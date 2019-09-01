@@ -1,0 +1,67 @@
+{
+  "name": "vuerd-plugin-erd",
+  "version": "0.1.0",
+  "description": "vuerd-core plugin erd",
+  "main": "dist/vuerd-plugin-erd.common.js",
+  "typings": "src/types/index.d.ts",
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build --target lib --inline-vue --name vuerd-plugin-erd src/components/index.ts",
+    "lint": "vue-cli-service lint",
+    "test:unit": "vue-cli-service test:unit"
+  },
+  "author": "dineug <dineug2@gmail.com>",
+  "homepage": "https://github.com/vuerd/vuerd-plugin-erd",
+  "bugs": "https://github.com/vuerd/vuerd-plugin-erd/issues",
+  "repository": "https://github.com/vuerd/vuerd-plugin-erd.git",
+  "license": "MIT",
+  "dependencies": {
+    "core-js": "^2.6.5",
+    "rxjs": "^6.5.2",
+    "uuid": "^3.3.3",
+    "velocity-animate": "^1.5.2",
+    "vue": "^2.6.10",
+    "vue-class-component": "^7.0.2",
+    "vue-property-decorator": "^8.1.0",
+    "vuerd-core": "^0.1.13",
+    "vuex": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.1.0",
+    "@types/mocha": "^5.2.4",
+    "@types/uuid": "^3.4.5",
+    "@vue/cli-plugin-babel": "^3.11.0",
+    "@vue/cli-plugin-typescript": "^3.11.0",
+    "@vue/cli-plugin-unit-mocha": "^3.11.0",
+    "@vue/cli-service": "^3.11.0",
+    "@vue/test-utils": "1.0.0-beta.29",
+    "chai": "^4.1.2",
+    "node-sass": "^4.9.0",
+    "pug": "^2.0.4",
+    "sass-loader": "^7.1.0",
+    "typescript": "^3.4.3",
+    "vue-cli-plugin-pug": "^1.0.7",
+    "vue-template-compiler": "^2.6.10"
+  },
+  "postcss": {
+    "plugins": {
+      "autoprefixer": {}
+    }
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions"
+  ],
+  "files": [
+    "dist/*",
+    "src/*"
+  ],
+  "keywords": [
+    "vue",
+    "vuejs",
+    "vuerd",
+    "editor",
+    "vuerd plugin",
+    "erd"
+  ]
+}
