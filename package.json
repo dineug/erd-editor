@@ -6,7 +6,7 @@
   "typings": "src/types/index.d.ts",
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build --target lib --inline-vue --name vuerd-plugin-erd src/components/index.ts",
+    "build": "vue-cli-service build --target lib --name vuerd-plugin-erd src/components/index.ts",
     "lint": "vue-cli-service lint",
     "test:unit": "vue-cli-service test:unit"
   },
@@ -16,17 +16,20 @@
   "repository": "https://github.com/vuerd/vuerd-plugin-erd.git",
   "license": "MIT",
   "dependencies": {
+    "@tweenjs/tween.js": "^18.1.2",
     "core-js": "^2.6.5",
     "rxjs": "^6.5.2",
     "uuid": "^3.3.3",
-    "velocity-animate": "^1.5.2",
     "vue": "^2.6.10",
     "vue-class-component": "^7.0.2",
     "vue-property-decorator": "^8.1.0",
-    "vuerd-core": "^0.1.13",
+    "vuerd-core": "^0.1.19",
     "vuex": "^3.0.1"
   },
   "devDependencies": {
+    "@fortawesome/fontawesome-svg-core": "^1.2.22",
+    "@fortawesome/free-solid-svg-icons": "^5.10.2",
+    "@fortawesome/vue-fontawesome": "^0.1.7",
     "@types/chai": "^4.1.0",
     "@types/mocha": "^5.2.4",
     "@types/uuid": "^3.4.5",

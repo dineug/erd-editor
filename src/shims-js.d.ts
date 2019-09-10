@@ -1,3 +1,1 @@
-interface Window {
-  Velocity: any;
-}
+declare module '@tweenjs/tween.js';

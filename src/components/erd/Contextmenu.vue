@@ -1,0 +1,139 @@
+<template lang="pug">
+  .contextmenu
+    ul(:style="`top: ${y}px; left: ${x}px;`")
+      li(
+        v-for="menu in menus"
+        :key="menu.id"
+        @click="menu.execute"
+      )
+        span.icon
+          img(v-if="menu.base64" :src="menu.icon")
+          font-awesome-icon(v-else :icon="menu.icon")
+        span.name {{menu.name}}
+        span.keymap {{menu.keymap}}
+</template>
+
+<script lang="ts">
+  import {uuid} from '@/ts/util';
+  import icon from '@/ts/icon';
+  import tableStore, {Commit} from '@/store/table';
+  import {Component, Prop, Vue} from 'vue-property-decorator';
+
+  interface Menu {
+    readonly id: string;
+    name: string;
+    keymap: string;
+    icon: string;
+    base64?: boolean;
+
+    execute(): void;
+  }
+
+  @Component
+  export default class Contextmenu extends Vue {
+    @Prop({type: Number, default: 0})
+    private x!: number;
+    @Prop({type: Number, default: 0})
+    private y!: number;
+
+    private menus: Menu[] = [
+      {
+        id: uuid(),
+        name: 'Table',
+        keymap: 'Alt + T',
+        icon: 'table',
+        execute() {
+          tableStore.commit(Commit.tableAdd);
+        },
+      },
+      {
+        id: uuid(),
+        name: 'Memo',
+        keymap: 'Alt + M',
+        icon: 'sticky-note',
+        execute() {},
+      },
+      {
+        id: uuid(),
+        name: 'Primary Key',
+        keymap: 'Alt + K',
+        icon: 'key',
+        execute() {},
+      },
+      {
+        id: uuid(),
+        name: '1 : 1',
+        keymap: 'Alt + 1',
+        icon: icon['erd-0-1'],
+        base64: true,
+        execute() {},
+      },
+      {
+        id: uuid(),
+        name: '1 : N',
+        keymap: 'Alt + 2',
+        icon: icon['erd-0-1-N'],
+        base64: true,
+        execute() {},
+      },
+    ];
+
+  }
+</script>
+
+<style scoped lang="scss">
+  .contextmenu {
+
+    ul {
+      position: fixed;
+      z-index: 8000;
+      background-color: $color-table;
+      opacity: 0.9;
+
+      li {
+        padding: 10px;
+        cursor: pointer;
+        font-size: $size-font + 2;
+        white-space: nowrap;
+        color: $color-font;
+
+        &:hover {
+          color: $color-font-active;
+          background-color: $color-contextmenu-active;
+        }
+
+        span {
+          width: 70px;
+          display: inline-flex;
+          vertical-align: middle;
+          align-items: center;
+          overflow: hidden;
+        }
+
+        .icon {
+          width: 16px;
+
+          img {
+            width: 16px;
+          }
+        }
+
+        .name {
+          padding-left: 10px;
+        }
+
+        .keymap {
+          width: 100%;
+          display: inline;
+          padding-left: 10px;
+        }
+      }
+    }
+  }
+
+  ul, ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+</style>
