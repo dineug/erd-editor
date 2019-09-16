@@ -1,6 +1,7 @@
-import {SIZE_MIN_WIDTH} from '@/ts/layout';
-import {Table, Column, TableUI} from '@/store/table';
+import {SIZE_MIN_WIDTH, SIZE_MARGIN_RIGHT, SIZE_TABLE_HEIGHT, SIZE_COLUMN_HEIGHT} from '@/ts/layout';
+import tableStore, {Table, Column, TableUI} from '@/store/table';
 import {uuid} from '@/ts/util';
+import {zIndexNext} from '@/store/table/tableHandler';
 import canvasStore from '@/store/canvas';
 
 export default class TableModel implements Table {
@@ -13,21 +14,30 @@ export default class TableModel implements Table {
   constructor() {
     this.id = uuid();
     this.ui = {
-      active: false,
+      active: true,
       top: 100 - canvasStore.state.y,
       left: 200 - canvasStore.state.x,
       widthName: SIZE_MIN_WIDTH,
       widthComment: SIZE_MIN_WIDTH,
-      height: 50,
-      zIndex: 1,
+      zIndex: zIndexNext(tableStore.state.tables),
     };
   }
 
   public width(): number {
-    let width = this.ui.widthName;
+    let width = this.ui.widthName + SIZE_MARGIN_RIGHT;
     if (canvasStore.state.show.tableComment) {
-      width += this.ui.widthComment;
+      width += this.ui.widthComment + SIZE_MARGIN_RIGHT;
     }
+    this.columns.forEach((column) => {
+      const columnWidth = column.width();
+      if (columnWidth > width) {
+        width = columnWidth;
+      }
+    });
     return width;
+  }
+
+  public height(): number {
+    return SIZE_TABLE_HEIGHT + (this.columns.length * SIZE_COLUMN_HEIGHT);
   }
 }

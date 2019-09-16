@@ -1,15 +1,25 @@
 <template lang="pug">
   .table(
-    :style="`top: ${table.ui.top}px; left: ${table.ui.left}px; width: ${table.width()}px; height: ${table.ui.height}px;`"
+    :class="{active: table.ui.active}"
+    :style="tableStyle"
     @mousedown="onMousedown"
   )
     .table-header
       .table-header-top
-        CircleButton.table-button(:close="true")
-        CircleButton.table-button(:add="true")
+        CircleButton.table-button(:close="true" @click="onClose")
+        CircleButton.table-button(:add="true" @click="onColumnAdd")
       .table-header-body
-        span.table-name(:style="`width: ${table.ui.widthName}px;`") {{placeholder(table.name, 'table')}}
-        span.table-comment(:style="`width: ${table.ui.widthComment}px;`") {{placeholder(table.comment, 'comment')}}
+        span.table-name(
+          :class="{focus: focusName, placeholder: placeholderName}"
+          :style="`width: ${table.ui.widthName}px;`"
+          @mousedown="onFocus($event, 'name')"
+        ) {{placeholder(table.name, 'table')}}
+        span.table-comment(
+          v-if="show.tableComment"
+          :class="{focus: focusComment, placeholder: placeholderComment}"
+          :style="`width: ${table.ui.widthComment}px;`"
+          @mousedown="onFocus($event, 'comment')"
+        ) {{placeholder(table.comment, 'comment')}}
     .table-body
       Column(
         v-for="column in table.columns"
@@ -21,10 +31,12 @@
 <script lang="ts">
   import {SIZE_TABLE_PADDING} from '@/ts/layout';
   import {Table as TableModel} from '@/store/table';
-  import tableStore, {Commit} from '@/store/table';
-  import canvasStore from '@/store/canvas';
+  import tableStore, {Commit, FocusType} from '@/store/table';
+  import canvasStore, {Show} from '@/store/canvas';
   import AnimationFrame from '@/ts/AnimationFrame';
-  import {Component, Prop, Vue} from 'vue-property-decorator';
+  import eventBus, {Bus} from '@/ts/EventBus';
+  import {log} from '@/ts/util';
+  import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
   import Column from './Table/Column.vue';
   import CircleButton from './CircleButton.vue';
 
@@ -44,10 +56,86 @@
 
     private mouseup$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mouseup');
     private mousemove$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mousemove');
+    private keydown$: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(window, 'keydown');
     private subMouseup: Subscription | null = null;
     private subMousemove: Subscription | null = null;
-    private moveXAnimation: AnimationFrame<{x: number}> | null = null;
-    private moveYAnimation: AnimationFrame<{y: number}> | null = null;
+    private subKeydown: Subscription | null = null;
+
+    private moveXAnimation: AnimationFrame<{ x: number }> | null = null;
+    private moveYAnimation: AnimationFrame<{ y: number }> | null = null;
+
+    get tableStyle(): string {
+      return `
+        top: ${this.table.ui.top}px;
+        left: ${this.table.ui.left}px;
+        width: ${this.table.width()}px;
+        height: ${this.table.height()}px;
+        z-index: ${this.table.ui.zIndex};
+      `;
+    }
+
+    get focus(): boolean {
+      let result = false;
+      if (tableStore.state.tableFocus && tableStore.state.tableFocus.id === this.table.id) {
+        result = true;
+      }
+      return result;
+    }
+
+    get focusName(): boolean {
+      let result = false;
+      if (tableStore.state.tableFocus
+        && tableStore.state.tableFocus.id === this.table.id
+        && tableStore.state.tableFocus.focusName) {
+        result = true;
+      }
+      return result;
+    }
+
+    get focusComment(): boolean {
+      let result = false;
+      if (tableStore.state.tableFocus
+        && tableStore.state.tableFocus.id === this.table.id
+        && tableStore.state.tableFocus.focusComment) {
+        result = true;
+      }
+      return result;
+    }
+
+    get placeholderName(): boolean {
+      let result = false;
+      if (this.table.name === '') {
+        result = true;
+      }
+      return result;
+    }
+
+    get placeholderComment(): boolean {
+      let result = false;
+      if (this.table.name === '') {
+        result = true;
+      }
+      return result;
+    }
+
+    get show(): Show {
+      return canvasStore.state.show;
+    }
+
+    @Watch('focus')
+    private watchFocus(value: boolean) {
+      log.debug('Table watchFocus');
+      if (value) {
+        if (this.subKeydown) {
+          this.subKeydown.unsubscribe();
+        }
+        this.subKeydown = this.keydown$.subscribe(this.onKeydown);
+      } else {
+        if (this.subKeydown) {
+          this.subKeydown.unsubscribe();
+        }
+      }
+    }
 
     private placeholder(value: string, display: string) {
       if (value === '') {
@@ -57,9 +145,19 @@
       }
     }
 
+    // ==================== Event Handler ===================
     private onMousedown(event: MouseEvent) {
-      this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
-      this.subMousemove = this.mousemove$.subscribe(this.onMousemove);
+      const el = event.target as HTMLElement;
+      if (!el.closest('.table-button')) {
+        this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
+        this.subMousemove = this.mousemove$.subscribe(this.onMousemove);
+      }
+      if (!el.closest('.table-name') && !el.closest('.table-comment')) {
+        tableStore.commit(Commit.tableSelect, {
+          table: this.table,
+          event,
+        });
+      }
     }
 
     private onMouseup(event: MouseEvent) {
@@ -67,6 +165,24 @@
         this.subMouseup.unsubscribe();
         this.subMousemove.unsubscribe();
       }
+      eventBus.$emit(Bus.Table.moveAnimationEnd);
+    }
+
+    private onMousemove(event: MouseEvent) {
+      event.preventDefault();
+      tableStore.commit(Commit.tableMove, {
+        table: this.table,
+        x: event.movementX,
+        y: event.movementY,
+        event,
+      });
+    }
+
+    private onClose() {
+      tableStore.commit(Commit.tableRemove, this.table);
+    }
+
+    private onMoveAnimationEnd() {
       if (this.moveXAnimation) {
         this.moveXAnimation.stop();
       }
@@ -76,7 +192,7 @@
       let x = 0;
       let y = 0;
       const minWidth = canvasStore.state.width - this.table.width() - TABLE_PADDING;
-      const minHeight = canvasStore.state.height - this.table.ui.height - TABLE_PADDING;
+      const minHeight = canvasStore.state.height - this.table.height() - TABLE_PADDING;
       if (this.table.ui.left > minWidth) {
         x = minWidth;
       }
@@ -99,14 +215,39 @@
       }
     }
 
-    private onMousemove(event: MouseEvent) {
-      event.preventDefault();
-      tableStore.commit(Commit.tableMove, {
-        table: this.table,
-        x: event.movementX,
-        y: event.movementY,
-      });
+    private onKeydown(event: KeyboardEvent) {
+      log.debug('Table onKeydown');
+      tableStore.commit(Commit.tableFocusMove, event);
     }
+
+    private onFocus(event: MouseEvent, focusType: FocusType) {
+      log.debug('Table onFocus');
+      tableStore.commit(Commit.tableSelect, {
+        table: this.table,
+        event,
+      });
+      if (this.focus) {
+        tableStore.commit(Commit.tableFocus, focusType);
+      }
+    }
+
+    private onColumnAdd() {
+      log.debug('Table onColumnAdd');
+      tableStore.commit(Commit.columnAdd, this.table);
+    }
+
+    // ==================== Event Handler END ===================
+
+    // ==================== Life Cycle ====================
+    private created() {
+      eventBus.$on(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
+    }
+
+    private destroyed() {
+      eventBus.$off(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
+    }
+
+    // ==================== Life Cycle END ====================
   }
 </script>
 
@@ -118,6 +259,11 @@
     opacity: 0.9;
     padding: $size-table-padding;
     font-size: $size-font + 2;
+
+    &.active {
+      border: solid $color-table-active 1px;
+      box-shadow: 0 1px 6px $color-table-active;
+    }
 
     .table-header {
 
@@ -137,6 +283,15 @@
           display: inline-flex;
           align-items: center;
           height: 100%;
+          margin-right: $size-margin-right;
+
+          &.focus {
+            border-bottom: solid $color-focus 1.5px;
+          }
+
+          &.placeholder {
+            color: $color-font-placeholder;
+          }
         }
       }
     }

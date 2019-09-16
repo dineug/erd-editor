@@ -52,6 +52,12 @@ class EventBus {
   }
 }
 
-export const Bus = {};
+enum Table {
+  moveAnimationEnd = 'Table.moveAnimationEnd',
+}
+
+export const Bus = {
+  Table,
+};
 
 export default new EventBus();

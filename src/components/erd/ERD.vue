@@ -12,6 +12,7 @@
   import eventBus from '@/ts/EventBus';
   import AnimationFrame from '@/ts/AnimationFrame';
   import canvasStore, {Commit} from '@/store/canvas';
+  import tableStore, {Commit as TableCommit} from '@/store/table';
   import {log, addSpanText, removeSpanText} from '@/ts/util';
   import {Component, Prop, Vue} from 'vue-property-decorator';
   import Canvas from './Canvas.vue';
@@ -24,11 +25,12 @@
     },
   })
   export default class ERD extends Vue {
-    // ==================== plugin DATA ====================
-    private width: number = 0;
-    private height: number = 0;
-    private value: string = '';
-    // ==================== plugin DATA END ====================
+    @Prop({type: String, default: ''})
+    private value!: string;
+    @Prop({type: Number, default: 0})
+    private width!: number;
+    @Prop({type: Number, default: 0})
+    private height!: number;
 
     private mouseup$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mouseup');
     private mousemove$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mousemove');
@@ -52,6 +54,7 @@
         this.onMouseStop();
         this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
         this.subMousemove = this.mousemove$.subscribe(this.onMousemove);
+        tableStore.commit(TableCommit.tableSelectAllEnd);
       }
     }
 

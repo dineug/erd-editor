@@ -17,6 +17,7 @@
   import {uuid} from '@/ts/util';
   import icon from '@/ts/icon';
   import tableStore, {Commit} from '@/store/table';
+  import {log} from '@/ts/util';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   interface Menu {
@@ -51,14 +52,18 @@
         name: 'Memo',
         keymap: 'Alt + M',
         icon: 'sticky-note',
-        execute() {},
+        execute() {
+          log.debug('Memo');
+        },
       },
       {
         id: uuid(),
         name: 'Primary Key',
         keymap: 'Alt + K',
         icon: 'key',
-        execute() {},
+        execute() {
+          log.debug('Primary Key');
+        },
       },
       {
         id: uuid(),
@@ -66,7 +71,9 @@
         keymap: 'Alt + 1',
         icon: icon['erd-0-1'],
         base64: true,
-        execute() {},
+        execute() {
+          log.debug('1 : 1');
+        },
       },
       {
         id: uuid(),
@@ -74,7 +81,9 @@
         keymap: 'Alt + 2',
         icon: icon['erd-0-1-N'],
         base64: true,
-        execute() {},
+        execute() {
+          log.debug('1 : N');
+        },
       },
     ];
 

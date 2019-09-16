@@ -1,4 +1,4 @@
-import {SIZE_MIN_WIDTH, SIZE_COLUMN_OPTION, SIZE_COLUMN_OPTION_NN} from '@/ts/layout';
+import {SIZE_MIN_WIDTH, SIZE_COLUMN_OPTION_NN, SIZE_MARGIN_RIGHT} from '@/ts/layout';
 import {Column, ColumnOption, ColumnUI} from '@/store/table';
 import {uuid} from '@/ts/util';
 import canvasStore from '@/store/canvas';
@@ -33,27 +33,18 @@ export default class ColumnModel implements Column {
   }
 
   public width(): number {
-    let width = this.ui.widthName;
+    let width = this.ui.widthName + SIZE_MARGIN_RIGHT;
     if (canvasStore.state.show.columnComment) {
-      width += this.ui.widthComment;
+      width += this.ui.widthComment + SIZE_MARGIN_RIGHT;
     }
     if (canvasStore.state.show.columnDataType) {
-      width += this.ui.widthDataType;
+      width += this.ui.widthDataType + SIZE_MARGIN_RIGHT;
     }
     if (canvasStore.state.show.columnDefault) {
-      width += this.ui.widthDefault;
-    }
-    if (canvasStore.state.show.columnAutoIncrement) {
-      width += SIZE_COLUMN_OPTION;
-    }
-    if (canvasStore.state.show.columnPrimaryKey) {
-      width += SIZE_COLUMN_OPTION;
-    }
-    if (canvasStore.state.show.columnUnique) {
-      width += SIZE_COLUMN_OPTION;
+      width += this.ui.widthDefault + SIZE_MARGIN_RIGHT;
     }
     if (canvasStore.state.show.columnNotNull) {
-      width += SIZE_COLUMN_OPTION_NN;
+      width += SIZE_COLUMN_OPTION_NN + SIZE_MARGIN_RIGHT;
     }
     return width;
   }
