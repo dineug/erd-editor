@@ -13,7 +13,9 @@ import {
 } from './table/tableController';
 import {
   columnAdd,
+  columnFocus,
 } from './table/columnController';
+import {TableFocus} from '@/models/TableFocusModel';
 
 Vue.use(Vuex);
 
@@ -72,28 +74,6 @@ export interface ColumnUI {
   widthDefault: number;
 }
 
-export interface TableFocus extends Table {
-  focusName: boolean;
-  focusComment: boolean;
-  focusColumns: ColumnFocus[];
-}
-
-export interface ColumnFocus extends Column {
-  focusName: boolean;
-  focusComment: boolean;
-  focusDataType: boolean;
-  focusDefault: boolean;
-  focusAutoIncrement: boolean;
-  focusPrimaryKey: boolean;
-  focusUnique: boolean;
-  focusNotNull: boolean;
-}
-
-export const enum FocusType {
-  name = 'name',
-  comment = 'comment',
-}
-
 export const enum Commit {
   tableAdd = 'tableAdd',
   tableMove = 'tableMove',
@@ -105,6 +85,7 @@ export const enum Commit {
   tableFocus = 'tableFocus',
   tableFocusMove = 'tableFocusMove',
   columnAdd = 'columnAdd',
+  columnFocus = 'columnFocus',
 }
 
 export default new Vuex.Store<State>({
@@ -124,6 +105,7 @@ export default new Vuex.Store<State>({
     tableFocus,
     tableFocusMove,
     columnAdd,
+    columnFocus,
   },
   actions: {},
 });

@@ -12,27 +12,31 @@
         span.table-name(
           :class="{focus: focusName, placeholder: placeholderName}"
           :style="`width: ${table.ui.widthName}px;`"
-          @mousedown="onFocus($event, 'name')"
+          @mousedown="onFocus($event, 'tableName')"
         ) {{placeholder(table.name, 'table')}}
         span.table-comment(
           v-if="show.tableComment"
           :class="{focus: focusComment, placeholder: placeholderComment}"
           :style="`width: ${table.ui.widthComment}px;`"
-          @mousedown="onFocus($event, 'comment')"
+          @mousedown="onFocus($event, 'tableComment')"
         ) {{placeholder(table.comment, 'comment')}}
     .table-body
       Column(
-        v-for="column in table.columns"
+        v-for="(column, index) in table.columns"
         :key="column.id"
+        :table="table"
         :column="column"
+        :columnFocus="columnFocus(index)"
       )
 </template>
 
 <script lang="ts">
   import {SIZE_TABLE_PADDING} from '@/ts/layout';
   import {Table as TableModel} from '@/store/table';
-  import tableStore, {Commit, FocusType} from '@/store/table';
+  import tableStore, {Commit} from '@/store/table';
   import canvasStore, {Show} from '@/store/canvas';
+  import {FocusType} from '@/models/TableFocusModel';
+  import {ColumnFocus} from '@/models/ColumnFocusModel';
   import AnimationFrame from '@/ts/AnimationFrame';
   import eventBus, {Bus} from '@/ts/EventBus';
   import {log} from '@/ts/util';
@@ -137,12 +141,29 @@
       }
     }
 
+    @Watch('table.columns')
+    private watchColumns() {
+      log.debug('Table watchColumns');
+      if (tableStore.state.tableFocus && tableStore.state.tableFocus.id === this.table.id) {
+        tableStore.state.tableFocus.watchColumns();
+      }
+    }
+
     private placeholder(value: string, display: string) {
       if (value === '') {
         return display;
       } else {
         return value;
       }
+    }
+
+    private columnFocus(index: number): ColumnFocus | null {
+      let result: ColumnFocus | null = null;
+      if (tableStore.state.tableFocus
+        && tableStore.state.tableFocus.id === this.table.id) {
+        result = tableStore.state.tableFocus.focusColumns[index];
+      }
+      return result;
     }
 
     // ==================== Event Handler ===================
@@ -152,7 +173,9 @@
         this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
         this.subMousemove = this.mousemove$.subscribe(this.onMousemove);
       }
-      if (!el.closest('.table-name') && !el.closest('.table-comment')) {
+      if (!el.closest('.table-name')
+        && !el.closest('.table-comment')
+        && !el.closest('.column')) {
         tableStore.commit(Commit.tableSelect, {
           table: this.table,
           event,
@@ -282,11 +305,11 @@
         .table-name, .table-comment {
           display: inline-flex;
           align-items: center;
-          height: 100%;
           margin-right: $size-margin-right;
+          border-bottom: solid $color-opacity $size-border-bottom;
 
           &.focus {
-            border-bottom: solid $color-focus 1.5px;
+            border-bottom: solid $color-focus $size-border-bottom;
           }
 
           &.placeholder {

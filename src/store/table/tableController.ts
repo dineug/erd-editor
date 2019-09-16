@@ -1,9 +1,8 @@
-import {State, Table, FocusType} from '../table';
+import {State, Table} from '../table';
 import TableModel from '@/models/TableModel';
 import {zIndexNext} from './tableHandler';
 import {log} from '@/ts/util';
-import TableFocusModel from '@/models/TableFocusModel';
-import Key from '@/models/Key';
+import TableFocusModel, {FocusType} from '@/models/TableFocusModel';
 
 export function tableAdd(state: State) {
   log.debug('tableController tableAdd');
@@ -66,22 +65,13 @@ export function tableFocusEnd(state: State) {
 export function tableFocus(state: State, focusType: FocusType) {
   log.debug('tableController tableFocus');
   if (state.tableFocus) {
-    switch (focusType) {
-      case FocusType.name:
-        state.tableFocus.focusName = true;
-        break;
-      case FocusType.comment:
-        state.tableFocus.focusComment = true;
-        break;
-    }
+    state.tableFocus.focus(focusType);
   }
 }
 
 export function tableFocusMove(state: State, event: KeyboardEvent) {
   log.debug('tableController tableFocusMove');
-  if (event.key === Key.ArrowRight) {
-    log.debug('ArrowRight');
-  } else if (event.key === Key.ArrowLeft) {
-    log.debug('ArrowLeft');
+  if (state.tableFocus) {
+    state.tableFocus.move(event);
   }
 }

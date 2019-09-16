@@ -1,4 +1,10 @@
-import {SIZE_MIN_WIDTH, SIZE_MARGIN_RIGHT, SIZE_TABLE_HEIGHT, SIZE_COLUMN_HEIGHT} from '@/ts/layout';
+import {
+  SIZE_MIN_WIDTH,
+  SIZE_MARGIN_RIGHT,
+  SIZE_TABLE_HEIGHT,
+  SIZE_COLUMN_HEIGHT,
+  SIZE_COLUMN_OPTION_NN,
+} from '@/ts/layout';
 import tableStore, {Table, Column, TableUI} from '@/store/table';
 import {uuid} from '@/ts/util';
 import {zIndexNext} from '@/store/table/tableHandler';
@@ -28,6 +34,10 @@ export default class TableModel implements Table {
     if (canvasStore.state.show.tableComment) {
       width += this.ui.widthComment + SIZE_MARGIN_RIGHT;
     }
+    const defaultColumnWidth = this.defaultColumnWidth();
+    if (width < defaultColumnWidth) {
+      width = defaultColumnWidth;
+    }
     this.columns.forEach((column) => {
       const columnWidth = column.width();
       if (columnWidth > width) {
@@ -40,4 +50,22 @@ export default class TableModel implements Table {
   public height(): number {
     return SIZE_TABLE_HEIGHT + (this.columns.length * SIZE_COLUMN_HEIGHT);
   }
+
+  private defaultColumnWidth(): number {
+    let width = SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
+    if (canvasStore.state.show.columnComment) {
+      width += SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
+    }
+    if (canvasStore.state.show.columnDataType) {
+      width += SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
+    }
+    if (canvasStore.state.show.columnDefault) {
+      width += SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
+    }
+    if (canvasStore.state.show.columnNotNull) {
+      width += SIZE_COLUMN_OPTION_NN + SIZE_MARGIN_RIGHT;
+    }
+    return width;
+  }
+
 }
