@@ -1,5 +1,9 @@
 <template lang="pug">
-  .button(:class="{close, add}" @click="$emit('click', $event)")
+  .button(
+    :class="{close, add}"
+    :title="title"
+    @click="$emit('click', $event)"
+  )
     font-awesome-icon(v-if="close" icon="times")
     font-awesome-icon(v-else-if="add" icon="plus")
 </template>
@@ -13,6 +17,8 @@
     private close!: boolean;
     @Prop({type: Boolean, default: false})
     private add!: boolean;
+    @Prop({type: String, default: ''})
+    private title!: string;
   }
 </script>
 

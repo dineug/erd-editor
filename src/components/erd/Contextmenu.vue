@@ -16,7 +16,8 @@
 <script lang="ts">
   import {uuid} from '@/ts/util';
   import icon from '@/ts/icon';
-  import tableStore, {Commit} from '@/store/table';
+  import tableStore, {Commit as TableCommit} from '@/store/table';
+  import memoStore, {Commit as MemoCommit} from '@/store/memo';
   import {log} from '@/ts/util';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
@@ -44,7 +45,7 @@
         keymap: 'Alt + N',
         icon: 'table',
         execute() {
-          tableStore.commit(Commit.tableAdd);
+          tableStore.commit(TableCommit.tableAdd);
         },
       },
       {
@@ -53,7 +54,7 @@
         keymap: 'Alt + M',
         icon: 'sticky-note',
         execute() {
-          log.debug('Memo');
+          memoStore.commit(MemoCommit.memoAdd);
         },
       },
       {

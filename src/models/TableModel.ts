@@ -6,9 +6,10 @@ import {
   SIZE_COLUMN_OPTION_NN,
 } from '@/ts/layout';
 import tableStore, {Table, Column, TableUI} from '@/store/table';
-import {uuid} from '@/ts/util';
-import {zIndexNext} from '@/store/table/tableHandler';
+import memoStore from '@/store/memo';
 import canvasStore from '@/store/canvas';
+import {uuid} from '@/ts/util';
+import {zIndexNext, pointNext} from '@/store/table/tableHandler';
 
 export default class TableModel implements Table {
   public readonly id: string;
@@ -19,13 +20,14 @@ export default class TableModel implements Table {
 
   constructor() {
     this.id = uuid();
+    const point = pointNext(tableStore.state.tables, memoStore.state.memos);
     this.ui = {
       active: true,
-      top: 100 - canvasStore.state.y,
-      left: 200 - canvasStore.state.x,
+      top: point.top,
+      left: point.left,
       widthName: SIZE_MIN_WIDTH,
       widthComment: SIZE_MIN_WIDTH,
-      zIndex: zIndexNext(tableStore.state.tables),
+      zIndex: zIndexNext(tableStore.state.tables, memoStore.state.memos),
     };
   }
 

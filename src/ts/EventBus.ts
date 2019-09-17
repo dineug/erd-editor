@@ -56,8 +56,13 @@ enum Table {
   moveAnimationEnd = 'Table.moveAnimationEnd',
 }
 
+enum Memo {
+  moveAnimationEnd = 'Memo.moveAnimationEnd',
+}
+
 export const Bus = {
   Table,
+  Memo,
 };
 
 export default new EventBus();

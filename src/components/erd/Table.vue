@@ -6,8 +6,16 @@
   )
     .table-header
       .table-header-top
-        CircleButton.table-button(:close="true" @click="onClose")
-        CircleButton.table-button(:add="true" @click="onColumnAdd")
+        CircleButton.table-button(
+          title="Ctrl + Delete"
+          close
+          @click="onClose"
+        )
+        CircleButton.table-button(
+          title="Alt + Enter"
+          add
+          @click="onColumnAdd"
+        )
       .table-header-body
         span.table-name(
           :class="{focus: focusName, placeholder: placeholderName}"
@@ -193,6 +201,7 @@
         this.subMousemove.unsubscribe();
       }
       eventBus.$emit(Bus.Table.moveAnimationEnd);
+      eventBus.$emit(Bus.Memo.moveAnimationEnd);
     }
 
     private onMousemove(event: MouseEvent) {
@@ -219,8 +228,8 @@
       }
       let x = 0;
       let y = 0;
-      const minWidth = canvasStore.state.width - this.table.width() - TABLE_PADDING;
-      const minHeight = canvasStore.state.height - this.table.height() - TABLE_PADDING;
+      const minWidth = canvasStore.state.width - (this.table.width() + TABLE_PADDING);
+      const minHeight = canvasStore.state.height - (this.table.height() + TABLE_PADDING);
       if (this.table.ui.left > minWidth) {
         x = minWidth;
       }
@@ -286,7 +295,6 @@
 <style scoped lang="scss">
   .table {
     position: absolute;
-    z-index: 300;
     background-color: $color-table;
     opacity: 0.9;
     padding: $size-table-padding;

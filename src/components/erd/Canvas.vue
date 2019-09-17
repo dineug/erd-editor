@@ -12,11 +12,17 @@
       :key="table.id"
       :table="table"
     )
+    Memo(
+      v-for="memo in memos"
+      :key="memo.id"
+      :memo="memo"
+    )
 </template>
 
 <script lang="ts">
   import canvasStore, {State} from '@/store/canvas';
   import tableStore, {Table as TableModel} from '@/store/table';
+  import memoStore, {Memo as MemoModel} from '@/store/memo';
   import {log} from '@/ts/util';
   import {Component, Prop, Vue} from 'vue-property-decorator';
   import Table from './Table.vue';
@@ -49,6 +55,10 @@
 
     get tables(): TableModel[] {
       return tableStore.state.tables;
+    }
+
+    get memos(): MemoModel[] {
+      return memoStore.state.memos;
     }
 
     // ==================== Event Handler ===================

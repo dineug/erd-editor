@@ -13,6 +13,7 @@
   import AnimationFrame from '@/ts/AnimationFrame';
   import canvasStore, {Commit} from '@/store/canvas';
   import tableStore, {Commit as TableCommit} from '@/store/table';
+  import memoStore, {Commit as MemoCommit} from '@/store/memo';
   import {log, addSpanText, removeSpanText} from '@/ts/util';
   import Key from '@/models/Key';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
@@ -62,11 +63,12 @@
 
     private onMousedown(event: MouseEvent) {
       const el = event.target as HTMLElement;
-      if (!el.closest('.contextmenu-erd') && !el.closest('.table')) {
+      if (!el.closest('.contextmenu-erd') && !el.closest('.table') && !el.closest('.memo')) {
         this.onMouseStop();
         this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
         this.subMousemove = this.mousemove$.subscribe(this.onMousemove);
         tableStore.commit(TableCommit.tableSelectAllEnd);
+        memoStore.commit(MemoCommit.memoSelectAllEnd);
       }
     }
 
@@ -123,9 +125,21 @@
 
     private onKeydown(event: KeyboardEvent) {
       log.debug('ERD onKeydown');
-      // log.debug(event.key);
       if (this.focus) {
-        // Contextmenu keymap
+        if (event.altKey && event.code === Key.KeyN) {
+          tableStore.commit(TableCommit.tableAdd);
+        } else if (event.altKey && event.code === Key.KeyM) {
+          memoStore.commit(MemoCommit.memoAdd);
+        } else if (event.altKey && event.key === Key.Enter) {
+          tableStore.commit(TableCommit.columnAddAll);
+        } else if (event.ctrlKey && event.code === Key.KeyA) {
+          event.preventDefault();
+          tableStore.commit(TableCommit.tableSelectAll);
+          memoStore.commit(MemoCommit.memoSelectAll);
+        } else if (event.ctrlKey && event.key === Key.Delete) {
+          tableStore.commit(TableCommit.tableRemoveAll);
+          memoStore.commit(MemoCommit.memoRemoveAll);
+        }
       }
     }
 

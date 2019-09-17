@@ -4,7 +4,9 @@ import {
   tableAdd,
   tableMove,
   tableRemove,
+  tableRemoveAll,
   tableSelect,
+  tableSelectAll,
   tableSelectAllEnd,
   tableFocusStart,
   tableFocusEnd,
@@ -13,6 +15,7 @@ import {
 } from './table/tableController';
 import {
   columnAdd,
+  columnAddAll,
   columnFocus,
 } from './table/columnController';
 import {TableFocus} from '@/models/TableFocusModel';
@@ -25,7 +28,7 @@ export interface State {
 }
 
 export interface Table {
-  id: string;
+  readonly id: string;
   name: string;
   comment: string;
   columns: Column[];
@@ -45,7 +48,7 @@ export interface TableUI {
 }
 
 export interface Column {
-  id: string;
+  readonly id: string;
   name: string;
   comment: string;
   dataType: string;
@@ -78,13 +81,16 @@ export const enum Commit {
   tableAdd = 'tableAdd',
   tableMove = 'tableMove',
   tableRemove = 'tableRemove',
+  tableRemoveAll = 'tableRemoveAll',
   tableSelect = 'tableSelect',
+  tableSelectAll = 'tableSelectAll',
   tableSelectAllEnd = 'tableSelectAllEnd',
   tableFocusStart = 'tableFocusStart',
   tableFocusEnd = 'tableFocusEnd',
   tableFocus = 'tableFocus',
   tableFocusMove = 'tableFocusMove',
   columnAdd = 'columnAdd',
+  columnAddAll = 'columnAddAll',
   columnFocus = 'columnFocus',
 }
 
@@ -98,13 +104,16 @@ export default new Vuex.Store<State>({
     tableAdd,
     tableMove,
     tableRemove,
+    tableRemoveAll,
     tableSelect,
+    tableSelectAll,
     tableSelectAllEnd,
     tableFocusStart,
     tableFocusEnd,
     tableFocus,
     tableFocusMove,
     columnAdd,
+    columnAddAll,
     columnFocus,
   },
   actions: {},

@@ -8,6 +8,15 @@ export function columnAdd(state: State, table: Table) {
   table.columns.push(new ColumnModel());
 }
 
+export function columnAddAll(state: State) {
+  log.debug('columnController columnAddAll');
+  state.tables.forEach((table: Table) => {
+    if (table.ui.active) {
+      table.columns.push(new ColumnModel());
+    }
+  });
+}
+
 export function columnFocus(state: State, payload: { focusType: FocusType, column: Column }) {
   log.debug('columnController columnFocus');
   const {focusType, column} = payload;
