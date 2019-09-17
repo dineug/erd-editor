@@ -1,6 +1,7 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 import {dataShow} from '@/data/canvas';
+import {log} from '@/ts/util';
 
 Vue.use(Vuex);
 
@@ -10,6 +11,7 @@ export interface State {
   x: number;
   y: number;
   show: Show;
+  focus: boolean;
 }
 
 export interface Show {
@@ -26,6 +28,7 @@ export interface Show {
 
 export const enum Commit {
   move = 'move',
+  focus = 'focus',
 }
 
 export default new Vuex.Store<State>({
@@ -35,13 +38,19 @@ export default new Vuex.Store<State>({
     x: 0,
     y: 0,
     show: dataShow,
+    focus: false,
   },
   getters: {},
   mutations: {
     move(state: State, payload: {x: number, y: number}) {
+      log.debug('canvasStore move');
       const {x, y} = payload;
       state.x += x;
       state.y += y;
+    },
+    focus(state: State, focus: boolean) {
+      log.debug(`canvasStore focus: ${focus}`);
+      state.focus = focus;
     },
   },
   actions: {},

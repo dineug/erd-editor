@@ -80,7 +80,9 @@
 
     get focus(): boolean {
       let result = false;
-      if (tableStore.state.tableFocus && tableStore.state.tableFocus.id === this.table.id) {
+      if (tableStore.state.tableFocus
+        && tableStore.state.tableFocus.id === this.table.id
+        && canvasStore.state.focus) {
         result = true;
       }
       return result;
@@ -132,11 +134,13 @@
       if (value) {
         if (this.subKeydown) {
           this.subKeydown.unsubscribe();
+          this.subKeydown = null;
         }
         this.subKeydown = this.keydown$.subscribe(this.onKeydown);
       } else {
         if (this.subKeydown) {
           this.subKeydown.unsubscribe();
+          this.subKeydown = null;
         }
       }
     }
@@ -202,6 +206,7 @@
     }
 
     private onClose() {
+      log.debug('Table onClose');
       tableStore.commit(Commit.tableRemove, this.table);
     }
 
@@ -268,6 +273,10 @@
 
     private destroyed() {
       eventBus.$off(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
+      if (this.subKeydown) {
+        this.subKeydown.unsubscribe();
+        this.subKeydown = null;
+      }
     }
 
     // ==================== Life Cycle END ====================

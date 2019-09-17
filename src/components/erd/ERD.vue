@@ -14,7 +14,8 @@
   import canvasStore, {Commit} from '@/store/canvas';
   import tableStore, {Commit as TableCommit} from '@/store/table';
   import {log, addSpanText, removeSpanText} from '@/ts/util';
-  import {Component, Prop, Vue} from 'vue-property-decorator';
+  import Key from '@/models/Key';
+  import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
   import Canvas from './Canvas.vue';
 
   import {fromEvent, Observable, Subscription} from 'rxjs';
@@ -31,13 +32,24 @@
     private width!: number;
     @Prop({type: Number, default: 0})
     private height!: number;
+    @Prop({type: Boolean, default: false})
+    private focus!: boolean;
 
     private mouseup$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mouseup');
     private mousemove$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mousemove');
+    private keydown$: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(window, 'keydown');
     private subMouseup: Subscription | null = null;
     private subMousemove: Subscription | null = null;
+    private subKeydown!: Subscription;
+
     private moveXAnimation: AnimationFrame<{x: number}> | null = null;
     private moveYAnimation: AnimationFrame<{y: number}> | null = null;
+
+    @Watch('focus')
+    private watchFocus(focus: boolean) {
+      log.debug(`ERD watchFocus: ${focus}`);
+      canvasStore.commit(Commit.focus, focus);
+    }
 
     // ==================== Event Handler ===================
     private onChange() {
@@ -109,21 +121,35 @@
       });
     }
 
+    private onKeydown(event: KeyboardEvent) {
+      log.debug('ERD onKeydown');
+      // log.debug(event.key);
+      if (this.focus) {
+        // Contextmenu keymap
+      }
+    }
+
     // ==================== Event Handler END ===================
 
     // ==================== Life Cycle ====================
     private created() {
+      log.debug('ERD created');
       if (process.env.NODE_ENV === 'development') {
         eventBus.destroyed();
       }
+      canvasStore.commit(Commit.focus, this.focus);
     }
 
     private mounted() {
+      log.debug('ERD mounted');
       addSpanText();
+      this.subKeydown = this.keydown$.subscribe(this.onKeydown);
     }
 
     private destroyed() {
+      log.debug('ERD destroyed');
       removeSpanText();
+      this.subKeydown.unsubscribe();
     }
 
     // ==================== Life Cycle END ====================

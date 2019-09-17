@@ -40,8 +40,8 @@
     private menus: Menu[] = [
       {
         id: uuid(),
-        name: 'Table',
-        keymap: 'Alt + T',
+        name: 'New Table',
+        keymap: 'Alt + N',
         icon: 'table',
         execute() {
           tableStore.commit(Commit.tableAdd);
@@ -49,7 +49,7 @@
       },
       {
         id: uuid(),
-        name: 'Memo',
+        name: 'New Memo',
         keymap: 'Alt + M',
         icon: 'sticky-note',
         execute() {
@@ -112,7 +112,7 @@
         }
 
         span {
-          width: 70px;
+          width: 75px;
           display: inline-flex;
           vertical-align: middle;
           align-items: center;

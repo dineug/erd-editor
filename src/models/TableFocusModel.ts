@@ -108,6 +108,9 @@ export default class TableFocusModel implements TableFocus {
   }
 
   public move(event: KeyboardEvent) {
+    if (event.key === Key.Tab) {
+      event.preventDefault();
+    }
     if (event.key === Key.ArrowLeft) {
       if (this.currentFocusTable) {
         if (this.focusName && canvasStore.state.show.tableComment) {
@@ -121,7 +124,7 @@ export default class TableFocusModel implements TableFocus {
           this.focus(focusColumn.preFocus(), this.currentColumn);
         }
       }
-    } else if (event.key === Key.ArrowRight) {
+    } else if (event.key === Key.ArrowRight || event.key === Key.Tab) {
       if (this.currentFocusTable) {
         if (this.focusName && canvasStore.state.show.tableComment) {
           this.focus(FocusType.tableComment);

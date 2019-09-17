@@ -177,6 +177,7 @@
       margin-right: $size-margin-right;
       border-bottom: solid $color-opacity $size-border-bottom;
       margin-bottom: $size-margin-bottom;
+      color: $color-font-active;
 
       &.focus {
         border-bottom: solid $color-focus $size-border-bottom;

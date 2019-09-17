@@ -15,9 +15,18 @@ enum Key {
   Enter = 'Enter',
   Delete = 'Delete',
   Tab = 'Tab',
+  Control = 'Control',
   ArrowUp = 'ArrowUp',
   ArrowRight = 'ArrowRight',
   ArrowDown = 'ArrowDown',
   ArrowLeft = 'ArrowLeft',
+  n = 'n',
+  m = 'm',
+  k = 'k',
+  N = 'N',
+  M = 'M',
+  K = 'K',
+  num1 = '1',
+  num2 = '2',
 }
 export default Key;
