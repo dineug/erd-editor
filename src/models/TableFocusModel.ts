@@ -1,8 +1,8 @@
-import tableStore, {Table, TableUI, Column, Commit, ColumnWidth} from '@/store/table';
+import {Table, TableUI, Column, Commit, ColumnWidth} from '@/store/table';
 import ColumnFocusModel, {ColumnFocus} from './ColumnFocusModel';
 import {log, isData, getData} from '@/ts/util';
 import Key from '@/models/Key';
-import canvasStore from '@/store/canvas';
+import StoreManagement from '@/store/StoreManagement';
 
 export const enum FocusType {
   tableName = 'tableName',
@@ -32,10 +32,12 @@ export default class TableFocusModel implements TableFocus {
   private table: Table;
   private currentFocusTable: boolean = false;
   private currentColumn: Column | null = null;
+  private store: StoreManagement;
 
-  constructor(table: Table) {
+  constructor(store: StoreManagement, table: Table) {
+    this.store = store;
     this.table = table;
-    this.table.columns.forEach((column: Column) => this.focusColumns.push(new ColumnFocusModel(column)));
+    this.table.columns.forEach((column: Column) => this.focusColumns.push(new ColumnFocusModel(store, column)));
   }
 
   get id(): string {
@@ -114,11 +116,11 @@ export default class TableFocusModel implements TableFocus {
     if (event.key === Key.Tab) {
       event.preventDefault();
     }
-    if (event.key === Key.Enter || tableStore.state.edit) {
+    if (event.key === Key.Enter || this.store.tableStore.state.edit) {
       this.edit(event);
     } else if (event.key === Key.ArrowLeft) {
       if (this.currentFocusTable) {
-        if (this.focusName && canvasStore.state.show.tableComment) {
+        if (this.focusName && this.store.canvasStore.state.show.tableComment) {
           this.focus(FocusType.tableComment);
         } else {
           this.focus(FocusType.tableName);
@@ -131,7 +133,7 @@ export default class TableFocusModel implements TableFocus {
       }
     } else if (event.key === Key.ArrowRight || event.key === Key.Tab) {
       if (this.currentFocusTable) {
-        if (this.focusName && canvasStore.state.show.tableComment) {
+        if (this.focusName && this.store.canvasStore.state.show.tableComment) {
           this.focus(FocusType.tableComment);
         } else {
           this.focus(FocusType.tableName);
@@ -182,7 +184,7 @@ export default class TableFocusModel implements TableFocus {
     const oldFocusColumns = [...this.focusColumns];
     this.focusColumns = [];
     this.table.columns.forEach((column: Column) => {
-      const columnFocus = new ColumnFocusModel(column);
+      const columnFocus = new ColumnFocusModel(this.store, column);
       const oldColumnFocus = getData(oldFocusColumns, column.id);
       if (oldColumnFocus) {
         columnFocus.focusName = oldColumnFocus.focusName;
@@ -245,15 +247,15 @@ export default class TableFocusModel implements TableFocus {
 
   private edit(event: KeyboardEvent) {
     log.debug('TableFocusModel edit');
-    if (tableStore.state.edit) {
+    if (this.store.tableStore.state.edit) {
       if (!event.altKey && (event.key === Key.Enter || event.key === Key.Tab)) {
-        tableStore.commit(Commit.tableEditEnd);
+        this.store.tableStore.commit(Commit.tableEditEnd);
       }
     } else {
       if (!event.altKey && event.key === Key.Enter) {
         if (this.currentFocusTable) {
           const focusType = this.focusName ? FocusType.tableName : FocusType.tableComment;
-          tableStore.commit(Commit.tableEditStart, {
+          this.store.tableStore.commit(Commit.tableEditStart, {
             id: this.table.id,
             focusType,
           });
@@ -264,7 +266,7 @@ export default class TableFocusModel implements TableFocus {
             if (focusType === FocusType.columnNotNull) {
               this.currentColumn.option.notNull = !this.currentColumn.option.notNull;
             } else {
-              tableStore.commit(Commit.tableEditStart, {
+              this.store.tableStore.commit(Commit.tableEditStart, {
                 id: this.currentColumn.id,
                 focusType,
               });

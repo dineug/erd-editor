@@ -1,7 +1,7 @@
 import {SIZE_START_X, SIZE_START_Y, SIZE_START_ADD} from '@/ts/layout';
 import {Table} from '../table';
 import {Memo} from '../memo';
-import canvasStore from '@/store/canvas';
+import StoreManagement from '@/store/StoreManagement';
 
 export function zIndexNext(tables: Table[], memos: Memo[]): number {
   let max = 0;
@@ -18,10 +18,10 @@ export function zIndexNext(tables: Table[], memos: Memo[]): number {
   return max + 1;
 }
 
-export function pointNext(tables: Table[], memos: Memo[]): { top: number, left: number } {
+export function pointNext(store: StoreManagement, tables: Table[], memos: Memo[]): { top: number, left: number } {
   const point = {
-    top: SIZE_START_Y - canvasStore.state.y,
-    left: SIZE_START_X - canvasStore.state.x,
+    top: SIZE_START_Y - store.canvasStore.state.y,
+    left: SIZE_START_X - store.canvasStore.state.x,
   };
   let isPosition = true;
   while (isPosition) {

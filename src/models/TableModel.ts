@@ -6,12 +6,11 @@ import {
   SIZE_COLUMN_OPTION_NN,
   SIZE_COLUMN_CLOSE,
 } from '@/ts/layout';
-import tableStore, {Table, Column, TableUI, ColumnWidth} from '@/store/table';
-import memoStore from '@/store/memo';
-import canvasStore from '@/store/canvas';
+import {Table, Column, TableUI, ColumnWidth} from '@/store/table';
 import {uuid} from '@/ts/util';
 import {zIndexNext, pointNext} from '@/store/table/tableHandler';
 import ColumnModel from '@/models/ColumnModel';
+import StoreManagement from '@/store/StoreManagement';
 
 export default class TableModel implements Table {
   public id: string;
@@ -19,31 +18,33 @@ export default class TableModel implements Table {
   public comment: string = '';
   public columns: Column[] = [];
   public ui: TableUI;
+  private store: StoreManagement;
 
-  constructor(table?: Table) {
+  constructor(store: StoreManagement, table?: Table) {
+    this.store = store;
     if (table) {
       this.id = table.id;
       this.name = table.name;
       this.comment = table.comment;
       this.ui = table.ui;
-      table.columns.forEach((column) => this.columns.push(new ColumnModel(column)));
+      table.columns.forEach((column) => this.columns.push(new ColumnModel(store, column)));
     } else {
       this.id = uuid();
-      const point = pointNext(tableStore.state.tables, memoStore.state.memos);
+      const point = pointNext(store, store.tableStore.state.tables, store.memoStore.state.memos);
       this.ui = {
         active: true,
         top: point.top,
         left: point.left,
         widthName: SIZE_MIN_WIDTH,
         widthComment: SIZE_MIN_WIDTH,
-        zIndex: zIndexNext(tableStore.state.tables, memoStore.state.memos),
+        zIndex: zIndexNext(store.tableStore.state.tables, store.memoStore.state.memos),
       };
     }
   }
 
   public width(): number {
     let width = this.ui.widthName + SIZE_MARGIN_RIGHT;
-    if (canvasStore.state.show.tableComment) {
+    if (this.store.canvasStore.state.show.tableComment) {
       width += this.ui.widthComment + SIZE_MARGIN_RIGHT;
     }
     const defaultColumnWidth = this.defaultColumnWidth();
@@ -74,17 +75,17 @@ export default class TableModel implements Table {
       if (columnWidth.name < column.ui.widthName) {
         columnWidth.name = column.ui.widthName;
       }
-      if (canvasStore.state.show.columnComment && columnWidth.comment < column.ui.widthComment) {
+      if (this.store.canvasStore.state.show.columnComment && columnWidth.comment < column.ui.widthComment) {
         columnWidth.comment = column.ui.widthComment;
       }
-      if (canvasStore.state.show.columnDataType && columnWidth.dataType < column.ui.widthDataType) {
+      if (this.store.canvasStore.state.show.columnDataType && columnWidth.dataType < column.ui.widthDataType) {
         columnWidth.dataType = column.ui.widthDataType;
       }
-      if (canvasStore.state.show.columnDefault && columnWidth.default < column.ui.widthDefault) {
+      if (this.store.canvasStore.state.show.columnDefault && columnWidth.default < column.ui.widthDefault) {
         columnWidth.default = column.ui.widthDefault;
       }
     });
-    if (canvasStore.state.show.columnNotNull) {
+    if (this.store.canvasStore.state.show.columnNotNull) {
       columnWidth.notNull = SIZE_COLUMN_OPTION_NN;
     }
     if (columnWidth.name !== 0) {
@@ -107,16 +108,16 @@ export default class TableModel implements Table {
 
   private defaultColumnWidth(): number {
     let width = SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
-    if (canvasStore.state.show.columnComment) {
+    if (this.store.canvasStore.state.show.columnComment) {
       width += SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
     }
-    if (canvasStore.state.show.columnDataType) {
+    if (this.store.canvasStore.state.show.columnDataType) {
       width += SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
     }
-    if (canvasStore.state.show.columnDefault) {
+    if (this.store.canvasStore.state.show.columnDefault) {
       width += SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
     }
-    if (canvasStore.state.show.columnNotNull) {
+    if (this.store.canvasStore.state.show.columnNotNull) {
       width += SIZE_COLUMN_OPTION_NN + SIZE_MARGIN_RIGHT;
     }
     return width;

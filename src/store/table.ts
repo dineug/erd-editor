@@ -25,6 +25,7 @@ import {
 import {TableFocus, FocusType} from '@/models/TableFocusModel';
 import {dataInit} from '@/data/table';
 import TableModel from '@/models/TableModel';
+import StoreManagement from '@/store/StoreManagement';
 
 Vue.use(Vuex);
 
@@ -122,45 +123,48 @@ export const enum Commit {
   columnRemoveAll = 'columnRemoveAll',
 }
 
-export default new Vuex.Store<State>({
-  state: {
-    tables: [],
-    tableFocus: null,
-    edit: null,
-  },
-  getters: {},
-  mutations: {
-    init(state: State) {
-      const initData = dataInit() as any;
-      const data = state as any;
-      Object.keys(state).forEach((key) => {
-        data[key] = initData[key];
-      });
+export function createStore() {
+  return new Vuex.Store<State>({
+    state: {
+      tables: [],
+      tableFocus: null,
+      edit: null,
     },
-    load(state: State, load: State) {
-      state.tableFocus = null;
-      state.edit = null;
-      state.tables = [];
-      load.tables.forEach((table) => state.tables.push(new TableModel(table)));
+    getters: {},
+    mutations: {
+      init(state: State) {
+        const initData = dataInit() as any;
+        const data = state as any;
+        Object.keys(state).forEach((key) => {
+          data[key] = initData[key];
+        });
+      },
+      load(state: State, payload: { load: State, store: StoreManagement }) {
+        const {load, store} = payload;
+        state.tableFocus = null;
+        state.edit = null;
+        state.tables = [];
+        load.tables.forEach((table) => state.tables.push(new TableModel(store, table)));
+      },
+      tableAdd,
+      tableMove,
+      tableRemove,
+      tableRemoveAll,
+      tableSelect,
+      tableSelectAll,
+      tableSelectAllEnd,
+      tableFocusStart,
+      tableFocusEnd,
+      tableFocus,
+      tableFocusMove,
+      tableEditStart,
+      tableEditEnd,
+      columnAdd,
+      columnAddAll,
+      columnFocus,
+      columnRemove,
+      columnRemoveAll,
     },
-    tableAdd,
-    tableMove,
-    tableRemove,
-    tableRemoveAll,
-    tableSelect,
-    tableSelectAll,
-    tableSelectAllEnd,
-    tableFocusStart,
-    tableFocusEnd,
-    tableFocus,
-    tableFocusMove,
-    tableEditStart,
-    tableEditEnd,
-    columnAdd,
-    columnAddAll,
-    columnFocus,
-    columnRemove,
-    columnRemoveAll,
-  },
-  actions: {},
-});
+    actions: {},
+  });
+}

@@ -4,21 +4,23 @@ import ColumnModel from '@/models/ColumnModel';
 import {FocusType} from '@/models/TableFocusModel';
 import {tableFocusStart} from './tableController';
 import eventBus, {Bus} from '@/ts/EventBus';
+import StoreManagement from '@/store/StoreManagement';
 
-export function columnAdd(state: State, table: Table) {
+export function columnAdd(state: State, payload: {table: Table, store: StoreManagement}) {
   log.debug('columnController columnAdd');
-  table.columns.push(new ColumnModel());
+  const {table, store} = payload;
+  table.columns.push(new ColumnModel(store));
   eventBus.$emit(Bus.ERD.change);
 }
 
-export function columnAddAll(state: State) {
+export function columnAddAll(state: State, store: StoreManagement) {
   log.debug('columnController columnAddAll');
   state.tables.forEach((table: Table) => {
     if (table.ui.active) {
       if (!state.tableFocus) {
-        tableFocusStart(state, table);
+        tableFocusStart(state, {table, store});
       }
-      table.columns.push(new ColumnModel());
+      table.columns.push(new ColumnModel(store));
     }
   });
   eventBus.$emit(Bus.ERD.change);

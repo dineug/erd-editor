@@ -6,24 +6,28 @@
       v-if="contextmenu"
       :x="contextmenuX"
       :y="contextmenuY"
+      :store="store"
     )
     Table(
       v-for="table in tables"
       :key="table.id"
       :table="table"
+      :store="store"
     )
     Memo(
       v-for="memo in memos"
       :key="memo.id"
       :memo="memo"
+      :store="store"
     )
 </template>
 
 <script lang="ts">
-  import canvasStore, {State} from '@/store/canvas';
-  import tableStore, {Table as TableModel} from '@/store/table';
-  import memoStore, {Memo as MemoModel} from '@/store/memo';
+  import {State} from '@/store/canvas';
+  import {Table as TableModel} from '@/store/table';
+  import {Memo as MemoModel} from '@/store/memo';
   import {log} from '@/ts/util';
+  import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Vue} from 'vue-property-decorator';
   import Table from './Table.vue';
   import Memo from './Memo.vue';
@@ -41,6 +45,8 @@
     },
   })
   export default class Canvas extends Vue {
+    @Prop({type: Object, default: () => ({})})
+    private store!: StoreManagement;
 
     private mousedown$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mousedown');
     private subMousedown!: Subscription;
@@ -50,15 +56,15 @@
     private contextmenuY: number = 0;
 
     get option(): State {
-      return canvasStore.state;
+      return this.store.canvasStore.state;
     }
 
     get tables(): TableModel[] {
-      return tableStore.state.tables;
+      return this.store.tableStore.state.tables;
     }
 
     get memos(): MemoModel[] {
-      return memoStore.state.memos;
+      return this.store.memoStore.state.memos;
     }
 
     // ==================== Event Handler ===================

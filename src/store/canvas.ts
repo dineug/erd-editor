@@ -33,41 +33,43 @@ export const enum Commit {
   focus = 'focus',
 }
 
-export default new Vuex.Store<State>({
-  state: {
-    width: 2000,
-    height: 2000,
-    x: 0,
-    y: 0,
-    show: dataShow(),
-    focus: false,
-  },
-  getters: {},
-  mutations: {
-    init(state: State) {
-      const stateData = state as any;
-      const initData = dataInit() as any;
-      Object.keys(state).forEach((key) => {
-        stateData[key] = initData[key];
-      });
+export function createStore() {
+  return new Vuex.Store<State>({
+    state: {
+      width: 2000,
+      height: 2000,
+      x: 0,
+      y: 0,
+      show: dataShow(),
+      focus: false,
     },
-    load(state: State, load: State) {
-      const stateData = state as any;
-      const loadData = load as any;
-      Object.keys(state).forEach((key) => {
-        stateData[key] = loadData[key];
-      });
+    getters: {},
+    mutations: {
+      init(state: State) {
+        const stateData = state as any;
+        const initData = dataInit() as any;
+        Object.keys(state).forEach((key) => {
+          stateData[key] = initData[key];
+        });
+      },
+      load(state: State, load: State) {
+        const stateData = state as any;
+        const loadData = load as any;
+        Object.keys(state).forEach((key) => {
+          stateData[key] = loadData[key];
+        });
+      },
+      move(state: State, payload: {x: number, y: number}) {
+        log.debug('canvasStore move');
+        const {x, y} = payload;
+        state.x += x;
+        state.y += y;
+      },
+      focus(state: State, focus: boolean) {
+        log.debug(`canvasStore focus: ${focus}`);
+        state.focus = focus;
+      },
     },
-    move(state: State, payload: {x: number, y: number}) {
-      log.debug('canvasStore move');
-      const {x, y} = payload;
-      state.x += x;
-      state.y += y;
-    },
-    focus(state: State, focus: boolean) {
-      log.debug(`canvasStore focus: ${focus}`);
-      state.focus = focus;
-    },
-  },
-  actions: {},
-});
+    actions: {},
+  });
+}

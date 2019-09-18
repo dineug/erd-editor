@@ -1,22 +1,25 @@
 import {State, Table, Edit} from '../table';
-import memoStore, {Commit, Memo} from '@/store/memo';
+import {Commit, Memo} from '@/store/memo';
 import TableModel from '@/models/TableModel';
 import {zIndexNext} from './tableHandler';
 import {log} from '@/ts/util';
 import TableFocusModel, {FocusType} from '@/models/TableFocusModel';
+import StoreManagement from '@/store/StoreManagement';
 import eventBus, {Bus} from '@/ts/EventBus';
 
-export function tableAdd(state: State) {
+export function tableAdd(state: State, store: StoreManagement) {
   log.debug('tableController tableAdd');
   tableSelectAllEnd(state);
-  memoStore.commit(Commit.memoSelectAllEnd);
-  state.tables.push(new TableModel());
+  store.memoStore.commit(Commit.memoSelectAllEnd);
+  state.tables.push(new TableModel(store));
   eventBus.$emit(Bus.ERD.change);
 }
 
-export function tableMove(state: State, payload: { table: Table, x: number, y: number, event: MouseEvent }) {
+export function tableMove(
+  state: State,
+  payload: { table: Table, x: number, y: number, event: MouseEvent, store: StoreManagement }) {
   log.debug('tableController tableMove');
-  const {table, x, y, event} = payload;
+  const {table, x, y, event, store} = payload;
   if (event.ctrlKey) {
     state.tables.forEach((value: Table) => {
       if (value.ui.active) {
@@ -24,7 +27,7 @@ export function tableMove(state: State, payload: { table: Table, x: number, y: n
         value.ui.left += x;
       }
     });
-    memoStore.state.memos.forEach((value: Memo) => {
+    store.memoStore.state.memos.forEach((value: Memo) => {
       if (value.ui.active) {
         value.ui.top += y;
         value.ui.left += x;
@@ -54,17 +57,17 @@ export function tableRemoveAll(state: State) {
   eventBus.$emit(Bus.ERD.change);
 }
 
-export function tableSelect(state: State, payload: { table: Table, event: MouseEvent }) {
+export function tableSelect(state: State, payload: { table: Table, event: MouseEvent, store: StoreManagement }) {
   log.debug('tableController tableSelect');
-  const {table, event} = payload;
-  table.ui.zIndex = zIndexNext(state.tables, memoStore.state.memos);
+  const {table, event, store} = payload;
+  table.ui.zIndex = zIndexNext(state.tables, store.memoStore.state.memos);
   if (event.ctrlKey) {
     table.ui.active = true;
   } else {
     state.tables.forEach((value: Table) => value.ui.active = value.id === table.id);
-    memoStore.commit(Commit.memoSelectAllEnd);
+    store.memoStore.commit(Commit.memoSelectAllEnd);
   }
-  tableFocusStart(state, table);
+  tableFocusStart(state, {table, store});
 }
 
 export function tableSelectAll(state: State) {
@@ -78,10 +81,11 @@ export function tableSelectAllEnd(state: State) {
   tableFocusEnd(state);
 }
 
-export function tableFocusStart(state: State, table: Table) {
+export function tableFocusStart(state: State, payload: {table: Table, store: StoreManagement}) {
   log.debug('tableController tableFocusStart');
+  const {table, store} = payload;
   if (!state.tableFocus || state.tableFocus.id !== table.id) {
-    state.tableFocus = new TableFocusModel(table);
+    state.tableFocus = new TableFocusModel(store, table);
   }
 }
 

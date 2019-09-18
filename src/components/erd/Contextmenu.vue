@@ -16,9 +16,10 @@
 <script lang="ts">
   import {uuid} from '@/ts/util';
   import icon from '@/ts/icon';
-  import tableStore, {Commit as TableCommit} from '@/store/table';
-  import memoStore, {Commit as MemoCommit} from '@/store/memo';
+  import {Commit as TableCommit} from '@/store/table';
+  import {Commit as MemoCommit} from '@/store/memo';
   import {log} from '@/ts/util';
+  import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   interface Menu {
@@ -33,6 +34,8 @@
 
   @Component
   export default class Contextmenu extends Vue {
+    @Prop({type: Object, default: () => ({})})
+    private store!: StoreManagement;
     @Prop({type: Number, default: 0})
     private x!: number;
     @Prop({type: Number, default: 0})
@@ -44,8 +47,8 @@
         name: 'New Table',
         keymap: 'Alt + N',
         icon: 'table',
-        execute() {
-          tableStore.commit(TableCommit.tableAdd);
+        execute: () => {
+          this.store.tableStore.commit(TableCommit.tableAdd, this.store);
         },
       },
       {
@@ -53,8 +56,8 @@
         name: 'New Memo',
         keymap: 'Alt + M',
         icon: 'sticky-note',
-        execute() {
-          memoStore.commit(MemoCommit.memoAdd);
+        execute: () => {
+          this.store.memoStore.commit(MemoCommit.memoAdd, this.store);
         },
       },
       {
@@ -62,7 +65,7 @@
         name: 'Primary Key',
         keymap: 'Alt + K',
         icon: 'key',
-        execute() {
+        execute: () => {
           log.debug('Primary Key');
         },
       },
@@ -72,7 +75,7 @@
         keymap: 'Alt + 1',
         icon: icon['erd-0-1'],
         base64: true,
-        execute() {
+        execute: () => {
           log.debug('1 : 1');
         },
       },
@@ -82,7 +85,7 @@
         keymap: 'Alt + 2',
         icon: icon['erd-0-1-N'],
         base64: true,
-        execute() {
+        execute: () => {
           log.debug('1 : N');
         },
       },

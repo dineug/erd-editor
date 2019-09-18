@@ -79,11 +79,11 @@
 
 <script lang="ts">
   import {SIZE_MEMO_PADDING, SIZE_MEMO_WIDTH, SIZE_MEMO_HEIGHT} from '@/ts/layout';
-  import memoStore, {Memo as MemoModel, Commit} from '@/store/memo';
-  import canvasStore from '@/store/canvas';
+  import {Memo as MemoModel, Commit} from '@/store/memo';
   import eventBus, {Bus} from '@/ts/EventBus';
   import {log} from '@/ts/util';
   import AnimationFrame from '@/ts/AnimationFrame';
+  import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Vue} from 'vue-property-decorator';
   import CircleButton from './CircleButton.vue';
   import Sash from './Sash.vue';
@@ -123,6 +123,8 @@
     },
   })
   export default class Memo extends Vue {
+    @Prop({type: Object, default: () => ({})})
+    private store!: StoreManagement;
     @Prop({type: Object, default: () => ({})})
     private memo!: MemoModel;
 
@@ -224,9 +226,10 @@
         this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
         this.subMousemove = this.mousemove$.subscribe(this.onMousemove);
       }
-      memoStore.commit(Commit.memoSelect, {
+      this.store.memoStore.commit(Commit.memoSelect, {
         memo: this.memo,
         event,
+        store: this.store,
       });
     }
 
@@ -241,17 +244,18 @@
 
     private onMousemove(event: MouseEvent) {
       event.preventDefault();
-      memoStore.commit(Commit.memoMove, {
+      this.store.memoStore.commit(Commit.memoMove, {
         memo: this.memo,
         x: event.movementX,
         y: event.movementY,
         event,
+        store: this.store,
       });
     }
 
     private onClose() {
       log.debug('Memo onClose');
-      memoStore.commit(Commit.memoRemove, this.memo);
+      this.store.memoStore.commit(Commit.memoRemove, this.memo);
     }
 
     private onMoveAnimationEnd() {
@@ -263,8 +267,8 @@
       }
       let x = 0;
       let y = 0;
-      const minWidth = canvasStore.state.width - (this.memo.ui.width + MEMO_PADDING);
-      const minHeight = canvasStore.state.height - (this.memo.ui.height + MEMO_PADDING + MEMO_HEADER);
+      const minWidth = this.store.canvasStore.state.width - (this.memo.ui.width + MEMO_PADDING);
+      const minHeight = this.store.canvasStore.state.height - (this.memo.ui.height + MEMO_PADDING + MEMO_HEADER);
       if (this.memo.ui.left > minWidth) {
         x = minWidth;
       }

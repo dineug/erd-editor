@@ -1,21 +1,24 @@
 import {State, Memo} from '../memo';
-import tableStore, {Commit, Table} from '@/store/table';
+import {Commit, Table} from '@/store/table';
 import MemoModel from '@/models/MemoModel';
 import {log} from '@/ts/util';
 import {zIndexNext} from '@/store/table/tableHandler';
+import StoreManagement from '@/store/StoreManagement';
 import eventBus, {Bus} from '@/ts/EventBus';
 
-export function memoAdd(state: State) {
+export function memoAdd(state: State, store: StoreManagement) {
   log.debug('memoController memoAdd');
   memoSelectAllEnd(state);
-  tableStore.commit(Commit.tableSelectAllEnd);
-  state.memos.push(new MemoModel());
+  store.tableStore.commit(Commit.tableSelectAllEnd);
+  state.memos.push(new MemoModel(store));
   eventBus.$emit(Bus.ERD.change);
 }
 
-export function memoMove(state: State, payload: { memo: Memo, x: number, y: number, event: MouseEvent }) {
+export function memoMove(
+  state: State,
+  payload: { memo: Memo, x: number, y: number, event: MouseEvent, store: StoreManagement }) {
   log.debug('memoController memoMove');
-  const {memo, x, y, event} = payload;
+  const {memo, x, y, event, store} = payload;
   if (event.ctrlKey) {
     state.memos.forEach((value: Memo) => {
       if (value.ui.active) {
@@ -23,7 +26,7 @@ export function memoMove(state: State, payload: { memo: Memo, x: number, y: numb
         value.ui.left += x;
       }
     });
-    tableStore.state.tables.forEach((value: Table) => {
+    store.tableStore.state.tables.forEach((value: Table) => {
       if (value.ui.active) {
         value.ui.top += y;
         value.ui.left += x;
@@ -53,15 +56,15 @@ export function memoRemoveAll(state: State) {
   eventBus.$emit(Bus.ERD.change);
 }
 
-export function memoSelect(state: State, payload: { memo: Memo, event: MouseEvent }) {
+export function memoSelect(state: State, payload: { memo: Memo, event: MouseEvent, store: StoreManagement }) {
   log.debug('memoController memoSelect');
-  const {memo, event} = payload;
-  memo.ui.zIndex = zIndexNext(tableStore.state.tables, state.memos);
+  const {memo, event, store} = payload;
+  memo.ui.zIndex = zIndexNext(store.tableStore.state.tables, state.memos);
   if (event.ctrlKey) {
     memo.ui.active = true;
   } else {
     state.memos.forEach((value: Memo) => value.ui.active = value.id === memo.id);
-    tableStore.commit(Commit.tableSelectAllEnd);
+    store.tableStore.commit(Commit.tableSelectAllEnd);
   }
 }
 

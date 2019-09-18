@@ -89,9 +89,10 @@
   import {Column as ColumnModel, Table, ColumnWidth} from '@/store/table';
   import {ColumnFocus} from '@/models/ColumnFocusModel';
   import {FocusType} from '@/models/TableFocusModel';
-  import canvasStore, {Show} from '@/store/canvas';
-  import tableStore, {Commit as TableCommit, Edit} from '@/store/table';
+  import {Show} from '@/store/canvas';
+  import {Commit as TableCommit, Edit} from '@/store/table';
   import {log, getTextWidth} from '@/ts/util';
+  import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   @Component({
@@ -105,6 +106,8 @@
   })
   export default class Column extends Vue {
     @Prop({type: Object, default: () => ({})})
+    private store!: StoreManagement;
+    @Prop({type: Object, default: () => ({})})
     private table!: Table;
     @Prop({type: Object, default: () => ({})})
     private column!: ColumnModel;
@@ -114,7 +117,7 @@
     private SIZE_COLUMN_OPTION_NN = SIZE_COLUMN_OPTION_NN;
 
     get show(): Show {
-      return canvasStore.state.show;
+      return this.store.canvasStore.state.show;
     }
 
     get focusName(): boolean {
@@ -190,7 +193,7 @@
     }
 
     get edit(): Edit | null {
-      return tableStore.state.edit;
+      return this.store.tableStore.state.edit;
     }
 
     get columnWidth(): ColumnWidth {
@@ -208,13 +211,14 @@
     // ==================== Event Handler ===================
     private onFocus(event: MouseEvent, focusType: FocusType) {
       log.debug('Column onFocus');
-      tableStore.commit(TableCommit.tableSelect, {
+      this.store.tableStore.commit(TableCommit.tableSelect, {
         table: this.table,
         event,
+        store: this.store,
       });
       this.$nextTick(() => {
         if (this.columnFocus) {
-          tableStore.commit(TableCommit.columnFocus, {
+          this.store.tableStore.commit(TableCommit.columnFocus, {
             focusType,
             column: this.column,
           });
@@ -247,11 +251,11 @@
 
     private onEditBlur() {
       log.debug('Column onEditBlur');
-      tableStore.commit(TableCommit.tableEditEnd);
+      this.store.tableStore.commit(TableCommit.tableEditEnd);
     }
 
     private onColumnRemove() {
-      tableStore.commit(TableCommit.columnRemove, {
+      this.store.tableStore.commit(TableCommit.columnRemove, {
         table: this.table,
         column: this.column,
       });

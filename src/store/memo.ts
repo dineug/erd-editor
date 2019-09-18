@@ -44,33 +44,35 @@ export const enum Commit {
   memoSelectAllEnd = 'memoSelectAllEnd',
 }
 
-export default new Vuex.Store<State>({
-  state: {
-    memos: [],
-  },
-  getters: {},
-  mutations: {
-    init(state: State) {
-      const initData = dataInit() as any;
-      const data = state as any;
-      Object.keys(state).forEach((key) => {
-        data[key] = initData[key];
-      });
+export function createStore() {
+  return new Vuex.Store<State>({
+    state: {
+      memos: [],
     },
-    load(state: State, load: State) {
-      const stateData = state as any;
-      const loadData = load as any;
-      Object.keys(state).forEach((key) => {
-        stateData[key] = loadData[key];
-      });
+    getters: {},
+    mutations: {
+      init(state: State) {
+        const initData = dataInit() as any;
+        const data = state as any;
+        Object.keys(state).forEach((key) => {
+          data[key] = initData[key];
+        });
+      },
+      load(state: State, load: State) {
+        const stateData = state as any;
+        const loadData = load as any;
+        Object.keys(state).forEach((key) => {
+          stateData[key] = loadData[key];
+        });
+      },
+      memoAdd,
+      memoMove,
+      memoRemove,
+      memoRemoveAll,
+      memoSelect,
+      memoSelectAll,
+      memoSelectAllEnd,
     },
-    memoAdd,
-    memoMove,
-    memoRemove,
-    memoRemoveAll,
-    memoSelect,
-    memoSelectAll,
-    memoSelectAllEnd,
-  },
-  actions: {},
-});
+    actions: {},
+  });
+}

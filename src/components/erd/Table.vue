@@ -54,19 +54,21 @@
         :table="table"
         :column="column"
         :columnFocus="columnFocus(index)"
+        :store="store"
       )
 </template>
 
 <script lang="ts">
   import {SIZE_TABLE_PADDING, SIZE_MIN_WIDTH} from '@/ts/layout';
   import {Table as TableModel, Edit} from '@/store/table';
-  import tableStore, {Commit} from '@/store/table';
-  import canvasStore, {Show} from '@/store/canvas';
+  import {Commit} from '@/store/table';
+  import {Show} from '@/store/canvas';
   import {FocusType} from '@/models/TableFocusModel';
   import {ColumnFocus} from '@/models/ColumnFocusModel';
   import AnimationFrame from '@/ts/AnimationFrame';
   import eventBus, {Bus} from '@/ts/EventBus';
   import {log, getTextWidth} from '@/ts/util';
+  import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
   import Column from './Table/Column.vue';
   import CircleButton from './CircleButton.vue';
@@ -89,6 +91,8 @@
     },
   })
   export default class Table extends Vue {
+    @Prop({type: Object, default: () => ({})})
+    private store!: StoreManagement;
     @Prop({type: Object, default: () => ({})})
     private table!: TableModel;
 
@@ -114,9 +118,9 @@
 
     get focus(): boolean {
       let result = false;
-      if (tableStore.state.tableFocus
-        && tableStore.state.tableFocus.id === this.table.id
-        && canvasStore.state.focus) {
+      if (this.store.tableStore.state.tableFocus
+        && this.store.tableStore.state.tableFocus.id === this.table.id
+        && this.store.canvasStore.state.focus) {
         result = true;
       }
       return result;
@@ -124,9 +128,9 @@
 
     get focusName(): boolean {
       let result = false;
-      if (tableStore.state.tableFocus
-        && tableStore.state.tableFocus.id === this.table.id
-        && tableStore.state.tableFocus.focusName) {
+      if (this.store.tableStore.state.tableFocus
+        && this.store.tableStore.state.tableFocus.id === this.table.id
+        && this.store.tableStore.state.tableFocus.focusName) {
         result = true;
       }
       return result;
@@ -134,9 +138,9 @@
 
     get focusComment(): boolean {
       let result = false;
-      if (tableStore.state.tableFocus
-        && tableStore.state.tableFocus.id === this.table.id
-        && tableStore.state.tableFocus.focusComment) {
+      if (this.store.tableStore.state.tableFocus
+        && this.store.tableStore.state.tableFocus.id === this.table.id
+        && this.store.tableStore.state.tableFocus.focusComment) {
         result = true;
       }
       return result;
@@ -159,11 +163,11 @@
     }
 
     get show(): Show {
-      return canvasStore.state.show;
+      return this.store.canvasStore.state.show;
     }
 
     get edit(): Edit | null {
-      return tableStore.state.edit;
+      return this.store.tableStore.state.edit;
     }
 
     @Watch('focus')
@@ -186,8 +190,8 @@
     @Watch('table.columns')
     private watchColumns() {
       log.debug('Table watchColumns');
-      if (tableStore.state.tableFocus && tableStore.state.tableFocus.id === this.table.id) {
-        tableStore.state.tableFocus.watchColumns();
+      if (this.store.tableStore.state.tableFocus && this.store.tableStore.state.tableFocus.id === this.table.id) {
+        this.store.tableStore.state.tableFocus.watchColumns();
       }
     }
 
@@ -201,9 +205,9 @@
 
     private columnFocus(index: number): ColumnFocus | null {
       let result: ColumnFocus | null = null;
-      if (tableStore.state.tableFocus
-        && tableStore.state.tableFocus.id === this.table.id) {
-        result = tableStore.state.tableFocus.focusColumns[index];
+      if (this.store.tableStore.state.tableFocus
+        && this.store.tableStore.state.tableFocus.id === this.table.id) {
+        result = this.store.tableStore.state.tableFocus.focusColumns[index];
       }
       return result;
     }
@@ -218,9 +222,10 @@
       if (!el.closest('.table-name')
         && !el.closest('.table-comment')
         && !el.closest('.column')) {
-        tableStore.commit(Commit.tableSelect, {
+        this.store.tableStore.commit(Commit.tableSelect, {
           table: this.table,
           event,
+          store: this.store,
         });
       }
     }
@@ -236,17 +241,18 @@
 
     private onMousemove(event: MouseEvent) {
       event.preventDefault();
-      tableStore.commit(Commit.tableMove, {
+      this.store.tableStore.commit(Commit.tableMove, {
         table: this.table,
         x: event.movementX,
         y: event.movementY,
         event,
+        store: this.store,
       });
     }
 
     private onClose() {
       log.debug('Table onClose');
-      tableStore.commit(Commit.tableRemove, this.table);
+      this.store.tableStore.commit(Commit.tableRemove, this.table);
     }
 
     private onMoveAnimationEnd() {
@@ -258,8 +264,8 @@
       }
       let x = 0;
       let y = 0;
-      const minWidth = canvasStore.state.width - (this.table.width() + TABLE_PADDING);
-      const minHeight = canvasStore.state.height - (this.table.height() + TABLE_PADDING);
+      const minWidth = this.store.canvasStore.state.width - (this.table.width() + TABLE_PADDING);
+      const minHeight = this.store.canvasStore.state.height - (this.table.height() + TABLE_PADDING);
       if (this.table.ui.left > minWidth) {
         x = minWidth;
       }
@@ -284,23 +290,27 @@
 
     private onKeydown(event: KeyboardEvent) {
       log.debug('Table onKeydown');
-      tableStore.commit(Commit.tableFocusMove, event);
+      this.store.tableStore.commit(Commit.tableFocusMove, event);
     }
 
     private onFocus(event: MouseEvent, focusType: FocusType) {
       log.debug('Table onFocus');
-      tableStore.commit(Commit.tableSelect, {
+      this.store.tableStore.commit(Commit.tableSelect, {
         table: this.table,
         event,
+        store: this.store,
       });
       if (this.focus) {
-        tableStore.commit(Commit.tableFocus, focusType);
+        this.store.tableStore.commit(Commit.tableFocus, focusType);
       }
     }
 
     private onColumnAdd() {
       log.debug('Table onColumnAdd');
-      tableStore.commit(Commit.columnAdd, this.table);
+      this.store.tableStore.commit(Commit.columnAdd, {
+        table: this.table,
+        store: this.store,
+      });
     }
 
     private onEditInput(event: Event, focusType: FocusType) {
@@ -322,7 +332,7 @@
 
     private onEditBlur() {
       log.debug('Table onEditBlur');
-      tableStore.commit(Commit.tableEditEnd);
+      this.store.tableStore.commit(Commit.tableEditEnd);
     }
 
     // ==================== Event Handler END ===================

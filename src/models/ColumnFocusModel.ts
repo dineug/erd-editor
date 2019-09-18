@@ -1,6 +1,6 @@
 import {Column, ColumnOption, ColumnUI} from '@/store/table';
 import {FocusType} from './TableFocusModel';
-import canvasStore from '@/store/canvas';
+import StoreManagement from '@/store/StoreManagement';
 
 export interface ColumnFocus extends Column {
   focusName: boolean;
@@ -21,8 +21,10 @@ export default class ColumnFocusModel implements ColumnFocus {
   public focusDefault: boolean = false;
   public focusComment: boolean = false;
   private column: Column;
+  private store: StoreManagement;
 
-  constructor(column: Column) {
+  constructor(store: StoreManagement, column: Column) {
+    this.store = store;
     this.column = column;
   }
 
@@ -96,16 +98,16 @@ export default class ColumnFocusModel implements ColumnFocus {
 
   private currentShowFocus(): FocusType[] {
     const focusTypes: FocusType[] = [FocusType.columnName];
-    if (canvasStore.state.show.columnDataType) {
+    if (this.store.canvasStore.state.show.columnDataType) {
       focusTypes.push(FocusType.columnDataType);
     }
-    if (canvasStore.state.show.columnNotNull) {
+    if (this.store.canvasStore.state.show.columnNotNull) {
       focusTypes.push(FocusType.columnNotNull);
     }
-    if (canvasStore.state.show.columnDefault) {
+    if (this.store.canvasStore.state.show.columnDefault) {
       focusTypes.push(FocusType.columnDefault);
     }
-    if (canvasStore.state.show.columnComment) {
+    if (this.store.canvasStore.state.show.columnComment) {
       focusTypes.push(FocusType.columnComment);
     }
     return focusTypes;

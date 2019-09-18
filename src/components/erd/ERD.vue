@@ -3,7 +3,7 @@
     :style="`width: ${width}px; height: ${height}px;`"
     @mousedown="onMousedown"
   )
-    Canvas(ref="canvas")
+    Canvas(ref="canvas" :store="store")
 </template>
 
 <script lang="ts">
@@ -11,12 +11,12 @@
 
   import eventBus, {Bus} from '@/ts/EventBus';
   import AnimationFrame from '@/ts/AnimationFrame';
-  import canvasStore, {Commit} from '@/store/canvas';
-  import tableStore, {Commit as TableCommit} from '@/store/table';
-  import memoStore, {Commit as MemoCommit} from '@/store/memo';
+  import {Commit} from '@/store/canvas';
+  import {Commit as TableCommit} from '@/store/table';
+  import {Commit as MemoCommit} from '@/store/memo';
   import {log, addSpanText, removeSpanText} from '@/ts/util';
   import Key from '@/models/Key';
-  import DataManagement from '@/ts/DataManagement';
+  import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
   import Canvas from './Canvas.vue';
 
@@ -47,29 +47,33 @@
     private moveXAnimation: AnimationFrame<{x: number}> | null = null;
     private moveYAnimation: AnimationFrame<{y: number}> | null = null;
 
+    private store: StoreManagement = new StoreManagement();
+
     @Watch('focus')
     private watchFocus(focus: boolean) {
       log.debug(`ERD watchFocus: ${focus}`);
-      canvasStore.commit(Commit.focus, focus);
+      this.store.canvasStore.commit(Commit.focus, focus);
     }
 
     @Watch('value')
     private watchValue(value: string) {
       if (value.trim() === '') {
-        DataManagement.init();
-        this.$emit('change', DataManagement.value());
+        this.store.init();
+        this.$emit('change', this.store.value());
       } else {
-        DataManagement.load(value);
+        this.store.load(value);
       }
     }
 
     // ==================== Event Handler ===================
     private onChange() {
-      this.$emit('change', DataManagement.value());
+      log.debug('ERD onChange');
+      this.$emit('change', this.store.value());
     }
 
     private onInput() {
-      this.$emit('input', DataManagement.value());
+      log.debug('ERD onInput');
+      this.$emit('input', this.store.value());
     }
 
     private onMousedown(event: MouseEvent) {
@@ -78,8 +82,8 @@
         this.onMouseStop();
         this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
         this.subMousemove = this.mousemove$.subscribe(this.onMousemove);
-        tableStore.commit(TableCommit.tableSelectAllEnd);
-        memoStore.commit(MemoCommit.memoSelectAllEnd);
+        this.store.tableStore.commit(TableCommit.tableSelectAllEnd);
+        this.store.memoStore.commit(MemoCommit.memoSelectAllEnd);
       }
     }
 
@@ -98,37 +102,37 @@
 
     private onMouseup(event: MouseEvent) {
       this.onMouseStop();
-      const minWidth = this.width - canvasStore.state.width;
-      const minHeight = this.height - canvasStore.state.height;
+      const minWidth = this.width - this.store.canvasStore.state.width;
+      const minHeight = this.height - this.store.canvasStore.state.height;
       let x = 0;
       let y = 0;
-      if (canvasStore.state.x < minWidth) {
+      if (this.store.canvasStore.state.x < minWidth) {
         x = minWidth;
       }
-      if (canvasStore.state.y < minHeight) {
+      if (this.store.canvasStore.state.y < minHeight) {
         y = minHeight;
       }
 
-      if (canvasStore.state.x > 0 || canvasStore.state.x < minWidth) {
+      if (this.store.canvasStore.state.x > 0 || this.store.canvasStore.state.x < minWidth) {
         this.moveXAnimation = new AnimationFrame(
-          {x: canvasStore.state.x},
+          {x: this.store.canvasStore.state.x},
           {x}, 200)
-          .update((value) => canvasStore.state.x = value.x)
+          .update((value) => this.store.canvasStore.state.x = value.x)
           .start();
       }
 
-      if (canvasStore.state.y > 0 || canvasStore.state.y < minHeight) {
+      if (this.store.canvasStore.state.y > 0 || this.store.canvasStore.state.y < minHeight) {
         this.moveYAnimation = new AnimationFrame(
-          {y: canvasStore.state.y},
+          {y: this.store.canvasStore.state.y},
           {y}, 200)
-          .update((value) => canvasStore.state.y = value.y)
+          .update((value) => this.store.canvasStore.state.y = value.y)
           .start();
       }
     }
 
     private onMousemove(event: MouseEvent) {
       event.preventDefault();
-      canvasStore.commit(Commit.move, {
+      this.store.canvasStore.commit(Commit.move, {
         x: event.movementX,
         y: event.movementY,
       });
@@ -138,20 +142,20 @@
       log.debug('ERD onKeydown');
       if (this.focus) {
         if (event.altKey && event.code === Key.KeyN) {
-          tableStore.commit(TableCommit.tableAdd);
+          this.store.tableStore.commit(TableCommit.tableAdd, this.store);
         } else if (event.altKey && event.code === Key.KeyM) {
-          memoStore.commit(MemoCommit.memoAdd);
+          this.store.memoStore.commit(MemoCommit.memoAdd, this.store);
         } else if (event.altKey && event.key === Key.Enter) {
-          tableStore.commit(TableCommit.columnAddAll);
+          this.store.tableStore.commit(TableCommit.columnAddAll, this.store);
         } else if (event.ctrlKey && event.code === Key.KeyA) {
           event.preventDefault();
-          tableStore.commit(TableCommit.tableSelectAll);
-          memoStore.commit(MemoCommit.memoSelectAll);
+          this.store.tableStore.commit(TableCommit.tableSelectAll);
+          this.store.memoStore.commit(MemoCommit.memoSelectAll);
         } else if (event.ctrlKey && event.key === Key.Delete) {
-          tableStore.commit(TableCommit.tableRemoveAll);
-          memoStore.commit(MemoCommit.memoRemoveAll);
+          this.store.tableStore.commit(TableCommit.tableRemoveAll);
+          this.store.memoStore.commit(MemoCommit.memoRemoveAll);
         } else if (event.altKey && event.key === Key.Delete) {
-          tableStore.commit(TableCommit.columnRemoveAll);
+          this.store.tableStore.commit(TableCommit.columnRemoveAll);
         }
       }
     }
@@ -164,8 +168,7 @@
       if (process.env.NODE_ENV === 'development') {
         eventBus.destroyed();
       }
-      DataManagement.init();
-      canvasStore.commit(Commit.focus, this.focus);
+      this.store.canvasStore.commit(Commit.focus, this.focus);
       eventBus.$on(Bus.ERD.change, this.onChange);
       eventBus.$on(Bus.ERD.input, this.onInput);
     }
