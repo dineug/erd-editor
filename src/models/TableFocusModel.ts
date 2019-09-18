@@ -200,7 +200,7 @@ export default class TableFocusModel implements TableFocus {
         isAdd = true;
       }
     });
-    if (oldFocusColumns.length > this.focusColumns.length && this.currentColumn) {
+    if (!isAdd && oldFocusColumns.length > this.focusColumns.length && this.currentColumn) {
       const focusColumn = getData(oldFocusColumns, this.currentColumn.id);
       if (focusColumn) {
         const index = oldFocusColumns.indexOf(focusColumn);

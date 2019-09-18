@@ -4,7 +4,7 @@ import {uuid} from '@/ts/util';
 import canvasStore from '@/store/canvas';
 
 export default class ColumnModel implements Column {
-  public readonly id: string;
+  public id: string;
   public name: string = '';
   public comment: string = '';
   public dataType: string = '';
@@ -12,24 +12,34 @@ export default class ColumnModel implements Column {
   public option: ColumnOption;
   public ui: ColumnUI;
 
-  constructor() {
-    this.id = uuid();
-    this.option = {
-      autoIncrement: false,
-      primaryKey: false,
-      unique: false,
-      notNull: false,
-    };
-    this.ui = {
-      active: false,
-      pk: false,
-      fk: false,
-      pfk: false,
-      widthName: SIZE_MIN_WIDTH,
-      widthComment: SIZE_MIN_WIDTH,
-      widthDataType: SIZE_MIN_WIDTH,
-      widthDefault: SIZE_MIN_WIDTH,
-    };
+  constructor(column?: Column) {
+    if (column) {
+      this.id = column.id;
+      this.name = column.name;
+      this.comment = column.comment;
+      this.dataType = column.dataType;
+      this.default = column.default;
+      this.option = column.option;
+      this.ui = column.ui;
+    } else {
+      this.id = uuid();
+      this.option = {
+        autoIncrement: false,
+        primaryKey: false,
+        unique: false,
+        notNull: false,
+      };
+      this.ui = {
+        active: false,
+        pk: false,
+        fk: false,
+        pfk: false,
+        widthName: SIZE_MIN_WIDTH,
+        widthComment: SIZE_MIN_WIDTH,
+        widthDataType: SIZE_MIN_WIDTH,
+        widthDefault: SIZE_MIN_WIDTH,
+      };
+    }
   }
 
   public width(): number {

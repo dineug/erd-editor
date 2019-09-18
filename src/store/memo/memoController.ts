@@ -3,12 +3,14 @@ import tableStore, {Commit, Table} from '@/store/table';
 import MemoModel from '@/models/MemoModel';
 import {log} from '@/ts/util';
 import {zIndexNext} from '@/store/table/tableHandler';
+import eventBus, {Bus} from '@/ts/EventBus';
 
 export function memoAdd(state: State) {
   log.debug('memoController memoAdd');
   memoSelectAllEnd(state);
   tableStore.commit(Commit.tableSelectAllEnd);
   state.memos.push(new MemoModel());
+  eventBus.$emit(Bus.ERD.change);
 }
 
 export function memoMove(state: State, payload: { memo: Memo, x: number, y: number, event: MouseEvent }) {
@@ -37,6 +39,7 @@ export function memoRemove(state: State, memo: Memo) {
   log.debug('memoController memoRemove');
   const index = state.memos.indexOf(memo);
   state.memos.splice(index, 1);
+  eventBus.$emit(Bus.ERD.change);
 }
 
 export function memoRemoveAll(state: State) {
@@ -47,6 +50,7 @@ export function memoRemoveAll(state: State) {
       i--;
     }
   }
+  eventBus.$emit(Bus.ERD.change);
 }
 
 export function memoSelect(state: State, payload: { memo: Memo, event: MouseEvent }) {

@@ -11,25 +11,34 @@ import memoStore from '@/store/memo';
 import canvasStore from '@/store/canvas';
 import {uuid} from '@/ts/util';
 import {zIndexNext, pointNext} from '@/store/table/tableHandler';
+import ColumnModel from '@/models/ColumnModel';
 
 export default class TableModel implements Table {
-  public readonly id: string;
+  public id: string;
   public name: string = '';
   public comment: string = '';
   public columns: Column[] = [];
   public ui: TableUI;
 
-  constructor() {
-    this.id = uuid();
-    const point = pointNext(tableStore.state.tables, memoStore.state.memos);
-    this.ui = {
-      active: true,
-      top: point.top,
-      left: point.left,
-      widthName: SIZE_MIN_WIDTH,
-      widthComment: SIZE_MIN_WIDTH,
-      zIndex: zIndexNext(tableStore.state.tables, memoStore.state.memos),
-    };
+  constructor(table?: Table) {
+    if (table) {
+      this.id = table.id;
+      this.name = table.name;
+      this.comment = table.comment;
+      this.ui = table.ui;
+      table.columns.forEach((column) => this.columns.push(new ColumnModel(column)));
+    } else {
+      this.id = uuid();
+      const point = pointNext(tableStore.state.tables, memoStore.state.memos);
+      this.ui = {
+        active: true,
+        top: point.top,
+        left: point.left,
+        widthName: SIZE_MIN_WIDTH,
+        widthComment: SIZE_MIN_WIDTH,
+        zIndex: zIndexNext(tableStore.state.tables, memoStore.state.memos),
+      };
+    }
   }
 
   public width(): number {

@@ -23,6 +23,8 @@ import {
   columnRemoveAll,
 } from './table/columnController';
 import {TableFocus, FocusType} from '@/models/TableFocusModel';
+import {dataInit} from '@/data/table';
+import TableModel from '@/models/TableModel';
 
 Vue.use(Vuex);
 
@@ -38,7 +40,7 @@ export interface Edit {
 }
 
 export interface Table {
-  readonly id: string;
+  id: string;
   name: string;
   comment: string;
   columns: Column[];
@@ -68,7 +70,7 @@ export interface TableUI {
 }
 
 export interface Column {
-  readonly id: string;
+  id: string;
   name: string;
   comment: string;
   dataType: string;
@@ -98,6 +100,8 @@ export interface ColumnUI {
 }
 
 export const enum Commit {
+  init = 'init',
+  load = 'load',
   tableAdd = 'tableAdd',
   tableMove = 'tableMove',
   tableRemove = 'tableRemove',
@@ -126,6 +130,19 @@ export default new Vuex.Store<State>({
   },
   getters: {},
   mutations: {
+    init(state: State) {
+      const initData = dataInit() as any;
+      const data = state as any;
+      Object.keys(state).forEach((key) => {
+        data[key] = initData[key];
+      });
+    },
+    load(state: State, load: State) {
+      state.tableFocus = null;
+      state.edit = null;
+      state.tables = [];
+      load.tables.forEach((table) => state.tables.push(new TableModel(table)));
+    },
     tableAdd,
     tableMove,
     tableRemove,

@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
-import {dataShow} from '@/data/canvas';
+import {dataShow, dataInit} from '@/data/canvas';
 import {log} from '@/ts/util';
 
 Vue.use(Vuex);
@@ -27,6 +27,8 @@ export interface Show {
 }
 
 export const enum Commit {
+  init = 'init',
+  load = 'load',
   move = 'move',
   focus = 'focus',
 }
@@ -37,11 +39,25 @@ export default new Vuex.Store<State>({
     height: 2000,
     x: 0,
     y: 0,
-    show: dataShow,
+    show: dataShow(),
     focus: false,
   },
   getters: {},
   mutations: {
+    init(state: State) {
+      const stateData = state as any;
+      const initData = dataInit() as any;
+      Object.keys(state).forEach((key) => {
+        stateData[key] = initData[key];
+      });
+    },
+    load(state: State, load: State) {
+      const stateData = state as any;
+      const loadData = load as any;
+      Object.keys(state).forEach((key) => {
+        stateData[key] = loadData[key];
+      });
+    },
     move(state: State, payload: {x: number, y: number}) {
       log.debug('canvasStore move');
       const {x, y} = payload;

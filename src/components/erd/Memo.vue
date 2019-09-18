@@ -80,7 +80,7 @@
 <script lang="ts">
   import {SIZE_MEMO_PADDING, SIZE_MEMO_WIDTH, SIZE_MEMO_HEIGHT} from '@/ts/layout';
   import memoStore, {Memo as MemoModel, Commit} from '@/store/memo';
-  import canvasStore, {Show} from '@/store/canvas';
+  import canvasStore from '@/store/canvas';
   import eventBus, {Bus} from '@/ts/EventBus';
   import {log} from '@/ts/util';
   import AnimationFrame from '@/ts/AnimationFrame';

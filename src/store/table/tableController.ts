@@ -4,12 +4,14 @@ import TableModel from '@/models/TableModel';
 import {zIndexNext} from './tableHandler';
 import {log} from '@/ts/util';
 import TableFocusModel, {FocusType} from '@/models/TableFocusModel';
+import eventBus, {Bus} from '@/ts/EventBus';
 
 export function tableAdd(state: State) {
   log.debug('tableController tableAdd');
   tableSelectAllEnd(state);
   memoStore.commit(Commit.memoSelectAllEnd);
   state.tables.push(new TableModel());
+  eventBus.$emit(Bus.ERD.change);
 }
 
 export function tableMove(state: State, payload: { table: Table, x: number, y: number, event: MouseEvent }) {
@@ -38,6 +40,7 @@ export function tableRemove(state: State, table: Table) {
   log.debug('tableController tableRemove');
   const index = state.tables.indexOf(table);
   state.tables.splice(index, 1);
+  eventBus.$emit(Bus.ERD.change);
 }
 
 export function tableRemoveAll(state: State) {
@@ -48,6 +51,7 @@ export function tableRemoveAll(state: State) {
       i--;
     }
   }
+  eventBus.$emit(Bus.ERD.change);
 }
 
 export function tableSelect(state: State, payload: { table: Table, event: MouseEvent }) {
@@ -109,4 +113,5 @@ export function tableEditStart(state: State, edit: Edit) {
 export function tableEditEnd(state: State) {
   log.debug('tableController editEnd');
   state.edit = null;
+  eventBus.$emit(Bus.ERD.change);
 }

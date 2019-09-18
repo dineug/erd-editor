@@ -9,6 +9,7 @@ import {
   memoSelectAll,
   memoSelectAllEnd,
 } from './memo/memoController';
+import {dataInit} from '@/data/memo';
 
 Vue.use(Vuex);
 
@@ -32,6 +33,8 @@ export interface MemoUI {
 }
 
 export const enum Commit {
+  init = 'init',
+  load = 'load',
   memoAdd = 'memoAdd',
   memoMove = 'memoMove',
   memoRemove = 'memoRemove',
@@ -47,6 +50,20 @@ export default new Vuex.Store<State>({
   },
   getters: {},
   mutations: {
+    init(state: State) {
+      const initData = dataInit() as any;
+      const data = state as any;
+      Object.keys(state).forEach((key) => {
+        data[key] = initData[key];
+      });
+    },
+    load(state: State, load: State) {
+      const stateData = state as any;
+      const loadData = load as any;
+      Object.keys(state).forEach((key) => {
+        stateData[key] = loadData[key];
+      });
+    },
     memoAdd,
     memoMove,
     memoRemove,

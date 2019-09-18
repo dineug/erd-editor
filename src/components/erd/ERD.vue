@@ -9,13 +9,14 @@
 <script lang="ts">
   import '@/plugins/fontawesome';
 
-  import eventBus from '@/ts/EventBus';
+  import eventBus, {Bus} from '@/ts/EventBus';
   import AnimationFrame from '@/ts/AnimationFrame';
   import canvasStore, {Commit} from '@/store/canvas';
   import tableStore, {Commit as TableCommit} from '@/store/table';
   import memoStore, {Commit as MemoCommit} from '@/store/memo';
   import {log, addSpanText, removeSpanText} from '@/ts/util';
   import Key from '@/models/Key';
+  import DataManagement from '@/ts/DataManagement';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
   import Canvas from './Canvas.vue';
 
@@ -52,13 +53,23 @@
       canvasStore.commit(Commit.focus, focus);
     }
 
+    @Watch('value')
+    private watchValue(value: string) {
+      if (value.trim() === '') {
+        DataManagement.init();
+        this.$emit('change', DataManagement.value());
+      } else {
+        DataManagement.load(value);
+      }
+    }
+
     // ==================== Event Handler ===================
     private onChange() {
-      // this.$emit('change', '');
+      this.$emit('change', DataManagement.value());
     }
 
     private onInput() {
-      // this.$emit('input', '');
+      this.$emit('input', DataManagement.value());
     }
 
     private onMousedown(event: MouseEvent) {
@@ -153,7 +164,10 @@
       if (process.env.NODE_ENV === 'development') {
         eventBus.destroyed();
       }
+      DataManagement.init();
       canvasStore.commit(Commit.focus, this.focus);
+      eventBus.$on(Bus.ERD.change, this.onChange);
+      eventBus.$on(Bus.ERD.input, this.onInput);
     }
 
     private mounted() {
@@ -166,6 +180,8 @@
       log.debug('ERD destroyed');
       removeSpanText();
       this.subKeydown.unsubscribe();
+      eventBus.$off(Bus.ERD.change, this.onChange);
+      eventBus.$off(Bus.ERD.input, this.onInput);
     }
 
     // ==================== Life Cycle END ====================

@@ -60,9 +60,15 @@ enum Memo {
   moveAnimationEnd = 'Memo.moveAnimationEnd',
 }
 
+enum ERD {
+  change = 'ERD.change',
+  input = 'ERD.change',
+}
+
 export const Bus = {
   Table,
   Memo,
+  ERD,
 };
 
 export default new EventBus();
