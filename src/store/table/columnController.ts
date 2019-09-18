@@ -24,3 +24,17 @@ export function columnFocus(state: State, payload: { focusType: FocusType, colum
     state.tableFocus.focus(focusType, column);
   }
 }
+
+export function columnRemove(state: State, payload: { table: Table, column: Column }) {
+  log.debug('columnController columnRemove');
+  const {table, column} = payload;
+  const index = table.columns.indexOf(column);
+  table.columns.splice(index, 1);
+}
+
+export function columnRemoveAll(state: State) {
+  log.debug('columnController columnRemoveAll');
+  if (state.tableFocus) {
+    state.tableFocus.columnRemove();
+  }
+}

@@ -12,19 +12,29 @@ import {
   tableFocusEnd,
   tableFocus,
   tableFocusMove,
+  tableEditStart,
+  tableEditEnd,
 } from './table/tableController';
 import {
   columnAdd,
   columnAddAll,
   columnFocus,
+  columnRemove,
+  columnRemoveAll,
 } from './table/columnController';
-import {TableFocus} from '@/models/TableFocusModel';
+import {TableFocus, FocusType} from '@/models/TableFocusModel';
 
 Vue.use(Vuex);
 
 export interface State {
   tables: Table[];
   tableFocus: TableFocus | null;
+  edit: Edit | null;
+}
+
+export interface Edit {
+  id: string;
+  focusType: FocusType;
 }
 
 export interface Table {
@@ -36,6 +46,16 @@ export interface Table {
 
   width(): number;
   height(): number;
+  maxWidthColumn(): ColumnWidth;
+}
+
+export interface ColumnWidth {
+  width: number;
+  name: number;
+  comment: number;
+  dataType: number;
+  default: number;
+  notNull: number;
 }
 
 export interface TableUI {
@@ -89,15 +109,20 @@ export const enum Commit {
   tableFocusEnd = 'tableFocusEnd',
   tableFocus = 'tableFocus',
   tableFocusMove = 'tableFocusMove',
+  tableEditStart = 'tableEditStart',
+  tableEditEnd = 'tableEditEnd',
   columnAdd = 'columnAdd',
   columnAddAll = 'columnAddAll',
   columnFocus = 'columnFocus',
+  columnRemove = 'columnRemove',
+  columnRemoveAll = 'columnRemoveAll',
 }
 
 export default new Vuex.Store<State>({
   state: {
     tables: [],
     tableFocus: null,
+    edit: null,
   },
   getters: {},
   mutations: {
@@ -112,9 +137,13 @@ export default new Vuex.Store<State>({
     tableFocusEnd,
     tableFocus,
     tableFocusMove,
+    tableEditStart,
+    tableEditEnd,
     columnAdd,
     columnAddAll,
     columnFocus,
+    columnRemove,
+    columnRemoveAll,
   },
   actions: {},
 });

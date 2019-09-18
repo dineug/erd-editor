@@ -4,8 +4,9 @@ import {
   SIZE_TABLE_HEIGHT,
   SIZE_COLUMN_HEIGHT,
   SIZE_COLUMN_OPTION_NN,
+  SIZE_COLUMN_CLOSE,
 } from '@/ts/layout';
-import tableStore, {Table, Column, TableUI} from '@/store/table';
+import tableStore, {Table, Column, TableUI, ColumnWidth} from '@/store/table';
 import memoStore from '@/store/memo';
 import canvasStore from '@/store/canvas';
 import {uuid} from '@/ts/util';
@@ -40,17 +41,59 @@ export default class TableModel implements Table {
     if (width < defaultColumnWidth) {
       width = defaultColumnWidth;
     }
-    this.columns.forEach((column) => {
-      const columnWidth = column.width();
-      if (columnWidth > width) {
-        width = columnWidth;
-      }
-    });
-    return width;
+    const columnWidth = this.maxWidthColumn();
+    if (width < columnWidth.width) {
+      width = columnWidth.width;
+    }
+    return width + SIZE_COLUMN_CLOSE;
   }
 
   public height(): number {
     return SIZE_TABLE_HEIGHT + (this.columns.length * SIZE_COLUMN_HEIGHT);
+  }
+
+  public maxWidthColumn(): ColumnWidth {
+    const columnWidth = {
+      width: 0,
+      name: 0,
+      comment: 0,
+      dataType: 0,
+      default: 0,
+      notNull: 0,
+    };
+    this.columns.forEach((column) => {
+      if (columnWidth.name < column.ui.widthName) {
+        columnWidth.name = column.ui.widthName;
+      }
+      if (canvasStore.state.show.columnComment && columnWidth.comment < column.ui.widthComment) {
+        columnWidth.comment = column.ui.widthComment;
+      }
+      if (canvasStore.state.show.columnDataType && columnWidth.dataType < column.ui.widthDataType) {
+        columnWidth.dataType = column.ui.widthDataType;
+      }
+      if (canvasStore.state.show.columnDefault && columnWidth.default < column.ui.widthDefault) {
+        columnWidth.default = column.ui.widthDefault;
+      }
+    });
+    if (canvasStore.state.show.columnNotNull) {
+      columnWidth.notNull = SIZE_COLUMN_OPTION_NN;
+    }
+    if (columnWidth.name !== 0) {
+      columnWidth.width += columnWidth.name + SIZE_MARGIN_RIGHT;
+    }
+    if (columnWidth.comment !== 0) {
+      columnWidth.width += columnWidth.comment + SIZE_MARGIN_RIGHT;
+    }
+    if (columnWidth.dataType !== 0) {
+      columnWidth.width += columnWidth.dataType + SIZE_MARGIN_RIGHT;
+    }
+    if (columnWidth.default !== 0) {
+      columnWidth.width += columnWidth.default + SIZE_MARGIN_RIGHT;
+    }
+    if (columnWidth.notNull !== 0) {
+      columnWidth.width += columnWidth.notNull + SIZE_MARGIN_RIGHT;
+    }
+    return columnWidth;
   }
 
   private defaultColumnWidth(): number {

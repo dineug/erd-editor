@@ -1,7 +1,7 @@
 <template lang="pug">
   .sash(
     :class="{ vertical: vertical, horizontal: horizontal, edge: edge }"
-    :style="{ top: `${centerTop}px`, left: `${centerLeft}px`}"
+    :style="sashStyle"
     @mousedown="onMousedown"
   )
 </template>
@@ -20,6 +20,8 @@
     private horizontal!: boolean;
     @Prop({type: Boolean, default: false})
     private edge!: boolean;
+    @Prop({type: String, default: 'move'})
+    private edgeCursor!: boolean;
     @Prop({type: Number, default: 0})
     private top!: number;
     @Prop({type: Number, default: 0})
@@ -40,6 +42,21 @@
       return this.left === 0 && !this.vertical && !this.edge
         ? this.left
         : this.left - (SIZE_SASH / 2);
+    }
+
+    get sashStyle(): string {
+      if (this.edge) {
+        return `
+          top: ${this.centerTop}px;
+          left: ${this.centerLeft}px;
+          cursor: ${this.edgeCursor};
+        `;
+      } else {
+        return `
+          top: ${this.centerTop}px;
+          left: ${this.centerLeft}px;
+        `;
+      }
     }
 
     // ==================== Event Handler ===================
@@ -74,7 +91,6 @@
     &.edge {
       width: $size-sash;
       height: $size-sash;
-      cursor: move;
     }
 
     &.vertical {

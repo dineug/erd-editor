@@ -1,16 +1,35 @@
 <template lang="pug">
   .column
+    input.name(
+      v-if="edit && edit.id === column.id && edit.focusType === 'columnName'"
+      v-focus
+      v-model="column.name"
+      :style="`width: ${columnWidth.name}px;`"
+      spellcheck="false"
+      @input="onEditInput($event, 'columnName')"
+      @blur="onEditBlur"
+    )
     .name(
+      v-else
       :class="{focus: focusName, placeholder: placeholderName}"
-      :style="`width: ${column.ui.widthName}px;`"
+      :style="`width: ${columnWidth.name}px;`"
       @mousedown="onFocus($event, 'columnName')"
     )
       span {{placeholder(column.name, 'column')}}
 
+    input.data-type(
+      v-if="show.columnDataType && edit && edit.id === column.id && edit.focusType === 'columnDataType'"
+      v-focus
+      v-model="column.dataType"
+      :style="`width: ${columnWidth.dataType}px;`"
+      spellcheck="false"
+      @input="onEditInput($event, 'columnDataType')"
+      @blur="onEditBlur"
+    )
     .data-type(
-      v-if="show.columnDataType"
+      v-else-if="show.columnDataType"
       :class="{focus: focusDataType, placeholder: placeholderDataType}"
-      :style="`width: ${column.ui.widthDataType}px;`"
+      :style="`width: ${columnWidth.dataType}px;`"
       @mousedown="onFocus($event, 'columnDataType')"
     )
       span {{placeholder(column.dataType, 'dataType')}}
@@ -24,34 +43,66 @@
       span(v-if="column.option.notNull") N-N
       span(v-else) NULL
 
+    input.default(
+      v-if="show.columnDefault && edit && edit.id === column.id && edit.focusType === 'columnDefault'"
+      v-focus
+      v-model="column.default"
+      :style="`width: ${columnWidth.default}px;`"
+      spellcheck="false"
+      @input="onEditInput($event, 'columnDefault')"
+      @blur="onEditBlur"
+    )
     .default(
-      v-if="show.columnDefault"
+      v-else-if="show.columnDefault"
       :class="{focus: focusDefault, placeholder: placeholderDefault}"
-      :style="`width: ${column.ui.widthDefault}px;`"
+      :style="`width: ${columnWidth.default}px;`"
       @mousedown="onFocus($event, 'columnDefault')"
     )
       span {{placeholder(column.default, 'default')}}
 
+    input.comment(
+      v-if="show.columnComment && edit && edit.id === column.id && edit.focusType === 'columnComment'"
+      v-focus
+      v-model="column.comment"
+      :style="`width: ${columnWidth.comment}px;`"
+      spellcheck="false"
+      @input="onEditInput($event, 'columnComment')"
+      @blur="onEditBlur"
+    )
     .comment(
-      v-if="show.columnComment"
+      v-else-if="show.columnComment"
       :class="{focus: focusComment, placeholder: placeholderComment}"
-      :style="`width: ${column.ui.widthComment}px;`"
+      :style="`width: ${columnWidth.comment}px;`"
       @mousedown="onFocus($event, 'columnComment')"
     )
       span {{placeholder(column.comment, 'comment')}}
+
+    font-awesome-icon.column-button(
+      icon="times"
+      title="Alt + Delete"
+      @click="onColumnRemove"
+    )
 </template>
 
 <script lang="ts">
-  import {SIZE_COLUMN_OPTION_NN} from '@/ts/layout';
-  import {Column as ColumnModel, Table} from '@/store/table';
+  import {SIZE_COLUMN_OPTION_NN, SIZE_MIN_WIDTH} from '@/ts/layout';
+  import {Column as ColumnModel, Table, ColumnWidth} from '@/store/table';
   import {ColumnFocus} from '@/models/ColumnFocusModel';
   import {FocusType} from '@/models/TableFocusModel';
   import canvasStore, {Show} from '@/store/canvas';
-  import tableStore, {Commit as TableCommit} from '@/store/table';
-  import {log} from '@/ts/util';
+  import tableStore, {Commit as TableCommit, Edit} from '@/store/table';
+  import {log, getTextWidth} from '@/ts/util';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
-  @Component
+  @Component({
+    directives: {
+      focus: {
+        inserted(el: HTMLElement) {
+          el.focus();
+        },
+      },
+    },
+  })
   export default class Column extends Vue {
     @Prop({type: Object, default: () => ({})})
     private table!: Table;
@@ -138,6 +189,14 @@
       return result;
     }
 
+    get edit(): Edit | null {
+      return tableStore.state.edit;
+    }
+
+    get columnWidth(): ColumnWidth {
+      return this.table.maxWidthColumn();
+    }
+
     private placeholder(value: string, display: string) {
       if (value === '') {
         return display;
@@ -163,6 +222,41 @@
       });
     }
 
+    private onEditInput(event: Event, focusType: FocusType) {
+      log.debug('Column onEditInput');
+      const input = event.target as HTMLInputElement;
+      let width = getTextWidth(input.value);
+      if (SIZE_MIN_WIDTH > width) {
+        width = SIZE_MIN_WIDTH;
+      }
+      switch (focusType) {
+        case FocusType.columnName:
+          this.column.ui.widthName = width;
+          break;
+        case FocusType.columnDataType:
+          this.column.ui.widthDataType = width;
+          break;
+        case FocusType.columnDefault:
+          this.column.ui.widthDefault = width;
+          break;
+        case FocusType.columnComment:
+          this.column.ui.widthComment = width;
+          break;
+      }
+    }
+
+    private onEditBlur() {
+      log.debug('Column onEditBlur');
+      tableStore.commit(TableCommit.tableEditEnd);
+    }
+
+    private onColumnRemove() {
+      tableStore.commit(TableCommit.columnRemove, {
+        table: this.table,
+        column: this.column,
+      });
+    }
+
     // ==================== Event Handler END ===================
 
   }
@@ -175,8 +269,8 @@
       vertical-align: middle;
       align-items: center;
       margin-right: $size-margin-right;
-      border-bottom: solid $color-opacity $size-border-bottom;
       margin-bottom: $size-margin-bottom;
+      border-bottom: solid $color-opacity $size-border-bottom;
       color: $color-font-active;
 
       &.focus {
@@ -186,6 +280,26 @@
       &.placeholder {
         color: $color-font-placeholder;
       }
+    }
+
+    .column-button {
+      color: $color-font;
+      font-size: $size-column-close;
+      cursor: pointer;
+
+      &:hover {
+        color: $color-font-active;
+      }
+    }
+
+    input {
+      outline: none;
+      border: none;
+      opacity: 0.9;
+      background-color: $color-table;
+      color: $color-font-active;
+      margin-right: $size-margin-right;
+      border-bottom: solid $color-edit $size-border-bottom;
     }
   }
 </style>

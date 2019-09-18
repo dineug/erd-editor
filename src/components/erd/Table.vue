@@ -17,13 +17,32 @@
           @click="onColumnAdd"
         )
       .table-header-body
+        input(
+          v-if="edit && edit.id === table.id && edit.focusType === 'tableName'"
+          v-focus
+          v-model="table.name"
+          :style="`width: ${table.ui.widthName}px;`"
+          spellcheck="false"
+          @input="onEditInput($event, 'tableName')"
+          @blur="onEditBlur"
+        )
         span.table-name(
+          v-else
           :class="{focus: focusName, placeholder: placeholderName}"
           :style="`width: ${table.ui.widthName}px;`"
           @mousedown="onFocus($event, 'tableName')"
         ) {{placeholder(table.name, 'table')}}
+        input(
+          v-if="show.tableComment && edit && edit.id === table.id && edit.focusType === 'tableComment'"
+          v-focus
+          v-model="table.comment"
+          :style="`width: ${table.ui.widthComment}px;`"
+          spellcheck="false"
+          @input="onEditInput($event, 'tableComment')"
+          @blur="onEditBlur"
+        )
         span.table-comment(
-          v-if="show.tableComment"
+          v-else-if="show.tableComment"
           :class="{focus: focusComment, placeholder: placeholderComment}"
           :style="`width: ${table.ui.widthComment}px;`"
           @mousedown="onFocus($event, 'tableComment')"
@@ -39,15 +58,15 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_TABLE_PADDING} from '@/ts/layout';
-  import {Table as TableModel} from '@/store/table';
+  import {SIZE_TABLE_PADDING, SIZE_MIN_WIDTH} from '@/ts/layout';
+  import {Table as TableModel, Edit} from '@/store/table';
   import tableStore, {Commit} from '@/store/table';
   import canvasStore, {Show} from '@/store/canvas';
   import {FocusType} from '@/models/TableFocusModel';
   import {ColumnFocus} from '@/models/ColumnFocusModel';
   import AnimationFrame from '@/ts/AnimationFrame';
   import eventBus, {Bus} from '@/ts/EventBus';
-  import {log} from '@/ts/util';
+  import {log, getTextWidth} from '@/ts/util';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
   import Column from './Table/Column.vue';
   import CircleButton from './CircleButton.vue';
@@ -60,6 +79,13 @@
     components: {
       Column,
       CircleButton,
+    },
+    directives: {
+      focus: {
+        inserted(el: HTMLElement) {
+          el.focus();
+        },
+      },
     },
   })
   export default class Table extends Vue {
@@ -126,7 +152,7 @@
 
     get placeholderComment(): boolean {
       let result = false;
-      if (this.table.name === '') {
+      if (this.table.comment === '') {
         result = true;
       }
       return result;
@@ -134,6 +160,10 @@
 
     get show(): Show {
       return canvasStore.state.show;
+    }
+
+    get edit(): Edit | null {
+      return tableStore.state.edit;
     }
 
     @Watch('focus')
@@ -273,6 +303,28 @@
       tableStore.commit(Commit.columnAdd, this.table);
     }
 
+    private onEditInput(event: Event, focusType: FocusType) {
+      log.debug('Table onEditInput');
+      const input = event.target as HTMLInputElement;
+      let width = getTextWidth(input.value);
+      if (SIZE_MIN_WIDTH > width) {
+        width = SIZE_MIN_WIDTH;
+      }
+      switch (focusType) {
+        case FocusType.tableName:
+          this.table.ui.widthName = width;
+          break;
+        case FocusType.tableComment:
+          this.table.ui.widthComment = width;
+          break;
+      }
+    }
+
+    private onEditBlur() {
+      log.debug('Table onEditBlur');
+      tableStore.commit(Commit.tableEditEnd);
+    }
+
     // ==================== Event Handler END ===================
 
     // ==================== Life Cycle ====================
@@ -324,6 +376,7 @@
           align-items: center;
           margin-right: $size-margin-right;
           border-bottom: solid $color-opacity $size-border-bottom;
+          color: $color-font-active;
 
           &.focus {
             border-bottom: solid $color-focus $size-border-bottom;
@@ -334,6 +387,16 @@
           }
         }
       }
+    }
+
+    input {
+      outline: none;
+      border: none;
+      opacity: 0.9;
+      background-color: $color-table;
+      color: $color-font-active;
+      border-bottom: solid $color-edit $size-border-bottom;
+      margin-right: $size-margin-right;
     }
   }
 </style>

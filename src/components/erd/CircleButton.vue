@@ -27,8 +27,6 @@
     width: 17px;
     height: 17px;
     font-size: .70em;
-    border: none;
-    outline: none;
     cursor: pointer;
     border-radius: 50%;
     display: inline-flex;

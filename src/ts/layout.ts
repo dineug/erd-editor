@@ -15,3 +15,4 @@ export const SIZE_MEMO_WIDTH = 127;
 export const SIZE_MEMO_HEIGHT = 100;
 export const SIZE_MEMO_PADDING = 10;
 export const SIZE_SASH = 5;
+export const SIZE_COLUMN_CLOSE = 7;

@@ -139,6 +139,8 @@
         } else if (event.ctrlKey && event.key === Key.Delete) {
           tableStore.commit(TableCommit.tableRemoveAll);
           memoStore.commit(MemoCommit.memoRemoveAll);
+        } else if (event.altKey && event.key === Key.Delete) {
+          tableStore.commit(TableCommit.columnRemoveAll);
         }
       }
     }

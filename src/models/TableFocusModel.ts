@@ -1,4 +1,4 @@
-import {Table, TableUI, Column} from '@/store/table';
+import tableStore, {Table, TableUI, Column, Commit, ColumnWidth} from '@/store/table';
 import ColumnFocusModel, {ColumnFocus} from './ColumnFocusModel';
 import {log, isData, getData} from '@/ts/util';
 import Key from '@/models/Key';
@@ -20,10 +20,9 @@ export interface TableFocus extends Table {
   focusColumns: ColumnFocus[];
 
   focus(focusType: FocusType, column?: Column): void;
-
   move(event: KeyboardEvent): void;
-
   watchColumns(): void;
+  columnRemove(): void;
 }
 
 export default class TableFocusModel implements TableFocus {
@@ -65,6 +64,10 @@ export default class TableFocusModel implements TableFocus {
 
   public height(): number {
     return this.table.height();
+  }
+
+  public maxWidthColumn(): ColumnWidth {
+    return this.table.maxWidthColumn();
   }
 
   public focus(focusType: FocusType, column?: Column) {
@@ -111,7 +114,9 @@ export default class TableFocusModel implements TableFocus {
     if (event.key === Key.Tab) {
       event.preventDefault();
     }
-    if (event.key === Key.ArrowLeft) {
+    if (event.key === Key.Enter || tableStore.state.edit) {
+      this.edit(event);
+    } else if (event.key === Key.ArrowLeft) {
       if (this.currentFocusTable) {
         if (this.focusName && canvasStore.state.show.tableComment) {
           this.focus(FocusType.tableComment);
@@ -195,8 +200,26 @@ export default class TableFocusModel implements TableFocus {
         isAdd = true;
       }
     });
+    if (oldFocusColumns.length > this.focusColumns.length && this.currentColumn) {
+      const focusColumn = getData(oldFocusColumns, this.currentColumn.id);
+      if (focusColumn) {
+        const index = oldFocusColumns.indexOf(focusColumn);
+        if (index === 0) {
+          this.focus(FocusType.tableName);
+        } else {
+          this.focus(focusColumn.currentFocus(), this.columns[index - 1]);
+        }
+      }
+    }
     if (isAdd) {
       this.focus(FocusType.columnName, this.columns[this.columns.length - 1]);
+    }
+  }
+
+  public columnRemove() {
+    if (this.currentColumn) {
+      const index = this.table.columns.indexOf(this.currentColumn);
+      this.table.columns.splice(index, 1);
     }
   }
 
@@ -219,6 +242,39 @@ export default class TableFocusModel implements TableFocus {
       value.focusNotNull = false;
     });
   }
+
+  private edit(event: KeyboardEvent) {
+    log.debug('TableFocusModel edit');
+    if (tableStore.state.edit) {
+      if (!event.altKey && (event.key === Key.Enter || event.key === Key.Tab)) {
+        tableStore.commit(Commit.tableEditEnd);
+      }
+    } else {
+      if (!event.altKey && event.key === Key.Enter) {
+        if (this.currentFocusTable) {
+          const focusType = this.focusName ? FocusType.tableName : FocusType.tableComment;
+          tableStore.commit(Commit.tableEditStart, {
+            id: this.table.id,
+            focusType,
+          });
+        } else if (this.currentColumn) {
+          const focusColumn = getData(this.focusColumns, this.currentColumn.id);
+          if (focusColumn) {
+            const focusType = focusColumn.currentFocus();
+            if (focusType === FocusType.columnNotNull) {
+              this.currentColumn.option.notNull = !this.currentColumn.option.notNull;
+            } else {
+              tableStore.commit(Commit.tableEditStart, {
+                id: this.currentColumn.id,
+                focusType,
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
 }
 
 

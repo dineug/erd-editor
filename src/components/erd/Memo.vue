@@ -24,8 +24,8 @@
       @mouseup="onMouseupSash"
     )
     Sash(
-      :left="width"
       vertical
+      :left="width"
       @mousemove="onMousemoveSash($event, 'right')"
       @mousedown="onMousedownSash"
       @mouseup="onMouseupSash"
@@ -37,20 +37,22 @@
       @mouseup="onMouseupSash"
     )
     Sash(
-      :top="height"
       horizontal
+      :top="height"
       @mousemove="onMousemoveSash($event, 'bottom')"
       @mousedown="onMousedownSash"
       @mouseup="onMouseupSash"
     )
     Sash(
       edge
+      edgeCursor="nw-resize"
       @mousemove="onMousemoveSash($event, 'lt')"
       @mousedown="onMousedownSash"
       @mouseup="onMouseupSash"
     )
     Sash(
       edge
+      edgeCursor="ne-resize"
       :left="width"
       @mousemove="onMousemoveSash($event, 'rt')"
       @mousedown="onMousedownSash"
@@ -58,6 +60,7 @@
     )
     Sash(
       edge
+      edgeCursor="ne-resize"
       :top="height"
       @mousemove="onMousemoveSash($event, 'lb')"
       @mousedown="onMousedownSash"
@@ -65,6 +68,7 @@
     )
     Sash(
       edge
+      edgeCursor="nw-resize"
       :left="width"
       :top="height"
       @mousemove="onMousemoveSash($event, 'rb')"

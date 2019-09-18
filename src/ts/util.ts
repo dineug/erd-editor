@@ -53,6 +53,7 @@ export function addSpanText() {
     position: fixed;
     top: -10000px;
     font-size: ${SIZE_FONT + 2}px;
+    font-family: 'Noto Sans', sans-serif;
   `);
 }
 

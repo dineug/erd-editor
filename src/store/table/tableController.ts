@@ -1,4 +1,4 @@
-import {State, Table} from '../table';
+import {State, Table, Edit} from '../table';
 import memoStore, {Commit, Memo} from '@/store/memo';
 import TableModel from '@/models/TableModel';
 import {zIndexNext} from './tableHandler';
@@ -84,6 +84,7 @@ export function tableFocusStart(state: State, table: Table) {
 export function tableFocusEnd(state: State) {
   log.debug('tableController tableFocusEnd');
   state.tableFocus = null;
+  state.edit = null;
 }
 
 export function tableFocus(state: State, focusType: FocusType) {
@@ -98,4 +99,14 @@ export function tableFocusMove(state: State, event: KeyboardEvent) {
   if (state.tableFocus) {
     state.tableFocus.move(event);
   }
+}
+
+export function tableEditStart(state: State, edit: Edit) {
+  log.debug('tableController editStart');
+  state.edit = edit;
+}
+
+export function tableEditEnd(state: State) {
+  log.debug('tableController editEnd');
+  state.edit = null;
 }
