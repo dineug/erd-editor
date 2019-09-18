@@ -3,6 +3,7 @@ import ColumnFocusModel, {ColumnFocus} from './ColumnFocusModel';
 import {log, isData, getData} from '@/ts/util';
 import Key from '@/models/Key';
 import StoreManagement from '@/store/StoreManagement';
+import eventBus, {Bus} from '@/ts/EventBus';
 
 export const enum FocusType {
   tableName = 'tableName',
@@ -32,12 +33,31 @@ export default class TableFocusModel implements TableFocus {
   private table: Table;
   private currentFocusTable: boolean = false;
   private currentColumn: Column | null = null;
-  private store: StoreManagement;
+  private readonly store: StoreManagement;
 
-  constructor(store: StoreManagement, table: Table) {
+  constructor(store: StoreManagement, table: Table, tableFocus?: any) {
     this.store = store;
     this.table = table;
-    this.table.columns.forEach((column: Column) => this.focusColumns.push(new ColumnFocusModel(store, column)));
+    if (tableFocus) {
+      tableFocus.focusColumns.forEach((value: any) => value.id = value.column.id);
+      this.table.columns.forEach((column: Column) => {
+        const columnFocus = getData(tableFocus.focusColumns, column.id);
+        this.focusColumns.push(new ColumnFocusModel(store, column, columnFocus));
+      });
+      this.focusName = tableFocus.focusName;
+      this.focusComment = tableFocus.focusComment;
+      this.currentFocusTable = tableFocus.currentFocusTable;
+      if (tableFocus.currentColumn) {
+        const column = getData(this.table.columns, tableFocus.currentColumn.id);
+        if (column) {
+          this.currentColumn = column;
+        }
+      } else {
+        this.currentColumn = tableFocus.currentColumn;
+      }
+    } else {
+      this.table.columns.forEach((column: Column) => this.focusColumns.push(new ColumnFocusModel(store, column)));
+    }
   }
 
   get id(): string {
@@ -216,6 +236,7 @@ export default class TableFocusModel implements TableFocus {
     if (isAdd) {
       this.focus(FocusType.columnName, this.columns[this.columns.length - 1]);
     }
+    eventBus.$emit(Bus.ERD.change);
   }
 
   public columnRemove() {

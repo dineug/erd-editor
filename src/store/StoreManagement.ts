@@ -17,48 +17,36 @@ import {log} from '@/ts/util';
 import {Store} from 'vuex';
 
 function setData(exclude: string, target: any, data: any) {
-  if (data !== null && data !== undefined) {
-    Object.keys(data).forEach((key) => {
-      if (key !== exclude) {
-        if (Array.isArray(data[key])) {
-          target[key] = [];
-          data[key].forEach((value: any) => {
-            const v = {};
-            setData(exclude, v, value);
-            target[key].push(v);
-          });
-        } else if (typeof data[key] === 'object') {
-          target[key] = {};
-          setData(exclude, target[key], data[key]);
-        } else {
-          target[key] = data[key];
-        }
+  Object.keys(data).forEach((key) => {
+    if (key !== exclude) {
+      if (data[key] === null || data[key] === undefined) {
+        target[key] = data[key];
+      } else if (Array.isArray(data[key])) {
+        target[key] = [];
+        data[key].forEach((value: any) => {
+          const v = {};
+          setData(exclude, v, value);
+          target[key].push(v);
+        });
+      } else if (typeof data[key] === 'object') {
+        target[key] = {};
+        setData(exclude, target[key], data[key]);
+      } else {
+        target[key] = data[key];
       }
-    });
-  }
+    }
+  });
 }
 
 export default class StoreManagement {
-  private readonly storeCanvas: Store<CanvasState>;
-  private readonly storeTable: Store<TableState>;
-  private readonly storeMemo: Store<MemoState>;
+  public readonly canvasStore: Store<CanvasState>;
+  public readonly tableStore: Store<TableState>;
+  public readonly memoStore: Store<MemoState>;
 
   constructor() {
-    this.storeCanvas = createdStoreCanvas();
-    this.storeTable = createdStoreTable();
-    this.storeMemo = createdStoreMemo();
-  }
-
-  get canvasStore(): Store<CanvasState> {
-    return this.storeCanvas;
-  }
-
-  get tableStore(): Store<TableState> {
-    return this.storeTable;
-  }
-
-  get memoStore(): Store<MemoState> {
-    return this.storeMemo;
+    this.canvasStore = createdStoreCanvas();
+    this.tableStore = createdStoreTable();
+    this.memoStore = createdStoreMemo();
   }
 
   public init() {
@@ -82,12 +70,13 @@ export default class StoreManagement {
   public value(): string {
     log.debug('DataManagement value');
     const data = {
-      canvas: this.storeCanvas.state,
+      canvas: this.canvasStore.state,
       table: {},
       memo: {},
     };
-    setData('store', data.table, this.storeTable.state);
-    setData('store', data.memo, this.storeMemo.state);
+    setData('store', data.table, this.tableStore.state);
+    setData('store', data.memo, this.memoStore.state);
+    log.debug(data);
     return JSON.stringify(data);
   }
 }

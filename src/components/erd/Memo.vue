@@ -16,6 +16,7 @@
         v-model="memo.value"
         v-focus
         spellcheck="false"
+        @blur="onBlur"
       )
     Sash(
       vertical
@@ -330,6 +331,10 @@
     private onMouseupSash(event: MouseEvent) {
       log.debug('Memo onMouseupSash');
       this.onMouseup(event);
+    }
+
+    private onBlur() {
+      eventBus.$emit(Bus.ERD.change);
     }
 
     // ==================== Event Handler END ===================

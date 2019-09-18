@@ -25,7 +25,9 @@ import {
 import {TableFocus, FocusType} from '@/models/TableFocusModel';
 import {dataInit} from '@/data/table';
 import TableModel from '@/models/TableModel';
+import TableFocusModel from '@/models/TableFocusModel';
 import StoreManagement from '@/store/StoreManagement';
+import {getData} from '@/ts/util';
 
 Vue.use(Vuex);
 
@@ -141,10 +143,18 @@ export function createStore() {
       },
       load(state: State, payload: { load: State, store: StoreManagement }) {
         const {load, store} = payload;
-        state.tableFocus = null;
-        state.edit = null;
+        state.edit = load.edit;
         state.tables = [];
         load.tables.forEach((table) => state.tables.push(new TableModel(store, table)));
+        if (load.tableFocus) {
+          const reTableFocus = load.tableFocus as any;
+          const table = getData(state.tables, reTableFocus.table.id);
+          if (table) {
+            state.tableFocus = new TableFocusModel(store, table, reTableFocus);
+          }
+        } else {
+          state.tableFocus = null;
+        }
       },
       tableAdd,
       tableMove,
