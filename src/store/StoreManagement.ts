@@ -67,7 +67,7 @@ export default class StoreManagement {
     this.memoStore.commit(MemoCommit.load, data.memo);
   }
 
-  public value(): string {
+  get value(): string {
     log.debug('DataManagement value');
     const data = {
       canvas: this.canvasStore.state,
@@ -76,7 +76,6 @@ export default class StoreManagement {
     };
     setData('store', data.table, this.tableStore.state);
     setData('store', data.memo, this.memoStore.state);
-    log.debug(data);
     return JSON.stringify(data);
   }
 }

@@ -93,6 +93,8 @@
   export default class Table extends Vue {
     @Prop({type: Object, default: () => ({})})
     private store!: StoreManagement;
+    @Prop({type: Boolean, default: false})
+    private focus!: boolean;
     @Prop({type: Object, default: () => ({})})
     private table!: TableModel;
 
@@ -116,11 +118,11 @@
       `;
     }
 
-    get focus(): boolean {
+    get tableFocus(): boolean {
       let result = false;
       if (this.store.tableStore.state.tableFocus
         && this.store.tableStore.state.tableFocus.id === this.table.id
-        && this.store.canvasStore.state.focus) {
+        && this.focus) {
         result = true;
       }
       return result;
@@ -170,9 +172,9 @@
       return this.store.tableStore.state.edit;
     }
 
-    @Watch('focus')
-    private watchFocus(value: boolean) {
-      log.debug('Table watchFocus');
+    @Watch('tableFocus')
+    private watchTableFocus(value: boolean) {
+      log.debug('Table watchTableFocus');
       if (value) {
         if (this.subKeydown) {
           this.subKeydown.unsubscribe();
@@ -300,7 +302,7 @@
         event,
         store: this.store,
       });
-      if (this.focus) {
+      if (this.tableFocus) {
         this.store.tableStore.commit(Commit.tableFocus, focusType);
       }
     }

@@ -8,10 +8,9 @@ Vue.use(Vuex);
 export interface State {
   width: number;
   height: number;
-  x: number;
-  y: number;
+  scrollTop: number;
+  scrollLeft: number;
   show: Show;
-  focus: boolean;
 }
 
 export interface Show {
@@ -30,7 +29,6 @@ export const enum Commit {
   init = 'init',
   load = 'load',
   move = 'move',
-  focus = 'focus',
 }
 
 export function createStore() {
@@ -38,10 +36,9 @@ export function createStore() {
     state: {
       width: 2000,
       height: 2000,
-      x: 0,
-      y: 0,
+      scrollTop: 0,
+      scrollLeft: 0,
       show: dataShow(),
-      focus: false,
     },
     getters: {},
     mutations: {
@@ -59,15 +56,11 @@ export function createStore() {
           stateData[key] = loadData[key];
         });
       },
-      move(state: State, payload: {x: number, y: number}) {
+      move(state: State, payload: {scrollTop: number, scrollLeft: number}) {
         log.debug('canvasStore move');
-        const {x, y} = payload;
-        state.x += x;
-        state.y += y;
-      },
-      focus(state: State, focus: boolean) {
-        log.debug(`canvasStore focus: ${focus}`);
-        state.focus = focus;
+        const {scrollTop, scrollLeft} = payload;
+        state.scrollTop = scrollTop;
+        state.scrollLeft = scrollLeft;
       },
     },
     actions: {},

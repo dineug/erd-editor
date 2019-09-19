@@ -8558,10 +8558,10 @@ vue@^2.6.10:
   resolved "https://registry.yarnpkg.com/vue/-/vue-2.6.10.tgz#a72b1a42a4d82a721ea438d1b6bf55e66195c637"
   integrity sha512-ImThpeNU9HbdZL3utgMCq0oiMzAkt1mcgy3/E6zWC/G6AaQoeuFdsl9nDhTDU3X1R6FK7nsIUuRACVcjI+A2GQ==
 
-vuerd-core@^0.2.8:
-  version "0.2.8"
-  resolved "https://registry.yarnpkg.com/vuerd-core/-/vuerd-core-0.2.8.tgz#261cff4d022d01b28483cf9db1b5f4a060686040"
-  integrity sha512-J2izYxWFYMNIR3xyk/dzkHGmpLCTCqovWBygEu7W2/09N7rdLJHucV4Pwke2d+Yjc+KQTdIqAApc6uJCMLcOCA==
+vuerd-core@^0.2.9:
+  version "0.2.9"
+  resolved "https://registry.yarnpkg.com/vuerd-core/-/vuerd-core-0.2.9.tgz#0854b845187c1964620302b38cd937ee4d6fb24b"
+  integrity sha512-7cByGpbB6FMANHBNs8in3VjOjXNM3J5b3YLEXVjmnXT7g95IY0hT4VuKynYK1u3y2qcx5sTMDnu7eHhB9QYh1g==
   dependencies:
     "@tweenjs/tween.js" "^18.1.2"
     core-js "^2.6.5"
@@ -8570,9 +8570,9 @@ vuerd-core@^0.2.8:
     vue "^2.6.10"
     vue-class-component "^7.0.2"
     vue-property-decorator "^8.1.0"
-    vuex "^3.0.1"
+    vuex "^3.1.1"
 
-vuex@^3.0.1:
+vuex@^3.0.1, vuex@^3.1.1:
   version "3.1.1"
   resolved "https://registry.yarnpkg.com/vuex/-/vuex-3.1.1.tgz#0c264bfe30cdbccf96ab9db3177d211828a5910e"
   integrity sha512-ER5moSbLZuNSMBFnEBVGhQ1uCBNJslH9W/Dw2W7GZN23UQA69uapP5GTT9Vm8Trc0PzBSVt6LzF3hGjmv41xcg==

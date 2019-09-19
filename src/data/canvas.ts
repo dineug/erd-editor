@@ -18,10 +18,9 @@ function dataInit(): State {
   return {
     width: 2000,
     height: 2000,
-    x: 0,
-    y: 0,
+    scrollTop: 0,
+    scrollLeft: 0,
     show: dataShow(),
-    focus: false,
   };
 }
 

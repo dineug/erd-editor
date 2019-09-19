@@ -20,8 +20,8 @@ export function zIndexNext(tables: Table[], memos: Memo[]): number {
 
 export function pointNext(store: StoreManagement, tables: Table[], memos: Memo[]): { top: number, left: number } {
   const point = {
-    top: SIZE_START_Y - store.canvasStore.state.y,
-    left: SIZE_START_X - store.canvasStore.state.x,
+    top: SIZE_START_Y + store.canvasStore.state.scrollTop,
+    left: SIZE_START_X + store.canvasStore.state.scrollLeft,
   };
   let isPosition = true;
   while (isPosition) {

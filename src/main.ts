@@ -6,7 +6,7 @@ import 'vuerd-core/dist/vuerd-core.css';
 
 Vue.config.productionTip = false;
 VuerdCore.use(ERD);
-Vue.use(VuerdCore);
+Vue.use(VuerdCore, {logLevel: 'debug'});
 
 new Vue({
   render: (h) => h(App),

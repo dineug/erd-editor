@@ -1,6 +1,6 @@
 <template lang="pug">
   .canvas(
-    :style="`width: ${option.width}px; height: ${option.height}px; top: ${option.y}px; left: ${option.x}px;`"
+    :style="`width: ${option.width}px; height: ${option.height}px;`"
   )
     Contextmenu.contextmenu-erd(
       v-if="contextmenu"
@@ -13,6 +13,7 @@
       :key="table.id"
       :table="table"
       :store="store"
+      :focus="focus"
     )
     Memo(
       v-for="memo in memos"
@@ -47,6 +48,8 @@
   export default class Canvas extends Vue {
     @Prop({type: Object, default: () => ({})})
     private store!: StoreManagement;
+    @Prop({type: Boolean, default: false})
+    private focus!: boolean;
 
     private mousedown$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mousedown');
     private subMousedown!: Subscription;
@@ -112,7 +115,6 @@
   .canvas {
     position: relative;
     z-index: 200;
-
     background-color: $color-canvas;
   }
 </style>

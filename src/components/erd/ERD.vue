@@ -3,14 +3,13 @@
     :style="`width: ${width}px; height: ${height}px;`"
     @mousedown="onMousedown"
   )
-    Canvas(ref="canvas" :store="store")
+    Canvas(ref="canvas" :store="store" :focus="focus")
 </template>
 
 <script lang="ts">
   import '@/plugins/fontawesome';
 
   import eventBus, {Bus} from '@/ts/EventBus';
-  import AnimationFrame from '@/ts/AnimationFrame';
   import {Commit} from '@/store/canvas';
   import {Commit as TableCommit} from '@/store/table';
   import {Commit as MemoCommit} from '@/store/memo';
@@ -44,42 +43,35 @@
     private subMousemove: Subscription | null = null;
     private subKeydown!: Subscription;
 
-    private moveXAnimation: AnimationFrame<{x: number}> | null = null;
-    private moveYAnimation: AnimationFrame<{y: number}> | null = null;
-
     private store: StoreManagement = new StoreManagement();
-
-    @Watch('focus')
-    private watchFocus(focus: boolean) {
-      log.debug(`ERD watchFocus: ${focus}`);
-      this.store.canvasStore.commit(Commit.focus, focus);
-    }
 
     @Watch('value')
     private watchValue(value: string) {
       if (value.trim() === '') {
         this.store.init();
-        this.$emit('change', this.store.value());
+        this.$emit('change', this.store.value);
       } else {
         this.store.load(value);
       }
+      this.$el.scrollTop = this.store.canvasStore.state.scrollTop;
+      this.$el.scrollLeft = this.store.canvasStore.state.scrollLeft;
     }
 
     // ==================== Event Handler ===================
     private onChange() {
       log.debug('ERD onChange');
-      this.$emit('change', this.store.value());
+      this.$emit('change', this.store.value);
     }
 
     private onInput() {
       log.debug('ERD onInput');
-      this.$emit('input', this.store.value());
+      this.$emit('input', this.store.value);
     }
 
     private onMousedown(event: MouseEvent) {
       const el = event.target as HTMLElement;
       if (!el.closest('.contextmenu-erd') && !el.closest('.table') && !el.closest('.memo')) {
-        this.onMouseStop();
+        this.onMouseup(event);
         this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
         this.subMousemove = this.mousemove$.subscribe(this.onMousemove);
         this.store.tableStore.commit(TableCommit.tableSelectAllEnd);
@@ -87,54 +79,20 @@
       }
     }
 
-    private onMouseStop() {
+    private onMouseup(event: MouseEvent) {
       if (this.subMouseup && this.subMousemove) {
         this.subMouseup.unsubscribe();
         this.subMousemove.unsubscribe();
-      }
-      if (this.moveXAnimation) {
-        this.moveXAnimation.stop();
-      }
-      if (this.moveYAnimation) {
-        this.moveYAnimation.stop();
-      }
-    }
-
-    private onMouseup(event: MouseEvent) {
-      this.onMouseStop();
-      const minWidth = this.width - this.store.canvasStore.state.width;
-      const minHeight = this.height - this.store.canvasStore.state.height;
-      let x = 0;
-      let y = 0;
-      if (this.store.canvasStore.state.x < minWidth) {
-        x = minWidth;
-      }
-      if (this.store.canvasStore.state.y < minHeight) {
-        y = minHeight;
-      }
-
-      if (this.store.canvasStore.state.x > 0 || this.store.canvasStore.state.x < minWidth) {
-        this.moveXAnimation = new AnimationFrame(
-          {x: this.store.canvasStore.state.x},
-          {x}, 200)
-          .update((value) => this.store.canvasStore.state.x = value.x)
-          .start();
-      }
-
-      if (this.store.canvasStore.state.y > 0 || this.store.canvasStore.state.y < minHeight) {
-        this.moveYAnimation = new AnimationFrame(
-          {y: this.store.canvasStore.state.y},
-          {y}, 200)
-          .update((value) => this.store.canvasStore.state.y = value.y)
-          .start();
       }
     }
 
     private onMousemove(event: MouseEvent) {
       event.preventDefault();
+      this.$el.scrollTop -= event.movementY;
+      this.$el.scrollLeft -= event.movementX;
       this.store.canvasStore.commit(Commit.move, {
-        x: event.movementX,
-        y: event.movementY,
+        scrollTop: this.$el.scrollTop,
+        scrollLeft: this.$el.scrollLeft,
       });
     }
 
@@ -168,7 +126,6 @@
       if (process.env.NODE_ENV === 'development') {
         eventBus.destroyed();
       }
-      this.store.canvasStore.commit(Commit.focus, this.focus);
       eventBus.$on(Bus.ERD.change, this.onChange);
       eventBus.$on(Bus.ERD.input, this.onInput);
     }
@@ -195,5 +152,6 @@
   .erd {
     position: absolute;
     z-index: 100;
+    overflow: hidden;
   }
 </style>
