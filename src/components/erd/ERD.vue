@@ -113,6 +113,7 @@
           this.store.memoStore.commit(MemoCommit.memoAdd, this.store);
         } else if (event.altKey && event.key === Key.Enter) {
           this.store.tableStore.commit(TableCommit.columnAddAll, this.store);
+          this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
         } else if (event.ctrlKey && event.code === Key.KeyA) {
           event.preventDefault();
           this.store.tableStore.commit(TableCommit.tableSelectAll);
@@ -122,6 +123,7 @@
           this.store.memoStore.commit(MemoCommit.memoRemoveAll, this.store);
         } else if (event.altKey && event.key === Key.Delete) {
           this.store.tableStore.commit(TableCommit.columnRemoveAll);
+          this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
         }
       }
     }

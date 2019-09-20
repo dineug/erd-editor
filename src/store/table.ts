@@ -143,8 +143,18 @@ export function createStore() {
       },
       load(state: State, payload: { load: State, store: StoreManagement }) {
         const {load, store} = payload;
+        state.edit = load.edit;
         state.tables = [];
         load.tables.forEach((table) => state.tables.push(new TableModel(store, table)));
+        if (load.tableFocus) {
+          const reTableFocus = load.tableFocus as any;
+          const table = getData(state.tables, reTableFocus.table.id);
+          if (table) {
+            state.tableFocus = new TableFocusModel(store, table, reTableFocus);
+          }
+        } else {
+          state.tableFocus = null;
+        }
       },
       tableAdd,
       tableMove,

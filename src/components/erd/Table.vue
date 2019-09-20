@@ -316,6 +316,7 @@
         table: this.table,
         store: this.store,
       });
+      this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
     }
 
     private onEditInput(event: Event, focusType: FocusType) {

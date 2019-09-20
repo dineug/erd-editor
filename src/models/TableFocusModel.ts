@@ -35,10 +35,29 @@ export default class TableFocusModel implements TableFocus {
   private currentColumn: Column | null = null;
   private readonly store: StoreManagement;
 
-  constructor(store: StoreManagement, table: Table) {
+  constructor(store: StoreManagement, table: Table, tableFocus?: any) {
     this.store = store;
     this.table = table;
-    this.table.columns.forEach((column: Column) => this.focusColumns.push(new ColumnFocusModel(store, column)));
+    if (tableFocus) {
+      tableFocus.focusColumns.forEach((value: any) => value.id = value.column.id);
+      this.table.columns.forEach((column: Column) => {
+        const columnFocus = getData(tableFocus.focusColumns, column.id);
+        this.focusColumns.push(new ColumnFocusModel(store, column, columnFocus));
+      });
+      this.focusName = tableFocus.focusName;
+      this.focusComment = tableFocus.focusComment;
+      this.currentFocusTable = tableFocus.currentFocusTable;
+      if (tableFocus.currentColumn) {
+        const column = getData(this.table.columns, tableFocus.currentColumn.id);
+        if (column) {
+          this.currentColumn = column;
+        }
+      } else {
+        this.currentColumn = tableFocus.currentColumn;
+      }
+    } else {
+      this.table.columns.forEach((column: Column) => this.focusColumns.push(new ColumnFocusModel(store, column)));
+    }
   }
 
   get id(): string {
@@ -217,7 +236,6 @@ export default class TableFocusModel implements TableFocus {
     if (isAdd) {
       this.focus(FocusType.columnName, this.columns[this.columns.length - 1]);
     }
-    this.store.eventBus.$emit(Bus.ERD.change);
   }
 
   public columnRemove() {

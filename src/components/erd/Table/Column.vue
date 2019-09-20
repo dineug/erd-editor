@@ -261,6 +261,7 @@
         table: this.table,
         column: this.column,
       });
+      this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
     }
 
     // ==================== Event Handler END ===================
