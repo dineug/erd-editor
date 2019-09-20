@@ -45,27 +45,31 @@
 
     private store: StoreManagement = new StoreManagement();
 
+    private currentValue: string = '';
+
     @Watch('value')
     private watchValue(value: string) {
+      log.debug('ERD watchValue');
       if (value.trim() === '') {
         this.store.init();
-        this.$emit('change', this.store.value);
-      } else {
+        this.currentValue = this.store.value;
+        this.$emit('change', this.currentValue);
+      } else if (this.currentValue !== value) {
         this.store.load(value);
       }
-      this.$el.scrollTop = this.store.canvasStore.state.scrollTop;
-      this.$el.scrollLeft = this.store.canvasStore.state.scrollLeft;
     }
 
     // ==================== Event Handler ===================
     private onChange() {
       log.debug('ERD onChange');
-      this.$emit('change', this.store.value);
+      this.currentValue = this.store.value;
+      this.$emit('change', this.currentValue);
     }
 
     private onInput() {
       log.debug('ERD onInput');
-      this.$emit('input', this.store.value);
+      this.currentValue = this.store.value;
+      this.$emit('input', this.currentValue);
     }
 
     private onMousedown(event: MouseEvent) {

@@ -62,7 +62,7 @@ enum Memo {
 
 enum ERD {
   change = 'ERD.change',
-  input = 'ERD.change',
+  input = 'ERD.input',
 }
 
 export const Bus = {

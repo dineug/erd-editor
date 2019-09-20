@@ -16,6 +16,7 @@
         v-model="memo.value"
         v-focus
         spellcheck="false"
+        @input="onInput"
         @blur="onBlur"
       )
     Sash(
@@ -331,6 +332,10 @@
     private onMouseupSash(event: MouseEvent) {
       log.debug('Memo onMouseupSash');
       this.onMouseup(event);
+    }
+
+    private onInput() {
+      eventBus.$emit(Bus.ERD.input);
     }
 
     private onBlur() {

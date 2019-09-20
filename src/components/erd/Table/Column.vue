@@ -93,6 +93,7 @@
   import {Commit as TableCommit, Edit} from '@/store/table';
   import {log, getTextWidth} from '@/ts/util';
   import StoreManagement from '@/store/StoreManagement';
+  import eventBus, {Bus} from '@/ts/EventBus';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   @Component({
@@ -247,6 +248,7 @@
           this.column.ui.widthComment = width;
           break;
       }
+      eventBus.$emit(Bus.ERD.input);
     }
 
     private onEditBlur() {

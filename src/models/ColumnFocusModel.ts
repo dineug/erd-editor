@@ -23,16 +23,9 @@ export default class ColumnFocusModel implements ColumnFocus {
   private column: Column;
   private store: StoreManagement;
 
-  constructor(store: StoreManagement, column: Column, columnFocus?: any) {
+  constructor(store: StoreManagement, column: Column) {
     this.store = store;
     this.column = column;
-    if (columnFocus) {
-      this.focusName = columnFocus.focusName;
-      this.focusDataType = columnFocus.focusDataType;
-      this.focusNotNull = columnFocus.focusNotNull;
-      this.focusDefault = columnFocus.focusDefault;
-      this.focusComment = columnFocus.focusComment;
-    }
   }
 
   get id(): string {

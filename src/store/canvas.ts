@@ -55,6 +55,8 @@ export function createStore() {
         Object.keys(state).forEach((key) => {
           stateData[key] = loadData[key];
         });
+        state.scrollTop = 0;
+        state.scrollLeft = 0;
       },
       move(state: State, payload: {scrollTop: number, scrollLeft: number}) {
         log.debug('canvasStore move');

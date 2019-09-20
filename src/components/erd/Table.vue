@@ -330,6 +330,7 @@
           this.table.ui.widthComment = width;
           break;
       }
+      eventBus.$emit(Bus.ERD.input);
     }
 
     private onEditBlur() {

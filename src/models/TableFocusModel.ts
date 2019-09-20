@@ -35,29 +35,10 @@ export default class TableFocusModel implements TableFocus {
   private currentColumn: Column | null = null;
   private readonly store: StoreManagement;
 
-  constructor(store: StoreManagement, table: Table, tableFocus?: any) {
+  constructor(store: StoreManagement, table: Table) {
     this.store = store;
     this.table = table;
-    if (tableFocus) {
-      tableFocus.focusColumns.forEach((value: any) => value.id = value.column.id);
-      this.table.columns.forEach((column: Column) => {
-        const columnFocus = getData(tableFocus.focusColumns, column.id);
-        this.focusColumns.push(new ColumnFocusModel(store, column, columnFocus));
-      });
-      this.focusName = tableFocus.focusName;
-      this.focusComment = tableFocus.focusComment;
-      this.currentFocusTable = tableFocus.currentFocusTable;
-      if (tableFocus.currentColumn) {
-        const column = getData(this.table.columns, tableFocus.currentColumn.id);
-        if (column) {
-          this.currentColumn = column;
-        }
-      } else {
-        this.currentColumn = tableFocus.currentColumn;
-      }
-    } else {
-      this.table.columns.forEach((column: Column) => this.focusColumns.push(new ColumnFocusModel(store, column)));
-    }
+    this.table.columns.forEach((column: Column) => this.focusColumns.push(new ColumnFocusModel(store, column)));
   }
 
   get id(): string {
@@ -286,6 +267,7 @@ export default class TableFocusModel implements TableFocus {
             const focusType = focusColumn.currentFocus();
             if (focusType === FocusType.columnNotNull) {
               this.currentColumn.option.notNull = !this.currentColumn.option.notNull;
+              eventBus.$emit(Bus.ERD.input);
             } else {
               this.store.tableStore.commit(Commit.tableEditStart, {
                 id: this.currentColumn.id,
