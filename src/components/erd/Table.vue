@@ -51,10 +51,10 @@
       Column(
         v-for="(column, index) in table.columns"
         :key="column.id"
+        :store="store"
         :table="table"
         :column="column"
         :columnFocus="columnFocus(index)"
-        :store="store"
       )
 </template>
 
@@ -66,7 +66,7 @@
   import {FocusType} from '@/models/TableFocusModel';
   import {ColumnFocus} from '@/models/ColumnFocusModel';
   import AnimationFrame from '@/ts/AnimationFrame';
-  import eventBus, {Bus} from '@/ts/EventBus';
+  import {Bus} from '@/ts/EventBus';
   import {log, getTextWidth} from '@/ts/util';
   import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
@@ -237,8 +237,8 @@
         this.subMouseup.unsubscribe();
         this.subMousemove.unsubscribe();
       }
-      eventBus.$emit(Bus.Table.moveAnimationEnd);
-      eventBus.$emit(Bus.Memo.moveAnimationEnd);
+      this.store.eventBus.$emit(Bus.Table.moveAnimationEnd);
+      this.store.eventBus.$emit(Bus.Memo.moveAnimationEnd);
     }
 
     private onMousemove(event: MouseEvent) {
@@ -254,7 +254,10 @@
 
     private onClose() {
       log.debug('Table onClose');
-      this.store.tableStore.commit(Commit.tableRemove, this.table);
+      this.store.tableStore.commit(Commit.tableRemove, {
+        table: this.table,
+        store: this.store,
+      });
     }
 
     private onMoveAnimationEnd() {
@@ -330,23 +333,23 @@
           this.table.ui.widthComment = width;
           break;
       }
-      eventBus.$emit(Bus.ERD.input);
+      // eventBus.$emit(Bus.ERD.input);
     }
 
     private onEditBlur() {
       log.debug('Table onEditBlur');
-      this.store.tableStore.commit(Commit.tableEditEnd);
+      this.store.tableStore.commit(Commit.tableEditEnd, this.store);
     }
 
     // ==================== Event Handler END ===================
 
     // ==================== Life Cycle ====================
     private created() {
-      eventBus.$on(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
+      this.store.eventBus.$on(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
     }
 
     private destroyed() {
-      eventBus.$off(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
+      this.store.eventBus.$off(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
       if (this.subKeydown) {
         this.subKeydown.unsubscribe();
         this.subKeydown = null;

@@ -3,7 +3,7 @@ import ColumnFocusModel, {ColumnFocus} from './ColumnFocusModel';
 import {log, isData, getData} from '@/ts/util';
 import Key from '@/models/Key';
 import StoreManagement from '@/store/StoreManagement';
-import eventBus, {Bus} from '@/ts/EventBus';
+import {Bus} from '@/ts/EventBus';
 
 export const enum FocusType {
   tableName = 'tableName',
@@ -217,7 +217,7 @@ export default class TableFocusModel implements TableFocus {
     if (isAdd) {
       this.focus(FocusType.columnName, this.columns[this.columns.length - 1]);
     }
-    eventBus.$emit(Bus.ERD.change);
+    this.store.eventBus.$emit(Bus.ERD.change);
   }
 
   public columnRemove() {
@@ -251,7 +251,7 @@ export default class TableFocusModel implements TableFocus {
     log.debug('TableFocusModel edit');
     if (this.store.tableStore.state.edit) {
       if (!event.altKey && (event.key === Key.Enter || event.key === Key.Tab)) {
-        this.store.tableStore.commit(Commit.tableEditEnd);
+        this.store.tableStore.commit(Commit.tableEditEnd, this.store);
       }
     } else {
       if (!event.altKey && event.key === Key.Enter) {
@@ -267,7 +267,7 @@ export default class TableFocusModel implements TableFocus {
             const focusType = focusColumn.currentFocus();
             if (focusType === FocusType.columnNotNull) {
               this.currentColumn.option.notNull = !this.currentColumn.option.notNull;
-              eventBus.$emit(Bus.ERD.input);
+              this.store.eventBus.$emit(Bus.ERD.input);
             } else {
               this.store.tableStore.commit(Commit.tableEditStart, {
                 id: this.currentColumn.id,

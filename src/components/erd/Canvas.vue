@@ -4,22 +4,22 @@
   )
     Contextmenu.contextmenu-erd(
       v-if="contextmenu"
+      :store="store"
       :x="contextmenuX"
       :y="contextmenuY"
-      :store="store"
     )
     Table(
       v-for="table in tables"
       :key="table.id"
-      :table="table"
       :store="store"
       :focus="focus"
+      :table="table"
     )
     Memo(
       v-for="memo in memos"
       :key="memo.id"
-      :memo="memo"
       :store="store"
+      :memo="memo"
     )
 </template>
 

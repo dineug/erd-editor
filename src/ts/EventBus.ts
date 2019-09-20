@@ -71,4 +71,4 @@ export const Bus = {
   ERD,
 };
 
-export default new EventBus();
+export default EventBus;

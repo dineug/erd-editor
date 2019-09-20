@@ -93,7 +93,7 @@
   import {Commit as TableCommit, Edit} from '@/store/table';
   import {log, getTextWidth} from '@/ts/util';
   import StoreManagement from '@/store/StoreManagement';
-  import eventBus, {Bus} from '@/ts/EventBus';
+  import {Bus} from '@/ts/EventBus';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   @Component({
@@ -248,12 +248,12 @@
           this.column.ui.widthComment = width;
           break;
       }
-      eventBus.$emit(Bus.ERD.input);
+      // this.store.eventBus.$emit(Bus.ERD.input);
     }
 
     private onEditBlur() {
       log.debug('Column onEditBlur');
-      this.store.tableStore.commit(TableCommit.tableEditEnd);
+      this.store.tableStore.commit(TableCommit.tableEditEnd, this.store);
     }
 
     private onColumnRemove() {

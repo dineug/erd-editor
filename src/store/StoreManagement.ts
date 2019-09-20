@@ -2,17 +2,18 @@ import {
   Commit as CanvasCommit,
   State as CanvasState,
   createStore as createdStoreCanvas,
-} from '@/store/canvas';
+} from './canvas';
 import {
   Commit as TableCommit,
   State as TableState,
   createStore as createdStoreTable,
-} from '@/store/table';
+} from './table';
 import {
   Commit as MemoCommit,
   State as MemoState,
   createStore as createdStoreMemo,
-} from '@/store/memo';
+} from './memo';
+import EventBus from '@/ts/EventBus';
 import {log} from '@/ts/util';
 import {Store} from 'vuex';
 
@@ -42,11 +43,13 @@ export default class StoreManagement {
   public readonly canvasStore: Store<CanvasState>;
   public readonly tableStore: Store<TableState>;
   public readonly memoStore: Store<MemoState>;
+  public readonly eventBus: EventBus;
 
   constructor() {
     this.canvasStore = createdStoreCanvas();
     this.tableStore = createdStoreTable();
     this.memoStore = createdStoreMemo();
+    this.eventBus = new EventBus();
   }
 
   public init() {

@@ -5,14 +5,14 @@ import {zIndexNext} from './tableHandler';
 import {log} from '@/ts/util';
 import TableFocusModel, {FocusType} from '@/models/TableFocusModel';
 import StoreManagement from '@/store/StoreManagement';
-import eventBus, {Bus} from '@/ts/EventBus';
+import {Bus} from '@/ts/EventBus';
 
 export function tableAdd(state: State, store: StoreManagement) {
   log.debug('tableController tableAdd');
   tableSelectAllEnd(state);
   store.memoStore.commit(Commit.memoSelectAllEnd);
   state.tables.push(new TableModel(store));
-  eventBus.$emit(Bus.ERD.change);
+  store.eventBus.$emit(Bus.ERD.change);
 }
 
 export function tableMove(
@@ -39,14 +39,15 @@ export function tableMove(
   }
 }
 
-export function tableRemove(state: State, table: Table) {
+export function tableRemove(state: State, payload: { table: Table, store: StoreManagement }) {
   log.debug('tableController tableRemove');
+  const {table, store} = payload;
   const index = state.tables.indexOf(table);
   state.tables.splice(index, 1);
-  eventBus.$emit(Bus.ERD.change);
+  store.eventBus.$emit(Bus.ERD.change);
 }
 
-export function tableRemoveAll(state: State) {
+export function tableRemoveAll(state: State, store: StoreManagement) {
   log.debug('tableController tableRemoveAll');
   for (let i = 0; i < state.tables.length; i++) {
     if (state.tables[i].ui.active) {
@@ -54,7 +55,7 @@ export function tableRemoveAll(state: State) {
       i--;
     }
   }
-  eventBus.$emit(Bus.ERD.change);
+  store.eventBus.$emit(Bus.ERD.change);
 }
 
 export function tableSelect(state: State, payload: { table: Table, event: MouseEvent, store: StoreManagement }) {
@@ -81,7 +82,7 @@ export function tableSelectAllEnd(state: State) {
   tableFocusEnd(state);
 }
 
-export function tableFocusStart(state: State, payload: {table: Table, store: StoreManagement}) {
+export function tableFocusStart(state: State, payload: { table: Table, store: StoreManagement }) {
   log.debug('tableController tableFocusStart');
   const {table, store} = payload;
   if (!state.tableFocus || state.tableFocus.id !== table.id) {
@@ -114,8 +115,8 @@ export function tableEditStart(state: State, edit: Edit) {
   state.edit = edit;
 }
 
-export function tableEditEnd(state: State) {
+export function tableEditEnd(state: State, store: StoreManagement) {
   log.debug('tableController editEnd');
   state.edit = null;
-  eventBus.$emit(Bus.ERD.change);
+  store.eventBus.$emit(Bus.ERD.change);
 }

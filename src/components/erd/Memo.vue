@@ -82,7 +82,7 @@
 <script lang="ts">
   import {SIZE_MEMO_PADDING, SIZE_MEMO_WIDTH, SIZE_MEMO_HEIGHT} from '@/ts/layout';
   import {Memo as MemoModel, Commit} from '@/store/memo';
-  import eventBus, {Bus} from '@/ts/EventBus';
+  import {Bus} from '@/ts/EventBus';
   import {log} from '@/ts/util';
   import AnimationFrame from '@/ts/AnimationFrame';
   import StoreManagement from '@/store/StoreManagement';
@@ -240,8 +240,8 @@
         this.subMouseup.unsubscribe();
         this.subMousemove.unsubscribe();
       }
-      eventBus.$emit(Bus.Memo.moveAnimationEnd);
-      eventBus.$emit(Bus.Table.moveAnimationEnd);
+      this.store.eventBus.$emit(Bus.Memo.moveAnimationEnd);
+      this.store.eventBus.$emit(Bus.Table.moveAnimationEnd);
     }
 
     private onMousemove(event: MouseEvent) {
@@ -257,7 +257,10 @@
 
     private onClose() {
       log.debug('Memo onClose');
-      this.store.memoStore.commit(Commit.memoRemove, this.memo);
+      this.store.memoStore.commit(Commit.memoRemove, {
+        memo: this.memo,
+        store: this.store,
+      });
     }
 
     private onMoveAnimationEnd() {
@@ -335,22 +338,22 @@
     }
 
     private onInput() {
-      eventBus.$emit(Bus.ERD.input);
+      // this.store.eventBus.$emit(Bus.ERD.input);
     }
 
     private onBlur() {
-      eventBus.$emit(Bus.ERD.change);
+      this.store.eventBus.$emit(Bus.ERD.change);
     }
 
     // ==================== Event Handler END ===================
 
     // ==================== Life Cycle ====================
     private created() {
-      eventBus.$on(Bus.Memo.moveAnimationEnd, this.onMoveAnimationEnd);
+      this.store.eventBus.$on(Bus.Memo.moveAnimationEnd, this.onMoveAnimationEnd);
     }
 
     private destroyed() {
-      eventBus.$off(Bus.Memo.moveAnimationEnd, this.onMoveAnimationEnd);
+      this.store.eventBus.$off(Bus.Memo.moveAnimationEnd, this.onMoveAnimationEnd);
     }
 
     // ==================== Life Cycle END ====================

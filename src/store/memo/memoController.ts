@@ -4,14 +4,14 @@ import MemoModel from '@/models/MemoModel';
 import {log} from '@/ts/util';
 import {zIndexNext} from '@/store/table/tableHandler';
 import StoreManagement from '@/store/StoreManagement';
-import eventBus, {Bus} from '@/ts/EventBus';
+import {Bus} from '@/ts/EventBus';
 
 export function memoAdd(state: State, store: StoreManagement) {
   log.debug('memoController memoAdd');
   memoSelectAllEnd(state);
   store.tableStore.commit(Commit.tableSelectAllEnd);
   state.memos.push(new MemoModel(store));
-  eventBus.$emit(Bus.ERD.change);
+  store.eventBus.$emit(Bus.ERD.change);
 }
 
 export function memoMove(
@@ -38,14 +38,15 @@ export function memoMove(
   }
 }
 
-export function memoRemove(state: State, memo: Memo) {
+export function memoRemove(state: State, payload: { memo: Memo, store: StoreManagement }) {
   log.debug('memoController memoRemove');
+  const {memo, store} = payload;
   const index = state.memos.indexOf(memo);
   state.memos.splice(index, 1);
-  eventBus.$emit(Bus.ERD.change);
+  store.eventBus.$emit(Bus.ERD.change);
 }
 
-export function memoRemoveAll(state: State) {
+export function memoRemoveAll(state: State, store: StoreManagement) {
   log.debug('memoController memoRemoveAll');
   for (let i = 0; i < state.memos.length; i++) {
     if (state.memos[i].ui.active) {
@@ -53,7 +54,7 @@ export function memoRemoveAll(state: State) {
       i--;
     }
   }
-  eventBus.$emit(Bus.ERD.change);
+  store.eventBus.$emit(Bus.ERD.change);
 }
 
 export function memoSelect(state: State, payload: { memo: Memo, event: MouseEvent, store: StoreManagement }) {

@@ -3,13 +3,17 @@
     :style="`width: ${width}px; height: ${height}px;`"
     @mousedown="onMousedown"
   )
-    Canvas(ref="canvas" :store="store" :focus="focus")
+    Canvas(
+      :store="store"
+      :focus="focus"
+      ref="canvas"
+    )
 </template>
 
 <script lang="ts">
   import '@/plugins/fontawesome';
 
-  import eventBus, {Bus} from '@/ts/EventBus';
+  import {Bus} from '@/ts/EventBus';
   import {Commit} from '@/store/canvas';
   import {Commit as TableCommit} from '@/store/table';
   import {Commit as MemoCommit} from '@/store/memo';
@@ -114,8 +118,8 @@
           this.store.tableStore.commit(TableCommit.tableSelectAll);
           this.store.memoStore.commit(MemoCommit.memoSelectAll);
         } else if (event.ctrlKey && event.key === Key.Delete) {
-          this.store.tableStore.commit(TableCommit.tableRemoveAll);
-          this.store.memoStore.commit(MemoCommit.memoRemoveAll);
+          this.store.tableStore.commit(TableCommit.tableRemoveAll, this.store);
+          this.store.memoStore.commit(MemoCommit.memoRemoveAll, this.store);
         } else if (event.altKey && event.key === Key.Delete) {
           this.store.tableStore.commit(TableCommit.columnRemoveAll);
         }
@@ -127,11 +131,8 @@
     // ==================== Life Cycle ====================
     private created() {
       log.debug('ERD created');
-      if (process.env.NODE_ENV === 'development') {
-        eventBus.destroyed();
-      }
-      eventBus.$on(Bus.ERD.change, this.onChange);
-      eventBus.$on(Bus.ERD.input, this.onInput);
+      this.store.eventBus.$on(Bus.ERD.change, this.onChange);
+      this.store.eventBus.$on(Bus.ERD.input, this.onInput);
     }
 
     private mounted() {
@@ -144,8 +145,7 @@
       log.debug('ERD destroyed');
       removeSpanText();
       this.subKeydown.unsubscribe();
-      eventBus.$off(Bus.ERD.change, this.onChange);
-      eventBus.$off(Bus.ERD.input, this.onInput);
+      this.store.eventBus.destroyed();
     }
 
     // ==================== Life Cycle END ====================
