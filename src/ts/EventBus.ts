@@ -60,19 +60,15 @@ enum Memo {
   moveAnimationEnd = 'Memo.moveAnimationEnd',
 }
 
-enum Canvas {
-  contextmenuEnd = 'Canvas.contextmenuEnd',
-}
-
 enum ERD {
   change = 'ERD.change',
   input = 'ERD.input',
+  contextmenuEnd = 'ERD.contextmenuEnd',
 }
 
 export const Bus = {
   Table,
   Memo,
-  Canvas,
   ERD,
 };
 

@@ -1,7 +1,7 @@
 <template lang="pug">
   .erd(
     :style="`width: ${width}px; height: ${height}px;`"
-    @mousedown="onMousedown"
+    @mousedown="onMousedownERD"
   )
     Canvas(
       :store="store"
@@ -17,11 +17,19 @@
       :ghostY="selectGhostY"
       @selectEnd="onSelectEnd"
     )
+    Contextmenu.contextmenu-erd(
+      v-if="contextmenu"
+      :store="store"
+      :menus="menus"
+      :x="contextmenuX"
+      :y="contextmenuY"
+    )
 </template>
 
 <script lang="ts">
   import '@/plugins/fontawesome';
 
+  import {SIZE_MENU_HEIGHT} from '@/ts/layout';
   import {Bus} from '@/ts/EventBus';
   import {Commit as CanvasCommit} from '@/store/canvas';
   import {Commit as TableCommit} from '@/store/table';
@@ -29,15 +37,19 @@
   import {log, addSpanText, removeSpanText} from '@/ts/util';
   import Key from '@/models/Key';
   import StoreManagement from '@/store/StoreManagement';
+  import Menu from '@/models/Menu';
+  import {dataMenu} from '@/data/contextmenu';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
   import Canvas from './Canvas.vue';
   import MultipleSelect from './MultipleSelect.vue';
+  import Contextmenu from './Contextmenu.vue';
 
   import {fromEvent, Observable, Subscription} from 'rxjs';
 
   @Component({
     components: {
       Canvas,
+      Contextmenu,
       MultipleSelect,
     },
   })
@@ -51,12 +63,24 @@
     @Prop({type: Boolean, default: false})
     private focus!: boolean;
 
+    private resize$: Observable<Event> = fromEvent(window, 'resize');
+    private mousedown$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mousedown');
     private mouseup$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mouseup');
     private mousemove$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mousemove');
     private keydown$: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(window, 'keydown');
+    private subResize!: Subscription;
+    private subMousedown!: Subscription;
     private subMouseup: Subscription | null = null;
     private subMousemove: Subscription | null = null;
     private subKeydown!: Subscription;
+
+    private contextmenu$!: Observable<MouseEvent>;
+    private subContextmenu!: Subscription;
+    private contextmenu: boolean = false;
+    private contextmenuX: number = 0;
+    private contextmenuY: number = 0;
+    private windowWidth: number = window.innerWidth;
+    private windowHeight: number = window.innerHeight;
 
     private store: StoreManagement = new StoreManagement();
 
@@ -67,6 +91,8 @@
     private selectY: number = 0;
     private selectGhostX: number = 0;
     private selectGhostY: number = 0;
+
+    private menus: Menu[] = dataMenu(this.store);
 
     @Watch('value')
     private watchValue(value: string) {
@@ -93,7 +119,7 @@
       this.$emit('input', this.currentValue);
     }
 
-    private onMousedown(event: MouseEvent) {
+    private onMousedownERD(event: MouseEvent) {
       const el = event.target as HTMLElement;
       if (!event.ctrlKey
         && !el.closest('.contextmenu-erd')
@@ -115,6 +141,13 @@
         this.selectGhostX = event.offsetX;
         this.selectGhostY = event.offsetY;
         this.select = true;
+      }
+    }
+
+    private onMousedown(event: MouseEvent) {
+      const el = event.target as HTMLElement;
+      if (!el.closest('.contextmenu-erd')) {
+        this.contextmenu = false;
       }
     }
 
@@ -165,6 +198,33 @@
       this.select = false;
     }
 
+    private onResize() {
+      log.debug('ERD onResize');
+      this.windowWidth = window.innerWidth;
+      this.windowHeight = window.innerHeight;
+    }
+
+    private onContextmenu(event: MouseEvent) {
+      log.debug('Canvas onContextmenu');
+      event.preventDefault();
+      const el = event.target as HTMLElement;
+      this.contextmenu = !!el.closest('.canvas');
+      if (this.contextmenu) {
+        this.contextmenuX = event.x;
+        this.contextmenuY = event.y;
+        const height = this.menus.length * SIZE_MENU_HEIGHT;
+        if (event.y + height > this.windowHeight) {
+          this.contextmenuY = event.y - height;
+        } else {
+          this.contextmenuY = event.y;
+        }
+      }
+    }
+
+    private onContextmenuEnd() {
+      this.contextmenu = false;
+    }
+
     // ==================== Event Handler END ===================
 
     // ==================== Life Cycle ====================
@@ -177,12 +237,20 @@
     private mounted() {
       log.debug('ERD mounted');
       addSpanText();
+      this.contextmenu$ = fromEvent<MouseEvent>(this.$el, 'contextmenu');
+      this.subContextmenu = this.contextmenu$.subscribe(this.onContextmenu);
+      this.subResize = this.resize$.subscribe(this.onResize);
+      this.subMousedown = this.mousedown$.subscribe(this.onMousedown);
       this.subKeydown = this.keydown$.subscribe(this.onKeydown);
+      this.store.eventBus.$on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     }
 
     private destroyed() {
       log.debug('ERD destroyed');
       removeSpanText();
+      this.subContextmenu.unsubscribe();
+      this.subResize.unsubscribe();
+      this.subMousedown.unsubscribe();
       this.subKeydown.unsubscribe();
       this.store.eventBus.destroyed();
     }

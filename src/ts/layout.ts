@@ -17,3 +17,4 @@ export const SIZE_MEMO_PADDING = 10;
 export const SIZE_SASH = 5;
 export const SIZE_COLUMN_CLOSE = 7;
 export const SIZE_COLUMN_KEY = 12;
+export const SIZE_MENU_HEIGHT = 39.52;

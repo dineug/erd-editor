@@ -24,13 +24,12 @@
 </template>
 
 <script lang="ts">
+  import {SIZE_MENU_HEIGHT} from '@/ts/layout';
   import StoreManagement from '@/store/StoreManagement';
   import Menu from '@/models/Menu';
   import {Bus} from '@/ts/EventBus';
   import {log} from '@/ts/util';
   import {Component, Prop, Vue} from 'vue-property-decorator';
-
-  const MENU_HEIGHT = 39.52;
 
   @Component
   export default class Contextmenu extends Vue {
@@ -43,6 +42,8 @@
     @Prop({type: Number, default: 0})
     private y!: number;
 
+    private windowHeight: number = window.innerHeight;
+
     private currentMenu: Menu | null = null;
 
     get childrenX(): number {
@@ -52,7 +53,14 @@
 
     get childrenY(): number {
       if (this.currentMenu) {
-        return this.y + this.menus.indexOf(this.currentMenu) * MENU_HEIGHT;
+        let y = this.y + this.menus.indexOf(this.currentMenu) * SIZE_MENU_HEIGHT;
+        if (this.currentMenu.children) {
+          const height = (this.currentMenu.children.length - 1) * SIZE_MENU_HEIGHT;
+          if (y + height > this.windowHeight) {
+            y -= height;
+          }
+        }
+        return y;
       } else {
         return this.y;
       }
@@ -72,7 +80,7 @@
         menu.execute();
         log.debug(menu.icon);
         if (!menu.option || menu.option.close === undefined || menu.option.close) {
-          this.store.eventBus.$emit(Bus.Canvas.contextmenuEnd);
+          this.store.eventBus.$emit(Bus.ERD.contextmenuEnd);
         }
       }
     }
