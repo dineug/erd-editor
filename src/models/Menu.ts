@@ -1,6 +1,8 @@
+import {ShowKey} from '@/store/canvas';
+
 export interface MenuOption {
   close?: boolean;
-  show?: string;
+  show?: ShowKey;
 }
 
 export default interface Menu {

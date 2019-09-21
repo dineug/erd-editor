@@ -8,13 +8,22 @@
       :focus="focus"
       ref="canvas"
     )
+    MultipleSelect(
+      v-if="select"
+      :store="store"
+      :x="selectX"
+      :y="selectY"
+      :ghostX="selectGhostX"
+      :ghostY="selectGhostY"
+      @selectEnd="onSelectEnd"
+    )
 </template>
 
 <script lang="ts">
   import '@/plugins/fontawesome';
 
   import {Bus} from '@/ts/EventBus';
-  import {Commit} from '@/store/canvas';
+  import {Commit as CanvasCommit} from '@/store/canvas';
   import {Commit as TableCommit} from '@/store/table';
   import {Commit as MemoCommit} from '@/store/memo';
   import {log, addSpanText, removeSpanText} from '@/ts/util';
@@ -22,12 +31,14 @@
   import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
   import Canvas from './Canvas.vue';
+  import MultipleSelect from './MultipleSelect.vue';
 
   import {fromEvent, Observable, Subscription} from 'rxjs';
 
   @Component({
     components: {
       Canvas,
+      MultipleSelect,
     },
   })
   export default class ERD extends Vue {
@@ -50,6 +61,12 @@
     private store: StoreManagement = new StoreManagement();
 
     private currentValue: string = '';
+
+    private select: boolean = false;
+    private selectX: number = 0;
+    private selectY: number = 0;
+    private selectGhostX: number = 0;
+    private selectGhostY: number = 0;
 
     @Watch('value')
     private watchValue(value: string) {
@@ -78,12 +95,26 @@
 
     private onMousedown(event: MouseEvent) {
       const el = event.target as HTMLElement;
-      if (!el.closest('.contextmenu-erd') && !el.closest('.table') && !el.closest('.memo')) {
+      if (!event.ctrlKey
+        && !el.closest('.contextmenu-erd')
+        && !el.closest('.table')
+        && !el.closest('.memo')) {
         this.onMouseup(event);
         this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
         this.subMousemove = this.mousemove$.subscribe(this.onMousemove);
         this.store.tableStore.commit(TableCommit.tableSelectAllEnd);
         this.store.memoStore.commit(MemoCommit.memoSelectAllEnd);
+      } else if (event.ctrlKey
+        && !el.closest('.contextmenu-erd')
+        && !el.closest('.table')
+        && !el.closest('.memo')) {
+        this.store.tableStore.commit(TableCommit.tableSelectAllEnd);
+        this.store.memoStore.commit(MemoCommit.memoSelectAllEnd);
+        this.selectX = event.x;
+        this.selectY = event.y;
+        this.selectGhostX = event.offsetX;
+        this.selectGhostY = event.offsetY;
+        this.select = true;
       }
     }
 
@@ -98,7 +129,7 @@
       event.preventDefault();
       this.$el.scrollTop -= event.movementY;
       this.$el.scrollLeft -= event.movementX;
-      this.store.canvasStore.commit(Commit.move, {
+      this.store.canvasStore.commit(CanvasCommit.move, {
         scrollTop: this.$el.scrollTop,
         scrollLeft: this.$el.scrollLeft,
       });
@@ -126,6 +157,10 @@
           this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
         }
       }
+    }
+
+    private onSelectEnd() {
+      this.select = false;
     }
 
     // ==================== Event Handler END ===================

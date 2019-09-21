@@ -1,3 +1,4 @@
+import {SIZE_MEMO_PADDING} from '@/ts/layout';
 import {State, Memo} from '../memo';
 import {Commit, Table} from '@/store/table';
 import MemoModel from '@/models/MemoModel';
@@ -5,6 +6,9 @@ import {log} from '@/ts/util';
 import {zIndexNext} from '@/store/table/tableHandler';
 import StoreManagement from '@/store/StoreManagement';
 import {Bus} from '@/ts/EventBus';
+
+const MEMO_PADDING = SIZE_MEMO_PADDING * 2;
+const MEMO_HEADER = 17 + SIZE_MEMO_PADDING;
 
 export function memoAdd(state: State, store: StoreManagement) {
   log.debug('memoController memoAdd');
@@ -16,7 +20,12 @@ export function memoAdd(state: State, store: StoreManagement) {
 
 export function memoMove(
   state: State,
-  payload: { memo: Memo, x: number, y: number, event: MouseEvent, store: StoreManagement }) {
+  payload: {
+    memo: Memo,
+    x: number, y: number,
+    event: MouseEvent,
+    store: StoreManagement,
+  }) {
   log.debug('memoController memoMove');
   const {memo, x, y, event, store} = payload;
   if (event.ctrlKey) {
@@ -77,4 +86,20 @@ export function memoSelectAll(state: State) {
 export function memoSelectAllEnd(state: State) {
   log.debug('memoController memoSelectAllEnd');
   state.memos.forEach((memo: Memo) => memo.ui.active = false);
+}
+
+export function memoMultipleSelect(
+  state: State,
+  payload: {
+    min: { x: number, y: number },
+    max: { x: number, y: number },
+  }) {
+  log.debug('memoController memoSelectAllEnd');
+  const {min, max} = payload;
+  state.memos.forEach((memo: Memo) => {
+    const centerX = memo.ui.left + (memo.ui.width / 2) + MEMO_PADDING;
+    const centerY = memo.ui.top + (memo.ui.height / 2) + MEMO_PADDING + MEMO_HEADER;
+    memo.ui.active = !!(min.x <= centerX && centerX <= max.x
+      && min.y <= centerY && centerY <= max.y);
+  });
 }

@@ -25,6 +25,18 @@ export interface Show {
   relationship: boolean;
 }
 
+export const enum ShowKey {
+  tableComment = 'tableComment',
+  columnComment = 'columnComment',
+  columnDataType = 'columnDataType',
+  columnDefault = 'columnDefault',
+  columnAutoIncrement = 'columnAutoIncrement',
+  columnPrimaryKey = 'columnPrimaryKey',
+  columnUnique = 'columnUnique',
+  columnNotNull = 'columnNotNull',
+  relationship = 'relationship',
+}
+
 export const enum Commit {
   init = 'init',
   load = 'load',

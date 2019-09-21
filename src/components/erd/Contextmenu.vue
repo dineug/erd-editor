@@ -60,7 +60,7 @@
 
     private getIcon(menu: Menu): string | undefined {
       if (menu.option && menu.option.show) {
-        const show = this.store.canvasStore.state.show as any;
+        const show = this.store.canvasStore.state.show;
         return show[menu.option.show] ? 'check' : undefined;
       } else {
         return menu.icon;
@@ -68,7 +68,7 @@
     }
 
     private onExecute(menu: Menu) {
-      if (menu.execute) {
+      if (!menu.children && menu.execute && typeof menu.execute === 'function') {
         menu.execute();
         log.debug(menu.icon);
         if (!menu.option || menu.option.close === undefined || menu.option.close) {

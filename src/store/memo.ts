@@ -8,6 +8,7 @@ import {
   memoSelect,
   memoSelectAll,
   memoSelectAllEnd,
+  memoMultipleSelect,
 } from './memo/memoController';
 import {dataInit} from '@/data/memo';
 
@@ -42,6 +43,7 @@ export const enum Commit {
   memoSelect = 'memoSelect',
   memoSelectAll = 'memoSelectAll',
   memoSelectAllEnd = 'memoSelectAllEnd',
+  memoMultipleSelect = 'memoMultipleSelect',
 }
 
 export function createStore() {
@@ -72,6 +74,7 @@ export function createStore() {
       memoSelect,
       memoSelectAll,
       memoSelectAllEnd,
+      memoMultipleSelect,
     },
     actions: {},
   });

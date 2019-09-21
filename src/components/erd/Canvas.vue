@@ -1,7 +1,5 @@
 <template lang="pug">
-  .canvas(
-    :style="`width: ${option.width}px; height: ${option.height}px;`"
-  )
+  .canvas(:style="`width: ${option.width}px; height: ${option.height}px;`")
     Contextmenu.contextmenu-erd(
       v-if="contextmenu"
       :store="store"
@@ -25,7 +23,7 @@
 </template>
 
 <script lang="ts">
-  import {State} from '@/store/canvas';
+  import {State, ShowKey} from '@/store/canvas';
   import {Table as TableModel, Commit as TableCommit} from '@/store/table';
   import {Memo as MemoModel, Commit as MemoCommit} from '@/store/memo';
   import {log, uuid} from '@/ts/util';
@@ -122,7 +120,7 @@
               this.option.show.tableComment = !this.option.show.tableComment;
               this.store.eventBus.$emit(Bus.ERD.change);
             },
-            option: {close: false, show: 'tableComment'},
+            option: {close: false, show: ShowKey.tableComment},
           },
           {
             id: uuid(),
@@ -132,7 +130,7 @@
               this.option.show.columnComment = !this.option.show.columnComment;
               this.store.eventBus.$emit(Bus.ERD.change);
             },
-            option: {close: false, show: 'columnComment'},
+            option: {close: false, show: ShowKey.columnComment},
           },
           {
             id: uuid(),
@@ -142,7 +140,7 @@
               this.option.show.columnDataType = !this.option.show.columnDataType;
               this.store.eventBus.$emit(Bus.ERD.change);
             },
-            option: {close: false, show: 'columnDataType'},
+            option: {close: false, show: ShowKey.columnDataType},
           },
           {
             id: uuid(),
@@ -152,7 +150,7 @@
               this.option.show.columnNotNull = !this.option.show.columnNotNull;
               this.store.eventBus.$emit(Bus.ERD.change);
             },
-            option: {close: false, show: 'columnNotNull'},
+            option: {close: false, show: ShowKey.columnNotNull},
           },
           {
             id: uuid(),
@@ -162,7 +160,7 @@
               this.option.show.columnDefault = !this.option.show.columnDefault;
               this.store.eventBus.$emit(Bus.ERD.change);
             },
-            option: {close: false, show: 'columnDefault'},
+            option: {close: false, show: ShowKey.columnDefault},
           },
           {
             id: uuid(),
@@ -172,7 +170,7 @@
               this.option.show.columnAutoIncrement = !this.option.show.columnAutoIncrement;
               this.store.eventBus.$emit(Bus.ERD.change);
             },
-            option: {close: false, show: 'columnAutoIncrement'},
+            option: {close: false, show: ShowKey.columnAutoIncrement},
           },
           {
             id: uuid(),
@@ -182,7 +180,7 @@
               this.option.show.columnPrimaryKey = !this.option.show.columnPrimaryKey;
               this.store.eventBus.$emit(Bus.ERD.change);
             },
-            option: {close: false, show: 'columnPrimaryKey'},
+            option: {close: false, show: ShowKey.columnPrimaryKey},
           },
           {
             id: uuid(),
@@ -192,7 +190,7 @@
               this.option.show.columnUnique = !this.option.show.columnUnique;
               this.store.eventBus.$emit(Bus.ERD.change);
             },
-            option: {close: false, show: 'columnUnique'},
+            option: {close: false, show: ShowKey.columnUnique},
           },
           {
             id: uuid(),
@@ -202,7 +200,7 @@
               this.option.show.relationship = !this.option.show.relationship;
               this.store.eventBus.$emit(Bus.ERD.change);
             },
-            option: {close: false, show: 'relationship'},
+            option: {close: false, show: ShowKey.relationship},
           },
         ],
       },
@@ -223,24 +221,20 @@
     // ==================== Event Handler ===================
     private onMousedown(event: MouseEvent) {
       log.debug('Canvas onMousedown');
-      if (event.target) {
-        const el = event.target as HTMLElement;
-        if (!el.closest('.contextmenu-erd')) {
-          this.contextmenu = false;
-        }
+      const el = event.target as HTMLElement;
+      if (!el.closest('.contextmenu-erd')) {
+        this.contextmenu = false;
       }
     }
 
     private onContextmenu(event: MouseEvent) {
       log.debug('Canvas onContextmenu');
       event.preventDefault();
-      if (event.target) {
-        const el = event.target as HTMLElement;
-        this.contextmenu = !!el.closest('.canvas');
-        if (this.contextmenu) {
-          this.contextmenuX = event.clientX;
-          this.contextmenuY = event.clientY;
-        }
+      const el = event.target as HTMLElement;
+      this.contextmenu = !!el.closest('.canvas');
+      if (this.contextmenu) {
+        this.contextmenuX = event.x;
+        this.contextmenuY = event.y;
       }
     }
 

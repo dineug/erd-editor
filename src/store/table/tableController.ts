@@ -1,3 +1,4 @@
+import {SIZE_TABLE_PADDING} from '@/ts/layout';
 import {Edit, State, Table} from '../table';
 import {Commit, Memo} from '@/store/memo';
 import TableModel from '@/models/TableModel';
@@ -6,6 +7,8 @@ import {log} from '@/ts/util';
 import TableFocusModel, {FocusType} from '@/models/TableFocusModel';
 import StoreManagement from '@/store/StoreManagement';
 import {Bus} from '@/ts/EventBus';
+
+const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 
 export function tableAdd(state: State, store: StoreManagement) {
   log.debug('tableController tableAdd');
@@ -19,7 +22,12 @@ export function tableAdd(state: State, store: StoreManagement) {
 
 export function tableMove(
   state: State,
-  payload: { table: Table, x: number, y: number, event: MouseEvent, store: StoreManagement }) {
+  payload: {
+    table: Table,
+    x: number, y: number,
+    event: MouseEvent,
+    store: StoreManagement,
+  }) {
   log.debug('tableController tableMove');
   const {table, x, y, event, store} = payload;
   if (event.ctrlKey) {
@@ -82,6 +90,22 @@ export function tableSelectAllEnd(state: State) {
   log.debug('tableController tableSelectAllEnd');
   state.tables.forEach((table: Table) => table.ui.active = false);
   tableFocusEnd(state);
+}
+
+export function tableMultipleSelect(
+  state: State,
+  payload: {
+    min: { x: number, y: number },
+    max: { x: number, y: number },
+  }) {
+  log.debug('tableController tableMultipleSelect');
+  const {min, max} = payload;
+  state.tables.forEach((table: Table) => {
+    const centerX = table.ui.left + (table.width() / 2) + TABLE_PADDING;
+    const centerY = table.ui.top + (table.height() / 2) + TABLE_PADDING;
+    table.ui.active = !!(min.x <= centerX && centerX <= max.x
+      && min.y <= centerY && centerY <= max.y);
+  });
 }
 
 export function tableFocusStart(state: State, payload: { table: Table, store: StoreManagement }) {
