@@ -155,6 +155,8 @@
         } else if (event.altKey && event.key === Key.Delete) {
           this.store.tableStore.commit(TableCommit.columnRemoveAll);
           this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
+        } else if (event.altKey && event.code === Key.KeyK) {
+          this.store.tableStore.commit(TableCommit.columnPrimaryKey);
         }
       }
     }

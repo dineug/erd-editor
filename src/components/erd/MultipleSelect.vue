@@ -15,7 +15,6 @@
   import StoreManagement from '@/store/StoreManagement';
   import {Commit as TableCommit} from '@/store/table';
   import {Commit as MemoCommit} from '@/store/memo';
-  import {log} from '@/ts/util';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   import {fromEvent, Observable, Subscription} from 'rxjs';

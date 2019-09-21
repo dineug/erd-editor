@@ -1,5 +1,12 @@
 <template lang="pug">
   .column
+    .key
+      font-awesome-icon.column-key(
+        v-if="column.ui.pk | column.ui.fk | column.ui.pfk"
+        :class="{pk: column.ui.pk, fk: column.ui.fk, pfk: column.ui.pfk}"
+        icon="key"
+      )
+
     input.name(
       v-if="edit && edit.id === column.id && edit.focusType === 'columnName'"
       v-focus
@@ -286,6 +293,26 @@
 
       &.placeholder {
         color: $color-font-placeholder;
+      }
+
+      &.key {
+        width: $size-key;
+
+        .column-key {
+          font-size: $size-key;
+
+          &.pk {
+            color: $color-key-pk;
+          }
+
+          &.fk {
+            color: $color-key-fk;
+          }
+
+          &.pfk {
+            color: $color-key-pfk;
+          }
+        }
       }
     }
 

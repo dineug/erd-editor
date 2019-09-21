@@ -1,4 +1,9 @@
-import {SIZE_MIN_WIDTH, SIZE_COLUMN_OPTION_NN, SIZE_MARGIN_RIGHT} from '@/ts/layout';
+import {
+  SIZE_MIN_WIDTH,
+  SIZE_COLUMN_OPTION_NN,
+  SIZE_MARGIN_RIGHT,
+  SIZE_COLUMN_KEY,
+} from '@/ts/layout';
 import {Column, ColumnOption, ColumnUI} from '@/store/table';
 import {uuid} from '@/ts/util';
 import StoreManagement from '@/store/StoreManagement';

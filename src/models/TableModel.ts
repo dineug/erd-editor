@@ -5,6 +5,7 @@ import {
   SIZE_COLUMN_HEIGHT,
   SIZE_COLUMN_OPTION_NN,
   SIZE_COLUMN_CLOSE,
+  SIZE_COLUMN_KEY,
 } from '@/ts/layout';
 import {Table, Column, TableUI, ColumnWidth} from '@/store/table';
 import {uuid} from '@/ts/util';
@@ -55,7 +56,7 @@ export default class TableModel implements Table {
     if (width < columnWidth.width) {
       width = columnWidth.width;
     }
-    return width + SIZE_COLUMN_CLOSE;
+    return width + SIZE_COLUMN_CLOSE + SIZE_COLUMN_KEY + SIZE_MARGIN_RIGHT;
   }
 
   public height(): number {

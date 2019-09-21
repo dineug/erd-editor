@@ -44,3 +44,10 @@ export function columnRemoveAll(state: State) {
     state.tableFocus.columnRemove();
   }
 }
+
+export function columnPrimaryKey(state: State) {
+  log.debug('columnController columnPrimaryKey');
+  if (state.tableFocus) {
+    state.tableFocus.primaryKey();
+  }
+}

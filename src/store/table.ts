@@ -22,6 +22,7 @@ import {
   columnFocus,
   columnRemove,
   columnRemoveAll,
+  columnPrimaryKey,
 } from './table/columnController';
 import {TableFocus, FocusType} from '@/models/TableFocusModel';
 import {dataInit} from '@/data/table';
@@ -125,6 +126,7 @@ export const enum Commit {
   columnFocus = 'columnFocus',
   columnRemove = 'columnRemove',
   columnRemoveAll = 'columnRemoveAll',
+  columnPrimaryKey = 'columnPrimaryKey',
 }
 
 export function createStore() {
@@ -177,6 +179,7 @@ export function createStore() {
       columnFocus,
       columnRemove,
       columnRemoveAll,
+      columnPrimaryKey,
     },
     actions: {},
   });

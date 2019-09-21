@@ -24,6 +24,7 @@ export interface TableFocus extends Table {
   move(event: KeyboardEvent): void;
   watchColumns(): void;
   columnRemove(): void;
+  primaryKey(): void;
 }
 
 export default class TableFocusModel implements TableFocus {
@@ -242,6 +243,20 @@ export default class TableFocusModel implements TableFocus {
     if (this.currentColumn) {
       const index = this.table.columns.indexOf(this.currentColumn);
       this.table.columns.splice(index, 1);
+    }
+  }
+
+  public primaryKey() {
+    if (this.currentColumn) {
+      if (this.currentColumn.ui.pfk) {
+        this.currentColumn.ui.pfk = false;
+        this.currentColumn.ui.fk = true;
+      } else if (this.currentColumn.ui.fk) {
+        this.currentColumn.ui.fk = false;
+        this.currentColumn.ui.pfk = true;
+      } else {
+        this.currentColumn.ui.pk = !this.currentColumn.ui.pk;
+      }
     }
   }
 

@@ -85,7 +85,7 @@
         keymap: 'Alt + K',
         icon: 'key',
         execute: () => {
-          log.debug('Primary Key');
+          this.store.tableStore.commit(TableCommit.columnPrimaryKey);
         },
       },
       {
