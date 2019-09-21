@@ -24,6 +24,7 @@
       :x="contextmenuX"
       :y="contextmenuY"
     )
+    Preview(:store="store")
 </template>
 
 <script lang="ts">
@@ -45,6 +46,7 @@
   import Canvas from './Canvas.vue';
   import MultipleSelect from './MultipleSelect.vue';
   import Contextmenu from './Contextmenu.vue';
+  import Preview from './Preview.vue';
 
   import {fromEvent, Observable, Subscription} from 'rxjs';
 
@@ -53,6 +55,7 @@
       Canvas,
       Contextmenu,
       MultipleSelect,
+      Preview,
     },
   })
   export default class ERD extends Vue {
