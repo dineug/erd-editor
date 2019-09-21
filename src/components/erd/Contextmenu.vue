@@ -1,100 +1,94 @@
 <template lang="pug">
   .contextmenu
-    ul(:style="`top: ${y}px; left: ${x}px;`")
+    ul(:style="`top: ${y}px; left: ${x}px;`" ref="ul")
       li(
         v-for="menu in menus"
         :key="menu.id"
-        @click="menu.execute"
+        @click="onExecute(menu)"
+        @mouseover="onMouseover(menu)"
       )
         span.icon
-          img(v-if="menu.base64" :src="menu.icon")
-          font-awesome-icon(v-else :icon="menu.icon")
+          img(v-if="getIcon(menu) && menu.base64" :src="getIcon(menu)")
+          font-awesome-icon(v-else-if="getIcon(menu)" :icon="getIcon(menu)")
         span.name {{menu.name}}
         span.keymap {{menu.keymap}}
+        span.arrow(v-if="menu.children")
+          font-awesome-icon(icon="chevron-right")
+    Contextmenu(
+      v-if="currentMenu && currentMenu.children"
+      :store="store"
+      :menus="currentMenu.children"
+      :x="childrenX"
+      :y="childrenY"
+    )
 </template>
 
 <script lang="ts">
-  import {uuid} from '@/ts/util';
-  import icon from '@/ts/icon';
-  import {Commit as TableCommit} from '@/store/table';
-  import {Commit as MemoCommit} from '@/store/memo';
-  import {log} from '@/ts/util';
   import StoreManagement from '@/store/StoreManagement';
+  import Menu from '@/models/Menu';
+  import {Bus} from '@/ts/EventBus';
+  import {log} from '@/ts/util';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
-  interface Menu {
-    readonly id: string;
-    name: string;
-    keymap: string;
-    icon: string;
-    base64?: boolean;
-
-    execute(): void;
-  }
+  const MENU_HEIGHT = 39.52;
 
   @Component
   export default class Contextmenu extends Vue {
     @Prop({type: Object, default: () => ({})})
     private store!: StoreManagement;
+    @Prop({type: Array, default: () => []})
+    private menus!: Menu[];
     @Prop({type: Number, default: 0})
     private x!: number;
     @Prop({type: Number, default: 0})
     private y!: number;
 
-    private menus: Menu[] = [
-      {
-        id: uuid(),
-        name: 'New Table',
-        keymap: 'Alt + N',
-        icon: 'table',
-        execute: () => {
-          this.store.tableStore.commit(TableCommit.tableAdd, this.store);
-        },
-      },
-      {
-        id: uuid(),
-        name: 'New Memo',
-        keymap: 'Alt + M',
-        icon: 'sticky-note',
-        execute: () => {
-          this.store.memoStore.commit(MemoCommit.memoAdd, this.store);
-        },
-      },
-      {
-        id: uuid(),
-        name: 'Primary Key',
-        keymap: 'Alt + K',
-        icon: 'key',
-        execute: () => {
-          log.debug('Primary Key');
-        },
-      },
-      {
-        id: uuid(),
-        name: '1 : 1',
-        keymap: 'Alt + 1',
-        icon: icon['erd-0-1'],
-        base64: true,
-        execute: () => {
-          log.debug('1 : 1');
-        },
-      },
-      {
-        id: uuid(),
-        name: '1 : N',
-        keymap: 'Alt + 2',
-        icon: icon['erd-0-1-N'],
-        base64: true,
-        execute: () => {
-          log.debug('1 : N');
-        },
-      },
-    ];
+    private currentMenu: Menu | null = null;
+
+    get childrenX(): number {
+      const ul = this.$refs.ul as HTMLElement;
+      return this.x + ul.clientWidth;
+    }
+
+    get childrenY(): number {
+      if (this.currentMenu) {
+        return this.y + this.menus.indexOf(this.currentMenu) * MENU_HEIGHT;
+      } else {
+        return this.y;
+      }
+    }
+
+    private getIcon(menu: Menu): string | undefined {
+      if (menu.option && menu.option.show) {
+        const show = this.store.canvasStore.state.show as any;
+        return show[menu.option.show] ? 'check' : undefined;
+      } else {
+        return menu.icon;
+      }
+    }
+
+    private onExecute(menu: Menu) {
+      if (menu.execute) {
+        menu.execute();
+        log.debug(menu.icon);
+        if (!menu.option || menu.option.close === undefined || menu.option.close) {
+          this.store.eventBus.$emit(Bus.Canvas.contextmenuEnd);
+        }
+      }
+    }
+
+    private onMouseover(menu: Menu) {
+      this.currentMenu = menu;
+    }
 
   }
 </script>
 
 <style scoped lang="scss">
+  $size-icon: 16px;
+  $size-name: 110px;
+  $size-keymap: 50px;
+
   .contextmenu {
 
     ul {
@@ -116,29 +110,34 @@
         }
 
         span {
-          width: 75px;
           display: inline-flex;
           vertical-align: middle;
           align-items: center;
           overflow: hidden;
+          padding-right: 10px;
         }
 
         .icon {
-          width: 16px;
+          width: $size-icon;
 
           img {
-            width: 16px;
+            width: $size-icon;
           }
         }
 
         .name {
-          padding-left: 10px;
+          width: $size-name;
         }
 
         .keymap {
+          width: $size-keymap;
+          display: inline-block;
+          padding-right: 0;
+        }
+
+        .arrow {
           width: 100%;
-          display: inline;
-          padding-left: 10px;
+          padding-right: 0;
         }
       }
     }

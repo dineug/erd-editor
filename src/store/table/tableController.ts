@@ -1,4 +1,4 @@
-import {State, Table, Edit} from '../table';
+import {Edit, State, Table} from '../table';
 import {Commit, Memo} from '@/store/memo';
 import TableModel from '@/models/TableModel';
 import {zIndexNext} from './tableHandler';
@@ -11,7 +11,9 @@ export function tableAdd(state: State, store: StoreManagement) {
   log.debug('tableController tableAdd');
   tableSelectAllEnd(state);
   store.memoStore.commit(Commit.memoSelectAllEnd);
-  state.tables.push(new TableModel(store));
+  const table = new TableModel(store);
+  state.tables.push(table);
+  tableFocusStart(state, {table, store});
   store.eventBus.$emit(Bus.ERD.change);
 }
 

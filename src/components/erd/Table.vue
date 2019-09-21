@@ -349,6 +349,12 @@
       this.store.eventBus.$on(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
     }
 
+    private mounted() {
+      if (this.tableFocus) {
+        this.subKeydown = this.keydown$.subscribe(this.onKeydown);
+      }
+    }
+
     private destroyed() {
       this.store.eventBus.$off(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
       if (this.subKeydown) {

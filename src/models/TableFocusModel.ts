@@ -27,11 +27,11 @@ export interface TableFocus extends Table {
 }
 
 export default class TableFocusModel implements TableFocus {
-  public focusName: boolean = false;
+  public focusName: boolean = true;
   public focusComment: boolean = false;
   public focusColumns: ColumnFocus[] = [];
   private table: Table;
-  private currentFocusTable: boolean = false;
+  private currentFocusTable: boolean = true;
   private currentColumn: Column | null = null;
   private readonly store: StoreManagement;
 

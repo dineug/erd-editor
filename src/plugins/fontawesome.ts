@@ -7,6 +7,8 @@ import {
   faStickyNote,
   faPlus,
   faTimes,
+  faChevronRight,
+  faCheck,
 } from '@fortawesome/free-solid-svg-icons';
 
 library.add(
@@ -15,6 +17,8 @@ library.add(
   faStickyNote,
   faPlus,
   faTimes,
+  faChevronRight,
+  faCheck,
 );
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
