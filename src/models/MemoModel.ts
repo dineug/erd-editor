@@ -5,7 +5,7 @@ import StoreManagement from '@/store/StoreManagement';
 import {zIndexNext, pointNext} from '@/store/table/tableHandler';
 
 export default class MemoModel implements Memo {
-  public readonly id: string;
+  public id: string;
   public value: string = '';
   public ui: MemoUI;
   private store: StoreManagement;

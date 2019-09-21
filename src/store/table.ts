@@ -82,8 +82,6 @@ export interface Column {
   default: string;
   option: ColumnOption;
   ui: ColumnUI;
-
-  width(): number;
 }
 
 export interface ColumnOption {

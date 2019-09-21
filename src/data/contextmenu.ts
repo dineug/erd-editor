@@ -2,19 +2,21 @@ import StoreManagement from '@/store/StoreManagement';
 import Menu from '@/models/Menu';
 import {Commit as TableCommit} from '@/store/table';
 import {Commit as MemoCommit} from '@/store/memo';
+import {Commit as RelationshipCommit, RelationshipType} from '@/store/relationship';
 import {ShowKey} from '@/store/canvas';
 import {Bus} from '@/ts/EventBus';
 import icon from '@/ts/icon';
-import {log, uuid} from '@/ts/util';
+import {uuid} from '@/ts/util';
 
 function dataMenu(store: StoreManagement): Menu[] {
+  const show = store.canvasStore.state.show;
   return [
     {
       id: uuid(),
       name: 'New Table',
       keymap: 'Alt + N',
       icon: 'table',
-      execute: () => {
+      execute() {
         store.tableStore.commit(TableCommit.tableAdd, store);
       },
     },
@@ -23,7 +25,7 @@ function dataMenu(store: StoreManagement): Menu[] {
       name: 'New Memo',
       keymap: 'Alt + M',
       icon: 'sticky-note',
-      execute: () => {
+      execute() {
         store.memoStore.commit(MemoCommit.memoAdd, store);
       },
     },
@@ -32,7 +34,7 @@ function dataMenu(store: StoreManagement): Menu[] {
       name: 'Primary Key',
       keymap: 'Alt + K',
       icon: 'key',
-      execute: () => {
+      execute() {
         store.tableStore.commit(TableCommit.columnPrimaryKey);
       },
     },
@@ -40,20 +42,26 @@ function dataMenu(store: StoreManagement): Menu[] {
       id: uuid(),
       name: '1 : 1',
       keymap: 'Alt + 1',
-      icon: icon['erd-0-1'],
+      icon: icon[RelationshipType.ZeroOne],
       base64: true,
-      execute: () => {
-        log.debug('1 : 1');
+      execute() {
+        store.relationshipStore.commit(RelationshipCommit.relationshipEditStart, {
+          store,
+          relationshipType: RelationshipType.ZeroOne,
+        });
       },
     },
     {
       id: uuid(),
       name: '1 : N',
       keymap: 'Alt + 2',
-      icon: icon['erd-0-1-N'],
+      icon: icon[RelationshipType.ZeroOneN],
       base64: true,
-      execute: () => {
-        log.debug('1 : N');
+      execute() {
+        store.relationshipStore.commit(RelationshipCommit.relationshipEditStart, {
+          store,
+          relationshipType: RelationshipType.ZeroOneN,
+        });
       },
     },
     {
@@ -62,90 +70,90 @@ function dataMenu(store: StoreManagement): Menu[] {
       children: [
         {
           id: uuid(),
-          icon: store.canvasStore.state.show.tableComment ? 'check' : undefined,
+          icon: show.tableComment ? 'check' : undefined,
           name: 'Table Comment',
-          execute: () => {
-            store.canvasStore.state.show.tableComment = !store.canvasStore.state.show.tableComment;
+          execute() {
+            show.tableComment = !show.tableComment;
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: {close: false, show: ShowKey.tableComment},
         },
         {
           id: uuid(),
-          icon: store.canvasStore.state.show.columnComment ? 'check' : undefined,
+          icon: show.columnComment ? 'check' : undefined,
           name: 'Column Comment',
-          execute: () => {
-            store.canvasStore.state.show.columnComment = !store.canvasStore.state.show.columnComment;
+          execute() {
+            show.columnComment = !show.columnComment;
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: {close: false, show: ShowKey.columnComment},
         },
         {
           id: uuid(),
-          icon: store.canvasStore.state.show.columnDataType ? 'check' : undefined,
+          icon: show.columnDataType ? 'check' : undefined,
           name: 'DataType',
-          execute: () => {
-            store.canvasStore.state.show.columnDataType = !store.canvasStore.state.show.columnDataType;
+          execute() {
+            show.columnDataType = !show.columnDataType;
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: {close: false, show: ShowKey.columnDataType},
         },
         {
           id: uuid(),
-          icon: store.canvasStore.state.show.columnNotNull ? 'check' : undefined,
+          icon: show.columnNotNull ? 'check' : undefined,
           name: 'Not Null',
-          execute: () => {
-            store.canvasStore.state.show.columnNotNull = !store.canvasStore.state.show.columnNotNull;
+          execute() {
+            show.columnNotNull = !show.columnNotNull;
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: {close: false, show: ShowKey.columnNotNull},
         },
         {
           id: uuid(),
-          icon: store.canvasStore.state.show.columnDefault ? 'check' : undefined,
+          icon: show.columnDefault ? 'check' : undefined,
           name: 'Default',
-          execute: () => {
-            store.canvasStore.state.show.columnDefault = !store.canvasStore.state.show.columnDefault;
+          execute() {
+            show.columnDefault = !show.columnDefault;
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: {close: false, show: ShowKey.columnDefault},
         },
         {
           id: uuid(),
-          icon: store.canvasStore.state.show.columnAutoIncrement ? 'check' : undefined,
+          icon: show.columnAutoIncrement ? 'check' : undefined,
           name: 'AutoIncrement',
-          execute: () => {
-            store.canvasStore.state.show.columnAutoIncrement = !store.canvasStore.state.show.columnAutoIncrement;
+          execute() {
+            show.columnAutoIncrement = !show.columnAutoIncrement;
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: {close: false, show: ShowKey.columnAutoIncrement},
         },
         {
           id: uuid(),
-          icon: store.canvasStore.state.show.columnPrimaryKey ? 'check' : undefined,
+          icon: show.columnPrimaryKey ? 'check' : undefined,
           name: 'PrimaryKey',
-          execute: () => {
-            store.canvasStore.state.show.columnPrimaryKey = !store.canvasStore.state.show.columnPrimaryKey;
+          execute() {
+            show.columnPrimaryKey = !show.columnPrimaryKey;
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: {close: false, show: ShowKey.columnPrimaryKey},
         },
         {
           id: uuid(),
-          icon: store.canvasStore.state.show.columnUnique ? 'check' : undefined,
+          icon: show.columnUnique ? 'check' : undefined,
           name: 'Unique',
-          execute: () => {
-            store.canvasStore.state.show.columnUnique = !store.canvasStore.state.show.columnUnique;
+          execute() {
+            show.columnUnique = !show.columnUnique;
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: {close: false, show: ShowKey.columnUnique},
         },
         {
           id: uuid(),
-          icon: store.canvasStore.state.show.relationship ? 'check' : undefined,
+          icon: show.relationship ? 'check' : undefined,
           name: 'Relationship',
-          execute: () => {
-            store.canvasStore.state.show.relationship = !store.canvasStore.state.show.relationship;
+          execute() {
+            show.relationship = !show.relationship;
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: {close: false, show: ShowKey.relationship},

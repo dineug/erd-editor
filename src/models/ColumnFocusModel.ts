@@ -63,10 +63,6 @@ export default class ColumnFocusModel implements ColumnFocus {
     return this.column.ui;
   }
 
-  public width(): number {
-    return this.column.width();
-  }
-
   public currentFocus(): FocusType {
     let focusType = FocusType.columnName;
     if (this.focusName) {

@@ -19,7 +19,7 @@ export interface State {
 }
 
 export interface Memo {
-  readonly id: string;
+  id: string;
   value: string;
   ui: MemoUI;
 }

@@ -43,7 +43,6 @@
     private y!: number;
 
     private windowHeight: number = window.innerHeight;
-
     private currentMenu: Menu | null = null;
 
     get childrenX(): number {

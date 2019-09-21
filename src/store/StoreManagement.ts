@@ -13,6 +13,11 @@ import {
   State as MemoState,
   createStore as createdStoreMemo,
 } from './memo';
+import {
+  Commit as RelationshipCommit,
+  State as RelationshipState,
+  createStore as createStoreRelationship,
+} from './relationship';
 import EventBus from '@/ts/EventBus';
 import {log} from '@/ts/util';
 import {Store} from 'vuex';
@@ -43,12 +48,14 @@ export default class StoreManagement {
   public readonly canvasStore: Store<CanvasState>;
   public readonly tableStore: Store<TableState>;
   public readonly memoStore: Store<MemoState>;
+  public readonly relationshipStore: Store<RelationshipState>;
   public readonly eventBus: EventBus;
 
   constructor() {
     this.canvasStore = createdStoreCanvas();
     this.tableStore = createdStoreTable();
     this.memoStore = createdStoreMemo();
+    this.relationshipStore = createStoreRelationship();
     this.eventBus = new EventBus();
   }
 
@@ -57,6 +64,7 @@ export default class StoreManagement {
     this.canvasStore.commit(CanvasCommit.init);
     this.tableStore.commit(TableCommit.init);
     this.memoStore.commit(MemoCommit.init);
+    this.relationshipStore.commit(RelationshipCommit.init);
   }
 
   public load(value: string) {
@@ -68,6 +76,7 @@ export default class StoreManagement {
       store: this,
     });
     this.memoStore.commit(MemoCommit.load, data.memo);
+    this.relationshipStore.commit(RelationshipCommit.load, data.relationship);
   }
 
   get value(): string {
@@ -76,9 +85,11 @@ export default class StoreManagement {
       canvas: this.canvasStore.state,
       table: {},
       memo: {},
+      relationship: {},
     };
     setData('store', data.table, this.tableStore.state);
     setData('store', data.memo, this.memoStore.state);
+    setData('store', data.relationship, this.relationshipStore.state);
     return JSON.stringify(data);
   }
 }

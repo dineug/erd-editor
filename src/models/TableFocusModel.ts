@@ -249,12 +249,15 @@ export default class TableFocusModel implements TableFocus {
   public primaryKey() {
     if (this.currentColumn) {
       if (this.currentColumn.ui.pfk) {
-        this.currentColumn.ui.pfk = false;
         this.currentColumn.ui.fk = true;
+        this.currentColumn.ui.pfk = false;
+        this.currentColumn.option.primaryKey = false;
       } else if (this.currentColumn.ui.fk) {
         this.currentColumn.ui.fk = false;
         this.currentColumn.ui.pfk = true;
+        this.currentColumn.option.primaryKey = true;
       } else {
+        this.currentColumn.option.primaryKey = !this.currentColumn.ui.pk;
         this.currentColumn.ui.pk = !this.currentColumn.ui.pk;
       }
     }

@@ -1,6 +1,6 @@
 <template lang="pug">
   .erd(
-    :style="`width: ${width}px; height: ${height}px;`"
+    :style="erdStyle"
     @mousedown="onMousedownERD"
   )
     Canvas(
@@ -34,11 +34,13 @@
   import {Commit as CanvasCommit} from '@/store/canvas';
   import {Commit as TableCommit} from '@/store/table';
   import {Commit as MemoCommit} from '@/store/memo';
+  import {Commit as RelationshipCommit, RelationshipType} from '@/store/relationship';
   import {log, addSpanText, removeSpanText} from '@/ts/util';
   import Key from '@/models/Key';
   import StoreManagement from '@/store/StoreManagement';
   import Menu from '@/models/Menu';
   import {dataMenu} from '@/data/contextmenu';
+  import icon from '@/ts/icon';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
   import Canvas from './Canvas.vue';
   import MultipleSelect from './MultipleSelect.vue';
@@ -74,6 +76,9 @@
     private subMousemove: Subscription | null = null;
     private subKeydown!: Subscription;
 
+    private store: StoreManagement = new StoreManagement();
+    private currentValue: string = '';
+
     private contextmenu$!: Observable<MouseEvent>;
     private subContextmenu!: Subscription;
     private contextmenu: boolean = false;
@@ -82,10 +87,6 @@
     private windowWidth: number = window.innerWidth;
     private windowHeight: number = window.innerHeight;
 
-    private store: StoreManagement = new StoreManagement();
-
-    private currentValue: string = '';
-
     private select: boolean = false;
     private selectX: number = 0;
     private selectY: number = 0;
@@ -93,6 +94,18 @@
     private selectGhostY: number = 0;
 
     private menus: Menu[] = dataMenu(this.store);
+
+    get erdStyle(): string {
+      let style = `
+        width: ${this.width}px;
+        height: ${this.height}px;
+      `;
+      if (this.store.relationshipStore.state.edit) {
+        const relationshipType = this.store.relationshipStore.state.edit.relationshipType;
+        style += `cursor: url("${icon[relationshipType]}") 16 16, auto;`;
+      }
+      return style;
+    }
 
     @Watch('value')
     private watchValue(value: string) {
@@ -190,6 +203,16 @@
           this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
         } else if (event.altKey && event.code === Key.KeyK) {
           this.store.tableStore.commit(TableCommit.columnPrimaryKey);
+        } else if (event.altKey && event.code === Key.Digit1) {
+          this.store.relationshipStore.commit(RelationshipCommit.relationshipEditStart, {
+            store: this.store,
+            relationshipType: RelationshipType.ZeroOne,
+          });
+        } else if (event.altKey && event.code === Key.Digit2) {
+          this.store.relationshipStore.commit(RelationshipCommit.relationshipEditStart, {
+            store: this.store,
+            relationshipType: RelationshipType.ZeroOneN,
+          });
         }
       }
     }
