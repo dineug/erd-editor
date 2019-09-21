@@ -21,6 +21,7 @@
       :class="{focus: focusName, placeholder: placeholderName}"
       :style="`width: ${columnWidth.name}px;`"
       @mousedown="onFocus($event, 'columnName')"
+      @dblclick="onDblclick($event, 'columnName')"
     )
       span {{placeholder(column.name, 'column')}}
 
@@ -38,6 +39,7 @@
       :class="{focus: focusDataType, placeholder: placeholderDataType}"
       :style="`width: ${columnWidth.dataType}px;`"
       @mousedown="onFocus($event, 'columnDataType')"
+      @dblclick="onDblclick($event, 'columnDataType')"
     )
       span {{placeholder(column.dataType, 'dataType')}}
 
@@ -46,6 +48,7 @@
       :class="{focus: focusNotNull}"
       :style="`width: ${SIZE_COLUMN_OPTION_NN}px;`"
       @mousedown="onFocus($event, 'columnNotNull')"
+      @dblclick="onDblclick($event, 'columnNotNull')"
     )
       span(v-if="column.option.notNull") N-N
       span(v-else) NULL
@@ -64,6 +67,7 @@
       :class="{focus: focusDefault, placeholder: placeholderDefault}"
       :style="`width: ${columnWidth.default}px;`"
       @mousedown="onFocus($event, 'columnDefault')"
+      @dblclick="onDblclick($event, 'columnDefault')"
     )
       span {{placeholder(column.default, 'default')}}
 
@@ -81,6 +85,7 @@
       :class="{focus: focusComment, placeholder: placeholderComment}"
       :style="`width: ${columnWidth.comment}px;`"
       @mousedown="onFocus($event, 'columnComment')"
+      @dblclick="onDblclick($event, 'columnComment')"
     )
       span {{placeholder(column.comment, 'comment')}}
 
@@ -269,6 +274,20 @@
         column: this.column,
       });
       this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
+    }
+
+    private onDblclick(event: MouseEvent, focusType: FocusType) {
+      log.debug('Column onDblclick');
+      event.preventDefault();
+      if (focusType === FocusType.columnNotNull) {
+        this.column.option.notNull = !this.column.option.notNull;
+        this.store.eventBus.$emit(Bus.ERD.change);
+      } else {
+        this.store.tableStore.commit(TableCommit.tableEditStart, {
+          id: this.column.id,
+          focusType,
+        });
+      }
     }
 
     // ==================== Event Handler END ===================

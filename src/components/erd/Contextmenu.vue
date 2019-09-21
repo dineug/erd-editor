@@ -28,7 +28,6 @@
   import StoreManagement from '@/store/StoreManagement';
   import Menu from '@/models/Menu';
   import {Bus} from '@/ts/EventBus';
-  import {log} from '@/ts/util';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   @Component
@@ -77,7 +76,6 @@
     private onExecute(menu: Menu) {
       if (!menu.children && menu.execute && typeof menu.execute === 'function') {
         menu.execute();
-        log.debug(menu.icon);
         if (!menu.option || menu.option.close === undefined || menu.option.close) {
           this.store.eventBus.$emit(Bus.ERD.contextmenuEnd);
         }
