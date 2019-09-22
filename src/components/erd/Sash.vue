@@ -51,12 +51,11 @@
           left: ${this.centerLeft}px;
           cursor: ${this.edgeCursor};
         `;
-      } else {
-        return `
-          top: ${this.centerTop}px;
-          left: ${this.centerLeft}px;
-        `;
       }
+      return `
+        top: ${this.centerTop}px;
+        left: ${this.centerLeft}px;
+      `;
     }
 
     // ==================== Event Handler ===================

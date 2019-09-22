@@ -59,18 +59,16 @@
           }
         }
         return y;
-      } else {
-        return this.y;
       }
+      return this.y;
     }
 
     private getIcon(menu: Menu): string | undefined {
       if (menu.option && menu.option.show) {
         const show = this.store.canvasStore.state.show;
         return show[menu.option.show] ? 'check' : undefined;
-      } else {
-        return menu.icon;
       }
+      return menu.icon;
     }
 
     private onExecute(menu: Menu) {

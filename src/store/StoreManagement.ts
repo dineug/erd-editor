@@ -22,28 +22,6 @@ import EventBus from '@/ts/EventBus';
 import {log} from '@/ts/util';
 import {Store} from 'vuex';
 
-function setData(exclude: string, target: any, data: any) {
-  Object.keys(data).forEach((key) => {
-    if (key !== exclude) {
-      if (data[key] === null || data[key] === undefined) {
-        target[key] = data[key];
-      } else if (Array.isArray(data[key])) {
-        target[key] = [];
-        data[key].forEach((value: any) => {
-          const v = {};
-          setData(exclude, v, value);
-          target[key].push(v);
-        });
-      } else if (typeof data[key] === 'object') {
-        target[key] = {};
-        setData(exclude, target[key], data[key]);
-      } else {
-        target[key] = data[key];
-      }
-    }
-  });
-}
-
 export default class StoreManagement {
   public readonly canvasStore: Store<CanvasState>;
   public readonly tableStore: Store<TableState>;
@@ -83,13 +61,10 @@ export default class StoreManagement {
     log.debug('DataManagement value');
     const data = {
       canvas: this.canvasStore.state,
-      table: {},
-      memo: {},
-      relationship: {},
+      table: this.tableStore.state,
+      memo: this.memoStore.state,
+      relationship: this.relationshipStore.state,
     };
-    setData('store', data.table, this.tableStore.state);
-    setData('store', data.memo, this.memoStore.state);
-    setData('store', data.relationship, this.relationshipStore.state);
-    return JSON.stringify(data);
+    return JSON.stringify(data, (key, value) => key === 'store' ? undefined : value);
   }
 }

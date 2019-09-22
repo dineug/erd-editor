@@ -92,7 +92,6 @@ export function autoName<T extends Name>(list: T[], id: string, name: string, nu
   }
   if (result) {
     return name;
-  } else {
-    return autoName(list, id, name.replace(/[0-9]/g, '') + num, num + 1);
   }
+  return autoName(list, id, name.replace(/[0-9]/g, '') + num, num + 1);
 }

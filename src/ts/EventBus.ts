@@ -15,9 +15,8 @@ class EventBus {
       get(target: { string: Subject<any> } | any, p: string): any {
         if (target[p]) {
           return target[p];
-        } else {
-          return target[p] = new Subject();
         }
+        return target[p] = new Subject();
       },
     });
   }

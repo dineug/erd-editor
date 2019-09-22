@@ -200,9 +200,8 @@
     private placeholder(value: string, display: string) {
       if (value === '') {
         return display;
-      } else {
-        return value;
       }
+      return value;
     }
 
     private columnFocus(index: number): ColumnFocus | null {
