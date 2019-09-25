@@ -45,7 +45,7 @@ function dataMenu(store: StoreManagement): Menu[] {
       icon: icon[RelationshipType.ZeroOne],
       base64: true,
       execute() {
-        store.relationshipStore.commit(RelationshipCommit.relationshipEditStart, {
+        store.relationshipStore.commit(RelationshipCommit.relationshipDrawStart, {
           store,
           relationshipType: RelationshipType.ZeroOne,
         });
@@ -58,7 +58,7 @@ function dataMenu(store: StoreManagement): Menu[] {
       icon: icon[RelationshipType.ZeroOneN],
       base64: true,
       execute() {
-        store.relationshipStore.commit(RelationshipCommit.relationshipEditStart, {
+        store.relationshipStore.commit(RelationshipCommit.relationshipDrawStart, {
           store,
           relationshipType: RelationshipType.ZeroOneN,
         });

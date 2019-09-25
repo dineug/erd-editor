@@ -3,24 +3,33 @@ import {Commit as TableCommit, Table} from '@/store/table';
 import {Commit as MemoCommit} from '@/store/memo';
 import {log} from '@/ts/util';
 import StoreManagement from '@/store/StoreManagement';
-import RelationshipModel from '@/models/RelationshipModel';
-import {createColumns} from './relationshipHandler';
+import RelationshipDrawModal from '@/models/RelationshipDrawModal';
+import {createPrimaryKey, columnIds, createColumns} from './relationshipHandler';
 
 export function relationshipAdd(state: State, payload: { table: Table, store: StoreManagement }) {
   log.debug('relationshipController relationshipAdd');
   const {table, store} = payload;
-  if (state.edit && state.edit.start) {
-    state.edit.end = {
-      tableId: table.id,
-      x: table.ui.left,
-      y: table.ui.top,
-      columnIds: createColumns(store, state.edit.start.tableId, table),
-    };
-    state.relationships.push(state.edit);
+  if (state.draw && state.draw.start) {
+    // state.draw.end = {
+    //   tableId: table.id,
+    //   x: table.ui.left,
+    //   y: table.ui.top,
+    //   columnIds: createColumns(store, state.draw.start.tableId, table),
+    // };
+    // state.relationships.push(state.draw);
   }
 }
 
-export function relationshipEditStart(
+export function relationshipDraw(state: State, payload: { x: number, y: number }) {
+  log.debug('relationshipController relationshipDraw');
+  const {x, y} = payload;
+  if (state.draw) {
+    state.draw.end.x = x;
+    state.draw.end.y = y;
+  }
+}
+
+export function relationshipDrawStart(
   state: State,
   payload: {
     relationshipType: RelationshipType,
@@ -28,17 +37,33 @@ export function relationshipEditStart(
   }) {
   log.debug('relationshipController relationshipEditStart');
   const {relationshipType, store} = payload;
-  if (state.edit && state.edit.relationshipType === relationshipType) {
-    state.edit = null;
+  if (state.draw && state.draw.relationshipType === relationshipType) {
+    state.draw = null;
   } else {
     store.tableStore.commit(TableCommit.tableSelectAllEnd);
     store.memoStore.commit(MemoCommit.memoSelectAllEnd);
-    state.edit = new RelationshipModel(store, relationshipType);
+    state.draw = new RelationshipDrawModal(relationshipType);
   }
 }
 
-export function relationshipEditEnd(state: State, payload: { table: Table, store: StoreManagement }) {
+export function relationshipDrawStartAdd(state: State, payload: { table: Table, store: StoreManagement }) {
+  log.debug('relationshipController relationshipDrawStartAdd');
+  const {table, store} = payload;
+  if (state.draw) {
+    createPrimaryKey(store, table);
+    state.draw.start = {
+      table,
+      x: table.ui.left,
+      y: table.ui.top,
+    };
+  }
+}
+
+
+export function relationshipDrawEnd(state: State, payload: { table: Table, store: StoreManagement }) {
   log.debug('relationshipController relationshipEditEnd');
-  relationshipAdd(state, payload);
-  state.edit = null;
+  if (state.draw && state.draw.start) {
+    relationshipAdd(state, payload);
+  }
+  state.draw = null;
 }

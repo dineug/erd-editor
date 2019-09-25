@@ -8,6 +8,11 @@
       :focus="focus"
       ref="canvas"
     )
+    RelationshipDraw(
+      v-if="draw && draw.start"
+      :store="store"
+      :draw="draw"
+    )
     MultipleSelect(
       v-if="select"
       :store="store"
@@ -35,7 +40,11 @@
   import {Commit as CanvasCommit} from '@/store/canvas';
   import {Commit as TableCommit} from '@/store/table';
   import {Commit as MemoCommit} from '@/store/memo';
-  import {Commit as RelationshipCommit, RelationshipType} from '@/store/relationship';
+  import {
+    Commit as RelationshipCommit,
+    RelationshipType,
+    RelationshipDraw as RelationshipDrawModel,
+  } from '@/store/relationship';
   import {log, addSpanText, removeSpanText} from '@/ts/util';
   import Key from '@/models/Key';
   import StoreManagement from '@/store/StoreManagement';
@@ -47,6 +56,7 @@
   import MultipleSelect from './MultipleSelect.vue';
   import Contextmenu from './Contextmenu.vue';
   import Preview from './Preview.vue';
+  import RelationshipDraw from './RelationshipDraw.vue';
 
   import {fromEvent, Observable, Subscription} from 'rxjs';
 
@@ -56,6 +66,7 @@
       Contextmenu,
       MultipleSelect,
       Preview,
+      RelationshipDraw,
     },
   })
   export default class ERD extends Vue {
@@ -103,11 +114,15 @@
         width: ${this.width}px;
         height: ${this.height}px;
       `;
-      if (this.store.relationshipStore.state.edit) {
-        const relationshipType = this.store.relationshipStore.state.edit.relationshipType;
+      if (this.store.relationshipStore.state.draw) {
+        const relationshipType = this.store.relationshipStore.state.draw.relationshipType;
         style += `cursor: url("${icon[relationshipType]}") 16 16, auto;`;
       }
       return style;
+    }
+
+    get draw(): RelationshipDrawModel | null {
+      return this.store.relationshipStore.state.draw;
     }
 
     @Watch('value')
@@ -207,12 +222,12 @@
         } else if (event.altKey && event.code === Key.KeyK) {
           this.store.tableStore.commit(TableCommit.columnPrimaryKey);
         } else if (event.altKey && event.code === Key.Digit1) {
-          this.store.relationshipStore.commit(RelationshipCommit.relationshipEditStart, {
+          this.store.relationshipStore.commit(RelationshipCommit.relationshipDrawStart, {
             store: this.store,
             relationshipType: RelationshipType.ZeroOne,
           });
         } else if (event.altKey && event.code === Key.Digit2) {
-          this.store.relationshipStore.commit(RelationshipCommit.relationshipEditStart, {
+          this.store.relationshipStore.commit(RelationshipCommit.relationshipDrawStart, {
             store: this.store,
             relationshipType: RelationshipType.ZeroOneN,
           });
@@ -231,10 +246,10 @@
     }
 
     private onContextmenu(event: MouseEvent) {
-      log.debug('Canvas onContextmenu');
+      log.debug('ERD onContextmenu');
       event.preventDefault();
       const el = event.target as HTMLElement;
-      this.contextmenu = !!el.closest('.canvas');
+      this.contextmenu = !!el.closest('.erd');
       if (this.contextmenu) {
         this.contextmenuX = event.x;
         this.contextmenuY = event.y;

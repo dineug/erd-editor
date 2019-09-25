@@ -1,6 +1,6 @@
 import {SIZE_MEMO_PADDING} from '@/ts/layout';
 import {State, Memo} from '../memo';
-import {Commit, Table} from '@/store/table';
+import {Commit as TableCommit, Table} from '@/store/table';
 import MemoModel from '@/models/MemoModel';
 import {log} from '@/ts/util';
 import {zIndexNext} from '@/store/table/tableHandler';
@@ -13,7 +13,7 @@ const MEMO_HEADER = 17 + SIZE_MEMO_PADDING;
 export function memoAdd(state: State, store: StoreManagement) {
   log.debug('memoController memoAdd');
   memoSelectAllEnd(state);
-  store.tableStore.commit(Commit.tableSelectAllEnd);
+  store.tableStore.commit(TableCommit.tableSelectAllEnd);
   state.memos.push(new MemoModel(store));
   store.eventBus.$emit(Bus.ERD.change);
 }
@@ -74,7 +74,7 @@ export function memoSelect(state: State, payload: { memo: Memo, event: MouseEven
     memo.ui.active = true;
   } else {
     state.memos.forEach((value: Memo) => value.ui.active = value.id === memo.id);
-    store.tableStore.commit(Commit.tableSelectAllEnd);
+    store.tableStore.commit(TableCommit.tableSelectAllEnd);
   }
 }
 

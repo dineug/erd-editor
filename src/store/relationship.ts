@@ -2,16 +2,19 @@ import Vue from 'vue';
 import Vuex from 'vuex';
 import {
   relationshipAdd,
-  relationshipEditStart,
-  relationshipEditEnd,
+  relationshipDraw,
+  relationshipDrawStart,
+  relationshipDrawStartAdd,
+  relationshipDrawEnd,
 } from './relationship/relationshipController';
+import {Table} from './table';
 import {dataInit} from '@/data/relationship';
 
 Vue.use(Vuex);
 
 export interface State {
   relationships: Relationship[];
-  edit: Relationship | null;
+  draw: RelationshipDraw | null;
 }
 
 export const enum RelationshipType {
@@ -28,8 +31,8 @@ export interface Relationship {
   id: string;
   identification: boolean;
   relationshipType: RelationshipType;
-  start: Point | null;
-  end: Point | null;
+  start: Point;
+  end: Point;
 }
 
 export interface Point {
@@ -39,19 +42,38 @@ export interface Point {
   columnIds: string[];
 }
 
+export interface RelationshipDraw {
+  relationshipType: RelationshipType;
+  start: PointDrawStart | null;
+  end: PointDrawEnd;
+}
+
+export interface PointDrawStart {
+  table: Table;
+  x: number;
+  y: number;
+}
+
+export interface PointDrawEnd {
+  x: number;
+  y: number;
+}
+
 export const enum Commit {
   init = 'init',
   load = 'load',
   relationshipAdd = 'relationshipAdd',
-  relationshipEditStart = 'relationshipEditStart',
-  relationshipEditEnd = 'relationshipEditEnd',
+  relationshipDraw = 'relationshipDraw',
+  relationshipDrawStart = 'relationshipDrawStart',
+  relationshipDrawStartAdd = 'relationshipDrawStartAdd',
+  relationshipDrawEnd = 'relationshipDrawEnd',
 }
 
 export function createStore() {
   return new Vuex.Store<State>({
     state: {
       relationships: [],
-      edit: null,
+      draw: null,
     },
     getters: {},
     mutations: {
@@ -68,11 +90,13 @@ export function createStore() {
         Object.keys(state).forEach((key) => {
           stateData[key] = loadData[key];
         });
-        state.edit = null;
+        state.draw = null;
       },
       relationshipAdd,
-      relationshipEditStart,
-      relationshipEditEnd,
+      relationshipDraw,
+      relationshipDrawStart,
+      relationshipDrawStartAdd,
+      relationshipDrawEnd,
     },
     actions: {},
   });

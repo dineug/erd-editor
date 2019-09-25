@@ -1,6 +1,7 @@
 import {SIZE_TABLE_PADDING} from '@/ts/layout';
 import {Edit, State, Table} from '../table';
-import {Commit, Memo} from '@/store/memo';
+import {Commit as MemoCommit, Memo} from '@/store/memo';
+import {Commit as RelationshipCommit} from '@/store/relationship';
 import TableModel from '@/models/TableModel';
 import {zIndexNext} from './tableHandler';
 import {log} from '@/ts/util';
@@ -13,7 +14,7 @@ const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 export function tableAdd(state: State, store: StoreManagement) {
   log.debug('tableController tableAdd');
   tableSelectAllEnd(state);
-  store.memoStore.commit(Commit.memoSelectAllEnd);
+  store.memoStore.commit(MemoCommit.memoSelectAllEnd);
   const table = new TableModel(store);
   state.tables.push(table);
   tableFocusStart(state, {table, store});
@@ -76,9 +77,22 @@ export function tableSelect(state: State, payload: { table: Table, event: MouseE
     table.ui.active = true;
   } else {
     state.tables.forEach((value: Table) => value.ui.active = value.id === table.id);
-    store.memoStore.commit(Commit.memoSelectAllEnd);
+    store.memoStore.commit(MemoCommit.memoSelectAllEnd);
   }
   tableFocusStart(state, {table, store});
+  if (store.relationshipStore.state.draw) {
+    if (store.relationshipStore.state.draw.start) {
+      store.relationshipStore.commit(RelationshipCommit.relationshipDrawEnd, {
+        table,
+        store,
+      });
+    } else {
+      store.relationshipStore.commit(RelationshipCommit.relationshipDrawStartAdd, {
+        table,
+        store,
+      });
+    }
+  }
 }
 
 export function tableSelectAll(state: State) {

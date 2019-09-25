@@ -61,13 +61,13 @@
     }
 
     private onMousemove(event: MouseEvent) {
-      event.preventDefault();
       if (!event.ctrlKey) {
         this.$emit('selectEnd');
       }
     }
 
     private onMousemoveParent(event: MouseEvent) {
+      event.preventDefault();
       const currentX = event.x;
       const currentY = event.y;
       const currentMinX = this.x > currentX;
