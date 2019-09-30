@@ -4,7 +4,7 @@ import {Memo} from '../memo';
 import StoreManagement from '@/store/StoreManagement';
 
 export function zIndexNext(tables: Table[], memos: Memo[]): number {
-  let max = 0;
+  let max = 1;
   tables.forEach((table: Table) => {
     if (max < table.ui.zIndex) {
       max = table.ui.zIndex;

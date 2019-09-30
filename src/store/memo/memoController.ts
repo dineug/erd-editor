@@ -3,7 +3,7 @@ import {State, Memo} from '../memo';
 import {Commit as TableCommit, Table} from '@/store/table';
 import MemoModel from '@/models/MemoModel';
 import {log} from '@/ts/util';
-import {zIndexNext} from '@/store/table/tableHandler';
+import {zIndexNext} from '@/store/table/tableHelper';
 import StoreManagement from '@/store/StoreManagement';
 import {Bus} from '@/ts/EventBus';
 

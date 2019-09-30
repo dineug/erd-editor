@@ -1,5 +1,5 @@
 <template lang="pug">
-  .canvas(:style="`width: ${option.width}px; height: ${option.height}px;`")
+  .canvas(:style="canvasStyle")
     Table(
       v-for="table in tables"
       :key="table.id"
@@ -13,12 +13,19 @@
       :store="store"
       :memo="memo"
     )
+    svg.canvas-svg(:style="canvasStyle")
+      Relationship(
+        v-for="relationship in relationships"
+        :key="relationship.id"
+        :store="store"
+        :relationship="relationship"
+      )
 </template>
 
 <script lang="ts">
-  import {State} from '@/store/canvas';
   import {Table as TableModel} from '@/store/table';
   import {Memo as MemoModel} from '@/store/memo';
+  import {Relationship as RelationshipModel} from '@/store/relationship';
   import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Vue} from 'vue-property-decorator';
   import Table from './Table.vue';
@@ -38,8 +45,12 @@
     @Prop({type: Boolean, default: false})
     private focus!: boolean;
 
-    get option(): State {
-      return this.store.canvasStore.state;
+    get canvasStyle(): string {
+      const option = this.store.canvasStore.state;
+      return `
+        width: ${option.width}px;
+        height: ${option.height}px;
+      `;
     }
 
     get tables(): TableModel[] {
@@ -50,6 +61,10 @@
       return this.store.memoStore.state.memos;
     }
 
+    get relationships(): RelationshipModel[] {
+      return this.store.relationshipStore.state.relationships;
+    }
+
   }
 </script>
 
@@ -57,5 +72,10 @@
   .canvas {
     position: relative;
     background-color: $color-canvas;
+
+    .canvas-svg {
+      position: absolute;
+      z-index: 1;
+    }
   }
 </style>

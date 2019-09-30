@@ -1,5 +1,5 @@
 <template lang="pug">
-  .preview-relationship
+  svg.preview-relationship
 </template>
 
 <script lang="ts">

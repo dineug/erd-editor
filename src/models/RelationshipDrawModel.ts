@@ -1,7 +1,7 @@
 import {uuid} from '@/ts/util';
 import {RelationshipDraw, PointDrawEnd, PointDrawStart, RelationshipType} from '@/store/relationship';
 
-export default class RelationshipDrawModal implements RelationshipDraw {
+export default class RelationshipDrawModel implements RelationshipDraw {
   public id: string;
   public relationshipType: RelationshipType;
   public start: PointDrawStart | null = null;

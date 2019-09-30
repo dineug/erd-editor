@@ -9,7 +9,7 @@ import {
 } from '@/ts/layout';
 import {Table, Column, TableUI, ColumnWidth} from '@/store/table';
 import {uuid} from '@/ts/util';
-import {zIndexNext, pointNext} from '@/store/table/tableHandler';
+import {zIndexNext, pointNext} from '@/store/table/tableHelper';
 import ColumnModel from '@/models/ColumnModel';
 import StoreManagement from '@/store/StoreManagement';
 

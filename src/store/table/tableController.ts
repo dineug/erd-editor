@@ -3,7 +3,7 @@ import {Edit, State, Table} from '../table';
 import {Commit as MemoCommit, Memo} from '@/store/memo';
 import {Commit as RelationshipCommit} from '@/store/relationship';
 import TableModel from '@/models/TableModel';
-import {zIndexNext} from './tableHandler';
+import {zIndexNext} from './tableHelper';
 import {log} from '@/ts/util';
 import TableFocusModel, {FocusType} from '@/models/TableFocusModel';
 import StoreManagement from '@/store/StoreManagement';

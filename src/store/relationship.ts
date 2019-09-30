@@ -27,6 +27,13 @@ export const enum RelationshipType {
   N = 'N',
 }
 
+export const enum Direction {
+  left = 'left',
+  right = 'right',
+  top = 'top',
+  bottom = 'bottom',
+}
+
 export interface Relationship {
   id: string;
   identification: boolean;
@@ -37,9 +44,10 @@ export interface Relationship {
 
 export interface Point {
   tableId: string;
+  columnIds: string[];
   x: number;
   y: number;
-  columnIds: string[];
+  direction: Direction;
 }
 
 export interface RelationshipDraw {

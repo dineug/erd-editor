@@ -2,7 +2,7 @@ import {SIZE_MEMO_WIDTH, SIZE_MEMO_HEIGHT} from '@/ts/layout';
 import {uuid} from '@/ts/util';
 import {Memo, MemoUI} from '@/store/memo';
 import StoreManagement from '@/store/StoreManagement';
-import {zIndexNext, pointNext} from '@/store/table/tableHandler';
+import {zIndexNext, pointNext} from '@/store/table/tableHelper';
 
 export default class MemoModel implements Memo {
   public id: string;

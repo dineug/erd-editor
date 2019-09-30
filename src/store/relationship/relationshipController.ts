@@ -3,20 +3,18 @@ import {Commit as TableCommit, Table} from '@/store/table';
 import {Commit as MemoCommit} from '@/store/memo';
 import {log} from '@/ts/util';
 import StoreManagement from '@/store/StoreManagement';
-import RelationshipDrawModal from '@/models/RelationshipDrawModal';
-import {createPrimaryKey, columnIds, createColumns} from './relationshipHandler';
+import RelationshipDrawModel from '@/models/RelationshipDrawModel';
+import RelationshipModel from '@/models/RelationshipModel';
+import {createPrimaryKey, relationshipSort} from './relationshipHelper';
+import {Bus} from '@/ts/EventBus';
 
 export function relationshipAdd(state: State, payload: { table: Table, store: StoreManagement }) {
   log.debug('relationshipController relationshipAdd');
   const {table, store} = payload;
   if (state.draw && state.draw.start) {
-    // state.draw.end = {
-    //   tableId: table.id,
-    //   x: table.ui.left,
-    //   y: table.ui.top,
-    //   columnIds: createColumns(store, state.draw.start.tableId, table),
-    // };
-    // state.relationships.push(state.draw);
+    state.relationships.push(new RelationshipModel(store, state.draw.relationshipType, state.draw.start, table));
+    relationshipSort(store, state.relationships);
+    store.eventBus.$emit(Bus.ERD.change);
   }
 }
 
@@ -42,7 +40,7 @@ export function relationshipDrawStart(
   } else {
     store.tableStore.commit(TableCommit.tableSelectAllEnd);
     store.memoStore.commit(MemoCommit.memoSelectAllEnd);
-    state.draw = new RelationshipDrawModal(relationshipType);
+    state.draw = new RelationshipDrawModel(relationshipType);
   }
 }
 

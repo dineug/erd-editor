@@ -30,7 +30,7 @@
 <script lang="ts">
   import StoreManagement from '@/store/StoreManagement';
   import {Commit, RelationshipDraw as RelationshipDrawModel} from '@/store/relationship';
-  import {getDraw, DrawPath} from '@/store/relationship/relationshipHandler';
+  import {getDraw, DrawPath} from '@/store/relationship/relationshipHelper';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   import {fromEvent, Observable, Subscription} from 'rxjs';
