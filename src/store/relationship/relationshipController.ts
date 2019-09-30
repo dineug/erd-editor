@@ -13,7 +13,7 @@ export function relationshipAdd(state: State, payload: { table: Table, store: St
   const {table, store} = payload;
   if (state.draw && state.draw.start) {
     state.relationships.push(new RelationshipModel(store, state.draw.relationshipType, state.draw.start, table));
-    relationshipSort(store, state.relationships);
+    relationshipSort(store.tableStore.state.tables, state.relationships);
     store.eventBus.$emit(Bus.ERD.change);
   }
 }

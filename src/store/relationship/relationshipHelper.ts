@@ -472,10 +472,7 @@ function relationshipOverlayOrder(
   const endPoints: RelationshipPoint[] = [];
 
   relationships.forEach((relationship) => {
-    // 자기참조시 순서문제
-    // relationship.start.tableId relationship.end.tableId
-    // relationship.start.direction relationship.end.direction
-    if (relationship.start.tableId === relationship.end.tableId) {
+    if (relationship.start.tableId === relationship.end.tableId) { // self relationship
       if (direction === Direction.top) {
         startPoints.push(relationship.start);
         endPoints.push(relationship.end);
@@ -498,7 +495,7 @@ function relationshipOverlayOrder(
   };
   const distances: RelationshipOrder[] = [];
   endPoints.forEach((endPoint, index) => {
-    if (startPoints[index].tableId === endPoint.tableId) {
+    if (startPoints[index].tableId === endPoint.tableId) { // self relationship
       distances.push({
         point: startPoints[index],
         distance: Math.abs(start.x - endPoint.x) + Math.abs(start.y - endPoint.y),
@@ -534,9 +531,8 @@ function relationshipOverlaySort(direction: Direction, graph: RelationshipGraph)
   }
 }
 
-export function relationshipSort(store: StoreManagement, relationships: Relationship[]) {
+export function relationshipSort(tables: Table[], relationships: Relationship[]) {
   const graphs: RelationshipGraph[] = [];
-  const tables = store.tableStore.state.tables;
 
   relationships.forEach((relationship) => {
     const tableStart = getData(tables, relationship.start.tableId);

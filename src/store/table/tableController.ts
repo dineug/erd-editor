@@ -8,6 +8,7 @@ import {log} from '@/ts/util';
 import TableFocusModel, {FocusType} from '@/models/TableFocusModel';
 import StoreManagement from '@/store/StoreManagement';
 import {Bus} from '@/ts/EventBus';
+import {relationshipSort} from '@/store/relationship/relationshipHelper';
 
 const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 
@@ -48,6 +49,7 @@ export function tableMove(
     table.ui.top += y;
     table.ui.left += x;
   }
+  relationshipSort(state.tables, store.relationshipStore.state.relationships);
 }
 
 export function tableRemove(state: State, payload: { table: Table, store: StoreManagement }) {

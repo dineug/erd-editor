@@ -6,6 +6,7 @@ import {log} from '@/ts/util';
 import {zIndexNext} from '@/store/table/tableHelper';
 import StoreManagement from '@/store/StoreManagement';
 import {Bus} from '@/ts/EventBus';
+import {relationshipSort} from '@/store/relationship/relationshipHelper';
 
 const MEMO_PADDING = SIZE_MEMO_PADDING * 2;
 const MEMO_HEADER = 17 + SIZE_MEMO_PADDING;
@@ -41,6 +42,7 @@ export function memoMove(
         value.ui.left += x;
       }
     });
+    relationshipSort(store.tableStore.state.tables, store.relationshipStore.state.relationships);
   } else {
     memo.ui.top += y;
     memo.ui.left += x;
