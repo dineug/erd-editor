@@ -3,6 +3,7 @@ import {FocusType} from './TableFocusModel';
 import StoreManagement from '@/store/StoreManagement';
 
 export interface ColumnFocus extends Column {
+  selected: boolean;
   focusName: boolean;
   focusDataType: boolean;
   focusNotNull: boolean;
@@ -15,6 +16,7 @@ export interface ColumnFocus extends Column {
 }
 
 export default class ColumnFocusModel implements ColumnFocus {
+  public selected: boolean = false;
   public focusName: boolean = false;
   public focusDataType: boolean = false;
   public focusNotNull: boolean = false;
@@ -27,6 +29,7 @@ export default class ColumnFocusModel implements ColumnFocus {
     this.store = store;
     this.column = column;
     if (columnFocus) {
+      this.selected = columnFocus.selected;
       this.focusName = columnFocus.focusName;
       this.focusDataType = columnFocus.focusDataType;
       this.focusNotNull = columnFocus.focusNotNull;

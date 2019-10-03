@@ -5,6 +5,7 @@ function dataInit(): State {
     tables: [],
     tableFocus: null,
     edit: null,
+    copyColumns: [],
   };
 }
 

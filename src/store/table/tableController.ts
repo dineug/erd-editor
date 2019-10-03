@@ -142,6 +142,7 @@ export function tableFocus(state: State, focusType: FocusType) {
   log.debug('tableController tableFocus');
   if (state.tableFocus) {
     state.tableFocus.focus(focusType);
+    state.tableFocus.selected();
   }
 }
 

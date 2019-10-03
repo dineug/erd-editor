@@ -43,7 +43,6 @@ export function createPrimaryKey(store: StoreManagement, table: Table) {
         notNull: true,
       },
       ui: {
-        active: false,
         pk: true,
         fk: false,
         pfk: false,
@@ -53,7 +52,9 @@ export function createPrimaryKey(store: StoreManagement, table: Table) {
         widthDefault: SIZE_MIN_WIDTH,
       },
     };
-    table.columns.push(new ColumnModel(store, column));
+    table.columns.push(new ColumnModel(store, {
+      load: column,
+    }));
   }
 }
 
@@ -68,26 +69,27 @@ export function createColumns(store: StoreManagement, from: Table, to: Table): s
         widthName = SIZE_MIN_WIDTH;
       }
       to.columns.push(new ColumnModel(store, {
-        id,
-        name,
-        comment: column.comment,
-        dataType: column.dataType,
-        default: column.default,
-        option: {
-          autoIncrement: false,
-          primaryKey: false,
-          unique: false,
-          notNull: column.option.notNull,
-        },
-        ui: {
-          active: false,
-          pk: false,
-          fk: true,
-          pfk: false,
-          widthName,
-          widthComment: column.ui.widthComment,
-          widthDataType: column.ui.widthDataType,
-          widthDefault: column.ui.widthDefault,
+        load: {
+          id,
+          name,
+          comment: column.comment,
+          dataType: column.dataType,
+          default: column.default,
+          option: {
+            autoIncrement: false,
+            primaryKey: false,
+            unique: false,
+            notNull: column.option.notNull,
+          },
+          ui: {
+            pk: false,
+            fk: true,
+            pfk: false,
+            widthName,
+            widthComment: column.ui.widthComment,
+            widthDataType: column.ui.widthDataType,
+            widthDefault: column.ui.widthDefault,
+          },
         },
       }));
       ids.push(id);

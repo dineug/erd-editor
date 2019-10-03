@@ -1,6 +1,6 @@
 import {SIZE_MIN_WIDTH} from '@/ts/layout';
-import {Column, ColumnOption, ColumnUI} from '@/store/table';
-import {uuid} from '@/ts/util';
+import {Table, Column, ColumnOption, ColumnUI} from '@/store/table';
+import {uuid, autoName} from '@/ts/util';
 import StoreManagement from '@/store/StoreManagement';
 
 export default class ColumnModel implements Column {
@@ -13,16 +13,39 @@ export default class ColumnModel implements Column {
   public ui: ColumnUI;
   private store: StoreManagement;
 
-  constructor(store: StoreManagement, column?: Column) {
+  constructor(store: StoreManagement, data?: {load?: Column, copy?: {table: Table, column: Column}}) {
     this.store = store;
-    if (column) {
-      this.id = column.id;
-      this.name = column.name;
+    if (data && data.load) {
+      const {load} = data;
+      this.id = load.id;
+      this.name = load.name;
+      this.comment = load.comment;
+      this.dataType = load.dataType;
+      this.default = load.default;
+      this.option = load.option;
+      this.ui = load.ui;
+    } else if (data && data.copy) {
+      const {table, column} = data.copy;
+      this.id = uuid();
+      this.name = autoName(table.columns, this.id, column.name);
       this.comment = column.comment;
       this.dataType = column.dataType;
       this.default = column.default;
-      this.option = column.option;
-      this.ui = column.ui;
+      this.option = {
+        autoIncrement: column.option.autoIncrement,
+        primaryKey: column.option.primaryKey,
+        unique: column.option.unique,
+        notNull: column.option.notNull,
+      };
+      this.ui = {
+        pk: column.ui.pk,
+        fk: column.ui.fk,
+        pfk: column.ui.pfk,
+        widthName: column.ui.widthName,
+        widthComment: column.ui.widthComment,
+        widthDataType: column.ui.widthDataType,
+        widthDefault: column.ui.widthDefault,
+      };
     } else {
       this.id = uuid();
       this.option = {
@@ -32,7 +55,6 @@ export default class ColumnModel implements Column {
         notNull: false,
       };
       this.ui = {
-        active: false,
         pk: false,
         fk: false,
         pfk: false,

@@ -1,6 +1,7 @@
 import {SIZE_START_X, SIZE_START_Y, SIZE_START_ADD} from '@/ts/layout';
 import {Table} from '../table';
 import {Memo} from '../memo';
+import {ColumnFocus} from '@/models/ColumnFocusModel';
 import StoreManagement from '@/store/StoreManagement';
 
 export function zIndexNext(tables: Table[], memos: Memo[]): number {
@@ -46,3 +47,21 @@ export function pointNext(store: StoreManagement, tables: Table[], memos: Memo[]
   return point;
 }
 
+export function getSelect(focusColumns: ColumnFocus[]): {min: number, max: number} {
+  const index = {
+    min: -1,
+    max: -1,
+  };
+  const len = focusColumns.length;
+  for (let i = 0; i < len; i++) {
+    if (focusColumns[i].selected) {
+      if (index.min === -1 || index.min > i) {
+        index.min = i;
+      }
+      if (index.max === -1 || index.max < i) {
+        index.max = i;
+      }
+    }
+  }
+  return index;
+}

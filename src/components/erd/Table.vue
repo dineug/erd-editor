@@ -57,6 +57,7 @@
         :table="table"
         :column="column"
         :columnFocus="columnFocus(index)"
+        draggable="true"
       )
 </template>
 
@@ -69,7 +70,7 @@
   import {ColumnFocus} from '@/models/ColumnFocusModel';
   import AnimationFrame from '@/ts/AnimationFrame';
   import {Bus} from '@/ts/EventBus';
-  import {log, getTextWidth} from '@/ts/util';
+  import {log, getTextWidth, autoName} from '@/ts/util';
   import StoreManagement from '@/store/StoreManagement';
   import {relationshipSort} from '@/store/relationship/relationshipHelper';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
@@ -219,7 +220,7 @@
     // ==================== Event Handler ===================
     private onMousedown(event: MouseEvent) {
       const el = event.target as HTMLElement;
-      if (!el.closest('.table-button')) {
+      if (!el.closest('.table-button') && !el.closest('.column')) {
         this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
         this.subMousemove = this.mousemove$.subscribe(this.onMousemove);
       }
@@ -345,8 +346,13 @@
       // eventBus.$emit(Bus.ERD.input);
     }
 
-    private onEditBlur() {
+    private onEditBlur(event: Event) {
       log.debug('Table onEditBlur');
+      const reName = autoName(this.store.tableStore.state.tables, this.table.id, this.table.name);
+      if (this.table.name !== reName) {
+        this.table.ui.widthName = getTextWidth(reName);
+        this.table.name = reName;
+      }
       this.store.tableStore.commit(Commit.tableEditEnd, this.store);
     }
 

@@ -28,7 +28,9 @@ export default class TableModel implements Table {
       this.name = table.name;
       this.comment = table.comment;
       this.ui = table.ui;
-      table.columns.forEach((column) => this.columns.push(new ColumnModel(store, column)));
+      table.columns.forEach((column) => this.columns.push(new ColumnModel(store, {
+        load: column,
+      })));
     } else {
       this.id = uuid();
       const point = pointNext(store, store.tableStore.state.tables, store.memoStore.state.memos);

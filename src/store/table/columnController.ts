@@ -27,11 +27,12 @@ export function columnAddAll(state: State, store: StoreManagement) {
   relationshipSort(state.tables, store.relationshipStore.state.relationships);
 }
 
-export function columnFocus(state: State, payload: { focusType: FocusType, column: Column }) {
+export function columnFocus(state: State, payload: { focusType: FocusType, column: Column, event: MouseEvent }) {
   log.debug('columnController columnFocus');
-  const {focusType, column} = payload;
+  const {focusType, column, event} = payload;
   if (state.tableFocus) {
     state.tableFocus.focus(focusType, column);
+    state.tableFocus.selected(event);
   }
 }
 
@@ -51,8 +52,14 @@ export function columnRemove(state: State, payload: { table: Table, column: Colu
 export function columnRemoveAll(state: State, store: StoreManagement) {
   log.debug('columnController columnRemoveAll');
   if (state.tableFocus) {
-    state.tableFocus.columnRemove();
-    relationshipSort(state.tables, store.relationshipStore.state.relationships);
+    const columns = state.tableFocus.columnSelectAll();
+    columns.forEach((column) => {
+      columnRemove(state, {
+        table: state.tableFocus as Table,
+        column,
+        store,
+      });
+    });
   }
 }
 
@@ -60,5 +67,32 @@ export function columnPrimaryKey(state: State) {
   log.debug('columnController columnPrimaryKey');
   if (state.tableFocus) {
     state.tableFocus.primaryKey();
+  }
+}
+
+export function columnCopy(state: State) {
+  log.debug('columnController columnCopy');
+  if (state.tableFocus) {
+    state.copyColumns = state.tableFocus.columnSelectAll();
+  } else {
+    state.copyColumns = [];
+  }
+}
+
+export function columnPaste(state: State, store: StoreManagement) {
+  log.debug('columnController columnPaste');
+  if (state.copyColumns.length !== 0) {
+    state.tables.forEach((table) => {
+      if (table.ui.active) {
+        state.copyColumns.forEach((column) => {
+          table.columns.push(new ColumnModel(store, {
+            copy: {
+              table,
+              column,
+            },
+          }));
+        });
+      }
+    });
   }
 }

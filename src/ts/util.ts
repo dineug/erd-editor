@@ -20,6 +20,26 @@ export function getData<T extends List>(list: T[], id: string): T | null {
   return null;
 }
 
+export function setData(target: any, data: any) {
+  Object.keys(data).forEach((key) => {
+    if (data[key] === null || data[key] === undefined) {
+      target[key] = data[key];
+    } else if (Array.isArray(data[key])) {
+      target[key] = [];
+      data[key].forEach((value: any) => {
+        const v = {};
+        setData(v, value);
+        target[key].push(v);
+      });
+    } else if (typeof data[key] === 'object') {
+      target[key] = {};
+      setData(target[key], data[key]);
+    } else {
+      target[key] = data[key];
+    }
+  });
+}
+
 export function getDataIndex<T extends List>(list: T[], id: string): number | null {
   for (let i = 0; i < list.length; i++) {
     if (list[i].id === id) {

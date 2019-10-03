@@ -5,6 +5,7 @@ import {log, isData, getData} from '@/ts/util';
 import Key from '@/models/Key';
 import StoreManagement from '@/store/StoreManagement';
 import {Bus} from '@/ts/EventBus';
+import {getSelect} from '@/store/table/tableHelper';
 
 export const enum FocusType {
   tableName = 'tableName',
@@ -22,9 +23,10 @@ export interface TableFocus extends Table {
   focusColumns: ColumnFocus[];
 
   focus(focusType: FocusType, column?: Column): void;
+  selected(event?: MouseEvent): void;
   move(event: KeyboardEvent): void;
   watchColumns(): void;
-  columnRemove(): void;
+  columnSelectAll(): Column[];
   primaryKey(): void;
 }
 
@@ -134,11 +136,40 @@ export default class TableFocusModel implements TableFocus {
     }
   }
 
+  public selected(event?: MouseEvent) {
+    if (this.currentColumn && event) {
+      if (event.shiftKey || event.ctrlKey) {
+        for (const column of this.focusColumns) {
+          if (column.id === this.currentColumn.id) {
+            column.selected = true;
+            break;
+          }
+        }
+        if (event.shiftKey) {
+          const index = getSelect(this.focusColumns);
+          log.debug(index);
+          if (index.min !== -1 && index.max !== -1) {
+            for (let i = index.min; i <= index.max; i++) {
+              this.focusColumns[i].selected = true;
+            }
+          }
+        }
+      } else {
+        this.selectedMove();
+      }
+    } else {
+      this.focusColumns.forEach((column) => column.selected = false);
+    }
+  }
+
   public move(event: KeyboardEvent) {
     if (event.key === Key.Tab) {
       event.preventDefault();
     }
-    if (event.key === Key.Enter || this.store.tableStore.state.edit) {
+    if (this.store.tableStore.state.edit
+      || event.key === Key.F2
+      || event.key === Key.Enter
+      || event.key === Key.Escape) {
       this.edit(event);
     } else if (event.key === Key.ArrowLeft) {
       if (this.currentFocusTable) {
@@ -147,10 +178,12 @@ export default class TableFocusModel implements TableFocus {
         } else {
           this.focus(FocusType.tableName);
         }
+        this.selectedMove();
       } else if (this.currentColumn) {
         const focusColumn = getData(this.focusColumns, this.currentColumn.id);
         if (focusColumn) {
           this.focus(focusColumn.preFocus(), this.currentColumn);
+          this.selectedMove(event);
         }
       }
     } else if (event.key === Key.ArrowRight || event.key === Key.Tab) {
@@ -160,16 +193,19 @@ export default class TableFocusModel implements TableFocus {
         } else {
           this.focus(FocusType.tableName);
         }
+        this.selectedMove();
       } else if (this.currentColumn) {
         const focusColumn = getData(this.focusColumns, this.currentColumn.id);
         if (focusColumn) {
           this.focus(focusColumn.nextFocus(), this.currentColumn);
+          this.selectedMove(event);
         }
       }
     } else if (event.key === Key.ArrowUp) {
       if (this.currentFocusTable) {
         if (this.columns.length !== 0) {
           this.focus(FocusType.columnName, this.columns[this.columns.length - 1]);
+          this.selectedMove(event);
         }
       } else if (this.currentColumn) {
         const focusColumn = getData(this.focusColumns, this.currentColumn.id);
@@ -177,8 +213,10 @@ export default class TableFocusModel implements TableFocus {
           const index = this.columns.indexOf(this.currentColumn);
           if (index === 0) {
             this.focus(FocusType.tableName);
+            this.selectedMove();
           } else {
             this.focus(focusColumn.currentFocus(), this.columns[index - 1]);
+            this.selectedMove(event);
           }
         }
       }
@@ -186,6 +224,7 @@ export default class TableFocusModel implements TableFocus {
       if (this.currentFocusTable) {
         if (this.columns.length !== 0) {
           this.focus(FocusType.columnName, this.columns[0]);
+          this.selectedMove(event);
         }
       } else if (this.currentColumn) {
         const focusColumn = getData(this.focusColumns, this.currentColumn.id);
@@ -193,8 +232,10 @@ export default class TableFocusModel implements TableFocus {
           const index = this.columns.indexOf(this.currentColumn);
           if (index === this.columns.length - 1) {
             this.focus(FocusType.tableName);
+            this.selectedMove();
           } else {
             this.focus(focusColumn.currentFocus(), this.columns[index + 1]);
+            this.selectedMove(event);
           }
         }
       }
@@ -209,6 +250,7 @@ export default class TableFocusModel implements TableFocus {
       const columnFocus = new ColumnFocusModel(this.store, column);
       const oldColumnFocus = getData(oldFocusColumns, column.id);
       if (oldColumnFocus) {
+        columnFocus.selected = oldColumnFocus.selected;
         columnFocus.focusName = oldColumnFocus.focusName;
         columnFocus.focusComment = oldColumnFocus.focusComment;
         columnFocus.focusDataType = oldColumnFocus.focusDataType;
@@ -227,24 +269,34 @@ export default class TableFocusModel implements TableFocus {
     if (!isAdd && oldFocusColumns.length > this.focusColumns.length && this.currentColumn) {
       const focusColumn = getData(oldFocusColumns, this.currentColumn.id);
       if (focusColumn) {
-        const index = oldFocusColumns.indexOf(focusColumn);
+        let index = oldFocusColumns.indexOf(focusColumn);
+        if (this.columns.length < index) {
+          index = this.columns.length;
+        }
         if (index === 0) {
           this.focus(FocusType.tableName);
+          this.selectedMove();
         } else {
           this.focus(focusColumn.currentFocus(), this.columns[index - 1]);
+          this.selectedMove();
         }
       }
     }
     if (isAdd) {
       this.focus(FocusType.columnName, this.columns[this.columns.length - 1]);
+      this.selectedMove();
     }
   }
 
-  public columnRemove() {
-    if (this.currentColumn) {
-      const index = this.table.columns.indexOf(this.currentColumn);
-      this.table.columns.splice(index, 1);
+  public columnSelectAll(): Column[] {
+    const columns: Column[] = [];
+    const len = this.focusColumns.length;
+    for (let i = 0; i < len; i++) {
+      if (this.focusColumns[i].selected) {
+        columns.push(this.columns[i]);
+      }
     }
+    return columns;
   }
 
   public primaryKey() {
@@ -295,11 +347,11 @@ export default class TableFocusModel implements TableFocus {
   private edit(event: KeyboardEvent) {
     log.debug('TableFocusModel edit');
     if (this.store.tableStore.state.edit) {
-      if (!event.altKey && (event.key === Key.Enter || event.key === Key.Tab)) {
+      if (!event.altKey && (event.key === Key.Enter || event.key === Key.Tab || event.key === Key.Escape)) {
         this.store.tableStore.commit(Commit.tableEditEnd, this.store);
       }
     } else {
-      if (!event.altKey && event.key === Key.Enter) {
+      if (!event.altKey && (event.key === Key.Enter || event.key === Key.F2)) {
         if (this.currentFocusTable) {
           const focusType = this.focusName ? FocusType.tableName : FocusType.tableComment;
           this.store.tableStore.commit(Commit.tableEditStart, {
@@ -322,6 +374,27 @@ export default class TableFocusModel implements TableFocus {
           }
         }
       }
+    }
+  }
+
+  private selectedMove(event?: KeyboardEvent) {
+    if (this.currentColumn) {
+      if (event && event.shiftKey) {
+        for (const column of this.focusColumns) {
+          if (column.id === this.currentColumn.id) {
+            column.selected = true;
+            break;
+          }
+        }
+      } else {
+        this.focusColumns.forEach((column) => {
+          if (this.currentColumn) {
+            column.selected = column.id === this.currentColumn.id;
+          }
+        });
+      }
+    } else {
+      this.focusColumns.forEach((column) => column.selected = false);
     }
   }
 

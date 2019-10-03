@@ -23,6 +23,8 @@ import {
   columnRemove,
   columnRemoveAll,
   columnPrimaryKey,
+  columnCopy,
+  columnPaste,
 } from './table/columnController';
 import {TableFocus, FocusType} from '@/models/TableFocusModel';
 import {dataInit} from '@/data/table';
@@ -37,6 +39,7 @@ export interface State {
   tables: Table[];
   tableFocus: TableFocus | null;
   edit: Edit | null;
+  copyColumns: Column[];
 }
 
 export interface Edit {
@@ -92,7 +95,6 @@ export interface ColumnOption {
 }
 
 export interface ColumnUI {
-  active: boolean;
   pk: boolean;
   fk: boolean;
   pfk: boolean;
@@ -125,6 +127,8 @@ export const enum Commit {
   columnRemove = 'columnRemove',
   columnRemoveAll = 'columnRemoveAll',
   columnPrimaryKey = 'columnPrimaryKey',
+  columnCopy = 'columnCopy',
+  columnPaste = 'columnPaste',
 }
 
 export function createStore() {
@@ -133,6 +137,7 @@ export function createStore() {
       tables: [],
       tableFocus: null,
       edit: null,
+      copyColumns: [],
     },
     getters: {},
     mutations: {
@@ -146,6 +151,7 @@ export function createStore() {
       load(state: State, payload: { load: State, store: StoreManagement }) {
         const {load, store} = payload;
         state.edit = load.edit;
+        state.copyColumns = load.copyColumns;
         state.tables = [];
         load.tables.forEach((table) => state.tables.push(new TableModel(store, table)));
         if (load.tableFocus) {
@@ -178,6 +184,8 @@ export function createStore() {
       columnRemove,
       columnRemoveAll,
       columnPrimaryKey,
+      columnCopy,
+      columnPaste,
     },
     actions: {},
   });

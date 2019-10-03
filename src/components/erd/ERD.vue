@@ -202,35 +202,39 @@
     private onKeydown(event: KeyboardEvent) {
       log.debug('ERD onKeydown');
       if (this.focus) {
-        if (event.altKey && event.code === Key.KeyN) {
+        if (event.altKey && event.code === Key.KeyN) { // Alt + N
           this.store.tableStore.commit(TableCommit.tableAdd, this.store);
-        } else if (event.altKey && event.code === Key.KeyM) {
+        } else if (event.altKey && event.code === Key.KeyM) { // Alt + M
           this.store.memoStore.commit(MemoCommit.memoAdd, this.store);
-        } else if (event.altKey && event.key === Key.Enter) {
+        } else if (event.altKey && event.key === Key.Enter) { // Alt + Enter
           this.store.tableStore.commit(TableCommit.columnAddAll, this.store);
           this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
-        } else if (event.ctrlKey && event.code === Key.KeyA) {
+        } else if (event.ctrlKey && event.code === Key.KeyA) { // Ctrl + A
           event.preventDefault();
           this.store.tableStore.commit(TableCommit.tableSelectAll);
           this.store.memoStore.commit(MemoCommit.memoSelectAll);
-        } else if (event.ctrlKey && event.key === Key.Delete) {
+        } else if (event.ctrlKey && event.key === Key.Delete) { // Ctrl + Delete
           this.store.tableStore.commit(TableCommit.tableRemoveAll, this.store);
           this.store.memoStore.commit(MemoCommit.memoRemoveAll, this.store);
-        } else if (event.altKey && event.key === Key.Delete) {
+        } else if (event.altKey && event.key === Key.Delete) { // Alt + Delete
           this.store.tableStore.commit(TableCommit.columnRemoveAll, this.store);
           this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
-        } else if (event.altKey && event.code === Key.KeyK) {
+        } else if (event.altKey && event.code === Key.KeyK) { // Alt + K
           this.store.tableStore.commit(TableCommit.columnPrimaryKey);
-        } else if (event.altKey && event.code === Key.Digit1) {
+        } else if (event.altKey && event.code === Key.Digit1) { // Alt + 1
           this.store.relationshipStore.commit(RelationshipCommit.relationshipDrawStart, {
             store: this.store,
             relationshipType: RelationshipType.ZeroOne,
           });
-        } else if (event.altKey && event.code === Key.Digit2) {
+        } else if (event.altKey && event.code === Key.Digit2) { // Alt + 2
           this.store.relationshipStore.commit(RelationshipCommit.relationshipDrawStart, {
             store: this.store,
             relationshipType: RelationshipType.ZeroOneN,
           });
+        } else if (event.ctrlKey && event.code === Key.KeyC && !this.store.tableStore.state.edit) { // Ctrl + C
+          this.store.tableStore.commit(TableCommit.columnCopy);
+        } else if (event.ctrlKey && event.code === Key.KeyV && !this.store.tableStore.state.edit) { // Ctrl + V
+          this.store.tableStore.commit(TableCommit.columnPaste, this.store);
         }
       }
     }

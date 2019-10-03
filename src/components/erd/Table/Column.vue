@@ -1,5 +1,5 @@
 <template lang="pug">
-  .column
+  .column(:class="{select: selected}")
     .key
       font-awesome-icon.column-key(
         v-if="column.ui.pk | column.ui.fk | column.ui.pfk"
@@ -213,6 +213,14 @@
       return this.table.maxWidthColumn();
     }
 
+    get selected(): boolean {
+      let result = false;
+      if (this.columnFocus && this.columnFocus.selected) {
+        result = true;
+      }
+      return result;
+    }
+
     private placeholder(value: string, display: string) {
       if (value === '') {
         return display;
@@ -233,6 +241,7 @@
           this.store.tableStore.commit(TableCommit.columnFocus, {
             focusType,
             column: this.column,
+            event,
           });
         }
       });
@@ -297,6 +306,15 @@
 
 <style scoped lang="scss">
   .column {
+
+    &.select {
+      background-color: $color-column-select;
+
+      input {
+        background-color: $color-column-select;
+      }
+    }
+
     div {
       display: inline-flex;
       vertical-align: middle;
