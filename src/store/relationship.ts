@@ -6,6 +6,9 @@ import {
   relationshipDrawStart,
   relationshipDrawStartAdd,
   relationshipDrawEnd,
+  relationshipIdentification,
+  relationshipIdentificationAll,
+  relationshipRemove,
 } from './relationship/relationshipController';
 import {Table} from './table';
 import {dataInit} from '@/data/relationship';
@@ -75,6 +78,9 @@ export const enum Commit {
   relationshipDrawStart = 'relationshipDrawStart',
   relationshipDrawStartAdd = 'relationshipDrawStartAdd',
   relationshipDrawEnd = 'relationshipDrawEnd',
+  relationshipIdentification = 'relationshipIdentification',
+  relationshipIdentificationAll = 'relationshipIdentificationAll',
+  relationshipRemove = 'relationshipRemove',
 }
 
 export function createStore() {
@@ -105,6 +111,9 @@ export function createStore() {
       relationshipDrawStart,
       relationshipDrawStartAdd,
       relationshipDrawEnd,
+      relationshipIdentification,
+      relationshipIdentificationAll,
+      relationshipRemove,
     },
     actions: {},
   });

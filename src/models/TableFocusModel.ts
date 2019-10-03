@@ -1,4 +1,5 @@
 import {Table, TableUI, Column, Commit, ColumnWidth} from '@/store/table';
+import {Commit as RelationshipCommit} from '@/store/relationship';
 import ColumnFocusModel, {ColumnFocus} from './ColumnFocusModel';
 import {log, isData, getData} from '@/ts/util';
 import Key from '@/models/Key';
@@ -252,10 +253,18 @@ export default class TableFocusModel implements TableFocus {
         this.currentColumn.ui.fk = true;
         this.currentColumn.ui.pfk = false;
         this.currentColumn.option.primaryKey = false;
+        this.store.relationshipStore.commit(RelationshipCommit.relationshipIdentification, {
+          table: this.table,
+          column: this.currentColumn,
+        });
       } else if (this.currentColumn.ui.fk) {
         this.currentColumn.ui.fk = false;
         this.currentColumn.ui.pfk = true;
         this.currentColumn.option.primaryKey = true;
+        this.store.relationshipStore.commit(RelationshipCommit.relationshipIdentification, {
+          table: this.table,
+          column: this.currentColumn,
+        });
       } else {
         this.currentColumn.option.primaryKey = !this.currentColumn.ui.pk;
         this.currentColumn.ui.pk = !this.currentColumn.ui.pk;

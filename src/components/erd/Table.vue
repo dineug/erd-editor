@@ -31,6 +31,7 @@
           :class="{focus: focusName, placeholder: placeholderName}"
           :style="`width: ${table.ui.widthName}px;`"
           @mousedown="onFocus($event, 'tableName')"
+          @dblclick="onDblclick($event, 'tableName')"
         ) {{placeholder(table.name, 'table')}}
         input(
           v-if="show.tableComment && edit && edit.id === table.id && edit.focusType === 'tableComment'"
@@ -46,6 +47,7 @@
           :class="{focus: focusComment, placeholder: placeholderComment}"
           :style="`width: ${table.ui.widthComment}px;`"
           @mousedown="onFocus($event, 'tableComment')"
+          @dblclick="onDblclick($event, 'tableComment')"
         ) {{placeholder(table.comment, 'comment')}}
     .table-body
       Column(
@@ -69,6 +71,7 @@
   import {Bus} from '@/ts/EventBus';
   import {log, getTextWidth} from '@/ts/util';
   import StoreManagement from '@/store/StoreManagement';
+  import {relationshipSort} from '@/store/relationship/relationshipHelper';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
   import Column from './Table/Column.vue';
   import CircleButton from './CircleButton.vue';
@@ -280,14 +283,20 @@
         this.moveXAnimation = new AnimationFrame(
           {x: this.table.ui.left},
           {x}, 200)
-          .update((value) => this.table.ui.left = value.x)
+          .update((value) => {
+            this.table.ui.left = value.x;
+            relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships);
+          })
           .start();
       }
       if (this.table.ui.top < 0 || this.table.ui.top > minHeight) {
         this.moveYAnimation = new AnimationFrame(
           {y: this.table.ui.top},
           {y}, 200)
-          .update((value) => this.table.ui.top = value.y)
+          .update((value) => {
+            this.table.ui.top = value.y;
+            relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships);
+          })
           .start();
       }
     }
@@ -339,6 +348,15 @@
     private onEditBlur() {
       log.debug('Table onEditBlur');
       this.store.tableStore.commit(Commit.tableEditEnd, this.store);
+    }
+
+    private onDblclick(event: MouseEvent, focusType: FocusType) {
+      log.debug('Table onDblclick');
+      event.preventDefault();
+      this.store.tableStore.commit(Commit.tableEditStart, {
+        id: this.table.id,
+        focusType,
+      });
     }
 
     // ==================== Event Handler END ===================

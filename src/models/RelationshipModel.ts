@@ -24,7 +24,7 @@ export default class RelationshipModel implements Relationship {
     };
     this.end = {
       tableId: table.id,
-      columnIds: createColumns(store, start.table.id, table),
+      columnIds: createColumns(store, start.table, table),
       x: table.ui.left,
       y: table.ui.top,
       direction: Direction.bottom,

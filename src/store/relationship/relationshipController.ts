@@ -1,11 +1,11 @@
-import {State, RelationshipType} from '../relationship';
-import {Commit as TableCommit, Table} from '@/store/table';
+import {State, RelationshipType, Relationship} from '../relationship';
+import {Column, Commit as TableCommit, Table} from '@/store/table';
 import {Commit as MemoCommit} from '@/store/memo';
-import {log} from '@/ts/util';
+import {getData, log} from '@/ts/util';
 import StoreManagement from '@/store/StoreManagement';
 import RelationshipDrawModel from '@/models/RelationshipDrawModel';
 import RelationshipModel from '@/models/RelationshipModel';
-import {createPrimaryKey, relationshipSort} from './relationshipHelper';
+import {createPrimaryKey, relationshipSort, getColumn} from './relationshipHelper';
 import {Bus} from '@/ts/EventBus';
 
 export function relationshipAdd(state: State, payload: { table: Table, store: StoreManagement }) {
@@ -64,4 +64,75 @@ export function relationshipDrawEnd(state: State, payload: { table: Table, store
     relationshipAdd(state, payload);
   }
   state.draw = null;
+}
+
+export function relationshipIdentification(state: State, payload: { table: Table, column: Column }) {
+  log.debug('relationshipController relationshipIdentification');
+  const {table, column} = payload;
+  state.relationships.forEach((relationship) => {
+    if (relationship.end.tableId === table.id
+      && relationship.end.columnIds.indexOf(column.id) !== -1) {
+      relationship.identification = !relationship.end.columnIds.some((columnId) => {
+        const targetColumn = getData(table.columns, columnId);
+        if (targetColumn) {
+          return !targetColumn.option.primaryKey;
+        }
+        return true;
+      });
+    }
+  });
+}
+
+export function relationshipIdentificationAll(
+  state: State,
+  payload: { relationship: Relationship, store: StoreManagement },
+) {
+  log.debug('relationshipController relationshipIdentificationAll');
+  const {relationship, store} = payload;
+  relationship.identification = !relationship.end.columnIds.some((columnId) => {
+    const column = getColumn(store.tableStore.state.tables, relationship.end.tableId, columnId);
+    if (column) {
+      return !column.option.primaryKey;
+    }
+    return true;
+  });
+}
+
+export function relationshipRemove(state: State, payload: { table: Table, column: Column, store: StoreManagement }) {
+  log.debug('relationshipController relationshipRemove');
+  const {table, column, store} = payload;
+
+  state.relationships.forEach((relationship) => {
+    if (relationship.start.tableId === table.id || relationship.end.tableId === table.id) {
+      let index = -1;
+      if (relationship.start.tableId === table.id) {
+        index = relationship.start.columnIds.indexOf(column.id);
+        const endColumnId = relationship.end.columnIds[index];
+        const endColumn = getColumn(store.tableStore.state.tables, relationship.end.tableId, endColumnId);
+        if (endColumn) {
+          if (endColumn.ui.pfk) {
+            endColumn.ui.pk = true;
+            endColumn.ui.pfk = false;
+          } else if (endColumn.ui.fk) {
+            endColumn.ui.fk = false;
+          }
+        }
+      } else {
+        index = relationship.end.columnIds.indexOf(column.id);
+      }
+      relationship.start.columnIds.splice(index, 1);
+      relationship.end.columnIds.splice(index, 1);
+      relationshipIdentificationAll(state, {
+        relationship,
+        store,
+      });
+    }
+  });
+
+  const len = state.relationships.length;
+  for (let i = 0; i < len; i++) {
+    if (state.relationships[i].start.columnIds.length === 0) {
+      state.relationships.splice(i, 1);
+    }
+  }
 }

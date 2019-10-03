@@ -271,6 +271,7 @@
       this.store.tableStore.commit(TableCommit.columnRemove, {
         table: this.table,
         column: this.column,
+        store: this.store,
       });
       this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
     }

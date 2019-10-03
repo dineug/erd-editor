@@ -13,7 +13,10 @@
       :store="store"
       :memo="memo"
     )
-    svg.canvas-svg(:style="canvasStyle")
+    svg.canvas-svg(
+      v-if="show.relationship"
+      :style="canvasStyle"
+    )
       Relationship(
         v-for="relationship in relationships"
         :key="relationship.id"
@@ -26,6 +29,7 @@
   import {Table as TableModel} from '@/store/table';
   import {Memo as MemoModel} from '@/store/memo';
   import {Relationship as RelationshipModel} from '@/store/relationship';
+  import {Show} from '@/store/canvas';
   import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Vue} from 'vue-property-decorator';
   import Table from './Table.vue';
@@ -63,6 +67,10 @@
 
     get relationships(): RelationshipModel[] {
       return this.store.relationshipStore.state.relationships;
+    }
+
+    get show(): Show {
+      return this.store.canvasStore.state.show;
     }
 
   }

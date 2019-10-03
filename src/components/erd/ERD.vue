@@ -193,7 +193,7 @@
       event.preventDefault();
       this.$el.scrollTop -= event.movementY;
       this.$el.scrollLeft -= event.movementX;
-      this.store.canvasStore.commit(CanvasCommit.move, {
+      this.store.canvasStore.commit(CanvasCommit.canvasMove, {
         scrollTop: this.$el.scrollTop,
         scrollLeft: this.$el.scrollLeft,
       });
@@ -217,7 +217,7 @@
           this.store.tableStore.commit(TableCommit.tableRemoveAll, this.store);
           this.store.memoStore.commit(MemoCommit.memoRemoveAll, this.store);
         } else if (event.altKey && event.key === Key.Delete) {
-          this.store.tableStore.commit(TableCommit.columnRemoveAll);
+          this.store.tableStore.commit(TableCommit.columnRemoveAll, this.store);
           this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
         } else if (event.altKey && event.code === Key.KeyK) {
           this.store.tableStore.commit(TableCommit.columnPrimaryKey);

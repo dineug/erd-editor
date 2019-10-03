@@ -5,97 +5,6 @@ import ColumnModel from '@/models/ColumnModel';
 import {autoName, getData, getTextWidth, uuid} from '@/ts/util';
 import {Direction, Point as RelationshipPoint, Relationship, RelationshipDraw} from '../relationship';
 
-const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
-const PATH_HEIGHT = 40;
-const PATH_END_HEIGHT = PATH_HEIGHT + 20;
-const PATH_LINE_HEIGHT = 35;
-const LINE_SIZE = 10;
-const LINE_HEIGHT = 15;
-const CIRCLE_HEIGHT = 26;
-
-const directions = ['top', 'bottom', 'left', 'right'];
-
-export interface Point {
-  x: number;
-  y: number;
-}
-
-export interface PointToPoint {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-}
-
-export interface Circle {
-  cx: number;
-  cy: number;
-}
-
-export interface Coordinate {
-  width: number;
-  height: number;
-  top: Point;
-  bottom: Point;
-  left: Point;
-  right: Point;
-  lt: Point;
-  rt: Point;
-  lb: Point;
-  rb: Point;
-}
-
-export interface Path {
-  M: Point;
-  L: Point;
-  Q: Point;
-
-  d(): string;
-}
-
-export interface PathLine {
-  start: PointToPoint;
-  end: PointToPoint;
-}
-
-export interface Line {
-  start: PointToPoint;
-  end: {
-    base: PointToPoint;
-    left: PointToPoint;
-    center: PointToPoint;
-    right: PointToPoint;
-  };
-}
-
-export interface RelationshipPath {
-  path: { path: Path, line: PathLine };
-  line: { line: Line, circle: Circle };
-}
-
-export interface DrawLine {
-  start: PointToPoint;
-}
-
-export interface DrawPath {
-  path: { path: Path, line: DrawLine };
-  line: DrawLine;
-}
-
-export interface RelationshipGraph {
-  table: Table;
-  coordinate: Coordinate;
-  top: Relationship[];
-  bottom: Relationship[];
-  left: Relationship[];
-  right: Relationship[];
-}
-
-export interface RelationshipOrder {
-  point: RelationshipPoint;
-  distance: number;
-}
-
 export function columnIds(table: Table): string[] {
   const ids: string[] = [];
   table.columns.forEach((column: Column) => {
@@ -148,46 +57,155 @@ export function createPrimaryKey(store: StoreManagement, table: Table) {
   }
 }
 
-export function createColumns(store: StoreManagement, tableId: string, table: Table): string[] {
+export function createColumns(store: StoreManagement, from: Table, to: Table): string[] {
   const ids: string[] = [];
-  const targetTable = getData(store.tableStore.state.tables, tableId);
-  if (targetTable) {
-    targetTable.columns.forEach((column) => {
-      if (column.option.primaryKey) {
-        const id = uuid();
-        const name = autoName(table.columns, id, column.name);
-        let widthName = getTextWidth(name);
-        if (widthName < SIZE_MIN_WIDTH) {
-          widthName = SIZE_MIN_WIDTH;
-        }
-        table.columns.push(new ColumnModel(store, {
-          id,
-          name,
-          comment: column.comment,
-          dataType: column.dataType,
-          default: column.default,
-          option: {
-            autoIncrement: false,
-            primaryKey: false,
-            unique: false,
-            notNull: column.option.notNull,
-          },
-          ui: {
-            active: false,
-            pk: false,
-            fk: true,
-            pfk: false,
-            widthName,
-            widthComment: column.ui.widthComment,
-            widthDataType: column.ui.widthDataType,
-            widthDefault: column.ui.widthDefault,
-          },
-        }));
-        ids.push(id);
+  from.columns.forEach((column) => {
+    if (column.option.primaryKey) {
+      const id = uuid();
+      const name = autoName(to.columns, id, column.name);
+      let widthName = getTextWidth(name);
+      if (widthName < SIZE_MIN_WIDTH) {
+        widthName = SIZE_MIN_WIDTH;
       }
-    });
-  }
+      to.columns.push(new ColumnModel(store, {
+        id,
+        name,
+        comment: column.comment,
+        dataType: column.dataType,
+        default: column.default,
+        option: {
+          autoIncrement: false,
+          primaryKey: false,
+          unique: false,
+          notNull: column.option.notNull,
+        },
+        ui: {
+          active: false,
+          pk: false,
+          fk: true,
+          pfk: false,
+          widthName,
+          widthComment: column.ui.widthComment,
+          widthDataType: column.ui.widthDataType,
+          widthDefault: column.ui.widthDefault,
+        },
+      }));
+      ids.push(id);
+    }
+  });
   return ids;
+}
+
+export function getColumn(tables: Table[], tableId: string, columnId: string): Column | null {
+  let target: Column | null = null;
+  let result = false;
+  for (const table of tables) {
+    result = false;
+    if (table.id === tableId) {
+      for (const column of table.columns) {
+        if (column.id === columnId) {
+          target = column;
+          result = true;
+          break;
+        }
+      }
+    }
+    if (result) {
+      break;
+    }
+  }
+  return target;
+}
+
+// ==================== UI Handler ===================
+const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
+const PATH_HEIGHT = 40;
+const PATH_END_HEIGHT = PATH_HEIGHT + 20;
+const PATH_LINE_HEIGHT = 35;
+const LINE_SIZE = 10;
+const LINE_HEIGHT = 15;
+const CIRCLE_HEIGHT = 26;
+const directions = ['top', 'bottom', 'left', 'right'];
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface PointToPoint {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+interface Circle {
+  cx: number;
+  cy: number;
+}
+
+interface Coordinate {
+  width: number;
+  height: number;
+  top: Point;
+  bottom: Point;
+  left: Point;
+  right: Point;
+  lt: Point;
+  rt: Point;
+  lb: Point;
+  rb: Point;
+}
+
+interface Path {
+  M: Point;
+  L: Point;
+  Q: Point;
+
+  d(): string;
+}
+
+interface PathLine {
+  start: PointToPoint;
+  end: PointToPoint;
+}
+
+interface Line {
+  start: PointToPoint;
+  end: {
+    base: PointToPoint;
+    left: PointToPoint;
+    center: PointToPoint;
+    right: PointToPoint;
+  };
+}
+
+export interface RelationshipPath {
+  path: { path: Path, line: PathLine };
+  line: { line: Line, circle: Circle };
+}
+
+interface DrawLine {
+  start: PointToPoint;
+}
+
+export interface DrawPath {
+  path: { path: Path, line: DrawLine };
+  line: DrawLine;
+}
+
+interface RelationshipGraph {
+  table: Table;
+  coordinate: Coordinate;
+  top: Relationship[];
+  bottom: Relationship[];
+  left: Relationship[];
+  right: Relationship[];
+}
+
+interface RelationshipOrder {
+  point: RelationshipPoint;
+  distance: number;
 }
 
 function getCoordinate(table: Table): Coordinate {
@@ -766,3 +784,4 @@ export function getZeroOne(relationship: Relationship): RelationshipPath {
     line: getLine(relationship.start, relationship.end),
   };
 }
+// ==================== UI Handler END ===================

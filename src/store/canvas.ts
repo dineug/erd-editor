@@ -1,7 +1,8 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
+import {canvasMove} from './canvas/canvasController';
+import {showChange} from './canvas/showController';
 import {dataShow, dataInit} from '@/data/canvas';
-import {log} from '@/ts/util';
 
 Vue.use(Vuex);
 
@@ -40,7 +41,8 @@ export const enum ShowKey {
 export const enum Commit {
   init = 'init',
   load = 'load',
-  move = 'move',
+  canvasMove = 'canvasMove',
+  showChange = 'showChange',
 }
 
 export function createStore() {
@@ -70,12 +72,8 @@ export function createStore() {
         state.scrollTop = 0;
         state.scrollLeft = 0;
       },
-      move(state: State, payload: {scrollTop: number, scrollLeft: number}) {
-        log.debug('canvasStore move');
-        const {scrollTop, scrollLeft} = payload;
-        state.scrollTop = scrollTop;
-        state.scrollLeft = scrollLeft;
-      },
+      canvasMove,
+      showChange,
     },
     actions: {},
   });

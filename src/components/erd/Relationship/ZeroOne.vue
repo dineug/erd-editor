@@ -12,8 +12,9 @@
     path(
       :d="path.path.path.d()"
       :stroke="relationship.identification ? '#60b9c4' : '#dda8b1'"
-      stroke-dasharray="10"
-      stroke-width="3" fill="transparent"
+      :stroke-dasharray="relationship.identification ? 0 : 10"
+      stroke-width="3"
+      fill="transparent"
     )
     line(
       :x1="path.line.line.start.x1"

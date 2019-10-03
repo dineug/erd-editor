@@ -8,8 +8,8 @@ function animate() {
 
 export default class AnimationFrame<T> {
   private tween!: any;
-  constructor(start: T, to: T, millisecond: number) {
-    this.tween = new TWEEN.Tween(start)
+  constructor(from: T, to: T, millisecond: number) {
+    this.tween = new TWEEN.Tween(from)
       .to(to, millisecond)
       .easing(TWEEN.Easing.Quadratic.Out);
   }
