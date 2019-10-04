@@ -18,3 +18,5 @@ export const SIZE_SASH = 5;
 export const SIZE_COLUMN_CLOSE = 7;
 export const SIZE_COLUMN_KEY = 12;
 export const SIZE_MENU_HEIGHT = 39.52;
+export const SIZE_PREVIEW_WIDTH = 150;
+export const SIZE_TOP_MENU_HEIGHT = 30;

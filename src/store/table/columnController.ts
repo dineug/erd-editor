@@ -3,7 +3,7 @@ import {Commit as RelationshipCommit} from '@/store/relationship';
 import {log, getData} from '@/ts/util';
 import ColumnModel from '@/models/ColumnModel';
 import {FocusType} from '@/models/TableFocusModel';
-import {tableFocusStart} from './tableController';
+import {tableFocusStart, tableEditEnd} from './tableController';
 import StoreManagement from '@/store/StoreManagement';
 import {relationshipSort} from '@/store/relationship/relationshipHelper';
 
@@ -11,6 +11,7 @@ export function columnAdd(state: State, payload: { table: Table, store: StoreMan
   log.debug('columnController columnAdd');
   const {table, store} = payload;
   table.columns.push(new ColumnModel(store));
+  tableEditEnd(state, store);
   relationshipSort(state.tables, store.relationshipStore.state.relationships);
 }
 
@@ -24,6 +25,7 @@ export function columnAddAll(state: State, store: StoreManagement) {
       table.columns.push(new ColumnModel(store));
     }
   });
+  tableEditEnd(state, store);
   relationshipSort(state.tables, store.relationshipStore.state.relationships);
 }
 
@@ -127,6 +129,7 @@ export function columnMove(state: State, payload: { table: Table, column: Column
         column: current.column,
         store,
       });
+      relationshipSort(state.tables, store.relationshipStore.state.relationships);
     }
     state.columnDraggable.table = table;
   }

@@ -1,5 +1,6 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
+import {SIZE_PREVIEW_WIDTH} from '@/ts/layout';
 import {canvasMove} from './canvas/canvasController';
 import {showChange} from './canvas/showController';
 import {dataShow, dataInit} from '@/data/canvas';
@@ -54,7 +55,11 @@ export function createStore() {
       scrollLeft: 0,
       show: dataShow(),
     },
-    getters: {},
+    getters: {
+      previewRatio(state: State): number {
+        return SIZE_PREVIEW_WIDTH / state.width;
+      },
+    },
     mutations: {
       init(state: State) {
         const stateData = state as any;

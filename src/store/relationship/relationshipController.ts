@@ -139,7 +139,8 @@ export function relationshipRemoveColumn(
   }
 
   state.relationships.forEach((relationship) => {
-    if (relationship.start.tableId === table.id || relationship.end.tableId === table.id) {
+    if ((relationship.start.tableId === table.id && relationship.start.columnIds.indexOf(column.id) !== -1)
+      || (relationship.end.tableId === table.id && relationship.end.columnIds.indexOf(column.id) !== -1)) {
       let index = -1;
       if (relationship.start.tableId === table.id) {
         index = relationship.start.columnIds.indexOf(column.id);
@@ -165,10 +166,10 @@ export function relationshipRemoveColumn(
     }
   });
 
-  const len = state.relationships.length;
-  for (let i = 0; i < len; i++) {
+  for (let i = 0; i < state.relationships.length; i++) {
     if (state.relationships[i].start.columnIds.length === 0) {
       state.relationships.splice(i, 1);
+      i--;
     }
   }
 }

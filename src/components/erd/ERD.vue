@@ -29,7 +29,16 @@
       :x="contextmenuX"
       :y="contextmenuY"
     )
-    Preview(:store="store")
+    Preview(
+      :store="store"
+      :width="width"
+      :height="height"
+    )
+    PreviewTarget(
+      :store="store"
+      :width="width"
+      :height="height"
+    )
 </template>
 
 <script lang="ts">
@@ -55,8 +64,9 @@
   import Canvas from './Canvas.vue';
   import MultipleSelect from './MultipleSelect.vue';
   import Contextmenu from './Contextmenu.vue';
-  import Preview from './Preview.vue';
   import RelationshipDraw from './RelationshipDraw.vue';
+  import Preview from './Preview.vue';
+  import PreviewTarget from './PreviewTarget.vue';
 
   import {fromEvent, Observable, Subscription} from 'rxjs';
 
@@ -65,8 +75,9 @@
       Canvas,
       Contextmenu,
       MultipleSelect,
-      Preview,
       RelationshipDraw,
+      Preview,
+      PreviewTarget,
     },
   })
   export default class ERD extends Vue {
@@ -155,7 +166,9 @@
       if (!event.ctrlKey
         && !el.closest('.contextmenu-erd')
         && !el.closest('.table')
-        && !el.closest('.memo')) {
+        && !el.closest('.memo')
+        && !el.closest('.preview')
+        && !el.closest('.preview-target')) {
         this.onMouseup(event);
         this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
         this.subMousemove = this.mousemove$.subscribe(this.onMousemove);
@@ -164,7 +177,9 @@
       } else if (event.ctrlKey
         && !el.closest('.contextmenu-erd')
         && !el.closest('.table')
-        && !el.closest('.memo')) {
+        && !el.closest('.memo')
+        && !el.closest('.preview')
+        && !el.closest('.preview-target')) {
         this.store.tableStore.commit(TableCommit.tableSelectAllEnd);
         this.store.memoStore.commit(MemoCommit.memoSelectAllEnd);
         this.selectX = event.x;

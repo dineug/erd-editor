@@ -96,7 +96,7 @@
 
     ul {
       position: fixed;
-      z-index: 8000;
+      z-index: 100000000;
       background-color: $color-table;
       opacity: 0.9;
 
