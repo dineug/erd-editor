@@ -102,7 +102,7 @@
     z-index: 100000000;
     overflow: hidden;
     background-color: $color-canvas;
-    box-shadow: 1px 1px 6px 2px $color-preview-shadow;
+    box-shadow: 5px 5px 30px 10px $color-preview-shadow;
 
     .preview-canvas {
       position: relative;

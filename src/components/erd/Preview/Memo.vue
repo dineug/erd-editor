@@ -1,8 +1,8 @@
 <template lang="pug">
   .preview-memo(:style="memoStyle")
-    .memo-header
+    //.memo-header
       .memo-button
-    .memo-body
+    //.memo-body
       div(:style="textareaStyle") {{memo.value}}
 </template>
 

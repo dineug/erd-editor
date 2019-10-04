@@ -1,24 +1,20 @@
 <template lang="pug">
   .preview-table(:style="tableStyle")
-    .table-header
+    //.table-header
       .table-header-top
         .table-button
         .table-button
       .table-header-body
-        span.table-name(
-          :style="`width: ${table.ui.widthName}px;`"
-        ) {{table.name}}
-        span.table-comment(
-          :style="`width: ${table.ui.widthComment}px;`"
-        ) {{table.comment}}
-      ul.table-body
-        Column(
-          v-for="column in table.columns"
-          :key="column.id"
-          :store="store"
-          :table="table"
-          :column="column"
-        )
+        span.table-name(:style="`width: ${table.ui.widthName}px;`") {{table.name}}
+        span.table-comment(:style="`width: ${table.ui.widthComment}px;`") {{table.comment}}
+      //ul.table-body
+        //Column(
+          //v-for="column in table.columns"
+          //:key="column.id"
+          //:store="store"
+          //:table="table"
+          //:column="column"
+        //)
 </template>
 
 <script lang="ts">
