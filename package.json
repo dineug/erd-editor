@@ -27,34 +27,25 @@
     "vuex": "^3.0.1"
   },
   "devDependencies": {
-    "@fortawesome/fontawesome-svg-core": "^1.2.22",
-    "@fortawesome/free-solid-svg-icons": "^5.10.2",
+    "@fortawesome/fontawesome-svg-core": "^1.2.25",
+    "@fortawesome/free-solid-svg-icons": "^5.11.2",
     "@fortawesome/vue-fontawesome": "^0.1.7",
-    "@types/chai": "^4.1.0",
-    "@types/mocha": "^5.2.4",
+    "@types/jest": "^23.1.4",
     "@types/uuid": "^3.4.5",
     "@vue/cli-plugin-babel": "^3.11.0",
     "@vue/cli-plugin-typescript": "^3.11.0",
-    "@vue/cli-plugin-unit-mocha": "^3.11.0",
+    "@vue/cli-plugin-unit-jest": "^3.11.0",
     "@vue/cli-service": "^3.11.0",
     "@vue/test-utils": "1.0.0-beta.29",
-    "chai": "^4.1.2",
+    "babel-core": "7.0.0-bridge.0",
     "node-sass": "^4.9.0",
     "pug": "^2.0.4",
     "sass-loader": "^7.1.0",
+    "ts-jest": "^23.0.0",
     "typescript": "^3.4.3",
     "vue-cli-plugin-pug": "^1.0.7",
     "vue-template-compiler": "^2.6.10"
   },
-  "postcss": {
-    "plugins": {
-      "autoprefixer": {}
-    }
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions"
-  ],
   "files": [
     "dist/*",
     "src/*"
