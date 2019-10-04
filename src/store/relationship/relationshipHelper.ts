@@ -43,6 +43,7 @@ export function createPrimaryKey(store: StoreManagement, table: Table) {
         notNull: true,
       },
       ui: {
+        active: false,
         pk: true,
         fk: false,
         pfk: false,
@@ -82,6 +83,7 @@ export function createColumns(store: StoreManagement, from: Table, to: Table): s
             notNull: column.option.notNull,
           },
           ui: {
+            active: false,
             pk: false,
             fk: true,
             pfk: false,

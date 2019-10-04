@@ -1,6 +1,6 @@
 import {State, Table, Column, ColumnTable} from '../table';
 import {Commit as RelationshipCommit} from '@/store/relationship';
-import {log} from '@/ts/util';
+import {log, getData} from '@/ts/util';
 import ColumnModel from '@/models/ColumnModel';
 import {FocusType} from '@/models/TableFocusModel';
 import {tableFocusStart} from './tableController';
@@ -129,5 +129,24 @@ export function columnMove(state: State, payload: { table: Table, column: Column
       });
     }
     state.columnDraggable.table = table;
+  }
+}
+
+export function columnActive(state: State, payload: {tableId: string, columnIds: string[]}) {
+  log.debug('columnController columnActive');
+  const {tableId, columnIds} = payload;
+  const table = getData(state.tables, tableId);
+  if (table) {
+    table.columns.forEach((column) => {
+      column.ui.active = columnIds.indexOf(column.id) !== -1;
+    });
+  }
+}
+
+export function columnActiveEnd(state: State, tableId: string) {
+  log.debug('columnController columnActiveEnd');
+  const table = getData(state.tables, tableId);
+  if (table) {
+    table.columns.forEach((column) => column.ui.active = false);
   }
 }

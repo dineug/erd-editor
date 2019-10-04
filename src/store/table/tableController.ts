@@ -30,7 +30,7 @@ export function tableMove(
     event: MouseEvent,
     store: StoreManagement,
   }) {
-  log.debug('tableController tableMove');
+  // log.debug('tableController tableMove');
   const {table, x, y, event, store} = payload;
   if (event.ctrlKey) {
     state.tables.forEach((value: Table) => {
@@ -161,5 +161,6 @@ export function tableEditStart(state: State, edit: Edit) {
 export function tableEditEnd(state: State, store: StoreManagement) {
   log.debug('tableController editEnd');
   state.edit = null;
+  relationshipSort(state.tables, store.relationshipStore.state.relationships);
   store.eventBus.$emit(Bus.ERD.change);
 }

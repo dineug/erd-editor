@@ -7,6 +7,7 @@ import RelationshipDrawModel from '@/models/RelationshipDrawModel';
 import RelationshipModel from '@/models/RelationshipModel';
 import {createPrimaryKey, relationshipSort, getColumn} from './relationshipHelper';
 import {Bus} from '@/ts/EventBus';
+import {columnActive} from '@/store/table/columnController';
 
 export function relationshipAdd(state: State, payload: { table: Table, store: StoreManagement }) {
   log.debug('relationshipController relationshipAdd');
@@ -139,4 +140,30 @@ export function relationshipRemove(state: State, payload: { table: Table, column
       state.relationships.splice(i, 1);
     }
   }
+}
+
+export function relationshipActive(
+  state: State,
+  payload: { relationship: Relationship, store: StoreManagement },
+) {
+  log.debug('relationshipController relationshipActive');
+  const {relationship, store} = payload;
+  store.tableStore.commit(TableCommit.columnActive, {
+    tableId: relationship.start.tableId,
+    columnIds: relationship.start.columnIds,
+  });
+  store.tableStore.commit(TableCommit.columnActive, {
+    tableId: relationship.end.tableId,
+    columnIds: relationship.end.columnIds,
+  });
+}
+
+export function relationshipActiveEnd(
+  state: State,
+  payload: { relationship: Relationship, store: StoreManagement },
+) {
+  log.debug('relationshipController relationshipActiveEnd');
+  const {relationship, store} = payload;
+  store.tableStore.commit(TableCommit.columnActiveEnd, relationship.start.tableId);
+  store.tableStore.commit(TableCommit.columnActiveEnd, relationship.end.tableId);
 }

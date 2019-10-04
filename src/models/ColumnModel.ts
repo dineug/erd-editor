@@ -38,6 +38,7 @@ export default class ColumnModel implements Column {
         notNull: column.option.notNull,
       };
       this.ui = {
+        active: column.ui.active,
         pk: column.ui.pk,
         fk: column.ui.fk,
         pfk: column.ui.pfk,
@@ -55,6 +56,7 @@ export default class ColumnModel implements Column {
         notNull: false,
       };
       this.ui = {
+        active: false,
         pk: false,
         fk: false,
         pfk: false,

@@ -356,6 +356,7 @@
           this.table.ui.widthComment = width;
           break;
       }
+      relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships);
       // eventBus.$emit(Bus.ERD.input);
     }
 

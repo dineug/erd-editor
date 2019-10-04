@@ -28,6 +28,8 @@ import {
   columnDraggableStart,
   columnDraggableEnd,
   columnMove,
+  columnActive,
+  columnActiveEnd,
 } from './table/columnController';
 import {TableFocus, FocusType} from '@/models/TableFocusModel';
 import {dataInit} from '@/data/table';
@@ -104,6 +106,7 @@ export interface ColumnOption {
 }
 
 export interface ColumnUI {
+  active: boolean;
   pk: boolean;
   fk: boolean;
   pfk: boolean;
@@ -141,6 +144,8 @@ export const enum Commit {
   columnDraggableStart = 'columnDraggableStart',
   columnDraggableEnd = 'columnDraggableEnd',
   columnMove = 'columnMove',
+  columnActive = 'columnActive',
+  columnActiveEnd = 'columnActiveEnd',
 }
 
 export function createStore() {
@@ -203,6 +208,8 @@ export function createStore() {
       columnDraggableStart,
       columnDraggableEnd,
       columnMove,
+      columnActive,
+      columnActiveEnd,
     },
     actions: {},
   });

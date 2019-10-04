@@ -1,6 +1,6 @@
 <template lang="pug">
   li.column(
-    :class="{selected, draggable}"
+    :class="{selected, draggable, active: column.ui.active}"
     :data-id="column.id"
     draggable="true"
     @mousedown="onMousedown"
@@ -113,6 +113,7 @@
   import {log, getTextWidth} from '@/ts/util';
   import StoreManagement from '@/store/StoreManagement';
   import {Bus} from '@/ts/EventBus';
+  import {relationshipSort} from '@/store/relationship/relationshipHelper';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   @Component({
@@ -150,7 +151,7 @@
 
     get selected(): boolean {
       let result = false;
-      if (this.columnFocus && this.columnFocus.selected) {
+      if (this.columnFocus && this.columnFocus.selected && !this.column.ui.active) {
         result = true;
       }
       return result;
@@ -286,6 +287,7 @@
           this.column.ui.widthComment = width;
           break;
       }
+      relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships);
       // this.store.eventBus.$emit(Bus.ERD.input);
     }
 
@@ -355,10 +357,18 @@
   .column {
 
     &.selected {
-      background-color: $color-column-select;
+      background-color: $color-column-selected;
 
       input {
-        background-color: $color-column-select;
+        background-color: $color-column-selected;
+      }
+    }
+
+    &.active {
+      background-color: $color-column-active;
+
+      input {
+        background-color: $color-column-active;
       }
     }
 

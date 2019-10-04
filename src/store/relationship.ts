@@ -9,6 +9,8 @@ import {
   relationshipIdentification,
   relationshipIdentificationAll,
   relationshipRemove,
+  relationshipActive,
+  relationshipActiveEnd,
 } from './relationship/relationshipController';
 import {Table} from './table';
 import {dataInit} from '@/data/relationship';
@@ -81,6 +83,8 @@ export const enum Commit {
   relationshipIdentification = 'relationshipIdentification',
   relationshipIdentificationAll = 'relationshipIdentificationAll',
   relationshipRemove = 'relationshipRemove',
+  relationshipActive = 'relationshipActive',
+  relationshipActiveEnd = 'relationshipActiveEnd',
 }
 
 export function createStore() {
@@ -114,6 +118,8 @@ export function createStore() {
       relationshipIdentification,
       relationshipIdentificationAll,
       relationshipRemove,
+      relationshipActive,
+      relationshipActiveEnd,
     },
     actions: {},
   });

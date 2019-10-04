@@ -27,7 +27,7 @@ export function memoMove(
     event: MouseEvent,
     store: StoreManagement,
   }) {
-  log.debug('memoController memoMove');
+  // log.debug('memoController memoMove');
   const {memo, x, y, event, store} = payload;
   if (event.ctrlKey) {
     state.memos.forEach((value: Memo) => {
