@@ -6,6 +6,7 @@ function dataInit(): State {
     tableFocus: null,
     edit: null,
     copyColumns: [],
+    columnDraggable: null,
   };
 }
 

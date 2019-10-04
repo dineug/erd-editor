@@ -1,5 +1,12 @@
 <template lang="pug">
-  .column(:class="{select: selected}")
+  li.column(
+    :class="{selected, draggable}"
+    :data-id="column.id"
+    draggable="true"
+    @mousedown="onMousedown"
+    @dragstart="onDragstart"
+    @dragend="onDragend"
+  )
     .key
       font-awesome-icon.column-key(
         v-if="column.ui.pk | column.ui.fk | column.ui.pfk"
@@ -98,7 +105,7 @@
 
 <script lang="ts">
   import {SIZE_COLUMN_OPTION_NN, SIZE_MIN_WIDTH} from '@/ts/layout';
-  import {Column as ColumnModel, Table, ColumnWidth} from '@/store/table';
+  import {Column as ColumnModel, Table, ColumnWidth, ColumnTable} from '@/store/table';
   import {ColumnFocus} from '@/models/ColumnFocusModel';
   import {FocusType} from '@/models/TableFocusModel';
   import {Show} from '@/store/canvas';
@@ -131,6 +138,33 @@
 
     get show(): Show {
       return this.store.canvasStore.state.show;
+    }
+
+    get edit(): Edit | null {
+      return this.store.tableStore.state.edit;
+    }
+
+    get columnWidth(): ColumnWidth {
+      return this.table.maxWidthColumn();
+    }
+
+    get selected(): boolean {
+      let result = false;
+      if (this.columnFocus && this.columnFocus.selected) {
+        result = true;
+      }
+      return result;
+    }
+
+    get draggable(): boolean {
+      const columnDraggable = this.store.tableStore.state.columnDraggable;
+      let result = false;
+      if (columnDraggable
+        && columnDraggable.table.id === this.table.id
+        && columnDraggable.column.id === this.column.id) {
+        result = true;
+      }
+      return result;
     }
 
     get focusName(): boolean {
@@ -200,22 +234,6 @@
     get placeholderComment(): boolean {
       let result = false;
       if (this.column.comment === '') {
-        result = true;
-      }
-      return result;
-    }
-
-    get edit(): Edit | null {
-      return this.store.tableStore.state.edit;
-    }
-
-    get columnWidth(): ColumnWidth {
-      return this.table.maxWidthColumn();
-    }
-
-    get selected(): boolean {
-      let result = false;
-      if (this.columnFocus && this.columnFocus.selected) {
         result = true;
       }
       return result;
@@ -299,6 +317,28 @@
       }
     }
 
+    private onMousedown(event: MouseEvent) {
+      log.debug('Column onMousedown');
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+      }
+    }
+
+    private onDragstart(event: DragEvent) {
+      log.debug('Column onDragstart');
+      this.$emit('dragstart', event, this.column);
+      // firefox
+      if (event.dataTransfer) {
+        event.dataTransfer.setData('text/plain', this.column.id);
+      }
+    }
+
+    private onDragend(event: DragEvent) {
+      log.debug('Column onDragend');
+      this.$emit('dragend', event);
+    }
+
     // ==================== Event Handler END ===================
 
   }
@@ -307,12 +347,16 @@
 <style scoped lang="scss">
   .column {
 
-    &.select {
+    &.selected {
       background-color: $color-column-select;
 
       input {
         background-color: $color-column-select;
       }
+    }
+
+    &.draggable {
+      opacity: 0.5;
     }
 
     div {
@@ -372,5 +416,11 @@
       margin-right: $size-margin-right;
       border-bottom: solid $color-edit $size-border-bottom;
     }
+  }
+
+  ul, ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
   }
 </style>

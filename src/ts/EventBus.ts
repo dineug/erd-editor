@@ -53,6 +53,8 @@ class EventBus {
 
 enum Table {
   moveAnimationEnd = 'Table.moveAnimationEnd',
+  draggableStart = 'Table.draggableStart',
+  draggableEnd = 'Table.draggableEnd',
 }
 
 enum Memo {

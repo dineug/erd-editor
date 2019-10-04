@@ -5,6 +5,7 @@ import {log, isData, getData} from '@/ts/util';
 import Key from '@/models/Key';
 import StoreManagement from '@/store/StoreManagement';
 import {Bus} from '@/ts/EventBus';
+import {getSelect} from '@/store/table/tableHelper';
 import {
   focusAllEnd,
   selectedMove,
@@ -13,7 +14,6 @@ import {
   moveArrowUp,
   moveArrowDown,
 } from './TableFocusHelper';
-import {getSelect} from '@/store/table/tableHelper';
 
 export const enum FocusType {
   tableName = 'tableName',
@@ -42,10 +42,10 @@ export default class TableFocusModel implements TableFocus {
   public focusName: boolean = true;
   public focusComment: boolean = false;
   public focusColumns: ColumnFocus[] = [];
-  private table: Table;
+  private readonly table: Table;
+  private readonly store: StoreManagement;
   private currentFocusTable: boolean = true;
   private currentColumn: Column | null = null;
-  private readonly store: StoreManagement;
 
   constructor(store: StoreManagement, table: Table, tableFocus?: any) {
     this.store = store;

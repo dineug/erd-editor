@@ -49,7 +49,11 @@
           @mousedown="onFocus($event, 'tableComment')"
           @dblclick="onDblclick($event, 'tableComment')"
         ) {{placeholder(table.comment, 'comment')}}
-    .table-body
+    transition-group.table-body(
+      :name="transitionName"
+      tag="ul"
+      ref="group"
+    )
       Column(
         v-for="(column, index) in table.columns"
         :key="column.id"
@@ -57,13 +61,14 @@
         :table="table"
         :column="column"
         :columnFocus="columnFocus(index)"
-        draggable="true"
+        @dragstart="onDragstart"
+        @dragend="onDragend"
       )
 </template>
 
 <script lang="ts">
   import {SIZE_TABLE_PADDING, SIZE_MIN_WIDTH} from '@/ts/layout';
-  import {Table as TableModel, Edit} from '@/store/table';
+  import {Table as TableModel, Edit, ColumnTable, Column as ColumnModel} from '@/store/table';
   import {Commit} from '@/store/table';
   import {Show} from '@/store/canvas';
   import {FocusType} from '@/models/TableFocusModel';
@@ -77,7 +82,8 @@
   import Column from './Table/Column.vue';
   import CircleButton from './CircleButton.vue';
 
-  import {fromEvent, Observable, Subscription} from 'rxjs';
+  import {fromEvent, Observable, Subscription, Subject} from 'rxjs';
+  import {throttleTime, debounceTime} from 'rxjs/operators';
 
   const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 
@@ -109,8 +115,13 @@
     private subMousemove: Subscription | null = null;
     private subKeydown: Subscription | null = null;
 
+    private draggableListener: Subscription[] = [];
+    private draggable$: Subject<DragEvent> = new Subject();
+    private subDraggable: Subscription | null = null;
+
     private moveXAnimation: AnimationFrame<{ x: number }> | null = null;
     private moveYAnimation: AnimationFrame<{ y: number }> | null = null;
+    private transitionName: string = '';
 
     get tableStyle(): string {
       return `
@@ -365,24 +376,89 @@
       });
     }
 
+    private onDragstart(event: DragEvent, column: ColumnModel) {
+      log.debug('Table onDragstart');
+      const columnDraggable: ColumnTable = {
+        table: this.table,
+        column,
+      };
+      this.store.tableStore.commit(Commit.columnDraggableStart, columnDraggable);
+      this.store.tableStore.commit(Commit.tableEditEnd, this.store);
+      this.store.eventBus.$emit(Bus.Table.draggableStart);
+    }
+
+    private onDragend(event: DragEvent) {
+      log.debug('Table onDragend');
+      this.store.tableStore.commit(Commit.columnDraggableEnd);
+      this.store.eventBus.$emit(Bus.Table.draggableEnd);
+    }
+
+    private onDraggableStart() {
+      log.debug('Table onDraggableStart');
+      this.transitionName = 'column';
+      const vm = this.$refs.group as Vue;
+      const ul = vm.$el as HTMLElement;
+      ul.childNodes.forEach((column: ChildNode) => {
+        this.draggableListener.push(
+          fromEvent<DragEvent>(column as HTMLElement, 'dragover').pipe(
+            throttleTime(300),
+          ).subscribe(this.onDragoverGroup),
+        );
+      });
+    }
+
+    private onDraggableEnd() {
+      log.debug('Table onDraggableEnd');
+      this.transitionName = '';
+      this.draggableListener.forEach((draggable: Subscription) => draggable.unsubscribe());
+      this.draggableListener = [];
+    }
+
+    private onDragoverGroup(event: DragEvent) {
+      log.debug('Table onDragoverGroup');
+      this.draggable$.next(event);
+    }
+
+    private onDragover(event: DragEvent) {
+      log.debug('Table onDragover');
+      log.debug(event.target);
+      // const li = findParentLiByElement(event.target as HTMLElement);
+      // if (li && li.dataset.id && this.tabDraggable && this.tabDraggable.id !== li.dataset.id) {
+      //   const tab = getData(this.view.tabs, li.dataset.id);
+      //   if (tab) {
+      //     viewStore.commit(Commit.tabMove, {view: this.view, tab});
+      //   }
+      // }
+    }
+
     // ==================== Event Handler END ===================
 
     // ==================== Life Cycle ====================
     private created() {
       this.store.eventBus.$on(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
+      this.store.eventBus.$on(Bus.Table.draggableStart, this.onDraggableStart);
+      this.store.eventBus.$on(Bus.Table.draggableEnd, this.onDraggableEnd);
     }
 
     private mounted() {
       if (this.tableFocus) {
         this.subKeydown = this.keydown$.subscribe(this.onKeydown);
       }
+      this.subDraggable = this.draggable$.pipe(
+        debounceTime(50),
+      ).subscribe(this.onDragover);
     }
 
     private destroyed() {
       this.store.eventBus.$off(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
+      this.store.eventBus.$off(Bus.Table.draggableStart, this.onDraggableStart);
+      this.store.eventBus.$off(Bus.Table.draggableEnd, this.onDraggableEnd);
       if (this.subKeydown) {
         this.subKeydown.unsubscribe();
         this.subKeydown = null;
+      }
+      if (this.subDraggable) {
+        this.subDraggable.unsubscribe();
       }
     }
 
@@ -444,5 +520,16 @@
       border-bottom: solid $color-edit $size-border-bottom;
       margin-right: $size-margin-right;
     }
+  }
+
+  /* animation */
+  .column-move {
+    transition: transform 0.3s;
+  }
+
+  ul, ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
   }
 </style>

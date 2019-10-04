@@ -65,6 +65,13 @@ export default class StoreManagement {
       memo: this.memoStore.state,
       relationship: this.relationshipStore.state,
     };
-    return JSON.stringify(data, (key, value) => key === 'store' ? undefined : value);
+    return JSON.stringify(data, (key, value) => {
+      if (key === 'store') {
+        return undefined;
+      } else if (key === 'columnDraggable') {
+        return null;
+      }
+      return value;
+    });
   }
 }

@@ -25,6 +25,8 @@ import {
   columnPrimaryKey,
   columnCopy,
   columnPaste,
+  columnDraggableStart,
+  columnDraggableEnd,
 } from './table/columnController';
 import {TableFocus, FocusType} from '@/models/TableFocusModel';
 import {dataInit} from '@/data/table';
@@ -40,6 +42,12 @@ export interface State {
   tableFocus: TableFocus | null;
   edit: Edit | null;
   copyColumns: Column[];
+  columnDraggable: ColumnTable | null;
+}
+
+export interface ColumnTable {
+  table: Table;
+  column: Column;
 }
 
 export interface Edit {
@@ -129,6 +137,8 @@ export const enum Commit {
   columnPrimaryKey = 'columnPrimaryKey',
   columnCopy = 'columnCopy',
   columnPaste = 'columnPaste',
+  columnDraggableStart = 'columnDraggableStart',
+  columnDraggableEnd = 'columnDraggableEnd',
 }
 
 export function createStore() {
@@ -138,6 +148,7 @@ export function createStore() {
       tableFocus: null,
       edit: null,
       copyColumns: [],
+      columnDraggable: null,
     },
     getters: {},
     mutations: {
@@ -152,6 +163,7 @@ export function createStore() {
         const {load, store} = payload;
         state.edit = load.edit;
         state.copyColumns = load.copyColumns;
+        state.columnDraggable = null;
         state.tables = [];
         load.tables.forEach((table) => state.tables.push(new TableModel(store, table)));
         if (load.tableFocus) {
@@ -186,6 +198,8 @@ export function createStore() {
       columnPrimaryKey,
       columnCopy,
       columnPaste,
+      columnDraggableStart,
+      columnDraggableEnd,
     },
     actions: {},
   });

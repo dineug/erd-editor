@@ -1,4 +1,4 @@
-import {State, Table, Column} from '../table';
+import {State, Table, Column, ColumnTable} from '../table';
 import {Commit as RelationshipCommit} from '@/store/relationship';
 import {log} from '@/ts/util';
 import ColumnModel from '@/models/ColumnModel';
@@ -95,4 +95,14 @@ export function columnPaste(state: State, store: StoreManagement) {
       }
     });
   }
+}
+
+export function columnDraggableStart(state: State, columnDraggable: ColumnTable) {
+  log.debug('columnController columnDraggableStart');
+  state.columnDraggable = columnDraggable;
+}
+
+export function columnDraggableEnd(state: State) {
+  log.debug('columnController columnDraggableEnd');
+  state.columnDraggable = null;
 }
