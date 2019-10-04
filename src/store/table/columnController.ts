@@ -41,7 +41,7 @@ export function columnRemove(state: State, payload: { table: Table, column: Colu
   const {table, column, store} = payload;
   const index = table.columns.indexOf(column);
   table.columns.splice(index, 1);
-  store.relationshipStore.commit(RelationshipCommit.relationshipRemove, {
+  store.relationshipStore.commit(RelationshipCommit.relationshipRemoveColumn, {
     table,
     column,
     store,
@@ -122,7 +122,7 @@ export function columnMove(state: State, payload: { table: Table, column: Column
       const targetIndex = table.columns.indexOf(column);
       current.table.columns.splice(currentIndex, 1);
       table.columns.splice(targetIndex, 0, current.column);
-      store.relationshipStore.commit(RelationshipCommit.relationshipRemove, {
+      store.relationshipStore.commit(RelationshipCommit.relationshipRemoveColumn, {
         table: current.table,
         column: current.column,
         store,

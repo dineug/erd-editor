@@ -7,7 +7,6 @@ import RelationshipDrawModel from '@/models/RelationshipDrawModel';
 import RelationshipModel from '@/models/RelationshipModel';
 import {createPrimaryKey, relationshipSort, getColumn} from './relationshipHelper';
 import {Bus} from '@/ts/EventBus';
-import {columnActive} from '@/store/table/columnController';
 
 export function relationshipAdd(state: State, payload: { table: Table, store: StoreManagement }) {
   log.debug('relationshipController relationshipAdd');
@@ -99,8 +98,40 @@ export function relationshipIdentificationAll(
   });
 }
 
-export function relationshipRemove(state: State, payload: { table: Table, column: Column, store: StoreManagement }) {
-  log.debug('relationshipController relationshipRemove');
+export function relationshipRemoveTable(
+  state: State,
+  payload: { table: Table, store: StoreManagement },
+) {
+  log.debug('relationshipController relationshipRemoveTable');
+  const {table, store} = payload;
+  for (let i = 0; i < state.relationships.length; i++) {
+    const relationship = state.relationships[i];
+    if (relationship.start.tableId === table.id
+      || relationship.end.tableId === table.id) {
+      if (relationship.start.tableId === table.id) {
+        relationship.end.columnIds.forEach((columnId) => {
+          const column = getColumn(store.tableStore.state.tables, relationship.end.tableId, columnId);
+          if (column) {
+            if (column.ui.fk) {
+              column.ui.fk = false;
+            } else if (column.ui.pfk) {
+              column.ui.pfk = false;
+              column.ui.pk = true;
+            }
+          }
+        });
+      }
+      state.relationships.splice(i, 1);
+      i--;
+    }
+  }
+}
+
+export function relationshipRemoveColumn(
+  state: State,
+  payload: { table: Table, column: Column, store: StoreManagement },
+) {
+  log.debug('relationshipController relationshipRemoveColumn');
   const {table, column, store} = payload;
 
   if (column.ui.fk) {

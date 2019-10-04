@@ -57,6 +57,10 @@ export function tableRemove(state: State, payload: { table: Table, store: StoreM
   const {table, store} = payload;
   const index = state.tables.indexOf(table);
   state.tables.splice(index, 1);
+  store.relationshipStore.commit(RelationshipCommit.relationshipRemoveTable, {
+    table,
+    store,
+  });
   store.eventBus.$emit(Bus.ERD.change);
 }
 
@@ -64,6 +68,10 @@ export function tableRemoveAll(state: State, store: StoreManagement) {
   log.debug('tableController tableRemoveAll');
   for (let i = 0; i < state.tables.length; i++) {
     if (state.tables[i].ui.active) {
+      store.relationshipStore.commit(RelationshipCommit.relationshipRemoveTable, {
+        table: state.tables[i],
+        store,
+      });
       state.tables.splice(i, 1);
       i--;
     }
