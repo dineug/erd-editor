@@ -61,8 +61,6 @@
         :table="table"
         :column="column"
         :columnFocus="columnFocus(index)"
-        @dragstart="onDragstart"
-        @dragend="onDragend"
       )
 </template>
 
@@ -75,7 +73,7 @@
   import {ColumnFocus} from '@/models/ColumnFocusModel';
   import AnimationFrame from '@/ts/AnimationFrame';
   import {Bus} from '@/ts/EventBus';
-  import {log, getTextWidth, autoName} from '@/ts/util';
+  import {log, getTextWidth, autoName, findParentLiByElement, getData} from '@/ts/util';
   import StoreManagement from '@/store/StoreManagement';
   import {relationshipSort} from '@/store/relationship/relationshipHelper';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
@@ -185,6 +183,10 @@
 
     get edit(): Edit | null {
       return this.store.tableStore.state.edit;
+    }
+
+    get columnDraggable(): ColumnTable | null {
+      return this.store.tableStore.state.columnDraggable;
     }
 
     @Watch('tableFocus')
@@ -361,7 +363,11 @@
       log.debug('Table onEditBlur');
       const reName = autoName(this.store.tableStore.state.tables, this.table.id, this.table.name);
       if (this.table.name !== reName) {
-        this.table.ui.widthName = getTextWidth(reName);
+        let width = getTextWidth(reName);
+        if (SIZE_MIN_WIDTH > width) {
+          width = SIZE_MIN_WIDTH;
+        }
+        this.table.ui.widthName = width;
         this.table.name = reName;
       }
       this.store.tableStore.commit(Commit.tableEditEnd, this.store);
@@ -374,23 +380,6 @@
         id: this.table.id,
         focusType,
       });
-    }
-
-    private onDragstart(event: DragEvent, column: ColumnModel) {
-      log.debug('Table onDragstart');
-      const columnDraggable: ColumnTable = {
-        table: this.table,
-        column,
-      };
-      this.store.tableStore.commit(Commit.columnDraggableStart, columnDraggable);
-      this.store.tableStore.commit(Commit.tableEditEnd, this.store);
-      this.store.eventBus.$emit(Bus.Table.draggableStart);
-    }
-
-    private onDragend(event: DragEvent) {
-      log.debug('Table onDragend');
-      this.store.tableStore.commit(Commit.columnDraggableEnd);
-      this.store.eventBus.$emit(Bus.Table.draggableEnd);
     }
 
     private onDraggableStart() {
@@ -421,14 +410,13 @@
 
     private onDragover(event: DragEvent) {
       log.debug('Table onDragover');
-      log.debug(event.target);
-      // const li = findParentLiByElement(event.target as HTMLElement);
-      // if (li && li.dataset.id && this.tabDraggable && this.tabDraggable.id !== li.dataset.id) {
-      //   const tab = getData(this.view.tabs, li.dataset.id);
-      //   if (tab) {
-      //     viewStore.commit(Commit.tabMove, {view: this.view, tab});
-      //   }
-      // }
+      const li = findParentLiByElement(event.target as HTMLElement);
+      if (li && li.dataset.id && this.columnDraggable && this.columnDraggable.column.id !== li.dataset.id) {
+        const column = getData(this.table.columns, li.dataset.id);
+        if (column) {
+          this.store.tableStore.commit(Commit.columnMove, {table: this.table, column});
+        }
+      }
     }
 
     // ==================== Event Handler END ===================

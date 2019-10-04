@@ -9685,22 +9685,22 @@ vue@^2.6.10:
   resolved "https://registry.yarnpkg.com/vue/-/vue-2.6.10.tgz#a72b1a42a4d82a721ea438d1b6bf55e66195c637"
   integrity sha512-ImThpeNU9HbdZL3utgMCq0oiMzAkt1mcgy3/E6zWC/G6AaQoeuFdsl9nDhTDU3X1R6FK7nsIUuRACVcjI+A2GQ==
 
-vuerd-core@^0.2.13:
-  version "0.2.13"
-  resolved "https://registry.yarnpkg.com/vuerd-core/-/vuerd-core-0.2.13.tgz#007022c0ed77bbd540c4eefe15969d530c241448"
-  integrity sha512-ejvBNpUkmTa6i2OorG3Gz4yHsy//Jh8sMaaFy6kXaxpZx7ob6GRnXBb5tLdNoZ3mIWkD5RqH5+NZ6Gw7rUMSMQ==
+vuerd-core@^0.2.14:
+  version "0.2.14"
+  resolved "https://registry.yarnpkg.com/vuerd-core/-/vuerd-core-0.2.14.tgz#d78e6f0297405768a0275ef0ecf277582404443f"
+  integrity sha512-NYcPxXeu+Oeacfuy5iT10+nfadwSqEGUsY9m9VVl6kmWMES+TVsSqG2tNU6duAvbUVCA1MbjIzSAXmgn2/b16A==
   dependencies:
     "@tweenjs/tween.js" "^18.1.2"
     core-js "^2.6.5"
     rxjs "^6.5.2"
-    uuid "^3.3.2"
+    uuid "^3.3.3"
     vscode-icons-js "^9.3.0"
     vue "^2.6.10"
     vue-class-component "^7.0.2"
     vue-property-decorator "^8.1.0"
     vuex "^3.1.1"
 
-vuex@^3.0.1, vuex@^3.1.1:
+vuex@^3.1.1:
   version "3.1.1"
   resolved "https://registry.yarnpkg.com/vuex/-/vuex-3.1.1.tgz#0c264bfe30cdbccf96ab9db3177d211828a5910e"
   integrity sha512-ER5moSbLZuNSMBFnEBVGhQ1uCBNJslH9W/Dw2W7GZN23UQA69uapP5GTT9Vm8Trc0PzBSVt6LzF3hGjmv41xcg==

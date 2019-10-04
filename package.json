@@ -23,8 +23,8 @@
     "vue": "^2.6.10",
     "vue-class-component": "^7.0.2",
     "vue-property-decorator": "^8.1.0",
-    "vuerd-core": "^0.2.13",
-    "vuex": "^3.0.1"
+    "vuerd-core": "^0.2.14",
+    "vuex": "^3.1.1"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.25",

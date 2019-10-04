@@ -7,7 +7,7 @@ import {tableFocusStart} from './tableController';
 import StoreManagement from '@/store/StoreManagement';
 import {relationshipSort} from '@/store/relationship/relationshipHelper';
 
-export function columnAdd(state: State, payload: {table: Table, store: StoreManagement}) {
+export function columnAdd(state: State, payload: { table: Table, store: StoreManagement }) {
   log.debug('columnController columnAdd');
   const {table, store} = payload;
   table.columns.push(new ColumnModel(store));
@@ -105,4 +105,24 @@ export function columnDraggableStart(state: State, columnDraggable: ColumnTable)
 export function columnDraggableEnd(state: State) {
   log.debug('columnController columnDraggableEnd');
   state.columnDraggable = null;
+}
+
+export function columnMove(state: State, payload: { table: Table, column: Column }) {
+  log.debug('columnController columnMove');
+  if (state.columnDraggable) {
+    const {table, column} = payload;
+    const current = state.columnDraggable;
+    if (table.id === current.table.id && column.id !== current.column.id) {
+      const currentIndex = table.columns.indexOf(current.column);
+      const targetIndex = table.columns.indexOf(column);
+      table.columns.splice(currentIndex, 1);
+      table.columns.splice(targetIndex, 0, current.column);
+    } else if (table.id !== current.table.id && column.id !== current.column.id) {
+      const currentIndex = current.table.columns.indexOf(current.column);
+      const targetIndex = table.columns.indexOf(column);
+      current.table.columns.splice(currentIndex, 1);
+      table.columns.splice(targetIndex, 0, current.column);
+    }
+    state.columnDraggable.table = table;
+  }
 }

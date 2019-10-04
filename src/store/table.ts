@@ -27,6 +27,7 @@ import {
   columnPaste,
   columnDraggableStart,
   columnDraggableEnd,
+  columnMove,
 } from './table/columnController';
 import {TableFocus, FocusType} from '@/models/TableFocusModel';
 import {dataInit} from '@/data/table';
@@ -139,6 +140,7 @@ export const enum Commit {
   columnPaste = 'columnPaste',
   columnDraggableStart = 'columnDraggableStart',
   columnDraggableEnd = 'columnDraggableEnd',
+  columnMove = 'columnMove',
 }
 
 export function createStore() {
@@ -200,6 +202,7 @@ export function createStore() {
       columnPaste,
       columnDraggableStart,
       columnDraggableEnd,
+      columnMove,
     },
     actions: {},
   });

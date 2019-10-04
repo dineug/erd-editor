@@ -115,3 +115,12 @@ export function autoName<T extends Name>(list: T[], id: string, name: string, nu
   }
   return autoName(list, id, name.replace(/[0-9]/g, '') + num, num + 1);
 }
+
+export function findParentLiByElement(el: HTMLElement | null): HTMLElement | null {
+  if (el === null) {
+    return null;
+  } else if (el.localName === 'li') {
+    return el;
+  }
+  return findParentLiByElement(el.parentElement);
+}

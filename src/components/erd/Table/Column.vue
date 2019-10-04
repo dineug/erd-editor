@@ -105,11 +105,11 @@
 
 <script lang="ts">
   import {SIZE_COLUMN_OPTION_NN, SIZE_MIN_WIDTH} from '@/ts/layout';
-  import {Column as ColumnModel, Table, ColumnWidth, ColumnTable} from '@/store/table';
+  import {Column as ColumnModel, Table, ColumnWidth} from '@/store/table';
   import {ColumnFocus} from '@/models/ColumnFocusModel';
   import {FocusType} from '@/models/TableFocusModel';
   import {Show} from '@/store/canvas';
-  import {Commit as TableCommit, Edit} from '@/store/table';
+  import {Commit as TableCommit, Edit, ColumnTable} from '@/store/table';
   import {log, getTextWidth} from '@/ts/util';
   import StoreManagement from '@/store/StoreManagement';
   import {Bus} from '@/ts/EventBus';
@@ -327,7 +327,13 @@
 
     private onDragstart(event: DragEvent) {
       log.debug('Column onDragstart');
-      this.$emit('dragstart', event, this.column);
+      const columnDraggable: ColumnTable = {
+        table: this.table,
+        column: this.column,
+      };
+      this.store.tableStore.commit(TableCommit.columnDraggableStart, columnDraggable);
+      this.store.tableStore.commit(TableCommit.tableEditEnd, this.store);
+      this.store.eventBus.$emit(Bus.Table.draggableStart);
       // firefox
       if (event.dataTransfer) {
         event.dataTransfer.setData('text/plain', this.column.id);
@@ -336,7 +342,8 @@
 
     private onDragend(event: DragEvent) {
       log.debug('Column onDragend');
-      this.$emit('dragend', event);
+      this.store.tableStore.commit(TableCommit.columnDraggableEnd);
+      this.store.eventBus.$emit(Bus.Table.draggableEnd);
     }
 
     // ==================== Event Handler END ===================
