@@ -414,7 +414,11 @@
       if (li && li.dataset.id && this.columnDraggable && this.columnDraggable.column.id !== li.dataset.id) {
         const column = getData(this.table.columns, li.dataset.id);
         if (column) {
-          this.store.tableStore.commit(Commit.columnMove, {table: this.table, column});
+          this.store.tableStore.commit(Commit.columnMove, {
+            table: this.table,
+            column,
+            store: this.store,
+          });
         }
       }
     }

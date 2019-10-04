@@ -102,6 +102,10 @@ export function relationshipRemove(state: State, payload: { table: Table, column
   log.debug('relationshipController relationshipRemove');
   const {table, column, store} = payload;
 
+  if (column.ui.fk) {
+    column.ui.fk = false;
+  }
+
   state.relationships.forEach((relationship) => {
     if (relationship.start.tableId === table.id || relationship.end.tableId === table.id) {
       let index = -1;

@@ -107,10 +107,10 @@ export function columnDraggableEnd(state: State) {
   state.columnDraggable = null;
 }
 
-export function columnMove(state: State, payload: { table: Table, column: Column }) {
+export function columnMove(state: State, payload: { table: Table, column: Column, store: StoreManagement }) {
   log.debug('columnController columnMove');
   if (state.columnDraggable) {
-    const {table, column} = payload;
+    const {table, column, store} = payload;
     const current = state.columnDraggable;
     if (table.id === current.table.id && column.id !== current.column.id) {
       const currentIndex = table.columns.indexOf(current.column);
@@ -122,6 +122,11 @@ export function columnMove(state: State, payload: { table: Table, column: Column
       const targetIndex = table.columns.indexOf(column);
       current.table.columns.splice(currentIndex, 1);
       table.columns.splice(targetIndex, 0, current.column);
+      store.relationshipStore.commit(RelationshipCommit.relationshipRemove, {
+        table: current.table,
+        column: current.column,
+        store,
+      });
     }
     state.columnDraggable.table = table;
   }
