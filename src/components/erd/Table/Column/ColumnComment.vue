@@ -1,14 +1,14 @@
 <template lang="pug">
-  input.column-data-type(
+  input.column-comment(
     v-if="edit"
     v-focus
-    v-model="column.dataType"
+    v-model="column.comment"
     :style="`width: ${width}px;`"
     spellcheck="false"
     @input="onInput"
     @blur="onBlur"
   )
-  .column-data-type(
+  .column-comment(
     v-else
     :class="{focus, placeholder}"
     :style="`width: ${width}px;`"
@@ -32,7 +32,7 @@
       },
     },
   })
-  export default class ColumnDataType extends Vue {
+  export default class ColumnComment extends Vue {
     @Prop({type: Object, default: () => ({})})
     private column!: Column;
     @Prop({type: Object, default: null})
@@ -44,7 +44,7 @@
 
     get focus(): boolean {
       let result = false;
-      if (this.columnFocus && this.columnFocus.focusDataType) {
+      if (this.columnFocus && this.columnFocus.focusComment) {
         result = true;
       }
       return result;
@@ -52,16 +52,16 @@
 
     get placeholder(): boolean {
       let result = false;
-      if (this.column.dataType === '') {
+      if (this.column.comment.trim() === '') {
         result = true;
       }
       return result;
     }
 
     get value(): string {
-      let value = 'dataType';
-      if (this.column.dataType !== '') {
-        value = this.column.dataType;
+      let value = 'comment';
+      if (this.column.comment.trim() !== '') {
+        value = this.column.comment;
       }
       return value;
     }
@@ -85,7 +85,7 @@
 </script>
 
 <style scoped lang="scss">
-  .column-data-type {
+  .column-comment {
 
   }
 </style>

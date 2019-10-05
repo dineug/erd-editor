@@ -1,14 +1,14 @@
 <template lang="pug">
-  input.column-name(
+  input.column-data-type(
     v-if="edit"
     v-focus
-    v-model="column.name"
+    v-model="column.dataType"
     :style="`width: ${width}px;`"
     spellcheck="false"
     @input="onInput"
     @blur="onBlur"
   )
-  .column-name(
+  .column-data-type(
     v-else
     :class="{focus, placeholder}"
     :style="`width: ${width}px;`"
@@ -32,7 +32,7 @@
       },
     },
   })
-  export default class ColumnName extends Vue {
+  export default class ColumnDataType extends Vue {
     @Prop({type: Object, default: () => ({})})
     private column!: Column;
     @Prop({type: Object, default: null})
@@ -44,7 +44,7 @@
 
     get focus(): boolean {
       let result = false;
-      if (this.columnFocus && this.columnFocus.focusName) {
+      if (this.columnFocus && this.columnFocus.focusDataType) {
         result = true;
       }
       return result;
@@ -52,16 +52,16 @@
 
     get placeholder(): boolean {
       let result = false;
-      if (this.column.name === '') {
+      if (this.column.dataType.trim() === '') {
         result = true;
       }
       return result;
     }
 
     get value(): string {
-      let value = 'column';
-      if (this.column.name !== '') {
-        value = this.column.name;
+      let value = 'dataType';
+      if (this.column.dataType.trim() !== '') {
+        value = this.column.dataType;
       }
       return value;
     }
@@ -85,7 +85,7 @@
 </script>
 
 <style scoped lang="scss">
-  .column-name {
+  .column-data-type {
 
   }
 </style>

@@ -17,38 +17,27 @@
           @click="onColumnAdd"
         )
       .table-header-body
-        input(
-          v-if="edit && edit.id === table.id && edit.focusType === 'tableName'"
-          v-focus
-          v-model="table.name"
-          :style="`width: ${table.ui.widthName}px;`"
-          spellcheck="false"
-          @input="onEditInput($event, 'tableName')"
+        TableName(
+          :edit="edit && edit.id === table.id && edit.focusType === 'tableName'"
+          :table="table"
+          :tableFocus="store.tableStore.state.tableFocus"
+          :width="table.ui.widthName"
           @blur="onEditBlur"
-        )
-        span.table-name(
-          v-else
-          :class="{focus: focusName, placeholder: placeholderName}"
-          :style="`width: ${table.ui.widthName}px;`"
+          @input="onEditInput($event, 'tableName')"
           @mousedown="onFocus($event, 'tableName')"
           @dblclick="onDblclick($event, 'tableName')"
-        ) {{placeholder(table.name, 'table')}}
-        input(
-          v-if="show.tableComment && edit && edit.id === table.id && edit.focusType === 'tableComment'"
-          v-focus
-          v-model="table.comment"
-          :style="`width: ${table.ui.widthComment}px;`"
-          spellcheck="false"
-          @input="onEditInput($event, 'tableComment')"
-          @blur="onEditBlur"
         )
-        span.table-comment(
-          v-else-if="show.tableComment"
-          :class="{focus: focusComment, placeholder: placeholderComment}"
-          :style="`width: ${table.ui.widthComment}px;`"
+        TableComment(
+          v-if="show.tableComment"
+          :edit="edit && edit.id === table.id && edit.focusType === 'tableComment'"
+          :table="table"
+          :tableFocus="store.tableStore.state.tableFocus"
+          :width="table.ui.widthComment"
+          @blur="onEditBlur"
+          @input="onEditInput($event, 'tableComment')"
           @mousedown="onFocus($event, 'tableComment')"
           @dblclick="onDblclick($event, 'tableComment')"
-        ) {{placeholder(table.comment, 'comment')}}
+        )
     transition-group.table-body(
       :name="transitionName"
       tag="ul"
@@ -66,7 +55,7 @@
 
 <script lang="ts">
   import {SIZE_TABLE_PADDING, SIZE_MIN_WIDTH} from '@/ts/layout';
-  import {Table as TableModel, Edit, ColumnTable, Column as ColumnModel} from '@/store/table';
+  import {Table as TableModel, Edit, ColumnTable} from '@/store/table';
   import {Commit} from '@/store/table';
   import {Show} from '@/store/canvas';
   import {FocusType} from '@/models/TableFocusModel';
@@ -79,6 +68,8 @@
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
   import Column from './Table/Column.vue';
   import CircleButton from './CircleButton.vue';
+  import TableName from './Table/TableName.vue';
+  import TableComment from './Table/TableComment.vue';
 
   import {fromEvent, Observable, Subscription, Subject} from 'rxjs';
   import {throttleTime, debounceTime} from 'rxjs/operators';
@@ -89,13 +80,8 @@
     components: {
       Column,
       CircleButton,
-    },
-    directives: {
-      focus: {
-        inserted(el: HTMLElement) {
-          el.focus();
-        },
-      },
+      TableName,
+      TableComment,
     },
   })
   export default class Table extends Vue {
@@ -141,42 +127,6 @@
       return result;
     }
 
-    get focusName(): boolean {
-      let result = false;
-      if (this.store.tableStore.state.tableFocus
-        && this.store.tableStore.state.tableFocus.id === this.table.id
-        && this.store.tableStore.state.tableFocus.focusName) {
-        result = true;
-      }
-      return result;
-    }
-
-    get focusComment(): boolean {
-      let result = false;
-      if (this.store.tableStore.state.tableFocus
-        && this.store.tableStore.state.tableFocus.id === this.table.id
-        && this.store.tableStore.state.tableFocus.focusComment) {
-        result = true;
-      }
-      return result;
-    }
-
-    get placeholderName(): boolean {
-      let result = false;
-      if (this.table.name === '') {
-        result = true;
-      }
-      return result;
-    }
-
-    get placeholderComment(): boolean {
-      let result = false;
-      if (this.table.comment === '') {
-        result = true;
-      }
-      return result;
-    }
-
     get show(): Show {
       return this.store.canvasStore.state.show;
     }
@@ -212,13 +162,6 @@
       if (this.store.tableStore.state.tableFocus && this.store.tableStore.state.tableFocus.id === this.table.id) {
         this.store.tableStore.state.tableFocus.watchColumns();
       }
-    }
-
-    private placeholder(value: string, display: string) {
-      if (value === '') {
-        return display;
-      }
-      return value;
     }
 
     private columnFocus(index: number): ColumnFocus | null {

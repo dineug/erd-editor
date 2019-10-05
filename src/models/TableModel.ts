@@ -50,15 +50,15 @@ export default class TableModel implements Table {
     if (this.store.canvasStore.state.show.tableComment) {
       width += this.ui.widthComment + SIZE_MARGIN_RIGHT;
     }
-    const defaultColumnWidth = this.defaultColumnWidth();
+    const defaultColumnWidth = this.defaultColumnWidth() + SIZE_COLUMN_CLOSE + SIZE_COLUMN_KEY + SIZE_MARGIN_RIGHT;
     if (width < defaultColumnWidth) {
       width = defaultColumnWidth;
     }
-    const columnWidth = this.maxWidthColumn();
-    if (width < columnWidth.width) {
-      width = columnWidth.width;
+    const columnWidth = this.maxWidthColumn().width + SIZE_COLUMN_CLOSE + SIZE_COLUMN_KEY + SIZE_MARGIN_RIGHT;
+    if (width < columnWidth) {
+      width = columnWidth;
     }
-    return width + SIZE_COLUMN_CLOSE + SIZE_COLUMN_KEY + SIZE_MARGIN_RIGHT;
+    return width;
   }
 
   public height(): number {

@@ -1,14 +1,14 @@
 <template lang="pug">
-  input.column-default(
+  input.column-name(
     v-if="edit"
     v-focus
-    v-model="column.default"
+    v-model="column.name"
     :style="`width: ${width}px;`"
     spellcheck="false"
     @input="onInput"
     @blur="onBlur"
   )
-  .column-default(
+  .column-name(
     v-else
     :class="{focus, placeholder}"
     :style="`width: ${width}px;`"
@@ -32,7 +32,7 @@
       },
     },
   })
-  export default class ColumnDefault extends Vue {
+  export default class ColumnName extends Vue {
     @Prop({type: Object, default: () => ({})})
     private column!: Column;
     @Prop({type: Object, default: null})
@@ -44,7 +44,7 @@
 
     get focus(): boolean {
       let result = false;
-      if (this.columnFocus && this.columnFocus.focusDefault) {
+      if (this.columnFocus && this.columnFocus.focusName) {
         result = true;
       }
       return result;
@@ -52,16 +52,16 @@
 
     get placeholder(): boolean {
       let result = false;
-      if (this.column.default === '') {
+      if (this.column.name.trim() === '') {
         result = true;
       }
       return result;
     }
 
     get value(): string {
-      let value = 'default';
-      if (this.column.default !== '') {
-        value = this.column.default;
+      let value = 'column';
+      if (this.column.name.trim() !== '') {
+        value = this.column.name;
       }
       return value;
     }
@@ -85,7 +85,7 @@
 </script>
 
 <style scoped lang="scss">
-  .column-default {
+  .column-name {
 
   }
 </style>

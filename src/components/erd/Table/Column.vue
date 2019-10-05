@@ -88,11 +88,11 @@
   import {Bus} from '@/ts/EventBus';
   import {relationshipSort} from '@/store/relationship/relationshipHelper';
   import {Component, Prop, Vue} from 'vue-property-decorator';
-  import ColumnDataType from './ColumnDataType.vue';
-  import ColumnName from './ColumnName.vue';
-  import ColumnNotNull from './ColumnNotNull.vue';
-  import ColumnDefault from './ColumnDefault.vue';
-  import ColumnComment from './ColumnComment.vue';
+  import ColumnDataType from './Column/ColumnDataType.vue';
+  import ColumnName from './Column/ColumnName.vue';
+  import ColumnNotNull from './Column/ColumnNotNull.vue';
+  import ColumnDefault from './Column/ColumnDefault.vue';
+  import ColumnComment from './Column/ColumnComment.vue';
 
   @Component({
     components: {
@@ -101,13 +101,6 @@
       ColumnNotNull,
       ColumnDefault,
       ColumnComment,
-    },
-    directives: {
-      focus: {
-        inserted(el: HTMLElement) {
-          el.focus();
-        },
-      },
     },
   })
   export default class Column extends Vue {

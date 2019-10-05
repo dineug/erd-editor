@@ -88,11 +88,12 @@ export function removeSpanText() {
  * text width
  * @param text
  */
+const TEXT_PADDING = 2;
 export function getTextWidth(text: string): number {
   let result = 0;
   if (spanText) {
     spanText.innerHTML = text;
-    result = spanText.offsetWidth;
+    result = spanText.offsetWidth + TEXT_PADDING;
   }
   return result;
 }
@@ -105,7 +106,7 @@ interface Name {
 export function autoName<T extends Name>(list: T[], id: string, name: string, num: number = 1): string {
   let result = true;
   for (const value of list) {
-    if (name === value.name && value.id !== id) {
+    if (name === value.name && value.id !== id && name !== '') {
       result = false;
       break;
     }

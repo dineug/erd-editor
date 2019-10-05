@@ -1,14 +1,14 @@
 <template lang="pug">
-  input.column-comment(
+  input(
     v-if="edit"
     v-focus
-    v-model="column.comment"
+    v-model="table.name"
     :style="`width: ${width}px;`"
     spellcheck="false"
     @input="onInput"
     @blur="onBlur"
   )
-  .column-comment(
+  .table-name(
     v-else
     :class="{focus, placeholder}"
     :style="`width: ${width}px;`"
@@ -19,8 +19,8 @@
 </template>
 
 <script lang="ts">
-  import {Column} from '@/store/table';
-  import {ColumnFocus} from '@/models/ColumnFocusModel';
+  import {Table} from '@/store/table';
+  import {TableFocus} from '@/models/TableFocusModel';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   @Component({
@@ -32,11 +32,11 @@
       },
     },
   })
-  export default class ColumnComment extends Vue {
+  export default class TableName extends Vue {
     @Prop({type: Object, default: () => ({})})
-    private column!: Column;
+    private table!: Table;
     @Prop({type: Object, default: null})
-    private columnFocus!: ColumnFocus | null;
+    private tableFocus!: TableFocus | null;
     @Prop({type: Boolean, default: false})
     private edit!: boolean;
     @Prop({type: Number, default: 0})
@@ -44,7 +44,9 @@
 
     get focus(): boolean {
       let result = false;
-      if (this.columnFocus && this.columnFocus.focusComment) {
+      if (this.tableFocus
+        && this.tableFocus.id === this.table.id
+        && this.tableFocus.focusName) {
         result = true;
       }
       return result;
@@ -52,16 +54,16 @@
 
     get placeholder(): boolean {
       let result = false;
-      if (this.column.comment === '') {
+      if (this.table.name.trim() === '') {
         result = true;
       }
       return result;
     }
 
     get value(): string {
-      let value = 'comment';
-      if (this.column.comment !== '') {
-        value = this.column.comment;
+      let value = 'table';
+      if (this.table.name.trim() !== '') {
+        value = this.table.name;
       }
       return value;
     }
@@ -85,7 +87,7 @@
 </script>
 
 <style scoped lang="scss">
-  .column-comment {
+  .table-name {
 
   }
 </style>
