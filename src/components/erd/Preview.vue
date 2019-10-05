@@ -24,7 +24,7 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_PREVIEW_WIDTH, SIZE_TOP_MENU_HEIGHT} from '@/ts/layout';
+  import {SIZE_PREVIEW_WIDTH, SIZE_TOP_MENU_HEIGHT, SIZE_PREVIEW_MARGIN} from '@/ts/layout';
   import {Table as TableModel} from '@/store/table';
   import {Memo as MemoModel} from '@/store/memo';
   import {Relationship as RelationshipModel} from '@/store/relationship';
@@ -35,8 +35,7 @@
   import Memo from './Preview/Memo.vue';
   import Relationship from './Preview/Relationship.vue';
 
-  const MARGIN = 20;
-  const MARGIN_TOP = SIZE_TOP_MENU_HEIGHT + MARGIN;
+  const MARGIN_TOP = SIZE_TOP_MENU_HEIGHT + SIZE_PREVIEW_MARGIN;
 
   @Component({
     components: {
@@ -70,7 +69,7 @@
       const option = this.store.canvasStore.state;
       const x = (-1 * option.width / 2) + (SIZE_PREVIEW_WIDTH / 2);
       const y = (-1 * option.height / 2) + (option.height * ratio / 2);
-      const left = x - SIZE_PREVIEW_WIDTH - MARGIN + this.width + option.scrollLeft;
+      const left = x - SIZE_PREVIEW_WIDTH - SIZE_PREVIEW_MARGIN + this.width + option.scrollLeft;
       const top = y + MARGIN_TOP + option.scrollTop;
       return `
         transform: scale(${ratio}, ${ratio});

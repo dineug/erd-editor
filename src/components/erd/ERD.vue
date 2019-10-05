@@ -39,6 +39,11 @@
       :width="width"
       :height="height"
     )
+    TopMenu(
+      :store="store"
+      :width="width"
+      :height="height"
+    )
 </template>
 
 <script lang="ts">
@@ -67,6 +72,7 @@
   import RelationshipDraw from './RelationshipDraw.vue';
   import Preview from './Preview.vue';
   import PreviewTarget from './PreviewTarget.vue';
+  import TopMenu from './TopMenu.vue';
 
   import {fromEvent, Observable, Subscription} from 'rxjs';
 
@@ -78,6 +84,7 @@
       RelationshipDraw,
       Preview,
       PreviewTarget,
+      TopMenu,
     },
   })
   export default class ERD extends Vue {
@@ -321,7 +328,7 @@
 
 <style scoped lang="scss">
   .erd {
-    position: absolute;
+    position: relative;
     z-index: 100;
     overflow: hidden;
   }

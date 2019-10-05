@@ -101,24 +101,32 @@
         }
       }
 
-      const ghostCurrentX = event.offsetX;
-      const ghostCurrentY = event.offsetY;
-      const ghostMin = {
-        x: this.ghostX < ghostCurrentX ? this.ghostX : ghostCurrentX,
-        y: this.ghostY < ghostCurrentY ? this.ghostY : ghostCurrentY,
-      };
-      const ghostMax = {
-        x: this.ghostX > ghostCurrentX ? this.ghostX : ghostCurrentX,
-        y: this.ghostY > ghostCurrentY ? this.ghostY : ghostCurrentY,
-      };
-      this.store.tableStore.commit(TableCommit.tableMultipleSelect, {
-        min: ghostMin,
-        max: ghostMax,
-      });
-      this.store.memoStore.commit(MemoCommit.memoMultipleSelect, {
-        min: ghostMin,
-        max: ghostMax,
-      });
+      const el = event.target as HTMLElement;
+      if (!el.closest('.table')
+        && !el.closest('.memo')
+        && !el.closest('.contextmenu-erd')
+        && !el.closest('.top-menu')
+        && !el.closest('.preview')
+        && !el.closest('.preview-target')) {
+        const ghostCurrentX = event.offsetX;
+        const ghostCurrentY = event.offsetY;
+        const ghostMin = {
+          x: this.ghostX < ghostCurrentX ? this.ghostX : ghostCurrentX,
+          y: this.ghostY < ghostCurrentY ? this.ghostY : ghostCurrentY,
+        };
+        const ghostMax = {
+          x: this.ghostX > ghostCurrentX ? this.ghostX : ghostCurrentX,
+          y: this.ghostY > ghostCurrentY ? this.ghostY : ghostCurrentY,
+        };
+        this.store.tableStore.commit(TableCommit.tableMultipleSelect, {
+          min: ghostMin,
+          max: ghostMax,
+        });
+        this.store.memoStore.commit(MemoCommit.memoMultipleSelect, {
+          min: ghostMin,
+          max: ghostMax,
+        });
+      }
     }
 
     // ==================== Event Handler END ===================

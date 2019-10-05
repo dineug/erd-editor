@@ -14,87 +14,60 @@
         icon="key"
       )
 
-    input.name(
-      v-if="edit && edit.id === column.id && edit.focusType === 'columnName'"
-      v-focus
-      v-model="column.name"
-      :style="`width: ${columnWidth.name}px;`"
-      spellcheck="false"
-      @input="onEditInput($event, 'columnName')"
+    ColumnName(
+      :edit="edit && edit.id === column.id && edit.focusType === 'columnName'"
+      :column="column"
+      :columnFocus="columnFocus"
+      :width="columnWidth.name"
       @blur="onEditBlur"
-    )
-    .name(
-      v-else
-      :class="{focus: focusName, placeholder: placeholderName}"
-      :style="`width: ${columnWidth.name}px;`"
+      @input="onEditInput($event, 'columnName')"
       @mousedown="onFocus($event, 'columnName')"
       @dblclick="onDblclick($event, 'columnName')"
     )
-      span {{placeholder(column.name, 'column')}}
 
-    input.data-type(
-      v-if="show.columnDataType && edit && edit.id === column.id && edit.focusType === 'columnDataType'"
-      v-focus
-      v-model="column.dataType"
-      :style="`width: ${columnWidth.dataType}px;`"
-      spellcheck="false"
-      @input="onEditInput($event, 'columnDataType')"
+    ColumnDataType(
+      v-if="show.columnDataType"
+      :edit="edit && edit.id === column.id && edit.focusType === 'columnDataType'"
+      :column="column"
+      :columnFocus="columnFocus"
+      :width="columnWidth.dataType"
       @blur="onEditBlur"
-    )
-    .data-type(
-      v-else-if="show.columnDataType"
-      :class="{focus: focusDataType, placeholder: placeholderDataType}"
-      :style="`width: ${columnWidth.dataType}px;`"
+      @input="onEditInput($event, 'columnDataType')"
       @mousedown="onFocus($event, 'columnDataType')"
       @dblclick="onDblclick($event, 'columnDataType')"
     )
-      span {{placeholder(column.dataType, 'dataType')}}
 
-    .not-null(
+    ColumnNotNull(
       v-if="show.columnNotNull"
-      :class="{focus: focusNotNull}"
-      :style="`width: ${SIZE_COLUMN_OPTION_NN}px;`"
+      :column="column"
+      :columnFocus="columnFocus"
       @mousedown="onFocus($event, 'columnNotNull')"
       @dblclick="onDblclick($event, 'columnNotNull')"
     )
-      span(v-if="column.option.notNull") N-N
-      span(v-else) NULL
 
-    input.default(
-      v-if="show.columnDefault && edit && edit.id === column.id && edit.focusType === 'columnDefault'"
-      v-focus
-      v-model="column.default"
-      :style="`width: ${columnWidth.default}px;`"
-      spellcheck="false"
-      @input="onEditInput($event, 'columnDefault')"
+    ColumnDefault(
+      v-if="show.columnDefault"
+      :edit="edit && edit.id === column.id && edit.focusType === 'columnDefault'"
+      :column="column"
+      :columnFocus="columnFocus"
+      :width="columnWidth.default"
       @blur="onEditBlur"
-    )
-    .default(
-      v-else-if="show.columnDefault"
-      :class="{focus: focusDefault, placeholder: placeholderDefault}"
-      :style="`width: ${columnWidth.default}px;`"
+      @input="onEditInput($event, 'columnDefault')"
       @mousedown="onFocus($event, 'columnDefault')"
       @dblclick="onDblclick($event, 'columnDefault')"
     )
-      span {{placeholder(column.default, 'default')}}
 
-    input.comment(
-      v-if="show.columnComment && edit && edit.id === column.id && edit.focusType === 'columnComment'"
-      v-focus
-      v-model="column.comment"
-      :style="`width: ${columnWidth.comment}px;`"
-      spellcheck="false"
-      @input="onEditInput($event, 'columnComment')"
+    ColumnComment(
+      v-if="show.columnComment"
+      :edit="edit && edit.id === column.id && edit.focusType === 'columnComment'"
+      :column="column"
+      :columnFocus="columnFocus"
+      :width="columnWidth.comment"
       @blur="onEditBlur"
-    )
-    .comment(
-      v-else-if="show.columnComment"
-      :class="{focus: focusComment, placeholder: placeholderComment}"
-      :style="`width: ${columnWidth.comment}px;`"
+      @input="onEditInput($event, 'columnComment')"
       @mousedown="onFocus($event, 'columnComment')"
       @dblclick="onDblclick($event, 'columnComment')"
     )
-      span {{placeholder(column.comment, 'comment')}}
 
     font-awesome-icon.column-button(
       icon="times"
@@ -104,7 +77,7 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_COLUMN_OPTION_NN, SIZE_MIN_WIDTH} from '@/ts/layout';
+  import {SIZE_MIN_WIDTH} from '@/ts/layout';
   import {Column as ColumnModel, Table, ColumnWidth} from '@/store/table';
   import {ColumnFocus} from '@/models/ColumnFocusModel';
   import {FocusType} from '@/models/TableFocusModel';
@@ -115,8 +88,20 @@
   import {Bus} from '@/ts/EventBus';
   import {relationshipSort} from '@/store/relationship/relationshipHelper';
   import {Component, Prop, Vue} from 'vue-property-decorator';
+  import ColumnDataType from './ColumnDataType.vue';
+  import ColumnName from './ColumnName.vue';
+  import ColumnNotNull from './ColumnNotNull.vue';
+  import ColumnDefault from './ColumnDefault.vue';
+  import ColumnComment from './ColumnComment.vue';
 
   @Component({
+    components: {
+      ColumnName,
+      ColumnDataType,
+      ColumnNotNull,
+      ColumnDefault,
+      ColumnComment,
+    },
     directives: {
       focus: {
         inserted(el: HTMLElement) {
@@ -134,8 +119,6 @@
     private column!: ColumnModel;
     @Prop({type: Object, default: null})
     private columnFocus!: ColumnFocus | null;
-
-    private SIZE_COLUMN_OPTION_NN = SIZE_COLUMN_OPTION_NN;
 
     get show(): Show {
       return this.store.canvasStore.state.show;
@@ -166,85 +149,6 @@
         result = true;
       }
       return result;
-    }
-
-    get focusName(): boolean {
-      let result = false;
-      if (this.columnFocus && this.columnFocus.focusName) {
-        result = true;
-      }
-      return result;
-    }
-
-    get focusDataType(): boolean {
-      let result = false;
-      if (this.columnFocus && this.columnFocus.focusDataType) {
-        result = true;
-      }
-      return result;
-    }
-
-    get focusNotNull(): boolean {
-      let result = false;
-      if (this.columnFocus && this.columnFocus.focusNotNull) {
-        result = true;
-      }
-      return result;
-    }
-
-    get focusDefault(): boolean {
-      let result = false;
-      if (this.columnFocus && this.columnFocus.focusDefault) {
-        result = true;
-      }
-      return result;
-    }
-
-    get focusComment(): boolean {
-      let result = false;
-      if (this.columnFocus && this.columnFocus.focusComment) {
-        result = true;
-      }
-      return result;
-    }
-
-    get placeholderName(): boolean {
-      let result = false;
-      if (this.column.name === '') {
-        result = true;
-      }
-      return result;
-    }
-
-    get placeholderDataType(): boolean {
-      let result = false;
-      if (this.column.dataType === '') {
-        result = true;
-      }
-      return result;
-    }
-
-    get placeholderDefault(): boolean {
-      let result = false;
-      if (this.column.default === '') {
-        result = true;
-      }
-      return result;
-    }
-
-    get placeholderComment(): boolean {
-      let result = false;
-      if (this.column.comment === '') {
-        result = true;
-      }
-      return result;
-    }
-
-    private placeholder(value: string, display: string) {
-      if (value === '') {
-        return display;
-      }
-      return value;
     }
 
     // ==================== Event Handler ===================

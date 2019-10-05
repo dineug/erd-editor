@@ -6,15 +6,14 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_PREVIEW_WIDTH, SIZE_TOP_MENU_HEIGHT} from '@/ts/layout';
+  import {SIZE_PREVIEW_WIDTH, SIZE_TOP_MENU_HEIGHT, SIZE_PREVIEW_MARGIN} from '@/ts/layout';
   import {Commit as CanvasCommit} from '@/store/canvas';
   import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   import {fromEvent, Observable, Subscription} from 'rxjs';
 
-  const MARGIN = 20;
-  const MARGIN_TOP = SIZE_TOP_MENU_HEIGHT + MARGIN;
+  const MARGIN_TOP = SIZE_TOP_MENU_HEIGHT + SIZE_PREVIEW_MARGIN;
 
   @Component
   export default class PreviewTarget extends Vue {
@@ -35,7 +34,7 @@
       const option = this.store.canvasStore.state;
       const x = option.scrollLeft * ratio;
       const y = option.scrollTop * ratio;
-      const left = this.width - SIZE_PREVIEW_WIDTH - MARGIN + option.scrollLeft + x;
+      const left = this.width - SIZE_PREVIEW_WIDTH - SIZE_PREVIEW_MARGIN + option.scrollLeft + x;
       const top = MARGIN_TOP + option.scrollTop + y;
       return `
         width: ${this.width * ratio}px;

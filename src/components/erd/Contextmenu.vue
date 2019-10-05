@@ -67,6 +67,9 @@
       if (menu.option && menu.option.show) {
         const show = this.store.canvasStore.state.show;
         return show[menu.option.show] ? 'check' : undefined;
+      } else if (menu.option && menu.option.database) {
+        const database = this.store.canvasStore.state.database;
+        return menu.option.database === database ? 'check' : undefined;
       }
       return menu.icon;
     }

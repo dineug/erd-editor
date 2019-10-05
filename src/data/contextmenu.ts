@@ -3,13 +3,15 @@ import Menu from '@/models/Menu';
 import {Commit as TableCommit} from '@/store/table';
 import {Commit as MemoCommit} from '@/store/memo';
 import {Commit as RelationshipCommit, RelationshipType} from '@/store/relationship';
-import {ShowKey, Commit as CanvasCommit} from '@/store/canvas';
+import {Commit as CanvasCommit, ShowKey} from '@/store/canvas';
 import {Bus} from '@/ts/EventBus';
 import icon from '@/ts/icon';
 import {uuid} from '@/ts/util';
+import {Database} from './dataType';
 
 function dataMenu(store: StoreManagement): Menu[] {
   const show = store.canvasStore.state.show;
+  const database = store.canvasStore.state.database;
   return [
     {
       id: uuid(),
@@ -97,7 +99,7 @@ function dataMenu(store: StoreManagement): Menu[] {
         {
           id: uuid(),
           icon: show.columnDataType ? 'check' : undefined,
-          name: 'DataType',
+          name: 'dataType',
           execute() {
             store.canvasStore.commit(CanvasCommit.showChange, {
               showKey: ShowKey.columnDataType,
@@ -145,6 +147,62 @@ function dataMenu(store: StoreManagement): Menu[] {
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: {close: false, show: ShowKey.relationship},
+        },
+      ],
+    },
+    {
+      id: uuid(),
+      name: 'Database',
+      children: [
+        {
+          id: uuid(),
+          icon: database === Database.MariaDB ? 'check' : undefined,
+          name: Database.MariaDB,
+          execute() {
+            store.canvasStore.commit(CanvasCommit.databaseChange, Database.MariaDB);
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: {close: false, database: Database.MariaDB},
+        },
+        {
+          id: uuid(),
+          icon: database === Database.MSSQL ? 'check' : undefined,
+          name: Database.MSSQL,
+          execute() {
+            store.canvasStore.commit(CanvasCommit.databaseChange, Database.MSSQL);
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: {close: false, database: Database.MSSQL},
+        },
+        {
+          id: uuid(),
+          icon: database === Database.MySQL ? 'check' : undefined,
+          name: Database.MySQL,
+          execute() {
+            store.canvasStore.commit(CanvasCommit.databaseChange, Database.MySQL);
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: {close: false, database: Database.MySQL},
+        },
+        {
+          id: uuid(),
+          icon: database === Database.Oracle ? 'check' : undefined,
+          name: Database.Oracle,
+          execute() {
+            store.canvasStore.commit(CanvasCommit.databaseChange, Database.Oracle);
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: {close: false, database: Database.Oracle},
+        },
+        {
+          id: uuid(),
+          icon: database === Database.PostgreSQL ? 'check' : undefined,
+          name: Database.PostgreSQL,
+          execute() {
+            store.canvasStore.commit(CanvasCommit.databaseChange, Database.PostgreSQL);
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: {close: false, database: Database.PostgreSQL},
         },
       ],
     },

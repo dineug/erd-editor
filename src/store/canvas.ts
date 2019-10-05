@@ -3,7 +3,9 @@ import Vuex from 'vuex';
 import {SIZE_PREVIEW_WIDTH} from '@/ts/layout';
 import {canvasMove} from './canvas/canvasController';
 import {showChange} from './canvas/showController';
-import {dataShow, dataInit} from '@/data/canvas';
+import {databaseChange} from './canvas/databaseController';
+import {dataInit, dataShow} from '@/data/canvas';
+import {Database} from '@/data/dataType';
 
 Vue.use(Vuex);
 
@@ -13,6 +15,7 @@ export interface State {
   scrollTop: number;
   scrollLeft: number;
   show: Show;
+  database: Database;
 }
 
 export interface Show {
@@ -44,6 +47,7 @@ export const enum Commit {
   load = 'load',
   canvasMove = 'canvasMove',
   showChange = 'showChange',
+  databaseChange = 'databaseChange',
 }
 
 export function createStore() {
@@ -54,6 +58,7 @@ export function createStore() {
       scrollTop: 0,
       scrollLeft: 0,
       show: dataShow(),
+      database: Database.MySQL,
     },
     getters: {
       previewRatio(state: State): number {
@@ -79,6 +84,7 @@ export function createStore() {
       },
       canvasMove,
       showChange,
+      databaseChange,
     },
     actions: {},
   });

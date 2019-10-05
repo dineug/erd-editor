@@ -1,8 +1,10 @@
 import {ShowKey} from '@/store/canvas';
+import {Database} from '@/data/dataType';
 
 export interface MenuOption {
   close?: boolean;
   show?: ShowKey;
+  database?: Database;
 }
 
 export default interface Menu {
