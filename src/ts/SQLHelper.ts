@@ -1,5 +1,15 @@
 import {Column} from '@/store/table';
 
+export interface Name {
+  id: string;
+  name: string;
+}
+
+export interface KeyColumn {
+  start: Column[];
+  end: Column[];
+}
+
 interface List {
   name: string;
 }
@@ -23,20 +33,25 @@ export function formatNames<T extends List>(list: T[], backtick?: string, backti
   return buf.join('');
 }
 
-export function formatSize(columns: Column[]): {nameMax: number, dataTypeMax: number} {
-  let nameMax = 0;
-  let dataTypeMax = 0;
-  columns.forEach((column: Column) => {
-    if (nameMax < column.name.length) {
-      nameMax = column.name.length;
+export interface MaxLength {
+  name: number;
+  dataType: number;
+}
+
+export function formatSize(columns: Column[]): MaxLength {
+  let name = 0;
+  let dataType = 0;
+  columns.forEach((column) => {
+    if (name < column.name.length) {
+      name = column.name.length;
     }
-    if (dataTypeMax < column.dataType.length) {
-      dataTypeMax = column.dataType.length;
+    if (dataType < column.dataType.length) {
+      dataType = column.dataType.length;
     }
   });
   return {
-    nameMax,
-    dataTypeMax,
+    name,
+    dataType,
   };
 }
 
@@ -46,4 +61,20 @@ export function formatSpace(size: number): string {
     buf.push(' ');
   }
   return buf.join('');
+}
+
+export function primaryKey(columns: Column[]): boolean {
+  return columns.some((column) => column.option.primaryKey);
+}
+
+export function primaryKeyColumns(columns: Column[]): Column[] {
+  return columns.filter((column) => column.option.primaryKey);
+}
+
+export function unique(columns: Column[]): boolean {
+  return columns.some((column) => column.option.unique);
+}
+
+export function uniqueColumns(columns: Column[]): Column[] {
+  return columns.filter((column) => column.option.unique);
 }
