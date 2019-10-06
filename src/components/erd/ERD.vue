@@ -3,24 +3,10 @@
     :style="erdStyle"
     @mousedown="onMousedownERD"
   )
-    Canvas(
+    TopMenu(
       :store="store"
-      :focus="focus"
-      ref="canvas"
-    )
-    RelationshipDraw(
-      v-if="draw && draw.start"
-      :store="store"
-      :draw="draw"
-    )
-    MultipleSelect(
-      v-if="select"
-      :store="store"
-      :x="selectX"
-      :y="selectY"
-      :ghostX="selectGhostX"
-      :ghostY="selectGhostY"
-      @selectEnd="onSelectEnd"
+      :width="width"
+      :height="height"
     )
     Contextmenu.contextmenu-erd(
       v-if="contextmenu"
@@ -29,21 +15,39 @@
       :x="contextmenuX"
       :y="contextmenuY"
     )
+    Canvas(
+      v-if="canvasType === 'ERD'"
+      :store="store"
+      :focus="focus"
+      ref="canvas"
+    )
+    RelationshipDraw(
+      v-if="canvasType === 'ERD' && draw && draw.start"
+      :store="store"
+      :draw="draw"
+    )
+    MultipleSelect(
+      v-if="canvasType === 'ERD' && select"
+      :store="store"
+      :x="selectX"
+      :y="selectY"
+      :ghostX="selectGhostX"
+      :ghostY="selectGhostY"
+      @selectEnd="onSelectEnd"
+    )
     Preview(
+      v-if="canvasType === 'ERD'"
       :store="store"
       :width="width"
       :height="height"
     )
     PreviewTarget(
+      v-if="canvasType === 'ERD'"
       :store="store"
       :width="width"
       :height="height"
     )
-    TopMenu(
-      :store="store"
-      :width="width"
-      :height="height"
-    )
+    SQL(v-if="canvasType === 'SQL'" :value="sql")
 </template>
 
 <script lang="ts">
@@ -51,7 +55,7 @@
 
   import {SIZE_MENU_HEIGHT} from '@/ts/layout';
   import {Bus} from '@/ts/EventBus';
-  import {Commit as CanvasCommit} from '@/store/canvas';
+  import {Commit as CanvasCommit, CanvasType} from '@/store/canvas';
   import {Commit as TableCommit} from '@/store/table';
   import {Commit as MemoCommit} from '@/store/memo';
   import {
@@ -65,6 +69,7 @@
   import Menu from '@/models/Menu';
   import {dataMenu} from '@/data/contextmenu';
   import icon from '@/ts/icon';
+  import SQLFactory from '@/ts/SQL';
   import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
   import Canvas from './Canvas.vue';
   import MultipleSelect from './MultipleSelect.vue';
@@ -73,6 +78,7 @@
   import Preview from './Preview.vue';
   import PreviewTarget from './PreviewTarget.vue';
   import TopMenu from './TopMenu.vue';
+  import SQL from './SQL.vue';
 
   import {fromEvent, Observable, Subscription} from 'rxjs';
 
@@ -85,6 +91,7 @@
       Preview,
       PreviewTarget,
       TopMenu,
+      SQL,
     },
   })
   export default class ERD extends Vue {
@@ -141,6 +148,14 @@
 
     get draw(): RelationshipDrawModel | null {
       return this.store.relationshipStore.state.draw;
+    }
+
+    get canvasType(): CanvasType {
+      return this.store.canvasStore.state.canvasType;
+    }
+
+    get sql(): string {
+      return SQLFactory.toDDL(this.store);
     }
 
     @Watch('value')

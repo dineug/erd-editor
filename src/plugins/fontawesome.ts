@@ -9,6 +9,11 @@ import {
   faTimes,
   faChevronRight,
   faCheck,
+  faCode,
+  faList,
+  faBezierCurve,
+  faRedoAlt,
+  faUndoAlt,
 } from '@fortawesome/free-solid-svg-icons';
 
 library.add(
@@ -19,6 +24,11 @@ library.add(
   faTimes,
   faChevronRight,
   faCheck,
+  faCode,
+  faList,
+  faBezierCurve,
+  faRedoAlt,
+  faUndoAlt,
 );
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);

@@ -36,14 +36,12 @@
   import Table from './Table.vue';
   import Memo from './Memo.vue';
   import Relationship from './Relationship.vue';
-  import Menu from './TopMenu.vue';
 
   @Component({
     components: {
       Table,
       Memo,
       Relationship,
-      Menu,
     },
   })
   export default class Canvas extends Vue {

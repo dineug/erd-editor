@@ -1,4 +1,4 @@
-import {Show, State} from '@/store/canvas';
+import {CanvasType, Show, State} from '@/store/canvas';
 import {Database} from './dataType';
 
 function dataShow(): Show {
@@ -23,6 +23,8 @@ function dataInit(): State {
     scrollLeft: 0,
     show: dataShow(),
     database: Database.MySQL,
+    databaseName: '',
+    canvasType: CanvasType.ERD,
   };
 }
 
