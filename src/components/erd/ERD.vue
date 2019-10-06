@@ -48,7 +48,11 @@ import {CanvasType} from '@/store/canvas'
       :width="width"
       :height="height"
     )
-    SQL(v-if="canvasType === 'SQL'" :value="sql")
+    SQL(
+      v-if="canvasType === 'SQL'"
+      :store="store"
+      :value="sql"
+    )
 </template>
 
 <script lang="ts">

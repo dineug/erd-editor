@@ -6,7 +6,11 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_PREVIEW_WIDTH, SIZE_TOP_MENU_HEIGHT, SIZE_PREVIEW_MARGIN} from '@/ts/layout';
+  import {
+    SIZE_PREVIEW_WIDTH,
+    SIZE_TOP_MENU_HEIGHT,
+    SIZE_PREVIEW_MARGIN,
+  } from '@/ts/layout';
   import {Commit as CanvasCommit} from '@/store/canvas';
   import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Vue} from 'vue-property-decorator';

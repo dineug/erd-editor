@@ -6,12 +6,27 @@
 </template>
 
 <script lang="ts">
+  import {Commit as CanvasCommit} from '@/store/canvas';
+  import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   @Component
   export default class SQL extends Vue {
+    @Prop({type: Object, default: () => ({})})
+    private store!: StoreManagement;
     @Prop({type: String, default: ''})
     private value!: string;
+
+    private mounted() {
+      if (this.$el.parentElement) {
+        this.$el.parentElement.scrollTop = 0;
+        this.$el.parentElement.scrollLeft = 0;
+        this.store.canvasStore.commit(CanvasCommit.canvasMove, {
+          scrollTop: this.$el.parentElement.scrollTop,
+          scrollLeft: this.$el.parentElement.scrollLeft,
+        });
+      }
+    }
   }
 </script>
 
