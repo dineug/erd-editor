@@ -25,17 +25,25 @@
       @dblclick="onDblclick($event, 'columnName')"
     )
 
-    ColumnDataType(
-      v-if="show.columnDataType"
-      :edit="edit && edit.id === column.id && edit.focusType === 'columnDataType'"
-      :column="column"
-      :columnFocus="columnFocus"
-      :width="columnWidth.dataType"
-      @blur="onEditBlur"
-      @input="onEditInput($event, 'columnDataType')"
-      @mousedown="onFocus($event, 'columnDataType')"
-      @dblclick="onDblclick($event, 'columnDataType')"
-    )
+    .data-type
+      ColumnDataType(
+        v-if="show.columnDataType"
+        :store="store"
+        :edit="edit && edit.id === column.id && edit.focusType === 'columnDataType'"
+        :column="column"
+        :columnFocus="columnFocus"
+        :width="columnWidth.dataType"
+        @blur="onEditBlur"
+        @input="onEditInput($event, 'columnDataType')"
+        @mousedown="onFocus($event, 'columnDataType')"
+        @dblclick="onDblclick($event, 'columnDataType')"
+      )
+      DataTypeHint(
+        v-if="show.columnDataType && edit && edit.id === column.id && edit.focusType === 'columnDataType'"
+        :store="store"
+        :column="column"
+        @blur="onEditBlur"
+      )
 
     ColumnNotNull(
       v-if="show.columnNotNull"
@@ -93,6 +101,7 @@
   import ColumnNotNull from './Column/ColumnNotNull.vue';
   import ColumnDefault from './Column/ColumnDefault.vue';
   import ColumnComment from './Column/ColumnComment.vue';
+  import DataTypeHint from './Column/DataTypeHint.vue';
 
   @Component({
     components: {
@@ -101,6 +110,7 @@
       ColumnNotNull,
       ColumnDefault,
       ColumnComment,
+      DataTypeHint,
     },
   })
   export default class Column extends Vue {
@@ -244,7 +254,6 @@
       this.store.tableStore.commit(TableCommit.columnDraggableEnd);
       this.store.eventBus.$emit(Bus.Table.draggableEnd);
     }
-
     // ==================== Event Handler END ===================
 
   }
@@ -273,7 +282,17 @@
       opacity: 0.5;
     }
 
-    div {
+    .data-type {
+      display: inline;
+      position: relative;
+    }
+
+    div.key,
+    div.column-name,
+    div.column-data-type,
+    div.column-not-null,
+    div.column-default,
+    div.column-comment {
       display: inline-flex;
       vertical-align: middle;
       align-items: center;

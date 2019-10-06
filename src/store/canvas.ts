@@ -5,7 +5,7 @@ import {canvasMove} from './canvas/canvasController';
 import {showChange} from './canvas/showController';
 import {databaseChange} from './canvas/databaseController';
 import {dataInit, dataShow} from '@/data/canvas';
-import {Database} from '@/data/dataType';
+import databases, {Database, DataTypeHint} from '@/data/dataType';
 
 Vue.use(Vuex);
 
@@ -63,6 +63,16 @@ export function createStore() {
     getters: {
       previewRatio(state: State): number {
         return SIZE_PREVIEW_WIDTH / state.width;
+      },
+      typeHint(state: State): DataTypeHint[] {
+        let dataTypeHints!: DataTypeHint[];
+        for (const database of databases) {
+          if (state.database === database.database) {
+            dataTypeHints = database.dataTypeHints;
+            break;
+          }
+        }
+        return dataTypeHints;
       },
     },
     mutations: {

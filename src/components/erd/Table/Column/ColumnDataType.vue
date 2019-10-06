@@ -6,7 +6,9 @@
     :style="`width: ${width}px;`"
     spellcheck="false"
     @input="onInput"
+    @change="onChange"
     @blur="onBlur"
+    @keydown="onKeydown"
   )
   .column-data-type(
     v-else
@@ -21,6 +23,9 @@
 <script lang="ts">
   import {Column} from '@/store/table';
   import {ColumnFocus} from '@/models/ColumnFocusModel';
+  import StoreManagement from '@/store/StoreManagement';
+  import {Bus} from '@/ts/EventBus';
+  import Key from '@/models/Key';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   @Component({
@@ -33,6 +38,8 @@
     },
   })
   export default class ColumnDataType extends Vue {
+    @Prop({type: Object, default: () => ({})})
+    private store!: StoreManagement;
     @Prop({type: Object, default: () => ({})})
     private column!: Column;
     @Prop({type: Object, default: null})
@@ -66,12 +73,21 @@
       return value;
     }
 
+    // ==================== Event Handler ===================
     private onInput(event: InputEvent) {
+      this.store.eventBus.$emit(Bus.DataTypeHint.search);
+      this.$emit('input', event);
+    }
+
+    private onChange(event: InputEvent) {
       this.$emit('input', event);
     }
 
     private onBlur(event: InputEvent) {
-      this.$emit('blur', event);
+      const el = event.target as HTMLElement;
+      if (!el.closest('.data-type')) {
+        this.$emit('blur', event);
+      }
     }
 
     private onMousedown(event: MouseEvent) {
@@ -81,6 +97,47 @@
     private onDblclick(event: MouseEvent) {
       this.$emit('dblclick', event);
     }
+
+    private onChangeTrigger(data: {columnId: string, value: string}) {
+      const {columnId, value} = data;
+      if (this.column.id === columnId) {
+        if (this.$el.localName === 'input') {
+          const input = this.$el as HTMLInputElement;
+          this.column.dataType = value;
+          input.value = value;
+          input.focus();
+          input.dispatchEvent(new Event('change'));
+        }
+      }
+    }
+
+    private onKeydown(event: KeyboardEvent) {
+      switch (event.key) {
+        case Key.ArrowUp:
+          this.store.eventBus.$emit(Bus.DataTypeHint.arrowUp, event);
+          break;
+        case Key.ArrowDown:
+          this.store.eventBus.$emit(Bus.DataTypeHint.arrowDown, event);
+          break;
+        case Key.ArrowRight:
+          this.store.eventBus.$emit(Bus.DataTypeHint.arrowRight, event);
+          break;
+        case Key.ArrowLeft:
+          this.store.eventBus.$emit(Bus.DataTypeHint.arrowLeft, event);
+          break;
+      }
+    }
+    // ==================== Event Handler END ===================
+
+    // ==================== Life Cycle ====================
+    private created() {
+      this.store.eventBus.$on(Bus.ColumnDataType.change, this.onChangeTrigger);
+    }
+
+    private destroyed() {
+      this.store.eventBus.$off(Bus.ColumnDataType.change, this.onChangeTrigger);
+    }
+    // ==================== Life Cycle END ====================
   }
 </script>
 

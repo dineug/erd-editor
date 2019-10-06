@@ -67,10 +67,24 @@ enum ERD {
   contextmenuEnd = 'ERD.contextmenuEnd',
 }
 
+enum ColumnDataType {
+  change = 'ColumnDataType.change',
+}
+
+enum DataTypeHint {
+  search = 'DataTypeHint.search',
+  arrowUp = 'DataTypeHint.arrowUp',
+  arrowDown = 'DataTypeHint.arrowDown',
+  arrowRight = 'DataTypeHint.arrowRight',
+  arrowLeft = 'DataTypeHint.arrowLeft',
+}
+
 export const Bus = {
   Table,
   Memo,
   ERD,
+  ColumnDataType,
+  DataTypeHint,
 };
 
 export default EventBus;

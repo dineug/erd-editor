@@ -89,6 +89,7 @@ export function removeSpanText() {
  * @param text
  */
 const TEXT_PADDING = 2;
+
 export function getTextWidth(text: string): number {
   let result = 0;
   if (spanText) {
@@ -124,4 +125,47 @@ export function findParentLiByElement(el: HTMLElement | null): HTMLElement | nul
     return el;
   }
   return findParentLiByElement(el.parentElement);
+}
+
+export function markToHTML(className: string, target: string, key: string): string {
+  const keyArray = key.split('');
+  const strArray = target.split('');
+  for (let i = 0; i < keyArray.length - 1; i++) {
+    if (keyEquals(keyArray, i + 1)) {
+      keyArray.splice(i, 1);
+      i--;
+    }
+  }
+  const buf: string[] = [];
+  strArray.forEach((value) => {
+    const html = keyHtml(keyArray, value, className);
+    if (html) {
+      buf.push(html);
+    } else {
+      buf.push(value);
+    }
+  });
+  return buf.join('');
+}
+
+function keyEquals(keyArray: string[], start: number): boolean {
+  let result = false;
+  for (let i = start + 1; i < keyArray.length; i++) {
+    if (keyArray[start].toLowerCase() === keyArray[i].toLowerCase() || keyArray[start] === ' ') {
+      result = true;
+      break;
+    }
+  }
+  return result;
+}
+
+function keyHtml(keyArray: string[], target: string, className: string): string | null {
+  let result: string | null = null;
+  for (const key of keyArray) {
+    if (target.toLowerCase() === key.toLowerCase()) {
+      result = '<span class="' + className + '">' + target + '</span>';
+      break;
+    }
+  }
+  return result;
 }
