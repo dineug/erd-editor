@@ -145,7 +145,7 @@ export function markToHTML(className: string, target: string, key: string): stri
       buf.push(value);
     }
   });
-  return buf.join();
+  return buf.join('');
 }
 
 function keyEquals(keyArray: string[], start: number): boolean {

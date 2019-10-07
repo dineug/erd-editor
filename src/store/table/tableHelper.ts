@@ -1,5 +1,5 @@
 import {SIZE_START_X, SIZE_START_Y, SIZE_START_ADD} from '@/ts/layout';
-import {Table} from '../table';
+import {Column, Table} from '../table';
 import {Memo} from '../memo';
 import {ColumnFocus} from '@/models/ColumnFocusModel';
 import StoreManagement from '@/store/StoreManagement';
@@ -64,4 +64,31 @@ export function getSelect(focusColumns: ColumnFocus[]): {min: number, max: numbe
     }
   }
   return index;
+}
+
+export function searchTable(tables: Table[], keyword: string): Table[] {
+  tables.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  if (keyword.trim() === '') {
+    return tables;
+  }
+  const targets: Table[] = [];
+  tables.forEach((table) => {
+    if (searchColumn(table.columns, keyword).length !== 0) {
+      targets.push(table);
+    }
+  });
+  return targets;
+}
+
+export function searchColumn(columns: Column[], keyword: string): Column[] {
+  return columns.filter((column) => {
+    return search(column.name, keyword)
+      || search(column.dataType, keyword)
+      || search(column.default, keyword)
+      || search(column.comment, keyword);
+  });
+}
+
+export function search(target: string, keyword: string): boolean {
+  return keyword.split(' ').some((key) => target.indexOf(key) !== -1);
 }

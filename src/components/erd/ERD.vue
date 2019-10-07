@@ -1,4 +1,3 @@
-import {CanvasType} from '@/store/canvas'
 <template lang="pug">
   .erd(
     :style="erdStyle"
@@ -53,6 +52,10 @@ import {CanvasType} from '@/store/canvas'
       :store="store"
       :value="sql"
     )
+    TableList(
+      v-if="canvasType === 'List'"
+      :store="store"
+    )
 </template>
 
 <script lang="ts">
@@ -84,6 +87,7 @@ import {CanvasType} from '@/store/canvas'
   import PreviewTarget from './PreviewTarget.vue';
   import TopMenu from './TopMenu.vue';
   import SQL from './SQL.vue';
+  import TableList from './TableList.vue';
 
   import {fromEvent, Observable, Subscription} from 'rxjs';
 
@@ -97,6 +101,7 @@ import {CanvasType} from '@/store/canvas'
       PreviewTarget,
       TopMenu,
       SQL,
+      TableList,
     },
   })
   export default class ERD extends Vue {

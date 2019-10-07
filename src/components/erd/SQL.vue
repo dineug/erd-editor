@@ -34,7 +34,7 @@
   .sql {
     margin-top: $size-top-menu-height;
     width: 100%;
-    height: 100%;
+    height: calc(100% - 30px);
     background-color: $color-table;
     opacity: 0.9;
     color: $color-font-active;

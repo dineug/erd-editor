@@ -79,12 +79,17 @@ enum DataTypeHint {
   arrowLeft = 'DataTypeHint.arrowLeft',
 }
 
+enum TableList {
+  search = 'TableList.search',
+}
+
 export const Bus = {
   Table,
   Memo,
   ERD,
   ColumnDataType,
   DataTypeHint,
+  TableList,
 };
 
 export default EventBus;

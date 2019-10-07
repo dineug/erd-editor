@@ -1,3 +1,4 @@
+import {CanvasType} from '@/store/canvas'
 <template lang="pug">
   ul.top-menu(:style="topMenuStyle")
     li
@@ -39,6 +40,17 @@
       @click="onRedo"
     )
       font-awesome-icon(icon="redo-alt")
+    li.search(v-if="canvasType === 'List'")
+      font-awesome-icon(icon="search")
+    li(v-if="canvasType === 'List'")
+      input(
+        type="text"
+        placeholder="search"
+        spellcheck="false"
+        title="search"
+        v-model="search"
+        @input="onSearch"
+      )
 </template>
 
 <script lang="ts">
@@ -46,7 +58,7 @@
   import {CanvasType, Commit} from '@/store/canvas';
   import {Bus} from '@/ts/EventBus';
   import StoreManagement from '@/store/StoreManagement';
-  import {Component, Prop, Vue} from 'vue-property-decorator';
+  import {Component, Prop, Vue, Watch} from 'vue-property-decorator';
 
   @Component
   export default class TopMenu extends Vue {
@@ -60,6 +72,8 @@
     private undo!: boolean;
     @Prop({type: Boolean, default: false})
     private redo!: boolean;
+
+    private search: string = '';
 
     get topMenuStyle(): string {
       const left = this.store.canvasStore.state.scrollLeft;
@@ -76,6 +90,14 @@
       return this.store.canvasStore.state.canvasType;
     }
 
+    @Watch('canvasType')
+    private watchCanvasType(canvasType: CanvasType) {
+      if (canvasType === CanvasType.List) {
+        this.store.eventBus.$emit(Bus.TableList.search, this.search);
+      }
+    }
+
+    // ==================== Event Handler ===================
     private onCanvasType(canvasType: CanvasType) {
       this.store.canvasStore.commit(Commit.canvasChangeType, canvasType);
     }
@@ -91,6 +113,12 @@
     private onChange() {
       this.store.eventBus.$emit(Bus.ERD.change);
     }
+
+    private onSearch() {
+      this.store.eventBus.$emit(Bus.TableList.search, this.search);
+    }
+
+    // ==================== Event Handler END ===================
 
   }
 </script>
@@ -116,6 +144,10 @@
 
       &.active {
         color: $color-font-active;
+      }
+
+      &.search {
+        cursor: default;
       }
     }
 
