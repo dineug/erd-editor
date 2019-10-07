@@ -1,6 +1,5 @@
 <template lang="pug">
   .canvas(:style="canvasStyle")
-    Menu
     Table(
       v-for="table in tables"
       :key="table.id"

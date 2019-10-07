@@ -27,7 +27,7 @@ class MariaDB {
 
     stringBuffer.push(`DROP DATABASE IF EXISTS ${canvas.databaseName};`);
     stringBuffer.push('');
-    stringBuffer.push(`CREATE DATABASE ${canvas.databaseName} DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;`);
+    stringBuffer.push(`CREATE DATABASE ${canvas.databaseName} DEFAULT CHARACTER SET utf8;`);
     stringBuffer.push(`USE ${canvas.databaseName}`);
     stringBuffer.push('');
 
