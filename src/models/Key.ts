@@ -26,6 +26,7 @@ enum Key {
   KeyA = 'KeyA',
   KeyC = 'KeyC',
   KeyV = 'KeyV',
+  KeyZ = 'KeyZ',
   Digit1 = 'Digit1',
   Digit2 = 'Digit2',
 }

@@ -9388,6 +9388,11 @@ uglify-to-browserify@~1.0.0:
   resolved "https://registry.yarnpkg.com/uglify-to-browserify/-/uglify-to-browserify-1.0.2.tgz#6e0924d6bda6b5afe349e39a6d632850a0f882b7"
   integrity sha1-bgkk1r2mta/jSeOabWMoUKD4grc=
 
+undo-manager@^1.0.5:
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/undo-manager/-/undo-manager-1.0.5.tgz#c348cf5bbd745d0d5163bf733d95f20ec0caa71c"
+  integrity sha1-w0jPW710XQ1RY79zPZXyDsDKpxw=
+
 unicode-canonical-property-names-ecmascript@^1.0.4:
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/unicode-canonical-property-names-ecmascript/-/unicode-canonical-property-names-ecmascript-1.0.4.tgz#2619800c4c825800efdd8343af7dd9933cbe2818"
@@ -9685,14 +9690,15 @@ vue@^2.6.10:
   resolved "https://registry.yarnpkg.com/vue/-/vue-2.6.10.tgz#a72b1a42a4d82a721ea438d1b6bf55e66195c637"
   integrity sha512-ImThpeNU9HbdZL3utgMCq0oiMzAkt1mcgy3/E6zWC/G6AaQoeuFdsl9nDhTDU3X1R6FK7nsIUuRACVcjI+A2GQ==
 
-vuerd-core@^0.2.15:
-  version "0.2.15"
-  resolved "https://registry.yarnpkg.com/vuerd-core/-/vuerd-core-0.2.15.tgz#f23d1189ccf5041550cf73d50e2aa0381137001e"
-  integrity sha512-sbVoOYfCv3DbRvdkg+Apjwqg54XIpczg03Zy0AUolqeuXfCmZFT/Jp8JD/2NsXUk6n67X2dX8wb/ZwACaxVHlg==
+vuerd-core@^0.2.17:
+  version "0.2.17"
+  resolved "https://registry.yarnpkg.com/vuerd-core/-/vuerd-core-0.2.17.tgz#9dd9aed57e5710a7d355d9708d5f471ad48bee70"
+  integrity sha512-bsaEs8zesFBv4qvZIeO4i20Xdts/awvGWGyiPDcUOUKfgdy1rf5ZFYrcgZpS915aTKhh1r/nHSsuPN4WKbJdkg==
   dependencies:
     "@tweenjs/tween.js" "^18.1.2"
     core-js "^2.6.5"
     rxjs "^6.5.2"
+    undo-manager "^1.0.5"
     uuid "^3.3.3"
     vscode-icons-js "^9.3.0"
     vue "^2.6.10"

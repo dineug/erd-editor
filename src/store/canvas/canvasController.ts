@@ -12,3 +12,10 @@ export function canvasChangeType(state: State, canvasType: CanvasType) {
   log.debug('canvasController canvasChangeType');
   state.canvasType = canvasType;
 }
+
+export function canvasResize(state: State, payload: {width: number, height: number}) {
+  log.debug('canvasController canvasWidthHeight');
+  const {width, height} = payload;
+  state.width = width;
+  state.height = height;
+}

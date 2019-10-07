@@ -1,14 +1,22 @@
-import {CanvasType} from '@/store/canvas'
 <template lang="pug">
   ul.top-menu(:style="topMenuStyle")
     li
-      input(
+      input.database-name(
         type="text"
         placeholder="database name"
         spellcheck="false"
         title="database name"
         v-model="store.canvasStore.state.databaseName"
         @change="onChange"
+      )
+    li
+      input.canvas-size(
+        type="text"
+        placeholder="canvas size"
+        title="canvas size"
+        :value="store.canvasStore.state.width"
+        @input="onInputSize"
+        @change="onChangeSize"
       )
     li(
       title="ERD"
@@ -54,7 +62,7 @@ import {CanvasType} from '@/store/canvas'
 </template>
 
 <script lang="ts">
-  import {SIZE_TOP_MENU_HEIGHT} from '@/ts/layout';
+  import {SIZE_TOP_MENU_HEIGHT, SIZE_CANVAS_MIN, SIZE_CANVAS_MAX} from '@/ts/layout';
   import {CanvasType, Commit} from '@/store/canvas';
   import {Bus} from '@/ts/EventBus';
   import StoreManagement from '@/store/StoreManagement';
@@ -118,6 +126,27 @@ import {CanvasType} from '@/store/canvas'
       this.store.eventBus.$emit(Bus.TableList.search, this.search);
     }
 
+    private onInputSize(event: Event) {
+      const input = event.target as HTMLInputElement;
+      input.value = input.value.replace(/[^0-9]/g, '');
+    }
+
+    private onChangeSize(event: Event) {
+      const input = event.target as HTMLInputElement;
+      let size = Number(input.value);
+      if (size < SIZE_CANVAS_MIN) {
+        size = SIZE_CANVAS_MIN;
+      }
+      if (size > SIZE_CANVAS_MAX) {
+        size = SIZE_CANVAS_MAX;
+      }
+      this.store.canvasStore.commit(Commit.canvasResize, {
+        width: size,
+        height: size,
+      });
+      this.store.eventBus.$emit(Bus.ERD.change);
+    }
+
     // ==================== Event Handler END ===================
 
   }
@@ -143,7 +172,7 @@ import {CanvasType} from '@/store/canvas'
       }
 
       &.undo-redo {
-        cursor: default;
+        cursor: not-allowed;
       }
 
       &.active {
@@ -162,7 +191,14 @@ import {CanvasType} from '@/store/canvas'
       opacity: 0.9;
       background-color: $color-table;
       color: $color-font-active;
-      width: 200px;
+
+      &.database-name {
+        width: 200px;
+      }
+
+      &.canvas-size {
+        width: 50px;
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 import {SIZE_PREVIEW_WIDTH} from '@/ts/layout';
-import {canvasMove, canvasChangeType} from './canvas/canvasController';
+import {canvasMove, canvasChangeType, canvasResize} from './canvas/canvasController';
 import {showChange} from './canvas/showController';
 import {databaseChange} from './canvas/databaseController';
 import {dataInit, dataShow} from '@/data/canvas';
@@ -55,6 +55,7 @@ export const enum Commit {
   load = 'load',
   canvasMove = 'canvasMove',
   canvasChangeType = 'canvasChangeType',
+  canvasResize = 'canvasResize',
   showChange = 'showChange',
   databaseChange = 'databaseChange',
 }
@@ -105,6 +106,7 @@ export function createStore() {
       },
       canvasMove,
       canvasChangeType,
+      canvasResize,
       showChange,
       databaseChange,
     },

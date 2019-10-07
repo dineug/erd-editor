@@ -8,6 +8,9 @@ export default {
       scope: [
         'vuerd',
       ],
+      option: {
+        undoManager: true,
+      },
     });
   },
 };

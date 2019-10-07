@@ -21,3 +21,5 @@ export const SIZE_MENU_HEIGHT = 39.52;
 export const SIZE_PREVIEW_WIDTH = 150;
 export const SIZE_PREVIEW_MARGIN = 20;
 export const SIZE_TOP_MENU_HEIGHT = 30;
+export const SIZE_CANVAS_MIN = 2000;
+export const SIZE_CANVAS_MAX = 20000;

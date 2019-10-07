@@ -6,13 +6,17 @@ interface Listener {
   callback(...arg: any): void;
 }
 
+interface Bus$ {
+  string: Subject<any>;
+}
+
 class EventBus {
-  private bus$!: { string: Subject<any> } | any;
+  private bus$!: Bus$ | any;
   private listeners: Listener[] = [];
 
   constructor() {
-    this.bus$ = new Proxy<{ string: Subject<any> } | any>({}, {
-      get(target: { string: Subject<any> } | any, p: string): any {
+    this.bus$ = new Proxy<Bus$ | any>({}, {
+      get(target: Bus$ | any, p: string): any {
         if (target[p]) {
           return target[p];
         }

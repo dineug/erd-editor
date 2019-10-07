@@ -291,6 +291,12 @@
             this.store.tableStore.commit(TableCommit.columnCopy);
           } else if (event.ctrlKey && event.code === Key.KeyV && !this.store.tableStore.state.edit) { // Ctrl + V
             this.store.tableStore.commit(TableCommit.columnPaste, this.store);
+          } else if (event.ctrlKey && event.shiftKey && event.code === Key.KeyZ) { // Ctrl + Shift + Z
+            event.preventDefault();
+            this.onRedo();
+          } else if (event.ctrlKey && event.code === Key.KeyZ) { // Ctrl + Z
+            event.preventDefault();
+            this.onUndo();
           }
         }
       }
