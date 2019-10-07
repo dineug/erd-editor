@@ -7,6 +7,7 @@
 [Live Demo](https://vuerd.github.io/vuerd-docs/iframe.html?id=demo-live--vuerd-core)
 
 ## Install
+### vuerd-core plugin install
 ```bash
 $ yarn add vuerd-core
 $ yarn add vuerd-plugin-erd
@@ -14,8 +15,14 @@ or
 $ npm install vuerd-core
 $ npm install vuerd-plugin-erd
 ```
+### Component use
+```bash
+$ yarn add vuerd-plugin-erd
+or
+$ npm install vuerd-plugin-erd
+```
 ## Usage
-### vuerd-core plugin install 
+### vuerd-core plugin install
 ```js
 // main.js or main.ts
 import Vue from 'vue';
