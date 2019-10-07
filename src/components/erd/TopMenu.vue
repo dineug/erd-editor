@@ -28,13 +28,13 @@ import {CanvasType} from '@/store/canvas'
       @click="onCanvasType('List')"
     )
       font-awesome-icon(icon="list")
-    li(
+    li.undo-redo(
       title="undo(Ctrl + Z)"
       :class="{active: undo}"
       @click="onUndo"
     )
       font-awesome-icon(icon="undo-alt")
-    li(
+    li.undo-redo(
       title="redo(Ctrl + Shift + Z)"
       :class="{active: redo}"
       @click="onRedo"
@@ -142,7 +142,12 @@ import {CanvasType} from '@/store/canvas'
         margin-left: 20px;
       }
 
+      &.undo-redo {
+        cursor: default;
+      }
+
       &.active {
+        cursor: pointer;
         color: $color-font-active;
       }
 

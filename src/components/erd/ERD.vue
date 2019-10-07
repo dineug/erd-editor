@@ -7,6 +7,10 @@
       :store="store"
       :width="width"
       :height="height"
+      :undo="undo"
+      :redo="redo"
+      @undo="onUndo"
+      @redo="onRedo"
     )
     Contextmenu.contextmenu-erd(
       v-if="canvasType === 'ERD' && contextmenu"
@@ -113,6 +117,10 @@
     private height!: number;
     @Prop({type: Boolean, default: false})
     private focus!: boolean;
+    @Prop({type: Boolean, default: false})
+    private undo!: boolean;
+    @Prop({type: Boolean, default: false})
+    private redo!: boolean;
 
     private resize$: Observable<Event> = fromEvent(window, 'resize');
     private mousedown$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mousedown');
@@ -317,6 +325,14 @@
 
     private onContextmenuEnd() {
       this.contextmenu = false;
+    }
+
+    private onUndo() {
+      this.$emit('undo');
+    }
+
+    private onRedo() {
+      this.$emit('redo');
     }
 
     // ==================== Event Handler END ===================
