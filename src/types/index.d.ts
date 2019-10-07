@@ -1,9 +1,9 @@
 import {Command} from 'vuerd-core';
 import Vue from 'vue';
 
-declare class vuerd extends Vue { }
+declare class Vuerd extends Vue { }
 export {
-  vuerd,
+  Vuerd,
 };
 
 export declare function install(command: Command): void;

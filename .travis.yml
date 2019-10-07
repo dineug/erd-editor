@@ -7,8 +7,6 @@ deploy:
   email: dineug2@gmail.com
   api_key: $NPM_TOKEN
   skip_cleanup: true
-  on:
-    tags: true
 
 script:
   - yarn lint

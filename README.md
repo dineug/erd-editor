@@ -41,14 +41,14 @@ Vue.use(VuerdCore);
 ```js
 // main.js or main.ts
 import Vue from 'vue';
-import {vuerd} from 'vuerd-plugin-erd';
+import {Vuerd} from 'vuerd-plugin-erd';
 import 'vuerd-plugin-erd/dist/vuerd-plugin-erd.css';
-Vue.component('vuerd', vuerd);
+Vue.component('Vuerd', Vuerd);
 ```
 ```html
 <template>
   <div class="workspace">
-    <vuerd
+    <Vuerd
       :width="width"
       :height="height"
       :focus="focus"
@@ -61,7 +61,7 @@ Vue.component('vuerd', vuerd);
 
 <script>
   export default {
-    name: 'WorkspaceERD',
+    name: 'Workspace',
     data: () => ({
       focus: true,
       value: '',
