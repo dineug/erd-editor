@@ -136,9 +136,11 @@
       let size = Number(input.value);
       if (size < SIZE_CANVAS_MIN) {
         size = SIZE_CANVAS_MIN;
+        input.value = `${size}`;
       }
       if (size > SIZE_CANVAS_MAX) {
         size = SIZE_CANVAS_MAX;
+        input.value = `${size}`;
       }
       this.store.canvasStore.commit(Commit.canvasResize, {
         width: size,
@@ -197,7 +199,7 @@
       }
 
       &.canvas-size {
-        width: 50px;
+        width: 80px;
       }
     }
   }
