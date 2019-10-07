@@ -1,0 +1,13 @@
+language: node_js
+node_js:
+  - lts/*
+
+deploy:
+  provider: npm
+  email: dineug2@gmail.com
+  api_key: $NPM_TOKEN
+  skip_cleanup: true
+
+script:
+  - yarn lint
+  - yarn build

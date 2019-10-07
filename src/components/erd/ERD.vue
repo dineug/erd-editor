@@ -255,7 +255,7 @@
     }
 
     private onKeydown(event: KeyboardEvent) {
-      log.debug('ERD onKeydown');
+      // log.debug('ERD onKeydown');
       if (this.focus) {
         if (this.canvasType === CanvasType.ERD) {
           if (event.altKey && event.code === Key.KeyN) { // Alt + N
@@ -334,11 +334,15 @@
     }
 
     private onUndo() {
-      this.$emit('undo');
+      if (this.undo) {
+        this.$emit('undo');
+      }
     }
 
     private onRedo() {
-      this.$emit('redo');
+      if (this.redo) {
+        this.$emit('redo');
+      }
     }
 
     // ==================== Event Handler END ===================
