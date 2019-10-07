@@ -1,6 +1,8 @@
 import ERD from './erd/ERD.vue';
 import {Command} from 'vuerd-core';
 
+export const vuerd = ERD;
+
 export default {
   install(command: Command) {
     command.editorAdd({

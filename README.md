@@ -15,6 +15,7 @@ $ npm install vuerd-core
 $ npm install vuerd-plugin-erd
 ```
 ## Usage
+### vuerd-core plugin install 
 ```js
 // main.js or main.ts
 import Vue from 'vue';
@@ -27,4 +28,55 @@ Vue.use(VuerdCore);
 ```
 ```html
 <VuerdCore/>
+```
+### Component use
+[Component Wrapping Structure](https://vuerd.github.io/vuerd-docs/?path=/story/plugin-command--editor)
+```js
+// main.js or main.ts
+import Vue from 'vue';
+import {vuerd} from 'vuerd-plugin-erd';
+import 'vuerd-plugin-erd/dist/vuerd-plugin-erd.css';
+Vue.component('vuerd', vuerd);
+```
+```html
+<template>
+  <div class="workspace">
+    <vuerd
+      :width="width"
+      :height="height"
+      :focus="focus"
+      :value="value"
+      @change="onChange"
+      @input="onInput"
+    />
+  </div>
+</template>
+
+<script>
+  export default {
+    name: 'WorkspaceERD',
+    data: () => ({
+      focus: true,
+      value: '',
+      // editor size
+      width: 1000,
+      height: 1000,
+    }),
+    methods: {
+      onChange(value) {
+        // data save
+      },
+      onInput(value) {
+        // data save
+      }
+    },
+  }
+</script>
+
+<style scoped>
+  .workspace {
+    height: 100vh;
+    overflow: hidden;
+  }
+</style>
 ```

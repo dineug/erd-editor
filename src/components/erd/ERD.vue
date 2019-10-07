@@ -384,5 +384,7 @@
     position: relative;
     z-index: 100;
     overflow: hidden;
+    color: $color-font;
+    background-color: $color-canvas;
   }
 </style>
