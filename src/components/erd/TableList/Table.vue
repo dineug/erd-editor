@@ -7,6 +7,7 @@
         placeholder="table"
         v-model="table.name"
         @change="onChange"
+        @input="onInput($event, 'tableName')"
       )
       input(
         type="text"
@@ -14,6 +15,7 @@
         placeholder="comment"
         v-model="table.comment"
         @change="onChange"
+        @input="onInput($event, 'tableComment')"
       )
     .table-body
       .table-column-header
@@ -35,10 +37,14 @@
 </template>
 
 <script lang="ts">
+  import {SIZE_MIN_WIDTH} from '@/ts/layout';
   import StoreManagement from '@/store/StoreManagement';
   import {Table as TableModel, Commit as TableCommit} from '@/store/table';
   import {searchColumn} from '@/store/table/tableHelper';
   import {Column as ColumnModel} from '@/store/table';
+  import {FocusType} from '@/models/TableFocusModel';
+  import {getTextWidth} from '@/ts/util';
+  import {relationshipSort} from '@/store/relationship/relationshipHelper';
   import {Component, Prop, Vue} from 'vue-property-decorator';
   import Column from './Column.vue';
 
@@ -62,6 +68,25 @@
     private onChange() {
       this.store.tableStore.commit(TableCommit.tableEditEnd, this.store);
     }
+
+    private onInput(event: Event, focusType: FocusType) {
+      const input = event.target as HTMLInputElement;
+      let width = getTextWidth(input.value);
+      if (SIZE_MIN_WIDTH > width) {
+        width = SIZE_MIN_WIDTH;
+      }
+      switch (focusType) {
+        case FocusType.tableName:
+          this.table.ui.widthName = width;
+          break;
+        case FocusType.tableComment:
+          this.table.ui.widthComment = width;
+          break;
+      }
+      relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships);
+      // eventBus.$emit(Bus.ERD.input);
+    }
+
   }
 </script>
 

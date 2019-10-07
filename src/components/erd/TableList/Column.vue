@@ -26,6 +26,7 @@
       placeholder="column"
       v-model="column.name"
       @change="onChange"
+      @input="onInput($event, 'columnName')"
     )
     input(
       type="text"
@@ -33,6 +34,7 @@
       placeholder="dataType"
       v-model="column.dataType"
       @change="onChange"
+      @input="onInput($event, 'columnDataType')"
     )
     input(
       type="text"
@@ -40,6 +42,7 @@
       placeholder="default"
       v-model="column.default"
       @change="onChange"
+      @input="onInput($event, 'columnDefault')"
     )
     input(
       type="text"
@@ -47,14 +50,19 @@
       placeholder="comment"
       v-model="column.comment"
       @change="onChange"
+      @input="onInput($event, 'columnComment')"
     )
 </template>
 
 <script lang="ts">
+  import {SIZE_MIN_WIDTH} from '@/ts/layout';
   import StoreManagement from '@/store/StoreManagement';
   import {Column as ColumnModel, Commit as TableCommit} from '@/store/table';
   import {Table as TableModel} from '@/store/table';
   import {Commit as RelationshipCommit} from '@/store/relationship';
+  import {FocusType} from '@/models/TableFocusModel';
+  import {relationshipSort} from '@/store/relationship/relationshipHelper';
+  import {getTextWidth} from '@/ts/util';
   import {Component, Prop, Vue} from 'vue-property-decorator';
 
   @Component
@@ -91,6 +99,30 @@
 
     private onChange() {
       this.store.tableStore.commit(TableCommit.tableEditEnd, this.store);
+    }
+
+    private onInput(event: Event, focusType: FocusType) {
+      const input = event.target as HTMLInputElement;
+      let width = getTextWidth(input.value);
+      if (SIZE_MIN_WIDTH > width) {
+        width = SIZE_MIN_WIDTH;
+      }
+      switch (focusType) {
+        case FocusType.columnName:
+          this.column.ui.widthName = width;
+          break;
+        case FocusType.columnDataType:
+          this.column.ui.widthDataType = width;
+          break;
+        case FocusType.columnDefault:
+          this.column.ui.widthDefault = width;
+          break;
+        case FocusType.columnComment:
+          this.column.ui.widthComment = width;
+          break;
+      }
+      relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships);
+      // this.store.eventBus.$emit(Bus.ERD.input);
     }
   }
 </script>
