@@ -3,7 +3,7 @@
 ![vuerd](https://user-images.githubusercontent.com/45829489/66325039-8856cc00-e961-11e9-9b4e-c5580200dc1a.gif)
 
 ## Document
-[Storybook](https://vuerd.github.io/vuerd-docs/)
+[Storybook](https://vuerd.github.io/vuerd-docs/)  
 [Live Demo](https://vuerd.github.io/vuerd-docs/iframe.html?id=demo-live--vuerd-core)
 
 ## Install
