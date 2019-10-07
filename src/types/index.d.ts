@@ -1,6 +1,7 @@
 import {Command} from 'vuerd-core';
-import vuerd from '../components/erd/ERD.vue';
+import Vue from 'vue';
 
+declare class vuerd extends Vue { }
 export {
   vuerd,
 };
