@@ -1,7 +1,6 @@
 import {Command} from 'vuerd-core';
-import {Component} from 'vue';
+import vuerd from '../components/erd/ERD.vue';
 
-type vuerd = Component;
 export {
   vuerd,
 };
