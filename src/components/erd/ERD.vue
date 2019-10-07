@@ -379,12 +379,43 @@
   }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss">
   .erd {
     position: relative;
     z-index: 100;
     overflow: hidden;
     color: $color-font;
     background-color: $color-canvas;
+
+    /* width */
+    ::-webkit-scrollbar {
+      width: $size-scrollbar;
+      height: $size-scrollbar;
+    }
+
+    /* Track */
+    ::-webkit-scrollbar-track {
+      background: $color-opacity;
+    }
+
+    ::-webkit-scrollbar-corner {
+      background: $color-opacity;
+    }
+
+    /* Handle */
+    ::-webkit-scrollbar-thumb {
+      background: $color-scrollbar-thumb;
+    }
+
+    /* Handle : hover*/
+    ::-webkit-scrollbar-thumb:hover {
+      background: $color-scrollbar-thumb-active;
+    }
+
+    /* firefox */
+    .scrollbar {
+      scrollbar-color: $color-scrollbar-thumb $color-opacity;
+      scrollbar-width: thin;
+    }
   }
 </style>

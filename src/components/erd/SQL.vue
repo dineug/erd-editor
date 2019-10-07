@@ -1,5 +1,5 @@
 <template lang="pug">
-  textarea.sql(
+  textarea.sql.scrollbar(
     :value="value"
     spellcheck="false"
   )

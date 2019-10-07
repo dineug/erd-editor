@@ -1,5 +1,5 @@
 <template lang="pug">
-  .table-list
+  .table-list.scrollbar
     Table(
       v-for="table in tables"
       :key="table.id"
