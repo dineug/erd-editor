@@ -6316,6 +6316,11 @@ mkdirp@0.5.x, mkdirp@0.x, "mkdirp@>=0.5 0", mkdirp@^0.5.0, mkdirp@^0.5.1, mkdirp
   dependencies:
     minimist "0.0.8"
 
+monaco-editor@^0.18.1:
+  version "0.18.1"
+  resolved "https://registry.yarnpkg.com/monaco-editor/-/monaco-editor-0.18.1.tgz#ced7c305a23109875feeaf395a504b91f6358cfc"
+  integrity sha512-fmL+RFZ2Hrezy+X/5ZczQW51LUmvzfcqOurnkCIRFTyjdVjzR7JvENzI6+VKBJzJdPh6EYL4RoWl92b2Hrk9fw==
+
 move-concurrently@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/move-concurrently/-/move-concurrently-1.0.1.tgz#be2c005fda32e0b29af1f05d7c4b33214c701f92"
@@ -9690,10 +9695,10 @@ vue@^2.6.10:
   resolved "https://registry.yarnpkg.com/vue/-/vue-2.6.10.tgz#a72b1a42a4d82a721ea438d1b6bf55e66195c637"
   integrity sha512-ImThpeNU9HbdZL3utgMCq0oiMzAkt1mcgy3/E6zWC/G6AaQoeuFdsl9nDhTDU3X1R6FK7nsIUuRACVcjI+A2GQ==
 
-vuerd-core@^0.2.17:
-  version "0.2.17"
-  resolved "https://registry.yarnpkg.com/vuerd-core/-/vuerd-core-0.2.17.tgz#9dd9aed57e5710a7d355d9708d5f471ad48bee70"
-  integrity sha512-bsaEs8zesFBv4qvZIeO4i20Xdts/awvGWGyiPDcUOUKfgdy1rf5ZFYrcgZpS915aTKhh1r/nHSsuPN4WKbJdkg==
+vuerd-core@^0.2.18:
+  version "0.2.18"
+  resolved "https://registry.yarnpkg.com/vuerd-core/-/vuerd-core-0.2.18.tgz#ac7ce145f395bc1834e2f6589287ca780684040c"
+  integrity sha512-AzdNyAoaq2fvMDQ+McpMXw3MOGeNgUH815ZFqLqGL/5Vy7yhQmnA+bF7A7S4Hz9c3u788wQiD86wAlEI6D0LMw==
   dependencies:
     "@tweenjs/tween.js" "^18.1.2"
     core-js "^2.6.5"

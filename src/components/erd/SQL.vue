@@ -1,14 +1,13 @@
 <template lang="pug">
-  textarea.sql.scrollbar(
-    :value="value"
-    spellcheck="false"
-  )
+  .sql
 </template>
 
 <script lang="ts">
   import {Commit as CanvasCommit} from '@/store/canvas';
   import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Vue} from 'vue-property-decorator';
+
+  import * as monaco from 'monaco-editor';
 
   @Component
   export default class SQL extends Vue {
@@ -26,6 +25,11 @@
           scrollLeft: this.$el.parentElement.scrollLeft,
         });
       }
+      monaco.editor.create(this.$el as HTMLElement, {
+        value: this.value,
+        language: 'sql',
+        theme: 'vs-dark',
+      });
     }
   }
 </script>
@@ -33,15 +37,6 @@
 <style scoped lang="scss">
   .sql {
     margin-top: $size-top-menu-height;
-    width: 100%;
     height: calc(100% - 30px);
-    background-color: $color-table;
-    opacity: 0.9;
-    color: $color-font-active;
-
-    padding: 0;
-    border: none;
-    resize: none;
-    outline: none;
   }
 </style>
