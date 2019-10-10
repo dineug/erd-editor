@@ -3,15 +3,10 @@
 </template>
 
 <script lang="ts">
+  import monaco from '@/plugins/monaco-editor';
   import {Commit as CanvasCommit} from '@/store/canvas';
   import StoreManagement from '@/store/StoreManagement';
   import {Component, Prop, Vue} from 'vue-property-decorator';
-
-  import 'monaco-editor/esm/vs/editor/browser/controller/coreCommands.js';
-  import 'monaco-editor/esm/vs/editor/contrib/find/findController.js';
-  import 'monaco-editor/esm/vs/editor/contrib/suggest/suggestController.js';
-  import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
-  import 'monaco-editor/esm/vs/basic-languages/sql/sql.contribution.js';
 
   @Component
   export default class SQL extends Vue {
@@ -29,6 +24,7 @@
           scrollLeft: this.$el.parentElement.scrollLeft,
         });
       }
+
       monaco.editor.create(this.$el as HTMLElement, {
         value: this.value,
         language: 'sql',
