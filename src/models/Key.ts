@@ -30,4 +30,4 @@ enum Key {
   Digit1 = 'Digit1',
   Digit2 = 'Digit2',
 }
-export default Key;
+export default Key

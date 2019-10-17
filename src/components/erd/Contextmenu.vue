@@ -24,70 +24,69 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_MENU_HEIGHT} from '@/ts/layout';
-  import StoreManagement from '@/store/StoreManagement';
-  import Menu from '@/models/Menu';
-  import {Bus} from '@/ts/EventBus';
-  import {Component, Prop, Vue} from 'vue-property-decorator';
+import { SIZE_MENU_HEIGHT } from '@/ts/layout'
+import StoreManagement from '@/store/StoreManagement'
+import Menu from '@/models/Menu'
+import { Bus } from '@/ts/EventBus'
+import { Component, Prop, Vue } from 'vue-property-decorator'
 
-  @Component
-  export default class Contextmenu extends Vue {
-    @Prop({type: Object, default: () => ({})})
-    private store!: StoreManagement;
-    @Prop({type: Array, default: () => []})
-    private menus!: Menu[];
-    @Prop({type: Number, default: 0})
-    private x!: number;
-    @Prop({type: Number, default: 0})
-    private y!: number;
+@Component
+export default class Contextmenu extends Vue {
+  @Prop({type: Object, default: () => ({})})
+  private store!: StoreManagement
+  @Prop({type: Array, default: () => []})
+  private menus!: Menu[]
+  @Prop({type: Number, default: 0})
+  private x!: number
+  @Prop({type: Number, default: 0})
+  private y!: number
 
-    private windowHeight: number = window.innerHeight;
-    private currentMenu: Menu | null = null;
+  private windowHeight: number = window.innerHeight
+  private currentMenu: Menu | null = null
 
-    get childrenX(): number {
-      const ul = this.$refs.ul as HTMLElement;
-      return this.x + ul.clientWidth;
-    }
-
-    get childrenY(): number {
-      if (this.currentMenu) {
-        let y = this.y + this.menus.indexOf(this.currentMenu) * SIZE_MENU_HEIGHT;
-        if (this.currentMenu.children) {
-          const height = (this.currentMenu.children.length - 1) * SIZE_MENU_HEIGHT;
-          if (y + height > this.windowHeight) {
-            y -= height;
-          }
-        }
-        return y;
-      }
-      return this.y;
-    }
-
-    private getIcon(menu: Menu): string | undefined {
-      if (menu.option && menu.option.show) {
-        const show = this.store.canvasStore.state.show;
-        return show[menu.option.show] ? 'check' : undefined;
-      } else if (menu.option && menu.option.database) {
-        const database = this.store.canvasStore.state.database;
-        return menu.option.database === database ? 'check' : undefined;
-      }
-      return menu.icon;
-    }
-
-    private onExecute(menu: Menu) {
-      if (!menu.children && menu.execute && typeof menu.execute === 'function') {
-        menu.execute();
-        if (!menu.option || menu.option.close === undefined || menu.option.close) {
-          this.store.eventBus.$emit(Bus.ERD.contextmenuEnd);
-        }
-      }
-    }
-
-    private onMouseover(menu: Menu) {
-      this.currentMenu = menu;
-    }
-
+  get childrenX (): number {
+    const ul = this.$refs.ul as HTMLElement
+    return this.x + ul.clientWidth
   }
+
+  get childrenY (): number {
+    if (this.currentMenu) {
+      let y = this.y + this.menus.indexOf(this.currentMenu) * SIZE_MENU_HEIGHT
+      if (this.currentMenu.children) {
+        const height = (this.currentMenu.children.length - 1) * SIZE_MENU_HEIGHT
+        if (y + height > this.windowHeight) {
+          y -= height
+        }
+      }
+      return y
+    }
+    return this.y
+  }
+
+  private getIcon (menu: Menu): string | undefined {
+    if (menu.option && menu.option.show) {
+      const show = this.store.canvasStore.state.show
+      return show[menu.option.show] ? 'check' : undefined
+    } else if (menu.option && menu.option.database) {
+      const database = this.store.canvasStore.state.database
+      return menu.option.database === database ? 'check' : undefined
+    }
+    return menu.icon
+  }
+
+  private onExecute (menu: Menu) {
+    if (!menu.children && menu.execute && typeof menu.execute === 'function') {
+      menu.execute()
+      if (!menu.option || menu.option.close === undefined || menu.option.close) {
+        this.store.eventBus.$emit(Bus.ERD.contextmenuEnd)
+      }
+    }
+  }
+
+  private onMouseover (menu: Menu) {
+    this.currentMenu = menu
+  }
+}
 </script>
 
 <style scoped lang="scss">

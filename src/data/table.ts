@@ -1,15 +1,15 @@
-import {State} from '@/store/table';
+import { State } from '@/store/table'
 
-function dataInit(): State {
+function dataInit (): State {
   return {
     tables: [],
     tableFocus: null,
     edit: null,
     copyColumns: [],
-    columnDraggable: null,
-  };
+    columnDraggable: null
+  }
 }
 
 export {
-  dataInit,
-};
+  dataInit
+}

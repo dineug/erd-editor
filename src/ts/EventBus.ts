@@ -1,57 +1,57 @@
-import {Subscription, Subject} from 'rxjs';
+import { Subscription, Subject } from 'rxjs'
 
 interface Listener {
-  sub: Subscription;
+  sub: Subscription
 
-  callback(...arg: any): void;
+  callback (data?: any): void
 }
 
 interface Bus$ {
-  string: Subject<any>;
+  string: Subject<any>
 }
 
 class EventBus {
-  private bus$!: Bus$ | any;
-  private listeners: Listener[] = [];
+  private bus$!: Bus$ | any
+  private listeners: Listener[] = []
 
-  constructor() {
+  constructor () {
     this.bus$ = new Proxy<Bus$ | any>({}, {
-      get(target: Bus$ | any, p: string): any {
+      get (target: Bus$ | any, p: string): any {
         if (target[p]) {
-          return target[p];
+          return target[p]
         }
-        return target[p] = new Subject();
-      },
-    });
+        return target[p] = new Subject()
+      }
+    })
   }
 
-  public $on(event: string, callback: (...args: any) => void) {
+  public $on (event: string, callback: (data?: any) => void) {
     this.listeners.push({
       sub: this.bus$[event].subscribe(callback),
-      callback,
-    });
+      callback
+    })
   }
 
-  public $off(event: string, callback: (...args: any) => void) {
-    const len = this.listeners.length;
+  public $off (event: string, callback: (data?: any) => void) {
+    const len = this.listeners.length
     for (let i = 0; i < len; i++) {
       if (this.listeners[i].callback === callback) {
-        this.listeners[i].sub.unsubscribe();
-        this.listeners.splice(i, 1);
-        break;
+        this.listeners[i].sub.unsubscribe()
+        this.listeners.splice(i, 1)
+        break
       }
     }
   }
 
-  public $emit(event: string, ...args: any) {
-    this.bus$[event].next(...args);
+  public $emit (event: string, data?: any) {
+    this.bus$[event].next(data)
   }
 
-  public destroyed() {
+  public destroyed () {
     this.listeners.forEach((listener) => {
-      listener.sub.unsubscribe();
-    });
-    this.listeners = [];
+      listener.sub.unsubscribe()
+    })
+    this.listeners = []
   }
 }
 
@@ -93,7 +93,7 @@ export const Bus = {
   ERD,
   ColumnDataType,
   DataTypeHint,
-  TableList,
-};
+  TableList
+}
 
-export default EventBus;
+export default EventBus

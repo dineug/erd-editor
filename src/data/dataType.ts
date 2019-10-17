@@ -1,8 +1,8 @@
-import MariaDB from './DataType/MariaDB';
-import MSSQL from './DataType/MSSQL';
-import MySQL from './DataType/MySQL';
-import Oracle from './DataType/Oracle';
-import PostgreSQL from './DataType/PostgreSQL';
+import MariaDB from './DataType/MariaDB'
+import MSSQL from './DataType/MSSQL'
+import MySQL from './DataType/MySQL'
+import Oracle from './DataType/Oracle'
+import PostgreSQL from './DataType/PostgreSQL'
 
 export const enum Database {
   MariaDB = 'MariaDB',
@@ -13,35 +13,35 @@ export const enum Database {
 }
 
 export interface DataTypeHint {
-  name: string;
+  name: string
 }
 
 export interface DatabaseHint {
-  database: Database;
-  dataTypeHints: DataTypeHint[];
+  database: Database
+  dataTypeHints: DataTypeHint[]
 }
 
 const databases: DatabaseHint[] = [
   {
     database: Database.MariaDB,
-    dataTypeHints: MariaDB,
+    dataTypeHints: MariaDB
   },
   {
     database: Database.MSSQL,
-    dataTypeHints: MSSQL,
+    dataTypeHints: MSSQL
   },
   {
     database: Database.MySQL,
-    dataTypeHints: MySQL,
+    dataTypeHints: MySQL
   },
   {
     database: Database.Oracle,
-    dataTypeHints: Oracle,
+    dataTypeHints: Oracle
   },
   {
     database: Database.PostgreSQL,
-    dataTypeHints: PostgreSQL,
-  },
-];
+    dataTypeHints: PostgreSQL
+  }
+]
 
-export default databases;
+export default databases

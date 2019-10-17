@@ -37,57 +37,56 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_MIN_WIDTH} from '@/ts/layout';
-  import StoreManagement from '@/store/StoreManagement';
-  import {Table as TableModel, Commit as TableCommit} from '@/store/table';
-  import {searchColumn} from '@/store/table/tableHelper';
-  import {Column as ColumnModel} from '@/store/table';
-  import {FocusType} from '@/models/TableFocusModel';
-  import {getTextWidth} from '@/ts/util';
-  import {relationshipSort} from '@/store/relationship/relationshipHelper';
-  import {Component, Prop, Vue} from 'vue-property-decorator';
-  import Column from './Column.vue';
+import { SIZE_MIN_WIDTH } from '@/ts/layout'
+import StoreManagement from '@/store/StoreManagement'
+import { Table as TableModel, Commit as TableCommit, Column as ColumnModel } from '@/store/table'
+import { searchColumn } from '@/store/table/tableHelper'
 
-  @Component({
-    components: {
-      Column,
-    },
-  })
-  export default class Table extends Vue {
-    @Prop({type: Object, default: () => ({})})
-    private store!: StoreManagement;
-    @Prop({type: Object, default: () => ({})})
-    private table!: TableModel;
-    @Prop({type: String, default: ''})
-    private search!: string;
+import { FocusType } from '@/models/TableFocusModel'
+import { getTextWidth } from '@/ts/util'
+import { relationshipSort } from '@/store/relationship/relationshipHelper'
+import { Component, Prop, Vue } from 'vue-property-decorator'
+import Column from './Column.vue'
 
-    get columns(): ColumnModel[] {
-      return searchColumn(this.table.columns, this.search);
-    }
-
-    private onChange() {
-      this.store.tableStore.commit(TableCommit.tableEditEnd, this.store);
-    }
-
-    private onInput(event: Event, focusType: FocusType) {
-      const input = event.target as HTMLInputElement;
-      let width = getTextWidth(input.value);
-      if (SIZE_MIN_WIDTH > width) {
-        width = SIZE_MIN_WIDTH;
-      }
-      switch (focusType) {
-        case FocusType.tableName:
-          this.table.ui.widthName = width;
-          break;
-        case FocusType.tableComment:
-          this.table.ui.widthComment = width;
-          break;
-      }
-      relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships);
-      // eventBus.$emit(Bus.ERD.input);
-    }
-
+@Component({
+  components: {
+    Column
   }
+})
+export default class Table extends Vue {
+  @Prop({type: Object, default: () => ({})})
+  private store!: StoreManagement
+  @Prop({type: Object, default: () => ({})})
+  private table!: TableModel
+  @Prop({type: String, default: ''})
+  private search!: string
+
+  get columns (): ColumnModel[] {
+    return searchColumn(this.table.columns, this.search)
+  }
+
+  private onChange () {
+    this.store.tableStore.commit(TableCommit.tableEditEnd, this.store)
+  }
+
+  private onInput (event: Event, focusType: FocusType) {
+    const input = event.target as HTMLInputElement
+    let width = getTextWidth(input.value)
+    if (SIZE_MIN_WIDTH > width) {
+      width = SIZE_MIN_WIDTH
+    }
+    switch (focusType) {
+      case FocusType.tableName:
+        this.table.ui.widthName = width
+        break
+      case FocusType.tableComment:
+        this.table.ui.widthComment = width
+        break
+    }
+    relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships)
+    // eventBus.$emit(Bus.ERD.input);
+  }
+}
 </script>
 
 <style scoped lang="scss">

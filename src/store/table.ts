@@ -1,5 +1,5 @@
-import Vue from 'vue';
-import Vuex from 'vuex';
+import Vue from 'vue'
+import Vuex from 'vuex'
 import {
   tableAdd,
   tableMove,
@@ -14,8 +14,8 @@ import {
   tableFocus,
   tableFocusMove,
   tableEditStart,
-  tableEditEnd,
-} from './table/tableController';
+  tableEditEnd
+} from './table/tableController'
 import {
   columnAdd,
   columnAddAll,
@@ -29,91 +29,91 @@ import {
   columnDraggableEnd,
   columnMove,
   columnActive,
-  columnActiveEnd,
-} from './table/columnController';
-import {TableFocus, FocusType} from '@/models/TableFocusModel';
-import {dataInit} from '@/data/table';
-import TableModel from '@/models/TableModel';
-import TableFocusModel from '@/models/TableFocusModel';
-import StoreManagement from '@/store/StoreManagement';
-import {getData} from '@/ts/util';
+  columnActiveEnd
+} from './table/columnController'
+import TableFocusModel, { TableFocus, FocusType } from '@/models/TableFocusModel'
+import { dataInit } from '@/data/table'
+import TableModel from '@/models/TableModel'
 
-Vue.use(Vuex);
+import StoreManagement from '@/store/StoreManagement'
+import { getData } from '@/ts/util'
+
+Vue.use(Vuex)
 
 export interface State {
-  tables: Table[];
-  tableFocus: TableFocus | null;
-  edit: Edit | null;
-  copyColumns: Column[];
-  columnDraggable: ColumnTable | null;
+  tables: Table[]
+  tableFocus: TableFocus | null
+  edit: Edit | null
+  copyColumns: Column[]
+  columnDraggable: ColumnTable | null
 }
 
 export interface ColumnTable {
-  table: Table;
-  column: Column;
+  table: Table
+  column: Column
 }
 
 export interface Edit {
-  id: string;
-  focusType: FocusType;
+  id: string
+  focusType: FocusType
 }
 
 export interface Table {
-  id: string;
-  name: string;
-  comment: string;
-  columns: Column[];
-  ui: TableUI;
+  id: string
+  name: string
+  comment: string
+  columns: Column[]
+  ui: TableUI
 
-  width(): number;
-  height(): number;
-  maxWidthColumn(): ColumnWidth;
+  width (): number
+  height (): number
+  maxWidthColumn (): ColumnWidth
 }
 
 export interface ColumnWidth {
-  width: number;
-  name: number;
-  comment: number;
-  dataType: number;
-  default: number;
-  notNull: number;
+  width: number
+  name: number
+  comment: number
+  dataType: number
+  default: number
+  notNull: number
 }
 
 export interface TableUI {
-  active: boolean;
-  top: number;
-  left: number;
-  widthName: number;
-  widthComment: number;
-  zIndex: number;
+  active: boolean
+  top: number
+  left: number
+  widthName: number
+  widthComment: number
+  zIndex: number
 }
 
 export interface Column {
-  id: string;
-  name: string;
-  comment: string;
-  dataType: string;
-  default: string;
-  option: ColumnOption;
-  ui: ColumnUI;
+  id: string
+  name: string
+  comment: string
+  dataType: string
+  default: string
+  option: ColumnOption
+  ui: ColumnUI
 }
 
 export interface ColumnOption {
-  autoIncrement: boolean;
-  primaryKey: boolean;
-  unique: boolean;
-  notNull: boolean;
+  autoIncrement: boolean
+  primaryKey: boolean
+  unique: boolean
+  notNull: boolean
 }
 
 export interface ColumnUI {
-  active: boolean;
-  pk: boolean;
-  fk: boolean;
-  pfk: boolean;
-  widthName: number;
-  widthComment: number;
-  widthDataType: number;
-  widthDefault: number;
+  active: boolean
+  pk: boolean
+  fk: boolean
+  pfk: boolean
+  widthName: number
+  widthComment: number
+  widthDataType: number
+  widthDefault: number
 }
 
 export const enum Commit {
@@ -148,39 +148,39 @@ export const enum Commit {
   columnActiveEnd = 'columnActiveEnd',
 }
 
-export function createStore() {
+export function createStore () {
   return new Vuex.Store<State>({
     state: {
       tables: [],
       tableFocus: null,
       edit: null,
       copyColumns: [],
-      columnDraggable: null,
+      columnDraggable: null
     },
     getters: {},
     mutations: {
-      init(state: State) {
-        const initData = dataInit() as any;
-        const data = state as any;
+      init (state: State) {
+        const initData = dataInit() as any
+        const data = state as any
         Object.keys(state).forEach((key) => {
-          data[key] = initData[key];
-        });
+          data[key] = initData[key]
+        })
       },
-      load(state: State, payload: { load: State, store: StoreManagement }) {
-        const {load, store} = payload;
-        state.edit = load.edit;
-        state.copyColumns = load.copyColumns;
-        state.columnDraggable = null;
-        state.tables = [];
-        load.tables.forEach((table) => state.tables.push(new TableModel(store, table)));
+      load (state: State, payload: { load: State, store: StoreManagement }) {
+        const {load, store} = payload
+        state.edit = load.edit
+        state.copyColumns = load.copyColumns
+        state.columnDraggable = null
+        state.tables = []
+        load.tables.forEach((table) => state.tables.push(new TableModel(store, table)))
         if (load.tableFocus) {
-          const reTableFocus = load.tableFocus as any;
-          const table = getData(state.tables, reTableFocus.table.id);
+          const reTableFocus = load.tableFocus as any
+          const table = getData(state.tables, reTableFocus.table.id)
           if (table) {
-            state.tableFocus = new TableFocusModel(store, table, reTableFocus);
+            state.tableFocus = new TableFocusModel(store, table, reTableFocus)
           }
         } else {
-          state.tableFocus = null;
+          state.tableFocus = null
         }
       },
       tableAdd,
@@ -209,8 +209,8 @@ export function createStore() {
       columnDraggableEnd,
       columnMove,
       columnActive,
-      columnActiveEnd,
+      columnActiveEnd
     },
-    actions: {},
-  });
+    actions: {}
+  })
 }

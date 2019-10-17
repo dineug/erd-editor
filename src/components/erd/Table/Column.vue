@@ -85,178 +85,178 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_MIN_WIDTH} from '@/ts/layout';
-  import {Column as ColumnModel, Table, ColumnWidth} from '@/store/table';
-  import {ColumnFocus} from '@/models/ColumnFocusModel';
-  import {FocusType} from '@/models/TableFocusModel';
-  import {Show} from '@/store/canvas';
-  import {Commit as TableCommit, Edit, ColumnTable} from '@/store/table';
-  import {log, getTextWidth} from '@/ts/util';
-  import StoreManagement from '@/store/StoreManagement';
-  import {Bus} from '@/ts/EventBus';
-  import {relationshipSort} from '@/store/relationship/relationshipHelper';
-  import {Component, Prop, Vue} from 'vue-property-decorator';
-  import ColumnDataType from './Column/ColumnDataType.vue';
-  import ColumnName from './Column/ColumnName.vue';
-  import ColumnNotNull from './Column/ColumnNotNull.vue';
-  import ColumnDefault from './Column/ColumnDefault.vue';
-  import ColumnComment from './Column/ColumnComment.vue';
-  import DataTypeHint from './Column/DataTypeHint.vue';
+import { SIZE_MIN_WIDTH } from '@/ts/layout'
+import { Column as ColumnModel, Table, ColumnWidth, Commit as TableCommit, Edit, ColumnTable } from '@/store/table'
+import { ColumnFocus } from '@/models/ColumnFocusModel'
+import { FocusType } from '@/models/TableFocusModel'
+import { Show } from '@/store/canvas'
 
-  @Component({
-    components: {
-      ColumnName,
-      ColumnDataType,
-      ColumnNotNull,
-      ColumnDefault,
-      ColumnComment,
-      DataTypeHint,
-    },
-  })
-  export default class Column extends Vue {
-    @Prop({type: Object, default: () => ({})})
-    private store!: StoreManagement;
-    @Prop({type: Object, default: () => ({})})
-    private table!: Table;
-    @Prop({type: Object, default: () => ({})})
-    private column!: ColumnModel;
-    @Prop({type: Object, default: null})
-    private columnFocus!: ColumnFocus | null;
+import { log, getTextWidth } from '@/ts/util'
+import StoreManagement from '@/store/StoreManagement'
+import { Bus } from '@/ts/EventBus'
+import { relationshipSort } from '@/store/relationship/relationshipHelper'
+import { Component, Prop, Vue } from 'vue-property-decorator'
+import ColumnDataType from './Column/ColumnDataType.vue'
+import ColumnName from './Column/ColumnName.vue'
+import ColumnNotNull from './Column/ColumnNotNull.vue'
+import ColumnDefault from './Column/ColumnDefault.vue'
+import ColumnComment from './Column/ColumnComment.vue'
+import DataTypeHint from './Column/DataTypeHint.vue'
 
-    get show(): Show {
-      return this.store.canvasStore.state.show;
-    }
-
-    get edit(): Edit | null {
-      return this.store.tableStore.state.edit;
-    }
-
-    get columnWidth(): ColumnWidth {
-      return this.table.maxWidthColumn();
-    }
-
-    get selected(): boolean {
-      let result = false;
-      if (this.columnFocus && this.columnFocus.selected && !this.column.ui.active) {
-        result = true;
-      }
-      return result;
-    }
-
-    get draggable(): boolean {
-      const columnDraggable = this.store.tableStore.state.columnDraggable;
-      let result = false;
-      if (columnDraggable
-        && columnDraggable.table.id === this.table.id
-        && columnDraggable.column.id === this.column.id) {
-        result = true;
-      }
-      return result;
-    }
-
-    // ==================== Event Handler ===================
-    private onFocus(event: MouseEvent, focusType: FocusType) {
-      log.debug('Column onFocus');
-      this.store.tableStore.commit(TableCommit.tableSelect, {
-        table: this.table,
-        event,
-        store: this.store,
-      });
-      this.$nextTick(() => {
-        if (this.columnFocus) {
-          this.store.tableStore.commit(TableCommit.columnFocus, {
-            focusType,
-            column: this.column,
-            event,
-          });
-        }
-      });
-    }
-
-    private onEditInput(event: Event, focusType: FocusType) {
-      log.debug('Column onEditInput');
-      const input = event.target as HTMLInputElement;
-      let width = getTextWidth(input.value);
-      if (SIZE_MIN_WIDTH > width) {
-        width = SIZE_MIN_WIDTH;
-      }
-      switch (focusType) {
-        case FocusType.columnName:
-          this.column.ui.widthName = width;
-          break;
-        case FocusType.columnDataType:
-          this.column.ui.widthDataType = width;
-          break;
-        case FocusType.columnDefault:
-          this.column.ui.widthDefault = width;
-          break;
-        case FocusType.columnComment:
-          this.column.ui.widthComment = width;
-          break;
-      }
-      relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships);
-      // this.store.eventBus.$emit(Bus.ERD.input);
-    }
-
-    private onEditBlur() {
-      log.debug('Column onEditBlur');
-      this.store.tableStore.commit(TableCommit.tableEditEnd, this.store);
-    }
-
-    private onColumnRemove() {
-      this.store.tableStore.commit(TableCommit.columnRemove, {
-        table: this.table,
-        column: this.column,
-        store: this.store,
-      });
-      this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
-    }
-
-    private onDblclick(event: MouseEvent, focusType: FocusType) {
-      log.debug('Column onDblclick');
-      event.preventDefault();
-      if (focusType === FocusType.columnNotNull) {
-        this.column.option.notNull = !this.column.option.notNull;
-        this.store.eventBus.$emit(Bus.ERD.change);
-      } else {
-        this.store.tableStore.commit(TableCommit.tableEditStart, {
-          id: this.column.id,
-          focusType,
-        });
-      }
-    }
-
-    private onMousedown(event: MouseEvent) {
-      log.debug('Column onMousedown');
-      const selection = window.getSelection();
-      if (selection) {
-        selection.removeAllRanges();
-      }
-    }
-
-    private onDragstart(event: DragEvent) {
-      log.debug('Column onDragstart');
-      const columnDraggable: ColumnTable = {
-        table: this.table,
-        column: this.column,
-      };
-      this.store.tableStore.commit(TableCommit.columnDraggableStart, columnDraggable);
-      this.store.tableStore.commit(TableCommit.tableEditEnd, this.store);
-      this.store.eventBus.$emit(Bus.Table.draggableStart);
-      // firefox
-      if (event.dataTransfer) {
-        event.dataTransfer.setData('text/plain', this.column.id);
-      }
-    }
-
-    private onDragend(event: DragEvent) {
-      log.debug('Column onDragend');
-      this.store.tableStore.commit(TableCommit.columnDraggableEnd);
-      this.store.eventBus.$emit(Bus.Table.draggableEnd);
-    }
-    // ==================== Event Handler END ===================
-
+@Component({
+  components: {
+    ColumnName,
+    ColumnDataType,
+    ColumnNotNull,
+    ColumnDefault,
+    ColumnComment,
+    DataTypeHint
   }
+})
+export default class Column extends Vue {
+  @Prop({type: Object, default: () => ({})})
+  private store!: StoreManagement
+  @Prop({type: Object, default: () => ({})})
+  private table!: Table
+  @Prop({type: Object, default: () => ({})})
+  private column!: ColumnModel
+  @Prop({type: Object, default: null})
+  private columnFocus!: ColumnFocus | null
+
+  get show (): Show {
+    return this.store.canvasStore.state.show
+  }
+
+  get edit (): Edit | null {
+    return this.store.tableStore.state.edit
+  }
+
+  get columnWidth (): ColumnWidth {
+    return this.table.maxWidthColumn()
+  }
+
+  get selected (): boolean {
+    let result = false
+    if (this.columnFocus && this.columnFocus.selected && !this.column.ui.active) {
+      result = true
+    }
+    return result
+  }
+
+  get draggable (): boolean {
+    const columnDraggable = this.store.tableStore.state.columnDraggable
+    let result = false
+    if (columnDraggable &&
+      columnDraggable.table.id === this.table.id &&
+      columnDraggable.column.id === this.column.id) {
+      result = true
+    }
+    return result
+  }
+
+  // ==================== Event Handler ===================
+  private onFocus (event: MouseEvent, focusType: FocusType) {
+    log.debug('Column onFocus')
+    this.store.tableStore.commit(TableCommit.tableSelect, {
+      table: this.table,
+      event,
+      store: this.store
+    })
+    this.$nextTick(() => {
+      if (this.columnFocus) {
+        this.store.tableStore.commit(TableCommit.columnFocus, {
+          focusType,
+          column: this.column,
+          event
+        })
+      }
+    })
+  }
+
+  private onEditInput (event: Event, focusType: FocusType) {
+    log.debug('Column onEditInput')
+    const input = event.target as HTMLInputElement
+    let width = getTextWidth(input.value)
+    if (SIZE_MIN_WIDTH > width) {
+      width = SIZE_MIN_WIDTH
+    }
+    switch (focusType) {
+      case FocusType.columnName:
+        this.column.ui.widthName = width
+        break
+      case FocusType.columnDataType:
+        this.column.ui.widthDataType = width
+        break
+      case FocusType.columnDefault:
+        this.column.ui.widthDefault = width
+        break
+      case FocusType.columnComment:
+        this.column.ui.widthComment = width
+        break
+    }
+    relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships)
+    // this.store.eventBus.$emit(Bus.ERD.input);
+  }
+
+  private onEditBlur () {
+    log.debug('Column onEditBlur')
+    this.store.tableStore.commit(TableCommit.tableEditEnd, this.store)
+  }
+
+  private onColumnRemove () {
+    this.store.tableStore.commit(TableCommit.columnRemove, {
+      table: this.table,
+      column: this.column,
+      store: this.store
+    })
+    this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change))
+  }
+
+  private onDblclick (event: MouseEvent, focusType: FocusType) {
+    log.debug('Column onDblclick')
+    event.preventDefault()
+    if (focusType === FocusType.columnNotNull) {
+      this.column.option.notNull = !this.column.option.notNull
+      this.store.eventBus.$emit(Bus.ERD.change)
+    } else {
+      this.store.tableStore.commit(TableCommit.tableEditStart, {
+        id: this.column.id,
+        focusType
+      })
+    }
+  }
+
+  private onMousedown (event: MouseEvent) {
+    log.debug('Column onMousedown')
+    const selection = window.getSelection()
+    if (selection) {
+      selection.removeAllRanges()
+    }
+  }
+
+  private onDragstart (event: DragEvent) {
+    log.debug('Column onDragstart')
+    const columnDraggable: ColumnTable = {
+      table: this.table,
+      column: this.column
+    }
+    this.store.tableStore.commit(TableCommit.columnDraggableStart, columnDraggable)
+    this.store.tableStore.commit(TableCommit.tableEditEnd, this.store)
+    this.store.eventBus.$emit(Bus.Table.draggableStart)
+    // firefox
+    if (event.dataTransfer) {
+      event.dataTransfer.setData('text/plain', this.column.id)
+    }
+  }
+
+  private onDragend (event: DragEvent) {
+    log.debug('Column onDragend')
+    this.store.tableStore.commit(TableCommit.columnDraggableEnd)
+    this.store.eventBus.$emit(Bus.Table.draggableEnd)
+  }
+
+  // ==================== Event Handler END ===================
+}
 </script>
 
 <style scoped lang="scss">

@@ -54,352 +54,352 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_TABLE_PADDING, SIZE_MIN_WIDTH} from '@/ts/layout';
-  import {Table as TableModel, Edit, ColumnTable} from '@/store/table';
-  import {Commit} from '@/store/table';
-  import {Show} from '@/store/canvas';
-  import {FocusType} from '@/models/TableFocusModel';
-  import {ColumnFocus} from '@/models/ColumnFocusModel';
-  import AnimationFrame from '@/ts/AnimationFrame';
-  import {Bus} from '@/ts/EventBus';
-  import {log, getTextWidth, autoName, findParentLiByElement, getData} from '@/ts/util';
-  import StoreManagement from '@/store/StoreManagement';
-  import {relationshipSort} from '@/store/relationship/relationshipHelper';
-  import {Component, Prop, Watch, Vue} from 'vue-property-decorator';
-  import Column from './Table/Column.vue';
-  import CircleButton from './CircleButton.vue';
-  import TableName from './Table/TableName.vue';
-  import TableComment from './Table/TableComment.vue';
+import { SIZE_TABLE_PADDING, SIZE_MIN_WIDTH } from '@/ts/layout'
+import { Table as TableModel, Edit, ColumnTable, Commit } from '@/store/table'
 
-  import {fromEvent, Observable, Subscription, Subject} from 'rxjs';
-  import {throttleTime, debounceTime} from 'rxjs/operators';
+import { Show } from '@/store/canvas'
+import { FocusType } from '@/models/TableFocusModel'
+import { ColumnFocus } from '@/models/ColumnFocusModel'
+import AnimationFrame from '@/ts/AnimationFrame'
+import { Bus } from '@/ts/EventBus'
+import { log, getTextWidth, autoName, findParentLiByElement, getData } from '@/ts/util'
+import StoreManagement from '@/store/StoreManagement'
+import { relationshipSort } from '@/store/relationship/relationshipHelper'
+import { Component, Prop, Watch, Vue } from 'vue-property-decorator'
+import Column from './Table/Column.vue'
+import CircleButton from './CircleButton.vue'
+import TableName from './Table/TableName.vue'
+import TableComment from './Table/TableComment.vue'
 
-  const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
+import { fromEvent, Observable, Subscription, Subject } from 'rxjs'
+import { throttleTime, debounceTime } from 'rxjs/operators'
 
-  @Component({
-    components: {
-      Column,
-      CircleButton,
-      TableName,
-      TableComment,
-    },
-  })
-  export default class Table extends Vue {
-    @Prop({type: Object, default: () => ({})})
-    private store!: StoreManagement;
-    @Prop({type: Boolean, default: false})
-    private focus!: boolean;
-    @Prop({type: Object, default: () => ({})})
-    private table!: TableModel;
+const TABLE_PADDING = SIZE_TABLE_PADDING * 2
 
-    private mouseup$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mouseup');
-    private mousemove$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mousemove');
-    private keydown$: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(window, 'keydown');
-    private subMouseup: Subscription | null = null;
-    private subMousemove: Subscription | null = null;
-    private subKeydown: Subscription | null = null;
+@Component({
+  components: {
+    Column,
+    CircleButton,
+    TableName,
+    TableComment
+  }
+})
+export default class Table extends Vue {
+  @Prop({type: Object, default: () => ({})})
+  private store!: StoreManagement
+  @Prop({type: Boolean, default: false})
+  private focus!: boolean
+  @Prop({type: Object, default: () => ({})})
+  private table!: TableModel
 
-    private draggableListener: Subscription[] = [];
-    private draggable$: Subject<DragEvent> = new Subject();
-    private subDraggable: Subscription | null = null;
+  private mouseup$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mouseup')
+  private mousemove$: Observable<MouseEvent> = fromEvent<MouseEvent>(window, 'mousemove')
+  private keydown$: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(window, 'keydown')
+  private subMouseup: Subscription | null = null
+  private subMousemove: Subscription | null = null
+  private subKeydown: Subscription | null = null
 
-    private moveXAnimation: AnimationFrame<{ x: number }> | null = null;
-    private moveYAnimation: AnimationFrame<{ y: number }> | null = null;
-    private transitionName: string = '';
+  private draggableListener: Subscription[] = []
+  private draggable$: Subject<DragEvent> = new Subject()
+  private subDraggable: Subscription | null = null
 
-    get tableStyle(): string {
-      return `
+  private moveXAnimation: AnimationFrame<{ x: number }> | null = null
+  private moveYAnimation: AnimationFrame<{ y: number }> | null = null
+  private transitionName: string = ''
+
+  get tableStyle (): string {
+    return `
         top: ${this.table.ui.top}px;
         left: ${this.table.ui.left}px;
         width: ${this.table.width()}px;
         height: ${this.table.height()}px;
         z-index: ${this.table.ui.zIndex};
-      `;
-    }
+      `
+  }
 
-    get tableFocus(): boolean {
-      let result = false;
-      if (this.store.tableStore.state.tableFocus
-        && this.store.tableStore.state.tableFocus.id === this.table.id
-        && this.focus) {
-        result = true;
+  get tableFocus (): boolean {
+    let result = false
+    if (this.store.tableStore.state.tableFocus &&
+      this.store.tableStore.state.tableFocus.id === this.table.id &&
+      this.focus) {
+      result = true
+    }
+    return result
+  }
+
+  get show (): Show {
+    return this.store.canvasStore.state.show
+  }
+
+  get edit (): Edit | null {
+    return this.store.tableStore.state.edit
+  }
+
+  get columnDraggable (): ColumnTable | null {
+    return this.store.tableStore.state.columnDraggable
+  }
+
+  @Watch('tableFocus')
+  private watchTableFocus (value: boolean) {
+    log.debug('Table watchTableFocus')
+    if (value) {
+      if (this.subKeydown) {
+        this.subKeydown.unsubscribe()
+        this.subKeydown = null
       }
-      return result;
-    }
-
-    get show(): Show {
-      return this.store.canvasStore.state.show;
-    }
-
-    get edit(): Edit | null {
-      return this.store.tableStore.state.edit;
-    }
-
-    get columnDraggable(): ColumnTable | null {
-      return this.store.tableStore.state.columnDraggable;
-    }
-
-    @Watch('tableFocus')
-    private watchTableFocus(value: boolean) {
-      log.debug('Table watchTableFocus');
-      if (value) {
-        if (this.subKeydown) {
-          this.subKeydown.unsubscribe();
-          this.subKeydown = null;
-        }
-        this.subKeydown = this.keydown$.subscribe(this.onKeydown);
-      } else {
-        if (this.subKeydown) {
-          this.subKeydown.unsubscribe();
-          this.subKeydown = null;
-        }
-      }
-    }
-
-    @Watch('table.columns')
-    private watchColumns() {
-      log.debug('Table watchColumns');
-      if (this.store.tableStore.state.tableFocus && this.store.tableStore.state.tableFocus.id === this.table.id) {
-        this.store.tableStore.state.tableFocus.watchColumns();
+      this.subKeydown = this.keydown$.subscribe(this.onKeydown)
+    } else {
+      if (this.subKeydown) {
+        this.subKeydown.unsubscribe()
+        this.subKeydown = null
       }
     }
+  }
 
-    private columnFocus(index: number): ColumnFocus | null {
-      let result: ColumnFocus | null = null;
-      if (this.store.tableStore.state.tableFocus
-        && this.store.tableStore.state.tableFocus.id === this.table.id) {
-        result = this.store.tableStore.state.tableFocus.focusColumns[index];
-      }
-      return result;
+  @Watch('table.columns')
+  private watchColumns () {
+    log.debug('Table watchColumns')
+    if (this.store.tableStore.state.tableFocus && this.store.tableStore.state.tableFocus.id === this.table.id) {
+      this.store.tableStore.state.tableFocus.watchColumns()
     }
+  }
 
-    // ==================== Event Handler ===================
-    private onMousedown(event: MouseEvent) {
-      const el = event.target as HTMLElement;
-      if (!el.closest('.table-button') && !el.closest('.column')) {
-        this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
-        this.subMousemove = this.mousemove$.subscribe(this.onMousemove);
-      }
-      if (!el.closest('.table-name')
-        && !el.closest('.table-comment')
-        && !el.closest('.column')) {
-        this.store.tableStore.commit(Commit.tableSelect, {
-          table: this.table,
-          event,
-          store: this.store,
-        });
-      }
+  private columnFocus (index: number): ColumnFocus | null {
+    let result: ColumnFocus | null = null
+    if (this.store.tableStore.state.tableFocus &&
+      this.store.tableStore.state.tableFocus.id === this.table.id) {
+      result = this.store.tableStore.state.tableFocus.focusColumns[index]
     }
+    return result
+  }
 
-    private onMouseup(event: MouseEvent) {
-      if (this.subMouseup && this.subMousemove) {
-        this.subMouseup.unsubscribe();
-        this.subMousemove.unsubscribe();
-      }
-      this.store.eventBus.$emit(Bus.Table.moveAnimationEnd);
-      this.store.eventBus.$emit(Bus.Memo.moveAnimationEnd);
+  // ==================== Event Handler ===================
+  private onMousedown (event: MouseEvent) {
+    const el = event.target as HTMLElement
+    if (!el.closest('.table-button') && !el.closest('.column')) {
+      this.subMouseup = this.mouseup$.subscribe(this.onMouseup)
+      this.subMousemove = this.mousemove$.subscribe(this.onMousemove)
     }
-
-    private onMousemove(event: MouseEvent) {
-      event.preventDefault();
-      this.store.tableStore.commit(Commit.tableMove, {
-        table: this.table,
-        x: event.movementX,
-        y: event.movementY,
-        event,
-        store: this.store,
-      });
-    }
-
-    private onClose() {
-      log.debug('Table onClose');
-      this.store.tableStore.commit(Commit.tableRemove, {
-        table: this.table,
-        store: this.store,
-      });
-    }
-
-    private onMoveAnimationEnd() {
-      if (this.moveXAnimation) {
-        this.moveXAnimation.stop();
-      }
-      if (this.moveYAnimation) {
-        this.moveYAnimation.stop();
-      }
-      let x = 0;
-      let y = 0;
-      const minWidth = this.store.canvasStore.state.width - (this.table.width() + TABLE_PADDING);
-      const minHeight = this.store.canvasStore.state.height - (this.table.height() + TABLE_PADDING);
-      if (this.table.ui.left > minWidth) {
-        x = minWidth;
-      }
-      if (this.table.ui.top > minHeight) {
-        y = minHeight;
-      }
-      if (this.table.ui.left < 0 || this.table.ui.left > minWidth) {
-        this.moveXAnimation = new AnimationFrame(
-          {x: this.table.ui.left},
-          {x}, 200)
-          .update((value) => {
-            this.table.ui.left = value.x;
-            relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships);
-          })
-          .start();
-      }
-      if (this.table.ui.top < 0 || this.table.ui.top > minHeight) {
-        this.moveYAnimation = new AnimationFrame(
-          {y: this.table.ui.top},
-          {y}, 200)
-          .update((value) => {
-            this.table.ui.top = value.y;
-            relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships);
-          })
-          .start();
-      }
-    }
-
-    private onKeydown(event: KeyboardEvent) {
-      log.debug('Table onKeydown');
-      this.store.tableStore.commit(Commit.tableFocusMove, event);
-    }
-
-    private onFocus(event: MouseEvent, focusType: FocusType) {
-      log.debug('Table onFocus');
+    if (!el.closest('.table-name') &&
+      !el.closest('.table-comment') &&
+      !el.closest('.column')) {
       this.store.tableStore.commit(Commit.tableSelect, {
         table: this.table,
         event,
-        store: this.store,
-      });
-      if (this.tableFocus) {
-        this.store.tableStore.commit(Commit.tableFocus, focusType);
-      }
+        store: this.store
+      })
     }
-
-    private onColumnAdd() {
-      log.debug('Table onColumnAdd');
-      this.store.tableStore.commit(Commit.columnAdd, {
-        table: this.table,
-        store: this.store,
-      });
-      this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change));
-    }
-
-    private onEditInput(event: Event, focusType: FocusType) {
-      log.debug('Table onEditInput');
-      const input = event.target as HTMLInputElement;
-      let width = getTextWidth(input.value);
-      if (SIZE_MIN_WIDTH > width) {
-        width = SIZE_MIN_WIDTH;
-      }
-      switch (focusType) {
-        case FocusType.tableName:
-          this.table.ui.widthName = width;
-          break;
-        case FocusType.tableComment:
-          this.table.ui.widthComment = width;
-          break;
-      }
-      relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships);
-      // eventBus.$emit(Bus.ERD.input);
-    }
-
-    private onEditBlur(event: Event) {
-      log.debug('Table onEditBlur');
-      const reName = autoName(this.store.tableStore.state.tables, this.table.id, this.table.name);
-      if (this.table.name !== reName) {
-        let width = getTextWidth(reName);
-        if (SIZE_MIN_WIDTH > width) {
-          width = SIZE_MIN_WIDTH;
-        }
-        this.table.ui.widthName = width;
-        this.table.name = reName;
-      }
-      this.store.tableStore.commit(Commit.tableEditEnd, this.store);
-    }
-
-    private onDblclick(event: MouseEvent, focusType: FocusType) {
-      log.debug('Table onDblclick');
-      event.preventDefault();
-      this.store.tableStore.commit(Commit.tableEditStart, {
-        id: this.table.id,
-        focusType,
-      });
-    }
-
-    private onDraggableStart() {
-      log.debug('Table onDraggableStart');
-      this.transitionName = 'column';
-      const vm = this.$refs.group as Vue;
-      const ul = vm.$el as HTMLElement;
-      ul.childNodes.forEach((column: ChildNode) => {
-        this.draggableListener.push(
-          fromEvent<DragEvent>(column as HTMLElement, 'dragover').pipe(
-            throttleTime(300),
-          ).subscribe(this.onDragoverGroup),
-        );
-      });
-    }
-
-    private onDraggableEnd() {
-      log.debug('Table onDraggableEnd');
-      this.transitionName = '';
-      this.draggableListener.forEach((draggable: Subscription) => draggable.unsubscribe());
-      this.draggableListener = [];
-    }
-
-    private onDragoverGroup(event: DragEvent) {
-      log.debug('Table onDragoverGroup');
-      this.draggable$.next(event);
-    }
-
-    private onDragover(event: DragEvent) {
-      log.debug('Table onDragover');
-      const li = findParentLiByElement(event.target as HTMLElement);
-      if (li && li.dataset.id && this.columnDraggable && this.columnDraggable.column.id !== li.dataset.id) {
-        const column = getData(this.table.columns, li.dataset.id);
-        if (column) {
-          this.store.tableStore.commit(Commit.columnMove, {
-            table: this.table,
-            column,
-            store: this.store,
-          });
-        }
-      }
-    }
-
-    // ==================== Event Handler END ===================
-
-    // ==================== Life Cycle ====================
-    private created() {
-      this.store.eventBus.$on(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
-      this.store.eventBus.$on(Bus.Table.draggableStart, this.onDraggableStart);
-      this.store.eventBus.$on(Bus.Table.draggableEnd, this.onDraggableEnd);
-    }
-
-    private mounted() {
-      if (this.tableFocus) {
-        this.subKeydown = this.keydown$.subscribe(this.onKeydown);
-      }
-      this.subDraggable = this.draggable$.pipe(
-        debounceTime(50),
-      ).subscribe(this.onDragover);
-    }
-
-    private destroyed() {
-      this.store.eventBus.$off(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd);
-      this.store.eventBus.$off(Bus.Table.draggableStart, this.onDraggableStart);
-      this.store.eventBus.$off(Bus.Table.draggableEnd, this.onDraggableEnd);
-      if (this.subKeydown) {
-        this.subKeydown.unsubscribe();
-        this.subKeydown = null;
-      }
-      if (this.subDraggable) {
-        this.subDraggable.unsubscribe();
-      }
-    }
-
-    // ==================== Life Cycle END ====================
   }
+
+  private onMouseup (event: MouseEvent) {
+    if (this.subMouseup && this.subMousemove) {
+      this.subMouseup.unsubscribe()
+      this.subMousemove.unsubscribe()
+    }
+    this.store.eventBus.$emit(Bus.Table.moveAnimationEnd)
+    this.store.eventBus.$emit(Bus.Memo.moveAnimationEnd)
+  }
+
+  private onMousemove (event: MouseEvent) {
+    event.preventDefault()
+    this.store.tableStore.commit(Commit.tableMove, {
+      table: this.table,
+      x: event.movementX,
+      y: event.movementY,
+      event,
+      store: this.store
+    })
+  }
+
+  private onClose () {
+    log.debug('Table onClose')
+    this.store.tableStore.commit(Commit.tableRemove, {
+      table: this.table,
+      store: this.store
+    })
+  }
+
+  private onMoveAnimationEnd () {
+    if (this.moveXAnimation) {
+      this.moveXAnimation.stop()
+    }
+    if (this.moveYAnimation) {
+      this.moveYAnimation.stop()
+    }
+    let x = 0
+    let y = 0
+    const minWidth = this.store.canvasStore.state.width - (this.table.width() + TABLE_PADDING)
+    const minHeight = this.store.canvasStore.state.height - (this.table.height() + TABLE_PADDING)
+    if (this.table.ui.left > minWidth) {
+      x = minWidth
+    }
+    if (this.table.ui.top > minHeight) {
+      y = minHeight
+    }
+    if (this.table.ui.left < 0 || this.table.ui.left > minWidth) {
+      this.moveXAnimation = new AnimationFrame(
+        {x: this.table.ui.left},
+        {x}, 200)
+        .update((value) => {
+          this.table.ui.left = value.x
+          relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships)
+        })
+        .start()
+    }
+    if (this.table.ui.top < 0 || this.table.ui.top > minHeight) {
+      this.moveYAnimation = new AnimationFrame(
+        {y: this.table.ui.top},
+        {y}, 200)
+        .update((value) => {
+          this.table.ui.top = value.y
+          relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships)
+        })
+        .start()
+    }
+  }
+
+  private onKeydown (event: KeyboardEvent) {
+    log.debug('Table onKeydown')
+    this.store.tableStore.commit(Commit.tableFocusMove, event)
+  }
+
+  private onFocus (event: MouseEvent, focusType: FocusType) {
+    log.debug('Table onFocus')
+    this.store.tableStore.commit(Commit.tableSelect, {
+      table: this.table,
+      event,
+      store: this.store
+    })
+    if (this.tableFocus) {
+      this.store.tableStore.commit(Commit.tableFocus, focusType)
+    }
+  }
+
+  private onColumnAdd () {
+    log.debug('Table onColumnAdd')
+    this.store.tableStore.commit(Commit.columnAdd, {
+      table: this.table,
+      store: this.store
+    })
+    this.$nextTick(() => this.store.eventBus.$emit(Bus.ERD.change))
+  }
+
+  private onEditInput (event: Event, focusType: FocusType) {
+    log.debug('Table onEditInput')
+    const input = event.target as HTMLInputElement
+    let width = getTextWidth(input.value)
+    if (SIZE_MIN_WIDTH > width) {
+      width = SIZE_MIN_WIDTH
+    }
+    switch (focusType) {
+      case FocusType.tableName:
+        this.table.ui.widthName = width
+        break
+      case FocusType.tableComment:
+        this.table.ui.widthComment = width
+        break
+    }
+    relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships)
+    // eventBus.$emit(Bus.ERD.input);
+  }
+
+  private onEditBlur (event: Event) {
+    log.debug('Table onEditBlur')
+    const reName = autoName(this.store.tableStore.state.tables, this.table.id, this.table.name)
+    if (this.table.name !== reName) {
+      let width = getTextWidth(reName)
+      if (SIZE_MIN_WIDTH > width) {
+        width = SIZE_MIN_WIDTH
+      }
+      this.table.ui.widthName = width
+      this.table.name = reName
+    }
+    this.store.tableStore.commit(Commit.tableEditEnd, this.store)
+  }
+
+  private onDblclick (event: MouseEvent, focusType: FocusType) {
+    log.debug('Table onDblclick')
+    event.preventDefault()
+    this.store.tableStore.commit(Commit.tableEditStart, {
+      id: this.table.id,
+      focusType
+    })
+  }
+
+  private onDraggableStart () {
+    log.debug('Table onDraggableStart')
+    this.transitionName = 'column'
+    const vm = this.$refs.group as Vue
+    const ul = vm.$el as HTMLElement
+    ul.childNodes.forEach((column: ChildNode) => {
+      this.draggableListener.push(
+        fromEvent<DragEvent>(column as HTMLElement, 'dragover').pipe(
+          throttleTime(300)
+        ).subscribe(this.onDragoverGroup)
+      )
+    })
+  }
+
+  private onDraggableEnd () {
+    log.debug('Table onDraggableEnd')
+    this.transitionName = ''
+    this.draggableListener.forEach((draggable: Subscription) => draggable.unsubscribe())
+    this.draggableListener = []
+  }
+
+  private onDragoverGroup (event: DragEvent) {
+    log.debug('Table onDragoverGroup')
+    this.draggable$.next(event)
+  }
+
+  private onDragover (event: DragEvent) {
+    log.debug('Table onDragover')
+    const li = findParentLiByElement(event.target as HTMLElement)
+    if (li && li.dataset.id && this.columnDraggable && this.columnDraggable.column.id !== li.dataset.id) {
+      const column = getData(this.table.columns, li.dataset.id)
+      if (column) {
+        this.store.tableStore.commit(Commit.columnMove, {
+          table: this.table,
+          column,
+          store: this.store
+        })
+      }
+    }
+  }
+
+  // ==================== Event Handler END ===================
+
+  // ==================== Life Cycle ====================
+  private created () {
+    this.store.eventBus.$on(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd)
+    this.store.eventBus.$on(Bus.Table.draggableStart, this.onDraggableStart)
+    this.store.eventBus.$on(Bus.Table.draggableEnd, this.onDraggableEnd)
+  }
+
+  private mounted () {
+    if (this.tableFocus) {
+      this.subKeydown = this.keydown$.subscribe(this.onKeydown)
+    }
+    this.subDraggable = this.draggable$.pipe(
+      debounceTime(50)
+    ).subscribe(this.onDragover)
+  }
+
+  private destroyed () {
+    this.store.eventBus.$off(Bus.Table.moveAnimationEnd, this.onMoveAnimationEnd)
+    this.store.eventBus.$off(Bus.Table.draggableStart, this.onDraggableStart)
+    this.store.eventBus.$off(Bus.Table.draggableEnd, this.onDraggableEnd)
+    if (this.subKeydown) {
+      this.subKeydown.unsubscribe()
+      this.subKeydown = null
+    }
+    if (this.subDraggable) {
+      this.subDraggable.unsubscribe()
+    }
+  }
+
+  // ==================== Life Cycle END ====================
+}
 </script>
 
 <style scoped lang="scss">

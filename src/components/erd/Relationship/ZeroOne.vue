@@ -52,21 +52,21 @@
 </template>
 
 <script lang="ts">
-  import {Relationship} from '@/store/relationship';
-  import {getZeroOne, RelationshipPath} from '@/store/relationship/relationshipHelper';
-  import {Component, Prop, Vue} from 'vue-property-decorator';
+import { Relationship } from '@/store/relationship'
+import { getZeroOne, RelationshipPath } from '@/store/relationship/relationshipHelper'
+import { Component, Prop, Vue } from 'vue-property-decorator'
 
-  @Component
-  export default class ZeroOne extends Vue {
-    @Prop({type: Object, default: () => ({})})
-    private relationship!: Relationship;
-    @Prop({type: String, default: '#dda8b1'})
-    private stroke!: string;
+@Component
+export default class ZeroOne extends Vue {
+  @Prop({type: Object, default: () => ({})})
+  private relationship!: Relationship
+  @Prop({type: String, default: '#dda8b1'})
+  private stroke!: string
 
-    get path(): RelationshipPath {
-      return getZeroOne(this.relationship);
-    }
+  get path (): RelationshipPath {
+    return getZeroOne(this.relationship)
   }
+}
 </script>
 
 <style scoped lang="scss">

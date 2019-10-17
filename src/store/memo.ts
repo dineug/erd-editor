@@ -1,5 +1,5 @@
-import Vue from 'vue';
-import Vuex from 'vuex';
+import Vue from 'vue'
+import Vuex from 'vuex'
 import {
   memoAdd,
   memoMove,
@@ -8,29 +8,29 @@ import {
   memoSelect,
   memoSelectAll,
   memoSelectAllEnd,
-  memoMultipleSelect,
-} from './memo/memoController';
-import {dataInit} from '@/data/memo';
+  memoMultipleSelect
+} from './memo/memoController'
+import { dataInit } from '@/data/memo'
 
-Vue.use(Vuex);
+Vue.use(Vuex)
 
 export interface State {
-  memos: Memo[];
+  memos: Memo[]
 }
 
 export interface Memo {
-  id: string;
-  value: string;
-  ui: MemoUI;
+  id: string
+  value: string
+  ui: MemoUI
 }
 
 export interface MemoUI {
-  active: boolean;
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-  zIndex: number;
+  active: boolean
+  top: number
+  left: number
+  width: number
+  height: number
+  zIndex: number
 }
 
 export const enum Commit {
@@ -46,26 +46,26 @@ export const enum Commit {
   memoMultipleSelect = 'memoMultipleSelect',
 }
 
-export function createStore() {
+export function createStore () {
   return new Vuex.Store<State>({
     state: {
-      memos: [],
+      memos: []
     },
     getters: {},
     mutations: {
-      init(state: State) {
-        const initData = dataInit() as any;
-        const data = state as any;
+      init (state: State) {
+        const initData = dataInit() as any
+        const data = state as any
         Object.keys(state).forEach((key) => {
-          data[key] = initData[key];
-        });
+          data[key] = initData[key]
+        })
       },
-      load(state: State, load: State) {
-        const stateData = state as any;
-        const loadData = load as any;
+      load (state: State, load: State) {
+        const stateData = state as any
+        const loadData = load as any
         Object.keys(state).forEach((key) => {
-          stateData[key] = loadData[key];
-        });
+          stateData[key] = loadData[key]
+        })
       },
       memoAdd,
       memoMove,
@@ -74,8 +74,8 @@ export function createStore() {
       memoSelect,
       memoSelectAll,
       memoSelectAllEnd,
-      memoMultipleSelect,
+      memoMultipleSelect
     },
-    actions: {},
-  });
+    actions: {}
+  })
 }

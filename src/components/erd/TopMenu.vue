@@ -62,96 +62,95 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_TOP_MENU_HEIGHT, SIZE_CANVAS_MIN, SIZE_CANVAS_MAX} from '@/ts/layout';
-  import {CanvasType, Commit} from '@/store/canvas';
-  import {Bus} from '@/ts/EventBus';
-  import StoreManagement from '@/store/StoreManagement';
-  import {Component, Prop, Vue, Watch} from 'vue-property-decorator';
+import { SIZE_TOP_MENU_HEIGHT, SIZE_CANVAS_MIN, SIZE_CANVAS_MAX } from '@/ts/layout'
+import { CanvasType, Commit } from '@/store/canvas'
+import { Bus } from '@/ts/EventBus'
+import StoreManagement from '@/store/StoreManagement'
+import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
 
-  @Component
-  export default class TopMenu extends Vue {
-    @Prop({type: Object, default: () => ({})})
-    private store!: StoreManagement;
-    @Prop({type: Number, default: 0})
-    private width!: number;
-    @Prop({type: Number, default: 0})
-    private height!: number;
-    @Prop({type: Boolean, default: false})
-    private undo!: boolean;
-    @Prop({type: Boolean, default: false})
-    private redo!: boolean;
+@Component
+export default class TopMenu extends Vue {
+  @Prop({type: Object, default: () => ({})})
+  private store!: StoreManagement
+  @Prop({type: Number, default: 0})
+  private width!: number
+  @Prop({type: Number, default: 0})
+  private height!: number
+  @Prop({type: Boolean, default: false})
+  private undo!: boolean
+  @Prop({type: Boolean, default: false})
+  private redo!: boolean
 
-    private search: string = '';
+  private search: string = ''
 
-    get topMenuStyle(): string {
-      const left = this.store.canvasStore.state.scrollLeft;
-      const top = this.store.canvasStore.state.scrollTop;
-      return `
+  get topMenuStyle (): string {
+    const left = this.store.canvasStore.state.scrollLeft
+    const top = this.store.canvasStore.state.scrollTop
+    return `
         width: ${this.width}px;
         height: ${SIZE_TOP_MENU_HEIGHT}px;
         left: ${left}px;
         top: ${top}px;
-      `;
-    }
-
-    get canvasType(): CanvasType {
-      return this.store.canvasStore.state.canvasType;
-    }
-
-    @Watch('canvasType')
-    private watchCanvasType(canvasType: CanvasType) {
-      if (canvasType === CanvasType.List) {
-        this.store.eventBus.$emit(Bus.TableList.search, this.search);
-      }
-    }
-
-    // ==================== Event Handler ===================
-    private onCanvasType(canvasType: CanvasType) {
-      this.store.canvasStore.commit(Commit.canvasChangeType, canvasType);
-    }
-
-    private onUndo() {
-      this.$emit('undo');
-    }
-
-    private onRedo() {
-      this.$emit('redo');
-    }
-
-    private onChange() {
-      this.store.eventBus.$emit(Bus.ERD.change);
-    }
-
-    private onSearch() {
-      this.store.eventBus.$emit(Bus.TableList.search, this.search);
-    }
-
-    private onInputSize(event: Event) {
-      const input = event.target as HTMLInputElement;
-      input.value = input.value.replace(/[^0-9]/g, '');
-    }
-
-    private onChangeSize(event: Event) {
-      const input = event.target as HTMLInputElement;
-      let size = Number(input.value);
-      if (size < SIZE_CANVAS_MIN) {
-        size = SIZE_CANVAS_MIN;
-        input.value = `${size}`;
-      }
-      if (size > SIZE_CANVAS_MAX) {
-        size = SIZE_CANVAS_MAX;
-        input.value = `${size}`;
-      }
-      this.store.canvasStore.commit(Commit.canvasResize, {
-        width: size,
-        height: size,
-      });
-      this.store.eventBus.$emit(Bus.ERD.change);
-    }
-
-    // ==================== Event Handler END ===================
-
+      `
   }
+
+  get canvasType (): CanvasType {
+    return this.store.canvasStore.state.canvasType
+  }
+
+  @Watch('canvasType')
+  private watchCanvasType (canvasType: CanvasType) {
+    if (canvasType === CanvasType.List) {
+      this.store.eventBus.$emit(Bus.TableList.search, this.search)
+    }
+  }
+
+  // ==================== Event Handler ===================
+  private onCanvasType (canvasType: CanvasType) {
+    this.store.canvasStore.commit(Commit.canvasChangeType, canvasType)
+  }
+
+  private onUndo () {
+    this.$emit('undo')
+  }
+
+  private onRedo () {
+    this.$emit('redo')
+  }
+
+  private onChange () {
+    this.store.eventBus.$emit(Bus.ERD.change)
+  }
+
+  private onSearch () {
+    this.store.eventBus.$emit(Bus.TableList.search, this.search)
+  }
+
+  private onInputSize (event: Event) {
+    const input = event.target as HTMLInputElement
+    input.value = input.value.replace(/[^0-9]/g, '')
+  }
+
+  private onChangeSize (event: Event) {
+    const input = event.target as HTMLInputElement
+    let size = Number(input.value)
+    if (size < SIZE_CANVAS_MIN) {
+      size = SIZE_CANVAS_MIN
+      input.value = `${size}`
+    }
+    if (size > SIZE_CANVAS_MAX) {
+      size = SIZE_CANVAS_MAX
+      input.value = `${size}`
+    }
+    this.store.canvasStore.commit(Commit.canvasResize, {
+      width: size,
+      height: size
+    })
+    this.store.eventBus.$emit(Bus.ERD.change)
+  }
+
+  // ==================== Event Handler END ===================
+}
 </script>
 
 <style scoped lang="scss">

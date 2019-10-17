@@ -55,76 +55,76 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_MIN_WIDTH} from '@/ts/layout';
-  import StoreManagement from '@/store/StoreManagement';
-  import {Column as ColumnModel, Commit as TableCommit} from '@/store/table';
-  import {Table as TableModel} from '@/store/table';
-  import {Commit as RelationshipCommit} from '@/store/relationship';
-  import {FocusType} from '@/models/TableFocusModel';
-  import {relationshipSort} from '@/store/relationship/relationshipHelper';
-  import {getTextWidth} from '@/ts/util';
-  import {Component, Prop, Vue} from 'vue-property-decorator';
+import { SIZE_MIN_WIDTH } from '@/ts/layout'
+import StoreManagement from '@/store/StoreManagement'
+import { Column as ColumnModel, Commit as TableCommit, Table as TableModel } from '@/store/table'
 
-  @Component
-  export default class Column extends Vue {
-    @Prop({type: Object, default: () => ({})})
-    private store!: StoreManagement;
-    @Prop({type: Object, default: () => ({})})
-    private table!: TableModel;
-    @Prop({type: Object, default: () => ({})})
-    private column!: ColumnModel;
+import { Commit as RelationshipCommit } from '@/store/relationship'
+import { FocusType } from '@/models/TableFocusModel'
+import { relationshipSort } from '@/store/relationship/relationshipHelper'
+import { getTextWidth } from '@/ts/util'
+import { Component, Prop, Vue } from 'vue-property-decorator'
 
-    private onChangePK(event: InputEvent) {
-      if (this.column.option.primaryKey) {
-        if (this.column.ui.fk) {
-          this.column.ui.fk = false;
-          this.column.ui.pfk = true;
-          this.store.relationshipStore.commit(RelationshipCommit.relationshipIdentification, {
-            table: this.table,
-            column: this.column,
-          });
-        }
-      } else {
-        if (this.column.ui.pfk) {
-          this.column.ui.pfk = false;
-          this.column.ui.fk = true;
-          this.store.relationshipStore.commit(RelationshipCommit.relationshipIdentification, {
-            table: this.table,
-            column: this.column,
-          });
-        }
+@Component
+export default class Column extends Vue {
+  @Prop({type: Object, default: () => ({})})
+  private store!: StoreManagement
+  @Prop({type: Object, default: () => ({})})
+  private table!: TableModel
+  @Prop({type: Object, default: () => ({})})
+  private column!: ColumnModel
+
+  private onChangePK (event: InputEvent) {
+    if (this.column.option.primaryKey) {
+      if (this.column.ui.fk) {
+        this.column.ui.fk = false
+        this.column.ui.pfk = true
+        this.store.relationshipStore.commit(RelationshipCommit.relationshipIdentification, {
+          table: this.table,
+          column: this.column
+        })
       }
-      this.onChange();
-    }
-
-    private onChange() {
-      this.store.tableStore.commit(TableCommit.tableEditEnd, this.store);
-    }
-
-    private onInput(event: Event, focusType: FocusType) {
-      const input = event.target as HTMLInputElement;
-      let width = getTextWidth(input.value);
-      if (SIZE_MIN_WIDTH > width) {
-        width = SIZE_MIN_WIDTH;
+    } else {
+      if (this.column.ui.pfk) {
+        this.column.ui.pfk = false
+        this.column.ui.fk = true
+        this.store.relationshipStore.commit(RelationshipCommit.relationshipIdentification, {
+          table: this.table,
+          column: this.column
+        })
       }
-      switch (focusType) {
-        case FocusType.columnName:
-          this.column.ui.widthName = width;
-          break;
-        case FocusType.columnDataType:
-          this.column.ui.widthDataType = width;
-          break;
-        case FocusType.columnDefault:
-          this.column.ui.widthDefault = width;
-          break;
-        case FocusType.columnComment:
-          this.column.ui.widthComment = width;
-          break;
-      }
-      relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships);
-      // this.store.eventBus.$emit(Bus.ERD.input);
     }
+    this.onChange()
   }
+
+  private onChange () {
+    this.store.tableStore.commit(TableCommit.tableEditEnd, this.store)
+  }
+
+  private onInput (event: Event, focusType: FocusType) {
+    const input = event.target as HTMLInputElement
+    let width = getTextWidth(input.value)
+    if (SIZE_MIN_WIDTH > width) {
+      width = SIZE_MIN_WIDTH
+    }
+    switch (focusType) {
+      case FocusType.columnName:
+        this.column.ui.widthName = width
+        break
+      case FocusType.columnDataType:
+        this.column.ui.widthDataType = width
+        break
+      case FocusType.columnDefault:
+        this.column.ui.widthDefault = width
+        break
+      case FocusType.columnComment:
+        this.column.ui.widthComment = width
+        break
+    }
+    relationshipSort(this.store.tableStore.state.tables, this.store.relationshipStore.state.relationships)
+    // this.store.eventBus.$emit(Bus.ERD.input);
+  }
+}
 </script>
 
 <style scoped lang="scss">

@@ -18,34 +18,34 @@
 </template>
 
 <script lang="ts">
-  import {Table as TableModel} from '@/store/table';
-  import StoreManagement from '@/store/StoreManagement';
-  import {Component, Prop, Vue} from 'vue-property-decorator';
-  import Column from './Column.vue';
-  import CircleButton from '../CircleButton.vue';
+import { Table as TableModel } from '@/store/table'
+import StoreManagement from '@/store/StoreManagement'
+import { Component, Prop, Vue } from 'vue-property-decorator'
+import Column from './Column.vue'
+import CircleButton from '../CircleButton.vue'
 
-  @Component({
-    components: {
-      CircleButton,
-      Column,
-    },
-  })
-  export default class Table extends Vue {
-    @Prop({type: Object, default: () => ({})})
-    private store!: StoreManagement;
-    @Prop({type: Object, default: () => ({})})
-    private table!: TableModel;
+@Component({
+  components: {
+    CircleButton,
+    Column
+  }
+})
+export default class Table extends Vue {
+  @Prop({type: Object, default: () => ({})})
+  private store!: StoreManagement
+  @Prop({type: Object, default: () => ({})})
+  private table!: TableModel
 
-    get tableStyle(): string {
-      return `
+  get tableStyle (): string {
+    return `
         top: ${this.table.ui.top}px;
         left: ${this.table.ui.left}px;
         width: ${this.table.width()}px;
         height: ${this.table.height()}px;
         z-index: ${this.table.ui.zIndex};
-      `;
-    }
+      `
   }
+}
 </script>
 
 <style scoped lang="scss">

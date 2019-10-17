@@ -7,48 +7,48 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_MEMO_PADDING} from '@/ts/layout';
-  import {Memo as MemoModel} from '@/store/memo';
-  import {Component, Prop, Vue} from 'vue-property-decorator';
-  import CircleButton from '../CircleButton.vue';
+import { SIZE_MEMO_PADDING } from '@/ts/layout'
+import { Memo as MemoModel } from '@/store/memo'
+import { Component, Prop, Vue } from 'vue-property-decorator'
+import CircleButton from '../CircleButton.vue'
 
-  const MEMO_PADDING = SIZE_MEMO_PADDING * 2;
-  const MEMO_HEADER = 17 + SIZE_MEMO_PADDING;
+const MEMO_PADDING = SIZE_MEMO_PADDING * 2
+const MEMO_HEADER = 17 + SIZE_MEMO_PADDING
 
-  @Component({
-    components: {
-      CircleButton,
-    },
-  })
-  export default class Memo extends Vue {
-    @Prop({type: Object, default: () => ({})})
-    private memo!: MemoModel;
+@Component({
+  components: {
+    CircleButton
+  }
+})
+export default class Memo extends Vue {
+  @Prop({type: Object, default: () => ({})})
+  private memo!: MemoModel
 
-    get memoStyle(): string {
-      return `
+  get memoStyle (): string {
+    return `
         top: ${this.memo.ui.top}px;
         left: ${this.memo.ui.left}px;
         width: ${this.width}px;
         height: ${this.height}px;
         z-index: ${this.memo.ui.zIndex};
-      `;
-    }
+      `
+  }
 
-    get textareaStyle(): string {
-      return `
+  get textareaStyle (): string {
+    return `
         width: ${this.memo.ui.width}px;
         height: ${this.memo.ui.height}px;
-      `;
-    }
-
-    get width(): number {
-      return this.memo.ui.width + MEMO_PADDING;
-    }
-
-    get height(): number {
-      return this.memo.ui.height + MEMO_PADDING + MEMO_HEADER;
-    }
+      `
   }
+
+  get width (): number {
+    return this.memo.ui.width + MEMO_PADDING
+  }
+
+  get height (): number {
+    return this.memo.ui.height + MEMO_PADDING + MEMO_HEADER
+  }
+}
 </script>
 
 <style scoped lang="scss">

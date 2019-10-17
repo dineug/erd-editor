@@ -2,22 +2,21 @@
   "name": "vuerd-plugin-erd",
   "version": "0.1.9",
   "description": "vuerd-core plugin erd",
-  "main": "src/main.js",
-  "typings": "src/types/index.d.ts",
+  "author": "dineug <dineug2@gmail.com>",
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build --target lib --name vuerd-plugin-erd src/components/index.ts",
-    "lint": "vue-cli-service lint",
-    "test:unit": "vue-cli-service test:unit"
+    "test:unit": "vue-cli-service test:unit",
+    "lint": "vue-cli-service lint"
   },
-  "author": "dineug <dineug2@gmail.com>",
-  "homepage": "https://github.com/vuerd/vuerd-plugin-erd",
-  "bugs": "https://github.com/vuerd/vuerd-plugin-erd/issues",
-  "repository": "https://github.com/vuerd/vuerd-plugin-erd.git",
-  "license": "MIT",
+  "main": "src/main.js",
+  "files": [
+    "dist/*",
+    "src/*"
+  ],
   "dependencies": {
     "@tweenjs/tween.js": "^18.1.2",
-    "core-js": "^2.6.5",
+    "core-js": "^3.1.2",
     "monaco-editor": "^0.18.1",
     "rxjs": "^6.5.2",
     "uuid": "^3.3.3",
@@ -25,32 +24,34 @@
     "vue-class-component": "^7.0.2",
     "vue-property-decorator": "^8.1.0",
     "vuerd-core": "^0.2.18",
-    "vuex": "^3.1.1"
+    "vuex": "^3.0.1"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.25",
     "@fortawesome/free-solid-svg-icons": "^5.11.2",
     "@fortawesome/vue-fontawesome": "^0.1.7",
-    "@types/jest": "^23.1.4",
+    "@types/jest": "^24.0.11",
     "@types/uuid": "^3.4.5",
-    "@vue/cli-plugin-babel": "^3.11.0",
-    "@vue/cli-plugin-typescript": "^3.11.0",
-    "@vue/cli-plugin-unit-jest": "^3.11.0",
-    "@vue/cli-service": "^3.11.0",
+    "@vue/cli-plugin-babel": "^4.0.0",
+    "@vue/cli-plugin-eslint": "^4.0.0",
+    "@vue/cli-plugin-typescript": "^4.0.0",
+    "@vue/cli-plugin-unit-jest": "^4.0.0",
+    "@vue/cli-plugin-vuex": "^4.0.0",
+    "@vue/cli-service": "^4.0.0",
+    "@vue/eslint-config-standard": "^4.0.0",
+    "@vue/eslint-config-typescript": "^4.0.0",
     "@vue/test-utils": "1.0.0-beta.29",
-    "babel-core": "7.0.0-bridge.0",
-    "node-sass": "^4.9.0",
+    "eslint": "^5.16.0",
+    "eslint-plugin-vue": "^5.0.0",
+    "node-sass": "^4.12.0",
     "pug": "^2.0.4",
     "sass-loader": "^7.1.0",
-    "ts-jest": "^23.0.0",
     "typescript": "^3.4.3",
     "vue-cli-plugin-pug": "^1.0.7",
     "vue-template-compiler": "^2.6.10"
   },
-  "files": [
-    "dist/*",
-    "src/*"
-  ],
+  "bugs": "https://github.com/vuerd/vuerd-plugin-erd/issues",
+  "homepage": "https://github.com/vuerd/vuerd-plugin-erd",
   "keywords": [
     "vue",
     "vuejs",
@@ -58,5 +59,8 @@
     "editor",
     "vuerd plugin",
     "erd"
-  ]
+  ],
+  "license": "MIT",
+  "repository": "https://github.com/vuerd/vuerd-plugin-erd.git",
+  "typings": "src/types/index.d.ts"
 }

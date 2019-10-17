@@ -1,18 +1,18 @@
-import ERD from './erd/ERD.vue';
-import {Command} from 'vuerd-core';
+import ERD from './erd/ERD.vue'
+import { Command } from 'vuerd-core'
 
-export const Vuerd = ERD;
+export const Vuerd = ERD
 
 export default {
-  install(command: Command) {
+  install (command: Command) {
     command.editorAdd({
       component: ERD,
       scope: [
-        'vuerd',
+        'vuerd'
       ],
       option: {
-        undoManager: true,
-      },
-    });
-  },
-};
+        undoManager: true
+      }
+    })
+  }
+}

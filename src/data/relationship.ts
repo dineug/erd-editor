@@ -1,12 +1,12 @@
-import {State} from '@/store/relationship';
+import { State } from '@/store/relationship'
 
-function dataInit(): State {
+function dataInit (): State {
   return {
     relationships: [],
-    draw: null,
-  };
+    draw: null
+  }
 }
 
 export {
-  dataInit,
-};
+  dataInit
+}

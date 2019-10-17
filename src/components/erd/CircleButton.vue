@@ -9,17 +9,17 @@
 </template>
 
 <script lang="ts">
-  import {Component, Prop, Vue} from 'vue-property-decorator';
+import { Component, Prop, Vue } from 'vue-property-decorator'
 
-  @Component
-  export default class CircleButton extends Vue {
-    @Prop({type: Boolean, default: false})
-    private close!: boolean;
-    @Prop({type: Boolean, default: false})
-    private add!: boolean;
-    @Prop({type: String, default: ''})
-    private title!: string;
-  }
+@Component
+export default class CircleButton extends Vue {
+  @Prop({type: Boolean, default: false})
+  private close!: boolean
+  @Prop({type: Boolean, default: false})
+  private add!: boolean
+  @Prop({type: String, default: ''})
+  private title!: string
+}
 </script>
 
 <style scoped lang="scss">

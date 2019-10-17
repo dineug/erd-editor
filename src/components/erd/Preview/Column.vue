@@ -39,31 +39,31 @@
 </template>
 
 <script lang="ts">
-  import {SIZE_COLUMN_OPTION_NN} from '@/ts/layout';
-  import {Column as ColumnModel, Table, ColumnWidth} from '@/store/table';
-  import {Show} from '@/store/canvas';
-  import StoreManagement from '@/store/StoreManagement';
-  import {Component, Prop, Vue} from 'vue-property-decorator';
+import { SIZE_COLUMN_OPTION_NN } from '@/ts/layout'
+import { Column as ColumnModel, Table, ColumnWidth } from '@/store/table'
+import { Show } from '@/store/canvas'
+import StoreManagement from '@/store/StoreManagement'
+import { Component, Prop, Vue } from 'vue-property-decorator'
 
-  @Component
-  export default class Column extends Vue {
-    @Prop({type: Object, default: () => ({})})
-    private store!: StoreManagement;
-    @Prop({type: Object, default: () => ({})})
-    private table!: Table;
-    @Prop({type: Object, default: () => ({})})
-    private column!: ColumnModel;
+@Component
+export default class Column extends Vue {
+  @Prop({type: Object, default: () => ({})})
+  private store!: StoreManagement
+  @Prop({type: Object, default: () => ({})})
+  private table!: Table
+  @Prop({type: Object, default: () => ({})})
+  private column!: ColumnModel
 
-    private SIZE_COLUMN_OPTION_NN = SIZE_COLUMN_OPTION_NN;
+  private SIZE_COLUMN_OPTION_NN = SIZE_COLUMN_OPTION_NN
 
-    get show(): Show {
-      return this.store.canvasStore.state.show;
-    }
-
-    get columnWidth(): ColumnWidth {
-      return this.table.maxWidthColumn();
-    }
+  get show (): Show {
+    return this.store.canvasStore.state.show
   }
+
+  get columnWidth (): ColumnWidth {
+    return this.table.maxWidthColumn()
+  }
+}
 </script>
 
 <style scoped lang="scss">

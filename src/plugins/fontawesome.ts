@@ -1,6 +1,6 @@
-import Vue from 'vue';
-import { library } from '@fortawesome/fontawesome-svg-core';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import Vue from 'vue'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import {
   faKey,
   faTable,
@@ -14,8 +14,8 @@ import {
   faBezierCurve,
   faRedoAlt,
   faUndoAlt,
-  faSearch,
-} from '@fortawesome/free-solid-svg-icons';
+  faSearch
+} from '@fortawesome/free-solid-svg-icons'
 
 library.add(
   faKey,
@@ -30,7 +30,7 @@ library.add(
   faBezierCurve,
   faRedoAlt,
   faUndoAlt,
-  faSearch,
-);
+  faSearch
+)
 
-Vue.component('font-awesome-icon', FontAwesomeIcon);
+Vue.component('font-awesome-icon', FontAwesomeIcon)
