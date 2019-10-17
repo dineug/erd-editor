@@ -66,11 +66,11 @@ export default class ColumnComment extends Vue {
     return value
   }
 
-  private onInput (event: InputEvent) {
+  private onInput (event: Event) {
     this.$emit('input', event)
   }
 
-  private onBlur (event: InputEvent) {
+  private onBlur (event: Event) {
     this.$emit('blur', event)
   }
 

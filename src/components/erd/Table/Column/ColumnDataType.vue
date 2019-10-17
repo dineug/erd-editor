@@ -74,16 +74,16 @@ export default class ColumnDataType extends Vue {
   }
 
   // ==================== Event Handler ===================
-  private onInput (event: InputEvent) {
+  private onInput (event: Event) {
     this.store.eventBus.$emit(Bus.DataTypeHint.search)
     this.$emit('input', event)
   }
 
-  private onChange (event: InputEvent) {
+  private onChange (event: Event) {
     this.$emit('input', event)
   }
 
-  private onBlur (event: InputEvent) {
+  private onBlur (event: Event) {
     const el = event.target as HTMLElement
     if (!el.closest('.data-type')) {
       this.$emit('blur', event)

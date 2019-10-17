@@ -74,7 +74,7 @@ export default class Column extends Vue {
   @Prop({type: Object, default: () => ({})})
   private column!: ColumnModel
 
-  private onChangePK (event: InputEvent) {
+  private onChangePK (event: Event) {
     if (this.column.option.primaryKey) {
       if (this.column.ui.fk) {
         this.column.ui.fk = false

@@ -45,8 +45,8 @@
     "eslint-plugin-vue": "^5.0.0",
     "node-sass": "^4.12.0",
     "pug": "^2.0.4",
-    "sass-loader": "^7.1.0",
-    "typescript": "^3.4.3",
+    "sass-loader": "^8.0.0",
+    "typescript": "~3.5.3",
     "vue-cli-plugin-pug": "^1.0.7",
     "vue-template-compiler": "^2.6.10"
   },
