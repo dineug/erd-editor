@@ -1,5 +1,5 @@
-import Vue from 'vue'
-import Vuex from 'vuex'
+import Vue from "vue";
+import Vuex from "vuex";
 import {
   relationshipAdd,
   relationshipDraw,
@@ -12,84 +12,84 @@ import {
   relationshipRemoveColumn,
   relationshipActive,
   relationshipActiveEnd
-} from './relationship/relationshipController'
-import { Table } from './table'
-import { dataInit } from '@/data/relationship'
+} from "./relationship/relationshipController";
+import { Table } from "./table";
+import { dataInit } from "@/data/relationship";
 
-Vue.use(Vuex)
+Vue.use(Vuex);
 
 export interface State {
-  relationships: Relationship[]
-  draw: RelationshipDraw | null
+  relationships: Relationship[];
+  draw: RelationshipDraw | null;
 }
 
 export const enum RelationshipType {
-  ZeroOne = 'ZeroOne',
-  ZeroOneN = 'ZeroOneN',
-  ZeroN = 'ZeroN',
-  One = 'One',
-  OneN = 'OneN',
-  OneOnly = 'OneOnly',
-  N = 'N',
+  ZeroOne = "ZeroOne",
+  ZeroOneN = "ZeroOneN",
+  ZeroN = "ZeroN",
+  One = "One",
+  OneN = "OneN",
+  OneOnly = "OneOnly",
+  N = "N"
 }
 
 export const enum Direction {
-  left = 'left',
-  right = 'right',
-  top = 'top',
-  bottom = 'bottom',
+  left = "left",
+  right = "right",
+  top = "top",
+  bottom = "bottom"
 }
 
 export interface Relationship {
-  id: string
-  identification: boolean
-  relationshipType: RelationshipType
-  start: Point
-  end: Point
+  id: string;
+  identification: boolean;
+  relationshipType: RelationshipType;
+  start: Point;
+  end: Point;
 }
 
 export interface Point {
-  tableId: string
-  columnIds: string[]
-  x: number
-  y: number
-  direction: Direction
+  tableId: string;
+  columnIds: string[];
+  x: number;
+  y: number;
+  direction: Direction;
 }
 
 export interface RelationshipDraw {
-  relationshipType: RelationshipType
-  start: PointDrawStart | null
-  end: PointDrawEnd
+  relationshipType: RelationshipType;
+  start: PointDrawStart | null;
+  end: PointDrawEnd;
 }
 
 export interface PointDrawStart {
-  table: Table
-  x: number
-  y: number
+  table: Table;
+  x: number;
+  y: number;
 }
 
 export interface PointDrawEnd {
-  x: number
-  y: number
+  x: number;
+  y: number;
 }
 
 export const enum Commit {
-  init = 'init',
-  load = 'load',
-  relationshipAdd = 'relationshipAdd',
-  relationshipDraw = 'relationshipDraw',
-  relationshipDrawStart = 'relationshipDrawStart',
-  relationshipDrawStartAdd = 'relationshipDrawStartAdd',
-  relationshipDrawEnd = 'relationshipDrawEnd',
-  relationshipIdentification = 'relationshipIdentification',
-  relationshipIdentificationAll = 'relationshipIdentificationAll',
-  relationshipRemoveTable = 'relationshipRemoveTable',
-  relationshipRemoveColumn = 'relationshipRemoveColumn',
-  relationshipActive = 'relationshipActive',
-  relationshipActiveEnd = 'relationshipActiveEnd',
+  init = "init",
+  load = "load",
+  relationshipAdd = "relationshipAdd",
+  relationshipDraw = "relationshipDraw",
+  relationshipDrawStart = "relationshipDrawStart",
+  relationshipDrawStartAdd = "relationshipDrawStartAdd",
+  relationshipDrawEnd = "relationshipDrawEnd",
+  relationshipIdentification = "relationshipIdentification",
+  relationshipIdentificationAll = "relationshipIdentificationAll",
+  relationshipRemoveTable = "relationshipRemoveTable",
+  relationshipRemoveColumn = "relationshipRemoveColumn",
+  relationshipActive = "relationshipActive",
+  relationshipActiveEnd = "relationshipActiveEnd"
 }
 
-export function createStore () {
+export function createStore() {
   return new Vuex.Store<State>({
     state: {
       relationships: [],
@@ -97,20 +97,20 @@ export function createStore () {
     },
     getters: {},
     mutations: {
-      init (state: State) {
-        const initData = dataInit() as any
-        const data = state as any
-        Object.keys(state).forEach((key) => {
-          data[key] = initData[key]
-        })
+      init(state: State) {
+        const initData = dataInit() as any;
+        const data = state as any;
+        Object.keys(state).forEach(key => {
+          data[key] = initData[key];
+        });
       },
-      load (state: State, load: State) {
-        const stateData = state as any
-        const loadData = load as any
-        Object.keys(state).forEach((key) => {
-          stateData[key] = loadData[key]
-        })
-        state.draw = null
+      load(state: State, load: State) {
+        const stateData = state as any;
+        const loadData = load as any;
+        Object.keys(state).forEach(key => {
+          stateData[key] = loadData[key];
+        });
+        state.draw = null;
       },
       relationshipAdd,
       relationshipDraw,
@@ -125,5 +125,5 @@ export function createStore () {
       relationshipActiveEnd
     },
     actions: {}
-  })
+  });
 }

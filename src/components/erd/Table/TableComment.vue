@@ -19,75 +19,76 @@
 </template>
 
 <script lang="ts">
-import { Table } from '@/store/table'
-import { TableFocus } from '@/models/TableFocusModel'
-import { Component, Prop, Vue } from 'vue-property-decorator'
+import { Table } from "@/store/table";
+import { TableFocus } from "@/models/TableFocusModel";
+import { Component, Prop, Vue } from "vue-property-decorator";
 
 @Component({
   directives: {
     focus: {
-      inserted (el: HTMLElement) {
-        el.focus()
+      inserted(el: HTMLElement) {
+        el.focus();
       }
     }
   }
 })
 export default class TableComment extends Vue {
-  @Prop({type: Object, default: () => ({})})
-  private table!: Table
-  @Prop({type: Object, default: null})
-  private tableFocus!: TableFocus | null
-  @Prop({type: Boolean, default: false})
-  private edit!: boolean
-  @Prop({type: Number, default: 0})
-  private width!: number
+  @Prop({ type: Object, default: () => ({}) })
+  private table!: Table;
+  @Prop({ type: Object, default: null })
+  private tableFocus!: TableFocus | null;
+  @Prop({ type: Boolean, default: false })
+  private edit!: boolean;
+  @Prop({ type: Number, default: 0 })
+  private width!: number;
 
-  get focus (): boolean {
-    let result = false
-    if (this.tableFocus &&
+  get focus(): boolean {
+    let result = false;
+    if (
+      this.tableFocus &&
       this.tableFocus.id === this.table.id &&
-      this.tableFocus.focusComment) {
-      result = true
+      this.tableFocus.focusComment
+    ) {
+      result = true;
     }
-    return result
+    return result;
   }
 
-  get placeholder (): boolean {
-    let result = false
-    if (this.table.comment.trim() === '') {
-      result = true
+  get placeholder(): boolean {
+    let result = false;
+    if (this.table.comment.trim() === "") {
+      result = true;
     }
-    return result
+    return result;
   }
 
-  get value (): string {
-    let value = 'comment'
-    if (this.table.comment.trim() !== '') {
-      value = this.table.comment
+  get value(): string {
+    let value = "comment";
+    if (this.table.comment.trim() !== "") {
+      value = this.table.comment;
     }
-    return value
+    return value;
   }
 
-  private onInput (event: Event) {
-    this.$emit('input', event)
+  private onInput(event: Event) {
+    this.$emit("input", event);
   }
 
-  private onBlur (event: Event) {
-    this.$emit('blur', event)
+  private onBlur(event: Event) {
+    this.$emit("blur", event);
   }
 
-  private onMousedown (event: MouseEvent) {
-    this.$emit('mousedown', event)
+  private onMousedown(event: MouseEvent) {
+    this.$emit("mousedown", event);
   }
 
-  private onDblclick (event: MouseEvent) {
-    this.$emit('dblclick', event)
+  private onDblclick(event: MouseEvent) {
+    this.$emit("dblclick", event);
   }
 }
 </script>
 
 <style scoped lang="scss">
-  .table-comment {
-
-  }
+.table-comment {
+}
 </style>

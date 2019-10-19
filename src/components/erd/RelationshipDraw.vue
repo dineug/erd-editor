@@ -28,60 +28,70 @@
 </template>
 
 <script lang="ts">
-import StoreManagement from '@/store/StoreManagement'
-import { Commit, RelationshipDraw as RelationshipDrawModel } from '@/store/relationship'
-import { getDraw, DrawPath } from '@/store/relationship/relationshipHelper'
-import { Component, Prop, Vue } from 'vue-property-decorator'
+import StoreManagement from "@/store/StoreManagement";
+import {
+  Commit,
+  RelationshipDraw as RelationshipDrawModel
+} from "@/store/relationship";
+import { getDraw, DrawPath } from "@/store/relationship/relationshipHelper";
+import { Component, Prop, Vue } from "vue-property-decorator";
 
-import { fromEvent, Observable, Subscription } from 'rxjs'
+import { fromEvent, Observable, Subscription } from "rxjs";
 
 @Component
 export default class RelationshipDraw extends Vue {
-  @Prop({type: Object, default: () => ({})})
-  private store!: StoreManagement
-  @Prop({type: Object, default: () => ({})})
-  private draw!: RelationshipDrawModel
+  @Prop({ type: Object, default: () => ({}) })
+  private store!: StoreManagement;
+  @Prop({ type: Object, default: () => ({}) })
+  private draw!: RelationshipDrawModel;
 
-  private mousemoveParent$!: Observable<MouseEvent>
-  private subMousemoveParent!: Subscription
+  private mousemoveParent$!: Observable<MouseEvent>;
+  private subMousemoveParent!: Subscription;
 
-  get svgStyle (): string {
+  get svgStyle(): string {
     return `
         width: ${this.store.canvasStore.state.width}px;
         height: ${this.store.canvasStore.state.height}px;
-      `
+      `;
   }
 
-  get drawPath (): DrawPath {
-    return getDraw(this.draw)
+  get drawPath(): DrawPath {
+    return getDraw(this.draw);
   }
 
   // ==================== Event Handler ===================
-  private onMousemoveParent (event: MouseEvent) {
-    event.preventDefault()
-    const el = event.target as HTMLElement
-    if (!el.closest('.contextmenu-erd') &&
-      !el.closest('.table') &&
-      !el.closest('.memo')) {
+  private onMousemoveParent(event: MouseEvent) {
+    event.preventDefault();
+    const el = event.target as HTMLElement;
+    if (
+      !el.closest(".contextmenu-erd") &&
+      !el.closest(".table") &&
+      !el.closest(".memo")
+    ) {
       this.store.relationshipStore.commit(Commit.relationshipDraw, {
         x: event.offsetX,
         y: event.offsetY
-      })
+      });
     }
   }
 
   // ==================== Event Handler END ===================
 
   // ==================== Life Cycle ====================
-  private mounted () {
+  private mounted() {
     if (this.$el.parentElement) {
-      this.mousemoveParent$ = fromEvent<MouseEvent>(this.$el.parentElement, 'mousemove')
-      this.subMousemoveParent = this.mousemoveParent$.subscribe(this.onMousemoveParent)
+      this.mousemoveParent$ = fromEvent<MouseEvent>(
+        this.$el.parentElement,
+        "mousemove"
+      );
+      this.subMousemoveParent = this.mousemoveParent$.subscribe(
+        this.onMousemoveParent
+      );
     }
   }
 
-  private destroyed () {
-    this.subMousemoveParent.unsubscribe()
+  private destroyed() {
+    this.subMousemoveParent.unsubscribe();
   }
 
   // ==================== Life Cycle END ====================
@@ -89,8 +99,8 @@ export default class RelationshipDraw extends Vue {
 </script>
 
 <style scoped lang="scss">
-  .relationship-draw {
-    position: absolute;
-    top: 0;
-  }
+.relationship-draw {
+  position: absolute;
+  top: 0;
+}
 </style>

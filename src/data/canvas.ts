@@ -1,7 +1,7 @@
-import { CanvasType, Show, State } from '@/store/canvas'
-import { Database } from './dataType'
+import { CanvasType, Show, State } from "@/store/canvas";
+import { Database } from "./dataType";
 
-function dataShow (): Show {
+function dataShow(): Show {
   return {
     tableComment: true,
     columnComment: true,
@@ -12,10 +12,10 @@ function dataShow (): Show {
     columnUnique: true,
     columnNotNull: true,
     relationship: true
-  }
+  };
 }
 
-function dataInit (): State {
+function dataInit(): State {
   return {
     width: 2000,
     height: 2000,
@@ -23,12 +23,9 @@ function dataInit (): State {
     scrollLeft: 0,
     show: dataShow(),
     database: Database.MySQL,
-    databaseName: '',
+    databaseName: "",
     canvasType: CanvasType.ERD
-  }
+  };
 }
 
-export {
-  dataInit,
-  dataShow
-}
+export { dataInit, dataShow };

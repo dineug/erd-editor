@@ -1,11 +1,9 @@
-import { State } from '@/store/memo'
+import { State } from "@/store/memo";
 
-function dataInit (): State {
+function dataInit(): State {
   return {
     memos: []
-  }
+  };
 }
 
-export {
-  dataInit
-}
+export { dataInit };

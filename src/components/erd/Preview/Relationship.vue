@@ -13,15 +13,15 @@
 </template>
 
 <script lang="ts">
-import { Relationship as RelationshipModel } from '@/store/relationship'
-import { Component, Prop, Vue } from 'vue-property-decorator'
-import ZeroOne from '../Relationship/ZeroOne.vue'
-import ZeroOneN from '../Relationship/ZeroOneN.vue'
+import { Relationship as RelationshipModel } from "@/store/relationship";
+import { Component, Prop, Vue } from "vue-property-decorator";
+import ZeroOne from "../Relationship/ZeroOne.vue";
+import ZeroOneN from "../Relationship/ZeroOneN.vue";
 
 const enum Color {
-  active = '#ffc107',
-  identification = '#60b9c4',
-  notIdentification = '#dda8b1',
+  active = "#ffc107",
+  identification = "#60b9c4",
+  notIdentification = "#dda8b1"
 }
 
 @Component({
@@ -31,21 +31,20 @@ const enum Color {
   }
 })
 export default class Relationship extends Vue {
-  @Prop({type: Object, default: () => ({})})
-  private relationship!: RelationshipModel
+  @Prop({ type: Object, default: () => ({}) })
+  private relationship!: RelationshipModel;
 
-  get stroke (): string {
-    let color = Color.notIdentification
+  get stroke(): string {
+    let color = Color.notIdentification;
     if (this.relationship.identification) {
-      color = Color.identification
+      color = Color.identification;
     }
-    return color
+    return color;
   }
 }
 </script>
 
 <style scoped lang="scss">
-  .preview-relationship {
-
-  }
+.preview-relationship {
+}
 </style>

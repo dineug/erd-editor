@@ -1,5 +1,5 @@
-import Vue from 'vue'
-import Vuex from 'vuex'
+import Vue from "vue";
+import Vuex from "vuex";
 import {
   tableAdd,
   tableMove,
@@ -15,7 +15,7 @@ import {
   tableFocusMove,
   tableEditStart,
   tableEditEnd
-} from './table/tableController'
+} from "./table/tableController";
 import {
   columnAdd,
   columnAddAll,
@@ -30,125 +30,128 @@ import {
   columnMove,
   columnActive,
   columnActiveEnd
-} from './table/columnController'
-import TableFocusModel, { TableFocus, FocusType } from '@/models/TableFocusModel'
-import { dataInit } from '@/data/table'
-import TableModel from '@/models/TableModel'
+} from "./table/columnController";
+import TableFocusModel, {
+  TableFocus,
+  FocusType
+} from "@/models/TableFocusModel";
+import { dataInit } from "@/data/table";
+import TableModel from "@/models/TableModel";
 
-import StoreManagement from '@/store/StoreManagement'
-import { getData } from '@/ts/util'
+import StoreManagement from "@/store/StoreManagement";
+import { getData } from "@/ts/util";
 
-Vue.use(Vuex)
+Vue.use(Vuex);
 
 export interface State {
-  tables: Table[]
-  tableFocus: TableFocus | null
-  edit: Edit | null
-  copyColumns: Column[]
-  columnDraggable: ColumnTable | null
+  tables: Table[];
+  tableFocus: TableFocus | null;
+  edit: Edit | null;
+  copyColumns: Column[];
+  columnDraggable: ColumnTable | null;
 }
 
 export interface ColumnTable {
-  table: Table
-  column: Column
+  table: Table;
+  column: Column;
 }
 
 export interface Edit {
-  id: string
-  focusType: FocusType
+  id: string;
+  focusType: FocusType;
 }
 
 export interface Table {
-  id: string
-  name: string
-  comment: string
-  columns: Column[]
-  ui: TableUI
+  id: string;
+  name: string;
+  comment: string;
+  columns: Column[];
+  ui: TableUI;
 
-  width (): number
-  height (): number
-  maxWidthColumn (): ColumnWidth
+  width(): number;
+  height(): number;
+  maxWidthColumn(): ColumnWidth;
 }
 
 export interface ColumnWidth {
-  width: number
-  name: number
-  comment: number
-  dataType: number
-  default: number
-  notNull: number
+  width: number;
+  name: number;
+  comment: number;
+  dataType: number;
+  default: number;
+  notNull: number;
 }
 
 export interface TableUI {
-  active: boolean
-  top: number
-  left: number
-  widthName: number
-  widthComment: number
-  zIndex: number
+  active: boolean;
+  top: number;
+  left: number;
+  widthName: number;
+  widthComment: number;
+  zIndex: number;
 }
 
 export interface Column {
-  id: string
-  name: string
-  comment: string
-  dataType: string
-  default: string
-  option: ColumnOption
-  ui: ColumnUI
+  id: string;
+  name: string;
+  comment: string;
+  dataType: string;
+  default: string;
+  option: ColumnOption;
+  ui: ColumnUI;
 }
 
 export interface ColumnOption {
-  autoIncrement: boolean
-  primaryKey: boolean
-  unique: boolean
-  notNull: boolean
+  autoIncrement: boolean;
+  primaryKey: boolean;
+  unique: boolean;
+  notNull: boolean;
 }
 
 export interface ColumnUI {
-  active: boolean
-  pk: boolean
-  fk: boolean
-  pfk: boolean
-  widthName: number
-  widthComment: number
-  widthDataType: number
-  widthDefault: number
+  active: boolean;
+  pk: boolean;
+  fk: boolean;
+  pfk: boolean;
+  widthName: number;
+  widthComment: number;
+  widthDataType: number;
+  widthDefault: number;
 }
 
 export const enum Commit {
-  init = 'init',
-  load = 'load',
-  tableAdd = 'tableAdd',
-  tableMove = 'tableMove',
-  tableRemove = 'tableRemove',
-  tableRemoveAll = 'tableRemoveAll',
-  tableSelect = 'tableSelect',
-  tableSelectAll = 'tableSelectAll',
-  tableSelectAllEnd = 'tableSelectAllEnd',
-  tableMultipleSelect = 'tableMultipleSelect',
-  tableFocusStart = 'tableFocusStart',
-  tableFocusEnd = 'tableFocusEnd',
-  tableFocus = 'tableFocus',
-  tableFocusMove = 'tableFocusMove',
-  tableEditStart = 'tableEditStart',
-  tableEditEnd = 'tableEditEnd',
-  columnAdd = 'columnAdd',
-  columnAddAll = 'columnAddAll',
-  columnFocus = 'columnFocus',
-  columnRemove = 'columnRemove',
-  columnRemoveAll = 'columnRemoveAll',
-  columnPrimaryKey = 'columnPrimaryKey',
-  columnCopy = 'columnCopy',
-  columnPaste = 'columnPaste',
-  columnDraggableStart = 'columnDraggableStart',
-  columnDraggableEnd = 'columnDraggableEnd',
-  columnMove = 'columnMove',
-  columnActive = 'columnActive',
-  columnActiveEnd = 'columnActiveEnd',
+  init = "init",
+  load = "load",
+  tableAdd = "tableAdd",
+  tableMove = "tableMove",
+  tableRemove = "tableRemove",
+  tableRemoveAll = "tableRemoveAll",
+  tableSelect = "tableSelect",
+  tableSelectAll = "tableSelectAll",
+  tableSelectAllEnd = "tableSelectAllEnd",
+  tableMultipleSelect = "tableMultipleSelect",
+  tableFocusStart = "tableFocusStart",
+  tableFocusEnd = "tableFocusEnd",
+  tableFocus = "tableFocus",
+  tableFocusMove = "tableFocusMove",
+  tableEditStart = "tableEditStart",
+  tableEditEnd = "tableEditEnd",
+  columnAdd = "columnAdd",
+  columnAddAll = "columnAddAll",
+  columnFocus = "columnFocus",
+  columnRemove = "columnRemove",
+  columnRemoveAll = "columnRemoveAll",
+  columnPrimaryKey = "columnPrimaryKey",
+  columnCopy = "columnCopy",
+  columnPaste = "columnPaste",
+  columnDraggableStart = "columnDraggableStart",
+  columnDraggableEnd = "columnDraggableEnd",
+  columnMove = "columnMove",
+  columnActive = "columnActive",
+  columnActiveEnd = "columnActiveEnd"
 }
 
-export function createStore () {
+export function createStore() {
   return new Vuex.Store<State>({
     state: {
       tables: [],
@@ -159,28 +162,30 @@ export function createStore () {
     },
     getters: {},
     mutations: {
-      init (state: State) {
-        const initData = dataInit() as any
-        const data = state as any
-        Object.keys(state).forEach((key) => {
-          data[key] = initData[key]
-        })
+      init(state: State) {
+        const initData = dataInit() as any;
+        const data = state as any;
+        Object.keys(state).forEach(key => {
+          data[key] = initData[key];
+        });
       },
-      load (state: State, payload: { load: State, store: StoreManagement }) {
-        const {load, store} = payload
-        state.edit = load.edit
-        state.copyColumns = load.copyColumns
-        state.columnDraggable = null
-        state.tables = []
-        load.tables.forEach((table) => state.tables.push(new TableModel(store, table)))
+      load(state: State, payload: { load: State; store: StoreManagement }) {
+        const { load, store } = payload;
+        state.edit = load.edit;
+        state.copyColumns = load.copyColumns;
+        state.columnDraggable = null;
+        state.tables = [];
+        load.tables.forEach(table =>
+          state.tables.push(new TableModel(store, table))
+        );
         if (load.tableFocus) {
-          const reTableFocus = load.tableFocus as any
-          const table = getData(state.tables, reTableFocus.table.id)
+          const reTableFocus = load.tableFocus as any;
+          const table = getData(state.tables, reTableFocus.table.id);
           if (table) {
-            state.tableFocus = new TableFocusModel(store, table, reTableFocus)
+            state.tableFocus = new TableFocusModel(store, table, reTableFocus);
           }
         } else {
-          state.tableFocus = null
+          state.tableFocus = null;
         }
       },
       tableAdd,
@@ -212,5 +217,5 @@ export function createStore () {
       columnActiveEnd
     },
     actions: {}
-  })
+  });
 }
