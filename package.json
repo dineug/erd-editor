@@ -1,6 +1,6 @@
 {
   "name": "vuerd-plugin-erd",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "vuerd-core plugin erd",
   "author": "dineug <dineug2@gmail.com>",
   "scripts": {
@@ -23,7 +23,7 @@
     "vue": "^2.6.10",
     "vue-class-component": "^7.0.2",
     "vue-property-decorator": "^8.1.0",
-    "vuerd-core": "^0.2.18",
+    "vuerd-core": "^0.3.0",
     "vuex": "^3.0.1"
   },
   "devDependencies": {

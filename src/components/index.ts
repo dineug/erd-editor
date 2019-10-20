@@ -9,7 +9,11 @@ export default {
       component: ERD,
       scope: ["vuerd"],
       option: {
-        undoManager: true
+        undoManager: true,
+        readme: {
+          owner: "vuerd",
+          repo: "vuerd-plugin-erd"
+        }
       }
     });
   }
