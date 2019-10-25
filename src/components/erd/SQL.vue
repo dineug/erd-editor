@@ -1,9 +1,14 @@
 <template lang="pug">
-  .sql
+  pre.workspace-sql
+    code.sql.scrollbar(
+      contenteditable="true"
+      spellcheck="false"
+      ref="code"
+    ) {{value}}
 </template>
 
 <script lang="ts">
-import monaco from "@/plugins/monaco-editor";
+import hljs from "@/plugins/highlight";
 import { Commit as CanvasCommit } from "@/store/canvas";
 import StoreManagement from "@/store/StoreManagement";
 import { Component, Prop, Vue } from "vue-property-decorator";
@@ -25,19 +30,22 @@ export default class SQL extends Vue {
       });
     }
 
-    monaco.editor.create(this.$el as HTMLElement, {
-      value: this.value,
-      language: "sql",
-      theme: "vs-dark",
-      automaticLayout: true
-    });
+    hljs.highlightBlock(this.$refs.code);
   }
 }
 </script>
 
 <style scoped lang="scss">
-.sql {
+@import "~highlight.js/styles/monokai-sublime.css";
+
+.workspace-sql {
   margin-top: $size-top-menu-height;
   height: calc(100% - 30px);
+
+  .sql {
+    height: calc(100% - 10px);
+    padding: 5px;
+    background-color: $color-sql;
+  }
 }
 </style>

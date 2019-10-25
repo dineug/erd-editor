@@ -222,7 +222,8 @@ export default class ERD extends Vue {
       !el.closest(".table") &&
       !el.closest(".memo") &&
       !el.closest(".preview") &&
-      !el.closest(".preview-target")
+      !el.closest(".preview-target") &&
+      !el.closest(".workspace-sql")
     ) {
       this.onMouseup(event);
       this.subMouseup = this.mouseup$.subscribe(this.onMouseup);
@@ -235,7 +236,8 @@ export default class ERD extends Vue {
       !el.closest(".table") &&
       !el.closest(".memo") &&
       !el.closest(".preview") &&
-      !el.closest(".preview-target")
+      !el.closest(".preview-target") &&
+      !el.closest(".workspace-sql")
     ) {
       this.store.tableStore.commit(TableCommit.tableSelectAllEnd);
       this.store.memoStore.commit(MemoCommit.memoSelectAllEnd);

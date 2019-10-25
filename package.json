@@ -1,6 +1,6 @@
 {
   "name": "vuerd-plugin-erd",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "vuerd-core plugin erd",
   "author": "dineug <dineug2@gmail.com>",
   "scripts": {
@@ -9,7 +9,7 @@
     "test:unit": "vue-cli-service test:unit",
     "lint": "vue-cli-service lint"
   },
-  "main": "src/main.js",
+  "main": "dist/vuerd-plugin-erd.common.js",
   "files": [
     "dist/*",
     "src/*"
@@ -17,7 +17,7 @@
   "dependencies": {
     "@tweenjs/tween.js": "^18.1.2",
     "core-js": "^3.1.2",
-    "monaco-editor": "^0.18.1",
+    "highlight.js": "^9.15.10",
     "rxjs": "^6.5.2",
     "uuid": "^3.3.3",
     "vue": "^2.6.10",

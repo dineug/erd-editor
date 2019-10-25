@@ -35,9 +35,7 @@ async function findTreeBy(): Promise<Tree> {
 }
 
 async function save(treeSaves: TreeSave[]): Promise<void> {}
-
 async function deleteByPaths(paths: string[]): Promise<void> {}
-
 async function move(treeMove: TreeMove): Promise<void> {}
 
 VuerdCore.use({
