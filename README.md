@@ -87,3 +87,6 @@ Vue.component('Vuerd', Vuerd);
   }
 </style>
 ```
+
+## License
+[MIT](https://github.com/vuerd/vuerd-plugin-erd/blob/master/LICENSE)
