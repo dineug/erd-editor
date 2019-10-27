@@ -183,6 +183,7 @@ Vue.use(VuerdCore);
 | Move Data Type Hint | Arrow key(up, down) |
 | Relationship ZeroOne | Alt + 1 |
 | Relationship ZeroOneN | Alt + 2 |
+| Primary Key | Alt + K |
 
 ## License
 [MIT](https://github.com/vuerd/vuerd-plugin-erd/blob/master/LICENSE)
