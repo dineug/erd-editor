@@ -1,6 +1,6 @@
 {
   "name": "vuerd-plugin-erd",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "vuerd-core plugin erd",
   "author": "dineug <dineug2@gmail.com>",
   "scripts": {

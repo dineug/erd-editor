@@ -88,5 +88,24 @@ Vue.component('Vuerd', Vuerd);
 </style>
 ```
 
+## Editor Action
+| Name | Action
+| --- | --- |
+| Multiple selection(table, memo) | Ctrl + Drag, Ctrl + Click, Ctrl + A |
+| Multi-movement(table, memo) | Ctrl + Drag |
+| Column shift | Drag |
+| Multiple selection(column) | Ctrl + Click, Shift + Click, Shift + Arrow key(up, down) |
+| Copy&Paste(column) | Ctrl + C, Ctrl + V |
+| Contextmenu | Right-click |
+| New Table | Alt + N |
+| New Memo | Alt + M |
+| New Column | Alt + Enter |
+| Delete(table, memo) | Ctrl + Delete |
+| Delete(column) | Alt + Delete |
+| Select DataType Hint | Arrow key(right), Click |
+| Move Data Type Hint | Arrow key(up, down) |
+| Relationship ZeroOne | Alt + 1 |
+| Relationship ZeroOneN | Alt + 2 |
+
 ## License
 [MIT](https://github.com/vuerd/vuerd-plugin-erd/blob/master/LICENSE)
