@@ -184,6 +184,8 @@ Vue.use(VuerdCore);
 | Relationship ZeroOne | Alt + 1 |
 | Relationship ZeroOneN | Alt + 2 |
 | Primary Key | Alt + K |
+| Undo | Ctrl + Z |
+| Redo | Ctrl + Shift + Z |
 
 ## License
 [MIT](https://github.com/vuerd/vuerd-plugin-erd/blob/master/LICENSE)
