@@ -1,4 +1,4 @@
-# vuerd-plugin-erd
+# vuerd-plugin-erd [![Build Status](https://travis-ci.com/vuerd/vuerd-plugin-erd.svg?branch=master)](https://travis-ci.com/vuerd/vuerd-plugin-erd)
 ### [vuerd-core](https://github.com/vuerd/vuerd-core) plugin  
 ![vuerd](https://user-images.githubusercontent.com/45829489/66325039-8856cc00-e961-11e9-9b4e-c5580200dc1a.gif)
 
