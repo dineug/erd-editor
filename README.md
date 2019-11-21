@@ -186,7 +186,7 @@ Vue.use(VuerdCore);
 | Primary Key | Alt + K |
 | Undo | Ctrl + Z |
 | Redo | Ctrl + Shift + Z |
-| Editing | Enter |
+| Editing | Enter, dblclick |
 
 ## License
 [MIT](https://github.com/vuerd/vuerd-plugin-erd/blob/master/LICENSE)

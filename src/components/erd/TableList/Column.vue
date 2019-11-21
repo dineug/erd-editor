@@ -90,6 +90,8 @@ export default class Column extends Vue {
             column: this.column
           }
         );
+      } else {
+        this.column.ui.pk = this.column.option.primaryKey;
       }
     } else {
       if (this.column.ui.pfk) {
@@ -102,6 +104,8 @@ export default class Column extends Vue {
             column: this.column
           }
         );
+      } else {
+        this.column.ui.pk = this.column.option.primaryKey;
       }
     }
     this.onChange();
