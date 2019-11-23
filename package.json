@@ -2,18 +2,19 @@
   "name": "vuerd-plugin-erd",
   "version": "0.2.4",
   "description": "vuerd-core plugin erd",
-  "author": "dineug <dineug2@gmail.com>",
+  "main": "dist/vuerd-plugin-erd.common.js",
+  "typings": "src/types/index.d.ts",
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build --target lib --name vuerd-plugin-erd src/components/index.ts",
     "test:unit": "vue-cli-service test:unit",
     "lint": "vue-cli-service lint"
   },
-  "main": "dist/vuerd-plugin-erd.common.js",
-  "files": [
-    "dist/*",
-    "src/*"
-  ],
+  "author": "dineug <dineug2@gmail.com>",
+  "homepage": "https://github.com/vuerd/vuerd-plugin-erd",
+  "bugs": "https://github.com/vuerd/vuerd-plugin-erd/issues",
+  "repository": "https://github.com/vuerd/vuerd-plugin-erd.git",
+  "license": "MIT",
   "dependencies": {
     "@tweenjs/tween.js": "^18.1.2",
     "core-js": "^3.1.2",
@@ -52,8 +53,11 @@
     "vue-cli-plugin-pug": "^1.0.7",
     "vue-template-compiler": "^2.6.10"
   },
-  "bugs": "https://github.com/vuerd/vuerd-plugin-erd/issues",
-  "homepage": "https://github.com/vuerd/vuerd-plugin-erd",
+
+  "files": [
+    "dist/*",
+    "src/types/*"
+  ],
   "keywords": [
     "vue",
     "vuejs",
@@ -61,8 +65,5 @@
     "editor",
     "vuerd plugin",
     "erd"
-  ],
-  "license": "MIT",
-  "repository": "https://github.com/vuerd/vuerd-plugin-erd.git",
-  "typings": "src/types/index.d.ts"
+  ]
 }
