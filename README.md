@@ -1,5 +1,9 @@
-# vuerd-plugin-erd [![Build Status](https://travis-ci.com/vuerd/vuerd-plugin-erd.svg?branch=master)](https://travis-ci.com/vuerd/vuerd-plugin-erd)
-### [vuerd-core](https://github.com/vuerd/vuerd-core) plugin  
+# vuerd-plugin-erd  
+
+> [vuerd-core](https://github.com/vuerd/vuerd-core) plugin ERD Editor
+
+[![npm version](https://img.shields.io/npm/v/vuerd-plugin-erd.svg)](https://www.npmjs.com/package/vuerd-plugin-erd) [![Build Status](https://travis-ci.com/vuerd/vuerd-plugin-erd.svg?branch=master)](https://travis-ci.com/vuerd/vuerd-plugin-erd) [![Codacy Badge](https://api.codacy.com/project/badge/Grade/f88cf42b6167435ea7699f7bb36313cc)](https://www.codacy.com/gh/vuerd/vuerd-plugin-erd?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=vuerd/vuerd-plugin-erd&amp;utm_campaign=Badge_Grade)
+
 ![vuerd](https://user-images.githubusercontent.com/45829489/66325039-8856cc00-e961-11e9-9b4e-c5580200dc1a.gif)
 
 ## Document
@@ -159,11 +163,24 @@ import ERD from 'vuerd-plugin-erd';
 import 'vuerd-core/dist/vuerd-core.css';
 import 'vuerd-plugin-erd/dist/vuerd-plugin-erd.css';
 VuerdCore.use(ERD);
+// VuerdCore.use(ERD, option);
 Vue.use(VuerdCore);
 ```
 ```html
 <VuerdCore/>
 ```
+### Option interface
+```typescript
+export interface Option {
+  scope?: string[] | RegExp[];
+  exclude?: string[] | RegExp[];
+}
+```
+### Option
+| Name | Type | Default | Describe |
+| --- | --- | --- | --- |
+| scope | [String \| RegExp] | ["vuerd"] | file designation(string extension) |
+| exclude | [String \| RegExp] |  | exception file designation(string extension) |
 
 ## Editor Action
 | Name | Action
