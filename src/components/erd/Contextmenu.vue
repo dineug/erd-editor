@@ -30,7 +30,9 @@ import Menu from "@/models/Menu";
 import { Bus } from "@/ts/EventBus";
 import { Component, Prop, Vue } from "vue-property-decorator";
 
-@Component
+@Component({
+  name: "Contextmenu"
+})
 export default class Contextmenu extends Vue {
   @Prop({ type: Object, default: () => ({}) })
   private store!: StoreManagement;
