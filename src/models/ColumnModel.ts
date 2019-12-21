@@ -42,9 +42,9 @@ export default class ColumnModel implements Column {
       };
       this.ui = {
         active: column.ui.active,
-        pk: column.ui.pk,
-        fk: column.ui.fk,
-        pfk: column.ui.pfk,
+        pk: column.option.primaryKey,
+        fk: false,
+        pfk: false,
         widthName: column.ui.widthName,
         widthComment: column.ui.widthComment,
         widthDataType: column.ui.widthDataType,
