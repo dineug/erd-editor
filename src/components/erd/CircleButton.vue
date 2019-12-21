@@ -1,6 +1,6 @@
 <template lang="pug">
-  .button(
-    :class="{close, add}"
+  .erd-circle-button(
+    :class="{'erd-close': close, 'erd-add': add}"
     :title="title"
     @click="$emit('click', $event)"
   )
@@ -23,7 +23,7 @@ export default class CircleButton extends Vue {
 </script>
 
 <style scoped lang="scss">
-.button {
+.erd-circle-button {
   width: 17px;
   height: 17px;
   font-size: 0.7em;
@@ -33,12 +33,12 @@ export default class CircleButton extends Vue {
   justify-content: center;
   align-items: center;
 
-  &.close {
+  &.erd-close {
     color: $color-button-close;
     background-color: $color-button-close;
   }
 
-  &.add {
+  &.erd-add {
     color: $color-button-add;
     background-color: $color-button-add;
   }
