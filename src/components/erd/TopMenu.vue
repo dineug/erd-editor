@@ -62,7 +62,7 @@
           v-model="search"
           @input="onSearch"
         )
-    help(v-if="help" @close="onHelp(false)")
+    help(v-if="help" :store="store" @close="onHelp(false)")
 </template>
 
 <script lang="ts">

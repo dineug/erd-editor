@@ -1,5 +1,5 @@
 <template lang="pug">
-  .erd-help
+  .erd-help(:style="helpStyle" @mousedown="onMousedown" @touchstart="onTouchstart")
     .erd-help-body
       CircleButton.help-close(close @click="onClose")
       table
@@ -14,6 +14,7 @@
 </template>
 
 <script lang="ts">
+import StoreManagement from "@/store/StoreManagement";
 import { Component, Prop, Vue } from "vue-property-decorator";
 import CircleButton from "@/components/erd/CircleButton.vue";
 
@@ -28,6 +29,17 @@ interface EditorAction {
   }
 })
 export default class Help extends Vue {
+  @Prop({ type: Object, default: () => ({}) })
+  private store!: StoreManagement;
+
+  get helpStyle(): string {
+    const option = this.store.canvasStore.state;
+    return `
+        left: ${option.scrollLeft}px;
+        top: ${option.scrollTop}px;
+    `;
+  }
+
   private editorActions: EditorAction[] = [
     {
       name: "Multiple selection(table, memo)",
@@ -109,6 +121,14 @@ export default class Help extends Vue {
 
   private onClose() {
     this.$emit("close");
+  }
+
+  private onMousedown(event: MouseEvent) {
+    event.stopPropagation();
+  }
+
+  private onTouchstart(event: TouchEvent) {
+    event.stopPropagation();
   }
 }
 </script>
