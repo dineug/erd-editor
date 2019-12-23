@@ -1,64 +1,68 @@
 <template lang="pug">
-  ul.top-menu(:style="topMenuStyle")
-    li
-      input.database-name(
-        type="text"
-        placeholder="database name"
-        spellcheck="false"
-        title="database name"
-        v-model="store.canvasStore.state.databaseName"
-        @change="onChange"
+  div
+    ul.top-menu(:style="topMenuStyle")
+      li
+        input.database-name(
+          type="text"
+          placeholder="database name"
+          spellcheck="false"
+          title="database name"
+          v-model="store.canvasStore.state.databaseName"
+          @change="onChange"
+        )
+      li
+        input.canvas-size(
+          type="text"
+          placeholder="canvas size"
+          title="canvas size"
+          :value="store.canvasStore.state.width"
+          @input="onInputSize"
+          @change="onChangeSize"
+        )
+      li(
+        title="ERD"
+        :class="{active: canvasType === 'ERD'}"
+        @click="onCanvasType('ERD')"
       )
-    li
-      input.canvas-size(
-        type="text"
-        placeholder="canvas size"
-        title="canvas size"
-        :value="store.canvasStore.state.width"
-        @input="onInputSize"
-        @change="onChangeSize"
+        font-awesome-icon(icon="bezier-curve")
+      li(
+        title="SQL"
+        :class="{active: canvasType === 'SQL'}"
+        @click="onCanvasType('SQL')"
       )
-    li(
-      title="ERD"
-      :class="{active: canvasType === 'ERD'}"
-      @click="onCanvasType('ERD')"
-    )
-      font-awesome-icon(icon="bezier-curve")
-    li(
-      title="SQL"
-      :class="{active: canvasType === 'SQL'}"
-      @click="onCanvasType('SQL')"
-    )
-      font-awesome-icon(icon="code")
-    li(
-      title="list"
-      :class="{active: canvasType === 'List'}"
-      @click="onCanvasType('List')"
-    )
-      font-awesome-icon(icon="list")
-    li.undo-redo(
-      title="undo(Ctrl + Z)"
-      :class="{active: undo}"
-      @click="onUndo"
-    )
-      font-awesome-icon(icon="undo-alt")
-    li.undo-redo(
-      title="redo(Ctrl + Shift + Z)"
-      :class="{active: redo}"
-      @click="onRedo"
-    )
-      font-awesome-icon(icon="redo-alt")
-    li.search(v-if="canvasType === 'List'")
-      font-awesome-icon(icon="search")
-    li(v-if="canvasType === 'List'")
-      input(
-        type="text"
-        placeholder="search"
-        spellcheck="false"
-        title="search"
-        v-model="search"
-        @input="onSearch"
+        font-awesome-icon(icon="code")
+      li(
+        title="list"
+        :class="{active: canvasType === 'List'}"
+        @click="onCanvasType('List')"
       )
+        font-awesome-icon(icon="list")
+      li.undo-redo(
+        title="undo(Ctrl + Z)"
+        :class="{active: undo}"
+        @click="onUndo"
+      )
+        font-awesome-icon(icon="undo-alt")
+      li.undo-redo(
+        title="redo(Ctrl + Shift + Z)"
+        :class="{active: redo}"
+        @click="onRedo"
+      )
+        font-awesome-icon(icon="redo-alt")
+      li(@click="onHelp(true)")
+        font-awesome-icon(icon="question")
+      li.search(v-if="canvasType === 'List'")
+        font-awesome-icon(icon="search")
+      li(v-if="canvasType === 'List'")
+        input(
+          type="text"
+          placeholder="search"
+          spellcheck="false"
+          title="search"
+          v-model="search"
+          @input="onSearch"
+        )
+    help(v-if="help" @close="onHelp(false)")
 </template>
 
 <script lang="ts">
@@ -71,8 +75,13 @@ import { CanvasType, Commit } from "@/store/canvas";
 import { Bus } from "@/ts/EventBus";
 import StoreManagement from "@/store/StoreManagement";
 import { Component, Prop, Vue, Watch } from "vue-property-decorator";
+import Help from "./TopMenu/Help.vue";
 
-@Component
+@Component({
+  components: {
+    Help
+  }
+})
 export default class TopMenu extends Vue {
   @Prop({ type: Object, default: () => ({}) })
   private store!: StoreManagement;
@@ -86,6 +95,7 @@ export default class TopMenu extends Vue {
   private redo!: boolean;
 
   private search: string = "";
+  private help: boolean = false;
 
   get topMenuStyle(): string {
     const left = this.store.canvasStore.state.scrollLeft;
@@ -151,6 +161,10 @@ export default class TopMenu extends Vue {
       height: size
     });
     this.store.eventBus.$emit(Bus.ERD.change);
+  }
+
+  private onHelp(open: boolean) {
+    this.help = open;
   }
 
   // ==================== Event Handler END ===================

@@ -3,6 +3,7 @@
     :class="{active: memo.ui.active}"
     :style="memoStyle"
     @mousedown="onMousedown"
+    @touchstart="onTouchstart"
   )
     .memo-header
       CircleButton.memo-button(
@@ -142,8 +143,20 @@ export default class Memo extends Vue {
     window,
     "mousemove"
   );
+  private touchmove$: Observable<TouchEvent> = fromEvent<TouchEvent>(
+    window,
+    "touchmove"
+  );
+  private touchend$: Observable<TouchEvent> = fromEvent<TouchEvent>(
+    window,
+    "touchend"
+  );
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
+  private subTouchmove: Subscription | null = null;
+  private subTouchend: Subscription | null = null;
+  private touchX: number = 0;
+  private touchY: number = 0;
 
   private moveXAnimation: AnimationFrame<{ x: number }> | null = null;
   private moveYAnimation: AnimationFrame<{ y: number }> | null = null;
@@ -264,6 +277,44 @@ export default class Memo extends Vue {
       memo: this.memo,
       x: event.movementX,
       y: event.movementY,
+      event,
+      store: this.store
+    });
+  }
+
+  private onTouchstart(event: TouchEvent) {
+    this.touchX = event.touches[0].clientX;
+    this.touchY = event.touches[0].clientY;
+    const el = event.target as HTMLElement;
+    if (!el.closest(".memo-button") && !el.closest(".sash")) {
+      this.subTouchend = this.touchend$.subscribe(this.onTouchend);
+      this.subTouchmove = this.touchmove$.subscribe(this.onTouchmove);
+    }
+    this.store.memoStore.commit(Commit.memoSelect, {
+      memo: this.memo,
+      event,
+      store: this.store
+    });
+  }
+
+  private onTouchend(event: TouchEvent) {
+    if (this.subTouchend && this.subTouchmove) {
+      this.subTouchend.unsubscribe();
+      this.subTouchmove.unsubscribe();
+    }
+    this.store.eventBus.$emit(Bus.Memo.moveAnimationEnd);
+    this.store.eventBus.$emit(Bus.Table.moveAnimationEnd);
+  }
+
+  private onTouchmove(event: TouchEvent) {
+    const movementX = event.touches[0].clientX - this.touchX;
+    const movementY = event.touches[0].clientY - this.touchY;
+    this.touchX = event.touches[0].clientX;
+    this.touchY = event.touches[0].clientY;
+    this.store.memoStore.commit(Commit.memoMove, {
+      memo: this.memo,
+      x: movementX,
+      y: movementY,
       event,
       store: this.store
     });

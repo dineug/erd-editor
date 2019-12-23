@@ -14,7 +14,8 @@ import {
   faBezierCurve,
   faRedoAlt,
   faUndoAlt,
-  faSearch
+  faSearch,
+  faQuestion
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -30,7 +31,8 @@ library.add(
   faBezierCurve,
   faRedoAlt,
   faUndoAlt,
-  faSearch
+  faSearch,
+  faQuestion
 );
 
 Vue.component("font-awesome-icon", FontAwesomeIcon);

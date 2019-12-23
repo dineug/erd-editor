@@ -3,6 +3,7 @@
     :class="{active: table.ui.active}"
     :style="tableStyle"
     @mousedown="onMousedown"
+    @touchstart="onTouchstart"
   )
     .table-header
       .table-header-top
@@ -106,13 +107,25 @@ export default class Table extends Vue {
     window,
     "mousemove"
   );
+  private touchmove$: Observable<TouchEvent> = fromEvent<TouchEvent>(
+    window,
+    "touchmove"
+  );
+  private touchend$: Observable<TouchEvent> = fromEvent<TouchEvent>(
+    window,
+    "touchend"
+  );
   private keydown$: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(
     window,
     "keydown"
   );
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
+  private subTouchmove: Subscription | null = null;
+  private subTouchend: Subscription | null = null;
   private subKeydown: Subscription | null = null;
+  private touchX: number = 0;
+  private touchY: number = 0;
 
   private draggableListener: Subscription[] = [];
   private draggable$: Subject<DragEvent> = new Subject();
@@ -230,6 +243,50 @@ export default class Table extends Vue {
       table: this.table,
       x: event.movementX,
       y: event.movementY,
+      event,
+      store: this.store
+    });
+  }
+
+  private onTouchstart(event: TouchEvent) {
+    this.touchX = event.touches[0].clientX;
+    this.touchY = event.touches[0].clientY;
+    const el = event.target as HTMLElement;
+    if (!el.closest(".table-button") && !el.closest(".column")) {
+      this.subTouchend = this.touchend$.subscribe(this.onTouchend);
+      this.subTouchmove = this.touchmove$.subscribe(this.onTouchmove);
+    }
+    if (
+      !el.closest(".table-name") &&
+      !el.closest(".table-comment") &&
+      !el.closest(".column")
+    ) {
+      this.store.tableStore.commit(Commit.tableSelect, {
+        table: this.table,
+        event,
+        store: this.store
+      });
+    }
+  }
+
+  private onTouchend(event: TouchEvent) {
+    if (this.subTouchend && this.subTouchmove) {
+      this.subTouchend.unsubscribe();
+      this.subTouchmove.unsubscribe();
+    }
+    this.store.eventBus.$emit(Bus.Table.moveAnimationEnd);
+    this.store.eventBus.$emit(Bus.Memo.moveAnimationEnd);
+  }
+
+  private onTouchmove(event: TouchEvent) {
+    const movementX = event.touches[0].clientX - this.touchX;
+    const movementY = event.touches[0].clientY - this.touchY;
+    this.touchX = event.touches[0].clientX;
+    this.touchY = event.touches[0].clientY;
+    this.store.tableStore.commit(Commit.tableMove, {
+      table: this.table,
+      x: movementX,
+      y: movementY,
       event,
       store: this.store
     });

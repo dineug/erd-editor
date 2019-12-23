@@ -2,6 +2,7 @@
   .preview-target(
     :style="previewStyle"
     @mousedown="onMousedown"
+    @touchstart="onTouchstart"
   )
 </template>
 
@@ -36,8 +37,20 @@ export default class PreviewTarget extends Vue {
     window,
     "mousemove"
   );
+  private touchmove$: Observable<TouchEvent> = fromEvent<TouchEvent>(
+    window,
+    "touchmove"
+  );
+  private touchend$: Observable<TouchEvent> = fromEvent<TouchEvent>(
+    window,
+    "touchend"
+  );
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
+  private subTouchmove: Subscription | null = null;
+  private subTouchend: Subscription | null = null;
+  private touchX: number = 0;
+  private touchY: number = 0;
 
   get previewStyle(): string {
     const ratio = this.store.canvasStore.getters.previewRatio;
@@ -77,6 +90,36 @@ export default class PreviewTarget extends Vue {
       const ratio = this.store.canvasStore.getters.previewRatio;
       this.$el.parentElement.scrollTop += event.movementY / ratio;
       this.$el.parentElement.scrollLeft += event.movementX / ratio;
+      this.store.canvasStore.commit(CanvasCommit.canvasMove, {
+        scrollTop: this.$el.parentElement.scrollTop,
+        scrollLeft: this.$el.parentElement.scrollLeft
+      });
+    }
+  }
+
+  private onTouchstart(event: TouchEvent) {
+    this.touchX = event.touches[0].clientX;
+    this.touchY = event.touches[0].clientY;
+    this.subTouchend = this.touchend$.subscribe(this.onTouchend);
+    this.subTouchmove = this.touchmove$.subscribe(this.onTouchmove);
+  }
+
+  private onTouchend(event: TouchEvent) {
+    if (this.subTouchend && this.subTouchmove) {
+      this.subTouchend.unsubscribe();
+      this.subTouchmove.unsubscribe();
+    }
+  }
+
+  private onTouchmove(event: TouchEvent) {
+    const movementX = event.touches[0].clientX - this.touchX;
+    const movementY = event.touches[0].clientY - this.touchY;
+    this.touchX = event.touches[0].clientX;
+    this.touchY = event.touches[0].clientY;
+    if (this.$el.parentElement) {
+      const ratio = this.store.canvasStore.getters.previewRatio;
+      this.$el.parentElement.scrollTop += movementY / ratio;
+      this.$el.parentElement.scrollLeft += movementX / ratio;
       this.store.canvasStore.commit(CanvasCommit.canvasMove, {
         scrollTop: this.$el.parentElement.scrollTop,
         scrollLeft: this.$el.parentElement.scrollLeft

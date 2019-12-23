@@ -2,6 +2,7 @@
   .erd(
     :style="erdStyle"
     @mousedown="onMousedownERD"
+    @touchstart="onTouchstartERD"
   )
     TopMenu(
       :store="store"
@@ -96,6 +97,7 @@ import TableList from "./TableList.vue";
 import { fromEvent, Observable, Subscription } from "rxjs";
 
 @Component({
+  name: "ERD",
   components: {
     Canvas,
     Contextmenu,
@@ -139,11 +141,21 @@ export default class ERD extends Vue {
     window,
     "keydown"
   );
+  private touchmove$: Observable<TouchEvent> = fromEvent<TouchEvent>(
+    window,
+    "touchmove"
+  );
+  private touchend$: Observable<TouchEvent> = fromEvent<TouchEvent>(
+    window,
+    "touchend"
+  );
   private subResize!: Subscription;
   private subMousedown!: Subscription;
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
   private subKeydown!: Subscription;
+  private subTouchmove: Subscription | null = null;
+  private subTouchend: Subscription | null = null;
 
   private store: StoreManagement = new StoreManagement();
   private currentValue: string = "";
@@ -155,6 +167,8 @@ export default class ERD extends Vue {
   private contextmenuY: number = 0;
   private windowWidth: number = window.innerWidth;
   private windowHeight: number = window.innerHeight;
+  private touchX: number = 0;
+  private touchY: number = 0;
 
   private select: boolean = false;
   private selectX: number = 0;
@@ -267,6 +281,43 @@ export default class ERD extends Vue {
     event.preventDefault();
     this.$el.scrollTop -= event.movementY;
     this.$el.scrollLeft -= event.movementX;
+    this.store.canvasStore.commit(CanvasCommit.canvasMove, {
+      scrollTop: this.$el.scrollTop,
+      scrollLeft: this.$el.scrollLeft
+    });
+  }
+
+  private onTouchstartERD(event: TouchEvent) {
+    const el = event.target as HTMLElement;
+    if (
+      !el.closest(".contextmenu-erd") &&
+      !el.closest(".table") &&
+      !el.closest(".memo") &&
+      !el.closest(".preview") &&
+      !el.closest(".preview-target") &&
+      !el.closest(".workspace-sql")
+    ) {
+      this.touchX = event.touches[0].clientX;
+      this.touchY = event.touches[0].clientY;
+      this.subTouchend = this.touchend$.subscribe(this.onTouchend);
+      this.subTouchmove = this.touchmove$.subscribe(this.onTouchmove);
+    }
+  }
+
+  private onTouchend(event: TouchEvent) {
+    if (this.subTouchend && this.subTouchmove) {
+      this.subTouchend.unsubscribe();
+      this.subTouchmove.unsubscribe();
+    }
+  }
+
+  private onTouchmove(event: TouchEvent) {
+    const movementX = event.touches[0].clientX - this.touchX;
+    const movementY = event.touches[0].clientY - this.touchY;
+    this.touchX = event.touches[0].clientX;
+    this.touchY = event.touches[0].clientY;
+    this.$el.scrollTop -= movementY;
+    this.$el.scrollLeft -= movementX;
     this.store.canvasStore.commit(CanvasCommit.canvasMove, {
       scrollTop: this.$el.scrollTop,
       scrollLeft: this.$el.scrollLeft
