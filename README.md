@@ -30,17 +30,17 @@ Vue.component('Vuerd', Vuerd);
 ```html
 <template>
   <div class="workspace-vuerd">
-    <Vuerd
-            :focus="true"
-            :undo="undo"
-            :redo="redo"
-            :width="width"
-            :height="height"
-            :value="value"
-            @input="onInput"
-            @change="onChange"
-            @undo="onUndo"
-            @redo="onRedo"
+    <vuerd
+      :focus="true"
+      :undo="undo"
+      :redo="redo"
+      :width="width"
+      :height="height"
+      :value="value"
+      @input="onInput"
+      @change="onChange"
+      @undo="onUndo"
+      @redo="onRedo"
     />
   </div>
 </template>
@@ -119,6 +119,9 @@ Vue.component('Vuerd', Vuerd);
 </script>
 
 <style scoped>
+  body {
+    margin: 0;
+  }
   .workspace-vuerd {
     overflow: hidden;
     height: 100vh;
@@ -167,9 +170,78 @@ VuerdCore.use(ERD);
 Vue.use(VuerdCore);
 ```
 ```html
-<VuerdCore/>
+<vuerd-core />
 ```
 ## CDN Quick Start
+### Component
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>vuerd-core demo</title>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/vuerd-plugin-erd/dist/vuerd-plugin-erd.css">
+  <style>
+    body {
+      margin: 0;
+    }
+    #app {
+      overflow: hidden;
+      height: 100vh;    
+    } 
+  </style>
+</head>
+<body>
+  <div id="app">
+    <vuerd
+      :focus="true"
+      :width="width"
+      :height="height"
+      :value="value"
+      @input="onInput"
+      @change="onChange"
+     />
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuerd-plugin-erd/dist/vuerd-plugin-erd.umd.min.js"></script>
+  <script>
+    const Vuerd = window['vuerd-plugin-erd'].Vuerd
+    Vue.component('Vuerd', Vuerd)
+    new Vue({
+      el: '#app',
+      data: () => ({
+        width: 2000,
+        height: 2000,
+        value: ''
+      }),
+      methods: {
+        onResize() {
+          this.width = window.innerWidth
+          this.height = window.innerHeight
+        },
+        onInput(value) {
+          this.value = value
+          // data save
+        },
+        onChange(value) {
+          this.value = value
+          // data save
+        }
+      },
+      mounted() {
+        window.addEventListener('resize', this.onResize)
+        window.dispatchEvent(new Event('resize'))
+        // save data load
+        this.value = ''
+      },
+      destroyed() {
+        window.removeEventListener('resize', this.onResize)
+      }
+     })
+  </script>
+</body>
+</html>
+```
+### vuerd-core plugin
 ```html
 <!DOCTYPE html>
 <html>
