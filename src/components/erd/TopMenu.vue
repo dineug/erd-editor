@@ -49,7 +49,7 @@
         @click="onRedo"
       )
         font-awesome-icon(icon="redo-alt")
-      li(@click="onHelp(true)")
+      li(title="help" @click="onHelp(true)")
         font-awesome-icon(icon="question")
       li.search(v-if="canvasType === 'List'")
         font-awesome-icon(icon="search")
