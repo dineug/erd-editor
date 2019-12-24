@@ -7,6 +7,7 @@ export const Vuerd = ERD;
 export default {
   install(command: Command, option?: Option) {
     const editor: Editor = {
+      name: "vuerd",
       component: ERD,
       scope: ["vuerd"],
       option: {
