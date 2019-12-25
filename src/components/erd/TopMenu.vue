@@ -24,7 +24,7 @@
         :class="{active: canvasType === 'ERD'}"
         @click="onCanvasType('ERD')"
       )
-        font-awesome-icon(icon="bezier-curve")
+        font-awesome-icon(icon="project-diagram")
       li(
         title="SQL"
         :class="{active: canvasType === 'SQL'}"

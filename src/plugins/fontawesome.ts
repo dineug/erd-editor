@@ -11,11 +11,11 @@ import {
   faCheck,
   faCode,
   faList,
-  faBezierCurve,
   faRedoAlt,
   faUndoAlt,
   faSearch,
-  faQuestion
+  faQuestion,
+  faProjectDiagram
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -28,11 +28,11 @@ library.add(
   faCheck,
   faCode,
   faList,
-  faBezierCurve,
   faRedoAlt,
   faUndoAlt,
   faSearch,
-  faQuestion
+  faQuestion,
+  faProjectDiagram
 );
 
 Vue.component("font-awesome-icon", FontAwesomeIcon);
