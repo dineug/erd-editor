@@ -1,5 +1,10 @@
 <template lang="pug">
-  .erd-help(:style="helpStyle" @mousedown="onMousedown" @touchstart="onTouchstart")
+  .erd-help(
+    :style="helpStyle"
+    @mousedown="onMousedown"
+    @touchstart="onTouchstart"
+    @dblclick="onClose"
+  )
     .erd-help-body
       CircleButton.help-close(close @click="onClose")
       table
@@ -18,6 +23,8 @@ import StoreManagement from "@/store/StoreManagement";
 import { Component, Prop, Vue } from "vue-property-decorator";
 import CircleButton from "@/components/erd/CircleButton.vue";
 
+import { fromEvent, Observable, Subscription } from "rxjs";
+
 interface EditorAction {
   name: string;
   action: string;
@@ -31,14 +38,6 @@ interface EditorAction {
 export default class Help extends Vue {
   @Prop({ type: Object, default: () => ({}) })
   private store!: StoreManagement;
-
-  get helpStyle(): string {
-    const option = this.store.canvasStore.state;
-    return `
-        left: ${option.scrollLeft}px;
-        top: ${option.scrollTop}px;
-    `;
-  }
 
   private editorActions: EditorAction[] = [
     {
@@ -119,16 +118,36 @@ export default class Help extends Vue {
     }
   ];
 
+  get helpStyle(): string {
+    const option = this.store.canvasStore.state;
+    return `
+        left: ${option.scrollLeft}px;
+        top: ${option.scrollTop}px;
+    `;
+  }
+
   private onClose() {
     this.$emit("close");
   }
 
   private onMousedown(event: MouseEvent) {
     event.stopPropagation();
+    const el = event.target as HTMLElement;
+    if (el) {
+      if (!el.closest(".erd-help-body")) {
+        this.$emit("close");
+      }
+    }
   }
 
   private onTouchstart(event: TouchEvent) {
     event.stopPropagation();
+    const el = event.target as HTMLElement;
+    if (el) {
+      if (!el.closest(".erd-help-body")) {
+        this.$emit("close");
+      }
+    }
   }
 }
 </script>
