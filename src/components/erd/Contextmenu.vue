@@ -9,11 +9,11 @@
       )
         span.icon
           img(v-if="getIcon(menu) && menu.base64" :src="getIcon(menu)")
-          font-awesome-icon(v-else-if="getIcon(menu)" :icon="getIcon(menu)")
+          font-awesome-icon(v-else-if="getIcon(menu)" :icon="getIcon(menu)" style="width: 14px;")
         span.name {{menu.name}}
         span.keymap {{menu.keymap}}
         span.arrow(v-if="menu.children")
-          font-awesome-icon(icon="chevron-right")
+          font-awesome-icon(icon="chevron-right" style="width: 8.13px; height: 13px;")
     Contextmenu(
       v-if="currentMenu && currentMenu.children"
       :store="store"

@@ -4,8 +4,8 @@
     :title="title"
     @click="$emit('click', $event)"
   )
-    font-awesome-icon(v-if="close" icon="times")
-    font-awesome-icon(v-else-if="add" icon="plus")
+    font-awesome-icon.icon-size(v-if="close" icon="times")
+    font-awesome-icon.icon-size(v-else-if="add" icon="plus")
 </template>
 
 <script lang="ts">
@@ -45,6 +45,10 @@ export default class CircleButton extends Vue {
 
   &:hover {
     color: $color-font-active;
+  }
+
+  .icon-size {
+    width: $size-column-close;
   }
 }
 </style>

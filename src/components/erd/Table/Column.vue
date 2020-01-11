@@ -331,7 +331,7 @@ export default class Column extends Vue {
       width: $size-key;
 
       .column-key {
-        font-size: $size-key;
+        width: $size-key;
 
         &.pk {
           color: $color-key-pk;
@@ -350,7 +350,7 @@ export default class Column extends Vue {
 
   .column-button {
     color: $color-font;
-    font-size: $size-column-close;
+    width: $size-column-close;
     cursor: pointer;
 
     &:hover {

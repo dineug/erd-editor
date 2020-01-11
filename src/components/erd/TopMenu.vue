@@ -24,35 +24,35 @@
         :class="{active: canvasType === 'ERD'}"
         @click="onCanvasType('ERD')"
       )
-        font-awesome-icon(icon="project-diagram")
+        font-awesome-icon(icon="project-diagram" style="width: 20px; height: 16px;")
       li(
         title="SQL"
         :class="{active: canvasType === 'SQL'}"
         @click="onCanvasType('SQL')"
       )
-        font-awesome-icon(icon="code")
+        font-awesome-icon(icon="code" style="width: 20px; height: 16px;")
       li(
         title="list"
         :class="{active: canvasType === 'List'}"
         @click="onCanvasType('List')"
       )
-        font-awesome-icon(icon="list")
+        font-awesome-icon(icon="list" style="width: 16px; height: 16px;")
       li.undo-redo(
         title="undo(Ctrl + Z)"
         :class="{active: undo}"
         @click="onUndo"
       )
-        font-awesome-icon(icon="undo-alt")
+        font-awesome-icon(icon="undo-alt" style="width: 16px; height: 16px;")
       li.undo-redo(
         title="redo(Ctrl + Shift + Z)"
         :class="{active: redo}"
         @click="onRedo"
       )
-        font-awesome-icon(icon="redo-alt")
+        font-awesome-icon(icon="redo-alt" style="width: 16px; height: 16px;")
       li(title="help" @click="onHelp(true)")
-        font-awesome-icon(icon="question")
+        font-awesome-icon(icon="question" style="width: 12px; height: 16px;")
       li.search(v-if="canvasType === 'List'")
-        font-awesome-icon(icon="search")
+        font-awesome-icon(icon="search" style="width: 16px; height: 16px;")
       li(v-if="canvasType === 'List'")
         input(
           type="text"
