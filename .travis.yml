@@ -9,5 +9,4 @@ deploy:
   skip_cleanup: true
 
 script:
-  - yarn lint
   - yarn build
