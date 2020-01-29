@@ -11,6 +11,9 @@ import { Bus } from "@/ts/EventBus";
 import icon from "@/ts/icon";
 import { uuid } from "@/ts/util";
 import { Database } from "./dataType";
+import domToImage from "dom-to-image";
+
+const a = document.createElement("a");
 
 function dataMenu(store: StoreManagement): Menu[] {
   const show = store.canvasStore.state.show;
@@ -78,6 +81,7 @@ function dataMenu(store: StoreManagement): Menu[] {
     {
       id: uuid(),
       name: "View Option",
+      icon: "eye",
       children: [
         {
           id: uuid(),
@@ -162,6 +166,7 @@ function dataMenu(store: StoreManagement): Menu[] {
     {
       id: uuid(),
       name: "Database",
+      icon: "code",
       children: [
         {
           id: uuid(),
@@ -227,6 +232,40 @@ function dataMenu(store: StoreManagement): Menu[] {
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: { close: false, database: Database.PostgreSQL }
+        }
+      ]
+    },
+    {
+      id: uuid(),
+      name: "Export",
+      icon: "file-export",
+      children: [
+        {
+          id: uuid(),
+          name: "png",
+          icon: "file-image",
+          execute() {
+            const canvas = document.getElementById(store.uuid);
+            if (canvas) {
+              canvas.style.backgroundColor = "#282828";
+              domToImage
+                .toBlob(canvas)
+                .then(blob => {
+                  a.href = window.URL.createObjectURL(blob);
+                  if (store.canvasStore.state.databaseName.trim() === "") {
+                    a.download = `unnamed-${new Date().getTime()}.png`;
+                  } else {
+                    a.download = `${
+                      store.canvasStore.state.databaseName
+                    }-${new Date().getTime()}.png`;
+                  }
+                  a.click();
+                })
+                .finally(() => {
+                  canvas.style.backgroundColor = null;
+                });
+            }
+          }
         }
       ]
     }

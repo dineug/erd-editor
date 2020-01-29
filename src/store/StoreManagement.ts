@@ -19,7 +19,7 @@ import {
   createStore as createStoreRelationship
 } from "./relationship";
 import EventBus from "@/ts/EventBus";
-import { log } from "@/ts/util";
+import { log, uuid } from "@/ts/util";
 import { Store } from "vuex";
 
 export default class StoreManagement {
@@ -28,6 +28,7 @@ export default class StoreManagement {
   public readonly memoStore: Store<MemoState>;
   public readonly relationshipStore: Store<RelationshipState>;
   public readonly eventBus: EventBus;
+  public readonly uuid: string = uuid();
 
   constructor() {
     this.canvasStore = createdStoreCanvas();

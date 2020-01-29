@@ -1,5 +1,5 @@
 <template lang="pug">
-  .canvas(:style="canvasStyle")
+  .canvas(:id="store.uuid" :style="canvasStyle")
     Table(
       v-for="table in tables"
       :key="table.id"

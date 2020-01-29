@@ -15,7 +15,10 @@ import {
   faUndoAlt,
   faSearch,
   faQuestion,
-  faProjectDiagram
+  faProjectDiagram,
+  faFileImage,
+  faFileExport,
+  faEye
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -32,7 +35,10 @@ library.add(
   faUndoAlt,
   faSearch,
   faQuestion,
-  faProjectDiagram
+  faProjectDiagram,
+  faFileImage,
+  faFileExport,
+  faEye
 );
 
 Vue.component("font-awesome-icon", FontAwesomeIcon);
