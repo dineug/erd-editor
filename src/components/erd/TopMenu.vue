@@ -167,6 +167,18 @@ export default class TopMenu extends Vue {
     this.help = open;
   }
 
+  private onHelpStop() {
+    this.help = false;
+  }
+
+  private created() {
+    this.store.eventBus.$on(Bus.TopMenu.helpStop, this.onHelpStop);
+  }
+
+  private destroyed() {
+    this.store.eventBus.$off(Bus.TopMenu.helpStop, this.onHelpStop);
+  }
+
   // ==================== Event Handler END ===================
 }
 </script>

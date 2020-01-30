@@ -89,6 +89,11 @@ export function relationshipDrawEnd(
   state.draw = null;
 }
 
+export function relationshipDrawStop(state: State) {
+  log.debug("relationshipController relationshipDrawStop");
+  state.draw = null;
+}
+
 export function relationshipIdentification(
   state: State,
   payload: { table: Table; column: Column }

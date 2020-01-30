@@ -23,12 +23,12 @@ import { log, uuid } from "@/ts/util";
 import { Store } from "vuex";
 
 export default class StoreManagement {
-  public readonly canvasStore: Store<CanvasState>;
-  public readonly tableStore: Store<TableState>;
-  public readonly memoStore: Store<MemoState>;
-  public readonly relationshipStore: Store<RelationshipState>;
-  public readonly eventBus: EventBus;
-  public readonly uuid: string = uuid();
+  public canvasStore: Store<CanvasState>;
+  public tableStore: Store<TableState>;
+  public memoStore: Store<MemoState>;
+  public relationshipStore: Store<RelationshipState>;
+  public eventBus: EventBus;
+  public uuid: string = uuid();
 
   constructor() {
     this.canvasStore = createdStoreCanvas();
@@ -74,5 +74,13 @@ export default class StoreManagement {
       }
       return value;
     });
+  }
+
+  public destroyed() {
+    delete this.canvasStore;
+    delete this.tableStore;
+    delete this.memoStore;
+    delete this.relationshipStore;
+    delete this.eventBus;
   }
 }

@@ -98,5 +98,9 @@ export function searchColumn(columns: Column[], keyword: string): Column[] {
 }
 
 export function search(target: string, keyword: string): boolean {
-  return keyword.split(" ").some(key => target.indexOf(key) !== -1);
+  return keyword
+    .split(" ")
+    .some(
+      key => target.toLocaleLowerCase().indexOf(key.toLocaleLowerCase()) !== -1
+    );
 }

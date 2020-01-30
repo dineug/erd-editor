@@ -90,13 +90,18 @@ enum TableList {
   search = "TableList.search"
 }
 
+enum TopMenu {
+  helpStop = "TopMenu.helpStop"
+}
+
 export const Bus = {
   Table,
   Memo,
   ERD,
   ColumnDataType,
   DataTypeHint,
-  TableList
+  TableList,
+  TopMenu
 };
 
 export default EventBus;

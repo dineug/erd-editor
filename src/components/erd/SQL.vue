@@ -1,24 +1,54 @@
 <template lang="pug">
-  pre.workspace-sql
-    code.sql.scrollbar(
+  .workspace-sql
+    code.sql.hljs.scrollbar(
       contenteditable="true"
       spellcheck="false"
       ref="code"
-    ) {{value}}
+      v-html="value"
+    )
 </template>
 
 <script lang="ts">
 import hljs from "@/plugins/highlight";
+import SQLFactory from "@/ts/SQL";
 import { Commit as CanvasCommit } from "@/store/canvas";
 import StoreManagement from "@/store/StoreManagement";
-import { Component, Prop, Vue } from "vue-property-decorator";
+import { Component, Prop, Vue, Watch } from "vue-property-decorator";
+import { Subscription, Subject } from "rxjs";
+import { debounceTime } from "rxjs/operators";
 
 @Component
 export default class SQL extends Vue {
   @Prop({ type: Object, default: () => ({}) })
   private store!: StoreManagement;
-  @Prop({ type: String, default: "" })
-  private value!: string;
+
+  private value: string = "";
+  private databaseName$: Subject<void> = new Subject();
+  private subDatabaseName!: Subscription;
+
+  @Watch("store.canvasStore.state.database")
+  private watchDatabase() {
+    this.convertSQL();
+  }
+
+  @Watch("store.canvasStore.state.databaseName")
+  private watchDatabaseName() {
+    this.databaseName$.next();
+  }
+
+  private convertSQL() {
+    const sql = SQLFactory.toDDL(this.store);
+    this.value = hljs.highlight("sql", sql).value;
+  }
+
+  private created() {
+    this.convertSQL();
+    this.subDatabaseName = this.databaseName$
+      .pipe(debounceTime(300))
+      .subscribe(() => {
+        this.convertSQL();
+      });
+  }
 
   private mounted() {
     if (this.$el.parentElement) {
@@ -29,8 +59,10 @@ export default class SQL extends Vue {
         scrollLeft: this.$el.parentElement.scrollLeft
       });
     }
+  }
 
-    hljs.highlightBlock(this.$refs.code);
+  private destroyed() {
+    this.subDatabaseName.unsubscribe();
   }
 }
 </script>
@@ -41,10 +73,12 @@ export default class SQL extends Vue {
 .workspace-sql {
   margin-top: $size-top-menu-height;
   height: calc(100% - 30px);
+  white-space: pre;
 
   .sql {
-    height: calc(100% - 10px);
-    padding: 5px;
+    height: 100%;
+    padding: 10px;
+    box-sizing: border-box;
     background-color: $color-sql;
   }
 }

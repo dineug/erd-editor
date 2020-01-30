@@ -1,3 +1,4 @@
+import { CanvasType } from "@/store/canvas";
 <template lang="pug">
   .erd(
     :style="erdStyle"
@@ -52,10 +53,16 @@
       :width="width"
       :height="height"
     )
+    Contextmenu.contextmenu-erd(
+      v-if="canvasType === 'SQL' && sqlContextmenu"
+      :store="store"
+      :menus="sqlMenus"
+      :x="contextmenuX"
+      :y="contextmenuY"
+    )
     SQL(
       v-if="canvasType === 'SQL'"
       :store="store"
-      :value="sql"
     )
     TableList(
       v-if="canvasType === 'List'"
@@ -66,7 +73,11 @@
 <script lang="ts">
 import "@/plugins/fontawesome";
 
-import { SIZE_MENU_HEIGHT } from "@/ts/layout";
+import {
+  SIZE_MENU_HEIGHT,
+  SIZE_PREVIEW_MARGIN,
+  SIZE_TOP_MENU_HEIGHT
+} from "@/ts/layout";
 import { Bus } from "@/ts/EventBus";
 import { CanvasType, Commit as CanvasCommit } from "@/store/canvas";
 import { Commit as TableCommit } from "@/store/table";
@@ -82,7 +93,6 @@ import StoreManagement from "@/store/StoreManagement";
 import Menu from "@/models/Menu";
 import { dataMenu } from "@/data/contextmenu";
 import icon from "@/ts/icon";
-import SQLFactory from "@/ts/SQL";
 import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import Canvas from "./Canvas.vue";
 import MultipleSelect from "./MultipleSelect.vue";
@@ -95,6 +105,9 @@ import SQL from "./SQL.vue";
 import TableList from "./TableList.vue";
 
 import { fromEvent, Observable, Subscription } from "rxjs";
+
+const MARGIN_TOP = SIZE_TOP_MENU_HEIGHT + SIZE_PREVIEW_MARGIN;
+const SQL_MENU_WIDTH = 216;
 
 @Component({
   name: "ERD",
@@ -165,6 +178,7 @@ export default class ERD extends Vue {
   private contextmenu: boolean = false;
   private contextmenuX: number = 0;
   private contextmenuY: number = 0;
+  private sqlContextmenu: boolean = false;
   private windowWidth: number = window.innerWidth;
   private windowHeight: number = window.innerHeight;
   private touchX: number = 0;
@@ -199,8 +213,28 @@ export default class ERD extends Vue {
     return this.store.canvasStore.state.canvasType;
   }
 
-  get sql(): string {
-    return SQLFactory.toDDL(this.store);
+  get sqlMenus(): Menu[] {
+    let menus: Menu[] = [];
+    for (const menu of this.menus) {
+      if (menu.name === "Database" && menu.children) {
+        menus = menu.children;
+        break;
+      }
+    }
+    return menus;
+  }
+
+  get sqlMenuX(): number {
+    return (
+      this.width -
+      SQL_MENU_WIDTH -
+      SIZE_PREVIEW_MARGIN -
+      this.store.canvasStore.state.scrollLeft
+    );
+  }
+
+  get sqlMenuY(): number {
+    return MARGIN_TOP + this.store.canvasStore.state.scrollTop;
   }
 
   @Watch("value")
@@ -267,6 +301,7 @@ export default class ERD extends Vue {
     const el = event.target as HTMLElement;
     if (!el.closest(".contextmenu-erd")) {
       this.contextmenu = false;
+      this.sqlContextmenu = false;
     }
   }
 
@@ -327,8 +362,22 @@ export default class ERD extends Vue {
   private onKeydown(event: KeyboardEvent) {
     // log.debug('ERD onKeydown');
     if (this.focus) {
+      if (event.key === Key.Escape) {
+        // Escape
+        this.store.eventBus.$emit(Bus.TopMenu.helpStop);
+      }
       if (this.canvasType === CanvasType.ERD) {
-        if (event.altKey && event.code === Key.KeyN) {
+        if (event.key === Key.Escape) {
+          // Escape
+          this.contextmenu = false;
+          this.onSelectEnd();
+          this.store.relationshipStore.commit(
+            RelationshipCommit.relationshipDrawStop
+          );
+          this.store.tableStore.commit(TableCommit.tableSelectAllEnd);
+          this.store.memoStore.commit(MemoCommit.memoSelectAllEnd);
+          this.store.tableStore.commit(TableCommit.columnDraggableEnd);
+        } else if (event.altKey && event.code === Key.KeyN) {
           // Alt + N
           this.store.tableStore.commit(TableCommit.tableAdd, this.store);
         } else if (event.altKey && event.code === Key.KeyM) {
@@ -395,6 +444,8 @@ export default class ERD extends Vue {
           event.preventDefault();
           this.onUndo();
         }
+      } else if (this.canvasType === CanvasType.SQL) {
+        this.sqlContextmenu = false;
       }
     }
   }
@@ -414,6 +465,7 @@ export default class ERD extends Vue {
     event.preventDefault();
     const el = event.target as HTMLElement;
     this.contextmenu = !!el.closest(".erd");
+    this.sqlContextmenu = !!el.closest(".erd");
     if (this.contextmenu) {
       this.contextmenuX = event.x;
       this.contextmenuY = event.y;
@@ -428,6 +480,7 @@ export default class ERD extends Vue {
 
   private onContextmenuEnd() {
     this.contextmenu = false;
+    this.sqlContextmenu = false;
   }
 
   private onUndo() {
@@ -470,6 +523,7 @@ export default class ERD extends Vue {
     this.subMousedown.unsubscribe();
     this.subKeydown.unsubscribe();
     this.store.eventBus.destroyed();
+    this.store.destroyed();
   }
 
   // ==================== Life Cycle END ====================

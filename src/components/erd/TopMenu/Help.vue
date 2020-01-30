@@ -5,25 +5,25 @@
     @touchstart="onTouchstart"
     @dblclick="onClose"
   )
-    .erd-help-body
-      CircleButton.help-close(close @click="onClose")
-      table
-        thead
-          tr
-            td Name
-            td Action
-        tbody
-          tr(v-for="editorAction in editorActions" :key="editorActions.name")
-            td {{ editorAction.name }}
-            td {{ editorAction.action }}
+    .erd-help-box
+      CircleButton.erd-help-close(
+        title="ESC"
+        close
+        @click="onClose"
+      )
+      div
+        div.erd-help-head
+          span.erd-help-name Name
+          span.erd-help-action Action
+        div.erd-help-body(v-for="editorAction in editorActions" :key="editorActions.name")
+          span.erd-help-name {{ editorAction.name }}
+          span.erd-help-action {{ editorAction.action }}
 </template>
 
 <script lang="ts">
 import StoreManagement from "@/store/StoreManagement";
 import { Component, Prop, Vue } from "vue-property-decorator";
 import CircleButton from "@/components/erd/CircleButton.vue";
-
-import { fromEvent, Observable, Subscription } from "rxjs";
 
 interface EditorAction {
   name: string;
@@ -115,6 +115,10 @@ export default class Help extends Vue {
     {
       name: "Editing",
       action: "Enter, dblclick"
+    },
+    {
+      name: "All Action Stop",
+      action: "ESC"
     }
   ];
 
@@ -134,7 +138,7 @@ export default class Help extends Vue {
     event.stopPropagation();
     const el = event.target as HTMLElement;
     if (el) {
-      if (!el.closest(".erd-help-body")) {
+      if (!el.closest(".erd-help-box")) {
         this.$emit("close");
       }
     }
@@ -144,7 +148,7 @@ export default class Help extends Vue {
     event.stopPropagation();
     const el = event.target as HTMLElement;
     if (el) {
-      if (!el.closest(".erd-help-body")) {
+      if (!el.closest(".erd-help-box")) {
         this.$emit("close");
       }
     }
@@ -160,11 +164,11 @@ export default class Help extends Vue {
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
 
-  .erd-help-body {
+  .erd-help-box {
     position: absolute;
     background-color: black;
-    width: 710px;
-    height: 560px;
+    width: 700px;
+    height: 615px;
     top: 0;
     bottom: 0;
     left: 0;
@@ -173,8 +177,36 @@ export default class Help extends Vue {
     padding: 20px;
     box-sizing: border-box;
 
-    .help-close {
+    .erd-help-close {
       float: right;
+    }
+
+    .erd-help-head {
+      margin-bottom: 20px;
+
+      .erd-help-name {
+        width: 40%;
+        display: inline-block;
+      }
+
+      .erd-help-action {
+        width: 55%;
+        display: inline-block;
+      }
+    }
+
+    .erd-help-body {
+      margin-bottom: 5px;
+
+      .erd-help-name {
+        width: 40%;
+        display: inline-block;
+      }
+
+      .erd-help-action {
+        width: 60%;
+        display: inline-block;
+      }
     }
   }
 }
