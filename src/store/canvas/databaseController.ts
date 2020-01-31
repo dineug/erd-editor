@@ -1,5 +1,5 @@
 import { State } from "../canvas";
-import { Database } from "@/data/dataType";
+import { Database } from "@/data/DataType";
 import { log } from "@/ts/util";
 
 export function databaseChange(state: State, database: Database) {

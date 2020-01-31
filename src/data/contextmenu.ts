@@ -10,7 +10,8 @@ import { Commit as CanvasCommit, ShowKey } from "@/store/canvas";
 import { Bus } from "@/ts/EventBus";
 import icon from "@/ts/icon";
 import { uuid } from "@/ts/util";
-import { Database } from "./dataType";
+import { Database } from "./DataType";
+import { Language } from "@/ts/GeneratorCode";
 import domToImage from "dom-to-image";
 
 const a = document.createElement("a");
@@ -272,4 +273,63 @@ function dataMenu(store: StoreManagement): Menu[] {
   ];
 }
 
-export { dataMenu };
+function dataMenuCode(store: StoreManagement): Menu[] {
+  const language = store.canvasStore.state.language;
+  return [
+    {
+      id: uuid(),
+      icon: language === Language.graphql ? "check" : undefined,
+      name: Language.graphql,
+      execute() {
+        store.canvasStore.commit(CanvasCommit.languageChange, Language.graphql);
+        store.eventBus.$emit(Bus.ERD.change);
+      },
+      option: { close: false, language: Language.graphql }
+    },
+    {
+      id: uuid(),
+      icon: language === Language.cs ? "check" : undefined,
+      name: Language.cs,
+      execute() {
+        store.canvasStore.commit(CanvasCommit.languageChange, Language.cs);
+        store.eventBus.$emit(Bus.ERD.change);
+      },
+      option: { close: false, language: Language.cs }
+    },
+    {
+      id: uuid(),
+      icon: language === Language.java ? "check" : undefined,
+      name: Language.java,
+      execute() {
+        store.canvasStore.commit(CanvasCommit.languageChange, Language.java);
+        store.eventBus.$emit(Bus.ERD.change);
+      },
+      option: { close: false, language: Language.java }
+    },
+    {
+      id: uuid(),
+      icon: language === Language.kotlin ? "check" : undefined,
+      name: Language.kotlin,
+      execute() {
+        store.canvasStore.commit(CanvasCommit.languageChange, Language.kotlin);
+        store.eventBus.$emit(Bus.ERD.change);
+      },
+      option: { close: false, language: Language.kotlin }
+    },
+    {
+      id: uuid(),
+      icon: language === Language.typescript ? "check" : undefined,
+      name: Language.typescript,
+      execute() {
+        store.canvasStore.commit(
+          CanvasCommit.languageChange,
+          Language.typescript
+        );
+        store.eventBus.$emit(Bus.ERD.change);
+      },
+      option: { close: false, language: Language.typescript }
+    }
+  ];
+}
+
+export { dataMenu, dataMenuCode };

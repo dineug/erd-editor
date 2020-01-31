@@ -1,3 +1,4 @@
+// @ts-ignore
 import TWEEN from "@tweenjs/tween.js";
 
 function animate() {

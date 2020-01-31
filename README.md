@@ -4,11 +4,17 @@
 
 [![npm version](https://img.shields.io/npm/v/vuerd-plugin-erd.svg)](https://www.npmjs.com/package/vuerd-plugin-erd) [![Build Status](https://travis-ci.com/vuerd/vuerd-plugin-erd.svg?branch=master)](https://travis-ci.com/vuerd/vuerd-plugin-erd)
 
-![vuerd](https://user-images.githubusercontent.com/45829489/66325039-8856cc00-e961-11e9-9b4e-c5580200dc1a.gif)
+![vuerd-info](https://user-images.githubusercontent.com/45829489/73578052-08311500-44c2-11ea-88df-cfa83be54eaa.gif)
+![multiple-selection](https://user-images.githubusercontent.com/45829489/73578079-14b56d80-44c2-11ea-9a55-858acdcf16dd.gif)
+![sql-ddl](https://user-images.githubusercontent.com/45829489/73578092-1da63f00-44c2-11ea-941a-d83b1dbb53db.gif)
+![generator-code](https://user-images.githubusercontent.com/45829489/73578110-29920100-44c2-11ea-8bcb-cddaa19f2447.gif)
 
 ## Document
 [Storybook](https://vuerd.github.io/vuerd-docs/)  
 [Live Demo](https://vuerd.github.io/vuerd-docs/iframe.html?id=demo-live--vuerd-core)
+
+## IDE
+[vscode extension](https://github.com/vuerd/vuerd-vscode)
 
 ## Component
 ### Install

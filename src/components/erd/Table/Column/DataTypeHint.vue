@@ -14,7 +14,7 @@
 
 <script lang="ts">
 import { Column } from "@/store/table";
-import { DataTypeHint as DataTypeHintModel } from "@/data/dataType";
+import { DataTypeHint as DataTypeHintModel } from "@/data/DataType";
 import StoreManagement from "@/store/StoreManagement";
 import { markToHTML, log } from "@/ts/util";
 import { Bus } from "@/ts/EventBus";

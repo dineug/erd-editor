@@ -54,7 +54,7 @@ import { CanvasType } from "@/store/canvas";
       :height="height"
     )
     Contextmenu.contextmenu-erd(
-      v-if="canvasType === 'SQL' && sqlContextmenu"
+      v-if="canvasType === 'SQL' && contextmenu"
       :store="store"
       :menus="sqlMenus"
       :x="contextmenuX"
@@ -68,16 +68,23 @@ import { CanvasType } from "@/store/canvas";
       v-if="canvasType === 'List'"
       :store="store"
     )
+    Contextmenu.contextmenu-erd(
+      v-if="canvasType === 'GeneratorCode' && contextmenu"
+      :store="store"
+      :menus="codeMenus"
+      :x="contextmenuX"
+      :y="contextmenuY"
+    )
+    GeneratorCode(
+      v-if="canvasType === 'GeneratorCode'"
+      :store="store"
+    )
 </template>
 
 <script lang="ts">
 import "@/plugins/fontawesome";
 
-import {
-  SIZE_MENU_HEIGHT,
-  SIZE_PREVIEW_MARGIN,
-  SIZE_TOP_MENU_HEIGHT
-} from "@/ts/layout";
+import { SIZE_MENU_HEIGHT } from "@/ts/layout";
 import { Bus } from "@/ts/EventBus";
 import { CanvasType, Commit as CanvasCommit } from "@/store/canvas";
 import { Commit as TableCommit } from "@/store/table";
@@ -91,7 +98,7 @@ import { addSpanText, log, removeSpanText } from "@/ts/util";
 import Key from "@/models/Key";
 import StoreManagement from "@/store/StoreManagement";
 import Menu from "@/models/Menu";
-import { dataMenu } from "@/data/contextmenu";
+import { dataMenu, dataMenuCode } from "@/data/contextmenu";
 import icon from "@/ts/icon";
 import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import Canvas from "./Canvas.vue";
@@ -103,11 +110,9 @@ import PreviewTarget from "./PreviewTarget.vue";
 import TopMenu from "./TopMenu.vue";
 import SQL from "./SQL.vue";
 import TableList from "./TableList.vue";
+import GeneratorCode from "./GeneratorCode.vue";
 
 import { fromEvent, Observable, Subscription } from "rxjs";
-
-const MARGIN_TOP = SIZE_TOP_MENU_HEIGHT + SIZE_PREVIEW_MARGIN;
-const SQL_MENU_WIDTH = 216;
 
 @Component({
   name: "ERD",
@@ -120,7 +125,8 @@ const SQL_MENU_WIDTH = 216;
     PreviewTarget,
     TopMenu,
     SQL,
-    TableList
+    TableList,
+    GeneratorCode
   }
 })
 export default class ERD extends Vue {
@@ -178,7 +184,6 @@ export default class ERD extends Vue {
   private contextmenu: boolean = false;
   private contextmenuX: number = 0;
   private contextmenuY: number = 0;
-  private sqlContextmenu: boolean = false;
   private windowWidth: number = window.innerWidth;
   private windowHeight: number = window.innerHeight;
   private touchX: number = 0;
@@ -191,6 +196,7 @@ export default class ERD extends Vue {
   private selectGhostY: number = 0;
 
   private menus: Menu[] = dataMenu(this.store);
+  private codeMenus: Menu[] = dataMenuCode(this.store);
 
   get erdStyle(): string {
     let style = `
@@ -222,19 +228,6 @@ export default class ERD extends Vue {
       }
     }
     return menus;
-  }
-
-  get sqlMenuX(): number {
-    return (
-      this.width -
-      SQL_MENU_WIDTH -
-      SIZE_PREVIEW_MARGIN -
-      this.store.canvasStore.state.scrollLeft
-    );
-  }
-
-  get sqlMenuY(): number {
-    return MARGIN_TOP + this.store.canvasStore.state.scrollTop;
   }
 
   @Watch("value")
@@ -301,7 +294,6 @@ export default class ERD extends Vue {
     const el = event.target as HTMLElement;
     if (!el.closest(".contextmenu-erd")) {
       this.contextmenu = false;
-      this.sqlContextmenu = false;
     }
   }
 
@@ -444,8 +436,13 @@ export default class ERD extends Vue {
           event.preventDefault();
           this.onUndo();
         }
-      } else if (this.canvasType === CanvasType.SQL) {
-        this.sqlContextmenu = false;
+      } else if (
+        this.canvasType === CanvasType.SQL ||
+        this.canvasType === CanvasType.GeneratorCode
+      ) {
+        if (event.key === Key.Escape) {
+          this.contextmenu = false;
+        }
       }
     }
   }
@@ -465,7 +462,6 @@ export default class ERD extends Vue {
     event.preventDefault();
     const el = event.target as HTMLElement;
     this.contextmenu = !!el.closest(".erd");
-    this.sqlContextmenu = !!el.closest(".erd");
     if (this.contextmenu) {
       this.contextmenuX = event.x;
       this.contextmenuY = event.y;
@@ -480,7 +476,6 @@ export default class ERD extends Vue {
 
   private onContextmenuEnd() {
     this.contextmenu = false;
-    this.sqlContextmenu = false;
   }
 
   private onUndo() {

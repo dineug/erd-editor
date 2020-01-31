@@ -2,14 +2,16 @@ import Vue from "vue";
 import Vuex from "vuex";
 import { SIZE_PREVIEW_WIDTH } from "@/ts/layout";
 import {
-  canvasMove,
   canvasChangeType,
+  canvasMove,
   canvasResize
 } from "./canvas/canvasController";
 import { showChange } from "./canvas/showController";
 import { databaseChange } from "./canvas/databaseController";
+import { languageChange } from "./canvas/languageController";
 import { dataInit, dataShow } from "@/data/canvas";
-import databases, { Database, DataTypeHint } from "@/data/dataType";
+import databases, { Database, DataTypeHint } from "@/data/DataType";
+import { Language } from "@/ts/GeneratorCode";
 
 Vue.use(Vuex);
 
@@ -22,12 +24,14 @@ export interface State {
   database: Database;
   databaseName: string;
   canvasType: CanvasType;
+  language: Language; // ADD: version 0.2.16
 }
 
 export const enum CanvasType {
   ERD = "ERD",
   SQL = "SQL",
-  List = "List"
+  List = "List",
+  GeneratorCode = "GeneratorCode"
 }
 
 export interface Show {
@@ -61,7 +65,8 @@ export const enum Commit {
   canvasChangeType = "canvasChangeType",
   canvasResize = "canvasResize",
   showChange = "showChange",
-  databaseChange = "databaseChange"
+  databaseChange = "databaseChange",
+  languageChange = "languageChange"
 }
 
 export function createStore() {
@@ -74,7 +79,8 @@ export function createStore() {
       show: dataShow(),
       database: Database.MySQL,
       databaseName: "",
-      canvasType: CanvasType.ERD
+      canvasType: CanvasType.ERD,
+      language: Language.graphql
     },
     getters: {
       previewRatio(state: State): number {
@@ -103,7 +109,11 @@ export function createStore() {
         const stateData = state as any;
         const loadData = load as any;
         Object.keys(state).forEach(key => {
-          stateData[key] = loadData[key];
+          if (key === "language" && loadData[key] === undefined) {
+            stateData[key] = Language.graphql;
+          } else {
+            stateData[key] = loadData[key];
+          }
         });
         state.scrollTop = 0;
         state.scrollLeft = 0;
@@ -112,7 +122,8 @@ export function createStore() {
       canvasChangeType,
       canvasResize,
       showChange,
-      databaseChange
+      databaseChange,
+      languageChange
     },
     actions: {}
   });

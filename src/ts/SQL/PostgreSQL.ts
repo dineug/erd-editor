@@ -69,7 +69,7 @@ class PostgreSQL {
     // PK
     if (pk) {
       const pkColumns = primaryKeyColumns(table.columns);
-      buffer.push(`\tPRIMARY KEY (${formatNames(pkColumns, '"')})`);
+      buffer.push(`  PRIMARY KEY (${formatNames(pkColumns, '"')})`);
     }
     buffer.push(`);`);
   }
@@ -82,7 +82,7 @@ class PostgreSQL {
   ) {
     const stringBuffer: string[] = [];
     stringBuffer.push(
-      `\t"${column.name}"` + formatSpace(spaceSize.name - column.name.length)
+      `  "${column.name}"` + formatSpace(spaceSize.name - column.name.length)
     );
     stringBuffer.push(
       `${column.dataType}` +
@@ -138,7 +138,7 @@ class PostgreSQL {
         name: fkName
       });
 
-      buffer.push(`\tADD CONSTRAINT "${fkName}"`);
+      buffer.push(`  ADD CONSTRAINT "${fkName}"`);
 
       // key
       const columns: KeyColumn = {
@@ -158,9 +158,9 @@ class PostgreSQL {
         }
       });
 
-      buffer.push(`\t\tFOREIGN KEY (${formatNames(columns.end, '"')})`);
+      buffer.push(`    FOREIGN KEY (${formatNames(columns.end, '"')})`);
       buffer.push(
-        `\t\tREFERENCES "${name}"."${startTable.name}" (${formatNames(
+        `    REFERENCES "${name}"."${startTable.name}" (${formatNames(
           columns.start,
           '"'
         )});`

@@ -1,5 +1,6 @@
-import { Database } from "@/data/dataType";
+import { Database } from "@/data/DataType";
 import StoreManagement from "@/store/StoreManagement";
+import { Commit as TableCommit } from "@/store/table";
 import MariaDB from "./SQL/MariaDB";
 import MSSQL from "./SQL/MSSQL";
 import MySQL from "./SQL/MySQL";
@@ -8,6 +9,7 @@ import PostgreSQL from "./SQL/PostgreSQL";
 
 class SQL {
   public toDDL(store: StoreManagement): string {
+    store.tableStore.commit(TableCommit.tableOrderByNameASC);
     const database = store.canvasStore.state.database;
     switch (database) {
       case Database.MariaDB:

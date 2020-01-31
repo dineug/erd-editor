@@ -43,7 +43,7 @@ class MSSQL {
             `ALTER TABLE [${canvas.databaseName}].[${table.name}]`
           );
           stringBuffer.push(
-            `\tADD CONSTRAINT [UQ_${column.name}] UNIQUE ([${column.name}])\nGO`
+            `  ADD CONSTRAINT [UQ_${column.name}] UNIQUE ([${column.name}])\nGO`
           );
           stringBuffer.push("");
         });
@@ -85,7 +85,7 @@ class MSSQL {
     if (pk) {
       const pkColumns = primaryKeyColumns(table.columns);
       buffer.push(
-        `\tCONSTRAINT [PK_${table.name}] PRIMARY KEY (${formatNames(
+        `  CONSTRAINT [PK_${table.name}] PRIMARY KEY (${formatNames(
           pkColumns,
           "[",
           "]"
@@ -103,7 +103,7 @@ class MSSQL {
   ) {
     const stringBuffer: string[] = [];
     stringBuffer.push(
-      `\t[${column.name}]` + formatSpace(spaceSize.name - column.name.length)
+      `  [${column.name}]` + formatSpace(spaceSize.name - column.name.length)
     );
     stringBuffer.push(
       `[${column.dataType}]` +
@@ -126,7 +126,7 @@ class MSSQL {
     if (table.comment.trim() !== "") {
       buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
       buffer.push(
-        `\t'${table.comment}', 'user', dbo, 'table', '${name}.${table.name}'\nGO`
+        `  '${table.comment}', 'user', dbo, 'table', '${name}.${table.name}'\nGO`
       );
       buffer.push("");
     }
@@ -134,7 +134,7 @@ class MSSQL {
       if (column.comment.trim() !== "") {
         buffer.push(`EXECUTE sp_addextendedproperty 'MS_Description',`);
         buffer.push(
-          `\t'${column.comment}', 'user', dbo, 'table', '${name}.${table.name}', 'column', '${table.name}'\nGO`
+          `  '${column.comment}', 'user', dbo, 'table', '${name}.${table.name}', 'column', '${table.name}'\nGO`
         );
         buffer.push("");
       }
@@ -161,7 +161,7 @@ class MSSQL {
         name: fkName
       });
 
-      buffer.push(`\tADD CONSTRAINT [${fkName}]`);
+      buffer.push(`  ADD CONSTRAINT [${fkName}]`);
 
       // key
       const columns: KeyColumn = {
@@ -181,9 +181,9 @@ class MSSQL {
         }
       });
 
-      buffer.push(`\t\tFOREIGN KEY (${formatNames(columns.end, "[", "]")})`);
+      buffer.push(`    FOREIGN KEY (${formatNames(columns.end, "[", "]")})`);
       buffer.push(
-        `\t\tREFERENCES [${name}].[${startTable.name}] (${formatNames(
+        `    REFERENCES [${name}].[${startTable.name}] (${formatNames(
           columns.start,
           "[",
           "]"

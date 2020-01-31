@@ -43,15 +43,12 @@ export default class Contextmenu extends Vue {
   private x!: number;
   @Prop({ type: Number, default: 0 })
   private y!: number;
-  @Prop({ type: String, default: "fixed" })
-  private position!: string;
 
   private windowHeight: number = window.innerHeight;
   private currentMenu: Menu | null = null;
 
   get ulStyle(): string {
     return `
-      position: ${this.position};
       top: ${this.y}px;
       left: ${this.x}px;
     `;
@@ -84,6 +81,9 @@ export default class Contextmenu extends Vue {
     } else if (menu.option && menu.option.database) {
       const database = this.store.canvasStore.state.database;
       return menu.option.database === database ? "check" : undefined;
+    } else if (menu.option && menu.option.language) {
+      const language = this.store.canvasStore.state.language;
+      return menu.option.language === language ? "check" : undefined;
     }
     return menu.icon;
   }
@@ -114,6 +114,7 @@ $size-keymap: 50px;
 
 .contextmenu {
   ul {
+    position: fixed;
     z-index: 100000000;
     background-color: $color-table;
     opacity: 0.9;

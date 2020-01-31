@@ -1,5 +1,6 @@
 import { CanvasType, Show, State } from "@/store/canvas";
-import { Database } from "./dataType";
+import { Database } from "./DataType";
+import { Language } from "@/ts/GeneratorCode";
 
 function dataShow(): Show {
   return {
@@ -24,7 +25,8 @@ function dataInit(): State {
     show: dataShow(),
     database: Database.MySQL,
     databaseName: "",
-    canvasType: CanvasType.ERD
+    canvasType: CanvasType.ERD,
+    language: Language.graphql
   };
 }
 

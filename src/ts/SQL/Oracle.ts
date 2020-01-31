@@ -38,7 +38,7 @@ class Oracle {
         uqColumns.forEach(column => {
           stringBuffer.push(`ALTER TABLE ${canvas.databaseName}.${table.name}`);
           stringBuffer.push(
-            `\tADD CONSTRAINT UQ_${column.name} UNIQUE (${column.name});`
+            `  ADD CONSTRAINT UQ_${column.name} UNIQUE (${column.name});`
           );
           stringBuffer.push("");
         });
@@ -73,10 +73,10 @@ class Oracle {
           stringBuffer.push(`REFERENCING NEW AS NEW FOR EACH ROW`);
           stringBuffer.push(`BEGIN`);
           stringBuffer.push(
-            `\tSELECT ${canvas.databaseName}.${aiName}.NEXTVAL`
+            `  SELECT ${canvas.databaseName}.${aiName}.NEXTVAL`
           );
-          stringBuffer.push(`\tINTO: NEW.${column.name}`);
-          stringBuffer.push(`\tFROM DUAL;`);
+          stringBuffer.push(`  INTO: NEW.${column.name}`);
+          stringBuffer.push(`  FROM DUAL;`);
           stringBuffer.push(`END;`);
           stringBuffer.push("");
         }
@@ -118,7 +118,7 @@ class Oracle {
     if (pk) {
       const pkColumns = primaryKeyColumns(table.columns);
       buffer.push(
-        `\tCONSTRAINT PK_${table.name} PRIMARY KEY (${formatNames(pkColumns)})`
+        `  CONSTRAINT PK_${table.name} PRIMARY KEY (${formatNames(pkColumns)})`
       );
     }
     buffer.push(`);`);
@@ -132,7 +132,7 @@ class Oracle {
   ) {
     const stringBuffer: string[] = [];
     stringBuffer.push(
-      `\t${column.name}` + formatSpace(spaceSize.name - column.name.length)
+      `  ${column.name}` + formatSpace(spaceSize.name - column.name.length)
     );
     stringBuffer.push(
       `${column.dataType}` +
@@ -184,7 +184,7 @@ class Oracle {
         name: fkName
       });
 
-      buffer.push(`\tADD CONSTRAINT ${fkName}`);
+      buffer.push(`  ADD CONSTRAINT ${fkName}`);
 
       // key
       const columns: KeyColumn = {
@@ -204,9 +204,9 @@ class Oracle {
         }
       });
 
-      buffer.push(`\t\tFOREIGN KEY (${formatNames(columns.end)})`);
+      buffer.push(`    FOREIGN KEY (${formatNames(columns.end)})`);
       buffer.push(
-        `\t\tREFERENCES ${name}.${startTable.name} (${formatNames(
+        `    REFERENCES ${name}.${startTable.name} (${formatNames(
           columns.start
         )});`
       );

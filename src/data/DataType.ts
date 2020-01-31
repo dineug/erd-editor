@@ -12,8 +12,18 @@ export const enum Database {
   PostgreSQL = "PostgreSQL"
 }
 
+export type PrimitiveType =
+  | "int"
+  | "float"
+  | "boolean"
+  | "string"
+  | "date"
+  | "dateTime"
+  | "time";
+
 export interface DataTypeHint {
   name: string;
+  primitiveType: PrimitiveType;
 }
 
 export interface DatabaseHint {

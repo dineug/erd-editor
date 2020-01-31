@@ -32,11 +32,17 @@
       )
         font-awesome-icon(icon="code" style="width: 20px; height: 16px;")
       li(
-        title="list"
+        title="List"
         :class="{active: canvasType === 'List'}"
         @click="onCanvasType('List')"
       )
         font-awesome-icon(icon="list" style="width: 16px; height: 16px;")
+      li(
+        title="GeneratorCode"
+        :class="{active: canvasType === 'GeneratorCode'}"
+        @click="onCanvasType('GeneratorCode')"
+      )
+        font-awesome-icon(icon="sliders-h" style="width: 16px; height: 16px;")
       li.undo-redo(
         title="undo(Ctrl + Z)"
         :class="{active: undo}"

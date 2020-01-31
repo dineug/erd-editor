@@ -196,3 +196,17 @@ export function tableEditEnd(state: State, store: StoreManagement) {
   relationshipSort(state.tables, store.relationshipStore.state.relationships);
   store.eventBus.$emit(Bus.ERD.change);
 }
+
+export function tableOrderByNameASC(state: State) {
+  log.debug("tableController tableOrderByNameASC");
+  state.tables.sort((a, b) => {
+    const nameA = a.name.toLocaleLowerCase();
+    const nameB = b.name.toLocaleLowerCase();
+    if (nameA < nameB) {
+      return -1;
+    } else if (nameA > nameB) {
+      return 1;
+    }
+    return 0;
+  });
+}

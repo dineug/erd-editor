@@ -18,7 +18,8 @@ import {
   faProjectDiagram,
   faFileImage,
   faFileExport,
-  faEye
+  faEye,
+  faSlidersH
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -38,7 +39,8 @@ library.add(
   faProjectDiagram,
   faFileImage,
   faFileExport,
-  faEye
+  faEye,
+  faSlidersH
 );
 
 Vue.component("font-awesome-icon", FontAwesomeIcon);
