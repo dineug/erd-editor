@@ -1,6 +1,6 @@
 {
   "name": "vuerd-plugin-erd",
-  "version": "0.2.16",
+  "version": "0.2.17",
   "description": "vuerd-core plugin erd",
   "main": "dist/vuerd-plugin-erd.common.js",
   "typings": "src/types/index.d.ts",

@@ -279,7 +279,7 @@ function dataMenuCode(store: StoreManagement): Menu[] {
     {
       id: uuid(),
       icon: language === Language.graphql ? "check" : undefined,
-      name: Language.graphql,
+      name: "GraphQL",
       execute() {
         store.canvasStore.commit(CanvasCommit.languageChange, Language.graphql);
         store.eventBus.$emit(Bus.ERD.change);
@@ -289,7 +289,7 @@ function dataMenuCode(store: StoreManagement): Menu[] {
     {
       id: uuid(),
       icon: language === Language.cs ? "check" : undefined,
-      name: Language.cs,
+      name: "C#",
       execute() {
         store.canvasStore.commit(CanvasCommit.languageChange, Language.cs);
         store.eventBus.$emit(Bus.ERD.change);
@@ -299,7 +299,7 @@ function dataMenuCode(store: StoreManagement): Menu[] {
     {
       id: uuid(),
       icon: language === Language.java ? "check" : undefined,
-      name: Language.java,
+      name: "Java",
       execute() {
         store.canvasStore.commit(CanvasCommit.languageChange, Language.java);
         store.eventBus.$emit(Bus.ERD.change);
@@ -309,7 +309,7 @@ function dataMenuCode(store: StoreManagement): Menu[] {
     {
       id: uuid(),
       icon: language === Language.kotlin ? "check" : undefined,
-      name: Language.kotlin,
+      name: "Kotlin",
       execute() {
         store.canvasStore.commit(CanvasCommit.languageChange, Language.kotlin);
         store.eventBus.$emit(Bus.ERD.change);
@@ -319,7 +319,7 @@ function dataMenuCode(store: StoreManagement): Menu[] {
     {
       id: uuid(),
       icon: language === Language.typescript ? "check" : undefined,
-      name: Language.typescript,
+      name: "TypeScript",
       execute() {
         store.canvasStore.commit(
           CanvasCommit.languageChange,
