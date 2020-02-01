@@ -11,7 +11,7 @@ import { Bus } from "@/ts/EventBus";
 import icon from "@/ts/icon";
 import { uuid } from "@/ts/util";
 import { Database } from "./DataType";
-import { Language } from "@/ts/GeneratorCode";
+import { Case, Language } from "@/ts/GeneratorCode";
 import domToImage from "dom-to-image";
 
 const a = document.createElement("a");
@@ -167,7 +167,7 @@ function dataMenu(store: StoreManagement): Menu[] {
     {
       id: uuid(),
       name: "Database",
-      icon: "code",
+      icon: "database",
       children: [
         {
           id: uuid(),
@@ -275,59 +275,198 @@ function dataMenu(store: StoreManagement): Menu[] {
 
 function dataMenuCode(store: StoreManagement): Menu[] {
   const language = store.canvasStore.state.language;
+  const tableCase = store.canvasStore.state.tableCase;
+  const columnCase = store.canvasStore.state.columnCase;
   return [
     {
       id: uuid(),
-      icon: language === Language.graphql ? "check" : undefined,
-      name: "GraphQL",
-      execute() {
-        store.canvasStore.commit(CanvasCommit.languageChange, Language.graphql);
-        store.eventBus.$emit(Bus.ERD.change);
-      },
-      option: { close: false, language: Language.graphql }
+      icon: "code",
+      name: "Language",
+      children: [
+        {
+          id: uuid(),
+          icon: language === Language.graphql ? "check" : undefined,
+          name: "GraphQL",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorLanguageChange,
+              Language.graphql
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, language: Language.graphql }
+        },
+        {
+          id: uuid(),
+          icon: language === Language.cs ? "check" : undefined,
+          name: "C#",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorLanguageChange,
+              Language.cs
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, language: Language.cs }
+        },
+        {
+          id: uuid(),
+          icon: language === Language.java ? "check" : undefined,
+          name: "Java",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorLanguageChange,
+              Language.java
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, language: Language.java }
+        },
+        {
+          id: uuid(),
+          icon: language === Language.kotlin ? "check" : undefined,
+          name: "Kotlin",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorLanguageChange,
+              Language.kotlin
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, language: Language.kotlin }
+        },
+        {
+          id: uuid(),
+          icon: language === Language.typescript ? "check" : undefined,
+          name: "TypeScript",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorLanguageChange,
+              Language.typescript
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, language: Language.typescript }
+        }
+      ]
     },
     {
       id: uuid(),
-      icon: language === Language.cs ? "check" : undefined,
-      name: "C#",
-      execute() {
-        store.canvasStore.commit(CanvasCommit.languageChange, Language.cs);
-        store.eventBus.$emit(Bus.ERD.change);
-      },
-      option: { close: false, language: Language.cs }
+      icon: "table",
+      name: "Table Name Case",
+      children: [
+        {
+          id: uuid(),
+          icon: tableCase === Case.none ? "check" : undefined,
+          name: "None",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorTableCaseChange,
+              Case.none
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, tableCase: Case.none }
+        },
+        {
+          id: uuid(),
+          icon: tableCase === Case.camelCase ? "check" : undefined,
+          name: "Camel",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorTableCaseChange,
+              Case.camelCase
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, tableCase: Case.camelCase }
+        },
+        {
+          id: uuid(),
+          icon: tableCase === Case.pascalCase ? "check" : undefined,
+          name: "Pascal",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorTableCaseChange,
+              Case.pascalCase
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, tableCase: Case.pascalCase }
+        },
+        {
+          id: uuid(),
+          icon: tableCase === Case.snakeCase ? "check" : undefined,
+          name: "Snake",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorTableCaseChange,
+              Case.snakeCase
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, tableCase: Case.snakeCase }
+        }
+      ]
     },
     {
       id: uuid(),
-      icon: language === Language.java ? "check" : undefined,
-      name: "Java",
-      execute() {
-        store.canvasStore.commit(CanvasCommit.languageChange, Language.java);
-        store.eventBus.$emit(Bus.ERD.change);
-      },
-      option: { close: false, language: Language.java }
-    },
-    {
-      id: uuid(),
-      icon: language === Language.kotlin ? "check" : undefined,
-      name: "Kotlin",
-      execute() {
-        store.canvasStore.commit(CanvasCommit.languageChange, Language.kotlin);
-        store.eventBus.$emit(Bus.ERD.change);
-      },
-      option: { close: false, language: Language.kotlin }
-    },
-    {
-      id: uuid(),
-      icon: language === Language.typescript ? "check" : undefined,
-      name: "TypeScript",
-      execute() {
-        store.canvasStore.commit(
-          CanvasCommit.languageChange,
-          Language.typescript
-        );
-        store.eventBus.$emit(Bus.ERD.change);
-      },
-      option: { close: false, language: Language.typescript }
+      icon: "columns",
+      name: "Column Name Case",
+      children: [
+        {
+          id: uuid(),
+          icon: columnCase === Case.none ? "check" : undefined,
+          name: "None",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorColumnCaseChange,
+              Case.none
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, columnCase: Case.none }
+        },
+        {
+          id: uuid(),
+          icon: columnCase === Case.camelCase ? "check" : undefined,
+          name: "Camel",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorColumnCaseChange,
+              Case.camelCase
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, columnCase: Case.camelCase }
+        },
+        {
+          id: uuid(),
+          icon: columnCase === Case.pascalCase ? "check" : undefined,
+          name: "Pascal",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorColumnCaseChange,
+              Case.pascalCase
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, columnCase: Case.pascalCase }
+        },
+        {
+          id: uuid(),
+          icon: columnCase === Case.snakeCase ? "check" : undefined,
+          name: "Snake",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorColumnCaseChange,
+              Case.snakeCase
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, columnCase: Case.snakeCase }
+        }
+      ]
     }
   ];
 }

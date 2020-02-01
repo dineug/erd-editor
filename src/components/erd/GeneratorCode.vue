@@ -26,6 +26,16 @@ export default class GeneratorCode extends Vue {
     this.convertCode();
   }
 
+  @Watch("store.canvasStore.state.tableCase")
+  private watchTableCase() {
+    this.convertCode();
+  }
+
+  @Watch("store.canvasStore.state.columnCase")
+  private watchColumnCase() {
+    this.convertCode();
+  }
+
   private convertCode() {
     const language = this.store.canvasStore.state.language;
     const code = CodeFactory.toCode(this.store);

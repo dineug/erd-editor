@@ -8,10 +8,14 @@ import {
 } from "./canvas/canvasController";
 import { showChange } from "./canvas/showController";
 import { databaseChange } from "./canvas/databaseController";
-import { languageChange } from "./canvas/languageController";
+import {
+  generatorLanguageChange,
+  generatorTableCaseChange,
+  generatorColumnCaseChange
+} from "./canvas/generatorController";
 import { dataInit, dataShow } from "@/data/canvas";
 import databases, { Database, DataTypeHint } from "@/data/DataType";
-import { Language } from "@/ts/GeneratorCode";
+import { Case, Language } from "@/ts/GeneratorCode";
 
 Vue.use(Vuex);
 
@@ -25,6 +29,8 @@ export interface State {
   databaseName: string;
   canvasType: CanvasType;
   language: Language; // ADD: version 0.2.16
+  tableCase: Case; // ADD: version 0.2.18
+  columnCase: Case; // ADD: version 0.2.18
 }
 
 export const enum CanvasType {
@@ -66,7 +72,9 @@ export const enum Commit {
   canvasResize = "canvasResize",
   showChange = "showChange",
   databaseChange = "databaseChange",
-  languageChange = "languageChange"
+  generatorLanguageChange = "generatorLanguageChange",
+  generatorTableCaseChange = "generatorTableCaseChange",
+  generatorColumnCaseChange = "generatorColumnCaseChange"
 }
 
 export function createStore() {
@@ -80,7 +88,9 @@ export function createStore() {
       database: Database.MySQL,
       databaseName: "",
       canvasType: CanvasType.ERD,
-      language: Language.graphql
+      language: Language.graphql,
+      tableCase: Case.pascalCase,
+      columnCase: Case.camelCase
     },
     getters: {
       previewRatio(state: State): number {
@@ -111,6 +121,10 @@ export function createStore() {
         Object.keys(state).forEach(key => {
           if (key === "language" && loadData[key] === undefined) {
             stateData[key] = Language.graphql;
+          } else if (key === "tableCase" && loadData[key] === undefined) {
+            stateData[key] = Case.pascalCase;
+          } else if (key === "columnCase" && loadData[key] === undefined) {
+            stateData[key] = Case.camelCase;
           } else {
             stateData[key] = loadData[key];
           }
@@ -123,7 +137,9 @@ export function createStore() {
       canvasResize,
       showChange,
       databaseChange,
-      languageChange
+      generatorLanguageChange,
+      generatorTableCaseChange,
+      generatorColumnCaseChange
     },
     actions: {}
   });

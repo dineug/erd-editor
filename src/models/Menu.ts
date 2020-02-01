@@ -1,12 +1,14 @@
 import { ShowKey } from "@/store/canvas";
 import { Database } from "@/data/DataType";
-import { Language } from "@/ts/GeneratorCode";
+import { Language, Case } from "@/ts/GeneratorCode";
 
 export interface MenuOption {
   close?: boolean;
   show?: ShowKey;
   database?: Database;
   language?: Language;
+  tableCase?: Case;
+  columnCase?: Case;
 }
 
 export default interface Menu {

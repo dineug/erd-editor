@@ -14,6 +14,13 @@ export const enum Language {
   typescript = "typescript"
 }
 
+export const enum Case {
+  none = "none",
+  camelCase = "camelCase",
+  pascalCase = "pascalCase",
+  snakeCase = "snakeCase"
+}
+
 class GeneratorCode {
   public toCode(store: StoreManagement): string {
     store.tableStore.commit(TableCommit.tableOrderByNameASC);

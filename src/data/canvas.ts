@@ -1,6 +1,6 @@
 import { CanvasType, Show, State } from "@/store/canvas";
 import { Database } from "./DataType";
-import { Language } from "@/ts/GeneratorCode";
+import { Case, Language } from "@/ts/GeneratorCode";
 
 function dataShow(): Show {
   return {
@@ -26,7 +26,9 @@ function dataInit(): State {
     database: Database.MySQL,
     databaseName: "",
     canvasType: CanvasType.ERD,
-    language: Language.graphql
+    language: Language.graphql,
+    tableCase: Case.pascalCase,
+    columnCase: Case.camelCase
   };
 }
 

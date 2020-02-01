@@ -84,6 +84,12 @@ export default class Contextmenu extends Vue {
     } else if (menu.option && menu.option.language) {
       const language = this.store.canvasStore.state.language;
       return menu.option.language === language ? "check" : undefined;
+    } else if (menu.option && menu.option.tableCase) {
+      const tableCase = this.store.canvasStore.state.tableCase;
+      return menu.option.tableCase === tableCase ? "check" : undefined;
+    } else if (menu.option && menu.option.columnCase) {
+      const columnCase = this.store.canvasStore.state.columnCase;
+      return menu.option.columnCase === columnCase ? "check" : undefined;
     }
     return menu.icon;
   }

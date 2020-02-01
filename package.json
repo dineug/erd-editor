@@ -1,6 +1,6 @@
 {
   "name": "vuerd-plugin-erd",
-  "version": "0.2.17",
+  "version": "0.2.18",
   "description": "vuerd-core plugin erd",
   "main": "dist/vuerd-plugin-erd.common.js",
   "typings": "src/types/index.d.ts",
@@ -17,6 +17,7 @@
   "license": "MIT",
   "dependencies": {
     "@tweenjs/tween.js": "^18.4.2",
+    "change-case": "^4.1.1",
     "core-js": "^3.4.8",
     "dom-to-image": "^2.6.0",
     "highlight.js": "^9.18.0",
