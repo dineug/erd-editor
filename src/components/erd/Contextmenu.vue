@@ -17,6 +17,7 @@
           font-awesome-icon(icon="chevron-right" style="width: 8.13px; height: 13px;")
     Contextmenu(
       v-if="currentMenu && currentMenu.children"
+      :key="currentMenu.id"
       :store="store"
       :menus="currentMenu.children"
       :x="childrenX"
@@ -109,6 +110,10 @@ export default class Contextmenu extends Vue {
 
   private onMouseover(menu: Menu) {
     this.currentMenu = menu;
+  }
+
+  private destroyed() {
+    this.currentMenu = null;
   }
 }
 </script>

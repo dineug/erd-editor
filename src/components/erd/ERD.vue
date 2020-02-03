@@ -1,4 +1,3 @@
-import { CanvasType } from "@/store/canvas";
 <template lang="pug">
   .erd(
     :style="erdStyle"
@@ -240,6 +239,8 @@ export default class ERD extends Vue {
     } else if (this.currentValue !== value) {
       this.store.load(value);
     }
+    this.$el.scrollLeft = this.store.canvasStore.state.scrollLeft;
+    this.$el.scrollTop = this.store.canvasStore.state.scrollTop;
   }
 
   // ==================== Event Handler ===================

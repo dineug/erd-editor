@@ -69,7 +69,7 @@ class graphql {
         const typeName = getNameCase(endTable.name, tableCase);
         const fieldName = getNameCase(endTable.name, columnCase);
         if (endTable.comment.trim() !== "") {
-          buffer.push(`# ${endTable.comment}`);
+          buffer.push(`  # ${endTable.comment}`);
         }
         if (relationships.relationshipType === RelationshipType.ZeroOne) {
           buffer.push(`  ${fieldName}: ${typeName}`);

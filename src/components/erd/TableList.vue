@@ -50,9 +50,10 @@ export default class TableList extends Vue {
       this.$el.parentElement.scrollTop = 0;
       this.$el.parentElement.scrollLeft = 0;
       this.store.canvasStore.commit(CanvasCommit.canvasMove, {
-        scrollTop: this.$el.parentElement.scrollTop,
-        scrollLeft: this.$el.parentElement.scrollLeft
+        scrollTop: 0,
+        scrollLeft: 0
       });
+      this.store.eventBus.$emit(Bus.ERD.change);
     }
   }
 

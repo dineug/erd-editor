@@ -31,25 +31,20 @@ class PostgreSQL {
     stringBuffer.push("");
 
     tables.forEach(table => {
-      this.formatTable(canvas.databaseName, table, stringBuffer);
+      this.formatTable(table, stringBuffer);
       stringBuffer.push("");
-      this.formatComment(canvas.databaseName, table, stringBuffer);
+      this.formatComment(table, stringBuffer);
     });
     relationships.forEach(relationship => {
-      this.formatRelation(
-        canvas.databaseName,
-        tables,
-        relationship,
-        stringBuffer
-      );
+      this.formatRelation(tables, relationship, stringBuffer);
       stringBuffer.push("");
     });
 
     return stringBuffer.join("\n");
   }
 
-  private formatTable(name: string, table: Table, buffer: string[]) {
-    buffer.push(`CREATE TABLE "${name}"."${table.name}"`);
+  private formatTable(table: Table, buffer: string[]) {
+    buffer.push(`CREATE TABLE "${table.name}"`);
     buffer.push(`(`);
     const pk = primaryKey(table.columns);
     const spaceSize = formatSize(table.columns);
@@ -101,17 +96,15 @@ class PostgreSQL {
     buffer.push(stringBuffer.join(" ") + `${isComma ? "," : ""}`);
   }
 
-  private formatComment(name: string, table: Table, buffer: string[]) {
+  private formatComment(table: Table, buffer: string[]) {
     if (table.comment.trim() !== "") {
-      buffer.push(
-        `COMMENT ON TABLE "${name}"."${table.name}" IS '${table.comment}';`
-      );
+      buffer.push(`COMMENT ON TABLE "${table.name}" IS '${table.comment}';`);
       buffer.push("");
     }
     table.columns.forEach(column => {
       if (column.comment.trim() !== "") {
         buffer.push(
-          `COMMENT ON COLUMN "${name}"."${table.name}"."${column.name}" IS '${column.comment}';`
+          `COMMENT ON COLUMN "${table.name}"."${column.name}" IS '${column.comment}';`
         );
         buffer.push("");
       }
@@ -119,7 +112,6 @@ class PostgreSQL {
   }
 
   private formatRelation(
-    name: string,
     tables: Table[],
     relationship: Relationship,
     buffer: string[]
@@ -128,7 +120,7 @@ class PostgreSQL {
     const endTable = getData(tables, relationship.end.tableId);
 
     if (startTable && endTable) {
-      buffer.push(`ALTER TABLE "${name}"."${endTable.name}"`);
+      buffer.push(`ALTER TABLE "${endTable.name}"`);
 
       // FK 중복 처리
       let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
@@ -160,7 +152,7 @@ class PostgreSQL {
 
       buffer.push(`    FOREIGN KEY (${formatNames(columns.end, '"')})`);
       buffer.push(
-        `    REFERENCES "${name}"."${startTable.name}" (${formatNames(
+        `    REFERENCES "${startTable.name}" (${formatNames(
           columns.start,
           '"'
         )});`

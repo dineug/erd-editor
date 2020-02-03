@@ -26,17 +26,17 @@
       )
         font-awesome-icon(icon="project-diagram" style="width: 20px; height: 16px;")
       li(
-        title="SQL"
-        :class="{active: canvasType === 'SQL'}"
-        @click="onCanvasType('SQL')"
-      )
-        font-awesome-icon(icon="code" style="width: 20px; height: 16px;")
-      li(
         title="List"
         :class="{active: canvasType === 'List'}"
         @click="onCanvasType('List')"
       )
         font-awesome-icon(icon="list" style="width: 16px; height: 16px;")
+      li(
+        title="SQL"
+        :class="{active: canvasType === 'SQL'}"
+        @click="onCanvasType('SQL')"
+      )
+        font-awesome-icon(icon="code" style="width: 20px; height: 16px;")
       li(
         title="GeneratorCode"
         :class="{active: canvasType === 'GeneratorCode'}"

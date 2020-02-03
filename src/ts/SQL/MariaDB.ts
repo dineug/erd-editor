@@ -30,11 +30,11 @@ class MariaDB {
     stringBuffer.push(
       `CREATE DATABASE ${canvas.databaseName} DEFAULT CHARACTER SET utf8;`
     );
-    stringBuffer.push(`USE ${canvas.databaseName}`);
+    stringBuffer.push(`USE ${canvas.databaseName};`);
     stringBuffer.push("");
 
     tables.forEach(table => {
-      this.formatTable(canvas.databaseName, table, stringBuffer);
+      this.formatTable(table, stringBuffer);
       stringBuffer.push("");
       // unique
       if (unique(table.columns)) {
@@ -42,27 +42,22 @@ class MariaDB {
         uqColumns.forEach(column => {
           stringBuffer.push(`ALTER TABLE ${canvas.databaseName}.${table.name}`);
           stringBuffer.push(
-            `  ADD CONSTRAINT UQ_${column.name} UNIQUE (\`${column.name}\`);`
+            `  ADD CONSTRAINT UQ_${column.name} UNIQUE (${column.name});`
           );
           stringBuffer.push("");
         });
       }
     });
     relationships.forEach(relationship => {
-      this.formatRelation(
-        canvas.databaseName,
-        tables,
-        relationship,
-        stringBuffer
-      );
+      this.formatRelation(tables, relationship, stringBuffer);
       stringBuffer.push("");
     });
 
     return stringBuffer.join("\n");
   }
 
-  private formatTable(name: string, table: Table, buffer: string[]) {
-    buffer.push(`CREATE TABLE ${name}.${table.name}`);
+  private formatTable(table: Table, buffer: string[]) {
+    buffer.push(`CREATE TABLE ${table.name}`);
     buffer.push(`(`);
     const pk = primaryKey(table.columns);
     const spaceSize = formatSize(table.columns);
@@ -81,7 +76,7 @@ class MariaDB {
     });
     if (pk) {
       const pkColumns = primaryKeyColumns(table.columns);
-      buffer.push(`  PRIMARY KEY (${formatNames(pkColumns, "`")})`);
+      buffer.push(`  PRIMARY KEY (${formatNames(pkColumns)})`);
     }
     if (table.comment.trim() === "") {
       buffer.push(`);`);
@@ -98,7 +93,7 @@ class MariaDB {
   ) {
     const stringBuffer: string[] = [];
     stringBuffer.push(
-      `  \`${column.name}\`` + formatSpace(spaceSize.name - column.name.length)
+      `  ${column.name}` + formatSpace(spaceSize.name - column.name.length)
     );
     stringBuffer.push(
       `${column.dataType}` +
@@ -119,7 +114,6 @@ class MariaDB {
   }
 
   private formatRelation(
-    name: string,
     tables: Table[],
     relationship: Relationship,
     buffer: string[]
@@ -128,7 +122,7 @@ class MariaDB {
     const endTable = getData(tables, relationship.end.tableId);
 
     if (startTable && endTable) {
-      buffer.push(`ALTER TABLE ${name}.${endTable.name}`);
+      buffer.push(`ALTER TABLE ${endTable.name}`);
 
       // FK
       let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
@@ -158,12 +152,9 @@ class MariaDB {
         }
       });
 
-      buffer.push(`    FOREIGN KEY (${formatNames(columns.end, "`")})`);
+      buffer.push(`    FOREIGN KEY (${formatNames(columns.end)})`);
       buffer.push(
-        `    REFERENCES ${name}.${startTable.name} (${formatNames(
-          columns.start,
-          "`"
-        )});`
+        `    REFERENCES ${startTable.name} (${formatNames(columns.start)});`
       );
     }
   }

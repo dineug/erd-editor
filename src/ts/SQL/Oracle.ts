@@ -27,16 +27,15 @@ class Oracle {
     const stringBuffer: string[] = [];
     const tables = store.tableStore.state.tables;
     const relationships = store.relationshipStore.state.relationships;
-    const canvas = store.canvasStore.state;
 
     tables.forEach(table => {
-      this.formatTable(canvas.databaseName, table, stringBuffer);
+      this.formatTable(table, stringBuffer);
       stringBuffer.push("");
       // unique
       if (unique(table.columns)) {
         const uqColumns = uniqueColumns(table.columns);
         uqColumns.forEach(column => {
-          stringBuffer.push(`ALTER TABLE ${canvas.databaseName}.${table.name}`);
+          stringBuffer.push(`ALTER TABLE ${table.name}`);
           stringBuffer.push(
             `  ADD CONSTRAINT UQ_${column.name} UNIQUE (${column.name});`
           );
@@ -53,7 +52,7 @@ class Oracle {
             name: aiName
           });
 
-          stringBuffer.push(`CREATE SEQUENCE ${canvas.databaseName}.${aiName}`);
+          stringBuffer.push(`CREATE SEQUENCE ${aiName}`);
           stringBuffer.push(`START WITH 1`);
           stringBuffer.push(`INCREMENT BY 1;`);
           stringBuffer.push("");
@@ -64,40 +63,29 @@ class Oracle {
             id: uuid(),
             name: trgName
           });
-          stringBuffer.push(
-            `CREATE OR REPLACE TRIGGER ${canvas.databaseName}.${trgName}`
-          );
-          stringBuffer.push(
-            `BEFORE INSERT ON ${canvas.databaseName}.${table.name}`
-          );
+          stringBuffer.push(`CREATE OR REPLACE TRIGGER ${trgName}`);
+          stringBuffer.push(`BEFORE INSERT ON ${table.name}`);
           stringBuffer.push(`REFERENCING NEW AS NEW FOR EACH ROW`);
           stringBuffer.push(`BEGIN`);
-          stringBuffer.push(
-            `  SELECT ${canvas.databaseName}.${aiName}.NEXTVAL`
-          );
+          stringBuffer.push(`  SELECT ${aiName}.NEXTVAL`);
           stringBuffer.push(`  INTO: NEW.${column.name}`);
           stringBuffer.push(`  FROM DUAL;`);
           stringBuffer.push(`END;`);
           stringBuffer.push("");
         }
       });
-      this.formatComment(canvas.databaseName, table, stringBuffer);
+      this.formatComment(table, stringBuffer);
     });
     relationships.forEach(relationship => {
-      this.formatRelation(
-        canvas.databaseName,
-        tables,
-        relationship,
-        stringBuffer
-      );
+      this.formatRelation(tables, relationship, stringBuffer);
       stringBuffer.push("");
     });
 
     return stringBuffer.join("\n");
   }
 
-  private formatTable(name: string, table: Table, buffer: string[]) {
-    buffer.push(`CREATE TABLE ${name}.${table.name}`);
+  private formatTable(table: Table, buffer: string[]) {
+    buffer.push(`CREATE TABLE ${table.name}`);
     buffer.push(`(`);
     const pk = primaryKey(table.columns);
     const spaceSize = formatSize(table.columns);
@@ -147,17 +135,15 @@ class Oracle {
     buffer.push(stringBuffer.join(" ") + `${isComma ? "," : ""}`);
   }
 
-  private formatComment(name: string, table: Table, buffer: string[]) {
+  private formatComment(table: Table, buffer: string[]) {
     if (table.comment.trim() !== "") {
-      buffer.push(
-        `COMMENT ON TABLE ${name}.${table.name} IS '${table.comment}';`
-      );
+      buffer.push(`COMMENT ON TABLE ${table.name} IS '${table.comment}';`);
       buffer.push("");
     }
     table.columns.forEach(column => {
       if (column.comment.trim() !== "") {
         buffer.push(
-          `COMMENT ON COLUMN ${name}.${table.name}.${column.name} IS '${column.comment}';`
+          `COMMENT ON COLUMN ${table.name}.${column.name} IS '${column.comment}';`
         );
         buffer.push("");
       }
@@ -165,7 +151,6 @@ class Oracle {
   }
 
   private formatRelation(
-    name: string,
     tables: Table[],
     relationship: Relationship,
     buffer: string[]
@@ -174,7 +159,7 @@ class Oracle {
     const endTable = getData(tables, relationship.end.tableId);
 
     if (startTable && endTable) {
-      buffer.push(`ALTER TABLE ${name}.${endTable.name}`);
+      buffer.push(`ALTER TABLE ${endTable.name}`);
 
       // FK
       let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
@@ -206,9 +191,7 @@ class Oracle {
 
       buffer.push(`    FOREIGN KEY (${formatNames(columns.end)})`);
       buffer.push(
-        `    REFERENCES ${name}.${startTable.name} (${formatNames(
-          columns.start
-        )});`
+        `    REFERENCES ${startTable.name} (${formatNames(columns.start)});`
       );
     }
   }

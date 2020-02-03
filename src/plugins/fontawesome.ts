@@ -21,7 +21,9 @@ import {
   faEye,
   faSlidersH,
   faDatabase,
-  faColumns
+  faColumns,
+  faFileImport,
+  faFileCode
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -44,7 +46,9 @@ library.add(
   faEye,
   faSlidersH,
   faDatabase,
-  faColumns
+  faColumns,
+  faFileImport,
+  faFileCode
 );
 
 Vue.component("font-awesome-icon", FontAwesomeIcon);

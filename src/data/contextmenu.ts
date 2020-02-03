@@ -12,9 +12,7 @@ import icon from "@/ts/icon";
 import { uuid } from "@/ts/util";
 import { Database } from "./DataType";
 import { Case, Language } from "@/ts/GeneratorCode";
-import domToImage from "dom-to-image";
-
-const a = document.createElement("a");
+import File from "@/ts/File";
 
 function dataMenu(store: StoreManagement): Menu[] {
   const show = store.canvasStore.state.show;
@@ -171,6 +169,19 @@ function dataMenu(store: StoreManagement): Menu[] {
       children: [
         {
           id: uuid(),
+          icon: database === Database.MySQL ? "check" : undefined,
+          name: Database.MySQL,
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.databaseChange,
+              Database.MySQL
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, database: Database.MySQL }
+        },
+        {
+          id: uuid(),
           icon: database === Database.MariaDB ? "check" : undefined,
           name: Database.MariaDB,
           execute() {
@@ -184,29 +195,16 @@ function dataMenu(store: StoreManagement): Menu[] {
         },
         {
           id: uuid(),
-          icon: database === Database.MSSQL ? "check" : undefined,
-          name: Database.MSSQL,
+          icon: database === Database.PostgreSQL ? "check" : undefined,
+          name: Database.PostgreSQL,
           execute() {
             store.canvasStore.commit(
               CanvasCommit.databaseChange,
-              Database.MSSQL
+              Database.PostgreSQL
             );
             store.eventBus.$emit(Bus.ERD.change);
           },
-          option: { close: false, database: Database.MSSQL }
-        },
-        {
-          id: uuid(),
-          icon: database === Database.MySQL ? "check" : undefined,
-          name: Database.MySQL,
-          execute() {
-            store.canvasStore.commit(
-              CanvasCommit.databaseChange,
-              Database.MySQL
-            );
-            store.eventBus.$emit(Bus.ERD.change);
-          },
-          option: { close: false, database: Database.MySQL }
+          option: { close: false, database: Database.PostgreSQL }
         },
         {
           id: uuid(),
@@ -223,16 +221,30 @@ function dataMenu(store: StoreManagement): Menu[] {
         },
         {
           id: uuid(),
-          icon: database === Database.PostgreSQL ? "check" : undefined,
-          name: Database.PostgreSQL,
+          icon: database === Database.MSSQL ? "check" : undefined,
+          name: Database.MSSQL,
           execute() {
             store.canvasStore.commit(
               CanvasCommit.databaseChange,
-              Database.PostgreSQL
+              Database.MSSQL
             );
             store.eventBus.$emit(Bus.ERD.change);
           },
-          option: { close: false, database: Database.PostgreSQL }
+          option: { close: false, database: Database.MSSQL }
+        }
+      ]
+    },
+    {
+      id: uuid(),
+      name: "Import",
+      icon: "file-import",
+      children: [
+        {
+          id: uuid(),
+          name: "json",
+          execute() {
+            File.importJSON(store);
+          }
         }
       ]
     },
@@ -243,29 +255,17 @@ function dataMenu(store: StoreManagement): Menu[] {
       children: [
         {
           id: uuid(),
+          name: "json",
+          execute() {
+            File.exportJson(store.value, store.canvasStore.state.databaseName);
+          }
+        },
+        {
+          id: uuid(),
           name: "png",
           icon: "file-image",
           execute() {
-            const canvas = document.getElementById(store.uuid);
-            if (canvas) {
-              canvas.style.backgroundColor = "#282828";
-              domToImage
-                .toBlob(canvas)
-                .then(blob => {
-                  a.href = window.URL.createObjectURL(blob);
-                  if (store.canvasStore.state.databaseName.trim() === "") {
-                    a.download = `unnamed-${new Date().getTime()}.png`;
-                  } else {
-                    a.download = `${
-                      store.canvasStore.state.databaseName
-                    }-${new Date().getTime()}.png`;
-                  }
-                  a.click();
-                })
-                .finally(() => {
-                  canvas.style.backgroundColor = null;
-                });
-            }
+            File.exportPNG(store.uuid, store.canvasStore.state.databaseName);
           }
         }
       ]

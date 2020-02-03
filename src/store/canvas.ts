@@ -129,8 +129,6 @@ export function createStore() {
             stateData[key] = loadData[key];
           }
         });
-        state.scrollTop = 0;
-        state.scrollLeft = 0;
       },
       canvasMove,
       canvasChangeType,

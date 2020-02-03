@@ -33,38 +33,31 @@ class MSSQL {
     stringBuffer.push("");
 
     tables.forEach(table => {
-      this.formatTable(canvas.databaseName, table, stringBuffer);
+      this.formatTable(table, stringBuffer);
       stringBuffer.push("");
       // unique
       if (unique(table.columns)) {
         const uqColumns = uniqueColumns(table.columns);
         uqColumns.forEach(column => {
-          stringBuffer.push(
-            `ALTER TABLE [${canvas.databaseName}].[${table.name}]`
-          );
+          stringBuffer.push(`ALTER TABLE [${table.name}]`);
           stringBuffer.push(
             `  ADD CONSTRAINT [UQ_${column.name}] UNIQUE ([${column.name}])\nGO`
           );
           stringBuffer.push("");
         });
       }
-      this.formatComment(canvas.databaseName, table, stringBuffer);
+      this.formatComment(table, stringBuffer);
     });
     relationships.forEach(relationship => {
-      this.formatRelation(
-        canvas.databaseName,
-        tables,
-        relationship,
-        stringBuffer
-      );
+      this.formatRelation(tables, relationship, stringBuffer);
       stringBuffer.push("");
     });
 
     return stringBuffer.join("\n");
   }
 
-  private formatTable(name: string, table: Table, buffer: string[]) {
-    buffer.push(`CREATE TABLE [${name}].[${table.name}]`);
+  private formatTable(table: Table, buffer: string[]) {
+    buffer.push(`CREATE TABLE [${table.name}]`);
     buffer.push(`(`);
     const pk = primaryKey(table.columns);
     const spaceSize = formatSize(table.columns);
@@ -122,11 +115,11 @@ class MSSQL {
     buffer.push(stringBuffer.join(" ") + `${isComma ? "," : ""}`);
   }
 
-  private formatComment(name: string, table: Table, buffer: string[]) {
+  private formatComment(table: Table, buffer: string[]) {
     if (table.comment.trim() !== "") {
       buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
       buffer.push(
-        `  '${table.comment}', 'user', dbo, 'table', '${name}.${table.name}'\nGO`
+        `  '${table.comment}', 'user', dbo, 'table', '${table.name}'\nGO`
       );
       buffer.push("");
     }
@@ -134,7 +127,7 @@ class MSSQL {
       if (column.comment.trim() !== "") {
         buffer.push(`EXECUTE sp_addextendedproperty 'MS_Description',`);
         buffer.push(
-          `  '${column.comment}', 'user', dbo, 'table', '${name}.${table.name}', 'column', '${table.name}'\nGO`
+          `  '${column.comment}', 'user', dbo, 'table', '${table.name}', 'column', '${table.name}'\nGO`
         );
         buffer.push("");
       }
@@ -142,7 +135,6 @@ class MSSQL {
   }
 
   private formatRelation(
-    name: string,
     tables: Table[],
     relationship: Relationship,
     buffer: string[]
@@ -151,7 +143,7 @@ class MSSQL {
     const endTable = getData(tables, relationship.end.tableId);
 
     if (startTable && endTable) {
-      buffer.push(`ALTER TABLE [${name}].[${endTable.name}]`);
+      buffer.push(`ALTER TABLE [${endTable.name}]`);
 
       // FK
       let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
@@ -183,7 +175,7 @@ class MSSQL {
 
       buffer.push(`    FOREIGN KEY (${formatNames(columns.end, "[", "]")})`);
       buffer.push(
-        `    REFERENCES [${name}].[${startTable.name}] (${formatNames(
+        `    REFERENCES [${startTable.name}] (${formatNames(
           columns.start,
           "[",
           "]"
