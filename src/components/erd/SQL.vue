@@ -11,7 +11,6 @@
 import SQLFactory from "@/ts/SQL";
 import { Commit as CanvasCommit } from "@/store/canvas";
 import StoreManagement from "@/store/StoreManagement";
-import { Bus } from "@/ts/EventBus";
 import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import { Subscription, Subject } from "rxjs";
 import { debounceTime } from "rxjs/operators";
@@ -58,7 +57,6 @@ export default class SQL extends Vue {
         scrollTop: 0,
         scrollLeft: 0
       });
-      this.store.eventBus.$emit(Bus.ERD.change);
     }
   }
 

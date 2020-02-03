@@ -31,7 +31,6 @@ import { Memo as MemoModel } from "@/store/memo";
 import { Relationship as RelationshipModel } from "@/store/relationship";
 import { Show } from "@/store/canvas";
 import StoreManagement from "@/store/StoreManagement";
-import { Bus } from "@/ts/EventBus";
 import { Component, Prop, Vue } from "vue-property-decorator";
 import Table from "./Table.vue";
 import Memo from "./Memo.vue";
@@ -72,10 +71,6 @@ export default class Canvas extends Vue {
 
   get show(): Show {
     return this.store.canvasStore.state.show;
-  }
-
-  private mounted() {
-    this.store.eventBus.$emit(Bus.ERD.change);
   }
 }
 </script>

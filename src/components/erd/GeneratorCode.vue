@@ -11,7 +11,6 @@
 import CodeFactory, { Language } from "@/ts/GeneratorCode";
 import StoreManagement from "@/store/StoreManagement";
 import { Commit as CanvasCommit } from "@/store/canvas";
-import { Bus } from "@/ts/EventBus";
 import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import hljs from "@/plugins/highlight";
 
@@ -59,7 +58,6 @@ export default class GeneratorCode extends Vue {
         scrollTop: 0,
         scrollLeft: 0
       });
-      this.store.eventBus.$emit(Bus.ERD.change);
     }
   }
 }

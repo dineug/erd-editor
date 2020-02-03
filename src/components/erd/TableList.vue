@@ -53,7 +53,6 @@ export default class TableList extends Vue {
         scrollTop: 0,
         scrollLeft: 0
       });
-      this.store.eventBus.$emit(Bus.ERD.change);
     }
   }
 

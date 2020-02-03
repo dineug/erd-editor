@@ -239,8 +239,10 @@ export default class ERD extends Vue {
     } else if (this.currentValue !== value) {
       this.store.load(value);
     }
-    this.$el.scrollLeft = this.store.canvasStore.state.scrollLeft;
-    this.$el.scrollTop = this.store.canvasStore.state.scrollTop;
+    this.$nextTick(() => {
+      this.$el.scrollLeft = this.store.canvasStore.state.scrollLeft;
+      this.$el.scrollTop = this.store.canvasStore.state.scrollTop;
+    });
   }
 
   // ==================== Event Handler ===================
