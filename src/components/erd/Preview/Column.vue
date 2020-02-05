@@ -2,7 +2,7 @@
   li.preview-column
     .key
       font-awesome-icon.column-key(
-        v-if="column.ui.pk | column.ui.fk | column.ui.pfk"
+        v-if="column.ui.pk || column.ui.fk || column.ui.pfk"
         :class="{pk: column.ui.pk, fk: column.ui.fk, pfk: column.ui.pfk}"
         icon="key"
       )

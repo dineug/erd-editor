@@ -9,7 +9,7 @@
   )
     .key
       font-awesome-icon.column-key(
-        v-if="column.ui.pk | column.ui.fk | column.ui.pfk"
+        v-if="column.ui.pk || column.ui.fk || column.ui.pfk"
         :class="{pk: column.ui.pk, fk: column.ui.fk, pfk: column.ui.pfk}"
         icon="key"
       )
@@ -280,6 +280,8 @@ export default class Column extends Vue {
 
 <style scoped lang="scss">
 .column {
+  height: $size-column-height;
+
   &.selected {
     background-color: $color-column-selected;
 
