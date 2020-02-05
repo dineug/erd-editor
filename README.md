@@ -10,11 +10,10 @@
 ![generator-code](https://user-images.githubusercontent.com/45829489/73578110-29920100-44c2-11ea-8bcb-cddaa19f2447.gif)
 
 ## Document
-[Storybook](https://vuerd.github.io/vuerd-docs/)  
-[Live Demo](https://vuerd.github.io/vuerd-docs/iframe.html?id=demo-live--vuerd-core)
+[Live Demo](https://vuerd.github.io/vuerd-docs/iframe.html?id=demo-live--vuerd)
 
 ## IDE
-[vscode extension](https://github.com/vuerd/vuerd-vscode)
+[vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
 
 ## Component
 ### Install
