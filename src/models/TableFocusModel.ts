@@ -342,7 +342,7 @@ export default class TableFocusModel implements TableFocus {
             if (focusType === FocusType.columnNotNull) {
               this.currentColumn.option.notNull = !this.currentColumn.option
                 .notNull;
-              this.store.eventBus.$emit(Bus.ERD.input);
+              this.store.eventBus.$emit(Bus.ERD.change);
             } else {
               this.store.tableStore.commit(Commit.tableEditStart, {
                 id: this.currentColumn.id,

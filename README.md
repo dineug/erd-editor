@@ -43,7 +43,6 @@ Vue.component('Vuerd', Vuerd);
       :width="width"
       :height="height"
       :value="value"
-      @input="onInput"
       @change="onChange"
       @undo="onUndo"
       @redo="onRedo"
@@ -72,20 +71,6 @@ Vue.component('Vuerd', Vuerd);
       callback() {
         this.undo = this.undoManager.hasUndo();
         this.redo = this.undoManager.hasRedo();
-      },
-      onInput(value) {
-        if (this.value !== value) {
-          const oldValue = this.value
-          this.undoManager.add({
-            undo: () => {
-              this.value = oldValue
-            },
-            redo: () => {
-              this.value = value
-            },
-          })
-        }
-        this.value = value
       },
       onChange(value) {
         if (this.value !== value) {
@@ -149,7 +134,6 @@ Vue.component('Vuerd', Vuerd);
 | Event | Type | Describe |
 | --- | --- | --- |
 | change | String | editor data |
-| input | String | editor data |
 | undo |  | undo execute |
 | redo |  | redo execute |
 
@@ -203,7 +187,6 @@ Vue.use(VuerdCore);
       :width="width"
       :height="height"
       :value="value"
-      @input="onInput"
       @change="onChange"
      />
   </div>
@@ -223,10 +206,6 @@ Vue.use(VuerdCore);
         onResize() {
           this.width = window.innerWidth
           this.height = window.innerHeight
-        },
-        onInput(value) {
-          this.value = value
-          // data save
         },
         onChange(value) {
           this.value = value
