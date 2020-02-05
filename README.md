@@ -10,10 +10,25 @@
 ![generator-code](https://user-images.githubusercontent.com/45829489/73578110-29920100-44c2-11ea-8bcb-cddaa19f2447.gif)
 
 ## Document
-[Live Demo](https://vuerd.github.io/vuerd-docs/iframe.html?id=demo-live--vuerd)
+- [Live Demo](https://vuerd.github.io/vuerd-docs/iframe.html?id=demo-live--vuerd)  
+- [vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
 
-## IDE
-[vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
+## Prop
+| Name | Type | Describe |
+| --- | --- | --- |
+| value | String | editor data |
+| width | Number | width |
+| height | Number | height |
+| focus | Boolean | current focus |
+| undo | Boolean | undo status |
+| redo | Boolean | redo status |
+
+## Emit
+| Event | Type | Describe |
+| --- | --- | --- |
+| change | String | editor data |
+| undo |  | undo execute |
+| redo |  | redo execute |
 
 ## Component
 ### Install
@@ -119,50 +134,7 @@ Vue.component('Vuerd', Vuerd);
 </style>
 ```
 
-## Prop
-| Name | Type | Describe |
-| --- | --- | --- |
-| value | String | editor data |
-| width | Number | width |
-| height | Number | height |
-| focus | Boolean | current focus |
-| undo | Boolean | undo status |
-| redo | Boolean | redo status |
-
-## Emit
-| Event | Type | Describe |
-| --- | --- | --- |
-| change | String | editor data |
-| undo |  | undo execute |
-| redo |  | redo execute |
-
-
-## vuerd-core plugin
-### Install
-```bash
-$ yarn add vuerd-core
-$ yarn add vuerd-plugin-erd
-or
-$ npm install vuerd-core
-$ npm install vuerd-plugin-erd
-```
-### Usage
-```js
-// main.js or main.ts
-import Vue from 'vue';
-import VuerdCore from 'vuerd-core';
-import ERD from 'vuerd-plugin-erd';
-import 'vuerd-core/dist/vuerd-core.css';
-import 'vuerd-plugin-erd/dist/vuerd-plugin-erd.css';
-VuerdCore.use(ERD);
-// VuerdCore.use(ERD, option);
-Vue.use(VuerdCore);
-```
-```html
-<vuerd-core />
-```
-## CDN Quick Start
-### Component
+### CDN Quick Start
 ```html
 <!DOCTYPE html>
 <html>
@@ -225,7 +197,34 @@ Vue.use(VuerdCore);
 </body>
 </html>
 ```
-### vuerd-core plugin
+
+
+## vuerd-core plugin
+### Install
+```bash
+$ yarn add vuerd-core
+$ yarn add vuerd-plugin-erd
+or
+$ npm install vuerd-core
+$ npm install vuerd-plugin-erd
+```
+
+### Usage
+```js
+// main.js or main.ts
+import Vue from 'vue';
+import VuerdCore from 'vuerd-core';
+import ERD from 'vuerd-plugin-erd';
+import 'vuerd-core/dist/vuerd-core.css';
+import 'vuerd-plugin-erd/dist/vuerd-plugin-erd.css';
+VuerdCore.use(ERD, /* option */);
+Vue.use(VuerdCore);
+```
+```html
+<vuerd-core />
+```
+
+### CDN Quick Start
 ```html
 <!DOCTYPE html>
 <html>
@@ -253,6 +252,7 @@ Vue.use(VuerdCore);
 </body>
 </html>
 ```
+
 ### Option interface
 ```typescript
 export interface Option {
@@ -260,6 +260,7 @@ export interface Option {
   exclude?: string[] | RegExp[];
 }
 ```
+
 ### Option
 | Name | Type | Default | Describe |
 | --- | --- | --- | --- |
