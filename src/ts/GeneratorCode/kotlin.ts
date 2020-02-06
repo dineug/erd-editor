@@ -3,13 +3,17 @@ import { Table, Column } from "@/store/table";
 import { getPrimitiveType, getNameCase } from "../GeneratorCodeHelper";
 import { Database } from "@/data/DataType";
 import { Case } from "@/ts/GeneratorCode";
-import { camelCase, pascalCase, snakeCase } from "change-case";
+import { PrimitiveType } from "@/data/DataType";
 
 const typescriptType: { [key: string]: string } = {
-  int: "Long",
-  float: "Double",
-  boolean: "boolean",
+  int: "Int",
+  long: "Long",
+  float: "Float",
+  double: "Double",
+  decimal: "BigDecimal",
+  boolean: "Boolean",
   string: "String",
+  lob: "String",
   date: "LocalDate",
   dateTime: "LocalDateTime",
   time: "LocalTime"
@@ -60,9 +64,45 @@ class kotlin {
     if (column.comment.trim() !== "") {
       buffer.push(`  // ${column.comment}`);
     }
-    buffer.push(
-      `  var ${columnName}: ${typescriptType[primitiveType]}? = null`
-    );
+    if (
+      column.option.notNull &&
+      primitiveType !== "date" &&
+      primitiveType !== "dateTime" &&
+      primitiveType !== "time"
+    ) {
+      buffer.push(
+        `  var ${columnName}: ${
+          typescriptType[primitiveType]
+        } = ${this.getDefault(primitiveType)}`
+      );
+    } else {
+      buffer.push(
+        `  var ${columnName}: ${typescriptType[primitiveType]}? = null`
+      );
+    }
+  }
+
+  private getDefault(primitiveType: PrimitiveType) {
+    switch (primitiveType) {
+      case "int":
+      case "long":
+        return 0;
+      case "float":
+        return "0.0f";
+      case "double":
+        return "0.0";
+      case "boolean":
+        return false;
+      case "string":
+      case "lob":
+        return '""';
+      case "decimal":
+        return "BigDecimal.ZERO";
+      case "date":
+      case "dateTime":
+      case "time":
+        return null;
+    }
   }
 }
 

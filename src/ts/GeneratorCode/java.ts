@@ -3,13 +3,16 @@ import { Table, Column } from "@/store/table";
 import { getPrimitiveType, getNameCase } from "../GeneratorCodeHelper";
 import { Database } from "@/data/DataType";
 import { Case } from "@/ts/GeneratorCode";
-import { camelCase, pascalCase, snakeCase } from "change-case";
 
 const typescriptType: { [key: string]: string } = {
-  int: "Long",
-  float: "Double",
-  boolean: "boolean",
+  int: "Integer",
+  long: "Long",
+  float: "Float",
+  double: "Double",
+  decimal: "BigDecimal",
+  boolean: "Boolean",
   string: "String",
+  lob: "String",
   date: "LocalDate",
   dateTime: "LocalDateTime",
   time: "LocalTime"

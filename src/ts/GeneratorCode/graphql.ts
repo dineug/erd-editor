@@ -5,17 +5,19 @@ import { getPrimitiveType, getNameCase } from "../GeneratorCodeHelper";
 import { Database } from "@/data/DataType";
 import { getData } from "@/ts/util";
 import { Case } from "@/ts/GeneratorCode";
-import { camelCase, pascalCase, snakeCase } from "change-case";
 
 const typescriptType: { [key: string]: string } = {
   int: "Int",
+  long: "Int",
   float: "Float",
+  double: "Float",
+  decimal: "Float",
   boolean: "Boolean",
   string: "String",
+  lob: "String",
   date: "String",
   dateTime: "String",
   time: "String"
-  // ID
 };
 
 class graphql {
@@ -77,7 +79,7 @@ class graphql {
           relationships.relationshipType === RelationshipType.ZeroOneN
         ) {
           const fieldNameList = getNameCase(`${fieldName}List`, columnCase);
-          buffer.push(`  ${fieldNameList}: [${typeName}]`);
+          buffer.push(`  ${fieldNameList}: [${typeName}!]!`);
         }
       }
     });
@@ -96,10 +98,14 @@ class graphql {
     }
     let idType = column.option.primaryKey || column.ui.fk;
     if (idType) {
-      buffer.push(`  ${columnName}: ID`);
+      buffer.push(`  ${columnName}: ID${column.option.notNull ? "!" : ""}`);
     } else {
       const primitiveType = getPrimitiveType(column.dataType, database);
-      buffer.push(`  ${columnName}: ${typescriptType[primitiveType]}`);
+      buffer.push(
+        `  ${columnName}: ${typescriptType[primitiveType]}${
+          column.option.notNull ? "!" : ""
+        }`
+      );
     }
   }
 }

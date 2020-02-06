@@ -3,13 +3,16 @@ import { Table, Column } from "@/store/table";
 import { getPrimitiveType, getNameCase } from "../GeneratorCodeHelper";
 import { Case } from "@/ts/GeneratorCode";
 import { Database } from "@/data/DataType";
-import { camelCase, pascalCase, snakeCase } from "change-case";
 
 const typescriptType: { [key: string]: string } = {
   int: "number",
+  long: "number",
   float: "number",
+  double: "number",
+  decimal: "number",
   boolean: "boolean",
   string: "string",
+  lob: "string",
   date: "string",
   dateTime: "string",
   time: "string"
@@ -60,7 +63,11 @@ class typescript {
     if (column.comment.trim() !== "") {
       buffer.push(`  // ${column.comment}`);
     }
-    buffer.push(`  ${columnName}: ${typescriptType[primitiveType]};`);
+    buffer.push(
+      `  ${columnName}: ${typescriptType[primitiveType]}${
+        column.option.notNull ? "" : " | null"
+      };`
+    );
   }
 }
 

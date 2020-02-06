@@ -14,9 +14,13 @@ export const enum Database {
 
 export type PrimitiveType =
   | "int"
+  | "long"
   | "float"
+  | "double"
+  | "decimal"
   | "boolean"
   | "string"
+  | "lob"
   | "date"
   | "dateTime"
   | "time";
