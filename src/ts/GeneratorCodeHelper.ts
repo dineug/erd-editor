@@ -15,7 +15,7 @@ export function getPrimitiveType(
     if (
       dataType
         .toLocaleLowerCase()
-        .indexOf(dataTypeHint.name.toLocaleLowerCase()) !== -1
+        .indexOf(dataTypeHint.name.toLocaleLowerCase()) === 0
     ) {
       return dataTypeHint.primitiveType;
     }

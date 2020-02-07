@@ -19,10 +19,10 @@
       )
     .table-body
       .table-column-header
-        span.check PK
-        span.check NN
-        span.check UQ
-        span.check AI
+        span.check(title="Primary Key") PK
+        span.check(title="Not Null") NN
+        span.check(title="Unique") UQ
+        span.check(title="Auto Increment") AI
         span Name
         span DataType
         span Default

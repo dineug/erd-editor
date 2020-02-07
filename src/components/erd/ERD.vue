@@ -355,7 +355,7 @@ export default class ERD extends Vue {
   }
 
   private onKeydown(event: KeyboardEvent) {
-    // log.debug('ERD onKeydown');
+    // log.debug(`ERD onKeydown: ${event.key}`);
     if (this.focus) {
       if (event.key === Key.Escape) {
         // Escape

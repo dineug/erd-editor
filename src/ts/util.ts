@@ -184,7 +184,7 @@ function keyHtml(
   let result: string | null = null;
   for (const key of keyArray) {
     if (target.toLowerCase() === key.toLowerCase()) {
-      result = '<span class="' + className + '">' + target + "</span>";
+      result = `<span class="${className}">${target}</span>`;
       break;
     }
   }

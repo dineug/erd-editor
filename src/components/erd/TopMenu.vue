@@ -55,7 +55,7 @@
         @click="onRedo"
       )
         font-awesome-icon(icon="redo-alt" style="width: 16px; height: 16px;")
-      li(title="help" @click="onHelp(true)")
+      li(title="Help" @click="onHelp(true)")
         font-awesome-icon(icon="question" style="width: 12px; height: 16px;")
       li.search(v-if="canvasType === 'List'")
         font-awesome-icon(icon="search" style="width: 16px; height: 16px;")
