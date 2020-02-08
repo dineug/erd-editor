@@ -15,7 +15,9 @@
         span.erd-import-error-title Import SQL DDL Error
       .erd-import-error-body.scrollbar {{ message }}
       .erd-import-error-footer(style="font-size")
-        span DDL Parser with by&nbsp;
+        span DDL Parser with
+        span(style="color: red;") &nbsp❤&nbsp
+        span by&nbsp;
         a(
           href="https://github.com/duartealexf/sql-ddl-to-json-schema"
           target="_blank"
@@ -26,7 +28,6 @@
 import StoreManagement from "@/store/StoreManagement";
 import { Component, Prop, Vue } from "vue-property-decorator";
 import CircleButton from "@/components/erd/CircleButton.vue";
-import hljs from "@/plugins/highlight";
 
 @Component({
   components: {
