@@ -78,6 +78,12 @@
       v-if="canvasType === 'GeneratorCode'"
       :store="store"
     )
+    ImportErrorDDL(
+      v-if="importErrorDDL"
+      :store="store"
+      :message="importErrorMessage"
+      @close="onImportErrorDDLEnd"
+    )
 </template>
 
 <script lang="ts">
@@ -110,6 +116,7 @@ import TopMenu from "./TopMenu.vue";
 import SQL from "./SQL.vue";
 import TableList from "./TableList.vue";
 import GeneratorCode from "./GeneratorCode.vue";
+import ImportErrorDDL from "./ImportErrorDDL.vue";
 
 import { fromEvent, Observable, Subscription } from "rxjs";
 
@@ -125,7 +132,8 @@ import { fromEvent, Observable, Subscription } from "rxjs";
     TopMenu,
     SQL,
     TableList,
-    GeneratorCode
+    GeneratorCode,
+    ImportErrorDDL
   }
 })
 export default class ERD extends Vue {
@@ -197,6 +205,9 @@ export default class ERD extends Vue {
   private menus: Menu[] = dataMenu(this.store);
   private codeMenus: Menu[] = dataMenuCode(this.store);
 
+  private importErrorDDL: boolean = false;
+  private importErrorMessage: string = "";
+
   get erdStyle(): string {
     let style = `
         width: ${this.width}px;
@@ -239,10 +250,7 @@ export default class ERD extends Vue {
     } else if (this.currentValue !== value) {
       this.store.load(value);
     }
-    this.$nextTick(() => {
-      this.$el.scrollLeft = this.store.canvasStore.state.scrollLeft;
-      this.$el.scrollTop = this.store.canvasStore.state.scrollTop;
-    });
+    this.onScroll();
   }
 
   // ==================== Event Handler ===================
@@ -256,6 +264,14 @@ export default class ERD extends Vue {
     log.debug("ERD onInput");
     this.currentValue = this.store.value;
     this.$emit("input", this.currentValue);
+  }
+
+  private onScroll() {
+    log.debug("ERD onScroll");
+    this.$nextTick(() => {
+      this.$el.scrollLeft = this.store.canvasStore.state.scrollLeft;
+      this.$el.scrollTop = this.store.canvasStore.state.scrollTop;
+    });
   }
 
   private onMousedownERD(event: MouseEvent) {
@@ -360,11 +376,12 @@ export default class ERD extends Vue {
       if (event.key === Key.Escape) {
         // Escape
         this.store.eventBus.$emit(Bus.TopMenu.helpStop);
+        this.onImportErrorDDLEnd();
       }
       if (this.canvasType === CanvasType.ERD) {
         if (event.key === Key.Escape) {
           // Escape
-          this.contextmenu = false;
+          this.onContextmenuEnd();
           this.onSelectEnd();
           this.store.relationshipStore.commit(
             RelationshipCommit.relationshipDrawStop
@@ -444,7 +461,7 @@ export default class ERD extends Vue {
         this.canvasType === CanvasType.GeneratorCode
       ) {
         if (event.key === Key.Escape) {
-          this.contextmenu = false;
+          this.onContextmenuEnd();
         }
       }
     }
@@ -493,6 +510,15 @@ export default class ERD extends Vue {
     }
   }
 
+  private onImportErrorDDLStart(message: string) {
+    this.importErrorDDL = true;
+    this.importErrorMessage = message;
+  }
+
+  private onImportErrorDDLEnd() {
+    this.importErrorDDL = false;
+  }
+
   // ==================== Event Handler END ===================
 
   // ==================== Life Cycle ====================
@@ -500,6 +526,11 @@ export default class ERD extends Vue {
     log.debug("ERD created");
     this.store.eventBus.$on(Bus.ERD.change, this.onChange);
     this.store.eventBus.$on(Bus.ERD.input, this.onInput);
+    this.store.eventBus.$on(Bus.ERD.scroll, this.onScroll);
+    this.store.eventBus.$on(
+      Bus.ERD.importErrorDDLStart,
+      this.onImportErrorDDLStart
+    );
   }
 
   private mounted() {

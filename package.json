@@ -1,6 +1,6 @@
 {
   "name": "vuerd-plugin-erd",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "vuerd-core plugin erd",
   "main": "dist/vuerd-plugin-erd.common.js",
   "typings": "src/types/index.d.ts",
@@ -23,6 +23,7 @@
     "highlight.js": "^9.18.0",
     "highlightjs-graphql": "^1.0.1",
     "rxjs": "^6.5.3",
+    "sql-ddl-to-json-schema": "^3.1.2",
     "uuid": "^3.3.3",
     "vue": "^2.6.10",
     "vue-class-component": "^7.1.0",

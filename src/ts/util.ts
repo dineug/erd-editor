@@ -62,7 +62,7 @@ export function isData<T extends List>(list: T[], id: string): boolean {
 let spanText: HTMLElement | null = null;
 
 export function addSpanText() {
-  spanText = document.getElementById("span-text-width-erd");
+  spanText = document.querySelector("#span-text-width-erd");
   if (!spanText) {
     spanText = document.createElement("span");
     document.body.appendChild(spanText);
@@ -152,7 +152,7 @@ export function markToHTML(
   }
   const buf: string[] = [];
   strArray.forEach(value => {
-    const html = keyHtml(keyArray, value, className);
+    const html = keyHTML(keyArray, value, className);
     if (html) {
       buf.push(html);
     } else {
@@ -176,7 +176,7 @@ function keyEquals(keyArray: string[], start: number): boolean {
   return result;
 }
 
-function keyHtml(
+function keyHTML(
   keyArray: string[],
   target: string,
   className: string

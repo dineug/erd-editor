@@ -245,6 +245,20 @@ function dataMenu(store: StoreManagement): Menu[] {
           execute() {
             File.importJSON(store);
           }
+        },
+        {
+          id: uuid(),
+          name: `SQL DDL ${Database.MySQL}`,
+          execute() {
+            File.importSQL(store, Database.MySQL);
+          }
+        },
+        {
+          id: uuid(),
+          name: `SQL DDL ${Database.MariaDB}`,
+          execute() {
+            File.importSQL(store, Database.MariaDB);
+          }
         }
       ]
     },
@@ -257,7 +271,7 @@ function dataMenu(store: StoreManagement): Menu[] {
           id: uuid(),
           name: "json",
           execute() {
-            File.exportJson(store.value, store.canvasStore.state.databaseName);
+            File.exportJSON(store.value, store.canvasStore.state.databaseName);
           }
         },
         {

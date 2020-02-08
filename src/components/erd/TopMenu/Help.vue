@@ -11,13 +11,12 @@
         close
         @click="onClose"
       )
-      div
-        div.erd-help-head
-          span.erd-help-name Name
-          span.erd-help-action Action
-        div.erd-help-body(v-for="editorAction in editorActions" :key="editorActions.name")
-          span.erd-help-name {{ editorAction.name }}
-          span.erd-help-action {{ editorAction.action }}
+      .erd-help-head
+        span.erd-help-name Name
+        span.erd-help-action Action
+      .erd-help-body(v-for="editorAction in editorActions" :key="editorActions.name")
+        span.erd-help-name {{ editorAction.name }}
+        span.erd-help-action {{ editorAction.action }}
 </template>
 
 <script lang="ts">
@@ -163,6 +162,7 @@ export default class Help extends Vue {
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
+  font-size: $size-font + 5px;
 
   .erd-help-box {
     position: absolute;

@@ -11,6 +11,7 @@ import { Bus } from "@/ts/EventBus";
 import { relationshipSort } from "@/store/relationship/relationshipHelper";
 
 const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
+const TABLE_SORT_PADDING = TABLE_PADDING * 4;
 
 export function tableAdd(state: State, store: StoreManagement) {
   log.debug("tableController tableAdd");
@@ -209,4 +210,36 @@ export function tableOrderByNameASC(state: State) {
     }
     return 0;
   });
+}
+
+export function tableSort(state: State, store: StoreManagement) {
+  log.debug("tableController tableSort");
+  const canvasWidth = store.canvasStore.state.width;
+  tableOrderByNameASC(state);
+  let widthSum = 50;
+  let currentHeight = 50;
+  let maxHeight = 50;
+  state.tables.forEach(table => {
+    const width = table.width() + TABLE_SORT_PADDING;
+    const height = table.height() + TABLE_SORT_PADDING;
+    if (widthSum + width < canvasWidth) {
+      if (maxHeight < height) {
+        maxHeight = height;
+      }
+      table.ui.top = currentHeight;
+      table.ui.left = widthSum;
+      widthSum += width;
+    } else {
+      currentHeight += maxHeight;
+      maxHeight = 0;
+      widthSum = 50;
+      if (maxHeight < height) {
+        maxHeight = height;
+      }
+      table.ui.top = currentHeight;
+      table.ui.left = widthSum;
+      widthSum += width;
+    }
+  });
+  relationshipSort(state.tables, store.relationshipStore.state.relationships);
 }

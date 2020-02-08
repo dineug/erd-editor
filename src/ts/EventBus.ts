@@ -71,7 +71,9 @@ enum Memo {
 enum ERD {
   change = "ERD.change",
   input = "ERD.input",
-  contextmenuEnd = "ERD.contextmenuEnd"
+  contextmenuEnd = "ERD.contextmenuEnd",
+  importErrorDDLStart = "ERD.importErrorDDLStart",
+  scroll = "ERD.scroll"
 }
 
 enum ColumnDataType {

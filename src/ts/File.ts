@@ -1,10 +1,19 @@
 import StoreManagement from "@/store/StoreManagement";
+import { Database } from "@/data/DataType";
 import domToImage from "dom-to-image";
+import { Commit as TableCommit } from "@/store/table";
+// @ts-ignore
+import Parser from "sql-ddl-to-json-schema";
+import { Bus } from "@/ts/EventBus";
+import ParserJsonConvertERD from "./ParserJsonConvertERD";
 
 class File {
   private exportA = document.createElement("a");
   private importInputJSON = document.createElement("input");
+  private importInputSQL = document.createElement("input");
+  private currentDatabase = Database.MySQL;
   private store: StoreManagement | null = null;
+  private parserMySQL = new Parser("mysql");
 
   constructor() {
     this.importInputJSON.setAttribute("type", "file");
@@ -20,6 +29,7 @@ class File {
             const value = reader.result as string;
             if (this.store && value) {
               this.store.load(value);
+              this.store.eventBus.$emit(Bus.ERD.scroll);
             }
             this.importInputJSON.value = "";
           };
@@ -28,11 +38,69 @@ class File {
         }
       }
     });
+
+    this.importInputSQL.setAttribute("type", "file");
+    this.importInputSQL.setAttribute("accept", ".sql");
+    this.importInputSQL.addEventListener("change", e => {
+      const input = e.target as HTMLInputElement;
+      if (input && input.files) {
+        const f = input.files[0];
+        if (/\.(sql)$/i.test(f.name)) {
+          const reader = new FileReader();
+          reader.readAsText(f);
+          reader.onload = () => {
+            const value = reader.result as string;
+            if (
+              value &&
+              (this.currentDatabase === Database.MySQL ||
+                this.currentDatabase === Database.MariaDB)
+            ) {
+              try {
+                const tables = this.parserMySQL.feed(value).toCompactJson();
+                const json = ParserJsonConvertERD.toERD(tables);
+                if (this.store) {
+                  this.store.load(json);
+                  this.store.eventBus.$emit(Bus.ERD.scroll);
+                  this.store.tableStore.commit(
+                    TableCommit.tableSort,
+                    this.store
+                  );
+                }
+              } catch (err) {
+                const key =
+                  ". Instead, I was expecting to see one of the following:";
+                const startIndex = err.message.indexOf("\n");
+                const lastIndex = err.message.indexOf(key);
+                const message = err.message.substr(
+                  startIndex,
+                  lastIndex - startIndex
+                );
+                if (this.store) {
+                  this.store.eventBus.$emit(
+                    Bus.ERD.importErrorDDLStart,
+                    message
+                  );
+                }
+              }
+            }
+            this.importInputSQL.value = "";
+          };
+        } else {
+          alert("Just upload the sql file");
+        }
+      }
+    });
   }
 
   public importJSON(store: StoreManagement) {
     this.store = store;
     this.importInputJSON.click();
+  }
+
+  public importSQL(store: StoreManagement, database: Database) {
+    this.store = store;
+    this.currentDatabase = database;
+    this.importInputSQL.click();
   }
 
   public exportPNG(id: string, databaseName: string) {
@@ -54,7 +122,7 @@ class File {
     }
   }
 
-  public exportJson(json: string, databaseName: string) {
+  public exportJSON(json: string, databaseName: string) {
     let fileName = `unnamed-${new Date().getTime()}.vuerd.json`;
     if (databaseName.trim() !== "") {
       fileName = `${databaseName}-${new Date().getTime()}.vuerd.json`;

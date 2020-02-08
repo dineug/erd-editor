@@ -15,7 +15,8 @@ import {
   tableFocusMove,
   tableEditStart,
   tableEditEnd,
-  tableOrderByNameASC
+  tableOrderByNameASC,
+  tableSort
 } from "./table/tableController";
 import {
   columnAdd,
@@ -138,6 +139,7 @@ export const enum Commit {
   tableEditStart = "tableEditStart",
   tableEditEnd = "tableEditEnd",
   tableOrderByNameASC = "tableOrderByNameASC",
+  tableSort = "tableSort",
   columnAdd = "columnAdd",
   columnAddAll = "columnAddAll",
   columnFocus = "columnFocus",
@@ -205,6 +207,7 @@ export function createStore() {
       tableEditStart,
       tableEditEnd,
       tableOrderByNameASC,
+      tableSort,
       columnAdd,
       columnAddAll,
       columnFocus,
