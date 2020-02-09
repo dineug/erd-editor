@@ -222,24 +222,17 @@ export function tableSort(state: State, store: StoreManagement) {
   state.tables.forEach(table => {
     const width = table.width() + TABLE_SORT_PADDING;
     const height = table.height() + TABLE_SORT_PADDING;
-    if (widthSum + width < canvasWidth) {
-      if (maxHeight < height) {
-        maxHeight = height;
-      }
-      table.ui.top = currentHeight;
-      table.ui.left = widthSum;
-      widthSum += width;
-    } else {
+    if (widthSum + width > canvasWidth) {
       currentHeight += maxHeight;
       maxHeight = 0;
       widthSum = 50;
-      if (maxHeight < height) {
-        maxHeight = height;
-      }
-      table.ui.top = currentHeight;
-      table.ui.left = widthSum;
-      widthSum += width;
     }
+    if (maxHeight < height) {
+      maxHeight = height;
+    }
+    table.ui.top = currentHeight;
+    table.ui.left = widthSum;
+    widthSum += width;
   });
   relationshipSort(state.tables, store.relationshipStore.state.relationships);
 }

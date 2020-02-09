@@ -1,13 +1,14 @@
 import { uuid, getTextWidth } from "./util";
-import { SIZE_MIN_WIDTH } from "./layout";
+import { SIZE_MIN_WIDTH, SIZE_CANVAS_MIN, SIZE_CANVAS_MAX } from "./layout";
 import { Direction, RelationshipType } from "@/store/relationship";
 
 export interface ParserTable {
   name: string;
   columns: ParserColumn[];
   primaryKey?: { columns: ParserTableColumn[] };
-  uniqueKeys?: UniqueKeys[];
+  uniqueKeys?: UniqueKey[];
   foreignKeys?: ForeignKey[];
+  indexes?: Indexes[];
   options?: ParserTableOption;
 }
 
@@ -27,7 +28,12 @@ export interface ForeignKey {
   reference: ParserTableReference;
 }
 
-export interface UniqueKeys {
+export interface UniqueKey {
+  name: string;
+  columns: ParserTableColumn[];
+}
+
+export interface Indexes {
   name: string;
   columns: ParserTableColumn[];
 }
@@ -52,14 +58,21 @@ export interface ParserColumnType {
 
 export interface ParserColumnOption {
   nullable?: boolean;
-  default?: string;
+  default?: string | number;
   autoincrement?: boolean;
   comment?: string;
 }
 
 class ParserJsonConvertERD {
   public toERD(tables: ParserTable[]): string {
-    const data = this.createData();
+    let canvasSize = tables.length * 100;
+    if (canvasSize < SIZE_CANVAS_MIN) {
+      canvasSize = SIZE_CANVAS_MIN;
+    }
+    if (canvasSize > SIZE_CANVAS_MAX) {
+      canvasSize = SIZE_CANVAS_MAX;
+    }
+    const data = this.createData(canvasSize);
     tables.forEach(table => {
       data.table.tables.push(this.createTable(table));
     });
@@ -67,11 +80,11 @@ class ParserJsonConvertERD {
     return JSON.stringify(data);
   }
 
-  private createData(): any {
+  private createData(canvasSize: number): any {
     return {
       canvas: {
-        width: 5000,
-        height: 5000,
+        width: canvasSize,
+        height: canvasSize,
         scrollTop: 0,
         scrollLeft: 0,
         show: {
@@ -201,7 +214,7 @@ class ParserJsonConvertERD {
       newColumn.comment = column.options.comment;
     }
     if (column.options && column.options.default !== undefined) {
-      newColumn.default = column.options.default;
+      newColumn.default = `${column.options.default}`;
     }
     if (column.options && column.options.autoincrement !== undefined) {
       newColumn.option.autoIncrement = column.options.autoincrement;

@@ -64,7 +64,9 @@ export function createStore() {
         const stateData = state as any;
         const loadData = load as any;
         Object.keys(state).forEach(key => {
-          stateData[key] = loadData[key];
+          if (loadData[key] !== undefined) {
+            stateData[key] = loadData[key];
+          }
         });
       },
       memoAdd,

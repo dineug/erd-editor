@@ -125,7 +125,7 @@ export function createStore() {
             stateData[key] = Case.pascalCase;
           } else if (key === "columnCase" && loadData[key] === undefined) {
             stateData[key] = Case.camelCase;
-          } else {
+          } else if (loadData[key] !== undefined) {
             stateData[key] = loadData[key];
           }
         });
