@@ -39,8 +39,8 @@ export default class GeneratorCode extends Vue {
   private convertCode() {
     const language = this.store.canvasStore.state.language;
     const code = CodeFactory.toCode(this.store);
-    if (language === Language.graphql) {
-      this.value = hljs.highlight(Language.typescript, code).value;
+    if (language === Language.JPA) {
+      this.value = hljs.highlight(Language.java, code).value;
     } else {
       this.value = hljs.highlight(language, code).value;
     }

@@ -361,6 +361,19 @@ function dataMenuCode(store: StoreManagement): Menu[] {
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: { close: false, language: Language.typescript }
+        },
+        {
+          id: uuid(),
+          icon: language === Language.JPA ? "check" : undefined,
+          name: Language.JPA,
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorLanguageChange,
+              Language.JPA
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, language: Language.JPA }
         }
       ]
     },
