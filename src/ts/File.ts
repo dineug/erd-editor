@@ -57,7 +57,10 @@ class File {
             ) {
               try {
                 const tables = this.parserMySQL.feed(value).toCompactJson();
-                const json = ParserJsonConvertERD.toERD(tables);
+                const json = ParserJsonConvertERD.toERD(
+                  tables,
+                  this.currentDatabase
+                );
                 if (this.store) {
                   this.store.load(json);
                   this.store.eventBus.$emit(Bus.ERD.scroll);

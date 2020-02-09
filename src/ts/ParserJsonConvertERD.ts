@@ -1,6 +1,7 @@
 import { uuid, getTextWidth } from "./util";
 import { SIZE_MIN_WIDTH, SIZE_CANVAS_MIN, SIZE_CANVAS_MAX } from "./layout";
 import { Direction, RelationshipType } from "@/store/relationship";
+import { Database } from "@/data/DataType";
 
 export interface ParserTable {
   name: string;
@@ -8,7 +9,7 @@ export interface ParserTable {
   primaryKey?: { columns: ParserTableColumn[] };
   uniqueKeys?: UniqueKey[];
   foreignKeys?: ForeignKey[];
-  indexes?: Indexes[];
+  indexes?: Index[];
   options?: ParserTableOption;
 }
 
@@ -33,7 +34,7 @@ export interface UniqueKey {
   columns: ParserTableColumn[];
 }
 
-export interface Indexes {
+export interface Index {
   name: string;
   columns: ParserTableColumn[];
 }
@@ -64,7 +65,7 @@ export interface ParserColumnOption {
 }
 
 class ParserJsonConvertERD {
-  public toERD(tables: ParserTable[]): string {
+  public toERD(tables: ParserTable[], database: Database): string {
     let canvasSize = tables.length * 100;
     if (canvasSize < SIZE_CANVAS_MIN) {
       canvasSize = SIZE_CANVAS_MIN;
@@ -72,7 +73,7 @@ class ParserJsonConvertERD {
     if (canvasSize > SIZE_CANVAS_MAX) {
       canvasSize = SIZE_CANVAS_MAX;
     }
-    const data = this.createData(canvasSize);
+    const data = this.createData(canvasSize, database);
     tables.forEach(table => {
       data.table.tables.push(this.createTable(table));
     });
@@ -80,7 +81,7 @@ class ParserJsonConvertERD {
     return JSON.stringify(data);
   }
 
-  private createData(canvasSize: number): any {
+  private createData(canvasSize: number, database: Database): any {
     return {
       canvas: {
         width: canvasSize,
@@ -98,7 +99,7 @@ class ParserJsonConvertERD {
           columnNotNull: true,
           relationship: true
         },
-        database: "MySQL",
+        database,
         databaseName: "",
         canvasType: "ERD",
         language: "graphql",
