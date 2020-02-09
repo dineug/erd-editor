@@ -5,13 +5,15 @@ import cs from "./GeneratorCode/cs";
 import java from "./GeneratorCode/java";
 import kotlin from "./GeneratorCode/kotlin";
 import typescript from "./GeneratorCode/typescript";
+import JPA from "./GeneratorCode/JPA";
 
 export const enum Language {
   graphql = "graphql",
   cs = "cs",
   java = "java",
   kotlin = "kotlin",
-  typescript = "typescript"
+  typescript = "typescript",
+  JPA = "JPA"
 }
 
 export const enum Case {
@@ -36,6 +38,8 @@ class GeneratorCode {
         return kotlin.toCode(store);
       case Language.typescript:
         return typescript.toCode(store);
+      case Language.JPA:
+        return JPA.toCode(store);
     }
     return "";
   }

@@ -1,25 +1,16 @@
 <template lang="pug">
   .preview-memo(:style="memoStyle")
-    //.memo-header
-      .memo-button
-    //.memo-body
-      div(:style="textareaStyle") {{memo.value}}
 </template>
 
 <script lang="ts">
 import { SIZE_MEMO_PADDING } from "@/ts/layout";
 import { Memo as MemoModel } from "@/store/memo";
 import { Component, Prop, Vue } from "vue-property-decorator";
-import CircleButton from "../CircleButton.vue";
 
 const MEMO_PADDING = SIZE_MEMO_PADDING * 2;
 const MEMO_HEADER = 17 + SIZE_MEMO_PADDING;
 
-@Component({
-  components: {
-    CircleButton
-  }
-})
+@Component
 export default class Memo extends Vue {
   @Prop({ type: Object, default: () => ({}) })
   private memo!: MemoModel;
@@ -58,7 +49,7 @@ export default class Memo extends Vue {
   background-color: $color-table;
   cursor: default;
 
-  .memo-header {
+  /*  .memo-header {
     padding: $size-memo-padding;
     opacity: 0.9;
     background-color: $color-table;
@@ -76,6 +67,6 @@ export default class Memo extends Vue {
       background-color: $color-table;
       color: $color-font-active;
     }
-  }
+  }*/
 }
 </style>
