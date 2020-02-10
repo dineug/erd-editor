@@ -4,7 +4,7 @@ import { getNameCase, getPrimitiveType } from "../GeneratorCodeHelper";
 import { Database } from "@/data/DataType";
 import { Case } from "@/ts/GeneratorCode";
 import { Relationship, RelationshipType } from "@/store/relationship";
-import { getData } from "@/ts/util";
+import { getData, isData } from "@/ts/util";
 import { primaryKeyColumns, primaryKey } from "@/ts/SQLHelper";
 
 const typescriptType: { [key: string]: string } = {
@@ -65,6 +65,7 @@ class JPA {
           tableCase
         )} implements Serializable {`
       );
+      const pfkTables: Table[] = [];
       pkColumns.forEach(column => {
         if (column.ui.pfk) {
           (relationships
@@ -75,12 +76,9 @@ class JPA {
             )
             .map(relationship => getData(tables, relationship.start.tableId))
             .filter(table => table !== null) as Table[]).forEach(table => {
-            buffer.push(
-              `  private ${getNameCase(table.name, tableCase)} ${getNameCase(
-                table.name,
-                columnCase
-              )};`
-            );
+            if (isData(pfkTables, table.id)) {
+              pfkTables.push(table);
+            }
           });
         } else {
           const columnName = getNameCase(column.name, columnCase);
@@ -89,6 +87,14 @@ class JPA {
             `  private ${typescriptType[primitiveType]} ${columnName};`
           );
         }
+      });
+      pfkTables.forEach(table => {
+        buffer.push(
+          `  private ${getNameCase(table.name, tableCase)} ${getNameCase(
+            table.name,
+            columnCase
+          )};`
+        );
       });
       buffer.push(`}`);
     }
