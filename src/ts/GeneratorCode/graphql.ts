@@ -55,9 +55,6 @@ class graphql {
     columnCase: Case
   ) {
     const tableName = getNameCase(table.name, tableCase);
-    const currentRelationships = relationships.filter(
-      relationship => relationship.start.tableId === table.id
-    );
     if (table.comment.trim() !== "") {
       buffer.push(`# ${table.comment}`);
     }
@@ -65,24 +62,14 @@ class graphql {
     table.columns.forEach(column => {
       this.formatColumn(column, buffer, database, columnCase);
     });
-    currentRelationships.forEach(relationships => {
-      const endTable = getData(tables, relationships.end.tableId);
-      if (endTable) {
-        const typeName = getNameCase(endTable.name, tableCase);
-        const fieldName = getNameCase(endTable.name, columnCase);
-        if (endTable.comment.trim() !== "") {
-          buffer.push(`  # ${endTable.comment}`);
-        }
-        if (relationships.relationshipType === RelationshipType.ZeroOne) {
-          buffer.push(`  ${fieldName}: ${typeName}`);
-        } else if (
-          relationships.relationshipType === RelationshipType.ZeroOneN
-        ) {
-          const fieldNameList = getNameCase(`${fieldName}List`, columnCase);
-          buffer.push(`  ${fieldNameList}: [${typeName}!]!`);
-        }
-      }
-    });
+    this.formatRelation(
+      table,
+      buffer,
+      relationships,
+      tables,
+      tableCase,
+      columnCase
+    );
     buffer.push(`}`);
   }
 
@@ -107,6 +94,53 @@ class graphql {
         }`
       );
     }
+  }
+
+  private formatRelation(
+    table: Table,
+    buffer: string[],
+    relationships: Relationship[],
+    tables: Table[],
+    tableCase: Case,
+    columnCase: Case
+  ) {
+    relationships
+      .filter(relationship => relationship.end.tableId === table.id)
+      .forEach(relationship => {
+        const startTable = getData(tables, relationship.start.tableId);
+        if (startTable) {
+          const typeName = getNameCase(startTable.name, tableCase);
+          const fieldName = getNameCase(startTable.name, columnCase);
+          if (startTable.comment.trim() !== "") {
+            buffer.push(`  # ${startTable.comment}`);
+          }
+          buffer.push(`  ${fieldName}: ${typeName}`);
+        }
+      });
+    relationships
+      .filter(relationship => relationship.start.tableId === table.id)
+      .forEach(relationship => {
+        const endTable = getData(tables, relationship.end.tableId);
+        if (endTable) {
+          const typeName = getNameCase(endTable.name, tableCase);
+          const fieldName = getNameCase(endTable.name, columnCase);
+          if (endTable.comment.trim() !== "") {
+            buffer.push(`  # ${endTable.comment}`);
+          }
+          if (relationship.relationshipType === RelationshipType.ZeroOne) {
+            buffer.push(`  ${fieldName}: ${typeName}`);
+          } else if (
+            relationship.relationshipType === RelationshipType.ZeroOneN
+          ) {
+            buffer.push(
+              `  ${getNameCase(
+                `${fieldName}List`,
+                columnCase
+              )}: [${typeName}!]!`
+            );
+          }
+        }
+      });
   }
 }
 

@@ -2,7 +2,7 @@
 
 > [vuerd-core](https://github.com/vuerd/vuerd-core) plugin ERD Editor
 
-[![npm version](https://img.shields.io/npm/v/vuerd-plugin-erd.svg)](https://www.npmjs.com/package/vuerd-plugin-erd) [![Build Status](https://travis-ci.com/vuerd/vuerd-plugin-erd.svg?branch=master)](https://travis-ci.com/vuerd/vuerd-plugin-erd)
+[![npm version](https://img.shields.io/npm/v/vuerd-plugin-erd.svg?color=blue)](https://www.npmjs.com/package/vuerd-plugin-erd) [![VS Marketplace version](https://vsmarketplacebadge.apphb.com/version-short/dineug.vuerd-vscode.svg?color=blue)](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) [![GitHub](https://img.shields.io/github/license/vuerd/vuerd-plugin-erd)](https://github.com/vuerd/vuerd-plugin-erd/blob/master/LICENSE)
 
 ![vuerd-info](https://user-images.githubusercontent.com/45829489/73578052-08311500-44c2-11ea-88df-cfa83be54eaa.gif)
 ## Multiple selection

@@ -312,16 +312,16 @@ function dataMenuCode(store: StoreManagement): Menu[] {
         },
         {
           id: uuid(),
-          icon: language === Language.cs ? "check" : undefined,
-          name: "C#",
+          icon: language === Language.JPA ? "check" : undefined,
+          name: Language.JPA,
           execute() {
             store.canvasStore.commit(
               CanvasCommit.generatorLanguageChange,
-              Language.cs
+              Language.JPA
             );
             store.eventBus.$emit(Bus.ERD.change);
           },
-          option: { close: false, language: Language.cs }
+          option: { close: false, language: Language.JPA }
         },
         {
           id: uuid(),
@@ -364,16 +364,16 @@ function dataMenuCode(store: StoreManagement): Menu[] {
         },
         {
           id: uuid(),
-          icon: language === Language.JPA ? "check" : undefined,
-          name: Language.JPA,
+          icon: language === Language.cs ? "check" : undefined,
+          name: "C#",
           execute() {
             store.canvasStore.commit(
               CanvasCommit.generatorLanguageChange,
-              Language.JPA
+              Language.cs
             );
             store.eventBus.$emit(Bus.ERD.change);
           },
-          option: { close: false, language: Language.JPA }
+          option: { close: false, language: Language.cs }
         }
       ]
     },
@@ -384,16 +384,16 @@ function dataMenuCode(store: StoreManagement): Menu[] {
       children: [
         {
           id: uuid(),
-          icon: tableCase === Case.none ? "check" : undefined,
-          name: "None",
+          icon: tableCase === Case.pascalCase ? "check" : undefined,
+          name: "Pascal",
           execute() {
             store.canvasStore.commit(
               CanvasCommit.generatorTableCaseChange,
-              Case.none
+              Case.pascalCase
             );
             store.eventBus.$emit(Bus.ERD.change);
           },
-          option: { close: false, tableCase: Case.none }
+          option: { close: false, tableCase: Case.pascalCase }
         },
         {
           id: uuid(),
@@ -410,19 +410,6 @@ function dataMenuCode(store: StoreManagement): Menu[] {
         },
         {
           id: uuid(),
-          icon: tableCase === Case.pascalCase ? "check" : undefined,
-          name: "Pascal",
-          execute() {
-            store.canvasStore.commit(
-              CanvasCommit.generatorTableCaseChange,
-              Case.pascalCase
-            );
-            store.eventBus.$emit(Bus.ERD.change);
-          },
-          option: { close: false, tableCase: Case.pascalCase }
-        },
-        {
-          id: uuid(),
           icon: tableCase === Case.snakeCase ? "check" : undefined,
           name: "Snake",
           execute() {
@@ -433,6 +420,19 @@ function dataMenuCode(store: StoreManagement): Menu[] {
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: { close: false, tableCase: Case.snakeCase }
+        },
+        {
+          id: uuid(),
+          icon: tableCase === Case.none ? "check" : undefined,
+          name: "None",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorTableCaseChange,
+              Case.none
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, tableCase: Case.none }
         }
       ]
     },
@@ -443,16 +443,16 @@ function dataMenuCode(store: StoreManagement): Menu[] {
       children: [
         {
           id: uuid(),
-          icon: columnCase === Case.none ? "check" : undefined,
-          name: "None",
+          icon: columnCase === Case.pascalCase ? "check" : undefined,
+          name: "Pascal",
           execute() {
             store.canvasStore.commit(
               CanvasCommit.generatorColumnCaseChange,
-              Case.none
+              Case.pascalCase
             );
             store.eventBus.$emit(Bus.ERD.change);
           },
-          option: { close: false, columnCase: Case.none }
+          option: { close: false, columnCase: Case.pascalCase }
         },
         {
           id: uuid(),
@@ -469,19 +469,6 @@ function dataMenuCode(store: StoreManagement): Menu[] {
         },
         {
           id: uuid(),
-          icon: columnCase === Case.pascalCase ? "check" : undefined,
-          name: "Pascal",
-          execute() {
-            store.canvasStore.commit(
-              CanvasCommit.generatorColumnCaseChange,
-              Case.pascalCase
-            );
-            store.eventBus.$emit(Bus.ERD.change);
-          },
-          option: { close: false, columnCase: Case.pascalCase }
-        },
-        {
-          id: uuid(),
           icon: columnCase === Case.snakeCase ? "check" : undefined,
           name: "Snake",
           execute() {
@@ -492,6 +479,19 @@ function dataMenuCode(store: StoreManagement): Menu[] {
             store.eventBus.$emit(Bus.ERD.change);
           },
           option: { close: false, columnCase: Case.snakeCase }
+        },
+        {
+          id: uuid(),
+          icon: columnCase === Case.none ? "check" : undefined,
+          name: "None",
+          execute() {
+            store.canvasStore.commit(
+              CanvasCommit.generatorColumnCaseChange,
+              Case.none
+            );
+            store.eventBus.$emit(Bus.ERD.change);
+          },
+          option: { close: false, columnCase: Case.none }
         }
       ]
     }
