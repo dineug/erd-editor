@@ -277,6 +277,7 @@ export default class ERD extends Vue {
   private onMousedownERD(event: MouseEvent) {
     const el = event.target as HTMLElement;
     if (
+      this.canvasType === CanvasType.ERD &&
       !event.ctrlKey &&
       !el.closest(".contextmenu-erd") &&
       !el.closest(".table") &&
@@ -291,6 +292,7 @@ export default class ERD extends Vue {
       this.store.tableStore.commit(TableCommit.tableSelectAllEnd);
       this.store.memoStore.commit(MemoCommit.memoSelectAllEnd);
     } else if (
+      this.canvasType === CanvasType.ERD &&
       event.ctrlKey &&
       !el.closest(".contextmenu-erd") &&
       !el.closest(".table") &&
@@ -336,6 +338,7 @@ export default class ERD extends Vue {
   private onTouchstartERD(event: TouchEvent) {
     const el = event.target as HTMLElement;
     if (
+      this.canvasType === CanvasType.ERD &&
       !el.closest(".contextmenu-erd") &&
       !el.closest(".table") &&
       !el.closest(".memo") &&

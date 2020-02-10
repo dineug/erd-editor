@@ -1,11 +1,11 @@
 import StoreManagement from "@/store/StoreManagement";
-import { Table, Column } from "@/store/table";
-import { getPrimitiveType, getNameCase } from "../GeneratorCodeHelper";
+import { Column, Table } from "@/store/table";
+import { getNameCase, getPrimitiveType } from "../GeneratorCodeHelper";
 import { Database } from "@/data/DataType";
 import { Case } from "@/ts/GeneratorCode";
 import { Relationship, RelationshipType } from "@/store/relationship";
 import { getData } from "@/ts/util";
-import { primaryKeyColumns } from "@/ts/SQLHelper";
+import { primaryKeyColumns, primaryKey } from "@/ts/SQLHelper";
 
 const typescriptType: { [key: string]: string } = {
   int: "Integer",
@@ -66,11 +66,29 @@ class JPA {
         )} implements Serializable {`
       );
       pkColumns.forEach(column => {
-        const columnName = getNameCase(column.name, columnCase);
-        const primitiveType = getPrimitiveType(column.dataType, database);
-        buffer.push(
-          `  private ${typescriptType[primitiveType]} ${columnName};`
-        );
+        if (column.ui.pfk) {
+          (relationships
+            .filter(relationship =>
+              relationship.end.columnIds.some(
+                columnId => columnId === column.id
+              )
+            )
+            .map(relationship => getData(tables, relationship.start.tableId))
+            .filter(table => table !== null) as Table[]).forEach(table => {
+            buffer.push(
+              `  private ${getNameCase(table.name, tableCase)} ${getNameCase(
+                table.name,
+                columnCase
+              )};`
+            );
+          });
+        } else {
+          const columnName = getNameCase(column.name, columnCase);
+          const primitiveType = getPrimitiveType(column.dataType, database);
+          buffer.push(
+            `  private ${typescriptType[primitiveType]} ${columnName};`
+          );
+        }
       });
       buffer.push(`}`);
     }
@@ -105,23 +123,25 @@ class JPA {
     database: Database,
     columnCase: Case
   ) {
-    const columnName = getNameCase(column.name, columnCase);
-    const primitiveType = getPrimitiveType(column.dataType, database);
-    if (column.comment.trim() !== "") {
-      buffer.push(`  // ${column.comment}`);
-    }
-    if (column.option.primaryKey) {
-      buffer.push(`  @Id`);
-      if (column.option.autoIncrement) {
-        buffer.push(`  @GeneratedValue`);
+    if (!column.ui.fk && !column.ui.pfk) {
+      const columnName = getNameCase(column.name, columnCase);
+      const primitiveType = getPrimitiveType(column.dataType, database);
+      if (column.comment.trim() !== "") {
+        buffer.push(`  // ${column.comment}`);
       }
-    } else if (column.option.notNull) {
-      buffer.push(`  @Column(nullable = false)`);
+      if (column.option.primaryKey) {
+        buffer.push(`  @Id`);
+        if (column.option.autoIncrement) {
+          buffer.push(`  @GeneratedValue`);
+        }
+      } else if (column.option.notNull) {
+        buffer.push(`  @Column(nullable = false)`);
+      }
+      if (primitiveType === "lob") {
+        buffer.push(`  @Lob`);
+      }
+      buffer.push(`  private ${typescriptType[primitiveType]} ${columnName};`);
     }
-    if (primitiveType === "lob") {
-      buffer.push(`  @Lob`);
-    }
-    buffer.push(`  private ${typescriptType[primitiveType]} ${columnName};`);
   }
 
   private formatRelation(
@@ -136,14 +156,17 @@ class JPA {
       .filter(relationship => relationship.end.tableId === table.id)
       .forEach(relationship => {
         const startTable = getData(tables, relationship.start.tableId);
-        const endColumns = relationship.end.columnIds.map(
-          columnId => getData(table.columns, columnId) as Column
-        );
+        const endColumns = relationship.end.columnIds
+          .map(columnId => getData(table.columns, columnId))
+          .filter(column => column !== null) as Column[];
         if (startTable && endColumns.length !== 0) {
           const typeName = getNameCase(startTable.name, tableCase);
           const fieldName = getNameCase(startTable.name, columnCase);
           if (startTable.comment.trim() !== "") {
             buffer.push(`  // ${startTable.comment}`);
+          }
+          if (primaryKey(endColumns)) {
+            buffer.push(`  @Id`);
           }
           if (relationship.relationshipType === RelationshipType.ZeroOne) {
             buffer.push(`  @OneToOne`);
@@ -157,14 +180,20 @@ class JPA {
             buffer.push(`  @JoinColumns(value = {`);
             endColumns.forEach((column, index) => {
               buffer.push(
-                `    @JoinColumn(name = "${column.name}")${
-                  endColumns.length - 1 > index ? "," : ""
-                }`
+                `    @JoinColumn(name = "${getNameCase(
+                  column.name,
+                  Case.snakeCase
+                )}")${endColumns.length - 1 > index ? "," : ""}`
               );
             });
             buffer.push(`  })`);
           } else {
-            buffer.push(`  @JoinColumn(name = "${endColumns[0].name}")`);
+            buffer.push(
+              `  @JoinColumn(name = "${getNameCase(
+                endColumns[0].name,
+                Case.snakeCase
+              )}")`
+            );
           }
           buffer.push(`  private ${typeName} ${fieldName};`);
         }

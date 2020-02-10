@@ -25,8 +25,8 @@ export default class TableModel implements Table {
     this.store = store;
     if (table) {
       this.id = table.id;
-      this.name = table.name;
-      this.comment = table.comment;
+      this.name = `${table.name}`;
+      this.comment = `${table.comment}`;
       this.ui = table.ui;
       table.columns.forEach(column =>
         this.columns.push(

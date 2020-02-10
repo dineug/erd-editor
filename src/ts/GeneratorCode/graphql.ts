@@ -79,20 +79,22 @@ class graphql {
     database: Database,
     columnCase: Case
   ) {
-    const columnName = getNameCase(column.name, columnCase);
-    if (column.comment.trim() !== "") {
-      buffer.push(`  # ${column.comment}`);
-    }
-    let idType = column.option.primaryKey || column.ui.fk;
-    if (idType) {
-      buffer.push(`  ${columnName}: ID${column.option.notNull ? "!" : ""}`);
-    } else {
-      const primitiveType = getPrimitiveType(column.dataType, database);
-      buffer.push(
-        `  ${columnName}: ${typescriptType[primitiveType]}${
-          column.option.notNull ? "!" : ""
-        }`
-      );
+    if (!column.ui.fk) {
+      const columnName = getNameCase(column.name, columnCase);
+      if (column.comment.trim() !== "") {
+        buffer.push(`  # ${column.comment}`);
+      }
+      let idType = column.option.primaryKey || column.ui.fk;
+      if (idType) {
+        buffer.push(`  ${columnName}: ID${column.option.notNull ? "!" : ""}`);
+      } else {
+        const primitiveType = getPrimitiveType(column.dataType, database);
+        buffer.push(
+          `  ${columnName}: ${typescriptType[primitiveType]}${
+            column.option.notNull ? "!" : ""
+          }`
+        );
+      }
     }
   }
 

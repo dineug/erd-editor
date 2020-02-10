@@ -21,10 +21,10 @@ export default class ColumnModel implements Column {
     if (data && data.load) {
       const { load } = data;
       this.id = load.id;
-      this.name = load.name;
-      this.comment = load.comment;
-      this.dataType = load.dataType;
-      this.default = load.default;
+      this.name = `${load.name}`;
+      this.comment = `${load.comment}`;
+      this.dataType = `${load.dataType}`;
+      this.default = `${load.default}`;
       this.option = load.option;
       this.ui = load.ui;
     } else if (data && data.copy) {
