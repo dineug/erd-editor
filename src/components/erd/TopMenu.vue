@@ -82,6 +82,8 @@ import { Bus } from "@/ts/EventBus";
 import StoreManagement from "@/store/StoreManagement";
 import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import Help from "./TopMenu/Help.vue";
+import { Subscription, Subject } from "rxjs";
+import { debounceTime } from "rxjs/operators";
 
 @Component({
   components: {
@@ -102,6 +104,8 @@ export default class TopMenu extends Vue {
 
   private search: string = "";
   private help: boolean = false;
+  private search$: Subject<void> = new Subject();
+  private subSearch!: Subscription;
 
   get topMenuStyle(): string {
     const left = this.store.canvasStore.state.scrollLeft;
@@ -143,7 +147,7 @@ export default class TopMenu extends Vue {
   }
 
   private onSearch() {
-    this.store.eventBus.$emit(Bus.TableList.search, this.search);
+    this.search$.next();
   }
 
   private onInputSize(event: Event) {
@@ -179,10 +183,14 @@ export default class TopMenu extends Vue {
 
   private created() {
     this.store.eventBus.$on(Bus.TopMenu.helpStop, this.onHelpStop);
+    this.subSearch = this.search$.pipe(debounceTime(200)).subscribe(() => {
+      this.store.eventBus.$emit(Bus.TableList.search, this.search);
+    });
   }
 
   private destroyed() {
     this.store.eventBus.$off(Bus.TopMenu.helpStop, this.onHelpStop);
+    this.subSearch.unsubscribe();
   }
 
   // ==================== Event Handler END ===================

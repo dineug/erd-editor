@@ -170,7 +170,9 @@ export function columnActive(
   const table = getData(state.tables, tableId);
   if (table) {
     table.columns.forEach(column => {
-      column.ui.active = columnIds.indexOf(column.id) !== -1;
+      if (!column.ui.active) {
+        column.ui.active = columnIds.indexOf(column.id) !== -1;
+      }
     });
   }
 }

@@ -1,5 +1,8 @@
 <template lang="pug">
-  .table-list.scrollbar
+  transition-group.table-list.scrollbar(
+    tag="div"
+    name="table-list"
+  )
     Table(
       v-for="table in tables"
       :key="table.id"
@@ -73,5 +76,10 @@ export default class TableList extends Vue {
   overflow: auto;
   background-color: $color-table;
   opacity: 0.9;
+}
+
+/* animation */
+.table-list-move {
+  transition: transform 0.5s;
 }
 </style>
