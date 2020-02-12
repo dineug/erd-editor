@@ -49,11 +49,9 @@ class ConvertERDToVisualization {
     });
 
     relationships.forEach(relationship => {
-      relationship.end.columnIds.forEach(columnId => {
-        data.links.push({
-          source: relationship.start.tableId,
-          target: columnId
-        });
+      data.links.push({
+        source: relationship.start.tableId,
+        target: relationship.end.tableId
       });
     });
 

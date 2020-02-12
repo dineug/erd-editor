@@ -62,7 +62,7 @@ const chart = data => {
     .selectAll("line")
     .data(links)
     .join("line")
-    .attr("stroke-width", d => Math.sqrt(2));
+    .attr("stroke-width", Math.sqrt(2));
 
   const node = svg
     .append("g")

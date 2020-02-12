@@ -479,10 +479,7 @@ export default class ERD extends Vue {
           event.preventDefault();
           this.onUndo();
         }
-      } else if (
-        this.canvasType === CanvasType.SQL ||
-        this.canvasType === CanvasType.GeneratorCode
-      ) {
+      } else {
         if (event.key === Key.Escape) {
           this.onContextmenuEnd();
         }
