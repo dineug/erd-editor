@@ -239,10 +239,17 @@ export default class Table extends Vue {
 
   private onMousemove(event: MouseEvent) {
     event.preventDefault();
+    let movementX = event.movementX / window.devicePixelRatio;
+    let movementY = event.movementY / window.devicePixelRatio;
+    // firefox
+    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
+      movementX = event.movementX;
+      movementY = event.movementY;
+    }
     this.store.tableStore.commit(Commit.tableMove, {
       table: this.table,
-      x: event.movementX,
-      y: event.movementY,
+      x: movementX,
+      y: movementY,
       event,
       store: this.store
     });
@@ -279,8 +286,15 @@ export default class Table extends Vue {
   }
 
   private onTouchmove(event: TouchEvent) {
-    const movementX = event.touches[0].clientX - this.touchX;
-    const movementY = event.touches[0].clientY - this.touchY;
+    let movementX =
+      (event.touches[0].clientX - this.touchX) / window.devicePixelRatio;
+    let movementY =
+      (event.touches[0].clientY - this.touchY) / window.devicePixelRatio;
+    // firefox
+    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
+      movementX = event.touches[0].clientX - this.touchX;
+      movementY = event.touches[0].clientY - this.touchY;
+    }
     this.touchX = event.touches[0].clientX;
     this.touchY = event.touches[0].clientY;
     this.store.tableStore.commit(Commit.tableMove, {

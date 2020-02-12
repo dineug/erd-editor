@@ -88,8 +88,15 @@ export default class PreviewTarget extends Vue {
     event.preventDefault();
     if (this.$el.parentElement) {
       const ratio = this.store.canvasStore.getters.previewRatio;
-      this.$el.parentElement.scrollTop += event.movementY / ratio;
-      this.$el.parentElement.scrollLeft += event.movementX / ratio;
+      let movementX = event.movementX / window.devicePixelRatio;
+      let movementY = event.movementY / window.devicePixelRatio;
+      // firefox
+      if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
+        movementX = event.movementX;
+        movementY = event.movementY;
+      }
+      this.$el.parentElement.scrollTop += movementY / ratio;
+      this.$el.parentElement.scrollLeft += movementX / ratio;
       this.store.canvasStore.commit(CanvasCommit.canvasMove, {
         scrollTop: this.$el.parentElement.scrollTop,
         scrollLeft: this.$el.parentElement.scrollLeft
@@ -112,8 +119,15 @@ export default class PreviewTarget extends Vue {
   }
 
   private onTouchmove(event: TouchEvent) {
-    const movementX = event.touches[0].clientX - this.touchX;
-    const movementY = event.touches[0].clientY - this.touchY;
+    let movementX =
+      (event.touches[0].clientX - this.touchX) / window.devicePixelRatio;
+    let movementY =
+      (event.touches[0].clientY - this.touchY) / window.devicePixelRatio;
+    // firefox
+    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
+      movementX = event.touches[0].clientX - this.touchX;
+      movementY = event.touches[0].clientY - this.touchY;
+    }
     this.touchX = event.touches[0].clientX;
     this.touchY = event.touches[0].clientY;
     if (this.$el.parentElement) {
