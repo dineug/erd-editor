@@ -80,6 +80,6 @@ export default class TableList extends Vue {
 
 /* animation */
 .table-list-move {
-  transition: transform 0.5s;
+  transition: transform 0.4s;
 }
 </style>
