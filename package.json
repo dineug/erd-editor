@@ -1,6 +1,6 @@
 {
   "name": "vuerd-plugin-erd",
-  "version": "0.3.8",
+  "version": "0.4.0",
   "description": "vuerd-core plugin erd",
   "main": "dist/vuerd-plugin-erd.common.js",
   "typings": "src/types/index.d.ts",
@@ -19,6 +19,7 @@
     "@tweenjs/tween.js": "^18.4.2",
     "change-case": "^4.1.1",
     "core-js": "^3.4.8",
+    "d3": "^5.15.0",
     "dom-to-image": "^2.6.0",
     "highlight.js": "^9.18.0",
     "highlightjs-graphql": "^1.0.1",
@@ -35,6 +36,7 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.25",
     "@fortawesome/free-solid-svg-icons": "^5.11.2",
     "@fortawesome/vue-fontawesome": "^0.1.8",
+    "@mdi/js": "^4.9.95",
     "@types/dom-to-image": "^2.6.0",
     "@types/jest": "^24.0.19",
     "@types/uuid": "^3.4.6",

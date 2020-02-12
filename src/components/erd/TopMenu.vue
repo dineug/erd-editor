@@ -32,6 +32,12 @@
       )
         font-awesome-icon(icon="list" style="width: 16px; height: 16px;")
       li(
+        title="Visualization"
+        :class="{active: canvasType === 'Visualization'}"
+        @click="onCanvasType('Visualization')"
+      )
+        MDIcon(:size="24" :color="canvasType === 'Visualization' ? 'white' : ''") mdi-chart-bubble
+      li(
         title="SQL DDL"
         :class="{active: canvasType === 'SQL'}"
         @click="onCanvasType('SQL')"
@@ -82,12 +88,14 @@ import { Bus } from "@/ts/EventBus";
 import StoreManagement from "@/store/StoreManagement";
 import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import Help from "./TopMenu/Help.vue";
+import MDIcon from "./MDIcon.vue";
 import { Subscription, Subject } from "rxjs";
 import { debounceTime } from "rxjs/operators";
 
 @Component({
   components: {
-    Help
+    Help,
+    MDIcon
   }
 })
 export default class TopMenu extends Vue {

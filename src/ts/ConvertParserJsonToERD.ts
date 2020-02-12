@@ -64,7 +64,7 @@ export interface ParserColumnOption {
   comment?: string;
 }
 
-class ParserJsonConvertERD {
+class ConvertParserJsonToERD {
   public toERD(tables: ParserTable[], database: Database): string {
     let canvasSize = tables.length * 100;
     if (canvasSize < SIZE_CANVAS_MIN) {
@@ -309,4 +309,4 @@ class ParserJsonConvertERD {
   }
 }
 
-export default new ParserJsonConvertERD();
+export default new ConvertParserJsonToERD();

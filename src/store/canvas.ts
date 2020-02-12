@@ -37,7 +37,8 @@ export const enum CanvasType {
   ERD = "ERD",
   SQL = "SQL",
   List = "List",
-  GeneratorCode = "GeneratorCode"
+  GeneratorCode = "GeneratorCode",
+  Visualization = "Visualization"
 }
 
 export interface Show {

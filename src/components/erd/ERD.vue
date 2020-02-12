@@ -84,6 +84,12 @@
       :message="importErrorMessage"
       @close="onImportErrorDDLEnd"
     )
+    Visualization(
+      v-if="canvasType === 'Visualization'"
+      :store="store"
+      :width="width"
+      :height="height"
+    )
 </template>
 
 <script lang="ts">
@@ -117,6 +123,7 @@ import SQL from "./SQL.vue";
 import TableList from "./TableList.vue";
 import GeneratorCode from "./GeneratorCode.vue";
 import ImportErrorDDL from "./ImportErrorDDL.vue";
+import Visualization from "./Visualization.vue";
 
 import { fromEvent, Observable, Subscription } from "rxjs";
 
@@ -133,7 +140,8 @@ import { fromEvent, Observable, Subscription } from "rxjs";
     SQL,
     TableList,
     GeneratorCode,
-    ImportErrorDDL
+    ImportErrorDDL,
+    Visualization
   }
 })
 export default class ERD extends Vue {

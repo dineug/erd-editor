@@ -5,7 +5,7 @@ import { Commit as TableCommit } from "@/store/table";
 // @ts-ignore
 import Parser from "sql-ddl-to-json-schema";
 import { Bus } from "@/ts/EventBus";
-import ParserJsonConvertERD from "./ParserJsonConvertERD";
+import ConvertParserJsonToERD from "./ConvertParserJsonToERD";
 
 class File {
   private exportA = document.createElement("a");
@@ -57,7 +57,7 @@ class File {
             ) {
               try {
                 const tables = this.parserMySQL.feed(value).toCompactJson();
-                const json = ParserJsonConvertERD.toERD(
+                const json = ConvertParserJsonToERD.toERD(
                   tables,
                   this.currentDatabase
                 );
