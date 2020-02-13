@@ -5,7 +5,13 @@ import { Database } from "@/data/DataType";
 import { Case } from "@/ts/GeneratorCode";
 import { Relationship, RelationshipType } from "@/store/relationship";
 import { getData, isData } from "@/ts/util";
-import { primaryKeyColumns, primaryKey } from "@/ts/SQLHelper";
+import {
+  primaryKey,
+  primaryKeyColumns,
+  unique,
+  uniqueColumns,
+  formatNames
+} from "@/ts/SQLHelper";
 
 const typescriptType: { [key: string]: string } = {
   int: "Integer",
@@ -108,6 +114,16 @@ class JPA {
         `@IdClass(${getNameCase(`${table.name}Id`, tableCase)}.class)`
       );
     }
+    // if (unique(table.columns)) {
+    //   const uqColumns = uniqueColumns(table.columns).map(column => {
+    //     return { name: getNameCase(column.name, Case.snakeCase) };
+    //   });
+    //   buffer.push(`@Table(uniqueConstraints = {`);
+    //   buffer.push(`  @UniqueConstraint(`);
+    //   buffer.push(`    columnNames={${formatNames(uqColumns, '"')}}`);
+    //   buffer.push(`  )`);
+    //   buffer.push(`})`);
+    // }
     buffer.push(`public class ${tableName} {`);
     table.columns.forEach(column => {
       this.formatColumn(column, buffer, database, columnCase);

@@ -215,7 +215,9 @@ export function tableOrderByNameASC(state: State) {
 export function tableSort(state: State, store: StoreManagement) {
   log.debug("tableController tableSort");
   const canvasWidth = store.canvasStore.state.width;
-  tableOrderByNameASC(state);
+  state.tables.sort((a, b) => {
+    return a.columns.length - b.columns.length;
+  });
   let widthSum = 50;
   let currentHeight = 50;
   let maxHeight = 50;
