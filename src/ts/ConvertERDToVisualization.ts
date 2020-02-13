@@ -38,7 +38,7 @@ class ConvertERDToVisualization {
         data.nodes.push({
           id: column.id,
           name: column.name,
-          group: this.getGroup(column)
+          group: "column"
         });
         data.links.push({
           source: table.id,
