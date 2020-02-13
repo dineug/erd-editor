@@ -6,8 +6,7 @@
 import StoreManagement from "@/store/StoreManagement";
 import { Commit as CanvasCommit } from "@/store/canvas";
 import ConvertERDToVisualization from "@/ts/ConvertERDToVisualization";
-// @ts-ignore
-import { chart } from "@/ts/Visualization.js";
+import { chart } from "@/ts/Visualization";
 import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 
 const HEIGHT = 1200;

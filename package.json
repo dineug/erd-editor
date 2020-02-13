@@ -37,6 +37,7 @@
     "@fortawesome/free-solid-svg-icons": "^5.11.2",
     "@fortawesome/vue-fontawesome": "^0.1.8",
     "@mdi/js": "^4.9.95",
+    "@types/d3": "^5.7.2",
     "@types/dom-to-image": "^2.6.0",
     "@types/jest": "^24.0.19",
     "@types/uuid": "^3.4.6",
