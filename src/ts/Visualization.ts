@@ -1,6 +1,5 @@
-/**
- * https://observablehq.com/@d3/disjoint-force-directed-graph
- */
+// https://observablehq.com/@d3/disjoint-force-directed-graph
+
 import {
   scaleOrdinal,
   schemeCategory10,
@@ -13,22 +12,23 @@ import {
   forceY,
   create
 } from "d3";
+import { Visualization } from "./ConvertERDToVisualization";
 
 const scale = scaleOrdinal(schemeCategory10);
 
-const drag = simulation => {
-  function dragstarted(d) {
+const drag = (simulation: any): any => {
+  function dragstarted(d: any) {
     if (!event.active) simulation.alphaTarget(0.3).restart();
     d.fx = d.x;
     d.fy = d.y;
   }
 
-  function dragged(d) {
+  function dragged(d: any) {
     d.fx = event.x;
     d.fy = event.y;
   }
 
-  function dragended(d) {
+  function dragended(d: any) {
     if (!event.active) simulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
@@ -40,14 +40,14 @@ const drag = simulation => {
     .on("end", dragended);
 };
 
-const chart = data => {
+const chart = (data: Visualization) => {
   const links = data.links.map(d => Object.create(d));
   const nodes = data.nodes.map(d => Object.create(d));
 
   const simulation = forceSimulation(nodes)
     .force(
       "link",
-      forceLink(links).id(d => d.id)
+      forceLink(links).id((d: any) => d.id)
     )
     .force("charge", forceManyBody())
     .force("x", forceX())

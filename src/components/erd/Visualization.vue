@@ -10,6 +10,8 @@ import ConvertERDToVisualization from "@/ts/ConvertERDToVisualization";
 import { chart } from "@/ts/Visualization.js";
 import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 
+const HEIGHT = 1200;
+
 @Component
 export default class Visualization extends Vue {
   @Prop({ type: Object, default: () => ({}) })
@@ -35,9 +37,9 @@ export default class Visualization extends Vue {
     if (this.svg) {
       this.svg.attr("viewBox", [
         -this.width / 2,
-        -this.height / 2,
+        -HEIGHT / 2,
         this.width,
-        this.height
+        HEIGHT
       ]);
     }
   }
@@ -61,6 +63,7 @@ export default class Visualization extends Vue {
 
 <style scoped lang="scss">
 .erd-visualization {
+  height: 100%;
   overflow: auto;
   background-color: $color-table;
 }

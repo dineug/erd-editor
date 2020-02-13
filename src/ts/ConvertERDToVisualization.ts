@@ -1,21 +1,19 @@
 import StoreManagement from "@/store/StoreManagement";
 
-type Group = "Cited Works" | "Citing Patents";
+export type Group = "Cited Works" | "Citing Patents";
 
-interface Node {
+export interface Node {
   id: string;
   group: Group;
   name: string;
-  radius?: number;
-  citing_patents_count?: number;
 }
 
-interface Link {
+export interface Link {
   source: string;
   target: string;
 }
 
-interface Visualization {
+export interface Visualization {
   nodes: Node[];
   links: Link[];
 }
