@@ -314,15 +314,8 @@ export default class Memo extends Vue {
   }
 
   private onTouchmove(event: TouchEvent) {
-    let movementX =
-      (event.touches[0].clientX - this.touchX) / window.devicePixelRatio;
-    let movementY =
-      (event.touches[0].clientY - this.touchY) / window.devicePixelRatio;
-    // firefox
-    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
-      movementX = event.touches[0].clientX - this.touchX;
-      movementY = event.touches[0].clientY - this.touchY;
-    }
+    const movementX = event.touches[0].clientX - this.touchX;
+    const movementY = event.touches[0].clientY - this.touchY;
     this.touchX = event.touches[0].clientX;
     this.touchY = event.touches[0].clientY;
     this.store.memoStore.commit(Commit.memoMove, {
