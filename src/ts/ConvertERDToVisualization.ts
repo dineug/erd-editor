@@ -1,6 +1,7 @@
 import StoreManagement from "@/store/StoreManagement";
+import { Column } from "@/store/table";
 
-export type Group = "Cited Works" | "Citing Patents";
+export type Group = "table" | "column" | "pk" | "fk" | "pfk";
 
 export interface Node {
   id: string;
@@ -31,13 +32,13 @@ class ConvertERDToVisualization {
       data.nodes.push({
         id: table.id,
         name: table.name,
-        group: "Cited Works"
+        group: "table"
       });
       table.columns.forEach(column => {
         data.nodes.push({
           id: column.id,
           name: column.name,
-          group: "Citing Patents"
+          group: this.getGroup(column)
         });
         data.links.push({
           source: table.id,
@@ -54,6 +55,17 @@ class ConvertERDToVisualization {
     });
 
     return data;
+  }
+
+  private getGroup(column: Column): Group {
+    if (column.ui.pk) {
+      return "pk";
+    } else if (column.ui.fk) {
+      return "fk";
+    } else if (column.ui.pfk) {
+      return "pfk";
+    }
+    return "column";
   }
 }
 
