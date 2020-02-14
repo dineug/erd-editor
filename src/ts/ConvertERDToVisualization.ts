@@ -48,10 +48,19 @@ class ConvertERDToVisualization {
     });
 
     relationships.forEach(relationship => {
-      data.links.push({
-        source: relationship.start.tableId,
-        target: relationship.end.tableId
-      });
+      if (
+        relationship.start.tableId !== relationship.end.tableId &&
+        this.isLink(
+          data.links,
+          relationship.start.tableId,
+          relationship.end.tableId
+        )
+      ) {
+        data.links.push({
+          source: relationship.start.tableId,
+          target: relationship.end.tableId
+        });
+      }
     });
 
     return data;
@@ -66,6 +75,21 @@ class ConvertERDToVisualization {
       return "pfk";
     }
     return "column";
+  }
+
+  private isLink(
+    links: Link[],
+    startTableId: string,
+    endTableId: string
+  ): boolean {
+    let result = true;
+    for (const link of links) {
+      if (link.source === startTableId && link.target === endTableId) {
+        result = false;
+        break;
+      }
+    }
+    return result;
   }
 }
 
