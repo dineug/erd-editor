@@ -27,11 +27,6 @@ export default class Visualization extends Vue {
     this.setViewBox();
   }
 
-  @Watch("height")
-  private watchHeight() {
-    this.setViewBox();
-  }
-
   private setViewBox() {
     if (this.svg) {
       this.svg.attr("viewBox", [

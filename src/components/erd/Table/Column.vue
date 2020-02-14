@@ -89,16 +89,16 @@
 import { SIZE_MIN_WIDTH } from "@/ts/layout";
 import {
   Column as ColumnModel,
-  Table,
+  ColumnTable,
   ColumnWidth,
   Commit as TableCommit,
   Edit,
-  ColumnTable
+  Table
 } from "@/store/table";
 import { ColumnFocus } from "@/models/ColumnFocusModel";
 import { FocusType } from "@/models/TableFocusModel";
 import { Show } from "@/store/canvas";
-import { log, getTextWidth } from "@/ts/util";
+import { getTextWidth, log } from "@/ts/util";
 import StoreManagement from "@/store/StoreManagement";
 import { Bus } from "@/ts/EventBus";
 import { relationshipSort } from "@/store/relationship/relationshipHelper";
@@ -214,12 +214,14 @@ export default class Column extends Vue {
     // this.store.eventBus.$emit(Bus.ERD.input);
   }
 
-  private onEditChangeDataTypeSync() {
+  private onEditChangeDataTypeSync(event: Event) {
     log.debug("Column onEditChangeDataTypeSync");
+    this.onEditInput(event, FocusType.columnDataType);
     this.store.tableStore.commit(TableCommit.columnDataTypeSync, {
       column: this.column,
       store: this.store
     });
+    this.store.eventBus.$emit(Bus.ERD.change);
   }
 
   private onEditBlur() {
