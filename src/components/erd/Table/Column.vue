@@ -216,11 +216,20 @@ export default class Column extends Vue {
 
   private onEditChangeDataTypeSync(event: Event) {
     log.debug("Column onEditChangeDataTypeSync");
-    this.onEditInput(event, FocusType.columnDataType);
+    const input = event.target as HTMLInputElement;
+    let width = getTextWidth(input.value);
+    if (SIZE_MIN_WIDTH > width) {
+      width = SIZE_MIN_WIDTH;
+    }
+    this.column.ui.widthDataType = width;
     this.store.tableStore.commit(TableCommit.columnDataTypeSync, {
       column: this.column,
       store: this.store
     });
+    relationshipSort(
+      this.store.tableStore.state.tables,
+      this.store.relationshipStore.state.relationships
+    );
     this.store.eventBus.$emit(Bus.ERD.change);
   }
 
