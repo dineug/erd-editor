@@ -311,6 +311,9 @@ export default class TableFocusModel implements TableFocus {
         this.currentColumn.option.primaryKey = !this.currentColumn.ui.pk;
         this.currentColumn.ui.pk = !this.currentColumn.ui.pk;
       }
+      if (this.currentColumn.option.primaryKey) {
+        this.currentColumn.option.notNull = true;
+      }
     }
   }
 

@@ -31,7 +31,8 @@ import {
   columnDraggableEnd,
   columnMove,
   columnActive,
-  columnActiveEnd
+  columnActiveEnd,
+  columnDataTypeSync
 } from "./table/columnController";
 import TableFocusModel, {
   TableFocus,
@@ -152,7 +153,8 @@ export const enum Commit {
   columnDraggableEnd = "columnDraggableEnd",
   columnMove = "columnMove",
   columnActive = "columnActive",
-  columnActiveEnd = "columnActiveEnd"
+  columnActiveEnd = "columnActiveEnd",
+  columnDataTypeSync = "columnDataTypeSync"
 }
 
 export function createStore() {
@@ -220,7 +222,8 @@ export function createStore() {
       columnDraggableEnd,
       columnMove,
       columnActive,
-      columnActiveEnd
+      columnActiveEnd,
+      columnDataTypeSync
     },
     actions: {}
   });

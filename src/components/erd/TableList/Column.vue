@@ -33,7 +33,7 @@
       spellcheck="false"
       placeholder="dataType"
       v-model="column.dataType"
-      @change="onChange"
+      @change="onEditChangeDataTypeSync"
       @input="onInput($event, 'columnDataType')"
     )
     input(
@@ -62,11 +62,10 @@ import {
   Commit as TableCommit,
   Table as TableModel
 } from "@/store/table";
-
 import { Commit as RelationshipCommit } from "@/store/relationship";
 import { FocusType } from "@/models/TableFocusModel";
 import { relationshipSort } from "@/store/relationship/relationshipHelper";
-import { getTextWidth } from "@/ts/util";
+import { getTextWidth, log } from "@/ts/util";
 import { Component, Prop, Vue } from "vue-property-decorator";
 
 @Component
@@ -93,6 +92,7 @@ export default class Column extends Vue {
       } else {
         this.column.ui.pk = this.column.option.primaryKey;
       }
+      this.column.option.notNull = true;
     } else {
       if (this.column.ui.pfk) {
         this.column.ui.pfk = false;
@@ -140,6 +140,14 @@ export default class Column extends Vue {
       this.store.relationshipStore.state.relationships
     );
     // this.store.eventBus.$emit(Bus.ERD.input);
+  }
+
+  private onEditChangeDataTypeSync() {
+    this.store.tableStore.commit(TableCommit.columnDataTypeSync, {
+      column: this.column,
+      store: this.store
+    });
+    this.onChange();
   }
 }
 </script>

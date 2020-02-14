@@ -6,6 +6,7 @@ import { FocusType } from "@/models/TableFocusModel";
 import { tableFocusStart, tableEditEnd } from "./tableController";
 import StoreManagement from "@/store/StoreManagement";
 import { relationshipSort } from "@/store/relationship/relationshipHelper";
+import { getDataTypeSyncColumns } from "./columnHelper";
 
 export function columnAdd(
   state: State,
@@ -183,4 +184,23 @@ export function columnActiveEnd(state: State, tableId: string) {
   if (table) {
     table.columns.forEach(column => (column.ui.active = false));
   }
+}
+
+export function columnDataTypeSync(
+  state: State,
+  payload: { column: Column; store: StoreManagement }
+) {
+  log.debug("columnController columnDataTypeSync");
+  const { column, store } = payload;
+  const syncColumns = getDataTypeSyncColumns(
+    [column],
+    store.tableStore.state.tables,
+    store.relationshipStore.state.relationships
+  );
+  syncColumns.forEach(syncColumn => {
+    if (syncColumn.id !== column.id) {
+      syncColumn.dataType = column.dataType;
+      syncColumn.ui.widthDataType = column.ui.widthDataType;
+    }
+  });
 }

@@ -80,7 +80,7 @@ export default class ColumnDataType extends Vue {
   }
 
   private onChange(event: Event) {
-    this.$emit("input", event);
+    this.$emit("change", event);
   }
 
   private onBlur(event: Event) {

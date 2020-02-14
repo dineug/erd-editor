@@ -35,6 +35,7 @@
         :width="columnWidth.dataType"
         @blur="onEditBlur"
         @input="onEditInput($event, 'columnDataType')"
+        @change="onEditChangeDataTypeSync"
         @mousedown="onFocus($event, 'columnDataType')"
         @dblclick="onDblclick($event, 'columnDataType')"
       )
@@ -97,7 +98,6 @@ import {
 import { ColumnFocus } from "@/models/ColumnFocusModel";
 import { FocusType } from "@/models/TableFocusModel";
 import { Show } from "@/store/canvas";
-
 import { log, getTextWidth } from "@/ts/util";
 import StoreManagement from "@/store/StoreManagement";
 import { Bus } from "@/ts/EventBus";
@@ -212,6 +212,14 @@ export default class Column extends Vue {
       this.store.relationshipStore.state.relationships
     );
     // this.store.eventBus.$emit(Bus.ERD.input);
+  }
+
+  private onEditChangeDataTypeSync() {
+    log.debug("Column onEditChangeDataTypeSync");
+    this.store.tableStore.commit(TableCommit.columnDataTypeSync, {
+      column: this.column,
+      store: this.store
+    });
   }
 
   private onEditBlur() {
