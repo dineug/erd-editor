@@ -72,6 +72,7 @@ export default class Column extends Vue {
 
 <style scoped lang="scss">
 li.preview-column {
+  height: $size-column-height;
   cursor: default;
 
   div {
