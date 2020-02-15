@@ -6,12 +6,14 @@
         .table-button
       .table-header-body
         span.table-name(
+          :class="{placeholder: table.name.trim() === ''}"
           :style="`width: ${table.ui.widthName}px;`"
-        ) {{table.name}}
+        ) {{table.name.trim() === '' ? 'table' : table.name}}
         span.table-comment(
           v-if="show.tableComment"
+          :class="{placeholder: table.comment.trim() === ''}"
           :style="`width: ${table.ui.widthComment}px;`"
-        ) {{table.comment}}
+        ) {{table.comment.trim() === '' ? 'comment' : table.comment}}
       ul.table-body
         Column(
           v-for="column in table.columns"
@@ -88,6 +90,10 @@ export default class Table extends Vue {
         margin-right: $size-margin-right;
         border-bottom: solid $color-opacity $size-border-bottom;
         color: $color-font-active;
+      }
+
+      .placeholder {
+        color: $color-font-placeholder;
       }
     }
   }
