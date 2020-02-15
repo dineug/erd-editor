@@ -58,6 +58,8 @@ export default class Column extends Vue {
   @Prop({ type: Object, default: () => ({}) })
   private column!: ColumnModel;
 
+  private SIZE_COLUMN_OPTION_NN = SIZE_COLUMN_OPTION_NN;
+
   get show(): Show {
     return this.store.canvasStore.state.show;
   }
