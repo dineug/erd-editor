@@ -13,14 +13,19 @@ import {
   create
 } from "d3";
 import { Visualization } from "./ConvertERDToVisualization";
+import StoreManagement from "@/store/StoreManagement";
+import { Bus } from "@/ts/EventBus";
+import { Table } from "@/store/table";
+import { getData } from "./util";
 
 const scale = scaleOrdinal(schemeCategory10);
 
-const drag = (simulation: any): any => {
+function drag(simulation: any, store: StoreManagement): any {
   function dragstarted(d: any) {
     if (!event.active) simulation.alphaTarget(0.3).restart();
     d.fx = d.x;
     d.fy = d.y;
+    store.eventBus.$emit(Bus.Visualization.dragStart);
   }
 
   function dragged(d: any) {
@@ -32,15 +37,16 @@ const drag = (simulation: any): any => {
     if (!event.active) simulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
+    store.eventBus.$emit(Bus.Visualization.dragEnd);
   }
 
   return d3drag()
     .on("start", dragstarted)
     .on("drag", dragged)
     .on("end", dragended);
-};
+}
 
-const chart = (data: Visualization) => {
+function chart(data: Visualization, store: StoreManagement) {
   const links = data.links.map(d => Object.create(d));
   const nodes = data.nodes.map(d => Object.create(d));
 
@@ -73,9 +79,26 @@ const chart = (data: Visualization) => {
     .join("circle")
     .attr("r", 5)
     .attr("fill", d => scale(d.group))
-    .call(drag(simulation));
+    .call(drag(simulation, store));
 
-  node.append("title").text(d => d.name);
+  node.on("mouseover", d => {
+    const node = data.nodes[d.index];
+    let table: Table | null = null;
+    let columnId: string = "";
+    if (node.group === "table") {
+      table = getData(store.tableStore.state.tables, node.id);
+    } else if (node.group === "column" && node.tableId) {
+      table = getData(store.tableStore.state.tables, node.tableId);
+      columnId = node.id;
+    }
+    store.eventBus.$emit(Bus.Visualization.previewStart, {
+      table,
+      columnId
+    });
+  });
+  node.on("mouseleave", () => {
+    store.eventBus.$emit(Bus.Visualization.previewEnd);
+  });
 
   simulation.on("tick", () => {
     link
@@ -88,6 +111,6 @@ const chart = (data: Visualization) => {
   });
 
   return svg;
-};
+}
 
 export { chart };

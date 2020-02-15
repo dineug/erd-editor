@@ -96,6 +96,13 @@ enum TopMenu {
   helpStop = "TopMenu.helpStop"
 }
 
+enum Visualization {
+  dragStart = "Visualization.dragStart",
+  dragEnd = "Visualization.dragEnd",
+  previewStart = "Visualization.previewStart",
+  previewEnd = "Visualization.previewEnd"
+}
+
 export const Bus = {
   Table,
   Memo,
@@ -103,7 +110,8 @@ export const Bus = {
   ColumnDataType,
   DataTypeHint,
   TableList,
-  TopMenu
+  TopMenu,
+  Visualization
 };
 
 export default EventBus;

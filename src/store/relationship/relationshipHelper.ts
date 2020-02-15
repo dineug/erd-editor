@@ -165,7 +165,7 @@ interface Circle {
   cy: number;
 }
 
-interface Coordinate {
+export interface Coordinate {
   width: number;
   height: number;
   top: Point;
@@ -229,7 +229,7 @@ interface RelationshipOrder {
   distance: number;
 }
 
-function getCoordinate(table: Table): Coordinate {
+export function getCoordinate(table: Table): Coordinate {
   const width = table.width() + TABLE_PADDING;
   const height = table.height() + TABLE_PADDING;
   const ui = table.ui;

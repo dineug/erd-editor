@@ -34,30 +34,6 @@ export default class Table extends Vue {
   padding: $size-table-padding;
   font-size: $size-font + 2;
   cursor: default;
-
-  /*  .table-header {
-    .table-header-top {
-      overflow: hidden;
-
-      .table-button {
-        margin-left: 5px;
-        float: right;
-      }
-    }
-
-    .table-header-body {
-      height: $size-table-header-height;
-
-      .table-name,
-      .table-comment {
-        display: inline-flex;
-        align-items: center;
-        margin-right: $size-margin-right;
-        border-bottom: solid $color-opacity $size-border-bottom;
-        color: $color-font-active;
-      }
-    }
-  }*/
 }
 
 ul,

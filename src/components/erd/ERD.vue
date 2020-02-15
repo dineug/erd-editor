@@ -24,6 +24,8 @@
       v-if="canvasType === 'ERD'"
       :store="store"
       :focus="focus"
+      :width="width"
+      :height="height"
       ref="canvas"
     )
     RelationshipDraw(

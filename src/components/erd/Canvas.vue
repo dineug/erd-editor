@@ -31,7 +31,8 @@ import { Memo as MemoModel } from "@/store/memo";
 import { Relationship as RelationshipModel } from "@/store/relationship";
 import { Show } from "@/store/canvas";
 import StoreManagement from "@/store/StoreManagement";
-import { Component, Prop, Vue } from "vue-property-decorator";
+import { virtualTable } from "@/store/table/tableHelper";
+import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import Table from "./Table.vue";
 import Memo from "./Memo.vue";
 import Relationship from "./Relationship.vue";
@@ -48,6 +49,10 @@ export default class Canvas extends Vue {
   private store!: StoreManagement;
   @Prop({ type: Boolean, default: false })
   private focus!: boolean;
+  @Prop({ type: Number, default: 0 })
+  private width!: number;
+  @Prop({ type: Number, default: 0 })
+  private height!: number;
 
   get canvasStyle(): string {
     const option = this.store.canvasStore.state;
@@ -58,6 +63,22 @@ export default class Canvas extends Vue {
   }
 
   get tables(): TableModel[] {
+    // === Virtual table rendering slow ===
+    // const minX = this.store.canvasStore.state.scrollLeft;
+    // const minY = this.store.canvasStore.state.scrollTop;
+    // const maxX = minX + this.width;
+    // const maxY = minY + this.height;
+    // return this.store.tableStore.state.tables.filter(table =>
+    //   virtualTable(
+    //     {
+    //       minX,
+    //       minY,
+    //       maxX,
+    //       maxY
+    //     },
+    //     table
+    //   )
+    // );
     return this.store.tableStore.state.tables;
   }
 

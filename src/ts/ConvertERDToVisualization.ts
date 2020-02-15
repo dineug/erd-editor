@@ -7,6 +7,7 @@ export interface Node {
   id: string;
   group: Group;
   name: string;
+  tableId?: string;
 }
 
 export interface Link {
@@ -38,7 +39,8 @@ class ConvertERDToVisualization {
         data.nodes.push({
           id: column.id,
           name: column.name,
-          group: "column"
+          group: "column",
+          tableId: table.id
         });
         data.links.push({
           source: table.id,
