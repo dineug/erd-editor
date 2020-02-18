@@ -20,7 +20,7 @@
 
 ## Document
 
-- [Live Demo](https://vuerd.github.io/vuerd-docs/iframe.html?id=demo-live--vuerd)
+- [Live Demo](https://vuerd.github.io/vuerd/)
 - [vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
 
 ## Prop
