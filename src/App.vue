@@ -37,13 +37,13 @@ export default class App extends Vue {
     this.height = window.innerHeight;
   }
 
-  private callback() {
+  private hasUndoRedo() {
     this.undo = this.undoManager.hasUndo();
     this.redo = this.undoManager.hasRedo();
   }
 
   private onChange(value: string) {
-    if (this.value !== value) {
+    if (this.value !== "" && this.value !== value) {
       const oldValue = this.value;
       this.undoManager.add({
         undo: () => {
@@ -66,7 +66,7 @@ export default class App extends Vue {
   }
 
   private created() {
-    this.undoManager.setCallback(this.callback);
+    this.undoManager.setCallback(this.hasUndoRedo);
   }
 
   private mounted() {

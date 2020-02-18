@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>vuerd demo</title>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.css"
+    />
+    <style>
+      body {
+        margin: 0;
+      }
+      #app {
+        overflow: hidden;
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <vuerd
+        :focus="true"
+        :undo="undo"
+        :redo="redo"
+        :width="width"
+        :height="height"
+        :value="value"
+        @change="onChange"
+        @undo="onUndo"
+        @redo="onRedo"
+      />
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/undo-manager"></script>
+    <script>
+      const Vuerd = window.vuerd.default;
+      Vue.component("Vuerd", Vuerd);
+      new Vue({
+        el: "#app",
+        data: () => ({
+          width: 2000,
+          height: 2000,
+          value: "",
+          undo: false,
+          redo: false,
+          undoManager: new UndoManager()
+        }),
+        methods: {
+          onResize() {
+            this.width = window.innerWidth;
+            this.height = window.innerHeight;
+          },
+          hasUndoRedo() {
+            this.undo = this.undoManager.hasUndo();
+            this.redo = this.undoManager.hasRedo();
+          },
+          onChange(value) {
+            if (this.value !== "" && this.value !== value) {
+              const oldValue = this.value;
+              this.undoManager.add({
+                undo: () => {
+                  this.value = oldValue;
+                },
+                redo: () => {
+                  this.value = value;
+                }
+              });
+            }
+            this.value = value;
+          },
+          onUndo() {
+            this.undoManager.undo();
+          },
+          onRedo() {
+            this.undoManager.redo();
+          }
+        },
+        created() {
+          this.undoManager.setCallback(this.hasUndoRedo);
+        },
+        mounted() {
+          window.addEventListener("resize", this.onResize);
+          window.dispatchEvent(new Event("resize"));
+          // only mounted save data load
+          this.value = "";
+        },
+        destroyed() {
+          window.removeEventListener("resize", this.onResize);
+        }
+      });
+    </script>
+  </body>
+</html>
