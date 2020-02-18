@@ -1,8 +1,8 @@
-# vuerd-plugin-erd  
+# vuerd  
 
-> [vuerd-core](https://github.com/vuerd/vuerd-core) plugin ERD Editor
+> ERD Editor
 
-[![npm version](https://img.shields.io/npm/v/vuerd-plugin-erd.svg?color=blue)](https://www.npmjs.com/package/vuerd-plugin-erd) [![VS Marketplace version](https://vsmarketplacebadge.apphb.com/version-short/dineug.vuerd-vscode.svg?color=blue)](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) [![GitHub](https://img.shields.io/github/license/vuerd/vuerd-plugin-erd)](https://github.com/vuerd/vuerd-plugin-erd/blob/master/LICENSE)
+[![npm version](https://img.shields.io/npm/v/vuerd.svg?color=blue)](https://www.npmjs.com/package/vuerd) [![VS Marketplace version](https://vsmarketplacebadge.apphb.com/version-short/dineug.vuerd-vscode.svg?color=blue)](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) [![GitHub](https://img.shields.io/github/license/vuerd/vuerd)](https://github.com/vuerd/vuerd/blob/master/LICENSE)
 
 ![vuerd-info](https://user-images.githubusercontent.com/45829489/73578052-08311500-44c2-11ea-88df-cfa83be54eaa.gif)
 ## Multiple selection
@@ -36,18 +36,18 @@
 ## Component
 ### Install
 ```bash
-$ yarn add vuerd-plugin-erd
+$ yarn add vuerd
 $ yarn add undo-manager
 or
-$ npm install vuerd-plugin-erd
+$ npm install vuerd
 $ npm install undo-manager
 ```
 ### Usage
 ```js
 // main.js or main.ts
 import Vue from 'vue';
-import {Vuerd} from 'vuerd-plugin-erd';
-import 'vuerd-plugin-erd/dist/vuerd-plugin-erd.css';
+import Vuerd from 'vuerd';
+import 'vuerd/dist/vuerd.css';
 Vue.component('Vuerd', Vuerd);
 ```
 ```html
@@ -86,8 +86,8 @@ Vue.component('Vuerd', Vuerd);
         this.height = window.innerHeight
       },
       callback() {
-        this.undo = this.undoManager.hasUndo();
-        this.redo = this.undoManager.hasRedo();
+        this.undo = this.undoManager.hasUndo()
+        this.redo = this.undoManager.hasRedo()
       },
       onChange(value) {
         if (this.value !== value) {
@@ -143,7 +143,7 @@ Vue.component('Vuerd', Vuerd);
 <html>
 <head>
   <title>vuerd-core demo</title>
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/vuerd-plugin-erd/dist/vuerd-plugin-erd.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.css">
   <style>
     body {
       margin: 0;
@@ -165,9 +165,9 @@ Vue.component('Vuerd', Vuerd);
      />
   </div>
   <script src="https://cdn.jsdelivr.net/npm/vue"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vuerd-plugin-erd/dist/vuerd-plugin-erd.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.umd.min.js"></script>
   <script>
-    const Vuerd = window['vuerd-plugin-erd'].Vuerd
+    const Vuerd = window['vuerd'].default
     Vue.component('Vuerd', Vuerd)
     new Vue({
       el: '#app',
@@ -201,75 +201,6 @@ Vue.component('Vuerd', Vuerd);
 </html>
 ```
 
-
-## vuerd-core plugin
-### Install
-```bash
-$ yarn add vuerd-core
-$ yarn add vuerd-plugin-erd
-or
-$ npm install vuerd-core
-$ npm install vuerd-plugin-erd
-```
-
-### Usage
-```js
-// main.js or main.ts
-import Vue from 'vue';
-import VuerdCore from 'vuerd-core';
-import ERD from 'vuerd-plugin-erd';
-import 'vuerd-core/dist/vuerd-core.css';
-import 'vuerd-plugin-erd/dist/vuerd-plugin-erd.css';
-VuerdCore.use(ERD, /* option */);
-Vue.use(VuerdCore);
-```
-```html
-<vuerd-core />
-```
-
-### CDN Quick Start
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <title>vuerd-core demo</title>
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/vuerd-core/dist/vuerd-core.css">
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/vuerd-plugin-erd/dist/vuerd-plugin-erd.css">
-</head>
-<body>
-  <div id="app">
-    <vuerd-core />
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/vue"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vuerd-core/dist/vuerd-core.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vuerd-plugin-erd/dist/vuerd-plugin-erd.umd.min.js"></script>
-  <script>
-    const VuerdCore = window['vuerd-core'].default
-    const ERD = window['vuerd-plugin-erd'].default
-    VuerdCore.use(ERD)
-    Vue.use(VuerdCore)
-    new Vue({
-      el: '#app'
-    })
-  </script>
-</body>
-</html>
-```
-
-### Option interface
-```typescript
-export interface Option {
-  scope?: string[] | RegExp[];
-  exclude?: string[] | RegExp[];
-}
-```
-
-### Option
-| Name | Type | Default | Describe |
-| --- | --- | --- | --- |
-| scope | [String \| RegExp] | ["vuerd"] | file designation(string extension) |
-| exclude | [String \| RegExp] |  | exception file designation(string extension) |
-
 ## Editor Action
 | Name                            | Action                                                   |
 | ------------------------------- | -------------------------------------------------------- |
@@ -295,4 +226,4 @@ export interface Option {
 | All Action Stop                 | ESC                                                      |
 
 ## License
-[MIT](https://github.com/vuerd/vuerd-plugin-erd/blob/master/LICENSE)
+[MIT](https://github.com/vuerd/vuerd/blob/master/LICENSE)

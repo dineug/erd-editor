@@ -1,12 +1,12 @@
 {
-  "name": "vuerd-plugin-erd",
-  "version": "0.4.5",
-  "description": "vuerd-core plugin erd",
-  "main": "dist/vuerd-plugin-erd.common.js",
+  "name": "vuerd",
+  "version": "0.4.6",
+  "description": "ERD Editor",
+  "main": "dist/vuerd.common.js",
   "typings": "src/types/index.d.ts",
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build --target lib --name vuerd-plugin-erd src/components/index.ts",
+    "build": "vue-cli-service build --target lib --name vuerd src/components/index.ts",
     "test:unit": "vue-cli-service test:unit",
     "lint": "vue-cli-service lint"
   },
@@ -29,7 +29,6 @@
     "vue": "^2.6.10",
     "vue-class-component": "^7.1.0",
     "vue-property-decorator": "^8.3.0",
-    "vuerd-core": "^0.4.9",
     "vuex": "^3.1.2"
   },
   "devDependencies": {
@@ -59,6 +58,7 @@
     "pug": "^2.0.4",
     "sass-loader": "^8.0.0",
     "typescript": "~3.5.3",
+    "undo-manager": "^1.0.5",
     "vue-cli-plugin-pug": "^1.0.7",
     "vue-template-compiler": "^2.6.10"
   },
@@ -71,7 +71,6 @@
     "vuejs",
     "vuerd",
     "editor",
-    "vuerd plugin",
     "erd",
     "db",
     "database"

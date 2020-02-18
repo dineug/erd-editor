@@ -1475,11 +1475,6 @@
     "@types/istanbul-lib-coverage" "*"
     "@types/istanbul-lib-report" "*"
 
-"@types/jasmine@^3.3.8":
-  version "3.4.1"
-  resolved "https://registry.yarnpkg.com/@types/jasmine/-/jasmine-3.4.1.tgz#214496efdd7870f133051a95d1692f9cc0730ee7"
-  integrity sha512-kA2/srq6lb/kiczw+l/yW7lKdAN9Ae5A/pp1bhu8RBzhYY/ybc1hwav3sWrPyAwSRcAS95NVB0uZdM62qT75EA==
-
 "@types/jest@^24.0.19":
   version "24.0.23"
   resolved "https://registry.yarnpkg.com/@types/jest/-/jest-24.0.23.tgz#046f8e2ade026fe831623e361a36b6fb9a4463e4"
@@ -5486,11 +5481,6 @@ getpass@^0.1.1:
   dependencies:
     assert-plus "^1.0.0"
 
-github-markdown-css@^3.0.1:
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/github-markdown-css/-/github-markdown-css-3.0.1.tgz#d08db1060d2e182025e0d07d547cfe2afed30205"
-  integrity sha512-9G5CIPsHoyk5ObDsb/H4KTi23J8KE1oDd4KYU51qwqeM+lKWAiO7abpSgCkyWswgmSKBiuE7/4f8xUz7f2qAiQ==
-
 glob-parent@^3.1.0:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/glob-parent/-/glob-parent-3.1.0.tgz#9e6af6299d8d3bd2bd40430832bd113df906c5ae"
@@ -5722,11 +5712,6 @@ hex-color-regex@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/hex-color-regex/-/hex-color-regex-1.1.0.tgz#4c06fccb4602fe2602b3c93df82d7e7dbf1a8a8e"
   integrity sha512-l9sfDFsuqtOqKDsQdqrMRk0U85RZc0RtOR9yPI7mRVOa4FsR/BVnZ0shmQRM96Ji99kYZP/7hn1cedc1+ApsTQ==
-
-highlight.js@^9.16.2:
-  version "9.16.2"
-  resolved "https://registry.yarnpkg.com/highlight.js/-/highlight.js-9.16.2.tgz#68368d039ffe1c6211bcc07e483daf95de3e403e"
-  integrity sha512-feMUrVLZvjy0oC7FVJQcSQRqbBq9kwqnYE4+Kj9ZjbHh3g+BisiPgF49NyQbVLNdrL/qqZr3Ca9yOKwgn2i/tw==
 
 highlight.js@^9.18.0:
   version "9.18.0"
@@ -7433,11 +7418,6 @@ map-visit@^1.0.0:
   integrity sha1-7Nyo8TFE5mDxtb1B8S80edmN+48=
   dependencies:
     object-visit "^1.0.0"
-
-marked@^0.7.0:
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/marked/-/marked-0.7.0.tgz#b64201f051d271b1edc10a04d1ae9b74bb8e5c0e"
-  integrity sha512-c+yYdCZJQrsRjTPhUx7VKkApw9bwDkNbHUKo1ovgcfDjb2kc8rLuRbIFyXL5WOEUwzSSKo3IXpph2K6DqB/KZg==
 
 md5.js@^1.3.4:
   version "1.3.5"
@@ -11381,13 +11361,6 @@ void-elements@^2.0.1:
   resolved "https://registry.yarnpkg.com/void-elements/-/void-elements-2.0.1.tgz#c066afb582bb1cb4128d60ea92392e94d5e9dbec"
   integrity sha1-wGavtYK7HLQSjWDqkjkulNXp2+w=
 
-vscode-icons-js@^9.3.0:
-  version "9.3.0"
-  resolved "https://registry.yarnpkg.com/vscode-icons-js/-/vscode-icons-js-9.3.0.tgz#7f07d5bb6fdf611e2a9a30796f5cc3ffed919c76"
-  integrity sha512-yUGnl/ikSIGgoI3LJef4Q86LZOpoQn2a1Jc67GPKP1k2GK/v93xY9yI0vF1sBImPuRf/KfiWal/a7xhQ0pR94Q==
-  dependencies:
-    "@types/jasmine" "^3.3.8"
-
 vue-class-component@^7.1.0:
   version "7.1.0"
   resolved "https://registry.yarnpkg.com/vue-class-component/-/vue-class-component-7.1.0.tgz#b33efcb10e17236d684f70b1e96f1946ec793e87"
@@ -11478,25 +11451,6 @@ vue@^2.6.10:
   version "2.6.10"
   resolved "https://registry.yarnpkg.com/vue/-/vue-2.6.10.tgz#a72b1a42a4d82a721ea438d1b6bf55e66195c637"
   integrity sha512-ImThpeNU9HbdZL3utgMCq0oiMzAkt1mcgy3/E6zWC/G6AaQoeuFdsl9nDhTDU3X1R6FK7nsIUuRACVcjI+A2GQ==
-
-vuerd-core@^0.4.9:
-  version "0.4.9"
-  resolved "https://registry.yarnpkg.com/vuerd-core/-/vuerd-core-0.4.9.tgz#5f3932b036b4c58d0a7fdc61ccd68606254d9cc0"
-  integrity sha512-RcamFQXO1Xm0eflCZna994WA6OJd35RWDbFQW1sRzbTe+Pf7bTklB1vN6bvL5GkoFSm74TZc9Y+y3mKa+EsTjw==
-  dependencies:
-    "@tweenjs/tween.js" "^18.4.2"
-    core-js "^3.4.8"
-    github-markdown-css "^3.0.1"
-    highlight.js "^9.16.2"
-    marked "^0.7.0"
-    rxjs "^6.5.3"
-    undo-manager "^1.0.5"
-    uuid "^3.3.3"
-    vscode-icons-js "^9.3.0"
-    vue "^2.6.10"
-    vue-class-component "^7.1.0"
-    vue-property-decorator "^8.3.0"
-    vuex "^3.1.2"
 
 vuex@^3.1.2:
   version "3.1.2"
