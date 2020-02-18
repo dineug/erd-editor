@@ -11,9 +11,9 @@
     "lint": "vue-cli-service lint"
   },
   "author": "dineug <dineug2@gmail.com>",
-  "homepage": "https://github.com/vuerd/vuerd-plugin-erd",
-  "bugs": "https://github.com/vuerd/vuerd-plugin-erd/issues",
-  "repository": "https://github.com/vuerd/vuerd-plugin-erd.git",
+  "homepage": "https://github.com/vuerd/vuerd",
+  "bugs": "https://github.com/vuerd/vuerd/issues",
+  "repository": "https://github.com/vuerd/vuerd.git",
   "license": "MIT",
   "dependencies": {
     "@tweenjs/tween.js": "^18.4.2",
