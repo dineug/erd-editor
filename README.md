@@ -130,7 +130,7 @@ Vue.component("Vuerd", Vuerd);
     mounted() {
       window.addEventListener("resize", this.onResize);
       window.dispatchEvent(new Event("resize"));
-      // only mounted save data load
+      // save data load
       this.value = "";
     },
     destroyed() {
@@ -238,7 +238,7 @@ Vue.component("Vuerd", Vuerd);
         mounted() {
           window.addEventListener("resize", this.onResize);
           window.dispatchEvent(new Event("resize"));
-          // only mounted save data load
+          // save data load
           this.value = "";
         },
         destroyed() {

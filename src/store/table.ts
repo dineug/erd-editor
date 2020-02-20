@@ -166,7 +166,6 @@ export function createStore() {
       copyColumns: [],
       columnDraggable: null
     },
-    getters: {},
     mutations: {
       init(state: State) {
         const initData = dataInit() as any;
@@ -224,7 +223,6 @@ export function createStore() {
       columnActive,
       columnActiveEnd,
       columnDataTypeSync
-    },
-    actions: {}
+    }
   });
 }

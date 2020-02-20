@@ -1,6 +1,6 @@
 {
   "name": "vuerd",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "ERD Editor",
   "main": "dist/vuerd.common.js",
   "typings": "src/types/index.d.ts",

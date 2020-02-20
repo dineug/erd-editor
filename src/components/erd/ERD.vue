@@ -258,6 +258,7 @@ export default class ERD extends Vue {
       this.currentValue = this.store.value;
       this.$emit("change", this.currentValue);
     } else if (this.currentValue !== value) {
+      this.currentValue = value;
       this.store.load(value);
     }
     this.onScroll();

@@ -139,7 +139,6 @@ export function createStore() {
       generatorLanguageChange,
       generatorTableCaseChange,
       generatorColumnCaseChange
-    },
-    actions: {}
+    }
   });
 }

@@ -71,7 +71,7 @@ export default class StoreManagement {
       (key, value) => {
         if (key === "store") {
           return undefined;
-        } else if (key === "columnDraggable") {
+        } else if (key === "columnDraggable" || key === "draw") {
           return null;
         }
         return value;

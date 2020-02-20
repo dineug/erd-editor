@@ -97,7 +97,6 @@ export function createStore() {
       relationships: [],
       draw: null
     },
-    getters: {},
     mutations: {
       init(state: State) {
         const initData = dataInit() as any;
@@ -128,7 +127,6 @@ export function createStore() {
       relationshipRemoveColumn,
       relationshipActive,
       relationshipActiveEnd
-    },
-    actions: {}
+    }
   });
 }

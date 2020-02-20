@@ -51,7 +51,6 @@ export function createStore() {
     state: {
       memos: []
     },
-    getters: {},
     mutations: {
       init(state: State) {
         const initData = dataInit() as any;
@@ -77,7 +76,6 @@ export function createStore() {
       memoSelectAll,
       memoSelectAllEnd,
       memoMultipleSelect
-    },
-    actions: {}
+    }
   });
 }
