@@ -5,23 +5,24 @@
 [![npm version](https://img.shields.io/npm/v/vuerd.svg?color=blue)](https://www.npmjs.com/package/vuerd) [![VS Marketplace version](https://vsmarketplacebadge.apphb.com/version-short/dineug.vuerd-vscode.svg?color=blue)](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) [![GitHub](https://img.shields.io/github/license/vuerd/vuerd)](https://github.com/vuerd/vuerd/blob/master/LICENSE)
 
 ## ERD
-![vuerd](https://vuerd.github.io/vuerd/vuerd-erd.gif)
+
+![vuerd-erd](https://user-images.githubusercontent.com/45829489/75112083-c55afb00-5683-11ea-9bff-4532158fe604.gif)
 
 ## SQL DDL
 
-![vuerd](https://vuerd.github.io/vuerd/vuerd-ddl.gif)
+![vuerd-ddl](https://user-images.githubusercontent.com/45829489/75112091-d146bd00-5683-11ea-9793-f925f55e3ea4.gif)
 
 ## Generator Code
 
-![vuerd](https://vuerd.github.io/vuerd/vuerd-generator-code.gif)
+![vuerd-generator-code](https://user-images.githubusercontent.com/45829489/75112094-dad02500-5683-11ea-8d23-3fb8930f0bfe.gif)
 
 ## Visualization
 
-![vuerd](https://vuerd.github.io/vuerd/vuerd-visualization.gif)
+![vuerd-visualization](https://user-images.githubusercontent.com/45829489/75112098-e6235080-5683-11ea-913e-314dbb1010bc.gif)
 
 ## SQL DDL Import
 
-![vuerd](https://vuerd.github.io/vuerd/vuerd-ddl-import.gif)
+![vuerd-ddl-import](https://user-images.githubusercontent.com/45829489/75112104-f0454f00-5683-11ea-9a59-cecb08de0735.gif)
 
 ## Document
 
