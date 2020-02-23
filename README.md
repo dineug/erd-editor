@@ -6,23 +6,23 @@
 
 ## ERD
 
-![vuerd](https://user-images.githubusercontent.com/45829489/75112083-c55afb00-5683-11ea-9bff-4532158fe604.gif)
+![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-erd.gif?raw=true)
 
 ## SQL DDL
 
-![vuerd](https://user-images.githubusercontent.com/45829489/75112091-d146bd00-5683-11ea-9793-f925f55e3ea4.gif)
+![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-ddl.gif?raw=true)
 
 ## Generator Code
 
-![vuerd](https://user-images.githubusercontent.com/45829489/75112094-dad02500-5683-11ea-8d23-3fb8930f0bfe.gif)
+![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-generator-code.gif?raw=true)
 
 ## Visualization
 
-![vuerd](https://user-images.githubusercontent.com/45829489/75112098-e6235080-5683-11ea-913e-314dbb1010bc.gif)
+![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-visualization.gif?raw=true)
 
 ## SQL DDL Import
 
-![vuerd](https://user-images.githubusercontent.com/45829489/75112104-f0454f00-5683-11ea-9a59-cecb08de0735.gif)
+![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-ddl-import.gif?raw=true)
 
 ## Document
 
