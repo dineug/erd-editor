@@ -1,25 +1,23 @@
 module.exports = {
   root: true,
   env: {
+    browser: true,
+    es6: true,
     node: true
   },
-  extends: ["plugin:vue/essential", "@vue/prettier", "@vue/typescript"],
-  rules: {
-    "no-console": process.env.NODE_ENV === "production" ? "error" : "off",
-    "no-debugger": process.env.NODE_ENV === "production" ? "error" : "off"
-  },
+  parser: "@typescript-eslint/parser",
+  plugins: ["prettier", "@typescript-eslint"],
+  extends: [
+    "plugin:@typescript-eslint/recommended",
+    "prettier/@typescript-eslint",
+    "plugin:prettier/recommended"
+  ],
   parserOptions: {
-    parser: "@typescript-eslint/parser"
+    project: "tsconfig.json"
   },
-  overrides: [
-    {
-      files: [
-        "**/__tests__/*.{j,t}s?(x)",
-        "**/tests/unit/**/*.spec.{j,t}s?(x)"
-      ],
-      env: {
-        jest: true
-      }
-    }
-  ]
+  rules: {
+    "@typescript-eslint/explicit-function-return-type": 0,
+    "@typescript-eslint/no-unused-vars": 0,
+    "@typescript-eslint/no-explicit-any": 0
+  }
 };
