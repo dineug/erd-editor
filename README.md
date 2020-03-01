@@ -1,7 +1,9 @@
 # vuerd
+
 > ERD Editor
 
 ## Next step
+
 - base: vue -> lit-element
 - build: vue-cli -> rollup
 - undo, redo state small piece of data
@@ -10,6 +12,7 @@
 - option theme, keymap
 
 ## Next Usage
+
 ```javascript
 // setup ERD Editor
 const editor = document.createElement("erd-editor");

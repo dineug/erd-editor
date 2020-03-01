@@ -1,9 +1,11 @@
-import { LitElement, html, css, customElement, property } from "lit-element";
+import { html, css, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { EditorElement } from "./EditorElement";
 import { createEditorContext } from "@src/model/EditorContext";
+import "./ERD";
 
 @customElement("erd-editor")
-class Editor extends LitElement {
+class Editor extends EditorElement {
   static get styles() {
     return css`
       .vuerd-editor {
@@ -14,26 +16,24 @@ class Editor extends LitElement {
   }
 
   @property({ type: Number })
-  width = 2000;
+  width = 1200;
   @property({ type: Number })
-  height = 2000;
-
-  private context = createEditorContext();
+  height = 675;
 
   get theme() {
     const { font, canvas } = this.context.theme;
-    const { width, height } = this;
     return {
       color: font,
       backgroundColor: canvas,
-      width: `${width}px`,
-      height: `${height}px`
+      width: `${this.width}px`,
+      height: `${this.height}px`
     };
   }
 
   constructor() {
     super();
     console.log("constructor");
+    this.context = createEditorContext();
   }
   connectedCallback() {
     super.connectedCallback();
@@ -41,20 +41,30 @@ class Editor extends LitElement {
   }
   firstUpdated() {
     console.log("after render");
-    console.log(this.renderRoot.querySelector(".vuerd-editor"));
+    // console.log(this.renderRoot.querySelector(".vuerd-editor"));
   }
   updated(changedProperties: any) {
-    console.log("updated", changedProperties);
+    changedProperties.forEach((oldValue: any, propName: string) => {
+      if (propName === "width" || propName === "height") {
+        console.log(
+          `${propName} changed. newValue: ${this[propName]}, oldValue: ${oldValue}`
+        );
+      }
+    });
   }
   disconnectedCallback() {
-    console.log("before destroy");
+    console.log("destroy");
     super.disconnectedCallback();
   }
 
   render() {
     return html`
       <div class="vuerd-editor" style=${styleMap(this.theme)}>
-        Editor
+        <vuerd-erd
+          .width=${this.width}
+          .height=${this.height}
+          .context=${this.context}
+        ></vuerd-erd>
       </div>
     `;
   }
