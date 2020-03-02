@@ -1,14 +1,20 @@
 import pkg from "./package.json";
 import config from "./rollup.config.common";
 import replace from "@rollup/plugin-replace";
+import strip from "@rollup/plugin-strip";
 
 const { esm, banner } = config();
 
-esm.push(
+esm.push.apply(esm, [
   replace({
     "process.env.NODE_ENV": JSON.stringify("production")
+  }),
+  strip({
+    debugger: true,
+    include: "**/*.ts",
+    functions: ["console.*"]
   })
-);
+]);
 
 export default [
   {

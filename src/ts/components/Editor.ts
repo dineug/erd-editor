@@ -1,24 +1,20 @@
-import { html, css, customElement, property } from "lit-element";
+import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { EditorElement } from "./EditorElement";
+import { EditorElement } from "../model/EditorElement";
 import { createEditorContext } from "@src/model/EditorContext";
+import { Layout, defaultWidth, defaultHeight } from "@src/model/Layout";
 import "./ERD";
 
 @customElement("erd-editor")
 class Editor extends EditorElement {
   static get styles() {
-    return css`
-      .vuerd-editor {
-        position: relative;
-        overflow: hidden;
-      }
-    `;
+    return Layout;
   }
 
   @property({ type: Number })
-  width = 1200;
+  width = defaultWidth;
   @property({ type: Number })
-  height = 675;
+  height = defaultHeight;
 
   get theme() {
     const { font, canvas } = this.context.theme;
@@ -32,15 +28,15 @@ class Editor extends EditorElement {
 
   constructor() {
     super();
-    console.log("constructor");
+    console.log("Editor constructor");
     this.context = createEditorContext();
   }
   connectedCallback() {
     super.connectedCallback();
-    console.log("before render");
+    console.log("Editor before render");
   }
   firstUpdated() {
-    console.log("after render");
+    console.log("Editor after render");
     // console.log(this.renderRoot.querySelector(".vuerd-editor"));
   }
   updated(changedProperties: any) {
@@ -53,11 +49,16 @@ class Editor extends EditorElement {
     });
   }
   disconnectedCallback() {
-    console.log("destroy");
+    console.log("Editor destroy");
     super.disconnectedCallback();
   }
 
+  protected createRenderRoot(): Element | ShadowRoot {
+    return this.attachShadow({ mode: "open" });
+  }
+
   render() {
+    console.log("Editor render");
     return html`
       <div class="vuerd-editor" style=${styleMap(this.theme)}>
         <vuerd-erd

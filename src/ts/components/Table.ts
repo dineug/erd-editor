@@ -1,21 +1,10 @@
-import { html, css, customElement, property } from "lit-element";
+import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { EditorElement } from "./EditorElement";
+import { EditorElement } from "../model/EditorElement";
 import { Subscription } from "rxjs";
 
 @customElement("vuerd-table")
 class Table extends EditorElement {
-  static get styles() {
-    return css`
-      .vuerd-table {
-        position: absolute;
-        opacity: 0.9;
-        padding: 10px;
-        font-size: 13px;
-      }
-    `;
-  }
-
   @property({ type: Object })
   table = {
     width: 100,
@@ -40,6 +29,22 @@ class Table extends EditorElement {
       height: `${this.table.height}px`,
       zIndex: `${this.table.ui.zIndex}`
     };
+  }
+
+  constructor() {
+    super();
+    console.log("Table constructor");
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    console.log("Table before render");
+  }
+  firstUpdated() {
+    console.log("Table after render");
+  }
+  disconnectedCallback() {
+    console.log("Table destroy");
+    super.disconnectedCallback();
   }
 
   private onMousedown() {
@@ -74,6 +79,7 @@ class Table extends EditorElement {
   }
 
   render() {
+    console.log("Table render");
     return html`
       <div
         class="vuerd-table"

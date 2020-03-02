@@ -1,25 +1,12 @@
-import { html, css, customElement, property } from "lit-element";
+import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
-import { EditorElement } from "./EditorElement";
+import { EditorElement } from "../model/EditorElement";
 import "./Table";
 import "./CanvasSVG";
 
 @customElement("vuerd-canvas")
 class Canvas extends EditorElement {
-  static get styles() {
-    return css`
-      .vuerd-canvas {
-        position: relative;
-      }
-
-      .vuerd-canvas-svg {
-        position: absolute;
-        z-index: 1;
-      }
-    `;
-  }
-
   get theme() {
     const { canvas } = this.context.theme;
     const { width, height } = this.context.canvas;
@@ -30,7 +17,24 @@ class Canvas extends EditorElement {
     };
   }
 
+  constructor() {
+    super();
+    console.log("Canvas constructor");
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    console.log("Canvas before render");
+  }
+  firstUpdated() {
+    console.log("Canvas after render");
+  }
+  disconnectedCallback() {
+    console.log("Canvas destroy");
+    super.disconnectedCallback();
+  }
+
   render() {
+    console.log("Canvas render");
     return html`
       <div class="vuerd-canvas" style=${styleMap(this.theme)}>
         ${repeat(

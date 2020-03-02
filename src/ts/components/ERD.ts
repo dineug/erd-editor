@@ -1,23 +1,15 @@
-import { html, css, customElement, property } from "lit-element";
+import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { EditorElement } from "./EditorElement";
+import { EditorElement } from "../model/EditorElement";
+import { defaultWidth, defaultHeight } from "@src/model/Layout";
 import "./Canvas";
 
 @customElement("vuerd-erd")
 class ERD extends EditorElement {
-  static get styles() {
-    return css`
-      .vuerd-erd {
-        position: relative;
-        overflow: hidden;
-      }
-    `;
-  }
-
   @property({ type: Number })
-  width = 2000;
+  width = defaultWidth;
   @property({ type: Number })
-  height = 2000;
+  height = defaultHeight;
 
   get theme() {
     return {
@@ -26,7 +18,24 @@ class ERD extends EditorElement {
     };
   }
 
+  constructor() {
+    super();
+    console.log("ERD constructor");
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    console.log("ERD before render");
+  }
+  firstUpdated() {
+    console.log("ERD after render");
+  }
+  disconnectedCallback() {
+    console.log("ERD destroy");
+    super.disconnectedCallback();
+  }
+
   render() {
+    console.log("ERD render");
     return html`
       <div class="vuerd-erd" style=${styleMap(this.theme)}>
         <vuerd-canvas .context=${this.context}></vuerd-canvas>
