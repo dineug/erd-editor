@@ -1,4 +1,4 @@
-export interface Canvas {
+export interface CanvasState {
   width: number;
   height: number;
   scrollTop: number;
@@ -56,7 +56,7 @@ export const enum Case {
   snakeCase = "snakeCase"
 }
 
-export function createCanvas(): Canvas {
+export function createCanvasState(): CanvasState {
   return {
     width: 2000,
     height: 2000,

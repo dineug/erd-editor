@@ -6,7 +6,7 @@ import { EditorElement } from "../model/EditorElement";
 @customElement("vuerd-canvas-svg")
 class CanvasSVG extends EditorElement {
   get theme() {
-    const { width, height } = this.context.canvas;
+    const { width, height } = this.context.store.canvasState;
     return {
       width: `${width}px`,
       height: `${height}px`

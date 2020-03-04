@@ -9,7 +9,7 @@ import "./CanvasSVG";
 class Canvas extends EditorElement {
   get theme() {
     const { canvas } = this.context.theme;
-    const { width, height } = this.context.canvas;
+    const { width, height } = this.context.store.canvasState;
     return {
       backgroundColor: canvas,
       width: `${width}px`,
@@ -35,13 +35,14 @@ class Canvas extends EditorElement {
 
   render() {
     console.log("Canvas render");
+    const { tables } = this.context.store.tableState;
     return html`
       <div class="vuerd-canvas" style=${styleMap(this.theme)}>
         ${repeat(
-          [1, 2, 3],
-          item => item,
-          (item, index) => html`
-            <vuerd-table .context=${this.context}></vuerd-table>
+          tables,
+          table => table.id,
+          table => html`
+            <vuerd-table .table=${table} .context=${this.context}></vuerd-table>
           `
         )}
         <vuerd-canvas-svg .context=${this.context}></vuerd-canvas-svg>

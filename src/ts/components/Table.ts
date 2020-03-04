@@ -2,32 +2,27 @@ import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { EditorElement } from "../model/EditorElement";
 import { Subscription } from "rxjs";
+import { tableMove } from "@src/model/Command";
+import { Table as TableModel } from "@src/model/Table";
 
 @customElement("vuerd-table")
 class Table extends EditorElement {
   @property({ type: Object })
-  table = {
-    width: 100,
-    height: 100,
-    ui: {
-      top: 10,
-      left: 10,
-      zIndex: 2
-    }
-  };
+  table!: TableModel;
 
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
 
   get theme() {
     const { table } = this.context.theme;
+    const { ui } = this.table;
     return {
       backgroundColor: table,
-      top: `${this.table.ui.top}px`,
-      left: `${this.table.ui.left}px`,
-      width: `${this.table.width}px`,
-      height: `${this.table.height}px`,
-      zIndex: `${this.table.ui.zIndex}`
+      top: `${ui.top}px`,
+      left: `${ui.left}px`,
+      width: `${this.table.width()}px`,
+      height: `${this.table.height()}px`,
+      zIndex: `${ui.zIndex}`
     };
   }
 
@@ -73,9 +68,18 @@ class Table extends EditorElement {
       movementX = event.movementX;
       movementY = event.movementY;
     }
-    this.table.ui.left += movementX;
-    this.table.ui.top += movementY;
-    this.requestUpdate();
+    this.context.store.dispatch(
+      tableMove(
+        {
+          tableId: this.table.id,
+          left: this.table.ui.left + movementX,
+          top: this.table.ui.top + movementY
+        },
+        () => {
+          this.requestUpdate();
+        }
+      )
+    );
   }
 
   render() {
