@@ -1,10 +1,5 @@
 import { css } from "lit-element";
 
-const ratioWidth = 16;
-const ratioHeight = 9;
-export const defaultWidth = 1200;
-export const defaultHeight = (defaultWidth / ratioWidth) * ratioHeight;
-
 export const Layout = css`
   .vuerd-editor {
     position: relative;
@@ -28,3 +23,8 @@ export const Layout = css`
     font-size: 13px;
   }
 `;
+
+const ratioWidth = 16;
+const ratioHeight = 9;
+export const defaultWidth = 1200;
+export const defaultHeight = (defaultWidth / ratioWidth) * ratioHeight;

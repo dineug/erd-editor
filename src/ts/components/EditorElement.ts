@@ -1,5 +1,5 @@
 import { LitElement } from "lit-element";
-import { EditorContext } from "@src/model/EditorContext";
+import { EditorContext } from "@src/core/EditorContext";
 
 export class EditorElement extends LitElement {
   context!: EditorContext;

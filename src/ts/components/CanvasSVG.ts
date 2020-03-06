@@ -1,7 +1,7 @@
 import { svg, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
-import { EditorElement } from "../model/EditorElement";
+import { EditorElement } from "./EditorElement";
 
 @customElement("vuerd-canvas-svg")
 class CanvasSVG extends EditorElement {

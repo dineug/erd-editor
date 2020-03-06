@@ -1,7 +1,7 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { EditorElement } from "../model/EditorElement";
-import { defaultWidth, defaultHeight } from "@src/model/Layout";
+import { EditorElement } from "./EditorElement";
+import { defaultWidth, defaultHeight } from "./Layout";
 import "./Canvas";
 
 @customElement("vuerd-erd")

@@ -1,8 +1,8 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { EditorElement } from "../model/EditorElement";
-import { createEditorContext } from "@src/model/EditorContext";
-import { Layout, defaultWidth, defaultHeight } from "@src/model/Layout";
+import { EditorElement } from "./EditorElement";
+import { createEditorContext } from "@src/core/EditorContext";
+import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import "./ERD";
 
 @customElement("erd-editor")

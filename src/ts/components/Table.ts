@@ -1,9 +1,9 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { EditorElement } from "../model/EditorElement";
+import { EditorElement } from "./EditorElement";
 import { Subscription } from "rxjs";
-import { tableMove } from "@src/model/Command";
-import { Table as TableModel } from "@src/model/Table";
+import { tableMove } from "@src/core/command/table";
+import { Table as TableModel } from "@src/core/store/Table";
 
 @customElement("vuerd-table")
 class Table extends EditorElement {
@@ -71,9 +71,10 @@ class Table extends EditorElement {
     this.context.store.dispatch(
       tableMove(
         {
-          tableId: this.table.id,
-          left: this.table.ui.left + movementX,
-          top: this.table.ui.top + movementY
+          movementX,
+          movementY,
+          tableIds: [this.table.id],
+          memoIds: []
         },
         () => {
           this.requestUpdate();
