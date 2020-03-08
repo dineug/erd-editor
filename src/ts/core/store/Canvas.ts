@@ -56,6 +56,18 @@ export const enum Case {
   snakeCase = "snakeCase"
 }
 
+export const enum ShowKey {
+  tableComment = "tableComment",
+  columnComment = "columnComment",
+  columnDataType = "columnDataType",
+  columnDefault = "columnDefault",
+  columnAutoIncrement = "columnAutoIncrement",
+  columnPrimaryKey = "columnPrimaryKey",
+  columnUnique = "columnUnique",
+  columnNotNull = "columnNotNull",
+  relationship = "relationship"
+}
+
 export function createCanvasState(): CanvasState {
   return {
     width: 2000,

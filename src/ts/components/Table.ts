@@ -39,48 +39,8 @@ class Table extends EditorElement {
   }
   disconnectedCallback() {
     console.log("Table destroy");
+    this.onMouseup();
     super.disconnectedCallback();
-  }
-
-  private onMousedown() {
-    const { mouseup$, mousemove$ } = this.context.windowEventObservable;
-    this.subMouseup = mouseup$.subscribe(event => this.onMouseup(event));
-    this.subMousemove = mousemove$.subscribe(event => this.onMousemove(event));
-  }
-
-  private onMouseup(event: MouseEvent) {
-    if (this.subMouseup) {
-      this.subMouseup.unsubscribe();
-    }
-    if (this.subMousemove) {
-      this.subMousemove.unsubscribe();
-    }
-    this.subMouseup = null;
-    this.subMousemove = null;
-  }
-
-  private onMousemove(event: MouseEvent) {
-    event.preventDefault();
-    let movementX = event.movementX / window.devicePixelRatio;
-    let movementY = event.movementY / window.devicePixelRatio;
-    // firefox
-    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
-      movementX = event.movementX;
-      movementY = event.movementY;
-    }
-    this.context.store.dispatch(
-      tableMove(
-        {
-          movementX,
-          movementY,
-          tableIds: [this.table.id],
-          memoIds: []
-        },
-        () => {
-          this.requestUpdate();
-        }
-      )
-    );
   }
 
   render() {
@@ -93,4 +53,45 @@ class Table extends EditorElement {
       ></div>
     `;
   }
+
+  private onMousedown = (event: MouseEvent) => {
+    const { mouseup$, mousemove$ } = this.context.windowEventObservable;
+    this.subMouseup = mouseup$.subscribe(this.onMouseup);
+    this.subMousemove = mousemove$.subscribe(this.onMousemove);
+  };
+
+  private onMouseup = (event?: MouseEvent) => {
+    if (this.subMouseup) {
+      this.subMouseup.unsubscribe();
+    }
+    if (this.subMousemove) {
+      this.subMousemove.unsubscribe();
+    }
+    this.subMouseup = null;
+    this.subMousemove = null;
+  };
+
+  private onMousemove = (event: MouseEvent) => {
+    event.preventDefault();
+    let movementX = event.movementX / window.devicePixelRatio;
+    let movementY = event.movementY / window.devicePixelRatio;
+    // firefox
+    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
+      movementX = event.movementX;
+      movementY = event.movementY;
+    }
+    const { store } = this.context;
+    store.dispatch(
+      tableMove(
+        store,
+        event.ctrlKey,
+        movementX,
+        movementY,
+        this.table.id,
+        () => {
+          this.requestUpdate();
+        }
+      )
+    );
+  };
 }

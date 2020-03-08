@@ -4,6 +4,8 @@ import { EditorElement } from "./EditorElement";
 import { createEditorContext } from "@src/core/EditorContext";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import "./ERD";
+import "./Fontawesome";
+import "./Contextmenu";
 
 @customElement("erd-editor")
 class Editor extends EditorElement {
@@ -37,7 +39,6 @@ class Editor extends EditorElement {
   }
   firstUpdated() {
     console.log("Editor after render");
-    // console.log(this.renderRoot.querySelector(".vuerd-editor"));
   }
   updated(changedProperties: any) {
     changedProperties.forEach((oldValue: any, propName: string) => {

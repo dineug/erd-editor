@@ -2,6 +2,7 @@ import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
 import { EditorElement } from "./EditorElement";
+import { Table } from "@src/core/store/Table";
 import "./Table";
 import "./CanvasSVG";
 
@@ -16,6 +17,9 @@ class Canvas extends EditorElement {
       height: `${height}px`
     };
   }
+
+  @property({ type: Array })
+  tables: Table[] = [];
 
   constructor() {
     super();
@@ -35,14 +39,13 @@ class Canvas extends EditorElement {
 
   render() {
     console.log("Canvas render");
-    const { tables } = this.context.store.tableState;
     return html`
       <div class="vuerd-canvas" style=${styleMap(this.theme)}>
         ${repeat(
-          tables,
+          this.tables,
           table => table.id,
           table => html`
-            <vuerd-table .table=${table} .context=${this.context}></vuerd-table>
+            <vuerd-table .context=${this.context} .table=${table}></vuerd-table>
           `
         )}
         <vuerd-canvas-svg .context=${this.context}></vuerd-canvas-svg>
