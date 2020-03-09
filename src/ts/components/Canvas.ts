@@ -1,6 +1,7 @@
-import { html, customElement, property } from "lit-element";
+import { html, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
+import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Table } from "@src/core/store/Table";
 import "./Table";
@@ -18,22 +19,24 @@ class Canvas extends EditorElement {
     };
   }
 
-  @property({ type: Array })
-  tables: Table[] = [];
+  private tables: Table[] = [];
+  private subTables!: Subscription;
 
-  constructor() {
-    super();
-    console.log("Canvas constructor");
-  }
   connectedCallback() {
     super.connectedCallback();
     console.log("Canvas before render");
+    const { store } = this.context;
+    this.tables = store.tableState.tables;
+    this.subTables = store.observe(this.tables, () => {
+      this.requestUpdate();
+    });
   }
   firstUpdated() {
     console.log("Canvas after render");
   }
   disconnectedCallback() {
     console.log("Canvas destroy");
+    this.subTables.unsubscribe();
     super.disconnectedCallback();
   }
 

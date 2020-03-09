@@ -44,10 +44,6 @@ export class Contextmenu extends EditorElement {
     return y;
   }
 
-  constructor() {
-    super();
-    console.log("Contextmenu constructor");
-  }
   connectedCallback() {
     super.connectedCallback();
     console.log("Contextmenu before render");

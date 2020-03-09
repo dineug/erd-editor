@@ -1,4 +1,4 @@
-import { svg, customElement, property } from "lit-element";
+import { svg, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
 import { EditorElement } from "./EditorElement";
@@ -13,10 +13,6 @@ class CanvasSVG extends EditorElement {
     };
   }
 
-  constructor() {
-    super();
-    console.log("CanvasSVG constructor");
-  }
   connectedCallback() {
     super.connectedCallback();
     console.log("CanvasSVG before render");

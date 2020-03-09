@@ -32,7 +32,6 @@ export function getERDContextmenu(store: Store): Menu[] {
       name: "New Table",
       keymap: "Alt + N",
       execute() {
-        console.log("New Table");
         store.dispatch(tableAdd(store));
       }
     }

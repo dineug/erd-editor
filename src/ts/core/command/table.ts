@@ -13,10 +13,7 @@ export interface TableAdd {
   columns: Column[];
   ui: TableUI;
 }
-export function tableAdd(
-  store: Store,
-  effect = () => {}
-): CommandEffect<TableAdd> {
+export function tableAdd(store: Store): CommandEffect<TableAdd> {
   const point = nextPoint(
     store,
     store.tableState.tables,
@@ -37,14 +34,12 @@ export function tableAdd(
         widthName: SIZE_MIN_WIDTH,
         widthComment: SIZE_MIN_WIDTH
       }
-    },
-    effect
+    }
   };
 }
 export function tableAddExecute(store: Store, data: TableAdd) {
   const { tables } = store.tableState;
   tables.push(new TableModel(data));
-  store.tableState.tables = [...tables];
 }
 
 export interface TableMove {
@@ -58,13 +53,11 @@ export function tableMove(
   ctrlKey: boolean,
   movementX: number,
   movementY: number,
-  tableId: string,
-  effect = () => {}
+  tableId: string
 ): CommandEffect<TableMove> {
   const { tableState, memoState } = store;
   return {
     name: "table.move",
-    effect,
     data: {
       movementX,
       movementY,

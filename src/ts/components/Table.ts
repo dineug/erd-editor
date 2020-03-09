@@ -1,14 +1,14 @@
-import { html, customElement, property } from "lit-element";
+import { html, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { EditorElement } from "./EditorElement";
 import { Subscription } from "rxjs";
+import { EditorElement } from "./EditorElement";
 import { tableMove } from "@src/core/command/table";
 import { Table as TableModel } from "@src/core/store/Table";
 
 @customElement("vuerd-table")
 class Table extends EditorElement {
-  @property({ type: Object })
   table!: TableModel;
+  subTableUI!: Subscription;
 
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
@@ -26,13 +26,13 @@ class Table extends EditorElement {
     };
   }
 
-  constructor() {
-    super();
-    console.log("Table constructor");
-  }
   connectedCallback() {
     super.connectedCallback();
     console.log("Table before render");
+    const { store } = this.context;
+    this.subTableUI = store.observe(this.table.ui, () => {
+      this.requestUpdate();
+    });
   }
   firstUpdated() {
     console.log("Table after render");
@@ -40,6 +40,7 @@ class Table extends EditorElement {
   disconnectedCallback() {
     console.log("Table destroy");
     this.onMouseup();
+    this.subTableUI.unsubscribe();
     super.disconnectedCallback();
   }
 
@@ -82,16 +83,7 @@ class Table extends EditorElement {
     }
     const { store } = this.context;
     store.dispatch(
-      tableMove(
-        store,
-        event.ctrlKey,
-        movementX,
-        movementY,
-        this.table.id,
-        () => {
-          this.requestUpdate();
-        }
-      )
+      tableMove(store, event.ctrlKey, movementX, movementY, this.table.id)
     );
   };
 }

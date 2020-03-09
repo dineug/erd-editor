@@ -28,14 +28,10 @@ class Editor extends EditorElement {
     };
   }
 
-  constructor() {
-    super();
-    console.log("Editor constructor");
-    this.context = createEditorContext();
-  }
   connectedCallback() {
     super.connectedCallback();
     console.log("Editor before render");
+    this.context = createEditorContext();
   }
   firstUpdated() {
     console.log("Editor after render");
@@ -63,9 +59,9 @@ class Editor extends EditorElement {
     return html`
       <div class="vuerd-editor" style=${styleMap(this.theme)}>
         <vuerd-erd
+          .context=${this.context}
           .width=${this.width}
           .height=${this.height}
-          .context=${this.context}
         ></vuerd-erd>
       </div>
     `;

@@ -33,10 +33,6 @@ class ERD extends EditorElement {
     };
   }
 
-  constructor() {
-    super();
-    console.log("ERD constructor");
-  }
   connectedCallback() {
     super.connectedCallback();
     console.log("ERD before render");
@@ -64,10 +60,9 @@ class ERD extends EditorElement {
 
   render() {
     console.log("ERD render");
-    const { tables } = this.context.store.tableState;
     return html`
       <div class="vuerd-erd" style=${styleMap(this.theme)}>
-        <vuerd-canvas .context=${this.context} .tables=${tables}></vuerd-canvas>
+        <vuerd-canvas .context=${this.context}></vuerd-canvas>
         ${this.contextmenu
           ? html`
               <vuerd-contextmenu

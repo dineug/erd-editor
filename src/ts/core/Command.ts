@@ -11,7 +11,6 @@ type CommandName = "table.add" | "table.move";
 
 export interface CommandEffect<T> {
   name: CommandName;
-  effect: () => void;
   data: T;
 }
 
@@ -24,5 +23,4 @@ export function commandExecute(store: Store, command: Command) {
       tableMoveExecute(store, command.data as TableMove);
       break;
   }
-  command.effect();
 }

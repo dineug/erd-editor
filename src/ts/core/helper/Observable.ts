@@ -1,39 +1,36 @@
-export function useObservable<T>(
-  obj: T,
-  effect: (
-    name: string | number | symbol,
-    oldValue: any,
-    newValue: any
-  ) => void,
-  map = new WeakMap(),
-  keys: object[] = []
-): [T, () => void] {
-  return [
-    new Proxy(obj as any, {
-      get(target, prop) {
-        if (typeof target[prop] === "object") {
-          if (map.has(target[prop])) {
-            return map.get(target[prop]);
-          } else {
-            const [p] = useObservable(target[prop], effect, map, keys);
-            map.set(target[prop], p);
-            keys.push(target[prop]);
-            return p;
-          }
+export function observable<T>(
+  data: T,
+  rawToProxy: WeakMap<object, any>,
+  proxyToRaw: WeakMap<object, any>,
+  effect: (raw: any, field: string | number | symbol) => void
+): T {
+  return new Proxy(data as any, {
+    get(target, p) {
+      if (typeof target[p] === "object") {
+        if (rawToProxy.has(target[p])) {
+          return rawToProxy.get(target[p]);
         }
-        return target[prop];
-      },
-      set(target, prop, value) {
-        const oldValue = target[prop];
-        target[prop] = value;
-        effect(prop, oldValue, value);
-        return true;
+        const proxy = observable(target[p], rawToProxy, proxyToRaw, effect);
+        rawToProxy.set(target[p], proxy);
+        proxyToRaw.set(proxy, target[p]);
+        return proxy;
       }
-    }),
-    () => {
-      keys.forEach(key => {
-        map.delete(key);
-      });
+      return target[p];
+    },
+    set(target, p, value) {
+      if (Array.isArray(target[p])) {
+        const list = target[p].map((item: any) => {
+          if (proxyToRaw.has(item)) {
+            return proxyToRaw.get(item);
+          }
+          return item;
+        });
+        target[p] = list;
+      } else {
+        target[p] = value;
+      }
+      effect(target, p);
+      return true;
     }
-  ];
+  });
 }
