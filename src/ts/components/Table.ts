@@ -8,8 +8,8 @@ import { Table as TableModel } from "@src/core/store/Table";
 @customElement("vuerd-table")
 class Table extends EditorElement {
   table!: TableModel;
-  subTableUI!: Subscription;
 
+  private subTableUI!: Subscription;
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
 
@@ -30,9 +30,7 @@ class Table extends EditorElement {
     super.connectedCallback();
     console.log("Table before render");
     const { store } = this.context;
-    this.subTableUI = store.observe(this.table.ui, () => {
-      this.requestUpdate();
-    });
+    this.subTableUI = store.observe(this.table.ui, () => this.requestUpdate());
   }
   firstUpdated() {
     console.log("Table after render");

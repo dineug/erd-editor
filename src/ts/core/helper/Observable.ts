@@ -1,8 +1,8 @@
-export function observable<T>(
+export function createObservable<T>(
   data: T,
   rawToProxy: WeakMap<object, any>,
   proxyToRaw: WeakMap<object, any>,
-  effect: (raw: any, field: string | number | symbol) => void
+  effect: (raw: any, name: string | number | symbol) => void
 ): T {
   return new Proxy(data as any, {
     get(target, p) {
@@ -10,7 +10,12 @@ export function observable<T>(
         if (rawToProxy.has(target[p])) {
           return rawToProxy.get(target[p]);
         }
-        const proxy = observable(target[p], rawToProxy, proxyToRaw, effect);
+        const proxy = createObservable(
+          target[p],
+          rawToProxy,
+          proxyToRaw,
+          effect
+        );
         rawToProxy.set(target[p], proxy);
         proxyToRaw.set(proxy, target[p]);
         return proxy;

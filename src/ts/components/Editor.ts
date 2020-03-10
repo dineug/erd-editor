@@ -47,6 +47,7 @@ class Editor extends EditorElement {
   }
   disconnectedCallback() {
     console.log("Editor destroy");
+    this.context.store.destroy();
     super.disconnectedCallback();
   }
 

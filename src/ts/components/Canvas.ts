@@ -27,9 +27,7 @@ class Canvas extends EditorElement {
     console.log("Canvas before render");
     const { store } = this.context;
     this.tables = store.tableState.tables;
-    this.subTables = store.observe(this.tables, () => {
-      this.requestUpdate();
-    });
+    this.subTables = store.observe(this.tables, () => this.requestUpdate());
   }
   firstUpdated() {
     console.log("Canvas after render");
