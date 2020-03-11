@@ -23,14 +23,6 @@ class MSSQL {
     const stringBuffer: string[] = [];
     const tables = store.tableStore.state.tables;
     const relationships = store.relationshipStore.state.relationships;
-    const canvas = store.canvasStore.state;
-
-    stringBuffer.push(`DROP DATABASE [${canvas.databaseName}]\nGO`);
-    stringBuffer.push("");
-    stringBuffer.push(`CREATE DATABASE [${canvas.databaseName}]\nGO`);
-    stringBuffer.push("");
-    stringBuffer.push(`USE [${canvas.databaseName}]\nGO`);
-    stringBuffer.push("");
 
     tables.forEach(table => {
       this.formatTable(table, stringBuffer);
@@ -39,9 +31,9 @@ class MSSQL {
       if (unique(table.columns)) {
         const uqColumns = uniqueColumns(table.columns);
         uqColumns.forEach(column => {
-          stringBuffer.push(`ALTER TABLE [${table.name}]`);
+          stringBuffer.push(`ALTER TABLE ${table.name}`);
           stringBuffer.push(
-            `  ADD CONSTRAINT [UQ_${column.name}] UNIQUE ([${column.name}])\nGO`
+            `  ADD CONSTRAINT UQ_${column.name} UNIQUE (${column.name})\nGO`
           );
           stringBuffer.push("");
         });
@@ -57,7 +49,7 @@ class MSSQL {
   }
 
   private formatTable(table: Table, buffer: string[]) {
-    buffer.push(`CREATE TABLE [${table.name}]`);
+    buffer.push(`CREATE TABLE ${table.name}`);
     buffer.push(`(`);
     const pk = primaryKey(table.columns);
     const spaceSize = formatSize(table.columns);
@@ -78,11 +70,7 @@ class MSSQL {
     if (pk) {
       const pkColumns = primaryKeyColumns(table.columns);
       buffer.push(
-        `  CONSTRAINT [PK_${table.name}] PRIMARY KEY (${formatNames(
-          pkColumns,
-          "[",
-          "]"
-        )})`
+        `  CONSTRAINT PK_${table.name} PRIMARY KEY (${formatNames(pkColumns)})`
       );
     }
     buffer.push(`)\nGO`);
@@ -96,10 +84,10 @@ class MSSQL {
   ) {
     const stringBuffer: string[] = [];
     stringBuffer.push(
-      `  [${column.name}]` + formatSpace(spaceSize.name - column.name.length)
+      `  "${column.name}"` + formatSpace(spaceSize.name - column.name.length)
     );
     stringBuffer.push(
-      `[${column.dataType}]` +
+      `${column.dataType}` +
         formatSpace(spaceSize.dataType - column.dataType.length)
     );
     if (column.option.notNull) {
@@ -143,7 +131,7 @@ class MSSQL {
     const endTable = getData(tables, relationship.end.tableId);
 
     if (startTable && endTable) {
-      buffer.push(`ALTER TABLE [${endTable.name}]`);
+      buffer.push(`ALTER TABLE ${endTable.name}`);
 
       // FK
       let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
@@ -153,7 +141,7 @@ class MSSQL {
         name: fkName
       });
 
-      buffer.push(`  ADD CONSTRAINT [${fkName}]`);
+      buffer.push(`  ADD CONSTRAINT ${fkName}`);
 
       // key
       const columns: KeyColumn = {
@@ -173,13 +161,9 @@ class MSSQL {
         }
       });
 
-      buffer.push(`    FOREIGN KEY (${formatNames(columns.end, "[", "]")})`);
+      buffer.push(`    FOREIGN KEY (${formatNames(columns.end)})`);
       buffer.push(
-        `    REFERENCES [${startTable.name}] (${formatNames(
-          columns.start,
-          "[",
-          "]"
-        )})\nGO`
+        `    REFERENCES ${startTable.name} (${formatNames(columns.start)})\nGO`
       );
     }
   }
