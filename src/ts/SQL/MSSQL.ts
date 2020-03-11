@@ -106,7 +106,7 @@ class MSSQL {
       stringBuffer.push(`NOT NULL`);
     }
     if (column.option.autoIncrement) {
-      stringBuffer.push(`IDENTITY`);
+      stringBuffer.push(`IDENTITY(1,1)`);
     } else {
       if (column.default.trim() !== "") {
         stringBuffer.push(`DEFAULT ${column.default}`);
