@@ -4,12 +4,14 @@ import {
   EventBus
 } from "./Event";
 import { Theme, createTheme } from "./Theme";
+import { Keymap, createKeymap } from "./Keymap";
 import { Store } from "./Store";
 
 export interface EditorContext {
   windowEventObservable: WindowEventObservable;
   eventBus: EventBus;
   theme: Theme;
+  keymap: Keymap;
   store: Store;
 }
 
@@ -18,6 +20,7 @@ export function createEditorContext(): EditorContext {
     windowEventObservable: createWindowEventObservable(),
     eventBus: new EventBus(),
     theme: createTheme(),
+    keymap: createKeymap(),
     store: new Store()
   };
 }

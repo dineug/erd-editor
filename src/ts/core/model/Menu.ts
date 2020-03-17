@@ -1,6 +1,6 @@
 import { ShowKey, Database, Language, Case } from "../store/Canvas";
 import { Store } from "../Store";
-import { uuid } from "../Helper";
+import { Keymap, keymapOptionToString } from "../Keymap";
 import { tableAdd } from "../command/table";
 
 export interface MenuOption {
@@ -13,7 +13,6 @@ export interface MenuOption {
 }
 
 export interface Menu {
-  id: string;
   name: string;
   keymap?: string;
   icon?: string;
@@ -24,16 +23,19 @@ export interface Menu {
   execute?(effect?: () => void): void;
 }
 
-export function getERDContextmenu(store: Store): Menu[] {
-  return [
-    {
-      id: uuid(),
+export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
+  const menu: { [key: string]: Menu } = {
+    newTable: {
       icon: "table",
       name: "New Table",
-      keymap: "Alt + N",
       execute() {
         store.dispatch(tableAdd(store));
       }
     }
-  ];
+  };
+  if (keymap.newTable.length !== 0) {
+    const [keymapOption] = keymap.newTable;
+    menu.newTable.keymap = keymapOptionToString(keymapOption);
+  }
+  return Object.values(menu);
 }

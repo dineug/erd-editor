@@ -5,6 +5,8 @@ import { EditorElement } from "./EditorElement";
 import { defaultWidth, defaultHeight } from "./Layout";
 import { Menu, getERDContextmenu } from "@src/core/model/Menu";
 import { Bus } from "@src/core/Event";
+import { keymapMatch } from "@src/core/Keymap";
+import { tableAdd } from "@src/core/command/table";
 import "./Canvas";
 
 @customElement("vuerd-erd")
@@ -24,6 +26,7 @@ class ERD extends EditorElement {
   private mousedown$!: Observable<MouseEvent>;
   private subContextmenu!: Subscription;
   private subMousedown!: Subscription;
+  private subKeydown!: Subscription;
   private menus: Menu[] = [];
 
   get theme() {
@@ -36,9 +39,18 @@ class ERD extends EditorElement {
   connectedCallback() {
     super.connectedCallback();
     console.log("ERD before render");
-    const { store, eventBus } = this.context;
-    this.menus = getERDContextmenu(store);
+    const { store, eventBus, keymap } = this.context;
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
+    this.subKeydown = this.context.windowEventObservable.keydown$.subscribe(
+      (event: KeyboardEvent) => {
+        const { focus } = store.editorState;
+        if (focus) {
+          if (keymapMatch(event, keymap.newTable)) {
+            store.dispatch(tableAdd(store));
+          }
+        }
+      }
+    );
   }
   firstUpdated() {
     console.log("ERD after render");
@@ -54,6 +66,7 @@ class ERD extends EditorElement {
     console.log("ERD destroy");
     this.subContextmenu.unsubscribe();
     this.subMousedown.unsubscribe();
+    this.subKeydown.unsubscribe();
     this.context.eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     super.disconnectedCallback();
   }
@@ -79,6 +92,8 @@ class ERD extends EditorElement {
 
   private onContextmenu = (event: MouseEvent) => {
     event.preventDefault();
+    const { store, keymap } = this.context;
+    this.menus = getERDContextmenu(store, keymap);
     this.contextmenuX = event.x;
     this.contextmenuY = event.y;
     this.contextmenu = true;
@@ -89,7 +104,7 @@ class ERD extends EditorElement {
   };
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
-    if (!el.closest(".vuerd-contextmenu-ul")) {
+    if (!el.closest(".vuerd-contextmenu")) {
       this.contextmenu = false;
     }
   };

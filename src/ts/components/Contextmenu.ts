@@ -1,6 +1,5 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { repeat } from "lit-html/directives/repeat";
 import { EditorElement } from "./EditorElement";
 import { SIZE_MENU_HEIGHT } from "@src/core/Layout";
 import { Menu } from "@src/core/model/Menu";
@@ -12,7 +11,7 @@ export class Contextmenu extends EditorElement {
   x = 0;
   @property({ type: Number })
   y = 0;
-  @property({ type: Object })
+  @property({ attribute: false })
   currentMenu: Menu | null = null;
 
   menus: Menu[] = [];
@@ -29,7 +28,7 @@ export class Contextmenu extends EditorElement {
 
   get childrenX() {
     let x = this.x;
-    const ul = this.renderRoot.querySelector(".vuerd-contextmenu-ul");
+    const ul = this.renderRoot.querySelector(".vuerd-contextmenu");
     if (ul) {
       x = this.x + ul.clientWidth;
     }
@@ -60,49 +59,59 @@ export class Contextmenu extends EditorElement {
   render() {
     console.log("Contextmenu render");
     return html`
-      <div class="vuerd-contextmenu">
-        <ul class="vuerd-contextmenu-ul" style=${styleMap(this.theme)}>
-          ${repeat(
-            this.menus,
-            menu => menu.id,
-            menu => html`
-              <li
-                @click=${() => this.onExecute(menu)}
-                @mouseover=${() => this.onMouseover(menu)}
-                @mouseenter=${this.onMouseenter}
-                @mouseleave=${this.onMouseleave}
-              >
-                ${menu.icon
-                  ? html`
-                      <span class="icon">
-                        <vuerd-fontawesome
-                          .context=${this.context}
-                          size="14"
-                          icon=${menu.icon}
-                        >
-                        </vuerd-fontawesome>
-                      </span>
-                    `
-                  : html`
-                      <span class="icon"></span>
-                    `}
-                <span class="name">${menu.name}</span>
-                <span class="keymap">${menu.keymap}</span>
-              </li>
-            `
-          )}
-        </ul>
-        ${this.currentMenu && this.currentMenu.children
-          ? html`
-              <vuerd-contextmenu
-                .context=${this.context}
-                .menus=${this.currentMenu.children}
-                .x=${this.childrenX}
-                .y=${this.childrenY}
-              ></vuerd-contextmenu>
-            `
-          : ``}
-      </div>
+      <ul class="vuerd-contextmenu" style=${styleMap(this.theme)}>
+        ${this.menus.map(
+          menu => html`
+            <li
+              @click=${() => this.onExecute(menu)}
+              @mouseover=${() => this.onMouseover(menu)}
+              @mouseenter=${this.onMouseenter}
+              @mouseleave=${this.onMouseleave}
+            >
+              ${menu.icon
+                ? html`
+                    <span class="icon">
+                      <vuerd-fontawesome
+                        .context=${this.context}
+                        size="14"
+                        icon=${menu.icon}
+                      >
+                      </vuerd-fontawesome>
+                    </span>
+                  `
+                : html`
+                    <span class="icon"></span>
+                  `}
+              <span class="name">${menu.name}</span>
+              <span class="keymap" title=${menu.keymap ? menu.keymap : ""}>
+                ${menu.keymap}
+              </span>
+              ${menu.children
+                ? html`
+                    <span class="arrow">
+                      <vuerd-fontawesome
+                        .context=${this.context}
+                        size="13"
+                        icon="chevron-right"
+                      >
+                      </vuerd-fontawesome>
+                    </span>
+                  `
+                : html``}
+            </li>
+          `
+        )}
+      </ul>
+      ${this.currentMenu && this.currentMenu.children
+        ? html`
+            <vuerd-contextmenu
+              .context=${this.context}
+              .menus=${this.currentMenu.children}
+              .x=${this.childrenX}
+              .y=${this.childrenY}
+            ></vuerd-contextmenu>
+          `
+        : ``}
     `;
   }
 

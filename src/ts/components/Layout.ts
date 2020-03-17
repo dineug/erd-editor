@@ -34,40 +34,39 @@ export const Layout = css`
     font-size: 13px;
   }
 
-  .vuerd-contextmenu > ul {
+  .vuerd-contextmenu {
     position: fixed;
     z-index: 100000000;
     opacity: 0.9;
   }
-  .vuerd-contextmenu > ul > li {
-    padding: 10px;
+  .vuerd-contextmenu > li {
+    padding: 10px 5px 10px 10px;
     cursor: pointer;
     font-size: 13px;
     white-space: nowrap;
   }
-  .vuerd-contextmenu > ul > li > span {
+  .vuerd-contextmenu > li > span {
     display: inline-flex;
     vertical-align: middle;
     align-items: center;
     overflow: hidden;
+    text-overflow: ellipsis;
     padding-right: 10px;
   }
-  .vuerd-contextmenu > ul > li > span.icon {
+  .vuerd-contextmenu > li > span.icon,
+  .vuerd-contextmenu > li > span.icon > img {
     width: 16px;
   }
-  .vuerd-contextmenu > ul > li > span.icon > img {
-    width: 16px;
-  }
-  .vuerd-contextmenu > ul > li > span.name {
+  .vuerd-contextmenu > li > span.name {
     width: 110px;
   }
-  .vuerd-contextmenu > ul > li > span.keymap {
-    width: 50px;
+  .vuerd-contextmenu > li > span.keymap {
+    width: 70px;
     display: inline-block;
     padding-right: 0;
   }
-  .vuerd-contextmenu > ul > li > span.arrow {
-    width: 100%;
+  .vuerd-contextmenu > li > span.arrow {
+    width: 13px;
     padding-right: 0;
   }
 `;

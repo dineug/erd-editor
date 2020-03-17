@@ -2,6 +2,7 @@ import { Subject, Subscription, asapScheduler } from "rxjs";
 import { CanvasState, createCanvasState } from "./store/Canvas";
 import { TableState, createTableState } from "./store/Table";
 import { MemoState, createMemoState } from "./store/Memo";
+import { EditorState, createEditorState } from "./store/Editor";
 import { Command, commandExecute } from "./Command";
 import { createObservable } from "./helper/Observable";
 
@@ -9,7 +10,8 @@ export class Store {
   readonly canvasState: CanvasState;
   readonly tableState: TableState;
   readonly memoState: MemoState;
-  readonly dispatch$ = new Subject<Command>();
+  readonly editorState: EditorState;
+  private dispatch$ = new Subject<Command>();
   private subDispatch: Subscription;
   private rawToProxy = new WeakMap();
   private proxyToRaw = new WeakMap();
@@ -33,6 +35,12 @@ export class Store {
     );
     this.memoState = createObservable(
       createMemoState(),
+      this.rawToProxy,
+      this.proxyToRaw,
+      this.effect
+    );
+    this.editorState = createObservable(
+      createEditorState(),
       this.rawToProxy,
       this.proxyToRaw,
       this.effect
@@ -66,7 +74,9 @@ export class Store {
     if (proxy) {
       const observable$ = this.proxyToObservable.get(proxy);
       if (observable$) {
-        observable$.next(name);
+        asapScheduler.schedule(() => {
+          observable$.next(name);
+        });
       }
     }
   };

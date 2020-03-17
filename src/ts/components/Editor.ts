@@ -1,5 +1,6 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { createEditorContext } from "@src/core/EditorContext";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
@@ -18,6 +19,8 @@ class Editor extends EditorElement {
   @property({ type: Number })
   height = defaultHeight;
 
+  private subKeydown!: Subscription;
+
   get theme() {
     const { font, canvas } = this.context.theme;
     return {
@@ -32,22 +35,42 @@ class Editor extends EditorElement {
     super.connectedCallback();
     console.log("Editor before render");
     this.context = createEditorContext();
+    if (process.env.NODE_ENV === "development") {
+      this.subKeydown = this.context.windowEventObservable.keydown$.subscribe(
+        event => {
+          console.log(`
+          metaKey: ${event.metaKey},
+          ctrlKey: ${event.ctrlKey},
+          altKey: ${event.altKey},
+          shiftKey: ${event.shiftKey},
+          code: ${event.code},
+          key: ${event.key}
+          `);
+        }
+      );
+    }
   }
   firstUpdated() {
     console.log("Editor after render");
   }
   updated(changedProperties: any) {
     changedProperties.forEach((oldValue: any, propName: string) => {
-      if (propName === "width" || propName === "height") {
-        console.log(
-          `${propName} changed. newValue: ${this[propName]}, oldValue: ${oldValue}`
-        );
+      switch (propName) {
+        case "width":
+          console.log(`width: ${this.width}`);
+          break;
+        case "height":
+          console.log(`height: ${this.height}`);
+          break;
       }
     });
   }
   disconnectedCallback() {
     console.log("Editor destroy");
     this.context.store.destroy();
+    if (process.env.NODE_ENV === "development") {
+      this.subKeydown.unsubscribe();
+    }
     super.disconnectedCallback();
   }
 
@@ -66,5 +89,12 @@ class Editor extends EditorElement {
         ></vuerd-erd>
       </div>
     `;
+  }
+
+  focus() {
+    this.context.store.editorState.focus = true;
+  }
+  blur() {
+    this.context.store.editorState.focus = false;
   }
 }
