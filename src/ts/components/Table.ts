@@ -2,6 +2,7 @@ import { html, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
+import { Logger } from "@src/core/Logger";
 import { tableMove } from "@src/core/command/table";
 import { Table as TableModel } from "@src/core/store/Table";
 
@@ -28,22 +29,22 @@ class Table extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    console.log("Table before render");
+    Logger.debug("Table before render");
     const { store } = this.context;
     this.subTableUI = store.observe(this.table.ui, () => this.requestUpdate());
   }
   firstUpdated() {
-    console.log("Table after render");
+    Logger.debug("Table after render");
   }
   disconnectedCallback() {
-    console.log("Table destroy");
+    Logger.debug("Table destroy");
     this.onMouseup();
     this.subTableUI.unsubscribe();
     super.disconnectedCallback();
   }
 
   render() {
-    console.log("Table render");
+    Logger.debug("Table render");
     return html`
       <div
         class="vuerd-table"

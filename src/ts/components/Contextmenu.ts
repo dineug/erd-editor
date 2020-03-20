@@ -1,8 +1,9 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { EditorElement } from "./EditorElement";
+import { Logger } from "@src/core/Logger";
 import { SIZE_MENU_HEIGHT } from "@src/core/Layout";
-import { Menu } from "@src/core/model/Menu";
+import { Menu } from "@src/core/Contextmenu";
 import { Bus } from "@src/core/Event";
 
 @customElement("vuerd-contextmenu")
@@ -45,19 +46,19 @@ export class Contextmenu extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    console.log("Contextmenu before render");
+    Logger.debug("Contextmenu before render");
   }
   firstUpdated() {
-    console.log("Contextmenu after render");
+    Logger.debug("Contextmenu after render");
   }
   disconnectedCallback() {
-    console.log("Contextmenu destroy");
+    Logger.debug("Contextmenu destroy");
     this.currentMenu = null;
     super.disconnectedCallback();
   }
 
   render() {
-    console.log("Contextmenu render");
+    Logger.debug("Contextmenu render");
     return html`
       <ul class="vuerd-contextmenu" style=${styleMap(this.theme)}>
         ${this.menus.map(

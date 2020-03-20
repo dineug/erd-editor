@@ -2,8 +2,9 @@ import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { fromEvent, Observable, Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
+import { Logger } from "@src/core/Logger";
 import { defaultWidth, defaultHeight } from "./Layout";
-import { Menu, getERDContextmenu } from "@src/core/model/Menu";
+import { Menu, getERDContextmenu } from "@src/core/Contextmenu";
 import { Bus } from "@src/core/Event";
 import { keymapMatch } from "@src/core/Keymap";
 import { tableAdd } from "@src/core/command/table";
@@ -38,7 +39,7 @@ class ERD extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    console.log("ERD before render");
+    Logger.debug("ERD before render");
     const { store, eventBus, keymap } = this.context;
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subKeydown = this.context.windowEventObservable.keydown$.subscribe(
@@ -53,7 +54,7 @@ class ERD extends EditorElement {
     );
   }
   firstUpdated() {
-    console.log("ERD after render");
+    Logger.debug("ERD after render");
     const erd = this.renderRoot.querySelector(".vuerd-erd");
     if (erd) {
       this.contextmenu$ = fromEvent<MouseEvent>(erd, "contextmenu");
@@ -63,7 +64,7 @@ class ERD extends EditorElement {
     }
   }
   disconnectedCallback() {
-    console.log("ERD destroy");
+    Logger.debug("ERD destroy");
     this.subContextmenu.unsubscribe();
     this.subMousedown.unsubscribe();
     this.subKeydown.unsubscribe();
@@ -72,7 +73,7 @@ class ERD extends EditorElement {
   }
 
   render() {
-    console.log("ERD render");
+    Logger.debug("ERD render");
     return html`
       <div class="vuerd-erd" style=${styleMap(this.theme)}>
         <vuerd-canvas .context=${this.context}></vuerd-canvas>

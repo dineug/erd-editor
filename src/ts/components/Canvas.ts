@@ -3,6 +3,7 @@ import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
+import { Logger } from "@src/core/Logger";
 import { Table } from "@src/core/store/Table";
 import "./Table";
 import "./CanvasSVG";
@@ -24,22 +25,22 @@ class Canvas extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    console.log("Canvas before render");
+    Logger.debug("Canvas before render");
     const { store } = this.context;
     this.tables = store.tableState.tables;
     this.subTables = store.observe(this.tables, () => this.requestUpdate());
   }
   firstUpdated() {
-    console.log("Canvas after render");
+    Logger.debug("Canvas after render");
   }
   disconnectedCallback() {
-    console.log("Canvas destroy");
+    Logger.debug("Canvas destroy");
     this.subTables.unsubscribe();
     super.disconnectedCallback();
   }
 
   render() {
-    console.log("Canvas render");
+    Logger.debug("Canvas render");
     return html`
       <div class="vuerd-canvas" style=${styleMap(this.theme)}>
         ${repeat(

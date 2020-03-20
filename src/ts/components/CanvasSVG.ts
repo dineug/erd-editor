@@ -2,6 +2,7 @@ import { svg, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
 import { EditorElement } from "./EditorElement";
+import { Logger } from "@src/core/Logger";
 
 @customElement("vuerd-canvas-svg")
 class CanvasSVG extends EditorElement {
@@ -15,18 +16,18 @@ class CanvasSVG extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    console.log("CanvasSVG before render");
+    Logger.debug("CanvasSVG before render");
   }
   firstUpdated() {
-    console.log("CanvasSVG after render");
+    Logger.debug("CanvasSVG after render");
   }
   disconnectedCallback() {
-    console.log("CanvasSVG destroy");
+    Logger.debug("CanvasSVG destroy");
     super.disconnectedCallback();
   }
 
   render() {
-    console.log("CanvasSVG render");
+    Logger.debug("CanvasSVG render");
     return svg`
       <svg class="vuerd-canvas-svg" style=${styleMap(this.theme)}>
       ${repeat(

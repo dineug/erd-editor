@@ -12,7 +12,7 @@ esm.push.apply(esm, [
   strip({
     debugger: true,
     include: "**/*.ts",
-    functions: ["console.*"]
+    functions: ["Logger.debug"]
   })
 ]);
 

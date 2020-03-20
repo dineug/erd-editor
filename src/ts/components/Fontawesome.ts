@@ -1,6 +1,7 @@
 import { svg, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { EditorElement } from "./EditorElement";
+import { Logger } from "@src/core/Logger";
 import { getIcon } from "@src/plugins/fontawesome";
 
 const SIZE = 24;

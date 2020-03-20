@@ -2,6 +2,7 @@ import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
+import { Logger } from "@src/core/Logger";
 import { createEditorContext } from "@src/core/EditorContext";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import "./ERD";
@@ -33,12 +34,12 @@ class Editor extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    console.log("Editor before render");
+    Logger.debug("Editor before render");
     this.context = createEditorContext();
     if (process.env.NODE_ENV === "development") {
       this.subKeydown = this.context.windowEventObservable.keydown$.subscribe(
         event => {
-          console.log(`
+          Logger.debug(`
           metaKey: ${event.metaKey},
           ctrlKey: ${event.ctrlKey},
           altKey: ${event.altKey},
@@ -51,22 +52,22 @@ class Editor extends EditorElement {
     }
   }
   firstUpdated() {
-    console.log("Editor after render");
+    Logger.debug("Editor after render");
   }
   updated(changedProperties: any) {
     changedProperties.forEach((oldValue: any, propName: string) => {
       switch (propName) {
         case "width":
-          console.log(`width: ${this.width}`);
+          Logger.debug(`width: ${this.width}`);
           break;
         case "height":
-          console.log(`height: ${this.height}`);
+          Logger.debug(`height: ${this.height}`);
           break;
       }
     });
   }
   disconnectedCallback() {
-    console.log("Editor destroy");
+    Logger.debug("Editor destroy");
     this.context.store.destroy();
     if (process.env.NODE_ENV === "development") {
       this.subKeydown.unsubscribe();
@@ -79,7 +80,7 @@ class Editor extends EditorElement {
   }
 
   render() {
-    console.log("Editor render");
+    Logger.debug("Editor render");
     return html`
       <div class="vuerd-editor" style=${styleMap(this.theme)}>
         <vuerd-erd

@@ -1,7 +1,7 @@
-import { ShowKey, Database, Language, Case } from "../store/Canvas";
-import { Store } from "../Store";
-import { Keymap, keymapOptionToString } from "../Keymap";
-import { tableAdd } from "../command/table";
+import { ShowKey, Database, Language, Case } from "./store/Canvas";
+import { Store } from "./Store";
+import { Keymap, keymapOptionToString } from "./Keymap";
+import { tableAdd } from "./command/table";
 
 export interface MenuOption {
   close?: boolean;
