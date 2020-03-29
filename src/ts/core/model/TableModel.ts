@@ -8,22 +8,24 @@ import {
   SIZE_COLUMN_KEY
 } from "../Layout";
 import { Table, TableUI, Column, ColumnWidth } from "../store/Table";
-import { TableAdd } from "../Command/table";
+import { AddTable } from "../Command/table";
 
 export class TableModel implements Table {
   id: string;
-  name: string;
-  comment: string;
-  columns: Column[];
+  name = "";
+  comment = "";
+  columns: Column[] = [];
   ui: TableUI;
 
-  constructor(table: TableAdd) {
-    const { id, name, comment, columns, ui } = table;
-    this.id = id;
-    this.name = name;
-    this.comment = comment;
-    this.columns = columns;
-    this.ui = ui;
+  constructor(data: { addTable?: AddTable }) {
+    const { addTable } = data;
+    if (addTable) {
+      const { id, ui } = addTable;
+      this.id = id;
+      this.ui = ui;
+    } else {
+      throw new Error("not found table");
+    }
   }
 
   width(): number {
@@ -31,8 +33,7 @@ export class TableModel implements Table {
     return 100;
   }
   height(): number {
-    // throw new Error("Method not implemented.");
-    return 100;
+    return SIZE_TABLE_HEIGHT + this.columns.length * SIZE_COLUMN_HEIGHT;
   }
   maxWidthColumn(): ColumnWidth {
     throw new Error("Method not implemented.");

@@ -3,14 +3,18 @@ import { styleMap } from "lit-html/directives/style-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
-import { tableMove } from "@src/core/command/table";
+import { moveTable, removeTable } from "@src/core/command/table";
+import { addColumn } from "@src/core/command/column";
 import { Table as TableModel } from "@src/core/store/Table";
+import { keymapOptionToString } from "@src/core/Keymap";
+import "./CircleButton";
 
 @customElement("vuerd-table")
 class Table extends EditorElement {
   table!: TableModel;
 
   private subTableUI!: Subscription;
+  private subTableColumns!: Subscription;
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
 
@@ -32,6 +36,9 @@ class Table extends EditorElement {
     Logger.debug("Table before render");
     const { store } = this.context;
     this.subTableUI = store.observe(this.table.ui, () => this.requestUpdate());
+    this.subTableColumns = store.observe(this.table.columns, () =>
+      this.requestUpdate()
+    );
   }
   firstUpdated() {
     Logger.debug("Table after render");
@@ -40,17 +47,43 @@ class Table extends EditorElement {
     Logger.debug("Table destroy");
     this.onMouseup();
     this.subTableUI.unsubscribe();
+    this.subTableColumns.unsubscribe();
     super.disconnectedCallback();
   }
 
   render() {
     Logger.debug("Table render");
+    const { theme, keymap } = this.context;
+    const keymapAddColumn = keymapOptionToString(keymap.addColumn[0]);
+    const keymapRemoveTable = keymapOptionToString(keymap.removeTable[0]);
     return html`
       <div
         class="vuerd-table"
         style=${styleMap(this.theme)}
         @mousedown=${this.onMousedown}
-      ></div>
+      >
+        <div class="vuerd-table-header">
+          <div class="vuerd-table-header-top">
+            <vuerd-circle-button
+              .context=${this.context}
+              .backgroundColor=${theme.buttonClose}
+              .color=${theme.buttonClose}
+              icon="times"
+              title=${keymapRemoveTable}
+              @click=${this.onRemoveTable}
+            ></vuerd-circle-button>
+            <vuerd-circle-button
+              .context=${this.context}
+              .backgroundColor=${theme.buttonAdd}
+              .color=${theme.buttonAdd}
+              icon="plus"
+              title=${keymapAddColumn}
+              @click=${this.onAddColumn}
+            ></vuerd-circle-button>
+          </div>
+          <div class="vuerd-table-header-body"></div>
+        </div>
+      </div>
     `;
   }
 
@@ -82,7 +115,15 @@ class Table extends EditorElement {
     }
     const { store } = this.context;
     store.dispatch(
-      tableMove(store, event.ctrlKey, movementX, movementY, this.table.id)
+      moveTable(store, event.ctrlKey, movementX, movementY, this.table.id)
     );
   };
+  private onAddColumn(event: MouseEvent) {
+    const { store } = this.context;
+    store.dispatch(addColumn(store));
+  }
+  private onRemoveTable(event: MouseEvent) {
+    const { store } = this.context;
+    store.dispatch(removeTable(store));
+  }
 }

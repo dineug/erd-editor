@@ -33,6 +33,27 @@ export const Layout = css`
     padding: 10px;
     font-size: 13px;
   }
+  .vuerd-table .vuerd-table-header-top {
+    overflow: hidden;
+  }
+  .vuerd-table .vuerd-table-header-top .vuerd-circle-button {
+    margin-left: 5px;
+    float: right;
+  }
+  .vuerd-table .vuerd-table-header-body {
+    height: 30px;
+  }
+
+  .vuerd-circle-button {
+    width: 17px;
+    height: 17px;
+    font-size: 0.7em;
+    cursor: pointer;
+    border-radius: 50%;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+  }
 
   .vuerd-contextmenu {
     position: fixed;

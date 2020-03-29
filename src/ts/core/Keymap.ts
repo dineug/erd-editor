@@ -70,18 +70,38 @@ export interface KeymapOption {
 }
 
 export interface Keymap {
-  newTable: KeymapOption[];
+  addTable: KeymapOption[];
+  removeTable: KeymapOption[];
+  addColumn: KeymapOption[];
 }
 
 export function createKeymap(): Keymap {
   return {
-    newTable: [
+    addTable: [
       {
         meta: false,
         ctrl: false,
         alt: true,
         shift: false,
         key: "N"
+      }
+    ],
+    removeTable: [
+      {
+        meta: false,
+        ctrl: true,
+        alt: false,
+        shift: false,
+        key: "Delete"
+      }
+    ],
+    addColumn: [
+      {
+        meta: false,
+        ctrl: false,
+        alt: true,
+        shift: false,
+        key: "Enter"
       }
     ]
   };
@@ -122,7 +142,8 @@ export function keymapMatch(
   return result;
 }
 
-export function keymapOptionToString(keymapOption: KeymapOption): string {
+export function keymapOptionToString(keymapOption?: KeymapOption): string {
+  if (!keymapOption) return "";
   const result: string[] = [];
   if (keymapOption.meta) {
     result.push("Meta");

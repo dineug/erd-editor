@@ -6,14 +6,11 @@ import { Column, TableUI } from "../store/Table";
 import { TableModel } from "../model/TableModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
 
-export interface TableAdd {
+export interface AddTable {
   id: string;
-  name: string;
-  comment: string;
-  columns: Column[];
   ui: TableUI;
 }
-export function tableAdd(store: Store): CommandEffect<TableAdd> {
+export function addTable(store: Store): CommandEffect<AddTable> {
   const point = nextPoint(
     store,
     store.tableState.tables,
@@ -23,9 +20,6 @@ export function tableAdd(store: Store): CommandEffect<TableAdd> {
     name: "table.add",
     data: {
       id: uuid(),
-      name: "",
-      comment: "",
-      columns: [],
       ui: {
         active: true,
         left: point.left,
@@ -37,24 +31,24 @@ export function tableAdd(store: Store): CommandEffect<TableAdd> {
     }
   };
 }
-export function tableAddExecute(store: Store, data: TableAdd) {
+export function addTableExecute(store: Store, data: AddTable) {
   const { tables } = store.tableState;
-  tables.push(new TableModel(data));
+  tables.push(new TableModel({ addTable: data }));
 }
 
-export interface TableMove {
+export interface MoveTable {
   movementX: number;
   movementY: number;
   tableIds: string[];
   memoIds: string[];
 }
-export function tableMove(
+export function moveTable(
   store: Store,
   ctrlKey: boolean,
   movementX: number,
   movementY: number,
   tableId: string
-): CommandEffect<TableMove> {
+): CommandEffect<MoveTable> {
   const { tableState, memoState } = store;
   return {
     name: "table.move",
@@ -72,7 +66,7 @@ export function tableMove(
     }
   };
 }
-export function tableMoveExecute(store: Store, data: TableMove) {
+export function moveTableExecute(store: Store, data: MoveTable) {
   const { tableState, memoState } = store;
   data.tableIds.forEach(tableId => {
     const table = getData(tableState.tables, tableId);
@@ -88,4 +82,40 @@ export function tableMoveExecute(store: Store, data: TableMove) {
       memo.ui.top += data.movementY;
     }
   });
+}
+
+export interface RemoveTable {
+  tableIds: string[];
+  memoIds: string[];
+}
+export function removeTable(store: Store): CommandEffect<RemoveTable> {
+  const { tableState, memoState } = store;
+  return {
+    name: "table.remove",
+    data: {
+      tableIds: tableState.tables
+        .filter(table => table.ui.active)
+        .map(table => table.id),
+      memoIds: memoState.memos
+        .filter(memo => memo.ui.active)
+        .map(memo => memo.id)
+    }
+  };
+}
+export function removeTableExecute(store: Store, data: RemoveTable) {
+  const { tableState, memoState } = store;
+  for (let i = 0; i < tableState.tables.length; i++) {
+    const id = tableState.tables[i].id;
+    if (data.tableIds.some(tableId => tableId === id)) {
+      tableState.tables.splice(i, 1);
+      i--;
+    }
+  }
+  for (let i = 0; i < memoState.memos.length; i++) {
+    const id = memoState.memos[i].id;
+    if (data.memoIds.some(memoId => memoId === id)) {
+      memoState.memos.splice(i, 1);
+      i--;
+    }
+  }
 }

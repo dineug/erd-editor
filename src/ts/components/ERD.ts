@@ -7,7 +7,8 @@ import { defaultWidth, defaultHeight } from "./Layout";
 import { Menu, getERDContextmenu } from "@src/core/Contextmenu";
 import { Bus } from "@src/core/Event";
 import { keymapMatch } from "@src/core/Keymap";
-import { tableAdd } from "@src/core/command/table";
+import { addTable, removeTable } from "@src/core/command/table";
+import { addColumn } from "@src/core/command/column";
 import "./Canvas";
 
 @customElement("vuerd-erd")
@@ -46,8 +47,12 @@ class ERD extends EditorElement {
       (event: KeyboardEvent) => {
         const { focus } = store.editorState;
         if (focus) {
-          if (keymapMatch(event, keymap.newTable)) {
-            store.dispatch(tableAdd(store));
+          if (keymapMatch(event, keymap.addTable)) {
+            store.dispatch(addTable(store));
+          } else if (keymapMatch(event, keymap.removeTable)) {
+            store.dispatch(removeTable(store));
+          } else if (keymapMatch(event, keymap.addColumn)) {
+            store.dispatch(addColumn(store));
           }
         }
       }
