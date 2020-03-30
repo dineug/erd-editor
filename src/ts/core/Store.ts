@@ -11,7 +11,7 @@ export class Store {
   readonly tableState: TableState;
   readonly memoState: MemoState;
   readonly editorState: EditorState;
-  private dispatch$ = new Subject<Command>();
+  private dispatch$ = new Subject<Command[]>();
   private subDispatch: Subscription;
   private rawToProxy = new WeakMap();
   private proxyToRaw = new WeakMap();
@@ -45,14 +45,14 @@ export class Store {
       this.proxyToRaw,
       this.effect
     );
-    this.subDispatch = this.dispatch$.subscribe(command =>
-      commandExecute(this, command)
+    this.subDispatch = this.dispatch$.subscribe(commands =>
+      commandExecute(this, commands)
     );
   }
 
-  dispatch(command: Command) {
+  dispatch(commands: Command[]) {
     asapScheduler.schedule(() => {
-      this.dispatch$.next(command);
+      this.dispatch$.next(commands);
     });
   }
 

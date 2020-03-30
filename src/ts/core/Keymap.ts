@@ -72,6 +72,7 @@ export interface KeymapOption {
 export interface Keymap {
   addTable: KeymapOption[];
   removeTable: KeymapOption[];
+  selectAllTable: KeymapOption[];
   addColumn: KeymapOption[];
   addMemo: KeymapOption[];
 }
@@ -94,6 +95,15 @@ export function createKeymap(): Keymap {
         alt: false,
         shift: false,
         key: "Delete"
+      }
+    ],
+    selectAllTable: [
+      {
+        meta: false,
+        ctrl: true,
+        alt: false,
+        shift: false,
+        key: "A"
       }
     ],
     addColumn: [

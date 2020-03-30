@@ -5,6 +5,7 @@ import { getData, uuid } from "../Helper";
 import { MemoUI } from "../store/Memo";
 import { MemoModel } from "../model/MemoModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
+import { selectEndTableExecute } from "./table";
 
 export interface AddMemo {
   id: string;
@@ -30,6 +31,8 @@ export function addMemo(store: Store): CommandEffect<AddMemo> {
 }
 export function addMemoExecute(store: Store, data: AddMemo) {
   const { memos } = store.memoState;
+  selectEndTableExecute(store);
+  selectEndMemoExecute(store);
   memos.push(new MemoModel({ addMemo: data }));
 }
 
@@ -138,17 +141,39 @@ export function selectMemo(
   };
 }
 export function selectMemoExecute(store: Store, data: SelectMemo) {
-  const { tableState, memoState } = store;
-  const targetMemo = getData(memoState.memos, data.memoId);
+  const { memos } = store.memoState;
+  const targetMemo = getData(memos, data.memoId);
   if (targetMemo) {
     targetMemo.ui.zIndex = data.zIndex;
     if (data.ctrlKey) {
       targetMemo.ui.active = true;
     } else {
-      memoState.memos.forEach(memo => {
+      memos.forEach(memo => {
         memo.ui.active = memo.id === data.memoId;
       });
-      tableState.tables.forEach(table => (table.ui.active = false));
+      selectEndTableExecute(store);
     }
   }
+}
+
+export function selectEndMemo(): CommandEffect<null> {
+  return {
+    name: "memo.selectEnd",
+    data: null
+  };
+}
+export function selectEndMemoExecute(store: Store) {
+  const { memos } = store.memoState;
+  memos.forEach(memo => (memo.ui.active = false));
+}
+
+export function selectAllMemo(): CommandEffect<null> {
+  return {
+    name: "memo.selectAll",
+    data: null
+  };
+}
+export function selectAllMemoExecute(store: Store) {
+  const { memos } = store.memoState;
+  memos.forEach(memo => (memo.ui.active = true));
 }

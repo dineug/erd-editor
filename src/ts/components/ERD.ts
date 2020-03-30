@@ -1,15 +1,20 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { fromEvent, Observable, Subscription } from "rxjs";
+import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import { defaultWidth, defaultHeight } from "./Layout";
 import { Menu, getERDContextmenu } from "@src/core/Contextmenu";
 import { Bus } from "@src/core/Event";
 import { keymapMatch } from "@src/core/Keymap";
-import { addTable, removeTable } from "@src/core/command/table";
+import {
+  addTable,
+  removeTable,
+  selectEndTable,
+  selectAllTable
+} from "@src/core/command/table";
 import { addColumn } from "@src/core/command/column";
-import { addMemo } from "@src/core/command/memo";
+import { addMemo, selectEndMemo, selectAllMemo } from "@src/core/command/memo";
 import "./Canvas";
 
 @customElement("vuerd-erd")
@@ -25,10 +30,6 @@ class ERD extends EditorElement {
   @property({ type: Number })
   contextmenuY = 0;
 
-  private contextmenu$!: Observable<MouseEvent>;
-  private mousedown$!: Observable<MouseEvent>;
-  private subContextmenu!: Subscription;
-  private subMousedown!: Subscription;
   private subKeydown!: Subscription;
   private menus: Menu[] = [];
 
@@ -49,13 +50,16 @@ class ERD extends EditorElement {
         const { focus } = store.editorState;
         if (focus) {
           if (keymapMatch(event, keymap.addTable)) {
-            store.dispatch(addTable(store));
+            store.dispatch([addTable(store)]);
           } else if (keymapMatch(event, keymap.removeTable)) {
-            store.dispatch(removeTable(store));
+            store.dispatch([removeTable(store)]);
           } else if (keymapMatch(event, keymap.addColumn)) {
-            store.dispatch(addColumn(store));
+            store.dispatch([addColumn(store)]);
           } else if (keymapMatch(event, keymap.addMemo)) {
-            store.dispatch(addMemo(store));
+            store.dispatch([addMemo(store)]);
+          } else if (keymapMatch(event, keymap.selectAllTable)) {
+            // TODO: if add not editor mod
+            store.dispatch([selectAllTable(), selectAllMemo()]);
           }
         }
       }
@@ -63,18 +67,9 @@ class ERD extends EditorElement {
   }
   firstUpdated() {
     Logger.debug("ERD after render");
-    const erd = this.renderRoot.querySelector(".vuerd-erd");
-    if (erd) {
-      this.contextmenu$ = fromEvent<MouseEvent>(erd, "contextmenu");
-      this.mousedown$ = fromEvent<MouseEvent>(erd, "mousedown");
-      this.subContextmenu = this.contextmenu$.subscribe(this.onContextmenu);
-      this.subMousedown = this.mousedown$.subscribe(this.onMousedown);
-    }
   }
   disconnectedCallback() {
     Logger.debug("ERD destroy");
-    this.subContextmenu.unsubscribe();
-    this.subMousedown.unsubscribe();
     this.subKeydown.unsubscribe();
     this.context.eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     super.disconnectedCallback();
@@ -83,7 +78,12 @@ class ERD extends EditorElement {
   render() {
     Logger.debug("ERD render");
     return html`
-      <div class="vuerd-erd" style=${styleMap(this.theme)}>
+      <div
+        class="vuerd-erd"
+        style=${styleMap(this.theme)}
+        @mousedown=${this.onMousedown}
+        @contextmenu=${this.onContextmenu}
+      >
         <vuerd-canvas .context=${this.context}></vuerd-canvas>
         ${this.contextmenu
           ? html`
@@ -115,6 +115,14 @@ class ERD extends EditorElement {
     const el = event.target as HTMLElement;
     if (!el.closest(".vuerd-contextmenu")) {
       this.contextmenu = false;
+    }
+    if (
+      !el.closest(".vuerd-contextmenu") &&
+      !el.closest(".vuerd-table") &&
+      !el.closest(".vuerd-memo")
+    ) {
+      const { store } = this.context;
+      store.dispatch([selectEndTable(), selectEndMemo()]);
     }
   };
 }

@@ -35,6 +35,7 @@ export interface RemoveColumn {
   tableId: string;
 }
 export function removeColumn(store: Store): CommandEffect<Array<RemoveColumn>> {
+  // TODO: focus select method
   return {
     name: "column.remove",
     data: []
