@@ -11,7 +11,7 @@ export class MemoModel implements Memo {
     if (addMemo) {
       const { id, ui } = addMemo;
       this.id = id;
-      this.ui = ui;
+      this.ui = Object.assign({}, ui);
     } else {
       throw new Error("not found memo");
     }

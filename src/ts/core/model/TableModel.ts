@@ -22,7 +22,7 @@ export class TableModel implements Table {
     if (addTable) {
       const { id, ui } = addTable;
       this.id = id;
-      this.ui = ui;
+      this.ui = Object.assign({}, ui);
     } else {
       throw new Error("not found table");
     }

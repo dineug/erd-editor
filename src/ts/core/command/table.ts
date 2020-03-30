@@ -2,6 +2,7 @@ import { CommandEffect } from "../Command";
 import { SIZE_MIN_WIDTH } from "../Layout";
 import { Store } from "../Store";
 import { getData, uuid } from "../Helper";
+import { Logger } from "../Logger";
 import { TableUI } from "../store/Table";
 import { TableModel } from "../model/TableModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
@@ -30,6 +31,7 @@ export function addTable(store: Store): CommandEffect<AddTable> {
   };
 }
 export function addTableExecute(store: Store, data: AddTable) {
+  Logger.debug("addTableExecute");
   const { tables } = store.tableState;
   selectEndTableExecute(store);
   selectEndMemoExecute(store);
@@ -67,6 +69,7 @@ export function moveTable(
   };
 }
 export function moveTableExecute(store: Store, data: MoveTable) {
+  Logger.debug("moveTableExecute");
   const { tableState, memoState } = store;
   data.tableIds.forEach(tableId => {
     const table = getData(tableState.tables, tableId);
@@ -88,21 +91,27 @@ export interface RemoveTable {
   tableIds: string[];
   memoIds: string[];
 }
-export function removeTable(store: Store): CommandEffect<RemoveTable> {
+export function removeTable(
+  store: Store,
+  tableId?: string
+): CommandEffect<RemoveTable> {
   const { tableState, memoState } = store;
   return {
     name: "table.remove",
     data: {
-      tableIds: tableState.tables
-        .filter(table => table.ui.active)
-        .map(table => table.id),
-      memoIds: memoState.memos
-        .filter(memo => memo.ui.active)
-        .map(memo => memo.id)
+      tableIds: tableId
+        ? [tableId]
+        : tableState.tables
+            .filter(table => table.ui.active)
+            .map(table => table.id),
+      memoIds: tableId
+        ? []
+        : memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id)
     }
   };
 }
 export function removeTableExecute(store: Store, data: RemoveTable) {
+  Logger.debug("removeTableExecute");
   const { tableState, memoState } = store;
   for (let i = 0; i < tableState.tables.length; i++) {
     const id = tableState.tables[i].id;
@@ -141,6 +150,7 @@ export function selectTable(
   };
 }
 export function selectTableExecute(store: Store, data: SelectTable) {
+  Logger.debug("selectTableExecute");
   const { tables } = store.tableState;
   const targetTable = getData(tables, data.tableId);
   if (targetTable) {
@@ -163,6 +173,7 @@ export function selectEndTable(): CommandEffect<null> {
   };
 }
 export function selectEndTableExecute(store: Store) {
+  Logger.debug("selectEndTableExecute");
   const { tables } = store.tableState;
   tables.forEach(table => (table.ui.active = false));
 }
@@ -174,6 +185,7 @@ export function selectAllTable(): CommandEffect<null> {
   };
 }
 export function selectAllTableExecute(store: Store) {
+  Logger.debug("selectAllTableExecute");
   const { tables } = store.tableState;
   tables.forEach(table => (table.ui.active = true));
 }

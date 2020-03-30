@@ -31,7 +31,7 @@ export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
       name: "New Table",
       keymap: keymapOptionToString(keymap.addTable[0]),
       execute() {
-        store.dispatch([addTable(store)]);
+        store.dispatch(addTable(store));
       }
     },
     addMemo: {
@@ -39,7 +39,7 @@ export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
       name: "New Memo",
       keymap: keymapOptionToString(keymap.addMemo[0]),
       execute() {
-        store.dispatch([addMemo(store)]);
+        store.dispatch(addMemo(store));
       }
     }
   };

@@ -5,6 +5,11 @@
   "main": "dist/vuerd.cjs.js",
   "module": "dist/vuerd.esm.js",
   "browser": "dist/vuerd.js",
+  "typings": "src/ts/types/index.d.ts",
+  "files": [
+    "dist/*.js",
+    "src"
+  ],
   "scripts": {
     "serve": "rollup -c rollup.config.dev.js -w",
     "build": "rollup -c"

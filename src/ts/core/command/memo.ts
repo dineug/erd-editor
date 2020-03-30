@@ -2,6 +2,7 @@ import { CommandEffect } from "../Command";
 import { SIZE_MEMO_WIDTH, SIZE_MEMO_HEIGHT } from "../Layout";
 import { Store } from "../Store";
 import { getData, uuid } from "../Helper";
+import { Logger } from "../Logger";
 import { MemoUI } from "../store/Memo";
 import { MemoModel } from "../model/MemoModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
@@ -30,6 +31,7 @@ export function addMemo(store: Store): CommandEffect<AddMemo> {
   };
 }
 export function addMemoExecute(store: Store, data: AddMemo) {
+  Logger.debug("addMemoExecute");
   const { memos } = store.memoState;
   selectEndTableExecute(store);
   selectEndMemoExecute(store);
@@ -67,6 +69,7 @@ export function moveMemo(
   };
 }
 export function moveMemoExecute(store: Store, data: MoveMemo) {
+  Logger.debug("moveMemoExecute");
   const { tableState, memoState } = store;
   data.tableIds.forEach(tableId => {
     const table = getData(tableState.tables, tableId);
@@ -88,21 +91,27 @@ export interface RemoveMemo {
   tableIds: string[];
   memoIds: string[];
 }
-export function removeMemo(store: Store): CommandEffect<RemoveMemo> {
+export function removeMemo(
+  store: Store,
+  memoId?: string
+): CommandEffect<RemoveMemo> {
   const { tableState, memoState } = store;
   return {
     name: "memo.remove",
     data: {
-      tableIds: tableState.tables
-        .filter(table => table.ui.active)
-        .map(table => table.id),
-      memoIds: memoState.memos
-        .filter(memo => memo.ui.active)
-        .map(memo => memo.id)
+      tableIds: memoId
+        ? []
+        : tableState.tables
+            .filter(table => table.ui.active)
+            .map(table => table.id),
+      memoIds: memoId
+        ? [memoId]
+        : memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id)
     }
   };
 }
 export function removeMemoExecute(store: Store, data: RemoveMemo) {
+  Logger.debug("removeMemoExecute");
   const { tableState, memoState } = store;
   for (let i = 0; i < tableState.tables.length; i++) {
     const id = tableState.tables[i].id;
@@ -141,6 +150,7 @@ export function selectMemo(
   };
 }
 export function selectMemoExecute(store: Store, data: SelectMemo) {
+  Logger.debug("selectMemoExecute");
   const { memos } = store.memoState;
   const targetMemo = getData(memos, data.memoId);
   if (targetMemo) {
@@ -163,6 +173,7 @@ export function selectEndMemo(): CommandEffect<null> {
   };
 }
 export function selectEndMemoExecute(store: Store) {
+  Logger.debug("selectEndMemoExecute");
   const { memos } = store.memoState;
   memos.forEach(memo => (memo.ui.active = false));
 }
@@ -174,6 +185,7 @@ export function selectAllMemo(): CommandEffect<null> {
   };
 }
 export function selectAllMemoExecute(store: Store) {
+  Logger.debug("selectAllMemoExecute");
   const { memos } = store.memoState;
   memos.forEach(memo => (memo.ui.active = true));
 }

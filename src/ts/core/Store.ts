@@ -11,8 +11,10 @@ export class Store {
   readonly tableState: TableState;
   readonly memoState: MemoState;
   readonly editorState: EditorState;
-  private dispatch$ = new Subject<Command[]>();
-  private subDispatch: Subscription;
+  private dispatch$ = new Subject<Array<Command>>();
+  private subDispatchList: Subscription[] = [];
+  private push$ = new Subject<Array<Command>>();
+  private subPush: Subscription;
   private rawToProxy = new WeakMap();
   private proxyToRaw = new WeakMap();
   private proxyToObservable = new WeakMap<
@@ -45,22 +47,37 @@ export class Store {
       this.proxyToRaw,
       this.effect
     );
-    this.subDispatch = this.dispatch$.subscribe(commands =>
+    this.subDispatchList.push(
+      this.dispatch$.subscribe(commands => commandExecute(this, commands))
+    );
+    this.subPush = this.push$.subscribe(commands =>
       commandExecute(this, commands)
     );
   }
 
-  dispatch(commands: Command[]) {
-    asapScheduler.schedule(() => {
-      this.dispatch$.next(commands);
-    });
+  dispatch(...commands: Command[]) {
+    asapScheduler.schedule(() => this.dispatch$.next(commands));
+  }
+
+  pull(effect: (commands: Command[]) => void): Subscription {
+    const subDispatch = this.dispatch$.subscribe(effect);
+    this.subDispatchList.push(subDispatch);
+    return subDispatch;
+  }
+
+  push(commands: Command[]) {
+    asapScheduler.schedule(() => this.push$.next(commands));
   }
 
   destroy() {
-    this.subDispatch.unsubscribe();
+    this.subDispatchList.forEach(subDispatch => subDispatch.unsubscribe());
+    this.subPush.unsubscribe();
   }
 
-  observe(proxy: any, effect: (name: string | number | symbol) => void) {
+  observe(
+    proxy: any,
+    effect: (name: string | number | symbol) => void
+  ): Subscription {
     let observable$ = this.proxyToObservable.get(proxy);
     if (!observable$) {
       observable$ = new Subject();
@@ -74,9 +91,7 @@ export class Store {
     if (proxy) {
       const observable$ = this.proxyToObservable.get(proxy);
       if (observable$) {
-        asapScheduler.schedule(() => {
-          observable$.next(name);
-        });
+        asapScheduler.schedule(() => observable$.next(name));
       }
     }
   };

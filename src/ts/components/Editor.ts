@@ -4,6 +4,7 @@ import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import { createEditorContext } from "@src/core/EditorContext";
+import { Command } from "@src/core/Command";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import "./ERD";
 import "./Fontawesome";
@@ -32,10 +33,15 @@ class Editor extends EditorElement {
     };
   }
 
+  constructor() {
+    super();
+    Logger.debug("Editor constructor");
+    this.context = createEditorContext();
+  }
+
   connectedCallback() {
     super.connectedCallback();
     Logger.debug("Editor before render");
-    this.context = createEditorContext();
     if (process.env.NODE_ENV === "development") {
       this.subKeydown = this.context.windowEventObservable.keydown$.subscribe(
         event => {
@@ -97,5 +103,13 @@ class Editor extends EditorElement {
   }
   blur() {
     this.context.store.editorState.focus = false;
+  }
+  pull(effect: (commands: Command[]) => void): Subscription {
+    const { store } = this.context;
+    return store.pull(effect);
+  }
+  push(commands: Command[]) {
+    const { store } = this.context;
+    store.push(commands);
   }
 }

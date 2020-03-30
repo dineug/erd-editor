@@ -105,7 +105,7 @@ class Table extends EditorElement {
       !el.closest(".vuerd-column")
     ) {
       const { store } = this.context;
-      store.dispatch([selectTable(store, event.ctrlKey, this.table.id)]);
+      store.dispatch(selectTable(store, event.ctrlKey, this.table.id));
     }
   };
 
@@ -130,16 +130,16 @@ class Table extends EditorElement {
       movementY = event.movementY;
     }
     const { store } = this.context;
-    store.dispatch([
+    store.dispatch(
       moveTable(store, event.ctrlKey, movementX, movementY, this.table.id)
-    ]);
+    );
   };
   private onAddColumn(event: MouseEvent) {
     const { store } = this.context;
-    store.dispatch([addColumn(store)]);
+    store.dispatch(addColumn(store, this.table.id));
   }
   private onRemoveTable(event: MouseEvent) {
     const { store } = this.context;
-    store.dispatch([removeTable(store)]);
+    store.dispatch(removeTable(store, this.table.id));
   }
 }

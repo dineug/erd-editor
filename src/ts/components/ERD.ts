@@ -50,16 +50,23 @@ class ERD extends EditorElement {
         const { focus } = store.editorState;
         if (focus) {
           if (keymapMatch(event, keymap.addTable)) {
-            store.dispatch([addTable(store)]);
-          } else if (keymapMatch(event, keymap.removeTable)) {
-            store.dispatch([removeTable(store)]);
-          } else if (keymapMatch(event, keymap.addColumn)) {
-            store.dispatch([addColumn(store)]);
+            store.dispatch(addTable(store));
+          } else if (
+            keymapMatch(event, keymap.removeTable) &&
+            (store.tableState.tables.some(table => table.ui.active) ||
+              store.memoState.memos.some(memo => memo.ui.active))
+          ) {
+            store.dispatch(removeTable(store));
+          } else if (
+            keymapMatch(event, keymap.addColumn) &&
+            store.tableState.tables.some(table => table.ui.active)
+          ) {
+            store.dispatch(addColumn(store));
           } else if (keymapMatch(event, keymap.addMemo)) {
-            store.dispatch([addMemo(store)]);
+            store.dispatch(addMemo(store));
           } else if (keymapMatch(event, keymap.selectAllTable)) {
             // TODO: if add not editor mod
-            store.dispatch([selectAllTable(), selectAllMemo()]);
+            store.dispatch(selectAllTable(), selectAllMemo());
           }
         }
       }
@@ -122,7 +129,7 @@ class ERD extends EditorElement {
       !el.closest(".vuerd-memo")
     ) {
       const { store } = this.context;
-      store.dispatch([selectEndTable(), selectEndMemo()]);
+      store.dispatch(selectEndTable(), selectEndMemo());
     }
   };
 }
