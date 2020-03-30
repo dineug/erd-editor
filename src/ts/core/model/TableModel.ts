@@ -8,7 +8,7 @@ import {
   SIZE_COLUMN_KEY
 } from "../Layout";
 import { Table, TableUI, Column, ColumnWidth } from "../store/Table";
-import { AddTable } from "../Command/table";
+import { AddTable } from "../command/table";
 
 export class TableModel implements Table {
   id: string;

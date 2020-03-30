@@ -3,7 +3,7 @@ import { styleMap } from "lit-html/directives/style-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
-import { moveTable, removeTable } from "@src/core/command/table";
+import { moveTable, removeTable, selectTable } from "@src/core/command/table";
 import { addColumn } from "@src/core/command/column";
 import { Table as TableModel } from "@src/core/store/Table";
 import { keymapOptionToString } from "@src/core/Keymap";
@@ -88,9 +88,20 @@ class Table extends EditorElement {
   }
 
   private onMousedown = (event: MouseEvent) => {
-    const { mouseup$, mousemove$ } = this.context.windowEventObservable;
-    this.subMouseup = mouseup$.subscribe(this.onMouseup);
-    this.subMousemove = mousemove$.subscribe(this.onMousemove);
+    const el = event.target as HTMLElement;
+    if (!el.closest(".vuerd-circle-button") && !el.closest(".vuerd-column")) {
+      const { mouseup$, mousemove$ } = this.context.windowEventObservable;
+      this.subMouseup = mouseup$.subscribe(this.onMouseup);
+      this.subMousemove = mousemove$.subscribe(this.onMousemove);
+    }
+    if (
+      !el.closest(".vuerd-table-name") &&
+      !el.closest(".vuerd-table-comment") &&
+      !el.closest(".vuerd-column")
+    ) {
+      const { store } = this.context;
+      store.dispatch(selectTable(store, event.ctrlKey, this.table.id));
+    }
   };
 
   private onMouseup = (event?: MouseEvent) => {

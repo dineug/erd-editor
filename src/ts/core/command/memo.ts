@@ -1,20 +1,20 @@
 import { CommandEffect } from "../Command";
-import { SIZE_MIN_WIDTH } from "../Layout";
+import { SIZE_MEMO_WIDTH, SIZE_MEMO_HEIGHT } from "../Layout";
 import { Store } from "../Store";
 import { getData, uuid } from "../Helper";
-import { TableUI } from "../store/Table";
-import { TableModel } from "../model/TableModel";
+import { MemoUI } from "../store/Memo";
+import { MemoModel } from "../model/MemoModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
 
-export interface AddTable {
+export interface AddMemo {
   id: string;
-  ui: TableUI;
+  ui: MemoUI;
 }
-export function addTable(store: Store): CommandEffect<AddTable> {
+export function addMemo(store: Store): CommandEffect<AddMemo> {
   const { tableState, memoState } = store;
   const point = nextPoint(store, tableState.tables, memoState.memos);
   return {
-    name: "table.add",
+    name: "memo.add",
     data: {
       id: uuid(),
       ui: {
@@ -22,33 +22,33 @@ export function addTable(store: Store): CommandEffect<AddTable> {
         left: point.left,
         top: point.top,
         zIndex: nextZIndex(tableState.tables, memoState.memos),
-        widthName: SIZE_MIN_WIDTH,
-        widthComment: SIZE_MIN_WIDTH
+        width: SIZE_MEMO_WIDTH,
+        height: SIZE_MEMO_HEIGHT
       }
     }
   };
 }
-export function addTableExecute(store: Store, data: AddTable) {
-  const { tables } = store.tableState;
-  tables.push(new TableModel({ addTable: data }));
+export function addMemoExecute(store: Store, data: AddMemo) {
+  const { memos } = store.memoState;
+  memos.push(new MemoModel({ addMemo: data }));
 }
 
-export interface MoveTable {
+export interface MoveMemo {
   movementX: number;
   movementY: number;
   tableIds: string[];
   memoIds: string[];
 }
-export function moveTable(
+export function moveMemo(
   store: Store,
   ctrlKey: boolean,
   movementX: number,
   movementY: number,
-  tableId: string
-): CommandEffect<MoveTable> {
+  memoId: string
+): CommandEffect<MoveMemo> {
   const { tableState, memoState } = store;
   return {
-    name: "table.move",
+    name: "memo.move",
     data: {
       movementX,
       movementY,
@@ -56,14 +56,14 @@ export function moveTable(
         ? tableState.tables
             .filter(table => table.ui.active)
             .map(table => table.id)
-        : [tableId],
+        : [],
       memoIds: ctrlKey
         ? memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id)
-        : []
+        : [memoId]
     }
   };
 }
-export function moveTableExecute(store: Store, data: MoveTable) {
+export function moveMemoExecute(store: Store, data: MoveMemo) {
   const { tableState, memoState } = store;
   data.tableIds.forEach(tableId => {
     const table = getData(tableState.tables, tableId);
@@ -81,14 +81,14 @@ export function moveTableExecute(store: Store, data: MoveTable) {
   });
 }
 
-export interface RemoveTable {
+export interface RemoveMemo {
   tableIds: string[];
   memoIds: string[];
 }
-export function removeTable(store: Store): CommandEffect<RemoveTable> {
+export function removeMemo(store: Store): CommandEffect<RemoveMemo> {
   const { tableState, memoState } = store;
   return {
-    name: "table.remove",
+    name: "memo.remove",
     data: {
       tableIds: tableState.tables
         .filter(table => table.ui.active)
@@ -99,7 +99,7 @@ export function removeTable(store: Store): CommandEffect<RemoveTable> {
     }
   };
 }
-export function removeTableExecute(store: Store, data: RemoveTable) {
+export function removeMemoExecute(store: Store, data: RemoveMemo) {
   const { tableState, memoState } = store;
   for (let i = 0; i < tableState.tables.length; i++) {
     const id = tableState.tables[i].id;
@@ -117,38 +117,38 @@ export function removeTableExecute(store: Store, data: RemoveTable) {
   }
 }
 
-export interface SelectTable {
+export interface SelectMemo {
   ctrlKey: boolean;
-  tableId: string;
+  memoId: string;
   zIndex: number;
 }
-export function selectTable(
+export function selectMemo(
   store: Store,
   ctrlKey: boolean,
-  tableId: string
-): CommandEffect<SelectTable> {
+  memoId: string
+): CommandEffect<SelectMemo> {
   const { tableState, memoState } = store;
   return {
-    name: "table.select",
+    name: "memo.select",
     data: {
       ctrlKey,
-      tableId,
+      memoId,
       zIndex: nextZIndex(tableState.tables, memoState.memos)
     }
   };
 }
-export function selectTableExecute(store: Store, data: SelectTable) {
+export function selectMemoExecute(store: Store, data: SelectMemo) {
   const { tableState, memoState } = store;
-  const targetTable = getData(tableState.tables, data.tableId);
-  if (targetTable) {
-    targetTable.ui.zIndex = data.zIndex;
+  const targetMemo = getData(memoState.memos, data.memoId);
+  if (targetMemo) {
+    targetMemo.ui.zIndex = data.zIndex;
     if (data.ctrlKey) {
-      targetTable.ui.active = true;
+      targetMemo.ui.active = true;
     } else {
-      tableState.tables.forEach(table => {
-        table.ui.active = table.id === data.tableId;
+      memoState.memos.forEach(memo => {
+        memo.ui.active = memo.id === data.memoId;
       });
-      memoState.memos.forEach(memo => (memo.ui.active = false));
+      tableState.tables.forEach(table => (table.ui.active = false));
     }
   }
 }

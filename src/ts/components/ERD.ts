@@ -9,6 +9,7 @@ import { Bus } from "@src/core/Event";
 import { keymapMatch } from "@src/core/Keymap";
 import { addTable, removeTable } from "@src/core/command/table";
 import { addColumn } from "@src/core/command/column";
+import { addMemo } from "@src/core/command/memo";
 import "./Canvas";
 
 @customElement("vuerd-erd")
@@ -53,6 +54,8 @@ class ERD extends EditorElement {
             store.dispatch(removeTable(store));
           } else if (keymapMatch(event, keymap.addColumn)) {
             store.dispatch(addColumn(store));
+          } else if (keymapMatch(event, keymap.addMemo)) {
+            store.dispatch(addMemo(store));
           }
         }
       }

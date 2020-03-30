@@ -29,3 +29,15 @@ export function addColumnExecute(store: Store, data: AddColumn[]) {
     }
   });
 }
+
+export interface RemoveColumn {
+  id: string;
+  tableId: string;
+}
+export function removeColumn(store: Store): CommandEffect<Array<RemoveColumn>> {
+  return {
+    name: "column.remove",
+    data: []
+  };
+}
+export function removeColumnExecute(store: Store, data: RemoveColumn[]) {}

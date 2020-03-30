@@ -73,6 +73,7 @@ export interface Keymap {
   addTable: KeymapOption[];
   removeTable: KeymapOption[];
   addColumn: KeymapOption[];
+  addMemo: KeymapOption[];
 }
 
 export function createKeymap(): Keymap {
@@ -102,6 +103,15 @@ export function createKeymap(): Keymap {
         alt: true,
         shift: false,
         key: "Enter"
+      }
+    ],
+    addMemo: [
+      {
+        meta: false,
+        ctrl: false,
+        alt: true,
+        shift: false,
+        key: "M"
       }
     ]
   };
