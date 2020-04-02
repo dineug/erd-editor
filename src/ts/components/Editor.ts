@@ -104,12 +104,12 @@ class Editor extends EditorElement {
   blur() {
     this.context.store.editorState.focus = false;
   }
-  pull(effect: (commands: Command[]) => void): Subscription {
+  subscribe(effect: (commands: Command[]) => void): Subscription {
     const { store } = this.context;
-    return store.pull(effect);
+    return store.subscribe(effect);
   }
-  push(commands: Command[]) {
+  next(commands: Command[]) {
     const { store } = this.context;
-    store.push(commands);
+    store.next(commands);
   }
 }

@@ -13,8 +13,8 @@ export class Store {
   readonly editorState: EditorState;
   private dispatch$ = new Subject<Array<Command>>();
   private subDispatchList: Subscription[] = [];
-  private push$ = new Subject<Array<Command>>();
-  private subPush: Subscription;
+  private next$ = new Subject<Array<Command>>();
+  private subNext: Subscription;
   private rawToProxy = new WeakMap();
   private proxyToRaw = new WeakMap();
   private proxyToObservable = new WeakMap<
@@ -50,7 +50,7 @@ export class Store {
     this.subDispatchList.push(
       this.dispatch$.subscribe(commands => commandExecute(this, commands))
     );
-    this.subPush = this.push$.subscribe(commands =>
+    this.subNext = this.next$.subscribe(commands =>
       commandExecute(this, commands)
     );
   }
@@ -59,19 +59,19 @@ export class Store {
     asapScheduler.schedule(() => this.dispatch$.next(commands));
   }
 
-  pull(effect: (commands: Command[]) => void): Subscription {
+  subscribe(effect: (commands: Command[]) => void): Subscription {
     const subDispatch = this.dispatch$.subscribe(effect);
     this.subDispatchList.push(subDispatch);
     return subDispatch;
   }
 
-  push(commands: Command[]) {
-    asapScheduler.schedule(() => this.push$.next(commands));
+  next(commands: Command[]) {
+    asapScheduler.schedule(() => this.next$.next(commands));
   }
 
   destroy() {
     this.subDispatchList.forEach(subDispatch => subDispatch.unsubscribe());
-    this.subPush.unsubscribe();
+    this.subNext.unsubscribe();
   }
 
   observe(

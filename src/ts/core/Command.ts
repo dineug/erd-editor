@@ -29,6 +29,7 @@ import {
   selectEndMemoExecute,
   selectAllMemoExecute
 } from "./command/memo";
+import { MoveCanvas, moveCanvasExecute } from "./command/canvas";
 
 export interface CommandEffect<T> {
   name: CommandName;
@@ -48,7 +49,8 @@ type CommandName =
   | "memo.remove"
   | "memo.select"
   | "memo.selectEnd"
-  | "memo.selectAll";
+  | "memo.selectAll"
+  | "canvas.move";
 export type Command =
   | CommandEffect<null>
   | CommandEffect<AddTable>
@@ -60,7 +62,8 @@ export type Command =
   | CommandEffect<AddMemo>
   | CommandEffect<MoveMemo>
   | CommandEffect<RemoveMemo>
-  | CommandEffect<SelectMemo>;
+  | CommandEffect<SelectMemo>
+  | CommandEffect<MoveCanvas>;
 
 export function commandExecute(store: Store, commands: Command[]) {
   commands.forEach(command => {
@@ -106,6 +109,9 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "memo.selectAll":
         selectAllMemoExecute(store);
+        break;
+      case "canvas.move":
+        moveCanvasExecute(store, command.data as MoveCanvas);
         break;
     }
   });

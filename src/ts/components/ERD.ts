@@ -15,6 +15,7 @@ import {
 } from "@src/core/command/table";
 import { addColumn } from "@src/core/command/column";
 import { addMemo, selectEndMemo, selectAllMemo } from "@src/core/command/memo";
+import { moveCanvas } from "@src/core/command/canvas";
 import "./Canvas";
 
 @customElement("vuerd-erd")
@@ -30,8 +31,12 @@ class ERD extends EditorElement {
   @property({ type: Number })
   contextmenuY = 0;
 
+  private subMouseup: Subscription | null = null;
+  private subMousemove: Subscription | null = null;
   private subKeydown!: Subscription;
+  private subCanvas!: Subscription;
   private menus: Menu[] = [];
+  private erd!: Element;
 
   get theme() {
     return {
@@ -51,20 +56,24 @@ class ERD extends EditorElement {
         if (focus) {
           if (keymapMatch(event, keymap.addTable)) {
             store.dispatch(addTable(store));
-          } else if (
+          }
+          if (
             keymapMatch(event, keymap.removeTable) &&
             (store.tableState.tables.some(table => table.ui.active) ||
               store.memoState.memos.some(memo => memo.ui.active))
           ) {
             store.dispatch(removeTable(store));
-          } else if (
+          }
+          if (
             keymapMatch(event, keymap.addColumn) &&
             store.tableState.tables.some(table => table.ui.active)
           ) {
             store.dispatch(addColumn(store));
-          } else if (keymapMatch(event, keymap.addMemo)) {
+          }
+          if (keymapMatch(event, keymap.addMemo)) {
             store.dispatch(addMemo(store));
-          } else if (keymapMatch(event, keymap.selectAllTable)) {
+          }
+          if (keymapMatch(event, keymap.selectAllTable)) {
             // TODO: if add not editor mod
             store.dispatch(selectAllTable(), selectAllMemo());
           }
@@ -74,10 +83,26 @@ class ERD extends EditorElement {
   }
   firstUpdated() {
     Logger.debug("ERD after render");
+    const { store } = this.context;
+    this.erd = this.renderRoot.querySelector(".vuerd-erd") as Element;
+    this.erd.scrollTop = store.canvasState.scrollTop;
+    this.erd.scrollLeft = store.canvasState.scrollLeft;
+    this.subCanvas = store.observe(
+      store.canvasState,
+      (name: string | number | symbol) => {
+        if (name === "scrollTop") {
+          this.erd.scrollTop = store.canvasState.scrollTop;
+        } else if (name === "scrollLeft") {
+          this.erd.scrollLeft = store.canvasState.scrollLeft;
+        }
+      }
+    );
   }
   disconnectedCallback() {
     Logger.debug("ERD destroy");
+    this.onMouseup();
     this.subKeydown.unsubscribe();
+    this.subCanvas.unsubscribe();
     this.context.eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     super.disconnectedCallback();
   }
@@ -114,7 +139,6 @@ class ERD extends EditorElement {
     this.contextmenuY = event.y;
     this.contextmenu = true;
   };
-
   private onContextmenuEnd = (event: Event) => {
     this.contextmenu = false;
   };
@@ -128,8 +152,42 @@ class ERD extends EditorElement {
       !el.closest(".vuerd-table") &&
       !el.closest(".vuerd-memo")
     ) {
-      const { store } = this.context;
+      const { store, windowEventObservable } = this.context;
       store.dispatch(selectEndTable(), selectEndMemo());
+      if (event.ctrlKey) {
+      } else {
+        this.onMouseup();
+        this.subMouseup = windowEventObservable.mouseup$.subscribe(
+          this.onMouseup
+        );
+        this.subMousemove = windowEventObservable.mousemove$.subscribe(
+          this.onMousemove
+        );
+      }
     }
+  };
+  private onMouseup = (event?: MouseEvent) => {
+    if (this.subMouseup) {
+      this.subMouseup.unsubscribe();
+    }
+    if (this.subMousemove) {
+      this.subMousemove.unsubscribe();
+    }
+    this.subMouseup = null;
+    this.subMousemove = null;
+  };
+  private onMousemove = (event: MouseEvent) => {
+    event.preventDefault();
+    let movementX = event.movementX / window.devicePixelRatio;
+    let movementY = event.movementY / window.devicePixelRatio;
+    // firefox
+    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
+      movementX = event.movementX;
+      movementY = event.movementY;
+    }
+    this.erd.scrollTop -= movementY;
+    this.erd.scrollLeft -= movementX;
+    const { store } = this.context;
+    store.dispatch(moveCanvas(this.erd.scrollTop, this.erd.scrollLeft));
   };
 }

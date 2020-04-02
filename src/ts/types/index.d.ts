@@ -9,6 +9,6 @@ export declare class Editor extends LitElement {
   height: number;
   focus(): void;
   blur(): void;
-  pull(effect: (commands: Command[]) => void): Subscription;
-  push(commands: Command[]): void;
+  subscribe(effect: (commands: Command[]) => void): Subscription;
+  next(commands: Command[]): void;
 }

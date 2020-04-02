@@ -7,13 +7,13 @@ if (container && container2) {
   const editor = document.createElement("erd-editor") as Editor;
   const editor2 = document.createElement("erd-editor") as Editor;
 
-  editor.pull(commands => {
+  editor.subscribe(commands => {
     console.log("editor pull");
-    editor2.push(commands);
+    editor2.next(commands);
   });
-  editor2.pull(commands => {
+  editor2.subscribe(commands => {
     console.log("editor2 pull");
-    editor.push(commands);
+    editor.next(commands);
   });
   editor2.blur();
 

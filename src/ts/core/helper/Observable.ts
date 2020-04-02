@@ -4,7 +4,7 @@ export function createObservable<T>(
   proxyToRaw: WeakMap<object, any>,
   effect: (raw: any, name: string | number | symbol) => void
 ): T {
-  return new Proxy(data as any, {
+  const proxy = new Proxy(data as any, {
     get(target, p) {
       if (typeof target[p] === "object") {
         if (rawToProxy.has(target[p])) {
@@ -16,8 +16,6 @@ export function createObservable<T>(
           proxyToRaw,
           effect
         );
-        rawToProxy.set(target[p], proxy);
-        proxyToRaw.set(proxy, target[p]);
         return proxy;
       }
       return target[p];
@@ -38,4 +36,7 @@ export function createObservable<T>(
       return true;
     }
   });
+  rawToProxy.set(data as any, proxy);
+  proxyToRaw.set(proxy, data);
+  return proxy;
 }
