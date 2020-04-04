@@ -24,3 +24,25 @@ export function moveCanvasExecute(store: Store, data: MoveCanvas) {
   canvasState.scrollTop = data.scrollTop;
   canvasState.scrollLeft = data.scrollLeft;
 }
+
+export interface ResizeCanvas {
+  width: number;
+  height: number;
+}
+export function resizeCanvas(
+  width: number,
+  height: number
+): CommandEffect<ResizeCanvas> {
+  return {
+    name: "canvas.resize",
+    data: {
+      width,
+      height
+    }
+  };
+}
+export function resizeCanvasExecute(store: Store, data: ResizeCanvas) {
+  const { canvasState } = store;
+  canvasState.width = data.width;
+  canvasState.height = data.height;
+}
