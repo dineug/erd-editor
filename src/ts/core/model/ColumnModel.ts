@@ -12,7 +12,7 @@ export class ColumnModel implements Column {
     autoIncrement: false,
     primaryKey: false,
     unique: false,
-    notNull: false
+    notNull: false,
   };
   ui: ColumnUI = {
     active: false,
@@ -22,7 +22,7 @@ export class ColumnModel implements Column {
     widthName: SIZE_MIN_WIDTH,
     widthComment: SIZE_MIN_WIDTH,
     widthDataType: SIZE_MIN_WIDTH,
-    widthDefault: SIZE_MIN_WIDTH
+    widthDefault: SIZE_MIN_WIDTH,
   };
 
   constructor(data: { addColumn?: AddColumn }) {

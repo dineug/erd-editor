@@ -21,7 +21,7 @@ import {
   faDatabase,
   faColumns,
   faFileImport,
-  faFileCode
+  faFileCode,
 } from "@fortawesome/free-solid-svg-icons";
 
 const icons = [
@@ -46,7 +46,7 @@ const icons = [
   faDatabase,
   faColumns,
   faFileImport,
-  faFileCode
+  faFileCode,
 ];
 
 export function getIcon(

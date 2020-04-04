@@ -23,7 +23,7 @@ export class Contextmenu extends EditorElement {
       backgroundColor: table,
       color: font,
       left: `${this.x}px`,
-      top: `${this.y}px`
+      top: `${this.y}px`,
     };
   }
 

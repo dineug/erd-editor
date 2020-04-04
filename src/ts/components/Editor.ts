@@ -29,7 +29,7 @@ class Editor extends EditorElement {
       color: font,
       backgroundColor: canvas,
       width: `${this.width}px`,
-      height: `${this.height}px`
+      height: `${this.height}px`,
     };
   }
 

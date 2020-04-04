@@ -16,7 +16,7 @@ export function createWindowEventObservable(): WindowEventObservable {
     mousemove$: fromEvent<MouseEvent>(window, "mousemove"),
     touchmove$: fromEvent<TouchEvent>(window, "touchmove"),
     touchend$: fromEvent<TouchEvent>(window, "touchend"),
-    keydown$: fromEvent<KeyboardEvent>(window, "keydown")
+    keydown$: fromEvent<KeyboardEvent>(window, "keydown"),
   };
 }
 
@@ -31,16 +31,16 @@ export class EventBus {
   emit(name: string, detail?: any) {
     this.bus.dispatchEvent(
       new CustomEvent(name, {
-        detail
+        detail,
       })
     );
   }
 }
 
 enum ERD {
-  contextmenuEnd = "ERD.contextmenuEnd"
+  contextmenuEnd = "ERD.contextmenuEnd",
 }
 
 export const Bus = {
-  ERD
+  ERD,
 };

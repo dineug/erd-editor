@@ -25,7 +25,7 @@ export function nextPoint(
 ): { top: number; left: number } {
   const point = {
     top: SIZE_START_Y + store.canvasState.scrollTop,
-    left: SIZE_START_X + store.canvasState.scrollLeft
+    left: SIZE_START_X + store.canvasState.scrollLeft,
   };
   let isPosition = true;
   while (isPosition) {

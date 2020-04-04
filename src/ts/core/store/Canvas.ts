@@ -29,7 +29,7 @@ export const enum CanvasType {
   SQL = "SQL",
   List = "List",
   GeneratorCode = "GeneratorCode",
-  Visualization = "Visualization"
+  Visualization = "Visualization",
 }
 
 export const enum Database {
@@ -37,7 +37,7 @@ export const enum Database {
   MSSQL = "MSSQL",
   MySQL = "MySQL",
   Oracle = "Oracle",
-  PostgreSQL = "PostgreSQL"
+  PostgreSQL = "PostgreSQL",
 }
 
 export const enum Language {
@@ -46,14 +46,14 @@ export const enum Language {
   java = "java",
   kotlin = "kotlin",
   typescript = "typescript",
-  JPA = "JPA"
+  JPA = "JPA",
 }
 
 export const enum Case {
   none = "none",
   camelCase = "camelCase",
   pascalCase = "pascalCase",
-  snakeCase = "snakeCase"
+  snakeCase = "snakeCase",
 }
 
 export const enum ShowKey {
@@ -65,7 +65,7 @@ export const enum ShowKey {
   columnPrimaryKey = "columnPrimaryKey",
   columnUnique = "columnUnique",
   columnNotNull = "columnNotNull",
-  relationship = "relationship"
+  relationship = "relationship",
 }
 
 export function createCanvasState(): CanvasState {
@@ -83,13 +83,13 @@ export function createCanvasState(): CanvasState {
       columnPrimaryKey: true,
       columnUnique: true,
       columnNotNull: true,
-      relationship: true
+      relationship: true,
     },
     database: Database.MySQL,
     databaseName: "",
     canvasType: CanvasType.ERD,
     language: Language.graphql,
     tableCase: Case.pascalCase,
-    columnCase: Case.camelCase
+    columnCase: Case.camelCase,
   };
 }

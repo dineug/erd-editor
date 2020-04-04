@@ -19,18 +19,18 @@ const esm = [
   url(),
   resolve(),
   commonjs({
-    include: "node_modules/**"
+    include: "node_modules/**",
   }),
   eslint(),
   typescript(),
   terser({
-    include: [/^.+\.min\.js$/]
-  })
+    include: [/^.+\.min\.js$/],
+  }),
 ];
 
 export default function config() {
   return {
     esm,
-    banner
+    banner,
   };
 }

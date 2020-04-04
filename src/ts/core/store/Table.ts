@@ -62,6 +62,6 @@ export interface ColumnUI {
 
 export function createTableState(): TableState {
   return {
-    tables: []
+    tables: [],
   };
 }

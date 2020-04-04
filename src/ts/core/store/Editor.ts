@@ -4,6 +4,6 @@ export interface EditorState {
 
 export function createEditorState(): EditorState {
   return {
-    focus: true
+    focus: true,
   };
 }

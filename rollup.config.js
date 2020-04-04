@@ -7,13 +7,13 @@ const { esm, banner } = config();
 
 esm.push.apply(esm, [
   replace({
-    "process.env.NODE_ENV": JSON.stringify("production")
+    "process.env.NODE_ENV": JSON.stringify("production"),
   }),
   strip({
     debugger: true,
     include: "**/*.ts",
-    functions: ["Logger.debug"]
-  })
+    functions: ["Logger.debug"],
+  }),
 ]);
 
 export default [
@@ -24,16 +24,16 @@ export default [
         name: "vuerd",
         file: pkg.browser,
         format: "iife",
-        banner
+        banner,
       },
       {
         name: "vuerd",
         file: `dist/${pkg.name}.min.js`,
         format: "iife",
-        banner
-      }
+        banner,
+      },
     ],
-    plugins: esm
+    plugins: esm,
   },
   {
     input: "src/ts/index.ts",
@@ -41,14 +41,14 @@ export default [
       {
         file: pkg.main,
         format: "cjs",
-        banner
+        banner,
       },
       {
         file: pkg.module,
         format: "es",
-        banner
-      }
+        banner,
+      },
     ],
-    plugins: esm
-  }
+    plugins: esm,
+  },
 ];

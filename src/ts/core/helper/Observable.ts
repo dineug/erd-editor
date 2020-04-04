@@ -34,7 +34,7 @@ export function createObservable<T>(
       }
       effect(target, p);
       return true;
-    }
+    },
   });
   rawToProxy.set(data as any, proxy);
   proxyToRaw.set(proxy, data);

@@ -32,7 +32,7 @@ export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
       keymap: keymapOptionToString(keymap.addTable[0]),
       execute() {
         store.dispatch(addTable(store));
-      }
+      },
     },
     addMemo: {
       icon: "sticky-note",
@@ -40,8 +40,8 @@ export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
       keymap: keymapOptionToString(keymap.addMemo[0]),
       execute() {
         store.dispatch(addMemo(store));
-      }
-    }
+      },
+    },
   };
   return Object.values(menu);
 }

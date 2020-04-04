@@ -27,7 +27,7 @@ class Table extends EditorElement {
       left: `${ui.left}px`,
       width: `${this.table.width()}px`,
       height: `${this.table.height()}px`,
-      zIndex: `${ui.zIndex}`
+      zIndex: `${ui.zIndex}`,
     };
     if (ui.active) {
       theme.border = `solid ${tableActive} 1px`;

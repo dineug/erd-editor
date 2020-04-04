@@ -26,6 +26,6 @@ export function uuid(): string {
     "-",
     s4(),
     s4(),
-    s4()
+    s4(),
   ].join("");
 }

@@ -23,7 +23,7 @@ class Fontawesome extends EditorElement {
     return {
       display: "flex",
       width: `${rem}rem`,
-      height: `${rem}rem`
+      height: `${rem}rem`,
     };
   }
 

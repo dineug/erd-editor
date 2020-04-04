@@ -10,7 +10,7 @@ class CanvasSVG extends EditorElement {
     const { width, height } = this.context.store.canvasState;
     return {
       width: `${width}px`,
-      height: `${height}px`
+      height: `${height}px`,
     };
   }
 

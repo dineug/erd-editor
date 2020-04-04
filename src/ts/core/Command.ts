@@ -9,13 +9,13 @@ import {
   SelectTable,
   selectTableExecute,
   selectEndTableExecute,
-  selectAllTableExecute
+  selectAllTableExecute,
 } from "./command/table";
 import {
   AddColumn,
   addColumnExecute,
   RemoveColumn,
-  removeColumnExecute
+  removeColumnExecute,
 } from "./command/column";
 import {
   AddMemo,
@@ -27,13 +27,13 @@ import {
   SelectMemo,
   selectMemoExecute,
   selectEndMemoExecute,
-  selectAllMemoExecute
+  selectAllMemoExecute,
 } from "./command/memo";
 import {
   MoveCanvas,
   moveCanvasExecute,
   ResizeCanvas,
-  resizeCanvasExecute
+  resizeCanvasExecute,
 } from "./command/canvas";
 
 export interface CommandEffect<T> {

@@ -16,7 +16,7 @@ class CircleButton extends EditorElement {
 
   get theme() {
     return {
-      backgroundColor: this.backgroundColor
+      backgroundColor: this.backgroundColor,
     };
   }
 

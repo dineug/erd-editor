@@ -46,6 +46,6 @@ export function createTheme(): Theme {
     previewTarget: "#ffc107",
     scrollBarThumb: "#80808059",
     scrollBarThumbActive: "#9B9B9B",
-    code: "#23241f"
+    code: "#23241f",
   };
 }

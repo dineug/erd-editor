@@ -5,7 +5,7 @@ import {
   SIZE_COLUMN_HEIGHT,
   SIZE_COLUMN_OPTION_NN,
   SIZE_COLUMN_CLOSE,
-  SIZE_COLUMN_KEY
+  SIZE_COLUMN_KEY,
 } from "../Layout";
 import { Table, TableUI, Column, ColumnWidth } from "../store/Table";
 import { AddTable } from "../command/table";

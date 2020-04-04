@@ -11,7 +11,7 @@ import {
   addTable,
   removeTable,
   selectEndTable,
-  selectAllTable
+  selectAllTable,
 } from "@src/core/command/table";
 import { addColumn } from "@src/core/command/column";
 import { addMemo, selectEndMemo, selectAllMemo } from "@src/core/command/memo";
@@ -41,7 +41,7 @@ class ERD extends EditorElement {
   get theme() {
     return {
       width: `${this.width}px`,
-      height: `${this.height}px`
+      height: `${this.height}px`,
     };
   }
 

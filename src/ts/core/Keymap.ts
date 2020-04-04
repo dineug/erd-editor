@@ -85,8 +85,8 @@ export function createKeymap(): Keymap {
         ctrl: false,
         alt: true,
         shift: false,
-        key: "N"
-      }
+        key: "N",
+      },
     ],
     removeTable: [
       {
@@ -94,8 +94,8 @@ export function createKeymap(): Keymap {
         ctrl: true,
         alt: false,
         shift: false,
-        key: "Delete"
-      }
+        key: "Delete",
+      },
     ],
     selectAllTable: [
       {
@@ -103,8 +103,8 @@ export function createKeymap(): Keymap {
         ctrl: true,
         alt: false,
         shift: false,
-        key: "A"
-      }
+        key: "A",
+      },
     ],
     addColumn: [
       {
@@ -112,8 +112,8 @@ export function createKeymap(): Keymap {
         ctrl: false,
         alt: true,
         shift: false,
-        key: "Enter"
-      }
+        key: "Enter",
+      },
     ],
     addMemo: [
       {
@@ -121,9 +121,9 @@ export function createKeymap(): Keymap {
         ctrl: false,
         alt: true,
         shift: false,
-        key: "M"
-      }
-    ]
+        key: "M",
+      },
+    ],
   };
 }
 

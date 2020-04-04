@@ -14,8 +14,8 @@ export function moveCanvas(
     name: "canvas.move",
     data: {
       scrollTop,
-      scrollLeft
-    }
+      scrollLeft,
+    },
   };
 }
 export function moveCanvasExecute(store: Store, data: MoveCanvas) {
@@ -37,8 +37,8 @@ export function resizeCanvas(
     name: "canvas.resize",
     data: {
       width,
-      height
-    }
+      height,
+    },
   };
 }
 export function resizeCanvasExecute(store: Store, data: ResizeCanvas) {

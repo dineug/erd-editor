@@ -25,9 +25,9 @@ export function addTable(store: Store): CommandEffect<AddTable> {
         top: point.top,
         zIndex: nextZIndex(tableState.tables, memoState.memos),
         widthName: SIZE_MIN_WIDTH,
-        widthComment: SIZE_MIN_WIDTH
-      }
-    }
+        widthComment: SIZE_MIN_WIDTH,
+      },
+    },
   };
 }
 export function addTableExecute(store: Store, data: AddTable) {
@@ -64,8 +64,8 @@ export function moveTable(
         : [tableId],
       memoIds: ctrlKey
         ? memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id)
-        : []
-    }
+        : [],
+    },
   };
 }
 export function moveTableExecute(store: Store, data: MoveTable) {
@@ -106,8 +106,8 @@ export function removeTable(
             .map(table => table.id),
       memoIds: tableId
         ? []
-        : memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id)
-    }
+        : memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id),
+    },
   };
 }
 export function removeTableExecute(store: Store, data: RemoveTable) {
@@ -145,8 +145,8 @@ export function selectTable(
     data: {
       ctrlKey,
       tableId,
-      zIndex: nextZIndex(tableState.tables, memoState.memos)
-    }
+      zIndex: nextZIndex(tableState.tables, memoState.memos),
+    },
   };
 }
 export function selectTableExecute(store: Store, data: SelectTable) {
@@ -169,7 +169,7 @@ export function selectTableExecute(store: Store, data: SelectTable) {
 export function selectEndTable(): CommandEffect<null> {
   return {
     name: "table.selectEnd",
-    data: null
+    data: null,
   };
 }
 export function selectEndTableExecute(store: Store) {
@@ -181,7 +181,7 @@ export function selectEndTableExecute(store: Store) {
 export function selectAllTable(): CommandEffect<null> {
   return {
     name: "table.selectAll",
-    data: null
+    data: null,
   };
 }
 export function selectAllTableExecute(store: Store) {

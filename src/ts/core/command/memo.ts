@@ -25,9 +25,9 @@ export function addMemo(store: Store): CommandEffect<AddMemo> {
         top: point.top,
         zIndex: nextZIndex(tableState.tables, memoState.memos),
         width: SIZE_MEMO_WIDTH,
-        height: SIZE_MEMO_HEIGHT
-      }
-    }
+        height: SIZE_MEMO_HEIGHT,
+      },
+    },
   };
 }
 export function addMemoExecute(store: Store, data: AddMemo) {
@@ -64,8 +64,8 @@ export function moveMemo(
         : [],
       memoIds: ctrlKey
         ? memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id)
-        : [memoId]
-    }
+        : [memoId],
+    },
   };
 }
 export function moveMemoExecute(store: Store, data: MoveMemo) {
@@ -106,8 +106,8 @@ export function removeMemo(
             .map(table => table.id),
       memoIds: memoId
         ? [memoId]
-        : memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id)
-    }
+        : memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id),
+    },
   };
 }
 export function removeMemoExecute(store: Store, data: RemoveMemo) {
@@ -145,8 +145,8 @@ export function selectMemo(
     data: {
       ctrlKey,
       memoId,
-      zIndex: nextZIndex(tableState.tables, memoState.memos)
-    }
+      zIndex: nextZIndex(tableState.tables, memoState.memos),
+    },
   };
 }
 export function selectMemoExecute(store: Store, data: SelectMemo) {
@@ -169,7 +169,7 @@ export function selectMemoExecute(store: Store, data: SelectMemo) {
 export function selectEndMemo(): CommandEffect<null> {
   return {
     name: "memo.selectEnd",
-    data: null
+    data: null,
   };
 }
 export function selectEndMemoExecute(store: Store) {
@@ -181,7 +181,7 @@ export function selectEndMemoExecute(store: Store) {
 export function selectAllMemo(): CommandEffect<null> {
   return {
     name: "memo.selectAll",
-    data: null
+    data: null,
   };
 }
 export function selectAllMemoExecute(store: Store) {

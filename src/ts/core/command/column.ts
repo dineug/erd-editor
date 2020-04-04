@@ -18,17 +18,17 @@ export function addColumn(
       ? [
           {
             id: uuid(),
-            tableId
-          }
+            tableId,
+          },
         ]
       : store.tableState.tables
           .filter(table => table.ui.active)
           .map(table => {
             return {
               id: uuid(),
-              tableId: table.id
+              tableId: table.id,
             };
-          })
+          }),
   };
 }
 export function addColumnExecute(store: Store, data: AddColumn[]) {
@@ -50,7 +50,7 @@ export function removeColumn(store: Store): CommandEffect<Array<RemoveColumn>> {
   // TODO: focus select method
   return {
     name: "column.remove",
-    data: []
+    data: [],
   };
 }
 export function removeColumnExecute(store: Store, data: RemoveColumn[]) {

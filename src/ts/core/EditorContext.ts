@@ -1,7 +1,7 @@
 import {
   WindowEventObservable,
   createWindowEventObservable,
-  EventBus
+  EventBus,
 } from "./Event";
 import { Theme, createTheme } from "./Theme";
 import { Keymap, createKeymap } from "./Keymap";
@@ -21,6 +21,6 @@ export function createEditorContext(): EditorContext {
     eventBus: new EventBus(),
     theme: createTheme(),
     keymap: createKeymap(),
-    store: new Store()
+    store: new Store(),
   };
 }

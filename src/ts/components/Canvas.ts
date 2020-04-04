@@ -16,7 +16,7 @@ class Canvas extends EditorElement {
     return {
       backgroundColor: canvas,
       width: `${width}px`,
-      height: `${height}px`
+      height: `${height}px`,
     };
   }
 

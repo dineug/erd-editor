@@ -19,6 +19,6 @@ export interface MemoUI {
 
 export function createMemoState(): MemoState {
   return {
-    memos: []
+    memos: [],
   };
 }
