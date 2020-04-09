@@ -6,7 +6,7 @@ export function createObservable<T>(
 ): T {
   const proxy = new Proxy(data as any, {
     get(target, p) {
-      if (typeof target[p] === "object") {
+      if (target[p] !== null && typeof target[p] === "object") {
         if (rawToProxy.has(target[p])) {
           return rawToProxy.get(target[p]);
         }
@@ -30,6 +30,13 @@ export function createObservable<T>(
         });
         target[p] = list;
       } else {
+        if (typeof target[p] === "object" && value === null) {
+          if (rawToProxy.has(target[p])) {
+            const proxy = rawToProxy.get(target[p]);
+            proxyToRaw.delete(proxy);
+          }
+          rawToProxy.delete(target[p]);
+        }
         target[p] = value;
       }
       effect(target, p);

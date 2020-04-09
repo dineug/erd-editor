@@ -1,5 +1,5 @@
 export function getData<T extends { id: string }>(
-  list: T[],
+  list: Array<T>,
   id: string
 ): T | null {
   for (const v of list) {

@@ -16,7 +16,6 @@ import {
 import { addColumn } from "@src/core/command/column";
 import { addMemo, selectEndMemo, selectAllMemo } from "@src/core/command/memo";
 import { moveCanvas } from "@src/core/command/canvas";
-import "./Canvas";
 
 @customElement("vuerd-erd")
 class ERD extends EditorElement {
@@ -31,10 +30,9 @@ class ERD extends EditorElement {
   @property({ type: Number })
   contextmenuY = 0;
 
+  private subscriptionList: Subscription[] = [];
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
-  private subKeydown!: Subscription;
-  private subCanvas!: Subscription;
   private menus: Menu[] = [];
   private erd!: Element;
 
@@ -50,35 +48,40 @@ class ERD extends EditorElement {
     Logger.debug("ERD before render");
     const { store, eventBus, keymap } = this.context;
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
-    this.subKeydown = this.context.windowEventObservable.keydown$.subscribe(
-      (event: KeyboardEvent) => {
-        const { focus } = store.editorState;
-        if (focus) {
-          if (keymapMatch(event, keymap.addTable)) {
-            store.dispatch(addTable(store));
-          }
-          if (
-            keymapMatch(event, keymap.removeTable) &&
-            (store.tableState.tables.some(table => table.ui.active) ||
-              store.memoState.memos.some(memo => memo.ui.active))
-          ) {
-            store.dispatch(removeTable(store));
-          }
-          if (
-            keymapMatch(event, keymap.addColumn) &&
-            store.tableState.tables.some(table => table.ui.active)
-          ) {
-            store.dispatch(addColumn(store));
-          }
-          if (keymapMatch(event, keymap.addMemo)) {
-            store.dispatch(addMemo(store));
-          }
-          if (keymapMatch(event, keymap.selectAllTable)) {
-            // TODO: if add not editor mod
-            store.dispatch(selectAllTable(), selectAllMemo());
+    this.subscriptionList.push(
+      this.context.windowEventObservable.keydown$.subscribe(
+        (event: KeyboardEvent) => {
+          const { focus } = store.editorState;
+          if (focus) {
+            if (keymapMatch(event, keymap.addTable)) {
+              store.dispatch(addTable(store));
+            }
+            if (
+              keymapMatch(event, keymap.removeTable) &&
+              (store.tableState.tables.some(table => table.ui.active) ||
+                store.memoState.memos.some(memo => memo.ui.active))
+            ) {
+              store.dispatch(removeTable(store));
+            }
+            if (
+              keymapMatch(event, keymap.addColumn) &&
+              store.tableState.tables.some(table => table.ui.active)
+            ) {
+              store.dispatch(addColumn(store));
+            }
+            if (keymapMatch(event, keymap.addMemo)) {
+              store.dispatch(addMemo(store));
+            }
+            if (
+              keymapMatch(event, keymap.selectAllTable) &&
+              store.editorState.tableEdit === null
+            ) {
+              event.preventDefault();
+              store.dispatch(selectAllTable(), selectAllMemo());
+            }
           }
         }
-      }
+      )
     );
   }
   firstUpdated() {
@@ -87,22 +90,20 @@ class ERD extends EditorElement {
     this.erd = this.renderRoot.querySelector(".vuerd-erd") as Element;
     this.erd.scrollTop = store.canvasState.scrollTop;
     this.erd.scrollLeft = store.canvasState.scrollLeft;
-    this.subCanvas = store.observe(
-      store.canvasState,
-      (name: string | number | symbol) => {
+    this.subscriptionList.push(
+      store.observe(store.canvasState, (name: string | number | symbol) => {
         if (name === "scrollTop") {
           this.erd.scrollTop = store.canvasState.scrollTop;
         } else if (name === "scrollLeft") {
           this.erd.scrollLeft = store.canvasState.scrollLeft;
         }
-      }
+      })
     );
   }
   disconnectedCallback() {
     Logger.debug("ERD destroy");
     this.onMouseup();
-    this.subKeydown.unsubscribe();
-    this.subCanvas.unsubscribe();
+    this.subscriptionList.forEach(sub => sub.unsubscribe());
     this.context.eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     super.disconnectedCallback();
   }

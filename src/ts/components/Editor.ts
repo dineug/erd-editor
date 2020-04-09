@@ -7,8 +7,13 @@ import { createEditorContext } from "@src/core/EditorContext";
 import { Command } from "@src/core/Command";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import "./ERD";
+import "./Canvas";
+import "./CanvasSVG";
+import "./Table";
 import "./Fontawesome";
 import "./Contextmenu";
+import "./CircleButton";
+import "./InputEdit";
 
 @customElement("erd-editor")
 class Editor extends EditorElement {
@@ -21,7 +26,7 @@ class Editor extends EditorElement {
   @property({ type: Number })
   height = defaultHeight;
 
-  private subKeydown!: Subscription;
+  private subscriptionList: Subscription[] = [];
 
   get theme() {
     const { font, canvas } = this.context.theme;
@@ -43,17 +48,17 @@ class Editor extends EditorElement {
     super.connectedCallback();
     Logger.debug("Editor before render");
     if (process.env.NODE_ENV === "development") {
-      this.subKeydown = this.context.windowEventObservable.keydown$.subscribe(
-        event => {
+      this.subscriptionList.push(
+        this.context.windowEventObservable.keydown$.subscribe(event => {
           Logger.debug(`
-          metaKey: ${event.metaKey},
-          ctrlKey: ${event.ctrlKey},
-          altKey: ${event.altKey},
-          shiftKey: ${event.shiftKey},
-          code: ${event.code},
-          key: ${event.key}
-          `);
-        }
+            metaKey: ${event.metaKey},
+            ctrlKey: ${event.ctrlKey},
+            altKey: ${event.altKey},
+            shiftKey: ${event.shiftKey},
+            code: ${event.code},
+            key: ${event.key}
+            `);
+        })
       );
     }
   }
@@ -75,9 +80,7 @@ class Editor extends EditorElement {
   disconnectedCallback() {
     Logger.debug("Editor destroy");
     this.context.store.destroy();
-    if (process.env.NODE_ENV === "development") {
-      this.subKeydown.unsubscribe();
-    }
+    this.subscriptionList.forEach(sub => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

@@ -35,11 +35,20 @@ import {
   ResizeCanvas,
   resizeCanvasExecute,
 } from "./command/canvas";
+import {
+  TableFocus,
+  tableFocusExecute,
+  tableFocusEndExecute,
+  TableEdit,
+  tableEditExecute,
+  tableEditEndExecute,
+} from "./command/editor";
 
 export interface CommandEffect<T> {
   name: CommandName;
   data: T;
 }
+
 type CommandName =
   | "table.add"
   | "table.move"
@@ -56,7 +65,12 @@ type CommandName =
   | "memo.selectEnd"
   | "memo.selectAll"
   | "canvas.move"
-  | "canvas.resize";
+  | "canvas.resize"
+  | "editor.tableFocus"
+  | "editor.tableFocusEnd"
+  | "editor.tableEdit"
+  | "editor.tableEditEnd";
+
 export type Command =
   | CommandEffect<null>
   | CommandEffect<AddTable>
@@ -70,7 +84,9 @@ export type Command =
   | CommandEffect<RemoveMemo>
   | CommandEffect<SelectMemo>
   | CommandEffect<MoveCanvas>
-  | CommandEffect<ResizeCanvas>;
+  | CommandEffect<ResizeCanvas>
+  | CommandEffect<TableFocus>
+  | CommandEffect<TableEdit>;
 
 export function commandExecute(store: Store, commands: Command[]) {
   commands.forEach(command => {
@@ -122,6 +138,18 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "canvas.resize":
         resizeCanvasExecute(store, command.data as ResizeCanvas);
+        break;
+      case "editor.tableFocus":
+        tableFocusExecute(store, command.data as TableFocus);
+        break;
+      case "editor.tableFocusEnd":
+        tableFocusEndExecute(store);
+        break;
+      case "editor.tableEdit":
+        tableEditExecute(store, command.data as TableEdit);
+        break;
+      case "editor.tableEditEnd":
+        tableEditEndExecute(store);
         break;
     }
   });

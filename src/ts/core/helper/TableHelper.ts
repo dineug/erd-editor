@@ -1,6 +1,14 @@
-import { SIZE_START_X, SIZE_START_Y, SIZE_START_ADD } from "../Layout";
+import {
+  SIZE_START_X,
+  SIZE_START_Y,
+  SIZE_START_ADD,
+  SIZE_COLUMN_OPTION_NN,
+  SIZE_MARGIN_RIGHT,
+  SIZE_MIN_WIDTH,
+} from "../Layout";
 import { Store } from "../Store";
-import { Table } from "../store/Table";
+import { Table, Column, ColumnWidth } from "../store/Table";
+import { Show } from "../store/Canvas";
 import { Memo } from "../store/Memo";
 
 export function nextZIndex(tables: Table[], memos: Memo[]): number {
@@ -48,4 +56,65 @@ export function nextPoint(
     }
   }
   return point;
+}
+
+type ColumnWidthKey =
+  | "width"
+  | "name"
+  | "comment"
+  | "dataType"
+  | "default"
+  | "notNull";
+export function getMaxWidthColumn(columns: Column[], show: Show) {
+  const columnWidth: ColumnWidth = {
+    width: 0,
+    name: 0,
+    comment: 0,
+    dataType: 0,
+    default: 0,
+    notNull: 0,
+  };
+  columns.forEach(column => {
+    if (columnWidth.name < column.ui.widthName) {
+      columnWidth.name = column.ui.widthName;
+    }
+    if (show.columnComment && columnWidth.comment < column.ui.widthComment) {
+      columnWidth.comment = column.ui.widthComment;
+    }
+    if (show.columnDataType && columnWidth.dataType < column.ui.widthDataType) {
+      columnWidth.dataType = column.ui.widthDataType;
+    }
+    if (show.columnDefault && columnWidth.default < column.ui.widthDefault) {
+      columnWidth.default = column.ui.widthDefault;
+    }
+  });
+  if (show.columnNotNull) {
+    columnWidth.notNull = SIZE_COLUMN_OPTION_NN;
+  }
+  Object.keys(columnWidth)
+    .filter(key => key !== "width")
+    .forEach(key => {
+      const k = key as ColumnWidthKey;
+      if (columnWidth[k] !== 0) {
+        columnWidth.width += columnWidth[k] + SIZE_MARGIN_RIGHT;
+      }
+    });
+  return columnWidth;
+}
+
+export function getDefaultWidthColumn(show: Show): number {
+  let width = SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
+  if (show.columnComment) {
+    width += SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
+  }
+  if (show.columnDataType) {
+    width += SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
+  }
+  if (show.columnDefault) {
+    width += SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
+  }
+  if (show.columnNotNull) {
+    width += SIZE_COLUMN_OPTION_NN + SIZE_MARGIN_RIGHT;
+  }
+  return width;
 }

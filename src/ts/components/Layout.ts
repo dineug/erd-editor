@@ -11,6 +11,10 @@ export const Layout = css`
   .vuerd-editor {
     position: relative;
     overflow: hidden;
+
+    font-size: 13px;
+    font-family: "Noto Sans", "JetBrainsMono", "Cascadia Code", "D2Coding",
+      "Consolas", sans-serif;
   }
 
   .vuerd-erd {
@@ -42,6 +46,18 @@ export const Layout = css`
   }
   .vuerd-table .vuerd-table-header-body {
     height: 30px;
+  }
+  .vuerd-table .vuerd-table-header-body div.vuerd-input-edit {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 5px;
+    border-bottom: solid #fff0 1.5px;
+  }
+  .vuerd-table .vuerd-table-header-body input.vuerd-input-edit {
+    outline: none;
+    border: none;
+    opacity: 0.9;
+    margin-right: 5px;
   }
 
   .vuerd-circle-button {

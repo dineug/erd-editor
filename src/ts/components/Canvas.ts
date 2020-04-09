@@ -5,8 +5,6 @@ import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Table } from "@src/core/store/Table";
-import "./Table";
-import "./CanvasSVG";
 
 @customElement("vuerd-canvas")
 class Canvas extends EditorElement {
@@ -21,21 +19,23 @@ class Canvas extends EditorElement {
   }
 
   private tables: Table[] = [];
-  private subTables!: Subscription;
+  private subscriptionList: Subscription[] = [];
 
   connectedCallback() {
     super.connectedCallback();
     Logger.debug("Canvas before render");
     const { store } = this.context;
     this.tables = store.tableState.tables;
-    this.subTables = store.observe(this.tables, () => this.requestUpdate());
+    this.subscriptionList.push(
+      store.observe(this.tables, () => this.requestUpdate())
+    );
   }
   firstUpdated() {
     Logger.debug("Canvas after render");
   }
   disconnectedCallback() {
     Logger.debug("Canvas destroy");
-    this.subTables.unsubscribe();
+    this.subscriptionList.forEach(sub => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

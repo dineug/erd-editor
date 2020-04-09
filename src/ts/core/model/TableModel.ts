@@ -1,14 +1,17 @@
 import {
-  SIZE_MIN_WIDTH,
-  SIZE_MARGIN_RIGHT,
   SIZE_TABLE_HEIGHT,
   SIZE_COLUMN_HEIGHT,
-  SIZE_COLUMN_OPTION_NN,
+  SIZE_MARGIN_RIGHT,
   SIZE_COLUMN_CLOSE,
   SIZE_COLUMN_KEY,
 } from "../Layout";
 import { Table, TableUI, Column, ColumnWidth } from "../store/Table";
+import { Show } from "../store/Canvas";
 import { AddTable } from "../command/table";
+import {
+  getMaxWidthColumn,
+  getDefaultWidthColumn,
+} from "../helper/TableHelper";
 
 export class TableModel implements Table {
   id: string;
@@ -16,8 +19,10 @@ export class TableModel implements Table {
   comment = "";
   columns: Column[] = [];
   ui: TableUI;
+  show: Show;
 
-  constructor(data: { addTable?: AddTable }) {
+  constructor(data: { addTable?: AddTable }, show: Show) {
+    this.show = show;
     const { addTable } = data;
     if (addTable) {
       const { id, ui } = addTable;
@@ -29,13 +34,37 @@ export class TableModel implements Table {
   }
 
   width(): number {
-    // throw new Error("Method not implemented.");
-    return 100;
+    // table header width
+    let width = this.ui.widthName + SIZE_MARGIN_RIGHT;
+    if (this.show.tableComment) {
+      width += this.ui.widthComment + SIZE_MARGIN_RIGHT;
+    }
+    // default width column
+    const defaultWidthColumn =
+      getDefaultWidthColumn(this.show) +
+      SIZE_COLUMN_CLOSE +
+      SIZE_COLUMN_KEY +
+      SIZE_MARGIN_RIGHT;
+    if (width < defaultWidthColumn) {
+      width = defaultWidthColumn;
+    }
+    // max width column
+    const maxWidthColumn =
+      this.maxWidthColumn().width +
+      SIZE_COLUMN_CLOSE +
+      SIZE_COLUMN_KEY +
+      SIZE_MARGIN_RIGHT;
+    if (width < maxWidthColumn) {
+      width = maxWidthColumn;
+    }
+    return width;
   }
+
   height(): number {
     return SIZE_TABLE_HEIGHT + this.columns.length * SIZE_COLUMN_HEIGHT;
   }
+
   maxWidthColumn(): ColumnWidth {
-    throw new Error("Method not implemented.");
+    return getMaxWidthColumn(this.columns, this.show);
   }
 }

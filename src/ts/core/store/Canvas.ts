@@ -8,8 +8,8 @@ export interface CanvasState {
   databaseName: string;
   canvasType: CanvasType;
   language: Language; // ADD: version 0.2.16
-  tableCase: Case; // ADD: version 0.2.18
-  columnCase: Case; // ADD: version 0.2.18
+  tableCase: NameCase; // ADD: version 0.2.18
+  columnCase: NameCase; // ADD: version 0.2.18
 }
 
 export interface Show {
@@ -24,49 +24,35 @@ export interface Show {
   relationship: boolean;
 }
 
-export const enum CanvasType {
-  ERD = "ERD",
-  SQL = "SQL",
-  List = "List",
-  GeneratorCode = "GeneratorCode",
-  Visualization = "Visualization",
-}
+export type ShowKey =
+  | "tableComment"
+  | "columnComment"
+  | "columnDataType"
+  | "columnDefault"
+  | "columnAutoIncrement"
+  | "columnPrimaryKey"
+  | "columnUnique"
+  | "columnNotNull"
+  | "relationship";
 
-export const enum Database {
-  MariaDB = "MariaDB",
-  MSSQL = "MSSQL",
-  MySQL = "MySQL",
-  Oracle = "Oracle",
-  PostgreSQL = "PostgreSQL",
-}
+export type CanvasType =
+  | "ERD"
+  | "SQL"
+  | "List"
+  | "GeneratorCode"
+  | "Visualization";
 
-export const enum Language {
-  graphql = "graphql",
-  cs = "cs",
-  java = "java",
-  kotlin = "kotlin",
-  typescript = "typescript",
-  JPA = "JPA",
-}
+export type Database = "MariaDB" | "MSSQL" | "MySQL" | "Oracle" | "PostgreSQL";
 
-export const enum Case {
-  none = "none",
-  camelCase = "camelCase",
-  pascalCase = "pascalCase",
-  snakeCase = "snakeCase",
-}
+export type Language =
+  | "graphql"
+  | "cs"
+  | "java"
+  | "kotlin"
+  | "typescript"
+  | "JPA";
 
-export const enum ShowKey {
-  tableComment = "tableComment",
-  columnComment = "columnComment",
-  columnDataType = "columnDataType",
-  columnDefault = "columnDefault",
-  columnAutoIncrement = "columnAutoIncrement",
-  columnPrimaryKey = "columnPrimaryKey",
-  columnUnique = "columnUnique",
-  columnNotNull = "columnNotNull",
-  relationship = "relationship",
-}
+export type NameCase = "none" | "camelCase" | "pascalCase" | "snakeCase";
 
 export function createCanvasState(): CanvasState {
   return {
@@ -85,11 +71,11 @@ export function createCanvasState(): CanvasState {
       columnNotNull: true,
       relationship: true,
     },
-    database: Database.MySQL,
+    database: "MySQL",
     databaseName: "",
-    canvasType: CanvasType.ERD,
-    language: Language.graphql,
-    tableCase: Case.pascalCase,
-    columnCase: Case.camelCase,
+    canvasType: "ERD",
+    language: "graphql",
+    tableCase: "pascalCase",
+    columnCase: "camelCase",
   };
 }

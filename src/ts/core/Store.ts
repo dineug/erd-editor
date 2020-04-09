@@ -12,9 +12,8 @@ export class Store {
   readonly memoState: MemoState;
   readonly editorState: EditorState;
   private dispatch$ = new Subject<Array<Command>>();
-  private subDispatchList: Subscription[] = [];
   private next$ = new Subject<Array<Command>>();
-  private subNext: Subscription;
+  private subscriptionList: Subscription[] = [];
   private rawToProxy = new WeakMap();
   private proxyToRaw = new WeakMap();
   private proxyToObservable = new WeakMap<
@@ -47,12 +46,10 @@ export class Store {
       this.proxyToRaw,
       this.effect
     );
-    this.subDispatchList.push(
-      this.dispatch$.subscribe(commands => commandExecute(this, commands))
-    );
-    this.subNext = this.next$.subscribe(commands =>
-      commandExecute(this, commands)
-    );
+    this.subscriptionList.push.apply(this.subscriptionList, [
+      this.dispatch$.subscribe(commands => commandExecute(this, commands)),
+      this.next$.subscribe(commands => commandExecute(this, commands)),
+    ]);
   }
 
   dispatch(...commands: Command[]) {
@@ -61,7 +58,7 @@ export class Store {
 
   subscribe(effect: (commands: Command[]) => void): Subscription {
     const subDispatch = this.dispatch$.subscribe(effect);
-    this.subDispatchList.push(subDispatch);
+    this.subscriptionList.push(subDispatch);
     return subDispatch;
   }
 
@@ -70,8 +67,7 @@ export class Store {
   }
 
   destroy() {
-    this.subDispatchList.forEach(subDispatch => subDispatch.unsubscribe());
-    this.subNext.unsubscribe();
+    this.subscriptionList.forEach(sub => sub.unsubscribe());
   }
 
   observe(

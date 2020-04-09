@@ -1,4 +1,4 @@
-import { ShowKey, Database, Language, Case } from "./store/Canvas";
+import { ShowKey, Database, Language, NameCase } from "./store/Canvas";
 import { Store } from "./Store";
 import { Keymap, keymapOptionToString } from "./Keymap";
 import { addTable } from "./command/table";
@@ -9,8 +9,8 @@ export interface MenuOption {
   show?: ShowKey;
   database?: Database;
   language?: Language;
-  tableCase?: Case;
-  columnCase?: Case;
+  tableCase?: NameCase;
+  columnCase?: NameCase;
 }
 
 export interface Menu {
