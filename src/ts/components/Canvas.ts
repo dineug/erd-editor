@@ -1,6 +1,5 @@
 import { html, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { repeat } from "lit-html/directives/repeat";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
@@ -30,9 +29,6 @@ class Canvas extends EditorElement {
       store.observe(this.tables, () => this.requestUpdate())
     );
   }
-  firstUpdated() {
-    Logger.debug("Canvas after render");
-  }
   disconnectedCallback() {
     Logger.debug("Canvas destroy");
     this.subscriptionList.forEach(sub => sub.unsubscribe());
@@ -43,9 +39,7 @@ class Canvas extends EditorElement {
     Logger.debug("Canvas render");
     return html`
       <div class="vuerd-canvas" style=${styleMap(this.theme)}>
-        ${repeat(
-          this.tables,
-          table => table.id,
+        ${this.tables.map(
           table => html`
             <vuerd-table .context=${this.context} .table=${table}></vuerd-table>
           `

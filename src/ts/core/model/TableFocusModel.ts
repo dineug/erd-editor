@@ -1,6 +1,7 @@
 import { Show } from "../store/Canvas";
 import { Table, Column, ColumnWidth } from "../store/Table";
 import { ColumnFocus, ColumnFocusModel } from "./ColumnFocusModel";
+import { TableFocusMove } from "../command/editor";
 
 export type FocusType =
   | "tableName"
@@ -17,11 +18,7 @@ export interface TableFocus {
   focusComment: boolean;
   focusColumns: ColumnFocus[];
 
-  focus(focusType: FocusType, column?: Column): void;
-  selected(event?: MouseEvent): void;
-  move(event: KeyboardEvent): void;
-  columnSelectAll(): Column[];
-  primaryKey(): void;
+  move(tableFocusMove: TableFocusMove): void;
 }
 
 export class TableFocusModel implements TableFocus {
@@ -43,19 +40,36 @@ export class TableFocusModel implements TableFocus {
     });
   }
 
-  focus(focusType: FocusType, column?: Column) {
-    throw new Error("Method not implemented.");
+  move(tableFocusMove: TableFocusMove) {
+    switch (tableFocusMove.moveKey) {
+      case "ArrowUp":
+        if (this.focusColumns.length !== 0) {
+        }
+        break;
+      case "ArrowDown":
+        if (this.focusColumns.length !== 0) {
+        }
+        break;
+      case "ArrowLeft":
+        if (this.isFocusTable) {
+          if (this.show.tableComment) {
+            this.focusName = !this.focusName;
+            this.focusComment = !this.focusComment;
+          }
+        }
+        break;
+      case "ArrowRight":
+        if (this.isFocusTable) {
+          if (this.show.tableComment) {
+            this.focusName = !this.focusName;
+            this.focusComment = !this.focusComment;
+          }
+        }
+        break;
+    }
   }
-  selected(event?: MouseEvent) {
-    throw new Error("Method not implemented.");
-  }
-  move(event: KeyboardEvent) {
-    throw new Error("Method not implemented.");
-  }
-  columnSelectAll(): Column[] {
-    throw new Error("Method not implemented.");
-  }
-  primaryKey() {
-    throw new Error("Method not implemented.");
+
+  private get isFocusTable(): boolean {
+    return this.focusName || this.focusComment;
   }
 }

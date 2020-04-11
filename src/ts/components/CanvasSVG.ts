@@ -18,9 +18,6 @@ class CanvasSVG extends EditorElement {
     super.connectedCallback();
     Logger.debug("CanvasSVG before render");
   }
-  firstUpdated() {
-    Logger.debug("CanvasSVG after render");
-  }
   disconnectedCallback() {
     Logger.debug("CanvasSVG destroy");
     super.disconnectedCallback();

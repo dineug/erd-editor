@@ -1,5 +1,6 @@
 import { html, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { repeat } from "lit-html/directives/repeat";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
@@ -17,6 +18,7 @@ class Table extends EditorElement {
   private subscriptionList: Subscription[] = [];
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
+  private subTableFocus: Subscription | null = null;
 
   get theme() {
     const { table, tableActive } = this.context.theme;
@@ -39,8 +41,7 @@ class Table extends EditorElement {
   get focusTableName() {
     const { editorState } = this.context.store;
     return (
-      editorState.tableFocus !== null &&
-      editorState.tableFocus.id === this.table.id &&
+      editorState.tableFocus?.id === this.table.id &&
       editorState.tableFocus.focusName
     );
   }
@@ -48,9 +49,26 @@ class Table extends EditorElement {
   get focusTableComment() {
     const { editorState } = this.context.store;
     return (
-      editorState.tableFocus !== null &&
-      editorState.tableFocus.id === this.table.id &&
+      editorState.tableFocus?.id === this.table.id &&
       editorState.tableFocus.focusComment
+    );
+  }
+
+  get editTableName() {
+    const { editorState } = this.context.store;
+    return (
+      this.focusTableName &&
+      editorState.tableEdit?.id === this.table.id &&
+      editorState.tableEdit.focusType === "tableName"
+    );
+  }
+
+  get editTableComment() {
+    const { editorState } = this.context.store;
+    return (
+      this.focusTableComment &&
+      editorState.tableEdit?.id === this.table.id &&
+      editorState.tableEdit.focusType === "tableComment"
     );
   }
 
@@ -61,6 +79,14 @@ class Table extends EditorElement {
     this.subscriptionList.push.apply(this.subscriptionList, [
       store.observe(this.table.ui, () => this.requestUpdate()),
       store.observe(this.table.columns, () => this.requestUpdate()),
+      store.observe(
+        store.canvasState.show,
+        (name: string | number | symbol) => {
+          if (name === "tableComment") {
+            this.requestUpdate();
+          }
+        }
+      ),
       store.observe(store.editorState, (name: string | number | symbol) => {
         Logger.debug(`Table observe editorState: ${String(name)}`);
         if (name === "tableFocus" || name === "tableEdit") {
@@ -68,25 +94,27 @@ class Table extends EditorElement {
             store.editorState.tableFocus === null ||
             store.editorState.tableFocus.id === this.table.id
           ) {
+            this.tableFocusUnsubscribe();
+            this.tableFocusObserve();
             this.requestUpdate();
           }
         }
       }),
     ]);
-  }
-  firstUpdated() {
-    Logger.debug("Table after render");
+    this.tableFocusObserve();
   }
   disconnectedCallback() {
     Logger.debug("Table destroy");
     this.onMouseup();
     this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.tableFocusUnsubscribe();
     super.disconnectedCallback();
   }
 
   render() {
     Logger.debug("Table render");
     const { theme, keymap } = this.context;
+    const { show } = this.context.store.canvasState;
     const keymapAddColumn = keymapOptionToString(keymap.addColumn[0]);
     const keymapRemoveTable = keymapOptionToString(keymap.removeTable[0]);
     return html`
@@ -121,22 +149,42 @@ class Table extends EditorElement {
               .value=${this.table.name}
               placeholder="table"
               ?focusState=${this.focusTableName}
+              ?edit=${this.editTableName}
               @input=${(event: InputEvent) =>
                 this.onInputTable(event, "tableName")}
               @blur=${(event: Event) => this.onBlurTable(event, "tableName")}
             ></vuerd-input-edit>
-            <vuerd-input-edit
-              .context=${this.context}
-              .width=${this.table.ui.widthComment}
-              .value=${this.table.comment}
-              placeholder="comment"
-              ?focusState=${this.focusTableComment}
-              @input=${(event: InputEvent) =>
-                this.onInputTable(event, "tableComment")}
-              @blur=${(event: Event) => this.onBlurTable(event, "tableComment")}
-            ></vuerd-input-edit>
+            ${show.tableComment
+              ? html`
+                  <vuerd-input-edit
+                    .context=${this.context}
+                    .width=${this.table.ui.widthComment}
+                    .value=${this.table.comment}
+                    placeholder="comment"
+                    ?focusState=${this.focusTableComment}
+                    ?edit=${this.editTableComment}
+                    @input=${(event: InputEvent) =>
+                      this.onInputTable(event, "tableComment")}
+                    @blur=${(event: Event) =>
+                      this.onBlurTable(event, "tableComment")}
+                  ></vuerd-input-edit>
+                `
+              : html``}
           </div>
         </div>
+        <ul class="vuerd-table-body">
+          ${repeat(
+            this.table.columns,
+            column => column.id,
+            column =>
+              html`
+                <vuerd-column
+                  .context=${this.context}
+                  .column=${column}
+                ></vuerd-column>
+              `
+          )}
+        </ul>
       </div>
     `;
   }
@@ -199,5 +247,17 @@ class Table extends EditorElement {
     Logger.debug(`onBlurTable: ${name}`);
     const { store } = this.context;
     store.dispatch(tableEditEnd());
+  }
+  private tableFocusObserve() {
+    const { store } = this.context;
+    if (store.editorState.tableFocus?.id === this.table.id) {
+      this.subTableFocus = store.observe(store.editorState.tableFocus, () =>
+        this.requestUpdate()
+      );
+    }
+  }
+  private tableFocusUnsubscribe() {
+    this.subTableFocus?.unsubscribe();
+    this.subTableFocus = null;
   }
 }

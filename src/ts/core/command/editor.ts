@@ -41,6 +41,37 @@ export function tableFocusEndExecute(store: Store) {
   tableEditEndExecute(store);
 }
 
+export const moveKeys: MoveKey[] = [
+  "ArrowUp",
+  "ArrowRight",
+  "ArrowDown",
+  "ArrowLeft",
+];
+export type MoveKey = "ArrowUp" | "ArrowRight" | "ArrowDown" | "ArrowLeft";
+export interface TableFocusMove {
+  moveKey: MoveKey;
+  shiftKey: boolean;
+}
+export function tableFocusMove(
+  moveKey: MoveKey,
+  shiftKey: boolean
+): CommandEffect<TableFocusMove> {
+  return {
+    name: "editor.tableFocusMove",
+    data: {
+      moveKey,
+      shiftKey,
+    },
+  };
+}
+export function tableFocusMoveExecute(store: Store, data: TableFocusMove) {
+  Logger.debug("tableFocusMoveExecute");
+  const { tableFocus } = store.editorState;
+  if (tableFocus) {
+    tableFocus.move(data);
+  }
+}
+
 export interface TableEdit {
   id: string;
   focusType: FocusType;

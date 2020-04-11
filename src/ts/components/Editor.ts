@@ -10,10 +10,13 @@ import "./ERD";
 import "./Canvas";
 import "./CanvasSVG";
 import "./Table";
+import "./table/Column";
 import "./Fontawesome";
 import "./Contextmenu";
 import "./CircleButton";
 import "./InputEdit";
+import "./table/ColumnKey";
+import "./table/ColumnNotNull";
 
 @customElement("erd-editor")
 class Editor extends EditorElement {
@@ -61,9 +64,6 @@ class Editor extends EditorElement {
         })
       );
     }
-  }
-  firstUpdated() {
-    Logger.debug("Editor after render");
   }
   updated(changedProperties: any) {
     changedProperties.forEach((oldValue: any, propName: string) => {

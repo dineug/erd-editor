@@ -48,9 +48,6 @@ export class Contextmenu extends EditorElement {
     super.connectedCallback();
     Logger.debug("Contextmenu before render");
   }
-  firstUpdated() {
-    Logger.debug("Contextmenu after render");
-  }
   disconnectedCallback() {
     Logger.debug("Contextmenu destroy");
     this.currentMenu = null;

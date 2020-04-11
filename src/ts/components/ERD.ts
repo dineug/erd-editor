@@ -16,6 +16,7 @@ import {
 import { addColumn } from "@src/core/command/column";
 import { addMemo, selectEndMemo, selectAllMemo } from "@src/core/command/memo";
 import { moveCanvas } from "@src/core/command/canvas";
+import { moveKeys, MoveKey, tableFocusMove } from "@src/core/command/editor";
 
 @customElement("vuerd-erd")
 class ERD extends EditorElement {
@@ -73,11 +74,20 @@ class ERD extends EditorElement {
               store.dispatch(addMemo(store));
             }
             if (
-              keymapMatch(event, keymap.selectAllTable) &&
-              store.editorState.tableEdit === null
+              store.editorState.tableEdit === null &&
+              keymapMatch(event, keymap.selectAllTable)
             ) {
               event.preventDefault();
               store.dispatch(selectAllTable(), selectAllMemo());
+            }
+            if (
+              store.editorState.tableEdit === null &&
+              moveKeys.some(moveKey => moveKey === event.key)
+            ) {
+              event.preventDefault();
+              store.dispatch(
+                tableFocusMove(event.key as MoveKey, event.shiftKey)
+              );
             }
           }
         }

@@ -39,6 +39,8 @@ import {
   TableFocus,
   tableFocusExecute,
   tableFocusEndExecute,
+  TableFocusMove,
+  tableFocusMoveExecute,
   TableEdit,
   tableEditExecute,
   tableEditEndExecute,
@@ -68,6 +70,7 @@ type CommandName =
   | "canvas.resize"
   | "editor.tableFocus"
   | "editor.tableFocusEnd"
+  | "editor.tableFocusMove"
   | "editor.tableEdit"
   | "editor.tableEditEnd";
 
@@ -86,6 +89,7 @@ export type Command =
   | CommandEffect<MoveCanvas>
   | CommandEffect<ResizeCanvas>
   | CommandEffect<TableFocus>
+  | CommandEffect<TableFocusMove>
   | CommandEffect<TableEdit>;
 
 export function commandExecute(store: Store, commands: Command[]) {
@@ -144,6 +148,9 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "editor.tableFocusEnd":
         tableFocusEndExecute(store);
+        break;
+      case "editor.tableFocusMove":
+        tableFocusMoveExecute(store, command.data as TableFocusMove);
         break;
       case "editor.tableEdit":
         tableEditExecute(store, command.data as TableEdit);
