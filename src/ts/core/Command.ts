@@ -36,14 +36,14 @@ import {
   resizeCanvasExecute,
 } from "./command/canvas";
 import {
-  TableFocus,
-  tableFocusExecute,
-  tableFocusEndExecute,
-  TableFocusMove,
-  tableFocusMoveExecute,
-  TableEdit,
-  tableEditExecute,
-  tableEditEndExecute,
+  FocusTable,
+  focusTableExecute,
+  focusTableEndExecute,
+  FocusMoveTable,
+  focusMoveTableExecute,
+  EditTable,
+  editTableExecute,
+  editTableEndExecute,
 } from "./command/editor";
 
 export interface CommandEffect<T> {
@@ -68,11 +68,11 @@ type CommandName =
   | "memo.selectAll"
   | "canvas.move"
   | "canvas.resize"
-  | "editor.tableFocus"
-  | "editor.tableFocusEnd"
-  | "editor.tableFocusMove"
-  | "editor.tableEdit"
-  | "editor.tableEditEnd";
+  | "editor.focusTable"
+  | "editor.focusTableEnd"
+  | "editor.focusMoveTable"
+  | "editor.editTable"
+  | "editor.editTableEnd";
 
 export type Command =
   | CommandEffect<null>
@@ -88,9 +88,9 @@ export type Command =
   | CommandEffect<SelectMemo>
   | CommandEffect<MoveCanvas>
   | CommandEffect<ResizeCanvas>
-  | CommandEffect<TableFocus>
-  | CommandEffect<TableFocusMove>
-  | CommandEffect<TableEdit>;
+  | CommandEffect<FocusTable>
+  | CommandEffect<FocusMoveTable>
+  | CommandEffect<EditTable>;
 
 export function commandExecute(store: Store, commands: Command[]) {
   commands.forEach(command => {
@@ -143,20 +143,20 @@ export function commandExecute(store: Store, commands: Command[]) {
       case "canvas.resize":
         resizeCanvasExecute(store, command.data as ResizeCanvas);
         break;
-      case "editor.tableFocus":
-        tableFocusExecute(store, command.data as TableFocus);
+      case "editor.focusTable":
+        focusTableExecute(store, command.data as FocusTable);
         break;
-      case "editor.tableFocusEnd":
-        tableFocusEndExecute(store);
+      case "editor.focusTableEnd":
+        focusTableEndExecute(store);
         break;
-      case "editor.tableFocusMove":
-        tableFocusMoveExecute(store, command.data as TableFocusMove);
+      case "editor.focusMoveTable":
+        focusMoveTableExecute(store, command.data as FocusMoveTable);
         break;
-      case "editor.tableEdit":
-        tableEditExecute(store, command.data as TableEdit);
+      case "editor.editTable":
+        editTableExecute(store, command.data as EditTable);
         break;
-      case "editor.tableEditEnd":
-        tableEditEndExecute(store);
+      case "editor.editTableEnd":
+        editTableEndExecute(store);
         break;
     }
   });

@@ -2,43 +2,43 @@ import { CommandEffect } from "../Command";
 import { Store } from "../Store";
 import { Logger } from "../Logger";
 import { getData } from "../Helper";
-import { TableFocusModel, FocusType } from "../model/TableFocusModel";
+import { FocusTableModel, FocusType } from "../model/FocusTableModel";
 
-export interface TableFocus {
+export interface FocusTable {
   tableId: string;
 }
-export function tableFocus(tableId: string): CommandEffect<TableFocus> {
+export function focusTable(tableId: string): CommandEffect<FocusTable> {
   return {
-    name: "editor.tableFocus",
+    name: "editor.focusTable",
     data: {
       tableId,
     },
   };
 }
-export function tableFocusExecute(store: Store, data: TableFocus) {
-  Logger.debug("tableFocusExecute");
+export function focusTableExecute(store: Store, data: FocusTable) {
+  Logger.debug("focusTableExecute");
   const { tableState, editorState, canvasState } = store;
   const table = getData(tableState.tables, data.tableId);
   if (
     table &&
-    (editorState.tableFocus === null ||
-      editorState.tableFocus.id !== data.tableId)
+    (editorState.focusTable === null ||
+      editorState.focusTable.id !== data.tableId)
   ) {
-    editorState.tableFocus = new TableFocusModel(table, canvasState.show);
+    editorState.focusTable = new FocusTableModel(table, canvasState.show);
   }
 }
 
-export function tableFocusEnd(): CommandEffect<null> {
+export function focusTableEnd(): CommandEffect<null> {
   return {
-    name: "editor.tableFocusEnd",
+    name: "editor.focusTableEnd",
     data: null,
   };
 }
-export function tableFocusEndExecute(store: Store) {
-  Logger.debug("tableFocusEndExecute");
+export function focusTableEndExecute(store: Store) {
+  Logger.debug("focusTableEndExecute");
   const { editorState } = store;
-  editorState.tableFocus = null;
-  tableEditEndExecute(store);
+  editorState.focusTable = null;
+  editTableEndExecute(store);
 }
 
 export const moveKeys: MoveKey[] = [
@@ -48,63 +48,63 @@ export const moveKeys: MoveKey[] = [
   "ArrowLeft",
 ];
 export type MoveKey = "ArrowUp" | "ArrowRight" | "ArrowDown" | "ArrowLeft";
-export interface TableFocusMove {
+export interface FocusMoveTable {
   moveKey: MoveKey;
   shiftKey: boolean;
 }
-export function tableFocusMove(
+export function focusMoveTable(
   moveKey: MoveKey,
   shiftKey: boolean
-): CommandEffect<TableFocusMove> {
+): CommandEffect<FocusMoveTable> {
   return {
-    name: "editor.tableFocusMove",
+    name: "editor.focusMoveTable",
     data: {
       moveKey,
       shiftKey,
     },
   };
 }
-export function tableFocusMoveExecute(store: Store, data: TableFocusMove) {
-  Logger.debug("tableFocusMoveExecute");
-  const { tableFocus } = store.editorState;
-  if (tableFocus) {
-    tableFocus.move(data);
+export function focusMoveTableExecute(store: Store, data: FocusMoveTable) {
+  Logger.debug("focusMoveTableExecute");
+  const { focusTable } = store.editorState;
+  if (focusTable) {
+    focusTable.move(data);
   }
 }
 
-export interface TableEdit {
+export interface EditTable {
   id: string;
   focusType: FocusType;
 }
-export function tableEdit(
+export function editTable(
   id: string,
   focusType: FocusType
-): CommandEffect<TableEdit> {
+): CommandEffect<EditTable> {
   return {
-    name: "editor.tableEdit",
+    name: "editor.editTable",
     data: {
       id,
       focusType,
     },
   };
 }
-export function tableEditExecute(store: Store, data: TableEdit) {
-  Logger.debug("tableEditExecute");
+export function editTableExecute(store: Store, data: EditTable) {
+  Logger.debug("editTableExecute");
   const { editorState } = store;
-  editorState.tableEdit = {
+  editorState.editTable = {
     id: data.id,
     focusType: data.focusType,
   };
 }
 
-export function tableEditEnd(): CommandEffect<null> {
+export function editTableEnd(): CommandEffect<null> {
   return {
-    name: "editor.tableEditEnd",
+    name: "editor.editTableEnd",
     data: null,
   };
 }
-export function tableEditEndExecute(store: Store) {
-  Logger.debug("tableEditEndExecute");
+export function editTableEndExecute(store: Store) {
+  Logger.debug("editTableEndExecute");
   const { editorState } = store;
-  editorState.tableEdit = null;
+  editorState.editTable = null;
 }

@@ -1,22 +1,21 @@
 import { Show } from "../store/Canvas";
 import { Column } from "../store/Table";
-import { FocusType } from "./TableFocusModel";
+import { FocusType } from "./FocusTableModel";
 
-export interface ColumnFocus {
+export interface FocusColumn {
   readonly id: string;
+  readonly currentFocus: FocusType;
+  readonly nextFocus: FocusType;
+  readonly preFocus: FocusType;
   selected: boolean;
   focusName: boolean;
   focusDataType: boolean;
   focusNotNull: boolean;
   focusDefault: boolean;
   focusComment: boolean;
-
-  currentFocus(): FocusType;
-  nextFocus(): FocusType;
-  preFocus(): FocusType;
 }
 
-export class ColumnFocusModel implements ColumnFocus {
+export class FocusColumnModel implements FocusColumn {
   selected = false;
   focusName = false;
   focusDataType = false;
@@ -29,19 +28,18 @@ export class ColumnFocusModel implements ColumnFocus {
   get id() {
     return this.column.id;
   }
+  get currentFocus(): FocusType {
+    throw new Error("Method not implemented.");
+  }
+  get nextFocus(): FocusType {
+    throw new Error("Method not implemented.");
+  }
+  get preFocus(): FocusType {
+    throw new Error("Method not implemented.");
+  }
 
   constructor(column: Column, show: Show) {
     this.column = column;
     this.show = show;
-  }
-
-  currentFocus(): FocusType {
-    throw new Error("Method not implemented.");
-  }
-  nextFocus(): FocusType {
-    throw new Error("Method not implemented.");
-  }
-  preFocus(): FocusType {
-    throw new Error("Method not implemented.");
   }
 }

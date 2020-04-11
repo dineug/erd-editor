@@ -6,10 +6,10 @@ import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import { moveTable, removeTable, selectTable } from "@src/core/command/table";
 import { addColumn } from "@src/core/command/column";
-import { tableEditEnd } from "@src/core/command/editor";
+import { editTableEnd } from "@src/core/command/editor";
 import { Table as TableModel } from "@src/core/store/Table";
 import { keymapOptionToString } from "@src/core/Keymap";
-import { FocusType } from "@src/core/model/TableFocusModel";
+import { FocusType } from "@src/core/model/FocusTableModel";
 
 @customElement("vuerd-table")
 class Table extends EditorElement {
@@ -41,16 +41,16 @@ class Table extends EditorElement {
   get focusTableName() {
     const { editorState } = this.context.store;
     return (
-      editorState.tableFocus?.id === this.table.id &&
-      editorState.tableFocus.focusName
+      editorState.focusTable?.id === this.table.id &&
+      editorState.focusTable.focusName
     );
   }
 
   get focusTableComment() {
     const { editorState } = this.context.store;
     return (
-      editorState.tableFocus?.id === this.table.id &&
-      editorState.tableFocus.focusComment
+      editorState.focusTable?.id === this.table.id &&
+      editorState.focusTable.focusComment
     );
   }
 
@@ -58,8 +58,8 @@ class Table extends EditorElement {
     const { editorState } = this.context.store;
     return (
       this.focusTableName &&
-      editorState.tableEdit?.id === this.table.id &&
-      editorState.tableEdit.focusType === "tableName"
+      editorState.editTable?.id === this.table.id &&
+      editorState.editTable.focusType === "tableName"
     );
   }
 
@@ -67,8 +67,8 @@ class Table extends EditorElement {
     const { editorState } = this.context.store;
     return (
       this.focusTableComment &&
-      editorState.tableEdit?.id === this.table.id &&
-      editorState.tableEdit.focusType === "tableComment"
+      editorState.editTable?.id === this.table.id &&
+      editorState.editTable.focusType === "tableComment"
     );
   }
 
@@ -89,10 +89,10 @@ class Table extends EditorElement {
       ),
       store.observe(store.editorState, (name: string | number | symbol) => {
         Logger.debug(`Table observe editorState: ${String(name)}`);
-        if (name === "tableFocus" || name === "tableEdit") {
+        if (name === "focusTable" || name === "editTable") {
           if (
-            store.editorState.tableFocus === null ||
-            store.editorState.tableFocus.id === this.table.id
+            store.editorState.focusTable === null ||
+            store.editorState.focusTable.id === this.table.id
           ) {
             this.tableFocusUnsubscribe();
             this.tableFocusObserve();
@@ -150,9 +150,8 @@ class Table extends EditorElement {
               placeholder="table"
               ?focusState=${this.focusTableName}
               ?edit=${this.editTableName}
-              @input=${(event: InputEvent) =>
-                this.onInputTable(event, "tableName")}
-              @blur=${(event: Event) => this.onBlurTable(event, "tableName")}
+              @input=${(event: InputEvent) => this.onInput(event, "tableName")}
+              @blur=${this.onBlur}
             ></vuerd-input-edit>
             ${show.tableComment
               ? html`
@@ -164,9 +163,8 @@ class Table extends EditorElement {
                     ?focusState=${this.focusTableComment}
                     ?edit=${this.editTableComment}
                     @input=${(event: InputEvent) =>
-                      this.onInputTable(event, "tableComment")}
-                    @blur=${(event: Event) =>
-                      this.onBlurTable(event, "tableComment")}
+                      this.onInput(event, "tableComment")}
+                    @blur=${this.onBlur}
                   ></vuerd-input-edit>
                 `
               : html``}
@@ -239,19 +237,18 @@ class Table extends EditorElement {
     const { store } = this.context;
     store.dispatch(removeTable(store, this.table.id));
   }
-  private onInputTable(event: InputEvent, name: FocusType) {
-    Logger.debug(`onInputTable: ${name}`);
+  private onInput(event: InputEvent, name: FocusType) {
+    Logger.debug(`onInput: ${name}`);
     Logger.debug(event);
   }
-  private onBlurTable(event: Event, name: FocusType) {
-    Logger.debug(`onBlurTable: ${name}`);
+  private onBlur = (event: Event) => {
     const { store } = this.context;
-    store.dispatch(tableEditEnd());
-  }
+    store.dispatch(editTableEnd());
+  };
   private tableFocusObserve() {
     const { store } = this.context;
-    if (store.editorState.tableFocus?.id === this.table.id) {
-      this.subTableFocus = store.observe(store.editorState.tableFocus, () =>
+    if (store.editorState.focusTable?.id === this.table.id) {
+      this.subTableFocus = store.observe(store.editorState.focusTable, () =>
         this.requestUpdate()
       );
     }

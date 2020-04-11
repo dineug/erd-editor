@@ -4,6 +4,8 @@ import { Subscription } from "rxjs";
 import { EditorElement } from "../EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Column as ColumnModel } from "@src/core/store/Table";
+import { editTableEnd } from "@src/core/command/editor";
+import { FocusType } from "@src/core/model/FocusTableModel";
 
 @customElement("vuerd-column")
 class Column extends EditorElement {
@@ -48,6 +50,8 @@ class Column extends EditorElement {
           .width=${this.column.ui.widthName}
           .value=${this.column.name}
           placeholder="column"
+          @input=${(event: InputEvent) => this.onInput(event, "columnName")}
+          @blur=${this.onBlur}
         ></vuerd-input-edit>
         ${show.columnDataType
           ? html`
@@ -74,6 +78,9 @@ class Column extends EditorElement {
                 .width=${this.column.ui.widthDefault}
                 .value=${this.column.default}
                 placeholder="default"
+                @input=${(event: InputEvent) =>
+                  this.onInput(event, "columnDefault")}
+                @blur=${this.onBlur}
               ></vuerd-input-edit>
             `
           : html``}
@@ -84,10 +91,21 @@ class Column extends EditorElement {
                 .width=${this.column.ui.widthComment}
                 .value=${this.column.comment}
                 placeholder="comment"
+                @input=${(event: InputEvent) =>
+                  this.onInput(event, "columnComment")}
+                @blur=${this.onBlur}
               ></vuerd-input-edit>
             `
           : html``}
       </li>
     `;
   }
+  private onInput(event: InputEvent, name: FocusType) {
+    Logger.debug(`onInput: ${name}`);
+    Logger.debug(event);
+  }
+  private onBlur = (event: Event) => {
+    const { store } = this.context;
+    store.dispatch(editTableEnd());
+  };
 }

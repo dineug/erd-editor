@@ -16,7 +16,13 @@ import {
 import { addColumn } from "@src/core/command/column";
 import { addMemo, selectEndMemo, selectAllMemo } from "@src/core/command/memo";
 import { moveCanvas } from "@src/core/command/canvas";
-import { moveKeys, MoveKey, tableFocusMove } from "@src/core/command/editor";
+import {
+  moveKeys,
+  MoveKey,
+  focusMoveTable,
+  editTable as editTableCommand,
+  editTableEnd,
+} from "@src/core/command/editor";
 
 @customElement("vuerd-erd")
 class ERD extends EditorElement {
@@ -52,7 +58,7 @@ class ERD extends EditorElement {
     this.subscriptionList.push(
       this.context.windowEventObservable.keydown$.subscribe(
         (event: KeyboardEvent) => {
-          const { focus } = store.editorState;
+          const { focus, editTable, focusTable } = store.editorState;
           if (focus) {
             if (keymapMatch(event, keymap.addTable)) {
               store.dispatch(addTable(store));
@@ -74,20 +80,32 @@ class ERD extends EditorElement {
               store.dispatch(addMemo(store));
             }
             if (
-              store.editorState.tableEdit === null &&
+              editTable === null &&
               keymapMatch(event, keymap.selectAllTable)
             ) {
               event.preventDefault();
               store.dispatch(selectAllTable(), selectAllMemo());
             }
             if (
-              store.editorState.tableEdit === null &&
+              editTable === null &&
               moveKeys.some(moveKey => moveKey === event.key)
             ) {
               event.preventDefault();
               store.dispatch(
-                tableFocusMove(event.key as MoveKey, event.shiftKey)
+                focusMoveTable(event.key as MoveKey, event.shiftKey)
               );
+            }
+            if (focusTable !== null && keymapMatch(event, keymap.edit)) {
+              if (editTable === null) {
+                store.dispatch(
+                  editTableCommand(
+                    focusTable.currentFocusId,
+                    focusTable.currentFocus
+                  )
+                );
+              } else {
+                store.dispatch(editTableEnd());
+              }
             }
           }
         }

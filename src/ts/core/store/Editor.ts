@@ -1,12 +1,12 @@
-import { TableFocus, FocusType } from "../model/TableFocusModel";
+import { FocusTable, FocusType } from "../model/FocusTableModel";
 
 export interface EditorState {
   focus: boolean;
-  tableFocus: TableFocus | null;
-  tableEdit: TableEdit | null;
+  focusTable: FocusTable | null;
+  editTable: EditTable | null;
 }
 
-export interface TableEdit {
+export interface EditTable {
   id: string;
   focusType: FocusType;
 }
@@ -14,7 +14,7 @@ export interface TableEdit {
 export function createEditorState(): EditorState {
   return {
     focus: true,
-    tableFocus: null,
-    tableEdit: null,
+    focusTable: null,
+    editTable: null,
   };
 }

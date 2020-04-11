@@ -1,7 +1,7 @@
 import { Show } from "../store/Canvas";
 import { Table, Column, ColumnWidth } from "../store/Table";
-import { ColumnFocus, ColumnFocusModel } from "./ColumnFocusModel";
-import { TableFocusMove } from "../command/editor";
+import { FocusColumn, FocusColumnModel } from "./FocusColumnModel";
+import { FocusMoveTable } from "../command/editor";
 
 export type FocusType =
   | "tableName"
@@ -12,19 +12,21 @@ export type FocusType =
   | "columnDefault"
   | "columnComment";
 
-export interface TableFocus {
+export interface FocusTable {
   readonly id: string;
+  readonly currentFocus: FocusType;
+  readonly currentFocusId: string;
   focusName: boolean;
   focusComment: boolean;
-  focusColumns: ColumnFocus[];
+  focusColumns: FocusColumn[];
 
-  move(tableFocusMove: TableFocusMove): void;
+  move(focusMoveTable: FocusMoveTable): void;
 }
 
-export class TableFocusModel implements TableFocus {
+export class FocusTableModel implements FocusTable {
   focusName = true;
   focusComment = false;
-  focusColumns: ColumnFocus[] = [];
+  focusColumns: FocusColumn[] = [];
   private table: Table;
   private show: Show;
 
@@ -32,16 +34,27 @@ export class TableFocusModel implements TableFocus {
     return this.table.id;
   }
 
+  get currentFocus(): FocusType {
+    throw new Error("Method not implemented.");
+  }
+  get currentFocusId(): string {
+    throw new Error("Method not implemented.");
+  }
+
+  private get isFocusTable(): boolean {
+    return this.focusName || this.focusComment;
+  }
+
   constructor(table: Table, show: Show) {
     this.table = table;
     this.show = show;
     this.table.columns.forEach(column => {
-      this.focusColumns.push(new ColumnFocusModel(column, show));
+      this.focusColumns.push(new FocusColumnModel(column, show));
     });
   }
 
-  move(tableFocusMove: TableFocusMove) {
-    switch (tableFocusMove.moveKey) {
+  move(focusMoveTable: FocusMoveTable) {
+    switch (focusMoveTable.moveKey) {
       case "ArrowUp":
         if (this.focusColumns.length !== 0) {
         }
@@ -67,9 +80,5 @@ export class TableFocusModel implements TableFocus {
         }
         break;
     }
-  }
-
-  private get isFocusTable(): boolean {
-    return this.focusName || this.focusComment;
   }
 }

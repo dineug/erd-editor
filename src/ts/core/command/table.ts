@@ -7,7 +7,7 @@ import { TableUI } from "../store/Table";
 import { TableModel } from "../model/TableModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
 import { selectEndMemoExecute } from "./memo";
-import { tableFocusExecute, tableFocusEndExecute } from "./editor";
+import { focusTableExecute, focusTableEndExecute } from "./editor";
 
 export interface AddTable {
   id: string;
@@ -37,7 +37,7 @@ export function addTableExecute(store: Store, data: AddTable) {
   selectEndTableExecute(store);
   selectEndMemoExecute(store);
   tables.push(new TableModel({ addTable: data }, store.canvasState.show));
-  tableFocusExecute(store, { tableId: data.id });
+  focusTableExecute(store, { tableId: data.id });
 }
 
 export interface MoveTable {
@@ -165,7 +165,7 @@ export function selectTableExecute(store: Store, data: SelectTable) {
       });
       selectEndMemoExecute(store);
     }
-    tableFocusExecute(store, { tableId: data.tableId });
+    focusTableExecute(store, { tableId: data.tableId });
   }
 }
 
@@ -179,7 +179,7 @@ export function selectEndTableExecute(store: Store) {
   Logger.debug("selectEndTableExecute");
   const { tables } = store.tableState;
   tables.forEach(table => (table.ui.active = false));
-  tableFocusEndExecute(store);
+  focusTableEndExecute(store);
 }
 
 export function selectAllTable(): CommandEffect<null> {

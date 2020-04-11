@@ -62,10 +62,10 @@ type Key =
   | "M";
 
 export interface KeymapOption {
-  meta: boolean;
-  ctrl: boolean;
-  alt: boolean;
-  shift: boolean;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
   key?: Key;
 }
 
@@ -75,88 +75,93 @@ export interface Keymap {
   selectAllTable: KeymapOption[];
   addColumn: KeymapOption[];
   addMemo: KeymapOption[];
+  edit: KeymapOption[];
 }
 
 export function createKeymap(): Keymap {
   return {
     addTable: [
       {
-        meta: false,
-        ctrl: false,
-        alt: true,
-        shift: false,
+        metaKey: false,
+        ctrlKey: false,
+        altKey: true,
+        shiftKey: false,
         key: "N",
       },
     ],
     removeTable: [
       {
-        meta: false,
-        ctrl: true,
-        alt: false,
-        shift: false,
+        metaKey: false,
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
         key: "Delete",
       },
     ],
     selectAllTable: [
       {
-        meta: false,
-        ctrl: true,
-        alt: false,
-        shift: false,
+        metaKey: false,
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
         key: "A",
       },
     ],
     addColumn: [
       {
-        meta: false,
-        ctrl: false,
-        alt: true,
-        shift: false,
+        metaKey: false,
+        ctrlKey: false,
+        altKey: true,
+        shiftKey: false,
         key: "Enter",
       },
     ],
     addMemo: [
       {
-        meta: false,
-        ctrl: false,
-        alt: true,
-        shift: false,
+        metaKey: false,
+        ctrlKey: false,
+        altKey: true,
+        shiftKey: false,
         key: "M",
+      },
+    ],
+    edit: [
+      {
+        metaKey: false,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        key: "Enter",
       },
     ],
   };
 }
 
 type MultipleKey = "altKey" | "metaKey" | "ctrlKey" | "shiftKey";
-function getMultipleKeys(keymapOption: KeymapOption): MultipleKey[] {
-  const result: MultipleKey[] = [];
-  if (keymapOption.meta) {
-    result.push("metaKey");
-  }
-  if (keymapOption.ctrl) {
-    result.push("ctrlKey");
-  }
-  if (keymapOption.alt) {
-    result.push("altKey");
-  }
-  if (keymapOption.shift) {
-    result.push("shiftKey");
-  }
-  return result;
-}
-
+const multipleKeys: MultipleKey[] = [
+  "altKey",
+  "metaKey",
+  "ctrlKey",
+  "shiftKey",
+];
 export function keymapMatch(
   event: KeyboardEvent,
   keymapOptions: KeymapOption[]
 ): boolean {
   let result = false;
   for (const keymapOption of keymapOptions) {
-    const multipleKeys = getMultipleKeys(keymapOption);
-    const m = !multipleKeys.some(multipleKey => !event[multipleKey]);
+    const isMultipleKey = !multipleKeys.some(
+      multipleKey => !(keymapOption[multipleKey] === event[multipleKey])
+    );
     if (keymapOption.key) {
-      result = m && event.key.toUpperCase() === keymapOption.key.toUpperCase();
+      result =
+        isMultipleKey &&
+        event.key.toUpperCase() === keymapOption.key.toUpperCase();
     } else {
-      result = m;
+      result = isMultipleKey;
+    }
+    if (result) {
+      break;
     }
   }
   return result;
@@ -165,16 +170,16 @@ export function keymapMatch(
 export function keymapOptionToString(keymapOption?: KeymapOption): string {
   if (!keymapOption) return "";
   const result: string[] = [];
-  if (keymapOption.meta) {
+  if (keymapOption.metaKey) {
     result.push("Meta");
   }
-  if (keymapOption.ctrl) {
+  if (keymapOption.ctrlKey) {
     result.push("Ctrl");
   }
-  if (keymapOption.alt) {
+  if (keymapOption.altKey) {
     result.push("Alt");
   }
-  if (keymapOption.shift) {
+  if (keymapOption.shiftKey) {
     result.push("Shift");
   }
   if (keymapOption.key) {
