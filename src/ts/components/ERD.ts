@@ -21,7 +21,7 @@ import {
   MoveKey,
   focusMoveTable,
   editTable as editTableCommand,
-  editTableEnd,
+  editEndTable,
 } from "@src/core/command/editor";
 
 @customElement("vuerd-erd")
@@ -104,7 +104,7 @@ class ERD extends EditorElement {
                   )
                 );
               } else {
-                store.dispatch(editTableEnd());
+                store.dispatch(editEndTable());
               }
             }
           }
@@ -196,12 +196,8 @@ class ERD extends EditorElement {
     }
   };
   private onMouseup = (event?: MouseEvent) => {
-    if (this.subMouseup) {
-      this.subMouseup.unsubscribe();
-    }
-    if (this.subMousemove) {
-      this.subMousemove.unsubscribe();
-    }
+    this.subMouseup?.unsubscribe();
+    this.subMousemove?.unsubscribe();
     this.subMouseup = null;
     this.subMousemove = null;
   };

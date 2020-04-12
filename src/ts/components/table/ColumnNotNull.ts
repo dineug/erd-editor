@@ -1,4 +1,4 @@
-import { html, customElement } from "lit-element";
+import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "../EditorElement";
@@ -8,16 +8,23 @@ import { SIZE_COLUMN_OPTION_NN } from "@src/core/Layout";
 
 @customElement("vuerd-column-not-null")
 class ColumnNotNull extends EditorElement {
+  @property({ type: Boolean })
+  focusState = false;
+
   columnOption!: ColumnOption;
 
   private subscriptionList: Subscription[] = [];
 
   get theme() {
-    const { fontActive } = this.context.theme;
-    return {
+    const { fontActive, focus } = this.context.theme;
+    const theme: any = {
       color: fontActive,
       width: `${SIZE_COLUMN_OPTION_NN}px`,
     };
+    if (this.focusState) {
+      theme.borderBottom = `solid ${focus} 1.5px`;
+    }
+    return theme;
   }
 
   connectedCallback() {

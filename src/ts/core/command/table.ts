@@ -7,7 +7,7 @@ import { TableUI } from "../store/Table";
 import { TableModel } from "../model/TableModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
 import { selectEndMemoExecute } from "./memo";
-import { focusTableExecute, focusTableEndExecute } from "./editor";
+import { focusTableExecute, focusEndTableExecute } from "./editor";
 
 export interface AddTable {
   id: string;
@@ -179,7 +179,7 @@ export function selectEndTableExecute(store: Store) {
   Logger.debug("selectEndTableExecute");
   const { tables } = store.tableState;
   tables.forEach(table => (table.ui.active = false));
-  focusTableEndExecute(store);
+  focusEndTableExecute(store);
 }
 
 export function selectAllTable(): CommandEffect<null> {

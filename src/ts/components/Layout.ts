@@ -52,14 +52,21 @@ export const Layout = css`
     outline: none;
     border: none;
     opacity: 0.9;
+    font-size: 13px;
+    font-family: "Noto Sans", "Cascadia Code", "JetBrains Mono", "D2Coding",
+      "Consolas", sans-serif;
   }
   div.vuerd-input-edit,
-  div.vuerd-column-not-null {
+  .vuerd-column-not-null {
     display: inline-block;
     border-bottom: solid #fff0 1.5px;
+    height: 18px;
   }
-  div.vuerd-column-key {
+  .vuerd-column-key {
     display: inline-block;
+  }
+  .vuerd-column {
+    height: 19.5px;
   }
 
   .vuerd-circle-button {

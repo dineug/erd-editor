@@ -16,5 +16,5 @@ if (container && container2) {
   editor2.blur();
 
   container.appendChild(editor);
-  container2.appendChild(editor2);
+  // container2.appendChild(editor2);
 }

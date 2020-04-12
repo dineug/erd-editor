@@ -17,28 +17,30 @@ export function focusTable(tableId: string): CommandEffect<FocusTable> {
 }
 export function focusTableExecute(store: Store, data: FocusTable) {
   Logger.debug("focusTableExecute");
-  const { tableState, editorState, canvasState } = store;
+  const { tableState, editorState } = store;
   const table = getData(tableState.tables, data.tableId);
   if (
     table &&
     (editorState.focusTable === null ||
       editorState.focusTable.id !== data.tableId)
   ) {
-    editorState.focusTable = new FocusTableModel(table, canvasState.show);
+    editorState.focusTable?.destroy();
+    editorState.focusTable = new FocusTableModel(table, store);
   }
 }
 
-export function focusTableEnd(): CommandEffect<null> {
+export function focusEndTable(): CommandEffect<null> {
   return {
-    name: "editor.focusTableEnd",
+    name: "editor.focusEndTable",
     data: null,
   };
 }
-export function focusTableEndExecute(store: Store) {
-  Logger.debug("focusTableEndExecute");
+export function focusEndTableExecute(store: Store) {
+  Logger.debug("focusEndTableExecute");
   const { editorState } = store;
+  editorState.focusTable?.destroy();
   editorState.focusTable = null;
-  editTableEndExecute(store);
+  editEndTableExecute(store);
 }
 
 export const moveKeys: MoveKey[] = [
@@ -67,9 +69,7 @@ export function focusMoveTable(
 export function focusMoveTableExecute(store: Store, data: FocusMoveTable) {
   Logger.debug("focusMoveTableExecute");
   const { focusTable } = store.editorState;
-  if (focusTable) {
-    focusTable.move(data);
-  }
+  focusTable?.move(data);
 }
 
 export interface EditTable {
@@ -97,14 +97,14 @@ export function editTableExecute(store: Store, data: EditTable) {
   };
 }
 
-export function editTableEnd(): CommandEffect<null> {
+export function editEndTable(): CommandEffect<null> {
   return {
-    name: "editor.editTableEnd",
+    name: "editor.editEndTable",
     data: null,
   };
 }
-export function editTableEndExecute(store: Store) {
-  Logger.debug("editTableEndExecute");
+export function editEndTableExecute(store: Store) {
+  Logger.debug("editEndTableExecute");
   const { editorState } = store;
   editorState.editTable = null;
 }

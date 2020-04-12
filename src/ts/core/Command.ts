@@ -38,12 +38,12 @@ import {
 import {
   FocusTable,
   focusTableExecute,
-  focusTableEndExecute,
+  focusEndTableExecute,
   FocusMoveTable,
   focusMoveTableExecute,
   EditTable,
   editTableExecute,
-  editTableEndExecute,
+  editEndTableExecute,
 } from "./command/editor";
 
 export interface CommandEffect<T> {
@@ -69,10 +69,10 @@ type CommandName =
   | "canvas.move"
   | "canvas.resize"
   | "editor.focusTable"
-  | "editor.focusTableEnd"
+  | "editor.focusEndTable"
   | "editor.focusMoveTable"
   | "editor.editTable"
-  | "editor.editTableEnd";
+  | "editor.editEndTable";
 
 export type Command =
   | CommandEffect<null>
@@ -146,8 +146,8 @@ export function commandExecute(store: Store, commands: Command[]) {
       case "editor.focusTable":
         focusTableExecute(store, command.data as FocusTable);
         break;
-      case "editor.focusTableEnd":
-        focusTableEndExecute(store);
+      case "editor.focusEndTable":
+        focusEndTableExecute(store);
         break;
       case "editor.focusMoveTable":
         focusMoveTableExecute(store, command.data as FocusMoveTable);
@@ -155,8 +155,8 @@ export function commandExecute(store: Store, commands: Command[]) {
       case "editor.editTable":
         editTableExecute(store, command.data as EditTable);
         break;
-      case "editor.editTableEnd":
-        editTableEndExecute(store);
+      case "editor.editEndTable":
+        editEndTableExecute(store);
         break;
     }
   });

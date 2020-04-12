@@ -16,6 +16,8 @@ class InputEdit extends EditorElement {
   value = "";
   @property({ type: String })
   placeholder = "";
+  @property({ type: String })
+  backgroundColor = "";
 
   get theme() {
     const {
@@ -30,7 +32,11 @@ class InputEdit extends EditorElement {
       width: `${this.width}px`,
     };
     if (this.edit) {
-      theme.backgroundColor = table;
+      if (this.backgroundColor === "") {
+        theme.backgroundColor = table;
+      } else {
+        theme.backgroundColor = this.backgroundColor;
+      }
       theme.borderBottom = `solid ${edit} 1.5px`;
     } else {
       if (this.focusState) {
@@ -50,7 +56,22 @@ class InputEdit extends EditorElement {
     return this.value;
   }
 
+  updated(changedProperties: any) {
+    Logger.debug("InputEdit updated");
+    changedProperties.forEach((oldValue: any, propName: string) => {
+      switch (propName) {
+        case "edit":
+          if (this.edit) {
+            const input = this.renderRoot.querySelector("input");
+            input?.focus();
+          }
+          break;
+      }
+    });
+  }
+
   render() {
+    Logger.debug("InputEdit render");
     return this.edit
       ? html`
           <input
@@ -58,7 +79,6 @@ class InputEdit extends EditorElement {
             style=${styleMap(this.theme)}
             type="text"
             spellcheck="false"
-            autofocus
             value=${this.value}
             placeholder=${this.placeholder}
             @blur=${this.onEmit}
