@@ -17,8 +17,9 @@ import "./CircleButton";
 import "./InputEdit";
 import "./table/ColumnKey";
 import "./table/ColumnNotNull";
+import "./Sash";
 
-@customElement("erd-editor")
+@customElement("vuerd-editor")
 class Editor extends EditorElement {
   static get styles() {
     return Layout;
@@ -116,3 +117,6 @@ class Editor extends EditorElement {
     store.next(commands);
   }
 }
+
+@customElement("erd-editor")
+class EditorAlias extends Editor {}

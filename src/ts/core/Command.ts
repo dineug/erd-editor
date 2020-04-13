@@ -16,6 +16,8 @@ import {
   addColumnExecute,
   RemoveColumn,
   removeColumnExecute,
+  ChangeColumnNotNull,
+  changeColumnNotNullExecute,
 } from "./command/column";
 import {
   AddMemo,
@@ -60,6 +62,7 @@ type CommandName =
   | "table.selectAll"
   | "column.add"
   | "column.remove"
+  | "column.changeNotNull"
   | "memo.add"
   | "memo.move"
   | "memo.remove"
@@ -82,6 +85,7 @@ export type Command =
   | CommandEffect<SelectTable>
   | CommandEffect<Array<AddColumn>>
   | CommandEffect<Array<RemoveColumn>>
+  | CommandEffect<ChangeColumnNotNull>
   | CommandEffect<AddMemo>
   | CommandEffect<MoveMemo>
   | CommandEffect<RemoveMemo>
@@ -118,6 +122,9 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "column.remove":
         removeColumnExecute(store, command.data as Array<RemoveColumn>);
+        break;
+      case "column.changeNotNull":
+        changeColumnNotNullExecute(store, command.data as ChangeColumnNotNull);
         break;
       case "memo.add":
         addMemoExecute(store, command.data as AddMemo);

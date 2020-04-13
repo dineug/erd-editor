@@ -49,6 +49,9 @@ export const Layout = css`
   }
 
   input.vuerd-input-edit {
+    display: inline-flex;
+    vertical-align: middle;
+    align-items: center;
     outline: none;
     border: none;
     opacity: 0.9;
@@ -58,12 +61,16 @@ export const Layout = css`
   }
   div.vuerd-input-edit,
   .vuerd-column-not-null {
-    display: inline-block;
+    display: inline-flex;
+    vertical-align: middle;
+    align-items: center;
     border-bottom: solid #fff0 1.5px;
     height: 18px;
   }
   .vuerd-column-key {
-    display: inline-block;
+    display: inline-flex;
+    vertical-align: middle;
+    align-items: center;
   }
   .vuerd-column {
     height: 19.5px;

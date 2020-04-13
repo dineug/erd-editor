@@ -58,20 +58,26 @@ class Table extends EditorElement {
       ),
       store.observe(store.editorState, (name: string | number | symbol) => {
         Logger.debug(`Table observe editorState: ${String(name)}`);
-        if (name === "focusTable" || name === "editTable") {
-          if (
-            store.editorState.focusTable === null ||
-            store.editorState.focusTable.id !== this.table.id
-          ) {
-            this.focusTableUnsubscribe();
-          }
-          if (
-            this.subFocusTable === null &&
-            store.editorState.focusTable?.id === this.table.id
-          ) {
-            this.focusTableObserve();
-          }
-          this.requestUpdate();
+        switch (name) {
+          case "focusTable":
+            if (
+              store.editorState.focusTable === null ||
+              store.editorState.focusTable.id !== this.table.id
+            ) {
+              this.focusTableUnsubscribe();
+            } else if (
+              this.subFocusTable === null &&
+              store.editorState.focusTable?.id === this.table.id
+            ) {
+              this.focusTableObserve();
+            }
+            this.requestUpdate();
+            break;
+          case "editTable":
+            if (store.editorState.focusTable?.id === this.table.id) {
+              this.requestUpdate();
+            }
+            break;
         }
       }),
     ]);

@@ -9,7 +9,7 @@ import {
   focusEndColumn,
   selectEndColumn,
 } from "../helper/FocusTableHelper";
-import { getData, getDataIndex } from "../Helper";
+import { getData, getIndex } from "../Helper";
 
 export type FocusType =
   | "tableName"
@@ -95,7 +95,7 @@ export class FocusTableModel implements FocusTable {
             this.currentFocusColumn.selected = true;
             this.currentFocusColumn.focusName = true;
           } else {
-            const index = getDataIndex(
+            const index = getIndex(
               this.focusColumns,
               this.currentFocusColumn.id
             );
@@ -127,7 +127,7 @@ export class FocusTableModel implements FocusTable {
             this.currentFocusColumn.selected = true;
             this.currentFocusColumn.focusName = true;
           } else {
-            const index = getDataIndex(
+            const index = getIndex(
               this.focusColumns,
               this.currentFocusColumn.id
             );

@@ -56,3 +56,46 @@ export function removeColumn(store: Store): CommandEffect<Array<RemoveColumn>> {
 export function removeColumnExecute(store: Store, data: RemoveColumn[]) {
   Logger.debug("removeColumnExecute");
 }
+
+export interface ChangeColumnNotNull {
+  tableId: string;
+  columnId: string;
+  notNull: boolean;
+}
+export function changeColumnNotNull(
+  store: Store,
+  tableId: string,
+  columnId: string
+): CommandEffect<ChangeColumnNotNull> {
+  let notNull = false;
+  const { tables } = store.tableState;
+  const table = getData(tables, tableId);
+  if (table) {
+    const column = getData(table.columns, columnId);
+    if (column) {
+      notNull = !column.option.notNull;
+    }
+  }
+  return {
+    name: "column.changeNotNull",
+    data: {
+      tableId,
+      columnId,
+      notNull,
+    },
+  };
+}
+export function changeColumnNotNullExecute(
+  store: Store,
+  data: ChangeColumnNotNull
+) {
+  Logger.debug("changeColumnNotNullExecute");
+  const { tables } = store.tableState;
+  const table = getData(tables, data.tableId);
+  if (table) {
+    const column = getData(table.columns, data.columnId);
+    if (column) {
+      column.option.notNull = data.notNull;
+    }
+  }
+}

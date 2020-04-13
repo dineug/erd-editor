@@ -13,7 +13,7 @@ import {
   selectEndTable,
   selectAllTable,
 } from "@src/core/command/table";
-import { addColumn } from "@src/core/command/column";
+import { addColumn, changeColumnNotNull } from "@src/core/command/column";
 import { addMemo, selectEndMemo, selectAllMemo } from "@src/core/command/memo";
 import { moveCanvas } from "@src/core/command/canvas";
 import {
@@ -97,12 +97,20 @@ class ERD extends EditorElement {
             }
             if (focusTable !== null && keymapMatch(event, keymap.edit)) {
               if (editTable === null) {
-                store.dispatch(
-                  editTableCommand(
-                    focusTable.currentFocusId,
-                    focusTable.currentFocus
-                  )
-                );
+                const currentFocus = focusTable.currentFocus;
+                if (currentFocus === "columnNotNull") {
+                  const columnId = focusTable.currentFocusId;
+                  store.dispatch(
+                    changeColumnNotNull(store, focusTable.id, columnId)
+                  );
+                } else {
+                  store.dispatch(
+                    editTableCommand(
+                      focusTable.currentFocusId,
+                      focusTable.currentFocus
+                    )
+                  );
+                }
               } else {
                 store.dispatch(editEndTable());
               }
@@ -120,10 +128,13 @@ class ERD extends EditorElement {
     this.erd.scrollLeft = store.canvasState.scrollLeft;
     this.subscriptionList.push(
       store.observe(store.canvasState, (name: string | number | symbol) => {
-        if (name === "scrollTop") {
-          this.erd.scrollTop = store.canvasState.scrollTop;
-        } else if (name === "scrollLeft") {
-          this.erd.scrollLeft = store.canvasState.scrollLeft;
+        switch (name) {
+          case "scrollTop":
+            this.erd.scrollTop = store.canvasState.scrollTop;
+            break;
+          case "scrollLeft":
+            this.erd.scrollLeft = store.canvasState.scrollLeft;
+            break;
         }
       })
     );

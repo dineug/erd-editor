@@ -29,8 +29,12 @@ class ColumnKey extends EditorElement {
     const { store } = this.context;
     this.subscriptionList.push(
       store.observe(this.columnUI, (name: string | number | symbol) => {
-        if (name === "pk" || name === "fk" || name === "pfk") {
-          this.requestUpdate();
+        switch (name) {
+          case "pk":
+          case "fk":
+          case "pfk":
+            this.requestUpdate();
+            break;
         }
       })
     );

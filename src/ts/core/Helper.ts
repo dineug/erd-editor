@@ -10,7 +10,7 @@ export function getData<T extends { id: string }>(
   return null;
 }
 
-export function getDataIndex<T extends { id: string }>(
+export function getIndex<T extends { id: string }>(
   list: Array<T>,
   id: string
 ): number {

@@ -51,13 +51,13 @@ class Column extends EditorElement {
       store.observe(
         store.canvasState.show,
         (name: string | number | symbol) => {
-          if (
-            name === "columnComment" ||
-            name === "columnDataType" ||
-            name === "columnDefault" ||
-            name === "columnNotNull"
-          ) {
-            this.requestUpdate();
+          switch (name) {
+            case "columnComment":
+            case "columnDataType":
+            case "columnDefault":
+            case "columnNotNull":
+              this.requestUpdate();
+              break;
           }
         }
       ),
