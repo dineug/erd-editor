@@ -43,6 +43,10 @@ import {
   focusEndTableExecute,
   FocusMoveTable,
   focusMoveTableExecute,
+  FocusTargetTable,
+  focusTargetTableExecute,
+  FocusTargetColumn,
+  focusTargetColumnExecute,
   EditTable,
   editTableExecute,
   editEndTableExecute,
@@ -74,6 +78,8 @@ type CommandName =
   | "editor.focusTable"
   | "editor.focusEndTable"
   | "editor.focusMoveTable"
+  | "editor.focusTargetTable"
+  | "editor.focusTargetColumn"
   | "editor.editTable"
   | "editor.editEndTable";
 
@@ -94,6 +100,8 @@ export type Command =
   | CommandEffect<ResizeCanvas>
   | CommandEffect<FocusTable>
   | CommandEffect<FocusMoveTable>
+  | CommandEffect<FocusTargetTable>
+  | CommandEffect<FocusTargetColumn>
   | CommandEffect<EditTable>;
 
 export function commandExecute(store: Store, commands: Command[]) {
@@ -158,6 +166,12 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "editor.focusMoveTable":
         focusMoveTableExecute(store, command.data as FocusMoveTable);
+        break;
+      case "editor.focusTargetTable":
+        focusTargetTableExecute(store, command.data as FocusTargetTable);
+        break;
+      case "editor.focusTargetColumn":
+        focusTargetColumnExecute(store, command.data as FocusTargetColumn);
         break;
       case "editor.editTable":
         editTableExecute(store, command.data as EditTable);

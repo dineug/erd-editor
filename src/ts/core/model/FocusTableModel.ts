@@ -2,7 +2,11 @@ import { Subscription } from "rxjs";
 import { Store } from "../Store";
 import { Table } from "../store/Table";
 import { FocusColumn, FocusColumnModel } from "./FocusColumnModel";
-import { FocusMoveTable } from "../command/editor";
+import {
+  FocusMoveTable,
+  FocusTargetTable,
+  FocusTargetColumn,
+} from "../command/editor";
 import { Logger } from "../Logger";
 import {
   focusEnd,
@@ -30,6 +34,10 @@ export interface FocusTable {
 
   focusColumnChangeCall: boolean;
   move(focusMoveTable: FocusMoveTable): void;
+  focus(data: {
+    focusTargetTable?: FocusTargetTable;
+    focusTargetColumn?: FocusTargetColumn;
+  }): void;
   destroy(): void;
 }
 
@@ -178,6 +186,35 @@ export class FocusTableModel implements FocusTable {
         break;
     }
     this.focusColumnChangeCall = !this.focusColumnChangeCall;
+  }
+
+  focus(data: {
+    focusTargetTable: FocusTargetTable;
+    focusTargetColumn: FocusTargetColumn;
+  }) {
+    const { focusTargetTable, focusTargetColumn } = data;
+    if (focusTargetTable) {
+      focusEnd(this);
+      selectEndColumn(this.focusColumns);
+      this.currentFocusColumn = null;
+      if (focusTargetTable.focusType === "tableComment") {
+        this.focusComment = true;
+      } else {
+        this.focusName = true;
+      }
+    } else if (focusTargetColumn) {
+      const targetFocusColumn = getData(
+        this.focusColumns,
+        focusTargetColumn.columnId
+      );
+      if (targetFocusColumn) {
+        focusEnd(this);
+        selectEndColumn(this.focusColumns);
+        this.currentFocusColumn = targetFocusColumn;
+        this.currentFocusColumn.selected = true;
+        this.currentFocusColumn.focus(focusTargetColumn.focusType);
+      }
+    }
   }
 
   destroy() {

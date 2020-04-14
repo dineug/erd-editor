@@ -6,7 +6,7 @@ import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import { moveTable, removeTable, selectTable } from "@src/core/command/table";
 import { addColumn } from "@src/core/command/column";
-import { editEndTable } from "@src/core/command/editor";
+import { editEndTable, focusTargetTable } from "@src/core/command/editor";
 import { Table as TableModel, Column } from "@src/core/store/Table";
 import { keymapOptionToString } from "@src/core/Keymap";
 import { FocusType } from "@src/core/model/FocusTableModel";
@@ -124,27 +124,33 @@ class Table extends EditorElement {
           </div>
           <div class="vuerd-table-header-body">
             <vuerd-input-edit
+              class="vuerd-table-name"
               .context=${this.context}
               .width=${this.table.ui.widthName}
               .value=${this.table.name}
               .focusState=${this.focusTable("focusName")}
               .edit=${this.editTable("tableName")}
               placeholder="table"
-              @input=${(event: InputEvent) => this.onInput(event, "tableName")}
               @blur=${this.onBlur}
+              @input=${(event: InputEvent) => this.onInput(event, "tableName")}
+              @mousedown=${(event: MouseEvent) =>
+                this.onFocus(event, "tableName")}
             ></vuerd-input-edit>
             ${show.tableComment
               ? html`
                   <vuerd-input-edit
+                    class="vuerd-table-comment"
                     .context=${this.context}
                     .width=${this.table.ui.widthComment}
                     .value=${this.table.comment}
                     .focusState=${this.focusTable("focusComment")}
                     .edit=${this.editTable("tableComment")}
                     placeholder="comment"
+                    @blur=${this.onBlur}
                     @input=${(event: InputEvent) =>
                       this.onInput(event, "tableComment")}
-                    @blur=${this.onBlur}
+                    @mousedown=${(event: MouseEvent) =>
+                      this.onFocus(event, "tableComment")}
                   ></vuerd-input-edit>
                 `
               : html``}
@@ -180,16 +186,15 @@ class Table extends EditorElement {
 
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
-    if (!el.closest(".vuerd-circle-button") && !el.closest(".vuerd-column")) {
+    if (
+      !el.closest(".vuerd-circle-button") &&
+      !el.closest("vuerd-input-edit")
+    ) {
       const { mouseup$, mousemove$ } = this.context.windowEventObservable;
       this.subMouseup = mouseup$.subscribe(this.onMouseup);
       this.subMousemove = mousemove$.subscribe(this.onMousemove);
     }
-    if (
-      !el.closest(".vuerd-table-name") &&
-      !el.closest(".vuerd-table-comment") &&
-      !el.closest(".vuerd-column")
-    ) {
+    if (!el.closest("vuerd-input-edit")) {
       const { store } = this.context;
       store.dispatch(selectTable(store, event.ctrlKey, this.table.id));
     }
@@ -225,13 +230,21 @@ class Table extends EditorElement {
     store.dispatch(removeTable(store, this.table.id));
   }
   private onInput(event: InputEvent, name: FocusType) {
-    Logger.debug(`onInput: ${name}`);
+    Logger.debug(`Table onInput: ${name}`);
     Logger.debug(event);
   }
   private onBlur = (event: Event) => {
     const { store } = this.context;
     store.dispatch(editEndTable());
   };
+  private onFocus(event: MouseEvent | TouchEvent, focusType: FocusType) {
+    Logger.debug(`Table onFocus: ${focusType}`);
+    const { store } = this.context;
+    store.dispatch(
+      selectTable(store, event.ctrlKey, this.table.id),
+      focusTargetTable(focusType)
+    );
+  }
   private focusTableObserve() {
     const { store } = this.context;
     if (store.editorState.focusTable?.id === this.table.id) {

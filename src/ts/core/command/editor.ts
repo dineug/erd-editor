@@ -24,7 +24,7 @@ export function focusTableExecute(store: Store, data: FocusTable) {
     (editorState.focusTable === null ||
       editorState.focusTable.id !== data.tableId)
   ) {
-    editorState.focusTable?.destroy();
+    focusEndTableExecute(store);
     editorState.focusTable = new FocusTableModel(table, store);
   }
 }
@@ -70,6 +70,54 @@ export function focusMoveTableExecute(store: Store, data: FocusMoveTable) {
   Logger.debug("focusMoveTableExecute");
   const { focusTable } = store.editorState;
   focusTable?.move(data);
+}
+
+export interface FocusTargetTable {
+  focusType: FocusType;
+}
+export function focusTargetTable(
+  focusType: FocusType
+): CommandEffect<FocusTargetTable> {
+  return {
+    name: "editor.focusTargetTable",
+    data: {
+      focusType,
+    },
+  };
+}
+export function focusTargetTableExecute(store: Store, data: FocusTargetTable) {
+  Logger.debug("focusTargetTableExecute");
+  const { focusTable } = store.editorState;
+  focusTable?.focus({
+    focusTargetTable: data,
+  });
+}
+
+export interface FocusTargetColumn {
+  columnId: string;
+  focusType: FocusType;
+}
+export function focusTargetColumn(
+  columnId: string,
+  focusType: FocusType
+): CommandEffect<FocusTargetColumn> {
+  return {
+    name: "editor.focusTargetColumn",
+    data: {
+      columnId,
+      focusType,
+    },
+  };
+}
+export function focusTargetColumnExecute(
+  store: Store,
+  data: FocusTargetColumn
+) {
+  Logger.debug("focusTargetColumnExecute");
+  const { focusTable } = store.editorState;
+  focusTable?.focus({
+    focusTargetColumn: data,
+  });
 }
 
 export interface EditTable {

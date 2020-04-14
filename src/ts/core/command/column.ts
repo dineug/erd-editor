@@ -3,6 +3,7 @@ import { Store } from "../Store";
 import { getData, uuid } from "../Helper";
 import { Logger } from "../Logger";
 import { ColumnModel } from "../model/ColumnModel";
+import { focusTableExecute } from "./editor";
 
 export interface AddColumn {
   id: string;
@@ -37,6 +38,9 @@ export function addColumnExecute(store: Store, data: AddColumn[]) {
   data.forEach(addColumn => {
     const table = getData(tables, addColumn.tableId);
     if (table) {
+      focusTableExecute(store, {
+        tableId: table.id,
+      });
       table.columns.push(new ColumnModel({ addColumn }));
     }
   });

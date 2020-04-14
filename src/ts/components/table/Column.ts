@@ -4,7 +4,8 @@ import { Subscription } from "rxjs";
 import { EditorElement } from "../EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Column as ColumnModel } from "@src/core/store/Table";
-import { editEndTable } from "@src/core/command/editor";
+import { selectTable } from "@src/core/command/table";
+import { editEndTable, focusTargetColumn } from "@src/core/command/editor";
 import { FocusType } from "@src/core/model/FocusTableModel";
 
 @customElement("vuerd-column")
@@ -90,8 +91,9 @@ class Column extends EditorElement {
           .edit=${this.editName}
           .backgroundColor=${columnSelected}
           placeholder="column"
-          @input=${(event: InputEvent) => this.onInput(event, "columnName")}
           @blur=${this.onBlur}
+          @input=${(event: InputEvent) => this.onInput(event, "columnName")}
+          @mousedown=${(event: MouseEvent) => this.onFocus(event, "columnName")}
         ></vuerd-input-edit>
         ${show.columnDataType
           ? html`
@@ -103,6 +105,8 @@ class Column extends EditorElement {
                 .edit=${this.editDataType}
                 .backgroundColor=${columnSelected}
                 placeholder="dataType"
+                @mousedown=${(event: MouseEvent) =>
+                  this.onFocus(event, "columnDataType")}
               ></vuerd-input-edit>
             `
           : html``}
@@ -112,6 +116,8 @@ class Column extends EditorElement {
                 .context=${this.context}
                 .columnOption=${this.column.option}
                 .focusState=${this.focusNotNull}
+                @mousedown=${(event: MouseEvent) =>
+                  this.onFocus(event, "columnNotNull")}
               ></vuerd-column-not-null>
             `
           : html``}
@@ -125,9 +131,11 @@ class Column extends EditorElement {
                 .edit=${this.editDefault}
                 .backgroundColor=${columnSelected}
                 placeholder="default"
+                @blur=${this.onBlur}
                 @input=${(event: InputEvent) =>
                   this.onInput(event, "columnDefault")}
-                @blur=${this.onBlur}
+                @mousedown=${(event: MouseEvent) =>
+                  this.onFocus(event, "columnDefault")}
               ></vuerd-input-edit>
             `
           : html``}
@@ -141,9 +149,11 @@ class Column extends EditorElement {
                 .edit=${this.editComment}
                 .backgroundColor=${columnSelected}
                 placeholder="comment"
+                @blur=${this.onBlur}
                 @input=${(event: InputEvent) =>
                   this.onInput(event, "columnComment")}
-                @blur=${this.onBlur}
+                @mousedown=${(event: MouseEvent) =>
+                  this.onFocus(event, "columnComment")}
               ></vuerd-input-edit>
             `
           : html``}
@@ -158,4 +168,12 @@ class Column extends EditorElement {
     const { store } = this.context;
     store.dispatch(editEndTable());
   };
+  private onFocus(event: MouseEvent | TouchEvent, focusType: FocusType) {
+    Logger.debug(`Column onFocus: ${focusType}`);
+    const { store } = this.context;
+    store.dispatch(
+      selectTable(store, event.ctrlKey, this.tableId),
+      focusTargetColumn(this.column.id, focusType)
+    );
+  }
 }
