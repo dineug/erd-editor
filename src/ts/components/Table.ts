@@ -229,14 +229,14 @@ class Table extends EditorElement {
       moveTable(store, event.ctrlKey, movementX, movementY, this.table.id)
     );
   };
-  private onAddColumn(event: MouseEvent) {
+  private onAddColumn = (event: MouseEvent) => {
     const { store } = this.context;
     store.dispatch(addColumn(store, this.table.id));
-  }
-  private onRemoveTable(event: MouseEvent) {
+  };
+  private onRemoveTable = (event: MouseEvent) => {
     const { store } = this.context;
     store.dispatch(removeTable(store, this.table.id));
-  }
+  };
   private onInput(event: InputEvent, focusType: FocusType) {
     Logger.debug(`Table onInput: ${focusType}`);
     Logger.debug(event);

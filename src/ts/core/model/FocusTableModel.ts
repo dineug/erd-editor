@@ -1,6 +1,6 @@
 import { Subscription } from "rxjs";
 import { Store } from "../Store";
-import { Table } from "../store/Table";
+import { Table, Column } from "../store/Table";
 import { Logger } from "../Logger";
 import { FocusColumn, FocusColumnModel } from "./FocusColumnModel";
 import {
@@ -34,6 +34,7 @@ export interface FocusTable {
   readonly id: string;
   readonly currentFocus: FocusType;
   readonly currentFocusId: string;
+  readonly selectColumns: Column[];
   focusName: boolean;
   focusComment: boolean;
   focusColumns: FocusColumn[];
@@ -75,6 +76,13 @@ export class FocusTableModel implements FocusTable {
     } else {
       return this.currentFocusColumn.id;
     }
+  }
+
+  get selectColumns(): Column[] {
+    return this.focusColumns
+      .filter(focusColumn => focusColumn.selected)
+      .map(focusColumn => getData(this.table.columns, focusColumn.id))
+      .filter(column => column !== null) as Column[];
   }
 
   constructor(table: Table, store: Store) {
@@ -256,10 +264,21 @@ export class FocusTableModel implements FocusTable {
     const { show } = this.store.canvasState;
     const oldColumnsSize = this.focusColumns.length;
     const columnsSize = this.table.columns.length;
+    let currentColumnIndex: number | null = null;
+    let currentFocusType: FocusType = "columnName";
+    if (this.currentFocusColumn?.currentFocus) {
+      currentColumnIndex = getIndex(
+        this.focusColumns,
+        this.currentFocusColumn.id
+      );
+      currentFocusType = this.currentFocusColumn.currentFocus;
+    }
+
     this.focusColumns = [];
     this.table.columns.forEach(column => {
       this.focusColumns.push(new FocusColumnModel(column, show));
     });
+
     // currentFocusColumn reload
     if (this.currentFocusColumn?.currentFocus) {
       const targetFocusColumn = getData(
@@ -272,13 +291,32 @@ export class FocusTableModel implements FocusTable {
         this.currentFocusColumn = targetFocusColumn;
       }
     }
-    // addColumn focus
+
     if (oldColumnsSize < columnsSize) {
+      // addColumn focus
       focusEnd(this);
       selectEndColumn(this.focusColumns);
       this.currentFocusColumn = this.focusColumns[this.focusColumns.length - 1];
       this.currentFocusColumn.selected = true;
       this.currentFocusColumn.focus("columnName");
+    } else if (oldColumnsSize > columnsSize && currentColumnIndex !== null) {
+      // removeColumn focus
+      focusEnd(this);
+      if (columnsSize === 0) {
+        this.currentFocusColumn = null;
+        this.focusName = true;
+      } else {
+        let targetIndex = this.focusColumns.length - 1;
+        if (currentColumnIndex === 0) {
+          targetIndex = 0;
+        } else if (currentColumnIndex - 1 < columnsSize) {
+          targetIndex = currentColumnIndex - 1;
+        }
+        selectEndColumn(this.focusColumns);
+        this.currentFocusColumn = this.focusColumns[targetIndex];
+        this.currentFocusColumn.selected = true;
+        this.currentFocusColumn.focus(currentFocusType);
+      }
     }
   }
 }

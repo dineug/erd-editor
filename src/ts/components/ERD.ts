@@ -15,6 +15,7 @@ import {
 } from "@src/core/command/table";
 import {
   addColumn,
+  removeColumn,
   changeColumnNotNull,
   changeColumnPrimaryKey,
 } from "@src/core/command/column";
@@ -89,6 +90,19 @@ class ERD extends EditorElement {
           ) {
             event.preventDefault();
             store.dispatch(removeTable(store));
+          }
+
+          if (focusTable !== null && keymapMatch(event, keymap.removeColumn)) {
+            event.preventDefault();
+            const columns = focusTable.selectColumns;
+            if (columns.length !== 0) {
+              store.dispatch(
+                removeColumn(
+                  focusTable.id,
+                  columns.map(column => column.id)
+                )
+              );
+            }
           }
 
           if (focusTable !== null && keymapMatch(event, keymap.primaryKey)) {

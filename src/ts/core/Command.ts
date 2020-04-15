@@ -97,7 +97,7 @@ export type Command =
   | CommandEffect<RemoveTable>
   | CommandEffect<SelectTable>
   | CommandEffect<Array<AddColumn>>
-  | CommandEffect<Array<RemoveColumn>>
+  | CommandEffect<RemoveColumn>
   | CommandEffect<ChangeColumnNotNull>
   | CommandEffect<ChangeColumnPrimaryKey>
   | CommandEffect<AddMemo>
@@ -137,7 +137,7 @@ export function commandExecute(store: Store, commands: Command[]) {
         addColumnExecute(store, command.data as Array<AddColumn>);
         break;
       case "column.remove":
-        removeColumnExecute(store, command.data as Array<RemoveColumn>);
+        removeColumnExecute(store, command.data as RemoveColumn);
         break;
       case "column.changeNotNull":
         changeColumnNotNullExecute(store, command.data as ChangeColumnNotNull);

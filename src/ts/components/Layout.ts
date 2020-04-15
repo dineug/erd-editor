@@ -88,6 +88,10 @@ export const Layout = css`
     align-items: center;
   }
 
+  .vuerd-column-button-remove {
+    cursor: pointer;
+  }
+
   .vuerd-contextmenu {
     position: fixed;
     z-index: 100000000;

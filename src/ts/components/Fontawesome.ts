@@ -21,7 +21,7 @@ class Fontawesome extends EditorElement {
   get theme() {
     const rem = SIZE_REM * (this.size / SIZE);
     return {
-      display: "flex",
+      display: "inline-flex",
       width: `${rem}rem`,
       height: `${rem}rem`,
     };

@@ -47,18 +47,34 @@ export function addColumnExecute(store: Store, data: AddColumn[]) {
 }
 
 export interface RemoveColumn {
-  columnIds: string[];
   tableId: string;
+  columnIds: string[];
 }
-export function removeColumn(store: Store): CommandEffect<Array<RemoveColumn>> {
-  // TODO: focus select method
+export function removeColumn(
+  tableId: string,
+  columnIds: string[]
+): CommandEffect<RemoveColumn> {
   return {
     name: "column.remove",
-    data: [],
+    data: {
+      tableId,
+      columnIds,
+    },
   };
 }
-export function removeColumnExecute(store: Store, data: RemoveColumn[]) {
+export function removeColumnExecute(store: Store, data: RemoveColumn) {
   Logger.debug("removeColumnExecute");
+  const { tables } = store.tableState;
+  const table = getData(tables, data.tableId);
+  if (table) {
+    for (let i = 0; i < table.columns.length; i++) {
+      const id = table.columns[i].id;
+      if (data.columnIds.some(columnId => columnId === id)) {
+        table.columns.splice(i, 1);
+        i--;
+      }
+    }
+  }
 }
 
 export interface ChangeColumnNotNull {

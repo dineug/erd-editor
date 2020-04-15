@@ -10,8 +10,9 @@ import {
   focusTargetColumn,
   editTable as editTableCommand,
 } from "@src/core/command/editor";
-import { changeColumnNotNull } from "@src/core/command/column";
+import { changeColumnNotNull, removeColumn } from "@src/core/command/column";
 import { FocusType } from "@src/core/model/FocusTableModel";
+import { keymapOptionToString } from "@src/core/Keymap";
 
 @customElement("vuerd-column")
 class Column extends EditorElement {
@@ -35,6 +36,8 @@ class Column extends EditorElement {
   editDefault = false;
   @property({ type: Boolean })
   editComment = false;
+  @property({ type: String })
+  columnButtonColor = "#fff0";
 
   tableId!: string;
   column!: ColumnModel;
@@ -75,14 +78,17 @@ class Column extends EditorElement {
   }
 
   render() {
+    const { theme, keymap } = this.context;
     const { show } = this.context.store.canvasState;
-    const { columnSelected } = this.context.theme;
+    const keymapRemoveColumn = keymapOptionToString(keymap.removeColumn[0]);
     return html`
       <li
         class="vuerd-column"
         style=${styleMap(this.theme)}
         data-id=${this.column.id}
         draggable="true"
+        @mouseenter=${this.onMouseenter}
+        @mouseleave=${this.onMouseleave}
       >
         <vuerd-column-key
           .context=${this.context}
@@ -94,7 +100,7 @@ class Column extends EditorElement {
           .value=${this.column.name}
           .focusState=${this.focusName}
           .edit=${this.editName}
-          .backgroundColor=${columnSelected}
+          .backgroundColor=${theme.columnSelected}
           placeholder="column"
           @blur=${this.onBlur}
           @input=${(event: InputEvent) => this.onInput(event, "columnName")}
@@ -109,7 +115,7 @@ class Column extends EditorElement {
                 .value=${this.column.dataType}
                 .focusState=${this.focusDataType}
                 .edit=${this.editDataType}
-                .backgroundColor=${columnSelected}
+                .backgroundColor=${theme.columnSelected}
                 placeholder="dataType"
                 @mousedown=${(event: MouseEvent) =>
                   this.onFocus(event, "columnDataType")}
@@ -139,7 +145,7 @@ class Column extends EditorElement {
                 .value=${this.column.default}
                 .focusState=${this.focusDefault}
                 .edit=${this.editDefault}
-                .backgroundColor=${columnSelected}
+                .backgroundColor=${theme.columnSelected}
                 placeholder="default"
                 @blur=${this.onBlur}
                 @input=${(event: InputEvent) =>
@@ -159,7 +165,7 @@ class Column extends EditorElement {
                 .value=${this.column.comment}
                 .focusState=${this.focusComment}
                 .edit=${this.editComment}
-                .backgroundColor=${columnSelected}
+                .backgroundColor=${theme.columnSelected}
                 placeholder="comment"
                 @blur=${this.onBlur}
                 @input=${(event: InputEvent) =>
@@ -171,9 +177,19 @@ class Column extends EditorElement {
               ></vuerd-input-edit>
             `
           : html``}
+        <vuerd-fontawesome
+          class="vuerd-column-button-remove"
+          .context=${this.context}
+          .color=${this.columnButtonColor}
+          title=${keymapRemoveColumn}
+          icon="times"
+          size="8"
+          @click=${this.onRemoveColumn}
+        ></vuerd-fontawesome>
       </li>
     `;
   }
+
   private onInput(event: InputEvent, focusType: FocusType) {
     Logger.debug(`onInput: ${focusType}`);
     Logger.debug(event);
@@ -208,4 +224,15 @@ class Column extends EditorElement {
       }
     }
   }
+  private onMouseenter = (event: MouseEvent) => {
+    const { font } = this.context.theme;
+    this.columnButtonColor = font;
+  };
+  private onMouseleave = (event: MouseEvent) => {
+    this.columnButtonColor = "#fff0";
+  };
+  private onRemoveColumn = (event: MouseEvent) => {
+    const { store } = this.context;
+    store.dispatch(removeColumn(this.tableId, [this.column.id]));
+  };
 }
