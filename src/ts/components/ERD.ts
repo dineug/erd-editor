@@ -22,6 +22,7 @@ import {
   focusMoveTable,
   editTable as editTableCommand,
   editEndTable,
+  selectAllColumn,
 } from "@src/core/command/editor";
 
 @customElement("vuerd-erd")
@@ -56,68 +57,75 @@ class ERD extends EditorElement {
     const { store, eventBus, keymap } = this.context;
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subscriptionList.push(
-      this.context.windowEventObservable.keydown$.subscribe(
-        (event: KeyboardEvent) => {
-          const { focus, editTable, focusTable } = store.editorState;
-          if (focus) {
-            if (keymapMatch(event, keymap.addTable)) {
-              store.dispatch(addTable(store));
-            }
-            if (
-              keymapMatch(event, keymap.removeTable) &&
-              (store.tableState.tables.some(table => table.ui.active) ||
-                store.memoState.memos.some(memo => memo.ui.active))
-            ) {
-              store.dispatch(removeTable(store));
-            }
-            if (
-              keymapMatch(event, keymap.addColumn) &&
-              store.tableState.tables.some(table => table.ui.active)
-            ) {
-              store.dispatch(addColumn(store));
-            }
-            if (keymapMatch(event, keymap.addMemo)) {
-              store.dispatch(addMemo(store));
-            }
-            if (
-              editTable === null &&
-              keymapMatch(event, keymap.selectAllTable)
-            ) {
-              event.preventDefault();
-              store.dispatch(selectAllTable(), selectAllMemo());
-            }
-            if (
-              editTable === null &&
-              moveKeys.some(moveKey => moveKey === event.key)
-            ) {
-              event.preventDefault();
-              store.dispatch(
-                focusMoveTable(event.key as MoveKey, event.shiftKey)
-              );
-            }
-            if (focusTable !== null && keymapMatch(event, keymap.edit)) {
-              if (editTable === null) {
-                const currentFocus = focusTable.currentFocus;
-                if (currentFocus === "columnNotNull") {
-                  const columnId = focusTable.currentFocusId;
-                  store.dispatch(
-                    changeColumnNotNull(store, focusTable.id, columnId)
-                  );
-                } else {
-                  store.dispatch(
-                    editTableCommand(
-                      focusTable.currentFocusId,
-                      focusTable.currentFocus
-                    )
-                  );
-                }
+      this.context.windowEventObservable.keydown$.subscribe(event => {
+        const { focus, editTable, focusTable } = store.editorState;
+        if (focus) {
+          if (keymapMatch(event, keymap.addTable)) {
+            event.preventDefault();
+            store.dispatch(addTable(store));
+          }
+          if (
+            keymapMatch(event, keymap.addColumn) &&
+            store.tableState.tables.some(table => table.ui.active)
+          ) {
+            event.preventDefault();
+            store.dispatch(addColumn(store));
+          }
+          if (keymapMatch(event, keymap.addMemo)) {
+            event.preventDefault();
+            store.dispatch(addMemo(store));
+          }
+          if (
+            keymapMatch(event, keymap.removeTable) &&
+            (store.tableState.tables.some(table => table.ui.active) ||
+              store.memoState.memos.some(memo => memo.ui.active))
+          ) {
+            event.preventDefault();
+            store.dispatch(removeTable(store));
+          }
+          if (editTable === null && keymapMatch(event, keymap.selectAllTable)) {
+            event.preventDefault();
+            store.dispatch(selectAllTable(), selectAllMemo());
+          }
+          if (
+            editTable === null &&
+            keymapMatch(event, keymap.selectAllColumn)
+          ) {
+            event.preventDefault();
+            store.dispatch(selectAllColumn());
+          }
+          if (
+            editTable === null &&
+            moveKeys.some(moveKey => moveKey === event.key)
+          ) {
+            event.preventDefault();
+            store.dispatch(
+              focusMoveTable(event.key as MoveKey, event.shiftKey)
+            );
+          }
+          if (focusTable !== null && keymapMatch(event, keymap.edit)) {
+            event.preventDefault();
+            if (editTable === null) {
+              const currentFocus = focusTable.currentFocus;
+              if (currentFocus === "columnNotNull") {
+                const columnId = focusTable.currentFocusId;
+                store.dispatch(
+                  changeColumnNotNull(store, focusTable.id, columnId)
+                );
               } else {
-                store.dispatch(editEndTable());
+                store.dispatch(
+                  editTableCommand(
+                    focusTable.currentFocusId,
+                    focusTable.currentFocus
+                  )
+                );
               }
+            } else {
+              store.dispatch(editEndTable());
             }
           }
         }
-      )
+      })
     );
   }
   firstUpdated() {

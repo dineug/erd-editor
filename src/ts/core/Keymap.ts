@@ -71,11 +71,13 @@ export interface KeymapOption {
 
 export interface Keymap {
   addTable: KeymapOption[];
-  removeTable: KeymapOption[];
-  selectAllTable: KeymapOption[];
   addColumn: KeymapOption[];
   addMemo: KeymapOption[];
+  removeTable: KeymapOption[];
+  selectAllTable: KeymapOption[];
+  selectAllColumn: KeymapOption[];
   edit: KeymapOption[];
+  stop: KeymapOption[];
 }
 
 export function createKeymap(): Keymap {
@@ -87,24 +89,6 @@ export function createKeymap(): Keymap {
         altKey: true,
         shiftKey: false,
         key: "N",
-      },
-    ],
-    removeTable: [
-      {
-        metaKey: false,
-        ctrlKey: true,
-        altKey: false,
-        shiftKey: false,
-        key: "Delete",
-      },
-    ],
-    selectAllTable: [
-      {
-        metaKey: false,
-        ctrlKey: true,
-        altKey: false,
-        shiftKey: false,
-        key: "A",
       },
     ],
     addColumn: [
@@ -125,6 +109,33 @@ export function createKeymap(): Keymap {
         key: "M",
       },
     ],
+    removeTable: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
+        key: "Delete",
+      },
+    ],
+    selectAllTable: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
+        key: "A",
+      },
+    ],
+    selectAllColumn: [
+      {
+        metaKey: false,
+        ctrlKey: false,
+        altKey: true,
+        shiftKey: false,
+        key: "A",
+      },
+    ],
     edit: [
       {
         metaKey: false,
@@ -132,6 +143,15 @@ export function createKeymap(): Keymap {
         altKey: false,
         shiftKey: false,
         key: "Enter",
+      },
+    ],
+    stop: [
+      {
+        metaKey: false,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        key: "Escape",
       },
     ],
   };

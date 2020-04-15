@@ -12,6 +12,7 @@ import {
   focusEnd,
   focusEndColumn,
   selectEndColumn,
+  selectAllColumn,
 } from "../helper/FocusTableHelper";
 import { getData, getIndex, range } from "../Helper";
 
@@ -40,6 +41,8 @@ export interface FocusTable {
   focusColumnChangeCall: boolean;
   move(focusMoveTable: FocusMoveTable): void;
   focus(focusData: FocusData): void;
+  selectAll(): void;
+  selectEnd(): void;
   destroy(): void;
 }
 
@@ -197,6 +200,7 @@ export class FocusTableModel implements FocusTable {
   focus(focusData: FocusData) {
     const { focusTargetTable, focusTargetColumn } = focusData;
     if (focusTargetTable) {
+      // focus table
       focusEnd(this);
       selectEndColumn(this.focusColumns);
       this.currentFocusColumn = null;
@@ -206,6 +210,7 @@ export class FocusTableModel implements FocusTable {
         this.focusName = true;
       }
     } else if (focusTargetColumn) {
+      // focus column
       const targetFocusColumn = getData(
         this.focusColumns,
         focusTargetColumn.columnId
@@ -232,6 +237,15 @@ export class FocusTableModel implements FocusTable {
         this.currentFocusColumn.focus(focusTargetColumn.focusType);
       }
     }
+  }
+
+  selectAll() {
+    selectAllColumn(this.focusColumns);
+    this.focusColumnChangeCall = !this.focusColumnChangeCall;
+  }
+  selectEnd() {
+    selectEndColumn(this.focusColumns);
+    this.focusColumnChangeCall = !this.focusColumnChangeCall;
   }
 
   destroy() {

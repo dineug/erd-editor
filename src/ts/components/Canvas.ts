@@ -1,5 +1,6 @@
 import { html, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { repeat } from "lit-html/directives/repeat";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
@@ -39,7 +40,9 @@ class Canvas extends EditorElement {
     Logger.debug("Canvas render");
     return html`
       <div class="vuerd-canvas" style=${styleMap(this.theme)}>
-        ${this.tables.map(
+        ${repeat(
+          this.tables,
+          table => table.id,
           table => html`
             <vuerd-table .context=${this.context} .table=${table}></vuerd-table>
           `

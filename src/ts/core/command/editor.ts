@@ -128,6 +128,30 @@ export function focusTargetColumnExecute(
   });
 }
 
+export function selectAllColumn(): CommandEffect<null> {
+  return {
+    name: "editor.selectAllColumn",
+    data: null,
+  };
+}
+export function selectAllColumnExecute(store: Store) {
+  Logger.debug("selectAllColumnExecute");
+  const { focusTable } = store.editorState;
+  focusTable?.selectAll();
+}
+
+export function selectEndColumn(): CommandEffect<null> {
+  return {
+    name: "editor.selectEndColumn",
+    data: null,
+  };
+}
+export function selectEndColumnExecute(store: Store) {
+  Logger.debug("selectEndColumnExecute");
+  const { focusTable } = store.editorState;
+  focusTable?.selectEnd();
+}
+
 export interface EditTable {
   id: string;
   focusType: FocusType;

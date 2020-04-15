@@ -47,6 +47,8 @@ import {
   focusTargetTableExecute,
   FocusTargetColumn,
   focusTargetColumnExecute,
+  selectAllColumnExecute,
+  selectEndColumnExecute,
   EditTable,
   editTableExecute,
   editEndTableExecute,
@@ -80,6 +82,8 @@ type CommandName =
   | "editor.focusMoveTable"
   | "editor.focusTargetTable"
   | "editor.focusTargetColumn"
+  | "editor.selectAllColumn"
+  | "editor.selectEndColumn"
   | "editor.editTable"
   | "editor.editEndTable";
 
@@ -172,6 +176,12 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "editor.focusTargetColumn":
         focusTargetColumnExecute(store, command.data as FocusTargetColumn);
+        break;
+      case "editor.selectAllColumn":
+        selectAllColumnExecute(store);
+        break;
+      case "editor.selectEndColumn":
+        selectEndColumnExecute(store);
         break;
       case "editor.editTable":
         editTableExecute(store, command.data as EditTable);

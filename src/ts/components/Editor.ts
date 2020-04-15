@@ -2,10 +2,13 @@ import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
+import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
+import { keymapMatch } from "@src/core/Keymap";
 import { createEditorContext } from "@src/core/EditorContext";
 import { Command } from "@src/core/Command";
-import { Layout, defaultWidth, defaultHeight } from "./Layout";
+import { selectEndTable } from "@src/core/command/table";
+import { selectEndMemo } from "@src/core/command/memo";
 import "./ERD";
 import "./Canvas";
 import "./CanvasSVG";
@@ -51,20 +54,26 @@ class Editor extends EditorElement {
   connectedCallback() {
     super.connectedCallback();
     Logger.debug("Editor before render");
-    if (process.env.NODE_ENV === "development") {
-      this.subscriptionList.push(
-        this.context.windowEventObservable.keydown$.subscribe(event => {
-          Logger.debug(`
-            metaKey: ${event.metaKey},
-            ctrlKey: ${event.ctrlKey},
-            altKey: ${event.altKey},
-            shiftKey: ${event.shiftKey},
-            code: ${event.code},
-            key: ${event.key}
-            `);
-        })
-      );
-    }
+    const { store, keymap } = this.context;
+    this.subscriptionList.push(
+      this.context.windowEventObservable.keydown$.subscribe(event => {
+        Logger.debug(`
+        metaKey: ${event.metaKey},
+        ctrlKey: ${event.ctrlKey},
+        altKey: ${event.altKey},
+        shiftKey: ${event.shiftKey},
+        code: ${event.code},
+        key: ${event.key}
+        `);
+        const { focus } = store.editorState;
+        if (focus) {
+          if (keymapMatch(event, keymap.stop)) {
+            event.preventDefault();
+            store.dispatch(selectEndTable(), selectEndMemo());
+          }
+        }
+      })
+    );
   }
   updated(changedProperties: any) {
     changedProperties.forEach((oldValue: any, propName: string) => {
