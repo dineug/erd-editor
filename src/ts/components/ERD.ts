@@ -13,7 +13,11 @@ import {
   selectEndTable,
   selectAllTable,
 } from "@src/core/command/table";
-import { addColumn, changeColumnNotNull } from "@src/core/command/column";
+import {
+  addColumn,
+  changeColumnNotNull,
+  changeColumnPrimaryKey,
+} from "@src/core/command/column";
 import { addMemo, selectEndMemo, selectAllMemo } from "@src/core/command/memo";
 import { moveCanvas } from "@src/core/command/canvas";
 import {
@@ -64,6 +68,7 @@ class ERD extends EditorElement {
             event.preventDefault();
             store.dispatch(addTable(store));
           }
+
           if (
             keymapMatch(event, keymap.addColumn) &&
             store.tableState.tables.some(table => table.ui.active)
@@ -71,10 +76,12 @@ class ERD extends EditorElement {
             event.preventDefault();
             store.dispatch(addColumn(store));
           }
+
           if (keymapMatch(event, keymap.addMemo)) {
             event.preventDefault();
             store.dispatch(addMemo(store));
           }
+
           if (
             keymapMatch(event, keymap.removeTable) &&
             (store.tableState.tables.some(table => table.ui.active) ||
@@ -83,10 +90,26 @@ class ERD extends EditorElement {
             event.preventDefault();
             store.dispatch(removeTable(store));
           }
+
+          if (focusTable !== null && keymapMatch(event, keymap.primaryKey)) {
+            event.preventDefault();
+            const currentFocus = focusTable.currentFocus;
+            if (
+              currentFocus !== "tableName" &&
+              currentFocus !== "tableComment"
+            ) {
+              const columnId = focusTable.currentFocusId;
+              store.dispatch(
+                changeColumnPrimaryKey(store, focusTable.id, columnId)
+              );
+            }
+          }
+
           if (editTable === null && keymapMatch(event, keymap.selectAllTable)) {
             event.preventDefault();
             store.dispatch(selectAllTable(), selectAllMemo());
           }
+
           if (
             editTable === null &&
             keymapMatch(event, keymap.selectAllColumn)
@@ -94,6 +117,7 @@ class ERD extends EditorElement {
             event.preventDefault();
             store.dispatch(selectAllColumn());
           }
+
           if (
             editTable === null &&
             moveKeys.some(moveKey => moveKey === event.key)
@@ -103,6 +127,7 @@ class ERD extends EditorElement {
               focusMoveTable(event.key as MoveKey, event.shiftKey)
             );
           }
+
           if (focusTable !== null && keymapMatch(event, keymap.edit)) {
             event.preventDefault();
             if (editTable === null) {

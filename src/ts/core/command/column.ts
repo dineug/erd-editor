@@ -103,3 +103,61 @@ export function changeColumnNotNullExecute(
     }
   }
 }
+
+export interface ChangeColumnPrimaryKey {
+  tableId: string;
+  columnId: string;
+  primaryKey: boolean;
+}
+export function changeColumnPrimaryKey(
+  store: Store,
+  tableId: string,
+  columnId: string
+): CommandEffect<ChangeColumnPrimaryKey> {
+  let primaryKey = false;
+  const { tables } = store.tableState;
+  const table = getData(tables, tableId);
+  if (table) {
+    const column = getData(table.columns, columnId);
+    if (column) {
+      primaryKey = !column.option.primaryKey;
+    }
+  }
+  return {
+    name: "column.changePrimaryKey",
+    data: {
+      tableId,
+      columnId,
+      primaryKey,
+    },
+  };
+}
+export function changeColumnPrimaryKeyExecute(
+  store: Store,
+  data: ChangeColumnPrimaryKey
+) {
+  Logger.debug("changeColumnPrimaryKeyExecute");
+  const { tables } = store.tableState;
+  const table = getData(tables, data.tableId);
+  if (table) {
+    const column = getData(table.columns, data.columnId);
+    if (column) {
+      if (data.primaryKey) {
+        if (column.ui.fk) {
+          column.ui.fk = false;
+          column.ui.pfk = true;
+        } else {
+          column.ui.pk = true;
+        }
+      } else {
+        if (column.ui.pfk) {
+          column.ui.pfk = false;
+          column.ui.fk = true;
+        } else {
+          column.ui.pk = false;
+        }
+      }
+      column.option.primaryKey = data.primaryKey;
+    }
+  }
+}

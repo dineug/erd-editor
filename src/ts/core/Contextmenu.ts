@@ -3,6 +3,7 @@ import { Store } from "./Store";
 import { Keymap, keymapOptionToString } from "./Keymap";
 import { addTable } from "./command/table";
 import { addMemo } from "./command/memo";
+import { changeColumnPrimaryKey } from "./command/column";
 
 export interface MenuOption {
   close?: boolean;
@@ -25,8 +26,8 @@ export interface Menu {
 }
 
 export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
-  const menu: { [key: string]: Menu } = {
-    addTable: {
+  return [
+    {
       icon: "table",
       name: "New Table",
       keymap: keymapOptionToString(keymap.addTable[0]),
@@ -34,7 +35,7 @@ export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
         store.dispatch(addTable(store));
       },
     },
-    addMemo: {
+    {
       icon: "sticky-note",
       name: "New Memo",
       keymap: keymapOptionToString(keymap.addMemo[0]),
@@ -42,6 +43,22 @@ export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
         store.dispatch(addMemo(store));
       },
     },
-  };
-  return Object.values(menu);
+    {
+      icon: "key",
+      name: "Primary Key",
+      keymap: keymapOptionToString(keymap.primaryKey[0]),
+      execute() {
+        const { focusTable } = store.editorState;
+        if (focusTable !== null) {
+          const currentFocus = focusTable.currentFocus;
+          if (currentFocus !== "tableName" && currentFocus !== "tableComment") {
+            const columnId = focusTable.currentFocusId;
+            store.dispatch(
+              changeColumnPrimaryKey(store, focusTable.id, columnId)
+            );
+          }
+        }
+      },
+    },
+  ];
 }

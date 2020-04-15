@@ -18,6 +18,8 @@ import {
   removeColumnExecute,
   ChangeColumnNotNull,
   changeColumnNotNullExecute,
+  ChangeColumnPrimaryKey,
+  changeColumnPrimaryKeyExecute,
 } from "./command/column";
 import {
   AddMemo,
@@ -69,6 +71,7 @@ type CommandName =
   | "column.add"
   | "column.remove"
   | "column.changeNotNull"
+  | "column.changePrimaryKey"
   | "memo.add"
   | "memo.move"
   | "memo.remove"
@@ -96,6 +99,7 @@ export type Command =
   | CommandEffect<Array<AddColumn>>
   | CommandEffect<Array<RemoveColumn>>
   | CommandEffect<ChangeColumnNotNull>
+  | CommandEffect<ChangeColumnPrimaryKey>
   | CommandEffect<AddMemo>
   | CommandEffect<MoveMemo>
   | CommandEffect<RemoveMemo>
@@ -137,6 +141,12 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "column.changeNotNull":
         changeColumnNotNullExecute(store, command.data as ChangeColumnNotNull);
+        break;
+      case "column.changePrimaryKey":
+        changeColumnPrimaryKeyExecute(
+          store,
+          command.data as ChangeColumnPrimaryKey
+        );
         break;
       case "memo.add":
         addMemoExecute(store, command.data as AddMemo);
