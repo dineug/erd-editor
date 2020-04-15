@@ -2,6 +2,10 @@ import { SIZE_MIN_WIDTH } from "../Layout";
 import { Column, ColumnOption, ColumnUI } from "../store/Table";
 import { AddColumn } from "../Command/column";
 
+interface ColumnData {
+  addColumn?: AddColumn;
+}
+
 export class ColumnModel implements Column {
   id: string;
   name = "";
@@ -25,7 +29,7 @@ export class ColumnModel implements Column {
     widthDefault: SIZE_MIN_WIDTH,
   };
 
-  constructor(data: { addColumn?: AddColumn }) {
+  constructor(data: ColumnData) {
     const { addColumn } = data;
     if (addColumn) {
       const { id } = addColumn;

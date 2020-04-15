@@ -1,12 +1,16 @@
 import { Memo, MemoUI } from "../store/Memo";
 import { AddMemo } from "../command/memo";
 
+interface MemoData {
+  addMemo?: AddMemo;
+}
+
 export class MemoModel implements Memo {
   id: string;
   value = "";
   ui: MemoUI;
 
-  constructor(data: { addMemo?: AddMemo }) {
+  constructor(data: MemoData) {
     const { addMemo } = data;
     if (addMemo) {
       const { id, ui } = addMemo;

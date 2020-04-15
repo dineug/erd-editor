@@ -13,8 +13,8 @@ export function getData<T extends { id: string }>(
 export function getIndex<T extends { id: string }>(
   list: Array<T>,
   id: string
-): number {
-  let index = -1;
+): number | null {
+  let index: number | null = null;
   const size = list.length;
   for (let i = 0; i < size; i++) {
     if (id === list[i].id) {
@@ -43,4 +43,18 @@ export function uuid(): string {
     s4(),
     s4(),
   ].join("");
+}
+
+export function range(a: number, b: number): number[] {
+  const indexList: number[] = [];
+  let start = a;
+  let end = b;
+  if (a > b) {
+    start = b;
+    end = a;
+  }
+  for (let i = start; i <= end; i++) {
+    indexList.push(i);
+  }
+  return indexList;
 }

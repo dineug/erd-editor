@@ -13,6 +13,10 @@ import {
   getDefaultWidthColumn,
 } from "../helper/TableHelper";
 
+interface TableData {
+  addTable?: AddTable;
+}
+
 export class TableModel implements Table {
   id: string;
   name = "";
@@ -21,9 +25,9 @@ export class TableModel implements Table {
   ui: TableUI;
   show: Show;
 
-  constructor(data: { addTable?: AddTable }, show: Show) {
-    this.show = show;
+  constructor(data: TableData, show: Show) {
     const { addTable } = data;
+    this.show = show;
     if (addTable) {
       const { id, ui } = addTable;
       this.id = id;

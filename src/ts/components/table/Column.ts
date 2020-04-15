@@ -173,7 +173,12 @@ class Column extends EditorElement {
     const { store } = this.context;
     store.dispatch(
       selectTable(store, event.ctrlKey, this.tableId),
-      focusTargetColumn(this.column.id, focusType)
+      focusTargetColumn(
+        this.column.id,
+        focusType,
+        event.ctrlKey,
+        event.shiftKey
+      )
     );
   }
 }

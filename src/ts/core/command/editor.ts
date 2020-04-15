@@ -24,8 +24,10 @@ export function focusTableExecute(store: Store, data: FocusTable) {
     (editorState.focusTable === null ||
       editorState.focusTable.id !== data.tableId)
   ) {
-    focusEndTableExecute(store);
-    editorState.focusTable = new FocusTableModel(table, store);
+    if (editorState.focusTable?.id !== table.id) {
+      focusEndTableExecute(store);
+      editorState.focusTable = new FocusTableModel(table, store);
+    }
   }
 }
 
@@ -96,16 +98,22 @@ export function focusTargetTableExecute(store: Store, data: FocusTargetTable) {
 export interface FocusTargetColumn {
   columnId: string;
   focusType: FocusType;
+  ctrlKey: boolean;
+  shiftKey: boolean;
 }
 export function focusTargetColumn(
   columnId: string,
-  focusType: FocusType
+  focusType: FocusType,
+  ctrlKey: boolean,
+  shiftKey: boolean
 ): CommandEffect<FocusTargetColumn> {
   return {
     name: "editor.focusTargetColumn",
     data: {
       columnId,
       focusType,
+      ctrlKey,
+      shiftKey,
     },
   };
 }
