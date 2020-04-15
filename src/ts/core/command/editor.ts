@@ -93,6 +93,7 @@ export function focusTargetTableExecute(store: Store, data: FocusTargetTable) {
   focusTable?.focus({
     focusTargetTable: data,
   });
+  editEndTableExecute(store);
 }
 
 export interface FocusTargetColumn {
@@ -126,6 +127,7 @@ export function focusTargetColumnExecute(
   focusTable?.focus({
     focusTargetColumn: data,
   });
+  editEndTableExecute(store);
 }
 
 export function selectAllColumn(): CommandEffect<null> {

@@ -5,7 +5,12 @@ import { EditorElement } from "../EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Column as ColumnModel } from "@src/core/store/Table";
 import { selectTable } from "@src/core/command/table";
-import { editEndTable, focusTargetColumn } from "@src/core/command/editor";
+import {
+  editEndTable,
+  focusTargetColumn,
+  editTable as editTableCommand,
+} from "@src/core/command/editor";
+import { changeColumnNotNull } from "@src/core/command/column";
 import { FocusType } from "@src/core/model/FocusTableModel";
 
 @customElement("vuerd-column")
@@ -94,6 +99,7 @@ class Column extends EditorElement {
           @blur=${this.onBlur}
           @input=${(event: InputEvent) => this.onInput(event, "columnName")}
           @mousedown=${(event: MouseEvent) => this.onFocus(event, "columnName")}
+          @dblclick=${(event: MouseEvent) => this.onEdit(event, "columnName")}
         ></vuerd-input-edit>
         ${show.columnDataType
           ? html`
@@ -107,6 +113,8 @@ class Column extends EditorElement {
                 placeholder="dataType"
                 @mousedown=${(event: MouseEvent) =>
                   this.onFocus(event, "columnDataType")}
+                @dblclick=${(event: MouseEvent) =>
+                  this.onEdit(event, "columnDataType")}
               ></vuerd-input-edit>
             `
           : html``}
@@ -118,6 +126,8 @@ class Column extends EditorElement {
                 .focusState=${this.focusNotNull}
                 @mousedown=${(event: MouseEvent) =>
                   this.onFocus(event, "columnNotNull")}
+                @dblclick=${(event: MouseEvent) =>
+                  this.onEdit(event, "columnNotNull")}
               ></vuerd-column-not-null>
             `
           : html``}
@@ -136,6 +146,8 @@ class Column extends EditorElement {
                   this.onInput(event, "columnDefault")}
                 @mousedown=${(event: MouseEvent) =>
                   this.onFocus(event, "columnDefault")}
+                @dblclick=${(event: MouseEvent) =>
+                  this.onEdit(event, "columnDefault")}
               ></vuerd-input-edit>
             `
           : html``}
@@ -154,14 +166,16 @@ class Column extends EditorElement {
                   this.onInput(event, "columnComment")}
                 @mousedown=${(event: MouseEvent) =>
                   this.onFocus(event, "columnComment")}
+                @dblclick=${(event: MouseEvent) =>
+                  this.onEdit(event, "columnComment")}
               ></vuerd-input-edit>
             `
           : html``}
       </li>
     `;
   }
-  private onInput(event: InputEvent, name: FocusType) {
-    Logger.debug(`onInput: ${name}`);
+  private onInput(event: InputEvent, focusType: FocusType) {
+    Logger.debug(`onInput: ${focusType}`);
     Logger.debug(event);
   }
   private onBlur = (event: Event) => {
@@ -180,5 +194,18 @@ class Column extends EditorElement {
         event.shiftKey
       )
     );
+  }
+  private onEdit(event: MouseEvent, focusType: FocusType) {
+    const { store } = this.context;
+    const { editTable, focusTable } = store.editorState;
+    if (focusTable !== null && editTable === null) {
+      if (focusType === "columnNotNull") {
+        store.dispatch(
+          changeColumnNotNull(store, this.tableId, this.column.id)
+        );
+      } else {
+        store.dispatch(editTableCommand(this.column.id, focusType));
+      }
+    }
   }
 }

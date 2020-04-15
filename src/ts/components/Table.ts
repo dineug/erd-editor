@@ -6,7 +6,11 @@ import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import { moveTable, removeTable, selectTable } from "@src/core/command/table";
 import { addColumn } from "@src/core/command/column";
-import { editEndTable, focusTargetTable } from "@src/core/command/editor";
+import {
+  editEndTable,
+  focusTargetTable,
+  editTable as editTableCommand,
+} from "@src/core/command/editor";
 import { Table as TableModel, Column } from "@src/core/store/Table";
 import { keymapOptionToString } from "@src/core/Keymap";
 import { FocusType } from "@src/core/model/FocusTableModel";
@@ -135,6 +139,8 @@ class Table extends EditorElement {
               @input=${(event: InputEvent) => this.onInput(event, "tableName")}
               @mousedown=${(event: MouseEvent) =>
                 this.onFocus(event, "tableName")}
+              @dblclick=${(event: MouseEvent) =>
+                this.onEdit(event, "tableName")}
             ></vuerd-input-edit>
             ${show.tableComment
               ? html`
@@ -151,6 +157,8 @@ class Table extends EditorElement {
                       this.onInput(event, "tableComment")}
                     @mousedown=${(event: MouseEvent) =>
                       this.onFocus(event, "tableComment")}
+                    @dblclick=${(event: MouseEvent) =>
+                      this.onEdit(event, "tableComment")}
                   ></vuerd-input-edit>
                 `
               : html``}
@@ -229,8 +237,8 @@ class Table extends EditorElement {
     const { store } = this.context;
     store.dispatch(removeTable(store, this.table.id));
   }
-  private onInput(event: InputEvent, name: FocusType) {
-    Logger.debug(`Table onInput: ${name}`);
+  private onInput(event: InputEvent, focusType: FocusType) {
+    Logger.debug(`Table onInput: ${focusType}`);
     Logger.debug(event);
   }
   private onBlur = (event: Event) => {
@@ -244,6 +252,13 @@ class Table extends EditorElement {
       selectTable(store, event.ctrlKey, this.table.id),
       focusTargetTable(focusType)
     );
+  }
+  private onEdit(event: MouseEvent, focusType: FocusType) {
+    const { store } = this.context;
+    const { editTable, focusTable } = store.editorState;
+    if (focusTable !== null && editTable === null) {
+      store.dispatch(editTableCommand(this.table.id, focusType));
+    }
   }
   private focusTableObserve() {
     const { store } = this.context;

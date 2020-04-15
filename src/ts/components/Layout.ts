@@ -66,6 +66,7 @@ export const Layout = css`
     align-items: center;
     border-bottom: solid #fff0 1.5px;
     height: 18px;
+    cursor: default;
   }
   .vuerd-column-key {
     display: inline-flex;
