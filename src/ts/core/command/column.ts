@@ -1,8 +1,10 @@
 import { CommandEffect } from "../Command";
+import { SIZE_MIN_WIDTH } from "../Layout";
 import { Store } from "../Store";
-import { getData, uuid } from "../Helper";
+import { Helper, getData, uuid } from "../Helper";
 import { Logger } from "../Logger";
 import { ColumnModel } from "../model/ColumnModel";
+import { getColumn, getChangeOption } from "../helper/ColumnHelper";
 import { focusTableExecute } from "./editor";
 
 export interface AddColumn {
@@ -77,103 +79,267 @@ export function removeColumnExecute(store: Store, data: RemoveColumn) {
   }
 }
 
-export interface ChangeColumnNotNull {
+export interface ChangeColumnValue {
   tableId: string;
   columnId: string;
-  notNull: boolean;
+  value: string;
+  width: number;
 }
-export function changeColumnNotNull(
-  store: Store,
+
+export function changeColumnName(
+  helper: Helper,
   tableId: string,
-  columnId: string
-): CommandEffect<ChangeColumnNotNull> {
-  let notNull = false;
-  const { tables } = store.tableState;
-  const table = getData(tables, tableId);
-  if (table) {
-    const column = getData(table.columns, columnId);
-    if (column) {
-      notNull = !column.option.notNull;
-    }
+  columnId: string,
+  value: string
+): CommandEffect<ChangeColumnValue> {
+  let width = helper.getTextWidth(value);
+  if (width < SIZE_MIN_WIDTH) {
+    width = SIZE_MIN_WIDTH;
   }
   return {
-    name: "column.changeNotNull",
+    name: "column.changeName",
     data: {
       tableId,
       columnId,
-      notNull,
+      value,
+      width,
     },
   };
 }
-export function changeColumnNotNullExecute(
-  store: Store,
-  data: ChangeColumnNotNull
-) {
-  Logger.debug("changeColumnNotNullExecute");
+export function changeColumnNameExecute(store: Store, data: ChangeColumnValue) {
+  Logger.debug("changeColumnNameExecute");
   const { tables } = store.tableState;
-  const table = getData(tables, data.tableId);
-  if (table) {
-    const column = getData(table.columns, data.columnId);
-    if (column) {
-      column.option.notNull = data.notNull;
-    }
+  const column = getColumn(tables, data.tableId, data.columnId);
+  if (column) {
+    column.name = data.value;
+    column.ui.widthName = data.width;
   }
 }
 
-export interface ChangeColumnPrimaryKey {
+export function changeColumnComment(
+  helper: Helper,
+  tableId: string,
+  columnId: string,
+  value: string
+): CommandEffect<ChangeColumnValue> {
+  let width = helper.getTextWidth(value);
+  if (width < SIZE_MIN_WIDTH) {
+    width = SIZE_MIN_WIDTH;
+  }
+  return {
+    name: "column.changeComment",
+    data: {
+      tableId,
+      columnId,
+      value,
+      width,
+    },
+  };
+}
+export function changeColumnCommentExecute(
+  store: Store,
+  data: ChangeColumnValue
+) {
+  Logger.debug("changeColumnCommentExecute");
+  const { tables } = store.tableState;
+  const column = getColumn(tables, data.tableId, data.columnId);
+  if (column) {
+    column.comment = data.value;
+    column.ui.widthComment = data.width;
+  }
+}
+
+export function changeColumnDataType(
+  helper: Helper,
+  tableId: string,
+  columnId: string,
+  value: string
+): CommandEffect<ChangeColumnValue> {
+  let width = helper.getTextWidth(value);
+  if (width < SIZE_MIN_WIDTH) {
+    width = SIZE_MIN_WIDTH;
+  }
+  return {
+    name: "column.changeDataType",
+    data: {
+      tableId,
+      columnId,
+      value,
+      width,
+    },
+  };
+}
+export function changeColumnDataTypeExecute(
+  store: Store,
+  data: ChangeColumnValue
+) {
+  Logger.debug("changeColumnDataTypeExecute");
+  const { tables } = store.tableState;
+  const column = getColumn(tables, data.tableId, data.columnId);
+  if (column) {
+    column.dataType = data.value;
+    column.ui.widthDataType = data.width;
+  }
+}
+
+export function changeColumnDefault(
+  helper: Helper,
+  tableId: string,
+  columnId: string,
+  value: string
+): CommandEffect<ChangeColumnValue> {
+  let width = helper.getTextWidth(value);
+  if (width < SIZE_MIN_WIDTH) {
+    width = SIZE_MIN_WIDTH;
+  }
+  return {
+    name: "column.changeDefault",
+    data: {
+      tableId,
+      columnId,
+      value,
+      width,
+    },
+  };
+}
+export function changeColumnDefaultExecute(
+  store: Store,
+  data: ChangeColumnValue
+) {
+  Logger.debug("changeColumnDefaultExecute");
+  const { tables } = store.tableState;
+  const column = getColumn(tables, data.tableId, data.columnId);
+  if (column) {
+    column.default = data.value;
+    column.ui.widthDefault = data.width;
+  }
+}
+
+export interface ChangeColumnOption {
   tableId: string;
   columnId: string;
-  primaryKey: boolean;
+  value: boolean;
 }
+
+export function changeColumnAutoIncrement(
+  store: Store,
+  tableId: string,
+  columnId: string
+): CommandEffect<ChangeColumnOption> {
+  const { tables } = store.tableState;
+  return {
+    name: "column.changeAutoIncrement",
+    data: {
+      tableId,
+      columnId,
+      value: getChangeOption(tables, tableId, columnId, "autoIncrement"),
+    },
+  };
+}
+export function changeColumnAutoIncrementExecute(
+  store: Store,
+  data: ChangeColumnOption
+) {
+  Logger.debug("changeColumnAutoIncrementExecute");
+  const { tables } = store.tableState;
+  const column = getColumn(tables, data.tableId, data.columnId);
+  if (column) {
+    column.option.autoIncrement = data.value;
+  }
+}
+
 export function changeColumnPrimaryKey(
   store: Store,
   tableId: string,
   columnId: string
-): CommandEffect<ChangeColumnPrimaryKey> {
-  let primaryKey = false;
+): CommandEffect<ChangeColumnOption> {
   const { tables } = store.tableState;
-  const table = getData(tables, tableId);
-  if (table) {
-    const column = getData(table.columns, columnId);
-    if (column) {
-      primaryKey = !column.option.primaryKey;
-    }
-  }
   return {
     name: "column.changePrimaryKey",
     data: {
       tableId,
       columnId,
-      primaryKey,
+      value: getChangeOption(tables, tableId, columnId, "primaryKey"),
     },
   };
 }
 export function changeColumnPrimaryKeyExecute(
   store: Store,
-  data: ChangeColumnPrimaryKey
+  data: ChangeColumnOption
 ) {
   Logger.debug("changeColumnPrimaryKeyExecute");
   const { tables } = store.tableState;
-  const table = getData(tables, data.tableId);
-  if (table) {
-    const column = getData(table.columns, data.columnId);
-    if (column) {
-      if (data.primaryKey) {
-        if (column.ui.fk) {
-          column.ui.fk = false;
-          column.ui.pfk = true;
-        } else {
-          column.ui.pk = true;
-        }
+  const column = getColumn(tables, data.tableId, data.columnId);
+  if (column) {
+    if (data.value) {
+      if (column.ui.fk) {
+        column.ui.fk = false;
+        column.ui.pfk = true;
       } else {
-        if (column.ui.pfk) {
-          column.ui.pfk = false;
-          column.ui.fk = true;
-        } else {
-          column.ui.pk = false;
-        }
+        column.ui.pk = true;
       }
-      column.option.primaryKey = data.primaryKey;
+    } else {
+      if (column.ui.pfk) {
+        column.ui.pfk = false;
+        column.ui.fk = true;
+      } else {
+        column.ui.pk = false;
+      }
     }
+    column.option.primaryKey = data.value;
+  }
+}
+
+export function changeColumnUnique(
+  store: Store,
+  tableId: string,
+  columnId: string
+): CommandEffect<ChangeColumnOption> {
+  const { tables } = store.tableState;
+  return {
+    name: "column.changeUnique",
+    data: {
+      tableId,
+      columnId,
+      value: getChangeOption(tables, tableId, columnId, "unique"),
+    },
+  };
+}
+export function changeColumnUniqueExecute(
+  store: Store,
+  data: ChangeColumnOption
+) {
+  Logger.debug("changeColumnUniqueExecute");
+  const { tables } = store.tableState;
+  const column = getColumn(tables, data.tableId, data.columnId);
+  if (column) {
+    column.option.unique = data.value;
+  }
+}
+
+export function changeColumnNotNull(
+  store: Store,
+  tableId: string,
+  columnId: string
+): CommandEffect<ChangeColumnOption> {
+  const { tables } = store.tableState;
+  return {
+    name: "column.changeNotNull",
+    data: {
+      tableId,
+      columnId,
+      value: getChangeOption(tables, tableId, columnId, "notNull"),
+    },
+  };
+}
+export function changeColumnNotNullExecute(
+  store: Store,
+  data: ChangeColumnOption
+) {
+  Logger.debug("changeColumnNotNullExecute");
+  const { tables } = store.tableState;
+  const column = getColumn(tables, data.tableId, data.columnId);
+  if (column) {
+    column.option.notNull = data.value;
   }
 }

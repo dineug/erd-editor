@@ -74,6 +74,13 @@ class Editor extends EditorElement {
       })
     );
   }
+  firstUpdated() {
+    Logger.debug("Editor after render");
+    const span = this.renderRoot.querySelector(
+      ".vuerd-text-width"
+    ) as HTMLSpanElement;
+    this.context.helper.setSpan(span);
+  }
   updated(changedProperties: any) {
     changedProperties.forEach((oldValue: any, propName: string) => {
       switch (propName) {
@@ -106,6 +113,7 @@ class Editor extends EditorElement {
           .width=${this.width}
           .height=${this.height}
         ></vuerd-erd>
+        <span class="vuerd-text-width"></span>
       </div>
     `;
   }

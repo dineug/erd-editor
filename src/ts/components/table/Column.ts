@@ -3,6 +3,7 @@ import { styleMap } from "lit-html/directives/style-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "../EditorElement";
 import { Logger } from "@src/core/Logger";
+import { SIZE_MIN_WIDTH } from "@src/core/Layout";
 import { Column as ColumnModel } from "@src/core/store/Table";
 import { selectTable } from "@src/core/command/table";
 import {
@@ -10,12 +11,21 @@ import {
   focusTargetColumn,
   editTable as editTableCommand,
 } from "@src/core/command/editor";
-import { changeColumnNotNull, removeColumn } from "@src/core/command/column";
+import {
+  changeColumnNotNull,
+  removeColumn,
+  changeColumnName,
+  changeColumnComment,
+  changeColumnDataType,
+  changeColumnDefault,
+} from "@src/core/command/column";
 import { FocusType } from "@src/core/model/FocusTableModel";
 import { keymapOptionToString } from "@src/core/Keymap";
 
 @customElement("vuerd-column")
 class Column extends EditorElement {
+  @property({ type: String })
+  buttonColor = "#fff0";
   @property({ type: Boolean })
   selected = false;
   @property({ type: Boolean })
@@ -36,8 +46,16 @@ class Column extends EditorElement {
   editDefault = false;
   @property({ type: Boolean })
   editComment = false;
-  @property({ type: String })
-  buttonColor = "#fff0";
+  @property({ type: Number })
+  widthName = SIZE_MIN_WIDTH;
+  @property({ type: Number })
+  widthDataType = SIZE_MIN_WIDTH;
+  @property({ type: Number })
+  widthNotNull = SIZE_MIN_WIDTH;
+  @property({ type: Number })
+  widthDefault = SIZE_MIN_WIDTH;
+  @property({ type: Number })
+  widthComment = SIZE_MIN_WIDTH;
 
   tableId!: string;
   column!: ColumnModel;
@@ -45,10 +63,10 @@ class Column extends EditorElement {
   private subscriptionList: Subscription[] = [];
 
   get theme() {
-    const { columnSelected } = this.context.theme;
+    const { columnSelect } = this.context.theme;
     const theme: any = {};
     if (this.selected) {
-      theme.backgroundColor = columnSelected;
+      theme.backgroundColor = columnSelect;
     }
     return theme;
   }
@@ -70,6 +88,16 @@ class Column extends EditorElement {
           }
         }
       ),
+      store.observe(this.column.ui, (name: string | number | symbol) => {
+        switch (name) {
+          case "widthName":
+          case "widthComment":
+          case "widthDataType":
+          case "widthDefault":
+            this.dispatchEvent(new CustomEvent("request-update"));
+            break;
+        }
+      }),
     ]);
   }
   disconnectedCallback() {
@@ -96,11 +124,11 @@ class Column extends EditorElement {
         ></vuerd-column-key>
         <vuerd-input-edit
           .context=${this.context}
-          .width=${this.column.ui.widthName}
+          .width=${this.widthName}
           .value=${this.column.name}
           .focusState=${this.focusName}
           .edit=${this.editName}
-          .backgroundColor=${theme.columnSelected}
+          .backgroundColor=${theme.columnSelect}
           placeholder="column"
           @blur=${this.onBlur}
           @input=${(event: InputEvent) => this.onInput(event, "columnName")}
@@ -111,11 +139,11 @@ class Column extends EditorElement {
           ? html`
               <vuerd-input-edit
                 .context=${this.context}
-                .width=${this.column.ui.widthDataType}
+                .width=${this.widthDataType}
                 .value=${this.column.dataType}
                 .focusState=${this.focusDataType}
                 .edit=${this.editDataType}
-                .backgroundColor=${theme.columnSelected}
+                .backgroundColor=${theme.columnSelect}
                 placeholder="dataType"
                 @mousedown=${(event: MouseEvent) =>
                   this.onFocus(event, "columnDataType")}
@@ -141,11 +169,11 @@ class Column extends EditorElement {
           ? html`
               <vuerd-input-edit
                 .context=${this.context}
-                .width=${this.column.ui.widthDefault}
+                .width=${this.widthDefault}
                 .value=${this.column.default}
                 .focusState=${this.focusDefault}
                 .edit=${this.editDefault}
-                .backgroundColor=${theme.columnSelected}
+                .backgroundColor=${theme.columnSelect}
                 placeholder="default"
                 @blur=${this.onBlur}
                 @input=${(event: InputEvent) =>
@@ -161,11 +189,11 @@ class Column extends EditorElement {
           ? html`
               <vuerd-input-edit
                 .context=${this.context}
-                .width=${this.column.ui.widthComment}
+                .width=${this.widthComment}
                 .value=${this.column.comment}
                 .focusState=${this.focusComment}
                 .edit=${this.editComment}
-                .backgroundColor=${theme.columnSelected}
+                .backgroundColor=${theme.columnSelect}
                 placeholder="comment"
                 @blur=${this.onBlur}
                 @input=${(event: InputEvent) =>
@@ -191,8 +219,36 @@ class Column extends EditorElement {
   }
 
   private onInput(event: InputEvent, focusType: FocusType) {
-    Logger.debug(`onInput: ${focusType}`);
-    Logger.debug(event);
+    Logger.debug(`Column onInput: ${focusType}`);
+    const { store, helper } = this.context;
+    const input = event.target as HTMLInputElement;
+    switch (focusType) {
+      case "columnName":
+        store.dispatch(
+          changeColumnName(helper, this.tableId, this.column.id, input.value)
+        );
+        break;
+      case "columnComment":
+        store.dispatch(
+          changeColumnComment(helper, this.tableId, this.column.id, input.value)
+        );
+        break;
+      case "columnDataType":
+        store.dispatch(
+          changeColumnDataType(
+            helper,
+            this.tableId,
+            this.column.id,
+            input.value
+          )
+        );
+        break;
+      case "columnDefault":
+        store.dispatch(
+          changeColumnDefault(helper, this.tableId, this.column.id, input.value)
+        );
+        break;
+    }
   }
   private onBlur = (event: Event) => {
     const { store } = this.context;
@@ -206,7 +262,7 @@ class Column extends EditorElement {
       editTable === null ||
       editTable.focusType !== focusType ||
       focusTable === null ||
-      focusTable.id !== this.tableId
+      focusTable.currentFocusId !== this.column.id
     ) {
       store.dispatch(
         selectTable(store, event.ctrlKey, this.tableId),

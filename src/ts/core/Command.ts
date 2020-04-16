@@ -10,16 +10,25 @@ import {
   selectTableExecute,
   selectEndTableExecute,
   selectAllTableExecute,
+  ChangeTableValue,
+  changeTableNameExecute,
+  changeTableCommentExecute,
 } from "./command/table";
 import {
   AddColumn,
   addColumnExecute,
   RemoveColumn,
   removeColumnExecute,
-  ChangeColumnNotNull,
-  changeColumnNotNullExecute,
-  ChangeColumnPrimaryKey,
+  ChangeColumnValue,
+  changeColumnNameExecute,
+  changeColumnCommentExecute,
+  changeColumnDataTypeExecute,
+  changeColumnDefaultExecute,
+  ChangeColumnOption,
+  changeColumnAutoIncrementExecute,
   changeColumnPrimaryKeyExecute,
+  changeColumnUniqueExecute,
+  changeColumnNotNullExecute,
 } from "./command/column";
 import {
   AddMemo,
@@ -68,10 +77,18 @@ type CommandName =
   | "table.select"
   | "table.selectEnd"
   | "table.selectAll"
+  | "table.changeName"
+  | "table.changeComment"
   | "column.add"
   | "column.remove"
-  | "column.changeNotNull"
+  | "column.changeName"
+  | "column.changeComment"
+  | "column.changeDataType"
+  | "column.changeDefault"
+  | "column.changeAutoIncrement"
   | "column.changePrimaryKey"
+  | "column.changeUnique"
+  | "column.changeNotNull"
   | "memo.add"
   | "memo.move"
   | "memo.remove"
@@ -96,10 +113,11 @@ export type Command =
   | CommandEffect<MoveTable>
   | CommandEffect<RemoveTable>
   | CommandEffect<SelectTable>
+  | CommandEffect<ChangeTableValue>
   | CommandEffect<Array<AddColumn>>
   | CommandEffect<RemoveColumn>
-  | CommandEffect<ChangeColumnNotNull>
-  | CommandEffect<ChangeColumnPrimaryKey>
+  | CommandEffect<ChangeColumnValue>
+  | CommandEffect<ChangeColumnOption>
   | CommandEffect<AddMemo>
   | CommandEffect<MoveMemo>
   | CommandEffect<RemoveMemo>
@@ -133,20 +151,47 @@ export function commandExecute(store: Store, commands: Command[]) {
       case "table.selectAll":
         selectAllTableExecute(store);
         break;
+      case "table.changeName":
+        changeTableNameExecute(store, command.data as ChangeTableValue);
+        break;
+      case "table.changeComment":
+        changeTableCommentExecute(store, command.data as ChangeTableValue);
+        break;
       case "column.add":
         addColumnExecute(store, command.data as Array<AddColumn>);
         break;
       case "column.remove":
         removeColumnExecute(store, command.data as RemoveColumn);
         break;
-      case "column.changeNotNull":
-        changeColumnNotNullExecute(store, command.data as ChangeColumnNotNull);
+      case "column.changeName":
+        changeColumnNameExecute(store, command.data as ChangeColumnValue);
+        break;
+      case "column.changeComment":
+        changeColumnCommentExecute(store, command.data as ChangeColumnValue);
+        break;
+      case "column.changeDataType":
+        changeColumnDataTypeExecute(store, command.data as ChangeColumnValue);
+        break;
+      case "column.changeDefault":
+        changeColumnDefaultExecute(store, command.data as ChangeColumnValue);
+        break;
+      case "column.changeAutoIncrement":
+        changeColumnAutoIncrementExecute(
+          store,
+          command.data as ChangeColumnOption
+        );
         break;
       case "column.changePrimaryKey":
         changeColumnPrimaryKeyExecute(
           store,
-          command.data as ChangeColumnPrimaryKey
+          command.data as ChangeColumnOption
         );
+        break;
+      case "column.changeUnique":
+        changeColumnUniqueExecute(store, command.data as ChangeColumnOption);
+        break;
+      case "column.changeNotNull":
+        changeColumnNotNullExecute(store, command.data as ChangeColumnOption);
         break;
       case "memo.add":
         addMemoExecute(store, command.data as AddMemo);

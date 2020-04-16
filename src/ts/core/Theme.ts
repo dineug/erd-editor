@@ -12,7 +12,7 @@ export interface Theme {
   contextmenuActive: string;
   edit: string;
   mark: string;
-  columnSelected: string;
+  columnSelect: string;
   columnActive: string;
   previewShadow: string;
   previewTarget: string;
@@ -36,7 +36,7 @@ export function createTheme(): Theme {
     contextmenuActive: "#383d41",
     edit: "#ffc107",
     mark: "#ffc107",
-    columnSelected: "#232a2f",
+    columnSelect: "#232a2f",
     columnActive: "#372908",
     previewShadow: "#171717",
     previewTarget: "#ffc107",

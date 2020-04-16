@@ -1,3 +1,15 @@
+export class Helper {
+  private span: HTMLSpanElement | null = null;
+  setSpan(span: HTMLSpanElement) {
+    this.span = span;
+  }
+  getTextWidth(value: string): number {
+    if (this.span === null) throw new Error("not found span");
+    this.span.innerText = value;
+    return this.span.offsetWidth;
+  }
+}
+
 export function getData<T extends { id: string }>(
   list: Array<T>,
   id: string

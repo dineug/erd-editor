@@ -11,7 +11,6 @@ export const Layout = css`
   .vuerd-editor {
     position: relative;
     overflow: hidden;
-
     font-size: 13px;
     font-family: "Noto Sans", "Cascadia Code", "JetBrains Mono", "D2Coding",
       "Consolas", sans-serif;
@@ -115,6 +114,15 @@ export const Layout = css`
   .vuerd-contextmenu > li > span.arrow {
     width: 13px;
     padding-right: 0;
+  }
+
+  .vuerd-text-width {
+    visibility: hidden;
+    position: fixed;
+    top: -100px;
+    font-size: 13px;
+    font-family: "Noto Sans", "Cascadia Code", "JetBrains Mono", "D2Coding",
+      "Consolas", sans-serif;
   }
 `;
 

@@ -4,7 +4,13 @@ import { repeat } from "lit-html/directives/repeat";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
-import { moveTable, removeTable, selectTable } from "@src/core/command/table";
+import {
+  moveTable,
+  removeTable,
+  selectTable,
+  changeTableName,
+  changeTableComment,
+} from "@src/core/command/table";
 import { addColumn } from "@src/core/command/column";
 import {
   editEndTable,
@@ -100,10 +106,11 @@ class Table extends EditorElement {
 
   render() {
     Logger.debug("Table render");
-    const { theme, keymap } = this.context;
+    const { keymap } = this.context;
     const { show } = this.context.store.canvasState;
     const keymapAddColumn = keymapOptionToString(keymap.addColumn[0]);
     const keymapRemoveTable = keymapOptionToString(keymap.removeTable[0]);
+    const widthColumn = this.table.maxWidthColumn();
     return html`
       <div
         class="vuerd-table"
@@ -191,6 +198,12 @@ class Table extends EditorElement {
                   .editDataType=${this.editColumn(column, "columnDataType")}
                   .editDefault=${this.editColumn(column, "columnDefault")}
                   .editComment=${this.editColumn(column, "columnComment")}
+                  .widthName=${widthColumn.name}
+                  .widthDataType=${widthColumn.dataType}
+                  .widthNotNull=${widthColumn.notNull}
+                  .widthDefault=${widthColumn.default}
+                  .widthComment=${widthColumn.comment}
+                  @request-update=${() => this.requestUpdate()}
                 ></vuerd-column>
               `
           )}
@@ -201,10 +214,7 @@ class Table extends EditorElement {
 
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
-    if (
-      !el.closest(".vuerd-circle-button") &&
-      !el.closest("vuerd-input-edit")
-    ) {
+    if (!el.closest(".vuerd-button") && !el.closest("vuerd-input-edit")) {
       const { mouseup$, mousemove$ } = this.context.windowEventObservable;
       this.subMouseup = mouseup$.subscribe(this.onMouseup);
       this.subMousemove = mousemove$.subscribe(this.onMousemove);
@@ -253,7 +263,16 @@ class Table extends EditorElement {
   };
   private onInput(event: InputEvent, focusType: FocusType) {
     Logger.debug(`Table onInput: ${focusType}`);
-    Logger.debug(event);
+    const { store, helper } = this.context;
+    const input = event.target as HTMLInputElement;
+    switch (focusType) {
+      case "tableName":
+        store.dispatch(changeTableName(helper, this.table.id, input.value));
+        break;
+      case "tableComment":
+        store.dispatch(changeTableComment(helper, this.table.id, input.value));
+        break;
+    }
   }
   private onBlur = (event: Event) => {
     const { store } = this.context;

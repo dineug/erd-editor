@@ -1,7 +1,7 @@
 import { CommandEffect } from "../Command";
 import { SIZE_MIN_WIDTH } from "../Layout";
 import { Store } from "../Store";
-import { getData, uuid } from "../Helper";
+import { Helper, getData, uuid } from "../Helper";
 import { Logger } from "../Logger";
 import { TableUI } from "../store/Table";
 import { TableModel } from "../model/TableModel";
@@ -192,4 +192,69 @@ export function selectAllTableExecute(store: Store) {
   Logger.debug("selectAllTableExecute");
   const { tables } = store.tableState;
   tables.forEach(table => (table.ui.active = true));
+}
+
+export interface ChangeTableValue {
+  tableId: string;
+  value: string;
+  width: number;
+}
+
+export function changeTableName(
+  helper: Helper,
+  tableId: string,
+  value: string
+): CommandEffect<ChangeTableValue> {
+  let width = helper.getTextWidth(value);
+  if (width < SIZE_MIN_WIDTH) {
+    width = SIZE_MIN_WIDTH;
+  }
+  return {
+    name: "table.changeName",
+    data: {
+      tableId,
+      value,
+      width,
+    },
+  };
+}
+export function changeTableNameExecute(store: Store, data: ChangeTableValue) {
+  Logger.debug("changeTableNameExecute");
+  const { tables } = store.tableState;
+  const table = getData(tables, data.tableId);
+  if (table) {
+    table.name = data.value;
+    table.ui.widthName = data.width;
+  }
+}
+
+export function changeTableComment(
+  helper: Helper,
+  tableId: string,
+  value: string
+): CommandEffect<ChangeTableValue> {
+  let width = helper.getTextWidth(value);
+  if (width < SIZE_MIN_WIDTH) {
+    width = SIZE_MIN_WIDTH;
+  }
+  return {
+    name: "table.changeComment",
+    data: {
+      tableId,
+      value,
+      width,
+    },
+  };
+}
+export function changeTableCommentExecute(
+  store: Store,
+  data: ChangeTableValue
+) {
+  Logger.debug("changeTableCommentExecute");
+  const { tables } = store.tableState;
+  const table = getData(tables, data.tableId);
+  if (table) {
+    table.comment = data.value;
+    table.ui.widthComment = data.width;
+  }
 }

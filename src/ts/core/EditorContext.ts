@@ -6,6 +6,7 @@ import {
 import { Theme, createTheme } from "./Theme";
 import { Keymap, createKeymap } from "./Keymap";
 import { Store } from "./Store";
+import { Helper } from "./Helper";
 
 export interface EditorContext {
   windowEventObservable: WindowEventObservable;
@@ -13,6 +14,7 @@ export interface EditorContext {
   theme: Theme;
   keymap: Keymap;
   store: Store;
+  helper: Helper;
 }
 
 export function createEditorContext(): EditorContext {
@@ -22,5 +24,6 @@ export function createEditorContext(): EditorContext {
     theme: createTheme(),
     keymap: createKeymap(),
     store: new Store(),
+    helper: new Helper(),
   };
 }
