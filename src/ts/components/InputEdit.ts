@@ -63,7 +63,12 @@ class InputEdit extends EditorElement {
         case "edit":
           if (this.edit) {
             const input = this.renderRoot.querySelector("input");
-            input?.focus();
+            if (input) {
+              const len = input.value.length;
+              input.selectionStart = len;
+              input.selectionEnd = len;
+              input.focus();
+            }
           }
           break;
       }

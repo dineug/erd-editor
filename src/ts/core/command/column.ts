@@ -5,7 +5,7 @@ import { Helper, getData, uuid } from "../Helper";
 import { Logger } from "../Logger";
 import { ColumnModel } from "../model/ColumnModel";
 import { getColumn, getChangeOption } from "../helper/ColumnHelper";
-import { focusTableExecute } from "./editor";
+import { focusTableExecute, editEndTableExecute } from "./editor";
 
 export interface AddColumn {
   id: string;
@@ -37,12 +37,15 @@ export function addColumn(
 export function addColumnExecute(store: Store, data: AddColumn[]) {
   Logger.debug("addColumnExecute");
   const { tables } = store.tableState;
-  data.forEach(addColumn => {
+  editEndTableExecute(store);
+  data.forEach((addColumn: AddColumn, index: number) => {
     const table = getData(tables, addColumn.tableId);
     if (table) {
-      focusTableExecute(store, {
-        tableId: table.id,
-      });
+      if (index === data.length - 1) {
+        focusTableExecute(store, {
+          tableId: table.id,
+        });
+      }
       table.columns.push(new ColumnModel({ addColumn }));
     }
   });

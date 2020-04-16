@@ -75,19 +75,6 @@ class Column extends EditorElement {
     super.connectedCallback();
     const { store } = this.context;
     this.subscriptionList.push.apply(this.subscriptionList, [
-      store.observe(
-        store.canvasState.show,
-        (name: string | number | symbol) => {
-          switch (name) {
-            case "columnComment":
-            case "columnDataType":
-            case "columnDefault":
-            case "columnNotNull":
-              this.requestUpdate();
-              break;
-          }
-        }
-      ),
       store.observe(this.column.ui, (name: string | number | symbol) => {
         switch (name) {
           case "widthName":

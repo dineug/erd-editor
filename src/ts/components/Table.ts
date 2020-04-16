@@ -64,8 +64,14 @@ class Table extends EditorElement {
       store.observe(
         store.canvasState.show,
         (name: string | number | symbol) => {
-          if (name === "tableComment") {
-            this.requestUpdate();
+          switch (name) {
+            case "tableComment":
+            case "columnComment":
+            case "columnDataType":
+            case "columnDefault":
+            case "columnNotNull":
+              this.requestUpdate();
+              break;
           }
         }
       ),
