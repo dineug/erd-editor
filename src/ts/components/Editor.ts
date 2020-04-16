@@ -16,7 +16,6 @@ import "./Table";
 import "./table/Column";
 import "./Fontawesome";
 import "./Contextmenu";
-import "./CircleButton";
 import "./InputEdit";
 import "./table/ColumnKey";
 import "./table/ColumnNotNull";

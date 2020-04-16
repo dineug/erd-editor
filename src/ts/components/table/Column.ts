@@ -37,7 +37,7 @@ class Column extends EditorElement {
   @property({ type: Boolean })
   editComment = false;
   @property({ type: String })
-  columnButtonColor = "#fff0";
+  buttonColor = "#fff0";
 
   tableId!: string;
   column!: ColumnModel;
@@ -178,12 +178,12 @@ class Column extends EditorElement {
             `
           : html``}
         <vuerd-fontawesome
-          class="vuerd-column-button-remove"
+          class="vuerd-button"
           .context=${this.context}
-          .color=${this.columnButtonColor}
+          .color=${this.buttonColor}
           title=${keymapRemoveColumn}
           icon="times"
-          size="8"
+          size="9"
           @click=${this.onRemoveColumn}
         ></vuerd-fontawesome>
       </li>
@@ -201,15 +201,23 @@ class Column extends EditorElement {
   private onFocus(event: MouseEvent | TouchEvent, focusType: FocusType) {
     Logger.debug(`Column onFocus: ${focusType}`);
     const { store } = this.context;
-    store.dispatch(
-      selectTable(store, event.ctrlKey, this.tableId),
-      focusTargetColumn(
-        this.column.id,
-        focusType,
-        event.ctrlKey,
-        event.shiftKey
-      )
-    );
+    const { editTable, focusTable } = store.editorState;
+    if (
+      editTable === null ||
+      editTable.focusType !== focusType ||
+      focusTable === null ||
+      focusTable.id !== this.tableId
+    ) {
+      store.dispatch(
+        selectTable(store, event.ctrlKey, this.tableId),
+        focusTargetColumn(
+          this.column.id,
+          focusType,
+          event.ctrlKey,
+          event.shiftKey
+        )
+      );
+    }
   }
   private onEdit(event: MouseEvent, focusType: FocusType) {
     const { store } = this.context;
@@ -226,10 +234,10 @@ class Column extends EditorElement {
   }
   private onMouseenter = (event: MouseEvent) => {
     const { font } = this.context.theme;
-    this.columnButtonColor = font;
+    this.buttonColor = font;
   };
   private onMouseleave = (event: MouseEvent) => {
-    this.columnButtonColor = "#fff0";
+    this.buttonColor = "#fff0";
   };
   private onRemoveColumn = (event: MouseEvent) => {
     const { store } = this.context;

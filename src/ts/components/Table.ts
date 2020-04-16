@@ -1,4 +1,4 @@
-import { html, customElement } from "lit-element";
+import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
 import { Subscription } from "rxjs";
@@ -20,6 +20,9 @@ type FocusTableKey = "focusName" | "focusComment";
 
 @customElement("vuerd-table")
 class Table extends EditorElement {
+  @property({ type: String })
+  buttonColor = "#fff0";
+
   table!: TableModel;
 
   private subscriptionList: Subscription[] = [];
@@ -106,25 +109,29 @@ class Table extends EditorElement {
         class="vuerd-table"
         style=${styleMap(this.theme)}
         @mousedown=${this.onMousedown}
+        @mouseenter=${this.onMouseenter}
+        @mouseleave=${this.onMouseleave}
       >
         <div class="vuerd-table-header">
           <div class="vuerd-table-header-top">
-            <vuerd-circle-button
+            <vuerd-fontawesome
+              class="vuerd-button"
               .context=${this.context}
-              .backgroundColor=${theme.buttonClose}
-              .color=${theme.buttonClose}
-              icon="times"
+              .color=${this.buttonColor}
               title=${keymapRemoveTable}
+              icon="times"
+              size="12"
               @click=${this.onRemoveTable}
-            ></vuerd-circle-button>
-            <vuerd-circle-button
+            ></vuerd-fontawesome>
+            <vuerd-fontawesome
+              class="vuerd-button"
               .context=${this.context}
-              .backgroundColor=${theme.buttonAdd}
-              .color=${theme.buttonAdd}
-              icon="plus"
+              .color=${this.buttonColor}
               title=${keymapAddColumn}
+              icon="plus"
+              size="12"
               @click=${this.onAddColumn}
-            ></vuerd-circle-button>
+            ></vuerd-fontawesome>
           </div>
           <div class="vuerd-table-header-body">
             <vuerd-input-edit
@@ -229,6 +236,13 @@ class Table extends EditorElement {
       moveTable(store, event.ctrlKey, movementX, movementY, this.table.id)
     );
   };
+  private onMouseenter = (event: MouseEvent) => {
+    const { font } = this.context.theme;
+    this.buttonColor = font;
+  };
+  private onMouseleave = (event: MouseEvent) => {
+    this.buttonColor = "#fff0";
+  };
   private onAddColumn = (event: MouseEvent) => {
     const { store } = this.context;
     store.dispatch(addColumn(store, this.table.id));
@@ -248,10 +262,18 @@ class Table extends EditorElement {
   private onFocus(event: MouseEvent | TouchEvent, focusType: FocusType) {
     Logger.debug(`Table onFocus: ${focusType}`);
     const { store } = this.context;
-    store.dispatch(
-      selectTable(store, event.ctrlKey, this.table.id),
-      focusTargetTable(focusType)
-    );
+    const { editTable, focusTable } = store.editorState;
+    if (
+      editTable === null ||
+      editTable.focusType !== focusType ||
+      focusTable === null ||
+      focusTable.id !== this.table.id
+    ) {
+      store.dispatch(
+        selectTable(store, event.ctrlKey, this.table.id),
+        focusTargetTable(focusType)
+      );
+    }
   }
   private onEdit(event: MouseEvent, focusType: FocusType) {
     const { store } = this.context;

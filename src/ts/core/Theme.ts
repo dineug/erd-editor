@@ -10,8 +10,6 @@ export interface Theme {
   fontActive: string;
   fontPlaceholder: string;
   contextmenuActive: string;
-  buttonClose: string;
-  buttonAdd: string;
   edit: string;
   mark: string;
   columnSelected: string;
@@ -36,8 +34,6 @@ export function createTheme(): Theme {
     fontActive: "white",
     fontPlaceholder: "#6D6D6D",
     contextmenuActive: "#383d41",
-    buttonClose: "#9B0005",
-    buttonAdd: "#009B2E",
     edit: "#ffc107",
     mark: "#ffc107",
     columnSelected: "#232a2f",

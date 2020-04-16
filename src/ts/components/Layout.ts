@@ -40,7 +40,7 @@ export const Layout = css`
   .vuerd-table .vuerd-table-header-top {
     overflow: hidden;
   }
-  .vuerd-table .vuerd-table-header-top .vuerd-circle-button {
+  .vuerd-table .vuerd-table-header-top .vuerd-button {
     margin-left: 5px;
     float: right;
   }
@@ -77,18 +77,7 @@ export const Layout = css`
     height: 19.5px;
   }
 
-  .vuerd-circle-button {
-    width: 17px;
-    height: 17px;
-    font-size: 0.7em;
-    cursor: pointer;
-    border-radius: 50%;
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .vuerd-column-button-remove {
+  .vuerd-button {
     cursor: pointer;
   }
 
