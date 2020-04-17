@@ -87,6 +87,7 @@ export function moveTableExecute(store: Store, data: MoveTable) {
       memo.ui.top += data.movementY;
     }
   });
+  // TODO: relationship sort
 }
 
 export interface RemoveTable {
@@ -129,6 +130,7 @@ export function removeTableExecute(store: Store, data: RemoveTable) {
       i--;
     }
   }
+  // TODO: relationship valid
 }
 
 export interface SelectTable {
@@ -225,6 +227,7 @@ export function changeTableNameExecute(store: Store, data: ChangeTableValue) {
   if (table) {
     table.name = data.value;
     table.ui.widthName = data.width;
+    // TODO: relationship sort
   }
 }
 
@@ -256,5 +259,6 @@ export function changeTableCommentExecute(
   if (table) {
     table.comment = data.value;
     table.ui.widthComment = data.width;
+    // TODO: relationship sort
   }
 }

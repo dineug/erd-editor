@@ -85,6 +85,7 @@ export function moveMemoExecute(store: Store, data: MoveMemo) {
       memo.ui.top += data.movementY;
     }
   });
+  // TODO: relationship sort
 }
 
 export interface RemoveMemo {

@@ -20,31 +20,41 @@ export class Store {
     object,
     Subject<string | number | symbol>
   >();
+  private excludeKeys: string[] = [
+    "store",
+    "subscriptionList",
+    "focusColumns",
+    "currentFocusColumn",
+  ];
 
   constructor() {
     this.canvasState = createObservable(
       createCanvasState(),
       this.rawToProxy,
       this.proxyToRaw,
-      this.effect
+      this.effect,
+      this.excludeKeys
     );
     this.tableState = createObservable(
       createTableState(),
       this.rawToProxy,
       this.proxyToRaw,
-      this.effect
+      this.effect,
+      this.excludeKeys
     );
     this.memoState = createObservable(
       createMemoState(),
       this.rawToProxy,
       this.proxyToRaw,
-      this.effect
+      this.effect,
+      this.excludeKeys
     );
     this.editorState = createObservable(
       createEditorState(),
       this.rawToProxy,
       this.proxyToRaw,
-      this.effect
+      this.effect,
+      this.excludeKeys
     );
     this.subscriptionList.push.apply(this.subscriptionList, [
       this.dispatch$.subscribe(commands => commandExecute(this, commands)),

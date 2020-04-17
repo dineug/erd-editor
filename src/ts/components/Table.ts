@@ -1,9 +1,14 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
-import { Subscription } from "rxjs";
+import { Subscription, Subject, fromEvent } from "rxjs";
+import { debounceTime, throttleTime } from "rxjs/operators";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
+import { Table as TableModel, Column } from "@src/core/store/Table";
+import { keymapOptionToString } from "@src/core/Keymap";
+import { FocusType } from "@src/core/model/FocusTableModel";
+import { getData } from "@src/core/Helper";
 import {
   moveTable,
   removeTable,
@@ -11,16 +16,12 @@ import {
   changeTableName,
   changeTableComment,
 } from "@src/core/command/table";
-import { addColumn } from "@src/core/command/column";
+import { addColumn, moveColumn } from "@src/core/command/column";
 import {
   editEndTable,
   focusTargetTable,
   editTable as editTableCommand,
 } from "@src/core/command/editor";
-import { Table as TableModel, Column } from "@src/core/store/Table";
-import { keymapOptionToString } from "@src/core/Keymap";
-import { FocusType } from "@src/core/model/FocusTableModel";
-import { getData } from "@src/core/Helper";
 
 type FocusTableKey = "focusName" | "focusComment";
 
@@ -31,7 +32,9 @@ class Table extends EditorElement {
 
   table!: TableModel;
 
+  private draggable$: Subject<CustomEvent> = new Subject();
   private subscriptionList: Subscription[] = [];
+  private subDraggableColumns: Subscription[] = [];
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
   private subFocusTable: Subscription | null = null;
@@ -61,6 +64,7 @@ class Table extends EditorElement {
     this.subscriptionList.push.apply(this.subscriptionList, [
       store.observe(this.table.ui, () => this.requestUpdate()),
       store.observe(this.table.columns, () => this.requestUpdate()),
+      this.draggable$.pipe(debounceTime(50)).subscribe(this.onDragoverColumn),
       store.observe(
         store.canvasState.show,
         (name: string | number | symbol) => {
@@ -95,6 +99,15 @@ class Table extends EditorElement {
           case "editTable":
             if (store.editorState.focusTable?.id === this.table.id) {
               this.requestUpdate();
+            }
+            break;
+          case "draggableColumn":
+            if (store.editorState.draggableColumn) {
+              if (this.subDraggableColumns.length === 0) {
+                this.onDraggableColumn();
+              }
+            } else {
+              this.onDraggableEndColumn();
             }
             break;
         }
@@ -218,26 +231,12 @@ class Table extends EditorElement {
     `;
   }
 
-  private onMousedown = (event: MouseEvent) => {
-    const el = event.target as HTMLElement;
-    if (!el.closest(".vuerd-button") && !el.closest("vuerd-input-edit")) {
-      const { mouseup$, mousemove$ } = this.context.windowEventObservable;
-      this.subMouseup = mouseup$.subscribe(this.onMouseup);
-      this.subMousemove = mousemove$.subscribe(this.onMousemove);
-    }
-    if (!el.closest("vuerd-input-edit")) {
-      const { store } = this.context;
-      store.dispatch(selectTable(store, event.ctrlKey, this.table.id));
-    }
-  };
-
   private onMouseup = (event?: MouseEvent) => {
     this.subMouseup?.unsubscribe();
     this.subMousemove?.unsubscribe();
     this.subMouseup = null;
     this.subMousemove = null;
   };
-
   private onMousemove = (event: MouseEvent) => {
     event.preventDefault();
     let movementX = event.movementX / window.devicePixelRatio;
@@ -252,21 +251,70 @@ class Table extends EditorElement {
       moveTable(store, event.ctrlKey, movementX, movementY, this.table.id)
     );
   };
-  private onMouseenter = (event: MouseEvent) => {
+  private onDragoverGroupColumn = (event: CustomEvent) => {
+    Logger.debug("Table onDragoverGroupColumn");
+    this.draggable$.next(event);
+  };
+  private onDragoverColumn = (event: CustomEvent) => {
+    Logger.debug("Table onDragoverColumn");
+    const { store } = this.context;
+    const { draggableColumn } = store.editorState;
+    const { tableId, columnId } = event.detail;
+    if (draggableColumn && draggableColumn.columnId !== columnId) {
+      store.dispatch(
+        moveColumn(
+          draggableColumn.tableId,
+          draggableColumn.columnId,
+          tableId,
+          columnId
+        )
+      );
+    }
+  };
+
+  private onMousedown(event: MouseEvent) {
+    const el = event.target as HTMLElement;
+    if (!el.closest(".vuerd-button") && !el.closest("vuerd-input-edit")) {
+      const { mouseup$, mousemove$ } = this.context.windowEventObservable;
+      this.subMouseup = mouseup$.subscribe(this.onMouseup);
+      this.subMousemove = mousemove$.subscribe(this.onMousemove);
+    }
+    if (!el.closest("vuerd-input-edit")) {
+      const { store } = this.context;
+      store.dispatch(selectTable(store, event.ctrlKey, this.table.id));
+    }
+  }
+  private onMouseenter(event: MouseEvent) {
     const { font } = this.context.theme;
     this.buttonColor = font;
-  };
-  private onMouseleave = (event: MouseEvent) => {
+  }
+  private onMouseleave(event: MouseEvent) {
     this.buttonColor = "#fff0";
-  };
-  private onAddColumn = (event: MouseEvent) => {
+  }
+  private onDraggableColumn() {
+    Logger.debug("Table onDraggableColumn");
+    const liNodeList = this.renderRoot.querySelectorAll("vuerd-column");
+    liNodeList.forEach(li => {
+      this.subDraggableColumns.push(
+        fromEvent<CustomEvent>(li, "dragover")
+          .pipe(throttleTime(300))
+          .subscribe(this.onDragoverGroupColumn)
+      );
+    });
+  }
+  private onDraggableEndColumn() {
+    Logger.debug("Table onDraggableEndColumn");
+    this.subDraggableColumns.forEach(sub => sub.unsubscribe());
+    this.subDraggableColumns = [];
+  }
+  private onAddColumn(event: MouseEvent) {
     const { store } = this.context;
     store.dispatch(addColumn(store, this.table.id));
-  };
-  private onRemoveTable = (event: MouseEvent) => {
+  }
+  private onRemoveTable(event: MouseEvent) {
     const { store } = this.context;
     store.dispatch(removeTable(store, this.table.id));
-  };
+  }
   private onInput(event: InputEvent, focusType: FocusType) {
     Logger.debug(`Table onInput: ${focusType}`);
     const { store, helper } = this.context;
@@ -280,10 +328,10 @@ class Table extends EditorElement {
         break;
     }
   }
-  private onBlur = (event: Event) => {
+  private onBlur(event: Event) {
     const { store } = this.context;
     store.dispatch(editEndTable());
-  };
+  }
   private onFocus(event: MouseEvent | TouchEvent, focusType: FocusType) {
     Logger.debug(`Table onFocus: ${focusType}`);
     const { store } = this.context;
@@ -307,6 +355,7 @@ class Table extends EditorElement {
       store.dispatch(editTableCommand(this.table.id, focusType));
     }
   }
+
   private focusTableObserve() {
     const { store } = this.context;
     if (store.editorState.focusTable?.id === this.table.id) {

@@ -1,11 +1,15 @@
 import { CommandEffect } from "../Command";
 import { SIZE_MIN_WIDTH } from "../Layout";
 import { Store } from "../Store";
-import { Helper, getData, uuid } from "../Helper";
+import { Helper, getData, getIndex, uuid } from "../Helper";
 import { Logger } from "../Logger";
 import { ColumnModel } from "../model/ColumnModel";
 import { getColumn, getChangeOption } from "../helper/ColumnHelper";
-import { focusTableExecute, editEndTableExecute } from "./editor";
+import {
+  focusTableExecute,
+  editEndTableExecute,
+  draggableColumnExecute,
+} from "./editor";
 
 export interface AddColumn {
   id: string;
@@ -49,6 +53,7 @@ export function addColumnExecute(store: Store, data: AddColumn[]) {
       table.columns.push(new ColumnModel({ addColumn }));
     }
   });
+  // TODO: relationship sort
 }
 
 export interface RemoveColumn {
@@ -79,6 +84,7 @@ export function removeColumnExecute(store: Store, data: RemoveColumn) {
         i--;
       }
     }
+    // TODO: relationship valid, sort
   }
 }
 
@@ -116,6 +122,7 @@ export function changeColumnNameExecute(store: Store, data: ChangeColumnValue) {
   if (column) {
     column.name = data.value;
     column.ui.widthName = data.width;
+    // TODO: relationship sort
   }
 }
 
@@ -149,6 +156,7 @@ export function changeColumnCommentExecute(
   if (column) {
     column.comment = data.value;
     column.ui.widthComment = data.width;
+    // TODO: relationship sort
   }
 }
 
@@ -182,6 +190,7 @@ export function changeColumnDataTypeExecute(
   if (column) {
     column.dataType = data.value;
     column.ui.widthDataType = data.width;
+    // TODO: relationship sort
   }
 }
 
@@ -215,6 +224,7 @@ export function changeColumnDefaultExecute(
   if (column) {
     column.default = data.value;
     column.ui.widthDefault = data.width;
+    // TODO: relationship sort
   }
 }
 
@@ -344,5 +354,69 @@ export function changeColumnNotNullExecute(
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
     column.option.notNull = data.value;
+  }
+}
+
+export interface MoveColumn {
+  tableId: string;
+  columnId: string;
+  targetTableId: string;
+  targetColumnId: string;
+}
+export function moveColumn(
+  tableId: string,
+  columnId: string,
+  targetTableId: string,
+  targetColumnId: string
+): CommandEffect<MoveColumn> {
+  return {
+    name: "column.move",
+    data: {
+      tableId,
+      columnId,
+      targetTableId,
+      targetColumnId,
+    },
+  };
+}
+export function moveColumnExecute(store: Store, data: MoveColumn) {
+  Logger.debug("moveColumnExecute");
+  const { tables } = store.tableState;
+  const currentTable = getData(tables, data.tableId);
+  const currentColumn = getColumn(tables, data.tableId, data.columnId);
+  const targetTable = getData(tables, data.targetTableId);
+  const targetColumn = getColumn(
+    tables,
+    data.targetTableId,
+    data.targetColumnId
+  );
+  if (currentTable && targetTable && currentColumn && targetColumn) {
+    if (
+      data.tableId === data.targetTableId &&
+      data.columnId !== data.targetColumnId
+    ) {
+      const currentIndex = getIndex(targetTable.columns, currentColumn.id);
+      const targetIndex = getIndex(targetTable.columns, targetColumn.id);
+      if (currentIndex !== null && targetIndex !== null) {
+        targetTable.columns.splice(currentIndex, 1);
+        targetTable.columns.splice(targetIndex, 0, currentColumn);
+      }
+    } else if (
+      data.tableId !== data.targetTableId &&
+      data.columnId !== data.targetColumnId
+    ) {
+      const currentIndex = getIndex(currentTable.columns, currentColumn.id);
+      const targetIndex = getIndex(targetTable.columns, targetColumn.id);
+      if (currentIndex !== null && targetIndex !== null) {
+        currentTable.columns.splice(currentIndex, 1);
+        targetTable.columns.splice(targetIndex, 0, currentColumn);
+        // TODO: relationship valid, sort
+
+        draggableColumnExecute(store, {
+          tableId: data.targetTableId,
+          columnId: data.columnId,
+        });
+      }
+    }
   }
 }

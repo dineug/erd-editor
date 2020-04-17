@@ -116,17 +116,17 @@ export class Contextmenu extends EditorElement {
   private onMouseover(menu: Menu) {
     this.currentMenu = menu;
   }
-  private onMouseenter = (event: MouseEvent) => {
+  private onMouseenter(event: MouseEvent) {
     const { fontActive, contextmenuActive } = this.context.theme;
     const el = event.target as HTMLElement;
     el.style.color = fontActive;
     el.style.backgroundColor = contextmenuActive;
-  };
-  private onMouseleave = (event: MouseEvent) => {
+  }
+  private onMouseleave(event: MouseEvent) {
     const el = event.target as HTMLElement;
     el.style.color = "";
     el.style.backgroundColor = "";
-  };
+  }
   private onExecute(menu: Menu) {
     if (!menu.children && menu.execute && typeof menu.execute === "function") {
       menu.execute();

@@ -1,12 +1,22 @@
+import { Logger } from "../Logger";
+
+let proxyCount = 0;
+
 export function createObservable<T>(
   data: T,
   rawToProxy: WeakMap<object, any>,
   proxyToRaw: WeakMap<object, any>,
-  effect: (raw: any, name: string | number | symbol) => void
+  effect: (raw: any, name: string | number | symbol) => void,
+  excludeKeys: string[]
 ): T {
   const proxy = new Proxy(data as any, {
     get(target, p) {
-      if (target[p] !== null && typeof target[p] === "object") {
+      if (
+        typeof target[p] === "object" &&
+        target[p] !== null &&
+        !proxyToRaw.has(target[p]) &&
+        !excludeKeys.some(key => key === p)
+      ) {
         if (rawToProxy.has(target[p])) {
           return rawToProxy.get(target[p]);
         }
@@ -14,7 +24,8 @@ export function createObservable<T>(
           target[p],
           rawToProxy,
           proxyToRaw,
-          effect
+          effect,
+          excludeKeys
         );
         return proxy;
       }
@@ -39,11 +50,18 @@ export function createObservable<T>(
         }
         target[p] = value;
       }
-      effect(target, p);
+      if (Array.isArray(target)) {
+        if (p === "length") {
+          effect(target, p);
+        }
+      } else {
+        effect(target, p);
+      }
       return true;
     },
   });
   rawToProxy.set(data as any, proxy);
   proxyToRaw.set(proxy, data);
+  Logger.debug(`createObservable proxyCount: ${++proxyCount}`, data);
   return proxy;
 }

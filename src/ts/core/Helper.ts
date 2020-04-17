@@ -70,3 +70,15 @@ export function range(a: number, b: number): number[] {
   }
   return indexList;
 }
+
+export function getParentElement(
+  el: HTMLElement | null,
+  tagName: string
+): HTMLElement | null {
+  if (el === null) {
+    return null;
+  } else if (el.localName === tagName.toLowerCase()) {
+    return el;
+  }
+  return getParentElement(el.parentElement, tagName);
+}

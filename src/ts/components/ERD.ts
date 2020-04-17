@@ -218,18 +218,39 @@ class ERD extends EditorElement {
     `;
   }
 
-  private onContextmenu = (event: MouseEvent) => {
+  private onContextmenuEnd = (event: Event) => {
+    this.contextmenu = false;
+  };
+  private onMouseup = (event?: MouseEvent) => {
+    this.subMouseup?.unsubscribe();
+    this.subMousemove?.unsubscribe();
+    this.subMouseup = null;
+    this.subMousemove = null;
+  };
+  private onMousemove = (event: MouseEvent) => {
+    event.preventDefault();
+    let movementX = event.movementX / window.devicePixelRatio;
+    let movementY = event.movementY / window.devicePixelRatio;
+    // firefox
+    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
+      movementX = event.movementX;
+      movementY = event.movementY;
+    }
+    this.erd.scrollTop -= movementY;
+    this.erd.scrollLeft -= movementX;
+    const { store } = this.context;
+    store.dispatch(moveCanvas(this.erd.scrollTop, this.erd.scrollLeft));
+  };
+
+  private onContextmenu(event: MouseEvent) {
     event.preventDefault();
     const { store, keymap } = this.context;
     this.menus = getERDContextmenu(store, keymap);
     this.contextmenuX = event.x;
     this.contextmenuY = event.y;
     this.contextmenu = true;
-  };
-  private onContextmenuEnd = (event: Event) => {
-    this.contextmenu = false;
-  };
-  private onMousedown = (event: MouseEvent) => {
+  }
+  private onMousedown(event: MouseEvent) {
     const el = event.target as HTMLElement;
     if (!el.closest(".vuerd-contextmenu")) {
       this.contextmenu = false;
@@ -252,25 +273,5 @@ class ERD extends EditorElement {
         );
       }
     }
-  };
-  private onMouseup = (event?: MouseEvent) => {
-    this.subMouseup?.unsubscribe();
-    this.subMousemove?.unsubscribe();
-    this.subMouseup = null;
-    this.subMousemove = null;
-  };
-  private onMousemove = (event: MouseEvent) => {
-    event.preventDefault();
-    let movementX = event.movementX / window.devicePixelRatio;
-    let movementY = event.movementY / window.devicePixelRatio;
-    // firefox
-    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
-      movementX = event.movementX;
-      movementY = event.movementY;
-    }
-    this.erd.scrollTop -= movementY;
-    this.erd.scrollLeft -= movementX;
-    const { store } = this.context;
-    store.dispatch(moveCanvas(this.erd.scrollTop, this.erd.scrollLeft));
-  };
+  }
 }

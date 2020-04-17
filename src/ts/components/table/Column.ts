@@ -10,6 +10,8 @@ import {
   editEndTable,
   focusTargetColumn,
   editTable as editTableCommand,
+  draggableColumn,
+  draggableEndColumn,
 } from "@src/core/command/editor";
 import {
   changeColumnNotNull,
@@ -104,6 +106,9 @@ class Column extends EditorElement {
         draggable="true"
         @mouseenter=${this.onMouseenter}
         @mouseleave=${this.onMouseleave}
+        @dragstart=${this.onDragstart}
+        @dragend=${this.onDragend}
+        @dragover=${this.onDragover}
       >
         <vuerd-column-key
           .context=${this.context}
@@ -237,10 +242,10 @@ class Column extends EditorElement {
         break;
     }
   }
-  private onBlur = (event: Event) => {
+  private onBlur(event: Event) {
     const { store } = this.context;
     store.dispatch(editEndTable());
-  };
+  }
   private onFocus(event: MouseEvent | TouchEvent, focusType: FocusType) {
     Logger.debug(`Column onFocus: ${focusType}`);
     const { store } = this.context;
@@ -275,15 +280,36 @@ class Column extends EditorElement {
       }
     }
   }
-  private onMouseenter = (event: MouseEvent) => {
+  private onMouseenter(event: MouseEvent) {
     const { font } = this.context.theme;
     this.buttonColor = font;
-  };
-  private onMouseleave = (event: MouseEvent) => {
+  }
+  private onMouseleave(event: MouseEvent) {
     this.buttonColor = "#fff0";
-  };
-  private onRemoveColumn = (event: MouseEvent) => {
+  }
+  private onRemoveColumn(event: MouseEvent) {
     const { store } = this.context;
     store.dispatch(removeColumn(this.tableId, [this.column.id]));
-  };
+  }
+  private onDragstart(event: DragEvent) {
+    Logger.debug("Column onDragstart");
+    const { store } = this.context;
+    store.dispatch(draggableColumn(this.tableId, this.column.id));
+  }
+  private onDragend(event: DragEvent) {
+    Logger.debug("Column onDragend");
+    const { store } = this.context;
+    store.dispatch(draggableEndColumn());
+  }
+  private onDragover(event: DragEvent) {
+    Logger.debug("Column onDragover");
+    this.dispatchEvent(
+      new CustomEvent("dragover", {
+        detail: {
+          tableId: this.tableId,
+          columnId: this.column.id,
+        },
+      })
+    );
+  }
 }

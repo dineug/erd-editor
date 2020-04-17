@@ -29,6 +29,8 @@ import {
   changeColumnPrimaryKeyExecute,
   changeColumnUniqueExecute,
   changeColumnNotNullExecute,
+  MoveColumn,
+  moveColumnExecute,
 } from "./command/column";
 import {
   AddMemo,
@@ -63,6 +65,9 @@ import {
   EditTable,
   editTableExecute,
   editEndTableExecute,
+  DraggableColumn,
+  draggableColumnExecute,
+  draggableEndColumnExecute,
 } from "./command/editor";
 
 export interface CommandEffect<T> {
@@ -89,6 +94,7 @@ type CommandName =
   | "column.changePrimaryKey"
   | "column.changeUnique"
   | "column.changeNotNull"
+  | "column.move"
   | "memo.add"
   | "memo.move"
   | "memo.remove"
@@ -105,7 +111,9 @@ type CommandName =
   | "editor.selectAllColumn"
   | "editor.selectEndColumn"
   | "editor.editTable"
-  | "editor.editEndTable";
+  | "editor.editEndTable"
+  | "editor.draggableColumn"
+  | "editor.draggableEndColumn";
 
 export type Command =
   | CommandEffect<null>
@@ -118,6 +126,7 @@ export type Command =
   | CommandEffect<RemoveColumn>
   | CommandEffect<ChangeColumnValue>
   | CommandEffect<ChangeColumnOption>
+  | CommandEffect<MoveColumn>
   | CommandEffect<AddMemo>
   | CommandEffect<MoveMemo>
   | CommandEffect<RemoveMemo>
@@ -128,7 +137,8 @@ export type Command =
   | CommandEffect<FocusMoveTable>
   | CommandEffect<FocusTargetTable>
   | CommandEffect<FocusTargetColumn>
-  | CommandEffect<EditTable>;
+  | CommandEffect<EditTable>
+  | CommandEffect<DraggableColumn>;
 
 export function commandExecute(store: Store, commands: Command[]) {
   commands.forEach(command => {
@@ -193,6 +203,9 @@ export function commandExecute(store: Store, commands: Command[]) {
       case "column.changeNotNull":
         changeColumnNotNullExecute(store, command.data as ChangeColumnOption);
         break;
+      case "column.move":
+        moveColumnExecute(store, command.data as MoveColumn);
+        break;
       case "memo.add":
         addMemoExecute(store, command.data as AddMemo);
         break;
@@ -243,6 +256,12 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "editor.editEndTable":
         editEndTableExecute(store);
+        break;
+      case "editor.draggableColumn":
+        draggableColumnExecute(store, command.data as DraggableColumn);
+        break;
+      case "editor.draggableEndColumn":
+        draggableEndColumnExecute(store);
         break;
     }
   });

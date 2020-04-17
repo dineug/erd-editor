@@ -39,7 +39,6 @@ export interface FocusTable {
   focusComment: boolean;
   focusColumns: FocusColumn[];
 
-  focusColumnChangeCall: boolean;
   move(focusMoveTable: FocusMoveTable): void;
   focus(focusData: FocusData): void;
   selectAll(): void;
@@ -51,7 +50,7 @@ export class FocusTableModel implements FocusTable {
   focusName = true;
   focusComment = false;
   focusColumns: FocusColumn[] = [];
-  focusColumnChangeCall = true;
+  private observeCall = true;
   private table: Table;
   private store: Store;
   private currentFocusColumn: FocusColumn | null = null;
@@ -93,9 +92,7 @@ export class FocusTableModel implements FocusTable {
       this.focusColumns.push(new FocusColumnModel(column, show));
     });
     this.subscriptionList.push(
-      store.observe(this.table.columns, () => {
-        this.createFocusColumns();
-      })
+      store.observe(this.table.columns, () => this.createFocusColumns())
     );
   }
 
@@ -202,7 +199,7 @@ export class FocusTableModel implements FocusTable {
         }
         break;
     }
-    this.focusColumnChangeCall = !this.focusColumnChangeCall;
+    this.observeCall = !this.observeCall;
   }
 
   focus(focusData: FocusData) {
@@ -249,11 +246,11 @@ export class FocusTableModel implements FocusTable {
 
   selectAll() {
     selectAllColumn(this.focusColumns);
-    this.focusColumnChangeCall = !this.focusColumnChangeCall;
+    this.observeCall = !this.observeCall;
   }
   selectEnd() {
     selectEndColumn(this.focusColumns);
-    this.focusColumnChangeCall = !this.focusColumnChangeCall;
+    this.observeCall = !this.observeCall;
   }
 
   destroy() {
@@ -261,6 +258,7 @@ export class FocusTableModel implements FocusTable {
   }
 
   private createFocusColumns() {
+    Logger.debug("FocusTableModel createFocusColumns");
     const { show } = this.store.canvasState;
     const oldColumnsSize = this.focusColumns.length;
     const columnsSize = this.table.columns.length;

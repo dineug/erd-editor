@@ -96,10 +96,10 @@ class InputEdit extends EditorElement {
         `;
   }
 
-  private onEmit = (event: InputEvent) => {
+  private onEmit(event: InputEvent) {
     Logger.debug(`InputEdit onEmit: ${event.type}`);
     if (event.type === "blur") {
       this.dispatchEvent(new Event(event.type));
     }
-  };
+  }
 }

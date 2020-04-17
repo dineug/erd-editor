@@ -173,10 +173,7 @@ export function editTable(
 export function editTableExecute(store: Store, data: EditTable) {
   Logger.debug("editTableExecute");
   const { editorState } = store;
-  editorState.editTable = {
-    id: data.id,
-    focusType: data.focusType,
-  };
+  editorState.editTable = data;
 }
 
 export function editEndTable(): CommandEffect<null> {
@@ -189,4 +186,38 @@ export function editEndTableExecute(store: Store) {
   Logger.debug("editEndTableExecute");
   const { editorState } = store;
   editorState.editTable = null;
+}
+
+export interface DraggableColumn {
+  tableId: string;
+  columnId: string;
+}
+export function draggableColumn(
+  tableId: string,
+  columnId: string
+): CommandEffect<DraggableColumn> {
+  return {
+    name: "editor.draggableColumn",
+    data: {
+      tableId,
+      columnId,
+    },
+  };
+}
+export function draggableColumnExecute(store: Store, data: DraggableColumn) {
+  Logger.debug("draggableColumnExecute");
+  const { editorState } = store;
+  editorState.draggableColumn = data;
+}
+
+export function draggableEndColumn(): CommandEffect<null> {
+  return {
+    name: "editor.draggableEndColumn",
+    data: null,
+  };
+}
+export function draggableEndColumnExecute(store: Store) {
+  Logger.debug("draggableEndColumnExecute");
+  const { editorState } = store;
+  editorState.draggableColumn = null;
 }
