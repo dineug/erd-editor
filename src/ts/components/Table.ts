@@ -25,6 +25,12 @@ import {
 
 type FocusTableKey = "focusName" | "focusComment";
 
+interface TransitionColumn {
+  id: string;
+  top: number;
+  left: number;
+}
+
 @customElement("vuerd-table")
 class Table extends EditorElement {
   @property({ type: String })
@@ -38,6 +44,7 @@ class Table extends EditorElement {
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
   private subFocusTable: Subscription | null = null;
+  private transitionColumns: TransitionColumn[] = [];
 
   get theme() {
     const { table, tableActive } = this.context.theme;
@@ -114,6 +121,9 @@ class Table extends EditorElement {
       }),
     ]);
     this.focusTableObserve();
+  }
+  updated(changedProperties: any) {
+    this.transitionStartColumn();
   }
   disconnectedCallback() {
     Logger.debug("Table destroy");
@@ -261,6 +271,7 @@ class Table extends EditorElement {
     const { draggableColumn } = store.editorState;
     const { tableId, columnId } = event.detail;
     if (draggableColumn && draggableColumn.columnId !== columnId) {
+      this.transitionSnapshotColumn();
       store.dispatch(
         moveColumn(
           draggableColumn.tableId,
@@ -403,5 +414,59 @@ class Table extends EditorElement {
       editorState.editTable?.id === column.id &&
       editorState.editTable.focusType === focusType
     );
+  }
+
+  /**
+   * FLIP stands for First, Last, Invert, Play.
+   * https://aerotwist.com/blog/flip-your-animations/
+   */
+  private transitionSnapshotColumn() {
+    // First
+    this.transitionColumns = [];
+    const liNodeList = this.renderRoot.querySelectorAll(".vuerd-column");
+    liNodeList.forEach(node => {
+      const li = node as HTMLElement;
+      const { top, left } = li.getBoundingClientRect();
+      const id = li.dataset.id as string;
+      this.transitionColumns.push({
+        id,
+        top,
+        left,
+      });
+    });
+  }
+  private transitionStartColumn() {
+    if (this.transitionColumns.length !== 0) {
+      const liNodeList = this.renderRoot.querySelectorAll(".vuerd-column");
+      // Last
+      // Invert
+      liNodeList.forEach(node => {
+        const li = node as HTMLElement;
+        const { top, left } = li.getBoundingClientRect();
+        const id = li.dataset.id as string;
+        const old = getData(this.transitionColumns, id);
+        if (old) {
+          const dx = old.left - left;
+          const dy = old.top - top;
+          if (dx || dy) {
+            li.style.transform = `translate(${dx}px,${dy}px)`;
+            li.style.transitionDuration = "0s";
+          }
+        }
+      });
+      this.transitionColumns = [];
+      // Play
+      liNodeList.forEach(node => {
+        const li = node as HTMLElement;
+        li.classList.add("vuerd-column-move");
+        li.style.transform = "";
+        li.style.transitionDuration = "";
+        const onTransitionend = () => {
+          li.classList.remove("vuerd-column-move");
+          li.removeEventListener("transitionend", onTransitionend);
+        };
+        li.addEventListener("transitionend", onTransitionend);
+      });
+    }
   }
 }

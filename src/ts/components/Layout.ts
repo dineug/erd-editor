@@ -75,6 +75,9 @@ export const Layout = css`
   .vuerd-column {
     height: 19.5px;
   }
+  .vuerd-column-move {
+    transition: transform 0.3s;
+  }
 
   .vuerd-button {
     cursor: pointer;
