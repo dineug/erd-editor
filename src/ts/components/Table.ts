@@ -40,10 +40,10 @@ class Table extends EditorElement {
 
   private draggable$: Subject<CustomEvent> = new Subject();
   private subscriptionList: Subscription[] = [];
-  private subDraggableColumns: Subscription[] = [];
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
   private subFocusTable: Subscription | null = null;
+  private subDraggableColumns: Subscription[] = [];
   private transitionColumns: TransitionColumn[] = [];
 
   get theme() {
@@ -53,9 +53,9 @@ class Table extends EditorElement {
       backgroundColor: table,
       top: `${ui.top}px`,
       left: `${ui.left}px`,
+      zIndex: `${ui.zIndex}`,
       width: `${this.table.width()}px`,
       height: `${this.table.height()}px`,
-      zIndex: `${ui.zIndex}`,
     };
     if (ui.active) {
       theme.border = `solid ${tableActive} 1px`;
@@ -69,9 +69,9 @@ class Table extends EditorElement {
     Logger.debug("Table before render");
     const { store } = this.context;
     this.subscriptionList.push.apply(this.subscriptionList, [
+      this.draggable$.pipe(debounceTime(50)).subscribe(this.onDragoverColumn),
       store.observe(this.table.ui, () => this.requestUpdate()),
       store.observe(this.table.columns, () => this.requestUpdate()),
-      this.draggable$.pipe(debounceTime(50)).subscribe(this.onDragoverColumn),
       store.observe(
         store.canvasState.show,
         (name: string | number | symbol) => {
@@ -128,8 +128,8 @@ class Table extends EditorElement {
   disconnectedCallback() {
     Logger.debug("Table destroy");
     this.onMouseup();
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
     this.focusTableUnsubscribe();
+    this.subscriptionList.forEach(sub => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
@@ -454,7 +454,6 @@ class Table extends EditorElement {
           }
         }
       });
-      this.transitionColumns = [];
       // Play
       liNodeList.forEach(node => {
         const li = node as HTMLElement;
@@ -467,6 +466,7 @@ class Table extends EditorElement {
         };
         li.addEventListener("transitionend", onTransitionend);
       });
+      this.transitionColumns = [];
     }
   }
 }

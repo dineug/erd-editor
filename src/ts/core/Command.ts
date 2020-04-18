@@ -43,6 +43,10 @@ import {
   selectMemoExecute,
   selectEndMemoExecute,
   selectAllMemoExecute,
+  ChangeMemoValue,
+  changeMemoValueExecute,
+  ResizeMemo,
+  resizeMemoExecute,
 } from "./command/memo";
 import {
   MoveCanvas,
@@ -101,6 +105,8 @@ type CommandName =
   | "memo.select"
   | "memo.selectEnd"
   | "memo.selectAll"
+  | "memo.changeValue"
+  | "memo.resize"
   | "canvas.move"
   | "canvas.resize"
   | "editor.focusTable"
@@ -131,6 +137,8 @@ export type Command =
   | CommandEffect<MoveMemo>
   | CommandEffect<RemoveMemo>
   | CommandEffect<SelectMemo>
+  | CommandEffect<ChangeMemoValue>
+  | CommandEffect<ResizeMemo>
   | CommandEffect<MoveCanvas>
   | CommandEffect<ResizeCanvas>
   | CommandEffect<FocusTable>
@@ -223,6 +231,12 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "memo.selectAll":
         selectAllMemoExecute(store);
+        break;
+      case "memo.changeValue":
+        changeMemoValueExecute(store, command.data as ChangeMemoValue);
+        break;
+      case "memo.resize":
+        resizeMemoExecute(store, command.data as ResizeMemo);
         break;
       case "canvas.move":
         moveCanvasExecute(store, command.data as MoveCanvas);

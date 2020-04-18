@@ -395,11 +395,11 @@ export function moveColumnExecute(store: Store, data: MoveColumn) {
       data.tableId === data.targetTableId &&
       data.columnId !== data.targetColumnId
     ) {
-      const currentIndex = getIndex(targetTable.columns, currentColumn.id);
-      const targetIndex = getIndex(targetTable.columns, targetColumn.id);
+      const currentIndex = getIndex(currentTable.columns, currentColumn.id);
+      const targetIndex = getIndex(currentTable.columns, targetColumn.id);
       if (currentIndex !== null && targetIndex !== null) {
-        targetTable.columns.splice(currentIndex, 1);
-        targetTable.columns.splice(targetIndex, 0, currentColumn);
+        currentTable.columns.splice(currentIndex, 1);
+        currentTable.columns.splice(targetIndex, 0, currentColumn);
       }
     } else if (
       data.tableId !== data.targetTableId &&

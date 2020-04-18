@@ -190,3 +190,65 @@ export function selectAllMemoExecute(store: Store) {
   const { memos } = store.memoState;
   memos.forEach(memo => (memo.ui.active = true));
 }
+
+export interface ChangeMemoValue {
+  memoId: string;
+  value: string;
+}
+export function changeMemoValue(
+  memoId: string,
+  value: string
+): CommandEffect<ChangeMemoValue> {
+  return {
+    name: "memo.changeValue",
+    data: {
+      memoId,
+      value,
+    },
+  };
+}
+export function changeMemoValueExecute(store: Store, data: ChangeMemoValue) {
+  Logger.debug("changeMemoValueExecute");
+  const { memos } = store.memoState;
+  const memo = getData(memos, data.memoId);
+  if (memo) {
+    memo.value = data.value;
+  }
+}
+
+export interface ResizeMemo {
+  memoId: string;
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+export function resizeMemo(
+  memoId: string,
+  top: number,
+  left: number,
+  width: number,
+  height: number
+): CommandEffect<ResizeMemo> {
+  return {
+    name: "memo.resize",
+    data: {
+      memoId,
+      top,
+      left,
+      width,
+      height,
+    },
+  };
+}
+export function resizeMemoExecute(store: Store, data: ResizeMemo) {
+  Logger.debug("resizeMemoExecute");
+  const { memos } = store.memoState;
+  const memo = getData(memos, data.memoId);
+  if (memo) {
+    memo.ui.top = data.top;
+    memo.ui.left = data.left;
+    memo.ui.width = data.width;
+    memo.ui.height = data.height;
+  }
+}

@@ -40,8 +40,8 @@ export function createTheme(): Theme {
     columnActive: "#372908",
     previewShadow: "#171717",
     previewTarget: "#ffc107",
-    scrollBarThumb: "#80808059",
-    scrollBarThumbActive: "#9B9B9B",
+    scrollBarThumb: "#6D6D6D",
+    scrollBarThumbActive: "#a2a2a2",
     code: "#23241f",
   };
 }

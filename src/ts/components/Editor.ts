@@ -20,6 +20,7 @@ import "./InputEdit";
 import "./table/ColumnKey";
 import "./table/ColumnNotNull";
 import "./Sash";
+import "./Memo";
 
 @customElement("vuerd-editor")
 class Editor extends EditorElement {
@@ -67,6 +68,7 @@ class Editor extends EditorElement {
         const { focus } = store.editorState;
         if (focus) {
           if (keymapMatch(event, keymap.stop)) {
+            Logger.debug("keymap.stop");
             event.preventDefault();
             store.dispatch(selectEndTable(), selectEndMemo());
           }
@@ -106,7 +108,23 @@ class Editor extends EditorElement {
 
   render() {
     Logger.debug("Editor render");
+    const { scrollBarThumb, scrollBarThumbActive } = this.context.theme;
     return html`
+      <style>
+        /* Handle */
+        ::-webkit-scrollbar-thumb {
+          background: ${scrollBarThumb};
+        }
+        /* Handle : hover*/
+        ::-webkit-scrollbar-thumb:hover {
+          background: ${scrollBarThumbActive};
+        }
+        /* firefox */
+        .vuerd-scrollbar {
+          scrollbar-color: ${scrollBarThumb} #fff0;
+          scrollbar-width: auto;
+        }
+      </style>
       <div class="vuerd-editor" style=${styleMap(this.theme)}>
         <vuerd-erd
           .context=${this.context}

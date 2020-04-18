@@ -1,5 +1,5 @@
 import {
-  SIZE_TABLE_HEIGHT,
+  SIZE_TABLE_HEADER_HEIGHT,
   SIZE_COLUMN_HEIGHT,
   SIZE_MARGIN_RIGHT,
   SIZE_COLUMN_CLOSE,
@@ -65,7 +65,7 @@ export class TableModel implements Table {
   }
 
   height(): number {
-    return SIZE_TABLE_HEIGHT + this.columns.length * SIZE_COLUMN_HEIGHT;
+    return SIZE_TABLE_HEADER_HEIGHT + this.columns.length * SIZE_COLUMN_HEIGHT;
   }
 
   maxWidthColumn(): ColumnWidth {
