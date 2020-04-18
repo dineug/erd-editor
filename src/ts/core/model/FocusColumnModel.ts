@@ -35,7 +35,7 @@ export const focusTypeKeyFocusColumnKeyMap: {
 export interface FocusColumn {
   readonly id: string;
   readonly currentFocus: FocusType | null;
-  selected: boolean;
+  select: boolean;
   focusName: boolean;
   focusDataType: boolean;
   focusNotNull: boolean;
@@ -48,7 +48,7 @@ export interface FocusColumn {
 }
 
 export class FocusColumnModel implements FocusColumn {
-  selected = false;
+  select = false;
   focusName = false;
   focusDataType = false;
   focusNotNull = false;

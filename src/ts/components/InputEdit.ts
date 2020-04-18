@@ -1,5 +1,6 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { classMap } from "lit-html/directives/class-map";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import { SIZE_MIN_WIDTH } from "@src/core/Layout";
@@ -10,43 +11,29 @@ class InputEdit extends EditorElement {
   edit = false;
   @property({ type: Boolean })
   focusState = false;
+  @property({ type: Boolean })
+  select = false;
   @property({ type: Number })
   width = SIZE_MIN_WIDTH;
   @property({ type: String })
   value = "";
   @property({ type: String })
   placeholder = "";
-  @property({ type: String })
-  backgroundColor = "";
 
-  get theme() {
-    const {
-      fontActive,
-      fontPlaceholder,
-      focus,
-      table,
-      edit,
-    } = this.context.theme;
-    const theme: any = {
-      color: fontActive,
+  get classMap() {
+    return {
+      "vuerd-input-edit": true,
+      placeholder: this.value.trim() === "" && !this.edit,
+      focus: this.focusState && !this.edit,
+      edit: this.edit,
+      select: this.select,
+    };
+  }
+
+  get styleMap() {
+    return {
       width: `${this.width}px`,
     };
-    if (this.edit) {
-      if (this.backgroundColor === "") {
-        theme.backgroundColor = table;
-      } else {
-        theme.backgroundColor = this.backgroundColor;
-      }
-      theme.borderBottom = `solid ${edit} 1.5px`;
-    } else {
-      if (this.focusState) {
-        theme.borderBottom = `solid ${focus} 1.5px`;
-      }
-      if (this.value.trim() === "") {
-        theme.color = fontPlaceholder;
-      }
-    }
-    return theme;
   }
 
   get placeholderValue() {
@@ -80,8 +67,8 @@ class InputEdit extends EditorElement {
     return this.edit
       ? html`
           <input
-            class="vuerd-input-edit"
-            style=${styleMap(this.theme)}
+            class=${classMap(this.classMap)}
+            style=${styleMap(this.styleMap)}
             type="text"
             spellcheck="false"
             value=${this.value}
@@ -90,7 +77,10 @@ class InputEdit extends EditorElement {
           />
         `
       : html`
-          <div class="vuerd-input-edit" style=${styleMap(this.theme)}>
+          <div
+            class=${classMap(this.classMap)}
+            style=${styleMap(this.styleMap)}
+          >
             <span>${this.placeholderValue}</span>
           </div>
         `;
@@ -99,7 +89,7 @@ class InputEdit extends EditorElement {
   private onEmit(event: InputEvent) {
     Logger.debug(`InputEdit onEmit: ${event.type}`);
     if (event.type === "blur") {
-      this.dispatchEvent(new Event(event.type));
+      this.dispatchEvent(new Event(event.type, event));
     }
   }
 }

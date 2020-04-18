@@ -79,7 +79,7 @@ export class FocusTableModel implements FocusTable {
 
   get selectColumns(): Column[] {
     return this.focusColumns
-      .filter(focusColumn => focusColumn.selected)
+      .filter(focusColumn => focusColumn.select)
       .map(focusColumn => getData(this.table.columns, focusColumn.id))
       .filter(column => column !== null) as Column[];
   }
@@ -110,7 +110,7 @@ export class FocusTableModel implements FocusTable {
             this.currentFocusColumn = this.focusColumns[
               this.focusColumns.length - 1
             ];
-            this.currentFocusColumn.selected = true;
+            this.currentFocusColumn.select = true;
             this.currentFocusColumn.focusName = true;
           } else {
             const index = getIndex(
@@ -130,7 +130,7 @@ export class FocusTableModel implements FocusTable {
                 if (currentFocus) {
                   focusEnd(this);
                   this.currentFocusColumn = this.focusColumns[index - 1];
-                  this.currentFocusColumn.selected = true;
+                  this.currentFocusColumn.select = true;
                   this.currentFocusColumn.focus(currentFocus);
                 }
               }
@@ -144,7 +144,7 @@ export class FocusTableModel implements FocusTable {
             // move table -> column
             focusEnd(this);
             this.currentFocusColumn = this.focusColumns[0];
-            this.currentFocusColumn.selected = true;
+            this.currentFocusColumn.select = true;
             this.currentFocusColumn.focusName = true;
           } else {
             const index = getIndex(
@@ -164,7 +164,7 @@ export class FocusTableModel implements FocusTable {
                 if (currentFocus) {
                   focusEnd(this);
                   this.currentFocusColumn = this.focusColumns[index + 1];
-                  this.currentFocusColumn.selected = true;
+                  this.currentFocusColumn.select = true;
                   this.currentFocusColumn.focus(currentFocus);
                 }
               }
@@ -181,7 +181,7 @@ export class FocusTableModel implements FocusTable {
           this.focusComment = !this.focusComment;
         } else if (this.currentFocusColumn) {
           // move column -> column
-          this.currentFocusColumn.selected = true;
+          this.currentFocusColumn.select = true;
           this.currentFocusColumn.preFocus();
         }
         break;
@@ -194,7 +194,7 @@ export class FocusTableModel implements FocusTable {
           this.focusComment = !this.focusComment;
         } else if (this.currentFocusColumn) {
           // move column -> column
-          this.currentFocusColumn.selected = true;
+          this.currentFocusColumn.select = true;
           this.currentFocusColumn.nextFocus();
         }
         break;
@@ -231,14 +231,14 @@ export class FocusTableModel implements FocusTable {
           const targetIndex = getIndex(this.focusColumns, targetFocusColumn.id);
           if (currentIndex !== null && targetIndex !== null) {
             range(currentIndex, targetIndex).forEach(index => {
-              this.focusColumns[index].selected = true;
+              this.focusColumns[index].select = true;
             });
           }
         } else if (!focusTargetColumn.ctrlKey) {
           selectEndColumn(this.focusColumns);
         }
         this.currentFocusColumn = targetFocusColumn;
-        this.currentFocusColumn.selected = true;
+        this.currentFocusColumn.select = true;
         this.currentFocusColumn.focus(focusTargetColumn.focusType);
       }
     }
@@ -284,7 +284,7 @@ export class FocusTableModel implements FocusTable {
         this.currentFocusColumn.id
       );
       if (targetFocusColumn) {
-        targetFocusColumn.selected = true;
+        targetFocusColumn.select = true;
         targetFocusColumn.focus(this.currentFocusColumn.currentFocus);
         this.currentFocusColumn = targetFocusColumn;
       }
@@ -295,7 +295,7 @@ export class FocusTableModel implements FocusTable {
       focusEnd(this);
       selectEndColumn(this.focusColumns);
       this.currentFocusColumn = this.focusColumns[this.focusColumns.length - 1];
-      this.currentFocusColumn.selected = true;
+      this.currentFocusColumn.select = true;
       this.currentFocusColumn.focus("columnName");
     } else if (oldColumnsSize > columnsSize && currentColumnIndex !== null) {
       // removeColumn focus
@@ -312,7 +312,7 @@ export class FocusTableModel implements FocusTable {
         }
         selectEndColumn(this.focusColumns);
         this.currentFocusColumn = this.focusColumns[targetIndex];
-        this.currentFocusColumn.selected = true;
+        this.currentFocusColumn.select = true;
         this.currentFocusColumn.focus(currentFocusType);
       }
     }

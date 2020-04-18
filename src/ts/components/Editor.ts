@@ -12,15 +12,17 @@ import { selectEndMemo } from "@src/core/command/memo";
 import "./ERD";
 import "./Canvas";
 import "./CanvasSVG";
-import "./Table";
-import "./table/Column";
 import "./Fontawesome";
 import "./Contextmenu";
 import "./InputEdit";
-import "./table/ColumnKey";
-import "./table/ColumnNotNull";
 import "./Sash";
 import "./Memo";
+import "./Table";
+import "./table/Column";
+import "./table/ColumnKey";
+import "./table/ColumnNotNull";
+import "./table/ColumnDataType";
+import "./table/ColumnDataTypeHint";
 
 @customElement("vuerd-editor")
 class Editor extends EditorElement {
@@ -35,11 +37,8 @@ class Editor extends EditorElement {
 
   private subscriptionList: Subscription[] = [];
 
-  get theme() {
-    const { font, canvas } = this.context.theme;
+  get styleMap() {
     return {
-      color: font,
-      backgroundColor: canvas,
       width: `${this.width}px`,
       height: `${this.height}px`,
     };
@@ -108,24 +107,54 @@ class Editor extends EditorElement {
 
   render() {
     Logger.debug("Editor render");
-    const { scrollBarThumb, scrollBarThumbActive } = this.context.theme;
+    const {
+      canvas,
+      table,
+      tableActive,
+      focus,
+      keyPK,
+      keyFK,
+      keyPFK,
+      font,
+      fontActive,
+      fontPlaceholder,
+      contextmenuActive,
+      edit,
+      mark,
+      columnSelect,
+      columnActive,
+      previewShadow,
+      previewTarget,
+      scrollBarThumb,
+      scrollBarThumbActive,
+      code,
+    } = this.context.theme;
     return html`
       <style>
-        /* Handle */
-        ::-webkit-scrollbar-thumb {
-          background: ${scrollBarThumb};
-        }
-        /* Handle : hover*/
-        ::-webkit-scrollbar-thumb:hover {
-          background: ${scrollBarThumbActive};
-        }
-        /* firefox */
-        .vuerd-scrollbar {
-          scrollbar-color: ${scrollBarThumb} #fff0;
-          scrollbar-width: auto;
+        :host {
+          --vuerd-color-canvas: ${canvas};
+          --vuerd-color-table: ${table};
+          --vuerd-color-table-active: ${tableActive};
+          --vuerd-color-focus: ${focus};
+          --vuerd-color-key-pk: ${keyPK};
+          --vuerd-color-key-fk: ${keyFK};
+          --vuerd-color-key-pfk: ${keyPFK};
+          --vuerd-color-font: ${font};
+          --vuerd-color-font-active: ${fontActive};
+          --vuerd-color-font-placeholder: ${fontPlaceholder};
+          --vuerd-color-contextmenu-active: ${contextmenuActive};
+          --vuerd-color-edit: ${edit};
+          --vuerd-color-mark: ${mark};
+          --vuerd-color-column-select: ${columnSelect};
+          --vuerd-color-column-active: ${columnActive};
+          --vuerd-color-preview-shadow: ${previewShadow};
+          --vuerd-color-preview-target: ${previewTarget};
+          --vuerd-color-scrollbar-thumb: ${scrollBarThumb};
+          --vuerd-color-scrollbar-thumb-active: ${scrollBarThumbActive};
+          --vuerd-color-code: ${code};
         }
       </style>
-      <div class="vuerd-editor" style=${styleMap(this.theme)}>
+      <div class="vuerd-editor" style=${styleMap(this.styleMap)}>
         <vuerd-erd
           .context=${this.context}
           .width=${this.width}

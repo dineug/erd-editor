@@ -24,6 +24,8 @@ export const Layout = css`
     overflow: hidden;
     font-size: ${SIZE_FONT}px;
     font-family: ${fontFamily};
+    color: var(--vuerd-color-font);
+    background-color: var(--vuerd-color-canvas);
   }
 
   .vuerd-erd {
@@ -33,6 +35,7 @@ export const Layout = css`
 
   .vuerd-canvas {
     position: relative;
+    background-color: var(--vuerd-color-canvas);
   }
 
   .vuerd-canvas-svg {
@@ -40,11 +43,29 @@ export const Layout = css`
     z-index: 1;
   }
 
+  .vuerd-text-width {
+    visibility: hidden;
+    position: fixed;
+    top: -100px;
+    font-size: ${SIZE_FONT}px;
+    font-family: ${fontFamily};
+  }
+
+  .vuerd-button {
+    cursor: pointer;
+  }
+
+  /* =============== table ============== */
   .vuerd-table {
     position: absolute;
     opacity: 0.9;
     padding: ${SIZE_TABLE_PADDING}px;
     font-size: ${SIZE_FONT}px;
+    background-color: var(--vuerd-color-table);
+  }
+  .vuerd-table.active {
+    border: solid var(--vuerd-color-table-active) 1px;
+    box-shadow: 0 1px 6px var(--vuerd-color-table-active);
   }
   .vuerd-table .vuerd-table-header-top {
     overflow: hidden;
@@ -58,17 +79,55 @@ export const Layout = css`
     height: ${SIZE_TABLE_HEADER_BODY_HEIGHT}px;
   }
 
-  input.vuerd-input-edit {
+  /* =============== column ============== */
+  .vuerd-column {
+    height: ${SIZE_COLUMN_HEIGHT}px;
+  }
+  .vuerd-column.select {
+    background-color: var(--vuerd-color-column-select);
+  }
+  .vuerd-column-move {
+    transition: transform 0.3s;
+  }
+
+  .vuerd-input-edit {
     display: inline-flex;
     vertical-align: middle;
     align-items: center;
+    color: var(--vuerd-color-font-active);
+    background-color: var(--vuerd-color-table);
+  }
+  input.vuerd-input-edit {
     outline: none;
     border: none;
     opacity: 0.9;
     font-size: ${SIZE_FONT}px;
     font-family: ${fontFamily};
   }
-  div.vuerd-input-edit,
+  div.vuerd-input-edit {
+    border-bottom: solid #fff0 1.5px;
+    height: ${SIZE_INPUT_EDIT_HEIGHT}px;
+    cursor: default;
+  }
+  .vuerd-input-edit.select {
+    background-color: var(--vuerd-color-column-select);
+  }
+  .vuerd-input-edit.focus {
+    border-bottom: solid var(--vuerd-color-focus) 1.5px;
+  }
+  .vuerd-input-edit.edit {
+    border-bottom: solid var(--vuerd-color-edit) 1.5px;
+  }
+  .vuerd-input-edit.placeholder {
+    color: var(--vuerd-color-font-placeholder);
+  }
+
+  .vuerd-column-key {
+    display: inline-flex;
+    vertical-align: middle;
+    align-items: center;
+  }
+
   .vuerd-column-not-null {
     display: inline-flex;
     vertical-align: middle;
@@ -76,33 +135,63 @@ export const Layout = css`
     border-bottom: solid #fff0 1.5px;
     height: ${SIZE_INPUT_EDIT_HEIGHT}px;
     cursor: default;
+    color: var(--vuerd-color-font-active);
   }
-  .vuerd-column-key {
+  .vuerd-column-not-null.focus {
+    border-bottom: solid var(--vuerd-color-focus) 1.5px;
+  }
+
+  .vuerd-column-data-type {
     display: inline-flex;
     vertical-align: middle;
     align-items: center;
+    position: relative;
   }
-  .vuerd-column {
-    height: ${SIZE_COLUMN_HEIGHT}px;
+  vuerd-column-data-type-hint {
+    position: absolute;
   }
-  .vuerd-column-move {
-    transition: transform 0.3s;
+  .vuerd-column-data-type-hint {
+    position: absolute;
+    opacity: 0.9;
+    top: 10px;
+    left: 0;
+    z-index: 100000000;
+    color: var(--vuerd-color-font);
+    background-color: var(--vuerd-color-table);
   }
-
-  .vuerd-button {
+  .vuerd-column-data-type-hint > li {
+    padding: 5px;
     cursor: pointer;
+    font-size: ${SIZE_FONT}px;
+  }
+  .vuerd-column-data-type-hint > li:hover {
+    color: var(--vuerd-color-font-active);
+    background-color: var(--vuerd-color-contextmenu-active);
+  }
+  .vuerd-column-data-type-hint > li:hover .vuerd-mark {
+    color: var(--vuerd-color-font-active);
+  }
+  .vuerd-mark {
+    color: var(--vuerd-color-mark);
   }
 
+  /* =============== contextmenu ============== */
   .vuerd-contextmenu {
     position: fixed;
     z-index: 100000000;
     opacity: 0.9;
+    color: var(--vuerd-color-font);
+    background-color: var(--vuerd-color-table);
   }
   .vuerd-contextmenu > li {
     padding: 10px 5px 10px 10px;
     cursor: pointer;
     font-size: ${SIZE_FONT}px;
     white-space: nowrap;
+  }
+  .vuerd-contextmenu > li:hover {
+    color: var(--vuerd-color-font-active);
+    background-color: var(--vuerd-color-contextmenu-active);
   }
   .vuerd-contextmenu > li > span {
     display: inline-flex;
@@ -130,14 +219,7 @@ export const Layout = css`
     padding-right: 0;
   }
 
-  .vuerd-text-width {
-    visibility: hidden;
-    position: fixed;
-    top: -100px;
-    font-size: ${SIZE_FONT}px;
-    font-family: ${fontFamily};
-  }
-
+  /* =============== sash ============== */
   .vuerd-sash {
     position: absolute;
     z-index: 1000;
@@ -157,9 +239,15 @@ export const Layout = css`
     height: ${SIZE_SASH}px;
   }
 
+  /* =============== memo ============== */
   .vuerd-memo {
     position: absolute;
     opacity: 0.9;
+    background-color: var(--vuerd-color-table);
+  }
+  .vuerd-memo.active {
+    border: solid var(--vuerd-color-table-active) 1px;
+    box-shadow: 0 1px 6px var(--vuerd-color-table-active);
   }
   .vuerd-memo > .vuerd-memo-header {
     padding: ${SIZE_MEMO_PADDING}px;
@@ -176,19 +264,35 @@ export const Layout = css`
     outline: none;
     font-size: ${SIZE_FONT}px;
     font-family: ${fontFamily};
+    color: var(--vuerd-color-font-active);
+    background-color: var(--vuerd-color-table);
   }
 
+  /* =============== scrollbar ============== */
   /* width */
   ::-webkit-scrollbar {
     width: 12px;
     height: 12px;
   }
-  /* Track */
+  /* track */
   ::-webkit-scrollbar-track {
     background: #fff0;
   }
   ::-webkit-scrollbar-corner {
     background: #fff0;
+  }
+  /* handle */
+  ::-webkit-scrollbar-thumb {
+    background: var(--vuerd-color-scrollbar-thumb);
+  }
+  /* handle:hover */
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--vuerd-color-scrollbar-thumb-active);
+  }
+  /* firefox */
+  .vuerd-scrollbar {
+    scrollbar-color: var(--vuerd-color-scrollbar-thumb) #fff0;
+    scrollbar-width: auto;
   }
 `;
 

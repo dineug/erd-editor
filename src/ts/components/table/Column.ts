@@ -1,5 +1,5 @@
 import { html, customElement, property } from "lit-element";
-import { styleMap } from "lit-html/directives/style-map";
+import { classMap } from "lit-html/directives/class-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "../EditorElement";
 import { Logger } from "@src/core/Logger";
@@ -29,7 +29,7 @@ class Column extends EditorElement {
   @property({ type: String })
   buttonColor = "#fff0";
   @property({ type: Boolean })
-  selected = false;
+  select = false;
   @property({ type: Boolean })
   focusName = false;
   @property({ type: Boolean })
@@ -64,13 +64,11 @@ class Column extends EditorElement {
 
   private subscriptionList: Subscription[] = [];
 
-  get theme() {
-    const { columnSelect } = this.context.theme;
-    const theme: any = {};
-    if (this.selected) {
-      theme.backgroundColor = columnSelect;
-    }
-    return theme;
+  get classMap() {
+    return {
+      "vuerd-column": true,
+      select: this.select,
+    };
   }
 
   connectedCallback() {
@@ -100,8 +98,7 @@ class Column extends EditorElement {
     const keymapRemoveColumn = keymapOptionToString(keymap.removeColumn[0]);
     return html`
       <li
-        class="vuerd-column"
-        style=${styleMap(this.theme)}
+        class=${classMap(this.classMap)}
         data-id=${this.column.id}
         draggable="true"
         @mouseenter=${this.onMouseenter}
@@ -120,7 +117,7 @@ class Column extends EditorElement {
           .value=${this.column.name}
           .focusState=${this.focusName}
           .edit=${this.editName}
-          .backgroundColor=${theme.columnSelect}
+          .select=${this.select}
           placeholder="column"
           @blur=${this.onBlur}
           @input=${(event: InputEvent) => this.onInput(event, "columnName")}
@@ -129,19 +126,20 @@ class Column extends EditorElement {
         ></vuerd-input-edit>
         ${show.columnDataType
           ? html`
-              <vuerd-input-edit
+              <vuerd-column-data-type
                 .context=${this.context}
                 .width=${this.widthDataType}
                 .value=${this.column.dataType}
                 .focusState=${this.focusDataType}
                 .edit=${this.editDataType}
-                .backgroundColor=${theme.columnSelect}
-                placeholder="dataType"
+                .select=${this.select}
+                @input=${(event: InputEvent) =>
+                  this.onInput(event, "columnDataType")}
                 @mousedown=${(event: MouseEvent) =>
                   this.onFocus(event, "columnDataType")}
                 @dblclick=${(event: MouseEvent) =>
                   this.onEdit(event, "columnDataType")}
-              ></vuerd-input-edit>
+              ></vuerd-column-data-type>
             `
           : html``}
         ${show.columnNotNull
@@ -165,7 +163,7 @@ class Column extends EditorElement {
                 .value=${this.column.default}
                 .focusState=${this.focusDefault}
                 .edit=${this.editDefault}
-                .backgroundColor=${theme.columnSelect}
+                .select=${this.select}
                 placeholder="default"
                 @blur=${this.onBlur}
                 @input=${(event: InputEvent) =>
@@ -185,7 +183,7 @@ class Column extends EditorElement {
                 .value=${this.column.comment}
                 .focusState=${this.focusComment}
                 .edit=${this.editComment}
-                .backgroundColor=${theme.columnSelect}
+                .select=${this.select}
                 placeholder="comment"
                 @blur=${this.onBlur}
                 @input=${(event: InputEvent) =>

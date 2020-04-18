@@ -25,9 +25,9 @@ export function focusEnd(focusTable: FocusTable) {
 }
 
 export function selectEndColumn(focusColumns: FocusColumn[]) {
-  focusColumns.forEach(focusColumn => (focusColumn.selected = false));
+  focusColumns.forEach(focusColumn => (focusColumn.select = false));
 }
 
 export function selectAllColumn(focusColumns: FocusColumn[]) {
-  focusColumns.forEach(focusColumn => (focusColumn.selected = true));
+  focusColumns.forEach(focusColumn => (focusColumn.select = true));
 }

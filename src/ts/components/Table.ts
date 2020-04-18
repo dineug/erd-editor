@@ -1,5 +1,6 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { classMap } from "lit-html/directives/class-map";
 import { repeat } from "lit-html/directives/repeat";
 import { Subscription, Subject, fromEvent } from "rxjs";
 import { debounceTime, throttleTime } from "rxjs/operators";
@@ -46,22 +47,22 @@ class Table extends EditorElement {
   private subDraggableColumns: Subscription[] = [];
   private transitionColumns: TransitionColumn[] = [];
 
-  get theme() {
-    const { table, tableActive } = this.context.theme;
+  get classMap() {
+    return {
+      "vuerd-table": true,
+      active: this.table.ui.active,
+    };
+  }
+
+  get styleMap() {
     const { ui } = this.table;
-    const theme: any = {
-      backgroundColor: table,
+    return {
       top: `${ui.top}px`,
       left: `${ui.left}px`,
       zIndex: `${ui.zIndex}`,
       width: `${this.table.width()}px`,
       height: `${this.table.height()}px`,
     };
-    if (ui.active) {
-      theme.border = `solid ${tableActive} 1px`;
-      theme.boxShadow = `0 1px 6px ${tableActive}`;
-    }
-    return theme;
   }
 
   connectedCallback() {
@@ -139,8 +140,8 @@ class Table extends EditorElement {
     const widthColumn = this.table.maxWidthColumn();
     return html`
       <div
-        class="vuerd-table"
-        style=${styleMap(this.theme)}
+        class=${classMap(this.classMap)}
+        style=${styleMap(this.styleMap)}
         @mousedown=${this.onMousedown}
         @mouseenter=${this.onMouseenter}
         @mouseleave=${this.onMouseleave}
@@ -214,7 +215,7 @@ class Table extends EditorElement {
                   .context=${this.context}
                   .tableId=${this.table.id}
                   .column=${column}
-                  .selected=${this.selectColumn(column)}
+                  .select=${this.selectColumn(column)}
                   .focusName=${this.focusColumn(column, "columnName")}
                   .focusDataType=${this.focusColumn(column, "columnDataType")}
                   .focusNotNull=${this.focusColumn(column, "columnNotNull")}
@@ -402,7 +403,7 @@ class Table extends EditorElement {
     const { editorState } = this.context.store;
     return (
       editorState.focusTable?.id === this.table.id &&
-      getData(editorState.focusTable.focusColumns, column.id)?.selected === true
+      getData(editorState.focusTable.focusColumns, column.id)?.select === true
     );
   }
   private editColumn(column: Column, focusType: FocusType) {

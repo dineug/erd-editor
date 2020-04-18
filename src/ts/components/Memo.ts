@@ -1,5 +1,6 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { classMap } from "lit-html/directives/class-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
@@ -45,30 +46,27 @@ class Memo extends EditorElement {
   private x = 0;
   private y = 0;
 
-  get theme() {
-    const { table, tableActive } = this.context.theme;
+  get classMap() {
+    return {
+      "vuerd-memo": true,
+      active: this.memo.ui.active,
+    };
+  }
+
+  get styleMap() {
     const { ui } = this.memo;
-    const theme: any = {
-      backgroundColor: table,
+    return {
       top: `${ui.top}px`,
       left: `${ui.left}px`,
       zIndex: `${ui.zIndex}`,
       width: `${this.width}px`,
       height: `${this.height}px`,
     };
-    if (ui.active) {
-      theme.border = `solid ${tableActive} 1px`;
-      theme.boxShadow = `0 1px 6px ${tableActive}`;
-    }
-    return theme;
   }
 
-  get textareaTheme() {
-    const { table, fontActive } = this.context.theme;
+  get textareaStyleMap() {
     const { ui } = this.memo;
     return {
-      backgroundColor: table,
-      color: fontActive,
       width: `${ui.width}px`,
       height: `${ui.height}px`,
     };
@@ -111,8 +109,8 @@ class Memo extends EditorElement {
     const keymapRemoveTable = keymapOptionToString(keymap.removeTable[0]);
     return html`
       <div
-        class="vuerd-memo"
-        style=${styleMap(this.theme)}
+        class=${classMap(this.classMap)}
+        style=${styleMap(this.styleMap)}
         @mousedown=${this.onMousedown}
         @mouseenter=${this.onMouseenter}
         @mouseleave=${this.onMouseleave}
@@ -131,7 +129,7 @@ class Memo extends EditorElement {
         <div class="vuerd-memo-body">
           <textarea
             class="vuerd-memo-textarea vuerd-scrollbar"
-            style=${styleMap(this.textareaTheme)}
+            style=${styleMap(this.textareaStyleMap)}
             spellcheck="false"
             .value=${this.memo.value}
             @input=${this.onInput}

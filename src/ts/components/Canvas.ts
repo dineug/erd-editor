@@ -9,11 +9,9 @@ import { Memo } from "@src/core/store/Memo";
 
 @customElement("vuerd-canvas")
 class Canvas extends EditorElement {
-  get theme() {
-    const { canvas } = this.context.theme;
+  get styleMap() {
     const { width, height } = this.context.store.canvasState;
     return {
-      backgroundColor: canvas,
       width: `${width}px`,
       height: `${height}px`,
     };
@@ -43,7 +41,7 @@ class Canvas extends EditorElement {
   render() {
     Logger.debug("Canvas render");
     return html`
-      <div class="vuerd-canvas" style=${styleMap(this.theme)}>
+      <div class="vuerd-canvas" style=${styleMap(this.styleMap)}>
         ${repeat(
           this.tables,
           table => table.id,

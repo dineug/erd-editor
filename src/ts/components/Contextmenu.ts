@@ -20,11 +20,8 @@ export class Contextmenu extends EditorElement {
 
   private subscriptionList: Subscription[] = [];
 
-  get theme() {
-    const { table, font } = this.context.theme;
+  get styleMap() {
     return {
-      backgroundColor: table,
-      color: font,
       left: `${this.x}px`,
       top: `${this.y}px`,
     };
@@ -75,15 +72,13 @@ export class Contextmenu extends EditorElement {
   render() {
     Logger.debug("Contextmenu render");
     return html`
-      <ul class="vuerd-contextmenu" style=${styleMap(this.theme)}>
+      <ul class="vuerd-contextmenu" style=${styleMap(this.styleMap)}>
         ${this.menus.map(menu => {
           const icon = this.getIcon(menu);
           return html`
             <li
               @click=${() => this.onExecute(menu)}
               @mouseover=${() => this.onMouseover(menu)}
-              @mouseenter=${this.onMouseenter}
-              @mouseleave=${this.onMouseleave}
             >
               ${icon
                 ? html`
@@ -134,17 +129,6 @@ export class Contextmenu extends EditorElement {
 
   private onMouseover(menu: Menu) {
     this.currentMenu = menu;
-  }
-  private onMouseenter(event: MouseEvent) {
-    const { fontActive, contextmenuActive } = this.context.theme;
-    const el = event.target as HTMLElement;
-    el.style.color = fontActive;
-    el.style.backgroundColor = contextmenuActive;
-  }
-  private onMouseleave(event: MouseEvent) {
-    const el = event.target as HTMLElement;
-    el.style.color = "";
-    el.style.backgroundColor = "";
   }
   private onExecute(menu: Menu) {
     if (!menu.children && menu.execute && typeof menu.execute === "function") {

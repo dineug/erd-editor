@@ -1,5 +1,6 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { classMap } from "lit-html/directives/class-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "../EditorElement";
 import { Logger } from "@src/core/Logger";
@@ -15,16 +16,17 @@ class ColumnNotNull extends EditorElement {
 
   private subscriptionList: Subscription[] = [];
 
-  get theme() {
-    const { fontActive, focus } = this.context.theme;
-    const theme: any = {
-      color: fontActive,
+  get classMap() {
+    return {
+      "vuerd-column-not-null": true,
+      focus: this.focusState,
+    };
+  }
+
+  get styleMap() {
+    return {
       width: `${SIZE_COLUMN_OPTION_NN}px`,
     };
-    if (this.focusState) {
-      theme.borderBottom = `solid ${focus} 1.5px`;
-    }
-    return theme;
   }
 
   connectedCallback() {
@@ -45,7 +47,7 @@ class ColumnNotNull extends EditorElement {
 
   render() {
     return html`
-      <div class="vuerd-column-not-null" style=${styleMap(this.theme)}>
+      <div class=${classMap(this.classMap)} style=${styleMap(this.styleMap)}>
         ${this.columnOption.notNull ? "N-N" : "NULL"}
       </div>
     `;
