@@ -77,7 +77,7 @@ class Column extends EditorElement {
     super.connectedCallback();
     const { store } = this.context;
     this.subscriptionList.push.apply(this.subscriptionList, [
-      store.observe(this.column.ui, (name: string | number | symbol) => {
+      store.observe(this.column.ui, name => {
         switch (name) {
           case "widthName":
           case "widthComment":

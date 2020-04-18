@@ -183,7 +183,7 @@ class ERD extends EditorElement {
     this.erd.scrollTop = store.canvasState.scrollTop;
     this.erd.scrollLeft = store.canvasState.scrollLeft;
     this.subscriptionList.push(
-      store.observe(store.canvasState, (name: string | number | symbol) => {
+      store.observe(store.canvasState, name => {
         switch (name) {
           case "scrollTop":
             this.erd.scrollTop = store.canvasState.scrollTop;

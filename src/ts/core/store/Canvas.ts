@@ -45,11 +45,11 @@ export type CanvasType =
 export type Database = "MariaDB" | "MSSQL" | "MySQL" | "Oracle" | "PostgreSQL";
 
 export type Language =
-  | "graphql"
-  | "cs"
-  | "java"
-  | "kotlin"
-  | "typescript"
+  | "GraphQL"
+  | "C#"
+  | "Java"
+  | "Kotlin"
+  | "TypeScript"
   | "JPA";
 
 export type NameCase = "none" | "camelCase" | "pascalCase" | "snakeCase";
@@ -74,7 +74,7 @@ export function createCanvasState(): CanvasState {
     database: "MySQL",
     databaseName: "",
     canvasType: "ERD",
-    language: "graphql",
+    language: "GraphQL",
     tableCase: "pascalCase",
     columnCase: "camelCase",
   };

@@ -72,20 +72,17 @@ class Table extends EditorElement {
       this.draggable$.pipe(debounceTime(50)).subscribe(this.onDragoverColumn),
       store.observe(this.table.ui, () => this.requestUpdate()),
       store.observe(this.table.columns, () => this.requestUpdate()),
-      store.observe(
-        store.canvasState.show,
-        (name: string | number | symbol) => {
-          switch (name) {
-            case "tableComment":
-            case "columnComment":
-            case "columnDataType":
-            case "columnDefault":
-            case "columnNotNull":
-              this.requestUpdate();
-              break;
-          }
+      store.observe(store.canvasState.show, name => {
+        switch (name) {
+          case "tableComment":
+          case "columnComment":
+          case "columnDataType":
+          case "columnDefault":
+          case "columnNotNull":
+            this.requestUpdate();
+            break;
         }
-      ),
+      }),
       store.observe(store.editorState, (name: string | number | symbol) => {
         Logger.debug(`Table observe editorState: ${String(name)}`);
         switch (name) {

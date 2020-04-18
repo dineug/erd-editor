@@ -4,6 +4,7 @@ import { Keymap, keymapOptionToString } from "./Keymap";
 import { addTable } from "./command/table";
 import { addMemo } from "./command/memo";
 import { changeColumnPrimaryKey } from "./command/column";
+import { changeCanvasShow, changeDatabase } from "./command/canvas";
 
 export interface MenuOption {
   close?: boolean;
@@ -26,6 +27,7 @@ export interface Menu {
 }
 
 export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
+  const { show } = store.canvasState;
   return [
     {
       icon: "table",
@@ -60,5 +62,86 @@ export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
         }
       },
     },
+    {
+      icon: "eye",
+      name: "View Option",
+      children: createShowMenus(store),
+    },
+    {
+      icon: "database",
+      name: "Database",
+      children: createDatabaseMenus(store),
+    },
   ];
+}
+
+interface ShowMenu {
+  name: string;
+  showKey: ShowKey;
+}
+const showMenus: ShowMenu[] = [
+  {
+    name: "Table Comment",
+    showKey: "tableComment",
+  },
+  {
+    name: "Column Comment",
+    showKey: "columnComment",
+  },
+  {
+    name: "DataType",
+    showKey: "columnDataType",
+  },
+  {
+    name: "Default",
+    showKey: "columnDefault",
+  },
+  {
+    name: "Not Null",
+    showKey: "columnNotNull",
+  },
+  {
+    name: "Relationship",
+    showKey: "relationship",
+  },
+];
+function createShowMenus(store: Store): Menu[] {
+  const { show } = store.canvasState;
+  return showMenus.map(showMenu => {
+    return {
+      icon: show[showMenu.showKey] ? "check" : undefined,
+      name: showMenu.name,
+      execute() {
+        store.dispatch(changeCanvasShow(store, showMenu.showKey));
+      },
+      option: {
+        close: false,
+        show: showMenu.showKey,
+      },
+    };
+  });
+}
+
+const databaseKeys: Database[] = [
+  "MySQL",
+  "MariaDB",
+  "PostgreSQL",
+  "Oracle",
+  "MSSQL",
+];
+function createDatabaseMenus(store: Store): Menu[] {
+  const { canvasState } = store;
+  return databaseKeys.map(databaseKey => {
+    return {
+      icon: canvasState.database === databaseKey ? "check" : undefined,
+      name: databaseKey,
+      execute() {
+        store.dispatch(changeDatabase(databaseKey));
+      },
+      option: {
+        close: false,
+        database: databaseKey,
+      },
+    };
+  });
 }

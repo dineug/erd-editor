@@ -28,7 +28,7 @@ class ColumnKey extends EditorElement {
     super.connectedCallback();
     const { store } = this.context;
     this.subscriptionList.push(
-      store.observe(this.columnUI, (name: string | number | symbol) => {
+      store.observe(this.columnUI, name => {
         switch (name) {
           case "pk":
           case "fk":

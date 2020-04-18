@@ -1,5 +1,6 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import { SIZE_MENU_HEIGHT } from "@src/core/Layout";
@@ -16,6 +17,8 @@ export class Contextmenu extends EditorElement {
   currentMenu: Menu | null = null;
 
   menus: Menu[] = [];
+
+  private subscriptionList: Subscription[] = [];
 
   get theme() {
     const { table, font } = this.context.theme;
@@ -47,10 +50,25 @@ export class Contextmenu extends EditorElement {
   connectedCallback() {
     super.connectedCallback();
     Logger.debug("Contextmenu before render");
+    const { store } = this.context;
+    this.subscriptionList.push.apply(this.subscriptionList, [
+      store.observe(store.canvasState.show, () => this.requestUpdate()),
+      store.observe(store.canvasState, name => {
+        switch (name) {
+          case "database":
+          case "language":
+          case "tableCase":
+          case "columnCase":
+            this.requestUpdate();
+            break;
+        }
+      }),
+    ]);
   }
   disconnectedCallback() {
     Logger.debug("Contextmenu destroy");
     this.currentMenu = null;
+    this.subscriptionList.forEach(sub => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
@@ -58,21 +76,22 @@ export class Contextmenu extends EditorElement {
     Logger.debug("Contextmenu render");
     return html`
       <ul class="vuerd-contextmenu" style=${styleMap(this.theme)}>
-        ${this.menus.map(
-          menu => html`
+        ${this.menus.map(menu => {
+          const icon = this.getIcon(menu);
+          return html`
             <li
               @click=${() => this.onExecute(menu)}
               @mouseover=${() => this.onMouseover(menu)}
               @mouseenter=${this.onMouseenter}
               @mouseleave=${this.onMouseleave}
             >
-              ${menu.icon
+              ${icon
                 ? html`
                     <span class="icon">
                       <vuerd-fontawesome
                         .context=${this.context}
                         size="14"
-                        icon=${menu.icon}
+                        icon=${icon}
                       >
                       </vuerd-fontawesome>
                     </span>
@@ -97,8 +116,8 @@ export class Contextmenu extends EditorElement {
                   `
                 : html``}
             </li>
-          `
-        )}
+          `;
+        })}
       </ul>
       ${this.currentMenu && this.currentMenu.children
         ? html`
@@ -138,5 +157,26 @@ export class Contextmenu extends EditorElement {
         this.context.eventBus.emit(Bus.ERD.contextmenuEnd);
       }
     }
+  }
+
+  private getIcon(menu: Menu): string | undefined {
+    const { canvasState } = this.context.store;
+    if (menu.option?.show) {
+      const show = canvasState.show;
+      return show[menu.option.show] ? "check" : undefined;
+    } else if (menu.option?.database) {
+      const database = canvasState.database;
+      return menu.option.database === database ? "check" : undefined;
+    } else if (menu.option?.language) {
+      const language = canvasState.language;
+      return menu.option.language === language ? "check" : undefined;
+    } else if (menu.option?.tableCase) {
+      const tableCase = canvasState.tableCase;
+      return menu.option.tableCase === tableCase ? "check" : undefined;
+    } else if (menu.option?.columnCase) {
+      const columnCase = canvasState.columnCase;
+      return menu.option.columnCase === columnCase ? "check" : undefined;
+    }
+    return menu.icon;
   }
 }

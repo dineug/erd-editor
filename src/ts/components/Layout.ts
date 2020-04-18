@@ -9,6 +9,8 @@ import {
   SIZE_MEMO_PADDING,
 } from "@src/core/Layout";
 
+const fontFamily = css`"Noto Sans", "Cascadia Code", "JetBrains Mono", "D2Coding", "Consolas", sans-serif`;
+
 export const Layout = css`
   ul,
   ol {
@@ -21,8 +23,7 @@ export const Layout = css`
     position: relative;
     overflow: hidden;
     font-size: ${SIZE_FONT}px;
-    font-family: "Noto Sans", "Cascadia Code", "JetBrains Mono", "D2Coding",
-      "Consolas", sans-serif;
+    font-family: ${fontFamily};
   }
 
   .vuerd-erd {
@@ -65,8 +66,7 @@ export const Layout = css`
     border: none;
     opacity: 0.9;
     font-size: ${SIZE_FONT}px;
-    font-family: "Noto Sans", "Cascadia Code", "JetBrains Mono", "D2Coding",
-      "Consolas", sans-serif;
+    font-family: ${fontFamily};
   }
   div.vuerd-input-edit,
   .vuerd-column-not-null {
@@ -110,7 +110,7 @@ export const Layout = css`
     align-items: center;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-right: 10px;
+    padding-right: 5px;
   }
   .vuerd-contextmenu > li > span.icon,
   .vuerd-contextmenu > li > span.icon > img {
@@ -118,6 +118,7 @@ export const Layout = css`
   }
   .vuerd-contextmenu > li > span.name {
     width: 110px;
+    height: 17px;
   }
   .vuerd-contextmenu > li > span.keymap {
     width: 70px;
@@ -134,8 +135,7 @@ export const Layout = css`
     position: fixed;
     top: -100px;
     font-size: ${SIZE_FONT}px;
-    font-family: "Noto Sans", "Cascadia Code", "JetBrains Mono", "D2Coding",
-      "Consolas", sans-serif;
+    font-family: ${fontFamily};
   }
 
   .vuerd-sash {
@@ -175,8 +175,7 @@ export const Layout = css`
     resize: none;
     outline: none;
     font-size: ${SIZE_FONT}px;
-    font-family: "Noto Sans", "Cascadia Code", "JetBrains Mono", "D2Coding",
-      "Consolas", sans-serif;
+    font-family: ${fontFamily};
   }
 
   /* width */

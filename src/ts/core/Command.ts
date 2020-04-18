@@ -53,6 +53,17 @@ import {
   moveCanvasExecute,
   ResizeCanvas,
   resizeCanvasExecute,
+  ChangeCanvasShow,
+  changeCanvasShowExecute,
+  ChangeDatabase,
+  changeDatabaseExecute,
+  ChangeCanvasType,
+  changeCanvasTypeExecute,
+  ChangeLanguage,
+  changeLanguageExecute,
+  ChangeNameCase,
+  changeTableCaseExecute,
+  changeColumnCaseExecute,
 } from "./command/canvas";
 import {
   FocusTable,
@@ -109,6 +120,12 @@ type CommandName =
   | "memo.resize"
   | "canvas.move"
   | "canvas.resize"
+  | "canvas.changeShow"
+  | "canvas.changeDatabase"
+  | "canvas.changeCanvasType"
+  | "canvas.changeLanguage"
+  | "canvas.changeTableCase"
+  | "canvas.changeColumnCase"
   | "editor.focusTable"
   | "editor.focusEndTable"
   | "editor.focusMoveTable"
@@ -141,6 +158,11 @@ export type Command =
   | CommandEffect<ResizeMemo>
   | CommandEffect<MoveCanvas>
   | CommandEffect<ResizeCanvas>
+  | CommandEffect<ChangeCanvasShow>
+  | CommandEffect<ChangeDatabase>
+  | CommandEffect<ChangeCanvasType>
+  | CommandEffect<ChangeLanguage>
+  | CommandEffect<ChangeNameCase>
   | CommandEffect<FocusTable>
   | CommandEffect<FocusMoveTable>
   | CommandEffect<FocusTargetTable>
@@ -243,6 +265,24 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "canvas.resize":
         resizeCanvasExecute(store, command.data as ResizeCanvas);
+        break;
+      case "canvas.changeShow":
+        changeCanvasShowExecute(store, command.data as ChangeCanvasShow);
+        break;
+      case "canvas.changeDatabase":
+        changeDatabaseExecute(store, command.data as ChangeDatabase);
+        break;
+      case "canvas.changeCanvasType":
+        changeCanvasTypeExecute(store, command.data as ChangeCanvasType);
+        break;
+      case "canvas.changeLanguage":
+        changeLanguageExecute(store, command.data as ChangeLanguage);
+        break;
+      case "canvas.changeTableCase":
+        changeTableCaseExecute(store, command.data as ChangeNameCase);
+        break;
+      case "canvas.changeColumnCase":
+        changeColumnCaseExecute(store, command.data as ChangeNameCase);
         break;
       case "editor.focusTable":
         focusTableExecute(store, command.data as FocusTable);
