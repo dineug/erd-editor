@@ -10,6 +10,7 @@ import { Table as TableModel, Column } from "@src/core/store/Table";
 import { keymapOptionToString } from "@src/core/Keymap";
 import { FocusType } from "@src/core/model/FocusTableModel";
 import { getData } from "@src/core/Helper";
+import { useTransitionFlip } from "@src/core/Animation";
 import {
   moveTable,
   removeTable,
@@ -26,17 +27,8 @@ import {
 
 type FocusTableKey = "focusName" | "focusComment";
 
-interface TransitionColumn {
-  id: string;
-  top: number;
-  left: number;
-}
-
 @customElement("vuerd-table")
 class Table extends EditorElement {
-  @property({ type: String })
-  buttonColor = "#fff0";
-
   table!: TableModel;
 
   private draggable$: Subject<CustomEvent> = new Subject();
@@ -45,7 +37,8 @@ class Table extends EditorElement {
   private subMousemove: Subscription | null = null;
   private subFocusTable: Subscription | null = null;
   private subDraggableColumns: Subscription[] = [];
-  private transitionColumns: TransitionColumn[] = [];
+  private snapshotColumn: (list: HTMLElement[]) => void;
+  private playColumn: (list: HTMLElement[], className: string) => void;
 
   get classMap() {
     return {
@@ -63,6 +56,13 @@ class Table extends EditorElement {
       width: `${this.table.width()}px`,
       height: `${this.table.height()}px`,
     };
+  }
+
+  constructor() {
+    super();
+    const { snapshot, play } = useTransitionFlip();
+    this.snapshotColumn = snapshot;
+    this.playColumn = play;
   }
 
   connectedCallback() {
@@ -121,7 +121,12 @@ class Table extends EditorElement {
     this.focusTableObserve();
   }
   updated(changedProperties: any) {
-    this.transitionStartColumn();
+    this.playColumn(
+      Array.from(
+        this.renderRoot.querySelectorAll(".vuerd-column")
+      ) as HTMLElement[],
+      "vuerd-column-move"
+    );
   }
   disconnectedCallback() {
     Logger.debug("Table destroy");
@@ -143,15 +148,12 @@ class Table extends EditorElement {
         class=${classMap(this.classMap)}
         style=${styleMap(this.styleMap)}
         @mousedown=${this.onMousedown}
-        @mouseenter=${this.onMouseenter}
-        @mouseleave=${this.onMouseleave}
       >
         <div class="vuerd-table-header">
           <div class="vuerd-table-header-top">
             <vuerd-fontawesome
               class="vuerd-button"
               .context=${this.context}
-              .color=${this.buttonColor}
               title=${keymapRemoveTable}
               icon="times"
               size="12"
@@ -160,7 +162,6 @@ class Table extends EditorElement {
             <vuerd-fontawesome
               class="vuerd-button"
               .context=${this.context}
-              .color=${this.buttonColor}
               title=${keymapAddColumn}
               icon="plus"
               size="12"
@@ -269,7 +270,11 @@ class Table extends EditorElement {
     const { draggableColumn } = store.editorState;
     const { tableId, columnId } = event.detail;
     if (draggableColumn && draggableColumn.columnId !== columnId) {
-      this.transitionSnapshotColumn();
+      this.snapshotColumn(
+        Array.from(
+          this.renderRoot.querySelectorAll(".vuerd-column")
+        ) as HTMLElement[]
+      );
       store.dispatch(
         moveColumn(
           draggableColumn.tableId,
@@ -292,13 +297,6 @@ class Table extends EditorElement {
       const { store } = this.context;
       store.dispatch(selectTable(store, event.ctrlKey, this.table.id));
     }
-  }
-  private onMouseenter(event: MouseEvent) {
-    const { font } = this.context.theme;
-    this.buttonColor = font;
-  }
-  private onMouseleave(event: MouseEvent) {
-    this.buttonColor = "#fff0";
   }
   private onDraggableColumn() {
     Logger.debug("Table onDraggableColumn");
@@ -412,59 +410,5 @@ class Table extends EditorElement {
       editorState.editTable?.id === column.id &&
       editorState.editTable.focusType === focusType
     );
-  }
-
-  /**
-   * FLIP stands for First, Last, Invert, Play.
-   * https://aerotwist.com/blog/flip-your-animations/
-   */
-  private transitionSnapshotColumn() {
-    // First
-    this.transitionColumns = [];
-    const liNodeList = this.renderRoot.querySelectorAll(".vuerd-column");
-    liNodeList.forEach(node => {
-      const li = node as HTMLElement;
-      const { top, left } = li.getBoundingClientRect();
-      const id = li.dataset.id as string;
-      this.transitionColumns.push({
-        id,
-        top,
-        left,
-      });
-    });
-  }
-  private transitionStartColumn() {
-    if (this.transitionColumns.length !== 0) {
-      const liNodeList = this.renderRoot.querySelectorAll(".vuerd-column");
-      // Last
-      // Invert
-      liNodeList.forEach(node => {
-        const li = node as HTMLElement;
-        const { top, left } = li.getBoundingClientRect();
-        const id = li.dataset.id as string;
-        const old = getData(this.transitionColumns, id);
-        if (old) {
-          const dx = old.left - left;
-          const dy = old.top - top;
-          if (dx || dy) {
-            li.style.transform = `translate(${dx}px,${dy}px)`;
-            li.style.transitionDuration = "0s";
-          }
-        }
-      });
-      // Play
-      liNodeList.forEach(node => {
-        const li = node as HTMLElement;
-        li.classList.add("vuerd-column-move");
-        li.style.transform = "";
-        li.style.transitionDuration = "";
-        const onTransitionend = () => {
-          li.classList.remove("vuerd-column-move");
-          li.removeEventListener("transitionend", onTransitionend);
-        };
-        li.addEventListener("transitionend", onTransitionend);
-      });
-      this.transitionColumns = [];
-    }
   }
 }

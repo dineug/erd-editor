@@ -26,8 +26,6 @@ import { keymapOptionToString } from "@src/core/Keymap";
 
 @customElement("vuerd-column")
 class Column extends EditorElement {
-  @property({ type: String })
-  buttonColor = "#fff0";
   @property({ type: Boolean })
   select = false;
   @property({ type: Boolean })
@@ -75,6 +73,7 @@ class Column extends EditorElement {
     super.connectedCallback();
     const { store } = this.context;
     this.subscriptionList.push.apply(this.subscriptionList, [
+      store.observe(this.column, () => this.requestUpdate()),
       store.observe(this.column.ui, name => {
         switch (name) {
           case "widthName":
@@ -101,8 +100,6 @@ class Column extends EditorElement {
         class=${classMap(this.classMap)}
         data-id=${this.column.id}
         draggable="true"
-        @mouseenter=${this.onMouseenter}
-        @mouseleave=${this.onMouseleave}
         @dragstart=${this.onDragstart}
         @dragend=${this.onDragend}
         @dragover=${this.onDragover}
@@ -198,7 +195,6 @@ class Column extends EditorElement {
         <vuerd-fontawesome
           class="vuerd-button"
           .context=${this.context}
-          .color=${this.buttonColor}
           title=${keymapRemoveColumn}
           icon="times"
           size="9"
@@ -277,13 +273,6 @@ class Column extends EditorElement {
         store.dispatch(editTableCommand(this.column.id, focusType));
       }
     }
-  }
-  private onMouseenter(event: MouseEvent) {
-    const { font } = this.context.theme;
-    this.buttonColor = font;
-  }
-  private onMouseleave(event: MouseEvent) {
-    this.buttonColor = "#fff0";
   }
   private onRemoveColumn(event: MouseEvent) {
     const { store } = this.context;

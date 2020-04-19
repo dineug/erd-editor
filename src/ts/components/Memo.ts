@@ -35,9 +35,6 @@ interface ResizeMemo {
 
 @customElement("vuerd-memo")
 class Memo extends EditorElement {
-  @property({ type: String })
-  buttonColor = "#fff0";
-
   memo!: MemoModel;
 
   private subscriptionList: Subscription[] = [];
@@ -112,14 +109,11 @@ class Memo extends EditorElement {
         class=${classMap(this.classMap)}
         style=${styleMap(this.styleMap)}
         @mousedown=${this.onMousedown}
-        @mouseenter=${this.onMouseenter}
-        @mouseleave=${this.onMouseleave}
       >
         <div class="vuerd-memo-header">
           <vuerd-fontawesome
             class="vuerd-button"
             .context=${this.context}
-            .color=${this.buttonColor}
             title=${keymapRemoveTable}
             icon="times"
             size="12"
@@ -227,13 +221,6 @@ class Memo extends EditorElement {
     }
     const { store } = this.context;
     store.dispatch(selectMemo(store, event.ctrlKey, this.memo.id));
-  }
-  private onMouseenter(event: MouseEvent) {
-    const { font } = this.context.theme;
-    this.buttonColor = font;
-  }
-  private onMouseleave(event: MouseEvent) {
-    this.buttonColor = "#fff0";
   }
   private onRemoveMemo(event: MouseEvent) {
     const { store } = this.context;

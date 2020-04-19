@@ -9,13 +9,14 @@ export interface Theme {
   font: string;
   fontActive: string;
   fontPlaceholder: string;
+  contextmenu: string;
   contextmenuActive: string;
   edit: string;
   mark: string;
   columnSelect: string;
   columnActive: string;
   previewShadow: string;
-  previewTarget: string;
+  previewHandle: string;
   scrollBarThumb: string;
   scrollBarThumbActive: string;
   code: string;
@@ -33,13 +34,14 @@ export function createTheme(): Theme {
     font: "#a2a2a2",
     fontActive: "white",
     fontPlaceholder: "#6D6D6D",
+    contextmenu: "#191919",
     contextmenuActive: "#383d41",
     edit: "#ffc107",
     mark: "#ffc107",
     columnSelect: "#232a2f",
     columnActive: "#372908",
     previewShadow: "#171717",
-    previewTarget: "#ffc107",
+    previewHandle: "#ffc107",
     scrollBarThumb: "#6D6D6D",
     scrollBarThumbActive: "#a2a2a2",
     code: "#23241f",

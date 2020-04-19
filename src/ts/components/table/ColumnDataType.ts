@@ -17,7 +17,6 @@ class ColumnDataType extends EditorElement {
   value = "";
 
   render() {
-    const { theme } = this.context;
     return html`
       <div class="vuerd-column-data-type">
         <vuerd-input-edit

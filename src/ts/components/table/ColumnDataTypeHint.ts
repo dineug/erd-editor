@@ -1,6 +1,7 @@
 import { html, customElement, property } from "lit-element";
 import { repeat } from "lit-html/directives/repeat";
 import { unsafeHTML } from "lit-html/directives/unsafe-html";
+import { Subscription } from "rxjs";
 import { EditorElement } from "../EditorElement";
 import { Logger } from "@src/core/Logger";
 import { databaseHints, DataTypeHint } from "@src/core/DataType";
@@ -33,14 +34,14 @@ class ColumnDataTypeHint extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.filterHint();
+    this.hintFilter();
   }
   updated(changedProperties: any) {
     Logger.debug("ColumnDataTypeHint updated");
     changedProperties.forEach((oldValue: any, propName: string) => {
       switch (propName) {
         case "value":
-          this.filterHint();
+          this.hintFilter();
           break;
       }
     });
@@ -63,7 +64,7 @@ class ColumnDataTypeHint extends EditorElement {
     `;
   }
 
-  private filterHint() {
+  private hintFilter() {
     if (this.value.trim() === "") {
       this.hints = this.dataTypeHints.map(dataTypeHint => {
         return {

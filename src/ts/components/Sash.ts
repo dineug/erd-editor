@@ -20,21 +20,21 @@ class Sash extends EditorElement {
   @property({ type: Number })
   left = 0;
 
-  get sashClass() {
-    const sashClass: any = {
+  get classMap() {
+    const classMap: any = {
       "vuerd-sash": true,
     };
     if (this.vertical) {
-      sashClass.vertical = true;
+      classMap.vertical = true;
     } else if (this.horizontal) {
-      sashClass.horizontal = true;
+      classMap.horizontal = true;
     } else if (this.edge) {
-      sashClass.edge = true;
+      classMap.edge = true;
     }
-    return sashClass;
+    return classMap;
   }
 
-  get theme() {
+  get styleMap() {
     const theme: any = {
       top: `${this.centerTop}px`,
       left: `${this.centerLeft}px`,
@@ -60,8 +60,8 @@ class Sash extends EditorElement {
   render() {
     return html`
       <div
-        class=${classMap(this.sashClass)}
-        style=${styleMap(this.theme)}
+        class=${classMap(this.classMap)}
+        style=${styleMap(this.styleMap)}
       ></div>
     `;
   }

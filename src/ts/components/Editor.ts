@@ -118,13 +118,14 @@ class Editor extends EditorElement {
       font,
       fontActive,
       fontPlaceholder,
+      contextmenu,
       contextmenuActive,
       edit,
       mark,
       columnSelect,
       columnActive,
       previewShadow,
-      previewTarget,
+      previewHandle,
       scrollBarThumb,
       scrollBarThumbActive,
       code,
@@ -132,6 +133,9 @@ class Editor extends EditorElement {
     return html`
       <style>
         :host {
+          --vuerd-font-family: "Noto Sans", "Cascadia Code", "JetBrains Mono",
+            "D2Coding", "Consolas", sans-serif;
+
           --vuerd-color-canvas: ${canvas};
           --vuerd-color-table: ${table};
           --vuerd-color-table-active: ${tableActive};
@@ -142,13 +146,14 @@ class Editor extends EditorElement {
           --vuerd-color-font: ${font};
           --vuerd-color-font-active: ${fontActive};
           --vuerd-color-font-placeholder: ${fontPlaceholder};
+          --vuerd-color-contextmenu: ${contextmenu};
           --vuerd-color-contextmenu-active: ${contextmenuActive};
           --vuerd-color-edit: ${edit};
           --vuerd-color-mark: ${mark};
           --vuerd-color-column-select: ${columnSelect};
           --vuerd-color-column-active: ${columnActive};
           --vuerd-color-preview-shadow: ${previewShadow};
-          --vuerd-color-preview-target: ${previewTarget};
+          --vuerd-color-preview-handle: ${previewHandle};
           --vuerd-color-scrollbar-thumb: ${scrollBarThumb};
           --vuerd-color-scrollbar-thumb-active: ${scrollBarThumbActive};
           --vuerd-color-code: ${code};

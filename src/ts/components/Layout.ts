@@ -9,8 +9,6 @@ import {
   SIZE_MEMO_PADDING,
 } from "@src/core/Layout";
 
-const fontFamily = css`"Noto Sans", "Cascadia Code", "JetBrains Mono", "D2Coding", "Consolas", sans-serif`;
-
 export const Layout = css`
   ul,
   ol {
@@ -23,7 +21,7 @@ export const Layout = css`
     position: relative;
     overflow: hidden;
     font-size: ${SIZE_FONT}px;
-    font-family: ${fontFamily};
+    font-family: var(--vuerd-font-family);
     color: var(--vuerd-color-font);
     background-color: var(--vuerd-color-canvas);
   }
@@ -48,11 +46,14 @@ export const Layout = css`
     position: fixed;
     top: -100px;
     font-size: ${SIZE_FONT}px;
-    font-family: ${fontFamily};
+    font-family: var(--vuerd-font-family);
   }
 
   .vuerd-button {
     cursor: pointer;
+  }
+  .vuerd-button:hover {
+    fill: var(--vuerd-color-font-active);
   }
 
   /* =============== table ============== */
@@ -61,7 +62,11 @@ export const Layout = css`
     opacity: 0.9;
     padding: ${SIZE_TABLE_PADDING}px;
     font-size: ${SIZE_FONT}px;
+    fill: #fff0;
     background-color: var(--vuerd-color-table);
+  }
+  .vuerd-table:hover {
+    fill: var(--vuerd-color-font);
   }
   .vuerd-table.active {
     border: solid var(--vuerd-color-table-active) 1px;
@@ -82,10 +87,15 @@ export const Layout = css`
   /* =============== column ============== */
   .vuerd-column {
     height: ${SIZE_COLUMN_HEIGHT}px;
+    fill: #fff0;
+  }
+  .vuerd-column:hover {
+    fill: var(--vuerd-color-font);
   }
   .vuerd-column.select {
     background-color: var(--vuerd-color-column-select);
   }
+  /* animation FLIP */
   .vuerd-column-move {
     transition: transform 0.3s;
   }
@@ -102,7 +112,7 @@ export const Layout = css`
     border: none;
     opacity: 0.9;
     font-size: ${SIZE_FONT}px;
-    font-family: ${fontFamily};
+    font-family: var(--vuerd-font-family);
   }
   div.vuerd-input-edit {
     border-bottom: solid #fff0 1.5px;
@@ -126,6 +136,16 @@ export const Layout = css`
     display: inline-flex;
     vertical-align: middle;
     align-items: center;
+    fill: #fff0;
+  }
+  .vuerd-column-key.pk {
+    fill: var(--vuerd-color-key-pk);
+  }
+  .vuerd-column-key.fk {
+    fill: var(--vuerd-color-key-fk);
+  }
+  .vuerd-column-key.pfk {
+    fill: var(--vuerd-color-key-pfk);
   }
 
   .vuerd-column-not-null {
@@ -157,7 +177,7 @@ export const Layout = css`
     left: 0;
     z-index: 100000000;
     color: var(--vuerd-color-font);
-    background-color: var(--vuerd-color-table);
+    background-color: var(--vuerd-color-contextmenu);
   }
   .vuerd-column-data-type-hint > li {
     padding: 5px;
@@ -181,7 +201,8 @@ export const Layout = css`
     z-index: 100000000;
     opacity: 0.9;
     color: var(--vuerd-color-font);
-    background-color: var(--vuerd-color-table);
+    fill: var(--vuerd-color-font);
+    background-color: var(--vuerd-color-contextmenu);
   }
   .vuerd-contextmenu > li {
     padding: 10px 5px 10px 10px;
@@ -191,6 +212,7 @@ export const Layout = css`
   }
   .vuerd-contextmenu > li:hover {
     color: var(--vuerd-color-font-active);
+    fill: var(--vuerd-color-font-active);
     background-color: var(--vuerd-color-contextmenu-active);
   }
   .vuerd-contextmenu > li > span {
@@ -243,7 +265,11 @@ export const Layout = css`
   .vuerd-memo {
     position: absolute;
     opacity: 0.9;
+    fill: #fff0;
     background-color: var(--vuerd-color-table);
+  }
+  .vuerd-memo:hover {
+    fill: var(--vuerd-color-font);
   }
   .vuerd-memo.active {
     border: solid var(--vuerd-color-table-active) 1px;
@@ -263,7 +289,7 @@ export const Layout = css`
     resize: none;
     outline: none;
     font-size: ${SIZE_FONT}px;
-    font-family: ${fontFamily};
+    font-family: var(--vuerd-font-family);
     color: var(--vuerd-color-font-active);
     background-color: var(--vuerd-color-table);
   }
