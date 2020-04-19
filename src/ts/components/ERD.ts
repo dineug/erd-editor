@@ -49,13 +49,6 @@ class ERD extends EditorElement {
   private menus: Menu[] = [];
   private erd!: Element;
 
-  get styleMap() {
-    return {
-      width: `${this.width}px`,
-      height: `${this.height}px`,
-    };
-  }
-
   connectedCallback() {
     super.connectedCallback();
     Logger.debug("ERD before render");
@@ -208,7 +201,10 @@ class ERD extends EditorElement {
     return html`
       <div
         class="vuerd-erd"
-        style=${styleMap(this.styleMap)}
+        style=${styleMap({
+          width: `${this.width}px`,
+          height: `${this.height}px`,
+        })}
         @mousedown=${this.onMousedown}
         @contextmenu=${this.onContextmenu}
       >

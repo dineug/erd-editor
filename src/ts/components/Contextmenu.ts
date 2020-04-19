@@ -20,13 +20,6 @@ export class Contextmenu extends EditorElement {
 
   private subscriptionList: Subscription[] = [];
 
-  get styleMap() {
-    return {
-      left: `${this.x}px`,
-      top: `${this.y}px`,
-    };
-  }
-
   get childrenX() {
     let x = this.x;
     const ul = this.renderRoot.querySelector(".vuerd-contextmenu");
@@ -72,7 +65,13 @@ export class Contextmenu extends EditorElement {
   render() {
     Logger.debug("Contextmenu render");
     return html`
-      <ul class="vuerd-contextmenu" style=${styleMap(this.styleMap)}>
+      <ul
+        class="vuerd-contextmenu"
+        style=${styleMap({
+          left: `${this.x}px`,
+          top: `${this.y}px`,
+        })}
+      >
         ${this.menus.map(menu => {
           const icon = this.getIcon(menu);
           return html`

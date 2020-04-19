@@ -62,13 +62,6 @@ class Column extends EditorElement {
 
   private subscriptionList: Subscription[] = [];
 
-  get classMap() {
-    return {
-      "vuerd-column": true,
-      select: this.select,
-    };
-  }
-
   connectedCallback() {
     super.connectedCallback();
     const { store } = this.context;
@@ -92,12 +85,15 @@ class Column extends EditorElement {
   }
 
   render() {
-    const { theme, keymap } = this.context;
+    const { keymap } = this.context;
     const { show } = this.context.store.canvasState;
     const keymapRemoveColumn = keymapOptionToString(keymap.removeColumn[0]);
     return html`
       <li
-        class=${classMap(this.classMap)}
+        class=${classMap({
+          "vuerd-column": true,
+          select: this.select,
+        })}
         data-id=${this.column.id}
         draggable="true"
         @dragstart=${this.onDragstart}
@@ -130,6 +126,9 @@ class Column extends EditorElement {
                 .focusState=${this.focusDataType}
                 .edit=${this.editDataType}
                 .select=${this.select}
+                .tableId=${this.tableId}
+                .columnId=${this.column.id}
+                @blur=${this.onBlur}
                 @input=${(event: InputEvent) =>
                   this.onInput(event, "columnDataType")}
                 @mousedown=${(event: MouseEvent) =>

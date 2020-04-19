@@ -95,7 +95,7 @@ export const Layout = css`
   .vuerd-column.select {
     background-color: var(--vuerd-color-column-select);
   }
-  /* animation FLIP */
+  /* animation flip */
   .vuerd-column-move {
     transition: transform 0.3s;
   }
@@ -190,6 +190,17 @@ export const Layout = css`
   }
   .vuerd-column-data-type-hint > li:hover .vuerd-mark {
     color: var(--vuerd-color-font-active);
+  }
+  .vuerd-data-type-hint.active {
+    color: var(--vuerd-color-font-active);
+    background-color: var(--vuerd-color-contextmenu-active);
+  }
+  .vuerd-data-type-hint.active .vuerd-mark {
+    color: var(--vuerd-color-font-active);
+  }
+  /* animation flip */
+  .vuerd-data-type-hint-move {
+    transition: transform 0.2s;
   }
   .vuerd-mark {
     color: var(--vuerd-color-mark);

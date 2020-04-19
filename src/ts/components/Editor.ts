@@ -37,13 +37,6 @@ class Editor extends EditorElement {
 
   private subscriptionList: Subscription[] = [];
 
-  get styleMap() {
-    return {
-      width: `${this.width}px`,
-      height: `${this.height}px`,
-    };
-  }
-
   constructor() {
     super();
     Logger.debug("Editor constructor");
@@ -159,7 +152,13 @@ class Editor extends EditorElement {
           --vuerd-color-code: ${code};
         }
       </style>
-      <div class="vuerd-editor" style=${styleMap(this.styleMap)}>
+      <div
+        class="vuerd-editor"
+        style=${styleMap({
+          width: `${this.width}px`,
+          height: `${this.height}px`,
+        })}
+      >
         <vuerd-erd
           .context=${this.context}
           .width=${this.width}

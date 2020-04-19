@@ -30,12 +30,6 @@ class InputEdit extends EditorElement {
     };
   }
 
-  get styleMap() {
-    return {
-      width: `${this.width}px`,
-    };
-  }
-
   get placeholderValue() {
     if (this.value.trim() === "") {
       return this.placeholder;
@@ -44,7 +38,6 @@ class InputEdit extends EditorElement {
   }
 
   updated(changedProperties: any) {
-    Logger.debug("InputEdit updated");
     changedProperties.forEach((oldValue: any, propName: string) => {
       switch (propName) {
         case "edit":
@@ -63,15 +56,16 @@ class InputEdit extends EditorElement {
   }
 
   render() {
-    Logger.debug("InputEdit render");
     return this.edit
       ? html`
           <input
             class=${classMap(this.classMap)}
-            style=${styleMap(this.styleMap)}
+            style=${styleMap({
+              width: `${this.width}px`,
+            })}
             type="text"
             spellcheck="false"
-            value=${this.value}
+            .value=${this.value}
             placeholder=${this.placeholder}
             @blur=${this.onEmit}
           />
@@ -79,7 +73,9 @@ class InputEdit extends EditorElement {
       : html`
           <div
             class=${classMap(this.classMap)}
-            style=${styleMap(this.styleMap)}
+            style=${styleMap({
+              width: `${this.width}px`,
+            })}
           >
             <span>${this.placeholderValue}</span>
           </div>
@@ -89,7 +85,7 @@ class InputEdit extends EditorElement {
   private onEmit(event: InputEvent) {
     Logger.debug(`InputEdit onEmit: ${event.type}`);
     if (event.type === "blur") {
-      this.dispatchEvent(new Event(event.type, event));
+      this.dispatchEvent(new Event("blur"));
     }
   }
 }

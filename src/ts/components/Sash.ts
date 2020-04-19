@@ -35,14 +35,14 @@ class Sash extends EditorElement {
   }
 
   get styleMap() {
-    const theme: any = {
+    const styleMap: any = {
       top: `${this.centerTop}px`,
       left: `${this.centerLeft}px`,
     };
     if (this.edge) {
-      theme.cursor = this.cursor;
+      styleMap.cursor = this.cursor;
     }
-    return theme;
+    return styleMap;
   }
 
   get centerTop() {

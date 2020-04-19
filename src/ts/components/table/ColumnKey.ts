@@ -11,16 +11,6 @@ class ColumnKey extends EditorElement {
 
   private subscriptionList: Subscription[] = [];
 
-  get classMap() {
-    const { pk, fk, pfk } = this.columnUI;
-    return {
-      "vuerd-column-key": true,
-      pk,
-      fk,
-      pfk,
-    };
-  }
-
   connectedCallback() {
     super.connectedCallback();
     const { store } = this.context;
@@ -42,8 +32,16 @@ class ColumnKey extends EditorElement {
   }
 
   render() {
+    const { pk, fk, pfk } = this.columnUI;
     return html`
-      <div class=${classMap(this.classMap)}>
+      <div
+        class=${classMap({
+          "vuerd-column-key": true,
+          pk,
+          fk,
+          pfk,
+        })}
+      >
         <vuerd-fontawesome
           .context=${this.context}
           size="12"

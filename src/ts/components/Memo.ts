@@ -43,32 +43,6 @@ class Memo extends EditorElement {
   private x = 0;
   private y = 0;
 
-  get classMap() {
-    return {
-      "vuerd-memo": true,
-      active: this.memo.ui.active,
-    };
-  }
-
-  get styleMap() {
-    const { ui } = this.memo;
-    return {
-      top: `${ui.top}px`,
-      left: `${ui.left}px`,
-      zIndex: `${ui.zIndex}`,
-      width: `${this.width}px`,
-      height: `${this.height}px`,
-    };
-  }
-
-  get textareaStyleMap() {
-    const { ui } = this.memo;
-    return {
-      width: `${ui.width}px`,
-      height: `${ui.height}px`,
-    };
-  }
-
   get width(): number {
     const { ui } = this.memo;
     return ui.width + MEMO_PADDING;
@@ -102,12 +76,22 @@ class Memo extends EditorElement {
   }
 
   render() {
+    const { ui } = this.memo;
     const { keymap } = this.context;
     const keymapRemoveTable = keymapOptionToString(keymap.removeTable[0]);
     return html`
       <div
-        class=${classMap(this.classMap)}
-        style=${styleMap(this.styleMap)}
+        class=${classMap({
+          "vuerd-memo": true,
+          active: ui.active,
+        })}
+        style=${styleMap({
+          top: `${ui.top}px`,
+          left: `${ui.left}px`,
+          zIndex: `${ui.zIndex}`,
+          width: `${this.width}px`,
+          height: `${this.height}px`,
+        })}
         @mousedown=${this.onMousedown}
       >
         <div class="vuerd-memo-header">
@@ -123,7 +107,10 @@ class Memo extends EditorElement {
         <div class="vuerd-memo-body">
           <textarea
             class="vuerd-memo-textarea vuerd-scrollbar"
-            style=${styleMap(this.textareaStyleMap)}
+            style=${styleMap({
+              width: `${ui.width}px`,
+              height: `${ui.height}px`,
+            })}
             spellcheck="false"
             .value=${this.memo.value}
             @input=${this.onInput}

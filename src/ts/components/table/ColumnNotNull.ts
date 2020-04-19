@@ -16,19 +16,6 @@ class ColumnNotNull extends EditorElement {
 
   private subscriptionList: Subscription[] = [];
 
-  get classMap() {
-    return {
-      "vuerd-column-not-null": true,
-      focus: this.focusState,
-    };
-  }
-
-  get styleMap() {
-    return {
-      width: `${SIZE_COLUMN_OPTION_NN}px`,
-    };
-  }
-
   connectedCallback() {
     super.connectedCallback();
     const { store } = this.context;
@@ -47,7 +34,15 @@ class ColumnNotNull extends EditorElement {
 
   render() {
     return html`
-      <div class=${classMap(this.classMap)} style=${styleMap(this.styleMap)}>
+      <div
+        class=${classMap({
+          "vuerd-column-not-null": true,
+          focus: this.focusState,
+        })}
+        style=${styleMap({
+          width: `${SIZE_COLUMN_OPTION_NN}px`,
+        })}
+      >
         ${this.columnOption.notNull ? "N-N" : "NULL"}
       </div>
     `;

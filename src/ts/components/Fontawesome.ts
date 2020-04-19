@@ -16,22 +16,18 @@ class Fontawesome extends EditorElement {
   @property({ type: Number })
   size = SIZE;
 
-  get styleMap() {
-    const rem = SIZE_REM * (this.size / SIZE);
-    return {
-      display: "inline-flex",
-      width: `${rem}rem`,
-      height: `${rem}rem`,
-    };
-  }
-
   render() {
     const icon = getIcon(this.prefix, this.icon);
     if (icon) {
       const [width, height, , , d] = icon.icon;
+      const rem = SIZE_REM * (this.size / SIZE);
       return svg`
         <svg
-          style=${styleMap(this.styleMap)} 
+          style=${styleMap({
+            display: "inline-flex",
+            width: `${rem}rem`,
+            height: `${rem}rem`,
+          })} 
           viewBox="0 0 ${width} ${height}"
         >
           <path d=${d}></path>

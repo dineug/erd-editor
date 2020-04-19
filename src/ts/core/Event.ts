@@ -22,10 +22,10 @@ export function createWindowEventObservable(): WindowEventObservable {
 
 export class EventBus {
   private bus = document.createElement("div");
-  on(name: string, effect: (event: Event) => void) {
+  on(name: string, effect: (event: any) => void) {
     this.bus.addEventListener(name, effect);
   }
-  off(name: string, effect: (event: Event) => void) {
+  off(name: string, effect: (event: any) => void) {
     this.bus.removeEventListener(name, effect);
   }
   emit(name: string, detail?: any) {
@@ -41,6 +41,15 @@ enum ERD {
   contextmenuEnd = "ERD.contextmenuEnd",
 }
 
+enum ColumnDataTypeHint {
+  arrowUp = "ColumnDataTypeHint.arrowUp",
+  arrowDown = "ColumnDataTypeHint.arrowDown",
+  arrowRight = "ColumnDataTypeHint.arrowRight",
+  arrowLeft = "ColumnDataTypeHint.arrowLeft",
+  filterStart = "ColumnDataTypeHint.filterStart",
+}
+
 export const Bus = {
   ERD,
+  ColumnDataTypeHint,
 };

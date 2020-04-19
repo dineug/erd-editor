@@ -37,38 +37,16 @@ class Table extends EditorElement {
   private subMousemove: Subscription | null = null;
   private subFocusTable: Subscription | null = null;
   private subDraggableColumns: Subscription[] = [];
-  private snapshotColumn: (list: HTMLElement[]) => void;
-  private playColumn: (list: HTMLElement[], className: string) => void;
-
-  get classMap() {
-    return {
-      "vuerd-table": true,
-      active: this.table.ui.active,
-    };
-  }
-
-  get styleMap() {
-    const { ui } = this.table;
-    return {
-      top: `${ui.top}px`,
-      left: `${ui.left}px`,
-      zIndex: `${ui.zIndex}`,
-      width: `${this.table.width()}px`,
-      height: `${this.table.height()}px`,
-    };
-  }
-
-  constructor() {
-    super();
-    const { snapshot, play } = useTransitionFlip();
-    this.snapshotColumn = snapshot;
-    this.playColumn = play;
-  }
+  private snapshotColumn!: (list: HTMLElement[]) => void;
+  private playColumn!: (list: HTMLElement[], className: string) => void;
 
   connectedCallback() {
     super.connectedCallback();
     Logger.debug("Table before render");
     const { store } = this.context;
+    const { snapshot, play } = useTransitionFlip();
+    this.snapshotColumn = snapshot;
+    this.playColumn = play;
     this.subscriptionList.push.apply(this.subscriptionList, [
       this.draggable$.pipe(debounceTime(50)).subscribe(this.onDragoverColumn),
       store.observe(this.table.ui, () => this.requestUpdate()),
@@ -138,6 +116,7 @@ class Table extends EditorElement {
 
   render() {
     Logger.debug("Table render");
+    const { ui } = this.table;
     const { keymap } = this.context;
     const { show } = this.context.store.canvasState;
     const keymapAddColumn = keymapOptionToString(keymap.addColumn[0]);
@@ -145,8 +124,17 @@ class Table extends EditorElement {
     const widthColumn = this.table.maxWidthColumn();
     return html`
       <div
-        class=${classMap(this.classMap)}
-        style=${styleMap(this.styleMap)}
+        class=${classMap({
+          "vuerd-table": true,
+          active: ui.active,
+        })}
+        style=${styleMap({
+          top: `${ui.top}px`,
+          left: `${ui.left}px`,
+          zIndex: `${ui.zIndex}`,
+          width: `${this.table.width()}px`,
+          height: `${this.table.height()}px`,
+        })}
         @mousedown=${this.onMousedown}
       >
         <div class="vuerd-table-header">

@@ -6,14 +6,6 @@ import { Logger } from "@src/core/Logger";
 
 @customElement("vuerd-canvas-svg")
 class CanvasSVG extends EditorElement {
-  get styleMap() {
-    const { width, height } = this.context.store.canvasState;
-    return {
-      width: `${width}px`,
-      height: `${height}px`,
-    };
-  }
-
   connectedCallback() {
     super.connectedCallback();
     Logger.debug("CanvasSVG before render");
@@ -25,10 +17,14 @@ class CanvasSVG extends EditorElement {
 
   render() {
     Logger.debug("CanvasSVG render");
+    const { width, height } = this.context.store.canvasState;
     return svg`
       <svg 
         class="vuerd-canvas-svg" 
-        style=${styleMap(this.styleMap)}
+        style=${styleMap({
+          width: `${width}px`,
+          height: `${height}px`,
+        })}
       >
       ${repeat(
         [1, 2, 3],
