@@ -59,7 +59,6 @@ class Memo extends EditorElement {
     const { store } = this.context;
     this.subscriptionList.push.apply(this.subscriptionList, [
       store.observe(this.memo.ui, () => this.requestUpdate()),
-      store.observe(this.memo, () => this.requestUpdate()),
     ]);
   }
   firstUpdated() {

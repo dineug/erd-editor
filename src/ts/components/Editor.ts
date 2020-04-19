@@ -23,6 +23,11 @@ import "./table/ColumnKey";
 import "./table/ColumnNotNull";
 import "./table/ColumnDataType";
 import "./table/ColumnDataTypeHint";
+import "./Minimap";
+import "./minimap/MinimapHandle";
+import "./minimap/Table";
+import "./minimap/Column";
+import "./minimap/Memo";
 
 @customElement("vuerd-editor")
 class Editor extends EditorElement {
@@ -47,8 +52,9 @@ class Editor extends EditorElement {
     super.connectedCallback();
     Logger.debug("Editor before render");
     const { store, keymap } = this.context;
+    const { keydown$ } = this.context.windowEventObservable;
     this.subscriptionList.push(
-      this.context.windowEventObservable.keydown$.subscribe(event => {
+      keydown$.subscribe(event => {
         Logger.debug(`
         metaKey: ${event.metaKey},
         ctrlKey: ${event.ctrlKey},
@@ -117,8 +123,8 @@ class Editor extends EditorElement {
       mark,
       columnSelect,
       columnActive,
-      previewShadow,
-      previewHandle,
+      minimapShadow,
+      minimapHandle,
       scrollBarThumb,
       scrollBarThumbActive,
       code,
@@ -145,8 +151,8 @@ class Editor extends EditorElement {
           --vuerd-color-mark: ${mark};
           --vuerd-color-column-select: ${columnSelect};
           --vuerd-color-column-active: ${columnActive};
-          --vuerd-color-preview-shadow: ${previewShadow};
-          --vuerd-color-preview-handle: ${previewHandle};
+          --vuerd-color-minimap-shadow: ${minimapShadow};
+          --vuerd-color-minimap-handle: ${minimapHandle};
           --vuerd-color-scrollbar-thumb: ${scrollBarThumb};
           --vuerd-color-scrollbar-thumb-active: ${scrollBarThumbActive};
           --vuerd-color-code: ${code};

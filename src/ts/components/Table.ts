@@ -278,6 +278,7 @@ class Table extends EditorElement {
     const el = event.target as HTMLElement;
     if (!el.closest(".vuerd-button") && !el.closest("vuerd-input-edit")) {
       const { mouseup$, mousemove$ } = this.context.windowEventObservable;
+      this.onMouseup();
       this.subMouseup = mouseup$.subscribe(this.onMouseup);
       this.subMousemove = mousemove$.subscribe(this.onMousemove);
     }

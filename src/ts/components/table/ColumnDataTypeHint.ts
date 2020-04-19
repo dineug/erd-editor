@@ -2,8 +2,7 @@ import { html, customElement, property } from "lit-element";
 import { classMap } from "lit-html/directives/class-map";
 import { repeat } from "lit-html/directives/repeat";
 import { unsafeHTML } from "lit-html/directives/unsafe-html";
-import { Subscription } from "rxjs";
-import { fromEvent, Observable } from "rxjs";
+import { Subscription, fromEvent } from "rxjs";
 import { EditorElement } from "../EditorElement";
 import { Logger } from "@src/core/Logger";
 import { databaseHints, DataTypeHint } from "@src/core/DataType";
@@ -67,10 +66,8 @@ class ColumnDataTypeHint extends EditorElement {
     this.playHint = play;
     this.hintFilter();
     this.subscriptionList.push.apply(this.subscriptionList, [
-      fromEvent<MouseEvent>(editor, "mousedown").subscribe(
-        this.onMousedownHost
-      ),
-      mousedown$.subscribe(this.onMousedown),
+      mousedown$.subscribe(this.onMousedownWindow),
+      fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
     ]);
     eventBus.on(Bus.ColumnDataTypeHint.arrowUp, this.onArrowUp);
     eventBus.on(Bus.ColumnDataTypeHint.arrowDown, this.onArrowDown);
@@ -197,13 +194,13 @@ class ColumnDataTypeHint extends EditorElement {
   private onFilterStart = (event: CustomEvent) => {
     this.filterStart = true;
   };
-  private onMousedownHost = (event: MouseEvent) => {
+  private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
     if (!el.closest(".vuerd-column-data-type")) {
       this.dispatchEvent(new Event("blur"));
     }
   };
-  private onMousedown = (event: MouseEvent) => {
+  private onMousedownWindow = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
     const root = this.getRootNode() as any;
     if (!el.closest(root.host.localName)) {
@@ -213,12 +210,12 @@ class ColumnDataTypeHint extends EditorElement {
 
   private onSelectHint(hint: Hint) {
     Logger.debug("ColumnDataTypeHint onSelectHint");
-    this.filterStart = false;
     const { store, helper } = this.context;
+    this.filterStart = false;
+    this.activeEnd();
     store.dispatch(
       changeColumnDataType(helper, this.tableId, this.columnId, hint.name)
     );
-    this.activeEnd();
   }
 
   private hintFilter() {

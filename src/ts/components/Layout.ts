@@ -305,6 +305,28 @@ export const Layout = css`
     background-color: var(--vuerd-color-table);
   }
 
+  /* =============== minimap ============== */
+  .vuerd-minimap {
+    position: absolute;
+    z-index: 100000000;
+    overflow: hidden;
+    background-color: var(--vuerd-color-canvas);
+    box-shadow: 10px 10px 30px 20px var(--vuerd-color-minimap-shadow);
+  }
+  .vuerd-minimap-canvas {
+    position: relative;
+  }
+  .vuerd-minimap-canvas-svg {
+    position: absolute;
+    z-index: 1;
+  }
+  .vuerd-minimap-handle {
+    position: absolute;
+    z-index: 100000001;
+    border: solid var(--vuerd-color-minimap-handle) 1px;
+    cursor: pointer;
+  }
+
   /* =============== scrollbar ============== */
   /* width */
   ::-webkit-scrollbar {

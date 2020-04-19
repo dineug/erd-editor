@@ -77,7 +77,7 @@ class ColumnDataType extends EditorElement {
   }
   private onBlur() {
     const input = this.renderRoot.querySelector("input");
-    if (input) {
+    if (input && this.edit) {
       const len = input.value.length;
       input.selectionStart = len;
       input.selectionEnd = len;

@@ -15,8 +15,8 @@ export interface Theme {
   mark: string;
   columnSelect: string;
   columnActive: string;
-  previewShadow: string;
-  previewHandle: string;
+  minimapShadow: string;
+  minimapHandle: string;
   scrollBarThumb: string;
   scrollBarThumbActive: string;
   code: string;
@@ -40,8 +40,8 @@ export function createTheme(): Theme {
     mark: "#ffc107",
     columnSelect: "#232a2f",
     columnActive: "#372908",
-    previewShadow: "#171717",
-    previewHandle: "#ffc107",
+    minimapShadow: "black",
+    minimapHandle: "#ffc107",
     scrollBarThumb: "#6D6D6D",
     scrollBarThumbActive: "#a2a2a2",
     code: "#23241f",

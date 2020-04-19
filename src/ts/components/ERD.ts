@@ -53,9 +53,11 @@ class ERD extends EditorElement {
     super.connectedCallback();
     Logger.debug("ERD before render");
     const { store, eventBus, keymap } = this.context;
+    const { mousedown$, keydown$ } = this.context.windowEventObservable;
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
-    this.subscriptionList.push(
-      this.context.windowEventObservable.keydown$.subscribe(event => {
+    this.subscriptionList.push.apply(this.subscriptionList, [
+      mousedown$.subscribe(this.onMousedownWindow),
+      keydown$.subscribe(event => {
         const { focus, editTable, focusTable } = store.editorState;
         if (focus) {
           if (keymapMatch(event, keymap.addTable)) {
@@ -166,8 +168,8 @@ class ERD extends EditorElement {
             }
           }
         }
-      })
-    );
+      }),
+    ]);
   }
   firstUpdated() {
     Logger.debug("ERD after render");
@@ -191,8 +193,8 @@ class ERD extends EditorElement {
   disconnectedCallback() {
     Logger.debug("ERD destroy");
     this.onMouseup();
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
     this.context.eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
+    this.subscriptionList.forEach(sub => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
@@ -209,6 +211,11 @@ class ERD extends EditorElement {
         @contextmenu=${this.onContextmenu}
       >
         <vuerd-canvas .context=${this.context}></vuerd-canvas>
+        <vuerd-minimap
+          .context=${this.context}
+          .width=${this.width}
+          .height=${this.height}
+        ></vuerd-minimap>
         ${this.contextmenu
           ? html`
               <vuerd-contextmenu
@@ -246,6 +253,13 @@ class ERD extends EditorElement {
     const { store } = this.context;
     store.dispatch(moveCanvas(this.erd.scrollTop, this.erd.scrollLeft));
   };
+  private onMousedownWindow = (event: MouseEvent) => {
+    const el = event.target as HTMLElement;
+    const root = this.getRootNode() as any;
+    if (!el.closest(root.host.localName)) {
+      this.contextmenu = false;
+    }
+  };
 
   private onContextmenu(event: MouseEvent) {
     event.preventDefault();
@@ -265,17 +279,15 @@ class ERD extends EditorElement {
       !el.closest(".vuerd-table") &&
       !el.closest(".vuerd-memo")
     ) {
-      const { store, windowEventObservable } = this.context;
+      const { store } = this.context;
+      const { mouseup$, mousemove$ } = this.context.windowEventObservable;
       store.dispatch(selectEndTable(), selectEndMemo());
       if (event.ctrlKey) {
+        // TODO: multiple selection
       } else {
         this.onMouseup();
-        this.subMouseup = windowEventObservable.mouseup$.subscribe(
-          this.onMouseup
-        );
-        this.subMousemove = windowEventObservable.mousemove$.subscribe(
-          this.onMousemove
-        );
+        this.subMouseup = mouseup$.subscribe(this.onMouseup);
+        this.subMousemove = mousemove$.subscribe(this.onMousemove);
       }
     }
   }
