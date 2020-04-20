@@ -334,6 +334,13 @@ export const Layout = css`
     opacity: 1;
   }
 
+  /* =============== minimap ============== */
+  .vuerd-drag-select {
+    position: fixed;
+    z-index: 7500;
+    stroke: var(--vuerd-color-drag-select);
+  }
+
   /* =============== scrollbar ============== */
   /* width */
   ::-webkit-scrollbar {

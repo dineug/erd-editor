@@ -28,6 +28,7 @@ import "./minimap/MinimapHandle";
 import "./minimap/Table";
 import "./minimap/Column";
 import "./minimap/Memo";
+import "./DragSelect";
 
 @customElement("vuerd-editor")
 class Editor extends EditorElement {
@@ -127,6 +128,7 @@ class Editor extends EditorElement {
       scrollBarThumb,
       scrollBarThumbActive,
       code,
+      dragSelect,
     } = this.context.theme;
     return html`
       <style>
@@ -155,6 +157,7 @@ class Editor extends EditorElement {
           --vuerd-color-scrollbar-thumb: ${scrollBarThumb};
           --vuerd-color-scrollbar-thumb-active: ${scrollBarThumbActive};
           --vuerd-color-code: ${code};
+          --vuerd-color-drag-select: ${dragSelect};
         }
       </style>
       <div

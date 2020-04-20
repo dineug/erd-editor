@@ -42,6 +42,16 @@ class ERD extends EditorElement {
   contextmenuX = 0;
   @property({ type: Number })
   contextmenuY = 0;
+  @property({ type: Boolean })
+  select = false;
+  @property({ type: Number })
+  selectX = 0;
+  @property({ type: Number })
+  selectY = 0;
+  @property({ type: Number })
+  selectGhostX = 0;
+  @property({ type: Number })
+  selectGhostY = 0;
 
   private subscriptionList: Subscription[] = [];
   private subMouseup: Subscription | null = null;
@@ -217,6 +227,18 @@ class ERD extends EditorElement {
               ></vuerd-contextmenu>
             `
           : ``}
+        ${this.select
+          ? html`
+              <vuerd-drag-select
+                .context=${this.context}
+                .x=${this.selectX}
+                .y=${this.selectY}
+                .ghostX=${this.selectGhostX}
+                .ghostY=${this.selectGhostY}
+                @select-end=${this.onSelectEnd}
+              ></vuerd-drag-select>
+            `
+          : ""}
       </div>
     `;
   }
@@ -268,18 +290,27 @@ class ERD extends EditorElement {
     if (
       !el.closest(".vuerd-contextmenu") &&
       !el.closest(".vuerd-table") &&
-      !el.closest(".vuerd-memo")
+      !el.closest(".vuerd-memo") &&
+      !el.closest(".vuerd-minimap") &&
+      !el.closest(".vuerd-minimap-handle")
     ) {
       const { store } = this.context;
       const { mouseup$, mousemove$ } = this.context.windowEventObservable;
       store.dispatch(selectEndTable(), selectEndMemo());
       if (event.ctrlKey) {
-        // TODO: multiple selection
+        this.selectX = event.x;
+        this.selectY = event.y;
+        this.selectGhostX = event.offsetX;
+        this.selectGhostY = event.offsetY;
+        this.select = true;
       } else {
         this.onMouseup();
         this.subMouseup = mouseup$.subscribe(this.onMouseup);
         this.subMousemove = mousemove$.subscribe(this.onMousemove);
       }
     }
+  }
+  private onSelectEnd() {
+    this.select = false;
   }
 }

@@ -20,6 +20,7 @@ export interface Theme {
   scrollBarThumb: string;
   scrollBarThumbActive: string;
   code: string;
+  dragSelect: string;
 }
 
 export function createTheme(): Theme {
@@ -45,5 +46,6 @@ export function createTheme(): Theme {
     scrollBarThumb: "#6D6D6D",
     scrollBarThumbActive: "#a2a2a2",
     code: "#23241f",
+    dragSelect: "#0098ff",
   };
 }
