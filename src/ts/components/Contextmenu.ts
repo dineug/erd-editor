@@ -108,7 +108,7 @@ export class Contextmenu extends EditorElement {
                       </vuerd-fontawesome>
                     </span>
                   `
-                : html``}
+                : ""}
             </li>
           `;
         })}

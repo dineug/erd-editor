@@ -140,7 +140,7 @@ class Column extends EditorElement {
                   this.onEdit(event, "columnDataType")}
               ></vuerd-column-data-type>
             `
-          : html``}
+          : ""}
         ${show.columnNotNull
           ? html`
               <vuerd-column-not-null
@@ -153,7 +153,7 @@ class Column extends EditorElement {
                   this.onEdit(event, "columnNotNull")}
               ></vuerd-column-not-null>
             `
-          : html``}
+          : ""}
         ${show.columnDefault
           ? html`
               <vuerd-input-edit
@@ -173,7 +173,7 @@ class Column extends EditorElement {
                   this.onEdit(event, "columnDefault")}
               ></vuerd-input-edit>
             `
-          : html``}
+          : ""}
         ${show.columnComment
           ? html`
               <vuerd-input-edit
@@ -193,7 +193,7 @@ class Column extends EditorElement {
                   this.onEdit(event, "columnComment")}
               ></vuerd-input-edit>
             `
-          : html``}
+          : ""}
         <vuerd-fontawesome
           class="vuerd-button"
           .context=${this.context}

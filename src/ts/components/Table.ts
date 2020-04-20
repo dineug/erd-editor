@@ -185,7 +185,7 @@ class Table extends EditorElement {
                       this.onEdit(event, "tableComment")}
                   ></vuerd-input-edit>
                 `
-              : html``}
+              : ""}
           </div>
         </div>
         <ul class="vuerd-table-body">

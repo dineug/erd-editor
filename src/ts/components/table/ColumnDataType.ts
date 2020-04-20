@@ -45,7 +45,7 @@ class ColumnDataType extends EditorElement {
                 @blur=${this.onBlurHint}
               ></vuerd-column-data-type-hint>
             `
-          : html``}
+          : ""}
       </div>
     `;
   }
