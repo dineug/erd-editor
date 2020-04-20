@@ -143,7 +143,7 @@ export function createKeymap(): Keymap {
         metaKey: false,
         ctrlKey: true,
         altKey: false,
-        shiftKey: false,
+        shiftKey: true,
         key: "A",
       },
     ],

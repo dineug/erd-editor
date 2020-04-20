@@ -70,6 +70,7 @@ class Memo extends EditorElement {
   }
   disconnectedCallback() {
     Logger.debug("Memo destroy");
+    this.onMouseup();
     this.subscriptionList.forEach(sub => sub.unsubscribe());
     super.disconnectedCallback();
   }
@@ -202,6 +203,7 @@ class Memo extends EditorElement {
       !el.closest(".vuerd-memo-textarea")
     ) {
       const { mouseup$, mousemove$ } = this.context.windowEventObservable;
+      this.onMouseup();
       this.subMouseup = mouseup$.subscribe(this.onMouseup);
       this.subMousemove = mousemove$.subscribe(this.onMousemove);
     }
@@ -223,6 +225,7 @@ class Memo extends EditorElement {
     this.x = event.x;
     this.y = event.y;
     const { mouseup$, mousemove$ } = this.context.windowEventObservable;
+    this.onMouseup();
     this.subMouseup = mouseup$.subscribe(this.onMouseup);
     this.subMousemove = mousemove$.subscribe(event => {
       this.onMousemoveSash(event, position);

@@ -10,7 +10,7 @@ import { Table as TableModel, Column } from "@src/core/store/Table";
 import { keymapOptionToString } from "@src/core/Keymap";
 import { FocusType } from "@src/core/model/FocusTableModel";
 import { getData } from "@src/core/Helper";
-import { useTransitionFlip } from "@src/core/Animation";
+import { FlipAnimation } from "@src/core/Animation";
 import {
   moveTable,
   removeTable,
@@ -37,16 +37,16 @@ class Table extends EditorElement {
   private subMousemove: Subscription | null = null;
   private subFocusTable: Subscription | null = null;
   private subDraggableColumns: Subscription[] = [];
-  private snapshotColumn!: (list: HTMLElement[]) => void;
-  private playColumn!: (list: HTMLElement[], className: string) => void;
+  private flipAnimation = new FlipAnimation(
+    this.renderRoot,
+    ".vuerd-column",
+    "vuerd-column-move"
+  );
 
   connectedCallback() {
     super.connectedCallback();
     Logger.debug("Table before render");
     const { store } = this.context;
-    const { snapshot, play } = useTransitionFlip();
-    this.snapshotColumn = snapshot;
-    this.playColumn = play;
     this.subscriptionList.push.apply(this.subscriptionList, [
       this.draggable$.pipe(debounceTime(50)).subscribe(this.onDragoverColumn),
       store.observe(this.table.ui, () => this.requestUpdate()),
@@ -64,33 +64,32 @@ class Table extends EditorElement {
       }),
       store.observe(store.editorState, (name: string | number | symbol) => {
         Logger.debug(`Table observe editorState: ${String(name)}`);
+        const { focusTable, draggableColumn } = store.editorState;
         switch (name) {
           case "focusTable":
-            if (
-              store.editorState.focusTable === null ||
-              store.editorState.focusTable.id !== this.table.id
-            ) {
+            if (focusTable === null || focusTable.id !== this.table.id) {
               this.focusTableUnsubscribe();
             } else if (
               this.subFocusTable === null &&
-              store.editorState.focusTable?.id === this.table.id
+              focusTable?.id === this.table.id
             ) {
               this.focusTableObserve();
             }
             this.requestUpdate();
             break;
           case "editTable":
-            if (store.editorState.focusTable?.id === this.table.id) {
+            if (focusTable?.id === this.table.id) {
               this.requestUpdate();
             }
             break;
           case "draggableColumn":
-            if (store.editorState.draggableColumn) {
+            if (draggableColumn) {
               if (this.subDraggableColumns.length === 0) {
                 this.onDraggableColumn();
               }
             } else {
               this.onDraggableEndColumn();
+              this.requestUpdate();
             }
             break;
         }
@@ -99,12 +98,7 @@ class Table extends EditorElement {
     this.focusTableObserve();
   }
   updated(changedProperties: any) {
-    this.playColumn(
-      Array.from(
-        this.renderRoot.querySelectorAll(".vuerd-column")
-      ) as HTMLElement[],
-      "vuerd-column-move"
-    );
+    this.flipAnimation.play();
   }
   disconnectedCallback() {
     Logger.debug("Table destroy");
@@ -205,6 +199,7 @@ class Table extends EditorElement {
                   .tableId=${this.table.id}
                   .column=${column}
                   .select=${this.selectColumn(column)}
+                  .draggable=${this.draggableColumn(column)}
                   .focusName=${this.focusColumn(column, "columnName")}
                   .focusDataType=${this.focusColumn(column, "columnDataType")}
                   .focusNotNull=${this.focusColumn(column, "columnNotNull")}
@@ -258,11 +253,7 @@ class Table extends EditorElement {
     const { draggableColumn } = store.editorState;
     const { tableId, columnId } = event.detail;
     if (draggableColumn && draggableColumn.columnId !== columnId) {
-      this.snapshotColumn(
-        Array.from(
-          this.renderRoot.querySelectorAll(".vuerd-column")
-        ) as HTMLElement[]
-      );
+      this.flipAnimation.snapshot();
       store.dispatch(
         moveColumn(
           draggableColumn.tableId,
@@ -365,39 +356,37 @@ class Table extends EditorElement {
     this.subFocusTable = null;
   }
   private focusTable(focusTableKey: FocusTableKey) {
-    const { editorState } = this.context.store;
-    return (
-      editorState.focusTable?.id === this.table.id &&
-      editorState.focusTable[focusTableKey]
-    );
+    const { focusTable } = this.context.store.editorState;
+    return focusTable?.id === this.table.id && focusTable[focusTableKey];
   }
   private editTable(focusType: FocusType) {
-    const { editorState } = this.context.store;
-    return (
-      editorState.editTable?.id === this.table.id &&
-      editorState.editTable.focusType === focusType
-    );
+    const { editTable } = this.context.store.editorState;
+    return editTable?.id === this.table.id && editTable.focusType === focusType;
   }
   private focusColumn(column: Column, focusType: FocusType) {
-    const { editorState } = this.context.store;
+    const { focusTable } = this.context.store.editorState;
     return (
-      editorState.focusTable?.id === this.table.id &&
-      editorState.focusTable.currentFocusId === column.id &&
-      editorState.focusTable.currentFocus === focusType
+      focusTable?.id === this.table.id &&
+      focusTable.currentFocusId === column.id &&
+      focusTable.currentFocus === focusType
     );
   }
   private selectColumn(column: Column) {
-    const { editorState } = this.context.store;
+    const { focusTable } = this.context.store.editorState;
     return (
-      editorState.focusTable?.id === this.table.id &&
-      getData(editorState.focusTable.focusColumns, column.id)?.select === true
+      focusTable?.id === this.table.id &&
+      getData(focusTable.focusColumns, column.id)?.select === true
     );
   }
   private editColumn(column: Column, focusType: FocusType) {
-    const { editorState } = this.context.store;
+    const { editTable } = this.context.store.editorState;
+    return editTable?.id === column.id && editTable.focusType === focusType;
+  }
+  private draggableColumn(column: Column) {
+    const { draggableColumn } = this.context.store.editorState;
     return (
-      editorState.editTable?.id === column.id &&
-      editorState.editTable.focusType === focusType
+      draggableColumn?.tableId === this.table.id &&
+      draggableColumn.columnId === column.id
     );
   }
 }

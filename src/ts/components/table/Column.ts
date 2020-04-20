@@ -29,6 +29,8 @@ class Column extends EditorElement {
   @property({ type: Boolean })
   select = false;
   @property({ type: Boolean })
+  draggable = false;
+  @property({ type: Boolean })
   focusName = false;
   @property({ type: Boolean })
   focusDataType = false;
@@ -93,6 +95,7 @@ class Column extends EditorElement {
         class=${classMap({
           "vuerd-column": true,
           select: this.select,
+          draggable: this.draggable,
         })}
         data-id=${this.column.id}
         draggable="true"

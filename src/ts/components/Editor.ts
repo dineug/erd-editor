@@ -67,7 +67,6 @@ class Editor extends EditorElement {
         if (focus) {
           if (keymapMatch(event, keymap.stop)) {
             Logger.debug("keymap.stop");
-            event.preventDefault();
             store.dispatch(selectEndTable(), selectEndMemo());
           }
         }

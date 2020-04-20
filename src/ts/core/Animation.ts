@@ -2,57 +2,63 @@
  * FLIP stands for First, Last, Invert, Play.
  * https://aerotwist.com/blog/flip-your-animations/
  */
-export interface TransitionFlip {
-  el: HTMLElement;
-  firstTop: number;
-  firstLeft: number;
+export interface FlipSnapshot {
+  el: Element;
+  top: number;
+  left: number;
 }
-export function useTransitionFlip() {
-  let transitionFlipList: TransitionFlip[] = [];
+export class FlipAnimation {
+  private flipSnapshots: FlipSnapshot[] = [];
+  private root: Element | DocumentFragment;
+  private selector: string;
+  private animationName: string;
+
+  constructor(
+    root: Element | DocumentFragment,
+    selector: string,
+    animationName: string
+  ) {
+    this.root = root;
+    this.selector = selector;
+    this.animationName = animationName;
+  }
+
   // first
-  const snapshot = (list: HTMLElement[]) => {
-    transitionFlipList = [];
-    list.forEach(el => {
+  snapshot() {
+    this.flipSnapshots = [];
+    this.root.querySelectorAll(this.selector).forEach(el => {
       const { top, left } = el.getBoundingClientRect();
-      transitionFlipList.push({
-        el,
-        firstTop: top,
-        firstLeft: left,
-      });
+      this.flipSnapshots.push({ el, top, left });
     });
-  };
-  const play = (list: HTMLElement[], className: string) => {
-    if (transitionFlipList.length !== 0) {
-      list.forEach(el => {
-        const transitionFlip = transitionFlipList.find(
-          transitionFlip => transitionFlip.el === el
-        );
-        if (transitionFlip) {
-          // last
-          const { top, left } = el.getBoundingClientRect();
-          const { firstTop, firstLeft } = transitionFlip;
-          const dx = firstLeft - left;
-          const dy = firstTop - top;
-          if (dx || dy) {
-            // invert
-            el.style.transform = `translate(${dx}px,${dy}px)`;
-            el.style.transitionDuration = "0s";
-          }
+  }
+
+  play() {
+    if (this.flipSnapshots.length !== 0) {
+      // last
+      this.flipSnapshots.forEach(snapshot => {
+        const el = snapshot.el as HTMLElement;
+        const { top, left } = el.getBoundingClientRect();
+        const dx = snapshot.left - left;
+        const dy = snapshot.top - top;
+        if (dx || dy) {
+          // invert
+          el.style.transform = `translate(${dx}px,${dy}px)`;
+          el.style.transitionDuration = "0s";
         }
       });
       // play
-      list.forEach(el => {
-        el.classList.add(className);
+      this.flipSnapshots.forEach(snapshot => {
+        const el = snapshot.el as HTMLElement;
+        el.classList.add(this.animationName);
         el.style.transform = "";
         el.style.transitionDuration = "";
         const onTransitionend = () => {
-          el.classList.remove(className);
+          el.classList.remove(this.animationName);
           el.removeEventListener("transitionend", onTransitionend);
         };
         el.addEventListener("transitionend", onTransitionend);
       });
-      transitionFlipList = [];
+      this.flipSnapshots = [];
     }
-  };
-  return { snapshot, play };
+  }
 }

@@ -7,7 +7,7 @@ import { EditorElement } from "../EditorElement";
 import { Logger } from "@src/core/Logger";
 import { databaseHints, DataTypeHint } from "@src/core/DataType";
 import { markToHTML } from "@src/core/Helper";
-import { useTransitionFlip } from "@src/core/Animation";
+import { FlipAnimation } from "@src/core/Animation";
 import { Bus } from "@src/core/Event";
 import { changeColumnDataType } from "@src/core/command/column";
 
@@ -28,9 +28,12 @@ class ColumnDataTypeHint extends EditorElement {
   columnId!: string;
 
   private filterStart = true;
-  private snapshotHint!: (list: HTMLElement[]) => void;
-  private playHint!: (list: HTMLElement[], className: string) => void;
   private subscriptionList: Subscription[] = [];
+  private flipAnimation = new FlipAnimation(
+    this.renderRoot,
+    ".vuerd-data-type-hint",
+    "vuerd-data-type-hint-move"
+  );
 
   get dataTypeHints() {
     const { canvasState } = this.context.store;
@@ -59,11 +62,8 @@ class ColumnDataTypeHint extends EditorElement {
     super.connectedCallback();
     const { eventBus } = this.context;
     const { mousedown$ } = this.context.windowEventObservable;
-    const { snapshot, play } = useTransitionFlip();
     const root = this.getRootNode() as Element | DocumentFragment;
     const editor = root.querySelector(".vuerd-editor") as Element;
-    this.snapshotHint = snapshot;
-    this.playHint = play;
     this.hintFilter();
     this.subscriptionList.push.apply(this.subscriptionList, [
       mousedown$.subscribe(this.onMousedownWindow),
@@ -80,20 +80,11 @@ class ColumnDataTypeHint extends EditorElement {
     changedProperties.forEach((oldValue: any, propName: string) => {
       switch (propName) {
         case "value":
-          this.snapshotHint(
-            Array.from(
-              this.renderRoot.querySelectorAll(".vuerd-data-type-hint")
-            ) as HTMLElement[]
-          );
+          this.flipAnimation.snapshot();
           this.hintFilter();
           break;
         case "hints":
-          this.playHint(
-            Array.from(
-              this.renderRoot.querySelectorAll(".vuerd-data-type-hint")
-            ) as HTMLElement[],
-            "vuerd-data-type-hint-move"
-          );
+          this.flipAnimation.play();
           break;
       }
     });

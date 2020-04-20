@@ -95,6 +95,9 @@ export const Layout = css`
   .vuerd-column.select {
     background-color: var(--vuerd-color-column-select);
   }
+  .vuerd-column.draggable {
+    opacity: 0.5;
+  }
   /* animation flip */
   .vuerd-column-move {
     transition: transform 0.3s;
@@ -325,6 +328,10 @@ export const Layout = css`
     z-index: 100000001;
     border: solid var(--vuerd-color-minimap-handle) 1px;
     cursor: pointer;
+    opacity: 0.7;
+  }
+  .vuerd-minimap-handle:hover {
+    opacity: 1;
   }
 
   /* =============== scrollbar ============== */

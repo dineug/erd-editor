@@ -1,4 +1,4 @@
-import { html, svg, customElement, property } from "lit-element";
+import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "../EditorElement";
@@ -25,12 +25,7 @@ class MinimapHandle extends EditorElement {
   private subMousemove: Subscription | null = null;
 
   get styleMap() {
-    const {
-      width,
-      height,
-      scrollLeft,
-      scrollTop,
-    } = this.context.store.canvasState;
+    const { scrollLeft, scrollTop } = this.context.store.canvasState;
     const ratio = this.ratio;
     const x = scrollLeft * ratio;
     const y = scrollTop * ratio;
