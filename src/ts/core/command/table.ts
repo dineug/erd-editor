@@ -1,13 +1,15 @@
 import { CommandEffect } from "../Command";
-import { SIZE_MIN_WIDTH } from "../Layout";
+import { SIZE_MIN_WIDTH, SIZE_TABLE_PADDING } from "../Layout";
 import { Store } from "../Store";
-import { Helper, getData, uuid } from "../Helper";
+import { Helper, getData, uuid, Point } from "../Helper";
 import { Logger } from "../Logger";
 import { TableUI } from "../store/Table";
 import { TableModel } from "../model/TableModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
 import { selectEndMemoExecute } from "./memo";
 import { focusTableExecute, focusEndTableExecute } from "./editor";
+
+const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 
 export interface AddTable {
   id: string;
@@ -261,4 +263,35 @@ export function changeTableCommentExecute(
     table.ui.widthComment = data.width;
     // TODO: relationship sort
   }
+}
+
+export interface DragSelectTable {
+  min: Point;
+  max: Point;
+}
+export function dragSelectTable(
+  min: Point,
+  max: Point
+): CommandEffect<DragSelectTable> {
+  return {
+    name: "table.dragSelect",
+    data: {
+      min,
+      max,
+    },
+  };
+}
+export function dragSelectTableExecute(store: Store, data: DragSelectTable) {
+  Logger.debug("dragSelectTableExecute");
+  const { tables } = store.tableState;
+  const { min, max } = data;
+  tables.forEach(table => {
+    const centerX = table.ui.left + table.width() / 2 + TABLE_PADDING;
+    const centerY = table.ui.top + table.height() / 2 + TABLE_PADDING;
+    table.ui.active =
+      min.x <= centerX &&
+      centerX <= max.x &&
+      min.y <= centerY &&
+      centerY <= max.y;
+  });
 }

@@ -1,12 +1,18 @@
 import { CommandEffect } from "../Command";
-import { SIZE_MEMO_WIDTH, SIZE_MEMO_HEIGHT } from "../Layout";
+import {
+  SIZE_MEMO_WIDTH,
+  SIZE_MEMO_HEIGHT,
+  SIZE_MEMO_PADDING,
+} from "../Layout";
 import { Store } from "../Store";
-import { getData, uuid } from "../Helper";
+import { getData, uuid, Point } from "../Helper";
 import { Logger } from "../Logger";
 import { MemoUI } from "../store/Memo";
 import { MemoModel } from "../model/MemoModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
 import { selectEndTableExecute } from "./table";
+
+const MEMO_PADDING = SIZE_MEMO_PADDING * 2;
 
 export interface AddMemo {
   id: string;
@@ -251,4 +257,35 @@ export function resizeMemoExecute(store: Store, data: ResizeMemo) {
     memo.ui.width = data.width;
     memo.ui.height = data.height;
   }
+}
+
+export interface DragSelectMemo {
+  min: Point;
+  max: Point;
+}
+export function dragSelectMemo(
+  min: Point,
+  max: Point
+): CommandEffect<DragSelectMemo> {
+  return {
+    name: "memo.dragSelect",
+    data: {
+      min,
+      max,
+    },
+  };
+}
+export function dragSelectMemoExecute(store: Store, data: DragSelectMemo) {
+  Logger.debug("dragSelectMemoExecute");
+  const { memos } = store.memoState;
+  const { min, max } = data;
+  memos.forEach(memo => {
+    const centerX = memo.ui.left + memo.ui.width / 2 + MEMO_PADDING;
+    const centerY = memo.ui.top + memo.ui.height / 2 + MEMO_PADDING;
+    memo.ui.active =
+      min.x <= centerX &&
+      centerX <= max.x &&
+      min.y <= centerY &&
+      centerY <= max.y;
+  });
 }

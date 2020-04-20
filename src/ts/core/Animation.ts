@@ -23,10 +23,10 @@ export class FlipAnimation {
     this.animationName = animationName;
   }
 
-  // first
   snapshot() {
     this.flipSnapshots = [];
     this.root.querySelectorAll(this.selector).forEach(el => {
+      // first
       const { top, left } = el.getBoundingClientRect();
       this.flipSnapshots.push({ el, top, left });
     });
@@ -34,8 +34,8 @@ export class FlipAnimation {
 
   play() {
     if (this.flipSnapshots.length !== 0) {
-      // last
       this.flipSnapshots.forEach(snapshot => {
+        // last
         const el = snapshot.el as HTMLElement;
         const { top, left } = el.getBoundingClientRect();
         const dx = snapshot.left - left;
@@ -44,19 +44,18 @@ export class FlipAnimation {
           // invert
           el.style.transform = `translate(${dx}px,${dy}px)`;
           el.style.transitionDuration = "0s";
+          // play
+          requestAnimationFrame(() => {
+            el.classList.add(this.animationName);
+            el.style.transform = "";
+            el.style.transitionDuration = "";
+            const onTransitionend = () => {
+              el.classList.remove(this.animationName);
+              el.removeEventListener("transitionend", onTransitionend);
+            };
+            el.addEventListener("transitionend", onTransitionend);
+          });
         }
-      });
-      // play
-      this.flipSnapshots.forEach(snapshot => {
-        const el = snapshot.el as HTMLElement;
-        el.classList.add(this.animationName);
-        el.style.transform = "";
-        el.style.transitionDuration = "";
-        const onTransitionend = () => {
-          el.classList.remove(this.animationName);
-          el.removeEventListener("transitionend", onTransitionend);
-        };
-        el.addEventListener("transitionend", onTransitionend);
       });
       this.flipSnapshots = [];
     }

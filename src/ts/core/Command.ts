@@ -13,6 +13,8 @@ import {
   ChangeTableValue,
   changeTableNameExecute,
   changeTableCommentExecute,
+  DragSelectTable,
+  dragSelectTableExecute,
 } from "./command/table";
 import {
   AddColumn,
@@ -47,6 +49,8 @@ import {
   changeMemoValueExecute,
   ResizeMemo,
   resizeMemoExecute,
+  DragSelectMemo,
+  dragSelectMemoExecute,
 } from "./command/memo";
 import {
   MoveCanvas,
@@ -99,6 +103,7 @@ type CommandName =
   | "table.selectAll"
   | "table.changeName"
   | "table.changeComment"
+  | "table.dragSelect"
   | "column.add"
   | "column.remove"
   | "column.changeName"
@@ -118,6 +123,7 @@ type CommandName =
   | "memo.selectAll"
   | "memo.changeValue"
   | "memo.resize"
+  | "memo.dragSelect"
   | "canvas.move"
   | "canvas.resize"
   | "canvas.changeShow"
@@ -145,6 +151,7 @@ export type Command =
   | CommandEffect<RemoveTable>
   | CommandEffect<SelectTable>
   | CommandEffect<ChangeTableValue>
+  | CommandEffect<DragSelectTable>
   | CommandEffect<Array<AddColumn>>
   | CommandEffect<RemoveColumn>
   | CommandEffect<ChangeColumnValue>
@@ -156,6 +163,7 @@ export type Command =
   | CommandEffect<SelectMemo>
   | CommandEffect<ChangeMemoValue>
   | CommandEffect<ResizeMemo>
+  | CommandEffect<DragSelectMemo>
   | CommandEffect<MoveCanvas>
   | CommandEffect<ResizeCanvas>
   | CommandEffect<ChangeCanvasShow>
@@ -196,6 +204,9 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "table.changeComment":
         changeTableCommentExecute(store, command.data as ChangeTableValue);
+        break;
+      case "table.dragSelect":
+        dragSelectTableExecute(store, command.data as DragSelectTable);
         break;
       case "column.add":
         addColumnExecute(store, command.data as Array<AddColumn>);
@@ -259,6 +270,9 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "memo.resize":
         resizeMemoExecute(store, command.data as ResizeMemo);
+        break;
+      case "memo.dragSelect":
+        dragSelectMemoExecute(store, command.data as DragSelectMemo);
         break;
       case "canvas.move":
         moveCanvasExecute(store, command.data as MoveCanvas);

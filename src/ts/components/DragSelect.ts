@@ -3,6 +3,8 @@ import { styleMap } from "lit-html/directives/style-map";
 import { Subscription, fromEvent } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
+import { dragSelectTable } from "@src/core/command/table";
+import { dragSelectMemo } from "@src/core/command/memo";
 
 const MARGIN = 4;
 
@@ -129,6 +131,11 @@ class DargSelect extends EditorElement {
         x: this.ghostX > ghostCurrentX ? this.ghostX : ghostCurrentX,
         y: this.ghostY > ghostCurrentY ? this.ghostY : ghostCurrentY,
       };
+      const { store } = this.context;
+      store.dispatch(
+        dragSelectTable(ghostMin, ghostMax),
+        dragSelectMemo(ghostMin, ghostMax)
+      );
     }
   };
 }
