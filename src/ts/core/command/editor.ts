@@ -190,17 +190,26 @@ export function editEndTableExecute(store: Store) {
 
 export interface DraggableColumn {
   tableId: string;
-  columnId: string;
+  columnIds: string[];
 }
 export function draggableColumn(
+  store: Store,
   tableId: string,
-  columnId: string
+  columnId: string,
+  ctrlKey: boolean
 ): CommandEffect<DraggableColumn> {
+  const columnIds: string[] = [];
+  const { focusTable } = store.editorState;
+  if (ctrlKey && focusTable) {
+    focusTable.selectColumns.forEach(column => columnIds.push(column.id));
+  } else {
+    columnIds.push(columnId);
+  }
   return {
     name: "editor.draggableColumn",
     data: {
       tableId,
-      columnId,
+      columnIds,
     },
   };
 }

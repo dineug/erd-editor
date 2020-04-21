@@ -48,6 +48,19 @@ class Minimap extends EditorElement {
     };
   }
 
+  get shadowStyle() {
+    const { scrollLeft, scrollTop } = this.context.store.canvasState;
+    const left =
+      this.width + scrollLeft - SIZE_MINIMAP_WIDTH - SIZE_MINIMAP_MARGIN;
+    const top = MARGIN_TOP + scrollTop;
+    return {
+      width: `${SIZE_MINIMAP_WIDTH}px`,
+      height: `${SIZE_MINIMAP_WIDTH}px`,
+      left: `${left}px`,
+      top: `${top}px`,
+    };
+  }
+
   connectedCallback() {
     super.connectedCallback();
     Logger.debug("Minimap before render");
@@ -105,6 +118,10 @@ class Minimap extends EditorElement {
           ${svg`<svg class="vuerd-minimap-canvas-svg"></svg>`}
         </div>
       </div>
+      <div
+        class="vuerd-minimap-shadow"
+        style=${styleMap(this.shadowStyle)}
+      ></div>
       <vuerd-minimap-handle
         .context=${this.context}
         .width=${this.width}

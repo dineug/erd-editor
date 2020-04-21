@@ -193,8 +193,9 @@ class ERD extends EditorElement {
   }
   disconnectedCallback() {
     Logger.debug("ERD destroy");
+    const { eventBus } = this.context;
     this.onMouseup();
-    this.context.eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
+    eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subscriptionList.forEach(sub => sub.unsubscribe());
     super.disconnectedCallback();
   }

@@ -311,10 +311,14 @@ export const Layout = css`
   /* =============== minimap ============== */
   .vuerd-minimap {
     position: absolute;
-    z-index: 100000000;
+    z-index: 100000001;
     overflow: hidden;
     background-color: var(--vuerd-color-canvas);
-    box-shadow: 10px 10px 30px 20px var(--vuerd-color-minimap-shadow);
+  }
+  .vuerd-minimap-shadow {
+    position: absolute;
+    z-index: 100000000;
+    box-shadow: 0 1px 6px var(--vuerd-color-minimap-shadow);
   }
   .vuerd-minimap-canvas {
     position: relative;
@@ -325,7 +329,7 @@ export const Layout = css`
   }
   .vuerd-minimap-handle {
     position: absolute;
-    z-index: 100000001;
+    z-index: 100000002;
     border: solid var(--vuerd-color-minimap-handle) 1px;
     cursor: pointer;
     opacity: 0.7;

@@ -283,7 +283,9 @@ class Column extends EditorElement {
   private onDragstart(event: DragEvent) {
     Logger.debug("Column onDragstart");
     const { store } = this.context;
-    store.dispatch(draggableColumn(this.tableId, this.column.id));
+    store.dispatch(
+      draggableColumn(store, this.tableId, this.column.id, event.ctrlKey)
+    );
   }
   private onDragend(event: DragEvent) {
     Logger.debug("Column onDragend");

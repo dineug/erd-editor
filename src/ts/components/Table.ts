@@ -252,12 +252,15 @@ class Table extends EditorElement {
     const { store } = this.context;
     const { draggableColumn } = store.editorState;
     const { tableId, columnId } = event.detail;
-    if (draggableColumn && draggableColumn.columnId !== columnId) {
+    if (
+      draggableColumn &&
+      !draggableColumn.columnIds.some(id => id === columnId)
+    ) {
       this.flipAnimation.snapshot();
       store.dispatch(
         moveColumn(
           draggableColumn.tableId,
-          draggableColumn.columnId,
+          draggableColumn.columnIds,
           tableId,
           columnId
         )
@@ -386,7 +389,7 @@ class Table extends EditorElement {
     const { draggableColumn } = this.context.store.editorState;
     return (
       draggableColumn?.tableId === this.table.id &&
-      draggableColumn.columnId === column.id
+      draggableColumn.columnIds.some(id => id === column.id)
     );
   }
 }

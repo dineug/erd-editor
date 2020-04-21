@@ -3,6 +3,7 @@ import { SIZE_MIN_WIDTH } from "../Layout";
 import { Store } from "../Store";
 import { Helper, getData, getIndex, uuid } from "../Helper";
 import { Logger } from "../Logger";
+import { Column } from "../store/Table";
 import { ColumnModel } from "../model/ColumnModel";
 import { getColumn, getChangeOption } from "../helper/ColumnHelper";
 import {
@@ -359,13 +360,13 @@ export function changeColumnNotNullExecute(
 
 export interface MoveColumn {
   tableId: string;
-  columnId: string;
+  columnIds: string[];
   targetTableId: string;
   targetColumnId: string;
 }
 export function moveColumn(
   tableId: string,
-  columnId: string,
+  columnIds: string[],
   targetTableId: string,
   targetColumnId: string
 ): CommandEffect<MoveColumn> {
@@ -373,7 +374,7 @@ export function moveColumn(
     name: "column.move",
     data: {
       tableId,
-      columnId,
+      columnIds,
       targetTableId,
       targetColumnId,
     },
@@ -383,38 +384,70 @@ export function moveColumnExecute(store: Store, data: MoveColumn) {
   Logger.debug("moveColumnExecute");
   const { tables } = store.tableState;
   const currentTable = getData(tables, data.tableId);
-  const currentColumn = getColumn(tables, data.tableId, data.columnId);
+  let currentColumns: Column[] = [];
+  data.columnIds.forEach(columnId => {
+    const column = getColumn(tables, data.tableId, columnId);
+    if (column) {
+      currentColumns.push(column);
+    }
+  });
   const targetTable = getData(tables, data.targetTableId);
   const targetColumn = getColumn(
     tables,
     data.targetTableId,
     data.targetColumnId
   );
-  if (currentTable && targetTable && currentColumn && targetColumn) {
+  if (
+    currentTable &&
+    targetTable &&
+    currentColumns.length !== 0 &&
+    targetColumn
+  ) {
     if (
       data.tableId === data.targetTableId &&
-      data.columnId !== data.targetColumnId
+      !data.columnIds.some(columnId => columnId === data.targetColumnId)
     ) {
-      const currentIndex = getIndex(currentTable.columns, currentColumn.id);
       const targetIndex = getIndex(currentTable.columns, targetColumn.id);
-      if (currentIndex !== null && targetIndex !== null) {
-        currentTable.columns.splice(currentIndex, 1);
-        currentTable.columns.splice(targetIndex, 0, currentColumn);
+      if (targetIndex !== null) {
+        const currentIndex = getIndex(
+          currentTable.columns,
+          currentColumns[0].id
+        );
+        if (currentIndex !== null && currentIndex > targetIndex) {
+          currentColumns = currentColumns.reverse();
+        }
+        currentColumns.forEach(currentColumn => {
+          const currentIndex = getIndex(currentTable.columns, currentColumn.id);
+          if (currentIndex !== null) {
+            currentTable.columns.splice(currentIndex, 1);
+            currentTable.columns.splice(targetIndex, 0, currentColumn);
+          }
+        });
       }
     } else if (
       data.tableId !== data.targetTableId &&
-      data.columnId !== data.targetColumnId
+      !data.columnIds.some(columnId => columnId === data.targetColumnId)
     ) {
-      const currentIndex = getIndex(currentTable.columns, currentColumn.id);
       const targetIndex = getIndex(targetTable.columns, targetColumn.id);
-      if (currentIndex !== null && targetIndex !== null) {
-        currentTable.columns.splice(currentIndex, 1);
-        targetTable.columns.splice(targetIndex, 0, currentColumn);
+      if (targetIndex !== null) {
+        const currentIndex = getIndex(
+          currentTable.columns,
+          currentColumns[0].id
+        );
+        if (currentIndex !== null && currentIndex > targetIndex) {
+          currentColumns = currentColumns.reverse();
+        }
+        currentColumns.forEach(currentColumn => {
+          const currentIndex = getIndex(currentTable.columns, currentColumn.id);
+          if (currentIndex !== null) {
+            currentTable.columns.splice(currentIndex, 1);
+            targetTable.columns.splice(targetIndex, 0, currentColumn);
+          }
+        });
         // TODO: relationship valid, sort
-
         draggableColumnExecute(store, {
           tableId: data.targetTableId,
-          columnId: data.columnId,
+          columnIds: data.columnIds,
         });
       }
     }
