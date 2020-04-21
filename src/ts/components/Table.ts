@@ -188,7 +188,7 @@ class Table extends EditorElement {
               : ""}
           </div>
         </div>
-        <ul class="vuerd-table-body">
+        <div class="vuerd-table-body">
           ${repeat(
             this.table.columns,
             column => column.id,
@@ -218,7 +218,7 @@ class Table extends EditorElement {
                 ></vuerd-column>
               `
           )}
-        </ul>
+        </div>
       </div>
     `;
   }

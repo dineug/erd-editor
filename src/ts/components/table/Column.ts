@@ -91,7 +91,7 @@ class Column extends EditorElement {
     const { show } = this.context.store.canvasState;
     const keymapRemoveColumn = keymapOptionToString(keymap.removeColumn[0]);
     return html`
-      <li
+      <div
         class=${classMap({
           "vuerd-column": true,
           select: this.select,
@@ -202,7 +202,7 @@ class Column extends EditorElement {
           size="9"
           @click=${this.onRemoveColumn}
         ></vuerd-fontawesome>
-      </li>
+      </div>
     `;
   }
 

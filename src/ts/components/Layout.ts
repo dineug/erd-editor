@@ -22,8 +22,8 @@ export const Layout = css`
     overflow: hidden;
     font-size: ${SIZE_FONT}px;
     font-family: var(--vuerd-font-family);
-    color: var(--vuerd-color-font);
-    background-color: var(--vuerd-color-canvas);
+    color: var(--vuerd-theme-font, var(--vuerd-color-font));
+    background-color: var(--vuerd-theme-canvas, var(--vuerd-color-canvas));
   }
 
   .vuerd-erd {
@@ -33,7 +33,7 @@ export const Layout = css`
 
   .vuerd-canvas {
     position: relative;
-    background-color: var(--vuerd-color-canvas);
+    background-color: var(--vuerd-theme-canvas, var(--vuerd-color-canvas));
   }
 
   .vuerd-canvas-svg {
@@ -53,7 +53,7 @@ export const Layout = css`
     cursor: pointer;
   }
   .vuerd-button:hover {
-    fill: var(--vuerd-color-font-active);
+    fill: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }
 
   /* =============== table ============== */
@@ -63,14 +63,16 @@ export const Layout = css`
     padding: ${SIZE_TABLE_PADDING}px;
     font-size: ${SIZE_FONT}px;
     fill: #fff0;
-    background-color: var(--vuerd-color-table);
+    background-color: var(--vuerd-theme-table, var(--vuerd-color-table));
   }
   .vuerd-table:hover {
-    fill: var(--vuerd-color-font);
+    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
   .vuerd-table.active {
-    border: solid var(--vuerd-color-table-active) 1px;
-    box-shadow: 0 1px 6px var(--vuerd-color-table-active);
+    border: solid
+      var(--vuerd-theme-table-active, var(--vuerd-color-table-active)) 1px;
+    box-shadow: 0 1px 6px
+      var(--vuerd-theme-table-active, var(--vuerd-color-table-active));
   }
   .vuerd-table .vuerd-table-header-top {
     overflow: hidden;
@@ -90,10 +92,13 @@ export const Layout = css`
     fill: #fff0;
   }
   .vuerd-column:hover {
-    fill: var(--vuerd-color-font);
+    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
   .vuerd-column.select {
-    background-color: var(--vuerd-color-column-select);
+    background-color: var(
+      --vuerd-theme-column-select,
+      var(--vuerd-color-column-select)
+    );
   }
   .vuerd-column.draggable {
     opacity: 0.5;
@@ -107,8 +112,8 @@ export const Layout = css`
     display: inline-flex;
     vertical-align: middle;
     align-items: center;
-    color: var(--vuerd-color-font-active);
-    background-color: var(--vuerd-color-table);
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    background-color: var(--vuerd-theme-table, var(--vuerd-color-table));
   }
   input.vuerd-input-edit {
     outline: none;
@@ -123,16 +128,23 @@ export const Layout = css`
     cursor: default;
   }
   .vuerd-input-edit.select {
-    background-color: var(--vuerd-color-column-select);
+    background-color: var(
+      --vuerd-theme-column-select,
+      var(--vuerd-color-column-select)
+    );
   }
   .vuerd-input-edit.focus {
-    border-bottom: solid var(--vuerd-color-focus) 1.5px;
+    border-bottom: solid var(--vuerd-theme-focus, var(--vuerd-color-focus))
+      1.5px;
   }
   .vuerd-input-edit.edit {
-    border-bottom: solid var(--vuerd-color-edit) 1.5px;
+    border-bottom: solid var(--vuerd-theme-edit, var(--vuerd-color-edit)) 1.5px;
   }
   .vuerd-input-edit.placeholder {
-    color: var(--vuerd-color-font-placeholder);
+    color: var(
+      --vuerd-theme-font-placeholder,
+      var(--vuerd-color-font-placeholder)
+    );
   }
 
   .vuerd-column-key {
@@ -142,13 +154,13 @@ export const Layout = css`
     fill: #fff0;
   }
   .vuerd-column-key.pk {
-    fill: var(--vuerd-color-key-pk);
+    fill: var(--vuerd-theme-key-pk, var(--vuerd-color-key-pk));
   }
   .vuerd-column-key.fk {
-    fill: var(--vuerd-color-key-fk);
+    fill: var(--vuerd-theme-key-fk, var(--vuerd-color-key-fk));
   }
   .vuerd-column-key.pfk {
-    fill: var(--vuerd-color-key-pfk);
+    fill: var(--vuerd-theme-key-pfk, var(--vuerd-color-key-pfk));
   }
 
   .vuerd-column-not-null {
@@ -158,10 +170,11 @@ export const Layout = css`
     border-bottom: solid #fff0 1.5px;
     height: ${SIZE_INPUT_EDIT_HEIGHT}px;
     cursor: default;
-    color: var(--vuerd-color-font-active);
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }
   .vuerd-column-not-null.focus {
-    border-bottom: solid var(--vuerd-color-focus) 1.5px;
+    border-bottom: solid var(--vuerd-theme-focus, var(--vuerd-color-focus))
+      1.5px;
   }
 
   .vuerd-column-data-type {
@@ -179,8 +192,11 @@ export const Layout = css`
     top: 10px;
     left: 0;
     z-index: 100000000;
-    color: var(--vuerd-color-font);
-    background-color: var(--vuerd-color-contextmenu);
+    color: var(--vuerd-theme-font, var(--vuerd-color-font));
+    background-color: var(
+      --vuerd-theme-contextmenu,
+      var(--vuerd-color-contextmenu)
+    );
   }
   .vuerd-column-data-type-hint > li {
     padding: 5px;
@@ -188,25 +204,31 @@ export const Layout = css`
     font-size: ${SIZE_FONT}px;
   }
   .vuerd-column-data-type-hint > li:hover {
-    color: var(--vuerd-color-font-active);
-    background-color: var(--vuerd-color-contextmenu-active);
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    background-color: var(
+      --vuerd-theme-contextmenu-active,
+      var(--vuerd-color-contextmenu-active)
+    );
   }
   .vuerd-column-data-type-hint > li:hover .vuerd-mark {
-    color: var(--vuerd-color-font-active);
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }
   .vuerd-data-type-hint.active {
-    color: var(--vuerd-color-font-active);
-    background-color: var(--vuerd-color-contextmenu-active);
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    background-color: var(
+      --vuerd-theme-contextmenu-active,
+      var(--vuerd-color-contextmenu-active)
+    );
   }
   .vuerd-data-type-hint.active .vuerd-mark {
-    color: var(--vuerd-color-font-active);
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }
   /* animation flip */
   .vuerd-data-type-hint-move {
     transition: transform 0.2s;
   }
   .vuerd-mark {
-    color: var(--vuerd-color-mark);
+    color: var(--vuerd-theme-mark, var(--vuerd-color-mark));
   }
 
   /* =============== contextmenu ============== */
@@ -214,9 +236,12 @@ export const Layout = css`
     position: fixed;
     z-index: 100000000;
     opacity: 0.9;
-    color: var(--vuerd-color-font);
-    fill: var(--vuerd-color-font);
-    background-color: var(--vuerd-color-contextmenu);
+    color: var(--vuerd-theme-font, var(--vuerd-color-font));
+    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
+    background-color: var(
+      --vuerd-theme-contextmenu,
+      var(--vuerd-color-contextmenu)
+    );
   }
   .vuerd-contextmenu > li {
     padding: 10px 5px 10px 10px;
@@ -225,9 +250,12 @@ export const Layout = css`
     white-space: nowrap;
   }
   .vuerd-contextmenu > li:hover {
-    color: var(--vuerd-color-font-active);
-    fill: var(--vuerd-color-font-active);
-    background-color: var(--vuerd-color-contextmenu-active);
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    fill: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    background-color: var(
+      --vuerd-theme-contextmenu-active,
+      var(--vuerd-color-contextmenu-active)
+    );
   }
   .vuerd-contextmenu > li > span {
     display: inline-flex;
@@ -280,14 +308,16 @@ export const Layout = css`
     position: absolute;
     opacity: 0.9;
     fill: #fff0;
-    background-color: var(--vuerd-color-table);
+    background-color: var(--vuerd-theme-table, var(--vuerd-color-table));
   }
   .vuerd-memo:hover {
-    fill: var(--vuerd-color-font);
+    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
   .vuerd-memo.active {
-    border: solid var(--vuerd-color-table-active) 1px;
-    box-shadow: 0 1px 6px var(--vuerd-color-table-active);
+    border: solid
+      var(--vuerd-theme-table-active, var(--vuerd-color-table-active)) 1px;
+    box-shadow: 0 1px 6px
+      var(--vuerd-theme-table-active, var(--vuerd-color-table-active));
   }
   .vuerd-memo > .vuerd-memo-header {
     padding: ${SIZE_MEMO_PADDING}px;
@@ -304,8 +334,8 @@ export const Layout = css`
     outline: none;
     font-size: ${SIZE_FONT}px;
     font-family: var(--vuerd-font-family);
-    color: var(--vuerd-color-font-active);
-    background-color: var(--vuerd-color-table);
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    background-color: var(--vuerd-theme-table, var(--vuerd-color-table));
   }
 
   /* =============== minimap ============== */
@@ -313,12 +343,13 @@ export const Layout = css`
     position: absolute;
     z-index: 100000001;
     overflow: hidden;
-    background-color: var(--vuerd-color-canvas);
+    background-color: var(--vuerd-theme-canvas, var(--vuerd-color-canvas));
   }
   .vuerd-minimap-shadow {
     position: absolute;
     z-index: 100000000;
-    box-shadow: 0 1px 6px var(--vuerd-color-minimap-shadow);
+    box-shadow: 0 1px 6px
+      var(--vuerd-theme-minimap-shadow, var(--vuerd-color-minimap-shadow));
   }
   .vuerd-minimap-canvas {
     position: relative;
@@ -330,7 +361,8 @@ export const Layout = css`
   .vuerd-minimap-handle {
     position: absolute;
     z-index: 100000002;
-    border: solid var(--vuerd-color-minimap-handle) 1px;
+    border: solid
+      var(--vuerd-theme-minimap-handle, var(--vuerd-color-minimap-handle)) 1px;
     cursor: pointer;
     opacity: 0.7;
   }
@@ -342,7 +374,7 @@ export const Layout = css`
   .vuerd-drag-select {
     position: fixed;
     z-index: 7500;
-    stroke: var(--vuerd-color-drag-select);
+    stroke: var(--vuerd-theme-drag-select, var(--vuerd-color-drag-select));
   }
 
   /* =============== scrollbar ============== */
@@ -360,15 +392,25 @@ export const Layout = css`
   }
   /* handle */
   ::-webkit-scrollbar-thumb {
-    background: var(--vuerd-color-scrollbar-thumb);
+    background: var(
+      --vuerd-theme-scrollbar-thumb,
+      var(--vuerd-color-scrollbar-thumb)
+    );
   }
   /* handle:hover */
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--vuerd-color-scrollbar-thumb-active);
+    background: var(
+      --vuerd-theme-scrollbar-thumb-active,
+      var(--vuerd-color-scrollbar-thumb-active)
+    );
   }
   /* firefox */
   .vuerd-scrollbar {
-    scrollbar-color: var(--vuerd-color-scrollbar-thumb) #fff0;
+    scrollbar-color: var(
+        --vuerd-theme-scrollbar-thumb,
+        var(--vuerd-color-scrollbar-thumb)
+      )
+      #fff0;
     scrollbar-width: auto;
   }
 `;
