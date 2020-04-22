@@ -8,12 +8,12 @@ import { defaultWidth, defaultHeight } from "./Layout";
 import {
   SIZE_MINIMAP_WIDTH,
   SIZE_MINIMAP_MARGIN,
-  SIZE_TOP_MENU_HEIGHT,
+  SIZE_MENUBAR_HEIGHT,
 } from "@src/core/Layout";
 import { Table } from "@src/core/store/Table";
 import { Memo } from "@src/core/store/Memo";
 
-const MARGIN_TOP = SIZE_TOP_MENU_HEIGHT + SIZE_MINIMAP_MARGIN;
+const MARGIN_TOP = SIZE_MENUBAR_HEIGHT + SIZE_MINIMAP_MARGIN;
 
 @customElement("vuerd-minimap")
 class Minimap extends EditorElement {

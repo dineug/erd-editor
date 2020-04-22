@@ -7,6 +7,8 @@ import {
   SIZE_TABLE_PADDING,
   SIZE_TABLE_HEADER_BODY_HEIGHT,
   SIZE_MEMO_PADDING,
+  SIZE_MENUBAR_HEIGHT,
+  SIZE_COLUMN_MARGIN_RIGHT,
 } from "@src/core/Layout";
 
 export const Layout = css`
@@ -108,10 +110,17 @@ export const Layout = css`
     transition: transform 0.3s;
   }
 
+  vuerd-input-edit,
+  vuerd-column-key,
+  vuerd-column-not-null,
+  vuerd-column-data-type {
+    float: left;
+  }
   .vuerd-input-edit {
-    display: inline-flex;
+    display: flex;
     vertical-align: middle;
     align-items: center;
+    margin-right: ${SIZE_COLUMN_MARGIN_RIGHT}px;
     color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
     background-color: var(--vuerd-theme-table, var(--vuerd-color-table));
   }
@@ -119,6 +128,8 @@ export const Layout = css`
     outline: none;
     border: none;
     opacity: 0.9;
+    padding: 1px 0 1px 0;
+    height: 17px;
     font-size: ${SIZE_FONT}px;
     font-family: var(--vuerd-font-family);
   }
@@ -148,10 +159,11 @@ export const Layout = css`
   }
 
   .vuerd-column-key {
-    display: inline-flex;
+    display: flex;
     vertical-align: middle;
     align-items: center;
     fill: #fff0;
+    margin-right: ${SIZE_COLUMN_MARGIN_RIGHT}px;
   }
   .vuerd-column-key.pk {
     fill: var(--vuerd-theme-key-pk, var(--vuerd-color-key-pk));
@@ -164,12 +176,13 @@ export const Layout = css`
   }
 
   .vuerd-column-not-null {
-    display: inline-flex;
+    display: flex;
     vertical-align: middle;
     align-items: center;
     border-bottom: solid #fff0 1.5px;
-    height: ${SIZE_INPUT_EDIT_HEIGHT}px;
     cursor: default;
+    height: ${SIZE_INPUT_EDIT_HEIGHT}px;
+    margin-right: ${SIZE_COLUMN_MARGIN_RIGHT}px;
     color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }
   .vuerd-column-not-null.focus {
@@ -178,7 +191,7 @@ export const Layout = css`
   }
 
   .vuerd-column-data-type {
-    display: inline-flex;
+    display: flex;
     vertical-align: middle;
     align-items: center;
     position: relative;
@@ -189,7 +202,7 @@ export const Layout = css`
   .vuerd-column-data-type-hint {
     position: absolute;
     opacity: 0.9;
-    top: 10px;
+    top: 11px;
     left: 0;
     z-index: 100000000;
     color: var(--vuerd-theme-font, var(--vuerd-color-font));
@@ -370,11 +383,38 @@ export const Layout = css`
     opacity: 1;
   }
 
-  /* =============== minimap ============== */
+  /* =============== dragSelect ============== */
   .vuerd-drag-select {
     position: fixed;
     z-index: 7500;
     stroke: var(--vuerd-theme-drag-select, var(--vuerd-color-drag-select));
+  }
+
+  /* =============== menubar ============== */
+  .vuerd-menubar {
+    width: 100%;
+    position: absolute;
+    overflow: hidden;
+    z-index: 100000003;
+    opacity: 0.9;
+    display: flex;
+    align-items: center;
+    height: ${SIZE_MENUBAR_HEIGHT}px;
+    background-color: var(--vuerd-theme-menubar, var(--vuerd-color-menubar));
+  }
+
+  .vuerd-menubar li {
+    margin-left: 20px;
+  }
+
+  .vuerd-menubar input {
+    outline: none;
+    border: none;
+    opacity: 0.9;
+    font-size: ${SIZE_FONT}px;
+    font-family: var(--vuerd-font-family);
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    background-color: var(--vuerd-theme-table, var(--vuerd-color-table));
   }
 
   /* =============== scrollbar ============== */

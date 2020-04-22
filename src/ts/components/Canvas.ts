@@ -22,6 +22,14 @@ class Canvas extends EditorElement {
     this.subscriptionList.push.apply(this.subscriptionList, [
       store.observe(this.tables, () => this.requestUpdate()),
       store.observe(this.memos, () => this.requestUpdate()),
+      store.observe(store.canvasState, name => {
+        switch (name) {
+          case "width":
+          case "height":
+            this.requestUpdate();
+            break;
+        }
+      }),
     ]);
   }
   disconnectedCallback() {

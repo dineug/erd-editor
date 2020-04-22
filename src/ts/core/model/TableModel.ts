@@ -1,7 +1,7 @@
 import {
   SIZE_TABLE_HEADER_HEIGHT,
   SIZE_COLUMN_HEIGHT,
-  SIZE_MARGIN_RIGHT,
+  SIZE_COLUMN_MARGIN_RIGHT,
   SIZE_COLUMN_CLOSE,
   SIZE_COLUMN_KEY,
 } from "../Layout";
@@ -39,16 +39,16 @@ export class TableModel implements Table {
 
   width(): number {
     // table header width
-    let width = this.ui.widthName + SIZE_MARGIN_RIGHT;
+    let width = this.ui.widthName + SIZE_COLUMN_MARGIN_RIGHT;
     if (this.show.tableComment) {
-      width += this.ui.widthComment + SIZE_MARGIN_RIGHT;
+      width += this.ui.widthComment + SIZE_COLUMN_MARGIN_RIGHT;
     }
     // default width column
     const defaultWidthColumn =
       getDefaultWidthColumn(this.show) +
       SIZE_COLUMN_CLOSE +
       SIZE_COLUMN_KEY +
-      SIZE_MARGIN_RIGHT;
+      SIZE_COLUMN_MARGIN_RIGHT;
     if (width < defaultWidthColumn) {
       width = defaultWidthColumn;
     }
@@ -57,7 +57,7 @@ export class TableModel implements Table {
       this.maxWidthColumn().width +
       SIZE_COLUMN_CLOSE +
       SIZE_COLUMN_KEY +
-      SIZE_MARGIN_RIGHT;
+      SIZE_COLUMN_MARGIN_RIGHT;
     if (width < maxWidthColumn) {
       width = maxWidthColumn;
     }

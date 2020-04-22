@@ -29,6 +29,7 @@ import "./minimap/Table";
 import "./minimap/Column";
 import "./minimap/Memo";
 import "./DragSelect";
+import "./Menubar";
 
 @customElement("vuerd-editor")
 class Editor extends EditorElement {
@@ -129,6 +130,7 @@ class Editor extends EditorElement {
       scrollBarThumbActive,
       code,
       dragSelect,
+      menubar,
     } = this.context.theme;
     return html`
       <style>
@@ -157,6 +159,7 @@ class Editor extends EditorElement {
           --vuerd-color-scrollbar-thumb-active: ${scrollBarThumbActive};
           --vuerd-color-code: ${code};
           --vuerd-color-drag-select: ${dragSelect};
+          --vuerd-color-menubar: ${menubar};
         }
       </style>
       <div
@@ -166,6 +169,7 @@ class Editor extends EditorElement {
           height: `${this.height}px`,
         })}
       >
+        <vuerd-menubar .context=${this.context}></vuerd-menubar>
         <vuerd-erd
           .context=${this.context}
           .width=${this.width}

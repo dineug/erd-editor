@@ -3,7 +3,7 @@ import {
   SIZE_START_Y,
   SIZE_START_ADD,
   SIZE_COLUMN_OPTION_NN,
-  SIZE_MARGIN_RIGHT,
+  SIZE_COLUMN_MARGIN_RIGHT,
   SIZE_MIN_WIDTH,
 } from "../Layout";
 import { Store } from "../Store";
@@ -96,25 +96,25 @@ export function getMaxWidthColumn(columns: Column[], show: Show) {
     .forEach(key => {
       const k = key as ColumnWidthKey;
       if (columnWidth[k] !== 0) {
-        columnWidth.width += columnWidth[k] + SIZE_MARGIN_RIGHT;
+        columnWidth.width += columnWidth[k] + SIZE_COLUMN_MARGIN_RIGHT;
       }
     });
   return columnWidth;
 }
 
 export function getDefaultWidthColumn(show: Show): number {
-  let width = SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
+  let width = SIZE_MIN_WIDTH + SIZE_COLUMN_MARGIN_RIGHT;
   if (show.columnComment) {
-    width += SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
+    width += SIZE_MIN_WIDTH + SIZE_COLUMN_MARGIN_RIGHT;
   }
   if (show.columnDataType) {
-    width += SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
+    width += SIZE_MIN_WIDTH + SIZE_COLUMN_MARGIN_RIGHT;
   }
   if (show.columnDefault) {
-    width += SIZE_MIN_WIDTH + SIZE_MARGIN_RIGHT;
+    width += SIZE_MIN_WIDTH + SIZE_COLUMN_MARGIN_RIGHT;
   }
   if (show.columnNotNull) {
-    width += SIZE_COLUMN_OPTION_NN + SIZE_MARGIN_RIGHT;
+    width += SIZE_COLUMN_OPTION_NN + SIZE_COLUMN_MARGIN_RIGHT;
   }
   return width;
 }

@@ -7,11 +7,11 @@ import { defaultWidth, defaultHeight } from "../Layout";
 import {
   SIZE_MINIMAP_WIDTH,
   SIZE_MINIMAP_MARGIN,
-  SIZE_TOP_MENU_HEIGHT,
+  SIZE_MENUBAR_HEIGHT,
 } from "@src/core/Layout";
 import { moveCanvas } from "@src/core/command/canvas";
 
-const MARGIN_TOP = SIZE_TOP_MENU_HEIGHT + SIZE_MINIMAP_MARGIN;
+const MARGIN_TOP = SIZE_MENUBAR_HEIGHT + SIZE_MINIMAP_MARGIN;
 
 @customElement("vuerd-minimap-handle")
 class MinimapHandle extends EditorElement {

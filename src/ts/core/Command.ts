@@ -61,6 +61,8 @@ import {
   changeCanvasShowExecute,
   ChangeDatabase,
   changeDatabaseExecute,
+  ChangeDatabaseName,
+  changeDatabaseNameExecute,
   ChangeCanvasType,
   changeCanvasTypeExecute,
   ChangeLanguage,
@@ -128,6 +130,7 @@ type CommandName =
   | "canvas.resize"
   | "canvas.changeShow"
   | "canvas.changeDatabase"
+  | "canvas.changeDatabaseName"
   | "canvas.changeCanvasType"
   | "canvas.changeLanguage"
   | "canvas.changeTableCase"
@@ -168,6 +171,7 @@ export type Command =
   | CommandEffect<ResizeCanvas>
   | CommandEffect<ChangeCanvasShow>
   | CommandEffect<ChangeDatabase>
+  | CommandEffect<ChangeDatabaseName>
   | CommandEffect<ChangeCanvasType>
   | CommandEffect<ChangeLanguage>
   | CommandEffect<ChangeNameCase>
@@ -285,6 +289,9 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "canvas.changeDatabase":
         changeDatabaseExecute(store, command.data as ChangeDatabase);
+        break;
+      case "canvas.changeDatabaseName":
+        changeDatabaseNameExecute(store, command.data as ChangeDatabaseName);
         break;
       case "canvas.changeCanvasType":
         changeCanvasTypeExecute(store, command.data as ChangeCanvasType);

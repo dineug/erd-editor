@@ -21,6 +21,7 @@ export interface Theme {
   scrollBarThumbActive: string;
   code: string;
   dragSelect: string;
+  menubar: string;
 }
 
 export function createTheme(): Theme {
@@ -47,5 +48,6 @@ export function createTheme(): Theme {
     scrollBarThumbActive: "#a2a2a2",
     code: "#23241f",
     dragSelect: "#0098ff",
+    menubar: "#191919",
   };
 }

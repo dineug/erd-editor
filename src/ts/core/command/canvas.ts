@@ -96,6 +96,27 @@ export function changeDatabaseExecute(store: Store, data: ChangeDatabase) {
   store.canvasState.database = data.database;
 }
 
+export interface ChangeDatabaseName {
+  value: string;
+}
+export function changeDatabaseName(
+  value: string
+): CommandEffect<ChangeDatabaseName> {
+  return {
+    name: "canvas.changeDatabaseName",
+    data: {
+      value,
+    },
+  };
+}
+export function changeDatabaseNameExecute(
+  store: Store,
+  data: ChangeDatabaseName
+) {
+  Logger.debug("changeDatabaseNameExecute");
+  store.canvasState.databaseName = data.value;
+}
+
 export interface ChangeCanvasType {
   canvasType: CanvasType;
 }
