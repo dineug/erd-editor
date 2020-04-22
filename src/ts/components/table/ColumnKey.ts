@@ -42,11 +42,7 @@ class ColumnKey extends EditorElement {
           pfk,
         })}
       >
-        <vuerd-fontawesome
-          .context=${this.context}
-          size="12"
-          icon="key"
-        ></vuerd-fontawesome>
+        <vuerd-fontawesome size="12" icon="key"></vuerd-fontawesome>
       </div>
     `;
   }

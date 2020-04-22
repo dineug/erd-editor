@@ -59,7 +59,6 @@ class Table extends EditorElement {
           column =>
             html`
               <vuerd-minimap-column
-                .context=${this.context}
                 .column=${column}
                 @request-update=${() => this.requestUpdate()}
               ></vuerd-minimap-column>

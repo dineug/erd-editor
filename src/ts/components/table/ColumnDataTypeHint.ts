@@ -62,7 +62,7 @@ class ColumnDataTypeHint extends EditorElement {
     super.connectedCallback();
     const { eventBus } = this.context;
     const { mousedown$ } = this.context.windowEventObservable;
-    const root = this.getRootNode() as Element | DocumentFragment;
+    const root = this.getRootNode() as ShadowRoot;
     const editor = root.querySelector(".vuerd-editor") as Element;
     this.hintFilter();
     this.subscriptionList.push.apply(this.subscriptionList, [
@@ -193,7 +193,7 @@ class ColumnDataTypeHint extends EditorElement {
   };
   private onMousedownWindow = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
-    const root = this.getRootNode() as any;
+    const root = this.getRootNode() as ShadowRoot;
     if (!el.closest(root.host.localName)) {
       this.dispatchEvent(new Event("blur"));
     }

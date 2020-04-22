@@ -212,16 +212,14 @@ class ERD extends EditorElement {
         @mousedown=${this.onMousedown}
         @contextmenu=${this.onContextmenu}
       >
-        <vuerd-canvas .context=${this.context}></vuerd-canvas>
+        <vuerd-canvas></vuerd-canvas>
         <vuerd-minimap
-          .context=${this.context}
           .width=${this.width}
           .height=${this.height}
         ></vuerd-minimap>
         ${this.contextmenu
           ? html`
               <vuerd-contextmenu
-                .context=${this.context}
                 .menus=${this.menus}
                 .x=${this.contextmenuX}
                 .y=${this.contextmenuY}
@@ -231,7 +229,6 @@ class ERD extends EditorElement {
         ${this.select
           ? html`
               <vuerd-drag-select
-                .context=${this.context}
                 .x=${this.selectX}
                 .y=${this.selectY}
                 .ghostX=${this.selectGhostX}
@@ -269,7 +266,7 @@ class ERD extends EditorElement {
   };
   private onMousedownWindow = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
-    const root = this.getRootNode() as any;
+    const root = this.getRootNode() as ShadowRoot;
     if (!el.closest(root.host.localName)) {
       this.contextmenu = false;
     }

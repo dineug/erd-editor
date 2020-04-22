@@ -24,7 +24,6 @@ class ColumnDataType extends EditorElement {
     return html`
       <div class="vuerd-column-data-type">
         <vuerd-input-edit
-          .context=${this.context}
           .width=${this.width}
           .value=${this.value}
           .focusState=${this.focusState}
@@ -38,7 +37,6 @@ class ColumnDataType extends EditorElement {
         ${this.edit
           ? html`
               <vuerd-column-data-type-hint
-                .context=${this.context}
                 .value=${this.value}
                 .tableId=${this.tableId}
                 .columnId=${this.columnId}

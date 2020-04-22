@@ -32,7 +32,7 @@ class DargSelect extends EditorElement {
   connectedCallback() {
     super.connectedCallback();
     const { mouseup$, mousemove$ } = this.context.windowEventObservable;
-    const root = this.getRootNode() as Element | DocumentFragment;
+    const root = this.getRootNode() as ShadowRoot;
     const erd = root.querySelector(".vuerd-erd") as Element;
     this.subscriptionList.push.apply(this.subscriptionList, [
       mouseup$.subscribe(this.onMouseup),

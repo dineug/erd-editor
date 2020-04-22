@@ -135,7 +135,6 @@ class Table extends EditorElement {
           <div class="vuerd-table-header-top">
             <vuerd-fontawesome
               class="vuerd-button"
-              .context=${this.context}
               title=${keymapRemoveTable}
               icon="times"
               size="12"
@@ -143,7 +142,6 @@ class Table extends EditorElement {
             ></vuerd-fontawesome>
             <vuerd-fontawesome
               class="vuerd-button"
-              .context=${this.context}
               title=${keymapAddColumn}
               icon="plus"
               size="12"
@@ -153,7 +151,6 @@ class Table extends EditorElement {
           <div class="vuerd-table-header-body">
             <vuerd-input-edit
               class="vuerd-table-name"
-              .context=${this.context}
               .width=${this.table.ui.widthName}
               .value=${this.table.name}
               .focusState=${this.focusTable("focusName")}
@@ -170,7 +167,6 @@ class Table extends EditorElement {
               ? html`
                   <vuerd-input-edit
                     class="vuerd-table-comment"
-                    .context=${this.context}
                     .width=${this.table.ui.widthComment}
                     .value=${this.table.comment}
                     .focusState=${this.focusTable("focusComment")}
@@ -195,7 +191,6 @@ class Table extends EditorElement {
             column =>
               html`
                 <vuerd-column
-                  .context=${this.context}
                   .tableId=${this.table.id}
                   .column=${column}
                   .select=${this.selectColumn(column)}

@@ -97,7 +97,6 @@ class Memo extends EditorElement {
         <div class="vuerd-memo-header">
           <vuerd-fontawesome
             class="vuerd-button"
-            .context=${this.context}
             title=${keymapRemoveTable}
             icon="times"
             size="12"
@@ -117,53 +116,45 @@ class Memo extends EditorElement {
           ></textarea>
         </div>
         <vuerd-sash
-          .context=${this.context}
           vertical
           @mousedown=${(event: MouseEvent) =>
             this.onMousedownSash(event, "left")}
         ></vuerd-sash>
         <vuerd-sash
-          .context=${this.context}
           vertical
           .left=${this.width}
           @mousedown=${(event: MouseEvent) =>
             this.onMousedownSash(event, "right")}
         ></vuerd-sash>
         <vuerd-sash
-          .context=${this.context}
           horizontal
           @mousedown=${(event: MouseEvent) =>
             this.onMousedownSash(event, "top")}
         ></vuerd-sash>
         <vuerd-sash
-          .context=${this.context}
           horizontal
           .top=${this.height}
           @mousedown=${(event: MouseEvent) =>
             this.onMousedownSash(event, "bottom")}
         ></vuerd-sash>
         <vuerd-sash
-          .context=${this.context}
           edge
           cursor="nw-resize"
           @mousedown=${(event: MouseEvent) => this.onMousedownSash(event, "lt")}
         ></vuerd-sash>
         <vuerd-sash
-          .context=${this.context}
           edge
           cursor="ne-resize"
           .left=${this.width}
           @mousedown=${(event: MouseEvent) => this.onMousedownSash(event, "rt")}
         ></vuerd-sash>
         <vuerd-sash
-          .context=${this.context}
           edge
           cursor="ne-resize"
           .top=${this.height}
           @mousedown=${(event: MouseEvent) => this.onMousedownSash(event, "lb")}
         ></vuerd-sash>
         <vuerd-sash
-          .context=${this.context}
           edge
           cursor="nw-resize"
           .left=${this.width}

@@ -93,7 +93,7 @@ class MinimapHandle extends EditorElement {
       movementX = event.movementX;
       movementY = event.movementY;
     }
-    const root = this.getRootNode() as Element | DocumentFragment;
+    const root = this.getRootNode() as ShadowRoot;
     const erd = root.querySelector(".vuerd-erd") as Element;
     erd.scrollTop += movementY / ratio;
     erd.scrollLeft += movementX / ratio;

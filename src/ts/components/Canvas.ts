@@ -53,7 +53,7 @@ class Canvas extends EditorElement {
           this.tables,
           table => table.id,
           table => html`
-            <vuerd-table .context=${this.context} .table=${table}></vuerd-table>
+            <vuerd-table .table=${table}></vuerd-table>
           `
         )}
         ${repeat(
@@ -61,10 +61,10 @@ class Canvas extends EditorElement {
           memo => memo.id,
           memo =>
             html`
-              <vuerd-memo .context=${this.context} .memo=${memo}></vuerd-memo>
+              <vuerd-memo .memo=${memo}></vuerd-memo>
             `
         )}
-        <vuerd-canvas-svg .context=${this.context}></vuerd-canvas-svg>
+        <vuerd-canvas-svg></vuerd-canvas-svg>
       </div>
     `;
   }

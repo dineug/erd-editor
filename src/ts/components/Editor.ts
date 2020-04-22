@@ -1,11 +1,10 @@
-import { html, customElement, property } from "lit-element";
+import { LitElement, html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { Subscription } from "rxjs";
-import { EditorElement } from "./EditorElement";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
 import { keymapMatch } from "@src/core/Keymap";
-import { createEditorContext } from "@src/core/EditorContext";
+import { EditorContext, createEditorContext } from "@src/core/EditorContext";
 import { Command } from "@src/core/Command";
 import { selectEndTable } from "@src/core/command/table";
 import { selectEndMemo } from "@src/core/command/memo";
@@ -32,7 +31,7 @@ import "./DragSelect";
 import "./Menubar";
 
 @customElement("vuerd-editor")
-class Editor extends EditorElement {
+class Editor extends LitElement {
   static get styles() {
     return Layout;
   }
@@ -41,6 +40,8 @@ class Editor extends EditorElement {
   width = defaultWidth;
   @property({ type: Number })
   height = defaultHeight;
+
+  context!: EditorContext;
 
   private subscriptionList: Subscription[] = [];
 
@@ -99,10 +100,6 @@ class Editor extends EditorElement {
     this.context.store.destroy();
     this.subscriptionList.forEach(sub => sub.unsubscribe());
     super.disconnectedCallback();
-  }
-
-  protected createRenderRoot(): Element | ShadowRoot {
-    return this.attachShadow({ mode: "open" });
   }
 
   render() {
@@ -169,12 +166,8 @@ class Editor extends EditorElement {
           height: `${this.height}px`,
         })}
       >
-        <vuerd-menubar .context=${this.context}></vuerd-menubar>
-        <vuerd-erd
-          .context=${this.context}
-          .width=${this.width}
-          .height=${this.height}
-        ></vuerd-erd>
+        <vuerd-menubar></vuerd-menubar>
+        <vuerd-erd .width=${this.width} .height=${this.height}></vuerd-erd>
         <span class="vuerd-text-width"></span>
       </div>
     `;

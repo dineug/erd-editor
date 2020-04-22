@@ -98,10 +98,7 @@ class Minimap extends EditorElement {
             table => table.id,
             table =>
               html`
-                <vuerd-minimap-table
-                  .context=${this.context}
-                  .table=${table}
-                ></vuerd-minimap-table>
+                <vuerd-minimap-table .table=${table}></vuerd-minimap-table>
               `
           )}
           ${repeat(
@@ -109,10 +106,7 @@ class Minimap extends EditorElement {
             memo => memo.id,
             memo =>
               html`
-                <vuerd-minimap-memo
-                  .context=${this.context}
-                  .memo=${memo}
-                ></vuerd-minimap-memo>
+                <vuerd-minimap-memo .memo=${memo}></vuerd-minimap-memo>
               `
           )}
           ${svg`<svg class="vuerd-minimap-canvas-svg"></svg>`}
@@ -123,7 +117,6 @@ class Minimap extends EditorElement {
         style=${styleMap(this.shadowStyle)}
       ></div>
       <vuerd-minimap-handle
-        .context=${this.context}
         .width=${this.width}
         .height=${this.height}
       ></vuerd-minimap-handle>

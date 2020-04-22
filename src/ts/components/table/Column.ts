@@ -103,12 +103,8 @@ class Column extends EditorElement {
         @dragend=${this.onDragend}
         @dragover=${this.onDragover}
       >
-        <vuerd-column-key
-          .context=${this.context}
-          .columnUI=${this.column.ui}
-        ></vuerd-column-key>
+        <vuerd-column-key .columnUI=${this.column.ui}></vuerd-column-key>
         <vuerd-input-edit
-          .context=${this.context}
           .width=${this.widthName}
           .value=${this.column.name}
           .focusState=${this.focusName}
@@ -123,7 +119,6 @@ class Column extends EditorElement {
         ${show.columnDataType
           ? html`
               <vuerd-column-data-type
-                .context=${this.context}
                 .width=${this.widthDataType}
                 .value=${this.column.dataType}
                 .focusState=${this.focusDataType}
@@ -144,7 +139,6 @@ class Column extends EditorElement {
         ${show.columnNotNull
           ? html`
               <vuerd-column-not-null
-                .context=${this.context}
                 .columnOption=${this.column.option}
                 .focusState=${this.focusNotNull}
                 @mousedown=${(event: MouseEvent) =>
@@ -157,7 +151,6 @@ class Column extends EditorElement {
         ${show.columnDefault
           ? html`
               <vuerd-input-edit
-                .context=${this.context}
                 .width=${this.widthDefault}
                 .value=${this.column.default}
                 .focusState=${this.focusDefault}
@@ -177,7 +170,6 @@ class Column extends EditorElement {
         ${show.columnComment
           ? html`
               <vuerd-input-edit
-                .context=${this.context}
                 .width=${this.widthComment}
                 .value=${this.column.comment}
                 .focusState=${this.focusComment}
@@ -196,7 +188,6 @@ class Column extends EditorElement {
           : ""}
         <vuerd-fontawesome
           class="vuerd-button"
-          .context=${this.context}
           title=${keymapRemoveColumn}
           icon="times"
           size="9"
