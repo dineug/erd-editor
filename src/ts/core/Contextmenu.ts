@@ -1,6 +1,7 @@
 import { ShowKey, Database, Language, NameCase } from "./store/Canvas";
 import { Store } from "./Store";
 import { Keymap, keymapOptionToString } from "./Keymap";
+import { exportPNG, exportJSON } from "./File";
 import { addTable } from "./command/table";
 import { addMemo } from "./command/memo";
 import { changeColumnPrimaryKey } from "./command/column";
@@ -23,11 +24,11 @@ export interface Menu {
   children?: Menu[];
   option?: MenuOption;
 
-  execute?(effect?: () => void): void;
+  execute?(root: ShadowRoot): void;
 }
 
 export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
-  const { show } = store.canvasState;
+  const { canvasState, tableState, memoState, relationshipState } = store;
   return [
     {
       icon: "table",
@@ -71,6 +72,34 @@ export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
       icon: "database",
       name: "Database",
       children: createDatabaseMenus(store),
+    },
+    {
+      icon: "file-export",
+      name: "Export",
+      children: [
+        {
+          name: "json",
+          execute() {
+            const data = {
+              canvas: canvasState,
+              table: tableState,
+              memo: memoState,
+              relationship: relationshipState,
+            };
+            exportJSON(
+              JSON.stringify(data, undefined, 2),
+              canvasState.databaseName
+            );
+          },
+        },
+        {
+          icon: "file-image",
+          name: "png",
+          execute(root: ShadowRoot) {
+            exportPNG(root, ".vuerd-canvas", canvasState.databaseName);
+          },
+        },
+      ],
     },
   ];
 }

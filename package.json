@@ -25,6 +25,7 @@
     "@rollup/plugin-typescript": "^4.1.1",
     "@rollup/plugin-url": "^4.0.2",
     "@types/d3": "^5.7.2",
+    "@types/dom-to-image": "^2.6.0",
     "@typescript-eslint/eslint-plugin": "^2.29.0",
     "@typescript-eslint/parser": "^2.29.0",
     "browser-sync": "^2.26.7",
@@ -42,6 +43,7 @@
     "@fortawesome/free-solid-svg-icons": "^5.13.0",
     "@mdi/js": "^5.1.45",
     "d3": "^5.16.0",
+    "dom-to-image": "^2.6.0",
     "lit-element": "^2.3.1",
     "rxjs": "^6.5.5"
   }

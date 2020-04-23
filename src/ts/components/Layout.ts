@@ -9,6 +9,7 @@ import {
   SIZE_MEMO_PADDING,
   SIZE_MENUBAR_HEIGHT,
   SIZE_COLUMN_MARGIN_RIGHT,
+  SIZE_CONTEXTMENU_HEIGHT,
 } from "@src/core/Layout";
 
 export const Layout = css`
@@ -269,7 +270,9 @@ export const Layout = css`
     );
   }
   .vuerd-contextmenu > li {
+    height: ${SIZE_CONTEXTMENU_HEIGHT}px;
     padding: 10px 5px 10px 10px;
+    box-sizing: border-box;
     cursor: pointer;
     font-size: ${SIZE_FONT}px;
     white-space: nowrap;

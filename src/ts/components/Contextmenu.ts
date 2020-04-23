@@ -3,7 +3,7 @@ import { styleMap } from "lit-html/directives/style-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
-import { SIZE_MENU_HEIGHT } from "@src/core/Layout";
+import { SIZE_CONTEXTMENU_HEIGHT } from "@src/core/Layout";
 import { Menu } from "@src/core/Contextmenu";
 import { Bus } from "@src/core/Event";
 
@@ -32,7 +32,7 @@ export class Contextmenu extends EditorElement {
   get childrenY() {
     let y = this.y;
     if (this.currentMenu) {
-      y += this.menus.indexOf(this.currentMenu) * SIZE_MENU_HEIGHT;
+      y += this.menus.indexOf(this.currentMenu) * SIZE_CONTEXTMENU_HEIGHT;
     }
     return y;
   }
@@ -118,7 +118,7 @@ export class Contextmenu extends EditorElement {
   }
   private onExecute(menu: Menu) {
     if (!menu.children && menu.execute && typeof menu.execute === "function") {
-      menu.execute();
+      menu.execute(this.getRootNode() as ShadowRoot);
       if (
         !menu.option ||
         menu.option.close ||
