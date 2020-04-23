@@ -75,6 +75,7 @@ class Column extends EditorElement {
           case "widthComment":
           case "widthDataType":
           case "widthDefault":
+          case "active":
             this.dispatchEvent(new CustomEvent("request-update"));
             break;
         }
@@ -89,6 +90,7 @@ class Column extends EditorElement {
   render() {
     const { keymap } = this.context;
     const { show } = this.context.store.canvasState;
+    const { ui } = this.column;
     const keymapRemoveColumn = keymapOptionToString(keymap.removeColumn[0]);
     return html`
       <div
@@ -96,6 +98,7 @@ class Column extends EditorElement {
           "vuerd-column": true,
           select: this.select,
           draggable: this.draggable,
+          active: ui.active,
         })}
         data-id=${this.column.id}
         draggable="true"
@@ -103,13 +106,14 @@ class Column extends EditorElement {
         @dragend=${this.onDragend}
         @dragover=${this.onDragover}
       >
-        <vuerd-column-key .columnUI=${this.column.ui}></vuerd-column-key>
+        <vuerd-column-key .columnUI=${ui}></vuerd-column-key>
         <vuerd-input-edit
           .width=${this.widthName}
           .value=${this.column.name}
           .focusState=${this.focusName}
           .edit=${this.editName}
           .select=${this.select}
+          .active=${ui.active}
           placeholder="column"
           @blur=${this.onBlur}
           @input=${(event: InputEvent) => this.onInput(event, "columnName")}
@@ -124,6 +128,7 @@ class Column extends EditorElement {
                 .focusState=${this.focusDataType}
                 .edit=${this.editDataType}
                 .select=${this.select}
+                .active=${ui.active}
                 .tableId=${this.tableId}
                 .columnId=${this.column.id}
                 @blur=${this.onBlur}
@@ -156,6 +161,7 @@ class Column extends EditorElement {
                 .focusState=${this.focusDefault}
                 .edit=${this.editDefault}
                 .select=${this.select}
+                .active=${ui.active}
                 placeholder="default"
                 @blur=${this.onBlur}
                 @input=${(event: InputEvent) =>
@@ -175,6 +181,7 @@ class Column extends EditorElement {
                 .focusState=${this.focusComment}
                 .edit=${this.editComment}
                 .select=${this.select}
+                .active=${ui.active}
                 placeholder="comment"
                 @blur=${this.onBlur}
                 @input=${(event: InputEvent) =>
@@ -186,13 +193,13 @@ class Column extends EditorElement {
               ></vuerd-input-edit>
             `
           : ""}
-        <vuerd-fontawesome
+        <vuerd-icon
           class="vuerd-button"
           title=${keymapRemoveColumn}
           icon="times"
           size="9"
           @click=${this.onRemoveColumn}
-        ></vuerd-fontawesome>
+        ></vuerd-icon>
       </div>
     `;
   }

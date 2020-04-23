@@ -1,7 +1,8 @@
 import { CommandEffect } from "../Command";
 import { SIZE_MIN_WIDTH, SIZE_TABLE_PADDING } from "../Layout";
 import { Store } from "../Store";
-import { Helper, getData, uuid, Point } from "../Helper";
+import { Helper, getData, uuid } from "../Helper";
+import { Point } from "../helper/RelationshipHelper";
 import { Logger } from "../Logger";
 import { TableUI } from "../store/Table";
 import { TableModel } from "../model/TableModel";

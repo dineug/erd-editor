@@ -133,20 +133,20 @@ class Table extends EditorElement {
       >
         <div class="vuerd-table-header">
           <div class="vuerd-table-header-top">
-            <vuerd-fontawesome
+            <vuerd-icon
               class="vuerd-button"
               title=${keymapRemoveTable}
               icon="times"
               size="12"
               @click=${this.onRemoveTable}
-            ></vuerd-fontawesome>
-            <vuerd-fontawesome
+            ></vuerd-icon>
+            <vuerd-icon
               class="vuerd-button"
               title=${keymapAddColumn}
               icon="plus"
               size="12"
               @click=${this.onAddColumn}
-            ></vuerd-fontawesome>
+            ></vuerd-icon>
           </div>
           <div class="vuerd-table-header-body">
             <vuerd-input-edit

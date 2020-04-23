@@ -2,14 +2,19 @@ import { Subject, Subscription, asapScheduler } from "rxjs";
 import { CanvasState, createCanvasState } from "./store/Canvas";
 import { TableState, createTableState } from "./store/Table";
 import { MemoState, createMemoState } from "./store/Memo";
+import {
+  RelationshipState,
+  createRelationshipState,
+} from "./store/Relationship";
 import { EditorState, createEditorState } from "./store/Editor";
 import { Command, commandExecute } from "./Command";
-import { createObservable } from "./helper/Observable";
+import { createObservable } from "./Observable";
 
 export class Store {
   readonly canvasState: CanvasState;
   readonly tableState: TableState;
   readonly memoState: MemoState;
+  readonly relationshipState: RelationshipState;
   readonly editorState: EditorState;
   private dispatch$ = new Subject<Array<Command>>();
   private next$ = new Subject<Array<Command>>();
@@ -44,6 +49,13 @@ export class Store {
     );
     this.memoState = createObservable(
       createMemoState(),
+      this.rawToProxy,
+      this.proxyToRaw,
+      this.effect,
+      this.excludeKeys
+    );
+    this.relationshipState = createObservable(
+      createRelationshipState(),
       this.rawToProxy,
       this.proxyToRaw,
       this.effect,

@@ -1,4 +1,4 @@
-import { Logger } from "../Logger";
+import { Logger } from "./Logger";
 
 let proxyCount = 0;
 

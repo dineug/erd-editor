@@ -2,7 +2,7 @@
  * FLIP stands for First, Last, Invert, Play.
  * https://aerotwist.com/blog/flip-your-animations/
  */
-export interface FlipSnapshot {
+interface FlipSnapshot {
   el: Element;
   top: number;
   left: number;

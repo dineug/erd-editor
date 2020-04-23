@@ -27,7 +27,7 @@ class ColumnDataTypeHint extends EditorElement {
   tableId!: string;
   columnId!: string;
 
-  private filterStart = true;
+  private startFilter = true;
   private subscriptionList: Subscription[] = [];
   private flipAnimation = new FlipAnimation(
     this.renderRoot,
@@ -73,7 +73,7 @@ class ColumnDataTypeHint extends EditorElement {
     eventBus.on(Bus.ColumnDataTypeHint.arrowDown, this.onArrowDown);
     eventBus.on(Bus.ColumnDataTypeHint.arrowLeft, this.onArrowLeft);
     eventBus.on(Bus.ColumnDataTypeHint.arrowRight, this.onArrowRight);
-    eventBus.on(Bus.ColumnDataTypeHint.filterStart, this.onFilterStart);
+    eventBus.on(Bus.ColumnDataTypeHint.startFilter, this.onStartFilter);
   }
   updated(changedProperties: any) {
     Logger.debug("ColumnDataTypeHint updated");
@@ -95,7 +95,7 @@ class ColumnDataTypeHint extends EditorElement {
     eventBus.off(Bus.ColumnDataTypeHint.arrowDown, this.onArrowDown);
     eventBus.off(Bus.ColumnDataTypeHint.arrowLeft, this.onArrowLeft);
     eventBus.off(Bus.ColumnDataTypeHint.arrowRight, this.onArrowRight);
-    eventBus.off(Bus.ColumnDataTypeHint.filterStart, this.onFilterStart);
+    eventBus.off(Bus.ColumnDataTypeHint.startFilter, this.onStartFilter);
     this.subscriptionList.forEach(sub => sub.unsubscribe());
     super.disconnectedCallback();
   }
@@ -170,7 +170,7 @@ class ColumnDataTypeHint extends EditorElement {
     const index = this.activeIndex;
     if (index !== null) {
       event.detail.preventDefault();
-      this.filterStart = false;
+      this.startFilter = false;
       const { store, helper } = this.context;
       store.dispatch(
         changeColumnDataType(
@@ -182,8 +182,8 @@ class ColumnDataTypeHint extends EditorElement {
       );
     }
   };
-  private onFilterStart = (event: CustomEvent) => {
-    this.filterStart = true;
+  private onStartFilter = (event: CustomEvent) => {
+    this.startFilter = true;
   };
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
@@ -202,7 +202,7 @@ class ColumnDataTypeHint extends EditorElement {
   private onSelectHint(hint: Hint) {
     Logger.debug("ColumnDataTypeHint onSelectHint");
     const { store, helper } = this.context;
-    this.filterStart = false;
+    this.startFilter = false;
     this.activeEnd();
     store.dispatch(
       changeColumnDataType(helper, this.tableId, this.columnId, hint.name)
@@ -210,7 +210,7 @@ class ColumnDataTypeHint extends EditorElement {
   }
 
   private hintFilter() {
-    if (this.filterStart) {
+    if (this.startFilter) {
       if (this.value.trim() === "") {
         this.hints = this.dataTypeHints.map(dataTypeHint => {
           return {

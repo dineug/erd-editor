@@ -136,8 +136,3 @@ function keyHTML(
   }
   return result;
 }
-
-export interface Point {
-  x: number;
-  y: number;
-}

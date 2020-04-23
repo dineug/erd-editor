@@ -46,10 +46,18 @@ enum ColumnDataTypeHint {
   arrowDown = "ColumnDataTypeHint.arrowDown",
   arrowRight = "ColumnDataTypeHint.arrowRight",
   arrowLeft = "ColumnDataTypeHint.arrowLeft",
-  filterStart = "ColumnDataTypeHint.filterStart",
+  startFilter = "ColumnDataTypeHint.startFilter",
+}
+
+enum Visualization {
+  startPreview = "Visualization.startPreview",
+  endPreview = "Visualization.endPreview",
+  dragStart = "Visualization.dragStart",
+  dragEnd = "Visualization.dragEnd",
 }
 
 export const Bus = {
   ERD,
   ColumnDataTypeHint,
+  Visualization,
 };

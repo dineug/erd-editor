@@ -1,8 +1,14 @@
 import { html, customElement } from "lit-element";
+import { classMap } from "lit-html/directives/class-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
-import { changeDatabaseName, resizeCanvas } from "@src/core/command/canvas";
+import {
+  resizeCanvas,
+  changeDatabaseName,
+  changeCanvasType,
+} from "@src/core/command/canvas";
+import { CanvasType } from "@src/core/store/Canvas";
 import { SIZE_CANVAS_MIN, SIZE_CANVAS_MAX } from "@src/core/Layout";
 
 @customElement("vuerd-menubar")
@@ -19,6 +25,7 @@ class Menubar extends EditorElement {
           case "databaseName":
           case "width":
           case "height":
+          case "canvasType":
             this.requestUpdate();
             break;
         }
@@ -31,10 +38,10 @@ class Menubar extends EditorElement {
   }
 
   render() {
-    const { databaseName, width } = this.context.store.canvasState;
+    const { databaseName, width, canvasType } = this.context.store.canvasState;
     return html`
       <ul class="vuerd-menubar">
-        <li>
+        <li class="vuerd-menubar-input">
           <input
             style="width: 200px;"
             type="text"
@@ -45,7 +52,7 @@ class Menubar extends EditorElement {
             @input=${this.onChangeDatabaseName}
           />
         </li>
-        <li>
+        <li class="vuerd-menubar-input">
           <input
             style="width: 65px;"
             type="text"
@@ -56,6 +63,26 @@ class Menubar extends EditorElement {
             @input=${this.onResizeValid}
             @change=${this.onResizeCanvas}
           />
+        </li>
+        <li
+          class=${classMap({
+            "vuerd-menubar-menu": true,
+            active: canvasType === "ERD",
+          })}
+          title="ERD"
+          @click=${() => this.onChangeCanvasType("ERD")}
+        >
+          <vuerd-icon icon="project-diagram" size="18"></vuerd-icon>
+        </li>
+        <li
+          class=${classMap({
+            "vuerd-menubar-menu": true,
+            active: canvasType === "Visualization",
+          })}
+          title="Visualization"
+          @click=${() => this.onChangeCanvasType("Visualization")}
+        >
+          <vuerd-icon prefix="mdi" icon="chart-bubble"></vuerd-icon>
         </li>
       </ul>
     `;
@@ -81,5 +108,11 @@ class Menubar extends EditorElement {
     input.value = size.toString();
     const { store } = this.context;
     store.dispatch(resizeCanvas(size, size));
+  }
+  private onChangeCanvasType(canvasType: CanvasType) {
+    const { store } = this.context;
+    if (canvasType !== store.canvasState.canvasType) {
+      store.dispatch(changeCanvasType(canvasType));
+    }
   }
 }

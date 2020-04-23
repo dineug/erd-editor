@@ -12,6 +12,8 @@ class ColumnDataType extends EditorElement {
   focusState = false;
   @property({ type: Boolean })
   select = false;
+  @property({ type: Boolean })
+  active = false;
   @property({ type: Number })
   width = SIZE_MIN_WIDTH;
   @property({ type: String })
@@ -29,6 +31,7 @@ class ColumnDataType extends EditorElement {
           .focusState=${this.focusState}
           .edit=${this.edit}
           .select=${this.select}
+          .active=${this.active}
           placeholder="dataType"
           @keydown=${this.onKeydown}
           @blur=${this.onBlur}
@@ -68,7 +71,7 @@ class ColumnDataType extends EditorElement {
   }
   private onInput(event: KeyboardEvent) {
     const { eventBus } = this.context;
-    eventBus.emit(Bus.ColumnDataTypeHint.filterStart);
+    eventBus.emit(Bus.ColumnDataTypeHint.startFilter);
   }
   private onBlurHint() {
     this.dispatchEvent(new Event("blur"));

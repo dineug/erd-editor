@@ -5,7 +5,8 @@ import {
   SIZE_MEMO_PADDING,
 } from "../Layout";
 import { Store } from "../Store";
-import { getData, uuid, Point } from "../Helper";
+import { getData, uuid } from "../Helper";
+import { Point } from "../helper/RelationshipHelper";
 import { Logger } from "../Logger";
 import { MemoUI } from "../store/Memo";
 import { MemoModel } from "../model/MemoModel";

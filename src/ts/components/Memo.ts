@@ -95,13 +95,13 @@ class Memo extends EditorElement {
         @mousedown=${this.onMousedown}
       >
         <div class="vuerd-memo-header">
-          <vuerd-fontawesome
+          <vuerd-icon
             class="vuerd-button"
             title=${keymapRemoveTable}
             icon="times"
             size="12"
             @click=${this.onRemoveMemo}
-          ></vuerd-fontawesome>
+          ></vuerd-icon>
         </div>
         <div class="vuerd-memo-body">
           <textarea

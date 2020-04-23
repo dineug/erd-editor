@@ -82,8 +82,7 @@ export class Contextmenu extends EditorElement {
               ${icon
                 ? html`
                     <span class="icon">
-                      <vuerd-fontawesome size="14" icon=${icon}>
-                      </vuerd-fontawesome>
+                      <vuerd-icon size="14" icon=${icon}> </vuerd-icon>
                     </span>
                   `
                 : html`
@@ -96,8 +95,7 @@ export class Contextmenu extends EditorElement {
               ${menu.children
                 ? html`
                     <span class="arrow">
-                      <vuerd-fontawesome size="13" icon="chevron-right">
-                      </vuerd-fontawesome>
+                      <vuerd-icon size="13" icon="chevron-right"> </vuerd-icon>
                     </span>
                   `
                 : ""}

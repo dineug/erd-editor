@@ -13,6 +13,8 @@ class InputEdit extends EditorElement {
   focusState = false;
   @property({ type: Boolean })
   select = false;
+  @property({ type: Boolean })
+  active = false;
   @property({ type: Number })
   width = SIZE_MIN_WIDTH;
   @property({ type: String })
@@ -27,6 +29,7 @@ class InputEdit extends EditorElement {
       focus: this.focusState && !this.edit,
       edit: this.edit,
       select: this.select,
+      active: this.active,
     };
   }
 

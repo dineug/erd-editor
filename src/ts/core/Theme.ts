@@ -22,6 +22,7 @@ export interface Theme {
   code: string;
   dragSelect: string;
   menubar: string;
+  visualization: string;
 }
 
 export function createTheme(): Theme {
@@ -49,5 +50,6 @@ export function createTheme(): Theme {
     code: "#23241f",
     dragSelect: "#0098ff",
     menubar: "#191919",
+    visualization: "#191919",
   };
 }

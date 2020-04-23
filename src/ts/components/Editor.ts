@@ -1,5 +1,6 @@
 import { LitElement, html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { cache } from "lit-html/directives/cache";
 import { Subscription } from "rxjs";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
@@ -11,7 +12,7 @@ import { selectEndMemo } from "@src/core/command/memo";
 import "./ERD";
 import "./Canvas";
 import "./CanvasSVG";
-import "./Fontawesome";
+import "./Icon";
 import "./Contextmenu";
 import "./InputEdit";
 import "./Sash";
@@ -29,6 +30,9 @@ import "./minimap/Column";
 import "./minimap/Memo";
 import "./DragSelect";
 import "./Menubar";
+import "./Visualization";
+import "./visualization/Table";
+import "./visualization/Column";
 
 @customElement("vuerd-editor")
 class Editor extends LitElement {
@@ -41,7 +45,7 @@ class Editor extends LitElement {
   @property({ type: Number })
   height = defaultHeight;
 
-  context!: EditorContext;
+  context: EditorContext;
 
   private subscriptionList: Subscription[] = [];
 
@@ -56,7 +60,12 @@ class Editor extends LitElement {
     Logger.debug("Editor before render");
     const { store, keymap } = this.context;
     const { keydown$ } = this.context.windowEventObservable;
-    this.subscriptionList.push(
+    this.subscriptionList.push.apply(this.subscriptionList, [
+      store.observe(store.canvasState, name => {
+        if (name === "canvasType") {
+          this.requestUpdate();
+        }
+      }),
       keydown$.subscribe(event => {
         Logger.debug(`
         metaKey: ${event.metaKey},
@@ -73,8 +82,8 @@ class Editor extends LitElement {
             store.dispatch(selectEndTable(), selectEndMemo());
           }
         }
-      })
-    );
+      }),
+    ]);
   }
   firstUpdated() {
     Logger.debug("Editor after render");
@@ -104,6 +113,7 @@ class Editor extends LitElement {
 
   render() {
     Logger.debug("Editor render");
+    const { canvasType } = this.context.store.canvasState;
     const {
       canvas,
       table,
@@ -128,6 +138,7 @@ class Editor extends LitElement {
       code,
       dragSelect,
       menubar,
+      visualization,
     } = this.context.theme;
     return html`
       <style>
@@ -157,6 +168,7 @@ class Editor extends LitElement {
           --vuerd-color-code: ${code};
           --vuerd-color-drag-select: ${dragSelect};
           --vuerd-color-menubar: ${menubar};
+          --vuerd-color-visualization: ${visualization};
         }
       </style>
       <div
@@ -167,7 +179,18 @@ class Editor extends LitElement {
         })}
       >
         <vuerd-menubar></vuerd-menubar>
-        <vuerd-erd .width=${this.width} .height=${this.height}></vuerd-erd>
+        ${canvasType === "ERD"
+          ? html`
+              <vuerd-erd
+                .width=${this.width}
+                .height=${this.height}
+              ></vuerd-erd>
+            `
+          : canvasType === "Visualization"
+          ? html`
+              <vuerd-visualization .width=${this.width}></vuerd-visualization>
+            `
+          : ""}
         <span class="vuerd-text-width"></span>
       </div>
     `;

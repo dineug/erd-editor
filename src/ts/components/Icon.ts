@@ -2,13 +2,13 @@ import { svg, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
-import { getIcon } from "@src/plugins/fontawesome";
+import { getIcon } from "@src/core/Icon";
 
 const SIZE = 24;
 const SIZE_REM = 1.5;
 
-@customElement("vuerd-fontawesome")
-class Fontawesome extends EditorElement {
+@customElement("vuerd-icon")
+class Icon extends EditorElement {
   @property({ type: String })
   prefix = "fas";
   @property({ type: String })
