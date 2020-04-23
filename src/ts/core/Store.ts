@@ -69,8 +69,8 @@ export class Store {
       this.excludeKeys
     );
     this.subscriptionList.push.apply(this.subscriptionList, [
-      this.dispatch$.subscribe(commands => commandExecute(this, commands)),
-      this.next$.subscribe(commands => commandExecute(this, commands)),
+      this.dispatch$.subscribe((commands) => commandExecute(this, commands)),
+      this.next$.subscribe((commands) => commandExecute(this, commands)),
     ]);
   }
 
@@ -89,7 +89,7 @@ export class Store {
   }
 
   destroy() {
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
   }
 
   observe(

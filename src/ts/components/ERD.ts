@@ -67,7 +67,7 @@ class ERD extends EditorElement {
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subscriptionList.push.apply(this.subscriptionList, [
       mousedown$.subscribe(this.onMousedownWindow),
-      keydown$.subscribe(event => {
+      keydown$.subscribe((event) => {
         const { focus, editTable, focusTable } = store.editorState;
         if (focus) {
           if (keymapMatch(event, keymap.addTable)) {
@@ -77,7 +77,7 @@ class ERD extends EditorElement {
 
           if (
             keymapMatch(event, keymap.addColumn) &&
-            store.tableState.tables.some(table => table.ui.active)
+            store.tableState.tables.some((table) => table.ui.active)
           ) {
             Logger.debug("keymap.addColumn");
             store.dispatch(addColumn(store));
@@ -90,8 +90,8 @@ class ERD extends EditorElement {
 
           if (
             keymapMatch(event, keymap.removeTable) &&
-            (store.tableState.tables.some(table => table.ui.active) ||
-              store.memoState.memos.some(memo => memo.ui.active))
+            (store.tableState.tables.some((table) => table.ui.active) ||
+              store.memoState.memos.some((memo) => memo.ui.active))
           ) {
             Logger.debug("keymap.removeTable");
             store.dispatch(removeTable(store));
@@ -104,7 +104,7 @@ class ERD extends EditorElement {
               store.dispatch(
                 removeColumn(
                   focusTable.id,
-                  columns.map(column => column.id)
+                  columns.map((column) => column.id)
                 )
               );
             }
@@ -140,7 +140,7 @@ class ERD extends EditorElement {
           if (
             focusTable !== null &&
             editTable === null &&
-            moveKeys.some(moveKey => moveKey === event.key)
+            moveKeys.some((moveKey) => moveKey === event.key)
           ) {
             store.dispatch(
               focusMoveTable(event.key as MoveKey, event.shiftKey)
@@ -179,7 +179,7 @@ class ERD extends EditorElement {
     this.erd.scrollTop = store.canvasState.scrollTop;
     this.erd.scrollLeft = store.canvasState.scrollLeft;
     this.subscriptionList.push(
-      store.observe(store.canvasState, name => {
+      store.observe(store.canvasState, (name) => {
         switch (name) {
           case "scrollTop":
             this.erd.scrollTop = store.canvasState.scrollTop;
@@ -196,7 +196,7 @@ class ERD extends EditorElement {
     const { eventBus } = this.context;
     this.onMouseup();
     eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

@@ -96,7 +96,7 @@ class ColumnDataTypeHint extends EditorElement {
     eventBus.off(Bus.ColumnDataTypeHint.arrowLeft, this.onArrowLeft);
     eventBus.off(Bus.ColumnDataTypeHint.arrowRight, this.onArrowRight);
     eventBus.off(Bus.ColumnDataTypeHint.startFilter, this.onStartFilter);
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
@@ -105,8 +105,8 @@ class ColumnDataTypeHint extends EditorElement {
       <ul class="vuerd-column-data-type-hint">
         ${repeat(
           this.hints,
-          hint => hint.name,
-          hint => {
+          (hint) => hint.name,
+          (hint) => {
             return html`
               <li
                 class=${classMap({
@@ -212,7 +212,7 @@ class ColumnDataTypeHint extends EditorElement {
   private hintFilter() {
     if (this.startFilter) {
       if (this.value.trim() === "") {
-        this.hints = this.dataTypeHints.map(dataTypeHint => {
+        this.hints = this.dataTypeHints.map((dataTypeHint) => {
           return {
             name: dataTypeHint.name,
             html: dataTypeHint.name,
@@ -222,12 +222,12 @@ class ColumnDataTypeHint extends EditorElement {
       } else {
         this.hints = this.dataTypeHints
           .filter(
-            dataTypeHint =>
+            (dataTypeHint) =>
               dataTypeHint.name
                 .toLowerCase()
                 .indexOf(this.value.toLowerCase()) !== -1
           )
-          .map(dataTypeHint => {
+          .map((dataTypeHint) => {
             return {
               name: dataTypeHint.name,
               html: markToHTML("vuerd-mark", dataTypeHint.name, this.value),
@@ -238,6 +238,6 @@ class ColumnDataTypeHint extends EditorElement {
     }
   }
   private activeEnd() {
-    this.hints.forEach(hint => (hint.active = false));
+    this.hints.forEach((hint) => (hint.active = false));
   }
 }

@@ -37,13 +37,13 @@ function convertVisualization(store: Store): Visualization {
   const tables = tableState.tables;
   const relationships = relationshipState.relationships;
 
-  tables.forEach(table => {
+  tables.forEach((table) => {
     data.nodes.push({
       id: table.id,
       name: table.name,
       group: "table",
     });
-    table.columns.forEach(column => {
+    table.columns.forEach((column) => {
       data.nodes.push({
         id: column.id,
         name: column.name,
@@ -57,7 +57,7 @@ function convertVisualization(store: Store): Visualization {
     });
   });
 
-  relationships.forEach(relationship => {
+  relationships.forEach((relationship) => {
     const { start, end } = relationship;
     if (
       start.tableId !== end.tableId &&
@@ -114,8 +114,8 @@ function onDrag(simulation: any, eventBus: EventBus): any {
 
 export function createVisualization(store: Store, eventBus: EventBus) {
   const data = convertVisualization(store);
-  const links = data.links.map(d => Object.create(d));
-  const nodes = data.nodes.map(d => Object.create(d));
+  const links = data.links.map((d) => Object.create(d));
+  const nodes = data.nodes.map((d) => Object.create(d));
 
   const simulation = forceSimulation(nodes)
     .force(
@@ -145,10 +145,10 @@ export function createVisualization(store: Store, eventBus: EventBus) {
     .data(nodes)
     .join("circle")
     .attr("r", 5)
-    .attr("fill", d => scale(d.group))
+    .attr("fill", (d) => scale(d.group))
     .call(onDrag(simulation, eventBus));
 
-  node.on("mouseover", d => {
+  node.on("mouseover", (d) => {
     const node = data.nodes[d.index];
     let tableId: string | null = null;
     let columnId: string | null = null;
@@ -169,12 +169,12 @@ export function createVisualization(store: Store, eventBus: EventBus) {
 
   simulation.on("tick", () => {
     link
-      .attr("x1", d => d.source.x)
-      .attr("y1", d => d.source.y)
-      .attr("x2", d => d.target.x)
-      .attr("y2", d => d.target.y);
+      .attr("x1", (d) => d.source.x)
+      .attr("y1", (d) => d.source.y)
+      .attr("x2", (d) => d.target.x)
+      .attr("y2", (d) => d.target.y);
 
-    node.attr("cx", d => d.x).attr("cy", d => d.y);
+    node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
   });
 
   return svg;

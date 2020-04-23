@@ -70,7 +70,7 @@ class Minimap extends EditorElement {
     this.subscriptionList.push.apply(this.subscriptionList, [
       store.observe(this.tables, () => this.requestUpdate()),
       store.observe(this.memos, () => this.requestUpdate()),
-      store.observe(store.canvasState, name => {
+      store.observe(store.canvasState, (name) => {
         switch (name) {
           case "width":
           case "height":
@@ -84,7 +84,7 @@ class Minimap extends EditorElement {
   }
   disconnectedCallback() {
     Logger.debug("Minimap destroy");
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
@@ -95,19 +95,17 @@ class Minimap extends EditorElement {
         <div class="vuerd-minimap-canvas">
           ${repeat(
             this.tables,
-            table => table.id,
-            table =>
+            (table) => table.id,
+            (table) =>
               html`
                 <vuerd-minimap-table .table=${table}></vuerd-minimap-table>
               `
           )}
           ${repeat(
             this.memos,
-            memo => memo.id,
-            memo =>
-              html`
-                <vuerd-minimap-memo .memo=${memo}></vuerd-minimap-memo>
-              `
+            (memo) => memo.id,
+            (memo) =>
+              html` <vuerd-minimap-memo .memo=${memo}></vuerd-minimap-memo> `
           )}
           ${svg`<svg class="vuerd-minimap-canvas-svg"></svg>`}
         </div>

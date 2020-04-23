@@ -51,7 +51,7 @@ class Table extends EditorElement {
       this.draggable$.pipe(debounceTime(50)).subscribe(this.onDragoverColumn),
       store.observe(this.table.ui, () => this.requestUpdate()),
       store.observe(this.table.columns, () => this.requestUpdate()),
-      store.observe(store.canvasState.show, name => {
+      store.observe(store.canvasState.show, (name) => {
         switch (name) {
           case "tableComment":
           case "columnComment":
@@ -104,7 +104,7 @@ class Table extends EditorElement {
     Logger.debug("Table destroy");
     this.onMouseup();
     this.focusTableUnsubscribe();
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
@@ -187,8 +187,8 @@ class Table extends EditorElement {
         <div class="vuerd-table-body">
           ${repeat(
             this.table.columns,
-            column => column.id,
-            column =>
+            (column) => column.id,
+            (column) =>
               html`
                 <vuerd-column
                   .tableId=${this.table.id}
@@ -249,7 +249,7 @@ class Table extends EditorElement {
     const { tableId, columnId } = event.detail;
     if (
       draggableColumn &&
-      !draggableColumn.columnIds.some(id => id === columnId)
+      !draggableColumn.columnIds.some((id) => id === columnId)
     ) {
       this.flipAnimation.snapshot();
       store.dispatch(
@@ -279,7 +279,7 @@ class Table extends EditorElement {
   private onDraggableColumn() {
     Logger.debug("Table onDraggableColumn");
     const liNodeList = this.renderRoot.querySelectorAll("vuerd-column");
-    liNodeList.forEach(li => {
+    liNodeList.forEach((li) => {
       this.subDraggableColumns.push(
         fromEvent<CustomEvent>(li, "dragover")
           .pipe(throttleTime(300))
@@ -289,7 +289,7 @@ class Table extends EditorElement {
   }
   private onDraggableEndColumn() {
     Logger.debug("Table onDraggableEndColumn");
-    this.subDraggableColumns.forEach(sub => sub.unsubscribe());
+    this.subDraggableColumns.forEach((sub) => sub.unsubscribe());
     this.subDraggableColumns = [];
   }
   private onAddColumn(event: MouseEvent) {
@@ -384,7 +384,7 @@ class Table extends EditorElement {
     const { draggableColumn } = this.context.store.editorState;
     return (
       draggableColumn?.tableId === this.table.id &&
-      draggableColumn.columnIds.some(id => id === column.id)
+      draggableColumn.columnIds.some((id) => id === column.id)
     );
   }
 }

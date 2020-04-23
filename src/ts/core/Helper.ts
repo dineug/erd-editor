@@ -97,7 +97,7 @@ export function markToHTML(
     }
   }
   const buf: string[] = [];
-  strArray.forEach(value => {
+  strArray.forEach((value) => {
     const html = keyHTML(keyArray, value, className);
     if (html) {
       buf.push(html);

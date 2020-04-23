@@ -43,7 +43,7 @@ export class Contextmenu extends EditorElement {
     const { store } = this.context;
     this.subscriptionList.push.apply(this.subscriptionList, [
       store.observe(store.canvasState.show, () => this.requestUpdate()),
-      store.observe(store.canvasState, name => {
+      store.observe(store.canvasState, (name) => {
         switch (name) {
           case "database":
           case "language":
@@ -58,7 +58,7 @@ export class Contextmenu extends EditorElement {
   disconnectedCallback() {
     Logger.debug("Contextmenu destroy");
     this.currentMenu = null;
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
@@ -72,7 +72,7 @@ export class Contextmenu extends EditorElement {
           top: `${this.y}px`,
         })}
       >
-        ${this.menus.map(menu => {
+        ${this.menus.map((menu) => {
           const icon = this.getIcon(menu);
           return html`
             <li
@@ -85,9 +85,7 @@ export class Contextmenu extends EditorElement {
                       <vuerd-icon size="14" icon=${icon}> </vuerd-icon>
                     </span>
                   `
-                : html`
-                    <span class="icon"></span>
-                  `}
+                : html` <span class="icon"></span> `}
               <span class="name">${menu.name}</span>
               <span class="keymap" title=${menu.keymap ? menu.keymap : ""}>
                 ${menu.keymap}

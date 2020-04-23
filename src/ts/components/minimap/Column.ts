@@ -14,7 +14,7 @@ class Column extends EditorElement {
     super.connectedCallback();
     const { store } = this.context;
     this.subscriptionList.push(
-      store.observe(this.column.ui, name => {
+      store.observe(this.column.ui, (name) => {
         switch (name) {
           case "widthName":
           case "widthComment":
@@ -27,7 +27,7 @@ class Column extends EditorElement {
     );
   }
   disconnectedCallback() {
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

@@ -15,7 +15,7 @@ export function createObservable<T>(
         typeof target[p] === "object" &&
         target[p] !== null &&
         !proxyToRaw.has(target[p]) &&
-        !excludeKeys.some(key => key === p)
+        !excludeKeys.some((key) => key === p)
       ) {
         if (rawToProxy.has(target[p])) {
           return rawToProxy.get(target[p]);

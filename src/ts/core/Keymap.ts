@@ -191,7 +191,7 @@ export function keymapMatch(
   let result = false;
   for (const keymapOption of keymapOptions) {
     const isMultipleKey = !multipleKeys.some(
-      multipleKey => !(keymapOption[multipleKey] === event[multipleKey])
+      (multipleKey) => !(keymapOption[multipleKey] === event[multipleKey])
     );
     if (keymapOption.key) {
       result =

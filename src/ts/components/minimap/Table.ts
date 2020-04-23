@@ -19,7 +19,7 @@ class Table extends EditorElement {
     this.subscriptionList.push.apply(this.subscriptionList, [
       store.observe(this.table.ui, () => this.requestUpdate()),
       store.observe(this.table.columns, () => this.requestUpdate()),
-      store.observe(store.canvasState.show, name => {
+      store.observe(store.canvasState.show, (name) => {
         switch (name) {
           case "tableComment":
           case "columnComment":
@@ -33,7 +33,7 @@ class Table extends EditorElement {
     ]);
   }
   disconnectedCallback() {
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
@@ -55,8 +55,8 @@ class Table extends EditorElement {
       >
         ${repeat(
           this.table.columns,
-          column => column.id,
-          column =>
+          (column) => column.id,
+          (column) =>
             html`
               <vuerd-minimap-column
                 .column=${column}

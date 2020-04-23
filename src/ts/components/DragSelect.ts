@@ -41,7 +41,7 @@ class DargSelect extends EditorElement {
     ]);
   }
   disconnectedCallback() {
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

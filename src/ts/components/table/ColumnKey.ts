@@ -15,7 +15,7 @@ class ColumnKey extends EditorElement {
     super.connectedCallback();
     const { store } = this.context;
     this.subscriptionList.push(
-      store.observe(this.columnUI, name => {
+      store.observe(this.columnUI, (name) => {
         switch (name) {
           case "pk":
           case "fk":
@@ -27,7 +27,7 @@ class ColumnKey extends EditorElement {
     );
   }
   disconnectedCallback() {
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

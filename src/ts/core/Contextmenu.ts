@@ -107,7 +107,7 @@ const showMenus: ShowMenu[] = [
 ];
 function createShowMenus(store: Store): Menu[] {
   const { show } = store.canvasState;
-  return showMenus.map(showMenu => {
+  return showMenus.map((showMenu) => {
     return {
       icon: show[showMenu.showKey] ? "check" : undefined,
       name: showMenu.name,
@@ -131,7 +131,7 @@ const databaseKeys: Database[] = [
 ];
 function createDatabaseMenus(store: Store): Menu[] {
   const { canvasState } = store;
-  return databaseKeys.map(databaseKey => {
+  return databaseKeys.map((databaseKey) => {
     return {
       icon: canvasState.database === databaseKey ? "check" : undefined,
       name: databaseKey,

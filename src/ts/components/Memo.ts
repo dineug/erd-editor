@@ -71,7 +71,7 @@ class Memo extends EditorElement {
   disconnectedCallback() {
     Logger.debug("Memo destroy");
     this.onMouseup();
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
@@ -218,7 +218,7 @@ class Memo extends EditorElement {
     const { mouseup$, mousemove$ } = this.context.windowEventObservable;
     this.onMouseup();
     this.subMouseup = mouseup$.subscribe(this.onMouseup);
-    this.subMousemove = mousemove$.subscribe(event => {
+    this.subMousemove = mousemove$.subscribe((event) => {
       this.onMousemoveSash(event, position);
     });
   }

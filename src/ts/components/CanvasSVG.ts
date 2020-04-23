@@ -14,7 +14,7 @@ class CanvasSVG extends EditorElement {
     Logger.debug("CanvasSVG before render");
     const { store } = this.context;
     this.subscriptionList.push(
-      store.observe(store.canvasState, name => {
+      store.observe(store.canvasState, (name) => {
         switch (name) {
           case "width":
           case "height":
@@ -42,7 +42,7 @@ class CanvasSVG extends EditorElement {
       >
       ${repeat(
         [1, 2, 3],
-        item => item,
+        (item) => item,
         (item, index) => svg`
           <g></g>
         `

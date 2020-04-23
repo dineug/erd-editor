@@ -79,16 +79,16 @@ export class FocusTableModel implements FocusTable {
 
   get selectColumns(): Column[] {
     return this.focusColumns
-      .filter(focusColumn => focusColumn.select)
-      .map(focusColumn => getData(this.table.columns, focusColumn.id))
-      .filter(column => column !== null) as Column[];
+      .filter((focusColumn) => focusColumn.select)
+      .map((focusColumn) => getData(this.table.columns, focusColumn.id))
+      .filter((column) => column !== null) as Column[];
   }
 
   constructor(table: Table, store: Store) {
     const { show } = store.canvasState;
     this.table = table;
     this.store = store;
-    this.table.columns.forEach(column => {
+    this.table.columns.forEach((column) => {
       this.focusColumns.push(new FocusColumnModel(column, show));
     });
     this.subscriptionList.push(
@@ -230,7 +230,7 @@ export class FocusTableModel implements FocusTable {
           );
           const targetIndex = getIndex(this.focusColumns, targetFocusColumn.id);
           if (currentIndex !== null && targetIndex !== null) {
-            range(currentIndex, targetIndex).forEach(index => {
+            range(currentIndex, targetIndex).forEach((index) => {
               this.focusColumns[index].select = true;
             });
           }
@@ -254,7 +254,7 @@ export class FocusTableModel implements FocusTable {
   }
 
   destroy() {
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
   }
 
   private createFocusColumns() {
@@ -273,7 +273,7 @@ export class FocusTableModel implements FocusTable {
     }
 
     this.focusColumns = [];
-    this.table.columns.forEach(column => {
+    this.table.columns.forEach((column) => {
       this.focusColumns.push(new FocusColumnModel(column, show));
     });
 

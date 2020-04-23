@@ -25,7 +25,7 @@ export class FlipAnimation {
 
   snapshot() {
     this.flipSnapshots = [];
-    this.root.querySelectorAll(this.selector).forEach(el => {
+    this.root.querySelectorAll(this.selector).forEach((el) => {
       // first
       const { top, left } = el.getBoundingClientRect();
       this.flipSnapshots.push({ el, top, left });
@@ -34,7 +34,7 @@ export class FlipAnimation {
 
   play() {
     if (this.flipSnapshots.length !== 0) {
-      this.flipSnapshots.forEach(snapshot => {
+      this.flipSnapshots.forEach((snapshot) => {
         // last
         const el = snapshot.el as HTMLElement;
         const { top, left } = el.getBoundingClientRect();

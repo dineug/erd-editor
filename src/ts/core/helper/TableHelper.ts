@@ -74,7 +74,7 @@ export function getMaxWidthColumn(columns: Column[], show: Show) {
     default: 0,
     notNull: 0,
   };
-  columns.forEach(column => {
+  columns.forEach((column) => {
     if (columnWidth.name < column.ui.widthName) {
       columnWidth.name = column.ui.widthName;
     }
@@ -92,8 +92,8 @@ export function getMaxWidthColumn(columns: Column[], show: Show) {
     columnWidth.notNull = SIZE_COLUMN_OPTION_NN;
   }
   Object.keys(columnWidth)
-    .filter(key => key !== "width")
-    .forEach(key => {
+    .filter((key) => key !== "width")
+    .forEach((key) => {
       const k = key as ColumnWidthKey;
       if (columnWidth[k] !== 0) {
         columnWidth.width += columnWidth[k] + SIZE_COLUMN_MARGIN_RIGHT;

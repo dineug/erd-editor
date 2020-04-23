@@ -49,7 +49,7 @@ class MinimapHandle extends EditorElement {
     super.connectedCallback();
     const { store } = this.context;
     this.subscriptionList.push(
-      store.observe(store.canvasState, name => {
+      store.observe(store.canvasState, (name) => {
         switch (name) {
           case "width":
           case "height":
@@ -63,7 +63,7 @@ class MinimapHandle extends EditorElement {
   }
   disconnectedCallback() {
     this.onMouseup();
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

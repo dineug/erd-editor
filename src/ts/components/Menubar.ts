@@ -19,7 +19,7 @@ class Menubar extends EditorElement {
     super.connectedCallback();
     const { store } = this.context;
     this.subscriptionList.push(
-      store.observe(store.canvasState, name => {
+      store.observe(store.canvasState, (name) => {
         Logger.debug(name);
         switch (name) {
           case "databaseName":
@@ -33,7 +33,7 @@ class Menubar extends EditorElement {
     );
   }
   disconnectedCallback() {
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

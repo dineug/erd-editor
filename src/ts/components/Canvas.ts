@@ -22,7 +22,7 @@ class Canvas extends EditorElement {
     this.subscriptionList.push.apply(this.subscriptionList, [
       store.observe(this.tables, () => this.requestUpdate()),
       store.observe(this.memos, () => this.requestUpdate()),
-      store.observe(store.canvasState, name => {
+      store.observe(store.canvasState, (name) => {
         switch (name) {
           case "width":
           case "height":
@@ -34,7 +34,7 @@ class Canvas extends EditorElement {
   }
   disconnectedCallback() {
     Logger.debug("Canvas destroy");
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
@@ -51,18 +51,13 @@ class Canvas extends EditorElement {
       >
         ${repeat(
           this.tables,
-          table => table.id,
-          table => html`
-            <vuerd-table .table=${table}></vuerd-table>
-          `
+          (table) => table.id,
+          (table) => html` <vuerd-table .table=${table}></vuerd-table> `
         )}
         ${repeat(
           this.memos,
-          memo => memo.id,
-          memo =>
-            html`
-              <vuerd-memo .memo=${memo}></vuerd-memo>
-            `
+          (memo) => memo.id,
+          (memo) => html` <vuerd-memo .memo=${memo}></vuerd-memo> `
         )}
         <vuerd-canvas-svg></vuerd-canvas-svg>
       </div>

@@ -11,8 +11,8 @@ export function focusEndTable(focusTable: FocusTable) {
 }
 
 export function focusEndColumn(focusColumns: FocusColumn[]) {
-  focusColumns.forEach(focusColumn => {
-    Object.keys(focusColumnKeyFocusTypeKeyMap).forEach(key => {
+  focusColumns.forEach((focusColumn) => {
+    Object.keys(focusColumnKeyFocusTypeKeyMap).forEach((key) => {
       const k = key as FocusColumnKey;
       focusColumn[k] = false;
     });
@@ -25,9 +25,9 @@ export function focusEnd(focusTable: FocusTable) {
 }
 
 export function selectEndColumn(focusColumns: FocusColumn[]) {
-  focusColumns.forEach(focusColumn => (focusColumn.select = false));
+  focusColumns.forEach((focusColumn) => (focusColumn.select = false));
 }
 
 export function selectAllColumn(focusColumns: FocusColumn[]) {
-  focusColumns.forEach(focusColumn => (focusColumn.select = true));
+  focusColumns.forEach((focusColumn) => (focusColumn.select = true));
 }

@@ -63,7 +63,7 @@ export class FocusColumnModel implements FocusColumn {
 
   get currentFocus(): FocusType | null {
     let focusType: FocusType | null = null;
-    Object.keys(focusColumnKeyFocusTypeKeyMap).forEach(key => {
+    Object.keys(focusColumnKeyFocusTypeKeyMap).forEach((key) => {
       const k = key as FocusColumnKey;
       if (this[k]) {
         focusType = focusColumnKeyFocusTypeKeyMap[k];
@@ -74,7 +74,7 @@ export class FocusColumnModel implements FocusColumn {
 
   private get currentFocusShowList(): FocusType[] {
     const focusTypes: FocusType[] = ["columnName"];
-    showKeys.forEach(showKey => {
+    showKeys.forEach((showKey) => {
       if (this.show[showKey]) {
         focusTypes.push(showKey as FocusType);
       }
