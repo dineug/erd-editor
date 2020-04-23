@@ -7,8 +7,8 @@ import { Logger } from "../Logger";
 import { TableUI } from "../store/Table";
 import { TableModel } from "../model/TableModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
-import { selectEndMemoExecute } from "./memo";
-import { focusTableExecute, focusEndTableExecute } from "./editor";
+import { executeSelectEndMemo } from "./memo";
+import { executeFocusTable, executeFocusEndTable } from "./editor";
 
 const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 
@@ -34,13 +34,13 @@ export function addTable(store: Store): CommandEffect<AddTable> {
     },
   };
 }
-export function addTableExecute(store: Store, data: AddTable) {
-  Logger.debug("addTableExecute");
+export function executeAddTable(store: Store, data: AddTable) {
+  Logger.debug("executeAddTable");
   const { tables } = store.tableState;
-  selectEndTableExecute(store);
-  selectEndMemoExecute(store);
+  executeFocusEndTable(store);
+  executeSelectEndMemo(store);
   tables.push(new TableModel({ addTable: data }, store.canvasState.show));
-  focusTableExecute(store, { tableId: data.id });
+  executeFocusTable(store, { tableId: data.id });
 }
 
 export interface MoveTable {
@@ -64,26 +64,28 @@ export function moveTable(
       movementY,
       tableIds: ctrlKey
         ? tableState.tables
-            .filter(table => table.ui.active)
-            .map(table => table.id)
+            .filter((table) => table.ui.active)
+            .map((table) => table.id)
         : [tableId],
       memoIds: ctrlKey
-        ? memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id)
+        ? memoState.memos
+            .filter((memo) => memo.ui.active)
+            .map((memo) => memo.id)
         : [],
     },
   };
 }
-export function moveTableExecute(store: Store, data: MoveTable) {
-  Logger.debug("moveTableExecute");
+export function executeMoveTable(store: Store, data: MoveTable) {
+  Logger.debug("executeMoveTable");
   const { tableState, memoState } = store;
-  data.tableIds.forEach(tableId => {
+  data.tableIds.forEach((tableId) => {
     const table = getData(tableState.tables, tableId);
     if (table) {
       table.ui.left += data.movementX;
       table.ui.top += data.movementY;
     }
   });
-  data.memoIds.forEach(memoId => {
+  data.memoIds.forEach((memoId) => {
     const memo = getData(memoState.memos, memoId);
     if (memo) {
       memo.ui.left += data.movementX;
@@ -108,27 +110,29 @@ export function removeTable(
       tableIds: tableId
         ? [tableId]
         : tableState.tables
-            .filter(table => table.ui.active)
-            .map(table => table.id),
+            .filter((table) => table.ui.active)
+            .map((table) => table.id),
       memoIds: tableId
         ? []
-        : memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id),
+        : memoState.memos
+            .filter((memo) => memo.ui.active)
+            .map((memo) => memo.id),
     },
   };
 }
-export function removeTableExecute(store: Store, data: RemoveTable) {
-  Logger.debug("removeTableExecute");
+export function executeRemoveTable(store: Store, data: RemoveTable) {
+  Logger.debug("executeRemoveTable");
   const { tableState, memoState } = store;
   for (let i = 0; i < tableState.tables.length; i++) {
     const id = tableState.tables[i].id;
-    if (data.tableIds.some(tableId => tableId === id)) {
+    if (data.tableIds.some((tableId) => tableId === id)) {
       tableState.tables.splice(i, 1);
       i--;
     }
   }
   for (let i = 0; i < memoState.memos.length; i++) {
     const id = memoState.memos[i].id;
-    if (data.memoIds.some(memoId => memoId === id)) {
+    if (data.memoIds.some((memoId) => memoId === id)) {
       memoState.memos.splice(i, 1);
       i--;
     }
@@ -156,8 +160,8 @@ export function selectTable(
     },
   };
 }
-export function selectTableExecute(store: Store, data: SelectTable) {
-  Logger.debug("selectTableExecute");
+export function executeSelectTable(store: Store, data: SelectTable) {
+  Logger.debug("executeSelectTable");
   const { tables } = store.tableState;
   const targetTable = getData(tables, data.tableId);
   if (targetTable) {
@@ -165,12 +169,12 @@ export function selectTableExecute(store: Store, data: SelectTable) {
     if (data.ctrlKey) {
       targetTable.ui.active = true;
     } else {
-      tables.forEach(table => {
+      tables.forEach((table) => {
         table.ui.active = table.id === data.tableId;
       });
-      selectEndMemoExecute(store);
+      executeSelectEndMemo(store);
     }
-    focusTableExecute(store, { tableId: data.tableId });
+    executeFocusTable(store, { tableId: data.tableId });
   }
 }
 
@@ -180,11 +184,11 @@ export function selectEndTable(): CommandEffect<null> {
     data: null,
   };
 }
-export function selectEndTableExecute(store: Store) {
-  Logger.debug("selectEndTableExecute");
+export function executeSelectEndTable(store: Store) {
+  Logger.debug("executeSelectEndTable");
   const { tables } = store.tableState;
-  tables.forEach(table => (table.ui.active = false));
-  focusEndTableExecute(store);
+  tables.forEach((table) => (table.ui.active = false));
+  executeFocusEndTable(store);
 }
 
 export function selectAllTable(): CommandEffect<null> {
@@ -193,10 +197,10 @@ export function selectAllTable(): CommandEffect<null> {
     data: null,
   };
 }
-export function selectAllTableExecute(store: Store) {
-  Logger.debug("selectAllTableExecute");
+export function executeSelectAllTable(store: Store) {
+  Logger.debug("executeSelectAllTable");
   const { tables } = store.tableState;
-  tables.forEach(table => (table.ui.active = true));
+  tables.forEach((table) => (table.ui.active = true));
 }
 
 export interface ChangeTableValue {
@@ -223,8 +227,8 @@ export function changeTableName(
     },
   };
 }
-export function changeTableNameExecute(store: Store, data: ChangeTableValue) {
-  Logger.debug("changeTableNameExecute");
+export function executeChangeTableName(store: Store, data: ChangeTableValue) {
+  Logger.debug("executeChangeTableName");
   const { tables } = store.tableState;
   const table = getData(tables, data.tableId);
   if (table) {
@@ -252,11 +256,11 @@ export function changeTableComment(
     },
   };
 }
-export function changeTableCommentExecute(
+export function executeChangeTableComment(
   store: Store,
   data: ChangeTableValue
 ) {
-  Logger.debug("changeTableCommentExecute");
+  Logger.debug("executeChangeTableComment");
   const { tables } = store.tableState;
   const table = getData(tables, data.tableId);
   if (table) {
@@ -282,11 +286,11 @@ export function dragSelectTable(
     },
   };
 }
-export function dragSelectTableExecute(store: Store, data: DragSelectTable) {
-  Logger.debug("dragSelectTableExecute");
+export function executeDragSelectTable(store: Store, data: DragSelectTable) {
+  Logger.debug("executeDragSelectTable");
   const { tables } = store.tableState;
   const { min, max } = data;
-  tables.forEach(table => {
+  tables.forEach((table) => {
     const centerX = table.ui.left + table.width() / 2 + TABLE_PADDING;
     const centerY = table.ui.top + table.height() / 2 + TABLE_PADDING;
     table.ui.active =

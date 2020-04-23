@@ -25,8 +25,8 @@ export function moveCanvas(
     },
   };
 }
-export function moveCanvasExecute(store: Store, data: MoveCanvas) {
-  Logger.debug("moveCanvasExecute");
+export function executeMoveCanvas(store: Store, data: MoveCanvas) {
+  Logger.debug("executeMoveCanvas");
   const { canvasState } = store;
   canvasState.scrollTop = data.scrollTop;
   canvasState.scrollLeft = data.scrollLeft;
@@ -48,8 +48,8 @@ export function resizeCanvas(
     },
   };
 }
-export function resizeCanvasExecute(store: Store, data: ResizeCanvas) {
-  Logger.debug("resizeCanvasExecute");
+export function executeResizeCanvas(store: Store, data: ResizeCanvas) {
+  Logger.debug("executeResizeCanvas");
   const { canvasState } = store;
   canvasState.width = data.width;
   canvasState.height = data.height;
@@ -72,8 +72,8 @@ export function changeCanvasShow(
     },
   };
 }
-export function changeCanvasShowExecute(store: Store, data: ChangeCanvasShow) {
-  Logger.debug("changeCanvasShowExecute");
+export function executeChangeCanvasShow(store: Store, data: ChangeCanvasShow) {
+  Logger.debug("executeChangeCanvasShow");
   const { show } = store.canvasState;
   show[data.showKey] = data.value;
 }
@@ -91,8 +91,8 @@ export function changeDatabase(
     },
   };
 }
-export function changeDatabaseExecute(store: Store, data: ChangeDatabase) {
-  Logger.debug("changeDatabaseExecute");
+export function executeChangeDatabase(store: Store, data: ChangeDatabase) {
+  Logger.debug("executeChangeDatabase");
   store.canvasState.database = data.database;
 }
 
@@ -109,11 +109,11 @@ export function changeDatabaseName(
     },
   };
 }
-export function changeDatabaseNameExecute(
+export function executeChangeDatabaseName(
   store: Store,
   data: ChangeDatabaseName
 ) {
-  Logger.debug("changeDatabaseNameExecute");
+  Logger.debug("executeChangeDatabaseName");
   store.canvasState.databaseName = data.value;
 }
 
@@ -130,8 +130,8 @@ export function changeCanvasType(
     },
   };
 }
-export function changeCanvasTypeExecute(store: Store, data: ChangeCanvasType) {
-  Logger.debug("changeCanvasTypeExecute");
+export function executeChangeCanvasType(store: Store, data: ChangeCanvasType) {
+  Logger.debug("executeChangeCanvasType");
   store.canvasState.canvasType = data.canvasType;
 }
 
@@ -148,8 +148,8 @@ export function changeLanguage(
     },
   };
 }
-export function changeLanguageExecute(store: Store, data: ChangeLanguage) {
-  Logger.debug("changeLanguageExecute");
+export function executeChangeLanguage(store: Store, data: ChangeLanguage) {
+  Logger.debug("executeChangeLanguage");
   store.canvasState.language = data.language;
 }
 
@@ -167,8 +167,8 @@ export function changeTableCase(
     },
   };
 }
-export function changeTableCaseExecute(store: Store, data: ChangeNameCase) {
-  Logger.debug("changeTableCaseExecute");
+export function executeChangeTableCase(store: Store, data: ChangeNameCase) {
+  Logger.debug("executeChangeTableCase");
   store.canvasState.tableCase = data.nameCase;
 }
 
@@ -182,7 +182,7 @@ export function changeColumnCase(
     },
   };
 }
-export function changeColumnCaseExecute(store: Store, data: ChangeNameCase) {
-  Logger.debug("changeColumnCaseExecute");
+export function executeChangeColumnCase(store: Store, data: ChangeNameCase) {
+  Logger.debug("executeChangeColumnCase");
   store.canvasState.columnCase = data.nameCase;
 }

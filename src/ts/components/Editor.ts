@@ -61,12 +61,12 @@ class Editor extends LitElement {
     const { store, keymap } = this.context;
     const { keydown$ } = this.context.windowEventObservable;
     this.subscriptionList.push.apply(this.subscriptionList, [
-      store.observe(store.canvasState, name => {
+      store.observe(store.canvasState, (name) => {
         if (name === "canvasType") {
           this.requestUpdate();
         }
       }),
-      keydown$.subscribe(event => {
+      keydown$.subscribe((event) => {
         Logger.debug(`
         metaKey: ${event.metaKey},
         ctrlKey: ${event.ctrlKey},
@@ -107,7 +107,7 @@ class Editor extends LitElement {
   disconnectedCallback() {
     Logger.debug("Editor destroy");
     this.context.store.destroy();
-    this.subscriptionList.forEach(sub => sub.unsubscribe());
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

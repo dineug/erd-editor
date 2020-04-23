@@ -1,94 +1,94 @@
 import { Store } from "./Store";
 import {
   AddTable,
-  addTableExecute,
   MoveTable,
-  moveTableExecute,
   RemoveTable,
-  removeTableExecute,
   SelectTable,
-  selectTableExecute,
-  selectEndTableExecute,
-  selectAllTableExecute,
   ChangeTableValue,
-  changeTableNameExecute,
-  changeTableCommentExecute,
   DragSelectTable,
-  dragSelectTableExecute,
+  executeAddTable,
+  executeMoveTable,
+  executeRemoveTable,
+  executeSelectTable,
+  executeSelectEndTable,
+  executeSelectAllTable,
+  executeChangeTableName,
+  executeChangeTableComment,
+  executeDragSelectTable,
 } from "./command/table";
 import {
   AddColumn,
-  addColumnExecute,
   RemoveColumn,
-  removeColumnExecute,
   ChangeColumnValue,
-  changeColumnNameExecute,
-  changeColumnCommentExecute,
-  changeColumnDataTypeExecute,
-  changeColumnDefaultExecute,
   ChangeColumnOption,
-  changeColumnAutoIncrementExecute,
-  changeColumnPrimaryKeyExecute,
-  changeColumnUniqueExecute,
-  changeColumnNotNullExecute,
   MoveColumn,
-  moveColumnExecute,
+  executeAddColumn,
+  executeRemoveColumn,
+  executeChangeColumnName,
+  executeChangeColumnComment,
+  executeChangeColumnDataType,
+  executeChangeColumnDefault,
+  executeChangeColumnAutoIncrement,
+  executeChangeColumnPrimaryKey,
+  executeChangeColumnUnique,
+  executeChangeColumnNotNull,
+  executeMoveColumn,
 } from "./command/column";
 import {
   AddMemo,
-  addMemoExecute,
   MoveMemo,
-  moveMemoExecute,
   RemoveMemo,
-  removeMemoExecute,
   SelectMemo,
-  selectMemoExecute,
-  selectEndMemoExecute,
-  selectAllMemoExecute,
   ChangeMemoValue,
-  changeMemoValueExecute,
   ResizeMemo,
-  resizeMemoExecute,
   DragSelectMemo,
-  dragSelectMemoExecute,
+  executeAddMemo,
+  executeMoveMemo,
+  executeRemoveMemo,
+  executeSelectMemo,
+  executeSelectEndMemo,
+  executeSelectAllMemo,
+  executeChangeMemoValue,
+  executeResizeMemo,
+  executeDragSelectMemo,
 } from "./command/memo";
 import {
   MoveCanvas,
-  moveCanvasExecute,
   ResizeCanvas,
-  resizeCanvasExecute,
   ChangeCanvasShow,
-  changeCanvasShowExecute,
   ChangeDatabase,
-  changeDatabaseExecute,
   ChangeDatabaseName,
-  changeDatabaseNameExecute,
   ChangeCanvasType,
-  changeCanvasTypeExecute,
   ChangeLanguage,
-  changeLanguageExecute,
   ChangeNameCase,
-  changeTableCaseExecute,
-  changeColumnCaseExecute,
+  executeMoveCanvas,
+  executeResizeCanvas,
+  executeChangeCanvasShow,
+  executeChangeDatabase,
+  executeChangeDatabaseName,
+  executeChangeCanvasType,
+  executeChangeLanguage,
+  executeChangeTableCase,
+  executeChangeColumnCase,
 } from "./command/canvas";
 import {
   FocusTable,
-  focusTableExecute,
-  focusEndTableExecute,
   FocusMoveTable,
-  focusMoveTableExecute,
   FocusTargetTable,
-  focusTargetTableExecute,
   FocusTargetColumn,
-  focusTargetColumnExecute,
-  selectAllColumnExecute,
-  selectEndColumnExecute,
   EditTable,
-  editTableExecute,
-  editEndTableExecute,
   DraggableColumn,
-  draggableColumnExecute,
-  draggableEndColumnExecute,
+  executeFocusTable,
+  executeFocusEndTable,
+  executeFocusMoveTable,
+  executeFocusTargetTable,
+  executeFocusTargetColumn,
+  executeSelectAllColumn,
+  executeSelectEndColumn,
+  executeEditTable,
+  executeEditEndTable,
+  executeDraggableColumn,
+  executeDraggableEndColumn,
 } from "./command/editor";
 
 export interface CommandEffect<T> {
@@ -183,160 +183,160 @@ export type Command =
   | CommandEffect<DraggableColumn>;
 
 export function commandExecute(store: Store, commands: Command[]) {
-  commands.forEach(command => {
+  commands.forEach((command) => {
     switch (command.name) {
       case "table.add":
-        addTableExecute(store, command.data as AddTable);
+        executeAddTable(store, command.data as AddTable);
         break;
       case "table.move":
-        moveTableExecute(store, command.data as MoveTable);
+        executeMoveTable(store, command.data as MoveTable);
         break;
       case "table.remove":
-        removeTableExecute(store, command.data as RemoveTable);
+        executeRemoveTable(store, command.data as RemoveTable);
         break;
       case "table.select":
-        selectTableExecute(store, command.data as SelectTable);
+        executeSelectTable(store, command.data as SelectTable);
         break;
       case "table.selectEnd":
-        selectEndTableExecute(store);
+        executeSelectEndTable(store);
         break;
       case "table.selectAll":
-        selectAllTableExecute(store);
+        executeSelectAllTable(store);
         break;
       case "table.changeName":
-        changeTableNameExecute(store, command.data as ChangeTableValue);
+        executeChangeTableName(store, command.data as ChangeTableValue);
         break;
       case "table.changeComment":
-        changeTableCommentExecute(store, command.data as ChangeTableValue);
+        executeChangeTableComment(store, command.data as ChangeTableValue);
         break;
       case "table.dragSelect":
-        dragSelectTableExecute(store, command.data as DragSelectTable);
+        executeDragSelectTable(store, command.data as DragSelectTable);
         break;
       case "column.add":
-        addColumnExecute(store, command.data as Array<AddColumn>);
+        executeAddColumn(store, command.data as Array<AddColumn>);
         break;
       case "column.remove":
-        removeColumnExecute(store, command.data as RemoveColumn);
+        executeRemoveColumn(store, command.data as RemoveColumn);
         break;
       case "column.changeName":
-        changeColumnNameExecute(store, command.data as ChangeColumnValue);
+        executeChangeColumnName(store, command.data as ChangeColumnValue);
         break;
       case "column.changeComment":
-        changeColumnCommentExecute(store, command.data as ChangeColumnValue);
+        executeChangeColumnComment(store, command.data as ChangeColumnValue);
         break;
       case "column.changeDataType":
-        changeColumnDataTypeExecute(store, command.data as ChangeColumnValue);
+        executeChangeColumnDataType(store, command.data as ChangeColumnValue);
         break;
       case "column.changeDefault":
-        changeColumnDefaultExecute(store, command.data as ChangeColumnValue);
+        executeChangeColumnDefault(store, command.data as ChangeColumnValue);
         break;
       case "column.changeAutoIncrement":
-        changeColumnAutoIncrementExecute(
+        executeChangeColumnAutoIncrement(
           store,
           command.data as ChangeColumnOption
         );
         break;
       case "column.changePrimaryKey":
-        changeColumnPrimaryKeyExecute(
+        executeChangeColumnPrimaryKey(
           store,
           command.data as ChangeColumnOption
         );
         break;
       case "column.changeUnique":
-        changeColumnUniqueExecute(store, command.data as ChangeColumnOption);
+        executeChangeColumnUnique(store, command.data as ChangeColumnOption);
         break;
       case "column.changeNotNull":
-        changeColumnNotNullExecute(store, command.data as ChangeColumnOption);
+        executeChangeColumnNotNull(store, command.data as ChangeColumnOption);
         break;
       case "column.move":
-        moveColumnExecute(store, command.data as MoveColumn);
+        executeMoveColumn(store, command.data as MoveColumn);
         break;
       case "memo.add":
-        addMemoExecute(store, command.data as AddMemo);
+        executeAddMemo(store, command.data as AddMemo);
         break;
       case "memo.move":
-        moveMemoExecute(store, command.data as MoveMemo);
+        executeMoveMemo(store, command.data as MoveMemo);
         break;
       case "memo.remove":
-        removeMemoExecute(store, command.data as RemoveMemo);
+        executeRemoveMemo(store, command.data as RemoveMemo);
         break;
       case "memo.select":
-        selectMemoExecute(store, command.data as SelectMemo);
+        executeSelectMemo(store, command.data as SelectMemo);
         break;
       case "memo.selectEnd":
-        selectEndMemoExecute(store);
+        executeSelectEndMemo(store);
         break;
       case "memo.selectAll":
-        selectAllMemoExecute(store);
+        executeSelectAllMemo(store);
         break;
       case "memo.changeValue":
-        changeMemoValueExecute(store, command.data as ChangeMemoValue);
+        executeChangeMemoValue(store, command.data as ChangeMemoValue);
         break;
       case "memo.resize":
-        resizeMemoExecute(store, command.data as ResizeMemo);
+        executeResizeMemo(store, command.data as ResizeMemo);
         break;
       case "memo.dragSelect":
-        dragSelectMemoExecute(store, command.data as DragSelectMemo);
+        executeDragSelectMemo(store, command.data as DragSelectMemo);
         break;
       case "canvas.move":
-        moveCanvasExecute(store, command.data as MoveCanvas);
+        executeMoveCanvas(store, command.data as MoveCanvas);
         break;
       case "canvas.resize":
-        resizeCanvasExecute(store, command.data as ResizeCanvas);
+        executeResizeCanvas(store, command.data as ResizeCanvas);
         break;
       case "canvas.changeShow":
-        changeCanvasShowExecute(store, command.data as ChangeCanvasShow);
+        executeChangeCanvasShow(store, command.data as ChangeCanvasShow);
         break;
       case "canvas.changeDatabase":
-        changeDatabaseExecute(store, command.data as ChangeDatabase);
+        executeChangeDatabase(store, command.data as ChangeDatabase);
         break;
       case "canvas.changeDatabaseName":
-        changeDatabaseNameExecute(store, command.data as ChangeDatabaseName);
+        executeChangeDatabaseName(store, command.data as ChangeDatabaseName);
         break;
       case "canvas.changeCanvasType":
-        changeCanvasTypeExecute(store, command.data as ChangeCanvasType);
+        executeChangeCanvasType(store, command.data as ChangeCanvasType);
         break;
       case "canvas.changeLanguage":
-        changeLanguageExecute(store, command.data as ChangeLanguage);
+        executeChangeLanguage(store, command.data as ChangeLanguage);
         break;
       case "canvas.changeTableCase":
-        changeTableCaseExecute(store, command.data as ChangeNameCase);
+        executeChangeTableCase(store, command.data as ChangeNameCase);
         break;
       case "canvas.changeColumnCase":
-        changeColumnCaseExecute(store, command.data as ChangeNameCase);
+        executeChangeColumnCase(store, command.data as ChangeNameCase);
         break;
       case "editor.focusTable":
-        focusTableExecute(store, command.data as FocusTable);
+        executeFocusTable(store, command.data as FocusTable);
         break;
       case "editor.focusEndTable":
-        focusEndTableExecute(store);
+        executeFocusEndTable(store);
         break;
       case "editor.focusMoveTable":
-        focusMoveTableExecute(store, command.data as FocusMoveTable);
+        executeFocusMoveTable(store, command.data as FocusMoveTable);
         break;
       case "editor.focusTargetTable":
-        focusTargetTableExecute(store, command.data as FocusTargetTable);
+        executeFocusTargetTable(store, command.data as FocusTargetTable);
         break;
       case "editor.focusTargetColumn":
-        focusTargetColumnExecute(store, command.data as FocusTargetColumn);
+        executeFocusTargetColumn(store, command.data as FocusTargetColumn);
         break;
       case "editor.selectAllColumn":
-        selectAllColumnExecute(store);
+        executeSelectAllColumn(store);
         break;
       case "editor.selectEndColumn":
-        selectEndColumnExecute(store);
+        executeSelectEndColumn(store);
         break;
       case "editor.editTable":
-        editTableExecute(store, command.data as EditTable);
+        executeEditTable(store, command.data as EditTable);
         break;
       case "editor.editEndTable":
-        editEndTableExecute(store);
+        executeEditEndTable(store);
         break;
       case "editor.draggableColumn":
-        draggableColumnExecute(store, command.data as DraggableColumn);
+        executeDraggableColumn(store, command.data as DraggableColumn);
         break;
       case "editor.draggableEndColumn":
-        draggableEndColumnExecute(store);
+        executeDraggableEndColumn(store);
         break;
     }
   });

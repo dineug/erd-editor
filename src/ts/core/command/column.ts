@@ -7,9 +7,9 @@ import { Column } from "../store/Table";
 import { ColumnModel } from "../model/ColumnModel";
 import { getColumn, getChangeOption } from "../helper/ColumnHelper";
 import {
-  focusTableExecute,
-  editEndTableExecute,
-  draggableColumnExecute,
+  executeFocusTable,
+  executeEditEndTable,
+  executeDraggableColumn,
 } from "./editor";
 
 export interface AddColumn {
@@ -30,8 +30,8 @@ export function addColumn(
           },
         ]
       : store.tableState.tables
-          .filter(table => table.ui.active)
-          .map(table => {
+          .filter((table) => table.ui.active)
+          .map((table) => {
             return {
               id: uuid(),
               tableId: table.id,
@@ -39,15 +39,15 @@ export function addColumn(
           }),
   };
 }
-export function addColumnExecute(store: Store, data: AddColumn[]) {
-  Logger.debug("addColumnExecute");
+export function executeAddColumn(store: Store, data: AddColumn[]) {
+  Logger.debug("executeAddColumn");
   const { tables } = store.tableState;
-  editEndTableExecute(store);
+  executeEditEndTable(store);
   data.forEach((addColumn: AddColumn, index: number) => {
     const table = getData(tables, addColumn.tableId);
     if (table) {
       if (index === data.length - 1) {
-        focusTableExecute(store, {
+        executeFocusTable(store, {
           tableId: table.id,
         });
       }
@@ -73,14 +73,14 @@ export function removeColumn(
     },
   };
 }
-export function removeColumnExecute(store: Store, data: RemoveColumn) {
-  Logger.debug("removeColumnExecute");
+export function executeRemoveColumn(store: Store, data: RemoveColumn) {
+  Logger.debug("executeRemoveColumn");
   const { tables } = store.tableState;
   const table = getData(tables, data.tableId);
   if (table) {
     for (let i = 0; i < table.columns.length; i++) {
       const id = table.columns[i].id;
-      if (data.columnIds.some(columnId => columnId === id)) {
+      if (data.columnIds.some((columnId) => columnId === id)) {
         table.columns.splice(i, 1);
         i--;
       }
@@ -116,8 +116,8 @@ export function changeColumnName(
     },
   };
 }
-export function changeColumnNameExecute(store: Store, data: ChangeColumnValue) {
-  Logger.debug("changeColumnNameExecute");
+export function executeChangeColumnName(store: Store, data: ChangeColumnValue) {
+  Logger.debug("executeChangeColumnName");
   const { tables } = store.tableState;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
@@ -147,11 +147,11 @@ export function changeColumnComment(
     },
   };
 }
-export function changeColumnCommentExecute(
+export function executeChangeColumnComment(
   store: Store,
   data: ChangeColumnValue
 ) {
-  Logger.debug("changeColumnCommentExecute");
+  Logger.debug("executeChangeColumnComment");
   const { tables } = store.tableState;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
@@ -181,11 +181,11 @@ export function changeColumnDataType(
     },
   };
 }
-export function changeColumnDataTypeExecute(
+export function executeChangeColumnDataType(
   store: Store,
   data: ChangeColumnValue
 ) {
-  Logger.debug("changeColumnDataTypeExecute");
+  Logger.debug("executeChangeColumnDataType");
   const { tables } = store.tableState;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
@@ -215,11 +215,11 @@ export function changeColumnDefault(
     },
   };
 }
-export function changeColumnDefaultExecute(
+export function executeChangeColumnDefault(
   store: Store,
   data: ChangeColumnValue
 ) {
-  Logger.debug("changeColumnDefaultExecute");
+  Logger.debug("executeChangeColumnDefault");
   const { tables } = store.tableState;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
@@ -250,11 +250,11 @@ export function changeColumnAutoIncrement(
     },
   };
 }
-export function changeColumnAutoIncrementExecute(
+export function executeChangeColumnAutoIncrement(
   store: Store,
   data: ChangeColumnOption
 ) {
-  Logger.debug("changeColumnAutoIncrementExecute");
+  Logger.debug("executeChangeColumnAutoIncrement");
   const { tables } = store.tableState;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
@@ -277,11 +277,11 @@ export function changeColumnPrimaryKey(
     },
   };
 }
-export function changeColumnPrimaryKeyExecute(
+export function executeChangeColumnPrimaryKey(
   store: Store,
   data: ChangeColumnOption
 ) {
-  Logger.debug("changeColumnPrimaryKeyExecute");
+  Logger.debug("executeChangeColumnPrimaryKey");
   const { tables } = store.tableState;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
@@ -319,11 +319,11 @@ export function changeColumnUnique(
     },
   };
 }
-export function changeColumnUniqueExecute(
+export function executeChangeColumnUnique(
   store: Store,
   data: ChangeColumnOption
 ) {
-  Logger.debug("changeColumnUniqueExecute");
+  Logger.debug("executeChangeColumnUnique");
   const { tables } = store.tableState;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
@@ -346,11 +346,11 @@ export function changeColumnNotNull(
     },
   };
 }
-export function changeColumnNotNullExecute(
+export function executeChangeColumnNotNull(
   store: Store,
   data: ChangeColumnOption
 ) {
-  Logger.debug("changeColumnNotNullExecute");
+  Logger.debug("executeChangeColumnNotNull");
   const { tables } = store.tableState;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
@@ -380,12 +380,12 @@ export function moveColumn(
     },
   };
 }
-export function moveColumnExecute(store: Store, data: MoveColumn) {
-  Logger.debug("moveColumnExecute");
+export function executeMoveColumn(store: Store, data: MoveColumn) {
+  Logger.debug("executeMoveColumn");
   const { tables } = store.tableState;
   const currentTable = getData(tables, data.tableId);
   let currentColumns: Column[] = [];
-  data.columnIds.forEach(columnId => {
+  data.columnIds.forEach((columnId) => {
     const column = getColumn(tables, data.tableId, columnId);
     if (column) {
       currentColumns.push(column);
@@ -405,7 +405,7 @@ export function moveColumnExecute(store: Store, data: MoveColumn) {
   ) {
     if (
       data.tableId === data.targetTableId &&
-      !data.columnIds.some(columnId => columnId === data.targetColumnId)
+      !data.columnIds.some((columnId) => columnId === data.targetColumnId)
     ) {
       const targetIndex = getIndex(currentTable.columns, targetColumn.id);
       if (targetIndex !== null) {
@@ -416,7 +416,7 @@ export function moveColumnExecute(store: Store, data: MoveColumn) {
         if (currentIndex !== null && currentIndex > targetIndex) {
           currentColumns = currentColumns.reverse();
         }
-        currentColumns.forEach(currentColumn => {
+        currentColumns.forEach((currentColumn) => {
           const currentIndex = getIndex(currentTable.columns, currentColumn.id);
           if (currentIndex !== null) {
             currentTable.columns.splice(currentIndex, 1);
@@ -426,7 +426,7 @@ export function moveColumnExecute(store: Store, data: MoveColumn) {
       }
     } else if (
       data.tableId !== data.targetTableId &&
-      !data.columnIds.some(columnId => columnId === data.targetColumnId)
+      !data.columnIds.some((columnId) => columnId === data.targetColumnId)
     ) {
       const targetIndex = getIndex(targetTable.columns, targetColumn.id);
       if (targetIndex !== null) {
@@ -437,7 +437,7 @@ export function moveColumnExecute(store: Store, data: MoveColumn) {
         if (currentIndex !== null && currentIndex > targetIndex) {
           currentColumns = currentColumns.reverse();
         }
-        currentColumns.forEach(currentColumn => {
+        currentColumns.forEach((currentColumn) => {
           const currentIndex = getIndex(currentTable.columns, currentColumn.id);
           if (currentIndex !== null) {
             currentTable.columns.splice(currentIndex, 1);
@@ -445,7 +445,7 @@ export function moveColumnExecute(store: Store, data: MoveColumn) {
           }
         });
         // TODO: relationship valid, sort
-        draggableColumnExecute(store, {
+        executeDraggableColumn(store, {
           tableId: data.targetTableId,
           columnIds: data.columnIds,
         });

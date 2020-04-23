@@ -15,8 +15,8 @@ export function focusTable(tableId: string): CommandEffect<FocusTable> {
     },
   };
 }
-export function focusTableExecute(store: Store, data: FocusTable) {
-  Logger.debug("focusTableExecute");
+export function executeFocusTable(store: Store, data: FocusTable) {
+  Logger.debug("executeFocusTable");
   const { tableState, editorState } = store;
   const table = getData(tableState.tables, data.tableId);
   if (
@@ -25,7 +25,7 @@ export function focusTableExecute(store: Store, data: FocusTable) {
       editorState.focusTable.id !== data.tableId)
   ) {
     if (editorState.focusTable?.id !== table.id) {
-      focusEndTableExecute(store);
+      executeFocusEndTable(store);
       editorState.focusTable = new FocusTableModel(table, store);
     }
   }
@@ -37,12 +37,12 @@ export function focusEndTable(): CommandEffect<null> {
     data: null,
   };
 }
-export function focusEndTableExecute(store: Store) {
-  Logger.debug("focusEndTableExecute");
+export function executeFocusEndTable(store: Store) {
+  Logger.debug("executeFocusEndTable");
   const { editorState } = store;
   editorState.focusTable?.destroy();
   editorState.focusTable = null;
-  editEndTableExecute(store);
+  executeEditEndTable(store);
 }
 
 export const moveKeys: MoveKey[] = [
@@ -68,8 +68,8 @@ export function focusMoveTable(
     },
   };
 }
-export function focusMoveTableExecute(store: Store, data: FocusMoveTable) {
-  Logger.debug("focusMoveTableExecute");
+export function executeFocusMoveTable(store: Store, data: FocusMoveTable) {
+  Logger.debug("executeFocusMoveTable");
   const { focusTable } = store.editorState;
   focusTable?.move(data);
 }
@@ -87,13 +87,13 @@ export function focusTargetTable(
     },
   };
 }
-export function focusTargetTableExecute(store: Store, data: FocusTargetTable) {
-  Logger.debug("focusTargetTableExecute");
+export function executeFocusTargetTable(store: Store, data: FocusTargetTable) {
+  Logger.debug("executeFocusTargetTable");
   const { focusTable } = store.editorState;
   focusTable?.focus({
     focusTargetTable: data,
   });
-  editEndTableExecute(store);
+  executeEditEndTable(store);
 }
 
 export interface FocusTargetColumn {
@@ -118,16 +118,16 @@ export function focusTargetColumn(
     },
   };
 }
-export function focusTargetColumnExecute(
+export function executeFocusTargetColumn(
   store: Store,
   data: FocusTargetColumn
 ) {
-  Logger.debug("focusTargetColumnExecute");
+  Logger.debug("executeFocusTargetColumn");
   const { focusTable } = store.editorState;
   focusTable?.focus({
     focusTargetColumn: data,
   });
-  editEndTableExecute(store);
+  executeEditEndTable(store);
 }
 
 export function selectAllColumn(): CommandEffect<null> {
@@ -136,8 +136,8 @@ export function selectAllColumn(): CommandEffect<null> {
     data: null,
   };
 }
-export function selectAllColumnExecute(store: Store) {
-  Logger.debug("selectAllColumnExecute");
+export function executeSelectAllColumn(store: Store) {
+  Logger.debug("executeSelectAllColumn");
   const { focusTable } = store.editorState;
   focusTable?.selectAll();
 }
@@ -148,8 +148,8 @@ export function selectEndColumn(): CommandEffect<null> {
     data: null,
   };
 }
-export function selectEndColumnExecute(store: Store) {
-  Logger.debug("selectEndColumnExecute");
+export function executeSelectEndColumn(store: Store) {
+  Logger.debug("executeSelectEndColumn");
   const { focusTable } = store.editorState;
   focusTable?.selectEnd();
 }
@@ -170,8 +170,8 @@ export function editTable(
     },
   };
 }
-export function editTableExecute(store: Store, data: EditTable) {
-  Logger.debug("editTableExecute");
+export function executeEditTable(store: Store, data: EditTable) {
+  Logger.debug("executeEditTable");
   const { editorState } = store;
   editorState.editTable = data;
 }
@@ -182,8 +182,8 @@ export function editEndTable(): CommandEffect<null> {
     data: null,
   };
 }
-export function editEndTableExecute(store: Store) {
-  Logger.debug("editEndTableExecute");
+export function executeEditEndTable(store: Store) {
+  Logger.debug("executeEditEndTable");
   const { editorState } = store;
   editorState.editTable = null;
 }
@@ -201,7 +201,7 @@ export function draggableColumn(
   const columnIds: string[] = [];
   const { focusTable } = store.editorState;
   if (ctrlKey && focusTable) {
-    focusTable.selectColumns.forEach(column => columnIds.push(column.id));
+    focusTable.selectColumns.forEach((column) => columnIds.push(column.id));
   } else {
     columnIds.push(columnId);
   }
@@ -213,8 +213,8 @@ export function draggableColumn(
     },
   };
 }
-export function draggableColumnExecute(store: Store, data: DraggableColumn) {
-  Logger.debug("draggableColumnExecute");
+export function executeDraggableColumn(store: Store, data: DraggableColumn) {
+  Logger.debug("executeDraggableColumn");
   const { editorState } = store;
   editorState.draggableColumn = data;
 }
@@ -225,8 +225,8 @@ export function draggableEndColumn(): CommandEffect<null> {
     data: null,
   };
 }
-export function draggableEndColumnExecute(store: Store) {
-  Logger.debug("draggableEndColumnExecute");
+export function executeDraggableEndColumn(store: Store) {
+  Logger.debug("executeDraggableEndColumn");
   const { editorState } = store;
   editorState.draggableColumn = null;
 }

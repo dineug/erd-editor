@@ -11,7 +11,7 @@ import { Logger } from "../Logger";
 import { MemoUI } from "../store/Memo";
 import { MemoModel } from "../model/MemoModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
-import { selectEndTableExecute } from "./table";
+import { executeSelectEndTable } from "./table";
 
 const MEMO_PADDING = SIZE_MEMO_PADDING * 2;
 
@@ -37,11 +37,11 @@ export function addMemo(store: Store): CommandEffect<AddMemo> {
     },
   };
 }
-export function addMemoExecute(store: Store, data: AddMemo) {
-  Logger.debug("addMemoExecute");
+export function executeAddMemo(store: Store, data: AddMemo) {
+  Logger.debug("executeAddMemo");
   const { memos } = store.memoState;
-  selectEndTableExecute(store);
-  selectEndMemoExecute(store);
+  executeSelectEndTable(store);
+  executeSelectEndMemo(store);
   memos.push(new MemoModel({ addMemo: data }));
 }
 
@@ -66,26 +66,28 @@ export function moveMemo(
       movementY,
       tableIds: ctrlKey
         ? tableState.tables
-            .filter(table => table.ui.active)
-            .map(table => table.id)
+            .filter((table) => table.ui.active)
+            .map((table) => table.id)
         : [],
       memoIds: ctrlKey
-        ? memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id)
+        ? memoState.memos
+            .filter((memo) => memo.ui.active)
+            .map((memo) => memo.id)
         : [memoId],
     },
   };
 }
-export function moveMemoExecute(store: Store, data: MoveMemo) {
-  Logger.debug("moveMemoExecute");
+export function executeMoveMemo(store: Store, data: MoveMemo) {
+  Logger.debug("executeMoveMemo");
   const { tableState, memoState } = store;
-  data.tableIds.forEach(tableId => {
+  data.tableIds.forEach((tableId) => {
     const table = getData(tableState.tables, tableId);
     if (table) {
       table.ui.left += data.movementX;
       table.ui.top += data.movementY;
     }
   });
-  data.memoIds.forEach(memoId => {
+  data.memoIds.forEach((memoId) => {
     const memo = getData(memoState.memos, memoId);
     if (memo) {
       memo.ui.left += data.movementX;
@@ -110,27 +112,29 @@ export function removeMemo(
       tableIds: memoId
         ? []
         : tableState.tables
-            .filter(table => table.ui.active)
-            .map(table => table.id),
+            .filter((table) => table.ui.active)
+            .map((table) => table.id),
       memoIds: memoId
         ? [memoId]
-        : memoState.memos.filter(memo => memo.ui.active).map(memo => memo.id),
+        : memoState.memos
+            .filter((memo) => memo.ui.active)
+            .map((memo) => memo.id),
     },
   };
 }
-export function removeMemoExecute(store: Store, data: RemoveMemo) {
-  Logger.debug("removeMemoExecute");
+export function executeRemoveMemo(store: Store, data: RemoveMemo) {
+  Logger.debug("executeRemoveMemo");
   const { tableState, memoState } = store;
   for (let i = 0; i < tableState.tables.length; i++) {
     const id = tableState.tables[i].id;
-    if (data.tableIds.some(tableId => tableId === id)) {
+    if (data.tableIds.some((tableId) => tableId === id)) {
       tableState.tables.splice(i, 1);
       i--;
     }
   }
   for (let i = 0; i < memoState.memos.length; i++) {
     const id = memoState.memos[i].id;
-    if (data.memoIds.some(memoId => memoId === id)) {
+    if (data.memoIds.some((memoId) => memoId === id)) {
       memoState.memos.splice(i, 1);
       i--;
     }
@@ -157,8 +161,8 @@ export function selectMemo(
     },
   };
 }
-export function selectMemoExecute(store: Store, data: SelectMemo) {
-  Logger.debug("selectMemoExecute");
+export function executeSelectMemo(store: Store, data: SelectMemo) {
+  Logger.debug("executeSelectMemo");
   const { memos } = store.memoState;
   const targetMemo = getData(memos, data.memoId);
   if (targetMemo) {
@@ -166,10 +170,10 @@ export function selectMemoExecute(store: Store, data: SelectMemo) {
     if (data.ctrlKey) {
       targetMemo.ui.active = true;
     } else {
-      memos.forEach(memo => {
+      memos.forEach((memo) => {
         memo.ui.active = memo.id === data.memoId;
       });
-      selectEndTableExecute(store);
+      executeSelectEndTable(store);
     }
   }
 }
@@ -180,10 +184,10 @@ export function selectEndMemo(): CommandEffect<null> {
     data: null,
   };
 }
-export function selectEndMemoExecute(store: Store) {
-  Logger.debug("selectEndMemoExecute");
+export function executeSelectEndMemo(store: Store) {
+  Logger.debug("executeSelectEndMemo");
   const { memos } = store.memoState;
-  memos.forEach(memo => (memo.ui.active = false));
+  memos.forEach((memo) => (memo.ui.active = false));
 }
 
 export function selectAllMemo(): CommandEffect<null> {
@@ -192,10 +196,10 @@ export function selectAllMemo(): CommandEffect<null> {
     data: null,
   };
 }
-export function selectAllMemoExecute(store: Store) {
-  Logger.debug("selectAllMemoExecute");
+export function executeSelectAllMemo(store: Store) {
+  Logger.debug("executeSelectAllMemo");
   const { memos } = store.memoState;
-  memos.forEach(memo => (memo.ui.active = true));
+  memos.forEach((memo) => (memo.ui.active = true));
 }
 
 export interface ChangeMemoValue {
@@ -214,8 +218,8 @@ export function changeMemoValue(
     },
   };
 }
-export function changeMemoValueExecute(store: Store, data: ChangeMemoValue) {
-  Logger.debug("changeMemoValueExecute");
+export function executeChangeMemoValue(store: Store, data: ChangeMemoValue) {
+  Logger.debug("executeChangeMemoValue");
   const { memos } = store.memoState;
   const memo = getData(memos, data.memoId);
   if (memo) {
@@ -248,8 +252,8 @@ export function resizeMemo(
     },
   };
 }
-export function resizeMemoExecute(store: Store, data: ResizeMemo) {
-  Logger.debug("resizeMemoExecute");
+export function executeResizeMemo(store: Store, data: ResizeMemo) {
+  Logger.debug("executeResizeMemo");
   const { memos } = store.memoState;
   const memo = getData(memos, data.memoId);
   if (memo) {
@@ -276,11 +280,11 @@ export function dragSelectMemo(
     },
   };
 }
-export function dragSelectMemoExecute(store: Store, data: DragSelectMemo) {
-  Logger.debug("dragSelectMemoExecute");
+export function executeDragSelectMemo(store: Store, data: DragSelectMemo) {
+  Logger.debug("executeDragSelectMemo");
   const { memos } = store.memoState;
   const { min, max } = data;
-  memos.forEach(memo => {
+  memos.forEach((memo) => {
     const centerX = memo.ui.left + memo.ui.width / 2 + MEMO_PADDING;
     const centerY = memo.ui.top + memo.ui.height / 2 + MEMO_PADDING;
     memo.ui.active =
