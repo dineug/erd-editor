@@ -21,5 +21,13 @@ module.exports = {
     "@typescript-eslint/no-explicit-any": 0,
     "@typescript-eslint/no-empty-function": 0,
     "@typescript-eslint/no-use-before-define": 0,
+    "no-var": 0,
+    "prefer-rest-params": 0,
+    "prettier/prettier": [
+      0,
+      {
+        endOfLine: "auto",
+      },
+    ],
   },
 };
