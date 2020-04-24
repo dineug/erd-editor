@@ -10,6 +10,7 @@ import {
 } from "@src/core/command/canvas";
 import { CanvasType } from "@src/core/store/Canvas";
 import { SIZE_CANVAS_MIN, SIZE_CANVAS_MAX } from "@src/core/Layout";
+import { Bus } from "@src/core/Event";
 
 @customElement("vuerd-menubar")
 class Menubar extends EditorElement {
@@ -40,7 +41,7 @@ class Menubar extends EditorElement {
   render() {
     const { databaseName, width, canvasType } = this.context.store.canvasState;
     return html`
-      <ul class="vuerd-menubar">
+      <ul class="vuerd-menubar" @mousedown=${this.onMousedown}>
         <li class="vuerd-menubar-input">
           <input
             style="width: 200px;"
@@ -88,6 +89,10 @@ class Menubar extends EditorElement {
     `;
   }
 
+  private onMousedown(event: MouseEvent) {
+    const { eventBus } = this.context;
+    eventBus.emit(Bus.ERD.contextmenuEnd);
+  }
   private onChangeDatabaseName(event: InputEvent) {
     const input = event.target as HTMLInputElement;
     const { store } = this.context;

@@ -3,6 +3,7 @@ import { Store } from "../Store";
 import { Logger } from "../Logger";
 import { getData } from "../Helper";
 import { FocusTableModel, FocusType } from "../model/FocusTableModel";
+import { RelationshipType } from "../store/Relationship";
 
 export interface FocusTable {
   tableId: string;
@@ -229,4 +230,112 @@ export function executeDraggableEndColumn(store: Store) {
   Logger.debug("executeDraggableEndColumn");
   const { editorState } = store;
   editorState.draggableColumn = null;
+}
+
+export interface DrawStartRelationship {
+  relationshipType: RelationshipType;
+}
+export function drawStartRelationship(
+  relationshipType: RelationshipType
+): CommandEffect<DrawStartRelationship> {
+  return {
+    name: "editor.drawStartRelationship",
+    data: {
+      relationshipType,
+    },
+  };
+}
+export function executeDrawStartRelationship(
+  store: Store,
+  data: DrawStartRelationship
+) {
+  Logger.debug("executeDrawStartRelationship");
+  const { editorState } = store;
+  if (
+    editorState.drawRelationship?.relationshipType === data.relationshipType
+  ) {
+    executeDrawEndRelationship(store);
+  } else {
+    editorState.drawRelationship = {
+      relationshipType: data.relationshipType,
+      start: null,
+      end: null,
+    };
+  }
+}
+
+export interface DrawStartAddRelationship {
+  tableId: string;
+  x: number;
+  y: number;
+}
+export function drawStartAddRelationship(
+  tableId: string,
+  x: number,
+  y: number
+): CommandEffect<DrawStartAddRelationship> {
+  return {
+    name: "editor.drawStartAddRelationship",
+    data: {
+      tableId,
+      x,
+      y,
+    },
+  };
+}
+export function executeDrawStartAddRelationship(
+  store: Store,
+  data: DrawStartAddRelationship
+) {
+  Logger.debug("executeDrawStartAddRelationship");
+  const { tables } = store.tableState;
+  const { drawRelationship } = store.editorState;
+  const table = getData(tables, data.tableId);
+  if (drawRelationship && table) {
+    drawRelationship.start = {
+      tableId: data.tableId,
+      x: table.ui.left,
+      y: table.ui.top,
+    };
+    drawRelationship.end = {
+      x: data.x,
+      y: data.y,
+    };
+  }
+}
+
+export function drawEndRelationship(): CommandEffect<null> {
+  return {
+    name: "editor.drawEndRelationship",
+    data: null,
+  };
+}
+export function executeDrawEndRelationship(store: Store) {
+  Logger.debug("executeDrawEndRelationship");
+  store.editorState.drawRelationship = null;
+}
+
+export interface DrawRelationship {
+  x: number;
+  y: number;
+}
+export function drawRelationship(
+  x: number,
+  y: number
+): CommandEffect<DrawRelationship> {
+  return {
+    name: "editor.drawRelationship",
+    data: {
+      x,
+      y,
+    },
+  };
+}
+export function executeDrawRelationship(store: Store, data: DrawRelationship) {
+  Logger.debug("executeDrawRelationship");
+  const { drawRelationship } = store.editorState;
+  if (drawRelationship?.start && drawRelationship.end) {
+    drawRelationship.end.x = data.x;
+    drawRelationship.end.y = data.y;
+  }
 }

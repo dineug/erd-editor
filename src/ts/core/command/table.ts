@@ -37,7 +37,7 @@ export function addTable(store: Store): CommandEffect<AddTable> {
 export function executeAddTable(store: Store, data: AddTable) {
   Logger.debug("executeAddTable");
   const { tables } = store.tableState;
-  executeFocusEndTable(store);
+  executeSelectEndTable(store);
   executeSelectEndMemo(store);
   tables.push(new TableModel({ addTable: data }, store.canvasState.show));
   executeFocusTable(store, { tableId: data.id });

@@ -70,7 +70,7 @@ class InputEdit extends EditorElement {
             spellcheck="false"
             .value=${this.value}
             placeholder=${this.placeholder}
-            @blur=${this.onEmit}
+            @blur=${this.onBlur}
           />
         `
       : html`
@@ -85,10 +85,7 @@ class InputEdit extends EditorElement {
         `;
   }
 
-  private onEmit(event: InputEvent) {
-    Logger.debug(`InputEdit onEmit: ${event.type}`);
-    if (event.type === "blur") {
-      this.dispatchEvent(new Event("blur"));
-    }
+  private onBlur(event: InputEvent) {
+    this.dispatchEvent(new Event("blur"));
   }
 }

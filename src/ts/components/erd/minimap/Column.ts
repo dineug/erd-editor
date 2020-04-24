@@ -1,6 +1,6 @@
 import { html, customElement } from "lit-element";
 import { Subscription } from "rxjs";
-import { EditorElement } from "../EditorElement";
+import { EditorElement } from "../../EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Column as ColumnModel } from "@src/core/store/Table";
 

@@ -2,7 +2,7 @@ import { svg, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
 import { Subscription } from "rxjs";
-import { EditorElement } from "./EditorElement";
+import { EditorElement } from "../EditorElement";
 import { Logger } from "@src/core/Logger";
 
 @customElement("vuerd-canvas-svg")

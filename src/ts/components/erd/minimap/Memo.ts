@@ -2,7 +2,7 @@ import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { classMap } from "lit-html/directives/class-map";
 import { Subscription } from "rxjs";
-import { EditorElement } from "../EditorElement";
+import { EditorElement } from "../../EditorElement";
 import { Logger } from "@src/core/Logger";
 import { SIZE_MEMO_PADDING } from "@src/core/Layout";
 import { Memo as MemoModel } from "@src/core/store/Memo";

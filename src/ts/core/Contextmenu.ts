@@ -80,14 +80,17 @@ export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
         {
           name: "json",
           execute() {
-            const data = {
-              canvas: canvasState,
-              table: tableState,
-              memo: memoState,
-              relationship: relationshipState,
-            };
             exportJSON(
-              JSON.stringify(data, undefined, 2),
+              JSON.stringify(
+                {
+                  canvas: canvasState,
+                  table: tableState,
+                  memo: memoState,
+                  relationship: relationshipState,
+                },
+                undefined,
+                2
+              ),
               canvasState.databaseName
             );
           },

@@ -78,6 +78,9 @@ import {
   FocusTargetColumn,
   EditTable,
   DraggableColumn,
+  DrawStartRelationship,
+  DrawStartAddRelationship,
+  DrawRelationship,
   executeFocusTable,
   executeFocusEndTable,
   executeFocusMoveTable,
@@ -89,6 +92,10 @@ import {
   executeEditEndTable,
   executeDraggableColumn,
   executeDraggableEndColumn,
+  executeDrawStartRelationship,
+  executeDrawStartAddRelationship,
+  executeDrawEndRelationship,
+  executeDrawRelationship,
 } from "./command/editor";
 
 export interface CommandEffect<T> {
@@ -145,7 +152,11 @@ type CommandName =
   | "editor.editTable"
   | "editor.editEndTable"
   | "editor.draggableColumn"
-  | "editor.draggableEndColumn";
+  | "editor.draggableEndColumn"
+  | "editor.drawStartRelationship"
+  | "editor.drawStartAddRelationship"
+  | "editor.drawEndRelationship"
+  | "editor.drawRelationship";
 
 export type Command =
   | CommandEffect<null>
@@ -180,7 +191,10 @@ export type Command =
   | CommandEffect<FocusTargetTable>
   | CommandEffect<FocusTargetColumn>
   | CommandEffect<EditTable>
-  | CommandEffect<DraggableColumn>;
+  | CommandEffect<DraggableColumn>
+  | CommandEffect<DrawStartRelationship>
+  | CommandEffect<DrawStartAddRelationship>
+  | CommandEffect<DrawRelationship>;
 
 export function commandExecute(store: Store, commands: Command[]) {
   commands.forEach((command) => {
@@ -337,6 +351,24 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "editor.draggableEndColumn":
         executeDraggableEndColumn(store);
+        break;
+      case "editor.drawStartRelationship":
+        executeDrawStartRelationship(
+          store,
+          command.data as DrawStartRelationship
+        );
+        break;
+      case "editor.drawStartAddRelationship":
+        executeDrawStartAddRelationship(
+          store,
+          command.data as DrawStartAddRelationship
+        );
+        break;
+      case "editor.drawEndRelationship":
+        executeDrawEndRelationship(store);
+        break;
+      case "editor.drawRelationship":
+        executeDrawRelationship(store, command.data as DrawRelationship);
         break;
     }
   });

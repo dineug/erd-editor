@@ -3,6 +3,7 @@ import domToImage from "dom-to-image";
 const exportHelper = document.createElement("a");
 const importHelperJSON = document.createElement("input");
 const importHelperSQL = document.createElement("input");
+
 importHelperJSON.setAttribute("type", "file");
 importHelperJSON.setAttribute("accept", ".json");
 importHelperJSON.addEventListener("change", (event) => {
