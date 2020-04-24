@@ -205,7 +205,6 @@ class Column extends EditorElement {
   }
 
   private onInput(event: InputEvent, focusType: FocusType) {
-    Logger.debug(`Column onInput: ${focusType}`);
     const { store, helper } = this.context;
     const input = event.target as HTMLInputElement;
     switch (focusType) {
@@ -241,7 +240,6 @@ class Column extends EditorElement {
     store.dispatch(editEndTable());
   }
   private onFocus(event: MouseEvent | TouchEvent, focusType: FocusType) {
-    Logger.debug(`Column onFocus: ${focusType}`);
     const { store } = this.context;
     const { editTable, focusTable } = store.editorState;
     if (
@@ -279,19 +277,16 @@ class Column extends EditorElement {
     store.dispatch(removeColumn(this.tableId, [this.column.id]));
   }
   private onDragstart(event: DragEvent) {
-    Logger.debug("Column onDragstart");
     const { store } = this.context;
     store.dispatch(
       draggableColumn(store, this.tableId, this.column.id, event.ctrlKey)
     );
   }
   private onDragend(event: DragEvent) {
-    Logger.debug("Column onDragend");
     const { store } = this.context;
     store.dispatch(draggableEndColumn());
   }
   private onDragover(event: DragEvent) {
-    Logger.debug("Column onDragover");
     this.dispatchEvent(
       new CustomEvent("dragover", {
         detail: {

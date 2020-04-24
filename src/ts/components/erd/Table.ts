@@ -45,7 +45,6 @@ class Table extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    Logger.debug("Table before render");
     const { store } = this.context;
     this.subscriptionList.push(
       this.draggable$.pipe(debounceTime(50)).subscribe(this.onDragoverColumn),
@@ -63,7 +62,6 @@ class Table extends EditorElement {
         }
       }),
       store.observe(store.editorState, (name) => {
-        Logger.debug(`Table observe editorState: ${String(name)}`);
         const { focusTable, draggableColumn } = store.editorState;
         switch (name) {
           case "focusTable":
@@ -101,7 +99,6 @@ class Table extends EditorElement {
     this.flipAnimation.play();
   }
   disconnectedCallback() {
-    Logger.debug("Table destroy");
     this.onMouseup();
     this.unsubscribeFocusTable();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
@@ -109,7 +106,6 @@ class Table extends EditorElement {
   }
 
   render() {
-    Logger.debug("Table render");
     const { ui } = this.table;
     const { keymap } = this.context;
     const { show } = this.context.store.canvasState;
@@ -239,11 +235,9 @@ class Table extends EditorElement {
     );
   };
   private onDragoverGroupColumn = (event: CustomEvent) => {
-    Logger.debug("Table onDragoverGroupColumn");
     this.draggable$.next(event);
   };
   private onDragoverColumn = (event: CustomEvent) => {
-    Logger.debug("Table onDragoverColumn");
     const { store } = this.context;
     const { draggableColumn } = store.editorState;
     const { tableId, columnId } = event.detail;
@@ -277,7 +271,6 @@ class Table extends EditorElement {
     }
   }
   private onDraggableColumn() {
-    Logger.debug("Table onDraggableColumn");
     const liNodeList = this.renderRoot.querySelectorAll("vuerd-column");
     liNodeList.forEach((li) => {
       this.subDraggableColumns.push(
@@ -288,7 +281,6 @@ class Table extends EditorElement {
     });
   }
   private onDraggableEndColumn() {
-    Logger.debug("Table onDraggableEndColumn");
     this.subDraggableColumns.forEach((sub) => sub.unsubscribe());
     this.subDraggableColumns = [];
   }
@@ -301,7 +293,6 @@ class Table extends EditorElement {
     store.dispatch(removeTable(store, this.table.id));
   }
   private onInput(event: InputEvent, focusType: FocusType) {
-    Logger.debug(`Table onInput: ${focusType}`);
     const { store, helper } = this.context;
     const input = event.target as HTMLInputElement;
     switch (focusType) {
@@ -318,7 +309,6 @@ class Table extends EditorElement {
     store.dispatch(editEndTable());
   }
   private onFocus(event: MouseEvent | TouchEvent, focusType: FocusType) {
-    Logger.debug(`Table onFocus: ${focusType}`);
     const { store } = this.context;
     const { editTable, focusTable } = store.editorState;
     if (

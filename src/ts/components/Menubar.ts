@@ -21,7 +21,6 @@ class Menubar extends EditorElement {
     const { store } = this.context;
     this.subscriptionList.push(
       store.observe(store.canvasState, (name) => {
-        Logger.debug(name);
         switch (name) {
           case "databaseName":
           case "width":

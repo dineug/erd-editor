@@ -76,7 +76,6 @@ class ColumnDataTypeHint extends EditorElement {
     eventBus.on(Bus.ColumnDataTypeHint.startFilter, this.onStartFilter);
   }
   updated(changedProperties: any) {
-    Logger.debug("ColumnDataTypeHint updated");
     changedProperties.forEach((oldValue: any, propName: string) => {
       switch (propName) {
         case "value":
@@ -125,7 +124,6 @@ class ColumnDataTypeHint extends EditorElement {
   }
 
   private onArrowUp = (event: CustomEvent) => {
-    Logger.debug("ColumnDataTypeHint onArrowUp");
     if (this.hints.length !== 0) {
       event.detail.preventDefault();
     }
@@ -143,7 +141,6 @@ class ColumnDataTypeHint extends EditorElement {
     }
   };
   private onArrowDown = (event: CustomEvent) => {
-    Logger.debug("ColumnDataTypeHint onArrowDown");
     if (this.hints.length !== 0) {
       event.detail.preventDefault();
     }
@@ -161,12 +158,10 @@ class ColumnDataTypeHint extends EditorElement {
     }
   };
   private onArrowLeft = (event: CustomEvent) => {
-    Logger.debug("ColumnDataTypeHint onArrowLeft");
     this.activeEnd();
     this.requestUpdate();
   };
   private onArrowRight = (event: CustomEvent) => {
-    Logger.debug("ColumnDataTypeHint onArrowRight");
     const index = this.activeIndex;
     if (index !== null) {
       event.detail.preventDefault();
@@ -200,7 +195,6 @@ class ColumnDataTypeHint extends EditorElement {
   };
 
   private onSelectHint(hint: Hint) {
-    Logger.debug("ColumnDataTypeHint onSelectHint");
     const { store, helper } = this.context;
     this.startFilter = false;
     this.activeEnd();

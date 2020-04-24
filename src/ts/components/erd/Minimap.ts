@@ -63,7 +63,6 @@ class Minimap extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    Logger.debug("Minimap before render");
     const { store } = this.context;
     this.tables = store.tableState.tables;
     this.memos = store.memoState.memos;
@@ -83,13 +82,11 @@ class Minimap extends EditorElement {
     );
   }
   disconnectedCallback() {
-    Logger.debug("Minimap destroy");
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
   render() {
-    Logger.debug("Minimap render");
     return html`
       <div class="vuerd-minimap" style=${styleMap(this.styleMap)}>
         <div class="vuerd-minimap-canvas">

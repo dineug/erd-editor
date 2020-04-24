@@ -15,7 +15,6 @@ class Canvas extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    Logger.debug("Canvas before render");
     const { store } = this.context;
     this.tables = store.tableState.tables;
     this.memos = store.memoState.memos;
@@ -33,13 +32,11 @@ class Canvas extends EditorElement {
     );
   }
   disconnectedCallback() {
-    Logger.debug("Canvas destroy");
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
   render() {
-    Logger.debug("Canvas render");
     const { width, height } = this.context.store.canvasState;
     return html`
       <div

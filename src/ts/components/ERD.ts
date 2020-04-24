@@ -95,7 +95,6 @@ class ERD extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    Logger.debug("ERD before render");
     const { store, eventBus, keymap } = this.context;
     const { mousedown$, keydown$ } = this.context.windowEventObservable;
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
@@ -115,7 +114,6 @@ class ERD extends EditorElement {
         const { focus, editTable, focusTable } = store.editorState;
         if (focus) {
           if (keymapMatch(event, keymap.addTable)) {
-            Logger.debug("keymap.addTable");
             store.dispatch(addTable(store));
           }
 
@@ -123,12 +121,10 @@ class ERD extends EditorElement {
             keymapMatch(event, keymap.addColumn) &&
             store.tableState.tables.some((table) => table.ui.active)
           ) {
-            Logger.debug("keymap.addColumn");
             store.dispatch(addColumn(store));
           }
 
           if (keymapMatch(event, keymap.addMemo)) {
-            Logger.debug("keymap.addMemo");
             store.dispatch(addMemo(store));
           }
 
@@ -137,12 +133,10 @@ class ERD extends EditorElement {
             (store.tableState.tables.some((table) => table.ui.active) ||
               store.memoState.memos.some((memo) => memo.ui.active))
           ) {
-            Logger.debug("keymap.removeTable");
             store.dispatch(removeTable(store));
           }
 
           if (focusTable !== null && keymapMatch(event, keymap.removeColumn)) {
-            Logger.debug("keymap.removeColumn");
             const columns = focusTable.selectColumns;
             if (columns.length !== 0) {
               store.dispatch(
@@ -155,7 +149,6 @@ class ERD extends EditorElement {
           }
 
           if (focusTable !== null && keymapMatch(event, keymap.primaryKey)) {
-            Logger.debug("keymap.primaryKey");
             const currentFocus = focusTable.currentFocus;
             if (
               currentFocus !== "tableName" &&
@@ -169,7 +162,6 @@ class ERD extends EditorElement {
           }
 
           if (editTable === null && keymapMatch(event, keymap.selectAllTable)) {
-            Logger.debug("keymap.selectAllTable");
             store.dispatch(selectAllTable(), selectAllMemo());
           }
 
@@ -177,7 +169,6 @@ class ERD extends EditorElement {
             editTable === null &&
             keymapMatch(event, keymap.selectAllColumn)
           ) {
-            Logger.debug("keymap.selectAllColumn");
             store.dispatch(selectAllColumn());
           }
 
@@ -192,7 +183,6 @@ class ERD extends EditorElement {
           }
 
           if (focusTable !== null && keymapMatch(event, keymap.edit)) {
-            Logger.debug("keymap.edit");
             if (editTable === null) {
               const currentFocus = focusTable.currentFocus;
               if (currentFocus === "columnNotNull") {
@@ -225,7 +215,6 @@ class ERD extends EditorElement {
     );
   }
   firstUpdated() {
-    Logger.debug("ERD after render");
     const { store } = this.context;
     this.erd = this.renderRoot.querySelector(".vuerd-erd") as Element;
     this.erd.scrollTop = store.canvasState.scrollTop;
@@ -244,7 +233,6 @@ class ERD extends EditorElement {
     );
   }
   disconnectedCallback() {
-    Logger.debug("ERD destroy");
     const { eventBus } = this.context;
     this.onMouseup();
     this.unsubscribeDrawRelationship();
@@ -254,7 +242,6 @@ class ERD extends EditorElement {
   }
 
   render() {
-    Logger.debug("ERD render");
     const { drawRelationship } = this.context.store.editorState;
     return html`
       <div

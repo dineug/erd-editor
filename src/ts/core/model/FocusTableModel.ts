@@ -258,7 +258,6 @@ export class FocusTableModel implements FocusTable {
   }
 
   private createFocusColumns() {
-    Logger.debug("FocusTableModel createFocusColumns");
     const { show } = this._store.canvasState;
     const oldColumnsSize = this.focusColumns.length;
     const columnsSize = this._table.columns.length;

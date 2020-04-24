@@ -15,7 +15,6 @@ class CanvasSVG extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    Logger.debug("CanvasSVG before render");
     const { store } = this.context;
     this.relationships = store.relationshipState.relationships;
     this.subscriptionList.push(
@@ -36,14 +35,12 @@ class CanvasSVG extends EditorElement {
     this.observeRelationships();
   }
   disconnectedCallback() {
-    Logger.debug("CanvasSVG destroy");
     this.unsubscribeRelationships();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
   render() {
-    Logger.debug("CanvasSVG render");
     const { width, height } = this.context.store.canvasState;
     return svg`
       <svg 

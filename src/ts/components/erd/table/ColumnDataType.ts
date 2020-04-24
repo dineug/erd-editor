@@ -52,7 +52,6 @@ class ColumnDataType extends EditorElement {
   }
 
   private onKeydown(event: KeyboardEvent) {
-    Logger.debug("ColumnDataType onKeydown");
     const { eventBus } = this.context;
     switch (event.key) {
       case "ArrowUp":

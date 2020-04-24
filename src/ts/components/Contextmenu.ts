@@ -39,7 +39,6 @@ export class Contextmenu extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    Logger.debug("Contextmenu before render");
     const { store } = this.context;
     this.subscriptionList.push(
       store.observe(store.canvasState.show, () => this.requestUpdate()),
@@ -56,14 +55,12 @@ export class Contextmenu extends EditorElement {
     );
   }
   disconnectedCallback() {
-    Logger.debug("Contextmenu destroy");
     this.currentMenu = null;
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
   render() {
-    Logger.debug("Contextmenu render");
     return html`
       <ul
         class="vuerd-contextmenu"

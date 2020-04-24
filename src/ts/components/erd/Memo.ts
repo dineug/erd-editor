@@ -55,21 +55,18 @@ class Memo extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    Logger.debug("Memo before render");
     const { store } = this.context;
     this.subscriptionList.push(
       store.observe(this.memo.ui, () => this.requestUpdate())
     );
   }
   firstUpdated() {
-    Logger.debug("Memo after render");
     const textarea = this.renderRoot.querySelector(
       "textarea"
     ) as HTMLTextAreaElement;
     textarea.focus();
   }
   disconnectedCallback() {
-    Logger.debug("Memo destroy");
     this.onMouseup();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
@@ -206,13 +203,11 @@ class Memo extends EditorElement {
     store.dispatch(removeMemo(store, this.memo.id));
   }
   private onInput(event: InputEvent) {
-    Logger.debug("Memo onInput");
     const { store } = this.context;
     const textarea = event.target as HTMLTextAreaElement;
     store.dispatch(changeMemoValue(this.memo.id, textarea.value));
   }
   private onMousedownSash(event: MouseEvent, position: Position) {
-    Logger.debug("Memo onMousedownSash");
     this.x = event.x;
     this.y = event.y;
     const { mouseup$, mousemove$ } = this.context.windowEventObservable;
@@ -223,7 +218,6 @@ class Memo extends EditorElement {
     });
   }
   private onMousemoveSash(event: MouseEvent, position: Position) {
-    Logger.debug("Memo onMousemoveSash");
     event.preventDefault();
     const { store } = this.context;
     let verticalUI: ResizeMemo | null = null;

@@ -35,13 +35,11 @@ class Editor extends LitElement {
 
   constructor() {
     super();
-    Logger.debug("Editor constructor");
     this.context = createEditorContext();
   }
 
   connectedCallback() {
     super.connectedCallback();
-    Logger.debug("Editor before render");
     const { store, keymap } = this.context;
     const { keydown$ } = this.context.windowEventObservable;
     this.subscriptionList.push(
@@ -62,7 +60,6 @@ class Editor extends LitElement {
         const { focus } = store.editorState;
         if (focus) {
           if (keymapMatch(event, keymap.stop)) {
-            Logger.debug("keymap.stop");
             store.dispatch(
               selectEndTable(),
               selectEndMemo(),
@@ -74,33 +71,18 @@ class Editor extends LitElement {
     );
   }
   firstUpdated() {
-    Logger.debug("Editor after render");
     const span = this.renderRoot.querySelector(
       ".vuerd-text-width"
     ) as HTMLSpanElement;
     this.context.helper.setSpan(span);
   }
-  updated(changedProperties: any) {
-    changedProperties.forEach((oldValue: any, propName: string) => {
-      switch (propName) {
-        case "width":
-          Logger.debug(`width: ${this.width}`);
-          break;
-        case "height":
-          Logger.debug(`height: ${this.height}`);
-          break;
-      }
-    });
-  }
   disconnectedCallback() {
-    Logger.debug("Editor destroy");
     this.context.store.destroy();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
   render() {
-    Logger.debug("Editor render");
     const { canvasType } = this.context.store.canvasState;
     const {
       canvas,
