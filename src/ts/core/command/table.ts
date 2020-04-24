@@ -8,7 +8,12 @@ import { TableUI } from "../store/Table";
 import { TableModel } from "../model/TableModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
 import { executeSelectEndMemo } from "./memo";
-import { executeFocusTable, executeFocusEndTable } from "./editor";
+import {
+  executeFocusTable,
+  executeFocusEndTable,
+  executeDrawStartAddRelationship,
+  executeDrawEndRelationship,
+} from "./editor";
 
 const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 
@@ -163,6 +168,7 @@ export function selectTable(
 export function executeSelectTable(store: Store, data: SelectTable) {
   Logger.debug("executeSelectTable");
   const { tables } = store.tableState;
+  const { drawRelationship } = store.editorState;
   const targetTable = getData(tables, data.tableId);
   if (targetTable) {
     targetTable.ui.zIndex = data.zIndex;
@@ -175,6 +181,14 @@ export function executeSelectTable(store: Store, data: SelectTable) {
       executeSelectEndMemo(store);
     }
     executeFocusTable(store, { tableId: data.tableId });
+    if (drawRelationship) {
+      if (drawRelationship.start) {
+        // TODO: addRelationship
+        executeDrawEndRelationship(store);
+      } else {
+        executeDrawStartAddRelationship(store, { tableId: data.tableId });
+      }
+    }
   }
 }
 

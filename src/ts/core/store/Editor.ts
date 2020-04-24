@@ -20,11 +20,11 @@ export interface EditTable {
 export interface DrawRelationship {
   relationshipType: RelationshipType;
   start: DrawStartPoint | null;
-  end: Point | null;
+  end: Point;
 }
 
 export interface DrawStartPoint {
-  tableId: string;
+  table: Table;
   x: number;
   y: number;
 }

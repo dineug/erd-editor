@@ -302,7 +302,7 @@ export const Layout = css`
     height: 17px;
   }
   .vuerd-contextmenu > li > span.keymap {
-    width: 70px;
+    width: 85px;
     display: inline-block;
     padding-right: 0;
   }

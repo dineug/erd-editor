@@ -7,6 +7,8 @@ import { defaultWidth, defaultHeight } from "./Layout";
 import { Menu, getERDContextmenu } from "@src/core/Contextmenu";
 import { Bus } from "@src/core/Event";
 import { keymapMatch } from "@src/core/Keymap";
+import { relationshipMenus } from "@src/core/Contextmenu";
+import { getBase64Icon } from "@src/core/Icon";
 import {
   addTable,
   removeTable,
@@ -28,6 +30,7 @@ import {
   editTable as editTableCommand,
   editEndTable,
   selectAllColumn,
+  drawStartRelationship,
 } from "@src/core/command/editor";
 
 @customElement("vuerd-erd")
@@ -56,8 +59,23 @@ class ERD extends EditorElement {
   private subscriptionList: Subscription[] = [];
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
+  private subDrawRelationship: Subscription | null = null;
   private menus: Menu[] = [];
   private erd!: Element;
+
+  get styleMap() {
+    const { drawRelationship } = this.context.store.editorState;
+    const styleMap: any = {
+      width: `${this.width}px`,
+      height: `${this.height}px`,
+    };
+    if (drawRelationship) {
+      styleMap.cursor = `url("${getBase64Icon(
+        drawRelationship.relationshipType
+      )}") 16 16, auto`;
+    }
+    return styleMap;
+  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -66,6 +84,16 @@ class ERD extends EditorElement {
     const { mousedown$, keydown$ } = this.context.windowEventObservable;
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subscriptionList.push(
+      store.observe(store.editorState, (name) => {
+        const { drawRelationship } = store.editorState;
+        if (name === "drawRelationship") {
+          this.unsubscribeDrawRelationship();
+          if (drawRelationship !== null) {
+            this.observeDrawRelationship();
+          }
+          this.requestUpdate();
+        }
+      }),
       mousedown$.subscribe(this.onMousedownWindow),
       keydown$.subscribe((event) => {
         const { focus, editTable, focusTable } = store.editorState;
@@ -168,6 +196,14 @@ class ERD extends EditorElement {
               store.dispatch(editEndTable());
             }
           }
+
+          relationshipMenus.forEach((relationshipMenu) => {
+            if (keymapMatch(event, keymap[relationshipMenu.keymapName])) {
+              store.dispatch(
+                drawStartRelationship(relationshipMenu.relationshipType)
+              );
+            }
+          });
         }
       })
     );
@@ -195,6 +231,7 @@ class ERD extends EditorElement {
     Logger.debug("ERD destroy");
     const { eventBus } = this.context;
     this.onMouseup();
+    this.unsubscribeDrawRelationship();
     eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
@@ -206,10 +243,7 @@ class ERD extends EditorElement {
     return html`
       <div
         class="vuerd-erd"
-        style=${styleMap({
-          width: `${this.width}px`,
-          height: `${this.height}px`,
-        })}
+        style=${styleMap(this.styleMap)}
         @mousedown=${this.onMousedown}
         @contextmenu=${this.onContextmenu}
       >
@@ -318,5 +352,17 @@ class ERD extends EditorElement {
   }
   private onSelectEnd() {
     this.select = false;
+  }
+
+  private observeDrawRelationship() {
+    const { store } = this.context;
+    const { drawRelationship } = this.context.store.editorState;
+    if (drawRelationship) {
+      store.observe(drawRelationship, () => this.requestUpdate());
+    }
+  }
+  private unsubscribeDrawRelationship() {
+    this.subDrawRelationship?.unsubscribe();
+    this.subDrawRelationship = null;
   }
 }

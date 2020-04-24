@@ -1,11 +1,14 @@
 import { ShowKey, Database, Language, NameCase } from "./store/Canvas";
 import { Store } from "./Store";
-import { Keymap, keymapOptionToString } from "./Keymap";
+import { Keymap, keymapOptionToString, RelationshipKeymapName } from "./Keymap";
 import { exportPNG, exportJSON } from "./File";
+import { getBase64Icon } from "./Icon";
 import { addTable } from "./command/table";
 import { addMemo } from "./command/memo";
 import { changeColumnPrimaryKey } from "./command/column";
 import { changeCanvasShow, changeDatabase } from "./command/canvas";
+import { drawStartRelationship } from "./command/editor";
+import { RelationshipType } from "./store/Relationship";
 
 export interface MenuOption {
   close?: boolean;
@@ -62,6 +65,10 @@ export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
           }
         }
       },
+    },
+    {
+      name: "Relationship",
+      children: createRelationshipMenus(store, keymap),
     },
     {
       icon: "eye",
@@ -173,6 +180,64 @@ function createDatabaseMenus(store: Store): Menu[] {
       option: {
         close: false,
         database: databaseKey,
+      },
+    };
+  });
+}
+
+interface RelationshipMenu {
+  name: string;
+  relationshipType: RelationshipType;
+  keymapName: RelationshipKeymapName;
+}
+export const relationshipMenus: RelationshipMenu[] = [
+  {
+    name: "Zero One",
+    relationshipType: "ZeroOne",
+    keymapName: "relationshipZeroOne",
+  },
+  {
+    name: "Zero N",
+    relationshipType: "ZeroN",
+    keymapName: "relationshipZeroN",
+  },
+  {
+    name: "One",
+    relationshipType: "One",
+    keymapName: "relationshipOne",
+  },
+  {
+    name: "N",
+    relationshipType: "N",
+    keymapName: "relationshipN",
+  },
+  {
+    name: "Zero One N",
+    relationshipType: "ZeroOneN",
+    keymapName: "relationshipZeroOneN",
+  },
+  {
+    name: "One N",
+    relationshipType: "OneN",
+    keymapName: "relationshipOneN",
+  },
+  {
+    name: "One Only",
+    relationshipType: "OneOnly",
+    keymapName: "relationshipOneOnly",
+  },
+];
+function createRelationshipMenus(store: Store, keymap: Keymap): Menu[] {
+  return relationshipMenus.map((relationshipMenu) => {
+    return {
+      icon: getBase64Icon(relationshipMenu.relationshipType),
+      base64: true,
+      name: relationshipMenu.name,
+      keymap: keymapOptionToString(keymap[relationshipMenu.keymapName][0]),
+      execute() {
+        store.dispatch(
+          drawStartRelationship(relationshipMenu.relationshipType)
+        );
       },
     };
   });

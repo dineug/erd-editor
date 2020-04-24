@@ -61,6 +61,15 @@ type Key =
   | "N"
   | "M";
 
+export type RelationshipKeymapName =
+  | "relationshipZeroOne"
+  | "relationshipZeroN"
+  | "relationshipOne"
+  | "relationshipN"
+  | "relationshipZeroOneN"
+  | "relationshipOneN"
+  | "relationshipOneOnly";
+
 export interface KeymapOption {
   metaKey: boolean;
   ctrlKey: boolean;
@@ -80,6 +89,13 @@ export interface Keymap {
   selectAllColumn: KeymapOption[];
   edit: KeymapOption[];
   stop: KeymapOption[];
+  relationshipZeroOne: KeymapOption[];
+  relationshipZeroN: KeymapOption[];
+  relationshipOne: KeymapOption[];
+  relationshipN: KeymapOption[];
+  relationshipZeroOneN: KeymapOption[];
+  relationshipOneN: KeymapOption[];
+  relationshipOneOnly: KeymapOption[];
 }
 
 export function createKeymap(): Keymap {
@@ -172,6 +188,69 @@ export function createKeymap(): Keymap {
         altKey: false,
         shiftKey: false,
         key: "Escape",
+      },
+    ],
+    relationshipZeroOne: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: true,
+        shiftKey: false,
+        key: "1",
+      },
+    ],
+    relationshipZeroN: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: true,
+        shiftKey: false,
+        key: "2",
+      },
+    ],
+    relationshipOne: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: true,
+        shiftKey: false,
+        key: "3",
+      },
+    ],
+    relationshipN: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: true,
+        shiftKey: false,
+        key: "4",
+      },
+    ],
+    relationshipZeroOneN: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: true,
+        shiftKey: false,
+        key: "5",
+      },
+    ],
+    relationshipOneN: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: true,
+        shiftKey: false,
+        key: "6",
+      },
+    ],
+    relationshipOneOnly: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: true,
+        shiftKey: false,
+        key: "7",
       },
     ],
   };

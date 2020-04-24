@@ -62,18 +62,18 @@ class Table extends EditorElement {
             break;
         }
       }),
-      store.observe(store.editorState, (name: string | number | symbol) => {
+      store.observe(store.editorState, (name) => {
         Logger.debug(`Table observe editorState: ${String(name)}`);
         const { focusTable, draggableColumn } = store.editorState;
         switch (name) {
           case "focusTable":
             if (focusTable === null || focusTable.id !== this.table.id) {
-              this.focusTableUnsubscribe();
+              this.unsubscribeFocusTable();
             } else if (
               this.subFocusTable === null &&
               focusTable?.id === this.table.id
             ) {
-              this.focusTableObserve();
+              this.observeFocusTable();
             }
             this.requestUpdate();
             break;
@@ -95,7 +95,7 @@ class Table extends EditorElement {
         }
       })
     );
-    this.focusTableObserve();
+    this.observeFocusTable();
   }
   updated(changedProperties: any) {
     this.flipAnimation.play();
@@ -103,7 +103,7 @@ class Table extends EditorElement {
   disconnectedCallback() {
     Logger.debug("Table destroy");
     this.onMouseup();
-    this.focusTableUnsubscribe();
+    this.unsubscribeFocusTable();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
@@ -341,7 +341,7 @@ class Table extends EditorElement {
     }
   }
 
-  private focusTableObserve() {
+  private observeFocusTable() {
     const { store } = this.context;
     if (store.editorState.focusTable?.id === this.table.id) {
       this.subFocusTable = store.observe(store.editorState.focusTable, () =>
@@ -349,7 +349,7 @@ class Table extends EditorElement {
       );
     }
   }
-  private focusTableUnsubscribe() {
+  private unsubscribeFocusTable() {
     this.subFocusTable?.unsubscribe();
     this.subFocusTable = null;
   }

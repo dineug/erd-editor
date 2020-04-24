@@ -9,6 +9,7 @@ import { EditorContext, createEditorContext } from "@src/core/EditorContext";
 import { Command } from "@src/core/Command";
 import { selectEndTable } from "@src/core/command/table";
 import { selectEndMemo } from "@src/core/command/memo";
+import { drawEndRelationship } from "@src/core/command/editor";
 import "./Icon";
 import "./Contextmenu";
 import "./InputEdit";
@@ -80,7 +81,11 @@ class Editor extends LitElement {
         if (focus) {
           if (keymapMatch(event, keymap.stop)) {
             Logger.debug("keymap.stop");
-            store.dispatch(selectEndTable(), selectEndMemo());
+            store.dispatch(
+              selectEndTable(),
+              selectEndMemo(),
+              drawEndRelationship()
+            );
           }
         }
       })

@@ -20,7 +20,7 @@ class ColumnNotNull extends EditorElement {
     super.connectedCallback();
     const { store } = this.context;
     this.subscriptionList.push(
-      store.observe(this.columnOption, (name: string | number | symbol) => {
+      store.observe(this.columnOption, (name) => {
         if (name === "notNull") {
           this.requestUpdate();
         }

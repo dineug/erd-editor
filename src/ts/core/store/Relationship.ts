@@ -18,15 +18,14 @@ export interface RelationshipPoint {
   direction: Direction;
 }
 
-export enum RelationshipType {
-  ZeroOne = "ZeroOne",
-  // ZeroOneN = "ZeroOneN",
-  ZeroN = "ZeroN",
-  // One = "One",
-  OneN = "OneN",
-  OneOnly = "OneOnly",
-  N = "N",
-}
+export type RelationshipType =
+  | "ZeroOneN"
+  | "ZeroOne"
+  | "ZeroN"
+  | "OneOnly"
+  | "OneN"
+  | "One"
+  | "N";
 
 export enum Direction {
   left = "left",

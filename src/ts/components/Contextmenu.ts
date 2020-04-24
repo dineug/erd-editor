@@ -79,13 +79,19 @@ export class Contextmenu extends EditorElement {
               @click=${() => this.onExecute(menu)}
               @mouseover=${() => this.onMouseover(menu)}
             >
-              ${icon
+              ${icon && menu.base64
+                ? html`
+                    <span class="icon">
+                      <img src=${icon} />
+                    </span>
+                  `
+                : icon
                 ? html`
                     <span class="icon">
                       <vuerd-icon size="14" icon=${icon}> </vuerd-icon>
                     </span>
                   `
-                : html` <span class="icon"></span> `}
+                : html`<span class="icon"></span>`}
               <span class="name">${menu.name}</span>
               <span class="keymap" title=${menu.keymap ? menu.keymap : ""}>
                 ${menu.keymap}

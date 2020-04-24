@@ -269,20 +269,14 @@ export function executeDrawStartRelationship(
 
 export interface DrawStartAddRelationship {
   tableId: string;
-  x: number;
-  y: number;
 }
 export function drawStartAddRelationship(
-  tableId: string,
-  x: number,
-  y: number
+  tableId: string
 ): CommandEffect<DrawStartAddRelationship> {
   return {
     name: "editor.drawStartAddRelationship",
     data: {
       tableId,
-      x,
-      y,
     },
   };
 }
@@ -300,8 +294,6 @@ export function executeDrawStartAddRelationship(
       x: table.ui.left,
       y: table.ui.top,
     };
-    drawRelationship.end.x = data.x;
-    drawRelationship.end.y = data.y;
   }
 }
 
