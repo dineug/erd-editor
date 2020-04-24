@@ -16,7 +16,7 @@ class Table extends EditorElement {
   connectedCallback() {
     super.connectedCallback();
     const { store } = this.context;
-    this.subscriptionList.push.apply(this.subscriptionList, [
+    this.subscriptionList.push(
       store.observe(this.table.ui, () => this.requestUpdate()),
       store.observe(this.table.columns, () => this.requestUpdate()),
       store.observe(store.canvasState.show, (name) => {
@@ -29,8 +29,8 @@ class Table extends EditorElement {
             this.requestUpdate();
             break;
         }
-      }),
-    ]);
+      })
+    );
   }
   disconnectedCallback() {
     this.subscriptionList.forEach((sub) => sub.unsubscribe());

@@ -451,6 +451,13 @@ export const Layout = css`
     );
   }
 
+  /* =============== DrawRelationship ============== */
+  .vuerd-draw-relationship {
+    position: absolute;
+    top: 0;
+    stroke: var(--vuerd-theme-key-fk, var(--vuerd-color-key-fk));
+  }
+
   /* =============== scrollbar ============== */
   /* width */
   ::-webkit-scrollbar {

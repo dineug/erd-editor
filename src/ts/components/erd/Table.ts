@@ -47,7 +47,7 @@ class Table extends EditorElement {
     super.connectedCallback();
     Logger.debug("Table before render");
     const { store } = this.context;
-    this.subscriptionList.push.apply(this.subscriptionList, [
+    this.subscriptionList.push(
       this.draggable$.pipe(debounceTime(50)).subscribe(this.onDragoverColumn),
       store.observe(this.table.ui, () => this.requestUpdate()),
       store.observe(this.table.columns, () => this.requestUpdate()),
@@ -93,8 +93,8 @@ class Table extends EditorElement {
             }
             break;
         }
-      }),
-    ]);
+      })
+    );
     this.focusTableObserve();
   }
   updated(changedProperties: any) {

@@ -67,7 +67,7 @@ class Column extends EditorElement {
   connectedCallback() {
     super.connectedCallback();
     const { store } = this.context;
-    this.subscriptionList.push.apply(this.subscriptionList, [
+    this.subscriptionList.push(
       store.observe(this.column, () => this.requestUpdate()),
       store.observe(this.column.ui, (name) => {
         switch (name) {
@@ -79,8 +79,8 @@ class Column extends EditorElement {
             this.dispatchEvent(new CustomEvent("request-update"));
             break;
         }
-      }),
-    ]);
+      })
+    );
   }
   disconnectedCallback() {
     this.subscriptionList.forEach((sub) => sub.unsubscribe());

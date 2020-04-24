@@ -19,7 +19,7 @@ class Canvas extends EditorElement {
     const { store } = this.context;
     this.tables = store.tableState.tables;
     this.memos = store.memoState.memos;
-    this.subscriptionList.push.apply(this.subscriptionList, [
+    this.subscriptionList.push(
       store.observe(this.tables, () => this.requestUpdate()),
       store.observe(this.memos, () => this.requestUpdate()),
       store.observe(store.canvasState, (name) => {
@@ -29,8 +29,8 @@ class Canvas extends EditorElement {
             this.requestUpdate();
             break;
         }
-      }),
-    ]);
+      })
+    );
   }
   disconnectedCallback() {
     Logger.debug("Canvas destroy");

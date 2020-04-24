@@ -65,7 +65,7 @@ class ERD extends EditorElement {
     const { store, eventBus, keymap } = this.context;
     const { mousedown$, keydown$ } = this.context.windowEventObservable;
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
-    this.subscriptionList.push.apply(this.subscriptionList, [
+    this.subscriptionList.push(
       mousedown$.subscribe(this.onMousedownWindow),
       keydown$.subscribe((event) => {
         const { focus, editTable, focusTable } = store.editorState;
@@ -169,8 +169,8 @@ class ERD extends EditorElement {
             }
           }
         }
-      }),
-    ]);
+      })
+    );
   }
   firstUpdated() {
     Logger.debug("ERD after render");
@@ -202,6 +202,7 @@ class ERD extends EditorElement {
 
   render() {
     Logger.debug("ERD render");
+    const { drawRelationship } = this.context.store.editorState;
     return html`
       <div
         class="vuerd-erd"
@@ -235,6 +236,13 @@ class ERD extends EditorElement {
                 .ghostY=${this.selectGhostY}
                 @select-end=${this.onSelectEnd}
               ></vuerd-drag-select>
+            `
+          : ""}
+        ${drawRelationship?.start
+          ? html`
+              <vuerd-draw-relationship
+                .draw=${drawRelationship}
+              ></vuerd-draw-relationship>
             `
           : ""}
       </div>

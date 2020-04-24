@@ -65,10 +65,10 @@ class ColumnDataTypeHint extends EditorElement {
     const root = this.getRootNode() as ShadowRoot;
     const editor = root.querySelector(".vuerd-editor") as Element;
     this.hintFilter();
-    this.subscriptionList.push.apply(this.subscriptionList, [
+    this.subscriptionList.push(
       mousedown$.subscribe(this.onMousedownWindow),
-      fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
-    ]);
+      fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown)
+    );
     eventBus.on(Bus.ColumnDataTypeHint.arrowUp, this.onArrowUp);
     eventBus.on(Bus.ColumnDataTypeHint.arrowDown, this.onArrowDown);
     eventBus.on(Bus.ColumnDataTypeHint.arrowLeft, this.onArrowLeft);

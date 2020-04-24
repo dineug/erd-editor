@@ -41,7 +41,7 @@ export class Contextmenu extends EditorElement {
     super.connectedCallback();
     Logger.debug("Contextmenu before render");
     const { store } = this.context;
-    this.subscriptionList.push.apply(this.subscriptionList, [
+    this.subscriptionList.push(
       store.observe(store.canvasState.show, () => this.requestUpdate()),
       store.observe(store.canvasState, (name) => {
         switch (name) {
@@ -52,8 +52,8 @@ export class Contextmenu extends EditorElement {
             this.requestUpdate();
             break;
         }
-      }),
-    ]);
+      })
+    );
   }
   disconnectedCallback() {
     Logger.debug("Contextmenu destroy");

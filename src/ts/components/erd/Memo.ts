@@ -57,9 +57,9 @@ class Memo extends EditorElement {
     super.connectedCallback();
     Logger.debug("Memo before render");
     const { store } = this.context;
-    this.subscriptionList.push.apply(this.subscriptionList, [
-      store.observe(this.memo.ui, () => this.requestUpdate()),
-    ]);
+    this.subscriptionList.push(
+      store.observe(this.memo.ui, () => this.requestUpdate())
+    );
   }
   firstUpdated() {
     Logger.debug("Memo after render");

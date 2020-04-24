@@ -26,6 +26,7 @@ class CanvasSVG extends EditorElement {
   }
   disconnectedCallback() {
     Logger.debug("CanvasSVG destroy");
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
@@ -34,7 +35,7 @@ class CanvasSVG extends EditorElement {
     const { width, height } = this.context.store.canvasState;
     return svg`
       <svg 
-        class="vuerd-canvas-svg" 
+        class="vuerd-canvas-svg"
         style=${styleMap({
           width: `${width}px`,
           height: `${height}px`,

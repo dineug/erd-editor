@@ -259,7 +259,10 @@ export function executeDrawStartRelationship(
     editorState.drawRelationship = {
       relationshipType: data.relationshipType,
       start: null,
-      end: null,
+      end: {
+        x: 0,
+        y: 0,
+      },
     };
   }
 }
@@ -293,14 +296,12 @@ export function executeDrawStartAddRelationship(
   const table = getData(tables, data.tableId);
   if (drawRelationship && table) {
     drawRelationship.start = {
-      tableId: data.tableId,
+      table,
       x: table.ui.left,
       y: table.ui.top,
     };
-    drawRelationship.end = {
-      x: data.x,
-      y: data.y,
-    };
+    drawRelationship.end.x = data.x;
+    drawRelationship.end.y = data.y;
   }
 }
 
@@ -334,7 +335,7 @@ export function drawRelationship(
 export function executeDrawRelationship(store: Store, data: DrawRelationship) {
   Logger.debug("executeDrawRelationship");
   const { drawRelationship } = store.editorState;
-  if (drawRelationship?.start && drawRelationship.end) {
+  if (drawRelationship?.start) {
     drawRelationship.end.x = data.x;
     drawRelationship.end.y = data.y;
   }

@@ -5,7 +5,7 @@ import strip from "@rollup/plugin-strip";
 
 const { esm, banner, onwarn } = config();
 
-esm.push.apply(esm, [
+esm.push(
   replace({
     "process.env.NODE_ENV": JSON.stringify("production"),
   }),
@@ -13,8 +13,8 @@ esm.push.apply(esm, [
     debugger: true,
     include: "**/*.ts",
     functions: ["Logger.debug"],
-  }),
-]);
+  })
+);
 
 export default [
   {

@@ -67,7 +67,7 @@ class Minimap extends EditorElement {
     const { store } = this.context;
     this.tables = store.tableState.tables;
     this.memos = store.memoState.memos;
-    this.subscriptionList.push.apply(this.subscriptionList, [
+    this.subscriptionList.push(
       store.observe(this.tables, () => this.requestUpdate()),
       store.observe(this.memos, () => this.requestUpdate()),
       store.observe(store.canvasState, (name) => {
@@ -79,8 +79,8 @@ class Minimap extends EditorElement {
             this.requestUpdate();
             break;
         }
-      }),
-    ]);
+      })
+    );
   }
   disconnectedCallback() {
     Logger.debug("Minimap destroy");

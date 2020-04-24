@@ -30,6 +30,7 @@ import "./erd/minimap/Table";
 import "./erd/minimap/Column";
 import "./erd/minimap/Memo";
 import "./erd/DragSelect";
+import "./erd/DrawRelationship";
 import "./Visualization";
 import "./visualization/Table";
 import "./visualization/Column";
@@ -60,7 +61,7 @@ class Editor extends LitElement {
     Logger.debug("Editor before render");
     const { store, keymap } = this.context;
     const { keydown$ } = this.context.windowEventObservable;
-    this.subscriptionList.push.apply(this.subscriptionList, [
+    this.subscriptionList.push(
       store.observe(store.canvasState, (name) => {
         if (name === "canvasType") {
           this.requestUpdate();
@@ -82,8 +83,8 @@ class Editor extends LitElement {
             store.dispatch(selectEndTable(), selectEndMemo());
           }
         }
-      }),
-    ]);
+      })
+    );
   }
   firstUpdated() {
     Logger.debug("Editor after render");

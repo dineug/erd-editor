@@ -68,10 +68,10 @@ export class Store {
       this.effect,
       this.excludeKeys
     );
-    this.subscriptionList.push.apply(this.subscriptionList, [
+    this.subscriptionList.push(
       this.dispatch$.subscribe((commands) => commandExecute(this, commands)),
-      this.next$.subscribe((commands) => commandExecute(this, commands)),
-    ]);
+      this.next$.subscribe((commands) => commandExecute(this, commands))
+    );
   }
 
   dispatch(...commands: Command[]) {
