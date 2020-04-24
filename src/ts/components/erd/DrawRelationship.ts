@@ -60,10 +60,8 @@ class DrawRelationship extends EditorElement {
       >
         <g>
           <line
-            x1=${path.line.start.x1}
-            y1=${path.line.start.y1}
-            x2=${path.line.start.x2}
-            y2=${path.line.start.y2}
+            x1=${path.line.start.x1} y1=${path.line.start.y1}
+            x2=${path.line.start.x2} y2=${path.line.start.y2}
             stroke-width="3"
           ></line>
           <path
@@ -72,10 +70,8 @@ class DrawRelationship extends EditorElement {
             stroke-width="3" fill="transparent"
           ></path>
           <line
-            x1=${line.start.x1}
-            y1=${line.start.y1}
-            x2=${line.start.x2}
-            y2=${line.start.y2}
+            x1=${line.start.x1} y1=${line.start.y1}
+            x2=${line.start.x2} y2=${line.start.y2}
             stroke-width="3"
           ></line>
         </g>

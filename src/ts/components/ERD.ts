@@ -32,6 +32,22 @@ import {
   selectAllColumn,
   drawStartRelationship,
 } from "@src/core/command/editor";
+import "./erd/Canvas";
+import "./erd/CanvasSVG";
+import "./erd/Memo";
+import "./erd/Table";
+import "./erd/table/Column";
+import "./erd/table/ColumnKey";
+import "./erd/table/ColumnNotNull";
+import "./erd/table/ColumnDataType";
+import "./erd/table/ColumnDataTypeHint";
+import "./erd/Minimap";
+import "./erd/minimap/MinimapHandle";
+import "./erd/minimap/Table";
+import "./erd/minimap/Column";
+import "./erd/minimap/Memo";
+import "./erd/DragSelect";
+import "./erd/DrawRelationship";
 
 @customElement("vuerd-erd")
 class ERD extends EditorElement {

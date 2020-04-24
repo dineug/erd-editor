@@ -16,25 +16,7 @@ import "./InputEdit";
 import "./Sash";
 import "./Menubar";
 import "./ERD";
-import "./erd/Canvas";
-import "./erd/CanvasSVG";
-import "./erd/Memo";
-import "./erd/Table";
-import "./erd/table/Column";
-import "./erd/table/ColumnKey";
-import "./erd/table/ColumnNotNull";
-import "./erd/table/ColumnDataType";
-import "./erd/table/ColumnDataTypeHint";
-import "./erd/Minimap";
-import "./erd/minimap/MinimapHandle";
-import "./erd/minimap/Table";
-import "./erd/minimap/Column";
-import "./erd/minimap/Memo";
-import "./erd/DragSelect";
-import "./erd/DrawRelationship";
 import "./Visualization";
-import "./visualization/Table";
-import "./visualization/Column";
 
 @customElement("vuerd-editor")
 class Editor extends LitElement {

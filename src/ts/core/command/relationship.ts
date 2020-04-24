@@ -3,10 +3,11 @@ import { Store } from "../Store";
 import { Logger } from "../Logger";
 import { getData, uuid } from "../Helper";
 import { getColumnIds } from "../helper/ColumnHelper";
+import { relationshipSort } from "../helper/RelationshipHelper";
 import { RelationshipType } from "../store/Relationship";
 import { Table } from "../store/Table";
-import { AddCustomColumn, executeAddCustomColumn } from "./column";
 import { RelationshipModel } from "../model/RelationshipModel";
+import { AddCustomColumn, executeAddCustomColumn } from "./column";
 
 interface AddRelationshipPoint {
   tableId: string;
@@ -79,5 +80,6 @@ export function executeAddRelationship(store: Store, data: AddRelationship) {
     executeAddCustomColumn(store, createEndColumns);
     // add relationship
     relationships.push(new RelationshipModel({ addRelationship: data }));
+    relationshipSort(tables, relationships);
   }
 }

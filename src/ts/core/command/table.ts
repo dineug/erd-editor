@@ -2,7 +2,7 @@ import { CommandEffect } from "../Command";
 import { SIZE_MIN_WIDTH, SIZE_TABLE_PADDING } from "../Layout";
 import { Store } from "../Store";
 import { Helper, getData, uuid } from "../Helper";
-import { Point } from "../helper/RelationshipHelper";
+import { Point, relationshipSort } from "../helper/RelationshipHelper";
 import { Logger } from "../Logger";
 import { TableModel } from "../model/TableModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
@@ -86,22 +86,24 @@ export function moveTable(
 }
 export function executeMoveTable(store: Store, data: MoveTable) {
   Logger.debug("executeMoveTable");
-  const { tableState, memoState } = store;
+  const { tables } = store.tableState;
+  const { memos } = store.memoState;
+  const { relationships } = store.relationshipState;
   data.tableIds.forEach((tableId) => {
-    const table = getData(tableState.tables, tableId);
+    const table = getData(tables, tableId);
     if (table) {
       table.ui.left += data.movementX;
       table.ui.top += data.movementY;
     }
   });
   data.memoIds.forEach((memoId) => {
-    const memo = getData(memoState.memos, memoId);
+    const memo = getData(memos, memoId);
     if (memo) {
       memo.ui.left += data.movementX;
       memo.ui.top += data.movementY;
     }
   });
-  // TODO: relationship sort
+  relationshipSort(tables, relationships);
 }
 
 export interface RemoveTable {
@@ -254,11 +256,12 @@ export function changeTableName(
 export function executeChangeTableName(store: Store, data: ChangeTableValue) {
   Logger.debug("executeChangeTableName");
   const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
   const table = getData(tables, data.tableId);
   if (table) {
     table.name = data.value;
     table.ui.widthName = data.width;
-    // TODO: relationship sort
+    relationshipSort(tables, relationships);
   }
 }
 
@@ -286,11 +289,12 @@ export function executeChangeTableComment(
 ) {
   Logger.debug("executeChangeTableComment");
   const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
   const table = getData(tables, data.tableId);
   if (table) {
     table.comment = data.value;
     table.ui.widthComment = data.width;
-    // TODO: relationship sort
+    relationshipSort(tables, relationships);
   }
 }
 

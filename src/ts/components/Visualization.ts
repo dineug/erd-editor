@@ -6,6 +6,8 @@ import { createVisualization } from "@src/core/Visualization";
 import { Bus } from "@src/core/Event";
 import { Table } from "@src/core/store/Table";
 import { getData } from "@src/core/Helper";
+import "./visualization/Table";
+import "./visualization/Column";
 
 const HEIGHT = 1200;
 const MARGIN = 20;

@@ -4,16 +4,26 @@ import { repeat } from "lit-html/directives/repeat";
 import { Subscription } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
+import { Relationship } from "@src/core/store/Relationship";
+import { createRelationship } from "./Relationship";
 
 @customElement("vuerd-canvas-svg")
 class CanvasSVG extends EditorElement {
+  private relationships: Relationship[] = [];
   private subscriptionList: Subscription[] = [];
+  private subRelationships: Subscription[] = [];
 
   connectedCallback() {
     super.connectedCallback();
     Logger.debug("CanvasSVG before render");
     const { store } = this.context;
+    this.relationships = store.relationshipState.relationships;
     this.subscriptionList.push(
+      store.observe(this.relationships, () => {
+        this.unsubscribeRelationships();
+        this.observeRelationships();
+        this.requestUpdate();
+      }),
       store.observe(store.canvasState, (name) => {
         switch (name) {
           case "width":
@@ -23,9 +33,11 @@ class CanvasSVG extends EditorElement {
         }
       })
     );
+    this.observeRelationships();
   }
   disconnectedCallback() {
     Logger.debug("CanvasSVG destroy");
+    this.unsubscribeRelationships();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
@@ -42,13 +54,26 @@ class CanvasSVG extends EditorElement {
         })}
       >
       ${repeat(
-        [1, 2, 3],
-        (item) => item,
-        (item, index) => svg`
-          <g></g>
-        `
+        this.relationships,
+        (relationship) => relationship.id,
+        (relationship) => createRelationship(relationship)
       )}
       </svg>
     `;
+  }
+
+  observeRelationships() {
+    const { store } = this.context;
+    this.relationships.forEach((relationship) => {
+      this.subRelationships.push(
+        store.observe(relationship, () => this.requestUpdate()),
+        store.observe(relationship.start, () => this.requestUpdate()),
+        store.observe(relationship.end, () => this.requestUpdate())
+      );
+    });
+  }
+  unsubscribeRelationships() {
+    this.subRelationships.forEach((sub) => sub.unsubscribe());
+    this.subRelationships = [];
   }
 }

@@ -2,8 +2,9 @@ import { CommandEffect } from "../Command";
 import { SIZE_MIN_WIDTH } from "../Layout";
 import { Store } from "../Store";
 import { Helper, getData, getIndex, uuid } from "../Helper";
+import { relationshipSort } from "../helper/RelationshipHelper";
 import { Logger } from "../Logger";
-import { Column, ColumnUI, ColumnOption } from "../store/Table";
+import { Column, ColumnOption } from "../store/Table";
 import { ColumnModel } from "../model/ColumnModel";
 import { getColumn, getChangeOption } from "../helper/ColumnHelper";
 import {
@@ -42,6 +43,7 @@ export function addColumn(
 export function executeAddColumn(store: Store, data: AddColumn[]) {
   Logger.debug("executeAddColumn");
   const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
   executeEditEndTable(store);
   data.forEach((addColumn: AddColumn, index: number) => {
     const table = getData(tables, addColumn.tableId);
@@ -54,7 +56,7 @@ export function executeAddColumn(store: Store, data: AddColumn[]) {
       table.columns.push(new ColumnModel({ addColumn }));
     }
   });
-  // TODO: relationship sort
+  relationshipSort(tables, relationships);
 }
 
 interface AddCustomColumnUI {
@@ -115,13 +117,14 @@ export function addCustomColumn(
 export function executeAddCustomColumn(store: Store, data: AddCustomColumn[]) {
   Logger.debug("executeAddCustomColumn");
   const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
   data.forEach((addCustomColumn: AddCustomColumn) => {
     const table = getData(tables, addCustomColumn.tableId);
     if (table) {
       table.columns.push(new ColumnModel({ addCustomColumn }));
     }
   });
-  // TODO: relationship sort
+  relationshipSort(tables, relationships);
 }
 
 export interface RemoveColumn {
@@ -143,6 +146,7 @@ export function removeColumn(
 export function executeRemoveColumn(store: Store, data: RemoveColumn) {
   Logger.debug("executeRemoveColumn");
   const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
   const table = getData(tables, data.tableId);
   if (table) {
     for (let i = 0; i < table.columns.length; i++) {
@@ -152,7 +156,8 @@ export function executeRemoveColumn(store: Store, data: RemoveColumn) {
         i--;
       }
     }
-    // TODO: relationship valid, sort
+    // TODO: relationship valid
+    relationshipSort(tables, relationships);
   }
 }
 
@@ -186,11 +191,12 @@ export function changeColumnName(
 export function executeChangeColumnName(store: Store, data: ChangeColumnValue) {
   Logger.debug("executeChangeColumnName");
   const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
     column.name = data.value;
     column.ui.widthName = data.width;
-    // TODO: relationship sort
+    relationshipSort(tables, relationships);
   }
 }
 
@@ -220,11 +226,12 @@ export function executeChangeColumnComment(
 ) {
   Logger.debug("executeChangeColumnComment");
   const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
     column.comment = data.value;
     column.ui.widthComment = data.width;
-    // TODO: relationship sort
+    relationshipSort(tables, relationships);
   }
 }
 
@@ -254,11 +261,12 @@ export function executeChangeColumnDataType(
 ) {
   Logger.debug("executeChangeColumnDataType");
   const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
     column.dataType = data.value;
     column.ui.widthDataType = data.width;
-    // TODO: relationship sort
+    relationshipSort(tables, relationships);
   }
 }
 
@@ -288,11 +296,12 @@ export function executeChangeColumnDefault(
 ) {
   Logger.debug("executeChangeColumnDefault");
   const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (column) {
     column.default = data.value;
     column.ui.widthDefault = data.width;
-    // TODO: relationship sort
+    relationshipSort(tables, relationships);
   }
 }
 
@@ -453,6 +462,7 @@ export function moveColumn(
 export function executeMoveColumn(store: Store, data: MoveColumn) {
   Logger.debug("executeMoveColumn");
   const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
   const currentTable = getData(tables, data.tableId);
   let currentColumns: Column[] = [];
   data.columnIds.forEach((columnId) => {
@@ -514,11 +524,12 @@ export function executeMoveColumn(store: Store, data: MoveColumn) {
             targetTable.columns.splice(targetIndex, 0, currentColumn);
           }
         });
-        // TODO: relationship valid, sort
         executeDraggableColumn(store, {
           tableId: data.targetTableId,
           columnIds: data.columnIds,
         });
+        // TODO: relationship valid
+        relationshipSort(tables, relationships);
       }
     }
   }

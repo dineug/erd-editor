@@ -14,7 +14,7 @@ const PATH_HEIGHT = 40;
 const PATH_END_HEIGHT = PATH_HEIGHT + 20;
 const PATH_LINE_HEIGHT = 35;
 const LINE_SIZE = 10;
-const LINE_HEIGHT = 15;
+const LINE_HEIGHT = 16;
 const CIRCLE_HEIGHT = 26;
 const directions: Direction[] = ["top", "bottom", "left", "right"];
 
@@ -65,6 +65,7 @@ interface Line {
   start: PointToPoint;
   end: {
     base: PointToPoint;
+    base2: PointToPoint;
     left: PointToPoint;
     center: PointToPoint;
     right: PointToPoint;
@@ -660,6 +661,12 @@ function getLine(
         x2: end.x,
         y2: end.y,
       },
+      base2: {
+        x1: end.x,
+        y1: end.y,
+        x2: end.x,
+        y2: end.y,
+      },
       left: {
         x1: end.x,
         y1: end.y,
@@ -707,26 +714,32 @@ function getLine(
     if (end.direction === "left") {
       change *= -1;
     }
-    line.end.base.x2 += change * LINE_HEIGHT;
-    line.end.left.x1 = line.end.center.x1 = line.end.right.x1 = line.end.base.x1 =
-      line.end.base.x2;
+    line.end.base.x1 = line.end.base.x2 += change * LINE_HEIGHT;
+    line.end.base2.x1 = line.end.base2.x2 += change * (LINE_SIZE + LINE_HEIGHT);
+    line.end.left.x1 = line.end.right.x1 = line.end.base.x1;
     line.end.base.y1 -= LINE_SIZE;
     line.end.base.y2 += LINE_SIZE;
+    line.end.base2.y1 -= LINE_SIZE;
+    line.end.base2.y2 += LINE_SIZE;
     line.end.left.y2 += LINE_SIZE;
     line.end.right.y2 -= LINE_SIZE;
+    line.end.center.x1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
 
     circle.cx += change * CIRCLE_HEIGHT;
   } else if (end.direction === "top" || end.direction === "bottom") {
     if (end.direction === "top") {
       change *= -1;
     }
-    line.end.base.y2 += change * LINE_HEIGHT;
-    line.end.left.y1 = line.end.center.y1 = line.end.right.y1 = line.end.base.y1 =
-      line.end.base.y2;
+    line.end.base.y1 = line.end.base.y2 += change * LINE_HEIGHT;
+    line.end.base2.y1 = line.end.base2.y2 += change * (LINE_SIZE + LINE_HEIGHT);
+    line.end.left.y1 = line.end.right.y1 = line.end.base.y1;
     line.end.base.x1 -= LINE_SIZE;
     line.end.base.x2 += LINE_SIZE;
+    line.end.base2.x1 -= LINE_SIZE;
+    line.end.base2.x2 += LINE_SIZE;
     line.end.left.x2 += LINE_SIZE;
     line.end.right.x2 -= LINE_SIZE;
+    line.end.center.y1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
 
     circle.cy += change * CIRCLE_HEIGHT;
   }
@@ -737,7 +750,9 @@ function getLine(
   };
 }
 
-export function getZeroOne(relationship: Relationship): RelationshipPath {
+export function getRelationshipPath(
+  relationship: Relationship
+): RelationshipPath {
   return {
     path: getPath(relationship.start, relationship.end),
     line: getLine(relationship.start, relationship.end),

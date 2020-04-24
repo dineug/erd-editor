@@ -42,6 +42,10 @@ export const Layout = css`
   .vuerd-canvas-svg {
     position: absolute;
     z-index: 1;
+    stroke: var(--vuerd-theme-key-fk, var(--vuerd-color-key-fk));
+  }
+  .vuerd-canvas-svg .identification {
+    stroke: var(--vuerd-theme-key-pfk, var(--vuerd-color-key-pfk));
   }
 
   .vuerd-text-width {

@@ -6,7 +6,7 @@ import {
 } from "../Layout";
 import { Store } from "../Store";
 import { getData, uuid } from "../Helper";
-import { Point } from "../helper/RelationshipHelper";
+import { Point, relationshipSort } from "../helper/RelationshipHelper";
 import { Logger } from "../Logger";
 import { MemoUI } from "../store/Memo";
 import { MemoModel } from "../model/MemoModel";
@@ -79,22 +79,26 @@ export function moveMemo(
 }
 export function executeMoveMemo(store: Store, data: MoveMemo) {
   Logger.debug("executeMoveMemo");
-  const { tableState, memoState } = store;
+  const { tables } = store.tableState;
+  const { memos } = store.memoState;
+  const { relationships } = store.relationshipState;
   data.tableIds.forEach((tableId) => {
-    const table = getData(tableState.tables, tableId);
+    const table = getData(tables, tableId);
     if (table) {
       table.ui.left += data.movementX;
       table.ui.top += data.movementY;
     }
   });
   data.memoIds.forEach((memoId) => {
-    const memo = getData(memoState.memos, memoId);
+    const memo = getData(memos, memoId);
     if (memo) {
       memo.ui.left += data.movementX;
       memo.ui.top += data.movementY;
     }
   });
-  // TODO: relationship sort
+  if (data.tableIds.length !== 0) {
+    relationshipSort(tables, relationships);
+  }
 }
 
 export interface RemoveMemo {
