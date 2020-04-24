@@ -3,7 +3,7 @@ import { SIZE_MIN_WIDTH } from "../Layout";
 import { Store } from "../Store";
 import { Helper, getData, getIndex, uuid } from "../Helper";
 import { Logger } from "../Logger";
-import { Column } from "../store/Table";
+import { Column, ColumnUI, ColumnOption } from "../store/Table";
 import { ColumnModel } from "../model/ColumnModel";
 import { getColumn, getChangeOption } from "../helper/ColumnHelper";
 import {
@@ -52,6 +52,73 @@ export function executeAddColumn(store: Store, data: AddColumn[]) {
         });
       }
       table.columns.push(new ColumnModel({ addColumn }));
+    }
+  });
+  // TODO: relationship sort
+}
+
+interface AddCustomColumnUI {
+  active: boolean;
+  pk: boolean;
+  fk: boolean;
+  pfk: boolean;
+}
+interface AddCustomColumnValue {
+  name: string;
+  comment: string;
+  dataType: string;
+  default: string;
+  widthName: number;
+  widthComment: number;
+  widthDataType: number;
+  widthDefault: number;
+}
+export interface AddCustomColumn {
+  tableId: string;
+  id: string;
+  option: ColumnOption | null;
+  ui: AddCustomColumnUI | null;
+  value: AddCustomColumnValue | null;
+}
+export function addCustomColumn(
+  store: Store,
+  option: ColumnOption | null,
+  ui: AddCustomColumnUI | null,
+  value: AddCustomColumnValue | null,
+  tableId?: string
+): CommandEffect<Array<AddCustomColumn>> {
+  return {
+    name: "column.addCustom",
+    data: tableId
+      ? [
+          {
+            tableId,
+            id: uuid(),
+            option,
+            ui,
+            value,
+          },
+        ]
+      : store.tableState.tables
+          .filter((table) => table.ui.active)
+          .map((table) => {
+            return {
+              tableId: table.id,
+              id: uuid(),
+              option,
+              ui,
+              value,
+            };
+          }),
+  };
+}
+export function executeAddCustomColumn(store: Store, data: AddCustomColumn[]) {
+  Logger.debug("executeAddCustomColumn");
+  const { tables } = store.tableState;
+  data.forEach((addCustomColumn: AddCustomColumn) => {
+    const table = getData(tables, addCustomColumn.tableId);
+    if (table) {
+      table.columns.push(new ColumnModel({ addCustomColumn }));
     }
   });
   // TODO: relationship sort
@@ -291,6 +358,9 @@ export function executeChangeColumnPrimaryKey(
         column.ui.pfk = true;
       } else {
         column.ui.pk = true;
+      }
+      if (!column.option.notNull) {
+        store.dispatch(changeColumnNotNull(store, data.tableId, data.columnId));
       }
     } else {
       if (column.ui.pfk) {

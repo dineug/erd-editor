@@ -26,10 +26,10 @@ export class Store {
     Subject<string | number | symbol>
   >();
   private excludeKeys: string[] = [
-    "store",
-    "subscriptionList",
+    "_store",
+    "_subscriptionList",
+    "_currentFocusColumn",
     "focusColumns",
-    "currentFocusColumn",
   ];
 
   constructor() {

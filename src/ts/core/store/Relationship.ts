@@ -27,12 +27,7 @@ export type RelationshipType =
   | "One"
   | "N";
 
-export enum Direction {
-  left = "left",
-  right = "right",
-  top = "top",
-  bottom = "bottom",
-}
+export type Direction = "left" | "right" | "top" | "bottom";
 
 export function createRelationshipState(): RelationshipState {
   return {

@@ -95,7 +95,12 @@ export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
                   memo: memoState,
                   relationship: relationshipState,
                 },
-                undefined,
+                (key, value) => {
+                  if (key === "_show") {
+                    return undefined;
+                  }
+                  return value;
+                },
                 2
               ),
               canvasState.databaseName
@@ -192,6 +197,11 @@ interface RelationshipMenu {
 }
 export const relationshipMenus: RelationshipMenu[] = [
   {
+    name: "Zero One N",
+    relationshipType: "ZeroOneN",
+    keymapName: "relationshipZeroOneN",
+  },
+  {
     name: "Zero One",
     relationshipType: "ZeroOne",
     keymapName: "relationshipZeroOne",
@@ -202,6 +212,16 @@ export const relationshipMenus: RelationshipMenu[] = [
     keymapName: "relationshipZeroN",
   },
   {
+    name: "One Only",
+    relationshipType: "OneOnly",
+    keymapName: "relationshipOneOnly",
+  },
+  {
+    name: "One N",
+    relationshipType: "OneN",
+    keymapName: "relationshipOneN",
+  },
+  {
     name: "One",
     relationshipType: "One",
     keymapName: "relationshipOne",
@@ -210,21 +230,6 @@ export const relationshipMenus: RelationshipMenu[] = [
     name: "N",
     relationshipType: "N",
     keymapName: "relationshipN",
-  },
-  {
-    name: "Zero One N",
-    relationshipType: "ZeroOneN",
-    keymapName: "relationshipZeroOneN",
-  },
-  {
-    name: "One N",
-    relationshipType: "OneN",
-    keymapName: "relationshipOneN",
-  },
-  {
-    name: "One Only",
-    relationshipType: "OneOnly",
-    keymapName: "relationshipOneOnly",
   },
 ];
 function createRelationshipMenus(store: Store, keymap: Keymap): Menu[] {

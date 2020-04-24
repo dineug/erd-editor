@@ -18,11 +18,13 @@ import {
 } from "./command/table";
 import {
   AddColumn,
+  AddCustomColumn,
   RemoveColumn,
   ChangeColumnValue,
   ChangeColumnOption,
   MoveColumn,
   executeAddColumn,
+  executeAddCustomColumn,
   executeRemoveColumn,
   executeChangeColumnName,
   executeChangeColumnComment,
@@ -34,6 +36,10 @@ import {
   executeChangeColumnNotNull,
   executeMoveColumn,
 } from "./command/column";
+import {
+  AddRelationship,
+  executeAddRelationship,
+} from "./command/relationship";
 import {
   AddMemo,
   MoveMemo,
@@ -114,6 +120,7 @@ type CommandName =
   | "table.changeComment"
   | "table.dragSelect"
   | "column.add"
+  | "column.addCustom"
   | "column.remove"
   | "column.changeName"
   | "column.changeComment"
@@ -124,6 +131,7 @@ type CommandName =
   | "column.changeUnique"
   | "column.changeNotNull"
   | "column.move"
+  | "relationship.add"
   | "memo.add"
   | "memo.move"
   | "memo.remove"
@@ -167,10 +175,12 @@ export type Command =
   | CommandEffect<ChangeTableValue>
   | CommandEffect<DragSelectTable>
   | CommandEffect<Array<AddColumn>>
+  | CommandEffect<Array<AddCustomColumn>>
   | CommandEffect<RemoveColumn>
   | CommandEffect<ChangeColumnValue>
   | CommandEffect<ChangeColumnOption>
   | CommandEffect<MoveColumn>
+  | CommandEffect<AddRelationship>
   | CommandEffect<AddMemo>
   | CommandEffect<MoveMemo>
   | CommandEffect<RemoveMemo>
@@ -229,6 +239,9 @@ export function commandExecute(store: Store, commands: Command[]) {
       case "column.add":
         executeAddColumn(store, command.data as Array<AddColumn>);
         break;
+      case "column.addCustom":
+        executeAddCustomColumn(store, command.data as Array<AddCustomColumn>);
+        break;
       case "column.remove":
         executeRemoveColumn(store, command.data as RemoveColumn);
         break;
@@ -264,6 +277,9 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "column.move":
         executeMoveColumn(store, command.data as MoveColumn);
+        break;
+      case "relationship.add":
+        executeAddRelationship(store, command.data as AddRelationship);
         break;
       case "memo.add":
         executeAddMemo(store, command.data as AddMemo);

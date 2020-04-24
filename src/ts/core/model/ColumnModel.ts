@@ -1,9 +1,10 @@
 import { SIZE_MIN_WIDTH } from "../Layout";
 import { Column, ColumnOption, ColumnUI } from "../store/Table";
-import { AddColumn } from "../Command/column";
+import { AddColumn, AddCustomColumn } from "../Command/column";
 
 interface ColumnData {
   addColumn?: AddColumn;
+  addCustomColumn?: AddCustomColumn;
 }
 
 export class ColumnModel implements Column {
@@ -30,10 +31,29 @@ export class ColumnModel implements Column {
   };
 
   constructor(data: ColumnData) {
-    const { addColumn } = data;
+    const { addColumn, addCustomColumn } = data;
     if (addColumn) {
       const { id } = addColumn;
       this.id = id;
+    } else if (addCustomColumn) {
+      const { id, option, ui, value } = addCustomColumn;
+      this.id = id;
+      if (option) {
+        this.option = Object.assign(this.option, option);
+      }
+      if (ui) {
+        this.ui = Object.assign(this.ui, ui);
+      }
+      if (value) {
+        this.name = value.name;
+        this.comment = value.comment;
+        this.dataType = value.dataType;
+        this.default = value.default;
+        this.ui.widthName = value.widthName;
+        this.ui.widthComment = value.widthComment;
+        this.ui.widthDataType = value.widthDataType;
+        this.ui.widthDefault = value.widthDefault;
+      }
     } else {
       throw new Error("not found column");
     }

@@ -4,7 +4,6 @@ import { Store } from "../Store";
 import { Helper, getData, uuid } from "../Helper";
 import { Point } from "../helper/RelationshipHelper";
 import { Logger } from "../Logger";
-import { TableUI } from "../store/Table";
 import { TableModel } from "../model/TableModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
 import { executeSelectEndMemo } from "./memo";
@@ -14,12 +13,19 @@ import {
   executeDrawStartAddRelationship,
   executeDrawEndRelationship,
 } from "./editor";
+import { addRelationship } from "./relationship";
 
 const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 
+interface AddTableUI {
+  active: boolean;
+  top: number;
+  left: number;
+  zIndex: number;
+}
 export interface AddTable {
   id: string;
-  ui: TableUI;
+  ui: AddTableUI;
 }
 export function addTable(store: Store): CommandEffect<AddTable> {
   const { tableState, memoState } = store;
@@ -33,8 +39,6 @@ export function addTable(store: Store): CommandEffect<AddTable> {
         left: point.left,
         top: point.top,
         zIndex: nextZIndex(tableState.tables, memoState.memos),
-        widthName: SIZE_MIN_WIDTH,
-        widthComment: SIZE_MIN_WIDTH,
       },
     },
   };
@@ -183,7 +187,13 @@ export function executeSelectTable(store: Store, data: SelectTable) {
     executeFocusTable(store, { tableId: data.tableId });
     if (drawRelationship) {
       if (drawRelationship.start) {
-        // TODO: addRelationship
+        store.dispatch(
+          addRelationship(
+            drawRelationship.relationshipType,
+            drawRelationship.start.table,
+            data.tableId
+          )
+        );
         executeDrawEndRelationship(store);
       } else {
         executeDrawStartAddRelationship(store, { tableId: data.tableId });

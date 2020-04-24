@@ -54,11 +54,12 @@ export class FocusColumnModel implements FocusColumn {
   focusNotNull = false;
   focusDefault = false;
   focusComment = false;
-  private column: Column;
-  private show: Show;
+
+  private _column: Column;
+  private _show: Show;
 
   get id() {
-    return this.column.id;
+    return this._column.id;
   }
 
   get currentFocus(): FocusType | null {
@@ -75,7 +76,7 @@ export class FocusColumnModel implements FocusColumn {
   private get currentFocusShowList(): FocusType[] {
     const focusTypes: FocusType[] = ["columnName"];
     showKeys.forEach((showKey) => {
-      if (this.show[showKey]) {
+      if (this._show[showKey]) {
         focusTypes.push(showKey as FocusType);
       }
     });
@@ -83,8 +84,8 @@ export class FocusColumnModel implements FocusColumn {
   }
 
   constructor(column: Column, show: Show) {
-    this.column = column;
-    this.show = show;
+    this._column = column;
+    this._show = show;
   }
 
   focus(focusType: FocusType) {

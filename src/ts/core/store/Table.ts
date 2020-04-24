@@ -27,9 +27,9 @@ export interface TableUI {
   active: boolean;
   top: number;
   left: number;
+  zIndex: number;
   widthName: number;
   widthComment: number;
-  zIndex: number;
 }
 
 export interface Column {

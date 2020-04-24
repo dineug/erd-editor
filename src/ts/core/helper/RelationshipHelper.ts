@@ -16,7 +16,7 @@ const PATH_LINE_HEIGHT = 35;
 const LINE_SIZE = 10;
 const LINE_HEIGHT = 15;
 const CIRCLE_HEIGHT = 26;
-const directions = ["top", "bottom", "left", "right"];
+const directions: Direction[] = ["top", "bottom", "left", "right"];
 
 export interface Point {
   x: number;
@@ -142,12 +142,11 @@ export function getCoordinate(table: Table): Coordinate {
 }
 
 function directionFilter(key: string) {
-  return key === "left" || key === "right" || key === "top" || key === "bottom";
+  return directions.some((direction) => direction === key);
 }
 
 function getDrawDirection(draw: DrawRelationship): Direction {
-  let direction = Direction.bottom;
-  const table = getData;
+  let direction: Direction = "bottom";
   if (draw.start) {
     const start = getCoordinate(draw.start.table);
     let min =
@@ -204,15 +203,15 @@ function getDrawPath(
     line.start.y2 = draw.start.y;
 
     let change = 1;
-    if (direction === Direction.left || direction === Direction.right) {
-      if (direction === Direction.left) {
+    if (direction === "left" || direction === "right") {
+      if (direction === "left") {
         change *= -1;
       }
       line.start.x2 = draw.start.x + change * PATH_HEIGHT;
       path.M.x = line.start.x2;
       path.M.y = draw.start.y;
-    } else if (direction === Direction.top || direction === Direction.bottom) {
-      if (direction === Direction.top) {
+    } else if (direction === "top" || direction === "bottom") {
+      if (direction === "top") {
         change *= -1;
       }
       line.start.y2 = draw.start.y + change * PATH_HEIGHT;
@@ -246,15 +245,15 @@ function getDrawLine(direction: Direction, draw: DrawRelationship): DrawLine {
     line.start.y2 = draw.start.y;
 
     let change = 1;
-    if (direction === Direction.left || direction === Direction.right) {
-      if (direction === Direction.left) {
+    if (direction === "left" || direction === "right") {
+      if (direction === "left") {
         change *= -1;
       }
       line.start.x1 = line.start.x2 += change * LINE_HEIGHT;
       line.start.y1 -= LINE_SIZE;
       line.start.y2 += LINE_SIZE;
-    } else if (direction === Direction.top || direction === Direction.bottom) {
-      if (direction === Direction.top) {
+    } else if (direction === "top" || direction === "bottom") {
+      if (direction === "top") {
         change *= -1;
       }
       line.start.y1 = line.start.y2 += change * LINE_HEIGHT;
@@ -324,9 +323,9 @@ function getDirection(
   end: Coordinate,
   relationship: Relationship
 ): { start: Direction; end: Direction } {
-  const direction = {
-    start: Direction.bottom,
-    end: Direction.bottom,
+  const direction: { start: Direction; end: Direction } = {
+    start: "bottom",
+    end: "bottom",
   };
   let min =
     Math.pow(Math.abs(start.bottom.x - end.bottom.x), 2) +
@@ -378,13 +377,13 @@ function relationshipOverlayPoint(
   const xArray: number[] = [];
   const yArray: number[] = [];
 
-  if (direction === Direction.left || direction === Direction.right) {
+  if (direction === "left" || direction === "right") {
     let sum = graph.coordinate.lt.y - padding.y;
     for (let i = 0; i < len; i++) {
       sum += margin.y;
       yArray.push(sum);
     }
-  } else if (direction === Direction.top || direction === Direction.bottom) {
+  } else if (direction === "top" || direction === "bottom") {
     let sum = graph.coordinate.lt.x - padding.x;
     for (let i = 0; i < len; i++) {
       sum += margin.x;
@@ -412,10 +411,10 @@ function relationshipOverlayOrder(
   relationships.forEach((relationship) => {
     if (relationship.start.tableId === relationship.end.tableId) {
       // self relationship
-      if (direction === Direction.top) {
+      if (direction === "top") {
         startPoints.push(relationship.start);
         endPoints.push(relationship.end);
-      } else if (direction === Direction.right) {
+      } else if (direction === "right") {
         startPoints.push(relationship.end);
         endPoints.push(relationship.start);
       }
@@ -442,12 +441,12 @@ function relationshipOverlayOrder(
           Math.pow(Math.abs(start.x - endPoint.x), 2) +
           Math.pow(Math.abs(start.y - endPoint.y), 2),
       });
-    } else if (direction === Direction.left || direction === Direction.right) {
+    } else if (direction === "left" || direction === "right") {
       distances.push({
         point: startPoints[index],
         distance: Math.abs(start.y - endPoint.y),
       });
-    } else if (direction === Direction.top || direction === Direction.bottom) {
+    } else if (direction === "top" || direction === "bottom") {
       distances.push({
         point: startPoints[index],
         distance: Math.abs(start.x - endPoint.x),
@@ -469,11 +468,11 @@ function relationshipOverlaySort(
     graph[direction]
   );
 
-  if (direction === Direction.left || direction === Direction.right) {
+  if (direction === "left" || direction === "right") {
     point.yArray.forEach((y, index) => {
       distances[index].point.y = y;
     });
-  } else if (direction === Direction.top || direction === Direction.bottom) {
+  } else if (direction === "top" || direction === "bottom") {
     point.xArray.forEach((x, index) => {
       distances[index].point.x = x;
     });
@@ -492,8 +491,8 @@ export function relationshipSort(
 
     if (tableStart && tableEnd) {
       if (relationship.start.tableId === relationship.end.tableId) {
-        relationship.start.direction = Direction.top;
-        relationship.end.direction = Direction.right;
+        relationship.start.direction = "top";
+        relationship.end.direction = "right";
         const graph = getRelationshipGraph(graphs, tableStart);
 
         if (graph) {
@@ -602,21 +601,15 @@ function getPath(
   };
 
   let change = 1;
-  if (
-    start.direction === Direction.left ||
-    start.direction === Direction.right
-  ) {
-    if (start.direction === Direction.left) {
+  if (start.direction === "left" || start.direction === "right") {
+    if (start.direction === "left") {
       change *= -1;
     }
     line.start.x2 = start.x + change * PATH_HEIGHT;
     path.M.x = line.start.x2;
     path.M.y = start.y;
-  } else if (
-    start.direction === Direction.top ||
-    start.direction === Direction.bottom
-  ) {
-    if (start.direction === Direction.top) {
+  } else if (start.direction === "top" || start.direction === "bottom") {
+    if (start.direction === "top") {
       change *= -1;
     }
     line.start.y2 = start.y + change * PATH_HEIGHT;
@@ -625,19 +618,16 @@ function getPath(
   }
 
   change = 1;
-  if (end.direction === Direction.left || end.direction === Direction.right) {
-    if (end.direction === Direction.left) {
+  if (end.direction === "left" || end.direction === "right") {
+    if (end.direction === "left") {
       change *= -1;
     }
     line.end.x2 = end.x + change * PATH_END_HEIGHT;
     line.end.x1 += change * PATH_LINE_HEIGHT;
     path.L.x = line.end.x2;
     path.L.y = end.y;
-  } else if (
-    end.direction === Direction.top ||
-    end.direction === Direction.bottom
-  ) {
-    if (end.direction === Direction.top) {
+  } else if (end.direction === "top" || end.direction === "bottom") {
+    if (end.direction === "top") {
       change *= -1;
     }
     line.end.y2 = end.y + change * PATH_END_HEIGHT;
@@ -696,21 +686,15 @@ function getLine(
   };
 
   let change = 1;
-  if (
-    start.direction === Direction.left ||
-    start.direction === Direction.right
-  ) {
-    if (start.direction === Direction.left) {
+  if (start.direction === "left" || start.direction === "right") {
+    if (start.direction === "left") {
       change *= -1;
     }
     line.start.x1 = line.start.x2 += change * LINE_HEIGHT;
     line.start.y1 -= LINE_SIZE;
     line.start.y2 += LINE_SIZE;
-  } else if (
-    start.direction === Direction.top ||
-    start.direction === Direction.bottom
-  ) {
-    if (start.direction === Direction.top) {
+  } else if (start.direction === "top" || start.direction === "bottom") {
+    if (start.direction === "top") {
       change *= -1;
     }
     line.start.y1 = line.start.y2 += change * LINE_HEIGHT;
@@ -719,8 +703,8 @@ function getLine(
   }
 
   change = 1;
-  if (end.direction === Direction.left || end.direction === Direction.right) {
-    if (end.direction === Direction.left) {
+  if (end.direction === "left" || end.direction === "right") {
+    if (end.direction === "left") {
       change *= -1;
     }
     line.end.base.x2 += change * LINE_HEIGHT;
@@ -732,11 +716,8 @@ function getLine(
     line.end.right.y2 -= LINE_SIZE;
 
     circle.cx += change * CIRCLE_HEIGHT;
-  } else if (
-    end.direction === Direction.top ||
-    end.direction === Direction.bottom
-  ) {
-    if (end.direction === Direction.top) {
+  } else if (end.direction === "top" || end.direction === "bottom") {
+    if (end.direction === "top") {
       change *= -1;
     }
     line.end.base.y2 += change * LINE_HEIGHT;

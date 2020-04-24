@@ -4,6 +4,7 @@ import { Logger } from "../Logger";
 import { getData } from "../Helper";
 import { FocusTableModel, FocusType } from "../model/FocusTableModel";
 import { RelationshipType } from "../store/Relationship";
+import { addCustomColumn } from "./column";
 
 export interface FocusTable {
   tableId: string;
@@ -289,6 +290,27 @@ export function executeDrawStartAddRelationship(
   const { drawRelationship } = store.editorState;
   const table = getData(tables, data.tableId);
   if (drawRelationship && table) {
+    if (!table.columns.some((column) => column.option.primaryKey)) {
+      store.dispatch(
+        addCustomColumn(
+          store,
+          {
+            autoIncrement: false,
+            primaryKey: true,
+            unique: false,
+            notNull: true,
+          },
+          {
+            active: false,
+            pk: true,
+            fk: false,
+            pfk: false,
+          },
+          null,
+          table.id
+        )
+      );
+    }
     drawRelationship.start = {
       table,
       x: table.ui.left,

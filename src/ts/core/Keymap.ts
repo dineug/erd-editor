@@ -89,13 +89,13 @@ export interface Keymap {
   selectAllColumn: KeymapOption[];
   edit: KeymapOption[];
   stop: KeymapOption[];
+  relationshipZeroOneN: KeymapOption[];
   relationshipZeroOne: KeymapOption[];
   relationshipZeroN: KeymapOption[];
+  relationshipOneOnly: KeymapOption[];
+  relationshipOneN: KeymapOption[];
   relationshipOne: KeymapOption[];
   relationshipN: KeymapOption[];
-  relationshipZeroOneN: KeymapOption[];
-  relationshipOneN: KeymapOption[];
-  relationshipOneOnly: KeymapOption[];
 }
 
 export function createKeymap(): Keymap {
@@ -190,7 +190,7 @@ export function createKeymap(): Keymap {
         key: "Escape",
       },
     ],
-    relationshipZeroOne: [
+    relationshipZeroOneN: [
       {
         metaKey: false,
         ctrlKey: true,
@@ -199,7 +199,7 @@ export function createKeymap(): Keymap {
         key: "1",
       },
     ],
-    relationshipZeroN: [
+    relationshipZeroOne: [
       {
         metaKey: false,
         ctrlKey: true,
@@ -208,7 +208,7 @@ export function createKeymap(): Keymap {
         key: "2",
       },
     ],
-    relationshipOne: [
+    relationshipZeroN: [
       {
         metaKey: false,
         ctrlKey: true,
@@ -217,7 +217,7 @@ export function createKeymap(): Keymap {
         key: "3",
       },
     ],
-    relationshipN: [
+    relationshipOneOnly: [
       {
         metaKey: false,
         ctrlKey: true,
@@ -226,7 +226,7 @@ export function createKeymap(): Keymap {
         key: "4",
       },
     ],
-    relationshipZeroOneN: [
+    relationshipOneN: [
       {
         metaKey: false,
         ctrlKey: true,
@@ -235,7 +235,7 @@ export function createKeymap(): Keymap {
         key: "5",
       },
     ],
-    relationshipOneN: [
+    relationshipOne: [
       {
         metaKey: false,
         ctrlKey: true,
@@ -244,7 +244,7 @@ export function createKeymap(): Keymap {
         key: "6",
       },
     ],
-    relationshipOneOnly: [
+    relationshipN: [
       {
         metaKey: false,
         ctrlKey: true,

@@ -27,3 +27,13 @@ export function getChangeOption(
   }
   return value;
 }
+
+export function getColumnIds(columns: Column[]): string[] {
+  const ids: string[] = [];
+  columns.forEach((column) => {
+    if (column.option.primaryKey) {
+      ids.push(column.id);
+    }
+  });
+  return ids;
+}
