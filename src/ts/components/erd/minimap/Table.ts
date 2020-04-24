@@ -3,7 +3,7 @@ import { styleMap } from "lit-html/directives/style-map";
 import { classMap } from "lit-html/directives/class-map";
 import { repeat } from "lit-html/directives/repeat";
 import { Subscription } from "rxjs";
-import { EditorElement } from "../../EditorElement";
+import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Table as TableModel } from "@src/core/store/Table";
 

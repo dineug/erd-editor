@@ -1,7 +1,7 @@
 import { html, customElement } from "lit-element";
 import { classMap } from "lit-html/directives/class-map";
 import { Subscription } from "rxjs";
-import { EditorElement } from "../../EditorElement";
+import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { ColumnUI } from "@src/core/store/Table";
 

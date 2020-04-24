@@ -4,7 +4,7 @@ import { classMap } from "lit-html/directives/class-map";
 import { repeat } from "lit-html/directives/repeat";
 import { Subscription, Subject, fromEvent } from "rxjs";
 import { debounceTime, throttleTime } from "rxjs/operators";
-import { EditorElement } from "../EditorElement";
+import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Table as TableModel, Column } from "@src/core/store/Table";
 import { keymapOptionToString } from "@src/core/Keymap";

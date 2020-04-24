@@ -1,7 +1,7 @@
 import { svg, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { Subscription, fromEvent } from "rxjs";
-import { EditorElement } from "../EditorElement";
+import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { dragSelectTable } from "@src/core/command/table";
 import { dragSelectMemo } from "@src/core/command/memo";

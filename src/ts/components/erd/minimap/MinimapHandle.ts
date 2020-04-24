@@ -1,9 +1,9 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { Subscription } from "rxjs";
-import { EditorElement } from "../../EditorElement";
+import { EditorElement } from "@src/components/EditorElement";
+import { defaultWidth, defaultHeight } from "@src/components/Layout";
 import { Logger } from "@src/core/Logger";
-import { defaultWidth, defaultHeight } from "../../Layout";
 import {
   SIZE_MINIMAP_WIDTH,
   SIZE_MINIMAP_MARGIN,

@@ -3,7 +3,7 @@ import { classMap } from "lit-html/directives/class-map";
 import { repeat } from "lit-html/directives/repeat";
 import { unsafeHTML } from "lit-html/directives/unsafe-html";
 import { Subscription, fromEvent } from "rxjs";
-import { EditorElement } from "../../EditorElement";
+import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { databaseHints, DataTypeHint } from "@src/core/DataType";
 import { markToHTML } from "@src/core/Helper";
