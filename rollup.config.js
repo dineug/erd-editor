@@ -3,7 +3,7 @@ import config from "./rollup.config.common";
 import replace from "@rollup/plugin-replace";
 import strip from "@rollup/plugin-strip";
 
-const { esm, banner } = config();
+const { esm, banner, onwarn } = config();
 
 esm.push.apply(esm, [
   replace({
@@ -34,6 +34,7 @@ export default [
       },
     ],
     plugins: esm,
+    onwarn,
   },
   {
     input: "src/ts/index.ts",
@@ -50,5 +51,6 @@ export default [
       },
     ],
     plugins: esm,
+    onwarn,
   },
 ];

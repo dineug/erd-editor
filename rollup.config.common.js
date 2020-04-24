@@ -32,5 +32,10 @@ export default function config() {
   return {
     esm,
     banner,
+    onwarn(warning, rollupWarn) {
+      if (warning.code !== "CIRCULAR_DEPENDENCY") {
+        rollupWarn(warning);
+      }
+    },
   };
 }

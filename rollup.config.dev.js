@@ -4,7 +4,7 @@ import replace from "@rollup/plugin-replace";
 import html from "rollup-plugin-generate-html-template";
 import browserSync from "browser-sync";
 
-const { esm, banner } = config();
+const { esm, banner, onwarn } = config();
 
 esm.push(
   replace({
@@ -44,5 +44,6 @@ export default [
       ],
     },
     plugins: esm,
+    onwarn,
   },
 ];
