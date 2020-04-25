@@ -4,11 +4,17 @@ import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import { defaultWidth, defaultHeight } from "./Layout";
-import { Menu, getERDContextmenu } from "@src/core/Contextmenu";
+import {
+  Menu,
+  createContextmenuERD,
+  createContextmenuRelationship,
+} from "@src/core/Contextmenu";
 import { Bus } from "@src/core/Event";
 import { keymapMatch } from "@src/core/Keymap";
+import { getParentElement, getData } from "@src/core/Helper";
 import { relationshipMenus } from "@src/core/Contextmenu";
 import { getBase64Icon } from "@src/core/Icon";
+import { Relationship } from "@src/core/store/Relationship";
 import {
   addTable,
   removeTable,
@@ -57,21 +63,16 @@ class ERD extends EditorElement {
   height = defaultHeight;
   @property({ type: Boolean })
   contextmenu = false;
-  @property({ type: Number })
-  contextmenuX = 0;
-  @property({ type: Number })
-  contextmenuY = 0;
   @property({ type: Boolean })
   select = false;
-  @property({ type: Number })
-  selectX = 0;
-  @property({ type: Number })
-  selectY = 0;
-  @property({ type: Number })
-  selectGhostX = 0;
-  @property({ type: Number })
-  selectGhostY = 0;
 
+  private selectX = 0;
+  private selectY = 0;
+  private selectGhostX = 0;
+  private selectGhostY = 0;
+  private contextmenuX = 0;
+  private contextmenuY = 0;
+  private contextmenuRelationship: Relationship | null = null;
   private subscriptionList: Subscription[] = [];
   private subMouseup: Subscription | null = null;
   private subMousemove: Subscription | null = null;
@@ -261,6 +262,7 @@ class ERD extends EditorElement {
                 .menus=${this.menus}
                 .x=${this.contextmenuX}
                 .y=${this.contextmenuY}
+                .relationship=${this.contextmenuRelationship}
               ></vuerd-contextmenu>
             `
           : ``}
@@ -288,6 +290,7 @@ class ERD extends EditorElement {
 
   private onContextmenuEnd = (event: Event) => {
     this.contextmenu = false;
+    this.contextmenuRelationship = null;
   };
   private onMouseup = (event?: MouseEvent) => {
     this.subMouseup?.unsubscribe();
@@ -319,11 +322,28 @@ class ERD extends EditorElement {
 
   private onContextmenu(event: MouseEvent) {
     event.preventDefault();
+    const el = event.target as HTMLElement;
     const { store, keymap } = this.context;
-    this.menus = getERDContextmenu(store, keymap);
     this.contextmenuX = event.x;
     this.contextmenuY = event.y;
-    this.contextmenu = true;
+    if (!el.closest(".vuerd-relationship")) {
+      this.menus = createContextmenuERD(store, keymap);
+      this.contextmenu = true;
+    } else {
+      const g = getParentElement(el, "g");
+      if (g) {
+        const id = g.dataset.id;
+        if (id) {
+          const { relationships } = this.context.store.relationshipState;
+          const relationship = getData(relationships, id);
+          if (relationship) {
+            this.menus = createContextmenuRelationship(store, relationship);
+            this.contextmenuRelationship = relationship;
+            this.contextmenu = true;
+          }
+        }
+      }
+    }
   }
   private onMousedown(event: MouseEvent) {
     const el = event.target as HTMLElement;

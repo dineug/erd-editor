@@ -8,15 +8,17 @@ import { addMemo } from "./command/memo";
 import { changeColumnPrimaryKey } from "./command/column";
 import { changeCanvasShow, changeDatabase } from "./command/canvas";
 import { drawStartRelationship } from "./command/editor";
-import { RelationshipType } from "./store/Relationship";
+import { changeRelationshipType } from "./command/relationship";
+import { Relationship, RelationshipType } from "./store/Relationship";
 
 export interface MenuOption {
   close?: boolean;
-  show?: ShowKey;
+  showKey?: ShowKey;
   database?: Database;
   language?: Language;
   tableCase?: NameCase;
   columnCase?: NameCase;
+  relationshipType?: RelationshipType;
 }
 
 export interface Menu {
@@ -30,7 +32,7 @@ export interface Menu {
   execute?(root: ShadowRoot): void;
 }
 
-export function getERDContextmenu(store: Store, keymap: Keymap): Menu[] {
+export function createContextmenuERD(store: Store, keymap: Keymap): Menu[] {
   const { canvasState, tableState, memoState, relationshipState } = store;
   return [
     {
@@ -160,7 +162,7 @@ function createShowMenus(store: Store): Menu[] {
       },
       option: {
         close: false,
-        show: showMenu.showKey,
+        showKey: showMenu.showKey,
       },
     };
   });
@@ -243,6 +245,33 @@ function createRelationshipMenus(store: Store, keymap: Keymap): Menu[] {
         store.dispatch(
           drawStartRelationship(relationshipMenu.relationshipType)
         );
+      },
+    };
+  });
+}
+
+export function createContextmenuRelationship(
+  store: Store,
+  relationship: Relationship
+): Menu[] {
+  return relationshipMenus.map((relationshipMenu) => {
+    return {
+      icon:
+        relationship.relationshipType === relationshipMenu.relationshipType
+          ? "check"
+          : undefined,
+      name: relationshipMenu.name,
+      execute() {
+        store.dispatch(
+          changeRelationshipType(
+            relationship.id,
+            relationshipMenu.relationshipType
+          )
+        );
+      },
+      option: {
+        close: false,
+        relationshipType: relationshipMenu.relationshipType,
       },
     };
   });

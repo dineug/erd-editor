@@ -6,6 +6,7 @@ import { Logger } from "@src/core/Logger";
 import { SIZE_CONTEXTMENU_HEIGHT } from "@src/core/Layout";
 import { Menu } from "@src/core/Contextmenu";
 import { Bus } from "@src/core/Event";
+import { Relationship } from "@src/core/store/Relationship";
 
 @customElement("vuerd-contextmenu")
 export class Contextmenu extends EditorElement {
@@ -17,6 +18,7 @@ export class Contextmenu extends EditorElement {
   currentMenu: Menu | null = null;
 
   menus: Menu[] = [];
+  relationship: Relationship | null = null;
 
   private subscriptionList: Subscription[] = [];
 
@@ -53,6 +55,15 @@ export class Contextmenu extends EditorElement {
         }
       })
     );
+    if (this.relationship) {
+      this.subscriptionList.push(
+        store.observe(this.relationship, (name) => {
+          if (name === "relationshipType") {
+            this.requestUpdate();
+          }
+        })
+      );
+    }
   }
   disconnectedCallback() {
     this.currentMenu = null;
@@ -134,9 +145,9 @@ export class Contextmenu extends EditorElement {
 
   private getIcon(menu: Menu): string | undefined {
     const { canvasState } = this.context.store;
-    if (menu.option?.show) {
+    if (menu.option?.showKey) {
       const show = canvasState.show;
-      return show[menu.option.show] ? "check" : undefined;
+      return show[menu.option.showKey] ? "check" : undefined;
     } else if (menu.option?.database) {
       const database = canvasState.database;
       return menu.option.database === database ? "check" : undefined;
@@ -149,6 +160,10 @@ export class Contextmenu extends EditorElement {
     } else if (menu.option?.columnCase) {
       const columnCase = canvasState.columnCase;
       return menu.option.columnCase === columnCase ? "check" : undefined;
+    } else if (this.relationship && menu.option?.relationshipType) {
+      return this.relationship.relationshipType === menu.option.relationshipType
+        ? "check"
+        : undefined;
     }
     return menu.icon;
   }

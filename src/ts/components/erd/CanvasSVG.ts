@@ -63,6 +63,7 @@ class CanvasSVG extends EditorElement {
           return svg`
             <g
               class=${classMap({
+                "vuerd-relationship": true,
                 identification:
                   relationship.identification &&
                   this.activeId !== relationship.id,

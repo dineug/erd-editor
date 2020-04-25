@@ -42,16 +42,6 @@ export const Layout = css`
   .vuerd-canvas-svg {
     position: absolute;
     z-index: 1;
-    stroke: var(--vuerd-theme-key-fk, var(--vuerd-color-key-fk));
-  }
-  .vuerd-canvas-svg > g.identification {
-    stroke: var(--vuerd-theme-key-pfk, var(--vuerd-color-key-pfk));
-  }
-  .vuerd-canvas-svg > g.active {
-    stroke: var(
-      --vuerd-theme-relationship-active,
-      var(--vuerd-color-relationship-active)
-    );
   }
 
   .vuerd-text-width {
@@ -67,6 +57,80 @@ export const Layout = css`
   }
   .vuerd-button:hover {
     fill: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+  }
+
+  /* =============== contextmenu ============== */
+  .vuerd-contextmenu {
+    position: fixed;
+    z-index: 100000000;
+    opacity: 0.9;
+    color: var(--vuerd-theme-font, var(--vuerd-color-font));
+    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
+    background-color: var(
+      --vuerd-theme-contextmenu,
+      var(--vuerd-color-contextmenu)
+    );
+  }
+  .vuerd-contextmenu > li {
+    height: ${SIZE_CONTEXTMENU_HEIGHT}px;
+    padding: 10px 5px 10px 10px;
+    box-sizing: border-box;
+    cursor: pointer;
+    font-size: ${SIZE_FONT}px;
+    white-space: nowrap;
+  }
+  .vuerd-contextmenu > li:hover {
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    fill: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    background-color: var(
+      --vuerd-theme-contextmenu-active,
+      var(--vuerd-color-contextmenu-active)
+    );
+  }
+  .vuerd-contextmenu > li > span {
+    display: inline-flex;
+    vertical-align: middle;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 5px;
+  }
+  .vuerd-contextmenu > li > span.icon,
+  .vuerd-contextmenu > li > span.icon > img {
+    width: 16px;
+  }
+  .vuerd-contextmenu > li > span.name {
+    width: 110px;
+    height: 17px;
+  }
+  .vuerd-contextmenu > li > span.keymap {
+    width: 85px;
+    display: inline-block;
+    padding-right: 0;
+  }
+  .vuerd-contextmenu > li > span.arrow {
+    width: 13px;
+    padding-right: 0;
+  }
+
+  /* =============== sash ============== */
+  .vuerd-sash {
+    position: absolute;
+    z-index: 1000;
+  }
+  .vuerd-sash.vertical {
+    width: ${SIZE_SASH}px;
+    height: 100%;
+    cursor: ew-resize;
+  }
+  .vuerd-sash.horizontal {
+    width: 100%;
+    height: ${SIZE_SASH}px;
+    cursor: ns-resize;
+  }
+  .vuerd-sash.edge {
+    width: ${SIZE_SASH}px;
+    height: ${SIZE_SASH}px;
   }
 
   /* =============== table ============== */
@@ -267,78 +331,25 @@ export const Layout = css`
     color: var(--vuerd-theme-mark, var(--vuerd-color-mark));
   }
 
-  /* =============== contextmenu ============== */
-  .vuerd-contextmenu {
-    position: fixed;
-    z-index: 100000000;
-    opacity: 0.9;
-    color: var(--vuerd-theme-font, var(--vuerd-color-font));
-    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
-    background-color: var(
-      --vuerd-theme-contextmenu,
-      var(--vuerd-color-contextmenu)
+  /* =============== relationship ============== */
+  .vuerd-relationship {
+    stroke: var(--vuerd-theme-key-fk, var(--vuerd-color-key-fk));
+  }
+  .vuerd-relationship.identification {
+    stroke: var(--vuerd-theme-key-pfk, var(--vuerd-color-key-pfk));
+  }
+  .vuerd-relationship.active {
+    stroke: var(
+      --vuerd-theme-relationship-active,
+      var(--vuerd-color-relationship-active)
     );
-  }
-  .vuerd-contextmenu > li {
-    height: ${SIZE_CONTEXTMENU_HEIGHT}px;
-    padding: 10px 5px 10px 10px;
-    box-sizing: border-box;
-    cursor: pointer;
-    font-size: ${SIZE_FONT}px;
-    white-space: nowrap;
-  }
-  .vuerd-contextmenu > li:hover {
-    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
-    fill: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
-    background-color: var(
-      --vuerd-theme-contextmenu-active,
-      var(--vuerd-color-contextmenu-active)
-    );
-  }
-  .vuerd-contextmenu > li > span {
-    display: inline-flex;
-    vertical-align: middle;
-    align-items: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding-right: 5px;
-  }
-  .vuerd-contextmenu > li > span.icon,
-  .vuerd-contextmenu > li > span.icon > img {
-    width: 16px;
-  }
-  .vuerd-contextmenu > li > span.name {
-    width: 110px;
-    height: 17px;
-  }
-  .vuerd-contextmenu > li > span.keymap {
-    width: 85px;
-    display: inline-block;
-    padding-right: 0;
-  }
-  .vuerd-contextmenu > li > span.arrow {
-    width: 13px;
-    padding-right: 0;
   }
 
-  /* =============== sash ============== */
-  .vuerd-sash {
+  /* =============== DrawRelationship ============== */
+  .vuerd-draw-relationship {
     position: absolute;
-    z-index: 1000;
-  }
-  .vuerd-sash.vertical {
-    width: ${SIZE_SASH}px;
-    height: 100%;
-    cursor: ew-resize;
-  }
-  .vuerd-sash.horizontal {
-    width: 100%;
-    height: ${SIZE_SASH}px;
-    cursor: ns-resize;
-  }
-  .vuerd-sash.edge {
-    width: ${SIZE_SASH}px;
-    height: ${SIZE_SASH}px;
+    top: 0;
+    stroke: var(--vuerd-theme-key-fk, var(--vuerd-color-key-fk));
   }
 
   /* =============== memo ============== */
@@ -459,13 +470,6 @@ export const Layout = css`
       --vuerd-theme-visualization,
       var(--vuerd-color-visualization)
     );
-  }
-
-  /* =============== DrawRelationship ============== */
-  .vuerd-draw-relationship {
-    position: absolute;
-    top: 0;
-    stroke: var(--vuerd-theme-key-fk, var(--vuerd-color-key-fk));
   }
 
   /* =============== scrollbar ============== */

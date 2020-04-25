@@ -109,3 +109,31 @@ export function executeRemoveRelationship(
     }
   }
 }
+
+export interface ChangeRelationshipType {
+  relationshipId: string;
+  relationshipType: RelationshipType;
+}
+export function changeRelationshipType(
+  relationshipId: string,
+  relationshipType: RelationshipType
+): CommandEffect<ChangeRelationshipType> {
+  return {
+    name: "relationship.changeRelationshipType",
+    data: {
+      relationshipId,
+      relationshipType,
+    },
+  };
+}
+export function executeChangeRelationshipType(
+  store: Store,
+  data: ChangeRelationshipType
+) {
+  Logger.debug("executeChangeRelationshipType");
+  const { relationships } = store.relationshipState;
+  const relationship = getData(relationships, data.relationshipId);
+  if (relationship) {
+    relationship.relationshipType = data.relationshipType;
+  }
+}
