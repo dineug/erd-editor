@@ -4,6 +4,7 @@ import { Subscription } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { defaultWidth, defaultHeight } from "@src/components/Layout";
 import { Logger } from "@src/core/Logger";
+import { Move } from "@src/core/Event";
 import {
   SIZE_MINIMAP_WIDTH,
   SIZE_MINIMAP_MARGIN,
@@ -21,8 +22,8 @@ class MinimapHandle extends EditorElement {
   height = defaultHeight;
 
   private subscriptionList: Subscription[] = [];
-  private subMouseup: Subscription | null = null;
-  private subMousemove: Subscription | null = null;
+  private subMoveEnd: Subscription | null = null;
+  private subMove: Subscription | null = null;
 
   get styleMap() {
     const { scrollLeft, scrollTop } = this.context.store.canvasState;
@@ -62,7 +63,7 @@ class MinimapHandle extends EditorElement {
     );
   }
   disconnectedCallback() {
-    this.onMouseup();
+    this.onMoveEnd();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
@@ -72,27 +73,20 @@ class MinimapHandle extends EditorElement {
       <div
         class="vuerd-minimap-handle"
         style=${styleMap(this.styleMap)}
-        @mousedown=${this.onMousedown}
+        @mousedown=${this.onMoveStart}
+        @touchstart=${this.onMoveStart}
       ></div>
     `;
   }
 
-  private onMouseup = (event?: MouseEvent) => {
-    this.subMouseup?.unsubscribe();
-    this.subMousemove?.unsubscribe();
-    this.subMouseup = null;
-    this.subMousemove = null;
+  private onMoveEnd = (event?: MouseEvent | TouchEvent) => {
+    this.subMoveEnd?.unsubscribe();
+    this.subMove?.unsubscribe();
+    this.subMoveEnd = null;
+    this.subMove = null;
   };
-  private onMousemove = (event: MouseEvent) => {
-    event.preventDefault();
+  private onMove = ({ event, movementX, movementY }: Move) => {
     const ratio = this.ratio;
-    let movementX = event.movementX / window.devicePixelRatio;
-    let movementY = event.movementY / window.devicePixelRatio;
-    // firefox
-    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
-      movementX = event.movementX;
-      movementY = event.movementY;
-    }
     const root = this.getRootNode() as ShadowRoot;
     const erd = root.querySelector(".vuerd-erd") as Element;
     erd.scrollTop += movementY / ratio;
@@ -101,10 +95,10 @@ class MinimapHandle extends EditorElement {
     store.dispatch(moveCanvas(erd.scrollTop, erd.scrollLeft));
   };
 
-  private onMousedown() {
-    const { mouseup$, mousemove$ } = this.context.windowEventObservable;
-    this.onMouseup();
-    this.subMouseup = mouseup$.subscribe(this.onMouseup);
-    this.subMousemove = mousemove$.subscribe(this.onMousemove);
+  private onMoveStart() {
+    const { moveEnd$, move$ } = this.context.windowEventObservable;
+    this.onMoveEnd();
+    this.subMoveEnd = moveEnd$.subscribe(this.onMoveEnd);
+    this.subMove = move$.subscribe(this.onMove);
   }
 }

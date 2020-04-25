@@ -77,7 +77,9 @@ class Editor extends LitElement {
     this.context.helper.setSpan(span);
   }
   disconnectedCallback() {
-    this.context.store.destroy();
+    const { store, windowEventObservable } = this.context;
+    store.destroy();
+    windowEventObservable.destroy();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }

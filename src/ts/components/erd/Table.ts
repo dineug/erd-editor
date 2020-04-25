@@ -8,6 +8,7 @@ import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Table as TableModel, Column } from "@src/core/store/Table";
 import { keymapOptionToString } from "@src/core/Keymap";
+import { Move } from "@src/core/Event";
 import { FocusType } from "@src/core/model/FocusTableModel";
 import { getData } from "@src/core/Helper";
 import { FlipAnimation } from "@src/core/Animation";
@@ -33,8 +34,8 @@ class Table extends EditorElement {
 
   private draggable$: Subject<CustomEvent> = new Subject();
   private subscriptionList: Subscription[] = [];
-  private subMouseup: Subscription | null = null;
-  private subMousemove: Subscription | null = null;
+  private subMoveEnd: Subscription | null = null;
+  private subMove: Subscription | null = null;
   private subFocusTable: Subscription | null = null;
   private subDraggableColumns: Subscription[] = [];
   private flipAnimation = new FlipAnimation(
@@ -99,7 +100,7 @@ class Table extends EditorElement {
     this.flipAnimation.play();
   }
   disconnectedCallback() {
-    this.onMouseup();
+    this.onMoveEnd();
     this.unsubscribeFocusTable();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
@@ -125,7 +126,8 @@ class Table extends EditorElement {
           width: `${this.table.width()}px`,
           height: `${this.table.height()}px`,
         })}
-        @mousedown=${this.onMousedown}
+        @mousedown=${this.onMoveStart}
+        @touchstart=${this.onMoveStart}
       >
         <div class="vuerd-table-header">
           <div class="vuerd-table-header-top">
@@ -214,21 +216,13 @@ class Table extends EditorElement {
     `;
   }
 
-  private onMouseup = (event?: MouseEvent) => {
-    this.subMouseup?.unsubscribe();
-    this.subMousemove?.unsubscribe();
-    this.subMouseup = null;
-    this.subMousemove = null;
+  private onMoveEnd = (event?: MouseEvent | TouchEvent) => {
+    this.subMoveEnd?.unsubscribe();
+    this.subMove?.unsubscribe();
+    this.subMoveEnd = null;
+    this.subMove = null;
   };
-  private onMousemove = (event: MouseEvent) => {
-    event.preventDefault();
-    let movementX = event.movementX / window.devicePixelRatio;
-    let movementY = event.movementY / window.devicePixelRatio;
-    // firefox
-    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
-      movementX = event.movementX;
-      movementY = event.movementY;
-    }
+  private onMove = ({ event, movementX, movementY }: Move) => {
     const { store } = this.context;
     store.dispatch(
       moveTable(store, event.ctrlKey, movementX, movementY, this.table.id)
@@ -256,14 +250,15 @@ class Table extends EditorElement {
       );
     }
   };
+  private onMoveValid = () => {};
 
-  private onMousedown(event: MouseEvent) {
+  private onMoveStart(event: MouseEvent | TouchEvent) {
     const el = event.target as HTMLElement;
     if (!el.closest(".vuerd-button") && !el.closest("vuerd-input-edit")) {
-      const { mouseup$, mousemove$ } = this.context.windowEventObservable;
-      this.onMouseup();
-      this.subMouseup = mouseup$.subscribe(this.onMouseup);
-      this.subMousemove = mousemove$.subscribe(this.onMousemove);
+      const { moveEnd$, move$ } = this.context.windowEventObservable;
+      this.onMoveEnd();
+      this.subMoveEnd = moveEnd$.subscribe(this.onMoveEnd);
+      this.subMove = move$.subscribe(this.onMove);
     }
     if (!el.closest("vuerd-input-edit")) {
       const { store } = this.context;

@@ -9,7 +9,7 @@ import {
   createContextmenuERD,
   createContextmenuRelationship,
 } from "@src/core/Contextmenu";
-import { Bus } from "@src/core/Event";
+import { Bus, Move } from "@src/core/Event";
 import { keymapMatch } from "@src/core/Keymap";
 import { getParentElement, getData } from "@src/core/Helper";
 import { relationshipMenus } from "@src/core/Contextmenu";
@@ -74,8 +74,8 @@ class ERD extends EditorElement {
   private contextmenuY = 0;
   private contextmenuRelationship: Relationship | null = null;
   private subscriptionList: Subscription[] = [];
-  private subMouseup: Subscription | null = null;
-  private subMousemove: Subscription | null = null;
+  private subMoveEnd: Subscription | null = null;
+  private subMove: Subscription | null = null;
   private subDrawRelationship: Subscription | null = null;
   private menus: Menu[] = [];
   private erd!: Element;
@@ -235,7 +235,7 @@ class ERD extends EditorElement {
   }
   disconnectedCallback() {
     const { eventBus } = this.context;
-    this.onMouseup();
+    this.onMoveEnd();
     this.unsubscribeDrawRelationship();
     eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
@@ -249,6 +249,7 @@ class ERD extends EditorElement {
         class="vuerd-erd"
         style=${styleMap(this.styleMap)}
         @mousedown=${this.onMousedown}
+        @touchstart=${this.onTouchstart}
         @contextmenu=${this.onContextmenu}
       >
         <vuerd-canvas></vuerd-canvas>
@@ -292,21 +293,13 @@ class ERD extends EditorElement {
     this.contextmenu = false;
     this.contextmenuRelationship = null;
   };
-  private onMouseup = (event?: MouseEvent) => {
-    this.subMouseup?.unsubscribe();
-    this.subMousemove?.unsubscribe();
-    this.subMouseup = null;
-    this.subMousemove = null;
+  private onMoveEnd = (event?: MouseEvent | TouchEvent) => {
+    this.subMoveEnd?.unsubscribe();
+    this.subMove?.unsubscribe();
+    this.subMoveEnd = null;
+    this.subMove = null;
   };
-  private onMousemove = (event: MouseEvent) => {
-    event.preventDefault();
-    let movementX = event.movementX / window.devicePixelRatio;
-    let movementY = event.movementY / window.devicePixelRatio;
-    // firefox
-    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
-      movementX = event.movementX;
-      movementY = event.movementY;
-    }
+  private onMove = ({ event, movementX, movementY }: Move) => {
     this.erd.scrollTop -= movementY;
     this.erd.scrollLeft -= movementX;
     const { store } = this.context;
@@ -358,7 +351,7 @@ class ERD extends EditorElement {
       !el.closest(".vuerd-minimap-handle")
     ) {
       const { store } = this.context;
-      const { mouseup$, mousemove$ } = this.context.windowEventObservable;
+      const { moveEnd$, move$ } = this.context.windowEventObservable;
       store.dispatch(selectEndTable(), selectEndMemo());
       if (event.ctrlKey) {
         this.selectX = event.x;
@@ -367,10 +360,30 @@ class ERD extends EditorElement {
         this.selectGhostY = event.offsetY;
         this.select = true;
       } else {
-        this.onMouseup();
-        this.subMouseup = mouseup$.subscribe(this.onMouseup);
-        this.subMousemove = mousemove$.subscribe(this.onMousemove);
+        this.onMoveEnd();
+        this.subMoveEnd = moveEnd$.subscribe(this.onMoveEnd);
+        this.subMove = move$.subscribe(this.onMove);
       }
+    }
+  }
+  private onTouchstart(event: TouchEvent) {
+    const el = event.target as HTMLElement;
+    if (!el.closest(".vuerd-contextmenu")) {
+      this.contextmenu = false;
+    }
+    if (
+      !el.closest(".vuerd-contextmenu") &&
+      !el.closest(".vuerd-table") &&
+      !el.closest(".vuerd-memo") &&
+      !el.closest(".vuerd-minimap") &&
+      !el.closest(".vuerd-minimap-handle")
+    ) {
+      const { store } = this.context;
+      const { moveEnd$, move$ } = this.context.windowEventObservable;
+      store.dispatch(selectEndTable(), selectEndMemo());
+      this.onMoveEnd();
+      this.subMoveEnd = moveEnd$.subscribe(this.onMoveEnd);
+      this.subMove = move$.subscribe(this.onMove);
     }
   }
   private onSelectEnd() {

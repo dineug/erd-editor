@@ -1,4 +1,4 @@
-import { html, customElement, property } from "lit-element";
+import { html, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { classMap } from "lit-html/directives/class-map";
 import { Subscription } from "rxjs";
@@ -10,7 +10,8 @@ import {
   SIZE_MEMO_HEIGHT,
 } from "@src/core/Layout";
 import { keymapOptionToString } from "@src/core/Keymap";
-import { Memo as MemoModel, MemoUI } from "@src/core/store/Memo";
+import { Move } from "@src/core/Event";
+import { Memo as MemoModel } from "@src/core/store/Memo";
 import {
   moveMemo,
   selectMemo,
@@ -38,8 +39,8 @@ class Memo extends EditorElement {
   memo!: MemoModel;
 
   private subscriptionList: Subscription[] = [];
-  private subMouseup: Subscription | null = null;
-  private subMousemove: Subscription | null = null;
+  private subMoveEnd: Subscription | null = null;
+  private subMove: Subscription | null = null;
   private x = 0;
   private y = 0;
 
@@ -67,7 +68,7 @@ class Memo extends EditorElement {
     textarea.focus();
   }
   disconnectedCallback() {
-    this.onMouseup();
+    this.onMoveEnd();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
@@ -89,7 +90,8 @@ class Memo extends EditorElement {
           width: `${this.width}px`,
           height: `${this.height}px`,
         })}
-        @mousedown=${this.onMousedown}
+        @mousedown=${this.onMoveStart}
+        @touchstart=${this.onMoveStart}
       >
         <div class="vuerd-memo-header">
           <vuerd-icon
@@ -162,38 +164,30 @@ class Memo extends EditorElement {
     `;
   }
 
-  private onMouseup = (event?: MouseEvent) => {
-    this.subMouseup?.unsubscribe();
-    this.subMousemove?.unsubscribe();
-    this.subMouseup = null;
-    this.subMousemove = null;
+  private onMoveEnd = (event?: MouseEvent | TouchEvent) => {
+    this.subMoveEnd?.unsubscribe();
+    this.subMove?.unsubscribe();
+    this.subMoveEnd = null;
+    this.subMove = null;
   };
-  private onMousemove = (event: MouseEvent) => {
-    event.preventDefault();
-    let movementX = event.movementX / window.devicePixelRatio;
-    let movementY = event.movementY / window.devicePixelRatio;
-    // firefox
-    if (window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
-      movementX = event.movementX;
-      movementY = event.movementY;
-    }
+  private onMove = ({ event, movementX, movementY }: Move) => {
     const { store } = this.context;
     store.dispatch(
       moveMemo(store, event.ctrlKey, movementX, movementY, this.memo.id)
     );
   };
 
-  private onMousedown(event: MouseEvent) {
+  private onMoveStart(event: MouseEvent | TouchEvent) {
     const el = event.target as HTMLElement;
     if (
       !el.closest(".vuerd-button") &&
       !el.closest(".vuerd-sash") &&
       !el.closest(".vuerd-memo-textarea")
     ) {
-      const { mouseup$, mousemove$ } = this.context.windowEventObservable;
-      this.onMouseup();
-      this.subMouseup = mouseup$.subscribe(this.onMouseup);
-      this.subMousemove = mousemove$.subscribe(this.onMousemove);
+      const { moveEnd$, move$ } = this.context.windowEventObservable;
+      this.onMoveEnd();
+      this.subMoveEnd = moveEnd$.subscribe(this.onMoveEnd);
+      this.subMove = move$.subscribe(this.onMove);
     }
     const { store } = this.context;
     store.dispatch(selectMemo(store, event.ctrlKey, this.memo.id));
@@ -208,44 +202,44 @@ class Memo extends EditorElement {
     store.dispatch(changeMemoValue(this.memo.id, textarea.value));
   }
   private onMousedownSash(event: MouseEvent, position: Position) {
-    this.x = event.x;
-    this.y = event.y;
-    const { mouseup$, mousemove$ } = this.context.windowEventObservable;
-    this.onMouseup();
-    this.subMouseup = mouseup$.subscribe(this.onMouseup);
-    this.subMousemove = mousemove$.subscribe((event) => {
-      this.onMousemoveSash(event, position);
+    this.x = event.clientX;
+    this.y = event.clientY;
+    const { moveEnd$, move$ } = this.context.windowEventObservable;
+    this.onMoveEnd();
+    this.subMoveEnd = moveEnd$.subscribe(this.onMoveEnd);
+    this.subMove = move$.subscribe((move) => {
+      this.onMousemoveSash(move, position);
     });
   }
-  private onMousemoveSash(event: MouseEvent, position: Position) {
-    event.preventDefault();
+  private onMousemoveSash(move: Move, position: Position) {
+    move.event.preventDefault();
     const { store } = this.context;
     let verticalUI: ResizeMemo | null = null;
     let horizontalUI: ResizeMemo | null = null;
     switch (position) {
       case "left":
       case "right":
-        verticalUI = this.resizeWidth(event, position);
+        verticalUI = this.resizeWidth(move, position);
         break;
       case "top":
       case "bottom":
-        horizontalUI = this.resizeHeight(event, position);
+        horizontalUI = this.resizeHeight(move, position);
         break;
       case "lt":
-        verticalUI = this.resizeWidth(event, "left");
-        horizontalUI = this.resizeHeight(event, "top");
+        verticalUI = this.resizeWidth(move, "left");
+        horizontalUI = this.resizeHeight(move, "top");
         break;
       case "rt":
-        verticalUI = this.resizeWidth(event, "right");
-        horizontalUI = this.resizeHeight(event, "top");
+        verticalUI = this.resizeWidth(move, "right");
+        horizontalUI = this.resizeHeight(move, "top");
         break;
       case "lb":
-        verticalUI = this.resizeWidth(event, "left");
-        horizontalUI = this.resizeHeight(event, "bottom");
+        verticalUI = this.resizeWidth(move, "left");
+        horizontalUI = this.resizeHeight(move, "bottom");
         break;
       case "rb":
-        verticalUI = this.resizeWidth(event, "right");
-        horizontalUI = this.resizeHeight(event, "bottom");
+        verticalUI = this.resizeWidth(move, "right");
+        horizontalUI = this.resizeHeight(move, "bottom");
         break;
     }
     if (verticalUI?.change && horizontalUI?.change) {
@@ -281,62 +275,64 @@ class Memo extends EditorElement {
     }
   }
 
-  private resizeWidth(event: MouseEvent, direction: Direction): ResizeMemo {
+  private resizeWidth(
+    { event, movementX, x }: Move,
+    direction: Direction
+  ): ResizeMemo {
     const ui = Object.assign({ change: false }, this.memo.ui);
-    const mouseDirection: Direction = event.movementX < 0 ? "left" : "right";
+    const mouseDirection: Direction = movementX < 0 ? "left" : "right";
     const width =
-      direction === "left"
-        ? ui.width - event.movementX
-        : ui.width + event.movementX;
+      direction === "left" ? ui.width - movementX : ui.width + movementX;
     switch (mouseDirection) {
       case "left":
-        if (SIZE_MEMO_WIDTH < width && event.x < this.x) {
+        if (SIZE_MEMO_WIDTH < width && x < this.x) {
           ui.width = width;
           if (direction === "left") {
-            ui.left += event.movementX;
+            ui.left += movementX;
           }
-          this.x += event.movementX;
+          this.x += movementX;
           ui.change = true;
         }
         break;
       case "right":
-        if (SIZE_MEMO_WIDTH < width && event.x > this.x) {
+        if (SIZE_MEMO_WIDTH < width && x > this.x) {
           ui.width = width;
           if (direction === "left") {
-            ui.left += event.movementX;
+            ui.left += movementX;
           }
-          this.x += event.movementX;
+          this.x += movementX;
           ui.change = true;
         }
         break;
     }
     return ui;
   }
-  private resizeHeight(event: MouseEvent, direction: Direction): ResizeMemo {
+  private resizeHeight(
+    { event, movementY, y }: Move,
+    direction: Direction
+  ): ResizeMemo {
     const ui = Object.assign({ change: false }, this.memo.ui);
-    const mouseDirection: Direction = event.movementY < 0 ? "top" : "bottom";
+    const mouseDirection: Direction = movementY < 0 ? "top" : "bottom";
     const height =
-      direction === "top"
-        ? ui.height - event.movementY
-        : ui.height + event.movementY;
+      direction === "top" ? ui.height - movementY : ui.height + movementY;
     switch (mouseDirection) {
       case "top":
-        if (SIZE_MEMO_HEIGHT < height && event.y < this.y) {
+        if (SIZE_MEMO_HEIGHT < height && y < this.y) {
           ui.height = height;
           if (direction === "top") {
-            ui.top += event.movementY;
+            ui.top += movementY;
           }
-          this.y += event.movementY;
+          this.y += movementY;
           ui.change = true;
         }
         break;
       case "bottom":
-        if (SIZE_MEMO_HEIGHT < height && event.y > this.y) {
+        if (SIZE_MEMO_HEIGHT < height && y > this.y) {
           ui.height = height;
           if (direction === "top") {
-            ui.top += event.movementY;
+            ui.top += movementY;
           }
-          this.y += event.movementY;
+          this.y += movementY;
           ui.change = true;
         }
         break;

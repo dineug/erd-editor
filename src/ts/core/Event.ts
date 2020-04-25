@@ -1,22 +1,87 @@
-import { fromEvent, Observable } from "rxjs";
+import { fromEvent, Observable, merge } from "rxjs";
+import { map } from "rxjs/operators";
 
+export interface Move {
+  movementX: number;
+  movementY: number;
+  x: number;
+  y: number;
+  event: MouseEvent | TouchEvent;
+}
 export interface WindowEventObservable {
+  keydown$: Observable<KeyboardEvent>;
   mousedown$: Observable<MouseEvent>;
   mouseup$: Observable<MouseEvent>;
   mousemove$: Observable<MouseEvent>;
-  touchmove$: Observable<TouchEvent>;
+  touchstart$: Observable<TouchEvent>;
   touchend$: Observable<TouchEvent>;
-  keydown$: Observable<KeyboardEvent>;
+  touchmove$: Observable<TouchEvent>;
+  move$: Observable<Move>;
+  moveEnd$: Observable<MouseEvent | TouchEvent>;
+  destroy(): void;
 }
 
 export function createWindowEventObservable(): WindowEventObservable {
+  const mousemove$ = fromEvent<MouseEvent>(window, "mousemove");
+  const touchmove$ = fromEvent<TouchEvent>(window, "touchmove");
+  const mouseup$ = fromEvent<MouseEvent>(window, "mouseup");
+  const touchend$ = fromEvent<TouchEvent>(window, "touchend");
+  const touchstart$ = fromEvent<TouchEvent>(window, "touchstart");
+  const subTouchstart = touchstart$.subscribe((event) => {
+    touchX = event.touches[0].clientX;
+    touchY = event.touches[0].clientY;
+  });
+  let touchX = 0;
+  let touchY = 0;
   return {
-    mousedown$: fromEvent<MouseEvent>(window, "mousedown"),
-    mouseup$: fromEvent<MouseEvent>(window, "mouseup"),
-    mousemove$: fromEvent<MouseEvent>(window, "mousemove"),
-    touchmove$: fromEvent<TouchEvent>(window, "touchmove"),
-    touchend$: fromEvent<TouchEvent>(window, "touchend"),
     keydown$: fromEvent<KeyboardEvent>(window, "keydown"),
+    mousedown$: fromEvent<MouseEvent>(window, "mousedown"),
+    mouseup$,
+    mousemove$,
+    touchstart$,
+    touchend$,
+    touchmove$,
+    move$: merge(
+      mousemove$.pipe(
+        map((event) => {
+          let movementX = event.movementX / window.devicePixelRatio;
+          let movementY = event.movementY / window.devicePixelRatio;
+          // firefox
+          if (
+            window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1
+          ) {
+            movementX = event.movementX;
+            movementY = event.movementY;
+          }
+          return {
+            movementX,
+            movementY,
+            x: event.clientX,
+            y: event.clientY,
+            event,
+          };
+        })
+      ),
+      touchmove$.pipe(
+        map((event) => {
+          const movementX = event.touches[0].clientX - touchX;
+          const movementY = event.touches[0].clientY - touchY;
+          touchX = event.touches[0].clientX;
+          touchY = event.touches[0].clientY;
+          return {
+            movementX,
+            movementY,
+            x: event.touches[0].clientX,
+            y: event.touches[0].clientY,
+            event,
+          };
+        })
+      )
+    ),
+    moveEnd$: merge(mouseup$, touchend$),
+    destroy() {
+      subTouchstart.unsubscribe();
+    },
   };
 }
 

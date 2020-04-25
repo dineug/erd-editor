@@ -5,7 +5,7 @@ import {
   RelationshipPoint,
   Direction,
 } from "../store/Relationship";
-import { Table, Column } from "../store/Table";
+import { Table } from "../store/Table";
 import { DrawRelationship } from "../store/Editor";
 import { getData } from "../Helper";
 import { getColumns } from "./ColumnHelper";
@@ -869,7 +869,7 @@ export function removeColumnRelationshipValid(
   }
   columnUIKeyValidList.forEach((columnUIKeyValid) => {
     if (columnUIKeyValid.columnIds.length !== 0) {
-      removeRelationshipColumnUIKeyValid(
+      removeRelationshipColumnIdValid(
         store,
         columnUIKeyValid.tableId,
         columnUIKeyValid.columnIds
@@ -878,7 +878,7 @@ export function removeColumnRelationshipValid(
   });
 }
 
-export function removeRelationshipColumnUIKeyValid(
+export function removeRelationshipColumnIdValid(
   store: Store,
   tableId: string,
   columnIds: string[]
