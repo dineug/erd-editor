@@ -1,14 +1,20 @@
 import { SIZE_TABLE_PADDING } from "../Layout";
+import { Store } from "../Store";
 import {
   Relationship,
   RelationshipPoint,
   Direction,
 } from "../store/Relationship";
-import { Table } from "../store/Table";
+import { Table, Column } from "../store/Table";
 import { DrawRelationship } from "../store/Editor";
 import { getData } from "../Helper";
+import { getColumns } from "./ColumnHelper";
+import {
+  executeChangeIdentification,
+  executeRemoveRelationship,
+} from "../command/relationship";
 
-// ==================== UI Handler ===================
+// ==================== Draw Relationship ===================
 const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 const PATH_HEIGHT = 40;
 const PATH_END_HEIGHT = PATH_HEIGHT + 20;
@@ -68,6 +74,7 @@ interface Line {
     base2: PointToPoint;
     left: PointToPoint;
     center: PointToPoint;
+    center2: PointToPoint;
     right: PointToPoint;
   };
 }
@@ -679,6 +686,12 @@ function getLine(
         x2: end.x,
         y2: end.y,
       },
+      center2: {
+        x1: end.x,
+        y1: end.y,
+        x2: end.x,
+        y2: end.y,
+      },
       right: {
         x1: end.x,
         y1: end.y,
@@ -716,14 +729,15 @@ function getLine(
     }
     line.end.base.x1 = line.end.base.x2 += change * LINE_HEIGHT;
     line.end.base2.x1 = line.end.base2.x2 += change * (LINE_SIZE + LINE_HEIGHT);
-    line.end.left.x1 = line.end.right.x1 = line.end.base.x1;
+    line.end.center.x1 = line.end.left.x1 = line.end.right.x1 =
+      line.end.base.x1;
     line.end.base.y1 -= LINE_SIZE;
     line.end.base.y2 += LINE_SIZE;
     line.end.base2.y1 -= LINE_SIZE;
     line.end.base2.y2 += LINE_SIZE;
     line.end.left.y2 += LINE_SIZE;
     line.end.right.y2 -= LINE_SIZE;
-    line.end.center.x1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
+    line.end.center2.x1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
 
     circle.cx += change * CIRCLE_HEIGHT;
   } else if (end.direction === "top" || end.direction === "bottom") {
@@ -732,14 +746,15 @@ function getLine(
     }
     line.end.base.y1 = line.end.base.y2 += change * LINE_HEIGHT;
     line.end.base2.y1 = line.end.base2.y2 += change * (LINE_SIZE + LINE_HEIGHT);
-    line.end.left.y1 = line.end.right.y1 = line.end.base.y1;
+    line.end.center.y1 = line.end.left.y1 = line.end.right.y1 =
+      line.end.base.y1;
     line.end.base.x1 -= LINE_SIZE;
     line.end.base.x2 += LINE_SIZE;
     line.end.base2.x1 -= LINE_SIZE;
     line.end.base2.x2 += LINE_SIZE;
     line.end.left.x2 += LINE_SIZE;
     line.end.right.x2 -= LINE_SIZE;
-    line.end.center.y1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
+    line.end.center2.y1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
 
     circle.cy += change * CIRCLE_HEIGHT;
   }
@@ -758,5 +773,127 @@ export function getRelationshipPath(
     line: getLine(relationship.start, relationship.end),
   };
 }
+// ==================== Draw Relationship END ===================
 
-// ==================== UI Handler END ===================
+export function identificationValid(store: Store) {
+  const { relationships } = store.relationshipState;
+  const { tables } = store.tableState;
+  relationships.forEach((relationship) => {
+    const { end } = relationship;
+    const table = getData(tables, end.tableId);
+    if (table) {
+      const columns = getColumns(table, end.columnIds);
+      const identification = !columns.some(
+        (column) => !column.option.primaryKey
+      );
+      if (identification !== relationship.identification) {
+        executeChangeIdentification(store, {
+          relationshipId: relationship.id,
+          identification,
+        });
+      }
+    }
+  });
+}
+
+export function removeTableRelationshipValid(store: Store, tableIds: string[]) {
+  const { relationships } = store.relationshipState;
+  const removeRelationshipIds: string[] = [];
+  relationships.forEach((relationship) => {
+    const { start, end } = relationship;
+    if (
+      tableIds.some(
+        (tableId) => tableId === start.tableId || tableId === end.tableId
+      )
+    ) {
+      removeRelationshipIds.push(relationship.id);
+    }
+  });
+  if (removeRelationshipIds.length !== 0) {
+    executeRemoveRelationship(store, {
+      relationshipIds: removeRelationshipIds,
+    });
+  }
+}
+
+interface ColumnUIKeyValid {
+  tableId: string;
+  columnIds: string[];
+}
+export function removeColumnRelationshipValid(
+  store: Store,
+  table: Table,
+  columnIds: string[]
+) {
+  const { relationships } = store.relationshipState;
+  const removeRelationshipIds: string[] = [];
+  const columnUIKeyValidList: ColumnUIKeyValid[] = [];
+  relationships.forEach((relationship) => {
+    const { start, end } = relationship;
+    const columnUIKeyValid: ColumnUIKeyValid = {
+      tableId: end.tableId,
+      columnIds: [],
+    };
+    if (table.id === start.tableId) {
+      for (let i = 0; i < start.columnIds.length; i++) {
+        const id = start.columnIds[i];
+        if (columnIds.some((columnId) => columnId === id)) {
+          columnUIKeyValid.columnIds.push(end.columnIds[i]);
+          start.columnIds.splice(i, 1);
+          end.columnIds.splice(i, 1);
+          i--;
+        }
+      }
+    } else if (table.id === end.tableId) {
+      for (let i = 0; i < end.columnIds.length; i++) {
+        const id = end.columnIds[i];
+        if (columnIds.some((columnId) => columnId === id)) {
+          columnUIKeyValid.columnIds.push(id);
+          start.columnIds.splice(i, 1);
+          end.columnIds.splice(i, 1);
+          i--;
+        }
+      }
+    }
+
+    if (start.columnIds.length === 0) {
+      removeRelationshipIds.push(relationship.id);
+    }
+    columnUIKeyValidList.push(columnUIKeyValid);
+  });
+
+  if (removeRelationshipIds.length !== 0) {
+    executeRemoveRelationship(store, {
+      relationshipIds: removeRelationshipIds,
+    });
+  }
+  columnUIKeyValidList.forEach((columnUIKeyValid) => {
+    if (columnUIKeyValid.columnIds.length !== 0) {
+      removeRelationshipColumnUIKeyValid(
+        store,
+        columnUIKeyValid.tableId,
+        columnUIKeyValid.columnIds
+      );
+    }
+  });
+}
+
+export function removeRelationshipColumnUIKeyValid(
+  store: Store,
+  tableId: string,
+  columnIds: string[]
+) {
+  const { tables } = store.tableState;
+  const table = getData(tables, tableId);
+  if (table) {
+    columnIds.forEach((columnId) => {
+      const column = getData(table.columns, columnId);
+      if (column?.ui.fk) {
+        column.ui.fk = false;
+      } else if (column?.ui.pfk) {
+        column.ui.pfk = false;
+        column.ui.pk = true;
+      }
+    });
+  }
+}

@@ -168,8 +168,8 @@ function relationshipOneOnly({ path, line }: RelationshipPath) {
       stroke-width="3"
     ></line>
     <line
-      x1=${line.line.end.center.x1} y1=${line.line.end.center.y1}
-      x2=${line.line.end.center.x2} y2=${line.line.end.center.y2}
+      x1=${line.line.end.center2.x1} y1=${line.line.end.center2.y1}
+      x2=${line.line.end.center2.x2} y2=${line.line.end.center2.y2}
       stroke-width="3"
     ></line>
   `;
@@ -194,8 +194,8 @@ function relationshipOneN({ path, line }: RelationshipPath) {
       stroke-width="3"
     ></line>
     <line
-      x1=${line.line.end.center.x1} y1=${line.line.end.center.y1}
-      x2=${line.line.end.center.x2} y2=${line.line.end.center.y2}
+      x1=${line.line.end.center2.x1} y1=${line.line.end.center2.y1}
+      x2=${line.line.end.center2.x2} y2=${line.line.end.center2.y2}
       stroke-width="3"
     ></line>
     <line
@@ -220,8 +220,8 @@ function relationshipOne({ path, line }: RelationshipPath) {
       stroke-width="3"
     ></line>
     <line
-      x1=${line.line.end.center.x1} y1=${line.line.end.center.y1}
-      x2=${line.line.end.center.x2} y2=${line.line.end.center.y2}
+      x1=${line.line.end.center2.x1} y1=${line.line.end.center2.y1}
+      x2=${line.line.end.center2.x2} y2=${line.line.end.center2.y2}
       stroke-width="3"
     ></line>
   `;
@@ -241,8 +241,8 @@ function relationshipN({ path, line }: RelationshipPath) {
       stroke-width="3"
     ></line>
     <line
-      x1=${line.line.end.center.x1} y1=${line.line.end.center.y1}
-      x2=${line.line.end.center.x2} y2=${line.line.end.center.y2}
+      x1=${line.line.end.center2.x1} y1=${line.line.end.center2.y1}
+      x2=${line.line.end.center2.x2} y2=${line.line.end.center2.y2}
       stroke-width="3"
     ></line>
     <line

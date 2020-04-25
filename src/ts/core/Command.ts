@@ -43,9 +43,11 @@ import {
   AddRelationship,
   RemoveRelationship,
   ChangeRelationshipType,
+  ChangeIdentification,
   executeAddRelationship,
   executeRemoveRelationship,
   executeChangeRelationshipType,
+  executeChangeIdentification,
 } from "./command/relationship";
 import {
   AddMemo,
@@ -143,6 +145,7 @@ type CommandName =
   | "relationship.add"
   | "relationship.remove"
   | "relationship.changeRelationshipType"
+  | "relationship.changeIdentification"
   | "memo.add"
   | "memo.move"
   | "memo.remove"
@@ -195,6 +198,7 @@ export type Command =
   | CommandEffect<AddRelationship>
   | CommandEffect<RemoveRelationship>
   | CommandEffect<ChangeRelationshipType>
+  | CommandEffect<ChangeIdentification>
   | CommandEffect<AddMemo>
   | CommandEffect<MoveMemo>
   | CommandEffect<RemoveMemo>
@@ -308,6 +312,12 @@ export function commandExecute(store: Store, commands: Command[]) {
         executeChangeRelationshipType(
           store,
           command.data as ChangeRelationshipType
+        );
+        break;
+      case "relationship.changeIdentification":
+        executeChangeIdentification(
+          store,
+          command.data as ChangeIdentification
         );
         break;
       case "memo.add":

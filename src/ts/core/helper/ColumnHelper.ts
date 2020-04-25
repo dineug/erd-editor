@@ -37,3 +37,14 @@ export function getColumnIds(columns: Column[]): string[] {
   });
   return ids;
 }
+
+export function getColumns(table: Table, columnIds: string[]): Column[] {
+  const columns: Column[] = [];
+  columnIds.forEach((columnId) => {
+    const column = getData(table.columns, columnId);
+    if (column) {
+      columns.push(column);
+    }
+  });
+  return columns;
+}

@@ -121,6 +121,7 @@ export class Contextmenu extends EditorElement {
               .menus=${this.currentMenu.children}
               .x=${this.childrenX}
               .y=${this.childrenY}
+              .relationship=${this.relationship}
             ></vuerd-contextmenu>
           `
         : ``}

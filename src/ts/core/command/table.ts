@@ -2,7 +2,11 @@ import { CommandEffect } from "../Command";
 import { SIZE_MIN_WIDTH, SIZE_TABLE_PADDING } from "../Layout";
 import { Store } from "../Store";
 import { Helper, getData, uuid } from "../Helper";
-import { Point, relationshipSort } from "../helper/RelationshipHelper";
+import {
+  Point,
+  relationshipSort,
+  removeTableRelationshipValid,
+} from "../helper/RelationshipHelper";
 import { Logger } from "../Logger";
 import { TableModel } from "../model/TableModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
@@ -13,7 +17,7 @@ import {
   executeDrawStartAddRelationship,
   executeDrawEndRelationship,
 } from "./editor";
-import { addRelationship } from "./relationship";
+import { addRelationship, executeRemoveRelationship } from "./relationship";
 
 const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 
@@ -149,7 +153,8 @@ export function executeRemoveTable(store: Store, data: RemoveTable) {
       i--;
     }
   }
-  // TODO: relationship valid
+  // relationship valid
+  removeTableRelationshipValid(store, data.tableIds);
 }
 
 export interface SelectTable {

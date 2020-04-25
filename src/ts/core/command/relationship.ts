@@ -3,7 +3,10 @@ import { Store } from "../Store";
 import { Logger } from "../Logger";
 import { getData, uuid } from "../Helper";
 import { getColumnIds } from "../helper/ColumnHelper";
-import { relationshipSort } from "../helper/RelationshipHelper";
+import {
+  relationshipSort,
+  removeRelationshipColumnUIKeyValid,
+} from "../helper/RelationshipHelper";
 import { RelationshipType } from "../store/Relationship";
 import { Table } from "../store/Table";
 import { RelationshipModel } from "../model/RelationshipModel";
@@ -111,21 +114,14 @@ export function executeRemoveRelationship(
         (relationshipId) => relationshipId === relationship.id
       )
     ) {
-      // column ui key valid
-      relationship.end.columnIds.forEach((columnId) => {
-        const table = getData(tables, relationship.end.tableId);
-        if (table) {
-          const column = getData(table.columns, columnId);
-          if (column?.ui.fk) {
-            column.ui.fk = false;
-          } else if (column?.ui.pfk) {
-            column.ui.pfk = false;
-            column.ui.pk = true;
-          }
-        }
-      });
       relationships.splice(i, 1);
       i--;
+      // column valid
+      removeRelationshipColumnUIKeyValid(
+        store,
+        relationship.end.tableId,
+        relationship.end.columnIds
+      );
     }
   }
 }
@@ -155,5 +151,33 @@ export function executeChangeRelationshipType(
   const relationship = getData(relationships, data.relationshipId);
   if (relationship) {
     relationship.relationshipType = data.relationshipType;
+  }
+}
+
+export interface ChangeIdentification {
+  relationshipId: string;
+  identification: boolean;
+}
+export function ChangeIdentification(
+  relationshipId: string,
+  identification: boolean
+): CommandEffect<ChangeIdentification> {
+  return {
+    name: "relationship.changeIdentification",
+    data: {
+      relationshipId,
+      identification,
+    },
+  };
+}
+export function executeChangeIdentification(
+  store: Store,
+  data: ChangeIdentification
+) {
+  Logger.debug("executeChangeIdentification");
+  const { relationships } = store.relationshipState;
+  const relationship = getData(relationships, data.relationshipId);
+  if (relationship) {
+    relationship.identification = data.identification;
   }
 }

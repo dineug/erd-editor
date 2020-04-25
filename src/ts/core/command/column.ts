@@ -5,7 +5,11 @@ import { Store } from "../Store";
 import { Column, ColumnOption } from "../store/Table";
 import { Relationship } from "../store/Relationship";
 import { Helper, getData, getIndex, uuid } from "../Helper";
-import { relationshipSort } from "../helper/RelationshipHelper";
+import {
+  relationshipSort,
+  identificationValid,
+  removeColumnRelationshipValid,
+} from "../helper/RelationshipHelper";
 import { getColumn, getChangeOption } from "../helper/ColumnHelper";
 import { ColumnModel } from "../model/ColumnModel";
 import {
@@ -151,13 +155,15 @@ export function executeRemoveColumn(store: Store, data: RemoveColumn) {
   const table = getData(tables, data.tableId);
   if (table) {
     for (let i = 0; i < table.columns.length; i++) {
-      const id = table.columns[i].id;
-      if (data.columnIds.some((columnId) => columnId === id)) {
+      const column = table.columns[i];
+      if (data.columnIds.some((columnId) => columnId === column.id)) {
         table.columns.splice(i, 1);
         i--;
       }
     }
-    // TODO: relationship valid
+    // relationship valid
+    removeColumnRelationshipValid(store, table, data.columnIds);
+    identificationValid(store);
     relationshipSort(tables, relationships);
   }
 }
@@ -360,8 +366,9 @@ export function executeChangeColumnPrimaryKey(
 ) {
   Logger.debug("executeChangeColumnPrimaryKey");
   const { tables } = store.tableState;
+  const table = getData(tables, data.tableId);
   const column = getColumn(tables, data.tableId, data.columnId);
-  if (column) {
+  if (table && column) {
     if (data.value) {
       if (column.ui.fk) {
         column.ui.fk = false;
@@ -381,6 +388,8 @@ export function executeChangeColumnPrimaryKey(
       }
     }
     column.option.primaryKey = data.value;
+    // relationship valid
+    identificationValid(store);
   }
 }
 
@@ -529,7 +538,9 @@ export function executeMoveColumn(store: Store, data: MoveColumn) {
           tableId: data.targetTableId,
           columnIds: data.columnIds,
         });
-        // TODO: relationship valid
+        // relationship valid
+        removeColumnRelationshipValid(store, currentTable, data.columnIds);
+        identificationValid(store);
         relationshipSort(tables, relationships);
       }
     }
