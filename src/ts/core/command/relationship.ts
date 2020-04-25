@@ -87,11 +87,13 @@ export function executeAddRelationship(store: Store, data: AddRelationship) {
 export interface RemoveRelationship {
   relationshipIds: string[];
 }
-export function removeRelationship(): CommandEffect<RemoveRelationship> {
+export function removeRelationship(
+  relationshipIds: string[]
+): CommandEffect<RemoveRelationship> {
   return {
     name: "relationship.remove",
     data: {
-      relationshipIds: [],
+      relationshipIds,
     },
   };
 }
@@ -101,9 +103,27 @@ export function executeRemoveRelationship(
 ) {
   Logger.debug("executeRemoveRelationship");
   const { relationships } = store.relationshipState;
+  const { tables } = store.tableState;
   for (let i = 0; i < relationships.length; i++) {
-    const id = relationships[i].id;
-    if (data.relationshipIds.some((relationshipId) => relationshipId === id)) {
+    const relationship = relationships[i];
+    if (
+      data.relationshipIds.some(
+        (relationshipId) => relationshipId === relationship.id
+      )
+    ) {
+      // column ui key valid
+      relationship.end.columnIds.forEach((columnId) => {
+        const table = getData(tables, relationship.end.tableId);
+        if (table) {
+          const column = getData(table.columns, columnId);
+          if (column?.ui.fk) {
+            column.ui.fk = false;
+          } else if (column?.ui.pfk) {
+            column.ui.pfk = false;
+            column.ui.pk = true;
+          }
+        }
+      });
       relationships.splice(i, 1);
       i--;
     }

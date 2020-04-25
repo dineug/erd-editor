@@ -8,7 +8,10 @@ import { addMemo } from "./command/memo";
 import { changeColumnPrimaryKey } from "./command/column";
 import { changeCanvasShow, changeDatabase } from "./command/canvas";
 import { drawStartRelationship } from "./command/editor";
-import { changeRelationshipType } from "./command/relationship";
+import {
+  changeRelationshipType,
+  removeRelationship,
+} from "./command/relationship";
 import { Relationship, RelationshipType } from "./store/Relationship";
 
 export interface MenuOption {
@@ -251,6 +254,24 @@ function createRelationshipMenus(store: Store, keymap: Keymap): Menu[] {
 }
 
 export function createContextmenuRelationship(
+  store: Store,
+  relationship: Relationship
+): Menu[] {
+  return [
+    {
+      name: "RelationshipType",
+      children: createRelationshipSingleMenus(store, relationship),
+    },
+    {
+      name: "Delete",
+      execute() {
+        store.dispatch(removeRelationship([relationship.id]));
+      },
+    },
+  ];
+}
+
+function createRelationshipSingleMenus(
   store: Store,
   relationship: Relationship
 ): Menu[] {
