@@ -23,6 +23,7 @@ import {
   ChangeColumnValue,
   ChangeColumnOption,
   MoveColumn,
+  ActiveColumn,
   executeAddColumn,
   executeAddCustomColumn,
   executeRemoveColumn,
@@ -35,10 +36,14 @@ import {
   executeChangeColumnUnique,
   executeChangeColumnNotNull,
   executeMoveColumn,
+  executeActiveColumn,
+  executeActiveEndColumn,
 } from "./command/column";
 import {
   AddRelationship,
+  RemoveRelationship,
   executeAddRelationship,
+  executeRemoveRelationship,
 } from "./command/relationship";
 import {
   AddMemo,
@@ -131,7 +136,10 @@ type CommandName =
   | "column.changeUnique"
   | "column.changeNotNull"
   | "column.move"
+  | "column.active"
+  | "column.activeEnd"
   | "relationship.add"
+  | "relationship.remove"
   | "memo.add"
   | "memo.move"
   | "memo.remove"
@@ -180,7 +188,9 @@ export type Command =
   | CommandEffect<ChangeColumnValue>
   | CommandEffect<ChangeColumnOption>
   | CommandEffect<MoveColumn>
+  | CommandEffect<Array<ActiveColumn>>
   | CommandEffect<AddRelationship>
+  | CommandEffect<RemoveRelationship>
   | CommandEffect<AddMemo>
   | CommandEffect<MoveMemo>
   | CommandEffect<RemoveMemo>
@@ -278,8 +288,17 @@ export function commandExecute(store: Store, commands: Command[]) {
       case "column.move":
         executeMoveColumn(store, command.data as MoveColumn);
         break;
+      case "column.active":
+        executeActiveColumn(store, command.data as Array<ActiveColumn>);
+        break;
+      case "column.activeEnd":
+        executeActiveEndColumn(store, command.data as Array<ActiveColumn>);
+        break;
       case "relationship.add":
         executeAddRelationship(store, command.data as AddRelationship);
+        break;
+      case "relationship.remove":
+        executeRemoveRelationship(store, command.data as RemoveRelationship);
         break;
       case "memo.add":
         executeAddMemo(store, command.data as AddMemo);

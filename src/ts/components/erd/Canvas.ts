@@ -28,6 +28,11 @@ class Canvas extends EditorElement {
             this.requestUpdate();
             break;
         }
+      }),
+      store.observe(store.canvasState.show, (name) => {
+        if (name === "relationship") {
+          this.requestUpdate();
+        }
       })
     );
   }
@@ -38,6 +43,7 @@ class Canvas extends EditorElement {
 
   render() {
     const { width, height } = this.context.store.canvasState;
+    const { show } = this.context.store.canvasState;
     return html`
       <div
         class="vuerd-canvas"
@@ -56,7 +62,7 @@ class Canvas extends EditorElement {
           (memo) => memo.id,
           (memo) => html` <vuerd-memo .memo=${memo}></vuerd-memo> `
         )}
-        <vuerd-canvas-svg></vuerd-canvas-svg>
+        ${show.relationship ? html`<vuerd-canvas-svg></vuerd-canvas-svg>` : ""}
       </div>
     `;
   }

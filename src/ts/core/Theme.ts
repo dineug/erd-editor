@@ -6,6 +6,7 @@ export interface Theme {
   keyPK: string;
   keyFK: string;
   keyPFK: string;
+  relationshipActive: string;
   font: string;
   fontActive: string;
   fontPlaceholder: string;
@@ -34,6 +35,7 @@ export function createTheme(): Theme {
     keyPK: "#B4B400",
     keyFK: "#dda8b1",
     keyPFK: "#60b9c4",
+    relationshipActive: "#ffc107",
     font: "#a2a2a2",
     fontActive: "white",
     fontPlaceholder: "#6D6D6D",

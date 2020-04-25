@@ -44,8 +44,14 @@ export const Layout = css`
     z-index: 1;
     stroke: var(--vuerd-theme-key-fk, var(--vuerd-color-key-fk));
   }
-  .vuerd-canvas-svg .identification {
+  .vuerd-canvas-svg > g.identification {
     stroke: var(--vuerd-theme-key-pfk, var(--vuerd-color-key-pfk));
+  }
+  .vuerd-canvas-svg > g.active {
+    stroke: var(
+      --vuerd-theme-relationship-active,
+      var(--vuerd-color-relationship-active)
+    );
   }
 
   .vuerd-text-width {

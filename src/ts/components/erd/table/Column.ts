@@ -75,8 +75,10 @@ class Column extends EditorElement {
           case "widthComment":
           case "widthDataType":
           case "widthDefault":
-          case "active":
             this.dispatchEvent(new CustomEvent("request-update"));
+            break;
+          case "active":
+            this.requestUpdate();
             break;
         }
       })

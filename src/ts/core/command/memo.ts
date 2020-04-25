@@ -128,18 +128,19 @@ export function removeMemo(
 }
 export function executeRemoveMemo(store: Store, data: RemoveMemo) {
   Logger.debug("executeRemoveMemo");
-  const { tableState, memoState } = store;
-  for (let i = 0; i < tableState.tables.length; i++) {
-    const id = tableState.tables[i].id;
+  const { tables } = store.tableState;
+  const { memos } = store.memoState;
+  for (let i = 0; i < tables.length; i++) {
+    const id = tables[i].id;
     if (data.tableIds.some((tableId) => tableId === id)) {
-      tableState.tables.splice(i, 1);
+      tables.splice(i, 1);
       i--;
     }
   }
-  for (let i = 0; i < memoState.memos.length; i++) {
-    const id = memoState.memos[i].id;
+  for (let i = 0; i < memos.length; i++) {
+    const id = memos[i].id;
     if (data.memoIds.some((memoId) => memoId === id)) {
-      memoState.memos.splice(i, 1);
+      memos.splice(i, 1);
       i--;
     }
   }
@@ -293,8 +294,8 @@ export function executeDragSelectMemo(store: Store, data: DragSelectMemo) {
     const centerY = memo.ui.top + memo.ui.height / 2 + MEMO_PADDING;
     memo.ui.active =
       min.x <= centerX &&
-      centerX <= max.x &&
+      max.x >= centerX &&
       min.y <= centerY &&
-      centerY <= max.y;
+      max.y >= centerY;
   });
 }

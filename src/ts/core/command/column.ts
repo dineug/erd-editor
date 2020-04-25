@@ -1,12 +1,13 @@
 import { CommandEffect } from "../Command";
 import { SIZE_MIN_WIDTH } from "../Layout";
+import { Logger } from "../Logger";
 import { Store } from "../Store";
+import { Column, ColumnOption } from "../store/Table";
+import { Relationship } from "../store/Relationship";
 import { Helper, getData, getIndex, uuid } from "../Helper";
 import { relationshipSort } from "../helper/RelationshipHelper";
-import { Logger } from "../Logger";
-import { Column, ColumnOption } from "../store/Table";
-import { ColumnModel } from "../model/ColumnModel";
 import { getColumn, getChangeOption } from "../helper/ColumnHelper";
+import { ColumnModel } from "../model/ColumnModel";
 import {
   executeFocusTable,
   executeEditEndTable,
@@ -533,4 +534,76 @@ export function executeMoveColumn(store: Store, data: MoveColumn) {
       }
     }
   }
+}
+
+export interface ActiveColumn {
+  tableId: string;
+  columnIds: string[];
+}
+export function activeColumn(
+  relationship: Relationship
+): CommandEffect<Array<ActiveColumn>> {
+  const { start, end } = relationship;
+  return {
+    name: "column.active",
+    data: [
+      {
+        tableId: start.tableId,
+        columnIds: start.columnIds,
+      },
+      {
+        tableId: end.tableId,
+        columnIds: end.columnIds,
+      },
+    ],
+  };
+}
+export function executeActiveColumn(store: Store, data: ActiveColumn[]) {
+  Logger.debug("executeActiveColumn");
+  const { tables } = store.tableState;
+  data.forEach((activeColumn) => {
+    const table = getData(tables, activeColumn.tableId);
+    if (table) {
+      activeColumn.columnIds.forEach((columnId) => {
+        const column = getData(table.columns, columnId);
+        if (column) {
+          column.ui.active = true;
+        }
+      });
+    }
+  });
+}
+
+export function activeEndColumn(
+  relationship: Relationship
+): CommandEffect<Array<ActiveColumn>> {
+  const { start, end } = relationship;
+  return {
+    name: "column.activeEnd",
+    data: [
+      {
+        tableId: start.tableId,
+        columnIds: start.columnIds,
+      },
+      {
+        tableId: end.tableId,
+        columnIds: end.columnIds,
+      },
+    ],
+  };
+}
+export function executeActiveEndColumn(store: Store, data: ActiveColumn[]) {
+  Logger.debug("executeActiveEndColumn");
+  const { tables } = store.tableState;
+  data.forEach((activeColumn) => {
+    const table = getData(tables, activeColumn.tableId);
+    if (table) {
+      activeColumn.columnIds.forEach((columnId) => {
+        const column = getData(table.columns, columnId);
+        if (column) {
+          column.ui.active = false;
+        }
+      });
+    }
+  });
 }

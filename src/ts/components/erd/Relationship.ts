@@ -1,5 +1,4 @@
 import { svg } from "lit-element";
-import { classMap } from "lit-html/directives/class-map";
 import { Logger } from "@src/core/Logger";
 import { Relationship } from "@src/core/store/Relationship";
 import {
@@ -35,31 +34,25 @@ export function createRelationship(relationship: Relationship) {
       break;
   }
   return svg`
-    <g 
-      class=${classMap({
-        identification: relationship.identification,
-      })} 
-      data-id=${relationship.id}
-    >
-      <!-- start -->
-      <line
-        x1=${path.line.start.x1} y1=${path.line.start.y1}
-        x2=${path.line.start.x2} y2=${path.line.start.y2}
-        stroke-width="3"
-      ></line>
-      <path
-        d=${path.path.d()}
-        stroke-dasharray=${relationship.identification ? 0 : 10}
-        stroke-width="3"
-        fill="transparent"
-      ></path>
-      <line
-        x1=${line.line.start.x1} y1=${line.line.start.y1}
-        x2=${line.line.start.x2} y2=${line.line.start.y2}
-        stroke-width="3"
-      ></line>
-      ${shape}
-    </g>
+    <!-- start -->
+    <line
+      x1=${path.line.start.x1} y1=${path.line.start.y1}
+      x2=${path.line.start.x2} y2=${path.line.start.y2}
+      stroke-width="3"
+    ></line>
+    <path
+      d=${path.path.d()}
+      stroke-dasharray=${relationship.identification ? 0 : 10}
+      stroke-width="3"
+      fill="transparent"
+    ></path>
+    <line
+      x1=${line.line.start.x1} y1=${line.line.start.y1}
+      x2=${line.line.start.x2} y2=${line.line.start.y2}
+      stroke-width="3"
+    ></line>
+    <!-- end -->
+    ${shape}
   `;
 }
 

@@ -92,6 +92,7 @@ class Editor extends LitElement {
       keyPK,
       keyFK,
       keyPFK,
+      relationshipActive,
       font,
       fontActive,
       fontPlaceholder,
@@ -122,6 +123,7 @@ class Editor extends LitElement {
           --vuerd-color-key-pk: ${keyPK};
           --vuerd-color-key-fk: ${keyFK};
           --vuerd-color-key-pfk: ${keyPFK};
+          --vuerd-color-relationship-active: ${relationshipActive};
           --vuerd-color-font: ${font};
           --vuerd-color-font-active: ${fontActive};
           --vuerd-color-font-placeholder: ${fontPlaceholder};

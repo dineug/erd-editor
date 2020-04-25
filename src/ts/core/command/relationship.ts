@@ -83,3 +83,29 @@ export function executeAddRelationship(store: Store, data: AddRelationship) {
     relationshipSort(tables, relationships);
   }
 }
+
+export interface RemoveRelationship {
+  relationshipIds: string[];
+}
+export function removeRelationship(): CommandEffect<RemoveRelationship> {
+  return {
+    name: "relationship.remove",
+    data: {
+      relationshipIds: [],
+    },
+  };
+}
+export function executeRemoveRelationship(
+  store: Store,
+  data: RemoveRelationship
+) {
+  Logger.debug("executeRemoveRelationship");
+  const { relationships } = store.relationshipState;
+  for (let i = 0; i < relationships.length; i++) {
+    const id = relationships[i].id;
+    if (data.relationshipIds.some((relationshipId) => relationshipId === id)) {
+      relationships.splice(i, 1);
+      i--;
+    }
+  }
+}
