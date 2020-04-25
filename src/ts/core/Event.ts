@@ -27,12 +27,12 @@ export function createWindowEventObservable(): WindowEventObservable {
   const mouseup$ = fromEvent<MouseEvent>(window, "mouseup");
   const touchend$ = fromEvent<TouchEvent>(window, "touchend");
   const touchstart$ = fromEvent<TouchEvent>(window, "touchstart");
+  let touchX = 0;
+  let touchY = 0;
   const subTouchstart = touchstart$.subscribe((event) => {
     touchX = event.touches[0].clientX;
     touchY = event.touches[0].clientY;
   });
-  let touchX = 0;
-  let touchY = 0;
   return {
     keydown$: fromEvent<KeyboardEvent>(window, "keydown"),
     mousedown$: fromEvent<MouseEvent>(window, "mousedown"),
@@ -121,8 +121,18 @@ enum Visualization {
   dragEnd = "Visualization.dragEnd",
 }
 
+enum Table {
+  moveValid = "Table.moveValid",
+}
+
+enum Memo {
+  moveValid = "Memo.moveValid",
+}
+
 export const Bus = {
   ERD,
   ColumnDataTypeHint,
   Visualization,
+  Table,
+  Memo,
 };

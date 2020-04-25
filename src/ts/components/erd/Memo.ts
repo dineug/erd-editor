@@ -8,9 +8,11 @@ import {
   SIZE_MEMO_PADDING,
   SIZE_MEMO_WIDTH,
   SIZE_MEMO_HEIGHT,
+  SIZE_MENUBAR_HEIGHT,
 } from "@src/core/Layout";
 import { keymapOptionToString } from "@src/core/Keymap";
-import { Move } from "@src/core/Event";
+import { Bus, Move } from "@src/core/Event";
+import { AnimationFrame } from "@src/core/Animation";
 import { Memo as MemoModel } from "@src/core/store/Memo";
 import {
   moveMemo,
@@ -43,6 +45,8 @@ class Memo extends EditorElement {
   private subMove: Subscription | null = null;
   private x = 0;
   private y = 0;
+  private animationFrameX = new AnimationFrame<{ x: number }>(200);
+  private animationFrameY = new AnimationFrame<{ y: number }>(200);
 
   get width(): number {
     const { ui } = this.memo;
@@ -56,10 +60,11 @@ class Memo extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    const { store } = this.context;
+    const { store, eventBus } = this.context;
     this.subscriptionList.push(
       store.observe(this.memo.ui, () => this.requestUpdate())
     );
+    eventBus.on(Bus.Memo.moveValid, this.onMoveValid);
   }
   firstUpdated() {
     const textarea = this.renderRoot.querySelector(
@@ -68,6 +73,8 @@ class Memo extends EditorElement {
     textarea.focus();
   }
   disconnectedCallback() {
+    const { eventBus } = this.context;
+    eventBus.off(Bus.Memo.moveValid, this.onMoveValid);
     this.onMoveEnd();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
@@ -165,16 +172,51 @@ class Memo extends EditorElement {
   }
 
   private onMoveEnd = (event?: MouseEvent | TouchEvent) => {
+    const { eventBus } = this.context;
     this.subMoveEnd?.unsubscribe();
     this.subMove?.unsubscribe();
     this.subMoveEnd = null;
     this.subMove = null;
+    eventBus.emit(Bus.Table.moveValid);
+    eventBus.emit(Bus.Memo.moveValid);
   };
   private onMove = ({ event, movementX, movementY }: Move) => {
+    if (event.type === "mousemove") {
+      event.preventDefault();
+    }
     const { store } = this.context;
     store.dispatch(
       moveMemo(store, event.ctrlKey, movementX, movementY, this.memo.id)
     );
+  };
+  private onMoveValid = () => {
+    const { width, height } = this.context.store.canvasState;
+    let x = 0;
+    let y = SIZE_MENUBAR_HEIGHT;
+    const minWidth = width - (this.memo.ui.width + MEMO_PADDING);
+    const minHeight =
+      height - (this.memo.ui.height + MEMO_PADDING + MEMO_HEADER);
+    if (this.memo.ui.left > minWidth) {
+      x = minWidth;
+    }
+    if (this.memo.ui.top > minHeight) {
+      y = minHeight;
+    }
+    if (this.memo.ui.left < 0 || this.memo.ui.left > minWidth) {
+      this.animationFrameX
+        .play({ x: this.memo.ui.left }, { x })
+        .update((value) => (this.memo.ui.left = value.x))
+        .start();
+    }
+    if (
+      this.memo.ui.top < SIZE_MENUBAR_HEIGHT ||
+      this.memo.ui.top > minHeight
+    ) {
+      this.animationFrameY
+        .play({ y: this.memo.ui.top }, { y })
+        .update((value) => (this.memo.ui.top = value.y))
+        .start();
+    }
   };
 
   private onMoveStart(event: MouseEvent | TouchEvent) {

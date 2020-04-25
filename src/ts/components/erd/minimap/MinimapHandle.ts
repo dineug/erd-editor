@@ -86,6 +86,9 @@ class MinimapHandle extends EditorElement {
     this.subMove = null;
   };
   private onMove = ({ event, movementX, movementY }: Move) => {
+    if (event.type === "mousemove") {
+      event.preventDefault();
+    }
     const ratio = this.ratio;
     const root = this.getRootNode() as ShadowRoot;
     const erd = root.querySelector(".vuerd-erd") as Element;

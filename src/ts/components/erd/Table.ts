@@ -1,4 +1,4 @@
-import { html, customElement, property } from "lit-element";
+import { html, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { classMap } from "lit-html/directives/class-map";
 import { repeat } from "lit-html/directives/repeat";
@@ -6,12 +6,14 @@ import { Subscription, Subject, fromEvent } from "rxjs";
 import { debounceTime, throttleTime } from "rxjs/operators";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
+import { SIZE_TABLE_PADDING, SIZE_MENUBAR_HEIGHT } from "@src/core/Layout";
 import { Table as TableModel, Column } from "@src/core/store/Table";
 import { keymapOptionToString } from "@src/core/Keymap";
-import { Move } from "@src/core/Event";
+import { Bus, Move } from "@src/core/Event";
 import { FocusType } from "@src/core/model/FocusTableModel";
 import { getData } from "@src/core/Helper";
-import { FlipAnimation } from "@src/core/Animation";
+import { relationshipSort } from "@src/core/helper/RelationshipHelper";
+import { FlipAnimation, AnimationFrame } from "@src/core/Animation";
 import {
   moveTable,
   removeTable,
@@ -27,6 +29,7 @@ import {
 } from "@src/core/command/editor";
 
 type FocusTableKey = "focusName" | "focusComment";
+const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 
 @customElement("vuerd-table")
 class Table extends EditorElement {
@@ -43,10 +46,12 @@ class Table extends EditorElement {
     ".vuerd-column",
     "vuerd-column-move"
   );
+  private animationFrameX = new AnimationFrame<{ x: number }>(200);
+  private animationFrameY = new AnimationFrame<{ y: number }>(200);
 
   connectedCallback() {
     super.connectedCallback();
-    const { store } = this.context;
+    const { store, eventBus } = this.context;
     this.subscriptionList.push(
       this.draggable$.pipe(debounceTime(50)).subscribe(this.onDragoverColumn),
       store.observe(this.table.ui, () => this.requestUpdate()),
@@ -95,11 +100,14 @@ class Table extends EditorElement {
       })
     );
     this.observeFocusTable();
+    eventBus.on(Bus.Table.moveValid, this.onMoveValid);
   }
   updated(changedProperties: any) {
     this.flipAnimation.play();
   }
   disconnectedCallback() {
+    const { eventBus } = this.context;
+    eventBus.off(Bus.Table.moveValid, this.onMoveValid);
     this.onMoveEnd();
     this.unsubscribeFocusTable();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
@@ -217,12 +225,18 @@ class Table extends EditorElement {
   }
 
   private onMoveEnd = (event?: MouseEvent | TouchEvent) => {
+    const { eventBus } = this.context;
     this.subMoveEnd?.unsubscribe();
     this.subMove?.unsubscribe();
     this.subMoveEnd = null;
     this.subMove = null;
+    eventBus.emit(Bus.Table.moveValid);
+    eventBus.emit(Bus.Memo.moveValid);
   };
   private onMove = ({ event, movementX, movementY }: Move) => {
+    if (event.type === "mousemove") {
+      event.preventDefault();
+    }
     const { store } = this.context;
     store.dispatch(
       moveTable(store, event.ctrlKey, movementX, movementY, this.table.id)
@@ -250,7 +264,42 @@ class Table extends EditorElement {
       );
     }
   };
-  private onMoveValid = () => {};
+  private onMoveValid = () => {
+    const { tables } = this.context.store.tableState;
+    const { relationships } = this.context.store.relationshipState;
+    const { width, height } = this.context.store.canvasState;
+    let x = 0;
+    let y = SIZE_MENUBAR_HEIGHT;
+    const minWidth = width - (this.table.width() + TABLE_PADDING);
+    const minHeight = height - (this.table.height() + TABLE_PADDING);
+    if (this.table.ui.left > minWidth) {
+      x = minWidth;
+    }
+    if (this.table.ui.top > minHeight) {
+      y = minHeight;
+    }
+    if (this.table.ui.left < 0 || this.table.ui.left > minWidth) {
+      this.animationFrameX
+        .play({ x: this.table.ui.left }, { x })
+        .update((value) => {
+          this.table.ui.left = value.x;
+          relationshipSort(tables, relationships);
+        })
+        .start();
+    }
+    if (
+      this.table.ui.top < SIZE_MENUBAR_HEIGHT ||
+      this.table.ui.top > minHeight
+    ) {
+      this.animationFrameY
+        .play({ y: this.table.ui.top }, { y })
+        .update((value) => {
+          this.table.ui.top = value.y;
+          relationshipSort(tables, relationships);
+        })
+        .start();
+    }
+  };
 
   private onMoveStart(event: MouseEvent | TouchEvent) {
     const el = event.target as HTMLElement;

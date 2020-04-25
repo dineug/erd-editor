@@ -300,6 +300,9 @@ class ERD extends EditorElement {
     this.subMove = null;
   };
   private onMove = ({ event, movementX, movementY }: Move) => {
+    if (event.type === "mousemove") {
+      event.preventDefault();
+    }
     this.erd.scrollTop -= movementY;
     this.erd.scrollLeft -= movementX;
     const { store } = this.context;
