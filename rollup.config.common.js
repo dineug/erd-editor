@@ -18,10 +18,8 @@ const esm = [
   json(),
   url(),
   resolve(),
-  commonjs({
-    include: "node_modules/**",
-  }),
-  eslint(),
+  commonjs(),
+  // eslint(),
   typescript(),
   terser({
     include: [/^.+\.min\.js$/],

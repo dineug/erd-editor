@@ -49,7 +49,7 @@ export function createTheme(): Theme {
     scrollBarThumb: "#6D6D6D",
     scrollBarThumbActive: "#a2a2a2",
     dragSelect: "#0098ff",
-    menubar: "#191919",
+    menubar: "black",
     visualization: "#191919",
   };
 }

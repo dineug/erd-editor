@@ -12,20 +12,12 @@ import {
   Name,
   KeyColumn,
 } from "../helper/SQLHelper";
+import { orderByNameASC } from "../helper/TableHelper";
 
 export function createDDL(store: Store): string {
   const fkNames: Name[] = [];
   const stringBuffer: string[] = [""];
-  const tables = [...store.tableState.tables].sort((a, b) => {
-    const nameA = a.name.toLowerCase();
-    const nameB = b.name.toLowerCase();
-    if (nameA < nameB) {
-      return -1;
-    } else if (nameA > nameB) {
-      return 1;
-    }
-    return 0;
-  });
+  const tables = orderByNameASC(store.tableState.tables);
   const relationships = store.relationshipState.relationships;
 
   tables.forEach((table) => {

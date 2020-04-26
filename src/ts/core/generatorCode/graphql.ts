@@ -5,8 +5,9 @@ import {
   oneRelationshipTypes,
   nRelationshipTypes,
 } from "../store/Relationship";
-import { getPrimitiveType, getNameCase } from "../helper/GeneratorCodeHelper";
 import { Database, NameCase } from "../store/Canvas";
+import { getPrimitiveType, getNameCase } from "../helper/GeneratorCodeHelper";
+import { orderByNameASC } from "../helper/TableHelper";
 import { getData } from "../Helper";
 
 const typescriptType: { [key: string]: string } = {
@@ -26,16 +27,7 @@ const typescriptType: { [key: string]: string } = {
 export function createCode(store: Store): string {
   const stringBuffer: string[] = [""];
   const { database, tableCase, columnCase } = store.canvasState;
-  const tables = [...store.tableState.tables].sort((a, b) => {
-    const nameA = a.name.toLowerCase();
-    const nameB = b.name.toLowerCase();
-    if (nameA < nameB) {
-      return -1;
-    } else if (nameA > nameB) {
-      return 1;
-    }
-    return 0;
-  });
+  const tables = orderByNameASC(store.tableState.tables);
   const relationships = store.relationshipState.relationships;
 
   tables.forEach((table) => {

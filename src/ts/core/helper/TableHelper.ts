@@ -118,3 +118,16 @@ export function getDefaultWidthColumn(show: Show): number {
   }
   return width;
 }
+
+export function orderByNameASC(tables: Table[]): Table[] {
+  return [...tables].sort((a, b) => {
+    const nameA = a.name.toLowerCase();
+    const nameB = b.name.toLowerCase();
+    if (nameA < nameB) {
+      return -1;
+    } else if (nameA > nameB) {
+      return 1;
+    }
+    return 0;
+  });
+}

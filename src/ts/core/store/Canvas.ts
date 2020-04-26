@@ -38,13 +38,13 @@ export type ShowKey =
 export type CanvasType =
   | "ERD"
   | "SQL"
-  | "List"
+  | "Grid"
   | "GeneratorCode"
   | "Visualization";
 export const canvasTypeList: CanvasType[] = [
   "ERD",
   "SQL",
-  "List",
+  "Grid",
   "GeneratorCode",
   "Visualization",
 ];

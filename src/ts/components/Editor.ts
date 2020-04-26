@@ -16,6 +16,7 @@ import "./InputEdit";
 import "./Sash";
 import "./Menubar";
 import "./ERD";
+import "./Grid";
 import "./Visualization";
 import "./SQL";
 import "./GeneratorCode";
@@ -160,6 +161,8 @@ class Editor extends LitElement {
                 .height=${this.height}
               ></vuerd-erd>
             `
+          : canvasType === "Grid"
+          ? html`<vuerd-grid .height=${this.height}></vuerd-grid>`
           : canvasType === "Visualization"
           ? html`
               <vuerd-visualization .width=${this.width}></vuerd-visualization>

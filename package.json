@@ -48,6 +48,7 @@
     "highlight.js": "^10.0.0",
     "highlightjs-graphql": "^1.0.1",
     "lit-element": "^2.3.1",
-    "rxjs": "^6.5.5"
+    "rxjs": "^6.5.5",
+    "tui-grid": "^4.10.1"
   }
 }

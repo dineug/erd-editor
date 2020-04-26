@@ -12,6 +12,46 @@ import { CanvasType } from "@src/core/store/Canvas";
 import { SIZE_CANVAS_MIN, SIZE_CANVAS_MAX } from "@src/core/Layout";
 import { Bus } from "@src/core/Event";
 
+interface Menu {
+  canvasType: CanvasType;
+  prefix: string;
+  icon: string;
+  size: number;
+}
+
+const menus: Menu[] = [
+  {
+    canvasType: "ERD",
+    prefix: "fas",
+    icon: "project-diagram",
+    size: 18,
+  },
+  {
+    canvasType: "Grid",
+    prefix: "fas",
+    icon: "list",
+    size: 18,
+  },
+  {
+    canvasType: "Visualization",
+    prefix: "mdi",
+    icon: "chart-bubble",
+    size: 24,
+  },
+  {
+    canvasType: "SQL",
+    prefix: "fas",
+    icon: "code",
+    size: 18,
+  },
+  {
+    canvasType: "GeneratorCode",
+    prefix: "fas",
+    icon: "sliders-h",
+    size: 18,
+  },
+];
+
 @customElement("vuerd-menubar")
 class Menubar extends EditorElement {
   private subscriptionList: Subscription[] = [];
@@ -64,46 +104,24 @@ class Menubar extends EditorElement {
             @change=${this.onResizeCanvas}
           />
         </li>
-        <li
-          class=${classMap({
-            "vuerd-menubar-menu": true,
-            active: canvasType === "ERD",
-          })}
-          title="ERD"
-          @click=${() => this.onChangeCanvasType("ERD")}
-        >
-          <vuerd-icon icon="project-diagram" size="18"></vuerd-icon>
-        </li>
-        <li
-          class=${classMap({
-            "vuerd-menubar-menu": true,
-            active: canvasType === "Visualization",
-          })}
-          title="Visualization"
-          @click=${() => this.onChangeCanvasType("Visualization")}
-        >
-          <vuerd-icon prefix="mdi" icon="chart-bubble"></vuerd-icon>
-        </li>
-        <li
-          class=${classMap({
-            "vuerd-menubar-menu": true,
-            active: canvasType === "SQL",
-          })}
-          title="SQL"
-          @click=${() => this.onChangeCanvasType("SQL")}
-        >
-          <vuerd-icon icon="code" size="18"></vuerd-icon>
-        </li>
-        <li
-          class=${classMap({
-            "vuerd-menubar-menu": true,
-            active: canvasType === "GeneratorCode",
-          })}
-          title="GeneratorCode"
-          @click=${() => this.onChangeCanvasType("GeneratorCode")}
-        >
-          <vuerd-icon icon="sliders-h" size="18"></vuerd-icon>
-        </li>
+        ${menus.map(
+          (menu) => html`
+            <li
+              class=${classMap({
+                "vuerd-menubar-menu": true,
+                active: canvasType === menu.canvasType,
+              })}
+              title=${menu.canvasType}
+              @click=${() => this.onChangeCanvasType(menu.canvasType)}
+            >
+              <vuerd-icon
+                .prefix=${menu.prefix}
+                .icon=${menu.icon}
+                .size=${menu.size}
+              ></vuerd-icon>
+            </li>
+          `
+        )}
       </ul>
     `;
   }
