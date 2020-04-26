@@ -9,13 +9,14 @@ import {
   languageList,
   nameCaseList,
 } from "../store/Canvas";
+import { Relationship, RelationshipType } from "../store/Relationship";
+import { Memo } from "../store/Memo";
+import { Table } from "../store/Table";
 import { FocusTableModel, FocusType } from "../model/FocusTableModel";
 import { TableModel } from "../model/TableModel";
 import { MemoModel } from "../model/MemoModel";
 import { RelationshipModel } from "../model/RelationshipModel";
-import { Relationship, RelationshipType } from "../store/Relationship";
-import { Memo } from "../store/Memo";
-import { Table } from "../store/Table";
+import { relationshipSort } from "../helper/RelationshipHelper";
 import { addCustomColumn } from "./column";
 
 export interface FocusTable {
@@ -380,18 +381,19 @@ export function loadJson(value: string): CommandEffect<LoadJson> {
 }
 export function executeLoadJson(store: Store, data: LoadJson) {
   Logger.debug("executeLoadJson");
-  store.tableState.tables.splice(0, store.tableState.tables.length);
-  store.memoState.memos.splice(0, store.memoState.memos.length);
-  store.relationshipState.relationships.splice(
+  const { canvasState, tableState, memoState, relationshipState } = store;
+  tableState.tables.splice(0, tableState.tables.length);
+  memoState.memos.splice(0, memoState.memos.length);
+  relationshipState.relationships.splice(
     0,
-    store.relationshipState.relationships.length
+    relationshipState.relationships.length
   );
   const json = JSON.parse(data.value) as JsonFormat;
 
-  const canvasState = store.canvasState as any;
+  const canvasStateAny = store.canvasState as any;
   const canvasJson = json.canvas as any;
   if (typeof canvasJson === "object" && canvasJson !== null) {
-    Object.keys(canvasState).forEach((key) => {
+    Object.keys(canvasStateAny).forEach((key) => {
       if (canvasJson[key] !== null && canvasJson[key] !== undefined) {
         switch (key) {
           case "show":
@@ -401,7 +403,7 @@ export function executeLoadJson(store: Store, data: LoadJson) {
                 canvasJson.show[showKey] !== undefined &&
                 typeof canvasJson.show[showKey] === "boolean"
               ) {
-                canvasState.show[showKey] = canvasJson.show[showKey];
+                canvasStateAny.show[showKey] = canvasJson.show[showKey];
               }
             });
             break;
@@ -481,5 +483,7 @@ export function executeLoadJson(store: Store, data: LoadJson) {
         }
       );
     }
+
+    relationshipSort(tableState.tables, relationshipState.relationships);
   }
 }

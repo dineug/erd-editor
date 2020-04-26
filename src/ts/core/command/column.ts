@@ -10,7 +10,11 @@ import {
   identificationValid,
   removeColumnRelationshipValid,
 } from "../helper/RelationshipHelper";
-import { getColumn, getChangeOption } from "../helper/ColumnHelper";
+import {
+  getColumn,
+  getChangeOption,
+  getDataTypeSyncColumns,
+} from "../helper/ColumnHelper";
 import { ColumnModel } from "../model/ColumnModel";
 import {
   executeFocusTable,
@@ -269,10 +273,17 @@ export function executeChangeColumnDataType(
   Logger.debug("executeChangeColumnDataType");
   const { tables } = store.tableState;
   const { relationships } = store.relationshipState;
-  const column = getColumn(tables, data.tableId, data.columnId);
-  if (column) {
-    column.dataType = data.value;
-    column.ui.widthDataType = data.width;
+  const targetColumn = getColumn(tables, data.tableId, data.columnId);
+  if (targetColumn) {
+    const columns = getDataTypeSyncColumns(
+      [targetColumn],
+      tables,
+      relationships
+    );
+    columns.forEach((column) => {
+      column.dataType = data.value;
+      column.ui.widthDataType = data.width;
+    });
     relationshipSort(tables, relationships);
   }
 }

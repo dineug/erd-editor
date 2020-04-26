@@ -1,5 +1,6 @@
+import { getData, getIndex } from "../Helper";
 import { Table, Column } from "../store/Table";
-import { getData } from "../Helper";
+import { Relationship } from "../store/Relationship";
 
 export function getColumn(
   tables: Table[],
@@ -47,4 +48,45 @@ export function getColumns(table: Table, columnIds: string[]): Column[] {
     }
   });
   return columns;
+}
+
+export function getDataTypeSyncColumns(
+  stack: Column[],
+  tables: Table[],
+  relationships: Relationship[],
+  targetColumns: Column[] = []
+): Column[] {
+  const target = stack.pop();
+  if (target) {
+    if (getIndex(targetColumns, target.id) === null) {
+      targetColumns.push(target);
+      relationships.forEach((relationship) => {
+        const index = relationship.start.columnIds.indexOf(target.id);
+        if (index !== -1) {
+          const columnId = relationship.end.columnIds[index];
+          const table = getData(tables, relationship.end.tableId);
+          if (table) {
+            const column = getData(table.columns, columnId);
+            if (column) {
+              stack.push(column);
+            }
+          }
+        } else {
+          const index = relationship.end.columnIds.indexOf(target.id);
+          if (index !== -1) {
+            const columnId = relationship.start.columnIds[index];
+            const table = getData(tables, relationship.start.tableId);
+            if (table) {
+              const column = getData(table.columns, columnId);
+              if (column) {
+                stack.push(column);
+              }
+            }
+          }
+        }
+      });
+    }
+    getDataTypeSyncColumns(stack, tables, relationships, targetColumns);
+  }
+  return targetColumns;
 }
