@@ -2,8 +2,20 @@ import { CommandEffect } from "../Command";
 import { Store } from "../Store";
 import { Logger } from "../Logger";
 import { getData } from "../Helper";
+import { JsonFormat } from "../File";
+import {
+  canvasTypeList,
+  databaseList,
+  languageList,
+  nameCaseList,
+} from "../store/Canvas";
 import { FocusTableModel, FocusType } from "../model/FocusTableModel";
-import { RelationshipType } from "../store/Relationship";
+import { TableModel } from "../model/TableModel";
+import { MemoModel } from "../model/MemoModel";
+import { RelationshipModel } from "../model/RelationshipModel";
+import { Relationship, RelationshipType } from "../store/Relationship";
+import { Memo } from "../store/Memo";
+import { Table } from "../store/Table";
 import { addCustomColumn } from "./column";
 
 export interface FocusTable {
@@ -352,5 +364,122 @@ export function executeDrawRelationship(store: Store, data: DrawRelationship) {
   if (drawRelationship?.start) {
     drawRelationship.end.x = data.x;
     drawRelationship.end.y = data.y;
+  }
+}
+
+export interface LoadJson {
+  value: string;
+}
+export function loadJson(value: string): CommandEffect<LoadJson> {
+  return {
+    name: "editor.loadJson",
+    data: {
+      value,
+    },
+  };
+}
+export function executeLoadJson(store: Store, data: LoadJson) {
+  Logger.debug("executeLoadJson");
+  store.tableState.tables.splice(0, store.tableState.tables.length);
+  store.memoState.memos.splice(0, store.memoState.memos.length);
+  store.relationshipState.relationships.splice(
+    0,
+    store.relationshipState.relationships.length
+  );
+  const json = JSON.parse(data.value) as JsonFormat;
+
+  const canvasState = store.canvasState as any;
+  const canvasJson = json.canvas as any;
+  if (typeof canvasJson === "object" && canvasJson !== null) {
+    Object.keys(canvasState).forEach((key) => {
+      if (canvasJson[key] !== null && canvasJson[key] !== undefined) {
+        switch (key) {
+          case "show":
+            Object.keys(canvasState.show).forEach((showKey) => {
+              if (
+                canvasJson.show[showKey] !== null &&
+                canvasJson.show[showKey] !== undefined &&
+                typeof canvasJson.show[showKey] === "boolean"
+              ) {
+                canvasState.show[showKey] = canvasJson.show[showKey];
+              }
+            });
+            break;
+          case "database":
+            if (databaseList.some((value) => value === canvasJson.database)) {
+              canvasState.database = canvasJson.database;
+            }
+            break;
+          case "canvasType":
+            if (
+              canvasTypeList.some((value) => value === canvasJson.canvasType)
+            ) {
+              canvasState.canvasType = canvasJson.canvasType;
+            }
+            break;
+          case "language":
+            if (languageList.some((value) => value === canvasJson.language)) {
+              canvasState.language = canvasJson.language;
+            }
+            break;
+          case "tableCase":
+            if (nameCaseList.some((value) => value === canvasJson.tableCase)) {
+              canvasState.tableCase = canvasJson.tableCase;
+            }
+            break;
+          case "columnCase":
+            if (nameCaseList.some((value) => value === canvasJson.columnCase)) {
+              canvasState.columnCase = canvasJson.columnCase;
+            }
+            break;
+          case "width":
+          case "height":
+          case "scrollTop":
+          case "scrollLeft":
+            if (typeof canvasJson[key] === "number") {
+              canvasState[key] = canvasJson[key];
+            }
+            break;
+          case "databaseName":
+            if (typeof canvasJson[key] === "string") {
+              canvasState[key] = canvasJson[key];
+            }
+            break;
+        }
+      }
+    });
+  }
+
+  const tableJson = json.table as any;
+  if (typeof tableJson === "object" && tableJson !== null) {
+    if (Array.isArray(tableJson.tables)) {
+      tableJson.tables.forEach((loadTable: Table) => {
+        store.tableState.tables.push(
+          new TableModel({ loadTable }, store.canvasState.show)
+        );
+      });
+    }
+  }
+
+  const memoJson = json.memo as any;
+  if (typeof memoJson === "object" && memoJson !== null) {
+    if (Array.isArray(memoJson.memos)) {
+      memoJson.memos.forEach((loadMemo: Memo) => {
+        store.memoState.memos.push(new MemoModel({ loadMemo }));
+      });
+    }
+  }
+
+  const relationshipJson = json.relationship as any;
+  if (typeof relationshipJson === "object" && relationshipJson !== null) {
+    if (Array.isArray(relationshipJson.relationships)) {
+      relationshipJson.relationships.forEach(
+        (loadRelationship: Relationship) => {
+          store.relationshipState.relationships.push(
+            new RelationshipModel({ loadRelationship })
+          );
+        }
+      );
+    }
   }
 }

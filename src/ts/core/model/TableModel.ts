@@ -18,6 +18,7 @@ import {
 
 interface TableData {
   addTable?: AddTable;
+  loadTable?: Table;
 }
 
 export class TableModel implements Table {
@@ -37,11 +38,32 @@ export class TableModel implements Table {
   private _show: Show;
 
   constructor(data: TableData, show: Show) {
-    const { addTable } = data;
+    const { addTable, loadTable } = data;
     this._show = show;
     if (addTable) {
       const { id, ui } = addTable;
       this.id = id;
+      this.ui = Object.assign(this.ui, ui);
+    } else if (
+      loadTable &&
+      typeof loadTable.id === "string" &&
+      typeof loadTable.name === "string" &&
+      typeof loadTable.comment === "string" &&
+      Array.isArray(loadTable.columns) &&
+      typeof loadTable.ui === "object" &&
+      loadTable.ui !== null &&
+      typeof loadTable.ui.active === "boolean" &&
+      typeof loadTable.ui.left === "number" &&
+      typeof loadTable.ui.top === "number" &&
+      typeof loadTable.ui.zIndex === "number" &&
+      typeof loadTable.ui.widthName === "number" &&
+      typeof loadTable.ui.widthComment === "number"
+    ) {
+      const { id, name, comment, columns, ui } = loadTable;
+      this.id = id;
+      this.name = name;
+      this.comment = comment;
+      this.columns = columns;
       this.ui = Object.assign(this.ui, ui);
     } else {
       throw new Error("not found table");

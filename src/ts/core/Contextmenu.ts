@@ -1,7 +1,7 @@
 import { ShowKey, Database, Language, NameCase } from "./store/Canvas";
 import { Store } from "./Store";
 import { Keymap, keymapOptionToString, RelationshipKeymapName } from "./Keymap";
-import { exportPNG, exportJSON } from "./File";
+import { exportPNG, exportJSON, importJSON, jsonFormat } from "./File";
 import { getBase64Icon } from "./Icon";
 import { addTable } from "./command/table";
 import { addMemo } from "./command/memo";
@@ -36,7 +36,7 @@ export interface Menu {
 }
 
 export function createContextmenuERD(store: Store, keymap: Keymap): Menu[] {
-  const { canvasState, tableState, memoState, relationshipState } = store;
+  const { canvasState } = store;
   return [
     {
       icon: "table",
@@ -86,6 +86,18 @@ export function createContextmenuERD(store: Store, keymap: Keymap): Menu[] {
       children: createDatabaseMenus(store),
     },
     {
+      icon: "file-import",
+      name: "Import",
+      children: [
+        {
+          name: "json",
+          execute() {
+            importJSON(store);
+          },
+        },
+      ],
+    },
+    {
       icon: "file-export",
       name: "Export",
       children: [
@@ -94,12 +106,7 @@ export function createContextmenuERD(store: Store, keymap: Keymap): Menu[] {
           execute() {
             exportJSON(
               JSON.stringify(
-                {
-                  canvas: canvasState,
-                  table: tableState,
-                  memo: memoState,
-                  relationship: relationshipState,
-                },
+                jsonFormat(store),
                 (key, value) => {
                   if (key === "_show") {
                     return undefined;

@@ -2,6 +2,12 @@ import { animationFrameScheduler, of, timer, Subscription } from "rxjs";
 import { repeat, map, takeUntil } from "rxjs/operators";
 
 /**
+ * LERP
+ * https://codepen.io/rachsmith/post/animation-tip-lerp
+ * x += (target.x - x) * 0.2
+ */
+
+/**
  * FLIP stands for First, Last, Invert, Play.
  * https://aerotwist.com/blog/flip-your-animations/
  */

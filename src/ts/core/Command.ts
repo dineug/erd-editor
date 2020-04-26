@@ -96,6 +96,7 @@ import {
   DrawStartRelationship,
   DrawStartAddRelationship,
   DrawRelationship,
+  LoadJson,
   executeFocusTable,
   executeFocusEndTable,
   executeFocusMoveTable,
@@ -111,6 +112,7 @@ import {
   executeDrawStartAddRelationship,
   executeDrawEndRelationship,
   executeDrawRelationship,
+  executeLoadJson,
 } from "./command/editor";
 
 export interface CommandEffect<T> {
@@ -178,7 +180,8 @@ type CommandName =
   | "editor.drawStartRelationship"
   | "editor.drawStartAddRelationship"
   | "editor.drawEndRelationship"
-  | "editor.drawRelationship";
+  | "editor.drawRelationship"
+  | "editor.loadJson";
 
 export type Command =
   | CommandEffect<null>
@@ -222,7 +225,8 @@ export type Command =
   | CommandEffect<DraggableColumn>
   | CommandEffect<DrawStartRelationship>
   | CommandEffect<DrawStartAddRelationship>
-  | CommandEffect<DrawRelationship>;
+  | CommandEffect<DrawRelationship>
+  | CommandEffect<LoadJson>;
 
 export function commandExecute(store: Store, commands: Command[]) {
   commands.forEach((command) => {
@@ -424,6 +428,9 @@ export function commandExecute(store: Store, commands: Command[]) {
         break;
       case "editor.drawRelationship":
         executeDrawRelationship(store, command.data as DrawRelationship);
+        break;
+      case "editor.loadJson":
+        executeLoadJson(store, command.data as LoadJson);
         break;
     }
   });

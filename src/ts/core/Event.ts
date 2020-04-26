@@ -1,5 +1,11 @@
-import { fromEvent, Observable, merge } from "rxjs";
-import { map } from "rxjs/operators";
+import {
+  fromEvent,
+  Observable,
+  merge,
+  of,
+  animationFrameScheduler,
+} from "rxjs";
+import { repeat, map } from "rxjs/operators";
 
 export interface Move {
   movementX: number;
@@ -9,6 +15,7 @@ export interface Move {
   event: MouseEvent | TouchEvent;
 }
 export interface WindowEventObservable {
+  requestAnimationFrame$: Observable<null>;
   keydown$: Observable<KeyboardEvent>;
   mousedown$: Observable<MouseEvent>;
   mouseup$: Observable<MouseEvent>;
@@ -34,6 +41,7 @@ export function createWindowEventObservable(): WindowEventObservable {
     touchY = event.touches[0].clientY;
   });
   return {
+    requestAnimationFrame$: of(null, animationFrameScheduler).pipe(repeat()),
     keydown$: fromEvent<KeyboardEvent>(window, "keydown"),
     mousedown$: fromEvent<MouseEvent>(window, "mousedown"),
     mouseup$,

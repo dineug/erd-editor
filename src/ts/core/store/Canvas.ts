@@ -41,8 +41,22 @@ export type CanvasType =
   | "List"
   | "GeneratorCode"
   | "Visualization";
+export const canvasTypeList: CanvasType[] = [
+  "ERD",
+  "SQL",
+  "List",
+  "GeneratorCode",
+  "Visualization",
+];
 
 export type Database = "MariaDB" | "MSSQL" | "MySQL" | "Oracle" | "PostgreSQL";
+export const databaseList: Database[] = [
+  "MariaDB",
+  "MSSQL",
+  "MySQL",
+  "Oracle",
+  "PostgreSQL",
+];
 
 export type Language =
   | "GraphQL"
@@ -51,8 +65,22 @@ export type Language =
   | "Kotlin"
   | "TypeScript"
   | "JPA";
+export const languageList: Language[] = [
+  "GraphQL",
+  "C#",
+  "Java",
+  "Kotlin",
+  "TypeScript",
+  "JPA",
+];
 
 export type NameCase = "none" | "camelCase" | "pascalCase" | "snakeCase";
+export const nameCaseList: NameCase[] = [
+  "none",
+  "camelCase",
+  "pascalCase",
+  "snakeCase",
+];
 
 export function createCanvasState(): CanvasState {
   return {
