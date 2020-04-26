@@ -73,8 +73,8 @@ class Minimap extends EditorElement {
         switch (name) {
           case "width":
           case "height":
-          case "scrollLeft":
           case "scrollTop":
+          case "scrollLeft":
             this.requestUpdate();
             break;
         }

@@ -17,6 +17,8 @@ import "./Sash";
 import "./Menubar";
 import "./ERD";
 import "./Visualization";
+import "./SQL";
+import "./GeneratorCode";
 
 @customElement("vuerd-editor")
 class Editor extends LitElement {
@@ -108,7 +110,6 @@ class Editor extends LitElement {
       minimapHandle,
       scrollBarThumb,
       scrollBarThumbActive,
-      code,
       dragSelect,
       menubar,
       visualization,
@@ -139,7 +140,6 @@ class Editor extends LitElement {
           --vuerd-color-minimap-handle: ${minimapHandle};
           --vuerd-color-scrollbar-thumb: ${scrollBarThumb};
           --vuerd-color-scrollbar-thumb-active: ${scrollBarThumbActive};
-          --vuerd-color-code: ${code};
           --vuerd-color-drag-select: ${dragSelect};
           --vuerd-color-menubar: ${menubar};
           --vuerd-color-visualization: ${visualization};
@@ -164,6 +164,10 @@ class Editor extends LitElement {
           ? html`
               <vuerd-visualization .width=${this.width}></vuerd-visualization>
             `
+          : canvasType === "SQL"
+          ? html`<vuerd-sql></vuerd-sql>`
+          : canvasType === "GeneratorCode"
+          ? html`<vuerd-generator-code></vuerd-generator-code>`
           : ""}
         <span class="vuerd-text-width"></span>
       </div>

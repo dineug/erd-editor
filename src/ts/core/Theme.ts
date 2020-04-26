@@ -20,7 +20,6 @@ export interface Theme {
   minimapHandle: string;
   scrollBarThumb: string;
   scrollBarThumbActive: string;
-  code: string;
   dragSelect: string;
   menubar: string;
   visualization: string;
@@ -49,7 +48,6 @@ export function createTheme(): Theme {
     minimapHandle: "#ffc107",
     scrollBarThumb: "#6D6D6D",
     scrollBarThumbActive: "#a2a2a2",
-    code: "#23241f",
     dragSelect: "#0098ff",
     menubar: "#191919",
     visualization: "#191919",

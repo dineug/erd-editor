@@ -18,7 +18,6 @@ import {
   faEye,
   faSlidersH,
   faDatabase,
-  faColumns,
   faFileImport,
   faFileCode,
 } from "@fortawesome/free-solid-svg-icons";
@@ -51,7 +50,6 @@ const icons = [
   faEye,
   faSlidersH,
   faDatabase,
-  faColumns,
   faFileImport,
   faFileCode,
   {

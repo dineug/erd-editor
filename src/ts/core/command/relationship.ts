@@ -2,7 +2,6 @@ import { CommandEffect } from "../Command";
 import { Store } from "../Store";
 import { Logger } from "../Logger";
 import { getData, uuid } from "../Helper";
-import { getColumnIds } from "../helper/ColumnHelper";
 import {
   relationshipSort,
   removeRelationshipColumnIdValid,
@@ -27,7 +26,9 @@ export function addRelationship(
   startTable: Table,
   endTableId: string
 ): CommandEffect<AddRelationship> {
-  const columnIds = getColumnIds(startTable.columns);
+  const columnIds = startTable.columns
+    .filter((column) => column.option.primaryKey)
+    .map((column) => column.id);
   return {
     name: "relationship.add",
     data: {
@@ -39,7 +40,7 @@ export function addRelationship(
       },
       end: {
         tableId: endTableId,
-        columnIds: columnIds.map((columnId) => uuid()),
+        columnIds: columnIds.map(() => uuid()),
       },
     },
   };

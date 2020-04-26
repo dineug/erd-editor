@@ -84,6 +84,26 @@ class Menubar extends EditorElement {
         >
           <vuerd-icon prefix="mdi" icon="chart-bubble"></vuerd-icon>
         </li>
+        <li
+          class=${classMap({
+            "vuerd-menubar-menu": true,
+            active: canvasType === "SQL",
+          })}
+          title="SQL"
+          @click=${() => this.onChangeCanvasType("SQL")}
+        >
+          <vuerd-icon icon="code" size="18"></vuerd-icon>
+        </li>
+        <li
+          class=${classMap({
+            "vuerd-menubar-menu": true,
+            active: canvasType === "GeneratorCode",
+          })}
+          title="GeneratorCode"
+          @click=${() => this.onChangeCanvasType("GeneratorCode")}
+        >
+          <vuerd-icon icon="sliders-h" size="18"></vuerd-icon>
+        </li>
       </ul>
     `;
   }

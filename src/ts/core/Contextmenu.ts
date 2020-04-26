@@ -6,7 +6,13 @@ import { getBase64Icon } from "./Icon";
 import { addTable } from "./command/table";
 import { addMemo } from "./command/memo";
 import { changeColumnPrimaryKey } from "./command/column";
-import { changeCanvasShow, changeDatabase } from "./command/canvas";
+import {
+  changeCanvasShow,
+  changeDatabase,
+  changeLanguage,
+  changeTableCase,
+  changeColumnCase,
+} from "./command/canvas";
 import { drawStartRelationship } from "./command/editor";
 import {
   changeRelationshipType,
@@ -185,7 +191,7 @@ const databaseKeys: Database[] = [
   "Oracle",
   "MSSQL",
 ];
-function createDatabaseMenus(store: Store): Menu[] {
+export function createDatabaseMenus(store: Store): Menu[] {
   const { canvasState } = store;
   return databaseKeys.map((databaseKey) => {
     return {
@@ -300,6 +306,106 @@ function createRelationshipSingleMenus(
       option: {
         close: false,
         relationshipType: relationshipMenu.relationshipType,
+      },
+    };
+  });
+}
+
+export function createContextmenuGeneratorCode(store: Store): Menu[] {
+  return [
+    {
+      icon: "code",
+      name: "Language",
+      children: createLanguageMenus(store),
+    },
+    {
+      name: "Table Name Case",
+      children: createTableCaseMenus(store),
+    },
+    {
+      name: "Column Name Case",
+      children: createColumnCaseMenus(store),
+    },
+  ];
+}
+
+const languageKeys: Language[] = [
+  "GraphQL",
+  "JPA",
+  "Java",
+  "Kotlin",
+  "TypeScript",
+  "C#",
+];
+function createLanguageMenus(store: Store): Menu[] {
+  const { canvasState } = store;
+  return languageKeys.map((languageKey) => {
+    return {
+      icon: canvasState.language === languageKey ? "check" : undefined,
+      name: languageKey,
+      execute() {
+        store.dispatch(changeLanguage(languageKey));
+      },
+      option: {
+        close: false,
+        language: languageKey,
+      },
+    };
+  });
+}
+
+interface NameCaseMenu {
+  name: string;
+  nameCase: NameCase;
+}
+const nameCaseMenus: NameCaseMenu[] = [
+  {
+    name: "Pascal",
+    nameCase: "pascalCase",
+  },
+  {
+    name: "Camel",
+    nameCase: "camelCase",
+  },
+  {
+    name: "Snake",
+    nameCase: "snakeCase",
+  },
+  {
+    name: "None",
+    nameCase: "none",
+  },
+];
+function createTableCaseMenus(store: Store): Menu[] {
+  const { canvasState } = store;
+  return nameCaseMenus.map((nameCaseMenu) => {
+    return {
+      icon:
+        canvasState.tableCase === nameCaseMenu.nameCase ? "check" : undefined,
+      name: nameCaseMenu.name,
+      execute() {
+        store.dispatch(changeTableCase(nameCaseMenu.nameCase));
+      },
+      option: {
+        close: false,
+        tableCase: nameCaseMenu.nameCase,
+      },
+    };
+  });
+}
+function createColumnCaseMenus(store: Store): Menu[] {
+  const { canvasState } = store;
+  return nameCaseMenus.map((nameCaseMenu) => {
+    return {
+      icon:
+        canvasState.columnCase === nameCaseMenu.nameCase ? "check" : undefined,
+      name: nameCaseMenu.name,
+      execute() {
+        store.dispatch(changeColumnCase(nameCaseMenu.nameCase));
+      },
+      option: {
+        close: false,
+        columnCase: nameCaseMenu.nameCase,
       },
     };
   });

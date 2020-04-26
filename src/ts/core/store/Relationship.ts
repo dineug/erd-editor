@@ -26,7 +26,17 @@ export type RelationshipType =
   | "OneN"
   | "One"
   | "N";
-
+export const oneRelationshipTypes: RelationshipType[] = [
+  "ZeroOne",
+  "OneOnly",
+  "One",
+];
+export const nRelationshipTypes: RelationshipType[] = [
+  "ZeroOneN",
+  "ZeroN",
+  "OneN",
+  "N",
+];
 export type Direction = "left" | "right" | "top" | "bottom";
 
 export function createRelationshipState(): RelationshipState {

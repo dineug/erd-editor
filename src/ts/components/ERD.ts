@@ -218,8 +218,10 @@ class ERD extends EditorElement {
   firstUpdated() {
     const { store } = this.context;
     this.erd = this.renderRoot.querySelector(".vuerd-erd") as Element;
-    this.erd.scrollTop = store.canvasState.scrollTop;
-    this.erd.scrollLeft = store.canvasState.scrollLeft;
+    requestAnimationFrame(() => {
+      this.erd.scrollTop = store.canvasState.scrollTop;
+      this.erd.scrollLeft = store.canvasState.scrollLeft;
+    });
     this.subscriptionList.push(
       store.observe(store.canvasState, (name) => {
         switch (name) {
@@ -266,7 +268,7 @@ class ERD extends EditorElement {
                 .relationship=${this.contextmenuRelationship}
               ></vuerd-contextmenu>
             `
-          : ``}
+          : ""}
         ${this.select
           ? html`
               <vuerd-drag-select

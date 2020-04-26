@@ -42,8 +42,11 @@
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^5.13.0",
     "@mdi/js": "^5.1.45",
+    "change-case": "^4.1.1",
     "d3": "^5.16.0",
     "dom-to-image": "^2.6.0",
+    "highlight.js": "^10.0.0",
+    "highlightjs-graphql": "^1.0.1",
     "lit-element": "^2.3.1",
     "rxjs": "^6.5.5"
   }

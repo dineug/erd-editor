@@ -29,16 +29,6 @@ export function getChangeOption(
   return value;
 }
 
-export function getColumnIds(columns: Column[]): string[] {
-  const ids: string[] = [];
-  columns.forEach((column) => {
-    if (column.option.primaryKey) {
-      ids.push(column.id);
-    }
-  });
-  return ids;
-}
-
 export function getColumns(table: Table, columnIds: string[]): Column[] {
   const columns: Column[] = [];
   columnIds.forEach((columnId) => {
@@ -61,26 +51,21 @@ export function getDataTypeSyncColumns(
     if (getIndex(targetColumns, target.id) === null) {
       targetColumns.push(target);
       relationships.forEach((relationship) => {
-        const index = relationship.start.columnIds.indexOf(target.id);
+        const { start, end } = relationship;
+        const index = start.columnIds.indexOf(target.id);
         if (index !== -1) {
-          const columnId = relationship.end.columnIds[index];
-          const table = getData(tables, relationship.end.tableId);
-          if (table) {
-            const column = getData(table.columns, columnId);
-            if (column) {
-              stack.push(column);
-            }
+          const columnId = end.columnIds[index];
+          const column = getColumn(tables, end.tableId, columnId);
+          if (column) {
+            stack.push(column);
           }
         } else {
-          const index = relationship.end.columnIds.indexOf(target.id);
+          const index = end.columnIds.indexOf(target.id);
           if (index !== -1) {
-            const columnId = relationship.start.columnIds[index];
-            const table = getData(tables, relationship.start.tableId);
-            if (table) {
-              const column = getData(table.columns, columnId);
-              if (column) {
-                stack.push(column);
-              }
+            const columnId = start.columnIds[index];
+            const column = getColumn(tables, start.tableId, columnId);
+            if (column) {
+              stack.push(column);
             }
           }
         }
