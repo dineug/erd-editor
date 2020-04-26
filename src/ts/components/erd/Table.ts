@@ -41,6 +41,7 @@ class Table extends EditorElement {
   private subMove: Subscription | null = null;
   private subFocusTable: Subscription | null = null;
   private subDraggableColumns: Subscription[] = [];
+  private subLerp: Subscription | null = null;
   private flipAnimation = new FlipAnimation(
     this.renderRoot,
     ".vuerd-column",
@@ -48,6 +49,18 @@ class Table extends EditorElement {
   );
   private animationFrameX = new AnimationFrame<{ x: number }>(200);
   private animationFrameY = new AnimationFrame<{ y: number }>(200);
+  private lerp = false;
+  private lerpTop = 0;
+  private lerpLeft = 0;
+
+  get top() {
+    const { ui } = this.table;
+    return this.lerp ? this.lerpTop : ui.top;
+  }
+  get left() {
+    const { ui } = this.table;
+    return this.lerp ? this.lerpLeft : ui.left;
+  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -128,8 +141,8 @@ class Table extends EditorElement {
           active: ui.active,
         })}
         style=${styleMap({
-          top: `${ui.top}px`,
-          left: `${ui.left}px`,
+          top: `${this.top}px`,
+          left: `${this.left}px`,
           zIndex: `${ui.zIndex}`,
           width: `${this.table.width()}px`,
           height: `${this.table.height()}px`,
@@ -228,10 +241,14 @@ class Table extends EditorElement {
     const { eventBus } = this.context;
     this.subMoveEnd?.unsubscribe();
     this.subMove?.unsubscribe();
+    this.subLerp?.unsubscribe();
     this.subMoveEnd = null;
     this.subMove = null;
+    this.subLerp = null;
+    this.lerp = false;
     eventBus.emit(Bus.Table.moveValid);
     eventBus.emit(Bus.Memo.moveValid);
+    this.requestUpdate();
   };
   private onMove = ({ event, movementX, movementY }: Move) => {
     if (event.type === "mousemove") {
@@ -304,10 +321,23 @@ class Table extends EditorElement {
   private onMoveStart(event: MouseEvent | TouchEvent) {
     const el = event.target as HTMLElement;
     if (!el.closest(".vuerd-button") && !el.closest("vuerd-input-edit")) {
-      const { moveEnd$, move$ } = this.context.windowEventObservable;
+      const {
+        moveEnd$,
+        move$,
+        requestAnimationFrame$,
+      } = this.context.windowEventObservable;
+      const { ui } = this.table;
       this.onMoveEnd();
+      this.lerpTop = ui.top;
+      this.lerpLeft = ui.left;
+      this.lerp = true;
       this.subMoveEnd = moveEnd$.subscribe(this.onMoveEnd);
       this.subMove = move$.subscribe(this.onMove);
+      this.subLerp = requestAnimationFrame$.subscribe(() => {
+        this.lerpTop += (ui.top - this.lerpTop) * 0.3;
+        this.lerpLeft += (ui.left - this.lerpLeft) * 0.3;
+        this.requestUpdate();
+      });
     }
     if (!el.closest("vuerd-input-edit")) {
       const { store } = this.context;

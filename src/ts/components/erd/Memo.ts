@@ -43,10 +43,14 @@ class Memo extends EditorElement {
   private subscriptionList: Subscription[] = [];
   private subMoveEnd: Subscription | null = null;
   private subMove: Subscription | null = null;
+  private subLerp: Subscription | null = null;
   private x = 0;
   private y = 0;
   private animationFrameX = new AnimationFrame<{ x: number }>(200);
   private animationFrameY = new AnimationFrame<{ y: number }>(200);
+  private lerp = false;
+  private lerpTop = 0;
+  private lerpLeft = 0;
 
   get width(): number {
     const { ui } = this.memo;
@@ -56,6 +60,15 @@ class Memo extends EditorElement {
   get height(): number {
     const { ui } = this.memo;
     return ui.height + MEMO_PADDING + MEMO_HEADER;
+  }
+
+  get top() {
+    const { ui } = this.memo;
+    return this.lerp ? this.lerpTop : ui.top;
+  }
+  get left() {
+    const { ui } = this.memo;
+    return this.lerp ? this.lerpLeft : ui.left;
   }
 
   connectedCallback() {
@@ -91,8 +104,8 @@ class Memo extends EditorElement {
           active: ui.active,
         })}
         style=${styleMap({
-          top: `${ui.top}px`,
-          left: `${ui.left}px`,
+          top: `${this.top}px`,
+          left: `${this.left}px`,
           zIndex: `${ui.zIndex}`,
           width: `${this.width}px`,
           height: `${this.height}px`,
@@ -175,10 +188,14 @@ class Memo extends EditorElement {
     const { eventBus } = this.context;
     this.subMoveEnd?.unsubscribe();
     this.subMove?.unsubscribe();
+    this.subLerp?.unsubscribe();
     this.subMoveEnd = null;
     this.subMove = null;
+    this.subLerp = null;
+    this.lerp = false;
     eventBus.emit(Bus.Table.moveValid);
     eventBus.emit(Bus.Memo.moveValid);
+    this.requestUpdate();
   };
   private onMove = ({ event, movementX, movementY }: Move) => {
     if (event.type === "mousemove") {
@@ -226,10 +243,23 @@ class Memo extends EditorElement {
       !el.closest(".vuerd-sash") &&
       !el.closest(".vuerd-memo-textarea")
     ) {
-      const { moveEnd$, move$ } = this.context.windowEventObservable;
+      const {
+        moveEnd$,
+        move$,
+        requestAnimationFrame$,
+      } = this.context.windowEventObservable;
+      const { ui } = this.memo;
       this.onMoveEnd();
+      this.lerpTop = ui.top;
+      this.lerpLeft = ui.left;
+      this.lerp = true;
       this.subMoveEnd = moveEnd$.subscribe(this.onMoveEnd);
       this.subMove = move$.subscribe(this.onMove);
+      this.subLerp = requestAnimationFrame$.subscribe(() => {
+        this.lerpTop += (ui.top - this.lerpTop) * 0.3;
+        this.lerpLeft += (ui.left - this.lerpLeft) * 0.3;
+        this.requestUpdate();
+      });
     }
     const { store } = this.context;
     store.dispatch(selectMemo(store, event.ctrlKey, this.memo.id));
