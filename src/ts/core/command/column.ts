@@ -1,4 +1,4 @@
-import { CommandEffect } from "../Command";
+import { Command } from "../Command";
 import { SIZE_MIN_WIDTH } from "../Layout";
 import { Logger } from "../Logger";
 import { Store } from "../Store";
@@ -29,7 +29,7 @@ export interface AddColumn {
 export function addColumn(
   store: Store,
   tableId?: string
-): CommandEffect<Array<AddColumn>> {
+): Command<"column.add"> {
   return {
     name: "column.add",
     data: tableId
@@ -97,7 +97,7 @@ export function addCustomColumn(
   ui: AddCustomColumnUI | null,
   value: AddCustomColumnValue | null,
   tableId?: string
-): CommandEffect<Array<AddCustomColumn>> {
+): Command<"column.addCustom"> {
   return {
     name: "column.addCustom",
     data: tableId
@@ -143,7 +143,7 @@ export interface RemoveColumn {
 export function removeColumn(
   tableId: string,
   columnIds: string[]
-): CommandEffect<RemoveColumn> {
+): Command<"column.remove"> {
   return {
     name: "column.remove",
     data: {
@@ -184,7 +184,7 @@ export function changeColumnName(
   tableId: string,
   columnId: string,
   value: string
-): CommandEffect<ChangeColumnValue> {
+): Command<"column.changeName"> {
   let width = helper.getTextWidth(value);
   if (width < SIZE_MIN_WIDTH) {
     width = SIZE_MIN_WIDTH;
@@ -216,7 +216,7 @@ export function changeColumnComment(
   tableId: string,
   columnId: string,
   value: string
-): CommandEffect<ChangeColumnValue> {
+): Command<"column.changeComment"> {
   let width = helper.getTextWidth(value);
   if (width < SIZE_MIN_WIDTH) {
     width = SIZE_MIN_WIDTH;
@@ -251,7 +251,7 @@ export function changeColumnDataType(
   tableId: string,
   columnId: string,
   value: string
-): CommandEffect<ChangeColumnValue> {
+): Command<"column.changeDataType"> {
   let width = helper.getTextWidth(value);
   if (width < SIZE_MIN_WIDTH) {
     width = SIZE_MIN_WIDTH;
@@ -293,7 +293,7 @@ export function changeColumnDefault(
   tableId: string,
   columnId: string,
   value: string
-): CommandEffect<ChangeColumnValue> {
+): Command<"column.changeDefault"> {
   let width = helper.getTextWidth(value);
   if (width < SIZE_MIN_WIDTH) {
     width = SIZE_MIN_WIDTH;
@@ -333,7 +333,7 @@ export function changeColumnAutoIncrement(
   store: Store,
   tableId: string,
   columnId: string
-): CommandEffect<ChangeColumnOption> {
+): Command<"column.changeAutoIncrement"> {
   const { tables } = store.tableState;
   return {
     name: "column.changeAutoIncrement",
@@ -360,7 +360,7 @@ export function changeColumnPrimaryKey(
   store: Store,
   tableId: string,
   columnId: string
-): CommandEffect<ChangeColumnOption> {
+): Command<"column.changePrimaryKey"> {
   const { tables } = store.tableState;
   return {
     name: "column.changePrimaryKey",
@@ -408,7 +408,7 @@ export function changeColumnUnique(
   store: Store,
   tableId: string,
   columnId: string
-): CommandEffect<ChangeColumnOption> {
+): Command<"column.changeUnique"> {
   const { tables } = store.tableState;
   return {
     name: "column.changeUnique",
@@ -435,7 +435,7 @@ export function changeColumnNotNull(
   store: Store,
   tableId: string,
   columnId: string
-): CommandEffect<ChangeColumnOption> {
+): Command<"column.changeNotNull"> {
   const { tables } = store.tableState;
   return {
     name: "column.changeNotNull",
@@ -469,7 +469,7 @@ export function moveColumn(
   columnIds: string[],
   targetTableId: string,
   targetColumnId: string
-): CommandEffect<MoveColumn> {
+): Command<"column.move"> {
   return {
     name: "column.move",
     data: {
@@ -564,7 +564,7 @@ export interface ActiveColumn {
 }
 export function activeColumn(
   relationship: Relationship
-): CommandEffect<Array<ActiveColumn>> {
+): Command<"column.active"> {
   const { start, end } = relationship;
   return {
     name: "column.active",
@@ -598,7 +598,7 @@ export function executeActiveColumn(store: Store, data: ActiveColumn[]) {
 
 export function activeEndColumn(
   relationship: Relationship
-): CommandEffect<Array<ActiveColumn>> {
+): Command<"column.activeEnd"> {
   const { start, end } = relationship;
   return {
     name: "column.activeEnd",

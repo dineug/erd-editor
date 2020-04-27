@@ -1,4 +1,4 @@
-import { CommandEffect } from "../Command";
+import { Command } from "../Command";
 import { Store } from "../Store";
 import { Logger } from "../Logger";
 import { getData } from "../Helper";
@@ -22,7 +22,7 @@ import { addCustomColumn } from "./column";
 export interface FocusTable {
   tableId: string;
 }
-export function focusTable(tableId: string): CommandEffect<FocusTable> {
+export function focusTable(tableId: string): Command<"editor.focusTable"> {
   return {
     name: "editor.focusTable",
     data: {
@@ -46,7 +46,7 @@ export function executeFocusTable(store: Store, data: FocusTable) {
   }
 }
 
-export function focusEndTable(): CommandEffect<null> {
+export function focusEndTable(): Command<"editor.focusEndTable"> {
   return {
     name: "editor.focusEndTable",
     data: null,
@@ -74,7 +74,7 @@ export interface FocusMoveTable {
 export function focusMoveTable(
   moveKey: MoveKey,
   shiftKey: boolean
-): CommandEffect<FocusMoveTable> {
+): Command<"editor.focusMoveTable"> {
   return {
     name: "editor.focusMoveTable",
     data: {
@@ -94,7 +94,7 @@ export interface FocusTargetTable {
 }
 export function focusTargetTable(
   focusType: FocusType
-): CommandEffect<FocusTargetTable> {
+): Command<"editor.focusTargetTable"> {
   return {
     name: "editor.focusTargetTable",
     data: {
@@ -122,7 +122,7 @@ export function focusTargetColumn(
   focusType: FocusType,
   ctrlKey: boolean,
   shiftKey: boolean
-): CommandEffect<FocusTargetColumn> {
+): Command<"editor.focusTargetColumn"> {
   return {
     name: "editor.focusTargetColumn",
     data: {
@@ -145,7 +145,7 @@ export function executeFocusTargetColumn(
   executeEditEndTable(store);
 }
 
-export function selectAllColumn(): CommandEffect<null> {
+export function selectAllColumn(): Command<"editor.selectAllColumn"> {
   return {
     name: "editor.selectAllColumn",
     data: null,
@@ -157,7 +157,7 @@ export function executeSelectAllColumn(store: Store) {
   focusTable?.selectAll();
 }
 
-export function selectEndColumn(): CommandEffect<null> {
+export function selectEndColumn(): Command<"editor.selectEndColumn"> {
   return {
     name: "editor.selectEndColumn",
     data: null,
@@ -176,7 +176,7 @@ export interface EditTable {
 export function editTable(
   id: string,
   focusType: FocusType
-): CommandEffect<EditTable> {
+): Command<"editor.editTable"> {
   return {
     name: "editor.editTable",
     data: {
@@ -191,7 +191,7 @@ export function executeEditTable(store: Store, data: EditTable) {
   editorState.editTable = data;
 }
 
-export function editEndTable(): CommandEffect<null> {
+export function editEndTable(): Command<"editor.editEndTable"> {
   return {
     name: "editor.editEndTable",
     data: null,
@@ -212,7 +212,7 @@ export function draggableColumn(
   tableId: string,
   columnId: string,
   ctrlKey: boolean
-): CommandEffect<DraggableColumn> {
+): Command<"editor.draggableColumn"> {
   const columnIds: string[] = [];
   const { focusTable } = store.editorState;
   if (ctrlKey && focusTable) {
@@ -234,7 +234,7 @@ export function executeDraggableColumn(store: Store, data: DraggableColumn) {
   editorState.draggableColumn = data;
 }
 
-export function draggableEndColumn(): CommandEffect<null> {
+export function draggableEndColumn(): Command<"editor.draggableEndColumn"> {
   return {
     name: "editor.draggableEndColumn",
     data: null,
@@ -251,7 +251,7 @@ export interface DrawStartRelationship {
 }
 export function drawStartRelationship(
   relationshipType: RelationshipType
-): CommandEffect<DrawStartRelationship> {
+): Command<"editor.drawStartRelationship"> {
   return {
     name: "editor.drawStartRelationship",
     data: {
@@ -286,7 +286,7 @@ export interface DrawStartAddRelationship {
 }
 export function drawStartAddRelationship(
   tableId: string
-): CommandEffect<DrawStartAddRelationship> {
+): Command<"editor.drawStartAddRelationship"> {
   return {
     name: "editor.drawStartAddRelationship",
     data: {
@@ -332,7 +332,7 @@ export function executeDrawStartAddRelationship(
   }
 }
 
-export function drawEndRelationship(): CommandEffect<null> {
+export function drawEndRelationship(): Command<"editor.drawEndRelationship"> {
   return {
     name: "editor.drawEndRelationship",
     data: null,
@@ -350,7 +350,7 @@ export interface DrawRelationship {
 export function drawRelationship(
   x: number,
   y: number
-): CommandEffect<DrawRelationship> {
+): Command<"editor.drawRelationship"> {
   return {
     name: "editor.drawRelationship",
     data: {
@@ -371,7 +371,7 @@ export function executeDrawRelationship(store: Store, data: DrawRelationship) {
 export interface LoadJson {
   value: string;
 }
-export function loadJson(value: string): CommandEffect<LoadJson> {
+export function loadJson(value: string): Command<"editor.loadJson"> {
   return {
     name: "editor.loadJson",
     data: {

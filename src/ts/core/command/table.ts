@@ -1,4 +1,4 @@
-import { CommandEffect } from "../Command";
+import { Command } from "../Command";
 import { SIZE_MIN_WIDTH, SIZE_TABLE_PADDING } from "../Layout";
 import { Store } from "../Store";
 import { Helper, getData, uuid } from "../Helper";
@@ -17,7 +17,7 @@ import {
   executeDrawStartAddRelationship,
   executeDrawEndRelationship,
 } from "./editor";
-import { addRelationship, executeRemoveRelationship } from "./relationship";
+import { addRelationship } from "./relationship";
 
 const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 
@@ -31,7 +31,7 @@ export interface AddTable {
   id: string;
   ui: AddTableUI;
 }
-export function addTable(store: Store): CommandEffect<AddTable> {
+export function addTable(store: Store): Command<"table.add"> {
   const { tableState, memoState } = store;
   const point = nextPoint(store, tableState.tables, memoState.memos);
   return {
@@ -68,7 +68,7 @@ export function moveTable(
   movementX: number,
   movementY: number,
   tableId: string
-): CommandEffect<MoveTable> {
+): Command<"table.move"> {
   const { tableState, memoState } = store;
   return {
     name: "table.move",
@@ -117,7 +117,7 @@ export interface RemoveTable {
 export function removeTable(
   store: Store,
   tableId?: string
-): CommandEffect<RemoveTable> {
+): Command<"table.remove"> {
   const { tableState, memoState } = store;
   return {
     name: "table.remove",
@@ -166,7 +166,7 @@ export function selectTable(
   store: Store,
   ctrlKey: boolean,
   tableId: string
-): CommandEffect<SelectTable> {
+): Command<"table.select"> {
   const { tableState, memoState } = store;
   return {
     name: "table.select",
@@ -210,7 +210,7 @@ export function executeSelectTable(store: Store, data: SelectTable) {
   }
 }
 
-export function selectEndTable(): CommandEffect<null> {
+export function selectEndTable(): Command<"table.selectEnd"> {
   return {
     name: "table.selectEnd",
     data: null,
@@ -223,7 +223,7 @@ export function executeSelectEndTable(store: Store) {
   executeFocusEndTable(store);
 }
 
-export function selectAllTable(): CommandEffect<null> {
+export function selectAllTable(): Command<"table.selectAll"> {
   return {
     name: "table.selectAll",
     data: null,
@@ -245,7 +245,7 @@ export function changeTableName(
   helper: Helper,
   tableId: string,
   value: string
-): CommandEffect<ChangeTableValue> {
+): Command<"table.changeName"> {
   let width = helper.getTextWidth(value);
   if (width < SIZE_MIN_WIDTH) {
     width = SIZE_MIN_WIDTH;
@@ -275,7 +275,7 @@ export function changeTableComment(
   helper: Helper,
   tableId: string,
   value: string
-): CommandEffect<ChangeTableValue> {
+): Command<"table.changeComment"> {
   let width = helper.getTextWidth(value);
   if (width < SIZE_MIN_WIDTH) {
     width = SIZE_MIN_WIDTH;
@@ -311,7 +311,7 @@ export interface DragSelectTable {
 export function dragSelectTable(
   min: Point,
   max: Point
-): CommandEffect<DragSelectTable> {
+): Command<"table.dragSelect"> {
   return {
     name: "table.dragSelect",
     data: {

@@ -1,4 +1,4 @@
-import { CommandEffect } from "../Command";
+import { Command } from "../Command";
 import {
   SIZE_MEMO_WIDTH,
   SIZE_MEMO_HEIGHT,
@@ -19,7 +19,7 @@ export interface AddMemo {
   id: string;
   ui: MemoUI;
 }
-export function addMemo(store: Store): CommandEffect<AddMemo> {
+export function addMemo(store: Store): Command<"memo.add"> {
   const { tableState, memoState } = store;
   const point = nextPoint(store, tableState.tables, memoState.memos);
   return {
@@ -57,7 +57,7 @@ export function moveMemo(
   movementX: number,
   movementY: number,
   memoId: string
-): CommandEffect<MoveMemo> {
+): Command<"memo.move"> {
   const { tableState, memoState } = store;
   return {
     name: "memo.move",
@@ -108,7 +108,7 @@ export interface RemoveMemo {
 export function removeMemo(
   store: Store,
   memoId?: string
-): CommandEffect<RemoveMemo> {
+): Command<"memo.remove"> {
   const { tableState, memoState } = store;
   return {
     name: "memo.remove",
@@ -155,7 +155,7 @@ export function selectMemo(
   store: Store,
   ctrlKey: boolean,
   memoId: string
-): CommandEffect<SelectMemo> {
+): Command<"memo.select"> {
   const { tableState, memoState } = store;
   return {
     name: "memo.select",
@@ -183,7 +183,7 @@ export function executeSelectMemo(store: Store, data: SelectMemo) {
   }
 }
 
-export function selectEndMemo(): CommandEffect<null> {
+export function selectEndMemo(): Command<"memo.selectEnd"> {
   return {
     name: "memo.selectEnd",
     data: null,
@@ -195,7 +195,7 @@ export function executeSelectEndMemo(store: Store) {
   memos.forEach((memo) => (memo.ui.active = false));
 }
 
-export function selectAllMemo(): CommandEffect<null> {
+export function selectAllMemo(): Command<"memo.selectAll"> {
   return {
     name: "memo.selectAll",
     data: null,
@@ -214,7 +214,7 @@ export interface ChangeMemoValue {
 export function changeMemoValue(
   memoId: string,
   value: string
-): CommandEffect<ChangeMemoValue> {
+): Command<"memo.changeValue"> {
   return {
     name: "memo.changeValue",
     data: {
@@ -245,7 +245,7 @@ export function resizeMemo(
   left: number,
   width: number,
   height: number
-): CommandEffect<ResizeMemo> {
+): Command<"memo.resize"> {
   return {
     name: "memo.resize",
     data: {
@@ -276,7 +276,7 @@ export interface DragSelectMemo {
 export function dragSelectMemo(
   min: Point,
   max: Point
-): CommandEffect<DragSelectMemo> {
+): Command<"memo.dragSelect"> {
   return {
     name: "memo.dragSelect",
     data: {

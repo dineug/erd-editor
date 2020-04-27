@@ -1,4 +1,4 @@
-import { CommandEffect } from "../Command";
+import { Command } from "../Command";
 import { Store } from "../Store";
 import { Logger } from "../Logger";
 import {
@@ -16,7 +16,7 @@ export interface MoveCanvas {
 export function moveCanvas(
   scrollTop: number,
   scrollLeft: number
-): CommandEffect<MoveCanvas> {
+): Command<"canvas.move"> {
   return {
     name: "canvas.move",
     data: {
@@ -39,7 +39,7 @@ export interface ResizeCanvas {
 export function resizeCanvas(
   width: number,
   height: number
-): CommandEffect<ResizeCanvas> {
+): Command<"canvas.resize"> {
   return {
     name: "canvas.resize",
     data: {
@@ -62,7 +62,7 @@ export interface ChangeCanvasShow {
 export function changeCanvasShow(
   store: Store,
   showKey: ShowKey
-): CommandEffect<ChangeCanvasShow> {
+): Command<"canvas.changeShow"> {
   const { show } = store.canvasState;
   return {
     name: "canvas.changeShow",
@@ -83,7 +83,7 @@ export interface ChangeDatabase {
 }
 export function changeDatabase(
   database: Database
-): CommandEffect<ChangeDatabase> {
+): Command<"canvas.changeDatabase"> {
   return {
     name: "canvas.changeDatabase",
     data: {
@@ -101,7 +101,7 @@ export interface ChangeDatabaseName {
 }
 export function changeDatabaseName(
   value: string
-): CommandEffect<ChangeDatabaseName> {
+): Command<"canvas.changeDatabaseName"> {
   return {
     name: "canvas.changeDatabaseName",
     data: {
@@ -122,7 +122,7 @@ export interface ChangeCanvasType {
 }
 export function changeCanvasType(
   canvasType: CanvasType
-): CommandEffect<ChangeCanvasType> {
+): Command<"canvas.changeCanvasType"> {
   return {
     name: "canvas.changeCanvasType",
     data: {
@@ -140,7 +140,7 @@ export interface ChangeLanguage {
 }
 export function changeLanguage(
   language: Language
-): CommandEffect<ChangeLanguage> {
+): Command<"canvas.changeLanguage"> {
   return {
     name: "canvas.changeLanguage",
     data: {
@@ -159,7 +159,7 @@ export interface ChangeNameCase {
 
 export function changeTableCase(
   nameCase: NameCase
-): CommandEffect<ChangeNameCase> {
+): Command<"canvas.changeTableCase"> {
   return {
     name: "canvas.changeTableCase",
     data: {
@@ -174,7 +174,7 @@ export function executeChangeTableCase(store: Store, data: ChangeNameCase) {
 
 export function changeColumnCase(
   nameCase: NameCase
-): CommandEffect<ChangeNameCase> {
+): Command<"canvas.changeColumnCase"> {
   return {
     name: "canvas.changeColumnCase",
     data: {

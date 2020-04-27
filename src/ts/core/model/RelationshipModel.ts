@@ -57,8 +57,15 @@ export class RelationshipModel implements Relationship {
       typeof loadRelationship.end.direction === "string" &&
       Array.isArray(loadRelationship.end.columnIds)
     ) {
-      const { id, relationshipType, start, end } = loadRelationship;
+      const {
+        id,
+        identification,
+        relationshipType,
+        start,
+        end,
+      } = loadRelationship;
       this.id = id;
+      this.identification = identification;
       this.relationshipType = relationshipType;
       this.start = Object.assign(this.start, start);
       this.end = Object.assign(this.end, end);

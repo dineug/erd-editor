@@ -1,4 +1,4 @@
-import { CommandEffect } from "../Command";
+import { Command } from "../Command";
 import { Store } from "../Store";
 import { Logger } from "../Logger";
 import { getData, uuid } from "../Helper";
@@ -25,7 +25,7 @@ export function addRelationship(
   relationshipType: RelationshipType,
   startTable: Table,
   endTableId: string
-): CommandEffect<AddRelationship> {
+): Command<"relationship.add"> {
   const columnIds = startTable.columns
     .filter((column) => column.option.primaryKey)
     .map((column) => column.id);
@@ -93,7 +93,7 @@ export interface RemoveRelationship {
 }
 export function removeRelationship(
   relationshipIds: string[]
-): CommandEffect<RemoveRelationship> {
+): Command<"relationship.remove"> {
   return {
     name: "relationship.remove",
     data: {
@@ -134,7 +134,7 @@ export interface ChangeRelationshipType {
 export function changeRelationshipType(
   relationshipId: string,
   relationshipType: RelationshipType
-): CommandEffect<ChangeRelationshipType> {
+): Command<"relationship.changeRelationshipType"> {
   return {
     name: "relationship.changeRelationshipType",
     data: {
@@ -162,7 +162,7 @@ export interface ChangeIdentification {
 export function ChangeIdentification(
   relationshipId: string,
   identification: boolean
-): CommandEffect<ChangeIdentification> {
+): Command<"relationship.changeIdentification"> {
   return {
     name: "relationship.changeIdentification",
     data: {
