@@ -8,7 +8,9 @@ import { SIZE_MENUBAR_HEIGHT } from "@src/core/Layout";
 import { createGridData } from "@src/core/Grid";
 import { GridTextEditor } from "./grid/GridTextEditor";
 import { GridColumnOptionEditor } from "./grid/GridColumnOptionEditor";
+import { GridColumnDataTypeEditor } from "./grid/GridColumnDataTypeEditor";
 import "./grid/ColumnOptionEditor";
+import "./grid/ColumnDataTypeEditor";
 
 const GRID_HEADER_HEIGHT = 40;
 const HEADER_HEIGHT = GRID_HEADER_HEIGHT + SIZE_MENUBAR_HEIGHT;
@@ -48,7 +50,7 @@ class Grid extends EditorElement {
       header: "DataType",
       name: "dataType",
       minWidth: 200,
-      editor: { type: GridTextEditor },
+      editor: { type: GridColumnDataTypeEditor },
     },
     {
       header: "Default",

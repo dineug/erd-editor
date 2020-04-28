@@ -1,18 +1,17 @@
 import { CellEditor, CellEditorProps } from "tui-grid/types/editor";
-import { ColumnOptionEditor } from "./ColumnOptionEditor";
+import { ColumnDataTypeEditor } from "./ColumnDataTypeEditor";
 
-export class GridColumnOptionEditor implements CellEditor {
+export class GridColumnDataTypeEditor implements CellEditor {
   props: CellEditorProps;
-  el: ColumnOptionEditor;
+  el: ColumnDataTypeEditor;
 
   constructor(props: CellEditorProps) {
     this.props = props;
     this.el = document.createElement(
-      "vuerd-grid-column-option-editor"
-    ) as ColumnOptionEditor;
+      "vuerd-grid-column-data-type-editor"
+    ) as ColumnDataTypeEditor;
     this.el.value = String(props.value);
     this.el.addEventListener("blur", this.onBlur);
-    this.el.addEventListener("keydown", this.onKeydown);
   }
 
   getElement() {
@@ -23,13 +22,9 @@ export class GridColumnOptionEditor implements CellEditor {
   }
   beforeDestroy() {
     this.el.removeEventListener("blur", this.onBlur);
-    this.el.removeEventListener("keydown", this.onKeydown);
   }
 
   private onBlur = () => {
     this.props.grid.finishEditing(this.props.rowKey, this.el.value);
-  };
-  private onKeydown = (event: KeyboardEvent) => {
-    this.props.portalEditingKeydown(event);
   };
 }

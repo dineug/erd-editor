@@ -1,4 +1,4 @@
-import { LitElement, html, customElement } from "lit-element";
+import { html, customElement } from "lit-element";
 import { classMap } from "lit-html/directives/class-map";
 import { Subscription, fromEvent } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
@@ -12,7 +12,7 @@ interface Option {
   active: boolean;
 }
 
-@customElement("vuerd-column-option-editor")
+@customElement("vuerd-grid-column-option-editor")
 export class ColumnOptionEditor extends EditorElement {
   private subscriptionList: Subscription[] = [];
   private options: Option[] = [
@@ -92,7 +92,7 @@ export class ColumnOptionEditor extends EditorElement {
 
   render() {
     return html`
-      <ul class="vuerd-column-option-editor" @keydown=${this.onKeydown}>
+      <ul class="vuerd-grid-column-option-editor" @keydown=${this.onKeydown}>
         ${this.options.map(
           (option, index) => html`
             <li
