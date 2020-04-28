@@ -1,7 +1,7 @@
 import { LitElement } from "lit-element";
 import { Subscription } from "rxjs";
 import { EditorContext } from "../core/EditorContext";
-import { Command } from "../core/Command";
+import { Command, CommandType } from "../core/Command";
 
 export declare class Editor extends LitElement {
   context: EditorContext;
@@ -9,6 +9,7 @@ export declare class Editor extends LitElement {
   height: number;
   focus(): void;
   blur(): void;
-  subscribe(effect: (commands: Command[]) => void): Subscription;
-  next(commands: Command[]): void;
+  subscribe(effect: (commands: Command<CommandType>[]) => void): Subscription;
+  next(commands: Command<CommandType>[]): void;
 }
+export { Command, CommandType };

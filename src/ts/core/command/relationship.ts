@@ -30,7 +30,7 @@ export function addRelationship(
     .filter((column) => column.option.primaryKey)
     .map((column) => column.id);
   return {
-    name: "relationship.add",
+    type: "relationship.add",
     data: {
       id: uuid(),
       relationshipType,
@@ -95,7 +95,7 @@ export function removeRelationship(
   relationshipIds: string[]
 ): Command<"relationship.remove"> {
   return {
-    name: "relationship.remove",
+    type: "relationship.remove",
     data: {
       relationshipIds,
     },
@@ -136,7 +136,7 @@ export function changeRelationshipType(
   relationshipType: RelationshipType
 ): Command<"relationship.changeRelationshipType"> {
   return {
-    name: "relationship.changeRelationshipType",
+    type: "relationship.changeRelationshipType",
     data: {
       relationshipId,
       relationshipType,
@@ -164,7 +164,7 @@ export function ChangeIdentification(
   identification: boolean
 ): Command<"relationship.changeIdentification"> {
   return {
-    name: "relationship.changeIdentification",
+    type: "relationship.changeIdentification",
     data: {
       relationshipId,
       identification,

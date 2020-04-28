@@ -6,6 +6,9 @@ import { defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
 import { SIZE_MENUBAR_HEIGHT } from "@src/core/Layout";
 import { createGridData } from "@src/core/Grid";
+import { GridTextEditor } from "./grid/GridTextEditor";
+import { GridColumnOptionEditor } from "./grid/GridColumnOptionEditor";
+import "./grid/ColumnOptionEditor";
 
 const GRID_HEADER_HEIGHT = 40;
 const HEADER_HEIGHT = GRID_HEADER_HEIGHT + SIZE_MENUBAR_HEIGHT;
@@ -16,17 +19,79 @@ class Grid extends EditorElement {
   height = defaultHeight;
 
   private grid!: tuiGrid;
+  private subscriptionList: Subscription[] = [];
+  private gridColumns: any = [
+    {
+      header: "Table Name",
+      name: "tableName",
+      editor: { type: GridTextEditor },
+    },
+    {
+      header: "Table Comment",
+      name: "tableComment",
+      editor: { type: GridTextEditor },
+    },
+    {
+      header: "Option",
+      name: "option",
+      minWidth: 100,
+      editor: {
+        type: GridColumnOptionEditor,
+      },
+    },
+    {
+      header: "Name",
+      name: "name",
+      editor: { type: GridTextEditor },
+    },
+    {
+      header: "DataType",
+      name: "dataType",
+      minWidth: 200,
+      editor: { type: GridTextEditor },
+    },
+    {
+      header: "Default",
+      name: "default",
+      editor: { type: GridTextEditor },
+    },
+    {
+      header: "Comment",
+      name: "comment",
+      editor: { type: GridTextEditor },
+    },
+  ];
 
   get gridHeight() {
     return this.height - HEADER_HEIGHT;
   }
 
+  connectedCallback() {
+    super.connectedCallback();
+    const { store } = this.context;
+    const { keydown$ } = this.context.windowEventObservable;
+    this.subscriptionList.push(
+      keydown$.subscribe((event) => {
+        if (event.key === "Delete" || event.key === "Backspace") {
+          Logger.debug(this.grid.getModifiedRows());
+        }
+      })
+    );
+  }
   firstUpdated() {
     const { store } = this.context;
     const rows = createGridData(store) as any;
     const container = this.renderRoot.querySelector(
       ".vuerd-grid"
     ) as HTMLElement;
+    const gridDefaultColumn: any = {
+      sortingType: "asc",
+      sortable: true,
+      onAfterChange: this.onAfterChange,
+    };
+    this.gridColumns.forEach((gridColumn: any) => {
+      gridColumn = Object.assign(gridColumn, gridDefaultColumn);
+    });
     this.grid = new tuiGrid({
       el: container,
       usageStatistics: false,
@@ -36,65 +101,7 @@ class Grid extends EditorElement {
         frozenBorderWidth: 0,
         minWidth: 300,
       },
-      columns: [
-        {
-          header: "Table Name",
-          name: "tableName",
-          editor: "text",
-        },
-        {
-          header: "Table Comment",
-          name: "tableComment",
-          editor: "text",
-        },
-        {
-          header: "Option",
-          name: "option",
-          onBeforeChange(ev) {
-            Logger.debug("Before change");
-            Logger.debug(ev);
-          },
-          onAfterChange(ev) {
-            Logger.debug("After change");
-            Logger.debug(ev);
-          },
-          formatter: "listItemText",
-          editor: {
-            type: "checkbox",
-            options: {
-              listItems: [
-                { text: "PK", value: "PK" },
-                { text: "NN", value: "NN" },
-                { text: "UQ", value: "UQ" },
-                { text: "AI", value: "AI" },
-              ],
-            },
-          },
-          copyOptions: {
-            useListItemText: true,
-          },
-        },
-        {
-          header: "Name",
-          name: "name",
-          editor: "text",
-        },
-        {
-          header: "DataType",
-          name: "dataType",
-          editor: "text",
-        },
-        {
-          header: "Default",
-          name: "default",
-          editor: "text",
-        },
-        {
-          header: "Comment",
-          name: "comment",
-          editor: "text",
-        },
-      ],
+      columns: this.gridColumns,
       data: rows,
     });
   }
@@ -109,10 +116,17 @@ class Grid extends EditorElement {
   }
   disconnectedCallback() {
     this.grid.destroy();
+    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
   render() {
     return html`<div class="vuerd-grid"></div>`;
   }
+
+  private onAfterChange = (ev: any) => {
+    Logger.debug("Grid onAfterChange", ev);
+    Logger.debug(this.grid);
+    Logger.debug(this.grid.getModifiedRows());
+  };
 }

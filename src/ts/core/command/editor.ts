@@ -24,7 +24,7 @@ export interface FocusTable {
 }
 export function focusTable(tableId: string): Command<"editor.focusTable"> {
   return {
-    name: "editor.focusTable",
+    type: "editor.focusTable",
     data: {
       tableId,
     },
@@ -48,7 +48,7 @@ export function executeFocusTable(store: Store, data: FocusTable) {
 
 export function focusEndTable(): Command<"editor.focusEndTable"> {
   return {
-    name: "editor.focusEndTable",
+    type: "editor.focusEndTable",
     data: null,
   };
 }
@@ -76,7 +76,7 @@ export function focusMoveTable(
   shiftKey: boolean
 ): Command<"editor.focusMoveTable"> {
   return {
-    name: "editor.focusMoveTable",
+    type: "editor.focusMoveTable",
     data: {
       moveKey,
       shiftKey,
@@ -96,7 +96,7 @@ export function focusTargetTable(
   focusType: FocusType
 ): Command<"editor.focusTargetTable"> {
   return {
-    name: "editor.focusTargetTable",
+    type: "editor.focusTargetTable",
     data: {
       focusType,
     },
@@ -124,7 +124,7 @@ export function focusTargetColumn(
   shiftKey: boolean
 ): Command<"editor.focusTargetColumn"> {
   return {
-    name: "editor.focusTargetColumn",
+    type: "editor.focusTargetColumn",
     data: {
       columnId,
       focusType,
@@ -147,7 +147,7 @@ export function executeFocusTargetColumn(
 
 export function selectAllColumn(): Command<"editor.selectAllColumn"> {
   return {
-    name: "editor.selectAllColumn",
+    type: "editor.selectAllColumn",
     data: null,
   };
 }
@@ -159,7 +159,7 @@ export function executeSelectAllColumn(store: Store) {
 
 export function selectEndColumn(): Command<"editor.selectEndColumn"> {
   return {
-    name: "editor.selectEndColumn",
+    type: "editor.selectEndColumn",
     data: null,
   };
 }
@@ -178,7 +178,7 @@ export function editTable(
   focusType: FocusType
 ): Command<"editor.editTable"> {
   return {
-    name: "editor.editTable",
+    type: "editor.editTable",
     data: {
       id,
       focusType,
@@ -193,7 +193,7 @@ export function executeEditTable(store: Store, data: EditTable) {
 
 export function editEndTable(): Command<"editor.editEndTable"> {
   return {
-    name: "editor.editEndTable",
+    type: "editor.editEndTable",
     data: null,
   };
 }
@@ -221,7 +221,7 @@ export function draggableColumn(
     columnIds.push(columnId);
   }
   return {
-    name: "editor.draggableColumn",
+    type: "editor.draggableColumn",
     data: {
       tableId,
       columnIds,
@@ -236,7 +236,7 @@ export function executeDraggableColumn(store: Store, data: DraggableColumn) {
 
 export function draggableEndColumn(): Command<"editor.draggableEndColumn"> {
   return {
-    name: "editor.draggableEndColumn",
+    type: "editor.draggableEndColumn",
     data: null,
   };
 }
@@ -253,7 +253,7 @@ export function drawStartRelationship(
   relationshipType: RelationshipType
 ): Command<"editor.drawStartRelationship"> {
   return {
-    name: "editor.drawStartRelationship",
+    type: "editor.drawStartRelationship",
     data: {
       relationshipType,
     },
@@ -288,7 +288,7 @@ export function drawStartAddRelationship(
   tableId: string
 ): Command<"editor.drawStartAddRelationship"> {
   return {
-    name: "editor.drawStartAddRelationship",
+    type: "editor.drawStartAddRelationship",
     data: {
       tableId,
     },
@@ -334,7 +334,7 @@ export function executeDrawStartAddRelationship(
 
 export function drawEndRelationship(): Command<"editor.drawEndRelationship"> {
   return {
-    name: "editor.drawEndRelationship",
+    type: "editor.drawEndRelationship",
     data: null,
   };
 }
@@ -352,7 +352,7 @@ export function drawRelationship(
   y: number
 ): Command<"editor.drawRelationship"> {
   return {
-    name: "editor.drawRelationship",
+    type: "editor.drawRelationship",
     data: {
       x,
       y,
@@ -373,7 +373,7 @@ export interface LoadJson {
 }
 export function loadJson(value: string): Command<"editor.loadJson"> {
   return {
-    name: "editor.loadJson",
+    type: "editor.loadJson",
     data: {
       value,
     },

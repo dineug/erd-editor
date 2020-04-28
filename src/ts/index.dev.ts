@@ -1,5 +1,5 @@
 import "./index";
-import { Editor } from "./types";
+import { Editor, Command, CommandType } from "./types";
 
 document.body.style.margin = "0";
 
@@ -9,10 +9,10 @@ if (container && container2) {
   const editor = document.createElement("erd-editor") as Editor;
   // const editor2 = document.createElement("erd-editor") as Editor;
 
-  // editor.subscribe(commands => {
+  // editor.subscribe((commands: Command<CommandType>[]) => {
   //   editor2.next(commands);
   // });
-  // editor2.subscribe(commands => {
+  // editor2.subscribe((commands: Command<CommandType>[]) => {
   //   editor.next(commands);
   // });
   // editor2.blur();

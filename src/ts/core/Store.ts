@@ -7,7 +7,7 @@ import {
   createRelationshipState,
 } from "./store/Relationship";
 import { EditorState, createEditorState } from "./store/Editor";
-import { Command, CommandName, commandExecute } from "./Command";
+import { Command, CommandType, commandExecute } from "./Command";
 import { createObservable } from "./Observable";
 
 export class Store {
@@ -16,8 +16,8 @@ export class Store {
   readonly memoState: MemoState;
   readonly relationshipState: RelationshipState;
   readonly editorState: EditorState;
-  private dispatch$ = new Subject<Array<Command<CommandName>>>();
-  private next$ = new Subject<Array<Command<CommandName>>>();
+  private dispatch$ = new Subject<Array<Command<CommandType>>>();
+  private next$ = new Subject<Array<Command<CommandType>>>();
   private subscriptionList: Subscription[] = [];
   private rawToProxy = new WeakMap();
   private proxyToRaw = new WeakMap();
@@ -74,19 +74,19 @@ export class Store {
     );
   }
 
-  dispatch(...commands: Array<Command<CommandName>>) {
+  dispatch(...commands: Array<Command<CommandType>>) {
     asapScheduler.schedule(() => this.dispatch$.next(commands));
   }
 
   subscribe(
-    effect: (commands: Array<Command<CommandName>>) => void
+    effect: (commands: Array<Command<CommandType>>) => void
   ): Subscription {
     const subDispatch = this.dispatch$.subscribe(effect);
     this.subscriptionList.push(subDispatch);
     return subDispatch;
   }
 
-  next(commands: Array<Command<CommandName>>) {
+  next(commands: Array<Command<CommandType>>) {
     asapScheduler.schedule(() => this.next$.next(commands));
   }
 

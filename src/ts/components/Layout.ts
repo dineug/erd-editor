@@ -5,10 +5,10 @@ import { tuiGrid } from "./css/tui-grid";
 import { tuiGridTheme } from "./css/tui-grid-theme";
 
 export const Layout = css`
-  ${vuerd}
   ${monokaiSublime}
   ${tuiGrid}
   ${tuiGridTheme}
+  ${vuerd}
 `;
 
 const ratioWidth = 16;

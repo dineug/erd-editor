@@ -23,7 +23,7 @@ export function addMemo(store: Store): Command<"memo.add"> {
   const { tableState, memoState } = store;
   const point = nextPoint(store, tableState.tables, memoState.memos);
   return {
-    name: "memo.add",
+    type: "memo.add",
     data: {
       id: uuid(),
       ui: {
@@ -60,7 +60,7 @@ export function moveMemo(
 ): Command<"memo.move"> {
   const { tableState, memoState } = store;
   return {
-    name: "memo.move",
+    type: "memo.move",
     data: {
       movementX,
       movementY,
@@ -111,7 +111,7 @@ export function removeMemo(
 ): Command<"memo.remove"> {
   const { tableState, memoState } = store;
   return {
-    name: "memo.remove",
+    type: "memo.remove",
     data: {
       tableIds: memoId
         ? []
@@ -158,7 +158,7 @@ export function selectMemo(
 ): Command<"memo.select"> {
   const { tableState, memoState } = store;
   return {
-    name: "memo.select",
+    type: "memo.select",
     data: {
       ctrlKey,
       memoId,
@@ -185,7 +185,7 @@ export function executeSelectMemo(store: Store, data: SelectMemo) {
 
 export function selectEndMemo(): Command<"memo.selectEnd"> {
   return {
-    name: "memo.selectEnd",
+    type: "memo.selectEnd",
     data: null,
   };
 }
@@ -197,7 +197,7 @@ export function executeSelectEndMemo(store: Store) {
 
 export function selectAllMemo(): Command<"memo.selectAll"> {
   return {
-    name: "memo.selectAll",
+    type: "memo.selectAll",
     data: null,
   };
 }
@@ -216,7 +216,7 @@ export function changeMemoValue(
   value: string
 ): Command<"memo.changeValue"> {
   return {
-    name: "memo.changeValue",
+    type: "memo.changeValue",
     data: {
       memoId,
       value,
@@ -247,7 +247,7 @@ export function resizeMemo(
   height: number
 ): Command<"memo.resize"> {
   return {
-    name: "memo.resize",
+    type: "memo.resize",
     data: {
       memoId,
       top,
@@ -278,7 +278,7 @@ export function dragSelectMemo(
   max: Point
 ): Command<"memo.dragSelect"> {
   return {
-    name: "memo.dragSelect",
+    type: "memo.dragSelect",
     data: {
       min,
       max,

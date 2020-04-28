@@ -35,7 +35,7 @@ export function addTable(store: Store): Command<"table.add"> {
   const { tableState, memoState } = store;
   const point = nextPoint(store, tableState.tables, memoState.memos);
   return {
-    name: "table.add",
+    type: "table.add",
     data: {
       id: uuid(),
       ui: {
@@ -71,7 +71,7 @@ export function moveTable(
 ): Command<"table.move"> {
   const { tableState, memoState } = store;
   return {
-    name: "table.move",
+    type: "table.move",
     data: {
       movementX,
       movementY,
@@ -120,7 +120,7 @@ export function removeTable(
 ): Command<"table.remove"> {
   const { tableState, memoState } = store;
   return {
-    name: "table.remove",
+    type: "table.remove",
     data: {
       tableIds: tableId
         ? [tableId]
@@ -169,7 +169,7 @@ export function selectTable(
 ): Command<"table.select"> {
   const { tableState, memoState } = store;
   return {
-    name: "table.select",
+    type: "table.select",
     data: {
       ctrlKey,
       tableId,
@@ -212,7 +212,7 @@ export function executeSelectTable(store: Store, data: SelectTable) {
 
 export function selectEndTable(): Command<"table.selectEnd"> {
   return {
-    name: "table.selectEnd",
+    type: "table.selectEnd",
     data: null,
   };
 }
@@ -225,7 +225,7 @@ export function executeSelectEndTable(store: Store) {
 
 export function selectAllTable(): Command<"table.selectAll"> {
   return {
-    name: "table.selectAll",
+    type: "table.selectAll",
     data: null,
   };
 }
@@ -251,7 +251,7 @@ export function changeTableName(
     width = SIZE_MIN_WIDTH;
   }
   return {
-    name: "table.changeName",
+    type: "table.changeName",
     data: {
       tableId,
       value,
@@ -281,7 +281,7 @@ export function changeTableComment(
     width = SIZE_MIN_WIDTH;
   }
   return {
-    name: "table.changeComment",
+    type: "table.changeComment",
     data: {
       tableId,
       value,
@@ -313,7 +313,7 @@ export function dragSelectTable(
   max: Point
 ): Command<"table.dragSelect"> {
   return {
-    name: "table.dragSelect",
+    type: "table.dragSelect",
     data: {
       min,
       max,

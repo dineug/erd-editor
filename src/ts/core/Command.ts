@@ -115,11 +115,11 @@ import {
   executeLoadJson,
 } from "./command/editor";
 
-export interface Command<K extends keyof CommandMap> {
-  name: K;
+export interface Command<K extends CommandType> {
+  type: K;
   data: CommandMap[K];
 }
-export type CommandName = keyof CommandMap;
+export type CommandType = keyof CommandMap;
 interface CommandMap {
   "table.add": AddTable;
   "table.move": MoveTable;
@@ -186,10 +186,10 @@ interface CommandMap {
 
 export function commandExecute(
   store: Store,
-  commands: Array<Command<CommandName>>
+  commands: Array<Command<CommandType>>
 ) {
   commands.forEach((command) => {
-    switch (command.name) {
+    switch (command.type) {
       case "table.add":
         executeAddTable(store, command.data as AddTable);
         break;

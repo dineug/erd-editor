@@ -31,7 +31,7 @@ export function addColumn(
   tableId?: string
 ): Command<"column.add"> {
   return {
-    name: "column.add",
+    type: "column.add",
     data: tableId
       ? [
           {
@@ -99,7 +99,7 @@ export function addCustomColumn(
   tableId?: string
 ): Command<"column.addCustom"> {
   return {
-    name: "column.addCustom",
+    type: "column.addCustom",
     data: tableId
       ? [
           {
@@ -145,7 +145,7 @@ export function removeColumn(
   columnIds: string[]
 ): Command<"column.remove"> {
   return {
-    name: "column.remove",
+    type: "column.remove",
     data: {
       tableId,
       columnIds,
@@ -190,7 +190,7 @@ export function changeColumnName(
     width = SIZE_MIN_WIDTH;
   }
   return {
-    name: "column.changeName",
+    type: "column.changeName",
     data: {
       tableId,
       columnId,
@@ -222,7 +222,7 @@ export function changeColumnComment(
     width = SIZE_MIN_WIDTH;
   }
   return {
-    name: "column.changeComment",
+    type: "column.changeComment",
     data: {
       tableId,
       columnId,
@@ -257,7 +257,7 @@ export function changeColumnDataType(
     width = SIZE_MIN_WIDTH;
   }
   return {
-    name: "column.changeDataType",
+    type: "column.changeDataType",
     data: {
       tableId,
       columnId,
@@ -299,7 +299,7 @@ export function changeColumnDefault(
     width = SIZE_MIN_WIDTH;
   }
   return {
-    name: "column.changeDefault",
+    type: "column.changeDefault",
     data: {
       tableId,
       columnId,
@@ -336,7 +336,7 @@ export function changeColumnAutoIncrement(
 ): Command<"column.changeAutoIncrement"> {
   const { tables } = store.tableState;
   return {
-    name: "column.changeAutoIncrement",
+    type: "column.changeAutoIncrement",
     data: {
       tableId,
       columnId,
@@ -363,7 +363,7 @@ export function changeColumnPrimaryKey(
 ): Command<"column.changePrimaryKey"> {
   const { tables } = store.tableState;
   return {
-    name: "column.changePrimaryKey",
+    type: "column.changePrimaryKey",
     data: {
       tableId,
       columnId,
@@ -411,7 +411,7 @@ export function changeColumnUnique(
 ): Command<"column.changeUnique"> {
   const { tables } = store.tableState;
   return {
-    name: "column.changeUnique",
+    type: "column.changeUnique",
     data: {
       tableId,
       columnId,
@@ -438,7 +438,7 @@ export function changeColumnNotNull(
 ): Command<"column.changeNotNull"> {
   const { tables } = store.tableState;
   return {
-    name: "column.changeNotNull",
+    type: "column.changeNotNull",
     data: {
       tableId,
       columnId,
@@ -471,7 +471,7 @@ export function moveColumn(
   targetColumnId: string
 ): Command<"column.move"> {
   return {
-    name: "column.move",
+    type: "column.move",
     data: {
       tableId,
       columnIds,
@@ -567,7 +567,7 @@ export function activeColumn(
 ): Command<"column.active"> {
   const { start, end } = relationship;
   return {
-    name: "column.active",
+    type: "column.active",
     data: [
       {
         tableId: start.tableId,
@@ -601,7 +601,7 @@ export function activeEndColumn(
 ): Command<"column.activeEnd"> {
   const { start, end } = relationship;
   return {
-    name: "column.activeEnd",
+    type: "column.activeEnd",
     data: [
       {
         tableId: start.tableId,

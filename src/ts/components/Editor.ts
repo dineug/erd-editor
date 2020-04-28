@@ -6,7 +6,7 @@ import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
 import { keymapMatch } from "@src/core/Keymap";
 import { EditorContext, createEditorContext } from "@src/core/EditorContext";
-import { Command } from "@src/core/Command";
+import { Command, CommandType } from "@src/core/Command";
 import { selectEndTable } from "@src/core/command/table";
 import { selectEndMemo } from "@src/core/command/memo";
 import { drawEndRelationship } from "@src/core/command/editor";
@@ -183,11 +183,11 @@ class Editor extends LitElement {
   blur() {
     this.context.store.editorState.focus = false;
   }
-  subscribe(effect: (commands: Command[]) => void): Subscription {
+  subscribe(effect: (commands: Command<CommandType>[]) => void): Subscription {
     const { store } = this.context;
     return store.subscribe(effect);
   }
-  next(commands: Command[]) {
+  next(commands: Command<CommandType>[]) {
     const { store } = this.context;
     store.next(commands);
   }

@@ -18,7 +18,7 @@ export function moveCanvas(
   scrollLeft: number
 ): Command<"canvas.move"> {
   return {
-    name: "canvas.move",
+    type: "canvas.move",
     data: {
       scrollTop,
       scrollLeft,
@@ -41,7 +41,7 @@ export function resizeCanvas(
   height: number
 ): Command<"canvas.resize"> {
   return {
-    name: "canvas.resize",
+    type: "canvas.resize",
     data: {
       width,
       height,
@@ -65,7 +65,7 @@ export function changeCanvasShow(
 ): Command<"canvas.changeShow"> {
   const { show } = store.canvasState;
   return {
-    name: "canvas.changeShow",
+    type: "canvas.changeShow",
     data: {
       showKey,
       value: !show[showKey],
@@ -85,7 +85,7 @@ export function changeDatabase(
   database: Database
 ): Command<"canvas.changeDatabase"> {
   return {
-    name: "canvas.changeDatabase",
+    type: "canvas.changeDatabase",
     data: {
       database,
     },
@@ -103,7 +103,7 @@ export function changeDatabaseName(
   value: string
 ): Command<"canvas.changeDatabaseName"> {
   return {
-    name: "canvas.changeDatabaseName",
+    type: "canvas.changeDatabaseName",
     data: {
       value,
     },
@@ -124,7 +124,7 @@ export function changeCanvasType(
   canvasType: CanvasType
 ): Command<"canvas.changeCanvasType"> {
   return {
-    name: "canvas.changeCanvasType",
+    type: "canvas.changeCanvasType",
     data: {
       canvasType,
     },
@@ -142,7 +142,7 @@ export function changeLanguage(
   language: Language
 ): Command<"canvas.changeLanguage"> {
   return {
-    name: "canvas.changeLanguage",
+    type: "canvas.changeLanguage",
     data: {
       language,
     },
@@ -161,7 +161,7 @@ export function changeTableCase(
   nameCase: NameCase
 ): Command<"canvas.changeTableCase"> {
   return {
-    name: "canvas.changeTableCase",
+    type: "canvas.changeTableCase",
     data: {
       nameCase,
     },
@@ -176,7 +176,7 @@ export function changeColumnCase(
   nameCase: NameCase
 ): Command<"canvas.changeColumnCase"> {
   return {
-    name: "canvas.changeColumnCase",
+    type: "canvas.changeColumnCase",
     data: {
       nameCase,
     },
