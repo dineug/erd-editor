@@ -48,6 +48,13 @@ export interface ColumnOption {
   unique: boolean;
   notNull: boolean;
 }
+export type ColumnOptionKey = keyof ColumnOption;
+export const columnOptionKeys: ColumnOptionKey[] = [
+  "autoIncrement",
+  "primaryKey",
+  "unique",
+  "notNull",
+];
 
 export interface ColumnUI {
   active: boolean;

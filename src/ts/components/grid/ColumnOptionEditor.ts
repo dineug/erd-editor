@@ -102,7 +102,12 @@ export class ColumnOptionEditor extends EditorElement {
               @click=${() => this.onChecked(option.simpleOption)}
               @mouseover=${() => this.onActive(index)}
             >
-              <input type="checkbox" .checked=${option.checked} />
+              <input
+                type="checkbox"
+                ?checked=${option.checked}
+                @change=${(event: Event) =>
+                  this.onChange(event, option.simpleOption)}
+              />
               <span>${option.name}</span>
             </li>
           `
@@ -113,7 +118,7 @@ export class ColumnOptionEditor extends EditorElement {
 
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
-    if (!el.closest(".vuerd-column-option-editor")) {
+    if (!el.closest(".vuerd-grid-column-option-editor")) {
       this.dispatchEvent(new Event("blur"));
     }
   };
@@ -129,6 +134,15 @@ export class ColumnOptionEditor extends EditorElement {
     this.options.forEach((option) => {
       if (option.simpleOption === simpleOption) {
         option.checked = !option.checked;
+      }
+    });
+    this.requestUpdate();
+  }
+  private onChange(event: Event, simpleOption: SimpleOption) {
+    const el = event.target as HTMLInputElement;
+    this.options.forEach((option) => {
+      if (option.simpleOption === simpleOption) {
+        option.checked = el.checked;
       }
     });
     this.requestUpdate();

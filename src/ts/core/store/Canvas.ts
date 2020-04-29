@@ -23,17 +23,7 @@ export interface Show {
   columnNotNull: boolean;
   relationship: boolean;
 }
-
-export type ShowKey =
-  | "tableComment"
-  | "columnComment"
-  | "columnDataType"
-  | "columnDefault"
-  | "columnAutoIncrement"
-  | "columnPrimaryKey"
-  | "columnUnique"
-  | "columnNotNull"
-  | "relationship";
+export type ShowKey = keyof Show;
 
 export type CanvasType =
   | "ERD"

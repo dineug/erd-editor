@@ -89,7 +89,7 @@ export class ColumnDataTypeEditor extends EditorElement {
     return html`
       <div class="vuerd-grid-column-data-type-editor">
         <input
-          class="vuerd-input-grid"
+          class="vuerd-grid-input"
           type="text"
           spellcheck="false"
           .value=${this.value}

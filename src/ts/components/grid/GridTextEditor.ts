@@ -7,7 +7,7 @@ export class GridTextEditor implements CellEditor {
   constructor(props: CellEditorProps) {
     this.props = props;
     this.el = document.createElement("input");
-    this.el.classList.add("vuerd-input-grid");
+    this.el.classList.add("vuerd-grid-input");
     this.el.type = "text";
     this.el.spellcheck = false;
     this.el.value = String(props.value);

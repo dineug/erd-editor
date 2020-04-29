@@ -3,7 +3,7 @@ import { ColumnOption } from "./store/Table";
 import { orderByNameASC } from "./helper/TableHelper";
 
 export type SimpleOption = "PK" | "NN" | "UQ" | "AI";
-export interface GridData {
+export interface GridRow {
   tableId: string;
   columnId: string;
   tableName: string;
@@ -15,8 +15,8 @@ export interface GridData {
   comment: string;
 }
 
-export function createGridData(store: Store): GridData[] {
-  const rows: GridData[] = [];
+export function createGridData(store: Store): GridRow[] {
+  const rows: GridRow[] = [];
   const tables = orderByNameASC(store.tableState.tables);
   tables.forEach((table) => {
     table.columns.forEach((column) => {
@@ -51,4 +51,28 @@ export function columnOptionToSimpleKeyToString(option: ColumnOption): string {
     keys.push("AI");
   }
   return keys.join(",");
+}
+
+export function changeColumnOptionList(
+  oldValue: string,
+  newValue: string
+): SimpleOption[] {
+  const changeSimpleOptions: SimpleOption[] = [];
+  const oldSimpleOptions: SimpleOption[] = oldValue.split(",") as Array<
+    SimpleOption
+  >;
+  const newSimpleOptions: SimpleOption[] = newValue.split(",") as Array<
+    SimpleOption
+  >;
+  oldSimpleOptions.forEach((oldValue) => {
+    if (!newSimpleOptions.some((newValue) => newValue === oldValue)) {
+      changeSimpleOptions.push(oldValue);
+    }
+  });
+  newSimpleOptions.forEach((newValue) => {
+    if (!oldSimpleOptions.some((oldValue) => oldValue === newValue)) {
+      changeSimpleOptions.push(newValue);
+    }
+  });
+  return changeSimpleOptions;
 }

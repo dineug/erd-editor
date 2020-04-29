@@ -163,6 +163,7 @@ export const tuiGridTheme = css`
   }
   .tui-grid-layer-editing {
     border-color: var(--vuerd-theme-focus, var(--vuerd-color-focus));
+    background-color: var(--vuerd-theme-table, var(--vuerd-color-table));
     padding: 0;
     border: none;
   }
