@@ -330,6 +330,18 @@ container.appendChild(editor);
 | Relationship - One                                  | Ctrl + Alt + 6                                                  |
 | Relationship - N                                    | Ctrl + Alt + 7                                                  |
 
+## TODO
+
+- [ ] Undo, Redo Manager
+- [ ] Grid filter
+- [ ] ERD finder
+- [ ] Real-time simultaneous editing api
+- [ ] SQL index Support [#9](https://github.com/vuerd/vuerd-vscode/issues/9)
+- SQL DDL import Support [#7](https://github.com/vuerd/vuerd-vscode/issues/7)
+  - [ ] Oracle
+  - [ ] MSSQL
+  - [ ] PostgreSQL
+
 ## License
 
 [MIT](https://github.com/vuerd/vuerd/blob/master/LICENSE)
