@@ -6,7 +6,7 @@ import {
   exportJSON,
   importJSON,
   importSQL,
-  jsonFormat,
+  createJsonStringify,
 } from "./File";
 import { getBase64Icon } from "./Icon";
 import { addTable } from "./command/table";
@@ -132,19 +132,7 @@ export function createContextmenuERD(context: EditorContext): Menu[] {
         {
           name: "json",
           execute() {
-            exportJSON(
-              JSON.stringify(
-                jsonFormat(store),
-                (key, value) => {
-                  if (key === "_show") {
-                    return undefined;
-                  }
-                  return value;
-                },
-                2
-              ),
-              canvasState.databaseName
-            );
+            exportJSON(createJsonStringify(store), canvasState.databaseName);
           },
         },
         {

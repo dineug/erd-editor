@@ -1,4 +1,5 @@
 import { Subject, Subscription, asapScheduler } from "rxjs";
+import { filter, debounceTime } from "rxjs/operators";
 import { CanvasState, createCanvasState } from "./store/Canvas";
 import { TableState, createTableState } from "./store/Table";
 import { MemoState, createMemoState } from "./store/Memo";
@@ -7,8 +8,14 @@ import {
   createRelationshipState,
 } from "./store/Relationship";
 import { EditorState, createEditorState } from "./store/Editor";
-import { Command, CommandType, commandExecute } from "./Command";
+import {
+  Command,
+  CommandType,
+  commandExecute,
+  changeCommandTypes,
+} from "./Command";
 import { createObservable } from "./Observable";
+import { createJsonFormat } from "./File";
 
 export class Store {
   readonly canvasState: CanvasState;
@@ -16,7 +23,8 @@ export class Store {
   readonly memoState: MemoState;
   readonly relationshipState: RelationshipState;
   readonly editorState: EditorState;
-  private dispatch$ = new Subject<Array<Command<CommandType>>>();
+  readonly dispatch$ = new Subject<Array<Command<CommandType>>>();
+  readonly change$ = new Subject<string>();
   private subscriptionList: Subscription[] = [];
   private rawToProxy = new WeakMap();
   private proxyToRaw = new WeakMap();
@@ -68,7 +76,28 @@ export class Store {
       this.excludeKeys
     );
     this.subscriptionList.push(
-      this.dispatch$.subscribe((commands) => commandExecute(this, commands))
+      this.dispatch$.subscribe((commands) => commandExecute(this, commands)),
+      this.dispatch$
+        .pipe(
+          filter((commands) => {
+            return commands.some((command) =>
+              changeCommandTypes.some(
+                (commandType) => commandType === command.type
+              )
+            );
+          }),
+          debounceTime(200)
+        )
+        .subscribe(() => {
+          this.change$.next(
+            JSON.stringify(createJsonFormat(this), (key, value) => {
+              if (key === "_show") {
+                return undefined;
+              }
+              return value;
+            })
+          );
+        })
     );
   }
 

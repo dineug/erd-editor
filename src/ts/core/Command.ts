@@ -192,6 +192,45 @@ interface CommandMap {
   "editor.pasteColumn": PasteColumn;
 }
 
+export const changeCommandTypes: CommandType[] = [
+  "table.add",
+  "table.move",
+  "table.remove",
+  "table.changeName",
+  "table.changeComment",
+  "table.sort",
+  "column.add",
+  "column.addCustom",
+  "column.remove",
+  "column.changeName",
+  "column.changeComment",
+  "column.changeDataType",
+  "column.changeDefault",
+  "column.changeAutoIncrement",
+  "column.changePrimaryKey",
+  "column.changeUnique",
+  "column.changeNotNull",
+  "column.move",
+  "relationship.add",
+  "relationship.remove",
+  "relationship.changeRelationshipType",
+  "relationship.changeIdentification",
+  "memo.add",
+  "memo.move",
+  "memo.remove",
+  "memo.changeValue",
+  "memo.resize",
+  "canvas.move",
+  "canvas.resize",
+  "canvas.changeShow",
+  "canvas.changeDatabase",
+  "canvas.changeDatabaseName",
+  "canvas.changeCanvasType",
+  "canvas.changeLanguage",
+  "canvas.changeTableCase",
+  "canvas.changeColumnCase",
+];
+
 export function commandExecute(
   store: Store,
   commands: Array<Command<CommandType>>

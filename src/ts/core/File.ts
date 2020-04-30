@@ -18,7 +18,7 @@ export interface JsonFormat {
   relationship: RelationshipState;
 }
 
-export function jsonFormat(store: Store): JsonFormat {
+export function createJsonFormat(store: Store): JsonFormat {
   const { canvasState, tableState, memoState, relationshipState } = store;
   return {
     canvas: canvasState,
@@ -26,6 +26,19 @@ export function jsonFormat(store: Store): JsonFormat {
     memo: memoState,
     relationship: relationshipState,
   };
+}
+
+export function createJsonStringify(store: Store): string {
+  return JSON.stringify(
+    createJsonFormat(store),
+    (key, value) => {
+      if (key === "_show") {
+        return undefined;
+      }
+      return value;
+    },
+    2
+  );
 }
 
 const exportHelper = document.createElement("a");

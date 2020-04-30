@@ -56,6 +56,15 @@ class Editor extends LitElement {
     const { store, keymap, eventBus } = this.context;
     const { keydown$ } = this.context.windowEventObservable;
     this.subscriptionList.push(
+      store.change$.subscribe((value) => {
+        this.dispatchEvent(
+          new CustomEvent("change", {
+            detail: {
+              value,
+            },
+          })
+        );
+      }),
       store.observe(store.canvasState, (name) => {
         if (name === "canvasType") {
           this.requestUpdate();
