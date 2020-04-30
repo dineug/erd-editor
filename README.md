@@ -334,7 +334,7 @@ container.appendChild(editor);
 
 - [ ] Undo, Redo Manager
 - [ ] Grid filter
-- [ ] ERD finder
+- [ ] ERD Table finder
 - [ ] Real-time simultaneous editing api
 - [ ] SQL index Support [#9](https://github.com/vuerd/vuerd-vscode/issues/9)
 - SQL DDL import Support [#7](https://github.com/vuerd/vuerd-vscode/issues/7)
