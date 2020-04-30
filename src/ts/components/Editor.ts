@@ -22,6 +22,7 @@ import "./Visualization";
 import "./SQL";
 import "./GeneratorCode";
 import "./Help";
+import "./ImportErrorDDL";
 
 @customElement("vuerd-editor")
 class Editor extends LitElement {
@@ -35,10 +36,13 @@ class Editor extends LitElement {
   height = defaultHeight;
   @property({ type: Boolean })
   help = false;
+  @property({ type: Boolean })
+  importErrorDDL = false;
 
   context: EditorContext;
 
   private subscriptionList: Subscription[] = [];
+  private importErrorDDLMessage = "";
 
   constructor() {
     super();
@@ -73,10 +77,12 @@ class Editor extends LitElement {
               drawEndRelationship()
             );
             eventBus.emit(Bus.Help.close);
+            eventBus.emit(Bus.ImportErrorDDL.close);
           }
         }
       })
     );
+    eventBus.on(Bus.Editor.importErrorDDL, this.onImportErrorDDL);
   }
   firstUpdated() {
     const span = this.renderRoot.querySelector(
@@ -85,9 +91,10 @@ class Editor extends LitElement {
     this.context.helper.setSpan(span);
   }
   disconnectedCallback() {
-    const { store, windowEventObservable } = this.context;
+    const { store, windowEventObservable, eventBus } = this.context;
     store.destroy();
     windowEventObservable.destroy();
+    eventBus.off(Bus.Editor.importErrorDDL, this.onImportErrorDDL);
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
@@ -186,15 +193,33 @@ class Editor extends LitElement {
               @close=${this.onHelpEnd}
             ></vuerd-help>`
           : ""}
+        ${this.importErrorDDL
+          ? html`
+              <vuerd-import-error-ddl
+                .width=${this.width}
+                .message=${this.importErrorDDLMessage}
+                @close=${this.onImportErrorDDLEnd}
+              ></vuerd-import-error-ddl>
+            `
+          : ""}
       </div>
     `;
   }
+
+  private onImportErrorDDL = (event: CustomEvent) => {
+    this.importErrorDDLMessage = event.detail.message;
+    this.importErrorDDL = true;
+  };
 
   private onHelp() {
     this.help = true;
   }
   private onHelpEnd() {
     this.help = false;
+  }
+  private onImportErrorDDLEnd() {
+    this.importErrorDDL = false;
+    this.importErrorDDLMessage = "";
   }
 
   focus() {

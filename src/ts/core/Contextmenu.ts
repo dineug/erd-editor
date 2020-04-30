@@ -1,7 +1,13 @@
 import { ShowKey, Database, Language, NameCase } from "./store/Canvas";
 import { Store } from "./Store";
 import { Keymap, keymapOptionToString, RelationshipKeymapName } from "./Keymap";
-import { exportPNG, exportJSON, importJSON, jsonFormat } from "./File";
+import {
+  exportPNG,
+  exportJSON,
+  importJSON,
+  importSQL,
+  jsonFormat,
+} from "./File";
 import { getBase64Icon } from "./Icon";
 import { addTable } from "./command/table";
 import { addMemo } from "./command/memo";
@@ -19,6 +25,9 @@ import {
   removeRelationship,
 } from "./command/relationship";
 import { Relationship, RelationshipType } from "./store/Relationship";
+import { Helper } from "./Helper";
+import { EventBus } from "./Event";
+import { EditorContext } from "./EditorContext";
 
 export interface MenuOption {
   close?: boolean;
@@ -41,7 +50,8 @@ export interface Menu {
   execute?(root: ShadowRoot): void;
 }
 
-export function createContextmenuERD(store: Store, keymap: Keymap): Menu[] {
+export function createContextmenuERD(context: EditorContext): Menu[] {
+  const { store, keymap } = context;
   const { canvasState } = store;
   return [
     {
@@ -99,6 +109,18 @@ export function createContextmenuERD(store: Store, keymap: Keymap): Menu[] {
           name: "json",
           execute() {
             importJSON(store);
+          },
+        },
+        {
+          name: "SQL DDL MySQL",
+          execute() {
+            importSQL(context, "MySQL");
+          },
+        },
+        {
+          name: "SQL DDL MariaDB",
+          execute() {
+            importSQL(context, "MariaDB");
           },
         },
       ],

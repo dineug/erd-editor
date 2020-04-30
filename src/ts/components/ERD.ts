@@ -348,11 +348,11 @@ class ERD extends EditorElement {
   private onContextmenu(event: MouseEvent) {
     event.preventDefault();
     const el = event.target as HTMLElement;
-    const { store, keymap } = this.context;
+    const { store } = this.context;
     this.contextmenuX = event.x;
     this.contextmenuY = event.y;
     if (!el.closest(".vuerd-relationship")) {
-      this.menus = createContextmenuERD(store, keymap);
+      this.menus = createContextmenuERD(this.context);
       this.contextmenu = true;
     } else {
       const g = getParentElement(el, "g");

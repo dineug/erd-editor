@@ -1,3 +1,4 @@
+const TEXT_PADDING = 2;
 export class Helper {
   private span: HTMLSpanElement | null = null;
   setSpan(span: HTMLSpanElement) {
@@ -6,7 +7,7 @@ export class Helper {
   getTextWidth(value: string): number {
     if (this.span === null) throw new Error("not found span");
     this.span.innerText = value;
-    return this.span.offsetWidth;
+    return this.span.offsetWidth + TEXT_PADDING;
   }
 }
 

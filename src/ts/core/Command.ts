@@ -15,6 +15,7 @@ import {
   executeChangeTableName,
   executeChangeTableComment,
   executeDragSelectTable,
+  executeSortTable,
 } from "./command/table";
 import {
   AddColumn,
@@ -134,6 +135,7 @@ interface CommandMap {
   "table.changeName": ChangeTableValue;
   "table.changeComment": ChangeTableValue;
   "table.dragSelect": DragSelectTable;
+  "table.sort": null;
   "column.add": Array<AddColumn>;
   "column.addCustom": Array<AddCustomColumn>;
   "column.remove": RemoveColumn;
@@ -222,6 +224,9 @@ export function commandExecute(
         break;
       case "table.dragSelect":
         executeDragSelectTable(store, command.data as DragSelectTable);
+        break;
+      case "table.sort":
+        executeSortTable(store);
         break;
       case "column.add":
         executeAddColumn(store, command.data as Array<AddColumn>);

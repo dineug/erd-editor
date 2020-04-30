@@ -73,12 +73,12 @@ export const vuerd = css`
     font-family: monospace !important;
   }
 
+  /* =============== help ============== */
   .vuerd-help {
     position: absolute;
     top: ${SIZE_MENUBAR_HEIGHT}px;
     height: calc(100% - ${SIZE_MENUBAR_HEIGHT}px);
     color: var(--vuerd-theme-font, var(--vuerd-color-font));
-    overflow: auto;
     opacity: 0.9;
     background-color: var(--vuerd-theme-help, var(--vuerd-color-help));
     z-index: 100000050;
@@ -99,7 +99,47 @@ export const vuerd = css`
     margin-block-end: 1em;
   }
   .vuerd-help-body {
+    height: calc(100% - 51.41px);
+    overflow: auto;
     padding: 0 20px 20px 20px;
+    box-sizing: border-box;
+  }
+
+  /* =============== import error DDL ============== */
+  .vuerd-import-error-ddl {
+    position: absolute;
+    top: ${SIZE_MENUBAR_HEIGHT}px;
+    height: calc(100% - ${SIZE_MENUBAR_HEIGHT}px);
+    color: var(--vuerd-theme-font, var(--vuerd-color-font));
+    opacity: 0.9;
+    background-color: var(--vuerd-theme-help, var(--vuerd-color-help));
+    z-index: 100000050;
+    fill: #fff0;
+    padding: 0 20px;
+  }
+  .vuerd-import-error-ddl:hover {
+    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
+  }
+  .vuerd-import-error-ddl-header > h3 {
+    display: inline-block;
+  }
+  .vuerd-import-error-ddl-header > .vuerd-button {
+    float: right;
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+  }
+  .vuerd-import-error-ddl-body {
+    font-family: monospace !important;
+    white-space: pre;
+    height: calc(100% - 108.41px);
+    overflow: auto;
+    box-sizing: border-box;
+  }
+  .vuerd-import-error-ddl-footer {
+    padding: 20px;
+  }
+  .vuerd-import-error-ddl-footer > a {
+    color: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
   /* =============== contextmenu ============== */
   .vuerd-contextmenu {

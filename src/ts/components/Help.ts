@@ -8,7 +8,7 @@ import { AnimationFrame } from "@src/core/Animation";
 import { Bus } from "@src/core/Event";
 import { keymapOptionToStringJoin } from "@src/core/Keymap";
 
-const MAX_WIDTH = 900;
+const MAX_WIDTH = 800;
 
 interface HelpDescribe {
   name: string;
@@ -204,7 +204,7 @@ class Help extends EditorElement {
             @click=${this.onClose}
           ></vuerd-icon>
         </div>
-        <div class="vuerd-help-body">
+        <div class="vuerd-help-body vuerd-scrollbar">
           <table>
             <thead>
               <th>Name</th>

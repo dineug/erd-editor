@@ -1,10 +1,15 @@
 import domToImage from "dom-to-image";
-import { Store } from "@src/core/Store";
-import { CanvasState } from "@src/core/store/Canvas";
-import { TableState } from "@src/core/store/Table";
-import { MemoState } from "@src/core/store/Memo";
-import { RelationshipState } from "@src/core/store/Relationship";
-import { loadJson } from "@src/core/command/editor";
+import { Parser } from "sql-ddl-to-json-schema";
+import { Store } from "./Store";
+import { CanvasState, Database } from "./store/Canvas";
+import { TableState } from "./store/Table";
+import { MemoState } from "./store/Memo";
+import { RelationshipState } from "./store/Relationship";
+import { loadJson } from "./command/editor";
+import { sortTable } from "./command/table";
+import { EditorContext } from "./EditorContext";
+import { createJson } from "./ParserSQLToJson";
+import { Bus } from "./Event";
 
 export interface JsonFormat {
   canvas: CanvasState;
@@ -84,7 +89,9 @@ export function importJSON(store: Store) {
   importHelperJSON.click();
 }
 
-export function importSQL(store: Store) {
+const parserMySQL = new Parser("mysql");
+export function importSQL(context: EditorContext, database: Database) {
+  const { store, helper, eventBus } = context;
   const importHelperSQL = document.createElement("input");
   importHelperSQL.setAttribute("type", "file");
   importHelperSQL.setAttribute("accept", ".sql");
@@ -97,8 +104,24 @@ export function importSQL(store: Store) {
         reader.readAsText(file);
         reader.onload = () => {
           const value = reader.result;
-          if (value) {
-            // TODO: data load
+          if (typeof value === "string") {
+            try {
+              const tables = parserMySQL.feed(value).toCompactJson();
+              const json = createJson(tables, helper, database);
+              store.dispatch(loadJson(json), sortTable());
+            } catch (err) {
+              // const key =
+              //   ". Instead, I was expecting to see one of the following:";
+              // const startIndex = err.message.indexOf("\n");
+              // const lastIndex = err.message.indexOf(key);
+              // const message = err.message.substr(
+              //   startIndex,
+              //   lastIndex - startIndex
+              // );
+              eventBus.emit(Bus.Editor.importErrorDDL, {
+                message: err.message,
+              });
+            }
           }
         };
       } else {

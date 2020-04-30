@@ -110,6 +110,10 @@ export class EventBus {
   }
 }
 
+enum Editor {
+  importErrorDDL = "Editor.importErrorDDL",
+}
+
 enum ERD {
   contextmenuEnd = "ERD.contextmenuEnd",
 }
@@ -141,11 +145,17 @@ enum Help {
   close = "Help.close",
 }
 
+enum ImportErrorDDL {
+  close = "ImportErrorDDL.close",
+}
+
 export const Bus = {
+  Editor,
   ERD,
   ColumnDataTypeHint,
   Visualization,
   Table,
   Memo,
   Help,
+  ImportErrorDDL,
 };

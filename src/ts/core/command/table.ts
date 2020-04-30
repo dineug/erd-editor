@@ -20,6 +20,7 @@ import {
 import { addRelationship } from "./relationship";
 
 const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
+const TABLE_SORT_PADDING = TABLE_PADDING * 4;
 
 interface AddTableUI {
   active: boolean;
@@ -333,4 +334,38 @@ export function executeDragSelectTable(store: Store, data: DragSelectTable) {
       min.y <= centerY &&
       max.y >= centerY;
   });
+}
+
+export function sortTable(): Command<"table.sort"> {
+  return {
+    type: "table.sort",
+    data: null,
+  };
+}
+export function executeSortTable(store: Store) {
+  Logger.debug("executeSortTable");
+  const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
+  const canvasWidth = store.canvasState.width;
+  tables.sort((a, b) => a.columns.length - b.columns.length);
+  let widthSum = 50;
+  let currentHeight = 50;
+  let maxHeight = 50;
+  tables.forEach((table) => {
+    const width = table.width() + TABLE_SORT_PADDING;
+    const height = table.height() + TABLE_SORT_PADDING;
+    if (widthSum + width > canvasWidth) {
+      currentHeight += maxHeight;
+      maxHeight = 0;
+      widthSum = 50;
+    }
+    if (maxHeight < height) {
+      maxHeight = height;
+    }
+    table.ui.top = currentHeight;
+    table.ui.left = widthSum;
+    widthSum += width;
+  });
+
+  relationshipSort(tables, relationships);
 }
