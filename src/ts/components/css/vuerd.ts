@@ -73,10 +73,38 @@ export const vuerd = css`
     font-family: monospace !important;
   }
 
+  .vuerd-help {
+    position: absolute;
+    top: ${SIZE_MENUBAR_HEIGHT}px;
+    height: calc(100% - ${SIZE_MENUBAR_HEIGHT}px);
+    color: var(--vuerd-theme-font, var(--vuerd-color-font));
+    overflow: auto;
+    opacity: 0.9;
+    background-color: var(--vuerd-theme-help, var(--vuerd-color-help));
+    z-index: 100000050;
+    fill: #fff0;
+  }
+  .vuerd-help:hover {
+    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
+  }
+  .vuerd-help-header {
+    padding: 0 20px;
+  }
+  .vuerd-help-header > h3 {
+    display: inline-block;
+  }
+  .vuerd-help-header > .vuerd-button {
+    float: right;
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+  }
+  .vuerd-help-body {
+    padding: 0 20px 20px 20px;
+  }
   /* =============== contextmenu ============== */
   .vuerd-contextmenu {
     position: fixed;
-    z-index: 100000000;
+    z-index: 100000060;
     opacity: 0.9;
     color: var(--vuerd-theme-font, var(--vuerd-color-font));
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));
@@ -410,13 +438,13 @@ export const vuerd = css`
   /* =============== minimap ============== */
   .vuerd-minimap {
     position: absolute;
-    z-index: 100000001;
+    z-index: 100000020;
     overflow: hidden;
     background-color: var(--vuerd-theme-canvas, var(--vuerd-color-canvas));
   }
   .vuerd-minimap-shadow {
     position: absolute;
-    z-index: 100000000;
+    z-index: 100000010;
     box-shadow: 0 1px 6px
       var(--vuerd-theme-minimap-shadow, var(--vuerd-color-minimap-shadow));
   }
@@ -429,7 +457,7 @@ export const vuerd = css`
   }
   .vuerd-minimap-handle {
     position: absolute;
-    z-index: 100000002;
+    z-index: 100000030;
     border: solid
       var(--vuerd-theme-minimap-handle, var(--vuerd-color-minimap-handle)) 1px;
     cursor: pointer;
@@ -442,7 +470,7 @@ export const vuerd = css`
   /* =============== dragSelect ============== */
   .vuerd-drag-select {
     position: fixed;
-    z-index: 7500;
+    z-index: 100000001;
     stroke: var(--vuerd-theme-drag-select, var(--vuerd-color-drag-select));
   }
 
@@ -451,7 +479,7 @@ export const vuerd = css`
     width: 100%;
     position: absolute;
     overflow: hidden;
-    z-index: 100000003;
+    z-index: 100001000;
     display: flex;
     align-items: center;
     height: ${SIZE_MENUBAR_HEIGHT}px;

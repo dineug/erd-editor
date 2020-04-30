@@ -5,6 +5,7 @@ import { Subscription } from "rxjs";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
 import { keymapMatch } from "@src/core/Keymap";
+import { Bus } from "@src/core/Event";
 import { EditorContext, createEditorContext } from "@src/core/EditorContext";
 import { Command, CommandType } from "@src/core/Command";
 import { selectEndTable } from "@src/core/command/table";
@@ -20,6 +21,7 @@ import "./Grid";
 import "./Visualization";
 import "./SQL";
 import "./GeneratorCode";
+import "./Help";
 
 @customElement("vuerd-editor")
 class Editor extends LitElement {
@@ -31,6 +33,8 @@ class Editor extends LitElement {
   width = defaultWidth;
   @property({ type: Number })
   height = defaultHeight;
+  @property({ type: Boolean })
+  help = false;
 
   context: EditorContext;
 
@@ -43,7 +47,7 @@ class Editor extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    const { store, keymap } = this.context;
+    const { store, keymap, eventBus } = this.context;
     const { keydown$ } = this.context.windowEventObservable;
     this.subscriptionList.push(
       store.observe(store.canvasState, (name) => {
@@ -68,6 +72,7 @@ class Editor extends LitElement {
               selectEndMemo(),
               drawEndRelationship()
             );
+            eventBus.emit(Bus.Help.close);
           }
         }
       })
@@ -114,6 +119,7 @@ class Editor extends LitElement {
       dragSelect,
       menubar,
       visualization,
+      help,
     } = this.context.theme;
     return html`
       <style>
@@ -144,6 +150,7 @@ class Editor extends LitElement {
           --vuerd-color-drag-select: ${dragSelect};
           --vuerd-color-menubar: ${menubar};
           --vuerd-color-visualization: ${visualization};
+          --vuerd-color-help: ${help};
         }
       </style>
       <div
@@ -153,7 +160,7 @@ class Editor extends LitElement {
           height: `${this.height}px`,
         })}
       >
-        <vuerd-menubar></vuerd-menubar>
+        <vuerd-menubar @help-start=${this.onHelp}></vuerd-menubar>
         ${canvasType === "ERD"
           ? html`
               <vuerd-erd
@@ -173,8 +180,21 @@ class Editor extends LitElement {
           ? html`<vuerd-generator-code></vuerd-generator-code>`
           : ""}
         <span class="vuerd-text-width"></span>
+        ${this.help
+          ? html`<vuerd-help
+              .width=${this.width}
+              @close=${this.onHelpEnd}
+            ></vuerd-help>`
+          : ""}
       </div>
     `;
+  }
+
+  private onHelp() {
+    this.help = true;
+  }
+  private onHelpEnd() {
+    this.help = false;
   }
 
   focus() {

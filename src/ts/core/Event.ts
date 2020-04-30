@@ -137,10 +137,15 @@ enum Memo {
   moveValid = "Memo.moveValid",
 }
 
+enum Help {
+  close = "Help.close",
+}
+
 export const Bus = {
   ERD,
   ColumnDataTypeHint,
   Visualization,
   Table,
   Memo,
+  Help,
 };

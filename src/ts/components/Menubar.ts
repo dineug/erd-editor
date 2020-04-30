@@ -122,6 +122,9 @@ class Menubar extends EditorElement {
             </li>
           `
         )}
+        <li class="vuerd-menubar-menu" title="Help" @click=${this.onHelp}>
+          <vuerd-icon icon="question" size="16"></vuerd-icon>
+        </li>
       </ul>
     `;
   }
@@ -156,5 +159,8 @@ class Menubar extends EditorElement {
     if (canvasType !== store.canvasState.canvasType) {
       store.dispatch(changeCanvasType(canvasType));
     }
+  }
+  private onHelp() {
+    this.dispatchEvent(new CustomEvent("help-start"));
   }
 }

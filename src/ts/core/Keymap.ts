@@ -326,3 +326,9 @@ export function keymapOptionToString(keymapOption?: KeymapOption): string {
   }
   return result.join(" + ");
 }
+
+export function keymapOptionToStringJoin(
+  keymapOptions: KeymapOption[]
+): string {
+  return keymapOptions.map((option) => keymapOptionToString(option)).join(",");
+}
