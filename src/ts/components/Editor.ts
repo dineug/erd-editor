@@ -1,18 +1,17 @@
 import { LitElement, html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { cache } from "lit-html/directives/cache";
 import { Subscription } from "rxjs";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
 import { keymapMatch, KeymapKey, KeymapOption } from "@src/core/Keymap";
 import { Bus } from "@src/core/Event";
 import { EditorContext, createEditorContext } from "@src/core/EditorContext";
-import { Command, CommandType } from "@src/core/Command";
+import { createJsonFormat } from "@src/core/File";
 import { selectEndTable } from "@src/core/command/table";
 import { selectEndMemo } from "@src/core/command/memo";
-import { drawEndRelationship } from "@src/core/command/editor";
+import { drawEndRelationship, loadJson, clear } from "@src/core/command/editor";
 import { ThemeKey } from "@src/core/Theme";
-import { Theme, Keymap } from "@src/types";
+import { Theme, Keymap, Editor } from "@src/types";
 import "./Icon";
 import "./Contextmenu";
 import "./InputEdit";
@@ -27,7 +26,7 @@ import "./Help";
 import "./ImportErrorDDL";
 
 @customElement("vuerd-editor")
-class Editor extends LitElement {
+class EditorModel extends LitElement implements Editor {
   static get styles() {
     return Layout;
   }
@@ -45,6 +44,25 @@ class Editor extends LitElement {
 
   private subscriptionList: Subscription[] = [];
   private importErrorDDLMessage = "";
+
+  get value() {
+    const { store } = this.context;
+    return JSON.stringify(createJsonFormat(store), (key, value) => {
+      if (key === "_show") {
+        return undefined;
+      }
+      return value;
+    });
+  }
+
+  set value(json: string) {
+    const { store } = this.context;
+    if (typeof json === "string" && json.trim() !== "") {
+      store.dispatch(loadJson(json));
+    } else {
+      store.dispatch(clear());
+    }
+  }
 
   constructor() {
     super();
@@ -239,6 +257,10 @@ class Editor extends LitElement {
   blur() {
     this.context.store.editorState.focus = false;
   }
+  clear() {
+    const { store } = this.context;
+    store.dispatch(clear());
+  }
   setTheme(theme: Theme) {
     const editorTheme = this.context.theme;
     if (typeof theme === "object" && theme !== null) {
@@ -265,4 +287,4 @@ class Editor extends LitElement {
 }
 
 @customElement("erd-editor")
-class EditorAlias extends Editor {}
+class EditorAlias extends EditorModel {}

@@ -1,16 +1,18 @@
-import { LitElement } from "lit-element";
 import { EditorContext } from "../core/EditorContext";
 import { ThemeKey } from "../core/Theme";
 import { KeymapKey, KeymapOption } from "../core/Keymap";
+import { Command, CommandType } from "../core/Command";
 
-export { ThemeKey, KeymapKey };
+export { ThemeKey, KeymapKey, KeymapOption, Command, CommandType };
 
-export declare class Editor extends LitElement {
+export interface Editor extends HTMLElement {
   context: EditorContext;
   width: number;
   height: number;
+  value: string;
   focus(): void;
   blur(): void;
+  clear(): void;
   setTheme(theme: Theme): void;
   setKeymap(keymap: Keymap): void;
 }

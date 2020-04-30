@@ -572,3 +572,20 @@ export function executePasteColumn(store: Store, data: PasteColumn) {
     store.dispatch(...batchCommand);
   }
 }
+
+export function clear(): Command<"editor.clear"> {
+  return {
+    type: "editor.clear",
+    data: null,
+  };
+}
+export function executeClear(store: Store) {
+  Logger.debug("executeClear");
+  const { tableState, memoState, relationshipState } = store;
+  tableState.tables.splice(0, tableState.tables.length);
+  memoState.memos.splice(0, memoState.memos.length);
+  relationshipState.relationships.splice(
+    0,
+    relationshipState.relationships.length
+  );
+}

@@ -118,6 +118,7 @@ import {
   executeLoadJson,
   executeCopyColumn,
   executePasteColumn,
+  executeClear,
 } from "./command/editor";
 
 export interface Command<K extends CommandType> {
@@ -190,6 +191,7 @@ interface CommandMap {
   "editor.loadJson": LoadJson;
   "editor.copyColumn": CopyColumn;
   "editor.pasteColumn": PasteColumn;
+  "editor.clear": null;
 }
 
 export const changeCommandTypes: CommandType[] = [
@@ -229,6 +231,8 @@ export const changeCommandTypes: CommandType[] = [
   "canvas.changeLanguage",
   "canvas.changeTableCase",
   "canvas.changeColumnCase",
+  "editor.loadJson",
+  "editor.clear",
 ];
 
 export function commandExecute(
@@ -446,6 +450,9 @@ export function commandExecute(
         break;
       case "editor.pasteColumn":
         executePasteColumn(store, command.data as PasteColumn);
+        break;
+      case "editor.clear":
+        executeClear(store);
         break;
     }
   });
