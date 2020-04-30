@@ -97,6 +97,8 @@ import {
   DrawStartAddRelationship,
   DrawRelationship,
   LoadJson,
+  CopyColumn,
+  PasteColumn,
   executeFocusTable,
   executeFocusEndTable,
   executeFocusMoveTable,
@@ -113,6 +115,8 @@ import {
   executeDrawEndRelationship,
   executeDrawRelationship,
   executeLoadJson,
+  executeCopyColumn,
+  executePasteColumn,
 } from "./command/editor";
 
 export interface Command<K extends CommandType> {
@@ -182,6 +186,8 @@ interface CommandMap {
   "editor.drawEndRelationship": null;
   "editor.drawRelationship": DrawRelationship;
   "editor.loadJson": LoadJson;
+  "editor.copyColumn": CopyColumn;
+  "editor.pasteColumn": PasteColumn;
 }
 
 export function commandExecute(
@@ -390,6 +396,12 @@ export function commandExecute(
         break;
       case "editor.loadJson":
         executeLoadJson(store, command.data as LoadJson);
+        break;
+      case "editor.copyColumn":
+        executeCopyColumn(store, command.data as CopyColumn);
+        break;
+      case "editor.pasteColumn":
+        executePasteColumn(store, command.data as PasteColumn);
         break;
     }
   });

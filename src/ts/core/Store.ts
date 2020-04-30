@@ -17,7 +17,6 @@ export class Store {
   readonly relationshipState: RelationshipState;
   readonly editorState: EditorState;
   private dispatch$ = new Subject<Array<Command<CommandType>>>();
-  private next$ = new Subject<Array<Command<CommandType>>>();
   private subscriptionList: Subscription[] = [];
   private rawToProxy = new WeakMap();
   private proxyToRaw = new WeakMap();
@@ -69,25 +68,12 @@ export class Store {
       this.excludeKeys
     );
     this.subscriptionList.push(
-      this.dispatch$.subscribe((commands) => commandExecute(this, commands)),
-      this.next$.subscribe((commands) => commandExecute(this, commands))
+      this.dispatch$.subscribe((commands) => commandExecute(this, commands))
     );
   }
 
   dispatch(...commands: Array<Command<CommandType>>) {
     asapScheduler.schedule(() => this.dispatch$.next(commands));
-  }
-
-  subscribe(
-    effect: (commands: Array<Command<CommandType>>) => void
-  ): Subscription {
-    const subDispatch = this.dispatch$.subscribe(effect);
-    this.subscriptionList.push(subDispatch);
-    return subDispatch;
-  }
-
-  next(commands: Array<Command<CommandType>>) {
-    asapScheduler.schedule(() => this.next$.next(commands));
   }
 
   destroy() {

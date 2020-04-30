@@ -37,6 +37,8 @@ import {
   editEndTable,
   selectAllColumn,
   drawStartRelationship,
+  copyColumn,
+  pasteColumn,
 } from "@src/core/command/editor";
 import "./erd/Canvas";
 import "./erd/CanvasSVG";
@@ -112,7 +114,7 @@ class ERD extends EditorElement {
       }),
       mousedown$.subscribe(this.onMousedownWindow),
       keydown$.subscribe((event) => {
-        const { focus, editTable, focusTable } = store.editorState;
+        const { focus, editTable, focusTable, copyColumns } = store.editorState;
         if (focus) {
           if (keymapMatch(event, keymap.addTable)) {
             store.dispatch(addTable(store));
@@ -211,6 +213,31 @@ class ERD extends EditorElement {
               );
             }
           });
+
+          if (
+            focusTable !== null &&
+            editTable === null &&
+            keymapMatch(event, keymap.copyColumn)
+          ) {
+            const columns = focusTable.selectColumns;
+            if (columns.length !== 0) {
+              store.dispatch(
+                copyColumn(
+                  focusTable.id,
+                  columns.map((column) => column.id)
+                )
+              );
+            }
+          }
+
+          if (
+            editTable === null &&
+            copyColumns.length !== 0 &&
+            keymapMatch(event, keymap.pasteColumn) &&
+            store.tableState.tables.some((table) => table.ui.active)
+          ) {
+            store.dispatch(pasteColumn(store));
+          }
         }
       })
     );

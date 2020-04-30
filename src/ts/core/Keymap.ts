@@ -87,6 +87,8 @@ export interface Keymap {
   primaryKey: KeymapOption[];
   selectAllTable: KeymapOption[];
   selectAllColumn: KeymapOption[];
+  copyColumn: KeymapOption[];
+  pasteColumn: KeymapOption[];
   edit: KeymapOption[];
   stop: KeymapOption[];
   relationshipZeroOneN: KeymapOption[];
@@ -170,6 +172,24 @@ export function createKeymap(): Keymap {
         altKey: true,
         shiftKey: false,
         key: "A",
+      },
+    ],
+    copyColumn: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
+        key: "C",
+      },
+    ],
+    pasteColumn: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
+        key: "V",
       },
     ],
     edit: [

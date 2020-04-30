@@ -96,31 +96,19 @@ export function addCustomColumn(
   option: ColumnOption | null,
   ui: AddCustomColumnUI | null,
   value: AddCustomColumnValue | null,
-  tableId?: string
+  tableIds: string[]
 ): Command<"column.addCustom"> {
   return {
     type: "column.addCustom",
-    data: tableId
-      ? [
-          {
-            tableId,
-            id: uuid(),
-            option,
-            ui,
-            value,
-          },
-        ]
-      : store.tableState.tables
-          .filter((table) => table.ui.active)
-          .map((table) => {
-            return {
-              tableId: table.id,
-              id: uuid(),
-              option,
-              ui,
-              value,
-            };
-          }),
+    data: tableIds.map((tableId) => {
+      return {
+        tableId,
+        id: uuid(),
+        option,
+        ui,
+        value,
+      };
+    }),
   };
 }
 export function executeAddCustomColumn(store: Store, data: AddCustomColumn[]) {

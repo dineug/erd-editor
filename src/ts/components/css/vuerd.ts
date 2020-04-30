@@ -70,6 +70,7 @@ export const vuerd = css`
     box-sizing: border-box;
     background-color: #23241f;
     overflow: auto;
+    font-family: monospace !important;
   }
 
   /* =============== contextmenu ============== */

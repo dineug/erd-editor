@@ -1,6 +1,6 @@
 import { FocusTable, FocusType } from "../model/FocusTableModel";
 import { DraggableColumn } from "../command/editor";
-import { Table } from "./Table";
+import { Table, Column } from "./Table";
 import { RelationshipType } from "./Relationship";
 import { Point } from "../helper/RelationshipHelper";
 
@@ -10,6 +10,7 @@ export interface EditorState {
   editTable: EditTable | null;
   draggableColumn: DraggableColumn | null;
   drawRelationship: DrawRelationship | null;
+  copyColumns: Column[];
 }
 
 export interface EditTable {
@@ -36,5 +37,6 @@ export function createEditorState(): EditorState {
     editTable: null,
     draggableColumn: null,
     drawRelationship: null,
+    copyColumns: [],
   };
 }

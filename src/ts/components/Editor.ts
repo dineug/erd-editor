@@ -183,14 +183,6 @@ class Editor extends LitElement {
   blur() {
     this.context.store.editorState.focus = false;
   }
-  subscribe(effect: (commands: Command<CommandType>[]) => void): Subscription {
-    const { store } = this.context;
-    return store.subscribe(effect);
-  }
-  next(commands: Command<CommandType>[]) {
-    const { store } = this.context;
-    store.next(commands);
-  }
 }
 
 @customElement("erd-editor")

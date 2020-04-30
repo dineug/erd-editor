@@ -1,5 +1,5 @@
 import "./index";
-import { Editor, Command, CommandType } from "./types";
+import { Editor } from "./types";
 
 document.body.style.margin = "0";
 

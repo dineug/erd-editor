@@ -1,4 +1,4 @@
-import { Command } from "../Command";
+import { Command, CommandType } from "../Command";
 import { Store } from "../Store";
 import { Logger } from "../Logger";
 import { getData } from "../Helper";
@@ -320,7 +320,7 @@ export function executeDrawStartAddRelationship(
             pfk: false,
           },
           null,
-          table.id
+          [table.id]
         )
       );
     }
@@ -485,5 +485,90 @@ export function executeLoadJson(store: Store, data: LoadJson) {
     }
 
     relationshipSort(tableState.tables, relationshipState.relationships);
+  }
+}
+
+export interface CopyColumn {
+  tableId: string;
+  columnIds: string[];
+}
+export function copyColumn(
+  tableId: string,
+  columnIds: string[]
+): Command<"editor.copyColumn"> {
+  return {
+    type: "editor.copyColumn",
+    data: {
+      tableId,
+      columnIds,
+    },
+  };
+}
+export function executeCopyColumn(store: Store, data: CopyColumn) {
+  Logger.debug("executeCopyColumn");
+  const { tables } = store.tableState;
+  const { copyColumns } = store.editorState;
+  const table = getData(tables, data.tableId);
+  if (table) {
+    copyColumns.splice(0, copyColumns.length);
+    data.columnIds.forEach((columnId) => {
+      const column = getData(table.columns, columnId);
+      if (column) {
+        copyColumns.push(column);
+      }
+    });
+  }
+}
+
+export interface PasteColumn {
+  tableIds: string[];
+}
+export function pasteColumn(store: Store): Command<"editor.pasteColumn"> {
+  return {
+    type: "editor.pasteColumn",
+    data: {
+      tableIds: store.tableState.tables
+        .filter((table) => table.ui.active)
+        .map((table) => table.id),
+    },
+  };
+}
+export function executePasteColumn(store: Store, data: PasteColumn) {
+  Logger.debug("executePasteColumn");
+  const { copyColumns } = store.editorState;
+  if (copyColumns.length !== 0) {
+    const batchCommand: Array<Command<CommandType>> = [];
+    copyColumns.forEach((column) => {
+      const { option, ui } = column;
+      batchCommand.push(
+        addCustomColumn(
+          store,
+          {
+            autoIncrement: option.autoIncrement,
+            primaryKey: option.primaryKey,
+            unique: option.unique,
+            notNull: option.notNull,
+          },
+          {
+            active: false,
+            pk: option.primaryKey,
+            fk: false,
+            pfk: false,
+          },
+          {
+            name: column.name,
+            dataType: column.dataType,
+            default: column.default,
+            comment: column.comment,
+            widthName: ui.widthName,
+            widthDataType: ui.widthDataType,
+            widthDefault: ui.widthDefault,
+            widthComment: ui.widthComment,
+          },
+          data.tableIds
+        )
+      );
+    });
+    store.dispatch(...batchCommand);
   }
 }
