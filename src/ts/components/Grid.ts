@@ -5,12 +5,17 @@ import { EditorElement } from "./EditorElement";
 import { defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
 import { SIZE_MENUBAR_HEIGHT } from "@src/core/Layout";
+import { getData } from "@src/core/Helper";
 import {
   getDataTypeSyncColumns,
   getColumn,
 } from "@src/core/helper/ColumnHelper";
 import { Command, CommandType } from "@src/core/Command";
-import { changeTableName, changeTableComment } from "@src/core/command/table";
+import {
+  ChangeTableValue,
+  changeTableName,
+  changeTableComment,
+} from "@src/core/command/table";
 import {
   changeColumnName,
   changeColumnDataType,
@@ -21,7 +26,12 @@ import {
   changeColumnUnique,
   changeColumnAutoIncrement,
 } from "@src/core/command/column";
-import { createGridData, changeColumnOptionList } from "@src/core/Grid";
+import {
+  createGridData,
+  SimpleOption,
+  changeColumnOptionList,
+  currentColumnOptionList,
+} from "@src/core/Grid";
 import { GridTextRender } from "./grid/GridTextRender";
 import { GridTextEditor } from "./grid/GridTextEditor";
 import { GridColumnOptionEditor } from "./grid/GridColumnOptionEditor";
@@ -93,7 +103,7 @@ class Grid extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    const { store } = this.context;
+    const { store, helper } = this.context;
     const { keydown$ } = this.context.windowEventObservable;
     this.subscriptionList.push(
       keydown$.subscribe((event) => {
@@ -101,7 +111,136 @@ class Grid extends EditorElement {
           !this.edit &&
           (event.key === "Delete" || event.key === "Backspace")
         ) {
-          Logger.debug(this.grid.getModifiedRows());
+          const updatedRows = this.grid.getModifiedRows().updatedRows;
+          if (updatedRows) {
+            const { tables } = this.context.store.tableState;
+            const { relationships } = this.context.store.relationshipState;
+            const batchCommand: Array<Command<CommandType>> = [];
+            const batchGridDataType: Array<Array<any>> = [];
+            const batchGridTableName: Array<{
+              tableId: string;
+              rowKey: number;
+            }> = [];
+            const batchGridTableComment: Array<{
+              tableId: string;
+              rowKey: number;
+            }> = [];
+            updatedRows.forEach((row: any) => {
+              const {
+                rowKey,
+                tableId,
+                columnId,
+                tableName,
+                tableComment,
+                option,
+                name,
+                dataType,
+                comment,
+              } = row;
+              const table = getData(tables, tableId);
+              const column = getColumn(tables, tableId, columnId);
+              if (table && column) {
+                if (tableName === "" && tableName !== table.name) {
+                  if (
+                    this.isCommandTable(
+                      batchCommand,
+                      "table.changeName",
+                      tableId
+                    )
+                  ) {
+                    batchCommand.push(changeTableName(helper, tableId, ""));
+                    batchGridTableName.push({
+                      tableId,
+                      rowKey,
+                    });
+                  }
+                }
+                if (tableComment === "" && tableComment !== table.comment) {
+                  if (
+                    this.isCommandTable(
+                      batchCommand,
+                      "table.changeComment",
+                      tableId
+                    )
+                  ) {
+                    batchCommand.push(changeTableComment(helper, tableId, ""));
+                    batchGridTableComment.push({
+                      tableId,
+                      rowKey,
+                    });
+                  }
+                }
+                if (option === "") {
+                  const changeOptions = currentColumnOptionList(column.option);
+                  this.batchCommandColumnOption(
+                    batchCommand,
+                    changeOptions,
+                    tableId,
+                    columnId
+                  );
+                }
+                if (name === "" && name !== column.name) {
+                  batchCommand.push(
+                    changeColumnName(helper, tableId, columnId, "")
+                  );
+                }
+                if (dataType === "" && dataType !== column.dataType) {
+                  batchCommand.push(
+                    changeColumnDataType(helper, tableId, columnId, "")
+                  );
+                  // DataTypeSync
+                  const columnIds = getDataTypeSyncColumns(
+                    [column],
+                    tables,
+                    relationships
+                  ).map((column) => column.id);
+                  batchGridDataType.push(
+                    this.grid.findRows(
+                      (row: any) =>
+                        columnIds.some(
+                          (columnId) => columnId === row.columnId
+                        ) && row.rowKey !== rowKey
+                    )
+                  );
+                }
+                if (row.default === "" && row.default !== column.default) {
+                  batchCommand.push(
+                    changeColumnDefault(helper, tableId, columnId, "")
+                  );
+                }
+                if (comment === "" && row.comment !== column.comment) {
+                  batchCommand.push(
+                    changeColumnComment(helper, tableId, columnId, "")
+                  );
+                }
+              }
+            });
+            store.dispatch(...batchCommand);
+            batchGridDataType.forEach((rows: any[]) => {
+              rows.forEach((row) => {
+                this.grid.setValue(row.rowKey, "dataType", "");
+              });
+            });
+            batchGridTableName.forEach(({ tableId, rowKey }) => {
+              this.grid
+                .findRows(
+                  (row: any) => row.tableId === tableId && row.rowKey !== rowKey
+                )
+                .forEach((row) => {
+                  this.grid.setValue(row.rowKey, "tableName", "");
+                });
+            });
+            batchGridTableComment.forEach(({ tableId, rowKey }) => {
+              this.grid
+                .findRows(
+                  (row: any) => row.tableId === tableId && row.rowKey !== rowKey
+                )
+                .forEach((row) => {
+                  this.grid.setValue(row.rowKey, "tableComment", "");
+                });
+            });
+            this.grid.clearModifiedData();
+          }
         }
       })
     );
@@ -164,19 +303,16 @@ class Grid extends EditorElement {
   };
   private onAfterChange = (event: any) => {
     const { store, helper } = this.context;
-    const row = this.grid.getRow(event.rowKey) as any;
+    const { value, prevValue, rowKey } = event;
+    const row = this.grid.getRow(rowKey) as any;
     if (row) {
-      const tableId = row.tableId as string;
-      const columnId = row.columnId as string;
-      const value = event.value as string;
-      const oldValue = event.prevValue as string;
+      const { tableId, columnId } = row;
       switch (event.columnName) {
         case "tableName":
           store.dispatch(changeTableName(helper, tableId, value));
           this.grid
             .findRows(
-              (row: any) =>
-                row.tableId === tableId && row.rowKey !== event.rowKey
+              (row: any) => row.tableId === tableId && row.rowKey !== rowKey
             )
             .forEach((row) => {
               this.grid.setValue(row.rowKey, "tableName", value);
@@ -186,38 +322,21 @@ class Grid extends EditorElement {
           store.dispatch(changeTableComment(helper, tableId, value));
           this.grid
             .findRows(
-              (row: any) =>
-                row.tableId === tableId && row.rowKey !== event.rowKey
+              (row: any) => row.tableId === tableId && row.rowKey !== rowKey
             )
             .forEach((row) => {
               this.grid.setValue(row.rowKey, "tableComment", value);
             });
           break;
         case "option":
-          const changeOptions = changeColumnOptionList(oldValue, value);
+          const changeOptions = changeColumnOptionList(prevValue, value);
           const batchCommand: Array<Command<CommandType>> = [];
-          changeOptions.forEach((simpleOption) => {
-            switch (simpleOption) {
-              case "PK":
-                batchCommand.push(
-                  changeColumnPrimaryKey(store, tableId, columnId)
-                );
-                break;
-              case "NN":
-                batchCommand.push(
-                  changeColumnNotNull(store, tableId, columnId)
-                );
-                break;
-              case "UQ":
-                batchCommand.push(changeColumnUnique(store, tableId, columnId));
-                break;
-              case "AI":
-                batchCommand.push(
-                  changeColumnAutoIncrement(store, tableId, columnId)
-                );
-                break;
-            }
-          });
+          this.batchCommandColumnOption(
+            batchCommand,
+            changeOptions,
+            tableId,
+            columnId
+          );
           if (batchCommand.length !== 0) {
             store.dispatch(...batchCommand);
           }
@@ -243,7 +362,7 @@ class Grid extends EditorElement {
               .findRows(
                 (row: any) =>
                   columnIds.some((columnId) => columnId === row.columnId) &&
-                  row.rowKey !== event.rowKey
+                  row.rowKey !== rowKey
               )
               .forEach((row) => {
                 this.grid.setValue(row.rowKey, "dataType", value);
@@ -260,4 +379,44 @@ class Grid extends EditorElement {
     }
     this.grid.clearModifiedData();
   };
+
+  private batchCommandColumnOption(
+    batchCommand: Array<Command<CommandType>>,
+    changeOptions: SimpleOption[],
+    tableId: string,
+    columnId: string
+  ) {
+    const { store } = this.context;
+    changeOptions.forEach((simpleOption) => {
+      switch (simpleOption) {
+        case "PK":
+          batchCommand.push(changeColumnPrimaryKey(store, tableId, columnId));
+          break;
+        case "NN":
+          batchCommand.push(changeColumnNotNull(store, tableId, columnId));
+          break;
+        case "UQ":
+          batchCommand.push(changeColumnUnique(store, tableId, columnId));
+          break;
+        case "AI":
+          batchCommand.push(
+            changeColumnAutoIncrement(store, tableId, columnId)
+          );
+          break;
+      }
+    });
+  }
+  private isCommandTable(
+    batchCommand: Array<Command<CommandType>>,
+    commandType: CommandType,
+    tableId: string
+  ) {
+    return !batchCommand.some((command) => {
+      if (command.type === commandType) {
+        const data = command.data as ChangeTableValue;
+        return data.tableId === tableId;
+      }
+      return false;
+    });
+  }
 }

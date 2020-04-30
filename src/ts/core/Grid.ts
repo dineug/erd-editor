@@ -76,3 +76,22 @@ export function changeColumnOptionList(
   });
   return changeSimpleOptions;
 }
+
+export function currentColumnOptionList(
+  columnOption: ColumnOption
+): SimpleOption[] {
+  const currentSimpleOptions: SimpleOption[] = [];
+  if (columnOption.primaryKey) {
+    currentSimpleOptions.push("PK");
+  }
+  if (columnOption.notNull) {
+    currentSimpleOptions.push("NN");
+  }
+  if (columnOption.unique) {
+    currentSimpleOptions.push("UQ");
+  }
+  if (columnOption.autoIncrement) {
+    currentSimpleOptions.push("AI");
+  }
+  return currentSimpleOptions;
+}
