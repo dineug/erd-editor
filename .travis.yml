@@ -11,5 +11,4 @@ deploy:
     tags: true
 
 script:
-  - npm install
   - npm run build

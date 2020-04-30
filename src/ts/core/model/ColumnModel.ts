@@ -1,6 +1,6 @@
 import { SIZE_MIN_WIDTH } from "../Layout";
 import { Column, ColumnOption, ColumnUI } from "../store/Table";
-import { AddColumn, AddCustomColumn } from "../Command/column";
+import { AddColumn, AddCustomColumn } from "../command/column";
 
 interface ColumnData {
   addColumn?: AddColumn;
