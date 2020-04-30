@@ -4,13 +4,15 @@ import { cache } from "lit-html/directives/cache";
 import { Subscription } from "rxjs";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
-import { keymapMatch } from "@src/core/Keymap";
+import { keymapMatch, KeymapKey, KeymapOption } from "@src/core/Keymap";
 import { Bus } from "@src/core/Event";
 import { EditorContext, createEditorContext } from "@src/core/EditorContext";
 import { Command, CommandType } from "@src/core/Command";
 import { selectEndTable } from "@src/core/command/table";
 import { selectEndMemo } from "@src/core/command/memo";
 import { drawEndRelationship } from "@src/core/command/editor";
+import { ThemeKey } from "@src/core/Theme";
+import { Theme, Keymap } from "@src/types";
 import "./Icon";
 import "./Contextmenu";
 import "./InputEdit";
@@ -227,6 +229,29 @@ class Editor extends LitElement {
   }
   blur() {
     this.context.store.editorState.focus = false;
+  }
+  setTheme(theme: Theme) {
+    const editorTheme = this.context.theme;
+    if (typeof theme === "object" && theme !== null) {
+      Object.keys(theme).forEach((key) => {
+        const k = key as ThemeKey;
+        if (editorTheme[k] !== undefined && typeof theme[k] === "string") {
+          editorTheme[k] = theme[k] as string;
+        }
+      });
+    }
+    this.requestUpdate();
+  }
+  setKeymap(keymap: Keymap) {
+    const editorKeymap = this.context.keymap;
+    if (typeof keymap === "object" && keymap !== null) {
+      Object.keys(keymap).forEach((key) => {
+        const k = key as KeymapKey;
+        if (editorKeymap[k] !== undefined && Array.isArray(keymap[k])) {
+          editorKeymap[k] = keymap[k] as KeymapOption[];
+        }
+      });
+    }
   }
 }
 

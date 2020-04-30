@@ -100,6 +100,8 @@ export interface Keymap {
   relationshipN: KeymapOption[];
 }
 
+export type KeymapKey = keyof Keymap;
+
 export function createKeymap(): Keymap {
   return {
     addTable: [

@@ -25,6 +25,7 @@ export interface Theme {
   visualization: string;
   help: string;
 }
+export type ThemeKey = keyof Theme;
 
 export function createTheme(): Theme {
   return {
