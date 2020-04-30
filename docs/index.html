@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>vuerd demo</title>
+    <link rel="icon" href="/vuerd/favicon.ico" type="image/x-icon" />
+    <style>
+      body {
+        margin: 0;
+      }
+    </style>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=UA-131336352-5"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "UA-131336352-5");
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.min.js"></script>
+    <script>
+      const container = document.querySelector("#app");
+      const editor = document.createElement("erd-editor");
+      window.addEventListener("resize", () => {
+        editor.width = window.innerWidth;
+        editor.height = window.innerHeight;
+      });
+      window.dispatchEvent(new Event("resize"));
+      container.appendChild(editor);
+    </script>
+  </body>
+</html>
