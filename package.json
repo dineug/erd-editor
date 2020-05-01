@@ -1,6 +1,6 @@
 {
   "name": "vuerd",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "ERD editor",
   "main": "dist/vuerd.cjs.js",
   "module": "dist/vuerd.esm.js",
@@ -10,12 +10,22 @@
     "dist/*.js",
     "src"
   ],
+  "keywords": [
+    "vuerd",
+    "editor",
+    "erd",
+    "db",
+    "database"
+  ],
+  "homepage": "https://github.com/vuerd/vuerd",
+  "bugs": "https://github.com/vuerd/vuerd/issues",
+  "repository": "https://github.com/vuerd/vuerd.git",
+  "author": "dineug <dineug2@gmail.com>",
+  "license": "MIT",
   "scripts": {
     "serve": "rollup -c rollup.config.dev.js -w",
     "build": "rollup -c"
   },
-  "author": "dineug <dineug2@gmail.com>",
-  "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^11.1.0",
     "@rollup/plugin-json": "^4.0.3",

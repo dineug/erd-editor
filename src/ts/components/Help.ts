@@ -63,8 +63,9 @@ class Help extends EditorElement {
       },
       {
         name: "Selection - column",
-        keymap:
-          "Click, Ctrl + Click, Shift + Click, Shift + Arrow key(up, down)",
+        keymap: `Click, Ctrl + Click, Shift + Click, Shift + Arrow key(up, down), ${keymapOptionToStringJoin(
+          keymap.selectAllColumn
+        )}`,
       },
       {
         name: "Movement - table, memo, column",
