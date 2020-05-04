@@ -10,7 +10,7 @@ import {
   createContextmenuRelationship,
 } from "@src/core/Contextmenu";
 import { Bus, Move } from "@src/core/Event";
-import { keymapMatch } from "@src/core/Keymap";
+import { keymapMatch, MoveKey, moveKeys } from "@src/core/Keymap";
 import { getParentElement, getData } from "@src/core/Helper";
 import { relationshipMenus } from "@src/core/Contextmenu";
 import { getBase64Icon } from "@src/core/Icon";
@@ -30,8 +30,6 @@ import {
 import { addMemo, selectEndMemo, selectAllMemo } from "@src/core/command/memo";
 import { moveCanvas } from "@src/core/command/canvas";
 import {
-  moveKeys,
-  MoveKey,
   focusMoveTable,
   editTable as editTableCommand,
   editEndTable,
@@ -40,6 +38,7 @@ import {
   copyColumn,
   pasteColumn,
 } from "@src/core/command/editor";
+import "./erd/InputEdit";
 import "./erd/Canvas";
 import "./erd/CanvasSVG";
 import "./erd/Memo";
@@ -56,6 +55,7 @@ import "./erd/minimap/Column";
 import "./erd/minimap/Memo";
 import "./erd/DragSelect";
 import "./erd/DrawRelationship";
+import "./erd/Finder";
 
 @customElement("vuerd-erd")
 class ERD extends EditorElement {
@@ -183,6 +183,11 @@ class ERD extends EditorElement {
             store.dispatch(
               focusMoveTable(event.key as MoveKey, event.shiftKey)
             );
+          }
+
+          if (focusTable !== null && event.key === "Tab") {
+            event.preventDefault();
+            store.dispatch(focusMoveTable("ArrowRight", event.shiftKey));
           }
 
           if (focusTable !== null && keymapMatch(event, keymap.edit)) {

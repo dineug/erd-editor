@@ -1004,7 +1004,7 @@ export const tuiGrid = css`
   }
 
   .tui-grid-editor-checkbox input[type="checkbox"],
-  input[type="radio"] {
+  .tui-grid-editor-checkbox input[type="radio"] {
     position: absolute;
     opacity: 0;
     cursor: pointer;

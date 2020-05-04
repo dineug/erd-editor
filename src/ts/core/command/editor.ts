@@ -1,8 +1,9 @@
 import { Command, CommandType } from "../Command";
 import { Store } from "../Store";
 import { Logger } from "../Logger";
-import { getData } from "../Helper";
+import { getData, uuid } from "../Helper";
 import { JsonFormat } from "../File";
+import { MoveKey } from "../Keymap";
 import {
   canvasTypeList,
   databaseList,
@@ -12,10 +13,16 @@ import {
 import { Relationship, RelationshipType } from "../store/Relationship";
 import { Memo } from "../store/Memo";
 import { Table } from "../store/Table";
+import { FilterColumnType, TextFilterCode } from "../store/Editor";
 import { FocusTableModel, FocusType } from "../model/FocusTableModel";
 import { TableModel } from "../model/TableModel";
 import { MemoModel } from "../model/MemoModel";
 import { RelationshipModel } from "../model/RelationshipModel";
+import { FilterStateModel } from "../model/FilterModel";
+import {
+  FocusFilterModel,
+  FocusType as FocusFilterType,
+} from "../model/FocusFilterModel";
 import { relationshipSort } from "../helper/RelationshipHelper";
 import { addCustomColumn } from "./column";
 
@@ -60,13 +67,6 @@ export function executeFocusEndTable(store: Store) {
   executeEditEndTable(store);
 }
 
-export const moveKeys: MoveKey[] = [
-  "ArrowUp",
-  "ArrowRight",
-  "ArrowDown",
-  "ArrowLeft",
-];
-export type MoveKey = "ArrowUp" | "ArrowRight" | "ArrowDown" | "ArrowLeft";
 export interface FocusMoveTable {
   moveKey: MoveKey;
   shiftKey: boolean;
@@ -87,6 +87,7 @@ export function executeFocusMoveTable(store: Store, data: FocusMoveTable) {
   Logger.debug("executeFocusMoveTable");
   const { focusTable } = store.editorState;
   focusTable?.move(data);
+  executeEditEndTable(store);
 }
 
 export interface FocusTargetTable {
@@ -381,13 +382,8 @@ export function loadJson(value: string): Command<"editor.loadJson"> {
 }
 export function executeLoadJson(store: Store, data: LoadJson) {
   Logger.debug("executeLoadJson");
-  const { canvasState, tableState, memoState, relationshipState } = store;
-  tableState.tables.splice(0, tableState.tables.length);
-  memoState.memos.splice(0, memoState.memos.length);
-  relationshipState.relationships.splice(
-    0,
-    relationshipState.relationships.length
-  );
+  const { canvasState, tableState, relationshipState } = store;
+  executeClear(store);
   const json = JSON.parse(data.value) as JsonFormat;
 
   const canvasStateAny = store.canvasState as any;
@@ -581,11 +577,324 @@ export function clear(): Command<"editor.clear"> {
 }
 export function executeClear(store: Store) {
   Logger.debug("executeClear");
-  const { tableState, memoState, relationshipState } = store;
-  tableState.tables.splice(0, tableState.tables.length);
-  memoState.memos.splice(0, memoState.memos.length);
-  relationshipState.relationships.splice(
-    0,
-    relationshipState.relationships.length
+  const { tables } = store.tableState;
+  const { memos } = store.memoState;
+  const { relationships } = store.relationshipState;
+  tables.splice(0, tables.length);
+  memos.splice(0, memos.length);
+  relationships.splice(0, relationships.length);
+}
+
+export interface AddFilterState {
+  id: string;
+}
+export function addFilterState(): Command<"editor.addFilterState"> {
+  return {
+    type: "editor.addFilterState",
+    data: {
+      id: uuid(),
+    },
+  };
+}
+export function executeAddFilterState(store: Store, data: AddFilterState) {
+  Logger.debug("executeAddFilterState");
+  const { filterStateList } = store.editorState;
+  filterStateList.push(new FilterStateModel({ addFilterState: data }));
+}
+
+export interface RemoveFilterState {
+  filterStateIds: string[];
+}
+export function removeFilterState(
+  filterStateIds: string[]
+): Command<"editor.removeFilterState"> {
+  return {
+    type: "editor.removeFilterState",
+    data: {
+      filterStateIds,
+    },
+  };
+}
+export function executeRemoveFilterState(
+  store: Store,
+  data: RemoveFilterState
+) {
+  Logger.debug("executeRemoveFilterState");
+  const { filterStateList } = store.editorState;
+  for (let i = 0; i < filterStateList.length; i++) {
+    const id = filterStateList[i].id;
+    if (data.filterStateIds.some((filterStateId) => filterStateId === id)) {
+      filterStateList.splice(i, 1);
+      i--;
+    }
+  }
+}
+
+export function focusFilter(): Command<"editor.focusFilter"> {
+  return {
+    type: "editor.focusFilter",
+    data: null,
+  };
+}
+export function executeFocusFilter(store: Store) {
+  Logger.debug("executeFocusFilter");
+  const { editorState } = store;
+  editorState.focusFilter = new FocusFilterModel(
+    editorState.filterStateList,
+    store
   );
+}
+
+export function focusEndFilter(): Command<"editor.focusEndFilter"> {
+  return {
+    type: "editor.focusEndFilter",
+    data: null,
+  };
+}
+export function executeFocusEndFilter(store: Store) {
+  Logger.debug("executeFocusEndFilter");
+  const { editorState } = store;
+  editorState.focusFilter?.destroy();
+  editorState.focusFilter = null;
+}
+
+export function filterActive(): Command<"editor.filterActive"> {
+  return {
+    type: "editor.filterActive",
+    data: null,
+  };
+}
+export function executeFilterActive(store: Store) {
+  Logger.debug("executeFilterActive");
+  const { editorState } = store;
+  editorState.filterActive = true;
+}
+
+export function filterActiveEnd(): Command<"editor.filterActiveEnd"> {
+  return {
+    type: "editor.filterActiveEnd",
+    data: null,
+  };
+}
+export function executeFilterActiveEnd(store: Store) {
+  Logger.debug("executeFilterActiveEnd");
+  const { editorState } = store;
+  editorState.filterActive = false;
+}
+
+export interface FocusMoveFilter {
+  moveKey: MoveKey;
+  shiftKey: boolean;
+}
+export function focusMoveFilter(
+  moveKey: MoveKey,
+  shiftKey: boolean
+): Command<"editor.focusMoveFilter"> {
+  return {
+    type: "editor.focusMoveFilter",
+    data: {
+      moveKey,
+      shiftKey,
+    },
+  };
+}
+export function executeFocusMoveFilter(store: Store, data: FocusMoveFilter) {
+  Logger.debug("executeFocusMoveTable");
+  const { focusFilter } = store.editorState;
+  focusFilter?.move(data);
+  executeEditEndFilter(store);
+}
+
+export interface FocusTargetFilter {
+  focusType: FocusFilterType;
+}
+export function focusTargetFilter(
+  focusType: FocusFilterType
+): Command<"editor.focusTargetFilter"> {
+  return {
+    type: "editor.focusTargetFilter",
+    data: {
+      focusType,
+    },
+  };
+}
+export function executeFocusTargetFilter(
+  store: Store,
+  data: FocusTargetFilter
+) {
+  Logger.debug("executeFocusTargetFilter");
+  const { focusFilter } = store.editorState;
+  focusFilter?.focus({
+    focusTargetFilter: data,
+  });
+  executeEditEndFilter(store);
+}
+
+export interface FocusTargetFilterState {
+  filterStateId: string;
+  focusType: FocusFilterType;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+}
+export function focusTargetFilterState(
+  filterStateId: string,
+  focusType: FocusFilterType,
+  ctrlKey: boolean,
+  shiftKey: boolean
+): Command<"editor.focusTargetFilterState"> {
+  return {
+    type: "editor.focusTargetFilterState",
+    data: {
+      filterStateId,
+      focusType,
+      ctrlKey,
+      shiftKey,
+    },
+  };
+}
+export function executeFocusTargetFilterState(
+  store: Store,
+  data: FocusTargetFilterState
+) {
+  Logger.debug("executeFocusTargetFilterState");
+  const { focusFilter } = store.editorState;
+  focusFilter?.focus({
+    focusTargetFilterState: data,
+  });
+  executeEditEndFilter(store);
+}
+
+export function selectAllFilterState(): Command<"editor.selectAllFilterState"> {
+  return {
+    type: "editor.selectAllFilterState",
+    data: null,
+  };
+}
+export function executeSelectAllFilterState(store: Store) {
+  Logger.debug("executeSelectAllFilterState");
+  const { focusFilter } = store.editorState;
+  focusFilter?.selectAll();
+}
+
+export function selectEndFilterState(): Command<"editor.selectEndFilterState"> {
+  return {
+    type: "editor.selectEndFilterState",
+    data: null,
+  };
+}
+export function executeSelectEndFilterState(store: Store) {
+  Logger.debug("executeSelectEndFilterState");
+  const { focusFilter } = store.editorState;
+  focusFilter?.selectEnd();
+}
+
+export interface EditFilter {
+  id?: string | null;
+  focusType: FocusFilterType;
+}
+export function editFilter(
+  focusType: FocusFilterType,
+  id?: string | null
+): Command<"editor.editFilter"> {
+  return {
+    type: "editor.editFilter",
+    data: {
+      id,
+      focusType,
+    },
+  };
+}
+export function executeEditFilter(store: Store, data: EditFilter) {
+  Logger.debug("executeEditFilter");
+  const { editorState } = store;
+  editorState.editFilter = data;
+}
+
+export function editEndFilter(): Command<"editor.editEndFilter"> {
+  return {
+    type: "editor.editEndFilter",
+    data: null,
+  };
+}
+export function executeEditEndFilter(store: Store) {
+  Logger.debug("executeEditEndFilter");
+  const { editorState } = store;
+  editorState.editFilter = null;
+}
+
+export interface ChangeFilterStateValue {
+  filterStateId: string;
+  value: string | FilterColumnType | TextFilterCode;
+}
+
+export function changeFilterStateColumnType(
+  filterStateId: string,
+  value: string | FilterColumnType | TextFilterCode
+): Command<"editor.changeFilterStateColumnType"> {
+  return {
+    type: "editor.changeFilterStateColumnType",
+    data: {
+      filterStateId,
+      value,
+    },
+  };
+}
+export function executeChangeFilterStateColumnType(
+  store: Store,
+  data: ChangeFilterStateValue
+) {
+  Logger.debug("executeChangeFilterStateColumnType");
+  const { filterStateList } = store.editorState;
+  const filetState = getData(filterStateList, data.filterStateId) as any | null;
+  if (filetState) {
+    filetState.columnType = data.value;
+  }
+}
+
+export function changeFilterStateFilterCode(
+  filterStateId: string,
+  value: string
+): Command<"editor.changeFilterStateFilterCode"> {
+  return {
+    type: "editor.changeFilterStateFilterCode",
+    data: {
+      filterStateId,
+      value,
+    },
+  };
+}
+export function executeChangeFilterStateFilterCode(
+  store: Store,
+  data: ChangeFilterStateValue
+) {
+  Logger.debug("executeChangeFilterStateFilterCode");
+  const { filterStateList } = store.editorState;
+  const filetState = getData(filterStateList, data.filterStateId) as any | null;
+  if (filetState) {
+    filetState.filterCode = data.value;
+  }
+}
+
+export function changeFilterStateValue(
+  filterStateId: string,
+  value: string
+): Command<"editor.changeFilterStateValue"> {
+  return {
+    type: "editor.changeFilterStateValue",
+    data: {
+      filterStateId,
+      value,
+    },
+  };
+}
+export function executeChangeFilterStateValue(
+  store: Store,
+  data: ChangeFilterStateValue
+) {
+  Logger.debug("executeChangeFilterStateValue");
+  const { filterStateList } = store.editorState;
+  const filetState = getData(filterStateList, data.filterStateId);
+  if (filetState) {
+    filetState.value = data.value;
+  }
 }

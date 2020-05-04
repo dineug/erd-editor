@@ -100,6 +100,13 @@ import {
   LoadJson,
   CopyColumn,
   PasteColumn,
+  AddFilterState,
+  RemoveFilterState,
+  FocusMoveFilter,
+  FocusTargetFilter,
+  FocusTargetFilterState,
+  EditFilter,
+  ChangeFilterStateValue,
   executeFocusTable,
   executeFocusEndTable,
   executeFocusMoveTable,
@@ -119,6 +126,22 @@ import {
   executeCopyColumn,
   executePasteColumn,
   executeClear,
+  executeAddFilterState,
+  executeRemoveFilterState,
+  executeFocusFilter,
+  executeFocusEndFilter,
+  executeFilterActive,
+  executeFilterActiveEnd,
+  executeFocusMoveFilter,
+  executeFocusTargetFilter,
+  executeFocusTargetFilterState,
+  executeSelectAllFilterState,
+  executeSelectEndFilterState,
+  executeEditFilter,
+  executeEditEndFilter,
+  executeChangeFilterStateColumnType,
+  executeChangeFilterStateFilterCode,
+  executeChangeFilterStateValue,
 } from "./command/editor";
 
 export interface Command<K extends CommandType> {
@@ -192,6 +215,22 @@ interface CommandMap {
   "editor.copyColumn": CopyColumn;
   "editor.pasteColumn": PasteColumn;
   "editor.clear": null;
+  "editor.addFilterState": AddFilterState;
+  "editor.removeFilterState": RemoveFilterState;
+  "editor.focusFilter": null;
+  "editor.focusEndFilter": null;
+  "editor.filterActive": null;
+  "editor.filterActiveEnd": null;
+  "editor.focusMoveFilter": FocusMoveFilter;
+  "editor.focusTargetFilter": FocusTargetFilter;
+  "editor.focusTargetFilterState": FocusTargetFilterState;
+  "editor.selectAllFilterState": null;
+  "editor.selectEndFilterState": null;
+  "editor.editFilter": EditFilter;
+  "editor.editEndFilter": null;
+  "editor.changeFilterStateColumnType": ChangeFilterStateValue;
+  "editor.changeFilterStateFilterCode": ChangeFilterStateValue;
+  "editor.changeFilterStateValue": ChangeFilterStateValue;
 }
 
 export const changeCommandTypes: CommandType[] = [
@@ -453,6 +492,66 @@ export function commandExecute(
         break;
       case "editor.clear":
         executeClear(store);
+        break;
+      case "editor.addFilterState":
+        executeAddFilterState(store, command.data as AddFilterState);
+        break;
+      case "editor.removeFilterState":
+        executeRemoveFilterState(store, command.data as RemoveFilterState);
+        break;
+      case "editor.focusFilter":
+        executeFocusFilter(store);
+        break;
+      case "editor.focusEndFilter":
+        executeFocusEndFilter(store);
+        break;
+      case "editor.filterActive":
+        executeFilterActive(store);
+        break;
+      case "editor.filterActiveEnd":
+        executeFilterActiveEnd(store);
+        break;
+      case "editor.focusMoveFilter":
+        executeFocusMoveFilter(store, command.data as FocusMoveFilter);
+        break;
+      case "editor.focusTargetFilter":
+        executeFocusTargetFilter(store, command.data as FocusTargetFilter);
+        break;
+      case "editor.focusTargetFilterState":
+        executeFocusTargetFilterState(
+          store,
+          command.data as FocusTargetFilterState
+        );
+        break;
+      case "editor.selectAllFilterState":
+        executeSelectAllFilterState(store);
+        break;
+      case "editor.selectEndFilterState":
+        executeSelectEndFilterState(store);
+        break;
+      case "editor.editFilter":
+        executeEditFilter(store, command.data as EditFilter);
+        break;
+      case "editor.editEndFilter":
+        executeEditEndFilter(store);
+        break;
+      case "editor.changeFilterStateColumnType":
+        executeChangeFilterStateColumnType(
+          store,
+          command.data as ChangeFilterStateValue
+        );
+        break;
+      case "editor.changeFilterStateFilterCode":
+        executeChangeFilterStateFilterCode(
+          store,
+          command.data as ChangeFilterStateValue
+        );
+        break;
+      case "editor.changeFilterStateValue":
+        executeChangeFilterStateValue(
+          store,
+          command.data as ChangeFilterStateValue
+        );
         break;
     }
   });

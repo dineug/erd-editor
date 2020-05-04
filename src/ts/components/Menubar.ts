@@ -1,4 +1,4 @@
-import { html, customElement } from "lit-element";
+import { html, customElement, property } from "lit-element";
 import { classMap } from "lit-html/directives/class-map";
 import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
@@ -8,6 +8,12 @@ import {
   changeDatabaseName,
   changeCanvasType,
 } from "@src/core/command/canvas";
+import {
+  filterActive,
+  filterActiveEnd,
+  focusFilter,
+  focusEndFilter,
+} from "@src/core/command/editor";
 import { CanvasType } from "@src/core/store/Canvas";
 import { SIZE_CANVAS_MIN, SIZE_CANVAS_MAX } from "@src/core/Layout";
 import { Bus } from "@src/core/Event";
@@ -54,12 +60,18 @@ const menus: Menu[] = [
 
 @customElement("vuerd-menubar")
 class Menubar extends EditorElement {
+  // @property({ type: Boolean })
+  // finder = false;
+
   private subscriptionList: Subscription[] = [];
 
   connectedCallback() {
     super.connectedCallback();
-    const { store } = this.context;
+    const { store, eventBus } = this.context;
     this.subscriptionList.push(
+      store.observe(store.editorState.filterStateList, () =>
+        this.requestUpdate()
+      ),
       store.observe(store.canvasState, (name) => {
         switch (name) {
           case "databaseName":
@@ -69,15 +81,26 @@ class Menubar extends EditorElement {
             this.requestUpdate();
             break;
         }
+      }),
+      store.observe(store.editorState, (name) => {
+        switch (name) {
+          case "filterActive":
+            this.requestUpdate();
+            break;
+        }
       })
     );
+    eventBus.on(Bus.Menubar.filter, this.onFilter);
   }
   disconnectedCallback() {
+    const { eventBus } = this.context;
+    eventBus.off(Bus.Menubar.filter, this.onFilter);
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
   render() {
+    const { filterActive, filterStateList } = this.context.store.editorState;
     const { databaseName, width, canvasType } = this.context.store.canvasState;
     return html`
       <ul class="vuerd-menubar" @mousedown=${this.onMousedown}>
@@ -125,10 +148,38 @@ class Menubar extends EditorElement {
         <li class="vuerd-menubar-menu" title="Help" @click=${this.onHelp}>
           <vuerd-icon icon="question" size="16"></vuerd-icon>
         </li>
+        ${canvasType === "Grid"
+          ? html`
+              <li
+                class=${classMap({
+                  "vuerd-menubar-menu": true,
+                  active: filterStateList.length !== 0,
+                })}
+                title="Filter"
+                @click=${this.onFilter}
+              >
+                <vuerd-icon icon="filter" size="16"></vuerd-icon>
+              </li>
+            `
+          : ""}
       </ul>
+      ${filterActive
+        ? html`
+            <vuerd-grid-filter @close=${this.onFilterEnd}></vuerd-grid-filter>
+          `
+        : ""}
     `;
   }
 
+  private onFilter = () => {
+    const { store } = this.context;
+    store.dispatch(filterActive(), focusFilter());
+  };
+
+  private onFilterEnd() {
+    const { store } = this.context;
+    store.dispatch(filterActiveEnd(), focusEndFilter());
+  }
   private onMousedown(event: MouseEvent) {
     const { eventBus } = this.context;
     eventBus.emit(Bus.ERD.contextmenuEnd);

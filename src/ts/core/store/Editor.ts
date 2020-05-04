@@ -1,4 +1,8 @@
 import { FocusTable, FocusType } from "../model/FocusTableModel";
+import {
+  FocusFilter,
+  FocusType as FocusFilterType,
+} from "../model/FocusFilterModel";
 import { DraggableColumn } from "../command/editor";
 import { Table, Column } from "./Table";
 import { RelationshipType } from "./Relationship";
@@ -11,6 +15,11 @@ export interface EditorState {
   draggableColumn: DraggableColumn | null;
   drawRelationship: DrawRelationship | null;
   copyColumns: Column[];
+  filterActive: boolean;
+  filterStateList: FilterState[];
+  filterOperatorType: FilterOperatorType;
+  focusFilter: FocusFilter | null;
+  editFilter: EditFilter | null;
 }
 
 export interface EditTable {
@@ -30,6 +39,45 @@ export interface DrawStartPoint {
   y: number;
 }
 
+export type FilterColumnType =
+  | "tableName"
+  | "tableComment"
+  | "option"
+  | "name"
+  | "dataType"
+  | "default"
+  | "comment";
+export const filterColumnTypes: FilterColumnType[] = [
+  "tableName",
+  "tableComment",
+  "option",
+  "name",
+  "dataType",
+  "default",
+  "comment",
+];
+export type TextFilterCode = "eq" | "ne" | "contain" | "start" | "end";
+export const textFilterCodeList: TextFilterCode[] = [
+  "eq",
+  "ne",
+  "contain",
+  "start",
+  "end",
+];
+export type FilterOperatorType = "AND" | "OR";
+export const filterOperatorTypes: FilterOperatorType[] = ["AND", "OR"];
+export interface FilterState {
+  id: string;
+  columnType: FilterColumnType;
+  filterCode: TextFilterCode;
+  value: string;
+}
+
+export interface EditFilter {
+  id?: string | null;
+  focusType: FocusFilterType;
+}
+
 export function createEditorState(): EditorState {
   return {
     focus: true,
@@ -38,5 +86,10 @@ export function createEditorState(): EditorState {
     draggableColumn: null,
     drawRelationship: null,
     copyColumns: [],
+    filterActive: false,
+    filterStateList: [],
+    filterOperatorType: "OR",
+    focusFilter: null,
+    editFilter: null,
   };
 }

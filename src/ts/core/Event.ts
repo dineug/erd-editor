@@ -149,6 +149,15 @@ enum ImportErrorDDL {
   close = "ImportErrorDDL.close",
 }
 
+enum Menubar {
+  filter = "Menubar.filter",
+  find = "Menubar.find",
+}
+
+enum Filter {
+  close = "Filter.close",
+}
+
 export const Bus = {
   Editor,
   ERD,
@@ -158,4 +167,6 @@ export const Bus = {
   Memo,
   Help,
   ImportErrorDDL,
+  Menubar,
+  Filter,
 };

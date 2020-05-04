@@ -58,6 +58,7 @@ export interface Keymap {
   pasteColumn?: KeymapOption[];
   edit?: KeymapOption[];
   stop?: KeymapOption[];
+  find?: KeymapOption[];
   relationshipZeroOneN?: KeymapOption[];
   relationshipZeroOne?: KeymapOption[];
   relationshipZeroN?: KeymapOption[];

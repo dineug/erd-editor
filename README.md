@@ -31,10 +31,10 @@
 
 ## Dependency
 
-- [ES6](https://developer.mozilla.org/ko/docs/Web/JavaScript/New_in_JavaScript/ECMAScript_6_support_in_Mozilla)
+- [ES6](https://developer.mozilla.org/en-US/docs/Archive/Web/JavaScript/New_in_JavaScript/ECMAScript_2015_support_in_Mozilla)
 - [Proxy](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy) - Observable
 - [custom elements](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements) - Web Standard Interface
-- [shadow DOM](https://developer.mozilla.org/ko/docs/Web/Web_Components/Using_shadow_DOM) - CSS encapsulation
+- [shadow DOM](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM) - CSS encapsulation
 - [Node.getRootNode()](https://developer.mozilla.org/en-US/docs/Web/API/Node/getRootNode) - Instance EditorContext Injection
 - [CSS variables](https://developer.mozilla.org/en-US/docs/Web/CSS/--*) - Custom Theme
 
@@ -183,6 +183,10 @@ editor.setTheme({
 
 ## interface Custom Keymap
 
+| Name | Type                    | Describe                                                                                                                                               |
+| ---- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| key  | event.key or event.code | [Key](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key), [Code](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code) |
+
 ```typescript
 interface KeymapOption {
   metaKey: boolean;
@@ -204,6 +208,7 @@ interface Keymap {
   pasteColumn?: KeymapOption[];
   edit?: KeymapOption[];
   stop?: KeymapOption[];
+  find?: KeymapOption[];
   relationshipZeroOneN?: KeymapOption[];
   relationshipZeroOne?: KeymapOption[];
   relationshipZeroN?: KeymapOption[];
@@ -306,22 +311,23 @@ container.appendChild(editor);
 | Editing - ERD                                       | dblclick, Enter                                                          |
 | Editing - Grid                                      | dblclick, Enter                                                          |
 | All Stop                                            | Escape                                                                   |
+| filter - Grid                                       | Ctrl + Alt + F                                                           |
 | Selection - table, memo                             | Ctrl + Drag, Click, Ctrl + Click, Ctrl + Alt + A                         |
-| Selection - column                                  | Click, Ctrl + Click, Shift + Click, Shift + Arrow key(up, down), Alt + A |
+| Selection - column, filter                          | Click, Ctrl + Click, Shift + Click, Shift + Arrow key(up, down), Alt + A |
 | Movement - table, memo, column                      | Drag, Ctrl + Drag                                                        |
 | Copy - column                                       | Ctrl + C                                                                 |
 | Paste - column                                      | Ctrl + V                                                                 |
 | Contextmenu - ERD, Relationship, SQL, GeneratorCode | Right-click                                                              |
 | New Table                                           | Alt + N                                                                  |
 | New Memo                                            | Alt + M                                                                  |
-| New Column                                          | Alt + Enter                                                              |
+| New - Column, filter                                | Alt + Enter                                                              |
 | Delete - table, memo                                | Ctrl + Delete                                                            |
-| Delete - column                                     | Alt + Delete                                                             |
+| Delete - column, filter                             | Alt + Delete                                                             |
 | Select DataType Hint                                | Arrow key(right), Click                                                  |
 | Move DataType Hint                                  | Arrow key(up, down)                                                      |
 | Primary Key                                         | Alt + K                                                                  |
-| Option Checked - Grid                               | Space, Click                                                             |
-| Move Option - Grid                                  | Arrow key(up, down, left, right)                                         |
+| checkbox - Grid, filter                             | Space, Click                                                             |
+| Move checkbox - Grid, filter                        | Arrow key(up, down, left, right)                                         |
 | Relationship - Zero One N                           | Ctrl + Alt + 1                                                           |
 | Relationship - Zero One                             | Ctrl + Alt + 2                                                           |
 | Relationship - Zero N                               | Ctrl + Alt + 3                                                           |
@@ -333,7 +339,7 @@ container.appendChild(editor);
 ## TODO
 
 - [ ] Undo, Redo Manager
-- [ ] Grid filter
+- [x] Grid filter
 - [ ] ERD Table finder
 - [ ] Real-time simultaneous editing api
 - [ ] SQL index Support [#9](https://github.com/vuerd/vuerd-vscode/issues/9)
@@ -341,6 +347,7 @@ container.appendChild(editor);
   - [ ] Oracle
   - [ ] MSSQL
   - [ ] PostgreSQL
+- [ ] SQL-Query generator [#3](https://github.com/vuerd/vuerd/issues/3)
 
 ## License
 

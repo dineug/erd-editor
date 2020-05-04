@@ -329,6 +329,10 @@ class Table extends EditorElement {
     this.subDraggableColumns = [];
   }
   private onAddColumn(event: MouseEvent) {
+    const selection = window.getSelection();
+    if (selection) {
+      selection.removeAllRanges();
+    }
     const { store } = this.context;
     store.dispatch(addColumn(store, this.table.id));
   }

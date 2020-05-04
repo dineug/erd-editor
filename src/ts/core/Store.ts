@@ -37,6 +37,8 @@ export class Store {
     "_subscriptionList",
     "_currentFocusColumn",
     "focusColumns",
+    "_currentFilterState",
+    "focusFilterStateList",
   ];
 
   constructor() {

@@ -1,5 +1,6 @@
 import { Store } from "./Store";
 import { ColumnOption } from "./store/Table";
+import { FilterState, FilterOperatorType } from "./store/Editor";
 import { orderByNameASC } from "./helper/TableHelper";
 
 export type SimpleOption = "PK" | "NN" | "UQ" | "AI";
@@ -94,4 +95,61 @@ export function currentColumnOptionList(
     currentSimpleOptions.push("AI");
   }
   return currentSimpleOptions;
+}
+
+export function filterGridData(store: Store): GridRow[] {
+  const rows = createGridData(store);
+  const { filterStateList, filterOperatorType } = store.editorState;
+  const activeFilterStateList = filterStateList.filter(
+    (filterState) => filterState.value !== ""
+  );
+  if (activeFilterStateList.length !== 0) {
+    return rows.filter((row) =>
+      filterMatch(row, activeFilterStateList, filterOperatorType)
+    );
+  } else {
+    return rows;
+  }
+}
+
+function filterMatch(
+  row: GridRow,
+  filterStateList: FilterState[],
+  filterOperatorType: FilterOperatorType
+): boolean {
+  let result = false;
+  if (filterOperatorType === "OR") {
+    result = filterStateList.some((filterState) =>
+      filterValueMatch(row[filterState.columnType], filterState)
+    );
+  } else {
+    result = !filterStateList.some(
+      (filterState) =>
+        !filterValueMatch(row[filterState.columnType], filterState)
+    );
+  }
+  return result;
+}
+
+function filterValueMatch(value: string, filterState: FilterState): boolean {
+  let result = false;
+  switch (filterState.filterCode) {
+    case "eq":
+      result = value === filterState.value;
+      break;
+    case "ne":
+      result = value !== filterState.value;
+      break;
+    case "contain":
+      result = value.indexOf(filterState.value) !== -1;
+      break;
+    case "start":
+      result = value.indexOf(filterState.value) === 0;
+      break;
+    case "end":
+      const lastIndex = value.lastIndexOf(filterState.value);
+      result = value.length === lastIndex + filterState.value.length;
+      break;
+  }
+  return result;
 }

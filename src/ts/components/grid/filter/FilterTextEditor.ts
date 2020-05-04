@@ -1,22 +1,18 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { classMap } from "lit-html/directives/class-map";
-import { EditorElement } from "./EditorElement";
+import { Subscription, fromEvent } from "rxjs";
+import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
-import { SIZE_MIN_WIDTH } from "@src/core/Layout";
 
-@customElement("vuerd-input-edit")
-class InputEdit extends EditorElement {
+@customElement("vuerd-grid-filter-text-editor")
+class FilterTextEditor extends EditorElement {
   @property({ type: Boolean })
   edit = false;
   @property({ type: Boolean })
   focusState = false;
   @property({ type: Boolean })
   select = false;
-  @property({ type: Boolean })
-  active = false;
-  @property({ type: Number })
-  width = SIZE_MIN_WIDTH;
   @property({ type: String })
   value = "";
   @property({ type: String })
@@ -24,12 +20,11 @@ class InputEdit extends EditorElement {
 
   get classMap() {
     return {
-      "vuerd-input-edit": true,
+      "vuerd-grid-filter-text-editor": true,
       placeholder: this.value.trim() === "" && !this.edit,
       focus: this.focusState && !this.edit,
       edit: this.edit,
       select: this.select,
-      active: this.active,
     };
   }
 
@@ -63,9 +58,6 @@ class InputEdit extends EditorElement {
       ? html`
           <input
             class=${classMap(this.classMap)}
-            style=${styleMap({
-              width: `${this.width}px`,
-            })}
             type="text"
             spellcheck="false"
             .value=${this.value}
@@ -74,12 +66,7 @@ class InputEdit extends EditorElement {
           />
         `
       : html`
-          <div
-            class=${classMap(this.classMap)}
-            style=${styleMap({
-              width: `${this.width}px`,
-            })}
-          >
+          <div class=${classMap(this.classMap)}>
             <span>${this.placeholderValue}</span>
           </div>
         `;

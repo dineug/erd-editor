@@ -14,7 +14,6 @@ import { ThemeKey } from "@src/core/Theme";
 import { Theme, Keymap, Editor } from "@src/types";
 import "./Icon";
 import "./Contextmenu";
-import "./InputEdit";
 import "./Sash";
 import "./Menubar";
 import "./ERD";
@@ -35,14 +34,12 @@ class EditorModel extends LitElement implements Editor {
   width = defaultWidth;
   @property({ type: Number })
   height = defaultHeight;
-  @property({ type: Boolean })
-  help = false;
-  @property({ type: Boolean })
-  importErrorDDL = false;
 
   context: EditorContext;
 
   private subscriptionList: Subscription[] = [];
+  private help = false;
+  private importErrorDDL = false;
   private importErrorDDLMessage = "";
 
   get value() {
@@ -107,6 +104,7 @@ class EditorModel extends LitElement implements Editor {
             );
             eventBus.emit(Bus.Help.close);
             eventBus.emit(Bus.ImportErrorDDL.close);
+            eventBus.emit(Bus.Filter.close);
           }
         }
       })
@@ -238,17 +236,21 @@ class EditorModel extends LitElement implements Editor {
   private onImportErrorDDL = (event: CustomEvent) => {
     this.importErrorDDLMessage = event.detail.message;
     this.importErrorDDL = true;
+    this.requestUpdate();
   };
 
   private onHelp() {
     this.help = true;
+    this.requestUpdate();
   }
   private onHelpEnd() {
     this.help = false;
+    this.requestUpdate();
   }
   private onImportErrorDDLEnd() {
     this.importErrorDDL = false;
     this.importErrorDDLMessage = "";
+    this.requestUpdate();
   }
 
   focus() {

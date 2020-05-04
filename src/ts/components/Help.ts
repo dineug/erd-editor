@@ -27,7 +27,7 @@ class Help extends EditorElement {
   private animationFrame = new AnimationFrame<{ right: number }>(200);
   private subscriptionList: Subscription[] = [];
 
-  get helpWidth() {
+  get drawerWidth() {
     let width = this.width / 2;
     if (width > MAX_WIDTH) {
       width = MAX_WIDTH;
@@ -56,13 +56,17 @@ class Help extends EditorElement {
         keymap: keymapOptionToStringJoin(keymap.stop),
       },
       {
+        name: "filter",
+        keymap: keymapOptionToStringJoin(keymap.find),
+      },
+      {
         name: "Selection - table, memo",
         keymap: `Ctrl + Drag, Click, Ctrl + Click, ${keymapOptionToStringJoin(
           keymap.selectAllTable
         )}`,
       },
       {
-        name: "Selection - column",
+        name: "Selection - column, filter",
         keymap: `Click, Ctrl + Click, Shift + Click, Shift + Arrow key(up, down), ${keymapOptionToStringJoin(
           keymap.selectAllColumn
         )}`,
@@ -92,7 +96,7 @@ class Help extends EditorElement {
         keymap: keymapOptionToStringJoin(keymap.addMemo),
       },
       {
-        name: "New Column",
+        name: "New - Column, filter",
         keymap: keymapOptionToStringJoin(keymap.addColumn),
       },
       {
@@ -100,7 +104,7 @@ class Help extends EditorElement {
         keymap: keymapOptionToStringJoin(keymap.removeTable),
       },
       {
-        name: "Delete - column",
+        name: "Delete - column, filter",
         keymap: keymapOptionToStringJoin(keymap.removeColumn),
       },
       {
@@ -116,11 +120,11 @@ class Help extends EditorElement {
         keymap: keymapOptionToStringJoin(keymap.primaryKey),
       },
       {
-        name: "Option Checked - Grid",
+        name: "checkbox - Grid, filter",
         keymap: "Space, Click",
       },
       {
-        name: "Move Option - Grid",
+        name: "Move checkbox - Grid, filter",
         keymap: "Arrow key(up, down, left, right)",
       },
       {
@@ -166,11 +170,11 @@ class Help extends EditorElement {
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown)
     );
     eventBus.on(Bus.Help.close, this.onClose);
-    this.animationRight = -1 * this.helpWidth;
+    this.animationRight = -1 * this.drawerWidth;
   }
   firstUpdated() {
     this.animationFrame
-      .play({ right: -1 * this.helpWidth }, { right: 0 })
+      .play({ right: -1 * this.drawerWidth }, { right: 0 })
       .update((value) => {
         this.animationRight = value.right;
       })
@@ -191,7 +195,7 @@ class Help extends EditorElement {
       <div
         class="vuerd-help"
         style=${styleMap({
-          width: `${this.helpWidth}px`,
+          width: `${this.drawerWidth}px`,
           right: `${this.right}px`,
         })}
       >
@@ -231,7 +235,7 @@ class Help extends EditorElement {
     this.animationRight = 0;
     this.animation = true;
     this.animationFrame
-      .play({ right: 0 }, { right: -1 * this.helpWidth })
+      .play({ right: 0 }, { right: -1 * this.drawerWidth })
       .update((value) => {
         this.animationRight = value.right;
       })

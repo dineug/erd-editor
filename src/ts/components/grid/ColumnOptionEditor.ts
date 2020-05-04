@@ -3,7 +3,7 @@ import { classMap } from "lit-html/directives/class-map";
 import { Subscription, fromEvent } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { SimpleOption } from "@src/core/Grid";
-import { moveKeys } from "@src/core/command/editor";
+import { moveKeys } from "@src/core/Keymap";
 
 interface Option {
   name: string;

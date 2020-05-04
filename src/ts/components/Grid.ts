@@ -6,6 +6,8 @@ import { defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
 import { SIZE_MENUBAR_HEIGHT } from "@src/core/Layout";
 import { getData } from "@src/core/Helper";
+import { Bus } from "@src/core/Event";
+import { moveKeys, MoveKey, keymapMatch } from "@src/core/Keymap";
 import {
   getDataTypeSyncColumns,
   getColumn,
@@ -27,10 +29,19 @@ import {
   changeColumnAutoIncrement,
 } from "@src/core/command/column";
 import {
+  focusMoveFilter,
+  addFilterState,
+  removeFilterState,
+  editFilter as editFilterCommand,
+  editEndFilter,
+  selectAllFilterState,
+} from "@src/core/command/editor";
+import {
   createGridData,
   SimpleOption,
   changeColumnOptionList,
   currentColumnOptionList,
+  filterGridData,
 } from "@src/core/Grid";
 import { GridTextRender } from "./grid/GridTextRender";
 import { GridTextEditor } from "./grid/GridTextEditor";
@@ -38,6 +49,10 @@ import { GridColumnOptionEditor } from "./grid/GridColumnOptionEditor";
 import { GridColumnDataTypeEditor } from "./grid/GridColumnDataTypeEditor";
 import "./grid/ColumnOptionEditor";
 import "./grid/ColumnDataTypeEditor";
+import "./grid/Filter";
+import "./grid/filter/FilterState";
+import "./grid/filter/FilterTextEditor";
+import "./grid/filter/FilterRadioEditor";
 
 const GRID_HEADER_HEIGHT = 40;
 const HEADER_HEIGHT = GRID_HEADER_HEIGHT + SIZE_MENUBAR_HEIGHT;
@@ -48,6 +63,7 @@ class Grid extends EditorElement {
   height = defaultHeight;
 
   private subscriptionList: Subscription[] = [];
+  private subFilterStateList: Subscription[] = [];
   private edit = false;
   private grid!: tuiGrid;
   private gridColumns: any = [
@@ -103,7 +119,7 @@ class Grid extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    const { store, helper } = this.context;
+    const { store, helper, keymap, eventBus } = this.context;
     const { keydown$ } = this.context.windowEventObservable;
     this.subscriptionList.push(
       keydown$.subscribe((event) => {
@@ -242,12 +258,94 @@ class Grid extends EditorElement {
             this.grid.clearModifiedData();
           }
         }
+
+        const {
+          focus,
+          focusFilter,
+          filterActive,
+          editFilter,
+        } = store.editorState;
+        if (focus) {
+          if (
+            filterActive &&
+            focusFilter !== null &&
+            editFilter === null &&
+            moveKeys.some((moveKey) => moveKey === event.key)
+          ) {
+            store.dispatch(
+              focusMoveFilter(event.key as MoveKey, event.shiftKey)
+            );
+          }
+
+          if (filterActive && focusFilter !== null && event.key === "Tab") {
+            event.preventDefault();
+            store.dispatch(focusMoveFilter("ArrowRight", event.shiftKey));
+          }
+
+          if (filterActive && keymapMatch(event, keymap.addColumn)) {
+            store.dispatch(addFilterState());
+          }
+
+          if (
+            filterActive &&
+            focusFilter !== null &&
+            keymapMatch(event, keymap.removeColumn)
+          ) {
+            const filterStateList = focusFilter.selectFilterStateList;
+            if (filterStateList.length !== 0) {
+              store.dispatch(
+                removeFilterState(
+                  filterStateList.map((filterState) => filterState.id)
+                )
+              );
+            }
+          }
+
+          if (
+            editFilter === null &&
+            keymapMatch(event, keymap.selectAllColumn)
+          ) {
+            store.dispatch(selectAllFilterState());
+          }
+
+          if (focusFilter !== null && keymapMatch(event, keymap.edit)) {
+            if (editFilter === null) {
+              store.dispatch(
+                editFilterCommand(
+                  focusFilter.currentFocus,
+                  focusFilter.currentFocusId
+                )
+              );
+            } else {
+              store.dispatch(editEndFilter());
+            }
+          }
+
+          if (keymapMatch(event, keymap.find)) {
+            this.grid.blur();
+            eventBus.emit(Bus.Menubar.filter);
+          }
+
+          if (event.key === "Escape") {
+            this.grid.focus(0, "tableName");
+          }
+        }
+      }),
+      store.observe(store.editorState.filterStateList, () => {
+        this.unsubscribeFilterStateList();
+        this.observeFilterStateList();
+        this.onFilter();
+      }),
+      store.observe(store.editorState, (name) => {
+        switch (name) {
+          case "filterOperatorType":
+            this.onFilter();
+            break;
+        }
       })
     );
   }
   firstUpdated() {
-    const { store } = this.context;
-    const rows = createGridData(store) as any;
     const container = this.renderRoot.querySelector(
       ".vuerd-grid"
     ) as HTMLElement;
@@ -269,10 +367,11 @@ class Grid extends EditorElement {
         minWidth: 300,
       },
       columns: this.gridColumns,
-      data: rows,
+      data: [],
     });
     this.grid.on("editingStart", this.onEditingStart);
     this.grid.on("editingFinish", this.onEditingFinish);
+    this.onFilter();
   }
   updated(changedProperties: any) {
     changedProperties.forEach((oldValue: any, propName: string) => {
@@ -380,6 +479,12 @@ class Grid extends EditorElement {
     this.grid.clearModifiedData();
   };
 
+  private onFilter() {
+    const { store } = this.context;
+    const rows = filterGridData(store) as any;
+    this.grid.resetData(rows);
+  }
+
   private batchCommandColumnOption(
     batchCommand: Array<Command<CommandType>>,
     changeOptions: SimpleOption[],
@@ -418,5 +523,18 @@ class Grid extends EditorElement {
       }
       return false;
     });
+  }
+  private observeFilterStateList() {
+    const { store } = this.context;
+    const { filterStateList } = this.context.store.editorState;
+    filterStateList.forEach((filterState) => {
+      this.subFilterStateList.push(
+        store.observe(filterState, () => this.onFilter())
+      );
+    });
+  }
+  private unsubscribeFilterStateList() {
+    this.subFilterStateList.forEach((sub) => sub.unsubscribe());
+    this.subFilterStateList = [];
   }
 }

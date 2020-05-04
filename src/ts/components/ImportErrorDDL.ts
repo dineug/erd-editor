@@ -23,7 +23,7 @@ class ImportErrorDDL extends EditorElement {
   private animationFrame = new AnimationFrame<{ right: number }>(200);
   private subscriptionList: Subscription[] = [];
 
-  get helpWidth() {
+  get drawerWidth() {
     let width = this.width / 2;
     if (width > MAX_WIDTH) {
       width = MAX_WIDTH;
@@ -46,11 +46,11 @@ class ImportErrorDDL extends EditorElement {
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown)
     );
     eventBus.on(Bus.ImportErrorDDL.close, this.onClose);
-    this.animationRight = -1 * this.helpWidth;
+    this.animationRight = -1 * this.drawerWidth;
   }
   firstUpdated() {
     this.animationFrame
-      .play({ right: -1 * this.helpWidth }, { right: 0 })
+      .play({ right: -1 * this.drawerWidth }, { right: 0 })
       .update((value) => {
         this.animationRight = value.right;
       })
@@ -71,7 +71,7 @@ class ImportErrorDDL extends EditorElement {
       <div
         class="vuerd-import-error-ddl"
         style=${styleMap({
-          width: `${this.helpWidth}px`,
+          width: `${this.drawerWidth}px`,
           right: `${this.right}px`,
         })}
       >
@@ -107,7 +107,7 @@ class ImportErrorDDL extends EditorElement {
     this.animationRight = 0;
     this.animation = true;
     this.animationFrame
-      .play({ right: 0 }, { right: -1 * this.helpWidth })
+      .play({ right: 0 }, { right: -1 * this.drawerWidth })
       .update((value) => {
         this.animationRight = value.right;
       })

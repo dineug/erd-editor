@@ -1,9 +1,10 @@
 /**
  * https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key
  * https://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values
+ * https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
+ * https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values
  */
 type Key =
-  | string
   | "Escape"
   | "Enter"
   | "Delete"
@@ -61,6 +62,14 @@ type Key =
   | "N"
   | "M";
 
+export const moveKeys: MoveKey[] = [
+  "ArrowUp",
+  "ArrowRight",
+  "ArrowDown",
+  "ArrowLeft",
+];
+export type MoveKey = "ArrowUp" | "ArrowRight" | "ArrowDown" | "ArrowLeft";
+
 export type RelationshipKeymapName =
   | "relationshipZeroOne"
   | "relationshipZeroN"
@@ -91,6 +100,7 @@ export interface Keymap {
   pasteColumn: KeymapOption[];
   edit: KeymapOption[];
   stop: KeymapOption[];
+  find: KeymapOption[];
   relationshipZeroOneN: KeymapOption[];
   relationshipZeroOne: KeymapOption[];
   relationshipZeroN: KeymapOption[];
@@ -212,6 +222,15 @@ export function createKeymap(): Keymap {
         key: "Escape",
       },
     ],
+    find: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: true,
+        shiftKey: false,
+        key: "F",
+      },
+    ],
     relationshipZeroOneN: [
       {
         metaKey: false,
@@ -297,7 +316,8 @@ export function keymapMatch(
     if (keymapOption.key) {
       result =
         isMultipleKey &&
-        event.key.toUpperCase() === keymapOption.key.toUpperCase();
+        (event.key.toUpperCase() === keymapOption.key.toUpperCase() ||
+          event.code.toUpperCase() === keymapOption.key.toUpperCase());
     } else {
       result = isMultipleKey;
     }
