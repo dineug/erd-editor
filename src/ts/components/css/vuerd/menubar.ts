@@ -62,7 +62,6 @@ export const menubar = css`
   .vuerd-grid-filter-header {
     height: 51.41px;
     padding: 0 20px;
-    overflow: hidden;
   }
   .vuerd-grid-filter-header h3 {
     display: inline-block;
