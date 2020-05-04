@@ -193,7 +193,7 @@ interface KeymapOption {
   ctrlKey: boolean;
   altKey: boolean;
   shiftKey: boolean;
-  key?: Key;
+  key?: string;
 }
 interface Keymap {
   addTable?: KeymapOption[];

@@ -15,6 +15,7 @@ import {
   focusEndFilter,
 } from "@src/core/command/editor";
 import { CanvasType } from "@src/core/store/Canvas";
+import { keymapOptionToString } from "@src/core/Keymap";
 import { SIZE_CANVAS_MIN, SIZE_CANVAS_MAX } from "@src/core/Layout";
 import { Bus } from "@src/core/Event";
 
@@ -60,8 +61,8 @@ const menus: Menu[] = [
 
 @customElement("vuerd-menubar")
 class Menubar extends EditorElement {
-  // @property({ type: Boolean })
-  // finder = false;
+  @property({ type: Boolean })
+  find = false;
 
   private subscriptionList: Subscription[] = [];
 
@@ -100,6 +101,7 @@ class Menubar extends EditorElement {
   }
 
   render() {
+    const { keymap } = this.context;
     const { filterActive, filterStateList } = this.context.store.editorState;
     const { databaseName, width, canvasType } = this.context.store.canvasState;
     return html`
@@ -155,7 +157,7 @@ class Menubar extends EditorElement {
                   "vuerd-menubar-menu": true,
                   active: filterStateList.length !== 0,
                 })}
-                title="Filter"
+                title=${`Filter ${keymapOptionToString(keymap.find[0])}`}
                 @click=${this.onFilter}
               >
                 <vuerd-icon icon="filter" size="16"></vuerd-icon>
@@ -163,6 +165,9 @@ class Menubar extends EditorElement {
             `
           : ""}
       </ul>
+      ${this.find
+        ? html`<vuerd-find @close=${this.onFindEnd}></vuerd-find>`
+        : ""}
       ${filterActive
         ? html`
             <vuerd-grid-filter @close=${this.onFilterEnd}></vuerd-grid-filter>
@@ -175,10 +180,16 @@ class Menubar extends EditorElement {
     const { store } = this.context;
     store.dispatch(filterActive(), focusFilter());
   };
+  private onFind = () => {
+    this.find = true;
+  };
 
   private onFilterEnd() {
     const { store } = this.context;
     store.dispatch(filterActiveEnd(), focusEndFilter());
+  }
+  private onFindEnd() {
+    this.find = false;
   }
   private onMousedown(event: MouseEvent) {
     const { eventBus } = this.context;

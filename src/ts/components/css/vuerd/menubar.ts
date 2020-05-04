@@ -60,7 +60,9 @@ export const menubar = css`
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
   .vuerd-grid-filter-header {
+    height: 51.41px;
     padding: 0 20px;
+    overflow: hidden;
   }
   .vuerd-grid-filter-header h3 {
     display: inline-block;
@@ -104,6 +106,8 @@ export const menubar = css`
   }
   .vuerd-grid-filter-text-editor {
     width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .vuerd-grid-filter-text-editor,
   .vuerd-grid-filter-radio-editor {
@@ -185,7 +189,7 @@ export const menubar = css`
     );
   }
 
-  .vuerd-finder {
+  .vuerd-find {
     position: absolute;
     z-index: 100000040;
     right: 190px;

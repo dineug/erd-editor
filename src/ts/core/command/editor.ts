@@ -13,7 +13,12 @@ import {
 import { Relationship, RelationshipType } from "../store/Relationship";
 import { Memo } from "../store/Memo";
 import { Table } from "../store/Table";
-import { FilterColumnType, TextFilterCode, FilterState } from "../store/Editor";
+import {
+  FilterColumnType,
+  TextFilterCode,
+  FilterState,
+  FilterOperatorType,
+} from "../store/Editor";
 import { FocusTableModel, FocusType } from "../model/FocusTableModel";
 import { TableModel } from "../model/TableModel";
 import { MemoModel } from "../model/MemoModel";
@@ -845,9 +850,9 @@ export function executeChangeFilterStateColumnType(
 ) {
   Logger.debug("executeChangeFilterStateColumnType");
   const { filterStateList } = store.editorState;
-  const filetState = getData(filterStateList, data.filterStateId) as any | null;
+  const filetState = getData(filterStateList, data.filterStateId);
   if (filetState) {
-    filetState.columnType = data.value;
+    filetState.columnType = data.value as FilterColumnType;
   }
 }
 
@@ -869,9 +874,9 @@ export function executeChangeFilterStateFilterCode(
 ) {
   Logger.debug("executeChangeFilterStateFilterCode");
   const { filterStateList } = store.editorState;
-  const filetState = getData(filterStateList, data.filterStateId) as any | null;
+  const filetState = getData(filterStateList, data.filterStateId);
   if (filetState) {
-    filetState.filterCode = data.value;
+    filetState.filterCode = data.value as TextFilterCode;
   }
 }
 
@@ -897,6 +902,27 @@ export function executeChangeFilterStateValue(
   if (filetState) {
     filetState.value = data.value;
   }
+}
+
+export interface ChangeFilterOperatorType {
+  value: FilterOperatorType;
+}
+export function changeFilterOperatorType(
+  value: FilterOperatorType
+): Command<"editor.changeFilterOperatorType"> {
+  return {
+    type: "editor.changeFilterOperatorType",
+    data: {
+      value,
+    },
+  };
+}
+export function executeChangeFilterOperatorType(
+  store: Store,
+  data: ChangeFilterOperatorType
+) {
+  Logger.debug("executeChangeFilterOperatorType");
+  store.editorState.filterOperatorType = data.value;
 }
 
 export interface DraggableFilterState {

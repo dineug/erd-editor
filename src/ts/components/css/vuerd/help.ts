@@ -17,7 +17,9 @@ export const help = css`
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
   .vuerd-help-header {
+    height: 51.41px;
     padding: 0 20px;
+    overflow: hidden;
   }
   .vuerd-help-header > h3 {
     display: inline-block;

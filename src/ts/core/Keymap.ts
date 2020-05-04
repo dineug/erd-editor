@@ -4,63 +4,6 @@
  * https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
  * https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values
  */
-type Key =
-  | "Escape"
-  | "Enter"
-  | "Delete"
-  | "Tab"
-  | "ArrowUp"
-  | "ArrowRight"
-  | "ArrowDown"
-  | "ArrowLeft"
-  | "F1"
-  | "F2"
-  | "F3"
-  | "F4"
-  | "F5"
-  | "F6"
-  | "F7"
-  | "F8"
-  | "F9"
-  | "F10"
-  | "F11"
-  | "F12"
-  | "0"
-  | "1"
-  | "2"
-  | "3"
-  | "4"
-  | "5"
-  | "6"
-  | "7"
-  | "8"
-  | "9"
-  | "Q"
-  | "W"
-  | "E"
-  | "R"
-  | "T"
-  | "Y"
-  | "U"
-  | "I"
-  | "O"
-  | "P"
-  | "A"
-  | "S"
-  | "D"
-  | "F"
-  | "G"
-  | "H"
-  | "J"
-  | "K"
-  | "L"
-  | "Z"
-  | "X"
-  | "C"
-  | "V"
-  | "B"
-  | "N"
-  | "M";
 
 export const moveKeys: MoveKey[] = [
   "ArrowUp",
@@ -84,7 +27,7 @@ export interface KeymapOption {
   ctrlKey: boolean;
   altKey: boolean;
   shiftKey: boolean;
-  key?: Key;
+  key?: string;
 }
 
 export interface Keymap {

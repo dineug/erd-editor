@@ -8,8 +8,8 @@ import { AnimationFrame } from "@src/core/Animation";
 
 const HEIGHT = 100;
 
-@customElement("vuerd-finder")
-class Finder extends EditorElement {
+@customElement("vuerd-find")
+class Find extends EditorElement {
   @property({ type: Boolean })
   animation = true;
   @property({ type: Number })
@@ -48,7 +48,7 @@ class Finder extends EditorElement {
   render() {
     return html`
       <div
-        class="vuerd-finder"
+        class="vuerd-find"
         style=${styleMap({
           top: `${this.top}px`,
           height: `${HEIGHT}px`,
@@ -72,7 +72,7 @@ class Finder extends EditorElement {
   };
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
-    if (!el.closest(".vuerd-finder")) {
+    if (!el.closest(".vuerd-find")) {
       this.onClose();
     }
   };

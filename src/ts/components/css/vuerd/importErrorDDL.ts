@@ -17,6 +17,10 @@ export const importErrorDDL = css`
   .vuerd-import-error-ddl:hover {
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
+  .vuerd-import-error-ddl-header {
+    height: 51.41px;
+    overflow: hidden;
+  }
   .vuerd-import-error-ddl-header > h3 {
     display: inline-block;
   }

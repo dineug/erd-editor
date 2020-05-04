@@ -55,7 +55,7 @@ import "./erd/minimap/Column";
 import "./erd/minimap/Memo";
 import "./erd/DragSelect";
 import "./erd/DrawRelationship";
-import "./erd/Finder";
+import "./erd/Find";
 
 @customElement("vuerd-erd")
 class ERD extends EditorElement {

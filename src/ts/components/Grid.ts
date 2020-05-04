@@ -369,9 +369,10 @@ class Grid extends EditorElement {
       columns: this.gridColumns,
       data: [],
     });
+    this.onFilter();
     this.grid.on("editingStart", this.onEditingStart);
     this.grid.on("editingFinish", this.onEditingFinish);
-    this.onFilter();
+    this.grid.focus(0, "tableName");
   }
   updated(changedProperties: any) {
     changedProperties.forEach((oldValue: any, propName: string) => {
@@ -481,8 +482,15 @@ class Grid extends EditorElement {
 
   private onFilter() {
     const { store } = this.context;
-    const rows = filterGridData(store) as any;
-    this.grid.resetData(rows);
+    const rows = filterGridData(store) as any[];
+    if (rows.length === 0) {
+      if (this.grid.findRows((row) => true).length !== 0) {
+        this.grid.clear();
+      }
+    } else {
+      this.grid.clear();
+      this.grid.resetData(rows);
+    }
   }
 
   private batchCommandColumnOption(

@@ -17,6 +17,7 @@ import {
   editFilter as editFilterCommand,
   editEndFilter,
   moveFilterState,
+  changeFilterOperatorType,
 } from "@src/core/command/editor";
 import { FocusType } from "@src/core/model/FocusFilterModel";
 import { getData } from "@src/core/Helper";
@@ -135,6 +136,7 @@ class Filter extends EditorElement {
             width="60"
             placeholder="operatorType"
             @blur=${this.onBlur}
+            @change=${this.onChange}
             @mousedown=${this.onFocus}
             @dblclick=${this.onEdit}
           ></vuerd-grid-filter-radio-editor>
@@ -258,6 +260,10 @@ class Filter extends EditorElement {
   private onBlur(event: Event) {
     const { store } = this.context;
     store.dispatch(editEndFilter());
+  }
+  private onChange(event: CustomEvent) {
+    const { store } = this.context;
+    store.dispatch(changeFilterOperatorType(event.detail.value));
   }
   private onDraggableFilterState() {
     const nodeList = this.renderRoot.querySelectorAll(
