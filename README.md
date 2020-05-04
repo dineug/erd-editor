@@ -314,7 +314,7 @@ container.appendChild(editor);
 | filter - Grid                                       | Ctrl + Alt + F                                                           |
 | Selection - table, memo                             | Ctrl + Drag, Click, Ctrl + Click, Ctrl + Alt + A                         |
 | Selection - column, filter                          | Click, Ctrl + Click, Shift + Click, Shift + Arrow key(up, down), Alt + A |
-| Movement - table, memo, column                      | Drag, Ctrl + Drag                                                        |
+| Movement - table, memo, column, filter              | Drag, Ctrl + Drag                                                        |
 | Copy - column                                       | Ctrl + C                                                                 |
 | Paste - column                                      | Ctrl + V                                                                 |
 | Contextmenu - ERD, Relationship, SQL, GeneratorCode | Right-click                                                              |

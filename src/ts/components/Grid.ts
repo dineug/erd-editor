@@ -326,7 +326,7 @@ class Grid extends EditorElement {
             eventBus.emit(Bus.Menubar.filter);
           }
 
-          if (event.key === "Escape") {
+          if (filterActive && event.key === "Escape") {
             this.grid.focus(0, "tableName");
           }
         }

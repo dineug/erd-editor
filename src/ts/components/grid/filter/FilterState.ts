@@ -18,6 +18,8 @@ import {
   changeFilterStateColumnType,
   changeFilterStateFilterCode,
   changeFilterStateValue,
+  draggableFilterState,
+  draggableEndFilterState,
 } from "@src/core/command/editor";
 import { FocusType } from "@src/core/model/FocusFilterModel";
 import { keymapOptionToString } from "@src/core/Keymap";
@@ -74,6 +76,9 @@ class FilterState extends EditorElement {
         })}
         data-id=${this.filterState.id}
         draggable="true"
+        @dragstart=${this.onDragstart}
+        @dragend=${this.onDragend}
+        @dragover=${this.onDragover}
       >
         <vuerd-grid-filter-radio-editor
           .items=${this.columnTypes}
@@ -175,5 +180,24 @@ class FilterState extends EditorElement {
         );
         break;
     }
+  }
+  private onDragstart(event: DragEvent) {
+    const { store } = this.context;
+    store.dispatch(
+      draggableFilterState(store, this.filterState.id, event.ctrlKey)
+    );
+  }
+  private onDragend(event: DragEvent) {
+    const { store } = this.context;
+    store.dispatch(draggableEndFilterState());
+  }
+  private onDragover(event: DragEvent) {
+    this.dispatchEvent(
+      new CustomEvent("dragover", {
+        detail: {
+          filterStateId: this.filterState.id,
+        },
+      })
+    );
   }
 }

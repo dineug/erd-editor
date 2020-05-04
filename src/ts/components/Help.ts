@@ -72,7 +72,7 @@ class Help extends EditorElement {
         )}`,
       },
       {
-        name: "Movement - table, memo, column",
+        name: "Movement - table, memo, column, filter",
         keymap: "Drag, Ctrl + Drag",
       },
       {

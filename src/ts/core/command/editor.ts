@@ -1,7 +1,7 @@
 import { Command, CommandType } from "../Command";
 import { Store } from "../Store";
 import { Logger } from "../Logger";
-import { getData, uuid } from "../Helper";
+import { getData, uuid, getIndex } from "../Helper";
 import { JsonFormat } from "../File";
 import { MoveKey } from "../Keymap";
 import {
@@ -13,7 +13,7 @@ import {
 import { Relationship, RelationshipType } from "../store/Relationship";
 import { Memo } from "../store/Memo";
 import { Table } from "../store/Table";
-import { FilterColumnType, TextFilterCode } from "../store/Editor";
+import { FilterColumnType, TextFilterCode, FilterState } from "../store/Editor";
 import { FocusTableModel, FocusType } from "../model/FocusTableModel";
 import { TableModel } from "../model/TableModel";
 import { MemoModel } from "../model/MemoModel";
@@ -896,5 +896,106 @@ export function executeChangeFilterStateValue(
   const filetState = getData(filterStateList, data.filterStateId);
   if (filetState) {
     filetState.value = data.value;
+  }
+}
+
+export interface DraggableFilterState {
+  filterStateIds: string[];
+}
+export function draggableFilterState(
+  store: Store,
+  filterStateId: string,
+  ctrlKey: boolean
+): Command<"editor.draggableFilterState"> {
+  const filterStateIds: string[] = [];
+  const { focusFilter } = store.editorState;
+  if (ctrlKey && focusFilter) {
+    focusFilter.selectFilterStateList.forEach((selectFilterState) =>
+      filterStateIds.push(selectFilterState.id)
+    );
+  } else {
+    filterStateIds.push(filterStateId);
+  }
+  return {
+    type: "editor.draggableFilterState",
+    data: {
+      filterStateIds,
+    },
+  };
+}
+export function executeDraggableFilterState(
+  store: Store,
+  data: DraggableFilterState
+) {
+  Logger.debug("executeDraggableFilterState");
+  const { editorState } = store;
+  editorState.draggableFilterState = data;
+}
+
+export function draggableEndFilterState(): Command<
+  "editor.draggableEndFilterState"
+> {
+  return {
+    type: "editor.draggableEndFilterState",
+    data: null,
+  };
+}
+export function executeDraggableEndFilterState(store: Store) {
+  Logger.debug("executeDraggableEndFilterState");
+  const { editorState } = store;
+  editorState.draggableFilterState = null;
+}
+
+export interface MoveFilterState {
+  filterStateIds: string[];
+  targetFilterStateId: string;
+}
+export function moveFilterState(
+  filterStateIds: string[],
+  targetFilterStateId: string
+): Command<"editor.moveFilterState"> {
+  return {
+    type: "editor.moveFilterState",
+    data: {
+      filterStateIds,
+      targetFilterStateId,
+    },
+  };
+}
+export function executeMoveFilterState(store: Store, data: MoveFilterState) {
+  Logger.debug("executeMoveFilterState");
+  const { filterStateList } = store.editorState;
+  let currentFilterStateList: FilterState[] = [];
+  data.filterStateIds.forEach((filterStateId) => {
+    const filterState = getData(filterStateList, filterStateId);
+    if (filterState) {
+      currentFilterStateList.push(filterState);
+    }
+  });
+  const targetFilterState = getData(filterStateList, data.targetFilterStateId);
+  if (currentFilterStateList.length !== 0 && targetFilterState) {
+    if (
+      !data.filterStateIds.some(
+        (filterStateId) => filterStateId === data.targetFilterStateId
+      )
+    ) {
+      const targetIndex = getIndex(filterStateList, targetFilterState.id);
+      if (targetIndex !== null) {
+        const currentIndex = getIndex(
+          filterStateList,
+          currentFilterStateList[0].id
+        );
+        if (currentIndex !== null && currentIndex > targetIndex) {
+          currentFilterStateList = currentFilterStateList.reverse();
+        }
+        currentFilterStateList.forEach((currentFilterState) => {
+          const currentIndex = getIndex(filterStateList, currentFilterState.id);
+          if (currentIndex !== null) {
+            filterStateList.splice(currentIndex, 1);
+            filterStateList.splice(targetIndex, 0, currentFilterState);
+          }
+        });
+      }
+    }
   }
 }

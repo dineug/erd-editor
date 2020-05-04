@@ -107,6 +107,8 @@ import {
   FocusTargetFilterState,
   EditFilter,
   ChangeFilterStateValue,
+  DraggableFilterState,
+  MoveFilterState,
   executeFocusTable,
   executeFocusEndTable,
   executeFocusMoveTable,
@@ -142,6 +144,9 @@ import {
   executeChangeFilterStateColumnType,
   executeChangeFilterStateFilterCode,
   executeChangeFilterStateValue,
+  executeDraggableFilterState,
+  executeDraggableEndFilterState,
+  executeMoveFilterState,
 } from "./command/editor";
 
 export interface Command<K extends CommandType> {
@@ -231,6 +236,9 @@ interface CommandMap {
   "editor.changeFilterStateColumnType": ChangeFilterStateValue;
   "editor.changeFilterStateFilterCode": ChangeFilterStateValue;
   "editor.changeFilterStateValue": ChangeFilterStateValue;
+  "editor.draggableFilterState": DraggableFilterState;
+  "editor.draggableEndFilterState": null;
+  "editor.moveFilterState": MoveFilterState;
 }
 
 export const changeCommandTypes: CommandType[] = [
@@ -552,6 +560,18 @@ export function commandExecute(
           store,
           command.data as ChangeFilterStateValue
         );
+        break;
+      case "editor.draggableFilterState":
+        executeDraggableFilterState(
+          store,
+          command.data as DraggableFilterState
+        );
+        break;
+      case "editor.draggableEndFilterState":
+        executeDraggableEndFilterState(store);
+        break;
+      case "editor.moveFilterState":
+        executeMoveFilterState(store, command.data as MoveFilterState);
         break;
     }
   });

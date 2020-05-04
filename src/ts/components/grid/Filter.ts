@@ -1,11 +1,12 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
-import { Subscription, fromEvent } from "rxjs";
+import { Subscription, Subject, fromEvent } from "rxjs";
+import { debounceTime, throttleTime } from "rxjs/operators";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { SIZE_MENUBAR_HEIGHT, SIZE_COLUMN_HEIGHT } from "@src/core/Layout";
-import { AnimationFrame } from "@src/core/Animation";
+import { FlipAnimation, AnimationFrame } from "@src/core/Animation";
 import { Bus } from "@src/core/Event";
 import { keymapOptionToString } from "@src/core/Keymap";
 import { RadioItem } from "./filter/FilterRadioEditor";
@@ -15,6 +16,7 @@ import {
   focusTargetFilter,
   editFilter as editFilterCommand,
   editEndFilter,
+  moveFilterState,
 } from "@src/core/command/editor";
 import { FocusType } from "@src/core/model/FocusFilterModel";
 import { getData } from "@src/core/Helper";
@@ -30,9 +32,16 @@ class Filter extends EditorElement {
   @property({ type: Number })
   top = 0;
 
+  private draggable$: Subject<CustomEvent> = new Subject();
   private operatorList: RadioItem[] = [];
   private animationFrame = new AnimationFrame<{ top: number }>(200);
   private subscriptionList: Subscription[] = [];
+  private subDraggableFilterState: Subscription[] = [];
+  private flipAnimation = new FlipAnimation(
+    this.renderRoot,
+    ".vuerd-grid-filter-state",
+    "vuerd-grid-filter-state-move"
+  );
 
   get height() {
     const { filterStateList } = this.context.store.editorState;
@@ -47,14 +56,28 @@ class Filter extends EditorElement {
     const root = this.getRootNode() as ShadowRoot;
     const editor = root.querySelector(".vuerd-editor") as Element;
     this.subscriptionList.push(
+      this.draggable$
+        .pipe(debounceTime(50))
+        .subscribe(this.onDragoverFilterState),
       mousedown$.subscribe(this.onMousedownWindow),
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
       store.observe(filterStateList, () => this.requestUpdate()),
       store.observe(store.editorState.focusFilter, () => this.requestUpdate()),
       store.observe(store.editorState, (name) => {
+        const { draggableFilterState } = store.editorState;
         switch (name) {
           case "editFilter":
             this.requestUpdate();
+            break;
+          case "draggableFilterState":
+            if (draggableFilterState) {
+              if (this.subDraggableFilterState.length === 0) {
+                this.onDraggableFilterState();
+              }
+            } else {
+              this.onDraggableEndFilterState();
+              this.requestUpdate();
+            }
             break;
         }
       })
@@ -78,6 +101,9 @@ class Filter extends EditorElement {
         this.animation = false;
       })
       .start();
+  }
+  updated(changedProperties: any) {
+    this.flipAnimation.play();
   }
   disconnectedCallback() {
     const { eventBus } = this.context;
@@ -135,6 +161,7 @@ class Filter extends EditorElement {
               html`
                 <vuerd-grid-filter-state
                   .select=${this.selectFilterState(filterState)}
+                  .draggable=${this.draggableFilterState(filterState)}
                   .filterState=${filterState}
                   .focusColumnType=${this.focusFilterState(
                     filterState,
@@ -188,6 +215,23 @@ class Filter extends EditorElement {
       this.onClose();
     }
   };
+  private onDragoverGroupFilterState = (event: CustomEvent) => {
+    this.draggable$.next(event);
+  };
+  private onDragoverFilterState = (event: CustomEvent) => {
+    const { store } = this.context;
+    const { draggableFilterState } = store.editorState;
+    const { filterStateId } = event.detail;
+    if (
+      draggableFilterState &&
+      !draggableFilterState.filterStateIds.some((id) => id === filterStateId)
+    ) {
+      this.flipAnimation.snapshot();
+      store.dispatch(
+        moveFilterState(draggableFilterState.filterStateIds, filterStateId)
+      );
+    }
+  };
 
   private onAddFilterState() {
     const selection = window.getSelection();
@@ -214,6 +258,22 @@ class Filter extends EditorElement {
   private onBlur(event: Event) {
     const { store } = this.context;
     store.dispatch(editEndFilter());
+  }
+  private onDraggableFilterState() {
+    const nodeList = this.renderRoot.querySelectorAll(
+      "vuerd-grid-filter-state"
+    );
+    nodeList.forEach((node) => {
+      this.subDraggableFilterState.push(
+        fromEvent<CustomEvent>(node, "dragover")
+          .pipe(throttleTime(300))
+          .subscribe(this.onDragoverGroupFilterState)
+      );
+    });
+  }
+  private onDraggableEndFilterState() {
+    this.subDraggableFilterState.forEach((sub) => sub.unsubscribe());
+    this.subDraggableFilterState = [];
   }
 
   private focusFilter() {
@@ -248,6 +308,13 @@ class Filter extends EditorElement {
     return (
       focusFilter !== null &&
       getData(focusFilter.focusFilterStateList, filterState.id)?.select === true
+    );
+  }
+  private draggableFilterState(filterState: FilterState) {
+    const { draggableFilterState } = this.context.store.editorState;
+    return (
+      draggableFilterState !== null &&
+      draggableFilterState.filterStateIds.some((id) => id === filterState.id)
     );
   }
 }

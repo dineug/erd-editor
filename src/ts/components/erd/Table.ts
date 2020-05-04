@@ -315,10 +315,10 @@ class Table extends EditorElement {
     }
   }
   private onDraggableColumn() {
-    const liNodeList = this.renderRoot.querySelectorAll("vuerd-column");
-    liNodeList.forEach((li) => {
+    const nodeList = this.renderRoot.querySelectorAll("vuerd-column");
+    nodeList.forEach((node) => {
       this.subDraggableColumns.push(
-        fromEvent<CustomEvent>(li, "dragover")
+        fromEvent<CustomEvent>(node, "dragover")
           .pipe(throttleTime(300))
           .subscribe(this.onDragoverGroupColumn)
       );
