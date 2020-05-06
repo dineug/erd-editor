@@ -20,6 +20,7 @@ class SQL extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
+    Logger.debug("SQL connectedCallback");
     const { store, eventBus } = this.context;
     const { mousedown$ } = this.context.windowEventObservable;
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
@@ -33,6 +34,7 @@ class SQL extends EditorElement {
     );
   }
   disconnectedCallback() {
+    Logger.debug("SQL disconnectedCallback");
     const { eventBus } = this.context;
     eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
@@ -40,6 +42,7 @@ class SQL extends EditorElement {
   }
 
   render() {
+    Logger.debug("SQL render");
     const sql = createDDL(this.context.store);
     const sqlHTML = hljs.highlight("sql", sql).value;
     return html`

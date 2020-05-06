@@ -119,6 +119,7 @@ class Grid extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
+    Logger.debug("Grid connectedCallback");
     const { store, helper, keymap, eventBus } = this.context;
     const { keydown$ } = this.context.windowEventObservable;
     this.subscriptionList.push(
@@ -326,7 +327,7 @@ class Grid extends EditorElement {
             eventBus.emit(Bus.Menubar.filter);
           }
 
-          if (filterActive && event.key === "Escape") {
+          if (filterActive && keymapMatch(event, keymap.stop)) {
             this.grid.focus(0, "tableName");
           }
         }
@@ -346,6 +347,7 @@ class Grid extends EditorElement {
     );
   }
   firstUpdated() {
+    Logger.debug("Grid firstUpdated");
     const container = this.renderRoot.querySelector(
       ".vuerd-grid"
     ) as HTMLElement;
@@ -375,6 +377,7 @@ class Grid extends EditorElement {
     this.grid.focus(0, "tableName");
   }
   updated(changedProperties: any) {
+    Logger.debug("Grid updated");
     changedProperties.forEach((oldValue: any, propName: string) => {
       switch (propName) {
         case "height":
@@ -384,6 +387,7 @@ class Grid extends EditorElement {
     });
   }
   disconnectedCallback() {
+    Logger.debug("Grid disconnectedCallback");
     this.grid.off("editingStart", this.onEditingStart);
     this.grid.off("editingFinish", this.onEditingFinish);
     this.grid.destroy();
@@ -392,6 +396,7 @@ class Grid extends EditorElement {
   }
 
   render() {
+    Logger.debug("Grid render");
     return html`<div class="vuerd-grid"></div>`;
   }
 

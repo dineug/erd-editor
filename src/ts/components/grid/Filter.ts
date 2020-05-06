@@ -118,6 +118,7 @@ class Filter extends EditorElement {
     const { filterOperatorType } = this.context.store.editorState;
     const { keymap } = this.context;
     const keymapAddColumn = keymapOptionToString(keymap.addColumn[0]);
+    const keymapStop = keymapOptionToString(keymap.stop[0]);
     return html`
       <div
         class="vuerd-grid-filter"
@@ -142,7 +143,7 @@ class Filter extends EditorElement {
           ></vuerd-grid-filter-radio-editor>
           <vuerd-icon
             class="vuerd-button"
-            title="ESC"
+            title=${keymapStop}
             icon="times"
             size="12"
             @click=${this.onClose}

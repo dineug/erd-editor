@@ -149,6 +149,8 @@ import {
   executeDraggableFilterState,
   executeDraggableEndFilterState,
   executeMoveFilterState,
+  executeFindActive,
+  executeFindActiveEnd,
 } from "./command/editor";
 
 export interface Command<K extends CommandType> {
@@ -242,6 +244,8 @@ interface CommandMap {
   "editor.draggableFilterState": DraggableFilterState;
   "editor.draggableEndFilterState": null;
   "editor.moveFilterState": MoveFilterState;
+  "editor.findActive": null;
+  "editor.findActiveEnd": null;
 }
 
 export const changeCommandTypes: CommandType[] = [
@@ -581,6 +585,12 @@ export function commandExecute(
         break;
       case "editor.moveFilterState":
         executeMoveFilterState(store, command.data as MoveFilterState);
+        break;
+      case "editor.findActive":
+        executeFindActive(store);
+        break;
+      case "editor.findActiveEnd":
+        executeFindActiveEnd(store);
         break;
     }
   });

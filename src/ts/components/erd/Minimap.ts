@@ -1,9 +1,11 @@
 import { html, svg, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { classMap } from "lit-html/directives/class-map";
 import { repeat } from "lit-html/directives/repeat";
 import { Subscription } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { defaultWidth, defaultHeight } from "@src/components/Layout";
+import { createRelationship } from "@src/components/erd/Relationship";
 import { Logger } from "@src/core/Logger";
 import {
   SIZE_MINIMAP_WIDTH,
@@ -12,6 +14,7 @@ import {
 } from "@src/core/Layout";
 import { Table } from "@src/core/store/Table";
 import { Memo } from "@src/core/store/Memo";
+import { Relationship } from "@src/core/store/Relationship";
 
 const MARGIN_TOP = SIZE_MENUBAR_HEIGHT + SIZE_MINIMAP_MARGIN;
 
@@ -24,7 +27,9 @@ class Minimap extends EditorElement {
 
   private tables: Table[] = [];
   private memos: Memo[] = [];
+  private relationships: Relationship[] = [];
   private subscriptionList: Subscription[] = [];
+  private subRelationships: Subscription[] = [];
 
   get styleMap() {
     const {
@@ -66,6 +71,7 @@ class Minimap extends EditorElement {
     const { store } = this.context;
     this.tables = store.tableState.tables;
     this.memos = store.memoState.memos;
+    this.relationships = store.relationshipState.relationships;
     this.subscriptionList.push(
       store.observe(this.tables, () => this.requestUpdate()),
       store.observe(this.memos, () => this.requestUpdate()),
@@ -78,15 +84,23 @@ class Minimap extends EditorElement {
             this.requestUpdate();
             break;
         }
+      }),
+      store.observe(this.relationships, () => {
+        this.unsubscribeRelationships();
+        this.observeRelationships();
+        this.requestUpdate();
       })
     );
+    this.observeRelationships();
   }
   disconnectedCallback() {
+    this.unsubscribeRelationships();
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
   render() {
+    const { width, height } = this.context.store.canvasState;
     return html`
       <div class="vuerd-minimap" style=${styleMap(this.styleMap)}>
         <div class="vuerd-minimap-canvas">
@@ -104,7 +118,33 @@ class Minimap extends EditorElement {
             (memo) =>
               html` <vuerd-minimap-memo .memo=${memo}></vuerd-minimap-memo> `
           )}
-          ${svg`<svg class="vuerd-minimap-canvas-svg"></svg>`}
+          ${svg`
+            <svg
+              class="vuerd-minimap-canvas-svg"
+              style=${styleMap({
+                width: `${width}px`,
+                height: `${height}px`,
+              })}
+            >
+            ${repeat(
+              this.relationships,
+              (relationship) => relationship.id,
+              (relationship) => {
+                const shape = createRelationship(relationship, 12);
+                return svg`
+                  <g
+                    class=${classMap({
+                      "vuerd-relationship": true,
+                      identification: relationship.identification,
+                    })}
+                  >
+                    ${shape}
+                  </g>
+                `;
+              }
+            )}
+            </svg>
+          `}
         </div>
       </div>
       <div
@@ -116,5 +156,20 @@ class Minimap extends EditorElement {
         .height=${this.height}
       ></vuerd-minimap-handle>
     `;
+  }
+
+  private observeRelationships() {
+    const { store } = this.context;
+    this.relationships.forEach((relationship) => {
+      this.subRelationships.push(
+        store.observe(relationship, () => this.requestUpdate()),
+        store.observe(relationship.start, () => this.requestUpdate()),
+        store.observe(relationship.end, () => this.requestUpdate())
+      );
+    });
+  }
+  private unsubscribeRelationships() {
+    this.subRelationships.forEach((sub) => sub.unsubscribe());
+    this.subRelationships = [];
   }
 }

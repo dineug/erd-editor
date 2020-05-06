@@ -5,6 +5,8 @@ import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { SIZE_MENUBAR_HEIGHT } from "@src/core/Layout";
 import { AnimationFrame } from "@src/core/Animation";
+import { keymapOptionToString } from "@src/core/Keymap";
+import { Bus } from "@src/core/Event";
 
 const HEIGHT = 100;
 
@@ -20,6 +22,7 @@ class Find extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
+    const { eventBus } = this.context;
     const { mousedown$ } = this.context.windowEventObservable;
     const root = this.getRootNode() as ShadowRoot;
     const editor = root.querySelector(".vuerd-editor") as Element;
@@ -27,6 +30,7 @@ class Find extends EditorElement {
       mousedown$.subscribe(this.onMousedownWindow),
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown)
     );
+    eventBus.on(Bus.Find.close, this.onClose);
     this.top = -1 * HEIGHT;
   }
   firstUpdated() {
@@ -41,11 +45,15 @@ class Find extends EditorElement {
       .start();
   }
   disconnectedCallback() {
+    const { eventBus } = this.context;
+    eventBus.off(Bus.Find.close, this.onClose);
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
   render() {
+    const { keymap } = this.context;
+    const keymapStop = keymapOptionToString(keymap.stop[0]);
     return html`
       <div
         class="vuerd-find"
@@ -53,7 +61,19 @@ class Find extends EditorElement {
           top: `${this.top}px`,
           height: `${HEIGHT}px`,
         })}
-      ></div>
+      >
+        <div class="vuerd-find-header">
+          <h3>Find</h3>
+          <vuerd-icon
+            class="vuerd-button"
+            title=${keymapStop}
+            icon="times"
+            size="12"
+            @click=${this.onClose}
+          ></vuerd-icon>
+        </div>
+        <div class="vuerd-find-body"></div>
+      </div>
     `;
   }
 

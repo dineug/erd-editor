@@ -29,6 +29,7 @@ class GeneratorCode extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
+    Logger.debug("GeneratorCode connectedCallback");
     const { store, eventBus } = this.context;
     const { mousedown$ } = this.context.windowEventObservable;
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
@@ -46,6 +47,7 @@ class GeneratorCode extends EditorElement {
     );
   }
   disconnectedCallback() {
+    Logger.debug("GeneratorCode disconnectedCallback");
     const { eventBus } = this.context;
     eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
@@ -53,6 +55,7 @@ class GeneratorCode extends EditorElement {
   }
 
   render() {
+    Logger.debug("GeneratorCode render");
     const { language } = this.context.store.canvasState;
     const code = createGeneratorCode(this.context.store);
     const codeHTML = hljs.highlight(LanguageMap[language], code).value;

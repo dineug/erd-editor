@@ -31,6 +31,7 @@ class Visualization extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
+    Logger.debug("Visualization connectedCallback");
     const { store, eventBus } = this.context;
     this.selection = createVisualization(store, eventBus) as any;
     this.setViewBox();
@@ -40,6 +41,7 @@ class Visualization extends EditorElement {
     eventBus.on(Bus.Visualization.dragEnd, this.onDragEnd);
   }
   updated(changedProperties: any) {
+    Logger.debug("Visualization updated");
     changedProperties.forEach((oldValue: any, propName: string) => {
       switch (propName) {
         case "width":
@@ -49,6 +51,7 @@ class Visualization extends EditorElement {
     });
   }
   disconnectedCallback() {
+    Logger.debug("Visualization disconnectedCallback");
     const { eventBus } = this.context;
     eventBus.off(Bus.Visualization.startPreview, this.onStartPreview);
     eventBus.off(Bus.Visualization.endPreview, this.onEndPreview);
@@ -58,6 +61,7 @@ class Visualization extends EditorElement {
   }
 
   render() {
+    Logger.debug("Visualization render");
     return html`
       <div class="vuerd-visualization" @mousemove=${this.onMousemove}>
         ${this.selection.node()}

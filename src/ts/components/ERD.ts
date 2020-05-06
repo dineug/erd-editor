@@ -35,8 +35,10 @@ import {
   editEndTable,
   selectAllColumn,
   drawStartRelationship,
+  drawEndRelationship,
   copyColumn,
   pasteColumn,
+  findActive,
 } from "@src/core/command/editor";
 import "./erd/InputEdit";
 import "./erd/Canvas";
@@ -80,7 +82,6 @@ class ERD extends EditorElement {
   private subMove: Subscription | null = null;
   private subDrawRelationship: Subscription | null = null;
   private menus: Menu[] = [];
-  private erd!: Element;
 
   get styleMap() {
     const { drawRelationship } = this.context.store.editorState;
@@ -96,12 +97,32 @@ class ERD extends EditorElement {
     return styleMap;
   }
 
+  get erd() {
+    return this.renderRoot.querySelector(".vuerd-erd");
+  }
+
   connectedCallback() {
     super.connectedCallback();
+    Logger.debug("ERD connectedCallback");
     const { store, eventBus, keymap } = this.context;
     const { mousedown$, keydown$ } = this.context.windowEventObservable;
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subscriptionList.push(
+      store.observe(store.canvasState, (name) => {
+        const erd = this.erd;
+        switch (name) {
+          case "scrollTop":
+            if (erd) {
+              erd.scrollTop = store.canvasState.scrollTop;
+            }
+            break;
+          case "scrollLeft":
+            if (erd) {
+              erd.scrollLeft = store.canvasState.scrollLeft;
+            }
+            break;
+        }
+      }),
       store.observe(store.editorState, (name) => {
         const { drawRelationship } = store.editorState;
         if (name === "drawRelationship") {
@@ -243,31 +264,42 @@ class ERD extends EditorElement {
           ) {
             store.dispatch(pasteColumn(store));
           }
+
+          if (keymapMatch(event, keymap.find)) {
+            store.dispatch(findActive());
+          }
+
+          if (keymapMatch(event, keymap.stop)) {
+            store.dispatch(
+              selectEndTable(),
+              selectEndMemo(),
+              drawEndRelationship()
+            );
+          }
         }
       })
     );
+    const erd = this.erd;
+    if (erd) {
+      requestAnimationFrame(() => {
+        erd.scrollTop = store.canvasState.scrollTop;
+        erd.scrollLeft = store.canvasState.scrollLeft;
+      });
+    }
   }
   firstUpdated() {
+    Logger.debug("ERD firstUpdated");
     const { store } = this.context;
-    this.erd = this.renderRoot.querySelector(".vuerd-erd") as Element;
     requestAnimationFrame(() => {
-      this.erd.scrollTop = store.canvasState.scrollTop;
-      this.erd.scrollLeft = store.canvasState.scrollLeft;
+      const erd = this.erd;
+      if (erd) {
+        erd.scrollTop = store.canvasState.scrollTop;
+        erd.scrollLeft = store.canvasState.scrollLeft;
+      }
     });
-    this.subscriptionList.push(
-      store.observe(store.canvasState, (name) => {
-        switch (name) {
-          case "scrollTop":
-            this.erd.scrollTop = store.canvasState.scrollTop;
-            break;
-          case "scrollLeft":
-            this.erd.scrollLeft = store.canvasState.scrollLeft;
-            break;
-        }
-      })
-    );
   }
   disconnectedCallback() {
+    Logger.debug("ERD disconnectedCallback");
     const { eventBus } = this.context;
     this.onMoveEnd();
     this.unsubscribeDrawRelationship();
@@ -277,6 +309,7 @@ class ERD extends EditorElement {
   }
 
   render() {
+    Logger.debug("ERD render");
     const { drawRelationship } = this.context.store.editorState;
     return html`
       <div
@@ -337,10 +370,13 @@ class ERD extends EditorElement {
     if (event.type === "mousemove") {
       event.preventDefault();
     }
-    this.erd.scrollTop -= movementY;
-    this.erd.scrollLeft -= movementX;
-    const { store } = this.context;
-    store.dispatch(moveCanvas(this.erd.scrollTop, this.erd.scrollLeft));
+    const erd = this.erd;
+    if (erd) {
+      erd.scrollTop -= movementY;
+      erd.scrollLeft -= movementX;
+      const { store } = this.context;
+      store.dispatch(moveCanvas(erd.scrollTop, erd.scrollLeft));
+    }
   };
   private onMousedownWindow = (event: MouseEvent) => {
     const el = event.target as HTMLElement;

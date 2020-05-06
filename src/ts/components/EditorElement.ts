@@ -11,6 +11,8 @@ export class EditorElement extends LitElement {
     const root = this.getRootNode() as ShadowRoot;
     const editor = root.host as Editor;
     this.context = editor.context;
+    // cache update
+    this.requestUpdate();
   }
 
   protected createRenderRoot(): Element | ShadowRoot {

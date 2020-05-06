@@ -6,12 +6,37 @@ import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Table } from "@src/core/store/Table";
 import { Memo } from "@src/core/store/Memo";
+import { virtualTable } from "@src/core/helper/TableHelper";
 
 @customElement("vuerd-canvas")
 class Canvas extends EditorElement {
   private tables: Table[] = [];
   private memos: Memo[] = [];
   private subscriptionList: Subscription[] = [];
+
+  get virtualTables() {
+    const {
+      width,
+      height,
+      scrollLeft,
+      scrollTop,
+    } = this.context.store.canvasState;
+    const minX = scrollLeft;
+    const minY = scrollTop;
+    const maxX = minX + width;
+    const maxY = minY + height;
+    return this.tables.filter((table) =>
+      virtualTable(
+        {
+          minX,
+          minY,
+          maxX,
+          maxY,
+        },
+        table
+      )
+    );
+  }
 
   connectedCallback() {
     super.connectedCallback();

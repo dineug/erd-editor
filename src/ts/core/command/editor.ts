@@ -673,6 +673,7 @@ export function executeFilterActive(store: Store) {
   Logger.debug("executeFilterActive");
   const { editorState } = store;
   editorState.filterActive = true;
+  executeFocusFilter(store);
 }
 
 export function filterActiveEnd(): Command<"editor.filterActiveEnd"> {
@@ -685,6 +686,8 @@ export function executeFilterActiveEnd(store: Store) {
   Logger.debug("executeFilterActiveEnd");
   const { editorState } = store;
   editorState.filterActive = false;
+  executeFocusEndFilter(store);
+  executeEditEndFilter(store);
 }
 
 export interface FocusMoveFilter {
@@ -1024,4 +1027,29 @@ export function executeMoveFilterState(store: Store, data: MoveFilterState) {
       }
     }
   }
+}
+
+export function findActive(): Command<"editor.findActive"> {
+  return {
+    type: "editor.findActive",
+    data: null,
+  };
+}
+export function executeFindActive(store: Store) {
+  Logger.debug("executeFindActive");
+  const { editorState } = store;
+  editorState.findActive = true;
+  executeFocusEndTable(store);
+}
+
+export function findActiveEnd(): Command<"editor.findActiveEnd"> {
+  return {
+    type: "editor.findActiveEnd",
+    data: null,
+  };
+}
+export function executeFindActiveEnd(store: Store) {
+  Logger.debug("executeFindActiveEnd");
+  const { editorState } = store;
+  editorState.findActive = false;
 }

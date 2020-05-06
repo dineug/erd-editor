@@ -6,7 +6,10 @@ import {
   RelationshipPath,
 } from "@src/core/helper/RelationshipHelper";
 
-export function createRelationship(relationship: Relationship) {
+export function createRelationship(
+  relationship: Relationship,
+  strokeWidth = 3
+) {
   let shape = svg``;
   const relationshipPath = getRelationshipPath(relationship);
   const { path, line } = relationshipPath;
@@ -43,7 +46,7 @@ export function createRelationship(relationship: Relationship) {
     <path
       d=${path.path.d()}
       stroke-dasharray=${relationship.identification ? 0 : 10}
-      stroke-width="3"
+      stroke-width=${strokeWidth}
       fill="transparent"
     ></path>
     <line

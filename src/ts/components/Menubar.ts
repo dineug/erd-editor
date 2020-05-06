@@ -11,8 +11,8 @@ import {
 import {
   filterActive,
   filterActiveEnd,
-  focusFilter,
-  focusEndFilter,
+  findActive,
+  findActiveEnd,
 } from "@src/core/command/editor";
 import { CanvasType } from "@src/core/store/Canvas";
 import { keymapOptionToString } from "@src/core/Keymap";
@@ -61,9 +61,6 @@ const menus: Menu[] = [
 
 @customElement("vuerd-menubar")
 class Menubar extends EditorElement {
-  @property({ type: Boolean })
-  find = false;
-
   private subscriptionList: Subscription[] = [];
 
   connectedCallback() {
@@ -86,6 +83,7 @@ class Menubar extends EditorElement {
       store.observe(store.editorState, (name) => {
         switch (name) {
           case "filterActive":
+          case "findActive":
             this.requestUpdate();
             break;
         }
@@ -102,7 +100,11 @@ class Menubar extends EditorElement {
 
   render() {
     const { keymap } = this.context;
-    const { filterActive, filterStateList } = this.context.store.editorState;
+    const {
+      filterActive,
+      filterStateList,
+      findActive,
+    } = this.context.store.editorState;
     const { databaseName, width, canvasType } = this.context.store.canvasState;
     return html`
       <ul class="vuerd-menubar" @mousedown=${this.onMousedown}>
@@ -150,6 +152,17 @@ class Menubar extends EditorElement {
         <li class="vuerd-menubar-menu" title="Help" @click=${this.onHelp}>
           <vuerd-icon icon="question" size="16"></vuerd-icon>
         </li>
+        ${canvasType === "ERD"
+          ? html`
+              <li
+                class="vuerd-menubar-menu"
+                title=${`Find ${keymapOptionToString(keymap.find[0])}`}
+                @click=${this.onFind}
+              >
+                <vuerd-icon icon="search" size="16"></vuerd-icon>
+              </li>
+            `
+          : ""}
         ${canvasType === "Grid"
           ? html`
               <li
@@ -165,7 +178,7 @@ class Menubar extends EditorElement {
             `
           : ""}
       </ul>
-      ${this.find
+      ${findActive
         ? html`<vuerd-find @close=${this.onFindEnd}></vuerd-find>`
         : ""}
       ${filterActive
@@ -178,18 +191,20 @@ class Menubar extends EditorElement {
 
   private onFilter = () => {
     const { store } = this.context;
-    store.dispatch(filterActive(), focusFilter());
+    store.dispatch(filterActive());
   };
   private onFind = () => {
-    this.find = true;
+    const { store } = this.context;
+    store.dispatch(findActive());
   };
 
   private onFilterEnd() {
     const { store } = this.context;
-    store.dispatch(filterActiveEnd(), focusEndFilter());
+    store.dispatch(filterActiveEnd());
   }
   private onFindEnd() {
-    this.find = false;
+    const { store } = this.context;
+    store.dispatch(findActiveEnd());
   }
   private onMousedown(event: MouseEvent) {
     const { eventBus } = this.context;

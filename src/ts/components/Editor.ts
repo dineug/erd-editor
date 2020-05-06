@@ -1,5 +1,6 @@
 import { LitElement, html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { cache } from "lit-html/directives/cache";
 import { Subscription } from "rxjs";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
@@ -7,9 +8,7 @@ import { keymapMatch, KeymapKey, KeymapOption } from "@src/core/Keymap";
 import { Bus } from "@src/core/Event";
 import { EditorContext, createEditorContext } from "@src/core/EditorContext";
 import { createJsonFormat } from "@src/core/File";
-import { selectEndTable } from "@src/core/command/table";
-import { selectEndMemo } from "@src/core/command/memo";
-import { drawEndRelationship, loadJson, clear } from "@src/core/command/editor";
+import { loadJson, clear } from "@src/core/command/editor";
 import { ThemeKey } from "@src/core/Theme";
 import { Theme, Keymap, Editor } from "@src/types";
 import "./Icon";
@@ -97,14 +96,10 @@ class EditorModel extends LitElement implements Editor {
         const { focus } = store.editorState;
         if (focus) {
           if (keymapMatch(event, keymap.stop)) {
-            store.dispatch(
-              selectEndTable(),
-              selectEndMemo(),
-              drawEndRelationship()
-            );
             eventBus.emit(Bus.Help.close);
             eventBus.emit(Bus.ImportErrorDDL.close);
             eventBus.emit(Bus.Filter.close);
+            eventBus.emit(Bus.Find.close);
           }
         }
       })
@@ -195,14 +190,17 @@ class EditorModel extends LitElement implements Editor {
         })}
       >
         <vuerd-menubar @help-start=${this.onHelp}></vuerd-menubar>
-        ${canvasType === "ERD"
-          ? html`
-              <vuerd-erd
-                .width=${this.width}
-                .height=${this.height}
-              ></vuerd-erd>
-            `
-          : canvasType === "Grid"
+        ${cache(
+          canvasType === "ERD"
+            ? html`
+                <vuerd-erd
+                  .width=${this.width}
+                  .height=${this.height}
+                ></vuerd-erd>
+              `
+            : ""
+        )}
+        ${canvasType === "Grid"
           ? html`<vuerd-grid .height=${this.height}></vuerd-grid>`
           : canvasType === "Visualization"
           ? html`

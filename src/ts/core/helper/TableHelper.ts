@@ -10,6 +10,7 @@ import { Store } from "../Store";
 import { Table, Column, ColumnWidth } from "../store/Table";
 import { Show } from "../store/Canvas";
 import { Memo } from "../store/Memo";
+import { getCoordinate } from "./RelationshipHelper";
 
 export function nextZIndex(tables: Table[], memos: Memo[]): number {
   let max = 1;
@@ -130,4 +131,35 @@ export function orderByNameASC(tables: Table[]): Table[] {
     }
     return 0;
   });
+}
+
+export function virtualTable(
+  current: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  },
+  table: Table
+): boolean {
+  const { minX, minY, maxX, maxY } = current;
+  const coordinate = getCoordinate(table);
+  return (
+    (minX < coordinate.lt.x &&
+      coordinate.lt.x < maxX &&
+      minY < coordinate.lt.y &&
+      coordinate.lt.y < maxY) ||
+    (minX < coordinate.lb.x &&
+      coordinate.lb.x < maxX &&
+      minY < coordinate.lb.y &&
+      coordinate.lb.y < maxY) ||
+    (minX < coordinate.rt.x &&
+      coordinate.rt.x < maxX &&
+      minY < coordinate.rt.y &&
+      coordinate.rt.y < maxY) ||
+    (minX < coordinate.rb.x &&
+      coordinate.rb.x < maxX &&
+      minY < coordinate.rb.y &&
+      coordinate.rb.y < maxY)
+  );
 }

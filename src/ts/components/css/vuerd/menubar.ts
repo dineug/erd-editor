@@ -192,9 +192,40 @@ export const menubar = css`
     position: absolute;
     z-index: 100000040;
     right: 190px;
-    width: 300px;
+    width: 350px;
     color: var(--vuerd-theme-font, var(--vuerd-color-font));
     background-color: var(--vuerd-theme-menubar, var(--vuerd-color-menubar));
     opacity: 0.9;
+  }
+
+  .vuerd-find {
+    position: absolute;
+    z-index: 100000040;
+    right: 190px;
+    width: 350px;
+    color: var(--vuerd-theme-font, var(--vuerd-color-font));
+    background-color: var(--vuerd-theme-menubar, var(--vuerd-color-menubar));
+    opacity: 0.9;
+    fill: #fff0;
+  }
+  .vuerd-find:hover {
+    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
+  }
+  .vuerd-find-header {
+    height: 51.41px;
+    padding: 0 20px;
+  }
+  .vuerd-find-header h3 {
+    display: inline-block;
+    margin-right: 10px;
+  }
+  .vuerd-find-header .vuerd-button {
+    float: right;
+    margin-left: 5px;
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+  }
+  .vuerd-find-body {
+    padding: 0 20px 20px 20px;
   }
 `;

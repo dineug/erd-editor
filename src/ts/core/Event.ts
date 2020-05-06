@@ -158,6 +158,10 @@ enum Filter {
   close = "Filter.close",
 }
 
+enum Find {
+  close = "Find.close",
+}
+
 export const Bus = {
   Editor,
   ERD,
@@ -169,4 +173,5 @@ export const Bus = {
   ImportErrorDDL,
   Menubar,
   Filter,
+  Find,
 };

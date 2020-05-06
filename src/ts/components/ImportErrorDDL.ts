@@ -6,6 +6,7 @@ import { Logger } from "@src/core/Logger";
 import { defaultWidth } from "./Layout";
 import { AnimationFrame } from "@src/core/Animation";
 import { Bus } from "@src/core/Event";
+import { keymapOptionToString } from "@src/core/Keymap";
 
 const MAX_WIDTH = 800;
 
@@ -67,6 +68,8 @@ class ImportErrorDDL extends EditorElement {
   }
 
   render() {
+    const { keymap } = this.context;
+    const keymapStop = keymapOptionToString(keymap.stop[0]);
     return html`
       <div
         class="vuerd-import-error-ddl"
@@ -79,7 +82,7 @@ class ImportErrorDDL extends EditorElement {
           <h3>Import SQL DDL Error</h3>
           <vuerd-icon
             class="vuerd-button"
-            title="ESC"
+            title=${keymapStop}
             icon="times"
             size="16"
             @click=${this.onClose}

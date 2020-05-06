@@ -15,6 +15,7 @@ export interface EditorState {
   draggableColumn: DraggableColumn | null;
   drawRelationship: DrawRelationship | null;
   copyColumns: Column[];
+  findActive: boolean;
   filterActive: boolean;
   filterStateList: FilterState[];
   filterOperatorType: FilterOperatorType;
@@ -87,6 +88,7 @@ export function createEditorState(): EditorState {
     draggableColumn: null,
     drawRelationship: null,
     copyColumns: [],
+    findActive: false,
     filterActive: false,
     filterStateList: [],
     filterOperatorType: "OR",
