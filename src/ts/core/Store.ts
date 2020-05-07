@@ -11,7 +11,7 @@ import { EditorState, createEditorState } from "./store/Editor";
 import {
   Command,
   CommandType,
-  commandExecute,
+  executeCommand,
   changeCommandTypes,
 } from "./Command";
 import { createObservable } from "./Observable";
@@ -78,16 +78,16 @@ export class Store {
       this.excludeKeys
     );
     this.subscriptionList.push(
-      this.dispatch$.subscribe((commands) => commandExecute(this, commands)),
+      this.dispatch$.subscribe((commands) => executeCommand(this, commands)),
       this.dispatch$
         .pipe(
-          filter((commands) => {
-            return commands.some((command) =>
+          filter((commands) =>
+            commands.some((command) =>
               changeCommandTypes.some(
                 (commandType) => commandType === command.type
               )
-            );
-          }),
+            )
+          ),
           debounceTime(200)
         )
         .subscribe(() => {
