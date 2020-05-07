@@ -2,6 +2,7 @@ import pkg from "./package.json";
 import config from "./rollup.config.common";
 import replace from "@rollup/plugin-replace";
 import strip from "@rollup/plugin-strip";
+import visualizer from "rollup-plugin-visualizer";
 
 const { esm, banner, onwarn } = config();
 
@@ -13,7 +14,8 @@ esm.push(
     debugger: true,
     include: "**/*.ts",
     functions: ["Logger.debug"],
-  })
+  }),
+  visualizer()
 );
 
 export default [

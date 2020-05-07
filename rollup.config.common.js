@@ -1,6 +1,4 @@
 import pkg from "./package.json";
-import json from "@rollup/plugin-json";
-import url from "@rollup/plugin-url";
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import typescript from "@rollup/plugin-typescript";
@@ -15,11 +13,9 @@ const banner = `/*!
  */`;
 
 const esm = [
-  json(),
-  url(),
   resolve(),
   commonjs(),
-  // eslint(),
+  // eslint(".eslintrc.js"),
   typescript(),
   terser({
     include: [/^.+\.min\.js$/],
