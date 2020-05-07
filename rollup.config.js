@@ -15,7 +15,9 @@ esm.push(
     include: "**/*.ts",
     functions: ["Logger.debug"],
   }),
-  visualizer()
+  visualizer({
+    filename: "./dist/stats.html",
+  })
 );
 
 export default [
