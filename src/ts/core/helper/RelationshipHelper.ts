@@ -103,8 +103,14 @@ interface RelationshipGraph {
 }
 
 interface RelationshipOrder {
-  point: RelationshipPoint;
+  start: RelationshipPoint;
+  end: RelationshipPoint;
   distance: number;
+}
+
+interface RelationshipMarginPoint {
+  xArray: number[];
+  yArray: number[];
 }
 
 export function getCoordinate(table: Table): Coordinate {
@@ -149,6 +155,10 @@ export function getCoordinate(table: Table): Coordinate {
   };
 }
 
+function getDistance(a: Point, b: Point): number {
+  return Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
+}
+
 function directionFilter(key: string) {
   return directions.some((direction) => direction === key);
 }
@@ -157,9 +167,7 @@ function getDrawDirection(draw: DrawRelationship): Direction {
   let direction: Direction = "bottom";
   if (draw.start) {
     const start = getCoordinate(draw.start.table);
-    let min =
-      Math.pow(Math.abs(start.bottom.x - draw.end.x), 2) +
-      Math.pow(Math.abs(start.bottom.y - draw.end.y), 2);
+    let min = getDistance(start.bottom, draw.end);
     draw.start.x = start.bottom.x;
     draw.start.y = start.bottom.y;
 
@@ -167,9 +175,7 @@ function getDrawDirection(draw: DrawRelationship): Direction {
       .filter(directionFilter)
       .forEach((key) => {
         const k = key as Direction;
-        const temp =
-          Math.pow(Math.abs(start[k].x - draw.end.x), 2) +
-          Math.pow(Math.abs(start[k].y - draw.end.y), 2);
+        const temp = getDistance(start[k], draw.end);
         if (min > temp) {
           min = temp;
           direction = k;
@@ -335,9 +341,7 @@ function getDirection(
     start: "bottom",
     end: "bottom",
   };
-  let min =
-    Math.pow(Math.abs(start.bottom.x - end.bottom.x), 2) +
-    Math.pow(Math.abs(start.bottom.y - end.bottom.y), 2);
+  let min = getDistance(start.bottom, end.bottom);
   relationship.start.x = start.bottom.x;
   relationship.start.y = start.bottom.y;
   relationship.end.x = end.bottom.x;
@@ -351,9 +355,7 @@ function getDirection(
         .forEach((key2) => {
           const k = key as Direction;
           const k2 = key2 as Direction;
-          const temp =
-            Math.pow(Math.abs(start[k].x - end[k2].x), 2) +
-            Math.pow(Math.abs(start[k].y - end[k2].y), 2);
+          const temp = getDistance(start[k], end[k2]);
 
           if (min > temp) {
             min = temp;
@@ -372,7 +374,7 @@ function getDirection(
 function relationshipOverlayPoint(
   direction: Direction,
   graph: RelationshipGraph
-): { xArray: number[]; yArray: number[] } {
+): RelationshipMarginPoint {
   const len = graph[direction].length;
   const margin = {
     x: graph.coordinate.width / len,
@@ -441,28 +443,38 @@ function relationshipOverlayOrder(
   };
   const distances: RelationshipOrder[] = [];
   endPoints.forEach((endPoint, index) => {
-    if (startPoints[index].tableId === endPoint.tableId) {
-      // self relationship
-      distances.push({
-        point: startPoints[index],
-        distance:
-          Math.pow(Math.abs(start.x - endPoint.x), 2) +
-          Math.pow(Math.abs(start.y - endPoint.y), 2),
-      });
-    } else if (direction === "left" || direction === "right") {
-      distances.push({
-        point: startPoints[index],
-        distance: Math.abs(start.y - endPoint.y),
-      });
-    } else if (direction === "top" || direction === "bottom") {
-      distances.push({
-        point: startPoints[index],
-        distance: Math.abs(start.x - endPoint.x),
-      });
-    }
+    distances.push({
+      start: startPoints[index],
+      end: endPoints[index],
+      distance: getDistance(start, endPoint),
+    });
   });
   distances.sort(sortDistance);
   return distances;
+}
+
+function relationshipOverlayFirstCheck(
+  direction: Direction,
+  order: RelationshipOrder,
+  point: RelationshipMarginPoint
+): boolean {
+  let result = true;
+  if (direction === "left" || direction === "right") {
+    result =
+      getDistance({ x: order.start.x, y: point.yArray[0] }, order.end) <
+      getDistance(
+        { x: order.start.x, y: point.yArray[point.yArray.length - 1] },
+        order.end
+      );
+  } else if (direction === "top" || direction === "bottom") {
+    result =
+      getDistance({ x: point.xArray[0], y: order.start.y }, order.end) <
+      getDistance(
+        { x: point.xArray[point.xArray.length - 1], y: order.start.y },
+        order.end
+      );
+  }
+  return result;
 }
 
 function relationshipOverlaySort(
@@ -470,19 +482,25 @@ function relationshipOverlaySort(
   graph: RelationshipGraph
 ) {
   const point = relationshipOverlayPoint(direction, graph);
-  const distances = relationshipOverlayOrder(
+  let distances = relationshipOverlayOrder(
     direction,
     graph.table,
     graph[direction]
   );
 
+  if (distances.length > 1) {
+    if (!relationshipOverlayFirstCheck(direction, distances[0], point)) {
+      distances = distances.reverse();
+    }
+  }
+
   if (direction === "left" || direction === "right") {
     point.yArray.forEach((y, index) => {
-      distances[index].point.y = y;
+      distances[index].start.y = y;
     });
   } else if (direction === "top" || direction === "bottom") {
     point.xArray.forEach((x, index) => {
-      distances[index].point.x = x;
+      distances[index].start.x = x;
     });
   }
 }

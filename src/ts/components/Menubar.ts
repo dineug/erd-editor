@@ -20,6 +20,7 @@ import { SIZE_CANVAS_MIN, SIZE_CANVAS_MAX } from "@src/core/Layout";
 import { Bus } from "@src/core/Event";
 
 interface Menu {
+  title: string;
   canvasType: CanvasType;
   prefix: string;
   icon: string;
@@ -28,30 +29,35 @@ interface Menu {
 
 const menus: Menu[] = [
   {
+    title: "ERD",
     canvasType: "ERD",
     prefix: "fas",
     icon: "project-diagram",
     size: 18,
   },
   {
+    title: "Grid",
     canvasType: "Grid",
     prefix: "fas",
     icon: "list",
     size: 18,
   },
   {
+    title: "Visualization",
     canvasType: "Visualization",
     prefix: "mdi",
     icon: "chart-bubble",
     size: 24,
   },
   {
+    title: "SQL DDL",
     canvasType: "SQL",
     prefix: "fas",
     icon: "code",
     size: 18,
   },
   {
+    title: "Generator Code",
     canvasType: "GeneratorCode",
     prefix: "fas",
     icon: "sliders-h",
@@ -138,7 +144,7 @@ class Menubar extends EditorElement {
                 "vuerd-menubar-menu": true,
                 active: canvasType === menu.canvasType,
               })}
-              title=${menu.canvasType}
+              title=${menu.title}
               @click=${() => this.onChangeCanvasType(menu.canvasType)}
             >
               <vuerd-icon
