@@ -4,7 +4,6 @@ import replace from "@rollup/plugin-replace";
 import html from "rollup-plugin-generate-html-template";
 import serve from "rollup-plugin-serve";
 import livereload from "rollup-plugin-livereload";
-// import browsersync from "rollup-plugin-browsersync";
 
 const { esm, banner, onwarn } = config();
 

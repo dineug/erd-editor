@@ -61,12 +61,7 @@ export const grid = css`
     cursor: pointer;
     font-size: ${SIZE_FONT}px;
   }
-  .vuerd-grid-column-option-editor > li:hover {
-    background-color: var(
-      --vuerd-theme-contextmenu-active,
-      var(--vuerd-color-contextmenu-active)
-    );
-  }
+  .vuerd-grid-column-option-editor > li:hover,
   .vuerd-grid-column-option-editor > li.active {
     background-color: var(
       --vuerd-theme-contextmenu-active,
@@ -98,21 +93,14 @@ export const grid = css`
     cursor: pointer;
     font-size: ${SIZE_FONT}px;
   }
-  .vuerd-grid-column-data-type-hint > li:hover {
-    background-color: var(
-      --vuerd-theme-contextmenu-active,
-      var(--vuerd-color-contextmenu-active)
-    );
-  }
-  .vuerd-grid-column-data-type-hint > li:hover .vuerd-mark {
-    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
-  }
+  .vuerd-grid-column-data-type-hint > li:hover,
   .vuerd-grid-data-type-hint.active {
     background-color: var(
       --vuerd-theme-contextmenu-active,
       var(--vuerd-color-contextmenu-active)
     );
   }
+  .vuerd-grid-column-data-type-hint > li:hover .vuerd-mark,
   .vuerd-grid-data-type-hint.active .vuerd-mark {
     color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }

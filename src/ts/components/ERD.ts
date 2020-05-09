@@ -15,9 +15,11 @@ import { getParentElement, getData } from "@src/core/Helper";
 import { relationshipMenus } from "@src/core/Contextmenu";
 import { getBase64Icon } from "@src/core/Icon";
 import { Relationship } from "@src/core/store/Relationship";
+import { Command, CommandType } from "@src/core/Command";
 import {
   addTable,
   removeTable,
+  selectTable,
   selectEndTable,
   selectAllTable,
 } from "@src/core/command/table";
@@ -38,7 +40,8 @@ import {
   drawEndRelationship,
   copyColumn,
   pasteColumn,
-  findActive,
+  findActive as findActiveCommand,
+  findActiveEnd,
 } from "@src/core/command/editor";
 import "./erd/InputEdit";
 import "./erd/Canvas";
@@ -58,6 +61,7 @@ import "./erd/minimap/Memo";
 import "./erd/DragSelect";
 import "./erd/DrawRelationship";
 import "./erd/Find";
+import "./erd/find/FindTable";
 
 @customElement("vuerd-erd")
 class ERD extends EditorElement {
@@ -112,13 +116,15 @@ class ERD extends EditorElement {
         const erd = this.erd;
         switch (name) {
           case "scrollTop":
-            if (erd) {
+            if (erd && erd.scrollTop !== store.canvasState.scrollTop) {
               erd.scrollTop = store.canvasState.scrollTop;
+              this.onScrollValid();
             }
             break;
           case "scrollLeft":
-            if (erd) {
+            if (erd && erd.scrollLeft !== store.canvasState.scrollLeft) {
               erd.scrollLeft = store.canvasState.scrollLeft;
+              this.onScrollValid();
             }
             break;
         }
@@ -135,7 +141,13 @@ class ERD extends EditorElement {
       }),
       mousedown$.subscribe(this.onMousedownWindow),
       keydown$.subscribe((event) => {
-        const { focus, editTable, focusTable, copyColumns } = store.editorState;
+        const {
+          focus,
+          editTable,
+          focusTable,
+          copyColumns,
+          findActive,
+        } = store.editorState;
         if (focus) {
           if (keymapMatch(event, keymap.addTable)) {
             store.dispatch(addTable(store));
@@ -145,7 +157,7 @@ class ERD extends EditorElement {
             keymapMatch(event, keymap.addColumn) &&
             store.tableState.tables.some((table) => table.ui.active)
           ) {
-            store.dispatch(addColumn(store));
+            store.dispatch(addColumn(store), findActiveEnd());
           }
 
           if (keymapMatch(event, keymap.addMemo)) {
@@ -266,15 +278,25 @@ class ERD extends EditorElement {
           }
 
           if (keymapMatch(event, keymap.find)) {
-            store.dispatch(findActive());
+            store.dispatch(findActiveCommand());
           }
 
           if (keymapMatch(event, keymap.stop)) {
-            store.dispatch(
-              selectEndTable(),
+            const batchCommand: Array<Command<CommandType>> = [
               selectEndMemo(),
-              drawEndRelationship()
-            );
+              drawEndRelationship(),
+            ];
+            if (findActive) {
+              const table = store.tableState.tables.find(
+                (table) => table.ui.active
+              );
+              if (table) {
+                batchCommand.push(selectTable(store, false, table.id));
+              }
+            } else {
+              batchCommand.push(selectEndTable());
+            }
+            store.dispatch(...batchCommand);
           }
         }
       })
@@ -284,6 +306,7 @@ class ERD extends EditorElement {
       requestAnimationFrame(() => {
         erd.scrollTop = store.canvasState.scrollTop;
         erd.scrollLeft = store.canvasState.scrollLeft;
+        this.onScrollValid();
       });
     }
   }
@@ -295,6 +318,7 @@ class ERD extends EditorElement {
       if (erd) {
         erd.scrollTop = store.canvasState.scrollTop;
         erd.scrollLeft = store.canvasState.scrollLeft;
+        this.onScrollValid();
       }
     });
   }
@@ -461,6 +485,17 @@ class ERD extends EditorElement {
   }
   private onSelectEnd() {
     this.select = false;
+  }
+  private onScrollValid() {
+    const { store } = this.context;
+    const erd = this.erd;
+    if (
+      erd &&
+      (erd.scrollTop !== store.canvasState.scrollTop ||
+        erd.scrollLeft !== store.canvasState.scrollLeft)
+    ) {
+      store.dispatch(moveCanvas(erd.scrollTop, erd.scrollLeft));
+    }
   }
 
   private observeDrawRelationship() {

@@ -22,9 +22,8 @@ import {
 import { FocusType } from "@src/core/model/FocusFilterModel";
 import { getData } from "@src/core/Helper";
 
-const HEADER_HEIGHT = 51.41;
-const PADDING = 20;
-const HEIGHT = PADDING + HEADER_HEIGHT;
+const PADDING = 10 * 2;
+const HEIGHT = 30;
 
 @customElement("vuerd-grid-filter")
 class Filter extends EditorElement {
@@ -84,7 +83,7 @@ class Filter extends EditorElement {
       })
     );
     eventBus.on(Bus.Filter.close, this.onClose);
-    this.top = -1 * this.height;
+    this.top = -1 * (this.height + PADDING);
     filterOperatorTypes.forEach((operatorType) => {
       this.operatorList.push({
         name: operatorType,
@@ -94,7 +93,7 @@ class Filter extends EditorElement {
   }
   firstUpdated() {
     this.animationFrame
-      .play({ top: -1 * this.height }, { top: SIZE_MENUBAR_HEIGHT })
+      .play({ top: -1 * (this.height + PADDING) }, { top: SIZE_MENUBAR_HEIGHT })
       .update((value) => {
         this.top = value.top;
       })
@@ -196,7 +195,7 @@ class Filter extends EditorElement {
     this.top = SIZE_MENUBAR_HEIGHT;
     this.animation = true;
     this.animationFrame
-      .play({ top: SIZE_MENUBAR_HEIGHT }, { top: -1 * this.height })
+      .play({ top: SIZE_MENUBAR_HEIGHT }, { top: -1 * (this.height + PADDING) })
       .update((value) => {
         this.top = value.top;
       })

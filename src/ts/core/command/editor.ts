@@ -30,6 +30,8 @@ import {
 } from "../model/FocusFilterModel";
 import { relationshipSort } from "../helper/RelationshipHelper";
 import { addCustomColumn } from "./column";
+import { executeSelectEndTable } from "./table";
+import { executeSelectEndMemo } from "./memo";
 
 export interface FocusTable {
   tableId: string;
@@ -604,6 +606,7 @@ export function addFilterState(): Command<"editor.addFilterState"> {
 export function executeAddFilterState(store: Store, data: AddFilterState) {
   Logger.debug("executeAddFilterState");
   const { filterStateList } = store.editorState;
+  executeEditEndFilter(store);
   filterStateList.push(new FilterStateModel({ addFilterState: data }));
 }
 
@@ -1039,7 +1042,8 @@ export function executeFindActive(store: Store) {
   Logger.debug("executeFindActive");
   const { editorState } = store;
   editorState.findActive = true;
-  executeFocusEndTable(store);
+  executeSelectEndTable(store);
+  executeSelectEndMemo(store);
 }
 
 export function findActiveEnd(): Command<"editor.findActiveEnd"> {

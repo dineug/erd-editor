@@ -4,9 +4,13 @@ import { repeat } from "lit-html/directives/repeat";
 import { unsafeHTML } from "lit-html/directives/unsafe-html";
 import { Subscription, fromEvent } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
-import { databaseHints, DataTypeHint } from "@src/core/DataType";
+import { Logger } from "@src/core/Logger";
 import { markToHTML } from "@src/core/Helper";
 import { FlipAnimation } from "@src/core/Animation";
+import { SIZE_START_X, SIZE_START_Y } from "@src/core/Layout";
+import { Table } from "@src/core/store/Table";
+import { moveCanvas } from "@src/core/command/canvas";
+import { selectOnlyTable } from "@src/core/command/table";
 
 interface Hint {
   name: string;
@@ -14,8 +18,8 @@ interface Hint {
   active: boolean;
 }
 
-@customElement("vuerd-grid-column-data-type-editor")
-export class ColumnDataTypeEditor extends EditorElement {
+@customElement("vuerd-find-table")
+class FindTable extends EditorElement {
   @property({ type: String })
   value = "";
   @property({ type: Array })
@@ -25,21 +29,9 @@ export class ColumnDataTypeEditor extends EditorElement {
   private subscriptionList: Subscription[] = [];
   private flipAnimation = new FlipAnimation(
     this.renderRoot,
-    ".vuerd-grid-data-type-hint",
-    "vuerd-grid-data-type-hint-move"
+    ".vuerd-find-table-hint",
+    "vuerd-find-table-hint-move"
   );
-
-  get dataTypeHints() {
-    const { canvasState } = this.context.store;
-    let dataTypeHints: DataTypeHint[] = [];
-    for (const databaseHint of databaseHints) {
-      if (databaseHint.database === canvasState.database) {
-        dataTypeHints = databaseHint.dataTypeHints;
-        break;
-      }
-    }
-    return dataTypeHints;
-  }
 
   get activeIndex(): number | null {
     let index: number | null = null;
@@ -87,17 +79,16 @@ export class ColumnDataTypeEditor extends EditorElement {
 
   render() {
     return html`
-      <div class="vuerd-grid-column-data-type-editor">
+      <div class="vuerd-find-table">
         <input
-          class="vuerd-grid-input"
           type="text"
           spellcheck="false"
-          placeholder="dataType"
           .value=${this.value}
+          placeholder="table"
           @keydown=${this.onKeydown}
           @input=${this.onInput}
         />
-        <ul class="vuerd-grid-column-data-type-hint">
+        <ul class="vuerd-find-table-list">
           ${repeat(
             this.hints,
             (hint) => hint.name,
@@ -105,7 +96,7 @@ export class ColumnDataTypeEditor extends EditorElement {
               return html`
                 <li
                   class=${classMap({
-                    "vuerd-grid-data-type-hint": true,
+                    "vuerd-find-table-hint": true,
                     active: hint.active,
                   })}
                   @click=${() => this.onSelectHint(hint)}
@@ -122,7 +113,7 @@ export class ColumnDataTypeEditor extends EditorElement {
 
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
-    if (!el.closest(".vuerd-grid-column-data-type-editor")) {
+    if (!el.closest(".vuerd-find-table")) {
       this.dispatchEvent(new Event("blur"));
     }
   };
@@ -133,6 +124,7 @@ export class ColumnDataTypeEditor extends EditorElement {
       this.dispatchEvent(new Event("blur"));
     }
   };
+
   private onInput(event: Event) {
     const input = event.target as HTMLInputElement;
     this.value = input.value;
@@ -149,6 +141,7 @@ export class ColumnDataTypeEditor extends EditorElement {
       case "ArrowLeft":
         this.onArrowLeft(event);
         break;
+      case "Enter":
       case "ArrowRight":
         this.onArrowRight(event);
         break;
@@ -193,11 +186,17 @@ export class ColumnDataTypeEditor extends EditorElement {
     this.requestUpdate();
   }
   private onArrowRight(event: KeyboardEvent) {
+    const { tables } = this.context.store.tableState;
     const index = this.activeIndex;
     if (index !== null) {
       event.preventDefault();
       this.startFilter = false;
-      this.value = this.hints[index].name;
+      const table = tables.find(
+        (table) => table.name === this.hints[index].name
+      );
+      if (table) {
+        this.moveCanvasFindTable(table);
+      }
     }
   }
   private onStartFilter() {
@@ -205,9 +204,9 @@ export class ColumnDataTypeEditor extends EditorElement {
   }
 
   private onSelectHint(hint: Hint) {
+    const { tables } = this.context.store.tableState;
     this.startFilter = false;
     this.activeEnd();
-    this.value = hint.name;
     const input = this.renderRoot.querySelector("input");
     if (input) {
       const len = input.value.length;
@@ -215,30 +214,27 @@ export class ColumnDataTypeEditor extends EditorElement {
       input.selectionEnd = len;
       input.focus();
     }
+    const table = tables.find((table) => table.name === hint.name);
+    if (table) {
+      this.moveCanvasFindTable(table);
+    }
   }
 
   private hintFilter() {
+    const { tables } = this.context.store.tableState;
     if (this.startFilter) {
-      if (this.value.trim() === "") {
-        this.hints = this.dataTypeHints.map((dataTypeHint) => {
-          return {
-            name: dataTypeHint.name,
-            html: dataTypeHint.name,
-            active: false,
-          };
-        });
+      if (this.value.trim().length < 1) {
+        this.hints = [];
       } else {
-        this.hints = this.dataTypeHints
+        this.hints = tables
           .filter(
-            (dataTypeHint) =>
-              dataTypeHint.name
-                .toLowerCase()
-                .indexOf(this.value.toLowerCase()) !== -1
+            (table) =>
+              table.name.toLowerCase().indexOf(this.value.toLowerCase()) !== -1
           )
-          .map((dataTypeHint) => {
+          .map((table) => {
             return {
-              name: dataTypeHint.name,
-              html: markToHTML("vuerd-mark", dataTypeHint.name, this.value),
+              name: table.name,
+              html: markToHTML("vuerd-mark", table.name, this.value),
               active: false,
             };
           });
@@ -247,5 +243,12 @@ export class ColumnDataTypeEditor extends EditorElement {
   }
   private activeEnd() {
     this.hints.forEach((hint) => (hint.active = false));
+  }
+  private moveCanvasFindTable(table: Table) {
+    const { store } = this.context;
+    store.dispatch(
+      moveCanvas(table.ui.top - SIZE_START_Y, table.ui.left - SIZE_START_X),
+      selectOnlyTable(store, table.id)
+    );
   }
 }

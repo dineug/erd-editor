@@ -150,16 +150,7 @@ export const column = css`
     cursor: pointer;
     font-size: ${SIZE_FONT}px;
   }
-  .vuerd-column-data-type-hint > li:hover {
-    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
-    background-color: var(
-      --vuerd-theme-contextmenu-active,
-      var(--vuerd-color-contextmenu-active)
-    );
-  }
-  .vuerd-column-data-type-hint > li:hover .vuerd-mark {
-    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
-  }
+  .vuerd-column-data-type-hint > li:hover,
   .vuerd-data-type-hint.active {
     color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
     background-color: var(
@@ -167,6 +158,7 @@ export const column = css`
       var(--vuerd-color-contextmenu-active)
     );
   }
+  .vuerd-column-data-type-hint > li:hover .vuerd-mark,
   .vuerd-data-type-hint.active .vuerd-mark {
     color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }

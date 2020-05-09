@@ -99,7 +99,7 @@ class Help extends EditorElement {
         keymap: keymapOptionToStringJoin(keymap.addMemo),
       },
       {
-        name: "New - Column, filter",
+        name: "New - column, filter",
         keymap: keymapOptionToStringJoin(keymap.addColumn),
       },
       {
@@ -111,11 +111,11 @@ class Help extends EditorElement {
         keymap: keymapOptionToStringJoin(keymap.removeColumn),
       },
       {
-        name: "Select DataType Hint",
+        name: "Select Hint - dataType, find",
         keymap: "Arrow key(right), Click",
       },
       {
-        name: "Move DataType Hint",
+        name: "Move Hint - dataType, find",
         keymap: "Arrow key(up, down)",
       },
       {

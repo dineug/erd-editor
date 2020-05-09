@@ -12,32 +12,34 @@ export const importErrorDDL = css`
     background-color: var(--vuerd-theme-help, var(--vuerd-color-help));
     z-index: 100000050;
     fill: #fff0;
-    padding: 0 20px;
+    padding: 20px;
+    box-sizing: border-box;
   }
   .vuerd-import-error-ddl:hover {
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
   .vuerd-import-error-ddl-header {
-    height: 51.41px;
+    height: 30px;
+    margin-bottom: 10px;
     overflow: hidden;
   }
   .vuerd-import-error-ddl-header > h3 {
     display: inline-block;
+    margin: 0;
   }
   .vuerd-import-error-ddl-header > .vuerd-button {
     float: right;
-    margin-block-start: 1em;
-    margin-block-end: 1em;
   }
   .vuerd-import-error-ddl-body {
     font-family: monospace !important;
     white-space: pre;
-    height: calc(100% - 108.41px);
+    height: calc(100% - 70px);
     overflow: auto;
     box-sizing: border-box;
   }
   .vuerd-import-error-ddl-footer {
-    padding: 20px;
+    height: 20px;
+    margin-top: 10px;
   }
   .vuerd-import-error-ddl-footer > a {
     color: var(--vuerd-theme-font, var(--vuerd-color-font));

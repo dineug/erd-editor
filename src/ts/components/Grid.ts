@@ -71,13 +71,13 @@ class Grid extends EditorElement {
       header: "Table Name",
       name: "tableName",
       renderer: { type: GridTextRender, options: { placeholder: "table" } },
-      editor: { type: GridTextEditor },
+      editor: { type: GridTextEditor, options: { placeholder: "table" } },
     },
     {
       header: "Table Comment",
       name: "tableComment",
       renderer: { type: GridTextRender, options: { placeholder: "comment" } },
-      editor: { type: GridTextEditor },
+      editor: { type: GridTextEditor, options: { placeholder: "comment" } },
     },
     {
       header: "Option",
@@ -90,7 +90,7 @@ class Grid extends EditorElement {
       header: "Name",
       name: "name",
       renderer: { type: GridTextRender, options: { placeholder: "column" } },
-      editor: { type: GridTextEditor },
+      editor: { type: GridTextEditor, options: { placeholder: "column" } },
     },
     {
       header: "DataType",
@@ -103,13 +103,13 @@ class Grid extends EditorElement {
       header: "Default",
       name: "default",
       renderer: { type: GridTextRender, options: { placeholder: "default" } },
-      editor: { type: GridTextEditor },
+      editor: { type: GridTextEditor, options: { placeholder: "default" } },
     },
     {
       header: "Comment",
       name: "comment",
       renderer: { type: GridTextRender, options: { placeholder: "comment" } },
-      editor: { type: GridTextEditor },
+      editor: { type: GridTextEditor, options: { placeholder: "comment" } },
     },
   ];
 

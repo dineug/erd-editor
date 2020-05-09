@@ -12,27 +12,27 @@ export const help = css`
     background-color: var(--vuerd-theme-help, var(--vuerd-color-help));
     z-index: 100000050;
     fill: #fff0;
+    padding: 20px;
+    box-sizing: border-box;
   }
   .vuerd-help:hover {
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
   .vuerd-help-header {
-    height: 51.41px;
-    padding: 0 20px;
+    height: 30px;
+    margin-bottom: 10px;
     overflow: hidden;
   }
   .vuerd-help-header > h3 {
     display: inline-block;
+    margin: 0;
   }
   .vuerd-help-header > .vuerd-button {
     float: right;
-    margin-block-start: 1em;
-    margin-block-end: 1em;
   }
   .vuerd-help-body {
-    height: calc(100% - 51.41px);
+    height: calc(100% - 40px);
     overflow: auto;
-    padding: 0 20px 20px 20px;
     box-sizing: border-box;
   }
 `;

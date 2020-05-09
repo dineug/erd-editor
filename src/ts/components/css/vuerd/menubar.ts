@@ -50,22 +50,22 @@ export const menubar = css`
     position: absolute;
     z-index: 100000040;
     right: 190px;
-    width: 410px;
+    width: 370px;
     color: var(--vuerd-theme-font, var(--vuerd-color-font));
     background-color: var(--vuerd-theme-menubar, var(--vuerd-color-menubar));
     opacity: 0.9;
     fill: #fff0;
+    padding: 10px;
   }
   .vuerd-grid-filter:hover {
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
   .vuerd-grid-filter-header {
-    height: 51.41px;
-    padding: 0 20px;
+    height: 30px;
   }
   .vuerd-grid-filter-header h3 {
     display: inline-block;
-    margin-right: 10px;
+    margin: 0 10px 0 0;
   }
   .vuerd-grid-filter-header .vuerd-grid-filter-radio-editor {
     display: inline-block;
@@ -73,11 +73,6 @@ export const menubar = css`
   .vuerd-grid-filter-header .vuerd-button {
     float: right;
     margin-left: 5px;
-    margin-block-start: 1em;
-    margin-block-end: 1em;
-  }
-  .vuerd-grid-filter-body {
-    padding: 0 20px 20px 20px;
   }
   .vuerd-grid-filter-state {
     height: ${SIZE_COLUMN_HEIGHT}px;
@@ -192,7 +187,7 @@ export const menubar = css`
     position: absolute;
     z-index: 100000040;
     right: 190px;
-    width: 350px;
+    width: 300px;
     color: var(--vuerd-theme-font, var(--vuerd-color-font));
     background-color: var(--vuerd-theme-menubar, var(--vuerd-color-menubar));
     opacity: 0.9;
@@ -202,7 +197,7 @@ export const menubar = css`
     position: absolute;
     z-index: 100000040;
     right: 190px;
-    width: 350px;
+    width: 235px;
     color: var(--vuerd-theme-font, var(--vuerd-color-font));
     background-color: var(--vuerd-theme-menubar, var(--vuerd-color-menubar));
     opacity: 0.9;
@@ -212,20 +207,69 @@ export const menubar = css`
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
   .vuerd-find-header {
-    height: 51.41px;
-    padding: 0 20px;
+    height: 30px;
+    padding: 10px;
   }
   .vuerd-find-header h3 {
     display: inline-block;
-    margin-right: 10px;
+    margin: 0 10px 0 0;
   }
   .vuerd-find-header .vuerd-button {
     float: right;
-    margin-left: 5px;
-    margin-block-start: 1em;
-    margin-block-end: 1em;
   }
-  .vuerd-find-body {
-    padding: 0 20px 20px 20px;
+  .vuerd-find-table {
+    display: inline-block;
+    position: relative;
+  }
+  .vuerd-find-table input {
+    display: flex;
+    width: 150px;
+    vertical-align: middle;
+    align-items: center;
+    margin-right: ${SIZE_COLUMN_MARGIN_RIGHT}px;
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    background-color: var(--vuerd-theme-menubar, var(--vuerd-color-menubar));
+    outline: none;
+    border: none;
+    opacity: 0.9;
+    padding: 1px 0 1px 0;
+    height: 17px;
+    font-size: ${SIZE_FONT}px;
+    font-family: var(--vuerd-font-family);
+    border-bottom: solid var(--vuerd-theme-edit, var(--vuerd-color-edit)) 1.5px;
+  }
+
+  .vuerd-find-table-list {
+    position: absolute;
+    top: 20.5px;
+    left: 0;
+    z-index: 100;
+    color: var(--vuerd-theme-font, var(--vuerd-color-font));
+    background-color: var(--vuerd-theme-menubar, var(--vuerd-color-menubar));
+    opacity: 0.9;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .vuerd-find-table-list > li {
+    padding: 5px;
+    cursor: pointer;
+    font-size: ${SIZE_FONT}px;
+  }
+  .vuerd-find-table-list > li:hover,
+  .vuerd-find-table-hint.active {
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    background-color: var(
+      --vuerd-theme-contextmenu-active,
+      var(--vuerd-color-contextmenu-active)
+    );
+  }
+  .vuerd-find-table-list > li:hover .vuerd-mark,
+  .vuerd-find-table-hint.active .vuerd-mark {
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+  }
+  /* animation flip */
+  .vuerd-find-table-hint-move {
+    transition: transform 0.2s;
   }
 `;

@@ -5,6 +5,7 @@ export class GridTextEditor implements CellEditor {
   el: HTMLInputElement;
 
   constructor(props: CellEditorProps) {
+    const { placeholder } = props.columnInfo.renderer.options as any;
     this.props = props;
     this.el = document.createElement("input");
     this.el.classList.add("vuerd-grid-input");
@@ -12,6 +13,9 @@ export class GridTextEditor implements CellEditor {
     this.el.spellcheck = false;
     this.el.value = String(props.value);
     this.el.addEventListener("blur", this.onBlur);
+    if (placeholder) {
+      this.el.placeholder = placeholder;
+    }
   }
 
   getElement() {

@@ -236,6 +236,36 @@ export function executeSelectAllTable(store: Store) {
   tables.forEach((table) => (table.ui.active = true));
 }
 
+export interface SelectOnlyTable {
+  tableId: string;
+  zIndex: number;
+}
+export function selectOnlyTable(
+  store: Store,
+  tableId: string
+): Command<"table.selectOnly"> {
+  const { tableState, memoState } = store;
+  return {
+    type: "table.selectOnly",
+    data: {
+      tableId,
+      zIndex: nextZIndex(tableState.tables, memoState.memos),
+    },
+  };
+}
+export function executeSelectOnlyTable(store: Store, data: SelectOnlyTable) {
+  Logger.debug("executeSelectOnlyTable");
+  const { tables } = store.tableState;
+  const targetTable = getData(tables, data.tableId);
+  if (targetTable) {
+    targetTable.ui.zIndex = data.zIndex;
+  }
+  tables.forEach((table) => {
+    table.ui.active = table.id === data.tableId;
+  });
+  executeSelectEndMemo(store);
+}
+
 export interface ChangeTableValue {
   tableId: string;
   value: string;

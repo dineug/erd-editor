@@ -2,7 +2,7 @@
 
 > ERD Editor
 
-[![npm version](https://img.shields.io/npm/v/vuerd.svg?color=blue)](https://www.npmjs.com/package/vuerd) [![VS Marketplace version](https://vsmarketplacebadge.apphb.com/version-short/dineug.vuerd-vscode.svg?color=blue)](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) [![GitHub](https://img.shields.io/github/license/vuerd/vuerd)](https://github.com/vuerd/vuerd/blob/master/LICENSE)
+[![npm version](https://img.shields.io/npm/v/vuerd.svg?color=blue)](https://www.npmjs.com/package/vuerd) [![VS Marketplace version](https://vsmarketplacebadge.apphb.com/version-short/dineug.vuerd-vscode.svg?color=blue)](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) [![Published on webcomponents.org](https://img.shields.io/badge/webcomponents.org-published-blue.svg)](https://www.webcomponents.org/element/vuerd) [![GitHub](https://img.shields.io/github/license/vuerd/vuerd)](https://github.com/vuerd/vuerd/blob/master/LICENSE)
 
 ## ERD
 
@@ -71,6 +71,7 @@ interface Editor extends HTMLElement {
 ```javascript
 const container = document.querySelector("#app");
 const editor = document.createElement("erd-editor");
+editor.value = "editor data..."; // editor data load
 container.appendChild(editor);
 editor.addEventListener("change", (event) => {
   console.log(event.detail.value);
@@ -289,6 +290,8 @@ container.appendChild(editor);
       }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.min.js"></script>
+    <!-- or module -->
+    <!-- <script type="module" src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.esm.js"></script> -->
   </head>
   <body>
     <erd-editor id="editor"></erd-editor>
@@ -306,7 +309,7 @@ container.appendChild(editor);
 
 ## Editor Keymap(default)
 
-| Name                                                | Action                                                                   |
+| Name                                                | Keymap                                                                   |
 | --------------------------------------------------- | ------------------------------------------------------------------------ |
 | Editing - ERD                                       | dblclick, Enter                                                          |
 | Editing - Grid                                      | dblclick, Enter                                                          |
@@ -320,11 +323,11 @@ container.appendChild(editor);
 | Contextmenu - ERD, Relationship, SQL, GeneratorCode | Right-click                                                              |
 | New Table                                           | Alt + N                                                                  |
 | New Memo                                            | Alt + M                                                                  |
-| New - Column, filter                                | Alt + Enter                                                              |
+| New - column, filter                                | Alt + Enter                                                              |
 | Delete - table, memo                                | Ctrl + Delete                                                            |
 | Delete - column, filter                             | Alt + Delete                                                             |
-| Select DataType Hint                                | Arrow key(right), Click                                                  |
-| Move DataType Hint                                  | Arrow key(up, down)                                                      |
+| Select Hint - dataType, find                        | Arrow key(right), Click                                                  |
+| Move Hint - dataType, find                          | Arrow key(up, down)                                                      |
 | Primary Key                                         | Alt + K                                                                  |
 | checkbox - Grid, filter                             | Space, Click                                                             |
 | Move checkbox - Grid, filter                        | Arrow key(up, down, left, right)                                         |
@@ -340,7 +343,7 @@ container.appendChild(editor);
 
 - [ ] Undo, Redo Manager
 - [x] Grid filter
-- [ ] ERD Table finder
+- [x] ERD Table finder
 - [ ] Real-time simultaneous editing api
 - [ ] SQL index Support [#9](https://github.com/vuerd/vuerd-vscode/issues/9)
 - SQL DDL import Support [#7](https://github.com/vuerd/vuerd-vscode/issues/7)

@@ -8,7 +8,8 @@ import { AnimationFrame } from "@src/core/Animation";
 import { keymapOptionToString } from "@src/core/Keymap";
 import { Bus } from "@src/core/Event";
 
-const HEIGHT = 100;
+const PADDING = 10 * 2;
+const HEIGHT = 30 + PADDING;
 
 @customElement("vuerd-find")
 class Find extends EditorElement {
@@ -64,6 +65,7 @@ class Find extends EditorElement {
       >
         <div class="vuerd-find-header">
           <h3>Find</h3>
+          <vuerd-find-table @blur=${this.onClose}></vuerd-find-table>
           <vuerd-icon
             class="vuerd-button"
             title=${keymapStop}
@@ -72,7 +74,6 @@ class Find extends EditorElement {
             @click=${this.onClose}
           ></vuerd-icon>
         </div>
-        <div class="vuerd-find-body"></div>
       </div>
     `;
   }

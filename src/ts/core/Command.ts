@@ -4,6 +4,7 @@ import {
   MoveTable,
   RemoveTable,
   SelectTable,
+  SelectOnlyTable,
   ChangeTableValue,
   DragSelectTable,
   executeAddTable,
@@ -12,6 +13,7 @@ import {
   executeSelectTable,
   executeSelectEndTable,
   executeSelectAllTable,
+  executeSelectOnlyTable,
   executeChangeTableName,
   executeChangeTableComment,
   executeDragSelectTable,
@@ -166,6 +168,7 @@ interface CommandMap {
   "table.select": SelectTable;
   "table.selectEnd": null;
   "table.selectAll": null;
+  "table.selectOnly": SelectOnlyTable;
   "table.changeName": ChangeTableValue;
   "table.changeComment": ChangeTableValue;
   "table.dragSelect": DragSelectTable;
@@ -335,6 +338,9 @@ function executeTableCommand(store: Store, command: Command<CommandType>) {
       break;
     case "table.selectAll":
       executeSelectAllTable(store);
+      break;
+    case "table.selectOnly":
+      executeSelectOnlyTable(store, command.data as SelectOnlyTable);
       break;
     case "table.changeName":
       executeChangeTableName(store, command.data as ChangeTableValue);
