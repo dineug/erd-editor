@@ -196,6 +196,9 @@ interface KeymapOption {
   key?: string;
 }
 interface Keymap {
+  edit?: KeymapOption[];
+  stop?: KeymapOption[];
+  find?: KeymapOption[];
   addTable?: KeymapOption[];
   addColumn?: KeymapOption[];
   addMemo?: KeymapOption[];
@@ -206,9 +209,6 @@ interface Keymap {
   selectAllColumn?: KeymapOption[];
   copyColumn?: KeymapOption[];
   pasteColumn?: KeymapOption[];
-  edit?: KeymapOption[];
-  stop?: KeymapOption[];
-  find?: KeymapOption[];
   relationshipZeroOneN?: KeymapOption[];
   relationshipZeroOne?: KeymapOption[];
   relationshipZeroN?: KeymapOption[];
@@ -314,6 +314,8 @@ container.appendChild(editor);
 | Editing - Grid                                      | dblclick, Enter                                                          |
 | All Stop                                            | Escape                                                                   |
 | Search - find, filter                               | Ctrl + Alt + F                                                           |
+| Undo - ERD                                          | Ctrl + Z                                                                 |
+| Redo - ERD                                          | Ctrl + Shift + Z                                                         |
 | Selection - table, memo                             | Ctrl + Drag, Click, Ctrl + Click, Ctrl + Alt + A                         |
 | Selection - column, filter                          | Click, Ctrl + Click, Shift + Click, Shift + Arrow key(up, down), Alt + A |
 | Movement - table, memo, column, filter              | Drag, Ctrl + Drag                                                        |

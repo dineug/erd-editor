@@ -102,41 +102,25 @@ export function executeMoveMemo(store: Store, data: MoveMemo) {
 }
 
 export interface RemoveMemo {
-  tableIds: string[];
   memoIds: string[];
 }
 export function removeMemo(
   store: Store,
   memoId?: string
 ): Command<"memo.remove"> {
-  const { tableState, memoState } = store;
+  const { memos } = store.memoState;
   return {
     type: "memo.remove",
     data: {
-      tableIds: memoId
-        ? []
-        : tableState.tables
-            .filter((table) => table.ui.active)
-            .map((table) => table.id),
       memoIds: memoId
         ? [memoId]
-        : memoState.memos
-            .filter((memo) => memo.ui.active)
-            .map((memo) => memo.id),
+        : memos.filter((memo) => memo.ui.active).map((memo) => memo.id),
     },
   };
 }
 export function executeRemoveMemo(store: Store, data: RemoveMemo) {
   Logger.debug("executeRemoveMemo");
-  const { tables } = store.tableState;
   const { memos } = store.memoState;
-  for (let i = 0; i < tables.length; i++) {
-    const id = tables[i].id;
-    if (data.tableIds.some((tableId) => tableId === id)) {
-      tables.splice(i, 1);
-      i--;
-    }
-  }
   for (let i = 0; i < memos.length; i++) {
     const id = memos[i].id;
     if (data.memoIds.some((memoId) => memoId === id)) {

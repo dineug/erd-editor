@@ -29,7 +29,12 @@ import {
   changeColumnNotNull,
   changeColumnPrimaryKey,
 } from "@src/core/command/column";
-import { addMemo, selectEndMemo, selectAllMemo } from "@src/core/command/memo";
+import {
+  addMemo,
+  removeMemo,
+  selectEndMemo,
+  selectAllMemo,
+} from "@src/core/command/memo";
 import { moveCanvas } from "@src/core/command/canvas";
 import {
   focusMoveTable,
@@ -169,7 +174,14 @@ class ERD extends EditorElement {
             (store.tableState.tables.some((table) => table.ui.active) ||
               store.memoState.memos.some((memo) => memo.ui.active))
           ) {
-            store.dispatch(removeTable(store));
+            const batchCommand: Array<Command<CommandType>> = [];
+            if (store.tableState.tables.some((table) => table.ui.active)) {
+              batchCommand.push(removeTable(store));
+            }
+            if (store.memoState.memos.some((memo) => memo.ui.active)) {
+              batchCommand.push(removeMemo(store));
+            }
+            store.dispatch(...batchCommand);
           }
 
           if (focusTable !== null && keymapMatch(event, keymap.removeColumn)) {

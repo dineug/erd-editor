@@ -132,7 +132,7 @@ export function createContextmenuERD(context: EditorContext): Menu[] {
         {
           name: "json",
           execute() {
-            exportJSON(createJsonStringify(store), canvasState.databaseName);
+            exportJSON(createJsonStringify(store, 2), canvasState.databaseName);
           },
         },
         {

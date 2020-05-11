@@ -63,6 +63,14 @@ class Help extends EditorElement {
         keymap: keymapOptionToStringJoin(keymap.find),
       },
       {
+        name: "Undo - ERD",
+        keymap: keymapOptionToStringJoin(keymap.undo),
+      },
+      {
+        name: "Redo - ERD",
+        keymap: keymapOptionToStringJoin(keymap.redo),
+      },
+      {
         name: "Selection - table, memo",
         keymap: `Ctrl + Drag, Click, Ctrl + Click, ${keymapOptionToStringJoin(
           keymap.selectAllTable

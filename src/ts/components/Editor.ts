@@ -7,7 +7,7 @@ import { Logger } from "@src/core/Logger";
 import { keymapMatch, KeymapKey, KeymapOption } from "@src/core/Keymap";
 import { Bus } from "@src/core/Event";
 import { EditorContext, createEditorContext } from "@src/core/EditorContext";
-import { createJsonFormat } from "@src/core/File";
+import { createJsonStringify } from "@src/core/File";
 import { loadJson, clear } from "@src/core/command/editor";
 import { ThemeKey } from "@src/core/Theme";
 import { Theme, Keymap, Editor } from "@src/types";
@@ -43,12 +43,7 @@ class EditorModel extends LitElement implements Editor {
 
   get value() {
     const { store } = this.context;
-    return JSON.stringify(createJsonFormat(store), (key, value) => {
-      if (key === "_show") {
-        return undefined;
-      }
-      return value;
-    });
+    return createJsonStringify(store);
   }
 
   set value(json: string) {

@@ -25,7 +25,7 @@ import {
   streamCommandTypes,
 } from "./Command";
 import { createObservable } from "./Observable";
-import { createJsonFormat } from "./File";
+import { createJsonStringify } from "./File";
 import { UndoManager } from "./UndoManager";
 import { executeUndoCommand } from "./UndoCommand";
 import { hasUndoRedo, focusEndTable } from "./command/editor";
@@ -141,14 +141,7 @@ export class Store {
           debounceTime(200)
         )
         .subscribe(() => {
-          this.change$.next(
-            JSON.stringify(createJsonFormat(this), (key, value) => {
-              if (key === "_show") {
-                return undefined;
-              }
-              return value;
-            })
-          );
+          this.change$.next(createJsonStringify(this));
         })
     );
   }

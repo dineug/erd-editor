@@ -28,7 +28,7 @@ export function createJsonFormat(store: Store): JsonFormat {
   };
 }
 
-export function createJsonStringify(store: Store): string {
+export function createJsonStringify(store: Store, space?: number): string {
   return JSON.stringify(
     createJsonFormat(store),
     (key, value) => {
@@ -37,7 +37,7 @@ export function createJsonStringify(store: Store): string {
       }
       return value;
     },
-    2
+    space
   );
 }
 
