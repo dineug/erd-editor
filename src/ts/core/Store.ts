@@ -1,5 +1,13 @@
 import { Subject, Subscription, asapScheduler } from "rxjs";
-import { filter, debounceTime } from "rxjs/operators";
+import {
+  filter,
+  debounceTime,
+  groupBy,
+  mergeMap,
+  buffer,
+  map,
+} from "rxjs/operators";
+import { Logger } from "./Logger";
 import { CanvasState, createCanvasState } from "./store/Canvas";
 import { TableState, createTableState } from "./store/Table";
 import { MemoState, createMemoState } from "./store/Memo";
@@ -13,9 +21,14 @@ import {
   CommandType,
   executeCommand,
   changeCommandTypes,
+  undoCommandTypes,
+  streamCommandTypes,
 } from "./Command";
 import { createObservable } from "./Observable";
 import { createJsonFormat } from "./File";
+import { UndoManager } from "./UndoManager";
+import { executeUndoCommand } from "./UndoCommand";
+import { hasUndoRedo, focusEndTable } from "./command/editor";
 
 export class Store {
   readonly canvasState: CanvasState;
@@ -24,6 +37,7 @@ export class Store {
   readonly relationshipState: RelationshipState;
   readonly editorState: EditorState;
   readonly dispatch$ = new Subject<Array<Command<CommandType>>>();
+  readonly undo$ = new Subject<Array<Command<CommandType>>>();
   readonly change$ = new Subject<string>();
   private subscriptionList: Subscription[] = [];
   private rawToProxy = new WeakMap();
@@ -40,6 +54,7 @@ export class Store {
     "_currentFilterState",
     "focusFilterStateList",
   ];
+  private undoManager: UndoManager;
 
   constructor() {
     this.canvasState = createObservable(
@@ -77,7 +92,42 @@ export class Store {
       this.effect,
       this.excludeKeys
     );
+    this.undoManager = new UndoManager(this.hasUndoRedo);
     this.subscriptionList.push(
+      this.undo$.subscribe((commands) => executeCommand(this, commands)),
+      this.dispatch$
+        .pipe(
+          filter((commands) =>
+            commands.some((command) =>
+              undoCommandTypes.some(
+                (commandType) => commandType === command.type
+              )
+            )
+          ),
+          groupBy((commands) =>
+            commands.some((command) =>
+              streamCommandTypes.some(
+                (commandType) => commandType === command.type
+              )
+            )
+          ),
+          mergeMap((group$) => {
+            return group$.key
+              ? group$.pipe(
+                  buffer(group$.pipe(debounceTime(200))),
+                  map((buff) =>
+                    buff.reduce((acc, current) => {
+                      acc.push(...current);
+                      return acc;
+                    })
+                  )
+                )
+              : group$;
+          })
+        )
+        .subscribe((commands) => {
+          executeUndoCommand(this, this.undoManager, commands);
+        }),
       this.dispatch$.subscribe((commands) => executeCommand(this, commands)),
       this.dispatch$
         .pipe(
@@ -109,6 +159,7 @@ export class Store {
 
   destroy() {
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
+    this.undoManager.clear();
   }
 
   observe(
@@ -123,6 +174,20 @@ export class Store {
     return observable$.subscribe(effect);
   }
 
+  undo() {
+    if (this.undoManager.hasUndo) {
+      this.dispatch(focusEndTable());
+      this.undoManager.undo();
+    }
+  }
+
+  redo() {
+    if (this.undoManager.hasRedo) {
+      this.dispatch(focusEndTable());
+      this.undoManager.redo();
+    }
+  }
+
   private effect = (raw: any, name: string | number | symbol) => {
     const proxy = this.rawToProxy.get(raw);
     if (proxy) {
@@ -131,5 +196,11 @@ export class Store {
         asapScheduler.schedule(() => observable$.next(name));
       }
     }
+  };
+
+  private hasUndoRedo = () => {
+    this.dispatch(
+      hasUndoRedo(this.undoManager.hasUndo, this.undoManager.hasRedo)
+    );
   };
 }

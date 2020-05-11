@@ -1,6 +1,5 @@
 import { LitElement } from "lit-element";
 import { EditorContext } from "@src/core/EditorContext";
-import { Editor } from "@src/types";
 
 export class EditorElement extends LitElement {
   context!: EditorContext;
@@ -9,8 +8,8 @@ export class EditorElement extends LitElement {
     super.connectedCallback();
     // instance context injection
     const root = this.getRootNode() as ShadowRoot;
-    const editor = root.host as Editor;
-    this.context = editor.context;
+    const editor = root.host as any;
+    this.context = editor.context as EditorContext;
     // cache update
     this.requestUpdate();
   }

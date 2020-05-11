@@ -8,7 +8,7 @@ import { Store } from "../Store";
 import { getData, uuid } from "../Helper";
 import { Point, relationshipSort } from "../helper/RelationshipHelper";
 import { Logger } from "../Logger";
-import { MemoUI } from "../store/Memo";
+import { MemoUI, Memo } from "../store/Memo";
 import { MemoModel } from "../model/MemoModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
 import { executeSelectEndTable } from "./table";
@@ -298,4 +298,16 @@ export function executeDragSelectMemo(store: Store, data: DragSelectMemo) {
       min.y <= centerY &&
       max.y >= centerY;
   });
+}
+
+export function loadMemo(memo: Memo): Command<"memo.load"> {
+  return {
+    type: "memo.load",
+    data: memo,
+  };
+}
+export function executeLoadMemo(store: Store, data: Memo) {
+  Logger.debug("executeLoadMemo");
+  const { memos } = store.memoState;
+  memos.push(new MemoModel({ loadMemo: data }));
 }

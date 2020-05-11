@@ -6,7 +6,7 @@ import {
   relationshipSort,
   removeRelationshipColumnIdValid,
 } from "../helper/RelationshipHelper";
-import { RelationshipType } from "../store/Relationship";
+import { Relationship, RelationshipType } from "../store/Relationship";
 import { Table } from "../store/Table";
 import { RelationshipModel } from "../model/RelationshipModel";
 import { AddCustomColumn, executeAddCustomColumn } from "./column";
@@ -181,4 +181,18 @@ export function executeChangeIdentification(
   if (relationship) {
     relationship.identification = data.identification;
   }
+}
+
+export function loadRelationship(
+  relationship: Relationship
+): Command<"relationship.load"> {
+  return {
+    type: "relationship.load",
+    data: relationship,
+  };
+}
+export function executeLoadRelationship(store: Store, data: Relationship) {
+  Logger.debug("executeLoadRelationship");
+  const { relationships } = store.relationshipState;
+  relationships.push(new RelationshipModel({ loadRelationship: data }));
 }

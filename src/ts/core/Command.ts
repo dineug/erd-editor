@@ -1,4 +1,7 @@
 import { Store } from "./Store";
+import { Logger } from "./Logger";
+import { Memo } from "./store/Memo";
+import { Relationship } from "./store/Relationship";
 import {
   AddTable,
   MoveTable,
@@ -7,6 +10,7 @@ import {
   SelectOnlyTable,
   ChangeTableValue,
   DragSelectTable,
+  LoadTable,
   executeAddTable,
   executeMoveTable,
   executeRemoveTable,
@@ -18,6 +22,7 @@ import {
   executeChangeTableComment,
   executeDragSelectTable,
   executeSortTable,
+  executeLoadTable,
 } from "./command/table";
 import {
   AddColumn,
@@ -51,6 +56,7 @@ import {
   executeRemoveRelationship,
   executeChangeRelationshipType,
   executeChangeIdentification,
+  executeLoadRelationship,
 } from "./command/relationship";
 import {
   AddMemo,
@@ -69,6 +75,7 @@ import {
   executeChangeMemoValue,
   executeResizeMemo,
   executeDragSelectMemo,
+  executeLoadMemo,
 } from "./command/memo";
 import {
   MoveCanvas,
@@ -112,6 +119,7 @@ import {
   ChangeFilterOperatorType,
   DraggableFilterState,
   MoveFilterState,
+  HasUndoRedo,
   executeFocusTable,
   executeFocusEndTable,
   executeFocusMoveTable,
@@ -153,6 +161,7 @@ import {
   executeMoveFilterState,
   executeFindActive,
   executeFindActiveEnd,
+  executeHasUndoRedo,
 } from "./command/editor";
 
 export interface Command<K extends CommandType> {
@@ -173,6 +182,7 @@ interface CommandMap {
   "table.changeComment": ChangeTableValue;
   "table.dragSelect": DragSelectTable;
   "table.sort": null;
+  "table.load": LoadTable;
   // column
   "column.add": Array<AddColumn>;
   "column.addCustom": Array<AddCustomColumn>;
@@ -193,6 +203,7 @@ interface CommandMap {
   "relationship.remove": RemoveRelationship;
   "relationship.changeRelationshipType": ChangeRelationshipType;
   "relationship.changeIdentification": ChangeIdentification;
+  "relationship.load": Relationship;
   // memo
   "memo.add": AddMemo;
   "memo.move": MoveMemo;
@@ -203,6 +214,7 @@ interface CommandMap {
   "memo.changeValue": ChangeMemoValue;
   "memo.resize": ResizeMemo;
   "memo.dragSelect": DragSelectMemo;
+  "memo.load": Memo;
   // canvas
   "canvas.move": MoveCanvas;
   "canvas.resize": ResizeCanvas;
@@ -255,6 +267,7 @@ interface CommandMap {
   "editor.moveFilterState": MoveFilterState;
   "editor.findActive": null;
   "editor.findActiveEnd": null;
+  "editor.hasUndoRedo": HasUndoRedo;
 }
 
 export const changeCommandTypes: CommandType[] = [
@@ -298,10 +311,57 @@ export const changeCommandTypes: CommandType[] = [
   "editor.clear",
 ];
 
+export const undoCommandTypes: CommandType[] = [
+  "table.add",
+  "table.move",
+  "table.remove",
+  "table.changeName",
+  "table.changeComment",
+  "table.sort",
+  "column.add",
+  "column.addCustom",
+  "column.remove",
+  "column.changeName",
+  "column.changeComment",
+  "column.changeDataType",
+  "column.changeDefault",
+  "column.changeAutoIncrement",
+  "column.changePrimaryKey",
+  "column.changeUnique",
+  "column.changeNotNull",
+  "column.move",
+  "relationship.add",
+  "relationship.remove",
+  "relationship.changeRelationshipType",
+  "relationship.changeIdentification",
+  "memo.add",
+  "memo.move",
+  "memo.remove",
+  "memo.changeValue",
+  "memo.resize",
+  "canvas.move",
+  "canvas.resize",
+  "canvas.changeShow",
+  "canvas.changeDatabase",
+  "canvas.changeDatabaseName",
+  "editor.loadJson",
+  "editor.clear",
+];
+
+export const streamCommandTypes: CommandType[] = [
+  "table.move",
+  "memo.move",
+  "memo.resize",
+  "canvas.move",
+];
+
 export function executeCommand(
   store: Store,
   commands: Array<Command<CommandType>>
 ) {
+  Logger.debug(
+    `executeCommand: ${commands.map((command) => command.type).join(", ")}`
+  );
   commands.forEach((command) => {
     if (/^table\./.test(command.type)) {
       executeTableCommand(store, command);
@@ -353,6 +413,9 @@ function executeTableCommand(store: Store, command: Command<CommandType>) {
       break;
     case "table.sort":
       executeSortTable(store);
+      break;
+    case "table.load":
+      executeLoadTable(store, command.data as LoadTable);
       break;
   }
 }
@@ -427,6 +490,9 @@ function executeRelationshipCommand(
     case "relationship.changeIdentification":
       executeChangeIdentification(store, command.data as ChangeIdentification);
       break;
+    case "relationship.load":
+      executeLoadRelationship(store, command.data as Relationship);
+      break;
   }
 }
 
@@ -458,6 +524,9 @@ function executeMemoCommand(store: Store, command: Command<CommandType>) {
       break;
     case "memo.dragSelect":
       executeDragSelectMemo(store, command.data as DragSelectMemo);
+      break;
+    case "memo.load":
+      executeLoadMemo(store, command.data as Memo);
       break;
   }
 }
@@ -639,6 +708,9 @@ function executeEditorCommand(store: Store, command: Command<CommandType>) {
       break;
     case "editor.findActiveEnd":
       executeFindActiveEnd(store);
+      break;
+    case "editor.hasUndoRedo":
+      executeHasUndoRedo(store, command.data as HasUndoRedo);
       break;
   }
 }

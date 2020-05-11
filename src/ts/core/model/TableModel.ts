@@ -10,7 +10,7 @@ import {
 } from "../Layout";
 import { Table, TableUI, Column, ColumnWidth } from "../store/Table";
 import { Show } from "../store/Canvas";
-import { AddTable } from "../command/table";
+import { AddTable, LoadTable } from "../command/table";
 import {
   getMaxWidthColumn,
   getDefaultWidthColumn,
@@ -18,7 +18,7 @@ import {
 
 interface TableData {
   addTable?: AddTable;
-  loadTable?: Table;
+  loadTable?: LoadTable;
 }
 
 export class TableModel implements Table {

@@ -31,6 +31,11 @@ export interface KeymapOption {
 }
 
 export interface Keymap {
+  edit: KeymapOption[];
+  stop: KeymapOption[];
+  find: KeymapOption[];
+  undo: KeymapOption[];
+  redo: KeymapOption[];
   addTable: KeymapOption[];
   addColumn: KeymapOption[];
   addMemo: KeymapOption[];
@@ -41,9 +46,6 @@ export interface Keymap {
   selectAllColumn: KeymapOption[];
   copyColumn: KeymapOption[];
   pasteColumn: KeymapOption[];
-  edit: KeymapOption[];
-  stop: KeymapOption[];
-  find: KeymapOption[];
   relationshipZeroOneN: KeymapOption[];
   relationshipZeroOne: KeymapOption[];
   relationshipZeroN: KeymapOption[];
@@ -57,6 +59,51 @@ export type KeymapKey = keyof Keymap;
 
 export function createKeymap(): Keymap {
   return {
+    edit: [
+      {
+        metaKey: false,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        key: "Enter",
+      },
+    ],
+    stop: [
+      {
+        metaKey: false,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        key: "Escape",
+      },
+    ],
+    find: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: true,
+        shiftKey: false,
+        key: "F",
+      },
+    ],
+    undo: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
+        key: "Z",
+      },
+    ],
+    redo: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: true,
+        key: "Z",
+      },
+    ],
     addTable: [
       {
         metaKey: false,
@@ -145,33 +192,6 @@ export function createKeymap(): Keymap {
         altKey: false,
         shiftKey: false,
         key: "V",
-      },
-    ],
-    edit: [
-      {
-        metaKey: false,
-        ctrlKey: false,
-        altKey: false,
-        shiftKey: false,
-        key: "Enter",
-      },
-    ],
-    stop: [
-      {
-        metaKey: false,
-        ctrlKey: false,
-        altKey: false,
-        shiftKey: false,
-        key: "Escape",
-      },
-    ],
-    find: [
-      {
-        metaKey: false,
-        ctrlKey: true,
-        altKey: true,
-        shiftKey: false,
-        key: "F",
       },
     ],
     relationshipZeroOneN: [

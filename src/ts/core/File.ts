@@ -41,8 +41,6 @@ export function createJsonStringify(store: Store): string {
   );
 }
 
-const exportHelper = document.createElement("a");
-
 export function exportPNG(
   root: Element | DocumentFragment,
   selector: string,
@@ -72,6 +70,7 @@ export function exportJSON(json: string, name?: string) {
 }
 
 function executeExport(blob: Blob, fileName: string) {
+  const exportHelper = document.createElement("a");
   exportHelper.href = window.URL.createObjectURL(blob);
   exportHelper.download = fileName;
   exportHelper.click();
@@ -123,14 +122,6 @@ export function importSQL(context: EditorContext, database: Database) {
               const json = createJson(tables, helper, database);
               store.dispatch(loadJson(json), sortTable());
             } catch (err) {
-              // const key =
-              //   ". Instead, I was expecting to see one of the following:";
-              // const startIndex = err.message.indexOf("\n");
-              // const lastIndex = err.message.indexOf(key);
-              // const message = err.message.substr(
-              //   startIndex,
-              //   lastIndex - startIndex
-              // );
               eventBus.emit(Bus.Editor.importErrorDDL, {
                 message: err.message,
               });

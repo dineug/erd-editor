@@ -298,6 +298,14 @@ class ERD extends EditorElement {
             }
             store.dispatch(...batchCommand);
           }
+
+          if (keymapMatch(event, keymap.undo)) {
+            store.undo();
+          }
+
+          if (keymapMatch(event, keymap.redo)) {
+            store.redo();
+          }
         }
       })
     );

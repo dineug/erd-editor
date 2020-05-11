@@ -1,12 +1,4 @@
-import { EditorContext } from "../core/EditorContext";
-import { ThemeKey } from "../core/Theme";
-import { KeymapKey, KeymapOption } from "../core/Keymap";
-import { Command, CommandType } from "../core/Command";
-
-export { ThemeKey, KeymapKey, KeymapOption, Command, CommandType };
-
 export interface Editor extends HTMLElement {
-  context: EditorContext;
   width: number;
   height: number;
   value: string;
@@ -45,7 +37,20 @@ export interface Theme {
   help?: string;
 }
 
+export interface KeymapOption {
+  metaKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+  key?: string;
+}
+
 export interface Keymap {
+  edit?: KeymapOption[];
+  stop?: KeymapOption[];
+  find?: KeymapOption[];
+  undo?: KeymapOption[];
+  redo?: KeymapOption[];
   addTable?: KeymapOption[];
   addColumn?: KeymapOption[];
   addMemo?: KeymapOption[];
@@ -56,9 +61,6 @@ export interface Keymap {
   selectAllColumn?: KeymapOption[];
   copyColumn?: KeymapOption[];
   pasteColumn?: KeymapOption[];
-  edit?: KeymapOption[];
-  stop?: KeymapOption[];
-  find?: KeymapOption[];
   relationshipZeroOneN?: KeymapOption[];
   relationshipZeroOne?: KeymapOption[];
   relationshipZeroN?: KeymapOption[];

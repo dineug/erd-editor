@@ -17,6 +17,7 @@ import {
   executeDrawStartAddRelationship,
   executeDrawEndRelationship,
 } from "./editor";
+import { Table, TableUI, Column } from "../store/Table";
 import { addRelationship } from "./relationship";
 
 const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
@@ -398,4 +399,24 @@ export function executeSortTable(store: Store) {
   });
 
   relationshipSort(tables, relationships);
+}
+
+export interface LoadTable {
+  id: string;
+  name: string;
+  comment: string;
+  columns: Column[];
+  ui: TableUI;
+}
+export function loadTable(table: LoadTable): Command<"table.load"> {
+  return {
+    type: "table.load",
+    data: table,
+  };
+}
+export function executeLoadTable(store: Store, data: LoadTable) {
+  Logger.debug("executeLoadTable");
+  const { tables } = store.tableState;
+  const { show } = store.canvasState;
+  tables.push(new TableModel({ loadTable: data }, show));
 }

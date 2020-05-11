@@ -39,10 +39,16 @@ export const menubar = css`
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));
     margin-left: 10px;
   }
-  .vuerd-menubar > .vuerd-menubar-menu.active {
+  .vuerd-menubar > .vuerd-menubar-menu.active,
+  .vuerd-menubar > .vuerd-menubar-menu:hover {
     fill: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }
-  .vuerd-menubar > .vuerd-menubar-menu:hover {
+  .vuerd-menubar > .vuerd-menubar-menu.undo-redo {
+    cursor: not-allowed;
+    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
+  }
+  .vuerd-menubar > .vuerd-menubar-menu.undo-redo.active {
+    cursor: pointer;
     fill: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }
 

@@ -59,7 +59,7 @@ class Help extends EditorElement {
         keymap: keymapOptionToStringJoin(keymap.stop),
       },
       {
-        name: "filter",
+        name: "Search - find, filter",
         keymap: keymapOptionToStringJoin(keymap.find),
       },
       {

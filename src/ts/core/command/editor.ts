@@ -4,34 +4,32 @@ import { Logger } from "../Logger";
 import { getData, uuid, getIndex } from "../Helper";
 import { JsonFormat } from "../File";
 import { MoveKey } from "../Keymap";
+import { Relationship, RelationshipType } from "../store/Relationship";
+import { Memo } from "../store/Memo";
 import {
   canvasTypeList,
   databaseList,
   languageList,
   nameCaseList,
 } from "../store/Canvas";
-import { Relationship, RelationshipType } from "../store/Relationship";
-import { Memo } from "../store/Memo";
-import { Table } from "../store/Table";
 import {
   FilterColumnType,
   TextFilterCode,
   FilterState,
   FilterOperatorType,
 } from "../store/Editor";
-import { FocusTableModel, FocusType } from "../model/FocusTableModel";
-import { TableModel } from "../model/TableModel";
-import { MemoModel } from "../model/MemoModel";
-import { RelationshipModel } from "../model/RelationshipModel";
-import { FilterStateModel } from "../model/FilterModel";
 import {
   FocusFilterModel,
   FocusType as FocusFilterType,
 } from "../model/FocusFilterModel";
+import { FocusTableModel, FocusType } from "../model/FocusTableModel";
+import { RelationshipModel } from "../model/RelationshipModel";
+import { FilterStateModel } from "../model/FilterModel";
 import { relationshipSort } from "../helper/RelationshipHelper";
 import { addCustomColumn } from "./column";
-import { executeSelectEndTable } from "./table";
-import { executeSelectEndMemo } from "./memo";
+import { LoadTable, executeSelectEndTable, executeLoadTable } from "./table";
+import { executeSelectEndMemo, executeLoadMemo } from "./memo";
+import { executeLoadRelationship } from "./relationship";
 
 export interface FocusTable {
   tableId: string;
@@ -458,10 +456,8 @@ export function executeLoadJson(store: Store, data: LoadJson) {
   const tableJson = json.table as any;
   if (typeof tableJson === "object" && tableJson !== null) {
     if (Array.isArray(tableJson.tables)) {
-      tableJson.tables.forEach((loadTable: Table) => {
-        store.tableState.tables.push(
-          new TableModel({ loadTable }, store.canvasState.show)
-        );
+      tableJson.tables.forEach((loadTable: LoadTable) => {
+        executeLoadTable(store, loadTable);
       });
     }
   }
@@ -470,7 +466,7 @@ export function executeLoadJson(store: Store, data: LoadJson) {
   if (typeof memoJson === "object" && memoJson !== null) {
     if (Array.isArray(memoJson.memos)) {
       memoJson.memos.forEach((loadMemo: Memo) => {
-        store.memoState.memos.push(new MemoModel({ loadMemo }));
+        executeLoadMemo(store, loadMemo);
       });
     }
   }
@@ -480,9 +476,7 @@ export function executeLoadJson(store: Store, data: LoadJson) {
     if (Array.isArray(relationshipJson.relationships)) {
       relationshipJson.relationships.forEach(
         (loadRelationship: Relationship) => {
-          store.relationshipState.relationships.push(
-            new RelationshipModel({ loadRelationship })
-          );
+          executeLoadRelationship(store, loadRelationship);
         }
       );
     }
@@ -1056,4 +1050,27 @@ export function executeFindActiveEnd(store: Store) {
   Logger.debug("executeFindActiveEnd");
   const { editorState } = store;
   editorState.findActive = false;
+}
+
+export interface HasUndoRedo {
+  hasUndo: boolean;
+  hasRedo: boolean;
+}
+export function hasUndoRedo(
+  hasUndo: boolean,
+  hasRedo: boolean
+): Command<"editor.hasUndoRedo"> {
+  return {
+    type: "editor.hasUndoRedo",
+    data: {
+      hasUndo,
+      hasRedo,
+    },
+  };
+}
+export function executeHasUndoRedo(store: Store, data: HasUndoRedo) {
+  Logger.debug("executeHasUndoRedo");
+  const { editorState } = store;
+  editorState.hasUndo = data.hasUndo;
+  editorState.hasRedo = data.hasRedo;
 }

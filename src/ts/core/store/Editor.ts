@@ -22,6 +22,8 @@ export interface EditorState {
   focusFilter: FocusFilter | null;
   editFilter: EditFilter | null;
   draggableFilterState: DraggableFilterState | null;
+  hasUndo: boolean;
+  hasRedo: boolean;
 }
 
 export interface EditTable {
@@ -95,5 +97,7 @@ export function createEditorState(): EditorState {
     focusFilter: null,
     editFilter: null,
     draggableFilterState: null,
+    hasUndo: false,
+    hasRedo: false,
   };
 }

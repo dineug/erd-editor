@@ -42,7 +42,6 @@
 
 ```typescript
 interface Editor extends HTMLElement {
-  context: EditorContext;
   width: number;
   height: number;
   value: string;
@@ -314,7 +313,7 @@ container.appendChild(editor);
 | Editing - ERD                                       | dblclick, Enter                                                          |
 | Editing - Grid                                      | dblclick, Enter                                                          |
 | All Stop                                            | Escape                                                                   |
-| filter - Grid                                       | Ctrl + Alt + F                                                           |
+| Search - find, filter                               | Ctrl + Alt + F                                                           |
 | Selection - table, memo                             | Ctrl + Drag, Click, Ctrl + Click, Ctrl + Alt + A                         |
 | Selection - column, filter                          | Click, Ctrl + Click, Shift + Click, Shift + Arrow key(up, down), Alt + A |
 | Movement - table, memo, column, filter              | Drag, Ctrl + Drag                                                        |
