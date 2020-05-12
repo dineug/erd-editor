@@ -3,14 +3,17 @@ import { UndoManager } from "./UndoManager";
 import { Command, CommandType } from "./Command";
 import { Logger } from "./Logger";
 import { createJsonStringify } from "./File";
-import { getData } from "./Helper";
+import { getData, getIndex, cloneDeep } from "./Helper";
 import { getColumn } from "./helper/ColumnHelper";
+import { Relationship } from "./store/Relationship";
+import { Column } from "./store/Table";
+import { LoadTable } from "./command/table";
 import {
   AddTable,
   MoveTable,
   RemoveTable,
   ChangeTableValue,
-  LoadTable,
+  loadTable,
   removeTable,
 } from "./command/table";
 import {
@@ -21,6 +24,8 @@ import {
   ChangeColumnOption,
   MoveColumn,
   removeColumn,
+  loadColumn,
+  removeOnlyColumn,
 } from "./command/column";
 import {
   AddRelationship,
@@ -50,7 +55,6 @@ export function executeUndoCommand(
   );
   const batchUndoCommand: Array<Command<CommandType>> = [];
   const batchRedoCommand: Array<Command<CommandType>> = [];
-  const { memos } = store.memoState;
   commands.forEach((command) => {
     if (/^table\./.test(command.type)) {
       executeTableCommand(store, command, batchUndoCommand, batchRedoCommand);
@@ -109,7 +113,7 @@ function executeTableCommand(
   batchRedoCommand: Array<Command<CommandType>>
 ) {
   const { tables } = store.tableState;
-  // table.remove
+  const { relationships } = store.relationshipState;
   if (command.type === "table.add") {
     const data = command.data as AddTable;
     batchUndoCommand.push(removeTable(store, data.id));
@@ -128,7 +132,33 @@ function executeTableCommand(
     batchUndoCommand.push(undoCommand);
     batchRedoCommand.push(command);
   } else if (command.type === "table.remove") {
-    // TODO: table, column, relationship
+    const data = command.data as RemoveTable;
+    const undoTables: LoadTable[] = [];
+    const undoRelationships: Relationship[] = [];
+    data.tableIds.forEach((tableId) => {
+      const table = getData(tables, tableId);
+      if (table) {
+        undoTables.push(cloneDeep(table));
+        relationships.forEach((relationship) => {
+          const { start, end } = relationship;
+          if (tableId === start.tableId || tableId === end.tableId) {
+            undoRelationships.push(cloneDeep(relationship));
+          }
+        });
+      }
+    });
+    undoTables.forEach((table) => batchUndoCommand.push(loadTable(table)));
+    if (undoRelationships.length > 0) {
+      batchUndoCommand.push(
+        removeRelationship(
+          undoRelationships.map((relationship) => relationship.id)
+        )
+      );
+      undoRelationships.forEach((relationship) => {
+        batchUndoCommand.push(loadRelationship(relationship));
+      });
+    }
+    batchRedoCommand.push(command);
   } else if (command.type === "table.changeName") {
     const data = command.data as ChangeTableValue;
     const table = getData(tables, data.tableId);
@@ -159,6 +189,15 @@ function executeTableCommand(
       batchUndoCommand.push(undoCommand);
       batchRedoCommand.push(command);
     }
+  } else if (command.type === "table.sort") {
+    const undoCommand: Command<"editor.loadJson"> = {
+      type: "editor.loadJson",
+      data: {
+        value: createJsonStringify(store),
+      },
+    };
+    batchUndoCommand.push(undoCommand);
+    batchRedoCommand.push(command);
   }
 }
 
@@ -169,8 +208,7 @@ function executeColumnCommand(
   batchRedoCommand: Array<Command<CommandType>>
 ) {
   const { tables } = store.tableState;
-  // column.remove
-  // column.move
+  const { relationships } = store.relationshipState;
   if (command.type === "column.add") {
     const data = command.data as Array<AddColumn>;
     data.forEach((addColumn) =>
@@ -184,7 +222,48 @@ function executeColumnCommand(
     );
     batchRedoCommand.push(command);
   } else if (command.type === "column.remove") {
-    // TODO: table, column, relationship
+    const data = command.data as RemoveColumn;
+    const undoRelationships: Relationship[] = [];
+    const table = getData(tables, data.tableId);
+    if (table) {
+      relationships.forEach((relationship) => {
+        const { start, end } = relationship;
+        if (
+          (data.tableId === start.tableId &&
+            data.columnIds.some((columnId) =>
+              start.columnIds.some((id) => id === columnId)
+            )) ||
+          (data.tableId === end.tableId &&
+            data.columnIds.some((columnId) =>
+              end.columnIds.some((id) => id === columnId)
+            ))
+        ) {
+          undoRelationships.push(cloneDeep(relationship));
+        }
+      });
+      const columns: Column[] = [];
+      const indexList: number[] = [];
+      data.columnIds.forEach((columnId) => {
+        const column = getData(table.columns, columnId);
+        const index = getIndex(table.columns, columnId);
+        if (column && index !== null) {
+          columns.push(cloneDeep(column));
+          indexList.push(index);
+        }
+      });
+      batchUndoCommand.push(loadColumn(data.tableId, columns, indexList));
+      if (undoRelationships.length > 0) {
+        batchUndoCommand.push(
+          removeRelationship(
+            undoRelationships.map((relationship) => relationship.id)
+          )
+        );
+        undoRelationships.forEach((relationship) => {
+          batchUndoCommand.push(loadRelationship(relationship));
+        });
+      }
+      batchRedoCommand.push(command);
+    }
   } else if (command.type === "column.changeName") {
     const data = command.data as ChangeColumnValue;
     const column = getColumn(tables, data.tableId, data.columnId);
@@ -298,7 +377,93 @@ function executeColumnCommand(
     batchUndoCommand.push(undoCommand);
     batchRedoCommand.push(command);
   } else if (command.type === "column.move") {
-    // TODO: table, column, relationship
+    const data = command.data as MoveColumn;
+    const currentTable = getData(tables, data.tableId);
+    const currentColumns: Column[] = [];
+    data.columnIds.forEach((columnId) => {
+      const column = getColumn(tables, data.tableId, columnId);
+      if (column) {
+        currentColumns.push(column);
+      }
+    });
+    const targetTable = getData(tables, data.targetTableId);
+    const targetColumn = getColumn(
+      tables,
+      data.targetTableId,
+      data.targetColumnId
+    );
+    if (
+      currentTable &&
+      targetTable &&
+      currentColumns.length !== 0 &&
+      targetColumn
+    ) {
+      if (
+        data.tableId === data.targetTableId &&
+        !data.columnIds.some((columnId) => columnId === data.targetColumnId)
+      ) {
+        const columns: Column[] = [];
+        const indexList: number[] = [];
+        data.columnIds.forEach((columnId) => {
+          const column = getData(currentTable.columns, columnId);
+          const index = getIndex(currentTable.columns, columnId);
+          if (column && index !== null) {
+            columns.push(cloneDeep(column));
+            indexList.push(index);
+          }
+        });
+        batchUndoCommand.push(
+          removeOnlyColumn(data.tableId, data.columnIds),
+          loadColumn(data.tableId, columns, indexList)
+        );
+        batchRedoCommand.push(command);
+      } else if (
+        data.tableId !== data.targetTableId &&
+        !data.columnIds.some((columnId) => columnId === data.targetColumnId)
+      ) {
+        const undoRelationships: Relationship[] = [];
+        const columns: Column[] = [];
+        const indexList: number[] = [];
+        data.columnIds.forEach((columnId) => {
+          const column = getData(currentTable.columns, columnId);
+          const index = getIndex(currentTable.columns, columnId);
+          if (column && index !== null) {
+            columns.push(cloneDeep(column));
+            indexList.push(index);
+          }
+        });
+        batchUndoCommand.push(
+          removeOnlyColumn(data.targetTableId, data.columnIds),
+          loadColumn(data.tableId, columns, indexList)
+        );
+        relationships.forEach((relationship) => {
+          const { start, end } = relationship;
+          if (
+            (data.tableId === start.tableId &&
+              data.columnIds.some((columnId) =>
+                start.columnIds.some((id) => id === columnId)
+              )) ||
+            (data.tableId === end.tableId &&
+              data.columnIds.some((columnId) =>
+                end.columnIds.some((id) => id === columnId)
+              ))
+          ) {
+            undoRelationships.push(cloneDeep(relationship));
+          }
+        });
+        if (undoRelationships.length > 0) {
+          batchUndoCommand.push(
+            removeRelationship(
+              undoRelationships.map((relationship) => relationship.id)
+            )
+          );
+          undoRelationships.forEach((relationship) => {
+            batchUndoCommand.push(loadRelationship(relationship));
+          });
+        }
+        batchRedoCommand.push(command);
+      }
+    }
   }
 }
 
@@ -318,7 +483,7 @@ function executeRelationshipCommand(
     data.relationshipIds.forEach((relationshipId) => {
       const relationship = getData(relationships, relationshipId);
       if (relationship) {
-        batchUndoCommand.push(loadRelationship(relationship));
+        batchUndoCommand.push(loadRelationship(cloneDeep(relationship)));
       }
     });
     batchRedoCommand.push(command);
@@ -379,7 +544,7 @@ function executeMemoCommand(
     data.memoIds.forEach((memoId) => {
       const memo = getData(memos, memoId);
       if (memo) {
-        batchUndoCommand.push(loadMemo(memo));
+        batchUndoCommand.push(loadMemo(cloneDeep(memo)));
       }
     });
     batchRedoCommand.push(command);

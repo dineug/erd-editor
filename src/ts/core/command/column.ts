@@ -160,6 +160,33 @@ export function executeRemoveColumn(store: Store, data: RemoveColumn) {
   }
 }
 
+export function removeOnlyColumn(
+  tableId: string,
+  columnIds: string[]
+): Command<"column.removeOnly"> {
+  return {
+    type: "column.removeOnly",
+    data: {
+      tableId,
+      columnIds,
+    },
+  };
+}
+export function executeRemoveOnlyColumn(store: Store, data: RemoveColumn) {
+  Logger.debug("executeRemoveOnlyColumn");
+  const { tables } = store.tableState;
+  const table = getData(tables, data.tableId);
+  if (table) {
+    for (let i = 0; i < table.columns.length; i++) {
+      const column = table.columns[i];
+      if (data.columnIds.some((columnId) => columnId === column.id)) {
+        table.columns.splice(i, 1);
+        i--;
+      }
+    }
+  }
+}
+
 export interface ChangeColumnValue {
   tableId: string;
   columnId: string;
@@ -473,7 +500,7 @@ export function executeMoveColumn(store: Store, data: MoveColumn) {
   const { tables } = store.tableState;
   const { relationships } = store.relationshipState;
   const currentTable = getData(tables, data.tableId);
-  let currentColumns: Column[] = [];
+  const currentColumns: Column[] = [];
   data.columnIds.forEach((columnId) => {
     const column = getColumn(tables, data.tableId, columnId);
     if (column) {
@@ -498,20 +525,13 @@ export function executeMoveColumn(store: Store, data: MoveColumn) {
     ) {
       const targetIndex = getIndex(currentTable.columns, targetColumn.id);
       if (targetIndex !== null) {
-        const currentIndex = getIndex(
-          currentTable.columns,
-          currentColumns[0].id
-        );
-        if (currentIndex !== null && currentIndex > targetIndex) {
-          currentColumns = currentColumns.reverse();
-        }
         currentColumns.forEach((currentColumn) => {
           const currentIndex = getIndex(currentTable.columns, currentColumn.id);
           if (currentIndex !== null) {
             currentTable.columns.splice(currentIndex, 1);
-            currentTable.columns.splice(targetIndex, 0, currentColumn);
           }
         });
+        currentTable.columns.splice(targetIndex, 0, ...currentColumns);
       }
     } else if (
       data.tableId !== data.targetTableId &&
@@ -519,20 +539,13 @@ export function executeMoveColumn(store: Store, data: MoveColumn) {
     ) {
       const targetIndex = getIndex(targetTable.columns, targetColumn.id);
       if (targetIndex !== null) {
-        const currentIndex = getIndex(
-          currentTable.columns,
-          currentColumns[0].id
-        );
-        if (currentIndex !== null && currentIndex > targetIndex) {
-          currentColumns = currentColumns.reverse();
-        }
         currentColumns.forEach((currentColumn) => {
           const currentIndex = getIndex(currentTable.columns, currentColumn.id);
           if (currentIndex !== null) {
             currentTable.columns.splice(currentIndex, 1);
-            targetTable.columns.splice(targetIndex, 0, currentColumn);
           }
         });
+        targetTable.columns.splice(targetIndex, 0, ...currentColumns);
         executeDraggableColumn(store, {
           tableId: data.targetTableId,
           columnIds: data.columnIds,
@@ -616,4 +629,35 @@ export function executeActiveEndColumn(store: Store, data: ActiveColumn[]) {
       });
     }
   });
+}
+
+export interface LoadColumn {
+  tableId: string;
+  columns: Column[];
+  indexList: number[];
+}
+export function loadColumn(
+  tableId: string,
+  columns: Column[],
+  indexList: number[]
+): Command<"column.load"> {
+  return {
+    type: "column.load",
+    data: {
+      tableId,
+      columns,
+      indexList,
+    },
+  };
+}
+export function executeLoadColumn(store: Store, data: LoadColumn) {
+  Logger.debug("executeLoadColumn");
+  const { tables } = store.tableState;
+  const table = getData(tables, data.tableId);
+  if (table) {
+    data.columns.forEach((column, index) => {
+      column.ui.active = false;
+      table.columns.splice(data.indexList[index], 0, column);
+    });
+  }
 }

@@ -84,6 +84,18 @@ export function getParentElement(
   return getParentElement(el.parentElement, tagName);
 }
 
+export function isObject(obj: any): boolean {
+  return typeof obj === "object" && obj !== null;
+}
+
+export function isEmpty(obj: any): boolean {
+  return obj === null || obj === undefined;
+}
+
+export function cloneDeep(obj: any): any {
+  return JSON.parse(JSON.stringify(obj));
+}
+
 export function markToHTML(
   className: string,
   target: string,

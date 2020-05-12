@@ -107,7 +107,6 @@ export function executeRemoveRelationship(
 ) {
   Logger.debug("executeRemoveRelationship");
   const { relationships } = store.relationshipState;
-  const { tables } = store.tableState;
   for (let i = 0; i < relationships.length; i++) {
     const relationship = relationships[i];
     if (

@@ -30,7 +30,7 @@ export class UndoManager {
     this.commands.splice(this.index + 1, this.commands.length - this.index);
     this.commands.push(command);
 
-    if (this.limit && this.commands.length > this.limit) {
+    if (this.limit !== 0 && this.commands.length > this.limit) {
       this.commands = this.commands.slice(
         this.commands.length - this.limit,
         this.commands.length

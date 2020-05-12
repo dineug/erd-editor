@@ -123,13 +123,11 @@ class ERD extends EditorElement {
           case "scrollTop":
             if (erd && erd.scrollTop !== store.canvasState.scrollTop) {
               erd.scrollTop = store.canvasState.scrollTop;
-              this.onScrollValid();
             }
             break;
           case "scrollLeft":
             if (erd && erd.scrollLeft !== store.canvasState.scrollLeft) {
               erd.scrollLeft = store.canvasState.scrollLeft;
-              this.onScrollValid();
             }
             break;
         }
@@ -312,10 +310,12 @@ class ERD extends EditorElement {
           }
 
           if (keymapMatch(event, keymap.undo)) {
+            event.preventDefault();
             store.undo();
           }
 
           if (keymapMatch(event, keymap.redo)) {
+            event.preventDefault();
             store.redo();
           }
         }

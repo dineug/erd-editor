@@ -75,7 +75,8 @@ class Memo extends EditorElement {
     super.connectedCallback();
     const { store, eventBus } = this.context;
     this.subscriptionList.push(
-      store.observe(this.memo.ui, () => this.requestUpdate())
+      store.observe(this.memo.ui, () => this.requestUpdate()),
+      store.observe(this.memo, () => this.requestUpdate())
     );
     eventBus.on(Bus.Memo.moveValid, this.onMoveValid);
   }

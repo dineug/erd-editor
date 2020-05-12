@@ -17,7 +17,7 @@ import {
   executeDrawStartAddRelationship,
   executeDrawEndRelationship,
 } from "./editor";
-import { Table, TableUI, Column } from "../store/Table";
+import { TableUI, Column } from "../store/Table";
 import { addRelationship } from "./relationship";
 
 const TABLE_PADDING = SIZE_TABLE_PADDING * 2;

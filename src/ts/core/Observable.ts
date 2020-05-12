@@ -1,4 +1,5 @@
 import { Logger } from "./Logger";
+import { isObject } from "./Helper";
 
 let proxyCount = 0;
 
@@ -12,8 +13,7 @@ export function createObservable<T>(
   const proxy = new Proxy(data as any, {
     get(target, p) {
       if (
-        typeof target[p] === "object" &&
-        target[p] !== null &&
+        isObject(target[p]) &&
         !proxyToRaw.has(target[p]) &&
         !excludeKeys.some((key) => key === p)
       ) {

@@ -1,4 +1,4 @@
-import { Subject, Subscription, asapScheduler } from "rxjs";
+import { Subject, Subscription, asapScheduler, merge } from "rxjs";
 import {
   filter,
   debounceTime,
@@ -25,7 +25,6 @@ import {
   streamCommandTypes,
 } from "./Command";
 import { createObservable } from "./Observable";
-import { createJsonStringify } from "./File";
 import { UndoManager } from "./UndoManager";
 import { executeUndoCommand } from "./UndoCommand";
 import { hasUndoRedo, focusEndTable } from "./command/editor";
@@ -38,7 +37,7 @@ export class Store {
   readonly editorState: EditorState;
   readonly dispatch$ = new Subject<Array<Command<CommandType>>>();
   readonly undo$ = new Subject<Array<Command<CommandType>>>();
-  readonly change$ = new Subject<string>();
+  readonly change$ = new Subject();
   private subscriptionList: Subscription[] = [];
   private rawToProxy = new WeakMap();
   private proxyToRaw = new WeakMap();
@@ -129,20 +128,20 @@ export class Store {
           executeUndoCommand(this, this.undoManager, commands);
         }),
       this.dispatch$.subscribe((commands) => executeCommand(this, commands)),
-      this.dispatch$
-        .pipe(
+      merge(
+        this.undo$,
+        this.dispatch$.pipe(
           filter((commands) =>
             commands.some((command) =>
               changeCommandTypes.some(
                 (commandType) => commandType === command.type
               )
             )
-          ),
-          debounceTime(200)
+          )
         )
-        .subscribe(() => {
-          this.change$.next(createJsonStringify(this));
-        })
+      )
+        .pipe(debounceTime(200))
+        .subscribe(() => this.change$.next())
     );
   }
 

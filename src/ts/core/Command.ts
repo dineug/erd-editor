@@ -32,6 +32,7 @@ import {
   ChangeColumnOption,
   MoveColumn,
   ActiveColumn,
+  LoadColumn,
   executeAddColumn,
   executeAddCustomColumn,
   executeRemoveColumn,
@@ -46,6 +47,8 @@ import {
   executeMoveColumn,
   executeActiveColumn,
   executeActiveEndColumn,
+  executeLoadColumn,
+  executeRemoveOnlyColumn,
 } from "./command/column";
 import {
   AddRelationship,
@@ -187,6 +190,7 @@ interface CommandMap {
   "column.add": Array<AddColumn>;
   "column.addCustom": Array<AddCustomColumn>;
   "column.remove": RemoveColumn;
+  "column.removeOnly": RemoveColumn;
   "column.changeName": ChangeColumnValue;
   "column.changeComment": ChangeColumnValue;
   "column.changeDataType": ChangeColumnValue;
@@ -198,6 +202,7 @@ interface CommandMap {
   "column.move": MoveColumn;
   "column.active": Array<ActiveColumn>;
   "column.activeEnd": Array<ActiveColumn>;
+  "column.load": LoadColumn;
   // relationship
   "relationship.add": AddRelationship;
   "relationship.remove": RemoveRelationship;
@@ -271,11 +276,14 @@ interface CommandMap {
 }
 
 export const changeCommandTypes: CommandType[] = [
+  // table
   "table.add",
   "table.move",
   "table.remove",
   "table.changeName",
   "table.changeComment",
+  "table.sort",
+  // column
   "column.add",
   "column.addCustom",
   "column.remove",
@@ -288,15 +296,18 @@ export const changeCommandTypes: CommandType[] = [
   "column.changeUnique",
   "column.changeNotNull",
   "column.move",
+  // relationship
   "relationship.add",
   "relationship.remove",
   "relationship.changeRelationshipType",
   "relationship.changeIdentification",
+  // memo
   "memo.add",
   "memo.move",
   "memo.remove",
   "memo.changeValue",
   "memo.resize",
+  // canvas
   "canvas.move",
   "canvas.resize",
   "canvas.changeShow",
@@ -306,16 +317,20 @@ export const changeCommandTypes: CommandType[] = [
   "canvas.changeLanguage",
   "canvas.changeTableCase",
   "canvas.changeColumnCase",
+  // editor
   "editor.loadJson",
   "editor.clear",
 ];
 
 export const undoCommandTypes: CommandType[] = [
+  // table
   "table.add",
   "table.move",
   "table.remove",
   "table.changeName",
   "table.changeComment",
+  "table.sort",
+  // column
   "column.add",
   "column.addCustom",
   "column.remove",
@@ -328,20 +343,24 @@ export const undoCommandTypes: CommandType[] = [
   "column.changeUnique",
   "column.changeNotNull",
   "column.move",
+  // relationship
   "relationship.add",
   "relationship.remove",
   "relationship.changeRelationshipType",
   "relationship.changeIdentification",
+  // memo
   "memo.add",
   "memo.move",
   "memo.remove",
   "memo.changeValue",
   "memo.resize",
+  // canvas
   "canvas.move",
   "canvas.resize",
   "canvas.changeShow",
   "canvas.changeDatabase",
   "canvas.changeDatabaseName",
+  // editor
   "editor.loadJson",
   "editor.clear",
 ];
@@ -429,6 +448,9 @@ function executeColumnCommand(store: Store, command: Command<CommandType>) {
     case "column.remove":
       executeRemoveColumn(store, command.data as RemoveColumn);
       break;
+    case "column.removeOnly":
+      executeRemoveOnlyColumn(store, command.data as RemoveColumn);
+      break;
     case "column.changeName":
       executeChangeColumnName(store, command.data as ChangeColumnValue);
       break;
@@ -464,6 +486,9 @@ function executeColumnCommand(store: Store, command: Command<CommandType>) {
       break;
     case "column.activeEnd":
       executeActiveEndColumn(store, command.data as Array<ActiveColumn>);
+      break;
+    case "column.load":
+      executeLoadColumn(store, command.data as LoadColumn);
       break;
   }
 }

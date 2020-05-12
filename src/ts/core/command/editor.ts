@@ -1,7 +1,7 @@
 import { Command, CommandType } from "../Command";
 import { Store } from "../Store";
 import { Logger } from "../Logger";
-import { getData, uuid, getIndex } from "../Helper";
+import { getData, uuid, getIndex, isObject, isEmpty } from "../Helper";
 import { JsonFormat } from "../File";
 import { MoveKey } from "../Keymap";
 import { Relationship, RelationshipType } from "../store/Relationship";
@@ -23,7 +23,6 @@ import {
   FocusType as FocusFilterType,
 } from "../model/FocusFilterModel";
 import { FocusTableModel, FocusType } from "../model/FocusTableModel";
-import { RelationshipModel } from "../model/RelationshipModel";
 import { FilterStateModel } from "../model/FilterModel";
 import { relationshipSort } from "../helper/RelationshipHelper";
 import { addCustomColumn } from "./column";
@@ -393,17 +392,13 @@ export function executeLoadJson(store: Store, data: LoadJson) {
 
   const canvasStateAny = store.canvasState as any;
   const canvasJson = json.canvas as any;
-  if (typeof canvasJson === "object" && canvasJson !== null) {
+  if (isObject(canvasJson)) {
     Object.keys(canvasStateAny).forEach((key) => {
-      if (canvasJson[key] !== null && canvasJson[key] !== undefined) {
+      if (!isEmpty(canvasJson[key])) {
         switch (key) {
           case "show":
             Object.keys(canvasState.show).forEach((showKey) => {
-              if (
-                canvasJson.show[showKey] !== null &&
-                canvasJson.show[showKey] !== undefined &&
-                typeof canvasJson.show[showKey] === "boolean"
-              ) {
+              if (typeof canvasJson.show[showKey] === "boolean") {
                 canvasStateAny.show[showKey] = canvasJson.show[showKey];
               }
             });
@@ -454,7 +449,7 @@ export function executeLoadJson(store: Store, data: LoadJson) {
   }
 
   const tableJson = json.table as any;
-  if (typeof tableJson === "object" && tableJson !== null) {
+  if (isObject(tableJson)) {
     if (Array.isArray(tableJson.tables)) {
       tableJson.tables.forEach((loadTable: LoadTable) => {
         executeLoadTable(store, loadTable);
@@ -463,7 +458,7 @@ export function executeLoadJson(store: Store, data: LoadJson) {
   }
 
   const memoJson = json.memo as any;
-  if (typeof memoJson === "object" && memoJson !== null) {
+  if (isObject(memoJson)) {
     if (Array.isArray(memoJson.memos)) {
       memoJson.memos.forEach((loadMemo: Memo) => {
         executeLoadMemo(store, loadMemo);
@@ -472,7 +467,7 @@ export function executeLoadJson(store: Store, data: LoadJson) {
   }
 
   const relationshipJson = json.relationship as any;
-  if (typeof relationshipJson === "object" && relationshipJson !== null) {
+  if (isObject(relationshipJson)) {
     if (Array.isArray(relationshipJson.relationships)) {
       relationshipJson.relationships.forEach(
         (loadRelationship: Relationship) => {

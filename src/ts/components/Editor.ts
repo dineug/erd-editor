@@ -10,6 +10,7 @@ import { EditorContext, createEditorContext } from "@src/core/EditorContext";
 import { createJsonStringify } from "@src/core/File";
 import { loadJson, clear } from "@src/core/command/editor";
 import { ThemeKey } from "@src/core/Theme";
+import { isObject } from "@src/core/Helper";
 import { Theme, Keymap, Editor } from "@src/types";
 import "./Icon";
 import "./Contextmenu";
@@ -65,15 +66,9 @@ class EditorModel extends LitElement implements Editor {
     const { store, keymap, eventBus } = this.context;
     const { keydown$ } = this.context.windowEventObservable;
     this.subscriptionList.push(
-      store.change$.subscribe((value) => {
-        this.dispatchEvent(
-          new CustomEvent("change", {
-            detail: {
-              value,
-            },
-          })
-        );
-      }),
+      store.change$.subscribe(() =>
+        this.dispatchEvent(new CustomEvent("change"))
+      ),
       store.observe(store.canvasState, (name) => {
         if (name === "canvasType") {
           this.requestUpdate();
@@ -258,7 +253,7 @@ class EditorModel extends LitElement implements Editor {
   }
   setTheme(theme: Theme) {
     const editorTheme = this.context.theme;
-    if (typeof theme === "object" && theme !== null) {
+    if (isObject(theme)) {
       Object.keys(theme).forEach((key) => {
         const k = key as ThemeKey;
         if (editorTheme[k] !== undefined && typeof theme[k] === "string") {
@@ -270,7 +265,7 @@ class EditorModel extends LitElement implements Editor {
   }
   setKeymap(keymap: Keymap) {
     const editorKeymap = this.context.keymap;
-    if (typeof keymap === "object" && keymap !== null) {
+    if (isObject(keymap)) {
       Object.keys(keymap).forEach((key) => {
         const k = key as KeymapKey;
         if (editorKeymap[k] !== undefined && Array.isArray(keymap[k])) {

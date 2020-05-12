@@ -73,7 +73,7 @@ const editor = document.createElement("erd-editor");
 editor.value = "editor data..."; // editor data load
 container.appendChild(editor);
 editor.addEventListener("change", (event) => {
-  console.log(event.detail.value);
+  console.log(event.target.value);
 });
 window.addEventListener("resize", () => {
   editor.width = window.innerWidth;
@@ -199,6 +199,8 @@ interface Keymap {
   edit?: KeymapOption[];
   stop?: KeymapOption[];
   find?: KeymapOption[];
+  undo?: KeymapOption[];
+  redo?: KeymapOption[];
   addTable?: KeymapOption[];
   addColumn?: KeymapOption[];
   addMemo?: KeymapOption[];
@@ -342,7 +344,7 @@ container.appendChild(editor);
 
 ## TODO
 
-- [ ] Undo, Redo Manager
+- [x] Undo, Redo Manager
 - [x] Grid filter
 - [x] ERD Table finder
 - [ ] Real-time simultaneous editing api
