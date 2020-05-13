@@ -1,5 +1,6 @@
 import { SIZE_TABLE_PADDING } from "../Layout";
 import { Store } from "../Store";
+import { Logger } from "../Logger";
 import {
   Relationship,
   RelationshipPoint,
@@ -835,7 +836,8 @@ export function removeTableRelationshipValid(store: Store, tableIds: string[]) {
 }
 
 interface ColumnUIKeyValid {
-  tableId: string;
+  startTableId: string;
+  endTableId: string;
   columnIds: string[];
 }
 export function removeColumnRelationshipValid(
@@ -849,7 +851,8 @@ export function removeColumnRelationshipValid(
   relationships.forEach((relationship) => {
     const { start, end } = relationship;
     const columnUIKeyValid: ColumnUIKeyValid = {
-      tableId: end.tableId,
+      startTableId: start.tableId,
+      endTableId: end.tableId,
       columnIds: [],
     };
     if (table.id === start.tableId) {
@@ -889,7 +892,12 @@ export function removeColumnRelationshipValid(
     if (columnUIKeyValid.columnIds.length !== 0) {
       removeRelationshipColumnIdValid(
         store,
-        columnUIKeyValid.tableId,
+        columnUIKeyValid.startTableId,
+        columnUIKeyValid.columnIds
+      );
+      removeRelationshipColumnIdValid(
+        store,
+        columnUIKeyValid.endTableId,
         columnUIKeyValid.columnIds
       );
     }

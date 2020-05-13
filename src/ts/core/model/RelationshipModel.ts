@@ -4,6 +4,7 @@ import {
   RelationshipPoint,
 } from "../store/Relationship";
 import { AddRelationship } from "../command/relationship";
+import { cloneDeep } from "../Helper";
 
 interface RelationshipData {
   addRelationship?: AddRelationship;
@@ -35,8 +36,8 @@ export class RelationshipModel implements Relationship {
       const { id, relationshipType, start, end } = addRelationship;
       this.id = id;
       this.relationshipType = relationshipType;
-      this.start = Object.assign(this.start, start);
-      this.end = Object.assign(this.end, end);
+      this.start = cloneDeep(start);
+      this.end = cloneDeep(end);
     } else if (
       loadRelationship &&
       typeof loadRelationship.id === "string" &&
@@ -67,8 +68,8 @@ export class RelationshipModel implements Relationship {
       this.id = id;
       this.identification = identification;
       this.relationshipType = relationshipType;
-      this.start = Object.assign(this.start, start);
-      this.end = Object.assign(this.end, end);
+      this.start = cloneDeep(start);
+      this.end = cloneDeep(end);
     } else {
       throw new Error("not found relationship");
     }

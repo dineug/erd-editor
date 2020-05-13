@@ -1,4 +1,4 @@
-import { Command } from "../Command";
+import { Command, CommandType } from "../Command";
 import { SIZE_MIN_WIDTH, SIZE_TABLE_PADDING } from "../Layout";
 import { Store } from "../Store";
 import { Helper, getData, uuid } from "../Helper";
@@ -19,6 +19,7 @@ import {
 } from "./editor";
 import { TableUI, Column } from "../store/Table";
 import { addRelationship } from "./relationship";
+import { AddCustomColumn } from "./column";
 
 const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
 const TABLE_SORT_PADDING = TABLE_PADDING * 4;
@@ -181,13 +182,50 @@ export function executeSelectTable(store: Store, data: SelectTable) {
     executeFocusTable(store, { tableId: data.tableId });
     if (drawRelationship) {
       if (drawRelationship.start) {
-        store.dispatch(
-          addRelationship(
-            drawRelationship.relationshipType,
-            drawRelationship.start.table,
-            data.tableId
-          )
+        const batchCommand: Array<Command<CommandType>> = [];
+        const addRelationshipCommand = addRelationship(
+          drawRelationship.relationshipType,
+          drawRelationship.start.table,
+          data.tableId
         );
+        const startTable = drawRelationship.start.table;
+        // create end table column
+        const createEndColumns: AddCustomColumn[] = [];
+        const { start, end } = addRelationshipCommand.data;
+        start.columnIds.forEach((startColumnId, index) => {
+          const startColumn = getData(startTable.columns, startColumnId);
+          if (startColumn) {
+            createEndColumns.push({
+              tableId: end.tableId,
+              id: end.columnIds[index],
+              option: null,
+              ui: {
+                active: false,
+                pk: false,
+                fk: true,
+                pfk: false,
+              },
+              value: {
+                name: startColumn.name,
+                comment: startColumn.comment,
+                dataType: startColumn.dataType,
+                default: startColumn.default,
+                widthName: startColumn.ui.widthName,
+                widthComment: startColumn.ui.widthComment,
+                widthDataType: startColumn.ui.widthDataType,
+                widthDefault: startColumn.ui.widthDefault,
+              },
+            });
+          }
+        });
+        batchCommand.push(
+          {
+            type: "column.addCustom",
+            data: createEndColumns,
+          },
+          addRelationshipCommand
+        );
+        store.dispatch(...batchCommand);
         executeDrawEndRelationship(store);
       } else {
         executeDrawStartAddRelationship(store, { tableId: data.tableId });

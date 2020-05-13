@@ -92,7 +92,6 @@ export interface AddCustomColumn {
   value: AddCustomColumnValue | null;
 }
 export function addCustomColumn(
-  store: Store,
   option: ColumnOption | null,
   ui: AddCustomColumnUI | null,
   value: AddCustomColumnValue | null,
@@ -403,7 +402,11 @@ export function executeChangeColumnPrimaryKey(
         column.ui.pk = true;
       }
       if (!column.option.notNull) {
-        store.dispatch(changeColumnNotNull(store, data.tableId, data.columnId));
+        executeChangeColumnNotNull(store, {
+          tableId: data.tableId,
+          columnId: data.columnId,
+          value: true,
+        });
       }
     } else {
       if (column.ui.pfk) {

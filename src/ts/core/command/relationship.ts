@@ -9,7 +9,6 @@ import {
 import { Relationship, RelationshipType } from "../store/Relationship";
 import { Table } from "../store/Table";
 import { RelationshipModel } from "../model/RelationshipModel";
-import { AddCustomColumn, executeAddCustomColumn } from "./column";
 
 interface AddRelationshipPoint {
   tableId: string;
@@ -53,36 +52,6 @@ export function executeAddRelationship(store: Store, data: AddRelationship) {
   const startTable = getData(tables, start.tableId);
   const endTable = getData(tables, end.tableId);
   if (start.columnIds.length !== 0 && startTable && endTable) {
-    // create end table column
-    const createEndColumns: AddCustomColumn[] = [];
-    start.columnIds.forEach((startColumnId, index) => {
-      const startColumn = getData(startTable.columns, startColumnId);
-      if (startColumn) {
-        createEndColumns.push({
-          tableId: end.tableId,
-          id: end.columnIds[index],
-          option: null,
-          ui: {
-            active: false,
-            pk: false,
-            fk: true,
-            pfk: false,
-          },
-          value: {
-            name: startColumn.name,
-            comment: startColumn.comment,
-            dataType: startColumn.dataType,
-            default: startColumn.default,
-            widthName: startColumn.ui.widthName,
-            widthComment: startColumn.ui.widthComment,
-            widthDataType: startColumn.ui.widthDataType,
-            widthDefault: startColumn.ui.widthDefault,
-          },
-        });
-      }
-    });
-    executeAddCustomColumn(store, createEndColumns);
-    // add relationship
     relationships.push(new RelationshipModel({ addRelationship: data }));
     relationshipSort(tables, relationships);
   }

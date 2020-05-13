@@ -311,7 +311,6 @@ export function executeDrawStartAddRelationship(
     if (!table.columns.some((column) => column.option.primaryKey)) {
       store.dispatch(
         addCustomColumn(
-          store,
           {
             autoIncrement: false,
             primaryKey: true,
@@ -534,7 +533,6 @@ export function executePasteColumn(store: Store, data: PasteColumn) {
       const { option, ui } = column;
       batchCommand.push(
         addCustomColumn(
-          store,
           {
             autoIncrement: option.autoIncrement,
             primaryKey: option.primaryKey,
