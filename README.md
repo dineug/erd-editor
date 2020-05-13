@@ -47,30 +47,35 @@ interface Editor extends HTMLElement {
   value: string;
   focus(): void;
   blur(): void;
+  initLoadJson(json: string): void;
   clear(): void;
   setTheme(theme: Theme): void;
   setKeymap(keymap: Keymap): void;
 }
 ```
 
-| Name      | Type     | Describe           |
-| --------- | -------- | ------------------ |
-| width     | Number   | width              |
-| height    | Number   | height             |
-| value     | String   | editor data        |
-| change    | Event    | editor data        |
-| focus     | Function | keymap on(default) |
-| blur      | Function | keymap off         |
-| clear     | Function | editor data clear  |
-| setTheme  | Function | custom theme       |
-| setKeymap | Function | custom keymap      |
+| Name         | Type     | Describe                    |
+| ------------ | -------- | --------------------------- |
+| width        | Number   | width                       |
+| height       | Number   | height                      |
+| value        | String   | editor data                 |
+| change       | Event    | editor data                 |
+| focus        | Function | keymap on(default)          |
+| blur         | Function | keymap off                  |
+| initLoadJson | Function | Do not record and save undo |
+| clear        | Function | editor data clear           |
+| setTheme     | Function | custom theme                |
+| setKeymap    | Function | custom keymap               |
 
 ### EditorElement Example
 
 ```javascript
 const container = document.querySelector("#app");
 const editor = document.createElement("erd-editor");
-editor.value = "editor data..."; // editor data load
+// editor data load
+editor.initLoadJson("editor data...");
+// or
+// editor.value = "editor data...";
 container.appendChild(editor);
 editor.addEventListener("change", (event) => {
   console.log(event.target.value);

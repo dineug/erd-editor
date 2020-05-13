@@ -247,6 +247,7 @@ interface CommandMap {
   "editor.drawEndRelationship": null;
   "editor.drawRelationship": DrawRelationship;
   "editor.loadJson": LoadJson;
+  "editor.initLoadJson": LoadJson;
   "editor.copyColumn": CopyColumn;
   "editor.pasteColumn": PasteColumn;
   "editor.clear": null;
@@ -640,6 +641,9 @@ function executeEditorCommand(store: Store, command: Command<CommandType>) {
       executeDrawRelationship(store, command.data as DrawRelationship);
       break;
     case "editor.loadJson":
+      executeLoadJson(store, command.data as LoadJson);
+      break;
+    case "editor.initLoadJson":
       executeLoadJson(store, command.data as LoadJson);
       break;
     case "editor.copyColumn":

@@ -8,7 +8,7 @@ import { keymapMatch, KeymapKey, KeymapOption } from "@src/core/Keymap";
 import { Bus } from "@src/core/Event";
 import { EditorContext, createEditorContext } from "@src/core/EditorContext";
 import { createJsonStringify } from "@src/core/File";
-import { loadJson, clear } from "@src/core/command/editor";
+import { loadJson, initLoadJson, clear } from "@src/core/command/editor";
 import { ThemeKey } from "@src/core/Theme";
 import { isObject } from "@src/core/Helper";
 import { Theme, Keymap, Editor } from "@src/types";
@@ -246,6 +246,10 @@ class EditorModel extends LitElement implements Editor {
   }
   blur() {
     this.context.store.editorState.focus = false;
+  }
+  initLoadJson(json: string) {
+    const { store } = this.context;
+    store.dispatch(initLoadJson(json));
   }
   clear() {
     const { store } = this.context;

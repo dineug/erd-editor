@@ -479,6 +479,15 @@ export function executeLoadJson(store: Store, data: LoadJson) {
   }
 }
 
+export function initLoadJson(value: string): Command<"editor.initLoadJson"> {
+  return {
+    type: "editor.initLoadJson",
+    data: {
+      value,
+    },
+  };
+}
+
 export interface CopyColumn {
   tableId: string;
   columnIds: string[];

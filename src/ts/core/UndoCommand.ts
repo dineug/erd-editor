@@ -96,6 +96,78 @@ export function executeUndoCommand(
     batchRedoCommand.push(redoCommand);
   }
 
+  const moveTableCommands = commands.filter(
+    (command) => command.type === "table.move"
+  );
+  if (moveTableCommands.length > 0) {
+    const data = moveTableCommands[0].data as MoveTable;
+    const tableIds = data.tableIds;
+    const memoIds = data.memoIds;
+    let movementX = 0;
+    let movementY = 0;
+    moveTableCommands.forEach((moveTableCommand) => {
+      const data = moveTableCommand.data as MoveTable;
+      movementX += data.movementX;
+      movementY += data.movementY;
+    });
+    const undoCommand: Command<"table.move"> = {
+      type: "table.move",
+      data: {
+        movementX: -1 * movementX,
+        movementY: -1 * movementY,
+        tableIds,
+        memoIds,
+      },
+    };
+    const redoCommand: Command<"table.move"> = {
+      type: "table.move",
+      data: {
+        movementX,
+        movementY,
+        tableIds,
+        memoIds,
+      },
+    };
+    batchUndoCommand.push(undoCommand);
+    batchRedoCommand.push(redoCommand);
+  }
+
+  const moveMemoCommands = commands.filter(
+    (command) => command.type === "memo.move"
+  );
+  if (moveMemoCommands.length > 0) {
+    const data = moveMemoCommands[0].data as MoveMemo;
+    const tableIds = data.tableIds;
+    const memoIds = data.memoIds;
+    let movementX = 0;
+    let movementY = 0;
+    moveMemoCommands.forEach((moveTableCommand) => {
+      const data = moveTableCommand.data as MoveMemo;
+      movementX += data.movementX;
+      movementY += data.movementY;
+    });
+    const undoCommand: Command<"memo.move"> = {
+      type: "memo.move",
+      data: {
+        movementX: -1 * movementX,
+        movementY: -1 * movementY,
+        tableIds,
+        memoIds,
+      },
+    };
+    const redoCommand: Command<"memo.move"> = {
+      type: "memo.move",
+      data: {
+        movementX,
+        movementY,
+        tableIds,
+        memoIds,
+      },
+    };
+    batchUndoCommand.push(undoCommand);
+    batchRedoCommand.push(redoCommand);
+  }
+
   undoManager.add({
     undo() {
       store.undo$.next(batchUndoCommand);
@@ -117,19 +189,6 @@ function executeTableCommand(
   if (command.type === "table.add") {
     const data = command.data as AddTable;
     batchUndoCommand.push(removeTable(store, data.id));
-    batchRedoCommand.push(command);
-  } else if (command.type === "table.move") {
-    const data = command.data as MoveTable;
-    const undoCommand: Command<"table.move"> = {
-      type: "table.move",
-      data: {
-        movementX: -1 * data.movementX,
-        movementY: -1 * data.movementY,
-        tableIds: data.tableIds,
-        memoIds: data.memoIds,
-      },
-    };
-    batchUndoCommand.push(undoCommand);
     batchRedoCommand.push(command);
   } else if (command.type === "table.remove") {
     const data = command.data as RemoveTable;
@@ -525,19 +584,6 @@ function executeMemoCommand(
   if (command.type === "memo.add") {
     const data = command.data as AddMemo;
     batchUndoCommand.push(removeMemo(store, data.id));
-    batchRedoCommand.push(command);
-  } else if (command.type === "memo.move") {
-    const data = command.data as MoveMemo;
-    const undoCommand: Command<"memo.move"> = {
-      type: "memo.move",
-      data: {
-        movementX: -1 * data.movementX,
-        movementY: -1 * data.movementY,
-        tableIds: data.tableIds,
-        memoIds: data.memoIds,
-      },
-    };
-    batchUndoCommand.push(undoCommand);
     batchRedoCommand.push(command);
   } else if (command.type === "memo.remove") {
     const data = command.data as RemoveMemo;

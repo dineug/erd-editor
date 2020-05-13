@@ -4,6 +4,7 @@ export interface Editor extends HTMLElement {
   value: string;
   focus(): void;
   blur(): void;
+  initLoadJson(json: string): void;
   clear(): void;
   setTheme(theme: Theme): void;
   setKeymap(keymap: Keymap): void;
