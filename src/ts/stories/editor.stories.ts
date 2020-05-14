@@ -1,7 +1,7 @@
 import { storiesOf } from "@storybook/html";
-import { Editor } from "../src/ts/types";
+import { Editor } from "../types";
 
-const stories = storiesOf("Theme", module);
+const stories = storiesOf("Editor", module);
 
 function init(editor: Editor) {
   document.body.setAttribute("style", "padding: 0; margin: 0;");
@@ -13,34 +13,30 @@ function init(editor: Editor) {
 }
 
 stories.add(
-  "css",
+  "load",
   () => {
-    const container = document.createElement("div");
     const editor = document.createElement("erd-editor") as Editor;
-    const style = document.createElement("style");
-    container.appendChild(editor);
-    container.appendChild(style);
     init(editor);
 
-    style.innerText = `
-      :root {
-        --vuerd-theme-canvas: #2f4e44;
-      }
-    `;
+    fetch("https://api.github.com/repos/vuerd/vuerd/contents/data/test.json")
+      .then((response) => response.json())
+      .then((data) => editor.initLoadJson(atob(data.content)));
+    // or editor.value = data.content
 
-    return container;
+    return editor;
   },
   { options: { showPanel: true, panelPosition: "right" } }
 );
 
 stories.add(
-  "javascript",
+  "change",
   () => {
     const editor = document.createElement("erd-editor") as Editor;
     init(editor);
 
-    editor.setTheme({
-      canvas: "#2f444e",
+    editor.addEventListener("change", (event) => {
+      const el = event.target as Editor;
+      console.log(`change event editor data: \n ${el.value}`);
     });
 
     return editor;

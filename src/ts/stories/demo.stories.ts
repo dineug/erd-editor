@@ -1,5 +1,5 @@
 import { storiesOf } from "@storybook/html";
-import { Editor } from "../src/ts/types";
+import { Editor } from "../types";
 
 const stories = storiesOf("Demo", module);
 
