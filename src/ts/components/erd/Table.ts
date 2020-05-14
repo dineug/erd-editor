@@ -6,7 +6,11 @@ import { Subscription, Subject, fromEvent } from "rxjs";
 import { debounceTime, throttleTime } from "rxjs/operators";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
-import { SIZE_TABLE_PADDING, SIZE_MENUBAR_HEIGHT } from "@src/core/Layout";
+import {
+  SIZE_TABLE_PADDING,
+  SIZE_TABLE_BORDER,
+  SIZE_MENUBAR_HEIGHT,
+} from "@src/core/Layout";
 import { Table as TableModel, Column } from "@src/core/store/Table";
 import { keymapOptionToString } from "@src/core/Keymap";
 import { Bus, Move } from "@src/core/Event";
@@ -29,7 +33,7 @@ import {
 } from "@src/core/command/editor";
 
 type FocusTableKey = "focusName" | "focusComment";
-const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
+const TABLE_PADDING = (SIZE_TABLE_PADDING + SIZE_TABLE_BORDER) * 2;
 
 @customElement("vuerd-table")
 class Table extends EditorElement {

@@ -1,5 +1,9 @@
 import { Command, CommandType } from "../Command";
-import { SIZE_MIN_WIDTH, SIZE_TABLE_PADDING } from "../Layout";
+import {
+  SIZE_MIN_WIDTH,
+  SIZE_TABLE_PADDING,
+  SIZE_TABLE_BORDER,
+} from "../Layout";
 import { Store } from "../Store";
 import { Helper, getData, uuid } from "../Helper";
 import {
@@ -21,7 +25,7 @@ import { TableUI, Column } from "../store/Table";
 import { addRelationship } from "./relationship";
 import { AddCustomColumn } from "./column";
 
-const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
+const TABLE_PADDING = (SIZE_TABLE_PADDING + SIZE_TABLE_BORDER) * 2;
 const TABLE_SORT_PADDING = TABLE_PADDING * 4;
 
 interface AddTableUI {

@@ -2,6 +2,7 @@ import { css } from "lit-element";
 import {
   SIZE_FONT,
   SIZE_TABLE_PADDING,
+  SIZE_TABLE_BORDER,
   SIZE_TABLE_HEADER_BODY_HEIGHT,
 } from "@src/core/Layout";
 
@@ -14,13 +15,15 @@ export const table = css`
     font-size: ${SIZE_FONT}px;
     fill: #fff0;
     background-color: var(--vuerd-theme-table, var(--vuerd-color-table));
+    border: solid #fff0 ${SIZE_TABLE_BORDER}px;
   }
   .vuerd-table:hover {
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
   .vuerd-table.active {
     border: solid
-      var(--vuerd-theme-table-active, var(--vuerd-color-table-active)) 1px;
+      var(--vuerd-theme-table-active, var(--vuerd-color-table-active))
+      ${SIZE_TABLE_BORDER}px;
     box-shadow: 0 1px 6px
       var(--vuerd-theme-table-active, var(--vuerd-color-table-active));
   }

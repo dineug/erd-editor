@@ -1,4 +1,4 @@
-import { SIZE_TABLE_PADDING } from "../Layout";
+import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from "../Layout";
 import { Store } from "../Store";
 import { Logger } from "../Logger";
 import {
@@ -16,7 +16,7 @@ import {
 } from "../command/relationship";
 
 // ==================== Draw Relationship ===================
-const TABLE_PADDING = SIZE_TABLE_PADDING * 2;
+const TABLE_PADDING = (SIZE_TABLE_PADDING + SIZE_TABLE_BORDER) * 2;
 const PATH_HEIGHT = 40;
 const PATH_END_HEIGHT = PATH_HEIGHT + 20;
 const PATH_LINE_HEIGHT = 35;
