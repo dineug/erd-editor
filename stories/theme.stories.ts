@@ -1,6 +1,5 @@
 import { storiesOf } from "@storybook/html";
 import { Editor } from "../src/ts/types";
-import "../dist/vuerd.min.js";
 
 const stories = storiesOf("Theme", module);
 
