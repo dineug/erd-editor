@@ -118,18 +118,13 @@ class ERD extends EditorElement {
     eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subscriptionList.push(
       store.observe(store.canvasState, (name) => {
-        const erd = this.erd;
-        switch (name) {
-          case "scrollTop":
-            if (erd && erd.scrollTop !== store.canvasState.scrollTop) {
-              erd.scrollTop = store.canvasState.scrollTop;
-            }
-            break;
-          case "scrollLeft":
-            if (erd && erd.scrollLeft !== store.canvasState.scrollLeft) {
-              erd.scrollLeft = store.canvasState.scrollLeft;
-            }
-            break;
+        if (name === "scrollTop" || name === "scrollLeft") {
+          const erd = this.erd;
+          if (erd) {
+            erd.scrollTop = store.canvasState.scrollTop;
+            erd.scrollLeft = store.canvasState.scrollLeft;
+            this.onScrollValid();
+          }
         }
       }),
       store.observe(store.editorState, (name) => {
@@ -508,13 +503,16 @@ class ERD extends EditorElement {
   }
   private onScrollValid() {
     const { store } = this.context;
+    const { canvasState } = store;
     const erd = this.erd;
     if (
       erd &&
-      (erd.scrollTop !== store.canvasState.scrollTop ||
-        erd.scrollLeft !== store.canvasState.scrollLeft)
+      (erd.scrollTop !== canvasState.scrollTop ||
+        erd.scrollLeft !== canvasState.scrollLeft)
     ) {
-      store.dispatch(moveCanvas(erd.scrollTop, erd.scrollLeft));
+      canvasState.scrollTop = erd.scrollTop;
+      canvasState.scrollLeft = erd.scrollLeft;
+      // store.dispatch(moveCanvas(erd.scrollTop, erd.scrollLeft));
     }
   }
 

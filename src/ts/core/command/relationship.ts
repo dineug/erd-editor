@@ -162,5 +162,25 @@ export function loadRelationship(
 export function executeLoadRelationship(store: Store, data: Relationship) {
   Logger.debug("executeLoadRelationship");
   const { relationships } = store.relationshipState;
+  const { tables } = store.tableState;
   relationships.push(new RelationshipModel({ loadRelationship: data }));
+
+  // valid end column ui key
+  const table = getData(tables, data.end.tableId);
+  if (table) {
+    data.end.columnIds.forEach((columnId) => {
+      const column = getData(table.columns, columnId);
+      if (column) {
+        if (column.option.primaryKey) {
+          column.ui.pfk = true;
+          column.ui.pk = false;
+          column.ui.fk = false;
+        } else {
+          column.ui.pfk = false;
+          column.ui.pk = false;
+          column.ui.fk = true;
+        }
+      }
+    });
+  }
 }
