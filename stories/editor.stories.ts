@@ -19,7 +19,10 @@ stories.add(
     const editor = document.createElement("erd-editor") as Editor;
     init(editor);
 
-    // editor.initLoadJson("");
+    fetch("https://api.github.com/repos/vuerd/vuerd/contents/data/test.json")
+      .then((response) => response.json())
+      .then((data) => editor.initLoadJson(atob(data.content)));
+    // or editor.value = data.content
 
     return editor;
   },

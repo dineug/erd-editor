@@ -26,7 +26,8 @@
 
 ## Document
 
-- [Live Demo](https://vuerd.github.io/vuerd/)
+- [Storybook](https://vuerd.github.io/vuerd/)
+- [Live Demo](https://vuerd.github.io/vuerd/iframe.html?id=editor--load)
 - [vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
 
 ## Dependency

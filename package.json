@@ -25,8 +25,8 @@
   "scripts": {
     "serve": "rollup -c rollup.config.dev.js -w",
     "build": "rollup -c",
-    "storybook": "start-storybook -p 8000 -s ./data",
-    "storybook:build": "build-storybook -c .storybook -s ./data -o docs"
+    "storybook": "start-storybook -p 8000",
+    "storybook:build": "build-storybook -c .storybook -o docs"
   },
   "devDependencies": {
     "@babel/core": "^7.9.6",
