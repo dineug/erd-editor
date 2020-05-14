@@ -89,7 +89,7 @@ export function executeUndoCommand(
   const moveCanvasCommands = commands.filter(
     (command) => command.type === "canvas.move"
   );
-  if (moveCanvasCommands.length > 1) {
+  if (moveCanvasCommands.length > 0) {
     const undoCommand = moveCanvasCommands[0];
     const redoCommand = moveCanvasCommands[moveCanvasCommands.length - 1];
     batchUndoCommand.push(undoCommand);
