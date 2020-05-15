@@ -993,7 +993,7 @@ export function moveFilterState(
 export function executeMoveFilterState(store: Store, data: MoveFilterState) {
   Logger.debug("executeMoveFilterState");
   const { filterStateList } = store.editorState;
-  let currentFilterStateList: FilterState[] = [];
+  const currentFilterStateList: FilterState[] = [];
   data.filterStateIds.forEach((filterStateId) => {
     const filterState = getData(filterStateList, filterStateId);
     if (filterState) {
@@ -1009,20 +1009,13 @@ export function executeMoveFilterState(store: Store, data: MoveFilterState) {
     ) {
       const targetIndex = getIndex(filterStateList, targetFilterState.id);
       if (targetIndex !== null) {
-        const currentIndex = getIndex(
-          filterStateList,
-          currentFilterStateList[0].id
-        );
-        if (currentIndex !== null && currentIndex > targetIndex) {
-          currentFilterStateList = currentFilterStateList.reverse();
-        }
         currentFilterStateList.forEach((currentFilterState) => {
           const currentIndex = getIndex(filterStateList, currentFilterState.id);
           if (currentIndex !== null) {
             filterStateList.splice(currentIndex, 1);
-            filterStateList.splice(targetIndex, 0, currentFilterState);
           }
         });
+        filterStateList.splice(targetIndex, 0, ...currentFilterStateList);
       }
     }
   }
