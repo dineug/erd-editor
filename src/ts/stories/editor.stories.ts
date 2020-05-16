@@ -21,7 +21,7 @@ stories.add(
     fetch("https://api.github.com/repos/vuerd/vuerd/contents/data/test.json")
       .then((response) => response.json())
       .then((data) => editor.initLoadJson(atob(data.content)));
-    // or editor.value = data.content
+    // or editor.value = atob(data.content)
 
     return editor;
   },

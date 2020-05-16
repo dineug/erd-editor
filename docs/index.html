@@ -2,37 +2,27 @@
 <html>
   <head>
     <title>vuerd demo</title>
-    <link rel="icon" href="/vuerd/favicon.ico" type="image/x-icon" />
     <style>
       body {
         margin: 0;
       }
     </style>
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id=UA-131336352-5"
-    ></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      gtag("js", new Date());
-      gtag("config", "UA-131336352-5");
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.min.js"></script>
   </head>
   <body>
-    <div id="app"></div>
-    <script src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.min.js"></script>
+    <erd-editor id="editor"></erd-editor>
     <script>
-      const container = document.querySelector("#app");
-      const editor = document.createElement("erd-editor");
+      const editor = document.querySelector("#editor");
+
       window.addEventListener("resize", () => {
         editor.width = window.innerWidth;
         editor.height = window.innerHeight;
       });
       window.dispatchEvent(new Event("resize"));
-      container.appendChild(editor);
+
+      fetch("https://api.github.com/repos/vuerd/vuerd/contents/data/test.json")
+        .then((response) => response.json())
+        .then((data) => editor.initLoadJson(atob(data.content)));
     </script>
   </body>
 </html>
