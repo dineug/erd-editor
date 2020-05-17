@@ -8,6 +8,7 @@ import {
   Language,
   NameCase,
 } from "../store/Canvas";
+import { relationshipSort } from "../helper/RelationshipHelper";
 
 export interface MoveCanvas {
   scrollTop: number;
@@ -74,8 +75,11 @@ export function changeCanvasShow(
 }
 export function executeChangeCanvasShow(store: Store, data: ChangeCanvasShow) {
   Logger.debug("executeChangeCanvasShow");
+  const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
   const { show } = store.canvasState;
   show[data.showKey] = data.value;
+  relationshipSort(tables, relationships);
 }
 
 export interface ChangeDatabase {

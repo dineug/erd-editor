@@ -85,6 +85,9 @@ class Minimap extends EditorElement {
             break;
         }
       }),
+      store.observe(store.canvasState.show, () => {
+        this.requestUpdate();
+      }),
       store.observe(this.relationships, () => {
         this.unsubscribeRelationships();
         this.observeRelationships();
@@ -101,6 +104,7 @@ class Minimap extends EditorElement {
 
   render() {
     const { width, height } = this.context.store.canvasState;
+    const { show } = this.context.store.canvasState;
     return html`
       <div class="vuerd-minimap" style=${styleMap(this.styleMap)}>
         <div class="vuerd-minimap-canvas">
@@ -118,7 +122,8 @@ class Minimap extends EditorElement {
             (memo) =>
               html` <vuerd-minimap-memo .memo=${memo}></vuerd-minimap-memo> `
           )}
-          ${svg`
+          ${show.relationship
+            ? svg`
             <svg
               class="vuerd-minimap-canvas-svg"
               style=${styleMap({
@@ -144,7 +149,8 @@ class Minimap extends EditorElement {
               }
             )}
             </svg>
-          `}
+          `
+            : ""}
         </div>
       </div>
       <div

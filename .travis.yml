@@ -21,6 +21,8 @@ install:
 
 script:
   - npm run test
-  - codecov --token="$CODECOV_TOKEN"
   - npm run build
   - npm run storybook:build
+
+after_success:
+  - codecov

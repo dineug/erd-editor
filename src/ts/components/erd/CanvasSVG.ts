@@ -35,6 +35,9 @@ class CanvasSVG extends EditorElement {
             this.requestUpdate();
             break;
         }
+      }),
+      store.observe(store.canvasState.show, () => {
+        this.requestUpdate();
       })
     );
     this.observeRelationships();
