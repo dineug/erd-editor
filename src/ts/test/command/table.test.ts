@@ -64,9 +64,9 @@ describe("command: table", () => {
     const context = createEditorContext();
     const { store } = context;
     const { tableState } = store;
+    const command = addTable(store);
 
     // when
-    const command = addTable(store);
     store.dispatch(
       command,
       addTable(store),
@@ -85,10 +85,10 @@ describe("command: table", () => {
     const context = createEditorContext();
     const { store } = context;
     const { tableState } = store;
-
-    // when
     const addTableCommand = addTable(store);
     const addTableCommand2 = addTable(store);
+
+    // when
     store.dispatch(
       addTableCommand,
       addTableCommand2,
@@ -110,9 +110,9 @@ describe("command: table", () => {
     const context = createEditorContext();
     const { store } = context;
     const { tableState } = store;
+    const command = addTable(store);
 
     // when
-    const command = addTable(store);
     store.dispatch(command, selectEndTable());
 
     // then
@@ -128,10 +128,10 @@ describe("command: table", () => {
     const context = createEditorContext();
     const { store } = context;
     const { tableState } = store;
-
-    // when
     const addTableCommand = addTable(store);
     const addTableCommand2 = addTable(store);
+
+    // when
     store.dispatch(addTableCommand, addTableCommand2, selectAllTable());
 
     // then
@@ -149,10 +149,10 @@ describe("command: table", () => {
     const context = createEditorContext();
     const { store } = context;
     const { tableState } = store;
-
-    // when
     const addTableCommand = addTable(store);
     const addTableCommand2 = addTable(store);
+
+    // when
     store.dispatch(
       addTableCommand,
       addTableCommand2,
@@ -175,9 +175,9 @@ describe("command: table", () => {
     const { store, helper } = context;
     const { tableState } = store;
     helper.setSpan(document.createElement("span"));
+    const command = addTable(store);
 
     // when
-    const command = addTable(store);
     const value = "test";
     store.dispatch(command, changeTableName(helper, command.data.id, value));
 
@@ -195,9 +195,9 @@ describe("command: table", () => {
     const { store, helper } = context;
     const { tableState } = store;
     helper.setSpan(document.createElement("span"));
+    const command = addTable(store);
 
     // when
-    const command = addTable(store);
     const value = "test";
     store.dispatch(command, changeTableComment(helper, command.data.id, value));
 
@@ -214,10 +214,10 @@ describe("command: table", () => {
     const context = createEditorContext();
     const { store } = context;
     const { tableState } = store;
-
-    // when
     const addTableCommand = addTable(store);
     const addTableCommand2 = addTable(store);
+
+    // when
     store.dispatch(
       addTableCommand,
       addTableCommand2,
@@ -250,10 +250,10 @@ describe("command: table", () => {
     const context = createEditorContext();
     const { store } = context;
     const { tableState } = store;
-
-    // when
     const addTableCommand = addTable(store);
     const addTableCommand2 = addTable(store);
+
+    // when
     store.dispatch(addTableCommand, addTableCommand2, sortTable());
 
     // then

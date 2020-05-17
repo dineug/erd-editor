@@ -62,9 +62,9 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
+    const command = addMemo(store);
 
     // when
-    const command = addMemo(store);
     store.dispatch(command, addMemo(store), removeMemo(store, command.data.id));
 
     // then
@@ -79,10 +79,10 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
-
-    // when
     const addMemoCommand = addMemo(store);
     const addMemoCommand2 = addMemo(store);
+
+    // when
     store.dispatch(
       addMemoCommand,
       addMemoCommand2,
@@ -104,9 +104,9 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
+    const command = addMemo(store);
 
     // when
-    const command = addMemo(store);
     store.dispatch(command, selectEndMemo());
 
     // then
@@ -122,10 +122,10 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
-
-    // when
     const addMemoCommand = addMemo(store);
     const addMemoCommand2 = addMemo(store);
+
+    // when
     store.dispatch(addMemoCommand, addMemoCommand2, selectAllMemo());
 
     // then
@@ -143,9 +143,9 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
+    const command = addMemo(store);
 
     // when
-    const command = addMemo(store);
     const value = "test";
     store.dispatch(command, changeMemoValue(command.data.id, value));
 
@@ -162,9 +162,9 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
+    const command = addMemo(store);
 
     // when
-    const command = addMemo(store);
     const top = 10;
     const left = 20;
     const width = 200;
@@ -190,10 +190,10 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
-
-    // when
     const addMemoCommand = addMemo(store);
     const addMemoCommand2 = addMemo(store);
+
+    // when
     store.dispatch(
       addMemoCommand,
       addMemoCommand2,

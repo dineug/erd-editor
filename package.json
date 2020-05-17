@@ -18,8 +18,13 @@
     "database"
   ],
   "homepage": "https://github.com/vuerd/vuerd",
-  "bugs": "https://github.com/vuerd/vuerd/issues",
-  "repository": "https://github.com/vuerd/vuerd.git",
+  "bugs": {
+    "url": "https://github.com/vuerd/vuerd/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vuerd/vuerd.git"
+  },
   "author": "dineug <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
@@ -27,7 +32,7 @@
     "build": "rollup -c",
     "storybook": "start-storybook -p 8000",
     "storybook:build": "build-storybook -c .storybook -o docs",
-    "test": "jest"
+    "test": "jest -c jestconfig.json"
   },
   "devDependencies": {
     "@babel/core": "^7.9.6",
@@ -51,6 +56,7 @@
     "babel-jest": "^26.0.1",
     "babel-loader": "^8.1.0",
     "babel-plugin-transform-remove-console": "^6.9.4",
+    "codecov": "^3.6.5",
     "eslint": "^6.8.0",
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-prettier": "^3.1.3",

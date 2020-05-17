@@ -16,7 +16,11 @@ deploy:
     on:
       branch: master
 
+install:
+  - npm i -g codecov
+
 script:
   - npm run test
+  - codecov --token="$CODECOV_TOKEN"
   - npm run build
   - npm run storybook:build
