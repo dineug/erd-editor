@@ -26,4 +26,4 @@ script:
   - npm run storybook:build
 
 after_success:
-  - codecov -t $CODECOV_TOKEN
+  - codecov
