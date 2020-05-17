@@ -16,14 +16,10 @@ deploy:
     on:
       branch: master
 
-install:
-  - npm i -g codecov
-  - npm i
-
 script:
   - npm run test
   - npm run build
   - npm run storybook:build
 
 after_success:
-  - codecov
+  - bash <(curl -s https://codecov.io/bash)
