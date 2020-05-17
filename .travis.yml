@@ -18,6 +18,7 @@ deploy:
 
 install:
   - npm i -g codecov
+  - npm i
 
 script:
   - npm run test
