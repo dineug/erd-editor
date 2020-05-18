@@ -24,13 +24,11 @@ describe("command: table", () => {
     const { tableState } = store;
 
     // when
-    const command = addTable(store);
-    store.dispatch(command);
+    store.dispatch(addTable(store));
 
     // then
     store.observe(tableState.tables, () => {
-      const table = getData(tableState.tables, command.data.id);
-      expect(command.data.id).toBe(table?.id);
+      expect(1).toBe(tableState.tables.length);
       done();
     });
   });
@@ -63,15 +61,15 @@ describe("command: table", () => {
     // given
     const context = createEditorContext();
     const { store } = context;
-    const { tableState } = store;
-    const command = addTable(store);
+    const { tableState, canvasState } = store;
+    tableState.tables.push(
+      new TableModel({ addTable: addTable(store).data }, canvasState.show),
+      new TableModel({ addTable: addTable(store).data }, canvasState.show)
+    );
+    const table = tableState.tables[0];
 
     // when
-    store.dispatch(
-      command,
-      addTable(store),
-      removeTable(store, command.data.id)
-    );
+    store.dispatch(removeTable(store, table.id));
 
     // then
     store.observe(tableState.tables, () => {
@@ -84,23 +82,21 @@ describe("command: table", () => {
     // given
     const context = createEditorContext();
     const { store } = context;
-    const { tableState } = store;
-    const addTableCommand = addTable(store);
-    const addTableCommand2 = addTable(store);
+    const { tableState, canvasState } = store;
+    tableState.tables.push(
+      new TableModel({ addTable: addTable(store).data }, canvasState.show),
+      new TableModel({ addTable: addTable(store).data }, canvasState.show)
+    );
+    const table = tableState.tables[0];
+    const table2 = tableState.tables[1];
 
     // when
-    store.dispatch(
-      addTableCommand,
-      addTableCommand2,
-      selectTable(store, false, addTableCommand.data.id)
-    );
+    store.dispatch(selectTable(store, false, table.id));
 
     // then
-    store.observe(tableState.tables, () => {
-      const table = getData(tableState.tables, addTableCommand.data.id);
-      const table2 = getData(tableState.tables, addTableCommand2.data.id);
-      expect(true).toBe(table?.ui.active);
-      expect(false).toBe(table2?.ui.active);
+    store.observe(table2.ui, () => {
+      expect(true).toBe(table.ui.active);
+      expect(false).toBe(table2.ui.active);
       done();
     });
   });
@@ -109,16 +105,18 @@ describe("command: table", () => {
     // given
     const context = createEditorContext();
     const { store } = context;
-    const { tableState } = store;
-    const command = addTable(store);
+    const { tableState, canvasState } = store;
+    tableState.tables.push(
+      new TableModel({ addTable: addTable(store).data }, canvasState.show)
+    );
+    const table = tableState.tables[0];
 
     // when
-    store.dispatch(command, selectEndTable());
+    store.dispatch(selectEndTable());
 
     // then
-    store.observe(tableState.tables, () => {
-      const table = getData(tableState.tables, command.data.id);
-      expect(false).toBe(table?.ui.active);
+    store.observe(table.ui, () => {
+      expect(false).toBe(table.ui.active);
       done();
     });
   });
@@ -127,19 +125,21 @@ describe("command: table", () => {
     // given
     const context = createEditorContext();
     const { store } = context;
-    const { tableState } = store;
-    const addTableCommand = addTable(store);
-    const addTableCommand2 = addTable(store);
+    const { tableState, canvasState } = store;
+    tableState.tables.push(
+      new TableModel({ addTable: addTable(store).data }, canvasState.show),
+      new TableModel({ addTable: addTable(store).data }, canvasState.show)
+    );
+    const table = tableState.tables[0];
+    const table2 = tableState.tables[1];
 
     // when
-    store.dispatch(addTableCommand, addTableCommand2, selectAllTable());
+    store.dispatch(selectAllTable());
 
     // then
-    store.observe(tableState.tables, () => {
-      const table = getData(tableState.tables, addTableCommand.data.id);
-      const table2 = getData(tableState.tables, addTableCommand2.data.id);
-      expect(true).toBe(table?.ui.active);
-      expect(true).toBe(table2?.ui.active);
+    store.observe(table2.ui, () => {
+      expect(true).toBe(table.ui.active);
+      expect(true).toBe(table2.ui.active);
       done();
     });
   });
@@ -148,23 +148,21 @@ describe("command: table", () => {
     // given
     const context = createEditorContext();
     const { store } = context;
-    const { tableState } = store;
-    const addTableCommand = addTable(store);
-    const addTableCommand2 = addTable(store);
+    const { tableState, canvasState } = store;
+    tableState.tables.push(
+      new TableModel({ addTable: addTable(store).data }, canvasState.show),
+      new TableModel({ addTable: addTable(store).data }, canvasState.show)
+    );
+    const table = tableState.tables[0];
+    const table2 = tableState.tables[1];
 
     // when
-    store.dispatch(
-      addTableCommand,
-      addTableCommand2,
-      selectOnlyTable(store, addTableCommand.data.id)
-    );
+    store.dispatch(selectOnlyTable(store, table.id));
 
     // then
-    store.observe(tableState.tables, () => {
-      const table = getData(tableState.tables, addTableCommand.data.id);
-      const table2 = getData(tableState.tables, addTableCommand2.data.id);
-      expect(true).toBe(table?.ui.active);
-      expect(false).toBe(table2?.ui.active);
+    store.observe(table2.ui, () => {
+      expect(true).toBe(table.ui.active);
+      expect(false).toBe(table2.ui.active);
       done();
     });
   });
@@ -173,18 +171,20 @@ describe("command: table", () => {
     // given
     const context = createEditorContext();
     const { store, helper } = context;
-    const { tableState } = store;
+    const { tableState, canvasState } = store;
     helper.setSpan(document.createElement("span"));
-    const command = addTable(store);
+    tableState.tables.push(
+      new TableModel({ addTable: addTable(store).data }, canvasState.show)
+    );
+    const table = tableState.tables[0];
 
     // when
     const value = "test";
-    store.dispatch(command, changeTableName(helper, command.data.id, value));
+    store.dispatch(changeTableName(helper, table.id, value));
 
     // then
-    store.observe(tableState.tables, () => {
-      const table = getData(tableState.tables, command.data.id);
-      expect(value).toBe(table?.name);
+    store.observe(table, () => {
+      expect(value).toBe(table.name);
       done();
     });
   });
@@ -193,18 +193,20 @@ describe("command: table", () => {
     // given
     const context = createEditorContext();
     const { store, helper } = context;
-    const { tableState } = store;
+    const { tableState, canvasState } = store;
     helper.setSpan(document.createElement("span"));
-    const command = addTable(store);
+    tableState.tables.push(
+      new TableModel({ addTable: addTable(store).data }, canvasState.show)
+    );
+    const table = tableState.tables[0];
 
     // when
     const value = "test";
-    store.dispatch(command, changeTableComment(helper, command.data.id, value));
+    store.dispatch(changeTableComment(helper, table.id, value));
 
     // then
-    store.observe(tableState.tables, () => {
-      const table = getData(tableState.tables, command.data.id);
-      expect(value).toBe(table?.comment);
+    store.observe(table, () => {
+      expect(value).toBe(table.comment);
       done();
     });
   });
@@ -213,16 +215,20 @@ describe("command: table", () => {
     // given
     const context = createEditorContext();
     const { store } = context;
-    const { tableState } = store;
-    const addTableCommand = addTable(store);
-    const addTableCommand2 = addTable(store);
+    const { tableState, canvasState } = store;
+    tableState.tables.push(
+      new TableModel({ addTable: addTable(store).data }, canvasState.show),
+      new TableModel({ addTable: addTable(store).data }, canvasState.show)
+    );
+    const table = tableState.tables[0];
+    const table2 = tableState.tables[1];
+    table.ui.top = 200;
+    table.ui.left = 200;
+    table2.ui.top = 400;
+    table2.ui.left = 400;
 
     // when
     store.dispatch(
-      addTableCommand,
-      addTableCommand2,
-      moveTable(store, false, 0, 100, addTableCommand.data.id),
-      moveTable(store, false, 200, 300, addTableCommand2.data.id),
       dragSelectTable(
         {
           x: 100,
@@ -236,11 +242,9 @@ describe("command: table", () => {
     );
 
     // then
-    store.observe(tableState.tables, () => {
-      const table = getData(tableState.tables, addTableCommand.data.id);
-      const table2 = getData(tableState.tables, addTableCommand2.data.id);
-      expect(true).toBe(table?.ui.active);
-      expect(false).toBe(table2?.ui.active);
+    store.observe(table2.ui, () => {
+      expect(true).toBe(table.ui.active);
+      expect(false).toBe(table2.ui.active);
       done();
     });
   });
@@ -249,21 +253,23 @@ describe("command: table", () => {
     // given
     const context = createEditorContext();
     const { store } = context;
-    const { tableState } = store;
-    const addTableCommand = addTable(store);
-    const addTableCommand2 = addTable(store);
+    const { tableState, canvasState } = store;
+    tableState.tables.push(
+      new TableModel({ addTable: addTable(store).data }, canvasState.show),
+      new TableModel({ addTable: addTable(store).data }, canvasState.show)
+    );
+    const table = tableState.tables[0];
+    const table2 = tableState.tables[1];
 
     // when
-    store.dispatch(addTableCommand, addTableCommand2, sortTable());
+    store.dispatch(sortTable());
 
     // then
-    store.observe(tableState.tables, () => {
-      const table = getData(tableState.tables, addTableCommand.data.id);
-      const table2 = getData(tableState.tables, addTableCommand2.data.id);
-      expect(50).toBe(table?.ui.top);
-      expect(50).toBe(table?.ui.left);
-      expect(50).toBe(table2?.ui.top);
-      expect(464).toBe(table2?.ui.left);
+    store.observe(table2.ui, () => {
+      expect(50).toBe(table.ui.top);
+      expect(50).toBe(table.ui.left);
+      expect(50).toBe(table2.ui.top);
+      expect(464).toBe(table2.ui.left);
       done();
     });
   });

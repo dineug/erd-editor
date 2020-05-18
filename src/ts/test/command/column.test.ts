@@ -40,18 +40,10 @@ describe("command: column", () => {
     store.dispatch(addColumn(store));
 
     // then
-    let callCount = 0;
-    store.observe(table.columns, () => {
-      expect(1).toBe(table.columns.length);
-      if (++callCount === 2) {
-        done();
-      }
-    });
     store.observe(table2.columns, () => {
+      expect(1).toBe(table.columns.length);
       expect(1).toBe(table2.columns.length);
-      if (++callCount === 2) {
-        done();
-      }
+      done();
     });
   });
 
@@ -71,18 +63,10 @@ describe("command: column", () => {
     store.dispatch(addCustomColumn(null, null, null, [table.id, table2.id]));
 
     // then
-    let callCount = 0;
-    store.observe(table.columns, () => {
-      expect(1).toBe(table.columns.length);
-      if (++callCount === 2) {
-        done();
-      }
-    });
     store.observe(table2.columns, () => {
+      expect(1).toBe(table.columns.length);
       expect(1).toBe(table2.columns.length);
-      if (++callCount === 2) {
-        done();
-      }
+      done();
     });
   });
 
@@ -412,22 +396,14 @@ describe("command: column", () => {
     store.dispatch(activeColumn(relationship));
 
     // then
-    let callCount = 0;
-    store.observe(startColumn.ui, () => {
-      expect(true).toBe(startColumn.ui.active);
-      if (++callCount === 2) {
-        done();
-      }
-    });
     store.observe(endColumn.ui, () => {
+      expect(true).toBe(startColumn.ui.active);
       expect(true).toBe(endColumn.ui.active);
-      if (++callCount === 2) {
-        done();
-      }
+      done();
     });
   });
 
-  it("column.active", (done) => {
+  it("column.activeEnd", (done) => {
     // given
     const context = createEditorContext();
     const { store } = context;
@@ -476,18 +452,10 @@ describe("command: column", () => {
     store.dispatch(activeEndColumn(relationship));
 
     // then
-    let callCount = 0;
-    store.observe(startColumn.ui, () => {
-      expect(false).toBe(startColumn.ui.active);
-      if (++callCount === 2) {
-        done();
-      }
-    });
     store.observe(endColumn.ui, () => {
+      expect(false).toBe(startColumn.ui.active);
       expect(false).toBe(endColumn.ui.active);
-      if (++callCount === 2) {
-        done();
-      }
+      done();
     });
   });
 

@@ -24,16 +24,10 @@ describe("command: canvas", () => {
     store.dispatch(moveCanvas(scrollTop, scrollLeft));
 
     // then
-    let callCount = 0;
-    store.observe(canvasState, (name) => {
-      if (name === "scrollTop") {
-        expect(scrollTop).toBe(canvasState.scrollTop);
-      } else if (name === "scrollLeft") {
-        expect(scrollLeft).toBe(canvasState.scrollLeft);
-      }
-      if (++callCount === 2) {
-        done();
-      }
+    store.observe(canvasState, () => {
+      expect(scrollTop).toBe(canvasState.scrollTop);
+      expect(scrollLeft).toBe(canvasState.scrollLeft);
+      done();
     });
   });
 
@@ -49,16 +43,10 @@ describe("command: canvas", () => {
     store.dispatch(resizeCanvas(width, height));
 
     // then
-    let callCount = 0;
-    store.observe(canvasState, (name) => {
-      if (name === "width") {
-        expect(width).toBe(canvasState.width);
-      } else if (name === "height") {
-        expect(height).toBe(canvasState.height);
-      }
-      if (++callCount === 2) {
-        done();
-      }
+    store.observe(canvasState, () => {
+      expect(width).toBe(canvasState.width);
+      expect(height).toBe(canvasState.height);
+      done();
     });
   });
 
@@ -67,37 +55,33 @@ describe("command: canvas", () => {
     const context = createEditorContext();
     const { store } = context;
     const { canvasState } = store;
+    const { show } = canvasState;
 
     // when
-    store.dispatch(changeCanvasShow(store, "tableComment"));
-    store.dispatch(changeCanvasShow(store, "columnComment"));
-    store.dispatch(changeCanvasShow(store, "columnDataType"));
-    store.dispatch(changeCanvasShow(store, "columnDefault"));
-    store.dispatch(changeCanvasShow(store, "columnAutoIncrement"));
-    store.dispatch(changeCanvasShow(store, "columnPrimaryKey"));
-    store.dispatch(changeCanvasShow(store, "columnUnique"));
-    store.dispatch(changeCanvasShow(store, "columnNotNull"));
-    store.dispatch(changeCanvasShow(store, "relationship"));
+    store.dispatch(
+      changeCanvasShow(store, "tableComment"),
+      changeCanvasShow(store, "columnComment"),
+      changeCanvasShow(store, "columnDataType"),
+      changeCanvasShow(store, "columnDefault"),
+      changeCanvasShow(store, "columnAutoIncrement"),
+      changeCanvasShow(store, "columnPrimaryKey"),
+      changeCanvasShow(store, "columnUnique"),
+      changeCanvasShow(store, "columnNotNull"),
+      changeCanvasShow(store, "relationship")
+    );
 
     // then
-    let callCount = 0;
-    store.observe(canvasState.show, (name) => {
-      switch (name) {
-        case "tableComment":
-        case "columnComment":
-        case "columnDataType":
-        case "columnDefault":
-        case "columnAutoIncrement":
-        case "columnPrimaryKey":
-        case "columnUnique":
-        case "columnNotNull":
-        case "relationship":
-          expect(false).toBe(canvasState.show[name]);
-          break;
-      }
-      if (++callCount === 9) {
-        done();
-      }
+    store.observe(show, () => {
+      expect(false).toBe(show.tableComment);
+      expect(false).toBe(show.columnComment);
+      expect(false).toBe(show.columnDataType);
+      expect(false).toBe(show.columnDefault);
+      expect(false).toBe(show.columnAutoIncrement);
+      expect(false).toBe(show.columnPrimaryKey);
+      expect(false).toBe(show.columnUnique);
+      expect(false).toBe(show.columnNotNull);
+      expect(false).toBe(show.relationship);
+      done();
     });
   });
 

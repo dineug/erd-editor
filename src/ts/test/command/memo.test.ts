@@ -22,13 +22,11 @@ describe("command: memo", () => {
     const { memoState } = store;
 
     // when
-    const command = addMemo(store);
-    store.dispatch(command);
+    store.dispatch(addMemo(store));
 
     // then
     store.observe(memoState.memos, () => {
-      const memo = getData(memoState.memos, command.data.id);
-      expect(command.data.id).toBe(memo?.id);
+      expect(1).toBe(memoState.memos.length);
       done();
     });
   });
@@ -62,10 +60,14 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
-    const command = addMemo(store);
+    memoState.memos.push(
+      new MemoModel({ addMemo: addMemo(store).data }),
+      new MemoModel({ addMemo: addMemo(store).data })
+    );
+    const memo = memoState.memos[0];
 
     // when
-    store.dispatch(command, addMemo(store), removeMemo(store, command.data.id));
+    store.dispatch(removeMemo(store, memo.id));
 
     // then
     store.observe(memoState.memos, () => {
@@ -79,22 +81,20 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
-    const addMemoCommand = addMemo(store);
-    const addMemoCommand2 = addMemo(store);
+    memoState.memos.push(
+      new MemoModel({ addMemo: addMemo(store).data }),
+      new MemoModel({ addMemo: addMemo(store).data })
+    );
+    const memo = memoState.memos[0];
+    const memo2 = memoState.memos[1];
 
     // when
-    store.dispatch(
-      addMemoCommand,
-      addMemoCommand2,
-      selectMemo(store, false, addMemoCommand.data.id)
-    );
+    store.dispatch(selectMemo(store, false, memo.id));
 
     // then
-    store.observe(memoState.memos, () => {
-      const memo = getData(memoState.memos, addMemoCommand.data.id);
-      const memo2 = getData(memoState.memos, addMemoCommand2.data.id);
-      expect(true).toBe(memo?.ui.active);
-      expect(false).toBe(memo2?.ui.active);
+    store.observe(memo2.ui, () => {
+      expect(true).toBe(memo.ui.active);
+      expect(false).toBe(memo2.ui.active);
       done();
     });
   });
@@ -104,15 +104,15 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
-    const command = addMemo(store);
+    memoState.memos.push(new MemoModel({ addMemo: addMemo(store).data }));
+    const memo = memoState.memos[0];
 
     // when
-    store.dispatch(command, selectEndMemo());
+    store.dispatch(selectEndMemo());
 
     // then
-    store.observe(memoState.memos, () => {
-      const memo = getData(memoState.memos, command.data.id);
-      expect(false).toBe(memo?.ui.active);
+    store.observe(memo.ui, () => {
+      expect(false).toBe(memo.ui.active);
       done();
     });
   });
@@ -122,18 +122,20 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
-    const addMemoCommand = addMemo(store);
-    const addMemoCommand2 = addMemo(store);
+    memoState.memos.push(
+      new MemoModel({ addMemo: addMemo(store).data }),
+      new MemoModel({ addMemo: addMemo(store).data })
+    );
+    const memo = memoState.memos[0];
+    const memo2 = memoState.memos[1];
 
     // when
-    store.dispatch(addMemoCommand, addMemoCommand2, selectAllMemo());
+    store.dispatch(selectAllMemo());
 
     // then
-    store.observe(memoState.memos, () => {
-      const memo = getData(memoState.memos, addMemoCommand.data.id);
-      const memo2 = getData(memoState.memos, addMemoCommand2.data.id);
-      expect(true).toBe(memo?.ui.active);
-      expect(true).toBe(memo2?.ui.active);
+    store.observe(memo2.ui, () => {
+      expect(true).toBe(memo.ui.active);
+      expect(true).toBe(memo2.ui.active);
       done();
     });
   });
@@ -143,16 +145,16 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
-    const command = addMemo(store);
+    memoState.memos.push(new MemoModel({ addMemo: addMemo(store).data }));
+    const memo = memoState.memos[0];
 
     // when
     const value = "test";
-    store.dispatch(command, changeMemoValue(command.data.id, value));
+    store.dispatch(changeMemoValue(memo.id, value));
 
     // then
-    store.observe(memoState.memos, () => {
-      const memo = getData(memoState.memos, command.data.id);
-      expect(value).toBe(memo?.value);
+    store.observe(memo, () => {
+      expect(value).toBe(memo.value);
       done();
     });
   });
@@ -162,25 +164,22 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
-    const command = addMemo(store);
+    memoState.memos.push(new MemoModel({ addMemo: addMemo(store).data }));
+    const memo = memoState.memos[0];
 
     // when
     const top = 10;
     const left = 20;
     const width = 200;
     const height = 300;
-    store.dispatch(
-      command,
-      resizeMemo(command.data.id, top, left, width, height)
-    );
+    store.dispatch(resizeMemo(memo.id, top, left, width, height));
 
     // then
-    store.observe(memoState.memos, () => {
-      const memo = getData(memoState.memos, command.data.id);
-      expect(top).toBe(memo?.ui.top);
-      expect(left).toBe(memo?.ui.left);
-      expect(width).toBe(memo?.ui.width);
-      expect(height).toBe(memo?.ui.height);
+    store.observe(memo.ui, () => {
+      expect(top).toBe(memo.ui.top);
+      expect(left).toBe(memo.ui.left);
+      expect(width).toBe(memo.ui.width);
+      expect(height).toBe(memo.ui.height);
       done();
     });
   });
@@ -190,27 +189,19 @@ describe("command: memo", () => {
     const context = createEditorContext();
     const { store } = context;
     const { memoState } = store;
-    const addMemoCommand = addMemo(store);
-    const addMemoCommand2 = addMemo(store);
+    memoState.memos.push(
+      new MemoModel({ addMemo: addMemo(store).data }),
+      new MemoModel({ addMemo: addMemo(store).data })
+    );
+    const memo = memoState.memos[0];
+    const memo2 = memoState.memos[1];
+    memo.ui.top = 200;
+    memo.ui.left = 200;
+    memo2.ui.top = 400;
+    memo2.ui.left = 400;
 
     // when
     store.dispatch(
-      addMemoCommand,
-      addMemoCommand2,
-      resizeMemo(
-        addMemoCommand.data.id,
-        200,
-        200,
-        addMemoCommand.data.ui.width,
-        addMemoCommand.data.ui.height
-      ),
-      resizeMemo(
-        addMemoCommand2.data.id,
-        400,
-        400,
-        addMemoCommand2.data.ui.width,
-        addMemoCommand2.data.ui.height
-      ),
       dragSelectMemo(
         {
           x: 100,
@@ -224,11 +215,9 @@ describe("command: memo", () => {
     );
 
     // then
-    store.observe(memoState.memos, () => {
-      const memo = getData(memoState.memos, addMemoCommand.data.id);
-      const memo2 = getData(memoState.memos, addMemoCommand2.data.id);
-      expect(true).toBe(memo?.ui.active);
-      expect(false).toBe(memo2?.ui.active);
+    store.observe(memo2.ui, () => {
+      expect(true).toBe(memo.ui.active);
+      expect(false).toBe(memo2.ui.active);
       done();
     });
   });
