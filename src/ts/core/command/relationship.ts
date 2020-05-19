@@ -127,7 +127,7 @@ export interface ChangeIdentification {
   relationshipId: string;
   identification: boolean;
 }
-export function ChangeIdentification(
+export function changeIdentification(
   relationshipId: string,
   identification: boolean
 ): Command<"relationship.changeIdentification"> {

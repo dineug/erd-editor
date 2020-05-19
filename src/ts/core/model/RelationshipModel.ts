@@ -36,8 +36,10 @@ export class RelationshipModel implements Relationship {
       const { id, relationshipType, start, end } = addRelationship;
       this.id = id;
       this.relationshipType = relationshipType;
-      this.start = cloneDeep(start);
-      this.end = cloneDeep(end);
+      this.start.tableId = start.tableId;
+      this.start.columnIds = [...start.columnIds];
+      this.end.tableId = end.tableId;
+      this.end.columnIds = [...end.columnIds];
     } else if (
       loadRelationship &&
       typeof loadRelationship.id === "string" &&
