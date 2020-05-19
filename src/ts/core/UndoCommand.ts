@@ -43,7 +43,7 @@ import {
   removeMemo,
   loadMemo,
 } from "./command/memo";
-import { ChangeCanvasShow } from "./command/canvas";
+import { ChangeCanvasShow, moveCanvas } from "./command/canvas";
 
 export function executeUndoCommand(
   store: Store,
@@ -89,7 +89,13 @@ export function executeUndoCommand(
   const moveCanvasCommands = commands.filter(
     (command) => command.type === "canvas.move"
   );
-  if (moveCanvasCommands.length > 0) {
+  if (moveCanvasCommands.length === 1) {
+    const { scrollTop, scrollLeft } = store.canvasState;
+    const undoCommand = moveCanvasCommands[0];
+    const redoCommand = moveCanvas(scrollTop, scrollLeft);
+    batchUndoCommand.push(undoCommand);
+    batchRedoCommand.push(redoCommand);
+  } else if (moveCanvasCommands.length > 1) {
     const undoCommand = moveCanvasCommands[0];
     const redoCommand = moveCanvasCommands[moveCanvasCommands.length - 1];
     batchUndoCommand.push(undoCommand);
