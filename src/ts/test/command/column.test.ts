@@ -423,30 +423,34 @@ describe("command: column", () => {
     const startColumn = startTable.columns[0];
     const endColumn = endTable.columns[0];
     startColumn.option.primaryKey = true;
+    startColumn.ui.pk = true;
     startColumn.ui.active = true;
+    endColumn.ui.fk = true;
     endColumn.ui.active = true;
-    const relationship = new RelationshipModel({
-      loadRelationship: {
-        id: uuid(),
-        identification: false,
-        relationshipType: "ZeroOneN",
-        start: {
-          tableId: startTable.id,
-          columnIds: [startColumn.id],
-          direction: "bottom",
-          x: 0,
-          y: 0,
+    relationshipState.relationships.push(
+      new RelationshipModel({
+        loadRelationship: {
+          id: uuid(),
+          identification: false,
+          relationshipType: "ZeroOneN",
+          start: {
+            tableId: startTable.id,
+            columnIds: [startColumn.id],
+            direction: "bottom",
+            x: 0,
+            y: 0,
+          },
+          end: {
+            tableId: endTable.id,
+            columnIds: [endColumn.id],
+            direction: "bottom",
+            x: 0,
+            y: 0,
+          },
         },
-        end: {
-          tableId: endTable.id,
-          columnIds: [endColumn.id],
-          direction: "bottom",
-          x: 0,
-          y: 0,
-        },
-      },
-    });
-    relationshipState.relationships.push(relationship);
+      })
+    );
+    const relationship = relationshipState.relationships[0];
 
     // when
     store.dispatch(activeEndColumn(relationship));
