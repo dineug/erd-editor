@@ -2,17 +2,17 @@ import { css } from "lit-element";
 
 export const tuiGrid = css`
   /*!
-  * TOAST UI Grid
-  * @version 4.10.1 | Mon Mar 23 2020
-  * @author NHN. FE Development Lab
-  * @license MIT
-  */
+ * TOAST UI Grid
+ * @version 4.12.1 | Mon May 18 2020
+ * @author NHN. FE Development Lab
+ * @license MIT
+ */
   /*!
-  * TOAST UI Select Box
-  * @version 1.0.0 | Thu Oct 24 2019
-  * @author NHN FE Development Lab <dl_javascript@nhn.com>
-  * @license MIT
-  */
+ * TOAST UI Select Box
+ * @version 1.0.0 | Thu Oct 24 2019
+ * @author NHN FE Development Lab <dl_javascript@nhn.com>
+ * @license MIT
+ */
   .tui-select-box {
     position: relative;
   }
@@ -337,6 +337,7 @@ export const tuiGrid = css`
     table-layout: fixed;
     border-collapse: collapse;
     border: 1px hidden transparent;
+    border-bottom: none;
   }
   .tui-grid-lside-area .tui-grid-table {
     width: 100%;
@@ -527,6 +528,7 @@ export const tuiGrid = css`
     top: 0;
     left: 0;
     overflow: hidden;
+    z-index: 5;
   }
   .tui-grid-lside-area .tui-grid-body-area {
     margin-right: -17px;
@@ -723,14 +725,10 @@ export const tuiGrid = css`
     width: 14px;
   }
   .tui-grid-tree-wrapper-relative {
-    display: table;
     position: relative;
     margin: -1px 0;
-    height: 100%;
-    width: 100%;
   }
   .tui-grid-tree-wrapper-valign-center {
-    display: table-cell;
     vertical-align: middle;
   }
   .tui-grid-tree-extra-content {
@@ -921,8 +919,8 @@ export const tuiGrid = css`
   }
 
   .tui-grid-filter-btn-apply {
-    background-color: var(--vuerd-theme-focus, var(--vuerd-color-focus));
-    border: 1px solid var(--vuerd-theme-focus, var(--vuerd-color-focus));
+    background-color: #00a9ff;
+    border: 1px solid #00a9ff;
   }
 
   .tui-grid-filter-btn-apply:hover {
@@ -967,7 +965,7 @@ export const tuiGrid = css`
   }
 
   .tui-grid-editor-select-box-layer {
-    position: fixed;
+    position: absolute;
     z-index: 100;
   }
 
@@ -984,7 +982,7 @@ export const tuiGrid = css`
   }
 
   .tui-grid-editor-checkbox-list-layer {
-    position: fixed;
+    position: absolute;
     background-color: #fff;
     border: 1px solid #aaa;
     z-index: 100;
@@ -1056,7 +1054,7 @@ export const tuiGrid = css`
 
   .tui-grid-editor-datepicker-layer {
     margin-top: -4px;
-    position: fixed;
+    position: absolute;
     z-index: 100;
   }
 

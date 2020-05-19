@@ -39,7 +39,7 @@ class Help extends EditorElement {
   }
 
   get right() {
-    return this.animate ? this.animationRight : 0;
+    return this.animation ? this.animationRight : 0;
   }
 
   get helpDescribe(): HelpDescribe[] {
