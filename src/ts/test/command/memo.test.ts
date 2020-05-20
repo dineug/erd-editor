@@ -26,7 +26,7 @@ describe("command: memo", () => {
 
     // then
     store.observe(memoState.memos, () => {
-      expect(1).toBe(memoState.memos.length);
+      expect(memoState.memos.length).toBe(1);
       done();
     });
   });
@@ -49,8 +49,8 @@ describe("command: memo", () => {
     // then
     store.observe(memoState.memos, () => {
       const memo = getData(memoState.memos, command.data.id);
-      expect(command.data.ui.top + movementY).toBe(memo?.ui.top);
-      expect(command.data.ui.left + movementX).toBe(memo?.ui.left);
+      expect(memo?.ui.top).toBe(command.data.ui.top + movementY);
+      expect(memo?.ui.left).toBe(command.data.ui.left + movementX);
       done();
     });
   });
@@ -71,7 +71,7 @@ describe("command: memo", () => {
 
     // then
     store.observe(memoState.memos, () => {
-      expect(1).toBe(memoState.memos.length);
+      expect(memoState.memos.length).toBe(1);
       done();
     });
   });
@@ -93,8 +93,8 @@ describe("command: memo", () => {
 
     // then
     store.observe(memo2.ui, () => {
-      expect(true).toBe(memo.ui.active);
-      expect(false).toBe(memo2.ui.active);
+      expect(memo.ui.active).toBe(true);
+      expect(memo2.ui.active).toBe(false);
       done();
     });
   });
@@ -112,7 +112,7 @@ describe("command: memo", () => {
 
     // then
     store.observe(memo.ui, () => {
-      expect(false).toBe(memo.ui.active);
+      expect(memo.ui.active).toBe(false);
       done();
     });
   });
@@ -134,8 +134,8 @@ describe("command: memo", () => {
 
     // then
     store.observe(memo2.ui, () => {
-      expect(true).toBe(memo.ui.active);
-      expect(true).toBe(memo2.ui.active);
+      expect(memo.ui.active).toBe(true);
+      expect(memo2.ui.active).toBe(true);
       done();
     });
   });
@@ -154,7 +154,7 @@ describe("command: memo", () => {
 
     // then
     store.observe(memo, () => {
-      expect(value).toBe(memo.value);
+      expect(memo.value).toBe(value);
       done();
     });
   });
@@ -176,10 +176,10 @@ describe("command: memo", () => {
 
     // then
     store.observe(memo.ui, () => {
-      expect(top).toBe(memo.ui.top);
-      expect(left).toBe(memo.ui.left);
-      expect(width).toBe(memo.ui.width);
-      expect(height).toBe(memo.ui.height);
+      expect(memo.ui.top).toBe(top);
+      expect(memo.ui.left).toBe(left);
+      expect(memo.ui.width).toBe(width);
+      expect(memo.ui.height).toBe(height);
       done();
     });
   });
@@ -216,8 +216,8 @@ describe("command: memo", () => {
 
     // then
     store.observe(memo2.ui, () => {
-      expect(true).toBe(memo.ui.active);
-      expect(false).toBe(memo2.ui.active);
+      expect(memo.ui.active).toBe(true);
+      expect(memo2.ui.active).toBe(false);
       done();
     });
   });
@@ -235,7 +235,7 @@ describe("command: memo", () => {
     // then
     store.observe(memoState.memos, () => {
       const targetMemo = getData(memoState.memos, memo.id);
-      expect(memo.id).toBe(targetMemo?.id);
+      expect(targetMemo?.id).toBe(memo.id);
       done();
     });
   });

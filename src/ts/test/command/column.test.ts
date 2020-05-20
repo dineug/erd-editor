@@ -41,8 +41,8 @@ describe("command: column", () => {
 
     // then
     store.observe(table2.columns, () => {
-      expect(1).toBe(table.columns.length);
-      expect(1).toBe(table2.columns.length);
+      expect(table.columns.length).toBe(1);
+      expect(table2.columns.length).toBe(1);
       done();
     });
   });
@@ -64,8 +64,8 @@ describe("command: column", () => {
 
     // then
     store.observe(table2.columns, () => {
-      expect(1).toBe(table.columns.length);
-      expect(1).toBe(table2.columns.length);
+      expect(table.columns.length).toBe(1);
+      expect(table2.columns.length).toBe(1);
       done();
     });
   });
@@ -90,7 +90,7 @@ describe("command: column", () => {
 
     // then
     store.observe(table.columns, () => {
-      expect(1).toBe(table.columns.length);
+      expect(table.columns.length).toBe(1);
       done();
     });
   });
@@ -115,7 +115,7 @@ describe("command: column", () => {
 
     // then
     store.observe(table.columns, () => {
-      expect(1).toBe(table.columns.length);
+      expect(table.columns.length).toBe(1);
       done();
     });
   });
@@ -141,7 +141,7 @@ describe("command: column", () => {
 
     // then
     store.observe(column, () => {
-      expect(value).toBe(column.name);
+      expect(column.name).toBe(value);
       done();
     });
   });
@@ -167,7 +167,7 @@ describe("command: column", () => {
 
     // then
     store.observe(column, () => {
-      expect(value).toBe(column.comment);
+      expect(column.comment).toBe(value);
       done();
     });
   });
@@ -193,7 +193,7 @@ describe("command: column", () => {
 
     // then
     store.observe(column, () => {
-      expect(value).toBe(column.dataType);
+      expect(column.dataType).toBe(value);
       done();
     });
   });
@@ -219,7 +219,7 @@ describe("command: column", () => {
 
     // then
     store.observe(column, () => {
-      expect(value).toBe(column.default);
+      expect(column.default).toBe(value);
       done();
     });
   });
@@ -243,7 +243,7 @@ describe("command: column", () => {
 
     // then
     store.observe(column.option, () => {
-      expect(true).toBe(column.option.autoIncrement);
+      expect(column.option.autoIncrement).toBe(true);
       done();
     });
   });
@@ -267,7 +267,7 @@ describe("command: column", () => {
 
     // then
     store.observe(column.option, () => {
-      expect(true).toBe(column.option.primaryKey);
+      expect(column.option.primaryKey).toBe(true);
       done();
     });
   });
@@ -291,7 +291,7 @@ describe("command: column", () => {
 
     // then
     store.observe(column.option, () => {
-      expect(true).toBe(column.option.unique);
+      expect(column.option.unique).toBe(true);
       done();
     });
   });
@@ -315,7 +315,7 @@ describe("command: column", () => {
 
     // then
     store.observe(column.option, () => {
-      expect(true).toBe(column.option.notNull);
+      expect(column.option.notNull).toBe(true);
       done();
     });
   });
@@ -344,7 +344,7 @@ describe("command: column", () => {
     // then
     store.observe(table.columns, () => {
       const index = getIndex(table.columns, column.id);
-      expect(table.columns.length - 1).toBe(index);
+      expect(index).toBe(table.columns.length - 1);
       done();
     });
   });
@@ -397,8 +397,8 @@ describe("command: column", () => {
 
     // then
     store.observe(endColumn.ui, () => {
-      expect(true).toBe(startColumn.ui.active);
-      expect(true).toBe(endColumn.ui.active);
+      expect(startColumn.ui.active).toBe(true);
+      expect(endColumn.ui.active).toBe(true);
       done();
     });
   });
@@ -457,8 +457,8 @@ describe("command: column", () => {
 
     // then
     store.observe(endColumn.ui, () => {
-      expect(false).toBe(startColumn.ui.active);
-      expect(false).toBe(endColumn.ui.active);
+      expect(startColumn.ui.active).toBe(false);
+      expect(endColumn.ui.active).toBe(false);
       done();
     });
   });
@@ -492,8 +492,8 @@ describe("command: column", () => {
     store.observe(table.columns, () => {
       const targetColumn = table.columns[0];
       const targetColumn2 = table.columns[2];
-      expect(column.id).toBe(targetColumn.id);
-      expect(column2.id).toBe(targetColumn2.id);
+      expect(targetColumn.id).toBe(column.id);
+      expect(targetColumn2.id).toBe(column2.id);
       done();
     });
   });

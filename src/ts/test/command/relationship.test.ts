@@ -78,8 +78,8 @@ describe("command: relationship", () => {
     // then
     store.observe(relationshipState.relationships, () => {
       const endColumn = endTable.columns[0];
-      expect(1).toBe(relationshipState.relationships.length);
-      expect(true).toBe(endColumn.ui.fk);
+      expect(relationshipState.relationships.length).toBe(1);
+      expect(endColumn.ui.fk).toBe(true);
       done();
     });
   });
@@ -136,8 +136,8 @@ describe("command: relationship", () => {
 
     // then
     store.observe(relationshipState.relationships, () => {
-      expect(0).toBe(relationshipState.relationships.length);
-      expect(false).toBe(endColumn.ui.fk);
+      expect(relationshipState.relationships.length).toBe(0);
+      expect(endColumn.ui.fk).toBe(false);
       done();
     });
   });
@@ -164,7 +164,7 @@ describe("command: relationship", () => {
 
     // then
     store.observe(relationship, () => {
-      expect(value).toBe(relationship.relationshipType);
+      expect(relationship.relationshipType).toBe(value);
       done();
     });
   });
@@ -191,7 +191,7 @@ describe("command: relationship", () => {
 
     // then
     store.observe(relationship, () => {
-      expect(value).toBe(relationship.identification);
+      expect(relationship.identification).toBe(value);
       done();
     });
   });
@@ -214,7 +214,7 @@ describe("command: relationship", () => {
 
     // then
     store.observe(relationshipState.relationships, () => {
-      expect(1).toBe(relationshipState.relationships.length);
+      expect(relationshipState.relationships.length).toBe(1);
       done();
     });
   });

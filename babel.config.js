@@ -5,5 +5,6 @@ module.exports = {
   ],
   plugins: [
     ["transform-remove-console", { exclude: ["log", "warn", "error"] }],
+    ["inline-json-import", {}],
   ],
 };

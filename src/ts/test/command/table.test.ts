@@ -28,7 +28,7 @@ describe("command: table", () => {
 
     // then
     store.observe(tableState.tables, () => {
-      expect(1).toBe(tableState.tables.length);
+      expect(tableState.tables.length).toBe(1);
       done();
     });
   });
@@ -51,8 +51,8 @@ describe("command: table", () => {
     // then
     store.observe(tableState.tables, () => {
       const table = getData(tableState.tables, command.data.id);
-      expect(command.data.ui.top + movementY).toBe(table?.ui.top);
-      expect(command.data.ui.left + movementX).toBe(table?.ui.left);
+      expect(table?.ui.top).toBe(command.data.ui.top + movementY);
+      expect(table?.ui.left).toBe(command.data.ui.left + movementX);
       done();
     });
   });
@@ -73,7 +73,7 @@ describe("command: table", () => {
 
     // then
     store.observe(tableState.tables, () => {
-      expect(1).toBe(tableState.tables.length);
+      expect(tableState.tables.length).toBe(1);
       done();
     });
   });
@@ -95,8 +95,8 @@ describe("command: table", () => {
 
     // then
     store.observe(table2.ui, () => {
-      expect(true).toBe(table.ui.active);
-      expect(false).toBe(table2.ui.active);
+      expect(table.ui.active).toBe(true);
+      expect(table2.ui.active).toBe(false);
       done();
     });
   });
@@ -116,7 +116,7 @@ describe("command: table", () => {
 
     // then
     store.observe(table.ui, () => {
-      expect(false).toBe(table.ui.active);
+      expect(table.ui.active).toBe(false);
       done();
     });
   });
@@ -138,8 +138,8 @@ describe("command: table", () => {
 
     // then
     store.observe(table2.ui, () => {
-      expect(true).toBe(table.ui.active);
-      expect(true).toBe(table2.ui.active);
+      expect(table.ui.active).toBe(true);
+      expect(table2.ui.active).toBe(true);
       done();
     });
   });
@@ -161,8 +161,8 @@ describe("command: table", () => {
 
     // then
     store.observe(table2.ui, () => {
-      expect(true).toBe(table.ui.active);
-      expect(false).toBe(table2.ui.active);
+      expect(table.ui.active).toBe(true);
+      expect(table2.ui.active).toBe(false);
       done();
     });
   });
@@ -184,7 +184,7 @@ describe("command: table", () => {
 
     // then
     store.observe(table, () => {
-      expect(value).toBe(table.name);
+      expect(table.name).toBe(value);
       done();
     });
   });
@@ -206,7 +206,7 @@ describe("command: table", () => {
 
     // then
     store.observe(table, () => {
-      expect(value).toBe(table.comment);
+      expect(table.comment).toBe(value);
       done();
     });
   });
@@ -243,8 +243,8 @@ describe("command: table", () => {
 
     // then
     store.observe(table2.ui, () => {
-      expect(true).toBe(table.ui.active);
-      expect(false).toBe(table2.ui.active);
+      expect(table.ui.active).toBe(true);
+      expect(table2.ui.active).toBe(false);
       done();
     });
   });
@@ -266,10 +266,10 @@ describe("command: table", () => {
 
     // then
     store.observe(table2.ui, () => {
-      expect(50).toBe(table.ui.top);
-      expect(50).toBe(table.ui.left);
-      expect(50).toBe(table2.ui.top);
-      expect(464).toBe(table2.ui.left);
+      expect(table.ui.top).toBe(50);
+      expect(table.ui.left).toBe(50);
+      expect(table2.ui.top).toBe(50);
+      expect(table2.ui.left).toBe(464);
       done();
     });
   });
@@ -290,7 +290,7 @@ describe("command: table", () => {
     // then
     store.observe(tableState.tables, () => {
       const targetTable = getData(tableState.tables, table.id);
-      expect(table.id).toBe(targetTable?.id);
+      expect(targetTable?.id).toBe(table.id);
       done();
     });
   });

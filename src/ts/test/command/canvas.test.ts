@@ -25,8 +25,8 @@ describe("command: canvas", () => {
 
     // then
     store.observe(canvasState, () => {
-      expect(scrollTop).toBe(canvasState.scrollTop);
-      expect(scrollLeft).toBe(canvasState.scrollLeft);
+      expect(canvasState.scrollTop).toBe(scrollTop);
+      expect(canvasState.scrollLeft).toBe(scrollLeft);
       done();
     });
   });
@@ -44,8 +44,8 @@ describe("command: canvas", () => {
 
     // then
     store.observe(canvasState, () => {
-      expect(width).toBe(canvasState.width);
-      expect(height).toBe(canvasState.height);
+      expect(canvasState.width).toBe(width);
+      expect(canvasState.height).toBe(height);
       done();
     });
   });
@@ -72,15 +72,15 @@ describe("command: canvas", () => {
 
     // then
     store.observe(show, () => {
-      expect(false).toBe(show.tableComment);
-      expect(false).toBe(show.columnComment);
-      expect(false).toBe(show.columnDataType);
-      expect(false).toBe(show.columnDefault);
-      expect(false).toBe(show.columnAutoIncrement);
-      expect(false).toBe(show.columnPrimaryKey);
-      expect(false).toBe(show.columnUnique);
-      expect(false).toBe(show.columnNotNull);
-      expect(false).toBe(show.relationship);
+      expect(show.tableComment).toBe(false);
+      expect(show.columnComment).toBe(false);
+      expect(show.columnDataType).toBe(false);
+      expect(show.columnDefault).toBe(false);
+      expect(show.columnAutoIncrement).toBe(false);
+      expect(show.columnPrimaryKey).toBe(false);
+      expect(show.columnUnique).toBe(false);
+      expect(show.columnNotNull).toBe(false);
+      expect(show.relationship).toBe(false);
       done();
     });
   });
@@ -96,11 +96,9 @@ describe("command: canvas", () => {
     store.dispatch(changeDatabase(database));
 
     // then
-    store.observe(canvasState, (name) => {
-      if (name === "database") {
-        expect(database).toBe(canvasState.database);
-        done();
-      }
+    store.observe(canvasState, () => {
+      expect(canvasState.database).toBe(database);
+      done();
     });
   });
 
@@ -115,11 +113,9 @@ describe("command: canvas", () => {
     store.dispatch(changeDatabaseName(databaseName));
 
     // then
-    store.observe(canvasState, (name) => {
-      if (name === "databaseName") {
-        expect(databaseName).toBe(canvasState.databaseName);
-        done();
-      }
+    store.observe(canvasState, () => {
+      expect(canvasState.databaseName).toBe(databaseName);
+      done();
     });
   });
 
@@ -134,11 +130,9 @@ describe("command: canvas", () => {
     store.dispatch(changeCanvasType(canvasType));
 
     // then
-    store.observe(canvasState, (name) => {
-      if (name === "canvasType") {
-        expect(canvasType).toBe(canvasState.canvasType);
-        done();
-      }
+    store.observe(canvasState, () => {
+      expect(canvasState.canvasType).toBe(canvasType);
+      done();
     });
   });
 
@@ -153,11 +147,9 @@ describe("command: canvas", () => {
     store.dispatch(changeLanguage(language));
 
     // then
-    store.observe(canvasState, (name) => {
-      if (name === "language") {
-        expect(language).toBe(canvasState.language);
-        done();
-      }
+    store.observe(canvasState, () => {
+      expect(canvasState.language).toBe(language);
+      done();
     });
   });
 
@@ -172,11 +164,9 @@ describe("command: canvas", () => {
     store.dispatch(changeTableCase(caseName));
 
     // then
-    store.observe(canvasState, (name) => {
-      if (name === "tableCase") {
-        expect(caseName).toBe(canvasState.tableCase);
-        done();
-      }
+    store.observe(canvasState, () => {
+      expect(canvasState.tableCase).toBe(caseName);
+      done();
     });
   });
 
@@ -191,11 +181,9 @@ describe("command: canvas", () => {
     store.dispatch(changeColumnCase(caseName));
 
     // then
-    store.observe(canvasState, (name) => {
-      if (name === "columnCase") {
-        expect(caseName).toBe(canvasState.columnCase);
-        done();
-      }
+    store.observe(canvasState, () => {
+      expect(canvasState.columnCase).toBe(caseName);
+      done();
     });
   });
 });
