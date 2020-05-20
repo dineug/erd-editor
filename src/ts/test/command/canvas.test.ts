@@ -1,4 +1,4 @@
-import { createEditorContext } from "../../core/EditorContext";
+import { createEditorContext } from "@src/core/EditorContext";
 import {
   moveCanvas,
   resizeCanvas,
@@ -9,7 +9,7 @@ import {
   changeLanguage,
   changeTableCase,
   changeColumnCase,
-} from "../../core/command/canvas";
+} from "@src/core/command/canvas";
 
 describe("command: canvas", () => {
   it("canvas.move", (done) => {

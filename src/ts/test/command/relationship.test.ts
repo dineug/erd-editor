@@ -1,17 +1,17 @@
-import { createEditorContext } from "../../core/EditorContext";
-import { getData, uuid } from "../../core/Helper";
-import { addTable } from "../../core/command/table";
-import { AddCustomColumn, addColumn } from "../../core/command/column";
+import { createEditorContext } from "@src/core/EditorContext";
+import { getData, uuid } from "@src/core/Helper";
+import { addTable } from "@src/core/command/table";
+import { AddCustomColumn, addColumn } from "@src/core/command/column";
 import {
   addRelationship,
   changeRelationshipType,
   changeIdentification,
   loadRelationship,
   removeRelationship,
-} from "../../core/command/relationship";
-import { TableModel } from "../../core/model/TableModel";
-import { ColumnModel } from "../../core/model/ColumnModel";
-import { RelationshipModel } from "../../core/model/RelationshipModel";
+} from "@src/core/command/relationship";
+import { TableModel } from "@src/core/model/TableModel";
+import { ColumnModel } from "@src/core/model/ColumnModel";
+import { RelationshipModel } from "@src/core/model/RelationshipModel";
 
 describe("command: relationship", () => {
   it("relationship.add", (done) => {

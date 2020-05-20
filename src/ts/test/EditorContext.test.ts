@@ -1,6 +1,6 @@
-import { createEditorContext } from "../core/EditorContext";
+import { createEditorContext } from "@src/core/EditorContext";
 
-test("create EditorContext", () => {
+it("create EditorContext", () => {
   const context = createEditorContext();
   expect(context).toBe(context);
 });

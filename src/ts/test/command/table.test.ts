@@ -1,5 +1,5 @@
-import { createEditorContext } from "../../core/EditorContext";
-import { getData } from "../../core/Helper";
+import { createEditorContext } from "@src/core/EditorContext";
+import { getData } from "@src/core/Helper";
 import {
   addTable,
   moveTable,
@@ -13,8 +13,8 @@ import {
   dragSelectTable,
   sortTable,
   loadTable,
-} from "../../core/command/table";
-import { TableModel } from "../../core/model/TableModel";
+} from "@src/core/command/table";
+import { TableModel } from "@src/core/model/TableModel";
 
 describe("command: table", () => {
   it("table.add", (done) => {

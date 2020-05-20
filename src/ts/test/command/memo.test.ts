@@ -1,5 +1,5 @@
-import { createEditorContext } from "../../core/EditorContext";
-import { getData } from "../../core/Helper";
+import { createEditorContext } from "@src/core/EditorContext";
+import { getData } from "@src/core/Helper";
 import {
   addMemo,
   moveMemo,
@@ -11,8 +11,8 @@ import {
   resizeMemo,
   dragSelectMemo,
   loadMemo,
-} from "../../core/command/memo";
-import { MemoModel } from "../../core/model/MemoModel";
+} from "@src/core/command/memo";
+import { MemoModel } from "@src/core/model/MemoModel";
 
 describe("command: memo", () => {
   it("memo.add", (done) => {

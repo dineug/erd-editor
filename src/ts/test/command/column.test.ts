@@ -1,6 +1,6 @@
-import { createEditorContext } from "../../core/EditorContext";
-import { getIndex, uuid } from "../../core/Helper";
-import { addTable } from "../../core/command/table";
+import { createEditorContext } from "@src/core/EditorContext";
+import { getIndex, uuid } from "@src/core/Helper";
+import { addTable } from "@src/core/command/table";
 import {
   addColumn,
   addCustomColumn,
@@ -18,10 +18,10 @@ import {
   activeColumn,
   activeEndColumn,
   loadColumn,
-} from "../../core/command/column";
-import { TableModel } from "../../core/model/TableModel";
-import { ColumnModel } from "../../core/model/ColumnModel";
-import { RelationshipModel } from "../../core/model/RelationshipModel";
+} from "@src/core/command/column";
+import { TableModel } from "@src/core/model/TableModel";
+import { ColumnModel } from "@src/core/model/ColumnModel";
+import { RelationshipModel } from "@src/core/model/RelationshipModel";
 
 describe("command: column", () => {
   it("column.add", (done) => {

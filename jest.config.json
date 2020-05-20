@@ -1,0 +1,6 @@
+{
+  "collectCoverage": true,
+  "moduleNameMapper": {
+    "^@src/(.*)": "<rootDir>/src/ts/$1"
+  }
+}
