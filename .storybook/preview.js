@@ -1,6 +1,6 @@
 import { configureActions } from "@storybook/addon-actions";
 import { setConsoleOptions } from "@storybook/addon-console";
-import "../dist/vuerd.min.js";
+import "../dist/vuerd.cjs.js";
 
 configureActions({
   depth: 100,
