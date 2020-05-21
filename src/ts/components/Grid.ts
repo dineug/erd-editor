@@ -62,6 +62,9 @@ class Grid extends EditorElement {
   @property({ type: Number })
   height = defaultHeight;
 
+  private deleteBatchExecuting = false;
+  private changeBatchExecuting = false;
+  private changeDataTypeSyncExecuting = false;
   private subscriptionList: Subscription[] = [];
   private subFilterStateList: Subscription[] = [];
   private edit = false;
@@ -238,6 +241,7 @@ class Grid extends EditorElement {
                 this.grid.setValue(row.rowKey, "dataType", "");
               });
             });
+            this.deleteBatchExecuting = true;
             batchGridTableName.forEach(({ tableId, rowKey }) => {
               this.grid
                 .findRows(
@@ -256,6 +260,7 @@ class Grid extends EditorElement {
                   this.grid.setValue(row.rowKey, "tableComment", "");
                 });
             });
+            this.deleteBatchExecuting = false;
             this.grid.clearModifiedData();
           }
         }
@@ -414,24 +419,32 @@ class Grid extends EditorElement {
       const { tableId, columnId } = row;
       switch (event.columnName) {
         case "tableName":
-          store.dispatch(changeTableName(helper, tableId, value));
-          this.grid
-            .findRows(
-              (row: any) => row.tableId === tableId && row.rowKey !== rowKey
-            )
-            .forEach((row) => {
-              this.grid.setValue(row.rowKey, "tableName", value);
-            });
+          if (!this.deleteBatchExecuting && !this.changeBatchExecuting) {
+            this.changeBatchExecuting = true;
+            store.dispatch(changeTableName(helper, tableId, value));
+            this.grid
+              .findRows(
+                (row: any) => row.tableId === tableId && row.rowKey !== rowKey
+              )
+              .forEach((row) => {
+                this.grid.setValue(row.rowKey, "tableName", value);
+              });
+            this.changeBatchExecuting = false;
+          }
           break;
         case "tableComment":
-          store.dispatch(changeTableComment(helper, tableId, value));
-          this.grid
-            .findRows(
-              (row: any) => row.tableId === tableId && row.rowKey !== rowKey
-            )
-            .forEach((row) => {
-              this.grid.setValue(row.rowKey, "tableComment", value);
-            });
+          if (!this.deleteBatchExecuting && !this.changeBatchExecuting) {
+            this.changeBatchExecuting = true;
+            store.dispatch(changeTableComment(helper, tableId, value));
+            this.grid
+              .findRows(
+                (row: any) => row.tableId === tableId && row.rowKey !== rowKey
+              )
+              .forEach((row) => {
+                this.grid.setValue(row.rowKey, "tableComment", value);
+              });
+            this.changeBatchExecuting = false;
+          }
           break;
         case "option":
           const changeOptions = changeColumnOptionList(prevValue, value);
@@ -450,28 +463,32 @@ class Grid extends EditorElement {
           store.dispatch(changeColumnName(helper, tableId, columnId, value));
           break;
         case "dataType":
-          const { tables } = this.context.store.tableState;
-          const { relationships } = this.context.store.relationshipState;
-          const column = getColumn(tables, tableId, columnId);
-          if (column) {
-            store.dispatch(
-              changeColumnDataType(helper, tableId, columnId, value)
-            );
-            // DataTypeSync
-            const columnIds = getDataTypeSyncColumns(
-              [column],
-              tables,
-              relationships
-            ).map((column) => column.id);
-            this.grid
-              .findRows(
-                (row: any) =>
-                  columnIds.some((columnId) => columnId === row.columnId) &&
-                  row.rowKey !== rowKey
-              )
-              .forEach((row) => {
-                this.grid.setValue(row.rowKey, "dataType", value);
-              });
+          if (!this.changeDataTypeSyncExecuting) {
+            this.changeDataTypeSyncExecuting = true;
+            const { tables } = this.context.store.tableState;
+            const { relationships } = this.context.store.relationshipState;
+            const column = getColumn(tables, tableId, columnId);
+            if (column) {
+              store.dispatch(
+                changeColumnDataType(helper, tableId, columnId, value)
+              );
+              // DataTypeSync
+              const columnIds = getDataTypeSyncColumns(
+                [column],
+                tables,
+                relationships
+              ).map((column) => column.id);
+              this.grid
+                .findRows(
+                  (row: any) =>
+                    columnIds.some((columnId) => columnId === row.columnId) &&
+                    row.rowKey !== rowKey
+                )
+                .forEach((row) => {
+                  this.grid.setValue(row.rowKey, "dataType", value);
+                });
+            }
+            this.changeDataTypeSyncExecuting = false;
           }
           break;
         case "default":
