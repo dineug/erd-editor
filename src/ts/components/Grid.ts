@@ -64,6 +64,7 @@ class Grid extends EditorElement {
 
   private deleteBatchExecuting = false;
   private changeBatchExecuting = false;
+  private deleteDataTypeSyncExecuting = false;
   private changeDataTypeSyncExecuting = false;
   private subscriptionList: Subscription[] = [];
   private subFilterStateList: Subscription[] = [];
@@ -236,11 +237,13 @@ class Grid extends EditorElement {
               }
             });
             store.dispatch(...batchCommand);
+            this.deleteDataTypeSyncExecuting = true;
             batchGridDataType.forEach((rows: any[]) => {
               rows.forEach((row) => {
                 this.grid.setValue(row.rowKey, "dataType", "");
               });
             });
+            this.deleteDataTypeSyncExecuting = false;
             this.deleteBatchExecuting = true;
             batchGridTableName.forEach(({ tableId, rowKey }) => {
               this.grid
@@ -463,7 +466,10 @@ class Grid extends EditorElement {
           store.dispatch(changeColumnName(helper, tableId, columnId, value));
           break;
         case "dataType":
-          if (!this.changeDataTypeSyncExecuting) {
+          if (
+            !this.deleteDataTypeSyncExecuting &&
+            !this.changeDataTypeSyncExecuting
+          ) {
             this.changeDataTypeSyncExecuting = true;
             const { tables } = this.context.store.tableState;
             const { relationships } = this.context.store.relationshipState;
