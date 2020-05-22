@@ -1,5 +1,6 @@
 import { html, customElement, property } from "lit-element";
-import { Subscription } from "rxjs";
+import { Subscription, Subject } from "rxjs";
+import { debounceTime } from "rxjs/operators";
 import tuiGrid from "tui-grid";
 import { EditorElement } from "./EditorElement";
 import { defaultHeight } from "./Layout";
@@ -66,6 +67,7 @@ class Grid extends EditorElement {
   private changeBatchExecuting = false;
   private deleteDataTypeSyncExecuting = false;
   private changeDataTypeSyncExecuting = false;
+  private filter$ = new Subject();
   private subscriptionList: Subscription[] = [];
   private subFilterStateList: Subscription[] = [];
   private edit = false;
@@ -127,6 +129,7 @@ class Grid extends EditorElement {
     const { store, helper, keymap, eventBus } = this.context;
     const { keydown$ } = this.context.windowEventObservable;
     this.subscriptionList.push(
+      this.filter$.pipe(debounceTime(200)).subscribe(() => this.onFilter()),
       keydown$.subscribe((event) => {
         if (
           !this.edit &&
@@ -343,12 +346,12 @@ class Grid extends EditorElement {
       store.observe(store.editorState.filterStateList, () => {
         this.unsubscribeFilterStateList();
         this.observeFilterStateList();
-        this.onFilter();
+        this.filter$.next();
       }),
       store.observe(store.editorState, (name) => {
         switch (name) {
           case "filterOperatorType":
-            this.onFilter();
+            this.filter$.next();
             break;
         }
       })
@@ -512,11 +515,8 @@ class Grid extends EditorElement {
     const { store } = this.context;
     const rows = filterGridData(store) as any[];
     if (rows.length === 0) {
-      if (this.grid.findRows((row) => true).length !== 0) {
-        this.grid.clear();
-      }
+      this.grid.resetData([]);
     } else {
-      this.grid.clear();
       this.grid.resetData(rows);
     }
   }
@@ -565,7 +565,7 @@ class Grid extends EditorElement {
     const { filterStateList } = this.context.store.editorState;
     filterStateList.forEach((filterState) => {
       this.subFilterStateList.push(
-        store.observe(filterState, () => this.onFilter())
+        store.observe(filterState, () => this.filter$.next())
       );
     });
   }

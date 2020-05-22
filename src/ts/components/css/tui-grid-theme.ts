@@ -11,54 +11,82 @@ export const tuiGridTheme = css`
     background-color: var(--vuerd-theme-table, var(--vuerd-color-table));
   }
   .tui-grid-container ::-webkit-scrollbar {
-    background-color: #fff;
+    background-color: #fff0;
   }
   .tui-grid-container ::-webkit-scrollbar-thumb {
-    background-color: #ddd;
+    background-color: var(
+      --vuerd-theme-scrollbar-thumb,
+      var(--vuerd-color-scrollbar-thumb)
+    );
   }
   .tui-grid-container ::-webkit-scrollbar-thumb:hover {
-    background-color: #ddd;
+    background-color: var(
+      --vuerd-theme-scrollbar-thumb-active,
+      var(--vuerd-color-scrollbar-thumb-active)
+    );
   }
   .tui-grid-container {
-    scrollbar-3dlight-color: #fff;
-    scrollbar-darkshadow-color: #fff;
-    scrollbar-track-color: #fff;
-    scrollbar-shadow-color: #fff;
-    scrollbar-face-color: #ddd;
-    scrollbar-highlight-color: #ddd;
-    scrollbar-arrow-color: #ddd;
+    scrollbar-3dlight-color: var(
+      --vuerd-theme-scrollbar-thumb,
+      var(--vuerd-color-scrollbar-thumb)
+    );
+    scrollbar-darkshadow-color: var(
+      --vuerd-theme-scrollbar-thumb,
+      var(--vuerd-color-scrollbar-thumb)
+    );
+    scrollbar-track-color: var(
+      --vuerd-theme-scrollbar-thumb,
+      var(--vuerd-color-scrollbar-thumb)
+    );
+    scrollbar-shadow-color: var(
+      --vuerd-theme-scrollbar-thumb,
+      var(--vuerd-color-scrollbar-thumb)
+    );
+    scrollbar-face-color: var(
+      --vuerd-theme-scrollbar-thumb,
+      var(--vuerd-color-scrollbar-thumb)
+    );
+    scrollbar-highlight-color: var(
+      --vuerd-theme-scrollbar-thumb,
+      var(--vuerd-color-scrollbar-thumb)
+    );
+    scrollbar-arrow-color: var(
+      --vuerd-theme-scrollbar-thumb,
+      var(--vuerd-color-scrollbar-thumb)
+    );
   }
   .tui-grid-border-line-bottom {
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--vuerd-theme-table, var(--vuerd-color-table));
   }
   .tui-grid-content-area {
-    border-color: #eee;
+    border-color: var(--vuerd-theme-table, var(--vuerd-color-table));
+    background-color: var(--vuerd-theme-table, var(--vuerd-color-table));
   }
   .tui-grid-scrollbar-y-inner-border {
-    background-color: #eee;
+    background-color: #fff0;
   }
   .tui-grid-scrollbar-y-outer-border {
-    background-color: #eee;
+    background-color: #fff0;
   }
   .tui-grid-scrollbar-right-top {
-    background-color: #f9f9f9;
-    border-color: #eee;
+    background-color: #fff0;
+    border-color: #fff0;
   }
   .tui-grid-scrollbar-right-bottom {
-    background-color: #f9f9f9;
-    border-color: #eee;
+    background-color: #fff0;
+    border-color: #fff0;
   }
   .tui-grid-scrollbar-left-bottom {
-    background-color: #f9f9f9;
-    border-color: #eee;
+    background-color: #fff0;
+    border-color: #fff0;
   }
   .tui-grid-scrollbar-frozen-border {
-    background-color: #f9f9f9;
-    border-color: #eee;
+    background-color: #fff0;
+    border-color: #fff0;
   }
   .tui-grid-height-resize-handle {
-    background-color: #fff;
-    border-color: #fff;
+    background-color: #fff0;
+    border-color: #fff0;
   }
   .tui-grid-pagination {
     background-color: transparent;
@@ -172,5 +200,15 @@ export const tuiGridTheme = css`
   }
   .tui-grid-cell-dummy {
     background-color: #fff;
+  }
+
+  .tui-grid-layer-state {
+    background-color: var(
+      --vuerd-theme-table,
+      var(--vuerd-color-table)
+    ) !important;
+  }
+  .tui-grid-layer-state p {
+    color: var(--vuerd-theme-font, var(--vuerd-color-font)) !important;
   }
 `;

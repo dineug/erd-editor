@@ -1,6 +1,6 @@
 {
   "name": "vuerd",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "ERD editor",
   "main": "dist/vuerd.cjs.js",
   "module": "dist/vuerd.esm.js",
@@ -63,7 +63,7 @@
     "eslint-plugin-prettier": "^3.1.3",
     "jest": "^26.0.1",
     "prettier": "^2.0.5",
-    "rollup": "^2.10.5",
+    "rollup": "^2.10.7",
     "rollup-plugin-browsersync": "^1.1.0",
     "rollup-plugin-eslint": "^7.0.0",
     "rollup-plugin-generate-html-template": "^1.6.1",
