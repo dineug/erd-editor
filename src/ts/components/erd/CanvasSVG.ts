@@ -15,7 +15,6 @@ class CanvasSVG extends EditorElement {
   activeId = "";
 
   private relationships: Relationship[] = [];
-  private subscriptionList: Subscription[] = [];
   private subRelationships: Subscription[] = [];
 
   connectedCallback() {
@@ -44,7 +43,6 @@ class CanvasSVG extends EditorElement {
   }
   disconnectedCallback() {
     this.unsubscribeRelationships();
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

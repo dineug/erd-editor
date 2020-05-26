@@ -32,7 +32,7 @@
     "build": "rollup -c",
     "storybook": "start-storybook -p 8000",
     "storybook:build": "build-storybook -c .storybook -o docs",
-    "test": "jest -c jest.config.json"
+    "test": "jest"
   },
   "devDependencies": {
     "@babel/core": "^7.9.6",

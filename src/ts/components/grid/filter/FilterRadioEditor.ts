@@ -30,7 +30,6 @@ class FilterRadioEditor extends EditorElement {
 
   items: RadioItem[] = [];
 
-  private subscriptionList: Subscription[] = [];
   private subKeydown: Subscription | null = null;
 
   get placeholderValue() {
@@ -72,7 +71,6 @@ class FilterRadioEditor extends EditorElement {
   }
   disconnectedCallback() {
     this.subKeydown?.unsubscribe();
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

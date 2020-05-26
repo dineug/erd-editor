@@ -21,7 +21,6 @@ class MinimapHandle extends EditorElement {
   @property({ type: Number })
   height = defaultHeight;
 
-  private subscriptionList: Subscription[] = [];
   private subMoveEnd: Subscription | null = null;
   private subMove: Subscription | null = null;
 
@@ -64,7 +63,6 @@ class MinimapHandle extends EditorElement {
   }
   disconnectedCallback() {
     this.onMoveEnd();
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

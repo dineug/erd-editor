@@ -14,7 +14,6 @@ interface Option {
 
 @customElement("vuerd-grid-column-option-editor")
 export class ColumnOptionEditor extends EditorElement {
-  private subscriptionList: Subscription[] = [];
   private options: Option[] = [
     {
       name: "Primary Key",
@@ -84,10 +83,6 @@ export class ColumnOptionEditor extends EditorElement {
   }
   updated() {
     this.onFocus();
-  }
-  disconnectedCallback() {
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
-    super.disconnectedCallback();
   }
 
   render() {

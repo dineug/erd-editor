@@ -48,6 +48,7 @@ import {
   findActive as findActiveCommand,
   findActiveEnd,
 } from "@src/core/command/editor";
+import { shareMouse } from "@src/core/command/share";
 import "./erd/InputEdit";
 import "./erd/Canvas";
 import "./erd/CanvasSVG";
@@ -86,7 +87,6 @@ class ERD extends EditorElement {
   private contextmenuX = 0;
   private contextmenuY = 0;
   private contextmenuRelationship: Relationship | null = null;
-  private subscriptionList: Subscription[] = [];
   private subMoveEnd: Subscription | null = null;
   private subMove: Subscription | null = null;
   private subDrawRelationship: Subscription | null = null;
@@ -343,7 +343,6 @@ class ERD extends EditorElement {
     this.onMoveEnd();
     this.unsubscribeDrawRelationship();
     eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 
@@ -354,6 +353,7 @@ class ERD extends EditorElement {
       <div
         class="vuerd-erd"
         style=${styleMap(this.styleMap)}
+        @mousemove=${this.onTrack}
         @mousedown=${this.onMousedown}
         @touchstart=${this.onTouchstart}
         @contextmenu=${this.onContextmenu}
@@ -513,6 +513,19 @@ class ERD extends EditorElement {
       canvasState.scrollTop = erd.scrollTop;
       canvasState.scrollLeft = erd.scrollLeft;
       // store.dispatch(moveCanvas(erd.scrollTop, erd.scrollLeft));
+    }
+  }
+  private onTrack(event: MouseEvent) {
+    const el = event.target as HTMLElement;
+    if (
+      !el.closest(".vuerd-table") &&
+      !el.closest(".vuerd-memo") &&
+      !el.closest(".vuerd-contextmenu") &&
+      !el.closest(".vuerd-minimap") &&
+      !el.closest(".vuerd-minimap-handle")
+    ) {
+      const { store } = this.context;
+      store.dispatch(shareMouse(event.offsetX, event.offsetY));
     }
   }
 

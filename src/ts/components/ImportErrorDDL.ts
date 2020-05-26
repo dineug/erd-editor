@@ -22,7 +22,6 @@ class ImportErrorDDL extends EditorElement {
   message = "";
 
   private animationFrame = new AnimationFrame<{ right: number }>(200);
-  private subscriptionList: Subscription[] = [];
 
   get drawerWidth() {
     let width = this.width / 2;
@@ -63,7 +62,6 @@ class ImportErrorDDL extends EditorElement {
   disconnectedCallback() {
     const { eventBus } = this.context;
     eventBus.off(Bus.ImportErrorDDL.close, this.onClose);
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

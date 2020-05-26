@@ -1,7 +1,6 @@
 import { html, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
-import { Subscription } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Table } from "@src/core/store/Table";
@@ -12,7 +11,6 @@ import { virtualTable } from "@src/core/helper/TableHelper";
 class Canvas extends EditorElement {
   private tables: Table[] = [];
   private memos: Memo[] = [];
-  private subscriptionList: Subscription[] = [];
 
   get virtualTables() {
     const {
@@ -60,10 +58,6 @@ class Canvas extends EditorElement {
         }
       })
     );
-  }
-  disconnectedCallback() {
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
-    super.disconnectedCallback();
   }
 
   render() {

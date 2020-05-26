@@ -1,6 +1,5 @@
 import { html, customElement, property } from "lit-element";
 import { classMap } from "lit-html/directives/class-map";
-import { Subscription } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { SIZE_MIN_WIDTH } from "@src/core/Layout";
@@ -62,8 +61,6 @@ class Column extends EditorElement {
   tableId!: string;
   column!: ColumnModel;
 
-  private subscriptionList: Subscription[] = [];
-
   connectedCallback() {
     super.connectedCallback();
     const { store } = this.context;
@@ -83,10 +80,6 @@ class Column extends EditorElement {
         }
       })
     );
-  }
-  disconnectedCallback() {
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
-    super.disconnectedCallback();
   }
 
   render() {

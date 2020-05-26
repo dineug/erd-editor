@@ -1,7 +1,6 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { classMap } from "lit-html/directives/class-map";
-import { Subscription } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { ColumnOption } from "@src/core/store/Table";
@@ -14,8 +13,6 @@ class ColumnNotNull extends EditorElement {
 
   columnOption!: ColumnOption;
 
-  private subscriptionList: Subscription[] = [];
-
   connectedCallback() {
     super.connectedCallback();
     const { store } = this.context;
@@ -26,10 +23,6 @@ class ColumnNotNull extends EditorElement {
         }
       })
     );
-  }
-  disconnectedCallback() {
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
-    super.disconnectedCallback();
   }
 
   render() {

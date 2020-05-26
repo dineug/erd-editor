@@ -35,7 +35,6 @@ class Filter extends EditorElement {
   private draggable$: Subject<CustomEvent> = new Subject();
   private operatorList: RadioItem[] = [];
   private animationFrame = new AnimationFrame<{ top: number }>(200);
-  private subscriptionList: Subscription[] = [];
   private subDraggableFilterState: Subscription[] = [];
   private flipAnimation = new FlipAnimation(
     this.renderRoot,
@@ -108,7 +107,6 @@ class Filter extends EditorElement {
   disconnectedCallback() {
     const { eventBus } = this.context;
     eventBus.off(Bus.Filter.close, this.onClose);
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

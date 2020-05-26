@@ -28,7 +28,6 @@ class ColumnDataTypeHint extends EditorElement {
   columnId!: string;
 
   private startFilter = true;
-  private subscriptionList: Subscription[] = [];
   private flipAnimation = new FlipAnimation(
     this.renderRoot,
     ".vuerd-data-type-hint",
@@ -95,7 +94,6 @@ class ColumnDataTypeHint extends EditorElement {
     eventBus.off(Bus.ColumnDataTypeHint.arrowLeft, this.onArrowLeft);
     eventBus.off(Bus.ColumnDataTypeHint.arrowRight, this.onArrowRight);
     eventBus.off(Bus.ColumnDataTypeHint.startFilter, this.onStartFilter);
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

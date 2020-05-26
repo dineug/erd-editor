@@ -1,6 +1,5 @@
-import { html, customElement, property } from "lit-element";
+import { html, customElement } from "lit-element";
 import { classMap } from "lit-html/directives/class-map";
-import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import {
@@ -67,8 +66,6 @@ const menus: Menu[] = [
 
 @customElement("vuerd-menubar")
 class Menubar extends EditorElement {
-  private subscriptionList: Subscription[] = [];
-
   connectedCallback() {
     super.connectedCallback();
     const { store, eventBus } = this.context;
@@ -102,7 +99,6 @@ class Menubar extends EditorElement {
   disconnectedCallback() {
     const { eventBus } = this.context;
     eventBus.off(Bus.Menubar.filter, this.onFilter);
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

@@ -40,7 +40,6 @@ interface ResizeMemo {
 class Memo extends EditorElement {
   memo!: MemoModel;
 
-  private subscriptionList: Subscription[] = [];
   private subMoveEnd: Subscription | null = null;
   private subMove: Subscription | null = null;
   private subLerp: Subscription | null = null;
@@ -90,7 +89,6 @@ class Memo extends EditorElement {
     const { eventBus } = this.context;
     eventBus.off(Bus.Memo.moveValid, this.onMoveValid);
     this.onMoveEnd();
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

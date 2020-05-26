@@ -28,7 +28,6 @@ class Minimap extends EditorElement {
   private tables: Table[] = [];
   private memos: Memo[] = [];
   private relationships: Relationship[] = [];
-  private subscriptionList: Subscription[] = [];
   private subRelationships: Subscription[] = [];
 
   get styleMap() {
@@ -98,7 +97,6 @@ class Minimap extends EditorElement {
   }
   disconnectedCallback() {
     this.unsubscribeRelationships();
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

@@ -19,7 +19,6 @@ class Find extends EditorElement {
   top = 0;
 
   private animationFrame = new AnimationFrame<{ top: number }>(200);
-  private subscriptionList: Subscription[] = [];
 
   connectedCallback() {
     super.connectedCallback();
@@ -48,7 +47,6 @@ class Find extends EditorElement {
   disconnectedCallback() {
     const { eventBus } = this.context;
     eventBus.off(Bus.Find.close, this.onClose);
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

@@ -26,7 +26,6 @@ class FindTable extends EditorElement {
   hints: Hint[] = [];
 
   private startFilter = true;
-  private subscriptionList: Subscription[] = [];
   private flipAnimation = new FlipAnimation(
     this.renderRoot,
     ".vuerd-find-table-hint",
@@ -71,10 +70,6 @@ class FindTable extends EditorElement {
           break;
       }
     });
-  }
-  disconnectedCallback() {
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
-    super.disconnectedCallback();
   }
 
   render() {

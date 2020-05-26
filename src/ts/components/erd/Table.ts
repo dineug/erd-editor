@@ -40,7 +40,6 @@ class Table extends EditorElement {
   table!: TableModel;
 
   private draggable$: Subject<CustomEvent> = new Subject();
-  private subscriptionList: Subscription[] = [];
   private subMoveEnd: Subscription | null = null;
   private subMove: Subscription | null = null;
   private subFocusTable: Subscription | null = null;
@@ -114,7 +113,6 @@ class Table extends EditorElement {
     eventBus.off(Bus.Table.moveValid, this.onMoveValid);
     this.onMoveEnd();
     this.unsubscribeFocusTable();
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

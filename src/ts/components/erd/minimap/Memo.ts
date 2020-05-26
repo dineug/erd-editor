@@ -14,8 +14,6 @@ const MEMO_HEADER = 17 + SIZE_MEMO_PADDING;
 class Memo extends EditorElement {
   memo!: MemoModel;
 
-  private subscriptionList: Subscription[] = [];
-
   get width(): number {
     const { ui } = this.memo;
     return ui.width + MEMO_PADDING;
@@ -32,10 +30,6 @@ class Memo extends EditorElement {
     this.subscriptionList.push(
       store.observe(this.memo.ui, () => this.requestUpdate())
     );
-  }
-  disconnectedCallback() {
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
-    super.disconnectedCallback();
   }
 
   render() {

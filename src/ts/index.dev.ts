@@ -3,16 +3,17 @@ import { Editor } from "./types";
 
 document.body.style.margin = "0";
 
-const container = document.querySelector("#app");
-if (container) {
-  const editor = document.createElement("erd-editor") as Editor;
-  container.appendChild(editor);
-  editor.addEventListener("change", (event) => {
-    console.log(event.target);
-  });
-  window.addEventListener("resize", () => {
-    editor.width = window.innerWidth;
-    editor.height = window.innerHeight;
-  });
-  window.dispatchEvent(new Event("resize"));
-}
+const editor = document.createElement("erd-editor") as Editor;
+const editor2 = document.createElement("erd-editor") as Editor;
+document.body.appendChild(editor);
+document.body.appendChild(editor2);
+
+editor2.blur();
+
+window.addEventListener("resize", () => {
+  editor.width = window.innerWidth;
+  editor.height = window.innerHeight / 2;
+  editor2.width = window.innerWidth;
+  editor2.height = window.innerHeight / 2;
+});
+window.dispatchEvent(new Event("resize"));

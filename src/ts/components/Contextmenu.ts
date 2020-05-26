@@ -1,6 +1,5 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import { SIZE_CONTEXTMENU_HEIGHT } from "@src/core/Layout";
@@ -19,8 +18,6 @@ export class Contextmenu extends EditorElement {
 
   menus: Menu[] = [];
   relationship: Relationship | null = null;
-
-  private subscriptionList: Subscription[] = [];
 
   get childrenX() {
     let x = this.x;
@@ -67,7 +64,6 @@ export class Contextmenu extends EditorElement {
   }
   disconnectedCallback() {
     this.currentMenu = null;
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

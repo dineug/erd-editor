@@ -1,5 +1,4 @@
 import { html, customElement } from "lit-element";
-import { Subscription } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Column as ColumnModel } from "@src/core/store/Table";
@@ -7,8 +6,6 @@ import { Column as ColumnModel } from "@src/core/store/Table";
 @customElement("vuerd-minimap-column")
 class Column extends EditorElement {
   column!: ColumnModel;
-
-  private subscriptionList: Subscription[] = [];
 
   connectedCallback() {
     super.connectedCallback();
@@ -25,10 +22,6 @@ class Column extends EditorElement {
         }
       })
     );
-  }
-  disconnectedCallback() {
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
-    super.disconnectedCallback();
   }
 
   render() {

@@ -1,6 +1,5 @@
 import { html, customElement, property } from "lit-element";
 import { unsafeHTML } from "lit-html/directives/unsafe-html";
-import { Subscription } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Bus } from "@src/core/Event";
@@ -15,7 +14,6 @@ class SQL extends EditorElement {
 
   private contextmenuX = 0;
   private contextmenuY = 0;
-  private subscriptionList: Subscription[] = [];
   private menus: Menu[] = [];
 
   connectedCallback() {
@@ -37,7 +35,6 @@ class SQL extends EditorElement {
     Logger.debug("SQL disconnectedCallback");
     const { eventBus } = this.context;
     eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

@@ -11,7 +11,6 @@ import { drawRelationship } from "@src/core/command/editor";
 class DrawRelationship extends EditorElement {
   draw!: DrawRelationshipModel;
 
-  private subscriptionList: Subscription[] = [];
   private subDrawRelationship: Subscription | null = null;
 
   connectedCallback() {
@@ -43,7 +42,6 @@ class DrawRelationship extends EditorElement {
   }
   disconnectedCallback() {
     this.unsubscribeDrawRelationship();
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

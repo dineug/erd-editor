@@ -1,6 +1,5 @@
 import { Subscription } from "rxjs";
 import { Store } from "../Store";
-import { MoveKey } from "../Keymap";
 import { FilterState } from "../store/Editor";
 import {
   FocusFilterState,

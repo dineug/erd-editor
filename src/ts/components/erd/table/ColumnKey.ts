@@ -1,6 +1,5 @@
 import { html, customElement } from "lit-element";
 import { classMap } from "lit-html/directives/class-map";
-import { Subscription } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { ColumnUI } from "@src/core/store/Table";
@@ -8,8 +7,6 @@ import { ColumnUI } from "@src/core/store/Table";
 @customElement("vuerd-column-key")
 class ColumnKey extends EditorElement {
   columnUI!: ColumnUI;
-
-  private subscriptionList: Subscription[] = [];
 
   connectedCallback() {
     super.connectedCallback();
@@ -25,10 +22,6 @@ class ColumnKey extends EditorElement {
         }
       })
     );
-  }
-  disconnectedCallback() {
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
-    super.disconnectedCallback();
   }
 
   render() {

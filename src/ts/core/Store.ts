@@ -16,18 +16,22 @@ import {
   createRelationshipState,
 } from "./store/Relationship";
 import { EditorState, createEditorState } from "./store/Editor";
+import { ShareState, createShareState } from "./store/Share";
 import {
   Command,
   CommandType,
+  ShareCommand,
   executeCommand,
   changeCommandTypes,
   undoCommandTypes,
   streamCommandTypes,
+  shareCommandTypes,
 } from "./Command";
 import { createObservable } from "./Observable";
 import { UndoManager } from "./UndoManager";
 import { executeUndoCommand } from "./UndoCommand";
 import { hasUndoRedo, focusEndTable } from "./command/editor";
+import { uuid } from "./Helper";
 
 export class Store {
   readonly canvasState: CanvasState;
@@ -35,9 +39,13 @@ export class Store {
   readonly memoState: MemoState;
   readonly relationshipState: RelationshipState;
   readonly editorState: EditorState;
+  readonly shareState: ShareState;
   readonly dispatch$ = new Subject<Array<Command<CommandType>>>();
   readonly undo$ = new Subject<Array<Command<CommandType>>>();
   readonly change$: Observable<Array<Command<CommandType>>>;
+  readonly share$: Observable<Array<ShareCommand<CommandType>>>;
+  readonly id = uuid();
+  readonly userName = "user";
   private subscriptionList: Subscription[] = [];
   private rawToProxy = new WeakMap();
   private proxyToRaw = new WeakMap();
@@ -49,8 +57,8 @@ export class Store {
     "_store",
     "_subscriptionList",
     "_currentFocusColumn",
-    "focusColumns",
     "_currentFilterState",
+    "focusColumns",
     "focusFilterStateList",
   ];
   private undoManager: UndoManager;
@@ -91,19 +99,16 @@ export class Store {
       this.effect,
       this.excludeKeys
     );
+    this.shareState = createObservable(
+      createShareState(),
+      this.rawToProxy,
+      this.proxyToRaw,
+      this.effect,
+      this.excludeKeys
+    );
+
     this.undoManager = new UndoManager(this.hasUndoRedo);
-    this.change$ = merge(
-      this.undo$,
-      this.dispatch$.pipe(
-        filter((commands) =>
-          commands.some((command) =>
-            changeCommandTypes.some(
-              (commandType) => commandType === command.type
-            )
-          )
-        )
-      )
-    ).pipe(debounceTime(200));
+
     this.subscriptionList.push(
       this.undo$.subscribe((commands) => executeCommand(this, commands)),
       this.dispatch$
@@ -136,10 +141,43 @@ export class Store {
               : group$;
           })
         )
-        .subscribe((commands) => {
-          executeUndoCommand(this, this.undoManager, commands);
-        }),
+        .subscribe((commands) =>
+          executeUndoCommand(this, this.undoManager, commands)
+        ),
       this.dispatch$.subscribe((commands) => executeCommand(this, commands))
+    );
+
+    this.change$ = merge(
+      this.undo$,
+      this.dispatch$.pipe(
+        filter((commands) =>
+          commands.some((command) =>
+            changeCommandTypes.some(
+              (commandType) => commandType === command.type
+            )
+          )
+        )
+      )
+    ).pipe(debounceTime(200));
+
+    this.share$ = this.dispatch$.pipe(
+      filter((commands) =>
+        commands.some((command) =>
+          shareCommandTypes.some((commandType) => commandType === command.type)
+        )
+      ),
+      map((commands) => {
+        const shareCommands: Array<ShareCommand<CommandType>> = [];
+        commands.forEach((command) => {
+          shareCommands.push({
+            type: command.type,
+            data: command.data,
+            id: this.id,
+            name: this.userName,
+          });
+        });
+        return shareCommands;
+      })
     );
   }
 

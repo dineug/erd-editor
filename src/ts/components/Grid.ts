@@ -68,7 +68,6 @@ class Grid extends EditorElement {
   private deleteDataTypeSyncExecuting = false;
   private changeDataTypeSyncExecuting = false;
   private filter$ = new Subject();
-  private subscriptionList: Subscription[] = [];
   private subFilterStateList: Subscription[] = [];
   private edit = false;
   private grid!: tuiGrid;
@@ -402,7 +401,6 @@ class Grid extends EditorElement {
     this.grid.off("editingStart", this.onEditingStart);
     this.grid.off("editingFinish", this.onEditingFinish);
     this.grid.destroy();
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

@@ -166,10 +166,15 @@ import {
   executeFindActiveEnd,
   executeHasUndoRedo,
 } from "./command/editor";
+import { ShareMouse } from "./command/share";
 
 export interface Command<K extends CommandType> {
   type: K;
   data: CommandMap[K];
+}
+export interface ShareCommand<K extends CommandType> extends Command<K> {
+  id: string;
+  name: string;
 }
 export type CommandType = keyof CommandMap;
 interface CommandMap {
@@ -274,6 +279,8 @@ interface CommandMap {
   "editor.findActive": null;
   "editor.findActiveEnd": null;
   "editor.hasUndoRedo": HasUndoRedo;
+  // share
+  "share.mouse": ShareMouse;
 }
 
 export const changeCommandTypes: CommandType[] = [
@@ -371,6 +378,50 @@ export const streamCommandTypes: CommandType[] = [
   "memo.move",
   "memo.resize",
   "canvas.move",
+];
+
+export const shareCommandTypes: CommandType[] = [
+  // table
+  "table.add",
+  "table.move",
+  "table.remove",
+  "table.changeName",
+  "table.changeComment",
+  "table.sort",
+  // column
+  "column.add",
+  "column.addCustom",
+  "column.remove",
+  "column.changeName",
+  "column.changeComment",
+  "column.changeDataType",
+  "column.changeDefault",
+  "column.changeAutoIncrement",
+  "column.changePrimaryKey",
+  "column.changeUnique",
+  "column.changeNotNull",
+  "column.move",
+  // relationship
+  "relationship.add",
+  "relationship.remove",
+  "relationship.changeRelationshipType",
+  "relationship.changeIdentification",
+  // memo
+  "memo.add",
+  "memo.move",
+  "memo.remove",
+  "memo.changeValue",
+  "memo.resize",
+  // canvas
+  "canvas.resize",
+  "canvas.changeShow",
+  "canvas.changeDatabase",
+  "canvas.changeDatabaseName",
+  // editor
+  "editor.loadJson",
+  "editor.clear",
+  // share
+  "share.mouse",
 ];
 
 export function executeCommand(

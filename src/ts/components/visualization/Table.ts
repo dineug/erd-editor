@@ -1,7 +1,6 @@
 import { html, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { repeat } from "lit-html/directives/repeat";
-import { Subscription } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Table as TableModel } from "@src/core/store/Table";
@@ -12,8 +11,6 @@ class Table extends EditorElement {
   columnId: string | null = null;
   top = 0;
   left = 0;
-
-  private subscriptionList: Subscription[] = [];
 
   connectedCallback() {
     super.connectedCallback();
@@ -33,10 +30,6 @@ class Table extends EditorElement {
         }
       })
     );
-  }
-  disconnectedCallback() {
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
-    super.disconnectedCallback();
   }
 
   render() {

@@ -27,8 +27,6 @@ class DargSelect extends EditorElement {
   @property({ type: Number })
   height = 0;
 
-  private subscriptionList: Subscription[] = [];
-
   connectedCallback() {
     super.connectedCallback();
     const { mouseup$, mousemove$ } = this.context.windowEventObservable;
@@ -39,10 +37,6 @@ class DargSelect extends EditorElement {
       mousemove$.subscribe(this.onMousemove),
       fromEvent<MouseEvent>(erd, "mousemove").subscribe(this.onMousemoveERD)
     );
-  }
-  disconnectedCallback() {
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
-    super.disconnectedCallback();
   }
 
   render() {

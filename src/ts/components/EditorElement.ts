@@ -1,8 +1,10 @@
 import { LitElement } from "lit-element";
+import { Subscription } from "rxjs";
 import { EditorContext } from "@src/core/EditorContext";
 
 export class EditorElement extends LitElement {
-  context!: EditorContext;
+  protected context!: EditorContext;
+  protected subscriptionList: Subscription[] = [];
 
   connectedCallback() {
     super.connectedCallback();
@@ -12,6 +14,12 @@ export class EditorElement extends LitElement {
     this.context = editor.context as EditorContext;
     // cache update
     this.requestUpdate();
+  }
+
+  disconnectedCallback() {
+    this.subscriptionList.forEach((subscription) => subscription.unsubscribe());
+    this.subscriptionList = [];
+    super.disconnectedCallback();
   }
 
   protected createRenderRoot(): Element | ShadowRoot {

@@ -4,13 +4,13 @@ import { isObject } from "./Helper";
 let proxyCount = 0;
 
 export function createObservable<T>(
-  data: T,
+  raw: T,
   rawToProxy: WeakMap<object, any>,
   proxyToRaw: WeakMap<object, any>,
   effect: (raw: any, name: string | number | symbol) => void,
   excludeKeys: string[]
 ): T {
-  const proxy = new Proxy(data as any, {
+  const proxy = new Proxy(raw as any, {
     get(target, p) {
       if (
         isObject(target[p]) &&
@@ -32,24 +32,7 @@ export function createObservable<T>(
       return target[p];
     },
     set(target, p, value) {
-      if (Array.isArray(target[p])) {
-        const list = target[p].map((item: any) => {
-          if (proxyToRaw.has(item)) {
-            return proxyToRaw.get(item);
-          }
-          return item;
-        });
-        target[p] = list;
-      } else {
-        if (typeof target[p] === "object" && value === null) {
-          if (rawToProxy.has(target[p])) {
-            const proxy = rawToProxy.get(target[p]);
-            proxyToRaw.delete(proxy);
-          }
-          rawToProxy.delete(target[p]);
-        }
-        target[p] = value;
-      }
+      target[p] = value;
       if (Array.isArray(target)) {
         if (p === "length") {
           effect(target, p);
@@ -60,8 +43,8 @@ export function createObservable<T>(
       return true;
     },
   });
-  rawToProxy.set(data as any, proxy);
-  proxyToRaw.set(proxy, data);
-  Logger.debug(`createObservable proxyCount: ${++proxyCount}`, data);
+  rawToProxy.set(raw as any, proxy);
+  proxyToRaw.set(proxy, raw);
+  Logger.debug(`createObservable proxyCount: ${++proxyCount}`, raw);
   return proxy;
 }
