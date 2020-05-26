@@ -1,15 +1,12 @@
 import pkg from "./package.json";
 import config from "./rollup.config.common";
-import replace from "@rollup/plugin-replace";
 import strip from "@rollup/plugin-strip";
 import visualizer from "rollup-plugin-visualizer";
+import { terser } from "rollup-plugin-terser";
 
-const { esm, banner, onwarn } = config();
+const { esm, banner } = config();
 
 esm.push(
-  replace({
-    "process.env.NODE_ENV": JSON.stringify("production"),
-  }),
   strip({
     debugger: true,
     include: "**/*.ts",
@@ -35,10 +32,10 @@ export default [
         file: `dist/${pkg.name}.min.js`,
         format: "iife",
         banner,
+        plugins: [terser()],
       },
     ],
     plugins: esm,
-    onwarn,
   },
   {
     input: "src/ts/index.ts",
@@ -55,6 +52,5 @@ export default [
       },
     ],
     plugins: esm,
-    onwarn,
   },
 ];

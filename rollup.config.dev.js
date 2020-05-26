@@ -1,16 +1,9 @@
 import pkg from "./package.json";
 import config from "./rollup.config.common";
-import replace from "@rollup/plugin-replace";
 import html from "rollup-plugin-generate-html-template";
 import browsersync from "rollup-plugin-browsersync";
 
-const { esm, banner, onwarn } = config();
-
-esm.push(
-  replace({
-    "process.env.NODE_ENV": JSON.stringify("development"),
-  })
-);
+const { esm, banner } = config();
 
 export default [
   {
@@ -29,6 +22,5 @@ export default [
       ],
     },
     plugins: esm,
-    onwarn,
   },
 ];
