@@ -1,9 +1,9 @@
 import { storiesOf } from "@storybook/html";
-import { Editor } from "../types";
+import { ERDEditorElement } from "../types";
 
 const stories = storiesOf("Editor", module);
 
-function init(editor: Editor) {
+function init(editor: ERDEditorElement) {
   document.body.setAttribute("style", "padding: 0; margin: 0;");
   window.addEventListener("resize", () => {
     editor.width = window.innerWidth;
@@ -15,7 +15,7 @@ function init(editor: Editor) {
 stories.add(
   "load",
   () => {
-    const editor = document.createElement("erd-editor") as Editor;
+    const editor = document.createElement("erd-editor") as ERDEditorElement;
     init(editor);
 
     fetch("https://api.github.com/repos/vuerd/vuerd/contents/data/test.json")
@@ -31,11 +31,11 @@ stories.add(
 stories.add(
   "change",
   () => {
-    const editor = document.createElement("erd-editor") as Editor;
+    const editor = document.createElement("erd-editor") as ERDEditorElement;
     init(editor);
 
     editor.addEventListener("change", (event) => {
-      const el = event.target as Editor;
+      const el = event.target as ERDEditorElement;
       console.log(`change event editor data: \n ${el.value}`);
     });
 

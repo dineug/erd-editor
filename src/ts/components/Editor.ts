@@ -11,7 +11,7 @@ import { createJsonStringify } from "@src/core/File";
 import { loadJson, initLoadJson, clear } from "@src/core/command/editor";
 import { ThemeKey } from "@src/core/Theme";
 import { isObject } from "@src/core/Helper";
-import { Theme, Keymap, Editor } from "@src/types";
+import { ERDEditorElement, Theme, Keymap, User } from "@src/types";
 import "./Icon";
 import "./Contextmenu";
 import "./Sash";
@@ -25,7 +25,7 @@ import "./Help";
 import "./ImportErrorDDL";
 
 @customElement("vuerd-editor")
-class EditorModel extends LitElement implements Editor {
+class Editor extends LitElement implements ERDEditorElement {
   static get styles() {
     return Layout;
   }
@@ -113,63 +113,37 @@ class EditorModel extends LitElement implements Editor {
 
   render() {
     const { canvasType } = this.context.store.canvasState;
-    const {
-      canvas,
-      table,
-      tableActive,
-      focus,
-      keyPK,
-      keyFK,
-      keyPFK,
-      relationshipActive,
-      font,
-      fontActive,
-      fontPlaceholder,
-      contextmenu,
-      contextmenuActive,
-      edit,
-      mark,
-      columnSelect,
-      columnActive,
-      minimapShadow,
-      minimapHandle,
-      scrollBarThumb,
-      scrollBarThumbActive,
-      dragSelect,
-      menubar,
-      visualization,
-      help,
-    } = this.context.theme;
+    const { theme } = this.context;
     return html`
       <style>
         @import url("https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap");
         :host {
           --vuerd-font-family: "Noto Sans", sans-serif;
-          --vuerd-color-canvas: ${canvas};
-          --vuerd-color-table: ${table};
-          --vuerd-color-table-active: ${tableActive};
-          --vuerd-color-focus: ${focus};
-          --vuerd-color-key-pk: ${keyPK};
-          --vuerd-color-key-fk: ${keyFK};
-          --vuerd-color-key-pfk: ${keyPFK};
-          --vuerd-color-relationship-active: ${relationshipActive};
-          --vuerd-color-font: ${font};
-          --vuerd-color-font-active: ${fontActive};
-          --vuerd-color-font-placeholder: ${fontPlaceholder};
-          --vuerd-color-contextmenu: ${contextmenu};
-          --vuerd-color-contextmenu-active: ${contextmenuActive};
-          --vuerd-color-edit: ${edit};
-          --vuerd-color-mark: ${mark};
-          --vuerd-color-column-select: ${columnSelect};
-          --vuerd-color-column-active: ${columnActive};
-          --vuerd-color-minimap-shadow: ${minimapShadow};
-          --vuerd-color-minimap-handle: ${minimapHandle};
-          --vuerd-color-scrollbar-thumb: ${scrollBarThumb};
-          --vuerd-color-scrollbar-thumb-active: ${scrollBarThumbActive};
-          --vuerd-color-drag-select: ${dragSelect};
-          --vuerd-color-menubar: ${menubar};
-          --vuerd-color-visualization: ${visualization};
-          --vuerd-color-help: ${help};
+          --vuerd-color-canvas: ${theme.canvas};
+          --vuerd-color-table: ${theme.table};
+          --vuerd-color-table-active: ${theme.tableActive};
+          --vuerd-color-focus: ${theme.focus};
+          --vuerd-color-key-pk: ${theme.keyPK};
+          --vuerd-color-key-fk: ${theme.keyFK};
+          --vuerd-color-key-pfk: ${theme.keyPFK};
+          --vuerd-color-relationship-active: ${theme.relationshipActive};
+          --vuerd-color-font: ${theme.font};
+          --vuerd-color-font-active: ${theme.fontActive};
+          --vuerd-color-font-placeholder: ${theme.fontPlaceholder};
+          --vuerd-color-contextmenu: ${theme.contextmenu};
+          --vuerd-color-contextmenu-active: ${theme.contextmenuActive};
+          --vuerd-color-edit: ${theme.edit};
+          --vuerd-color-mark: ${theme.mark};
+          --vuerd-color-column-select: ${theme.columnSelect};
+          --vuerd-color-column-active: ${theme.columnActive};
+          --vuerd-color-minimap-shadow: ${theme.minimapShadow};
+          --vuerd-color-minimap-handle: ${theme.minimapHandle};
+          --vuerd-color-scrollbar-thumb: ${theme.scrollBarThumb};
+          --vuerd-color-scrollbar-thumb-active: ${theme.scrollBarThumbActive};
+          --vuerd-color-drag-select: ${theme.dragSelect};
+          --vuerd-color-menubar: ${theme.menubar};
+          --vuerd-color-visualization: ${theme.visualization};
+          --vuerd-color-help: ${theme.help};
         }
       </style>
       <div
@@ -278,7 +252,13 @@ class EditorModel extends LitElement implements Editor {
       });
     }
   }
+  setUser(user: User) {
+    const { store } = this.context;
+    if (isObject(user) && user.name) {
+      store.user.name = user.name;
+    }
+  }
 }
 
 @customElement("erd-editor")
-class EditorAlias extends EditorModel {}
+class EditorAlias extends Editor {}

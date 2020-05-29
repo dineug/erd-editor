@@ -1,9 +1,9 @@
 import { storiesOf } from "@storybook/html";
-import { Editor } from "../types";
+import { ERDEditorElement } from "../types";
 
 const stories = storiesOf("Theme", module);
 
-function init(editor: Editor) {
+function init(editor: ERDEditorElement) {
   document.body.setAttribute("style", "padding: 0; margin: 0;");
   window.addEventListener("resize", () => {
     editor.width = window.innerWidth;
@@ -16,7 +16,7 @@ stories.add(
   "css",
   () => {
     const container = document.createElement("div");
-    const editor = document.createElement("erd-editor") as Editor;
+    const editor = document.createElement("erd-editor") as ERDEditorElement;
     const style = document.createElement("style");
     container.appendChild(editor);
     container.appendChild(style);
@@ -36,7 +36,7 @@ stories.add(
 stories.add(
   "javascript",
   () => {
-    const editor = document.createElement("erd-editor") as Editor;
+    const editor = document.createElement("erd-editor") as ERDEditorElement;
     init(editor);
 
     editor.setTheme({

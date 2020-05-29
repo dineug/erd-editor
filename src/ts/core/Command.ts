@@ -168,13 +168,15 @@ import {
 } from "./command/editor";
 import { ShareMouse } from "./command/share";
 
+export interface User {
+  id: string;
+  name: string;
+}
+
 export interface Command<K extends CommandType> {
   type: K;
   data: CommandMap[K];
-}
-export interface ShareCommand<K extends CommandType> extends Command<K> {
-  id: string;
-  name: string;
+  user?: User;
 }
 export type CommandType = keyof CommandMap;
 interface CommandMap {

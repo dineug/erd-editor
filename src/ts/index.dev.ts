@@ -1,10 +1,10 @@
 import "./index";
-import { Editor } from "./types";
+import { ERDEditorElement } from "./types";
 
 document.body.style.margin = "0";
 
-const editor = document.createElement("erd-editor") as Editor;
-const editor2 = document.createElement("erd-editor") as Editor;
+const editor = document.createElement("erd-editor") as ERDEditorElement;
+const editor2 = document.createElement("erd-editor") as ERDEditorElement;
 document.body.appendChild(editor);
 document.body.appendChild(editor2);
 

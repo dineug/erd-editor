@@ -60,7 +60,7 @@ class Canvas extends EditorElement {
     );
   }
 
-  render() {
+  render$() {
     const { width, height } = this.context.store.canvasState;
     const { show } = this.context.store.canvasState;
     return html`

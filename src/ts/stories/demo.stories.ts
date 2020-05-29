@@ -1,9 +1,9 @@
 import { storiesOf } from "@storybook/html";
-import { Editor } from "../types";
+import { ERDEditorElement } from "../types";
 
 const stories = storiesOf("Demo", module);
 
-function init(editor: Editor) {
+function init(editor: ERDEditorElement) {
   document.body.setAttribute("style", "padding: 0; margin: 0;");
   window.addEventListener("resize", () => {
     editor.width = window.innerWidth;
@@ -15,7 +15,7 @@ function init(editor: Editor) {
 stories.add(
   "Live",
   () => {
-    const editor = document.createElement("erd-editor") as Editor;
+    const editor = document.createElement("erd-editor") as ERDEditorElement;
     init(editor);
 
     return editor;

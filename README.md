@@ -39,10 +39,10 @@
 - [Node.getRootNode()](https://developer.mozilla.org/en-US/docs/Web/API/Node/getRootNode) - Instance EditorContext Injection
 - [CSS variables](https://developer.mozilla.org/en-US/docs/Web/CSS/--*) - Custom Theme
 
-## interface EditorElement
+## interface ERDEditorElement
 
 ```typescript
-interface Editor extends HTMLElement {
+interface ERDEditorElement extends HTMLElement {
   width: number;
   height: number;
   value: string;
@@ -277,11 +277,18 @@ container.appendChild(editor);
 ### typescript
 
 ```typescript
-import { Editor } from "vuerd";
+import { ERDEditorElement } from "vuerd";
 
 const container = document.querySelector("#app");
-const editor = document.createElement("erd-editor") as Editor;
+const editor = document.createElement("erd-editor") as ERDEditorElement;
 container.appendChild(editor);
+
+// or
+declare global {
+  interface HTMLElementTagNameMap {
+    "erd-editor": ERDEditorElement;
+  }
+}
 ```
 
 ## CDN Quick Start

@@ -1,4 +1,4 @@
-export interface Editor extends HTMLElement {
+export interface ERDEditorElement extends HTMLElement {
   width: number;
   height: number;
   value: string;
@@ -8,6 +8,7 @@ export interface Editor extends HTMLElement {
   clear(): void;
   setTheme(theme: Theme): void;
   setKeymap(keymap: Keymap): void;
+  setUser(user: User): void;
 }
 
 export interface Theme {
@@ -69,4 +70,8 @@ export interface Keymap {
   relationshipOneN?: KeymapOption[];
   relationshipOne?: KeymapOption[];
   relationshipN?: KeymapOption[];
+}
+
+export interface User {
+  name: string;
 }

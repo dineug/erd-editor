@@ -88,6 +88,10 @@ export function isObject(obj: any): boolean {
   return typeof obj === "object" && obj !== null;
 }
 
+export function isFunction(fn: any): boolean {
+  return typeof fn === "function";
+}
+
 export function isEmpty(obj: any): boolean {
   return obj === null || obj === undefined;
 }

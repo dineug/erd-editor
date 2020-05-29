@@ -20,14 +20,14 @@ import { ShareState, createShareState } from "./store/Share";
 import {
   Command,
   CommandType,
-  ShareCommand,
+  User,
   executeCommand,
   changeCommandTypes,
   undoCommandTypes,
   streamCommandTypes,
   shareCommandTypes,
 } from "./Command";
-import { createObservable } from "./Observable";
+import { createObservable, observeLegacy } from "./Observable";
 import { UndoManager } from "./UndoManager";
 import { executeUndoCommand } from "./UndoCommand";
 import { hasUndoRedo, focusEndTable } from "./command/editor";
@@ -43,16 +43,12 @@ export class Store {
   readonly dispatch$ = new Subject<Array<Command<CommandType>>>();
   readonly undo$ = new Subject<Array<Command<CommandType>>>();
   readonly change$: Observable<Array<Command<CommandType>>>;
-  readonly share$: Observable<Array<ShareCommand<CommandType>>>;
-  readonly id = uuid();
-  readonly userName = "user";
+  readonly share$: Observable<Array<Command<CommandType>>>;
+  readonly user: User = {
+    id: uuid(),
+    name: "user",
+  };
   private subscriptionList: Subscription[] = [];
-  private rawToProxy = new WeakMap();
-  private proxyToRaw = new WeakMap();
-  private proxyToObservable = new WeakMap<
-    object,
-    Subject<string | number | symbol>
-  >();
   private excludeKeys: string[] = [
     "_store",
     "_subscriptionList",
@@ -64,48 +60,15 @@ export class Store {
   private undoManager: UndoManager;
 
   constructor() {
-    this.canvasState = createObservable(
-      createCanvasState(),
-      this.rawToProxy,
-      this.proxyToRaw,
-      this.effect,
-      this.excludeKeys
-    );
-    this.tableState = createObservable(
-      createTableState(),
-      this.rawToProxy,
-      this.proxyToRaw,
-      this.effect,
-      this.excludeKeys
-    );
-    this.memoState = createObservable(
-      createMemoState(),
-      this.rawToProxy,
-      this.proxyToRaw,
-      this.effect,
-      this.excludeKeys
-    );
+    this.canvasState = createObservable(createCanvasState(), this.excludeKeys);
+    this.tableState = createObservable(createTableState(), this.excludeKeys);
+    this.memoState = createObservable(createMemoState(), this.excludeKeys);
     this.relationshipState = createObservable(
       createRelationshipState(),
-      this.rawToProxy,
-      this.proxyToRaw,
-      this.effect,
       this.excludeKeys
     );
-    this.editorState = createObservable(
-      createEditorState(),
-      this.rawToProxy,
-      this.proxyToRaw,
-      this.effect,
-      this.excludeKeys
-    );
-    this.shareState = createObservable(
-      createShareState(),
-      this.rawToProxy,
-      this.proxyToRaw,
-      this.effect,
-      this.excludeKeys
-    );
+    this.editorState = createObservable(createEditorState(), this.excludeKeys);
+    this.shareState = createObservable(createShareState(), this.excludeKeys);
 
     this.undoManager = new UndoManager(this.hasUndoRedo);
 
@@ -162,18 +125,20 @@ export class Store {
 
     this.share$ = this.dispatch$.pipe(
       filter((commands) =>
+        commands.some((command) => command.user === undefined)
+      ),
+      filter((commands) =>
         commands.some((command) =>
           shareCommandTypes.some((commandType) => commandType === command.type)
         )
       ),
       map((commands) => {
-        const shareCommands: Array<ShareCommand<CommandType>> = [];
+        const shareCommands: Array<Command<CommandType>> = [];
         commands.forEach((command) => {
           shareCommands.push({
             type: command.type,
             data: command.data,
-            id: this.id,
-            name: this.userName,
+            user: Object.assign({}, this.user),
           });
         });
         return shareCommands;
@@ -192,14 +157,9 @@ export class Store {
 
   observe(
     proxy: any,
-    effect: (name: string | number | symbol) => void
+    observer: (name: string | number | symbol) => void
   ): Subscription {
-    let observable$ = this.proxyToObservable.get(proxy);
-    if (!observable$) {
-      observable$ = new Subject();
-      this.proxyToObservable.set(proxy, observable$);
-    }
-    return observable$.subscribe(effect);
+    return observeLegacy(proxy, observer);
   }
 
   undo() {
@@ -215,16 +175,6 @@ export class Store {
       this.undoManager.redo();
     }
   }
-
-  private effect = (raw: any, name: string | number | symbol) => {
-    const proxy = this.rawToProxy.get(raw);
-    if (proxy) {
-      const observable$ = this.proxyToObservable.get(proxy);
-      if (observable$) {
-        asapScheduler.schedule(() => observable$.next(name));
-      }
-    }
-  };
 
   private hasUndoRedo = () => {
     this.dispatch(
