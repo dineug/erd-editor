@@ -3,9 +3,18 @@ import { Subscription } from "rxjs";
 import { EditorContext } from "@src/core/EditorContext";
 import { observeStart, observeEnd, destroyRef } from "@src/core/Observable";
 
-export class EditorElement extends LitElement {
-  protected context!: EditorContext;
+export class RxElement extends LitElement {
   protected subscriptionList: Subscription[] = [];
+
+  disconnectedCallback() {
+    this.subscriptionList.forEach((subscription) => subscription.unsubscribe());
+    this.subscriptionList = [];
+    super.disconnectedCallback();
+  }
+}
+
+export class EditorElement extends RxElement {
+  context!: EditorContext;
 
   connectedCallback() {
     super.connectedCallback();
@@ -15,12 +24,6 @@ export class EditorElement extends LitElement {
     this.context = editor.context as EditorContext;
     // cache update
     this.requestUpdate();
-  }
-
-  disconnectedCallback() {
-    this.subscriptionList.forEach((subscription) => subscription.unsubscribe());
-    this.subscriptionList = [];
-    super.disconnectedCallback();
   }
 
   protected createRenderRoot(): Element | ShadowRoot {

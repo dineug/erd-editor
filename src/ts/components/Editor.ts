@@ -1,7 +1,7 @@
-import { LitElement, html, customElement, property } from "lit-element";
+import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { cache } from "lit-html/directives/cache";
-import { Subscription } from "rxjs";
+import { RxElement } from "./EditorElement";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
 import { keymapMatch, KeymapKey, KeymapOption } from "@src/core/Keymap";
@@ -25,7 +25,7 @@ import "./Help";
 import "./ImportErrorDDL";
 
 @customElement("vuerd-editor")
-class Editor extends LitElement implements ERDEditorElement {
+class Editor extends RxElement implements ERDEditorElement {
   static get styles() {
     return Layout;
   }
@@ -37,7 +37,6 @@ class Editor extends LitElement implements ERDEditorElement {
 
   context: EditorContext;
 
-  private subscriptionList: Subscription[] = [];
   private help = false;
   private importErrorDDL = false;
   private importErrorDDLMessage = "";
@@ -103,10 +102,9 @@ class Editor extends LitElement implements ERDEditorElement {
     this.context.helper.setSpan(span);
   }
   disconnectedCallback() {
-    const { store, windowEventObservable, eventBus } = this.context;
+    const { store, windowEventObservable } = this.context;
     store.destroy();
     windowEventObservable.destroy();
-    this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }
 

@@ -95,7 +95,7 @@ export function createWindowEventObservable(): WindowEventObservable {
 
 export class EventBus {
   private bus = document.createElement("div");
-  on(eventName: string) {
+  on(eventName: string): Observable<CustomEvent> {
     return new Observable<CustomEvent>((observer) => {
       const handler = (event: any) => observer.next(event);
       this.bus.addEventListener(eventName, handler);

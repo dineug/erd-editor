@@ -44,11 +44,6 @@ class GeneratorCode extends EditorElement {
       })
     );
   }
-  disconnectedCallback() {
-    Logger.debug("GeneratorCode disconnectedCallback");
-    const { eventBus } = this.context;
-    super.disconnectedCallback();
-  }
 
   render() {
     Logger.debug("GeneratorCode render");
