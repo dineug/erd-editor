@@ -115,8 +115,8 @@ class ERD extends EditorElement {
     Logger.debug("ERD connectedCallback");
     const { store, eventBus, keymap } = this.context;
     const { mousedown$, keydown$ } = this.context.windowEventObservable;
-    eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subscriptionList.push(
+      eventBus.on(Bus.ERD.contextmenuEnd).subscribe(this.onContextmenuEnd),
       store.observe(store.canvasState, (name) => {
         if (name === "scrollTop" || name === "scrollLeft") {
           const erd = this.erd;
@@ -339,10 +339,8 @@ class ERD extends EditorElement {
   }
   disconnectedCallback() {
     Logger.debug("ERD disconnectedCallback");
-    const { eventBus } = this.context;
     this.onMoveEnd();
     this.unsubscribeDrawRelationship();
-    eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     super.disconnectedCallback();
   }
 

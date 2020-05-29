@@ -75,9 +75,9 @@ class Memo extends EditorElement {
     const { store, eventBus } = this.context;
     this.subscriptionList.push(
       store.observe(this.memo.ui, () => this.requestUpdate()),
-      store.observe(this.memo, () => this.requestUpdate())
+      store.observe(this.memo, () => this.requestUpdate()),
+      eventBus.on(Bus.Memo.moveValid).subscribe(this.onMoveValid)
     );
-    eventBus.on(Bus.Memo.moveValid, this.onMoveValid);
   }
   firstUpdated() {
     const textarea = this.renderRoot.querySelector(
@@ -86,8 +86,6 @@ class Memo extends EditorElement {
     textarea.focus();
   }
   disconnectedCallback() {
-    const { eventBus } = this.context;
-    eventBus.off(Bus.Memo.moveValid, this.onMoveValid);
     this.onMoveEnd();
     super.disconnectedCallback();
   }

@@ -95,15 +95,16 @@ export function createWindowEventObservable(): WindowEventObservable {
 
 export class EventBus {
   private bus = document.createElement("div");
-  on(name: string, effect: (event: any) => void) {
-    this.bus.addEventListener(name, effect);
+  on(eventName: string) {
+    return new Observable<CustomEvent>((observer) => {
+      const handler = (event: any) => observer.next(event);
+      this.bus.addEventListener(eventName, handler);
+      return () => this.bus.removeEventListener(eventName, handler);
+    });
   }
-  off(name: string, effect: (event: any) => void) {
-    this.bus.removeEventListener(name, effect);
-  }
-  emit(name: string, detail?: any) {
+  emit(eventName: string, detail?: any) {
     this.bus.dispatchEvent(
-      new CustomEvent(name, {
+      new CustomEvent(eventName, {
         detail,
       })
     );

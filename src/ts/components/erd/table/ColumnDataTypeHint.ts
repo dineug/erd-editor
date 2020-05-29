@@ -66,13 +66,17 @@ class ColumnDataTypeHint extends EditorElement {
     this.hintFilter();
     this.subscriptionList.push(
       mousedown$.subscribe(this.onMousedownWindow),
-      fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown)
+      fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
+      eventBus.on(Bus.ColumnDataTypeHint.arrowUp).subscribe(this.onArrowUp),
+      eventBus.on(Bus.ColumnDataTypeHint.arrowDown).subscribe(this.onArrowDown),
+      eventBus.on(Bus.ColumnDataTypeHint.arrowLeft).subscribe(this.onArrowLeft),
+      eventBus
+        .on(Bus.ColumnDataTypeHint.arrowRight)
+        .subscribe(this.onArrowRight),
+      eventBus
+        .on(Bus.ColumnDataTypeHint.startFilter)
+        .subscribe(this.onStartFilter)
     );
-    eventBus.on(Bus.ColumnDataTypeHint.arrowUp, this.onArrowUp);
-    eventBus.on(Bus.ColumnDataTypeHint.arrowDown, this.onArrowDown);
-    eventBus.on(Bus.ColumnDataTypeHint.arrowLeft, this.onArrowLeft);
-    eventBus.on(Bus.ColumnDataTypeHint.arrowRight, this.onArrowRight);
-    eventBus.on(Bus.ColumnDataTypeHint.startFilter, this.onStartFilter);
   }
   updated(changedProperties: any) {
     changedProperties.forEach((oldValue: any, propName: string) => {
@@ -86,15 +90,6 @@ class ColumnDataTypeHint extends EditorElement {
           break;
       }
     });
-  }
-  disconnectedCallback() {
-    const { eventBus } = this.context;
-    eventBus.off(Bus.ColumnDataTypeHint.arrowUp, this.onArrowUp);
-    eventBus.off(Bus.ColumnDataTypeHint.arrowDown, this.onArrowDown);
-    eventBus.off(Bus.ColumnDataTypeHint.arrowLeft, this.onArrowLeft);
-    eventBus.off(Bus.ColumnDataTypeHint.arrowRight, this.onArrowRight);
-    eventBus.off(Bus.ColumnDataTypeHint.startFilter, this.onStartFilter);
-    super.disconnectedCallback();
   }
 
   render() {

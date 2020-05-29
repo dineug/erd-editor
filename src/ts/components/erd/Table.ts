@@ -100,17 +100,15 @@ class Table extends EditorElement {
             }
             break;
         }
-      })
+      }),
+      eventBus.on(Bus.Table.moveValid).subscribe(this.onMoveValid)
     );
     this.observeFocusTable();
-    eventBus.on(Bus.Table.moveValid, this.onMoveValid);
   }
   updated(changedProperties: any) {
     this.flipAnimation.play();
   }
   disconnectedCallback() {
-    const { eventBus } = this.context;
-    eventBus.off(Bus.Table.moveValid, this.onMoveValid);
     this.onMoveEnd();
     this.unsubscribeFocusTable();
     super.disconnectedCallback();

@@ -92,14 +92,9 @@ class Menubar extends EditorElement {
             this.requestUpdate();
             break;
         }
-      })
+      }),
+      eventBus.on(Bus.Menubar.filter).subscribe(this.onFilter)
     );
-    eventBus.on(Bus.Menubar.filter, this.onFilter);
-  }
-  disconnectedCallback() {
-    const { eventBus } = this.context;
-    eventBus.off(Bus.Menubar.filter, this.onFilter);
-    super.disconnectedCallback();
   }
 
   render() {

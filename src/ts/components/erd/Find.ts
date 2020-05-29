@@ -28,9 +28,9 @@ class Find extends EditorElement {
     const editor = root.querySelector(".vuerd-editor") as Element;
     this.subscriptionList.push(
       mousedown$.subscribe(this.onMousedownWindow),
-      fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown)
+      fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
+      eventBus.on(Bus.Find.close).subscribe(this.onClose)
     );
-    eventBus.on(Bus.Find.close, this.onClose);
     this.top = -1 * HEIGHT;
   }
   firstUpdated() {
@@ -43,11 +43,6 @@ class Find extends EditorElement {
         this.animation = false;
       })
       .start();
-  }
-  disconnectedCallback() {
-    const { eventBus } = this.context;
-    eventBus.off(Bus.Find.close, this.onClose);
-    super.disconnectedCallback();
   }
 
   render() {

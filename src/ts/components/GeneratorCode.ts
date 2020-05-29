@@ -30,8 +30,8 @@ class GeneratorCode extends EditorElement {
     Logger.debug("GeneratorCode connectedCallback");
     const { store, eventBus } = this.context;
     const { mousedown$ } = this.context.windowEventObservable;
-    eventBus.on(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     this.subscriptionList.push(
+      eventBus.on(Bus.ERD.contextmenuEnd).subscribe(this.onContextmenuEnd),
       mousedown$.subscribe(this.onMousedownWindow),
       store.observe(store.canvasState, (name) => {
         switch (name) {
@@ -47,7 +47,6 @@ class GeneratorCode extends EditorElement {
   disconnectedCallback() {
     Logger.debug("GeneratorCode disconnectedCallback");
     const { eventBus } = this.context;
-    eventBus.off(Bus.ERD.contextmenuEnd, this.onContextmenuEnd);
     super.disconnectedCallback();
   }
 

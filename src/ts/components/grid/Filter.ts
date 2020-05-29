@@ -79,9 +79,9 @@ class Filter extends EditorElement {
             }
             break;
         }
-      })
+      }),
+      eventBus.on(Bus.Filter.close).subscribe(this.onClose)
     );
-    eventBus.on(Bus.Filter.close, this.onClose);
     this.top = -1 * (this.height + PADDING);
     filterOperatorTypes.forEach((operatorType) => {
       this.operatorList.push({
@@ -103,11 +103,6 @@ class Filter extends EditorElement {
   }
   updated(changedProperties: any) {
     this.flipAnimation.play();
-  }
-  disconnectedCallback() {
-    const { eventBus } = this.context;
-    eventBus.off(Bus.Filter.close, this.onClose);
-    super.disconnectedCallback();
   }
 
   render() {

@@ -35,10 +35,14 @@ class Visualization extends EditorElement {
     const { store, eventBus } = this.context;
     this.selection = createVisualization(store, eventBus) as any;
     this.setViewBox();
-    eventBus.on(Bus.Visualization.startPreview, this.onStartPreview);
-    eventBus.on(Bus.Visualization.endPreview, this.onEndPreview);
-    eventBus.on(Bus.Visualization.dragStart, this.onDragStart);
-    eventBus.on(Bus.Visualization.dragEnd, this.onDragEnd);
+    this.subscriptionList.push(
+      eventBus
+        .on(Bus.Visualization.startPreview)
+        .subscribe(this.onStartPreview),
+      eventBus.on(Bus.Visualization.endPreview).subscribe(this.onEndPreview),
+      eventBus.on(Bus.Visualization.dragStart).subscribe(this.onDragStart),
+      eventBus.on(Bus.Visualization.dragEnd).subscribe(this.onDragEnd)
+    );
   }
   updated(changedProperties: any) {
     Logger.debug("Visualization updated");
@@ -49,15 +53,6 @@ class Visualization extends EditorElement {
           break;
       }
     });
-  }
-  disconnectedCallback() {
-    Logger.debug("Visualization disconnectedCallback");
-    const { eventBus } = this.context;
-    eventBus.off(Bus.Visualization.startPreview, this.onStartPreview);
-    eventBus.off(Bus.Visualization.endPreview, this.onEndPreview);
-    eventBus.off(Bus.Visualization.dragStart, this.onDragStart);
-    eventBus.off(Bus.Visualization.dragEnd, this.onDragEnd);
-    super.disconnectedCallback();
   }
 
   render() {

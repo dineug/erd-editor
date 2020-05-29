@@ -92,9 +92,9 @@ class Editor extends LitElement implements ERDEditorElement {
             eventBus.emit(Bus.Find.close);
           }
         }
-      })
+      }),
+      eventBus.on(Bus.Editor.importErrorDDL).subscribe(this.onImportErrorDDL)
     );
-    eventBus.on(Bus.Editor.importErrorDDL, this.onImportErrorDDL);
   }
   firstUpdated() {
     const span = this.renderRoot.querySelector(
@@ -106,7 +106,6 @@ class Editor extends LitElement implements ERDEditorElement {
     const { store, windowEventObservable, eventBus } = this.context;
     store.destroy();
     windowEventObservable.destroy();
-    eventBus.off(Bus.Editor.importErrorDDL, this.onImportErrorDDL);
     this.subscriptionList.forEach((sub) => sub.unsubscribe());
     super.disconnectedCallback();
   }

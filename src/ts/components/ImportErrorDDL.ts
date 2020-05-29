@@ -43,9 +43,9 @@ class ImportErrorDDL extends EditorElement {
     const editor = root.querySelector(".vuerd-editor") as Element;
     this.subscriptionList.push(
       mousedown$.subscribe(this.onMousedownWindow),
-      fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown)
+      fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
+      eventBus.on(Bus.ImportErrorDDL.close).subscribe(this.onClose)
     );
-    eventBus.on(Bus.ImportErrorDDL.close, this.onClose);
     this.animationRight = -1 * this.drawerWidth;
   }
   firstUpdated() {
@@ -58,11 +58,6 @@ class ImportErrorDDL extends EditorElement {
         this.animation = false;
       })
       .start();
-  }
-  disconnectedCallback() {
-    const { eventBus } = this.context;
-    eventBus.off(Bus.ImportErrorDDL.close, this.onClose);
-    super.disconnectedCallback();
   }
 
   render() {
