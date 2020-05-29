@@ -35,9 +35,9 @@
     "test": "jest"
   },
   "devDependencies": {
-    "@babel/core": "^7.9.6",
-    "@babel/preset-env": "^7.9.6",
-    "@babel/preset-typescript": "^7.9.0",
+    "@babel/core": "^7.10.1",
+    "@babel/preset-env": "^7.10.1",
+    "@babel/preset-typescript": "^7.10.1",
     "@fortawesome/free-solid-svg-icons": "^5.13.0",
     "@mdi/js": "^5.3.45",
     "@rollup/plugin-commonjs": "^12.0.0",
@@ -71,7 +71,7 @@
     "lit-element": "^2.3.1",
     "lit-html": "^1.2.1",
     "prettier": "^2.0.5",
-    "rollup": "^2.10.9",
+    "rollup": "^2.11.2",
     "rollup-plugin-browsersync": "^1.1.0",
     "rollup-plugin-eslint": "^7.0.0",
     "rollup-plugin-generate-html-template": "^1.6.1",
