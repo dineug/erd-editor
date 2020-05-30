@@ -1,6 +1,6 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { Subscription, fromEvent } from "rxjs";
+import { fromEvent } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
 import { defaultWidth } from "./Layout";
@@ -238,10 +238,9 @@ class Help extends EditorElement {
   }
 
   private onClose = () => {
-    this.animationRight = 0;
     this.animation = true;
     this.animationFrame
-      .play({ right: 0 }, { right: -1 * this.drawerWidth })
+      .play({ right: this.animationRight }, { right: -1 * this.drawerWidth })
       .update((value) => {
         this.animationRight = value.right;
       })
@@ -257,9 +256,11 @@ class Help extends EditorElement {
     }
   };
   private onMousedownWindow = (event: MouseEvent) => {
+    const { user } = this.context.store;
     const el = event.target as HTMLElement;
     const root = this.getRootNode() as ShadowRoot;
-    if (!el.closest(root.host.localName)) {
+    const target = el.closest(root.host.localName) as any;
+    if (!target || user.id !== target?.context?.store?.user?.id) {
       this.onClose();
     }
   };

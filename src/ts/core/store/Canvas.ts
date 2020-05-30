@@ -10,6 +10,7 @@ export interface CanvasState {
   language: Language; // ADD: version 0.2.16
   tableCase: NameCase; // ADD: version 0.2.18
   columnCase: NameCase; // ADD: version 0.2.18
+  setting: Setting; // ADD: version 1.1.0
 }
 
 export interface Show {
@@ -24,6 +25,10 @@ export interface Show {
   relationship: boolean;
 }
 export type ShowKey = keyof Show;
+
+export interface Setting {
+  relationshipDataTypeSync: boolean; // ADD: version 1.1.0
+}
 
 export type CanvasType =
   | "ERD"
@@ -95,5 +100,8 @@ export function createCanvasState(): CanvasState {
     language: "GraphQL",
     tableCase: "pascalCase",
     columnCase: "camelCase",
+    setting: {
+      relationshipDataTypeSync: true,
+    },
   };
 }

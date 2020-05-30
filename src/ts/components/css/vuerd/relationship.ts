@@ -9,9 +9,6 @@ export const relationship = css`
     stroke: var(--vuerd-theme-key-pfk, var(--vuerd-color-key-pfk));
   }
   .vuerd-relationship.active {
-    stroke: var(
-      --vuerd-theme-relationship-active,
-      var(--vuerd-color-relationship-active)
-    );
+    stroke: var(--vuerd-theme-edit, var(--vuerd-color-edit));
   }
 `;

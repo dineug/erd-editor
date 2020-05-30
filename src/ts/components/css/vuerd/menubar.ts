@@ -51,7 +51,11 @@ export const menubar = css`
     cursor: pointer;
     fill: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }
+  .vuerd-menubar > .vuerd-menubar-menu-vertical {
+    margin-left: 10px;
+  }
 
+  /* =============== Grid filter ============== */
   .vuerd-grid-filter {
     position: absolute;
     z-index: 100000040;
@@ -189,6 +193,7 @@ export const menubar = css`
     );
   }
 
+  /* =============== ERD find ============== */
   .vuerd-find {
     position: absolute;
     z-index: 100000040;

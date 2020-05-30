@@ -4,16 +4,13 @@ import strip from "@rollup/plugin-strip";
 import visualizer from "rollup-plugin-visualizer";
 import { terser } from "rollup-plugin-terser";
 
-const { esm, banner } = config();
+const { plugins, banner } = config();
 
-esm.push(
+plugins.push(
   strip({
     debugger: true,
     include: "**/*.ts",
     functions: ["Logger.debug"],
-  }),
-  visualizer({
-    filename: "./dist/stats.html",
   })
 );
 
@@ -32,10 +29,15 @@ export default [
         file: `dist/${pkg.name}.min.js`,
         format: "iife",
         banner,
-        plugins: [terser()],
+        plugins: [
+          terser(),
+          visualizer({
+            filename: "./dist/stats.html",
+          }),
+        ],
       },
     ],
-    plugins: esm,
+    plugins,
   },
   {
     input: "src/ts/index.ts",
@@ -51,6 +53,6 @@ export default [
         banner,
       },
     ],
-    plugins: esm,
+    plugins,
   },
 ];

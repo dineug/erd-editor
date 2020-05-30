@@ -7,19 +7,18 @@ import { defaultWidth } from "./Layout";
 import { AnimationFrame } from "@src/core/Animation";
 import { Bus } from "@src/core/Event";
 import { keymapOptionToString } from "@src/core/Keymap";
+import { changeRelationshipDataTypeSync } from "@src/core/command/canvas";
 
 const MAX_WIDTH = 800;
 
-@customElement("vuerd-import-error-ddl")
-class ImportErrorDDL extends EditorElement {
+@customElement("vuerd-setting")
+class Setting extends EditorElement {
   @property({ type: Number })
   width = defaultWidth;
   @property({ type: Boolean })
   animation = true;
   @property({ type: Number })
   animationRight = defaultWidth;
-  @property({ type: String })
-  message = "";
 
   private animationFrame = new AnimationFrame<{ right: number }>(200);
 
@@ -37,14 +36,19 @@ class ImportErrorDDL extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    const { eventBus } = this.context;
+    const { eventBus, store } = this.context;
     const { mousedown$ } = this.context.windowEventObservable;
     const root = this.getRootNode() as ShadowRoot;
     const editor = root.querySelector(".vuerd-editor") as Element;
     this.subscriptionList.push(
       mousedown$.subscribe(this.onMousedownWindow),
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
-      eventBus.on(Bus.ImportErrorDDL.close).subscribe(this.onClose)
+      eventBus.on(Bus.Setting.close).subscribe(this.onClose),
+      store.observe(store.canvasState.setting, (name) => {
+        if (name === "relationshipDataTypeSync") {
+          this.requestUpdate();
+        }
+      })
     );
     this.animationRight = -1 * this.drawerWidth;
   }
@@ -63,16 +67,17 @@ class ImportErrorDDL extends EditorElement {
   render() {
     const { keymap } = this.context;
     const keymapStop = keymapOptionToString(keymap.stop[0]);
+    const { setting } = this.context.store.canvasState;
     return html`
       <div
-        class="vuerd-import-error-ddl"
+        class="vuerd-setting"
         style=${styleMap({
           width: `${this.drawerWidth}px`,
           right: `${this.right}px`,
         })}
       >
-        <div class="vuerd-import-error-ddl-header">
-          <h3>Import SQL DDL Error</h3>
+        <div class="vuerd-setting-header">
+          <h3>Setting</h3>
           <vuerd-icon
             class="vuerd-button"
             title=${keymapStop}
@@ -81,19 +86,26 @@ class ImportErrorDDL extends EditorElement {
             @click=${this.onClose}
           ></vuerd-icon>
         </div>
-        <div class="vuerd-import-error-ddl-body vuerd-scrollbar">
-          ${this.message}
-        </div>
-        <div class="vuerd-import-error-ddl-footer">
-          <span>DDL Parser with</span>
-          <span style="color: red;"> &nbsp;❤&nbsp;</span>
-          <span> by&nbsp;</span>
-          <a
-            href="https://github.com/duartealexf/sql-ddl-to-json-schema"
-            target="_blank"
-          >
-            sql-ddl-to-json-schema
-          </a>
+        <div class="vuerd-setting-body vuerd-scrollbar">
+          <table>
+            <tbody>
+              <tr>
+                <td>
+                  Relationship DataType Sync
+                </td>
+                <td>
+                  <label class="vuerd-switch">
+                    <input
+                      type="checkbox"
+                      ?checked=${setting.relationshipDataTypeSync}
+                      @change=${this.onChangeRelationshipDataTypeSync}
+                    />
+                    <span class="slider round"></span>
+                  </label>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     `;
@@ -113,7 +125,7 @@ class ImportErrorDDL extends EditorElement {
   };
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
-    if (!el.closest(".vuerd-import-error-ddl")) {
+    if (!el.closest(".vuerd-setting")) {
       this.onClose();
     }
   };
@@ -126,4 +138,10 @@ class ImportErrorDDL extends EditorElement {
       this.onClose();
     }
   };
+
+  private onChangeRelationshipDataTypeSync(event: Event) {
+    const { store } = this.context;
+    const input = event.target as HTMLInputElement;
+    store.dispatch(changeRelationshipDataTypeSync(input.checked));
+  }
 }

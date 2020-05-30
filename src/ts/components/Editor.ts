@@ -23,6 +23,7 @@ import "./SQL";
 import "./GeneratorCode";
 import "./Help";
 import "./ImportErrorDDL";
+import "./Setting";
 
 @customElement("vuerd-editor")
 class Editor extends RxElement implements ERDEditorElement {
@@ -40,6 +41,7 @@ class Editor extends RxElement implements ERDEditorElement {
   private help = false;
   private importErrorDDL = false;
   private importErrorDDLMessage = "";
+  private setting = false;
 
   get value() {
     const { store } = this.context;
@@ -89,6 +91,7 @@ class Editor extends RxElement implements ERDEditorElement {
             eventBus.emit(Bus.ImportErrorDDL.close);
             eventBus.emit(Bus.Filter.close);
             eventBus.emit(Bus.Find.close);
+            eventBus.emit(Bus.Setting.close);
           }
         }
       }),
@@ -123,24 +126,19 @@ class Editor extends RxElement implements ERDEditorElement {
           --vuerd-color-key-pk: ${theme.keyPK};
           --vuerd-color-key-fk: ${theme.keyFK};
           --vuerd-color-key-pfk: ${theme.keyPFK};
-          --vuerd-color-relationship-active: ${theme.relationshipActive};
           --vuerd-color-font: ${theme.font};
           --vuerd-color-font-active: ${theme.fontActive};
           --vuerd-color-font-placeholder: ${theme.fontPlaceholder};
           --vuerd-color-contextmenu: ${theme.contextmenu};
           --vuerd-color-contextmenu-active: ${theme.contextmenuActive};
           --vuerd-color-edit: ${theme.edit};
-          --vuerd-color-mark: ${theme.mark};
           --vuerd-color-column-select: ${theme.columnSelect};
           --vuerd-color-column-active: ${theme.columnActive};
           --vuerd-color-minimap-shadow: ${theme.minimapShadow};
-          --vuerd-color-minimap-handle: ${theme.minimapHandle};
           --vuerd-color-scrollbar-thumb: ${theme.scrollBarThumb};
           --vuerd-color-scrollbar-thumb-active: ${theme.scrollBarThumbActive};
-          --vuerd-color-drag-select: ${theme.dragSelect};
           --vuerd-color-menubar: ${theme.menubar};
           --vuerd-color-visualization: ${theme.visualization};
-          --vuerd-color-help: ${theme.help};
         }
       </style>
       <div
@@ -150,7 +148,10 @@ class Editor extends RxElement implements ERDEditorElement {
           height: `${this.height}px`,
         })}
       >
-        <vuerd-menubar @help-start=${this.onHelp}></vuerd-menubar>
+        <vuerd-menubar
+          @help-start=${this.onHelp}
+          @setting-start=${this.onSetting}
+        ></vuerd-menubar>
         ${cache(
           canvasType === "ERD"
             ? html`
@@ -188,6 +189,14 @@ class Editor extends RxElement implements ERDEditorElement {
               ></vuerd-import-error-ddl>
             `
           : ""}
+        ${this.setting
+          ? html`
+              <vuerd-setting
+                .width=${this.width}
+                @close=${this.onSettingEnd}
+              ></vuerd-setting>
+            `
+          : ""}
       </div>
     `;
   }
@@ -209,6 +218,14 @@ class Editor extends RxElement implements ERDEditorElement {
   private onImportErrorDDLEnd() {
     this.importErrorDDL = false;
     this.importErrorDDLMessage = "";
+    this.requestUpdate();
+  }
+  private onSetting() {
+    this.setting = true;
+    this.requestUpdate();
+  }
+  private onSettingEnd() {
+    this.setting = false;
     this.requestUpdate();
   }
 

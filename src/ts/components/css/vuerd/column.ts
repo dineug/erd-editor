@@ -167,6 +167,6 @@ export const column = css`
     transition: transform 0.2s;
   }
   .vuerd-mark {
-    color: var(--vuerd-theme-mark, var(--vuerd-color-mark));
+    color: var(--vuerd-theme-edit, var(--vuerd-color-edit));
   }
 `;

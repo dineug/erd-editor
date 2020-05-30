@@ -72,10 +72,9 @@ class Find extends EditorElement {
   }
 
   private onClose = () => {
-    this.top = SIZE_MENUBAR_HEIGHT;
     this.animation = true;
     this.animationFrame
-      .play({ top: SIZE_MENUBAR_HEIGHT }, { top: -1 * HEIGHT })
+      .play({ top: this.top }, { top: -1 * HEIGHT })
       .update((value) => {
         this.top = value.top;
       })
@@ -91,9 +90,11 @@ class Find extends EditorElement {
     }
   };
   private onMousedownWindow = (event: MouseEvent) => {
+    const { user } = this.context.store;
     const el = event.target as HTMLElement;
     const root = this.getRootNode() as ShadowRoot;
-    if (!el.closest(root.host.localName)) {
+    const target = el.closest(root.host.localName) as any;
+    if (!target || user.id !== target?.context?.store?.user?.id) {
       this.onClose();
     }
   };

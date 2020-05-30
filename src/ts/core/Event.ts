@@ -150,6 +150,10 @@ enum ImportErrorDDL {
   close = "ImportErrorDDL.close",
 }
 
+enum Setting {
+  close = "Setting.close",
+}
+
 enum Menubar {
   filter = "Menubar.filter",
   find = "Menubar.find",
@@ -172,6 +176,7 @@ export const Bus = {
   Memo,
   Help,
   ImportErrorDDL,
+  Setting,
   Menubar,
   Filter,
   Find,

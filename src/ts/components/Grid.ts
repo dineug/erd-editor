@@ -138,6 +138,7 @@ class Grid extends EditorElement {
           if (updatedRows) {
             const { tables } = this.context.store.tableState;
             const { relationships } = this.context.store.relationshipState;
+            const { setting } = this.context.store.canvasState;
             const batchCommand: Array<Command<CommandType>> = [];
             const batchGridDataType: Array<Array<any>> = [];
             const batchGridTableName: Array<{
@@ -211,20 +212,22 @@ class Grid extends EditorElement {
                   batchCommand.push(
                     changeColumnDataType(helper, tableId, columnId, "")
                   );
-                  // DataTypeSync
-                  const columnIds = getDataTypeSyncColumns(
-                    [column],
-                    tables,
-                    relationships
-                  ).map((column) => column.id);
-                  batchGridDataType.push(
-                    this.grid.findRows(
-                      (row: any) =>
-                        columnIds.some(
-                          (columnId) => columnId === row.columnId
-                        ) && row.rowKey !== rowKey
-                    )
-                  );
+                  if (setting.relationshipDataTypeSync) {
+                    // DataTypeSync
+                    const columnIds = getDataTypeSyncColumns(
+                      [column],
+                      tables,
+                      relationships
+                    ).map((column) => column.id);
+                    batchGridDataType.push(
+                      this.grid.findRows(
+                        (row: any) =>
+                          columnIds.some(
+                            (columnId) => columnId === row.columnId
+                          ) && row.rowKey !== rowKey
+                      )
+                    );
+                  }
                 }
                 if (row.default === "" && row.default !== column.default) {
                   batchCommand.push(
@@ -417,6 +420,7 @@ class Grid extends EditorElement {
   };
   private onAfterChange = (event: any) => {
     const { store, helper } = this.context;
+    const { setting } = store.canvasState;
     const { value, prevValue, rowKey } = event;
     const row = this.grid.getRow(rowKey) as any;
     if (row) {
@@ -479,21 +483,23 @@ class Grid extends EditorElement {
               store.dispatch(
                 changeColumnDataType(helper, tableId, columnId, value)
               );
-              // DataTypeSync
-              const columnIds = getDataTypeSyncColumns(
-                [column],
-                tables,
-                relationships
-              ).map((column) => column.id);
-              this.grid
-                .findRows(
-                  (row: any) =>
-                    columnIds.some((columnId) => columnId === row.columnId) &&
-                    row.rowKey !== rowKey
-                )
-                .forEach((row) => {
-                  this.grid.setValue(row.rowKey, "dataType", value);
-                });
+              if (setting.relationshipDataTypeSync) {
+                // DataTypeSync
+                const columnIds = getDataTypeSyncColumns(
+                  [column],
+                  tables,
+                  relationships
+                ).map((column) => column.id);
+                this.grid
+                  .findRows(
+                    (row: any) =>
+                      columnIds.some((columnId) => columnId === row.columnId) &&
+                      row.rowKey !== rowKey
+                  )
+                  .forEach((row) => {
+                    this.grid.setValue(row.rowKey, "dataType", value);
+                  });
+              }
             }
             this.changeDataTypeSyncExecuting = false;
           }

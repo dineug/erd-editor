@@ -24,8 +24,7 @@ export const minimap = css`
   .vuerd-minimap-handle {
     position: absolute;
     z-index: 100000030;
-    border: solid
-      var(--vuerd-theme-minimap-handle, var(--vuerd-color-minimap-handle)) 1px;
+    border: solid var(--vuerd-theme-edit, var(--vuerd-color-edit)) 1px;
     cursor: pointer;
     opacity: 0.7;
   }

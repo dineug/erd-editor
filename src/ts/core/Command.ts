@@ -89,6 +89,7 @@ import {
   ChangeCanvasType,
   ChangeLanguage,
   ChangeNameCase,
+  ChangeRelationshipDataTypeSync,
   executeMoveCanvas,
   executeResizeCanvas,
   executeChangeCanvasShow,
@@ -98,6 +99,7 @@ import {
   executeChangeLanguage,
   executeChangeTableCase,
   executeChangeColumnCase,
+  executeChangeRelationshipDataTypeSync,
 } from "./command/canvas";
 import {
   FocusTable,
@@ -237,6 +239,7 @@ interface CommandMap {
   "canvas.changeLanguage": ChangeLanguage;
   "canvas.changeTableCase": ChangeNameCase;
   "canvas.changeColumnCase": ChangeNameCase;
+  "canvas.changeRelationshipDataTypeSync": ChangeRelationshipDataTypeSync;
   // editor
   "editor.focusTable": FocusTable;
   "editor.focusEndTable": null;
@@ -327,6 +330,7 @@ export const changeCommandTypes: CommandType[] = [
   "canvas.changeLanguage",
   "canvas.changeTableCase",
   "canvas.changeColumnCase",
+  "canvas.changeRelationshipDataTypeSync",
   // editor
   "editor.loadJson",
   "editor.clear",
@@ -419,6 +423,7 @@ export const shareCommandTypes: CommandType[] = [
   "canvas.changeShow",
   "canvas.changeDatabase",
   "canvas.changeDatabaseName",
+  "canvas.changeRelationshipDataTypeSync",
   // editor
   "editor.loadJson",
   "editor.clear",
@@ -636,6 +641,12 @@ function executeCanvasCommand(store: Store, command: Command<CommandType>) {
       break;
     case "canvas.changeColumnCase":
       executeChangeColumnCase(store, command.data as ChangeNameCase);
+      break;
+    case "canvas.changeRelationshipDataTypeSync":
+      executeChangeRelationshipDataTypeSync(
+        store,
+        command.data as ChangeRelationshipDataTypeSync
+      );
       break;
   }
 }

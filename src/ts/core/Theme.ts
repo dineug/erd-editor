@@ -6,24 +6,19 @@ export interface Theme {
   keyPK: string;
   keyFK: string;
   keyPFK: string;
-  relationshipActive: string;
   font: string;
   fontActive: string;
   fontPlaceholder: string;
   contextmenu: string;
   contextmenuActive: string;
   edit: string;
-  mark: string;
   columnSelect: string;
   columnActive: string;
   minimapShadow: string;
-  minimapHandle: string;
   scrollBarThumb: string;
   scrollBarThumbActive: string;
-  dragSelect: string;
   menubar: string;
   visualization: string;
-  help: string;
 }
 export type ThemeKey = keyof Theme;
 
@@ -36,23 +31,18 @@ export function createTheme(): Theme {
     keyPK: "#B4B400",
     keyFK: "#dda8b1",
     keyPFK: "#60b9c4",
-    relationshipActive: "#ffc107",
     font: "#a2a2a2",
     fontActive: "white",
     fontPlaceholder: "#6D6D6D",
     contextmenu: "#191919",
     contextmenuActive: "#383d41",
     edit: "#ffc107",
-    mark: "#ffc107",
     columnSelect: "#232a2f",
     columnActive: "#372908",
     minimapShadow: "black",
-    minimapHandle: "#ffc107",
     scrollBarThumb: "#6D6D6D",
     scrollBarThumbActive: "#a2a2a2",
-    dragSelect: "#0098ff",
     menubar: "black",
     visualization: "#191919",
-    help: "#191919",
   };
 }

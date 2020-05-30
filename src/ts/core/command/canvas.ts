@@ -190,3 +190,24 @@ export function executeChangeColumnCase(store: Store, data: ChangeNameCase) {
   Logger.debug("executeChangeColumnCase");
   store.canvasState.columnCase = data.nameCase;
 }
+
+export interface ChangeRelationshipDataTypeSync {
+  value: boolean;
+}
+export function changeRelationshipDataTypeSync(
+  value: boolean
+): Command<"canvas.changeRelationshipDataTypeSync"> {
+  return {
+    type: "canvas.changeRelationshipDataTypeSync",
+    data: {
+      value,
+    },
+  };
+}
+export function executeChangeRelationshipDataTypeSync(
+  store: Store,
+  data: ChangeRelationshipDataTypeSync
+) {
+  Logger.debug("executeChangeRelationshipDataTypeSync");
+  store.canvasState.setting.relationshipDataTypeSync = data.value;
+}

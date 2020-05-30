@@ -19,24 +19,19 @@ export interface Theme {
   keyPK?: string;
   keyFK?: string;
   keyPFK?: string;
-  relationshipActive?: string;
   font?: string;
   fontActive?: string;
   fontPlaceholder?: string;
   contextmenu?: string;
   contextmenuActive?: string;
   edit?: string;
-  mark?: string;
   columnSelect?: string;
   columnActive?: string;
   minimapShadow?: string;
-  minimapHandle?: string;
   scrollBarThumb?: string;
   scrollBarThumbActive?: string;
-  dragSelect?: string;
   menubar?: string;
   visualization?: string;
-  help?: string;
 }
 
 export interface KeymapOption {

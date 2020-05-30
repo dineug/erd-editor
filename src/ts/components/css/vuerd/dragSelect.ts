@@ -5,6 +5,6 @@ export const dragSelect = css`
   .vuerd-drag-select {
     position: fixed;
     z-index: 100000001;
-    stroke: var(--vuerd-theme-drag-select, var(--vuerd-color-drag-select));
+    stroke: var(--vuerd-theme-focus, var(--vuerd-color-focus));
   }
 `;

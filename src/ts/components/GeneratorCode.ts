@@ -76,9 +76,11 @@ class GeneratorCode extends EditorElement {
     this.contextmenu = false;
   };
   private onMousedownWindow = (event: MouseEvent) => {
+    const { user } = this.context.store;
     const el = event.target as HTMLElement;
     const root = this.getRootNode() as ShadowRoot;
-    if (!el.closest(root.host.localName)) {
+    const target = el.closest(root.host.localName) as any;
+    if (!target || user.id !== target?.context?.store?.user?.id) {
       this.contextmenu = false;
     }
   };

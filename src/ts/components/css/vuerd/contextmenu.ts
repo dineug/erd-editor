@@ -5,7 +5,7 @@ export const contextmenu = css`
   /* =============== contextmenu ============== */
   .vuerd-contextmenu {
     position: fixed;
-    z-index: 100000060;
+    z-index: 100002000;
     opacity: 0.9;
     color: var(--vuerd-theme-font, var(--vuerd-color-font));
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));

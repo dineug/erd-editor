@@ -285,15 +285,15 @@ export function executeChangeColumnDataType(
   data: ChangeColumnValue
 ) {
   Logger.debug("executeChangeColumnDataType");
+  const { setting } = store.canvasState;
   const { tables } = store.tableState;
   const { relationships } = store.relationshipState;
   const targetColumn = getColumn(tables, data.tableId, data.columnId);
   if (targetColumn) {
-    const columns = getDataTypeSyncColumns(
-      [targetColumn],
-      tables,
-      relationships
-    );
+    let columns: Column[] = [targetColumn];
+    if (setting.relationshipDataTypeSync) {
+      columns = getDataTypeSyncColumns([targetColumn], tables, relationships);
+    }
     columns.forEach((column) => {
       column.dataType = data.value;
       column.ui.widthDataType = data.width;

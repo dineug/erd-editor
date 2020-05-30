@@ -9,7 +9,10 @@ export const help = css`
     height: calc(100% - ${SIZE_MENUBAR_HEIGHT}px);
     color: var(--vuerd-theme-font, var(--vuerd-color-font));
     opacity: 0.9;
-    background-color: var(--vuerd-theme-help, var(--vuerd-color-help));
+    background-color: var(
+      --vuerd-theme-contextmenu,
+      var(--vuerd-color-contextmenu)
+    );
     z-index: 100000050;
     fill: #fff0;
     padding: 20px;

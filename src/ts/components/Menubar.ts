@@ -150,9 +150,22 @@ class Menubar extends EditorElement {
             </li>
           `
         )}
-        <li class="vuerd-menubar-menu" title="Help" @click=${this.onHelp}>
+        <li class="vuerd-menubar-menu-vertical"></li>
+        <li
+          class="vuerd-menubar-menu"
+          title="Help"
+          @click=${() => this.onEmit("help-start")}
+        >
           <vuerd-icon icon="question" size="16"></vuerd-icon>
         </li>
+        <li
+          class="vuerd-menubar-menu"
+          title="Setting"
+          @click=${() => this.onEmit("setting-start")}
+        >
+          <vuerd-icon icon="cog" size="16"></vuerd-icon>
+        </li>
+        <li class="vuerd-menubar-menu-vertical"></li>
         ${canvasType === "ERD"
           ? html`
               <li
@@ -260,8 +273,8 @@ class Menubar extends EditorElement {
       store.dispatch(changeCanvasType(canvasType));
     }
   }
-  private onHelp() {
-    this.dispatchEvent(new CustomEvent("help-start"));
+  private onEmit(eventName: string) {
+    this.dispatchEvent(new CustomEvent(eventName));
   }
   private onUndo() {
     const { store } = this.context;

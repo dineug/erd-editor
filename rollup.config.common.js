@@ -11,11 +11,9 @@ const banner = `/*!
  * @license ${pkg.license}
  */`;
 
-const esm = [resolve(), commonjs(), eslint(".eslintrc.json"), typescript()];
-
 export default function config() {
   return {
-    esm,
+    plugins: [resolve(), commonjs(), eslint(".eslintrc.json"), typescript()],
     banner,
   };
 }

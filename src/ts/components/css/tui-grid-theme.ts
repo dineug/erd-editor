@@ -93,10 +93,7 @@ export const tuiGridTheme = css`
     border-color: transparent;
   }
   .tui-grid-layer-selection {
-    background-color: var(
-      --vuerd-theme-drag-select,
-      var(--vuerd-color-drag-select)
-    );
+    background-color: var(--vuerd-theme-focus, var(--vuerd-color-focus));
     border-color: var(--vuerd-theme-focus, var(--vuerd-color-focus));
   }
   .tui-grid-header-area {

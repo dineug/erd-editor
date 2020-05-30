@@ -1,8 +1,11 @@
 import { TableInterface, ColumnInterface } from "sql-ddl-to-json-schema";
 import { uuid, Helper } from "./Helper";
 import { SIZE_MIN_WIDTH, SIZE_CANVAS_MIN, SIZE_CANVAS_MAX } from "./Layout";
-import { Database } from "./store/Canvas";
 import { JsonFormat } from "./File";
+import { createCanvasState, Database } from "./store/Canvas";
+import { createTableState } from "./store/Table";
+import { createMemoState } from "./store/Memo";
+import { createRelationshipState } from "./store/Relationship";
 
 export function createJson(
   tables: TableInterface[],
@@ -25,39 +28,15 @@ export function createJson(
 }
 
 function createJsonFormat(canvasSize: number, database: Database): JsonFormat {
+  const canvas = createCanvasState();
+  canvas.width = canvasSize;
+  canvas.height = canvasSize;
+  canvas.database = database;
   return {
-    canvas: {
-      width: canvasSize,
-      height: canvasSize,
-      scrollTop: 0,
-      scrollLeft: 0,
-      show: {
-        tableComment: true,
-        columnComment: true,
-        columnDataType: true,
-        columnDefault: true,
-        columnAutoIncrement: true,
-        columnPrimaryKey: true,
-        columnUnique: true,
-        columnNotNull: true,
-        relationship: true,
-      },
-      database,
-      databaseName: "",
-      canvasType: "ERD",
-      language: "GraphQL",
-      tableCase: "pascalCase",
-      columnCase: "camelCase",
-    },
-    table: {
-      tables: [],
-    },
-    memo: {
-      memos: [],
-    },
-    relationship: {
-      relationships: [],
-    },
+    canvas,
+    table: createTableState(),
+    memo: createMemoState(),
+    relationship: createRelationshipState(),
   };
 }
 

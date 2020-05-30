@@ -1,6 +1,8 @@
 import { css } from "lit-element";
+import { SIZE_FONT, SIZE_MENUBAR_HEIGHT } from "@src/core/Layout";
 import { help } from "./vuerd/help";
 import { importErrorDDL } from "./vuerd/importErrorDDL";
+import { setting } from "./vuerd/setting";
 import { contextmenu } from "./vuerd/contextmenu";
 import { sash } from "./vuerd/sash";
 import { table } from "./vuerd/table";
@@ -13,7 +15,6 @@ import { dragSelect } from "./vuerd/dragSelect";
 import { menubar } from "./vuerd/menubar";
 import { grid } from "./vuerd/grid";
 import { scrollbar } from "./vuerd/scrollbar";
-import { SIZE_FONT, SIZE_MENUBAR_HEIGHT } from "@src/core/Layout";
 
 export const vuerd = css`
   .vuerd-editor {
@@ -78,6 +79,7 @@ export const vuerd = css`
 
   ${help}
   ${importErrorDDL}
+  ${setting}
   ${contextmenu}
   ${sash}
   ${table}

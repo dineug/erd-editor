@@ -442,6 +442,14 @@ export function executeLoadJson(store: Store, data: LoadJson) {
               canvasState[key] = canvasJson[key];
             }
             break;
+          case "setting":
+            if (
+              typeof canvasJson.setting.relationshipDataTypeSync === "boolean"
+            ) {
+              canvasState.setting.relationshipDataTypeSync =
+                canvasJson.setting.relationshipDataTypeSync;
+            }
+            break;
         }
       }
     });
