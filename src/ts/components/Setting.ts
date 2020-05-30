@@ -152,7 +152,7 @@ class Setting extends EditorElement {
                 </td>
               </tr>
               <tr>
-                <td>Column Order</td>
+                <td>ColumnType Order</td>
                 <td>
                   ${repeat(
                     setting.columnOrder,
