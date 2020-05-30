@@ -99,24 +99,19 @@ interface Theme {
   keyPK?: string;
   keyFK?: string;
   keyPFK?: string;
-  relationshipActive?: string;
   font?: string;
   fontActive?: string;
   fontPlaceholder?: string;
   contextmenu?: string;
   contextmenuActive?: string;
   edit?: string;
-  mark?: string;
   columnSelect?: string;
   columnActive?: string;
   minimapShadow?: string;
-  minimapHandle?: string;
   scrollBarThumb?: string;
   scrollBarThumbActive?: string;
-  dragSelect?: string;
   menubar?: string;
   visualization?: string;
-  help?: string;
 }
 ```
 
@@ -133,24 +128,19 @@ interface Theme {
   --vuerd-theme-key-pk: #b4b400;
   --vuerd-theme-key-fk: #dda8b1;
   --vuerd-theme-key-pfk: #60b9c4;
-  --vuerd-theme-relationship-active: #ffc107;
   --vuerd-theme-font: #a2a2a2;
   --vuerd-theme-font-active: white;
   --vuerd-theme-font-placeholder: #6d6d6d;
   --vuerd-theme-contextmenu: #191919;
   --vuerd-theme-contextmenu-active: #383d41;
   --vuerd-theme-edit: #ffc107;
-  --vuerd-theme-mark: #ffc107;
   --vuerd-theme-column-select: #232a2f;
   --vuerd-theme-column-active: #372908;
   --vuerd-theme-minimap-shadow: black;
-  --vuerd-theme-minimap-handle: #ffc107;
   --vuerd-theme-scrollbar-thumb: #6d6d6d;
   --vuerd-theme-scrollbar-thumb-active: #a2a2a2;
-  --vuerd-theme-drag-select: #0098ff;
   --vuerd-theme-menubar: black;
   --vuerd-theme-visualization: #191919;
-  --vuerd-theme-help: #191919;
 }
 ```
 
@@ -166,24 +156,19 @@ editor.setTheme({
   keyPK: "#B4B400",
   keyFK: "#dda8b1",
   keyPFK: "#60b9c4",
-  relationshipActive: "#ffc107",
   font: "#a2a2a2",
   fontActive: "white",
   fontPlaceholder: "#6D6D6D",
   contextmenu: "#191919",
   contextmenuActive: "#383d41",
   edit: "#ffc107",
-  mark: "#ffc107",
   columnSelect: "#232a2f",
   columnActive: "#372908",
   minimapShadow: "black",
-  minimapHandle: "#ffc107",
   scrollBarThumb: "#6D6D6D",
   scrollBarThumbActive: "#a2a2a2",
-  dragSelect: "#0098ff",
   menubar: "black",
   visualization: "#191919",
-  help: "#191919",
 });
 ```
 
