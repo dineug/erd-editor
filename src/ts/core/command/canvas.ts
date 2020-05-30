@@ -7,6 +7,7 @@ import {
   CanvasType,
   Language,
   NameCase,
+  ColumnType,
 } from "../store/Canvas";
 import { relationshipSort } from "../helper/RelationshipHelper";
 
@@ -210,4 +211,33 @@ export function executeChangeRelationshipDataTypeSync(
 ) {
   Logger.debug("executeChangeRelationshipDataTypeSync");
   store.canvasState.setting.relationshipDataTypeSync = data.value;
+}
+
+export interface MoveColumnOrder {
+  columnType: ColumnType;
+  targetColumnType: ColumnType;
+}
+export function moveColumnOrder(
+  columnType: ColumnType,
+  targetColumnType: ColumnType
+): Command<"canvas.moveColumnOrder"> {
+  return {
+    type: "canvas.moveColumnOrder",
+    data: {
+      columnType,
+      targetColumnType,
+    },
+  };
+}
+export function executeMoveColumnOrder(store: Store, data: MoveColumnOrder) {
+  Logger.debug("executeMoveColumnOrder");
+  const { columnOrder } = store.canvasState.setting;
+  if (data.columnType !== data.targetColumnType) {
+    const targetIndex = columnOrder.indexOf(data.targetColumnType);
+    const currentIndex = columnOrder.indexOf(data.columnType);
+    if (targetIndex !== -1 && currentIndex !== -1) {
+      columnOrder.splice(currentIndex, 1);
+      columnOrder.splice(targetIndex, 0, data.columnType);
+    }
+  }
 }

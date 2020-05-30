@@ -1,14 +1,11 @@
-import { Show, ShowKey } from "../store/Canvas";
+import { Show, Setting } from "../store/Canvas";
 import { Column } from "../store/Table";
 import { FocusType } from "./FocusTableModel";
-import { focusEndColumn } from "../helper/FocusTableHelper";
+import {
+  focusEndColumn,
+  currentFocusShowList,
+} from "../helper/FocusTableHelper";
 
-const showKeys: ShowKey[] = [
-  "columnDataType",
-  "columnNotNull",
-  "columnDefault",
-  "columnComment",
-];
 export type FocusColumnKey =
   | "focusName"
   | "focusDataType"
@@ -57,6 +54,7 @@ export class FocusColumnModel implements FocusColumn {
 
   private _column: Column;
   private _show: Show;
+  private _setting: Setting;
 
   get id() {
     return this._column.id;
@@ -74,18 +72,13 @@ export class FocusColumnModel implements FocusColumn {
   }
 
   private get currentFocusShowList(): FocusType[] {
-    const focusTypes: FocusType[] = ["columnName"];
-    showKeys.forEach((showKey) => {
-      if (this._show[showKey]) {
-        focusTypes.push(showKey as FocusType);
-      }
-    });
-    return focusTypes;
+    return currentFocusShowList(this._show, this._setting);
   }
 
-  constructor(column: Column, show: Show) {
+  constructor(column: Column, show: Show, setting: Setting) {
     this._column = column;
     this._show = show;
+    this._setting = setting;
   }
 
   focus(focusType: FocusType) {

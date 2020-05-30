@@ -11,6 +11,7 @@ import {
   databaseList,
   languageList,
   nameCaseList,
+  ColumnType,
 } from "../store/Canvas";
 import {
   FilterColumnType,
@@ -448,6 +449,17 @@ export function executeLoadJson(store: Store, data: LoadJson) {
             ) {
               canvasState.setting.relationshipDataTypeSync =
                 canvasJson.setting.relationshipDataTypeSync;
+            }
+            if (
+              Array.isArray(canvasJson.setting.columnOrder) &&
+              canvasJson.setting.columnOrder.length === 5 &&
+              canvasJson.setting.columnOrder.indexOf("columnName") !== -1 &&
+              canvasJson.setting.columnOrder.indexOf("columnDataType") !== -1 &&
+              canvasJson.setting.columnOrder.indexOf("columnNotNull") !== -1 &&
+              canvasJson.setting.columnOrder.indexOf("columnDefault") !== -1 &&
+              canvasJson.setting.columnOrder.indexOf("columnComment") !== -1
+            ) {
+              canvasState.setting.columnOrder = canvasJson.setting.columnOrder;
             }
             break;
         }
@@ -1076,4 +1088,40 @@ export function executeHasUndoRedo(store: Store, data: HasUndoRedo) {
   const { editorState } = store;
   editorState.hasUndo = data.hasUndo;
   editorState.hasRedo = data.hasRedo;
+}
+
+export interface DraggableColumnOrder {
+  columnType: ColumnType;
+}
+export function draggableColumnOrder(
+  columnType: ColumnType
+): Command<"editor.draggableColumnOrder"> {
+  return {
+    type: "editor.draggableColumnOrder",
+    data: {
+      columnType,
+    },
+  };
+}
+export function executeDraggableColumnOrder(
+  store: Store,
+  data: DraggableColumnOrder
+) {
+  Logger.debug("executeDraggableColumnOrder");
+  const { editorState } = store;
+  editorState.draggableColumnOrder = data;
+}
+
+export function draggableEndColumnOrder(): Command<
+  "editor.draggableEndColumnOrder"
+> {
+  return {
+    type: "editor.draggableEndColumnOrder",
+    data: null,
+  };
+}
+export function executeDraggableEndColumnOrder(store: Store) {
+  Logger.debug("executeDraggableEndColumnOrder");
+  const { editorState } = store;
+  editorState.draggableColumnOrder = null;
 }

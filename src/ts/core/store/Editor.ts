@@ -3,7 +3,11 @@ import {
   FocusFilter,
   FocusType as FocusFilterType,
 } from "../model/FocusFilterModel";
-import { DraggableColumn, DraggableFilterState } from "../command/editor";
+import {
+  DraggableColumn,
+  DraggableFilterState,
+  DraggableColumnOrder,
+} from "../command/editor";
 import { Table, Column } from "./Table";
 import { RelationshipType } from "./Relationship";
 import { Point } from "../helper/RelationshipHelper";
@@ -24,6 +28,7 @@ export interface EditorState {
   draggableFilterState: DraggableFilterState | null;
   hasUndo: boolean;
   hasRedo: boolean;
+  draggableColumnOrder: DraggableColumnOrder | null;
 }
 
 export interface EditTable {
@@ -99,5 +104,6 @@ export function createEditorState(): EditorState {
     draggableFilterState: null,
     hasUndo: false,
     hasRedo: false,
+    draggableColumnOrder: null,
   };
 }

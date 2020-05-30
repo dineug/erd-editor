@@ -1,4 +1,4 @@
-import { html, customElement, property } from "lit-element";
+import { html, customElement, property, TemplateResult } from "lit-element";
 import { classMap } from "lit-html/directives/class-map";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
@@ -64,7 +64,9 @@ class Column extends EditorElement {
   connectedCallback() {
     super.connectedCallback();
     const { store } = this.context;
+    const { columnOrder } = store.canvasState.setting;
     this.subscriptionList.push(
+      store.observe(columnOrder, () => this.requestUpdate()),
       store.observe(this.column, () => this.requestUpdate()),
       store.observe(this.column.ui, (name) => {
         switch (name) {
@@ -84,39 +86,34 @@ class Column extends EditorElement {
 
   render() {
     const { keymap } = this.context;
-    const { show } = this.context.store.canvasState;
+    const { show, setting } = this.context.store.canvasState;
     const { ui } = this.column;
     const keymapRemoveColumn = keymapOptionToString(keymap.removeColumn[0]);
-    return html`
-      <div
-        class=${classMap({
-          "vuerd-column": true,
-          select: this.select,
-          draggable: this.draggable,
-          active: ui.active,
-        })}
-        data-id=${this.column.id}
-        draggable="true"
-        @dragstart=${this.onDragstart}
-        @dragend=${this.onDragend}
-        @dragover=${this.onDragover}
-      >
-        <vuerd-column-key .columnUI=${ui}></vuerd-column-key>
-        <vuerd-input-edit
-          .width=${this.widthName}
-          .value=${this.column.name}
-          .focusState=${this.focusName}
-          .edit=${this.editName}
-          .select=${this.select}
-          .active=${ui.active}
-          placeholder="column"
-          @blur=${this.onBlur}
-          @input=${(event: InputEvent) => this.onInput(event, "columnName")}
-          @mousedown=${(event: MouseEvent) => this.onFocus(event, "columnName")}
-          @dblclick=${(event: MouseEvent) => this.onEdit(event, "columnName")}
-        ></vuerd-input-edit>
-        ${show.columnDataType
-          ? html`
+    const columns: TemplateResult[] = [];
+    setting.columnOrder.forEach((columnType) => {
+      switch (columnType) {
+        case "columnName":
+          columns.push(html`
+            <vuerd-input-edit
+              .width=${this.widthName}
+              .value=${this.column.name}
+              .focusState=${this.focusName}
+              .edit=${this.editName}
+              .select=${this.select}
+              .active=${ui.active}
+              placeholder="column"
+              @blur=${this.onBlur}
+              @input=${(event: InputEvent) => this.onInput(event, "columnName")}
+              @mousedown=${(event: MouseEvent) =>
+                this.onFocus(event, "columnName")}
+              @dblclick=${(event: MouseEvent) =>
+                this.onEdit(event, "columnName")}
+            ></vuerd-input-edit>
+          `);
+          break;
+        case "columnDataType":
+          if (show.columnDataType) {
+            columns.push(html`
               <vuerd-column-data-type
                 .width=${this.widthDataType}
                 .value=${this.column.dataType}
@@ -134,10 +131,12 @@ class Column extends EditorElement {
                 @dblclick=${(event: MouseEvent) =>
                   this.onEdit(event, "columnDataType")}
               ></vuerd-column-data-type>
-            `
-          : ""}
-        ${show.columnNotNull
-          ? html`
+            `);
+          }
+          break;
+        case "columnNotNull":
+          if (show.columnNotNull) {
+            columns.push(html`
               <vuerd-column-not-null
                 .columnOption=${this.column.option}
                 .focusState=${this.focusNotNull}
@@ -146,10 +145,12 @@ class Column extends EditorElement {
                 @dblclick=${(event: MouseEvent) =>
                   this.onEdit(event, "columnNotNull")}
               ></vuerd-column-not-null>
-            `
-          : ""}
-        ${show.columnDefault
-          ? html`
+            `);
+          }
+          break;
+        case "columnDefault":
+          if (show.columnDefault) {
+            columns.push(html`
               <vuerd-input-edit
                 .width=${this.widthDefault}
                 .value=${this.column.default}
@@ -166,10 +167,12 @@ class Column extends EditorElement {
                 @dblclick=${(event: MouseEvent) =>
                   this.onEdit(event, "columnDefault")}
               ></vuerd-input-edit>
-            `
-          : ""}
-        ${show.columnComment
-          ? html`
+            `);
+          }
+          break;
+        case "columnComment":
+          if (show.columnComment) {
+            columns.push(html`
               <vuerd-input-edit
                 .width=${this.widthComment}
                 .value=${this.column.comment}
@@ -186,8 +189,27 @@ class Column extends EditorElement {
                 @dblclick=${(event: MouseEvent) =>
                   this.onEdit(event, "columnComment")}
               ></vuerd-input-edit>
-            `
-          : ""}
+            `);
+          }
+          break;
+      }
+    });
+    return html`
+      <div
+        class=${classMap({
+          "vuerd-column": true,
+          select: this.select,
+          draggable: this.draggable,
+          active: ui.active,
+        })}
+        data-id=${this.column.id}
+        draggable="true"
+        @dragstart=${this.onDragstart}
+        @dragend=${this.onDragend}
+        @dragover=${this.onDragover}
+      >
+        <vuerd-column-key .columnUI=${ui}></vuerd-column-key>
+        ${columns}
         <vuerd-icon
           class="vuerd-button"
           title=${keymapRemoveColumn}

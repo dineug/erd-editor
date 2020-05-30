@@ -13,6 +13,7 @@ import {
   focusEndColumn,
   selectEndColumn,
   selectAllColumn,
+  currentFocusShowList,
 } from "../helper/FocusTableHelper";
 import { getData, getIndex, range } from "../Helper";
 
@@ -85,11 +86,11 @@ export class FocusTableModel implements FocusTable {
   }
 
   constructor(table: Table, store: Store) {
-    const { show } = store.canvasState;
+    const { show, setting } = store.canvasState;
     this._table = table;
     this._store = store;
     this._table.columns.forEach((column) => {
-      this.focusColumns.push(new FocusColumnModel(column, show));
+      this.focusColumns.push(new FocusColumnModel(column, show, setting));
     });
     this._subscriptionList.push(
       store.observe(this._table.columns, () => this.createFocusColumns())
@@ -258,11 +259,11 @@ export class FocusTableModel implements FocusTable {
   }
 
   private createFocusColumns() {
-    const { show } = this._store.canvasState;
+    const { show, setting } = this._store.canvasState;
     const oldColumnsSize = this.focusColumns.length;
     const columnsSize = this._table.columns.length;
     let currentColumnIndex: number | null = null;
-    let currentFocusType: FocusType = "columnName";
+    let currentFocusType: FocusType = currentFocusShowList(show, setting)[0];
     if (this._currentFocusColumn?.currentFocus) {
       currentColumnIndex = getIndex(
         this.focusColumns,
@@ -273,7 +274,7 @@ export class FocusTableModel implements FocusTable {
 
     this.focusColumns = [];
     this._table.columns.forEach((column) => {
-      this.focusColumns.push(new FocusColumnModel(column, show));
+      this.focusColumns.push(new FocusColumnModel(column, show, setting));
     });
 
     // currentFocusColumn reload
@@ -297,7 +298,7 @@ export class FocusTableModel implements FocusTable {
         this.focusColumns.length - 1
       ];
       this._currentFocusColumn.select = true;
-      this._currentFocusColumn.focus("columnName");
+      this._currentFocusColumn.focus(currentFocusShowList(show, setting)[0]);
     } else if (oldColumnsSize > columnsSize && currentColumnIndex !== null) {
       // removeColumn focus
       focusEnd(this);

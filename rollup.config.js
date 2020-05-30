@@ -11,6 +11,9 @@ plugins.push(
     debugger: true,
     include: "**/*.ts",
     functions: ["Logger.debug"],
+  }),
+  visualizer({
+    filename: "./dist/stats.html",
   })
 );
 
@@ -29,12 +32,7 @@ export default [
         file: `dist/${pkg.name}.min.js`,
         format: "iife",
         banner,
-        plugins: [
-          terser(),
-          visualizer({
-            filename: "./dist/stats.html",
-          }),
-        ],
+        plugins: [terser()],
       },
     ],
     plugins,

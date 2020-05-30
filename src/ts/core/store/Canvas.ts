@@ -28,7 +28,23 @@ export type ShowKey = keyof Show;
 
 export interface Setting {
   relationshipDataTypeSync: boolean; // ADD: version 1.1.0
+  columnOrder: ColumnType[];
 }
+
+export type ColumnType =
+  | "columnName"
+  | "columnDataType"
+  | "columnNotNull"
+  | "columnDefault"
+  | "columnComment";
+
+export const columnTypes: ColumnType[] = [
+  "columnName",
+  "columnDataType",
+  "columnNotNull",
+  "columnDefault",
+  "columnComment",
+];
 
 export type CanvasType =
   | "ERD"
@@ -102,6 +118,13 @@ export function createCanvasState(): CanvasState {
     columnCase: "camelCase",
     setting: {
       relationshipDataTypeSync: true,
+      columnOrder: [
+        "columnName",
+        "columnDataType",
+        "columnNotNull",
+        "columnDefault",
+        "columnComment",
+      ],
     },
   };
 }

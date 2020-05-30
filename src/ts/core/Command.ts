@@ -90,6 +90,7 @@ import {
   ChangeLanguage,
   ChangeNameCase,
   ChangeRelationshipDataTypeSync,
+  MoveColumnOrder,
   executeMoveCanvas,
   executeResizeCanvas,
   executeChangeCanvasShow,
@@ -100,6 +101,7 @@ import {
   executeChangeTableCase,
   executeChangeColumnCase,
   executeChangeRelationshipDataTypeSync,
+  executeMoveColumnOrder,
 } from "./command/canvas";
 import {
   FocusTable,
@@ -125,6 +127,7 @@ import {
   DraggableFilterState,
   MoveFilterState,
   HasUndoRedo,
+  DraggableColumnOrder,
   executeFocusTable,
   executeFocusEndTable,
   executeFocusMoveTable,
@@ -167,6 +170,8 @@ import {
   executeFindActive,
   executeFindActiveEnd,
   executeHasUndoRedo,
+  executeDraggableColumnOrder,
+  executeDraggableEndColumnOrder,
 } from "./command/editor";
 import { ShareMouse } from "./command/share";
 
@@ -240,6 +245,7 @@ interface CommandMap {
   "canvas.changeTableCase": ChangeNameCase;
   "canvas.changeColumnCase": ChangeNameCase;
   "canvas.changeRelationshipDataTypeSync": ChangeRelationshipDataTypeSync;
+  "canvas.moveColumnOrder": MoveColumnOrder;
   // editor
   "editor.focusTable": FocusTable;
   "editor.focusEndTable": null;
@@ -284,6 +290,8 @@ interface CommandMap {
   "editor.findActive": null;
   "editor.findActiveEnd": null;
   "editor.hasUndoRedo": HasUndoRedo;
+  "editor.draggableColumnOrder": DraggableColumnOrder;
+  "editor.draggableEndColumnOrder": null;
   // share
   "share.mouse": ShareMouse;
 }
@@ -648,6 +656,9 @@ function executeCanvasCommand(store: Store, command: Command<CommandType>) {
         command.data as ChangeRelationshipDataTypeSync
       );
       break;
+    case "canvas.moveColumnOrder":
+      executeMoveColumnOrder(store, command.data as MoveColumnOrder);
+      break;
   }
 }
 
@@ -802,6 +813,12 @@ function executeEditorCommand(store: Store, command: Command<CommandType>) {
       break;
     case "editor.hasUndoRedo":
       executeHasUndoRedo(store, command.data as HasUndoRedo);
+      break;
+    case "editor.draggableColumnOrder":
+      executeDraggableColumnOrder(store, command.data as DraggableColumnOrder);
+      break;
+    case "editor.draggableEndColumnOrder":
+      executeDraggableEndColumnOrder(store);
       break;
   }
 }

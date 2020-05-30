@@ -9,6 +9,8 @@ import {
   changeLanguage,
   changeTableCase,
   changeColumnCase,
+  changeRelationshipDataTypeSync,
+  moveColumnOrder,
 } from "@src/core/command/canvas";
 
 describe("command: canvas", () => {
@@ -183,6 +185,40 @@ describe("command: canvas", () => {
     // then
     store.observe(canvasState, () => {
       expect(canvasState.columnCase).toBe(caseName);
+      done();
+    });
+  });
+
+  it("canvas.changeRelationshipDataTypeSync", (done) => {
+    // given
+    const context = createEditorContext();
+    const { store } = context;
+    const { setting } = store.canvasState;
+
+    // when
+    const value = false;
+    store.dispatch(changeRelationshipDataTypeSync(value));
+
+    // then
+    store.observe(setting, () => {
+      expect(setting.relationshipDataTypeSync).toBe(value);
+      done();
+    });
+  });
+
+  it("canvas.moveColumnOrder", (done) => {
+    // given
+    const context = createEditorContext();
+    const { store } = context;
+    const { columnOrder } = store.canvasState.setting;
+
+    // when
+    store.dispatch(moveColumnOrder("columnComment", "columnName"));
+
+    // then
+    store.observe(columnOrder, () => {
+      expect(columnOrder[0]).toBe("columnComment");
+      expect(columnOrder[1]).toBe("columnName");
       done();
     });
   });
