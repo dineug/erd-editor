@@ -67,7 +67,6 @@ export const setting = css`
       --vuerd-theme-font-placeholder,
       var(--vuerd-color-font-placeholder)
     );
-    -webkit-transition: 0.3s;
     transition: 0.3s;
   }
   .vuerd-switch > .slider:before {

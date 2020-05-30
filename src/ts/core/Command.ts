@@ -339,6 +339,7 @@ export const changeCommandTypes: CommandType[] = [
   "canvas.changeTableCase",
   "canvas.changeColumnCase",
   "canvas.changeRelationshipDataTypeSync",
+  "canvas.moveColumnOrder",
   // editor
   "editor.loadJson",
   "editor.clear",
