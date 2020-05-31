@@ -50,6 +50,7 @@ stories.add(
     const container = document.createElement("div");
     const editor = document.createElement("erd-editor") as ERDEditorElement;
     const editor2 = document.createElement("erd-editor") as ERDEditorElement;
+    editor2.blur();
     container.appendChild(editor);
     container.appendChild(editor2);
     document.body.setAttribute("style", "padding: 0; margin: 0;");
