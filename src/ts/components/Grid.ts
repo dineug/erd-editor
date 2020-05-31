@@ -34,7 +34,7 @@ import {
   addFilterState,
   removeFilterState,
   editFilter as editFilterCommand,
-  editEndFilter,
+  editFilterEnd,
   selectAllFilterState,
 } from "@src/core/command/editor";
 import {
@@ -331,7 +331,7 @@ class Grid extends EditorElement {
                 )
               );
             } else {
-              store.dispatch(editEndFilter());
+              store.dispatch(editFilterEnd());
             }
           }
 

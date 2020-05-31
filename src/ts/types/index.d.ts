@@ -9,6 +9,8 @@ export interface ERDEditorElement extends HTMLElement {
   setTheme(theme: Theme): void;
   setKeymap(keymap: Keymap): void;
   setUser(user: User): void;
+  sharePull(effect: (commands: Array<Command<CommandType>>) => void): void;
+  sharePush(commands: Array<Command<CommandType>>): void;
 }
 
 export interface Theme {
@@ -70,3 +72,46 @@ export interface Keymap {
 export interface User {
   name: string;
 }
+
+export interface Command<K extends CommandType> {
+  type: K;
+  data: any;
+  user?: { id: string; name: string };
+}
+
+export type CommandType =
+  | "table.add"
+  | "table.move"
+  | "table.remove"
+  | "table.changeName"
+  | "table.changeComment"
+  | "table.sort"
+  | "column.add"
+  | "column.addCustom"
+  | "column.remove"
+  | "column.changeName"
+  | "column.changeComment"
+  | "column.changeDataType"
+  | "column.changeDefault"
+  | "column.changeAutoIncrement"
+  | "column.changePrimaryKey"
+  | "column.changeUnique"
+  | "column.changeNotNull"
+  | "column.move"
+  | "relationship.add"
+  | "relationship.remove"
+  | "relationship.changeRelationshipType"
+  | "relationship.changeIdentification"
+  | "memo.add"
+  | "memo.move"
+  | "memo.remove"
+  | "memo.changeValue"
+  | "memo.resize"
+  | "canvas.resize"
+  | "canvas.changeShow"
+  | "canvas.changeDatabase"
+  | "canvas.changeDatabaseName"
+  | "canvas.changeRelationshipDataTypeSync"
+  | "editor.loadJson"
+  | "editor.clear"
+  | "share.mouse";

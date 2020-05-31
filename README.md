@@ -52,6 +52,9 @@ interface ERDEditorElement extends HTMLElement {
   clear(): void;
   setTheme(theme: Theme): void;
   setKeymap(keymap: Keymap): void;
+  setUser(user: User): void;
+  sharePull(effect: (commands: Array<Command<CommandType>>) => void): void;
+  sharePush(commands: Array<Command<CommandType>>): void;
 }
 ```
 
@@ -67,6 +70,9 @@ interface ERDEditorElement extends HTMLElement {
 | clear        | Function | editor data clear           |
 | setTheme     | Function | custom theme                |
 | setKeymap    | Function | custom keymap               |
+| setUser      | Function | share user name             |
+| sharePull    | Function | share pull                  |
+| sharePush    | Function | share push                  |
 
 ### EditorElement Example
 
@@ -345,7 +351,7 @@ declare global {
 - [x] Undo, Redo Manager
 - [x] Grid filter
 - [x] ERD Table finder
-- [ ] Real-time simultaneous editing api
+- [x] Real-time simultaneous editing api
 - [ ] SQL index Support [#9](https://github.com/vuerd/vuerd-vscode/issues/9)
 - SQL DDL import Support [#7](https://github.com/vuerd/vuerd-vscode/issues/7)
   - [ ] Oracle

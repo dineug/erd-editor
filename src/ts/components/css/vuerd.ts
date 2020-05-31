@@ -15,6 +15,7 @@ import { dragSelect } from "./vuerd/dragSelect";
 import { menubar } from "./vuerd/menubar";
 import { grid } from "./vuerd/grid";
 import { scrollbar } from "./vuerd/scrollbar";
+import { shareMouse } from "./vuerd/shareMouse";
 
 export const vuerd = css`
   .vuerd-editor {
@@ -92,4 +93,5 @@ export const vuerd = css`
   ${menubar}
   ${grid}
   ${scrollbar}
+  ${shareMouse}
 `;

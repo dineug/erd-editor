@@ -13,7 +13,7 @@ import {
 import {
   selectAllFilterState,
   selectEndFilterState,
-  focusEndFilterState,
+  focusFilterStateEnd,
   focusEnd,
 } from "../helper/FocusFilterHelper";
 import { Logger } from "../Logger";
@@ -109,7 +109,7 @@ export class FocusFilterModel implements FocusFilter {
             if (index !== null) {
               if (index === 0) {
                 // move N -> 1
-                focusEndFilterState(this.focusFilterStateList);
+                focusFilterStateEnd(this.focusFilterStateList);
                 selectEndFilterState(this.focusFilterStateList);
                 this._currentFocusFilterState = null;
                 this.focusFilterOperatorType = true;
@@ -145,7 +145,7 @@ export class FocusFilterModel implements FocusFilter {
             if (index !== null) {
               if (index === this.focusFilterStateList.length - 1) {
                 // move N -> 1
-                focusEndFilterState(this.focusFilterStateList);
+                focusFilterStateEnd(this.focusFilterStateList);
                 selectEndFilterState(this.focusFilterStateList);
                 this._currentFocusFilterState = null;
                 this.focusFilterOperatorType = true;
@@ -186,7 +186,7 @@ export class FocusFilterModel implements FocusFilter {
   focus(focusData: FocusData) {
     const { focusTargetFilter, focusTargetFilterState } = focusData;
     if (focusTargetFilter) {
-      focusEndFilterState(this.focusFilterStateList);
+      focusFilterStateEnd(this.focusFilterStateList);
       selectEndFilterState(this.focusFilterStateList);
       this._currentFocusFilterState = null;
       this.focusFilterOperatorType = true;

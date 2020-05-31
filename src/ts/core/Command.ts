@@ -129,16 +129,16 @@ import {
   HasUndoRedo,
   DraggableColumnOrder,
   executeFocusTable,
-  executeFocusEndTable,
+  executeFocusTableEnd,
   executeFocusMoveTable,
   executeFocusTargetTable,
   executeFocusTargetColumn,
   executeSelectAllColumn,
   executeSelectEndColumn,
   executeEditTable,
-  executeEditEndTable,
+  executeEditTableEnd,
   executeDraggableColumn,
-  executeDraggableEndColumn,
+  executeDraggableColumnEnd,
   executeDrawStartRelationship,
   executeDrawStartAddRelationship,
   executeDrawEndRelationship,
@@ -150,7 +150,7 @@ import {
   executeAddFilterState,
   executeRemoveFilterState,
   executeFocusFilter,
-  executeFocusEndFilter,
+  executeFocusFilterEnd,
   executeFilterActive,
   executeFilterActiveEnd,
   executeFocusMoveFilter,
@@ -159,21 +159,21 @@ import {
   executeSelectAllFilterState,
   executeSelectEndFilterState,
   executeEditFilter,
-  executeEditEndFilter,
+  executeEditFilterEnd,
   executeChangeFilterStateColumnType,
   executeChangeFilterStateFilterCode,
   executeChangeFilterStateValue,
   executeChangeFilterOperatorType,
   executeDraggableFilterState,
-  executeDraggableEndFilterState,
+  executeDraggableFilterStateEnd,
   executeMoveFilterState,
   executeFindActive,
   executeFindActiveEnd,
   executeHasUndoRedo,
   executeDraggableColumnOrder,
-  executeDraggableEndColumnOrder,
+  executeDraggableColumnOrderEnd,
 } from "./command/editor";
-import { ShareMouse } from "./command/share";
+import { ShareMouse, ShareMouseEnd, executeShareMouse } from "./command/share";
 
 export interface User {
   id: string;
@@ -248,16 +248,16 @@ interface CommandMap {
   "canvas.moveColumnOrder": MoveColumnOrder;
   // editor
   "editor.focusTable": FocusTable;
-  "editor.focusEndTable": null;
+  "editor.focusTableEnd": null;
   "editor.focusMoveTable": FocusMoveTable;
   "editor.focusTargetTable": FocusTargetTable;
   "editor.focusTargetColumn": FocusTargetColumn;
   "editor.selectAllColumn": null;
   "editor.selectEndColumn": null;
   "editor.editTable": EditTable;
-  "editor.editEndTable": null;
+  "editor.editTableEnd": null;
   "editor.draggableColumn": DraggableColumn;
-  "editor.draggableEndColumn": null;
+  "editor.draggableColumnEnd": null;
   "editor.drawStartRelationship": DrawStartRelationship;
   "editor.drawStartAddRelationship": DrawStartAddRelationship;
   "editor.drawEndRelationship": null;
@@ -270,7 +270,7 @@ interface CommandMap {
   "editor.addFilterState": AddFilterState;
   "editor.removeFilterState": RemoveFilterState;
   "editor.focusFilter": null;
-  "editor.focusEndFilter": null;
+  "editor.focusFilterEnd": null;
   "editor.filterActive": null;
   "editor.filterActiveEnd": null;
   "editor.focusMoveFilter": FocusMoveFilter;
@@ -279,21 +279,22 @@ interface CommandMap {
   "editor.selectAllFilterState": null;
   "editor.selectEndFilterState": null;
   "editor.editFilter": EditFilter;
-  "editor.editEndFilter": null;
+  "editor.editFilterEnd": null;
   "editor.changeFilterStateColumnType": ChangeFilterStateValue;
   "editor.changeFilterStateFilterCode": ChangeFilterStateValue;
   "editor.changeFilterStateValue": ChangeFilterStateValue;
   "editor.changeFilterOperatorType": ChangeFilterOperatorType;
   "editor.draggableFilterState": DraggableFilterState;
-  "editor.draggableEndFilterState": null;
+  "editor.draggableFilterStateEnd": null;
   "editor.moveFilterState": MoveFilterState;
   "editor.findActive": null;
   "editor.findActiveEnd": null;
   "editor.hasUndoRedo": HasUndoRedo;
   "editor.draggableColumnOrder": DraggableColumnOrder;
-  "editor.draggableEndColumnOrder": null;
+  "editor.draggableColumnOrderEnd": null;
   // share
   "share.mouse": ShareMouse;
+  "share.mouseEnd": ShareMouseEnd;
 }
 
 export const changeCommandTypes: CommandType[] = [
@@ -460,6 +461,8 @@ export function executeCommand(
       executeCanvasCommand(store, command);
     } else if (/^editor\./.test(command.type)) {
       executeEditorCommand(store, command);
+    } else if (/^share\./.test(command.type)) {
+      executeShareCommand(store, command);
     }
   });
 }
@@ -668,8 +671,8 @@ function executeEditorCommand(store: Store, command: Command<CommandType>) {
     case "editor.focusTable":
       executeFocusTable(store, command.data as FocusTable);
       break;
-    case "editor.focusEndTable":
-      executeFocusEndTable(store);
+    case "editor.focusTableEnd":
+      executeFocusTableEnd(store);
       break;
     case "editor.focusMoveTable":
       executeFocusMoveTable(store, command.data as FocusMoveTable);
@@ -689,14 +692,14 @@ function executeEditorCommand(store: Store, command: Command<CommandType>) {
     case "editor.editTable":
       executeEditTable(store, command.data as EditTable);
       break;
-    case "editor.editEndTable":
-      executeEditEndTable(store);
+    case "editor.editTableEnd":
+      executeEditTableEnd(store);
       break;
     case "editor.draggableColumn":
       executeDraggableColumn(store, command.data as DraggableColumn);
       break;
-    case "editor.draggableEndColumn":
-      executeDraggableEndColumn(store);
+    case "editor.draggableColumnEnd":
+      executeDraggableColumnEnd(store);
       break;
     case "editor.drawStartRelationship":
       executeDrawStartRelationship(
@@ -740,8 +743,8 @@ function executeEditorCommand(store: Store, command: Command<CommandType>) {
     case "editor.focusFilter":
       executeFocusFilter(store);
       break;
-    case "editor.focusEndFilter":
-      executeFocusEndFilter(store);
+    case "editor.focusFilterEnd":
+      executeFocusFilterEnd(store);
       break;
     case "editor.filterActive":
       executeFilterActive(store);
@@ -770,8 +773,8 @@ function executeEditorCommand(store: Store, command: Command<CommandType>) {
     case "editor.editFilter":
       executeEditFilter(store, command.data as EditFilter);
       break;
-    case "editor.editEndFilter":
-      executeEditEndFilter(store);
+    case "editor.editFilterEnd":
+      executeEditFilterEnd(store);
       break;
     case "editor.changeFilterStateColumnType":
       executeChangeFilterStateColumnType(
@@ -800,8 +803,8 @@ function executeEditorCommand(store: Store, command: Command<CommandType>) {
     case "editor.draggableFilterState":
       executeDraggableFilterState(store, command.data as DraggableFilterState);
       break;
-    case "editor.draggableEndFilterState":
-      executeDraggableEndFilterState(store);
+    case "editor.draggableFilterStateEnd":
+      executeDraggableFilterStateEnd(store);
       break;
     case "editor.moveFilterState":
       executeMoveFilterState(store, command.data as MoveFilterState);
@@ -818,8 +821,21 @@ function executeEditorCommand(store: Store, command: Command<CommandType>) {
     case "editor.draggableColumnOrder":
       executeDraggableColumnOrder(store, command.data as DraggableColumnOrder);
       break;
-    case "editor.draggableEndColumnOrder":
-      executeDraggableEndColumnOrder(store);
+    case "editor.draggableColumnOrderEnd":
+      executeDraggableColumnOrderEnd(store);
       break;
+  }
+}
+
+export function executeShareCommand(
+  store: Store,
+  command: Command<CommandType>
+) {
+  if (command.user) {
+    switch (command.type) {
+      case "share.mouse":
+        executeShareMouse(store, command.data as ShareMouse, command.user);
+        break;
+    }
   }
 }

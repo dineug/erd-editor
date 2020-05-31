@@ -17,7 +17,7 @@ import {
 } from "@src/core/command/canvas";
 import {
   draggableColumnOrder,
-  draggableEndColumnOrder,
+  draggableColumnOrderEnd,
 } from "@src/core/command/editor";
 
 const MAX_WIDTH = 800;
@@ -245,7 +245,7 @@ class Setting extends EditorElement {
     this.renderRoot
       .querySelectorAll(".vuerd-column-order")
       .forEach((node) => node.classList.remove("none-hover"));
-    store.dispatch(draggableEndColumnOrder());
+    store.dispatch(draggableColumnOrderEnd());
   }
   private onDragoverTargetColumnOrder(event: DragEvent) {
     const el = event.target as HTMLElement;

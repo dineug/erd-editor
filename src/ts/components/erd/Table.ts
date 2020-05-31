@@ -27,7 +27,7 @@ import {
 } from "@src/core/command/table";
 import { addColumn, moveColumn } from "@src/core/command/column";
 import {
-  editEndTable,
+  editTableEnd,
   focusTargetTable,
   editTable as editTableCommand,
 } from "@src/core/command/editor";
@@ -354,7 +354,7 @@ class Table extends EditorElement {
   }
   private onBlur(event: Event) {
     const { store } = this.context;
-    store.dispatch(editEndTable());
+    store.dispatch(editTableEnd());
   }
   private onFocus(event: MouseEvent | TouchEvent, focusType: FocusType) {
     const { store } = this.context;

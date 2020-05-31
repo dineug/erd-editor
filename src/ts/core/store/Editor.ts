@@ -29,6 +29,7 @@ export interface EditorState {
   hasUndo: boolean;
   hasRedo: boolean;
   draggableColumnOrder: DraggableColumnOrder | null;
+  undoManager: boolean;
 }
 
 export interface EditTable {
@@ -105,5 +106,6 @@ export function createEditorState(): EditorState {
     hasUndo: false,
     hasRedo: false,
     draggableColumnOrder: null,
+    undoManager: true,
   };
 }

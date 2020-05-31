@@ -89,6 +89,7 @@ class Menubar extends EditorElement {
           case "findActive":
           case "hasUndo":
           case "hasRedo":
+          case "undoManager":
             this.requestUpdate();
             break;
         }
@@ -99,13 +100,7 @@ class Menubar extends EditorElement {
 
   render() {
     const { keymap } = this.context;
-    const {
-      filterActive,
-      filterStateList,
-      findActive,
-      hasUndo,
-      hasRedo,
-    } = this.context.store.editorState;
+    const { editorState } = this.context.store;
     const { databaseName, width, canvasType } = this.context.store.canvasState;
     return html`
       <ul class="vuerd-menubar" @mousedown=${this.onMousedown}>
@@ -175,28 +170,32 @@ class Menubar extends EditorElement {
               >
                 <vuerd-icon icon="search" size="16"></vuerd-icon>
               </li>
-              <li
-                class=${classMap({
-                  "vuerd-menubar-menu": true,
-                  "undo-redo": true,
-                  active: hasUndo,
-                })}
-                title=${`Undo ${keymapOptionToString(keymap.undo[0])}`}
-                @click=${this.onUndo}
-              >
-                <vuerd-icon icon="undo-alt" size="16"></vuerd-icon>
-              </li>
-              <li
-                class=${classMap({
-                  "vuerd-menubar-menu": true,
-                  "undo-redo": true,
-                  active: hasRedo,
-                })}
-                title=${`Redo ${keymapOptionToString(keymap.redo[0])}`}
-                @click=${this.onRedo}
-              >
-                <vuerd-icon icon="redo-alt" size="16"></vuerd-icon>
-              </li>
+              ${editorState.undoManager
+                ? html`
+                    <li
+                      class=${classMap({
+                        "vuerd-menubar-menu": true,
+                        "undo-redo": true,
+                        active: editorState.hasUndo,
+                      })}
+                      title=${`Undo ${keymapOptionToString(keymap.undo[0])}`}
+                      @click=${this.onUndo}
+                    >
+                      <vuerd-icon icon="undo-alt" size="16"></vuerd-icon>
+                    </li>
+                    <li
+                      class=${classMap({
+                        "vuerd-menubar-menu": true,
+                        "undo-redo": true,
+                        active: editorState.hasRedo,
+                      })}
+                      title=${`Redo ${keymapOptionToString(keymap.redo[0])}`}
+                      @click=${this.onRedo}
+                    >
+                      <vuerd-icon icon="redo-alt" size="16"></vuerd-icon>
+                    </li>
+                  `
+                : ""}
             `
           : ""}
         ${canvasType === "Grid"
@@ -204,7 +203,7 @@ class Menubar extends EditorElement {
               <li
                 class=${classMap({
                   "vuerd-menubar-menu": true,
-                  active: filterStateList.length !== 0,
+                  active: editorState.filterStateList.length !== 0,
                 })}
                 title=${`Filter ${keymapOptionToString(keymap.find[0])}`}
                 @click=${this.onFilter}
@@ -214,10 +213,10 @@ class Menubar extends EditorElement {
             `
           : ""}
       </ul>
-      ${findActive
+      ${editorState.findActive
         ? html`<vuerd-find @close=${this.onFindEnd}></vuerd-find>`
         : ""}
-      ${filterActive
+      ${editorState.filterActive
         ? html`
             <vuerd-grid-filter @close=${this.onFilterEnd}></vuerd-grid-filter>
           `

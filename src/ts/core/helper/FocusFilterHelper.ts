@@ -5,7 +5,7 @@ import {
 } from "../model/FocusFilterStateModel";
 import { FocusFilter } from "../model/FocusFilterModel";
 
-export function focusEndFilterState(focusFilterStateList: FocusFilterState[]) {
+export function focusFilterStateEnd(focusFilterStateList: FocusFilterState[]) {
   focusFilterStateList.forEach((focusFilterState) => {
     Object.keys(focusFilterStateKeyFocusTypeKeyMap).forEach((key) => {
       const k = key as FocusFilterStateKey;
@@ -16,7 +16,7 @@ export function focusEndFilterState(focusFilterStateList: FocusFilterState[]) {
 
 export function focusEnd(focusFilter: FocusFilter) {
   focusFilter.focusFilterOperatorType = false;
-  focusEndFilterState(focusFilter.focusFilterStateList);
+  focusFilterStateEnd(focusFilter.focusFilterStateList);
 }
 
 export function selectEndFilterState(focusFilterStateList: FocusFilterState[]) {

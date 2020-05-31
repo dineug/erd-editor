@@ -17,7 +17,7 @@ import { nextPoint, nextZIndex } from "../helper/TableHelper";
 import { executeSelectEndMemo } from "./memo";
 import {
   executeFocusTable,
-  executeFocusEndTable,
+  executeFocusTableEnd,
   executeDrawStartAddRelationship,
   executeDrawEndRelationship,
 } from "./editor";
@@ -248,7 +248,7 @@ export function executeSelectEndTable(store: Store) {
   Logger.debug("executeSelectEndTable");
   const { tables } = store.tableState;
   tables.forEach((table) => (table.ui.active = false));
-  executeFocusEndTable(store);
+  executeFocusTableEnd(store);
 }
 
 export function selectAllTable(): Command<"table.selectAll"> {

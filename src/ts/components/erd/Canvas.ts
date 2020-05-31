@@ -5,12 +5,14 @@ import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Table } from "@src/core/store/Table";
 import { Memo } from "@src/core/store/Memo";
+import { UserMouse } from "@src/core/store/Share";
 import { virtualTable } from "@src/core/helper/TableHelper";
 
 @customElement("vuerd-canvas")
 class Canvas extends EditorElement {
   private tables: Table[] = [];
   private memos: Memo[] = [];
+  private userMouseList: UserMouse[] = [];
 
   get virtualTables() {
     const {
@@ -41,9 +43,11 @@ class Canvas extends EditorElement {
     const { store } = this.context;
     this.tables = store.tableState.tables;
     this.memos = store.memoState.memos;
+    this.userMouseList = store.shareState.userMouseList;
     this.subscriptionList.push(
       store.observe(this.tables, () => this.requestUpdate()),
       store.observe(this.memos, () => this.requestUpdate()),
+      store.observe(this.userMouseList, () => this.requestUpdate()),
       store.observe(store.canvasState, (name) => {
         switch (name) {
           case "width":
@@ -82,6 +86,14 @@ class Canvas extends EditorElement {
           (memo) => html` <vuerd-memo .memo=${memo}></vuerd-memo> `
         )}
         ${show.relationship ? html`<vuerd-canvas-svg></vuerd-canvas-svg>` : ""}
+        ${repeat(
+          this.userMouseList,
+          (userMouse) => userMouse.id,
+          (userMouse) =>
+            html`
+              <vuerd-share-mouse .userMouse=${userMouse}></vuerd-share-mouse>
+            `
+        )}
       </div>
     `;
   }

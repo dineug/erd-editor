@@ -15,7 +15,7 @@ import {
   addFilterState,
   focusTargetFilter,
   editFilter as editFilterCommand,
-  editEndFilter,
+  editFilterEnd,
   moveFilterState,
   changeFilterOperatorType,
 } from "@src/core/command/editor";
@@ -253,7 +253,7 @@ class Filter extends EditorElement {
   }
   private onBlur(event: Event) {
     const { store } = this.context;
-    store.dispatch(editEndFilter());
+    store.dispatch(editFilterEnd());
   }
   private onChange(event: CustomEvent) {
     const { store } = this.context;

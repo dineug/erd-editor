@@ -18,7 +18,7 @@ import {
 import { ColumnModel } from "../model/ColumnModel";
 import {
   executeFocusTable,
-  executeEditEndTable,
+  executeEditTableEnd,
   executeDraggableColumn,
 } from "./editor";
 
@@ -53,7 +53,7 @@ export function executeAddColumn(store: Store, data: AddColumn[]) {
   Logger.debug("executeAddColumn");
   const { tables } = store.tableState;
   const { relationships } = store.relationshipState;
-  executeEditEndTable(store);
+  executeEditTableEnd(store);
   data.forEach((addColumn: AddColumn, index: number) => {
     const table = getData(tables, addColumn.tableId);
     if (table) {

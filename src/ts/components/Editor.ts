@@ -1,6 +1,7 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { cache } from "lit-html/directives/cache";
+import { Subscription } from "rxjs";
 import { RxElement } from "./EditorElement";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
@@ -42,6 +43,7 @@ class Editor extends RxElement implements ERDEditorElement {
   private importErrorDDL = false;
   private importErrorDDLMessage = "";
   private setting = false;
+  private subShare: Subscription | null = null;
 
   get value() {
     const { store } = this.context;
@@ -106,6 +108,7 @@ class Editor extends RxElement implements ERDEditorElement {
   }
   disconnectedCallback() {
     const { store, windowEventObservable } = this.context;
+    this.subShare?.unsubscribe();
     store.destroy();
     windowEventObservable.destroy();
     super.disconnectedCallback();
@@ -270,6 +273,23 @@ class Editor extends RxElement implements ERDEditorElement {
     const { store } = this.context;
     if (isObject(user) && user.name) {
       store.user.name = user.name;
+    }
+  }
+
+  sharePull(effect: (commands: any) => void) {
+    if (typeof effect === "function") {
+      const { store } = this.context;
+      this.subShare?.unsubscribe();
+      this.subShare = null;
+      this.subShare = store.share$.subscribe(effect);
+      store.editorState.undoManager = false;
+    }
+  }
+  sharePush(commands: any) {
+    if (Array.isArray(commands)) {
+      const { store } = this.context;
+      store.dispatch(...commands);
+      store.editorState.undoManager = false;
     }
   }
 }

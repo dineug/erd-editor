@@ -30,7 +30,7 @@ import {
 import { createObservable, observeLegacy } from "./Observable";
 import { UndoManager } from "./UndoManager";
 import { executeUndoCommand } from "./UndoCommand";
-import { hasUndoRedo, focusEndTable } from "./command/editor";
+import { hasUndoRedo, focusTableEnd } from "./command/editor";
 import { uuid } from "./Helper";
 
 export class Store {
@@ -51,6 +51,7 @@ export class Store {
   private subscriptionList: Subscription[] = [];
   private excludeKeys: string[] = [
     "_store",
+    "_subscription",
     "_subscriptionList",
     "_currentFocusColumn",
     "_currentFilterState",
@@ -124,13 +125,14 @@ export class Store {
     ).pipe(debounceTime(200));
 
     this.share$ = this.dispatch$.pipe(
-      filter((commands) =>
-        commands.some((command) => command.user === undefined)
-      ),
-      filter((commands) =>
-        commands.some((command) =>
-          shareCommandTypes.some((commandType) => commandType === command.type)
-        )
+      filter(
+        (commands) =>
+          commands.some((command) => command.user === undefined) &&
+          commands.some((command) =>
+            shareCommandTypes.some(
+              (commandType) => commandType === command.type
+            )
+          )
       ),
       map((commands) => {
         const shareCommands: Array<Command<CommandType>> = [];
@@ -163,15 +165,15 @@ export class Store {
   }
 
   undo() {
-    if (this.undoManager.hasUndo) {
-      this.dispatch(focusEndTable());
+    if (this.undoManager.hasUndo && this.editorState.undoManager) {
+      this.dispatch(focusTableEnd());
       this.undoManager.undo();
     }
   }
 
   redo() {
-    if (this.undoManager.hasRedo) {
-      this.dispatch(focusEndTable());
+    if (this.undoManager.hasRedo && this.editorState.undoManager) {
+      this.dispatch(focusTableEnd());
       this.undoManager.redo();
     }
   }

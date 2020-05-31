@@ -14,12 +14,12 @@ import {
   removeFilterState,
   focusTargetFilterState,
   editFilter as editFilterCommand,
-  editEndFilter,
+  editFilterEnd,
   changeFilterStateColumnType,
   changeFilterStateFilterCode,
   changeFilterStateValue,
   draggableFilterState,
-  draggableEndFilterState,
+  draggableFilterStateEnd,
 } from "@src/core/command/editor";
 import { FocusType } from "@src/core/model/FocusFilterModel";
 import { keymapOptionToString } from "@src/core/Keymap";
@@ -159,7 +159,7 @@ class FilterState extends EditorElement {
   }
   private onBlur(event: Event) {
     const { store } = this.context;
-    store.dispatch(editEndFilter());
+    store.dispatch(editFilterEnd());
   }
   private onInput(event: InputEvent) {
     const { store } = this.context;
@@ -189,7 +189,7 @@ class FilterState extends EditorElement {
   }
   private onDragend(event: DragEvent) {
     const { store } = this.context;
-    store.dispatch(draggableEndFilterState());
+    store.dispatch(draggableFilterStateEnd());
   }
   private onDragover(event: DragEvent) {
     this.dispatchEvent(

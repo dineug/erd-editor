@@ -4,16 +4,16 @@ import { addTable } from "@src/core/command/table";
 import { addColumn } from "@src/core/command/column";
 import {
   focusTable,
-  focusEndTable,
+  focusTableEnd,
   focusMoveTable,
   focusTargetTable,
   focusTargetColumn,
   selectAllColumn,
   selectEndColumn,
   editTable,
-  editEndTable,
+  editTableEnd,
   draggableColumn,
-  draggableEndColumn,
+  draggableColumnEnd,
   drawStartRelationship,
   drawStartAddRelationship,
   drawEndRelationship,
@@ -25,7 +25,7 @@ import {
   addFilterState,
   removeFilterState,
   focusFilter,
-  focusEndFilter,
+  focusFilterEnd,
   filterActive,
   filterActiveEnd,
   focusMoveFilter,
@@ -34,20 +34,20 @@ import {
   selectAllFilterState,
   selectEndFilterState,
   editFilter,
-  editEndFilter,
+  editFilterEnd,
   changeFilterStateColumnType,
   changeFilterStateFilterCode,
   changeFilterStateValue,
   changeFilterOperatorType,
   draggableFilterState,
-  draggableEndFilterState,
+  draggableFilterStateEnd,
   moveFilterState,
   findActive,
   findActiveEnd,
   hasUndoRedo,
   drawRelationship,
   draggableColumnOrder,
-  draggableEndColumnOrder,
+  draggableColumnOrderEnd,
 } from "@src/core/command/editor";
 import { TableModel } from "@src/core/model/TableModel";
 import { FocusTableModel } from "@src/core/model/FocusTableModel";
@@ -77,7 +77,7 @@ describe("command: editor", () => {
     });
   });
 
-  it("editor.focusEndTable", (done) => {
+  it("editor.focusTableEnd", (done) => {
     // given
     const context = createEditorContext();
     const { store } = context;
@@ -89,7 +89,7 @@ describe("command: editor", () => {
     editorState.focusTable = new FocusTableModel(table, store);
 
     // when
-    store.dispatch(focusEndTable());
+    store.dispatch(focusTableEnd());
 
     // then
     store.observe(editorState, () => {
@@ -248,7 +248,7 @@ describe("command: editor", () => {
     });
   });
 
-  it("editor.editEndTable", (done) => {
+  it("editor.editTableEnd", (done) => {
     // given
     const context = createEditorContext();
     const { store } = context;
@@ -263,7 +263,7 @@ describe("command: editor", () => {
     };
 
     // when
-    store.dispatch(editEndTable());
+    store.dispatch(editTableEnd());
 
     // then
     store.observe(editorState, () => {
@@ -297,7 +297,7 @@ describe("command: editor", () => {
     });
   });
 
-  it("editor.draggableEndColumn", (done) => {
+  it("editor.draggableColumnEnd", (done) => {
     // given
     const context = createEditorContext();
     const { store } = context;
@@ -317,7 +317,7 @@ describe("command: editor", () => {
     };
 
     // when
-    store.dispatch(draggableEndColumn());
+    store.dispatch(draggableColumnEnd());
 
     // then
     store.observe(editorState, () => {
@@ -576,7 +576,7 @@ describe("command: editor", () => {
     });
   });
 
-  it("editor.focusEndFilter", (done) => {
+  it("editor.focusFilterEnd", (done) => {
     // given
     const context = createEditorContext();
     const { store } = context;
@@ -587,7 +587,7 @@ describe("command: editor", () => {
     );
 
     // when
-    store.dispatch(focusEndFilter());
+    store.dispatch(focusFilterEnd());
 
     // then
     store.observe(editorState, () => {
@@ -785,7 +785,7 @@ describe("command: editor", () => {
     });
   });
 
-  it("editor.editEndFilter", (done) => {
+  it("editor.editFilterEnd", (done) => {
     // given
     const context = createEditorContext();
     const { store } = context;
@@ -800,7 +800,7 @@ describe("command: editor", () => {
     };
 
     // when
-    store.dispatch(editEndFilter());
+    store.dispatch(editFilterEnd());
 
     // then
     store.observe(editorState, () => {
@@ -909,7 +909,7 @@ describe("command: editor", () => {
     });
   });
 
-  it("editor.draggableEndFilterState", (done) => {
+  it("editor.draggableFilterStateEnd", (done) => {
     // given
     const context = createEditorContext();
     const { store } = context;
@@ -923,7 +923,7 @@ describe("command: editor", () => {
     };
 
     // when
-    store.dispatch(draggableEndFilterState());
+    store.dispatch(draggableFilterStateEnd());
 
     // then
     store.observe(editorState, () => {
@@ -1030,7 +1030,7 @@ describe("command: editor", () => {
     });
   });
 
-  it("edieditor.draggableEndColumnOrder", (done) => {
+  it("edieditor.draggableColumnOrderEnd", (done) => {
     // given
     const context = createEditorContext();
     const { store } = context;
@@ -1040,7 +1040,7 @@ describe("command: editor", () => {
     };
 
     // when
-    store.dispatch(draggableEndColumnOrder());
+    store.dispatch(draggableColumnOrderEnd());
 
     // then
     store.observe(editorState, () => {

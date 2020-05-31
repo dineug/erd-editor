@@ -1,6 +1,6 @@
 import { FilterState } from "../store/Editor";
 import { FocusType } from "./FocusFilterModel";
-import { focusEndFilterState } from "../helper/FocusFilterHelper";
+import { focusFilterStateEnd } from "../helper/FocusFilterHelper";
 
 export type FocusFilterStateKey =
   | "focusColumnType"
@@ -77,7 +77,7 @@ export class FocusFilterStateModel implements FocusFilterState {
       const nextFocusType = focusTypes[index + 1];
       const focusFilterStateKey =
         focusTypeKeyFocusFilterStateKeyMap[nextFocusType];
-      focusEndFilterState([this]);
+      focusFilterStateEnd([this]);
       this[focusFilterStateKey] = true;
     }
   }
@@ -92,7 +92,7 @@ export class FocusFilterStateModel implements FocusFilterState {
       const preFocusType = focusTypes[index - 1];
       const focusFilterStateKey =
         focusTypeKeyFocusFilterStateKeyMap[preFocusType];
-      focusEndFilterState([this]);
+      focusFilterStateEnd([this]);
       this[focusFilterStateKey] = true;
     }
   }

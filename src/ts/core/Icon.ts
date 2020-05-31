@@ -22,6 +22,7 @@ import {
   faFileImport,
   faFileCode,
   faCog,
+  faMousePointer,
 } from "@fortawesome/free-solid-svg-icons";
 import { mdiChartBubble } from "@mdi/js";
 import { RelationshipType } from "./store/Relationship";
@@ -56,6 +57,7 @@ const icons = [
   faFileImport,
   faFileCode,
   faCog,
+  faMousePointer,
   {
     prefix: "mdi",
     iconName: "chart-bubble",

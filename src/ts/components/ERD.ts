@@ -39,7 +39,7 @@ import { moveCanvas } from "@src/core/command/canvas";
 import {
   focusMoveTable,
   editTable as editTableCommand,
-  editEndTable,
+  editTableEnd,
   selectAllColumn,
   drawStartRelationship,
   drawEndRelationship,
@@ -68,6 +68,7 @@ import "./erd/DragSelect";
 import "./erd/DrawRelationship";
 import "./erd/Find";
 import "./erd/find/FindTable";
+import "./erd/ShareMouse";
 
 @customElement("vuerd-erd")
 class ERD extends EditorElement {
@@ -245,7 +246,7 @@ class ERD extends EditorElement {
                 );
               }
             } else {
-              store.dispatch(editEndTable());
+              store.dispatch(editTableEnd());
             }
           }
 
@@ -522,7 +523,8 @@ class ERD extends EditorElement {
       !el.closest(".vuerd-memo") &&
       !el.closest(".vuerd-contextmenu") &&
       !el.closest(".vuerd-minimap") &&
-      !el.closest(".vuerd-minimap-handle")
+      !el.closest(".vuerd-minimap-handle") &&
+      !el.closest(".vuerd-share-mouse")
     ) {
       const { store } = this.context;
       store.dispatch(shareMouse(event.offsetX, event.offsetY));

@@ -15,6 +15,8 @@ class Icon extends EditorElement {
   icon = "";
   @property({ type: Number })
   size = SIZE;
+  @property({ type: String })
+  color = "";
 
   render() {
     const icon = getIcon(this.prefix, this.icon);
@@ -30,7 +32,11 @@ class Icon extends EditorElement {
           })} 
           viewBox="0 0 ${width} ${height}"
         >
-          <path d=${d}></path>
+          ${
+            this.color === ""
+              ? svg`<path d=${d}></path>`
+              : svg`<path d=${d} fill=${this.color}></path>`
+          }
         </svg>
       `;
     } else {

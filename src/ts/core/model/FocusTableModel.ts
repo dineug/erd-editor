@@ -10,7 +10,7 @@ import {
 } from "../command/editor";
 import {
   focusEnd,
-  focusEndColumn,
+  focusColumnEnd,
   selectEndColumn,
   selectAllColumn,
   currentFocusShowList,
@@ -176,7 +176,7 @@ export class FocusTableModel implements FocusTable {
       case "ArrowLeft":
         if (this._currentFocusColumn === null && show.tableComment) {
           // move table -> table
-          focusEndColumn(this.focusColumns);
+          focusColumnEnd(this.focusColumns);
           selectEndColumn(this.focusColumns);
           this.focusName = !this.focusName;
           this.focusComment = !this.focusComment;
@@ -189,7 +189,7 @@ export class FocusTableModel implements FocusTable {
       case "ArrowRight":
         if (this._currentFocusColumn === null && show.tableComment) {
           // move table -> table
-          focusEndColumn(this.focusColumns);
+          focusColumnEnd(this.focusColumns);
           selectEndColumn(this.focusColumns);
           this.focusName = !this.focusName;
           this.focusComment = !this.focusComment;

@@ -6,12 +6,12 @@ import {
 } from "../model/FocusColumnModel";
 import { Show, Setting } from "../store/Canvas";
 
-export function focusEndTable(focusTable: FocusTable) {
+export function focusTableEnd(focusTable: FocusTable) {
   focusTable.focusName = false;
   focusTable.focusComment = false;
 }
 
-export function focusEndColumn(focusColumns: FocusColumn[]) {
+export function focusColumnEnd(focusColumns: FocusColumn[]) {
   focusColumns.forEach((focusColumn) => {
     Object.keys(focusColumnKeyFocusTypeKeyMap).forEach((key) => {
       const k = key as FocusColumnKey;
@@ -21,8 +21,8 @@ export function focusEndColumn(focusColumns: FocusColumn[]) {
 }
 
 export function focusEnd(focusTable: FocusTable) {
-  focusEndTable(focusTable);
-  focusEndColumn(focusTable.focusColumns);
+  focusTableEnd(focusTable);
+  focusColumnEnd(focusTable.focusColumns);
 }
 
 export function selectEndColumn(focusColumns: FocusColumn[]) {

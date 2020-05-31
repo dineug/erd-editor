@@ -52,24 +52,24 @@ export function executeFocusTable(store: Store, data: FocusTable) {
       editorState.focusTable.id !== data.tableId)
   ) {
     if (editorState.focusTable?.id !== table.id) {
-      executeFocusEndTable(store);
+      executeFocusTableEnd(store);
       editorState.focusTable = new FocusTableModel(table, store);
     }
   }
 }
 
-export function focusEndTable(): Command<"editor.focusEndTable"> {
+export function focusTableEnd(): Command<"editor.focusTableEnd"> {
   return {
-    type: "editor.focusEndTable",
+    type: "editor.focusTableEnd",
     data: null,
   };
 }
-export function executeFocusEndTable(store: Store) {
-  Logger.debug("executeFocusEndTable");
+export function executeFocusTableEnd(store: Store) {
+  Logger.debug("executeFocusTableEnd");
   const { editorState } = store;
   editorState.focusTable?.destroy();
   editorState.focusTable = null;
-  executeEditEndTable(store);
+  executeEditTableEnd(store);
 }
 
 export interface FocusMoveTable {
@@ -92,7 +92,7 @@ export function executeFocusMoveTable(store: Store, data: FocusMoveTable) {
   Logger.debug("executeFocusMoveTable");
   const { focusTable } = store.editorState;
   focusTable?.move(data);
-  executeEditEndTable(store);
+  executeEditTableEnd(store);
 }
 
 export interface FocusTargetTable {
@@ -114,7 +114,7 @@ export function executeFocusTargetTable(store: Store, data: FocusTargetTable) {
   focusTable?.focus({
     focusTargetTable: data,
   });
-  executeEditEndTable(store);
+  executeEditTableEnd(store);
 }
 
 export interface FocusTargetColumn {
@@ -148,7 +148,7 @@ export function executeFocusTargetColumn(
   focusTable?.focus({
     focusTargetColumn: data,
   });
-  executeEditEndTable(store);
+  executeEditTableEnd(store);
 }
 
 export function selectAllColumn(): Command<"editor.selectAllColumn"> {
@@ -197,14 +197,14 @@ export function executeEditTable(store: Store, data: EditTable) {
   editorState.editTable = data;
 }
 
-export function editEndTable(): Command<"editor.editEndTable"> {
+export function editTableEnd(): Command<"editor.editTableEnd"> {
   return {
-    type: "editor.editEndTable",
+    type: "editor.editTableEnd",
     data: null,
   };
 }
-export function executeEditEndTable(store: Store) {
-  Logger.debug("executeEditEndTable");
+export function executeEditTableEnd(store: Store) {
+  Logger.debug("executeEditTableEnd");
   const { editorState } = store;
   editorState.editTable = null;
 }
@@ -240,14 +240,14 @@ export function executeDraggableColumn(store: Store, data: DraggableColumn) {
   editorState.draggableColumn = data;
 }
 
-export function draggableEndColumn(): Command<"editor.draggableEndColumn"> {
+export function draggableColumnEnd(): Command<"editor.draggableColumnEnd"> {
   return {
-    type: "editor.draggableEndColumn",
+    type: "editor.draggableColumnEnd",
     data: null,
   };
 }
-export function executeDraggableEndColumn(store: Store) {
-  Logger.debug("executeDraggableEndColumn");
+export function executeDraggableColumnEnd(store: Store) {
+  Logger.debug("executeDraggableColumnEnd");
   const { editorState } = store;
   editorState.draggableColumn = null;
 }
@@ -459,7 +459,13 @@ export function executeLoadJson(store: Store, data: LoadJson) {
               canvasJson.setting.columnOrder.indexOf("columnDefault") !== -1 &&
               canvasJson.setting.columnOrder.indexOf("columnComment") !== -1
             ) {
-              canvasState.setting.columnOrder = canvasJson.setting.columnOrder;
+              canvasState.setting.columnOrder.splice(
+                0,
+                canvasState.setting.columnOrder.length
+              );
+              canvasState.setting.columnOrder.push(
+                ...canvasJson.setting.columnOrder
+              );
             }
             break;
         }
@@ -622,7 +628,7 @@ export function addFilterState(): Command<"editor.addFilterState"> {
 export function executeAddFilterState(store: Store, data: AddFilterState) {
   Logger.debug("executeAddFilterState");
   const { filterStateList } = store.editorState;
-  executeEditEndFilter(store);
+  executeEditFilterEnd(store);
   filterStateList.push(new FilterStateModel({ addFilterState: data }));
 }
 
@@ -669,14 +675,14 @@ export function executeFocusFilter(store: Store) {
   );
 }
 
-export function focusEndFilter(): Command<"editor.focusEndFilter"> {
+export function focusFilterEnd(): Command<"editor.focusFilterEnd"> {
   return {
-    type: "editor.focusEndFilter",
+    type: "editor.focusFilterEnd",
     data: null,
   };
 }
-export function executeFocusEndFilter(store: Store) {
-  Logger.debug("executeFocusEndFilter");
+export function executeFocusFilterEnd(store: Store) {
+  Logger.debug("executeFocusFilterEnd");
   const { editorState } = store;
   editorState.focusFilter?.destroy();
   editorState.focusFilter = null;
@@ -705,8 +711,8 @@ export function executeFilterActiveEnd(store: Store) {
   Logger.debug("executeFilterActiveEnd");
   const { editorState } = store;
   editorState.filterActive = false;
-  executeFocusEndFilter(store);
-  executeEditEndFilter(store);
+  executeFocusFilterEnd(store);
+  executeEditFilterEnd(store);
 }
 
 export interface FocusMoveFilter {
@@ -729,7 +735,7 @@ export function executeFocusMoveFilter(store: Store, data: FocusMoveFilter) {
   Logger.debug("executeFocusMoveTable");
   const { focusFilter } = store.editorState;
   focusFilter?.move(data);
-  executeEditEndFilter(store);
+  executeEditFilterEnd(store);
 }
 
 export interface FocusTargetFilter {
@@ -754,7 +760,7 @@ export function executeFocusTargetFilter(
   focusFilter?.focus({
     focusTargetFilter: data,
   });
-  executeEditEndFilter(store);
+  executeEditFilterEnd(store);
 }
 
 export interface FocusTargetFilterState {
@@ -788,7 +794,7 @@ export function executeFocusTargetFilterState(
   focusFilter?.focus({
     focusTargetFilterState: data,
   });
-  executeEditEndFilter(store);
+  executeEditFilterEnd(store);
 }
 
 export function selectAllFilterState(): Command<"editor.selectAllFilterState"> {
@@ -837,14 +843,14 @@ export function executeEditFilter(store: Store, data: EditFilter) {
   editorState.editFilter = data;
 }
 
-export function editEndFilter(): Command<"editor.editEndFilter"> {
+export function editFilterEnd(): Command<"editor.editFilterEnd"> {
   return {
-    type: "editor.editEndFilter",
+    type: "editor.editFilterEnd",
     data: null,
   };
 }
-export function executeEditEndFilter(store: Store) {
-  Logger.debug("executeEditEndFilter");
+export function executeEditFilterEnd(store: Store) {
+  Logger.debug("executeEditFilterEnd");
   const { editorState } = store;
   editorState.editFilter = null;
 }
@@ -980,16 +986,16 @@ export function executeDraggableFilterState(
   editorState.draggableFilterState = data;
 }
 
-export function draggableEndFilterState(): Command<
-  "editor.draggableEndFilterState"
+export function draggableFilterStateEnd(): Command<
+  "editor.draggableFilterStateEnd"
 > {
   return {
-    type: "editor.draggableEndFilterState",
+    type: "editor.draggableFilterStateEnd",
     data: null,
   };
 }
-export function executeDraggableEndFilterState(store: Store) {
-  Logger.debug("executeDraggableEndFilterState");
+export function executeDraggableFilterStateEnd(store: Store) {
+  Logger.debug("executeDraggableFilterStateEnd");
   const { editorState } = store;
   editorState.draggableFilterState = null;
 }
@@ -1112,16 +1118,16 @@ export function executeDraggableColumnOrder(
   editorState.draggableColumnOrder = data;
 }
 
-export function draggableEndColumnOrder(): Command<
-  "editor.draggableEndColumnOrder"
+export function draggableColumnOrderEnd(): Command<
+  "editor.draggableColumnOrderEnd"
 > {
   return {
-    type: "editor.draggableEndColumnOrder",
+    type: "editor.draggableColumnOrderEnd",
     data: null,
   };
 }
-export function executeDraggableEndColumnOrder(store: Store) {
-  Logger.debug("executeDraggableEndColumnOrder");
+export function executeDraggableColumnOrderEnd(store: Store) {
+  Logger.debug("executeDraggableColumnOrderEnd");
   const { editorState } = store;
   editorState.draggableColumnOrder = null;
 }

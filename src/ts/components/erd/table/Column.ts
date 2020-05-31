@@ -6,11 +6,11 @@ import { SIZE_MIN_WIDTH } from "@src/core/Layout";
 import { Column as ColumnModel } from "@src/core/store/Table";
 import { selectTable } from "@src/core/command/table";
 import {
-  editEndTable,
+  editTableEnd,
   focusTargetColumn,
   editTable as editTableCommand,
   draggableColumn,
-  draggableEndColumn,
+  draggableColumnEnd,
 } from "@src/core/command/editor";
 import {
   changeColumnNotNull,
@@ -254,7 +254,7 @@ class Column extends EditorElement {
   }
   private onBlur(event: Event) {
     const { store } = this.context;
-    store.dispatch(editEndTable());
+    store.dispatch(editTableEnd());
   }
   private onFocus(event: MouseEvent | TouchEvent, focusType: FocusType) {
     const { store } = this.context;
@@ -301,7 +301,7 @@ class Column extends EditorElement {
   }
   private onDragend(event: DragEvent) {
     const { store } = this.context;
-    store.dispatch(draggableEndColumn());
+    store.dispatch(draggableColumnEnd());
   }
   private onDragover(event: DragEvent) {
     this.dispatchEvent(

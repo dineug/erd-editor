@@ -2,7 +2,7 @@ import { Show, Setting } from "../store/Canvas";
 import { Column } from "../store/Table";
 import { FocusType } from "./FocusTableModel";
 import {
-  focusEndColumn,
+  focusColumnEnd,
   currentFocusShowList,
 } from "../helper/FocusTableHelper";
 
@@ -96,7 +96,7 @@ export class FocusColumnModel implements FocusColumn {
       }
       const nextFocusType = focusTypes[index + 1];
       const focusColumnKey = focusTypeKeyFocusColumnKeyMap[nextFocusType];
-      focusEndColumn([this]);
+      focusColumnEnd([this]);
       this[focusColumnKey] = true;
     }
   }
@@ -111,7 +111,7 @@ export class FocusColumnModel implements FocusColumn {
       }
       const preFocusType = focusTypes[index - 1];
       const focusColumnKey = focusTypeKeyFocusColumnKeyMap[preFocusType];
-      focusEndColumn([this]);
+      focusColumnEnd([this]);
       this[focusColumnKey] = true;
     }
   }
