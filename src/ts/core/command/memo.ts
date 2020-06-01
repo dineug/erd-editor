@@ -45,6 +45,30 @@ export function executeAddMemo(store: Store, data: AddMemo) {
   memos.push(new MemoModel({ addMemo: data }));
 }
 
+export function addOnlyMemo(store: Store): Command<"memo.addOnly"> {
+  const { tableState, memoState } = store;
+  const point = nextPoint(store, tableState.tables, memoState.memos);
+  return {
+    type: "memo.addOnly",
+    data: {
+      id: uuid(),
+      ui: {
+        active: false,
+        left: point.left,
+        top: point.top,
+        zIndex: nextZIndex(tableState.tables, memoState.memos),
+        width: SIZE_MEMO_WIDTH,
+        height: SIZE_MEMO_HEIGHT,
+      },
+    },
+  };
+}
+export function executeAddOnlyMemo(store: Store, data: AddMemo) {
+  Logger.debug("executeAddOnlyMemo");
+  const { memos } = store.memoState;
+  memos.push(new MemoModel({ addMemo: data }));
+}
+
 export interface MoveMemo {
   movementX: number;
   movementY: number;

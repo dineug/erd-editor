@@ -12,6 +12,7 @@ import {
   DragSelectTable,
   LoadTable,
   executeAddTable,
+  executeAddOnlyTable,
   executeMoveTable,
   executeRemoveTable,
   executeSelectTable,
@@ -34,6 +35,7 @@ import {
   ActiveColumn,
   LoadColumn,
   executeAddColumn,
+  executeAddOnlyColumn,
   executeAddCustomColumn,
   executeRemoveColumn,
   executeChangeColumnName,
@@ -70,6 +72,7 @@ import {
   ResizeMemo,
   DragSelectMemo,
   executeAddMemo,
+  executeAddOnlyMemo,
   executeMoveMemo,
   executeRemoveMemo,
   executeSelectMemo,
@@ -189,6 +192,7 @@ export type CommandType = keyof CommandMap;
 interface CommandMap {
   // table
   "table.add": AddTable;
+  "table.addOnly": AddTable;
   "table.move": MoveTable;
   "table.remove": RemoveTable;
   "table.select": SelectTable;
@@ -202,6 +206,7 @@ interface CommandMap {
   "table.load": LoadTable;
   // column
   "column.add": Array<AddColumn>;
+  "column.addOnly": Array<AddColumn>;
   "column.addCustom": Array<AddCustomColumn>;
   "column.remove": RemoveColumn;
   "column.removeOnly": RemoveColumn;
@@ -225,6 +230,7 @@ interface CommandMap {
   "relationship.load": Relationship;
   // memo
   "memo.add": AddMemo;
+  "memo.addOnly": AddMemo;
   "memo.move": MoveMemo;
   "memo.remove": RemoveMemo;
   "memo.select": SelectMemo;
@@ -300,6 +306,7 @@ interface CommandMap {
 export const changeCommandTypes: CommandType[] = [
   // table
   "table.add",
+  "table.addOnly",
   "table.move",
   "table.remove",
   "table.changeName",
@@ -307,6 +314,7 @@ export const changeCommandTypes: CommandType[] = [
   "table.sort",
   // column
   "column.add",
+  "column.addOnly",
   "column.addCustom",
   "column.remove",
   "column.changeName",
@@ -325,6 +333,7 @@ export const changeCommandTypes: CommandType[] = [
   "relationship.changeIdentification",
   // memo
   "memo.add",
+  "memo.addOnly",
   "memo.move",
   "memo.remove",
   "memo.changeValue",
@@ -349,6 +358,7 @@ export const changeCommandTypes: CommandType[] = [
 export const undoCommandTypes: CommandType[] = [
   // table
   "table.add",
+  "table.addOnly",
   "table.move",
   "table.remove",
   "table.changeName",
@@ -356,6 +366,7 @@ export const undoCommandTypes: CommandType[] = [
   "table.sort",
   // column
   "column.add",
+  "column.addOnly",
   "column.addCustom",
   "column.remove",
   "column.changeName",
@@ -374,6 +385,7 @@ export const undoCommandTypes: CommandType[] = [
   "relationship.changeIdentification",
   // memo
   "memo.add",
+  "memo.addOnly",
   "memo.move",
   "memo.remove",
   "memo.changeValue",
@@ -399,6 +411,7 @@ export const streamCommandTypes: CommandType[] = [
 export const shareCommandTypes: CommandType[] = [
   // table
   "table.add",
+  "table.addOnly",
   "table.move",
   "table.remove",
   "table.changeName",
@@ -406,6 +419,7 @@ export const shareCommandTypes: CommandType[] = [
   "table.sort",
   // column
   "column.add",
+  "column.addOnly",
   "column.addCustom",
   "column.remove",
   "column.changeName",
@@ -424,6 +438,7 @@ export const shareCommandTypes: CommandType[] = [
   "relationship.changeIdentification",
   // memo
   "memo.add",
+  "memo.addOnly",
   "memo.move",
   "memo.remove",
   "memo.changeValue",
@@ -472,6 +487,9 @@ function executeTableCommand(store: Store, command: Command<CommandType>) {
     case "table.add":
       executeAddTable(store, command.data as AddTable);
       break;
+    case "table.addOnly":
+      executeAddOnlyTable(store, command.data as AddTable);
+      break;
     case "table.move":
       executeMoveTable(store, command.data as MoveTable);
       break;
@@ -512,6 +530,9 @@ function executeColumnCommand(store: Store, command: Command<CommandType>) {
   switch (command.type) {
     case "column.add":
       executeAddColumn(store, command.data as Array<AddColumn>);
+      break;
+    case "column.addOnly":
+      executeAddOnlyColumn(store, command.data as Array<AddColumn>);
       break;
     case "column.addCustom":
       executeAddCustomColumn(store, command.data as Array<AddCustomColumn>);
@@ -594,6 +615,9 @@ function executeMemoCommand(store: Store, command: Command<CommandType>) {
   switch (command.type) {
     case "memo.add":
       executeAddMemo(store, command.data as AddMemo);
+      break;
+    case "memo.addOnly":
+      executeAddOnlyMemo(store, command.data as AddMemo);
       break;
     case "memo.move":
       executeMoveMemo(store, command.data as MoveMemo);

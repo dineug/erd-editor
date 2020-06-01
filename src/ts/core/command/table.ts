@@ -63,6 +63,28 @@ export function executeAddTable(store: Store, data: AddTable) {
   executeFocusTable(store, { tableId: data.id });
 }
 
+export function addOnlyTable(store: Store): Command<"table.addOnly"> {
+  const { tableState, memoState } = store;
+  const point = nextPoint(store, tableState.tables, memoState.memos);
+  return {
+    type: "table.addOnly",
+    data: {
+      id: uuid(),
+      ui: {
+        active: false,
+        left: point.left,
+        top: point.top,
+        zIndex: nextZIndex(tableState.tables, memoState.memos),
+      },
+    },
+  };
+}
+export function executeAddOnlyTable(store: Store, data: AddTable) {
+  Logger.debug("executeAddOnlyTable");
+  const { tables } = store.tableState;
+  tables.push(new TableModel({ addTable: data }, store.canvasState.show));
+}
+
 export interface MoveTable {
   movementX: number;
   movementY: number;

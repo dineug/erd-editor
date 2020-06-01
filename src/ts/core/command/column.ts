@@ -68,6 +68,42 @@ export function executeAddColumn(store: Store, data: AddColumn[]) {
   relationshipSort(tables, relationships);
 }
 
+export function addOnlyColumn(
+  store: Store,
+  tableId?: string
+): Command<"column.addOnly"> {
+  return {
+    type: "column.addOnly",
+    data: tableId
+      ? [
+          {
+            id: uuid(),
+            tableId,
+          },
+        ]
+      : store.tableState.tables
+          .filter((table) => table.ui.active)
+          .map((table) => {
+            return {
+              id: uuid(),
+              tableId: table.id,
+            };
+          }),
+  };
+}
+export function executeAddOnlyColumn(store: Store, data: AddColumn[]) {
+  Logger.debug("executeAddOnlyColumn");
+  const { tables } = store.tableState;
+  const { relationships } = store.relationshipState;
+  data.forEach((addColumn: AddColumn, index: number) => {
+    const table = getData(tables, addColumn.tableId);
+    if (table) {
+      table.columns.push(new ColumnModel({ addColumn }));
+    }
+  });
+  relationshipSort(tables, relationships);
+}
+
 interface AddCustomColumnUI {
   active: boolean;
   pk: boolean;

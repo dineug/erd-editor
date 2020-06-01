@@ -30,6 +30,7 @@ import {
 import { createObservable, observeLegacy } from "./Observable";
 import { UndoManager } from "./UndoManager";
 import { executeUndoCommand } from "./UndoCommand";
+import { executeShareCommand } from "./ShareCommand";
 import { hasUndoRedo, focusTableEnd } from "./command/editor";
 import { uuid } from "./Helper";
 
@@ -77,12 +78,14 @@ export class Store {
       this.undo$.subscribe((commands) => executeCommand(this, commands)),
       this.dispatch$
         .pipe(
-          filter((commands) =>
-            commands.some((command) =>
-              undoCommandTypes.some(
-                (commandType) => commandType === command.type
+          filter(
+            (commands) =>
+              this.editorState.undoManager &&
+              commands.some((command) =>
+                undoCommandTypes.some(
+                  (commandType) => commandType === command.type
+                )
               )
-            )
           ),
           groupBy((commands) =>
             commands.some((command) =>
@@ -134,17 +137,7 @@ export class Store {
             )
           )
       ),
-      map((commands) => {
-        const shareCommands: Array<Command<CommandType>> = [];
-        commands.forEach((command) => {
-          shareCommands.push({
-            type: command.type,
-            data: command.data,
-            user: Object.assign({}, this.user),
-          });
-        });
-        return shareCommands;
-      })
+      map((commands) => executeShareCommand(commands, this.user))
     );
   }
 

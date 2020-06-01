@@ -91,15 +91,29 @@ export function executeUndoCommand(
   );
   if (moveCanvasCommands.length === 1) {
     const { scrollTop, scrollLeft } = store.canvasState;
-    const undoCommand = moveCanvasCommands[0];
+    const undoCommand = moveCanvasCommands[0] as Command<"canvas.move">;
     const redoCommand = moveCanvas(scrollTop, scrollLeft);
-    batchUndoCommand.push(undoCommand);
-    batchRedoCommand.push(redoCommand);
+    if (
+      Math.abs(undoCommand.data.scrollTop - scrollTop) +
+        Math.abs(undoCommand.data.scrollLeft - scrollLeft) >
+      50
+    ) {
+      batchUndoCommand.push(undoCommand);
+      batchRedoCommand.push(redoCommand);
+    }
   } else if (moveCanvasCommands.length > 1) {
-    const undoCommand = moveCanvasCommands[0];
-    const redoCommand = moveCanvasCommands[moveCanvasCommands.length - 1];
-    batchUndoCommand.push(undoCommand);
-    batchRedoCommand.push(redoCommand);
+    const undoCommand = moveCanvasCommands[0] as Command<"canvas.move">;
+    const redoCommand = moveCanvasCommands[
+      moveCanvasCommands.length - 1
+    ] as Command<"canvas.move">;
+    if (
+      Math.abs(undoCommand.data.scrollTop - redoCommand.data.scrollTop) +
+        Math.abs(undoCommand.data.scrollLeft - redoCommand.data.scrollLeft) >
+      50
+    ) {
+      batchUndoCommand.push(undoCommand);
+      batchRedoCommand.push(redoCommand);
+    }
   }
 
   const moveTableCommands = commands.filter(
@@ -174,14 +188,16 @@ export function executeUndoCommand(
     batchRedoCommand.push(redoCommand);
   }
 
-  undoManager.add({
-    undo() {
-      store.undo$.next(batchUndoCommand);
-    },
-    redo() {
-      store.undo$.next(batchRedoCommand);
-    },
-  });
+  if (batchUndoCommand.length && batchRedoCommand.length) {
+    undoManager.add({
+      undo() {
+        store.undo$.next(batchUndoCommand);
+      },
+      redo() {
+        store.undo$.next(batchRedoCommand);
+      },
+    });
+  }
 }
 
 function executeTableCommand(
@@ -192,7 +208,7 @@ function executeTableCommand(
 ) {
   const { tables } = store.tableState;
   const { relationships } = store.relationshipState;
-  if (command.type === "table.add") {
+  if (command.type === "table.add" || command.type === "table.addOnly") {
     const data = command.data as AddTable;
     batchUndoCommand.push(removeTable(store, data.id));
     batchRedoCommand.push(command);
@@ -274,7 +290,7 @@ function executeColumnCommand(
 ) {
   const { tables } = store.tableState;
   const { relationships } = store.relationshipState;
-  if (command.type === "column.add") {
+  if (command.type === "column.add" || command.type === "column.addOnly") {
     const data = command.data as Array<AddColumn>;
     data.forEach((addColumn) =>
       batchUndoCommand.push(removeColumn(addColumn.tableId, [addColumn.id]))
@@ -587,7 +603,7 @@ function executeMemoCommand(
   batchRedoCommand: Array<Command<CommandType>>
 ) {
   const { memos } = store.memoState;
-  if (command.type === "memo.add") {
+  if (command.type === "memo.add" || command.type === "memo.addOnly") {
     const data = command.data as AddMemo;
     batchUndoCommand.push(removeMemo(store, data.id));
     batchRedoCommand.push(command);

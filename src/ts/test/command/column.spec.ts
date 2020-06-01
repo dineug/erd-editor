@@ -3,6 +3,7 @@ import { getIndex, uuid } from "@src/core/Helper";
 import { addTable } from "@src/core/command/table";
 import {
   addColumn,
+  addOnlyColumn,
   addCustomColumn,
   removeColumn,
   removeOnlyColumn,
@@ -38,6 +39,29 @@ describe("command: column", () => {
 
     // when
     store.dispatch(addColumn(store));
+
+    // then
+    store.observe(table2.columns, () => {
+      expect(table.columns.length).toBe(1);
+      expect(table2.columns.length).toBe(1);
+      done();
+    });
+  });
+
+  it("column.addOnly", (done) => {
+    // given
+    const context = createEditorContext();
+    const { store } = context;
+    const { tableState, canvasState } = store;
+    tableState.tables.push(
+      new TableModel({ addTable: addTable(store).data }, canvasState.show),
+      new TableModel({ addTable: addTable(store).data }, canvasState.show)
+    );
+    const table = tableState.tables[0];
+    const table2 = tableState.tables[1];
+
+    // when
+    store.dispatch(addOnlyColumn(store));
 
     // then
     store.observe(table2.columns, () => {

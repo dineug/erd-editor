@@ -2,6 +2,7 @@ import { createEditorContext } from "@src/core/EditorContext";
 import { getData } from "@src/core/Helper";
 import {
   addMemo,
+  addOnlyMemo,
   moveMemo,
   removeMemo,
   selectMemo,
@@ -23,6 +24,22 @@ describe("command: memo", () => {
 
     // when
     store.dispatch(addMemo(store));
+
+    // then
+    store.observe(memoState.memos, () => {
+      expect(memoState.memos.length).toBe(1);
+      done();
+    });
+  });
+
+  it("memo.addOnly", (done) => {
+    // given
+    const context = createEditorContext();
+    const { store } = context;
+    const { memoState } = store;
+
+    // when
+    store.dispatch(addOnlyMemo(store));
 
     // then
     store.observe(memoState.memos, () => {

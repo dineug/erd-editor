@@ -2,6 +2,7 @@ import { createEditorContext } from "@src/core/EditorContext";
 import { getData } from "@src/core/Helper";
 import {
   addTable,
+  addOnlyTable,
   moveTable,
   removeTable,
   selectTable,
@@ -25,6 +26,22 @@ describe("command: table", () => {
 
     // when
     store.dispatch(addTable(store));
+
+    // then
+    store.observe(tableState.tables, () => {
+      expect(tableState.tables.length).toBe(1);
+      done();
+    });
+  });
+
+  it("table.addOnly", (done) => {
+    // given
+    const context = createEditorContext();
+    const { store } = context;
+    const { tableState } = store;
+
+    // when
+    store.dispatch(addOnlyTable(store));
 
     // then
     store.observe(tableState.tables, () => {
