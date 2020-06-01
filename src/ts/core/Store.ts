@@ -52,8 +52,8 @@ export class Store {
   private subscriptionList: Subscription[] = [];
   private excludeKeys: string[] = [
     "_store",
-    "_subscription",
     "_subscriptionList",
+    "_timeoutID",
     "_currentFocusColumn",
     "_currentFilterState",
     "focusColumns",

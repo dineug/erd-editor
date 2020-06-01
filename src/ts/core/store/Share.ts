@@ -1,5 +1,3 @@
-import { Subscription } from "rxjs";
-
 export interface ShareState {
   userMouseList: UserMouse[];
 }
@@ -10,7 +8,7 @@ export interface UserMouse {
   color: string;
   x: number;
   y: number;
-  _subscription: Subscription;
+  _timeoutID: any;
 }
 
 export function createShareState(): ShareState {

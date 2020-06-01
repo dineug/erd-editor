@@ -1,4 +1,3 @@
-import { timer } from "rxjs";
 import { schemeCategory10 } from "d3";
 import { Command, User } from "../Command";
 import { Store } from "../Store";
@@ -27,10 +26,10 @@ export function executeShareMouse(store: Store, data: ShareMouse, user: User) {
       userMouse.name = user.name;
       userMouse.x = data.x;
       userMouse.y = data.y;
-      userMouse._subscription.unsubscribe();
-      userMouse._subscription = timer(1000 * 60).subscribe(() =>
-        executeShareMouseEnd(store, { id: user.id })
-      );
+      clearTimeout(userMouse._timeoutID);
+      userMouse._timeoutID = setTimeout(() => {
+        executeShareMouseEnd(store, { id: user.id });
+      }, 1000 * 30);
     } else {
       userMouseList.push({
         id: user.id,
@@ -38,9 +37,9 @@ export function executeShareMouse(store: Store, data: ShareMouse, user: User) {
         color: schemeCategory10[userMouseList.length % 10],
         x: data.x,
         y: data.y,
-        _subscription: timer(1000 * 60).subscribe(() =>
-          executeShareMouseEnd(store, { id: user.id })
-        ),
+        _timeoutID: setTimeout(() => {
+          executeShareMouseEnd(store, { id: user.id });
+        }, 1000 * 30),
       });
     }
   }

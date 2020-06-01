@@ -1,5 +1,6 @@
 import { html, customElement } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { Subscription } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { UserMouse } from "@src/core/store/Share";
@@ -8,12 +9,24 @@ import { UserMouse } from "@src/core/store/Share";
 class ShareMouse extends EditorElement {
   userMouse!: UserMouse;
 
+  private x = 0;
+  private y = 0;
+  private subLerp: Subscription | null = null;
+
   connectedCallback() {
     super.connectedCallback();
-    const { store } = this.context;
-    this.subscriptionList.push(
-      store.observe(this.userMouse, () => this.requestUpdate())
-    );
+    const { requestAnimationFrame$ } = this.context.windowEventObservable;
+    this.x = this.userMouse.x;
+    this.y = this.userMouse.y;
+    this.subLerp = requestAnimationFrame$.subscribe(() => {
+      this.x += (this.userMouse.x - this.x) * 0.2;
+      this.y += (this.userMouse.y - this.y) * 0.2;
+      this.requestUpdate();
+    });
+  }
+  disconnectedCallback() {
+    this.subLerp?.unsubscribe();
+    super.disconnectedCallback();
   }
 
   render() {
@@ -21,8 +34,8 @@ class ShareMouse extends EditorElement {
       <div
         class="vuerd-share-mouse"
         style=${styleMap({
-          top: `${this.userMouse.y}px`,
-          left: `${this.userMouse.x}px`,
+          top: `${this.y}px`,
+          left: `${this.x}px`,
         })}
       >
         <vuerd-icon
