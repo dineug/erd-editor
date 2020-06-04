@@ -80,13 +80,17 @@ export interface Command<K extends CommandType> {
 }
 
 export type CommandType =
+  // table
   | "table.add"
+  | "table.addOnly"
   | "table.move"
   | "table.remove"
   | "table.changeName"
   | "table.changeComment"
   | "table.sort"
+  // column
   | "column.add"
+  | "column.addOnly"
   | "column.addCustom"
   | "column.remove"
   | "column.changeName"
@@ -98,20 +102,26 @@ export type CommandType =
   | "column.changeUnique"
   | "column.changeNotNull"
   | "column.move"
+  // relationship
   | "relationship.add"
   | "relationship.remove"
   | "relationship.changeRelationshipType"
   | "relationship.changeIdentification"
+  // memo
   | "memo.add"
+  | "memo.addOnly"
   | "memo.move"
   | "memo.remove"
   | "memo.changeValue"
   | "memo.resize"
+  // canvas
   | "canvas.resize"
   | "canvas.changeShow"
   | "canvas.changeDatabase"
   | "canvas.changeDatabaseName"
   | "canvas.changeRelationshipDataTypeSync"
+  // editor
   | "editor.loadJson"
   | "editor.clear"
+  // share
   | "share.mouse";

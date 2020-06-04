@@ -85,7 +85,9 @@ export class Store {
                 undoCommandTypes.some(
                   (commandType) => commandType === command.type
                 )
-              )
+              ) &&
+              (commands.some((command) => command.user === undefined) ||
+                commands.some((command) => command.user?.id !== this.user.id))
           ),
           groupBy((commands) =>
             commands.some((command) =>
@@ -111,7 +113,15 @@ export class Store {
         .subscribe((commands) =>
           executeUndoCommand(this, this.undoManager, commands)
         ),
-      this.dispatch$.subscribe((commands) => executeCommand(this, commands))
+      this.dispatch$
+        .pipe(
+          filter(
+            (commands) =>
+              commands.some((command) => command.user === undefined) ||
+              commands.some((command) => command.user?.id !== this.user.id)
+          )
+        )
+        .subscribe((commands) => executeCommand(this, commands))
     );
 
     this.change$ = merge(

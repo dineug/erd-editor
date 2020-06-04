@@ -20,28 +20,26 @@ export function shareMouse(x: number, y: number): Command<"share.mouse"> {
 export function executeShareMouse(store: Store, data: ShareMouse, user: User) {
   Logger.debug("executeShareMouse");
   const { userMouseList } = store.shareState;
-  if (store.user.id !== user.id) {
-    const userMouse = getData(userMouseList, user.id);
-    if (userMouse) {
-      userMouse.name = user.name;
-      userMouse.x = data.x;
-      userMouse.y = data.y;
-      clearTimeout(userMouse._timeoutID);
-      userMouse._timeoutID = setTimeout(() => {
+  const userMouse = getData(userMouseList, user.id);
+  if (userMouse) {
+    userMouse.name = user.name;
+    userMouse.x = data.x;
+    userMouse.y = data.y;
+    clearTimeout(userMouse._timeoutID);
+    userMouse._timeoutID = setTimeout(() => {
+      executeShareMouseEnd(store, { id: user.id });
+    }, 1000 * 30);
+  } else {
+    userMouseList.push({
+      id: user.id,
+      name: user.name,
+      color: schemeCategory10[userMouseList.length % 10],
+      x: data.x,
+      y: data.y,
+      _timeoutID: setTimeout(() => {
         executeShareMouseEnd(store, { id: user.id });
-      }, 1000 * 30);
-    } else {
-      userMouseList.push({
-        id: user.id,
-        name: user.name,
-        color: schemeCategory10[userMouseList.length % 10],
-        x: data.x,
-        y: data.y,
-        _timeoutID: setTimeout(() => {
-          executeShareMouseEnd(store, { id: user.id });
-        }, 1000 * 30),
-      });
-    }
+      }, 1000 * 30),
+    });
   }
 }
 

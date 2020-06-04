@@ -1,6 +1,7 @@
 import { Command, CommandType, User } from "./Command";
 import { AddTable } from "./command/table";
 import { AddMemo } from "./command/memo";
+import { cloneDeep } from "./Helper";
 
 export function executeShareCommand(
   commands: Array<Command<CommandType>>,
@@ -9,7 +10,7 @@ export function executeShareCommand(
   const shareCommands: Array<Command<CommandType>> = [];
   commands.forEach((command) => {
     if (command.type === "table.add") {
-      const data = Object.assign({}, command.data) as AddTable;
+      const data = cloneDeep(command.data) as AddTable;
       data.ui.active = false;
       shareCommands.push({
         type: "table.addOnly",
@@ -17,7 +18,7 @@ export function executeShareCommand(
         user: Object.assign({}, user),
       });
     } else if (command.type === "memo.add") {
-      const data = Object.assign({}, command.data) as AddMemo;
+      const data = cloneDeep(command.data) as AddMemo;
       data.ui.active = false;
       shareCommands.push({
         type: "memo.addOnly",
