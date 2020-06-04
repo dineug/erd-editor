@@ -35,8 +35,8 @@
     "test": "jest"
   },
   "devDependencies": {
-    "@babel/core": "^7.10.1",
-    "@babel/preset-env": "^7.10.1",
+    "@babel/core": "^7.10.2",
+    "@babel/preset-env": "^7.10.2",
     "@babel/preset-typescript": "^7.10.1",
     "@fortawesome/free-solid-svg-icons": "^5.13.0",
     "@mdi/js": "^5.3.45",
@@ -50,7 +50,7 @@
     "@storybook/addon-storysource": "^5.3.19",
     "@storybook/html": "^5.3.19",
     "@types/d3": "^5.7.2",
-    "@types/dom-to-image": "^2.6.0",
+    "@types/dom-to-image": "^2.6.1",
     "@types/jest": "^25.2.3",
     "@typescript-eslint/eslint-plugin": "^2.34.0",
     "@typescript-eslint/parser": "^2.34.0",
@@ -71,7 +71,7 @@
     "lit-element": "^2.3.1",
     "lit-html": "^1.2.1",
     "prettier": "^2.0.5",
-    "rollup": "^2.11.2",
+    "rollup": "^2.13.1",
     "rollup-plugin-browsersync": "^1.1.0",
     "rollup-plugin-eslint": "^7.0.0",
     "rollup-plugin-generate-html-template": "^1.6.1",
