@@ -1,6 +1,6 @@
 {
   "name": "vuerd",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "ERD editor",
   "main": "dist/vuerd.cjs.js",
   "module": "dist/vuerd.esm.js",
@@ -81,7 +81,7 @@
     "sql-ddl-to-json-schema": "^4.0.1",
     "ts-loader": "^7.0.5",
     "tui-grid": "^4.13.0",
-    "typescript": "^3.9.3"
+    "typescript": "^3.9.5"
   },
   "dependencies": {}
 }

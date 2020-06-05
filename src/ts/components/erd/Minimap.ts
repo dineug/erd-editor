@@ -74,6 +74,7 @@ class Minimap extends EditorElement {
     this.subscriptionList.push(
       store.observe(this.tables, () => this.requestUpdate()),
       store.observe(this.memos, () => this.requestUpdate()),
+      store.observe(store.canvasState.show, () => this.requestUpdate()),
       store.observe(store.canvasState, (name) => {
         switch (name) {
           case "width":
@@ -83,9 +84,6 @@ class Minimap extends EditorElement {
             this.requestUpdate();
             break;
         }
-      }),
-      store.observe(store.canvasState.show, () => {
-        this.requestUpdate();
       }),
       store.observe(this.relationships, () => {
         this.unsubscribeRelationships();

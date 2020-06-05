@@ -59,17 +59,7 @@ class Table extends EditorElement {
       this.draggable$.pipe(debounceTime(50)).subscribe(this.onDragoverColumn),
       store.observe(this.table.ui, () => this.requestUpdate()),
       store.observe(this.table.columns, () => this.requestUpdate()),
-      store.observe(store.canvasState.show, (name) => {
-        switch (name) {
-          case "tableComment":
-          case "columnComment":
-          case "columnDataType":
-          case "columnDefault":
-          case "columnNotNull":
-            this.requestUpdate();
-            break;
-        }
-      }),
+      store.observe(store.canvasState.show, () => this.requestUpdate()),
       store.observe(store.editorState, (name) => {
         const { focusTable, draggableColumn } = store.editorState;
         switch (name) {
@@ -206,6 +196,11 @@ class Table extends EditorElement {
                   .focusNotNull=${this.focusColumn(column, "columnNotNull")}
                   .focusDefault=${this.focusColumn(column, "columnDefault")}
                   .focusComment=${this.focusColumn(column, "columnComment")}
+                  .focusUnique=${this.focusColumn(column, "columnUnique")}
+                  .focusAutoIncrement=${this.focusColumn(
+                    column,
+                    "columnAutoIncrement"
+                  )}
                   .editName=${this.editColumn(column, "columnName")}
                   .editDataType=${this.editColumn(column, "columnDataType")}
                   .editDefault=${this.editColumn(column, "columnDefault")}

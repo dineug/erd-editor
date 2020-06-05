@@ -452,12 +452,15 @@ export function executeLoadJson(store: Store, data: LoadJson) {
             }
             if (
               Array.isArray(canvasJson.setting.columnOrder) &&
-              canvasJson.setting.columnOrder.length === 5 &&
+              canvasJson.setting.columnOrder.length === 7 &&
               canvasJson.setting.columnOrder.indexOf("columnName") !== -1 &&
               canvasJson.setting.columnOrder.indexOf("columnDataType") !== -1 &&
               canvasJson.setting.columnOrder.indexOf("columnNotNull") !== -1 &&
               canvasJson.setting.columnOrder.indexOf("columnDefault") !== -1 &&
-              canvasJson.setting.columnOrder.indexOf("columnComment") !== -1
+              canvasJson.setting.columnOrder.indexOf("columnComment") !== -1 &&
+              canvasJson.setting.columnOrder.indexOf("columnUnique") !== -1 &&
+              canvasJson.setting.columnOrder.indexOf("columnAutoIncrement") !==
+                -1
             ) {
               canvasState.setting.columnOrder.splice(
                 0,

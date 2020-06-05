@@ -38,7 +38,9 @@ export const column = css`
   vuerd-input-edit,
   vuerd-column-key,
   vuerd-column-not-null,
-  vuerd-column-data-type {
+  vuerd-column-data-type,
+  vuerd-column-auto-increment,
+  vuerd-column-unique {
     float: left;
   }
   .vuerd-input-edit {
@@ -168,5 +170,29 @@ export const column = css`
   }
   .vuerd-mark {
     color: var(--vuerd-theme-edit, var(--vuerd-color-edit));
+  }
+
+  .vuerd-column-auto-increment,
+  .vuerd-column-unique {
+    display: flex;
+    vertical-align: middle;
+    align-items: center;
+    border-bottom: solid #fff0 1.5px;
+    cursor: default;
+    height: ${SIZE_INPUT_EDIT_HEIGHT}px;
+    margin-right: ${SIZE_COLUMN_MARGIN_RIGHT}px;
+    fill: var(
+      --vuerd-theme-font-placeholder,
+      var(--vuerd-color-font-placeholder)
+    );
+  }
+  .vuerd-column-auto-increment.focus,
+  .vuerd-column-unique.focus {
+    border-bottom: solid var(--vuerd-theme-focus, var(--vuerd-color-focus))
+      1.5px;
+  }
+  .vuerd-column-auto-increment.checked,
+  .vuerd-column-unique.checked {
+    fill: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }
 `;

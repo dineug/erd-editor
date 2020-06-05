@@ -24,7 +24,12 @@ import {
   faCog,
   faMousePointer,
 } from "@fortawesome/free-solid-svg-icons";
-import { mdiChartBubble } from "@mdi/js";
+import {
+  mdiChartBubble,
+  mdiAlphaIBoxOutline,
+  mdiAlphaUBoxOutline,
+  mdiAlphaABoxOutline,
+} from "@mdi/js";
 import { RelationshipType } from "./store/Relationship";
 
 interface IconDefinitionOverriding {
@@ -62,6 +67,21 @@ const icons = [
     prefix: "mdi",
     iconName: "chart-bubble",
     icon: [24, 24, , , mdiChartBubble],
+  },
+  {
+    prefix: "mdi",
+    iconName: "alpha-i-box-outline",
+    icon: [24, 24, , , mdiAlphaIBoxOutline],
+  },
+  {
+    prefix: "mdi",
+    iconName: "alpha-u-box-outline",
+    icon: [24, 24, , , mdiAlphaUBoxOutline],
+  },
+  {
+    prefix: "mdi",
+    iconName: "alpha-a-box-outline",
+    icon: [24, 24, , , mdiAlphaABoxOutline],
   },
 ] as IconDefinitionOverriding[];
 

@@ -3,6 +3,7 @@ import {
   SIZE_START_Y,
   SIZE_START_ADD,
   SIZE_COLUMN_OPTION_NN,
+  SIZE_COLUMN_OPTION,
   SIZE_COLUMN_MARGIN_RIGHT,
   SIZE_MIN_WIDTH,
 } from "../Layout";
@@ -65,7 +66,9 @@ type ColumnWidthKey =
   | "comment"
   | "dataType"
   | "default"
-  | "notNull";
+  | "notNull"
+  | "autoIncrement"
+  | "unique";
 export function getMaxWidthColumn(columns: Column[], show: Show) {
   const columnWidth: ColumnWidth = {
     width: 0,
@@ -74,6 +77,8 @@ export function getMaxWidthColumn(columns: Column[], show: Show) {
     dataType: 0,
     default: 0,
     notNull: 0,
+    autoIncrement: 0,
+    unique: 0,
   };
   columns.forEach((column) => {
     if (columnWidth.name < column.ui.widthName) {
@@ -91,6 +96,12 @@ export function getMaxWidthColumn(columns: Column[], show: Show) {
   });
   if (show.columnNotNull) {
     columnWidth.notNull = SIZE_COLUMN_OPTION_NN;
+  }
+  if (show.columnAutoIncrement) {
+    columnWidth.autoIncrement = SIZE_COLUMN_OPTION;
+  }
+  if (show.columnUnique) {
+    columnWidth.unique = SIZE_COLUMN_OPTION;
   }
   Object.keys(columnWidth)
     .filter((key) => key !== "width")
@@ -116,6 +127,12 @@ export function getDefaultWidthColumn(show: Show): number {
   }
   if (show.columnNotNull) {
     width += SIZE_COLUMN_OPTION_NN + SIZE_COLUMN_MARGIN_RIGHT;
+  }
+  if (show.columnAutoIncrement) {
+    width += SIZE_COLUMN_OPTION + SIZE_COLUMN_MARGIN_RIGHT;
+  }
+  if (show.columnUnique) {
+    width += SIZE_COLUMN_OPTION + SIZE_COLUMN_MARGIN_RIGHT;
   }
   return width;
 }

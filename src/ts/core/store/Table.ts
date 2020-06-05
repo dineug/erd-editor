@@ -21,6 +21,8 @@ export interface ColumnWidth {
   dataType: number;
   default: number;
   notNull: number;
+  autoIncrement: number;
+  unique: number;
 }
 
 export interface TableUI {

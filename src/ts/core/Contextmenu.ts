@@ -173,6 +173,14 @@ const showMenus: ShowMenu[] = [
     showKey: "columnNotNull",
   },
   {
+    name: "Unique",
+    showKey: "columnUnique",
+  },
+  {
+    name: "Auto Increment",
+    showKey: "columnAutoIncrement",
+  },
+  {
     name: "Relationship",
     showKey: "relationship",
   },

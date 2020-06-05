@@ -32,6 +32,8 @@ export interface Setting {
 }
 
 export type ColumnType =
+  | "columnUnique"
+  | "columnAutoIncrement"
   | "columnName"
   | "columnDataType"
   | "columnNotNull"
@@ -39,6 +41,8 @@ export type ColumnType =
   | "columnComment";
 
 export const columnTypes: ColumnType[] = [
+  "columnUnique",
+  "columnAutoIncrement",
   "columnName",
   "columnDataType",
   "columnNotNull",
@@ -104,9 +108,9 @@ export function createCanvasState(): CanvasState {
       columnComment: true,
       columnDataType: true,
       columnDefault: true,
-      columnAutoIncrement: true,
+      columnAutoIncrement: false,
       columnPrimaryKey: true,
-      columnUnique: true,
+      columnUnique: false,
       columnNotNull: true,
       relationship: true,
     },
@@ -122,6 +126,8 @@ export function createCanvasState(): CanvasState {
         "columnName",
         "columnDataType",
         "columnNotNull",
+        "columnUnique",
+        "columnAutoIncrement",
         "columnDefault",
         "columnComment",
       ],

@@ -20,6 +20,8 @@ import { getData, getIndex, range } from "../Helper";
 export type FocusType =
   | "tableName"
   | "tableComment"
+  | "columnUnique"
+  | "columnAutoIncrement"
   | "columnName"
   | "columnDataType"
   | "columnNotNull"

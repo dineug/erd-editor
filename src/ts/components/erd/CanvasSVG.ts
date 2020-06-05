@@ -22,6 +22,7 @@ class CanvasSVG extends EditorElement {
     const { store } = this.context;
     this.relationships = store.relationshipState.relationships;
     this.subscriptionList.push(
+      store.observe(store.canvasState.show, () => this.requestUpdate()),
       store.observe(this.relationships, () => {
         this.unsubscribeRelationships();
         this.observeRelationships();
@@ -34,9 +35,6 @@ class CanvasSVG extends EditorElement {
             this.requestUpdate();
             break;
         }
-      }),
-      store.observe(store.canvasState.show, () => {
-        this.requestUpdate();
       })
     );
     this.observeRelationships();

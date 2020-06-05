@@ -19,6 +19,8 @@ import {
   changeColumnComment,
   changeColumnDataType,
   changeColumnDefault,
+  changeColumnUnique,
+  changeColumnAutoIncrement,
 } from "@src/core/command/column";
 import { FocusType } from "@src/core/model/FocusTableModel";
 import { keymapOptionToString } from "@src/core/Keymap";
@@ -39,6 +41,10 @@ class Column extends EditorElement {
   focusDefault = false;
   @property({ type: Boolean })
   focusComment = false;
+  @property({ type: Boolean })
+  focusUnique = false;
+  @property({ type: Boolean })
+  focusAutoIncrement = false;
   @property({ type: Boolean })
   editName = false;
   @property({ type: Boolean })
@@ -66,6 +72,7 @@ class Column extends EditorElement {
     const { store } = this.context;
     const { columnOrder } = store.canvasState.setting;
     this.subscriptionList.push(
+      store.observe(store.canvasState.show, () => this.requestUpdate()),
       store.observe(columnOrder, () => this.requestUpdate()),
       store.observe(this.column, () => this.requestUpdate()),
       store.observe(this.column.ui, (name) => {
@@ -87,7 +94,7 @@ class Column extends EditorElement {
   render() {
     const { keymap } = this.context;
     const { show, setting } = this.context.store.canvasState;
-    const { ui } = this.column;
+    const { ui, option } = this.column;
     const keymapRemoveColumn = keymapOptionToString(keymap.removeColumn[0]);
     const columns: TemplateResult[] = [];
     setting.columnOrder.forEach((columnType) => {
@@ -192,6 +199,34 @@ class Column extends EditorElement {
             `);
           }
           break;
+        case "columnUnique":
+          if (show.columnUnique) {
+            columns.push(html`
+              <vuerd-column-unique
+                .columnOption=${option}
+                .focusState=${this.focusUnique}
+                @mousedown=${(event: MouseEvent) =>
+                  this.onFocus(event, "columnUnique")}
+                @dblclick=${(event: MouseEvent) =>
+                  this.onEdit(event, "columnUnique")}
+              ></vuerd-column-unique>
+            `);
+          }
+          break;
+        case "columnAutoIncrement":
+          if (show.columnAutoIncrement) {
+            columns.push(html`
+              <vuerd-column-auto-increment
+                .columnOption=${option}
+                .focusState=${this.focusAutoIncrement}
+                @mousedown=${(event: MouseEvent) =>
+                  this.onFocus(event, "columnAutoIncrement")}
+                @dblclick=${(event: MouseEvent) =>
+                  this.onEdit(event, "columnAutoIncrement")}
+              ></vuerd-column-auto-increment>
+            `);
+          }
+          break;
       }
     });
     return html`
@@ -283,6 +318,12 @@ class Column extends EditorElement {
       if (focusType === "columnNotNull") {
         store.dispatch(
           changeColumnNotNull(store, this.tableId, this.column.id)
+        );
+      } else if (focusType === "columnUnique") {
+        store.dispatch(changeColumnUnique(store, this.tableId, this.column.id));
+      } else if (focusType === "columnAutoIncrement") {
+        store.dispatch(
+          changeColumnAutoIncrement(store, this.tableId, this.column.id)
         );
       } else {
         store.dispatch(editTableCommand(this.column.id, focusType));

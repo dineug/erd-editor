@@ -7,12 +7,16 @@ import {
 } from "../helper/FocusTableHelper";
 
 export type FocusColumnKey =
+  | "focusUnique"
+  | "focusAutoIncrement"
   | "focusName"
   | "focusDataType"
   | "focusNotNull"
   | "focusDefault"
   | "focusComment";
 export const focusColumnKeyFocusTypeKeyMap: { [key: string]: FocusType } = {
+  focusUnique: "columnUnique",
+  focusAutoIncrement: "columnAutoIncrement",
   focusName: "columnName",
   focusDataType: "columnDataType",
   focusNotNull: "columnNotNull",
@@ -22,6 +26,8 @@ export const focusColumnKeyFocusTypeKeyMap: { [key: string]: FocusType } = {
 export const focusTypeKeyFocusColumnKeyMap: {
   [key: string]: FocusColumnKey;
 } = {
+  columnUnique: "focusUnique",
+  columnAutoIncrement: "focusAutoIncrement",
   columnName: "focusName",
   columnDataType: "focusDataType",
   columnNotNull: "focusNotNull",
@@ -33,6 +39,8 @@ export interface FocusColumn {
   readonly id: string;
   readonly currentFocus: FocusType | null;
   select: boolean;
+  focusUnique: boolean;
+  focusAutoIncrement: boolean;
   focusName: boolean;
   focusDataType: boolean;
   focusNotNull: boolean;
@@ -46,6 +54,8 @@ export interface FocusColumn {
 
 export class FocusColumnModel implements FocusColumn {
   select = false;
+  focusUnique = false;
+  focusAutoIncrement = false;
   focusName = false;
   focusDataType = false;
   focusNotNull = false;

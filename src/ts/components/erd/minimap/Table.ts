@@ -16,17 +16,7 @@ class Table extends EditorElement {
     this.subscriptionList.push(
       store.observe(this.table.ui, () => this.requestUpdate()),
       store.observe(this.table.columns, () => this.requestUpdate()),
-      store.observe(store.canvasState.show, (name) => {
-        switch (name) {
-          case "tableComment":
-          case "columnComment":
-          case "columnDataType":
-          case "columnDefault":
-          case "columnNotNull":
-            this.requestUpdate();
-            break;
-        }
-      })
+      store.observe(store.canvasState.show, () => this.requestUpdate())
     );
   }
 

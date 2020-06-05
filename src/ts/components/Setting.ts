@@ -44,6 +44,8 @@ class Setting extends EditorElement {
     columnNotNull$: new Subject<ColumnType>(),
     columnDefault$: new Subject<ColumnType>(),
     columnComment$: new Subject<ColumnType>(),
+    columnUnique$: new Subject<ColumnType>(),
+    columnAutoIncrement$: new Subject<ColumnType>(),
   };
 
   get drawerWidth() {

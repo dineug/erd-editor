@@ -28,6 +28,8 @@ import {
   removeColumn,
   changeColumnNotNull,
   changeColumnPrimaryKey,
+  changeColumnUnique,
+  changeColumnAutoIncrement,
 } from "@src/core/command/column";
 import {
   addMemo,
@@ -59,6 +61,8 @@ import "./erd/table/ColumnKey";
 import "./erd/table/ColumnNotNull";
 import "./erd/table/ColumnDataType";
 import "./erd/table/ColumnDataTypeHint";
+import "./erd/table/ColumnUnique";
+import "./erd/table/ColumnAutoIncrement";
 import "./erd/Minimap";
 import "./erd/minimap/MinimapHandle";
 import "./erd/minimap/Table";
@@ -236,6 +240,16 @@ class ERD extends EditorElement {
                 const columnId = focusTable.currentFocusId;
                 store.dispatch(
                   changeColumnNotNull(store, focusTable.id, columnId)
+                );
+              } else if (currentFocus === "columnUnique") {
+                const columnId = focusTable.currentFocusId;
+                store.dispatch(
+                  changeColumnUnique(store, focusTable.id, columnId)
+                );
+              } else if (currentFocus === "columnAutoIncrement") {
+                const columnId = focusTable.currentFocusId;
+                store.dispatch(
+                  changeColumnAutoIncrement(store, focusTable.id, columnId)
                 );
               } else {
                 store.dispatch(

@@ -39,30 +39,10 @@ export function currentFocusShowList(
 ): FocusType[] {
   const focusTypes: FocusType[] = [];
   setting.columnOrder.forEach((columnType) => {
-    switch (columnType) {
-      case "columnName":
-        focusTypes.push(columnType);
-        break;
-      case "columnDataType":
-        if (show.columnDataType) {
-          focusTypes.push(columnType);
-        }
-        break;
-      case "columnNotNull":
-        if (show.columnNotNull) {
-          focusTypes.push(columnType);
-        }
-        break;
-      case "columnDefault":
-        if (show.columnDefault) {
-          focusTypes.push(columnType);
-        }
-        break;
-      case "columnComment":
-        if (show.columnComment) {
-          focusTypes.push(columnType);
-        }
-        break;
+    if (columnType === "columnName") {
+      focusTypes.push(columnType);
+    } else if (show[columnType]) {
+      focusTypes.push(columnType);
     }
   });
   return focusTypes;
