@@ -1,4 +1,4 @@
-import { html, customElement, property } from "lit-element";
+import { html, customElement, property, TemplateResult } from "lit-element";
 import { classMap } from "lit-html/directives/class-map";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
@@ -26,6 +26,7 @@ class Column extends EditorElement {
     super.connectedCallback();
     const { store } = this.context;
     this.subscriptionList.push(
+      store.observe(store.canvasState.show, () => this.requestUpdate()),
       store.observe(this.column.ui, (name) => {
         switch (name) {
           case "widthName":
@@ -40,8 +41,86 @@ class Column extends EditorElement {
   }
 
   render() {
-    const { show } = this.context.store.canvasState;
-    const { ui } = this.column;
+    const { show, setting } = this.context.store.canvasState;
+    const { ui, option } = this.column;
+    const columns: TemplateResult[] = [];
+    setting.columnOrder.forEach((columnType) => {
+      switch (columnType) {
+        case "columnName":
+          columns.push(html`
+            <vuerd-input-edit
+              .width=${this.widthName}
+              .value=${this.column.name}
+              .active=${this.active}
+              placeholder="column"
+            ></vuerd-input-edit>
+          `);
+          break;
+        case "columnDataType":
+          if (show.columnDataType) {
+            columns.push(html`
+              <vuerd-input-edit
+                .width=${this.widthDataType}
+                .value=${this.column.dataType}
+                .active=${this.active}
+                placeholder="dataType"
+              ></vuerd-input-edit>
+            `);
+          }
+          break;
+        case "columnNotNull":
+          if (show.columnNotNull) {
+            columns.push(html`
+              <vuerd-column-not-null
+                .columnOption=${this.column.option}
+              ></vuerd-column-not-null>
+            `);
+          }
+          break;
+        case "columnDefault":
+          if (show.columnDefault) {
+            columns.push(html`
+              <vuerd-input-edit
+                .width=${this.widthDefault}
+                .value=${this.column.default}
+                .active=${this.active}
+                placeholder="default"
+              ></vuerd-input-edit>
+            `);
+          }
+          break;
+        case "columnComment":
+          if (show.columnComment) {
+            columns.push(html`
+              <vuerd-input-edit
+                .width=${this.widthComment}
+                .value=${this.column.comment}
+                .active=${this.active}
+                placeholder="comment"
+              ></vuerd-input-edit>
+            `);
+          }
+          break;
+        case "columnUnique":
+          if (show.columnUnique) {
+            columns.push(html`
+              <vuerd-column-unique
+                .columnOption=${option}
+              ></vuerd-column-unique>
+            `);
+          }
+          break;
+        case "columnAutoIncrement":
+          if (show.columnAutoIncrement) {
+            columns.push(html`
+              <vuerd-column-auto-increment
+                .columnOption=${option}
+              ></vuerd-column-auto-increment>
+            `);
+          }
+          break;
+      }
+    });
     return html`
       <div
         class=${classMap({
@@ -50,49 +129,7 @@ class Column extends EditorElement {
         })}
       >
         <vuerd-column-key .columnUI=${ui}></vuerd-column-key>
-        <vuerd-input-edit
-          .width=${this.widthName}
-          .value=${this.column.name}
-          .active=${this.active}
-          placeholder="column"
-        ></vuerd-input-edit>
-        ${show.columnDataType
-          ? html`
-              <vuerd-input-edit
-                .width=${this.widthDataType}
-                .value=${this.column.dataType}
-                .active=${this.active}
-                placeholder="dataType"
-              ></vuerd-input-edit>
-            `
-          : ""}
-        ${show.columnNotNull
-          ? html`
-              <vuerd-column-not-null
-                .columnOption=${this.column.option}
-              ></vuerd-column-not-null>
-            `
-          : ""}
-        ${show.columnDefault
-          ? html`
-              <vuerd-input-edit
-                .width=${this.widthDefault}
-                .value=${this.column.default}
-                .active=${this.active}
-                placeholder="default"
-              ></vuerd-input-edit>
-            `
-          : ""}
-        ${show.columnComment
-          ? html`
-              <vuerd-input-edit
-                .width=${this.widthComment}
-                .value=${this.column.comment}
-                .active=${this.active}
-                placeholder="comment"
-              ></vuerd-input-edit>
-            `
-          : ""}
+        ${columns}
       </div>
     `;
   }
