@@ -252,8 +252,8 @@ describe("command: table", () => {
           y: 100,
         },
         {
-          x: 400,
-          y: 400,
+          x: 500,
+          y: 500,
         }
       )
     );
@@ -286,7 +286,7 @@ describe("command: table", () => {
       expect(table.ui.top).toBe(50);
       expect(table.ui.left).toBe(50);
       expect(table2.ui.top).toBe(50);
-      expect(table2.ui.left).toBe(464);
+      expect(table2.ui.left).toBe(510);
       done();
     });
   });
