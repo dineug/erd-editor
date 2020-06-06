@@ -25,6 +25,7 @@ class Icon extends EditorElement {
       const rem = SIZE_REM * (this.size / SIZE);
       return svg`
         <svg
+          class="vuerd-icon"
           style=${styleMap({
             display: "inline-flex",
             width: `${rem}rem`,

@@ -181,7 +181,7 @@ export const column = css`
     cursor: default;
     height: ${SIZE_INPUT_EDIT_HEIGHT}px;
     margin-right: ${SIZE_COLUMN_MARGIN_RIGHT}px;
-    fill: var(
+    color: var(
       --vuerd-theme-font-placeholder,
       var(--vuerd-color-font-placeholder)
     );
@@ -193,6 +193,6 @@ export const column = css`
   }
   .vuerd-column-auto-increment.checked,
   .vuerd-column-unique.checked {
-    fill: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }
 `;

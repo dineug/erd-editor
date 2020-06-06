@@ -78,6 +78,10 @@ export const vuerd = css`
     font-family: monospace !important;
   }
 
+  .vuerd-icon {
+    transition: fill 0.15s;
+  }
+
   ${help}
   ${importErrorDDL}
   ${setting}

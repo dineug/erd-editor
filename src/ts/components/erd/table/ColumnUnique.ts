@@ -4,7 +4,7 @@ import { classMap } from "lit-html/directives/class-map";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { ColumnOption } from "@src/core/store/Table";
-import { SIZE_COLUMN_OPTION } from "@src/core/Layout";
+import { SIZE_COLUMN_OPTION_QU } from "@src/core/Layout";
 
 @customElement("vuerd-column-unique")
 class ColumnUnique extends EditorElement {
@@ -34,15 +34,11 @@ class ColumnUnique extends EditorElement {
           checked: this.columnOption.unique,
         })}
         style=${styleMap({
-          width: `${SIZE_COLUMN_OPTION}px`,
+          width: `${SIZE_COLUMN_OPTION_QU}px`,
         })}
         title="Unique"
       >
-        <vuerd-icon
-          size="19"
-          prefix="mdi"
-          icon="alpha-u-box-outline"
-        ></vuerd-icon>
+        UQ
       </div>
     `;
   }

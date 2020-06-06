@@ -1,6 +1,6 @@
 {
   "name": "vuerd",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "ERD editor",
   "main": "dist/vuerd.cjs.js",
   "module": "dist/vuerd.esm.js",
@@ -23,7 +23,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vuerd/vuerd.git"
+    "url": "https://github.com/vuerd/vuerd.git"
   },
   "author": "dineug <dineug2@gmail.com>",
   "license": "MIT",
@@ -32,6 +32,7 @@
     "build": "rollup -c",
     "storybook": "start-storybook -p 8000",
     "storybook:build": "build-storybook -c .storybook -o docs",
+    "lint": "eslint . --ext .ts",
     "test": "jest"
   },
   "devDependencies": {

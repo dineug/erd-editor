@@ -3,7 +3,8 @@ import {
   SIZE_START_Y,
   SIZE_START_ADD,
   SIZE_COLUMN_OPTION_NN,
-  SIZE_COLUMN_OPTION,
+  SIZE_COLUMN_OPTION_AI,
+  SIZE_COLUMN_OPTION_QU,
   SIZE_COLUMN_MARGIN_RIGHT,
   SIZE_MIN_WIDTH,
 } from "../Layout";
@@ -98,10 +99,10 @@ export function getMaxWidthColumn(columns: Column[], show: Show) {
     columnWidth.notNull = SIZE_COLUMN_OPTION_NN;
   }
   if (show.columnAutoIncrement) {
-    columnWidth.autoIncrement = SIZE_COLUMN_OPTION;
+    columnWidth.autoIncrement = SIZE_COLUMN_OPTION_AI;
   }
   if (show.columnUnique) {
-    columnWidth.unique = SIZE_COLUMN_OPTION;
+    columnWidth.unique = SIZE_COLUMN_OPTION_QU;
   }
   Object.keys(columnWidth)
     .filter((key) => key !== "width")
@@ -129,10 +130,10 @@ export function getDefaultWidthColumn(show: Show): number {
     width += SIZE_COLUMN_OPTION_NN + SIZE_COLUMN_MARGIN_RIGHT;
   }
   if (show.columnAutoIncrement) {
-    width += SIZE_COLUMN_OPTION + SIZE_COLUMN_MARGIN_RIGHT;
+    width += SIZE_COLUMN_OPTION_AI + SIZE_COLUMN_MARGIN_RIGHT;
   }
   if (show.columnUnique) {
-    width += SIZE_COLUMN_OPTION + SIZE_COLUMN_MARGIN_RIGHT;
+    width += SIZE_COLUMN_OPTION_QU + SIZE_COLUMN_MARGIN_RIGHT;
   }
   return width;
 }

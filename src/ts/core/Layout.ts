@@ -1,8 +1,9 @@
 export const SIZE_FONT = 13;
 export const SIZE_MIN_WIDTH = 60;
 export const SIZE_BORDER_BOTTOM = 1.5;
-export const SIZE_COLUMN_OPTION = 19;
-export const SIZE_COLUMN_OPTION_NN = 35;
+export const SIZE_COLUMN_OPTION_AI = 15;
+export const SIZE_COLUMN_OPTION_QU = 22;
+export const SIZE_COLUMN_OPTION_NN = 34;
 export const SIZE_COLUMN_CLOSE = 9;
 export const SIZE_COLUMN_KEY = 12;
 export const SIZE_COLUMN_MARGIN_RIGHT = 5;

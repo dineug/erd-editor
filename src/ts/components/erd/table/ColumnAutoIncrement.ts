@@ -4,7 +4,7 @@ import { classMap } from "lit-html/directives/class-map";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { ColumnOption } from "@src/core/store/Table";
-import { SIZE_COLUMN_OPTION } from "@src/core/Layout";
+import { SIZE_COLUMN_OPTION_AI } from "@src/core/Layout";
 
 @customElement("vuerd-column-auto-increment")
 class ColumnAutoIncrement extends EditorElement {
@@ -34,15 +34,11 @@ class ColumnAutoIncrement extends EditorElement {
           checked: this.columnOption.autoIncrement,
         })}
         style=${styleMap({
-          width: `${SIZE_COLUMN_OPTION}px`,
+          width: `${SIZE_COLUMN_OPTION_AI}px`,
         })}
         title="Auto Increment"
       >
-        <vuerd-icon
-          size="19"
-          prefix="mdi"
-          icon="alpha-a-box-outline"
-        ></vuerd-icon>
+        AI
       </div>
     `;
   }

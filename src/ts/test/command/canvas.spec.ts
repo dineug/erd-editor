@@ -78,9 +78,9 @@ describe("command: canvas", () => {
       expect(show.columnComment).toBe(false);
       expect(show.columnDataType).toBe(false);
       expect(show.columnDefault).toBe(false);
-      expect(show.columnAutoIncrement).toBe(true);
+      expect(show.columnAutoIncrement).toBe(false);
       expect(show.columnPrimaryKey).toBe(false);
-      expect(show.columnUnique).toBe(true);
+      expect(show.columnUnique).toBe(false);
       expect(show.columnNotNull).toBe(false);
       expect(show.relationship).toBe(false);
       done();
