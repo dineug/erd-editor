@@ -25,9 +25,8 @@ import {
   removeRelationship,
 } from "./command/relationship";
 import { Relationship, RelationshipType } from "./store/Relationship";
-import { Helper } from "./Helper";
-import { EventBus } from "./Event";
 import { EditorContext } from "./EditorContext";
+import { Bus } from "./Event";
 
 export interface MenuOption {
   close?: boolean;
@@ -68,23 +67,6 @@ export function createContextmenuERD(context: EditorContext): Menu[] {
       keymap: keymapOptionToString(keymap.addMemo[0]),
       execute() {
         store.dispatch(addMemo(store));
-      },
-    },
-    {
-      icon: "key",
-      name: "Primary Key",
-      keymap: keymapOptionToString(keymap.primaryKey[0]),
-      execute() {
-        const { focusTable } = store.editorState;
-        if (focusTable !== null) {
-          const currentFocus = focusTable.currentFocus;
-          if (currentFocus !== "tableName" && currentFocus !== "tableComment") {
-            const columnId = focusTable.currentFocusId;
-            store.dispatch(
-              changeColumnPrimaryKey(store, focusTable.id, columnId)
-            );
-          }
-        }
       },
     },
     {
@@ -327,6 +309,41 @@ function createRelationshipSingleMenus(
       },
     };
   });
+}
+
+export function createContextmenuTable(
+  context: EditorContext,
+  tableId: string
+): Menu[] {
+  const { store, keymap, eventBus } = context;
+  return [
+    {
+      icon: "key",
+      name: "Primary Key",
+      keymap: keymapOptionToString(keymap.primaryKey[0]),
+      execute() {
+        const { focusTable } = store.editorState;
+        if (focusTable !== null) {
+          const currentFocus = focusTable.currentFocus;
+          if (currentFocus !== "tableName" && currentFocus !== "tableComment") {
+            const columnId = focusTable.currentFocusId;
+            store.dispatch(
+              changeColumnPrimaryKey(store, focusTable.id, columnId)
+            );
+          }
+        }
+      },
+    },
+    {
+      name: "Table Properties",
+      keymap: keymapOptionToString(keymap.tableProperties[0]),
+      execute() {
+        eventBus.emit(Bus.Editor.tableProperties, {
+          tableId,
+        });
+      },
+    },
+  ];
 }
 
 export function createContextmenuGeneratorCode(store: Store): Menu[] {

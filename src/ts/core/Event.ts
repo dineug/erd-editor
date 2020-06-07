@@ -113,6 +113,7 @@ export class EventBus {
 
 enum Editor {
   importErrorDDL = "Editor.importErrorDDL",
+  tableProperties = "Editor.tableProperties",
 }
 
 enum ERD {
@@ -154,6 +155,10 @@ enum Setting {
   close = "Setting.close",
 }
 
+enum TableProperties {
+  close = "TableProperties.close",
+}
+
 enum Menubar {
   filter = "Menubar.filter",
   find = "Menubar.find",
@@ -177,6 +182,7 @@ export const Bus = {
   Help,
   ImportErrorDDL,
   Setting,
+  TableProperties,
   Menubar,
   Filter,
   Find,

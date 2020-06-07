@@ -53,6 +53,7 @@ export interface Keymap {
   relationshipOneN: KeymapOption[];
   relationshipOne: KeymapOption[];
   relationshipN: KeymapOption[];
+  tableProperties: KeymapOption[];
 }
 
 export type KeymapKey = keyof Keymap;
@@ -255,6 +256,15 @@ export function createKeymap(): Keymap {
         altKey: true,
         shiftKey: false,
         key: "7",
+      },
+    ],
+    tableProperties: [
+      {
+        metaKey: false,
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
+        key: "Space",
       },
     ],
   };

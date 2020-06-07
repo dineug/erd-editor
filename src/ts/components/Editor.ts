@@ -25,6 +25,7 @@ import "./GeneratorCode";
 import "./Help";
 import "./ImportErrorDDL";
 import "./Setting";
+import "./TableProperties";
 
 @customElement("vuerd-editor")
 class Editor extends RxElement implements ERDEditorElement {
@@ -43,6 +44,8 @@ class Editor extends RxElement implements ERDEditorElement {
   private importErrorDDL = false;
   private importErrorDDLMessage = "";
   private setting = false;
+  private tableProperties = false;
+  private tablePropertiesId = "";
   private subShare: Subscription | null = null;
 
   get value() {
@@ -94,10 +97,12 @@ class Editor extends RxElement implements ERDEditorElement {
             eventBus.emit(Bus.Filter.close);
             eventBus.emit(Bus.Find.close);
             eventBus.emit(Bus.Setting.close);
+            eventBus.emit(Bus.TableProperties.close);
           }
         }
       }),
-      eventBus.on(Bus.Editor.importErrorDDL).subscribe(this.onImportErrorDDL)
+      eventBus.on(Bus.Editor.importErrorDDL).subscribe(this.onImportErrorDDL),
+      eventBus.on(Bus.Editor.tableProperties).subscribe(this.onTableProperties)
     );
   }
   firstUpdated() {
@@ -200,6 +205,15 @@ class Editor extends RxElement implements ERDEditorElement {
               ></vuerd-setting>
             `
           : ""}
+        ${this.tableProperties
+          ? html`
+              <vuerd-table-properties
+                .width=${this.width}
+                .tableId=${this.tablePropertiesId}
+                @close=${this.onTablePropertiesEnd}
+              ></vuerd-table-properties>
+            `
+          : ""}
       </div>
     `;
   }
@@ -207,6 +221,11 @@ class Editor extends RxElement implements ERDEditorElement {
   private onImportErrorDDL = (event: CustomEvent) => {
     this.importErrorDDLMessage = event.detail.message;
     this.importErrorDDL = true;
+    this.requestUpdate();
+  };
+  private onTableProperties = (event: CustomEvent) => {
+    this.tablePropertiesId = event.detail.tableId;
+    this.tableProperties = true;
     this.requestUpdate();
   };
 
@@ -229,6 +248,11 @@ class Editor extends RxElement implements ERDEditorElement {
   }
   private onSettingEnd() {
     this.setting = false;
+    this.requestUpdate();
+  }
+  private onTablePropertiesEnd() {
+    this.tableProperties = false;
+    this.tablePropertiesId = "";
     this.requestUpdate();
   }
 

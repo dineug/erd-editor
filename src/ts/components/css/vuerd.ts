@@ -3,6 +3,7 @@ import { SIZE_FONT, SIZE_MENUBAR_HEIGHT } from "@src/core/Layout";
 import { help } from "./vuerd/help";
 import { importErrorDDL } from "./vuerd/importErrorDDL";
 import { setting } from "./vuerd/setting";
+import { tableProperties } from "./vuerd/tableProperties";
 import { contextmenu } from "./vuerd/contextmenu";
 import { sash } from "./vuerd/sash";
 import { table } from "./vuerd/table";
@@ -85,6 +86,7 @@ export const vuerd = css`
   ${help}
   ${importErrorDDL}
   ${setting}
+  ${tableProperties}
   ${contextmenu}
   ${sash}
   ${table}

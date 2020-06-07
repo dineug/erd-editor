@@ -137,6 +137,9 @@ class Setting extends EditorElement {
         </div>
         <div class="vuerd-setting-body vuerd-scrollbar">
           <table>
+            <colgroup>
+              <col width="190px" />
+            </colgroup>
             <tbody>
               <tr>
                 <td>

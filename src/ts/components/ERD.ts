@@ -8,6 +8,7 @@ import {
   Menu,
   createContextmenuERD,
   createContextmenuRelationship,
+  createContextmenuTable,
 } from "@src/core/Contextmenu";
 import { Bus, Move } from "@src/core/Event";
 import { keymapMatch, MoveKey, moveKeys } from "@src/core/Keymap";
@@ -328,6 +329,20 @@ class ERD extends EditorElement {
             event.preventDefault();
             store.redo();
           }
+
+          if (
+            keymapMatch(event, keymap.tableProperties) &&
+            store.tableState.tables.some((table) => table.ui.active)
+          ) {
+            const table = store.tableState.tables.find(
+              (table) => table.ui.active
+            );
+            if (table) {
+              eventBus.emit(Bus.Editor.tableProperties, {
+                tableId: table.id,
+              });
+            }
+          }
         }
       })
     );
@@ -446,23 +461,28 @@ class ERD extends EditorElement {
     const { store } = this.context;
     this.contextmenuX = event.x;
     this.contextmenuY = event.y;
-    if (!el.closest(".vuerd-relationship")) {
+
+    const tableTag = el.closest(".vuerd-table") as HTMLElement | null;
+    const relationshipTag = el.closest(
+      ".vuerd-relationship"
+    ) as HTMLElement | null;
+
+    if (!relationshipTag && !tableTag) {
       this.menus = createContextmenuERD(this.context);
       this.contextmenu = true;
-    } else {
-      const g = getParentElement(el, "g");
-      if (g) {
-        const id = g.dataset.id;
-        if (id) {
-          const { relationships } = this.context.store.relationshipState;
-          const relationship = getData(relationships, id);
-          if (relationship) {
-            this.menus = createContextmenuRelationship(store, relationship);
-            this.contextmenuRelationship = relationship;
-            this.contextmenu = true;
-          }
-        }
+    } else if (relationshipTag) {
+      const id = relationshipTag.dataset.id as string;
+      const { relationships } = this.context.store.relationshipState;
+      const relationship = getData(relationships, id);
+      if (relationship) {
+        this.menus = createContextmenuRelationship(store, relationship);
+        this.contextmenuRelationship = relationship;
+        this.contextmenu = true;
       }
+    } else if (tableTag) {
+      const id = tableTag.dataset.id as string;
+      this.menus = createContextmenuTable(this.context, id);
+      this.contextmenu = true;
     }
   }
   private onMousedown(event: MouseEvent) {

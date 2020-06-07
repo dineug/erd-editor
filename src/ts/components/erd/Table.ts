@@ -124,6 +124,7 @@ class Table extends EditorElement {
           width: `${this.table.width()}px`,
           height: `${this.table.height()}px`,
         })}
+        data-id=${this.table.id}
         @mousedown=${this.onMoveStart}
         @touchstart=${this.onMoveStart}
       >

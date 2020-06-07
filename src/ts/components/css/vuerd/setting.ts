@@ -102,6 +102,7 @@ export const setting = css`
     cursor: move;
     box-sizing: border-box;
     padding: 5px;
+    display: inline-block;
   }
   .vuerd-column-order:hover {
     background-color: var(

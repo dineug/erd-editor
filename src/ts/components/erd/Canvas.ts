@@ -78,12 +78,12 @@ class Canvas extends EditorElement {
         ${repeat(
           this.tables,
           (table) => table.id,
-          (table) => html` <vuerd-table .table=${table}></vuerd-table> `
+          (table) => html`<vuerd-table .table=${table}></vuerd-table>`
         )}
         ${repeat(
           this.memos,
           (memo) => memo.id,
-          (memo) => html` <vuerd-memo .memo=${memo}></vuerd-memo> `
+          (memo) => html`<vuerd-memo .memo=${memo}></vuerd-memo>`
         )}
         ${show.relationship ? html`<vuerd-canvas-svg></vuerd-canvas-svg>` : ""}
         ${repeat(
