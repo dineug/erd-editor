@@ -94,7 +94,7 @@ class Help extends EditorElement {
         keymap: keymapOptionToStringJoin(keymap.pasteColumn),
       },
       {
-        name: "Contextmenu - ERD, Relationship, SQL, GeneratorCode",
+        name: "Contextmenu - ERD, Table, Relationship, SQL, GeneratorCode",
         keymap: "Right-click",
       },
       {
