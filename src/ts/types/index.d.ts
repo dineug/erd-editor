@@ -2,6 +2,7 @@ export interface ERDEditorElement extends HTMLElement {
   width: number;
   height: number;
   value: string;
+  automaticLayout: boolean;
   focus(): void;
   blur(): void;
   initLoadJson(json: string): void;

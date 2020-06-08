@@ -37,6 +37,8 @@ class Editor extends RxElement implements ERDEditorElement {
   width = defaultWidth;
   @property({ type: Number })
   height = defaultHeight;
+  @property({ type: Boolean })
+  automaticLayout = false;
 
   context: EditorContext;
 
@@ -47,6 +49,14 @@ class Editor extends RxElement implements ERDEditorElement {
   private tableProperties = false;
   private tablePropertiesId = "";
   private subShare: Subscription | null = null;
+  // @ts-ignore
+  private resizeObserver = new ResizeObserver((entries) => {
+    entries.forEach((entry: any) => {
+      const { width, height } = entry.contentRect;
+      this.width = width;
+      this.height = height;
+    });
+  });
 
   get value() {
     const { store } = this.context;
@@ -106,16 +116,35 @@ class Editor extends RxElement implements ERDEditorElement {
     );
   }
   firstUpdated() {
+    const editor = this.renderRoot.querySelector(
+      ".vuerd-editor"
+    ) as HTMLElement;
     const span = this.renderRoot.querySelector(
       ".vuerd-text-width"
     ) as HTMLSpanElement;
     this.context.helper.setSpan(span);
+    if (this.automaticLayout) {
+      this.resizeObserver.observe(editor);
+    }
+  }
+  updated(changedProperties: any) {
+    changedProperties.forEach((oldValue: any, propName: string) => {
+      if (propName === "automaticLayout") {
+        const editor = this.renderRoot.querySelector(".vuerd-editor");
+        if (this.automaticLayout && editor) {
+          this.resizeObserver.observe(editor);
+        } else if (editor) {
+          this.resizeObserver.unobserve(editor);
+        }
+      }
+    });
   }
   disconnectedCallback() {
     const { store, windowEventObservable } = this.context;
-    this.subShare?.unsubscribe();
     store.destroy();
     windowEventObservable.destroy();
+    this.subShare?.unsubscribe();
+    this.resizeObserver.disconnect();
     super.disconnectedCallback();
   }
 
@@ -152,8 +181,8 @@ class Editor extends RxElement implements ERDEditorElement {
       <div
         class="vuerd-editor"
         style=${styleMap({
-          width: `${this.width}px`,
-          height: `${this.height}px`,
+          width: this.automaticLayout ? `100%` : `${this.width}px`,
+          height: this.automaticLayout ? `100%` : `${this.height}px`,
         })}
       >
         <vuerd-menubar

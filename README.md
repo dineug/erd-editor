@@ -46,6 +46,7 @@ interface ERDEditorElement extends HTMLElement {
   width: number;
   height: number;
   value: string;
+  automaticLayout: boolean;
   focus(): void;
   blur(): void;
   initLoadJson(json: string): void;
@@ -58,21 +59,22 @@ interface ERDEditorElement extends HTMLElement {
 }
 ```
 
-| Name         | Type     | Describe                    |
-| ------------ | -------- | --------------------------- |
-| width        | Number   | width                       |
-| height       | Number   | height                      |
-| value        | String   | editor data                 |
-| change       | Event    | editor data                 |
-| focus        | Function | keymap on(default)          |
-| blur         | Function | keymap off                  |
-| initLoadJson | Function | Do not record and save undo |
-| clear        | Function | editor data clear           |
-| setTheme     | Function | custom theme                |
-| setKeymap    | Function | custom keymap               |
-| setUser      | Function | share user name             |
-| sharePull    | Function | share pull                  |
-| sharePush    | Function | share push                  |
+| Name            | Type     | Describe                    |
+| --------------- | -------- | --------------------------- |
+| width           | Number   | width                       |
+| height          | Number   | height                      |
+| value           | String   | editor data                 |
+| automaticLayout | Boolean  | automatic layout            |
+| change          | Event    | editor data                 |
+| focus           | Function | keymap on(default)          |
+| blur            | Function | keymap off                  |
+| initLoadJson    | Function | Do not record and save undo |
+| clear           | Function | editor data clear           |
+| setTheme        | Function | custom theme                |
+| setKeymap       | Function | custom keymap               |
+| setUser         | Function | share user name             |
+| sharePull       | Function | share pull                  |
+| sharePush       | Function | share push                  |
 
 ### EditorElement Example
 
