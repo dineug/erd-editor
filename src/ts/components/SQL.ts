@@ -20,10 +20,8 @@ class SQL extends EditorElement {
     super.connectedCallback();
     Logger.debug("SQL connectedCallback");
     const { store, eventBus } = this.context;
-    const { mousedown$ } = this.context.windowEventObservable;
     this.subscriptionList.push(
       eventBus.on(Bus.ERD.contextmenuEnd).subscribe(this.onContextmenuEnd),
-      mousedown$.subscribe(this.onMousedownWindow),
       store.observe(store.canvasState, (name) => {
         if (name === "database") {
           this.requestUpdate();
@@ -60,15 +58,6 @@ class SQL extends EditorElement {
 
   private onContextmenuEnd = (event: Event) => {
     this.contextmenu = false;
-  };
-  private onMousedownWindow = (event: MouseEvent) => {
-    const { user } = this.context.store;
-    const el = event.target as HTMLElement;
-    const root = this.getRootNode() as ShadowRoot;
-    const target = el.closest(root.host.localName) as any;
-    if (!target || user.id !== target?.context?.store?.user?.id) {
-      this.contextmenu = false;
-    }
   };
 
   private onContextmenu(event: MouseEvent) {

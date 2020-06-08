@@ -23,11 +23,9 @@ class Find extends EditorElement {
   connectedCallback() {
     super.connectedCallback();
     const { eventBus } = this.context;
-    const { mousedown$ } = this.context.windowEventObservable;
     const root = this.getRootNode() as ShadowRoot;
     const editor = root.querySelector(".vuerd-editor") as Element;
     this.subscriptionList.push(
-      mousedown$.subscribe(this.onMousedownWindow),
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
       eventBus.on(Bus.Find.close).subscribe(this.onClose)
     );
@@ -86,15 +84,6 @@ class Find extends EditorElement {
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
     if (!el.closest(".vuerd-find")) {
-      this.onClose();
-    }
-  };
-  private onMousedownWindow = (event: MouseEvent) => {
-    const { user } = this.context.store;
-    const el = event.target as HTMLElement;
-    const root = this.getRootNode() as ShadowRoot;
-    const target = el.closest(root.host.localName) as any;
-    if (!target || user.id !== target?.context?.store?.user?.id) {
       this.onClose();
     }
   };

@@ -51,14 +51,12 @@ class Filter extends EditorElement {
     super.connectedCallback();
     const { store, eventBus } = this.context;
     const { filterStateList } = this.context.store.editorState;
-    const { mousedown$ } = this.context.windowEventObservable;
     const root = this.getRootNode() as ShadowRoot;
     const editor = root.querySelector(".vuerd-editor") as Element;
     this.subscriptionList.push(
       this.draggable$
         .pipe(debounceTime(50))
         .subscribe(this.onDragoverFilterState),
-      mousedown$.subscribe(this.onMousedownWindow),
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
       store.observe(filterStateList, () => this.requestUpdate()),
       store.observe(store.editorState.focusFilter, () => this.requestUpdate()),
@@ -199,15 +197,6 @@ class Filter extends EditorElement {
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
     if (!el.closest(".vuerd-grid-filter")) {
-      this.onClose();
-    }
-  };
-  private onMousedownWindow = (event: MouseEvent) => {
-    const { user } = this.context.store;
-    const el = event.target as HTMLElement;
-    const root = this.getRootNode() as ShadowRoot;
-    const target = el.closest(root.host.localName) as any;
-    if (!target || user.id !== target?.context?.store?.user?.id) {
       this.onClose();
     }
   };

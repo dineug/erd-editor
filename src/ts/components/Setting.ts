@@ -64,7 +64,6 @@ class Setting extends EditorElement {
     super.connectedCallback();
     const { eventBus, store } = this.context;
     const { setting } = store.canvasState;
-    const { mousedown$ } = this.context.windowEventObservable;
     const root = this.getRootNode() as ShadowRoot;
     const editor = root.querySelector(".vuerd-editor") as Element;
     Object.keys(this.dragoverMap).forEach((key) =>
@@ -78,7 +77,6 @@ class Setting extends EditorElement {
       this.draggable$
         .pipe(debounceTime(50))
         .subscribe(this.onDragoverColumnOrder),
-      mousedown$.subscribe(this.onMousedownWindow),
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
       eventBus.on(Bus.Setting.close).subscribe(this.onClose),
       store.observe(setting.columnOrder, () => this.requestUpdate()),
@@ -203,15 +201,6 @@ class Setting extends EditorElement {
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
     if (!el.closest(".vuerd-setting")) {
-      this.onClose();
-    }
-  };
-  private onMousedownWindow = (event: MouseEvent) => {
-    const { user } = this.context.store;
-    const el = event.target as HTMLElement;
-    const root = this.getRootNode() as ShadowRoot;
-    const target = el.closest(root.host.localName) as any;
-    if (!target || user.id !== target?.context?.store?.user?.id) {
       this.onClose();
     }
   };

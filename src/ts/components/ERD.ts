@@ -120,7 +120,7 @@ class ERD extends EditorElement {
     super.connectedCallback();
     Logger.debug("ERD connectedCallback");
     const { store, eventBus, keymap } = this.context;
-    const { mousedown$, keydown$ } = this.context.windowEventObservable;
+    const { keydown$ } = this.context.windowEventObservable;
     this.subscriptionList.push(
       eventBus.on(Bus.ERD.contextmenuEnd).subscribe(this.onContextmenuEnd),
       store.observe(store.canvasState, (name) => {
@@ -143,7 +143,6 @@ class ERD extends EditorElement {
           this.requestUpdate();
         }
       }),
-      mousedown$.subscribe(this.onMousedownWindow),
       keydown$.subscribe((event) => {
         const {
           focus,
@@ -443,15 +442,6 @@ class ERD extends EditorElement {
       erd.scrollLeft -= movementX;
       const { store } = this.context;
       store.dispatch(moveCanvas(erd.scrollTop, erd.scrollLeft));
-    }
-  };
-  private onMousedownWindow = (event: MouseEvent) => {
-    const { user } = this.context.store;
-    const el = event.target as HTMLElement;
-    const root = this.getRootNode() as ShadowRoot;
-    const target = el.closest(root.host.localName) as any;
-    if (!target || user.id !== target?.context?.store?.user?.id) {
-      this.contextmenu = false;
     }
   };
 

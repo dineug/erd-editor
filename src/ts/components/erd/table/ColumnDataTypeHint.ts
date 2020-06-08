@@ -60,12 +60,10 @@ class ColumnDataTypeHint extends EditorElement {
   connectedCallback() {
     super.connectedCallback();
     const { eventBus } = this.context;
-    const { mousedown$ } = this.context.windowEventObservable;
     const root = this.getRootNode() as ShadowRoot;
     const editor = root.querySelector(".vuerd-editor") as Element;
     this.hintFilter();
     this.subscriptionList.push(
-      mousedown$.subscribe(this.onMousedownWindow),
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
       eventBus.on(Bus.ColumnDataTypeHint.arrowUp).subscribe(this.onArrowUp),
       eventBus.on(Bus.ColumnDataTypeHint.arrowDown).subscribe(this.onArrowDown),
@@ -176,15 +174,6 @@ class ColumnDataTypeHint extends EditorElement {
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
     if (!el.closest(".vuerd-column-data-type")) {
-      this.dispatchEvent(new Event("blur"));
-    }
-  };
-  private onMousedownWindow = (event: MouseEvent) => {
-    const { user } = this.context.store;
-    const el = event.target as HTMLElement;
-    const root = this.getRootNode() as ShadowRoot;
-    const target = el.closest(root.host.localName) as any;
-    if (!target || user.id !== target?.context?.store?.user?.id) {
       this.dispatchEvent(new Event("blur"));
     }
   };
