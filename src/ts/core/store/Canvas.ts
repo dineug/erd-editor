@@ -28,7 +28,7 @@ export type ShowKey = keyof Show;
 
 export interface Setting {
   relationshipDataTypeSync: boolean; // ADD: version 1.1.0
-  columnOrder: ColumnType[];
+  columnOrder: ColumnType[]; // ADD: version 1.1.1
 }
 
 export type ColumnType =

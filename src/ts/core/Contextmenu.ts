@@ -334,15 +334,15 @@ export function createContextmenuTable(
         }
       },
     },
-    // {
-    //   name: "Table Properties",
-    //   keymap: keymapOptionToString(keymap.tableProperties[0]),
-    //   execute() {
-    //     eventBus.emit(Bus.Editor.tableProperties, {
-    //       tableId,
-    //     });
-    //   },
-    // },
+    {
+      name: "Table Properties",
+      keymap: keymapOptionToString(keymap.tableProperties[0]),
+      execute() {
+        eventBus.emit(Bus.Editor.tableProperties, {
+          tableId,
+        });
+      },
+    },
   ];
 }
 

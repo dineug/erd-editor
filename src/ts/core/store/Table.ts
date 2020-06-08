@@ -1,5 +1,6 @@
 export interface TableState {
   tables: Table[];
+  indexes: Index[];
 }
 
 export interface Table {
@@ -69,8 +70,16 @@ export interface ColumnUI {
   widthDefault: number;
 }
 
+export interface Index {
+  id: string;
+  name: string;
+  tableId: string;
+  columnIds: string[];
+}
+
 export function createTableState(): TableState {
   return {
     tables: [],
+    indexes: [],
   };
 }
