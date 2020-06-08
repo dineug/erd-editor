@@ -329,19 +329,19 @@ class ERD extends EditorElement {
             store.redo();
           }
 
-          if (
-            keymapMatch(event, keymap.tableProperties) &&
-            store.tableState.tables.some((table) => table.ui.active)
-          ) {
-            const table = store.tableState.tables.find(
-              (table) => table.ui.active
-            );
-            if (table) {
-              eventBus.emit(Bus.Editor.tableProperties, {
-                tableId: table.id,
-              });
-            }
-          }
+          // if (
+          //   keymapMatch(event, keymap.tableProperties) &&
+          //   store.tableState.tables.some((table) => table.ui.active)
+          // ) {
+          //   const table = store.tableState.tables.find(
+          //     (table) => table.ui.active
+          //   );
+          //   if (table) {
+          //     eventBus.emit(Bus.Editor.tableProperties, {
+          //       tableId: table.id,
+          //     });
+          //   }
+          // }
         }
       })
     );

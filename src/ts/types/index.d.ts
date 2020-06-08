@@ -67,7 +67,7 @@ export interface Keymap {
   relationshipOneN?: KeymapOption[];
   relationshipOne?: KeymapOption[];
   relationshipN?: KeymapOption[];
-  tableProperties?: KeymapOption[];
+  // tableProperties?: KeymapOption[];
 }
 
 export interface User {
