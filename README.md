@@ -78,22 +78,38 @@ interface ERDEditorElement extends HTMLElement {
 
 ### EditorElement Example
 
+### javascript
+
 ```javascript
 const container = document.querySelector("#app");
 const editor = document.createElement("erd-editor");
+container.appendChild(editor);
+
 // editor data load
 editor.initLoadJson("editor data...");
 // or
 // editor.value = "editor data...";
-container.appendChild(editor);
+
 editor.addEventListener("change", (event) => {
   console.log(event.target.value);
 });
+
+// layout
 window.addEventListener("resize", () => {
   editor.width = window.innerWidth;
   editor.height = window.innerHeight;
 });
 window.dispatchEvent(new Event("resize"));
+// or
+// editor.automaticLayout = true;
+```
+
+### html
+
+```html
+<erd-editor width="800" height="800"></erd-editor>
+<!-- or -->
+<!-- <erd-editor automatic-layout></erd-editor> -->
 ```
 
 ## interface Custom Theme
@@ -301,9 +317,9 @@ declare global {
     <!-- <script type="module" src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.esm.js"></script> -->
   </head>
   <body>
-    <erd-editor id="editor"></erd-editor>
+    <erd-editor></erd-editor>
     <script>
-      const editor = document.querySelector("#editor");
+      const editor = document.querySelector("erd-editor");
       window.addEventListener("resize", () => {
         editor.width = window.innerWidth;
         editor.height = window.innerHeight;

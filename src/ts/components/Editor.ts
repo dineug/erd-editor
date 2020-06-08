@@ -33,11 +33,11 @@ class Editor extends RxElement implements ERDEditorElement {
     return Layout;
   }
 
-  @property({ type: Number })
+  @property({ type: Number, reflect: true })
   width = defaultWidth;
-  @property({ type: Number })
+  @property({ type: Number, reflect: true })
   height = defaultHeight;
-  @property({ type: Boolean })
+  @property({ type: Boolean, reflect: true, attribute: "automatic-layout" })
   automaticLayout = false;
 
   context: EditorContext;
