@@ -292,8 +292,10 @@ class Editor extends RxElement implements ERDEditorElement {
     this.context.store.editorState.focus = false;
   }
   initLoadJson(json: string) {
-    const { store } = this.context;
-    store.dispatch(initLoadJson(json));
+    if (typeof json === "string" && json.trim() !== "") {
+      const { store } = this.context;
+      store.dispatch(initLoadJson(json));
+    }
   }
   clear() {
     const { store } = this.context;
