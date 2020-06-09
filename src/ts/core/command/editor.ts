@@ -388,123 +388,136 @@ export function executeLoadJson(store: Store, data: LoadJson) {
   Logger.debug("executeLoadJson");
   const { canvasState, tableState, relationshipState } = store;
   executeClear(store);
-  const json = JSON.parse(data.value) as JsonFormat;
+  try {
+    const json = JSON.parse(data.value) as JsonFormat;
 
-  const canvasStateAny = store.canvasState as any;
-  const canvasJson = json.canvas as any;
-  if (isObject(canvasJson)) {
-    Object.keys(canvasStateAny).forEach((key) => {
-      if (!isEmpty(canvasJson[key])) {
-        switch (key) {
-          case "show":
-            Object.keys(canvasState.show).forEach((showKey) => {
-              if (typeof canvasJson.show[showKey] === "boolean") {
-                canvasStateAny.show[showKey] = canvasJson.show[showKey];
+    const canvasStateAny = store.canvasState as any;
+    const canvasJson = json.canvas as any;
+    if (isObject(canvasJson)) {
+      Object.keys(canvasStateAny).forEach((key) => {
+        if (!isEmpty(canvasJson[key])) {
+          switch (key) {
+            case "show":
+              Object.keys(canvasState.show).forEach((showKey) => {
+                if (typeof canvasJson.show[showKey] === "boolean") {
+                  canvasStateAny.show[showKey] = canvasJson.show[showKey];
+                }
+              });
+              break;
+            case "database":
+              if (databaseList.some((value) => value === canvasJson.database)) {
+                canvasState.database = canvasJson.database;
               }
-            });
-            break;
-          case "database":
-            if (databaseList.some((value) => value === canvasJson.database)) {
-              canvasState.database = canvasJson.database;
-            }
-            break;
-          case "canvasType":
-            if (
-              canvasTypeList.some((value) => value === canvasJson.canvasType)
-            ) {
-              canvasState.canvasType = canvasJson.canvasType;
-            }
-            break;
-          case "language":
-            if (languageList.some((value) => value === canvasJson.language)) {
-              canvasState.language = canvasJson.language;
-            }
-            break;
-          case "tableCase":
-            if (nameCaseList.some((value) => value === canvasJson.tableCase)) {
-              canvasState.tableCase = canvasJson.tableCase;
-            }
-            break;
-          case "columnCase":
-            if (nameCaseList.some((value) => value === canvasJson.columnCase)) {
-              canvasState.columnCase = canvasJson.columnCase;
-            }
-            break;
-          case "width":
-          case "height":
-          case "scrollTop":
-          case "scrollLeft":
-            if (typeof canvasJson[key] === "number") {
-              canvasState[key] = canvasJson[key];
-            }
-            break;
-          case "databaseName":
-            if (typeof canvasJson[key] === "string") {
-              canvasState[key] = canvasJson[key];
-            }
-            break;
-          case "setting":
-            if (
-              typeof canvasJson.setting.relationshipDataTypeSync === "boolean"
-            ) {
-              canvasState.setting.relationshipDataTypeSync =
-                canvasJson.setting.relationshipDataTypeSync;
-            }
-            if (
-              Array.isArray(canvasJson.setting.columnOrder) &&
-              canvasJson.setting.columnOrder.length === 7 &&
-              canvasJson.setting.columnOrder.indexOf("columnName") !== -1 &&
-              canvasJson.setting.columnOrder.indexOf("columnDataType") !== -1 &&
-              canvasJson.setting.columnOrder.indexOf("columnNotNull") !== -1 &&
-              canvasJson.setting.columnOrder.indexOf("columnDefault") !== -1 &&
-              canvasJson.setting.columnOrder.indexOf("columnComment") !== -1 &&
-              canvasJson.setting.columnOrder.indexOf("columnUnique") !== -1 &&
-              canvasJson.setting.columnOrder.indexOf("columnAutoIncrement") !==
-                -1
-            ) {
-              canvasState.setting.columnOrder.splice(
-                0,
-                canvasState.setting.columnOrder.length
-              );
-              canvasState.setting.columnOrder.push(
-                ...canvasJson.setting.columnOrder
-              );
-            }
-            break;
+              break;
+            case "canvasType":
+              if (
+                canvasTypeList.some((value) => value === canvasJson.canvasType)
+              ) {
+                canvasState.canvasType = canvasJson.canvasType;
+              }
+              break;
+            case "language":
+              if (languageList.some((value) => value === canvasJson.language)) {
+                canvasState.language = canvasJson.language;
+              }
+              break;
+            case "tableCase":
+              if (
+                nameCaseList.some((value) => value === canvasJson.tableCase)
+              ) {
+                canvasState.tableCase = canvasJson.tableCase;
+              }
+              break;
+            case "columnCase":
+              if (
+                nameCaseList.some((value) => value === canvasJson.columnCase)
+              ) {
+                canvasState.columnCase = canvasJson.columnCase;
+              }
+              break;
+            case "width":
+            case "height":
+            case "scrollTop":
+            case "scrollLeft":
+              if (typeof canvasJson[key] === "number") {
+                canvasState[key] = canvasJson[key];
+              }
+              break;
+            case "databaseName":
+              if (typeof canvasJson[key] === "string") {
+                canvasState[key] = canvasJson[key];
+              }
+              break;
+            case "setting":
+              if (
+                typeof canvasJson.setting.relationshipDataTypeSync === "boolean"
+              ) {
+                canvasState.setting.relationshipDataTypeSync =
+                  canvasJson.setting.relationshipDataTypeSync;
+              }
+              if (
+                Array.isArray(canvasJson.setting.columnOrder) &&
+                canvasJson.setting.columnOrder.length === 7 &&
+                canvasJson.setting.columnOrder.indexOf("columnName") !== -1 &&
+                canvasJson.setting.columnOrder.indexOf("columnDataType") !==
+                  -1 &&
+                canvasJson.setting.columnOrder.indexOf("columnNotNull") !==
+                  -1 &&
+                canvasJson.setting.columnOrder.indexOf("columnDefault") !==
+                  -1 &&
+                canvasJson.setting.columnOrder.indexOf("columnComment") !==
+                  -1 &&
+                canvasJson.setting.columnOrder.indexOf("columnUnique") !== -1 &&
+                canvasJson.setting.columnOrder.indexOf(
+                  "columnAutoIncrement"
+                ) !== -1
+              ) {
+                canvasState.setting.columnOrder.splice(
+                  0,
+                  canvasState.setting.columnOrder.length
+                );
+                canvasState.setting.columnOrder.push(
+                  ...canvasJson.setting.columnOrder
+                );
+              }
+              break;
+          }
         }
+      });
+    }
+
+    const tableJson = json.table as any;
+    if (isObject(tableJson)) {
+      if (Array.isArray(tableJson.tables)) {
+        tableJson.tables.forEach((loadTable: LoadTable) => {
+          executeLoadTable(store, loadTable);
+        });
       }
-    });
-  }
-
-  const tableJson = json.table as any;
-  if (isObject(tableJson)) {
-    if (Array.isArray(tableJson.tables)) {
-      tableJson.tables.forEach((loadTable: LoadTable) => {
-        executeLoadTable(store, loadTable);
-      });
-    }
-  }
-
-  const memoJson = json.memo as any;
-  if (isObject(memoJson)) {
-    if (Array.isArray(memoJson.memos)) {
-      memoJson.memos.forEach((loadMemo: Memo) => {
-        executeLoadMemo(store, loadMemo);
-      });
-    }
-  }
-
-  const relationshipJson = json.relationship as any;
-  if (isObject(relationshipJson)) {
-    if (Array.isArray(relationshipJson.relationships)) {
-      relationshipJson.relationships.forEach(
-        (loadRelationship: Relationship) => {
-          executeLoadRelationship(store, loadRelationship);
-        }
-      );
     }
 
-    relationshipSort(tableState.tables, relationshipState.relationships);
+    const memoJson = json.memo as any;
+    if (isObject(memoJson)) {
+      if (Array.isArray(memoJson.memos)) {
+        memoJson.memos.forEach((loadMemo: Memo) => {
+          executeLoadMemo(store, loadMemo);
+        });
+      }
+    }
+
+    const relationshipJson = json.relationship as any;
+    if (isObject(relationshipJson)) {
+      if (Array.isArray(relationshipJson.relationships)) {
+        relationshipJson.relationships.forEach(
+          (loadRelationship: Relationship) => {
+            executeLoadRelationship(store, loadRelationship);
+          }
+        );
+      }
+
+      relationshipSort(tableState.tables, relationshipState.relationships);
+    }
+  } catch (err) {
+    Logger.error(err);
   }
 }
 
