@@ -247,6 +247,9 @@ export const menubar = css`
     height: 17px;
     font-size: ${SIZE_FONT}px;
     font-family: var(--vuerd-font-family);
+    border-bottom: solid #fff0 1.5px;
+  }
+  .vuerd-find-table input:focus {
     border-bottom: solid var(--vuerd-theme-edit, var(--vuerd-color-edit)) 1.5px;
   }
 

@@ -16,6 +16,7 @@ export const table = css`
     fill: #fff0;
     background-color: var(--vuerd-theme-table, var(--vuerd-color-table));
     border: solid #fff0 ${SIZE_TABLE_BORDER}px;
+    transition: border 0.1s;
   }
   .vuerd-table:hover {
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));

@@ -1,5 +1,9 @@
 import { css } from "lit-element";
-import { SIZE_MENUBAR_HEIGHT, SIZE_FONT } from "@src/core/Layout";
+import {
+  SIZE_MENUBAR_HEIGHT,
+  SIZE_COLUMN_MARGIN_RIGHT,
+  SIZE_FONT,
+} from "@src/core/Layout";
 
 export const tableProperties = css`
   /* =============== tableProperties ============== */
@@ -47,6 +51,7 @@ export const tableProperties = css`
     padding: 0;
     margin: 0;
     display: flex;
+    margin-bottom: 10px;
   }
   .vuerd-table-properties-tab > li {
     padding: 10px;
@@ -69,5 +74,29 @@ export const tableProperties = css`
       --vuerd-theme-contextmenu-active,
       var(--vuerd-color-contextmenu-active)
     );
+  }
+
+  /* =============== indexes ============== */
+  .vuerd-indexes input {
+    display: inline-flex;
+    vertical-align: middle;
+    align-items: center;
+    margin-right: ${SIZE_COLUMN_MARGIN_RIGHT}px;
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    background-color: var(
+      --vuerd-theme-contextmenu,
+      var(--vuerd-color-contextmenu)
+    );
+    outline: none;
+    border: none;
+    opacity: 0.9;
+    padding: 1px 0 1px 0;
+    height: 17px;
+    font-size: ${SIZE_FONT}px;
+    font-family: var(--vuerd-font-family);
+    border-bottom: solid #fff0 1.5px;
+  }
+  .vuerd-indexes input:focus {
+    border-bottom: solid var(--vuerd-theme-edit, var(--vuerd-color-edit)) 1.5px;
   }
 `;

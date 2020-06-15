@@ -1,7 +1,5 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
-import { classMap } from "lit-html/directives/class-map";
-import { repeat } from "lit-html/directives/repeat";
 import { fromEvent } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
@@ -11,6 +9,8 @@ import { Bus } from "@src/core/Event";
 import { keymapOptionToString } from "@src/core/Keymap";
 import { getData } from "@src/core/Helper";
 import { Table } from "@src/core/store/Table";
+import { focusTableEnd } from "@src/core/command/editor";
+import "./tableProperties/Indexes";
 
 const MAX_WIDTH = 800;
 
@@ -40,13 +40,6 @@ class TableProperties extends EditorElement {
     return this.animation ? this.animationRight : 0;
   }
 
-  get columns() {
-    if (this.table) {
-      return this.table.columns;
-    }
-    return [];
-  }
-
   connectedCallback() {
     super.connectedCallback();
     const { eventBus, store } = this.context;
@@ -58,6 +51,7 @@ class TableProperties extends EditorElement {
     );
     this.animationRight = -1 * this.drawerWidth;
     this.table = getData(store.tableState.tables, this.tableId);
+    store.dispatch(focusTableEnd());
   }
   firstUpdated() {
     this.animationFrame
@@ -83,7 +77,7 @@ class TableProperties extends EditorElement {
         })}
       >
         <div class="vuerd-table-properties-header">
-          <h3>Table Properties ${this.table?.name}</h3>
+          <h3>Table Properties "${this.table?.name}"</h3>
           <vuerd-icon
             class="vuerd-button"
             title=${keymapStop}
@@ -96,7 +90,13 @@ class TableProperties extends EditorElement {
           <ul class="vuerd-table-properties-tab">
             <li class="active">Indexes</li>
           </ul>
-          <div></div>
+          ${this.table
+            ? html`
+                <div>
+                  <vuerd-indexes .table=${this.table}></vuerd-indexes>
+                </div>
+              `
+            : ""}
         </div>
       </div>
     `;

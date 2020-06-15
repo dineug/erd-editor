@@ -49,14 +49,7 @@ class Editor extends RxElement implements ERDEditorElement {
   private tableProperties = false;
   private tablePropertiesId = "";
   private subShare: Subscription | null = null;
-  // @ts-ignore
-  private resizeObserver = new ResizeObserver((entries) => {
-    entries.forEach((entry: any) => {
-      const { width, height } = entry.contentRect;
-      this.width = width;
-      this.height = height;
-    });
-  });
+  private resizeObserver: any = null;
 
   get value() {
     const { store } = this.context;
@@ -75,6 +68,17 @@ class Editor extends RxElement implements ERDEditorElement {
   constructor() {
     super();
     this.context = createEditorContext();
+    // @ts-ignore
+    if (ResizeObserver) {
+      // @ts-ignore
+      this.resizeObserver = new ResizeObserver((entries) => {
+        entries.forEach((entry: any) => {
+          const { width, height } = entry.contentRect;
+          this.width = width;
+          this.height = height;
+        });
+      });
+    }
   }
 
   connectedCallback() {
@@ -124,14 +128,20 @@ class Editor extends RxElement implements ERDEditorElement {
     ) as HTMLSpanElement;
     this.context.helper.setSpan(span);
     if (this.automaticLayout) {
-      this.resizeObserver.observe(editor);
+      if (this.resizeObserver === null) {
+        Logger.warn("not supported ResizeObserver");
+      } else {
+        this.resizeObserver.observe(editor);
+      }
     }
   }
   updated(changedProperties: any) {
     changedProperties.forEach((oldValue: any, propName: string) => {
       if (propName === "automaticLayout") {
         const editor = this.renderRoot.querySelector(".vuerd-editor");
-        if (this.automaticLayout && editor) {
+        if (this.resizeObserver === null) {
+          Logger.warn("not supported ResizeObserver");
+        } else if (this.automaticLayout && editor) {
           this.resizeObserver.observe(editor);
         } else if (editor) {
           this.resizeObserver.unobserve(editor);
