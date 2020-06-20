@@ -187,7 +187,12 @@ import {
   executeFindActiveEnd,
   executeHasUndoRedo,
 } from "./command/editor";
-import { ShareMouse, ShareMouseEnd, executeShareMouse } from "./command/share";
+import {
+  ShareMouse,
+  ShareMouseEnd,
+  executeShareMouse,
+  executeShareMouseEnd,
+} from "./command/share";
 
 export interface User {
   id: string;
@@ -908,6 +913,9 @@ export function executeShareCommand(
     switch (command.type) {
       case "share.mouse":
         executeShareMouse(store, command.data as ShareMouse, command.user);
+        break;
+      case "share.mouseEnd":
+        executeShareMouseEnd(store, command.data as ShareMouseEnd);
         break;
     }
   }
