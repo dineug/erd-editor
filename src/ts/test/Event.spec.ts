@@ -20,7 +20,7 @@ function createTouch(clientX: number, clientY: number): Touch {
   };
 }
 
-it("event bus", (done) => {
+it("event bus: Bus.Editor.importErrorDDL", (done) => {
   // given
   const eventBus = new EventBus();
   const message = "test";
