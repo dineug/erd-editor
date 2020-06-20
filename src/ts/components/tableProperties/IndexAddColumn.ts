@@ -175,13 +175,15 @@ class IndexAddColumn extends EditorElement {
   }
   private onArrowRight(event: KeyboardEvent) {
     const { store } = this.context;
+    const { indexes } = store.tableState;
     const columns = this.table.columns;
     const index = this.activeIndex;
     if (index !== null) {
       event.preventDefault();
       this.startFilter = false;
+      const indexModel = getData(indexes, this.indexId);
       const column = getData(columns, this.hints[index].id);
-      if (column) {
+      if (column && indexModel && !indexModel.columnIds.includes(column.id)) {
         store.dispatch(addIndexColumn(this.indexId, column.id));
       }
     }
@@ -192,6 +194,7 @@ class IndexAddColumn extends EditorElement {
 
   private onSelectHint(hint: Hint) {
     const { store } = this.context;
+    const { indexes } = store.tableState;
     const columns = this.table.columns;
     this.startFilter = false;
     this.activeEnd();
@@ -202,8 +205,9 @@ class IndexAddColumn extends EditorElement {
       input.selectionEnd = len;
       input.focus();
     }
+    const indexModel = getData(indexes, this.indexId);
     const column = getData(columns, hint.id);
-    if (column) {
+    if (column && indexModel && !indexModel.columnIds.includes(column.id)) {
       store.dispatch(addIndexColumn(this.indexId, column.id));
     }
   }

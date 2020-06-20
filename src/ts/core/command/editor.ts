@@ -1111,39 +1111,3 @@ export function executeHasUndoRedo(store: Store, data: HasUndoRedo) {
   editorState.hasUndo = data.hasUndo;
   editorState.hasRedo = data.hasRedo;
 }
-
-export interface DraggableColumnOrder {
-  columnType: ColumnType;
-}
-export function draggableColumnOrder(
-  columnType: ColumnType
-): Command<"editor.draggableColumnOrder"> {
-  return {
-    type: "editor.draggableColumnOrder",
-    data: {
-      columnType,
-    },
-  };
-}
-export function executeDraggableColumnOrder(
-  store: Store,
-  data: DraggableColumnOrder
-) {
-  Logger.debug("executeDraggableColumnOrder");
-  const { editorState } = store;
-  editorState.draggableColumnOrder = data;
-}
-
-export function draggableColumnOrderEnd(): Command<
-  "editor.draggableColumnOrderEnd"
-> {
-  return {
-    type: "editor.draggableColumnOrderEnd",
-    data: null,
-  };
-}
-export function executeDraggableColumnOrderEnd(store: Store) {
-  Logger.debug("executeDraggableColumnOrderEnd");
-  const { editorState } = store;
-  editorState.draggableColumnOrder = null;
-}

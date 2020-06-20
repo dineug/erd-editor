@@ -59,6 +59,10 @@ class IndexColumn extends EditorElement {
   updated(changedProperties: any) {
     this.flipAnimation.play();
   }
+  disconnectedCallback() {
+    this.subDraggable.forEach((sub) => sub.unsubscribe);
+    super.disconnectedCallback();
+  }
 
   render() {
     return html`

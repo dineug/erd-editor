@@ -144,7 +144,6 @@ import {
   DraggableFilterState,
   MoveFilterState,
   HasUndoRedo,
-  DraggableColumnOrder,
   executeFocusTable,
   executeFocusTableEnd,
   executeFocusMoveTable,
@@ -187,8 +186,6 @@ import {
   executeFindActive,
   executeFindActiveEnd,
   executeHasUndoRedo,
-  executeDraggableColumnOrder,
-  executeDraggableColumnOrderEnd,
 } from "./command/editor";
 import { ShareMouse, ShareMouseEnd, executeShareMouse } from "./command/share";
 
@@ -317,8 +314,6 @@ interface CommandMap {
   "editor.findActive": null;
   "editor.findActiveEnd": null;
   "editor.hasUndoRedo": HasUndoRedo;
-  "editor.draggableColumnOrder": DraggableColumnOrder;
-  "editor.draggableColumnOrderEnd": null;
   // share
   "share.mouse": ShareMouse;
   "share.mouseEnd": ShareMouseEnd;
@@ -887,12 +882,6 @@ function executeEditorCommand(store: Store, command: Command<CommandType>) {
       break;
     case "editor.hasUndoRedo":
       executeHasUndoRedo(store, command.data as HasUndoRedo);
-      break;
-    case "editor.draggableColumnOrder":
-      executeDraggableColumnOrder(store, command.data as DraggableColumnOrder);
-      break;
-    case "editor.draggableColumnOrderEnd":
-      executeDraggableColumnOrderEnd(store);
       break;
   }
 }

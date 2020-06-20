@@ -2,7 +2,7 @@ import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { classMap } from "lit-html/directives/class-map";
 import { repeat } from "lit-html/directives/repeat";
-import { Subject, fromEvent } from "rxjs";
+import { Subject, fromEvent, Subscription } from "rxjs";
 import { debounceTime, throttleTime } from "rxjs/operators";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
@@ -15,10 +15,6 @@ import {
   changeRelationshipDataTypeSync,
   moveColumnOrder,
 } from "@src/core/command/canvas";
-import {
-  draggableColumnOrder,
-  draggableColumnOrderEnd,
-} from "@src/core/command/editor";
 
 const MAX_WIDTH = 800;
 
@@ -30,6 +26,8 @@ class Setting extends EditorElement {
   animation = true;
   @property({ type: Number })
   animationRight = defaultWidth;
+  @property({ type: String })
+  currentColumnType: ColumnType | null = null;
 
   private animationFrame = new AnimationFrame<{ right: number }>(200);
   private flipAnimation = new FlipAnimation(
@@ -38,15 +36,7 @@ class Setting extends EditorElement {
     "vuerd-column-order-move"
   );
   private draggable$: Subject<ColumnType> = new Subject();
-  private dragoverMap: { [key: string]: Subject<ColumnType> } = {
-    columnName$: new Subject<ColumnType>(),
-    columnDataType$: new Subject<ColumnType>(),
-    columnNotNull$: new Subject<ColumnType>(),
-    columnDefault$: new Subject<ColumnType>(),
-    columnComment$: new Subject<ColumnType>(),
-    columnUnique$: new Subject<ColumnType>(),
-    columnAutoIncrement$: new Subject<ColumnType>(),
-  };
+  private subDraggable: Subscription[] = [];
 
   get drawerWidth() {
     let width = this.width / 2;
@@ -66,31 +56,16 @@ class Setting extends EditorElement {
     const { setting } = store.canvasState;
     const root = this.getRootNode() as ShadowRoot;
     const editor = root.querySelector(".vuerd-editor") as Element;
-    Object.keys(this.dragoverMap).forEach((key) =>
-      this.subscriptionList.push(
-        this.dragoverMap[key]
-          .pipe(throttleTime(300))
-          .subscribe(this.onDragoverGroupColumnOrder)
-      )
-    );
     this.subscriptionList.push(
       this.draggable$
         .pipe(debounceTime(50))
-        .subscribe(this.onDragoverColumnOrder),
+        .subscribe(this.onDragoverGroupColumnOrder),
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
       eventBus.on(Bus.Setting.close).subscribe(this.onClose),
       store.observe(setting.columnOrder, () => this.requestUpdate()),
       store.observe(setting, (name) => {
         if (name === "relationshipDataTypeSync") {
           this.requestUpdate();
-        }
-      }),
-      store.observe(store.editorState, (name) => {
-        const { draggableColumnOrder } = store.editorState;
-        if (name === "draggableColumnOrder") {
-          if (!draggableColumnOrder) {
-            this.requestUpdate();
-          }
         }
       })
     );
@@ -110,6 +85,10 @@ class Setting extends EditorElement {
   }
   updated(changedProperties: any) {
     this.flipAnimation.play();
+  }
+  disconnectedCallback() {
+    this.subDraggable.forEach((sub) => sub.unsubscribe);
+    super.disconnectedCallback();
   }
 
   render() {
@@ -166,13 +145,12 @@ class Setting extends EditorElement {
                         <div
                           class=${classMap({
                             "vuerd-column-order": true,
-                            draggable: this.draggableColumnOrder(columnType),
+                            draggable: this.currentColumnType === columnType,
                           })}
                           data-id=${columnType}
                           draggable="true"
                           @dragstart=${this.onDragstartColumnOrder}
                           @dragend=${this.onDragendColumnOrder}
-                          @dragover=${this.onDragoverTargetColumnOrder}
                         >
                           ${columnType}
                         </div>
@@ -206,19 +184,18 @@ class Setting extends EditorElement {
     }
   };
   private onDragoverGroupColumnOrder = (targetColumnType: ColumnType) => {
-    this.draggable$.next(targetColumnType);
-  };
-  private onDragoverColumnOrder = (targetColumnType: ColumnType) => {
     const { store } = this.context;
-    const { draggableColumnOrder } = store.editorState;
-    if (
-      draggableColumnOrder !== null &&
-      draggableColumnOrder.columnType !== targetColumnType
-    ) {
+    if (this.currentColumnType && this.currentColumnType !== targetColumnType) {
       this.flipAnimation.snapshot();
-      store.dispatch(
-        moveColumnOrder(draggableColumnOrder.columnType, targetColumnType)
-      );
+      store.dispatch(moveColumnOrder(this.currentColumnType, targetColumnType));
+    }
+  };
+  private onDragoverColumnOrder = (event: DragEvent) => {
+    const el = event.target as HTMLElement;
+    const target = el.closest(".vuerd-column-order") as HTMLElement | null;
+    if (target) {
+      const columnType = el.dataset.id as ColumnType;
+      this.draggable$.next(columnType);
     }
   };
 
@@ -228,31 +205,24 @@ class Setting extends EditorElement {
     store.dispatch(changeRelationshipDataTypeSync(input.checked));
   }
   private onDragstartColumnOrder(event: DragEvent) {
-    const { store } = this.context;
     const el = event.target as HTMLElement;
-    this.renderRoot
-      .querySelectorAll(".vuerd-column-order")
-      .forEach((node) => node.classList.add("none-hover"));
-    store.dispatch(draggableColumnOrder(el.dataset.id as ColumnType));
+    const nodeList = this.renderRoot.querySelectorAll(".vuerd-column-order");
+    nodeList.forEach((node) => {
+      node.classList.add("none-hover");
+      this.subDraggable.push(
+        fromEvent<DragEvent>(node, "dragover")
+          .pipe(throttleTime(300))
+          .subscribe(this.onDragoverColumnOrder)
+      );
+    });
+    this.currentColumnType = el.dataset.id as ColumnType;
   }
-  private onDragendColumnOrder(event: DragEvent) {
-    const { store } = this.context;
+  private onDragendColumnOrder() {
+    this.currentColumnType = null;
+    this.subDraggable.forEach((sub) => sub.unsubscribe);
+    this.subDraggable = [];
     this.renderRoot
       .querySelectorAll(".vuerd-column-order")
       .forEach((node) => node.classList.remove("none-hover"));
-    store.dispatch(draggableColumnOrderEnd());
-  }
-  private onDragoverTargetColumnOrder(event: DragEvent) {
-    const el = event.target as HTMLElement;
-    const targetColumnType = el.dataset.id as ColumnType;
-    this.dragoverMap[`${targetColumnType}$`].next(targetColumnType);
-  }
-
-  private draggableColumnOrder(columnType: ColumnType) {
-    const { draggableColumnOrder } = this.context.store.editorState;
-    return (
-      draggableColumnOrder !== null &&
-      draggableColumnOrder.columnType === columnType
-    );
   }
 }

@@ -46,8 +46,6 @@ import {
   findActiveEnd,
   hasUndoRedo,
   drawRelationship,
-  draggableColumnOrder,
-  draggableColumnOrderEnd,
 } from "@src/core/command/editor";
 import { TableModel } from "@src/core/model/TableModel";
 import { FocusTableModel } from "@src/core/model/FocusTableModel";
@@ -1009,42 +1007,6 @@ describe("command: editor", () => {
     store.observe(editorState, () => {
       expect(editorState.hasUndo).toBe(true);
       expect(editorState.hasRedo).toBe(true);
-      done();
-    });
-  });
-
-  it("edieditor.draggableColumnOrder", (done) => {
-    // given
-    const context = createEditorContext();
-    const { store } = context;
-    const { editorState } = store;
-
-    // when
-    const value = "columnComment";
-    store.dispatch(draggableColumnOrder(value));
-
-    // then
-    store.observe(editorState, () => {
-      expect(editorState.draggableColumnOrder?.columnType).toBe(value);
-      done();
-    });
-  });
-
-  it("edieditor.draggableColumnOrderEnd", (done) => {
-    // given
-    const context = createEditorContext();
-    const { store } = context;
-    const { editorState } = store;
-    editorState.draggableColumnOrder = {
-      columnType: "columnComment",
-    };
-
-    // when
-    store.dispatch(draggableColumnOrderEnd());
-
-    // then
-    store.observe(editorState, () => {
-      expect(editorState.draggableColumnOrder).toBeNull();
       done();
     });
   });
