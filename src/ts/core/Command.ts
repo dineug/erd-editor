@@ -347,6 +347,13 @@ export const changeCommandTypes: CommandType[] = [
   "relationship.remove",
   "relationship.changeRelationshipType",
   "relationship.changeIdentification",
+  // index
+  "index.add",
+  "index.remove",
+  "index.changeName",
+  "index.addColumn",
+  "index.removeColumn",
+  "index.moveColumn",
   // memo
   "memo.add",
   "memo.addOnly",
@@ -452,6 +459,13 @@ export const shareCommandTypes: CommandType[] = [
   "relationship.remove",
   "relationship.changeRelationshipType",
   "relationship.changeIdentification",
+  // index
+  "index.add",
+  "index.remove",
+  "index.changeName",
+  "index.addColumn",
+  "index.removeColumn",
+  "index.moveColumn",
   // memo
   "memo.add",
   "memo.addOnly",
