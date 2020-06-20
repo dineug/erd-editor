@@ -155,8 +155,14 @@ export class AnimationFrame<T> {
                 const range = Math.abs(end - start);
                 if (start < end) {
                   currentValue[key] = range * progressRate + start;
+                  if (currentValue[key] > end) {
+                    currentValue[key] = end;
+                  }
                 } else {
                   currentValue[key] = (range * progressRate - start) * -1;
+                  if (currentValue[key] < end) {
+                    currentValue[key] = end;
+                  }
                 }
               }
             });

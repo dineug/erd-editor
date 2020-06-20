@@ -64,6 +64,14 @@ import {
   executeLoadRelationship,
 } from "./command/relationship";
 import {
+  AddIndex,
+  RemoveIndex,
+  ChangeIndexValue,
+  executeAddIndex,
+  executeRemoveIndex,
+  executeChangeIndexName,
+} from "./command/indexes";
+import {
   AddMemo,
   MoveMemo,
   RemoveMemo,
@@ -228,6 +236,10 @@ interface CommandMap {
   "relationship.changeRelationshipType": ChangeRelationshipType;
   "relationship.changeIdentification": ChangeIdentification;
   "relationship.load": Relationship;
+  // index
+  "index.add": AddIndex;
+  "index.remove": RemoveIndex;
+  "index.changeName": ChangeIndexValue;
   // memo
   "memo.add": AddMemo;
   "memo.addOnly": AddMemo;
@@ -470,6 +482,8 @@ export function executeCommand(
       executeColumnCommand(store, command);
     } else if (/^relationship\./.test(command.type)) {
       executeRelationshipCommand(store, command);
+    } else if (/^index\./.test(command.type)) {
+      executeIndexCommand(store, command);
     } else if (/^memo\./.test(command.type)) {
       executeMemoCommand(store, command);
     } else if (/^canvas\./.test(command.type)) {
@@ -607,6 +621,20 @@ function executeRelationshipCommand(
       break;
     case "relationship.load":
       executeLoadRelationship(store, command.data as Relationship);
+      break;
+  }
+}
+
+function executeIndexCommand(store: Store, command: Command<CommandType>) {
+  switch (command.type) {
+    case "index.add":
+      executeAddIndex(store, command.data as AddIndex);
+      break;
+    case "index.remove":
+      executeRemoveIndex(store, command.data as RemoveIndex);
+      break;
+    case "index.changeName":
+      executeChangeIndexName(store, command.data as ChangeIndexValue);
       break;
   }
 }

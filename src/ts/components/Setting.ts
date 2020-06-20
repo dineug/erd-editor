@@ -100,6 +100,7 @@ class Setting extends EditorElement {
     this.animationFrame
       .play({ right: -1 * this.drawerWidth }, { right: 0 })
       .update((value) => {
+        console.log(`right: ${value.right}`);
         this.animationRight = value.right;
       })
       .complete(() => {

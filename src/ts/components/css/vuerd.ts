@@ -60,6 +60,7 @@ export const vuerd = css`
   }
 
   .vuerd-visualization {
+    position: relative;
     height: 100%;
     overflow: auto;
     background-color: var(

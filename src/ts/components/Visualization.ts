@@ -29,6 +29,10 @@ class Visualization extends EditorElement {
   private x = 0;
   private y = 0;
 
+  get visualization() {
+    return this.renderRoot.querySelector(".vuerd-visualization");
+  }
+
   connectedCallback() {
     super.connectedCallback();
     Logger.debug("Visualization connectedCallback");
@@ -92,8 +96,13 @@ class Visualization extends EditorElement {
   };
 
   private onMousemove(event: MouseEvent) {
+    const visualization = this.visualization;
     this.x = event.x;
     this.y = event.y;
+    if (visualization) {
+      this.x += visualization.scrollLeft;
+      this.y += visualization.scrollTop;
+    }
   }
 
   private setViewBox() {

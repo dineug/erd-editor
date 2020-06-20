@@ -99,4 +99,55 @@ export const tableProperties = css`
   .vuerd-indexes input:focus {
     border-bottom: solid var(--vuerd-theme-edit, var(--vuerd-color-edit)) 1.5px;
   }
+  .vuerd-index,
+  .vuerd-index-column {
+    fill: #fff0;
+  }
+  .vuerd-index:hover,
+  .vuerd-index-column:hover {
+    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
+  }
+  .vuerd-index-column-name {
+    cursor: move;
+  }
+  .vuerd-index-add-column {
+    display: inline-block;
+    position: relative;
+  }
+  .vuerd-index-add-column-list {
+    position: absolute;
+    top: 20.5px;
+    left: 0;
+    z-index: 100;
+    color: var(--vuerd-theme-font, var(--vuerd-color-font));
+    background-color: var(
+      --vuerd-theme-contextmenu,
+      var(--vuerd-color-contextmenu)
+    );
+    opacity: 0.9;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .vuerd-index-add-column-list > li {
+    padding: 5px;
+    cursor: pointer;
+    font-size: ${SIZE_FONT}px;
+  }
+  .vuerd-index-add-column-list > li:hover,
+  .vuerd-index-add-column-hint.active {
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    background-color: var(
+      --vuerd-theme-contextmenu-active,
+      var(--vuerd-color-contextmenu-active)
+    );
+  }
+  .vuerd-index-add-column-list > li:hover .vuerd-mark,
+  .vuerd-index-add-column-hint.active .vuerd-mark {
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+  }
+  /* animation flip */
+  .vuerd-index-add-column-hint-move {
+    transition: transform 0.2s;
+  }
 `;
