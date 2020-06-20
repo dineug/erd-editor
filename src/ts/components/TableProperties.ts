@@ -11,6 +11,8 @@ import { getData } from "@src/core/Helper";
 import { Table } from "@src/core/store/Table";
 import { focusTableEnd } from "@src/core/command/editor";
 import "./tableProperties/Indexes";
+import "./tableProperties/IndexAddColumn";
+import "./tableProperties/IndexColumn";
 
 const MAX_WIDTH = 800;
 

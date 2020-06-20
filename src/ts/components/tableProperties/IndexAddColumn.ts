@@ -7,10 +7,8 @@ import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { markToHTML, getData } from "@src/core/Helper";
 import { FlipAnimation } from "@src/core/Animation";
-import { SIZE_START_X, SIZE_START_Y } from "@src/core/Layout";
 import { Table } from "@src/core/store/Table";
-import { moveCanvas } from "@src/core/command/canvas";
-import { selectOnlyTable } from "@src/core/command/table";
+import { addIndexColumn } from "@src/core/command/indexes";
 
 interface Hint {
   id: string;
@@ -19,18 +17,21 @@ interface Hint {
   active: boolean;
 }
 
-@customElement("vuerd-find-table")
-class FindTable extends EditorElement {
+@customElement("vuerd-index-add-column")
+class IndexAddColumn extends EditorElement {
   @property({ type: String })
   value = "";
   @property({ type: Array })
   hints: Hint[] = [];
 
+  table!: Table;
+  indexId!: string;
+
   private startFilter = true;
   private flipAnimation = new FlipAnimation(
     this.renderRoot,
-    ".vuerd-find-table-hint",
-    "vuerd-find-table-hint-move"
+    ".vuerd-index-add-column-hint",
+    "vuerd-index-add-column-hint-move"
   );
 
   get activeIndex(): number | null {
@@ -53,10 +54,6 @@ class FindTable extends EditorElement {
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown)
     );
   }
-  firstUpdated() {
-    const input = this.renderRoot.querySelector("input");
-    input?.focus();
-  }
   updated(changedProperties: any) {
     changedProperties.forEach((oldValue: any, propName: string) => {
       switch (propName) {
@@ -73,24 +70,25 @@ class FindTable extends EditorElement {
 
   render() {
     return html`
-      <div class="vuerd-find-table">
+      <div class="vuerd-index-add-column">
         <input
+          style="width: 80px;"
           type="text"
+          placeholder="add column"
           spellcheck="false"
-          .value=${this.value}
-          placeholder="table"
           @keydown=${this.onKeydown}
           @input=${this.onInput}
+          @focus=${this.onFocus}
         />
-        <ul class="vuerd-find-table-list">
+        <ul class="vuerd-index-add-column-list">
           ${repeat(
             this.hints,
-            (hint) => hint.id,
+            (hint) => hint.name,
             (hint) => {
               return html`
                 <li
                   class=${classMap({
-                    "vuerd-find-table-hint": true,
+                    "vuerd-index-add-column-hint": true,
                     active: hint.active,
                   })}
                   @click=${() => this.onSelectHint(hint)}
@@ -107,11 +105,14 @@ class FindTable extends EditorElement {
 
   private onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
-    if (!el.closest(".vuerd-find-table")) {
-      this.dispatchEvent(new Event("blur"));
+    if (!el.closest(".vuerd-index-add-column")) {
+      this.hints = [];
     }
   };
 
+  private onFocus() {
+    this.hintFilter();
+  }
   private onInput(event: Event) {
     const input = event.target as HTMLInputElement;
     this.value = input.value;
@@ -173,14 +174,15 @@ class FindTable extends EditorElement {
     this.requestUpdate();
   }
   private onArrowRight(event: KeyboardEvent) {
-    const { tables } = this.context.store.tableState;
+    const { store } = this.context;
+    const columns = this.table.columns;
     const index = this.activeIndex;
     if (index !== null) {
       event.preventDefault();
       this.startFilter = false;
-      const table = getData(tables, this.hints[index].id);
-      if (table) {
-        this.moveCanvasFindTable(table);
+      const column = getData(columns, this.hints[index].id);
+      if (column) {
+        store.dispatch(addIndexColumn(this.indexId, column.id));
       }
     }
   }
@@ -189,7 +191,8 @@ class FindTable extends EditorElement {
   }
 
   private onSelectHint(hint: Hint) {
-    const { tables } = this.context.store.tableState;
+    const { store } = this.context;
+    const columns = this.table.columns;
     this.startFilter = false;
     this.activeEnd();
     const input = this.renderRoot.querySelector("input");
@@ -199,28 +202,28 @@ class FindTable extends EditorElement {
       input.selectionEnd = len;
       input.focus();
     }
-    const table = getData(tables, hint.id);
-    if (table) {
-      this.moveCanvasFindTable(table);
+    const column = getData(columns, hint.id);
+    if (column) {
+      store.dispatch(addIndexColumn(this.indexId, column.id));
     }
   }
 
   private hintFilter() {
-    const { tables } = this.context.store.tableState;
+    const columns = this.table.columns;
     if (this.startFilter) {
       if (this.value.trim().length < 1) {
         this.hints = [];
       } else {
-        this.hints = tables
+        this.hints = columns
           .filter(
-            (table) =>
-              table.name.toLowerCase().indexOf(this.value.toLowerCase()) !== -1
+            (column) =>
+              column.name.toLowerCase().indexOf(this.value.toLowerCase()) !== -1
           )
-          .map((table) => {
+          .map((column) => {
             return {
-              id: table.id,
-              name: table.name,
-              html: markToHTML("vuerd-mark", table.name, this.value),
+              id: column.id,
+              name: column.name,
+              html: markToHTML("vuerd-mark", column.name, this.value),
               active: false,
             };
           });
@@ -229,12 +232,5 @@ class FindTable extends EditorElement {
   }
   private activeEnd() {
     this.hints.forEach((hint) => (hint.active = false));
-  }
-  private moveCanvasFindTable(table: Table) {
-    const { store } = this.context;
-    store.dispatch(
-      moveCanvas(table.ui.top - SIZE_START_Y, table.ui.left - SIZE_START_X),
-      selectOnlyTable(store, table.id)
-    );
   }
 }

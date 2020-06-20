@@ -91,7 +91,7 @@ export const tableProperties = css`
     border: none;
     opacity: 0.9;
     padding: 1px 0 1px 0;
-    height: 17px;
+    height: 23.5px;
     font-size: ${SIZE_FONT}px;
     font-family: var(--vuerd-font-family);
     border-bottom: solid #fff0 1.5px;
@@ -99,15 +99,27 @@ export const tableProperties = css`
   .vuerd-indexes input:focus {
     border-bottom: solid var(--vuerd-theme-edit, var(--vuerd-color-edit)) 1.5px;
   }
-  .vuerd-index,
-  .vuerd-index-column {
+  .vuerd-index {
     fill: #fff0;
   }
-  .vuerd-index:hover,
-  .vuerd-index-column:hover {
+  .vuerd-index:hover {
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
+  .vuerd-index-column {
+    fill: #fff0;
+    padding: 5px;
+    display: inline-block;
+  }
+  .vuerd-index-column:hover {
+    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+    background-color: var(
+      --vuerd-theme-contextmenu-active,
+      var(--vuerd-color-contextmenu-active)
+    );
+  }
   .vuerd-index-column-name {
+    display: inline-block;
     cursor: move;
   }
   .vuerd-index-add-column {
@@ -146,8 +158,21 @@ export const tableProperties = css`
   .vuerd-index-add-column-hint.active .vuerd-mark {
     color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }
+  .vuerd-index-column.draggable {
+    opacity: 0.5;
+  }
+  .vuerd-index-column.none-hover:hover {
+    color: var(--vuerd-theme-font, var(--vuerd-color-font));
+    background-color: var(
+      --vuerd-theme-contextmenu,
+      var(--vuerd-color-contextmenu)
+    );
+  }
   /* animation flip */
   .vuerd-index-add-column-hint-move {
     transition: transform 0.2s;
+  }
+  .vuerd-index-column-move {
+    transition: transform 0.3s;
   }
 `;

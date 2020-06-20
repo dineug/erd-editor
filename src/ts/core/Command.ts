@@ -67,9 +67,15 @@ import {
   AddIndex,
   RemoveIndex,
   ChangeIndexValue,
+  AddIndexColumn,
+  RemoveIndexColumn,
+  MoveIndexColumn,
   executeAddIndex,
   executeRemoveIndex,
   executeChangeIndexName,
+  executeAddIndexColumn,
+  executeRemoveIndexColumn,
+  executeMoveIndexColumn,
 } from "./command/indexes";
 import {
   AddMemo,
@@ -240,6 +246,9 @@ interface CommandMap {
   "index.add": AddIndex;
   "index.remove": RemoveIndex;
   "index.changeName": ChangeIndexValue;
+  "index.addColumn": AddIndexColumn;
+  "index.removeColumn": RemoveIndexColumn;
+  "index.moveColumn": MoveIndexColumn;
   // memo
   "memo.add": AddMemo;
   "memo.addOnly": AddMemo;
@@ -635,6 +644,15 @@ function executeIndexCommand(store: Store, command: Command<CommandType>) {
       break;
     case "index.changeName":
       executeChangeIndexName(store, command.data as ChangeIndexValue);
+      break;
+    case "index.addColumn":
+      executeAddIndexColumn(store, command.data as AddIndexColumn);
+      break;
+    case "index.removeColumn":
+      executeRemoveIndexColumn(store, command.data as RemoveIndexColumn);
+      break;
+    case "index.moveColumn":
+      executeMoveIndexColumn(store, command.data as MoveIndexColumn);
       break;
   }
 }

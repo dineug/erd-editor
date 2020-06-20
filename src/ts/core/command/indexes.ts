@@ -70,3 +70,92 @@ export function executeChangeIndexName(store: Store, data: ChangeIndexValue) {
     index.name = data.value;
   }
 }
+
+export interface AddIndexColumn {
+  indexId: string;
+  columnId: string;
+}
+export function addIndexColumn(
+  indexId: string,
+  columnId: string
+): Command<"index.addColumn"> {
+  return {
+    type: "index.addColumn",
+    data: {
+      indexId,
+      columnId,
+    },
+  };
+}
+export function executeAddIndexColumn(store: Store, data: AddIndexColumn) {
+  Logger.debug("executeAddIndexColumn");
+  const { indexes } = store.tableState;
+  const index = getData(indexes, data.indexId);
+  if (index && !index.columnIds.includes(data.columnId)) {
+    index.columnIds.push(data.columnId);
+  }
+}
+
+export interface RemoveIndexColumn {
+  indexId: string;
+  columnId: string;
+}
+export function removeIndexColumn(
+  indexId: string,
+  columnId: string
+): Command<"index.removeColumn"> {
+  return {
+    type: "index.removeColumn",
+    data: {
+      indexId,
+      columnId,
+    },
+  };
+}
+export function executeRemoveIndexColumn(
+  store: Store,
+  data: RemoveIndexColumn
+) {
+  Logger.debug("executeRemoveIndexColumn");
+  const { indexes } = store.tableState;
+  const index = getData(indexes, data.indexId);
+  if (index) {
+    const targetIndex = index.columnIds.indexOf(data.columnId);
+    if (targetIndex !== -1) {
+      index.columnIds.splice(targetIndex, 1);
+    }
+  }
+}
+
+export interface MoveIndexColumn {
+  indexId: string;
+  columnId: string;
+  targetColumnId: string;
+}
+export function moveIndexColumn(
+  indexId: string,
+  columnId: string,
+  targetColumnId: string
+): Command<"index.moveColumn"> {
+  return {
+    type: "index.moveColumn",
+    data: {
+      indexId,
+      columnId,
+      targetColumnId,
+    },
+  };
+}
+export function executeMoveIndexColumn(store: Store, data: MoveIndexColumn) {
+  Logger.debug("executeMoveIndexColumn");
+  const { indexes } = store.tableState;
+  const index = getData(indexes, data.indexId);
+  if (index && data.columnId !== data.targetColumnId) {
+    const currentIndex = index.columnIds.indexOf(data.columnId);
+    const targetIndex = index.columnIds.indexOf(data.targetColumnId);
+    if (currentIndex !== -1 && targetIndex !== -1) {
+      index.columnIds.splice(currentIndex, 1);
+      index.columnIds.splice(targetIndex, 0, data.columnId);
+    }
+  }
+}

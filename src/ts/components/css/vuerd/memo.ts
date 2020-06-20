@@ -8,7 +8,6 @@ export const memo = css`
     opacity: 0.9;
     fill: #fff0;
     background-color: var(--vuerd-theme-table, var(--vuerd-color-table));
-    transition: border 0.1s;
   }
   .vuerd-memo:hover {
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));

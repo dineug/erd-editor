@@ -105,6 +105,7 @@ export const setting = css`
     display: inline-block;
   }
   .vuerd-column-order:hover {
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
     background-color: var(
       --vuerd-theme-contextmenu-active,
       var(--vuerd-color-contextmenu-active)
@@ -114,6 +115,7 @@ export const setting = css`
     opacity: 0.5;
   }
   .vuerd-column-order.none-hover:hover {
+    color: var(--vuerd-theme-font, var(--vuerd-color-font));
     background-color: var(
       --vuerd-theme-contextmenu,
       var(--vuerd-color-contextmenu)

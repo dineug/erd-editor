@@ -1,23 +1,13 @@
-import { html, customElement, property } from "lit-element";
-import { styleMap } from "lit-html/directives/style-map";
-import { classMap } from "lit-html/directives/class-map";
+import { html, customElement } from "lit-element";
 import { repeat } from "lit-html/directives/repeat";
-import { fromEvent } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
-import { getData } from "@src/core/Helper";
-import { Table, Column } from "@src/core/store/Table";
+import { Table, Index } from "@src/core/store/Table";
 import {
   addIndex,
   removeIndex,
   changeIndexName,
 } from "@src/core/command/indexes";
-
-interface Index {
-  id: string;
-  name: string;
-  columns: Column[];
-}
 
 @customElement("vuerd-indexes")
 class Indexes extends EditorElement {
@@ -25,24 +15,16 @@ class Indexes extends EditorElement {
 
   get indexes(): Index[] {
     const { indexes } = this.context.store.tableState;
-    return indexes
-      .filter((index) => index.tableId === this.table.id)
-      .map((index) => {
-        return {
-          id: index.id,
-          name: index.name,
-          columns: index.columnIds
-            .map((columnId) => getData(this.table.columns, columnId))
-            .filter((column) => column !== null) as Column[],
-        };
-      });
+    return indexes.filter((index) => index.tableId === this.table.id);
   }
 
   connectedCallback() {
     super.connectedCallback();
     const { store } = this.context;
     const { indexes } = store.tableState;
-    store.observe(indexes, () => this.requestUpdate());
+    this.subscriptionList.push(
+      store.observe(indexes, () => this.requestUpdate())
+    );
   }
 
   render() {
@@ -76,35 +58,14 @@ class Indexes extends EditorElement {
                 .value=${index.name}
                 @input=${(event: InputEvent) => this.onInput(event, index)}
               />
-              <div class="vuerd-index-add-column">
-                <input
-                  type="text"
-                  placeholder="add column"
-                  spellcheck="false"
-                />
-                <ul class="vuerd-index-add-column-list">
-                  <li class="vuerd-index-add-column-hint">123</li>
-                  <li class="vuerd-index-add-column-hint">456</li>
-                  <li class="vuerd-index-add-column-hint">789</li>
-                </ul>
-              </div>
-              ${repeat(
-                index.columns,
-                (column) => column.id,
-                (column) => html`
-                  <span class="vuerd-index-column">
-                    <span class="vuerd-index-column-name">
-                      ${column.name}
-                    </span>
-                    <vuerd-icon
-                      class="vuerd-button"
-                      title="remove column"
-                      icon="times"
-                      size="9"
-                    ></vuerd-icon>
-                  </span>
-                `
-              )}
+              <vuerd-index-add-column
+                .table=${this.table}
+                .indexId=${index.id}
+              ></vuerd-index-add-column>
+              <vuerd-index-column
+                .table=${this.table}
+                .indexId=${index.id}
+              ></vuerd-index-column>
             </div>
           `
         )}
