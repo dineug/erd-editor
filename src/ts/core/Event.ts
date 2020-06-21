@@ -157,6 +157,7 @@ enum Setting {
 
 enum TableProperties {
   close = "TableProperties.close",
+  closeOnly = "TableProperties.closeOnly",
 }
 
 enum Menubar {

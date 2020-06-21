@@ -5,14 +5,22 @@ import { Subject, fromEvent, Subscription } from "rxjs";
 import { debounceTime, throttleTime } from "rxjs/operators";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
-import { getData } from "@src/core/Helper";
+import { getData, cloneDeep } from "@src/core/Helper";
 import { FlipAnimation } from "@src/core/Animation";
-import { Table, Column, Index } from "@src/core/store/Table";
-import { removeIndexColumn, moveIndexColumn } from "@src/core/command/indexes";
+import { Table, Column, Index, OrderType } from "@src/core/store/Table";
+import {
+  removeIndexColumn,
+  moveIndexColumn,
+  changeIndexColumnOrderType,
+} from "@src/core/command/indexes";
+
+interface IndexColumn extends Column {
+  orderType: OrderType;
+}
 
 interface IndexModel {
   id: string;
-  columns: Column[];
+  columns: IndexColumn[];
 }
 
 @customElement("vuerd-index-column")
@@ -30,15 +38,24 @@ class IndexColumn extends EditorElement {
   );
   private draggable$: Subject<string> = new Subject();
   private subDraggable: Subscription[] = [];
+  private subColumns: Subscription[] = [];
 
   get index(): IndexModel {
     const { indexes } = this.context.store.tableState;
     const index = getData(indexes, this.indexId) as Index;
     return {
       id: index.id,
-      columns: index.columnIds
-        .map((columnId) => getData(this.table.columns, columnId))
-        .filter((column) => column !== null) as Column[],
+      columns: index.columns
+        .map((column) => {
+          const data = getData(this.table.columns, column.id);
+          if (data) {
+            const newData = cloneDeep(data) as IndexColumn;
+            newData.orderType = column.orderType;
+            return newData;
+          }
+          return null;
+        })
+        .filter((column) => column !== null) as IndexColumn[],
     };
   }
 
@@ -49,8 +66,13 @@ class IndexColumn extends EditorElement {
     const index = getData(indexes, this.indexId);
     if (index) {
       this.subscriptionList.push(
-        store.observe(index.columnIds, () => this.requestUpdate())
+        store.observe(index.columns, () => {
+          this.unsubscribeColumn();
+          this.subscribeColumn();
+          this.requestUpdate();
+        })
       );
+      this.subscribeColumn();
     }
     this.subscriptionList.push(
       this.draggable$.pipe(debounceTime(50)).subscribe(this.onDragoverGroup)
@@ -61,6 +83,7 @@ class IndexColumn extends EditorElement {
   }
   disconnectedCallback() {
     this.subDraggable.forEach((sub) => sub.unsubscribe);
+    this.unsubscribeColumn();
     super.disconnectedCallback();
   }
 
@@ -82,6 +105,12 @@ class IndexColumn extends EditorElement {
           >
             <div class="vuerd-index-column-name">
               ${column.name}
+            </div>
+            <div
+              class="vuerd-index-column-order"
+              @click=${() => this.onChangeColumnOrderType(column)}
+            >
+              ${column.orderType}
             </div>
             <vuerd-icon
               class="vuerd-button"
@@ -114,10 +143,6 @@ class IndexColumn extends EditorElement {
     }
   };
 
-  private onRemoveColumn(column: Column) {
-    const { store } = this.context;
-    store.dispatch(removeIndexColumn(this.indexId, column.id));
-  }
   private onDragstart(event: DragEvent) {
     const nodeList = this.renderRoot.querySelectorAll(".vuerd-index-column");
     nodeList.forEach((node) => {
@@ -139,5 +164,30 @@ class IndexColumn extends EditorElement {
     this.renderRoot
       .querySelectorAll(".vuerd-index-column")
       .forEach((node) => node.classList.remove("none-hover"));
+  }
+  private onRemoveColumn(column: IndexColumn) {
+    const { store } = this.context;
+    store.dispatch(removeIndexColumn(this.indexId, column.id));
+  }
+  private onChangeColumnOrderType(column: IndexColumn) {
+    const { store } = this.context;
+    let value: OrderType = "ASC";
+    if (column.orderType === "ASC") {
+      value = "DESC";
+    }
+    store.dispatch(changeIndexColumnOrderType(this.indexId, column.id, value));
+  }
+
+  private subscribeColumn() {
+    const { store } = this.context;
+    const { indexes } = this.context.store.tableState;
+    const index = getData(indexes, this.indexId) as Index;
+    index.columns.forEach((column) => {
+      this.subColumns.push(store.observe(column, () => this.requestUpdate()));
+    });
+  }
+  private unsubscribeColumn() {
+    this.subColumns.forEach((sub) => sub.unsubscribe());
+    this.subColumns = [];
   }
 }

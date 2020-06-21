@@ -74,8 +74,15 @@ export interface Index {
   id: string;
   name: string;
   tableId: string;
-  columnIds: string[];
+  columns: IndexColumn[];
+  unique: boolean;
 }
+export interface IndexColumn {
+  id: string;
+  orderType: OrderType;
+}
+
+export type OrderType = "ASC" | "DESC";
 
 export function createTableState(): TableState {
   return {

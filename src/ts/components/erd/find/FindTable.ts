@@ -11,6 +11,7 @@ import { SIZE_START_X, SIZE_START_Y } from "@src/core/Layout";
 import { Table } from "@src/core/store/Table";
 import { moveCanvas } from "@src/core/command/canvas";
 import { selectOnlyTable } from "@src/core/command/table";
+import { Bus } from "@src/core/Event";
 
 interface Hint {
   id: string;
@@ -46,12 +47,14 @@ class FindTable extends EditorElement {
 
   connectedCallback() {
     super.connectedCallback();
+    const { eventBus } = this.context;
     const root = this.getRootNode() as ShadowRoot;
     const editor = root.querySelector(".vuerd-editor") as Element;
     this.hintFilter();
     this.subscriptionList.push(
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown)
     );
+    eventBus.emit(Bus.TableProperties.closeOnly);
   }
   firstUpdated() {
     const input = this.renderRoot.querySelector("input");

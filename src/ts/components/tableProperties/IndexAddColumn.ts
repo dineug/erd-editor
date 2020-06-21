@@ -182,9 +182,13 @@ class IndexAddColumn extends EditorElement {
       event.preventDefault();
       this.startFilter = false;
       const indexModel = getData(indexes, this.indexId);
-      const column = getData(columns, this.hints[index].id);
-      if (column && indexModel && !indexModel.columnIds.includes(column.id)) {
-        store.dispatch(addIndexColumn(this.indexId, column.id));
+      const targetColumn = getData(columns, this.hints[index].id);
+      if (
+        targetColumn &&
+        indexModel &&
+        !indexModel.columns.some((column) => column.id === targetColumn.id)
+      ) {
+        store.dispatch(addIndexColumn(this.indexId, targetColumn.id));
       }
     }
   }
@@ -206,9 +210,13 @@ class IndexAddColumn extends EditorElement {
       input.focus();
     }
     const indexModel = getData(indexes, this.indexId);
-    const column = getData(columns, hint.id);
-    if (column && indexModel && !indexModel.columnIds.includes(column.id)) {
-      store.dispatch(addIndexColumn(this.indexId, column.id));
+    const targetColumn = getData(columns, hint.id);
+    if (
+      targetColumn &&
+      indexModel &&
+      !indexModel.columns.some((column) => column.id === targetColumn.id)
+    ) {
+      store.dispatch(addIndexColumn(this.indexId, targetColumn.id));
     }
   }
 

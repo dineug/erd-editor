@@ -67,15 +67,19 @@ import {
   AddIndex,
   RemoveIndex,
   ChangeIndexValue,
+  ChangeIndexUnique,
   AddIndexColumn,
   RemoveIndexColumn,
   MoveIndexColumn,
+  ChangeIndexColumnOrderType,
   executeAddIndex,
   executeRemoveIndex,
   executeChangeIndexName,
+  executeChangeIndexUnique,
   executeAddIndexColumn,
   executeRemoveIndexColumn,
   executeMoveIndexColumn,
+  executeChangeIndexColumnOrderType,
 } from "./command/indexes";
 import {
   AddMemo,
@@ -248,9 +252,11 @@ interface CommandMap {
   "index.add": AddIndex;
   "index.remove": RemoveIndex;
   "index.changeName": ChangeIndexValue;
+  "index.changeUnique": ChangeIndexUnique;
   "index.addColumn": AddIndexColumn;
   "index.removeColumn": RemoveIndexColumn;
   "index.moveColumn": MoveIndexColumn;
+  "index.changeColumnOrderType": ChangeIndexColumnOrderType;
   // memo
   "memo.add": AddMemo;
   "memo.addOnly": AddMemo;
@@ -356,9 +362,11 @@ export const changeCommandTypes: CommandType[] = [
   "index.add",
   "index.remove",
   "index.changeName",
+  "index.changeUnique",
   "index.addColumn",
   "index.removeColumn",
   "index.moveColumn",
+  "index.changeColumnOrderType",
   // memo
   "memo.add",
   "memo.addOnly",
@@ -468,9 +476,11 @@ export const shareCommandTypes: CommandType[] = [
   "index.add",
   "index.remove",
   "index.changeName",
+  "index.changeUnique",
   "index.addColumn",
   "index.removeColumn",
   "index.moveColumn",
+  "index.changeColumnOrderType",
   // memo
   "memo.add",
   "memo.addOnly",
@@ -659,6 +669,9 @@ function executeIndexCommand(store: Store, command: Command<CommandType>) {
     case "index.changeName":
       executeChangeIndexName(store, command.data as ChangeIndexValue);
       break;
+    case "index.changeUnique":
+      executeChangeIndexUnique(store, command.data as ChangeIndexUnique);
+      break;
     case "index.addColumn":
       executeAddIndexColumn(store, command.data as AddIndexColumn);
       break;
@@ -667,6 +680,12 @@ function executeIndexCommand(store: Store, command: Command<CommandType>) {
       break;
     case "index.moveColumn":
       executeMoveIndexColumn(store, command.data as MoveIndexColumn);
+      break;
+    case "index.changeColumnOrderType":
+      executeChangeIndexColumnOrderType(
+        store,
+        command.data as ChangeIndexColumnOrderType
+      );
       break;
   }
 }

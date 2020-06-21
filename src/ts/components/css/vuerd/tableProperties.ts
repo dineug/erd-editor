@@ -101,26 +101,50 @@ export const tableProperties = css`
   }
   .vuerd-index {
     fill: #fff0;
+    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
   }
-  .vuerd-index:hover {
+  .vuerd-index:hover,
+  .vuerd-index-column:hover {
     fill: var(--vuerd-theme-font, var(--vuerd-color-font));
   }
   .vuerd-index-column {
     fill: #fff0;
-    padding: 5px;
     display: inline-block;
   }
-  .vuerd-index-column:hover {
-    fill: var(--vuerd-theme-font, var(--vuerd-color-font));
+  .vuerd-index-column.draggable {
+    opacity: 0.5;
+  }
+  .vuerd-index-unique {
+    display: inline-block;
+    cursor: pointer;
+    color: var(
+      --vuerd-theme-font-placeholder,
+      var(--vuerd-color-font-placeholder)
+    );
+  }
+  .vuerd-index-unique.checked {
     color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
+  }
+  .vuerd-index-column-name {
+    display: inline-block;
+    cursor: move;
+    padding: 5px;
+  }
+  .vuerd-index-column-name:hover {
     background-color: var(
       --vuerd-theme-contextmenu-active,
       var(--vuerd-color-contextmenu-active)
     );
   }
-  .vuerd-index-column-name {
+  .vuerd-index-column-name.none-hover:hover {
+    background-color: var(
+      --vuerd-theme-contextmenu,
+      var(--vuerd-color-contextmenu)
+    );
+  }
+  .vuerd-index-column-order {
     display: inline-block;
-    cursor: move;
+    cursor: pointer;
   }
   .vuerd-index-add-column {
     display: inline-block;
@@ -157,16 +181,6 @@ export const tableProperties = css`
   .vuerd-index-add-column-list > li:hover .vuerd-mark,
   .vuerd-index-add-column-hint.active .vuerd-mark {
     color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
-  }
-  .vuerd-index-column.draggable {
-    opacity: 0.5;
-  }
-  .vuerd-index-column.none-hover:hover {
-    color: var(--vuerd-theme-font, var(--vuerd-color-font));
-    background-color: var(
-      --vuerd-theme-contextmenu,
-      var(--vuerd-color-contextmenu)
-    );
   }
   /* animation flip */
   .vuerd-index-add-column-hint-move {

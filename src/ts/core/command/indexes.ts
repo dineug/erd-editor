@@ -1,8 +1,9 @@
 import { Command } from "../Command";
 import { Logger } from "../Logger";
 import { Store } from "../Store";
-import { uuid, getData } from "../Helper";
+import { uuid, getData, getIndex } from "../Helper";
 import { IndexModel } from "../model/IndexModel";
+import { OrderType } from "../store/Table";
 
 export interface AddIndex {
   id: string;
@@ -71,6 +72,34 @@ export function executeChangeIndexName(store: Store, data: ChangeIndexValue) {
   }
 }
 
+export interface ChangeIndexUnique {
+  indexId: string;
+  value: boolean;
+}
+export function changeIndexUnique(
+  indexId: string,
+  value: boolean
+): Command<"index.changeUnique"> {
+  return {
+    type: "index.changeUnique",
+    data: {
+      indexId,
+      value,
+    },
+  };
+}
+export function executeChangeIndexUnique(
+  store: Store,
+  data: ChangeIndexUnique
+) {
+  Logger.debug("executeChangeIndexUnique");
+  const { indexes } = store.tableState;
+  const index = getData(indexes, data.indexId);
+  if (index) {
+    index.unique = data.value;
+  }
+}
+
 export interface AddIndexColumn {
   indexId: string;
   columnId: string;
@@ -91,8 +120,11 @@ export function executeAddIndexColumn(store: Store, data: AddIndexColumn) {
   Logger.debug("executeAddIndexColumn");
   const { indexes } = store.tableState;
   const index = getData(indexes, data.indexId);
-  if (index && !index.columnIds.includes(data.columnId)) {
-    index.columnIds.push(data.columnId);
+  if (index && !index.columns.some((column) => column.id === data.columnId)) {
+    index.columns.push({
+      id: data.columnId,
+      orderType: "ASC",
+    });
   }
 }
 
@@ -120,9 +152,9 @@ export function executeRemoveIndexColumn(
   const { indexes } = store.tableState;
   const index = getData(indexes, data.indexId);
   if (index) {
-    const targetIndex = index.columnIds.indexOf(data.columnId);
-    if (targetIndex !== -1) {
-      index.columnIds.splice(targetIndex, 1);
+    const targetIndex = getIndex(index.columns, data.columnId);
+    if (targetIndex !== null) {
+      index.columns.splice(targetIndex, 1);
     }
   }
 }
@@ -151,11 +183,46 @@ export function executeMoveIndexColumn(store: Store, data: MoveIndexColumn) {
   const { indexes } = store.tableState;
   const index = getData(indexes, data.indexId);
   if (index && data.columnId !== data.targetColumnId) {
-    const currentIndex = index.columnIds.indexOf(data.columnId);
-    const targetIndex = index.columnIds.indexOf(data.targetColumnId);
-    if (currentIndex !== -1 && targetIndex !== -1) {
-      index.columnIds.splice(currentIndex, 1);
-      index.columnIds.splice(targetIndex, 0, data.columnId);
+    const currentColumn = getData(index.columns, data.columnId);
+    const currentIndex = getIndex(index.columns, data.columnId);
+    const targetIndex = getIndex(index.columns, data.targetColumnId);
+    if (currentColumn && currentIndex !== null && targetIndex !== null) {
+      index.columns.splice(currentIndex, 1);
+      index.columns.splice(targetIndex, 0, currentColumn);
+    }
+  }
+}
+
+export interface ChangeIndexColumnOrderType {
+  indexId: string;
+  columnId: string;
+  value: OrderType;
+}
+export function changeIndexColumnOrderType(
+  indexId: string,
+  columnId: string,
+  value: OrderType
+): Command<"index.changeColumnOrderType"> {
+  return {
+    type: "index.changeColumnOrderType",
+    data: {
+      indexId,
+      columnId,
+      value,
+    },
+  };
+}
+export function executeChangeIndexColumnOrderType(
+  store: Store,
+  data: ChangeIndexColumnOrderType
+) {
+  Logger.debug("executeChangeIndexColumnOrderType");
+  const { indexes } = store.tableState;
+  const index = getData(indexes, data.indexId);
+  if (index) {
+    const column = getData(index.columns, data.columnId);
+    if (column) {
+      column.orderType = data.value;
     }
   }
 }

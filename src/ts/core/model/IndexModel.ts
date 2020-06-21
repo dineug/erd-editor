@@ -1,4 +1,4 @@
-import { Index } from "../store/Table";
+import { Index, IndexColumn } from "../store/Table";
 import { AddIndex } from "../command/indexes";
 
 interface IndexData {
@@ -9,7 +9,8 @@ export class IndexModel implements Index {
   id: string;
   name = "";
   tableId: string;
-  columnIds: string[] = [];
+  columns: IndexColumn[] = [];
+  unique = false;
 
   constructor(data: IndexData) {
     const { addIndex } = data;

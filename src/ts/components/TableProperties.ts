@@ -9,7 +9,8 @@ import { Bus } from "@src/core/Event";
 import { keymapOptionToString } from "@src/core/Keymap";
 import { getData } from "@src/core/Helper";
 import { Table } from "@src/core/store/Table";
-import { focusTableEnd } from "@src/core/command/editor";
+import { selectEndTable, selectTable } from "@src/core/command/table";
+import { selectEndMemo } from "@src/core/command/memo";
 import "./tableProperties/Indexes";
 import "./tableProperties/IndexAddColumn";
 import "./tableProperties/IndexColumn";
@@ -49,11 +50,12 @@ class TableProperties extends EditorElement {
     const editor = root.querySelector(".vuerd-editor") as Element;
     this.subscriptionList.push(
       fromEvent<MouseEvent>(editor, "mousedown").subscribe(this.onMousedown),
-      eventBus.on(Bus.TableProperties.close).subscribe(this.onClose)
+      eventBus.on(Bus.TableProperties.close).subscribe(this.onClose),
+      eventBus.on(Bus.TableProperties.closeOnly).subscribe(this.onCloseOnly)
     );
     this.animationRight = -1 * this.drawerWidth;
     this.table = getData(store.tableState.tables, this.tableId);
-    store.dispatch(focusTableEnd());
+    store.dispatch(selectEndTable(), selectEndMemo());
   }
   firstUpdated() {
     this.animationFrame
@@ -105,6 +107,20 @@ class TableProperties extends EditorElement {
   }
 
   private onClose = () => {
+    const { store } = this.context;
+    this.animation = true;
+    this.animationFrame
+      .play({ right: this.animationRight }, { right: -1 * this.drawerWidth })
+      .update((value) => {
+        this.animationRight = value.right;
+      })
+      .complete(() => {
+        store.dispatch(selectTable(store, false, this.tableId));
+        this.dispatchEvent(new CustomEvent("close"));
+      })
+      .start();
+  };
+  private onCloseOnly = () => {
     this.animation = true;
     this.animationFrame
       .play({ right: this.animationRight }, { right: -1 * this.drawerWidth })

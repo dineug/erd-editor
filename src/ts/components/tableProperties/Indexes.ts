@@ -1,5 +1,7 @@
 import { html, customElement } from "lit-element";
+import { classMap } from "lit-html/directives/class-map";
 import { repeat } from "lit-html/directives/repeat";
+import { Subscription } from "rxjs";
 import { EditorElement } from "@src/components/EditorElement";
 import { Logger } from "@src/core/Logger";
 import { Table, Index } from "@src/core/store/Table";
@@ -7,11 +9,14 @@ import {
   addIndex,
   removeIndex,
   changeIndexName,
+  changeIndexUnique,
 } from "@src/core/command/indexes";
 
 @customElement("vuerd-indexes")
 class Indexes extends EditorElement {
   table!: Table;
+
+  private subIndexes: Subscription[] = [];
 
   get indexes(): Index[] {
     const { indexes } = this.context.store.tableState;
@@ -23,8 +28,17 @@ class Indexes extends EditorElement {
     const { store } = this.context;
     const { indexes } = store.tableState;
     this.subscriptionList.push(
-      store.observe(indexes, () => this.requestUpdate())
+      store.observe(indexes, () => {
+        this.unsubscribeIndex();
+        this.subscribeIndex();
+        this.requestUpdate();
+      })
     );
+    this.subscribeIndex();
+  }
+  disconnectedCallback() {
+    this.unsubscribeIndex();
+    super.disconnectedCallback();
   }
 
   render() {
@@ -49,8 +63,19 @@ class Indexes extends EditorElement {
                 title="remove index"
                 icon="times"
                 size="9"
-                @click=${() => this.onRemoveIndex(index.id)}
+                @click=${() => this.onRemoveIndex(index)}
               ></vuerd-icon>
+              <div
+                class=${classMap({
+                  "vuerd-index-unique": true,
+                  checked: index.unique,
+                })}
+                style="width: 22px;"
+                title="Unique"
+                @click=${() => this.onChangeIndexUnique(index)}
+              >
+                UQ
+              </div>
               <input
                 type="text"
                 placeholder="index name"
@@ -77,13 +102,35 @@ class Indexes extends EditorElement {
     const { store } = this.context;
     store.dispatch(addIndex(this.table.id));
   }
-  private onRemoveIndex(indexId: string) {
+  private onRemoveIndex(index: Index) {
     const { store } = this.context;
-    store.dispatch(removeIndex([indexId]));
+    store.dispatch(removeIndex([index.id]));
+  }
+  private onChangeIndexUnique(index: Index) {
+    const { store } = this.context;
+    store.dispatch(changeIndexUnique(index.id, !index.unique));
   }
   private onInput(event: InputEvent, index: Index) {
     const { store } = this.context;
     const input = event.target as HTMLInputElement;
     store.dispatch(changeIndexName(index.id, input.value));
+  }
+
+  private subscribeIndex() {
+    const { store } = this.context;
+    const { indexes } = this.context.store.tableState;
+    indexes.forEach((index) => {
+      this.subIndexes.push(
+        store.observe(index, (name) => {
+          if (name === "unique") {
+            this.requestUpdate();
+          }
+        })
+      );
+    });
+  }
+  private unsubscribeIndex() {
+    this.subIndexes.forEach((sub) => sub.unsubscribe());
+    this.subIndexes = [];
   }
 }

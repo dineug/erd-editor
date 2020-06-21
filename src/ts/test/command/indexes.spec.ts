@@ -6,6 +6,8 @@ import {
   addIndexColumn,
   removeIndexColumn,
   moveIndexColumn,
+  changeIndexColumnOrderType,
+  changeIndexUnique,
 } from "@src/core/command/indexes";
 import { uuid } from "@src/core/Helper";
 import { IndexModel } from "@src/core/model/IndexModel";
@@ -69,6 +71,27 @@ describe("command: index", () => {
     });
   });
 
+  it("index.changeUnique", (done) => {
+    // given
+    const context = createEditorContext();
+    const { store } = context;
+    const { tableState } = store;
+    tableState.indexes.push(
+      new IndexModel({ addIndex: addIndex(uuid()).data })
+    );
+    const index = tableState.indexes[0];
+
+    // when
+    const value = true;
+    store.dispatch(changeIndexUnique(index.id, value));
+
+    // then
+    store.observe(index, () => {
+      expect(index.unique).toBe(value);
+      done();
+    });
+  });
+
   it("index.addColumn", (done) => {
     // given
     const context = createEditorContext();
@@ -84,8 +107,8 @@ describe("command: index", () => {
     store.dispatch(addIndexColumn(index.id, columnId));
 
     // then
-    store.observe(index.columnIds, () => {
-      expect(index.columnIds.includes(columnId)).toBe(true);
+    store.observe(index.columns, () => {
+      expect(index.columns.some((column) => column.id === columnId)).toBe(true);
       done();
     });
   });
@@ -99,15 +122,26 @@ describe("command: index", () => {
       new IndexModel({ addIndex: addIndex(uuid()).data })
     );
     const index = tableState.indexes[0];
-    index.columnIds.push(uuid(), uuid());
+    index.columns.push(
+      {
+        id: uuid(),
+        orderType: "ASC",
+      },
+      {
+        id: uuid(),
+        orderType: "ASC",
+      }
+    );
 
     // when
-    const columnId = index.columnIds[0];
+    const columnId = index.columns[0].id;
     store.dispatch(removeIndexColumn(index.id, columnId));
 
     // then
-    store.observe(index.columnIds, () => {
-      expect(index.columnIds.includes(columnId)).toBe(false);
+    store.observe(index.columns, () => {
+      expect(index.columns.some((column) => column.id === columnId)).toBe(
+        false
+      );
       done();
     });
   });
@@ -121,17 +155,56 @@ describe("command: index", () => {
       new IndexModel({ addIndex: addIndex(uuid()).data })
     );
     const index = tableState.indexes[0];
-    index.columnIds.push(uuid(), uuid(), uuid());
+    index.columns.push(
+      {
+        id: uuid(),
+        orderType: "ASC",
+      },
+      {
+        id: uuid(),
+        orderType: "ASC",
+      },
+      {
+        id: uuid(),
+        orderType: "ASC",
+      }
+    );
 
     // when
-    const currentColumnId = index.columnIds[0];
-    const targetColumnId = index.columnIds[2];
+    const currentColumnId = index.columns[0].id;
+    const targetColumnId = index.columns[2].id;
     store.dispatch(moveIndexColumn(index.id, currentColumnId, targetColumnId));
 
     // then
-    store.observe(index.columnIds, () => {
-      expect(index.columnIds[2]).toBe(currentColumnId);
-      expect(index.columnIds[1]).toBe(targetColumnId);
+    store.observe(index.columns, () => {
+      expect(index.columns[2].id).toBe(currentColumnId);
+      expect(index.columns[1].id).toBe(targetColumnId);
+      done();
+    });
+  });
+
+  it("index.changeColumnOrderType", (done) => {
+    // given
+    const context = createEditorContext();
+    const { store } = context;
+    const { tableState } = store;
+    tableState.indexes.push(
+      new IndexModel({ addIndex: addIndex(uuid()).data })
+    );
+    const index = tableState.indexes[0];
+    index.columns.push({
+      id: uuid(),
+      orderType: "ASC",
+    });
+
+    // when
+    const column = index.columns[0];
+    const value = "DESC";
+    store.dispatch(changeIndexColumnOrderType(index.id, column.id, value));
+
+    // then
+    store.observe(column, () => {
+      expect(column.orderType).toBe(value);
       done();
     });
   });
