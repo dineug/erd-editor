@@ -11,6 +11,7 @@ import {
   relationshipSort,
   removeValidTableRelationship,
 } from "../helper/RelationshipHelper";
+import { removeValidTableIndex } from "../helper/IndexHelper";
 import { Logger } from "../Logger";
 import { TableModel } from "../model/TableModel";
 import { nextPoint, nextZIndex } from "../helper/TableHelper";
@@ -167,6 +168,7 @@ export function executeRemoveTable(store: Store, data: RemoveTable) {
     }
   }
   // relationship valid
+  removeValidTableIndex(store, data.tableIds);
   removeValidTableRelationship(store, data.tableIds);
 }
 

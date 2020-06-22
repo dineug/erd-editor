@@ -10,6 +10,7 @@ import {
   validIdentification,
   removeValidColumnRelationship,
 } from "../helper/RelationshipHelper";
+import { removeValidColumnIndex } from "../helper/IndexHelper";
 import {
   getColumn,
   getChangeOption,
@@ -189,6 +190,7 @@ export function executeRemoveColumn(store: Store, data: RemoveColumn) {
       }
     }
     // relationship valid
+    removeValidColumnIndex(store, table, data.columnIds);
     removeValidColumnRelationship(store, table, data.columnIds);
     validIdentification(store);
     relationshipSort(tables, relationships);

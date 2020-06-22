@@ -6,7 +6,7 @@ import { createJsonStringify } from "./File";
 import { getData, getIndex, cloneDeep } from "./Helper";
 import { getColumn } from "./helper/ColumnHelper";
 import { Relationship } from "./store/Relationship";
-import { Column } from "./store/Table";
+import { Column, Index } from "./store/Table";
 import { LoadTable } from "./command/table";
 import {
   AddTable,
@@ -35,6 +35,7 @@ import {
   removeRelationship,
   loadRelationship,
 } from "./command/relationship";
+import { removeIndex, loadIndex } from "./command/indexes";
 import {
   AddMemo,
   MoveMemo,
@@ -206,7 +207,7 @@ function executeTableCommand(
   batchUndoCommand: Array<Command<CommandType>>,
   batchRedoCommand: Array<Command<CommandType>>
 ) {
-  const { tables } = store.tableState;
+  const { tables, indexes } = store.tableState;
   const { relationships } = store.relationshipState;
   if (command.type === "table.add" || command.type === "table.addOnly") {
     const data = command.data as AddTable;
@@ -216,6 +217,7 @@ function executeTableCommand(
     const data = command.data as RemoveTable;
     const undoTables: LoadTable[] = [];
     const undoRelationships: Relationship[] = [];
+    const undoIndexes: Index[] = [];
     data.tableIds.forEach((tableId) => {
       const table = getData(tables, tableId);
       if (table) {
@@ -225,6 +227,12 @@ function executeTableCommand(
           if (tableId === start.tableId || tableId === end.tableId) {
             undoRelationships.push(cloneDeep(relationship));
           }
+        });
+        const tableIndexes = indexes.filter(
+          (index) => index.tableId === table.id
+        );
+        tableIndexes.forEach((index) => {
+          undoIndexes.push(cloneDeep(index));
         });
       }
     });
@@ -237,6 +245,12 @@ function executeTableCommand(
       );
       undoRelationships.forEach((relationship) => {
         batchUndoCommand.push(loadRelationship(relationship));
+      });
+    }
+    if (undoIndexes.length > 0) {
+      batchUndoCommand.push(removeIndex(undoIndexes.map((index) => index.id)));
+      undoIndexes.forEach((index) => {
+        batchUndoCommand.push(loadIndex(index));
       });
     }
     batchRedoCommand.push(command);
@@ -288,7 +302,7 @@ function executeColumnCommand(
   batchUndoCommand: Array<Command<CommandType>>,
   batchRedoCommand: Array<Command<CommandType>>
 ) {
-  const { tables } = store.tableState;
+  const { tables, indexes } = store.tableState;
   const { relationships } = store.relationshipState;
   if (command.type === "column.add" || command.type === "column.addOnly") {
     const data = command.data as Array<AddColumn>;
@@ -305,6 +319,7 @@ function executeColumnCommand(
   } else if (command.type === "column.remove") {
     const data = command.data as RemoveColumn;
     const undoRelationships: Relationship[] = [];
+    const undoIndexes: Index[] = [];
     const table = getData(tables, data.tableId);
     if (table) {
       relationships.forEach((relationship) => {
@@ -322,6 +337,14 @@ function executeColumnCommand(
           undoRelationships.push(cloneDeep(relationship));
         }
       });
+
+      const tableIndexes = indexes.filter(
+        (index) => index.tableId === table.id
+      );
+      tableIndexes.forEach((index) => {
+        undoIndexes.push(cloneDeep(index));
+      });
+
       const columns: Column[] = [];
       const indexList: number[] = [];
       data.columnIds.forEach((columnId) => {
@@ -341,6 +364,14 @@ function executeColumnCommand(
         );
         undoRelationships.forEach((relationship) => {
           batchUndoCommand.push(loadRelationship(relationship));
+        });
+      }
+      if (undoIndexes.length > 0) {
+        batchUndoCommand.push(
+          removeIndex(undoIndexes.map((index) => index.id))
+        );
+        undoIndexes.forEach((index) => {
+          batchUndoCommand.push(loadIndex(index));
         });
       }
       batchRedoCommand.push(command);
