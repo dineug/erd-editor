@@ -7,8 +7,8 @@ import { Relationship } from "../store/Relationship";
 import { Helper, getData, getIndex, uuid } from "../Helper";
 import {
   relationshipSort,
-  identificationValid,
-  removeColumnRelationshipValid,
+  validIdentification,
+  removeValidColumnRelationship,
 } from "../helper/RelationshipHelper";
 import {
   getColumn,
@@ -189,8 +189,8 @@ export function executeRemoveColumn(store: Store, data: RemoveColumn) {
       }
     }
     // relationship valid
-    removeColumnRelationshipValid(store, table, data.columnIds);
-    identificationValid(store);
+    removeValidColumnRelationship(store, table, data.columnIds);
+    validIdentification(store);
     relationshipSort(tables, relationships);
   }
 }
@@ -454,7 +454,7 @@ export function executeChangeColumnPrimaryKey(
     }
     column.option.primaryKey = data.value;
     // relationship valid
-    identificationValid(store);
+    validIdentification(store);
   }
 }
 
@@ -590,8 +590,8 @@ export function executeMoveColumn(store: Store, data: MoveColumn) {
           columnIds: data.columnIds,
         });
         // relationship valid
-        removeColumnRelationshipValid(store, currentTable, data.columnIds);
-        identificationValid(store);
+        removeValidColumnRelationship(store, currentTable, data.columnIds);
+        validIdentification(store);
         relationshipSort(tables, relationships);
       }
     }

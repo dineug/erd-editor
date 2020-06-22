@@ -9,7 +9,7 @@ import { Helper, getData, uuid } from "../Helper";
 import {
   Point,
   relationshipSort,
-  removeTableRelationshipValid,
+  removeValidTableRelationship,
 } from "../helper/RelationshipHelper";
 import { Logger } from "../Logger";
 import { TableModel } from "../model/TableModel";
@@ -167,7 +167,7 @@ export function executeRemoveTable(store: Store, data: RemoveTable) {
     }
   }
   // relationship valid
-  removeTableRelationshipValid(store, data.tableIds);
+  removeValidTableRelationship(store, data.tableIds);
 }
 
 export interface SelectTable {

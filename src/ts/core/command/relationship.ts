@@ -4,7 +4,7 @@ import { Logger } from "../Logger";
 import { getData, uuid } from "../Helper";
 import {
   relationshipSort,
-  removeRelationshipColumnIdValid,
+  removeValidRelationshipColumnId,
 } from "../helper/RelationshipHelper";
 import { Relationship, RelationshipType } from "../store/Relationship";
 import { Table } from "../store/Table";
@@ -86,7 +86,7 @@ export function executeRemoveRelationship(
       relationships.splice(i, 1);
       i--;
       // relationship valid
-      removeRelationshipColumnIdValid(
+      removeValidRelationshipColumnId(
         store,
         relationship.end.tableId,
         relationship.end.columnIds

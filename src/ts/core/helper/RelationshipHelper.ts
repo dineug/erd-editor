@@ -794,7 +794,7 @@ export function getRelationshipPath(
 }
 // ==================== Draw Relationship END ===================
 
-export function identificationValid(store: Store) {
+export function validIdentification(store: Store) {
   const { relationships } = store.relationshipState;
   const { tables } = store.tableState;
   relationships.forEach((relationship) => {
@@ -815,7 +815,7 @@ export function identificationValid(store: Store) {
   });
 }
 
-export function removeTableRelationshipValid(store: Store, tableIds: string[]) {
+export function removeValidTableRelationship(store: Store, tableIds: string[]) {
   const { relationships } = store.relationshipState;
   const removeRelationshipIds: string[] = [];
   relationships.forEach((relationship) => {
@@ -835,22 +835,22 @@ export function removeTableRelationshipValid(store: Store, tableIds: string[]) {
   }
 }
 
-interface ColumnUIKeyValid {
+interface ValidColumnUIKey {
   startTableId: string;
   endTableId: string;
   columnIds: string[];
 }
-export function removeColumnRelationshipValid(
+export function removeValidColumnRelationship(
   store: Store,
   table: Table,
   columnIds: string[]
 ) {
   const { relationships } = store.relationshipState;
   const removeRelationshipIds: string[] = [];
-  const columnUIKeyValidList: ColumnUIKeyValid[] = [];
+  const validColumnUIKeyList: ValidColumnUIKey[] = [];
   relationships.forEach((relationship) => {
     const { start, end } = relationship;
-    const columnUIKeyValid: ColumnUIKeyValid = {
+    const validColumnUIKey: ValidColumnUIKey = {
       startTableId: start.tableId,
       endTableId: end.tableId,
       columnIds: [],
@@ -859,7 +859,7 @@ export function removeColumnRelationshipValid(
       for (let i = 0; i < start.columnIds.length; i++) {
         const id = start.columnIds[i];
         if (columnIds.some((columnId) => columnId === id)) {
-          columnUIKeyValid.columnIds.push(end.columnIds[i]);
+          validColumnUIKey.columnIds.push(end.columnIds[i]);
           start.columnIds.splice(i, 1);
           end.columnIds.splice(i, 1);
           i--;
@@ -869,7 +869,7 @@ export function removeColumnRelationshipValid(
       for (let i = 0; i < end.columnIds.length; i++) {
         const id = end.columnIds[i];
         if (columnIds.some((columnId) => columnId === id)) {
-          columnUIKeyValid.columnIds.push(id);
+          validColumnUIKey.columnIds.push(id);
           start.columnIds.splice(i, 1);
           end.columnIds.splice(i, 1);
           i--;
@@ -880,7 +880,7 @@ export function removeColumnRelationshipValid(
     if (start.columnIds.length === 0) {
       removeRelationshipIds.push(relationship.id);
     }
-    columnUIKeyValidList.push(columnUIKeyValid);
+    validColumnUIKeyList.push(validColumnUIKey);
   });
 
   if (removeRelationshipIds.length !== 0) {
@@ -888,23 +888,23 @@ export function removeColumnRelationshipValid(
       relationshipIds: removeRelationshipIds,
     });
   }
-  columnUIKeyValidList.forEach((columnUIKeyValid) => {
-    if (columnUIKeyValid.columnIds.length !== 0) {
-      removeRelationshipColumnIdValid(
+  validColumnUIKeyList.forEach((validColumnUIKey) => {
+    if (validColumnUIKey.columnIds.length !== 0) {
+      removeValidRelationshipColumnId(
         store,
-        columnUIKeyValid.startTableId,
-        columnUIKeyValid.columnIds
+        validColumnUIKey.startTableId,
+        validColumnUIKey.columnIds
       );
-      removeRelationshipColumnIdValid(
+      removeValidRelationshipColumnId(
         store,
-        columnUIKeyValid.endTableId,
-        columnUIKeyValid.columnIds
+        validColumnUIKey.endTableId,
+        validColumnUIKey.columnIds
       );
     }
   });
 }
 
-export function removeRelationshipColumnIdValid(
+export function removeValidRelationshipColumnId(
   store: Store,
   tableId: string,
   columnIds: string[]
