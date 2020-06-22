@@ -346,6 +346,7 @@ declare global {
 | Copy - column                                              | Ctrl + C                                                                 |
 | Paste - column                                             | Ctrl + V                                                                 |
 | Contextmenu - ERD, Table, Relationship, SQL, GeneratorCode | Right-click                                                              |
+| Table Properties                                           | Ctrl + Space                                                             |
 | New Table                                                  | Alt + N                                                                  |
 | New Memo                                                   | Alt + M                                                                  |
 | New - column, filter                                       | Alt + Enter                                                              |
@@ -370,7 +371,7 @@ declare global {
 - [x] Grid filter
 - [x] ERD Table finder
 - [x] Real-time simultaneous editing api
-- [ ] SQL index Support [#9](https://github.com/vuerd/vuerd-vscode/issues/9)
+- [x] SQL index Support [#9](https://github.com/vuerd/vuerd-vscode/issues/9)
 - SQL DDL import Support [#7](https://github.com/vuerd/vuerd-vscode/issues/7)
   - [ ] Oracle
   - [ ] MSSQL

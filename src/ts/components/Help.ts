@@ -98,6 +98,10 @@ class Help extends EditorElement {
         keymap: "Right-click",
       },
       {
+        name: "Table Properties",
+        keymap: keymapOptionToStringJoin(keymap.tableProperties),
+      },
+      {
         name: "New Table",
         keymap: keymapOptionToStringJoin(keymap.addTable),
       },
