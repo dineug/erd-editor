@@ -46,7 +46,7 @@ export function createCode(store: Store): string {
   return stringBuffer.join("\n");
 }
 
-function formatTable(
+export function formatTable(
   table: Table,
   buffer: string[],
   database: Database,

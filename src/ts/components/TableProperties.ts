@@ -1,5 +1,6 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
+import { classMap } from "lit-html/directives/class-map";
 import { fromEvent } from "rxjs";
 import { EditorElement } from "./EditorElement";
 import { Logger } from "@src/core/Logger";
@@ -12,10 +13,18 @@ import { Table } from "@src/core/store/Table";
 import { selectEndTable, selectTable } from "@src/core/command/table";
 import { selectEndMemo } from "@src/core/command/memo";
 import "./tableProperties/Indexes";
-import "./tableProperties/IndexAddColumn";
-import "./tableProperties/IndexColumn";
+import "./tableProperties/indexes/IndexAddColumn";
+import "./tableProperties/indexes/IndexColumn";
+import "./tableProperties/SQL";
+import "./tableProperties/GeneratorCode";
 
 const MAX_WIDTH = 800;
+
+type TabType = "indexes" | "SQL" | "GeneratorCode";
+interface Tab {
+  name: string;
+  type: TabType;
+}
 
 @customElement("vuerd-table-properties")
 class TableProperties extends EditorElement {
@@ -27,7 +36,23 @@ class TableProperties extends EditorElement {
   animationRight = defaultWidth;
   @property({ type: String })
   tableId = "";
+  @property({ type: String })
+  tab: TabType = "indexes";
 
+  private tabs: Tab[] = [
+    {
+      name: "Indexes",
+      type: "indexes",
+    },
+    {
+      name: "SQL DDL",
+      type: "SQL",
+    },
+    {
+      name: "Generator Code",
+      type: "GeneratorCode",
+    },
+  ];
   private table: Table | null = null;
   private animationFrame = new AnimationFrame<{ right: number }>(200);
 
@@ -92,12 +117,40 @@ class TableProperties extends EditorElement {
         </div>
         <div class="vuerd-table-properties-body vuerd-scrollbar">
           <ul class="vuerd-table-properties-tab">
-            <li class="active">Indexes</li>
+            ${this.tabs.map(
+              (tab) =>
+                html`
+                  <li
+                    class=${classMap({
+                      active: tab.type === this.tab,
+                    })}
+                    @click=${() => this.onChangeTab(tab.type)}
+                  >
+                    ${tab.name}
+                  </li>
+                `
+            )}
           </ul>
           ${this.table
             ? html`
                 <div>
-                  <vuerd-indexes .table=${this.table}></vuerd-indexes>
+                  ${this.tab === "indexes"
+                    ? html`
+                        <vuerd-tab-indexes
+                          .table=${this.table}
+                        ></vuerd-tab-indexes>
+                      `
+                    : this.tab === "SQL"
+                    ? html`
+                        <vuerd-tab-sql .table=${this.table}></vuerd-tab-sql>
+                      `
+                    : this.tab === "GeneratorCode"
+                    ? html`
+                        <vuerd-tab-generator-code
+                          .table=${this.table}
+                        ></vuerd-tab-generator-code>
+                      `
+                    : ""}
                 </div>
               `
             : ""}
@@ -138,4 +191,8 @@ class TableProperties extends EditorElement {
       this.onClose();
     }
   };
+
+  private onChangeTab(tab: TabType) {
+    this.tab = tab;
+  }
 }

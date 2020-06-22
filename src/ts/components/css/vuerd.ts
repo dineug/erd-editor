@@ -78,6 +78,7 @@ export const vuerd = css`
     background-color: #23241f;
     overflow: auto;
     font-family: monospace !important;
+    outline: none;
   }
 
   .vuerd-icon {

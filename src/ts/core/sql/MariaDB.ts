@@ -55,7 +55,7 @@ export function createDDL(store: Store): string {
   return stringBuffer.join("\n");
 }
 
-function formatTable(table: Table, buffer: string[]) {
+export function formatTable(table: Table, buffer: string[]) {
   buffer.push(`CREATE TABLE ${table.name}`);
   buffer.push(`(`);
   const pk = primaryKey(table.columns);

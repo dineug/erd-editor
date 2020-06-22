@@ -76,8 +76,8 @@ export const tableProperties = css`
     );
   }
 
-  /* =============== indexes ============== */
-  .vuerd-indexes input {
+  /* =============== tab indexes ============== */
+  .vuerd-tab-indexes input {
     display: inline-flex;
     vertical-align: middle;
     align-items: center;
@@ -96,7 +96,7 @@ export const tableProperties = css`
     font-family: var(--vuerd-font-family);
     border-bottom: solid #fff0 1.5px;
   }
-  .vuerd-indexes input:focus {
+  .vuerd-tab-indexes input:focus {
     border-bottom: solid var(--vuerd-theme-edit, var(--vuerd-color-edit)) 1.5px;
   }
   .vuerd-index {
@@ -188,5 +188,17 @@ export const tableProperties = css`
   }
   .vuerd-index-column-move {
     transition: transform 0.3s;
+  }
+
+  /* =============== tab SQL, GeneratorCode ============== */
+  .vuerd-tab-sql,
+  .vuerd-tab-generator-code {
+    height: calc(100% - 87px);
+    white-space: pre;
+    box-sizing: border-box;
+    background-color: #23241f;
+    overflow: auto;
+    font-family: monospace !important;
+    outline: none;
   }
 `;

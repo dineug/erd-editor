@@ -12,8 +12,8 @@ import {
   changeIndexUnique,
 } from "@src/core/command/indexes";
 
-@customElement("vuerd-indexes")
-class Indexes extends EditorElement {
+@customElement("vuerd-tab-indexes")
+class TabIndexes extends EditorElement {
   table!: Table;
 
   private subIndexes: Subscription[] = [];
@@ -43,7 +43,7 @@ class Indexes extends EditorElement {
 
   render() {
     return html`
-      <div class="vuerd-indexes">
+      <div class="vuerd-tab-indexes">
         <div>
           <vuerd-icon
             class="vuerd-button"
