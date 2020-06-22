@@ -2,6 +2,7 @@ import { Store } from "./Store";
 import { Logger } from "./Logger";
 import { Memo } from "./store/Memo";
 import { Relationship } from "./store/Relationship";
+import { Index } from "./store/Table";
 import {
   AddTable,
   MoveTable,
@@ -80,6 +81,7 @@ import {
   executeRemoveIndexColumn,
   executeMoveIndexColumn,
   executeChangeIndexColumnOrderType,
+  executeLoadIndex,
 } from "./command/indexes";
 import {
   AddMemo,
@@ -257,6 +259,7 @@ interface CommandMap {
   "index.removeColumn": RemoveIndexColumn;
   "index.moveColumn": MoveIndexColumn;
   "index.changeColumnOrderType": ChangeIndexColumnOrderType;
+  "index.load": Index;
   // memo
   "memo.add": AddMemo;
   "memo.addOnly": AddMemo;
@@ -367,6 +370,7 @@ export const changeCommandTypes: CommandType[] = [
   "index.removeColumn",
   "index.moveColumn",
   "index.changeColumnOrderType",
+  "index.load",
   // memo
   "memo.add",
   "memo.addOnly",
@@ -481,6 +485,7 @@ export const shareCommandTypes: CommandType[] = [
   "index.removeColumn",
   "index.moveColumn",
   "index.changeColumnOrderType",
+  "index.load",
   // memo
   "memo.add",
   "memo.addOnly",
@@ -686,6 +691,9 @@ function executeIndexCommand(store: Store, command: Command<CommandType>) {
         store,
         command.data as ChangeIndexColumnOrderType
       );
+      break;
+    case "index.load":
+      executeLoadIndex(store, command.data as Index);
       break;
   }
 }

@@ -1,4 +1,5 @@
-import { Column } from "../store/Table";
+import { Table, Column, Index } from "../store/Table";
+import { getData, uuid, autoName } from "../Helper";
 
 export interface Name {
   id: string;
@@ -10,15 +11,11 @@ export interface KeyColumn {
   end: Column[];
 }
 
-interface List {
-  name: string;
-}
-
-export function formatNames<T extends List>(
-  list: T[],
-  backtick?: string,
-  backtick2?: string
-): string {
+export function formatNames<
+  T extends {
+    name: string;
+  }
+>(list: T[], backtick?: string, backtick2?: string): string {
   const buf: string[] = [];
   list.forEach((v, i) => {
     if (backtick) {

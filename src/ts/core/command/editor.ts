@@ -6,6 +6,7 @@ import { JsonFormat } from "../File";
 import { MoveKey } from "../Keymap";
 import { Relationship, RelationshipType } from "../store/Relationship";
 import { Memo } from "../store/Memo";
+import { Index } from "../store/Table";
 import {
   canvasTypeList,
   databaseList,
@@ -30,6 +31,7 @@ import { addCustomColumn } from "./column";
 import { LoadTable, executeSelectEndTable, executeLoadTable } from "./table";
 import { executeSelectEndMemo, executeLoadMemo } from "./memo";
 import { executeLoadRelationship } from "./relationship";
+import { executeLoadIndex } from "./indexes";
 
 export interface FocusTable {
   tableId: string;
@@ -491,6 +493,11 @@ export function executeLoadJson(store: Store, data: LoadJson) {
       if (Array.isArray(tableJson.tables)) {
         tableJson.tables.forEach((loadTable: LoadTable) => {
           executeLoadTable(store, loadTable);
+        });
+      }
+      if (Array.isArray(tableJson.indexes)) {
+        tableJson.indexes.forEach((loadIndex: Index) => {
+          executeLoadIndex(store, loadIndex);
         });
       }
     }

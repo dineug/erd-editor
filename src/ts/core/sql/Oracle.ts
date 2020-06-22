@@ -1,5 +1,5 @@
 import { Store } from "../Store";
-import { Table, Column } from "../store/Table";
+import { Table, Column, Index } from "../store/Table";
 import { Relationship } from "../store/Relationship";
 import { getData, uuid, autoName } from "../Helper";
 import {
@@ -20,9 +20,11 @@ export function createDDL(store: Store): string {
   const fkNames: Name[] = [];
   const aiNames: Name[] = [];
   const trgNames: Name[] = [];
+  const indexNames: Name[] = [];
   const stringBuffer: string[] = [""];
   const tables = orderByNameASC(store.tableState.tables);
   const relationships = store.relationshipState.relationships;
+  const indexes = store.tableState.indexes;
 
   tables.forEach((table) => {
     formatTable(table, stringBuffer);
@@ -75,6 +77,14 @@ export function createDDL(store: Store): string {
   relationships.forEach((relationship) => {
     formatRelation(tables, relationship, stringBuffer, fkNames);
     stringBuffer.push("");
+  });
+
+  indexes.forEach((index) => {
+    const table = getData(tables, index.tableId);
+    if (table) {
+      formatIndex(table, index, stringBuffer, indexNames);
+      stringBuffer.push("");
+    }
   });
 
   return stringBuffer.join("\n");
@@ -185,5 +195,43 @@ function formatRelation(
     buffer.push(
       `    REFERENCES ${startTable.name} (${formatNames(columns.start)});`
     );
+  }
+}
+
+export function formatIndex(
+  table: Table,
+  index: Index,
+  buffer: string[],
+  indexNames: Name[]
+) {
+  const columnNames = index.columns
+    .map((indexColumn) => {
+      const column = getData(table.columns, indexColumn.id);
+      if (column) {
+        return {
+          name: `${column.name} ${indexColumn.orderType}`,
+        };
+      }
+      return null;
+    })
+    .filter((columnName) => columnName !== null) as { name: string }[];
+
+  if (columnNames.length !== 0) {
+    let indexName = index.name;
+    if (index.name.trim() === "") {
+      indexName = `IDX_${table.name}`;
+      indexName = autoName(indexNames, "", indexName);
+      indexNames.push({
+        id: uuid(),
+        name: indexName,
+      });
+    }
+
+    if (index.unique) {
+      buffer.push(`CREATE UNIQUE INDEX ${indexName}`);
+    } else {
+      buffer.push(`CREATE INDEX ${indexName}`);
+    }
+    buffer.push(`  ON ${table.name} (${formatNames(columnNames)});`);
   }
 }

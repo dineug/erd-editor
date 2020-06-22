@@ -1,4 +1,5 @@
 import { createEditorContext } from "@src/core/EditorContext";
+import { uuid, getData } from "@src/core/Helper";
 import {
   addIndex,
   removeIndex,
@@ -8,8 +9,8 @@ import {
   moveIndexColumn,
   changeIndexColumnOrderType,
   changeIndexUnique,
+  loadIndex,
 } from "@src/core/command/indexes";
-import { uuid } from "@src/core/Helper";
 import { IndexModel } from "@src/core/model/IndexModel";
 
 describe("command: index", () => {
@@ -205,6 +206,24 @@ describe("command: index", () => {
     // then
     store.observe(column, () => {
       expect(column.orderType).toBe(value);
+      done();
+    });
+  });
+
+  it("index.load", (done) => {
+    // given
+    const context = createEditorContext();
+    const { store } = context;
+    const { tableState } = store;
+
+    // when
+    const index = new IndexModel({ addIndex: addIndex(uuid()).data });
+    store.dispatch(loadIndex(index));
+
+    // then
+    store.observe(tableState.indexes, () => {
+      const targetIndex = getData(tableState.indexes, index.id);
+      expect(targetIndex?.id).toBe(index.id);
       done();
     });
   });

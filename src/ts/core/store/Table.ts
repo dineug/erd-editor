@@ -1,6 +1,6 @@
 export interface TableState {
   tables: Table[];
-  indexes: Index[];
+  indexes: Index[]; // ADD: version 1.1.9
 }
 
 export interface Table {

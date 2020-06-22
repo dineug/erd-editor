@@ -3,7 +3,7 @@ import { Logger } from "../Logger";
 import { Store } from "../Store";
 import { uuid, getData, getIndex } from "../Helper";
 import { IndexModel } from "../model/IndexModel";
-import { OrderType } from "../store/Table";
+import { OrderType, Index } from "../store/Table";
 
 export interface AddIndex {
   id: string;
@@ -225,4 +225,16 @@ export function executeChangeIndexColumnOrderType(
       column.orderType = data.value;
     }
   }
+}
+
+export function loadIndex(index: Index): Command<"index.load"> {
+  return {
+    type: "index.load",
+    data: index,
+  };
+}
+export function executeLoadIndex(store: Store, data: Index) {
+  Logger.debug("executeLoadIndex");
+  const { indexes } = store.tableState;
+  indexes.push(new IndexModel({ loadIndex: data }));
 }

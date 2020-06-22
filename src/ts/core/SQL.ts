@@ -21,14 +21,3 @@ export function createDDL(store: Store): string {
   }
   return "";
 }
-
-// MySQL, MariaDB, MSSQL, Oracle, PostgreSQL ===================================================
-
-// CREATE INDEX index_name
-// ON table_name (column1, column2);
-
-//CREATE UNIQUE INDEX index_name
-// ON table_name (column1, column2);
-
-// CREATE INDEX index_name
-// ON table_name (column1 ASC, column2 DESC);

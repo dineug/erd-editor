@@ -24,6 +24,7 @@ export function createJson(
     data.table.tables.push(createTable(helper, table));
   });
   createRelationship(data, tables);
+  createIndex(data, tables);
   return JSON.stringify(data);
 }
 
@@ -122,8 +123,10 @@ function createColumn(helper: Helper, column: ColumnInterface): any {
       widthDefault: SIZE_MIN_WIDTH,
     },
   } as any;
-  if (column.type.width !== undefined && column.type.width === 8) {
-    newColumn.dataType = "BIGINT";
+  if (column.type.width !== undefined) {
+    newColumn.dataType = `${column.type.datatype.toUpperCase()}(${
+      column.type.width
+    })`;
   } else if (column.type.length !== undefined) {
     newColumn.dataType = `${column.type.datatype.toUpperCase()}(${
       column.type.length
@@ -228,4 +231,40 @@ function findByName(list: any[], name: string): any | null {
     }
   }
   return null;
+}
+
+function createIndex(data: JsonFormat, tables: TableInterface[]) {
+  tables.forEach((table) => {
+    if (table.indexes) {
+      table.indexes.forEach((index) => {
+        const targetTable = findByName(data.table.tables, table.name);
+        if (targetTable) {
+          const indexColumns: any[] = [];
+          index.columns.forEach((column) => {
+            if (column.column && column.sort) {
+              const targetColumn = findByName(
+                targetTable.columns,
+                column.column
+              );
+              if (targetColumn) {
+                indexColumns.push({
+                  id: targetColumn.id,
+                  orderType: column.sort.toUpperCase(),
+                });
+              }
+            }
+          });
+          if (indexColumns.length !== 0) {
+            data.table.indexes.push({
+              id: uuid(),
+              name: index.name ? index.name : "",
+              tableId: targetTable.id,
+              columns: indexColumns,
+              unique: false,
+            });
+          }
+        }
+      });
+    }
+  });
 }
