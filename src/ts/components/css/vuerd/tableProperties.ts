@@ -193,7 +193,6 @@ export const tableProperties = css`
   /* =============== tab SQL, GeneratorCode ============== */
   .vuerd-tab-sql,
   .vuerd-tab-generator-code {
-    height: calc(100% - 87px);
     white-space: pre;
     box-sizing: border-box;
     background-color: #23241f;
