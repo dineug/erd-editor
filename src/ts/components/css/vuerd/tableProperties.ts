@@ -152,7 +152,7 @@ export const tableProperties = css`
   }
   .vuerd-index-add-column-list {
     position: absolute;
-    top: 20.5px;
+    top: 27px;
     left: 0;
     z-index: 100;
     color: var(--vuerd-theme-font, var(--vuerd-color-font));
