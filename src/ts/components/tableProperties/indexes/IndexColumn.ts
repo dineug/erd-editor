@@ -145,8 +145,11 @@ class IndexColumn extends EditorElement {
 
   private onDragstart(event: DragEvent) {
     const nodeList = this.renderRoot.querySelectorAll(".vuerd-index-column");
+    const hoverNodeList = this.renderRoot.querySelectorAll(
+      ".vuerd-index-column-name"
+    );
+    hoverNodeList.forEach((node) => node.classList.add("none-hover"));
     nodeList.forEach((node) => {
-      node.classList.add("none-hover");
       this.subDraggable.push(
         fromEvent<DragEvent>(node, "dragover")
           .pipe(throttleTime(300))
@@ -162,7 +165,7 @@ class IndexColumn extends EditorElement {
     this.subDraggable.forEach((sub) => sub.unsubscribe());
     this.subDraggable = [];
     this.renderRoot
-      .querySelectorAll(".vuerd-index-column")
+      .querySelectorAll(".vuerd-index-column-name")
       .forEach((node) => node.classList.remove("none-hover"));
   }
   private onRemoveColumn(column: IndexColumn) {
