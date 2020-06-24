@@ -534,6 +534,7 @@ function executeColumnCommand(
         !data.columnIds.some((columnId) => columnId === data.targetColumnId)
       ) {
         const undoRelationships: Relationship[] = [];
+        const undoIndexes: Index[] = [];
         const columns: Column[] = [];
         const indexList: number[] = [];
         data.columnIds.forEach((columnId) => {
@@ -563,6 +564,14 @@ function executeColumnCommand(
             undoRelationships.push(cloneDeep(relationship));
           }
         });
+
+        const tableIndexes = indexes.filter(
+          (index) => index.tableId === data.tableId
+        );
+        tableIndexes.forEach((index) => {
+          undoIndexes.push(cloneDeep(index));
+        });
+
         if (undoRelationships.length > 0) {
           batchUndoCommand.push(
             removeRelationship(
@@ -571,6 +580,14 @@ function executeColumnCommand(
           );
           undoRelationships.forEach((relationship) => {
             batchUndoCommand.push(loadRelationship(relationship));
+          });
+        }
+        if (undoIndexes.length > 0) {
+          batchUndoCommand.push(
+            removeIndex(undoIndexes.map((index) => index.id))
+          );
+          undoIndexes.forEach((index) => {
+            batchUndoCommand.push(loadIndex(index));
           });
         }
         batchRedoCommand.push(command);

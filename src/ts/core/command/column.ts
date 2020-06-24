@@ -592,6 +592,7 @@ export function executeMoveColumn(store: Store, data: MoveColumn) {
           columnIds: data.columnIds,
         });
         // relationship valid
+        removeValidColumnIndex(store, currentTable, data.columnIds);
         removeValidColumnRelationship(store, currentTable, data.columnIds);
         validIdentification(store);
         relationshipSort(tables, relationships);
