@@ -3,6 +3,7 @@ import { MSSQLTypes } from "./dataType/MSSQL";
 import { MySQLTypes } from "./dataType/MySQL";
 import { OracleTypes } from "./dataType/Oracle";
 import { PostgreSQLTypes } from "./dataType/PostgreSQL";
+import { SQLiteTypes } from "./dataType/SQLite";
 import { Database } from "./store/Canvas";
 
 export type PrimitiveType =
@@ -48,5 +49,9 @@ export const databaseHints: DatabaseHint[] = [
   {
     database: "PostgreSQL",
     dataTypeHints: PostgreSQLTypes,
+  },
+  {
+    database: "SQLite",
+    dataTypeHints: SQLiteTypes,
   },
 ];

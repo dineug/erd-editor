@@ -26,6 +26,7 @@ import {
   formatTable as formatTablePostgreSQL,
   formatIndex as formatIndexPostgreSQL,
 } from "./sql/PostgreSQL";
+import { createDDL as createDDLSQLite } from "./sql/SQLite";
 
 export function createDDL(store: Store): string {
   const database = store.canvasState.database;
@@ -40,6 +41,8 @@ export function createDDL(store: Store): string {
       return createDDLOracle(store);
     case "PostgreSQL":
       return createDDLPostgreSQL(store);
+    case "SQLite":
+      return createDDLSQLite(store);
   }
   return "";
 }

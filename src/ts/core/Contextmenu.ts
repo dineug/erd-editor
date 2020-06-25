@@ -188,6 +188,7 @@ const databaseKeys: Database[] = [
   "MySQL",
   "MariaDB",
   "PostgreSQL",
+  "SQLite",
   "Oracle",
   "MSSQL",
 ];

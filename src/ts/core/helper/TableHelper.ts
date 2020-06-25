@@ -12,6 +12,7 @@ import { Store } from "../Store";
 import { Table, Column, ColumnWidth } from "../store/Table";
 import { Show } from "../store/Canvas";
 import { Memo } from "../store/Memo";
+import { Relationship } from "../store/Relationship";
 import { getCoordinate } from "./RelationshipHelper";
 
 export function nextZIndex(tables: Table[], memos: Memo[]): number {
@@ -180,4 +181,31 @@ export function virtualTable(
       minY < coordinate.rb.y &&
       coordinate.rb.y < maxY)
   );
+}
+
+export function orderByRelationship(
+  tables: Table[],
+  relationships: Relationship[]
+): Table[] {
+  const reTables: Table[] = [];
+  tables.forEach((table) => {
+    const index = lastTableIndex(
+      reTables,
+      relationships
+        .filter((relationship) => relationship.end.tableId === table.id)
+        .map((relationship) => relationship.start.tableId)
+    );
+    reTables.splice(index, 0, table);
+  });
+  return reTables;
+}
+
+function lastTableIndex(tables: Table[], tableIds: string[]): number {
+  let index = 0;
+  tables.forEach((table, i) => {
+    if (tableIds.some((tableId) => tableId === table.id)) {
+      index = i;
+    }
+  });
+  return index;
 }

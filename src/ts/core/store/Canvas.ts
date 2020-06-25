@@ -64,13 +64,20 @@ export const canvasTypeList: CanvasType[] = [
   "Visualization",
 ];
 
-export type Database = "MariaDB" | "MSSQL" | "MySQL" | "Oracle" | "PostgreSQL";
+export type Database =
+  | "MariaDB"
+  | "MSSQL"
+  | "MySQL"
+  | "Oracle"
+  | "PostgreSQL"
+  | "SQLite";
 export const databaseList: Database[] = [
   "MariaDB",
   "MSSQL",
   "MySQL",
   "Oracle",
   "PostgreSQL",
+  "SQLite",
 ];
 
 export type Language =
