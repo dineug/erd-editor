@@ -26,7 +26,11 @@ import {
   formatTable as formatTablePostgreSQL,
   formatIndex as formatIndexPostgreSQL,
 } from "./sql/PostgreSQL";
-import { createDDL as createDDLSQLite } from "./sql/SQLite";
+import {
+  createDDL as createDDLSQLite,
+  formatTable as formatTableSQLite,
+  formatIndex as formatIndexSQLite,
+} from "./sql/SQLite";
 
 export function createDDL(store: Store): string {
   const database = store.canvasState.database;
@@ -54,6 +58,8 @@ export function createDDLTable(store: Store, table: Table): string {
   const indexes = store.tableState.indexes.filter(
     (index) => index.tableId === table.id
   );
+  const relationships = store.relationshipState.relationships;
+  const tables = store.tableState.tables;
   switch (database) {
     case "MariaDB":
       formatTableMariaDB(table, stringBuffer);
@@ -92,6 +98,21 @@ export function createDDLTable(store: Store, table: Table): string {
       stringBuffer.push("");
       indexes.forEach((index) => {
         formatIndexPostgreSQL(table, index, stringBuffer, indexNames);
+        stringBuffer.push("");
+      });
+      break;
+    case "SQLite":
+      formatTableSQLite(
+        table,
+        tables,
+        relationships.filter(
+          (relationship) => relationship.end.tableId === table.id
+        ),
+        stringBuffer
+      );
+      stringBuffer.push("");
+      indexes.forEach((index) => {
+        formatIndexSQLite(table, index, stringBuffer, indexNames);
         stringBuffer.push("");
       });
       break;
