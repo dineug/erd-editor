@@ -12,7 +12,7 @@ import {
   Name,
   KeyColumn,
 } from "../helper/SQLHelper";
-import { orderByNameASC, orderByRelationship } from "../helper/TableHelper";
+import { orderByRelationship, orderByNameASC } from "../helper/TableHelper";
 
 export function createDDL(store: Store): string {
   const indexNames: Name[] = [];

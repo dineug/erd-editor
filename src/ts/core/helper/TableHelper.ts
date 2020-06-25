@@ -14,7 +14,7 @@ import { Show } from "../store/Canvas";
 import { Memo } from "../store/Memo";
 import { Relationship } from "../store/Relationship";
 import { getCoordinate } from "./RelationshipHelper";
-import { table } from "@src/components/css/vuerd/table";
+import { getIndex } from "../Helper";
 
 export function nextZIndex(tables: Table[], memos: Memo[]): number {
   let max = 1;
@@ -188,37 +188,36 @@ export function orderByRelationship(
   tables: Table[],
   relationships: Relationship[]
 ): Table[] {
-  const reTables: Table[] = [];
+  const firstTables: Table[] = [];
+  const reshapeTables: Table[] = [];
+  const sortTables: Table[] = [];
   tables.forEach((table) => {
-    const lastIndex = lastTableIndex(
-      reTables,
-      relationships
-        .filter((relationship) => relationship.end.tableId === table.id)
-        .map((relationship) => relationship.start.tableId)
-    );
+    const endRelationships = relationships
+      .filter((relationship) => relationship.end.tableId === table.id)
+      .map((relationship) => relationship.start.tableId);
+    if (endRelationships.length === 0) {
+      firstTables.push(table);
+    } else {
+      reshapeTables.push(table);
+      sortTables.push(table);
+    }
+  });
+
+  reshapeTables.forEach((table) => {
     const firstIndex = firstTableIndex(
-      reTables,
+      sortTables,
       relationships
         .filter((relationship) => relationship.start.tableId === table.id)
         .map((relationship) => relationship.end.tableId)
     );
-    if (firstIndex < lastIndex) {
-      reTables.splice(lastIndex, 0, table);
-    } else {
-      reTables.splice(firstIndex - 1, 0, table);
+    const currentIndex = getIndex(sortTables, table.id);
+    if (currentIndex !== null) {
+      sortTables.splice(currentIndex, 1);
     }
+    sortTables.splice(firstIndex, 0, table);
   });
-  return reTables;
-}
 
-function lastTableIndex(tables: Table[], tableIds: string[]): number {
-  let index = 0;
-  tables.forEach((table, i) => {
-    if (tableIds.some((tableId) => tableId === table.id)) {
-      index = i;
-    }
-  });
-  return index;
+  return [...firstTables, ...sortTables];
 }
 
 function firstTableIndex(tables: Table[], tableIds: string[]): number {
