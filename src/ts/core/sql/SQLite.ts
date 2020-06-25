@@ -12,14 +12,17 @@ import {
   Name,
   KeyColumn,
 } from "../helper/SQLHelper";
-import { orderByRelationship } from "../helper/TableHelper";
+import { orderByNameASC, orderByRelationship } from "../helper/TableHelper";
 
 export function createDDL(store: Store): string {
   const indexNames: Name[] = [];
   const stringBuffer: string[] = [""];
   const relationships = store.relationshipState.relationships;
   const indexes = store.tableState.indexes;
-  const tables = orderByRelationship(store.tableState.tables, relationships);
+  const tables = orderByRelationship(
+    orderByNameASC(store.tableState.tables),
+    relationships
+  );
 
   tables.forEach((table) => {
     formatTable(

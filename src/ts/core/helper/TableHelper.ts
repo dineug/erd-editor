@@ -14,6 +14,7 @@ import { Show } from "../store/Canvas";
 import { Memo } from "../store/Memo";
 import { Relationship } from "../store/Relationship";
 import { getCoordinate } from "./RelationshipHelper";
+import { table } from "@src/components/css/vuerd/table";
 
 export function nextZIndex(tables: Table[], memos: Memo[]): number {
   let max = 1;
@@ -189,13 +190,23 @@ export function orderByRelationship(
 ): Table[] {
   const reTables: Table[] = [];
   tables.forEach((table) => {
-    const index = lastTableIndex(
+    const lastIndex = lastTableIndex(
       reTables,
       relationships
         .filter((relationship) => relationship.end.tableId === table.id)
         .map((relationship) => relationship.start.tableId)
     );
-    reTables.splice(index, 0, table);
+    const firstIndex = firstTableIndex(
+      reTables,
+      relationships
+        .filter((relationship) => relationship.start.tableId === table.id)
+        .map((relationship) => relationship.end.tableId)
+    );
+    if (firstIndex < lastIndex) {
+      reTables.splice(lastIndex, 0, table);
+    } else {
+      reTables.splice(firstIndex - 1, 0, table);
+    }
   });
   return reTables;
 }
@@ -207,5 +218,17 @@ function lastTableIndex(tables: Table[], tableIds: string[]): number {
       index = i;
     }
   });
+  return index;
+}
+
+function firstTableIndex(tables: Table[], tableIds: string[]): number {
+  let index = tables.length - 1;
+  for (let i = 0; i < tables.length; i++) {
+    const id = tables[i].id;
+    if (tableIds.some((tableId) => tableId === id)) {
+      index = i;
+      break;
+    }
+  }
   return index;
 }
