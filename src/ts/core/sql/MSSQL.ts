@@ -87,7 +87,7 @@ function formatColumn(
 ) {
   const stringBuffer: string[] = [];
   stringBuffer.push(
-    `  "${column.name}"` + formatSpace(spaceSize.name - column.name.length)
+    `  ${column.name}` + formatSpace(spaceSize.name - column.name.length)
   );
   stringBuffer.push(
     `${column.dataType}` +
@@ -116,9 +116,9 @@ function formatComment(table: Table, buffer: string[]) {
   }
   table.columns.forEach((column) => {
     if (column.comment.trim() !== "") {
-      buffer.push(`EXECUTE sp_addextendedproperty 'MS_Description',`);
+      buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
       buffer.push(
-        `  '${column.comment}', 'user', dbo, 'table', '${table.name}', 'column', '${table.name}'\nGO`
+        `  '${column.comment}', 'user', dbo, 'table', '${table.name}', 'column', '${column.name}'\nGO`
       );
       buffer.push("");
     }
