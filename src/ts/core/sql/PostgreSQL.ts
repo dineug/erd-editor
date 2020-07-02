@@ -44,7 +44,7 @@ export function createDDL(store: Store): string {
 }
 
 export function formatTable(table: Table, buffer: string[]) {
-  buffer.push(`CREATE TABLE "${table.name}"`);
+  buffer.push(`CREATE TABLE ${table.name}`);
   buffer.push(`(`);
   const pk = primaryKey(table.columns);
   const spaceSize = formatSize(table.columns);
@@ -59,7 +59,7 @@ export function formatTable(table: Table, buffer: string[]) {
   // PK
   if (pk) {
     const pkColumns = primaryKeyColumns(table.columns);
-    buffer.push(`  PRIMARY KEY (${formatNames(pkColumns, '"')})`);
+    buffer.push(`  PRIMARY KEY (${formatNames(pkColumns)})`);
   }
   buffer.push(`);`);
 }
@@ -72,7 +72,7 @@ function formatColumn(
 ) {
   const stringBuffer: string[] = [];
   stringBuffer.push(
-    `  "${column.name}"` + formatSpace(spaceSize.name - column.name.length)
+    `  ${column.name}` + formatSpace(spaceSize.name - column.name.length)
   );
   stringBuffer.push(
     `${column.dataType}` +
@@ -93,13 +93,13 @@ function formatColumn(
 
 function formatComment(table: Table, buffer: string[]) {
   if (table.comment.trim() !== "") {
-    buffer.push(`COMMENT ON TABLE "${table.name}" IS '${table.comment}';`);
+    buffer.push(`COMMENT ON TABLE ${table.name} IS '${table.comment}';`);
     buffer.push("");
   }
   table.columns.forEach((column) => {
     if (column.comment.trim() !== "") {
       buffer.push(
-        `COMMENT ON COLUMN "${table.name}"."${column.name}" IS '${column.comment}';`
+        `COMMENT ON COLUMN ${table.name}.${column.name} IS '${column.comment}';`
       );
       buffer.push("");
     }
@@ -116,7 +116,7 @@ function formatRelation(
   const endTable = getData(tables, relationship.end.tableId);
 
   if (startTable && endTable) {
-    buffer.push(`ALTER TABLE "${endTable.name}"`);
+    buffer.push(`ALTER TABLE ${endTable.name}`);
 
     // FK 중복 처리
     let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
@@ -126,7 +126,7 @@ function formatRelation(
       name: fkName,
     });
 
-    buffer.push(`  ADD CONSTRAINT "${fkName}"`);
+    buffer.push(`  ADD CONSTRAINT ${fkName}`);
 
     // key
     const columns: KeyColumn = {
@@ -146,12 +146,9 @@ function formatRelation(
       }
     });
 
-    buffer.push(`    FOREIGN KEY (${formatNames(columns.end, '"')})`);
+    buffer.push(`    FOREIGN KEY (${formatNames(columns.end)})`);
     buffer.push(
-      `    REFERENCES "${startTable.name}" (${formatNames(
-        columns.start,
-        '"'
-      )});`
+      `    REFERENCES ${startTable.name} (${formatNames(columns.start)});`
     );
   }
 }
@@ -186,10 +183,10 @@ export function formatIndex(
     }
 
     if (index.unique) {
-      buffer.push(`CREATE UNIQUE INDEX "${indexName}"`);
+      buffer.push(`CREATE UNIQUE INDEX ${indexName}`);
     } else {
-      buffer.push(`CREATE INDEX "${indexName}"`);
+      buffer.push(`CREATE INDEX ${indexName}`);
     }
-    buffer.push(`  ON "${table.name}" (${formatNames(columnNames, '"')});`);
+    buffer.push(`  ON ${table.name} (${formatNames(columnNames)});`);
   }
 }

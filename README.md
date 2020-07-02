@@ -233,6 +233,7 @@ interface Keymap {
   relationshipOneN?: KeymapOption[];
   relationshipOne?: KeymapOption[];
   relationshipN?: KeymapOption[];
+  tableProperties?: KeymapOption[];
 }
 ```
 
