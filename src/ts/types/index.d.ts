@@ -109,6 +109,15 @@ export type CommandType =
   | "relationship.remove"
   | "relationship.changeRelationshipType"
   | "relationship.changeIdentification"
+  // index
+  | "index.add"
+  | "index.remove"
+  | "index.changeName"
+  | "index.changeUnique"
+  | "index.addColumn"
+  | "index.removeColumn"
+  | "index.moveColumn"
+  | "index.changeColumnOrderType"
   // memo
   | "memo.add"
   | "memo.addOnly"

@@ -370,7 +370,6 @@ export const changeCommandTypes: CommandType[] = [
   "index.removeColumn",
   "index.moveColumn",
   "index.changeColumnOrderType",
-  "index.load",
   // memo
   "memo.add",
   "memo.addOnly",
@@ -485,7 +484,6 @@ export const shareCommandTypes: CommandType[] = [
   "index.removeColumn",
   "index.moveColumn",
   "index.changeColumnOrderType",
-  "index.load",
   // memo
   "memo.add",
   "memo.addOnly",
