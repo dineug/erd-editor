@@ -50,6 +50,7 @@
     "@storybook/addon-google-analytics": "^5.3.19",
     "@storybook/addon-storysource": "^5.3.19",
     "@storybook/html": "^5.3.19",
+    "@storybook/theming": "^5.3.19",
     "@types/d3": "^5.7.2",
     "@types/dom-to-image": "^2.6.1",
     "@types/jest": "^26.0.3",
