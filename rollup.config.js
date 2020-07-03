@@ -57,25 +57,6 @@ export default [
     input: "src/ts/index.engine.ts",
     output: [
       {
-        name: "vuerd",
-        file: `dist/${pkg.name}-engine.js`,
-        format: "iife",
-        banner,
-      },
-      {
-        name: "vuerd",
-        file: `dist/${pkg.name}-engine.min.js`,
-        format: "iife",
-        banner,
-        plugins: [terser()],
-      },
-    ],
-    plugins,
-  },
-  {
-    input: "src/ts/index.engine.ts",
-    output: [
-      {
         file: `dist/${pkg.name}-engine.cjs.js`,
         format: "cjs",
         banner,
