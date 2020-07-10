@@ -81,7 +81,7 @@
     "rollup-plugin-visualizer": "^4.0.4",
     "rxjs": "^6.6.0",
     "sql-ddl-to-json-schema": "^4.0.1",
-    "ts-loader": "^7.0.5",
+    "ts-loader": "^8.0.0",
     "tui-grid": "^4.14.0",
     "typescript": "^3.9.6"
   },
