@@ -147,6 +147,19 @@ export class Store {
             )
           )
       ),
+      map((commands) => {
+        const shareCommands: Array<Command<CommandType>> = [];
+        commands.forEach((command) => {
+          if (
+            shareCommandTypes.some(
+              (commandType) => commandType === command.type
+            )
+          ) {
+            shareCommands.push(command);
+          }
+        });
+        return shareCommands;
+      }),
       map((commands) => executeShareCommand(commands, this.user))
     );
   }

@@ -57,9 +57,9 @@ class FilterRadioEditor extends EditorElement {
       switch (propName) {
         case "edit":
           if (this.edit) {
-            const { keydown$ } = this.context.windowEventObservable;
+            const { helper } = this.context;
             this.subKeydown?.unsubscribe();
-            this.subKeydown = keydown$.subscribe(this.onKeydown);
+            this.subKeydown = helper.keydown$.subscribe(this.onKeydown);
           } else {
             this.subKeydown?.unsubscribe();
           }

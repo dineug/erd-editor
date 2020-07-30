@@ -76,12 +76,15 @@ class ColumnDataType extends EditorElement {
     this.dispatchEvent(new Event("blur"));
   }
   private onBlur() {
+    const { helper } = this.context;
     const input = this.renderRoot.querySelector("input");
     if (input && this.edit) {
       const len = input.value.length;
       input.selectionStart = len;
       input.selectionEnd = len;
       input.focus();
+    } else {
+      helper.focus();
     }
   }
 }

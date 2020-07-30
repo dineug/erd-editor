@@ -16,7 +16,6 @@ export interface Move {
 }
 export interface WindowEventObservable {
   requestAnimationFrame$: Observable<null>;
-  keydown$: Observable<KeyboardEvent>;
   mousedown$: Observable<MouseEvent>;
   mouseup$: Observable<MouseEvent>;
   mousemove$: Observable<MouseEvent>;
@@ -42,7 +41,6 @@ export function createWindowEventObservable(): WindowEventObservable {
   });
   return {
     requestAnimationFrame$: of(null, animationFrameScheduler).pipe(repeat()),
-    keydown$: fromEvent<KeyboardEvent>(window, "keydown"),
     mousedown$: fromEvent<MouseEvent>(window, "mousedown"),
     mouseup$,
     mousemove$,

@@ -51,6 +51,11 @@ export const vuerd = css`
     font-size: ${SIZE_FONT}px;
     font-family: var(--vuerd-font-family);
   }
+  
+  .vuerd-editor-focus {
+    position: fixed;
+    top: -100px;
+  }
 
   .vuerd-button {
     cursor: pointer;

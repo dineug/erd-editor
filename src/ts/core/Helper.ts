@@ -1,6 +1,19 @@
+import { Subscription, fromEvent, Subject } from "rxjs";
+
 const TEXT_PADDING = 2;
 export class Helper {
+  keydown$: Subject<KeyboardEvent> = new Subject();
+
   private span: HTMLSpanElement | null = null;
+  private input: HTMLInputElement | null = null;
+  private subscriptionList: Subscription[] = [];
+
+  private onInputClear() {
+    if (this.input) {
+      this.input.value = "";
+    }
+  }
+
   setSpan(span: HTMLSpanElement) {
     this.span = span;
   }
@@ -8,6 +21,25 @@ export class Helper {
     if (this.span === null) throw new Error("not found span");
     this.span.innerText = value;
     return this.span.offsetWidth + TEXT_PADDING;
+  }
+  setInput(input: HTMLInputElement) {
+    this.input = input;
+    this.subscriptionList.push(
+      fromEvent(input, "input").subscribe(() => this.onInputClear)
+    );
+  }
+  focus() {
+    if (this.input === null) throw new Error("not found input");
+    this.input.focus();
+  }
+  blur() {
+    if (this.input === null) throw new Error("not found input");
+    this.input.blur();
+  }
+
+  destroy() {
+    this.subscriptionList.forEach((subscription) => subscription.unsubscribe());
+    this.subscriptionList = [];
   }
 }
 

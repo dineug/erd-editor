@@ -80,10 +80,13 @@ class Memo extends EditorElement {
     );
   }
   firstUpdated() {
+    const { store } = this.context;
     const textarea = this.renderRoot.querySelector(
       "textarea"
     ) as HTMLTextAreaElement;
-    textarea.focus();
+    if (store.editorState.focus) {
+      textarea.focus();
+    }
   }
   disconnectedCallback() {
     this.onMoveEnd();

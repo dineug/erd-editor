@@ -67,8 +67,8 @@ interface ERDEditorElement extends HTMLElement {
 | value           | String   | editor data                 |
 | automaticLayout | Boolean  | automatic layout            |
 | change          | Event    | editor data                 |
-| focus           | Function | keymap on(default)          |
-| blur            | Function | keymap off                  |
+| focus           | Function | focus                       |
+| blur            | Function | blur                        |
 | initLoadJson    | Function | Do not record and save undo |
 | clear           | Function | editor data clear           |
 | setTheme        | Function | custom theme                |

@@ -43,6 +43,7 @@ export function executeAddMemo(store: Store, data: AddMemo) {
   executeSelectEndTable(store);
   executeSelectEndMemo(store);
   memos.push(new MemoModel({ addMemo: data }));
+  store.editorState.focus = true;
 }
 
 export function addOnlyMemo(store: Store): Command<"memo.addOnly"> {
@@ -67,6 +68,7 @@ export function executeAddOnlyMemo(store: Store, data: AddMemo) {
   Logger.debug("executeAddOnlyMemo");
   const { memos } = store.memoState;
   memos.push(new MemoModel({ addMemo: data }));
+  store.editorState.focus = false;
 }
 
 export interface MoveMemo {

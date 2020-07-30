@@ -1,7 +1,7 @@
 import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { cache } from "lit-html/directives/cache";
-import { Subscription } from "rxjs";
+import { Subscription, fromEvent, merge } from "rxjs";
 import { RxElement } from "./EditorElement";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
@@ -83,8 +83,7 @@ class Editor extends RxElement implements ERDEditorElement {
 
   connectedCallback() {
     super.connectedCallback();
-    const { store, keymap, eventBus } = this.context;
-    const { keydown$ } = this.context.windowEventObservable;
+    const { store, eventBus, helper } = this.context;
     this.subscriptionList.push(
       store.change$.subscribe(() =>
         this.dispatchEvent(new CustomEvent("change"))
@@ -94,7 +93,50 @@ class Editor extends RxElement implements ERDEditorElement {
           this.requestUpdate();
         }
       }),
-      keydown$.subscribe((event) => {
+      store.observe(store.editorState, (name) => {
+        const {
+          editTable,
+          editFilter,
+          findActive,
+          filterActive,
+        } = store.editorState;
+        if (
+          (name === "editTable" && editTable === null) ||
+          (name === "editFilter" && editFilter === null && filterActive) ||
+          (name === "findActive" && !findActive)
+        ) {
+          helper.focus();
+        }
+      }),
+      eventBus.on(Bus.Editor.importErrorDDL).subscribe(this.onImportErrorDDL),
+      eventBus.on(Bus.Editor.tableProperties).subscribe(this.onTableProperties)
+    );
+  }
+  firstUpdated() {
+    Logger.debug("Editor firstUpdated");
+    const { store, keymap, eventBus, helper } = this.context;
+    const editor = this.renderRoot.querySelector(
+      ".vuerd-editor"
+    ) as HTMLElement;
+    const span = this.renderRoot.querySelector(
+      ".vuerd-text-width"
+    ) as HTMLSpanElement;
+    const input = this.renderRoot.querySelector(
+      ".vuerd-editor-focus"
+    ) as HTMLInputElement;
+
+    helper.setSpan(span);
+    helper.setInput(input);
+    helper.focus();
+    if (this.automaticLayout) {
+      if (this.resizeObserver === null) {
+        Logger.warn("not supported ResizeObserver");
+      } else {
+        this.resizeObserver.observe(editor);
+      }
+    }
+    this.subscriptionList.push(
+      fromEvent<KeyboardEvent>(editor, "keydown").subscribe((event) => {
         Logger.debug(`
         metaKey: ${event.metaKey},
         ctrlKey: ${event.ctrlKey},
@@ -103,6 +145,7 @@ class Editor extends RxElement implements ERDEditorElement {
         code: ${event.code},
         key: ${event.key}
         `);
+        helper.keydown$.next(event);
         const { focus } = store.editorState;
         if (focus) {
           if (keymapMatch(event, keymap.stop)) {
@@ -115,25 +158,11 @@ class Editor extends RxElement implements ERDEditorElement {
           }
         }
       }),
-      eventBus.on(Bus.Editor.importErrorDDL).subscribe(this.onImportErrorDDL),
-      eventBus.on(Bus.Editor.tableProperties).subscribe(this.onTableProperties)
+      merge(
+        fromEvent(editor, "mousedown"),
+        fromEvent(editor, "touchstart")
+      ).subscribe(this.onFocus)
     );
-  }
-  firstUpdated() {
-    const editor = this.renderRoot.querySelector(
-      ".vuerd-editor"
-    ) as HTMLElement;
-    const span = this.renderRoot.querySelector(
-      ".vuerd-text-width"
-    ) as HTMLSpanElement;
-    this.context.helper.setSpan(span);
-    if (this.automaticLayout) {
-      if (this.resizeObserver === null) {
-        Logger.warn("not supported ResizeObserver");
-      } else {
-        this.resizeObserver.observe(editor);
-      }
-    }
   }
   updated(changedProperties: any) {
     changedProperties.forEach((oldValue: any, propName: string) => {
@@ -150,9 +179,8 @@ class Editor extends RxElement implements ERDEditorElement {
     });
   }
   disconnectedCallback() {
-    const { store, windowEventObservable } = this.context;
-    store.destroy();
-    windowEventObservable.destroy();
+    const { store, windowEventObservable, helper } = this.context;
+    [store, windowEventObservable, helper].forEach((obj) => obj.destroy());
     this.subShare?.unsubscribe();
     this.resizeObserver.disconnect();
     super.disconnectedCallback();
@@ -221,6 +249,7 @@ class Editor extends RxElement implements ERDEditorElement {
           ? html`<vuerd-generator-code></vuerd-generator-code>`
           : ""}
         <span class="vuerd-text-width"></span>
+        <input class="vuerd-editor-focus" type="text" />
         ${this.help
           ? html`<vuerd-help
               .width=${this.width}
@@ -267,6 +296,26 @@ class Editor extends RxElement implements ERDEditorElement {
     this.tableProperties = true;
     this.requestUpdate();
   };
+  private onFocus = (event: Event) => {
+    Logger.debug("Editor onFocus");
+    const { helper } = this.context;
+    const el = event.target as HTMLElement;
+    Logger.debug(el);
+    if (
+      el.localName !== "input" &&
+      el.localName !== "textarea" &&
+      !el.closest(".vuerd-grid") &&
+      !el.closest(".vuerd-sql") &&
+      !el.closest(".vuerd-generator-code") &&
+      !el.closest(".vuerd-tab-sql") &&
+      !el.closest(".vuerd-tab-generator-code") &&
+      !el.closest(".tui-grid-layer-selection")
+    ) {
+      setTimeout(() => {
+        helper.focus();
+      }, 0);
+    }
+  };
 
   private onHelp() {
     this.help = true;
@@ -296,10 +345,12 @@ class Editor extends RxElement implements ERDEditorElement {
   }
 
   focus() {
-    this.context.store.editorState.focus = true;
+    const { helper } = this.context;
+    helper.focus();
   }
   blur() {
-    this.context.store.editorState.focus = false;
+    const { helper } = this.context;
+    helper.blur();
   }
   initLoadJson(json: string) {
     if (typeof json === "string" && json.trim() !== "") {

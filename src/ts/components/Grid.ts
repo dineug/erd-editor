@@ -126,10 +126,9 @@ class Grid extends EditorElement {
     super.connectedCallback();
     Logger.debug("Grid connectedCallback");
     const { store, helper, keymap, eventBus } = this.context;
-    const { keydown$ } = this.context.windowEventObservable;
     this.subscriptionList.push(
       this.filter$.pipe(debounceTime(200)).subscribe(() => this.onFilter()),
-      keydown$.subscribe((event) => {
+      helper.keydown$.subscribe((event) => {
         if (
           !this.edit &&
           (event.key === "Delete" || event.key === "Backspace")
@@ -273,76 +272,65 @@ class Grid extends EditorElement {
           }
         }
 
-        const {
-          focus,
-          focusFilter,
-          filterActive,
-          editFilter,
-        } = store.editorState;
-        if (focus) {
-          if (
-            filterActive &&
-            focusFilter !== null &&
-            editFilter === null &&
-            moveKeys.some((moveKey) => moveKey === event.key)
-          ) {
+        const { focusFilter, filterActive, editFilter } = store.editorState;
+
+        if (
+          filterActive &&
+          focusFilter !== null &&
+          editFilter === null &&
+          moveKeys.some((moveKey) => moveKey === event.key)
+        ) {
+          store.dispatch(focusMoveFilter(event.key as MoveKey, event.shiftKey));
+        }
+
+        if (filterActive && focusFilter !== null && event.key === "Tab") {
+          event.preventDefault();
+          store.dispatch(focusMoveFilter("ArrowRight", event.shiftKey));
+        }
+
+        if (filterActive && keymapMatch(event, keymap.addColumn)) {
+          store.dispatch(addFilterState());
+        }
+
+        if (
+          filterActive &&
+          focusFilter !== null &&
+          keymapMatch(event, keymap.removeColumn)
+        ) {
+          const filterStateList = focusFilter.selectFilterStateList;
+          if (filterStateList.length !== 0) {
             store.dispatch(
-              focusMoveFilter(event.key as MoveKey, event.shiftKey)
+              removeFilterState(
+                filterStateList.map((filterState) => filterState.id)
+              )
             );
           }
+        }
 
-          if (filterActive && focusFilter !== null && event.key === "Tab") {
-            event.preventDefault();
-            store.dispatch(focusMoveFilter("ArrowRight", event.shiftKey));
-          }
+        if (editFilter === null && keymapMatch(event, keymap.selectAllColumn)) {
+          store.dispatch(selectAllFilterState());
+        }
 
-          if (filterActive && keymapMatch(event, keymap.addColumn)) {
-            store.dispatch(addFilterState());
+        if (focusFilter !== null && keymapMatch(event, keymap.edit)) {
+          if (editFilter === null) {
+            store.dispatch(
+              editFilterCommand(
+                focusFilter.currentFocus,
+                focusFilter.currentFocusId
+              )
+            );
+          } else {
+            store.dispatch(editFilterEnd());
           }
+        }
 
-          if (
-            filterActive &&
-            focusFilter !== null &&
-            keymapMatch(event, keymap.removeColumn)
-          ) {
-            const filterStateList = focusFilter.selectFilterStateList;
-            if (filterStateList.length !== 0) {
-              store.dispatch(
-                removeFilterState(
-                  filterStateList.map((filterState) => filterState.id)
-                )
-              );
-            }
-          }
+        if (keymapMatch(event, keymap.find)) {
+          this.grid.blur();
+          eventBus.emit(Bus.Menubar.filter);
+        }
 
-          if (
-            editFilter === null &&
-            keymapMatch(event, keymap.selectAllColumn)
-          ) {
-            store.dispatch(selectAllFilterState());
-          }
-
-          if (focusFilter !== null && keymapMatch(event, keymap.edit)) {
-            if (editFilter === null) {
-              store.dispatch(
-                editFilterCommand(
-                  focusFilter.currentFocus,
-                  focusFilter.currentFocusId
-                )
-              );
-            } else {
-              store.dispatch(editFilterEnd());
-            }
-          }
-
-          if (keymapMatch(event, keymap.find)) {
-            this.grid.blur();
-            eventBus.emit(Bus.Menubar.filter);
-          }
-
-          if (filterActive && keymapMatch(event, keymap.stop)) {
-            this.grid.focus(0, "tableName");
-          }
+        if (filterActive && keymapMatch(event, keymap.stop)) {
+          this.grid.focus(0, "tableName");
         }
       }),
       store.observe(store.editorState.filterStateList, () => {

@@ -119,8 +119,7 @@ class ERD extends EditorElement {
   connectedCallback() {
     super.connectedCallback();
     Logger.debug("ERD connectedCallback");
-    const { store, eventBus, keymap } = this.context;
-    const { keydown$ } = this.context.windowEventObservable;
+    const { store, eventBus, keymap, helper } = this.context;
     this.subscriptionList.push(
       eventBus.on(Bus.ERD.contextmenuEnd).subscribe(this.onContextmenuEnd),
       store.observe(store.canvasState, (name) => {
@@ -143,204 +142,194 @@ class ERD extends EditorElement {
           this.requestUpdate();
         }
       }),
-      keydown$.subscribe((event) => {
+      helper.keydown$.subscribe((event) => {
         const {
-          focus,
           editTable,
           focusTable,
           copyColumns,
           findActive,
         } = store.editorState;
-        if (focus) {
-          if (keymapMatch(event, keymap.addTable)) {
-            store.dispatch(addTable(store));
-          }
 
-          if (
-            keymapMatch(event, keymap.addColumn) &&
-            store.tableState.tables.some((table) => table.ui.active)
-          ) {
-            store.dispatch(addColumn(store), findActiveEnd());
-          }
+        if (keymapMatch(event, keymap.addTable)) {
+          store.dispatch(addTable(store));
+        }
 
-          if (keymapMatch(event, keymap.addMemo)) {
-            store.dispatch(addMemo(store));
-          }
+        if (
+          keymapMatch(event, keymap.addColumn) &&
+          store.tableState.tables.some((table) => table.ui.active)
+        ) {
+          store.dispatch(addColumn(store), findActiveEnd());
+        }
 
-          if (
-            keymapMatch(event, keymap.removeTable) &&
-            (store.tableState.tables.some((table) => table.ui.active) ||
-              store.memoState.memos.some((memo) => memo.ui.active))
-          ) {
-            const batchCommand: Array<Command<CommandType>> = [];
-            if (store.tableState.tables.some((table) => table.ui.active)) {
-              batchCommand.push(removeTable(store));
-            }
-            if (store.memoState.memos.some((memo) => memo.ui.active)) {
-              batchCommand.push(removeMemo(store));
-            }
-            store.dispatch(...batchCommand);
-          }
+        if (keymapMatch(event, keymap.addMemo)) {
+          store.dispatch(addMemo(store));
+        }
 
-          if (focusTable !== null && keymapMatch(event, keymap.removeColumn)) {
-            const columns = focusTable.selectColumns;
-            if (columns.length !== 0) {
-              store.dispatch(
-                removeColumn(
-                  focusTable.id,
-                  columns.map((column) => column.id)
-                )
-              );
-            }
+        if (
+          keymapMatch(event, keymap.removeTable) &&
+          (store.tableState.tables.some((table) => table.ui.active) ||
+            store.memoState.memos.some((memo) => memo.ui.active))
+        ) {
+          const batchCommand: Array<Command<CommandType>> = [];
+          if (store.tableState.tables.some((table) => table.ui.active)) {
+            batchCommand.push(removeTable(store));
           }
-
-          if (focusTable !== null && keymapMatch(event, keymap.primaryKey)) {
-            const currentFocus = focusTable.currentFocus;
-            if (
-              currentFocus !== "tableName" &&
-              currentFocus !== "tableComment"
-            ) {
-              const columnId = focusTable.currentFocusId;
-              store.dispatch(
-                changeColumnPrimaryKey(store, focusTable.id, columnId)
-              );
-            }
+          if (store.memoState.memos.some((memo) => memo.ui.active)) {
+            batchCommand.push(removeMemo(store));
           }
+          store.dispatch(...batchCommand);
+        }
 
-          if (editTable === null && keymapMatch(event, keymap.selectAllTable)) {
-            store.dispatch(selectAllTable(), selectAllMemo());
-          }
-
-          if (
-            editTable === null &&
-            keymapMatch(event, keymap.selectAllColumn)
-          ) {
-            store.dispatch(selectAllColumn());
-          }
-
-          if (
-            focusTable !== null &&
-            editTable === null &&
-            moveKeys.some((moveKey) => moveKey === event.key)
-          ) {
+        if (focusTable !== null && keymapMatch(event, keymap.removeColumn)) {
+          const columns = focusTable.selectColumns;
+          if (columns.length !== 0) {
             store.dispatch(
-              focusMoveTable(event.key as MoveKey, event.shiftKey)
+              removeColumn(
+                focusTable.id,
+                columns.map((column) => column.id)
+              )
             );
           }
+        }
 
-          if (focusTable !== null && event.key === "Tab") {
-            event.preventDefault();
-            store.dispatch(focusMoveTable("ArrowRight", event.shiftKey));
+        if (focusTable !== null && keymapMatch(event, keymap.primaryKey)) {
+          const currentFocus = focusTable.currentFocus;
+          if (currentFocus !== "tableName" && currentFocus !== "tableComment") {
+            const columnId = focusTable.currentFocusId;
+            store.dispatch(
+              changeColumnPrimaryKey(store, focusTable.id, columnId)
+            );
           }
+        }
 
-          if (focusTable !== null && keymapMatch(event, keymap.edit)) {
-            if (editTable === null) {
-              const currentFocus = focusTable.currentFocus;
-              if (currentFocus === "columnNotNull") {
-                const columnId = focusTable.currentFocusId;
-                store.dispatch(
-                  changeColumnNotNull(store, focusTable.id, columnId)
-                );
-              } else if (currentFocus === "columnUnique") {
-                const columnId = focusTable.currentFocusId;
-                store.dispatch(
-                  changeColumnUnique(store, focusTable.id, columnId)
-                );
-              } else if (currentFocus === "columnAutoIncrement") {
-                const columnId = focusTable.currentFocusId;
-                store.dispatch(
-                  changeColumnAutoIncrement(store, focusTable.id, columnId)
-                );
-              } else {
-                store.dispatch(
-                  editTableCommand(
-                    focusTable.currentFocusId,
-                    focusTable.currentFocus
-                  )
-                );
-              }
-            } else {
-              store.dispatch(editTableEnd());
-            }
-          }
+        if (editTable === null && keymapMatch(event, keymap.selectAllTable)) {
+          store.dispatch(selectAllTable(), selectAllMemo());
+        }
 
-          relationshipMenus.forEach((relationshipMenu) => {
-            if (keymapMatch(event, keymap[relationshipMenu.keymapName])) {
+        if (editTable === null && keymapMatch(event, keymap.selectAllColumn)) {
+          store.dispatch(selectAllColumn());
+        }
+
+        if (
+          focusTable !== null &&
+          editTable === null &&
+          moveKeys.some((moveKey) => moveKey === event.key)
+        ) {
+          store.dispatch(focusMoveTable(event.key as MoveKey, event.shiftKey));
+        }
+
+        if (focusTable !== null && event.key === "Tab") {
+          event.preventDefault();
+          store.dispatch(focusMoveTable("ArrowRight", event.shiftKey));
+        }
+
+        if (focusTable !== null && keymapMatch(event, keymap.edit)) {
+          if (editTable === null) {
+            const currentFocus = focusTable.currentFocus;
+            if (currentFocus === "columnNotNull") {
+              const columnId = focusTable.currentFocusId;
               store.dispatch(
-                drawStartRelationship(relationshipMenu.relationshipType)
+                changeColumnNotNull(store, focusTable.id, columnId)
               );
-            }
-          });
-
-          if (
-            focusTable !== null &&
-            editTable === null &&
-            keymapMatch(event, keymap.copyColumn)
-          ) {
-            const columns = focusTable.selectColumns;
-            if (columns.length !== 0) {
+            } else if (currentFocus === "columnUnique") {
+              const columnId = focusTable.currentFocusId;
               store.dispatch(
-                copyColumn(
-                  focusTable.id,
-                  columns.map((column) => column.id)
+                changeColumnUnique(store, focusTable.id, columnId)
+              );
+            } else if (currentFocus === "columnAutoIncrement") {
+              const columnId = focusTable.currentFocusId;
+              store.dispatch(
+                changeColumnAutoIncrement(store, focusTable.id, columnId)
+              );
+            } else {
+              store.dispatch(
+                editTableCommand(
+                  focusTable.currentFocusId,
+                  focusTable.currentFocus
                 )
               );
             }
+          } else {
+            store.dispatch(editTableEnd());
           }
+        }
 
-          if (
-            editTable === null &&
-            copyColumns.length !== 0 &&
-            keymapMatch(event, keymap.pasteColumn) &&
-            store.tableState.tables.some((table) => table.ui.active)
-          ) {
-            store.dispatch(pasteColumn(store));
+        relationshipMenus.forEach((relationshipMenu) => {
+          if (keymapMatch(event, keymap[relationshipMenu.keymapName])) {
+            store.dispatch(
+              drawStartRelationship(relationshipMenu.relationshipType)
+            );
           }
+        });
 
-          if (keymapMatch(event, keymap.find)) {
-            store.dispatch(findActiveCommand());
+        if (
+          focusTable !== null &&
+          editTable === null &&
+          keymapMatch(event, keymap.copyColumn)
+        ) {
+          const columns = focusTable.selectColumns;
+          if (columns.length !== 0) {
+            store.dispatch(
+              copyColumn(
+                focusTable.id,
+                columns.map((column) => column.id)
+              )
+            );
           }
+        }
 
-          if (keymapMatch(event, keymap.stop)) {
-            const batchCommand: Array<Command<CommandType>> = [
-              selectEndMemo(),
-              drawEndRelationship(),
-            ];
-            if (findActive) {
-              const table = store.tableState.tables.find(
-                (table) => table.ui.active
-              );
-              if (table) {
-                batchCommand.push(selectTable(store, false, table.id));
-              }
-            } else {
-              batchCommand.push(selectEndTable());
-            }
-            store.dispatch(...batchCommand);
-          }
+        if (
+          editTable === null &&
+          copyColumns.length !== 0 &&
+          keymapMatch(event, keymap.pasteColumn) &&
+          store.tableState.tables.some((table) => table.ui.active)
+        ) {
+          store.dispatch(pasteColumn(store));
+        }
 
-          if (keymapMatch(event, keymap.undo)) {
-            event.preventDefault();
-            store.undo();
-          }
+        if (keymapMatch(event, keymap.find)) {
+          store.dispatch(findActiveCommand());
+        }
 
-          if (keymapMatch(event, keymap.redo)) {
-            event.preventDefault();
-            store.redo();
-          }
-
-          if (
-            keymapMatch(event, keymap.tableProperties) &&
-            store.tableState.tables.some((table) => table.ui.active)
-          ) {
+        if (keymapMatch(event, keymap.stop)) {
+          const batchCommand: Array<Command<CommandType>> = [
+            selectEndMemo(),
+            drawEndRelationship(),
+          ];
+          if (findActive) {
             const table = store.tableState.tables.find(
               (table) => table.ui.active
             );
             if (table) {
-              eventBus.emit(Bus.Editor.tableProperties, {
-                tableId: table.id,
-              });
+              batchCommand.push(selectTable(store, false, table.id));
             }
+          } else {
+            batchCommand.push(selectEndTable());
+          }
+          store.dispatch(...batchCommand);
+        }
+
+        if (keymapMatch(event, keymap.undo)) {
+          event.preventDefault();
+          store.undo();
+        }
+
+        if (keymapMatch(event, keymap.redo)) {
+          event.preventDefault();
+          store.redo();
+        }
+
+        if (
+          keymapMatch(event, keymap.tableProperties) &&
+          store.tableState.tables.some((table) => table.ui.active)
+        ) {
+          const table = store.tableState.tables.find(
+            (table) => table.ui.active
+          );
+          if (table) {
+            eventBus.emit(Bus.Editor.tableProperties, {
+              tableId: table.id,
+            });
           }
         }
       })

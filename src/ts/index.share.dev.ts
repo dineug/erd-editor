@@ -23,10 +23,6 @@ range(4).forEach(() => {
   editorList.push(editor);
 });
 
-range(3).forEach((i) => {
-  editorList[i + 1].blur();
-});
-
 editorList.forEach((editor) => {
   editor.sharePull((commands) => {
     editorList.forEach((targetEditor) => {
