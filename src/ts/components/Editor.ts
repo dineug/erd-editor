@@ -145,9 +145,8 @@ class Editor extends RxElement implements ERDEditorElement {
         code: ${event.code},
         key: ${event.key}
         `);
-        helper.keydown$.next(event);
-        const { focus } = store.editorState;
-        if (focus) {
+        if (event.key !== "Process") {
+          helper.keydown$.next(event);
           if (keymapMatch(event, keymap.stop)) {
             eventBus.emit(Bus.Help.close);
             eventBus.emit(Bus.ImportErrorDDL.close);
@@ -300,7 +299,6 @@ class Editor extends RxElement implements ERDEditorElement {
     Logger.debug("Editor onFocus");
     const { helper } = this.context;
     const el = event.target as HTMLElement;
-    Logger.debug(el);
     if (
       el.localName !== "input" &&
       el.localName !== "textarea" &&

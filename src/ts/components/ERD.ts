@@ -12,7 +12,7 @@ import {
 } from "@src/core/Contextmenu";
 import { Bus, Move } from "@src/core/Event";
 import { keymapMatch, MoveKey, moveKeys } from "@src/core/Keymap";
-import { getParentElement, getData } from "@src/core/Helper";
+import { getData } from "@src/core/Helper";
 import { relationshipMenus } from "@src/core/Contextmenu";
 import { getBase64Icon } from "@src/core/Icon";
 import { Relationship } from "@src/core/store/Relationship";
