@@ -127,11 +127,11 @@ function formatColumn(
     `${column.dataType}` +
       formatSpace(spaceSize.dataType - column.dataType.length)
   );
-  if (column.option.notNull) {
-    stringBuffer.push(`NOT NULL`);
-  }
   if (column.default.trim() !== "") {
     stringBuffer.push(`DEFAULT ${column.default}`);
+  }
+  if (column.option.notNull) {
+    stringBuffer.push(`NOT NULL`);
   }
   buffer.push(stringBuffer.join(" ") + `${isComma ? "," : ""}`);
 }
