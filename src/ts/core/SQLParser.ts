@@ -194,3 +194,23 @@ function tokenizerReType(tokens: Token[]) {
     }
   });
 }
+
+export function parser(tokens: Token[]): any {
+  // let current = 0;
+  const ast = {
+    body: [],
+  } as any;
+
+  tokens.forEach((token) => {
+    if (token.type === "keyword") {
+      if (
+        token.value.toUpperCase() === "CREATE" ||
+        token.value.toUpperCase() === "ALTER"
+      ) {
+        ast.body.push(token);
+      }
+    }
+  });
+
+  return ast;
+}

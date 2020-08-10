@@ -33,7 +33,8 @@
     "storybook": "start-storybook -p 8000",
     "storybook:build": "build-storybook -c .storybook -o docs",
     "lint": "eslint . --ext .ts",
-    "test": "jest"
+    "test": "jest",
+    "test:parser": "jest src/ts/test/SQLParser.spec.ts"
   },
   "devDependencies": {
     "@babel/core": "^7.10.5",
