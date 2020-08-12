@@ -196,21 +196,34 @@ function tokenizerReType(tokens: Token[]) {
 }
 
 export function parser(tokens: Token[]): any {
-  // let current = 0;
-  const ast = {
-    body: [],
-  } as any;
+  let current = 0;
 
-  tokens.forEach((token) => {
-    if (token.type === "keyword") {
-      if (
-        token.value.toUpperCase() === "CREATE" ||
-        token.value.toUpperCase() === "ALTER"
+  const statements: Array<Array<Token>> = [];
+
+  while (current < tokens.length) {
+    let token = tokens[current];
+    const value = token.value.toUpperCase();
+
+    if (
+      token.type === "keyword" &&
+      (value === "CREATE" || value === "ALTER" || value === "DROP")
+    ) {
+      const statement: Token[] = [];
+
+      while (
+        current < tokens.length &&
+        token.type !== "semicolon" &&
+        token.value !== tokenMatch.semicolon
       ) {
-        ast.body.push(token);
+        statement.push(token);
+        token = tokens[++current];
       }
-    }
-  });
 
-  return ast;
+      statements.push(statement);
+    }
+
+    current++;
+  }
+
+  return statements;
 }
