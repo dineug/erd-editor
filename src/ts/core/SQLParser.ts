@@ -1,37 +1,15 @@
-import { getKeywords } from "./sqlParser/SQLParserHelper";
+import {
+  Token,
+  tokenMatch,
+  isKeyword,
+  isString,
+  isNewStatement,
+  isSemicolon,
+} from "./sqlParser/SQLParserHelper";
 
-export type TokenType =
-  | "leftParen"
-  | "rightParen"
-  | "comma"
-  | "period"
-  | "semicolon"
-  | "keyword"
-  | "string"
-  | "doubleQuoteString"
-  | "singleQuoteString"
-  | "backtickString"
-  | "unknown";
-export interface Token {
-  type: TokenType;
-  value: string;
-}
-
-const tokenMatch = {
-  whiteSpace: /(?:\s+|#.*|-- +.*|\/\*(?:[\s\S])*?\*\/)+/,
-  leftParen: "(",
-  rightParen: ")",
-  comma: ",",
-  period: ".",
-  semicolon: ";",
-  doubleQuote: `"`,
-  singleQuote: `'`,
-  backtick: "`",
-  keywords: getKeywords(),
-  string: /[a-z0-9_]/i,
-  unknown: /.+/,
-};
-
+/**
+ * https://github.com/jamiebuilds/the-super-tiny-compiler
+ */
 export function tokenizer(input: string): Token[] {
   let current = 0;
 
@@ -77,7 +55,7 @@ export function tokenizer(input: string): Token[] {
     if (char === tokenMatch.period) {
       tokens.push({
         type: "period",
-        value: ",",
+        value: ".",
       });
     }
 
@@ -170,29 +148,15 @@ export function tokenizer(input: string): Token[] {
     throw new TypeError("I dont know what this character is: " + char);
   }
 
-  tokenizerReType(tokens);
-  return tokens;
-}
-
-function tokenizerReType(tokens: Token[]) {
   tokens.forEach((token) => {
-    if (
-      token.type === "string" &&
-      tokenMatch.keywords.some(
-        (keyword) => keyword.toUpperCase() === token.value.toUpperCase()
-      )
-    ) {
+    if (isString(token)) {
+      token.type = "string";
+    } else if (isKeyword(token)) {
       token.type = "keyword";
     }
-
-    if (
-      token.type === "doubleQuoteString" ||
-      token.type === "singleQuoteString" ||
-      token.type === "backtickString"
-    ) {
-      token.type = "string";
-    }
   });
+
+  return tokens;
 }
 
 export function parser(tokens: Token[]): any {
@@ -202,24 +166,27 @@ export function parser(tokens: Token[]): any {
 
   while (current < tokens.length) {
     let token = tokens[current];
-    const value = token.value.toUpperCase();
 
-    if (
-      token.type === "keyword" &&
-      (value === "CREATE" || value === "ALTER" || value === "DROP")
-    ) {
+    if (isNewStatement(token)) {
       const statement: Token[] = [];
+
+      statement.push(token);
+      token = tokens[++current];
 
       while (
         current < tokens.length &&
-        token.type !== "semicolon" &&
-        token.value !== tokenMatch.semicolon
+        !isNewStatement(token) &&
+        !isSemicolon(token)
       ) {
         statement.push(token);
         token = tokens[++current];
       }
 
       statements.push(statement);
+    }
+
+    if (token && isNewStatement(token)) {
+      continue;
     }
 
     current++;
