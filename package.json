@@ -43,7 +43,7 @@
     "@fortawesome/free-solid-svg-icons": "^5.14.0",
     "@mdi/js": "^5.4.55",
     "@rollup/plugin-commonjs": "^15.0.0",
-    "@rollup/plugin-node-resolve": "^8.4.0",
+    "@rollup/plugin-node-resolve": "^9.0.0",
     "@rollup/plugin-strip": "^2.0.0",
     "@rollup/plugin-typescript": "^5.0.2",
     "@storybook/addon-actions": "^6.0.6",
