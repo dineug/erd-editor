@@ -46,7 +46,7 @@
     "@rollup/plugin-node-resolve": "^8.4.0",
     "@rollup/plugin-strip": "^2.0.0",
     "@rollup/plugin-typescript": "^5.0.2",
-    "@storybook/addon-actions": "^5.3.19",
+    "@storybook/addon-actions": "^6.0.6",
     "@storybook/addon-console": "^1.2.1",
     "@storybook/addon-google-analytics": "^6.0.6",
     "@storybook/addon-storysource": "^5.3.19",
