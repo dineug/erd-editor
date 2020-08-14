@@ -48,7 +48,7 @@
     "@rollup/plugin-typescript": "^5.0.2",
     "@storybook/addon-actions": "^5.3.19",
     "@storybook/addon-console": "^1.2.1",
-    "@storybook/addon-google-analytics": "^5.3.19",
+    "@storybook/addon-google-analytics": "^6.0.6",
     "@storybook/addon-storysource": "^5.3.19",
     "@storybook/html": "^6.0.6",
     "@storybook/theming": "^5.3.19",
