@@ -6,6 +6,7 @@ type TokenType =
   | "rightParen"
   | "comma"
   | "period"
+  | "equal"
   | "semicolon"
   | "keyword"
   | "string"
@@ -24,6 +25,7 @@ export const tokenMatch = {
   rightParen: ")",
   comma: ",",
   period: ".",
+  equal: "=",
   semicolon: ";",
   doubleQuote: `"`,
   singleQuote: `'`,
@@ -63,13 +65,49 @@ export function isKeyword(token: Token): boolean {
 }
 
 export function isNewStatement(token: Token): boolean {
-  const value = token.value.toUpperCase();
+  const value = token.value;
   return (
     token.type === "keyword" &&
-    (value === "CREATE" || value === "ALTER" || value === "DROP")
+    (value === "CREATE" ||
+      value === "ALTER" ||
+      value === "DROP" ||
+      value === "USE" ||
+      value === "SET" ||
+      value === "RENAME" ||
+      value === "DELETE" ||
+      value === "SELECT")
   );
 }
 
 export function isSemicolon(token: Token): boolean {
   return token.type === "semicolon" && token.value === tokenMatch.semicolon;
+}
+
+export function keywordEqual(token: Token, value: string): boolean {
+  return token.type === "keyword" && token.value === value;
+}
+
+export function isCreateTable(tokens: Token[]): boolean {
+  return (
+    tokens.length > 2 &&
+    keywordEqual(tokens[0], "CREATE") &&
+    keywordEqual(tokens[1], "TABLE")
+  );
+}
+
+export function isCreateIndex(tokens: Token[]): boolean {
+  return (
+    tokens.length > 2 &&
+    keywordEqual(tokens[0], "CREATE") &&
+    keywordEqual(tokens[1], "INDEX")
+  );
+}
+
+export function isCreateUniqueIndex(tokens: Token[]): boolean {
+  return (
+    tokens.length > 3 &&
+    keywordEqual(tokens[0], "CREATE") &&
+    keywordEqual(tokens[1], "UNIQUE") &&
+    keywordEqual(tokens[2], "INDEX")
+  );
 }

@@ -5,6 +5,9 @@ import {
   isString,
   isNewStatement,
   isSemicolon,
+  isCreateTable,
+  isCreateIndex,
+  isCreateUniqueIndex,
 } from "./sqlParser/SQLParserHelper";
 
 /**
@@ -28,9 +31,7 @@ export function tokenizer(input: string): Token[] {
         type: "leftParen",
         value: "(",
       });
-
       current++;
-
       continue;
     }
 
@@ -57,6 +58,17 @@ export function tokenizer(input: string): Token[] {
         type: "period",
         value: ".",
       });
+      current++;
+      continue;
+    }
+
+    if (char === tokenMatch.equal) {
+      tokens.push({
+        type: "equal",
+        value: "=",
+      });
+      current++;
+      continue;
     }
 
     if (char === tokenMatch.semicolon) {
@@ -153,6 +165,7 @@ export function tokenizer(input: string): Token[] {
       token.type = "string";
     } else if (isKeyword(token)) {
       token.type = "keyword";
+      token.value = token.value.toUpperCase();
     }
   });
 
@@ -192,5 +205,20 @@ export function parser(tokens: Token[]): any {
     current++;
   }
 
-  return statements;
+  const ast: any = {
+    statements: [],
+  };
+  statements.forEach((statement) => {
+    if (isCreateTable(statement)) {
+      ast.statements.push(createTable(statement));
+    } else if (isCreateIndex(statement)) {
+      console.log("create.index");
+    } else if (isCreateUniqueIndex(statement)) {
+      console.log("create.unique.index");
+    }
+  });
+
+  return ast;
 }
+
+function createTable(tokens: Token[]): any {}
