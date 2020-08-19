@@ -1,5 +1,6 @@
 import { MySQLKeywords } from "./keyword/MySQL";
 import { PostgreSQLKeywords } from "./keyword/PostgreSQL";
+import { databaseHints } from "../DataType";
 
 type TokenType =
   | "leftParen"
@@ -109,5 +110,22 @@ export function isCreateUniqueIndex(tokens: Token[]): boolean {
     keywordEqual(tokens[0], "CREATE") &&
     keywordEqual(tokens[1], "UNIQUE") &&
     keywordEqual(tokens[2], "INDEX")
+  );
+}
+
+const dataTypes: string[] = [];
+databaseHints.forEach((databaseHint) => {
+  databaseHint.dataTypeHints.forEach((dataTypeHint) => {
+    const name = dataTypeHint.name.toUpperCase();
+    if (!dataTypes.some((dataType) => dataType === name)) {
+      dataTypes.push(name);
+    }
+  });
+});
+
+export function isDataType(token: Token): boolean {
+  return (
+    token.type === "keyword" &&
+    dataTypes.some((dataType) => dataType === token.value)
   );
 }

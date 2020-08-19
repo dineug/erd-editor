@@ -8,6 +8,7 @@ import {
   isCreateTable,
   isCreateIndex,
   isCreateUniqueIndex,
+  isDataType,
 } from "./sqlParser/SQLParserHelper";
 
 /**
@@ -221,4 +222,113 @@ export function parser(tokens: Token[]): any {
   return ast;
 }
 
-function createTable(tokens: Token[]): any {}
+function createTable(tokens: Token[]): any {
+  const current = { value: 0 };
+
+  const ast: any = {
+    type: "create.table",
+    name: "",
+    columns: [],
+  };
+
+  while (current.value < tokens.length) {
+    const token = tokens[current.value];
+
+    if (token.type === "leftParen") {
+      current.value++;
+      ast.columns = createTableColumn(tokens, current);
+      continue;
+    }
+
+    if (token.type === "string") {
+      ast.name = token.value;
+      current.value++;
+      continue;
+    }
+
+    current.value++;
+  }
+
+  return ast;
+}
+
+function createTableColumn(tokens: Token[], current: { value: number }): any {
+  const ast: any[] = [];
+
+  let column = {
+    name: "",
+    dataType: "",
+    default: "",
+    comment: "",
+    primaryKey: false,
+    autoIncrement: false,
+    unique: false,
+    nullable: true,
+  };
+
+  while (current.value < tokens.length) {
+    let token = tokens[current.value];
+
+    if (token.type === "string") {
+      column.name = token.value;
+      current.value++;
+      continue;
+    }
+
+    if (isDataType(token)) {
+      let value = token.value;
+      token = tokens[++current.value];
+
+      if (token.type === "leftParen") {
+        value += "(";
+        token = tokens[++current.value];
+
+        while (current.value < tokens.length && token.type !== "rightParen") {
+          value += token.value;
+          token = tokens[++current.value];
+        }
+
+        value += ")";
+        current.value++;
+      }
+
+      column.dataType = value;
+      continue;
+    }
+
+    if (token.type === "leftParen") {
+      token = tokens[++current.value];
+
+      while (current.value < tokens.length && token.type !== "rightParen") {
+        token = tokens[++current.value];
+      }
+
+      current.value++;
+      continue;
+    }
+
+    if (token.type === "comma") {
+      ast.push(column);
+      column = {
+        name: "",
+        dataType: "",
+        default: "",
+        comment: "",
+        primaryKey: false,
+        autoIncrement: false,
+        unique: false,
+        nullable: true,
+      };
+      current.value++;
+      continue;
+    }
+
+    current.value++;
+  }
+
+  if (ast.indexOf(column) === -1) {
+    ast.push(column);
+  }
+
+  return ast;
+}
