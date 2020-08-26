@@ -86,7 +86,9 @@ export type Language =
   | "Java"
   | "Kotlin"
   | "TypeScript"
-  | "JPA";
+  | "JPA"
+  | "Scala";
+  
 export const languageList: Language[] = [
   "GraphQL",
   "C#",
@@ -94,6 +96,7 @@ export const languageList: Language[] = [
   "Kotlin",
   "TypeScript",
   "JPA",
+  "Scala",
 ];
 
 export type NameCase = "none" | "camelCase" | "pascalCase" | "snakeCase";

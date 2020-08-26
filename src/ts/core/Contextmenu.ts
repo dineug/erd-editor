@@ -372,6 +372,7 @@ const languageKeys: Language[] = [
   "Kotlin",
   "TypeScript",
   "C#",
+  "Scala"
 ];
 function createLanguageMenus(store: Store): Menu[] {
   const { canvasState } = store;

@@ -24,6 +24,10 @@ import {
   createCode as createCodeJPA,
   formatTable as formatTableJPA,
 } from "./generatorCode/JPA";
+import {
+  createCode as createCodeScla,
+  formatTable as formatTableScala,
+} from "./generatorCode/scala";
 
 export function createGeneratorCode(store: Store): string {
   const { language } = store.canvasState;
@@ -40,6 +44,8 @@ export function createGeneratorCode(store: Store): string {
       return createCodeTypescript(store);
     case "JPA":
       return createCodeJPA(store);
+    case "Scala":
+      return createCodeScla(store);
   }
   return "";
 }
@@ -94,6 +100,10 @@ export function createGeneratorCodeTable(store: Store, table: Table): string {
         tableCase,
         columnCase
       );
+      stringBuffer.push("");
+      break;
+    case "Scala":
+      formatTableScala(table, stringBuffer, database, tableCase, columnCase);
       stringBuffer.push("");
       break;
   }
