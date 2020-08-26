@@ -68,6 +68,6 @@ function formatColumn(
   }
 
   buffer.push(
-    ` val ${typescriptType[primitiveType]} ${columnName}${addComma ? "," : ""}`
+    ` ${columnName}: ${typescriptType[primitiveType]}${addComma ? "," : ""}`
   );
 }
