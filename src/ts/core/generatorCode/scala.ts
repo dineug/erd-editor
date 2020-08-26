@@ -43,7 +43,7 @@ export function formatTable(
     buffer.push(`// ${table.comment}`);
   }
   buffer.push(`@Data`);
-  buffer.push(`case class ${tableName} (`);
+  buffer.push(`case class ${tableName}(`);
   table.columns.forEach((column, idx, array) => {
     var notLastElem = true
     if (idx === array.length - 1) {
