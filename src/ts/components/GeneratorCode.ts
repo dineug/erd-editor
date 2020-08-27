@@ -14,6 +14,7 @@ const LanguageMap: { [key: string]: HighlightKey } = {
   Kotlin: "kotlin",
   TypeScript: "typescript",
   JPA: "java",
+  Scala: "scala",
 };
 
 @customElement("vuerd-generator-code")
