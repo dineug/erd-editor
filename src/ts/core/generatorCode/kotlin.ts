@@ -5,7 +5,7 @@ import { getPrimitiveType, getNameCase } from "../helper/GeneratorCodeHelper";
 import { orderByNameASC } from "../helper/TableHelper";
 import { PrimitiveType } from "../DataType";
 
-const typescriptType: { [key: string]: string } = {
+const convertTypeMap: { [key: string]: string } = {
   int: "Int",
   long: "Long",
   float: "Float",
@@ -68,13 +68,13 @@ function formatColumn(
     primitiveType !== "time"
   ) {
     buffer.push(
-      `  var ${columnName}: ${typescriptType[primitiveType]} = ${getDefault(
+      `  var ${columnName}: ${convertTypeMap[primitiveType]} = ${getDefault(
         primitiveType
       )}`
     );
   } else {
     buffer.push(
-      `  var ${columnName}: ${typescriptType[primitiveType]}? = null`
+      `  var ${columnName}: ${convertTypeMap[primitiveType]}? = null`
     );
   }
 }

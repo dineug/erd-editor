@@ -4,7 +4,7 @@ import { Database, NameCase } from "../store/Canvas";
 import { getPrimitiveType, getNameCase } from "../helper/GeneratorCodeHelper";
 import { orderByNameASC } from "../helper/TableHelper";
 
-const typescriptType: { [key: string]: string } = {
+const convertTypeMap: { [key: string]: string } = {
   int: "Int",
   long: "Long",
   float: "Float",
@@ -45,9 +45,9 @@ export function formatTable(
   buffer.push(`@Data`);
   buffer.push(`case class ${tableName}(`);
   table.columns.forEach((column, idx, array) => {
-    var notLastElem = true
+    var notLastElem = true;
     if (idx === array.length - 1) {
-      notLastElem = false
+      notLastElem = false;
     }
     formatColumn(column, buffer, database, columnCase, notLastElem);
   });
@@ -68,6 +68,6 @@ function formatColumn(
   }
 
   buffer.push(
-    ` ${columnName}: ${typescriptType[primitiveType]}${addComma ? "," : ""}`
+    ` ${columnName}: ${convertTypeMap[primitiveType]}${addComma ? "," : ""}`
   );
 }

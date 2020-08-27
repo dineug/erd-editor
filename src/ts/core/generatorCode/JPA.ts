@@ -11,7 +11,7 @@ import { getPrimitiveType, getNameCase } from "../helper/GeneratorCodeHelper";
 import { primaryKey, primaryKeyColumns } from "../helper/SQLHelper";
 import { orderByNameASC } from "../helper/TableHelper";
 
-const typescriptType: { [key: string]: string } = {
+const convertTypeMap: { [key: string]: string } = {
   int: "Integer",
   long: "Long",
   float: "Float",
@@ -85,7 +85,7 @@ export function formatTable(
         const columnName = getNameCase(column.name, columnCase);
         const primitiveType = getPrimitiveType(column.dataType, database);
         buffer.push(
-          `  private ${typescriptType[primitiveType]} ${columnName};`
+          `  private ${convertTypeMap[primitiveType]} ${columnName};`
         );
       }
     });
@@ -148,7 +148,7 @@ function formatColumn(
     if (primitiveType === "lob") {
       buffer.push(`  @Lob`);
     }
-    buffer.push(`  private ${typescriptType[primitiveType]} ${columnName};`);
+    buffer.push(`  private ${convertTypeMap[primitiveType]} ${columnName};`);
   }
 }
 
