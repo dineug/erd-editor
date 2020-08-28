@@ -228,6 +228,7 @@ function createTable(tokens: Token[]): any {
   const ast: any = {
     type: "create.table",
     name: "",
+    comment: "",
     columns: [],
   };
 
@@ -326,7 +327,7 @@ function createTableColumn(tokens: Token[], current: { value: number }): any {
     current.value++;
   }
 
-  if (ast.indexOf(column) === -1) {
+  if (!ast.includes(column)) {
     ast.push(column);
   }
 

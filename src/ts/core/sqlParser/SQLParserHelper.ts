@@ -40,7 +40,7 @@ function getKeywords(): string[] {
   const keywords: string[] = [...MySQLKeywords];
 
   PostgreSQLKeywords.forEach((keyword) => {
-    if (!keywords.some((k) => k.toUpperCase() === keyword.toUpperCase())) {
+    if (!keywords.includes(keyword)) {
       keywords.push(keyword);
     }
   });
@@ -57,12 +57,8 @@ export function isString(token: Token): boolean {
 }
 
 export function isKeyword(token: Token): boolean {
-  return (
-    token.type === "string" &&
-    tokenMatch.keywords.some(
-      (keyword) => keyword.toUpperCase() === token.value.toUpperCase()
-    )
-  );
+  const value = token.value.toUpperCase();
+  return token.type === "string" && tokenMatch.keywords.includes(value);
 }
 
 export function isNewStatement(token: Token): boolean {
@@ -116,16 +112,13 @@ export function isCreateUniqueIndex(tokens: Token[]): boolean {
 const dataTypes: string[] = [];
 databaseHints.forEach((databaseHint) => {
   databaseHint.dataTypeHints.forEach((dataTypeHint) => {
-    const name = dataTypeHint.name.toUpperCase();
-    if (!dataTypes.some((dataType) => dataType === name)) {
-      dataTypes.push(name);
+    const dataType = dataTypeHint.name.toUpperCase();
+    if (!dataTypes.includes(dataType)) {
+      dataTypes.push(dataType);
     }
   });
 });
 
 export function isDataType(token: Token): boolean {
-  return (
-    token.type === "keyword" &&
-    dataTypes.some((dataType) => dataType === token.value)
-  );
+  return token.type === "keyword" && dataTypes.includes(token.value);
 }
