@@ -3,7 +3,7 @@ import { css } from "lit-element";
 export const tuiGrid = css`
   /*!
  * TOAST UI Grid
- * @version 4.14.0 | Fri Jun 26 2020
+ * @version 4.15.0 | Thu Aug 20 2020
  * @author NHN. FE Development Lab
  * @license MIT
  */

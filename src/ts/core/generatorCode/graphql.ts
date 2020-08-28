@@ -10,7 +10,7 @@ import { getPrimitiveType, getNameCase } from "../helper/GeneratorCodeHelper";
 import { orderByNameASC } from "../helper/TableHelper";
 import { getData } from "../Helper";
 
-const typescriptType: { [key: string]: string } = {
+const convertTypeMap: { [key: string]: string } = {
   int: "Int",
   long: "Int",
   float: "Float",
@@ -84,7 +84,7 @@ function formatColumn(
     } else {
       const primitiveType = getPrimitiveType(column.dataType, database);
       buffer.push(
-        `  ${columnName}: ${typescriptType[primitiveType]}${
+        `  ${columnName}: ${convertTypeMap[primitiveType]}${
           column.option.notNull ? "!" : ""
         }`
       );

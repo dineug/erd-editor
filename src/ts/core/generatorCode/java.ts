@@ -4,7 +4,7 @@ import { Database, NameCase } from "../store/Canvas";
 import { getPrimitiveType, getNameCase } from "../helper/GeneratorCodeHelper";
 import { orderByNameASC } from "../helper/TableHelper";
 
-const typescriptType: { [key: string]: string } = {
+const convertTypeMap: { [key: string]: string } = {
   int: "Integer",
   long: "Long",
   float: "Float",
@@ -61,5 +61,5 @@ function formatColumn(
   if (column.comment.trim() !== "") {
     buffer.push(`  // ${column.comment}`);
   }
-  buffer.push(`  private ${typescriptType[primitiveType]} ${columnName};`);
+  buffer.push(`  private ${convertTypeMap[primitiveType]} ${columnName};`);
 }

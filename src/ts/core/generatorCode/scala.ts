@@ -3,7 +3,6 @@ import { Table, Column } from "../store/Table";
 import { Database, NameCase } from "../store/Canvas";
 import { getPrimitiveType, getNameCase } from "../helper/GeneratorCodeHelper";
 import { orderByNameASC } from "../helper/TableHelper";
-import { PrimitiveType } from "../DataType";
 
 const convertTypeMap: { [key: string]: string } = {
   int: "Int",
@@ -43,61 +42,32 @@ export function formatTable(
   if (table.comment.trim() !== "") {
     buffer.push(`// ${table.comment}`);
   }
-  buffer.push(`class ${tableName} {`);
-  table.columns.forEach((column) => {
-    formatColumn(column, buffer, database, columnCase);
+  buffer.push(`@Data`);
+  buffer.push(`case class ${tableName}(`);
+  table.columns.forEach((column, idx, array) => {
+    var notLastElem = true;
+    if (idx === array.length - 1) {
+      notLastElem = false;
+    }
+    formatColumn(column, buffer, database, columnCase, notLastElem);
   });
-  buffer.push(`}`);
+  buffer.push(`)`);
 }
 
 function formatColumn(
   column: Column,
   buffer: string[],
   database: Database,
-  columnCase: NameCase
+  columnCase: NameCase,
+  addComma: boolean
 ) {
   const columnName = getNameCase(column.name, columnCase);
   const primitiveType = getPrimitiveType(column.dataType, database);
   if (column.comment.trim() !== "") {
-    buffer.push(`  // ${column.comment}`);
+    buffer.push(` // ${column.comment}`);
   }
-  if (
-    column.option.notNull &&
-    primitiveType !== "date" &&
-    primitiveType !== "dateTime" &&
-    primitiveType !== "time"
-  ) {
-    buffer.push(
-      `  var ${columnName}: ${convertTypeMap[primitiveType]} = ${getDefault(
-        primitiveType
-      )}`
-    );
-  } else {
-    buffer.push(
-      `  var ${columnName}: ${convertTypeMap[primitiveType]}? = null`
-    );
-  }
-}
 
-function getDefault(primitiveType: PrimitiveType) {
-  switch (primitiveType) {
-    case "int":
-    case "long":
-      return 0;
-    case "float":
-      return "0.0f";
-    case "double":
-      return "0.0";
-    case "boolean":
-      return false;
-    case "string":
-    case "lob":
-      return '""';
-    case "decimal":
-      return "BigDecimal.ZERO";
-    case "date":
-    case "dateTime":
-    case "time":
-      return null;
-  }
+  buffer.push(
+    ` ${columnName}: ${convertTypeMap[primitiveType]}${addComma ? "," : ""}`
+  );
 }

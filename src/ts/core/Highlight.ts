@@ -12,6 +12,8 @@ import kotlin from "highlight.js/lib/languages/kotlin.js";
 // @ts-ignore
 import typescript from "highlight.js/lib/languages/typescript.js";
 // @ts-ignore
+import scala from "highlight.js/lib/languages/scala.js";
+// @ts-ignore
 import graphql from "highlightjs-graphql";
 
 hljs.registerLanguage("sql", sql);
@@ -19,6 +21,7 @@ hljs.registerLanguage("csharp", csharp);
 hljs.registerLanguage("java", java);
 hljs.registerLanguage("kotlin", kotlin);
 hljs.registerLanguage("typescript", typescript);
+hljs.registerLanguage("scala", scala);
 graphql(hljs);
 
 export type HighlightKey =
@@ -27,5 +30,6 @@ export type HighlightKey =
   | "java"
   | "kotlin"
   | "typescript"
-  | "graphql";
+  | "graphql"
+  | "scala";
 export { hljs };
