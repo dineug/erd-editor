@@ -1,5 +1,6 @@
 import { MySQLKeywords } from "./keyword/MySQL";
 import { PostgreSQLKeywords } from "./keyword/PostgreSQL";
+import { SQLiteKeywords } from "./keyword/SQLite";
 import { databaseHints } from "../DataType";
 
 type TokenType =
@@ -37,15 +38,12 @@ export const tokenMatch = {
 };
 
 function getKeywords(): string[] {
-  const keywords: string[] = [...MySQLKeywords];
-
-  PostgreSQLKeywords.forEach((keyword) => {
-    if (!keywords.includes(keyword)) {
-      keywords.push(keyword);
-    }
-  });
-
-  return keywords;
+  const keywords: string[] = [
+    ...MySQLKeywords,
+    ...PostgreSQLKeywords,
+    ...SQLiteKeywords,
+  ];
+  return Array.from(new Set(keywords));
 }
 
 export type StatementType =
@@ -115,23 +113,60 @@ export function isCreateUniqueIndex(tokens: Token[]): boolean {
 }
 
 const dataTypes: string[] = [];
-databaseHints.forEach((databaseHint) => {
-  databaseHint.dataTypeHints.forEach((dataTypeHint) => {
-    const dataType = dataTypeHint.name.toUpperCase();
-    if (!dataTypes.includes(dataType)) {
-      dataTypes.push(dataType);
-    }
-  });
-});
+function setupDataTypes() {
+  if (!dataTypes.length) {
+    const keywords: string[] = [];
+    databaseHints.forEach((databaseHint) =>
+      keywords.push(
+        ...databaseHint.dataTypeHints.map((dataTypeHint) =>
+          dataTypeHint.name.toUpperCase()
+        )
+      )
+    );
+    dataTypes.push(...Array.from(new Set(keywords)));
+  }
+}
 
 export function isDataType(token: Token): boolean {
+  if (!dataTypes.length) setupDataTypes();
   return token.type === "keyword" && dataTypes.includes(token.value);
 }
 
 export function isNot(token: Token): boolean {
-  return token.type === "keyword" && token.value === "NOT";
+  return keywordEqual(token, "NOT");
 }
 
 export function isNull(token: Token): boolean {
-  return token.type === "keyword" && token.value === "NULL";
+  return keywordEqual(token, "NULL");
+}
+
+export function isDefault(token: Token): boolean {
+  return keywordEqual(token, "DEFAULT");
+}
+
+export function isComment(token: Token): boolean {
+  return keywordEqual(token, "COMMENT");
+}
+
+export function isAutoIncrement(token: Token): boolean {
+  return (
+    keywordEqual(token, "AUTO_INCREMENT") ||
+    keywordEqual(token, "AUTOINCREMENT")
+  );
+}
+
+export function isPrimary(token: Token): boolean {
+  return keywordEqual(token, "PRIMARY");
+}
+
+export function isKey(token: Token): boolean {
+  return keywordEqual(token, "KEY");
+}
+
+export function isUnique(token: Token): boolean {
+  return keywordEqual(token, "UNIQUE");
+}
+
+export function isConstraint(token: Token): boolean {
+  return keywordEqual(token, "CONSTRAINT");
 }
