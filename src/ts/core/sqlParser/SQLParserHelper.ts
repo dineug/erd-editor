@@ -1,7 +1,15 @@
+import { MariaDBKeywords } from "./keyword/MariaDB";
+import { MSSQLKeywords } from "./keyword/MSSQL";
 import { MySQLKeywords } from "./keyword/MySQL";
+import { OracleKeywords } from "./keyword/Oracle";
 import { PostgreSQLKeywords } from "./keyword/PostgreSQL";
 import { SQLiteKeywords } from "./keyword/SQLite";
 import { databaseHints } from "../DataType";
+
+export type StatementType =
+  | "create.table"
+  | "create.index"
+  | "create.unique.index";
 
 type TokenType =
   | "leftParen"
@@ -35,21 +43,39 @@ export const tokenMatch = {
   keywords: getKeywords(),
   string: /[a-z0-9_]/i,
   unknown: /.+/,
+  dataTypes: getDataTypes(),
 };
 
 function getKeywords(): string[] {
   const keywords: string[] = [
+    ...MariaDBKeywords,
+    ...MSSQLKeywords,
     ...MySQLKeywords,
+    ...OracleKeywords,
     ...PostgreSQLKeywords,
     ...SQLiteKeywords,
   ];
+  return Array.from(new Set(keywords.map((keyword) => keyword.toUpperCase())));
+}
+
+function getDataTypes(): string[] {
+  const keywords: string[] = [];
+  databaseHints.forEach((databaseHint) =>
+    keywords.push(
+      ...databaseHint.dataTypeHints.map((dataTypeHint) =>
+        dataTypeHint.name.toUpperCase()
+      )
+    )
+  );
   return Array.from(new Set(keywords));
 }
 
-export type StatementType =
-  | "create.table"
-  | "create.index"
-  | "create.unique.index";
+export function keywordEqual(token: Token, value: string): boolean {
+  return (
+    token.type === "keyword" &&
+    token.value.toUpperCase() === value.toUpperCase()
+  );
+}
 
 export function isString(token: Token): boolean {
   return (
@@ -65,26 +91,20 @@ export function isKeyword(token: Token): boolean {
 }
 
 export function isNewStatement(token: Token): boolean {
-  const value = token.value;
   return (
-    token.type === "keyword" &&
-    (value === "CREATE" ||
-      value === "ALTER" ||
-      value === "DROP" ||
-      value === "USE" ||
-      value === "SET" ||
-      value === "RENAME" ||
-      value === "DELETE" ||
-      value === "SELECT")
+    keywordEqual(token, "CREATE") ||
+    keywordEqual(token, "ALTER") ||
+    keywordEqual(token, "DROP") ||
+    keywordEqual(token, "USE") ||
+    keywordEqual(token, "SET") ||
+    keywordEqual(token, "RENAME") ||
+    keywordEqual(token, "DELETE") ||
+    keywordEqual(token, "SELECT")
   );
 }
 
 export function isSemicolon(token: Token): boolean {
   return token.type === "semicolon" && token.value === tokenMatch.semicolon;
-}
-
-export function keywordEqual(token: Token, value: string): boolean {
-  return token.type === "keyword" && token.value === value;
 }
 
 export function isCreateTable(tokens: Token[]): boolean {
@@ -112,24 +132,9 @@ export function isCreateUniqueIndex(tokens: Token[]): boolean {
   );
 }
 
-const dataTypes: string[] = [];
-function setupDataTypes() {
-  if (!dataTypes.length) {
-    const keywords: string[] = [];
-    databaseHints.forEach((databaseHint) =>
-      keywords.push(
-        ...databaseHint.dataTypeHints.map((dataTypeHint) =>
-          dataTypeHint.name.toUpperCase()
-        )
-      )
-    );
-    dataTypes.push(...Array.from(new Set(keywords)));
-  }
-}
-
 export function isDataType(token: Token): boolean {
-  if (!dataTypes.length) setupDataTypes();
-  return token.type === "keyword" && dataTypes.includes(token.value);
+  const value = token.value.toUpperCase();
+  return token.type === "keyword" && tokenMatch.dataTypes.includes(value);
 }
 
 export function isNot(token: Token): boolean {

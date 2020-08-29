@@ -166,7 +166,6 @@ export function tokenizer(input: string): Token[] {
       token.type = "string";
     } else if (isKeyword(token)) {
       token.type = "keyword";
-      token.value = token.value.toUpperCase();
     }
   });
 
