@@ -17,6 +17,7 @@ CREATE TABLE b (
     {
       "type": "create.table",
       "name": "a",
+      "comment": "",
       "columns": [
         {
           "name": "id",
@@ -33,6 +34,7 @@ CREATE TABLE b (
     {
       "type": "create.table",
       "name": "b",
+      "comment": "",
       "columns": [
         {
           "name": "id",
@@ -64,6 +66,7 @@ CREATE TABLE a (
     {
       "type": "create.table",
       "name": "a",
+      "comment": "",
       "columns": [
         {
           "name": "id",

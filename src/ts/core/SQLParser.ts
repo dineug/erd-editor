@@ -8,8 +8,8 @@ import {
   isCreateTable,
   isCreateIndex,
   isCreateUniqueIndex,
-  isDataType,
 } from "./sqlParser/SQLParserHelper";
+import { createTable, CreateTable } from "./sqlParser/createTable";
 
 /**
  * https://github.com/jamiebuilds/the-super-tiny-compiler
@@ -158,7 +158,7 @@ export function tokenizer(input: string): Token[] {
       continue;
     }
 
-    throw new TypeError("I dont know what this character is: " + char);
+    current++;
   }
 
   tokens.forEach((token) => {
@@ -173,7 +173,11 @@ export function tokenizer(input: string): Token[] {
   return tokens;
 }
 
-export function parser(tokens: Token[]): any {
+export interface AST {
+  statements: Array<CreateTable>;
+}
+
+export function parser(tokens: Token[]): AST {
   let current = 0;
 
   const statements: Array<Array<Token>> = [];
@@ -206,7 +210,7 @@ export function parser(tokens: Token[]): any {
     current++;
   }
 
-  const ast: any = {
+  const ast: AST = {
     statements: [],
   };
   statements.forEach((statement) => {
@@ -218,118 +222,6 @@ export function parser(tokens: Token[]): any {
       console.log("create.unique.index");
     }
   });
-
-  return ast;
-}
-
-function createTable(tokens: Token[]): any {
-  const current = { value: 0 };
-
-  const ast: any = {
-    type: "create.table",
-    name: "",
-    comment: "",
-    columns: [],
-  };
-
-  while (current.value < tokens.length) {
-    const token = tokens[current.value];
-
-    if (token.type === "leftParen") {
-      current.value++;
-      ast.columns = createTableColumn(tokens, current);
-      continue;
-    }
-
-    if (token.type === "string") {
-      ast.name = token.value;
-      current.value++;
-      continue;
-    }
-
-    current.value++;
-  }
-
-  return ast;
-}
-
-function createTableColumn(tokens: Token[], current: { value: number }): any {
-  const ast: any[] = [];
-
-  let column = {
-    name: "",
-    dataType: "",
-    default: "",
-    comment: "",
-    primaryKey: false,
-    autoIncrement: false,
-    unique: false,
-    nullable: true,
-  };
-
-  while (current.value < tokens.length) {
-    let token = tokens[current.value];
-
-    if (token.type === "string") {
-      column.name = token.value;
-      current.value++;
-      continue;
-    }
-
-    if (isDataType(token)) {
-      let value = token.value;
-      token = tokens[++current.value];
-
-      if (token.type === "leftParen") {
-        value += "(";
-        token = tokens[++current.value];
-
-        while (current.value < tokens.length && token.type !== "rightParen") {
-          value += token.value;
-          token = tokens[++current.value];
-        }
-
-        value += ")";
-        current.value++;
-      }
-
-      column.dataType = value;
-      continue;
-    }
-
-    if (token.type === "leftParen") {
-      token = tokens[++current.value];
-
-      while (current.value < tokens.length && token.type !== "rightParen") {
-        token = tokens[++current.value];
-      }
-
-      current.value++;
-      continue;
-    }
-
-    if (token.type === "comma") {
-      ast.push(column);
-      column = {
-        name: "",
-        dataType: "",
-        default: "",
-        comment: "",
-        primaryKey: false,
-        autoIncrement: false,
-        unique: false,
-        nullable: true,
-      };
-      current.value++;
-      continue;
-    }
-
-    current.value++;
-  }
-
-  if (!ast.includes(column)) {
-    ast.push(column);
-  }
 
   return ast;
 }

@@ -48,6 +48,11 @@ function getKeywords(): string[] {
   return keywords;
 }
 
+export type StatementType =
+  | "create.table"
+  | "create.index"
+  | "create.unique.index";
+
 export function isString(token: Token): boolean {
   return (
     token.type === "doubleQuoteString" ||
@@ -121,4 +126,12 @@ databaseHints.forEach((databaseHint) => {
 
 export function isDataType(token: Token): boolean {
   return token.type === "keyword" && dataTypes.includes(token.value);
+}
+
+export function isNot(token: Token): boolean {
+  return token.type === "keyword" && token.value === "NOT";
+}
+
+export function isNull(token: Token): boolean {
+  return token.type === "keyword" && token.value === "NULL";
 }
