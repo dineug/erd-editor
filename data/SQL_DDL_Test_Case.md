@@ -29,7 +29,9 @@ CREATE TABLE b (
           "unique": false,
           "nullable": false
         }
-      ]
+      ],
+      "indexes": [],
+      "foreignKeys": []
     },
     {
       "type": "create.table",
@@ -46,7 +48,9 @@ CREATE TABLE b (
           "unique": false,
           "nullable": false
         }
-      ]
+      ],
+      "indexes": [],
+      "foreignKeys": []
     }
   ]
 }
@@ -78,7 +82,9 @@ CREATE TABLE a (
           "unique": false,
           "nullable": false
         }
-      ]
+      ],
+      "indexes": [],
+      "foreignKeys": []
     }
   ]
 }

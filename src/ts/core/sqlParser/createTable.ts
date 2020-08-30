@@ -1,6 +1,7 @@
 import {
   Token,
   StatementType,
+  SortType,
   isDataType,
   isNot,
   isNull,
@@ -11,6 +12,10 @@ import {
   isKey,
   isUnique,
   isConstraint,
+  isIndex,
+  isForeign,
+  isReferences,
+  isDESC,
 } from "./SQLParserHelper";
 
 export interface CreateTable {
@@ -18,6 +23,8 @@ export interface CreateTable {
   name: string;
   comment: string;
   columns: Column[];
+  indexes: Index[];
+  foreignKeys: ForeignKey[];
 }
 
 interface Column {
@@ -31,6 +38,22 @@ interface Column {
   nullable: boolean;
 }
 
+interface Index {
+  name: string;
+  columns: IndexColumn[];
+}
+
+interface IndexColumn {
+  name: string;
+  sort: SortType;
+}
+
+interface ForeignKey {
+  foreignKeyNames: string[];
+  referencesTableName: string;
+  referencesColumnNames: string[];
+}
+
 export function createTable(tokens: Token[]): CreateTable {
   const current = { value: 0 };
 
@@ -39,6 +62,8 @@ export function createTable(tokens: Token[]): CreateTable {
     name: "",
     comment: "",
     columns: [],
+    indexes: [],
+    foreignKeys: [],
   };
 
   while (current.value < tokens.length) {
@@ -46,13 +71,30 @@ export function createTable(tokens: Token[]): CreateTable {
 
     if (token.type === "leftParen") {
       current.value++;
-      ast.columns = createTableColumns(tokens, current);
+      const { columns, indexes, foreignKeys } = createTableColumns(
+        tokens,
+        current
+      );
+      ast.columns = columns;
+      ast.indexes = indexes;
+      ast.foreignKeys = foreignKeys;
       continue;
     }
 
     if (token.type === "string" && ast.name === "") {
       ast.name = token.value;
-      current.value++;
+
+      token = tokens[++current.value];
+
+      if (token && token.type === "period") {
+        token = tokens[++current.value];
+
+        if (token && token.type === "string") {
+          ast.name = token.value;
+          current.value++;
+        }
+      }
+
       continue;
     }
 
@@ -76,8 +118,14 @@ export function createTable(tokens: Token[]): CreateTable {
 function createTableColumns(
   tokens: Token[],
   current: { value: number }
-): Column[] {
-  const ast: Column[] = [];
+): {
+  columns: Column[];
+  indexes: Index[];
+  foreignKeys: ForeignKey[];
+} {
+  const columns: Column[] = [];
+  const indexes: Index[] = [];
+  const foreignKeys: ForeignKey[] = [];
   const primaryKeyNames: string[] = [];
   const uniqueNames: string[] = [];
 
@@ -98,27 +146,6 @@ function createTableColumns(
     if (token.type === "string" && column.name === "") {
       column.name = token.value;
       current.value++;
-      continue;
-    }
-
-    if (isDataType(token)) {
-      let value = token.value;
-      token = tokens[++current.value];
-
-      if (token && token.type === "leftParen") {
-        value += "(";
-        token = tokens[++current.value];
-
-        while (current.value < tokens.length && token.type !== "rightParen") {
-          value += token.value;
-          token = tokens[++current.value];
-        }
-
-        value += ")";
-        current.value++;
-      }
-
-      column.dataType = value;
       continue;
     }
 
@@ -153,7 +180,7 @@ function createTableColumns(
           token = tokens[++current.value];
 
           while (current.value < tokens.length && token.type !== "rightParen") {
-            if (token.type !== "comma") {
+            if (token.type === "string") {
               primaryKeyNames.push(token.value.toUpperCase());
             }
             token = tokens[++current.value];
@@ -168,6 +195,128 @@ function createTableColumns(
       continue;
     }
 
+    if (isForeign(token)) {
+      token = tokens[++current.value];
+
+      if (token && isKey(token)) {
+        token = tokens[++current.value];
+
+        const foreignKey: ForeignKey = {
+          foreignKeyNames: [],
+          referencesTableName: "",
+          referencesColumnNames: [],
+        };
+
+        if (token && token.type === "leftParen") {
+          token = tokens[++current.value];
+
+          while (current.value < tokens.length && token.type !== "rightParen") {
+            if (token.type === "string") {
+              foreignKey.foreignKeyNames.push(token.value);
+            }
+            token = tokens[++current.value];
+          }
+
+          token = tokens[++current.value];
+        }
+
+        if (token && isReferences(token)) {
+          token = tokens[++current.value];
+
+          if (token.type === "string") {
+            foreignKey.referencesTableName = token.value;
+
+            token = tokens[++current.value];
+
+            if (token && token.type === "period") {
+              token = tokens[++current.value];
+
+              if (token && token.type === "string") {
+                foreignKey.referencesTableName = token.value;
+                token = tokens[++current.value];
+              }
+            }
+
+            if (token && token.type === "leftParen") {
+              token = tokens[++current.value];
+
+              while (
+                current.value < tokens.length &&
+                token.type !== "rightParen"
+              ) {
+                if (token.type === "string") {
+                  foreignKey.referencesColumnNames.push(token.value);
+                }
+                token = tokens[++current.value];
+              }
+
+              token = tokens[++current.value];
+            }
+          }
+        }
+
+        if (
+          foreignKey.foreignKeyNames.length &&
+          foreignKey.foreignKeyNames.length ===
+            foreignKey.referencesColumnNames.length
+        ) {
+          foreignKeys.push(foreignKey);
+        }
+      }
+
+      continue;
+    }
+
+    if (isIndex(token)) {
+      token = tokens[++current.value];
+
+      if (token && token.type === "string") {
+        const name = token.value;
+        const indexColumns: IndexColumn[] = [];
+        token = tokens[++current.value];
+
+        if (token && token.type === "leftParen") {
+          token = tokens[++current.value];
+          let indexColumn: IndexColumn = {
+            name: "",
+            sort: "ASC",
+          };
+
+          while (current.value < tokens.length && token.type !== "rightParen") {
+            if (token.type === "string") {
+              indexColumn.name = token.value;
+            }
+            if (isDESC(token)) {
+              indexColumn.sort = "DESC";
+            }
+            if (token.type === "comma") {
+              indexColumns.push(indexColumn);
+              indexColumn = {
+                name: "",
+                sort: "ASC",
+              };
+            }
+            token = tokens[++current.value];
+          }
+
+          if (!indexColumns.includes(indexColumn) && indexColumn.name !== "") {
+            indexColumns.push(indexColumn);
+          }
+
+          if (indexColumns.length) {
+            indexes.push({
+              name,
+              columns: indexColumns,
+            });
+          }
+
+          current.value++;
+        }
+      }
+
+      continue;
+    }
+
     if (isUnique(token)) {
       token = tokens[++current.value];
 
@@ -175,7 +324,7 @@ function createTableColumns(
         token = tokens[++current.value];
 
         while (current.value < tokens.length && token.type !== "rightParen") {
-          if (token.type !== "comma") {
+          if (token.type === "string") {
             uniqueNames.push(token.value.toUpperCase());
           }
           token = tokens[++current.value];
@@ -228,8 +377,31 @@ function createTableColumns(
       continue;
     }
 
+    if (isDataType(token)) {
+      let value = token.value;
+      token = tokens[++current.value];
+
+      if (token && token.type === "leftParen") {
+        value += "(";
+        token = tokens[++current.value];
+
+        while (current.value < tokens.length && token.type !== "rightParen") {
+          value += token.value;
+          token = tokens[++current.value];
+        }
+
+        value += ")";
+        current.value++;
+      }
+
+      column.dataType = value;
+      continue;
+    }
+
     if (token.type === "comma") {
-      ast.push(column);
+      if (column.name !== "" || column.dataType !== "") {
+        columns.push(column);
+      }
       column = {
         name: "",
         dataType: "",
@@ -252,11 +424,14 @@ function createTableColumns(
     current.value++;
   }
 
-  if (!ast.includes(column) && (column.name !== "" || column.dataType !== "")) {
-    ast.push(column);
+  if (
+    !columns.includes(column) &&
+    (column.name !== "" || column.dataType !== "")
+  ) {
+    columns.push(column);
   }
 
-  ast.forEach((column) => {
+  columns.forEach((column) => {
     if (primaryKeyNames.includes(column.name.toUpperCase())) {
       column.primaryKey = true;
     }
@@ -266,5 +441,9 @@ function createTableColumns(
     }
   });
 
-  return ast;
+  return {
+    columns,
+    indexes,
+    foreignKeys,
+  };
 }

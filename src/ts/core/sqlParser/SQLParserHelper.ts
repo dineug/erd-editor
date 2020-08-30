@@ -11,6 +11,8 @@ export type StatementType =
   | "create.index"
   | "create.unique.index";
 
+export type SortType = "ASC" | "DESC";
+
 type TokenType =
   | "leftParen"
   | "rightParen"
@@ -24,6 +26,7 @@ type TokenType =
   | "singleQuoteString"
   | "backtickString"
   | "unknown";
+
 export interface Token {
   type: TokenType;
   value: string;
@@ -174,4 +177,24 @@ export function isUnique(token: Token): boolean {
 
 export function isConstraint(token: Token): boolean {
   return keywordEqual(token, "CONSTRAINT");
+}
+
+export function isIndex(token: Token): boolean {
+  return keywordEqual(token, "INDEX");
+}
+
+export function isForeign(token: Token): boolean {
+  return keywordEqual(token, "FOREIGN");
+}
+
+export function isReferences(token: Token): boolean {
+  return keywordEqual(token, "REFERENCES");
+}
+
+export function isASC(token: Token): boolean {
+  return keywordEqual(token, "ASC");
+}
+
+export function isDESC(token: Token): boolean {
+  return keywordEqual(token, "DESC");
 }
