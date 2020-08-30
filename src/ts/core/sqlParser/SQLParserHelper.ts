@@ -13,6 +13,10 @@ export type StatementType =
 
 export type SortType = "ASC" | "DESC";
 
+export interface Current {
+  value: number;
+}
+
 type TokenType =
   | "leftParen"
   | "rightParen"

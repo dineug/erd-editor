@@ -1,5 +1,6 @@
 import {
   Token,
+  Current,
   StatementType,
   SortType,
   isDataType,
@@ -49,13 +50,19 @@ interface IndexColumn {
 }
 
 interface ForeignKey {
-  foreignKeyNames: string[];
-  referencesTableName: string;
-  referencesColumnNames: string[];
+  columnNames: string[];
+  refTableName: string;
+  refColumnNames: string[];
+}
+
+interface CreateTableColumns {
+  columns: Column[];
+  indexes: Index[];
+  foreignKeys: ForeignKey[];
 }
 
 export function createTable(tokens: Token[]): CreateTable {
-  const current = { value: 0 };
+  const current: Current = { value: 0 };
 
   const ast: CreateTable = {
     type: "create.table",
@@ -117,17 +124,13 @@ export function createTable(tokens: Token[]): CreateTable {
 
 function createTableColumns(
   tokens: Token[],
-  current: { value: number }
-): {
-  columns: Column[];
-  indexes: Index[];
-  foreignKeys: ForeignKey[];
-} {
+  current: Current
+): CreateTableColumns {
   const columns: Column[] = [];
   const indexes: Index[] = [];
   const foreignKeys: ForeignKey[] = [];
-  const primaryKeyNames: string[] = [];
-  const uniqueNames: string[] = [];
+  const primaryKeyColumnNames: string[] = [];
+  const uniqueColumnNames: string[] = [];
 
   let column = {
     name: "",
@@ -181,7 +184,7 @@ function createTableColumns(
 
           while (current.value < tokens.length && token.type !== "rightParen") {
             if (token.type === "string") {
-              primaryKeyNames.push(token.value.toUpperCase());
+              primaryKeyColumnNames.push(token.value.toUpperCase());
             }
             token = tokens[++current.value];
           }
@@ -202,9 +205,9 @@ function createTableColumns(
         token = tokens[++current.value];
 
         const foreignKey: ForeignKey = {
-          foreignKeyNames: [],
-          referencesTableName: "",
-          referencesColumnNames: [],
+          columnNames: [],
+          refTableName: "",
+          refColumnNames: [],
         };
 
         if (token && token.type === "leftParen") {
@@ -212,7 +215,7 @@ function createTableColumns(
 
           while (current.value < tokens.length && token.type !== "rightParen") {
             if (token.type === "string") {
-              foreignKey.foreignKeyNames.push(token.value);
+              foreignKey.columnNames.push(token.value);
             }
             token = tokens[++current.value];
           }
@@ -224,7 +227,7 @@ function createTableColumns(
           token = tokens[++current.value];
 
           if (token.type === "string") {
-            foreignKey.referencesTableName = token.value;
+            foreignKey.refTableName = token.value;
 
             token = tokens[++current.value];
 
@@ -232,7 +235,7 @@ function createTableColumns(
               token = tokens[++current.value];
 
               if (token && token.type === "string") {
-                foreignKey.referencesTableName = token.value;
+                foreignKey.refTableName = token.value;
                 token = tokens[++current.value];
               }
             }
@@ -245,7 +248,7 @@ function createTableColumns(
                 token.type !== "rightParen"
               ) {
                 if (token.type === "string") {
-                  foreignKey.referencesColumnNames.push(token.value);
+                  foreignKey.refColumnNames.push(token.value);
                 }
                 token = tokens[++current.value];
               }
@@ -256,9 +259,8 @@ function createTableColumns(
         }
 
         if (
-          foreignKey.foreignKeyNames.length &&
-          foreignKey.foreignKeyNames.length ===
-            foreignKey.referencesColumnNames.length
+          foreignKey.columnNames.length &&
+          foreignKey.columnNames.length === foreignKey.refColumnNames.length
         ) {
           foreignKeys.push(foreignKey);
         }
@@ -325,7 +327,7 @@ function createTableColumns(
 
         while (current.value < tokens.length && token.type !== "rightParen") {
           if (token.type === "string") {
-            uniqueNames.push(token.value.toUpperCase());
+            uniqueColumnNames.push(token.value.toUpperCase());
           }
           token = tokens[++current.value];
         }
@@ -432,11 +434,11 @@ function createTableColumns(
   }
 
   columns.forEach((column) => {
-    if (primaryKeyNames.includes(column.name.toUpperCase())) {
+    if (primaryKeyColumnNames.includes(column.name.toUpperCase())) {
       column.primaryKey = true;
     }
 
-    if (uniqueNames.includes(column.name.toUpperCase())) {
+    if (uniqueColumnNames.includes(column.name.toUpperCase())) {
       column.unique = true;
     }
   });
