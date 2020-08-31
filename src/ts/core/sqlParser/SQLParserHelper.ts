@@ -202,3 +202,7 @@ export function isASC(token: Token): boolean {
 export function isDESC(token: Token): boolean {
   return keywordEqual(token, "DESC");
 }
+
+export function isOn(token: Token): boolean {
+  return keywordEqual(token, "ON");
+}

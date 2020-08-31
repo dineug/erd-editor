@@ -9,7 +9,9 @@ import {
   isCreateIndex,
   isCreateUniqueIndex,
 } from "./sqlParser/SQLParserHelper";
-import { createTable, CreateTable } from "./sqlParser/createTable";
+import { createTable, CreateTable } from "./sqlParser/create.table";
+import { createIndex, CreateIndex } from "./sqlParser/create.index";
+import { createUniqueIndex } from "./sqlParser/create.unique.index";
 
 /**
  * https://github.com/jamiebuilds/the-super-tiny-compiler
@@ -173,7 +175,7 @@ export function tokenizer(input: string): Token[] {
 }
 
 export interface AST {
-  statements: Array<CreateTable>;
+  statements: Array<CreateTable | CreateIndex>;
 }
 
 export function parser(tokens: Token[]): AST {
@@ -216,9 +218,9 @@ export function parser(tokens: Token[]): AST {
     if (isCreateTable(statement)) {
       ast.statements.push(createTable(statement));
     } else if (isCreateIndex(statement)) {
-      console.log("create.index");
+      ast.statements.push(createIndex(statement));
     } else if (isCreateUniqueIndex(statement)) {
-      console.log("create.unique.index");
+      ast.statements.push(createUniqueIndex(statement));
     }
   });
 
