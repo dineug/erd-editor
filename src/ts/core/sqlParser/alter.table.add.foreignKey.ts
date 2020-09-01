@@ -3,28 +3,33 @@ import {
   Current,
   StatementType,
   isTable,
-  isAdd,
   isConstraint,
   isForeign,
   isString,
   isPeriod,
   isCurrent,
 } from "./SQLParserHelper";
-import { ForeignKey, parserForeignKey } from "./create.table";
+import { parserForeignKey } from "./create.table";
 
-export interface AlterTable {
+export interface AlterTableAddForeignKey {
   type: StatementType;
   name: string;
-  foreignKeys: ForeignKey[];
+  columnNames: string[];
+  refTableName: string;
+  refColumnNames: string[];
 }
 
-export function alterTable(tokens: Token[]): AlterTable {
+export function alterTableAddForeignKey(
+  tokens: Token[]
+): AlterTableAddForeignKey {
   const current: Current = { value: 0 };
 
-  const ast: AlterTable = {
-    type: "alter.table",
+  const ast: AlterTableAddForeignKey = {
+    type: "alter.table.add.foreignKey",
     name: "",
-    foreignKeys: [],
+    columnNames: [],
+    refTableName: "",
+    refColumnNames: [],
   };
 
   while (isCurrent(tokens, current.value)) {
@@ -51,23 +56,23 @@ export function alterTable(tokens: Token[]): AlterTable {
       continue;
     }
 
-    if (isAdd(token)) {
+    if (isConstraint(token)) {
       token = tokens[++current.value];
 
-      if (isConstraint(token)) {
-        token = tokens[++current.value];
+      if (isString(token)) {
+        current.value++;
+      }
 
-        if (isString(token)) {
-          token = tokens[++current.value];
-        }
+      continue;
+    }
 
-        if (isForeign(token)) {
-          const foreignKey = parserForeignKey(tokens, current);
+    if (isForeign(token)) {
+      const foreignKey = parserForeignKey(tokens, current);
 
-          if (foreignKey) {
-            ast.foreignKeys.push(foreignKey);
-          }
-        }
+      if (foreignKey) {
+        ast.columnNames = foreignKey.columnNames;
+        ast.refTableName = foreignKey.refTableName;
+        ast.refColumnNames = foreignKey.refColumnNames;
       }
 
       continue;

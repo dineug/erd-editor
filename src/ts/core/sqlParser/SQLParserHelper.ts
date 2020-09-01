@@ -6,7 +6,12 @@ import { PostgreSQLKeywords } from "./keyword/PostgreSQL";
 import { SQLiteKeywords } from "./keyword/SQLite";
 import { databaseHints } from "../DataType";
 
-export type StatementType = "create.table" | "create.index" | "alter.table";
+export type StatementType =
+  | "create.table"
+  | "create.index"
+  | "alter.table.add.primaryKey"
+  | "alter.table.add.foreignKey"
+  | "alter.table.add.unique";
 
 export type SortType = "ASC" | "DESC";
 
@@ -174,11 +179,55 @@ export function isCreateUniqueIndex(tokens: Token[]): boolean {
   );
 }
 
-export function isAlterTable(tokens: Token[]): boolean {
+export function isAlterTableAddPrimaryKey(tokens: Token[]): boolean {
   return (
-    tokens.length > 2 &&
-    keywordEqual(tokens[0], "ALTER") &&
-    keywordEqual(tokens[1], "TABLE")
+    (tokens.length > 6 &&
+      keywordEqual(tokens[0], "ALTER") &&
+      keywordEqual(tokens[1], "TABLE") &&
+      keywordEqual(tokens[3], "ADD") &&
+      keywordEqual(tokens[4], "PRIMARY") &&
+      keywordEqual(tokens[5], "KEY")) ||
+    (tokens.length > 8 &&
+      keywordEqual(tokens[0], "ALTER") &&
+      keywordEqual(tokens[1], "TABLE") &&
+      keywordEqual(tokens[3], "ADD") &&
+      keywordEqual(tokens[4], "CONSTRAINT") &&
+      keywordEqual(tokens[6], "PRIMARY") &&
+      keywordEqual(tokens[7], "KEY"))
+  );
+}
+
+export function isAlterTableAddForeignKey(tokens: Token[]): boolean {
+  return (
+    (tokens.length > 6 &&
+      keywordEqual(tokens[0], "ALTER") &&
+      keywordEqual(tokens[1], "TABLE") &&
+      keywordEqual(tokens[3], "ADD") &&
+      keywordEqual(tokens[4], "FOREIGN") &&
+      keywordEqual(tokens[5], "KEY")) ||
+    (tokens.length > 8 &&
+      keywordEqual(tokens[0], "ALTER") &&
+      keywordEqual(tokens[1], "TABLE") &&
+      keywordEqual(tokens[3], "ADD") &&
+      keywordEqual(tokens[4], "CONSTRAINT") &&
+      keywordEqual(tokens[6], "FOREIGN") &&
+      keywordEqual(tokens[7], "KEY"))
+  );
+}
+
+export function isAlterTableAddUnique(tokens: Token[]): boolean {
+  return (
+    (tokens.length > 5 &&
+      keywordEqual(tokens[0], "ALTER") &&
+      keywordEqual(tokens[1], "TABLE") &&
+      keywordEqual(tokens[3], "ADD") &&
+      keywordEqual(tokens[4], "UNIQUE")) ||
+    (tokens.length > 7 &&
+      keywordEqual(tokens[0], "ALTER") &&
+      keywordEqual(tokens[1], "TABLE") &&
+      keywordEqual(tokens[3], "ADD") &&
+      keywordEqual(tokens[4], "CONSTRAINT") &&
+      keywordEqual(tokens[6], "UNIQUE"))
   );
 }
 
@@ -269,9 +318,4 @@ export function isOn(token?: Token): boolean {
 export function isTable(token?: Token): boolean {
   if (!token) return false;
   return keywordEqual(token, "TABLE");
-}
-
-export function isAdd(token?: Token): boolean {
-  if (!token) return false;
-  return keywordEqual(token, "ADD");
 }

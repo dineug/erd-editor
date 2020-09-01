@@ -8,12 +8,25 @@ import {
   isCreateTable,
   isCreateIndex,
   isCreateUniqueIndex,
-  isAlterTable,
+  isAlterTableAddPrimaryKey,
+  isAlterTableAddForeignKey,
+  isAlterTableAddUnique,
 } from "./sqlParser/SQLParserHelper";
 import { createTable, CreateTable } from "./sqlParser/create.table";
 import { createIndex, CreateIndex } from "./sqlParser/create.index";
 import { createUniqueIndex } from "./sqlParser/create.unique.index";
-import { alterTable, AlterTable } from "./sqlParser/alter.table";
+import {
+  alterTableAddPrimaryKey,
+  AlterTableAddPrimaryKey,
+} from "./sqlParser/alter.table.add.primaryKey";
+import {
+  alterTableAddForeignKey,
+  AlterTableAddForeignKey,
+} from "./sqlParser/alter.table.add.foreignKey";
+import {
+  alterTableAddUnique,
+  AlterTableAddUnique,
+} from "./sqlParser/alter.table.add.unique";
 
 /**
  * https://github.com/jamiebuilds/the-super-tiny-compiler
@@ -177,7 +190,13 @@ export function tokenizer(input: string): Token[] {
 }
 
 export interface AST {
-  statements: Array<CreateTable | CreateIndex | AlterTable>;
+  statements: Array<
+    | CreateTable
+    | CreateIndex
+    | AlterTableAddPrimaryKey
+    | AlterTableAddForeignKey
+    | AlterTableAddUnique
+  >;
 }
 
 export function parser(tokens: Token[]): AST {
@@ -223,8 +242,12 @@ export function parser(tokens: Token[]): AST {
       ast.statements.push(createIndex(statement));
     } else if (isCreateUniqueIndex(statement)) {
       ast.statements.push(createUniqueIndex(statement));
-    } else if (isAlterTable(statement)) {
-      ast.statements.push(alterTable(statement));
+    } else if (isAlterTableAddPrimaryKey(statement)) {
+      ast.statements.push(alterTableAddPrimaryKey(statement));
+    } else if (isAlterTableAddForeignKey(statement)) {
+      ast.statements.push(alterTableAddForeignKey(statement));
+    } else if (isAlterTableAddUnique(statement)) {
+      ast.statements.push(alterTableAddUnique(statement));
     }
   });
 
