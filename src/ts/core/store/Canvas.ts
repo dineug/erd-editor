@@ -88,7 +88,7 @@ export type Language =
   | "TypeScript"
   | "JPA"
   | "Scala";
-  
+
 export const languageList: Language[] = [
   "GraphQL",
   "C#",
@@ -118,9 +118,9 @@ export function createCanvasState(): CanvasState {
       columnComment: true,
       columnDataType: true,
       columnDefault: true,
-      columnAutoIncrement: true,
+      columnAutoIncrement: false,
       columnPrimaryKey: true,
-      columnUnique: true,
+      columnUnique: false,
       columnNotNull: true,
       relationship: true,
     },

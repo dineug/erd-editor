@@ -35,7 +35,7 @@ export interface CreateTable {
   foreignKeys: ForeignKey[];
 }
 
-interface Column {
+export interface Column {
   name: string;
   dataType: string;
   default: string;
@@ -48,6 +48,7 @@ interface Column {
 
 interface Index {
   name: string;
+  unique: boolean;
   columns: IndexColumn[];
 }
 
@@ -90,7 +91,7 @@ export function createTable(tokens: Token[]): CreateTable {
       continue;
     }
 
-    if (isString(token) && ast.name === "") {
+    if (isString(token) && !ast.name) {
       ast.name = token.value;
 
       token = tokens[++current.value];
@@ -148,7 +149,7 @@ function createTableColumns(
   while (isCurrent(tokens, current.value)) {
     let token = tokens[current.value];
 
-    if (isString(token) && column.name === "") {
+    if (isString(token) && !column.name) {
       column.name = token.value;
       current.value++;
       continue;
@@ -249,6 +250,7 @@ function createTableColumns(
           if (indexColumns.length) {
             indexes.push({
               name,
+              unique: false,
               columns: indexColumns,
             });
           }
@@ -342,7 +344,7 @@ function createTableColumns(
     }
 
     if (isComma(token)) {
-      if (column.name !== "" || column.dataType !== "") {
+      if (column.name || column.dataType) {
         columns.push(column);
       }
       column = {
@@ -367,10 +369,7 @@ function createTableColumns(
     current.value++;
   }
 
-  if (
-    !columns.includes(column) &&
-    (column.name !== "" || column.dataType !== "")
-  ) {
+  if (!columns.includes(column) && (column.name || column.dataType)) {
     columns.push(column);
   }
 

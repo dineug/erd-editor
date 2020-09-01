@@ -35,7 +35,9 @@ setupCase();
 
 it.each(testCaseList)("%s", (_, sql, json) => {
   const tokens = tokenizer(sql);
-  const ast = parser(tokens);
-  const astJson = JSON.stringify(ast);
-  expect(json).toEqual(astJson);
+  const statements = parser(tokens);
+  const statementsJson = JSON.stringify({
+    statements,
+  });
+  expect(json).toEqual(statementsJson);
 });

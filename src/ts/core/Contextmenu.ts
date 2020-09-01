@@ -94,15 +94,9 @@ export function createContextmenuERD(context: EditorContext): Menu[] {
           },
         },
         {
-          name: "SQL DDL MySQL",
+          name: "SQL DDL",
           execute() {
-            importSQL(context, "MySQL");
-          },
-        },
-        {
-          name: "SQL DDL MariaDB",
-          execute() {
-            importSQL(context, "MariaDB");
+            importSQL(context);
           },
         },
       ],
@@ -372,7 +366,7 @@ const languageKeys: Language[] = [
   "Kotlin",
   "TypeScript",
   "C#",
-  "Scala"
+  "Scala",
 ];
 function createLanguageMenus(store: Store): Menu[] {
   const { canvasState } = store;

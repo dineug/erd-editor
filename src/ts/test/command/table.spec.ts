@@ -286,7 +286,7 @@ describe("command: table", () => {
       expect(table.ui.top).toBe(50);
       expect(table.ui.left).toBe(50);
       expect(table2.ui.top).toBe(50);
-      expect(table2.ui.left).toBe(510);
+      expect(table2.ui.left).toBe(463);
       done();
     });
   });

@@ -1,15 +1,15 @@
 import domToImage from "dom-to-image";
-import { Parser } from "sql-ddl-to-json-schema";
 import { Store } from "./Store";
-import { CanvasState, Database } from "./store/Canvas";
+import { CanvasState } from "./store/Canvas";
 import { TableState } from "./store/Table";
 import { MemoState } from "./store/Memo";
 import { RelationshipState } from "./store/Relationship";
 import { loadJson } from "./command/editor";
 import { sortTable } from "./command/table";
 import { EditorContext } from "./EditorContext";
-import { createJson } from "./ParserSQLToJson";
 import { Bus } from "./Event";
+import { DDLParser } from "./SQLParser";
+import { createJson } from "./SQLParserToJson";
 
 export interface JsonFormat {
   canvas: CanvasState;
@@ -101,8 +101,7 @@ export function importJSON(store: Store) {
   importHelperJSON.click();
 }
 
-const parserMySQL = new Parser("mysql");
-export function importSQL(context: EditorContext, database: Database) {
+export function importSQL(context: EditorContext) {
   const { store, helper, eventBus } = context;
   const importHelperSQL = document.createElement("input");
   importHelperSQL.setAttribute("type", "file");
@@ -118,8 +117,12 @@ export function importSQL(context: EditorContext, database: Database) {
           const value = reader.result;
           if (typeof value === "string") {
             try {
-              const tables = parserMySQL.feed(value).toCompactJson();
-              const json = createJson(tables, helper, database);
+              const statements = DDLParser(value);
+              const json = createJson(
+                statements,
+                helper,
+                store.canvasState.database
+              );
               store.dispatch(loadJson(json), sortTable());
             } catch (err) {
               eventBus.emit(Bus.Editor.importErrorDDL, {

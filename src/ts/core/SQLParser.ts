@@ -189,20 +189,18 @@ export function tokenizer(input: string): Token[] {
   return tokens;
 }
 
-export interface AST {
-  statements: Array<
-    | CreateTable
-    | CreateIndex
-    | AlterTableAddPrimaryKey
-    | AlterTableAddForeignKey
-    | AlterTableAddUnique
-  >;
-}
+export type Statement =
+  | CreateTable
+  | CreateIndex
+  | AlterTableAddPrimaryKey
+  | AlterTableAddForeignKey
+  | AlterTableAddUnique;
 
-export function parser(tokens: Token[]): AST {
+export function parser(tokens: Token[]): Statement[] {
   let current = 0;
 
-  const statements: Array<Array<Token>> = [];
+  const tokenStatements: Array<Array<Token>> = [];
+  const statements: Statement[] = [];
 
   while (current < tokens.length) {
     let token = tokens[current];
@@ -222,7 +220,7 @@ export function parser(tokens: Token[]): AST {
         token = tokens[++current];
       }
 
-      statements.push(statement);
+      tokenStatements.push(statement);
     }
 
     if (token && isNewStatement(token)) {
@@ -232,24 +230,26 @@ export function parser(tokens: Token[]): AST {
     current++;
   }
 
-  const ast: AST = {
-    statements: [],
-  };
-  statements.forEach((statement) => {
-    if (isCreateTable(statement)) {
-      ast.statements.push(createTable(statement));
-    } else if (isCreateIndex(statement)) {
-      ast.statements.push(createIndex(statement));
-    } else if (isCreateUniqueIndex(statement)) {
-      ast.statements.push(createUniqueIndex(statement));
-    } else if (isAlterTableAddPrimaryKey(statement)) {
-      ast.statements.push(alterTableAddPrimaryKey(statement));
-    } else if (isAlterTableAddForeignKey(statement)) {
-      ast.statements.push(alterTableAddForeignKey(statement));
-    } else if (isAlterTableAddUnique(statement)) {
-      ast.statements.push(alterTableAddUnique(statement));
+  tokenStatements.forEach((tokenStatement) => {
+    if (isCreateTable(tokenStatement)) {
+      statements.push(createTable(tokenStatement));
+    } else if (isCreateIndex(tokenStatement)) {
+      statements.push(createIndex(tokenStatement));
+    } else if (isCreateUniqueIndex(tokenStatement)) {
+      statements.push(createUniqueIndex(tokenStatement));
+    } else if (isAlterTableAddPrimaryKey(tokenStatement)) {
+      statements.push(alterTableAddPrimaryKey(tokenStatement));
+    } else if (isAlterTableAddForeignKey(tokenStatement)) {
+      statements.push(alterTableAddForeignKey(tokenStatement));
+    } else if (isAlterTableAddUnique(tokenStatement)) {
+      statements.push(alterTableAddUnique(tokenStatement));
     }
   });
 
-  return ast;
+  return statements;
+}
+
+export function DDLParser(input: string): Statement[] {
+  const tokens = tokenizer(input);
+  return parser(tokens);
 }

@@ -147,7 +147,6 @@ export function isNewStatement(token?: Token): boolean {
     keywordEqual(token, "ALTER") ||
     keywordEqual(token, "DROP") ||
     keywordEqual(token, "USE") ||
-    keywordEqual(token, "SET") ||
     keywordEqual(token, "RENAME") ||
     keywordEqual(token, "DELETE") ||
     keywordEqual(token, "SELECT")

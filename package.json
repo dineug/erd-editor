@@ -82,7 +82,6 @@
     "rollup-plugin-terser": "^7.0.0",
     "rollup-plugin-visualizer": "^4.1.1",
     "rxjs": "^6.6.2",
-    "sql-ddl-to-json-schema": "^4.0.3",
     "ts-loader": "^8.0.3",
     "tui-grid": "^4.15.0",
     "typescript": "^4.0.2"
