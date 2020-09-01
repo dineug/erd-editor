@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { tokenizer, parser } from "@src/core/SQLParser";
+import { databaseHints } from "@src/core/DataType";
 
 type TestCase = [string, string, string];
 const testCaseList: Array<TestCase> = [];
@@ -10,11 +11,11 @@ function setupCase() {
     "utf8"
   );
   const testCases = sqlDDLTestCase
-    .split("## ")
+    .split("### ")
     .slice(1)
-    .map((value) => `## ${value}`);
+    .map((value) => `### ${value}`);
   testCases.forEach((testCase) => {
-    const caseName = /##.*/.exec(testCase);
+    const caseName = /###.*/.exec(testCase);
     if (caseName) {
       const center = testCase.search(/```\s/);
       const jsonString = testCase.slice(center + 3);
@@ -36,8 +37,5 @@ setupCase();
 it.each(testCaseList)("%s", (_, sql, json) => {
   const tokens = tokenizer(sql);
   const statements = parser(tokens);
-  const statementsJson = JSON.stringify({
-    statements,
-  });
-  expect(json).toEqual(statementsJson);
+  expect(JSON.parse(json)).toEqual({ statements });
 });
