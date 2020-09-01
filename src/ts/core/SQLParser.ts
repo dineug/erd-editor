@@ -1,17 +1,19 @@
 import {
   Token,
   tokenMatch,
-  isKeyword,
-  isString,
+  isStringKeyword,
+  isExtraString,
   isNewStatement,
   isSemicolon,
   isCreateTable,
   isCreateIndex,
   isCreateUniqueIndex,
+  isAlterTable,
 } from "./sqlParser/SQLParserHelper";
 import { createTable, CreateTable } from "./sqlParser/create.table";
 import { createIndex, CreateIndex } from "./sqlParser/create.index";
 import { createUniqueIndex } from "./sqlParser/create.unique.index";
+import { alterTable, AlterTable } from "./sqlParser/alter.table";
 
 /**
  * https://github.com/jamiebuilds/the-super-tiny-compiler
@@ -164,9 +166,9 @@ export function tokenizer(input: string): Token[] {
   }
 
   tokens.forEach((token) => {
-    if (isString(token)) {
+    if (isExtraString(token)) {
       token.type = "string";
-    } else if (isKeyword(token)) {
+    } else if (isStringKeyword(token)) {
       token.type = "keyword";
     }
   });
@@ -175,7 +177,7 @@ export function tokenizer(input: string): Token[] {
 }
 
 export interface AST {
-  statements: Array<CreateTable | CreateIndex>;
+  statements: Array<CreateTable | CreateIndex | AlterTable>;
 }
 
 export function parser(tokens: Token[]): AST {
@@ -221,6 +223,8 @@ export function parser(tokens: Token[]): AST {
       ast.statements.push(createIndex(statement));
     } else if (isCreateUniqueIndex(statement)) {
       ast.statements.push(createUniqueIndex(statement));
+    } else if (isAlterTable(statement)) {
+      ast.statements.push(alterTable(statement));
     }
   });
 

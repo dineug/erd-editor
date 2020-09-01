@@ -6,10 +6,7 @@ import { PostgreSQLKeywords } from "./keyword/PostgreSQL";
 import { SQLiteKeywords } from "./keyword/SQLite";
 import { databaseHints } from "../DataType";
 
-export type StatementType =
-  | "create.table"
-  | "create.index"
-  | "create.unique.index";
+export type StatementType = "create.table" | "create.index" | "alter.table";
 
 export type SortType = "ASC" | "DESC";
 
@@ -84,7 +81,8 @@ export function keywordEqual(token: Token, value: string): boolean {
   );
 }
 
-export function isString(token: Token): boolean {
+export function isExtraString(token?: Token): boolean {
+  if (!token) return false;
   return (
     token.type === "doubleQuoteString" ||
     token.type === "singleQuoteString" ||
@@ -92,12 +90,53 @@ export function isString(token: Token): boolean {
   );
 }
 
-export function isKeyword(token: Token): boolean {
+export function isStringKeyword(token?: Token): boolean {
+  if (!token) return false;
   const value = token.value.toUpperCase();
   return token.type === "string" && tokenMatch.keywords.includes(value);
 }
 
-export function isNewStatement(token: Token): boolean {
+export function isKeyword(token?: Token): boolean {
+  if (!token) return false;
+  return token.type === "keyword";
+}
+
+export function isString(token?: Token): boolean {
+  if (!token) return false;
+  return token.type === "string";
+}
+
+export function isPeriod(token?: Token): boolean {
+  if (!token) return false;
+  return token.type === "period";
+}
+
+export function isLeftParen(token?: Token): boolean {
+  if (!token) return false;
+  return token.type === "leftParen";
+}
+
+export function isRightParen(token?: Token): boolean {
+  if (!token) return false;
+  return token.type === "rightParen";
+}
+
+export function isSemicolon(token?: Token): boolean {
+  if (!token) return false;
+  return token.type === "semicolon";
+}
+
+export function isComma(token?: Token): boolean {
+  if (!token) return false;
+  return token.type === "comma";
+}
+
+export function isCurrent<T>(list: T[], current: number): boolean {
+  return list.length > current;
+}
+
+export function isNewStatement(token?: Token): boolean {
+  if (!token) return false;
   return (
     keywordEqual(token, "CREATE") ||
     keywordEqual(token, "ALTER") ||
@@ -108,10 +147,6 @@ export function isNewStatement(token: Token): boolean {
     keywordEqual(token, "DELETE") ||
     keywordEqual(token, "SELECT")
   );
-}
-
-export function isSemicolon(token: Token): boolean {
-  return token.type === "semicolon" && token.value === tokenMatch.semicolon;
 }
 
 export function isCreateTable(tokens: Token[]): boolean {
@@ -139,70 +174,104 @@ export function isCreateUniqueIndex(tokens: Token[]): boolean {
   );
 }
 
-export function isDataType(token: Token): boolean {
+export function isAlterTable(tokens: Token[]): boolean {
+  return (
+    tokens.length > 2 &&
+    keywordEqual(tokens[0], "ALTER") &&
+    keywordEqual(tokens[1], "TABLE")
+  );
+}
+
+export function isDataType(token?: Token): boolean {
+  if (!token) return false;
   const value = token.value.toUpperCase();
   return token.type === "keyword" && tokenMatch.dataTypes.includes(value);
 }
 
-export function isNot(token: Token): boolean {
+export function isNot(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "NOT");
 }
 
-export function isNull(token: Token): boolean {
+export function isNull(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "NULL");
 }
 
-export function isDefault(token: Token): boolean {
+export function isDefault(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "DEFAULT");
 }
 
-export function isComment(token: Token): boolean {
+export function isComment(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "COMMENT");
 }
 
-export function isAutoIncrement(token: Token): boolean {
+export function isAutoIncrement(token?: Token): boolean {
+  if (!token) return false;
   return (
     keywordEqual(token, "AUTO_INCREMENT") ||
     keywordEqual(token, "AUTOINCREMENT")
   );
 }
 
-export function isPrimary(token: Token): boolean {
+export function isPrimary(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "PRIMARY");
 }
 
-export function isKey(token: Token): boolean {
+export function isKey(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "KEY");
 }
 
-export function isUnique(token: Token): boolean {
+export function isUnique(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "UNIQUE");
 }
 
-export function isConstraint(token: Token): boolean {
+export function isConstraint(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "CONSTRAINT");
 }
 
-export function isIndex(token: Token): boolean {
+export function isIndex(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "INDEX");
 }
 
-export function isForeign(token: Token): boolean {
+export function isForeign(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "FOREIGN");
 }
 
-export function isReferences(token: Token): boolean {
+export function isReferences(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "REFERENCES");
 }
 
-export function isASC(token: Token): boolean {
+export function isASC(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "ASC");
 }
 
-export function isDESC(token: Token): boolean {
+export function isDESC(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "DESC");
 }
 
-export function isOn(token: Token): boolean {
+export function isOn(token?: Token): boolean {
+  if (!token) return false;
   return keywordEqual(token, "ON");
+}
+
+export function isTable(token?: Token): boolean {
+  if (!token) return false;
+  return keywordEqual(token, "TABLE");
+}
+
+export function isAdd(token?: Token): boolean {
+  if (!token) return false;
+  return keywordEqual(token, "ADD");
 }

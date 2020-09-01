@@ -4,6 +4,12 @@ import {
   SortType,
   isDESC,
   isOn,
+  isIndex,
+  isString,
+  isLeftParen,
+  isRightParen,
+  isComma,
+  isCurrent,
 } from "./SQLParserHelper";
 
 export interface CreateIndex {
@@ -13,55 +19,57 @@ export interface CreateIndex {
   tableName: string;
   columns: IndexColumn[];
 }
-
 export interface IndexColumn {
   name: string;
   sort: SortType;
 }
 
-export function createIndex(tokens: Token[]): CreateIndex {
+export function createIndex(tokens: Token[], unique = false): CreateIndex {
   let current = 0;
 
   const ast: CreateIndex = {
     type: "create.index",
     name: "",
-    unique: false,
+    unique,
     tableName: "",
     columns: [],
   };
 
-  while (current < tokens.length) {
+  while (isCurrent(tokens, current)) {
     let token = tokens[current];
 
-    if (token.type === "string") {
-      ast.name = token.value;
+    if (isIndex(token)) {
+      token = tokens[++current];
 
-      current++;
+      if (isString(token)) {
+        ast.name = token.value;
+      }
+
       continue;
     }
 
     if (isOn(token)) {
       token = tokens[++current];
 
-      if (token && token.type === "string") {
+      if (isString(token)) {
         ast.tableName = token.value;
         token = tokens[++current];
 
-        if (token && token.type === "leftParen") {
+        if (isLeftParen(token)) {
           token = tokens[++current];
           let indexColumn: IndexColumn = {
             name: "",
             sort: "ASC",
           };
 
-          while (current < tokens.length && token.type !== "rightParen") {
-            if (token.type === "string") {
+          while (isCurrent(tokens, current) && !isRightParen(token)) {
+            if (isString(token)) {
               indexColumn.name = token.value;
             }
             if (isDESC(token)) {
               indexColumn.sort = "DESC";
             }
-            if (token.type === "comma") {
+            if (isComma(token)) {
               ast.columns.push(indexColumn);
               indexColumn = {
                 name: "",
