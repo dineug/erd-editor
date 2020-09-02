@@ -78,7 +78,7 @@ function findByName<T extends { name: string }>(
   name: string
 ): T | null {
   for (const item of list) {
-    if (item.name === name) {
+    if (item.name.toUpperCase() === name.toUpperCase()) {
       return item;
     }
   }

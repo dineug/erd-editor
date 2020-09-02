@@ -83,14 +83,11 @@ class ImportErrorDDL extends EditorElement {
           ${this.message}
         </div>
         <div class="vuerd-import-error-ddl-footer">
-          <span>DDL Parser with</span>
-          <span style="color: red;"> &nbsp;❤&nbsp;</span>
-          <span> by&nbsp;</span>
           <a
-            href="https://github.com/duartealexf/sql-ddl-to-json-schema"
+            href="https://github.com/vuerd/vuerd/blob/master/data/SQL_DDL_Test_Case.md"
             target="_blank"
           >
-            sql-ddl-to-json-schema
+            Import SQL DDL support syntax
           </a>
         </div>
       </div>

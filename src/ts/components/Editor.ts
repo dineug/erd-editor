@@ -10,8 +10,11 @@ import { Bus } from "@src/core/Event";
 import { EditorContext, createEditorContext } from "@src/core/EditorContext";
 import { createJsonStringify } from "@src/core/File";
 import { loadJson, initLoadJson, clear } from "@src/core/command/editor";
+import { sortTable } from "@src/core/command/table";
 import { ThemeKey } from "@src/core/Theme";
 import { isObject } from "@src/core/Helper";
+import { DDLParser } from "@src/core/SQLParser";
+import { createJson } from "@src/core/SQLParserToJson";
 import { ERDEditorElement, Theme, Keymap, User } from "@src/types";
 import "./Icon";
 import "./Contextmenu";
@@ -189,7 +192,7 @@ class Editor extends RxElement implements ERDEditorElement {
     const { canvasType } = this.context.store.canvasState;
     const { theme } = this.context;
     return html`
-      <style>
+      <style type="text/css">
         @import url("https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap");
         :host {
           --vuerd-font-family: "Noto Sans", sans-serif;
@@ -354,6 +357,14 @@ class Editor extends RxElement implements ERDEditorElement {
     if (typeof json === "string" && json.trim() !== "") {
       const { store } = this.context;
       store.dispatch(initLoadJson(json));
+    }
+  }
+  loadSQLDDL(sql: string) {
+    if (typeof sql === "string" && sql.trim() !== "") {
+      const { store, helper } = this.context;
+      const statements = DDLParser(sql);
+      const json = createJson(statements, helper, store.canvasState.database);
+      store.dispatch(loadJson(json), sortTable());
     }
   }
   clear() {

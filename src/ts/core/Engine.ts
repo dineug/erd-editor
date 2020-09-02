@@ -1,13 +1,17 @@
 import { Subscription } from "rxjs";
 import { Store } from "./Store";
-import { isObject } from "./Helper";
+import { isObject, Helper } from "./Helper";
 import { createJsonStringify } from "./File";
 import { loadJson, initLoadJson, clear } from "./command/editor";
+import { sortTable } from "./command/table";
+import { DDLParser } from "./SQLParser";
+import { createJson } from "./SQLParserToJson";
 import { User, Command, CommandType } from "../types";
 
 export class ERDEngine {
   private store = new Store();
   private subShare: Subscription | null = null;
+  private helper = new Helper();
 
   get value() {
     const { store } = this;
@@ -27,6 +31,14 @@ export class ERDEngine {
     if (typeof json === "string" && json.trim() !== "") {
       const { store } = this;
       store.dispatch(initLoadJson(json));
+    }
+  }
+  loadSQLDDL(sql: string) {
+    if (typeof sql === "string" && sql.trim() !== "") {
+      const { store, helper } = this;
+      const statements = DDLParser(sql);
+      const json = createJson(statements, helper, store.canvasState.database);
+      store.dispatch(loadJson(json), sortTable());
     }
   }
   clear(): void {

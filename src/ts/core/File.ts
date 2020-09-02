@@ -69,6 +69,16 @@ export function exportJSON(json: string, name?: string) {
   );
 }
 
+export function exportSQLDDL(sql: string, name?: string) {
+  const blobSQL = new Blob([sql]);
+  executeExport(
+    blobSQL,
+    name?.trim() === ""
+      ? `unnamed-${new Date().getTime()}.sql`
+      : `${name}-${new Date().getTime()}.sql`
+  );
+}
+
 function executeExport(blob: Blob, fileName: string) {
   const exportHelper = document.createElement("a");
   exportHelper.href = window.URL.createObjectURL(blob);

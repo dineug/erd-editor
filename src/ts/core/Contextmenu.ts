@@ -4,10 +4,12 @@ import { Keymap, keymapOptionToString, RelationshipKeymapName } from "./Keymap";
 import {
   exportPNG,
   exportJSON,
+  exportSQLDDL,
   importJSON,
   importSQL,
   createJsonStringify,
 } from "./File";
+import { createDDL } from "./SQL";
 import { getBase64Icon } from "./Icon";
 import { addTable } from "./command/table";
 import { addMemo } from "./command/memo";
@@ -109,6 +111,12 @@ export function createContextmenuERD(context: EditorContext): Menu[] {
           name: "json",
           execute() {
             exportJSON(createJsonStringify(store, 2), canvasState.databaseName);
+          },
+        },
+        {
+          name: "SQL DDL",
+          execute() {
+            exportSQLDDL(createDDL(store), canvasState.databaseName);
           },
         },
         {

@@ -18,7 +18,9 @@ export class Helper {
     this.span = span;
   }
   getTextWidth(value: string): number {
-    if (this.span === null) throw new Error("not found span");
+    if (this.span === null) {
+      return value.length * 10 + TEXT_PADDING;
+    }
     this.span.innerText = value;
     return this.span.offsetWidth + TEXT_PADDING;
   }
@@ -29,12 +31,14 @@ export class Helper {
     );
   }
   focus() {
-    if (this.input === null) throw new Error("not found input");
-    this.input.focus();
+    if (this.input !== null) {
+      this.input.focus();
+    }
   }
   blur() {
-    if (this.input === null) throw new Error("not found input");
-    this.input.blur();
+    if (this.input !== null) {
+      this.input.blur();
+    }
   }
 
   destroy() {

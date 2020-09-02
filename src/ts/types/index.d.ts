@@ -6,6 +6,7 @@ export interface ERDEditorElement extends HTMLElement {
   focus(): void;
   blur(): void;
   initLoadJson(json: string): void;
+  loadSQLDDL(sql: string): void;
   clear(): void;
   setTheme(theme: Theme): void;
   setKeymap(keymap: Keymap): void;

@@ -52,6 +52,7 @@ interface ERDEditorElement extends HTMLElement {
   focus(): void;
   blur(): void;
   initLoadJson(json: string): void;
+  loadSQLDDL(sql: string): void;
   clear(): void;
   setTheme(theme: Theme): void;
   setKeymap(keymap: Keymap): void;
@@ -71,6 +72,7 @@ interface ERDEditorElement extends HTMLElement {
 | focus           | Function | focus                       |
 | blur            | Function | blur                        |
 | initLoadJson    | Function | Do not record and save undo |
+| loadSQLDDL      | Function | import SQL DDL              |
 | clear           | Function | editor data clear           |
 | setTheme        | Function | custom theme                |
 | setKeymap       | Function | custom keymap               |
