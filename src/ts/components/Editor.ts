@@ -15,6 +15,8 @@ import { ThemeKey } from "@src/core/Theme";
 import { isObject } from "@src/core/Helper";
 import { DDLParser } from "@src/core/SQLParser";
 import { createJson } from "@src/core/SQLParserToJson";
+import { createDDL } from "@src/core/SQL";
+import { Database, databaseList } from "@src/core/store/Canvas";
 import { ERDEditorElement, Theme, Keymap, User } from "@src/types";
 import "./Icon";
 import "./Contextmenu";
@@ -416,6 +418,13 @@ class Editor extends RxElement implements ERDEditorElement {
       store.dispatch(...commands);
       store.editorState.undoManager = false;
     }
+  }
+  getSQLDDL(database?: Database) {
+    const { store } = this.context;
+    if (database && databaseList.includes(database)) {
+      return createDDL(store, database);
+    }
+    return createDDL(store);
   }
 }
 

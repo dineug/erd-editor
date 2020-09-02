@@ -1,5 +1,6 @@
 import { Store } from "./Store";
 import { Table } from "./store/Table";
+import { Database } from "./store/Canvas";
 import { Name } from "./helper/SQLHelper";
 import {
   createDDL as createDDLMariaDB,
@@ -32,9 +33,9 @@ import {
   formatIndex as formatIndexSQLite,
 } from "./sql/SQLite";
 
-export function createDDL(store: Store): string {
-  const database = store.canvasState.database;
-  switch (database) {
+export function createDDL(store: Store, database?: Database): string {
+  const currentDatabase = database ? database : store.canvasState.database;
+  switch (currentDatabase) {
     case "MariaDB":
       return createDDLMariaDB(store);
     case "MSSQL":

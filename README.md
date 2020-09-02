@@ -59,26 +59,28 @@ interface ERDEditorElement extends HTMLElement {
   setUser(user: User): void;
   sharePull(effect: (commands: Array<Command<CommandType>>) => void): void;
   sharePush(commands: Array<Command<CommandType>>): void;
+  getSQLDDL(database?: Database): string;
 }
 ```
 
-| Name            | Type     | Describe                    |
-| --------------- | -------- | --------------------------- |
-| width           | Number   | width                       |
-| height          | Number   | height                      |
-| value           | String   | editor data                 |
-| automaticLayout | Boolean  | automatic layout            |
-| change          | Event    | editor data                 |
-| focus           | Function | focus                       |
-| blur            | Function | blur                        |
-| initLoadJson    | Function | Do not record and save undo |
-| loadSQLDDL      | Function | import SQL DDL              |
-| clear           | Function | editor data clear           |
-| setTheme        | Function | custom theme                |
-| setKeymap       | Function | custom keymap               |
-| setUser         | Function | share user name             |
-| sharePull       | Function | share pull                  |
-| sharePush       | Function | share push                  |
+| Name            | Type     | Describe                                                   |
+| --------------- | -------- | ---------------------------------------------------------- |
+| width           | Number   | width                                                      |
+| height          | Number   | height                                                     |
+| value           | String   | editor data                                                |
+| automaticLayout | Boolean  | automatic layout                                           |
+| change          | Event    | editor data                                                |
+| focus           | Function | focus                                                      |
+| blur            | Function | blur                                                       |
+| initLoadJson    | Function | Do not record and save undo                                |
+| loadSQLDDL      | Function | import SQL DDL                                             |
+| clear           | Function | editor data clear                                          |
+| setTheme        | Function | custom theme                                               |
+| setKeymap       | Function | custom keymap                                              |
+| setUser         | Function | share user name                                            |
+| sharePull       | Function | share pull                                                 |
+| sharePush       | Function | share push                                                 |
+| getSQLDDL       | Function | SQL DDL(MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite) |
 
 ### EditorElement Example
 

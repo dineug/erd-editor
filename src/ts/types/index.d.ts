@@ -13,6 +13,7 @@ export interface ERDEditorElement extends HTMLElement {
   setUser(user: User): void;
   sharePull(effect: (commands: Array<Command<CommandType>>) => void): void;
   sharePush(commands: Array<Command<CommandType>>): void;
+  getSQLDDL(database?: Database): string;
 }
 
 export interface Theme {
@@ -75,6 +76,14 @@ export interface Keymap {
 export interface User {
   name: string;
 }
+
+export type Database =
+  | "MariaDB"
+  | "MSSQL"
+  | "MySQL"
+  | "Oracle"
+  | "PostgreSQL"
+  | "SQLite";
 
 export interface Command<K extends CommandType> {
   type: K;

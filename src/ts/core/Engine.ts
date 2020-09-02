@@ -6,6 +6,8 @@ import { loadJson, initLoadJson, clear } from "./command/editor";
 import { sortTable } from "./command/table";
 import { DDLParser } from "./SQLParser";
 import { createJson } from "./SQLParserToJson";
+import { createDDL } from "./SQL";
+import { Database, databaseList } from "./store/Canvas";
 import { User, Command, CommandType } from "../types";
 
 export class ERDEngine {
@@ -66,5 +68,12 @@ export class ERDEngine {
       store.dispatch(...commands);
       store.editorState.undoManager = false;
     }
+  }
+  getSQLDDL(database?: Database) {
+    const { store } = this;
+    if (database && databaseList.includes(database)) {
+      return createDDL(store, database);
+    }
+    return createDDL(store);
   }
 }
