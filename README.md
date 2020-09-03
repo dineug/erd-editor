@@ -284,6 +284,16 @@ $ npm install vuerd
 
 ```javascript
 import "vuerd";
+// import "vuerd/theme/abyss.css";
+// import "vuerd/theme/kimbie-dark.css";
+// import "vuerd/theme/monokai.css";
+// import "vuerd/theme/monokai-dimmed.css";
+// import "vuerd/theme/one-dark-pro.css";
+// import "vuerd/theme/red.css";
+// import "vuerd/theme/solarized-dark.css";
+// import "vuerd/theme/solarized-light.css";
+// import "vuerd/theme/tomorrow-night-blue.css";
+// import "vuerd/theme/vscode-dark.css";
 
 const container = document.querySelector("#app");
 const editor = document.createElement("erd-editor");
@@ -319,12 +329,22 @@ declare global {
         margin: 0;
       }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.min.js"></script>
-    <!-- or module -->
-    <!-- <script type="module" src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.esm.js"></script> -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/vuerd/theme/abyss.css" rel="stylesheet" /> -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/vuerd/theme/kimbie-dark.css" rel="stylesheet" /> -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/vuerd/theme/monokai.css" rel="stylesheet" /> -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/vuerd/theme/monokai-dimmed.css" rel="stylesheet" /> -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/vuerd/theme/one-dark-pro.css" rel="stylesheet" /> -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/vuerd/theme/red.css" rel="stylesheet" /> -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/vuerd/theme/solarized-dark.css" rel="stylesheet" /> -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/vuerd/theme/solarized-light.css" rel="stylesheet" /> -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/vuerd/theme/tomorrow-night-blue.css" rel="stylesheet" /> -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/vuerd/theme/vscode-dark.css" rel="stylesheet" /> -->
   </head>
   <body>
     <erd-editor></erd-editor>
+    <script src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.min.js"></script>
+    <!-- or module -->
+    <!-- <script type="module" src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.esm.js"></script> -->
     <script>
       const editor = document.querySelector("erd-editor");
       window.addEventListener("resize", () => {

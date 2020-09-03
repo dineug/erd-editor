@@ -1,6 +1,6 @@
 {
   "name": "vuerd",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "ERD editor",
   "main": "dist/vuerd.cjs.js",
   "module": "dist/vuerd.esm.js",
@@ -8,7 +8,8 @@
   "typings": "src/ts/types/index.d.ts",
   "files": [
     "dist/*.js",
-    "src/ts/types"
+    "src/ts/types",
+    "theme/*.css"
   ],
   "keywords": [
     "vuerd",
