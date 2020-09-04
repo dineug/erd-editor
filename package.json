@@ -58,7 +58,7 @@
     "@types/d3": "^5.7.2",
     "@types/dom-to-image": "^2.6.2",
     "@types/jest": "^26.0.10",
-    "@typescript-eslint/eslint-plugin": "^3.10.1",
+    "@typescript-eslint/eslint-plugin": "^4.0.0",
     "@typescript-eslint/parser": "^3.10.1",
     "babel-jest": "^26.3.0",
     "babel-loader": "^8.1.0",
