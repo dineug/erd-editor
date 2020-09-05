@@ -84,6 +84,7 @@
     "rollup-plugin-terser": "^7.0.0",
     "rollup-plugin-visualizer": "^4.1.1",
     "rxjs": "^6.6.2",
+    "stats.js": "^0.17.0",
     "ts-loader": "^8.0.3",
     "tui-grid": "^4.15.0",
     "typescript": "^4.0.2"
