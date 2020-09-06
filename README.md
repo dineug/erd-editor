@@ -303,6 +303,7 @@ container.appendChild(editor);
 ### typescript
 
 ```typescript
+import "vuerd";
 import { ERDEditorElement } from "vuerd";
 
 const container = document.querySelector("#app");
