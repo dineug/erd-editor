@@ -34,12 +34,6 @@ export default [
         banner,
         plugins: [terser()],
       },
-    ],
-    plugins,
-  },
-  {
-    input: "src/ts/index.ts",
-    output: [
       {
         file: pkg.main,
         format: "cjs",
