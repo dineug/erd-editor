@@ -1,7 +1,6 @@
 import {
   Token,
   Current,
-  StatementType,
   isTable,
   isConstraint,
   isForeign,
@@ -12,7 +11,7 @@ import {
 import { parserForeignKey } from "./create.table";
 
 export interface AlterTableAddForeignKey {
-  type: StatementType;
+  type: "alter.table.add.foreignKey";
   name: string;
   columnNames: string[];
   refTableName: string;

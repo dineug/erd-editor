@@ -6,13 +6,6 @@ import { PostgreSQLKeywords } from "./keyword/PostgreSQL";
 import { SQLiteKeywords } from "./keyword/SQLite";
 import { databaseHints } from "../DataType";
 
-export type StatementType =
-  | "create.table"
-  | "create.index"
-  | "alter.table.add.primaryKey"
-  | "alter.table.add.foreignKey"
-  | "alter.table.add.unique";
-
 export type SortType = "ASC" | "DESC";
 
 export interface Current {

@@ -1,6 +1,5 @@
 import {
   Token,
-  StatementType,
   isTable,
   isConstraint,
   isString,
@@ -12,7 +11,7 @@ import {
 } from "./SQLParserHelper";
 
 export interface AlterTableAddUnique {
-  type: StatementType;
+  type: "alter.table.add.unique";
   name: string;
   columnNames: string[];
 }

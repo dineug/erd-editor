@@ -32,25 +32,25 @@ function reshape(statements: Statement[]): Shape {
   statements.forEach((statement) => {
     switch (statement.type) {
       case "create.table":
-        const table = statement as CreateTable;
+        const table = statement;
         if (table.name) {
           shape.tables.push(table);
         }
         break;
       case "create.index":
-        const index = statement as CreateIndex;
+        const index = statement;
         if (index.tableName && index.columns.length) {
           shape.indexes.push(index);
         }
         break;
       case "alter.table.add.primaryKey":
-        const primaryKey = statement as AlterTableAddPrimaryKey;
+        const primaryKey = statement;
         if (primaryKey.name && primaryKey.columnNames.length) {
           shape.primaryKeys.push(primaryKey);
         }
         break;
       case "alter.table.add.foreignKey":
-        const foreignKey = statement as AlterTableAddForeignKey;
+        const foreignKey = statement;
         if (
           foreignKey.name &&
           foreignKey.columnNames.length &&
@@ -62,7 +62,7 @@ function reshape(statements: Statement[]): Shape {
         }
         break;
       case "alter.table.add.unique":
-        const unique = statement as AlterTableAddUnique;
+        const unique = statement;
         if (unique.name && unique.columnNames.length) {
           shape.uniques.push(unique);
         }

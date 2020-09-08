@@ -1,7 +1,6 @@
 import {
   Token,
   Current,
-  StatementType,
   isDataType,
   isNot,
   isNull,
@@ -27,7 +26,7 @@ import {
 import { IndexColumn } from "./create.index";
 
 export interface CreateTable {
-  type: StatementType;
+  type: "create.table";
   name: string;
   comment: string;
   columns: Column[];

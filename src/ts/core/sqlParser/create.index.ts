@@ -1,6 +1,5 @@
 import {
   Token,
-  StatementType,
   SortType,
   isDESC,
   isOn,
@@ -13,7 +12,7 @@ import {
 } from "./SQLParserHelper";
 
 export interface CreateIndex {
-  type: StatementType;
+  type: "create.index";
   name: string;
   unique: boolean;
   tableName: string;

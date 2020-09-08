@@ -1,6 +1,5 @@
 import {
   Token,
-  StatementType,
   isTable,
   isConstraint,
   isString,
@@ -13,7 +12,7 @@ import {
 } from "./SQLParserHelper";
 
 export interface AlterTableAddPrimaryKey {
-  type: StatementType;
+  type: "alter.table.add.primaryKey";
   name: string;
   columnNames: string[];
 }
