@@ -4,7 +4,7 @@ import { isObject, Helper } from "./Helper";
 import { createJsonStringify } from "./File";
 import { loadJson, initLoadJson, clear } from "./command/editor";
 import { sortTable } from "./command/table";
-import { DDLParser } from "./SQLParser";
+import { DDLParser } from "@dineug/sql-ddl-parser";
 import { createJson } from "./SQLParserToJson";
 import { createDDL } from "./SQL";
 import { Database, databaseList } from "./store/Canvas";

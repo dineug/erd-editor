@@ -36,13 +36,13 @@
     "storybook": "start-storybook -p 8000",
     "storybook:build": "build-storybook -c .storybook -o docs",
     "lint": "eslint . --ext .ts",
-    "test": "jest",
-    "test:parser": "jest src/ts/test/SQLParser.spec.ts"
+    "test": "jest"
   },
   "devDependencies": {
     "@babel/core": "^7.11.4",
     "@babel/preset-env": "^7.11.0",
     "@babel/preset-typescript": "^7.10.4",
+    "@dineug/sql-ddl-parser": "^0.1.0",
     "@fortawesome/free-solid-svg-icons": "^5.14.0",
     "@mdi/js": "^5.5.55",
     "@rollup/plugin-commonjs": "^15.0.0",

@@ -13,7 +13,7 @@ import { loadJson, initLoadJson, clear } from "@src/core/command/editor";
 import { sortTable } from "@src/core/command/table";
 import { ThemeKey } from "@src/core/Theme";
 import { isObject } from "@src/core/Helper";
-import { DDLParser } from "@src/core/SQLParser";
+import { DDLParser } from "@dineug/sql-ddl-parser";
 import { createJson } from "@src/core/SQLParserToJson";
 import { createDDL } from "@src/core/SQL";
 import { Database, databaseList } from "@src/core/store/Canvas";

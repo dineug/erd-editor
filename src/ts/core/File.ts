@@ -8,7 +8,7 @@ import { loadJson } from "./command/editor";
 import { sortTable } from "./command/table";
 import { EditorContext } from "./EditorContext";
 import { Bus } from "./Event";
-import { DDLParser } from "./SQLParser";
+import { DDLParser } from "@dineug/sql-ddl-parser";
 import { createJson } from "./SQLParserToJson";
 
 export interface JsonFormat {

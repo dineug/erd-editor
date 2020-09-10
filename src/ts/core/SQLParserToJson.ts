@@ -5,12 +5,15 @@ import { createCanvasState, Database } from "./store/Canvas";
 import { createTableState } from "./store/Table";
 import { createMemoState } from "./store/Memo";
 import { createRelationshipState } from "./store/Relationship";
-import { Statement } from "./SQLParser";
-import { CreateTable, Column } from "./sqlParser/create.table";
-import { CreateIndex } from "./sqlParser/create.index";
-import { AlterTableAddPrimaryKey } from "./sqlParser/alter.table.add.primaryKey";
-import { AlterTableAddForeignKey } from "./sqlParser/alter.table.add.foreignKey";
-import { AlterTableAddUnique } from "./sqlParser/alter.table.add.unique";
+import {
+  Statement,
+  CreateTable,
+  Column,
+  CreateIndex,
+  AlterTableAddPrimaryKey,
+  AlterTableAddForeignKey,
+  AlterTableAddUnique,
+} from "@dineug/sql-ddl-parser";
 
 interface Shape {
   tables: CreateTable[];
