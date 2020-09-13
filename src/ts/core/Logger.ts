@@ -1,17 +1,17 @@
 export class Logger {
-  static debug(...args: any) {
-    args.forEach((arg: any) => console.dir(arg));
+  static debug(...args: any[]) {
+    console.dir(...args);
   }
 
-  static log(...args: any) {
-    args.forEach((arg: any) => console.log(arg));
+  static log(...args: any[]) {
+    console.log(...args);
   }
 
-  static warn(...args: any) {
-    args.forEach((arg: any) => console.warn(arg));
+  static warn(...args: any[]) {
+    console.warn(...args);
   }
 
-  static error(...args: any) {
-    args.forEach((arg: any) => console.error(arg));
+  static error(...args: any[]) {
+    console.error(...args);
   }
 }

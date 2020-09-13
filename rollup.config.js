@@ -6,7 +6,7 @@ import { terser } from "rollup-plugin-terser";
 
 const { plugins, banner } = config();
 
-plugins.push(
+plugins.unshift(
   strip({
     debugger: true,
     include: "**/*.ts",
