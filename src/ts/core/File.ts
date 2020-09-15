@@ -11,6 +11,8 @@ import { Bus } from "./Event";
 import { DDLParser } from "@dineug/sql-ddl-parser";
 import { createJson } from "./SQLParserToJson";
 
+let exportFileCallback: ((blob: Blob, fileName: string) => void) | null = null;
+
 export interface JsonFormat {
   canvas: CanvasState;
   table: TableState;
@@ -80,10 +82,20 @@ export function exportSQLDDL(sql: string, name?: string) {
 }
 
 function executeExport(blob: Blob, fileName: string) {
-  const exportHelper = document.createElement("a");
-  exportHelper.href = window.URL.createObjectURL(blob);
-  exportHelper.download = fileName;
-  exportHelper.click();
+  if (exportFileCallback) {
+    exportFileCallback(blob, fileName);
+  } else {
+    const exportHelper = document.createElement("a");
+    exportHelper.href = window.URL.createObjectURL(blob);
+    exportHelper.download = fileName;
+    exportHelper.click();
+  }
+}
+
+export function setExportFileCallback(
+  callback: (blob: Blob, fileName: string) => void
+) {
+  exportFileCallback = callback;
 }
 
 export function importJSON(store: Store) {

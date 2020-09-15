@@ -1,4 +1,4 @@
-import "./index";
+export * from "./index";
 import { ERDEditorElement } from "./types";
 // @ts-ignore
 import Stats from "stats.js";
