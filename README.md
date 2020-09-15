@@ -8,7 +8,7 @@
 
 ![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-erd.gif?raw=true)
 
-## SQL DDL
+## Generator SQL DDL
 
 ![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-ddl.gif?raw=true)
 
@@ -27,7 +27,8 @@
 ## Document
 
 - [Storybook](https://vuerd.github.io/vuerd/)
-- [Live Demo](https://vuerd.github.io/vuerd/iframe.html?id=editor--load)
+- [Live Demo](https://vuerd.github.io/vuerd/iframe.html?id=demo--live&viewMode=story)
+- [Live Demo Sample](https://vuerd.github.io/vuerd/iframe.html?id=editor--load&viewMode=story)
 - [vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
 - [Real-time simultaneous editing sample](https://github.com/vuerd/vuerd-real-time-sample)
 - [Import SQL DDL support syntax](https://github.com/dineug/sql-ddl-parser/blob/master/src/SQL_DDL_Test_Case.md)
@@ -392,19 +393,6 @@ declare global {
 | Relationship - One N                                       | Ctrl + Alt + 5                                                           |
 | Relationship - One                                         | Ctrl + Alt + 6                                                           |
 | Relationship - N                                           | Ctrl + Alt + 7                                                           |
-
-## TODO
-
-- [x] Undo, Redo Manager
-- [x] Grid filter
-- [x] ERD Table finder
-- [x] Real-time simultaneous editing api
-- [x] SQL index Support [#9](https://github.com/vuerd/vuerd-vscode/issues/9)
-- SQL DDL import Support [#7](https://github.com/vuerd/vuerd-vscode/issues/7)
-  - [x] Oracle
-  - [x] MSSQL
-  - [x] PostgreSQL
-- [ ] SQL-Query generator [#3](https://github.com/vuerd/vuerd/issues/3)
 
 ## License
 
