@@ -50,6 +50,8 @@ export interface FocusColumn {
   focus(focusType: FocusType): void;
   nextFocus(): void;
   preFocus(): void;
+  isLastFocus(): boolean;
+  isFirstFocus(): boolean;
 }
 
 export class FocusColumnModel implements FocusColumn {
@@ -124,5 +126,25 @@ export class FocusColumnModel implements FocusColumn {
       focusColumnEnd([this]);
       this[focusColumnKey] = true;
     }
+  }
+
+  isLastFocus(): boolean {
+    const focusType = this.currentFocus;
+    if (focusType) {
+      const focusTypes = this.currentFocusShowList;
+      const index = focusTypes.indexOf(focusType);
+      return index === focusTypes.length - 1;
+    }
+    return false;
+  }
+
+  isFirstFocus(): boolean {
+    const focusType = this.currentFocus;
+    if (focusType) {
+      const focusTypes = this.currentFocusShowList;
+      const index = focusTypes.indexOf(focusType);
+      return index === 0;
+    }
+    return false;
   }
 }

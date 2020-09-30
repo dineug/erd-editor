@@ -9,6 +9,7 @@ import {
   FocusMoveFilter,
   FocusTargetFilter,
   FocusTargetFilterState,
+  addFilterState,
 } from "../command/editor";
 import {
   selectAllFilterState,
@@ -52,9 +53,11 @@ export class FocusFilterModel implements FocusFilter {
   private _currentFocusFilterState: FocusFilterState | null = null;
   private _subscriptionList: Subscription[] = [];
   private _filterStateList: FilterState[];
+  private _store: Store;
 
   constructor(filterStateList: FilterState[], store: Store) {
     this._filterStateList = filterStateList;
+    this._store = store;
     filterStateList.forEach((filterState) => {
       this.focusFilterStateList.push(new FocusFilterStateModel(filterState));
     });
@@ -177,6 +180,52 @@ export class FocusFilterModel implements FocusFilter {
           // move N -> N
           this._currentFocusFilterState.select = true;
           this._currentFocusFilterState.nextFocus();
+        }
+        break;
+      case "Tab":
+        if (focusMoveFilter.shiftKey) {
+          this.move({
+            moveKey: "ArrowLeft",
+            shiftKey: false,
+          });
+          if (
+            this._currentFocusFilterState &&
+            this._currentFocusFilterState.isLastFocus()
+          ) {
+            this.move({
+              moveKey: "ArrowUp",
+              shiftKey: false,
+            });
+          }
+        } else {
+          this.move({
+            moveKey: "ArrowRight",
+            shiftKey: false,
+          });
+          if (this._currentFocusFilterState) {
+            const index = getIndex(
+              this.focusFilterStateList,
+              this._currentFocusFilterState.id
+            );
+            const isLast = index === this.focusFilterStateList.length - 1;
+            if (isLast && this._currentFocusFilterState.isFirstFocus()) {
+              this._store.dispatch(addFilterState());
+            } else if (this._currentFocusFilterState.isFirstFocus()) {
+              this.move({
+                moveKey: "ArrowDown",
+                shiftKey: false,
+              });
+            }
+          } else {
+            if (this.focusFilterStateList.length === 0) {
+              this._store.dispatch(addFilterState());
+            } else {
+              this.move({
+                moveKey: "ArrowDown",
+                shiftKey: false,
+              });
+            }
+          }
         }
         break;
     }

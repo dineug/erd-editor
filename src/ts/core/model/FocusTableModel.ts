@@ -7,7 +7,9 @@ import {
   FocusMoveTable,
   FocusTargetTable,
   FocusTargetColumn,
+  findActiveEnd,
 } from "../command/editor";
+import { addColumn } from "../command/column";
 import {
   focusEnd,
   focusColumnEnd,
@@ -199,6 +201,52 @@ export class FocusTableModel implements FocusTable {
           // move column -> column
           this._currentFocusColumn.select = true;
           this._currentFocusColumn.nextFocus();
+        }
+        break;
+      case "Tab":
+        if (focusMoveTable.shiftKey) {
+          this.move({
+            moveKey: "ArrowLeft",
+            shiftKey: false,
+          });
+          if (
+            this._currentFocusColumn &&
+            this._currentFocusColumn.isLastFocus()
+          ) {
+            this.move({
+              moveKey: "ArrowUp",
+              shiftKey: false,
+            });
+          }
+        } else {
+          this.move({
+            moveKey: "ArrowRight",
+            shiftKey: false,
+          });
+          if (this._currentFocusColumn === null && this.focusName) {
+            if (this.focusColumns.length === 0) {
+              this._store.dispatch(addColumn(this._store), findActiveEnd());
+            } else {
+              this.move({
+                moveKey: "ArrowDown",
+                shiftKey: false,
+              });
+            }
+          } else if (this._currentFocusColumn) {
+            const columnIndex = getIndex(
+              this.focusColumns,
+              this._currentFocusColumn.id
+            );
+            const isLastColumn = columnIndex === this.focusColumns.length - 1;
+            if (isLastColumn && this._currentFocusColumn.isFirstFocus()) {
+              this._store.dispatch(addColumn(this._store), findActiveEnd());
+            } else if (this._currentFocusColumn.isFirstFocus()) {
+              this.move({
+                moveKey: "ArrowDown",
+                shiftKey: false,
+              });
+            }
+          }
         }
         break;
     }

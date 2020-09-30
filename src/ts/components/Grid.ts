@@ -38,7 +38,6 @@ import {
   selectAllFilterState,
 } from "@src/core/command/editor";
 import {
-  createGridData,
   SimpleOption,
   changeColumnOptionList,
   currentColumnOptionList,
@@ -285,7 +284,16 @@ class Grid extends EditorElement {
 
         if (filterActive && focusFilter !== null && event.key === "Tab") {
           event.preventDefault();
-          store.dispatch(focusMoveFilter("ArrowRight", event.shiftKey));
+          store.dispatch(focusMoveFilter("Tab", event.shiftKey));
+          // TODO: Refactoring edit
+          setTimeout(() => {
+            store.dispatch(
+              editFilterCommand(
+                focusFilter.currentFocus,
+                focusFilter.currentFocusId
+              )
+            );
+          }, 0);
         }
 
         if (filterActive && keymapMatch(event, keymap.addColumn)) {

@@ -33,6 +33,8 @@ export interface FocusFilterState {
   focus(focusType: FocusType): void;
   nextFocus(): void;
   preFocus(): void;
+  isLastFocus(): boolean;
+  isFirstFocus(): boolean;
 }
 
 export class FocusFilterStateModel implements FocusFilterState {
@@ -95,5 +97,23 @@ export class FocusFilterStateModel implements FocusFilterState {
       focusFilterStateEnd([this]);
       this[focusFilterStateKey] = true;
     }
+  }
+
+  isLastFocus(): boolean {
+    const focusType = this.currentFocus;
+    if (focusType) {
+      const index = focusTypes.indexOf(focusType);
+      return index === focusTypes.length - 1;
+    }
+    return false;
+  }
+
+  isFirstFocus(): boolean {
+    const focusType = this.currentFocus;
+    if (focusType) {
+      const index = focusTypes.indexOf(focusType);
+      return index === 0;
+    }
+    return false;
   }
 }

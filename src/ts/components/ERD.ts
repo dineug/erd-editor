@@ -220,7 +220,24 @@ class ERD extends EditorElement {
 
         if (focusTable !== null && event.key === "Tab") {
           event.preventDefault();
-          store.dispatch(focusMoveTable("ArrowRight", event.shiftKey));
+          store.dispatch(focusMoveTable("Tab", event.shiftKey));
+          // TODO: Refactoring edit
+          setTimeout(() => {
+            if (
+              ![
+                "columnUnique",
+                "columnAutoIncrement",
+                "columnNotNull",
+              ].includes(focusTable.currentFocus)
+            ) {
+              store.dispatch(
+                editTableCommand(
+                  focusTable.currentFocusId,
+                  focusTable.currentFocus
+                )
+              );
+            }
+          }, 0);
         }
 
         if (focusTable !== null && keymapMatch(event, keymap.edit)) {

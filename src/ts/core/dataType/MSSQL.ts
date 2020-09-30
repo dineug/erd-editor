@@ -31,6 +31,7 @@ export const MSSQLTypes: DataTypeHint[] = [
   { name: "text", primitiveType: "lob" },
   { name: "time", primitiveType: "time" },
   { name: "tinyint", primitiveType: "int" },
+  { name: "uniqueidentifier", primitiveType: "string" },
   { name: "varbinary", primitiveType: "string" },
   { name: "varchar", primitiveType: "string" },
   { name: "xml", primitiveType: "lob" },

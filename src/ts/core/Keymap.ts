@@ -11,7 +11,12 @@ export const moveKeys: MoveKey[] = [
   "ArrowDown",
   "ArrowLeft",
 ];
-export type MoveKey = "ArrowUp" | "ArrowRight" | "ArrowDown" | "ArrowLeft";
+export type MoveKey =
+  | "ArrowUp"
+  | "ArrowRight"
+  | "ArrowDown"
+  | "ArrowLeft"
+  | "Tab";
 
 export type RelationshipKeymapName =
   | "relationshipZeroOne"
