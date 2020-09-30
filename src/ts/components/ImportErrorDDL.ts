@@ -84,7 +84,7 @@ class ImportErrorDDL extends EditorElement {
         </div>
         <div class="vuerd-import-error-ddl-footer">
           <a
-            href="https://github.com/vuerd/vuerd/blob/master/data/SQL_DDL_Test_Case.md"
+            href="https://github.com/dineug/sql-ddl-parser/blob/master/src/SQL_DDL_Test_Case.md"
             target="_blank"
           >
             Import SQL DDL support syntax
