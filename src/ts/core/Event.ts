@@ -39,6 +39,8 @@ export function createWindowEventObservable(): WindowEventObservable {
     touchX = event.touches[0].clientX;
     touchY = event.touches[0].clientY;
   });
+  const ratioIgnore = ["macintosh", "firefox"];
+  const userAgent = window.navigator.userAgent.toLowerCase();
   return {
     requestAnimationFrame$: of(null, animationFrameScheduler).pipe(repeat()),
     mousedown$: fromEvent<MouseEvent>(window, "mousedown"),
@@ -53,9 +55,7 @@ export function createWindowEventObservable(): WindowEventObservable {
           let movementX = event.movementX / window.devicePixelRatio;
           let movementY = event.movementY / window.devicePixelRatio;
           // firefox
-          if (
-            window.navigator.userAgent.toLowerCase().indexOf("firefox") !== -1
-          ) {
+          if (ratioIgnore.some((target) => userAgent.indexOf(target) !== -1)) {
             movementX = event.movementX;
             movementY = event.movementY;
           }
