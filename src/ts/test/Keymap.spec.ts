@@ -15,7 +15,7 @@ describe("command: canvas", () => {
     const value = keymapMatch(
       new KeyboardEvent("keydown", {
         altKey: true,
-        key: "N",
+        code: "KeyN",
       }),
       keymap.addTable
     );
