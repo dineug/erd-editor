@@ -89,7 +89,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "F",
+        key: "KeyF",
       },
     ],
     undo: [
@@ -98,7 +98,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: false,
         shiftKey: false,
-        key: "Z",
+        key: "KeyZ",
       },
     ],
     redo: [
@@ -107,7 +107,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: false,
         shiftKey: true,
-        key: "Z",
+        key: "KeyZ",
       },
     ],
     addTable: [
@@ -116,7 +116,7 @@ export function createKeymap(): Keymap {
         ctrlKey: false,
         altKey: true,
         shiftKey: false,
-        key: "N",
+        key: "KeyN",
       },
     ],
     addColumn: [
@@ -134,7 +134,7 @@ export function createKeymap(): Keymap {
         ctrlKey: false,
         altKey: true,
         shiftKey: false,
-        key: "M",
+        key: "KeyM",
       },
     ],
     removeTable: [
@@ -161,7 +161,7 @@ export function createKeymap(): Keymap {
         ctrlKey: false,
         altKey: true,
         shiftKey: false,
-        key: "K",
+        key: "KeyK",
       },
     ],
     selectAllTable: [
@@ -170,7 +170,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "A",
+        key: "KeyA",
       },
     ],
     selectAllColumn: [
@@ -179,7 +179,7 @@ export function createKeymap(): Keymap {
         ctrlKey: false,
         altKey: true,
         shiftKey: false,
-        key: "A",
+        key: "KeyA",
       },
     ],
     copyColumn: [
@@ -188,7 +188,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: false,
         shiftKey: false,
-        key: "C",
+        key: "KeyC",
       },
     ],
     pasteColumn: [
@@ -197,7 +197,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: false,
         shiftKey: false,
-        key: "V",
+        key: "KeyV",
       },
     ],
     relationshipZeroOneN: [
@@ -206,7 +206,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "1",
+        key: "Digit1",
       },
     ],
     relationshipZeroOne: [
@@ -215,7 +215,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "2",
+        key: "Digit2",
       },
     ],
     relationshipZeroN: [
@@ -224,7 +224,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "3",
+        key: "Digit3",
       },
     ],
     relationshipOneOnly: [
@@ -233,7 +233,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "4",
+        key: "Digit4",
       },
     ],
     relationshipOneN: [
@@ -242,7 +242,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "5",
+        key: "Digit5",
       },
     ],
     relationshipOne: [
@@ -251,7 +251,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "6",
+        key: "Digit6",
       },
     ],
     relationshipN: [
@@ -260,7 +260,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "7",
+        key: "Digit7",
       },
     ],
     tableProperties: [
