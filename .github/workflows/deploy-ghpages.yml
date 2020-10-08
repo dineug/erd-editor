@@ -1,8 +1,6 @@
 name: Deploy gh-pages
 
 on:
-  push:
-    branches: [master]
   release:
     types: [created]
 

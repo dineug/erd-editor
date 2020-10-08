@@ -1,8 +1,6 @@
 name: Deploy npm package
 
 on:
-  push:
-    branches: [master]
   release:
     types: [created]
 
