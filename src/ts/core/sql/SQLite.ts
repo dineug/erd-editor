@@ -72,9 +72,27 @@ export function formatTable(
   if (pk) {
     const pkColumns = primaryKeyColumns(table.columns);
     if (relationships.length !== 0) {
-      buffer.push(`  PRIMARY KEY (${formatNames(pkColumns)}),`);
+      if (pkColumns.length === 1) {
+        const autoIncrement = pkColumns[0].option.autoIncrement
+          ? " AUTOINCREMENT"
+          : "";
+        buffer.push(
+          `  PRIMARY KEY (${formatNames(pkColumns)}${autoIncrement}),`
+        );
+      } else {
+        buffer.push(`  PRIMARY KEY (${formatNames(pkColumns)}),`);
+      }
     } else {
-      buffer.push(`  PRIMARY KEY (${formatNames(pkColumns)})`);
+      if (pkColumns.length === 1) {
+        const autoIncrement = pkColumns[0].option.autoIncrement
+          ? " AUTOINCREMENT"
+          : "";
+        buffer.push(
+          `  PRIMARY KEY (${formatNames(pkColumns)}${autoIncrement})`
+        );
+      } else {
+        buffer.push(`  PRIMARY KEY (${formatNames(pkColumns)})`);
+      }
     }
   }
 
@@ -141,12 +159,8 @@ function formatColumn(
   if (column.option.unique) {
     stringBuffer.push(`UNIQUE`);
   }
-  if (column.option.autoIncrement) {
-    stringBuffer.push(`AUTOINCREMENT`);
-  } else {
-    if (column.default.trim() !== "") {
-      stringBuffer.push(`DEFAULT ${column.default}`);
-    }
+  if (!column.option.autoIncrement && column.default.trim() !== "") {
+    stringBuffer.push(`DEFAULT ${column.default}`);
   }
   buffer.push(stringBuffer.join(" ") + `${isComma ? "," : ""}`);
 }
