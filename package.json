@@ -1,6 +1,6 @@
 {
   "name": "vuerd",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "description": "ERD editor",
   "main": "dist/vuerd.cjs.js",
   "module": "dist/vuerd.esm.js",
@@ -19,7 +19,7 @@
     "database",
     "diagram"
   ],
-  "homepage": "https://github.com/vuerd/vuerd",
+  "homepage": "https://github.com/vuerd/vuerd#readme",
   "bugs": {
     "url": "https://github.com/vuerd/vuerd/issues"
   },
