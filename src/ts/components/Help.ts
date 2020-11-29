@@ -71,19 +71,19 @@ class Help extends EditorElement {
       },
       {
         name: "Selection - table, memo",
-        keymap: `Ctrl + Drag, Click, Ctrl + Click, ${keymapOptionToStringJoin(
+        keymap: `Ctrl + Drag, Click, Ctrl + Click, Cmd + Drag, Cmd + Click, ${keymapOptionToStringJoin(
           keymap.selectAllTable
         )}`,
       },
       {
         name: "Selection - column, filter",
-        keymap: `Click, Ctrl + Click, Shift + Click, Shift + Arrow key(up, down), ${keymapOptionToStringJoin(
+        keymap: `Click, Ctrl + Click, Cmd + Click, Shift + Click, Shift + Arrow key(up, down), ${keymapOptionToStringJoin(
           keymap.selectAllColumn
         )}`,
       },
       {
         name: "Movement - table, memo, column, filter",
-        keymap: "Drag, Ctrl + Drag",
+        keymap: "Drag, Ctrl + Drag, Cmd + Drag",
       },
       {
         name: "Copy - column",
