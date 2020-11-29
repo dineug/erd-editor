@@ -123,7 +123,7 @@ function effect(target: any, p: string | number | symbol) {
       if (refTrigger.keys.some((key) => key === p)) {
         const update = refToUpdate.get(refTrigger.ref);
         if (update) {
-          new Promise((resolve) => resolve())
+          Promise.resolve()
             .then(() => {
               refToTask.set(refTrigger.ref, update);
             })
