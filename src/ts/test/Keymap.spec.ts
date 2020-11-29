@@ -15,7 +15,7 @@ describe("command: canvas", () => {
     const value = keymapMatch(
       new KeyboardEvent("keydown", {
         altKey: true,
-        code: "KeyN",
+        code: "N",
       }),
       keymap.addTable
     );
@@ -60,7 +60,7 @@ it("keymapOptionToString: All", () => {
   const value = keymapOptionToString(keymapOption);
 
   // then
-  expect(value).toBe("Meta + Ctrl + Alt + Shift + A");
+  expect(value).toBe("Cmd + Ctrl + Alt + Shift + A");
 });
 
 it("keymapOptionToStringJoin: All", () => {
@@ -77,5 +77,5 @@ it("keymapOptionToStringJoin: All", () => {
   const value = keymapOptionToStringJoin([keymapOption]);
 
   // then
-  expect(value).toBe("Meta + Ctrl + Alt + Shift + A");
+  expect(value).toBe("Cmd + Ctrl + Alt + Shift + A");
 });
