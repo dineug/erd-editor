@@ -68,7 +68,7 @@ class DargSelect extends EditorElement {
   };
   private onMousemove = (event: MouseEvent) => {
     event.preventDefault();
-    if (!event.ctrlKey) {
+    if (!event.ctrlKey && !event.metaKey) {
       this.dispatchEvent(new CustomEvent("select-end"));
     }
   };

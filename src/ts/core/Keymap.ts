@@ -86,6 +86,13 @@ export function createKeymap(): Keymap {
     find: [
       {
         metaKey: false,
+        ctrlKey: false,
+        altKey: true,
+        shiftKey: false,
+        key: "F",
+      },
+      {
+        metaKey: false,
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
@@ -100,11 +107,25 @@ export function createKeymap(): Keymap {
         shiftKey: false,
         key: "Z",
       },
+      {
+        metaKey: true,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        key: "Z",
+      },
     ],
     redo: [
       {
         metaKey: false,
         ctrlKey: true,
+        altKey: false,
+        shiftKey: true,
+        key: "Z",
+      },
+      {
+        metaKey: true,
+        ctrlKey: false,
         altKey: false,
         shiftKey: true,
         key: "Z",
@@ -172,6 +193,13 @@ export function createKeymap(): Keymap {
         shiftKey: false,
         key: "A",
       },
+      {
+        metaKey: true,
+        ctrlKey: false,
+        altKey: true,
+        shiftKey: false,
+        key: "A",
+      },
     ],
     selectAllColumn: [
       {
@@ -190,11 +218,25 @@ export function createKeymap(): Keymap {
         shiftKey: false,
         key: "C",
       },
+      {
+        metaKey: true,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        key: "C",
+      },
     ],
     pasteColumn: [
       {
         metaKey: false,
         ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
+        key: "V",
+      },
+      {
+        metaKey: true,
+        ctrlKey: false,
         altKey: false,
         shiftKey: false,
         key: "V",
@@ -208,11 +250,25 @@ export function createKeymap(): Keymap {
         shiftKey: false,
         key: "1",
       },
+      {
+        metaKey: true,
+        ctrlKey: false,
+        altKey: true,
+        shiftKey: false,
+        key: "1",
+      },
     ],
     relationshipZeroOne: [
       {
         metaKey: false,
         ctrlKey: true,
+        altKey: true,
+        shiftKey: false,
+        key: "2",
+      },
+      {
+        metaKey: true,
+        ctrlKey: false,
         altKey: true,
         shiftKey: false,
         key: "2",
@@ -226,11 +282,25 @@ export function createKeymap(): Keymap {
         shiftKey: false,
         key: "3",
       },
+      {
+        metaKey: true,
+        ctrlKey: false,
+        altKey: true,
+        shiftKey: false,
+        key: "3",
+      },
     ],
     relationshipOneOnly: [
       {
         metaKey: false,
         ctrlKey: true,
+        altKey: true,
+        shiftKey: false,
+        key: "4",
+      },
+      {
+        metaKey: true,
+        ctrlKey: false,
         altKey: true,
         shiftKey: false,
         key: "4",
@@ -244,11 +314,25 @@ export function createKeymap(): Keymap {
         shiftKey: false,
         key: "5",
       },
+      {
+        metaKey: true,
+        ctrlKey: false,
+        altKey: true,
+        shiftKey: false,
+        key: "5",
+      },
     ],
     relationshipOne: [
       {
         metaKey: false,
         ctrlKey: true,
+        altKey: true,
+        shiftKey: false,
+        key: "6",
+      },
+      {
+        metaKey: true,
+        ctrlKey: false,
         altKey: true,
         shiftKey: false,
         key: "6",
@@ -262,12 +346,26 @@ export function createKeymap(): Keymap {
         shiftKey: false,
         key: "7",
       },
+      {
+        metaKey: true,
+        ctrlKey: false,
+        altKey: true,
+        shiftKey: false,
+        key: "7",
+      },
     ],
     tableProperties: [
       {
         metaKey: false,
         ctrlKey: true,
         altKey: false,
+        shiftKey: false,
+        key: "Space",
+      },
+      {
+        metaKey: false,
+        ctrlKey: false,
+        altKey: true,
         shiftKey: false,
         key: "Space",
       },
@@ -313,7 +411,7 @@ export function keymapOptionToString(keymapOption?: KeymapOption): string {
   if (!keymapOption) return "";
   const result: string[] = [];
   if (keymapOption.metaKey) {
-    result.push("Meta");
+    result.push("Cmd");
   }
   if (keymapOption.ctrlKey) {
     result.push("Ctrl");
@@ -333,5 +431,5 @@ export function keymapOptionToString(keymapOption?: KeymapOption): string {
 export function keymapOptionToStringJoin(
   keymapOptions: KeymapOption[]
 ): string {
-  return keymapOptions.map((option) => keymapOptionToString(option)).join(",");
+  return keymapOptions.map((option) => keymapOptionToString(option)).join(", ");
 }

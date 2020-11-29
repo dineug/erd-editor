@@ -305,6 +305,7 @@ class ERD extends EditorElement {
         }
 
         if (keymapMatch(event, keymap.find)) {
+          event.preventDefault();
           store.dispatch(findActiveCommand());
         }
 
@@ -496,7 +497,7 @@ class ERD extends EditorElement {
       const { store } = this.context;
       const { moveEnd$, move$ } = this.context.windowEventObservable;
       store.dispatch(selectEndTable(), selectEndMemo());
-      if (event.ctrlKey) {
+      if (event.ctrlKey || event.metaKey) {
         this.selectX = event.x;
         this.selectY = event.y;
         this.selectGhostX = event.offsetX;

@@ -186,7 +186,13 @@ class Memo extends EditorElement {
     }
     const { store } = this.context;
     store.dispatch(
-      moveMemo(store, event.ctrlKey, movementX, movementY, this.memo.id)
+      moveMemo(
+        store,
+        event.ctrlKey || event.metaKey,
+        movementX,
+        movementY,
+        this.memo.id
+      )
     );
   };
   private onMoveValid = () => {
@@ -232,7 +238,9 @@ class Memo extends EditorElement {
       this.subMove = move$.subscribe(this.onMove);
     }
     const { store } = this.context;
-    store.dispatch(selectMemo(store, event.ctrlKey, this.memo.id));
+    store.dispatch(
+      selectMemo(store, event.ctrlKey || event.metaKey, this.memo.id)
+    );
   }
   private onRemoveMemo(event: MouseEvent) {
     const { store } = this.context;

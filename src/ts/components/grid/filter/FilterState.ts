@@ -144,7 +144,7 @@ class FilterState extends EditorElement {
         focusTargetFilterState(
           this.filterState.id,
           focusType,
-          event.ctrlKey,
+          event.ctrlKey || event.metaKey,
           event.shiftKey
         )
       );
@@ -184,7 +184,11 @@ class FilterState extends EditorElement {
   private onDragstart(event: DragEvent) {
     const { store } = this.context;
     store.dispatch(
-      draggableFilterState(store, this.filterState.id, event.ctrlKey)
+      draggableFilterState(
+        store,
+        this.filterState.id,
+        event.ctrlKey || event.metaKey
+      )
     );
   }
   private onDragend(event: DragEvent) {

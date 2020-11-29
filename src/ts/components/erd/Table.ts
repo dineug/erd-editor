@@ -235,7 +235,13 @@ class Table extends EditorElement {
     }
     const { store } = this.context;
     store.dispatch(
-      moveTable(store, event.ctrlKey, movementX, movementY, this.table.id)
+      moveTable(
+        store,
+        event.ctrlKey || event.metaKey,
+        movementX,
+        movementY,
+        this.table.id
+      )
     );
   };
   private onDragoverGroupColumn = (event: CustomEvent) => {
@@ -307,7 +313,9 @@ class Table extends EditorElement {
     }
     if (!el.closest("vuerd-input-edit")) {
       const { store } = this.context;
-      store.dispatch(selectTable(store, event.ctrlKey, this.table.id));
+      store.dispatch(
+        selectTable(store, event.ctrlKey || event.metaKey, this.table.id)
+      );
     }
   }
   private onDraggableColumn() {
@@ -362,7 +370,7 @@ class Table extends EditorElement {
       focusTable.id !== this.table.id
     ) {
       store.dispatch(
-        selectTable(store, event.ctrlKey, this.table.id),
+        selectTable(store, event.ctrlKey || event.metaKey, this.table.id),
         focusTargetTable(focusType)
       );
     }

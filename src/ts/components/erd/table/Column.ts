@@ -301,11 +301,11 @@ class Column extends EditorElement {
       focusTable.currentFocusId !== this.column.id
     ) {
       store.dispatch(
-        selectTable(store, event.ctrlKey, this.tableId),
+        selectTable(store, event.ctrlKey || event.metaKey, this.tableId),
         focusTargetColumn(
           this.column.id,
           focusType,
-          event.ctrlKey,
+          event.ctrlKey || event.metaKey,
           event.shiftKey
         )
       );
@@ -337,7 +337,12 @@ class Column extends EditorElement {
   private onDragstart(event: DragEvent) {
     const { store } = this.context;
     store.dispatch(
-      draggableColumn(store, this.tableId, this.column.id, event.ctrlKey)
+      draggableColumn(
+        store,
+        this.tableId,
+        this.column.id,
+        event.ctrlKey || event.metaKey
+      )
     );
   }
   private onDragend(event: DragEvent) {
