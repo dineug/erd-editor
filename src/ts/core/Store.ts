@@ -96,8 +96,8 @@ export class Store {
               )
             )
           ),
-          mergeMap((group$) => {
-            return group$.key
+          mergeMap((group$) =>
+            group$.key
               ? group$.pipe(
                   buffer(group$.pipe(debounceTime(200))),
                   map((buff) =>
@@ -107,8 +107,8 @@ export class Store {
                     })
                   )
                 )
-              : group$;
-          })
+              : group$
+          )
         )
         .subscribe((commands) =>
           executeUndoCommand(this, this.undoManager, commands)

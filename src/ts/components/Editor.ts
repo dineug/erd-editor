@@ -2,6 +2,7 @@ import { html, customElement, property } from "lit-element";
 import { styleMap } from "lit-html/directives/style-map";
 import { cache } from "lit-html/directives/cache";
 import { Subscription, fromEvent, merge } from "rxjs";
+import { groupBy, mergeMap, throttleTime, filter } from "rxjs/operators";
 import { RxElement } from "./EditorElement";
 import { Layout, defaultWidth, defaultHeight } from "./Layout";
 import { Logger } from "@src/core/Logger";
@@ -141,16 +142,27 @@ class Editor extends RxElement implements ERDEditorElement {
       }
     }
     this.subscriptionList.push(
-      fromEvent<KeyboardEvent>(editor, "keydown").subscribe((event) => {
-        Logger.debug(`
-        metaKey: ${event.metaKey},
-        ctrlKey: ${event.ctrlKey},
-        altKey: ${event.altKey},
-        shiftKey: ${event.shiftKey},
-        code: ${event.code},
-        key: ${event.key}
-        `);
-        if (event.key !== "Process") {
+      fromEvent<KeyboardEvent>(editor, "keydown")
+        .pipe(
+          groupBy((event) => event.code === "Enter"),
+          mergeMap((group$) =>
+            group$.key
+              ? group$.pipe(
+                  filter((event) => event.key !== "Process"),
+                  throttleTime(100)
+                )
+              : group$
+          )
+        )
+        .subscribe((event) => {
+          Logger.debug(`
+            metaKey: ${event.metaKey},
+            ctrlKey: ${event.ctrlKey},
+            altKey: ${event.altKey},
+            shiftKey: ${event.shiftKey},
+            code: ${event.code},
+            key: ${event.key}
+          `);
           helper.keydown$.next(event);
           if (keymapMatch(event, keymap.stop)) {
             eventBus.emit(Bus.Help.close);
@@ -160,8 +172,7 @@ class Editor extends RxElement implements ERDEditorElement {
             eventBus.emit(Bus.Setting.close);
             eventBus.emit(Bus.TableProperties.close);
           }
-        }
-      }),
+        }),
       merge(
         fromEvent(editor, "mousedown"),
         fromEvent(editor, "touchstart")
