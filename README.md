@@ -282,8 +282,6 @@ $ npm install vuerd
 
 ## Usage
 
-### javascript
-
 ```javascript
 import "vuerd";
 // import "vuerd/theme/abyss.css";
@@ -300,24 +298,6 @@ import "vuerd";
 const container = document.querySelector("#app");
 const editor = document.createElement("erd-editor");
 container.appendChild(editor);
-```
-
-### typescript
-
-```typescript
-import "vuerd";
-import { ERDEditorElement } from "vuerd";
-
-const container = document.querySelector("#app");
-const editor = document.createElement("erd-editor") as ERDEditorElement;
-container.appendChild(editor);
-
-// or
-declare global {
-  interface HTMLElementTagNameMap {
-    "erd-editor": ERDEditorElement;
-  }
-}
 ```
 
 ## CDN Quick Start

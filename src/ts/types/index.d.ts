@@ -16,6 +16,12 @@ export interface ERDEditorElement extends HTMLElement {
   getSQLDDL(database?: Database): string;
 }
 
+declare global {
+  interface HTMLElementTagNameMap {
+    "erd-editor": ERDEditorElement;
+  }
+}
+
 export interface Theme {
   canvas?: string;
   table?: string;

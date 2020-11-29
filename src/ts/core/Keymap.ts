@@ -89,7 +89,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "KeyF",
+        key: "F",
       },
     ],
     undo: [
@@ -98,7 +98,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: false,
         shiftKey: false,
-        key: "KeyZ",
+        key: "Z",
       },
     ],
     redo: [
@@ -107,7 +107,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: false,
         shiftKey: true,
-        key: "KeyZ",
+        key: "Z",
       },
     ],
     addTable: [
@@ -116,7 +116,7 @@ export function createKeymap(): Keymap {
         ctrlKey: false,
         altKey: true,
         shiftKey: false,
-        key: "KeyN",
+        key: "N",
       },
     ],
     addColumn: [
@@ -134,7 +134,7 @@ export function createKeymap(): Keymap {
         ctrlKey: false,
         altKey: true,
         shiftKey: false,
-        key: "KeyM",
+        key: "M",
       },
     ],
     removeTable: [
@@ -161,7 +161,7 @@ export function createKeymap(): Keymap {
         ctrlKey: false,
         altKey: true,
         shiftKey: false,
-        key: "KeyK",
+        key: "K",
       },
     ],
     selectAllTable: [
@@ -170,7 +170,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "KeyA",
+        key: "A",
       },
     ],
     selectAllColumn: [
@@ -179,7 +179,7 @@ export function createKeymap(): Keymap {
         ctrlKey: false,
         altKey: true,
         shiftKey: false,
-        key: "KeyA",
+        key: "A",
       },
     ],
     copyColumn: [
@@ -188,7 +188,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: false,
         shiftKey: false,
-        key: "KeyC",
+        key: "C",
       },
     ],
     pasteColumn: [
@@ -197,7 +197,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: false,
         shiftKey: false,
-        key: "KeyV",
+        key: "V",
       },
     ],
     relationshipZeroOneN: [
@@ -206,7 +206,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "Digit1",
+        key: "1",
       },
     ],
     relationshipZeroOne: [
@@ -215,7 +215,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "Digit2",
+        key: "2",
       },
     ],
     relationshipZeroN: [
@@ -224,7 +224,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "Digit3",
+        key: "3",
       },
     ],
     relationshipOneOnly: [
@@ -233,7 +233,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "Digit4",
+        key: "4",
       },
     ],
     relationshipOneN: [
@@ -242,7 +242,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "Digit5",
+        key: "5",
       },
     ],
     relationshipOne: [
@@ -251,7 +251,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "Digit6",
+        key: "6",
       },
     ],
     relationshipN: [
@@ -260,7 +260,7 @@ export function createKeymap(): Keymap {
         ctrlKey: true,
         altKey: true,
         shiftKey: false,
-        key: "Digit7",
+        key: "7",
       },
     ],
     tableProperties: [
@@ -295,7 +295,10 @@ export function keymapMatch(
       result =
         isMultipleKey &&
         (event.key.toUpperCase() === keymapOption.key.toUpperCase() ||
-          event.code.toUpperCase() === keymapOption.key.toUpperCase());
+          event.code.toUpperCase() === keymapOption.key.toUpperCase() ||
+          event.code.toUpperCase() === `Key${keymapOption.key}`.toUpperCase() ||
+          event.code.toUpperCase() ===
+            `Digit${keymapOption.key}`.toUpperCase());
     } else {
       result = isMultipleKey;
     }
