@@ -148,7 +148,7 @@ function formatRelation(
 
     buffer.push(`    FOREIGN KEY (${formatNames(columns.end)})`);
     buffer.push(
-      `    REFERENCES ${startTable.name} (${formatNames(columns.start)});`
+      `    REFERENCES "${startTable.name}" (${formatNames(columns.start)});`
     );
   }
 }
