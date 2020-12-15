@@ -72,7 +72,7 @@ function formatColumn(
 ) {
   const stringBuffer: string[] = [];
   stringBuffer.push(
-    `  ${column.name}` + formatSpace(spaceSize.name - column.name.length)
+    `  "${column.name}"` + formatSpace(spaceSize.name - column.name.length)
   );
   stringBuffer.push(
     `${column.dataType}` +
@@ -93,13 +93,13 @@ function formatColumn(
 
 function formatComment(table: Table, buffer: string[]) {
   if (table.comment.trim() !== "") {
-    buffer.push(`COMMENT ON TABLE ${table.name} IS '${table.comment}';`);
+    buffer.push(`COMMENT ON TABLE "${table.name}" IS '${table.comment}';`);
     buffer.push("");
   }
   table.columns.forEach((column) => {
     if (column.comment.trim() !== "") {
       buffer.push(
-        `COMMENT ON COLUMN ${table.name}.${column.name} IS '${column.comment}';`
+        `COMMENT ON COLUMN "${table.name}"."${column.name}" IS '${column.comment}';`
       );
       buffer.push("");
     }
@@ -116,7 +116,7 @@ function formatRelation(
   const endTable = getData(tables, relationship.end.tableId);
 
   if (startTable && endTable) {
-    buffer.push(`ALTER TABLE ${endTable.name}`);
+    buffer.push(`ALTER TABLE "${endTable.name}"`);
 
     // FK 중복 처리
     let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
@@ -187,6 +187,6 @@ export function formatIndex(
     } else {
       buffer.push(`CREATE INDEX ${indexName}`);
     }
-    buffer.push(`  ON ${table.name} (${formatNames(columnNames)});`);
+    buffer.push(`  ON "${table.name}" (${formatNames(columnNames)});`);
   }
 }
