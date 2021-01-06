@@ -3,7 +3,6 @@
     "target": "ES6",
     "module": "ESNext",
     "moduleResolution": "node",
-    "lib": ["ESNext", "DOM"],
     "noImplicitAny": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -12,9 +11,10 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["src/ts/*"]
+      "@/*": ["src/*"],
+      "@type/*": ["types/*"]
     }
   },
-  "include": ["src/ts/**/*.ts"],
+  "include": ["src/**/*.ts", "types/**/*.ts"],
   "exclude": ["node_modules"]
 }

@@ -6,18 +6,18 @@ import browsersync from "rollup-plugin-browsersync";
 const { plugins, banner } = config();
 
 export default {
-  input: "src/ts/index.dev.ts",
+  input: "src/index.dev.ts",
   output: {
     name: "vuerd",
-    file: pkg.browser,
-    format: "iife",
+    file: pkg.main,
+    format: "umd",
     banner,
     plugins: [
       html({
-        template: "src/index.html",
+        template: "public/index.rollup.html",
         target: "dist/index.html",
       }),
-      browsersync({ server: "dist", open: false }),
+      browsersync({ server: "dist", open: true, port: 8090 }),
     ],
   },
   plugins,
