@@ -1,5 +1,5 @@
 import { isObject, isArray } from "./helper";
-import { Logger } from "./Logger";
+import { Logger } from "./logger";
 
 type PropName = string | number | symbol;
 type Observer = () => void;
@@ -40,14 +40,12 @@ function unobserve(observer: Observer) {
   triggers?.forEach(({ raw }) => {
     const observers = rawToObservers.get(raw);
 
-    if (observers && observers.includes(observer)) {
+    observers &&
+      observers.includes(observer) &&
       observers.splice(observers.indexOf(observer), 1);
-    }
   });
 
-  if (triggers) {
-    observerToTriggers.delete(observer);
-  }
+  triggers && observerToTriggers.delete(observer);
 }
 
 function addObserver(raw: any) {
