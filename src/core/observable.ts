@@ -1,9 +1,10 @@
-import { Subject, Subscription } from "rxjs";
 import { isObject, isArray } from "./helper";
 import { Logger } from "./Logger";
 
 type PropName = string | number | symbol;
 type Observer = () => void;
+type Unsubscribe = () => void;
+type SubjectObserver<T> = (value: T) => void;
 
 interface Trigger {
   raw: any;
@@ -15,10 +16,15 @@ interface NextTrigger {
   keys: PropName[];
 }
 
+export interface Subject<T> {
+  next(value: T): void;
+  subscribe(observer: SubjectObserver<T>): Unsubscribe;
+}
+
 const rawToProxy = new WeakMap();
 const rawToObservers = new WeakMap<object, Array<Observer>>();
 const proxyToRaw = new WeakMap();
-const proxyToObservable$ = new WeakMap<object, Subject<PropName>>();
+const proxyToSubject = new WeakMap<object, Subject<PropName>>();
 const observerToTriggers = new WeakMap<Observer, Array<Trigger>>();
 const queue: Observer[] = [];
 const nextQueue: NextTrigger[] = [];
@@ -28,7 +34,7 @@ let batch = false;
 let nextBatch = false;
 let proxyCount = 0;
 
-function removeObserver(observer: Observer) {
+function unobserve(observer: Observer) {
   const triggers = observerToTriggers.get(observer);
 
   triggers?.forEach(({ raw }) => {
@@ -74,12 +80,15 @@ function addTrigger(raw: any, p: PropName) {
   }
 }
 
-const isTrigger = (raw: any, p: PropName, observer: Observer) =>
-  observerToTriggers
-    .get(observer)
-    ?.some(trigger => trigger.raw === raw && trigger.keys.includes(p));
+function isTrigger(raw: any, p: PropName, observer: Observer) {
+  const triggers = observerToTriggers.get(observer);
 
-const effect = (raw: any, p: PropName) =>
+  return triggers
+    ? triggers.some(trigger => trigger.raw === raw && trigger.keys.includes(p))
+    : false;
+}
+
+function effect(raw: any, p: PropName) {
   rawToObservers.get(raw)?.forEach(observer => {
     if (isTrigger(raw, p, observer)) {
       queue.includes(observer) || queue.push(observer);
@@ -90,13 +99,10 @@ const effect = (raw: any, p: PropName) =>
       }
     }
   });
+}
 
 function execute() {
-  while (queue.length) {
-    const observer = queue.shift();
-
-    observer && observer();
-  }
+  while (queue.length) (queue.shift() as Observer)();
   batch = false;
 }
 
@@ -104,9 +110,9 @@ function nextEffect(raw: any, p: PropName) {
   const proxy = rawToProxy.get(raw);
 
   if (proxy) {
-    const observable$ = proxyToObservable$.get(proxy);
+    const subject = proxyToSubject.get(proxy);
 
-    if (observable$) {
+    if (subject) {
       const trigger = nextQueue.find(trigger => trigger.proxy === proxy);
 
       if (!trigger) {
@@ -125,34 +131,31 @@ function nextEffect(raw: any, p: PropName) {
 
 function nextExecute() {
   while (nextQueue.length) {
-    const trigger = nextQueue.shift();
+    const trigger = nextQueue.shift() as NextTrigger;
+    const subject = proxyToSubject.get(trigger.proxy);
 
-    if (trigger) {
-      const observable$ = proxyToObservable$.get(trigger.proxy);
-
-      trigger.keys.forEach(key => observable$?.next(key));
-    }
+    trigger.keys.forEach(key => subject?.next(key));
   }
   nextBatch = false;
 }
 
 export function observable<T>(raw: T): T {
   const proxy = new Proxy(raw as any, {
-    get(target, p) {
+    get(target, p, receiver) {
+      const value = Reflect.get(target, p, receiver);
+
       addObserver(raw);
       addTrigger(raw, p);
 
-      if (isObject(target[p]) && !proxyToRaw.has(target[p])) {
-        if (rawToProxy.has(target[p])) return rawToProxy.get(target[p]);
+      if (isObject(value) && !proxyToRaw.has(value)) {
+        if (rawToProxy.has(value)) return rawToProxy.get(value);
 
-        return observable(target[p]);
+        return observable(value);
       }
 
-      return target[p];
+      return value;
     },
-    set(target, p, value) {
-      target[p] = value;
-
+    set(target, p, value, receiver) {
       if (!isArray(target)) {
         effect(target, p);
         nextEffect(target, p);
@@ -161,7 +164,7 @@ export function observable<T>(raw: T): T {
         nextEffect(target, p);
       }
 
-      return true;
+      return Reflect.set(target, p, value, receiver);
     },
   });
 
@@ -178,19 +181,39 @@ export function observer(f: Observer) {
   f();
   currentObserver = null;
 
-  return () => removeObserver(f);
+  return () => unobserve(f);
+}
+
+export function createSubject<T>(): Subject<T> {
+  const observers: Array<SubjectObserver<T>> = [];
+
+  const next = (value: T) => observers.forEach(observer => observer(value));
+
+  const subscribe = (observer: SubjectObserver<T>) => {
+    observers.push(observer);
+
+    return () => {
+      observers.includes(observer) &&
+        observers.splice(observers.indexOf(observer), 1);
+    };
+  };
+
+  return {
+    next,
+    subscribe,
+  };
 }
 
 export function watch(
   proxy: any,
-  observer: (propName: PropName) => void
-): Subscription {
-  let observable$ = proxyToObservable$.get(proxy);
+  observer: SubjectObserver<PropName>
+): Unsubscribe {
+  let subject = proxyToSubject.get(proxy);
 
-  if (!observable$) {
-    observable$ = new Subject();
-    proxyToObservable$.set(proxy, observable$);
+  if (!subject) {
+    subject = createSubject<PropName>();
+    proxyToSubject.set(proxy, subject);
   }
 
-  return observable$.subscribe(observer);
+  return subject.subscribe(observer);
 }
