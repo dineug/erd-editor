@@ -3,7 +3,7 @@ import { Logger } from "./logger";
 
 type PropName = string | number | symbol;
 type Observer = () => void;
-type Unsubscribe = () => void;
+export type Unsubscribe = () => void;
 type SubjectObserver<T> = (value: T) => void;
 
 interface Trigger {
@@ -33,6 +33,14 @@ let currentObserver: Observer | null = null;
 let batch = false;
 let nextBatch = false;
 let proxyCount = 0;
+
+export function observer(f: Observer): Unsubscribe {
+  currentObserver = f;
+  f();
+  currentObserver = null;
+
+  return () => unobserve(f);
+}
 
 function unobserve(observer: Observer) {
   const triggers = observerToTriggers.get(observer);
@@ -104,39 +112,6 @@ function execute() {
   batch = false;
 }
 
-function nextEffect(raw: any, p: PropName) {
-  const proxy = rawToProxy.get(raw);
-
-  if (proxy) {
-    const subject = proxyToSubject.get(proxy);
-
-    if (subject) {
-      const trigger = nextQueue.find(trigger => trigger.proxy === proxy);
-
-      if (!trigger) {
-        nextQueue.push({ proxy, keys: [p] });
-      } else if (!trigger.keys.includes(p)) {
-        trigger.keys.push(p);
-      }
-
-      if (!nextBatch) {
-        requestAnimationFrame(nextExecute);
-        nextBatch = true;
-      }
-    }
-  }
-}
-
-function nextExecute() {
-  while (nextQueue.length) {
-    const trigger = nextQueue.shift() as NextTrigger;
-    const subject = proxyToSubject.get(trigger.proxy);
-
-    trigger.keys.forEach(key => subject?.next(key));
-  }
-  nextBatch = false;
-}
-
 export function observable<T>(raw: T): T {
   const proxy = new Proxy(raw as any, {
     get(target, p, receiver) {
@@ -174,12 +149,37 @@ export function observable<T>(raw: T): T {
   return proxy;
 }
 
-export function observer(f: Observer) {
-  currentObserver = f;
-  f();
-  currentObserver = null;
+function nextEffect(raw: any, p: PropName) {
+  const proxy = rawToProxy.get(raw);
 
-  return () => unobserve(f);
+  if (proxy) {
+    const subject = proxyToSubject.get(proxy);
+
+    if (subject) {
+      const trigger = nextQueue.find(trigger => trigger.proxy === proxy);
+
+      if (!trigger) {
+        nextQueue.push({ proxy, keys: [p] });
+      } else if (!trigger.keys.includes(p)) {
+        trigger.keys.push(p);
+      }
+
+      if (!nextBatch) {
+        requestAnimationFrame(nextExecute);
+        nextBatch = true;
+      }
+    }
+  }
+}
+
+function nextExecute() {
+  while (nextQueue.length) {
+    const trigger = nextQueue.shift() as NextTrigger;
+    const subject = proxyToSubject.get(trigger.proxy);
+
+    trigger.keys.forEach(key => subject?.next(key));
+  }
+  nextBatch = false;
 }
 
 export function createSubject<T>(): Subject<T> {
