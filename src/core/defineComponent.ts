@@ -18,7 +18,7 @@ type LifecycleName =
   | typeof BEFORE_UPDATE
   | typeof UPDATED;
 type Template = () => TemplateResult | SVGTemplateResult;
-type LifecycleFunction = () => void;
+type Lifecycle = () => void;
 export type FunctionalComponent<P = any> = (props: P) => Template;
 
 interface ShadowOptions {
@@ -33,11 +33,11 @@ interface Options {
 }
 
 interface Component extends HTMLElement {
-  [BEFORE_MOUNT]: LifecycleFunction[] | null;
-  [MOUNTED]: LifecycleFunction[] | null;
-  [UNMOUNTED]: LifecycleFunction[] | null;
-  [BEFORE_UPDATE]: LifecycleFunction[] | null;
-  [UPDATED]: LifecycleFunction[] | null;
+  [BEFORE_MOUNT]: Lifecycle[] | null;
+  [MOUNTED]: Lifecycle[] | null;
+  [UNMOUNTED]: Lifecycle[] | null;
+  [BEFORE_UPDATE]: Lifecycle[] | null;
+  [UPDATED]: Lifecycle[] | null;
   [RENDER_ROOT]: ShadowRoot | HTMLElement;
   [TEMPLATE]: Template;
   [STYLE]: HTMLStyleElement | null;
@@ -46,14 +46,10 @@ interface Component extends HTMLElement {
 
 let currentInstance: Component | null = null;
 
-function createLifecycle(name: LifecycleName) {
-  return (f: LifecycleFunction) => {
-    if (currentInstance) {
-      const instance = currentInstance as any;
-      (instance[name] ?? (instance[name] = [])).push(f);
-    }
-  };
-}
+const createLifecycle = (name: LifecycleName) => (f: Lifecycle) => {
+  currentInstance &&
+    (currentInstance[name] ?? (currentInstance[name] = [])).push(f);
+};
 
 export const beforeMount = createLifecycle(BEFORE_MOUNT);
 export const mounted = createLifecycle(MOUNTED);
@@ -63,11 +59,11 @@ export const updated = createLifecycle(UPDATED);
 
 export function defineComponent(name: string, options: Options) {
   const C = class extends HTMLElement implements Component {
-    [BEFORE_MOUNT]: LifecycleFunction[] | null = null;
-    [MOUNTED]: LifecycleFunction[] | null = null;
-    [UNMOUNTED]: LifecycleFunction[] | null = null;
-    [BEFORE_UPDATE]: LifecycleFunction[] | null = null;
-    [UPDATED]: LifecycleFunction[] | null = null;
+    [BEFORE_MOUNT]: Lifecycle[] | null = null;
+    [MOUNTED]: Lifecycle[] | null = null;
+    [UNMOUNTED]: Lifecycle[] | null = null;
+    [BEFORE_UPDATE]: Lifecycle[] | null = null;
+    [UPDATED]: Lifecycle[] | null = null;
     [RENDER_ROOT]!: ShadowRoot | HTMLElement;
     [TEMPLATE]!: Template;
     [STYLE]: HTMLStyleElement | null = null;
