@@ -1,23 +1,10 @@
-import { html } from "lit-html";
-import { defineComponent } from "./defineComponent";
 import { closestElement } from "./helper";
 
-interface ProviderElement extends HTMLElement {
-  value: any;
+export interface ProviderElement<T> extends HTMLElement {
+  value: T;
 }
 
-defineComponent("vuerd-provider", {
-  shadow: { mode: "open" },
-  render: () => () => html`<slot></slot>`,
-});
-
-declare global {
-  interface HTMLElementTagNameMap {
-    "vuerd-provider": ProviderElement;
-  }
-}
-
-export function getContext<T = any>(el: Element): T {
-  const provider = closestElement("vuerd-provider", el) as ProviderElement;
+export function getContext<T = any>(selector: string, el: Element): T {
+  const provider = closestElement(selector, el) as ProviderElement<T>;
   return provider.value;
 }
