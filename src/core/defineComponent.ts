@@ -95,6 +95,10 @@ export const queryAll = createQuery(QUERY_ALL);
 
 export function defineComponent(name: string, options: Options) {
   const C = class extends HTMLElement implements Component {
+    static get observedAttributes() {
+      return options.observedProps ?? [];
+    }
+
     [BEFORE_MOUNT]: Callback[] | null = null;
     [MOUNTED]: Callback[] | null = null;
     [UNMOUNTED]: Callback[] | null = null;
