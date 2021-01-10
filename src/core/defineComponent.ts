@@ -23,10 +23,10 @@ type LifecycleName =
 type QueryName = typeof QUERY | typeof QUERY_ALL;
 type Callback = () => void;
 type Template = () => TemplateResult | SVGTemplateResult;
-export type FunctionalComponent<P = any> = (
+export type FunctionalComponent<P = any, T = HTMLElement> = (
   this: HTMLElement,
   props: P,
-  ctx: HTMLElement
+  ctx: T
 ) => Template;
 
 interface ShadowOptions {
@@ -37,11 +37,11 @@ interface Options {
   observedProps?: string[];
   shadow?: ShadowOptions;
   style?: string;
-  render: FunctionalComponent;
+  render: FunctionalComponent<any, any>;
 }
 
 interface Ref<T> {
-  current: T;
+  value: T;
 }
 
 interface Component {
@@ -67,13 +67,13 @@ const createLifecycle = (name: LifecycleName) => (f: Callback) => {
 const createQuery = (name: QueryName) => <T = any>(
   selector: string
 ): Ref<T> => {
-  const value = { current: null } as Ref<any>;
+  const ref = { value: null } as Ref<any>;
 
   if (currentInstance) {
     const renderRoot = currentInstance[RENDER_ROOT];
 
     const f = () =>
-      (value.current =
+      (ref.value =
         name === QUERY
           ? renderRoot.querySelector(selector)
           : [...renderRoot.querySelectorAll(selector)]);
@@ -82,7 +82,7 @@ const createQuery = (name: QueryName) => <T = any>(
     (currentInstance[QUERY] ?? (currentInstance[QUERY] = [])).push(f);
   }
 
-  return value;
+  return ref;
 };
 
 export const beforeMount = createLifecycle(BEFORE_MOUNT);
@@ -103,7 +103,7 @@ export function defineComponent(name: string, options: Options) {
     [QUERY]: Callback[] | null = null;
     [UNSUBSCRIBE]: Unsubscribe[] = [];
     [RENDER_ROOT]!: ShadowRoot | HTMLElement;
-    [TEMPLATE]!: Template;
+    [TEMPLATE]: Template;
     [STYLE]: HTMLStyleElement | null = null;
     [PROPS] = observable({}) as any;
 
