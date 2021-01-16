@@ -1,11 +1,11 @@
 module.exports = {
-  plugins: ["@snowpack/plugin-typescript"],
+  plugins: ['@snowpack/plugin-typescript'],
   mount: {
-    public: "/",
-    src: "/_dist_",
+    public: '/',
+    src: '/_dist_',
   },
   alias: {
-    "@": "./src",
-    "@type": "./types",
+    '@': './src',
+    '@type': './types',
   },
 };

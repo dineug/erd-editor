@@ -89,25 +89,25 @@ interface ERDEditorElement extends HTMLElement {
 ### javascript
 
 ```javascript
-const container = document.querySelector("#app");
-const editor = document.createElement("erd-editor");
+const container = document.querySelector('#app');
+const editor = document.createElement('erd-editor');
 container.appendChild(editor);
 
 // editor data load
-editor.initLoadJson("editor data...");
+editor.initLoadJson('editor data...');
 // or
 // editor.value = "editor data...";
 
-editor.addEventListener("change", event => {
+editor.addEventListener('change', event => {
   console.log(event.target.value);
 });
 
 // layout
-window.addEventListener("resize", () => {
+window.addEventListener('resize', () => {
   editor.width = window.innerWidth;
   editor.height = window.innerHeight;
 });
-window.dispatchEvent(new Event("resize"));
+window.dispatchEvent(new Event('resize'));
 // or
 // editor.automaticLayout = true;
 ```
@@ -179,28 +179,28 @@ interface Theme {
 ### javascript
 
 ```javascript
-const editor = document.createElement("erd-editor");
+const editor = document.createElement('erd-editor');
 editor.setTheme({
-  canvas: "#282828",
-  table: "#191919",
-  tableActive: "#14496d",
-  focus: "#00a9ff",
-  keyPK: "#B4B400",
-  keyFK: "#dda8b1",
-  keyPFK: "#60b9c4",
-  font: "#a2a2a2",
-  fontActive: "white",
-  fontPlaceholder: "#6D6D6D",
-  contextmenu: "#191919",
-  contextmenuActive: "#383d41",
-  edit: "#ffc107",
-  columnSelect: "#232a2f",
-  columnActive: "#372908",
-  minimapShadow: "black",
-  scrollBarThumb: "#6D6D6D",
-  scrollBarThumbActive: "#a2a2a2",
-  menubar: "black",
-  visualization: "#191919",
+  canvas: '#282828',
+  table: '#191919',
+  tableActive: '#14496d',
+  focus: '#00a9ff',
+  keyPK: '#B4B400',
+  keyFK: '#dda8b1',
+  keyPFK: '#60b9c4',
+  font: '#a2a2a2',
+  fontActive: 'white',
+  fontPlaceholder: '#6D6D6D',
+  contextmenu: '#191919',
+  contextmenuActive: '#383d41',
+  edit: '#ffc107',
+  columnSelect: '#232a2f',
+  columnActive: '#372908',
+  minimapShadow: 'black',
+  scrollBarThumb: '#6D6D6D',
+  scrollBarThumbActive: '#a2a2a2',
+  menubar: 'black',
+  visualization: '#191919',
 });
 ```
 
@@ -248,7 +248,7 @@ interface Keymap {
 ### Custom Keymap Example
 
 ```javascript
-const editor = document.createElement("erd-editor");
+const editor = document.createElement('erd-editor');
 editor.setKeymap({
   addTable: [
     {
@@ -256,7 +256,7 @@ editor.setKeymap({
       ctrlKey: false,
       altKey: true,
       shiftKey: false,
-      key: "N",
+      key: 'N',
     },
   ],
   addColumn: [
@@ -265,7 +265,7 @@ editor.setKeymap({
       ctrlKey: false,
       altKey: true,
       shiftKey: false,
-      key: "Enter",
+      key: 'Enter',
     },
   ],
   addMemo: [], // remove keymap
@@ -283,7 +283,7 @@ $ npm install vuerd
 ## Usage
 
 ```javascript
-import "vuerd";
+import 'vuerd';
 // import "vuerd/theme/abyss.css";
 // import "vuerd/theme/kimbie-dark.css";
 // import "vuerd/theme/monokai.css";
@@ -295,8 +295,8 @@ import "vuerd";
 // import "vuerd/theme/tomorrow-night-blue.css";
 // import "vuerd/theme/vscode-dark.css";
 
-const container = document.querySelector("#app");
-const editor = document.createElement("erd-editor");
+const container = document.querySelector('#app');
+const editor = document.createElement('erd-editor');
 container.appendChild(editor);
 ```
 
@@ -329,12 +329,12 @@ container.appendChild(editor);
     <!-- or module -->
     <!-- <script type="module" src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.esm.js"></script> -->
     <script>
-      const editor = document.querySelector("erd-editor");
-      window.addEventListener("resize", () => {
+      const editor = document.querySelector('erd-editor');
+      window.addEventListener('resize', () => {
         editor.width = window.innerWidth;
         editor.height = window.innerHeight;
       });
-      window.dispatchEvent(new Event("resize"));
+      window.dispatchEvent(new Event('resize'));
     </script>
   </body>
 </html>

@@ -1,8 +1,8 @@
-import pkg from "./package.json";
-import typescript from "@rollup/plugin-typescript";
-import resolve from "@rollup/plugin-node-resolve";
-import commonjs from "@rollup/plugin-commonjs";
-import { eslint } from "rollup-plugin-eslint";
+import pkg from './package.json';
+import typescript from '@rollup/plugin-typescript';
+import resolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
+import { eslint } from 'rollup-plugin-eslint';
 
 const banner = `/*!
  * ${pkg.name}
@@ -13,7 +13,7 @@ const banner = `/*!
 
 export default function config() {
   return {
-    plugins: [resolve(), commonjs(), eslint(".eslintrc.json"), typescript()],
+    plugins: [resolve(), commonjs(), eslint('.eslintrc.json'), typescript()],
     banner,
   };
 }
