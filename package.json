@@ -36,6 +36,7 @@
     "lint": "eslint . --ext .ts"
   },
   "devDependencies": {
+    "@dineug/lit-observable": "^0.1.7",
     "@rollup/plugin-commonjs": "^17.0.0",
     "@rollup/plugin-node-resolve": "^11.0.1",
     "@rollup/plugin-strip": "^2.0.0",

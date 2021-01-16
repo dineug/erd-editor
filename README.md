@@ -98,7 +98,7 @@ editor.initLoadJson("editor data...");
 // or
 // editor.value = "editor data...";
 
-editor.addEventListener("change", (event) => {
+editor.addEventListener("change", event => {
   console.log(event.target.value);
 });
 
@@ -374,7 +374,3 @@ container.appendChild(editor);
 | Relationship - One N                                       | Ctrl + Alt + 5, Cmd + Alt + 5                                                            |
 | Relationship - One                                         | Ctrl + Alt + 6, Cmd + Alt + 6                                                            |
 | Relationship - N                                           | Ctrl + Alt + 7, Cmd + Alt + 7                                                            |
-
-## License
-
-[MIT](https://github.com/vuerd/vuerd/blob/master/LICENSE)
