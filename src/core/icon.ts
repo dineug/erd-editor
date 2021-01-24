@@ -62,4 +62,5 @@ const icons = [
 export const getIcon = (prefix: string, iconName: string) =>
   icons.find(icon => icon.prefix === prefix && icon.iconName === iconName);
 
-export const addIcon = (icon: IconDefinition) => icons.push(icon);
+export const addIcon = (...newIcons: IconDefinition[]) =>
+  icons.push(...newIcons);
