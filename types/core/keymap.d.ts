@@ -1,8 +1,8 @@
 export interface KeymapOption {
-  metaKey: boolean;
-  ctrlKey: boolean;
-  altKey: boolean;
-  shiftKey: boolean;
+  metaKey?: boolean;
+  ctrlKey?: boolean;
+  altKey?: boolean;
+  shiftKey?: boolean;
   key?: string;
   preventDefault?: boolean;
   stopPropagation?: boolean;
