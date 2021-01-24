@@ -37,6 +37,9 @@
   },
   "devDependencies": {
     "@dineug/lit-observable": "^0.1.12",
+    "@dineug/sql-ddl-parser": "^0.1.2",
+    "@fortawesome/free-solid-svg-icons": "^5.15.2",
+    "@mdi/js": "^5.9.55",
     "@rollup/plugin-commonjs": "^17.0.0",
     "@rollup/plugin-node-resolve": "^11.1.0",
     "@rollup/plugin-strip": "^2.0.0",
