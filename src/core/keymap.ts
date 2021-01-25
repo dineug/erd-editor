@@ -1,227 +1,218 @@
-/**
- * https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key
- * https://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values
- * https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
- * https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values
- */
-
 import { Keymap, KeymapOption, MultipleKey } from '@type/core/keymap';
 
-export function createKeymap(): Keymap {
-  return {
-    edit: [
-      {
-        key: 'Enter',
-      },
-    ],
-    stop: [
-      {
-        key: 'Escape',
-      },
-    ],
-    find: [
-      {
-        altKey: true,
-        key: 'F',
-      },
-      {
-        ctrlKey: true,
-        altKey: true,
-        key: 'F',
-      },
-    ],
-    undo: [
-      {
-        ctrlKey: true,
-        key: 'Z',
-      },
-      {
-        metaKey: true,
-        key: 'Z',
-      },
-    ],
-    redo: [
-      {
-        ctrlKey: true,
-        shiftKey: true,
-        key: 'Z',
-      },
-      {
-        metaKey: true,
-        shiftKey: true,
-        key: 'Z',
-      },
-    ],
-    addTable: [
-      {
-        altKey: true,
-        key: 'N',
-      },
-    ],
-    addColumn: [
-      {
-        altKey: true,
-        key: 'Enter',
-      },
-    ],
-    addMemo: [
-      {
-        altKey: true,
-        key: 'M',
-      },
-    ],
-    removeTable: [
-      {
-        ctrlKey: true,
-        key: 'Delete',
-      },
-    ],
-    removeColumn: [
-      {
-        altKey: true,
-        key: 'Delete',
-      },
-    ],
-    primaryKey: [
-      {
-        altKey: true,
-        key: 'K',
-      },
-    ],
-    selectAllTable: [
-      {
-        ctrlKey: true,
-        altKey: true,
-        key: 'A',
-      },
-      {
-        metaKey: true,
-        altKey: true,
-        key: 'A',
-      },
-    ],
-    selectAllColumn: [
-      {
-        altKey: true,
-        key: 'A',
-      },
-    ],
-    copyColumn: [
-      {
-        ctrlKey: true,
-        key: 'C',
-      },
-      {
-        metaKey: true,
-        key: 'C',
-      },
-    ],
-    pasteColumn: [
-      {
-        ctrlKey: true,
-        key: 'V',
-      },
-      {
-        metaKey: true,
-        key: 'V',
-      },
-    ],
-    relationshipZeroOneN: [
-      {
-        ctrlKey: true,
-        altKey: true,
-        key: '1',
-      },
-      {
-        metaKey: true,
-        altKey: true,
-        key: '1',
-      },
-    ],
-    relationshipZeroOne: [
-      {
-        ctrlKey: true,
-        altKey: true,
-        key: '2',
-      },
-      {
-        metaKey: true,
-        altKey: true,
-        key: '2',
-      },
-    ],
-    relationshipZeroN: [
-      {
-        ctrlKey: true,
-        altKey: true,
-        key: '3',
-      },
-      {
-        metaKey: true,
-        altKey: true,
-        key: '3',
-      },
-    ],
-    relationshipOneOnly: [
-      {
-        ctrlKey: true,
-        altKey: true,
-        key: '4',
-      },
-      {
-        metaKey: true,
-        altKey: true,
-        key: '4',
-      },
-    ],
-    relationshipOneN: [
-      {
-        ctrlKey: true,
-        altKey: true,
-        key: '5',
-      },
-      {
-        metaKey: true,
-        altKey: true,
-        key: '5',
-      },
-    ],
-    relationshipOne: [
-      {
-        ctrlKey: true,
-        altKey: true,
-        key: '6',
-      },
-      {
-        metaKey: true,
-        altKey: true,
-        key: '6',
-      },
-    ],
-    relationshipN: [
-      {
-        ctrlKey: true,
-        altKey: true,
-        key: '7',
-      },
-      {
-        metaKey: true,
-        altKey: true,
-        key: '7',
-      },
-    ],
-    tableProperties: [
-      {
-        ctrlKey: true,
-        key: 'Space',
-      },
-      {
-        altKey: true,
-        key: 'Space',
-      },
-    ],
-  };
-}
+export const createKeymap = (): Keymap => ({
+  edit: [
+    {
+      key: 'Enter',
+    },
+  ],
+  stop: [
+    {
+      key: 'Escape',
+    },
+  ],
+  find: [
+    {
+      altKey: true,
+      key: 'F',
+    },
+    {
+      ctrlKey: true,
+      altKey: true,
+      key: 'F',
+    },
+  ],
+  undo: [
+    {
+      ctrlKey: true,
+      key: 'Z',
+    },
+    {
+      metaKey: true,
+      key: 'Z',
+    },
+  ],
+  redo: [
+    {
+      ctrlKey: true,
+      shiftKey: true,
+      key: 'Z',
+    },
+    {
+      metaKey: true,
+      shiftKey: true,
+      key: 'Z',
+    },
+  ],
+  addTable: [
+    {
+      altKey: true,
+      key: 'N',
+    },
+  ],
+  addColumn: [
+    {
+      altKey: true,
+      key: 'Enter',
+    },
+  ],
+  addMemo: [
+    {
+      altKey: true,
+      key: 'M',
+    },
+  ],
+  removeTable: [
+    {
+      ctrlKey: true,
+      key: 'Delete',
+    },
+  ],
+  removeColumn: [
+    {
+      altKey: true,
+      key: 'Delete',
+    },
+  ],
+  primaryKey: [
+    {
+      altKey: true,
+      key: 'K',
+    },
+  ],
+  selectAllTable: [
+    {
+      ctrlKey: true,
+      altKey: true,
+      key: 'A',
+    },
+    {
+      metaKey: true,
+      altKey: true,
+      key: 'A',
+    },
+  ],
+  selectAllColumn: [
+    {
+      altKey: true,
+      key: 'A',
+    },
+  ],
+  copyColumn: [
+    {
+      ctrlKey: true,
+      key: 'C',
+    },
+    {
+      metaKey: true,
+      key: 'C',
+    },
+  ],
+  pasteColumn: [
+    {
+      ctrlKey: true,
+      key: 'V',
+    },
+    {
+      metaKey: true,
+      key: 'V',
+    },
+  ],
+  relationshipZeroOneN: [
+    {
+      ctrlKey: true,
+      altKey: true,
+      key: '1',
+    },
+    {
+      metaKey: true,
+      altKey: true,
+      key: '1',
+    },
+  ],
+  relationshipZeroOne: [
+    {
+      ctrlKey: true,
+      altKey: true,
+      key: '2',
+    },
+    {
+      metaKey: true,
+      altKey: true,
+      key: '2',
+    },
+  ],
+  relationshipZeroN: [
+    {
+      ctrlKey: true,
+      altKey: true,
+      key: '3',
+    },
+    {
+      metaKey: true,
+      altKey: true,
+      key: '3',
+    },
+  ],
+  relationshipOneOnly: [
+    {
+      ctrlKey: true,
+      altKey: true,
+      key: '4',
+    },
+    {
+      metaKey: true,
+      altKey: true,
+      key: '4',
+    },
+  ],
+  relationshipOneN: [
+    {
+      ctrlKey: true,
+      altKey: true,
+      key: '5',
+    },
+    {
+      metaKey: true,
+      altKey: true,
+      key: '5',
+    },
+  ],
+  relationshipOne: [
+    {
+      ctrlKey: true,
+      altKey: true,
+      key: '6',
+    },
+    {
+      metaKey: true,
+      altKey: true,
+      key: '6',
+    },
+  ],
+  relationshipN: [
+    {
+      ctrlKey: true,
+      altKey: true,
+      key: '7',
+    },
+    {
+      metaKey: true,
+      altKey: true,
+      key: '7',
+    },
+  ],
+  tableProperties: [
+    {
+      ctrlKey: true,
+      key: 'Space',
+    },
+    {
+      altKey: true,
+      key: 'Space',
+    },
+  ],
+});
 
 const multipleKeys: MultipleKey[] = [
   'altKey',
@@ -236,33 +227,24 @@ const keyEquals = (event: KeyboardEvent, key: string) =>
   event.code.toUpperCase() === `Key${key}`.toUpperCase() ||
   event.code.toUpperCase() === `Digit${key}`.toUpperCase();
 
-export function getKeymapMatch(
+export const getKeymap = (
   event: KeyboardEvent,
   keymapOptions: KeymapOption[]
-): KeymapOption | null {
-  let result = false;
-
-  for (const keymapOption of keymapOptions) {
+) =>
+  keymapOptions.find(keymapOption => {
     const isMultipleKey = multipleKeys.every(
       multipleKey => !!keymapOption[multipleKey] === event[multipleKey]
     );
 
-    result = keymapOption.key
+    return keymapOption.key
       ? isMultipleKey && keyEquals(event, keymapOption.key)
       : isMultipleKey;
-
-    if (result) {
-      return keymapOption;
-    }
-  }
-
-  return null;
-}
+  });
 
 export const keymapMatch = (
   event: KeyboardEvent,
   keymapOptions: KeymapOption[]
-) => !!getKeymapMatch(event, keymapOptions);
+) => !!getKeymap(event, keymapOptions);
 
 export function keymapOptionToString(keymapOption?: KeymapOption): string {
   if (!keymapOption) return '';

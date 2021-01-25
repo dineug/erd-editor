@@ -18,7 +18,7 @@ export interface Icon {
 }
 
 export interface PanelConfig {
-  Panel: PanelClass;
-  name: string;
+  type: PanelClass;
   icon: Icon;
+  name?: string;
 }
