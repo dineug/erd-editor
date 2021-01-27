@@ -3,21 +3,24 @@ import { Keymap } from '../core/keymap';
 import { User } from '../core/share';
 import { ExtensionConfig } from '../core/extension';
 
-export interface ERDEditorElement extends HTMLElement {
+export interface ERDEditorProps {
   width: number;
   height: number;
-  value: string;
   automaticLayout: boolean;
+}
+
+export interface ERDEditorElement extends ERDEditorProps, HTMLElement {
+  value: string;
   focus(): void;
   blur(): void;
   clear(): void;
   initLoadJson(json: string): void;
   loadSQLDDL(sql: string): void;
-  setTheme(theme: Theme): void;
-  setKeymap(keymap: Keymap): void;
+  setTheme(theme: Partial<Theme>): void;
+  setKeymap(keymap: Partial<Keymap>): void;
   setUser(user: User): void;
   // sharePull(effect: (commands: Array<Command<CommandType>>) => void): void;
   // sharePush(commands: Array<Command<CommandType>>): void;
   // getSQLDDL(database?: Database): string;
-  extension(config: ExtensionConfig): void;
+  extension(config: Partial<ExtensionConfig>): void;
 }

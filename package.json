@@ -36,7 +36,7 @@
     "lint": "eslint . --ext .ts"
   },
   "devDependencies": {
-    "@dineug/lit-observable": "^0.1.14",
+    "@dineug/lit-observable": "^0.1.15",
     "@dineug/sql-ddl-parser": "^0.1.2",
     "@fortawesome/free-solid-svg-icons": "^5.15.2",
     "@mdi/js": "^5.9.55",
@@ -58,6 +58,7 @@
     "rollup-plugin-visualizer": "^4.2.0",
     "rxjs": "^6.6.3",
     "snowpack": "^3.0.11",
+    "stats.js": "^0.17.0",
     "typescript": "^4.1.3"
   },
   "dependencies": {}

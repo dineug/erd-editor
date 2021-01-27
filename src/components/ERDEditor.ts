@@ -1,33 +1,86 @@
-import { ERDEditorElement } from '@type/components/ERDEditorElement';
+import './ERDEditorProvider';
+import './editor/ERD';
+
+import {
+  ERDEditorProps,
+  ERDEditorElement,
+} from '@type/components/ERDEditorElement';
+import { ERDEditorContext } from '@type/core/ERDEditorContext';
 import { Theme } from '@type/core/theme';
 import { Keymap } from '@type/core/keymap';
 import { User } from '@type/core/share';
 import { ExtensionConfig } from '@type/core/extension';
 
-class ERDEditor extends HTMLElement implements ERDEditorElement {
-  width = 0;
-  height = 0;
-  automaticLayout = false;
+import {
+  defineComponent,
+  html,
+  FunctionalComponent,
+  query,
+  mounted,
+} from '@dineug/lit-observable';
+import { ERDEditorProviderElement } from '@/components/ERDEditorProvider';
 
-  get value(): string {
-    return '';
-  }
+const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
+  props,
+  ctx
+) => {
+  const providerRef = query<ERDEditorProviderElement>('vuerd-provider');
+  let context: ERDEditorContext | null = null;
 
-  set value(json: string) {}
+  mounted(() => {
+    const provider = providerRef.value;
+    context = provider.value;
+  });
 
-  focus() {}
-  blur() {}
-  clear() {}
+  ctx.focus = () => {};
+  ctx.blur = () => {};
+  ctx.clear = () => {};
+  ctx.initLoadJson = (json: string) => {};
+  ctx.loadSQLDDL = (sql: string) => {};
 
-  initLoadJson(json: string) {}
-  loadSQLDDL(sql: string) {}
+  ctx.setTheme = (theme: Theme) => {};
+  ctx.setKeymap = (keymap: Keymap) => {};
+  ctx.setUser = (user: User) => {};
 
-  setTheme(theme: Theme) {}
-  setKeymap(keymap: Keymap) {}
-  setUser(user: User) {}
+  ctx.extension = (config: ExtensionConfig) => {};
 
-  extension(config: ExtensionConfig) {}
-}
+  Object.defineProperty(ctx, 'value', {
+    get() {
+      return '';
+    },
+    set(json: string) {},
+  });
 
-customElements.define('vuerd-editor', ERDEditor);
-customElements.define('erd-editor', class extends ERDEditor {});
+  return () => html`
+    <vuerd-provider>
+      <vuerd-erd></vuerd-erd>
+    </vuerd-provider>
+  `;
+};
+
+type Shadow = 'open' | 'closed' | false | undefined;
+
+const componentOptions = {
+  shadow: 'closed' as Shadow,
+  observedProps: [
+    {
+      name: 'width',
+      type: Number,
+      default: 0,
+    },
+    {
+      name: 'height',
+      type: Number,
+      default: 0,
+    },
+    {
+      name: 'automaticLayout',
+      type: Boolean,
+      default: false,
+    },
+  ],
+  render: ERDEditor,
+};
+
+defineComponent('vuerd-editor', componentOptions);
+defineComponent('erd-editor', componentOptions);
