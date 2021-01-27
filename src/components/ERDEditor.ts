@@ -1,5 +1,6 @@
 import './ERDEditorProvider';
 import './editor/ERD';
+import './Icon';
 
 import {
   ERDEditorProps,
