@@ -62,8 +62,8 @@ defineComponent('vuerd-icon', {
       >
         ${
           props.color
-            ? svg`<path d=${d}></path>`
-            : svg`<path d=${d} fill=${props.color}></path>`
+            ? svg`<path d=${d} fill=${props.color}></path>`
+            : svg`<path d=${d}></path>`
         }
       </svg>
     `;

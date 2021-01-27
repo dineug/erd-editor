@@ -11,7 +11,6 @@ import { Theme } from '@type/core/theme';
 import { Keymap } from '@type/core/keymap';
 import { User } from '@type/core/share';
 import { ExtensionConfig } from '@type/core/extension';
-
 import {
   defineComponent,
   html,
