@@ -1,7 +1,7 @@
 import { defineComponent, svg } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { getIcon } from '@/core/icon';
-import { iconStyle } from '@/components/Icon.css.ts';
+import { iconStyle } from './Icon.style';
 
 declare global {
   interface HTMLElementTagNameMap {

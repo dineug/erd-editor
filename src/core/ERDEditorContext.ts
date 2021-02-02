@@ -5,5 +5,5 @@ import { createKeymap } from './keymap';
 
 export const createdERDEditorContext = (): ERDEditorContext => ({
   theme: observable(createTheme()),
-  keymap: createKeymap(),
+  keymap: observable(createKeymap()),
 });

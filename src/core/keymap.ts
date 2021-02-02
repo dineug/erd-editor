@@ -1,4 +1,10 @@
-import { Keymap, KeymapOption, MultipleKey } from '@type/core/keymap';
+import {
+  Keymap,
+  KeymapOption,
+  MultipleKey,
+  KeymapKey,
+} from '@type/core/keymap';
+import { isArray } from '@/core/helper';
 
 export const createKeymap = (): Keymap => ({
   edit: [
@@ -272,3 +278,8 @@ export function keymapOptionToString(keymapOption?: KeymapOption): string {
 
 export const keymapOptionsToString = (keymapOptions: KeymapOption[]) =>
   keymapOptions.map(option => keymapOptionToString(option)).join(', ');
+
+export const loadKeymap = (keymap: Keymap, newKeymap: Partial<Keymap>) =>
+  (Object.keys(keymap) as KeymapKey[])
+    .filter(key => isArray(newKeymap[key]))
+    .forEach(key => (keymap[key] = newKeymap[key] as KeymapOption[]));

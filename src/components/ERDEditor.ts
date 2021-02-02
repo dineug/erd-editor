@@ -6,7 +6,6 @@ import {
   ERDEditorProps,
   ERDEditorElement,
 } from '@type/components/ERDEditorElement';
-import { ERDEditorContext } from '@type/core/ERDEditorContext';
 import { Theme } from '@type/core/theme';
 import { Keymap } from '@type/core/keymap';
 import { User } from '@type/core/share';
@@ -15,22 +14,16 @@ import {
   defineComponent,
   html,
   FunctionalComponent,
-  query,
-  mounted,
 } from '@dineug/lit-observable';
-import { ERDEditorProviderElement } from '@/components/ERDEditorProvider';
+import { createdERDEditorContext } from '@/core/ERDEditorContext';
+import { loadTheme } from '@/core/theme';
+import { loadKeymap } from '@/core/keymap';
 
 const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   props,
   ctx
 ) => {
-  const providerRef = query<ERDEditorProviderElement>('vuerd-provider');
-  let context: ERDEditorContext | null = null;
-
-  mounted(() => {
-    const provider = providerRef.value;
-    context = provider.value;
-  });
+  const context = createdERDEditorContext();
 
   ctx.focus = () => {};
   ctx.blur = () => {};
@@ -38,11 +31,12 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   ctx.initLoadJson = (json: string) => {};
   ctx.loadSQLDDL = (sql: string) => {};
 
-  ctx.setTheme = (theme: Theme) => {};
-  ctx.setKeymap = (keymap: Keymap) => {};
+  ctx.setTheme = (theme: Partial<Theme>) => loadTheme(context.theme, theme);
+  ctx.setKeymap = (keymap: Partial<Keymap>) =>
+    loadKeymap(context.keymap, keymap);
   ctx.setUser = (user: User) => {};
 
-  ctx.extension = (config: ExtensionConfig) => {};
+  ctx.extension = (config: Partial<ExtensionConfig>) => {};
 
   Object.defineProperty(ctx, 'value', {
     get() {
@@ -52,16 +46,13 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   });
 
   return () => html`
-    <vuerd-provider>
+    <vuerd-provider .value=${context}>
       <vuerd-erd></vuerd-erd>
     </vuerd-provider>
   `;
 };
 
-type Shadow = 'open' | 'closed' | false | undefined;
-
 const componentOptions = {
-  shadow: 'closed' as Shadow,
   observedProps: [
     {
       name: 'width',
