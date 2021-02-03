@@ -7,6 +7,7 @@ function runStats() {
   stats.dom.style.top = '20px';
   stats.dom.style.right = '20px';
   stats.dom.style.left = '';
+  document.body.style.margin = '0';
   document.body.appendChild(stats.dom);
 
   const animate = () => {

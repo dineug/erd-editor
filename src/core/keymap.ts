@@ -3,7 +3,7 @@ import {
   KeymapOption,
   MultipleKey,
   KeymapKey,
-} from '@type/core/keymap';
+} from '@@types/core/keymap';
 import { isArray } from '@/core/helper';
 
 export const createKeymap = (): Keymap => ({

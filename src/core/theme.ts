@@ -1,4 +1,4 @@
-import { Theme, ThemeKey } from '@type/core/theme';
+import { Theme, ThemeKey } from '@@types/core/theme';
 import kebabCase from 'lodash/kebabCase';
 import { isString } from '@/core/helper';
 

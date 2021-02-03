@@ -1,4 +1,4 @@
-import { User } from '@type/core/share';
+import { User } from '@@types/core/share';
 
 export interface IUser extends User {
   id: string;

@@ -13,8 +13,14 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@type/*": ["types/*"]
-    }
+      "@@types/*": ["types/*"]
+    },
+    "plugins": [
+      {
+        "name": "typescript-styled-plugin",
+        "tags": ["css"]
+      }
+    ]
   },
   "include": ["src/**/*.ts", "types/**/*.ts"],
   "exclude": ["node_modules"]

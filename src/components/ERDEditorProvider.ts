@@ -1,4 +1,4 @@
-import { ERDEditorContext } from '@type/core/ERDEditorContext';
+import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import {
   defineComponent,
   html,
@@ -7,6 +7,7 @@ import {
   beforeMount,
 } from '@dineug/lit-observable';
 import { themeToString } from '@/core/theme';
+import { SIZE_FONT } from '@/core/layout';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -23,6 +24,8 @@ defineComponent('vuerd-provider', {
       @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap');
       :host {
         --vuerd-font-family: 'Noto Sans', sans-serif;
+        font-size: ${SIZE_FONT}px;
+        font-family: var(--vuerd-font-family) !important;
         ${themeToString(ctx.value.theme)}
       }
     </style>

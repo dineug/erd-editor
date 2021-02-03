@@ -6,6 +6,6 @@ module.exports = {
   },
   alias: {
     '@': './src',
-    '@type': './types',
+    '@@types': './types',
   },
 };

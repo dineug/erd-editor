@@ -2,6 +2,6 @@
   "collectCoverage": true,
   "moduleNameMapper": {
     "^@/(.*)": "<rootDir>/src/$1",
-    "^@type/(.*)": "<rootDir>/types/$1"
+    "^@@types/(.*)": "<rootDir>/types/$1"
   }
 }

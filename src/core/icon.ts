@@ -1,4 +1,4 @@
-import { IconDefinition } from '@type/core/icon';
+import { IconDefinition } from '@@types/core/icon';
 import {
   faKey,
   faTable,
