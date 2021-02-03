@@ -1,4 +1,4 @@
-import { ERDEditorContext } from '@@types/core/ERDEditorContext';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import {
   defineComponent,
   html,
@@ -16,7 +16,7 @@ declare global {
 }
 
 export interface ERDEditorProviderElement
-  extends ProviderElement<ERDEditorContext> {}
+  extends ProviderElement<IERDEditorContext> {}
 
 defineComponent('vuerd-provider', {
   render: (_, ctx: ERDEditorProviderElement) => () => html`
@@ -34,12 +34,12 @@ defineComponent('vuerd-provider', {
 });
 
 export const getVuerdContext = (ctx: Element) =>
-  getContext<ERDEditorContext>('vuerd-provider', ctx);
+  getContext<IERDEditorContext>('vuerd-provider', ctx);
 
 export function getVuerdContextRef(ctx: Element) {
-  const ref: { value: ERDEditorContext | null } = { value: null };
+  const ref: { value: IERDEditorContext | null } = { value: null };
 
   beforeMount(() => (ref.value = getVuerdContext(ctx)));
 
-  return ref as { value: ERDEditorContext };
+  return ref as { value: IERDEditorContext };
 }
