@@ -2,8 +2,10 @@ import { GlobalEventObservable, Move } from '@/internal-types/eventHelper';
 import { fromEvent, merge } from 'rxjs';
 import { map, filter, concatMap, takeUntil } from 'rxjs/operators';
 
-const ratioIgnore = ['macintosh', 'firefox'];
 const userAgent = window.navigator.userAgent.toLowerCase();
+const isRatio = ['macintosh', 'firefox'].every(
+  target => userAgent.indexOf(target) === -1
+);
 
 export function createGlobalEventObservable(): GlobalEventObservable {
   const mousedown$ = fromEvent<MouseEvent>(window, 'mousedown');
@@ -23,11 +25,11 @@ export function createGlobalEventObservable(): GlobalEventObservable {
   const move$ = merge<Move>(
     mousemove$.pipe(
       map(event => {
-        let movementX = event.movementX / window.devicePixelRatio;
-        let movementY = event.movementY / window.devicePixelRatio;
-        if (ratioIgnore.some(target => userAgent.indexOf(target) !== -1)) {
-          movementX = event.movementX;
-          movementY = event.movementY;
+        let movementX = event.movementX;
+        let movementY = event.movementY;
+        if (isRatio) {
+          movementX = event.movementX / window.devicePixelRatio;
+          movementY = event.movementY / window.devicePixelRatio;
         }
         return {
           event,

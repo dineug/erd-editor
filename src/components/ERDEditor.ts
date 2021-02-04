@@ -1,6 +1,7 @@
 import './ERDEditorProvider';
 import './editor/ERD';
 import './Icon';
+import './Menubar';
 
 import {
   ERDEditorProps,
@@ -57,6 +58,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
           height: props.automaticLayout ? `100%` : `${props.height}px`,
         })}
       >
+        <vuerd-menubar></vuerd-menubar>
         <vuerd-erd></vuerd-erd>
       </div>
     </vuerd-provider>
