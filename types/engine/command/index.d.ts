@@ -10,6 +10,7 @@ import {
   ChangeRelationshipDataTypeSync,
   MoveColumnOrder,
 } from './canvas.command';
+import * as CanvasCommand from './canvas.command.helper';
 
 export interface CommandMap {
   'canvas.move': MoveCanvas;
@@ -35,4 +36,8 @@ export interface CommandType<K extends CommandKey> {
 export interface CommandTypeAny {
   name: string;
   data: any;
+}
+
+export interface Command {
+  canvas: typeof CanvasCommand;
 }

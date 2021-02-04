@@ -6,7 +6,7 @@ import {
   NameCase,
   ColumnType,
 } from '@@types/engine/store/canvas.state';
-import { IStore } from '@/internal-types/store';
+import { Store } from '@@types/engine/store';
 import { createCommand } from './command.helper';
 
 export const moveCanvas = (scrollTop: number, scrollLeft: number) =>
@@ -22,7 +22,7 @@ export const resizeCanvas = (width: number, height: number) =>
   });
 
 export const changeCanvasShow = (
-  { canvasState: { show } }: IStore,
+  { canvasState: { show } }: Store,
   showKey: ShowKey
 ) =>
   createCommand('canvas.changeShow', {
