@@ -38,6 +38,8 @@ export interface CommandTypeAny {
   data: any;
 }
 
+export type CommandTypeAll = CommandType<CommandKey>;
+
 export interface Command {
   canvas: typeof CanvasCommand;
 }

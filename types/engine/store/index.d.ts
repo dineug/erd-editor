@@ -6,19 +6,22 @@ import { EditorState } from './editor.state';
 import { ShareState } from './share.state';
 import { CommandKey, CommandType, CommandTypeAny } from '../command';
 
-export interface Store {
+export interface State {
   readonly canvasState: CanvasState;
   readonly tableState: TableState;
   readonly memoState: MemoState;
   readonly relationshipState: RelationshipState;
   readonly editorState: EditorState;
   readonly shareState: ShareState;
+}
+
+export interface Store extends State {
   dispatch<K extends CommandKey>(
     ...commands: Array<
       CommandType<K> | Generator<CommandType<K>, CommandType<K>>
     >
   ): void;
-  dispatch(...commands: Array<CommandTypeAny>): void;
+  dispatch(...commands: CommandTypeAny[]): void;
   undo(): void;
   redo(): void;
 }
