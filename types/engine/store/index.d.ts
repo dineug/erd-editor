@@ -13,7 +13,11 @@ export interface Store {
   readonly relationshipState: RelationshipState;
   readonly editorState: EditorState;
   readonly shareState: ShareState;
-  dispatch<K extends CommandKey>(...commands: Array<CommandType<K>>): void;
+  dispatch<K extends CommandKey>(
+    ...commands: Array<
+      CommandType<K> | Generator<CommandType<K>, CommandType<K>>
+    >
+  ): void;
   dispatch(...commands: Array<CommandTypeAny>): void;
   undo(): void;
   redo(): void;
