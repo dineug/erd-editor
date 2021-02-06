@@ -40,7 +40,7 @@ export const changeDatabaseName = (value: string) =>
     value,
   });
 
-export const changeCanvasType = (canvasType: CanvasType) =>
+export const changeCanvasType = (canvasType: string) =>
   createCommand('canvas.changeCanvasType', {
     canvasType,
   });

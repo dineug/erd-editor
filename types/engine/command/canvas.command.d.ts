@@ -31,7 +31,7 @@ export interface ChangeDatabaseName {
 }
 
 export interface ChangeCanvasType {
-  canvasType: CanvasType;
+  canvasType: string;
 }
 
 export interface ChangeLanguage {

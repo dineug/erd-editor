@@ -4,8 +4,8 @@ export interface IconDefinition {
   icon: [
     number, // width
     number, // height
-    string[], // ligatures
-    string, // unicode
+    string[] | undefined, // ligatures
+    string | undefined, // unicode
     string // svgPathData
   ];
 }

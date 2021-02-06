@@ -1,7 +1,7 @@
 import { ERDEditorContext } from './ERDEditorContext';
 
 export interface Panel {
-  getElement(): HTMLElement;
+  render(): HTMLElement;
   beforeMount?(): void;
   mounted?(): void;
   unmounted?(): void;
@@ -15,10 +15,12 @@ export interface PanelClass {
 export interface Icon {
   prefix: string;
   name: string;
+  size?: number;
 }
 
 export interface PanelConfig {
   type: PanelClass;
   icon: Icon;
   name?: string;
+  key: string;
 }

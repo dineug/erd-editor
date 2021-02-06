@@ -8,8 +8,16 @@ import { createRelationshipState } from './relationship.state';
 import { createMemoState } from './memo.state';
 import { createEditorState } from './editor.state';
 import { createShareState } from './share.state';
-import { createUndoManager } from '@/core/UndoManager';
+import { createHistory } from '@/core/history';
 import { createStream, executeCommand } from '@/engine/command';
+import { createSubscriptionHelper } from '@/core/helper';
+
+const mergeIterator = (
+  acc: Array<CommandTypeAll>,
+  cur: any
+): CommandTypeAll[] => [...acc, ...(cur[Symbol.iterator] ? [...cur] : [cur])];
+const mergeCommand = (commands: CommandTypeAny[]) =>
+  commands.reduce<Array<CommandTypeAll>>(mergeIterator, []);
 
 const createState = (): State => ({
   canvasState: observable(createCanvasState()),
@@ -20,30 +28,27 @@ const createState = (): State => ({
   shareState: observable(createShareState()),
 });
 
-const mergeIterator = (
-  acc: Array<CommandTypeAll>,
-  cur: any
-): CommandTypeAll[] => [...acc, ...(cur[Symbol.iterator] ? [...cur] : [cur])];
-
 export function createStore(): IStore {
+  const subscriptionHelper = createSubscriptionHelper();
   const state = createState();
-  const stream = createStream();
-  const { undo, redo } = createUndoManager(() => {});
-
+  const { dispatch$, undo$ } = createStream();
+  const history = createHistory(() => {});
+  const command = executeCommand(state);
   const dispatch = (...commands: CommandTypeAny[]) =>
-    stream.dispatch$.next(
-      commands.reduce<Array<CommandTypeAll>>(mergeIterator, [])
-    );
+    dispatch$.next(mergeCommand(commands));
+  const destroy = () => subscriptionHelper.destroy();
 
-  stream.undo$.subscribe(commands => executeCommand(state, commands));
-  // TODO: executeUndoCommand
-  stream.dispatch$.subscribe(commands => executeCommand(state, commands));
+  subscriptionHelper.push(
+    undo$.subscribe(command),
+    // TODO: executeUndoCommand
+    dispatch$.subscribe(command)
+  );
 
   return {
     ...state,
     dispatch,
-    undo,
-    redo,
-    destroy() {},
+    undo: history.undo,
+    redo: history.redo,
+    destroy,
   };
 }

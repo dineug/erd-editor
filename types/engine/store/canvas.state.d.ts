@@ -6,7 +6,7 @@ export interface CanvasState {
   show: Show;
   database: Database;
   databaseName: string;
-  canvasType: CanvasType;
+  canvasType: string;
   language: Language; // ADD: version 0.2.16
   tableCase: NameCase; // ADD: version 0.2.18
   columnCase: NameCase; // ADD: version 0.2.18

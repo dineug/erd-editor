@@ -1,4 +1,4 @@
-import '@/components/ERDEditor';
+import './index';
 // @ts-ignore
 import Stats from 'stats.js';
 

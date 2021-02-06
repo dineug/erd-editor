@@ -1,12 +1,14 @@
 import './ERDEditorProvider';
-import './editor/ERD';
 import './Icon';
-import './Menubar';
+import './PanelView';
+import './menubar/Menubar';
+import './editor/ERD';
 
 import {
   ERDEditorProps,
   ERDEditorElement,
 } from '@@types/components/ERDEditorElement';
+import { PanelConfig } from '@@types/index';
 import { Theme } from '@@types/core/theme';
 import { Keymap } from '@@types/core/keymap';
 import { User } from '@@types/core/share';
@@ -17,10 +19,12 @@ import {
   FunctionalComponent,
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
+import { cache } from 'lit-html/directives/cache';
 import { createdERDEditorContext } from '@/core/ERDEditorContext';
 import { loadTheme } from '@/core/theme';
 import { loadKeymap } from '@/core/keymap';
 import { DEFAULT_WIDTH, DEFAULT_HEIGHT } from '@/core/layout';
+import { panels as globalPanels } from '@/core/panel';
 import { ERDEditorStyle } from './ERDEditor.style';
 
 const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
@@ -28,6 +32,8 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   ctx
 ) => {
   const context = createdERDEditorContext();
+  const { store } = context;
+  const { canvasState, editorState } = store;
 
   Object.defineProperty(ctx, 'value', {
     get() {
@@ -49,20 +55,35 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
 
   ctx.extension = (config: Partial<ExtensionConfig>) => {};
 
-  return () => html`
-    <vuerd-provider .value=${context}>
-      <div
-        class="vuerd-editor"
-        style=${styleMap({
-          width: props.automaticLayout ? `100%` : `${props.width}px`,
-          height: props.automaticLayout ? `100%` : `${props.height}px`,
-        })}
-      >
-        <vuerd-menubar></vuerd-menubar>
-        <vuerd-erd></vuerd-erd>
-      </div>
-    </vuerd-provider>
-  `;
+  return () => {
+    const canvasType = canvasState.canvasType;
+    const panels = [...globalPanels, ...editorState.panels];
+    const isPanel =
+      canvasType !== 'ERD' && panels.some(panel => panel.key === canvasType);
+    const isERD = !isPanel;
+
+    return html`
+      <vuerd-provider .value=${context}>
+        <div
+          class="vuerd-editor"
+          style=${styleMap({
+            width: props.automaticLayout ? `100%` : `${props.width}px`,
+            height: props.automaticLayout ? `100%` : `${props.height}px`,
+          })}
+        >
+          <vuerd-menubar></vuerd-menubar>
+          ${cache(isERD ? html`<vuerd-erd></vuerd-erd>` : null)}
+          ${isPanel
+            ? html`<vuerd-panel-view
+                .panel=${panels.find(
+                  panel => panel.key === canvasType
+                ) as PanelConfig}
+              ></vuerd-panel-view>`
+            : null}
+        </div>
+      </vuerd-provider>
+    `;
+  };
 };
 
 const componentOptions = {

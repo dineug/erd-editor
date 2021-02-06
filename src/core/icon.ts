@@ -52,11 +52,6 @@ const icons = [
   faFileCode,
   faCog,
   faMousePointer,
-  {
-    prefix: 'mdi',
-    iconName: 'chart-bubble',
-    icon: [24, 24, , , mdiChartBubble],
-  },
 ] as IconDefinition[];
 
 export const getIcon = (prefix: string, iconName: string) =>
