@@ -6,13 +6,17 @@ import * as R from 'ramda';
 import { Logger } from '@/core/logger';
 import * as CanvasCommand from './canvas.command.helper';
 import { executeCanvasCommandMap } from './canvas.command';
+import * as MemoCommand from './memo.command.helper';
+import { executeMemoCommandMap } from './memo.command';
 
 const executeCommandMap = {
   ...executeCanvasCommandMap,
+  ...executeMemoCommandMap,
 };
 
 export const createCommand = (): Command => ({
   canvas: CanvasCommand,
+  memo: MemoCommand,
 });
 
 export function createStream() {

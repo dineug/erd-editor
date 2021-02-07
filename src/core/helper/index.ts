@@ -35,3 +35,5 @@ export const isObject = (value: any) => !!value && typeof value === 'object';
 export const isFunction = (value: any) => typeof value === 'function';
 export const isString = (value: any) => typeof value === 'string';
 export const isUndefined = (value: any) => typeof value === 'undefined';
+export const getData = <T extends { id: string }>(list: Array<T>, id: string) =>
+  list.find(data => data.id === id);

@@ -1,7 +1,6 @@
 import {
   ShowKey,
   Database,
-  CanvasType,
   Language,
   NameCase,
   ColumnType,
