@@ -1,6 +1,7 @@
 import { State } from '@@types/engine/store';
 import {
   MoveCanvas,
+  MovementCanvas,
   ResizeCanvas,
   ChangeCanvasShow,
   ChangeDatabase,
@@ -16,6 +17,12 @@ export function executeMoveCanvas(state: State, data: MoveCanvas) {
   const { canvasState } = state;
   canvasState.scrollTop = data.scrollTop;
   canvasState.scrollLeft = data.scrollLeft;
+}
+
+export function executeMovementCanvas(state: State, data: MovementCanvas) {
+  const { canvasState } = state;
+  canvasState.scrollTop += data.movementY;
+  canvasState.scrollLeft += data.movementX;
 }
 
 export function executeResizeCanvas(state: State, data: ResizeCanvas) {
@@ -81,6 +88,7 @@ export function executeMoveColumnOrder(state: State, data: MoveColumnOrder) {
 
 export const executeCanvasCommandMap = {
   'canvas.move': executeMoveCanvas,
+  'canvas.movement': executeMovementCanvas,
   'canvas.resize': executeResizeCanvas,
   'canvas.changeShow': executeChangeCanvasShow,
   'canvas.changeDatabase': executeChangeDatabase,

@@ -15,8 +15,8 @@ export interface Theme {
   columnSelect: string;
   columnActive: string;
   minimapShadow: string;
-  scrollBarThumb: string;
-  scrollBarThumbActive: string;
+  scrollbarThumb: string;
+  scrollbarThumbActive: string;
   menubar: string;
   visualization: string;
 }

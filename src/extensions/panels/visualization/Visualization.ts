@@ -1,3 +1,4 @@
+import { ERDEditorContext } from '@@types/index';
 import {
   defineComponent,
   html,
@@ -10,9 +11,14 @@ declare global {
   }
 }
 
-export interface VisualizationProps {}
+export interface VisualizationProps {
+  width: number;
+  height: number;
+}
 
-export interface VisualizationElement extends VisualizationProps, HTMLElement {}
+export interface VisualizationElement extends VisualizationProps, HTMLElement {
+  api: ERDEditorContext;
+}
 
 const Visualization: FunctionalComponent<
   VisualizationProps,
@@ -22,5 +28,19 @@ const Visualization: FunctionalComponent<
 };
 
 defineComponent('vuerd-visualization', {
+  observedProps: [
+    {
+      name: 'width',
+      default: 0,
+    },
+    {
+      name: 'height',
+      default: 0,
+    },
+  ],
+  styleMap: {
+    width: '100%',
+    height: '100%',
+  },
   render: Visualization,
 });

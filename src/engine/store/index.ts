@@ -31,16 +31,19 @@ const createState = (): State => ({
 export function createStore(): IStore {
   const subscriptionHelper = createSubscriptionHelper();
   const state = createState();
-  const { dispatch$, undo$ } = createStream();
+  const { dispatch$, history$ } = createStream();
   const history = createHistory(() => {});
   const command = executeCommand(state);
   const dispatch = (...commands: CommandTypeAny[]) =>
     dispatch$.next(mergeCommand(commands));
-  const destroy = () => subscriptionHelper.destroy();
+  const destroy = () => {
+    subscriptionHelper.destroy();
+    history.clear();
+  };
 
   subscriptionHelper.push(
-    undo$.subscribe(command),
-    // TODO: executeUndoCommand
+    history$.subscribe(command),
+    // TODO: executeHistoryCommand
     dispatch$.subscribe(command)
   );
 

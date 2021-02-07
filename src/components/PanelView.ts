@@ -1,4 +1,4 @@
-import { PanelConfig, Panel } from '@@types/index';
+import { PanelConfig, Panel } from '@@types/core/panel';
 import {
   defineComponent,
   html,
@@ -17,18 +17,35 @@ declare global {
 
 export interface PanelViewProps {
   panel: PanelConfig;
+  width: number;
+  height: number;
 }
 
 export interface PanelViewElement extends PanelViewProps, HTMLElement {}
 
 defineComponent('vuerd-panel-view', {
-  observedProps: ['panel'],
+  observedProps: [
+    'panel',
+    {
+      name: 'width',
+      default: 0,
+    },
+    {
+      name: 'height',
+      default: 0,
+    },
+  ],
+  styleMap: {
+    height: '100%',
+    display: 'flex',
+    position: 'relative',
+  },
   render(props: PanelViewProps, ctx: PanelViewElement) {
     const contextRef = getVuerdContextRef(ctx);
     let panelInstance: Panel | null = null;
 
     beforeMount(() => {
-      panelInstance = new props.panel.type(contextRef.value);
+      panelInstance = new props.panel.type(props, contextRef.value);
       panelInstance.beforeMount && panelInstance.beforeMount();
     });
     mounted(() => panelInstance?.mounted && panelInstance.mounted());

@@ -10,66 +10,41 @@ import { Store } from '@@types/engine/store';
 import { createCommand } from './command.helper';
 
 export const moveCanvas = (scrollTop: number, scrollLeft: number) =>
-  createCommand('canvas.move', {
-    scrollTop,
-    scrollLeft,
-  });
+  createCommand('canvas.move', { scrollTop, scrollLeft });
+
+export const movementCanvas = (movementX: number, movementY: number) =>
+  createCommand('canvas.movement', { movementX, movementY });
 
 export const resizeCanvas = (width: number, height: number) =>
-  createCommand('canvas.resize', {
-    width,
-    height,
-  });
+  createCommand('canvas.resize', { width, height });
 
 export const changeCanvasShow = (
   { canvasState: { show } }: Store,
   showKey: ShowKey
-) =>
-  createCommand('canvas.changeShow', {
-    showKey,
-    value: !show[showKey],
-  });
+) => createCommand('canvas.changeShow', { showKey, value: !show[showKey] });
 
 export const changeDatabase = (database: Database) =>
-  createCommand('canvas.changeDatabase', {
-    database,
-  });
+  createCommand('canvas.changeDatabase', { database });
 
 export const changeDatabaseName = (value: string) =>
-  createCommand('canvas.changeDatabaseName', {
-    value,
-  });
+  createCommand('canvas.changeDatabaseName', { value });
 
 export const changeCanvasType = (canvasType: string) =>
-  createCommand('canvas.changeCanvasType', {
-    canvasType,
-  });
+  createCommand('canvas.changeCanvasType', { canvasType });
 
 export const changeLanguage = (language: Language) =>
-  createCommand('canvas.changeLanguage', {
-    language,
-  });
+  createCommand('canvas.changeLanguage', { language });
 
 export const changeTableCase = (nameCase: NameCase) =>
-  createCommand('canvas.changeTableCase', {
-    nameCase,
-  });
+  createCommand('canvas.changeTableCase', { nameCase });
 
 export const changeColumnCase = (nameCase: NameCase) =>
-  createCommand('canvas.changeColumnCase', {
-    nameCase,
-  });
+  createCommand('canvas.changeColumnCase', { nameCase });
 
 export const changeRelationshipDataTypeSync = (value: boolean) =>
-  createCommand('canvas.changeRelationshipDataTypeSync', {
-    value,
-  });
+  createCommand('canvas.changeRelationshipDataTypeSync', { value });
 
 export const moveColumnOrder = (
   columnType: ColumnType,
   targetColumnType: ColumnType
-) =>
-  createCommand('canvas.moveColumnOrder', {
-    columnType,
-    targetColumnType,
-  });
+) => createCommand('canvas.moveColumnOrder', { columnType, targetColumnType });

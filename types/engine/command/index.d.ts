@@ -1,30 +1,7 @@
-import {
-  MoveCanvas,
-  ResizeCanvas,
-  ChangeCanvasShow,
-  ChangeDatabase,
-  ChangeDatabaseName,
-  ChangeCanvasType,
-  ChangeLanguage,
-  ChangeNameCase,
-  ChangeRelationshipDataTypeSync,
-  MoveColumnOrder,
-} from './canvas.command';
+import { CanvasCommandMap } from './canvas.command';
 import * as CanvasCommand from './canvas.command.helper';
 
-export interface CommandMap {
-  'canvas.move': MoveCanvas;
-  'canvas.resize': ResizeCanvas;
-  'canvas.changeShow': ChangeCanvasShow;
-  'canvas.changeDatabase': ChangeDatabase;
-  'canvas.changeDatabaseName': ChangeDatabaseName;
-  'canvas.changeCanvasType': ChangeCanvasType;
-  'canvas.changeLanguage': ChangeLanguage;
-  'canvas.changeTableCase': ChangeNameCase;
-  'canvas.changeColumnCase': ChangeNameCase;
-  'canvas.changeRelationshipDataTypeSync': ChangeRelationshipDataTypeSync;
-  'canvas.moveColumnOrder': MoveColumnOrder;
-}
+export interface CommandMap extends CanvasCommandMap {}
 
 export type CommandKey = keyof CommandMap;
 

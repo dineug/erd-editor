@@ -1,5 +1,6 @@
 import './ERDEditorProvider';
 import './Icon';
+import './Sash';
 import './PanelView';
 import './menubar/Menubar';
 import './editor/ERD';
@@ -8,7 +9,6 @@ import {
   ERDEditorProps,
   ERDEditorElement,
 } from '@@types/components/ERDEditorElement';
-import { PanelConfig } from '@@types/index';
 import { Theme } from '@@types/core/theme';
 import { Keymap } from '@@types/core/keymap';
 import { User } from '@@types/core/share';
@@ -17,13 +17,21 @@ import {
   defineComponent,
   html,
   FunctionalComponent,
+  query,
+  mounted,
+  unmounted,
+  watch,
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { cache } from 'lit-html/directives/cache';
 import { createdERDEditorContext } from '@/core/ERDEditorContext';
 import { loadTheme } from '@/core/theme';
 import { loadKeymap } from '@/core/keymap';
-import { DEFAULT_WIDTH, DEFAULT_HEIGHT } from '@/core/layout';
+import {
+  DEFAULT_WIDTH,
+  DEFAULT_HEIGHT,
+  SIZE_MENUBAR_HEIGHT,
+} from '@/core/layout';
 import { panels as globalPanels } from '@/core/panel';
 import { ERDEditorStyle } from './ERDEditor.style';
 
@@ -32,8 +40,42 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   ctx
 ) => {
   const context = createdERDEditorContext();
-  const { store } = context;
+  const { store, globalEvent } = context;
   const { canvasState, editorState } = store;
+  const editorRef = query<HTMLElement>('.vuerd-editor');
+  // @ts-ignore
+  const resizeObserver = new ResizeObserver(entries => {
+    entries.forEach((entry: any) => {
+      const { width, height } = entry.contentRect;
+      ctx.setAttribute('width', width);
+      ctx.setAttribute('height', height);
+    });
+  });
+  let destroy: Array<() => void> = [];
+
+  destroy.push(
+    watch(props, name => {
+      if (name !== 'automaticLayout') return;
+
+      if (props.automaticLayout) {
+        resizeObserver.observe(editorRef.value);
+      } else {
+        resizeObserver.disconnect();
+      }
+    })
+  );
+
+  mounted(() => {
+    props.automaticLayout && resizeObserver.observe(editorRef.value);
+  });
+
+  unmounted(() => {
+    globalEvent.destroy();
+    store.destroy();
+    resizeObserver.disconnect();
+    destroy.forEach(fn => fn());
+    destroy = [];
+  });
 
   Object.defineProperty(ctx, 'value', {
     get() {
@@ -56,6 +98,8 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   ctx.extension = (config: Partial<ExtensionConfig>) => {};
 
   return () => {
+    const width = props.width;
+    const height = props.height - SIZE_MENUBAR_HEIGHT;
     const canvasType = canvasState.canvasType;
     const panels = [...globalPanels, ...editorState.panels];
     const isPanel =
@@ -72,13 +116,21 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
           })}
         >
           <vuerd-menubar></vuerd-menubar>
-          ${cache(isERD ? html`<vuerd-erd></vuerd-erd>` : null)}
+          ${cache(
+            isERD
+              ? html`<vuerd-erd .width=${width} .height=${height}></vuerd-erd>`
+              : null
+          )}
           ${isPanel
-            ? html`<vuerd-panel-view
-                .panel=${panels.find(
-                  panel => panel.key === canvasType
-                ) as PanelConfig}
-              ></vuerd-panel-view>`
+            ? html`
+                <vuerd-panel-view
+                  .width=${width}
+                  .height=${height}
+                  .panel=${panels.find(
+                    panel => panel.key === canvasType
+                  ) as any}
+                ></vuerd-panel-view>
+              `
             : null}
         </div>
       </vuerd-provider>

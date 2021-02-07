@@ -19,8 +19,8 @@ export const createTheme = (): Theme => ({
   columnSelect: '#232a2f',
   columnActive: '#372908',
   minimapShadow: 'black',
-  scrollBarThumb: '#6D6D6D',
-  scrollBarThumbActive: '#a2a2a2',
+  scrollbarThumb: '#6D6D6D',
+  scrollbarThumbActive: '#a2a2a2',
   menubar: 'black',
   visualization: '#191919',
 });

@@ -1,7 +1,6 @@
 import {
   ShowKey,
   Database,
-  CanvasType,
   Language,
   NameCase,
   ColumnType,
@@ -10,6 +9,11 @@ import {
 export interface MoveCanvas {
   scrollTop: number;
   scrollLeft: number;
+}
+
+export interface MovementCanvas {
+  movementX: number;
+  movementY: number;
 }
 
 export interface ResizeCanvas {
@@ -49,4 +53,19 @@ export interface ChangeRelationshipDataTypeSync {
 export interface MoveColumnOrder {
   columnType: ColumnType;
   targetColumnType: ColumnType;
+}
+
+export interface CanvasCommandMap {
+  'canvas.move': MoveCanvas;
+  'canvas.movement': MovementCanvas;
+  'canvas.resize': ResizeCanvas;
+  'canvas.changeShow': ChangeCanvasShow;
+  'canvas.changeDatabase': ChangeDatabase;
+  'canvas.changeDatabaseName': ChangeDatabaseName;
+  'canvas.changeCanvasType': ChangeCanvasType;
+  'canvas.changeLanguage': ChangeLanguage;
+  'canvas.changeTableCase': ChangeNameCase;
+  'canvas.changeColumnCase': ChangeNameCase;
+  'canvas.changeRelationshipDataTypeSync': ChangeRelationshipDataTypeSync;
+  'canvas.moveColumnOrder': MoveColumnOrder;
 }

@@ -8,8 +8,13 @@ export interface Panel {
   updated?(): void;
 }
 
+export interface PanelProps {
+  width: number;
+  height: number;
+}
+
 export interface PanelClass {
-  new (api: ERDEditorContext): Panel;
+  new (props: PanelProps, api: ERDEditorContext): Panel;
 }
 
 export interface Icon {

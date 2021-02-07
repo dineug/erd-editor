@@ -17,12 +17,12 @@ export const createCommand = (): Command => ({
 
 export function createStream() {
   const dispatch$ = new Subject<Array<CommandTypeAll>>();
-  const undo$ = new Subject<Array<CommandTypeAll>>();
-  const change$ = merge(undo$, dispatch$).pipe(debounceTime(200));
+  const history$ = new Subject<Array<CommandTypeAll>>();
+  const change$ = merge(history$, dispatch$).pipe(debounceTime(200));
 
   return {
     dispatch$,
-    undo$,
+    history$,
     change$,
   };
 }

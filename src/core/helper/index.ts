@@ -11,9 +11,12 @@ export const unsubscribeAll = (subscriptions: Subscription[]) =>
   subscriptions.forEach(subscription => subscription.unsubscribe());
 
 export function createSubscriptionHelper() {
-  const subscriptions: Subscription[] = [];
+  let subscriptions: Subscription[] = [];
   const push = (...args: Subscription[]) => subscriptions.push(...args);
-  const destroy = () => unsubscribeAll(subscriptions);
+  const destroy = () => {
+    unsubscribeAll(subscriptions);
+    subscriptions = [];
+  };
 
   return {
     push,

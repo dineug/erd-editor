@@ -3,8 +3,8 @@ import { SIZE_MENUBAR_HEIGHT, SIZE_FONT } from '@/core/layout';
 
 export const MenubarStyle = css`
   .vuerd-menubar {
-    display: flex;
     height: ${SIZE_MENUBAR_HEIGHT}px;
+    display: flex;
     align-items: center;
     overflow: hidden;
     background-color: var(--vuerd-color-menubar);

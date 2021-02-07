@@ -14,6 +14,11 @@ export declare function moveCanvas(
   scrollLeft: number
 ): CommandType<'canvas.move'>;
 
+export declare function movementCanvas(
+  movementX: number,
+  movementY: number
+): CommandType<'canvas.movement'>;
+
 export declare function resizeCanvas(
   width: number,
   height: number
