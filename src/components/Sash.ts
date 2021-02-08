@@ -6,7 +6,7 @@ import {
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
 import { SIZE_SASH } from '@/core/layout';
-import { getVuerdContextRef } from '@/components/ERDEditorProvider';
+import { useContext } from '@/core/hooks/context.hook';
 import { SashStyle } from './Sash.style';
 
 declare global {
@@ -38,7 +38,7 @@ export interface SashElement extends SashProps, HTMLElement {}
 const classKeys = ['vertical', 'horizontal', 'edge'];
 
 const Sash: FunctionalComponent<SashProps, SashElement> = (props, ctx) => {
-  const contextRef = getVuerdContextRef(ctx);
+  const contextRef = useContext(ctx);
 
   const centerTop = () =>
     props.top === 0 && !props.horizontal && !props.edge

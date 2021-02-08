@@ -4,7 +4,6 @@ import {
   html,
   ProviderElement,
   getContext,
-  beforeMount,
 } from '@dineug/lit-observable';
 import { themeToString } from '@/core/theme';
 import { SIZE_FONT } from '@/core/layout';
@@ -35,11 +34,3 @@ defineComponent('vuerd-provider', {
 
 export const getVuerdContext = (ctx: Element) =>
   getContext<IERDEditorContext>('vuerd-provider', ctx);
-
-export function getVuerdContextRef(ctx: Element) {
-  const ref: { value: IERDEditorContext | null } = { value: null };
-
-  beforeMount(() => (ref.value = getVuerdContext(ctx)));
-
-  return ref as { value: IERDEditorContext };
-}

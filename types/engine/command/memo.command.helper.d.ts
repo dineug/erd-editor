@@ -1,7 +1,9 @@
 import { Store } from '../store';
-import { CommandType, CommandTypeAll } from './index';
+import { CommandType } from './index';
 import { Memo } from '../store/memo.state';
 import { Point } from '../store/relationship.helper';
+
+export * from './memo.command.helper.generator';
 
 export declare function addMemo(store: Store): CommandType<'memo.add'>;
 
@@ -47,5 +49,3 @@ export declare function dragSelectMemo(
 ): CommandType<'memo.dragSelect'>;
 
 export declare function loadMemo(memo: Memo): CommandType<'memo.load'>;
-
-export declare function selectEnd$addMemo(store: Store): Generator;

@@ -7,7 +7,7 @@ import {
   unmounted,
   updated,
 } from '@dineug/lit-observable';
-import { getVuerdContextRef } from '@/components/ERDEditorProvider';
+import { useContext } from '@/core/hooks/context.hook';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -41,7 +41,7 @@ defineComponent('vuerd-panel-view', {
     position: 'relative',
   },
   render(props: PanelViewProps, ctx: PanelViewElement) {
-    const contextRef = getVuerdContextRef(ctx);
+    const contextRef = useContext(ctx);
     let panelInstance: Panel | null = null;
 
     beforeMount(() => {

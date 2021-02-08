@@ -6,7 +6,7 @@ import {
   FunctionalComponent,
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
-import { getVuerdContextRef } from '@/components/ERDEditorProvider';
+import { useContext } from '@/core/hooks/context.hook';
 import { changeCanvasType } from '@/engine/command/canvas.command.helper';
 import { panels } from '@/core/panel';
 import { MenuGroupStyle } from './MenuGroup.style';
@@ -52,7 +52,7 @@ const MenuGroup: FunctionalComponent<MenuGroupProps, MenuGroupElement> = (
   props,
   ctx
 ) => {
-  const contextRef = getVuerdContextRef(ctx);
+  const contextRef = useContext(ctx);
 
   const onChangeCanvasType = (canvasType: string) => {
     const { store } = contextRef.value;

@@ -6,7 +6,7 @@ import {
   FunctionalComponent,
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
-import { getVuerdContextRef } from '@/components/ERDEditorProvider';
+import { useContext } from '@/core/hooks/context.hook';
 import { CanvasStyle } from './Canvas.style';
 
 declare global {
@@ -23,7 +23,7 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
   props,
   ctx
 ) => {
-  const contextRef = getVuerdContextRef(ctx);
+  const contextRef = useContext(ctx);
 
   return () => {
     const { canvasState } = contextRef.value.store;

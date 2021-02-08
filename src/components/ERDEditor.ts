@@ -1,6 +1,7 @@
 import './ERDEditorProvider';
 import './Icon';
 import './Sash';
+import './Contextmenu';
 import './PanelView';
 import './menubar/Menubar';
 import './editor/ERD';
@@ -33,6 +34,7 @@ import {
   SIZE_MENUBAR_HEIGHT,
 } from '@/core/layout';
 import { panels as globalPanels } from '@/core/panel';
+import { useDestroy } from '@/core/hooks/destroy.hook';
 import { ERDEditorStyle } from './ERDEditor.style';
 
 const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
@@ -43,6 +45,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   const { store, globalEvent } = context;
   const { canvasState, editorState } = store;
   const editorRef = query<HTMLElement>('.vuerd-editor');
+  const destroy = useDestroy();
   // @ts-ignore
   const resizeObserver = new ResizeObserver(entries => {
     entries.forEach((entry: any) => {
@@ -51,7 +54,6 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
       ctx.setAttribute('height', height);
     });
   });
-  let destroy: Array<() => void> = [];
 
   destroy.push(
     watch(props, name => {
@@ -73,8 +75,6 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
     globalEvent.destroy();
     store.destroy();
     resizeObserver.disconnect();
-    destroy.forEach(fn => fn());
-    destroy = [];
   });
 
   Object.defineProperty(ctx, 'value', {
@@ -126,9 +126,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
                 <vuerd-panel-view
                   .width=${width}
                   .height=${height}
-                  .panel=${panels.find(
-                    panel => panel.key === canvasType
-                  ) as any}
+                  .panel=${panels.find(panel => panel.key === canvasType)}
                 ></vuerd-panel-view>
               `
             : null}

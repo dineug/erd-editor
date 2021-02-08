@@ -6,6 +6,8 @@ import { SIZE_MEMO_WIDTH, SIZE_MEMO_HEIGHT } from '@/core/layout';
 import { uuid } from '@/core/helper';
 import { nextZIndex, nextPoint } from '@/engine/store/helper';
 
+export * from './memo.command.helper.generator';
+
 export function addMemo(store: Store) {
   const { tableState, memoState } = store;
   const point = nextPoint(store);
@@ -84,9 +86,3 @@ export const dragSelectMemo = (min: Point, max: Point) =>
   createCommand('memo.dragSelect', { min, max });
 
 export const loadMemo = (memo: Memo) => createCommand('memo.load', memo);
-
-export function* selectEnd$addMemo(store: Store) {
-  // yield selectEndTable();
-  yield selectEndMemo();
-  yield addMemo(store);
-}

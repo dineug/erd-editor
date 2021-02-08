@@ -5,7 +5,7 @@ import {
   html,
   FunctionalComponent,
 } from '@dineug/lit-observable';
-import { getVuerdContextRef } from '@/components/ERDEditorProvider';
+import { useContext } from '@/core/hooks/context.hook';
 import {
   changeDatabaseName,
   resizeCanvas,
@@ -28,7 +28,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
   props,
   ctx
 ) => {
-  const contextRef = getVuerdContextRef(ctx);
+  const contextRef = useContext(ctx);
 
   const onChangeDatabaseName = (event: Event) => {
     const input = event.target as HTMLInputElement;

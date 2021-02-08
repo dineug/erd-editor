@@ -37,3 +37,12 @@ export interface Keymap {
 export type KeymapKey = keyof Keymap;
 
 export type MultipleKey = 'altKey' | 'metaKey' | 'ctrlKey' | 'shiftKey';
+
+export type RelationshipKeymapName =
+  | 'relationshipZeroOne'
+  | 'relationshipZeroN'
+  | 'relationshipOne'
+  | 'relationshipN'
+  | 'relationshipZeroOneN'
+  | 'relationshipOneN'
+  | 'relationshipOneOnly';

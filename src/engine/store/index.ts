@@ -11,13 +11,7 @@ import { createShareState } from './share.state';
 import { createHistory } from '@/core/history';
 import { createStream, executeCommand } from '@/engine/command';
 import { createSubscriptionHelper } from '@/core/helper';
-
-const mergeIterator = (
-  acc: Array<CommandTypeAll>,
-  cur: any
-): CommandTypeAll[] => [...acc, ...(cur[Symbol.iterator] ? [...cur] : [cur])];
-const mergeCommand = (commands: CommandTypeAny[]) =>
-  commands.reduce<Array<CommandTypeAll>>(mergeIterator, []);
+import { flat } from '@/core/helper';
 
 const createState = (): State => ({
   canvasState: observable(createCanvasState()),
@@ -35,7 +29,7 @@ export function createStore(): IStore {
   const history = createHistory(() => {});
   const command = executeCommand(state);
   const dispatch = (...commands: CommandTypeAny[]) =>
-    dispatch$.next(mergeCommand(commands));
+    dispatch$.next([...flat<CommandTypeAll>(commands)]);
   const destroy = () => {
     subscriptionHelper.destroy();
     history.clear();
