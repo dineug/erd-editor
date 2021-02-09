@@ -1,6 +1,6 @@
-import { GlobalEventObservable, Move } from '@/internal-types/eventHelper';
+import { GlobalEventObservable, Move } from '@/internal-types/event.helper';
 import { fromEvent, merge } from 'rxjs';
-import { map, filter, concatMap, takeUntil } from 'rxjs/operators';
+import { map, filter, takeUntil } from 'rxjs/operators';
 
 const userAgent = window.navigator.userAgent.toLowerCase();
 const isRatio = ['macintosh', 'firefox'].every(
@@ -57,12 +57,8 @@ export function createGlobalEventObservable(): GlobalEventObservable {
       })
     )
   );
-  const moveStart$ = merge(mousedown$, touchstart$);
   const moveEnd$ = merge(mouseup$, touchend$);
-  const drag$ = moveStart$.pipe(
-    concatMap(() => move$),
-    takeUntil(moveEnd$)
-  );
+  const drag$ = move$.pipe(takeUntil(moveEnd$));
 
   return {
     mousedown$,
@@ -71,7 +67,6 @@ export function createGlobalEventObservable(): GlobalEventObservable {
     touchstart$,
     touchend$,
     touchmove$,
-    moveStart$,
     moveEnd$,
     move$,
     drag$,

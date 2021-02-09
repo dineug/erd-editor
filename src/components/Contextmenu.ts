@@ -30,22 +30,6 @@ interface ContextmenuState {
   menu: Menu | null;
 }
 
-const iconTemplate = (menu: Menu) =>
-  menu.icon
-    ? html`
-        <span class="icon">
-          <vuerd-icon .size=${menu.icon.size || 14} name=${menu.icon.name}>
-          </vuerd-icon>
-        </span>
-      `
-    : menu.iconBase64
-    ? html`
-        <span class="icon">
-          <img src=${menu.iconBase64} />
-        </span>
-      `
-    : html`<span class="icon"></span>`;
-
 const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
   props,
   ctx
@@ -64,9 +48,7 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
       : props.y;
 
   const onMouseover = (menu: Menu) => (state.menu = menu);
-
   const onClose = () => ctx.dispatchEvent(new CustomEvent('close-contextmenu'));
-
   const onExecute = (menu: Menu) => {
     if (!menu.execute || menu.children?.length) return;
 
@@ -96,7 +78,7 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
               @mouseover=${() => onMouseover(menu)}
               @click=${() => onExecute(menu)}
             >
-              ${iconTemplate(menu)}
+              ${tplIcon(menu)}
               <span
                 class="name"
                 style=${styleMap({
@@ -138,6 +120,22 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
         : null}
     `;
 };
+
+const tplIcon = (menu: Menu) =>
+  menu.icon
+    ? html`
+        <span class="icon">
+          <vuerd-icon .size=${menu.icon.size || 14} name=${menu.icon.name}>
+          </vuerd-icon>
+        </span>
+      `
+    : menu.iconBase64
+    ? html`
+        <span class="icon">
+          <img src=${menu.iconBase64} />
+        </span>
+      `
+    : html`<span class="icon"></span>`;
 
 defineComponent('vuerd-contextmenu', {
   observedProps: [

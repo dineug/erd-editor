@@ -1,5 +1,5 @@
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { GlobalEventObservable } from './eventHelper';
+import { GlobalEventObservable } from './event.helper';
 import { IStore } from './store';
 
 export interface IERDEditorContext extends ERDEditorContext {

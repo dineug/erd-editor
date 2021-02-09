@@ -3,16 +3,13 @@ import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { keymapOptionToString } from '@/core/keymap';
 import { createShowMenus } from './show.contextmenu';
 import { createDatabaseMenus } from './database.contextmenu';
-import { createDrawRelationshipMenus } from './draw-relationship.contextmenu';
+import { createDrawRelationshipMenus } from './drawRelationship.contextmenu';
+import { createImportMenus } from './import.contextmenu';
+import { createExportMenus } from './export.contextmenu';
 
-const options: MenuOptions = {
+const defaultOptions: MenuOptions = {
   nameWidth: 75,
   keymapWidth: 45,
-};
-
-const fileOptions: MenuOptions = {
-  nameWidth: 60,
-  keymapWidth: 0,
 };
 
 export function createERDMenus(context: ERDEditorContext): Menu[] {
@@ -66,20 +63,7 @@ export function createERDMenus(context: ERDEditorContext): Menu[] {
         name: 'file-import',
       },
       name: 'Import',
-      children: [
-        {
-          name: 'json',
-          execute() {
-            // importJSON(store);
-          },
-        },
-        {
-          name: 'SQL DDL',
-          execute() {
-            // importSQL(context);
-          },
-        },
-      ].map(menu => ({ ...menu, options: fileOptions })),
+      children: createImportMenus(context),
     },
     {
       icon: {
@@ -87,30 +71,7 @@ export function createERDMenus(context: ERDEditorContext): Menu[] {
         name: 'file-export',
       },
       name: 'Export',
-      children: [
-        {
-          name: 'json',
-          execute() {
-            // exportJSON(createJsonStringify(store, 2), canvasState.databaseName);
-          },
-        },
-        {
-          name: 'SQL DDL',
-          execute() {
-            // exportSQLDDL(createDDL(store), canvasState.databaseName);
-          },
-        },
-        {
-          icon: {
-            prefix: 'fas',
-            name: 'file-image',
-          },
-          name: 'png',
-          execute() {
-            // exportPNG(root, '.vuerd-canvas', canvasState.databaseName);
-          },
-        },
-      ].map(menu => ({ ...menu, options: fileOptions })),
+      children: createExportMenus(context),
     },
-  ].map(menu => ({ ...menu, options }));
+  ].map(menu => ({ ...menu, options: { ...defaultOptions } }));
 }

@@ -6,8 +6,8 @@ import {
   FunctionalComponent,
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
+import { repeat } from 'lit-html/directives/repeat';
 import { useContext } from '@/core/hooks/context.hook';
-import { CanvasStyle } from './Canvas.style';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -26,7 +26,10 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
   const contextRef = useContext(ctx);
 
   return () => {
-    const { canvasState } = contextRef.value.store;
+    const {
+      canvasState,
+      memoState: { memos },
+    } = contextRef.value.store;
 
     return html`
       <div
@@ -38,13 +41,17 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
           left: `${canvasState.scrollLeft}px`,
         })}
       >
-        <vuerd-memo></vuerd-memo>
+        ${repeat(
+          memos,
+          memo => memo.id,
+          memo => html`<vuerd-memo .memo=${memo}></vuerd-memo>`
+        )}
       </div>
     `;
   };
 };
 
 defineComponent('vuerd-canvas', {
-  style: CanvasStyle,
+  shadow: false,
   render: Canvas,
 });

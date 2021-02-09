@@ -2,9 +2,10 @@ import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { databaseList } from '@/engine/store/canvas.state';
 
-const options: MenuOptions = {
+const defaultOptions: MenuOptions = {
   nameWidth: 75,
   keymapWidth: 0,
+  close: false,
 };
 
 export const createDatabaseMenus = ({
@@ -24,7 +25,6 @@ export const createDatabaseMenus = ({
       store.dispatch(command.canvas.changeDatabase(databaseType));
     },
     options: {
-      close: false,
-      ...options,
+      ...defaultOptions,
     },
   }));

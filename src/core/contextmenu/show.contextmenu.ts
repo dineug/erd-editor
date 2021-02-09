@@ -42,9 +42,10 @@ const showMenus: ShowMenu[] = [
   },
 ];
 
-const options: MenuOptions = {
+const defaultOptions: MenuOptions = {
   nameWidth: 105,
   keymapWidth: 0,
+  close: false,
 };
 
 export const createShowMenus = ({ store, command }: ERDEditorContext): Menu[] =>
@@ -60,7 +61,6 @@ export const createShowMenus = ({ store, command }: ERDEditorContext): Menu[] =>
       store.dispatch(command.canvas.changeCanvasShow(store, showMenu.showKey));
     },
     options: {
-      close: false,
-      ...options,
+      ...defaultOptions,
     },
   }));

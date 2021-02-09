@@ -49,7 +49,7 @@ export const relationshipMenus: RelationshipMenu[] = [
   },
 ];
 
-const options: MenuOptions = {
+const defaultOptions: MenuOptions = {
   nameWidth: 70,
   keymapWidth: 75,
 };
@@ -66,5 +66,7 @@ export const createDrawRelationshipMenus = ({
       //   drawStartRelationship(relationshipMenu.relationshipType)
       // );
     },
-    options,
+    options: {
+      ...defaultOptions,
+    },
   }));

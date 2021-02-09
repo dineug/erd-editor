@@ -1,6 +1,7 @@
 import './Canvas';
 
 import { Menu } from '@@types/core/contextmenu';
+import { Move } from '@/internal-types/event.helper';
 import {
   defineComponent,
   html,
@@ -15,8 +16,9 @@ import { movementCanvas } from '@/engine/command/canvas.command.helper';
 import { createERDMenus } from '@/core/contextmenu/erd.contextmenu';
 import { createShowMenus } from '@/core/contextmenu/show.contextmenu';
 import { createDatabaseMenus } from '@/core/contextmenu/database.contextmenu';
+import { selectEndMemo } from '@/engine/command/memo.command.helper';
 import { useDestroy } from '@/core/hooks/destroy.hook';
-import { ERDStyle } from './ERD.style';
+import { EditorStyle } from './index.style';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -55,18 +57,27 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
 
   const onCloseContextmenu = () => (state.menus = null);
 
-  const onMousedown = () => {
-    onCloseContextmenu();
-    const { drag$ } = contextRef.value.globalEvent;
+  const onMove = ({ event, movementX, movementY }: Move) => {
     const { store } = contextRef.value;
-    drag$.subscribe(move => {
-      move.event.type === 'mousemove' && move.event.preventDefault();
-      store.dispatch(movementCanvas(move.movementX, move.movementY));
-    });
+    event.type === 'mousemove' && event.preventDefault();
+    store.dispatch(movementCanvas(movementX, movementY));
+  };
+
+  const onMousedown = (event: MouseEvent) => {
+    const el = event.target as HTMLElement;
+    onCloseContextmenu();
+
+    if (!el.closest('.vuerd-table') && !el.closest('.vuerd-memo')) {
+      const { store } = contextRef.value;
+      const { drag$ } = contextRef.value.globalEvent;
+      store.dispatch(/**selectEndTable(),**/ selectEndMemo());
+      drag$.subscribe(onMove);
+    }
   };
 
   beforeMount(() => {
     const { canvasState } = contextRef.value.store;
+
     destroy.push(
       watch(canvasState.show, () => {
         const menue = state.menus?.find(menu => menu.name === 'View Option');
@@ -94,6 +105,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
       @mousedown=${onMousedown}
       @contextmenu=${onContextmenu}
     >
+      <div class="vuerd-erd-background"></div>
       <vuerd-canvas></vuerd-canvas>
       ${state.menus
         ? html`
@@ -123,6 +135,6 @@ defineComponent('vuerd-erd', {
   styleMap: {
     height: '100%',
   },
-  style: ERDStyle,
+  style: EditorStyle,
   render: ERD,
 });
