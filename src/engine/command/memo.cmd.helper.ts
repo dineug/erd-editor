@@ -6,7 +6,7 @@ import { SIZE_MEMO_WIDTH, SIZE_MEMO_HEIGHT } from '@/core/layout';
 import { uuid } from '@/core/helper';
 import { nextZIndex, nextPoint } from '@/engine/store/helper';
 
-export * from './memo.command.helper.generator';
+export * from './memo.cmd.helper.gen';
 
 export function addMemo(store: Store) {
   const { tableState, memoState } = store;

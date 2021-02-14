@@ -7,7 +7,7 @@ import {
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { useContext } from '@/core/hooks/context.hook';
-import { changeCanvasType } from '@/engine/command/canvas.command.helper';
+import { changeCanvasType } from '@/engine/command/canvas.cmd.helper';
 import { panels } from '@/core/panel';
 import { MenuGroupStyle } from './MenuGroup.style';
 

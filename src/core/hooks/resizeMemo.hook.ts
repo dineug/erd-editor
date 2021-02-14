@@ -2,7 +2,7 @@ import { Move } from '@/internal-types/event.helper';
 import { useContext } from './context.hook';
 import { SIZE_MEMO_WIDTH, SIZE_MEMO_HEIGHT } from '@/core/layout';
 import { MemoProps } from '@/components/editor/memo/Memo';
-import { resizeMemo } from '@/engine/command/memo.command.helper';
+import { resizeMemo } from '@/engine/command/memo.cmd.helper';
 
 type Direction = 'left' | 'right' | 'top' | 'bottom';
 export type Position =

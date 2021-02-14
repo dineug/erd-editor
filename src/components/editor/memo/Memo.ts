@@ -15,7 +15,7 @@ import {
   moveMemo,
   removeMemo,
   changeMemoValue,
-} from '@/engine/command/memo.command.helper';
+} from '@/engine/command/memo.cmd.helper';
 import { keymapOptionToString } from '@/core/keymap';
 import { SashProps } from '@/components/Sash';
 
@@ -36,7 +36,7 @@ const MEMO_HEADER = 6 + MEMO_PADDING;
 
 const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
-  const resize = useResizeMemo(props, ctx);
+  const { onMousedownSash } = useResizeMemo(props, ctx);
 
   const onMove = ({ event, movementX, movementY }: Move) => {
     event.type === 'mousemove' && event.preventDefault();
@@ -122,7 +122,7 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
           .value=${memo.value}
           @input=${onInput}
         ></textarea>
-        ${tplSash(height, width, resize.onMousedownSash)}
+        ${tplSash(height, width, onMousedownSash)}
       </div>
     `;
   };

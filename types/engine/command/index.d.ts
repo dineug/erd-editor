@@ -1,9 +1,14 @@
-import { CanvasCommandMap } from './canvas.command';
-import * as CanvasCommand from './canvas.command.helper';
-import { MemoCommandMap } from './memo.command';
-import * as MemoCommand from './memo.command.helper';
+import { CanvasCommandMap } from './canvas.cmd';
+import { MemoCommandMap } from './memo.cmd';
+import { TableCommandMap } from './table.cmd';
+import * as CanvasCommand from './canvas.cmd.helper';
+import * as MemoCommand from './memo.cmd.helper';
+import * as TableCommand from './table.com.helper';
 
-export interface CommandMap extends CanvasCommandMap, MemoCommandMap {}
+export interface CommandMap
+  extends CanvasCommandMap,
+    MemoCommandMap,
+    TableCommandMap {}
 
 export type CommandKey = keyof CommandMap;
 
@@ -22,4 +27,5 @@ export type CommandTypeAll = CommandType<CommandKey>;
 export interface Command {
   canvas: typeof CanvasCommand;
   memo: typeof MemoCommand;
+  table: typeof TableCommand;
 }

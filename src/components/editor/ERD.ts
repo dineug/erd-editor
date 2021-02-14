@@ -12,11 +12,11 @@ import {
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { useContext } from '@/core/hooks/context.hook';
-import { movementCanvas } from '@/engine/command/canvas.command.helper';
+import { movementCanvas } from '@/engine/command/canvas.cmd.helper';
 import { createERDMenus } from '@/core/contextmenu/erd.contextmenu';
 import { createShowMenus } from '@/core/contextmenu/show.contextmenu';
 import { createDatabaseMenus } from '@/core/contextmenu/database.contextmenu';
-import { selectEndMemo } from '@/engine/command/memo.command.helper';
+import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
 import { useDestroy } from '@/core/hooks/destroy.hook';
 import { EditorStyle } from './index.style';
 

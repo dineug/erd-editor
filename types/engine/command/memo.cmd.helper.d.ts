@@ -3,7 +3,7 @@ import { CommandType } from './index';
 import { Memo } from '../store/memo.state';
 import { Point } from '../store/relationship.helper';
 
-export * from './memo.command.helper.generator';
+export * from './memo.cmd.helper.gen';
 
 export declare function addMemo(store: Store): CommandType<'memo.add'>;
 

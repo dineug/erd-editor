@@ -1,5 +1,5 @@
 import { Memo, MemoUI } from '@@types/engine/store/memo.state';
-import { AddMemo } from '@@types/engine/command/memo.command';
+import { AddMemo } from '@@types/engine/command/memo.cmd';
 import { isString, isObject, isBoolean, isNumber } from '@/core/helper';
 
 interface MemoData {

@@ -1,4 +1,5 @@
 import './memo/Memo';
+import './table/Table';
 
 import {
   defineComponent,

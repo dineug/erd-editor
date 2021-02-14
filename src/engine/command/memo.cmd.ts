@@ -7,7 +7,7 @@ import {
   ChangeMemoValue,
   ResizeMemo,
   DragSelectMemo,
-} from '@@types/engine/command/memo.command';
+} from '@@types/engine/command/memo.cmd';
 import { Memo } from '@@types/engine/store/memo.state';
 import { SIZE_MEMO_PADDING } from '@/core/layout';
 import { getData } from '@/core/helper';
@@ -16,8 +16,6 @@ import { MemoModel } from '@/engine/store/models/memo.model';
 const MEMO_PADDING = SIZE_MEMO_PADDING * 2;
 
 export function executeAddMemo({ memoState: { memos } }: State, data: AddMemo) {
-  // executeSelectEndTable(store);
-  // executeSelectEndMemo(store);
   memos.push(new MemoModel({ addMemo: data }));
   // editorState.focus = true;
 }

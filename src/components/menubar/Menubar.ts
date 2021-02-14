@@ -9,7 +9,7 @@ import { useContext } from '@/core/hooks/context.hook';
 import {
   changeDatabaseName,
   resizeCanvas,
-} from '@/engine/command/canvas.command.helper';
+} from '@/engine/command/canvas.cmd.helper';
 import { onNumberOnly } from '@/core/helper/dom.helper';
 import { canvasSizeRange } from '@/engine/store/canvas.helper';
 import { MenubarStyle } from './Menubar.style';

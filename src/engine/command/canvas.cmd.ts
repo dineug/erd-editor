@@ -11,7 +11,7 @@ import {
   ChangeNameCase,
   ChangeRelationshipDataTypeSync,
   MoveColumnOrder,
-} from '@@types/engine/command/canvas.command';
+} from '@@types/engine/command/canvas.cmd';
 
 export function executeMoveCanvas(state: State, data: MoveCanvas) {
   const { canvasState } = state;

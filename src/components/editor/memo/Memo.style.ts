@@ -1,10 +1,7 @@
 import { css } from '@/core/tagged';
 import { SIZE_MEMO_PADDING, SIZE_FONT } from '@/core/layout';
-import { DefaultStyle } from '@/components/css';
 
 export const MemoStyle = css`
-  ${DefaultStyle}
-
   .vuerd-memo {
     position: absolute;
     opacity: 0.9;

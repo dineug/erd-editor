@@ -4,19 +4,23 @@ import { Subject, merge } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import * as R from 'ramda';
 import { Logger } from '@/core/logger';
-import * as CanvasCommand from './canvas.command.helper';
-import { executeCanvasCommandMap } from './canvas.command';
-import * as MemoCommand from './memo.command.helper';
-import { executeMemoCommandMap } from './memo.command';
+import * as CanvasCommand from './canvas.cmd.helper';
+import * as MemoCommand from './memo.cmd.helper';
+import * as TableCommand from './table.cmd.helper';
+import { executeCanvasCommandMap } from './canvas.cmd';
+import { executeMemoCommandMap } from './memo.cmd';
+import { executeTableCommandMap } from './table.cmd';
 
 const executeCommandMap = {
   ...executeCanvasCommandMap,
   ...executeMemoCommandMap,
+  ...executeTableCommandMap,
 };
 
 export const createCommand = (): Command => ({
   canvas: CanvasCommand,
   memo: MemoCommand,
+  table: TableCommand,
 });
 
 export function createStream() {
