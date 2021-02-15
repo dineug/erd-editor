@@ -23,7 +23,7 @@ export function createERDMenus(context: ERDEditorContext): Menu[] {
       name: 'New Table',
       keymap: keymapOptionToString(keymap.addTable[0]),
       execute() {
-        // store.dispatch(addTable(store));
+        store.dispatch(command.table.addTable$(store));
       },
     },
     {

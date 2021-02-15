@@ -1,7 +1,8 @@
 import { Store } from '../store';
 import { CommandType } from './index';
-import { LoadTable } from './table.cmd';
 import { Point } from '../store/relationship.helper';
+import { PureTable } from '../store/table.state';
+import { Helper } from '../../core/helper';
 
 export * from './table.cmd.helper.gen';
 
@@ -36,13 +37,13 @@ export declare function selectOnlyTable(
 ): CommandType<'table.selectOnly'>;
 
 export declare function changeTableName(
-  // helper: Helper,
+  helper: Helper,
   tableId: string,
   value: string
 ): CommandType<'table.changeName'>;
 
 export declare function changeTableComment(
-  // helper: Helper,
+  helper: Helper,
   tableId: string,
   value: string
 ): CommandType<'table.changeComment'>;
@@ -54,4 +55,4 @@ export declare function dragSelectTable(
 
 export declare function sortTable(): CommandType<'table.sort'>;
 
-export declare function loadTable(table: LoadTable): CommandType<'table.load'>;
+export declare function loadTable(table: PureTable): CommandType<'table.load'>;

@@ -1,3 +1,4 @@
+import { Helper as IHelper } from '@@types/core/helper';
 import flow from 'lodash/flow';
 import camelCase from 'lodash/camelCase';
 import upperFirst from 'lodash/upperFirst';
@@ -58,5 +59,22 @@ export function* flat<T>(iterator: any[]): Generator<T> {
   for (const value of iterator) {
     if (value && value[Symbol.iterator]) yield* flat(value);
     else yield value;
+  }
+}
+
+const TEXT_PADDING = 2;
+
+export class Helper implements IHelper {
+  private ghostText: HTMLSpanElement | null = null;
+
+  setGhostText(ghostText: HTMLSpanElement) {
+    this.ghostText = ghostText;
+  }
+
+  getTextWidth(value: string): number {
+    if (!this.ghostText) return value.length * 10 + TEXT_PADDING;
+
+    this.ghostText.innerText = value;
+    return this.ghostText.offsetWidth + TEXT_PADDING;
   }
 }

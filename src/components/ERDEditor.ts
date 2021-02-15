@@ -42,9 +42,10 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   ctx
 ) => {
   const context = createdERDEditorContext();
-  const { store, globalEvent } = context;
+  const { store, globalEvent, helper } = context;
   const { canvasState, editorState } = store;
   const editorRef = query<HTMLElement>('.vuerd-editor');
+  const ghostTextRef = query<HTMLSpanElement>('.vuerd-ghost-text-helper');
   const destroy = useDestroy();
   // @ts-ignore
   const resizeObserver = new ResizeObserver(entries => {
@@ -68,6 +69,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   );
 
   mounted(() => {
+    helper.setGhostText(ghostTextRef.value);
     props.automaticLayout && resizeObserver.observe(editorRef.value);
   });
 
@@ -131,6 +133,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
               `
             : null}
         </div>
+        <span class="vuerd-ghost-text-helper"></span>
       </vuerd-provider>
     `;
   };

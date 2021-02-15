@@ -22,6 +22,7 @@ export interface Store extends State {
     >
   ): void;
   dispatch(...commands: CommandTypeAny[]): void;
+  dispatch(...commands: unknown[]): void;
   undo(): void;
   redo(): void;
 }

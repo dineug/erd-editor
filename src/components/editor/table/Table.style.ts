@@ -39,4 +39,8 @@ export const TableStyle = css`
   .vuerd-table .vuerd-table-header-body {
     height: ${SIZE_TABLE_HEADER_BODY_HEIGHT}px;
   }
+
+  .vuerd-table .vuerd-table-header-body > vuerd-input {
+    float: left;
+  }
 `;

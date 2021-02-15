@@ -1,4 +1,5 @@
 import { State } from '@@types/engine/store';
+import { PureTable } from '@@types/engine/store/table.state';
 import {
   AddTable,
   MoveTable,
@@ -7,7 +8,6 @@ import {
   SelectOnlyTable,
   ChangeTableValue,
   DragSelectTable,
-  LoadTable,
 } from '@@types/engine/command/table.cmd';
 import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from '@/core/layout';
 import { getData } from '@/core/helper';
@@ -76,7 +76,6 @@ export function executeSelectTable(
       tables.forEach(table => {
         table.ui.active = table.id === data.tableId;
       });
-      // executeSelectEndMemo(store);
     }
     // executeFocusTable(store, { tableId: data.tableId });
     // if (drawRelationship) {
@@ -226,7 +225,7 @@ export function executeSortTable({
 
 export function executeLoadTable(
   { tableState: { tables }, canvasState: { show } }: State,
-  data: LoadTable
+  data: PureTable
 ) {
   tables.push(new TableModel({ loadTable: data }, show));
 }

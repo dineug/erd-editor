@@ -3,13 +3,15 @@ export interface TableState {
   indexes: Index[]; // ADD: version 1.2.0
 }
 
-export interface Table {
+export interface PureTable {
   id: string;
   name: string;
   comment: string;
   columns: Column[];
   ui: TableUI;
+}
 
+export interface Table extends PureTable {
   width(): number;
   height(): number;
   maxWidthColumn(): ColumnWidth;

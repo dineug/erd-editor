@@ -30,6 +30,7 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
     const {
       canvasState,
       memoState: { memos },
+      tableState: { tables },
     } = contextRef.value.store;
 
     return html`
@@ -42,6 +43,11 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
           left: `${canvasState.scrollLeft}px`,
         })}
       >
+        ${repeat(
+          tables,
+          table => table.id,
+          table => html`<vuerd-table .table=${table}></vuerd-table>`
+        )}
         ${repeat(
           memos,
           memo => memo.id,

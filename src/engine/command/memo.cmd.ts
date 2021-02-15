@@ -73,7 +73,6 @@ export function executeSelectMemo(
     memos.forEach(memo => {
       memo.ui.active = memo.id === data.memoId;
     });
-    // executeSelectEndTable(store);
   }
 }
 

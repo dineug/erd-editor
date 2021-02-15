@@ -5,6 +5,7 @@ import { createKeymap } from './keymap';
 import { createGlobalEventObservable } from './helper/event.helper';
 import { createStore } from '@/engine/store';
 import { createCommand } from '@/engine/command';
+import { Helper } from '@/core/helper';
 
 export const createdERDEditorContext = (): IERDEditorContext => ({
   theme: observable(createTheme()),
@@ -12,4 +13,5 @@ export const createdERDEditorContext = (): IERDEditorContext => ({
   globalEvent: createGlobalEventObservable(),
   store: createStore(),
   command: createCommand(),
+  helper: new Helper(),
 });

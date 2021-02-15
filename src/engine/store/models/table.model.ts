@@ -1,11 +1,12 @@
 import {
+  PureTable,
   Table,
   TableUI,
   Column,
   ColumnWidth,
 } from '@@types/engine/store/table.state';
 import { Show } from '@@types/engine/store/canvas.state';
-import { AddTable, LoadTable } from '@@types/engine/command/table.cmd';
+import { AddTable } from '@@types/engine/command/table.cmd';
 import {
   SIZE_TABLE_HEADER_HEIGHT,
   SIZE_COLUMN_HEIGHT,
@@ -22,10 +23,10 @@ import { getMaxWidthColumn, getDefaultWidthColumn } from './table.model.helper';
 
 interface TableData {
   addTable?: AddTable;
-  loadTable?: LoadTable;
+  loadTable?: PureTable;
 }
 
-const isLoadTable = (loadTable: LoadTable) =>
+const isLoadTable = (loadTable: PureTable) =>
   isString(loadTable.id) &&
   isString(loadTable.name) &&
   isString(loadTable.comment) &&
@@ -57,12 +58,15 @@ export class TableModel implements Table {
   constructor(data: TableData, show: Show) {
     const { addTable, loadTable } = data;
     this._show = show;
+
     if (addTable) {
       const { id, ui } = addTable;
+
       this.id = id;
       this.ui = Object.assign(this.ui, ui);
     } else if (loadTable && isLoadTable(loadTable)) {
       const { id, name, comment, columns, ui } = loadTable;
+
       this.id = id;
       this.name = name;
       this.comment = comment;
@@ -79,24 +83,29 @@ export class TableModel implements Table {
     if (this._show.tableComment) {
       width += this.ui.widthComment + SIZE_COLUMN_MARGIN_RIGHT;
     }
+
     // default width column
     const defaultWidthColumn =
       getDefaultWidthColumn(this._show) +
       SIZE_COLUMN_CLOSE +
       SIZE_COLUMN_KEY +
       SIZE_COLUMN_MARGIN_RIGHT;
+
     if (width < defaultWidthColumn) {
       width = defaultWidthColumn;
     }
+
     // max width column
     const maxWidthColumn =
       this.maxWidthColumn().width +
       SIZE_COLUMN_CLOSE +
       SIZE_COLUMN_KEY +
       SIZE_COLUMN_MARGIN_RIGHT;
+
     if (width < maxWidthColumn) {
       width = maxWidthColumn;
     }
+
     return width;
   }
 

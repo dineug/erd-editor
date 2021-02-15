@@ -1,6 +1,7 @@
 import { Point } from '@@types/engine/store/relationship.helper';
 import { Store } from '@@types/engine/store';
-import { LoadTable } from '@@types/engine/command/table.cmd';
+import { PureTable } from '@@types/engine/store/table.state';
+import { Helper } from '@@types/core/helper';
 import { createCommand } from './command.helper';
 import { SIZE_MIN_WIDTH } from '@/core/layout';
 import { uuid } from '@/core/helper';
@@ -75,12 +76,11 @@ export const selectOnlyTable = (
   });
 
 export function changeTableName(
-  // helper: Helper,
+  helper: Helper,
   tableId: string,
   value: string
 ) {
-  // const width = helper.getTextWidth(value);
-  const width = 0;
+  const width = helper.getTextWidth(value);
   return createCommand('table.changeName', {
     tableId,
     value,
@@ -89,12 +89,11 @@ export function changeTableName(
 }
 
 export function changeTableComment(
-  // helper: Helper,
+  helper: Helper,
   tableId: string,
   value: string
 ) {
-  // const width = helper.getTextWidth(value);
-  const width = 0;
+  const width = helper.getTextWidth(value);
   return createCommand('table.changeComment', {
     tableId,
     value,
@@ -110,5 +109,5 @@ export const dragSelectTable = (min: Point, max: Point) =>
 
 export const sortTable = () => createCommand('table.sort', null);
 
-export const loadTable = (table: LoadTable) =>
+export const loadTable = (table: PureTable) =>
   createCommand('table.load', table);

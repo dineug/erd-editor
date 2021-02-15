@@ -1,9 +1,16 @@
 import { Store } from '@@types/engine/store';
-import { selectEndMemo, addMemo } from './memo.cmd.helper';
+import { selectEndMemo, addMemo, selectMemo } from './memo.cmd.helper';
 import { selectEndTable } from './table.cmd.helper';
 
 export function* addMemo$(store: Store) {
   yield selectEndTable();
   yield selectEndMemo();
   yield addMemo(store);
+}
+
+export function* selectMemo$(store: Store, ctrlKey: boolean, memoId: string) {
+  yield selectMemo(store, ctrlKey, memoId);
+  if (!ctrlKey) {
+    yield selectEndTable();
+  }
 }

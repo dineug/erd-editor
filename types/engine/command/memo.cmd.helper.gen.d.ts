@@ -8,3 +8,9 @@ export declare function addMemo$(
   | CommandType<'memo.selectEnd'>
   | CommandType<'memo.add'>
 >;
+
+export declare function selectMemo$(
+  store: Store,
+  ctrlKey: boolean,
+  memoId: string
+): Generator<CommandType<'memo.select'> | CommandType<'table.selectEnd'>>;

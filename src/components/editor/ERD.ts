@@ -17,6 +17,7 @@ import { createERDMenus } from '@/core/contextmenu/erd.contextmenu';
 import { createShowMenus } from '@/core/contextmenu/show.contextmenu';
 import { createDatabaseMenus } from '@/core/contextmenu/database.contextmenu';
 import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
+import { selectEndTable } from '@/engine/command/table.cmd.helper';
 import { useDestroy } from '@/core/hooks/destroy.hook';
 import { EditorStyle } from './index.style';
 
@@ -70,7 +71,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
     if (!el.closest('.vuerd-table') && !el.closest('.vuerd-memo')) {
       const { store } = contextRef.value;
       const { drag$ } = contextRef.value.globalEvent;
-      store.dispatch(/**selectEndTable(),**/ selectEndMemo());
+      store.dispatch(selectEndTable(), selectEndMemo());
       drag$.subscribe(onMove);
     }
   };

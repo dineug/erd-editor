@@ -1,4 +1,4 @@
-import { TableUI, Column } from '../store/table.state';
+import { PureTable } from '../store/table.state';
 import { Point } from '../store/relationship.helper';
 
 export interface AddTableUI {
@@ -46,14 +46,6 @@ export interface DragSelectTable {
   max: Point;
 }
 
-export interface LoadTable {
-  id: string;
-  name: string;
-  comment: string;
-  columns: Column[];
-  ui: TableUI;
-}
-
 export interface TableCommandMap {
   'table.add': AddTable;
   'table.move': MoveTable;
@@ -66,5 +58,5 @@ export interface TableCommandMap {
   'table.changeComment': ChangeTableValue;
   'table.dragSelect': DragSelectTable;
   'table.sort': null;
-  'table.load': LoadTable;
+  'table.load': PureTable;
 }

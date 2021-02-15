@@ -1,5 +1,5 @@
 import { ColumnWidth, Column } from '@@types/engine/store/table.state';
-import { Show } from '@@types/engine/store/canvas.state';
+import { Show, ShowKey } from '@@types/engine/store/canvas.state';
 import {
   SIZE_MIN_WIDTH,
   SIZE_COLUMN_OPTION_NN,
@@ -29,6 +29,7 @@ export function getMaxWidthColumn(columns: Column[], show: Show) {
     autoIncrement: 0,
     unique: 0,
   };
+
   columns.forEach(column => {
     if (columnWidth.name < column.ui.widthName) {
       columnWidth.name = column.ui.widthName;
@@ -43,6 +44,7 @@ export function getMaxWidthColumn(columns: Column[], show: Show) {
       columnWidth.default = column.ui.widthDefault;
     }
   });
+
   if (show.columnNotNull) {
     columnWidth.notNull = SIZE_COLUMN_OPTION_NN;
   }
@@ -52,6 +54,7 @@ export function getMaxWidthColumn(columns: Column[], show: Show) {
   if (show.columnUnique) {
     columnWidth.unique = SIZE_COLUMN_OPTION_QU;
   }
+
   Object.keys(columnWidth)
     .filter(key => key !== 'width')
     .forEach(key => {
@@ -60,28 +63,45 @@ export function getMaxWidthColumn(columns: Column[], show: Show) {
         columnWidth.width += columnWidth[k] + SIZE_COLUMN_MARGIN_RIGHT;
       }
     });
+
   return columnWidth;
 }
 
+const defaultWidthColumnMap: Array<{ key: ShowKey; width: number }> = [
+  {
+    key: 'columnComment',
+    width: SIZE_MIN_WIDTH,
+  },
+  {
+    key: 'columnDataType',
+    width: SIZE_MIN_WIDTH,
+  },
+  {
+    key: 'columnDefault',
+    width: SIZE_MIN_WIDTH,
+  },
+  {
+    key: 'columnNotNull',
+    width: SIZE_COLUMN_OPTION_NN,
+  },
+  {
+    key: 'columnAutoIncrement',
+    width: SIZE_COLUMN_OPTION_AI,
+  },
+  {
+    key: 'columnUnique',
+    width: SIZE_COLUMN_OPTION_QU,
+  },
+];
+
 export function getDefaultWidthColumn(show: Show): number {
   let width = SIZE_MIN_WIDTH + SIZE_COLUMN_MARGIN_RIGHT;
-  if (show.columnComment) {
-    width += SIZE_MIN_WIDTH + SIZE_COLUMN_MARGIN_RIGHT;
-  }
-  if (show.columnDataType) {
-    width += SIZE_MIN_WIDTH + SIZE_COLUMN_MARGIN_RIGHT;
-  }
-  if (show.columnDefault) {
-    width += SIZE_MIN_WIDTH + SIZE_COLUMN_MARGIN_RIGHT;
-  }
-  if (show.columnNotNull) {
-    width += SIZE_COLUMN_OPTION_NN + SIZE_COLUMN_MARGIN_RIGHT;
-  }
-  if (show.columnAutoIncrement) {
-    width += SIZE_COLUMN_OPTION_AI + SIZE_COLUMN_MARGIN_RIGHT;
-  }
-  if (show.columnUnique) {
-    width += SIZE_COLUMN_OPTION_QU + SIZE_COLUMN_MARGIN_RIGHT;
-  }
+
+  defaultWidthColumnMap.forEach(data => {
+    if (show[data.key]) {
+      width += data.width + SIZE_COLUMN_MARGIN_RIGHT;
+    }
+  });
+
   return width;
 }

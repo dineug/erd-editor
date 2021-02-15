@@ -3,6 +3,7 @@ import { ERDStyle } from './ERD.style';
 import { CanvasStyle } from './Canvas.style';
 import { MemoStyle } from './memo/Memo.style';
 import { TableStyle } from './table/Table.style';
+import { InputStyle } from './Input.style';
 
 export const EditorStyle = [
   DefaultStyle,
@@ -10,4 +11,5 @@ export const EditorStyle = [
   CanvasStyle,
   MemoStyle,
   TableStyle,
+  InputStyle,
 ].join('');

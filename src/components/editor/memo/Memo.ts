@@ -11,7 +11,7 @@ import { SIZE_MEMO_PADDING } from '@/core/layout';
 import { useContext } from '@/core/hooks/context.hook';
 import { useResizeMemo, Position } from '@/core/hooks/resizeMemo.hook';
 import {
-  selectMemo,
+  selectMemo$,
   moveMemo,
   removeMemo,
   changeMemoValue,
@@ -65,7 +65,7 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
       drag$.subscribe(onMove);
     }
     store.dispatch(
-      selectMemo(store, event.ctrlKey || event.metaKey, props.memo.id)
+      selectMemo$(store, event.ctrlKey || event.metaKey, props.memo.id)
     );
   };
 
@@ -82,7 +82,7 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
 
   return () => {
     const { keymap } = contextRef.value;
-    const { memo } = props;
+    const memo = props.memo;
     const width = memo.ui.width + MEMO_PADDING;
     const height = memo.ui.height + MEMO_PADDING + MEMO_HEADER;
     const keymapRemoveTable = keymapOptionToString(keymap.removeTable[0]);
