@@ -9,6 +9,7 @@ import { classMap } from 'lit-html/directives/class-map';
 import { useContext } from '@/core/hooks/context.hook';
 import { changeCanvasType } from '@/engine/command/canvas.cmd.helper';
 import { panels } from '@/core/panel';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { MenuGroupStyle } from './MenuGroup.style';
 
 declare global {
@@ -53,6 +54,7 @@ const MenuGroup: FunctionalComponent<MenuGroupProps, MenuGroupElement> = (
   ctx
 ) => {
   const contextRef = useContext(ctx);
+  useTooltip(['.vuerd-menubar-menu'], ctx);
 
   const onChangeCanvasType = (canvasType: string) => {
     const { store } = contextRef.value;
@@ -76,7 +78,7 @@ const MenuGroup: FunctionalComponent<MenuGroupProps, MenuGroupElement> = (
             'vuerd-menubar-menu': true,
             active: canvasState.canvasType === menu.canvasType,
           })}
-          title=${menu.canvasType}
+          data-tippy-content=${menu.canvasType}
           @click=${() => onChangeCanvasType(menu.canvasType)}
         >
           <vuerd-icon

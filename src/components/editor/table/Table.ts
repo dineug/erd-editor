@@ -9,8 +9,9 @@ import {
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
-import { keymapOptionToString } from '@/core/keymap';
+import { keymapOptionsToString } from '@/core/keymap';
 import { useContext } from '@/core/hooks/context.hook';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
 import {
   changeTableName,
   changeTableComment,
@@ -32,6 +33,7 @@ export interface TableElement extends TableProps, HTMLElement {}
 
 const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
+  useTooltip(['.vuerd-button'], ctx);
 
   const onInput = (event: InputEvent, focusType: string) => {
     const { store, helper } = contextRef.value;
@@ -84,8 +86,6 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     } = contextRef.value;
     const table = props.table;
     const { ui } = table;
-    const keymapAddColumn = keymapOptionToString(keymap.addColumn[0]);
-    const keymapRemoveTable = keymapOptionToString(keymap.removeTable[0]);
 
     return html`
       <div
@@ -107,13 +107,13 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
           <div class="vuerd-table-header-top">
             <vuerd-icon
               class="vuerd-button"
-              title=${keymapRemoveTable}
+              data-tippy-content=${keymapOptionsToString(keymap.removeTable)}
               name="times"
               size="12"
             ></vuerd-icon>
             <vuerd-icon
               class="vuerd-button"
-              title=${keymapAddColumn}
+              data-tippy-content=${keymapOptionsToString(keymap.addColumn)}
               name="plus"
               size="12"
             ></vuerd-icon>

@@ -16,7 +16,8 @@ import {
   removeMemo,
   changeMemoValue,
 } from '@/engine/command/memo.cmd.helper';
-import { keymapOptionToString } from '@/core/keymap';
+import { keymapOptionsToString } from '@/core/keymap';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { sashTpl } from './Memo.template';
 
 declare global {
@@ -37,6 +38,7 @@ const MEMO_HEADER = 6 + MEMO_PADDING;
 const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
   const { onMousedownSash } = useResizeMemo(props, ctx);
+  useTooltip(['.vuerd-button'], ctx);
 
   const onMove = ({ event, movementX, movementY }: Move) => {
     event.type === 'mousemove' && event.preventDefault();
@@ -85,7 +87,6 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
     const memo = props.memo;
     const width = memo.ui.width + MEMO_PADDING;
     const height = memo.ui.height + MEMO_PADDING + MEMO_HEADER;
-    const keymapRemoveTable = keymapOptionToString(keymap.removeTable[0]);
 
     return html`
       <div
@@ -108,7 +109,7 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
             class="vuerd-button"
             name="times"
             size="12"
-            title=${keymapRemoveTable}
+            data-tippy-content=${keymapOptionsToString(keymap.removeTable)}
             @click=${onRemoveMemo}
           ></vuerd-icon>
         </div>

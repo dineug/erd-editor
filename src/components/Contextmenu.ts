@@ -6,10 +6,13 @@ import {
   observable,
   unmounted,
   query,
+  watch,
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { SIZE_CONTEXTMENU_HEIGHT } from '@/core/layout';
 import { onStopPropagation } from '@/core/helper/dom.helper';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
+import { useDestroy } from '@/core/hooks/destroy.hook';
 import { iconTpl } from './Contextmenu.template';
 import { ContextmenuStyle } from './Contextmenu.style';
 
@@ -37,6 +40,8 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
 ) => {
   const state = observable<ContextmenuState>({ menu: null });
   const rootRef = query<HTMLElement>('.vuerd-contextmenu');
+  const destroy = useDestroy();
+  const { resetTooltip } = useTooltip(['.name', '.keymap'], ctx);
 
   const childrenX = () => {
     const ul = rootRef.value;
@@ -59,6 +64,14 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
       onClose();
     }
   };
+
+  destroy.push(
+    watch(props, propName => {
+      if (propName === 'menus') {
+        resetTooltip();
+      }
+    })
+  );
 
   unmounted(() => (state.menu = null));
 
@@ -85,7 +98,7 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
                 style=${styleMap({
                   width: `${menu.options?.nameWidth ?? 70}px`,
                 })}
-                title=${menu.name}
+                data-tippy-content=${menu.name}
               >
                 ${menu.name}
               </span>
@@ -94,7 +107,9 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
                 style=${styleMap({
                   width: `${menu.options?.keymapWidth ?? 60}px`,
                 })}
-                title=${menu.keymap ? menu.keymap : ''}
+                data-tippy-content=${menu.keymapTooltip
+                  ? menu.keymapTooltip
+                  : ''}
               >
                 ${menu.keymap}
               </span>

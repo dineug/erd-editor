@@ -5,6 +5,8 @@ import {
   defineComponent,
   html,
   FunctionalComponent,
+  beforeMount,
+  watch,
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { repeat } from 'lit-html/directives/repeat';
@@ -27,11 +29,9 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
   const contextRef = useContext(ctx);
 
   return () => {
-    const {
-      canvasState,
-      memoState: { memos },
-      tableState: { tables },
-    } = contextRef.value.store;
+    const { canvasState, memoState, tableState } = contextRef.value.store;
+    const tables = tableState.tables;
+    const memos = memoState.memos;
 
     return html`
       <div

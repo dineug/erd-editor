@@ -12,6 +12,7 @@ import {
 } from '@/engine/command/canvas.cmd.helper';
 import { onNumberOnly } from '@/core/helper/dom.helper';
 import { canvasSizeRange } from '@/engine/store/canvas.helper';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { MenubarStyle } from './Menubar.style';
 
 declare global {
@@ -29,6 +30,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
   ctx
 ) => {
   const contextRef = useContext(ctx);
+  useTooltip(['.vuerd-menubar-input'], ctx);
 
   const onChangeDatabaseName = (event: Event) => {
     const input = event.target as HTMLInputElement;
@@ -53,7 +55,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
           class="vuerd-menubar-input"
           style="width: 200px;"
           type="text"
-          title="database name"
+          data-tippy-content="database name"
           placeholder="database name"
           spellcheck="false"
           .value=${canvasState.databaseName}
@@ -63,7 +65,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
           class="vuerd-menubar-input"
           style="width: 65px;"
           type="text"
-          title="canvas size"
+          data-tippy-content="canvas size"
           spellcheck="false"
           placeholder="canvas size"
           .value=${canvasState.width.toString()}

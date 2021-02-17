@@ -9,6 +9,7 @@ export interface MenuOptions {
 export interface Menu {
   name: string;
   keymap?: string;
+  keymapTooltip?: string;
   icon?: Icon;
   iconBase64?: string;
   children?: Menu[];

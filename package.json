@@ -63,6 +63,7 @@
     "rxjs": "^6.6.3",
     "snowpack": "^3.0.11",
     "stats.js": "^0.17.0",
+    "tippy.js": "^6.2.7",
     "typescript": "^4.1.3",
     "typescript-styled-plugin": "^0.15.0"
   },

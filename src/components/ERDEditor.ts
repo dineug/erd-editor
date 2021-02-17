@@ -10,6 +10,7 @@ import {
   ERDEditorProps,
   ERDEditorElement,
 } from '@@types/components/ERDEditorElement';
+import { PanelConfig } from '@@types/core/panel';
 import { Theme } from '@@types/core/theme';
 import { Keymap } from '@@types/core/keymap';
 import { User } from '@@types/core/share';
@@ -33,6 +34,7 @@ import {
   DEFAULT_HEIGHT,
   SIZE_MENUBAR_HEIGHT,
 } from '@/core/layout';
+import { isArray } from '@/core/helper';
 import { panels as globalPanels } from '@/core/panel';
 import { useDestroy } from '@/core/hooks/destroy.hook';
 import { ERDEditorStyle } from './ERDEditor.style';
@@ -57,8 +59,8 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   });
 
   destroy.push(
-    watch(props, name => {
-      if (name !== 'automaticLayout') return;
+    watch(props, propName => {
+      if (propName !== 'automaticLayout') return;
 
       if (props.automaticLayout) {
         resizeObserver.observe(editorRef.value);
@@ -97,7 +99,10 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
     loadKeymap(context.keymap, keymap);
   ctx.setUser = (user: User) => {};
 
-  ctx.extension = (config: Partial<ExtensionConfig>) => {};
+  ctx.extension = (config: Partial<ExtensionConfig>) => {
+    isArray(config.panels) &&
+      editorState.panels.push(...(config.panels as PanelConfig[]));
+  };
 
   return () => {
     const width = props.width;
