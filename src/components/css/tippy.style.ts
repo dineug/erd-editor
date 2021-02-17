@@ -1,5 +1,8 @@
 import { css } from '@/core/tagged';
 
+/**
+ * https://github.com/atomiks/tippyjs
+ */
 export const TippyStyle = css`
   .tippy-box[data-animation='fade'][data-state='hidden'] {
     opacity: 0;

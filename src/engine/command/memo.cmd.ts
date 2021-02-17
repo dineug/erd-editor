@@ -17,7 +17,6 @@ const MEMO_PADDING = SIZE_MEMO_PADDING * 2;
 
 export function executeAddMemo({ memoState: { memos } }: State, data: AddMemo) {
   memos.push(new MemoModel({ addMemo: data }));
-  // editorState.focus = true;
 }
 
 export function executeMoveMemo(

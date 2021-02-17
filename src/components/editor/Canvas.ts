@@ -11,6 +11,8 @@ import {
 import { styleMap } from 'lit-html/directives/style-map';
 import { repeat } from 'lit-html/directives/repeat';
 import { useContext } from '@/core/hooks/context.hook';
+import { useRenderTrigger } from '@/core/hooks/renderTrigger.hook';
+import { useDestroy } from '@/core/hooks/destroy.hook';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -27,11 +29,25 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
   ctx
 ) => {
   const contextRef = useContext(ctx);
+  const destroy = useDestroy();
+  const { render, trigger } = useRenderTrigger();
+
+  beforeMount(() => {
+    const {
+      memoState: { memos },
+      tableState: { tables },
+    } = contextRef.value.store;
+
+    destroy.push(watch(tables, render), watch(memos, render));
+  });
 
   return () => {
-    const { canvasState, memoState, tableState } = contextRef.value.store;
-    const tables = tableState.tables;
-    const memos = memoState.memos;
+    const {
+      canvasState,
+      memoState: { memos },
+      tableState: { tables },
+    } = contextRef.value.store;
+    trigger();
 
     return html`
       <div
