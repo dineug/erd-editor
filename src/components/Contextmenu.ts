@@ -10,6 +10,7 @@ import {
 import { styleMap } from 'lit-html/directives/style-map';
 import { SIZE_CONTEXTMENU_HEIGHT } from '@/core/layout';
 import { onStopPropagation } from '@/core/helper/dom.helper';
+import { iconTpl } from './Contextmenu.template';
 import { ContextmenuStyle } from './Contextmenu.style';
 
 declare global {
@@ -78,7 +79,7 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
               @mouseover=${() => onMouseover(menu)}
               @click=${() => onExecute(menu)}
             >
-              ${tplIcon(menu)}
+              ${iconTpl(menu)}
               <span
                 class="name"
                 style=${styleMap({
@@ -120,22 +121,6 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
         : null}
     `;
 };
-
-const tplIcon = (menu: Menu) =>
-  menu.icon
-    ? html`
-        <span class="icon">
-          <vuerd-icon .size=${menu.icon.size || 14} name=${menu.icon.name}>
-          </vuerd-icon>
-        </span>
-      `
-    : menu.iconBase64
-    ? html`
-        <span class="icon">
-          <img src=${menu.iconBase64} />
-        </span>
-      `
-    : html`<span class="icon"></span>`;
 
 defineComponent('vuerd-contextmenu', {
   observedProps: [

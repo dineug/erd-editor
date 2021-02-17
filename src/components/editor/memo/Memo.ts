@@ -9,7 +9,7 @@ import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
 import { SIZE_MEMO_PADDING } from '@/core/layout';
 import { useContext } from '@/core/hooks/context.hook';
-import { useResizeMemo, Position } from '@/core/hooks/resizeMemo.hook';
+import { useResizeMemo } from '@/core/hooks/resizeMemo.hook';
 import {
   selectMemo$,
   moveMemo,
@@ -17,7 +17,7 @@ import {
   changeMemoValue,
 } from '@/engine/command/memo.cmd.helper';
 import { keymapOptionToString } from '@/core/keymap';
-import { SashProps } from '@/components/Sash';
+import { sashTpl } from './Memo.template';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -122,80 +122,11 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
           .value=${memo.value}
           @input=${onInput}
         ></textarea>
-        ${tplSash(height, width, onMousedownSash)}
+        ${sashTpl(height, width, onMousedownSash)}
       </div>
     `;
   };
 };
-
-const createSash = (
-  top: number,
-  left: number
-): Array<{ position: Position } & Partial<SashProps>> => [
-  {
-    vertical: true,
-    position: 'left',
-  },
-  {
-    vertical: true,
-    position: 'right',
-    left,
-  },
-  {
-    horizontal: true,
-    position: 'top',
-  },
-  {
-    horizontal: true,
-    position: 'bottom',
-    top,
-  },
-  {
-    edge: true,
-    position: 'lt',
-    cursor: 'nwse-resize',
-  },
-  {
-    edge: true,
-    position: 'rt',
-    cursor: 'nesw-resize',
-    left,
-  },
-  {
-    edge: true,
-    position: 'lb',
-    cursor: 'nesw-resize',
-    top,
-  },
-  {
-    edge: true,
-    position: 'rb',
-    cursor: 'nwse-resize',
-    top,
-    left,
-  },
-];
-
-const tplSash = (
-  top: number,
-  left: number,
-  onMousedownSash: (event: MouseEvent, position: Position) => void
-) =>
-  createSash(top, left).map(
-    sash =>
-      html`
-        <vuerd-sash
-          ?vertical=${sash.vertical}
-          ?horizontal=${sash.horizontal}
-          ?edge=${sash.edge}
-          .cursor=${sash.cursor}
-          .top=${sash.top ?? 0}
-          .left=${sash.left ?? 0}
-          @mousedown=${(event: MouseEvent) =>
-            onMousedownSash(event, sash.position)}
-        ></vuerd-sash>
-      `
-  );
 
 defineComponent('vuerd-memo', {
   shadow: false,
