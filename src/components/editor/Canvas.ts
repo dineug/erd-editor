@@ -30,7 +30,7 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
 ) => {
   const contextRef = useContext(ctx);
   const destroy = useDestroy();
-  const { render, trigger } = useRenderTrigger();
+  const { renderTrigger } = useRenderTrigger();
 
   beforeMount(() => {
     const {
@@ -38,7 +38,7 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
       tableState: { tables },
     } = contextRef.value.store;
 
-    destroy.push(watch(tables, render), watch(memos, render));
+    destroy.push(watch(tables, renderTrigger), watch(memos, renderTrigger));
   });
 
   return () => {
@@ -47,7 +47,6 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
       memoState: { memos },
       tableState: { tables },
     } = contextRef.value.store;
-    trigger();
 
     return html`
       <div

@@ -36,7 +36,7 @@
     "lint": "eslint . --ext .ts"
   },
   "devDependencies": {
-    "@dineug/lit-observable": "^0.1.18",
+    "@dineug/lit-observable": "^0.1.19",
     "@dineug/sql-ddl-parser": "^0.1.2",
     "@fortawesome/free-solid-svg-icons": "^5.15.2",
     "@mdi/js": "^5.9.55",
