@@ -1,5 +1,5 @@
 module.exports = {
-  plugins: ['@snowpack/plugin-typescript'],
+  plugins: ['@snowpack/plugin-typescript', '@snowpack/plugin-dotenv'],
   mount: {
     public: '/',
     src: '/_dist_',

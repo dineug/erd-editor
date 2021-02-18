@@ -1,4 +1,5 @@
 export interface CanvasState {
+  version: string; // ADD: version 2.0.0
   width: number;
   height: number;
   scrollTop: number;
