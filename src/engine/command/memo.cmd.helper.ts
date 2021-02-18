@@ -25,15 +25,19 @@ export function addMemo(store: Store) {
 }
 
 export const moveMemo = (
-  { tableState: { tables }, memoState: { memos } }: Store,
+  {
+    tableState: { tables },
+    memoState: { memos },
+    canvasState: { zoomLevel },
+  }: Store,
   ctrlKey: boolean,
   movementX: number,
   movementY: number,
   memoId: string
 ) =>
   createCommand('memo.move', {
-    movementX,
-    movementY,
+    movementX: movementX / zoomLevel,
+    movementY: movementY / zoomLevel,
     tableIds: ctrlKey
       ? tables.filter(table => table.ui.active).map(table => table.id)
       : [],

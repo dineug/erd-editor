@@ -3,6 +3,7 @@ import {
   MoveCanvas,
   MovementCanvas,
   ResizeCanvas,
+  ZoomCanvas,
   ChangeCanvasShow,
   ChangeDatabase,
   ChangeDatabaseName,
@@ -13,22 +14,29 @@ import {
   MoveColumnOrder,
 } from '@@types/engine/command/canvas.cmd';
 
-export function executeMoveCanvas(state: State, data: MoveCanvas) {
-  const { canvasState } = state;
+export function executeMoveCanvas({ canvasState }: State, data: MoveCanvas) {
   canvasState.scrollTop = data.scrollTop;
   canvasState.scrollLeft = data.scrollLeft;
 }
 
-export function executeMovementCanvas(state: State, data: MovementCanvas) {
-  const { canvasState } = state;
+export function executeMovementCanvas(
+  { canvasState }: State,
+  data: MovementCanvas
+) {
   canvasState.scrollTop += data.movementY;
   canvasState.scrollLeft += data.movementX;
 }
 
-export function executeResizeCanvas(state: State, data: ResizeCanvas) {
-  const { canvasState } = state;
+export function executeResizeCanvas(
+  { canvasState }: State,
+  data: ResizeCanvas
+) {
   canvasState.width = data.width;
   canvasState.height = data.height;
+}
+
+export function executeZoomCanvas({ canvasState }: State, data: ZoomCanvas) {
+  canvasState.zoomLevel = data.zoomLevel;
 }
 
 export function executeChangeCanvasShow(state: State, data: ChangeCanvasShow) {
@@ -90,6 +98,7 @@ export const executeCanvasCommandMap = {
   'canvas.move': executeMoveCanvas,
   'canvas.movement': executeMovementCanvas,
   'canvas.resize': executeResizeCanvas,
+  'canvas.zoom': executeZoomCanvas,
   'canvas.changeShow': executeChangeCanvasShow,
   'canvas.changeDatabase': executeChangeDatabase,
   'canvas.changeDatabaseName': executeChangeDatabaseName,

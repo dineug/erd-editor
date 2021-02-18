@@ -57,6 +57,7 @@ export const createCanvasState = (): CanvasState => ({
   height: 2000,
   scrollTop: 0,
   scrollLeft: 0,
+  zoomLevel: 1,
   show: {
     tableComment: true,
     columnComment: true,

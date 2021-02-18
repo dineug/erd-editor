@@ -24,6 +24,10 @@ export declare function resizeCanvas(
   height: number
 ): CommandType<'canvas.resize'>;
 
+export declare function zoomCanvas(
+  zoomLevel: number
+): CommandType<'canvas.zoom'>;
+
 export declare function changeCanvasShow(
   store: Store,
   showKey: ShowKey

@@ -4,6 +4,12 @@ import camelCase from 'lodash/camelCase';
 import upperFirst from 'lodash/upperFirst';
 import { Subscription } from 'rxjs';
 import * as R from 'ramda';
+import {
+  SIZE_CANVAS_ZOOM_MIN,
+  SIZE_CANVAS_ZOOM_MAX,
+  SIZE_CANVAS_MIN,
+  SIZE_CANVAS_MAX,
+} from '@/core/layout';
 
 type TypeofName =
   | 'object'
@@ -61,6 +67,9 @@ export function* flat<T>(iterator: any[]): Generator<T> {
     else yield value;
   }
 }
+
+export const createBalanceRange = (min: number, max: number) => (num: number) =>
+  Math.min(Math.max(num, min), max);
 
 const TEXT_PADDING = 2;
 

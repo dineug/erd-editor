@@ -31,3 +31,5 @@ export const SIZE_MINIMAP_MARGIN = 20;
 export const SIZE_MENUBAR_HEIGHT = 30;
 export const SIZE_CANVAS_MIN = 2000;
 export const SIZE_CANVAS_MAX = 20000;
+export const SIZE_CANVAS_ZOOM_MAX = 1;
+export const SIZE_CANVAS_ZOOM_MIN = 0.1;

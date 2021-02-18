@@ -56,6 +56,7 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
           height: `${canvasState.height}px`,
           top: `${canvasState.scrollTop}px`,
           left: `${canvasState.scrollLeft}px`,
+          transform: `scale(${canvasState.zoomLevel})`,
         })}
       >
         ${repeat(

@@ -5,6 +5,9 @@ import {
   beforeMount,
   mounted,
   unmounted,
+  beforeFirstUpdate,
+  firstUpdated,
+  beforeUpdate,
   updated,
 } from '@dineug/lit-observable';
 import { useContext } from '@/core/hooks/context.hook';
@@ -50,6 +53,16 @@ defineComponent('vuerd-panel-view', {
     });
     mounted(() => panelInstance?.mounted && panelInstance.mounted());
     unmounted(() => panelInstance?.unmounted && panelInstance.unmounted());
+    beforeFirstUpdate(
+      () =>
+        panelInstance?.beforeFirstUpdate && panelInstance.beforeFirstUpdate()
+    );
+    firstUpdated(
+      () => panelInstance?.firstUpdated && panelInstance.firstUpdated()
+    );
+    beforeUpdate(
+      () => panelInstance?.beforeUpdate && panelInstance.beforeUpdate()
+    );
     updated(() => panelInstance?.updated && panelInstance.updated());
 
     return () => html`${panelInstance?.render()}`;

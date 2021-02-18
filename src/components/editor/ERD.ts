@@ -12,7 +12,7 @@ import {
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { useContext } from '@/core/hooks/context.hook';
-import { movementCanvas } from '@/engine/command/canvas.cmd.helper';
+import { movementCanvas, zoomCanvas } from '@/engine/command/canvas.cmd.helper';
 import { createERDMenus } from '@/core/contextmenu/erd.contextmenu';
 import { createShowMenus } from '@/core/contextmenu/show.contextmenu';
 import { createDatabaseMenus } from '@/core/contextmenu/database.contextmenu';
@@ -96,6 +96,18 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
     );
   });
 
+  const onWheel = (event: WheelEvent) => {
+    const { store } = contextRef.value;
+    const { canvasState } = store;
+    store.dispatch(
+      zoomCanvas(
+        event.deltaY < 0
+          ? canvasState.zoomLevel + 0.1
+          : canvasState.zoomLevel - 0.1
+      )
+    );
+  };
+
   return () => html`
     <div
       class="vuerd-erd"
@@ -105,6 +117,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
       })}
       @mousedown=${onMousedown}
       @contextmenu=${onContextmenu}
+      @wheel=${onWheel}
     >
       <div class="vuerd-erd-background"></div>
       <vuerd-canvas></vuerd-canvas>

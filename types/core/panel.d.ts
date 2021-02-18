@@ -5,6 +5,9 @@ export interface Panel {
   beforeMount?(): void;
   mounted?(): void;
   unmounted?(): void;
+  beforeFirstUpdate?(): void;
+  firstUpdated?(): void;
+  beforeUpdate?(): void;
   updated?(): void;
 }
 

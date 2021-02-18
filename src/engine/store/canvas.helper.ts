@@ -1,16 +1,24 @@
-import { SIZE_CANVAS_MIN, SIZE_CANVAS_MAX } from '@/core/layout';
-import { isString } from '@/core/helper';
+import {
+  SIZE_CANVAS_MIN,
+  SIZE_CANVAS_MAX,
+  SIZE_CANVAS_ZOOM_MIN,
+  SIZE_CANVAS_ZOOM_MAX,
+} from '@/core/layout';
+import { isString, createBalanceRange } from '@/core/helper';
 
-export function canvasSizeRange(size: number | string): number {
-  let resize = isString(size)
-    ? Number((size as string).replace(/[^0-9]/g, ''))
-    : size;
+export const canvasSizeBalanceRange = createBalanceRange(
+  SIZE_CANVAS_MIN,
+  SIZE_CANVAS_MAX
+);
 
-  if (resize < SIZE_CANVAS_MIN) {
-    resize = SIZE_CANVAS_MIN;
-  } else if (resize > SIZE_CANVAS_MAX) {
-    resize = SIZE_CANVAS_MAX;
-  }
+export const zoomBalanceRange = createBalanceRange(
+  SIZE_CANVAS_ZOOM_MIN,
+  SIZE_CANVAS_ZOOM_MAX
+);
 
-  return resize as number;
-}
+export const canvasSizeRange = (size: number | string) =>
+  canvasSizeBalanceRange(
+    (isString(size)
+      ? Number((size as string).replace(/[^0-9]/g, ''))
+      : size) as number
+  );

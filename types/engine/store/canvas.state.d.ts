@@ -4,6 +4,7 @@ export interface CanvasState {
   height: number;
   scrollTop: number;
   scrollLeft: number;
+  zoomLevel: number; // ADD: version 2.0.0
   show: Show;
   database: Database;
   databaseName: string;

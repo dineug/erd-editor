@@ -24,15 +24,19 @@ export function addTable(store: Store) {
 }
 
 export const moveTable = (
-  { tableState: { tables }, memoState: { memos } }: Store,
+  {
+    tableState: { tables },
+    memoState: { memos },
+    canvasState: { zoomLevel },
+  }: Store,
   ctrlKey: boolean,
   movementX: number,
   movementY: number,
   tableId: string
 ) =>
   createCommand('table.move', {
-    movementX,
-    movementY,
+    movementX: movementX / zoomLevel,
+    movementY: movementY / zoomLevel,
     tableIds: ctrlKey
       ? tables.filter(table => table.ui.active).map(table => table.id)
       : [tableId],

@@ -21,6 +21,10 @@ export interface ResizeCanvas {
   height: number;
 }
 
+export interface ZoomCanvas {
+  zoomLevel: number;
+}
+
 export interface ChangeCanvasShow {
   showKey: ShowKey;
   value: boolean;
@@ -59,6 +63,7 @@ export interface CanvasCommandMap {
   'canvas.move': MoveCanvas;
   'canvas.movement': MovementCanvas;
   'canvas.resize': ResizeCanvas;
+  'canvas.zoom': ZoomCanvas;
   'canvas.changeShow': ChangeCanvasShow;
   'canvas.changeDatabase': ChangeDatabase;
   'canvas.changeDatabaseName': ChangeDatabaseName;
