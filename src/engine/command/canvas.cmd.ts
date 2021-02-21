@@ -4,6 +4,7 @@ import {
   MovementCanvas,
   ResizeCanvas,
   ZoomCanvas,
+  MovementZoomCanvas,
   ChangeCanvasShow,
   ChangeDatabase,
   ChangeDatabaseName,
@@ -13,6 +14,7 @@ import {
   ChangeRelationshipDataTypeSync,
   MoveColumnOrder,
 } from '@@types/engine/command/canvas.cmd';
+import { zoomBalanceRange } from '@/engine/store/canvas.helper';
 
 export function executeMoveCanvas({ canvasState }: State, data: MoveCanvas) {
   canvasState.scrollTop = data.scrollTop;
@@ -36,7 +38,16 @@ export function executeResizeCanvas(
 }
 
 export function executeZoomCanvas({ canvasState }: State, data: ZoomCanvas) {
-  canvasState.zoomLevel = data.zoomLevel;
+  canvasState.zoomLevel = zoomBalanceRange(data.zoomLevel);
+}
+
+export function executeMovementZoomCanvas(
+  { canvasState }: State,
+  data: MovementZoomCanvas
+) {
+  canvasState.zoomLevel = zoomBalanceRange(
+    canvasState.zoomLevel + data.movementZoomLevel
+  );
 }
 
 export function executeChangeCanvasShow(state: State, data: ChangeCanvasShow) {
@@ -99,6 +110,7 @@ export const executeCanvasCommandMap = {
   'canvas.movement': executeMovementCanvas,
   'canvas.resize': executeResizeCanvas,
   'canvas.zoom': executeZoomCanvas,
+  'canvas.movementZoom': executeMovementZoomCanvas,
   'canvas.changeShow': executeChangeCanvasShow,
   'canvas.changeDatabase': executeChangeDatabase,
   'canvas.changeDatabaseName': executeChangeDatabaseName,

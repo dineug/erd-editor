@@ -17,6 +17,7 @@ import {
   changeTableComment,
   selectTable$,
   moveTable,
+  removeTable,
 } from '@/engine/command/table.cmd.helper';
 
 declare global {
@@ -77,6 +78,11 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     }
   };
 
+  const onRemoveTable = () => {
+    const { store } = contextRef.value;
+    store.dispatch(removeTable(store, props.table.id));
+  };
+
   return () => {
     const {
       keymap,
@@ -110,6 +116,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
               data-tippy-content=${keymapOptionsToString(keymap.removeTable)}
               name="times"
               size="12"
+              @click=${onRemoveTable}
             ></vuerd-icon>
             <vuerd-icon
               class="vuerd-button"

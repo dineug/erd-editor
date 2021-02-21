@@ -29,7 +29,8 @@ export function createStore(): IStore {
   const history = createHistory(() => {});
   const command = executeCommand(state);
   const dispatch = (...commands: CommandTypeAny[]) =>
-    dispatch$.next([...flat<CommandTypeAll>(commands)]);
+    queueMicrotask(() => dispatch$.next([...flat<CommandTypeAll>(commands)]));
+
   const destroy = () => {
     subscriptionHelper.destroy();
     history.clear();

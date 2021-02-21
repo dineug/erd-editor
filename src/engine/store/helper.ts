@@ -18,8 +18,8 @@ export function nextPoint({
   memoState: { memos },
 }: Store): Point {
   const point: Point = {
-    x: SIZE_START_X + scrollLeft,
-    y: SIZE_START_Y + scrollTop,
+    x: SIZE_START_X - scrollLeft,
+    y: SIZE_START_Y - scrollTop,
   };
 
   let isPosition = false;

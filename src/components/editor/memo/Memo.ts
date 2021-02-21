@@ -18,6 +18,7 @@ import {
 } from '@/engine/command/memo.cmd.helper';
 import { keymapOptionsToString } from '@/core/keymap';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
+import { onStopPropagation } from '@/core/helper/dom.helper';
 import { sashTpl } from './Memo.template';
 
 declare global {
@@ -122,6 +123,7 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
           spellcheck="false"
           .value=${memo.value}
           @input=${onInput}
+          @wheel=${onStopPropagation}
         ></textarea>
         ${sashTpl(height, width, onMousedownSash)}
       </div>

@@ -7,6 +7,7 @@ export const MemoStyle = css`
     opacity: 0.9;
     fill: #fff0;
     background-color: var(--vuerd-color-table);
+    border-radius: 5px;
   }
 
   .vuerd-memo:hover {

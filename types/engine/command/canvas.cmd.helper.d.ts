@@ -28,6 +28,10 @@ export declare function zoomCanvas(
   zoomLevel: number
 ): CommandType<'canvas.zoom'>;
 
+export declare function movementZoomCanvas(
+  movementZoomLevel: number
+): CommandType<'canvas.movementZoom'>;
+
 export declare function changeCanvasShow(
   store: Store,
   showKey: ShowKey

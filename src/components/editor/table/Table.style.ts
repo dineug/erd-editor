@@ -15,6 +15,7 @@ export const TableStyle = css`
     fill: #fff0;
     background-color: var(--vuerd-color-table);
     border: solid #fff0 ${SIZE_TABLE_BORDER}px;
+    border-radius: 5px;
   }
 
   .vuerd-table:hover {

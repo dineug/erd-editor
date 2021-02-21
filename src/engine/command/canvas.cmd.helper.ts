@@ -23,6 +23,11 @@ export const zoomCanvas = (zoomLevel: number) =>
     zoomLevel: zoomBalanceRange(zoomLevel),
   });
 
+export const movementZoomCanvas = (movementZoomLevel: number) =>
+  createCommand('canvas.movementZoom', {
+    movementZoomLevel,
+  });
+
 export const changeCanvasShow = (
   { canvasState: { show } }: Store,
   showKey: ShowKey
