@@ -7,20 +7,24 @@ import { Logger } from '@/core/logger';
 import * as CanvasCommand from './canvas.cmd.helper';
 import * as MemoCommand from './memo.cmd.helper';
 import * as TableCommand from './table.cmd.helper';
+import * as ColumnCommand from './column.cmd.helper';
 import { executeCanvasCommandMap } from './canvas.cmd';
 import { executeMemoCommandMap } from './memo.cmd';
 import { executeTableCommandMap } from './table.cmd';
+import { executeColumnCommandMap } from './column.cmd';
 
 const executeCommandMap = {
   ...executeCanvasCommandMap,
   ...executeMemoCommandMap,
   ...executeTableCommandMap,
+  ...executeColumnCommandMap,
 };
 
 export const createCommand = (): Command => ({
   canvas: CanvasCommand,
   memo: MemoCommand,
   table: TableCommand,
+  column: ColumnCommand,
 });
 
 export function createStream() {

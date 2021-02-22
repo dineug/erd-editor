@@ -4,12 +4,6 @@ import camelCase from 'lodash/camelCase';
 import upperFirst from 'lodash/upperFirst';
 import { Subscription } from 'rxjs';
 import * as R from 'ramda';
-import {
-  SIZE_CANVAS_ZOOM_MIN,
-  SIZE_CANVAS_ZOOM_MAX,
-  SIZE_CANVAS_MIN,
-  SIZE_CANVAS_MAX,
-} from '@/core/layout';
 
 type TypeofName =
   | 'object'
@@ -60,6 +54,11 @@ export const isBoolean = isTypeof('boolean');
 
 export const getData = <T extends { id: string }>(list: Array<T>, id: string) =>
   list.find(data => data.id === id);
+
+export const getIndex = <T extends { id: string }>(
+  list: Array<T>,
+  id: string
+) => R.findIndex(R.propEq('id', id))(list);
 
 export function* flat<T>(iterator: any[]): Generator<T> {
   for (const value of iterator) {
