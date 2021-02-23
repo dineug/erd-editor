@@ -1,4 +1,5 @@
 import '@/components/editor/Input';
+import '@/components/editor/table/column/Column';
 
 import { Table } from '@@types/engine/store/table.state';
 import { Move } from '@/internal-types/event.helper';
@@ -9,6 +10,7 @@ import {
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
+import { repeat } from 'lit-html/directives/repeat';
 import { keymapOptionsToString } from '@/core/keymap';
 import { useContext } from '@/core/hooks/context.hook';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
@@ -19,6 +21,7 @@ import {
   moveTable,
   removeTable,
 } from '@/engine/command/table.cmd.helper';
+import { addColumn } from '@/engine/command/column.cmd.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -83,6 +86,11 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     store.dispatch(removeTable(store, props.table.id));
   };
 
+  const onAddColumn = () => {
+    const { store } = contextRef.value;
+    store.dispatch(addColumn(store, props.table.id));
+  };
+
   return () => {
     const {
       keymap,
@@ -91,7 +99,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
       },
     } = contextRef.value;
     const table = props.table;
-    const { ui } = table;
+    const { ui, columns } = table;
 
     return html`
       <div
@@ -123,6 +131,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
               data-tippy-content=${keymapOptionsToString(keymap.addColumn)}
               name="plus"
               size="12"
+              @click=${onAddColumn}
             ></vuerd-icon>
           </div>
           <div class="vuerd-table-header-body">
@@ -146,6 +155,19 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
                 `
               : null}
           </div>
+        </div>
+        <div class="vuerd-table-body">
+          ${repeat(
+            columns,
+            column => column.id,
+            column =>
+              html`
+                <vuerd-column
+                  .tableId=${table.id}
+                  .column=${column}
+                ></vuerd-column>
+              `
+          )}
         </div>
       </div>
     `;

@@ -4,10 +4,18 @@ import {
   queryAll,
   closestElement,
 } from '@dineug/lit-observable';
-import tippy, { createSingleton, CreateSingletonInstance } from 'tippy.js';
+import tippy, {
+  createSingleton,
+  CreateSingletonInstance,
+  Props,
+} from 'tippy.js';
 import { flat, isArray } from '@/core/helper';
 
-export function useTooltip(selectors: string[], ctx: HTMLElement) {
+export function useTooltip(
+  selectors: string[],
+  ctx: HTMLElement,
+  options: Partial<Props> = {}
+) {
   const elementsRefs = selectors.map(selector =>
     queryAll<Array<HTMLElement>>(selector)
   );
@@ -26,12 +34,15 @@ export function useTooltip(selectors: string[], ctx: HTMLElement) {
         appendTo: root ?? 'parent',
         trigger: 'manual',
       }),
-      {
-        appendTo: root ?? 'parent',
-        zIndex: 100003000,
-        delay: [500, 100],
-        moveTransition: 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
-      }
+      Object.assign(
+        {
+          appendTo: root ?? 'parent',
+          zIndex: 100003000,
+          delay: [500, 100],
+          moveTransition: 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
+        },
+        options
+      )
     );
   };
 

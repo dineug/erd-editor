@@ -45,6 +45,8 @@ defineComponent('vuerd-icon', {
   ],
   styleMap: {
     display: 'flex',
+    height: '100%',
+    alignItems: 'center',
   },
   style: IconStyle,
   render: (props: IconProps, ctx: IconElement) => () => {

@@ -56,10 +56,6 @@ export function getChangeOption(
   columnId: string,
   columnOptionKey: 'autoIncrement' | 'primaryKey' | 'unique' | 'notNull'
 ): boolean {
-  let value = false;
   const column = getColumn(tables, tableId, columnId);
-  if (column) {
-    value = !column.option[columnOptionKey];
-  }
-  return value;
+  return column ? !column.option[columnOptionKey] : false;
 }

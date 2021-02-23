@@ -36,18 +36,18 @@ export class ColumnModel implements Column {
 
   constructor(data: ColumnData) {
     const { addColumn, addCustomColumn } = data;
+
     if (addColumn) {
       const { id } = addColumn;
+
       this.id = id;
     } else if (addCustomColumn) {
       const { id, option, ui, value } = addCustomColumn;
+
       this.id = id;
-      if (option) {
-        this.option = Object.assign(this.option, option);
-      }
-      if (ui) {
-        this.ui = Object.assign(this.ui, ui);
-      }
+      option && Object.assign(this.option, option);
+      ui && Object.assign(this.ui, ui);
+
       if (value) {
         this.name = value.name;
         this.comment = value.comment;
