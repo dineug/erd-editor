@@ -22,3 +22,13 @@ export const canvasSizeRange = (size: number | string) =>
       ? Number((size as string).replace(/[^0-9]/g, ''))
       : size) as number
   );
+
+export const zoomLevelRange = (zoomLevel: number | string) =>
+  zoomBalanceRange(
+    (isString(zoomLevel)
+      ? Number((zoomLevel as string).replace(/[^0-9]/g, ''))
+      : zoomLevel) as number
+  );
+
+export const zoomDisplayFormat = (zoomLevel: number) =>
+  `${(zoomLevel * 100).toFixed()}%`;

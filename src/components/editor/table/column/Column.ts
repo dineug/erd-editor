@@ -1,4 +1,5 @@
 import './ColumnKey';
+import './ColumnDataType';
 
 import { Column } from '@@types/engine/store/table.state';
 import {
@@ -11,6 +12,7 @@ import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { keymapOptionsToString } from '@/core/keymap';
 import { useContext } from '@/core/hooks/context.hook';
 import { removeColumn } from '@/engine/command/column.cmd.helper';
+import { columnTpl } from './Column.template';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -54,6 +56,7 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
         draggable="true"
       >
         <vuerd-column-key .ui=${ui}></vuerd-column-key>
+        ${columnTpl(props, contextRef.value)}
         <vuerd-icon
           class="vuerd-button"
           data-tippy-content=${keymapOptionsToString(keymap.removeColumn)}

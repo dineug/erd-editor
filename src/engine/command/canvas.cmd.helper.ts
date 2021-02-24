@@ -6,7 +6,7 @@ import {
   ColumnType,
 } from '@@types/engine/store/canvas.state';
 import { Store } from '@@types/engine/store';
-import { createCommand } from './command.helper';
+import { createCommand } from './helper';
 import { zoomBalanceRange } from '@/engine/store/canvas.helper';
 
 export const moveCanvas = (scrollTop: number, scrollLeft: number) =>

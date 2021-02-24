@@ -8,7 +8,7 @@ import {
 } from '@@types/engine/command/column.cmd';
 import { uuid } from '@/core/helper';
 import { getChangeOption } from '@/engine/store/column.helper';
-import { createCommand } from './command.helper';
+import { createCommand } from './helper';
 import { SIZE_MIN_WIDTH } from '@/core/layout';
 
 export const addColumn = (store: Store, tableId?: string) =>

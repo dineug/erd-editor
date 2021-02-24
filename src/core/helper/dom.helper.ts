@@ -10,23 +10,57 @@ export function onNumberOnly(event: Event) {
   input.value = input.value.replace(/[^0-9]/g, '');
 }
 
-export const onPreventDefault = (event: Event) => {
+export function onPreventDefault(event: Event) {
   event.preventDefault();
   return event;
-};
+}
 
-export const onStopPropagation = (event: Event) => {
+export function onStopPropagation(event: Event) {
   event.stopPropagation();
   return event;
-};
+}
 
-export const onStopImmediatePropagation = (event: Event) => {
+export function onStopImmediatePropagation(event: Event) {
   event.stopImmediatePropagation();
   return event;
-};
+}
 
 export const onStopAll = R.pipe(
   onPreventDefault,
   onStopPropagation,
   onStopImmediatePropagation
 );
+
+export function markToHTML(
+  className: string,
+  target: string,
+  keyword: string
+): string {
+  const match = new RegExp(keyword.split('').join('|'), 'i');
+  const list = target.split('');
+  const buffer: string[] = [];
+
+  while (list.length) {
+    const cur = list.shift() as string;
+
+    match.test(cur)
+      ? buffer.push(`<span class="${className}">${cur}</span>`)
+      : buffer.push(cur);
+  }
+
+  return buffer.join('');
+}
+
+export function lastCursorFocus(input: HTMLInputElement) {
+  const len = input.value.length;
+  input.selectionStart = len;
+  input.selectionEnd = len;
+  input.focus();
+}
+
+export function onInputClear(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (!input) return;
+
+  input.value = '';
+}

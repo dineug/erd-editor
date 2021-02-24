@@ -9,6 +9,7 @@ import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
 import { SIZE_MIN_WIDTH } from '@/core/layout';
 import { useDestroy } from '@/core/hooks/destroy.hook';
+import { lastCursorFocus } from '@/core/helper/dom.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -48,15 +49,10 @@ const Input: FunctionalComponent<InputProps, InputElement> = (props, ctx) => {
 
   destroy.push(
     watch(props, propName => {
-      if (propName === 'edit' && props.edit) {
-        const input = inputRef.value;
-        if (!input) return;
+      const input = inputRef.value;
+      if (propName !== 'edit' || !props.edit || !input) return;
 
-        const len = input.value.length;
-        input.selectionStart = len;
-        input.selectionEnd = len;
-        input.focus();
-      }
+      lastCursorFocus(input);
     })
   );
 

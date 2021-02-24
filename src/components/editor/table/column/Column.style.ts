@@ -29,7 +29,7 @@ export const ColumnStyle = css`
   }
 
   .vuerd-column > vuerd-icon,
-  vuerd-input,
+  .vuerd-column > vuerd-input,
   vuerd-column-key,
   vuerd-column-not-null,
   vuerd-column-data-type,

@@ -57,6 +57,7 @@ export function createGlobalEventObservable(): GlobalEventObservable {
       })
     )
   );
+  const moveStart$ = merge(mousedown$, touchstart$);
   const moveEnd$ = merge(mouseup$, touchend$);
   const drag$ = move$.pipe(takeUntil(moveEnd$));
 
@@ -67,6 +68,7 @@ export function createGlobalEventObservable(): GlobalEventObservable {
     touchstart$,
     touchend$,
     touchmove$,
+    moveStart$,
     moveEnd$,
     move$,
     drag$,

@@ -18,11 +18,13 @@ export type CommandKey = keyof CommandMap;
 export interface CommandType<K extends CommandKey> {
   name: K;
   data: CommandMap[K];
+  timestamp: number;
 }
 
 export interface CommandTypeAny {
   name: string;
   data: any;
+  timestamp: number;
 }
 
 export type CommandTypeAll = CommandType<CommandKey>;

@@ -8,6 +8,7 @@ export const ERDEditorStyle = css`
     flex-direction: column;
     overflow: hidden;
     background-color: #f8f8f8;
+    box-sizing: border-box;
   }
 
   .vuerd-ghost-text-helper {
@@ -16,6 +17,11 @@ export const ERDEditorStyle = css`
     top: -100px;
     font-size: ${SIZE_FONT}px;
     font-family: var(--vuerd-font-family);
+  }
+
+  .vuerd-ghost-focus-helper {
+    position: fixed;
+    top: -100px;
   }
 
   ${TippyStyle}

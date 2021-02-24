@@ -2,7 +2,7 @@ import { Point } from '@@types/engine/store/relationship.helper';
 import { Store } from '@@types/engine/store';
 import { PureTable } from '@@types/engine/store/table.state';
 import { Helper } from '@@types/core/helper';
-import { createCommand } from './command.helper';
+import { createCommand } from './helper';
 import { SIZE_MIN_WIDTH } from '@/core/layout';
 import { uuid } from '@/core/helper';
 import { nextZIndex, nextPoint } from '@/engine/store/helper';

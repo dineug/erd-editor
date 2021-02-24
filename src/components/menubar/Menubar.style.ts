@@ -8,10 +8,20 @@ export const MenubarStyle = css`
     align-items: center;
     overflow: hidden;
     background-color: var(--vuerd-color-menubar);
+    box-sizing: border-box;
+    border-bottom: solid #fff0 1px;
+  }
+
+  .vuerd-menubar.focus {
+    border-bottom: solid var(--vuerd-color-focus) 1px;
+  }
+
+  .vuerd-menubar.edit {
+    border-bottom: solid var(--vuerd-color-edit) 1px;
   }
 
   .vuerd-menubar-input {
-    margin-left: 20px;
+    margin-left: 15px;
     outline: none;
     border: none;
     opacity: 0.9;

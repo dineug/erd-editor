@@ -10,7 +10,6 @@ import {
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { SIZE_CONTEXTMENU_HEIGHT } from '@/core/layout';
-import { onStopPropagation } from '@/core/helper/dom.helper';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useDestroy } from '@/core/hooks/destroy.hook';
 import { iconTpl } from './Contextmenu.template';
@@ -65,6 +64,19 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
     }
   };
 
+  const createContextmenuEvent = (eventName: string) => (event: Event) => {
+    event.stopPropagation();
+    ctx.dispatchEvent(
+      new CustomEvent(eventName, {
+        composed: true,
+        bubbles: true,
+      })
+    );
+  };
+
+  const onMousedown = createContextmenuEvent('vuerd-contextmenu-mousedown');
+  const onTouchstart = createContextmenuEvent('vuerd-contextmenu-touchstart');
+
   destroy.push(
     watch(props, propName => {
       if (propName === 'menus') {
@@ -83,8 +95,8 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
           left: `${props.x}px`,
           top: `${props.y}px`,
         })}
-        @mousedown=${onStopPropagation}
-        @touchstart=${onStopPropagation}
+        @mousedown=${onMousedown}
+        @touchstart=${onTouchstart}
       >
         ${props.menus.map(
           menu => html`

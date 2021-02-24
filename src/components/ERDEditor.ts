@@ -23,9 +23,12 @@ import {
   mounted,
   unmounted,
   watch,
+  observable,
 } from '@dineug/lit-observable';
+import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
 import { cache } from 'lit-html/directives/cache';
+import { fromEvent, merge } from 'rxjs';
 import { createdERDEditorContext } from '@/core/ERDEditorContext';
 import { loadTheme } from '@/core/theme';
 import { loadKeymap } from '@/core/keymap';
@@ -34,9 +37,11 @@ import {
   DEFAULT_HEIGHT,
   SIZE_MENUBAR_HEIGHT,
 } from '@/core/layout';
-import { isArray } from '@/core/helper';
+import { isArray, createSubscriptionHelper } from '@/core/helper';
+import { ignoreEnterProcess } from '@/core/helper/operator.helper';
 import { panels as globalPanels } from '@/core/panel';
 import { useDestroy } from '@/core/hooks/destroy.hook';
+import { Logger } from '@/core/logger';
 import { ERDEditorStyle } from './ERDEditor.style';
 
 const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
@@ -48,7 +53,9 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   const { canvasState, editorState } = store;
   const editorRef = query<HTMLElement>('.vuerd-editor');
   const ghostTextRef = query<HTMLSpanElement>('.vuerd-ghost-text-helper');
+  const ghostInputRef = query<HTMLInputElement>('.vuerd-ghost-focus-helper');
   const destroy = useDestroy();
+  const subscriptionHelper = createSubscriptionHelper();
   // @ts-ignore
   const resizeObserver = new ResizeObserver(entries => {
     entries.forEach((entry: any) => {
@@ -57,6 +64,15 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
       ctx.setAttribute('height', height);
     });
   });
+  const state = observable({ focus: false });
+
+  const setFocus = () => (state.focus = document.activeElement === ctx);
+
+  const onFocus = () =>
+    setTimeout(() => {
+      document.activeElement !== ctx && helper.focus();
+      setFocus();
+    }, 0);
 
   destroy.push(
     watch(props, propName => {
@@ -72,12 +88,40 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
 
   mounted(() => {
     helper.setGhostText(ghostTextRef.value);
+    helper.setGhostInput(ghostInputRef.value);
+    helper.focus();
+    setFocus();
+
     props.automaticLayout && resizeObserver.observe(editorRef.value);
+    subscriptionHelper.push(
+      fromEvent<KeyboardEvent>(editorRef.value, 'keydown')
+        .pipe(ignoreEnterProcess)
+        .subscribe(event => {
+          Logger.debug(`
+metaKey: ${event.metaKey}
+ctrlKey: ${event.ctrlKey}
+altKey: ${event.altKey}
+shiftKey: ${event.shiftKey}
+code: ${event.code}
+key: ${event.key}
+          `);
+
+          helper.keydown$.next(event);
+        }),
+      merge(
+        fromEvent(editorRef.value, 'mousedown'),
+        fromEvent(editorRef.value, 'touchstart'),
+        fromEvent(editorRef.value, 'vuerd-contextmenu-mousedown'),
+        fromEvent(editorRef.value, 'vuerd-contextmenu-touchstart')
+      ).subscribe(onFocus),
+      globalEvent.moveStart$.subscribe(() => setTimeout(setFocus, 0))
+    );
   });
 
   unmounted(() => {
     globalEvent.destroy();
     store.destroy();
+    subscriptionHelper.destroy();
     resizeObserver.disconnect();
   });
 
@@ -88,8 +132,14 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
     set(json: string) {},
   });
 
-  ctx.focus = () => {};
-  ctx.blur = () => {};
+  ctx.focus = () => {
+    helper.focus();
+    setFocus();
+  };
+  ctx.blur = () => {
+    helper.blur();
+    setFocus();
+  };
   ctx.clear = () => {};
   ctx.initLoadJson = (json: string) => {};
   ctx.loadSQLDDL = (sql: string) => {};
@@ -116,13 +166,16 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
     return html`
       <vuerd-provider .value=${context}>
         <div
-          class="vuerd-editor"
+          class=${classMap({
+            'vuerd-editor': true,
+            focus: state.focus,
+          })}
           style=${styleMap({
             width: props.automaticLayout ? `100%` : `${props.width}px`,
             height: props.automaticLayout ? `100%` : `${props.height}px`,
           })}
         >
-          <vuerd-menubar></vuerd-menubar>
+          <vuerd-menubar .focusState=${state.focus}></vuerd-menubar>
           ${cache(
             isERD
               ? html`<vuerd-erd .width=${width} .height=${height}></vuerd-erd>`
@@ -137,6 +190,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
                 ></vuerd-panel-view>
               `
             : null}
+          <input class="vuerd-ghost-focus-helper" type="text" />
         </div>
         <span class="vuerd-ghost-text-helper"></span>
       </vuerd-provider>

@@ -1,9 +1,10 @@
-import { Helper as IHelper } from '@@types/core/helper';
+import { IHelper } from '@/internal-types/helper';
 import flow from 'lodash/flow';
 import camelCase from 'lodash/camelCase';
 import upperFirst from 'lodash/upperFirst';
-import { Subscription } from 'rxjs';
+import { Subscription, Subject, fromEvent } from 'rxjs';
 import * as R from 'ramda';
+import { onInputClear } from './dom.helper';
 
 type TypeofName =
   | 'object'
@@ -74,9 +75,20 @@ const TEXT_PADDING = 2;
 
 export class Helper implements IHelper {
   private ghostText: HTMLSpanElement | null = null;
+  private ghostInput: HTMLInputElement | null = null;
+  private subscriptionHelper = createSubscriptionHelper();
+
+  keydown$ = new Subject<KeyboardEvent>();
 
   setGhostText(ghostText: HTMLSpanElement) {
     this.ghostText = ghostText;
+  }
+
+  setGhostInput(ghostInput: HTMLInputElement) {
+    this.ghostInput = ghostInput;
+    this.subscriptionHelper.push(
+      fromEvent(this.ghostInput, 'input').subscribe(onInputClear)
+    );
   }
 
   getTextWidth(value: string): number {
@@ -84,5 +96,19 @@ export class Helper implements IHelper {
 
     this.ghostText.innerText = value;
     return this.ghostText.offsetWidth + TEXT_PADDING;
+  }
+
+  focus() {
+    if (!this.ghostInput) return;
+    this.ghostInput.focus();
+  }
+
+  blur() {
+    if (!this.ghostInput) return;
+    this.ghostInput.blur();
+  }
+
+  destroy() {
+    this.subscriptionHelper.destroy();
   }
 }

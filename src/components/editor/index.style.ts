@@ -6,6 +6,7 @@ import { TableStyle } from './table/Table.style';
 import { InputStyle } from './Input.style';
 import { ColumnStyle } from './table/column/Column.style';
 import { ColumnKeyStyle } from './table/column/ColumnKey.style';
+import { ColumnDataTypeStyle } from './table/column/ColumnDataType.style';
 
 export const EditorStyle = [
   DefaultStyle,
@@ -16,4 +17,5 @@ export const EditorStyle = [
   InputStyle,
   ColumnStyle,
   ColumnKeyStyle,
+  ColumnDataTypeStyle,
 ].join('');

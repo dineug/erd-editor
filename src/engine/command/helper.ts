@@ -6,4 +6,5 @@ export const createCommand = <K extends CommandKey>(
 ) => ({
   name,
   data,
+  timestamp: Date.now(),
 });

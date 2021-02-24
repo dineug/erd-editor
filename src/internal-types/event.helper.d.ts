@@ -15,6 +15,7 @@ export interface GlobalEventObservable {
   touchstart$: Observable<TouchEvent>;
   touchend$: Observable<TouchEvent>;
   touchmove$: Observable<TouchEvent>;
+  moveStart$: Observable<MouseEvent | TouchEvent>;
   moveEnd$: Observable<MouseEvent | TouchEvent>;
   move$: Observable<Move>;
   drag$: Observable<Move>;
