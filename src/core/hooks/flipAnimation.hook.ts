@@ -6,7 +6,11 @@ export function useFlipAnimation(
   selector: string,
   animationName: string
 ) {
-  const flipAnimation = new FlipAnimation(ctx, selector, animationName);
+  const flipAnimation = new FlipAnimation(
+    ctx.shadowRoot ? ctx.shadowRoot : ctx,
+    selector,
+    animationName
+  );
 
   beforeUpdate(() => flipAnimation.snapshot());
   updated(() => flipAnimation.play());
