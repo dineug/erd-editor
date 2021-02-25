@@ -8,13 +8,13 @@ import { nextZIndex, nextPoint } from '@/engine/store/helper';
 
 export * from './memo.cmd.helper.gen';
 
-export function addMemo(store: Store) {
+export function addMemo(store: Store, active = true) {
   const { tableState, memoState } = store;
   const point = nextPoint(store);
   return createCommand('memo.add', {
     id: uuid(),
     ui: {
-      active: true,
+      active,
       left: point.x,
       top: point.y,
       zIndex: nextZIndex(tableState.tables, memoState.memos),

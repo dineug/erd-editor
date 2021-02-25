@@ -2,7 +2,8 @@ import { Store } from '../store';
 import { CommandType } from './index';
 
 export declare function addTable$(
-  store: Store
+  store: Store,
+  active?: boolean
 ): Generator<
   | CommandType<'table.selectEnd'>
   | CommandType<'memo.selectEnd'>

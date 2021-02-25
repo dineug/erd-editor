@@ -22,6 +22,7 @@ import {
   removeTable,
 } from '@/engine/command/table.cmd.helper';
 import { addColumn } from '@/engine/command/column.cmd.helper';
+import { isFocus } from '@/engine/store/editor.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -96,6 +97,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
       keymap,
       store: {
         canvasState: { show },
+        editorState,
       },
     } = contextRef.value;
     const table = props.table;
@@ -139,6 +141,11 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
               class="vuerd-table-name"
               .width=${table.ui.widthName}
               .value=${table.name}
+              .focusState=${isFocus(
+                editorState.focusTable,
+                'tableName',
+                table.id
+              )}
               placeholder="table"
               @input=${(event: InputEvent) => onInput(event, 'tableName')}
             ></vuerd-input>
@@ -148,6 +155,11 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
                     class="vuerd-table-comment"
                     .width=${table.ui.widthComment}
                     .value=${table.comment}
+                    .focusState=${isFocus(
+                      editorState.focusTable,
+                      'tableComment',
+                      table.id
+                    )}
                     placeholder="comment"
                     @input=${(event: InputEvent) =>
                       onInput(event, 'tableComment')}

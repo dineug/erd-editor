@@ -4,6 +4,8 @@ import {
   defineComponent,
   html,
   FunctionalComponent,
+  mounted,
+  query,
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
@@ -39,6 +41,7 @@ const MEMO_HEADER = 6 + MEMO_PADDING;
 const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
   const { onMousedownSash } = useResizeMemo(props, ctx);
+  const textareaRef = query<HTMLTextAreaElement>('.vuerd-memo-textarea');
   useTooltip(['.vuerd-button'], ctx);
 
   const onMove = ({ event, movementX, movementY }: Move) => {
@@ -82,6 +85,13 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
     const textarea = event.target as HTMLTextAreaElement;
     store.dispatch(changeMemoValue(props.memo.id, textarea.value));
   };
+
+  mounted(() => {
+    const textarea = textareaRef.value;
+    if (!textarea || !props.memo.ui.active) return;
+
+    textarea.focus();
+  });
 
   return () => {
     const { keymap } = contextRef.value;

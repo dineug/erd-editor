@@ -8,16 +8,19 @@ import * as CanvasCommand from './canvas.cmd.helper';
 import * as MemoCommand from './memo.cmd.helper';
 import * as TableCommand from './table.cmd.helper';
 import * as ColumnCommand from './column.cmd.helper';
+import * as EditorCommand from './editor.cmd.helper';
 import { executeCanvasCommandMap } from './canvas.cmd';
 import { executeMemoCommandMap } from './memo.cmd';
 import { executeTableCommandMap } from './table.cmd';
 import { executeColumnCommandMap } from './column.cmd';
+import { executeEditorCommandMap } from './editor.cmd';
 
 const executeCommandMap = {
   ...executeCanvasCommandMap,
   ...executeMemoCommandMap,
   ...executeTableCommandMap,
   ...executeColumnCommandMap,
+  ...executeEditorCommandMap,
 };
 
 export const createCommand = (): Command => ({
@@ -25,6 +28,7 @@ export const createCommand = (): Command => ({
   memo: MemoCommand,
   table: TableCommand,
   column: ColumnCommand,
+  editor: EditorCommand,
 });
 
 export function createStream() {

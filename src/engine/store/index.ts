@@ -12,6 +12,7 @@ import { createHistory } from '@/core/history';
 import { createStream, executeCommand } from '@/engine/command';
 import { createSubscriptionHelper } from '@/core/helper';
 import { flat } from '@/core/helper';
+import { hasUndoRedo } from '@/engine/command/editor.cmd.helper';
 
 const createState = (): State => ({
   canvasState: observable(createCanvasState()),
@@ -26,10 +27,12 @@ export function createStore(): IStore {
   const subscriptionHelper = createSubscriptionHelper();
   const state = createState();
   const { dispatch$, history$ } = createStream();
-  const history = createHistory(() => {});
   const command = executeCommand(state);
   const dispatch = (...commands: CommandTypeAny[]) =>
     queueMicrotask(() => dispatch$.next([...flat<CommandTypeAll>(commands)]));
+  const history = createHistory(() => {
+    dispatch(hasUndoRedo(history.hasUndo(), history.hasRedo()));
+  });
 
   const destroy = () => {
     subscriptionHelper.destroy();

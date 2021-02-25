@@ -6,7 +6,10 @@ import { Helper } from '../../core/helper';
 
 export * from './table.cmd.helper.gen';
 
-export declare function addTable(store: Store): CommandType<'table.add'>;
+export declare function addTable(
+  store: Store,
+  active?: boolean
+): CommandType<'table.add'>;
 
 export declare function moveTable(
   store: Store,

@@ -15,6 +15,7 @@ import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { keymapOptionsToString } from '@/core/keymap';
 import { useContext } from '@/core/hooks/context.hook';
 import { removeColumn } from '@/engine/command/column.cmd.helper';
+import { isSelectColumn } from '@/engine/store/editor.helper';
 import { columnTpl } from './Column.template';
 
 declare global {
@@ -43,7 +44,10 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
   };
 
   return () => {
-    const { keymap } = contextRef.value;
+    const {
+      keymap,
+      store: { editorState },
+    } = contextRef.value;
     const column = props.column;
     const { ui } = column;
 
@@ -51,7 +55,7 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
       <div
         class=${classMap({
           'vuerd-column': true,
-          select: false,
+          select: isSelectColumn(editorState.focusTable, column.id),
           draggable: false,
           active: ui.active,
         })}

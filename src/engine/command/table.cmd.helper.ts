@@ -9,13 +9,13 @@ import { nextZIndex, nextPoint } from '@/engine/store/helper';
 
 export * from './table.cmd.helper.gen';
 
-export function addTable(store: Store) {
+export function addTable(store: Store, active = true) {
   const { tableState, memoState } = store;
   const point = nextPoint(store);
   return createCommand('table.add', {
     id: uuid(),
     ui: {
-      active: true,
+      active,
       left: point.x,
       top: point.y,
       zIndex: nextZIndex(tableState.tables, memoState.memos),

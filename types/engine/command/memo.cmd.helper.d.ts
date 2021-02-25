@@ -5,7 +5,10 @@ import { Point } from '../store/relationship.helper';
 
 export * from './memo.cmd.helper.gen';
 
-export declare function addMemo(store: Store): CommandType<'memo.add'>;
+export declare function addMemo(
+  store: Store,
+  active?: boolean
+): CommandType<'memo.add'>;
 
 export declare function moveMemo(
   store: Store,
