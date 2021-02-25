@@ -79,9 +79,9 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
 
   destroy.push(
     watch(props, propName => {
-      if (propName === 'menus') {
-        resetTooltip();
-      }
+      if (propName !== 'menus') return;
+
+      resetTooltip();
     })
   );
 

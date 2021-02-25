@@ -40,7 +40,7 @@ const ColumnAutoIncrement: FunctionalComponent<
       style=${styleMap({
         width: `${SIZE_COLUMN_OPTION_AI}px`,
       })}
-      title="Auto Increment"
+      data-tippy-content="Auto Increment"
     >
       AI
     </div>

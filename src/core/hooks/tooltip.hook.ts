@@ -8,6 +8,7 @@ import tippy, {
   createSingleton,
   CreateSingletonInstance,
   Props,
+  Instance,
 } from 'tippy.js';
 import { flat, isArray } from '@/core/helper';
 
@@ -20,6 +21,7 @@ export function useTooltip(
     queryAll<Array<HTMLElement>>(selector)
   );
   let singleton: CreateSingletonInstance | null = null;
+  let instances: Instance[] | null = null;
 
   const createTooltip = () => {
     const root = closestElement('.vuerd-editor', ctx);
@@ -29,11 +31,13 @@ export function useTooltip(
       ),
     ];
 
+    instances = tippy(elements, {
+      appendTo: root ?? 'parent',
+      trigger: 'manual',
+    });
+
     singleton = createSingleton(
-      tippy(elements, {
-        appendTo: root ?? 'parent',
-        trigger: 'manual',
-      }),
+      instances,
       Object.assign(
         {
           appendTo: root ?? 'parent',
@@ -47,10 +51,10 @@ export function useTooltip(
   };
 
   const destroyTooltip = () => {
-    if (singleton) {
-      singleton.destroy();
-      singleton = null;
-    }
+    singleton?.destroy();
+    instances?.forEach(instance => instance.destroy());
+    singleton = null;
+    instances = null;
   };
 
   const resetTooltip = () => {
