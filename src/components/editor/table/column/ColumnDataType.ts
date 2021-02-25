@@ -5,6 +5,7 @@ import {
   queryShadow,
 } from '@dineug/lit-observable';
 import { useDataTypeHint } from '@/core/hooks/dataTypeHint.hook';
+import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
 import { lastCursorFocus } from '@/core/helper/dom.helper';
 import { dataTypeHintTpl } from './ColumnDataType.template';
 
@@ -39,6 +40,7 @@ const ColumnDataType: FunctionalComponent<
     props,
     ctx
   );
+  useFlipAnimation(ctx, '.vuerd-data-type-hint', 'vuerd-data-type-hint-move');
 
   const onBlur = () => {
     const input = inputRef.value;
