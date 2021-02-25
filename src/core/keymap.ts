@@ -21,21 +21,25 @@ export const createKeymap = (): Keymap => ({
     {
       altKey: true,
       key: 'F',
+      preventDefault: true,
     },
     {
       ctrlKey: true,
       altKey: true,
       key: 'F',
+      preventDefault: true,
     },
   ],
   undo: [
     {
       ctrlKey: true,
       key: 'Z',
+      preventDefault: true,
     },
     {
       metaKey: true,
       key: 'Z',
+      preventDefault: true,
     },
   ],
   redo: [
@@ -43,11 +47,13 @@ export const createKeymap = (): Keymap => ({
       ctrlKey: true,
       shiftKey: true,
       key: 'Z',
+      preventDefault: true,
     },
     {
       metaKey: true,
       shiftKey: true,
       key: 'Z',
+      preventDefault: true,
     },
   ],
   addTable: [
@@ -251,6 +257,18 @@ export const keymapMatch = (
   event: KeyboardEvent,
   keymapOptions: KeymapOption[]
 ) => !!getKeymap(event, keymapOptions);
+
+export function keymapMatchAndOption(
+  event: KeyboardEvent,
+  keymapOptions: KeymapOption[]
+): boolean {
+  const current = getKeymap(event, keymapOptions);
+
+  current?.preventDefault && event.preventDefault();
+  current?.stopPropagation && event.stopPropagation();
+
+  return !!current;
+}
 
 export function keymapOptionToString(keymapOption?: KeymapOption): string {
   if (!keymapOption) return '';

@@ -63,7 +63,6 @@ export function columnTpl(
                   .value=${column.dataType}
                   .active=${ui.active}
                   .tableId=${props.tableId}
-                  .edit=${true}
                   .columnId=${column.id}
                   @blur=${onBlur}
                   @input=${(event: Event) => onInput(event, 'columnDataType')}
