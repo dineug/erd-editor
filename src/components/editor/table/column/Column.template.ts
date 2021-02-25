@@ -55,6 +55,32 @@ export function columnTpl(
               @input=${(event: Event) => onInput(event, 'columnName')}
             ></vuerd-input>
           `;
+        case 'columnDefault':
+          return show.columnDefault
+            ? html`
+                <vuerd-input
+                  .width=${ui.widthDefault}
+                  .value=${column.default}
+                  .active=${ui.active}
+                  placeholder="default"
+                  @blur=${onBlur}
+                  @input=${(event: Event) => onInput(event, 'columnDefault')}
+                ></vuerd-input>
+              `
+            : null;
+        case 'columnComment':
+          return show.columnComment
+            ? html`
+                <vuerd-input
+                  .width=${ui.widthComment}
+                  .value=${column.comment}
+                  .active=${ui.active}
+                  placeholder="comment"
+                  @blur=${onBlur}
+                  @input=${(event: Event) => onInput(event, 'columnComment')}
+                ></vuerd-input>
+              `
+            : null;
         case 'columnDataType':
           return show.columnDataType
             ? html`
@@ -67,6 +93,30 @@ export function columnTpl(
                   @blur=${onBlur}
                   @input=${(event: Event) => onInput(event, 'columnDataType')}
                 ></vuerd-column-data-type>
+              `
+            : null;
+        case 'columnNotNull':
+          return show.columnNotNull
+            ? html`
+                <vuerd-column-not-null
+                  .columnOption=${column.option}
+                ></vuerd-column-not-null>
+              `
+            : null;
+        case 'columnUnique':
+          return show.columnUnique
+            ? html`
+                <vuerd-column-unique
+                  .columnOption=${column.option}
+                ></vuerd-column-unique>
+              `
+            : null;
+        case 'columnAutoIncrement':
+          return show.columnAutoIncrement
+            ? html`
+                <vuerd-column-auto-increment
+                  .columnOption=${column.option}
+                ></vuerd-column-auto-increment>
               `
             : null;
         default:

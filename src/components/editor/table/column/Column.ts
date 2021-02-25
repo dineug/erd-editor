@@ -1,5 +1,8 @@
 import './ColumnKey';
 import './ColumnDataType';
+import './ColumnNotNull';
+import './ColumnUnique';
+import './ColumnAutoIncrement';
 
 import { Column } from '@@types/engine/store/table.state';
 import {
