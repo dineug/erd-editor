@@ -5,6 +5,8 @@ import { Column, ColumnOption } from '../store/table.state';
 import { Relationship } from '../store/relationship.state';
 import { Helper } from '../../core/helper';
 
+export * from './column.cmd.helper.gen';
+
 export declare function addColumn(
   store: Store,
   tableId?: string

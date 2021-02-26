@@ -8,7 +8,7 @@ export interface HasUndoRedo {
 
 export interface FocusTable {
   tableId: string;
-  focusType: TableType;
+  focusType?: TableType;
 }
 
 export interface FocusColumn {
@@ -23,4 +23,5 @@ export interface EditorCommandMap {
   'editor.hasUndoRedo': HasUndoRedo;
   'editor.focusTable': FocusTable;
   'editor.focusColumn': FocusColumn;
+  'editor.focusTableEnd': null;
 }

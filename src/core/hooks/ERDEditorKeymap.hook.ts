@@ -4,7 +4,7 @@ import { useContext } from './context.hook';
 import { createSubscriptionHelper } from '@/core/helper';
 import { keymapMatchAndOption } from '@/core/keymap';
 import { relationshipMenus } from '@/core/contextmenu/drawRelationship.contextmenu';
-import { addColumn } from '@/engine/command/column.cmd.helper';
+import { addColumn$ } from '@/engine/command/column.cmd.helper';
 import {
   addTable$,
   removeTable,
@@ -29,7 +29,7 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
 
     keymapMatchAndOption(event, keymap.addColumn) &&
       tableState.tables.some(table => table.ui.active) &&
-      store.dispatch(addColumn(store));
+      store.dispatch(addColumn$(store));
 
     keymapMatchAndOption(event, keymap.addMemo) &&
       store.dispatch(addMemo$(store));

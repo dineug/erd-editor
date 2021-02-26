@@ -6,17 +6,13 @@ export function isFocus(
   tableId: string,
   columnId: string | null = null
 ): boolean {
-  if (!focusTable) return false;
+  if (!focusTable || tableId !== focusTable.table.id) return false;
 
   switch (focusType) {
     case 'tableName':
     case 'tableComment':
-      return (
-        tableId === focusTable.table.id && focusType === focusTable.focusType
-      );
+      return focusType === focusTable.focusType;
   }
-
-  if (!columnId) return false;
 
   return columnId === focusTable.columnId && focusType === focusTable.focusType;
 }
@@ -27,6 +23,4 @@ export const isSelectColumn = (
   columnId: string
 ) =>
   focusTable?.table.id === tableId &&
-  focusTable.selectColumnIds.some(
-    selectColumnId => selectColumnId === columnId
-  );
+  focusTable.selectColumnIds.includes(columnId);

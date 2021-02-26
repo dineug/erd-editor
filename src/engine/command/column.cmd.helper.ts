@@ -11,6 +11,8 @@ import { getChangeOption } from '@/engine/store/column.helper';
 import { createCommand } from './helper';
 import { SIZE_MIN_WIDTH } from '@/core/layout';
 
+export * from './column.cmd.helper.gen';
+
 export const addColumn = (store: Store, tableId?: string) =>
   createCommand(
     'column.add',

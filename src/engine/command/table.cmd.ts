@@ -21,7 +21,6 @@ export function executeAddTable(
   data: AddTable
 ) {
   tables.push(new TableModel({ addTable: data }, show));
-  // executeFocusTable(store, { tableId: data.id });
 }
 
 export function executeMoveTable(
@@ -134,7 +133,6 @@ export function executeSelectTable(
 
 export function executeSelectEndTable({ tableState: { tables } }: State) {
   tables.forEach(table => (table.ui.active = false));
-  // executeFocusTableEnd(store);
 }
 
 export function executeSelectAllTable({ tableState: { tables } }: State) {

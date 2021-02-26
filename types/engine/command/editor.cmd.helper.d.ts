@@ -19,3 +19,5 @@ export declare function focusColumn(
   ctrlKey: boolean,
   shiftKey: boolean
 ): CommandType<'editor.focusColumn'>;
+
+export declare function focusTableEnd(): CommandType<'editor.focusTableEnd'>;

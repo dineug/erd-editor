@@ -20,17 +20,28 @@ export function executeFocusTable(
   { editorState, tableState: { tables } }: State,
   data: FocusTable
 ) {
-  if (editorState.focusTable?.table.id === data.tableId) {
+  if (editorState.focusTable?.table.id === data.tableId && data.focusType) {
     editorState.focusTable.focusType = data.focusType;
     editorState.focusTable.columnId = null;
     editorState.focusTable.selectColumnIds = [];
-  } else {
+  } else if (data.focusType) {
     const table = getData(tables, data.tableId);
     if (!table) return;
 
     editorState.focusTable = {
       table,
       focusType: data.focusType,
+      columnId: null,
+      selectColumnIds: [],
+      prevSelectColumnId: null,
+    };
+  } else if (editorState.focusTable?.table.id !== data.tableId) {
+    const table = getData(tables, data.tableId);
+    if (!table) return;
+
+    editorState.focusTable = {
+      table,
+      focusType: 'tableName',
       columnId: null,
       selectColumnIds: [],
       prevSelectColumnId: null,
@@ -84,8 +95,13 @@ export function executeFocusColumn(
   }
 }
 
+export function executeFocusTableEnd({ editorState }: State) {
+  editorState.focusTable = null;
+}
+
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
   'editor.focusColumn': executeFocusColumn,
+  'editor.focusTableEnd': executeFocusTableEnd,
 };

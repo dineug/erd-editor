@@ -5,7 +5,7 @@ import { createCommand } from './helper';
 export const hasUndoRedo = (hasUndo: boolean, hasRedo: boolean) =>
   createCommand('editor.hasUndoRedo', { hasUndo, hasRedo });
 
-export const focusTable = (tableId: string, focusType: TableType) =>
+export const focusTable = (tableId: string, focusType?: TableType) =>
   createCommand('editor.focusTable', { tableId, focusType });
 
 export const focusColumn = (
@@ -22,3 +22,5 @@ export const focusColumn = (
     ctrlKey,
     shiftKey,
   });
+
+export const focusTableEnd = () => createCommand('editor.focusTableEnd', null);
