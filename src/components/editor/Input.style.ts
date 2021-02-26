@@ -31,6 +31,11 @@ export const InputStyle = css`
     cursor: default;
   }
 
+  .vuerd-input > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .vuerd-input.select {
     background-color: var(--vuerd-color-column-select);
   }

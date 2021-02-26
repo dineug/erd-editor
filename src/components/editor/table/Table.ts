@@ -2,6 +2,7 @@ import '@/components/editor/Input';
 import '@/components/editor/table/column/Column';
 
 import { Table } from '@@types/engine/store/table.state';
+import { FocusType, TableType } from '@@types/engine/store/editor.state';
 import { Move } from '@/internal-types/event.helper';
 import {
   defineComponent,
@@ -22,7 +23,8 @@ import {
   removeTable,
 } from '@/engine/command/table.cmd.helper';
 import { addColumn } from '@/engine/command/column.cmd.helper';
-import { isFocus } from '@/engine/store/editor.helper';
+import { focusTable } from '@/engine/command/editor.cmd.helper';
+import { isFocus, isSelectColumn } from '@/engine/store/editor.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -39,6 +41,13 @@ export interface TableElement extends TableProps, HTMLElement {}
 const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
   useTooltip(['.vuerd-button'], ctx);
+
+  const getFocusState = (focusType: FocusType, columnId?: string) => {
+    const {
+      store: { editorState },
+    } = contextRef.value;
+    return isFocus(editorState.focusTable, focusType, props.table.id, columnId);
+  };
 
   const onInput = (event: InputEvent, focusType: string) => {
     const { store, helper } = contextRef.value;
@@ -92,6 +101,11 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     store.dispatch(addColumn(store, props.table.id));
   };
 
+  const onFocus = (focusType: TableType) => {
+    const { store } = contextRef.value;
+    store.dispatch(focusTable(props.table.id, focusType));
+  };
+
   return () => {
     const {
       keymap,
@@ -141,13 +155,10 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
               class="vuerd-table-name"
               .width=${table.ui.widthName}
               .value=${table.name}
-              .focusState=${isFocus(
-                editorState.focusTable,
-                'tableName',
-                table.id
-              )}
+              .focusState=${getFocusState('tableName')}
               placeholder="table"
               @input=${(event: InputEvent) => onInput(event, 'tableName')}
+              @mousedown=${() => onFocus('tableName')}
             ></vuerd-input>
             ${show.tableComment
               ? html`
@@ -155,14 +166,11 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
                     class="vuerd-table-comment"
                     .width=${table.ui.widthComment}
                     .value=${table.comment}
-                    .focusState=${isFocus(
-                      editorState.focusTable,
-                      'tableComment',
-                      table.id
-                    )}
+                    .focusState=${getFocusState('tableComment')}
                     placeholder="comment"
                     @input=${(event: InputEvent) =>
                       onInput(event, 'tableComment')}
+                    @mousedown=${() => onFocus('tableComment')}
                   ></vuerd-input>
                 `
               : null}
@@ -177,6 +185,21 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
                 <vuerd-column
                   .tableId=${table.id}
                   .column=${column}
+                  .select=${isSelectColumn(
+                    editorState.focusTable,
+                    table.id,
+                    column.id
+                  )}
+                  .focusName=${getFocusState('columnName', column.id)}
+                  .focusDataType=${getFocusState('columnDataType', column.id)}
+                  .focusNotNull=${getFocusState('columnNotNull', column.id)}
+                  .focusDefault=${getFocusState('columnDefault', column.id)}
+                  .focusComment=${getFocusState('columnComment', column.id)}
+                  .focusUnique=${getFocusState('columnUnique', column.id)}
+                  .focusAutoIncrement=${getFocusState(
+                    'columnAutoIncrement',
+                    column.id
+                  )}
                 ></vuerd-column>
               `
           )}

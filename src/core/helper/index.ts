@@ -61,6 +61,9 @@ export const getIndex = <T extends { id: string }>(
   id: string
 ) => R.findIndex(R.propEq('id', id))(list);
 
+export const range = (a: number, b: number) =>
+  a < b ? R.range(a, b + 1) : R.range(b, a + 1);
+
 export function* flat<T>(iterator: any[]): Generator<T> {
   for (const value of iterator) {
     if (value && value[Symbol.iterator]) yield* flat(value);

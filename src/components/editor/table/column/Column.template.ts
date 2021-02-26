@@ -9,7 +9,7 @@ import {
   changeColumnDataType,
   changeColumnDefault,
 } from '@/engine/command/column.cmd.helper';
-import { isFocus, isSelectColumn } from '@/engine/store/editor.helper';
+import { focusColumn } from '@/engine/command/editor.cmd.helper';
 
 interface ReshapeColumn {
   columnType: ColumnType;
@@ -45,6 +45,18 @@ export function columnTpl(
     );
   };
 
+  const onFocus = (event: MouseEvent, columnType: ColumnType) => {
+    store.dispatch(
+      focusColumn(
+        props.tableId,
+        props.column.id,
+        columnType,
+        event.ctrlKey || event.metaKey,
+        event.shiftKey
+      )
+    );
+  };
+
   const onBlur = () => {
     // store.dispatch(editTableEnd());
   };
@@ -60,16 +72,13 @@ export function columnTpl(
                 .width=${ui.widthName}
                 .value=${column.name}
                 .active=${ui.active}
-                .select=${isSelectColumn(editorState.focusTable, column.id)}
-                .focusState=${isFocus(
-                  editorState.focusTable,
-                  'columnName',
-                  props.tableId,
-                  column.id
-                )}
+                .select=${props.select}
+                .focusState=${props.focusName}
                 placeholder="column"
                 @blur=${onBlur}
                 @input=${(event: Event) => onInput(event, 'columnName')}
+                @mousedown=${(event: MouseEvent) =>
+                  onFocus(event, 'columnName')}
               ></vuerd-input>
             `,
           };
@@ -83,16 +92,13 @@ export function columnTpl(
                     .width=${ui.widthDefault}
                     .value=${column.default}
                     .active=${ui.active}
-                    .select=${isSelectColumn(editorState.focusTable, column.id)}
-                    .focusState=${isFocus(
-                      editorState.focusTable,
-                      'columnDefault',
-                      props.tableId,
-                      column.id
-                    )}
+                    .select=${props.select}
+                    .focusState=${props.focusDefault}
                     placeholder="default"
                     @blur=${onBlur}
                     @input=${(event: Event) => onInput(event, 'columnDefault')}
+                    @mousedown=${(event: MouseEvent) =>
+                      onFocus(event, 'columnDefault')}
                   ></vuerd-input>
                 `,
               }
@@ -107,16 +113,13 @@ export function columnTpl(
                     .width=${ui.widthComment}
                     .value=${column.comment}
                     .active=${ui.active}
-                    .select=${isSelectColumn(editorState.focusTable, column.id)}
-                    .focusState=${isFocus(
-                      editorState.focusTable,
-                      'columnComment',
-                      props.tableId,
-                      column.id
-                    )}
+                    .select=${props.select}
+                    .focusState=${props.focusComment}
                     placeholder="comment"
                     @blur=${onBlur}
                     @input=${(event: Event) => onInput(event, 'columnComment')}
+                    @mousedown=${(event: MouseEvent) =>
+                      onFocus(event, 'columnComment')}
                   ></vuerd-input>
                 `,
               }
@@ -133,15 +136,12 @@ export function columnTpl(
                     .active=${ui.active}
                     .tableId=${props.tableId}
                     .columnId=${column.id}
-                    .select=${isSelectColumn(editorState.focusTable, column.id)}
-                    .focusState=${isFocus(
-                      editorState.focusTable,
-                      'columnDataType',
-                      props.tableId,
-                      column.id
-                    )}
+                    .select=${props.select}
+                    .focusState=${props.focusDataType}
                     @blur=${onBlur}
                     @input=${(event: Event) => onInput(event, 'columnDataType')}
+                    @mousedown=${(event: MouseEvent) =>
+                      onFocus(event, 'columnDataType')}
                   ></vuerd-column-data-type>
                 `,
               }
@@ -154,12 +154,9 @@ export function columnTpl(
                 template: html`
                   <vuerd-column-not-null
                     .columnOption=${column.option}
-                    .focusState=${isFocus(
-                      editorState.focusTable,
-                      'columnNotNull',
-                      props.tableId,
-                      column.id
-                    )}
+                    .focusState=${props.focusNotNull}
+                    @mousedown=${(event: MouseEvent) =>
+                      onFocus(event, 'columnNotNull')}
                   ></vuerd-column-not-null>
                 `,
               }
@@ -172,12 +169,9 @@ export function columnTpl(
                 template: html`
                   <vuerd-column-unique
                     .columnOption=${column.option}
-                    .focusState=${isFocus(
-                      editorState.focusTable,
-                      'columnUnique',
-                      props.tableId,
-                      column.id
-                    )}
+                    .focusState=${props.focusUnique}
+                    @mousedown=${(event: MouseEvent) =>
+                      onFocus(event, 'columnUnique')}
                   ></vuerd-column-unique>
                 `,
               }
@@ -190,12 +184,9 @@ export function columnTpl(
                 template: html`
                   <vuerd-column-auto-increment
                     .columnOption=${column.option}
-                    .focusState=${isFocus(
-                      editorState.focusTable,
-                      'columnAutoIncrement',
-                      props.tableId,
-                      column.id
-                    )}
+                    .focusState=${props.focusAutoIncrement}
+                    @mousedown=${(event: MouseEvent) =>
+                      onFocus(event, 'columnAutoIncrement')}
                   ></vuerd-column-auto-increment>
                 `,
               }

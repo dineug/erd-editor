@@ -15,7 +15,6 @@ import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { keymapOptionsToString } from '@/core/keymap';
 import { useContext } from '@/core/hooks/context.hook';
 import { removeColumn } from '@/engine/command/column.cmd.helper';
-import { isSelectColumn } from '@/engine/store/editor.helper';
 import { columnTpl } from './Column.template';
 
 declare global {
@@ -27,6 +26,14 @@ declare global {
 export interface ColumnProps {
   tableId: string;
   column: Column;
+  select: boolean;
+  focusName: boolean;
+  focusDataType: boolean;
+  focusNotNull: boolean;
+  focusDefault: boolean;
+  focusComment: boolean;
+  focusUnique: boolean;
+  focusAutoIncrement: boolean;
 }
 
 export interface ColumnElement extends ColumnProps, HTMLElement {}
@@ -44,10 +51,7 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
   };
 
   return () => {
-    const {
-      keymap,
-      store: { editorState },
-    } = contextRef.value;
+    const { keymap } = contextRef.value;
     const column = props.column;
     const { ui } = column;
 
@@ -55,7 +59,7 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
       <div
         class=${classMap({
           'vuerd-column': true,
-          select: isSelectColumn(editorState.focusTable, column.id),
+          select: props.select,
           draggable: false,
           active: ui.active,
         })}
@@ -77,7 +81,18 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
 };
 
 defineComponent('vuerd-column', {
-  observedProps: ['tableId', 'column'],
+  observedProps: [
+    'tableId',
+    'column',
+    'select',
+    'focusName',
+    'focusDataType',
+    'focusNotNull',
+    'focusDefault',
+    'focusComment',
+    'focusUnique',
+    'focusAutoIncrement',
+  ],
   shadow: false,
   render: Column,
 });

@@ -4,9 +4,17 @@ import { useContext } from './context.hook';
 import { createSubscriptionHelper } from '@/core/helper';
 import { keymapMatchAndOption } from '@/core/keymap';
 import { relationshipMenus } from '@/core/contextmenu/drawRelationship.contextmenu';
-import { addTable$, removeTable } from '@/engine/command/table.cmd.helper';
 import { addColumn } from '@/engine/command/column.cmd.helper';
-import { addMemo$, removeMemo } from '@/engine/command/memo.cmd.helper';
+import {
+  addTable$,
+  removeTable,
+  selectAllTable,
+} from '@/engine/command/table.cmd.helper';
+import {
+  addMemo$,
+  removeMemo,
+  selectAllMemo,
+} from '@/engine/command/memo.cmd.helper';
 
 export function useERDEditorKeymap(ctx: HTMLElement) {
   const contextRef = useContext(ctx);
@@ -25,6 +33,9 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
 
     keymapMatchAndOption(event, keymap.addMemo) &&
       store.dispatch(addMemo$(store));
+
+    keymapMatchAndOption(event, keymap.selectAllTable) &&
+      store.dispatch(selectAllTable(), selectAllMemo());
 
     if (
       keymapMatchAndOption(event, keymap.removeTable) &&

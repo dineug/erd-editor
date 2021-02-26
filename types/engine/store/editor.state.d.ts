@@ -1,5 +1,6 @@
 import { PanelConfig } from '../../core/panel';
 import { ColumnType } from './canvas.state';
+import { Table } from './table.state';
 
 export interface EditorState {
   panels: PanelConfig[];
@@ -9,10 +10,13 @@ export interface EditorState {
 }
 
 export interface FocusTable {
-  tableId: string;
+  table: Table;
   columnId: string | null;
   focusType: FocusType;
   selectColumnIds: string[];
+  prevSelectColumnId: string | null;
 }
 
-export type FocusType = 'tableName' | 'tableComment' | ColumnType;
+export type TableType = 'tableName' | 'tableComment';
+
+export type FocusType = TableType | ColumnType;

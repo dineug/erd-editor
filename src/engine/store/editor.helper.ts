@@ -11,7 +11,9 @@ export function isFocus(
   switch (focusType) {
     case 'tableName':
     case 'tableComment':
-      return tableId === focusTable.tableId;
+      return (
+        tableId === focusTable.table.id && focusType === focusTable.focusType
+      );
   }
 
   if (!columnId) return false;
@@ -21,8 +23,10 @@ export function isFocus(
 
 export const isSelectColumn = (
   focusTable: FocusTable | null,
+  tableId: string,
   columnId: string
 ) =>
-  !!focusTable?.selectColumnIds.some(
+  focusTable?.table.id === tableId &&
+  focusTable.selectColumnIds.some(
     selectColumnId => selectColumnId === columnId
   );
