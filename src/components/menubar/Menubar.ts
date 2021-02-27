@@ -17,7 +17,7 @@ import {
   canvasSizeRange,
   zoomLevelRange,
   zoomDisplayFormat,
-} from '@/engine/store/canvas.helper';
+} from '@/engine/store/helper/canvas.helper';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { MenubarStyle } from './Menubar.style';
 

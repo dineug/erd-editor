@@ -7,7 +7,7 @@ import {
 } from '@@types/engine/store/canvas.state';
 import { Store } from '@@types/engine/store';
 import { createCommand } from './helper';
-import { zoomBalanceRange } from '@/engine/store/canvas.helper';
+import { zoomBalanceRange } from '@/engine/store/helper/canvas.helper';
 
 export const moveCanvas = (scrollTop: number, scrollLeft: number) =>
   createCommand('canvas.move', { scrollTop, scrollLeft });

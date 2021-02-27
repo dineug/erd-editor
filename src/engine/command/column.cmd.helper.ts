@@ -7,7 +7,7 @@ import {
   AddCustomColumnValue,
 } from '@@types/engine/command/column.cmd';
 import { uuid } from '@/core/helper';
-import { getChangeOption } from '@/engine/store/column.helper';
+import { getChangeOption } from '@/engine/store/helper/column.helper';
 import { createCommand } from './helper';
 import { SIZE_MIN_WIDTH } from '@/core/layout';
 

@@ -15,7 +15,7 @@ import { ColumnModel } from '@/engine/store/models/column.model';
 import {
   getColumn,
   getDataTypeSyncColumns,
-} from '@/engine/store/column.helper';
+} from '@/engine/store/helper/column.helper';
 
 export function executeAddColumn(
   { tableState: { tables }, relationshipState: { relationships } }: State,

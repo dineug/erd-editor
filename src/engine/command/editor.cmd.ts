@@ -9,7 +9,7 @@ import {
   appendSelectColumns,
   selectRangeColumns,
   appendSelectRangeColumns,
-} from './editor.helper';
+} from './helper/editor.helper';
 
 export function executeHasUndoRedo({ editorState }: State, data: HasUndoRedo) {
   editorState.hasUndo = data.hasUndo;

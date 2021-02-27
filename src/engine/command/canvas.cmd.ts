@@ -14,7 +14,7 @@ import {
   ChangeRelationshipDataTypeSync,
   MoveColumnOrder,
 } from '@@types/engine/command/canvas.cmd';
-import { zoomBalanceRange } from '@/engine/store/canvas.helper';
+import { zoomBalanceRange } from '@/engine/store/helper/canvas.helper';
 
 export function executeMoveCanvas({ canvasState }: State, data: MoveCanvas) {
   canvasState.scrollTop = data.scrollTop;

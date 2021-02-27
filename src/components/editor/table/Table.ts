@@ -24,7 +24,7 @@ import {
 } from '@/engine/command/table.cmd.helper';
 import { addColumn$ } from '@/engine/command/column.cmd.helper';
 import { focusTable } from '@/engine/command/editor.cmd.helper';
-import { isFocus, isSelectColumn } from '@/engine/store/editor.helper';
+import { isFocus, isSelectColumn } from '@/engine/store/helper/editor.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
