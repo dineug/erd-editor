@@ -1,6 +1,8 @@
 import { CommandType } from './index';
 import { ColumnType } from '../store/canvas.state';
-import { TableType } from '../store/editor.state';
+import { TableType, MoveKey } from '../store/editor.state';
+
+export * from './editor.cmd.helper.gen';
 
 export declare function hasUndoRedo(
   hasUndo: boolean,
@@ -21,3 +23,8 @@ export declare function focusColumn(
 ): CommandType<'editor.focusColumn'>;
 
 export declare function focusTableEnd(): CommandType<'editor.focusTableEnd'>;
+
+export declare function focusMoveTable(
+  moveKey: MoveKey,
+  shiftKey: boolean
+): CommandType<'editor.focusMoveTable'>;

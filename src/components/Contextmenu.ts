@@ -11,7 +11,7 @@ import {
 import { styleMap } from 'lit-html/directives/style-map';
 import { SIZE_CONTEXTMENU_HEIGHT } from '@/core/layout';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
-import { useDestroy } from '@/core/hooks/destroy.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { iconTpl } from './Contextmenu.template';
 import { ContextmenuStyle } from './Contextmenu.style';
 
@@ -39,7 +39,7 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
 ) => {
   const state = observable<ContextmenuState>({ menu: null });
   const rootRef = query<HTMLElement>('.vuerd-contextmenu');
-  const destroy = useDestroy();
+  const { unmountedGroup } = useUnmounted();
   const { resetTooltip } = useTooltip(['.name', '.keymap'], ctx);
 
   const childrenX = () => {
@@ -77,7 +77,7 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
   const onMousedown = createContextmenuEvent('vuerd-contextmenu-mousedown');
   const onTouchstart = createContextmenuEvent('vuerd-contextmenu-touchstart');
 
-  destroy.push(
+  unmountedGroup.push(
     watch(props, propName => {
       if (propName !== 'menus') return;
 

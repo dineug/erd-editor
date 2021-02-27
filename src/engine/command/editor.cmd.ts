@@ -23,6 +23,7 @@ export function executeFocusTable(
   if (editorState.focusTable?.table.id === data.tableId && data.focusType) {
     editorState.focusTable.focusType = data.focusType;
     editorState.focusTable.columnId = null;
+    editorState.focusTable.prevSelectColumnId = null;
     editorState.focusTable.selectColumnIds = [];
   } else if (data.focusType) {
     const table = getData(tables, data.tableId);
@@ -32,8 +33,8 @@ export function executeFocusTable(
       table,
       focusType: data.focusType,
       columnId: null,
-      selectColumnIds: [],
       prevSelectColumnId: null,
+      selectColumnIds: [],
     };
   } else if (editorState.focusTable?.table.id !== data.tableId) {
     const table = getData(tables, data.tableId);
@@ -43,8 +44,8 @@ export function executeFocusTable(
       table,
       focusType: 'tableName',
       columnId: null,
-      selectColumnIds: [],
       prevSelectColumnId: null,
+      selectColumnIds: [],
     };
   }
 }
@@ -77,10 +78,10 @@ export function executeFocusColumn(
         data.columnId
       );
     } else {
-      editorState.focusTable.selectColumnIds = [data.columnId];
+      focusTable.selectColumnIds = [data.columnId];
     }
 
-    editorState.focusTable.prevSelectColumnId = data.columnId;
+    focusTable.prevSelectColumnId = data.columnId;
   } else {
     const table = getData(tables, data.tableId);
     if (!table) return;
@@ -89,8 +90,8 @@ export function executeFocusColumn(
       table,
       focusType: data.focusType,
       columnId: data.columnId,
-      selectColumnIds: [data.columnId],
       prevSelectColumnId: data.columnId,
+      selectColumnIds: [data.columnId],
     };
   }
 }
@@ -99,9 +100,12 @@ export function executeFocusTableEnd({ editorState }: State) {
   editorState.focusTable = null;
 }
 
+export function executeFocusMoveTable(state: State) {}
+
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
   'editor.focusColumn': executeFocusColumn,
   'editor.focusTableEnd': executeFocusTableEnd,
+  'editor.focusMoveTable': executeFocusMoveTable,
 };

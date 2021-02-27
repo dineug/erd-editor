@@ -1,9 +1,11 @@
 import { CommandTypeAll } from '@@types/engine/command';
+import { MoveKey } from '@@types/engine/store/editor.state';
 import { beforeMount, unmounted } from '@dineug/lit-observable';
 import { useContext } from './context.hook';
 import { createSubscriptionHelper } from '@/core/helper';
 import { keymapMatchAndOption } from '@/core/keymap';
 import { relationshipMenus } from '@/core/contextmenu/drawRelationship.contextmenu';
+import { moveKeys } from '@/engine/store/editor.state';
 import { addColumn$ } from '@/engine/command/column.cmd.helper';
 import {
   addTable$,
@@ -15,6 +17,7 @@ import {
   removeMemo,
   selectAllMemo,
 } from '@/engine/command/memo.cmd.helper';
+import { focusMoveTable$ } from '@/engine/command/editor.cmd.helper';
 
 export function useERDEditorKeymap(ctx: HTMLElement) {
   const contextRef = useContext(ctx);
@@ -22,7 +25,7 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
 
   const onKeydown = (event: KeyboardEvent) => {
     const { keymap, store } = contextRef.value;
-    const { tableState, memoState } = store;
+    const { tableState, memoState, editorState } = store;
 
     keymapMatchAndOption(event, keymap.addTable) &&
       store.dispatch(addTable$(store));
@@ -51,6 +54,11 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
         commands.push(removeMemo(store));
 
       store.dispatch(...commands);
+    }
+
+    if (editorState.focusTable && moveKeys.includes(event.key as MoveKey)) {
+      event.key === 'Tab' && event.preventDefault();
+      store.dispatch(focusMoveTable$(event.key as MoveKey, event.shiftKey));
     }
 
     relationshipMenus.forEach(relationshipMenu => {

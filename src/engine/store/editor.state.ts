@@ -1,4 +1,4 @@
-import { EditorState } from '@@types/engine/store/editor.state';
+import { EditorState, MoveKey } from '@@types/engine/store/editor.state';
 
 export const createEditorState = (): EditorState => ({
   panels: [],
@@ -6,3 +6,11 @@ export const createEditorState = (): EditorState => ({
   hasRedo: false,
   focusTable: null,
 });
+
+export const moveKeys: MoveKey[] = [
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+  'ArrowUp',
+  'Tab',
+];

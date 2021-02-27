@@ -1,5 +1,5 @@
 import { ColumnType } from '../store/canvas.state';
-import { TableType } from '../store/editor.state';
+import { TableType, MoveKey } from '../store/editor.state';
 
 export interface HasUndoRedo {
   hasUndo: boolean;
@@ -19,9 +19,15 @@ export interface FocusColumn {
   shiftKey: boolean;
 }
 
+export interface FocusMoveTable {
+  moveKey: MoveKey;
+  shiftKey: boolean;
+}
+
 export interface EditorCommandMap {
   'editor.hasUndoRedo': HasUndoRedo;
   'editor.focusTable': FocusTable;
   'editor.focusColumn': FocusColumn;
   'editor.focusTableEnd': null;
+  'editor.focusMoveTable': FocusMoveTable;
 }

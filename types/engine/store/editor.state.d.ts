@@ -20,3 +20,10 @@ export interface FocusTable {
 export type TableType = 'tableName' | 'tableComment';
 
 export type FocusType = TableType | ColumnType;
+
+export type MoveKey =
+  | 'ArrowUp'
+  | 'ArrowRight'
+  | 'ArrowDown'
+  | 'ArrowLeft'
+  | 'Tab';

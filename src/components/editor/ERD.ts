@@ -21,7 +21,7 @@ import { createShowMenus } from '@/core/contextmenu/show.contextmenu';
 import { createDatabaseMenus } from '@/core/contextmenu/database.contextmenu';
 import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
 import { selectEndTable$ } from '@/engine/command/table.cmd.helper';
-import { useDestroy } from '@/core/hooks/destroy.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useERDEditorKeymap } from '@/core/hooks/ERDEditorKeymap.hook';
 import { EditorStyle } from './index.style';
 
@@ -51,7 +51,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
     menus: null,
   });
   const contextRef = useContext(ctx);
-  const destroy = useDestroy();
+  const { unmountedGroup } = useUnmounted();
   useERDEditorKeymap(ctx);
 
   const onContextmenu = (event: MouseEvent) => {
@@ -89,7 +89,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
   beforeMount(() => {
     const { canvasState } = contextRef.value.store;
 
-    destroy.push(
+    unmountedGroup.push(
       watch(canvasState.show, () => {
         const menue = state.menus?.find(menu => menu.name === 'View Option');
         if (!menue) return;

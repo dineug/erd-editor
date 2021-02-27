@@ -40,7 +40,7 @@ import {
 import { isArray, createSubscriptionHelper } from '@/core/helper';
 import { ignoreEnterProcess } from '@/core/helper/operator.helper';
 import { panels as globalPanels } from '@/core/panel';
-import { useDestroy } from '@/core/hooks/destroy.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { Logger } from '@/core/logger';
 import { ERDEditorStyle } from './ERDEditor.style';
 
@@ -54,7 +54,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   const editorRef = query<HTMLElement>('.vuerd-editor');
   const ghostTextRef = query<HTMLSpanElement>('.vuerd-ghost-text-helper');
   const ghostInputRef = query<HTMLInputElement>('.vuerd-ghost-focus-helper');
-  const destroy = useDestroy();
+  const { unmountedGroup } = useUnmounted();
   const subscriptionHelper = createSubscriptionHelper();
   // @ts-ignore
   const resizeObserver = new ResizeObserver(entries => {
@@ -74,7 +74,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
       setFocus();
     }, 0);
 
-  destroy.push(
+  unmountedGroup.push(
     watch(props, propName => {
       if (propName !== 'automaticLayout') return;
 
@@ -121,6 +121,7 @@ key: ${event.key}
   unmounted(() => {
     globalEvent.destroy();
     store.destroy();
+    helper.destroy();
     subscriptionHelper.destroy();
     resizeObserver.disconnect();
   });

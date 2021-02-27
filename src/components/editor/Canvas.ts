@@ -12,7 +12,7 @@ import { styleMap } from 'lit-html/directives/style-map';
 import { repeat } from 'lit-html/directives/repeat';
 import { useContext } from '@/core/hooks/context.hook';
 import { useRenderTrigger } from '@/core/hooks/renderTrigger.hook';
-import { useDestroy } from '@/core/hooks/destroy.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -29,7 +29,7 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
   ctx
 ) => {
   const contextRef = useContext(ctx);
-  const destroy = useDestroy();
+  const { unmountedGroup } = useUnmounted();
   const { renderTrigger } = useRenderTrigger();
 
   beforeMount(() => {
@@ -38,7 +38,10 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
       tableState: { tables },
     } = contextRef.value.store;
 
-    destroy.push(watch(tables, renderTrigger), watch(memos, renderTrigger));
+    unmountedGroup.push(
+      watch(tables, renderTrigger),
+      watch(memos, renderTrigger)
+    );
   });
 
   return () => {

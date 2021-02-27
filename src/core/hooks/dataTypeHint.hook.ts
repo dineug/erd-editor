@@ -8,7 +8,7 @@ import {
 import * as R from 'ramda';
 import { fromEvent } from 'rxjs';
 import { useContext } from './context.hook';
-import { useDestroy } from './destroy.hook';
+import { useUnmounted } from './unmounted.hook';
 import { ColumnDataTypeProps } from '@/components/editor/table/column/ColumnDataType';
 import { databaseHints } from '@/core/dataType';
 import { markToHTML } from '@/core/helper/dom.helper';
@@ -30,7 +30,7 @@ const findIndex = R.findIndex(R.propEq('active', true));
 
 export function useDataTypeHint(props: ColumnDataTypeProps, ctx: HTMLElement) {
   const contextRef = useContext(ctx);
-  const destroy = useDestroy();
+  const { unmountedGroup } = useUnmounted();
   const state = observable<HintState>({
     hints: [],
     isFilter: true,
@@ -168,7 +168,7 @@ export function useDataTypeHint(props: ColumnDataTypeProps, ctx: HTMLElement) {
     }
   };
 
-  destroy.push(
+  unmountedGroup.push(
     watch(props, propName => {
       if (propName !== 'value') return;
 

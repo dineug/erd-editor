@@ -8,7 +8,7 @@ import {
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
 import { SIZE_MIN_WIDTH } from '@/core/layout';
-import { useDestroy } from '@/core/hooks/destroy.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { lastCursorFocus } from '@/core/helper/dom.helper';
 
 declare global {
@@ -30,7 +30,7 @@ export interface InputProps {
 export interface InputElement extends InputProps, HTMLElement {}
 
 const Input: FunctionalComponent<InputProps, InputElement> = (props, ctx) => {
-  const destroy = useDestroy();
+  const { unmountedGroup } = useUnmounted();
   const inputRef = query<HTMLInputElement>('input');
 
   const getClassMap = () => ({
@@ -47,7 +47,7 @@ const Input: FunctionalComponent<InputProps, InputElement> = (props, ctx) => {
 
   const onBlur = () => ctx.dispatchEvent(new Event('blur'));
 
-  destroy.push(
+  unmountedGroup.push(
     watch(props, propName => {
       const input = inputRef.value;
       if (propName !== 'edit' || !props.edit || !input) return;
