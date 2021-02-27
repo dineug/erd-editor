@@ -3,6 +3,7 @@ import {
   HasUndoRedo,
   FocusTable,
   FocusColumn,
+  FocusMoveTable,
 } from '@@types/engine/command/editor.cmd';
 import { getData } from '@/core/helper';
 import {
@@ -10,6 +11,12 @@ import {
   selectRangeColumns,
   appendSelectRangeColumns,
 } from './helper/editor.helper';
+import {
+  arrowUp,
+  arrowRight,
+  arrowDown,
+  arrowLeft,
+} from './helper/editor.focus.helper';
 
 export function executeHasUndoRedo({ editorState }: State, data: HasUndoRedo) {
   editorState.hasUndo = data.hasUndo;
@@ -100,7 +107,26 @@ export function executeFocusTableEnd({ editorState }: State) {
   editorState.focusTable = null;
 }
 
-export function executeFocusMoveTable(state: State) {}
+export function executeFocusMoveTable(state: State, data: FocusMoveTable) {
+  const { editorState } = state;
+  if (!editorState.focusTable) return;
+
+  switch (data.moveKey) {
+    case 'ArrowUp':
+      arrowUp(state, data);
+      break;
+    case 'ArrowDown':
+      arrowDown(state, data);
+      break;
+    case 'ArrowLeft':
+      arrowLeft(state, data);
+      break;
+    case 'ArrowRight':
+    case 'Tab':
+      arrowRight(state, data);
+      break;
+  }
+}
 
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,

@@ -1,4 +1,8 @@
-import { EditorState, MoveKey } from '@@types/engine/store/editor.state';
+import {
+  EditorState,
+  MoveKey,
+  TableType,
+} from '@@types/engine/store/editor.state';
 
 export const createEditorState = (): EditorState => ({
   panels: [],
@@ -14,3 +18,5 @@ export const moveKeys: MoveKey[] = [
   'ArrowUp',
   'Tab',
 ];
+
+export const tableTypes: TableType[] = ['tableName', 'tableComment'];
