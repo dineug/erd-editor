@@ -29,3 +29,7 @@ export const focusTableEnd = () => createCommand('editor.focusTableEnd', null);
 
 export const focusMoveTable = (moveKey: MoveKey, shiftKey: boolean) =>
   createCommand('editor.focusMoveTable', { moveKey, shiftKey });
+
+export const editTable = () => createCommand('editor.editTable', null);
+
+export const editTableEnd = () => createCommand('editor.editTableEnd', null);

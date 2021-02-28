@@ -42,6 +42,7 @@ export function executeFocusTable(
       columnId: null,
       prevSelectColumnId: null,
       selectColumnIds: [],
+      edit: false,
     };
   } else if (editorState.focusTable?.table.id !== data.tableId) {
     const table = getData(tables, data.tableId);
@@ -53,6 +54,7 @@ export function executeFocusTable(
       columnId: null,
       prevSelectColumnId: null,
       selectColumnIds: [],
+      edit: false,
     };
   }
 }
@@ -99,6 +101,7 @@ export function executeFocusColumn(
       columnId: data.columnId,
       prevSelectColumnId: data.columnId,
       selectColumnIds: [data.columnId],
+      edit: false,
     };
   }
 }
@@ -110,6 +113,7 @@ export function executeFocusTableEnd({ editorState }: State) {
 export function executeFocusMoveTable(state: State, data: FocusMoveTable) {
   const { editorState } = state;
   if (!editorState.focusTable) return;
+  editorState.focusTable.edit = false;
 
   switch (data.moveKey) {
     case 'ArrowUp':
@@ -122,10 +126,22 @@ export function executeFocusMoveTable(state: State, data: FocusMoveTable) {
       arrowLeft(state, data);
       break;
     case 'ArrowRight':
-    case 'Tab':
       arrowRight(state, data);
       break;
+    case 'Tab':
+      data.shiftKey ? arrowLeft(state, data) : arrowRight(state, data);
+      break;
   }
+}
+
+export function executeEditTable({ editorState: { focusTable } }: State) {
+  if (!focusTable) return;
+  focusTable.edit = true;
+}
+
+export function executeEditTableEnd({ editorState: { focusTable } }: State) {
+  if (!focusTable) return;
+  focusTable.edit = false;
 }
 
 export const executeEditorCommandMap = {
@@ -134,4 +150,6 @@ export const executeEditorCommandMap = {
   'editor.focusColumn': executeFocusColumn,
   'editor.focusTableEnd': executeFocusTableEnd,
   'editor.focusMoveTable': executeFocusMoveTable,
+  'editor.editTable': executeEditTable,
+  'editor.editTableEnd': executeEditTableEnd,
 };

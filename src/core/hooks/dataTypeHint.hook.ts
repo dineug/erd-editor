@@ -120,9 +120,7 @@ export function useDataTypeHint(props: ColumnDataTypeProps, ctx: HTMLElement) {
     }
   };
 
-  const onArrowLeft = (event: KeyboardEvent) => {
-    activeEnd();
-  };
+  const onArrowLeft = () => activeEnd();
 
   const onArrowRight = (event: KeyboardEvent) => {
     const index = getActiveIndex();
@@ -175,6 +173,21 @@ export function useDataTypeHint(props: ColumnDataTypeProps, ctx: HTMLElement) {
       setHints();
     })
   );
+
+  beforeMount(() => {
+    const {
+      store: { canvasState },
+    } = contextRef.value;
+
+    unmountedGroup.push(
+      watch(canvasState, propName => {
+        if (propName !== 'database') return;
+
+        state.isFilter = true;
+        setHints();
+      })
+    );
+  });
 
   beforeMount(() => {
     const erd = closestElement('.vuerd-erd', ctx);

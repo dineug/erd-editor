@@ -15,6 +15,7 @@ export interface FocusTable {
   focusType: FocusType;
   selectColumnIds: string[];
   prevSelectColumnId: string | null;
+  edit: boolean;
 }
 
 export type TableType = 'tableName' | 'tableComment';

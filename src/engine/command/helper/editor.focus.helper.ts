@@ -21,9 +21,10 @@ function getColumnTypes({
   return ['columnName', ...columnOrder.filter(key => match.test(key))];
 }
 
-const isColumns = (focusTable: FocusTable) => !!focusTable.table.columns.length;
+export const isColumns = (focusTable: FocusTable) =>
+  !!focusTable.table.columns.length;
 
-function isLastColumn(state: State) {
+export function isLastColumn(state: State) {
   const {
     editorState: { focusTable },
   } = state;
@@ -45,7 +46,7 @@ function isFirstColumn(state: State) {
   return index === 0;
 }
 
-function isLastRowColumn({ table, columnId }: FocusTable) {
+export function isLastRowColumn({ table, columnId }: FocusTable) {
   if (!columnId) return true;
   const index = getIndex(table.columns, columnId);
   return index === table.columns.length - 1;
@@ -95,7 +96,7 @@ function getTableTypes({ canvasState: { show } }: State): TableType[] {
   return show.tableComment ? ['tableName', 'tableComment'] : ['tableName'];
 }
 
-function isLastTable(state: State) {
+export function isLastTable(state: State) {
   const {
     editorState: { focusTable },
   } = state;
@@ -117,7 +118,7 @@ function isFirstTable(state: State) {
   return index === 0;
 }
 
-const isTableFocusType = (focusType: FocusType) =>
+export const isTableFocusType = (focusType: FocusType) =>
   tableTypes.includes(focusType as any);
 
 function getNextRightTableType(state: State): FocusType {
@@ -172,7 +173,7 @@ export function arrowUp(state: State, data: FocusMoveTable) {
 
       focusTable.columnId = column.id;
       focusTable.prevSelectColumnId = column.id;
-      if (data.shiftKey) {
+      if (data.shiftKey && data.moveKey !== 'Tab') {
         focusTable.selectColumnIds = appendSelectColumns(
           focusTable.selectColumnIds,
           column.id
@@ -211,7 +212,7 @@ export function arrowDown(state: State, data: FocusMoveTable) {
 
       focusTable.columnId = column.id;
       focusTable.prevSelectColumnId = column.id;
-      if (data.shiftKey) {
+      if (data.shiftKey && data.moveKey !== 'Tab') {
         focusTable.selectColumnIds = appendSelectColumns(
           focusTable.selectColumnIds,
           column.id
@@ -258,7 +259,7 @@ export function arrowRight(state: State, data: FocusMoveTable) {
         focusTable.focusType = getFirstColumnType(state);
         focusTable.columnId = column.id;
         focusTable.prevSelectColumnId = column.id;
-        if (data.shiftKey) {
+        if (data.shiftKey && data.moveKey !== 'Tab') {
           focusTable.selectColumnIds = appendSelectColumns(
             focusTable.selectColumnIds,
             column.id
@@ -314,7 +315,7 @@ export function arrowLeft(state: State, data: FocusMoveTable) {
         focusTable.focusType = getLastColumnType(state);
         focusTable.columnId = column.id;
         focusTable.prevSelectColumnId = column.id;
-        if (data.shiftKey) {
+        if (data.shiftKey && data.moveKey !== 'Tab') {
           focusTable.selectColumnIds = appendSelectColumns(
             focusTable.selectColumnIds,
             column.id

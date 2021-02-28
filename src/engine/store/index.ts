@@ -2,6 +2,7 @@ import { CommandTypeAll, CommandTypeAny } from '@@types/engine/command';
 import { State } from '@@types/engine/store';
 import { IStore } from '@/internal-types/store';
 import { observable } from '@dineug/lit-observable';
+import { filter } from 'rxjs/operators';
 import { createCanvasState } from './canvas.state';
 import { createTableState } from './table.state';
 import { createRelationshipState } from './relationship.state';
@@ -40,9 +41,9 @@ export function createStore(): IStore {
   };
 
   subscriptionHelper.push(
-    history$.subscribe(command),
+    history$.pipe(filter(commands => !!commands.length)).subscribe(command),
     // TODO: executeHistoryCommand
-    dispatch$.subscribe(command)
+    dispatch$.pipe(filter(commands => !!commands.length)).subscribe(command)
   );
 
   return {

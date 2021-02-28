@@ -45,7 +45,14 @@ const Input: FunctionalComponent<InputProps, InputElement> = (props, ctx) => {
   const getPlaceholderValue = () =>
     props.value.trim() === '' ? props.placeholder : props.value;
 
-  const onBlur = () => ctx.dispatchEvent(new Event('blur'));
+  const onBlur = () => {
+    ctx.dispatchEvent(
+      new Event('vuerd-input-blur', {
+        composed: true,
+        bubbles: true,
+      })
+    );
+  };
 
   unmountedGroup.push(
     watch(props, propName => {

@@ -28,3 +28,7 @@ export declare function focusMoveTable(
   moveKey: MoveKey,
   shiftKey: boolean
 ): CommandType<'editor.focusMoveTable'>;
+
+export declare function editTable(): CommandType<'editor.editTable'>;
+
+export declare function editTableEnd(): CommandType<'editor.editTableEnd'>;

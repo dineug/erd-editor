@@ -41,6 +41,7 @@ import { isArray, createSubscriptionHelper } from '@/core/helper';
 import { ignoreEnterProcess } from '@/core/helper/operator.helper';
 import { panels as globalPanels } from '@/core/panel';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { editTableEnd } from '@/engine/command/editor.cmd.helper';
 import { Logger } from '@/core/logger';
 import { ERDEditorStyle } from './ERDEditor.style';
 
@@ -73,6 +74,8 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
       document.activeElement !== ctx && helper.focus();
       setFocus();
     }, 0);
+
+  const onEditTableEnd = () => store.dispatch(editTableEnd());
 
   unmountedGroup.push(
     watch(props, propName => {
@@ -112,7 +115,8 @@ key: ${event.key}
         fromEvent(editorRef.value, 'mousedown'),
         fromEvent(editorRef.value, 'touchstart'),
         fromEvent(editorRef.value, 'vuerd-contextmenu-mousedown'),
-        fromEvent(editorRef.value, 'vuerd-contextmenu-touchstart')
+        fromEvent(editorRef.value, 'vuerd-contextmenu-touchstart'),
+        fromEvent(editorRef.value, 'vuerd-input-blur')
       ).subscribe(onFocus),
       globalEvent.moveStart$.subscribe(() => setTimeout(setFocus, 0))
     );
@@ -176,7 +180,11 @@ key: ${event.key}
             height: props.automaticLayout ? `100%` : `${props.height}px`,
           })}
         >
-          <vuerd-menubar .focusState=${state.focus}></vuerd-menubar>
+          <vuerd-menubar
+            .focusState=${state.focus}
+            @mousedown=${onEditTableEnd}
+            @touchstart=${onEditTableEnd}
+          ></vuerd-menubar>
           ${cache(
             isERD
               ? html`<vuerd-erd .width=${width} .height=${height}></vuerd-erd>`

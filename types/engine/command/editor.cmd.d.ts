@@ -30,4 +30,6 @@ export interface EditorCommandMap {
   'editor.focusColumn': FocusColumn;
   'editor.focusTableEnd': null;
   'editor.focusMoveTable': FocusMoveTable;
+  'editor.editTable': null;
+  'editor.editTableEnd': null;
 }

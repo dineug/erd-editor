@@ -24,3 +24,24 @@ export const isSelectColumn = (
 ) =>
   focusTable?.table.id === tableId &&
   focusTable.selectColumnIds.includes(columnId);
+
+export function isEdit(
+  focusTable: FocusTable | null,
+  focusType: FocusType,
+  tableId: string,
+  columnId: string | null = null
+) {
+  if (!focusTable || tableId !== focusTable.table.id) return false;
+
+  switch (focusType) {
+    case 'tableName':
+    case 'tableComment':
+      return focusType === focusTable.focusType && focusTable.edit;
+  }
+
+  return (
+    columnId === focusTable.columnId &&
+    focusType === focusTable.focusType &&
+    focusTable.edit
+  );
+}

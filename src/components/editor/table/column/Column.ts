@@ -34,6 +34,14 @@ export interface ColumnProps {
   focusComment: boolean;
   focusUnique: boolean;
   focusAutoIncrement: boolean;
+  editName: boolean;
+  editDataType: boolean;
+  editDefault: boolean;
+  editComment: boolean;
+  widthName: number;
+  widthDataType: number;
+  widthDefault: number;
+  widthComment: number;
 }
 
 export interface ColumnElement extends ColumnProps, HTMLElement {}
@@ -92,6 +100,14 @@ defineComponent('vuerd-column', {
     'focusComment',
     'focusUnique',
     'focusAutoIncrement',
+    'editName',
+    'editDataType',
+    'editDefault',
+    'editComment',
+    'widthName',
+    'widthDataType',
+    'widthDefault',
+    'widthComment',
   ],
   shadow: false,
   render: Column,

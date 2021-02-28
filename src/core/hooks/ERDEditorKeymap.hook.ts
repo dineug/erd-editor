@@ -1,12 +1,17 @@
 import { CommandTypeAll } from '@@types/engine/command';
-import { MoveKey } from '@@types/engine/store/editor.state';
+import { MoveKey, FocusType } from '@@types/engine/store/editor.state';
 import { beforeMount, unmounted } from '@dineug/lit-observable';
 import { useContext } from './context.hook';
 import { createSubscriptionHelper } from '@/core/helper';
 import { keymapMatchAndOption } from '@/core/keymap';
 import { relationshipMenus } from '@/core/contextmenu/drawRelationship.contextmenu';
 import { moveKeys } from '@/engine/store/editor.state';
-import { addColumn$ } from '@/engine/command/column.cmd.helper';
+import {
+  addColumn$,
+  changeColumnNotNull,
+  changeColumnUnique,
+  changeColumnAutoIncrement,
+} from '@/engine/command/column.cmd.helper';
 import {
   addTable$,
   removeTable,
@@ -17,7 +22,24 @@ import {
   removeMemo,
   selectAllMemo,
 } from '@/engine/command/memo.cmd.helper';
-import { focusMoveTable$ } from '@/engine/command/editor.cmd.helper';
+import {
+  focusMoveTable,
+  focusMoveTable$,
+  editTable,
+  editTableEnd,
+} from '@/engine/command/editor.cmd.helper';
+
+const changeColumnMap = {
+  columnNotNull: changeColumnNotNull,
+  columnUnique: changeColumnUnique,
+  columnAutoIncrement: changeColumnAutoIncrement,
+};
+
+const changeColumnKeys: FocusType[] = [
+  'columnNotNull',
+  'columnUnique',
+  'columnAutoIncrement',
+];
 
 export function useERDEditorKeymap(ctx: HTMLElement) {
   const contextRef = useContext(ctx);
@@ -56,9 +78,48 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
       store.dispatch(...commands);
     }
 
-    if (editorState.focusTable && moveKeys.includes(event.key as MoveKey)) {
-      event.key === 'Tab' && event.preventDefault();
-      store.dispatch(focusMoveTable$(event.key as MoveKey, event.shiftKey));
+    if (
+      editorState.focusTable &&
+      !editorState.focusTable.edit &&
+      event.key !== 'Tab' &&
+      moveKeys.includes(event.key as MoveKey)
+    ) {
+      store.dispatch(focusMoveTable(event.key as MoveKey, event.shiftKey));
+    }
+
+    if (editorState.focusTable && event.key === 'Tab') {
+      event.preventDefault();
+      store.dispatch(
+        focusMoveTable$(store, event.key as MoveKey, event.shiftKey)
+      );
+
+      setTimeout(() => {
+        if (
+          !editorState.focusTable ||
+          changeColumnKeys.includes(editorState.focusTable.focusType)
+        )
+          return;
+
+        store.dispatch(editTable());
+      }, 20);
+    }
+
+    if (editorState.focusTable && keymapMatchAndOption(event, keymap.edit)) {
+      const focusTable = editorState.focusTable;
+
+      if (focusTable.edit) {
+        store.dispatch(editTableEnd());
+      } else if (focusTable.columnId) {
+        if (changeColumnKeys.includes(focusTable.focusType)) {
+          const changeColumn = (changeColumnMap as any)[focusTable.focusType];
+
+          store.dispatch(
+            changeColumn(store, focusTable.table.id, focusTable.columnId)
+          );
+        } else {
+          store.dispatch(editTable());
+        }
+      }
     }
 
     relationshipMenus.forEach(relationshipMenu => {

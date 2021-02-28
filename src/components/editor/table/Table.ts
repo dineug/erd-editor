@@ -23,8 +23,16 @@ import {
   removeTable,
 } from '@/engine/command/table.cmd.helper';
 import { addColumn$ } from '@/engine/command/column.cmd.helper';
-import { focusTable } from '@/engine/command/editor.cmd.helper';
-import { isFocus, isSelectColumn } from '@/engine/store/helper/editor.helper';
+import {
+  focusTable,
+  editTableEnd,
+  editTable,
+} from '@/engine/command/editor.cmd.helper';
+import {
+  isFocus,
+  isSelectColumn,
+  isEdit,
+} from '@/engine/store/helper/editor.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -47,6 +55,13 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
       store: { editorState },
     } = contextRef.value;
     return isFocus(editorState.focusTable, focusType, props.table.id, columnId);
+  };
+
+  const getEdit = (focusType: FocusType, columnId?: string) => {
+    const {
+      store: { editorState },
+    } = contextRef.value;
+    return isEdit(editorState.focusTable, focusType, props.table.id, columnId);
   };
 
   const onInput = (event: InputEvent, focusType: string) => {
@@ -106,6 +121,16 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     store.dispatch(focusTable(props.table.id, focusType));
   };
 
+  const onBlur = () => {
+    const { store } = contextRef.value;
+    store.dispatch(editTableEnd());
+  };
+
+  const onEdit = () => {
+    const { store } = contextRef.value;
+    store.dispatch(editTable());
+  };
+
   return () => {
     const {
       keymap,
@@ -116,6 +141,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     } = contextRef.value;
     const table = props.table;
     const { ui, columns } = table;
+    const widthColumn = table.maxWidthColumn();
 
     return html`
       <div
@@ -156,9 +182,12 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
               .width=${table.ui.widthName}
               .value=${table.name}
               .focusState=${getFocusState('tableName')}
+              .edit=${getEdit('tableName')}
               placeholder="table"
               @input=${(event: InputEvent) => onInput(event, 'tableName')}
               @mousedown=${() => onFocus('tableName')}
+              @dblclick=${onEdit}
+              @vuerd-input-blur=${onBlur}
             ></vuerd-input>
             ${show.tableComment
               ? html`
@@ -167,10 +196,13 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
                     .width=${table.ui.widthComment}
                     .value=${table.comment}
                     .focusState=${getFocusState('tableComment')}
+                    .edit=${getEdit('tableComment')}
                     placeholder="comment"
                     @input=${(event: InputEvent) =>
                       onInput(event, 'tableComment')}
                     @mousedown=${() => onFocus('tableComment')}
+                    @dblclick=${onEdit}
+                    @vuerd-input-blur=${onBlur}
                   ></vuerd-input>
                 `
               : null}
@@ -200,6 +232,14 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
                     'columnAutoIncrement',
                     column.id
                   )}
+                  .editName=${getEdit('columnName', column.id)}
+                  .editComment=${getEdit('columnComment', column.id)}
+                  .editDataType=${getEdit('columnDataType', column.id)}
+                  .editDefault=${getEdit('columnDefault', column.id)}
+                  .widthName=${widthColumn.name}
+                  .widthComment=${widthColumn.comment}
+                  .widthDataType=${widthColumn.dataType}
+                  .widthDefault=${widthColumn.default}
                 ></vuerd-column>
               `
           )}
