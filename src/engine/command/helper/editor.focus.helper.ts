@@ -92,6 +92,32 @@ function getNextLeftColumnType(state: State): FocusType {
     : columnTypes[index - 1];
 }
 
+export function getRemoveFirstColumnId(
+  focusTable: FocusTable,
+  columnIds: string[]
+) {
+  if (!focusTable.columnId) return null;
+
+  const columnIndex = getIndex(
+    focusTable.table.columns,
+    focusTable.columnId as string
+  );
+
+  if (columnIndex <= 0) return null;
+
+  let columnId = null;
+  for (let i = columnIndex - 1; i >= 0; i--) {
+    const column = focusTable.table.columns[i];
+
+    if (!columnIds.includes(column.id)) {
+      columnId = column.id;
+      break;
+    }
+  }
+
+  return columnId;
+}
+
 function getTableTypes({ canvasState: { show } }: State): TableType[] {
   return show.tableComment ? ['tableName', 'tableComment'] : ['tableName'];
 }

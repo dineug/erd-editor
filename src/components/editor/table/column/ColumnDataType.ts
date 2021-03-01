@@ -2,10 +2,10 @@ import {
   defineComponent,
   html,
   FunctionalComponent,
-  queryShadow,
   closestElement,
   beforeMount,
   unmounted,
+  queryShadowSelector,
 } from '@dineug/lit-observable';
 import { fromEvent } from 'rxjs';
 import { useDataTypeHint } from '@/core/hooks/dataTypeHint.hook';
@@ -40,7 +40,6 @@ const ColumnDataType: FunctionalComponent<
   ColumnDataTypeProps,
   ColumnDataTypeElement
 > = (props, ctx) => {
-  const inputRef = queryShadow<HTMLInputElement>('vuerd-input', 'input');
   const { hintState, onSelectHint, onKeydown, onInput } = useDataTypeHint(
     props,
     ctx
@@ -58,14 +57,16 @@ const ColumnDataType: FunctionalComponent<
 
   const onBlur = (event: CustomEvent) => {
     event.stopPropagation();
-    const input = inputRef.value;
+    const input = queryShadowSelector(['vuerd-input', 'input'], ctx);
 
-    input && props.edit ? lastCursorFocus(input) : emitBlur();
+    input && props.edit
+      ? lastCursorFocus(input as HTMLInputElement)
+      : emitBlur();
   };
 
   const onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement;
-    if (!el.closest('.vuerd-column-data-type')) {
+    if (props.edit && !el.closest('.vuerd-column-data-type')) {
       emitBlur();
     }
   };

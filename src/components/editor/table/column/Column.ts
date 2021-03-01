@@ -14,7 +14,7 @@ import { classMap } from 'lit-html/directives/class-map';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { keymapOptionsToString } from '@/core/keymap';
 import { useContext } from '@/core/hooks/context.hook';
-import { removeColumn } from '@/engine/command/column.cmd.helper';
+import { removeColumn$ } from '@/engine/command/column.cmd.helper';
 import { columnTpl } from './Column.template';
 
 declare global {
@@ -55,7 +55,7 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
 
   const onRemoveColumn = () => {
     const { store } = contextRef.value;
-    store.dispatch(removeColumn(props.tableId, [props.column.id]));
+    store.dispatch(removeColumn$(store, props.tableId, [props.column.id]));
   };
 
   return () => {

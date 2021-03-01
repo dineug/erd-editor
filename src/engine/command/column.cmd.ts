@@ -21,17 +21,9 @@ export function executeAddColumn(
   { tableState: { tables }, relationshipState: { relationships } }: State,
   data: AddColumn[]
 ) {
-  // executeEditTableEnd(store);
-  data.forEach((addColumn: AddColumn, index: number) => {
+  data.forEach((addColumn: AddColumn) => {
     const table = getData(tables, addColumn.tableId);
-    if (table) {
-      if (index === data.length - 1) {
-        // executeFocusTable(store, {
-        //   tableId: table.id,
-        // });
-      }
-      table.columns.push(new ColumnModel({ addColumn }));
-    }
+    table && table.columns.push(new ColumnModel({ addColumn }));
   });
   // relationshipSort(tables, relationships);
 }

@@ -32,3 +32,5 @@ export declare function focusMoveTable(
 export declare function editTable(): CommandType<'editor.editTable'>;
 
 export declare function editTableEnd(): CommandType<'editor.editTableEnd'>;
+
+export declare function selectAllColumn(): CommandType<'editor.selectAllColumn'>;

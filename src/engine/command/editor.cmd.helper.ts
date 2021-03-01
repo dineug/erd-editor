@@ -33,3 +33,6 @@ export const focusMoveTable = (moveKey: MoveKey, shiftKey: boolean) =>
 export const editTable = () => createCommand('editor.editTable', null);
 
 export const editTableEnd = () => createCommand('editor.editTableEnd', null);
+
+export const selectAllColumn = () =>
+  createCommand('editor.selectAllColumn', null);

@@ -144,6 +144,13 @@ export function executeEditTableEnd({ editorState: { focusTable } }: State) {
   focusTable.edit = false;
 }
 
+export function executeSelectAllColumn({ editorState: { focusTable } }: State) {
+  if (!focusTable) return;
+  focusTable.selectColumnIds = focusTable.table.columns.map(
+    column => column.id
+  );
+}
+
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
@@ -152,4 +159,5 @@ export const executeEditorCommandMap = {
   'editor.focusMoveTable': executeFocusMoveTable,
   'editor.editTable': executeEditTable,
   'editor.editTableEnd': executeEditTableEnd,
+  'editor.selectAllColumn': executeSelectAllColumn,
 };

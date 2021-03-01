@@ -11,6 +11,7 @@ import {
   changeColumnNotNull,
   changeColumnUnique,
   changeColumnAutoIncrement,
+  removeColumn$,
 } from '@/engine/command/column.cmd.helper';
 import {
   addTable$,
@@ -27,6 +28,7 @@ import {
   focusMoveTable$,
   editTable,
   editTableEnd,
+  selectAllColumn,
 } from '@/engine/command/editor.cmd.helper';
 
 const changeColumnMap = {
@@ -63,6 +65,13 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
       store.dispatch(selectAllTable(), selectAllMemo());
 
     if (
+      editorState.focusTable &&
+      keymapMatchAndOption(event, keymap.selectAllColumn)
+    ) {
+      store.dispatch(selectAllColumn());
+    }
+
+    if (
       keymapMatchAndOption(event, keymap.removeTable) &&
       (store.tableState.tables.some(table => table.ui.active) ||
         store.memoState.memos.some(memo => memo.ui.active))
@@ -76,6 +85,20 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
         commands.push(removeMemo(store));
 
       store.dispatch(...commands);
+    }
+
+    if (
+      editorState.focusTable &&
+      editorState.focusTable.selectColumnIds.length &&
+      keymapMatchAndOption(event, keymap.removeColumn)
+    ) {
+      store.dispatch(
+        removeColumn$(
+          store,
+          editorState.focusTable.table.id,
+          editorState.focusTable.selectColumnIds
+        )
+      );
     }
 
     if (
@@ -101,7 +124,7 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
           return;
 
         store.dispatch(editTable());
-      }, 20);
+      }, 0);
     }
 
     if (editorState.focusTable && keymapMatchAndOption(event, keymap.edit)) {
@@ -109,16 +132,17 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
 
       if (focusTable.edit) {
         store.dispatch(editTableEnd());
-      } else if (focusTable.columnId) {
-        if (changeColumnKeys.includes(focusTable.focusType)) {
-          const changeColumn = (changeColumnMap as any)[focusTable.focusType];
+      } else if (
+        focusTable.columnId &&
+        changeColumnKeys.includes(focusTable.focusType)
+      ) {
+        const changeColumn = (changeColumnMap as any)[focusTable.focusType];
 
-          store.dispatch(
-            changeColumn(store, focusTable.table.id, focusTable.columnId)
-          );
-        } else {
-          store.dispatch(editTable());
-        }
+        store.dispatch(
+          changeColumn(store, focusTable.table.id, focusTable.columnId)
+        );
+      } else {
+        store.dispatch(editTable());
       }
     }
 
