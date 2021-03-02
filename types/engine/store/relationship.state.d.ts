@@ -18,6 +18,11 @@ export interface RelationshipPoint {
   direction: Direction;
 }
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
 export type RelationshipType =
   | 'ZeroOneN'
   | 'ZeroOne'

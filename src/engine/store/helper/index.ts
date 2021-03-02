@@ -1,6 +1,6 @@
 import { Table, TableUI } from '@@types/engine/store/table.state';
 import { Memo, MemoUI } from '@@types/engine/store/memo.state';
-import { Point } from '@@types/engine/store/relationship.helper';
+import { Point } from '@@types/engine/store/relationship.state';
 import { Store } from '@@types/engine/store';
 import { SIZE_START_X, SIZE_START_Y, SIZE_START_ADD } from '@/core/layout';
 

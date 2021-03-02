@@ -1,4 +1,4 @@
-import { Point } from '@@types/engine/store/relationship.helper';
+import { Point } from '@@types/engine/store/relationship.state';
 import { Store } from '@@types/engine/store';
 import { PureTable } from '@@types/engine/store/table.state';
 import { Helper } from '@@types/core/helper';

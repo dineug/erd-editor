@@ -1,5 +1,5 @@
 import { MemoUI, Memo } from '../store/memo.state';
-import { Point } from '../store/relationship.helper';
+import { Point } from '../store/relationship.state';
 
 export interface AddMemo {
   id: string;

@@ -1,6 +1,6 @@
 import { Store } from '../store';
 import { CommandType } from './index';
-import { Point } from '../store/relationship.helper';
+import { Point } from '../store/relationship.state';
 import { PureTable } from '../store/table.state';
 import { Helper } from '../../core/helper';
 

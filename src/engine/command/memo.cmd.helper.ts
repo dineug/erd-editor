@@ -1,5 +1,5 @@
 import { Memo } from '@@types/engine/store/memo.state';
-import { Point } from '@@types/engine/store/relationship.helper';
+import { Point } from '@@types/engine/store/relationship.state';
 import { Store } from '@@types/engine/store';
 import { createCommand } from './helper';
 import { SIZE_MEMO_WIDTH, SIZE_MEMO_HEIGHT } from '@/core/layout';

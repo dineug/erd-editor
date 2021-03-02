@@ -1,5 +1,5 @@
 import { PureTable } from '../store/table.state';
-import { Point } from '../store/relationship.helper';
+import { Point } from '../store/relationship.state';
 
 export interface AddTableUI {
   active: boolean;
