@@ -66,8 +66,6 @@ export function executeSelectTable(
   { tableState: { tables } }: State,
   data: SelectTable
 ) {
-  // const { tables } = store.tableState;
-  // const { drawRelationship } = store.editorState;
   const targetTable = getData(tables, data.tableId);
   if (!targetTable) return;
 
@@ -75,59 +73,6 @@ export function executeSelectTable(
   data.ctrlKey
     ? (targetTable.ui.active = true)
     : tables.forEach(table => (table.ui.active = table.id === data.tableId));
-
-  // executeFocusTable(store, { tableId: data.tableId });
-  // if (drawRelationship) {
-  //   if (drawRelationship.start) {
-  //     const batchCommand: Array<Command<CommandType>> = [];
-  //     const addRelationshipCommand = addRelationship(
-  //       drawRelationship.relationshipType,
-  //       drawRelationship.start.table,
-  //       data.tableId
-  //     );
-  //     const startTable = drawRelationship.start.table;
-  //     // create end table column
-  //     const createEndColumns: AddCustomColumn[] = [];
-  //     const { start, end } = addRelationshipCommand.data;
-  //     start.columnIds.forEach((startColumnId, index) => {
-  //       const startColumn = getData(startTable.columns, startColumnId);
-  //       if (startColumn) {
-  //         createEndColumns.push({
-  //           tableId: end.tableId,
-  //           id: end.columnIds[index],
-  //           option: null,
-  //           ui: {
-  //             active: false,
-  //             pk: false,
-  //             fk: true,
-  //             pfk: false,
-  //           },
-  //           value: {
-  //             name: startColumn.name,
-  //             comment: startColumn.comment,
-  //             dataType: startColumn.dataType,
-  //             default: startColumn.default,
-  //             widthName: startColumn.ui.widthName,
-  //             widthComment: startColumn.ui.widthComment,
-  //             widthDataType: startColumn.ui.widthDataType,
-  //             widthDefault: startColumn.ui.widthDefault,
-  //           },
-  //         });
-  //       }
-  //     });
-  //     batchCommand.push(
-  //       {
-  //         type: 'column.addCustom',
-  //         data: createEndColumns,
-  //       },
-  //       addRelationshipCommand
-  //     );
-  //     store.dispatch(...batchCommand);
-  //     executeDrawEndRelationship(store);
-  //   } else {
-  //     executeDrawStartAddRelationship(store, { tableId: data.tableId });
-  //   }
-  // }
 }
 
 export function executeSelectEndTable({ tableState: { tables } }: State) {

@@ -1,6 +1,7 @@
 import { CommandType } from './index';
 import { ColumnType } from '../store/canvas.state';
 import { TableType, MoveKey } from '../store/editor.state';
+import { RelationshipType } from '../store/relationship.state';
 
 export * from './editor.cmd.helper.gen';
 
@@ -34,3 +35,13 @@ export declare function editTable(): CommandType<'editor.editTable'>;
 export declare function editTableEnd(): CommandType<'editor.editTableEnd'>;
 
 export declare function selectAllColumn(): CommandType<'editor.selectAllColumn'>;
+
+export declare function drawStartRelationship(
+  relationshipType: RelationshipType
+): CommandType<'editor.drawStartRelationship'>;
+
+export declare function drawStartAddRelationship(
+  tableId: string
+): CommandType<'editor.drawStartAddRelationship'>;
+
+export declare function drawEndRelationship(): CommandType<'editor.drawEndRelationship'>;

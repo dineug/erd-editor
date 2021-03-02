@@ -8,7 +8,7 @@ export function* addColumn$(store: Store, tableId?: string) {
   const addColumnCmd = addColumn(store, tableId);
   yield addColumnCmd;
   const column = addColumnCmd.data[addColumnCmd.data.length - 1];
-  yield focusColumn(column.tableId, column.id, 'columnName', false, false);
+  yield focusColumn(column.tableId, column.id, 'columnName');
 }
 
 export function* removeColumn$(
@@ -25,9 +25,7 @@ export function* removeColumn$(
       yield focusColumn(
         editorState.focusTable.table.id,
         columnId,
-        editorState.focusTable.focusType as ColumnType,
-        false,
-        false
+        editorState.focusTable.focusType as ColumnType
       );
     } else {
       yield focusTable(editorState.focusTable.table.id, 'tableName');

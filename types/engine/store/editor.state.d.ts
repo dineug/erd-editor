@@ -1,12 +1,14 @@
 import { PanelConfig } from '../../core/panel';
 import { ColumnType } from './canvas.state';
 import { Table } from './table.state';
+import { RelationshipType, Point } from './relationship.state';
 
 export interface EditorState {
   panels: PanelConfig[];
   hasUndo: boolean;
   hasRedo: boolean;
   focusTable: FocusTable | null;
+  drawRelationship: DrawRelationship | null;
 }
 
 export interface FocusTable {
@@ -16,6 +18,16 @@ export interface FocusTable {
   selectColumnIds: string[];
   prevSelectColumnId: string | null;
   edit: boolean;
+}
+
+export interface DrawRelationship {
+  relationshipType: RelationshipType;
+  start: DrawStartPoint | null;
+  end: Point;
+}
+
+export interface DrawStartPoint extends Point {
+  table: Table;
 }
 
 export type TableType = 'tableName' | 'tableComment';

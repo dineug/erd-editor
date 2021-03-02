@@ -1,5 +1,6 @@
 import { ColumnType } from '@@types/engine/store/canvas.state';
 import { TableType, MoveKey } from '@@types/engine/store/editor.state';
+import { RelationshipType } from '@@types/engine/store/relationship.state';
 import { createCommand } from './helper';
 
 export * from './editor.cmd.helper.gen';
@@ -14,8 +15,8 @@ export const focusColumn = (
   tableId: string,
   columnId: string,
   focusType: ColumnType,
-  ctrlKey: boolean,
-  shiftKey: boolean
+  ctrlKey = false,
+  shiftKey = false
 ) =>
   createCommand('editor.focusColumn', {
     tableId,
@@ -36,3 +37,12 @@ export const editTableEnd = () => createCommand('editor.editTableEnd', null);
 
 export const selectAllColumn = () =>
   createCommand('editor.selectAllColumn', null);
+
+export const drawStartRelationship = (relationshipType: RelationshipType) =>
+  createCommand('editor.drawStartRelationship', { relationshipType });
+
+export const drawStartAddRelationship = (tableId: string) =>
+  createCommand('editor.drawStartAddRelationship', { tableId });
+
+export const drawEndRelationship = () =>
+  createCommand('editor.drawEndRelationship', null);

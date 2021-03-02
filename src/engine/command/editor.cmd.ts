@@ -5,6 +5,10 @@ import {
   FocusColumn,
   FocusMoveTable,
 } from '@@types/engine/command/editor.cmd';
+import {
+  DrawStartRelationship,
+  DrawStartAddRelationship,
+} from '@@types/engine/command/editor.cmd';
 import { getData } from '@/core/helper';
 import {
   appendSelectColumns,
@@ -151,6 +155,40 @@ export function executeSelectAllColumn({ editorState: { focusTable } }: State) {
   );
 }
 
+export function executeDrawStartRelationship(
+  { editorState }: State,
+  data: DrawStartRelationship
+) {
+  editorState.drawRelationship = {
+    relationshipType: data.relationshipType,
+    start: null,
+    end: {
+      x: 0,
+      y: 0,
+    },
+  };
+}
+
+export function executeDrawStartAddRelationship(
+  { tableState: { tables }, editorState: { drawRelationship } }: State,
+  data: DrawStartAddRelationship
+) {
+  if (!drawRelationship) return;
+
+  const table = getData(tables, data.tableId);
+  if (!table) return;
+
+  drawRelationship.start = {
+    table,
+    x: table.ui.left,
+    y: table.ui.top,
+  };
+}
+
+export function executeDrawEndRelationship({ editorState }: State) {
+  editorState.drawRelationship = null;
+}
+
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
@@ -160,4 +198,7 @@ export const executeEditorCommandMap = {
   'editor.editTable': executeEditTable,
   'editor.editTableEnd': executeEditTableEnd,
   'editor.selectAllColumn': executeSelectAllColumn,
+  'editor.drawStartRelationship': executeDrawStartRelationship,
+  'editor.drawStartAddRelationship': executeDrawStartAddRelationship,
+  'editor.drawEndRelationship': executeDrawEndRelationship,
 };

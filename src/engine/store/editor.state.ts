@@ -9,6 +9,7 @@ export const createEditorState = (): EditorState => ({
   hasUndo: false,
   hasRedo: false,
   focusTable: null,
+  drawRelationship: null,
 });
 
 export const moveKeys: MoveKey[] = [

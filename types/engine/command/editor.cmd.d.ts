@@ -1,5 +1,6 @@
 import { ColumnType } from '../store/canvas.state';
 import { TableType, MoveKey } from '../store/editor.state';
+import { RelationshipType } from '../store/relationship.state';
 
 export interface HasUndoRedo {
   hasUndo: boolean;
@@ -24,6 +25,14 @@ export interface FocusMoveTable {
   shiftKey: boolean;
 }
 
+export interface DrawStartRelationship {
+  relationshipType: RelationshipType;
+}
+
+export interface DrawStartAddRelationship {
+  tableId: string;
+}
+
 export interface EditorCommandMap {
   'editor.hasUndoRedo': HasUndoRedo;
   'editor.focusTable': FocusTable;
@@ -33,4 +42,7 @@ export interface EditorCommandMap {
   'editor.editTable': null;
   'editor.editTableEnd': null;
   'editor.selectAllColumn': null;
+  'editor.drawStartRelationship': DrawStartRelationship;
+  'editor.drawStartAddRelationship': DrawStartAddRelationship;
+  'editor.drawEndRelationship': null;
 }
