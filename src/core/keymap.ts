@@ -262,7 +262,7 @@ export const keymapMatch = (
   keymapOptions: KeymapOption[]
 ) => !!getKeymap(event, keymapOptions);
 
-export function keymapMatchAndOption(
+export function keymapMatchAndStop(
   event: KeyboardEvent,
   keymapOptions: KeymapOption[]
 ): boolean {

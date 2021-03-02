@@ -23,6 +23,7 @@ export function executeAddColumn(
 ) {
   data.forEach((addColumn: AddColumn) => {
     const table = getData(tables, addColumn.tableId);
+
     table && table.columns.push(new ColumnModel({ addColumn }));
   });
   // relationshipSort(tables, relationships);
@@ -34,9 +35,9 @@ export function executeAddCustomColumn(
 ) {
   data.forEach((addCustomColumn: AddCustomColumn) => {
     const table = getData(tables, addCustomColumn.tableId);
-    if (table) {
-      table.columns.push(new ColumnModel({ addCustomColumn }));
-    }
+    if (!table) return;
+
+    table.columns.push(new ColumnModel({ addCustomColumn }));
   });
   // relationshipSort(tables, relationships);
 }
@@ -46,20 +47,21 @@ export function executeRemoveColumn(
   data: RemoveColumn
 ) {
   const table = getData(tables, data.tableId);
-  if (table) {
-    for (let i = 0; i < table.columns.length; i++) {
-      const column = table.columns[i];
-      if (data.columnIds.some(columnId => columnId === column.id)) {
-        table.columns.splice(i, 1);
-        i--;
-      }
+  if (!table) return;
+
+  for (let i = 0; i < table.columns.length; i++) {
+    const column = table.columns[i];
+
+    if (data.columnIds.some(columnId => columnId === column.id)) {
+      table.columns.splice(i, 1);
+      i--;
     }
-    // relationship valid
-    // removeValidColumnIndex(store, table, data.columnIds);
-    // removeValidColumnRelationship(store, table, data.columnIds);
-    // validIdentification(store);
-    // relationshipSort(tables, relationships);
   }
+  // relationship valid
+  // removeValidColumnIndex(store, table, data.columnIds);
+  // removeValidColumnRelationship(store, table, data.columnIds);
+  // validIdentification(store);
+  // relationshipSort(tables, relationships);
 }
 
 export function executeChangeColumnName(
@@ -67,11 +69,11 @@ export function executeChangeColumnName(
   data: ChangeColumnValue
 ) {
   const column = getColumn(tables, data.tableId, data.columnId);
-  if (column) {
-    column.name = data.value;
-    column.ui.widthName = data.width;
-    // relationshipSort(tables, relationships);
-  }
+  if (!column) return;
+
+  column.name = data.value;
+  column.ui.widthName = data.width;
+  // relationshipSort(tables, relationships);
 }
 
 export function executeChangeColumnComment(
@@ -79,11 +81,11 @@ export function executeChangeColumnComment(
   data: ChangeColumnValue
 ) {
   const column = getColumn(tables, data.tableId, data.columnId);
-  if (column) {
-    column.comment = data.value;
-    column.ui.widthComment = data.width;
-    // relationshipSort(tables, relationships);
-  }
+  if (!column) return;
+
+  column.comment = data.value;
+  column.ui.widthComment = data.width;
+  // relationshipSort(tables, relationships);
 }
 
 export function executeChangeColumnDataType(
@@ -95,17 +97,18 @@ export function executeChangeColumnDataType(
   data: ChangeColumnValue
 ) {
   const targetColumn = getColumn(tables, data.tableId, data.columnId);
-  if (targetColumn) {
-    let columns: Column[] = [targetColumn];
-    if (setting.relationshipDataTypeSync) {
-      columns = getDataTypeSyncColumns([targetColumn], tables, relationships);
-    }
-    columns.forEach(column => {
-      column.dataType = data.value;
-      column.ui.widthDataType = data.width;
-    });
-    // relationshipSort(tables, relationships);
+  if (!targetColumn) return;
+
+  let columns: Column[] = [targetColumn];
+  if (setting.relationshipDataTypeSync) {
+    columns = getDataTypeSyncColumns([targetColumn], tables, relationships);
   }
+
+  columns.forEach(column => {
+    column.dataType = data.value;
+    column.ui.widthDataType = data.width;
+  });
+  // relationshipSort(tables, relationships);
 }
 
 export function executeChangeColumnDefault(
@@ -113,11 +116,11 @@ export function executeChangeColumnDefault(
   data: ChangeColumnValue
 ) {
   const column = getColumn(tables, data.tableId, data.columnId);
-  if (column) {
-    column.default = data.value;
-    column.ui.widthDefault = data.width;
-    // relationshipSort(tables, relationships);
-  }
+  if (!column) return;
+
+  column.default = data.value;
+  column.ui.widthDefault = data.width;
+  // relationshipSort(tables, relationships);
 }
 
 export function executeChangeColumnAutoIncrement(
@@ -125,9 +128,9 @@ export function executeChangeColumnAutoIncrement(
   data: ChangeColumnOption
 ) {
   const column = getColumn(tables, data.tableId, data.columnId);
-  if (column) {
-    column.option.autoIncrement = data.value;
-  }
+  if (!column) return;
+
+  column.option.autoIncrement = data.value;
 }
 
 export function executeChangeColumnPrimaryKey(
@@ -136,33 +139,33 @@ export function executeChangeColumnPrimaryKey(
 ) {
   const table = getData(tables, data.tableId);
   const column = getColumn(tables, data.tableId, data.columnId);
-  if (table && column) {
-    if (data.value) {
-      if (column.ui.fk) {
-        column.ui.fk = false;
-        column.ui.pfk = true;
-      } else {
-        column.ui.pk = true;
-      }
-      if (!column.option.notNull) {
-        // executeChangeColumnNotNull(store, {
-        //   tableId: data.tableId,
-        //   columnId: data.columnId,
-        //   value: true,
-        // });
-      }
+  if (!table || !column) return;
+
+  if (data.value) {
+    if (column.ui.fk) {
+      column.ui.fk = false;
+      column.ui.pfk = true;
     } else {
-      if (column.ui.pfk) {
-        column.ui.pfk = false;
-        column.ui.fk = true;
-      } else {
-        column.ui.pk = false;
-      }
+      column.ui.pk = true;
     }
-    column.option.primaryKey = data.value;
-    // relationship valid
-    // validIdentification(store);
+    if (!column.option.notNull) {
+      // executeChangeColumnNotNull(store, {
+      //   tableId: data.tableId,
+      //   columnId: data.columnId,
+      //   value: true,
+      // });
+    }
+  } else {
+    if (column.ui.pfk) {
+      column.ui.pfk = false;
+      column.ui.fk = true;
+    } else {
+      column.ui.pk = false;
+    }
   }
+  column.option.primaryKey = data.value;
+  // relationship valid
+  // validIdentification(store);
 }
 
 export function executeChangeColumnUnique(
@@ -170,9 +173,9 @@ export function executeChangeColumnUnique(
   data: ChangeColumnOption
 ) {
   const column = getColumn(tables, data.tableId, data.columnId);
-  if (column) {
-    column.option.unique = data.value;
-  }
+  if (!column) return;
+
+  column.option.unique = data.value;
 }
 
 export function executeChangeColumnNotNull(
@@ -180,9 +183,9 @@ export function executeChangeColumnNotNull(
   data: ChangeColumnOption
 ) {
   const column = getColumn(tables, data.tableId, data.columnId);
-  if (column) {
-    column.option.notNull = data.value;
-  }
+  if (!column) return;
+
+  column.option.notNull = data.value;
 }
 
 export function executeMoveColumn(
@@ -191,62 +194,62 @@ export function executeMoveColumn(
 ) {
   const currentTable = getData(tables, data.tableId);
   const currentColumns: Column[] = [];
+
   data.columnIds.forEach(columnId => {
     const column = getColumn(tables, data.tableId, columnId);
-    if (column) {
-      currentColumns.push(column);
-    }
+
+    column && currentColumns.push(column);
   });
+
   const targetTable = getData(tables, data.targetTableId);
   const targetColumn = getColumn(
     tables,
     data.targetTableId,
     data.targetColumnId
   );
+
+  if (!currentTable || !targetTable || !currentColumns.length || !targetColumn)
+    return;
+
   if (
-    currentTable &&
-    targetTable &&
-    currentColumns.length !== 0 &&
-    targetColumn
+    data.tableId === data.targetTableId &&
+    !data.columnIds.some(columnId => columnId === data.targetColumnId)
   ) {
-    if (
-      data.tableId === data.targetTableId &&
-      !data.columnIds.some(columnId => columnId === data.targetColumnId)
-    ) {
-      const targetIndex = getIndex(currentTable.columns, targetColumn.id);
-      if (targetIndex !== -1) {
-        currentColumns.forEach(currentColumn => {
-          const currentIndex = getIndex(currentTable.columns, currentColumn.id);
-          if (currentIndex !== -1) {
-            currentTable.columns.splice(currentIndex, 1);
-          }
-        });
-        currentTable.columns.splice(targetIndex, 0, ...currentColumns);
-      }
-    } else if (
-      data.tableId !== data.targetTableId &&
-      !data.columnIds.some(columnId => columnId === data.targetColumnId)
-    ) {
-      const targetIndex = getIndex(targetTable.columns, targetColumn.id);
-      if (targetIndex !== -1) {
-        currentColumns.forEach(currentColumn => {
-          const currentIndex = getIndex(currentTable.columns, currentColumn.id);
-          if (currentIndex !== -1) {
-            currentTable.columns.splice(currentIndex, 1);
-          }
-        });
-        targetTable.columns.splice(targetIndex, 0, ...currentColumns);
-        // executeDraggableColumn(store, {
-        //   tableId: data.targetTableId,
-        //   columnIds: data.columnIds,
-        // });
-        // relationship valid
-        // removeValidColumnIndex(store, currentTable, data.columnIds);
-        // removeValidColumnRelationship(store, currentTable, data.columnIds);
-        // validIdentification(store);
-        // relationshipSort(tables, relationships);
-      }
-    }
+    const targetIndex = getIndex(currentTable.columns, targetColumn.id);
+    if (targetIndex === -1) return;
+
+    currentColumns.forEach(currentColumn => {
+      const currentIndex = getIndex(currentTable.columns, currentColumn.id);
+      if (currentIndex === -1) return;
+
+      currentTable.columns.splice(currentIndex, 1);
+    });
+
+    currentTable.columns.splice(targetIndex, 0, ...currentColumns);
+  } else if (
+    data.tableId !== data.targetTableId &&
+    !data.columnIds.some(columnId => columnId === data.targetColumnId)
+  ) {
+    const targetIndex = getIndex(targetTable.columns, targetColumn.id);
+    if (targetIndex === -1) return;
+
+    currentColumns.forEach(currentColumn => {
+      const currentIndex = getIndex(currentTable.columns, currentColumn.id);
+      if (currentIndex === -1) return;
+
+      currentTable.columns.splice(currentIndex, 1);
+    });
+
+    targetTable.columns.splice(targetIndex, 0, ...currentColumns);
+    // executeDraggableColumn(store, {
+    //   tableId: data.targetTableId,
+    //   columnIds: data.columnIds,
+    // });
+    // relationship valid
+    // removeValidColumnIndex(store, currentTable, data.columnIds);
+    // removeValidColumnRelationship(store, currentTable, data.columnIds);
+    // validIdentification(store);
+    // relationshipSort(tables, relationships);
   }
 }
 
@@ -256,14 +259,13 @@ export function executeActiveColumn(
 ) {
   data.forEach(activeColumn => {
     const table = getData(tables, activeColumn.tableId);
-    if (table) {
-      activeColumn.columnIds.forEach(columnId => {
-        const column = getData(table.columns, columnId);
-        if (column) {
-          column.ui.active = true;
-        }
-      });
-    }
+    if (!table) return;
+
+    activeColumn.columnIds.forEach(columnId => {
+      const column = getData(table.columns, columnId);
+
+      column && (column.ui.active = true);
+    });
   });
 }
 
@@ -273,14 +275,13 @@ export function executeActiveEndColumn(
 ) {
   data.forEach(activeColumn => {
     const table = getData(tables, activeColumn.tableId);
-    if (table) {
-      activeColumn.columnIds.forEach(columnId => {
-        const column = getData(table.columns, columnId);
-        if (column) {
-          column.ui.active = false;
-        }
-      });
-    }
+    if (!table) return;
+
+    activeColumn.columnIds.forEach(columnId => {
+      const column = getData(table.columns, columnId);
+
+      column && (column.ui.active = false);
+    });
   });
 }
 
@@ -289,12 +290,12 @@ export function executeLoadColumn(
   data: LoadColumn
 ) {
   const table = getData(tables, data.tableId);
-  if (table) {
-    data.columns.forEach((column, index) => {
-      column.ui.active = false;
-      table.columns.splice(data.indexList[index], 0, column);
-    });
-  }
+  if (!table) return;
+
+  data.columns.forEach((column, index) => {
+    column.ui.active = false;
+    table.columns.splice(data.indexList[index], 0, column);
+  });
 }
 
 export const executeColumnCommandMap = {

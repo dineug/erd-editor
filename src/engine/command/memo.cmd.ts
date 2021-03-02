@@ -25,18 +25,18 @@ export function executeMoveMemo(
 ) {
   data.tableIds.forEach(tableId => {
     const table = getData(tables, tableId);
-    if (table) {
-      table.ui.left += data.movementX;
-      table.ui.top += data.movementY;
-    }
+    if (!table) return;
+
+    table.ui.left += data.movementX;
+    table.ui.top += data.movementY;
   });
 
   data.memoIds.forEach(memoId => {
     const memo = getData(memos, memoId);
-    if (memo) {
-      memo.ui.left += data.movementX;
-      memo.ui.top += data.movementY;
-    }
+    if (!memo) return;
+
+    memo.ui.left += data.movementX;
+    memo.ui.top += data.movementY;
   });
 
   if (data.tableIds.length !== 0) {
@@ -66,20 +66,18 @@ export function executeSelectMemo(
   if (!targetMemo) return;
 
   targetMemo.ui.zIndex = data.zIndex;
-  if (data.ctrlKey) {
-    targetMemo.ui.active = true;
-  } else {
-    memos.forEach(memo => {
-      memo.ui.active = memo.id === data.memoId;
-    });
-  }
+  data.ctrlKey
+    ? (targetMemo.ui.active = true)
+    : memos.forEach(memo => (memo.ui.active = memo.id === data.memoId));
 }
 
-export const executeSelectEndMemo = ({ memoState: { memos } }: State) =>
+export function executeSelectEndMemo({ memoState: { memos } }: State) {
   memos.forEach(memo => (memo.ui.active = false));
+}
 
-export const executeSelectAllMemo = ({ memoState: { memos } }: State) =>
+export function executeSelectAllMemo({ memoState: { memos } }: State) {
   memos.forEach(memo => (memo.ui.active = true));
+}
 
 export function executeChangeMemoValue(
   { memoState: { memos } }: State,
@@ -109,9 +107,11 @@ export function executeDragSelectMemo(
   data: DragSelectMemo
 ) {
   const { min, max } = data;
+
   memos.forEach(memo => {
     const centerX = memo.ui.left + memo.ui.width / 2 + MEMO_PADDING;
     const centerY = memo.ui.top + memo.ui.height / 2 + MEMO_PADDING;
+
     memo.ui.active =
       min.x <= centerX &&
       max.x >= centerX &&
@@ -120,8 +120,9 @@ export function executeDragSelectMemo(
   });
 }
 
-export const executeLoadMemo = ({ memoState: { memos } }: State, data: Memo) =>
+export function executeLoadMemo({ memoState: { memos } }: State, data: Memo) {
   memos.push(new MemoModel({ loadMemo: data }));
+}
 
 export const executeMemoCommandMap = {
   'memo.add': executeAddMemo,

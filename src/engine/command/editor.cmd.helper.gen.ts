@@ -1,7 +1,7 @@
 import { Store } from '@@types/engine/store';
 import { MoveKey } from '@@types/engine/store/editor.state';
-import { focusMoveTable, focusColumn } from './editor.cmd.helper';
-import { addColumn } from './column.cmd.helper';
+import { focusMoveTable } from './editor.cmd.helper';
+import { addColumn$ } from './column.cmd.helper';
 import {
   isTableFocusType,
   isLastTable,
@@ -30,10 +30,7 @@ export function* focusMoveTable$(
         isLastColumn(store) &&
         isLastRowColumn(focusTable)))
   ) {
-    const addColumnCmd = addColumn(store, focusTable.table.id);
-    yield addColumnCmd;
-    const column = addColumnCmd.data[addColumnCmd.data.length - 1];
-    yield focusColumn(column.tableId, column.id, 'columnName', false, false);
+    yield addColumn$(store, focusTable.table.id);
   } else {
     yield focusMoveTable(moveKey, shiftKey);
   }

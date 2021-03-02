@@ -24,6 +24,10 @@ const createState = (): State => ({
   shareState: observable(createShareState()),
 });
 
+const notEmptyCommands = filter<CommandTypeAll[]>(
+  commands => !!commands.length
+);
+
 export function createStore(): IStore {
   const subscriptionHelper = createSubscriptionHelper();
   const state = createState();
@@ -41,9 +45,9 @@ export function createStore(): IStore {
   };
 
   subscriptionHelper.push(
-    history$.pipe(filter(commands => !!commands.length)).subscribe(command),
+    history$.pipe(notEmptyCommands).subscribe(command),
     // TODO: executeHistoryCommand
-    dispatch$.pipe(filter(commands => !!commands.length)).subscribe(command)
+    dispatch$.pipe(notEmptyCommands).subscribe(command)
   );
 
   return {

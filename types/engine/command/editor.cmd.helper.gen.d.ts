@@ -1,6 +1,7 @@
 import { CommandType } from './index';
 import { Store } from '../store';
 import { MoveKey } from '../store/editor.state';
+import { addColumn$ } from './column.cmd.helper';
 
 export declare function focusMoveTable$(
   store: Store,
@@ -10,4 +11,5 @@ export declare function focusMoveTable$(
   | CommandType<'editor.focusMoveTable'>
   | CommandType<'editor.focusColumn'>
   | CommandType<'column.add'>
+  | ReturnType<typeof addColumn$>
 >;

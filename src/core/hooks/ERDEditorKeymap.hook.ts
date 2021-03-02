@@ -3,7 +3,7 @@ import { MoveKey, FocusType } from '@@types/engine/store/editor.state';
 import { beforeMount, unmounted } from '@dineug/lit-observable';
 import { useContext } from './context.hook';
 import { createSubscriptionHelper } from '@/core/helper';
-import { keymapMatchAndOption } from '@/core/keymap';
+import { keymapMatchAndStop } from '@/core/keymap';
 import { relationshipMenus } from '@/core/contextmenu/drawRelationship.contextmenu';
 import { moveKeys } from '@/engine/store/editor.state';
 import {
@@ -51,28 +51,25 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
     const { keymap, store } = contextRef.value;
     const { tableState, memoState, editorState } = store;
 
-    keymapMatchAndOption(event, keymap.addTable) &&
+    keymapMatchAndStop(event, keymap.addTable) &&
       store.dispatch(addTable$(store));
 
-    keymapMatchAndOption(event, keymap.addColumn) &&
+    keymapMatchAndStop(event, keymap.addColumn) &&
       tableState.tables.some(table => table.ui.active) &&
       store.dispatch(addColumn$(store));
 
-    keymapMatchAndOption(event, keymap.addMemo) &&
+    keymapMatchAndStop(event, keymap.addMemo) &&
       store.dispatch(addMemo$(store));
 
-    keymapMatchAndOption(event, keymap.selectAllTable) &&
+    keymapMatchAndStop(event, keymap.selectAllTable) &&
       store.dispatch(selectAllTable(), selectAllMemo());
 
-    if (
-      editorState.focusTable &&
-      keymapMatchAndOption(event, keymap.selectAllColumn)
-    ) {
+    editorState.focusTable &&
+      keymapMatchAndStop(event, keymap.selectAllColumn) &&
       store.dispatch(selectAllColumn());
-    }
 
     if (
-      keymapMatchAndOption(event, keymap.removeTable) &&
+      keymapMatchAndStop(event, keymap.removeTable) &&
       (store.tableState.tables.some(table => table.ui.active) ||
         store.memoState.memos.some(memo => memo.ui.active))
     ) {
@@ -87,11 +84,9 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
       store.dispatch(...commands);
     }
 
-    if (
-      editorState.focusTable &&
+    editorState.focusTable &&
       editorState.focusTable.selectColumnIds.length &&
-      keymapMatchAndOption(event, keymap.removeColumn)
-    ) {
+      keymapMatchAndStop(event, keymap.removeColumn) &&
       store.dispatch(
         removeColumn$(
           store,
@@ -99,16 +94,12 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
           editorState.focusTable.selectColumnIds
         )
       );
-    }
 
-    if (
-      editorState.focusTable &&
+    editorState.focusTable &&
       !editorState.focusTable.edit &&
       event.key !== 'Tab' &&
-      moveKeys.includes(event.key as MoveKey)
-    ) {
+      moveKeys.includes(event.key as MoveKey) &&
       store.dispatch(focusMoveTable(event.key as MoveKey, event.shiftKey));
-    }
 
     if (editorState.focusTable && event.key === 'Tab') {
       event.preventDefault();
@@ -127,7 +118,7 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
       }, 0);
     }
 
-    if (editorState.focusTable && keymapMatchAndOption(event, keymap.edit)) {
+    if (editorState.focusTable && keymapMatchAndStop(event, keymap.edit)) {
       const focusTable = editorState.focusTable;
 
       if (focusTable.edit) {
@@ -147,13 +138,13 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
     }
 
     relationshipMenus.forEach(relationshipMenu => {
-      if (keymapMatchAndOption(event, keymap[relationshipMenu.keymapName])) {
+      if (keymapMatchAndStop(event, keymap[relationshipMenu.keymapName])) {
         // store.dispatch(drawStartRelationship(relationshipMenu.relationshipType));
       }
     });
 
-    keymapMatchAndOption(event, keymap.undo) && store.undo();
-    keymapMatchAndOption(event, keymap.redo) && store.redo();
+    keymapMatchAndStop(event, keymap.undo) && store.undo();
+    keymapMatchAndStop(event, keymap.redo) && store.redo();
   };
 
   beforeMount(() => {

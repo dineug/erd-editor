@@ -106,7 +106,7 @@ export function getRemoveFirstColumnId(
   if (columnIndex <= 0) return null;
 
   let columnId = null;
-  for (let i = columnIndex - 1; i >= 0; i--) {
+  for (let i = columnIndex; i >= 0; i--) {
     const column = focusTable.table.columns[i];
 
     if (!columnIds.includes(column.id)) {

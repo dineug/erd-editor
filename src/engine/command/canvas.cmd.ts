@@ -94,15 +94,14 @@ export function executeChangeRelationshipDataTypeSync(
 
 export function executeMoveColumnOrder(state: State, data: MoveColumnOrder) {
   const { columnOrder } = state.canvasState.setting;
-
   if (data.columnType === data.targetColumnType) return;
 
   const targetIndex = columnOrder.indexOf(data.targetColumnType);
   const currentIndex = columnOrder.indexOf(data.columnType);
-  if (targetIndex !== -1 && currentIndex !== -1) {
-    columnOrder.splice(currentIndex, 1);
-    columnOrder.splice(targetIndex, 0, data.columnType);
-  }
+  if (targetIndex === -1 || currentIndex === -1) return;
+
+  columnOrder.splice(currentIndex, 1);
+  columnOrder.splice(targetIndex, 0, data.columnType);
 }
 
 export const executeCanvasCommandMap = {

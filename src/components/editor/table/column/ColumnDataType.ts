@@ -6,12 +6,13 @@ import {
   beforeMount,
   unmounted,
   queryShadowSelector,
+  watch,
 } from '@dineug/lit-observable';
-import { fromEvent } from 'rxjs';
+import { fromEvent, Subscription } from 'rxjs';
 import { useDataTypeHint } from '@/core/hooks/dataTypeHint.hook';
 import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { lastCursorFocus } from '@/core/helper/dom.helper';
-import { createSubscriptionHelper } from '@/core/helper';
 import { dataTypeHintTpl } from './ColumnDataType.template';
 
 declare global {
@@ -44,7 +45,8 @@ const ColumnDataType: FunctionalComponent<
     props,
     ctx
   );
-  const subscriptionHelper = createSubscriptionHelper();
+  const { unmountedGroup } = useUnmounted();
+  let subscription: Subscription | null = null;
   useFlipAnimation(ctx, '.vuerd-data-type-hint', 'vuerd-data-type-hint-move');
 
   const emitBlur = () =>
@@ -71,16 +73,33 @@ const ColumnDataType: FunctionalComponent<
     }
   };
 
-  beforeMount(() => {
+  const offERDMousedown = () => {
+    subscription?.unsubscribe();
+    subscription = null;
+  };
+
+  const onERDMousedown = () => {
     const erd = closestElement('.vuerd-erd', ctx);
     if (!erd) return;
 
-    subscriptionHelper.push(
-      fromEvent<MouseEvent>(erd, 'mousedown').subscribe(onMousedown)
-    );
-  });
+    if (props.edit) {
+      offERDMousedown();
+      subscription = fromEvent<MouseEvent>(erd, 'mousedown').subscribe(
+        onMousedown
+      );
+    }
+  };
 
-  unmounted(() => subscriptionHelper.destroy());
+  unmountedGroup.push(
+    watch(props, propName => {
+      if (propName !== 'edit') return;
+
+      props.edit ? onERDMousedown() : offERDMousedown();
+    })
+  );
+
+  beforeMount(() => onERDMousedown());
+  unmounted(() => offERDMousedown());
 
   return () => html`
     <div class="vuerd-column-data-type">
