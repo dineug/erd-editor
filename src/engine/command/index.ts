@@ -9,11 +9,13 @@ import * as MemoCommand from './memo.cmd.helper';
 import * as TableCommand from './table.cmd.helper';
 import * as ColumnCommand from './column.cmd.helper';
 import * as EditorCommand from './editor.cmd.helper';
+import * as RelationshipCommand from './relationship.cmd.helper';
 import { executeCanvasCommandMap } from './canvas.cmd';
 import { executeMemoCommandMap } from './memo.cmd';
 import { executeTableCommandMap } from './table.cmd';
 import { executeColumnCommandMap } from './column.cmd';
 import { executeEditorCommandMap } from './editor.cmd';
+import { executeRelationshipCommandMap } from './relationship.cmd';
 
 const executeCommandMap = {
   ...executeCanvasCommandMap,
@@ -21,6 +23,7 @@ const executeCommandMap = {
   ...executeTableCommandMap,
   ...executeColumnCommandMap,
   ...executeEditorCommandMap,
+  ...executeRelationshipCommandMap,
 };
 
 export const createCommand = (): Command => ({
@@ -29,6 +32,7 @@ export const createCommand = (): Command => ({
   table: TableCommand,
   column: ColumnCommand,
   editor: EditorCommand,
+  relationship: RelationshipCommand,
 });
 
 export function createStream() {
