@@ -45,14 +45,13 @@ const Input: FunctionalComponent<InputProps, InputElement> = (props, ctx) => {
   const getPlaceholderValue = () =>
     props.value.trim() === '' ? props.placeholder : props.value;
 
-  const onBlur = () => {
+  const onBlur = () =>
     ctx.dispatchEvent(
-      new Event('vuerd-input-blur', {
+      new CustomEvent('vuerd-input-blur', {
         composed: true,
         bubbles: true,
       })
     );
-  };
 
   unmountedGroup.push(
     watch(props, propName => {
@@ -60,6 +59,11 @@ const Input: FunctionalComponent<InputProps, InputElement> = (props, ctx) => {
       if (propName !== 'edit' || !props.edit || !input) return;
 
       lastCursorFocus(input);
+    }),
+    // firefox
+    watch(props, propName => {
+      if (propName !== 'edit') return;
+      props.edit || onBlur();
     })
   );
 

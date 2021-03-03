@@ -74,7 +74,11 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
     const el = event.target as HTMLElement;
     onCloseContextmenu();
 
-    if (!el.closest('.vuerd-table') && !el.closest('.vuerd-memo')) {
+    if (
+      !el.closest('.vuerd-table') &&
+      !el.closest('.vuerd-memo') &&
+      !el.closest('.vuerd-input')
+    ) {
       const { store } = contextRef.value;
       const { drag$ } = contextRef.value.globalEvent;
       store.dispatch(selectEndTable$(), selectEndMemo());

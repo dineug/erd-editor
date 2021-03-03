@@ -29,6 +29,7 @@ import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
 import { cache } from 'lit-html/directives/cache';
 import { fromEvent, merge } from 'rxjs';
+import { throttleTime } from 'rxjs/operators';
 import { createdERDEditorContext } from '@/core/ERDEditorContext';
 import { loadTheme } from '@/core/theme';
 import { loadKeymap } from '@/core/keymap';
@@ -117,8 +118,12 @@ key: ${event.key}
         fromEvent(editorRef.value, 'vuerd-contextmenu-mousedown'),
         fromEvent(editorRef.value, 'vuerd-contextmenu-touchstart'),
         fromEvent(editorRef.value, 'vuerd-input-blur')
-      ).subscribe(onFocus),
-      globalEvent.moveStart$.subscribe(() => setTimeout(setFocus, 0))
+      )
+        .pipe(throttleTime(20))
+        .subscribe(onFocus),
+      globalEvent.moveStart$
+        .pipe(throttleTime(20))
+        .subscribe(() => setTimeout(setFocus, 0))
     );
   });
 

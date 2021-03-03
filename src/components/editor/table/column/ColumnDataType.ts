@@ -51,7 +51,7 @@ const ColumnDataType: FunctionalComponent<
 
   const emitBlur = () =>
     ctx.dispatchEvent(
-      new Event('vuerd-input-blur', {
+      new CustomEvent('vuerd-input-blur', {
         composed: true,
         bubbles: true,
       })
@@ -61,9 +61,7 @@ const ColumnDataType: FunctionalComponent<
     event.stopPropagation();
     const input = queryShadowSelector(['vuerd-input', 'input'], ctx);
 
-    input && props.edit
-      ? lastCursorFocus(input as HTMLInputElement)
-      : emitBlur();
+    input && props.edit ? setTimeout(lastCursorFocus, 0, input) : emitBlur();
   };
 
   const onMousedown = (event: MouseEvent) => {

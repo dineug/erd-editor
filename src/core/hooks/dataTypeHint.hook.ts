@@ -1,19 +1,11 @@
-import {
-  observable,
-  watch,
-  unmounted,
-  beforeMount,
-  closestElement,
-} from '@dineug/lit-observable';
+import { observable, watch, beforeMount } from '@dineug/lit-observable';
 import * as R from 'ramda';
-import { fromEvent } from 'rxjs';
 import { useContext } from './context.hook';
 import { useUnmounted } from './unmounted.hook';
 import { ColumnDataTypeProps } from '@/components/editor/table/column/ColumnDataType';
 import { databaseHints } from '@/core/dataType';
 import { markToHTML } from '@/core/helper/dom.helper';
 import { changeColumnDataType } from '@/engine/command/column.cmd.helper';
-import { createSubscriptionHelper } from '@/core/helper';
 
 export interface Hint {
   name: string;
@@ -35,7 +27,6 @@ export function useDataTypeHint(props: ColumnDataTypeProps, ctx: HTMLElement) {
     hints: [],
     isFilter: true,
   });
-  const subscriptionHelper = createSubscriptionHelper();
 
   const getDataTypeHints = () => {
     const {
@@ -159,13 +150,6 @@ export function useDataTypeHint(props: ColumnDataTypeProps, ctx: HTMLElement) {
 
   const onInput = () => (state.isFilter = true);
 
-  const onMousedown = (event: MouseEvent) => {
-    const el = event.target as HTMLElement;
-    if (!el.closest('.vuerd-column-data-type')) {
-      ctx.dispatchEvent(new Event('blur'));
-    }
-  };
-
   unmountedGroup.push(
     watch(props, propName => {
       if (propName !== 'value') return;
@@ -188,17 +172,6 @@ export function useDataTypeHint(props: ColumnDataTypeProps, ctx: HTMLElement) {
       })
     );
   });
-
-  beforeMount(() => {
-    const erd = closestElement('.vuerd-erd', ctx);
-    if (!erd) return;
-
-    subscriptionHelper.push(
-      fromEvent<MouseEvent>(erd, 'mousedown').subscribe(onMousedown)
-    );
-  });
-
-  unmounted(() => subscriptionHelper.destroy());
 
   return {
     hintState: state,
