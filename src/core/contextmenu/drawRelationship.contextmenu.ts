@@ -4,6 +4,7 @@ import { RelationshipKeymapName } from '@@types/core/keymap';
 import { RelationshipType } from '@@types/engine/store/relationship.state';
 import { keymapOptionToString, keymapOptionsToString } from '@/core/keymap';
 import { getBase64Icon } from '@/core/icon';
+import { drawStartRelationship$ } from '@/engine/command/editor.cmd.helper';
 
 interface RelationshipMenu {
   name: string;
@@ -56,17 +57,17 @@ const defaultOptions: MenuOptions = {
 
 export const createDrawRelationshipMenus = ({
   keymap,
+  store,
 }: ERDEditorContext): Menu[] =>
   relationshipMenus.map(relationshipMenu => ({
     iconBase64: getBase64Icon(relationshipMenu.relationshipType),
     name: relationshipMenu.name,
     keymap: keymapOptionToString(keymap[relationshipMenu.keymapName][0]),
     keymapTooltip: keymapOptionsToString(keymap[relationshipMenu.keymapName]),
-    execute() {
-      // store.dispatch(
-      //   drawStartRelationship(relationshipMenu.relationshipType)
-      // );
-    },
+    execute: () =>
+      store.dispatch(
+        drawStartRelationship$(store, relationshipMenu.relationshipType)
+      ),
     options: {
       ...defaultOptions,
     },

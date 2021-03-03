@@ -45,3 +45,8 @@ export declare function drawStartAddRelationship(
 ): CommandType<'editor.drawStartAddRelationship'>;
 
 export declare function drawEndRelationship(): CommandType<'editor.drawEndRelationship'>;
+
+export declare function drawRelationship(
+  x: number,
+  y: number
+): CommandType<'editor.drawRelationship'>;

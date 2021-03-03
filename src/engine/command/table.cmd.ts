@@ -5,7 +5,6 @@ import {
   MoveTable,
   RemoveTable,
   SelectTable,
-  SelectOnlyTable,
   ChangeTableValue,
   DragSelectTable,
 } from '@@types/engine/command/table.cmd';

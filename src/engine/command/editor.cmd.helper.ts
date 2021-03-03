@@ -46,3 +46,6 @@ export const drawStartAddRelationship = (tableId: string) =>
 
 export const drawEndRelationship = () =>
   createCommand('editor.drawEndRelationship', null);
+
+export const drawRelationship = (x: number, y: number) =>
+  createCommand('editor.drawRelationship', { x, y });

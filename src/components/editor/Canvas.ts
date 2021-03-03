@@ -1,5 +1,7 @@
 import './memo/Memo';
 import './table/Table';
+import './DrawRelationship';
+import './CanvasSVG';
 
 import {
   defineComponent,
@@ -46,20 +48,21 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
 
   return () => {
     const {
-      canvasState,
+      canvasState: { width, height, scrollTop, scrollLeft, zoomLevel, show },
       memoState: { memos },
       tableState: { tables },
+      editorState: { drawRelationship },
     } = contextRef.value.store;
 
     return html`
       <div
         class="vuerd-canvas"
         style=${styleMap({
-          width: `${canvasState.width}px`,
-          height: `${canvasState.height}px`,
-          top: `${canvasState.scrollTop}px`,
-          left: `${canvasState.scrollLeft}px`,
-          transform: `scale(${canvasState.zoomLevel})`,
+          width: `${width}px`,
+          height: `${height}px`,
+          top: `${scrollTop}px`,
+          left: `${scrollLeft}px`,
+          transform: `scale(${zoomLevel})`,
         })}
       >
         ${repeat(
@@ -72,6 +75,16 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
           memo => memo.id,
           memo => html`<vuerd-memo .memo=${memo}></vuerd-memo>`
         )}
+        ${show.relationship
+          ? html`<vuerd-canvas-svg></vuerd-canvas-svg>`
+          : null}
+        ${drawRelationship?.start
+          ? html`
+              <vuerd-draw-relationship
+                .draw=${drawRelationship}
+              ></vuerd-draw-relationship>
+            `
+          : null}
       </div>
     `;
   };

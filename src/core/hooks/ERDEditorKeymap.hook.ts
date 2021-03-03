@@ -29,6 +29,7 @@ import {
   editTable,
   editTableEnd,
   selectAllColumn,
+  drawStartRelationship$,
 } from '@/engine/command/editor.cmd.helper';
 
 const changeColumnMap = {
@@ -139,7 +140,9 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
 
     relationshipMenus.forEach(relationshipMenu => {
       if (keymapMatchAndStop(event, keymap[relationshipMenu.keymapName])) {
-        // store.dispatch(drawStartRelationship(relationshipMenu.relationshipType));
+        store.dispatch(
+          drawStartRelationship$(store, relationshipMenu.relationshipType)
+        );
       }
     });
 

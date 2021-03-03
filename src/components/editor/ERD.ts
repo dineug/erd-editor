@@ -23,6 +23,7 @@ import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
 import { selectEndTable$ } from '@/engine/command/table.cmd.helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useERDEditorKeymap } from '@/core/hooks/ERDEditorKeymap.hook';
+import { getBase64Icon } from '@/core/icon';
 import { EditorStyle } from './index.style';
 
 declare global {
@@ -106,31 +107,44 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
     );
   });
 
-  return () => html`
-    <div
-      class="vuerd-erd"
-      style=${styleMap({
-        width: `${props.width}px`,
-        height: `${props.height}px`,
-      })}
-      @mousedown=${onMousedown}
-      @contextmenu=${onContextmenu}
-      @wheel=${onWheel}
-    >
-      <div class="vuerd-erd-background"></div>
-      <vuerd-canvas></vuerd-canvas>
-      ${state.menus
-        ? html`
-            <vuerd-contextmenu
-              .menus=${state.menus}
-              .x=${state.contextmenuX}
-              .y=${state.contextmenuY}
-              @close-contextmenu=${onCloseContextmenu}
-            ></vuerd-contextmenu>
-          `
-        : null}
-    </div>
-  `;
+  return () => {
+    const {
+      store: {
+        editorState: { drawRelationship },
+      },
+    } = contextRef.value;
+
+    return html`
+      <div
+        class="vuerd-erd"
+        style=${styleMap({
+          width: `${props.width}px`,
+          height: `${props.height}px`,
+          cursor: drawRelationship
+            ? `url("${getBase64Icon(
+                drawRelationship.relationshipType
+              )}") 16 16, auto`
+            : '',
+        })}
+        @mousedown=${onMousedown}
+        @contextmenu=${onContextmenu}
+        @wheel=${onWheel}
+      >
+        <div class="vuerd-erd-background"></div>
+        <vuerd-canvas></vuerd-canvas>
+        ${state.menus
+          ? html`
+              <vuerd-contextmenu
+                .menus=${state.menus}
+                .x=${state.contextmenuX}
+                .y=${state.contextmenuY}
+                @close-contextmenu=${onCloseContextmenu}
+              ></vuerd-contextmenu>
+            `
+          : null}
+      </div>
+    `;
+  };
 };
 
 defineComponent('vuerd-erd', {

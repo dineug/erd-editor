@@ -10,6 +10,8 @@ import { ColumnDataTypeStyle } from './table/column/ColumnDataType.style';
 import { ColumnNotNullStyle } from './table/column/ColumnNotNull.style';
 import { ColumnUniqueStyle } from './table/column/ColumnUnique.style';
 import { ColumnAutoIncrementStyle } from './table/column/ColumnAutoIncrement.style';
+import { DrawRelationshipStyle } from './DrawRelationship.style';
+import { CanvasSVGStyle } from './CanvasSVG.style';
 
 export const EditorStyle = [
   DefaultStyle,
@@ -24,4 +26,6 @@ export const EditorStyle = [
   ColumnNotNullStyle,
   ColumnUniqueStyle,
   ColumnAutoIncrementStyle,
+  DrawRelationshipStyle,
+  CanvasSVGStyle,
 ].join('');

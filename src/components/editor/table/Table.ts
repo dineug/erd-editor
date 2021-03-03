@@ -139,7 +139,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
         editorState,
       },
     } = contextRef.value;
-    const table = props.table;
+    const { table } = props;
     const { ui, columns } = table;
     const widthColumn = table.maxWidthColumn();
 

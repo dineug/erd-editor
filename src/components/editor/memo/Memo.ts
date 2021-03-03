@@ -95,7 +95,7 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
 
   return () => {
     const { keymap } = contextRef.value;
-    const memo = props.memo;
+    const { memo } = props;
     const width = memo.ui.width + MEMO_PADDING;
     const height = memo.ui.height + MEMO_PADDING + MEMO_HEADER;
 

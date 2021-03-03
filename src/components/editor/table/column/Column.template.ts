@@ -49,7 +49,7 @@ export function columnTpl(
   const {
     canvasState: { show, setting },
   } = store;
-  const column = props.column;
+  const { column } = props;
   const { ui } = column;
 
   const onInput = (event: Event, columnType: ColumnType) => {

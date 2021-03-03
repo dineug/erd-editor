@@ -21,9 +21,7 @@ export const createDatabaseMenus = ({
           }
         : undefined,
     name: databaseType,
-    execute() {
-      store.dispatch(command.canvas.changeDatabase(databaseType));
-    },
+    execute: () => store.dispatch(command.canvas.changeDatabase(databaseType)),
     options: {
       ...defaultOptions,
     },

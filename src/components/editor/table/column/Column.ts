@@ -60,7 +60,7 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
 
   return () => {
     const { keymap } = contextRef.value;
-    const column = props.column;
+    const { column } = props;
     const { ui } = column;
 
     return html`

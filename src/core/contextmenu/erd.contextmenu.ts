@@ -23,9 +23,7 @@ export function createERDMenus(context: ERDEditorContext): Menu[] {
       name: 'New Table',
       keymap: keymapOptionToString(keymap.addTable[0]),
       keymapTooltip: keymapOptionsToString(keymap.addTable),
-      execute() {
-        store.dispatch(command.table.addTable$(store));
-      },
+      execute: () => store.dispatch(command.table.addTable$(store)),
     },
     {
       icon: {
@@ -35,9 +33,7 @@ export function createERDMenus(context: ERDEditorContext): Menu[] {
       name: 'New Memo',
       keymap: keymapOptionToString(keymap.addMemo[0]),
       keymapTooltip: keymapOptionsToString(keymap.addMemo),
-      execute() {
-        store.dispatch(command.memo.addMemo$(store));
-      },
+      execute: () => store.dispatch(command.memo.addMemo$(store)),
     },
     {
       name: 'Relationship',

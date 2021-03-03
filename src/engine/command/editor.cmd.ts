@@ -8,6 +8,7 @@ import {
 import {
   DrawStartRelationship,
   DrawStartAddRelationship,
+  DrawRelationship,
 } from '@@types/engine/command/editor.cmd';
 import { getData } from '@/core/helper';
 import {
@@ -189,6 +190,19 @@ export function executeDrawEndRelationship({ editorState }: State) {
   editorState.drawRelationship = null;
 }
 
+export function executeDrawRelationship(
+  {
+    editorState: { drawRelationship },
+    canvasState: { scrollLeft, scrollTop },
+  }: State,
+  data: DrawRelationship
+) {
+  if (!drawRelationship?.start) return;
+
+  drawRelationship.end.x = data.x - scrollLeft;
+  drawRelationship.end.y = data.y - scrollTop;
+}
+
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
@@ -201,4 +215,5 @@ export const executeEditorCommandMap = {
   'editor.drawStartRelationship': executeDrawStartRelationship,
   'editor.drawStartAddRelationship': executeDrawStartAddRelationship,
   'editor.drawEndRelationship': executeDrawEndRelationship,
+  'editor.drawRelationship': executeDrawRelationship,
 };

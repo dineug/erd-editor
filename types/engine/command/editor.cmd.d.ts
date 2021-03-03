@@ -33,6 +33,11 @@ export interface DrawStartAddRelationship {
   tableId: string;
 }
 
+export interface DrawRelationship {
+  x: number;
+  y: number;
+}
+
 export interface EditorCommandMap {
   'editor.hasUndoRedo': HasUndoRedo;
   'editor.focusTable': FocusTable;
@@ -45,4 +50,5 @@ export interface EditorCommandMap {
   'editor.drawStartRelationship': DrawStartRelationship;
   'editor.drawStartAddRelationship': DrawStartAddRelationship;
   'editor.drawEndRelationship': null;
+  'editor.drawRelationship': DrawRelationship;
 }

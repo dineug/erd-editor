@@ -57,9 +57,8 @@ export const createShowMenus = ({ store, command }: ERDEditorContext): Menu[] =>
         }
       : undefined,
     name: showMenu.name,
-    execute() {
-      store.dispatch(command.canvas.changeCanvasShow(store, showMenu.showKey));
-    },
+    execute: () =>
+      store.dispatch(command.canvas.changeCanvasShow(store, showMenu.showKey)),
     options: {
       ...defaultOptions,
     },
