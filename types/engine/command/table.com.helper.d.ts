@@ -34,11 +34,6 @@ export declare function selectEndTable(): CommandType<'table.selectEnd'>;
 
 export declare function selectAllTable(): CommandType<'table.selectAll'>;
 
-export declare function selectOnlyTable(
-  store: Store,
-  tableId: string
-): CommandType<'table.selectOnly'>;
-
 export declare function changeTableName(
   helper: Helper,
   tableId: string,

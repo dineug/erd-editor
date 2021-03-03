@@ -50,50 +50,70 @@ export function executeMovementZoomCanvas(
   );
 }
 
-export function executeChangeCanvasShow(state: State, data: ChangeCanvasShow) {
-  const { tables } = state.tableState;
-  const { relationships } = state.relationshipState;
-  const { show } = state.canvasState;
+export function executeChangeCanvasShow(
+  { canvasState: { show } }: State,
+  data: ChangeCanvasShow
+) {
   show[data.showKey] = data.value;
-  // relationshipSort(tables, relationships);
 }
 
-export function executeChangeDatabase(state: State, data: ChangeDatabase) {
-  state.canvasState.database = data.database;
+export function executeChangeDatabase(
+  { canvasState }: State,
+  data: ChangeDatabase
+) {
+  canvasState.database = data.database;
 }
 
 export function executeChangeDatabaseName(
-  state: State,
+  { canvasState }: State,
   data: ChangeDatabaseName
 ) {
-  state.canvasState.databaseName = data.value;
+  canvasState.databaseName = data.value;
 }
 
-export function executeChangeCanvasType(state: State, data: ChangeCanvasType) {
-  state.canvasState.canvasType = data.canvasType;
+export function executeChangeCanvasType(
+  { canvasState }: State,
+  data: ChangeCanvasType
+) {
+  canvasState.canvasType = data.canvasType;
 }
 
-export function executeChangeLanguage(state: State, data: ChangeLanguage) {
-  state.canvasState.language = data.language;
+export function executeChangeLanguage(
+  { canvasState }: State,
+  data: ChangeLanguage
+) {
+  canvasState.language = data.language;
 }
 
-export function executeChangeTableCase(state: State, data: ChangeNameCase) {
-  state.canvasState.tableCase = data.nameCase;
+export function executeChangeTableCase(
+  { canvasState }: State,
+  data: ChangeNameCase
+) {
+  canvasState.tableCase = data.nameCase;
 }
 
-export function executeChangeColumnCase(state: State, data: ChangeNameCase) {
-  state.canvasState.columnCase = data.nameCase;
+export function executeChangeColumnCase(
+  { canvasState }: State,
+  data: ChangeNameCase
+) {
+  canvasState.columnCase = data.nameCase;
 }
 
 export function executeChangeRelationshipDataTypeSync(
-  state: State,
+  { canvasState: { setting } }: State,
   data: ChangeRelationshipDataTypeSync
 ) {
-  state.canvasState.setting.relationshipDataTypeSync = data.value;
+  setting.relationshipDataTypeSync = data.value;
 }
 
-export function executeMoveColumnOrder(state: State, data: MoveColumnOrder) {
-  const { columnOrder } = state.canvasState.setting;
+export function executeMoveColumnOrder(
+  {
+    canvasState: {
+      setting: { columnOrder },
+    },
+  }: State,
+  data: MoveColumnOrder
+) {
   if (data.columnType === data.targetColumnType) return;
 
   const targetIndex = columnOrder.indexOf(data.targetColumnType);

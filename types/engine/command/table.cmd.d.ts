@@ -30,11 +30,6 @@ export interface SelectTable {
   zIndex: number;
 }
 
-export interface SelectOnlyTable {
-  tableId: string;
-  zIndex: number;
-}
-
 export interface ChangeTableValue {
   tableId: string;
   value: string;
@@ -53,7 +48,6 @@ export interface TableCommandMap {
   'table.select': SelectTable;
   'table.selectEnd': null;
   'table.selectAll': null;
-  'table.selectOnly': SelectOnlyTable;
   'table.changeName': ChangeTableValue;
   'table.changeComment': ChangeTableValue;
   'table.dragSelect': DragSelectTable;

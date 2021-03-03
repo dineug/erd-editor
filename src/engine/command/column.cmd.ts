@@ -16,9 +16,13 @@ import {
   getColumn,
   getDataTypeSyncColumns,
 } from '@/engine/store/helper/column.helper';
+import {
+  removeValidColumnRelationship,
+  validIdentification,
+} from '@/engine/store/helper/valid.helper';
 
 export function executeAddColumn(
-  { tableState: { tables }, relationshipState: { relationships } }: State,
+  { tableState: { tables } }: State,
   data: AddColumn[]
 ) {
   data.forEach((addColumn: AddColumn) => {
@@ -26,11 +30,10 @@ export function executeAddColumn(
 
     table && table.columns.push(new ColumnModel({ addColumn }));
   });
-  // relationshipSort(tables, relationships);
 }
 
 export function executeAddCustomColumn(
-  { tableState: { tables }, relationshipState: { relationships } }: State,
+  { tableState: { tables } }: State,
   data: AddCustomColumn[]
 ) {
   data.forEach((addCustomColumn: AddCustomColumn) => {
@@ -39,13 +42,12 @@ export function executeAddCustomColumn(
 
     table.columns.push(new ColumnModel({ addCustomColumn }));
   });
-  // relationshipSort(tables, relationships);
 }
 
-export function executeRemoveColumn(
-  { tableState: { tables }, relationshipState: { relationships } }: State,
-  data: RemoveColumn
-) {
+export function executeRemoveColumn(state: State, data: RemoveColumn) {
+  const {
+    tableState: { tables },
+  } = state;
   const table = getData(tables, data.tableId);
   if (!table) return;
 
@@ -57,15 +59,15 @@ export function executeRemoveColumn(
       i--;
     }
   }
-  // relationship valid
+
+  // TODO: Refactoring
   // removeValidColumnIndex(store, table, data.columnIds);
-  // removeValidColumnRelationship(store, table, data.columnIds);
-  // validIdentification(store);
-  // relationshipSort(tables, relationships);
+  removeValidColumnRelationship(state, table, data.columnIds);
+  validIdentification(state);
 }
 
 export function executeChangeColumnName(
-  { tableState: { tables }, relationshipState: { relationships } }: State,
+  { tableState: { tables } }: State,
   data: ChangeColumnValue
 ) {
   const column = getColumn(tables, data.tableId, data.columnId);
@@ -73,11 +75,10 @@ export function executeChangeColumnName(
 
   column.name = data.value;
   column.ui.widthName = data.width;
-  // relationshipSort(tables, relationships);
 }
 
 export function executeChangeColumnComment(
-  { tableState: { tables }, relationshipState: { relationships } }: State,
+  { tableState: { tables } }: State,
   data: ChangeColumnValue
 ) {
   const column = getColumn(tables, data.tableId, data.columnId);
@@ -85,7 +86,6 @@ export function executeChangeColumnComment(
 
   column.comment = data.value;
   column.ui.widthComment = data.width;
-  // relationshipSort(tables, relationships);
 }
 
 export function executeChangeColumnDataType(
@@ -108,11 +108,10 @@ export function executeChangeColumnDataType(
     column.dataType = data.value;
     column.ui.widthDataType = data.width;
   });
-  // relationshipSort(tables, relationships);
 }
 
 export function executeChangeColumnDefault(
-  { tableState: { tables }, relationshipState: { relationships } }: State,
+  { tableState: { tables } }: State,
   data: ChangeColumnValue
 ) {
   const column = getColumn(tables, data.tableId, data.columnId);
@@ -120,7 +119,6 @@ export function executeChangeColumnDefault(
 
   column.default = data.value;
   column.ui.widthDefault = data.width;
-  // relationshipSort(tables, relationships);
 }
 
 export function executeChangeColumnAutoIncrement(
@@ -134,9 +132,12 @@ export function executeChangeColumnAutoIncrement(
 }
 
 export function executeChangeColumnPrimaryKey(
-  { tableState: { tables } }: State,
+  state: State,
   data: ChangeColumnOption
 ) {
+  const {
+    tableState: { tables },
+  } = state;
   const table = getData(tables, data.tableId);
   const column = getColumn(tables, data.tableId, data.columnId);
   if (!table || !column) return;
@@ -164,8 +165,9 @@ export function executeChangeColumnPrimaryKey(
     }
   }
   column.option.primaryKey = data.value;
-  // relationship valid
-  // validIdentification(store);
+
+  // TODO: Refactoring
+  validIdentification(state);
 }
 
 export function executeChangeColumnUnique(
@@ -188,10 +190,10 @@ export function executeChangeColumnNotNull(
   column.option.notNull = data.value;
 }
 
-export function executeMoveColumn(
-  { tableState: { tables }, relationshipState: { relationships } }: State,
-  data: MoveColumn
-) {
+export function executeMoveColumn(state: State, data: MoveColumn) {
+  const {
+    tableState: { tables },
+  } = state;
   const currentTable = getData(tables, data.tableId);
   const currentColumns: Column[] = [];
 
@@ -245,11 +247,11 @@ export function executeMoveColumn(
     //   tableId: data.targetTableId,
     //   columnIds: data.columnIds,
     // });
-    // relationship valid
-    // removeValidColumnIndex(store, currentTable, data.columnIds);
-    // removeValidColumnRelationship(store, currentTable, data.columnIds);
-    // validIdentification(store);
-    // relationshipSort(tables, relationships);
+
+    // TODO: Refactoring
+    // removeValidColumnIndex(state, currentTable, data.columnIds);
+    removeValidColumnRelationship(state, currentTable, data.columnIds);
+    validIdentification(state);
   }
 }
 

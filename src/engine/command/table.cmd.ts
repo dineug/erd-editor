@@ -12,6 +12,7 @@ import {
 import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from '@/core/layout';
 import { getData } from '@/core/helper';
 import { TableModel } from '@/engine/store/models/table.model';
+import { removeValidTableRelationship } from '@/engine/store/helper/valid.helper';
 
 const TABLE_PADDING = (SIZE_TABLE_PADDING + SIZE_TABLE_BORDER) * 2;
 const TABLE_SORT_PADDING = TABLE_PADDING * 4;
@@ -42,13 +43,13 @@ export function executeMoveTable(
     memo.ui.left += data.movementX;
     memo.ui.top += data.movementY;
   });
-  // relationshipSort(tables, relationships);
 }
 
-export function executeRemoveTable(
-  { tableState: { tables } }: State,
-  data: RemoveTable
-) {
+export function executeRemoveTable(state: State, data: RemoveTable) {
+  const {
+    tableState: { tables },
+  } = state;
+
   for (let i = 0; i < tables.length; i++) {
     const id = tables[i].id;
 
@@ -57,9 +58,10 @@ export function executeRemoveTable(
       i--;
     }
   }
-  // relationship valid
+
+  // TODO: Refactoring
   // removeValidTableIndex(store, data.tableIds);
-  // removeValidTableRelationship(store, data.tableIds);
+  removeValidTableRelationship(state, data.tableIds);
 }
 
 export function executeSelectTable(
@@ -83,17 +85,6 @@ export function executeSelectAllTable({ tableState: { tables } }: State) {
   tables.forEach(table => (table.ui.active = true));
 }
 
-export function executeSelectOnlyTable(
-  { tableState: { tables } }: State,
-  data: SelectOnlyTable
-) {
-  const targetTable = getData(tables, data.tableId);
-  targetTable && (targetTable.ui.zIndex = data.zIndex);
-
-  tables.forEach(table => (table.ui.active = table.id === data.tableId));
-  // executeSelectEndMemo(store);
-}
-
 export function executeChangeTableName(
   { tableState: { tables } }: State,
   data: ChangeTableValue
@@ -103,7 +94,6 @@ export function executeChangeTableName(
 
   table.name = data.value;
   table.ui.widthName = data.width;
-  // relationshipSort(tables, relationships);
 }
 
 export function executeChangeTableComment(
@@ -115,7 +105,6 @@ export function executeChangeTableComment(
 
   table.comment = data.value;
   table.ui.widthComment = data.width;
-  // relationshipSort(tables, relationships);
 }
 
 export function executeDragSelectTable(
@@ -166,8 +155,6 @@ export function executeSortTable({
     table.ui.left = widthSum;
     widthSum += width;
   });
-
-  // relationshipSort(tables, relationships);
 }
 
 export function executeLoadTable(
@@ -184,7 +171,6 @@ export const executeTableCommandMap = {
   'table.select': executeSelectTable,
   'table.selectEnd': executeSelectEndTable,
   'table.selectAll': executeSelectAllTable,
-  'table.selectOnly': executeSelectOnlyTable,
   'table.changeName': executeChangeTableName,
   'table.changeComment': executeChangeTableComment,
   'table.dragSelect': executeDragSelectTable,

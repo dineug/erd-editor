@@ -38,10 +38,6 @@ export function executeMoveMemo(
     memo.ui.left += data.movementX;
     memo.ui.top += data.movementY;
   });
-
-  if (data.tableIds.length !== 0) {
-    // relationshipSort(tables, relationships);
-  }
 }
 
 export function executeRemoveMemo(

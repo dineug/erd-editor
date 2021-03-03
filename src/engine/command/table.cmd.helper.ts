@@ -70,15 +70,6 @@ export const selectEndTable = () => createCommand('table.selectEnd', null);
 
 export const selectAllTable = () => createCommand('table.selectAll', null);
 
-export const selectOnlyTable = (
-  { tableState: { tables }, memoState: { memos } }: Store,
-  tableId: string
-) =>
-  createCommand('table.selectOnly', {
-    tableId,
-    zIndex: nextZIndex(tables, memos),
-  });
-
 export function changeTableName(
   helper: Helper,
   tableId: string,

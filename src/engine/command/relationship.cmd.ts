@@ -8,6 +8,7 @@ import {
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { getData } from '@/core/helper';
 import { RelationshipModel } from '@/engine/store/models/relationship.model';
+import { removeValidRelationshipColumnId } from '@/engine/store/helper/valid.helper';
 
 export function executeAddRelationship(
   { relationshipState: { relationships }, tableState: { tables } }: State,
@@ -19,25 +20,29 @@ export function executeAddRelationship(
   if (!start.columnIds.length || !startTable || !endTable) return;
 
   relationships.push(new RelationshipModel({ addRelationship: data }));
-  // relationshipSort(tables, relationships);
 }
 
 export function executeRemoveRelationship(
-  { relationshipState: { relationships } }: State,
+  state: State,
   data: RemoveRelationship
 ) {
+  const {
+    relationshipState: { relationships },
+  } = state;
+
   for (let i = 0; i < relationships.length; i++) {
     const relationship = relationships[i];
 
     if (data.relationshipIds.includes(relationship.id)) {
       relationships.splice(i, 1);
       i--;
-      // relationship valid
-      // removeValidRelationshipColumnId(
-      //   store,
-      //   relationship.end.tableId,
-      //   relationship.end.columnIds
-      // );
+
+      // TODO: Refactoring
+      removeValidRelationshipColumnId(
+        state,
+        relationship.end.tableId,
+        relationship.end.columnIds
+      );
     }
   }
 }

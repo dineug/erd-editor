@@ -16,6 +16,7 @@ import { executeTableCommandMap } from './table.cmd';
 import { executeColumnCommandMap } from './column.cmd';
 import { executeEditorCommandMap } from './editor.cmd';
 import { executeRelationshipCommandMap } from './relationship.cmd';
+import { useHooks } from '@/engine/hooks';
 
 const executeCommandMap = {
   ...executeCanvasCommandMap,
@@ -53,5 +54,6 @@ export const executeCommand = R.curry(
       Logger.log('executeCommand =>', command.name);
       const execute = executeCommandMap[command.name];
       execute && execute(state, command.data as any);
+      useHooks(state, command.name);
     })
 );
