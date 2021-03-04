@@ -12,6 +12,7 @@ import { ColumnUniqueStyle } from './table/column/ColumnUnique.style';
 import { ColumnAutoIncrementStyle } from './table/column/ColumnAutoIncrement.style';
 import { DrawRelationshipStyle } from './DrawRelationship.style';
 import { CanvasSVGStyle } from './CanvasSVG.style';
+import { DragSelectStyle } from './DragSelect.style';
 
 export const EditorStyle = [
   DefaultStyle,
@@ -28,4 +29,5 @@ export const EditorStyle = [
   ColumnAutoIncrementStyle,
   DrawRelationshipStyle,
   CanvasSVGStyle,
+  DragSelectStyle,
 ].join('');

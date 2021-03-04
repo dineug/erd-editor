@@ -1,4 +1,5 @@
 import './Canvas';
+import './DragSelect';
 
 import { Menu } from '@@types/core/contextmenu';
 import { Move } from '@/internal-types/event.helper';
@@ -23,6 +24,7 @@ import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
 import { selectEndTable$ } from '@/engine/command/table.cmd.helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useERDEditorKeymap } from '@/core/hooks/ERDEditorKeymap.hook';
+import { useMousePosition } from '@/core/hooks/mousePosition.hook';
 import { getBase64Icon } from '@/core/icon';
 import { EditorStyle } from './index.style';
 
@@ -43,6 +45,9 @@ interface ERDState {
   contextmenuX: number;
   contextmenuY: number;
   menus: Menu[] | null;
+  dragSelect: boolean;
+  dragSelectX: number;
+  dragSelectY: number;
 }
 
 const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
@@ -50,9 +55,13 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
     contextmenuX: 0,
     contextmenuY: 0,
     menus: null,
+    dragSelect: false,
+    dragSelectX: 0,
+    dragSelectY: 0,
   });
   const contextRef = useContext(ctx);
   const { unmountedGroup } = useUnmounted();
+  const { getPosition } = useMousePosition('.vuerd-erd');
   useERDEditorKeymap(ctx);
 
   const onContextmenu = (event: MouseEvent) => {
@@ -70,7 +79,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
     store.dispatch(movementCanvas(movementX, movementY));
   };
 
-  const onMousedown = (event: MouseEvent) => {
+  const onDragSelect = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement;
     onCloseContextmenu();
 
@@ -79,16 +88,31 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
       !el.closest('.vuerd-memo') &&
       !el.closest('.vuerd-input')
     ) {
-      const { store } = contextRef.value;
-      const { drag$ } = contextRef.value.globalEvent;
+      const {
+        store,
+        globalEvent: { drag$ },
+      } = contextRef.value;
+
       store.dispatch(selectEndTable$(), selectEndMemo());
-      drag$.subscribe(onMove);
+
+      if (event.type === 'mousedown' && (event.ctrlKey || event.metaKey)) {
+        const position = getPosition(event as MouseEvent);
+        state.dragSelect = true;
+        state.dragSelectX = position.x;
+        state.dragSelectY = position.y;
+      } else {
+        drag$.subscribe(onMove);
+      }
     }
   };
 
   const onWheel = (event: WheelEvent) => {
     const { store } = contextRef.value;
     store.dispatch(movementZoomCanvas(event.deltaY < 0 ? 0.1 : -0.1));
+  };
+
+  const onDragSelectEnd = () => {
+    state.dragSelect = false;
   };
 
   beforeMount(() => {
@@ -130,12 +154,22 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
               )}") 16 16, auto`
             : '',
         })}
-        @mousedown=${onMousedown}
+        @mousedown=${onDragSelect}
+        @touchstart=${onDragSelect}
         @contextmenu=${onContextmenu}
         @wheel=${onWheel}
       >
         <div class="vuerd-erd-background"></div>
         <vuerd-canvas></vuerd-canvas>
+        ${state.dragSelect
+          ? html`
+              <vuerd-drag-select
+                .x=${state.dragSelectX}
+                .y=${state.dragSelectY}
+                @drag-select-end=${onDragSelectEnd}
+              ></vuerd-drag-select>
+            `
+          : null}
         ${state.menus
           ? html`
               <vuerd-contextmenu
