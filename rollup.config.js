@@ -6,7 +6,7 @@ import replace from '@rollup/plugin-replace';
 import filesize from 'rollup-plugin-filesize';
 import { terser } from 'rollup-plugin-terser';
 
-const { plugins, banner } = config();
+const { plugins, banner, onwarn } = config();
 
 export default {
   input: 'src/index.ts',
@@ -50,4 +50,5 @@ export default {
       showBrotliSize: true,
     }),
   ],
+  onwarn,
 };

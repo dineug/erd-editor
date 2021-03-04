@@ -11,9 +11,15 @@ const banner = `/*!
  * @license ${pkg.license}
  */`;
 
+function onwarn(warning) {
+  if (warning.code === 'CIRCULAR_DEPENDENCY') return;
+  console.warn(`(!) ${warning.message}`);
+}
+
 export default function config() {
   return {
     plugins: [resolve(), commonjs(), eslint('.eslintrc.json'), typescript()],
     banner,
+    onwarn,
   };
 }

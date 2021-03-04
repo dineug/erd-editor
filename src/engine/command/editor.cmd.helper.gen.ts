@@ -28,25 +28,31 @@ export function* focusMoveTable$(
   } = store;
   if (!focusTable) return;
 
-  moveKey === 'Tab' &&
-  !shiftKey &&
-  ((isTableFocusType(focusTable.focusType) &&
-    isLastTable(store) &&
-    !isColumns(focusTable)) ||
-    (!isTableFocusType(focusTable.focusType) &&
-      isLastColumn(store) &&
-      isLastRowColumn(focusTable)))
-    ? yield addColumn$(store, focusTable.table.id)
-    : yield focusMoveTable(moveKey, shiftKey);
+  if (
+    moveKey === 'Tab' &&
+    !shiftKey &&
+    ((isTableFocusType(focusTable.focusType) &&
+      isLastTable(store) &&
+      !isColumns(focusTable)) ||
+      (!isTableFocusType(focusTable.focusType) &&
+        isLastColumn(store) &&
+        isLastRowColumn(focusTable)))
+  ) {
+    yield addColumn$(store, focusTable.table.id);
+  } else {
+    yield focusMoveTable(moveKey, shiftKey);
+  }
 }
 
 export function* drawStartRelationship$(
   { editorState }: Store,
   relationshipType: RelationshipType
 ) {
-  editorState.drawRelationship?.relationshipType === relationshipType
-    ? yield drawEndRelationship()
-    : yield drawStartRelationship(relationshipType);
+  if (editorState.drawRelationship?.relationshipType === relationshipType) {
+    yield drawEndRelationship();
+  } else {
+    yield drawStartRelationship(relationshipType);
+  }
 }
 
 export function* drawStartAddRelationship$(

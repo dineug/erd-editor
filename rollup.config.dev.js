@@ -4,7 +4,7 @@ import html from 'rollup-plugin-generate-html-template';
 import browsersync from 'rollup-plugin-browsersync';
 import replace from '@rollup/plugin-replace';
 
-const { plugins, banner } = config();
+const { plugins, banner, onwarn } = config();
 
 export default {
   input: 'src/index.dev.ts',
@@ -28,4 +28,5 @@ export default {
     }),
     browsersync({ server: 'dist', open: true, port: 8090 }),
   ],
+  onwarn,
 };

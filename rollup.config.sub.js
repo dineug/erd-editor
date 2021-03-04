@@ -4,7 +4,7 @@ import strip from '@rollup/plugin-strip';
 import replace from '@rollup/plugin-replace';
 import { terser } from 'rollup-plugin-terser';
 
-const { plugins, banner } = config();
+const { plugins, banner, onwarn } = config();
 
 export default {
   input: 'src/ts/index.ts',
@@ -29,4 +29,5 @@ export default {
     }),
     ...plugins,
   ],
+  onwarn,
 };
