@@ -1,8 +1,16 @@
 import { Store } from '@@types/engine/store';
 import { ColumnType } from '@@types/engine/store/canvas.state';
-import { addColumn, removeColumn } from './column.cmd.helper';
+import {
+  addColumn,
+  removeColumn,
+  changeColumnPrimaryKey,
+  changeColumnNotNull,
+  moveColumn,
+} from './column.cmd.helper';
 import { focusColumn, focusTable } from './editor.cmd.helper';
 import { getRemoveFirstColumnId } from '@/engine/command/helper/editor.focus.helper';
+import { getColumn } from '@/engine/store/helper/column.helper';
+import { CommandType } from '@@types/engine/command';
 
 export function* addColumn$(store: Store, tableId?: string) {
   const addColumnCmd = addColumn(store, tableId);
@@ -33,4 +41,51 @@ export function* removeColumn$(
   }
 
   yield removeColumn(tableId, columnIds);
+}
+
+export function* changeColumnPrimaryKey$(
+  store: Store,
+  tableId: string,
+  columnId: string
+) {
+  const {
+    tableState: { tables },
+  } = store;
+  const changeColumnPrimaryKeyCmd = changeColumnPrimaryKey(
+    store,
+    tableId,
+    columnId
+  );
+
+  yield changeColumnPrimaryKeyCmd;
+
+  const column = getColumn(tables, tableId, columnId);
+  if (!changeColumnPrimaryKeyCmd.data.value || !column || column.option.notNull)
+    return;
+
+  yield changeColumnNotNull(store, tableId, columnId);
+}
+
+export function* moveColumn$(
+  tableId: string,
+  columnIds: string[],
+  targetTableId: string,
+  targetColumnId: string
+) {
+  yield moveColumn(tableId, columnIds, targetTableId, targetColumnId);
+
+  if (
+    tableId === targetTableId ||
+    columnIds.some(columnId => columnId === targetColumnId)
+  )
+    return;
+
+  yield {
+    name: 'editor.draggableColumn',
+    data: {
+      tableId,
+      columnIds,
+    },
+    timestamp: Date.now(),
+  } as CommandType<'editor.draggableColumn'>;
 }

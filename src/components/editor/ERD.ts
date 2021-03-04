@@ -111,9 +111,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
     store.dispatch(movementZoomCanvas(event.deltaY < 0 ? 0.1 : -0.1));
   };
 
-  const onDragSelectEnd = () => {
-    state.dragSelect = false;
-  };
+  const onDragSelectEnd = () => (state.dragSelect = false);
 
   beforeMount(() => {
     const { canvasState } = contextRef.value.store;

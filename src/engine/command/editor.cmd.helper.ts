@@ -1,3 +1,4 @@
+import { Store } from '@@types/engine/store';
 import { ColumnType } from '@@types/engine/store/canvas.state';
 import { TableType, MoveKey } from '@@types/engine/store/editor.state';
 import { RelationshipType } from '@@types/engine/store/relationship.state';
@@ -49,3 +50,15 @@ export const drawEndRelationship = () =>
 
 export const drawRelationship = (x: number, y: number) =>
   createCommand('editor.drawRelationship', { x, y });
+
+export const draggableColumn = (
+  { editorState: { focusTable } }: Store,
+  tableId: string,
+  columnId: string,
+  ctrlKey: boolean
+) =>
+  createCommand('editor.draggableColumn', {
+    tableId,
+    columnIds:
+      ctrlKey && focusTable ? [...focusTable.selectColumnIds] : [columnId],
+  });

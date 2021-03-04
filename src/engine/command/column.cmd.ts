@@ -138,9 +138,8 @@ export function executeChangeColumnPrimaryKey(
   const {
     tableState: { tables },
   } = state;
-  const table = getData(tables, data.tableId);
   const column = getColumn(tables, data.tableId, data.columnId);
-  if (!table || !column) return;
+  if (!column) return;
 
   if (data.value) {
     if (column.ui.fk) {
@@ -148,13 +147,6 @@ export function executeChangeColumnPrimaryKey(
       column.ui.pfk = true;
     } else {
       column.ui.pk = true;
-    }
-    if (!column.option.notNull) {
-      // executeChangeColumnNotNull(store, {
-      //   tableId: data.tableId,
-      //   columnId: data.columnId,
-      //   value: true,
-      // });
     }
   } else {
     if (column.ui.pfk) {
@@ -243,10 +235,6 @@ export function executeMoveColumn(state: State, data: MoveColumn) {
     });
 
     targetTable.columns.splice(targetIndex, 0, ...currentColumns);
-    // executeDraggableColumn(store, {
-    //   tableId: data.targetTableId,
-    //   columnIds: data.columnIds,
-    // });
 
     // TODO: Refactoring
     // removeValidColumnIndex(state, currentTable, data.columnIds);

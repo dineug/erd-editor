@@ -9,6 +9,7 @@ import {
   DrawStartRelationship,
   DrawStartAddRelationship,
   DrawRelationship,
+  DraggableColumn,
 } from '@@types/engine/command/editor.cmd';
 import { getData } from '@/core/helper';
 import {
@@ -203,6 +204,13 @@ export function executeDrawRelationship(
   drawRelationship.end.y = data.y - scrollTop;
 }
 
+export function executeDraggableColumn(
+  { editorState }: State,
+  data: DraggableColumn
+) {
+  editorState.draggableColumn = data;
+}
+
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
@@ -216,4 +224,5 @@ export const executeEditorCommandMap = {
   'editor.drawStartAddRelationship': executeDrawStartAddRelationship,
   'editor.drawEndRelationship': executeDrawEndRelationship,
   'editor.drawRelationship': executeDrawRelationship,
+  'editor.draggableColumn': executeDraggableColumn,
 };

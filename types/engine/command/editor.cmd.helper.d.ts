@@ -1,4 +1,5 @@
 import { CommandType } from './index';
+import { Store } from '../store';
 import { ColumnType } from '../store/canvas.state';
 import { TableType, MoveKey } from '../store/editor.state';
 import { RelationshipType } from '../store/relationship.state';
@@ -50,3 +51,10 @@ export declare function drawRelationship(
   x: number,
   y: number
 ): CommandType<'editor.drawRelationship'>;
+
+export declare function draggableColumn(
+  store: Store,
+  tableId: string,
+  columnId: string,
+  ctrlKey: boolean
+): CommandType<'editor.draggableColumn'>;

@@ -80,14 +80,26 @@ export const createKeymap = (): Keymap => ({
       key: 'Delete',
     },
     {
+      ctrlKey: true,
+      key: 'Backspace',
+    },
+    {
       metaKey: true,
       key: 'Delete',
+    },
+    {
+      metaKey: true,
+      key: 'Backspace',
     },
   ],
   removeColumn: [
     {
       altKey: true,
       key: 'Delete',
+    },
+    {
+      altKey: true,
+      key: 'Backspace',
     },
   ],
   primaryKey: [

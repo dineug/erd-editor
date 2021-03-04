@@ -73,6 +73,7 @@ export function* selectTable$(store: Store, ctrlKey: boolean, tableId: string) {
     yield {
       name: 'column.addCustom',
       data: createEndColumns,
+      timestamp: Date.now(),
     } as CommandType<'column.addCustom'>;
     yield addRelationshipCmd;
     yield drawEndRelationship();

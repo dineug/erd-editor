@@ -10,6 +10,7 @@ export const createEditorState = (): EditorState => ({
   hasRedo: false,
   focusTable: null,
   drawRelationship: null,
+  draggableColumn: null,
 });
 
 export const moveKeys: MoveKey[] = [

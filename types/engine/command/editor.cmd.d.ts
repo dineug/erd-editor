@@ -1,6 +1,8 @@
 import { ColumnType } from '../store/canvas.state';
-import { TableType, MoveKey } from '../store/editor.state';
+import { TableType, MoveKey, DraggableColumn } from '../store/editor.state';
 import { RelationshipType } from '../store/relationship.state';
+
+export { DraggableColumn } from '../store/editor.state';
 
 export interface HasUndoRedo {
   hasUndo: boolean;
@@ -51,4 +53,5 @@ export interface EditorCommandMap {
   'editor.drawStartAddRelationship': DrawStartAddRelationship;
   'editor.drawEndRelationship': null;
   'editor.drawRelationship': DrawRelationship;
+  'editor.draggableColumn': DraggableColumn;
 }
