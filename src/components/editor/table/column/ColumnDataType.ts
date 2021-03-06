@@ -88,15 +88,18 @@ const ColumnDataType: FunctionalComponent<
     }
   };
 
-  unmountedGroup.push(
-    watch(props, propName => {
-      if (propName !== 'edit') return;
+  beforeMount(() => {
+    unmountedGroup.push(
+      watch(props, propName => {
+        if (propName !== 'edit') return;
 
-      props.edit ? onERDMousedown() : offERDMousedown();
-    })
-  );
+        props.edit ? onERDMousedown() : offERDMousedown();
+      })
+    );
 
-  beforeMount(() => onERDMousedown());
+    onERDMousedown();
+  });
+
   unmounted(() => offERDMousedown());
 
   return () => html`

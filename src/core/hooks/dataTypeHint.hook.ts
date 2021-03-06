@@ -150,20 +150,17 @@ export function useDataTypeHint(props: ColumnDataTypeProps, ctx: HTMLElement) {
 
   const onInput = () => (state.isFilter = true);
 
-  unmountedGroup.push(
-    watch(props, propName => {
-      if (propName !== 'value') return;
-
-      setHints();
-    })
-  );
-
   beforeMount(() => {
     const {
       store: { canvasState },
     } = contextRef.value;
 
     unmountedGroup.push(
+      watch(props, propName => {
+        if (propName !== 'value') return;
+
+        setHints();
+      }),
       watch(canvasState, propName => {
         if (propName !== 'database') return;
 

@@ -83,7 +83,7 @@ export function* moveColumn$(
   yield {
     name: 'editor.draggableColumn',
     data: {
-      tableId,
+      tableId: targetTableId,
       columnIds,
     },
     timestamp: Date.now(),

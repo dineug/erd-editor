@@ -1,4 +1,8 @@
-import { FocusTable, FocusType } from '@@types/engine/store/editor.state';
+import {
+  FocusTable,
+  FocusType,
+  DraggableColumn,
+} from '@@types/engine/store/editor.state';
 
 export function isFocus(
   focusTable: FocusTable | null,
@@ -45,3 +49,11 @@ export function isEdit(
     focusTable.edit
   );
 }
+
+export const isDraggableColumn = (
+  draggableColumn: DraggableColumn | null,
+  tableId: string,
+  columnId: string
+) =>
+  draggableColumn?.tableId === tableId &&
+  draggableColumn.columnIds.includes(columnId);

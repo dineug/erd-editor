@@ -23,11 +23,6 @@ export const ColumnStyle = css`
     opacity: 0.5;
   }
 
-  /* animation flip */
-  .vuerd-column-move {
-    transition: transform 0.3s;
-  }
-
   .vuerd-column > vuerd-icon,
   .vuerd-column > vuerd-input,
   vuerd-column-key,

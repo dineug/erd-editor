@@ -54,4 +54,5 @@ export interface EditorCommandMap {
   'editor.drawEndRelationship': null;
   'editor.drawRelationship': DrawRelationship;
   'editor.draggableColumn': DraggableColumn;
+  'editor.draggableColumnEnd': null;
 }

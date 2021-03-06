@@ -1,17 +1,21 @@
 import '@/components/editor/Input';
-import '@/components/editor/table/column/Column';
+import './column/Column';
 
 import { Table } from '@@types/engine/store/table.state';
-import { FocusType, TableType } from '@@types/engine/store/editor.state';
+import { TableType } from '@@types/engine/store/editor.state';
 import { Move } from '@/internal-types/event.helper';
 import {
   defineComponent,
   html,
   FunctionalComponent,
+  beforeMount,
+  unmounted,
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
 import { repeat } from 'lit-html/directives/repeat';
+import { Subject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { keymapOptionsToString } from '@/core/keymap';
 import { useContext } from '@/core/hooks/context.hook';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
@@ -22,17 +26,16 @@ import {
   moveTable,
   removeTable,
 } from '@/engine/command/table.cmd.helper';
-import { addColumn$ } from '@/engine/command/column.cmd.helper';
+import { addColumn$, moveColumn$ } from '@/engine/command/column.cmd.helper';
 import {
   focusTable,
   editTableEnd,
   editTable,
 } from '@/engine/command/editor.cmd.helper';
-import {
-  isFocus,
-  isSelectColumn,
-  isEdit,
-} from '@/engine/store/helper/editor.helper';
+import { useHasTable } from '@/core/hooks/hasTable.hook';
+import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
+import { createSubscriptionHelper } from '@/core/helper';
+import { DragoverColumnDetail } from './column/Column';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -48,21 +51,16 @@ export interface TableElement extends TableProps, HTMLElement {}
 
 const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
+  const {
+    hasFocusState,
+    hasEdit,
+    hasSelectColumn,
+    hasDraggableColumn,
+  } = useHasTable(props, ctx);
   useTooltip(['.vuerd-button'], ctx);
-
-  const getFocusState = (focusType: FocusType, columnId?: string) => {
-    const {
-      store: { editorState },
-    } = contextRef.value;
-    return isFocus(editorState.focusTable, focusType, props.table.id, columnId);
-  };
-
-  const getEdit = (focusType: FocusType, columnId?: string) => {
-    const {
-      store: { editorState },
-    } = contextRef.value;
-    return isEdit(editorState.focusTable, focusType, props.table.id, columnId);
-  };
+  useFlipAnimation(ctx, 'vuerd-column', 'vuerd-column-move');
+  const draggable$ = new Subject<CustomEvent<DragoverColumnDetail>>();
+  const subscriptionHelper = createSubscriptionHelper();
 
   const onInput = (event: InputEvent, focusType: string) => {
     const { store, helper } = contextRef.value;
@@ -131,12 +129,42 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     store.dispatch(editTable());
   };
 
+  const onDragoverGroupColumn = (event: CustomEvent<DragoverColumnDetail>) =>
+    draggable$.next(event);
+
+  const onDraggableColumn = (event: CustomEvent<DragoverColumnDetail>) => {
+    const { store } = contextRef.value;
+    const {
+      editorState: { draggableColumn },
+    } = store;
+    const { tableId, columnId } = event.detail;
+
+    if (!draggableColumn || draggableColumn.columnIds.includes(columnId))
+      return;
+
+    store.dispatch(
+      moveColumn$(
+        draggableColumn.tableId,
+        draggableColumn.columnIds,
+        tableId,
+        columnId
+      )
+    );
+  };
+
+  beforeMount(() =>
+    subscriptionHelper.push(
+      draggable$.pipe(debounceTime(50)).subscribe(onDraggableColumn)
+    )
+  );
+
+  unmounted(() => subscriptionHelper.destroy());
+
   return () => {
     const {
       keymap,
       store: {
         canvasState: { show },
-        editorState,
       },
     } = contextRef.value;
     const { table } = props;
@@ -156,6 +184,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
           width: `${table.width()}px`,
           height: `${table.height()}px`,
         })}
+        data-id=${table.id}
         @mousedown=${onMoveStart}
         @touchstart=${onMoveStart}
       >
@@ -181,8 +210,8 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
               class="vuerd-table-name"
               .width=${table.ui.widthName}
               .value=${table.name}
-              .focusState=${getFocusState('tableName')}
-              .edit=${getEdit('tableName')}
+              .focusState=${hasFocusState('tableName')}
+              .edit=${hasEdit('tableName')}
               placeholder="table"
               @input=${(event: InputEvent) => onInput(event, 'tableName')}
               @mousedown=${() => onFocus('tableName')}
@@ -195,8 +224,8 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
                     class="vuerd-table-comment"
                     .width=${table.ui.widthComment}
                     .value=${table.comment}
-                    .focusState=${getFocusState('tableComment')}
-                    .edit=${getEdit('tableComment')}
+                    .focusState=${hasFocusState('tableComment')}
+                    .edit=${hasEdit('tableComment')}
                     placeholder="comment"
                     @input=${(event: InputEvent) =>
                       onInput(event, 'tableComment')}
@@ -217,29 +246,27 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
                 <vuerd-column
                   .tableId=${table.id}
                   .column=${column}
-                  .select=${isSelectColumn(
-                    editorState.focusTable,
-                    table.id,
-                    column.id
-                  )}
-                  .focusName=${getFocusState('columnName', column.id)}
-                  .focusDataType=${getFocusState('columnDataType', column.id)}
-                  .focusNotNull=${getFocusState('columnNotNull', column.id)}
-                  .focusDefault=${getFocusState('columnDefault', column.id)}
-                  .focusComment=${getFocusState('columnComment', column.id)}
-                  .focusUnique=${getFocusState('columnUnique', column.id)}
-                  .focusAutoIncrement=${getFocusState(
+                  .select=${hasSelectColumn(column.id)}
+                  .draggable=${hasDraggableColumn(column.id)}
+                  .focusName=${hasFocusState('columnName', column.id)}
+                  .focusDataType=${hasFocusState('columnDataType', column.id)}
+                  .focusNotNull=${hasFocusState('columnNotNull', column.id)}
+                  .focusDefault=${hasFocusState('columnDefault', column.id)}
+                  .focusComment=${hasFocusState('columnComment', column.id)}
+                  .focusUnique=${hasFocusState('columnUnique', column.id)}
+                  .focusAutoIncrement=${hasFocusState(
                     'columnAutoIncrement',
                     column.id
                   )}
-                  .editName=${getEdit('columnName', column.id)}
-                  .editComment=${getEdit('columnComment', column.id)}
-                  .editDataType=${getEdit('columnDataType', column.id)}
-                  .editDefault=${getEdit('columnDefault', column.id)}
+                  .editName=${hasEdit('columnName', column.id)}
+                  .editComment=${hasEdit('columnComment', column.id)}
+                  .editDataType=${hasEdit('columnDataType', column.id)}
+                  .editDefault=${hasEdit('columnDefault', column.id)}
                   .widthName=${widthColumn.name}
                   .widthComment=${widthColumn.comment}
                   .widthDataType=${widthColumn.dataType}
                   .widthDefault=${widthColumn.default}
+                  @dragover-column=${onDragoverGroupColumn}
                 ></vuerd-column>
               `
           )}

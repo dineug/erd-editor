@@ -44,4 +44,9 @@ export const TableStyle = css`
   .vuerd-table .vuerd-table-header-body > vuerd-input {
     float: left;
   }
+
+  /* animation flip */
+  .vuerd-column-move {
+    transition: transform 0.3s;
+  }
 `;

@@ -211,6 +211,10 @@ export function executeDraggableColumn(
   editorState.draggableColumn = data;
 }
 
+export function executeDraggableColumnEnd({ editorState }: State) {
+  editorState.draggableColumn = null;
+}
+
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
@@ -225,4 +229,5 @@ export const executeEditorCommandMap = {
   'editor.drawEndRelationship': executeDrawEndRelationship,
   'editor.drawRelationship': executeDrawRelationship,
   'editor.draggableColumn': executeDraggableColumn,
+  'editor.draggableColumnEnd': executeDraggableColumnEnd,
 };

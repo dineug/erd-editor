@@ -58,3 +58,5 @@ export declare function draggableColumn(
   columnId: string,
   ctrlKey: boolean
 ): CommandType<'editor.draggableColumn'>;
+
+export declare function draggableColumnEnd(): CommandType<'editor.draggableColumnEnd'>;

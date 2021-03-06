@@ -62,3 +62,6 @@ export const draggableColumn = (
     columnIds:
       ctrlKey && focusTable ? [...focusTable.selectColumnIds] : [columnId],
   });
+
+export const draggableColumnEnd = () =>
+  createCommand('editor.draggableColumnEnd', null);

@@ -2,6 +2,7 @@ import {
   defineComponent,
   html,
   FunctionalComponent,
+  beforeMount,
   watch,
   query,
 } from '@dineug/lit-observable';
@@ -53,18 +54,20 @@ const Input: FunctionalComponent<InputProps, InputElement> = (props, ctx) => {
       })
     );
 
-  unmountedGroup.push(
-    watch(props, propName => {
-      const input = inputRef.value;
-      if (propName !== 'edit' || !props.edit || !input) return;
+  beforeMount(() =>
+    unmountedGroup.push(
+      watch(props, propName => {
+        const input = inputRef.value;
+        if (propName !== 'edit' || !props.edit || !input) return;
 
-      lastCursorFocus(input);
-    }),
-    // firefox
-    watch(props, propName => {
-      if (propName !== 'edit') return;
-      props.edit || onBlur();
-    })
+        lastCursorFocus(input);
+      }),
+      // firefox
+      watch(props, propName => {
+        if (propName !== 'edit') return;
+        props.edit || onBlur();
+      })
+    )
   );
 
   return () =>

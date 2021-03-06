@@ -11,10 +11,16 @@ import {
   FunctionalComponent,
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
+import { Subject } from 'rxjs';
+import { throttleTime } from 'rxjs/operators';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { keymapOptionsToString } from '@/core/keymap';
 import { useContext } from '@/core/hooks/context.hook';
 import { removeColumn$ } from '@/engine/command/column.cmd.helper';
+import {
+  draggableColumn,
+  draggableColumnEnd,
+} from '@/engine/command/editor.cmd.helper';
 import { columnTpl } from './Column.template';
 
 declare global {
@@ -27,6 +33,7 @@ export interface ColumnProps {
   tableId: string;
   column: Column;
   select: boolean;
+  draggable: boolean;
   focusName: boolean;
   focusDataType: boolean;
   focusNotNull: boolean;
@@ -46,17 +53,54 @@ export interface ColumnProps {
 
 export interface ColumnElement extends ColumnProps, HTMLElement {}
 
+export interface DragoverColumnDetail {
+  tableId: string;
+  columnId: string;
+}
+
 const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
   props,
   ctx
 ) => {
   const contextRef = useContext(ctx);
   useTooltip(['.vuerd-button'], ctx, { placement: 'right' });
+  const dragover$ = new Subject();
 
   const onRemoveColumn = () => {
     const { store } = contextRef.value;
     store.dispatch(removeColumn$(store, props.tableId, [props.column.id]));
   };
+
+  const onDragstart = (event: DragEvent) => {
+    const { store } = contextRef.value;
+    store.dispatch(
+      draggableColumn(
+        store,
+        props.tableId,
+        props.column.id,
+        event.ctrlKey || event.metaKey
+      )
+    );
+  };
+
+  const onDragend = () => {
+    const { store } = contextRef.value;
+    store.dispatch(draggableColumnEnd());
+  };
+
+  const onDragover = () => dragover$.next();
+
+  const onDragoverColumn = () =>
+    ctx.dispatchEvent(
+      new CustomEvent<DragoverColumnDetail>('dragover-column', {
+        detail: {
+          tableId: props.tableId,
+          columnId: props.column.id,
+        },
+      })
+    );
+
+  dragover$.pipe(throttleTime(300)).subscribe(onDragoverColumn);
 
   return () => {
     const { keymap } = contextRef.value;
@@ -68,11 +112,14 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
         class=${classMap({
           'vuerd-column': true,
           select: props.select,
-          draggable: false,
+          draggable: props.draggable,
           active: ui.active,
         })}
         data-id=${column.id}
         draggable="true"
+        @dragstart=${onDragstart}
+        @dragend=${onDragend}
+        @dragover=${onDragover}
       >
         <vuerd-column-key .ui=${ui}></vuerd-column-key>
         ${columnTpl(props, contextRef.value)}
@@ -93,6 +140,7 @@ defineComponent('vuerd-column', {
     'tableId',
     'column',
     'select',
+    'draggable',
     'focusName',
     'focusDataType',
     'focusNotNull',
@@ -110,5 +158,8 @@ defineComponent('vuerd-column', {
     'widthComment',
   ],
   shadow: false,
+  styleMap: {
+    display: 'flex',
+  },
   render: Column,
 });
