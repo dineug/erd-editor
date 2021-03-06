@@ -10,6 +10,7 @@ import {
   FunctionalComponent,
   beforeMount,
   unmounted,
+  updated,
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
@@ -19,6 +20,7 @@ import { debounceTime } from 'rxjs/operators';
 import { keymapOptionsToString } from '@/core/keymap';
 import { useContext } from '@/core/hooks/context.hook';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
+import { useHasTable } from '@/core/hooks/hasTable.hook';
 import {
   changeTableName,
   changeTableComment,
@@ -32,9 +34,8 @@ import {
   editTableEnd,
   editTable,
 } from '@/engine/command/editor.cmd.helper';
-import { useHasTable } from '@/core/hooks/hasTable.hook';
-import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
 import { createSubscriptionHelper } from '@/core/helper';
+import { FlipAnimation } from '@/core/flipAnimation';
 import { DragoverColumnDetail } from './column/Column';
 
 declare global {
@@ -58,7 +59,11 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     hasDraggableColumn,
   } = useHasTable(props, ctx);
   useTooltip(['.vuerd-button'], ctx);
-  useFlipAnimation(ctx, 'vuerd-column', 'vuerd-column-move');
+  const flipAnimation = new FlipAnimation(
+    ctx.shadowRoot ? ctx.shadowRoot : ctx,
+    'vuerd-column',
+    'vuerd-column-move'
+  );
   const draggable$ = new Subject<CustomEvent<DragoverColumnDetail>>();
   const subscriptionHelper = createSubscriptionHelper();
 
@@ -142,6 +147,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     if (!draggableColumn || draggableColumn.columnIds.includes(columnId))
       return;
 
+    flipAnimation.snapshot();
     store.dispatch(
       moveColumn$(
         draggableColumn.tableId,
@@ -151,6 +157,8 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
       )
     );
   };
+
+  updated(() => flipAnimation.play());
 
   beforeMount(() =>
     subscriptionHelper.push(
