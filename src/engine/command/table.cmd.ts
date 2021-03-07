@@ -11,7 +11,10 @@ import {
 import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from '@/core/layout';
 import { getData } from '@/core/helper';
 import { TableModel } from '@/engine/store/models/table.model';
-import { removeValidTableRelationship } from '@/engine/store/helper/valid.helper';
+import {
+  removeValidTableRelationship,
+  removeValidTableIndex,
+} from '@/engine/store/helper/valid.helper';
 
 const TABLE_PADDING = (SIZE_TABLE_PADDING + SIZE_TABLE_BORDER) * 2;
 const TABLE_SORT_PADDING = TABLE_PADDING * 4;
@@ -59,7 +62,7 @@ export function executeRemoveTable(state: State, data: RemoveTable) {
   }
 
   // TODO: Refactoring
-  // removeValidTableIndex(store, data.tableIds);
+  removeValidTableIndex(state, data.tableIds);
   removeValidTableRelationship(state, data.tableIds);
 }
 

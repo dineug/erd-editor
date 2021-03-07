@@ -34,9 +34,7 @@ export class ColumnModel implements Column {
     widthDefault: SIZE_MIN_WIDTH,
   };
 
-  constructor(data: ColumnData) {
-    const { addColumn, addCustomColumn } = data;
-
+  constructor({ addColumn, addCustomColumn }: ColumnData) {
     if (addColumn) {
       const { id } = addColumn;
 

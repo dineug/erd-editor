@@ -8,6 +8,7 @@ import {
   moveColumn,
 } from './column.cmd.helper';
 import { focusColumn, focusTable } from './editor.cmd.helper';
+import { selectTable } from './table.cmd.helper';
 import { getRemoveFirstColumnId } from '@/engine/command/helper/editor.focus.helper';
 import { getColumn } from '@/engine/store/helper/column.helper';
 import { CommandType } from '@@types/engine/command';
@@ -67,6 +68,7 @@ export function* changeColumnPrimaryKey$(
 }
 
 export function* moveColumn$(
+  store: Store,
   tableId: string,
   columnIds: string[],
   targetTableId: string,
@@ -74,11 +76,7 @@ export function* moveColumn$(
 ) {
   yield moveColumn(tableId, columnIds, targetTableId, targetColumnId);
 
-  if (
-    tableId === targetTableId ||
-    columnIds.some(columnId => columnId === targetColumnId)
-  )
-    return;
+  if (tableId === targetTableId || columnIds.includes(targetColumnId)) return;
 
   yield {
     name: 'editor.draggableColumn',
@@ -88,4 +86,6 @@ export function* moveColumn$(
     },
     timestamp: Date.now(),
   } as CommandType<'editor.draggableColumn'>;
+  yield selectTable(store, false, targetTableId);
+  yield focusColumn(targetTableId, columnIds[0], 'columnName');
 }

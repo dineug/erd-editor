@@ -55,8 +55,7 @@ export class TableModel implements Table {
 
   private _show: Show;
 
-  constructor(data: TableData, show: Show) {
-    const { addTable, loadTable } = data;
+  constructor({ addTable, loadTable }: TableData, show: Show) {
     this._show = show;
 
     if (addTable) {

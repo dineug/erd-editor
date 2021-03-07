@@ -4,12 +4,14 @@ import { TableCommandMap } from './table.cmd';
 import { ColumnCommandMap } from './column.cmd';
 import { EditorCommandMap } from './editor.cmd';
 import { RelationshipCommandMap } from './relationship.cmd';
+import { IndexCommandMap } from './index.cmd';
 import * as CanvasCommand from './canvas.cmd.helper';
 import * as MemoCommand from './memo.cmd.helper';
 import * as TableCommand from './table.com.helper';
 import * as ColumnCommand from './column.cmd.helper';
 import * as EditorCommand from './editor.cmd.helper';
 import * as RelationshipCommand from './relationship.cmd.helper';
+import * as IndexCommand from './index.cmd.helper';
 
 export interface CommandMap
   extends CanvasCommandMap,
@@ -17,7 +19,8 @@ export interface CommandMap
     TableCommandMap,
     ColumnCommandMap,
     EditorCommandMap,
-    RelationshipCommandMap {}
+    RelationshipCommandMap,
+    IndexCommandMap {}
 
 export type CommandKey = keyof CommandMap;
 
@@ -42,4 +45,5 @@ export interface Command {
   column: typeof ColumnCommand;
   editor: typeof EditorCommand;
   relationship: typeof RelationshipCommand;
+  index: typeof IndexCommand;
 }

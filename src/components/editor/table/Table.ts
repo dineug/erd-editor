@@ -150,6 +150,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     flipAnimation.snapshot();
     store.dispatch(
       moveColumn$(
+        store,
         draggableColumn.tableId,
         draggableColumn.columnIds,
         tableId,

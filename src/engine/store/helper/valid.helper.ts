@@ -148,3 +148,36 @@ export function removeValidRelationshipColumnId(
     }
   });
 }
+
+export function removeValidColumnIndex(
+  state: State,
+  table: Table,
+  columnIds: string[]
+) {
+  const { indexes } = state.tableState;
+  const tableIndexes = indexes.filter(index => index.tableId === table.id);
+
+  tableIndexes.forEach(index => {
+    for (let i = 0; i < index.columns.length; i++) {
+      const id = index.columns[i].id;
+
+      if (columnIds.includes(id)) {
+        index.columns.splice(i, 1);
+        i--;
+      }
+    }
+  });
+}
+
+export function removeValidTableIndex(state: State, tableIds: string[]) {
+  const { indexes } = state.tableState;
+
+  for (let i = 0; i < indexes.length; i++) {
+    const id = indexes[i].tableId;
+
+    if (tableIds.some(tableId => tableId === id)) {
+      indexes.splice(i, 1);
+      i--;
+    }
+  }
+}

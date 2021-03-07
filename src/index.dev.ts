@@ -4,10 +4,11 @@ import Stats from 'stats.js';
 
 function runStats() {
   const stats = new Stats();
-  stats.dom.style.top = '20px';
+  stats.dom.style.top = '50px';
   stats.dom.style.right = '20px';
   stats.dom.style.left = '';
   document.body.style.margin = '0';
+  document.body.style.height = '100vh';
   document.body.appendChild(stats.dom);
 
   const animate = () => {
@@ -20,6 +21,7 @@ function runStats() {
 
 function runEditor() {
   const editor = document.createElement('erd-editor');
+  editor.automaticLayout = true;
   document.body.appendChild(editor);
 }
 

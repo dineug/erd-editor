@@ -25,10 +25,14 @@ export declare function changeColumnPrimaryKey$(
 >;
 
 export declare function moveColumn$(
+  store: Store,
   tableId: string,
   columnIds: string[],
   targetTableId: string,
   targetColumnId: string
 ): Generator<
-  CommandType<'column.move'> | CommandType<'editor.draggableColumn'>
+  | CommandType<'column.move'>
+  | CommandType<'editor.draggableColumn'>
+  | CommandType<'table.select'>
+  | CommandType<'editor.focusColumn'>
 >;

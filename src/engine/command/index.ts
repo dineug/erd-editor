@@ -10,12 +10,14 @@ import * as TableCommand from './table.cmd.helper';
 import * as ColumnCommand from './column.cmd.helper';
 import * as EditorCommand from './editor.cmd.helper';
 import * as RelationshipCommand from './relationship.cmd.helper';
+import * as IndexCommand from './index.cmd.helper';
 import { executeCanvasCommandMap } from './canvas.cmd';
 import { executeMemoCommandMap } from './memo.cmd';
 import { executeTableCommandMap } from './table.cmd';
 import { executeColumnCommandMap } from './column.cmd';
 import { executeEditorCommandMap } from './editor.cmd';
 import { executeRelationshipCommandMap } from './relationship.cmd';
+import { executeIndexCommandMap } from './index.cmd';
 import { useHooks } from '@/engine/hooks';
 
 const executeCommandMap = {
@@ -25,6 +27,7 @@ const executeCommandMap = {
   ...executeColumnCommandMap,
   ...executeEditorCommandMap,
   ...executeRelationshipCommandMap,
+  ...executeIndexCommandMap,
 };
 
 export const createCommand = (): Command => ({
@@ -34,6 +37,7 @@ export const createCommand = (): Command => ({
   column: ColumnCommand,
   editor: EditorCommand,
   relationship: RelationshipCommand,
+  index: IndexCommand,
 });
 
 export function createStream() {

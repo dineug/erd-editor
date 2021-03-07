@@ -19,6 +19,7 @@ import {
 import {
   removeValidColumnRelationship,
   validIdentification,
+  removeValidColumnIndex,
 } from '@/engine/store/helper/valid.helper';
 
 export function executeAddColumn(
@@ -61,7 +62,7 @@ export function executeRemoveColumn(state: State, data: RemoveColumn) {
   }
 
   // TODO: Refactoring
-  // removeValidColumnIndex(store, table, data.columnIds);
+  removeValidColumnIndex(state, table, data.columnIds);
   removeValidColumnRelationship(state, table, data.columnIds);
   validIdentification(state);
 }
@@ -237,7 +238,7 @@ export function executeMoveColumn(state: State, data: MoveColumn) {
     targetTable.columns.splice(targetIndex, 0, ...currentColumns);
 
     // TODO: Refactoring
-    // removeValidColumnIndex(state, currentTable, data.columnIds);
+    removeValidColumnIndex(state, currentTable, data.columnIds);
     removeValidColumnRelationship(state, currentTable, data.columnIds);
     validIdentification(state);
   }
