@@ -1,8 +1,8 @@
 import { CommandTypeAll } from '@@types/engine/command';
 import { MoveKey, FocusType } from '@@types/engine/store/editor.state';
-import { beforeMount, unmounted } from '@dineug/lit-observable';
+import { beforeMount } from '@dineug/lit-observable';
 import { useContext } from './context.hook';
-import { createSubscriptionHelper } from '@/core/helper';
+import { useUnmounted } from './unmounted.hook';
 import { keymapMatchAndStop } from '@/core/keymap';
 import { relationshipMenus } from '@/core/contextmenu/drawRelationship.contextmenu';
 import { moveKeys } from '@/engine/store/editor.state';
@@ -48,9 +48,9 @@ const changeColumnKeys: FocusType[] = [
   'columnAutoIncrement',
 ];
 
-export function useERDEditorKeymap(ctx: HTMLElement) {
+export function useERDKeymap(ctx: HTMLElement) {
   const contextRef = useContext(ctx);
-  const subscriptionHelper = createSubscriptionHelper();
+  const { unmountedGroup } = useUnmounted();
 
   const onKeydown = (event: KeyboardEvent) => {
     const { keymap, store } = contextRef.value;
@@ -169,8 +169,6 @@ export function useERDEditorKeymap(ctx: HTMLElement) {
 
   beforeMount(() => {
     const { helper } = contextRef.value;
-    subscriptionHelper.push(helper.keydown$.subscribe(onKeydown));
+    unmountedGroup.push(helper.keydown$.subscribe(onKeydown));
   });
-
-  unmounted(() => subscriptionHelper.destroy());
 }

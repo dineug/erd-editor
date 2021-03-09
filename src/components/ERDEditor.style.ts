@@ -9,6 +9,7 @@ export const ERDEditorStyle = css`
     overflow: hidden;
     background-color: #f8f8f8;
     box-sizing: border-box;
+    position: relative;
   }
 
   .vuerd-ghost-text-helper {

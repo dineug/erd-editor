@@ -5,6 +5,8 @@ import './Contextmenu';
 import './PanelView';
 import './menubar/Menubar';
 import './editor/ERD';
+import './drawer/Drawer';
+import './drawer/HelpDrawer';
 
 import {
   ERDEditorProps,
@@ -23,26 +25,25 @@ import {
   mounted,
   unmounted,
   watch,
-  observable,
 } from '@dineug/lit-observable';
-import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
 import { cache } from 'lit-html/directives/cache';
-import { fromEvent, merge } from 'rxjs';
-import { throttleTime } from 'rxjs/operators';
+import { fromEvent } from 'rxjs';
 import { createdERDEditorContext } from '@/core/ERDEditorContext';
 import { loadTheme } from '@/core/theme';
-import { loadKeymap } from '@/core/keymap';
+import { loadKeymap, keymapMatchAndStop } from '@/core/keymap';
 import {
   DEFAULT_WIDTH,
   DEFAULT_HEIGHT,
   SIZE_MENUBAR_HEIGHT,
 } from '@/core/layout';
-import { isArray, createSubscriptionHelper } from '@/core/helper';
-import { ignoreEnterProcess } from '@/core/helper/operator.helper';
+import { isArray } from '@/core/helper';
 import { panels as globalPanels } from '@/core/panel';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { useERDEditorGhost } from '@/core/hooks/ERDEditorGhost.hook';
+import { useERDEditorDrawer } from '@/core/hooks/ERDEditorDrawer.hook';
 import { editTableEnd } from '@/engine/command/editor.cmd.helper';
+import { ignoreEnterProcess } from '@/core/helper/operator.helper';
 import { Logger } from '@/core/logger';
 import { ERDEditorStyle } from './ERDEditor.style';
 
@@ -51,13 +52,12 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   ctx
 ) => {
   const context = createdERDEditorContext();
-  const { store, globalEvent, helper } = context;
+  const { store, helper, keymap } = context;
   const { canvasState, editorState } = store;
   const editorRef = query<HTMLElement>('.vuerd-editor');
-  const ghostTextRef = query<HTMLSpanElement>('.vuerd-ghost-text-helper');
-  const ghostInputRef = query<HTMLInputElement>('.vuerd-ghost-focus-helper');
+  const { ghostTpl, ghostState, setFocus } = useERDEditorGhost(context, ctx);
+  const { drawerTpl, openHelp, closeHelp } = useERDEditorDrawer(props);
   const { unmountedGroup } = useUnmounted();
-  const subscriptionHelper = createSubscriptionHelper();
   // @ts-ignore
   const resizeObserver = new ResizeObserver(entries => {
     entries.forEach((entry: any) => {
@@ -66,38 +66,38 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
       ctx.setAttribute('height', height);
     });
   });
-  const state = observable({ focus: false });
 
-  const setFocus = () => (state.focus = document.activeElement === ctx);
+  const closeDrawer = () => {
+    closeHelp();
+  };
 
-  const onFocus = () =>
-    setTimeout(() => {
-      document.activeElement !== ctx && helper.focus();
-      setFocus();
-    }, 0);
+  const onOpenHelp = () => openHelp();
 
-  const onEditTableEnd = () => store.dispatch(editTableEnd());
+  const onOutside = (event: MouseEvent | TouchEvent) => {
+    const el = event.target as HTMLElement;
 
-  unmountedGroup.push(
-    watch(props, propName => {
-      if (propName !== 'automaticLayout') return;
+    if (el.closest('vuerd-menubar') || el.closest('vuerd-drawer')) {
+      store.dispatch(editTableEnd());
+    }
 
-      if (props.automaticLayout) {
-        resizeObserver.observe(editorRef.value);
-      } else {
-        resizeObserver.disconnect();
-      }
-    })
-  );
+    if (!el.closest('vuerd-menubar') && !el.closest('vuerd-drawer')) {
+      closeDrawer();
+    }
+  };
 
   mounted(() => {
-    helper.setGhostText(ghostTextRef.value);
-    helper.setGhostInput(ghostInputRef.value);
-    helper.focus();
-    setFocus();
-
     props.automaticLayout && resizeObserver.observe(editorRef.value);
-    subscriptionHelper.push(
+
+    unmountedGroup.push(
+      watch(props, propName => {
+        if (propName !== 'automaticLayout') return;
+
+        if (props.automaticLayout) {
+          resizeObserver.observe(editorRef.value);
+        } else {
+          resizeObserver.disconnect();
+        }
+      }),
       fromEvent<KeyboardEvent>(editorRef.value, 'keydown')
         .pipe(ignoreEnterProcess)
         .subscribe(event => {
@@ -108,30 +108,18 @@ altKey: ${event.altKey}
 shiftKey: ${event.shiftKey}
 code: ${event.code}
 key: ${event.key}
-          `);
+        `);
 
           helper.keydown$.next(event);
-        }),
-      merge(
-        fromEvent(editorRef.value, 'mousedown'),
-        fromEvent(editorRef.value, 'touchstart'),
-        fromEvent(editorRef.value, 'vuerd-contextmenu-mousedown'),
-        fromEvent(editorRef.value, 'vuerd-contextmenu-touchstart'),
-        fromEvent(editorRef.value, 'vuerd-input-blur')
-      )
-        .pipe(throttleTime(20))
-        .subscribe(onFocus),
-      globalEvent.moveStart$
-        .pipe(throttleTime(20))
-        .subscribe(() => setTimeout(setFocus, 0))
+          keymapMatchAndStop(event, keymap.stop) && closeDrawer();
+        })
     );
   });
 
   unmounted(() => {
-    globalEvent.destroy();
-    store.destroy();
-    helper.destroy();
-    subscriptionHelper.destroy();
+    // globalEvent.destroy();
+    // store.destroy();
+    // helper.destroy();
     resizeObserver.disconnect();
   });
 
@@ -176,19 +164,17 @@ key: ${event.key}
     return html`
       <vuerd-provider .value=${context}>
         <div
-          class=${classMap({
-            'vuerd-editor': true,
-            focus: state.focus,
-          })}
+          class="vuerd-editor"
           style=${styleMap({
             width: props.automaticLayout ? `100%` : `${props.width}px`,
             height: props.automaticLayout ? `100%` : `${props.height}px`,
           })}
+          @mousedown=${onOutside}
+          @touchstart=${onOutside}
         >
           <vuerd-menubar
-            .focusState=${state.focus}
-            @mousedown=${onEditTableEnd}
-            @touchstart=${onEditTableEnd}
+            .focusState=${ghostState.focus}
+            @open-help=${onOpenHelp}
           ></vuerd-menubar>
           ${cache(
             isERD
@@ -204,9 +190,8 @@ key: ${event.key}
                 ></vuerd-panel-view>
               `
             : null}
-          <input class="vuerd-ghost-focus-helper" type="text" />
+          ${drawerTpl()} ${ghostTpl}
         </div>
-        <span class="vuerd-ghost-text-helper"></span>
       </vuerd-provider>
     `;
   };

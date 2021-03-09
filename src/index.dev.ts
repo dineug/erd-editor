@@ -21,8 +21,13 @@ function runStats() {
 
 function runEditor() {
   const editor = document.createElement('erd-editor');
-  editor.automaticLayout = true;
   document.body.appendChild(editor);
+
+  window.addEventListener('resize', () => {
+    editor.width = window.innerWidth;
+  });
+
+  window.dispatchEvent(new Event('resize'));
 }
 
 runStats();

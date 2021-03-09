@@ -23,7 +23,7 @@ import { createDatabaseMenus } from '@/core/contextmenu/database.contextmenu';
 import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
 import { selectEndTable$ } from '@/engine/command/table.cmd.helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { useERDEditorKeymap } from '@/core/hooks/ERDEditorKeymap.hook';
+import { useERDKeymap } from '@/core/hooks/ERDKeymap.hook';
 import { useMousePosition } from '@/core/hooks/mousePosition.hook';
 import { getBase64Icon } from '@/core/icon';
 import { EditorStyle } from './index.style';
@@ -62,7 +62,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
   const { unmountedGroup } = useUnmounted();
   const { getPosition } = useMousePosition('.vuerd-erd');
-  useERDEditorKeymap(ctx);
+  useERDKeymap(ctx);
 
   const onContextmenu = (event: MouseEvent) => {
     event.preventDefault();

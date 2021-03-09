@@ -21,3 +21,8 @@ export interface GlobalEventObservable {
   drag$: Observable<Move>;
   destroy(): void;
 }
+
+export interface EventBus {
+  on(eventName: string): Observable<any>;
+  emit(eventName: string, data?: any): void;
+}

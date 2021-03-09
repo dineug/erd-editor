@@ -9,7 +9,6 @@ import {
   html,
   FunctionalComponent,
   beforeMount,
-  unmounted,
   updated,
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
@@ -34,7 +33,7 @@ import {
   editTableEnd,
   editTable,
 } from '@/engine/command/editor.cmd.helper';
-import { createSubscriptionHelper } from '@/core/helper';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { FlipAnimation } from '@/core/flipAnimation';
 import { DragoverColumnDetail } from './column/Column';
 
@@ -65,7 +64,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     'vuerd-column-move'
   );
   const draggable$ = new Subject<CustomEvent<DragoverColumnDetail>>();
-  const subscriptionHelper = createSubscriptionHelper();
+  const { unmountedGroup } = useUnmounted();
 
   const onInput = (event: InputEvent, focusType: string) => {
     const { store, helper } = contextRef.value;
@@ -162,12 +161,10 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   updated(() => flipAnimation.play());
 
   beforeMount(() =>
-    subscriptionHelper.push(
+    unmountedGroup.push(
       draggable$.pipe(debounceTime(50)).subscribe(onDraggableColumn)
     )
   );
-
-  unmounted(() => subscriptionHelper.destroy());
 
   return () => {
     const {

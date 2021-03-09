@@ -4,14 +4,13 @@ import {
   svg,
   FunctionalComponent,
   beforeMount,
-  unmounted,
   closestElement,
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { fromEvent } from 'rxjs';
 import { getDraw } from '@/engine/store/helper/relationship.helper';
 import { useContext } from '@/core/hooks/context.hook';
-import { createSubscriptionHelper } from '@/core/helper';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { drawRelationship } from '@/engine/command/editor.cmd.helper';
 
 declare global {
@@ -28,14 +27,14 @@ export interface Element extends Props, HTMLElement {}
 
 const DrawRelationship: FunctionalComponent<Props, Element> = (props, ctx) => {
   const contextRef = useContext(ctx);
-  const subscriptionHelper = createSubscriptionHelper();
+  const { unmountedGroup } = useUnmounted();
 
   beforeMount(() => {
     const { store } = contextRef.value;
     const erd = closestElement('.vuerd-erd', ctx);
     if (!erd) return;
 
-    subscriptionHelper.push(
+    unmountedGroup.push(
       fromEvent<MouseEvent>(erd, 'mousemove').subscribe(event => {
         event.preventDefault();
         const { x, y } = erd.getBoundingClientRect();
@@ -44,8 +43,6 @@ const DrawRelationship: FunctionalComponent<Props, Element> = (props, ctx) => {
       })
     );
   });
-
-  unmounted(() => subscriptionHelper.destroy());
 
   return () => {
     const {

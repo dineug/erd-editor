@@ -5,14 +5,13 @@ import {
   observable,
   closestElement,
   beforeMount,
-  unmounted,
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { fromEvent } from 'rxjs';
-import { createSubscriptionHelper } from '@/core/helper';
 import { dragSelectTable } from '@/engine/command/table.cmd.helper';
 import { dragSelectMemo } from '@/engine/command/memo.cmd.helper';
 import { useContext } from '@/core/hooks/context.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -33,7 +32,7 @@ const DragSelect: FunctionalComponent<DragSelectProps, DragSelectElement> = (
 ) => {
   const contextRef = useContext(ctx);
   const state = observable({ width: 0, height: 0, top: 0, left: 0 });
-  const subscriptionHelper = createSubscriptionHelper();
+  const { unmountedGroup } = useUnmounted();
 
   const onGlobalMouseup = () => {
     ctx.dispatchEvent(new CustomEvent('drag-select-end'));
@@ -48,7 +47,7 @@ const DragSelect: FunctionalComponent<DragSelectProps, DragSelectElement> = (
     const erd = closestElement('.vuerd-erd', ctx);
     if (!erd) return;
 
-    subscriptionHelper.push(
+    unmountedGroup.push(
       mouseup$.subscribe(onGlobalMouseup),
       fromEvent<MouseEvent>(erd, 'mousemove').subscribe(event => {
         event.preventDefault();
@@ -90,8 +89,6 @@ const DragSelect: FunctionalComponent<DragSelectProps, DragSelectElement> = (
       })
     );
   });
-
-  unmounted(() => subscriptionHelper.destroy());
 
   return () => {
     return svg`

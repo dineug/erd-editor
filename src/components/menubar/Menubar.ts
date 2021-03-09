@@ -38,7 +38,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
   ctx
 ) => {
   const contextRef = useContext(ctx);
-  useTooltip(['.vuerd-menubar-input'], ctx);
+  useTooltip(['.vuerd-menubar-input', '.vuerd-menubar-menu'], ctx);
 
   const onChangeDatabaseName = (event: Event) => {
     const input = event.target as HTMLInputElement;
@@ -63,6 +63,8 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
     input.value = zoomDisplayFormat(zoomLevel);
     store.dispatch(zoomCanvas(zoomLevel));
   };
+
+  const onOpenHelp = () => ctx.dispatchEvent(new CustomEvent('open-help'));
 
   return () => {
     const { canvasState } = contextRef.value.store;
@@ -108,6 +110,14 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
           @change=${onZoomLevel}
         />
         <vuerd-menu-group></vuerd-menu-group>
+        <div class="vuerd-menubar-menu-vertical"></div>
+        <div
+          class="vuerd-menubar-menu"
+          data-tippy-content="Help"
+          @click=${onOpenHelp}
+        >
+          <vuerd-icon name="question" size="16"></vuerd-icon>
+        </div>
         <div class="vuerd-menubar-menu-vertical"></div>
       </div>
     `;
