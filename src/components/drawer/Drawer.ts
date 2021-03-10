@@ -38,7 +38,7 @@ const Drawer: FunctionalComponent<DrawerProps, DrawerElement> = (
     ctx
   );
   const { unmountedGroup } = useUnmounted();
-  useTooltip(['.vuerd-button'], ctx);
+  const { resetTooltip } = useTooltip(['.vuerd-button'], ctx);
 
   beforeMount(() =>
     unmountedGroup.push(
@@ -46,6 +46,7 @@ const Drawer: FunctionalComponent<DrawerProps, DrawerElement> = (
         if (propName !== 'visible') return;
 
         props.visible ? onOpen() : onClose();
+        props.visible && setTimeout(resetTooltip, 0);
       })
     )
   );

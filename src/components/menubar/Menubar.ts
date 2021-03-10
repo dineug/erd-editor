@@ -1,9 +1,9 @@
-import './MenuGroup';
-
 import {
   defineComponent,
   html,
   FunctionalComponent,
+  watch,
+  beforeMount,
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { useContext } from '@/core/hooks/context.hook';
@@ -19,6 +19,9 @@ import {
   zoomDisplayFormat,
 } from '@/engine/store/helper/canvas.helper';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
+import { useMenubarPanels } from '@/core/hooks/menubarPanels.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { panels } from '@/core/panel';
 import { MenubarStyle } from './Menubar.style';
 
 declare global {
@@ -38,7 +41,12 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
   ctx
 ) => {
   const contextRef = useContext(ctx);
-  useTooltip(['.vuerd-menubar-input', '.vuerd-menubar-menu'], ctx);
+  const { panelMenusTpl } = useMenubarPanels(ctx);
+  const { resetTooltip } = useTooltip(
+    ['.vuerd-menubar-input', '.vuerd-menubar-menu'],
+    ctx
+  );
+  const { unmountedGroup } = useUnmounted();
 
   const onChangeDatabaseName = (event: Event) => {
     const input = event.target as HTMLInputElement;
@@ -65,6 +73,15 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
   };
 
   const onOpenHelp = () => ctx.dispatchEvent(new CustomEvent('open-help'));
+
+  beforeMount(() => {
+    const { editorState } = contextRef.value.store;
+
+    unmountedGroup.push(
+      watch(editorState.panels, () => resetTooltip()),
+      watch(panels, () => resetTooltip())
+    );
+  });
 
   return () => {
     const { canvasState } = contextRef.value.store;
@@ -109,7 +126,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
           @input=${onNumberOnly}
           @change=${onZoomLevel}
         />
-        <vuerd-menu-group></vuerd-menu-group>
+        ${panelMenusTpl()}
         <div class="vuerd-menubar-menu-vertical"></div>
         <div
           class="vuerd-menubar-menu"
