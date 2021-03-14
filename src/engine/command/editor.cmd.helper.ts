@@ -65,3 +65,8 @@ export const draggableColumn = (
 
 export const draggableColumnEnd = () =>
   createCommand('editor.draggableColumnEnd', null);
+
+export const loadJson = (value: string) =>
+  createCommand('editor.loadJson', { value });
+
+export const clear = () => createCommand('editor.clear', null);

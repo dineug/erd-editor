@@ -40,6 +40,10 @@ export interface DrawRelationship {
   y: number;
 }
 
+export interface LoadJson {
+  value: string;
+}
+
 export interface EditorCommandMap {
   'editor.hasUndoRedo': HasUndoRedo;
   'editor.focusTable': FocusTable;
@@ -55,4 +59,6 @@ export interface EditorCommandMap {
   'editor.drawRelationship': DrawRelationship;
   'editor.draggableColumn': DraggableColumn;
   'editor.draggableColumnEnd': null;
+  'editor.loadJson': LoadJson;
+  'editor.clear': null;
 }

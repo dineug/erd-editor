@@ -18,6 +18,7 @@ const hookKeys: CommandKey[] = [
   'column.changeDataType',
   'column.changeDefault',
   'column.move',
+  'editor.loadJson',
 ];
 const match = new RegExp(hookKeys.join('|'), 'i');
 

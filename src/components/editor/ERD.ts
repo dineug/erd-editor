@@ -10,6 +10,7 @@ import {
   observable,
   beforeMount,
   watch,
+  query,
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { useContext } from '@/core/hooks/context.hook';
@@ -62,13 +63,14 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
   const { unmountedGroup } = useUnmounted();
   const { getPosition } = useMousePosition('.vuerd-erd');
+  const canvasRef = query('.vuerd-canvas');
   useERDKeymap(ctx);
 
   const onContextmenu = (event: MouseEvent) => {
     event.preventDefault();
     state.contextmenuX = event.clientX;
     state.contextmenuY = event.clientY;
-    state.menus = createERDMenus(contextRef.value);
+    state.menus = createERDMenus(contextRef.value, canvasRef.value);
   };
 
   const onCloseContextmenu = () => (state.menus = null);

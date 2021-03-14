@@ -28,3 +28,7 @@ export declare function drawStartAddRelationship$(
   | CommandType<'column.addCustom'>
   | CommandType<'editor.focusColumn'>
 >;
+
+export declare function loadJson$(
+  value: string
+): Generator<CommandType<'editor.clear'> | CommandType<'editor.loadJson'>>;

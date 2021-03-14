@@ -15,6 +15,7 @@ export function useERDEditorGhost(
   const ghostInputRef = query<HTMLInputElement>('.vuerd-ghost-focus-helper');
   const state = observable({ focus: false });
   const { unmountedGroup } = useUnmounted();
+  let timerId: any = null;
 
   const setFocus = () => {
     state.focus = document.activeElement === ctx;
@@ -33,6 +34,12 @@ export function useERDEditorGhost(
     helper.focus();
     setFocus();
 
+    timerId = setInterval(() => {
+      if (state.focus && !document.hasFocus()) {
+        state.focus = false;
+      }
+    }, 200);
+
     unmountedGroup.push(
       merge(
         fromEvent(editorRef.value, 'mousedown'),
@@ -45,7 +52,8 @@ export function useERDEditorGhost(
         .subscribe(onFocus),
       moveStart$
         .pipe(throttleTime(FOCUS_TIME))
-        .subscribe(() => setTimeout(setFocus, 0))
+        .subscribe(() => setTimeout(setFocus, 0)),
+      () => clearInterval(timerId)
     );
   });
 

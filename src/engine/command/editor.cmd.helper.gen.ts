@@ -7,6 +7,8 @@ import {
   drawStartRelationship,
   drawStartAddRelationship,
   drawEndRelationship,
+  clear,
+  loadJson,
 } from './editor.cmd.helper';
 import { addColumn$, addCustomColumn } from './column.cmd.helper';
 import {
@@ -86,4 +88,9 @@ export function* drawStartAddRelationship$(
   }
 
   yield drawStartAddRelationship(tableId);
+}
+
+export function* loadJson$(value: string) {
+  yield clear();
+  yield loadJson(value);
 }

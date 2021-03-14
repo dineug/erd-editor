@@ -12,7 +12,10 @@ const defaultOptions: MenuOptions = {
   keymapWidth: 45,
 };
 
-export function createERDMenus(context: ERDEditorContext): Menu[] {
+export function createERDMenus(
+  context: ERDEditorContext,
+  canvas: Element
+): Menu[] {
   const { store, keymap, command } = context;
   return [
     {
@@ -69,7 +72,7 @@ export function createERDMenus(context: ERDEditorContext): Menu[] {
         name: 'file-export',
       },
       name: 'Export',
-      children: createExportMenus(context),
+      children: createExportMenus(context, canvas),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));
 }

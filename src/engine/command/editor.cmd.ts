@@ -1,4 +1,7 @@
 import { State } from '@@types/engine/store';
+import { Index, PureTable } from '@@types/engine/store/table.state';
+import { Memo } from '@@types/engine/store/memo.state';
+import { Relationship } from '@@types/engine/store/relationship.state';
 import {
   HasUndoRedo,
   FocusTable,
@@ -10,8 +13,10 @@ import {
   DrawStartAddRelationship,
   DrawRelationship,
   DraggableColumn,
+  LoadJson,
 } from '@@types/engine/command/editor.cmd';
-import { getData } from '@/core/helper';
+import { JsonFormat } from '@@types/core/file';
+import { getData, isObject, isString, isEmpty } from '@/core/helper';
 import {
   appendSelectColumns,
   selectRangeColumns,
@@ -23,6 +28,16 @@ import {
   arrowDown,
   arrowLeft,
 } from './helper/editor.focus.helper';
+import { Logger } from '@/core/logger';
+import {
+  databaseList,
+  nameCaseList,
+  languageList,
+} from '@/engine/store/canvas.state';
+import { executeLoadTable } from './table.cmd';
+import { executeLoadMemo } from './memo.cmd';
+import { executeLoadIndex } from './index.cmd';
+import { executeLoadRelationship } from './relationship.cmd';
 
 export function executeHasUndoRedo({ editorState }: State, data: HasUndoRedo) {
   editorState.hasUndo = data.hasUndo;
@@ -215,6 +230,152 @@ export function executeDraggableColumnEnd({ editorState }: State) {
   editorState.draggableColumn = null;
 }
 
+// TODO: Refactoring
+export function executeLoadJson(state: State, data: LoadJson) {
+  const { canvasState } = state;
+
+  try {
+    const json = JSON.parse(data.value) as JsonFormat;
+
+    const canvasStateAny = canvasState as any;
+    const canvasJson = json.canvas as any;
+    if (isObject(canvasJson)) {
+      Object.keys(canvasStateAny).forEach(key => {
+        if (!isEmpty(canvasJson[key])) {
+          switch (key) {
+            case 'show':
+              Object.keys(canvasState.show).forEach(showKey => {
+                if (typeof canvasJson.show[showKey] === 'boolean') {
+                  canvasStateAny.show[showKey] = canvasJson.show[showKey];
+                }
+              });
+              break;
+            case 'database':
+              if (databaseList.includes(canvasJson.database)) {
+                canvasState.database = canvasJson.database;
+              }
+              break;
+            case 'canvasType':
+              if (isString(canvasJson.canvasType)) {
+                canvasState.canvasType = canvasJson.canvasType;
+              }
+              break;
+            case 'language':
+              if (languageList.includes(canvasJson.language)) {
+                canvasState.language = canvasJson.language;
+              }
+              break;
+            case 'tableCase':
+              if (nameCaseList.includes(canvasJson.tableCase)) {
+                canvasState.tableCase = canvasJson.tableCase;
+              }
+              break;
+            case 'columnCase':
+              if (nameCaseList.includes(canvasJson.columnCase)) {
+                canvasState.columnCase = canvasJson.columnCase;
+              }
+              break;
+            case 'width':
+            case 'height':
+            case 'scrollTop':
+            case 'scrollLeft':
+            case 'zoomLevel':
+              if (typeof canvasJson[key] === 'number') {
+                canvasState[key] = canvasJson[key];
+              }
+              break;
+            case 'databaseName':
+              if (typeof canvasJson[key] === 'string') {
+                canvasState[key] = canvasJson[key];
+              }
+              break;
+            case 'setting':
+              if (
+                typeof canvasJson.setting.relationshipDataTypeSync === 'boolean'
+              ) {
+                canvasState.setting.relationshipDataTypeSync =
+                  canvasJson.setting.relationshipDataTypeSync;
+              }
+              if (
+                Array.isArray(canvasJson.setting.columnOrder) &&
+                canvasJson.setting.columnOrder.length === 7 &&
+                canvasJson.setting.columnOrder.indexOf('columnName') !== -1 &&
+                canvasJson.setting.columnOrder.indexOf('columnDataType') !==
+                  -1 &&
+                canvasJson.setting.columnOrder.indexOf('columnNotNull') !==
+                  -1 &&
+                canvasJson.setting.columnOrder.indexOf('columnDefault') !==
+                  -1 &&
+                canvasJson.setting.columnOrder.indexOf('columnComment') !==
+                  -1 &&
+                canvasJson.setting.columnOrder.indexOf('columnUnique') !== -1 &&
+                canvasJson.setting.columnOrder.indexOf(
+                  'columnAutoIncrement'
+                ) !== -1
+              ) {
+                canvasState.setting.columnOrder.splice(
+                  0,
+                  canvasState.setting.columnOrder.length
+                );
+                canvasState.setting.columnOrder.push(
+                  ...canvasJson.setting.columnOrder
+                );
+              }
+              break;
+          }
+        }
+      });
+    }
+
+    const tableJson = json.table as any;
+    if (isObject(tableJson)) {
+      if (Array.isArray(tableJson.tables)) {
+        tableJson.tables.forEach((loadTable: PureTable) => {
+          executeLoadTable(state, loadTable);
+        });
+      }
+      if (Array.isArray(tableJson.indexes)) {
+        tableJson.indexes.forEach((loadIndex: Index) => {
+          executeLoadIndex(state, loadIndex);
+        });
+      }
+    }
+
+    const memoJson = json.memo as any;
+    if (isObject(memoJson)) {
+      if (Array.isArray(memoJson.memos)) {
+        memoJson.memos.forEach((loadMemo: Memo) => {
+          executeLoadMemo(state, loadMemo);
+        });
+      }
+    }
+
+    const relationshipJson = json.relationship as any;
+    if (isObject(relationshipJson)) {
+      if (Array.isArray(relationshipJson.relationships)) {
+        relationshipJson.relationships.forEach(
+          (loadRelationship: Relationship) => {
+            executeLoadRelationship(state, loadRelationship);
+          }
+        );
+      }
+    }
+  } catch (err) {
+    Logger.error(err);
+  }
+}
+
+export function executeClear({
+  tableState: { tables, indexes },
+  memoState: { memos },
+  relationshipState: { relationships },
+}: State) {
+  tables.splice(0, tables.length);
+  indexes.splice(0, indexes.length);
+  memos.splice(0, memos.length);
+  relationships.splice(0, relationships.length);
+}
+
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
@@ -230,4 +391,6 @@ export const executeEditorCommandMap = {
   'editor.drawRelationship': executeDrawRelationship,
   'editor.draggableColumn': executeDraggableColumn,
   'editor.draggableColumnEnd': executeDraggableColumnEnd,
+  'editor.loadJson': executeLoadJson,
+  'editor.clear': executeClear,
 };

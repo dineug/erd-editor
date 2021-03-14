@@ -39,7 +39,7 @@ export const uuid = () =>
 
 export const cloneDeep = (value: any) => JSON.parse(JSON.stringify(value));
 export const isArray = (value: any) => Array.isArray(value);
-export const isEmpty = (value: any) => !Object.keys(value).length;
+export const isEmpty = (value: any) => isNull(value) || isUndefined(value);
 
 const isTypeof = R.curry(
   (name: TypeofName, value: any) => typeof value === name
@@ -50,6 +50,7 @@ export const isString = isTypeof('string');
 export const isUndefined = isTypeof('undefined');
 export const isNumber = isTypeof('number');
 export const isBoolean = isTypeof('boolean');
+export const isNull = (value: any) => value === null;
 
 export const getData = <T extends { id: string }>(list: Array<T>, id: string) =>
   list.find(data => data.id === id);
@@ -71,3 +72,22 @@ export function* flat<T>(iterator: any[]): Generator<T> {
 
 export const createBalanceRange = (min: number, max: number) => (num: number) =>
   Math.min(Math.max(num, min), max);
+
+export function autoName<T extends { id: string; name: string }>(
+  list: T[],
+  id: string,
+  name: string,
+  num = 1
+): string {
+  let result = true;
+  for (const value of list) {
+    if (name === value.name && value.id !== id && name !== '') {
+      result = false;
+      break;
+    }
+  }
+  if (result) {
+    return name;
+  }
+  return autoName(list, id, name.replace(/[0-9]/g, '') + num, num + 1);
+}
