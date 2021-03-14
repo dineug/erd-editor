@@ -1,4 +1,4 @@
-import './Visualization';
+import './components/Visualization';
 
 import {
   Panel,

@@ -107,7 +107,7 @@ export function importSQLDDL(context: ERDEditorContext) {
   importHelperSQL.setAttribute('accept', '.sql');
   importHelperSQL.addEventListener('change', event => {
     const input = event.target as HTMLInputElement;
-    if (input.files) {
+    if (input.files && input.files.length) {
       const file = input.files[0];
       if (/\.(sql)$/i.test(file.name)) {
         const reader = new FileReader();
