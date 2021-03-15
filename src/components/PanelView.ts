@@ -9,8 +9,10 @@ import {
   firstUpdated,
   beforeUpdate,
   updated,
+  watch,
 } from '@dineug/lit-observable';
 import { useContext } from '@/core/hooks/context.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -45,11 +47,26 @@ defineComponent('vuerd-panel-view', {
   },
   render(props: PanelViewProps, ctx: PanelViewElement) {
     const contextRef = useContext(ctx);
+    const { unmountedGroup } = useUnmounted();
     let panelInstance: Panel | null = null;
 
+    const setHeight = () => {
+      ctx.style.height = `${props.height}px`;
+    };
+
     beforeMount(() => {
+      setHeight();
+
       panelInstance = new props.panel.type(props, contextRef.value);
       panelInstance.beforeMount && panelInstance.beforeMount();
+
+      unmountedGroup.push(
+        watch(props, propName => {
+          if (propName !== 'height') return;
+
+          setHeight();
+        })
+      );
     });
     mounted(() => panelInstance?.mounted && panelInstance.mounted());
     unmounted(() => panelInstance?.unmounted && panelInstance.unmounted());

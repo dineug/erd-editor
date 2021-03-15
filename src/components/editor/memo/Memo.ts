@@ -86,6 +86,14 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
     store.dispatch(changeMemoValue(props.memo.id, textarea.value));
   };
 
+  const onBlur = () =>
+    ctx.dispatchEvent(
+      new CustomEvent('vuerd-input-blur', {
+        composed: true,
+        bubbles: true,
+      })
+    );
+
   mounted(() => {
     const textarea = textareaRef.value;
     if (!textarea || !props.memo.ui.active) return;
@@ -134,6 +142,7 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
           .value=${memo.value}
           @input=${onInput}
           @wheel=${onStopPropagation}
+          @blur=${onBlur}
         ></textarea>
         ${sashTpl(height, width, onMousedownSash)}
       </div>

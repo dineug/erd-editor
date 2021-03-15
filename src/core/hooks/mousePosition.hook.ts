@@ -6,6 +6,8 @@ export function useMousePosition(selector: string) {
   const getPosition = (event: WheelEvent | MouseEvent) => {
     const { x, y } = elementRef.value.getBoundingClientRect();
 
+    console.log(x, y);
+
     return {
       x: event.clientX - x,
       y: event.clientY - y,
