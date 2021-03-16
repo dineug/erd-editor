@@ -4,7 +4,6 @@ import { SIZE_SASH } from '@/core/layout';
 export const SashStyle = css`
   .vuerd-sash {
     position: absolute;
-    z-index: 1;
   }
   .vuerd-sash.vertical {
     width: ${SIZE_SASH}px;

@@ -12,6 +12,7 @@ type TypeofName =
   | 'number'
   | 'boolean';
 
+export { v4 as uuid } from 'uuid';
 export { default as snakeCase } from 'lodash/snakeCase';
 export { default as camelCase } from 'lodash/camelCase';
 export const pascalCase = flow(camelCase, upperFirst);
@@ -31,11 +32,6 @@ export function createSubscriptionHelper() {
     destroy,
   };
 }
-
-const s4 = () =>
-  (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
-export const uuid = () =>
-  [s4(), s4(), '-', s4(), '-', s4(), '-', s4(), '-', s4(), s4(), s4()].join('');
 
 export const cloneDeep = (value: any) => JSON.parse(JSON.stringify(value));
 export const isArray = (value: any) => Array.isArray(value);

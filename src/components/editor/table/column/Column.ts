@@ -63,7 +63,7 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
   ctx
 ) => {
   const contextRef = useContext(ctx);
-  useTooltip(['.vuerd-button'], ctx, { placement: 'right' });
+  useTooltip(['.vuerd-column-button'], ctx, { placement: 'right' });
   const dragover$ = new Subject();
 
   const onRemoveColumn = () => {
@@ -124,7 +124,7 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
         <vuerd-column-key .ui=${ui}></vuerd-column-key>
         ${columnTpl(props, contextRef.value)}
         <vuerd-icon
-          class="vuerd-button"
+          class="vuerd-button vuerd-column-button"
           data-tippy-content=${keymapOptionsToString(keymap.removeColumn)}
           name="times"
           size="9"

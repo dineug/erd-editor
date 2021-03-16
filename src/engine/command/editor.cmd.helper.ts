@@ -70,3 +70,6 @@ export const loadJson = (value: string) =>
   createCommand('editor.loadJson', { value });
 
 export const clear = () => createCommand('editor.clear', null);
+
+export const changeViewport = (width: number, height: number) =>
+  createCommand('editor.changeViewport', { width, height });

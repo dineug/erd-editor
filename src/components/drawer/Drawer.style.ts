@@ -10,7 +10,6 @@ export const DrawerStyle = css`
     color: var(--vuerd-color-font);
     opacity: 0.9;
     background-color: var(--vuerd-color-contextmenu);
-    z-index: 100000050;
     fill: #fff0;
     padding: 20px;
     box-sizing: border-box;

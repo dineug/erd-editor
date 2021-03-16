@@ -10,6 +10,7 @@ export interface EditorState {
   focusTable: FocusTable | null;
   drawRelationship: DrawRelationship | null;
   draggableColumn: DraggableColumn | null;
+  viewport: Viewport;
 }
 
 export interface FocusTable {
@@ -34,6 +35,11 @@ export interface DrawStartPoint extends Point {
 export interface DraggableColumn {
   tableId: string;
   columnIds: string[];
+}
+
+export interface Viewport {
+  width: number;
+  height: number;
 }
 
 export type TableType = 'tableName' | 'tableComment';

@@ -1,5 +1,6 @@
 import './Canvas';
 import './DragSelect';
+import './minimap/Minimap';
 
 import { Menu } from '@@types/core/contextmenu';
 import { Move } from '@/internal-types/event.helper';
@@ -161,6 +162,10 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
       >
         <div class="vuerd-erd-background"></div>
         <vuerd-canvas></vuerd-canvas>
+        <vuerd-minimap
+          .width=${props.width}
+          .height=${props.height}
+        ></vuerd-minimap>
         ${state.dragSelect
           ? html`
               <vuerd-drag-select

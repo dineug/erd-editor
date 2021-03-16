@@ -15,18 +15,42 @@ import {
   MoveColumnOrder,
 } from '@@types/engine/command/canvas.cmd';
 import { zoomBalanceRange } from '@/engine/store/helper/canvas.helper';
+import { createBalanceRange } from '@/core/helper';
 
-export function executeMoveCanvas({ canvasState }: State, data: MoveCanvas) {
-  canvasState.scrollTop = data.scrollTop;
-  canvasState.scrollLeft = data.scrollLeft;
+export function executeMoveCanvas(
+  { canvasState, editorState: { viewport } }: State,
+  data: MoveCanvas
+) {
+  const scrollTopBalanceRange = createBalanceRange(
+    viewport.height - canvasState.height,
+    0
+  );
+  const scrollLeftBalanceRange = createBalanceRange(
+    viewport.width - canvasState.width,
+    0
+  );
+  canvasState.scrollTop = scrollTopBalanceRange(data.scrollTop);
+  canvasState.scrollLeft = scrollLeftBalanceRange(data.scrollLeft);
 }
 
 export function executeMovementCanvas(
-  { canvasState }: State,
+  { canvasState, editorState: { viewport } }: State,
   data: MovementCanvas
 ) {
-  canvasState.scrollTop += data.movementY;
-  canvasState.scrollLeft += data.movementX;
+  const scrollTopBalanceRange = createBalanceRange(
+    viewport.height - canvasState.height,
+    0
+  );
+  const scrollLeftBalanceRange = createBalanceRange(
+    viewport.width - canvasState.width,
+    0
+  );
+  canvasState.scrollTop = scrollTopBalanceRange(
+    canvasState.scrollTop + data.movementY
+  );
+  canvasState.scrollLeft = scrollLeftBalanceRange(
+    canvasState.scrollLeft + data.movementX
+  );
 }
 
 export function executeResizeCanvas(

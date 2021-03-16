@@ -14,7 +14,6 @@ export const ColumnDataTypeStyle = css`
     opacity: 0.9;
     top: 20.5px;
     left: 0;
-    z-index: 100000000;
     color: var(--vuerd-color-font);
     background-color: var(--vuerd-color-contextmenu);
     list-style: none;

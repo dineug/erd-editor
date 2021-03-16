@@ -5,8 +5,7 @@ import Stats from 'stats.js';
 function runStats() {
   const stats = new Stats();
   stats.dom.style.top = '50px';
-  stats.dom.style.right = '20px';
-  stats.dom.style.left = '';
+  stats.dom.style.left = '20px';
   document.body.style.margin = '0';
   document.body.style.height = '100vh';
   document.body.appendChild(stats.dom);

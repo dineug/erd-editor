@@ -42,7 +42,10 @@ import { panels as globalPanels } from '@/core/panel';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useERDEditorGhost } from '@/core/hooks/ERDEditorGhost.hook';
 import { useERDEditorDrawer } from '@/core/hooks/ERDEditorDrawer.hook';
-import { editTableEnd } from '@/engine/command/editor.cmd.helper';
+import {
+  editTableEnd,
+  changeViewport,
+} from '@/engine/command/editor.cmd.helper';
 import { ignoreEnterProcess } from '@/core/helper/operator.helper';
 import { Logger } from '@/core/logger';
 import { ERDEditorStyle } from './ERDEditor.style';
@@ -97,6 +100,11 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
         } else {
           resizeObserver.disconnect();
         }
+      }),
+      watch(props, propName => {
+        if (propName !== 'width' && propName !== 'height') return;
+
+        store.dispatch(changeViewport(props.width, props.height));
       }),
       fromEvent<KeyboardEvent>(editorRef.value, 'keydown')
         .pipe(ignoreEnterProcess)

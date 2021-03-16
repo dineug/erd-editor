@@ -11,7 +11,6 @@ export const ERDStyle = css`
     height: 100%;
     pointer-events: none;
     float: left;
-    background-color: var(--vuerd-color-canvas);
-    opacity: 0.95;
+    background-color: var(--vuerd-color-contextmenu);
   }
 `;

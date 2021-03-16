@@ -2,6 +2,7 @@ import { State } from '@@types/engine/store';
 import { Index, PureTable } from '@@types/engine/store/table.state';
 import { Memo } from '@@types/engine/store/memo.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
+import { DraggableColumn, Viewport } from '@@types/engine/store/editor.state';
 import {
   HasUndoRedo,
   FocusTable,
@@ -12,7 +13,6 @@ import {
   DrawStartRelationship,
   DrawStartAddRelationship,
   DrawRelationship,
-  DraggableColumn,
   LoadJson,
 } from '@@types/engine/command/editor.cmd';
 import { JsonFormat } from '@@types/core/file';
@@ -376,6 +376,14 @@ export function executeClear({
   relationships.splice(0, relationships.length);
 }
 
+export function executeChangeViewport(
+  { editorState: { viewport } }: State,
+  data: Viewport
+) {
+  viewport.width = data.width;
+  viewport.height = data.height;
+}
+
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
@@ -393,4 +401,5 @@ export const executeEditorCommandMap = {
   'editor.draggableColumnEnd': executeDraggableColumnEnd,
   'editor.loadJson': executeLoadJson,
   'editor.clear': executeClear,
+  'editor.changeViewport': executeChangeViewport,
 };

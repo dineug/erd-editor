@@ -4,7 +4,7 @@ import { SIZE_CONTEXTMENU_HEIGHT, SIZE_FONT } from '@/core/layout';
 export const ContextmenuStyle = css`
   .vuerd-contextmenu {
     position: fixed;
-    z-index: 100002000;
+    z-index: 1;
     opacity: 0.9;
     color: var(--vuerd-color-font);
     fill: var(--vuerd-color-font);

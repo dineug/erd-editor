@@ -13,6 +13,8 @@ import { ColumnAutoIncrementStyle } from './table/column/ColumnAutoIncrement.sty
 import { DrawRelationshipStyle } from './DrawRelationship.style';
 import { CanvasSVGStyle } from './CanvasSVG.style';
 import { DragSelectStyle } from './DragSelect.style';
+import { MinimapStyle } from './minimap/Minimap.style';
+import { MinimapHandleStyle } from './minimap/MinimapHandle.style';
 
 export const EditorStyle = [
   DefaultStyle,
@@ -30,4 +32,6 @@ export const EditorStyle = [
   DrawRelationshipStyle,
   CanvasSVGStyle,
   DragSelectStyle,
+  MinimapStyle,
+  MinimapHandleStyle,
 ].join('');

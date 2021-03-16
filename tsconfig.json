@@ -9,6 +9,7 @@
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "resolveJsonModule": true,
+    "allowJs": true,
     "strict": true,
     "baseUrl": ".",
     "paths": {

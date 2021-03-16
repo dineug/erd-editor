@@ -64,3 +64,8 @@ export declare function draggableColumnEnd(): CommandType<'editor.draggableColum
 export declare function loadJson(value: string): CommandType<'editor.loadJson'>;
 
 export declare function clear(): CommandType<'editor.clear'>;
+
+export declare function changeViewport(
+  width: number,
+  height: number
+): CommandType<'editor.changeViewport'>;

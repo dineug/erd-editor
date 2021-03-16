@@ -57,7 +57,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     hasSelectColumn,
     hasDraggableColumn,
   } = useHasTable(props, ctx);
-  useTooltip(['.vuerd-button'], ctx);
+  useTooltip(['.vuerd-table-button'], ctx);
   const flipAnimation = new FlipAnimation(
     ctx.shadowRoot ? ctx.shadowRoot : ctx,
     'vuerd-column',
@@ -197,14 +197,14 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
         <div class="vuerd-table-header">
           <div class="vuerd-table-header-top">
             <vuerd-icon
-              class="vuerd-button"
+              class="vuerd-button vuerd-table-button"
               data-tippy-content=${keymapOptionsToString(keymap.removeTable)}
               name="times"
               size="12"
               @click=${onRemoveTable}
             ></vuerd-icon>
             <vuerd-icon
-              class="vuerd-button"
+              class="vuerd-button vuerd-table-button"
               data-tippy-content=${keymapOptionsToString(keymap.addColumn)}
               name="plus"
               size="12"
