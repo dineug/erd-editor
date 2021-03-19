@@ -16,6 +16,7 @@ export default {
   },
   plugins: [
     replace({
+      preventAssignment: true,
       'process.env.NODE_ENV': JSON.stringify('development'),
       'import.meta.env.SNOWPACK_PUBLIC_VUERD_VERSION': JSON.stringify(
         pkg.version

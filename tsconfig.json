@@ -12,6 +12,7 @@
     "allowJs": true,
     "strict": true,
     "baseUrl": ".",
+    "outDir": "./dist",
     "paths": {
       "@/*": ["src/*"],
       "@@types/*": ["types/*"]
@@ -23,6 +24,6 @@
       }
     ]
   },
-  "include": ["src/**/*.ts", "types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*.ts", "types/**/*.ts", "src/**/*.js"],
+  "exclude": ["node_modules", "dist"]
 }

@@ -22,6 +22,7 @@ export default {
       functions: ['Logger.debug', 'Logger.log'],
     }),
     replace({
+      preventAssignment: true,
       'process.env.NODE_ENV': JSON.stringify('production'),
       'import.meta.env.SNOWPACK_PUBLIC_VUERD_VERSION': JSON.stringify(
         pkg.version

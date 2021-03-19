@@ -11,6 +11,7 @@ export const ColumnDataTypeStyle = css`
 
   .vuerd-column-data-type-hint {
     position: absolute;
+    z-index: 1;
     opacity: 0.9;
     top: 20.5px;
     left: 0;

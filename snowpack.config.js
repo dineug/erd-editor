@@ -8,4 +8,7 @@ module.exports = {
     '@': './src',
     '@@types': './types',
   },
+  packageOptions: {
+    knownEntrypoints: ['highlight.js'],
+  },
 };
