@@ -1,4 +1,4 @@
-import { DataTypeHint } from '@/core/dataType';
+import { DataTypeHint } from '@/core/sql/dataType';
 
 /**
  * https://mariadb.com/kb/en/data-types/

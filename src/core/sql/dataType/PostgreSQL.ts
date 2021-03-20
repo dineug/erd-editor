@@ -1,4 +1,4 @@
-import { DataTypeHint } from '@/core/dataType';
+import { DataTypeHint } from '@/core/sql/dataType';
 
 /**
  * https://www.postgresql.org/docs/current/datatype.html

@@ -1,11 +1,11 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { keymapOptionToString, keymapOptionsToString } from '@/core/keymap';
-import { createShowMenus } from './show.contextmenu';
-import { createDatabaseMenus } from './database.contextmenu';
-import { createDrawRelationshipMenus } from './drawRelationship.contextmenu';
-import { createImportMenus } from './import.contextmenu';
-import { createExportMenus } from './export.contextmenu';
+import { createShowMenus } from './show.menu';
+import { createDatabaseMenus } from './database.menu';
+import { createDrawRelationshipMenus } from './drawRelationship.menu';
+import { createImportMenus } from './import.menu';
+import { createExportMenus } from './export.menu';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 75,

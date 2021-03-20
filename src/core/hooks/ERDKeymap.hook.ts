@@ -4,7 +4,7 @@ import { beforeMount } from '@dineug/lit-observable';
 import { useContext } from './context.hook';
 import { useUnmounted } from './unmounted.hook';
 import { keymapMatchAndStop } from '@/core/keymap';
-import { relationshipMenus } from '@/core/contextmenu/drawRelationship.contextmenu';
+import { relationshipMenus } from '@/core/contextmenu/drawRelationship.menu';
 import { moveKeys } from '@/engine/store/editor.state';
 import {
   changeColumnNotNull,

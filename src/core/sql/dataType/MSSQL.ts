@@ -1,4 +1,4 @@
-import { DataTypeHint } from '@/core/dataType';
+import { DataTypeHint } from '@/core/sql/dataType';
 
 /**
  * https://docs.microsoft.com/ko-kr/sql/t-sql/data-types/data-types-transact-sql?view=sql-server-ver15

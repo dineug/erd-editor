@@ -1,25 +1,5 @@
-import './components/SQLDDL';
-
-import {
-  Panel,
-  PanelConfig,
-  PanelProps,
-  ERDEditorContext,
-} from '@@types/index';
-
-class SQLDDLPanel implements Panel {
-  el = document.createElement('vuerd-sql-ddl');
-  props: PanelProps;
-
-  constructor(props: PanelProps, api: ERDEditorContext) {
-    this.props = props;
-    this.el.api = api;
-  }
-
-  render() {
-    return this.el;
-  }
-}
+import { PanelConfig } from '@@types/index';
+import { SQLDDLPanel } from './components';
 
 export const SQLDDLPanelConfig: PanelConfig = {
   type: SQLDDLPanel,

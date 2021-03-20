@@ -19,9 +19,9 @@ import {
   movementCanvas,
   movementZoomCanvas,
 } from '@/engine/command/canvas.cmd.helper';
-import { createERDMenus } from '@/core/contextmenu/erd.contextmenu';
-import { createShowMenus } from '@/core/contextmenu/show.contextmenu';
-import { createDatabaseMenus } from '@/core/contextmenu/database.contextmenu';
+import { createERDMenus } from '@/core/contextmenu/erd.menu';
+import { createShowMenus } from '@/core/contextmenu/show.menu';
+import { createDatabaseMenus } from '@/core/contextmenu/database.menu';
 import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
 import { selectEndTable$ } from '@/engine/command/table.cmd.helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';

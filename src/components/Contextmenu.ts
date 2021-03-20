@@ -110,7 +110,7 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
                 style=${styleMap({
                   width: `${menu.options?.nameWidth ?? 70}px`,
                 })}
-                data-tippy-content=${menu.name}
+                title=${menu.name}
               >
                 ${menu.name}
               </span>

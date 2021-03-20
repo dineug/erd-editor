@@ -8,7 +8,7 @@ const defaultOptions: MenuOptions = {
   close: false,
 };
 
-export const crateHighlightTheme = ({
+export const createHighlightThemeMenus = ({
   store,
   command,
 }: ERDEditorContext): Menu[] =>

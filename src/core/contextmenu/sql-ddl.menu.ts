@@ -1,7 +1,7 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { createDatabaseMenus } from './database.contextmenu';
-import { crateHighlightTheme } from './highlightTheme.contextmenu';
+import { createDatabaseMenus } from './database.menu';
+import { createHighlightThemeMenus } from './highlightTheme.menu';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 100,
@@ -26,6 +26,6 @@ export const createSQLDDLMenus = (context: ERDEditorContext): Menu[] =>
         size: 18,
       },
       name: 'Highlight Theme',
-      children: crateHighlightTheme(context),
+      children: createHighlightThemeMenus(context),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

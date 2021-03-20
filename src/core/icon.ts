@@ -18,11 +18,11 @@ import {
   faFileImage,
   faFileExport,
   faEye,
-  faSlidersH,
   faFileImport,
   faFileCode,
   faCog,
   faMousePointer,
+  faCode,
 } from '@fortawesome/free-solid-svg-icons';
 import {
   mdiVectorLine,
@@ -31,7 +31,14 @@ import {
   mdiDatabaseImport,
   mdiDatabaseExport,
   mdiPalette,
+  mdiFormatLetterCase,
 } from '@mdi/js';
+
+export const createMDI = (name: string, icon: string): IconDefinition => ({
+  prefix: 'mdi',
+  iconName: name,
+  icon: [24, 24, , , icon],
+});
 
 const icons = [
   faKey,
@@ -51,41 +58,18 @@ const icons = [
   faFileImage,
   faFileExport,
   faEye,
-  faSlidersH,
   faFileImport,
   faFileCode,
   faCog,
   faMousePointer,
-  {
-    prefix: 'mdi',
-    iconName: 'vector-line',
-    icon: [24, 24, , , mdiVectorLine],
-  },
-  {
-    prefix: 'mdi',
-    iconName: 'code-json',
-    icon: [24, 24, , , mdiCodeJson],
-  },
-  {
-    prefix: 'mdi',
-    iconName: 'database',
-    icon: [24, 24, , , mdiDatabase],
-  },
-  {
-    prefix: 'mdi',
-    iconName: 'database-import',
-    icon: [24, 24, , , mdiDatabaseImport],
-  },
-  {
-    prefix: 'mdi',
-    iconName: 'database-export',
-    icon: [24, 24, , , mdiDatabaseExport],
-  },
-  {
-    prefix: 'mdi',
-    iconName: 'palette',
-    icon: [24, 24, , , mdiPalette],
-  },
+  faCode,
+  createMDI('vector-line', mdiVectorLine),
+  createMDI('code-json', mdiCodeJson),
+  createMDI('database', mdiDatabase),
+  createMDI('database-import', mdiDatabaseImport),
+  createMDI('database-export', mdiDatabaseExport),
+  createMDI('palette', mdiPalette),
+  createMDI('format-letter-case', mdiFormatLetterCase),
 ] as IconDefinition[];
 
 export const getIcon = (prefix: string, iconName: string) =>

@@ -3,7 +3,7 @@ import * as R from 'ramda';
 import { useContext } from './context.hook';
 import { useUnmounted } from './unmounted.hook';
 import { ColumnDataTypeProps } from '@/components/editor/table/column/ColumnDataType';
-import { databaseHints } from '@/core/dataType';
+import { databaseHints } from '@/core/sql/dataType';
 import { markToHTML } from '@/core/helper/dom.helper';
 import { changeColumnDataType } from '@/engine/command/column.cmd.helper';
 

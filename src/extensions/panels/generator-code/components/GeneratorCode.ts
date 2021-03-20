@@ -9,38 +9,40 @@ import {
   watch,
 } from '@dineug/lit-observable';
 import { unsafeHTML } from 'lit-html/directives/unsafe-html';
-import { createDDL } from '@/core/sql/ddl';
-import { hljs, highlightThemeMap } from '@/core/highlight';
-import { createSQLDDLMenus } from '@/core/contextmenu/sql-ddl.menu';
+import { createGeneratorCode } from '@/core/generator/code';
+import { hljs, highlightThemeMap, languageMap } from '@/core/highlight';
+import { createGeneratorCodeMenus } from '@/core/contextmenu/generatorCode.menu';
 import { createHighlightThemeMenus } from '@/core/contextmenu/highlightTheme.menu';
-import { createDatabaseMenus } from '@/core/contextmenu/database.menu';
+import { createTableNameCaseMenus } from '@/core/contextmenu/tableNameCase.menu';
+import { createColumnNameCaseMenus } from '@/core/contextmenu/columnNameCase.menu';
+import { createLanguageMenus } from '@/core/contextmenu/language.menu';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { SQLDDLStyle } from './SQLDDL.style';
+import { GeneratorCodeStyle } from './GeneratorCode.style';
 import { Scrollbar } from '@/components/css/scrollbar.style';
 
 declare global {
   interface HTMLElementTagNameMap {
-    'vuerd-sql-ddl': SQLDDLElement;
+    'vuerd-generator-code': GeneratorCodeElement;
   }
 }
 
-export interface SQLDDLProps {}
+export interface GeneratorCodeProps {}
 
-export interface SQLDDLElement extends SQLDDLProps, HTMLElement {
+export interface GeneratorCodeElement extends GeneratorCodeProps, HTMLElement {
   api: ERDEditorContext;
 }
 
-interface SQLDDLState {
+interface GeneratorCodeState {
   contextmenuX: number;
   contextmenuY: number;
   menus: Menu[] | null;
 }
 
-const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
-  props,
-  ctx
-) => {
-  const state = observable<SQLDDLState>({
+const GeneratorCode: FunctionalComponent<
+  GeneratorCodeProps,
+  GeneratorCodeElement
+> = (props, ctx) => {
+  const state = observable<GeneratorCodeState>({
     menus: null,
     contextmenuX: 0,
     contextmenuY: 0,
@@ -51,7 +53,7 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
     event.preventDefault();
     state.contextmenuX = event.clientX;
     state.contextmenuY = event.clientY;
-    state.menus = createSQLDDLMenus(ctx.api);
+    state.menus = createGeneratorCodeMenus(ctx.api);
   };
 
   const onCloseContextmenu = () => (state.menus = null);
@@ -63,11 +65,11 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
 
     unmountedGroup.push(
       watch(canvasState, propName => {
-        if (propName !== 'database') return;
-        const menue = state.menus?.find(menu => menu.name === 'Database');
+        if (propName !== 'language') return;
+        const menue = state.menus?.find(menu => menu.name === 'Language');
         if (!menue) return;
 
-        menue.children = createDatabaseMenus(ctx.api);
+        menue.children = createLanguageMenus(ctx.api);
       }),
       watch(canvasState, propName => {
         if (propName !== 'highlightTheme') return;
@@ -77,29 +79,47 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
         if (!menue) return;
 
         menue.children = createHighlightThemeMenus(ctx.api);
+      }),
+      watch(canvasState, propName => {
+        if (propName !== 'tableCase') return;
+        const menue = state.menus?.find(
+          menu => menu.name === 'Table Name Case'
+        );
+        if (!menue) return;
+
+        menue.children = createTableNameCaseMenus(ctx.api);
+      }),
+      watch(canvasState, propName => {
+        if (propName !== 'columnCase') return;
+        const menue = state.menus?.find(
+          menu => menu.name === 'Column Name Case'
+        );
+        if (!menue) return;
+
+        menue.children = createColumnNameCaseMenus(ctx.api);
       })
     );
   });
 
   return () => {
     const {
-      canvasState: { highlightTheme },
+      canvasState: { highlightTheme, language },
     } = ctx.api.store;
-    const sql = createDDL(ctx.api.store);
-    const sqlHTML = hljs.highlight('sql', sql).value;
+    const code = createGeneratorCode(ctx.api.store);
+    const codeHTML = hljs.highlight(languageMap[language], code).value;
 
     return html`
       <style type="text/css">
         ${highlightThemeMap[highlightTheme]}
       </style>
       <div
-        class="vuerd-sql-ddl vuerd-scrollbar hljs"
+        class="vuerd-generator-code vuerd-scrollbar hljs"
         contenteditable="true"
         spellcheck="false"
         @mousedown=${onMousedown}
         @contextmenu=${onContextmenu}
       >
-        ${unsafeHTML(sqlHTML)}
+        ${unsafeHTML(codeHTML)}
         ${state.menus
           ? html`
               <vuerd-contextmenu
@@ -116,11 +136,11 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
   };
 };
 
-defineComponent('vuerd-sql-ddl', {
+defineComponent('vuerd-generator-code', {
   styleMap: {
     width: '100%',
     height: '100%',
   },
-  style: [SQLDDLStyle, Scrollbar].join(''),
-  render: SQLDDL,
+  style: [GeneratorCodeStyle, Scrollbar].join(''),
+  render: GeneratorCode,
 });

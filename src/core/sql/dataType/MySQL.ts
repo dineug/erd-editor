@@ -1,4 +1,4 @@
-import { DataTypeHint } from '@/core/dataType';
+import { DataTypeHint } from '@/core/sql/dataType';
 
 /**
  * https://dev.mysql.com/doc/refman/8.0/en/data-types.html

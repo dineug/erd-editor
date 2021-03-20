@@ -1,4 +1,4 @@
-import { DataTypeHint } from '@/core/dataType';
+import { DataTypeHint } from '@/core/sql/dataType';
 
 /**
  * https://docs.oracle.com/cd/B28359_01/server.111/b28318/datatype.htm#CNCPT012

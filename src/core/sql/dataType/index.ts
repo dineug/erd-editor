@@ -19,6 +19,8 @@ export type PrimitiveType =
   | 'dateTime'
   | 'time';
 
+export type PrimitiveTypeMap = Record<PrimitiveType, string>;
+
 export interface DataTypeHint {
   name: string;
   primitiveType: PrimitiveType;
