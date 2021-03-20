@@ -16,9 +16,12 @@ function getColumnTypes({
     setting: { columnOrder },
   },
 }: State): ColumnType[] {
-  const showKeys = Object.keys(show).filter(key => show[key as ShowKey]);
+  const showKeys = [
+    'columnName',
+    ...Object.keys(show).filter(key => show[key as ShowKey]),
+  ];
   const match = new RegExp(showKeys.join('|'), 'i');
-  return ['columnName', ...columnOrder.filter(key => match.test(key))];
+  return [...columnOrder.filter(key => match.test(key))];
 }
 
 export const isColumns = (focusTable: FocusTable) =>

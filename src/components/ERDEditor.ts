@@ -7,6 +7,7 @@ import './menubar/Menubar';
 import './editor/ERD';
 import './drawer/Drawer';
 import './drawer/HelpDrawer';
+import './drawer/SettingDrawer';
 
 import {
   ERDEditorProps,
@@ -48,6 +49,7 @@ import {
 } from '@/engine/command/editor.cmd.helper';
 import { ignoreEnterProcess } from '@/core/helper/operator.helper';
 import { Logger } from '@/core/logger';
+import { SettingDrawerStyle } from './drawer/SettingDrawer.style';
 import { ERDEditorStyle } from './ERDEditor.style';
 
 const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
@@ -59,7 +61,9 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   const { editorState } = store;
   const editorRef = query<HTMLElement>('.vuerd-editor');
   const { ghostTpl, ghostState, setFocus } = useERDEditorGhost(context, ctx);
-  const { drawerTpl, openHelp, closeHelp } = useERDEditorDrawer(props);
+  const { drawerTpl, closeDrawer, openHelp, openSetting } = useERDEditorDrawer(
+    props
+  );
   const { hasPanel, panelTpl } = usePanelView(props, context);
   const { unmountedGroup } = useUnmounted();
   // @ts-ignore
@@ -70,12 +74,6 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
       ctx.setAttribute('height', height);
     });
   });
-
-  const closeDrawer = () => {
-    closeHelp();
-  };
-
-  const onOpenHelp = () => openHelp();
 
   const onOutside = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement;
@@ -178,7 +176,8 @@ key: ${event.key}
         >
           <vuerd-menubar
             .focusState=${ghostState.focus}
-            @open-help=${onOpenHelp}
+            @open-help=${openHelp}
+            @open-setting=${openSetting}
           ></vuerd-menubar>
           ${cache(
             !hasPanel()
@@ -210,7 +209,7 @@ const componentOptions = {
       default: false,
     },
   ],
-  style: ERDEditorStyle,
+  style: [ERDEditorStyle, SettingDrawerStyle].join(''),
   render: ERDEditor,
 };
 

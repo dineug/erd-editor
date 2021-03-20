@@ -73,6 +73,8 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
   };
 
   const onOpenHelp = () => ctx.dispatchEvent(new CustomEvent('open-help'));
+  const onOpenSetting = () =>
+    ctx.dispatchEvent(new CustomEvent('open-setting'));
 
   beforeMount(() => {
     const { editorState } = contextRef.value.store;
@@ -134,6 +136,13 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
           @click=${onOpenHelp}
         >
           <vuerd-icon name="question" size="16"></vuerd-icon>
+        </div>
+        <div
+          class="vuerd-menubar-menu"
+          data-tippy-content="Setting"
+          @click=${onOpenSetting}
+        >
+          <vuerd-icon name="cog" size="16"></vuerd-icon>
         </div>
         <div class="vuerd-menubar-menu-vertical"></div>
       </div>
