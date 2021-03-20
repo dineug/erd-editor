@@ -38,7 +38,7 @@ import {
   DEFAULT_HEIGHT,
   SIZE_MENUBAR_HEIGHT,
 } from '@/core/layout';
-import { isArray } from '@/core/helper';
+import { isArray, isString } from '@/core/helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useERDEditorGhost } from '@/core/hooks/ERDEditorGhost.hook';
 import { useERDEditorDrawer } from '@/core/hooks/ERDEditorDrawer.hook';
@@ -46,9 +46,15 @@ import { usePanelView } from '@/core/hooks/panelView.hook';
 import {
   editTableEnd,
   changeViewport,
+  clear,
+  loadJson$,
 } from '@/engine/command/editor.cmd.helper';
 import { ignoreEnterProcess } from '@/core/helper/operator.helper';
 import { Logger } from '@/core/logger';
+import { DDLParser } from '@dineug/sql-ddl-parser';
+import { createJson } from '@/core/parser/SQLParserToJson';
+import { createJsonStringify } from '@/core/file';
+import { sortTable } from '@/engine/command/table.cmd.helper';
 import { SettingDrawerStyle } from './drawer/SettingDrawer.style';
 import { ERDEditorStyle } from './ERDEditor.style';
 
@@ -132,9 +138,15 @@ key: ${event.key}
 
   Object.defineProperty(ctx, 'value', {
     get() {
-      return '';
+      const { store } = context;
+      return createJsonStringify(store);
     },
-    set(json: string) {},
+    set(json: string) {
+      const { store } = context;
+      isString(json) && json.trim()
+        ? store.dispatch(loadJson$(json))
+        : store.dispatch(clear());
+    },
   });
 
   ctx.focus = () => {
@@ -145,13 +157,27 @@ key: ${event.key}
     helper.blur();
     setFocus();
   };
-  ctx.clear = () => {};
+
+  ctx.clear = () => {
+    const { store } = context;
+    store.dispatch(clear());
+  };
+
   ctx.initLoadJson = (json: string) => {};
-  ctx.loadSQLDDL = (sql: string) => {};
+
+  ctx.loadSQLDDL = (sql: string) => {
+    if (isString(sql) && sql.trim()) {
+      const { store, helper } = context;
+      const statements = DDLParser(sql);
+      const json = createJson(statements, helper, store.canvasState.database);
+      store.dispatch(loadJson$(json), sortTable());
+    }
+  };
 
   ctx.setTheme = (theme: Partial<Theme>) => loadTheme(context.theme, theme);
   ctx.setKeymap = (keymap: Partial<Keymap>) =>
     loadKeymap(context.keymap, keymap);
+
   ctx.setUser = (user: User) => {};
 
   ctx.extension = (config: Partial<ExtensionConfig>) => {

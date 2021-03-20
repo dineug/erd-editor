@@ -6,12 +6,16 @@ import {
   FunctionalComponent,
   mounted,
   query,
+  beforeMount,
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
+import { Tween, Easing } from '@tweenjs/tween.js';
 import { SIZE_MEMO_PADDING } from '@/core/layout';
 import { useContext } from '@/core/hooks/context.hook';
 import { useResizeMemo } from '@/core/hooks/resizeMemo.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
 import {
   selectMemo$,
   moveMemo,
@@ -19,8 +23,8 @@ import {
   changeMemoValue,
 } from '@/engine/command/memo.cmd.helper';
 import { keymapOptionsToString } from '@/core/keymap';
-import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { onStopPropagation } from '@/core/helper/dom.helper';
+import { BalanceRange } from '@/core/helper/event.helper';
 import { sashTpl } from './Memo.template';
 
 declare global {
@@ -37,12 +41,16 @@ export interface MemoElement extends MemoProps, HTMLElement {}
 
 const MEMO_PADDING = SIZE_MEMO_PADDING * 2;
 const MEMO_HEADER = 6 + MEMO_PADDING;
+const ANIMATION_TIME = 300;
 
 const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
   const { onMousedownSash } = useResizeMemo(props, ctx);
+  const { unmountedGroup } = useUnmounted();
   const textareaRef = query<HTMLTextAreaElement>('.vuerd-memo-textarea');
   useTooltip(['.vuerd-button'], ctx);
+  let leftTween: Tween<{ left: number }> | null = null;
+  let topTween: Tween<{ top: number }> | null = null;
 
   const onMove = ({ event, movementX, movementY }: Move) => {
     event.type === 'mousemove' && event.preventDefault();
@@ -60,7 +68,7 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
 
   const onMoveStart = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement;
-    const { store, globalEvent } = contextRef.value;
+    const { store, globalEvent, eventBus } = contextRef.value;
     const { drag$ } = globalEvent;
 
     if (
@@ -68,7 +76,13 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
       !el.closest('vuerd-sash') &&
       !el.closest('.vuerd-memo-textarea')
     ) {
-      drag$.subscribe(onMove);
+      leftTween?.stop();
+      topTween?.stop();
+
+      drag$.subscribe({
+        next: onMove,
+        complete: () => eventBus.emit(BalanceRange.move),
+      });
     }
     store.dispatch(
       selectMemo$(store, event.ctrlKey || event.metaKey, props.memo.id)
@@ -93,6 +107,38 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
         bubbles: true,
       })
     );
+
+  const moveBalance = () => {
+    const {
+      canvasState: { width, height },
+    } = contextRef.value.store;
+    const minWidth = width - (props.memo.ui.width + MEMO_PADDING);
+    const minHeight =
+      height - (props.memo.ui.height + MEMO_PADDING + MEMO_HEADER);
+    const x = props.memo.ui.left > minWidth ? minWidth : 0;
+    const y = props.memo.ui.top > minHeight ? minHeight : 0;
+
+    if (props.memo.ui.left < 0 || props.memo.ui.left > minWidth) {
+      leftTween = new Tween(props.memo.ui)
+        .to({ left: x }, ANIMATION_TIME)
+        .easing(Easing.Quadratic.Out)
+        .onComplete(() => (leftTween = null))
+        .start();
+    }
+
+    if (props.memo.ui.top < 0 || props.memo.ui.top > minHeight) {
+      topTween = new Tween(props.memo.ui)
+        .to({ top: y }, ANIMATION_TIME)
+        .easing(Easing.Quadratic.Out)
+        .onComplete(() => (topTween = null))
+        .start();
+    }
+  };
+
+  beforeMount(() => {
+    const { eventBus } = contextRef.value;
+    unmountedGroup.push(eventBus.on(BalanceRange.move).subscribe(moveBalance));
+  });
 
   mounted(() => {
     const textarea = textareaRef.value;

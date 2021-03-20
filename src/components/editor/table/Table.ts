@@ -16,10 +16,12 @@ import { styleMap } from 'lit-html/directives/style-map';
 import { repeat } from 'lit-html/directives/repeat';
 import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
+import { Tween, Easing } from '@tweenjs/tween.js';
 import { keymapOptionsToString } from '@/core/keymap';
 import { useContext } from '@/core/hooks/context.hook';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useHasTable } from '@/core/hooks/hasTable.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import {
   changeTableName,
   changeTableComment,
@@ -33,8 +35,10 @@ import {
   editTableEnd,
   editTable,
 } from '@/engine/command/editor.cmd.helper';
-import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { BalanceRange } from '@/core/helper/event.helper';
 import { FlipAnimation } from '@/core/flipAnimation';
+import { relationshipSort } from '@/engine/store/helper/relationship.helper';
+import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from '@/core/layout';
 import { DragoverColumnDetail } from './column/Column';
 
 declare global {
@@ -48,6 +52,9 @@ export interface TableProps {
 }
 
 export interface TableElement extends TableProps, HTMLElement {}
+
+const TABLE_PADDING = (SIZE_TABLE_PADDING + SIZE_TABLE_BORDER) * 2;
+const ANIMATION_TIME = 300;
 
 const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
@@ -65,6 +72,8 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   );
   const draggable$ = new Subject<CustomEvent<DragoverColumnDetail>>();
   const { unmountedGroup } = useUnmounted();
+  let leftTween: Tween<{ left: number }> | null = null;
+  let topTween: Tween<{ top: number }> | null = null;
 
   const onInput = (event: InputEvent, focusType: string) => {
     const { store, helper } = contextRef.value;
@@ -95,11 +104,17 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
 
   const onMoveStart = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement;
-    const { store, globalEvent } = contextRef.value;
+    const { store, globalEvent, eventBus } = contextRef.value;
     const { drag$ } = globalEvent;
 
     if (!el.closest('.vuerd-button') && !el.closest('vuerd-input')) {
-      drag$.subscribe(onMove);
+      leftTween?.stop();
+      topTween?.stop();
+
+      drag$.subscribe({
+        next: onMove,
+        complete: () => eventBus.emit(BalanceRange.move),
+      });
     }
     if (!el.closest('vuerd-input-edit')) {
       store.dispatch(
@@ -158,13 +173,46 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     );
   };
 
+  const moveBalance = () => {
+    const {
+      canvasState: { width, height },
+      tableState: { tables },
+      relationshipState: { relationships },
+    } = contextRef.value.store;
+    const minWidth = width - (props.table.width() + TABLE_PADDING);
+    const minHeight = height - (props.table.height() + TABLE_PADDING);
+    const x = props.table.ui.left > minWidth ? minWidth : 0;
+    const y = props.table.ui.top > minHeight ? minHeight : 0;
+
+    if (props.table.ui.left < 0 || props.table.ui.left > minWidth) {
+      leftTween = new Tween(props.table.ui)
+        .to({ left: x }, ANIMATION_TIME)
+        .easing(Easing.Quadratic.Out)
+        .onUpdate(() => relationshipSort(tables, relationships))
+        .onComplete(() => (leftTween = null))
+        .start();
+    }
+
+    if (props.table.ui.top < 0 || props.table.ui.top > minHeight) {
+      topTween = new Tween(props.table.ui)
+        .to({ top: y }, ANIMATION_TIME)
+        .easing(Easing.Quadratic.Out)
+        .onUpdate(() => relationshipSort(tables, relationships))
+        .onComplete(() => (topTween = null))
+        .start();
+    }
+  };
+
   updated(() => flipAnimation.play());
 
-  beforeMount(() =>
+  beforeMount(() => {
+    const { eventBus } = contextRef.value;
+
     unmountedGroup.push(
-      draggable$.pipe(debounceTime(50)).subscribe(onDraggableColumn)
-    )
-  );
+      draggable$.pipe(debounceTime(50)).subscribe(onDraggableColumn),
+      eventBus.on(BalanceRange.move).subscribe(moveBalance)
+    );
+  });
 
   return () => {
     const {

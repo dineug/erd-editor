@@ -103,3 +103,7 @@ export function createEventBus() {
     emit,
   };
 }
+
+export enum BalanceRange {
+  move = 'BalanceRange.move',
+}
