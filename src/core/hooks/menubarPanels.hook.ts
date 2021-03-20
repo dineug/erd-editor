@@ -65,7 +65,7 @@ export function useMenubarPanels(ctx: HTMLElement) {
               'vuerd-menubar-menu': true,
               active: canvasState.canvasType === menu.canvasType,
             })}
-            data-tippy-content=${menu.canvasType}
+            data-tippy-content=${menu.title}
             @click=${() => onChangeCanvasType(menu.canvasType)}
           >
             <vuerd-icon

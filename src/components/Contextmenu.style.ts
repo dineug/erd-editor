@@ -14,6 +14,7 @@ export const ContextmenuStyle = css`
     margin: 0;
     display: flex;
     flex-direction: column;
+    font-family: var(--vuerd-font-family) !important;
   }
   .vuerd-contextmenu > li {
     height: ${SIZE_CONTEXTMENU_HEIGHT}px;

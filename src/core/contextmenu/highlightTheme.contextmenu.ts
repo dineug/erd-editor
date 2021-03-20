@@ -1,27 +1,28 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { databaseList } from '@/engine/store/canvas.state';
+import { highlightThemes } from '@/engine/store/canvas.state';
 
 const defaultOptions: MenuOptions = {
-  nameWidth: 80,
+  nameWidth: 95,
   keymapWidth: 0,
   close: false,
 };
 
-export const createDatabaseMenus = ({
+export const crateHighlightTheme = ({
   store,
   command,
 }: ERDEditorContext): Menu[] =>
-  databaseList.map(databaseType => ({
+  highlightThemes.map(highlightTheme => ({
     icon:
-      store.canvasState.database === databaseType
+      store.canvasState.highlightTheme === highlightTheme
         ? {
             prefix: 'fas',
             name: 'check',
           }
         : undefined,
-    name: databaseType,
-    execute: () => store.dispatch(command.canvas.changeDatabase(databaseType)),
+    name: highlightTheme,
+    execute: () =>
+      store.dispatch(command.canvas.changeHighlightTheme(highlightTheme)),
     options: {
       ...defaultOptions,
     },

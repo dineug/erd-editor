@@ -5,6 +5,7 @@ import {
   Language,
   NameCase,
   ColumnType,
+  HighlightTheme,
 } from '../store/canvas.state';
 import { Store } from '../store';
 import { CommandType } from './index';
@@ -69,3 +70,7 @@ export declare function moveColumnOrder(
   columnType: ColumnType,
   targetColumnType: ColumnType
 ): CommandType<'canvas.moveColumnOrder'>;
+
+export declare function changeHighlightTheme(
+  highlightTheme: HighlightTheme
+): CommandType<'canvas.changeHighlightTheme'>;

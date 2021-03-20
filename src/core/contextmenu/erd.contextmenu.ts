@@ -39,6 +39,11 @@ export function createERDMenus(
       execute: () => store.dispatch(command.memo.addMemo$(store)),
     },
     {
+      icon: {
+        prefix: 'mdi',
+        name: 'vector-line',
+        size: 18,
+      },
       name: 'Relationship',
       children: createDrawRelationshipMenus(context),
     },
@@ -52,8 +57,9 @@ export function createERDMenus(
     },
     {
       icon: {
-        prefix: 'fas',
+        prefix: 'mdi',
         name: 'database',
+        size: 18,
       },
       name: 'Database',
       children: createDatabaseMenus(context),

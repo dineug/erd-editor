@@ -5,7 +5,11 @@ export const iconTpl = (menu: Menu) =>
   menu.icon
     ? html`
         <span class="icon">
-          <vuerd-icon .size=${menu.icon.size || 14} name=${menu.icon.name}>
+          <vuerd-icon
+            .prefix=${menu.icon.prefix}
+            .size=${menu.icon.size || 14}
+            name=${menu.icon.name}
+          >
           </vuerd-icon>
         </span>
       `

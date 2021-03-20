@@ -4,6 +4,7 @@ import {
   Language,
   NameCase,
   ColumnType,
+  HighlightTheme,
 } from '@@types/engine/store/canvas.state';
 import { Store } from '@@types/engine/store';
 import { createCommand } from './helper';
@@ -58,3 +59,6 @@ export const moveColumnOrder = (
   columnType: ColumnType,
   targetColumnType: ColumnType
 ) => createCommand('canvas.moveColumnOrder', { columnType, targetColumnType });
+
+export const changeHighlightTheme = (highlightTheme: HighlightTheme) =>
+  createCommand('canvas.changeHighlightTheme', { highlightTheme });

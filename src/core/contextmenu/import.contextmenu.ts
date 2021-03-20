@@ -10,10 +10,20 @@ const defaultOptions: MenuOptions = {
 export const createImportMenus = (context: ERDEditorContext): Menu[] =>
   [
     {
+      icon: {
+        prefix: 'mdi',
+        name: 'code-json',
+        size: 18,
+      },
       name: 'json',
       execute: () => importJSON(context),
     },
     {
+      icon: {
+        prefix: 'mdi',
+        name: 'database-import',
+        size: 18,
+      },
       name: 'SQL DDL',
       execute: () => importSQLDDL(context),
     },

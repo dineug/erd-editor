@@ -12,6 +12,7 @@ export interface CanvasState {
   language: Language; // ADD: version 0.2.16
   tableCase: NameCase; // ADD: version 0.2.18
   columnCase: NameCase; // ADD: version 0.2.18
+  highlightTheme: HighlightTheme; // ADD: version 2.0.0
   setting: Setting; // ADD: version 1.1.0
 }
 
@@ -67,3 +68,10 @@ export type Language =
   | 'Scala';
 
 export type NameCase = 'none' | 'camelCase' | 'pascalCase' | 'snakeCase';
+
+export type HighlightTheme =
+  | 'AtomOneDark'
+  | 'AtomOneLight'
+  | 'MonokaiSublime'
+  | 'GithubGist'
+  | 'VS2015';

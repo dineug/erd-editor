@@ -40,7 +40,7 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
   const state = observable<ContextmenuState>({ menu: null });
   const rootRef = query<HTMLElement>('.vuerd-contextmenu');
   const { unmountedGroup } = useUnmounted();
-  const { resetTooltip } = useTooltip(['.name', '.keymap'], ctx);
+  const { resetTooltip } = useTooltip(['.keymap'], ctx);
 
   const childrenX = () => {
     const ul = rootRef.value;

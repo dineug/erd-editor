@@ -33,7 +33,9 @@ import {
   databaseList,
   nameCaseList,
   languageList,
+  highlightThemes,
 } from '@/engine/store/canvas.state';
+import { panels as globalPanels } from '@/core/panel';
 import { executeLoadTable } from './table.cmd';
 import { executeLoadMemo } from './memo.cmd';
 import { executeLoadIndex } from './index.cmd';
@@ -232,7 +234,10 @@ export function executeDraggableColumnEnd({ editorState }: State) {
 
 // TODO: Refactoring
 export function executeLoadJson(state: State, data: LoadJson) {
-  const { canvasState } = state;
+  const { canvasState, editorState } = state;
+  const panelNames = [...globalPanels, ...editorState.panels].map(
+    panel => panel.key
+  );
 
   try {
     const json = JSON.parse(data.value) as JsonFormat;
@@ -256,7 +261,7 @@ export function executeLoadJson(state: State, data: LoadJson) {
               }
               break;
             case 'canvasType':
-              if (isString(canvasJson.canvasType)) {
+              if (panelNames.includes(canvasJson.canvasType)) {
                 canvasState.canvasType = canvasJson.canvasType;
               }
               break;
@@ -273,6 +278,11 @@ export function executeLoadJson(state: State, data: LoadJson) {
             case 'columnCase':
               if (nameCaseList.includes(canvasJson.columnCase)) {
                 canvasState.columnCase = canvasJson.columnCase;
+              }
+              break;
+            case 'highlightTheme':
+              if (highlightThemes.includes(canvasJson.highlightTheme)) {
+                canvasState.highlightTheme = canvasJson.highlightTheme;
               }
               break;
             case 'width':

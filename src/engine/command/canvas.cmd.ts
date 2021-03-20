@@ -13,6 +13,7 @@ import {
   ChangeNameCase,
   ChangeRelationshipDataTypeSync,
   MoveColumnOrder,
+  ChangeHighlightTheme,
 } from '@@types/engine/command/canvas.cmd';
 import { zoomBalanceRange } from '@/engine/store/helper/canvas.helper';
 import { createBalanceRange } from '@/core/helper';
@@ -148,6 +149,13 @@ export function executeMoveColumnOrder(
   columnOrder.splice(targetIndex, 0, data.columnType);
 }
 
+export function executeChangeHighlightTheme(
+  { canvasState }: State,
+  data: ChangeHighlightTheme
+) {
+  canvasState.highlightTheme = data.highlightTheme;
+}
+
 export const executeCanvasCommandMap = {
   'canvas.move': executeMoveCanvas,
   'canvas.movement': executeMovementCanvas,
@@ -163,4 +171,5 @@ export const executeCanvasCommandMap = {
   'canvas.changeColumnCase': executeChangeColumnCase,
   'canvas.changeRelationshipDataTypeSync': executeChangeRelationshipDataTypeSync,
   'canvas.moveColumnOrder': executeMoveColumnOrder,
+  'canvas.changeHighlightTheme': executeChangeHighlightTheme,
 };

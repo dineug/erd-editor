@@ -38,10 +38,10 @@ import {
   SIZE_MENUBAR_HEIGHT,
 } from '@/core/layout';
 import { isArray } from '@/core/helper';
-import { panels as globalPanels } from '@/core/panel';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useERDEditorGhost } from '@/core/hooks/ERDEditorGhost.hook';
 import { useERDEditorDrawer } from '@/core/hooks/ERDEditorDrawer.hook';
+import { usePanelView } from '@/core/hooks/panelView.hook';
 import {
   editTableEnd,
   changeViewport,
@@ -56,10 +56,11 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
 ) => {
   const context = createdERDEditorContext();
   const { store, helper, keymap } = context;
-  const { canvasState, editorState } = store;
+  const { editorState } = store;
   const editorRef = query<HTMLElement>('.vuerd-editor');
   const { ghostTpl, ghostState, setFocus } = useERDEditorGhost(context, ctx);
   const { drawerTpl, openHelp, closeHelp } = useERDEditorDrawer(props);
+  const { hasPanel, panelTpl } = usePanelView(props, context);
   const { unmountedGroup } = useUnmounted();
   // @ts-ignore
   const resizeObserver = new ResizeObserver(entries => {
@@ -163,11 +164,6 @@ key: ${event.key}
   return () => {
     const width = props.width;
     const height = props.height - SIZE_MENUBAR_HEIGHT;
-    const canvasType = canvasState.canvasType;
-    const panels = [...globalPanels, ...editorState.panels];
-    const isPanel =
-      canvasType !== 'ERD' && panels.some(panel => panel.key === canvasType);
-    const isERD = !isPanel;
 
     return html`
       <vuerd-provider .value=${context}>
@@ -185,20 +181,11 @@ key: ${event.key}
             @open-help=${onOpenHelp}
           ></vuerd-menubar>
           ${cache(
-            isERD
+            !hasPanel()
               ? html`<vuerd-erd .width=${width} .height=${height}></vuerd-erd>`
               : null
           )}
-          ${isPanel
-            ? html`
-                <vuerd-panel-view
-                  .width=${width}
-                  .height=${height}
-                  .panel=${panels.find(panel => panel.key === canvasType)}
-                ></vuerd-panel-view>
-              `
-            : null}
-          ${drawerTpl()} ${ghostTpl}
+          ${panelTpl()} ${drawerTpl()} ${ghostTpl}
         </div>
       </vuerd-provider>
     `;

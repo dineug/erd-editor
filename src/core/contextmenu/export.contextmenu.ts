@@ -19,6 +19,11 @@ export const createExportMenus = (
 ): Menu[] =>
   [
     {
+      icon: {
+        prefix: 'mdi',
+        name: 'code-json',
+        size: 18,
+      },
       name: 'json',
       execute: () =>
         exportJSON(
@@ -27,6 +32,11 @@ export const createExportMenus = (
         ),
     },
     {
+      icon: {
+        prefix: 'mdi',
+        name: 'database-export',
+        size: 18,
+      },
       name: 'SQL DDL',
       execute: () =>
         exportSQLDDL(createDDL(store), store.canvasState.databaseName),

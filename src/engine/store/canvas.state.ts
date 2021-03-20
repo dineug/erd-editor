@@ -5,6 +5,7 @@ import {
   Database,
   Language,
   NameCase,
+  HighlightTheme,
 } from '@@types/engine/store/canvas.state';
 
 export const columnTypes: ColumnType[] = [
@@ -51,6 +52,14 @@ export const nameCaseList: NameCase[] = [
   'snakeCase',
 ];
 
+export const highlightThemes: HighlightTheme[] = [
+  'MonokaiSublime',
+  'VS2015',
+  'AtomOneDark',
+  'AtomOneLight',
+  'GithubGist',
+];
+
 export const createCanvasState = (): CanvasState => ({
   version: import.meta.env.SNOWPACK_PUBLIC_VUERD_VERSION,
   width: 2000,
@@ -75,6 +84,7 @@ export const createCanvasState = (): CanvasState => ({
   language: 'GraphQL',
   tableCase: 'pascalCase',
   columnCase: 'camelCase',
+  highlightTheme: 'VS2015',
   setting: {
     relationshipDataTypeSync: true,
     columnOrder: [

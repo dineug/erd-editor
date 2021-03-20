@@ -8,7 +8,6 @@ import {
   faTimes,
   faChevronRight,
   faCheck,
-  faCode,
   faList,
   faRedoAlt,
   faUndoAlt,
@@ -20,12 +19,19 @@ import {
   faFileExport,
   faEye,
   faSlidersH,
-  faDatabase,
   faFileImport,
   faFileCode,
   faCog,
   faMousePointer,
 } from '@fortawesome/free-solid-svg-icons';
+import {
+  mdiVectorLine,
+  mdiCodeJson,
+  mdiDatabase,
+  mdiDatabaseImport,
+  mdiDatabaseExport,
+  mdiPalette,
+} from '@mdi/js';
 
 const icons = [
   faKey,
@@ -35,7 +41,6 @@ const icons = [
   faTimes,
   faChevronRight,
   faCheck,
-  faCode,
   faList,
   faRedoAlt,
   faUndoAlt,
@@ -47,11 +52,40 @@ const icons = [
   faFileExport,
   faEye,
   faSlidersH,
-  faDatabase,
   faFileImport,
   faFileCode,
   faCog,
   faMousePointer,
+  {
+    prefix: 'mdi',
+    iconName: 'vector-line',
+    icon: [24, 24, , , mdiVectorLine],
+  },
+  {
+    prefix: 'mdi',
+    iconName: 'code-json',
+    icon: [24, 24, , , mdiCodeJson],
+  },
+  {
+    prefix: 'mdi',
+    iconName: 'database',
+    icon: [24, 24, , , mdiDatabase],
+  },
+  {
+    prefix: 'mdi',
+    iconName: 'database-import',
+    icon: [24, 24, , , mdiDatabaseImport],
+  },
+  {
+    prefix: 'mdi',
+    iconName: 'database-export',
+    icon: [24, 24, , , mdiDatabaseExport],
+  },
+  {
+    prefix: 'mdi',
+    iconName: 'palette',
+    icon: [24, 24, , , mdiPalette],
+  },
 ] as IconDefinition[];
 
 export const getIcon = (prefix: string, iconName: string) =>
