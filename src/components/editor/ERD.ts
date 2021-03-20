@@ -28,7 +28,7 @@ import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useERDKeymap } from '@/core/hooks/ERDKeymap.hook';
 import { useMousePosition } from '@/core/hooks/mousePosition.hook';
 import { getBase64Icon } from '@/core/icon';
-import { EditorStyle } from './index.style';
+import { IndexStyle } from './index.style';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -204,6 +204,6 @@ defineComponent('vuerd-erd', {
   styleMap: {
     height: '100%',
   },
-  style: EditorStyle,
+  style: IndexStyle,
   render: ERD,
 });

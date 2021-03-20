@@ -13,7 +13,7 @@ interface Menu {
 }
 
 const ERD = {
-  title: 'ERD',
+  title: 'Entity Relationship Diagram',
   canvasType: 'ERD',
   icon: {
     prefix: 'fas',

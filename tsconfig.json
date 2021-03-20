@@ -9,10 +9,8 @@
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "resolveJsonModule": true,
-    "allowJs": true,
     "strict": true,
     "baseUrl": ".",
-    "outDir": "./dist",
     "paths": {
       "@/*": ["src/*"],
       "@@types/*": ["types/*"]
@@ -24,6 +22,6 @@
       }
     ]
   },
-  "include": ["src/**/*.ts", "types/**/*.ts", "src/**/*.js"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*.ts", "types/**/*.ts"],
+  "exclude": ["node_modules"]
 }

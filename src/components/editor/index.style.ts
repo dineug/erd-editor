@@ -3,6 +3,7 @@ import { ERDStyle } from './ERD.style';
 import { CanvasStyle } from './Canvas.style';
 import { MemoStyle } from './memo/Memo.style';
 import { TableStyle } from './table/Table.style';
+import { HighLevelTableStyle } from './table/HighLevelTable.style';
 import { InputStyle } from './Input.style';
 import { ColumnStyle } from './table/column/Column.style';
 import { ColumnKeyStyle } from './table/column/ColumnKey.style';
@@ -16,12 +17,13 @@ import { DragSelectStyle } from './DragSelect.style';
 import { MinimapStyle } from './minimap/Minimap.style';
 import { MinimapHandleStyle } from './minimap/MinimapHandle.style';
 
-export const EditorStyle = [
+export const IndexStyle = [
   DefaultStyle,
   ERDStyle,
   CanvasStyle,
   MemoStyle,
   TableStyle,
+  HighLevelTableStyle,
   InputStyle,
   ColumnStyle,
   ColumnKeyStyle,

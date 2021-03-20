@@ -1,5 +1,6 @@
 import './memo/Memo';
 import './table/Table';
+import './table/HighLevelTable';
 import './DrawRelationship';
 import './CanvasSVG';
 
@@ -12,6 +13,7 @@ import {
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { repeat } from 'lit-html/directives/repeat';
+import { cache } from 'lit-html/directives/cache';
 import { useContext } from '@/core/hooks/context.hook';
 import { useRenderTrigger } from '@/core/hooks/renderTrigger.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
@@ -65,10 +67,23 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
           transform: `scale(${zoomLevel})`,
         })}
       >
-        ${repeat(
-          tables,
-          table => table.id,
-          table => html`<vuerd-table .table=${table}></vuerd-table>`
+        ${cache(
+          zoomLevel > 0.7
+            ? repeat(
+                tables,
+                table => table.id,
+                table => html`<vuerd-table .table=${table}></vuerd-table>`
+              )
+            : repeat(
+                tables,
+                table => table.id,
+                table =>
+                  html`
+                    <vuerd-high-level-table
+                      .table=${table}
+                    ></vuerd-high-level-table>
+                  `
+              )
         )}
         ${repeat(
           memos,

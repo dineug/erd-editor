@@ -15,6 +15,7 @@ import {
   MoveColumnOrder,
   ChangeHighlightTheme,
 } from '@@types/engine/command/canvas.cmd';
+import round from 'lodash/round';
 import { zoomBalanceRange } from '@/engine/store/helper/canvas.helper';
 import { createBalanceRange } from '@/core/helper';
 
@@ -63,15 +64,16 @@ export function executeResizeCanvas(
 }
 
 export function executeZoomCanvas({ canvasState }: State, data: ZoomCanvas) {
-  canvasState.zoomLevel = zoomBalanceRange(data.zoomLevel);
+  canvasState.zoomLevel = round(zoomBalanceRange(data.zoomLevel), 2);
 }
 
 export function executeMovementZoomCanvas(
   { canvasState }: State,
   data: MovementZoomCanvas
 ) {
-  canvasState.zoomLevel = zoomBalanceRange(
-    canvasState.zoomLevel + data.movementZoomLevel
+  canvasState.zoomLevel = round(
+    zoomBalanceRange(canvasState.zoomLevel + data.movementZoomLevel),
+    2
   );
 }
 
