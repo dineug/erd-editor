@@ -1,4 +1,4 @@
-import { ERDEditorContext } from '@@types/index';
+import { Table } from '@@types/engine/store/table.state';
 import { Menu } from '@@types/core/contextmenu';
 import {
   defineComponent,
@@ -9,7 +9,10 @@ import {
   watch,
 } from '@dineug/lit-observable';
 import { unsafeHTML } from 'lit-html/directives/unsafe-html';
-import { createGeneratorCode } from '@/core/generator/code';
+import {
+  createGeneratorCode,
+  createGeneratorCodeTable,
+} from '@/core/generator/code';
 import { hljs, highlightThemeMap, languageMap } from '@/core/highlight';
 import { createGeneratorCodeMenus } from '@/core/contextmenu/generatorCode.menu';
 import { createHighlightThemeMenus } from '@/core/contextmenu/highlightTheme.menu';
@@ -17,8 +20,10 @@ import { createTableNameCaseMenus } from '@/core/contextmenu/tableNameCase.menu'
 import { createColumnNameCaseMenus } from '@/core/contextmenu/columnNameCase.menu';
 import { createLanguageMenus } from '@/core/contextmenu/language.menu';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { useContext } from '@/core/hooks/context.hook';
 import { GeneratorCodeStyle } from './GeneratorCode.style';
-import { Scrollbar } from '@/components/css/scrollbar.style';
+import { ScrollbarStyle } from '@/components/css/scrollbar.style';
+import { Contextmenu } from '@/core/helper/event.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -26,11 +31,12 @@ declare global {
   }
 }
 
-export interface GeneratorCodeProps {}
-
-export interface GeneratorCodeElement extends GeneratorCodeProps, HTMLElement {
-  api: ERDEditorContext;
+export interface GeneratorCodeProps {
+  table: Table | null;
+  mode: 'all' | 'table';
 }
+
+export interface GeneratorCodeElement extends GeneratorCodeProps, HTMLElement {}
 
 interface GeneratorCodeState {
   contextmenuX: number;
@@ -42,6 +48,7 @@ const GeneratorCode: FunctionalComponent<
   GeneratorCodeProps,
   GeneratorCodeElement
 > = (props, ctx) => {
+  const contextRef = useContext(ctx);
   const state = observable<GeneratorCodeState>({
     menus: null,
     contextmenuX: 0,
@@ -53,7 +60,7 @@ const GeneratorCode: FunctionalComponent<
     event.preventDefault();
     state.contextmenuX = event.clientX;
     state.contextmenuY = event.clientY;
-    state.menus = createGeneratorCodeMenus(ctx.api);
+    state.menus = createGeneratorCodeMenus(contextRef.value);
   };
 
   const onCloseContextmenu = () => (state.menus = null);
@@ -61,7 +68,11 @@ const GeneratorCode: FunctionalComponent<
   const onMousedown = () => onCloseContextmenu();
 
   beforeMount(() => {
-    const { canvasState } = ctx.api.store;
+    const context = contextRef.value;
+    const {
+      store: { canvasState },
+      eventBus,
+    } = context;
 
     unmountedGroup.push(
       watch(canvasState, propName => {
@@ -69,7 +80,7 @@ const GeneratorCode: FunctionalComponent<
         const menue = state.menus?.find(menu => menu.name === 'Language');
         if (!menue) return;
 
-        menue.children = createLanguageMenus(ctx.api);
+        menue.children = createLanguageMenus(context);
       }),
       watch(canvasState, propName => {
         if (propName !== 'highlightTheme') return;
@@ -78,7 +89,7 @@ const GeneratorCode: FunctionalComponent<
         );
         if (!menue) return;
 
-        menue.children = createHighlightThemeMenus(ctx.api);
+        menue.children = createHighlightThemeMenus(context);
       }),
       watch(canvasState, propName => {
         if (propName !== 'tableCase') return;
@@ -87,7 +98,7 @@ const GeneratorCode: FunctionalComponent<
         );
         if (!menue) return;
 
-        menue.children = createTableNameCaseMenus(ctx.api);
+        menue.children = createTableNameCaseMenus(context);
       }),
       watch(canvasState, propName => {
         if (propName !== 'columnCase') return;
@@ -96,17 +107,24 @@ const GeneratorCode: FunctionalComponent<
         );
         if (!menue) return;
 
-        menue.children = createColumnNameCaseMenus(ctx.api);
-      })
+        menue.children = createColumnNameCaseMenus(context);
+      }),
+      eventBus.on(Contextmenu.close).subscribe(onCloseContextmenu)
     );
   });
 
   return () => {
+    const { store } = contextRef.value;
     const {
       canvasState: { highlightTheme, language },
-    } = ctx.api.store;
-    const code = createGeneratorCode(ctx.api.store);
-    const codeHTML = hljs.highlight(languageMap[language], code).value;
+    } = store;
+    const code =
+      props.mode === 'all' || !props.table
+        ? createGeneratorCode(store)
+        : createGeneratorCodeTable(store, props.table);
+    const codeHTML = hljs.highlight(code, {
+      language: languageMap[language],
+    }).value;
 
     return html`
       <style type="text/css">
@@ -137,10 +155,20 @@ const GeneratorCode: FunctionalComponent<
 };
 
 defineComponent('vuerd-generator-code', {
+  observedProps: [
+    {
+      name: 'table',
+      default: null,
+    },
+    {
+      name: 'mode',
+      default: 'all',
+    },
+  ],
   styleMap: {
     width: '100%',
     height: '100%',
   },
-  style: [GeneratorCodeStyle, Scrollbar].join(''),
+  style: [GeneratorCodeStyle, ScrollbarStyle].join(''),
   render: GeneratorCode,
 });

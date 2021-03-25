@@ -8,6 +8,7 @@ import './editor/ERD';
 import './drawer/Drawer';
 import './drawer/HelpDrawer';
 import './drawer/SettingDrawer';
+import './drawer/tablePropertiesDrawer/TablePropertiesDrawer';
 
 import {
   ERDEditorProps,
@@ -56,19 +57,25 @@ import { createJson } from '@/core/parser/SQLParserToJson';
 import { createJsonStringify } from '@/core/file';
 import { sortTable } from '@/engine/command/table.cmd.helper';
 import { SettingDrawerStyle } from './drawer/SettingDrawer.style';
+import { TablePropertiesDrawerStyle } from './drawer/tablePropertiesDrawer/TablePropertiesDrawer.style';
 import { ERDEditorStyle } from './ERDEditor.style';
+import { Contextmenu } from '@/core/helper/event.helper';
 
 const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   props,
   ctx
 ) => {
   const context = createdERDEditorContext();
-  const { store, helper, keymap } = context;
+  const { store, helper, keymap, eventBus } = context;
   const { editorState } = store;
   const editorRef = query<HTMLElement>('.vuerd-editor');
-  const { ghostTpl, ghostState, setFocus } = useERDEditorGhost(context, ctx);
+  const { ghostTpl, ghostState, setFocus, onFocus } = useERDEditorGhost(
+    context,
+    ctx
+  );
   const { drawerTpl, closeDrawer, openHelp, openSetting } = useERDEditorDrawer(
-    props
+    props,
+    context
   );
   const { hasPanel, panelTpl } = usePanelView(props, context);
   const { unmountedGroup } = useUnmounted();
@@ -124,7 +131,11 @@ key: ${event.key}
         `);
 
           helper.keydown$.next(event);
-          keymapMatchAndStop(event, keymap.stop) && closeDrawer();
+          if (keymapMatchAndStop(event, keymap.stop)) {
+            eventBus.emit(Contextmenu.close);
+            closeDrawer();
+            onFocus();
+          }
         })
     );
   });
@@ -235,7 +246,9 @@ const componentOptions = {
       default: false,
     },
   ],
-  style: [ERDEditorStyle, SettingDrawerStyle].join(''),
+  style: [ERDEditorStyle, SettingDrawerStyle, TablePropertiesDrawerStyle].join(
+    ''
+  ),
   render: ERDEditor,
 };
 

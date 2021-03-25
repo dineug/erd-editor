@@ -1,5 +1,5 @@
 import { VisualizationStyle } from './Visualization.style';
-import { Scrollbar } from '@/components/css/scrollbar.style';
+import { ScrollbarStyle } from '@/components/css/scrollbar.style';
 import { TableStyle } from '@/components/editor/table/Table.style';
 import { InputStyle } from '@/components/editor/Input.style';
 import { ColumnStyle } from '@/components/editor/table/column/Column.style';
@@ -11,7 +11,7 @@ import { ColumnAutoIncrementStyle } from '@/components/editor/table/column/Colum
 
 export const IndexStyle = [
   VisualizationStyle,
-  Scrollbar,
+  ScrollbarStyle,
   TableStyle,
   InputStyle,
   ColumnStyle,

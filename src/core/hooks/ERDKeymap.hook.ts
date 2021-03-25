@@ -35,6 +35,7 @@ import {
   drawStartRelationship$,
   drawEndRelationship,
 } from '@/engine/command/editor.cmd.helper';
+import { Drawer } from '@/core/helper/event.helper';
 
 const changeColumnMap = {
   columnNotNull: changeColumnNotNull,
@@ -53,7 +54,7 @@ export function useERDKeymap(ctx: HTMLElement) {
   const { unmountedGroup } = useUnmounted();
 
   const onKeydown = (event: KeyboardEvent) => {
-    const { keymap, store } = contextRef.value;
+    const { keymap, store, eventBus } = contextRef.value;
     const { tableState, memoState, editorState } = store;
 
     if (!editorState.focusTable || !editorState.focusTable.edit) {
@@ -92,6 +93,20 @@ export function useERDKeymap(ctx: HTMLElement) {
           commands.push(removeMemo(store));
 
         store.dispatch(...commands);
+      }
+
+      if (
+        keymapMatchAndStop(event, keymap.tableProperties) &&
+        store.tableState.tables.some(table => table.ui.active)
+      ) {
+        const table = store.tableState.tables.find(table => table.ui.active);
+        if (!table) return;
+
+        eventBus.emit(Drawer.openTableProperties, {
+          tableId: editorState.focusTable
+            ? editorState.focusTable.table.id
+            : table.id,
+        });
       }
     }
 

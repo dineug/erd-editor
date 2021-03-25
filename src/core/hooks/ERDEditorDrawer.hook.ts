@@ -1,15 +1,34 @@
 import { ERDEditorProps } from '@@types/components/ERDEditorElement';
-import { html, observable } from '@dineug/lit-observable';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
+import { html, observable, beforeMount } from '@dineug/lit-observable';
+import { Drawer } from '@/core/helper/event.helper';
+import {
+  selectTable$,
+  selectEndTable$,
+} from '@/engine/command/table.cmd.helper';
+import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
+import { drawEndRelationship } from '@/engine/command/editor.cmd.helper';
+import { useUnmounted } from './unmounted.hook';
 
 interface DrawerState {
   help: boolean;
   setting: boolean;
+  tableProperties: boolean;
 }
 
 type DrawerKey = keyof DrawerState;
 
-export function useERDEditorDrawer(props: ERDEditorProps) {
-  const state = observable<DrawerState>({ help: false, setting: false });
+export function useERDEditorDrawer(
+  props: ERDEditorProps,
+  { eventBus, store }: IERDEditorContext
+) {
+  const state = observable<DrawerState>({
+    help: false,
+    setting: false,
+    tableProperties: false,
+  });
+  const { unmountedGroup } = useUnmounted();
+  let tableId = '';
 
   const createOpen = (key: DrawerKey) => () => {
     Object.keys(state).forEach(stateKey => {
@@ -26,11 +45,33 @@ export function useERDEditorDrawer(props: ERDEditorProps) {
   const closeHelp = createClose('help');
   const openSetting = createOpen('setting');
   const closeSetting = createClose('setting');
+  const openTableProperties = createOpen('tableProperties');
+  const closeTableProperties = createClose('tableProperties');
 
   const closeDrawer = () => {
+    if (state.tableProperties && tableId) {
+      store.dispatch(selectTable$(store, false, tableId));
+    }
+
     closeHelp();
     closeSetting();
+    closeTableProperties();
+    tableId = '';
   };
+
+  beforeMount(() =>
+    unmountedGroup.push(
+      eventBus.on(Drawer.openTableProperties).subscribe(data => {
+        store.dispatch(
+          selectEndMemo(),
+          drawEndRelationship(),
+          selectEndTable$()
+        );
+        tableId = data.tableId;
+        openTableProperties();
+      })
+    )
+  );
 
   return {
     drawerTpl: () => html`
@@ -44,11 +85,20 @@ export function useERDEditorDrawer(props: ERDEditorProps) {
         .visible=${state.setting}
         @close=${closeSetting}
       ></vuerd-setting-drawer>
+      <vuerd-table-properties-drawer
+        .width=${props.width}
+        .visible=${state.tableProperties}
+        .tableId=${tableId}
+        @close=${closeTableProperties}
+      >
+      </vuerd-table-properties-drawer>
     `,
     closeDrawer,
     openHelp,
     closeHelp,
     openSetting,
     closeSetting,
+    openTableProperties,
+    closeTableProperties,
   };
 }

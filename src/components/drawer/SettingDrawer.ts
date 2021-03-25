@@ -17,7 +17,6 @@ import {
   moveColumnOrder,
   changeRelationshipDataTypeSync,
 } from '@/engine/command/canvas.cmd.helper';
-import { InputElement } from '../editor/Input';
 
 declare global {
   interface HTMLElementTagNameMap {

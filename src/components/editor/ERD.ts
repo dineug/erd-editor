@@ -29,6 +29,7 @@ import { useERDKeymap } from '@/core/hooks/ERDKeymap.hook';
 import { useMousePosition } from '@/core/hooks/mousePosition.hook';
 import { getBase64Icon } from '@/core/icon';
 import { IndexStyle } from './index.style';
+import { Contextmenu } from '@/core/helper/event.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -117,7 +118,10 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
   const onDragSelectEnd = () => (state.dragSelect = false);
 
   beforeMount(() => {
-    const { canvasState } = contextRef.value.store;
+    const {
+      store: { canvasState },
+      eventBus,
+    } = contextRef.value;
 
     unmountedGroup.push(
       watch(canvasState.show, () => {
@@ -132,7 +136,8 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
         if (!menue) return;
 
         menue.children = createDatabaseMenus(contextRef.value);
-      })
+      }),
+      eventBus.on(Contextmenu.close).subscribe(onCloseContextmenu)
     );
   });
 

@@ -18,7 +18,7 @@ export function useERDEditorGhost(
   let timerId: any = null;
 
   const setFocus = () => {
-    state.focus = document.activeElement === ctx;
+    state.focus = document.activeElement === ctx && document.hasFocus();
   };
 
   const onFocus = () => {
@@ -34,11 +34,7 @@ export function useERDEditorGhost(
     helper.focus();
     setFocus();
 
-    timerId = setInterval(() => {
-      if (state.focus && !document.hasFocus()) {
-        state.focus = false;
-      }
-    }, 200);
+    timerId = setInterval(() => setFocus(), 200);
 
     unmountedGroup.push(
       merge(
@@ -64,5 +60,6 @@ export function useERDEditorGhost(
     `,
     ghostState: state,
     setFocus,
+    onFocus,
   };
 }

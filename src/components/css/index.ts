@@ -1,5 +1,5 @@
 import { css } from '@/core/tagged';
-import { Scrollbar } from './scrollbar.style';
+import { ScrollbarStyle } from './scrollbar.style';
 
 export const DefaultStyle = css`
   .vuerd-button {
@@ -9,5 +9,5 @@ export const DefaultStyle = css`
     fill: var(--vuerd-color-font-active);
   }
 
-  ${Scrollbar}
+  ${ScrollbarStyle}
 `;

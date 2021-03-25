@@ -25,10 +25,7 @@ export const SettingDrawerStyle = css`
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(
-      --vuerd-theme-font-placeholder,
-      var(--vuerd-color-font-placeholder)
-    );
+    background-color: var(--vuerd-color-font-placeholder);
     transition: 0.3s;
   }
   .vuerd-setting-drawer .vuerd-switch > .slider:before {
@@ -38,17 +35,14 @@ export const SettingDrawerStyle = css`
     width: 15px;
     left: 3.75px;
     bottom: 3.75px;
-    background-color: var(
-      --vuerd-theme-font-active,
-      var(--vuerd-color-font-active)
-    );
+    background-color: var(--vuerd-color-font-active);
     transition: 0.3s;
   }
   .vuerd-setting-drawer .vuerd-switch > input:checked + .slider {
-    background-color: var(--vuerd-theme-focus, var(--vuerd-color-focus));
+    background-color: var(--vuerd-color-focus);
   }
   .vuerd-setting-drawer .vuerd-switch > input:focus + .slider {
-    box-shadow: 0 0 1px var(--vuerd-theme-focus, var(--vuerd-color-focus));
+    box-shadow: 0 0 1px var(--vuerd-color-focus);
   }
   .vuerd-setting-drawer .vuerd-switch > input:checked + .slider:before {
     transform: translateX(15px);
@@ -67,21 +61,15 @@ export const SettingDrawerStyle = css`
     display: inline-block;
   }
   .vuerd-setting-drawer .vuerd-column-order:hover {
-    color: var(--vuerd-theme-font-active, var(--vuerd-color-font-active));
-    background-color: var(
-      --vuerd-theme-contextmenu-active,
-      var(--vuerd-color-contextmenu-active)
-    );
+    color: var(--vuerd-color-font-active);
+    background-color: var(--vuerd-color-contextmenu-active);
   }
   .vuerd-setting-drawer .vuerd-column-order.draggable {
     opacity: 0.5;
   }
   .vuerd-setting-drawer .vuerd-column-order.none-hover:hover {
-    color: var(--vuerd-theme-font, var(--vuerd-color-font));
-    background-color: var(
-      --vuerd-theme-contextmenu,
-      var(--vuerd-color-contextmenu)
-    );
+    color: var(--vuerd-color-font);
+    background-color: var(--vuerd-color-contextmenu);
   }
 
   /* animation flip */

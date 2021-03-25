@@ -107,3 +107,11 @@ export function createEventBus() {
 export enum BalanceRange {
   move = 'BalanceRange.move',
 }
+
+export enum Drawer {
+  openTableProperties = 'Drawer.openTableProperties',
+}
+
+export enum Contextmenu {
+  close = 'Contextmenu.close',
+}

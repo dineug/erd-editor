@@ -1,4 +1,4 @@
-import { ERDEditorContext } from '@@types/index';
+import { Table } from '@@types/engine/store/table.state';
 import { Menu } from '@@types/core/contextmenu';
 import {
   defineComponent,
@@ -9,14 +9,16 @@ import {
   watch,
 } from '@dineug/lit-observable';
 import { unsafeHTML } from 'lit-html/directives/unsafe-html';
-import { createDDL } from '@/core/sql/ddl';
+import { createDDL, createDDLTable } from '@/core/sql/ddl';
 import { hljs, highlightThemeMap } from '@/core/highlight';
 import { createSQLDDLMenus } from '@/core/contextmenu/sql-ddl.menu';
 import { createHighlightThemeMenus } from '@/core/contextmenu/highlightTheme.menu';
 import { createDatabaseMenus } from '@/core/contextmenu/database.menu';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { useContext } from '@/core/hooks/context.hook';
 import { SQLDDLStyle } from './SQLDDL.style';
-import { Scrollbar } from '@/components/css/scrollbar.style';
+import { ScrollbarStyle } from '@/components/css/scrollbar.style';
+import { Contextmenu } from '@/core/helper/event.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -24,11 +26,12 @@ declare global {
   }
 }
 
-export interface SQLDDLProps {}
-
-export interface SQLDDLElement extends SQLDDLProps, HTMLElement {
-  api: ERDEditorContext;
+export interface SQLDDLProps {
+  table: Table | null;
+  mode: 'all' | 'table';
 }
+
+export interface SQLDDLElement extends SQLDDLProps, HTMLElement {}
 
 interface SQLDDLState {
   contextmenuX: number;
@@ -40,6 +43,7 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
   props,
   ctx
 ) => {
+  const contextRef = useContext(ctx);
   const state = observable<SQLDDLState>({
     menus: null,
     contextmenuX: 0,
@@ -51,7 +55,7 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
     event.preventDefault();
     state.contextmenuX = event.clientX;
     state.contextmenuY = event.clientY;
-    state.menus = createSQLDDLMenus(ctx.api);
+    state.menus = createSQLDDLMenus(contextRef.value);
   };
 
   const onCloseContextmenu = () => (state.menus = null);
@@ -59,7 +63,11 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
   const onMousedown = () => onCloseContextmenu();
 
   beforeMount(() => {
-    const { canvasState } = ctx.api.store;
+    const context = contextRef.value;
+    const {
+      store: { canvasState },
+      eventBus,
+    } = context;
 
     unmountedGroup.push(
       watch(canvasState, propName => {
@@ -67,7 +75,7 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
         const menue = state.menus?.find(menu => menu.name === 'Database');
         if (!menue) return;
 
-        menue.children = createDatabaseMenus(ctx.api);
+        menue.children = createDatabaseMenus(context);
       }),
       watch(canvasState, propName => {
         if (propName !== 'highlightTheme') return;
@@ -76,17 +84,24 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
         );
         if (!menue) return;
 
-        menue.children = createHighlightThemeMenus(ctx.api);
-      })
+        menue.children = createHighlightThemeMenus(context);
+      }),
+      eventBus.on(Contextmenu.close).subscribe(onCloseContextmenu)
     );
   });
 
   return () => {
+    const { store } = contextRef.value;
     const {
       canvasState: { highlightTheme },
-    } = ctx.api.store;
-    const sql = createDDL(ctx.api.store);
-    const sqlHTML = hljs.highlight('sql', sql).value;
+    } = store;
+    const sql =
+      props.mode === 'all' || !props.table
+        ? createDDL(store)
+        : createDDLTable(store, props.table);
+    const sqlHTML = hljs.highlight(sql, {
+      language: 'sql',
+    }).value;
 
     return html`
       <style type="text/css">
@@ -117,10 +132,20 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
 };
 
 defineComponent('vuerd-sql-ddl', {
+  observedProps: [
+    {
+      name: 'table',
+      default: null,
+    },
+    {
+      name: 'mode',
+      default: 'all',
+    },
+  ],
   styleMap: {
     width: '100%',
     height: '100%',
   },
-  style: [SQLDDLStyle, Scrollbar].join(''),
+  style: [SQLDDLStyle, ScrollbarStyle].join(''),
   render: SQLDDL,
 });

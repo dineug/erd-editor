@@ -1,6 +1,6 @@
 import { css } from '@/core/tagged';
 
-export const Scrollbar = css`
+export const ScrollbarStyle = css`
   ::-webkit-scrollbar {
     width: 12px;
     height: 12px;
