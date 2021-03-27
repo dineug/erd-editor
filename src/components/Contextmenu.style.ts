@@ -39,7 +39,7 @@ export const ContextmenuStyle = css`
   }
   .vuerd-contextmenu > li > span.icon,
   .vuerd-contextmenu > li > span.icon > img {
-    width: 16px;
+    width: 18px;
   }
   .vuerd-contextmenu > li > span.name {
     width: 70px;

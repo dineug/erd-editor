@@ -232,11 +232,11 @@ export const createKeymap = (): Keymap => ({
   ],
   tableProperties: [
     {
-      ctrlKey: true,
+      altKey: true,
       key: 'Space',
     },
     {
-      altKey: true,
+      ctrlKey: true,
       key: 'Space',
     },
   ],

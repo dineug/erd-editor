@@ -32,6 +32,7 @@ import {
   mdiDatabaseExport,
   mdiPalette,
   mdiFormatLetterCase,
+  mdiTableCog,
 } from '@mdi/js';
 
 export const createMDI = (name: string, icon: string): IconDefinition => ({
@@ -70,6 +71,7 @@ const icons = [
   createMDI('database-export', mdiDatabaseExport),
   createMDI('palette', mdiPalette),
   createMDI('format-letter-case', mdiFormatLetterCase),
+  createMDI('table-cog', mdiTableCog),
 ] as IconDefinition[];
 
 export const getIcon = (prefix: string, iconName: string) =>

@@ -50,7 +50,7 @@ export const relationshipMenus: RelationshipMenu[] = [
   },
 ];
 
-const defaultOptions: MenuOptions = {
+export const defaultOptions: MenuOptions = {
   nameWidth: 70,
   keymapWidth: 75,
 };

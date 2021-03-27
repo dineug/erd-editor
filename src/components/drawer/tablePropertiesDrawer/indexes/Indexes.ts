@@ -39,7 +39,10 @@ const Indexes: FunctionalComponent<IndexesProps, IndexesElement> = (
   ctx
 ) => {
   const contextRef = useContext(ctx);
-  const { resetTooltip } = useTooltip(['.vuerd-indexes-button'], ctx);
+  const { resetTooltip } = useTooltip(
+    ['.vuerd-indexes-button', '.vuerd-index-unique'],
+    ctx
+  );
   const { unmountedGroup } = useUnmounted();
 
   const getIndexes = () => {
@@ -111,7 +114,7 @@ const Indexes: FunctionalComponent<IndexesProps, IndexesElement> = (
                         checked: index.unique,
                       })}
                       style="width: 22px;"
-                      title="Unique"
+                      data-tippy-content="Unique"
                       @click=${() => onChangeIndexUnique(index)}
                     >
                       UQ

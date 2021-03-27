@@ -44,7 +44,7 @@ defineComponent('vuerd-icon', {
     },
   ],
   styleMap: {
-    display: 'flex',
+    display: 'inline-flex',
     height: '100%',
     alignItems: 'center',
   },
