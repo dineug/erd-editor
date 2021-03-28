@@ -3,7 +3,7 @@ import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { highlightThemes } from '@/engine/store/canvas.state';
 
 const defaultOptions: MenuOptions = {
-  nameWidth: 95,
+  nameWidth: 105,
   keymapWidth: 0,
   close: false,
 };

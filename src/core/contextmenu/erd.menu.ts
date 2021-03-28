@@ -9,7 +9,7 @@ import { createExportMenus } from './export.menu';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 75,
-  keymapWidth: 45,
+  keymapWidth: 50,
 };
 
 export function createERDMenus(

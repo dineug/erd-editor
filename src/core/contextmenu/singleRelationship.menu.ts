@@ -5,7 +5,7 @@ import { relationshipMenus } from './drawRelationship.menu';
 import { changeRelationshipType } from '@/engine/command/relationship.cmd.helper';
 
 const defaultOptions: MenuOptions = {
-  nameWidth: 70,
+  nameWidth: 75,
   keymapWidth: 0,
   close: false,
 };

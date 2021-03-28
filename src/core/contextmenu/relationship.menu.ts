@@ -5,7 +5,7 @@ import { removeRelationship } from '@/engine/command/relationship.cmd.helper';
 import { createSingleRelationship } from './singleRelationship.menu';
 
 const defaultOptions: MenuOptions = {
-  nameWidth: 100,
+  nameWidth: 110,
   keymapWidth: 0,
 };
 
