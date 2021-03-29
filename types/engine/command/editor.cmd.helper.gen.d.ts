@@ -32,3 +32,13 @@ export declare function drawStartAddRelationship$(
 export declare function loadJson$(
   value: string
 ): Generator<CommandType<'editor.clear'> | CommandType<'editor.loadJson'>>;
+
+export declare function initLoadJson$(
+  value: string
+): Generator<
+  CommandType<'editor.initClear'> | CommandType<'editor.initLoadJson'>
+>;
+
+export declare function pasteColumn$(
+  store: Store
+): Generator<CommandType<'column.addCustom'>>;

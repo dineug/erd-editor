@@ -10,6 +10,7 @@ import {
   FunctionalComponent,
   observable,
   beforeMount,
+  unmounted,
   watch,
   query,
 } from '@dineug/lit-observable';
@@ -178,6 +179,8 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
       eventBus.on(Contextmenu.close).subscribe(onCloseContextmenu)
     );
   });
+
+  unmounted(() => onCloseContextmenu());
 
   return () => {
     const {

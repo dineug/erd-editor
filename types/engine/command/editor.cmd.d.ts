@@ -47,6 +47,11 @@ export interface LoadJson {
   value: string;
 }
 
+export interface CopyColumn {
+  tableId: string;
+  columnIds: string[];
+}
+
 export interface EditorCommandMap {
   'editor.hasUndoRedo': HasUndoRedo;
   'editor.focusTable': FocusTable;
@@ -63,6 +68,9 @@ export interface EditorCommandMap {
   'editor.draggableColumn': DraggableColumn;
   'editor.draggableColumnEnd': null;
   'editor.loadJson': LoadJson;
+  'editor.initLoadJson': LoadJson;
   'editor.clear': null;
+  'editor.initClear': null;
   'editor.changeViewport': Viewport;
+  'editor.copyColumn': CopyColumn;
 }

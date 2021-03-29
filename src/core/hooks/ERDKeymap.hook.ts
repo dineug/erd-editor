@@ -34,6 +34,8 @@ import {
   focusMoveTable$,
   drawStartRelationship$,
   drawEndRelationship,
+  copyColumn,
+  pasteColumn$,
 } from '@/engine/command/editor.cmd.helper';
 import { Drawer } from '@/core/helper/event.helper';
 
@@ -123,6 +125,18 @@ export function useERDKeymap(ctx: HTMLElement) {
             editorState.focusTable.selectColumnIds
           )
         );
+
+      editorState.focusTable.selectColumnIds.length &&
+        keymapMatchAndStop(event, keymap.copyColumn) &&
+        store.dispatch(
+          copyColumn(
+            editorState.focusTable.table.id,
+            editorState.focusTable.selectColumnIds
+          )
+        );
+
+      keymapMatchAndStop(event, keymap.pasteColumn) &&
+        store.dispatch(pasteColumn$(store));
 
       editorState.focusTable.columnId &&
         keymapMatchAndStop(event, keymap.primaryKey) &&

@@ -1,6 +1,7 @@
 import { Store } from '@@types/engine/store';
 import { MoveKey } from '@@types/engine/store/editor.state';
 import { RelationshipType } from '@@types/engine/store/relationship.state';
+import { Column } from '@@types/engine/store/table.state';
 import {
   focusMoveTable,
   focusColumn,
@@ -9,6 +10,8 @@ import {
   drawEndRelationship,
   clear,
   loadJson,
+  initLoadJson,
+  initClear,
 } from './editor.cmd.helper';
 import { addColumn$, addCustomColumn } from './column.cmd.helper';
 import {
@@ -93,4 +96,47 @@ export function* drawStartAddRelationship$(
 export function* loadJson$(value: string) {
   yield clear();
   yield loadJson(value);
+}
+
+export function* initLoadJson$(value: string) {
+  yield initClear();
+  yield initLoadJson(value);
+}
+
+export function* pasteColumn$({ editorState, tableState: { tables } }: Store) {
+  const copyColumns = [...editorState.copyColumns];
+  const tableIds = tables
+    .filter(table => table.ui.active)
+    .map(table => table.id);
+
+  while (copyColumns.length && tableIds.length) {
+    const column = copyColumns.shift() as Column;
+    const { option, ui } = column;
+
+    yield addCustomColumn(
+      {
+        autoIncrement: option.autoIncrement,
+        primaryKey: option.primaryKey,
+        unique: option.unique,
+        notNull: option.notNull,
+      },
+      {
+        active: false,
+        pk: option.primaryKey,
+        fk: false,
+        pfk: false,
+      },
+      {
+        name: column.name,
+        dataType: column.dataType,
+        default: column.default,
+        comment: column.comment,
+        widthName: ui.widthName,
+        widthDataType: ui.widthDataType,
+        widthDefault: ui.widthDefault,
+        widthComment: ui.widthComment,
+      },
+      tableIds
+    );
+  }
 }

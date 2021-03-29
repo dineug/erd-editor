@@ -69,7 +69,18 @@ export const draggableColumnEnd = () =>
 export const loadJson = (value: string) =>
   createCommand('editor.loadJson', { value });
 
+export const initLoadJson = (value: string) =>
+  createCommand('editor.initLoadJson', { value });
+
 export const clear = () => createCommand('editor.clear', null);
+
+export const initClear = () => createCommand('editor.initClear', null);
 
 export const changeViewport = (width: number, height: number) =>
   createCommand('editor.changeViewport', { width, height });
+
+export const copyColumn = (tableId: string, columnIds: string[]) =>
+  createCommand('editor.copyColumn', {
+    tableId,
+    columnIds,
+  });

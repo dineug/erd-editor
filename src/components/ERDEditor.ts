@@ -49,6 +49,7 @@ import {
   changeViewport,
   clear,
   loadJson$,
+  initLoadJson$,
 } from '@/engine/command/editor.cmd.helper';
 import { ignoreEnterProcess } from '@/core/helper/operator.helper';
 import { Logger } from '@/core/logger';
@@ -174,7 +175,12 @@ key: ${event.key}
     store.dispatch(clear());
   };
 
-  ctx.initLoadJson = (json: string) => {};
+  ctx.initLoadJson = (json: string) => {
+    if (isString(json) && json.trim()) {
+      const { store } = context;
+      store.dispatch(initLoadJson$(json));
+    }
+  };
 
   ctx.loadSQLDDL = (sql: string) => {
     if (isString(sql) && sql.trim()) {

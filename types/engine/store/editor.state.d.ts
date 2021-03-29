@@ -1,6 +1,6 @@
 import { PanelConfig } from '../../core/panel';
 import { ColumnType } from './canvas.state';
-import { Table } from './table.state';
+import { Table, Column } from './table.state';
 import { RelationshipType, Point } from './relationship.state';
 
 export interface EditorState {
@@ -11,6 +11,7 @@ export interface EditorState {
   drawRelationship: DrawRelationship | null;
   draggableColumn: DraggableColumn | null;
   viewport: Viewport;
+  copyColumns: Column[];
 }
 
 export interface FocusTable {

@@ -8,15 +8,14 @@ import {
   FocusTable,
   FocusColumn,
   FocusMoveTable,
-} from '@@types/engine/command/editor.cmd';
-import {
   DrawStartRelationship,
   DrawStartAddRelationship,
   DrawRelationship,
   LoadJson,
+  CopyColumn,
 } from '@@types/engine/command/editor.cmd';
 import { JsonFormat } from '@@types/core/file';
-import { getData, isObject, isString, isEmpty } from '@/core/helper';
+import { getData, isObject, isEmpty, cloneDeep } from '@/core/helper';
 import {
   appendSelectColumns,
   selectRangeColumns,
@@ -394,6 +393,22 @@ export function executeChangeViewport(
   viewport.height = data.height;
 }
 
+export function executeCopyColumn(
+  { tableState: { tables }, editorState: { copyColumns } }: State,
+  data: CopyColumn
+) {
+  const table = getData(tables, data.tableId);
+  if (!table) return;
+
+  copyColumns.splice(0, copyColumns.length);
+  data.columnIds.forEach(columnId => {
+    const column = getData(table.columns, columnId);
+    if (!column) return;
+
+    copyColumns.push(cloneDeep(column));
+  });
+}
+
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
@@ -410,6 +425,9 @@ export const executeEditorCommandMap = {
   'editor.draggableColumn': executeDraggableColumn,
   'editor.draggableColumnEnd': executeDraggableColumnEnd,
   'editor.loadJson': executeLoadJson,
+  'editor.initLoadJson': executeLoadJson,
   'editor.clear': executeClear,
+  'editor.initClear': executeClear,
   'editor.changeViewport': executeChangeViewport,
+  'editor.copyColumn': executeCopyColumn,
 };
