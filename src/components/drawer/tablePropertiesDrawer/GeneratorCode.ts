@@ -23,7 +23,7 @@ import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useContext } from '@/core/hooks/context.hook';
 import { GeneratorCodeStyle } from './GeneratorCode.style';
 import { ScrollbarStyle } from '@/components/css/scrollbar.style';
-import { Contextmenu } from '@/core/helper/event.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -109,7 +109,7 @@ const GeneratorCode: FunctionalComponent<
 
         menue.children = createColumnNameCaseMenus(context);
       }),
-      eventBus.on(Contextmenu.close).subscribe(onCloseContextmenu)
+      eventBus.on(Bus.Contextmenu.close).subscribe(onCloseContextmenu)
     );
   });
 

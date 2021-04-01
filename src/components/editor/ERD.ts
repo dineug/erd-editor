@@ -32,7 +32,7 @@ import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useERDKeymap } from '@/core/hooks/ERDKeymap.hook';
 import { useMousePosition } from '@/core/hooks/mousePosition.hook';
 import { getBase64Icon } from '@/core/icon';
-import { Contextmenu } from '@/core/helper/event.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { getData } from '@/core/helper';
 import { IndexStyle } from './index.style';
 
@@ -176,7 +176,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
 
         menue.children = createDatabaseMenus(contextRef.value);
       }),
-      eventBus.on(Contextmenu.close).subscribe(onCloseContextmenu)
+      eventBus.on(Bus.Contextmenu.close).subscribe(onCloseContextmenu)
     );
   });
 

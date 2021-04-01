@@ -35,7 +35,7 @@ import {
   editTableEnd,
   editTable,
 } from '@/engine/command/editor.cmd.helper';
-import { BalanceRange } from '@/core/helper/event.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { FlipAnimation } from '@/core/flipAnimation';
 import { relationshipSort } from '@/engine/store/helper/relationship.helper';
 import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from '@/core/layout';
@@ -113,7 +113,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
 
       drag$.subscribe({
         next: onMove,
-        complete: () => eventBus.emit(BalanceRange.move),
+        complete: () => eventBus.emit(Bus.BalanceRange.move),
       });
     }
     if (!el.closest('vuerd-input-edit')) {
@@ -210,7 +210,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
 
     unmountedGroup.push(
       draggable$.pipe(debounceTime(50)).subscribe(onDraggableColumn),
-      eventBus.on(BalanceRange.move).subscribe(moveBalance)
+      eventBus.on(Bus.BalanceRange.move).subscribe(moveBalance)
     );
   });
 

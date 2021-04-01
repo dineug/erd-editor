@@ -6,22 +6,25 @@ import {
   beforeMount,
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
-import { useContext } from '@/core/hooks/context.hook';
 import {
   changeDatabaseName,
   resizeCanvas,
   zoomCanvas,
 } from '@/engine/command/canvas.cmd.helper';
-import { onNumberOnly } from '@/core/helper/dom.helper';
+import { findActive$ } from '@/engine/command/editor.cmd.helper';
 import {
   canvasSizeRange,
   zoomLevelRange,
   zoomDisplayFormat,
 } from '@/engine/store/helper/canvas.helper';
+import { onNumberOnly } from '@/core/helper/dom.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useMenubarPanels } from '@/core/hooks/menubarPanels.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { useContext } from '@/core/hooks/context.hook';
 import { panels } from '@/core/panel';
+import { keymapOptionsToString } from '@/core/keymap';
 import { MenubarStyle } from './Menubar.style';
 
 declare global {
@@ -72,6 +75,12 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
     store.dispatch(zoomCanvas(zoomLevel));
   };
 
+  const onFind = () => {
+    const { store, eventBus } = contextRef.value;
+    store.dispatch(findActive$());
+    eventBus.emit(Bus.Drawer.close);
+  };
+
   const onOpenHelp = () => ctx.dispatchEvent(new CustomEvent('open-help'));
   const onOpenSetting = () =>
     ctx.dispatchEvent(new CustomEvent('open-setting'));
@@ -86,7 +95,10 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
   });
 
   return () => {
-    const { canvasState } = contextRef.value.store;
+    const { store, keymap } = contextRef.value;
+    const {
+      canvasState: { databaseName, width, zoomLevel, canvasType },
+    } = store;
 
     return html`
       <div
@@ -103,7 +115,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
           data-tippy-content="database name"
           placeholder="database name"
           spellcheck="false"
-          .value=${canvasState.databaseName}
+          .value=${databaseName}
           @input=${onChangeDatabaseName}
         />
         <input
@@ -113,7 +125,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
           data-tippy-content="canvas size"
           spellcheck="false"
           placeholder="canvas size"
-          .value=${canvasState.width.toString()}
+          .value=${width.toString()}
           @input=${onNumberOnly}
           @change=${onResizeCanvas}
         />
@@ -124,7 +136,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
           data-tippy-content="zoom level"
           spellcheck="false"
           placeholder="zoom level"
-          .value=${zoomDisplayFormat(canvasState.zoomLevel)}
+          .value=${zoomDisplayFormat(zoomLevel)}
           @input=${onNumberOnly}
           @change=${onZoomLevel}
         />
@@ -145,6 +157,19 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
           <vuerd-icon name="cog" size="16"></vuerd-icon>
         </div>
         <div class="vuerd-menubar-menu-vertical"></div>
+        ${canvasType === 'ERD'
+          ? html`
+              <div
+                class="vuerd-menubar-menu"
+                data-tippy-content="Find [${keymapOptionsToString(
+                  keymap.find
+                )}]"
+                @click=${onFind}
+              >
+                <vuerd-icon name="search" size="16"></vuerd-icon>
+              </div>
+            `
+          : null}
       </div>
     `;
   };

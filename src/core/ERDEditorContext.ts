@@ -2,10 +2,8 @@ import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { observable } from '@dineug/lit-observable';
 import { createTheme } from './theme';
 import { createKeymap } from './keymap';
-import {
-  createGlobalEventObservable,
-  createEventBus,
-} from './helper/event.helper';
+import { createGlobalEventObservable } from './helper/event.helper';
+import { createEventBus } from './helper/eventBus.helper';
 import { createStore } from '@/engine/store';
 import { createCommand } from '@/engine/command';
 import { Helper } from '@/core/helper/editor.helper';

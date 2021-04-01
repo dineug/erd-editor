@@ -18,7 +18,7 @@ import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useContext } from '@/core/hooks/context.hook';
 import { SQLDDLStyle } from './SQLDDL.style';
 import { ScrollbarStyle } from '@/components/css/scrollbar.style';
-import { Contextmenu } from '@/core/helper/event.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -86,7 +86,7 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
 
         menue.children = createHighlightThemeMenus(context);
       }),
-      eventBus.on(Contextmenu.close).subscribe(onCloseContextmenu)
+      eventBus.on(Bus.Contextmenu.close).subscribe(onCloseContextmenu)
     );
   });
 

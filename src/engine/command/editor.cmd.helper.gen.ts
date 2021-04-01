@@ -12,6 +12,7 @@ import {
   loadJson,
   initLoadJson,
   initClear,
+  findActive,
 } from './editor.cmd.helper';
 import { addColumn$, addCustomColumn } from './column.cmd.helper';
 import {
@@ -21,6 +22,8 @@ import {
   isLastColumn,
   isLastRowColumn,
 } from './helper/editor.focus.helper';
+import { selectEndTable$ } from './table.cmd.helper';
+import { selectEndMemo } from './memo.cmd.helper';
 import { getData } from '@/core/helper';
 
 export function* focusMoveTable$(
@@ -139,4 +142,10 @@ export function* pasteColumn$({ editorState, tableState: { tables } }: Store) {
       tableIds
     );
   }
+}
+
+export function* findActive$() {
+  yield findActive();
+  yield selectEndTable$();
+  yield selectEndMemo();
 }

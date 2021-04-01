@@ -80,3 +80,7 @@ export declare function copyColumn(
   tableId: string,
   columnIds: string[]
 ): CommandType<'editor.copyColumn'>;
+
+export declare function findActive(): CommandType<'editor.findActive'>;
+
+export declare function findActiveEnd(): CommandType<'editor.findActiveEnd'>;

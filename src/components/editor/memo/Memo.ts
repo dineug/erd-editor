@@ -24,7 +24,7 @@ import {
 } from '@/engine/command/memo.cmd.helper';
 import { keymapOptionsToString } from '@/core/keymap';
 import { onStopPropagation } from '@/core/helper/dom.helper';
-import { BalanceRange } from '@/core/helper/event.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { sashTpl } from './Memo.template';
 
 declare global {
@@ -81,7 +81,7 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
 
       drag$.subscribe({
         next: onMove,
-        complete: () => eventBus.emit(BalanceRange.move),
+        complete: () => eventBus.emit(Bus.BalanceRange.move),
       });
     }
     store.dispatch(
@@ -137,7 +137,9 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
 
   beforeMount(() => {
     const { eventBus } = contextRef.value;
-    unmountedGroup.push(eventBus.on(BalanceRange.move).subscribe(moveBalance));
+    unmountedGroup.push(
+      eventBus.on(Bus.BalanceRange.move).subscribe(moveBalance)
+    );
   });
 
   mounted(() => {

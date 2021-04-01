@@ -1,7 +1,7 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { keymapOptionToString, keymapOptionsToString } from '@/core/keymap';
-import { Drawer } from '@/core/helper/event.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { changeColumnPrimaryKey$ } from '@/engine/command/column.cmd.helper';
 
 const defaultOptions: MenuOptions = {
@@ -50,7 +50,7 @@ export const createTableMenus = (
       keymap: keymapOptionToString(keymap.tableProperties[0]),
       keymapTooltip: keymapOptionsToString(keymap.tableProperties),
       execute: () =>
-        eventBus.emit(Drawer.openTableProperties, {
+        eventBus.emit(Bus.Drawer.openTableProperties, {
           tableId,
         }),
     },

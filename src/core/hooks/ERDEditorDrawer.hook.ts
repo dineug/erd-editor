@@ -1,7 +1,7 @@
 import { ERDEditorProps } from '@@types/components/ERDEditorElement';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { html, observable, beforeMount } from '@dineug/lit-observable';
-import { Drawer } from '@/core/helper/event.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 import {
   selectTable$,
   selectEndTable$,
@@ -61,7 +61,7 @@ export function useERDEditorDrawer(
 
   beforeMount(() =>
     unmountedGroup.push(
-      eventBus.on(Drawer.openTableProperties).subscribe(data => {
+      eventBus.on(Bus.Drawer.openTableProperties).subscribe(data => {
         store.dispatch(
           selectEndMemo(),
           drawEndRelationship(),
@@ -69,7 +69,8 @@ export function useERDEditorDrawer(
         );
         tableId = data.tableId;
         openTableProperties();
-      })
+      }),
+      eventBus.on(Bus.Drawer.close).subscribe(closeDrawer)
     )
   );
 

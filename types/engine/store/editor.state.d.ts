@@ -12,6 +12,7 @@ export interface EditorState {
   draggableColumn: DraggableColumn | null;
   viewport: Viewport;
   copyColumns: Column[];
+  findActive: boolean;
 }
 
 export interface FocusTable {

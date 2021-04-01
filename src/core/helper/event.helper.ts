@@ -1,5 +1,5 @@
 import { GlobalEventObservable, Move } from '@/internal-types/event.helper';
-import { fromEvent, merge, Observable } from 'rxjs';
+import { fromEvent, merge } from 'rxjs';
 import { map, filter, takeUntil } from 'rxjs/operators';
 
 const userAgent = window.navigator.userAgent.toLowerCase();
@@ -76,42 +76,4 @@ export function createGlobalEventObservable(): GlobalEventObservable {
       subscription.unsubscribe();
     },
   };
-}
-
-export function createEventBus() {
-  const bus = document.createElement('div');
-
-  const on = (eventName: string) =>
-    new Observable<any>(subscriber => {
-      const handler = (event: any) => subscriber.next(event.detail);
-
-      bus.addEventListener(eventName, handler);
-
-      return () => bus.removeEventListener(eventName, handler);
-    });
-
-  const emit = (eventName: string, detail?: any) => {
-    bus.dispatchEvent(
-      new CustomEvent(eventName, {
-        detail,
-      })
-    );
-  };
-
-  return {
-    on,
-    emit,
-  };
-}
-
-export enum BalanceRange {
-  move = 'BalanceRange.move',
-}
-
-export enum Drawer {
-  openTableProperties = 'Drawer.openTableProperties',
-}
-
-export enum Contextmenu {
-  close = 'Contextmenu.close',
 }

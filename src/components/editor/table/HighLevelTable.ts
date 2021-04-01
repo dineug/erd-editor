@@ -12,7 +12,7 @@ import { Tween, Easing } from '@tweenjs/tween.js';
 import { useContext } from '@/core/hooks/context.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { relationshipSort } from '@/engine/store/helper/relationship.helper';
-import { BalanceRange } from '@/core/helper/event.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { selectTable$, moveTable } from '@/engine/command/table.cmd.helper';
 import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from '@/core/layout';
 
@@ -86,7 +86,7 @@ const HighLevelTable: FunctionalComponent<
 
       drag$.subscribe({
         next: onMove,
-        complete: () => eventBus.emit(BalanceRange.move),
+        complete: () => eventBus.emit(Bus.BalanceRange.move),
       });
     }
     if (!el.closest('vuerd-input-edit')) {
@@ -128,7 +128,9 @@ const HighLevelTable: FunctionalComponent<
 
   beforeMount(() => {
     const { eventBus } = contextRef.value;
-    unmountedGroup.push(eventBus.on(BalanceRange.move).subscribe(moveBalance));
+    unmountedGroup.push(
+      eventBus.on(Bus.BalanceRange.move).subscribe(moveBalance)
+    );
   });
 
   return () => {

@@ -60,7 +60,7 @@ import { sortTable } from '@/engine/command/table.cmd.helper';
 import { SettingDrawerStyle } from './drawer/SettingDrawer.style';
 import { TablePropertiesDrawerStyle } from './drawer/tablePropertiesDrawer/TablePropertiesDrawer.style';
 import { ERDEditorStyle } from './ERDEditor.style';
-import { Contextmenu } from '@/core/helper/event.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 
 const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   props,
@@ -133,7 +133,8 @@ key: ${event.key}
 
           helper.keydown$.next(event);
           if (keymapMatchAndStop(event, keymap.stop)) {
-            eventBus.emit(Contextmenu.close);
+            eventBus.emit(Bus.Contextmenu.close);
+            eventBus.emit(Bus.Find.close);
             closeDrawer();
             onFocus();
           }

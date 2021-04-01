@@ -36,8 +36,9 @@ import {
   drawEndRelationship,
   copyColumn,
   pasteColumn$,
+  findActive$,
 } from '@/engine/command/editor.cmd.helper';
-import { Drawer } from '@/core/helper/event.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 
 const changeColumnMap = {
   columnNotNull: changeColumnNotNull,
@@ -104,11 +105,16 @@ export function useERDKeymap(ctx: HTMLElement) {
         const table = store.tableState.tables.find(table => table.ui.active);
         if (!table) return;
 
-        eventBus.emit(Drawer.openTableProperties, {
+        eventBus.emit(Bus.Drawer.openTableProperties, {
           tableId: editorState.focusTable
             ? editorState.focusTable.table.id
             : table.id,
         });
+      }
+
+      if (keymapMatchAndStop(event, keymap.find)) {
+        store.dispatch(findActive$());
+        eventBus.emit(Bus.Drawer.close);
       }
     }
 
@@ -189,8 +195,10 @@ export function useERDKeymap(ctx: HTMLElement) {
       }
     }
 
-    keymapMatchAndStop(event, keymap.stop) &&
+    if (keymapMatchAndStop(event, keymap.stop)) {
+      // TODO: findActiveEnd
       store.dispatch(selectEndMemo(), drawEndRelationship(), selectEndTable$());
+    }
 
     keymapMatchAndStop(event, keymap.undo) && store.undo();
     keymapMatchAndStop(event, keymap.redo) && store.redo();

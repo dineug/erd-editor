@@ -84,3 +84,7 @@ export const copyColumn = (tableId: string, columnIds: string[]) =>
     tableId,
     columnIds,
   });
+
+export const findActive = () => createCommand('editor.findActive', null);
+
+export const findActiveEnd = () => createCommand('editor.findActiveEnd', null);

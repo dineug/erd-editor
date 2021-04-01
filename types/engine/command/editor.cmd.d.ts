@@ -73,4 +73,6 @@ export interface EditorCommandMap {
   'editor.initClear': null;
   'editor.changeViewport': Viewport;
   'editor.copyColumn': CopyColumn;
+  'editor.findActive': null;
+  'editor.findActiveEnd': null;
 }

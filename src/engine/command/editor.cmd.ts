@@ -409,6 +409,14 @@ export function executeCopyColumn(
   });
 }
 
+export function executeFindActive({ editorState }: State) {
+  editorState.findActive = true;
+}
+
+export function executeFindActiveEnd({ editorState }: State) {
+  editorState.findActive = false;
+}
+
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
@@ -430,4 +438,6 @@ export const executeEditorCommandMap = {
   'editor.initClear': executeClear,
   'editor.changeViewport': executeChangeViewport,
   'editor.copyColumn': executeCopyColumn,
+  'editor.findActive': executeFindActive,
+  'editor.findActiveEnd': executeFindActiveEnd,
 };
