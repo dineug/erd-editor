@@ -14,11 +14,6 @@ import {
   ERDEditorProps,
   ERDEditorElement,
 } from '@@types/components/ERDEditorElement';
-import { PanelConfig } from '@@types/core/panel';
-import { Theme } from '@@types/core/theme';
-import { Keymap } from '@@types/core/keymap';
-import { User } from '@@types/core/share';
-import { ExtensionConfig } from '@@types/core/extension';
 import {
   defineComponent,
   html,
@@ -32,32 +27,24 @@ import { styleMap } from 'lit-html/directives/style-map';
 import { cache } from 'lit-html/directives/cache';
 import { fromEvent } from 'rxjs';
 import { createdERDEditorContext } from '@/core/ERDEditorContext';
-import { loadTheme } from '@/core/theme';
-import { loadKeymap, keymapMatchAndStop } from '@/core/keymap';
+import { keymapMatchAndStop } from '@/core/keymap';
 import {
   DEFAULT_WIDTH,
   DEFAULT_HEIGHT,
   SIZE_MENUBAR_HEIGHT,
 } from '@/core/layout';
-import { isArray, isString } from '@/core/helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useERDEditorGhost } from '@/core/hooks/ERDEditorGhost.hook';
 import { useERDEditorDrawer } from '@/core/hooks/ERDEditorDrawer.hook';
+import { useERDEditorElement } from '@/core/hooks/ERDEditorElement.hook';
 import { usePanelView } from '@/core/hooks/panelView.hook';
 import {
   editTableEnd,
   changeViewport,
-  clear,
-  loadJson$,
-  initLoadJson$,
 } from '@/engine/command/editor.cmd.helper';
-import { sortTable } from '@/engine/command/table.cmd.helper';
 import { ignoreEnterProcess } from '@/core/helper/operator.helper';
 import { Bus } from '@/core/helper/eventBus.helper';
 import { Logger } from '@/core/logger';
-import { DDLParser } from '@dineug/sql-ddl-parser';
-import { createJson } from '@/core/parser/SQLParserToJson';
-import { createJsonStringify } from '@/core/file';
 import { IndexStyle } from './index.style';
 
 const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
@@ -66,7 +53,6 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
 ) => {
   const context = createdERDEditorContext();
   const { store, helper, keymap, eventBus } = context;
-  const { editorState } = store;
   const editorRef = query<HTMLElement>('.vuerd-editor');
   const { ghostTpl, ghostState, setFocus, onFocus } = useERDEditorGhost(
     context,
@@ -78,6 +64,8 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   );
   const { hasPanel, panelTpl } = usePanelView(props, context);
   const { unmountedGroup } = useUnmounted();
+  useERDEditorElement(context, ctx, { setFocus });
+
   // @ts-ignore
   const resizeObserver = new ResizeObserver(entries => {
     entries.forEach((entry: any) => {
@@ -145,60 +133,6 @@ key: ${event.key}
     // helper.destroy();
     resizeObserver.disconnect();
   });
-
-  Object.defineProperty(ctx, 'value', {
-    get() {
-      const { store } = context;
-      return createJsonStringify(store);
-    },
-    set(json: string) {
-      const { store } = context;
-      isString(json) && json.trim()
-        ? store.dispatch(loadJson$(json))
-        : store.dispatch(clear());
-    },
-  });
-
-  ctx.focus = () => {
-    helper.focus();
-    setFocus();
-  };
-  ctx.blur = () => {
-    helper.blur();
-    setFocus();
-  };
-
-  ctx.clear = () => {
-    const { store } = context;
-    store.dispatch(clear());
-  };
-
-  ctx.initLoadJson = (json: string) => {
-    if (isString(json) && json.trim()) {
-      const { store } = context;
-      store.dispatch(initLoadJson$(json));
-    }
-  };
-
-  ctx.loadSQLDDL = (sql: string) => {
-    if (isString(sql) && sql.trim()) {
-      const { store, helper } = context;
-      const statements = DDLParser(sql);
-      const json = createJson(statements, helper, store.canvasState.database);
-      store.dispatch(loadJson$(json), sortTable());
-    }
-  };
-
-  ctx.setTheme = (theme: Partial<Theme>) => loadTheme(context.theme, theme);
-  ctx.setKeymap = (keymap: Partial<Keymap>) =>
-    loadKeymap(context.keymap, keymap);
-
-  ctx.setUser = (user: User) => {};
-
-  ctx.extension = (config: Partial<ExtensionConfig>) => {
-    isArray(config.panels) &&
-      editorState.panels.push(...(config.panels as PanelConfig[]));
-  };
 
   return () => {
     const width = props.width;
