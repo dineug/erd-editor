@@ -13,6 +13,7 @@ export interface EditorState {
   viewport: Viewport;
   copyColumns: Column[];
   findActive: boolean;
+  readonly: boolean;
 }
 
 export interface FocusTable {

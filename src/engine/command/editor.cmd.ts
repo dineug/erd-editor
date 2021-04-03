@@ -13,6 +13,7 @@ import {
   DrawRelationship,
   LoadJson,
   CopyColumn,
+  ReadonlyEditor,
 } from '@@types/engine/command/editor.cmd';
 import { JsonFormat } from '@@types/core/file';
 import { getData, isObject, isEmpty, cloneDeep } from '@/core/helper';
@@ -417,6 +418,13 @@ export function executeFindActiveEnd({ editorState }: State) {
   editorState.findActive = false;
 }
 
+export function executeReadonlyEditor(
+  { editorState }: State,
+  data: ReadonlyEditor
+) {
+  editorState.readonly = data.readonly;
+}
+
 export const executeEditorCommandMap = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
@@ -440,4 +448,5 @@ export const executeEditorCommandMap = {
   'editor.copyColumn': executeCopyColumn,
   'editor.findActive': executeFindActive,
   'editor.findActiveEnd': executeFindActiveEnd,
+  'editor.readonly': executeReadonlyEditor,
 };

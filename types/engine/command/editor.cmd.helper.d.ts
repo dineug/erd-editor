@@ -84,3 +84,7 @@ export declare function copyColumn(
 export declare function findActive(): CommandType<'editor.findActive'>;
 
 export declare function findActiveEnd(): CommandType<'editor.findActiveEnd'>;
+
+export declare function readonlyEditor(
+  readonly: boolean
+): CommandType<'editor.readonly'>;

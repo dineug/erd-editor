@@ -20,13 +20,12 @@ const hookKeys: CommandKey[] = [
   'column.move',
   'editor.loadJson',
 ];
-const match = new RegExp(hookKeys.join('|'), 'i');
 
 export function useRelationshipSort(
   { tableState: { tables }, relationshipState: { relationships } }: State,
   commandName: CommandKey
 ) {
-  if (!match.test(commandName)) return;
+  if (!hookKeys.includes(commandName)) return;
 
   relationshipSort(tables, relationships);
 }

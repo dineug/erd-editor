@@ -120,7 +120,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
     const { store, keymap } = contextRef.value;
     const {
       canvasState: { databaseName, width, zoomLevel, canvasType },
-      editorState: { hasUndo, hasRedo },
+      editorState: { hasUndo, hasRedo, readonly },
     } = store;
 
     return html`
@@ -128,8 +128,8 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
         <div
           class=${classMap({
             'vuerd-editor-status': true,
-            focus: props.focusState, // TODO: readonly mode
-            edit: props.focusState,
+            focus: props.focusState && readonly,
+            edit: props.focusState && !readonly,
           })}
           data-tippy-content="Editor Status"
         ></div>
@@ -140,6 +140,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
           data-tippy-content="database name"
           placeholder="database name"
           spellcheck="false"
+          ?disabled=${readonly}
           .value=${databaseName}
           @input=${onChangeDatabaseName}
         />
@@ -150,6 +151,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
           data-tippy-content="canvas size"
           spellcheck="false"
           placeholder="canvas size"
+          ?disabled=${readonly}
           .value=${width.toString()}
           @input=${onNumberOnly}
           @change=${onResizeCanvas}
@@ -197,7 +199,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
                 class=${classMap({
                   'vuerd-menubar-menu': true,
                   'undo-redo': true,
-                  active: hasUndo,
+                  active: hasUndo && !readonly,
                 })}
                 data-tippy-content=${`Undo [${keymapOptionsToString(
                   keymap.undo
@@ -210,7 +212,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
                 class=${classMap({
                   'vuerd-menubar-menu': true,
                   'undo-redo': true,
-                  active: hasRedo,
+                  active: hasRedo && !readonly,
                 })}
                 data-tippy-content=${`Redo [${keymapOptionsToString(
                   keymap.redo

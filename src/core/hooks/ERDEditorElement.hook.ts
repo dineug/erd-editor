@@ -90,8 +90,9 @@ export function useERDEditorElement(
 
   beforeMount(() =>
     unmountedGroup.push(
-      store.change$.subscribe(() =>
-        ctx.dispatchEvent(new CustomEvent('change'))
+      store.change$.subscribe(
+        () =>
+          editorState.readonly || ctx.dispatchEvent(new CustomEvent('change'))
       )
     )
   );

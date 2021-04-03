@@ -4,8 +4,6 @@ import { debounceTime, groupBy, mergeMap, buffer, map } from 'rxjs/operators';
 import { streamCommandTypes } from '@/engine/command/helper';
 import { notEmptyCommands } from '@/core/operators/notEmptyCommands';
 
-const match = new RegExp(streamCommandTypes.join('|'), 'i');
-
 export const groupByStreamCommands = (
   source$: Observable<Array<CommandTypeAll>>
 ) =>
@@ -16,7 +14,7 @@ export const groupByStreamCommands = (
         const streamCommands: CommandTypeAll[] = [];
 
         commands.forEach(command => {
-          match.test(command.name)
+          streamCommandTypes.includes(command.name)
             ? streamCommands.push(command)
             : batchCommands.push(command);
         });
@@ -29,7 +27,9 @@ export const groupByStreamCommands = (
     })
   ).pipe(
     notEmptyCommands,
-    groupBy(commands => commands.some(command => match.test(command.name))),
+    groupBy(commands =>
+      commands.some(command => streamCommandTypes.includes(command.name))
+    ),
     mergeMap(group$ =>
       group$.key
         ? group$.pipe(

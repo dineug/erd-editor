@@ -131,6 +131,10 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
 
   const onDragSelect = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement;
+    const {
+      store,
+      globalEvent: { drag$ },
+    } = contextRef.value;
 
     onCloseContextmenu();
 
@@ -143,11 +147,6 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
       !el.closest('.vuerd-memo') &&
       !el.closest('.vuerd-input')
     ) {
-      const {
-        store,
-        globalEvent: { drag$ },
-      } = contextRef.value;
-
       store.dispatch(selectEndTable$(), selectEndMemo());
 
       if (event.type === 'mousedown' && (event.ctrlKey || event.metaKey)) {

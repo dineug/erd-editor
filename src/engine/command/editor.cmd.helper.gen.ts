@@ -13,6 +13,9 @@ import {
   initLoadJson,
   initClear,
   findActive,
+  readonlyEditor,
+  draggableColumnEnd,
+  editTableEnd,
 } from './editor.cmd.helper';
 import { addColumn$, addCustomColumn } from './column.cmd.helper';
 import {
@@ -148,4 +151,15 @@ export function* findActive$() {
   yield findActive();
   yield selectEndTable$();
   yield selectEndMemo();
+}
+
+export function* readonlyEditor$(readonly: boolean) {
+  if (readonly) {
+    yield editTableEnd();
+    yield drawEndRelationship();
+    yield draggableColumnEnd();
+    yield readonlyEditor(readonly);
+  } else {
+    yield readonlyEditor(readonly);
+  }
 }

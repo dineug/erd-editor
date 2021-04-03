@@ -16,14 +16,19 @@ export const MenubarStyle = css`
     height: 10px;
     margin-left: 15px;
     border-radius: 50%;
+    transition: box-shadow 0.4s ease-in-out, background-color 0.4s ease-in-out;
   }
 
   .vuerd-editor-status.focus {
     background-color: var(--vuerd-color-focus);
+    box-shadow: 0 0 5px var(--vuerd-color-focus), 0 0 20px rgb(255 255 0 / 0.8),
+      0 0 35px rgb(255 255 0 / 0.7), 0 0 50px rgb(255 255 0 / 0.6);
   }
 
   .vuerd-editor-status.edit {
     background-color: var(--vuerd-color-edit);
+    box-shadow: 0 0 5px var(--vuerd-color-edit), 0 0 20px rgb(255 255 0 / 0.8),
+      0 0 35px rgb(255 255 0 / 0.7), 0 0 50px rgb(255 255 0 / 0.6);
   }
 
   .vuerd-menubar-input {

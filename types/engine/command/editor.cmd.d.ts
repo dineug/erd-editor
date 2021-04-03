@@ -52,6 +52,10 @@ export interface CopyColumn {
   columnIds: string[];
 }
 
+export interface ReadonlyEditor {
+  readonly: boolean;
+}
+
 export interface EditorCommandMap {
   'editor.hasUndoRedo': HasUndoRedo;
   'editor.focusTable': FocusTable;
@@ -75,4 +79,5 @@ export interface EditorCommandMap {
   'editor.copyColumn': CopyColumn;
   'editor.findActive': null;
   'editor.findActiveEnd': null;
+  'editor.readonly': ReadonlyEditor;
 }

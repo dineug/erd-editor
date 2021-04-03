@@ -78,6 +78,11 @@ const Indexes: FunctionalComponent<IndexesProps, IndexesElement> = (
   });
 
   return () => {
+    const {
+      store: {
+        editorState: { readonly },
+      },
+    } = contextRef.value;
     const { table } = props;
     const indexes = getIndexes();
 
@@ -123,6 +128,7 @@ const Indexes: FunctionalComponent<IndexesProps, IndexesElement> = (
                       type="text"
                       placeholder="index name"
                       spellcheck="false"
+                      ?disabled=${readonly}
                       .value=${index.name}
                       @input=${(event: Event) => onInput(event, index)}
                     />

@@ -2,13 +2,12 @@ import { CommandKey } from '@@types/engine/command';
 import { State } from '@@types/engine/store';
 
 const hookKeys: CommandKey[] = ['editor.loadJson'];
-const match = new RegExp(hookKeys.join('|'), 'i');
 
 export function useResetZIndex(
   { tableState: { tables }, memoState: { memos } }: State,
   commandName: CommandKey
 ) {
-  if (!match.test(commandName)) return;
+  if (!hookKeys.includes(commandName)) return;
 
   const uiList = [
     ...tables.map(table => table.ui),

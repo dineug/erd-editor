@@ -14,6 +14,7 @@ import { executeHistoryCommand } from '@/engine/history';
 import { notEmptyCommands } from '@/core/operators/notEmptyCommands';
 import { commandsFilter } from '@/core/operators/commandsFilter';
 import { groupByStreamCommands } from '@/core/operators/groupByStreamCommands';
+import { readonlyCommands } from '@/core/operators/readonlyCommands';
 import { historyCommandTypes } from '@/engine/command/helper';
 import { hasUndoRedo, focusTableEnd } from '@/engine/command/editor.cmd.helper';
 
@@ -36,13 +37,13 @@ export function createStore(): IStore {
   );
 
   const undo = () => {
-    if (!history.hasUndo()) return;
+    if (!history.hasUndo() || state.editorState.readonly) return;
     dispatch(focusTableEnd());
     history.undo();
   };
 
   const redo = () => {
-    if (!history.hasRedo()) return;
+    if (!history.hasRedo() || state.editorState.readonly) return;
     dispatch(focusTableEnd());
     history.redo();
   };
@@ -69,12 +70,12 @@ export function createStore(): IStore {
     history$.pipe(notEmptyCommands).subscribe(command),
     dispatch$
       .pipe(
-        notEmptyCommands,
+        readonlyCommands(state),
         commandsFilter(historyCommandTypes),
         groupByStreamCommands
       )
       .subscribe(historyCommand),
-    dispatch$.pipe(notEmptyCommands).subscribe(command)
+    dispatch$.pipe(readonlyCommands(state)).subscribe(command)
   );
 
   return store;

@@ -89,6 +89,7 @@ const SettingDrawer: FunctionalComponent<
   return () => {
     const {
       canvasState: { setting },
+      editorState: { readonly },
     } = contextRef.value.store;
 
     return html`
@@ -110,6 +111,7 @@ const SettingDrawer: FunctionalComponent<
                   <input
                     type="checkbox"
                     ?checked=${setting.relationshipDataTypeSync}
+                    ?disabled=${readonly}
                     @change=${onChangeRelationshipDataTypeSync}
                   />
                   <span class="slider round"></span>

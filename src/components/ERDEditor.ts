@@ -41,6 +41,7 @@ import { usePanelView } from '@/core/hooks/panelView.hook';
 import {
   editTableEnd,
   changeViewport,
+  readonlyEditor$,
 } from '@/engine/command/editor.cmd.helper';
 import { ignoreEnterProcess } from '@/core/operators/ignoreEnterProcess';
 import { Bus } from '@/core/helper/eventBus.helper';
@@ -89,6 +90,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
 
   mounted(() => {
     props.automaticLayout && resizeObserver.observe(editorRef.value);
+    store.dispatch(readonlyEditor$(props.readonly));
 
     unmountedGroup.push(
       watch(props, propName => {
@@ -104,6 +106,11 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
         if (propName !== 'width' && propName !== 'height') return;
 
         store.dispatch(changeViewport(props.width, props.height));
+      }),
+      watch(props, propName => {
+        if (propName !== 'readonly') return;
+
+        store.dispatch(readonlyEditor$(props.readonly));
       }),
       fromEvent<KeyboardEvent>(editorRef.value, 'keydown')
         .pipe(ignoreEnterProcess)
@@ -180,6 +187,11 @@ const componentOptions = {
     },
     {
       name: 'automaticLayout',
+      type: Boolean,
+      default: false,
+    },
+    {
+      name: 'readonly',
       type: Boolean,
       default: false,
     },

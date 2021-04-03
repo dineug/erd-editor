@@ -6,6 +6,7 @@ import {
 } from '@dineug/lit-observable';
 import { useColumnHint } from '@/core/hooks/columnHint.hook';
 import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
+import { useContext } from '@/core/hooks/context.hook';
 import { hintTpl } from './IndexAddColumn.template';
 
 declare global {
@@ -27,6 +28,7 @@ const IndexAddColumn: FunctionalComponent<
   IndexAddColumnProps,
   IndexAddColumnElement
 > = (props, ctx) => {
+  const contextRef = useContext(ctx);
   const { hintState, onSelectHint, onKeydown, onInput } = useColumnHint(
     props,
     ctx
@@ -50,22 +52,31 @@ const IndexAddColumn: FunctionalComponent<
     }, 200);
   };
 
-  return () => html`
-    <div class="vuerd-index-add-column">
-      <input
-        style="width: 80px;"
-        type="text"
-        placeholder="add column"
-        spellcheck="false"
-        .value=${hintState.value}
-        @keydown=${onKeydown}
-        @input=${onInput}
-        @focus=${onFocus}
-        @blur=${onBlur}
-      />
-      ${hintTpl({ onSelectHint }, hintState)}
-    </div>
-  `;
+  return () => {
+    const {
+      store: {
+        editorState: { readonly },
+      },
+    } = contextRef.value;
+
+    return html`
+      <div class="vuerd-index-add-column">
+        <input
+          style="width: 80px;"
+          type="text"
+          placeholder="add column"
+          spellcheck="false"
+          ?disabled=${readonly}
+          .value=${hintState.value}
+          @keydown=${onKeydown}
+          @input=${onInput}
+          @focus=${onFocus}
+          @blur=${onBlur}
+        />
+        ${hintTpl({ onSelectHint }, hintState)}
+      </div>
+    `;
+  };
 };
 
 defineComponent('vuerd-index-add-column', {

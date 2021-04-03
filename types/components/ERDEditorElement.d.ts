@@ -7,6 +7,7 @@ export interface ERDEditorProps {
   width: number;
   height: number;
   automaticLayout: boolean;
+  readonly: boolean;
 }
 
 export interface ERDEditorElement extends ERDEditorProps, HTMLElement {

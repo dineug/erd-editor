@@ -150,7 +150,12 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
   });
 
   return () => {
-    const { keymap } = contextRef.value;
+    const {
+      keymap,
+      store: {
+        editorState: { readonly },
+      },
+    } = contextRef.value;
     const { memo } = props;
     const width = memo.ui.width + MEMO_PADDING;
     const height = memo.ui.height + MEMO_PADDING + MEMO_HEADER;
@@ -187,6 +192,7 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
             height: `${memo.ui.height}px`,
           })}
           spellcheck="false"
+          ?disabled=${readonly}
           .value=${memo.value}
           @input=${onInput}
           @wheel=${onStopPropagation}

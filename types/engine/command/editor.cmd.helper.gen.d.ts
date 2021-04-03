@@ -49,3 +49,12 @@ export declare function findActive$(): Generator<
   | ReturnType<typeof selectEndTable$>
   | CommandType<'memo.selectEnd'>
 >;
+
+export declare function readonlyEditor$(
+  readonly: boolean
+): Generator<
+  | CommandType<'editor.editTableEnd'>
+  | CommandType<'editor.drawEndRelationship'>
+  | CommandType<'editor.draggableColumnEnd'>
+  | CommandType<'editor.readonly'>
+>;

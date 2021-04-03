@@ -88,3 +88,6 @@ export const copyColumn = (tableId: string, columnIds: string[]) =>
 export const findActive = () => createCommand('editor.findActive', null);
 
 export const findActiveEnd = () => createCommand('editor.findActiveEnd', null);
+
+export const readonlyEditor = (readonly: boolean) =>
+  createCommand('editor.readonly', { readonly });

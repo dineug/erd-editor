@@ -124,3 +124,45 @@ export const streamCommandTypes: CommandKey[] = [
   'canvas.movement',
   'canvas.movementZoom',
 ];
+
+export const readonlyCommandTypes: CommandKey[] = [
+  // table
+  'table.select',
+  'table.selectEnd',
+  'table.selectAll',
+  'table.dragSelect',
+  // column
+  'column.active',
+  'column.activeEnd',
+  // memo
+  'memo.select',
+  'memo.selectEnd',
+  'memo.selectAll',
+  'memo.dragSelect',
+  // canvas
+  'canvas.move',
+  'canvas.movement',
+  'canvas.zoom',
+  'canvas.movementZoom',
+  'canvas.changeShow',
+  'canvas.changeDatabase',
+  'canvas.changeCanvasType',
+  'canvas.changeLanguage',
+  'canvas.changeTableCase',
+  'canvas.changeColumnCase',
+  'canvas.moveColumnOrder',
+  'canvas.changeHighlightTheme',
+  // editor
+  'editor.focusTable',
+  'editor.focusColumn',
+  'editor.focusTableEnd',
+  'editor.focusMoveTable',
+  'editor.editTableEnd',
+  'editor.selectAllColumn',
+  'editor.initLoadJson',
+  'editor.initClear',
+  'editor.changeViewport',
+  'editor.findActive',
+  'editor.findActiveEnd',
+  'editor.readonly',
+];
