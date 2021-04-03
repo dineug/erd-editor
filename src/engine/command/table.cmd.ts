@@ -55,7 +55,7 @@ export function executeRemoveTable(state: State, data: RemoveTable) {
   for (let i = 0; i < tables.length; i++) {
     const id = tables[i].id;
 
-    if (data.tableIds.some(tableId => tableId === id)) {
+    if (data.tableIds.includes(id)) {
       tables.splice(i, 1);
       i--;
     }

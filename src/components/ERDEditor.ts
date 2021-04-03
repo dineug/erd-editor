@@ -42,7 +42,7 @@ import {
   editTableEnd,
   changeViewport,
 } from '@/engine/command/editor.cmd.helper';
-import { ignoreEnterProcess } from '@/core/helper/operator.helper';
+import { ignoreEnterProcess } from '@/core/operators/ignoreEnterProcess';
 import { Bus } from '@/core/helper/eventBus.helper';
 import { Logger } from '@/core/logger';
 import { IndexStyle } from './index.style';

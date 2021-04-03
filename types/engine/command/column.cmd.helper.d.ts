@@ -24,6 +24,11 @@ export declare function removeColumn(
   columnIds: string[]
 ): CommandType<'column.remove'>;
 
+export declare function removeOnlyColumn(
+  tableId: string,
+  columnIds: string[]
+): CommandType<'column.removeOnly'>;
+
 export declare function changeColumnName(
   helper: Helper,
   tableId: string,

@@ -65,19 +65,15 @@ export class RelationshipModel implements Relationship {
       this.end.tableId = end.tableId;
       this.end.columnIds = [...end.columnIds];
     } else if (loadRelationship && isLoadRelationship(loadRelationship)) {
-      const {
-        id,
-        identification,
-        relationshipType,
-        start,
-        end,
-      } = loadRelationship;
+      const { id, identification, relationshipType, start, end } = cloneDeep(
+        loadRelationship
+      );
 
       this.id = id;
       this.identification = identification;
       this.relationshipType = relationshipType;
-      this.start = cloneDeep(start);
-      this.end = cloneDeep(end);
+      this.start = start;
+      this.end = end;
     } else {
       throw new Error('not found relationship');
     }

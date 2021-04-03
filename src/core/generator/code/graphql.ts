@@ -124,17 +124,9 @@ function formatRelation(
         if (endTable.comment.trim() !== '') {
           buffer.push(`  # ${endTable.comment}`);
         }
-        if (
-          oneRelationshipTypes.some(
-            value => value === relationship.relationshipType
-          )
-        ) {
+        if (oneRelationshipTypes.includes(relationship.relationshipType)) {
           buffer.push(`  ${fieldName}: ${typeName}`);
-        } else if (
-          nRelationshipTypes.some(
-            value => value === relationship.relationshipType
-          )
-        ) {
+        } else if (nRelationshipTypes.includes(relationship.relationshipType)) {
           buffer.push(
             `  ${getNameCase(`${fieldName}List`, columnCase)}: [${typeName}!]!`
           );

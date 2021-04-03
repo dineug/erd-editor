@@ -5,6 +5,7 @@ import {
 } from '@@types/engine/store/table.state';
 import { AddColumn, AddCustomColumn } from '@@types/engine/command/column.cmd';
 import { SIZE_MIN_WIDTH } from '@/core/layout';
+import { cloneDeep } from '@/core/helper';
 
 interface ColumnData {
   addColumn?: AddColumn;
@@ -40,7 +41,7 @@ export class ColumnModel implements Column {
 
       this.id = id;
     } else if (addCustomColumn) {
-      const { id, option, ui, value } = addCustomColumn;
+      const { id, option, ui, value } = cloneDeep(addCustomColumn);
 
       this.id = id;
       option && Object.assign(this.option, option);

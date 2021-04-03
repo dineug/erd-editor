@@ -55,7 +55,7 @@ export function executeRemoveColumn(state: State, data: RemoveColumn) {
   for (let i = 0; i < table.columns.length; i++) {
     const column = table.columns[i];
 
-    if (data.columnIds.some(columnId => columnId === column.id)) {
+    if (data.columnIds.includes(column.id)) {
       table.columns.splice(i, 1);
       i--;
     }
@@ -65,6 +65,23 @@ export function executeRemoveColumn(state: State, data: RemoveColumn) {
   removeValidColumnIndex(state, table, data.columnIds);
   removeValidColumnRelationship(state, table, data.columnIds);
   validIdentification(state);
+}
+
+export function executeRemoveOnlyColumn(state: State, data: RemoveColumn) {
+  const {
+    tableState: { tables },
+  } = state;
+  const table = getData(tables, data.tableId);
+  if (!table) return;
+
+  for (let i = 0; i < table.columns.length; i++) {
+    const column = table.columns[i];
+
+    if (data.columnIds.includes(column.id)) {
+      table.columns.splice(i, 1);
+      i--;
+    }
+  }
 }
 
 export function executeChangeColumnName(
@@ -208,7 +225,7 @@ export function executeMoveColumn(state: State, data: MoveColumn) {
 
   if (
     data.tableId === data.targetTableId &&
-    !data.columnIds.some(columnId => columnId === data.targetColumnId)
+    !data.columnIds.includes(data.targetColumnId)
   ) {
     const targetIndex = getIndex(currentTable.columns, targetColumn.id);
     if (targetIndex === -1) return;
@@ -223,7 +240,7 @@ export function executeMoveColumn(state: State, data: MoveColumn) {
     currentTable.columns.splice(targetIndex, 0, ...currentColumns);
   } else if (
     data.tableId !== data.targetTableId &&
-    !data.columnIds.some(columnId => columnId === data.targetColumnId)
+    !data.columnIds.includes(data.targetColumnId)
   ) {
     const targetIndex = getIndex(targetTable.columns, targetColumn.id);
     if (targetIndex === -1) return;
@@ -293,6 +310,7 @@ export const executeColumnCommandMap = {
   'column.add': executeAddColumn,
   'column.addCustom': executeAddCustomColumn,
   'column.remove': executeRemoveColumn,
+  'column.removeOnly': executeRemoveOnlyColumn,
   'column.changeName': executeChangeColumnName,
   'column.changeComment': executeChangeColumnComment,
   'column.changeDataType': executeChangeColumnDataType,

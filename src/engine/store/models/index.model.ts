@@ -28,12 +28,12 @@ export class IndexModel implements Index {
       this.id = id;
       this.tableId = tableId;
     } else if (loadIndex && isLoadIndex(loadIndex)) {
-      const { id, name, tableId, columns, unique } = loadIndex;
+      const { id, name, tableId, columns, unique } = cloneDeep(loadIndex);
 
       this.id = id;
       this.name = name;
       this.tableId = tableId;
-      this.columns = cloneDeep(columns);
+      this.columns = columns;
       this.unique = unique;
     } else {
       throw new Error('not found index');

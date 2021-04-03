@@ -56,6 +56,12 @@ export const removeColumn = (tableId: string, columnIds: string[]) =>
     columnIds,
   });
 
+export const removeOnlyColumn = (tableId: string, columnIds: string[]) =>
+  createCommand('column.removeOnly', {
+    tableId,
+    columnIds,
+  });
+
 export function changeColumnName(
   helper: Helper,
   tableId: string,

@@ -3,7 +3,6 @@ import { TableState } from './table.state';
 import { RelationshipState } from './relationship.state';
 import { MemoState } from './memo.state';
 import { EditorState } from './editor.state';
-import { ShareState } from './share.state';
 import { BatchCommand } from '../command';
 
 export interface State {
@@ -12,7 +11,6 @@ export interface State {
   readonly memoState: MemoState;
   readonly relationshipState: RelationshipState;
   readonly editorState: EditorState;
-  readonly shareState: ShareState;
 }
 
 export interface Store extends State {

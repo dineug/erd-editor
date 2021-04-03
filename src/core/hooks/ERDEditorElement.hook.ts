@@ -5,6 +5,7 @@ import { Keymap } from '@@types/core/keymap';
 import { ExtensionConfig } from '@@types/core/extension';
 import { Database } from '@@types/engine/store/canvas.state';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
+import { beforeMount } from '@dineug/lit-observable';
 import { DDLParser } from '@dineug/sql-ddl-parser';
 import {
   clear,
@@ -19,6 +20,7 @@ import { loadKeymap } from '@/core/keymap';
 import { createDDL } from '@/core/sql/ddl';
 import { createJsonStringify } from '@/core/file';
 import { isArray, isString } from '@/core/helper';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 
 export function useERDEditorElement(
   context: IERDEditorContext,
@@ -27,6 +29,7 @@ export function useERDEditorElement(
 ) {
   const { store, helper } = context;
   const { editorState } = store;
+  const { unmountedGroup } = useUnmounted();
 
   Object.defineProperty(ctx, 'value', {
     get() {
@@ -84,4 +87,12 @@ export function useERDEditorElement(
     isArray(config.panels) &&
       editorState.panels.push(...(config.panels as PanelConfig[]));
   };
+
+  beforeMount(() =>
+    unmountedGroup.push(
+      store.change$.subscribe(() =>
+        ctx.dispatchEvent(new CustomEvent('change'))
+      )
+    )
+  );
 }

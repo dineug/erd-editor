@@ -26,7 +26,7 @@ import {
   changeIndexColumnOrderType,
   moveIndexColumn,
 } from '@/engine/command/index.cmd.helper';
-import { fromShadowDraggable } from '@/core/helper/observable.helper';
+import { fromShadowDraggable } from '@/core/observable/fromShadowDraggable';
 
 declare global {
   interface HTMLElementTagNameMap {

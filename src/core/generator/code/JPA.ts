@@ -72,7 +72,7 @@ export function formatTable(
       if (column.ui.pfk) {
         (relationships
           .filter(relationship =>
-            relationship.end.columnIds.some(columnId => columnId === column.id)
+            relationship.end.columnIds.includes(column.id)
           )
           .map(relationship => getData(tables, relationship.start.tableId))
           .filter(table => table !== null) as Table[]).forEach(table => {
@@ -175,17 +175,9 @@ function formatRelation(
         if (primaryKey(endColumns)) {
           buffer.push(`  @Id`);
         }
-        if (
-          oneRelationshipTypes.some(
-            value => value === relationship.relationshipType
-          )
-        ) {
+        if (oneRelationshipTypes.includes(relationship.relationshipType)) {
           buffer.push(`  @OneToOne`);
-        } else if (
-          nRelationshipTypes.some(
-            value => value === relationship.relationshipType
-          )
-        ) {
+        } else if (nRelationshipTypes.includes(relationship.relationshipType)) {
           buffer.push(`  @ManyToOne`);
         }
 
@@ -221,20 +213,12 @@ function formatRelation(
         if (endTable.comment.trim() !== '') {
           buffer.push(`  // ${endTable.comment}`);
         }
-        if (
-          oneRelationshipTypes.some(
-            value => value === relationship.relationshipType
-          )
-        ) {
+        if (oneRelationshipTypes.includes(relationship.relationshipType)) {
           buffer.push(
             `  @OneToOne(mappedBy = "${getNameCase(table.name, columnCase)}")`
           );
           buffer.push(`  private ${typeName} ${fieldName};`);
-        } else if (
-          nRelationshipTypes.some(
-            value => value === relationship.relationshipType
-          )
-        ) {
+        } else if (nRelationshipTypes.includes(relationship.relationshipType)) {
           buffer.push(
             `  @OneToMany(mappedBy = "${getNameCase(table.name, columnCase)}")`
           );

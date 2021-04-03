@@ -17,7 +17,13 @@ import {
   SIZE_START_X,
   SIZE_START_Y,
 } from '@/core/layout';
-import { isString, isObject, isBoolean, isNumber } from '@/core/helper';
+import {
+  isString,
+  isObject,
+  isBoolean,
+  isNumber,
+  cloneDeep,
+} from '@/core/helper';
 import { isArray } from 'lodash';
 import { getMaxWidthColumn, getDefaultWidthColumn } from './table.model.helper';
 
@@ -64,7 +70,7 @@ export class TableModel implements Table {
       this.id = id;
       this.ui = Object.assign(this.ui, ui);
     } else if (loadTable && isLoadTable(loadTable)) {
-      const { id, name, comment, columns, ui } = loadTable;
+      const { id, name, comment, columns, ui } = cloneDeep(loadTable);
 
       this.id = id;
       this.name = name;

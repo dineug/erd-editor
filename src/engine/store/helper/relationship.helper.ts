@@ -147,8 +147,7 @@ export function getCoordinate(table: Table): Coordinate {
 const getDistance = (a: Point, b: Point) =>
   Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
 
-const directionFilter = (key: string) =>
-  directions.some(direction => direction === key);
+const directionFilter = (key: string) => directions.includes(key as any);
 
 function getDrawDirection(draw: DrawRelationship): Direction {
   let direction: Direction = 'bottom';

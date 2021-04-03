@@ -87,7 +87,7 @@ function firstTableIndex(tables: Table[], tableIds: string[]): number {
   let index = tables.length - 1;
   for (let i = 0; i < tables.length; i++) {
     const id = tables[i].id;
-    if (tableIds.some(tableId => tableId === id)) {
+    if (tableIds.includes(id)) {
       index = i;
       break;
     }

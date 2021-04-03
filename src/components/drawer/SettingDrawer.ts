@@ -11,7 +11,7 @@ import {
 import { classMap } from 'lit-html/directives/class-map';
 import { repeat } from 'lit-html/directives/repeat';
 import { useContext } from '@/core/hooks/context.hook';
-import { fromShadowDraggable } from '@/core/helper/observable.helper';
+import { fromShadowDraggable } from '@/core/observable/fromShadowDraggable';
 import { FlipAnimation } from '@/core/flipAnimation';
 import {
   moveColumnOrder,

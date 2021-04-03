@@ -71,6 +71,7 @@ export interface ColumnCommandMap {
   'column.add': Array<AddColumn>;
   'column.addCustom': Array<AddCustomColumn>;
   'column.remove': RemoveColumn;
+  'column.removeOnly': RemoveColumn;
   'column.changeName': ChangeColumnValue;
   'column.changeComment': ChangeColumnValue;
   'column.changeDataType': ChangeColumnValue;

@@ -79,7 +79,7 @@ export function removeValidColumnRelationship(
     if (table.id === start.tableId) {
       for (let i = 0; i < start.columnIds.length; i++) {
         const id = start.columnIds[i];
-        if (!columnIds.some(columnId => columnId === id)) return;
+        if (!columnIds.includes(id)) return;
 
         validColumnUIKey.columnIds.push(end.columnIds[i]);
         start.columnIds.splice(i, 1);
@@ -89,7 +89,7 @@ export function removeValidColumnRelationship(
     } else if (table.id === end.tableId) {
       for (let i = 0; i < end.columnIds.length; i++) {
         const id = end.columnIds[i];
-        if (!columnIds.some(columnId => columnId === id)) return;
+        if (!columnIds.includes(id)) return;
 
         validColumnUIKey.columnIds.push(id);
         start.columnIds.splice(i, 1);
@@ -175,7 +175,7 @@ export function removeValidTableIndex(state: State, tableIds: string[]) {
   for (let i = 0; i < indexes.length; i++) {
     const id = indexes[i].tableId;
 
-    if (tableIds.some(tableId => tableId === id)) {
+    if (tableIds.includes(id)) {
       indexes.splice(i, 1);
       i--;
     }
