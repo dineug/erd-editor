@@ -46,7 +46,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
   const contextRef = useContext(ctx);
   const { panelMenusTpl } = useMenubarPanels(ctx);
   const { resetTooltip } = useTooltip(
-    ['.vuerd-menubar-input', '.vuerd-menubar-menu'],
+    ['.vuerd-menubar-input', '.vuerd-menubar-menu', '.vuerd-editor-status'],
     ctx
   );
   const { unmountedGroup } = useUnmounted();
@@ -88,16 +88,31 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
     eventBus.emit(Bus.Drawer.close);
   };
 
+  const onUndo = () => {
+    const { store } = contextRef.value;
+    store.undo();
+  };
+
+  const onRedo = () => {
+    const { store } = contextRef.value;
+    store.redo();
+  };
+
   const onOpenHelp = () => ctx.dispatchEvent(new CustomEvent('open-help'));
   const onOpenSetting = () =>
     ctx.dispatchEvent(new CustomEvent('open-setting'));
 
   beforeMount(() => {
-    const { editorState } = contextRef.value.store;
+    const { editorState, canvasState } = contextRef.value.store;
 
     unmountedGroup.push(
       watch(editorState.panels, () => resetTooltip()),
-      watch(panels, () => resetTooltip())
+      watch(panels, () => resetTooltip()),
+      watch(canvasState, propName => {
+        if (propName !== 'canvasType') return;
+
+        resetTooltip();
+      })
     );
   });
 
@@ -105,16 +120,19 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
     const { store, keymap } = contextRef.value;
     const {
       canvasState: { databaseName, width, zoomLevel, canvasType },
+      editorState: { hasUndo, hasRedo },
     } = store;
 
     return html`
-      <div
-        class=${classMap({
-          'vuerd-menubar': true,
-          focus: props.focusState, // TODO: readonly mode
-          edit: props.focusState,
-        })}
-      >
+      <div class="vuerd-menubar">
+        <div
+          class=${classMap({
+            'vuerd-editor-status': true,
+            focus: props.focusState, // TODO: readonly mode
+            edit: props.focusState,
+          })}
+          data-tippy-content="Editor Status"
+        ></div>
         <input
           class="vuerd-menubar-input"
           style="width: 150px;"
@@ -174,6 +192,32 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
                 @click=${onFind}
               >
                 <vuerd-icon name="search" size="16"></vuerd-icon>
+              </div>
+              <div
+                class=${classMap({
+                  'vuerd-menubar-menu': true,
+                  'undo-redo': true,
+                  active: hasUndo,
+                })}
+                data-tippy-content=${`Undo [${keymapOptionsToString(
+                  keymap.undo
+                )}]`}
+                @click=${onUndo}
+              >
+                <vuerd-icon name="undo-alt" size="16"></vuerd-icon>
+              </div>
+              <div
+                class=${classMap({
+                  'vuerd-menubar-menu': true,
+                  'undo-redo': true,
+                  active: hasRedo,
+                })}
+                data-tippy-content=${`Redo [${keymapOptionsToString(
+                  keymap.redo
+                )}]`}
+                @click=${onRedo}
+              >
+                <vuerd-icon name="redo-alt" size="16"></vuerd-icon>
               </div>
             `
           : null}

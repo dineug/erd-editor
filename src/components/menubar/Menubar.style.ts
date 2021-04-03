@@ -9,15 +9,21 @@ export const MenubarStyle = css`
     overflow: hidden;
     background-color: var(--vuerd-color-menubar);
     box-sizing: border-box;
-    border-bottom: solid #fff0 1px;
   }
 
-  .vuerd-menubar.focus {
-    border-bottom: solid var(--vuerd-color-focus) 1px;
+  .vuerd-editor-status {
+    width: 10px;
+    height: 10px;
+    margin-left: 15px;
+    border-radius: 50%;
   }
 
-  .vuerd-menubar.edit {
-    border-bottom: solid var(--vuerd-color-edit) 1px;
+  .vuerd-editor-status.focus {
+    background-color: var(--vuerd-color-focus);
+  }
+
+  .vuerd-editor-status.edit {
+    background-color: var(--vuerd-color-edit);
   }
 
   .vuerd-menubar-input {
