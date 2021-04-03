@@ -7,7 +7,10 @@ import {
   selectEndTable$,
 } from '@/engine/command/table.cmd.helper';
 import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
-import { drawEndRelationship } from '@/engine/command/editor.cmd.helper';
+import {
+  drawEndRelationship,
+  findActiveEnd,
+} from '@/engine/command/editor.cmd.helper';
 import { useUnmounted } from './unmounted.hook';
 
 interface DrawerState {
@@ -37,6 +40,7 @@ export function useERDEditorDrawer(
       state[stateKey as DrawerKey] = false;
     });
 
+    store.dispatch(findActiveEnd());
     state[key] = !state[key];
   };
   const createClose = (key: DrawerKey) => () => (state[key] = false);

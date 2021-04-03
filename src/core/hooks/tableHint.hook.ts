@@ -1,11 +1,13 @@
+import { Table } from '@@types/engine/store/table.state';
 import { observable, watch, beforeMount, query } from '@dineug/lit-observable';
 import * as R from 'ramda';
 import { useContext } from './context.hook';
 import { useUnmounted } from './unmounted.hook';
-import { IndexAddColumnProps } from '@/components/drawer/tablePropertiesDrawer/indexes/IndexAddColumn';
 import { markToHTML, lastCursorFocus } from '@/core/helper/dom.helper';
 import { getData } from '@/core/helper';
-import { addIndexColumn } from '@/engine/command/index.cmd.helper';
+import { moveCanvas } from '@/engine/command/canvas.cmd.helper';
+import { selectTable } from '@/engine/command/table.cmd.helper';
+import { SIZE_START_X, SIZE_START_Y } from '@/core/layout';
 
 export interface Hint {
   id: string;
@@ -23,7 +25,7 @@ export interface HintState {
 
 const findIndex = R.findIndex(R.propEq('active', true));
 
-export function useColumnHint(props: IndexAddColumnProps, ctx: HTMLElement) {
+export function useTableHint(ctx: HTMLElement) {
   const contextRef = useContext(ctx);
   const { unmountedGroup } = useUnmounted();
   const state = observable<HintState>({
@@ -39,15 +41,19 @@ export function useColumnHint(props: IndexAddColumnProps, ctx: HTMLElement) {
   const setHints = () => {
     if (!state.isFilter) return;
 
-    const columns = props.table.columns;
+    const {
+      store: {
+        tableState: { tables },
+      },
+    } = contextRef.value;
 
     state.hints =
       state.value.trim().length < 1
         ? []
-        : columns
+        : tables
             .filter(
-              column =>
-                column.name.toLowerCase().indexOf(state.value.toLowerCase()) !==
+              table =>
+                table.name.toLowerCase().indexOf(state.value.toLowerCase()) !==
                 -1
             )
             .map(column => {
@@ -55,7 +61,7 @@ export function useColumnHint(props: IndexAddColumnProps, ctx: HTMLElement) {
                 id: column.id,
                 name: column.name,
                 html: markToHTML(
-                  'vuerd-index-add-column-hint-mark',
+                  'vuerd-find-table-hint-mark',
                   column.name,
                   state.value
                 ),
@@ -68,21 +74,28 @@ export function useColumnHint(props: IndexAddColumnProps, ctx: HTMLElement) {
     state.hints.forEach(hint => (hint.active = false));
   };
 
-  const onSelectHint = (hint: Hint) => {
+  const moveCanvasFindTable = (table: Table) => {
     const { store } = contextRef.value;
-    const { indexes } = store.tableState;
-    const columns = props.table.columns;
+
+    store.dispatch(
+      moveCanvas(
+        (table.ui.top - SIZE_START_Y) * -1,
+        (table.ui.left - SIZE_START_X) * -1
+      ),
+      selectTable(store, false, table.id)
+    );
+  };
+
+  const onSelectHint = (hint: Hint) => {
     activeEnd();
     state.isFilter = false;
     lastCursorFocus(inputRef.value);
-    const indexModel = getData(indexes, props.indexId);
-    const targetColumn = getData(columns, hint.id);
-    if (
-      targetColumn &&
-      indexModel &&
-      !indexModel.columns.some(column => column.id === targetColumn.id)
-    ) {
-      store.dispatch(addIndexColumn(props.indexId, targetColumn.id));
+
+    const { tables } = contextRef.value.store.tableState;
+    const table = getData(tables, hint.id);
+
+    if (table) {
+      moveCanvasFindTable(table);
     }
   };
 
@@ -118,18 +131,13 @@ export function useColumnHint(props: IndexAddColumnProps, ctx: HTMLElement) {
     const index = getActiveIndex();
     if (index < 0) return;
     event.preventDefault();
-    const { store } = contextRef.value;
-    const { indexes } = store.tableState;
-    const columns = props.table.columns;
     state.isFilter = false;
-    const indexModel = getData(indexes, props.indexId);
-    const targetColumn = getData(columns, state.hints[index].id);
-    if (
-      targetColumn &&
-      indexModel &&
-      !indexModel.columns.some(column => column.id === targetColumn.id)
-    ) {
-      store.dispatch(addIndexColumn(props.indexId, targetColumn.id));
+
+    const { tables } = contextRef.value.store.tableState;
+    const table = getData(tables, state.hints[index].id);
+
+    if (table) {
+      moveCanvasFindTable(table);
     }
   };
 
@@ -148,6 +156,9 @@ export function useColumnHint(props: IndexAddColumnProps, ctx: HTMLElement) {
       case 'ArrowRight':
         arrowMap[event.key](event);
         break;
+      case 'Enter':
+        arrowMap.ArrowRight(event);
+        break;
     }
   };
 
@@ -155,6 +166,11 @@ export function useColumnHint(props: IndexAddColumnProps, ctx: HTMLElement) {
     const input = event.target as HTMLInputElement;
     state.value = input.value;
     state.isFilter = true;
+  };
+
+  const initHints = () => {
+    state.isFilter = true;
+    setHints();
   };
 
   beforeMount(() =>
@@ -172,5 +188,6 @@ export function useColumnHint(props: IndexAddColumnProps, ctx: HTMLElement) {
     onSelectHint,
     onKeydown,
     onInput,
+    initHints,
   };
 }

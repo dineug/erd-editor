@@ -1,6 +1,7 @@
 import './Canvas';
 import './DragSelect';
 import './minimap/Minimap';
+import './find/Find';
 
 import { Menu } from '@@types/core/contextmenu';
 import { Move } from '@/internal-types/event.helper';
@@ -21,6 +22,7 @@ import {
 } from '@/engine/command/canvas.cmd.helper';
 import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
 import { selectEndTable$ } from '@/engine/command/table.cmd.helper';
+import { findActiveEnd } from '@/engine/command/editor.cmd.helper';
 import { createERDMenus } from '@/core/contextmenu/erd.menu';
 import { createShowMenus } from '@/core/contextmenu/show.menu';
 import { createDatabaseMenus } from '@/core/contextmenu/database.menu';
@@ -116,6 +118,11 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
     relationshipUnsubscribe = null;
   };
 
+  const onCloseFind = () => {
+    const { store } = contextRef.value;
+    store.dispatch(findActiveEnd());
+  };
+
   const onMove = ({ event, movementX, movementY }: Move) => {
     const { store } = contextRef.value;
     event.type === 'mousemove' && event.preventDefault();
@@ -124,7 +131,12 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
 
   const onDragSelect = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement;
+
     onCloseContextmenu();
+
+    if (!el.closest('.vuerd-find')) {
+      onCloseFind();
+    }
 
     if (
       !el.closest('.vuerd-table') &&
@@ -185,7 +197,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
   return () => {
     const {
       store: {
-        editorState: { drawRelationship },
+        editorState: { drawRelationship, findActive },
       },
     } = contextRef.value;
 
@@ -227,10 +239,11 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
                 .menus=${state.menus}
                 .x=${state.contextmenuX}
                 .y=${state.contextmenuY}
-                @close-contextmenu=${onCloseContextmenu}
+                @close=${onCloseContextmenu}
               ></vuerd-contextmenu>
             `
           : null}
+        <vuerd-find .visible=${findActive} @close=${onCloseFind}></vuerd-find>
       </div>
     `;
   };

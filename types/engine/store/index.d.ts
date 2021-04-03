@@ -4,7 +4,7 @@ import { RelationshipState } from './relationship.state';
 import { MemoState } from './memo.state';
 import { EditorState } from './editor.state';
 import { ShareState } from './share.state';
-import { CommandKey, CommandType, CommandTypeAny } from '../command';
+import { BatchCommand } from '../command';
 
 export interface State {
   readonly canvasState: CanvasState;
@@ -16,12 +16,7 @@ export interface State {
 }
 
 export interface Store extends State {
-  dispatch<K extends CommandKey>(
-    ...commands: Array<
-      CommandType<K> | Generator<CommandType<K>, CommandType<K>>
-    >
-  ): void;
-  dispatch(...commands: CommandTypeAny[]): void;
+  dispatch(...commands: BatchCommand): void;
   dispatch(...commands: unknown[]): void;
   undo(): void;
   redo(): void;

@@ -53,7 +53,7 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
       : props.y;
 
   const onMouseover = (menu: Menu) => (state.menu = menu);
-  const onClose = () => ctx.dispatchEvent(new CustomEvent('close-contextmenu'));
+  const onClose = () => ctx.dispatchEvent(new CustomEvent('close'));
   const onExecute = (menu: Menu) => {
     if (!menu.execute || menu.children?.length) return;
 
@@ -142,7 +142,7 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
               .menus=${state.menu.children}
               .x=${childrenX()}
               .y=${childrenY()}
-              @close-contextmenu=${onClose}
+              @close=${onClose}
             ></vuerd-contextmenu>
           `
         : null}

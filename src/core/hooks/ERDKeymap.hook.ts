@@ -1,4 +1,4 @@
-import { CommandTypeAll } from '@@types/engine/command';
+import { BatchCommand } from '@@types/engine/command';
 import { MoveKey, FocusType } from '@@types/engine/store/editor.state';
 import { beforeMount } from '@dineug/lit-observable';
 import { useContext } from './context.hook';
@@ -19,6 +19,7 @@ import {
   selectAllTable,
   addTable$,
   selectEndTable$,
+  selectTable$,
 } from '@/engine/command/table.cmd.helper';
 import {
   removeMemo,
@@ -37,6 +38,7 @@ import {
   copyColumn,
   pasteColumn$,
   findActive$,
+  findActiveEnd,
 } from '@/engine/command/editor.cmd.helper';
 import { Bus } from '@/core/helper/eventBus.helper';
 
@@ -87,7 +89,7 @@ export function useERDKeymap(ctx: HTMLElement) {
         (store.tableState.tables.some(table => table.ui.active) ||
           store.memoState.memos.some(memo => memo.ui.active))
       ) {
-        const commands: CommandTypeAll[] = [];
+        const commands: BatchCommand = [];
 
         tableState.tables.some(table => table.ui.active) &&
           commands.push(removeTable(store));
@@ -113,7 +115,12 @@ export function useERDKeymap(ctx: HTMLElement) {
       }
 
       if (keymapMatchAndStop(event, keymap.find)) {
-        store.dispatch(findActive$());
+        if (editorState.findActive) {
+          store.dispatch(findActiveEnd());
+        } else {
+          store.dispatch(findActive$());
+        }
+
         eventBus.emit(Bus.Drawer.close);
       }
     }
@@ -196,8 +203,19 @@ export function useERDKeymap(ctx: HTMLElement) {
     }
 
     if (keymapMatchAndStop(event, keymap.stop)) {
-      // TODO: findActiveEnd
-      store.dispatch(selectEndMemo(), drawEndRelationship(), selectEndTable$());
+      const commands: BatchCommand = [drawEndRelationship(), findActiveEnd()];
+
+      if (editorState.findActive) {
+        const table = store.tableState.tables.find(table => table.ui.active);
+
+        if (table) {
+          commands.push(selectTable$(store, false, table.id));
+        }
+      } else {
+        commands.push(selectEndMemo(), selectEndTable$());
+      }
+
+      store.dispatch(...commands);
     }
 
     keymapMatchAndStop(event, keymap.undo) && store.undo();

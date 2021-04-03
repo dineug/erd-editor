@@ -17,6 +17,8 @@ export const ScrollbarStyle = css`
   ::-webkit-scrollbar-thumb:hover {
     background: var(--vuerd-color-scrollbar-thumb-active);
   }
+
+  /* firefox */
   .vuerd-scrollbar {
     scrollbar-color: var(--vuerd-color-scrollbar-thumb) #fff0;
     scrollbar-width: auto;

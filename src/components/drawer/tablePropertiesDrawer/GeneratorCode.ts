@@ -144,7 +144,7 @@ const GeneratorCode: FunctionalComponent<
                 .menus=${state.menus}
                 .x=${state.contextmenuX}
                 .y=${state.contextmenuY}
-                @close-contextmenu=${onCloseContextmenu}
+                @close=${onCloseContextmenu}
               >
               </vuerd-contextmenu>
             `

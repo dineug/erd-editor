@@ -16,6 +16,7 @@ import { CanvasSVGStyle } from './CanvasSVG.style';
 import { DragSelectStyle } from './DragSelect.style';
 import { MinimapStyle } from './minimap/Minimap.style';
 import { MinimapHandleStyle } from './minimap/MinimapHandle.style';
+import { FindStyle } from './find/Find.style';
 
 export const IndexStyle = [
   DefaultStyle,
@@ -36,4 +37,5 @@ export const IndexStyle = [
   DragSelectStyle,
   MinimapStyle,
   MinimapHandleStyle,
+  FindStyle,
 ].join('');

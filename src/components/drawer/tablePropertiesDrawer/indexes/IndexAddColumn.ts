@@ -4,7 +4,7 @@ import {
   html,
   FunctionalComponent,
 } from '@dineug/lit-observable';
-import { useColumnTypeHint } from '@/core/hooks/columnHint.hook';
+import { useColumnHint } from '@/core/hooks/columnHint.hook';
 import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
 import { hintTpl } from './IndexAddColumn.template';
 
@@ -27,7 +27,7 @@ const IndexAddColumn: FunctionalComponent<
   IndexAddColumnProps,
   IndexAddColumnElement
 > = (props, ctx) => {
-  const { hintState, onSelectHint, onKeydown, onInput } = useColumnTypeHint(
+  const { hintState, onSelectHint, onKeydown, onInput } = useColumnHint(
     props,
     ctx
   );
@@ -47,7 +47,7 @@ const IndexAddColumn: FunctionalComponent<
     setTimeout(() => {
       if (hintState.focus) return;
       hintState.hints = [];
-    }, 100);
+    }, 200);
   };
 
   return () => html`

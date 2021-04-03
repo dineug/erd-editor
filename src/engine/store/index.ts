@@ -1,4 +1,4 @@
-import { CommandTypeAll, CommandTypeAny } from '@@types/engine/command';
+import { CommandTypeAll, BatchCommand } from '@@types/engine/command';
 import { State } from '@@types/engine/store';
 import { IStore } from '@/internal-types/store';
 import { observable } from '@dineug/lit-observable';
@@ -33,7 +33,7 @@ export function createStore(): IStore {
   const state = createState();
   const { dispatch$, history$ } = createStream();
   const command = executeCommand(state);
-  const dispatch = (...commands: CommandTypeAny[]) =>
+  const dispatch = (...commands: BatchCommand) =>
     queueMicrotask(() => dispatch$.next([...flat<CommandTypeAll>(commands)]));
   const history = createHistory(() => {
     dispatch(hasUndoRedo(history.hasUndo(), history.hasRedo()));

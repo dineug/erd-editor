@@ -8,7 +8,8 @@
   "typings": "types/index.d.ts",
   "files": [
     "dist/*.js",
-    "types"
+    "types",
+    "theme/*.css"
   ],
   "keywords": [
     "vuerd",

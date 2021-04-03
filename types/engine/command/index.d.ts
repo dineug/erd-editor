@@ -38,6 +38,10 @@ export interface CommandTypeAny {
 
 export type CommandTypeAll = CommandType<CommandKey>;
 
+export type RecursionGenerator<T> = Generator<T | RecursionGenerator<T>>;
+
+export type BatchCommand<T = CommandTypeAll> = Array<T | RecursionGenerator<T>>;
+
 export interface Command {
   canvas: typeof CanvasCommand;
   memo: typeof MemoCommand;

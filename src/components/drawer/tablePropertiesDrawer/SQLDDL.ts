@@ -121,7 +121,7 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
                 .menus=${state.menus}
                 .x=${state.contextmenuX}
                 .y=${state.contextmenuY}
-                @close-contextmenu=${onCloseContextmenu}
+                @close=${onCloseContextmenu}
               >
               </vuerd-contextmenu>
             `

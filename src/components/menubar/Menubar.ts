@@ -11,7 +11,7 @@ import {
   resizeCanvas,
   zoomCanvas,
 } from '@/engine/command/canvas.cmd.helper';
-import { findActive$ } from '@/engine/command/editor.cmd.helper';
+import { findActive$, findActiveEnd } from '@/engine/command/editor.cmd.helper';
 import {
   canvasSizeRange,
   zoomLevelRange,
@@ -77,7 +77,14 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
 
   const onFind = () => {
     const { store, eventBus } = contextRef.value;
-    store.dispatch(findActive$());
+    const { findActive } = store.editorState;
+
+    if (findActive) {
+      store.dispatch(findActiveEnd());
+    } else {
+      store.dispatch(findActive$());
+    }
+
     eventBus.emit(Bus.Drawer.close);
   };
 

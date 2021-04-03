@@ -51,16 +51,14 @@ import {
   loadJson$,
   initLoadJson$,
 } from '@/engine/command/editor.cmd.helper';
+import { sortTable } from '@/engine/command/table.cmd.helper';
 import { ignoreEnterProcess } from '@/core/helper/operator.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { Logger } from '@/core/logger';
 import { DDLParser } from '@dineug/sql-ddl-parser';
 import { createJson } from '@/core/parser/SQLParserToJson';
 import { createJsonStringify } from '@/core/file';
-import { sortTable } from '@/engine/command/table.cmd.helper';
-import { SettingDrawerStyle } from './drawer/SettingDrawer.style';
-import { TablePropertiesDrawerStyle } from './drawer/tablePropertiesDrawer/TablePropertiesDrawer.style';
-import { ERDEditorStyle } from './ERDEditor.style';
-import { Bus } from '@/core/helper/eventBus.helper';
+import { IndexStyle } from './index.style';
 
 const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   props,
@@ -134,7 +132,6 @@ key: ${event.key}
           helper.keydown$.next(event);
           if (keymapMatchAndStop(event, keymap.stop)) {
             eventBus.emit(Bus.Contextmenu.close);
-            eventBus.emit(Bus.Find.close);
             closeDrawer();
             onFocus();
           }
@@ -253,9 +250,7 @@ const componentOptions = {
       default: false,
     },
   ],
-  style: [ERDEditorStyle, SettingDrawerStyle, TablePropertiesDrawerStyle].join(
-    ''
-  ),
+  style: IndexStyle,
   render: ERDEditor,
 };
 

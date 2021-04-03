@@ -91,8 +91,8 @@ export const IndexesStyle = css`
     color: var(--vuerd-color-font-active);
     background-color: var(--vuerd-color-contextmenu-active);
   }
-  .vuerd-index-add-column-list > li:hover .vuerd-mark,
-  .vuerd-index-add-column-hint.active .vuerd-mark {
+  .vuerd-index-add-column-list > li:hover .vuerd-index-add-column-hint-mark,
+  .vuerd-index-add-column-hint.active .vuerd-index-add-column-hint-mark {
     color: var(--vuerd-color-font-active);
   }
   /* animation flip */
@@ -103,7 +103,7 @@ export const IndexesStyle = css`
     transition: transform 0.3s;
   }
 
-  .vuerd-mark {
+  .vuerd-index-add-column-hint-mark {
     color: var(--vuerd-color-edit);
   }
 `;
