@@ -1,3 +1,4 @@
+import { TableCommandMap } from '@@types/engine/command/table.cmd';
 import { State } from '@@types/engine/store';
 import { PureTable } from '@@types/engine/store/table.state';
 import {
@@ -167,7 +168,10 @@ export function executeLoadTable(
   tables.push(new TableModel({ loadTable: data }, show));
 }
 
-export const executeTableCommandMap = {
+export const executeTableCommandMap: Record<
+  keyof TableCommandMap,
+  (state: State, data: any) => void
+> = {
   'table.add': executeAddTable,
   'table.move': executeMoveTable,
   'table.remove': executeRemoveTable,

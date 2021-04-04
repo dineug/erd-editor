@@ -1,3 +1,4 @@
+import { EditorCommandMap } from '@@types/engine/command/editor.cmd';
 import { State } from '@@types/engine/store';
 import { Index, PureTable } from '@@types/engine/store/table.state';
 import { Memo } from '@@types/engine/store/memo.state';
@@ -425,7 +426,18 @@ export function executeReadonlyEditor(
   editorState.readonly = data.readonly;
 }
 
-export const executeEditorCommandMap = {
+export function executeFilterActive({ editorState }: State) {
+  editorState.filterActive = true;
+}
+
+export function executeFilterActiveEnd({ editorState }: State) {
+  editorState.filterActive = false;
+}
+
+export const executeEditorCommandMap: Record<
+  keyof EditorCommandMap,
+  (state: State, data: any) => void
+> = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
   'editor.focusColumn': executeFocusColumn,
@@ -449,4 +461,6 @@ export const executeEditorCommandMap = {
   'editor.findActive': executeFindActive,
   'editor.findActiveEnd': executeFindActiveEnd,
   'editor.readonly': executeReadonlyEditor,
+  'editor.filterActive': executeFilterActive,
+  'editor.filterActiveEnd': executeFilterActiveEnd,
 };

@@ -1,3 +1,4 @@
+import { RelationshipCommandMap } from '@@types/engine/command/relationship.cmd';
 import { State } from '@@types/engine/store';
 import {
   AddRelationship,
@@ -93,7 +94,10 @@ export function executeLoadRelationship(
   });
 }
 
-export const executeRelationshipCommandMap = {
+export const executeRelationshipCommandMap: Record<
+  keyof RelationshipCommandMap,
+  (state: State, data: any) => void
+> = {
   'relationship.add': executeAddRelationship,
   'relationship.remove': executeRemoveRelationship,
   'relationship.changeRelationshipType': executeChangeRelationshipType,

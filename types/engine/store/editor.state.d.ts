@@ -14,6 +14,7 @@ export interface EditorState {
   copyColumns: Column[];
   findActive: boolean;
   readonly: boolean;
+  filterActive: boolean;
 }
 
 export interface FocusTable {

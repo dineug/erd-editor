@@ -1,4 +1,4 @@
-import { Command, CommandTypeAll } from '@@types/engine/command';
+import { Command, CommandTypeAll, CommandMap } from '@@types/engine/command';
 import { State } from '@@types/engine/store';
 import { Subject, merge } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
@@ -23,7 +23,10 @@ import { changeCommandTypes } from '@/engine/command/helper';
 import { commandsFilter } from '@/core/operators/commandsFilter';
 import { notEmptyCommands } from '@/core/operators/notEmptyCommands';
 
-const executeCommandMap = {
+const executeCommandMap: Record<
+  keyof CommandMap,
+  (state: State, data: any) => void
+> = {
   ...executeCanvasCommandMap,
   ...executeMemoCommandMap,
   ...executeTableCommandMap,

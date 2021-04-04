@@ -19,6 +19,7 @@ export const createEditorState = (): EditorState => ({
   copyColumns: [],
   findActive: false,
   readonly: false,
+  filterActive: false,
 });
 
 export const moveKeys: MoveKey[] = [

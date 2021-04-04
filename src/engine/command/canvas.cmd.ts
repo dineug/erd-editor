@@ -1,3 +1,4 @@
+import { CanvasCommandMap } from '@@types/engine/command/canvas.cmd';
 import { State } from '@@types/engine/store';
 import {
   MoveCanvas,
@@ -158,7 +159,10 @@ export function executeChangeHighlightTheme(
   canvasState.highlightTheme = data.highlightTheme;
 }
 
-export const executeCanvasCommandMap = {
+export const executeCanvasCommandMap: Record<
+  keyof CanvasCommandMap,
+  (state: State, data: any) => void
+> = {
   'canvas.move': executeMoveCanvas,
   'canvas.movement': executeMovementCanvas,
   'canvas.resize': executeResizeCanvas,

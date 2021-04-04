@@ -91,3 +91,8 @@ export const findActiveEnd = () => createCommand('editor.findActiveEnd', null);
 
 export const readonlyEditor = (readonly: boolean) =>
   createCommand('editor.readonly', { readonly });
+
+export const filterActive = () => createCommand('editor.filterActive', null);
+
+export const filterActiveEnd = () =>
+  createCommand('editor.filterActiveEnd', null);

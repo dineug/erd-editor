@@ -80,4 +80,6 @@ export interface EditorCommandMap {
   'editor.findActive': null;
   'editor.findActiveEnd': null;
   'editor.readonly': ReadonlyEditor;
+  'editor.filterActive': null;
+  'editor.filterActiveEnd': null;
 }

@@ -1,3 +1,4 @@
+import { MemoCommandMap } from '@@types/engine/command/memo.cmd';
 import { State } from '@@types/engine/store';
 import {
   AddMemo,
@@ -120,7 +121,10 @@ export function executeLoadMemo({ memoState: { memos } }: State, data: Memo) {
   memos.push(new MemoModel({ loadMemo: data }));
 }
 
-export const executeMemoCommandMap = {
+export const executeMemoCommandMap: Record<
+  keyof MemoCommandMap,
+  (state: State, data: any) => void
+> = {
   'memo.add': executeAddMemo,
   'memo.move': executeMoveMemo,
   'memo.remove': executeRemoveMemo,

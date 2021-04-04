@@ -1,3 +1,4 @@
+import { ColumnCommandMap } from '@@types/engine/command/column.cmd';
 import { State } from '@@types/engine/store';
 import { Column } from '@@types/engine/store/table.state';
 import {
@@ -307,7 +308,10 @@ export function executeLoadColumn(
   });
 }
 
-export const executeColumnCommandMap = {
+export const executeColumnCommandMap: Record<
+  keyof ColumnCommandMap,
+  (state: State, data: any) => void
+> = {
   'column.add': executeAddColumn,
   'column.addCustom': executeAddCustomColumn,
   'column.remove': executeRemoveColumn,

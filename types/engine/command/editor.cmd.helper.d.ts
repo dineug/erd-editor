@@ -88,3 +88,7 @@ export declare function findActiveEnd(): CommandType<'editor.findActiveEnd'>;
 export declare function readonlyEditor(
   readonly: boolean
 ): CommandType<'editor.readonly'>;
+
+export declare function filterActive(): CommandType<'editor.filterActive'>;
+
+export declare function filterActiveEnd(): CommandType<'editor.filterActiveEnd'>;

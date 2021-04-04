@@ -1,3 +1,4 @@
+import { IndexCommandMap } from '@@types/engine/command/index.cmd';
 import { State } from '@@types/engine/store';
 import { Index } from '@@types/engine/store/table.state';
 import {
@@ -121,7 +122,10 @@ export function executeLoadIndex(
   indexes.push(new IndexModel({ loadIndex: data }));
 }
 
-export const executeIndexCommandMap = {
+export const executeIndexCommandMap: Record<
+  keyof IndexCommandMap,
+  (state: State, data: any) => void
+> = {
   'index.add': executeAddIndex,
   'index.remove': executeRemoveIndex,
   'index.changeName': executeChangeIndexName,
