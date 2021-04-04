@@ -1,6 +1,7 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { ShowKey } from '@@types/engine/store/canvas.state';
+import { changeCanvasShow } from '@/engine/command/canvas.cmd.helper';
 
 interface ShowMenu {
   name: string;
@@ -48,7 +49,7 @@ const defaultOptions: MenuOptions = {
   close: false,
 };
 
-export const createShowMenus = ({ store, command }: ERDEditorContext): Menu[] =>
+export const createShowMenus = ({ store }: ERDEditorContext): Menu[] =>
   showMenus.map(showMenu => ({
     icon: store.canvasState.show[showMenu.showKey]
       ? {
@@ -57,8 +58,7 @@ export const createShowMenus = ({ store, command }: ERDEditorContext): Menu[] =>
         }
       : undefined,
     name: showMenu.name,
-    execute: () =>
-      store.dispatch(command.canvas.changeCanvasShow(store, showMenu.showKey)),
+    execute: () => store.dispatch(changeCanvasShow(store, showMenu.showKey)),
     options: {
       ...defaultOptions,
     },

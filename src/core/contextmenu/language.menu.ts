@@ -1,6 +1,7 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { languageList } from '@/engine/store/canvas.state';
+import { changeLanguage } from '@/engine/command/canvas.cmd.helper';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 70,
@@ -8,10 +9,7 @@ const defaultOptions: MenuOptions = {
   close: false,
 };
 
-export const createLanguageMenus = ({
-  store,
-  command,
-}: ERDEditorContext): Menu[] =>
+export const createLanguageMenus = ({ store }: ERDEditorContext): Menu[] =>
   languageList.map(language => ({
     icon:
       store.canvasState.language === language
@@ -21,7 +19,7 @@ export const createLanguageMenus = ({
           }
         : undefined,
     name: language,
-    execute: () => store.dispatch(command.canvas.changeLanguage(language)),
+    execute: () => store.dispatch(changeLanguage(language)),
     options: {
       ...defaultOptions,
     },

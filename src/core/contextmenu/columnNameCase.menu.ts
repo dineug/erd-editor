@@ -1,6 +1,7 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { NameCase } from '@@types/engine/store/canvas.state';
+import { changeColumnCase } from '@/engine/command/canvas.cmd.helper';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 50,
@@ -34,7 +35,6 @@ const nameCaseMenus: NameCaseMenu[] = [
 
 export const createColumnNameCaseMenus = ({
   store,
-  command,
 }: ERDEditorContext): Menu[] =>
   nameCaseMenus.map(menu => ({
     icon:
@@ -45,8 +45,7 @@ export const createColumnNameCaseMenus = ({
           }
         : undefined,
     name: menu.name,
-    execute: () =>
-      store.dispatch(command.canvas.changeColumnCase(menu.nameCase)),
+    execute: () => store.dispatch(changeColumnCase(menu.nameCase)),
     options: {
       ...defaultOptions,
     },

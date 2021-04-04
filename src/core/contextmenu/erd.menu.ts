@@ -6,6 +6,8 @@ import { createDatabaseMenus } from './database.menu';
 import { createDrawRelationshipMenus } from './drawRelationship.menu';
 import { createImportMenus } from './import.menu';
 import { createExportMenus } from './export.menu';
+import { addTable$ } from '@/engine/command/table.cmd.helper';
+import { addMemo$ } from '@/engine/command/memo.cmd.helper';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 75,
@@ -16,7 +18,7 @@ export function createERDMenus(
   context: ERDEditorContext,
   canvas: Element
 ): Menu[] {
-  const { store, keymap, command } = context;
+  const { store, keymap } = context;
   return [
     {
       icon: {
@@ -26,7 +28,7 @@ export function createERDMenus(
       name: 'New Table',
       keymap: keymapOptionToString(keymap.addTable[0]),
       keymapTooltip: keymapOptionsToString(keymap.addTable),
-      execute: () => store.dispatch(command.table.addTable$(store)),
+      execute: () => store.dispatch(addTable$(store)),
     },
     {
       icon: {
@@ -36,7 +38,7 @@ export function createERDMenus(
       name: 'New Memo',
       keymap: keymapOptionToString(keymap.addMemo[0]),
       keymapTooltip: keymapOptionsToString(keymap.addMemo),
-      execute: () => store.dispatch(command.memo.addMemo$(store)),
+      execute: () => store.dispatch(addMemo$(store)),
     },
     {
       icon: {

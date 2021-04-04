@@ -1,6 +1,7 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { highlightThemes } from '@/engine/store/canvas.state';
+import { changeHighlightTheme } from '@/engine/command/canvas.cmd.helper';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 105,
@@ -10,7 +11,6 @@ const defaultOptions: MenuOptions = {
 
 export const createHighlightThemeMenus = ({
   store,
-  command,
 }: ERDEditorContext): Menu[] =>
   highlightThemes.map(highlightTheme => ({
     icon:
@@ -21,8 +21,7 @@ export const createHighlightThemeMenus = ({
           }
         : undefined,
     name: highlightTheme,
-    execute: () =>
-      store.dispatch(command.canvas.changeHighlightTheme(highlightTheme)),
+    execute: () => store.dispatch(changeHighlightTheme(highlightTheme)),
     options: {
       ...defaultOptions,
     },

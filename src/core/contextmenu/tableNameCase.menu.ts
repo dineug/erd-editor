@@ -1,6 +1,7 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { NameCase } from '@@types/engine/store/canvas.state';
+import { changeTableCase } from '@/engine/command/canvas.cmd.helper';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 50,
@@ -32,10 +33,7 @@ const nameCaseMenus: NameCaseMenu[] = [
   },
 ];
 
-export const createTableNameCaseMenus = ({
-  store,
-  command,
-}: ERDEditorContext): Menu[] =>
+export const createTableNameCaseMenus = ({ store }: ERDEditorContext): Menu[] =>
   nameCaseMenus.map(menu => ({
     icon:
       store.canvasState.tableCase === menu.nameCase
@@ -45,8 +43,7 @@ export const createTableNameCaseMenus = ({
           }
         : undefined,
     name: menu.name,
-    execute: () =>
-      store.dispatch(command.canvas.changeTableCase(menu.nameCase)),
+    execute: () => store.dispatch(changeTableCase(menu.nameCase)),
     options: {
       ...defaultOptions,
     },
