@@ -98,6 +98,11 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
     store.redo();
   };
 
+  const onFilter = () => {
+    const { store, eventBus } = contextRef.value;
+    eventBus.emit(Bus.Drawer.close);
+  };
+
   const onOpenHelp = () => ctx.dispatchEvent(new CustomEvent('open-help'));
   const onOpenSetting = () =>
     ctx.dispatchEvent(new CustomEvent('open-setting'));
@@ -220,6 +225,18 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
                 @click=${onRedo}
               >
                 <vuerd-icon name="redo-alt" size="16"></vuerd-icon>
+              </div>
+            `
+          : canvasType === 'Grid'
+          ? html`
+              <div
+                class="vuerd-menubar-menu"
+                data-tippy-content="Filter [${keymapOptionsToString(
+                  keymap.find
+                )}]"
+                @click=${onFilter}
+              >
+                <vuerd-icon name="filter" size="16"></vuerd-icon>
               </div>
             `
           : null}

@@ -9,13 +9,16 @@ import {
   defineComponent,
   html,
   FunctionalComponent,
+  beforeMount,
+  watch,
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { Subject } from 'rxjs';
 import { throttleTime } from 'rxjs/operators';
-import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { keymapOptionsToString } from '@/core/keymap';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useContext } from '@/core/hooks/context.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { removeColumn$ } from '@/engine/command/column.cmd.helper';
 import {
   draggableColumn,
@@ -64,6 +67,10 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
 ) => {
   const contextRef = useContext(ctx);
   useTooltip(['.vuerd-column-button'], ctx, { placement: 'right' });
+  const { resetTooltip } = useTooltip(['.vuerd-column-comment'], ctx, {
+    placement: 'right',
+  });
+  const { unmountedGroup } = useUnmounted();
   const dragover$ = new Subject();
 
   const onRemoveColumn = () => {
@@ -101,6 +108,23 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
     );
 
   dragover$.pipe(throttleTime(300)).subscribe(onDragoverColumn);
+
+  beforeMount(() => {
+    const { show } = contextRef.value.store.canvasState;
+
+    unmountedGroup.push(
+      watch(props.column, propName => {
+        if (propName !== 'comment') return;
+
+        resetTooltip();
+      }),
+      watch(show, propName => {
+        if (propName !== 'columnComment') return;
+
+        resetTooltip();
+      })
+    );
+  });
 
   return () => {
     const { keymap } = contextRef.value;

@@ -10,6 +10,7 @@ import {
   FunctionalComponent,
   beforeMount,
   updated,
+  watch,
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
@@ -65,6 +66,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     hasDraggableColumn,
   } = useHasTable(props, ctx);
   useTooltip(['.vuerd-table-button'], ctx);
+  const { resetTooltip } = useTooltip(['.vuerd-table-comment'], ctx);
   const flipAnimation = new FlipAnimation(
     ctx.shadowRoot ? ctx.shadowRoot : ctx,
     'vuerd-column',
@@ -206,11 +208,26 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   updated(() => flipAnimation.play());
 
   beforeMount(() => {
-    const { eventBus } = contextRef.value;
+    const {
+      eventBus,
+      store: {
+        canvasState: { show },
+      },
+    } = contextRef.value;
 
     unmountedGroup.push(
       draggable$.pipe(debounceTime(50)).subscribe(onDraggableColumn),
-      eventBus.on(Bus.BalanceRange.move).subscribe(moveBalance)
+      eventBus.on(Bus.BalanceRange.move).subscribe(moveBalance),
+      watch(props.table, propName => {
+        if (propName !== 'comment') return;
+
+        resetTooltip();
+      }),
+      watch(show, propName => {
+        if (propName !== 'tableComment') return;
+
+        resetTooltip();
+      })
     );
   });
 
@@ -281,6 +298,9 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
                     .focusState=${hasFocusState('tableComment')}
                     .edit=${hasEdit('tableComment')}
                     placeholder="comment"
+                    data-tippy-content=${table.comment.trim()
+                      ? table.comment
+                      : 'comment'}
                     @input=${(event: InputEvent) =>
                       onInput(event, 'tableComment')}
                     @mousedown=${() => onFocus('tableComment')}

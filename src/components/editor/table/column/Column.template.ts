@@ -142,6 +142,7 @@ export function columnTpl(
                 columnType,
                 template: html`
                   <vuerd-input
+                    class="vuerd-column-comment"
                     .width=${props.widthComment}
                     .value=${column.comment}
                     .active=${ui.active}
@@ -149,6 +150,9 @@ export function columnTpl(
                     .edit=${props.editComment}
                     .focusState=${props.focusComment}
                     placeholder="comment"
+                    data-tippy-content=${column.comment.trim()
+                      ? column.comment
+                      : 'comment'}
                     @vuerd-input-blur=${onBlur}
                     @input=${(event: Event) => onInput(event, 'columnComment')}
                     @mousedown=${(event: MouseEvent) =>

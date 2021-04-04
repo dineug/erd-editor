@@ -1,6 +1,7 @@
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { Table, Column } from '@@types/engine/store/table.state';
-import { getData, getIndex } from '@/core/helper';
+import { getData, getIndex, createBalanceRange } from '@/core/helper';
+import { SIZE_MAX_WIDTH_COMMENT, SIZE_MIN_WIDTH } from '@/core/layout';
 
 export function getColumn(
   tables: Table[],
@@ -70,3 +71,8 @@ export function getColumns(table: Table, columnIds: string[]): Column[] {
   });
   return columns;
 }
+
+export const commentWidthBalanceRange = createBalanceRange(
+  SIZE_MIN_WIDTH,
+  SIZE_MAX_WIDTH_COMMENT
+);

@@ -15,6 +15,7 @@ import {
   removeValidTableRelationship,
   removeValidTableIndex,
 } from '@/engine/store/helper/valid.helper';
+import { commentWidthBalanceRange } from '@/engine/store/helper/column.helper';
 
 const TABLE_PADDING = (SIZE_TABLE_PADDING + SIZE_TABLE_BORDER) * 2;
 const TABLE_SORT_PADDING = TABLE_PADDING * 4;
@@ -106,7 +107,7 @@ export function executeChangeTableComment(
   if (!table) return;
 
   table.comment = data.value;
-  table.ui.widthComment = data.width;
+  table.ui.widthComment = commentWidthBalanceRange(data.width);
 }
 
 export function executeDragSelectTable(

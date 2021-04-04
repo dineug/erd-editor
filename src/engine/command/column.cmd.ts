@@ -15,6 +15,7 @@ import { ColumnModel } from '@/engine/store/models/column.model';
 import {
   getColumn,
   getDataTypeSyncColumns,
+  commentWidthBalanceRange,
 } from '@/engine/store/helper/column.helper';
 import {
   removeValidColumnRelationship,
@@ -103,7 +104,7 @@ export function executeChangeColumnComment(
   if (!column) return;
 
   column.comment = data.value;
-  column.ui.widthComment = data.width;
+  column.ui.widthComment = commentWidthBalanceRange(data.width);
 }
 
 export function executeChangeColumnDataType(
