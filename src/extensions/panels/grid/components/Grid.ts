@@ -5,9 +5,9 @@ import {
   FunctionalComponent,
   query,
   mounted,
-  beforeMount,
 } from '@dineug/lit-observable';
 import tuiGrid from 'tui-grid';
+import { useGridKeymap } from '@/extensions/panels/grid/hooks/gridKeymap.hook';
 import { IndexStyle } from './index.style';
 
 declare global {
@@ -27,10 +27,7 @@ export interface GridElement extends GridProps, HTMLElement {
 
 const Grid: FunctionalComponent<GridProps, GridElement> = (props, ctx) => {
   const containerRef = query<HTMLElement>('.vuerd-grid');
-
-  beforeMount(() => {
-    console.log(ctx.api);
-  });
+  useGridKeymap(ctx);
 
   mounted(() => {
     new tuiGrid({

@@ -1,5 +1,6 @@
-import { Command, CommandTypeAll, CommandMap } from '@@types/engine/command';
+import { Command, CommandTypeAll, CommandKey } from '@@types/engine/command';
 import { State } from '@@types/engine/store';
+import { ExecuteCommand } from '@/internal-types/command';
 import { Subject, merge } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import * as R from 'ramda';
@@ -23,10 +24,7 @@ import { changeCommandTypes } from '@/engine/command/helper';
 import { commandsFilter } from '@/core/operators/commandsFilter';
 import { notEmptyCommands } from '@/core/operators/notEmptyCommands';
 
-const executeCommandMap: Record<
-  keyof CommandMap,
-  (state: State, data: any) => void
-> = {
+const executeCommandMap: Record<CommandKey, ExecuteCommand> = {
   ...executeCanvasCommandMap,
   ...executeMemoCommandMap,
   ...executeTableCommandMap,

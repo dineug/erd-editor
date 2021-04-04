@@ -4,6 +4,7 @@ import { TableType, MoveKey } from '@@types/engine/store/editor.state';
 import { RelationshipType } from '@@types/engine/store/relationship.state';
 import { createCommand } from './helper';
 
+export * from './editor/filter.cmd.helper';
 export * from './editor.cmd.helper.gen';
 
 export const hasUndoRedo = (hasUndo: boolean, hasRedo: boolean) =>
@@ -91,8 +92,3 @@ export const findActiveEnd = () => createCommand('editor.findActiveEnd', null);
 
 export const readonlyEditor = (readonly: boolean) =>
   createCommand('editor.readonly', { readonly });
-
-export const filterActive = () => createCommand('editor.filterActive', null);
-
-export const filterActiveEnd = () =>
-  createCommand('editor.filterActiveEnd', null);

@@ -11,6 +11,7 @@ import {
   ActiveColumn,
   LoadColumn,
 } from '@@types/engine/command/column.cmd';
+import { ExecuteCommand } from '@/internal-types/command';
 import { getData, getIndex } from '@/core/helper';
 import { ColumnModel } from '@/engine/store/models/column.model';
 import {
@@ -310,7 +311,7 @@ export function executeLoadColumn(
 
 export const executeColumnCommandMap: Record<
   keyof ColumnCommandMap,
-  (state: State, data: any) => void
+  ExecuteCommand
 > = {
   'column.add': executeAddColumn,
   'column.addCustom': executeAddCustomColumn,

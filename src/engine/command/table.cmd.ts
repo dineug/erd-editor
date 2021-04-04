@@ -9,6 +9,7 @@ import {
   ChangeTableValue,
   DragSelectTable,
 } from '@@types/engine/command/table.cmd';
+import { ExecuteCommand } from '@/internal-types/command';
 import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from '@/core/layout';
 import { getData } from '@/core/helper';
 import { TableModel } from '@/engine/store/models/table.model';
@@ -170,7 +171,7 @@ export function executeLoadTable(
 
 export const executeTableCommandMap: Record<
   keyof TableCommandMap,
-  (state: State, data: any) => void
+  ExecuteCommand
 > = {
   'table.add': executeAddTable,
   'table.move': executeMoveTable,

@@ -11,6 +11,7 @@ import {
   MoveIndexColumn,
   ChangeIndexColumnOrderType,
 } from '@@types/engine/command/index.cmd';
+import { ExecuteCommand } from '@/internal-types/command';
 import { getData, getIndex } from '@/core/helper';
 import { IndexModel } from '@/engine/store/models/index.model';
 
@@ -124,7 +125,7 @@ export function executeLoadIndex(
 
 export const executeIndexCommandMap: Record<
   keyof IndexCommandMap,
-  (state: State, data: any) => void
+  ExecuteCommand
 > = {
   'index.add': executeAddIndex,
   'index.remove': executeRemoveIndex,

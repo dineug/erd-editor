@@ -13,7 +13,7 @@ import {
 } from '@dineug/lit-observable';
 import { getData } from '@/core/helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { createVisualization } from '../visualization';
+import { createVisualization } from '@/extensions/panels/visualization/visualization';
 import { IndexStyle } from './index.style';
 
 declare global {

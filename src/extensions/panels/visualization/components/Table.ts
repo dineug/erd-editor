@@ -8,7 +8,7 @@ import {
 } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { repeat } from 'lit-html/directives/repeat';
-import { useAPI } from '../hooks/api.hook';
+import { useAPI } from '@/extensions/panels/visualization/hooks/api.hook';
 
 declare global {
   interface HTMLElementTagNameMap {

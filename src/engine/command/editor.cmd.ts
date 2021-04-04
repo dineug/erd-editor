@@ -17,6 +17,7 @@ import {
   ReadonlyEditor,
 } from '@@types/engine/command/editor.cmd';
 import { JsonFormat } from '@@types/core/file';
+import { ExecuteCommand } from '@/internal-types/command';
 import { getData, isObject, isEmpty, cloneDeep } from '@/core/helper';
 import {
   appendSelectColumns,
@@ -41,6 +42,7 @@ import { executeLoadTable } from './table.cmd';
 import { executeLoadMemo } from './memo.cmd';
 import { executeLoadIndex } from './index.cmd';
 import { executeLoadRelationship } from './relationship.cmd';
+import { executeFilterCommandMap } from './editor/filter.cmd';
 
 export function executeHasUndoRedo({ editorState }: State, data: HasUndoRedo) {
   editorState.hasUndo = data.hasUndo;
@@ -426,17 +428,9 @@ export function executeReadonlyEditor(
   editorState.readonly = data.readonly;
 }
 
-export function executeFilterActive({ editorState }: State) {
-  editorState.filterActive = true;
-}
-
-export function executeFilterActiveEnd({ editorState }: State) {
-  editorState.filterActive = false;
-}
-
 export const executeEditorCommandMap: Record<
   keyof EditorCommandMap,
-  (state: State, data: any) => void
+  ExecuteCommand
 > = {
   'editor.hasUndoRedo': executeHasUndoRedo,
   'editor.focusTable': executeFocusTable,
@@ -461,6 +455,5 @@ export const executeEditorCommandMap: Record<
   'editor.findActive': executeFindActive,
   'editor.findActiveEnd': executeFindActiveEnd,
   'editor.readonly': executeReadonlyEditor,
-  'editor.filterActive': executeFilterActive,
-  'editor.filterActiveEnd': executeFilterActiveEnd,
+  ...executeFilterCommandMap,
 };

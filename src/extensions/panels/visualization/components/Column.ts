@@ -5,7 +5,7 @@ import {
   FunctionalComponent,
 } from '@dineug/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
-import { useAPI } from '../hooks/api.hook';
+import { useAPI } from '@/extensions/panels/visualization/hooks/api.hook';
 import { columnTpl } from './Column.template';
 
 declare global {

@@ -1,5 +1,7 @@
+import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { observable } from '@dineug/lit-observable';
+import * as R from 'ramda';
 import { createTheme } from './theme';
 import { createKeymap } from './keymap';
 import { createGlobalEventObservable } from './helper/event.helper';
@@ -7,7 +9,6 @@ import { createEventBus } from './helper/eventBus.helper';
 import { createStore } from '@/engine/store';
 import { createCommand } from '@/engine/command';
 import { createHelper } from '@/core/helper/editor.helper';
-import * as R from 'ramda';
 
 export const createdERDEditorContext = (): IERDEditorContext => ({
   theme: observable(createTheme()),
@@ -19,7 +20,19 @@ export const createdERDEditorContext = (): IERDEditorContext => ({
   helper: createHelper(),
 });
 
-export const omitERDEditorContext = R.pipe(
+export const omitERDEditorContext = R.pipe<
+  IERDEditorContext,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  ERDEditorContext
+>(
   R.omit(['globalEvent', 'eventBus']),
   R.dissocPath(['store', 'history$']),
   R.dissocPath(['store', 'change$']),

@@ -7,6 +7,7 @@ import {
   ChangeIdentification,
 } from '@@types/engine/command/relationship.cmd';
 import { Relationship } from '@@types/engine/store/relationship.state';
+import { ExecuteCommand } from '@/internal-types/command';
 import { getData } from '@/core/helper';
 import { RelationshipModel } from '@/engine/store/models/relationship.model';
 import { removeValidRelationshipColumnId } from '@/engine/store/helper/valid.helper';
@@ -96,7 +97,7 @@ export function executeLoadRelationship(
 
 export const executeRelationshipCommandMap: Record<
   keyof RelationshipCommandMap,
-  (state: State, data: any) => void
+  ExecuteCommand
 > = {
   'relationship.add': executeAddRelationship,
   'relationship.remove': executeRemoveRelationship,

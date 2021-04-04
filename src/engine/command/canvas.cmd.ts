@@ -16,6 +16,7 @@ import {
   MoveColumnOrder,
   ChangeHighlightTheme,
 } from '@@types/engine/command/canvas.cmd';
+import { ExecuteCommand } from '@/internal-types/command';
 import round from 'lodash/round';
 import { zoomBalanceRange } from '@/engine/store/helper/canvas.helper';
 import { createBalanceRange } from '@/core/helper';
@@ -161,7 +162,7 @@ export function executeChangeHighlightTheme(
 
 export const executeCanvasCommandMap: Record<
   keyof CanvasCommandMap,
-  (state: State, data: any) => void
+  ExecuteCommand
 > = {
   'canvas.move': executeMoveCanvas,
   'canvas.movement': executeMovementCanvas,

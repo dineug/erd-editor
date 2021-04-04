@@ -4,6 +4,7 @@ import { ColumnType } from '../store/canvas.state';
 import { TableType, MoveKey } from '../store/editor.state';
 import { RelationshipType } from '../store/relationship.state';
 
+export * from './editor/filter.cmd.helper';
 export * from './editor.cmd.helper.gen';
 
 export declare function hasUndoRedo(
@@ -88,7 +89,3 @@ export declare function findActiveEnd(): CommandType<'editor.findActiveEnd'>;
 export declare function readonlyEditor(
   readonly: boolean
 ): CommandType<'editor.readonly'>;
-
-export declare function filterActive(): CommandType<'editor.filterActive'>;
-
-export declare function filterActiveEnd(): CommandType<'editor.filterActiveEnd'>;

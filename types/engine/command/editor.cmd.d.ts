@@ -6,6 +6,7 @@ import {
   Viewport,
 } from '../store/editor.state';
 import { RelationshipType } from '../store/relationship.state';
+import { FilterCommandMap } from './editor/filter.cmd';
 
 export interface HasUndoRedo {
   hasUndo: boolean;
@@ -56,7 +57,7 @@ export interface ReadonlyEditor {
   readonly: boolean;
 }
 
-export interface EditorCommandMap {
+export interface EditorCommandMap extends FilterCommandMap {
   'editor.hasUndoRedo': HasUndoRedo;
   'editor.focusTable': FocusTable;
   'editor.focusColumn': FocusColumn;
@@ -80,6 +81,4 @@ export interface EditorCommandMap {
   'editor.findActive': null;
   'editor.findActiveEnd': null;
   'editor.readonly': ReadonlyEditor;
-  'editor.filterActive': null;
-  'editor.filterActiveEnd': null;
 }

@@ -10,6 +10,7 @@ import {
   DragSelectMemo,
 } from '@@types/engine/command/memo.cmd';
 import { Memo } from '@@types/engine/store/memo.state';
+import { ExecuteCommand } from '@/internal-types/command';
 import { SIZE_MEMO_PADDING } from '@/core/layout';
 import { getData } from '@/core/helper';
 import { MemoModel } from '@/engine/store/models/memo.model';
@@ -123,7 +124,7 @@ export function executeLoadMemo({ memoState: { memos } }: State, data: Memo) {
 
 export const executeMemoCommandMap: Record<
   keyof MemoCommandMap,
-  (state: State, data: any) => void
+  ExecuteCommand
 > = {
   'memo.add': executeAddMemo,
   'memo.move': executeMoveMemo,

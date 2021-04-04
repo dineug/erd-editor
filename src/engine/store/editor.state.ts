@@ -4,6 +4,7 @@ import {
   TableType,
 } from '@@types/engine/store/editor.state';
 import { DEFAULT_WIDTH, DEFAULT_HEIGHT } from '@/core/layout';
+import { createFilterState } from './editor/filter.state';
 
 export const createEditorState = (): EditorState => ({
   panels: [],
@@ -19,7 +20,7 @@ export const createEditorState = (): EditorState => ({
   copyColumns: [],
   findActive: false,
   readonly: false,
-  filterActive: false,
+  filterState: createFilterState(),
 });
 
 export const moveKeys: MoveKey[] = [

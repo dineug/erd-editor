@@ -2,6 +2,7 @@ import { PanelConfig } from '../../core/panel';
 import { ColumnType } from './canvas.state';
 import { Table, Column } from './table.state';
 import { RelationshipType, Point } from './relationship.state';
+import { FilterState } from './editor/filter.state';
 
 export interface EditorState {
   panels: PanelConfig[];
@@ -14,7 +15,7 @@ export interface EditorState {
   copyColumns: Column[];
   findActive: boolean;
   readonly: boolean;
-  filterActive: boolean;
+  filterState: FilterState;
 }
 
 export interface FocusTable {
