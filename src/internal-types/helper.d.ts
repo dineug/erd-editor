@@ -3,6 +3,7 @@ import { Subject } from 'rxjs';
 
 export interface IHelper extends Helper {
   keydown$: Subject<KeyboardEvent>;
+  setGhostText(ghostText: HTMLSpanElement): void;
   setGhostInput(ghostInput: HTMLInputElement): void;
   focus(): void;
   blur(): void;

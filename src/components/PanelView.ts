@@ -11,6 +11,7 @@ import {
   updated,
   watch,
 } from '@dineug/lit-observable';
+import { omitERDEditorContext } from '@/core/ERDEditorContext';
 import { useContext } from '@/core/hooks/context.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 
@@ -57,7 +58,9 @@ defineComponent('vuerd-panel-view', {
     beforeMount(() => {
       setHeight();
 
-      panelInstance = new props.panel.type(props, contextRef.value);
+      const api = omitERDEditorContext(contextRef.value);
+
+      panelInstance = new props.panel.type(props, api);
       panelInstance.beforeMount && panelInstance.beforeMount();
 
       unmountedGroup.push(

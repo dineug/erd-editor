@@ -13,11 +13,11 @@ export const groupByStreamCommands = (
         const batchCommands: CommandTypeAll[] = [];
         const streamCommands: CommandTypeAll[] = [];
 
-        commands.forEach(command => {
+        commands.forEach(command =>
           streamCommandTypes.includes(command.name)
             ? streamCommands.push(command)
-            : batchCommands.push(command);
-        });
+            : batchCommands.push(command)
+        );
 
         subscriber.next(batchCommands);
         subscriber.next(streamCommands);

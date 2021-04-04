@@ -5,42 +5,49 @@ import { createSubscriptionHelper } from './index';
 
 const TEXT_PADDING = 2;
 
-export class Helper implements IHelper {
-  private ghostText: HTMLSpanElement | null = null;
-  private ghostInput: HTMLInputElement | null = null;
-  private subscriptionHelper = createSubscriptionHelper();
+export function createHelper(): IHelper {
+  let ghostText: HTMLSpanElement | null = null;
+  let ghostInput: HTMLInputElement | null = null;
+  const subscriptionHelper = createSubscriptionHelper();
+  const keydown$ = new Subject<KeyboardEvent>();
 
-  keydown$ = new Subject<KeyboardEvent>();
+  const setGhostText = (ghost: HTMLSpanElement) => {
+    ghostText = ghost;
+  };
 
-  setGhostText(ghostText: HTMLSpanElement) {
-    this.ghostText = ghostText;
-  }
-
-  setGhostInput(ghostInput: HTMLInputElement) {
-    this.ghostInput = ghostInput;
-    this.subscriptionHelper.push(
-      fromEvent(this.ghostInput, 'input').subscribe(onInputClear)
+  const setGhostInput = (ghost: HTMLInputElement) => {
+    ghostInput = ghost;
+    subscriptionHelper.push(
+      fromEvent(ghostInput, 'input').subscribe(onInputClear)
     );
-  }
+  };
 
-  getTextWidth(value: string): number {
-    if (!this.ghostText) return value.length * 10 + TEXT_PADDING;
+  const getTextWidth = (value: string) => {
+    if (!ghostText) return value.length * 10 + TEXT_PADDING;
 
-    this.ghostText.innerText = value;
-    return this.ghostText.offsetWidth + TEXT_PADDING;
-  }
+    ghostText.innerText = value;
+    return ghostText.offsetWidth + TEXT_PADDING;
+  };
 
-  focus() {
-    if (!this.ghostInput) return;
-    this.ghostInput.focus();
-  }
+  const focus = () => {
+    if (!ghostInput) return;
+    ghostInput.focus();
+  };
 
-  blur() {
-    if (!this.ghostInput) return;
-    this.ghostInput.blur();
-  }
+  const blur = () => {
+    if (!ghostInput) return;
+    ghostInput.blur();
+  };
 
-  destroy() {
-    this.subscriptionHelper.destroy();
-  }
+  const destroy = () => subscriptionHelper.destroy();
+
+  return {
+    keydown$,
+    setGhostText,
+    setGhostInput,
+    getTextWidth,
+    focus,
+    blur,
+    destroy,
+  };
 }

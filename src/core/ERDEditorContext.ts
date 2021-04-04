@@ -6,7 +6,8 @@ import { createGlobalEventObservable } from './helper/event.helper';
 import { createEventBus } from './helper/eventBus.helper';
 import { createStore } from '@/engine/store';
 import { createCommand } from '@/engine/command';
-import { Helper } from '@/core/helper/editor.helper';
+import { createHelper } from '@/core/helper/editor.helper';
+import * as R from 'ramda';
 
 export const createdERDEditorContext = (): IERDEditorContext => ({
   theme: observable(createTheme()),
@@ -15,5 +16,18 @@ export const createdERDEditorContext = (): IERDEditorContext => ({
   eventBus: createEventBus(),
   store: createStore(),
   command: createCommand(),
-  helper: new Helper(),
+  helper: createHelper(),
 });
+
+export const omitERDEditorContext = R.pipe(
+  R.omit(['globalEvent', 'eventBus']),
+  R.dissocPath(['store', 'history$']),
+  R.dissocPath(['store', 'change$']),
+  R.dissocPath(['store', 'destroy']),
+  R.dissocPath(['helper', 'keydown$']),
+  R.dissocPath(['helper', 'setGhostText']),
+  R.dissocPath(['helper', 'setGhostInput']),
+  R.dissocPath(['helper', 'focus']),
+  R.dissocPath(['helper', 'blur']),
+  R.dissocPath(['helper', 'destroy'])
+);

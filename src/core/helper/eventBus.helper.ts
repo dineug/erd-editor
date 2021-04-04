@@ -39,13 +39,8 @@ enum Contextmenu {
   close = 'Contextmenu.close',
 }
 
-enum Find {
-  close = 'Find.close',
-}
-
 export const Bus = {
   BalanceRange,
   Drawer,
   Contextmenu,
-  Find,
 };

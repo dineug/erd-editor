@@ -8,5 +8,6 @@ export const SQLDDLStyle = css`
     overflow: auto;
     font-family: monospace !important;
     outline: none;
+    background-color: #1e1e1e;
   }
 `;

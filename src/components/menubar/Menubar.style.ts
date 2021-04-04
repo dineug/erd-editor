@@ -46,6 +46,8 @@ export const MenubarStyle = css`
     cursor: pointer;
     fill: var(--vuerd-color-font);
     margin-left: 10px;
+    display: flex;
+    align-items: center;
   }
 
   .vuerd-menubar-menu.active,

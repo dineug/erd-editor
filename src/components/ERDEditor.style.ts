@@ -1,6 +1,5 @@
 import { css } from '@/core/tagged';
 import { SIZE_FONT } from '@/core/layout';
-import { TippyStyle } from '@/components/css/tippy.style';
 
 export const ERDEditorStyle = css`
   .vuerd-editor {
@@ -24,6 +23,4 @@ export const ERDEditorStyle = css`
     position: fixed;
     top: -100px;
   }
-
-  ${TippyStyle}
 `;
