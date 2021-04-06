@@ -1,5 +1,7 @@
-import { CommandKey } from '@@types/engine/command';
+import { CommandKey, CommandTypeAll } from '@@types/engine/command';
 import { State } from '@@types/engine/store';
+import { Observable, Subscription } from 'rxjs';
+import { commandsFilter } from '@/core/operators/commandsFilter';
 import { relationshipSort } from '@/engine/store/helper/relationship.helper';
 
 const hookKeys: CommandKey[] = [
@@ -19,13 +21,13 @@ const hookKeys: CommandKey[] = [
   'column.changeDefault',
   'column.move',
   'editor.loadJson',
+  'editor.initLoadJson',
 ];
 
-export function useRelationshipSort(
-  { tableState: { tables }, relationshipState: { relationships } }: State,
-  commandName: CommandKey
-) {
-  if (!hookKeys.includes(commandName)) return;
-
-  relationshipSort(tables, relationships);
-}
+export const useRelationshipSort = (
+  hook$: Observable<Array<CommandTypeAll>>,
+  { tableState: { tables }, relationshipState: { relationships } }: State
+): Subscription =>
+  hook$
+    .pipe(commandsFilter(hookKeys))
+    .subscribe(() => relationshipSort(tables, relationships));

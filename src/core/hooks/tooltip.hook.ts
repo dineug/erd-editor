@@ -43,8 +43,6 @@ export function useTooltip(
           appendTo: root ?? 'parent',
           delay: [500, 100],
           moveTransition: 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
-          // interactive: true,
-          maxWidth: 'none',
         },
         options
       )

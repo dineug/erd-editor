@@ -11,7 +11,7 @@ import { focusColumn, focusTable } from './editor.cmd.helper';
 import { selectTable } from './table.cmd.helper';
 import { getRemoveFirstColumnId } from '@/engine/command/helper/editor.focus.helper';
 import { getColumn } from '@/engine/store/helper/column.helper';
-import { CommandType } from '@@types/engine/command';
+import { createCommand } from '@/engine/command/helper';
 
 export function* addColumn$(store: Store, tableId?: string) {
   const addColumnCmd = addColumn(store, tableId);
@@ -78,14 +78,10 @@ export function* moveColumn$(
 
   if (tableId === targetTableId || columnIds.includes(targetColumnId)) return;
 
-  yield {
-    name: 'editor.draggableColumn',
-    data: {
-      tableId: targetTableId,
-      columnIds,
-    },
-    timestamp: Date.now(),
-  } as CommandType<'editor.draggableColumn'>;
+  yield createCommand('editor.draggableColumn', {
+    tableId: targetTableId,
+    columnIds,
+  });
   yield selectTable(store, false, targetTableId);
   yield focusColumn(targetTableId, columnIds[0], 'columnName');
 }

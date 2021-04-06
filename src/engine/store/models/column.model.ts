@@ -5,7 +5,8 @@ import {
 } from '@@types/engine/store/table.state';
 import { AddColumn, AddCustomColumn } from '@@types/engine/command/column.cmd';
 import { SIZE_MIN_WIDTH } from '@/core/layout';
-import { cloneDeep } from '@/core/helper';
+import { cloneDeep, uuid } from '@/core/helper';
+import { Logger } from '@/core/logger';
 
 interface ColumnData {
   addColumn?: AddColumn;
@@ -58,7 +59,8 @@ export class ColumnModel implements Column {
         this.ui.widthDefault = value.widthDefault;
       }
     } else {
-      throw new Error('not found column');
+      Logger.warn('not found column');
+      this.id = uuid();
     }
   }
 }

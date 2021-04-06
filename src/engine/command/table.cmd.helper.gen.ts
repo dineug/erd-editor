@@ -1,5 +1,4 @@
 import { Store } from '@@types/engine/store';
-import { CommandType } from '@@types/engine/command';
 import { AddCustomColumn } from '@@types/engine/command/column.cmd';
 import { selectEndMemo } from './memo.cmd.helper';
 import { selectEndTable, addTable, selectTable } from './table.cmd.helper';
@@ -11,6 +10,7 @@ import {
 } from './editor.cmd.helper';
 import { addRelationship } from './relationship.cmd.helper';
 import { getData } from '@/core/helper';
+import { createCommand } from '@/engine/command/helper';
 
 export function* addTable$(store: Store, active = true) {
   yield selectEndTable();
@@ -70,11 +70,7 @@ export function* selectTable$(store: Store, ctrlKey: boolean, tableId: string) {
       });
     });
 
-    yield {
-      name: 'column.addCustom',
-      data: createEndColumns,
-      timestamp: Date.now(),
-    } as CommandType<'column.addCustom'>;
+    yield createCommand('column.addCustom', createEndColumns);
     yield addRelationshipCmd;
     yield drawEndRelationship();
   } else {

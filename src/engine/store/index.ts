@@ -11,6 +11,7 @@ import { createHistory } from '@/core/history';
 import { createSubscriptionHelper, flat } from '@/core/helper';
 import { createStream, executeCommand } from '@/engine/command';
 import { executeHistoryCommand } from '@/engine/history';
+import { useHooks } from '@/engine/hooks';
 import { notEmptyCommands } from '@/core/operators/notEmptyCommands';
 import { commandsFilter } from '@/core/operators/commandsFilter';
 import { groupByStreamCommands } from '@/core/operators/groupByStreamCommands';
@@ -29,7 +30,7 @@ const createState = (): State => ({
 export function createStore(): IStore {
   const subscriptionHelper = createSubscriptionHelper();
   const state = createState();
-  const { dispatch$, history$, change$ } = createStream();
+  const { dispatch$, history$, change$, hook$ } = createStream();
   const dispatch = (...commands: BatchCommand) =>
     queueMicrotask(() => dispatch$.next([...flat<CommandTypeAll>(commands)]));
   const history = createHistory(() =>
@@ -75,7 +76,8 @@ export function createStore(): IStore {
         groupByStreamCommands
       )
       .subscribe(historyCommand),
-    dispatch$.pipe(readonlyCommands(state)).subscribe(command)
+    dispatch$.pipe(readonlyCommands(state)).subscribe(command),
+    ...useHooks(hook$, state)
   );
 
   return store;

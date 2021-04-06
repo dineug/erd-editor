@@ -22,10 +22,12 @@ import {
   isObject,
   isBoolean,
   isNumber,
+  isArray,
   cloneDeep,
+  uuid,
 } from '@/core/helper';
-import { isArray } from 'lodash';
 import { getMaxWidthColumn, getDefaultWidthColumn } from './table.model.helper';
+import { Logger } from '@/core/logger';
 
 interface TableData {
   addTable?: AddTable;
@@ -78,7 +80,8 @@ export class TableModel implements Table {
       this.columns = columns;
       this.ui = Object.assign(this.ui, ui);
     } else {
-      throw new Error('not found table');
+      Logger.warn('not found table');
+      this.id = uuid();
     }
   }
 

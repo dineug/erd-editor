@@ -19,7 +19,6 @@ import { executeColumnCommandMap } from './column.cmd';
 import { executeEditorCommandMap } from './editor.cmd';
 import { executeRelationshipCommandMap } from './relationship.cmd';
 import { executeIndexCommandMap } from './index.cmd';
-import { useHooks } from '@/engine/hooks';
 import { changeCommandTypes } from '@/engine/command/helper';
 import { commandsFilter } from '@/core/operators/commandsFilter';
 import { notEmptyCommands } from '@/core/operators/notEmptyCommands';
@@ -51,11 +50,13 @@ export function createStream() {
     history$,
     dispatch$.pipe(commandsFilter(changeCommandTypes))
   ).pipe(notEmptyCommands, debounceTime(200));
+  const hook$ = merge(history$, dispatch$).pipe(notEmptyCommands);
 
   return {
     dispatch$,
     history$,
     change$,
+    hook$,
   };
 }
 
@@ -65,6 +66,5 @@ export const executeCommand = R.curry(
       Logger.log('executeCommand =>', command.name);
       const execute = executeCommandMap[command.name];
       execute && execute(state, command.data as any);
-      useHooks(state, command.name);
     })
 );

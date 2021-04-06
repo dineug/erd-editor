@@ -76,5 +76,6 @@ export const TippyStyle = css`
     position: relative;
     padding: 5px 9px;
     z-index: 1;
+    word-break: break-all;
   }
 `;

@@ -1,5 +1,8 @@
 import { css } from '@/core/tagged';
 
+/**
+ * https://uicdn.toast.com/grid/latest/tui-grid.css
+ */
 export const TuiGridStyle = css`
   /*!
  * TOAST UI Grid

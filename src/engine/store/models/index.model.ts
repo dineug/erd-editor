@@ -1,6 +1,7 @@
 import { Index, IndexColumn } from '@@types/engine/store/table.state';
 import { AddIndex } from '@@types/engine/command/index.cmd';
-import { cloneDeep, isString, isBoolean, isArray } from '@/core/helper';
+import { cloneDeep, isString, isBoolean, isArray, uuid } from '@/core/helper';
+import { Logger } from '@/core/logger';
 
 interface IndexData {
   addIndex?: AddIndex;
@@ -36,7 +37,9 @@ export class IndexModel implements Index {
       this.columns = columns;
       this.unique = unique;
     } else {
-      throw new Error('not found index');
+      Logger.warn('not found index');
+      this.id = uuid();
+      this.tableId = 'not found index';
     }
   }
 }

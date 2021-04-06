@@ -32,6 +32,7 @@ export const InputStyle = css`
   }
 
   .vuerd-input > span {
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }

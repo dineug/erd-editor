@@ -138,7 +138,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
     const { store, keymap } = contextRef.value;
     const {
       canvasState: { databaseName, width, zoomLevel, canvasType },
-      editorState: { hasUndo, hasRedo, readonly },
+      editorState: { hasUndo, hasRedo, readonly, filterState },
     } = store;
 
     return html`
@@ -243,7 +243,10 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
           : canvasType === 'Grid'
           ? html`
               <div
-                class="vuerd-menubar-menu"
+                class=${classMap({
+                  'vuerd-menubar-menu': true,
+                  active: !!filterState.filters.length,
+                })}
                 data-tippy-content="Filter [${keymapOptionsToString(
                   keymap.find
                 )}]"

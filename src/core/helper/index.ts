@@ -1,4 +1,3 @@
-import flow from 'lodash/flow';
 import camelCase from 'lodash/camelCase';
 import upperFirst from 'lodash/upperFirst';
 import { Subscription } from 'rxjs';
@@ -15,14 +14,17 @@ type TypeofName =
 export { v4 as uuid } from 'uuid';
 export { default as snakeCase } from 'lodash/snakeCase';
 export { default as camelCase } from 'lodash/camelCase';
-export const pascalCase = flow(camelCase, upperFirst);
+export const pascalCase = R.pipe<string | undefined, string, string>(
+  camelCase,
+  upperFirst
+);
 
 export function createSubscriptionHelper() {
   const subscriptions: Subscription[] = [];
   const push = (...args: Subscription[]) => subscriptions.push(...args);
   const destroy = () => {
     while (subscriptions.length) {
-      const subscription = subscriptions.pop() as Subscription;
+      const subscription = subscriptions.shift() as Subscription;
       subscription.unsubscribe();
     }
   };

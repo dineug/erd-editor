@@ -33,6 +33,7 @@ export const ContextmenuStyle = css`
     background-color: var(--vuerd-color-contextmenu-active);
   }
   .vuerd-contextmenu > li > span {
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     padding-right: 5px;

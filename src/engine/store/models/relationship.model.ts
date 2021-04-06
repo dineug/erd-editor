@@ -11,7 +11,9 @@ import {
   isNumber,
   isBoolean,
   isObject,
+  uuid,
 } from '@/core/helper';
+import { Logger } from '@/core/logger';
 
 interface RelationshipData {
   addRelationship?: AddRelationship;
@@ -38,7 +40,7 @@ const isLoadRelationship = (loadRelationship: Relationship) =>
 export class RelationshipModel implements Relationship {
   id: string;
   identification = false;
-  relationshipType: RelationshipType;
+  relationshipType: RelationshipType = 'ZeroOneN';
   start: RelationshipPoint = {
     tableId: '',
     columnIds: [],
@@ -75,7 +77,8 @@ export class RelationshipModel implements Relationship {
       this.start = start;
       this.end = end;
     } else {
-      throw new Error('not found relationship');
+      Logger.warn('not found relationship');
+      this.id = uuid();
     }
   }
 }

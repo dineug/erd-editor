@@ -10,6 +10,7 @@ import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
 import {
   drawEndRelationship,
   findActiveEnd,
+  filterActiveEnd,
 } from '@/engine/command/editor.cmd.helper';
 import { useUnmounted } from './unmounted.hook';
 
@@ -40,7 +41,7 @@ export function useERDEditorDrawer(
       state[stateKey as DrawerKey] = false;
     });
 
-    store.dispatch(findActiveEnd());
+    store.dispatch(findActiveEnd(), filterActiveEnd());
     state[key] = !state[key];
   };
   const createClose = (key: DrawerKey) => () => (state[key] = false);
