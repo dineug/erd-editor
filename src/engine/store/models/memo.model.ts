@@ -6,7 +6,6 @@ import {
   isBoolean,
   isNumber,
   cloneDeep,
-  uuid,
 } from '@/core/helper';
 import {
   SIZE_START_X,
@@ -14,7 +13,6 @@ import {
   SIZE_MEMO_WIDTH,
   SIZE_MEMO_HEIGHT,
 } from '@/core/layout';
-import { Logger } from '@/core/logger';
 
 interface MemoData {
   addMemo?: AddMemo;
@@ -57,8 +55,7 @@ export class MemoModel implements Memo {
       this.value = value;
       this.ui = Object.assign(this.ui, ui);
     } else {
-      Logger.warn('not found memo');
-      this.id = uuid();
+      throw new Error('not found memo');
     }
   }
 }

@@ -11,9 +11,7 @@ import {
   isNumber,
   isBoolean,
   isObject,
-  uuid,
 } from '@/core/helper';
-import { Logger } from '@/core/logger';
 
 interface RelationshipData {
   addRelationship?: AddRelationship;
@@ -77,8 +75,7 @@ export class RelationshipModel implements Relationship {
       this.start = start;
       this.end = end;
     } else {
-      Logger.warn('not found relationship');
-      this.id = uuid();
+      throw new Error('not found relationship');
     }
   }
 }
