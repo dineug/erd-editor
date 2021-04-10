@@ -5,6 +5,7 @@ import './ColumnUnique';
 import './ColumnAutoIncrement';
 
 import { Column } from '@@types/engine/store/table.state';
+import { ColumnType } from '@@types/engine/store/canvas.state';
 import {
   defineComponent,
   html,
@@ -23,7 +24,19 @@ import { removeColumn$ } from '@/engine/command/column.cmd.helper';
 import {
   draggableColumn,
   draggableColumnEnd,
+  focusColumn,
+  editTableEnd,
+  editTable,
 } from '@/engine/command/editor.cmd.helper';
+import {
+  changeColumnName,
+  changeColumnComment,
+  changeColumnDataType,
+  changeColumnDefault,
+  changeColumnNotNull,
+  changeColumnUnique,
+  changeColumnAutoIncrement,
+} from '@/engine/command/column.cmd.helper';
 import { columnTpl } from './Column.template';
 
 declare global {
@@ -60,6 +73,25 @@ export interface DragoverColumnDetail {
   tableId: string;
   columnId: string;
 }
+
+const changeColumnMap = {
+  columnName: changeColumnName,
+  columnComment: changeColumnComment,
+  columnDataType: changeColumnDataType,
+  columnDefault: changeColumnDefault,
+};
+
+const changeColumnBooleanMap = {
+  columnNotNull: changeColumnNotNull,
+  columnUnique: changeColumnUnique,
+  columnAutoIncrement: changeColumnAutoIncrement,
+};
+
+const changeColumnBooleanKeys: ColumnType[] = [
+  'columnNotNull',
+  'columnUnique',
+  'columnAutoIncrement',
+];
 
 const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
   props,
@@ -107,6 +139,47 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
       })
     );
 
+  const onInput = (event: Event, columnType: ColumnType) => {
+    const { store, helper } = contextRef.value;
+    const changeColumn = (changeColumnMap as any)[columnType];
+    if (!changeColumn) return;
+
+    const input = event.target as HTMLInputElement;
+
+    store.dispatch(
+      changeColumn(helper, props.tableId, props.column.id, input.value)
+    );
+  };
+
+  const onFocus = (event: MouseEvent, columnType: ColumnType) => {
+    const { store } = contextRef.value;
+    store.dispatch(
+      focusColumn(
+        props.tableId,
+        props.column.id,
+        columnType,
+        event.ctrlKey || event.metaKey,
+        event.shiftKey
+      )
+    );
+  };
+
+  const onBlur = () => {
+    const { store } = contextRef.value;
+    store.dispatch(editTableEnd());
+  };
+
+  const onEdit = (columnType: ColumnType) => {
+    const { store } = contextRef.value;
+    if (changeColumnBooleanKeys.includes(columnType)) {
+      const changeColumn = (changeColumnBooleanMap as any)[columnType];
+
+      store.dispatch(changeColumn(store, props.tableId, props.column.id));
+    } else {
+      store.dispatch(editTable());
+    }
+  };
+
   dragover$.pipe(throttleTime(300)).subscribe(onDragoverColumn);
 
   beforeMount(() => {
@@ -146,7 +219,12 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
         @dragover=${onDragover}
       >
         <vuerd-column-key .ui=${ui}></vuerd-column-key>
-        ${columnTpl(props, contextRef.value)}
+        ${columnTpl(props, contextRef.value, {
+          onInput,
+          onFocus,
+          onBlur,
+          onEdit,
+        })}
         <vuerd-icon
           class="vuerd-button vuerd-column-button"
           data-tippy-content=${keymapOptionsToString(keymap.removeColumn)}

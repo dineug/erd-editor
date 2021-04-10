@@ -14,8 +14,8 @@ import {
 import {
   findActive$,
   findActiveEnd,
-  filterActive,
-  filterActiveEnd,
+  filterActive$,
+  filterActiveEnd$,
 } from '@/engine/command/editor.cmd.helper';
 import {
   canvasSizeRange,
@@ -108,9 +108,9 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
     const { filterState } = store.editorState;
 
     if (filterState.active) {
-      store.dispatch(filterActiveEnd());
+      store.dispatch(filterActiveEnd$());
     } else {
-      store.dispatch(filterActive());
+      store.dispatch(filterActive$());
     }
 
     eventBus.emit(Bus.Drawer.close);

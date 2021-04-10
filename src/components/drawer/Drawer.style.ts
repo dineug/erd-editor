@@ -13,6 +13,7 @@ export const DrawerStyle = css`
     fill: #fff0;
     padding: 20px;
     box-sizing: border-box;
+    z-index: 100;
   }
 
   .vuerd-drawer:hover {

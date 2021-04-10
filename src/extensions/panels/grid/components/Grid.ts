@@ -1,3 +1,6 @@
+import './GridProvider';
+import './filter/Filter';
+
 import { ERDEditorContext } from '@@types/index';
 import {
   defineComponent,
@@ -8,6 +11,8 @@ import {
 } from '@dineug/lit-observable';
 import tuiGrid from 'tui-grid';
 import { useGridKeymap } from '@/extensions/panels/grid/hooks/gridKeymap.hook';
+import { useKeydown } from '@/extensions/panels/grid/hooks/keydown.hook';
+import { GridContext } from '@/extensions/panels/grid/GridContext';
 import { IndexStyle } from './index.style';
 
 declare global {
@@ -21,13 +26,39 @@ export interface GridProps {
   height: number;
 }
 
+// GridProvider
+
 export interface GridElement extends GridProps, HTMLElement {
   api: ERDEditorContext;
 }
 
 const Grid: FunctionalComponent<GridProps, GridElement> = (props, ctx) => {
-  const containerRef = query<HTMLElement>('.vuerd-grid');
+  const containerRef = query<HTMLElement>('.vuerd-grid-container');
+  const { keydown$ } = useKeydown(ctx);
   useGridKeymap(ctx);
+
+  const onCloseFilter = () => {
+    const { store, command } = ctx.api;
+    const { filterActiveEnd$ } = command.editor;
+    store.dispatch(filterActiveEnd$());
+  };
+
+  const onOutside = (event: MouseEvent | TouchEvent) => {
+    const el = event.target as HTMLElement;
+    const { store, command } = ctx.api;
+    const { editFilterEnd } = command.editor;
+
+    if (!el.closest('.vuerd-filter')) {
+      onCloseFilter();
+    }
+
+    if (
+      !el.closest('.vuerd-filter-radio-editor') &&
+      !el.closest('.vuerd-filter-input')
+    ) {
+      store.dispatch(editFilterEnd());
+    }
+  };
 
   mounted(() => {
     new tuiGrid({
@@ -44,7 +75,30 @@ const Grid: FunctionalComponent<GridProps, GridElement> = (props, ctx) => {
     });
   });
 
-  return () => html`<div class="vuerd-grid"></div>`;
+  return () => {
+    const {
+      store: {
+        editorState: { filterState },
+      },
+    } = ctx.api;
+    const context: GridContext = { api: ctx.api, keydown$ };
+
+    return html`
+      <vuerd-grid-provider .value=${context}>
+        <div
+          class="vuerd-grid"
+          @mousedown=${onOutside}
+          @touchstart=${onOutside}
+        >
+          <div class="vuerd-grid-container"></div>
+          <vuerd-filter
+            .visible=${filterState.active}
+            @close=${onCloseFilter}
+          ></vuerd-filter>
+        </div>
+      </vuerd-grid-provider>
+    `;
+  };
 };
 
 defineComponent('vuerd-grid', {

@@ -26,41 +26,45 @@ function executeCommand(
   history: History,
   commands: CommandTypeAll[]
 ) {
-  try {
-    Logger.log(
-      'executeHistoryCommand =>',
-      commands.map(command => command.name).join(',')
-    );
-    const batchUndoCommand: BatchCommand = [];
-    const batchRedoCommand: BatchCommand = [];
+  Logger.log(
+    'executeHistoryCommand =>',
+    commands.map(command => command.name).join(',')
+  );
+  const batchUndoCommand: BatchCommand = [];
+  const batchRedoCommand: BatchCommand = [];
 
-    commands.forEach(command => {
-      const execute = executeCommandMap[command.name];
-      if (!execute) return;
+  commands.forEach(command => {
+    const execute = executeCommandMap[command.name];
+    if (!execute) return;
 
-      execute(store, batchUndoCommand, command.data);
-      batchRedoCommand.push(command);
-    });
+    execute(store, batchUndoCommand, command.data);
+    batchRedoCommand.push(command);
+  });
 
-    Object.keys(executeStreamCommandMap).forEach(key =>
-      executeStreamCommandMap[key as keyof typeof executeStreamCommandMap](
-        commands,
-        batchUndoCommand,
-        batchRedoCommand
-      )
-    );
+  Object.keys(executeStreamCommandMap).forEach(key =>
+    executeStreamCommandMap[key as keyof typeof executeStreamCommandMap](
+      commands,
+      batchUndoCommand,
+      batchRedoCommand
+    )
+  );
 
-    if (!batchUndoCommand.length || !batchRedoCommand.length) return;
+  if (!batchUndoCommand.length || !batchRedoCommand.length) return;
 
-    history.push({
-      undo: () =>
-        store.history$.next([...flat<CommandTypeAll>(batchUndoCommand)]),
-      redo: () =>
-        store.history$.next([...flat<CommandTypeAll>(batchRedoCommand)]),
-    });
-  } catch (err) {
-    Logger.error(err);
-  }
+  history.push({
+    undo: () =>
+      store.history$.next([...flat<CommandTypeAll>(batchUndoCommand)]),
+    redo: () =>
+      store.history$.next([...flat<CommandTypeAll>(batchRedoCommand)]),
+  });
 }
 
-export const executeHistoryCommand = R.curry(executeCommand);
+export const executeHistoryCommand = R.curry(
+  (store: IStore, history: History, commands: CommandTypeAll[]) => {
+    try {
+      executeCommand(store, history, commands);
+    } catch (err) {
+      Logger.error(err);
+    }
+  }
+);

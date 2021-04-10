@@ -3,91 +3,29 @@ import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { html, TemplateResult } from '@dineug/lit-observable';
 import { repeat } from 'lit-html/directives/repeat';
 import { ColumnProps } from './Column';
-import {
-  changeColumnName,
-  changeColumnComment,
-  changeColumnDataType,
-  changeColumnDefault,
-  changeColumnNotNull,
-  changeColumnUnique,
-  changeColumnAutoIncrement,
-} from '@/engine/command/column.cmd.helper';
-import {
-  focusColumn,
-  editTableEnd,
-  editTable,
-} from '@/engine/command/editor.cmd.helper';
 
 interface ReshapeColumn {
   columnType: ColumnType;
   template: TemplateResult;
 }
 
-const changeColumnMap = {
-  columnName: changeColumnName,
-  columnComment: changeColumnComment,
-  columnDataType: changeColumnDataType,
-  columnDefault: changeColumnDefault,
-};
-
-const changeColumnBooleanMap = {
-  columnNotNull: changeColumnNotNull,
-  columnUnique: changeColumnUnique,
-  columnAutoIncrement: changeColumnAutoIncrement,
-};
-
-const changeColumnBooleanKeys: ColumnType[] = [
-  'columnNotNull',
-  'columnUnique',
-  'columnAutoIncrement',
-];
+export interface ColumnTplProps {
+  onInput(event: Event, columnType: ColumnType): void;
+  onFocus(event: MouseEvent, columnType: ColumnType): void;
+  onBlur(): void;
+  onEdit(columnType: ColumnType): void;
+}
 
 export function columnTpl(
   props: ColumnProps,
-  { store, helper }: IERDEditorContext
+  { store, helper }: IERDEditorContext,
+  { onInput, onFocus, onBlur, onEdit }: ColumnTplProps
 ) {
   const {
     canvasState: { show, setting },
   } = store;
   const { column } = props;
   const { ui } = column;
-
-  const onInput = (event: Event, columnType: ColumnType) => {
-    const changeColumn = (changeColumnMap as any)[columnType];
-    if (!changeColumn) return;
-
-    const input = event.target as HTMLInputElement;
-
-    store.dispatch(
-      changeColumn(helper, props.tableId, props.column.id, input.value)
-    );
-  };
-
-  const onFocus = (event: MouseEvent, columnType: ColumnType) => {
-    store.dispatch(
-      focusColumn(
-        props.tableId,
-        props.column.id,
-        columnType,
-        event.ctrlKey || event.metaKey,
-        event.shiftKey
-      )
-    );
-  };
-
-  const onBlur = () => {
-    store.dispatch(editTableEnd());
-  };
-
-  const onEdit = (columnType: ColumnType) => {
-    if (changeColumnBooleanKeys.includes(columnType)) {
-      const changeColumn = (changeColumnBooleanMap as any)[columnType];
-
-      store.dispatch(changeColumn(store, props.tableId, props.column.id));
-    } else {
-      store.dispatch(editTable());
-    }
-  };
 
   const reshapeColumns = setting.columnOrder
     .map<ReshapeColumn | null>(columnType => {

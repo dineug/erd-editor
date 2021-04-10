@@ -38,4 +38,6 @@ export type ColumnType =
   | 'default'
   | 'comment';
 
-export type FocusType = ColumnType | 'operatorType';
+export type FocusFilterType = 'columnType' | 'filterCode' | 'value';
+
+export type FocusType = FocusFilterType | 'operatorType';

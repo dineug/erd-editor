@@ -3,6 +3,7 @@ import {
   TextFilterCode,
   OperatorType,
   ColumnType,
+  FocusFilterType,
 } from '@@types/engine/store/editor/filter.state';
 
 export const createFilterState = (): FilterState => ({
@@ -31,4 +32,10 @@ export const columnTypes: ColumnType[] = [
   'dataType',
   'default',
   'comment',
+];
+
+export const focusFilterTypes: FocusFilterType[] = [
+  'columnType',
+  'filterCode',
+  'value',
 ];

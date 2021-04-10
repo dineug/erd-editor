@@ -12,8 +12,8 @@ export const TippyStyle = css`
   }
   .tippy-box {
     position: relative;
-    background-color: var(--vuerd-color-contextmenu);
-    color: var(--vuerd-color-font-active);
+    background-color: black;
+    color: #fff;
     border-radius: 4px;
     font-size: 14px;
     line-height: 1.4;
@@ -64,7 +64,7 @@ export const TippyStyle = css`
   .tippy-arrow {
     width: 16px;
     height: 16px;
-    color: var(--vuerd-color-contextmenu);
+    color: black;
   }
   .tippy-arrow:before {
     content: '';

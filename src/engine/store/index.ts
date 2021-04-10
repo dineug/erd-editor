@@ -19,13 +19,14 @@ import { readonlyCommands } from '@/core/operators/readonlyCommands';
 import { historyCommandTypes } from '@/engine/command/helper';
 import { hasUndoRedo, focusTableEnd } from '@/engine/command/editor.cmd.helper';
 
-const createState = (): State => ({
-  canvasState: observable(createCanvasState()),
-  tableState: observable(createTableState()),
-  relationshipState: observable(createRelationshipState()),
-  memoState: observable(createMemoState()),
-  editorState: observable(createEditorState()),
-});
+const createState = (): State =>
+  observable({
+    canvasState: createCanvasState(),
+    tableState: createTableState(),
+    relationshipState: createRelationshipState(),
+    memoState: createMemoState(),
+    editorState: createEditorState(),
+  });
 
 export function createStore(): IStore {
   const subscriptionHelper = createSubscriptionHelper();

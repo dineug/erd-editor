@@ -43,7 +43,6 @@ const SettingDrawer: FunctionalComponent<
   const state = observable<SettingDrawerState>({
     currentColumnType: null,
   });
-  const checkboxRef = query<HTMLInputElement>('.vuerd-switch > input');
   const columnsOrderRef = queryAll<Array<HTMLElement>>('.vuerd-column-order');
   const flipAnimation = new FlipAnimation(
     ctx.shadowRoot ? ctx.shadowRoot : ctx,
@@ -53,9 +52,10 @@ const SettingDrawer: FunctionalComponent<
 
   const onClose = () => ctx.dispatchEvent(new CustomEvent('close'));
 
-  const onChangeRelationshipDataTypeSync = () => {
+  const onChangeRelationshipDataTypeSync = (event: Event) => {
+    const checkbox = event.target as HTMLInputElement;
     const { store } = contextRef.value;
-    store.dispatch(changeRelationshipDataTypeSync(checkboxRef.value.checked));
+    store.dispatch(changeRelationshipDataTypeSync(checkbox.checked));
   };
 
   const onMoveColumnOrder = (
@@ -107,15 +107,12 @@ const SettingDrawer: FunctionalComponent<
             <tr>
               <td>Relationship DataType Sync</td>
               <td>
-                <label class="vuerd-switch">
-                  <input
-                    type="checkbox"
-                    ?checked=${setting.relationshipDataTypeSync}
-                    ?disabled=${readonly}
-                    @change=${onChangeRelationshipDataTypeSync}
-                  />
-                  <span class="slider round"></span>
-                </label>
+                <input
+                  type="checkbox"
+                  ?checked=${setting.relationshipDataTypeSync}
+                  ?disabled=${readonly}
+                  @change=${onChangeRelationshipDataTypeSync}
+                />
               </td>
             </tr>
             <tr>

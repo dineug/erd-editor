@@ -89,11 +89,10 @@ const HighLevelTable: FunctionalComponent<
         complete: () => eventBus.emit(Bus.BalanceRange.move),
       });
     }
-    if (!el.closest('vuerd-input-edit')) {
-      store.dispatch(
-        selectTable$(store, event.ctrlKey || event.metaKey, props.table.id)
-      );
-    }
+
+    store.dispatch(
+      selectTable$(store, event.ctrlKey || event.metaKey, props.table.id)
+    );
   };
 
   const moveBalance = () => {

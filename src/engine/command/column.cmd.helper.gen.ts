@@ -21,12 +21,10 @@ export function* addColumn$(store: Store, tableId?: string) {
 }
 
 export function* removeColumn$(
-  store: Store,
+  { editorState }: Store,
   tableId: string,
   columnIds: string[]
 ) {
-  const { editorState } = store;
-
   if (editorState.focusTable && editorState.focusTable.columnId) {
     const columnId = getRemoveFirstColumnId(editorState.focusTable, columnIds);
 

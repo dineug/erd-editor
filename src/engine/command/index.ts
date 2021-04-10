@@ -60,15 +60,20 @@ export function createStream() {
   };
 }
 
+function executeCommand$(state: State, commands: CommandTypeAll[]) {
+  commands.forEach(command => {
+    Logger.log('executeCommand =>', command.name);
+    const execute = executeCommandMap[command.name];
+    execute && execute(state, command.data as any);
+  });
+}
+
 export const executeCommand = R.curry(
-  (state: State, commands: CommandTypeAll[]) =>
-    commands.forEach(command => {
-      try {
-        Logger.log('executeCommand =>', command.name);
-        const execute = executeCommandMap[command.name];
-        execute && execute(state, command.data as any);
-      } catch (err) {
-        Logger.error(err);
-      }
-    })
+  (state: State, commands: CommandTypeAll[]) => {
+    try {
+      executeCommand$(state, commands);
+    } catch (err) {
+      Logger.error(err);
+    }
+  }
 );

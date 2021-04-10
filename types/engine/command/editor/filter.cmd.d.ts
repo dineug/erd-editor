@@ -3,6 +3,7 @@ import {
   TextFilterCode,
   OperatorType,
   Draggable,
+  FocusFilterType,
 } from '../../store/editor/filter.state';
 import { MoveKey } from '../../store/editor.state';
 
@@ -44,7 +45,7 @@ export interface Focus {
 
 export interface FocusFilter {
   filterId: string;
-  focusType: ColumnType;
+  focusType: FocusFilterType;
   ctrlKey: boolean;
   shiftKey: boolean;
 }
@@ -57,26 +58,20 @@ export interface FocusMove {
 export interface FilterCommandMap {
   'editor.filter.active': null;
   'editor.filter.activeEnd': null;
+  'editor.filter.add': AddFilter;
+  'editor.filter.remove': RemoveFilter;
+  'editor.filter.changeColumnType': ChangeFilterColumnType;
+  'editor.filter.changeFilterCode': changeFilterCode;
+  'editor.filter.changeValue': ChangeFilterValue;
+  'editor.filter.move': MoveFilter;
+  'editor.filter.changeOperatorType': ChangeOperatorType;
+  'editor.filter.focus': Focus;
+  'editor.filter.focusFilter': FocusFilter;
+  'editor.filter.focusEnd': null;
+  'editor.filter.focusMove': FocusMove;
+  'editor.filter.edit': null;
+  'editor.filter.editEnd': null;
+  'editor.filter.selectAll': null;
+  'editor.filter.draggable': Draggable;
+  'editor.filter.draggableEnd': null;
 }
-
-/**
- * editor.filter.add
- * editor.filter.remove
- * editor.filter.changeColumnType
- * editor.filter.changeFilterCode
- * editor.filter.changeValue
- * editor.filter.move
- *
- * editor.filter.changeOperatorType
- *
- * editor.filter.focus
- * editor.filter.focusFilter
- * editor.filter.focusEnd - null
- * editor.filter.focusMove
- * editor.filter.edit - null
- * editor.filter.editEnd - null
- * editor.filter.selectAll - null
- *
- * editor.filter.draggable
- * editor.filter.draggableEnd - null
- */

@@ -17,9 +17,6 @@ import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
 import { keymapOptionsToString } from '@/core/keymap';
 import { hintTpl } from './Find.template';
 
-const ANIMATION_TIME = 200;
-const HEIGHT = 33;
-
 declare global {
   interface HTMLElementTagNameMap {
     'vuerd-find': FindElement;
@@ -31,6 +28,9 @@ export interface FindProps {
 }
 
 export interface FindElement extends FindProps, HTMLElement {}
+
+const ANIMATION_TIME = 200;
+const HEIGHT = 33;
 
 const Find: FunctionalComponent<FindProps, FindElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
