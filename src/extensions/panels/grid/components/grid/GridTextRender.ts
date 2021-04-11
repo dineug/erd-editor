@@ -1,9 +1,7 @@
-import { CellRenderer, CellRendererProps } from 'tui-grid/types/renderer';
-
-export class GridTextRender implements CellRenderer {
+export class GridTextRender {
   el: HTMLDivElement;
 
-  constructor(props: CellRendererProps) {
+  constructor(props: any) {
     this.el = document.createElement('div');
     this.el.classList.add('vuerd-grid-text');
     this.render(props);
@@ -12,11 +10,11 @@ export class GridTextRender implements CellRenderer {
   getElement() {
     return this.el;
   }
-  render(props: CellRendererProps) {
+  render(props: any) {
     this.el.innerText = this.getValue(props);
   }
 
-  getValue(props: CellRendererProps) {
+  getValue(props: any) {
     const { placeholder } = props.columnInfo.renderer.options as any;
     const value = String(props.value);
     if (value.trim() === '') {

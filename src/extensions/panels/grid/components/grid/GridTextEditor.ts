@@ -1,10 +1,8 @@
-import { CellEditor, CellEditorProps } from 'tui-grid/types/editor';
-
-export class GridTextEditor implements CellEditor {
-  props: CellEditorProps;
+export class GridTextEditor {
+  props: any;
   el: HTMLInputElement;
 
-  constructor(props: CellEditorProps) {
+  constructor(props: any) {
     const { placeholder } = props.columnInfo.renderer.options as any;
     this.props = props;
     this.el = document.createElement('input');

@@ -1,13 +1,12 @@
 import './ColumnDataTypeEditor';
 
-import { CellEditor, CellEditorProps } from 'tui-grid/types/editor';
 import { ColumnDataTypeEditorElement } from './ColumnDataTypeEditor';
 
-export class GridColumnDataTypeEditor implements CellEditor {
-  props: CellEditorProps;
+export class GridColumnDataTypeEditor {
+  props: any;
   el: ColumnDataTypeEditorElement;
 
-  constructor(props: CellEditorProps) {
+  constructor(props: any) {
     this.props = props;
     this.el = document.createElement('vuerd-grid-column-data-type-editor');
     this.el.value = String(props.value);
