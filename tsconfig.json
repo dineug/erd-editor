@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
-    "target": "ES6",
+    "target": "ES2017",
     "module": "ESNext",
+    "lib": ["ES2017", "DOM", "DOM.Iterable"],
     "moduleResolution": "node",
-    "lib": ["ESNext", "DOM"],
     "noImplicitAny": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -12,9 +12,16 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["src/ts/*"]
-    }
+      "@/*": ["src/*"],
+      "@@types/*": ["types/*"]
+    },
+    "plugins": [
+      {
+        "name": "typescript-styled-plugin",
+        "tags": ["css"]
+      }
+    ]
   },
-  "include": ["src/ts/**/*.ts"],
+  "include": ["src/**/*.ts", "types/**/*.ts"],
   "exclude": ["node_modules"]
 }

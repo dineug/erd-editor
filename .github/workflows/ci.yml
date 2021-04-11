@@ -32,11 +32,5 @@ jobs:
       - name: Install
         run: npm install
 
-      - name: Test
-        run: npm run test
-
       - name: Build
         run: npm run build
-
-      - name: Codecov
-        run: bash <(curl -s https://codecov.io/bash)

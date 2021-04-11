@@ -1,68 +1,55 @@
-import pkg from "./package.json";
-import config from "./rollup.config.common";
-import strip from "@rollup/plugin-strip";
-import visualizer from "rollup-plugin-visualizer";
-import { terser } from "rollup-plugin-terser";
+import pkg from './package.json';
+import config from './rollup.config.common';
+import strip from '@rollup/plugin-strip';
+import visualizer from 'rollup-plugin-visualizer';
+import replace from '@rollup/plugin-replace';
+import filesize from 'rollup-plugin-filesize';
+import { terser } from 'rollup-plugin-terser';
 
-const { plugins, banner } = config();
+const { plugins, banner, onwarn } = config();
 
-plugins.unshift(
-  strip({
-    debugger: true,
-    include: "**/*.ts",
-    functions: ["Logger.debug"],
-  })
-);
-
-export default [
-  {
-    input: "src/ts/index.ts",
-    output: [
-      {
-        name: "vuerd",
-        file: pkg.browser,
-        format: "iife",
-        banner,
-      },
-      {
-        name: "vuerd",
-        file: `dist/${pkg.name}.min.js`,
-        format: "iife",
-        banner,
-        plugins: [
-          terser(),
-          visualizer({
-            filename: "./dist/stats.html",
-          }),
-        ],
-      },
-      {
-        file: pkg.main,
-        format: "cjs",
-        banner,
-      },
-      {
-        file: pkg.module,
-        format: "es",
-        banner,
-      },
-    ],
-    plugins,
-  },
-  {
-    input: "src/ts/index.engine.ts",
-    output: [
-      {
-        file: `dist/${pkg.name}-engine.cjs.js`,
-        format: "cjs",
-        banner,
-      },
-      {
-        file: `dist/${pkg.name}-engine.esm.js`,
-        format: "es",
-        banner,
-      },
-    ],
-    plugins,
-  },
-];
+export default {
+  input: 'src/index.ts',
+  output: [
+    {
+      file: pkg.module,
+      format: 'es',
+      banner,
+    },
+    {
+      name: 'vuerd',
+      file: pkg.main,
+      format: 'umd',
+      banner,
+    },
+    {
+      name: 'vuerd',
+      file: pkg.browser,
+      format: 'umd',
+      banner,
+      plugins: [terser()],
+    },
+  ],
+  plugins: [
+    strip({
+      debugger: true,
+      include: '**/*.ts',
+      functions: ['Logger.debug', 'Logger.log'],
+    }),
+    replace({
+      preventAssignment: true,
+      'process.env.NODE_ENV': JSON.stringify('production'),
+      'import.meta.env.SNOWPACK_PUBLIC_VUERD_VERSION': JSON.stringify(
+        pkg.version
+      ),
+    }),
+    ...plugins,
+    visualizer({
+      filename: './dist/stats.html',
+    }),
+    filesize({
+      showBrotliSize: true,
+    }),
+  ],
+  onwarn,
+};

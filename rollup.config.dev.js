@@ -1,24 +1,33 @@
-import pkg from "./package.json";
-import config from "./rollup.config.common";
-import html from "rollup-plugin-generate-html-template";
-import browsersync from "rollup-plugin-browsersync";
+import pkg from './package.json';
+import config from './rollup.config.common';
+import html from 'rollup-plugin-generate-html-template';
+import browsersync from 'rollup-plugin-browsersync';
+import replace from '@rollup/plugin-replace';
 
-const { plugins, banner } = config();
+const { plugins, banner, onwarn } = config();
 
 export default {
-  input: "src/ts/index.dev.ts",
+  input: 'src/index.dev.ts',
   output: {
-    name: "vuerd",
-    file: pkg.browser,
-    format: "iife",
+    name: 'vuerd',
+    file: pkg.main,
+    format: 'umd',
     banner,
-    plugins: [
-      html({
-        template: "src/index.html",
-        target: "dist/index.html",
-      }),
-      browsersync({ server: "dist", open: false }),
-    ],
   },
-  plugins,
+  plugins: [
+    replace({
+      preventAssignment: true,
+      'process.env.NODE_ENV': JSON.stringify('development'),
+      'import.meta.env.SNOWPACK_PUBLIC_VUERD_VERSION': JSON.stringify(
+        pkg.version
+      ),
+    }),
+    ...plugins,
+    html({
+      template: 'public/index.rollup.html',
+      target: 'dist/index.html',
+    }),
+    browsersync({ server: 'dist', open: true, port: 8090 }),
+  ],
+  onwarn,
 };
