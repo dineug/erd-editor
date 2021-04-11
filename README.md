@@ -22,6 +22,7 @@ interface ERDEditorElement extends HTMLElement {
   height: number;
   value: string;
   automaticLayout: boolean;
+  readonly: boolean;
   focus(): void;
   blur(): void;
   initLoadJson(json: string): void;
@@ -29,10 +30,8 @@ interface ERDEditorElement extends HTMLElement {
   clear(): void;
   setTheme(theme: Theme): void;
   setKeymap(keymap: Keymap): void;
-  setUser(user: User): void;
-  sharePull(effect: (commands: Array<Command<CommandType>>) => void): void;
-  sharePush(commands: Array<Command<CommandType>>): void;
   getSQLDDL(database?: Database): string;
+  extension(config: Partial<ExtensionConfig>): void;
 }
 ```
 
@@ -42,6 +41,7 @@ interface ERDEditorElement extends HTMLElement {
 | height          | Number   | height                                                     |
 | value           | String   | editor data                                                |
 | automaticLayout | Boolean  | automatic layout                                           |
+| readonly        | Boolean  | readonly                                                   |
 | change          | Event    | editor data                                                |
 | focus           | Function | focus                                                      |
 | blur            | Function | blur                                                       |
