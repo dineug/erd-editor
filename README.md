@@ -2,46 +2,17 @@
 
 > ERD Editor
 
-[![npm version](https://img.shields.io/npm/v/vuerd.svg?style=flat-square&color=blue)](https://www.npmjs.com/package/vuerd) [![VS Marketplace version](https://vsmarketplacebadge.apphb.com/version-short/dineug.vuerd-vscode.svg?style=flat-square&color=blue&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) [![APM](https://img.shields.io/apm/v/vuerd-atom?color=blue&style=flat-square&logo=atom)](https://atom.io/packages/vuerd-atom) [![GitHub](https://img.shields.io/github/license/vuerd/vuerd?style=flat-square&color=blue)](https://github.com/vuerd/vuerd/blob/master/LICENSE) [![Codecov](https://img.shields.io/codecov/c/gh/vuerd/vuerd?logo=codecov&style=flat-square)](https://codecov.io/gh/vuerd/vuerd) [![CI](https://img.shields.io/github/workflow/status/vuerd/vuerd/CI?label=CI&logo=github&style=flat-square)](https://github.com/vuerd/vuerd/actions)
+[![npm version](https://img.shields.io/npm/v/vuerd.svg?style=flat-square&color=blue)](https://www.npmjs.com/package/vuerd) [![VS Marketplace version](https://vsmarketplacebadge.apphb.com/version-short/dineug.vuerd-vscode.svg?style=flat-square&color=blue&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) [![APM](https://img.shields.io/apm/v/vuerd-atom?color=blue&style=flat-square&logo=atom)](https://atom.io/packages/vuerd-atom) [![GitHub](https://img.shields.io/github/license/vuerd/vuerd?style=flat-square&color=blue)](https://github.com/vuerd/vuerd/blob/master/LICENSE) [![CI](https://img.shields.io/github/workflow/status/vuerd/vuerd/CI?label=CI&logo=github&style=flat-square)](https://github.com/vuerd/vuerd/actions)
 
 ## ERD
 
 ![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-erd.gif?raw=true)
 
-## Generator SQL DDL
-
-![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-ddl.gif?raw=true)
-
-## Generator Code
-
-![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-generator-code.gif?raw=true)
-
-## Visualization
-
-![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-visualization.gif?raw=true)
-
-## SQL DDL Import
-
-![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-ddl-import.gif?raw=true)
-
 ## Document
 
-- [Storybook](https://vuerd.github.io/vuerd/)
-- [Live Demo](https://vuerd.github.io/vuerd/iframe.html?id=demo--live&viewMode=story)
-- [Live Demo Sample](https://vuerd.github.io/vuerd/iframe.html?id=editor--load&viewMode=story)
-- [Real-time simultaneous editing sample](https://github.com/vuerd/vuerd-real-time-sample)
 - [Import SQL DDL support syntax](https://github.com/dineug/sql-ddl-parser/blob/master/src/SQL_DDL_Test_Case.md)
 - [vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
 - [atom extension](https://atom.io/packages/vuerd-atom)
-
-## Dependency
-
-- [ES6](https://developer.mozilla.org/en-US/docs/Archive/Web/JavaScript/New_in_JavaScript/ECMAScript_2015_support_in_Mozilla)
-- [Proxy](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy) - Observable
-- [custom elements](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements) - Web Standard Interface
-- [shadow DOM](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM) - CSS encapsulation
-- [Node.getRootNode()](https://developer.mozilla.org/en-US/docs/Web/API/Node/getRootNode) - Instance EditorContext Injection
-- [CSS variables](https://developer.mozilla.org/en-US/docs/Web/CSS/--*) - Custom Theme
 
 ## interface ERDEditorElement
 
@@ -79,10 +50,8 @@ interface ERDEditorElement extends HTMLElement {
 | clear           | Function | editor data clear                                          |
 | setTheme        | Function | custom theme                                               |
 | setKeymap       | Function | custom keymap                                              |
-| setUser         | Function | share user name                                            |
-| sharePull       | Function | share pull                                                 |
-| sharePush       | Function | share push                                                 |
 | getSQLDDL       | Function | SQL DDL(MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite) |
+| extension       | Function | plugin API(scope instance)                                 |
 
 ### EditorElement Example
 
@@ -140,8 +109,8 @@ interface Theme {
   columnSelect?: string;
   columnActive?: string;
   minimapShadow?: string;
-  scrollBarThumb?: string;
-  scrollBarThumbActive?: string;
+  scrollbarThumb?: string;
+  scrollbarThumbActive?: string;
   menubar?: string;
   visualization?: string;
 }
@@ -197,8 +166,8 @@ editor.setTheme({
   columnSelect: '#232a2f',
   columnActive: '#372908',
   minimapShadow: 'black',
-  scrollBarThumb: '#6D6D6D',
-  scrollBarThumbActive: '#a2a2a2',
+  scrollbarThumb: '#6D6D6D',
+  scrollbarThumbActive: '#a2a2a2',
   menubar: 'black',
   visualization: '#191919',
 });
@@ -212,11 +181,13 @@ editor.setTheme({
 
 ```typescript
 interface KeymapOption {
-  metaKey: boolean;
-  ctrlKey: boolean;
-  altKey: boolean;
-  shiftKey: boolean;
+  metaKey?: boolean;
+  ctrlKey?: boolean;
+  altKey?: boolean;
+  shiftKey?: boolean;
   key?: string;
+  preventDefault?: boolean;
+  stopPropagation?: boolean;
 }
 interface Keymap {
   edit?: KeymapOption[];
@@ -272,6 +243,16 @@ editor.setKeymap({
 });
 ```
 
+## Global API
+
+```typescript
+function setExportFileCallback(
+  callback: (blob: Blob, fileName: string) => void
+): void;
+function addIcon(...newIcons: IconDefinition[]): void;
+function extension(config: Partial<ExtensionConfig>): void;
+```
+
 ## Install
 
 ```bash
@@ -310,6 +291,7 @@ container.appendChild(editor);
     <style>
       body {
         margin: 0;
+        height: 100vh;
       }
     </style>
     <!-- <link href="https://cdn.jsdelivr.net/npm/vuerd/theme/abyss.css" rel="stylesheet" /> -->
@@ -360,8 +342,8 @@ container.appendChild(editor);
 | New Table                                                  | Alt + N                                                                                  |
 | New Memo                                                   | Alt + M                                                                                  |
 | New - column, filter                                       | Alt + Enter                                                                              |
-| Delete - table, memo                                       | Ctrl + Delete                                                                            |
-| Delete - column, filter                                    | Alt + Delete                                                                             |
+| Delete - table, memo                                       | Ctrl + Delete, Ctrl + Backspace, Cmd + Delete, Cmd + Backspace                           |
+| Delete - column, filter                                    | Alt + Delete, Alt + Backspace                                                            |
 | Select Hint - dataType, find                               | Arrow key(right), Click                                                                  |
 | Move Hint - dataType, find                                 | Arrow key(up, down)                                                                      |
 | Primary Key                                                | Alt + K                                                                                  |

@@ -7,10 +7,10 @@ import { terser } from 'rollup-plugin-terser';
 const { plugins, banner, onwarn } = config();
 
 export default {
-  input: 'src/ts/index.ts',
+  input: 'src/index.ts',
   output: {
     name: 'vuerd',
-    file: `../static/${pkg.browser}`,
+    file: `../static/vuerd.min.js`,
     format: 'umd',
     banner,
     plugins: [terser()],

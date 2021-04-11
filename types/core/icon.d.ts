@@ -10,4 +10,4 @@ export interface IconDefinition {
   ];
 }
 
-declare function addIcon(...newIcons: IconDefinition[]): void;
+export declare function addIcon(...newIcons: IconDefinition[]): void;
