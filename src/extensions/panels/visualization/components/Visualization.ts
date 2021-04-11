@@ -13,7 +13,7 @@ import {
 } from '@dineug/lit-observable';
 import { getData } from '@/core/helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { createVisualization } from '@/extensions/panels/visualization/visualization';
+import { createVisualization } from '@/extensions/panels/visualization/core/visualization';
 import { IndexStyle } from './index.style';
 
 declare global {
@@ -110,7 +110,10 @@ const Visualization: FunctionalComponent<
     );
   });
 
-  unmounted(() => (d3SVG = null));
+  unmounted(() => {
+    d3SVG?.remove();
+    d3SVG = null;
+  });
 
   return () => html`
     <div class="vuerd-visualization vuerd-scrollbar" @mousemove=${onMousemove}>

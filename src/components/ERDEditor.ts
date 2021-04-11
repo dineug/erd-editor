@@ -40,6 +40,7 @@ import { useERDEditorElement } from '@/core/hooks/ERDEditorElement.hook';
 import { usePanelView } from '@/core/hooks/panelView.hook';
 import {
   editTableEnd,
+  editFilterEnd,
   changeViewport,
   readonlyEditor$,
 } from '@/engine/command/editor.cmd.helper';
@@ -80,7 +81,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
     const el = event.target as HTMLElement;
 
     if (el.closest('vuerd-menubar') || el.closest('vuerd-drawer')) {
-      store.dispatch(editTableEnd());
+      store.dispatch(editTableEnd(), editFilterEnd());
     }
 
     if (!el.closest('vuerd-menubar') && !el.closest('vuerd-drawer')) {

@@ -1,14 +1,22 @@
 import { MoveKey } from '@@types/engine/store/editor.state';
-import { beforeMount } from '@dineug/lit-observable';
-import { GridElement } from '@/extensions/panels/grid/components/Grid';
+import { beforeMount, closestElement, watch } from '@dineug/lit-observable';
+import { GridEditorElement } from '@/extensions/panels/grid/components/GridEditor';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useKeydown } from '@/extensions/panels/grid/hooks/keydown.hook';
 import { moveKeys } from '@/engine/store/editor.state';
 import { keymapMatchAndStop } from '@/core/keymap';
 
-export function useGridKeymap(ctx: GridElement) {
+export function useGridKeymap(ctx: GridEditorElement) {
   const { unmountedGroup } = useUnmounted();
   const { keydown$ } = useKeydown(ctx);
+
+  const onFocusEditor = () => {
+    const vEditor = closestElement('vuerd-editor', ctx) as HTMLElement | null;
+    const eEditor = closestElement('erd-editor', ctx) as HTMLElement | null;
+
+    vEditor?.focus();
+    eEditor?.focus();
+  };
 
   const onKeydown = (event: KeyboardEvent) => {
     const { keymap, store, command } = ctx.api;
@@ -27,6 +35,7 @@ export function useGridKeymap(ctx: GridElement) {
       if (keymapMatchAndStop(event, keymap.find)) {
         if (filterState.active) {
           store.dispatch(command.editor.filterActiveEnd$());
+          ctx.focus();
         } else {
           store.dispatch(command.editor.filterActive$());
         }
@@ -70,10 +79,26 @@ export function useGridKeymap(ctx: GridElement) {
           : store.dispatch(editFilter());
       }
 
-      keymapMatchAndStop(event, keymap.stop) &&
+      if (keymapMatchAndStop(event, keymap.stop)) {
         store.dispatch(command.editor.filterActiveEnd$());
+
+        if (filterState.active) {
+          ctx.focus();
+        }
+      }
     }
   };
 
-  beforeMount(() => unmountedGroup.push(keydown$.subscribe(onKeydown)));
+  beforeMount(() => {
+    const { filterState } = ctx.api.store.editorState;
+
+    unmountedGroup.push(
+      keydown$.subscribe(onKeydown),
+      watch(filterState, propName => {
+        if (propName !== 'active') return;
+
+        filterState.active && onFocusEditor();
+      })
+    );
+  });
 }

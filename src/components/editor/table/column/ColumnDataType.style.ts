@@ -1,5 +1,5 @@
 import { css } from '@/core/tagged';
-import { SIZE_FONT } from '@/core/layout';
+import { SIZE_FONT, SIZE_COLUMN_HEIGHT } from '@/core/layout';
 
 export const ColumnDataTypeStyle = css`
   .vuerd-column-data-type {
@@ -13,7 +13,7 @@ export const ColumnDataTypeStyle = css`
     position: absolute;
     z-index: 1;
     opacity: 0.9;
-    top: 20.5px;
+    top: ${SIZE_COLUMN_HEIGHT}px;
     left: 0;
     color: var(--vuerd-color-font);
     background-color: var(--vuerd-color-contextmenu);

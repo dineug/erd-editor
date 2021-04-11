@@ -1,4 +1,4 @@
-import './GridProvider';
+import './GridEditorProvider';
 import './filter/Filter';
 
 import { ERDEditorContext } from '@@types/index';
@@ -6,35 +6,35 @@ import {
   defineComponent,
   html,
   FunctionalComponent,
-  query,
-  mounted,
 } from '@dineug/lit-observable';
-import tuiGrid from 'tui-grid';
 import { useGridKeymap } from '@/extensions/panels/grid/hooks/gridKeymap.hook';
 import { useKeydown } from '@/extensions/panels/grid/hooks/keydown.hook';
-import { GridContext } from '@/extensions/panels/grid/GridContext';
+import { useGrid } from '@/extensions/panels/grid/hooks/grid.hook';
+import { GridContext } from '@/extensions/panels/grid/core/gridContext';
 import { IndexStyle } from './index.style';
 
 declare global {
   interface HTMLElementTagNameMap {
-    'vuerd-grid': GridElement;
+    'vuerd-grid-editor': GridEditorElement;
   }
 }
 
-export interface GridProps {
+export interface GridEditorProps {
   width: number;
   height: number;
 }
 
-// GridProvider
-
-export interface GridElement extends GridProps, HTMLElement {
+export interface GridEditorElement extends GridEditorProps, HTMLElement {
   api: ERDEditorContext;
+  focus(): void;
 }
 
-const Grid: FunctionalComponent<GridProps, GridElement> = (props, ctx) => {
-  const containerRef = query<HTMLElement>('.vuerd-grid-container');
+const GridEditor: FunctionalComponent<GridEditorProps, GridEditorElement> = (
+  props,
+  ctx
+) => {
   const { keydown$ } = useKeydown(ctx);
+  const gridRef = useGrid(props, ctx, keydown$);
   useGridKeymap(ctx);
 
   const onCloseFilter = () => {
@@ -60,33 +60,16 @@ const Grid: FunctionalComponent<GridProps, GridElement> = (props, ctx) => {
     }
   };
 
-  mounted(() => {
-    new tuiGrid({
-      el: containerRef.value,
-      usageStatistics: false,
-      bodyHeight: props.height,
-      columnOptions: {
-        frozenCount: 1,
-        frozenBorderWidth: 0,
-        minWidth: 300,
-      },
-      columns: [],
-      data: [],
-    });
-  });
+  ctx.focus = () => gridRef.value.focus(0, 'tableName');
 
   return () => {
-    const {
-      store: {
-        editorState: { filterState },
-      },
-    } = ctx.api;
+    const { filterState } = ctx.api.store.editorState;
     const context: GridContext = { api: ctx.api, keydown$ };
 
     return html`
-      <vuerd-grid-provider .value=${context}>
+      <vuerd-grid-editor-provider .value=${context}>
         <div
-          class="vuerd-grid"
+          class="vuerd-grid-editor"
           @mousedown=${onOutside}
           @touchstart=${onOutside}
         >
@@ -96,12 +79,12 @@ const Grid: FunctionalComponent<GridProps, GridElement> = (props, ctx) => {
             @close=${onCloseFilter}
           ></vuerd-filter>
         </div>
-      </vuerd-grid-provider>
+      </vuerd-grid-editor-provider>
     `;
   };
 };
 
-defineComponent('vuerd-grid', {
+defineComponent('vuerd-grid-editor', {
   observedProps: [
     {
       name: 'width',
@@ -117,5 +100,5 @@ defineComponent('vuerd-grid', {
     height: '100%',
   },
   style: IndexStyle,
-  render: Grid,
+  render: GridEditor,
 });

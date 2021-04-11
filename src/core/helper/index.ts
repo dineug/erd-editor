@@ -19,13 +19,16 @@ export const pascalCase = R.pipe<string | undefined, string, string>(
   upperFirst
 );
 
+type Callback = () => void;
+
 export function createSubscriptionHelper() {
-  const subscriptions: Subscription[] = [];
-  const push = (...args: Subscription[]) => subscriptions.push(...args);
+  const subscriptions: Array<Callback | Subscription> = [];
+  const push = (...args: Array<Callback | Subscription>) =>
+    subscriptions.push(...args);
   const destroy = () => {
     while (subscriptions.length) {
-      const subscription = subscriptions.shift() as Subscription;
-      subscription.unsubscribe();
+      const f = subscriptions.shift() as Callback | Subscription;
+      isFunction(f) ? (f as Callback)() : (f as Subscription).unsubscribe();
     }
   };
 

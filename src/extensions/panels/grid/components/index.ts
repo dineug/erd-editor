@@ -1,9 +1,9 @@
-import './Grid';
+import './GridEditor';
 
 import { Panel, PanelProps, ERDEditorContext } from '@@types/index';
 
 export class GridPanel implements Panel {
-  el = document.createElement('vuerd-grid');
+  el = document.createElement('vuerd-grid-editor');
   props: PanelProps;
 
   constructor(props: PanelProps, api: ERDEditorContext) {

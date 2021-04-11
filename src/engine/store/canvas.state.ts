@@ -80,7 +80,7 @@ export const createCanvasState = (): CanvasState => ({
   },
   database: 'MySQL',
   databaseName: '',
-  canvasType: 'Grid',
+  canvasType: 'ERD',
   language: 'GraphQL',
   tableCase: 'pascalCase',
   columnCase: 'camelCase',

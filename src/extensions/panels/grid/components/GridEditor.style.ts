@@ -1,7 +1,7 @@
 import { css } from '@/core/tagged';
 
-export const GridStyle = css`
-  .vuerd-grid {
+export const GridEditorStyle = css`
+  .vuerd-grid-editor {
     position: relative;
     height: 100%;
     background-color: var(--vuerd-color-table);
