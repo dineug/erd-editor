@@ -78,7 +78,10 @@ export function useERDKeymap(ctx: HTMLElement) {
 
       relationshipMenus.forEach(
         relationshipMenu =>
-          keymapMatchAndStop(event, keymap[relationshipMenu.keymapName]) &&
+          keymapMatchAndStop(
+            event,
+            (keymap as any)[relationshipMenu.keymapName]
+          ) &&
           store.dispatch(
             drawStartRelationship$(store, relationshipMenu.relationshipType)
           )

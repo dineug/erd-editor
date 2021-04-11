@@ -58,6 +58,7 @@ interface PathLine {
 
 interface Line {
   start: PointToPoint;
+  start2: PointToPoint;
   end: {
     base: PointToPoint;
     base2: PointToPoint;
@@ -73,12 +74,17 @@ export interface RelationshipPath {
   line: { line: Line; circle: Circle };
 }
 
-interface DrawLine {
+interface DrawPathLine {
   start: PointToPoint;
 }
 
+interface DrawLine {
+  start: PointToPoint;
+  start2: PointToPoint;
+}
+
 export interface DrawPath {
-  path: { path: Path; line: DrawLine };
+  path: { path: Path; line: DrawPathLine };
   line: DrawLine;
 }
 
@@ -187,6 +193,12 @@ function getDrawPath(
       x2: 0,
       y2: 0,
     },
+    start2: {
+      x1: 0,
+      y1: 0,
+      x2: 0,
+      y2: 0,
+    },
   };
   const path: Path = {
     M: { x: 0, y: 0 },
@@ -237,6 +249,12 @@ function getDrawLine(direction: Direction, draw: DrawRelationship): DrawLine {
       x2: 0,
       y2: 0,
     },
+    start2: {
+      x1: 0,
+      y1: 0,
+      x2: 0,
+      y2: 0,
+    },
   };
   if (!draw.start) return line;
 
@@ -244,6 +262,11 @@ function getDrawLine(direction: Direction, draw: DrawRelationship): DrawLine {
   line.start.y1 = draw.start.y;
   line.start.x2 = draw.start.x;
   line.start.y2 = draw.start.y;
+
+  line.start2.x1 = draw.start.x;
+  line.start2.y1 = draw.start.y;
+  line.start2.x2 = draw.start.x;
+  line.start2.y2 = draw.start.y;
 
   let change = 1;
   if (direction === 'left' || direction === 'right') {
@@ -253,6 +276,10 @@ function getDrawLine(direction: Direction, draw: DrawRelationship): DrawLine {
     line.start.x1 = line.start.x2 += change * LINE_HEIGHT;
     line.start.y1 -= LINE_SIZE;
     line.start.y2 += LINE_SIZE;
+
+    line.start2.x1 = line.start2.x2 = line.start.x1 + change * LINE_SIZE;
+    line.start2.y1 = line.start.y1;
+    line.start2.y2 = line.start.y2;
   } else if (direction === 'top' || direction === 'bottom') {
     if (direction === 'top') {
       change *= -1;
@@ -260,6 +287,10 @@ function getDrawLine(direction: Direction, draw: DrawRelationship): DrawLine {
     line.start.y1 = line.start.y2 += change * LINE_HEIGHT;
     line.start.x1 -= LINE_SIZE;
     line.start.x2 += LINE_SIZE;
+
+    line.start2.y1 = line.start2.y2 = line.start.y1 + change * LINE_SIZE;
+    line.start2.x1 = line.start.x1;
+    line.start2.x2 = line.start.x2;
   }
 
   return line;
@@ -287,6 +318,12 @@ export function getDraw(draw: DrawRelationship): DrawPath {
     },
     line: {
       start: {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 0,
+      },
+      start2: {
         x1: 0,
         y1: 0,
         x2: 0,
@@ -651,6 +688,12 @@ function getLine(
       x2: start.x,
       y2: start.y,
     },
+    start2: {
+      x1: start.x,
+      y1: start.y,
+      x2: start.x,
+      y2: start.y,
+    },
     end: {
       base: {
         x1: end.x,
@@ -703,6 +746,10 @@ function getLine(
     line.start.x1 = line.start.x2 += change * LINE_HEIGHT;
     line.start.y1 -= LINE_SIZE;
     line.start.y2 += LINE_SIZE;
+
+    line.start2.x1 = line.start2.x2 = line.start.x1 + change * LINE_SIZE;
+    line.start2.y1 = line.start.y1;
+    line.start2.y2 = line.start.y2;
   } else if (start.direction === 'top' || start.direction === 'bottom') {
     if (start.direction === 'top') {
       change *= -1;
@@ -710,6 +757,10 @@ function getLine(
     line.start.y1 = line.start.y2 += change * LINE_HEIGHT;
     line.start.x1 -= LINE_SIZE;
     line.start.x2 += LINE_SIZE;
+
+    line.start2.y1 = line.start2.y2 = line.start.y1 + change * LINE_SIZE;
+    line.start2.x1 = line.start.x1;
+    line.start2.x2 = line.start.x2;
   }
 
   change = 1;

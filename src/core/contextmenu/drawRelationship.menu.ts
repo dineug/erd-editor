@@ -13,11 +13,11 @@ interface RelationshipMenu {
 }
 
 export const relationshipMenus: RelationshipMenu[] = [
-  {
-    name: 'Zero One N',
-    relationshipType: 'ZeroOneN',
-    keymapName: 'relationshipZeroOneN',
-  },
+  // {
+  //   name: 'Zero One N',
+  //   relationshipType: 'ZeroOneN',
+  //   keymapName: 'relationshipZeroOneN',
+  // },
   {
     name: 'Zero One',
     relationshipType: 'ZeroOne',
@@ -38,16 +38,16 @@ export const relationshipMenus: RelationshipMenu[] = [
     relationshipType: 'OneN',
     keymapName: 'relationshipOneN',
   },
-  {
-    name: 'One',
-    relationshipType: 'One',
-    keymapName: 'relationshipOne',
-  },
-  {
-    name: 'N',
-    relationshipType: 'N',
-    keymapName: 'relationshipN',
-  },
+  // {
+  //   name: 'One',
+  //   relationshipType: 'One',
+  //   keymapName: 'relationshipOne',
+  // },
+  // {
+  //   name: 'N',
+  //   relationshipType: 'N',
+  //   keymapName: 'relationshipN',
+  // },
 ];
 
 export const defaultOptions: MenuOptions = {
@@ -62,8 +62,12 @@ export const createDrawRelationshipMenus = ({
   relationshipMenus.map(relationshipMenu => ({
     iconBase64: getBase64Icon(relationshipMenu.relationshipType),
     name: relationshipMenu.name,
-    keymap: keymapOptionToString(keymap[relationshipMenu.keymapName][0]),
-    keymapTooltip: keymapOptionsToString(keymap[relationshipMenu.keymapName]),
+    keymap: keymapOptionToString(
+      (keymap as any)[relationshipMenu.keymapName][0]
+    ),
+    keymapTooltip: keymapOptionsToString(
+      (keymap as any)[relationshipMenu.keymapName]
+    ),
     execute: () =>
       store.dispatch(
         drawStartRelationship$(store, relationshipMenu.relationshipType)

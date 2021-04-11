@@ -24,13 +24,13 @@ export interface Keymap {
   selectAllColumn: KeymapOption[];
   copyColumn: KeymapOption[];
   pasteColumn: KeymapOption[];
-  relationshipZeroOneN: KeymapOption[];
+  // relationshipZeroOneN: KeymapOption[];
   relationshipZeroOne: KeymapOption[];
   relationshipZeroN: KeymapOption[];
   relationshipOneOnly: KeymapOption[];
   relationshipOneN: KeymapOption[];
-  relationshipOne: KeymapOption[];
-  relationshipN: KeymapOption[];
+  // relationshipOne: KeymapOption[];
+  // relationshipN: KeymapOption[];
   tableProperties: KeymapOption[];
 }
 

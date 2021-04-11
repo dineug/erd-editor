@@ -146,90 +146,90 @@ export const createKeymap = (): Keymap => ({
       key: 'V',
     },
   ],
-  relationshipZeroOneN: [
-    {
-      ctrlKey: true,
-      altKey: true,
-      key: '1',
-    },
-    {
-      metaKey: true,
-      altKey: true,
-      key: '1',
-    },
-  ],
+  // relationshipZeroOneN: [
+  //   {
+  //     ctrlKey: true,
+  //     altKey: true,
+  //     key: '1',
+  //   },
+  //   {
+  //     metaKey: true,
+  //     altKey: true,
+  //     key: '1',
+  //   },
+  // ],
   relationshipZeroOne: [
     {
       ctrlKey: true,
       altKey: true,
-      key: '2',
+      key: '1',
     },
     {
       metaKey: true,
       altKey: true,
-      key: '2',
+      key: '1',
     },
   ],
   relationshipZeroN: [
     {
       ctrlKey: true,
       altKey: true,
-      key: '3',
+      key: '2',
     },
     {
       metaKey: true,
       altKey: true,
-      key: '3',
+      key: '2',
     },
   ],
   relationshipOneOnly: [
     {
       ctrlKey: true,
       altKey: true,
-      key: '4',
+      key: '3',
     },
     {
       metaKey: true,
       altKey: true,
-      key: '4',
+      key: '3',
     },
   ],
   relationshipOneN: [
     {
       ctrlKey: true,
       altKey: true,
-      key: '5',
+      key: '4',
     },
     {
       metaKey: true,
       altKey: true,
-      key: '5',
+      key: '4',
     },
   ],
-  relationshipOne: [
-    {
-      ctrlKey: true,
-      altKey: true,
-      key: '6',
-    },
-    {
-      metaKey: true,
-      altKey: true,
-      key: '6',
-    },
-  ],
-  relationshipN: [
-    {
-      ctrlKey: true,
-      altKey: true,
-      key: '7',
-    },
-    {
-      metaKey: true,
-      altKey: true,
-      key: '7',
-    },
-  ],
+  // relationshipOne: [
+  //   {
+  //     ctrlKey: true,
+  //     altKey: true,
+  //     key: '6',
+  //   },
+  //   {
+  //     metaKey: true,
+  //     altKey: true,
+  //     key: '6',
+  //   },
+  // ],
+  // relationshipN: [
+  //   {
+  //     ctrlKey: true,
+  //     altKey: true,
+  //     key: '7',
+  //   },
+  //   {
+  //     metaKey: true,
+  //     altKey: true,
+  //     key: '7',
+  //   },
+  // ],
   tableProperties: [
     {
       altKey: true,

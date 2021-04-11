@@ -18,6 +18,17 @@ interface RelationshipData {
   loadRelationship?: Relationship;
 }
 
+const migrationRelationshipTypes = ['ZeroOneN', 'One', 'N'];
+const migrationRelationshipTypeMap = {
+  ZeroOneN: 'ZeroN',
+  One: 'OneOnly',
+  N: 'OneN',
+};
+const migrationRelationshipType = (relationshipType: RelationshipType) =>
+  migrationRelationshipTypes.includes(relationshipType)
+    ? (migrationRelationshipTypeMap as any)[relationshipType]
+    : relationshipType;
+
 const isLoadRelationship = (loadRelationship: Relationship) =>
   isString(loadRelationship.id) &&
   isBoolean(loadRelationship.identification) &&
@@ -38,7 +49,7 @@ const isLoadRelationship = (loadRelationship: Relationship) =>
 export class RelationshipModel implements Relationship {
   id: string;
   identification = false;
-  relationshipType: RelationshipType = 'ZeroOneN';
+  relationshipType: RelationshipType = 'ZeroN';
   start: RelationshipPoint = {
     tableId: '',
     columnIds: [],
@@ -59,7 +70,7 @@ export class RelationshipModel implements Relationship {
       const { id, relationshipType, start, end } = addRelationship;
 
       this.id = id;
-      this.relationshipType = relationshipType;
+      this.relationshipType = migrationRelationshipType(relationshipType);
       this.start.tableId = start.tableId;
       this.start.columnIds = [...start.columnIds];
       this.end.tableId = end.tableId;
@@ -71,7 +82,7 @@ export class RelationshipModel implements Relationship {
 
       this.id = id;
       this.identification = identification;
-      this.relationshipType = relationshipType;
+      this.relationshipType = migrationRelationshipType(relationshipType);
       this.start = start;
       this.end = end;
     } else {

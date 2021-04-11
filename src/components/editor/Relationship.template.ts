@@ -224,6 +224,11 @@ export function relationshipTpl(relationship: Relationship, strokeWidth = 3) {
       x2=${line.line.start.x2} y2=${line.line.start.y2}
       stroke-width="3"
     ></line>
+    <line
+      x1=${line.line.start2.x1} y1=${line.line.start2.y1}
+      x2=${line.line.start2.x2} y2=${line.line.start2.y2}
+      stroke-width="3"
+    ></line>
     ${shape}
   `;
 }

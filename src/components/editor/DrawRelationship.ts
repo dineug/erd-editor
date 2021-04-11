@@ -75,6 +75,11 @@ const DrawRelationship: FunctionalComponent<Props, Element> = (props, ctx) => {
             x2=${line.start.x2} y2=${line.start.y2}
             stroke-width="3"
           ></line>
+          <line
+            x1=${line.start2.x1} y1=${line.start2.y1}
+            x2=${line.start2.x2} y2=${line.start2.y2}
+            stroke-width="3"
+          ></line>
         </g>
       </svg>
   `;
