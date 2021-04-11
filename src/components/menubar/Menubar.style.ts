@@ -21,14 +21,12 @@ export const MenubarStyle = css`
 
   .vuerd-editor-status.focus {
     background-color: var(--vuerd-color-focus);
-    box-shadow: 0 0 5px var(--vuerd-color-focus), 0 0 20px rgb(255 255 0 / 0.8),
-      0 0 35px rgb(255 255 0 / 0.7), 0 0 50px rgb(255 255 0 / 0.6);
+    box-shadow: 0 0 5px var(--vuerd-color-focus);
   }
 
   .vuerd-editor-status.edit {
     background-color: var(--vuerd-color-edit);
-    box-shadow: 0 0 5px var(--vuerd-color-edit), 0 0 20px rgb(255 255 0 / 0.8),
-      0 0 35px rgb(255 255 0 / 0.7), 0 0 50px rgb(255 255 0 / 0.6);
+    box-shadow: 0 0 5px var(--vuerd-color-edit);
   }
 
   .vuerd-menubar-input {
