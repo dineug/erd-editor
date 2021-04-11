@@ -2,7 +2,7 @@ import { css } from '@/core/tagged';
 
 export const FilterStyle = css`
   .vuerd-filter {
-    width: 338px;
+    width: 340px;
     display: flex;
     flex-direction: column;
     padding: 0 10px;
