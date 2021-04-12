@@ -24,13 +24,10 @@ export interface Keymap {
   selectAllColumn: KeymapOption[];
   copyColumn: KeymapOption[];
   pasteColumn: KeymapOption[];
-  // relationshipZeroOneN: KeymapOption[];
   relationshipZeroOne: KeymapOption[];
   relationshipZeroN: KeymapOption[];
   relationshipOneOnly: KeymapOption[];
   relationshipOneN: KeymapOption[];
-  // relationshipOne: KeymapOption[];
-  // relationshipN: KeymapOption[];
   tableProperties: KeymapOption[];
 }
 
@@ -41,8 +38,5 @@ export type MultipleKey = 'altKey' | 'metaKey' | 'ctrlKey' | 'shiftKey';
 export type RelationshipKeymapName =
   | 'relationshipZeroOne'
   | 'relationshipZeroN'
-  | 'relationshipOne'
-  | 'relationshipN'
-  | 'relationshipZeroOneN'
   | 'relationshipOneN'
   | 'relationshipOneOnly';

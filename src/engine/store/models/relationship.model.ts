@@ -12,22 +12,12 @@ import {
   isBoolean,
   isObject,
 } from '@/core/helper';
+import { migrationRelationshipType } from '@/core/migration/relationshipType';
 
 interface RelationshipData {
   addRelationship?: AddRelationship;
   loadRelationship?: Relationship;
 }
-
-const migrationRelationshipTypes = ['ZeroOneN', 'One', 'N'];
-const migrationRelationshipTypeMap = {
-  ZeroOneN: 'ZeroN',
-  One: 'OneOnly',
-  N: 'OneN',
-};
-const migrationRelationshipType = (relationshipType: RelationshipType) =>
-  migrationRelationshipTypes.includes(relationshipType)
-    ? (migrationRelationshipTypeMap as any)[relationshipType]
-    : relationshipType;
 
 const isLoadRelationship = (loadRelationship: Relationship) =>
   isString(loadRelationship.id) &&

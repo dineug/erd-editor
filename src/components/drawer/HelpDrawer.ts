@@ -129,10 +129,6 @@ const HelpDrawer: FunctionalComponent<HelpDrawerProps, HelpDrawerElement> = (
         name: 'Move checkbox - Grid, filter',
         keymap: 'Arrow key(up, down, left, right)',
       },
-      // {
-      //   name: 'Relationship - Zero One N',
-      //   keymap: keymapOptionsToString(keymap.relationshipZeroOneN),
-      // },
       {
         name: 'Relationship - Zero One',
         keymap: keymapOptionsToString(keymap.relationshipZeroOne),
@@ -149,14 +145,6 @@ const HelpDrawer: FunctionalComponent<HelpDrawerProps, HelpDrawerElement> = (
         name: 'Relationship - One N',
         keymap: keymapOptionsToString(keymap.relationshipOneN),
       },
-      // {
-      //   name: 'Relationship - One',
-      //   keymap: keymapOptionsToString(keymap.relationshipOne),
-      // },
-      // {
-      //   name: 'Relationship - N',
-      //   keymap: keymapOptionsToString(keymap.relationshipN),
-      // },
     ];
   };
 
