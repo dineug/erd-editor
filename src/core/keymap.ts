@@ -146,18 +146,6 @@ export const createKeymap = (): Keymap => ({
       key: 'V',
     },
   ],
-  // relationshipZeroOneN: [
-  //   {
-  //     ctrlKey: true,
-  //     altKey: true,
-  //     key: '1',
-  //   },
-  //   {
-  //     metaKey: true,
-  //     altKey: true,
-  //     key: '1',
-  //   },
-  // ],
   relationshipZeroOne: [
     {
       ctrlKey: true,
@@ -206,30 +194,6 @@ export const createKeymap = (): Keymap => ({
       key: '4',
     },
   ],
-  // relationshipOne: [
-  //   {
-  //     ctrlKey: true,
-  //     altKey: true,
-  //     key: '6',
-  //   },
-  //   {
-  //     metaKey: true,
-  //     altKey: true,
-  //     key: '6',
-  //   },
-  // ],
-  // relationshipN: [
-  //   {
-  //     ctrlKey: true,
-  //     altKey: true,
-  //     key: '7',
-  //   },
-  //   {
-  //     metaKey: true,
-  //     altKey: true,
-  //     key: '7',
-  //   },
-  // ],
   tableProperties: [
     {
       altKey: true,
@@ -238,6 +202,26 @@ export const createKeymap = (): Keymap => ({
     {
       ctrlKey: true,
       key: 'Space',
+    },
+  ],
+  zoomIn: [
+    {
+      altKey: true,
+      key: '+',
+    },
+    {
+      altKey: true,
+      key: 'Equal',
+    },
+  ],
+  zoomOut: [
+    {
+      altKey: true,
+      key: '-',
+    },
+    {
+      altKey: true,
+      key: 'Minus',
     },
   ],
 });

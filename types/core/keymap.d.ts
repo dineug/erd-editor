@@ -29,6 +29,8 @@ export interface Keymap {
   relationshipOneOnly: KeymapOption[];
   relationshipOneN: KeymapOption[];
   tableProperties: KeymapOption[];
+  zoomIn: KeymapOption[];
+  zoomOut: KeymapOption[];
 }
 
 export type KeymapKey = keyof Keymap;

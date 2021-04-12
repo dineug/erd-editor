@@ -40,6 +40,7 @@ import {
   findActive$,
   findActiveEnd,
 } from '@/engine/command/editor.cmd.helper';
+import { movementZoomCanvas } from '@/engine/command/canvas.cmd.helper';
 import { Bus } from '@/core/helper/eventBus.helper';
 
 const changeColumnMap = {
@@ -126,6 +127,11 @@ export function useERDKeymap(ctx: HTMLElement) {
 
         eventBus.emit(Bus.Drawer.close);
       }
+
+      keymapMatchAndStop(event, keymap.zoomIn) &&
+        store.dispatch(movementZoomCanvas(0.1));
+      keymapMatchAndStop(event, keymap.zoomOut) &&
+        store.dispatch(movementZoomCanvas(-0.1));
     }
 
     if (editorState.focusTable && !editorState.focusTable.edit) {

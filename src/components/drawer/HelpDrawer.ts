@@ -145,6 +145,14 @@ const HelpDrawer: FunctionalComponent<HelpDrawerProps, HelpDrawerElement> = (
         name: 'Relationship - One N',
         keymap: keymapOptionsToString(keymap.relationshipOneN),
       },
+      {
+        name: 'Zoom In - ERD',
+        keymap: keymapOptionsToString(keymap.zoomIn),
+      },
+      {
+        name: 'Zoom Out - ERD',
+        keymap: keymapOptionsToString(keymap.zoomOut),
+      },
     ];
   };
 
