@@ -1,6 +1,6 @@
 import { html } from 'lit-html';
 import '@dist/vuerd.min.js';
-import { initializeStyle } from '@/stories/ERDEditor.helper';
+import { initializeStyle } from '@/stories/example/ERDEditor.helper';
 
 export interface ERDEditorProps {
   theme?: string;

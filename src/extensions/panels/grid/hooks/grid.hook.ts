@@ -3,7 +3,7 @@ import { ChangeTableValue } from '@@types/engine/command/table.cmd';
 import { query, mounted, unmounted, watch } from '@dineug/lit-observable';
 import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
-import TuiGrid from 'tui-grid';
+import Grid from 'tui-grid';
 import {
   GridEditorProps,
   GridEditorElement,
@@ -32,7 +32,7 @@ export function useGrid(
   keydown$: Subject<KeyboardEvent>
 ) {
   const containerRef = query<HTMLElement>('.vuerd-grid-container');
-  const gridRef: { value: TuiGrid | null } = { value: null };
+  const gridRef: { value: Grid | null } = { value: null };
   const { unmountedGroup } = useUnmounted();
   const filter$ = new Subject();
   const subscriptionHelper = createSubscriptionHelper();
@@ -388,7 +388,7 @@ export function useGrid(
   mounted(() => {
     const { filterState } = ctx.api.store.editorState;
 
-    gridRef.value = new TuiGrid({
+    gridRef.value = new Grid({
       el: containerRef.value,
       usageStatistics: false,
       bodyHeight: getHeight(),
@@ -433,5 +433,5 @@ export function useGrid(
     gridRef.value.destroy();
   });
 
-  return gridRef as { value: TuiGrid };
+  return gridRef as { value: Grid };
 }

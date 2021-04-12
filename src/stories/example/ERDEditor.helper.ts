@@ -3,7 +3,6 @@ const defaultStyle = {
   margin: '0',
   width: '100%',
   height: '100vh',
-  overflow: 'hidden',
 };
 
 export function initializeStyle() {
