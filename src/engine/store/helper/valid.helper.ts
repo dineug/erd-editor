@@ -5,6 +5,7 @@ import { getColumns } from '@/engine/store/helper/column.helper';
 import {
   executeChangeIdentification,
   executeRemoveRelationship,
+  executeChangeStartRelationshipType,
 } from '@/engine/command/relationship.cmd';
 
 /**
@@ -21,11 +22,35 @@ export function validIdentification(state: State) {
     if (!table) return;
 
     const columns = getColumns(table, end.columnIds);
-    const identification = !columns.some(column => !column.option.primaryKey);
+    const identification = columns.every(column => column.option.primaryKey);
+
     if (identification !== relationship.identification) {
       executeChangeIdentification(state, {
         relationshipId: relationship.id,
         identification,
+      });
+    }
+  });
+}
+
+export function validStartRelationship(state: State) {
+  const { relationships } = state.relationshipState;
+  const { tables } = state.tableState;
+
+  relationships.forEach(relationship => {
+    const { end } = relationship;
+    const table = getData(tables, end.tableId);
+    if (!table) return;
+
+    const columns = getColumns(table, end.columnIds);
+    const startRelationshipType = columns.every(column => column.option.notNull)
+      ? 'Dash'
+      : 'Ring';
+
+    if (startRelationshipType !== relationship.startRelationshipType) {
+      executeChangeStartRelationshipType(state, {
+        relationshipId: relationship.id,
+        startRelationshipType,
       });
     }
   });

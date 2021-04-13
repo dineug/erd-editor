@@ -10,7 +10,7 @@ import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from '@/core/layout';
 import { getData } from '@/core/helper';
 
 const TABLE_PADDING = (SIZE_TABLE_PADDING + SIZE_TABLE_BORDER) * 2;
-const PATH_HEIGHT = 40;
+const PATH_HEIGHT = 30;
 const PATH_END_HEIGHT = PATH_HEIGHT + 20;
 const PATH_LINE_HEIGHT = 35;
 const LINE_SIZE = 10;
@@ -57,8 +57,12 @@ interface PathLine {
 }
 
 interface Line {
-  start: PointToPoint;
-  start2: PointToPoint;
+  start: {
+    base: PointToPoint;
+    base2: PointToPoint;
+    center: PointToPoint;
+    center2: PointToPoint;
+  };
   end: {
     base: PointToPoint;
     base2: PointToPoint;
@@ -71,7 +75,7 @@ interface Line {
 
 export interface RelationshipPath {
   path: { path: Path; line: PathLine };
-  line: { line: Line; circle: Circle };
+  line: { line: Line; circle: Circle; startCircle: Circle };
 }
 
 interface DrawPathLine {
@@ -79,8 +83,12 @@ interface DrawPathLine {
 }
 
 interface DrawLine {
-  start: PointToPoint;
-  start2: PointToPoint;
+  start: {
+    base: PointToPoint;
+    base2: PointToPoint;
+    center: PointToPoint;
+    center2: PointToPoint;
+  };
 }
 
 export interface DrawPath {
@@ -185,15 +193,9 @@ function getDrawDirection(draw: DrawRelationship): Direction {
 function getDrawPath(
   direction: Direction,
   draw: DrawRelationship
-): { path: Path; line: DrawLine } {
-  const line: DrawLine = {
+): { path: Path; line: DrawPathLine } {
+  const line: DrawPathLine = {
     start: {
-      x1: 0,
-      y1: 0,
-      x2: 0,
-      y2: 0,
-    },
-    start2: {
       x1: 0,
       y1: 0,
       x2: 0,
@@ -220,14 +222,16 @@ function getDrawPath(
       if (direction === 'left') {
         change *= -1;
       }
-      line.start.x2 = draw.start.x + change * PATH_HEIGHT;
+      line.start.x2 = draw.start.x + change * PATH_END_HEIGHT;
+      line.start.x1 += change * PATH_LINE_HEIGHT;
       path.M.x = line.start.x2;
       path.M.y = draw.start.y;
     } else if (direction === 'top' || direction === 'bottom') {
       if (direction === 'top') {
         change *= -1;
       }
-      line.start.y2 = draw.start.y + change * PATH_HEIGHT;
+      line.start.y2 = draw.start.y + change * PATH_END_HEIGHT;
+      line.start.y1 += change * PATH_LINE_HEIGHT;
       path.M.x = draw.start.x;
       path.M.y = line.start.y2;
     }
@@ -244,53 +248,70 @@ function getDrawPath(
 function getDrawLine(direction: Direction, draw: DrawRelationship): DrawLine {
   const line: DrawLine = {
     start: {
-      x1: 0,
-      y1: 0,
-      x2: 0,
-      y2: 0,
-    },
-    start2: {
-      x1: 0,
-      y1: 0,
-      x2: 0,
-      y2: 0,
+      base: {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 0,
+      },
+      base2: {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 0,
+      },
+      center: {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 0,
+      },
+      center2: {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 0,
+      },
     },
   };
   if (!draw.start) return line;
 
-  line.start.x1 = draw.start.x;
-  line.start.y1 = draw.start.y;
-  line.start.x2 = draw.start.x;
-  line.start.y2 = draw.start.y;
-
-  line.start2.x1 = draw.start.x;
-  line.start2.y1 = draw.start.y;
-  line.start2.x2 = draw.start.x;
-  line.start2.y2 = draw.start.y;
+  line.start.base.x1 = line.start.base2.x1 = line.start.center.x1 = line.start.center2.x1 =
+    draw.start.x;
+  line.start.base.x2 = line.start.base2.x2 = line.start.center.x2 = line.start.center2.x2 =
+    draw.start.x;
+  line.start.base.y1 = line.start.base2.y1 = line.start.center.y1 = line.start.center2.y1 =
+    draw.start.y;
+  line.start.base.y2 = line.start.base2.y2 = line.start.center.y2 = line.start.center2.y2 =
+    draw.start.y;
 
   let change = 1;
   if (direction === 'left' || direction === 'right') {
     if (direction === 'left') {
       change *= -1;
     }
-    line.start.x1 = line.start.x2 += change * LINE_HEIGHT;
-    line.start.y1 -= LINE_SIZE;
-    line.start.y2 += LINE_SIZE;
-
-    line.start2.x1 = line.start2.x2 = line.start.x1 + change * LINE_SIZE;
-    line.start2.y1 = line.start.y1;
-    line.start2.y2 = line.start.y2;
+    line.start.base.x1 = line.start.base.x2 += change * LINE_HEIGHT;
+    line.start.base2.x1 = line.start.base2.x2 +=
+      change * (LINE_SIZE + LINE_HEIGHT);
+    line.start.center.x1 = line.start.base.x1;
+    line.start.base.y1 -= LINE_SIZE;
+    line.start.base.y2 += LINE_SIZE;
+    line.start.base2.y1 -= LINE_SIZE;
+    line.start.base2.y2 += LINE_SIZE;
+    line.start.center2.x1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
   } else if (direction === 'top' || direction === 'bottom') {
     if (direction === 'top') {
       change *= -1;
     }
-    line.start.y1 = line.start.y2 += change * LINE_HEIGHT;
-    line.start.x1 -= LINE_SIZE;
-    line.start.x2 += LINE_SIZE;
-
-    line.start2.y1 = line.start2.y2 = line.start.y1 + change * LINE_SIZE;
-    line.start2.x1 = line.start.x1;
-    line.start2.x2 = line.start.x2;
+    line.start.base.y1 = line.start.base.y2 += change * LINE_HEIGHT;
+    line.start.base2.y1 = line.start.base2.y2 +=
+      change * (LINE_SIZE + LINE_HEIGHT);
+    line.start.center.y1 = line.start.base.y1;
+    line.start.base.x1 -= LINE_SIZE;
+    line.start.base.x2 += LINE_SIZE;
+    line.start.base2.x1 -= LINE_SIZE;
+    line.start.base2.x2 += LINE_SIZE;
+    line.start.center2.y1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
   }
 
   return line;
@@ -318,16 +339,30 @@ export function getDraw(draw: DrawRelationship): DrawPath {
     },
     line: {
       start: {
-        x1: 0,
-        y1: 0,
-        x2: 0,
-        y2: 0,
-      },
-      start2: {
-        x1: 0,
-        y1: 0,
-        x2: 0,
-        y2: 0,
+        base: {
+          x1: 0,
+          y1: 0,
+          x2: 0,
+          y2: 0,
+        },
+        base2: {
+          x1: 0,
+          y1: 0,
+          x2: 0,
+          y2: 0,
+        },
+        center: {
+          x1: 0,
+          y1: 0,
+          x2: 0,
+          y2: 0,
+        },
+        center2: {
+          x1: 0,
+          y1: 0,
+          x2: 0,
+          y2: 0,
+        },
       },
     },
   };
@@ -640,14 +675,16 @@ function getPath(
     if (start.direction === 'left') {
       change *= -1;
     }
-    line.start.x2 = start.x + change * PATH_HEIGHT;
+    line.start.x2 = start.x + change * PATH_END_HEIGHT;
+    line.start.x1 += change * PATH_LINE_HEIGHT;
     path.M.x = line.start.x2;
     path.M.y = start.y;
   } else if (start.direction === 'top' || start.direction === 'bottom') {
     if (start.direction === 'top') {
       change *= -1;
     }
-    line.start.y2 = start.y + change * PATH_HEIGHT;
+    line.start.y2 = start.y + change * PATH_END_HEIGHT;
+    line.start.y1 += change * PATH_LINE_HEIGHT;
     path.M.x = start.x;
     path.M.y = line.start.y2;
   }
@@ -680,19 +717,33 @@ function getPath(
 function getLine(
   start: RelationshipPoint,
   end: RelationshipPoint
-): { line: Line; circle: Circle } {
+): { line: Line; circle: Circle; startCircle: Circle } {
   const line: Line = {
     start: {
-      x1: start.x,
-      y1: start.y,
-      x2: start.x,
-      y2: start.y,
-    },
-    start2: {
-      x1: start.x,
-      y1: start.y,
-      x2: start.x,
-      y2: start.y,
+      base: {
+        x1: start.x,
+        y1: start.y,
+        x2: start.x,
+        y2: start.y,
+      },
+      base2: {
+        x1: start.x,
+        y1: start.y,
+        x2: start.x,
+        y2: start.y,
+      },
+      center: {
+        x1: start.x,
+        y1: start.y,
+        x2: start.x,
+        y2: start.y,
+      },
+      center2: {
+        x1: start.x,
+        y1: start.y,
+        x2: start.x,
+        y2: start.y,
+      },
     },
     end: {
       base: {
@@ -737,30 +788,42 @@ function getLine(
     cx: end.x,
     cy: end.y,
   };
+  const startCircle = {
+    cx: start.x,
+    cy: start.y,
+  };
 
   let change = 1;
   if (start.direction === 'left' || start.direction === 'right') {
     if (start.direction === 'left') {
       change *= -1;
     }
-    line.start.x1 = line.start.x2 += change * LINE_HEIGHT;
-    line.start.y1 -= LINE_SIZE;
-    line.start.y2 += LINE_SIZE;
+    line.start.base.x1 = line.start.base.x2 += change * LINE_HEIGHT;
+    line.start.base2.x1 = line.start.base2.x2 +=
+      change * (LINE_SIZE + LINE_HEIGHT);
+    line.start.center.x1 = line.start.base.x1;
+    line.start.base.y1 -= LINE_SIZE;
+    line.start.base.y2 += LINE_SIZE;
+    line.start.base2.y1 -= LINE_SIZE;
+    line.start.base2.y2 += LINE_SIZE;
+    line.start.center2.x1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
 
-    line.start2.x1 = line.start2.x2 = line.start.x1 + change * LINE_SIZE;
-    line.start2.y1 = line.start.y1;
-    line.start2.y2 = line.start.y2;
+    startCircle.cx += change * CIRCLE_HEIGHT;
   } else if (start.direction === 'top' || start.direction === 'bottom') {
     if (start.direction === 'top') {
       change *= -1;
     }
-    line.start.y1 = line.start.y2 += change * LINE_HEIGHT;
-    line.start.x1 -= LINE_SIZE;
-    line.start.x2 += LINE_SIZE;
+    line.start.base.y1 = line.start.base.y2 += change * LINE_HEIGHT;
+    line.start.base2.y1 = line.start.base2.y2 +=
+      change * (LINE_SIZE + LINE_HEIGHT);
+    line.start.center.y1 = line.start.base.y1;
+    line.start.base.x1 -= LINE_SIZE;
+    line.start.base.x2 += LINE_SIZE;
+    line.start.base2.x1 -= LINE_SIZE;
+    line.start.base2.x2 += LINE_SIZE;
+    line.start.center2.y1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
 
-    line.start2.y1 = line.start2.y2 = line.start.y1 + change * LINE_SIZE;
-    line.start2.x1 = line.start.x1;
-    line.start2.x2 = line.start.x2;
+    startCircle.cy += change * CIRCLE_HEIGHT;
   }
 
   change = 1;
@@ -803,6 +866,7 @@ function getLine(
   return {
     line,
     circle,
+    startCircle,
   };
 }
 

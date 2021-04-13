@@ -2,6 +2,7 @@ import {
   Relationship,
   RelationshipType,
   RelationshipPoint,
+  StartRelationshipType,
 } from '@@types/engine/store/relationship.state';
 import { AddRelationship } from '@@types/engine/command/relationship.cmd';
 import {
@@ -40,6 +41,7 @@ export class RelationshipModel implements Relationship {
   id: string;
   identification = false;
   relationshipType: RelationshipType = 'ZeroN';
+  startRelationshipType: StartRelationshipType = 'Dash';
   start: RelationshipPoint = {
     tableId: '',
     columnIds: [],
@@ -66,15 +68,23 @@ export class RelationshipModel implements Relationship {
       this.end.tableId = end.tableId;
       this.end.columnIds = [...end.columnIds];
     } else if (loadRelationship && isLoadRelationship(loadRelationship)) {
-      const { id, identification, relationshipType, start, end } = cloneDeep(
-        loadRelationship
-      );
+      const {
+        id,
+        identification,
+        relationshipType,
+        startRelationshipType,
+        start,
+        end,
+      } = cloneDeep(loadRelationship);
 
       this.id = id;
       this.identification = identification;
       this.relationshipType = migrationRelationshipType(relationshipType);
       this.start = start;
       this.end = end;
+      if (startRelationshipType) {
+        this.startRelationshipType = startRelationshipType;
+      }
     } else {
       throw new Error('not found relationship');
     }

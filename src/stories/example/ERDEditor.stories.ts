@@ -25,6 +25,7 @@ export default {
     scrollbarThumbActive: { control: 'color' },
     menubar: { control: 'color' },
     visualization: { control: 'color' },
+    onChange: { action: 'onChange' },
   },
 } as Meta;
 

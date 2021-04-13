@@ -25,6 +25,8 @@ export interface ERDEditorProps {
   scrollbarThumbActive?: string;
   menubar?: string;
   visualization?: string;
+  // event
+  onChange?(event: Event): void;
 }
 
 export const ERDEditor = (props: ERDEditorProps) => {
@@ -37,6 +39,10 @@ export const ERDEditor = (props: ERDEditorProps) => {
   link && document.body.removeChild(link);
 
   return html`
-    <erd-editor automatic-layout ?readonly=${props.readonly}></erd-editor>
+    <erd-editor
+      automatic-layout
+      ?readonly=${props.readonly}
+      @change=${props.onChange}
+    ></erd-editor>
   `;
 };

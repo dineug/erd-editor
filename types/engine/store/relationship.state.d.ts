@@ -6,6 +6,7 @@ export interface Relationship {
   id: string;
   identification: boolean;
   relationshipType: RelationshipType;
+  startRelationshipType?: StartRelationshipType; // ADD: version 2.0.3
   start: RelationshipPoint;
   end: RelationshipPoint;
 }
@@ -31,5 +32,7 @@ export type RelationshipType =
   | 'OneN'
   | 'One'
   | 'N';
+
+export type StartRelationshipType = 'Ring' | 'Dash';
 
 export type Direction = 'left' | 'right' | 'top' | 'bottom';

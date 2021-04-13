@@ -50,7 +50,12 @@ export function* selectTable$(store: Store, ctrlKey: boolean, tableId: string) {
       createEndColumns.push({
         tableId: end.tableId,
         id: end.columnIds[index],
-        option: null,
+        option: {
+          autoIncrement: false,
+          primaryKey: false,
+          unique: false,
+          notNull: true,
+        },
         ui: {
           active: false,
           pk: false,

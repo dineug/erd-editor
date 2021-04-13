@@ -1,5 +1,9 @@
 import { CommandType } from './index';
-import { RelationshipType, Relationship } from '../store/relationship.state';
+import {
+  RelationshipType,
+  Relationship,
+  StartRelationshipType,
+} from '../store/relationship.state';
 import { Table } from '../store/table.state';
 
 export function addRelationship(
@@ -16,6 +20,11 @@ export function changeRelationshipType(
   relationshipId: string,
   relationshipType: RelationshipType
 ): CommandType<'relationship.changeRelationshipType'>;
+
+export function changeStartRelationshipType(
+  relationshipId: string,
+  startRelationshipType: StartRelationshipType
+): CommandType<'relationship.changeStartRelationshipType'>;
 
 export function changeIdentification(
   relationshipId: string,

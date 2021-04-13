@@ -211,6 +211,8 @@ interface Keymap {
   relationshipOneOnly?: KeymapOption[];
   relationshipOneN?: KeymapOption[];
   tableProperties?: KeymapOption[];
+  zoomIn?: KeymapOption[];
+  zoomOut?: KeymapOption[];
 }
 ```
 
@@ -221,19 +223,13 @@ const editor = document.createElement('erd-editor');
 editor.setKeymap({
   addTable: [
     {
-      metaKey: false,
-      ctrlKey: false,
       altKey: true,
-      shiftKey: false,
       key: 'N',
     },
   ],
   addColumn: [
     {
-      metaKey: false,
-      ctrlKey: false,
       altKey: true,
-      shiftKey: false,
       key: 'Enter',
     },
   ],

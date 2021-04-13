@@ -36,6 +36,7 @@ import {
   languageList,
   highlightThemes,
 } from '@/engine/store/canvas.state';
+import { validStartRelationship } from '@/engine/store/helper/valid.helper';
 import { panels as globalPanels } from '@/core/panel';
 import { executeLoadTable } from './table.cmd';
 import { executeLoadMemo } from './memo.cmd';
@@ -334,36 +335,35 @@ export function executeLoadJson(state: State, data: LoadJson) {
 
   const tableJson = json.table as any;
   if (isObject(tableJson)) {
-    if (Array.isArray(tableJson.tables)) {
-      tableJson.tables.forEach((loadTable: PureTable) => {
-        executeLoadTable(state, loadTable);
-      });
-    }
-    if (Array.isArray(tableJson.indexes)) {
-      tableJson.indexes.forEach((loadIndex: Index) => {
-        executeLoadIndex(state, loadIndex);
-      });
-    }
+    Array.isArray(tableJson.tables) &&
+      tableJson.tables.forEach((loadTable: PureTable) =>
+        executeLoadTable(state, loadTable)
+      );
+
+    Array.isArray(tableJson.indexes) &&
+      tableJson.indexes.forEach((loadIndex: Index) =>
+        executeLoadIndex(state, loadIndex)
+      );
   }
 
   const memoJson = json.memo as any;
-  if (isObject(memoJson)) {
-    if (Array.isArray(memoJson.memos)) {
-      memoJson.memos.forEach((loadMemo: Memo) => {
-        executeLoadMemo(state, loadMemo);
-      });
-    }
+  if (isObject(memoJson) && Array.isArray(memoJson.memos)) {
+    memoJson.memos.forEach((loadMemo: Memo) =>
+      executeLoadMemo(state, loadMemo)
+    );
   }
 
   const relationshipJson = json.relationship as any;
-  if (isObject(relationshipJson)) {
-    if (Array.isArray(relationshipJson.relationships)) {
-      relationshipJson.relationships.forEach(
-        (loadRelationship: Relationship) => {
-          executeLoadRelationship(state, loadRelationship);
-        }
-      );
-    }
+  if (
+    isObject(relationshipJson) &&
+    Array.isArray(relationshipJson.relationships)
+  ) {
+    relationshipJson.relationships.forEach((loadRelationship: Relationship) => {
+      executeLoadRelationship(state, loadRelationship);
+    });
+
+    // migration version 2.0.3
+    validStartRelationship(state);
   }
 }
 

@@ -1,6 +1,7 @@
 import {
   RelationshipType,
   Relationship,
+  StartRelationshipType,
 } from '@@types/engine/store/relationship.state';
 import { Table } from '@@types/engine/store/table.state';
 import { createCommand } from './helper';
@@ -39,6 +40,15 @@ export const changeRelationshipType = (
   createCommand('relationship.changeRelationshipType', {
     relationshipId,
     relationshipType,
+  });
+
+export const changeStartRelationshipType = (
+  relationshipId: string,
+  startRelationshipType: StartRelationshipType
+) =>
+  createCommand('relationship.changeStartRelationshipType', {
+    relationshipId,
+    startRelationshipType,
   });
 
 export const changeIdentification = (

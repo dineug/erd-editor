@@ -1,4 +1,7 @@
-import { RelationshipCommandMap } from '@@types/engine/command/relationship.cmd';
+import {
+  ChangeStartRelationshipType,
+  RelationshipCommandMap,
+} from '@@types/engine/command/relationship.cmd';
 import { State } from '@@types/engine/store';
 import {
   AddRelationship,
@@ -59,6 +62,16 @@ export function executeChangeRelationshipType(
   relationship.relationshipType = data.relationshipType;
 }
 
+export function executeChangeStartRelationshipType(
+  { relationshipState: { relationships } }: State,
+  data: ChangeStartRelationshipType
+) {
+  const relationship = getData(relationships, data.relationshipId);
+  if (!relationship) return;
+
+  relationship.startRelationshipType = data.startRelationshipType;
+}
+
 export function executeChangeIdentification(
   { relationshipState: { relationships } }: State,
   data: ChangeIdentification
@@ -102,6 +115,7 @@ export const executeRelationshipCommandMap: Record<
   'relationship.add': executeAddRelationship,
   'relationship.remove': executeRemoveRelationship,
   'relationship.changeRelationshipType': executeChangeRelationshipType,
+  'relationship.changeStartRelationshipType': executeChangeStartRelationshipType,
   'relationship.changeIdentification': executeChangeIdentification,
   'relationship.load': executeLoadRelationship,
 };

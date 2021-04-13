@@ -23,6 +23,7 @@ import {
   removeValidColumnRelationship,
   validIdentification,
   removeValidColumnIndex,
+  validStartRelationship,
 } from '@/engine/store/helper/valid.helper';
 
 export function executeAddColumn(
@@ -68,6 +69,7 @@ export function executeRemoveColumn(state: State, data: RemoveColumn) {
   removeValidColumnIndex(state, table, data.columnIds);
   removeValidColumnRelationship(state, table, data.columnIds);
   validIdentification(state);
+  validStartRelationship(state);
 }
 
 export function executeRemoveOnlyColumn(state: State, data: RemoveColumn) {
@@ -194,13 +196,19 @@ export function executeChangeColumnUnique(
 }
 
 export function executeChangeColumnNotNull(
-  { tableState: { tables } }: State,
+  state: State,
   data: ChangeColumnOption
 ) {
+  const {
+    tableState: { tables },
+  } = state;
   const column = getColumn(tables, data.tableId, data.columnId);
   if (!column) return;
 
   column.option.notNull = data.value;
+
+  // TODO: Refactoring
+  validStartRelationship(state);
 }
 
 export function executeMoveColumn(state: State, data: MoveColumn) {
@@ -261,6 +269,7 @@ export function executeMoveColumn(state: State, data: MoveColumn) {
     removeValidColumnIndex(state, currentTable, data.columnIds);
     removeValidColumnRelationship(state, currentTable, data.columnIds);
     validIdentification(state);
+    validStartRelationship(state);
   }
 }
 

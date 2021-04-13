@@ -4,6 +4,7 @@ import {
   RemoveRelationship,
   ChangeRelationshipType,
   ChangeIdentification,
+  ChangeStartRelationshipType,
 } from '@@types/engine/command/relationship.cmd';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { IStore } from '@/internal-types/store';
@@ -56,6 +57,22 @@ export function executeChangeRelationshipType(
   );
 }
 
+export function executeChangeStartRelationshipType(
+  { relationshipState: { relationships } }: IStore,
+  batchUndoCommand: BatchCommand,
+  data: ChangeStartRelationshipType
+) {
+  const relationship = getData(relationships, data.relationshipId);
+  if (!relationship) return;
+
+  batchUndoCommand.push(
+    createCommand('relationship.changeStartRelationshipType', {
+      relationshipId: relationship.id,
+      startRelationshipType: relationship.startRelationshipType ?? 'Dash',
+    })
+  );
+}
+
 export function executeChangeIdentification(
   store: IStore,
   batchUndoCommand: BatchCommand,
@@ -68,5 +85,6 @@ export const executeRelationshipCommandMap = {
   'relationship.add': executeAddRelationship,
   'relationship.remove': executeRemoveRelationship,
   'relationship.changeRelationshipType': executeChangeRelationshipType,
+  'relationship.changeStartRelationshipType': executeChangeStartRelationshipType,
   'relationship.changeIdentification': executeChangeIdentification,
 };

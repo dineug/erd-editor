@@ -60,24 +60,30 @@ const DrawRelationship: FunctionalComponent<Props, Element> = (props, ctx) => {
         })}
       >
         <g>
+          <path
+            d=${path.path.d()}
+            stroke-dasharray="10"
+            stroke-width="3"
+            fill="transparent"
+          ></path>
           <line
             x1=${path.line.start.x1} y1=${path.line.start.y1}
             x2=${path.line.start.x2} y2=${path.line.start.y2}
             stroke-width="3"
           ></line>
-          <path
-            d=${path.path.d()}
-            stroke-dasharray="10"
-            stroke-width="3" fill="transparent"
-          ></path>
           <line
-            x1=${line.start.x1} y1=${line.start.y1}
-            x2=${line.start.x2} y2=${line.start.y2}
+            x1=${line.start.base.x1} y1=${line.start.base.y1}
+            x2=${line.start.base.x2} y2=${line.start.base.y2}
             stroke-width="3"
           ></line>
           <line
-            x1=${line.start2.x1} y1=${line.start2.y1}
-            x2=${line.start2.x2} y2=${line.start2.y2}
+            x1=${line.start.base2.x1} y1=${line.start.base2.y1}
+            x2=${line.start.base2.x2} y2=${line.start.base2.y2}
+            stroke-width="3"
+          ></line>
+          <line
+            x1=${line.start.center2.x1} y1=${line.start.center2.y1}
+            x2=${line.start.center2.x2} y2=${line.start.center2.y2}
             stroke-width="3"
           ></line>
         </g>

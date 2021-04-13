@@ -207,28 +207,63 @@ export function relationshipTpl(relationship: Relationship, strokeWidth = 3) {
     ? relationshipShapeTpl(relationshipPath)
     : null;
 
-  return svg`
-    <line
-      x1=${path.line.start.x1} y1=${path.line.start.y1}
-      x2=${path.line.start.x2} y2=${path.line.start.y2}
-      stroke-width="3"
-    ></line>
-    <path
-      d=${path.path.d()}
-      stroke-dasharray=${relationship.identification ? 0 : 10}
-      stroke-width=${strokeWidth}
-      fill="transparent"
-    ></path>
-    <line
-      x1=${line.line.start.x1} y1=${line.line.start.y1}
-      x2=${line.line.start.x2} y2=${line.line.start.y2}
-      stroke-width="3"
-    ></line>
-    <line
-      x1=${line.line.start2.x1} y1=${line.line.start2.y1}
-      x2=${line.line.start2.x2} y2=${line.line.start2.y2}
-      stroke-width="3"
-    ></line>
-    ${shape}
-  `;
+  return relationship.startRelationshipType === 'Ring'
+    ? svg`
+        <path
+          d=${path.path.d()}
+          stroke-dasharray=${relationship.identification ? 0 : 10}
+          stroke-width=${strokeWidth}
+          fill="transparent"
+        ></path>
+        <line
+          x1=${path.line.start.x1} y1=${path.line.start.y1}
+          x2=${path.line.start.x2} y2=${path.line.start.y2}
+          stroke-width="3"
+        ></line>
+        <circle
+          cx=${line.startCircle.cx} cy=${line.startCircle.cy} r="8"
+          fill-opacity="0.0"
+          stroke-width="3"
+        ></circle>
+        <line
+          x1=${line.line.start.base.x1} y1=${line.line.start.base.y1}
+          x2=${line.line.start.base.x2} y2=${line.line.start.base.y2}
+          stroke-width="3"
+        ></line>
+        <line
+          x1=${line.line.start.center.x1} y1=${line.line.start.center.y1}
+          x2=${line.line.start.center.x2} y2=${line.line.start.center.y2}
+          stroke-width="3"
+        ></line>
+        ${shape}
+    `
+    : svg`
+        <path
+          d=${path.path.d()}
+          stroke-dasharray=${relationship.identification ? 0 : 10}
+          stroke-width=${strokeWidth}
+          fill="transparent"
+        ></path>
+        <line
+          x1=${path.line.start.x1} y1=${path.line.start.y1}
+          x2=${path.line.start.x2} y2=${path.line.start.y2}
+          stroke-width="3"
+        ></line>
+        <line
+          x1=${line.line.start.base.x1} y1=${line.line.start.base.y1}
+          x2=${line.line.start.base.x2} y2=${line.line.start.base.y2}
+          stroke-width="3"
+        ></line>
+        <line
+          x1=${line.line.start.base2.x1} y1=${line.line.start.base2.y1}
+          x2=${line.line.start.base2.x2} y2=${line.line.start.base2.y2}
+          stroke-width="3"
+        ></line>
+        <line
+          x1=${line.line.start.center2.x1} y1=${line.line.start.center2.y1}
+          x2=${line.line.start.center2.x2} y2=${line.line.start.center2.y2}
+          stroke-width="3"
+        ></line>
+        ${shape}
+    `;
 }
