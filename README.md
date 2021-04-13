@@ -347,5 +347,5 @@ container.appendChild(editor);
 | Relationship - Zero N                                      | Ctrl + Alt + 2, Cmd + Alt + 2                                                            |
 | Relationship - One Only                                    | Ctrl + Alt + 3, Cmd + Alt + 3                                                            |
 | Relationship - One N                                       | Ctrl + Alt + 4, Cmd + Alt + 4                                                            |
-| Zoom In - ERD                                              | Alt + [+]                                                                                |
-| Zoom Out - ERD                                             | Alt + [-]                                                                                |
+| Zoom In - ERD                                              | Shift + Equal, Ctrl + Equal                                                              |
+| Zoom Out - ERD                                             | Shift + Minus, Ctrl + Minus                                                              |

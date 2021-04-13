@@ -1,6 +1,6 @@
 {
   "name": "vuerd",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "ERD editor",
   "main": "dist/vuerd.js",
   "module": "dist/vuerd.esm.js",

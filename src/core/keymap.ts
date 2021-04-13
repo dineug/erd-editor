@@ -206,12 +206,20 @@ export const createKeymap = (): Keymap => ({
   ],
   zoomIn: [
     {
+      shiftKey: true,
+      key: 'Equal',
+    },
+    {
       ctrlKey: true,
       key: 'Equal',
       preventDefault: true,
     },
   ],
   zoomOut: [
+    {
+      shiftKey: true,
+      key: 'Minus',
+    },
     {
       ctrlKey: true,
       key: 'Minus',
