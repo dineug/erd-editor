@@ -19,15 +19,16 @@ export const createKeymap = (): Keymap => ({
   ],
   find: [
     {
-      altKey: true,
+      ctrlKey: true,
       key: 'F',
       preventDefault: true,
+      stopPropagation: true,
     },
     {
-      ctrlKey: true,
-      altKey: true,
+      metaKey: true,
       key: 'F',
       preventDefault: true,
+      stopPropagation: true,
     },
   ],
   undo: [

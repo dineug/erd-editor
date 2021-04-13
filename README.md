@@ -323,7 +323,7 @@ container.appendChild(editor);
 | Editing - ERD                                              | dblclick, Enter                                                                          |
 | Editing - Grid                                             | dblclick, Enter                                                                          |
 | All Stop                                                   | Escape                                                                                   |
-| Search - find, filter                                      | Alt + F, Ctrl + Alt + F                                                                  |
+| Search - find, filter                                      | Ctrl + F, Cmd + F                                                                        |
 | Undo - ERD                                                 | Ctrl + Z, Cmd + Z                                                                        |
 | Redo - ERD                                                 | Ctrl + Shift + Z, Cmd + Shift + Z                                                        |
 | Selection - table, memo                                    | Ctrl + Drag, Click, Ctrl + Click, Ctrl + Alt + A, Cmd + Drag, Cmd + Click, Cmd + Alt + A |
