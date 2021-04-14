@@ -3,31 +3,31 @@ import { Table } from '@@types/engine/store/table.state';
 import {
   createCode as createCodeGraphql,
   formatTable as formatTableGraphql,
-} from './/graphql';
+} from './graphql';
 import {
   createCode as createCodeCsharp,
   formatTable as formatTableCsharp,
-} from './/csharp';
+} from './csharp';
 import {
   createCode as createCodeJava,
   formatTable as formatTableJava,
-} from './/java';
+} from './java';
 import {
   createCode as createCodeKotlin,
   formatTable as formatTableKotlin,
-} from './/kotlin';
+} from './kotlin';
 import {
   createCode as createCodeTypescript,
   formatTable as formatTableTypescript,
-} from './/typescript';
+} from './typescript';
 import {
   createCode as createCodeJPA,
   formatTable as formatTableJPA,
-} from './/JPA';
+} from './JPA';
 import {
   createCode as createCodeScla,
   formatTable as formatTableScala,
-} from './/scala';
+} from './scala';
 
 export function createGeneratorCode(store: Store): string {
   const { language } = store.canvasState;
