@@ -12,6 +12,11 @@ import { dragSelectTable } from '@/engine/command/table.cmd.helper';
 import { dragSelectMemo } from '@/engine/command/memo.cmd.helper';
 import { useContext } from '@/core/hooks/context.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import {
+  getZoomViewport,
+  getOverlapPosition,
+  getAbsolutePosition,
+} from '@/core/helper/dragSelect.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -62,13 +67,6 @@ const DragSelect: FunctionalComponent<DragSelectProps, DragSelectElement> = (
           x: props.x > currentX ? props.x : currentX,
           y: props.y > currentY ? props.y : currentY,
         };
-        const ghostMin = Object.assign({}, min);
-        const ghostMax = Object.assign({}, max);
-
-        ghostMin.x -= canvasState.scrollLeft;
-        ghostMin.y -= canvasState.scrollTop;
-        ghostMax.x -= canvasState.scrollLeft;
-        ghostMax.y -= canvasState.scrollTop;
 
         state.left = min.x;
         state.width = max.x - min.x;
@@ -81,6 +79,42 @@ const DragSelect: FunctionalComponent<DragSelectProps, DragSelectElement> = (
         if (state.height < 0) {
           state.height = 0;
         }
+
+        const ghostMin = Object.assign({}, min);
+        const ghostMax = Object.assign({}, max);
+
+        ghostMin.x -= canvasState.scrollLeft;
+        ghostMin.y -= canvasState.scrollTop;
+        ghostMax.x -= canvasState.scrollLeft;
+        ghostMax.y -= canvasState.scrollTop;
+
+        const zoomViewportRect = getZoomViewport(
+          canvasState.width,
+          canvasState.height,
+          canvasState.zoomLevel
+        );
+
+        const overlapPosition = getOverlapPosition(
+          {
+            ...ghostMin,
+            w: ghostMax.x - ghostMin.x,
+            h: ghostMax.y - ghostMin.y,
+          },
+          zoomViewportRect
+        );
+
+        if (!overlapPosition) return;
+
+        const absolutePosition = getAbsolutePosition(
+          overlapPosition,
+          zoomViewportRect,
+          canvasState.zoomLevel
+        );
+
+        ghostMin.x = absolutePosition.x1;
+        ghostMin.y = absolutePosition.y1;
+        ghostMax.x = absolutePosition.x2;
+        ghostMax.y = absolutePosition.y2;
 
         store.dispatch(
           dragSelectTable(ghostMin, ghostMax),
