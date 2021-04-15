@@ -1,6 +1,6 @@
 {
   "name": "vuerd",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "ERD editor",
   "main": "dist/vuerd.js",
   "module": "dist/vuerd.esm.js",
@@ -54,6 +54,7 @@
     "@snowpack/plugin-typescript": "^1.2.1",
     "@storybook/addon-actions": "^6.2.7",
     "@storybook/addon-essentials": "^6.2.7",
+    "@storybook/addon-google-analytics": "^6.2.8",
     "@storybook/addon-links": "^6.2.7",
     "@storybook/addons": "^6.2.7",
     "@storybook/storybook-deployer": "^2.8.7",

@@ -81,12 +81,15 @@ function formatColumn(
   if (column.option.notNull) {
     stringBuffer.push(`NOT NULL`);
   }
-  if (column.option.unique) {
-    stringBuffer.push(`UNIQUE`);
+  if (column.option.autoIncrement) {
+    stringBuffer.push(`GENERATED ALWAYS AS IDENTITY`);
   } else {
     if (column.default.trim() !== '') {
       stringBuffer.push(`DEFAULT ${column.default}`);
     }
+  }
+  if (column.option.unique) {
+    stringBuffer.push(`UNIQUE`);
   }
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
 }
