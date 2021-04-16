@@ -23,6 +23,7 @@ import {
   faCog,
   faMousePointer,
   faCode,
+  faSyncAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import {
   mdiVectorLine,
@@ -64,6 +65,7 @@ const icons = [
   faCog,
   faMousePointer,
   faCode,
+  faSyncAlt,
   createMDI('vector-line', mdiVectorLine),
   createMDI('code-json', mdiCodeJson),
   createMDI('database', mdiDatabase),

@@ -76,3 +76,5 @@ export const commentWidthBalanceRange = createBalanceRange(
   SIZE_MIN_WIDTH,
   SIZE_MAX_WIDTH_COMMENT
 );
+
+export const widthBalanceRange = createBalanceRange(SIZE_MIN_WIDTH, 10000);

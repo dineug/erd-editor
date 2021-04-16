@@ -4,7 +4,6 @@ import {
   html,
   FunctionalComponent,
   observable,
-  query,
   queryAll,
   updated,
 } from '@dineug/lit-observable';
@@ -17,6 +16,10 @@ import {
   moveColumnOrder,
   changeRelationshipDataTypeSync,
 } from '@/engine/command/canvas.cmd.helper';
+import {
+  commentWidthBalanceRange,
+  widthBalanceRange,
+} from '@/engine/store/helper/column.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -84,6 +87,37 @@ const SettingDrawer: FunctionalComponent<
     });
   };
 
+  const onSyncTableWidth = () => {
+    const {
+      store: {
+        tableState: { tables },
+      },
+      helper,
+    } = contextRef.value;
+
+    tables.forEach(table => {
+      table.ui.widthName = widthBalanceRange(helper.getTextWidth(table.name));
+      table.ui.widthComment = commentWidthBalanceRange(
+        helper.getTextWidth(table.comment)
+      );
+
+      table.columns.forEach(column => {
+        column.ui.widthName = widthBalanceRange(
+          helper.getTextWidth(column.name)
+        );
+        column.ui.widthDataType = widthBalanceRange(
+          helper.getTextWidth(column.dataType)
+        );
+        column.ui.widthDefault = widthBalanceRange(
+          helper.getTextWidth(column.default)
+        );
+        column.ui.widthComment = commentWidthBalanceRange(
+          helper.getTextWidth(column.comment)
+        );
+      });
+    });
+  };
+
   updated(() => flipAnimation.play());
 
   return () => {
@@ -136,6 +170,18 @@ const SettingDrawer: FunctionalComponent<
                       </div>
                     `
                 )}
+              </td>
+            </tr>
+            <tr>
+              <td>Recalculating table width</td>
+              <td>
+                <div
+                  class="vuerd-recalculating-table-width-button"
+                  @click=${onSyncTableWidth}
+                >
+                  <span>Sync</span>
+                  <vuerd-icon name="sync-alt" size="12"></vuerd-icon>
+                </div>
               </td>
             </tr>
           </tbody>

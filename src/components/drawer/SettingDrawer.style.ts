@@ -28,4 +28,18 @@ export const SettingDrawerStyle = css`
   .vuerd-setting-drawer .vuerd-column-order-move {
     transition: transform 0.3s;
   }
+
+  .vuerd-setting-drawer .vuerd-recalculating-table-width-button {
+    box-sizing: border-box;
+    padding: 5px;
+    display: inline-block;
+    cursor: pointer;
+    fill: var(--vuerd-color-font);
+    font-size: 15px;
+  }
+  .vuerd-setting-drawer .vuerd-recalculating-table-width-button:hover {
+    color: var(--vuerd-color-font-active);
+    background-color: var(--vuerd-color-contextmenu-active);
+    fill: var(--vuerd-color-font-active);
+  }
 `;
