@@ -8,6 +8,6 @@ export const SQLDDLPanelConfig: PanelConfig = {
     name: 'database-export',
     size: 20,
   },
-  key: 'SQL',
+  key: 'SQLDDL',
   name: 'SQL DDL',
 };

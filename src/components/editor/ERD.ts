@@ -72,9 +72,16 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
   const { unmountedGroup } = useUnmounted();
   const { getPosition } = useMousePosition('.vuerd-erd');
-  const canvasRef = query('.vuerd-canvas');
+  const canvasRef = query<HTMLElement>('.vuerd-canvas');
+  const erdRef = query<HTMLElement>('.vuerd-erd');
   useERDKeymap(ctx);
   let relationshipUnsubscribe: (() => void) | null = null;
+
+  const resetScroll = () => {
+    if (erdRef.value.scrollTop === 0 && erdRef.value.scrollLeft === 0) return;
+    erdRef.value.scrollTop = 0;
+    erdRef.value.scrollLeft = 0;
+  };
 
   const onContextmenu = (event: MouseEvent) => {
     event.preventDefault();
@@ -127,6 +134,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
     const { store } = contextRef.value;
     event.type === 'mousemove' && event.preventDefault();
     store.dispatch(movementCanvas(movementX, movementY));
+    resetScroll();
   };
 
   const onDragSelect = (event: MouseEvent | TouchEvent) => {
