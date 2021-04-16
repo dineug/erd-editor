@@ -68,9 +68,12 @@ const IndexColumn: FunctionalComponent<IndexColumnProps, IndexColumnElement> = (
   const { unmountedGroup } = useUnmounted();
   const { resetTooltip } = useTooltip(['.vuerd-index-column-button'], ctx);
 
-  const getIndex = (): IndexModel => {
+  const getIndex = (): IndexModel | null => {
     const { indexes } = contextRef.value.store.tableState;
-    const index = getData(indexes, props.indexId) as Index;
+    const index = getData(indexes, props.indexId);
+
+    if (!index) return null;
+
     return {
       id: index.id,
       columns: index.columns
@@ -134,40 +137,42 @@ const IndexColumn: FunctionalComponent<IndexColumnProps, IndexColumnElement> = (
   return () => {
     const index = getIndex();
 
-    return html`
-      ${repeat(
-        index.columns,
-        column => column.id,
-        column => html`
-          <div
-            class=${classMap({
-              'vuerd-index-column': true,
-              draggable: state.currentColumnId === column.id,
-            })}
-            data-id=${column.id}
-            draggable="true"
-            @dragstart=${() => onDragstart(column.id)}
-          >
-            <div class="vuerd-index-column-name">${column.name}</div>
-            <div
-              class="vuerd-index-column-order"
-              @click=${() => onChangeColumnOrderType(column)}
-            >
-              ${column.orderType}
-            </div>
-            <div style="display: inline-block;">
-              <vuerd-icon
-                class="vuerd-button vuerd-index-column-button"
-                data-tippy-content="Remove Column"
-                name="times"
-                size="9"
-                @click=${() => onRemoveColumn(column)}
-              ></vuerd-icon>
-            </div>
-          </div>
+    return index
+      ? html`
+          ${repeat(
+            index.columns,
+            column => column.id,
+            column => html`
+              <div
+                class=${classMap({
+                  'vuerd-index-column': true,
+                  draggable: state.currentColumnId === column.id,
+                })}
+                data-id=${column.id}
+                draggable="true"
+                @dragstart=${() => onDragstart(column.id)}
+              >
+                <div class="vuerd-index-column-name">${column.name}</div>
+                <div
+                  class="vuerd-index-column-order"
+                  @click=${() => onChangeColumnOrderType(column)}
+                >
+                  ${column.orderType}
+                </div>
+                <div style="display: inline-block;">
+                  <vuerd-icon
+                    class="vuerd-button vuerd-index-column-button"
+                    data-tippy-content="Remove Column"
+                    name="times"
+                    size="9"
+                    @click=${() => onRemoveColumn(column)}
+                  ></vuerd-icon>
+                </div>
+              </div>
+            `
+          )}
         `
-      )}
-    `;
+      : null;
   };
 };
 
