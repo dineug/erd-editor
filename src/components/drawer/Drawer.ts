@@ -13,6 +13,7 @@ import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { keymapOptionsToString } from '@/core/keymap';
 import { DEFAULT_WIDTH } from '@/core/layout';
 import { DrawerStyle } from './Drawer.style';
+import { IconStyle } from '@/components/Icon.style';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -100,6 +101,6 @@ defineComponent('vuerd-drawer', {
       default: false,
     },
   ],
-  style: DrawerStyle,
+  style: [DrawerStyle, IconStyle].join(''),
   render: Drawer,
 });

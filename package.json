@@ -1,6 +1,6 @@
 {
   "name": "vuerd",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "ERD editor",
   "main": "dist/vuerd.js",
   "module": "dist/vuerd.esm.js",
@@ -37,7 +37,8 @@
     "lint": "eslint . --ext .ts",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook",
-    "deploy-storybook": "storybook-to-ghpages"
+    "deploy-storybook": "storybook-to-ghpages",
+    "typedoc": "typedoc --out docs types/index.d.ts"
   },
   "devDependencies": {
     "@babel/core": "^7.13.15",
@@ -92,6 +93,7 @@
     "stats.js": "^0.17.0",
     "tippy.js": "^6.3.1",
     "tui-grid": "^4.16.1",
+    "typedoc": "^0.20.35",
     "typescript": "^4.2.4",
     "typescript-styled-plugin": "^0.15.0",
     "uuid": "^8.3.2"

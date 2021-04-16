@@ -1,7 +1,6 @@
 import { defineComponent, svg } from '@dineug/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 import { getIcon } from '@/core/icon';
-import { IconStyle } from './Icon.style';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -43,12 +42,12 @@ defineComponent('vuerd-icon', {
       default: null,
     },
   ],
+  shadow: false,
   styleMap: {
     display: 'inline-flex',
     height: '100%',
     alignItems: 'center',
   },
-  style: IconStyle,
   render: (props: IconProps, ctx: IconElement) => () => {
     const icon = getIcon(props.prefix, props.name);
     if (!icon) return svg``;

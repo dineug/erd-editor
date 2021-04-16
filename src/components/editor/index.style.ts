@@ -17,6 +17,7 @@ import { DragSelectStyle } from './DragSelect.style';
 import { MinimapStyle } from './minimap/Minimap.style';
 import { MinimapHandleStyle } from './minimap/MinimapHandle.style';
 import { FindStyle } from './find/Find.style';
+import { IconStyle } from '@/components/Icon.style';
 
 export const IndexStyle = [
   DefaultStyle,
@@ -38,4 +39,5 @@ export const IndexStyle = [
   MinimapStyle,
   MinimapHandleStyle,
   FindStyle,
+  IconStyle,
 ].join('');

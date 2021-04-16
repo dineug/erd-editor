@@ -10,6 +10,7 @@ import { GridTextRenderStyle } from './grid/GridTextRender.style';
 import { GridTextEditorStyle } from './grid/GridTextEditor.style';
 import { ColumnOptionEditorStyle } from './grid/ColumnOptionEditor.style';
 import { ColumnDataTypeEditorStyle } from './grid/ColumnDataTypeEditor.style';
+import { IconStyle } from '@/components/Icon.style';
 
 export const IndexStyle = [
   TuiGridStyle,
@@ -24,4 +25,5 @@ export const IndexStyle = [
   GridTextEditorStyle,
   ColumnOptionEditorStyle,
   ColumnDataTypeEditorStyle,
+  IconStyle,
 ].join('');
