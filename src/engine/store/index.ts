@@ -1,5 +1,6 @@
 import { CommandTypeAll, BatchCommand } from '@@types/engine/command';
 import { State } from '@@types/engine/store';
+import { Helper } from '@@types/core/helper';
 import { IStore } from '@/internal-types/store';
 import { observable } from '@dineug/lit-observable';
 import { createCanvasState } from './canvas.state';
@@ -28,7 +29,7 @@ const createState = (): State =>
     editorState: createEditorState(),
   });
 
-export function createStore(): IStore {
+export function createStore(helper: Helper): IStore {
   const subscriptionHelper = createSubscriptionHelper();
   const state = createState();
   const { dispatch$, history$, change$, hook$ } = createStream();
@@ -78,7 +79,7 @@ export function createStore(): IStore {
       )
       .subscribe(historyCommand),
     dispatch$.pipe(readonlyCommands(state)).subscribe(command),
-    ...useHooks(hook$, state)
+    ...useHooks(hook$, state, helper)
   );
 
   return store;

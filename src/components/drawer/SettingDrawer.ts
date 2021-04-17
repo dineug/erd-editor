@@ -16,10 +16,8 @@ import {
   moveColumnOrder,
   changeRelationshipDataTypeSync,
 } from '@/engine/command/canvas.cmd.helper';
-import {
-  commentWidthBalanceRange,
-  widthBalanceRange,
-} from '@/engine/store/helper/column.helper';
+import { recalculatingTableWidth } from '@/engine/store/helper/table.helper';
+import { relationshipSort } from '@/engine/store/helper/relationship.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -91,31 +89,13 @@ const SettingDrawer: FunctionalComponent<
     const {
       store: {
         tableState: { tables },
+        relationshipState: { relationships },
       },
       helper,
     } = contextRef.value;
 
-    tables.forEach(table => {
-      table.ui.widthName = widthBalanceRange(helper.getTextWidth(table.name));
-      table.ui.widthComment = commentWidthBalanceRange(
-        helper.getTextWidth(table.comment)
-      );
-
-      table.columns.forEach(column => {
-        column.ui.widthName = widthBalanceRange(
-          helper.getTextWidth(column.name)
-        );
-        column.ui.widthDataType = widthBalanceRange(
-          helper.getTextWidth(column.dataType)
-        );
-        column.ui.widthDefault = widthBalanceRange(
-          helper.getTextWidth(column.default)
-        );
-        column.ui.widthComment = commentWidthBalanceRange(
-          helper.getTextWidth(column.comment)
-        );
-      });
-    });
+    recalculatingTableWidth(tables, helper);
+    relationshipSort(tables, relationships);
   };
 
   updated(() => flipAnimation.play());

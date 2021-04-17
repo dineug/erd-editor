@@ -1,5 +1,6 @@
 import { CommandKey, CommandTypeAll } from '@@types/engine/command';
 import { State } from '@@types/engine/store';
+import { Helper } from '@@types/core/helper';
 import { Observable, Subscription } from 'rxjs';
 import { commandsFilter } from '@/core/operators/commandsFilter';
 import { relationshipSort } from '@/engine/store/helper/relationship.helper';
@@ -26,7 +27,8 @@ const hookKeys: CommandKey[] = [
 
 export const useRelationshipSort = (
   hook$: Observable<Array<CommandTypeAll>>,
-  { tableState: { tables }, relationshipState: { relationships } }: State
+  { tableState: { tables }, relationshipState: { relationships } }: State,
+  helper: Helper
 ): Subscription =>
   hook$
     .pipe(commandsFilter(hookKeys))

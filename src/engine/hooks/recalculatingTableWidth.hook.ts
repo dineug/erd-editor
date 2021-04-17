@@ -3,20 +3,15 @@ import { State } from '@@types/engine/store';
 import { Helper } from '@@types/core/helper';
 import { Observable, Subscription } from 'rxjs';
 import { commandsFilter } from '@/core/operators/commandsFilter';
+import { recalculatingTableWidth } from '@/engine/store/helper/table.helper';
 
 const hookKeys: CommandKey[] = ['editor.loadJson', 'editor.initLoadJson'];
 
-export const useResetZIndex = (
+export const useRecalculatingTableWidth = (
   hook$: Observable<Array<CommandTypeAll>>,
-  { tableState: { tables }, memoState: { memos } }: State,
+  { tableState: { tables } }: State,
   helper: Helper
 ): Subscription =>
-  hook$.pipe(commandsFilter(hookKeys)).subscribe(() => {
-    const uiList = [
-      ...tables.map(table => table.ui),
-      ...memos.map(memo => memo.ui),
-    ];
-
-    uiList.sort((a, b) => a.zIndex - b.zIndex);
-    uiList.forEach((ui, index) => (ui.zIndex = index + 1));
-  });
+  hook$
+    .pipe(commandsFilter(hookKeys))
+    .subscribe(() => recalculatingTableWidth(tables, helper));

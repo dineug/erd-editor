@@ -1,7 +1,9 @@
 import { Table } from '@@types/engine/store/table.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
+import { Helper } from '@@types/core/helper';
 import { getCoordinate } from '@/engine/store/helper/relationship.helper';
 import { getIndex } from '@/core/helper';
+import { widthBalanceRange, commentWidthBalanceRange } from './column.helper';
 
 export function virtualTable(
   current: {
@@ -93,4 +95,26 @@ function firstTableIndex(tables: Table[], tableIds: string[]): number {
     }
   }
   return index;
+}
+
+export function recalculatingTableWidth(tables: Table[], helper: Helper) {
+  tables.forEach(table => {
+    table.ui.widthName = widthBalanceRange(helper.getTextWidth(table.name));
+    table.ui.widthComment = commentWidthBalanceRange(
+      helper.getTextWidth(table.comment)
+    );
+
+    table.columns.forEach(column => {
+      column.ui.widthName = widthBalanceRange(helper.getTextWidth(column.name));
+      column.ui.widthDataType = widthBalanceRange(
+        helper.getTextWidth(column.dataType)
+      );
+      column.ui.widthDefault = widthBalanceRange(
+        helper.getTextWidth(column.default)
+      );
+      column.ui.widthComment = commentWidthBalanceRange(
+        helper.getTextWidth(column.comment)
+      );
+    });
+  });
 }

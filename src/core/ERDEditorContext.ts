@@ -10,15 +10,19 @@ import { createStore } from '@/engine/store';
 import { createCommand } from '@/engine/command';
 import { createHelper } from '@/core/helper/editor.helper';
 
-export const createdERDEditorContext = (): IERDEditorContext => ({
-  theme: observable(createTheme()),
-  keymap: observable(createKeymap()),
-  globalEvent: createGlobalEventObservable(),
-  eventBus: createEventBus(),
-  store: createStore(),
-  command: createCommand(),
-  helper: createHelper(),
-});
+export function createdERDEditorContext(): IERDEditorContext {
+  const helper = createHelper();
+
+  return {
+    theme: observable(createTheme()),
+    keymap: observable(createKeymap()),
+    globalEvent: createGlobalEventObservable(),
+    eventBus: createEventBus(),
+    store: createStore(helper),
+    command: createCommand(),
+    helper,
+  };
+}
 
 export const omitERDEditorContext = R.pipe<
   IERDEditorContext,
