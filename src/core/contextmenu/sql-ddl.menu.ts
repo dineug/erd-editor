@@ -23,19 +23,19 @@ export const createSQLDDLMenus = (context: ERDEditorContext): Menu[] =>
     {
       icon: {
         prefix: 'mdi',
-        name: 'palette',
-        size: 18,
-      },
-      name: 'Highlight Theme',
-      children: createHighlightThemeMenus(context),
-    },
-    {
-      icon: {
-        prefix: 'mdi',
         name: 'code-brackets',
         size: 18,
       },
       name: 'Bracket',
       children: createBracketTypeMenus(context),
+    },
+    {
+      icon: {
+        prefix: 'mdi',
+        name: 'palette',
+        size: 18,
+      },
+      name: 'Highlight Theme',
+      children: createHighlightThemeMenus(context),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));
