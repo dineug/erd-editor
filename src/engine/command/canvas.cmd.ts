@@ -15,6 +15,7 @@ import {
   ChangeRelationshipDataTypeSync,
   MoveColumnOrder,
   ChangeHighlightTheme,
+  ChangeBracketType,
 } from '@@types/engine/command/canvas.cmd';
 import { ExecuteCommand } from '@/internal-types/command';
 import round from 'lodash/round';
@@ -160,6 +161,13 @@ export function executeChangeHighlightTheme(
   canvasState.highlightTheme = data.highlightTheme;
 }
 
+export function executeChangeBracketType(
+  { canvasState }: State,
+  data: ChangeBracketType
+) {
+  canvasState.bracketType = data.bracketType;
+}
+
 export const executeCanvasCommandMap: Record<
   keyof CanvasCommandMap,
   ExecuteCommand
@@ -179,4 +187,5 @@ export const executeCanvasCommandMap: Record<
   'canvas.changeRelationshipDataTypeSync': executeChangeRelationshipDataTypeSync,
   'canvas.moveColumnOrder': executeMoveColumnOrder,
   'canvas.changeHighlightTheme': executeChangeHighlightTheme,
+  'canvas.changeBracketType': executeChangeBracketType,
 };

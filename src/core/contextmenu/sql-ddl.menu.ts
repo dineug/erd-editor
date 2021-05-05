@@ -2,6 +2,7 @@ import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { createDatabaseMenus } from './database.menu';
 import { createHighlightThemeMenus } from './highlightTheme.menu';
+import { createBracketTypeMenus } from './bracketType.menu';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 100,
@@ -27,5 +28,14 @@ export const createSQLDDLMenus = (context: ERDEditorContext): Menu[] =>
       },
       name: 'Highlight Theme',
       children: createHighlightThemeMenus(context),
+    },
+    {
+      icon: {
+        prefix: 'mdi',
+        name: 'code-brackets',
+        size: 18,
+      },
+      name: 'Bracket',
+      children: createBracketTypeMenus(context),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

@@ -1,4 +1,43 @@
-import { Column } from '@@types/engine/store/table.state';
+import { Table, Column, Index } from '@@types/engine/store/table.state';
+import { BracketType } from '@@types/engine/store/canvas.state';
+import { Relationship } from '@@types/engine/store/relationship.state';
+import { bracketTypeMap } from '@/engine/store/canvas.state';
+
+export interface FormatTableOptions {
+  table: Table;
+  buffer: string[];
+  bracket: string;
+}
+
+export interface FormatColumnOptions {
+  column: Column;
+  isComma: boolean;
+  spaceSize: MaxLength;
+  buffer: string[];
+  bracket: string;
+}
+
+export interface FormatRelationOptions {
+  tables: Table[];
+  relationship: Relationship;
+  buffer: string[];
+  fkNames: Name[];
+  bracket: string;
+}
+
+export interface FormatIndexOptions {
+  table: Table;
+  index: Index;
+  buffer: string[];
+  indexNames: Name[];
+  bracket: string;
+}
+
+export interface FormatCommentOptions {
+  table: Table;
+  buffer: string[];
+  bracket: string;
+}
 
 export interface Name {
   id: string;
@@ -77,4 +116,8 @@ export function unique(columns: Column[]): boolean {
 
 export function uniqueColumns(columns: Column[]): Column[] {
   return columns.filter(column => column.option.unique);
+}
+
+export function getBracket(bracketType: BracketType) {
+  return bracketTypeMap[bracketType] ?? '';
 }

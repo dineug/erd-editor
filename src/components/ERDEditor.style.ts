@@ -17,6 +17,7 @@ export const ERDEditorStyle = css`
     top: -100px;
     font-size: ${SIZE_FONT}px;
     font-family: var(--vuerd-font-family);
+    white-space: nowrap;
   }
 
   .vuerd-ghost-focus-helper {

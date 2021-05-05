@@ -1,7 +1,7 @@
 import { Store } from '@@types/engine/store';
 import { Table } from '@@types/engine/store/table.state';
 import { Database } from '@@types/engine/store/canvas.state';
-import { Name } from './helper';
+import { Name, getBracket } from './helper';
 import {
   createDDL as createDDLMariaDB,
   formatTable as formatTableMariaDB,
@@ -52,68 +52,109 @@ export function createDDL(store: Store, database?: Database): string {
   return '';
 }
 
-export function createDDLTable(store: Store, table: Table): string {
+export function createDDLTable(
+  { canvasState, tableState, relationshipState }: Store,
+  table: Table
+): string {
   const stringBuffer: string[] = [''];
-  const database = store.canvasState.database;
+  const database = canvasState.database;
   const indexNames: Name[] = [];
-  const indexes = store.tableState.indexes.filter(
+  const indexes = tableState.indexes.filter(
     index => index.tableId === table.id
   );
-  const relationships = store.relationshipState.relationships;
-  const tables = store.tableState.tables;
+  const relationships = relationshipState.relationships;
+  const tables = tableState.tables;
+  const bracket = getBracket(canvasState.bracketType);
   switch (database) {
     case 'MariaDB':
-      formatTableMariaDB(table, stringBuffer);
+      formatTableMariaDB({ table, buffer: stringBuffer, bracket });
       stringBuffer.push('');
       indexes.forEach(index => {
-        formatIndexMariaDB(table, index, stringBuffer, indexNames);
+        formatIndexMariaDB({
+          table,
+          index,
+          buffer: stringBuffer,
+          indexNames,
+          bracket,
+        });
         stringBuffer.push('');
       });
       break;
     case 'MSSQL':
-      formatTableMSSQL(table, stringBuffer);
+      formatTableMSSQL({ table, buffer: stringBuffer, bracket });
       stringBuffer.push('');
       indexes.forEach(index => {
-        formatIndexMSSQL(table, index, stringBuffer, indexNames);
+        formatIndexMSSQL({
+          table,
+          index,
+          buffer: stringBuffer,
+          indexNames,
+          bracket,
+        });
         stringBuffer.push('');
       });
       break;
     case 'MySQL':
-      formatTableMySQL(table, stringBuffer);
+      formatTableMySQL({ table, buffer: stringBuffer, bracket });
       stringBuffer.push('');
       indexes.forEach(index => {
-        formatIndexMySQL(table, index, stringBuffer, indexNames);
+        formatIndexMySQL({
+          table,
+          index,
+          buffer: stringBuffer,
+          indexNames,
+          bracket,
+        });
         stringBuffer.push('');
       });
       break;
     case 'Oracle':
-      formatTableOracle(table, stringBuffer);
+      formatTableOracle({ table, buffer: stringBuffer, bracket });
       stringBuffer.push('');
       indexes.forEach(index => {
-        formatIndexOracle(table, index, stringBuffer, indexNames);
+        formatIndexOracle({
+          table,
+          index,
+          buffer: stringBuffer,
+          indexNames,
+          bracket,
+        });
         stringBuffer.push('');
       });
       break;
     case 'PostgreSQL':
-      formatTablePostgreSQL(table, stringBuffer);
+      formatTablePostgreSQL({ table, buffer: stringBuffer, bracket });
       stringBuffer.push('');
       indexes.forEach(index => {
-        formatIndexPostgreSQL(table, index, stringBuffer, indexNames);
+        formatIndexPostgreSQL({
+          table,
+          index,
+          buffer: stringBuffer,
+          indexNames,
+          bracket,
+        });
         stringBuffer.push('');
       });
       break;
     case 'SQLite':
-      formatTableSQLite(
+      formatTableSQLite({
         table,
         tables,
-        relationships.filter(
+        relationships: relationships.filter(
           relationship => relationship.end.tableId === table.id
         ),
-        stringBuffer
-      );
+        buffer: stringBuffer,
+        bracket,
+      });
       stringBuffer.push('');
       indexes.forEach(index => {
-        formatIndexSQLite(table, index, stringBuffer, indexNames);
+        formatIndexSQLite({
+          table,
+          index,
+          buffer: stringBuffer,
+          indexNames,
+          bracket,
+        });
         stringBuffer.push('');
       });
       break;

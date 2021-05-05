@@ -35,6 +35,7 @@ import {
   nameCaseList,
   languageList,
   highlightThemes,
+  bracketTypes,
 } from '@/engine/store/canvas.state';
 import { validStartRelationship } from '@/engine/store/helper/valid.helper';
 import { panels as globalPanels } from '@/core/panel';
@@ -284,6 +285,11 @@ export function executeLoadJson(state: State, data: LoadJson) {
           case 'highlightTheme':
             if (highlightThemes.includes(canvasJson.highlightTheme)) {
               canvasState.highlightTheme = canvasJson.highlightTheme;
+            }
+            break;
+          case 'bracketType':
+            if (bracketTypes.includes(canvasJson.bracketType)) {
+              canvasState.bracketType = canvasJson.bracketType;
             }
             break;
           case 'width':

@@ -6,6 +6,7 @@ import {
   NameCase,
   ColumnType,
   HighlightTheme,
+  BracketType,
 } from '../store/canvas.state';
 import { Store } from '../store';
 import { CommandType } from './index';
@@ -74,3 +75,7 @@ export declare function moveColumnOrder(
 export declare function changeHighlightTheme(
   highlightTheme: HighlightTheme
 ): CommandType<'canvas.changeHighlightTheme'>;
+
+export declare function changeBracketType(
+  bracketType: BracketType
+): CommandType<'canvas.changeBracketType'>;

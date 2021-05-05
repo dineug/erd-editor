@@ -5,6 +5,7 @@ import {
   NameCase,
   ColumnType,
   HighlightTheme,
+  BracketType,
 } from '../store/canvas.state';
 
 export interface MoveCanvas {
@@ -68,6 +69,10 @@ export interface ChangeHighlightTheme {
   highlightTheme: HighlightTheme;
 }
 
+export interface ChangeBracketType {
+  bracketType: BracketType;
+}
+
 export interface CanvasCommandMap {
   'canvas.move': MoveCanvas;
   'canvas.movement': MovementCanvas;
@@ -84,4 +89,5 @@ export interface CanvasCommandMap {
   'canvas.changeRelationshipDataTypeSync': ChangeRelationshipDataTypeSync;
   'canvas.moveColumnOrder': MoveColumnOrder;
   'canvas.changeHighlightTheme': ChangeHighlightTheme;
+  'canvas.changeBracketType': ChangeBracketType;
 }

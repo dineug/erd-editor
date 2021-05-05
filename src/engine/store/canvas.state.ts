@@ -6,6 +6,7 @@ import {
   Language,
   NameCase,
   HighlightTheme,
+  BracketType,
 } from '@@types/engine/store/canvas.state';
 
 export const columnTypes: ColumnType[] = [
@@ -60,6 +61,20 @@ export const highlightThemes: HighlightTheme[] = [
   'GithubGist',
 ];
 
+export const bracketTypes: BracketType[] = [
+  'none',
+  'doubleQuote',
+  'singleQuote',
+  'backtick',
+];
+
+export const bracketTypeMap: Record<BracketType, string> = {
+  none: '',
+  singleQuote: `'`,
+  doubleQuote: `"`,
+  backtick: '`',
+};
+
 export const createCanvasState = (): CanvasState => ({
   version: import.meta.env.SNOWPACK_PUBLIC_VUERD_VERSION,
   width: 2000,
@@ -85,6 +100,7 @@ export const createCanvasState = (): CanvasState => ({
   tableCase: 'pascalCase',
   columnCase: 'camelCase',
   highlightTheme: 'VS2015',
+  bracketType: 'none',
   setting: {
     relationshipDataTypeSync: true,
     columnOrder: [

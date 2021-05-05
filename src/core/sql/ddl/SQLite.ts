@@ -1,5 +1,5 @@
 import { Store } from '@@types/engine/store';
-import { Table, Column, Index } from '@@types/engine/store/table.state';
+import { Table } from '@@types/engine/store/table.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { getData, uuid, autoName } from '@/core/helper';
 import {
@@ -8,41 +8,49 @@ import {
   formatSpace,
   primaryKey,
   primaryKeyColumns,
-  MaxLength,
   Name,
   KeyColumn,
+  getBracket,
+  FormatColumnOptions,
+  FormatIndexOptions,
 } from './helper';
 import {
   orderByNameASC,
   orderByRelationship,
 } from '@/engine/store/helper/table.helper';
 
-export function createDDL(store: Store): string {
+export function createDDL({
+  tableState,
+  relationshipState,
+  canvasState,
+}: Store): string {
   const indexNames: Name[] = [];
   const stringBuffer: string[] = [''];
-  const relationships = store.relationshipState.relationships;
-  const indexes = store.tableState.indexes;
+  const bracket = getBracket(canvasState.bracketType);
+  const relationships = relationshipState.relationships;
+  const indexes = tableState.indexes;
   const tables = orderByRelationship(
-    orderByNameASC(store.tableState.tables),
+    orderByNameASC(tableState.tables),
     relationships
   );
 
   tables.forEach(table => {
-    formatTable(
+    formatTable({
       table,
       tables,
-      relationships.filter(
+      relationships: relationships.filter(
         relationship => relationship.end.tableId === table.id
       ),
-      stringBuffer
-    );
+      buffer: stringBuffer,
+      bracket,
+    });
     stringBuffer.push('');
   });
 
   indexes.forEach(index => {
     const table = getData(tables, index.tableId);
     if (table) {
-      formatIndex(table, index, stringBuffer, indexNames);
+      formatIndex({ table, index, buffer: stringBuffer, indexNames, bracket });
       stringBuffer.push('');
     }
   });
@@ -50,25 +58,39 @@ export function createDDL(store: Store): string {
   return stringBuffer.join('\n');
 }
 
-export function formatTable(
-  table: Table,
-  tables: Table[],
-  relationships: Relationship[],
-  buffer: string[]
-) {
+interface FormatTableOptions {
+  table: Table;
+  tables: Table[];
+  relationships: Relationship[];
+  buffer: string[];
+  bracket: string;
+}
+export function formatTable({
+  table,
+  tables,
+  relationships,
+  buffer,
+  bracket,
+}: FormatTableOptions) {
   if (table.comment.trim() !== '') {
     buffer.push(`-- ${table.comment}`);
   }
-  buffer.push(`CREATE TABLE ${table.name}`);
+  buffer.push(`CREATE TABLE ${bracket}${table.name}${bracket}`);
   buffer.push(`(`);
   const pk = primaryKey(table.columns);
   const spaceSize = formatSize(table.columns);
 
   table.columns.forEach((column, i) => {
     if (pk || relationships.length !== 0) {
-      formatColumn(column, true, spaceSize, buffer);
+      formatColumn({ column, isComma: true, spaceSize, buffer, bracket });
     } else {
-      formatColumn(column, table.columns.length !== i + 1, spaceSize, buffer);
+      formatColumn({
+        column,
+        isComma: table.columns.length !== i + 1,
+        spaceSize,
+        buffer,
+        bracket,
+      });
     }
   });
   // PK
@@ -80,10 +102,10 @@ export function formatTable(
           ? ' AUTOINCREMENT'
           : '';
         buffer.push(
-          `  PRIMARY KEY (${formatNames(pkColumns)}${autoIncrement}),`
+          `  PRIMARY KEY (${formatNames(pkColumns, bracket)}${autoIncrement}),`
         );
       } else {
-        buffer.push(`  PRIMARY KEY (${formatNames(pkColumns)}),`);
+        buffer.push(`  PRIMARY KEY (${formatNames(pkColumns, bracket)}),`);
       }
     } else {
       if (pkColumns.length === 1) {
@@ -91,10 +113,10 @@ export function formatTable(
           ? ' AUTOINCREMENT'
           : '';
         buffer.push(
-          `  PRIMARY KEY (${formatNames(pkColumns)}${autoIncrement})`
+          `  PRIMARY KEY (${formatNames(pkColumns, bracket)}${autoIncrement})`
         );
       } else {
-        buffer.push(`  PRIMARY KEY (${formatNames(pkColumns)})`);
+        buffer.push(`  PRIMARY KEY (${formatNames(pkColumns, bracket)})`);
       }
     }
   }
@@ -124,15 +146,23 @@ export function formatTable(
 
       if (relationships.length - 1 > i) {
         buffer.push(
-          `  FOREIGN KEY (${formatNames(columns.end)}) REFERENCES ${
-            startTable.name
-          } (${formatNames(columns.start)}),`
+          `  FOREIGN KEY (${formatNames(
+            columns.end,
+            bracket
+          )}) REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
+            columns.start,
+            bracket
+          )}),`
         );
       } else {
         buffer.push(
-          `  FOREIGN KEY (${formatNames(columns.end)}) REFERENCES ${
-            startTable.name
-          } (${formatNames(columns.start)})`
+          `  FOREIGN KEY (${formatNames(
+            columns.end,
+            bracket
+          )}) REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
+            columns.start,
+            bracket
+          )})`
         );
       }
     }
@@ -141,18 +171,20 @@ export function formatTable(
   buffer.push(`);`);
 }
 
-function formatColumn(
-  column: Column,
-  isComma: boolean,
-  spaceSize: MaxLength,
-  buffer: string[]
-) {
+function formatColumn({
+  column,
+  isComma,
+  spaceSize,
+  buffer,
+  bracket,
+}: FormatColumnOptions) {
   if (column.comment.trim() !== '') {
     buffer.push(`  -- ${column.comment}`);
   }
   const stringBuffer: string[] = [];
   stringBuffer.push(
-    `  ${column.name}` + formatSpace(spaceSize.name - column.name.length)
+    `  ${bracket}${column.name}${bracket}` +
+      formatSpace(spaceSize.name - column.name.length)
   );
   stringBuffer.push(
     `${column.dataType}` +
@@ -168,18 +200,19 @@ function formatColumn(
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
 }
 
-export function formatIndex(
-  table: Table,
-  index: Index,
-  buffer: string[],
-  indexNames: Name[]
-) {
+export function formatIndex({
+  table,
+  index,
+  buffer,
+  indexNames,
+  bracket,
+}: FormatIndexOptions) {
   const columnNames = index.columns
     .map(indexColumn => {
       const column = getData(table.columns, indexColumn.id);
       if (column) {
         return {
-          name: `${column.name} ${indexColumn.orderType}`,
+          name: `${bracket}${column.name}${bracket} ${indexColumn.orderType}`,
         };
       }
       return null;
@@ -198,10 +231,12 @@ export function formatIndex(
     }
 
     if (index.unique) {
-      buffer.push(`CREATE UNIQUE INDEX ${indexName}`);
+      buffer.push(`CREATE UNIQUE INDEX ${bracket}${indexName}${bracket}`);
     } else {
-      buffer.push(`CREATE INDEX ${indexName}`);
+      buffer.push(`CREATE INDEX ${bracket}${indexName}${bracket}`);
     }
-    buffer.push(`  ON ${table.name} (${formatNames(columnNames)});`);
+    buffer.push(
+      `  ON ${bracket}${table.name}${bracket} (${formatNames(columnNames)});`
+    );
   }
 }

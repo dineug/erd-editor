@@ -67,6 +67,7 @@ export const changeCommandTypes: CommandKey[] = [
   'canvas.changeRelationshipDataTypeSync',
   'canvas.moveColumnOrder',
   'canvas.changeHighlightTheme',
+  'canvas.changeBracketType',
   // editor
   'editor.loadJson',
   'editor.clear',
@@ -154,6 +155,7 @@ export const readonlyCommandTypes: CommandKey[] = [
   'canvas.changeColumnCase',
   'canvas.moveColumnOrder',
   'canvas.changeHighlightTheme',
+  'canvas.changeBracketType',
   // editor
   'editor.focusTable',
   'editor.focusColumn',

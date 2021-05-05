@@ -1,6 +1,4 @@
 import { Store } from '@@types/engine/store';
-import { Table, Column, Index } from '@@types/engine/store/table.state';
-import { Relationship } from '@@types/engine/store/relationship.state';
 import { getData, uuid, autoName } from '@/core/helper';
 import {
   formatNames,
@@ -10,44 +8,65 @@ import {
   primaryKeyColumns,
   unique,
   uniqueColumns,
-  MaxLength,
   Name,
   KeyColumn,
+  getBracket,
+  FormatTableOptions,
+  FormatColumnOptions,
+  FormatRelationOptions,
+  FormatIndexOptions,
 } from './helper';
 import { orderByNameASC } from '@/engine/store/helper/table.helper';
 
-export function createDDL(store: Store): string {
+export function createDDL({
+  tableState,
+  relationshipState,
+  canvasState,
+}: Store): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
   const stringBuffer: string[] = [''];
-  const tables = orderByNameASC(store.tableState.tables);
-  const relationships = store.relationshipState.relationships;
-  const indexes = store.tableState.indexes;
+  const bracket = getBracket(canvasState.bracketType);
+  const tables = orderByNameASC(tableState.tables);
+  const relationships = relationshipState.relationships;
+  const indexes = tableState.indexes;
 
   tables.forEach(table => {
-    formatTable(table, stringBuffer);
+    formatTable({ table, buffer: stringBuffer, bracket });
     stringBuffer.push('');
     // unique
     if (unique(table.columns)) {
       const uqColumns = uniqueColumns(table.columns);
       uqColumns.forEach(column => {
-        stringBuffer.push(`ALTER TABLE ${table.name}`);
+        stringBuffer.push(`ALTER TABLE ${bracket}${table.name}${bracket}`);
         stringBuffer.push(
-          `  ADD CONSTRAINT UQ_${column.name} UNIQUE (${column.name});`
+          `  ADD CONSTRAINT ${bracket}UQ_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
         );
         stringBuffer.push('');
       });
     }
   });
   relationships.forEach(relationship => {
-    formatRelation(tables, relationship, stringBuffer, fkNames);
+    formatRelation({
+      tables,
+      relationship,
+      buffer: stringBuffer,
+      fkNames,
+      bracket,
+    });
     stringBuffer.push('');
   });
 
   indexes.forEach(index => {
     const table = getData(tables, index.tableId);
     if (table) {
-      formatIndex(table, index, stringBuffer, indexNames);
+      formatIndex({
+        table,
+        index,
+        buffer: stringBuffer,
+        indexNames,
+        bracket,
+      });
       stringBuffer.push('');
     }
   });
@@ -55,22 +74,34 @@ export function createDDL(store: Store): string {
   return stringBuffer.join('\n');
 }
 
-export function formatTable(table: Table, buffer: string[]) {
-  buffer.push(`CREATE TABLE ${table.name}`);
+export function formatTable({ table, buffer, bracket }: FormatTableOptions) {
+  buffer.push(`CREATE TABLE ${bracket}${table.name}${bracket}`);
   buffer.push(`(`);
   const pk = primaryKey(table.columns);
   const spaceSize = formatSize(table.columns);
 
   table.columns.forEach((column, i) => {
     if (pk) {
-      formatColumn(column, true, spaceSize, buffer);
+      formatColumn({
+        column,
+        isComma: true,
+        spaceSize,
+        buffer,
+        bracket,
+      });
     } else {
-      formatColumn(column, table.columns.length !== i + 1, spaceSize, buffer);
+      formatColumn({
+        column,
+        isComma: table.columns.length !== i + 1,
+        spaceSize,
+        buffer,
+        bracket,
+      });
     }
   });
   if (pk) {
     const pkColumns = primaryKeyColumns(table.columns);
-    buffer.push(`  PRIMARY KEY (${formatNames(pkColumns)})`);
+    buffer.push(`  PRIMARY KEY (${formatNames(pkColumns, bracket)})`);
   }
   if (table.comment.trim() === '') {
     buffer.push(`);`);
@@ -79,15 +110,17 @@ export function formatTable(table: Table, buffer: string[]) {
   }
 }
 
-function formatColumn(
-  column: Column,
-  isComma: boolean,
-  spaceSize: MaxLength,
-  buffer: string[]
-) {
+function formatColumn({
+  column,
+  isComma,
+  spaceSize,
+  buffer,
+  bracket,
+}: FormatColumnOptions) {
   const stringBuffer: string[] = [];
   stringBuffer.push(
-    `  ${column.name}` + formatSpace(spaceSize.name - column.name.length)
+    `  ${bracket}${column.name}${bracket}` +
+      formatSpace(spaceSize.name - column.name.length)
   );
   stringBuffer.push(
     `${column.dataType}` +
@@ -107,17 +140,18 @@ function formatColumn(
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
 }
 
-function formatRelation(
-  tables: Table[],
-  relationship: Relationship,
-  buffer: string[],
-  fkNames: Name[]
-) {
+function formatRelation({
+  tables,
+  relationship,
+  buffer,
+  fkNames,
+  bracket,
+}: FormatRelationOptions) {
   const startTable = getData(tables, relationship.start.tableId);
   const endTable = getData(tables, relationship.end.tableId);
 
   if (startTable && endTable) {
-    buffer.push(`ALTER TABLE ${endTable.name}`);
+    buffer.push(`ALTER TABLE ${bracket}${endTable.name}${bracket}`);
 
     // FK
     let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
@@ -127,7 +161,7 @@ function formatRelation(
       name: fkName,
     });
 
-    buffer.push(`  ADD CONSTRAINT ${fkName}`);
+    buffer.push(`  ADD CONSTRAINT ${bracket}${fkName}${bracket}`);
 
     // key
     const columns: KeyColumn = {
@@ -147,25 +181,29 @@ function formatRelation(
       }
     });
 
-    buffer.push(`    FOREIGN KEY (${formatNames(columns.end)})`);
+    buffer.push(`    FOREIGN KEY (${formatNames(columns.end, bracket)})`);
     buffer.push(
-      `    REFERENCES ${startTable.name} (${formatNames(columns.start)});`
+      `    REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
+        columns.start,
+        bracket
+      )});`
     );
   }
 }
 
-export function formatIndex(
-  table: Table,
-  index: Index,
-  buffer: string[],
-  indexNames: Name[]
-) {
+export function formatIndex({
+  table,
+  index,
+  buffer,
+  indexNames,
+  bracket,
+}: FormatIndexOptions) {
   const columnNames = index.columns
     .map(indexColumn => {
       const column = getData(table.columns, indexColumn.id);
       if (column) {
         return {
-          name: `${column.name} ${indexColumn.orderType}`,
+          name: `${bracket}${column.name}${bracket} ${indexColumn.orderType}`,
         };
       }
       return null;
@@ -184,10 +222,12 @@ export function formatIndex(
     }
 
     if (index.unique) {
-      buffer.push(`CREATE UNIQUE INDEX ${indexName}`);
+      buffer.push(`CREATE UNIQUE INDEX ${bracket}${indexName}${bracket}`);
     } else {
-      buffer.push(`CREATE INDEX ${indexName}`);
+      buffer.push(`CREATE INDEX ${bracket}${indexName}${bracket}`);
     }
-    buffer.push(`  ON ${table.name} (${formatNames(columnNames)});`);
+    buffer.push(
+      `  ON ${bracket}${table.name}${bracket} (${formatNames(columnNames)});`
+    );
   }
 }

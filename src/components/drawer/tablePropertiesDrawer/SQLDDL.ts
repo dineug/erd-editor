@@ -14,6 +14,7 @@ import { hljs, highlightThemeMap } from '@/core/highlight';
 import { createSQLDDLMenus } from '@/core/contextmenu/sql-ddl.menu';
 import { createHighlightThemeMenus } from '@/core/contextmenu/highlightTheme.menu';
 import { createDatabaseMenus } from '@/core/contextmenu/database.menu';
+import { createBracketTypeMenus } from '@/core/contextmenu/bracketType.menu';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { useContext } from '@/core/hooks/context.hook';
 import { SQLDDLStyle } from './SQLDDL.style';
@@ -85,6 +86,13 @@ const SQLDDL: FunctionalComponent<SQLDDLProps, SQLDDLElement> = (
         if (!menue) return;
 
         menue.children = createHighlightThemeMenus(context);
+      }),
+      watch(canvasState, propName => {
+        if (propName !== 'bracketType') return;
+        const menue = state.menus?.find(menu => menu.name === 'Bracket');
+        if (!menue) return;
+
+        menue.children = createBracketTypeMenus(context);
       }),
       eventBus.on(Bus.Contextmenu.close).subscribe(onCloseContextmenu)
     );

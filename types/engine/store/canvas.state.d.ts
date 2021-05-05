@@ -13,6 +13,7 @@ export interface CanvasState {
   tableCase: NameCase; // ADD: version 0.2.18
   columnCase: NameCase; // ADD: version 0.2.18
   highlightTheme: HighlightTheme; // ADD: version 2.0.0
+  bracketType: BracketType; // ADD: version 2.0.11
   setting: Setting; // ADD: version 1.1.0
 }
 
@@ -75,3 +76,5 @@ export type HighlightTheme =
   | 'MonokaiSublime'
   | 'GithubGist'
   | 'VS2015';
+
+export type BracketType = 'none' | 'doubleQuote' | 'singleQuote' | 'backtick';
