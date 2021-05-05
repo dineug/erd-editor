@@ -4,6 +4,7 @@ dist
 coverage
 docs
 storybook-static
+data/docker/**/data
 
 # local env files
 .env.local

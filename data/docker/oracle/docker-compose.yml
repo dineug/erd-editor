@@ -1,0 +1,7 @@
+version: '3.7'
+services:
+  oracle:
+    image: jaspeen/oracle-xe-11g
+    restart: always
+    ports:
+      - 1521:1521
