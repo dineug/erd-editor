@@ -6,7 +6,7 @@ import { css } from '@/core/tagged';
 export const TuiGridStyle = css`
   /*!
  * TOAST UI Grid
- * @version 4.16.1 | Fri Dec 18 2020
+ * @version 4.17.0 | Tue Apr 27 2021
  * @author NHN. FE Development Lab
  * @license MIT
  */
@@ -984,11 +984,17 @@ export const TuiGridStyle = css`
     outline: none;
   }
 
+  .tui-grid-container .tui-select-box-dropdown {
+    max-height: 180px;
+  }
+
   .tui-grid-editor-checkbox-list-layer {
     position: absolute;
     background-color: #fff;
     border: 1px solid #aaa;
     z-index: 100;
+    max-height: 180px;
+    overflow: hidden auto;
   }
 
   .tui-grid-editor-checkbox-list-layer * {
@@ -996,8 +1002,12 @@ export const TuiGridStyle = css`
   }
 
   .tui-grid-editor-checkbox-list-layer .tui-grid-editor-checkbox {
-    height: 32px;
     line-height: 32px;
+    height: 32px;
+  }
+
+  .tui-grid-editor-checkbox-list-layer .tui-grid-editor-checkbox:last-child {
+    margin-bottom: 1px;
   }
 
   .tui-grid-editor-checkbox-hovered {
@@ -1068,5 +1078,67 @@ export const TuiGridStyle = css`
   .tui-grid-container .tui-calendar-month .tui-calendar-body,
   .tui-grid-container .tui-calendar-year .tui-calendar-body {
     width: 220px;
+  }
+
+  .tui-grid-row-header-draggable {
+    text-align: center;
+    cursor: move; /* fallback if grab cursor is unsupported */
+    cursor: grab;
+  }
+
+  .tui-grid-row-header-draggable span {
+    display: inline-block;
+    width: 1px;
+    height: 1px;
+    margin: 1px;
+    line-height: 0;
+    background: #5a6268;
+  }
+
+  .tui-grid-floating-row {
+    z-index: 15;
+    background: #fff;
+    border: 1px solid #ddd;
+    color: #5a6268;
+    min-width: 200px;
+    position: absolute;
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .tui-grid-floating-cell {
+    display: inline-block;
+  }
+
+  .tui-grid-floating-tree-cell {
+    padding: 0 10px;
+  }
+
+  .tui-grid-floating-tree-cell-content {
+    margin-left: 10px;
+    vertical-align: middle;
+  }
+
+  .tui-grid-floating-tree-cell .tui-grid-tree-icon {
+    position: relative;
+    margin-top: -14px;
+    display: inline-block;
+  }
+
+  .tui-grid-floating-line {
+    position: absolute;
+    height: 1px;
+    background: #00a9ff;
+    display: none;
+    z-index: 15;
+  }
+
+  .tui-grid-cell.dragging {
+    opacity: 0.5;
+  }
+
+  .tui-grid-cell.parent-cell {
+    background-color: rgba(0, 169, 255, 0.15);
   }
 `;

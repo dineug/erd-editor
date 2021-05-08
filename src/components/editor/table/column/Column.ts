@@ -127,7 +127,7 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
     store.dispatch(draggableColumnEnd());
   };
 
-  const onDragover = () => dragover$.next();
+  const onDragover = () => dragover$.next(null);
 
   const onDragoverColumn = () =>
     ctx.dispatchEvent(

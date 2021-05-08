@@ -23,9 +23,9 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Setup Node
-        uses: actions/setup-node@v2.1.2
+        uses: actions/setup-node@v2
         with:
-          node-version: 12.x
+          node-version: 14
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install

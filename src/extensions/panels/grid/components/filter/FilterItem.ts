@@ -134,7 +134,7 @@ const FilterItem: FunctionalComponent<FilterItemProps, FilterItemElement> = (
     store.dispatch(draggableFilterEnd());
   };
 
-  const onDragover = () => dragover$.next();
+  const onDragover = () => dragover$.next(null);
 
   const onDragoverFilter = () =>
     ctx.dispatchEvent(

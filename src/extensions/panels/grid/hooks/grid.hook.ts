@@ -360,7 +360,7 @@ export function useGrid(
   const observeFilters = () => {
     const { filters } = ctx.api.store.editorState.filterState;
     subscriptionHelper.push(
-      ...filters.map(filter => watch(filter, () => filter$.next()))
+      ...filters.map(filter => watch(filter, () => filter$.next(null)))
     );
   };
   const unobserveFilters = () => subscriptionHelper.destroy();
@@ -417,12 +417,12 @@ export function useGrid(
       }),
       watch(filterState, propName => {
         if (propName !== 'filterOperatorType') return;
-        filter$.next();
+        filter$.next(null);
       }),
       watch(filterState.filters, () => {
         unobserveFilters();
         observeFilters();
-        filter$.next();
+        filter$.next(null);
       })
     );
   });

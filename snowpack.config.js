@@ -9,6 +9,10 @@ module.exports = {
     '@@types': './types',
   },
   packageOptions: {
-    knownEntrypoints: ['highlight.js'],
+    knownEntrypoints: [
+      'highlight.js',
+      'highlight.js/lib/languages/typescript.js',
+    ],
   },
+  exclude: ['**/node_modules/**/*', '**/src/stories/**'],
 };

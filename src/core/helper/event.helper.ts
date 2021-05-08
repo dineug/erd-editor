@@ -1,4 +1,4 @@
-import { GlobalEventObservable, Move } from '@/internal-types/event.helper';
+import { GlobalEventObservable } from '@/internal-types/event.helper';
 import { fromEvent, merge } from 'rxjs';
 import { map, filter, takeUntil } from 'rxjs/operators';
 
@@ -22,7 +22,7 @@ export function createGlobalEventObservable(): GlobalEventObservable {
     touchY = event.touches[0].clientY;
   });
 
-  const move$ = merge<Move>(
+  const move$ = merge(
     mousemove$.pipe(
       map(event => {
         let movementX = event.movementX;
