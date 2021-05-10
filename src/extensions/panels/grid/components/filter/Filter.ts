@@ -26,6 +26,7 @@ import { keymapOptionsToString } from '@/core/keymap';
 import { RadioItem } from './FilterRadioEditor';
 import { operatorTypes } from '@/engine/store/editor/filter.state';
 import { FlipAnimation } from '@/core/flipAnimation';
+import { onPreventDefault } from '@/core/helper/dom.helper';
 import { SIZE_COLUMN_HEIGHT } from '@/core/layout';
 
 declare global {
@@ -213,7 +214,11 @@ const Filter: FunctionalComponent<FilterProps, FilterElement> = (
                 @click=${onAddFilter}
               ></vuerd-icon>
             </div>
-            <div class="vuerd-filter-body">
+            <div
+              class="vuerd-filter-body"
+              @dragenter=${onPreventDefault}
+              @dragover=${onPreventDefault}
+            >
               ${repeat(
                 filterState.filters,
                 filter => filter.id,

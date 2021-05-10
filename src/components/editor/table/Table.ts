@@ -39,6 +39,7 @@ import {
 import { Bus } from '@/core/helper/eventBus.helper';
 import { FlipAnimation } from '@/core/flipAnimation';
 import { relationshipSort } from '@/engine/store/helper/relationship.helper';
+import { onPreventDefault } from '@/core/helper/dom.helper';
 import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from '@/core/layout';
 import { DragoverColumnDetail } from './column/Column';
 
@@ -310,7 +311,11 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
               : null}
           </div>
         </div>
-        <div class="vuerd-table-body">
+        <div
+          class="vuerd-table-body"
+          @dragenter=${onPreventDefault}
+          @dragover=${onPreventDefault}
+        >
           ${repeat(
             columns,
             column => column.id,

@@ -17,6 +17,7 @@ import {
   changeRelationshipDataTypeSync,
 } from '@/engine/command/canvas.cmd.helper';
 import { recalculatingTableWidth } from '@/engine/store/helper/table.helper';
+import { onPreventDefault } from '@/core/helper/dom.helper';
 import { relationshipSort } from '@/engine/store/helper/relationship.helper';
 
 declare global {
@@ -131,7 +132,7 @@ const SettingDrawer: FunctionalComponent<
             </tr>
             <tr>
               <td>ColumnType Order</td>
-              <td>
+              <td @dragenter=${onPreventDefault} @dragover=${onPreventDefault}>
                 ${repeat(
                   setting.columnOrder,
                   columnType => columnType,
