@@ -32,14 +32,15 @@
   "scripts": {
     "serve": "snowpack dev",
     "serve:rollup": "rollup -c rollup.config.dev.js -w",
+    "serve:storybook": "start-storybook -p 6006",
     "build": "rollup -c",
     "build:sub": "rollup -c rollup.config.sub.js",
-    "lint": "eslint . --ext .ts",
-    "storybook": "start-storybook -p 6006",
-    "build-storybook": "build-storybook",
-    "deploy-storybook": "storybook-to-ghpages",
+    "build:storybook": "build-storybook",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "deploy:storybook": "storybook-to-ghpages",
     "typedoc": "typedoc --out docs types/index.d.ts",
-    "test": "jest"
+    "lint": "eslint . --ext .ts"
   },
   "devDependencies": {
     "@babel/core": "^7.14.0",
