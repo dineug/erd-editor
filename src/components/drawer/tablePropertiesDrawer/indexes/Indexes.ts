@@ -20,6 +20,7 @@ import {
   changeIndexUnique,
   changeIndexName,
 } from '@/engine/command/index.cmd.helper';
+import { onPreventDefault } from '@/core/helper/dom.helper';
 import { IndexStyle } from './index.style';
 
 declare global {
@@ -139,6 +140,8 @@ const Indexes: FunctionalComponent<IndexesProps, IndexesElement> = (
                     <vuerd-index-column
                       .table=${table}
                       .indexId=${index.id}
+                      @dragenter=${onPreventDefault}
+                      @dragover=${onPreventDefault}
                     ></vuerd-index-column>
                   </div>
                 `
