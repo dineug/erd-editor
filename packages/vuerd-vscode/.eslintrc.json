@@ -9,7 +9,6 @@
   "plugins": ["prettier", "@typescript-eslint"],
   "extends": ["prettier"],
   "parserOptions": {
-    "project": "tsconfig.json",
     "ecmaVersion": 6,
     "sourceType": "module",
     "ecmaFeatures": {
