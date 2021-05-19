@@ -39,7 +39,7 @@ export default {
   plugins: [
     resolve(),
     commonjs(),
-    eslint("./.eslintrc.json"),
+    eslint(".eslintrc.json"),
     typescript(),
     visualizer({
       filename: "./dist/stats.html",

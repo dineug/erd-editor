@@ -18,7 +18,14 @@ function onwarn(warning) {
 
 export default function config() {
   return {
-    plugins: [resolve(), commonjs(), eslint('./.eslintrc.json'), typescript()],
+    plugins: [
+      resolve({
+        dedupe: ['lit-html'],
+      }),
+      commonjs(),
+      eslint('.eslintrc.json'),
+      typescript(),
+    ],
     banner,
     onwarn,
   };

@@ -13,7 +13,7 @@ const banner = `/*!
 
 export default function config() {
   return {
-    plugins: [resolve(), commonjs(), eslint('./.eslintrc.json'), typescript()],
+    plugins: [resolve(), commonjs(), eslint('.eslintrc.json'), typescript()],
     banner,
   };
 }

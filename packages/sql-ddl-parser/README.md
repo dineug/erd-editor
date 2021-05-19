@@ -6,7 +6,7 @@
 
 ## Document
 
-- [Import SQL DDL support syntax](https://github.com/dineug/sql-ddl-parser/blob/master/src/SQL_DDL_Test_Case.md)
+- [Import SQL DDL support syntax](https://github.com/vuerd/vuerd/blob/master/packages/sql-ddl-parser/src/SQL_DDL_Test_Case.md)
 
 ## interface
 
