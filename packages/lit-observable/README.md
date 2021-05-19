@@ -4,11 +4,6 @@
 
 [![npm version](https://img.shields.io/npm/v/@vuerd/lit-observable.svg?style=flat-square&color=blue)](https://www.npmjs.com/package/@vuerd/lit-observable) [![GitHub](https://img.shields.io/github/license/vuerd/vuerd?style=flat-square&color=blue)](https://github.com/vuerd/vuerd/blob/master/LICENSE)
 
-## Document
-
-- Example
-  - [erd-editor](https://github.com/vuerd/vuerd/packages/vuerd)
-
 ## Install
 
 ```bash
