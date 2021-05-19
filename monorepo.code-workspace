@@ -1,0 +1,24 @@
+{
+  "folders": [
+    {
+      "name": "vuerd",
+      "path": "packages/vuerd"
+    },
+    {
+      "name": "lit-observable",
+      "path": "packages/lit-observable"
+    },
+    {
+      "name": "sql-ddl-parser",
+      "path": "packages/sql-ddl-parser"
+    },
+    {
+      "name": "vuerd-vscode",
+      "path": "packages/vuerd-vscode"
+    },
+    {
+      "name": "monorepo",
+      "path": "."
+    }
+  ]
+}

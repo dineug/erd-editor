@@ -10,7 +10,7 @@ export default {
   input: 'src/index.ts',
   output: {
     name: 'vuerd',
-    file: `../../../static/vuerd.min.js`,
+    file: `../vuerd-vscode/static/vuerd.min.js`,
     format: 'umd',
     banner,
     plugins: [terser()],

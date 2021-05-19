@@ -1,0 +1,1430 @@
+{
+  "name": "vuerd-vscode",
+  "version": "0.7.22",
+  "displayName": "ERD Editor",
+  "description": "ERD Editor vscode extension",
+  "main": "./out/extension.js",
+  "private": true,
+  "icon": "img/vuerd.png",
+  "publisher": "dineug",
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "vuerd",
+    "ERD",
+    "Editor",
+    "vscode",
+    "db",
+    "database",
+    "diagram"
+  ],
+  "homepage": "https://github.com/vuerd/vuerd#readme",
+  "bugs": {
+    "url": "https://github.com/vuerd/vuerd/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vuerd/vuerd.git",
+    "directory": "packages/vuerd-vscode"
+  },
+  "author": "dineug <dineug2@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "rollup -c",
+    "lint": "eslint . --ext .ts"
+  },
+  "devDependencies": {
+    "@dineug/vscode-google-analytics": "^0.1.2",
+    "@rollup/plugin-commonjs": "^19.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.0",
+    "@rollup/plugin-typescript": "^8.2.1",
+    "@types/node": "^15.0.2",
+    "@types/vscode": "^1.47.0",
+    "@typescript-eslint/eslint-plugin": "^4.22.1",
+    "@typescript-eslint/parser": "^4.22.1",
+    "eslint": "^7.26.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "macaddress": "^0.5.2",
+    "prettier": "^2.2.1",
+    "rollup": "^2.47.0",
+    "rollup-plugin-eslint": "^7.0.0",
+    "typescript": "^4.2.4"
+  },
+  "dependencies": {},
+  "engines": {
+    "vscode": "^1.47.0"
+  },
+  "activationEvents": [
+    "onCommand:vuerd.webview",
+    "onWebviewPanel:vuerd.webview",
+    "onCustomEditor:vuerd.editor"
+  ],
+  "contributes": {
+    "capabilities": {
+      "untrustedWorkspaces": {
+        "supported": true
+      }
+    },
+    "customEditors": [
+      {
+        "viewType": "vuerd.editor",
+        "displayName": "vuerd",
+        "selector": [
+          {
+            "filenamePattern": "*.vuerd"
+          }
+        ]
+      }
+    ],
+    "languages": [
+      {
+        "id": "vuerd",
+        "extensions": [
+          ".vuerd"
+        ],
+        "aliases": [
+          "vuerd"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "vuerd.webview",
+        "title": "Open ERD Editor",
+        "category": "vuerd",
+        "icon": {
+          "light": "./img/vuerd.png",
+          "dark": "./img/vuerd.png"
+        }
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "vuerd.webview",
+          "when": "resourceFilename =~ /.*\\.(vuerd.json)/",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "vuerd.webview",
+          "when": "resourceFilename =~ /.*\\.(vuerd.json)/",
+          "group": "navigation"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "vuerd.webview",
+          "when": "resourceFilename =~ /.*\\.(vuerd.json)/",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "vuerd.webview",
+          "when": "resourceFilename =~ /.*\\.(vuerd.json)/",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "vuerd",
+      "properties": {
+        "dineug.vuerd-vscode.themeSync": {
+          "description": "Synchronize the current vscode theme",
+          "type": "boolean",
+          "default": false
+        },
+        "dineug.vuerd-vscode.theme": {
+          "description": "Custom Theme",
+          "type": "object",
+          "properties": {
+            "canvas": {
+              "description": "background color",
+              "type": "string",
+              "default": "#282828"
+            },
+            "table": {
+              "description": "background color",
+              "type": "string",
+              "default": "#191919"
+            },
+            "tableActive": {
+              "description": "active color",
+              "type": "string",
+              "default": "#14496d"
+            },
+            "focus": {
+              "description": "focus color",
+              "type": "string",
+              "default": "#00a9ff"
+            },
+            "keyPK": {
+              "description": "primaryKey color",
+              "type": "string",
+              "default": "#b4b400"
+            },
+            "keyFK": {
+              "description": "foreignKey color",
+              "type": "string",
+              "default": "#dda8b1"
+            },
+            "keyPFK": {
+              "description": "identification color",
+              "type": "string",
+              "default": "#60b9c4"
+            },
+            "font": {
+              "description": "font color",
+              "type": "string",
+              "default": "#a2a2a2"
+            },
+            "fontActive": {
+              "description": "active color",
+              "type": "string",
+              "default": "white"
+            },
+            "fontPlaceholder": {
+              "description": "placeholder color",
+              "type": "string",
+              "default": "#6d6d6d"
+            },
+            "contextmenu": {
+              "description": "background color",
+              "type": "string",
+              "default": "#191919"
+            },
+            "contextmenuActive": {
+              "description": "active color",
+              "type": "string",
+              "default": "#383d41"
+            },
+            "edit": {
+              "description": "edit color",
+              "type": "string",
+              "default": "#ffc107"
+            },
+            "columnSelect": {
+              "description": "select color",
+              "type": "string",
+              "default": "#232a2f"
+            },
+            "columnActive": {
+              "description": "active color",
+              "type": "string",
+              "default": "#372908"
+            },
+            "minimapShadow": {
+              "description": "shadow color",
+              "type": "string",
+              "default": "black"
+            },
+            "scrollbarThumb": {
+              "description": "thumb color",
+              "type": "string",
+              "default": "#6d6d6d"
+            },
+            "scrollbarThumbActive": {
+              "description": "active color",
+              "type": "string",
+              "default": "#a2a2a2"
+            },
+            "menubar": {
+              "description": "background color",
+              "type": "string",
+              "default": "black"
+            },
+            "visualization": {
+              "description": "background color",
+              "type": "string",
+              "default": "#191919"
+            }
+          }
+        },
+        "dineug.vuerd-vscode.keymap": {
+          "description": "Custom Keymap",
+          "type": "object",
+          "properties": {
+            "edit": {
+              "description": "ERD Edit",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "key": "Enter"
+                }
+              ]
+            },
+            "stop": {
+              "description": "Stop",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "key": "Escape"
+                }
+              ]
+            },
+            "find": {
+              "description": "Find",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "key": "F",
+                  "preventDefault": true,
+                  "stopPropagation": true
+                },
+                {
+                  "metaKey": true,
+                  "key": "F",
+                  "preventDefault": true,
+                  "stopPropagation": true
+                }
+              ]
+            },
+            "undo": {
+              "description": "ERD Undo",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "key": "Z",
+                  "preventDefault": true
+                },
+                {
+                  "metaKey": true,
+                  "key": "Z",
+                  "preventDefault": true
+                }
+              ]
+            },
+            "redo": {
+              "description": "ERD Redo",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "shiftKey": true,
+                  "key": "Z",
+                  "preventDefault": true
+                },
+                {
+                  "metaKey": true,
+                  "shiftKey": true,
+                  "key": "Z",
+                  "preventDefault": true
+                }
+              ]
+            },
+            "addTable": {
+              "description": "ERD Add Table",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "altKey": true,
+                  "key": "N"
+                }
+              ]
+            },
+            "addColumn": {
+              "description": "ERD Add Column",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "altKey": true,
+                  "key": "Enter"
+                }
+              ]
+            },
+            "addMemo": {
+              "description": "ERD Add Memo",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "altKey": true,
+                  "key": "M"
+                }
+              ]
+            },
+            "removeTable": {
+              "description": "ERD Remove Table",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "key": "Delete"
+                },
+                {
+                  "ctrlKey": true,
+                  "key": "Backspace"
+                },
+                {
+                  "metaKey": true,
+                  "key": "Delete"
+                },
+                {
+                  "metaKey": true,
+                  "key": "Backspace"
+                }
+              ]
+            },
+            "removeColumn": {
+              "description": "ERD Remove Column",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "altKey": true,
+                  "key": "Delete"
+                },
+                {
+                  "altKey": true,
+                  "key": "Backspace"
+                }
+              ]
+            },
+            "primaryKey": {
+              "description": "ERD Primary Key",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "altKey": true,
+                  "key": "K"
+                }
+              ]
+            },
+            "selectAllTable": {
+              "description": "ERD All Select Table",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "altKey": true,
+                  "key": "A"
+                },
+                {
+                  "metaKey": true,
+                  "altKey": true,
+                  "key": "A"
+                }
+              ]
+            },
+            "selectAllColumn": {
+              "description": "ERD All Select Column",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "altKey": true,
+                  "key": "A"
+                }
+              ]
+            },
+            "copyColumn": {
+              "description": "ERD Copy Column",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "key": "C"
+                },
+                {
+                  "metaKey": true,
+                  "key": "C"
+                }
+              ]
+            },
+            "pasteColumn": {
+              "description": "ERD Paste Column",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "key": "V"
+                },
+                {
+                  "metaKey": true,
+                  "key": "V"
+                }
+              ]
+            },
+            "relationshipZeroOne": {
+              "description": "ERD ZeroOne",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "altKey": true,
+                  "key": "1"
+                },
+                {
+                  "metaKey": true,
+                  "altKey": true,
+                  "key": "1"
+                }
+              ]
+            },
+            "relationshipZeroN": {
+              "description": "ERD ZeroN",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "altKey": true,
+                  "key": "2"
+                },
+                {
+                  "metaKey": true,
+                  "altKey": true,
+                  "key": "2"
+                }
+              ]
+            },
+            "relationshipOneOnly": {
+              "description": "ERD OneOnly",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "altKey": true,
+                  "key": "3"
+                },
+                {
+                  "metaKey": true,
+                  "altKey": true,
+                  "key": "3"
+                }
+              ]
+            },
+            "relationshipOneN": {
+              "description": "ERD OneN",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "altKey": true,
+                  "key": "4"
+                },
+                {
+                  "metaKey": true,
+                  "altKey": true,
+                  "key": "4"
+                }
+              ]
+            },
+            "tableProperties": {
+              "description": "ERD Table Properties",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "altKey": true,
+                  "key": "Space"
+                },
+                {
+                  "ctrlKey": true,
+                  "key": "Space"
+                }
+              ]
+            },
+            "zoomIn": {
+              "description": "ERD Zoom In",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "key": "Equal",
+                  "preventDefault": true,
+                  "stopPropagation": true
+                },
+                {
+                  "metaKey": true,
+                  "key": "Equal",
+                  "preventDefault": true,
+                  "stopPropagation": true
+                }
+              ]
+            },
+            "zoomOut": {
+              "description": "ERD Zoom Out",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metaKey": {
+                    "description": "window, command Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "ctrlKey": {
+                    "description": "control Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "altKey": {
+                    "description": "alt, option Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "shiftKey": {
+                    "description": "shift Key",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "key": {
+                    "description": "Key\nhttps://developer.mozilla.org/ko/docs/Web/API/KeyboardEvent/key/Key_Values\nhttps://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values",
+                    "type": "string"
+                  },
+                  "preventDefault": {
+                    "description": "preventDefault\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "stopPropagation": {
+                    "description": "stopPropagation\nhttps://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation",
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "default": [
+                {
+                  "ctrlKey": true,
+                  "key": "Minus",
+                  "preventDefault": true,
+                  "stopPropagation": true
+                },
+                {
+                  "metaKey": true,
+                  "key": "Minus",
+                  "preventDefault": true,
+                  "stopPropagation": true
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

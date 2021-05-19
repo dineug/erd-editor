@@ -36,6 +36,7 @@
     "serve:storybook": "start-storybook -p 6006",
     "build": "rollup -c",
     "build:sub": "rollup -c rollup.config.sub.js",
+    "build:vscode": "rollup -c rollup.config.vscode.js",
     "build:storybook": "build-storybook",
     "test": "jest",
     "test:watch": "jest --watch",
