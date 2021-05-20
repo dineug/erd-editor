@@ -40,7 +40,7 @@
     "build:storybook": "build-storybook",
     "test": "jest",
     "test:watch": "jest --watch",
-    "deploy:storybook": "storybook-to-ghpages",
+    "deploy:storybook": "npm run build && storybook-to-ghpages",
     "typedoc": "typedoc --out docs types/index.d.ts",
     "lint": "eslint . --ext .ts"
   },
