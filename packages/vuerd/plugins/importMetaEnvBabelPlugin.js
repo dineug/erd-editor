@@ -1,6 +1,6 @@
 const replaceVars = [
   {
-    regex: /^SNOWPACK_PUBLIC_/,
+    regex: /^VITE_/,
     replacement: (template, variableName) =>
       template.expression('process.env.%%variableName%%')({ variableName }),
   },
