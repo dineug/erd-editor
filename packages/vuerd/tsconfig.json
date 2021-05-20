@@ -20,7 +20,8 @@
         "name": "typescript-styled-plugin",
         "tags": ["css"]
       }
-    ]
+    ],
+    "types": ["vite/client"]
   },
   "include": ["src/**/*.ts", "types/**/*.ts"],
   "exclude": ["node_modules"]

@@ -28,7 +28,7 @@
   "author": "dineug <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "serve": "snowpack dev",
+    "serve": "vite",
     "serve:rollup": "rollup -c rollup.config.dev.js -w",
     "build": "rollup -c",
     "lint": "eslint . --ext .ts"
@@ -37,7 +37,6 @@
     "@rollup/plugin-commonjs": "^19.0.0",
     "@rollup/plugin-node-resolve": "^13.0.0",
     "@rollup/plugin-typescript": "^8.2.1",
-    "@snowpack/plugin-typescript": "^1.2.1",
     "@types/lodash": "^4.14.168",
     "@typescript-eslint/eslint-plugin": "^4.22.1",
     "@typescript-eslint/parser": "^4.22.1",
@@ -53,9 +52,9 @@
     "rollup-plugin-generate-html-template": "^1.7.0",
     "rollup-plugin-terser": "^7.0.2",
     "rollup-plugin-visualizer": "^5.5.0",
-    "snowpack": "^3.3.7",
     "stats.js": "^0.17.0",
-    "typescript": "^4.2.4"
+    "typescript": "^4.2.4",
+    "vite": "^2.3.3"
   },
   "dependencies": {
     "lit-html": "^1.4.1"

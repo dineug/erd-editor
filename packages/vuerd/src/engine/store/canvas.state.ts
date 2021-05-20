@@ -76,7 +76,7 @@ export const bracketTypeMap: Record<BracketType, string> = {
 };
 
 export const createCanvasState = (): CanvasState => ({
-  version: import.meta.env.SNOWPACK_PUBLIC_VUERD_VERSION,
+  version: import.meta.env.VITE_VUERD_VERSION,
   width: 2000,
   height: 2000,
   scrollTop: 0,

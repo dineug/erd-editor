@@ -14,7 +14,7 @@ export default {
     banner,
     plugins: [
       html({
-        template: 'public/index.rollup.html',
+        template: 'index.html',
         target: 'dist/index.html',
       }),
       browsersync({ server: 'dist', open: true, port: 8090 }),

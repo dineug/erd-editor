@@ -18,13 +18,11 @@ export default {
     replace({
       preventAssignment: true,
       'process.env.NODE_ENV': JSON.stringify('development'),
-      'import.meta.env.SNOWPACK_PUBLIC_VUERD_VERSION': JSON.stringify(
-        pkg.version
-      ),
+      'import.meta.env.VITE_VUERD_VERSION': JSON.stringify(pkg.version),
     }),
     ...plugins,
     html({
-      template: 'public/index.rollup.html',
+      template: 'index.html',
       target: 'dist/index.html',
     }),
     browsersync({ server: 'dist', open: true, port: 8090 }),
