@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "bootstrap": "lerna bootstrap",
-    "build": "lerna run build"
+    "build": "lerna run build",
+    "test": "lerna run test"
   },
   "devDependencies": {
     "lerna": "^4.0.0"
