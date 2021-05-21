@@ -11,8 +11,7 @@
     "format": "npm run format:eslint && npm run format:prettier",
     "format:eslint": "eslint \"**/*.{js,ts}\" --fix",
     "format:prettier": "prettier \"**/*.{cjs,html,js,json,md,ts}\" --write",
-    "lint": "eslint \"**/*.{js,ts}\"",
-    "precommit": "lint-staged"
+    "lint": "eslint \"**/*.{js,ts}\""
   },
   "devDependencies": {
     "lerna": "^4.0.0",
@@ -21,9 +20,15 @@
     "eslint": "^7.26.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^3.4.0",
+    "husky": "^6.0.0",
     "lint-staged": "^10.4.0",
     "prettier": "^2.3.0",
     "typescript": "^4.2.4"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
   },
   "lint-staged": {
     "**/*.{cjs,html,js,json,md,ts}": "prettier --write",
