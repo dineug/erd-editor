@@ -51,8 +51,9 @@
     "stats.js": "^0.17.0",
     "typescript": "^4.2.4",
     "typescript-styled-plugin": "^0.17.0",
-    "vite": "^2.3.3",
-    "vuerd": "^2.0.13"
+    "vite": "^2.3.3"
   },
-  "dependencies": {}
+  "dependencies": {
+    "vuerd": "^2.0.13"
+  }
 }

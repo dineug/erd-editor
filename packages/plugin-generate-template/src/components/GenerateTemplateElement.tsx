@@ -8,18 +8,19 @@ declare global {
   }
 }
 
-class GenerateTemplateElement extends HTMLElement {
+export class GenerateTemplateElement extends HTMLElement {
   renderRoot = this.attachShadow({ mode: 'open' });
   api!: ERDEditorContext;
-  width = 0;
-  height = 0;
 
   connectedCallback() {
+    Object.assign(this.style, {
+      width: '100%',
+      height: '100%',
+    });
     this.render();
   }
 
   render() {
-    console.log(this.width, this.height);
     render(<GenerateTemplate />, this.renderRoot);
   }
 }
