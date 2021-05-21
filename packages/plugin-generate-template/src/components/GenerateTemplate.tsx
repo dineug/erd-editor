@@ -1,15 +1,12 @@
 import { FunctionalComponent } from 'preact';
-import { useEffect } from 'preact/hooks';
 import { useContext } from '@/core/hooks/useContext';
 
 const GenerateTemplate: FunctionalComponent = () => {
-  const [ctxRef, ctx] = useContext();
+  const context = useContext();
 
-  useEffect(() => {
-    console.log(ctx.api);
-  });
+  console.log(context);
 
-  return <div ref={ctxRef}>test</div>;
+  return <div>test</div>;
 };
 
 export default GenerateTemplate;
