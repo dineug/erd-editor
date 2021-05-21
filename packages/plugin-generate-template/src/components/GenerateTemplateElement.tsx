@@ -1,6 +1,7 @@
 import { GenerateTemplateContext } from '@/internal-types/GenerateTemplateContext';
 import { ERDEditorContext } from 'vuerd';
 import { render } from 'preact';
+import { StyleSheetManager } from 'styled-components';
 import GenerateTemplate from '@/components/GenerateTemplate';
 import { GenerateTemplate as Context } from '@/core/GenerateTemplateContext';
 
@@ -31,7 +32,9 @@ export class GenerateTemplateElement extends HTMLElement {
   render() {
     render(
       <Context.Provider value={this.context}>
-        <GenerateTemplate />
+        <StyleSheetManager target={this.renderRoot as any}>
+          <GenerateTemplate />
+        </StyleSheetManager>
       </Context.Provider>,
       this.renderRoot
     );
