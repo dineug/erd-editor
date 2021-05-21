@@ -1,0 +1,58 @@
+{
+  "name": "@vuerd/plugin-generate-template",
+  "version": "0.1.0",
+  "description": "",
+  "private": true,
+  "main": "dist/generate-template.js",
+  "module": "dist/generate-template.esm.js",
+  "browser": "dist/generate-template.min.js",
+  "typings": "./types/index.d.ts",
+  "files": [
+    "dist/*.js",
+    "types"
+  ],
+  "keywords": [
+    "vuerd",
+    "erd",
+    "plugin"
+  ],
+  "homepage": "https://github.com/vuerd/vuerd#readme",
+  "bugs": {
+    "url": "https://github.com/vuerd/vuerd/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vuerd/vuerd.git",
+    "directory": "packages/plugin-generate-template"
+  },
+  "scripts": {
+    "serve": "vite",
+    "serve:rollup": "rollup -c rollup.config.dev.js -w",
+    "build": "rollup -c"
+  },
+  "author": "dineug <dineug2@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@preact/preset-vite": "^2.1.0",
+    "@mdi/js": "^5.9.55",
+    "@rollup/plugin-alias": "^3.1.2",
+    "@rollup/plugin-commonjs": "^19.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.0",
+    "@rollup/plugin-typescript": "^8.2.1",
+    "mobx": "^6.3.1",
+    "mobx-react-lite": "^3.2.0",
+    "preact": "^10.5.13",
+    "rollup": "^2.47.0",
+    "rollup-plugin-browsersync": "^1.3.1",
+    "rollup-plugin-filesize": "^9.1.1",
+    "rollup-plugin-generate-html-template": "^1.7.0",
+    "rollup-plugin-terser": "^7.0.2",
+    "rollup-plugin-visualizer": "^5.5.0",
+    "stats.js": "^0.17.0",
+    "typescript": "^4.2.4",
+    "typescript-styled-plugin": "^0.17.0",
+    "vite": "^2.3.3",
+    "vuerd": "^2.0.13"
+  },
+  "dependencies": {}
+}

@@ -9,6 +9,10 @@
       "path": "packages/vuerd-vscode"
     },
     {
+      "name": "plugin-generate-template",
+      "path": "packages/plugin-generate-template"
+    },
+    {
       "name": "sql-ddl-parser",
       "path": "packages/sql-ddl-parser"
     },

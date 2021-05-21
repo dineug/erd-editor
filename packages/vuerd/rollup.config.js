@@ -17,13 +17,13 @@ export default {
       banner,
     },
     {
-      name: 'vuerd',
+      name: pkg.name,
       file: pkg.main,
       format: 'umd',
       banner,
     },
     {
-      name: 'vuerd',
+      name: pkg.name,
       file: pkg.browser,
       format: 'umd',
       banner,

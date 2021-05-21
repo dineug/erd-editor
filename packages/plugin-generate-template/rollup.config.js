@@ -38,6 +38,6 @@ export default [
         showBrotliSize: true,
       }),
     ],
-    external: ['lit-html'],
+    external: ['vuerd'],
   },
 ];

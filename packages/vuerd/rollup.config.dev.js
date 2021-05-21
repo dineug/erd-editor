@@ -9,7 +9,7 @@ const { plugins, banner, onwarn } = config();
 export default {
   input: 'src/index.dev.ts',
   output: {
-    name: 'vuerd',
+    name: pkg.name,
     file: pkg.main,
     format: 'umd',
     banner,

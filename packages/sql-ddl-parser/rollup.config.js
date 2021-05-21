@@ -17,21 +17,21 @@ export default {
   input: 'src/index.ts',
   output: [
     {
-      name: 'SQLDDLParser',
+      file: pkg.module,
+      format: 'es',
+      banner,
+    },
+    {
+      name: pkg.name,
       file: pkg.main,
       format: 'umd',
       banner,
     },
     {
-      name: 'SQLDDLParser',
+      name: pkg.name,
       file: pkg.browser,
       format: 'umd',
       plugins: [uglify()],
-      banner,
-    },
-    {
-      file: pkg.module,
-      format: 'es',
       banner,
     },
   ],

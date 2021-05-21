@@ -9,9 +9,9 @@
     "build": "lerna run build",
     "test": "lerna run test",
     "format": "npm run format:eslint && npm run format:prettier",
-    "format:eslint": "eslint \"**/*.{js,ts}\" --fix",
-    "format:prettier": "prettier \"**/*.{cjs,html,js,json,md,ts}\" --write",
-    "lint": "eslint \"**/*.{js,ts}\"",
+    "format:eslint": "eslint \"**/*.{js,ts,tsx}\" --fix",
+    "format:prettier": "prettier \"**/*.{cjs,html,js,json,md,ts,tsx}\" --write",
+    "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "lint-staged": "lint-staged",
     "prepare": "husky install"
   },
@@ -28,7 +28,7 @@
     "typescript": "^4.2.4"
   },
   "lint-staged": {
-    "**/*.{cjs,html,js,json,md,ts}": "prettier --write",
-    "**/*.{js,ts}": "eslint --fix"
+    "**/*.{cjs,html,js,json,md,ts,tsx}": "prettier --write",
+    "**/*.{js,ts,tsx}": "eslint --fix"
   }
 }
