@@ -1,1 +1,1 @@
-export const SQLiteKeywords: string[] = ["AUTOINCREMENT"];
+export const SQLiteKeywords: string[] = ['AUTOINCREMENT'];

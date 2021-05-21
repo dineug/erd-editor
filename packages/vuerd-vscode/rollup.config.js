@@ -1,8 +1,7 @@
-import pkg from "./package.json";
-import resolve from "@rollup/plugin-node-resolve";
-import commonjs from "@rollup/plugin-commonjs";
-import typescript from "@rollup/plugin-typescript";
-import { eslint } from "rollup-plugin-eslint";
+import pkg from './package.json';
+import resolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
+import typescript from '@rollup/plugin-typescript';
 
 const banner = `/*!
  * ${pkg.name}
@@ -12,28 +11,28 @@ const banner = `/*!
  */`;
 
 export default {
-  input: "src/extension.ts",
+  input: 'src/extension.ts',
   output: {
     file: pkg.main,
-    format: "cjs",
+    format: 'cjs',
     banner,
   },
   external: [
-    "vscode",
-    "path",
-    "fs",
-    "url",
-    "events",
-    "stream",
-    "util",
-    "http",
-    "https",
-    "tls",
-    "os",
-    "zlib",
-    "dns",
-    "http2",
-    "net",
+    'vscode',
+    'path',
+    'fs',
+    'url',
+    'events',
+    'stream',
+    'util',
+    'http',
+    'https',
+    'tls',
+    'os',
+    'zlib',
+    'dns',
+    'http2',
+    'net',
   ],
-  plugins: [resolve(), commonjs(), eslint(".eslintrc.json"), typescript()],
+  plugins: [resolve(), commonjs(), typescript()],
 };

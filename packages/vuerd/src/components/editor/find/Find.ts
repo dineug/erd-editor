@@ -36,13 +36,8 @@ const Find: FunctionalComponent<FindProps, FindElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
   const { unmountedGroup } = useUnmounted();
   const { resetTooltip } = useTooltip(['.vuerd-button'], ctx);
-  const {
-    hintState,
-    onSelectHint,
-    onKeydown,
-    onInput,
-    initHints,
-  } = useTableHint(ctx);
+  const { hintState, onSelectHint, onKeydown, onInput, initHints } =
+    useTableHint(ctx);
   const inputRef = query<HTMLInputElement>('input');
   const state = observable({ top: 0, visible: false });
   let openTween: Tween<{ top: number }> | null = null;

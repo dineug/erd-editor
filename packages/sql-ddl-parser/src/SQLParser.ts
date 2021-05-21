@@ -1,4 +1,4 @@
-import { Token, Statement } from "@type/index";
+import { Token, Statement } from '@type/index';
 import {
   tokenMatch,
   isStringKeyword,
@@ -11,13 +11,13 @@ import {
   isAlterTableAddPrimaryKey,
   isAlterTableAddForeignKey,
   isAlterTableAddUnique,
-} from "./sqlParser/SQLParserHelper";
-import { createTable } from "./sqlParser/create.table";
-import { createIndex } from "./sqlParser/create.index";
-import { createUniqueIndex } from "./sqlParser/create.unique.index";
-import { alterTableAddPrimaryKey } from "./sqlParser/alter.table.add.primaryKey";
-import { alterTableAddForeignKey } from "./sqlParser/alter.table.add.foreignKey";
-import { alterTableAddUnique } from "./sqlParser/alter.table.add.unique";
+} from './sqlParser/SQLParserHelper';
+import { createTable } from './sqlParser/create.table';
+import { createIndex } from './sqlParser/create.index';
+import { createUniqueIndex } from './sqlParser/create.unique.index';
+import { alterTableAddPrimaryKey } from './sqlParser/alter.table.add.primaryKey';
+import { alterTableAddForeignKey } from './sqlParser/alter.table.add.foreignKey';
+import { alterTableAddUnique } from './sqlParser/alter.table.add.unique';
 
 /**
  * https://github.com/jamiebuilds/the-super-tiny-compiler
@@ -37,8 +37,8 @@ export function tokenizer(input: string): Token[] {
 
     if (char === tokenMatch.leftParen) {
       tokens.push({
-        type: "leftParen",
-        value: "(",
+        type: 'leftParen',
+        value: '(',
       });
       current++;
       continue;
@@ -46,8 +46,8 @@ export function tokenizer(input: string): Token[] {
 
     if (char === tokenMatch.rightParen) {
       tokens.push({
-        type: "rightParen",
-        value: ")",
+        type: 'rightParen',
+        value: ')',
       });
       current++;
       continue;
@@ -55,8 +55,8 @@ export function tokenizer(input: string): Token[] {
 
     if (char === tokenMatch.comma) {
       tokens.push({
-        type: "comma",
-        value: ",",
+        type: 'comma',
+        value: ',',
       });
       current++;
       continue;
@@ -64,8 +64,8 @@ export function tokenizer(input: string): Token[] {
 
     if (char === tokenMatch.period) {
       tokens.push({
-        type: "period",
-        value: ".",
+        type: 'period',
+        value: '.',
       });
       current++;
       continue;
@@ -73,8 +73,8 @@ export function tokenizer(input: string): Token[] {
 
     if (char === tokenMatch.equal) {
       tokens.push({
-        type: "equal",
-        value: "=",
+        type: 'equal',
+        value: '=',
       });
       current++;
       continue;
@@ -82,15 +82,15 @@ export function tokenizer(input: string): Token[] {
 
     if (char === tokenMatch.semicolon) {
       tokens.push({
-        type: "semicolon",
-        value: ";",
+        type: 'semicolon',
+        value: ';',
       });
       current++;
       continue;
     }
 
     if (char === tokenMatch.doubleQuote) {
-      let value = "";
+      let value = '';
 
       char = input[++current];
 
@@ -101,13 +101,13 @@ export function tokenizer(input: string): Token[] {
 
       char = input[++current];
 
-      tokens.push({ type: "doubleQuoteString", value });
+      tokens.push({ type: 'doubleQuoteString', value });
 
       continue;
     }
 
     if (char === tokenMatch.singleQuote) {
-      let value = "";
+      let value = '';
 
       char = input[++current];
 
@@ -118,13 +118,13 @@ export function tokenizer(input: string): Token[] {
 
       char = input[++current];
 
-      tokens.push({ type: "singleQuoteString", value });
+      tokens.push({ type: 'singleQuoteString', value });
 
       continue;
     }
 
     if (char === tokenMatch.backtick) {
-      let value = "";
+      let value = '';
 
       char = input[++current];
 
@@ -135,33 +135,33 @@ export function tokenizer(input: string): Token[] {
 
       char = input[++current];
 
-      tokens.push({ type: "backtickString", value });
+      tokens.push({ type: 'backtickString', value });
 
       continue;
     }
 
     if (tokenMatch.string.test(char)) {
-      let value = "";
+      let value = '';
 
       while (tokenMatch.string.test(char)) {
         value += char;
         char = input[++current];
       }
 
-      tokens.push({ type: "string", value });
+      tokens.push({ type: 'string', value });
 
       continue;
     }
 
     if (tokenMatch.unknown.test(char)) {
-      let value = "";
+      let value = '';
 
       while (tokenMatch.unknown.test(char)) {
         value += char;
         char = input[++current];
       }
 
-      tokens.push({ type: "unknown", value });
+      tokens.push({ type: 'unknown', value });
 
       continue;
     }
@@ -169,11 +169,11 @@ export function tokenizer(input: string): Token[] {
     current++;
   }
 
-  tokens.forEach((token) => {
+  tokens.forEach(token => {
     if (isExtraString(token)) {
-      token.type = "string";
+      token.type = 'string';
     } else if (isStringKeyword(token)) {
-      token.type = "keyword";
+      token.type = 'keyword';
     }
   });
 
@@ -214,7 +214,7 @@ export function parser(tokens: Token[]): Statement[] {
     current++;
   }
 
-  tokenStatements.forEach((tokenStatement) => {
+  tokenStatements.forEach(tokenStatement => {
     if (isCreateTable(tokenStatement)) {
       statements.push(createTable(tokenStatement));
     } else if (isCreateIndex(tokenStatement)) {

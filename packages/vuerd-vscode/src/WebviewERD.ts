@@ -1,5 +1,5 @@
-import * as path from "path";
-import * as os from "os";
+import * as path from 'path';
+import * as os from 'os';
 import {
   Disposable,
   WebviewPanel,
@@ -8,11 +8,11 @@ import {
   window,
   ViewColumn,
   workspace,
-} from "vscode";
-import { getHtmlForWebview, getTheme, getKeymap } from "./util";
-import WebviewManager from "./WebviewManager";
+} from 'vscode';
+import { getHtmlForWebview, getTheme, getKeymap } from './util';
+import WebviewManager from './WebviewManager';
 
-const viewType = "vuerd.webview";
+const viewType = 'vuerd.webview';
 
 export default class WebviewERD {
   private disposables: Disposable[] = [];
@@ -43,7 +43,7 @@ export default class WebviewERD {
         {
           enableScripts: true,
           localResourceRoots: [
-            Uri.file(path.join(context.extensionPath, "static")),
+            Uri.file(path.join(context.extensionPath, 'static')),
           ],
         }
       );
@@ -52,51 +52,51 @@ export default class WebviewERD {
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
     this.panel.webview.html = getHtmlForWebview(this.panel.webview, context);
     this.panel.webview.onDidReceiveMessage(
-      async (message) => {
+      async message => {
         switch (message.command) {
-          case "value":
+          case 'value':
             await workspace.fs.writeFile(
               this.uri,
               Buffer.from(
                 JSON.stringify(JSON.parse(message.value), null, 2),
-                "utf8"
+                'utf8'
               )
             );
             return;
-          case "getValue":
+          case 'getValue':
             try {
               const buffer = await workspace.fs.readFile(this.uri);
-              const value = Buffer.from(buffer).toString("utf8");
+              const value = Buffer.from(buffer).toString('utf8');
               this.panel.webview.postMessage({
-                command: "state",
+                command: 'state',
                 uri: this.uri,
               });
               this.panel.webview.postMessage({
-                command: "theme",
+                command: 'theme',
                 value: getTheme(),
               });
               this.panel.webview.postMessage({
-                command: "keymap",
+                command: 'keymap',
                 value: getKeymap(),
               });
               this.panel.webview.postMessage({
-                command: "value",
+                command: 'value',
                 value,
               });
             } catch (err) {
               window.showErrorMessage(err.message);
             }
             return;
-          case "exportFile":
+          case 'exportFile':
             window
               .showSaveDialog({
                 defaultUri: Uri.file(path.join(os.homedir(), message.fileName)),
               })
-              .then((uri) => {
+              .then(uri => {
                 if (uri) {
                   workspace.fs.writeFile(
                     uri,
-                    Buffer.from(message.value.split(",")[1], "base64")
+                    Buffer.from(message.value.split(',')[1], 'base64')
                   );
                 }
               });

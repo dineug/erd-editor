@@ -1,19 +1,19 @@
-import fs from "fs";
-import path from "path";
-import { tokenizer, parser } from "@src/SQLParser";
+import fs from 'fs';
+import path from 'path';
+import { tokenizer, parser } from '@src/SQLParser';
 
 type TestCase = [string, string, string];
 const testCaseList: Array<TestCase> = [];
 function setupCase() {
   const sqlDDLTestCase = fs.readFileSync(
-    path.join(__dirname, "./SQL_DDL_Test_Case.md"),
-    "utf8"
+    path.join(__dirname, './SQL_DDL_Test_Case.md'),
+    'utf8'
   );
   const testCases = sqlDDLTestCase
-    .split("### ")
+    .split('### ')
     .slice(1)
-    .map((value) => `### ${value}`);
-  testCases.forEach((testCase) => {
+    .map(value => `### ${value}`);
+  testCases.forEach(testCase => {
     const caseName = /###.*/.exec(testCase);
     if (caseName) {
       const center = testCase.search(/```\s/);
@@ -29,7 +29,7 @@ function setupCase() {
 }
 setupCase();
 
-it.each(testCaseList)("%s", (_, sql, json) => {
+it.each(testCaseList)('%s', (_, sql, json) => {
   const tokens = tokenizer(sql);
   const statements = parser(tokens);
   expect(json).toEqual({ statements });

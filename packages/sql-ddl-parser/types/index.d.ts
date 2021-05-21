@@ -1,18 +1,18 @@
-export type SortType = "ASC" | "DESC";
+export type SortType = 'ASC' | 'DESC';
 
 export type TokenType =
-  | "leftParen"
-  | "rightParen"
-  | "comma"
-  | "period"
-  | "equal"
-  | "semicolon"
-  | "keyword"
-  | "string"
-  | "doubleQuoteString"
-  | "singleQuoteString"
-  | "backtickString"
-  | "unknown";
+  | 'leftParen'
+  | 'rightParen'
+  | 'comma'
+  | 'period'
+  | 'equal'
+  | 'semicolon'
+  | 'keyword'
+  | 'string'
+  | 'doubleQuoteString'
+  | 'singleQuoteString'
+  | 'backtickString'
+  | 'unknown';
 
 export interface Token {
   type: TokenType;
@@ -27,7 +27,7 @@ export type Statement =
   | AlterTableAddUnique;
 
 export interface CreateTable {
-  type: "create.table";
+  type: 'create.table';
   name: string;
   comment: string;
   columns: Column[];
@@ -65,7 +65,7 @@ export interface CreateTableColumns {
 }
 
 export interface CreateIndex {
-  type: "create.index";
+  type: 'create.index';
   name: string;
   unique: boolean;
   tableName: string;
@@ -77,19 +77,19 @@ export interface IndexColumn {
 }
 
 export interface AlterTableAddUnique {
-  type: "alter.table.add.unique";
+  type: 'alter.table.add.unique';
   name: string;
   columnNames: string[];
 }
 
 export interface AlterTableAddPrimaryKey {
-  type: "alter.table.add.primaryKey";
+  type: 'alter.table.add.primaryKey';
   name: string;
   columnNames: string[];
 }
 
 export interface AlterTableAddForeignKey {
-  type: "alter.table.add.foreignKey";
+  type: 'alter.table.add.foreignKey';
   name: string;
   columnNames: string[];
   refTableName: string;

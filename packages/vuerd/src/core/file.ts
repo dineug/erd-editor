@@ -7,9 +7,8 @@ import { createJson } from '@/core/parser/SQLParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
 
-let executeExportFileExtra:
-  | ((blob: Blob, fileName: string) => void)
-  | null = null;
+let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
+  null;
 
 export const createJsonFormat = ({
   canvasState,

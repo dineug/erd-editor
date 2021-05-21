@@ -6,7 +6,7 @@ import {
   Column,
   Index,
   ForeignKey,
-} from "@type/index";
+} from '@type/index';
 import {
   Current,
   isDataType,
@@ -30,15 +30,15 @@ import {
   isComma,
   isCurrent,
   isKeyword,
-} from "./SQLParserHelper";
+} from './SQLParserHelper';
 
 export function createTable(tokens: Token[]): CreateTable {
   const current: Current = { value: 0 };
 
   const ast: CreateTable = {
-    type: "create.table",
-    name: "",
-    comment: "",
+    type: 'create.table',
+    name: '',
+    comment: '',
     columns: [],
     indexes: [],
     foreignKeys: [],
@@ -104,10 +104,10 @@ function createTableColumns(
   const uniqueColumnNames: string[] = [];
 
   let column = {
-    name: "",
-    dataType: "",
-    default: "",
-    comment: "",
+    name: '',
+    dataType: '',
+    default: '',
+    comment: '',
     primaryKey: false,
     autoIncrement: false,
     unique: false,
@@ -190,8 +190,8 @@ function createTableColumns(
         if (isLeftParen(token)) {
           token = tokens[++current.value];
           let indexColumn: IndexColumn = {
-            name: "",
-            sort: "ASC",
+            name: '',
+            sort: 'ASC',
           };
 
           while (isCurrent(tokens, current.value) && !isRightParen(token)) {
@@ -199,19 +199,19 @@ function createTableColumns(
               indexColumn.name = token.value;
             }
             if (isDESC(token)) {
-              indexColumn.sort = "DESC";
+              indexColumn.sort = 'DESC';
             }
             if (isComma(token)) {
               indexColumns.push(indexColumn);
               indexColumn = {
-                name: "",
-                sort: "ASC",
+                name: '',
+                sort: 'ASC',
               };
             }
             token = tokens[++current.value];
           }
 
-          if (!indexColumns.includes(indexColumn) && indexColumn.name !== "") {
+          if (!indexColumns.includes(indexColumn) && indexColumn.name !== '') {
             indexColumns.push(indexColumn);
           }
 
@@ -295,7 +295,7 @@ function createTableColumns(
       token = tokens[++current.value];
 
       if (isLeftParen(token)) {
-        value += "(";
+        value += '(';
         token = tokens[++current.value];
 
         while (isCurrent(tokens, current.value) && !isRightParen(token)) {
@@ -303,7 +303,7 @@ function createTableColumns(
           token = tokens[++current.value];
         }
 
-        value += ")";
+        value += ')';
         current.value++;
       }
 
@@ -316,10 +316,10 @@ function createTableColumns(
         columns.push(column);
       }
       column = {
-        name: "",
-        dataType: "",
-        default: "",
-        comment: "",
+        name: '',
+        dataType: '',
+        default: '',
+        comment: '',
         primaryKey: false,
         autoIncrement: false,
         unique: false,
@@ -341,7 +341,7 @@ function createTableColumns(
     columns.push(column);
   }
 
-  columns.forEach((column) => {
+  columns.forEach(column => {
     if (primaryKeyColumnNames.includes(column.name.toUpperCase())) {
       column.primaryKey = true;
     }
@@ -364,7 +364,7 @@ export function parserForeignKey(
 ): ForeignKey | null {
   const foreignKey: ForeignKey = {
     columnNames: [],
-    refTableName: "",
+    refTableName: '',
     refColumnNames: [],
   };
 

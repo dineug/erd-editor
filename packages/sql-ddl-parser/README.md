@@ -33,7 +33,7 @@ $ npm install @vuerd/sql-ddl-parser
 ## Usage
 
 ```javascript
-import { DDLParser } from "@vuerd/sql-ddl-parser";
+import { DDLParser } from '@vuerd/sql-ddl-parser';
 
-const statements = DDLParser("sql ddl...");
+const statements = DDLParser('sql ddl...');
 ```

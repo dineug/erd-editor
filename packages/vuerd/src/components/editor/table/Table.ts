@@ -60,12 +60,8 @@ const ANIMATION_TIME = 300;
 
 const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   const contextRef = useContext(ctx);
-  const {
-    hasFocusState,
-    hasEdit,
-    hasSelectColumn,
-    hasDraggableColumn,
-  } = useHasTable(props, ctx);
+  const { hasFocusState, hasEdit, hasSelectColumn, hasDraggableColumn } =
+    useHasTable(props, ctx);
   useTooltip(['.vuerd-table-button'], ctx);
   const { resetTooltip } = useTooltip(['.vuerd-table-comment'], ctx);
   const flipAnimation = new FlipAnimation(

@@ -1,4 +1,4 @@
-import { Token, AlterTableAddForeignKey } from "@type/index";
+import { Token, AlterTableAddForeignKey } from '@type/index';
 import {
   Current,
   isTable,
@@ -7,8 +7,8 @@ import {
   isString,
   isPeriod,
   isCurrent,
-} from "./SQLParserHelper";
-import { parserForeignKey } from "./create.table";
+} from './SQLParserHelper';
+import { parserForeignKey } from './create.table';
 
 export function alterTableAddForeignKey(
   tokens: Token[]
@@ -16,10 +16,10 @@ export function alterTableAddForeignKey(
   const current: Current = { value: 0 };
 
   const ast: AlterTableAddForeignKey = {
-    type: "alter.table.add.foreignKey",
-    name: "",
+    type: 'alter.table.add.foreignKey',
+    name: '',
     columnNames: [],
-    refTableName: "",
+    refTableName: '',
     refColumnNames: [],
   };
 

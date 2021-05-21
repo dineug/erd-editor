@@ -1,4 +1,4 @@
-import { Token, AlterTableAddPrimaryKey } from "@type/index";
+import { Token, AlterTableAddPrimaryKey } from '@type/index';
 import {
   isTable,
   isConstraint,
@@ -9,7 +9,7 @@ import {
   isKey,
   isLeftParen,
   isRightParen,
-} from "./SQLParserHelper";
+} from './SQLParserHelper';
 
 export function alterTableAddPrimaryKey(
   tokens: Token[]
@@ -17,8 +17,8 @@ export function alterTableAddPrimaryKey(
   let current = 0;
 
   const ast: AlterTableAddPrimaryKey = {
-    type: "alter.table.add.primaryKey",
-    name: "",
+    type: 'alter.table.add.primaryKey',
+    name: '',
     columnNames: [],
   };
 

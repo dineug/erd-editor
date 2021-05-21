@@ -56,12 +56,8 @@ const Filter: FunctionalComponent<FilterProps, FilterElement> = (
   const state = observable({ top: 0, visible: false });
   const { unmountedGroup } = useUnmounted();
   const { resetTooltip } = useTooltip(['.vuerd-filter-button'], ctx);
-  const {
-    hasFocusState,
-    hasEdit,
-    hasSelectFilter,
-    hasDraggableFilter,
-  } = useHasFilter(ctx);
+  const { hasFocusState, hasEdit, hasSelectFilter, hasDraggableFilter } =
+    useHasFilter(ctx);
   const flipAnimation = new FlipAnimation(
     ctx.shadowRoot ? ctx.shadowRoot : ctx,
     'vuerd-filter-item',

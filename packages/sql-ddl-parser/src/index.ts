@@ -1,1 +1,1 @@
-export * from "./SQLParser";
+export * from './SQLParser';

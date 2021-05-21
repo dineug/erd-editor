@@ -70,12 +70,14 @@ export function formatTable(
     const pfkTables: Table[] = [];
     pkColumns.forEach(column => {
       if (column.ui.pfk) {
-        (relationships
-          .filter(relationship =>
-            relationship.end.columnIds.includes(column.id)
-          )
-          .map(relationship => getData(tables, relationship.start.tableId))
-          .filter(table => table !== null) as Table[]).forEach(table => {
+        (
+          relationships
+            .filter(relationship =>
+              relationship.end.columnIds.includes(column.id)
+            )
+            .map(relationship => getData(tables, relationship.start.tableId))
+            .filter(table => table !== null) as Table[]
+        ).forEach(table => {
           if (!pfkTables.some(pfkTable => pfkTable.id === table.id)) {
             pfkTables.push(table);
           }

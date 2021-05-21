@@ -1,4 +1,4 @@
-import { Token, AlterTableAddUnique } from "@type/index";
+import { Token, AlterTableAddUnique } from '@type/index';
 import {
   isTable,
   isConstraint,
@@ -8,14 +8,14 @@ import {
   isUnique,
   isLeftParen,
   isRightParen,
-} from "./SQLParserHelper";
+} from './SQLParserHelper';
 
 export function alterTableAddUnique(tokens: Token[]): AlterTableAddUnique {
   let current = 0;
 
   const ast: AlterTableAddUnique = {
-    type: "alter.table.add.unique",
-    name: "",
+    type: 'alter.table.add.unique',
+    name: '',
     columnNames: [],
   };
 

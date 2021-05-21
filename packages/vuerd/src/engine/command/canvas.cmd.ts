@@ -184,7 +184,8 @@ export const executeCanvasCommandMap: Record<
   'canvas.changeLanguage': executeChangeLanguage,
   'canvas.changeTableCase': executeChangeTableCase,
   'canvas.changeColumnCase': executeChangeColumnCase,
-  'canvas.changeRelationshipDataTypeSync': executeChangeRelationshipDataTypeSync,
+  'canvas.changeRelationshipDataTypeSync':
+    executeChangeRelationshipDataTypeSync,
   'canvas.moveColumnOrder': executeMoveColumnOrder,
   'canvas.changeHighlightTheme': executeChangeHighlightTheme,
   'canvas.changeBracketType': executeChangeBracketType,

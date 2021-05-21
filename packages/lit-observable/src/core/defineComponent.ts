@@ -68,42 +68,42 @@ const createLifecycle = (name: LifecycleName) => (f: Callback) => {
   currentInstance &&
     (currentInstance[name] ?? (currentInstance[name] = [])).push(f);
 };
-const createQuery = (name: QueryName) => <T = any>(
-  selector: string
-): Ref<T> => {
-  const ref = { value: null } as Ref<any>;
+const createQuery =
+  (name: QueryName) =>
+  <T = any>(selector: string): Ref<T> => {
+    const ref = { value: null } as Ref<any>;
 
-  if (currentInstance) {
-    const renderRoot = currentInstance[RENDER_ROOT];
-    const f = () =>
-      (ref.value =
-        name === QUERY
-          ? renderRoot.querySelector(selector)
-          : [...renderRoot.querySelectorAll(selector)]);
+    if (currentInstance) {
+      const renderRoot = currentInstance[RENDER_ROOT];
+      const f = () =>
+        (ref.value =
+          name === QUERY
+            ? renderRoot.querySelector(selector)
+            : [...renderRoot.querySelectorAll(selector)]);
 
-    (currentInstance[QUERY] ?? (currentInstance[QUERY] = [])).push(f);
-  }
+      (currentInstance[QUERY] ?? (currentInstance[QUERY] = [])).push(f);
+    }
 
-  return ref;
-};
-const createQueryShadow = (name: QueryShadowName) => <T = any>(
-  ...selectors: string[]
-): Ref<T> => {
-  const ref = { value: null } as Ref<any>;
+    return ref;
+  };
+const createQueryShadow =
+  (name: QueryShadowName) =>
+  <T = any>(...selectors: string[]): Ref<T> => {
+    const ref = { value: null } as Ref<any>;
 
-  if (currentInstance) {
-    const el = currentInstance;
-    const f = () =>
-      (ref.value =
-        name === QUERY_SHADOW
-          ? queryShadowSelector(selectors, el)
-          : queryShadowSelectorAll(selectors, el));
+    if (currentInstance) {
+      const el = currentInstance;
+      const f = () =>
+        (ref.value =
+          name === QUERY_SHADOW
+            ? queryShadowSelector(selectors, el)
+            : queryShadowSelectorAll(selectors, el));
 
-    (currentInstance[QUERY] ?? (currentInstance[QUERY] = [])).push(f);
-  }
+      (currentInstance[QUERY] ?? (currentInstance[QUERY] = [])).push(f);
+    }
 
-  return ref;
-};
+    return ref;
+  };
 
 export const beforeMount = createLifecycle(BEFORE_MOUNT);
 export const mounted = createLifecycle(MOUNTED);

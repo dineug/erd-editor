@@ -85,6 +85,7 @@ export const executeRelationshipCommandMap = {
   'relationship.add': executeAddRelationship,
   'relationship.remove': executeRemoveRelationship,
   'relationship.changeRelationshipType': executeChangeRelationshipType,
-  'relationship.changeStartRelationshipType': executeChangeStartRelationshipType,
+  'relationship.changeStartRelationshipType':
+    executeChangeStartRelationshipType,
   'relationship.changeIdentification': executeChangeIdentification,
 };

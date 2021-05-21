@@ -276,14 +276,26 @@ function getDrawLine(direction: Direction, draw: DrawRelationship): DrawLine {
   };
   if (!draw.start) return line;
 
-  line.start.base.x1 = line.start.base2.x1 = line.start.center.x1 = line.start.center2.x1 =
-    draw.start.x;
-  line.start.base.x2 = line.start.base2.x2 = line.start.center.x2 = line.start.center2.x2 =
-    draw.start.x;
-  line.start.base.y1 = line.start.base2.y1 = line.start.center.y1 = line.start.center2.y1 =
-    draw.start.y;
-  line.start.base.y2 = line.start.base2.y2 = line.start.center.y2 = line.start.center2.y2 =
-    draw.start.y;
+  line.start.base.x1 =
+    line.start.base2.x1 =
+    line.start.center.x1 =
+    line.start.center2.x1 =
+      draw.start.x;
+  line.start.base.x2 =
+    line.start.base2.x2 =
+    line.start.center.x2 =
+    line.start.center2.x2 =
+      draw.start.x;
+  line.start.base.y1 =
+    line.start.base2.y1 =
+    line.start.center.y1 =
+    line.start.center2.y1 =
+      draw.start.y;
+  line.start.base.y2 =
+    line.start.base2.y2 =
+    line.start.center.y2 =
+    line.start.center2.y2 =
+      draw.start.y;
 
   let change = 1;
   if (direction === 'left' || direction === 'right') {
@@ -833,8 +845,10 @@ function getLine(
     }
     line.end.base.x1 = line.end.base.x2 += change * LINE_HEIGHT;
     line.end.base2.x1 = line.end.base2.x2 += change * (LINE_SIZE + LINE_HEIGHT);
-    line.end.center.x1 = line.end.left.x1 = line.end.right.x1 =
-      line.end.base.x1;
+    line.end.center.x1 =
+      line.end.left.x1 =
+      line.end.right.x1 =
+        line.end.base.x1;
     line.end.base.y1 -= LINE_SIZE;
     line.end.base.y2 += LINE_SIZE;
     line.end.base2.y1 -= LINE_SIZE;
@@ -850,8 +864,10 @@ function getLine(
     }
     line.end.base.y1 = line.end.base.y2 += change * LINE_HEIGHT;
     line.end.base2.y1 = line.end.base2.y2 += change * (LINE_SIZE + LINE_HEIGHT);
-    line.end.center.y1 = line.end.left.y1 = line.end.right.y1 =
-      line.end.base.y1;
+    line.end.center.y1 =
+      line.end.left.y1 =
+      line.end.right.y1 =
+        line.end.base.y1;
     line.end.base.x1 -= LINE_SIZE;
     line.end.base.x2 += LINE_SIZE;
     line.end.base2.x1 -= LINE_SIZE;

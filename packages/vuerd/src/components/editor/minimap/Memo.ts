@@ -22,27 +22,25 @@ export interface MinimapMemoElement extends MinimapMemoProps, HTMLElement {}
 const MEMO_PADDING = SIZE_MEMO_PADDING * 2;
 const MEMO_HEADER = 6 + MEMO_PADDING;
 
-const MinimapMemo: FunctionalComponent<MinimapMemoProps, MinimapMemoElement> = (
-  props,
-  ctx
-) => () => {
-  const { memo } = props;
-  const width = memo.ui.width + MEMO_PADDING;
-  const height = memo.ui.height + MEMO_PADDING + MEMO_HEADER;
+const MinimapMemo: FunctionalComponent<MinimapMemoProps, MinimapMemoElement> =
+  (props, ctx) => () => {
+    const { memo } = props;
+    const width = memo.ui.width + MEMO_PADDING;
+    const height = memo.ui.height + MEMO_PADDING + MEMO_HEADER;
 
-  return html`
-    <div
-      class="vuerd-memo"
-      style=${styleMap({
-        top: `${memo.ui.top}px`,
-        left: `${memo.ui.left}px`,
-        zIndex: `${memo.ui.zIndex}`,
-        width: `${width}px`,
-        height: `${height}px`,
-      })}
-    ></div>
-  `;
-};
+    return html`
+      <div
+        class="vuerd-memo"
+        style=${styleMap({
+          top: `${memo.ui.top}px`,
+          left: `${memo.ui.left}px`,
+          zIndex: `${memo.ui.zIndex}`,
+          width: `${width}px`,
+          height: `${height}px`,
+        })}
+      ></div>
+    `;
+  };
 
 defineComponent('vuerd-minimap-memo', {
   observedProps: ['memo'],

@@ -1,10 +1,10 @@
-import * as path from "path";
-import { Webview, Uri, ExtensionContext, workspace } from "vscode";
+import * as path from 'path';
+import { Webview, Uri, ExtensionContext, workspace } from 'vscode';
 
 export function getNonce() {
-  let text = "";
+  let text = '';
   const possible =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   for (let i = 0; i < 32; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
@@ -16,10 +16,10 @@ export function getHtmlForWebview(
   context: ExtensionContext
 ): string {
   const vuerdUri = webview.asWebviewUri(
-    Uri.file(path.join(context.extensionPath, "static", "vuerd.min.js"))
+    Uri.file(path.join(context.extensionPath, 'static', 'vuerd.min.js'))
   );
   const mainUri = webview.asWebviewUri(
-    Uri.file(path.join(context.extensionPath, "static", "main.js"))
+    Uri.file(path.join(context.extensionPath, 'static', 'main.js'))
   );
   const nonce = getNonce();
   const cspSource = webview.cspSource;
@@ -46,17 +46,17 @@ export function getHtmlForWebview(
 }
 
 export function getTheme() {
-  const config = workspace.getConfiguration("dineug.vuerd-vscode");
-  const themeSync = config.get("themeSync");
+  const config = workspace.getConfiguration('dineug.vuerd-vscode');
+  const themeSync = config.get('themeSync');
   return {
-    theme: Object.assign({}, config.get("theme")),
+    theme: Object.assign({}, config.get('theme')),
     themeSync: !!themeSync,
   };
 }
 
 export function getKeymap() {
-  const config = workspace.getConfiguration("dineug.vuerd-vscode");
+  const config = workspace.getConfiguration('dineug.vuerd-vscode');
   return {
-    keymap: Object.assign({}, config.get("keymap")),
+    keymap: Object.assign({}, config.get('keymap')),
   };
 }

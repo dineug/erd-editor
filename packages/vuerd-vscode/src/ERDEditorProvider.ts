@@ -1,9 +1,9 @@
-import * as path from "path";
-import * as os from "os";
-import * as vscode from "vscode";
-import { getHtmlForWebview, getTheme, getKeymap } from "./util";
-import { Disposable, disposeAll } from "./dispose";
-import { trackEvent } from "./GoogleAnalytics";
+import * as path from 'path';
+import * as os from 'os';
+import * as vscode from 'vscode';
+import { getHtmlForWebview, getTheme, getKeymap } from './util';
+import { Disposable, disposeAll } from './dispose';
+import { trackEvent } from './GoogleAnalytics';
 
 interface ERDEditorDocumentDelegate {
   getFileData(): Promise<string>;
@@ -16,9 +16,9 @@ class ERDEditorDocument extends Disposable implements vscode.CustomDocument {
     delegate: ERDEditorDocumentDelegate
   ): Promise<ERDEditorDocument | PromiseLike<ERDEditorDocument>> {
     const dataFile =
-      typeof backupId === "string" ? vscode.Uri.parse(backupId) : uri;
+      typeof backupId === 'string' ? vscode.Uri.parse(backupId) : uri;
     const buffer = await vscode.workspace.fs.readFile(dataFile);
-    const value = Buffer.from(buffer).toString("utf8");
+    const value = Buffer.from(buffer).toString('utf8');
     return new ERDEditorDocument(uri, value, delegate);
   }
 
@@ -91,13 +91,13 @@ class ERDEditorDocument extends Disposable implements vscode.CustomDocument {
 
     await vscode.workspace.fs.writeFile(
       targetResource,
-      Buffer.from(JSON.stringify(JSON.parse(value), null, 2), "utf8")
+      Buffer.from(JSON.stringify(JSON.parse(value), null, 2), 'utf8')
     );
   }
 
   async revert(_cancellation: vscode.CancellationToken): Promise<void> {
     const buffer = await vscode.workspace.fs.readFile(this.uri);
-    const value = Buffer.from(buffer).toString("utf8");
+    const value = Buffer.from(buffer).toString('utf8');
     this._documentData = value;
     this._onDidChangeDocument.fire({
       content: value,
@@ -124,7 +124,8 @@ class ERDEditorDocument extends Disposable implements vscode.CustomDocument {
 }
 
 export class ERDEditorProvider
-  implements vscode.CustomEditorProvider<ERDEditorDocument> {
+  implements vscode.CustomEditorProvider<ERDEditorDocument>
+{
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
     return vscode.window.registerCustomEditorProvider(
       ERDEditorProvider.viewType,
@@ -138,7 +139,7 @@ export class ERDEditorProvider
     );
   }
 
-  private static readonly viewType = "vuerd.editor";
+  private static readonly viewType = 'vuerd.editor';
 
   private readonly webviews = new WebviewCollection();
 
@@ -149,7 +150,7 @@ export class ERDEditorProvider
     openContext: { backupId?: string },
     _token: vscode.CancellationToken
   ): Promise<ERDEditorDocument> {
-    trackEvent("vuerd.editor");
+    trackEvent('vuerd.editor');
     const document: ERDEditorDocument = await ERDEditorDocument.create(
       uri,
       openContext.backupId,
@@ -159,12 +160,12 @@ export class ERDEditorProvider
             this.webviews.get(document.uri)
           );
           if (!webviewsForDocument.length) {
-            throw new Error("Could not find webview to save for");
+            throw new Error('Could not find webview to save for');
           }
           const panel = webviewsForDocument[0];
           const response = await this.postMessageWithResponse<{
             value: string;
-          }>(panel, "getFileData", {});
+          }>(panel, 'getFileData', {});
           return response.value;
         },
       }
@@ -173,7 +174,7 @@ export class ERDEditorProvider
     const listeners: vscode.Disposable[] = [];
 
     listeners.push(
-      document.onDidChange((e) => {
+      document.onDidChange(e => {
         this._onDidChangeCustomDocument.fire({
           document,
         });
@@ -181,9 +182,9 @@ export class ERDEditorProvider
     );
 
     listeners.push(
-      document.onDidChangeContent((e) => {
+      document.onDidChangeContent(e => {
         for (const webviewPanel of this.webviews.get(document.uri)) {
-          this.postMessage(webviewPanel, "update", {
+          this.postMessage(webviewPanel, 'update', {
             value: e.content,
           });
         }
@@ -210,31 +211,29 @@ export class ERDEditorProvider
       this._context
     );
 
-    webviewPanel.webview.onDidReceiveMessage((e) =>
-      this.onMessage(document, e)
-    );
+    webviewPanel.webview.onDidReceiveMessage(e => this.onMessage(document, e));
 
-    webviewPanel.webview.onDidReceiveMessage((e) => {
-      if (e.command === "getValue") {
-        this.postMessage(webviewPanel, "theme", {
+    webviewPanel.webview.onDidReceiveMessage(e => {
+      if (e.command === 'getValue') {
+        this.postMessage(webviewPanel, 'theme', {
           value: getTheme(),
         });
-        this.postMessage(webviewPanel, "keymap", {
+        this.postMessage(webviewPanel, 'keymap', {
           value: getKeymap(),
         });
-        this.postMessage(webviewPanel, "init", {
+        this.postMessage(webviewPanel, 'init', {
           value: document.documentData,
         });
-      } else if (e.command === "exportFile") {
+      } else if (e.command === 'exportFile') {
         vscode.window
           .showSaveDialog({
             defaultUri: vscode.Uri.file(path.join(os.homedir(), e.fileName)),
           })
-          .then((uri) => {
+          .then(uri => {
             if (uri) {
               vscode.workspace.fs.writeFile(
                 uri,
-                Buffer.from(e.value.split(",")[1], "base64")
+                Buffer.from(e.value.split(',')[1], 'base64')
               );
             }
           });
@@ -245,8 +244,8 @@ export class ERDEditorProvider
   private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<
     vscode.CustomDocumentContentChangeEvent<ERDEditorDocument>
   >();
-  public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument
-    .event;
+  public readonly onDidChangeCustomDocument =
+    this._onDidChangeCustomDocument.event;
 
   public saveCustomDocument(
     document: ERDEditorDocument,
@@ -287,7 +286,7 @@ export class ERDEditorProvider
     body: any
   ): Promise<R> {
     const requestId = this._requestId++;
-    const p = new Promise<R>((resolve) =>
+    const p = new Promise<R>(resolve =>
       this._callbacks.set(requestId, resolve)
     );
     panel.webview.postMessage({ type, requestId, body });
@@ -304,11 +303,11 @@ export class ERDEditorProvider
 
   private onMessage(document: ERDEditorDocument, message: any) {
     switch (message.type) {
-      case "value":
+      case 'value':
         document.makeEdit();
         return;
 
-      case "response": {
+      case 'response': {
         const callback = this._callbacks.get(message.requestId);
         callback?.(message.body);
         return;

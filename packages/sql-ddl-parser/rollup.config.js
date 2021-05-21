@@ -1,11 +1,10 @@
-import resolve from "@rollup/plugin-node-resolve";
-import commonjs from "@rollup/plugin-commonjs";
-import typescript from "@rollup/plugin-typescript";
-import visualizer from "rollup-plugin-visualizer";
-import filesize from "rollup-plugin-filesize";
-import { eslint } from "rollup-plugin-eslint";
-import { uglify } from "rollup-plugin-uglify";
-import pkg from "./package.json";
+import resolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
+import typescript from '@rollup/plugin-typescript';
+import visualizer from 'rollup-plugin-visualizer';
+import filesize from 'rollup-plugin-filesize';
+import { uglify } from 'rollup-plugin-uglify';
+import pkg from './package.json';
 
 const banner = `/*!
  * ${pkg.name}
@@ -15,34 +14,33 @@ const banner = `/*!
  */`;
 
 export default {
-  input: "src/index.ts",
+  input: 'src/index.ts',
   output: [
     {
-      name: "SQLDDLParser",
+      name: 'SQLDDLParser',
       file: pkg.main,
-      format: "umd",
+      format: 'umd',
       banner,
     },
     {
-      name: "SQLDDLParser",
+      name: 'SQLDDLParser',
       file: pkg.browser,
-      format: "umd",
+      format: 'umd',
       plugins: [uglify()],
       banner,
     },
     {
       file: pkg.module,
-      format: "es",
+      format: 'es',
       banner,
     },
   ],
   plugins: [
     resolve(),
     commonjs(),
-    eslint(".eslintrc.json"),
     typescript(),
     visualizer({
-      filename: "./dist/stats.html",
+      filename: './dist/stats.html',
     }),
     filesize({
       showBrotliSize: true,

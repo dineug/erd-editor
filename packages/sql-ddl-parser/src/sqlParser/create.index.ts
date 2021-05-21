@@ -1,4 +1,4 @@
-import { Token, CreateIndex, IndexColumn } from "@type/index";
+import { Token, CreateIndex, IndexColumn } from '@type/index';
 import {
   isDESC,
   isOn,
@@ -8,16 +8,16 @@ import {
   isRightParen,
   isComma,
   isCurrent,
-} from "./SQLParserHelper";
+} from './SQLParserHelper';
 
 export function createIndex(tokens: Token[], unique = false): CreateIndex {
   let current = 0;
 
   const ast: CreateIndex = {
-    type: "create.index",
-    name: "",
+    type: 'create.index',
+    name: '',
     unique,
-    tableName: "",
+    tableName: '',
     columns: [],
   };
 
@@ -44,8 +44,8 @@ export function createIndex(tokens: Token[], unique = false): CreateIndex {
         if (isLeftParen(token)) {
           token = tokens[++current];
           let indexColumn: IndexColumn = {
-            name: "",
-            sort: "ASC",
+            name: '',
+            sort: 'ASC',
           };
 
           while (isCurrent(tokens, current) && !isRightParen(token)) {
@@ -53,19 +53,19 @@ export function createIndex(tokens: Token[], unique = false): CreateIndex {
               indexColumn.name = token.value;
             }
             if (isDESC(token)) {
-              indexColumn.sort = "DESC";
+              indexColumn.sort = 'DESC';
             }
             if (isComma(token)) {
               ast.columns.push(indexColumn);
               indexColumn = {
-                name: "",
-                sort: "ASC",
+                name: '',
+                sort: 'ASC',
               };
             }
             token = tokens[++current];
           }
 
-          if (!ast.columns.includes(indexColumn) && indexColumn.name !== "") {
+          if (!ast.columns.includes(indexColumn) && indexColumn.name !== '') {
             ast.columns.push(indexColumn);
           }
 
