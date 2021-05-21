@@ -9,10 +9,6 @@
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "resolveJsonModule": true,
-    "strict": true,
-    "paths": {
-      "@/*": ["src/*"],
-      "@@types/*": ["types/*"]
-    }
+    "strict": true
   }
 }
