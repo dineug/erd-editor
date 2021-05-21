@@ -12,7 +12,8 @@
     "format:eslint": "eslint \"**/*.{js,ts}\" --fix",
     "format:prettier": "prettier \"**/*.{cjs,html,js,json,md,ts}\" --write",
     "lint": "eslint \"**/*.{js,ts}\"",
-    "postinstall": "husky install"
+    "lint-staged": "lint-staged",
+    "prepare": "husky install"
   },
   "devDependencies": {
     "lerna": "^4.0.0",
