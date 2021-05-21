@@ -1,4 +1,4 @@
-import { Token, AlterTableAddForeignKey } from '@type/index';
+import { Token, AlterTableAddForeignKey } from '@@types/index';
 import {
   Current,
   isTable,

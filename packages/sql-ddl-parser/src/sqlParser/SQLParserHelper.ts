@@ -1,4 +1,4 @@
-import { Token } from '@type/index';
+import { Token } from '@@types/index';
 import { MariaDBKeywords } from './keyword/MariaDB';
 import { MSSQLKeywords } from './keyword/MSSQL';
 import { MySQLKeywords } from './keyword/MySQL';

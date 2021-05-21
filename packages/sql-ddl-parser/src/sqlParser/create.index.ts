@@ -1,4 +1,4 @@
-import { Token, CreateIndex, IndexColumn } from '@type/index';
+import { Token, CreateIndex, IndexColumn } from '@@types/index';
 import {
   isDESC,
   isOn,

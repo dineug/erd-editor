@@ -1,20 +1,7 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2017",
-    "module": "ESNext",
-    "lib": ["ES2017", "DOM", "DOM.Iterable"],
-    "moduleResolution": "node",
-    "noImplicitAny": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "experimentalDecorators": true,
-    "resolveJsonModule": true,
-    "strict": true,
     "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"],
-      "@@types/*": ["types/*"]
-    },
     "plugins": [
       {
         "name": "typescript-styled-plugin",

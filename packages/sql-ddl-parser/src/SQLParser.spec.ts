@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { tokenizer, parser } from '@src/SQLParser';
+import { tokenizer, parser } from '@/SQLParser';
 
 type TestCase = [string, string, string];
 const testCaseList: Array<TestCase> = [];

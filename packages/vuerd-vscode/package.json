@@ -33,8 +33,7 @@
   "license": "MIT",
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "build": "rollup -c",
-    "lint": "eslint . --ext .ts"
+    "build": "rollup -c"
   },
   "devDependencies": {
     "@dineug/vscode-google-analytics": "^0.1.2",

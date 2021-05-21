@@ -1,4 +1,4 @@
-import { Token, Statement } from '@type/index';
+import { Token, Statement } from '@@types/index';
 import {
   tokenMatch,
   isStringKeyword,

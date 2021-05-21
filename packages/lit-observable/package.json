@@ -30,8 +30,7 @@
   "scripts": {
     "serve": "vite",
     "serve:rollup": "rollup -c rollup.config.dev.js -w",
-    "build": "rollup -c",
-    "lint": "eslint . --ext .ts"
+    "build": "rollup -c"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^19.0.0",

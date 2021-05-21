@@ -1,4 +1,4 @@
-import { Token, AlterTableAddUnique } from '@type/index';
+import { Token, AlterTableAddUnique } from '@@types/index';
 import {
   isTable,
   isConstraint,

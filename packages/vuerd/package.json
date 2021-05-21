@@ -41,8 +41,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "deploy:storybook": "npm run build && storybook-to-ghpages",
-    "typedoc": "typedoc --out docs types/index.d.ts",
-    "lint": "eslint . --ext .ts"
+    "typedoc": "typedoc --out docs types/index.d.ts"
   },
   "devDependencies": {
     "@babel/core": "^7.14.3",

@@ -28,7 +28,6 @@
   },
   "scripts": {
     "build": "rollup -c",
-    "lint": "eslint . --ext .ts",
     "test": "jest src/SQLParser.spec.ts"
   },
   "author": "dineug <dineug2@gmail.com>",

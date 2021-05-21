@@ -1,16 +1,8 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES5",
-    "noImplicitAny": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "moduleResolution": "node",
-    "strict": true,
-    "baseUrl": ".",
-    "paths": {
-      "@src/*": ["src/*"],
-      "@type/*": ["types/*"]
-    }
+    "baseUrl": "."
   },
   "include": ["src/**/*.ts", "types/**/*.ts"],
   "exclude": ["node_modules"]

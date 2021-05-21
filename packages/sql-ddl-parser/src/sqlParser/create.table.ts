@@ -6,7 +6,7 @@ import {
   Column,
   Index,
   ForeignKey,
-} from '@type/index';
+} from '@@types/index';
 import {
   Current,
   isDataType,
