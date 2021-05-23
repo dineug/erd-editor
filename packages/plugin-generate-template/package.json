@@ -33,6 +33,9 @@
   "author": "dineug <dineug2@gmail.com>",
   "license": "MIT",
   "devDependencies": {
+    "@codemirror/basic-setup": "^0.18.1",
+    "@codemirror/lang-javascript": "^0.18.0",
+    "@codemirror/theme-one-dark": "^0.18.1",
     "@mdi/js": "^5.9.55",
     "@preact/preset-vite": "^2.1.0",
     "@rollup/plugin-alias": "^3.1.2",
@@ -41,6 +44,7 @@
     "@rollup/plugin-replace": "^2.4.2",
     "@rollup/plugin-typescript": "^8.2.1",
     "@types/styled-components": "^5.1.9",
+    "ejs": "^3.1.6",
     "mobx": "^6.3.1",
     "mobx-react-lite": "^3.2.0",
     "preact": "^10.5.13",

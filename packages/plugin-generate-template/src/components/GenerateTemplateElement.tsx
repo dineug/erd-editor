@@ -1,7 +1,7 @@
 import { GenerateTemplateContext } from '@/internal-types/GenerateTemplateContext';
 import { ERDEditorContext } from 'vuerd';
 import { render } from 'preact';
-import { StyleSheetManager } from 'styled-components';
+import { StyleSheetManager, createGlobalStyle } from 'styled-components';
 import GenerateTemplate from '@/components/GenerateTemplate';
 import { GenerateTemplate as Context } from '@/core/GenerateTemplateContext';
 
@@ -11,6 +11,12 @@ declare global {
   }
 }
 
+const GlobalStyle = createGlobalStyle`
+  .cm-editor {
+    height: 100%
+  }
+`;
+
 export class GenerateTemplateElement extends HTMLElement {
   renderRoot = this.attachShadow({ mode: 'open' });
   api!: ERDEditorContext;
@@ -19,6 +25,7 @@ export class GenerateTemplateElement extends HTMLElement {
   connectedCallback() {
     this.context = {
       api: this.api,
+      host: this.renderRoot,
     };
 
     Object.assign(this.style, {
@@ -33,7 +40,10 @@ export class GenerateTemplateElement extends HTMLElement {
     render(
       <Context.Provider value={this.context}>
         <StyleSheetManager target={this.renderRoot as any}>
-          <GenerateTemplate />
+          <>
+            <GlobalStyle />
+            <GenerateTemplate />
+          </>
         </StyleSheetManager>
       </Context.Provider>,
       this.renderRoot
