@@ -1,5 +1,5 @@
 {
-  "name": "vuerd-monorepo",
+  "name": "@vuerd/monorepo",
   "private": true,
   "workspaces": [
     "packages/*"
