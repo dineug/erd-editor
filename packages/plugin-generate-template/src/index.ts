@@ -1,12 +1,9 @@
 import { PanelConfig, addIcon } from 'vuerd';
 import { mdiFileCog } from '@mdi/js';
 import { GenerateTemplatePanel } from '@/components';
+import { createMDI } from '@/core/icon';
 
-addIcon({
-  prefix: 'mdi',
-  iconName: 'file-cog',
-  icon: [24, 24, , , mdiFileCog],
-});
+addIcon(createMDI('file-cog', mdiFileCog));
 
 export const generateTemplatePanelConfig: PanelConfig = {
   type: GenerateTemplatePanel,

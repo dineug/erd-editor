@@ -22,6 +22,17 @@ export class GenerateTemplateElement extends HTMLElement {
   api!: ERDEditorContext;
   context!: GenerateTemplateContext;
 
+  _width = 0;
+  _height = 0;
+
+  set width(value: number) {
+    this._width = value;
+  }
+
+  set height(value: number) {
+    this._height = value;
+  }
+
   connectedCallback() {
     this.context = {
       api: this.api,

@@ -11,7 +11,7 @@
     "plugins": [
       {
         "name": "typescript-styled-plugin",
-        "tags": ["css"]
+        "tags": ["styled"]
       }
     ],
     "types": ["vite/client"]
