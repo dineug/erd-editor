@@ -1,21 +1,17 @@
 import { GenerateTemplateContext } from '@/internal-types/GenerateTemplateContext';
 import { ERDEditorContext } from 'vuerd';
 import { render } from 'preact';
-import { StyleSheetManager, createGlobalStyle } from 'styled-components';
+import { StyleSheetManager } from 'styled-components';
+import { GlobalStyle } from '@/components/GenerateTemplateElement.styled';
 import GenerateTemplate from '@/components/GenerateTemplate';
 import { GenerateTemplate as Context } from '@/core/GenerateTemplateContext';
+import { createGlobalEventObservable } from '@/core/helper/event.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
     'vuerd-plugin-generate-template': GenerateTemplateElement;
   }
 }
-
-const GlobalStyle = createGlobalStyle`
-  .cm-editor {
-    height: 100%
-  }
-`;
 
 export class GenerateTemplateElement extends HTMLElement {
   renderRoot = this.attachShadow({ mode: 'open' });
@@ -37,6 +33,7 @@ export class GenerateTemplateElement extends HTMLElement {
     this.context = {
       api: this.api,
       host: this.renderRoot,
+      globalEvent: createGlobalEventObservable(),
     };
 
     Object.assign(this.style, {

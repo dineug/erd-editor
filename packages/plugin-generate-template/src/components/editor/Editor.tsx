@@ -1,19 +1,18 @@
 import { FunctionalComponent } from 'preact';
-import styled from 'styled-components';
 import Toolbar from '@/components/editor/Toolbar';
 import Preview from '@/components/editor/Preview';
 import TemplateEditor from '@/components/editor/TemplateEditor';
+import { Container } from '@/components/editor/Editor.styled';
 
-const Container = styled.div`
-  width: calc(100% - 200px);
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-`;
+export interface Props {
+  sidebarWidth: number;
+}
 
-const Editor: FunctionalComponent = () => {
+const Editor: FunctionalComponent<Partial<Props>> = ({
+  sidebarWidth = 200,
+}) => {
   return (
-    <Container>
+    <Container sidebarWidth={sidebarWidth}>
       <Toolbar />
       <TemplateEditor />
     </Container>

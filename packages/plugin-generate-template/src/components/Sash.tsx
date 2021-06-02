@@ -1,6 +1,8 @@
+import { Move } from '@/internal-types/event.helper';
 import { FunctionalComponent } from 'preact';
-import styled from 'styled-components';
 import { SIZE_SASH } from '@/core/layout';
+import { useContext } from '@/core/hooks/useContext';
+import { Container } from '@/components/Sash.styled';
 
 type Cursor =
   | 'default'
@@ -11,40 +13,15 @@ type Cursor =
   | 'col-resize'
   | 'row-resize';
 
-interface Props {
+export interface Props {
   vertical: boolean;
   horizontal: boolean;
   edge: boolean;
   cursor: Cursor;
   top: number;
   left: number;
+  onGlobalMove(move: Move): void;
 }
-
-type ContainerProps = Pick<Props, 'vertical' | 'horizontal' | 'edge'>;
-
-const Container = styled.div<ContainerProps>`
-  position: absolute;
-  z-index: 1;
-  ${props =>
-    props.vertical
-      ? {
-          width: `${SIZE_SASH}px`,
-          height: '100%',
-          cursor: 'ew-resize',
-        }
-      : props.horizontal
-      ? {
-          width: '100%',
-          height: `${SIZE_SASH}px`,
-          cursor: 'ns-resize',
-        }
-      : props.edge
-      ? {
-          width: `${SIZE_SASH}px`,
-          height: `${SIZE_SASH}px`,
-        }
-      : null}
-`;
 
 const Sash: FunctionalComponent<Partial<Props>> = ({
   vertical = false,
@@ -53,7 +30,20 @@ const Sash: FunctionalComponent<Partial<Props>> = ({
   cursor = 'default',
   top = 0,
   left = 0,
+  onGlobalMove,
 }) => {
+  const context = useContext();
+
+  const onMousedown = () => {
+    if (!onGlobalMove) return;
+
+    const { drag$ } = context.globalEvent;
+    drag$.subscribe(move => {
+      move.event.type === 'mousemove' && move.event.preventDefault();
+      onGlobalMove(move);
+    });
+  };
+
   return (
     <Container
       style={{
@@ -68,6 +58,7 @@ const Sash: FunctionalComponent<Partial<Props>> = ({
       vertical={vertical}
       horizontal={horizontal}
       edge={edge}
+      onMouseDown={onMousedown}
     />
   );
 };

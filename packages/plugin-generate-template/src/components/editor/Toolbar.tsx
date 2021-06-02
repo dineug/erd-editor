@@ -1,15 +1,8 @@
 import { FunctionalComponent } from 'preact';
-import styled from 'styled-components';
 import Icon from '@/components/Icon';
+import { Container } from '@/components/editor/Toolbar.styled';
 
 interface Props {}
-
-const Container = styled.div`
-  width: 100%;
-  height: 30px;
-  overflow: hidden;
-  background-color: var(--vuerd-color-contextmenu);
-`;
 
 const Toolbar: FunctionalComponent<Props> = () => {
   return (

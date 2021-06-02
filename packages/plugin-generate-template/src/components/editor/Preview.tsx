@@ -1,5 +1,4 @@
 import { FunctionalComponent } from 'preact';
-import styled from 'styled-components';
 // @ts-ignore
 import ejs from 'ejs/ejs.min.js';
 

@@ -1,24 +1,20 @@
+import { Move } from '@/internal-types/event.helper';
 import { FunctionalComponent } from 'preact';
-import { useState } from 'preact/hooks';
-import styled from 'styled-components';
 import Sash from '@/components/Sash';
+import { Container } from '@/components/sidebar/Sidebar.styled';
 
-interface ContainerProps {
+export interface Props {
   width: number;
+  onGlobalMove(move: Move): void;
 }
 
-const Container = styled.div<ContainerProps>`
-  width: ${props => `${props.width}px`};
-  height: 100%;
-  background-color: var(--vuerd-color-contextmenu);
-`;
-
-const Sidebar: FunctionalComponent = () => {
-  const [width, setWidth] = useState(200);
-
+const Sidebar: FunctionalComponent<Partial<Props>> = ({
+  width = 200,
+  onGlobalMove,
+}) => {
   return (
     <Container width={width}>
-      <Sash vertical left={200} />
+      <Sash vertical left={width} onGlobalMove={onGlobalMove} />
     </Container>
   );
 };

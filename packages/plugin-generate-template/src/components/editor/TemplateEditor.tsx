@@ -1,15 +1,10 @@
 import { FunctionalComponent } from 'preact';
 import { useEffect } from 'preact/hooks';
-import styled from 'styled-components';
+import { memo } from 'preact/compat';
 import { useEditor } from '@/core/hooks/useEditor';
+import { Container } from '@/components/editor/TemplateEditor.styled';
 
 interface Props {}
-
-const Container = styled.div`
-  width: 100%;
-  height: 100%;
-  background-color: var(--vuerd-color-canvas);
-`;
 
 const TemplateEditor: FunctionalComponent<Props> = () => {
   const [parentRef, editorRef] = useEditor();
@@ -26,4 +21,4 @@ const TemplateEditor: FunctionalComponent<Props> = () => {
   return <Container ref={parentRef} />;
 };
 
-export default TemplateEditor;
+export default memo(TemplateEditor);

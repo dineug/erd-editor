@@ -1,19 +1,21 @@
+import { Move } from '@/internal-types/event.helper';
 import { FunctionalComponent } from 'preact';
-import styled from 'styled-components';
+import { useState } from 'preact/hooks';
 import Sidebar from '@/components/sidebar/Sidebar';
 import Editor from '@/components/editor/Editor';
-
-const Container = styled.div`
-  display: flex;
-  height: 100%;
-  background-color: var(--vuerd-color-canvas);
-`;
+import { Container } from '@/components/GenerateTemplate.styled';
 
 const GenerateTemplate: FunctionalComponent = () => {
+  const [width, setWidth] = useState(200);
+
+  const onGlobalMove = ({ movementX }: Move) => {
+    setWidth(prevState => prevState + movementX);
+  };
+
   return (
     <Container>
-      <Sidebar />
-      <Editor />
+      <Sidebar width={width} onGlobalMove={onGlobalMove} />
+      <Editor sidebarWidth={width} />
     </Container>
   );
 };
