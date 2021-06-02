@@ -56,6 +56,14 @@ export const exportSQLDDL = (sql: string, name?: string) =>
       : `${name}-${new Date().getTime()}.sql`
   );
 
+export const exportXML = (xml: string, name?: string) =>
+  executeExport(
+    new Blob([xml]),
+    name?.trim() === ''
+      ? `unnamed-${new Date().getTime()}.xml`
+      : `${name}-${new Date().getTime()}.xml`
+  );
+
 const executeExport = (blob: Blob, fileName: string) =>
   executeExportFileExtra
     ? executeExportFileExtra(blob, fileName)

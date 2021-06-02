@@ -5,8 +5,10 @@ import {
   exportPNG,
   exportJSON,
   exportSQLDDL,
+  exportXML,
 } from '@/core/file';
 import { createDDL } from '@/core/sql/ddl';
+import { createXML } from '@/core/parser/JSONToXML';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 60,
@@ -48,5 +50,15 @@ export const createExportMenus = (
       },
       name: 'png',
       execute: () => exportPNG(canvas, store.canvasState.databaseName),
+    },
+    {
+      icon: {
+        prefix: 'mdi',
+        name: 'xml',
+        size: 18,
+      },
+      name: 'XML',
+      execute: () =>
+        exportXML(createXML(store), store.canvasState.databaseName),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));
