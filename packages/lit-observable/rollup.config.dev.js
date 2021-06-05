@@ -8,7 +8,7 @@ const { plugins, banner } = config();
 export default {
   input: 'src/index.dev.ts',
   output: {
-    name: 'lito',
+    name: pkg.name,
     file: pkg.main,
     format: 'umd',
     banner,

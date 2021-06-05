@@ -48,7 +48,6 @@
     "rollup-plugin-filesize": "^9.1.1",
     "rollup-plugin-uglify": "^6.0.4",
     "rollup-plugin-visualizer": "^5.5.0",
-    "tslib": "^2.2.0",
     "typescript": "^4.2.4"
   },
   "dependencies": {}

@@ -4,7 +4,7 @@ import html from 'rollup-plugin-generate-html-template';
 import browsersync from 'rollup-plugin-browsersync';
 import replace from '@rollup/plugin-replace';
 
-const { plugins, banner, onwarn } = config();
+const { plugins, banner } = config();
 
 export default {
   input: 'src/index.dev.ts',
@@ -18,7 +18,6 @@ export default {
     replace({
       preventAssignment: true,
       'process.env.NODE_ENV': JSON.stringify('development'),
-      'import.meta.env.VITE_VUERD_VERSION': JSON.stringify(pkg.version),
     }),
     ...plugins,
     html({
@@ -27,5 +26,4 @@ export default {
     }),
     browsersync({ server: 'dist', open: true, port: 8090 }),
   ],
-  onwarn,
 };
