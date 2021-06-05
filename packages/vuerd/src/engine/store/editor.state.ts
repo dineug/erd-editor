@@ -1,9 +1,10 @@
+import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/core/layout';
 import {
   EditorState,
   MoveKey,
   TableType,
 } from '@@types/engine/store/editor.state';
-import { DEFAULT_WIDTH, DEFAULT_HEIGHT } from '@/core/layout';
+
 import { createFilterState } from './editor/filter.state';
 
 export const createEditorState = (): EditorState => ({

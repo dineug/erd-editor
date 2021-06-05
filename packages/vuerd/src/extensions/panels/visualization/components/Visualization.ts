@@ -1,19 +1,21 @@
 import './Table';
 
-import { Table } from '@@types/engine/store/table.state';
-import { ERDEditorContext } from '@@types/index';
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
-  observable,
   beforeMount,
+  defineComponent,
+  FunctionalComponent,
+  html,
+  observable,
   unmounted,
   watch,
 } from '@vuerd/lit-observable';
+
 import { getData } from '@/core/helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { createVisualization } from '@/extensions/panels/visualization/core/visualization';
+import { Table } from '@@types/engine/store/table.state';
+import { ERDEditorContext } from '@@types/index';
+
 import { IndexStyle } from './index.style';
 
 declare global {

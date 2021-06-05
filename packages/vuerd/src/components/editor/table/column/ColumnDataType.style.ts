@@ -1,5 +1,5 @@
+import { SIZE_COLUMN_HEIGHT, SIZE_FONT } from '@/core/layout';
 import { css } from '@/core/tagged';
-import { SIZE_FONT, SIZE_COLUMN_HEIGHT } from '@/core/layout';
 
 export const ColumnDataTypeStyle = css`
   .vuerd-column-data-type {

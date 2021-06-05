@@ -1,12 +1,14 @@
-import { Table } from '@@types/engine/store/table.state';
 import {
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
 } from '@vuerd/lit-observable';
+
 import { useColumnHint } from '@/core/hooks/columnHint.hook';
-import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
 import { useContext } from '@/core/hooks/context.hook';
+import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
+import { Table } from '@@types/engine/store/table.state';
+
 import { hintTpl } from './IndexAddColumn.template';
 
 declare global {

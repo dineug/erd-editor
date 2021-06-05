@@ -1,32 +1,32 @@
+import { getData, getIndex } from '@/core/helper';
+import {
+  arrowDown,
+  arrowLeft,
+  arrowRight,
+  arrowUp,
+} from '@/engine/command/helper/editor/filter.focus.helper';
+import {
+  appendSelectFilters,
+  appendSelectRangeFilters,
+  selectRangeFilters,
+} from '@/engine/command/helper/editor/filter.helper';
+import { FilterModel } from '@/engine/store/models/filter.model';
+import { ExecuteCommand } from '@/internal-types/command';
 import { FilterCommandMap } from '@@types/engine/command/editor/filter.cmd';
-import { State } from '@@types/engine/store';
 import {
   AddFilter,
-  RemoveFilter,
-  ChangeFilterColumnType,
   changeFilterCode,
+  ChangeFilterColumnType,
   ChangeFilterValue,
-  MoveFilter,
   ChangeOperatorType,
   Focus,
   FocusFilter,
   FocusMove,
+  MoveFilter,
+  RemoveFilter,
 } from '@@types/engine/command/editor/filter.cmd';
+import { State } from '@@types/engine/store';
 import { Draggable, Filter } from '@@types/engine/store/editor/filter.state';
-import { ExecuteCommand } from '@/internal-types/command';
-import { FilterModel } from '@/engine/store/models/filter.model';
-import { getData, getIndex } from '@/core/helper';
-import {
-  appendSelectFilters,
-  selectRangeFilters,
-  appendSelectRangeFilters,
-} from '@/engine/command/helper/editor/filter.helper';
-import {
-  arrowUp,
-  arrowDown,
-  arrowRight,
-  arrowLeft,
-} from '@/engine/command/helper/editor/filter.focus.helper';
 
 export function executeFilterActive({ editorState: { filterState } }: State) {
   filterState.active = true;

@@ -1,13 +1,14 @@
-import { Token, CreateIndex, IndexColumn } from '@@types/index';
+import { CreateIndex, IndexColumn, Token } from '@@types/index';
+
 import {
-  isDESC,
-  isOn,
-  isIndex,
-  isString,
-  isLeftParen,
-  isRightParen,
   isComma,
   isCurrent,
+  isDESC,
+  isIndex,
+  isLeftParen,
+  isOn,
+  isRightParen,
+  isString,
 } from './SQLParserHelper';
 
 export function createIndex(tokens: Token[], unique = false): CreateIndex {

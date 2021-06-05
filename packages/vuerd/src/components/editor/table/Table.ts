@@ -1,46 +1,48 @@
 import '@/components/editor/Input';
 import './column/Column';
 
-import { Table } from '@@types/engine/store/table.state';
-import { TableType } from '@@types/engine/store/editor.state';
-import { Move } from '@/internal-types/event.helper';
+import { Easing, Tween } from '@tweenjs/tween.js';
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
   beforeMount,
+  defineComponent,
+  FunctionalComponent,
+  html,
   updated,
   watch,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
-import { styleMap } from 'lit-html/directives/style-map';
 import { repeat } from 'lit-html/directives/repeat';
+import { styleMap } from 'lit-html/directives/style-map';
 import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
-import { Tween, Easing } from '@tweenjs/tween.js';
-import { keymapOptionsToString } from '@/core/keymap';
+
+import { FlipAnimation } from '@/core/flipAnimation';
+import { onPreventDefault } from '@/core/helper/dom.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { useContext } from '@/core/hooks/context.hook';
-import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useHasTable } from '@/core/hooks/hasTable.hook';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import {
-  changeTableName,
-  changeTableComment,
-  selectTable$,
-  moveTable,
-  removeTable,
-} from '@/engine/command/table.cmd.helper';
+import { keymapOptionsToString } from '@/core/keymap';
+import { SIZE_TABLE_BORDER, SIZE_TABLE_PADDING } from '@/core/layout';
 import { addColumn$, moveColumn$ } from '@/engine/command/column.cmd.helper';
 import {
-  focusTable,
-  editTableEnd,
   editTable,
+  editTableEnd,
+  focusTable,
 } from '@/engine/command/editor.cmd.helper';
-import { Bus } from '@/core/helper/eventBus.helper';
-import { FlipAnimation } from '@/core/flipAnimation';
+import {
+  changeTableComment,
+  changeTableName,
+  moveTable,
+  removeTable,
+  selectTable$,
+} from '@/engine/command/table.cmd.helper';
 import { relationshipSort } from '@/engine/store/helper/relationship.helper';
-import { onPreventDefault } from '@/core/helper/dom.helper';
-import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from '@/core/layout';
+import { Move } from '@/internal-types/event.helper';
+import { TableType } from '@@types/engine/store/editor.state';
+import { Table } from '@@types/engine/store/table.state';
+
 import { DragoverColumnDetail } from './column/Column';
 
 declare global {

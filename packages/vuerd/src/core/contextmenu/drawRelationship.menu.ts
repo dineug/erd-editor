@@ -1,10 +1,10 @@
+import { getBase64Icon } from '@/core/icon';
+import { keymapOptionsToString, keymapOptionToString } from '@/core/keymap';
+import { drawStartRelationship$ } from '@/engine/command/editor.cmd.helper';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { RelationshipKeymapName } from '@@types/core/keymap';
 import { RelationshipType } from '@@types/engine/store/relationship.state';
-import { keymapOptionToString, keymapOptionsToString } from '@/core/keymap';
-import { getBase64Icon } from '@/core/icon';
-import { drawStartRelationship$ } from '@/engine/command/editor.cmd.helper';
 
 interface RelationshipMenu {
   name: string;

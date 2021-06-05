@@ -1,8 +1,9 @@
-import { State } from '@@types/engine/store';
-import { CommandTypeAll } from '@@types/engine/command';
 import { Observable } from 'rxjs';
-import { readonlyCommandTypes } from '@/engine/command/helper';
+
 import { notEmptyCommands } from '@/core/operators/notEmptyCommands';
+import { readonlyCommandTypes } from '@/engine/command/helper';
+import { CommandTypeAll } from '@@types/engine/command';
+import { State } from '@@types/engine/store';
 
 export const readonlyCommands =
   ({ editorState }: State) =>

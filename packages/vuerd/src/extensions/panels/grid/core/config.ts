@@ -1,7 +1,7 @@
-import { GridTextRender } from '@/extensions/panels/grid/components/grid/GridTextRender';
-import { GridTextEditor } from '@/extensions/panels/grid/components/grid/GridTextEditor';
-import { GridColumnOptionEditor } from '@/extensions/panels/grid/components/grid/GridColumnOptionEditor';
 import { GridColumnDataTypeEditor } from '@/extensions/panels/grid/components/grid/GridColumnDataTypeEditor';
+import { GridColumnOptionEditor } from '@/extensions/panels/grid/components/grid/GridColumnOptionEditor';
+import { GridTextEditor } from '@/extensions/panels/grid/components/grid/GridTextEditor';
+import { GridTextRender } from '@/extensions/panels/grid/components/grid/GridTextRender';
 
 export const gridColumns: any = [
   {

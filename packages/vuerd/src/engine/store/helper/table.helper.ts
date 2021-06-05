@@ -1,9 +1,10 @@
-import { Table } from '@@types/engine/store/table.state';
-import { Relationship } from '@@types/engine/store/relationship.state';
-import { Helper } from '@@types/core/helper';
-import { getCoordinate } from '@/engine/store/helper/relationship.helper';
 import { getIndex } from '@/core/helper';
-import { widthBalanceRange, commentWidthBalanceRange } from './column.helper';
+import { getCoordinate } from '@/engine/store/helper/relationship.helper';
+import { Helper } from '@@types/core/helper';
+import { Relationship } from '@@types/engine/store/relationship.state';
+import { Table } from '@@types/engine/store/table.state';
+
+import { commentWidthBalanceRange, widthBalanceRange } from './column.helper';
 
 export function virtualTable(
   current: {

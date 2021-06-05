@@ -1,6 +1,7 @@
-import { GlobalEventObservable } from '@/internal-types/event.helper';
 import { fromEvent, merge } from 'rxjs';
-import { map, filter, takeUntil } from 'rxjs/operators';
+import { filter, map, takeUntil } from 'rxjs/operators';
+
+import { GlobalEventObservable } from '@/internal-types/event.helper';
 
 const userAgent = window.navigator.userAgent.toLowerCase();
 const isRatio = ['macintosh', 'firefox'].every(

@@ -1,14 +1,15 @@
-import { Token, AlterTableAddPrimaryKey } from '@@types/index';
+import { AlterTableAddPrimaryKey, Token } from '@@types/index';
+
 import {
-  isTable,
   isConstraint,
-  isString,
-  isPeriod,
   isCurrent,
-  isPrimary,
   isKey,
   isLeftParen,
+  isPeriod,
+  isPrimary,
   isRightParen,
+  isString,
+  isTable,
 } from './SQLParserHelper';
 
 export function alterTableAddPrimaryKey(

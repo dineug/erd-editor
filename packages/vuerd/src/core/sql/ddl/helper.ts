@@ -1,7 +1,7 @@
-import { Table, Column, Index } from '@@types/engine/store/table.state';
+import { bracketTypeMap } from '@/engine/store/canvas.state';
 import { BracketType } from '@@types/engine/store/canvas.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
-import { bracketTypeMap } from '@/engine/store/canvas.state';
+import { Column, Index, Table } from '@@types/engine/store/table.state';
 
 export interface FormatTableOptions {
   table: Table;

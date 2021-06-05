@@ -1,7 +1,9 @@
-import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
-import { html, query, mounted, observable } from '@vuerd/lit-observable';
+import { html, mounted, observable, query } from '@vuerd/lit-observable';
 import { fromEvent, merge } from 'rxjs';
 import { throttleTime } from 'rxjs/operators';
+
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
+
 import { useUnmounted } from './unmounted.hook';
 
 const FOCUS_TIME = 50;

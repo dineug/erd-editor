@@ -1,18 +1,18 @@
-import { Memo, MemoUI } from '@@types/engine/store/memo.state';
-import { AddMemo } from '@@types/engine/command/memo.cmd';
 import {
-  isString,
-  isObject,
+  cloneDeep,
   isBoolean,
   isNumber,
-  cloneDeep,
+  isObject,
+  isString,
 } from '@/core/helper';
 import {
+  SIZE_MEMO_HEIGHT,
+  SIZE_MEMO_WIDTH,
   SIZE_START_X,
   SIZE_START_Y,
-  SIZE_MEMO_WIDTH,
-  SIZE_MEMO_HEIGHT,
 } from '@/core/layout';
+import { AddMemo } from '@@types/engine/command/memo.cmd';
+import { Memo, MemoUI } from '@@types/engine/store/memo.state';
 
 interface MemoData {
   addMemo?: AddMemo;

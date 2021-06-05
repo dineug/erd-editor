@@ -1,13 +1,14 @@
-import { ColumnOption } from '@@types/engine/store/table.state';
 import {
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
-import { SIZE_COLUMN_OPTION_UQ } from '@/core/layout';
+
 import { useTooltip } from '@/core/hooks/tooltip.hook';
+import { SIZE_COLUMN_OPTION_UQ } from '@/core/layout';
+import { ColumnOption } from '@@types/engine/store/table.state';
 
 declare global {
   interface HTMLElementTagNameMap {

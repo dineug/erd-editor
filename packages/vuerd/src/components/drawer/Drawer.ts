@@ -1,19 +1,21 @@
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
   beforeMount,
+  defineComponent,
+  FunctionalComponent,
+  html,
   watch,
 } from '@vuerd/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
+
+import { IconStyle } from '@/components/Icon.style';
 import { useContext } from '@/core/hooks/context.hook';
-import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useDrawerAnimation } from '@/core/hooks/drawerAnimation.hook';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { keymapOptionsToString } from '@/core/keymap';
 import { DEFAULT_WIDTH } from '@/core/layout';
+
 import { DrawerStyle } from './Drawer.style';
-import { IconStyle } from '@/components/Icon.style';
 
 declare global {
   interface HTMLElementTagNameMap {

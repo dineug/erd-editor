@@ -1,13 +1,14 @@
-import { Token, AlterTableAddUnique } from '@@types/index';
+import { AlterTableAddUnique, Token } from '@@types/index';
+
 import {
-  isTable,
   isConstraint,
-  isString,
-  isPeriod,
   isCurrent,
-  isUnique,
   isLeftParen,
+  isPeriod,
   isRightParen,
+  isString,
+  isTable,
+  isUnique,
 } from './SQLParserHelper';
 
 export function alterTableAddUnique(tokens: Token[]): AlterTableAddUnique {

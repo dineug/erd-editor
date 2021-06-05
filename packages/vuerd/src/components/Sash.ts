@@ -1,12 +1,14 @@
 import {
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
-import { SIZE_SASH } from '@/core/layout';
+
 import { useContext } from '@/core/hooks/context.hook';
+import { SIZE_SASH } from '@/core/layout';
+
 import { SashStyle } from './Sash.style';
 
 declare global {

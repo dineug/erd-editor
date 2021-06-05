@@ -1,6 +1,6 @@
 import './Visualization';
 
-import { Panel, PanelProps, ERDEditorContext } from '@@types/index';
+import { ERDEditorContext, Panel, PanelProps } from '@@types/index';
 
 export class VisualizationPanel implements Panel {
   el = document.createElement('vuerd-visualization');

@@ -1,13 +1,14 @@
-import { ERDEditorProps } from '@@types/components/ERDEditorElement';
-import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import {
-  html,
-  observable,
   beforeFirstUpdate,
   beforeUpdate,
+  html,
+  observable,
 } from '@vuerd/lit-observable';
-import { panels as globalPanels } from '@/core/panel';
+
 import { SIZE_MENUBAR_HEIGHT } from '@/core/layout';
+import { panels as globalPanels } from '@/core/panel';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
+import { ERDEditorProps } from '@@types/components/ERDEditorElement';
 
 export function usePanelView(
   props: ERDEditorProps,

@@ -1,23 +1,24 @@
-import { Store } from '@@types/engine/store';
-import { Table } from '@@types/engine/store/table.state';
-import { Relationship } from '@@types/engine/store/relationship.state';
-import { getData, uuid, autoName } from '@/core/helper';
-import {
-  formatNames,
-  formatSize,
-  formatSpace,
-  primaryKey,
-  primaryKeyColumns,
-  Name,
-  KeyColumn,
-  getBracket,
-  FormatColumnOptions,
-  FormatIndexOptions,
-} from './helper';
+import { autoName, getData, uuid } from '@/core/helper';
 import {
   orderByNameASC,
   orderByRelationship,
 } from '@/engine/store/helper/table.helper';
+import { Store } from '@@types/engine/store';
+import { Relationship } from '@@types/engine/store/relationship.state';
+import { Table } from '@@types/engine/store/table.state';
+
+import {
+  FormatColumnOptions,
+  FormatIndexOptions,
+  formatNames,
+  formatSize,
+  formatSpace,
+  getBracket,
+  KeyColumn,
+  Name,
+  primaryKey,
+  primaryKeyColumns,
+} from './helper';
 
 export function createDDL({
   tableState,

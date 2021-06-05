@@ -1,4 +1,5 @@
 import { beforeUpdate, updated } from '@vuerd/lit-observable';
+
 import { FlipAnimation } from '@/core/flipAnimation';
 
 export function useFlipAnimation(

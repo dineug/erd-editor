@@ -1,27 +1,29 @@
-import { Command, CommandTypeAll, CommandKey } from '@@types/engine/command';
-import { State } from '@@types/engine/store';
-import { ExecuteCommand } from '@/internal-types/command';
-import { Subject, merge } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
 import * as R from 'ramda';
-import * as canvasCommand from './canvas.cmd.helper';
-import * as memoCommand from './memo.cmd.helper';
-import * as tableCommand from './table.cmd.helper';
-import * as columnCommand from './column.cmd.helper';
-import * as editorCommand from './editor.cmd.helper';
-import * as relationshipCommand from './relationship.cmd.helper';
-import * as indexCommand from './index.cmd.helper';
+import { merge, Subject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
+
 import { Logger } from '@/core/logger';
-import { executeCanvasCommandMap } from './canvas.cmd';
-import { executeMemoCommandMap } from './memo.cmd';
-import { executeTableCommandMap } from './table.cmd';
-import { executeColumnCommandMap } from './column.cmd';
-import { executeEditorCommandMap } from './editor.cmd';
-import { executeRelationshipCommandMap } from './relationship.cmd';
-import { executeIndexCommandMap } from './index.cmd';
-import { changeCommandTypes } from '@/engine/command/helper';
 import { commandsFilter } from '@/core/operators/commandsFilter';
 import { notEmptyCommands } from '@/core/operators/notEmptyCommands';
+import { changeCommandTypes } from '@/engine/command/helper';
+import { ExecuteCommand } from '@/internal-types/command';
+import { Command, CommandKey, CommandTypeAll } from '@@types/engine/command';
+import { State } from '@@types/engine/store';
+
+import { executeCanvasCommandMap } from './canvas.cmd';
+import * as canvasCommand from './canvas.cmd.helper';
+import { executeColumnCommandMap } from './column.cmd';
+import * as columnCommand from './column.cmd.helper';
+import { executeEditorCommandMap } from './editor.cmd';
+import * as editorCommand from './editor.cmd.helper';
+import { executeIndexCommandMap } from './index.cmd';
+import * as indexCommand from './index.cmd.helper';
+import { executeMemoCommandMap } from './memo.cmd';
+import * as memoCommand from './memo.cmd.helper';
+import { executeRelationshipCommandMap } from './relationship.cmd';
+import * as relationshipCommand from './relationship.cmd.helper';
+import { executeTableCommandMap } from './table.cmd';
+import * as tableCommand from './table.cmd.helper';
 
 const executeCommandMap: Record<CommandKey, ExecuteCommand> = {
   ...executeCanvasCommandMap,

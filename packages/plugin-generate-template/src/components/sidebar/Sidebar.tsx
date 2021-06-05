@@ -1,7 +1,8 @@
-import { Move } from '@/internal-types/event.helper';
 import { FunctionalComponent } from 'preact';
+
 import Sash from '@/components/Sash';
 import { Container } from '@/components/sidebar/Sidebar.styled';
+import { Move } from '@/internal-types/event.helper';
 
 export interface Props {
   width: number;

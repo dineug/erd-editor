@@ -1,19 +1,20 @@
-import { PanelConfig, Panel } from '@@types/core/panel';
 import {
-  defineComponent,
-  html,
+  beforeFirstUpdate,
   beforeMount,
+  beforeUpdate,
+  defineComponent,
+  firstUpdated,
+  html,
   mounted,
   unmounted,
-  beforeFirstUpdate,
-  firstUpdated,
-  beforeUpdate,
   updated,
   watch,
 } from '@vuerd/lit-observable';
+
 import { omitERDEditorContext } from '@/core/ERDEditorContext';
 import { useContext } from '@/core/hooks/context.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { Panel, PanelConfig } from '@@types/core/panel';
 
 declare global {
   interface HTMLElementTagNameMap {

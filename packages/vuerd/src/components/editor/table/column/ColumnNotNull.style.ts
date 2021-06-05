@@ -1,8 +1,8 @@
-import { css } from '@/core/tagged';
 import {
-  SIZE_INPUT_EDIT_HEIGHT,
   SIZE_COLUMN_MARGIN_RIGHT,
+  SIZE_INPUT_EDIT_HEIGHT,
 } from '@/core/layout';
+import { css } from '@/core/tagged';
 
 export const ColumnNotNullStyle = css`
   .vuerd-column-not-null {

@@ -1,13 +1,15 @@
-import { Table } from '@@types/engine/store/table.state';
-import { observable, watch, beforeMount, query } from '@vuerd/lit-observable';
+import { beforeMount, observable, query, watch } from '@vuerd/lit-observable';
 import * as R from 'ramda';
-import { useContext } from './context.hook';
-import { useUnmounted } from './unmounted.hook';
-import { markToHTML, lastCursorFocus } from '@/core/helper/dom.helper';
+
 import { getData } from '@/core/helper';
+import { lastCursorFocus, markToHTML } from '@/core/helper/dom.helper';
+import { SIZE_START_X, SIZE_START_Y } from '@/core/layout';
 import { moveCanvas } from '@/engine/command/canvas.cmd.helper';
 import { selectTable } from '@/engine/command/table.cmd.helper';
-import { SIZE_START_X, SIZE_START_Y } from '@/core/layout';
+import { Table } from '@@types/engine/store/table.state';
+
+import { useContext } from './context.hook';
+import { useUnmounted } from './unmounted.hook';
 
 export interface Hint {
   id: string;

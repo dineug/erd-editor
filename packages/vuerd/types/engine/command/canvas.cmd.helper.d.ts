@@ -1,14 +1,14 @@
+import { Store } from '../store';
 import {
-  ShowKey,
-  Database,
+  BracketType,
   CanvasType,
+  ColumnType,
+  Database,
+  HighlightTheme,
   Language,
   NameCase,
-  ColumnType,
-  HighlightTheme,
-  BracketType,
+  ShowKey,
 } from '../store/canvas.state';
-import { Store } from '../store';
 import { CommandType } from './index';
 
 export declare function moveCanvas(

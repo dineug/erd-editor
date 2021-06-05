@@ -1,16 +1,17 @@
-import { Store } from '@@types/engine/store';
-import { AddCustomColumn } from '@@types/engine/command/column.cmd';
-import { selectEndMemo } from './memo.cmd.helper';
-import { selectEndTable, addTable, selectTable } from './table.cmd.helper';
-import {
-  focusTableEnd,
-  focusTable,
-  drawStartAddRelationship$,
-  drawEndRelationship,
-} from './editor.cmd.helper';
-import { addRelationship } from './relationship.cmd.helper';
 import { getData } from '@/core/helper';
 import { createCommand } from '@/engine/command/helper';
+import { AddCustomColumn } from '@@types/engine/command/column.cmd';
+import { Store } from '@@types/engine/store';
+
+import {
+  drawEndRelationship,
+  drawStartAddRelationship$,
+  focusTable,
+  focusTableEnd,
+} from './editor.cmd.helper';
+import { selectEndMemo } from './memo.cmd.helper';
+import { addRelationship } from './relationship.cmd.helper';
+import { addTable, selectEndTable, selectTable } from './table.cmd.helper';
 
 export function* addTable$(store: Store, active = true) {
   yield selectEndTable();

@@ -3,39 +3,41 @@ import './DragSelect';
 import './minimap/Minimap';
 import './find/Find';
 
-import { Menu } from '@@types/core/contextmenu';
-import { Move } from '@/internal-types/event.helper';
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
-  observable,
   beforeMount,
+  defineComponent,
+  FunctionalComponent,
+  html,
+  observable,
+  query,
   unmounted,
   watch,
-  query,
 } from '@vuerd/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
+
+import { createDatabaseMenus } from '@/core/contextmenu/database.menu';
+import { createERDMenus } from '@/core/contextmenu/erd.menu';
+import { createRelationshipMenus } from '@/core/contextmenu/relationship.menu';
+import { createShowMenus } from '@/core/contextmenu/show.menu';
+import { createSingleRelationship } from '@/core/contextmenu/singleRelationship.menu';
+import { createTableMenus } from '@/core/contextmenu/table.menu';
+import { getData } from '@/core/helper';
+import { Bus } from '@/core/helper/eventBus.helper';
+import { useContext } from '@/core/hooks/context.hook';
+import { useERDKeymap } from '@/core/hooks/ERDKeymap.hook';
+import { useMousePosition } from '@/core/hooks/mousePosition.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { getBase64Icon } from '@/core/icon';
 import {
   movementCanvas,
   movementZoomCanvas,
 } from '@/engine/command/canvas.cmd.helper';
+import { findActiveEnd } from '@/engine/command/editor.cmd.helper';
 import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
 import { selectEndTable$ } from '@/engine/command/table.cmd.helper';
-import { findActiveEnd } from '@/engine/command/editor.cmd.helper';
-import { createERDMenus } from '@/core/contextmenu/erd.menu';
-import { createShowMenus } from '@/core/contextmenu/show.menu';
-import { createDatabaseMenus } from '@/core/contextmenu/database.menu';
-import { createTableMenus } from '@/core/contextmenu/table.menu';
-import { createRelationshipMenus } from '@/core/contextmenu/relationship.menu';
-import { createSingleRelationship } from '@/core/contextmenu/singleRelationship.menu';
-import { useContext } from '@/core/hooks/context.hook';
-import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { useERDKeymap } from '@/core/hooks/ERDKeymap.hook';
-import { useMousePosition } from '@/core/hooks/mousePosition.hook';
-import { getBase64Icon } from '@/core/icon';
-import { Bus } from '@/core/helper/eventBus.helper';
-import { getData } from '@/core/helper';
+import { Move } from '@/internal-types/event.helper';
+import { Menu } from '@@types/core/contextmenu';
+
 import { IndexStyle } from './index.style';
 
 declare global {

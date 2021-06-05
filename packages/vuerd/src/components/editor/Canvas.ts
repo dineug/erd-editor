@@ -5,15 +5,16 @@ import './DrawRelationship';
 import './CanvasSVG';
 
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
   beforeMount,
+  defineComponent,
+  FunctionalComponent,
+  html,
   watch,
 } from '@vuerd/lit-observable';
-import { styleMap } from 'lit-html/directives/style-map';
-import { repeat } from 'lit-html/directives/repeat';
 import { cache } from 'lit-html/directives/cache';
+import { repeat } from 'lit-html/directives/repeat';
+import { styleMap } from 'lit-html/directives/style-map';
+
 import { useContext } from '@/core/hooks/context.hook';
 import { useRenderTrigger } from '@/core/hooks/renderTrigger.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';

@@ -1,5 +1,5 @@
-import { css } from '@/core/tagged';
 import { SIZE_SASH } from '@/core/layout';
+import { css } from '@/core/tagged';
 
 export const SashStyle = css`
   .vuerd-sash {

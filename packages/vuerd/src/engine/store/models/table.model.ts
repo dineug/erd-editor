@@ -1,31 +1,32 @@
 import {
-  PureTable,
-  Table,
-  TableUI,
-  Column,
-  ColumnWidth,
-} from '@@types/engine/store/table.state';
-import { Show } from '@@types/engine/store/canvas.state';
-import { AddTable } from '@@types/engine/command/table.cmd';
+  cloneDeep,
+  isArray,
+  isBoolean,
+  isNumber,
+  isObject,
+  isString,
+} from '@/core/helper';
 import {
-  SIZE_TABLE_HEADER_HEIGHT,
-  SIZE_COLUMN_HEIGHT,
-  SIZE_COLUMN_MARGIN_RIGHT,
   SIZE_COLUMN_CLOSE,
+  SIZE_COLUMN_HEIGHT,
   SIZE_COLUMN_KEY,
+  SIZE_COLUMN_MARGIN_RIGHT,
   SIZE_MIN_WIDTH,
   SIZE_START_X,
   SIZE_START_Y,
+  SIZE_TABLE_HEADER_HEIGHT,
 } from '@/core/layout';
+import { AddTable } from '@@types/engine/command/table.cmd';
+import { Show } from '@@types/engine/store/canvas.state';
 import {
-  isString,
-  isObject,
-  isBoolean,
-  isNumber,
-  isArray,
-  cloneDeep,
-} from '@/core/helper';
-import { getMaxWidthColumn, getDefaultWidthColumn } from './table.model.helper';
+  Column,
+  ColumnWidth,
+  PureTable,
+  Table,
+  TableUI,
+} from '@@types/engine/store/table.state';
+
+import { getDefaultWidthColumn, getMaxWidthColumn } from './table.model.helper';
 
 interface TableData {
   addTable?: AddTable;

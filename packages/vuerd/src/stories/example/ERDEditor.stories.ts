@@ -1,4 +1,5 @@
-import { Story, Meta } from '@storybook/web-components';
+import { Meta, Story } from '@storybook/web-components';
+
 import { ERDEditor as Editor, ERDEditorProps } from './ERDEditor';
 
 export default {

@@ -1,9 +1,10 @@
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
 import * as vscode from 'vscode';
-import { getHtmlForWebview, getTheme, getKeymap } from './util';
+
 import { Disposable, disposeAll } from './dispose';
 import { trackEvent } from './GoogleAnalytics';
+import { getHtmlForWebview, getKeymap, getTheme } from './util';
 
 interface ERDEditorDocumentDelegate {
   getFileData(): Promise<string>;

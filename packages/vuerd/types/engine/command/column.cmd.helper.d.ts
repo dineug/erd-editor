@@ -1,9 +1,9 @@
-import { Store } from '../store';
-import { CommandType } from './index';
-import { AddCustomColumnUI, AddCustomColumnValue } from './column.cmd';
-import { Column, ColumnOption } from '../store/table.state';
-import { Relationship } from '../store/relationship.state';
 import { Helper } from '../../core/helper';
+import { Store } from '../store';
+import { Relationship } from '../store/relationship.state';
+import { Column, ColumnOption } from '../store/table.state';
+import { AddCustomColumnUI, AddCustomColumnValue } from './column.cmd';
+import { CommandType } from './index';
 
 export * from './column.cmd.helper.gen';
 

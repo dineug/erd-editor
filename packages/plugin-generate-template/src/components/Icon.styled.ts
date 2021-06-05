@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+
 import { Cursor } from '@/components/Icon';
 
 export const Container = styled.div<{ cursor: Cursor }>`

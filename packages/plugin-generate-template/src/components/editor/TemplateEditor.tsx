@@ -1,8 +1,9 @@
 import { FunctionalComponent } from 'preact';
-import { useEffect } from 'preact/hooks';
 import { memo } from 'preact/compat';
-import { useEditor } from '@/core/hooks/useEditor';
+import { useEffect } from 'preact/hooks';
+
 import { Container } from '@/components/editor/TemplateEditor.styled';
+import { useEditor } from '@/core/hooks/useEditor';
 
 interface Props {}
 

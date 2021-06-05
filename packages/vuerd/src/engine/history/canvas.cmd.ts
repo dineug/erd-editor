@@ -1,14 +1,14 @@
-import { BatchCommand } from '@@types/engine/command';
-import { ChangeCanvasShow } from '@@types/engine/command/canvas.cmd';
-import { IStore } from '@/internal-types/store';
-import { createCommand } from '@/engine/command/helper';
 import {
+  changeDatabase,
+  changeDatabaseName,
   moveCanvas,
   resizeCanvas,
   zoomCanvas,
-  changeDatabase,
-  changeDatabaseName,
 } from '@/engine/command/canvas.cmd.helper';
+import { createCommand } from '@/engine/command/helper';
+import { IStore } from '@/internal-types/store';
+import { BatchCommand } from '@@types/engine/command';
+import { ChangeCanvasShow } from '@@types/engine/command/canvas.cmd';
 
 export function executeMoveCanvas(
   { canvasState: { scrollTop, scrollLeft } }: IStore,

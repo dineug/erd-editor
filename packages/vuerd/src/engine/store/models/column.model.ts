@@ -1,11 +1,11 @@
+import { cloneDeep } from '@/core/helper';
+import { SIZE_MIN_WIDTH } from '@/core/layout';
+import { AddColumn, AddCustomColumn } from '@@types/engine/command/column.cmd';
 import {
   Column,
   ColumnOption,
   ColumnUI,
 } from '@@types/engine/store/table.state';
-import { AddColumn, AddCustomColumn } from '@@types/engine/command/column.cmd';
-import { SIZE_MIN_WIDTH } from '@/core/layout';
-import { cloneDeep } from '@/core/helper';
 
 interface ColumnData {
   addColumn?: AddColumn;

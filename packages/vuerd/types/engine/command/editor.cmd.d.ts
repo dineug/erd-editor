@@ -1,8 +1,8 @@
 import { ColumnType } from '../store/canvas.state';
 import {
-  TableType,
-  MoveKey,
   DraggableColumn,
+  MoveKey,
+  TableType,
   Viewport,
 } from '../store/editor.state';
 import { RelationshipType } from '../store/relationship.state';

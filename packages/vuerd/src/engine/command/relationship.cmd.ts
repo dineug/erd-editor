@@ -1,19 +1,19 @@
+import { getData } from '@/core/helper';
+import { removeValidRelationshipColumnId } from '@/engine/store/helper/valid.helper';
+import { RelationshipModel } from '@/engine/store/models/relationship.model';
+import { ExecuteCommand } from '@/internal-types/command';
 import {
   ChangeStartRelationshipType,
   RelationshipCommandMap,
 } from '@@types/engine/command/relationship.cmd';
-import { State } from '@@types/engine/store';
 import {
   AddRelationship,
-  RemoveRelationship,
-  ChangeRelationshipType,
   ChangeIdentification,
+  ChangeRelationshipType,
+  RemoveRelationship,
 } from '@@types/engine/command/relationship.cmd';
+import { State } from '@@types/engine/store';
 import { Relationship } from '@@types/engine/store/relationship.state';
-import { ExecuteCommand } from '@/internal-types/command';
-import { getData } from '@/core/helper';
-import { RelationshipModel } from '@/engine/store/models/relationship.model';
-import { removeValidRelationshipColumnId } from '@/engine/store/helper/valid.helper';
 
 export function executeAddRelationship(
   { relationshipState: { relationships }, tableState: { tables } }: State,

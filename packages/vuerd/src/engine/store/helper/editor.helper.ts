@@ -1,7 +1,7 @@
 import {
+  DraggableColumn,
   FocusTable,
   FocusType,
-  DraggableColumn,
 } from '@@types/engine/store/editor.state';
 
 export function isFocus(

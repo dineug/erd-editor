@@ -1,8 +1,9 @@
+import { changeRelationshipType } from '@/engine/command/relationship.cmd.helper';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { Relationship } from '@@types/engine/store/relationship.state';
+
 import { relationshipMenus } from './drawRelationship.menu';
-import { changeRelationshipType } from '@/engine/command/relationship.cmd.helper';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 75,

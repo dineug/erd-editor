@@ -1,47 +1,49 @@
-import { BatchCommand } from '@@types/engine/command';
-import { MoveKey, FocusType } from '@@types/engine/store/editor.state';
 import { beforeMount } from '@vuerd/lit-observable';
-import { useContext } from './context.hook';
-import { useUnmounted } from './unmounted.hook';
-import { keymapMatchAndStop } from '@/core/keymap';
+
 import { relationshipMenus } from '@/core/contextmenu/drawRelationship.menu';
-import { moveKeys } from '@/engine/store/editor.state';
+import { Bus } from '@/core/helper/eventBus.helper';
+import { keymapMatchAndStop } from '@/core/keymap';
+import { movementZoomCanvas } from '@/engine/command/canvas.cmd.helper';
 import {
-  changeColumnNotNull,
-  changeColumnUnique,
-  changeColumnAutoIncrement,
   addColumn$,
-  removeColumn$,
+  changeColumnAutoIncrement,
+  changeColumnNotNull,
   changeColumnPrimaryKey$,
+  changeColumnUnique,
+  removeColumn$,
 } from '@/engine/command/column.cmd.helper';
 import {
-  removeTable,
-  selectAllTable,
-  addTable$,
-  selectEndTable$,
-  selectTable$,
-} from '@/engine/command/table.cmd.helper';
+  copyColumn,
+  drawEndRelationship,
+  drawStartRelationship$,
+  editTable,
+  editTableEnd,
+  findActive$,
+  findActiveEnd,
+  focusMoveTable,
+  focusMoveTable$,
+  pasteColumn$,
+  selectAllColumn,
+} from '@/engine/command/editor.cmd.helper';
 import {
+  addMemo$,
   removeMemo,
   selectAllMemo,
   selectEndMemo,
-  addMemo$,
 } from '@/engine/command/memo.cmd.helper';
 import {
-  focusMoveTable,
-  editTable,
-  editTableEnd,
-  selectAllColumn,
-  focusMoveTable$,
-  drawStartRelationship$,
-  drawEndRelationship,
-  copyColumn,
-  pasteColumn$,
-  findActive$,
-  findActiveEnd,
-} from '@/engine/command/editor.cmd.helper';
-import { movementZoomCanvas } from '@/engine/command/canvas.cmd.helper';
-import { Bus } from '@/core/helper/eventBus.helper';
+  addTable$,
+  removeTable,
+  selectAllTable,
+  selectEndTable$,
+  selectTable$,
+} from '@/engine/command/table.cmd.helper';
+import { moveKeys } from '@/engine/store/editor.state';
+import { BatchCommand } from '@@types/engine/command';
+import { FocusType, MoveKey } from '@@types/engine/store/editor.state';
+
+import { useContext } from './context.hook';
+import { useUnmounted } from './unmounted.hook';
 
 const changeColumnMap = {
   columnNotNull: changeColumnNotNull,

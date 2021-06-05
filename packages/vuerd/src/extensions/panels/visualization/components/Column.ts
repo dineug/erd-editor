@@ -1,11 +1,13 @@
-import { Column } from '@@types/engine/store/table.state';
 import {
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
+
 import { useAPI } from '@/extensions/panels/visualization/hooks/api.hook';
+import { Column } from '@@types/engine/store/table.state';
+
 import { columnTpl } from './Column.template';
 
 declare global {

@@ -1,17 +1,17 @@
+import { cloneDeep, getData } from '@/core/helper';
+import {
+  changeMemoValue,
+  loadMemo,
+  removeMemo,
+} from '@/engine/command/memo.cmd.helper';
+import { IStore } from '@/internal-types/store';
 import { BatchCommand } from '@@types/engine/command';
 import {
   AddMemo,
-  RemoveMemo,
   ChangeMemoValue,
+  RemoveMemo,
 } from '@@types/engine/command/memo.cmd';
 import { Memo } from '@@types/engine/store/memo.state';
-import { IStore } from '@/internal-types/store';
-import {
-  removeMemo,
-  loadMemo,
-  changeMemoValue,
-} from '@/engine/command/memo.cmd.helper';
-import { getData, cloneDeep } from '@/core/helper';
 
 export function executeAddMemo(
   store: IStore,

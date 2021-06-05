@@ -1,6 +1,7 @@
-import { Theme, ThemeKey } from '@@types/core/theme';
 import kebabCase from 'lodash/kebabCase';
+
 import { isString } from '@/core/helper';
+import { Theme, ThemeKey } from '@@types/core/theme';
 
 export const createTheme = (): Theme => ({
   canvas: '#282828',

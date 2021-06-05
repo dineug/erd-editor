@@ -1,14 +1,16 @@
-import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { observable } from '@vuerd/lit-observable';
 import * as R from 'ramda';
-import { createTheme } from './theme';
-import { createKeymap } from './keymap';
+
+import { createHelper } from '@/core/helper/editor.helper';
+import { createCommand } from '@/engine/command';
+import { createStore } from '@/engine/store';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
+import { ERDEditorContext } from '@@types/core/ERDEditorContext';
+
 import { createGlobalEventObservable } from './helper/event.helper';
 import { createEventBus } from './helper/eventBus.helper';
-import { createStore } from '@/engine/store';
-import { createCommand } from '@/engine/command';
-import { createHelper } from '@/core/helper/editor.helper';
+import { createKeymap } from './keymap';
+import { createTheme } from './theme';
 
 export function createdERDEditorContext(): IERDEditorContext {
   const helper = createHelper();

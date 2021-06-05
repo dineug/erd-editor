@@ -1,7 +1,7 @@
 import {
+  Draggable,
   Focus,
   FocusType,
-  Draggable,
 } from '@@types/engine/store/editor/filter.state';
 
 export function isFocus(

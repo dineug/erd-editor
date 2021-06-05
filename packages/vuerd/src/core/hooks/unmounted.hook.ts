@@ -1,5 +1,6 @@
 import { unmounted } from '@vuerd/lit-observable';
 import { Subscription } from 'rxjs';
+
 import { isFunction } from '@/core/helper';
 
 type Callback = () => void;

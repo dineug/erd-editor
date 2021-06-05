@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+
 import { Props } from '@/components/sidebar/Sidebar';
 
 type ContainerProps = Pick<Props, 'width'>;

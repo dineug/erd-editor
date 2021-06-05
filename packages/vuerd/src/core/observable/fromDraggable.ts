@@ -1,5 +1,5 @@
-import { merge, fromEvent } from 'rxjs';
-import { throttleTime, debounceTime, takeUntil } from 'rxjs/operators';
+import { fromEvent, merge } from 'rxjs';
+import { debounceTime, takeUntil, throttleTime } from 'rxjs/operators';
 
 export const fromDraggable = (elements: Element[]) =>
   merge(

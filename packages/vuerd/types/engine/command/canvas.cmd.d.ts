@@ -1,11 +1,11 @@
 import {
-  ShowKey,
+  BracketType,
+  ColumnType,
   Database,
+  HighlightTheme,
   Language,
   NameCase,
-  ColumnType,
-  HighlightTheme,
-  BracketType,
+  ShowKey,
 } from '../store/canvas.state';
 
 export interface MoveCanvas {

@@ -1,25 +1,26 @@
-import { JsonFormat } from '@@types/core/file';
-import { Database } from '@@types/engine/store/canvas.state';
-import { Helper } from '@@types/core/helper';
-import { uuid } from '@/core/helper';
 import {
-  SIZE_MIN_WIDTH,
-  SIZE_CANVAS_MIN,
-  SIZE_CANVAS_MAX,
-} from '@/core/layout';
-import { createCanvasState } from '@/engine/store/canvas.state';
-import { createTableState } from '@/engine/store/table.state';
-import { createMemoState } from '@/engine/store/memo.state';
-import { createRelationshipState } from '@/engine/store/relationship.state';
-import {
-  Statement,
-  CreateTable,
+  AlterTableAddForeignKey,
+  AlterTableAddPrimaryKey,
+  AlterTableAddUnique,
   Column,
   CreateIndex,
-  AlterTableAddPrimaryKey,
-  AlterTableAddForeignKey,
-  AlterTableAddUnique,
+  CreateTable,
+  Statement,
 } from '@vuerd/sql-ddl-parser';
+
+import { uuid } from '@/core/helper';
+import {
+  SIZE_CANVAS_MAX,
+  SIZE_CANVAS_MIN,
+  SIZE_MIN_WIDTH,
+} from '@/core/layout';
+import { createCanvasState } from '@/engine/store/canvas.state';
+import { createMemoState } from '@/engine/store/memo.state';
+import { createRelationshipState } from '@/engine/store/relationship.state';
+import { createTableState } from '@/engine/store/table.state';
+import { JsonFormat } from '@@types/core/file';
+import { Helper } from '@@types/core/helper';
+import { Database } from '@@types/engine/store/canvas.state';
 
 interface Shape {
   tables: CreateTable[];

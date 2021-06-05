@@ -4,7 +4,7 @@
     "browser": true,
     "node": true
   },
-  "plugins": ["prettier", "@typescript-eslint"],
+  "plugins": ["prettier", "@typescript-eslint", "simple-import-sort"],
   "extends": ["prettier"],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
@@ -17,6 +17,8 @@
     "@typescript-eslint/no-empty-function": "off",
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/ban-ts-comment": "off",
-    "@typescript-eslint/ban-types": "off"
+    "@typescript-eslint/ban-types": "off",
+    "simple-import-sort/imports": "error",
+    "simple-import-sort/exports": "error"
   }
 }

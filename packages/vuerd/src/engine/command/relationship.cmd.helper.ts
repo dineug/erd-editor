@@ -1,11 +1,12 @@
+import { uuid } from '@/core/helper';
 import {
-  RelationshipType,
   Relationship,
+  RelationshipType,
   StartRelationshipType,
 } from '@@types/engine/store/relationship.state';
 import { Table } from '@@types/engine/store/table.state';
+
 import { createCommand } from './helper';
-import { uuid } from '@/core/helper';
 
 export function addRelationship(
   relationshipType: RelationshipType,

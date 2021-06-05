@@ -1,15 +1,16 @@
+import { zoomBalanceRange } from '@/engine/store/helper/canvas.helper';
+import { Store } from '@@types/engine/store';
 import {
-  ShowKey,
+  BracketType,
+  ColumnType,
   Database,
+  HighlightTheme,
   Language,
   NameCase,
-  ColumnType,
-  HighlightTheme,
-  BracketType,
+  ShowKey,
 } from '@@types/engine/store/canvas.state';
-import { Store } from '@@types/engine/store';
+
 import { createCommand } from './helper';
-import { zoomBalanceRange } from '@/engine/store/helper/canvas.helper';
 
 export const moveCanvas = (scrollTop: number, scrollLeft: number) =>
   createCommand('canvas.move', { scrollTop, scrollLeft });

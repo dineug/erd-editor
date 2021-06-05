@@ -1,10 +1,10 @@
+import { isArray } from '@/core/helper';
 import {
   Keymap,
+  KeymapKey,
   KeymapOption,
   MultipleKey,
-  KeymapKey,
 } from '@@types/core/keymap';
-import { isArray } from '@/core/helper';
 
 export const createKeymap = (): Keymap => ({
   edit: [

@@ -1,5 +1,6 @@
-import { ERDEditorContext } from '@@types/index';
 import { Subject } from 'rxjs';
+
+import { ERDEditorContext } from '@@types/index';
 
 export interface GridContext {
   api: ERDEditorContext;

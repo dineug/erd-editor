@@ -1,6 +1,6 @@
 import './GridEditor';
 
-import { Panel, PanelProps, ERDEditorContext } from '@@types/index';
+import { ERDEditorContext, Panel, PanelProps } from '@@types/index';
 
 export class GridPanel implements Panel {
   el = document.createElement('vuerd-grid-editor');

@@ -1,10 +1,11 @@
-import { Ref } from 'preact';
-import { useRef, useEffect } from 'preact/hooks';
-import { EditorState, basicSetup } from '@codemirror/basic-setup';
-import { EditorView, keymap } from '@codemirror/view';
+import { basicSetup, EditorState } from '@codemirror/basic-setup';
 import { defaultTabBinding } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { EditorView, keymap } from '@codemirror/view';
+import { Ref } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
+
 import { useContext } from './useContext';
 
 type EditorTuple = readonly [Ref<any>, { current: EditorView }];

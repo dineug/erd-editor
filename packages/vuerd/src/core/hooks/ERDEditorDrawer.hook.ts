@@ -1,17 +1,19 @@
-import { ERDEditorProps } from '@@types/components/ERDEditorElement';
-import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
-import { html, observable, beforeMount } from '@vuerd/lit-observable';
+import { beforeMount, html, observable } from '@vuerd/lit-observable';
+
 import { Bus } from '@/core/helper/eventBus.helper';
 import {
-  selectTable$,
-  selectEndTable$,
-} from '@/engine/command/table.cmd.helper';
+  drawEndRelationship,
+  filterActiveEnd,
+  findActiveEnd,
+} from '@/engine/command/editor.cmd.helper';
 import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
 import {
-  drawEndRelationship,
-  findActiveEnd,
-  filterActiveEnd,
-} from '@/engine/command/editor.cmd.helper';
+  selectEndTable$,
+  selectTable$,
+} from '@/engine/command/table.cmd.helper';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
+import { ERDEditorProps } from '@@types/components/ERDEditorElement';
+
 import { useUnmounted } from './unmounted.hook';
 
 interface DrawerState {

@@ -1,6 +1,6 @@
-import { css } from '@/core/tagged';
-import { SIZE_MENUBAR_HEIGHT } from '@/core/layout';
 import { DefaultStyle } from '@/components/css';
+import { SIZE_MENUBAR_HEIGHT } from '@/core/layout';
+import { css } from '@/core/tagged';
 
 export const DrawerStyle = css`
   .vuerd-drawer {

@@ -1,5 +1,5 @@
-import { css } from '@/core/tagged';
 import { SIZE_COLUMN_MARGIN_RIGHT } from '@/core/layout';
+import { css } from '@/core/tagged';
 
 export const ColumnKeyStyle = css`
   .vuerd-column-key {

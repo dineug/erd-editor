@@ -1,6 +1,7 @@
 import styled from 'styled-components';
-import { SIZE_SASH } from '@/core/layout';
+
 import { Props } from '@/components/Sash';
+import { SIZE_SASH } from '@/core/layout';
 
 type ContainerProps = Pick<Props, 'vertical' | 'horizontal' | 'edge'>;
 

@@ -1,16 +1,17 @@
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
   beforeMount,
-  watch,
+  defineComponent,
+  FunctionalComponent,
+  html,
   query,
+  watch,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
-import { SIZE_MIN_WIDTH } from '@/core/layout';
-import { useUnmounted } from '@/core/hooks/unmounted.hook';
+
 import { lastCursorFocus } from '@/core/helper/dom.helper';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { SIZE_MIN_WIDTH } from '@/core/layout';
 
 declare global {
   interface HTMLElementTagNameMap {

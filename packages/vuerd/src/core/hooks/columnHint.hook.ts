@@ -1,11 +1,13 @@
-import { observable, watch, beforeMount, query } from '@vuerd/lit-observable';
+import { beforeMount, observable, query, watch } from '@vuerd/lit-observable';
 import * as R from 'ramda';
+
+import { IndexAddColumnProps } from '@/components/drawer/tablePropertiesDrawer/indexes/IndexAddColumn';
+import { getData } from '@/core/helper';
+import { lastCursorFocus, markToHTML } from '@/core/helper/dom.helper';
+import { addIndexColumn } from '@/engine/command/index.cmd.helper';
+
 import { useContext } from './context.hook';
 import { useUnmounted } from './unmounted.hook';
-import { IndexAddColumnProps } from '@/components/drawer/tablePropertiesDrawer/indexes/IndexAddColumn';
-import { markToHTML, lastCursorFocus } from '@/core/helper/dom.helper';
-import { getData } from '@/core/helper';
-import { addIndexColumn } from '@/engine/command/index.cmd.helper';
 
 export interface Hint {
   id: string;

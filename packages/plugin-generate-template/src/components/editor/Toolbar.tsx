@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
-import Icon from '@/components/Icon';
+
 import { Container } from '@/components/editor/Toolbar.styled';
+import Icon from '@/components/Icon';
 
 interface Props {}
 

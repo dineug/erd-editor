@@ -1,7 +1,7 @@
 import {
-  observable,
   beforeFirstUpdate,
   beforeUpdate,
+  observable,
 } from '@vuerd/lit-observable';
 
 export function useRenderTrigger() {

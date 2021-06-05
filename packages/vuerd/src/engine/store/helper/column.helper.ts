@@ -1,7 +1,7 @@
-import { Relationship } from '@@types/engine/store/relationship.state';
-import { Table, Column } from '@@types/engine/store/table.state';
-import { getData, getIndex, createBalanceRange } from '@/core/helper';
+import { createBalanceRange, getData, getIndex } from '@/core/helper';
 import { SIZE_MAX_WIDTH_COMMENT, SIZE_MIN_WIDTH } from '@/core/layout';
+import { Relationship } from '@@types/engine/store/relationship.state';
+import { Column, Table } from '@@types/engine/store/table.state';
 
 export function getColumn(
   tables: Table[],

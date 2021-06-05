@@ -1,5 +1,6 @@
+import { Easing, Tween } from '@tweenjs/tween.js';
 import { observable } from '@vuerd/lit-observable';
-import { Tween, Easing } from '@tweenjs/tween.js';
+
 import { DrawerProps } from '@/components/drawer/Drawer';
 
 const MAX_WIDTH = 800;

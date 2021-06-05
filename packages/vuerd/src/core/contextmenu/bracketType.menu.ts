@@ -1,7 +1,7 @@
+import { changeBracketType } from '@/engine/command/canvas.cmd.helper';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { BracketType } from '@@types/engine/store/canvas.state';
-import { changeBracketType } from '@/engine/command/canvas.cmd.helper';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 85,

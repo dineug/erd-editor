@@ -1,5 +1,5 @@
+import { SIZE_FONT, SIZE_MENUBAR_HEIGHT } from '@/core/layout';
 import { css } from '@/core/tagged';
-import { SIZE_MENUBAR_HEIGHT, SIZE_FONT } from '@/core/layout';
 
 export const MenubarStyle = css`
   .vuerd-menubar {

@@ -1,4 +1,5 @@
 import './index';
+
 // @ts-ignore
 import Stats from 'stats.js';
 

@@ -1,23 +1,24 @@
-import { Token, Statement } from '@@types/index';
+import { Statement, Token } from '@@types/index';
+
+import { alterTableAddForeignKey } from './sqlParser/alter.table.add.foreignKey';
+import { alterTableAddPrimaryKey } from './sqlParser/alter.table.add.primaryKey';
+import { alterTableAddUnique } from './sqlParser/alter.table.add.unique';
+import { createIndex } from './sqlParser/create.index';
+import { createTable } from './sqlParser/create.table';
+import { createUniqueIndex } from './sqlParser/create.unique.index';
 import {
-  tokenMatch,
-  isStringKeyword,
+  isAlterTableAddForeignKey,
+  isAlterTableAddPrimaryKey,
+  isAlterTableAddUnique,
+  isCreateIndex,
+  isCreateTable,
+  isCreateUniqueIndex,
   isExtraString,
   isNewStatement,
   isSemicolon,
-  isCreateTable,
-  isCreateIndex,
-  isCreateUniqueIndex,
-  isAlterTableAddPrimaryKey,
-  isAlterTableAddForeignKey,
-  isAlterTableAddUnique,
+  isStringKeyword,
+  tokenMatch,
 } from './sqlParser/SQLParserHelper';
-import { createTable } from './sqlParser/create.table';
-import { createIndex } from './sqlParser/create.index';
-import { createUniqueIndex } from './sqlParser/create.unique.index';
-import { alterTableAddPrimaryKey } from './sqlParser/alter.table.add.primaryKey';
-import { alterTableAddForeignKey } from './sqlParser/alter.table.add.foreignKey';
-import { alterTableAddUnique } from './sqlParser/alter.table.add.unique';
 
 /**
  * https://github.com/jamiebuilds/the-super-tiny-compiler

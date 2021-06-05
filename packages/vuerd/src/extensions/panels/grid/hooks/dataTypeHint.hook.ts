@@ -1,10 +1,12 @@
-import { observable, watch, beforeMount } from '@vuerd/lit-observable';
+import { beforeMount, observable, watch } from '@vuerd/lit-observable';
 import * as R from 'ramda';
-import { useContext } from './context.hook';
-import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { ColumnDataTypeEditorProps } from '@/extensions/panels/grid/components/grid/ColumnDataTypeEditor';
-import { databaseHints } from '@/core/sql/dataType';
+
 import { markToHTML } from '@/core/helper/dom.helper';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { databaseHints } from '@/core/sql/dataType';
+import { ColumnDataTypeEditorProps } from '@/extensions/panels/grid/components/grid/ColumnDataTypeEditor';
+
+import { useContext } from './context.hook';
 
 export interface Hint {
   name: string;

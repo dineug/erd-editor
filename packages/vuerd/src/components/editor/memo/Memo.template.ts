@@ -1,6 +1,7 @@
 import { html } from '@vuerd/lit-observable';
-import { Position } from '@/core/hooks/resizeMemo.hook';
+
 import { SashProps } from '@/components/Sash';
+import { Position } from '@/core/hooks/resizeMemo.hook';
 
 const createSash = (
   top: number,

@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
+
+import { Canvas, Container } from '@/components/Icon.styled';
 import { getIcon } from '@/core/icon';
-import { Container, Canvas } from '@/components/Icon.styled';
 
 export type Cursor = 'default' | 'pointer';
 

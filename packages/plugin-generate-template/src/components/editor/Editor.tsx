@@ -1,8 +1,9 @@
 import { FunctionalComponent } from 'preact';
-import Toolbar from '@/components/editor/Toolbar';
+
+import { Container } from '@/components/editor/Editor.styled';
 import Preview from '@/components/editor/Preview';
 import TemplateEditor from '@/components/editor/TemplateEditor';
-import { Container } from '@/components/editor/Editor.styled';
+import Toolbar from '@/components/editor/Toolbar';
 
 export interface Props {
   sidebarWidth: number;

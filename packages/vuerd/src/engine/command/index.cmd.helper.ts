@@ -1,5 +1,6 @@
-import { Index, OrderType } from '@@types/engine/store/table.state';
 import { uuid } from '@/core/helper';
+import { Index, OrderType } from '@@types/engine/store/table.state';
+
 import { createCommand } from './helper';
 
 export const addIndex = (tableId: string) =>

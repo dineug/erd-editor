@@ -1,5 +1,6 @@
-import { GlobalEventObservable } from './event.helper';
 import { ERDEditorContext } from 'vuerd';
+
+import { GlobalEventObservable } from './event.helper';
 
 export interface GenerateTemplateContext {
   api: ERDEditorContext;

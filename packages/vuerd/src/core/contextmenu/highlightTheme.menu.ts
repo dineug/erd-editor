@@ -1,7 +1,7 @@
+import { changeHighlightTheme } from '@/engine/command/canvas.cmd.helper';
+import { highlightThemes } from '@/engine/store/canvas.state';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { highlightThemes } from '@/engine/store/canvas.state';
-import { changeHighlightTheme } from '@/engine/command/canvas.cmd.helper';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 105,

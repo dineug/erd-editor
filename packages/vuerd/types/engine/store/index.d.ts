@@ -1,9 +1,9 @@
-import { CanvasState } from './canvas.state';
-import { TableState } from './table.state';
-import { RelationshipState } from './relationship.state';
-import { MemoState } from './memo.state';
-import { EditorState } from './editor.state';
 import { BatchCommand } from '../command';
+import { CanvasState } from './canvas.state';
+import { EditorState } from './editor.state';
+import { MemoState } from './memo.state';
+import { RelationshipState } from './relationship.state';
+import { TableState } from './table.state';
 
 export interface State {
   readonly canvasState: CanvasState;

@@ -1,10 +1,10 @@
-import { CommandType } from './index';
 import {
-  RelationshipType,
   Relationship,
+  RelationshipType,
   StartRelationshipType,
 } from '../store/relationship.state';
 import { Table } from '../store/table.state';
+import { CommandType } from './index';
 
 export function addRelationship(
   relationshipType: RelationshipType,

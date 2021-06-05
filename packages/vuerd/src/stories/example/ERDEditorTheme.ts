@@ -1,5 +1,7 @@
-import { html } from 'lit-html';
 import '@dist/vuerd.min.js';
+
+import { html } from 'lit-html';
+
 import { initializeStyle } from '@/stories/example/ERDEditor.helper';
 
 export interface ERDEditorProps {

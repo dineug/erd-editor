@@ -1,6 +1,7 @@
 // @ts-ignore
 import Stats from 'stats.js';
 import { extension } from 'vuerd';
+
 import { generateTemplatePanelConfig } from './index';
 
 extension({

@@ -1,24 +1,25 @@
-import { ColumnType } from '@@types/engine/store/canvas.state';
 import {
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
   observable,
   queryAll,
   updated,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { repeat } from 'lit-html/directives/repeat';
+
+import { FlipAnimation } from '@/core/flipAnimation';
+import { onPreventDefault } from '@/core/helper/dom.helper';
 import { useContext } from '@/core/hooks/context.hook';
 import { fromShadowDraggable } from '@/core/observable/fromShadowDraggable';
-import { FlipAnimation } from '@/core/flipAnimation';
 import {
-  moveColumnOrder,
   changeRelationshipDataTypeSync,
+  moveColumnOrder,
 } from '@/engine/command/canvas.cmd.helper';
-import { recalculatingTableWidth } from '@/engine/store/helper/table.helper';
-import { onPreventDefault } from '@/core/helper/dom.helper';
 import { relationshipSort } from '@/engine/store/helper/relationship.helper';
+import { recalculatingTableWidth } from '@/engine/store/helper/table.helper';
+import { ColumnType } from '@@types/engine/store/canvas.state';
 
 declare global {
   interface HTMLElementTagNameMap {

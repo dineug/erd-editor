@@ -1,6 +1,8 @@
 import './TodoList';
+
+import { defineComponent, html } from '@/core';
+
 import { Store } from './Store';
-import { html, defineComponent } from '@/core';
 
 declare global {
   interface HTMLElementTagNameMap {

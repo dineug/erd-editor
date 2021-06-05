@@ -1,7 +1,9 @@
-import { PanelConfig } from '@@types/index';
 import { mdiChartBubble } from '@mdi/js';
-import { createMDI } from '@/core/icon';
+
 import { addIcon } from '@/core';
+import { createMDI } from '@/core/icon';
+import { PanelConfig } from '@@types/index';
+
 import { VisualizationPanel } from './components';
 
 addIcon(createMDI('chart-bubble', mdiChartBubble));

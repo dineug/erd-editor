@@ -1,11 +1,12 @@
-import { GenerateTemplateContext } from '@/internal-types/GenerateTemplateContext';
-import { ERDEditorContext } from 'vuerd';
 import { render } from 'preact';
 import { StyleSheetManager } from 'styled-components';
-import { GlobalStyle } from '@/components/GenerateTemplateElement.styled';
+import { ERDEditorContext } from 'vuerd';
+
 import GenerateTemplate from '@/components/GenerateTemplate';
+import { GlobalStyle } from '@/components/GenerateTemplateElement.styled';
 import { GenerateTemplate as Context } from '@/core/GenerateTemplateContext';
 import { createGlobalEventObservable } from '@/core/helper/event.helper';
+import { GenerateTemplateContext } from '@/internal-types/GenerateTemplateContext';
 
 declare global {
   interface HTMLElementTagNameMap {

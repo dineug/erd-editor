@@ -1,5 +1,6 @@
-import { Helper } from '@@types/core/helper';
 import { Subject } from 'rxjs';
+
+import { Helper } from '@@types/core/helper';
 
 export interface IHelper extends Helper {
   keydown$: Subject<KeyboardEvent>;

@@ -1,8 +1,9 @@
-import { Move } from '@/internal-types/event.helper';
 import { FunctionalComponent } from 'preact';
-import { SIZE_SASH } from '@/core/layout';
-import { useContext } from '@/core/hooks/useContext';
+
 import { Container } from '@/components/Sash.styled';
+import { useContext } from '@/core/hooks/useContext';
+import { SIZE_SASH } from '@/core/layout';
+import { Move } from '@/internal-types/event.helper';
 
 type Cursor =
   | 'default'

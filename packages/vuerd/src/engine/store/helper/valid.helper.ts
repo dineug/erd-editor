@@ -1,12 +1,12 @@
-import { Table } from '@@types/engine/store/table.state';
-import { State } from '@@types/engine/store';
 import { getData } from '@/core/helper';
-import { getColumns } from '@/engine/store/helper/column.helper';
 import {
   executeChangeIdentification,
-  executeRemoveRelationship,
   executeChangeStartRelationshipType,
+  executeRemoveRelationship,
 } from '@/engine/command/relationship.cmd';
+import { getColumns } from '@/engine/store/helper/column.helper';
+import { State } from '@@types/engine/store';
+import { Table } from '@@types/engine/store/table.state';
 
 /**
  * TODO: Refactoring

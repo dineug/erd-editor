@@ -1,4 +1,4 @@
-import { TableState, ColumnOptionKey } from '@@types/engine/store/table.state';
+import { ColumnOptionKey, TableState } from '@@types/engine/store/table.state';
 
 export const columnOptionKeys: ColumnOptionKey[] = [
   'autoIncrement',

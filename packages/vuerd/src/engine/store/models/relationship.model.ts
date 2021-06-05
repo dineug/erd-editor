@@ -1,19 +1,19 @@
 import {
-  Relationship,
-  RelationshipType,
-  RelationshipPoint,
-  StartRelationshipType,
-} from '@@types/engine/store/relationship.state';
-import { AddRelationship } from '@@types/engine/command/relationship.cmd';
-import {
   cloneDeep,
-  isString,
   isArray,
-  isNumber,
   isBoolean,
+  isNumber,
   isObject,
+  isString,
 } from '@/core/helper';
 import { migrationRelationshipType } from '@/core/migration/relationshipType';
+import { AddRelationship } from '@@types/engine/command/relationship.cmd';
+import {
+  Relationship,
+  RelationshipPoint,
+  RelationshipType,
+  StartRelationshipType,
+} from '@@types/engine/store/relationship.state';
 
 interface RelationshipData {
   addRelationship?: AddRelationship;

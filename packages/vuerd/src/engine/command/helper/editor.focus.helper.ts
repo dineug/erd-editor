@@ -1,13 +1,14 @@
-import { State } from '@@types/engine/store';
+import { getIndex } from '@/core/helper';
+import { tableTypes } from '@/engine/store/editor.state';
 import { FocusMoveTable } from '@@types/engine/command/editor.cmd';
-import { ShowKey, ColumnType } from '@@types/engine/store/canvas.state';
+import { State } from '@@types/engine/store';
+import { ColumnType, ShowKey } from '@@types/engine/store/canvas.state';
 import {
   FocusTable,
   FocusType,
   TableType,
 } from '@@types/engine/store/editor.state';
-import { tableTypes } from '@/engine/store/editor.state';
-import { getIndex } from '@/core/helper';
+
 import { appendSelectColumns } from './editor.helper';
 
 function getColumnTypes({

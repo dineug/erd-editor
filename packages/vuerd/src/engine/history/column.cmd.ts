@@ -1,29 +1,29 @@
+import { cloneDeep, getData, getIndex } from '@/core/helper';
+import {
+  loadColumn,
+  removeColumn,
+  removeOnlyColumn,
+} from '@/engine/command/column.cmd.helper';
+import { createCommand } from '@/engine/command/helper';
+import { loadIndex, removeIndex } from '@/engine/command/index.cmd.helper';
+import {
+  loadRelationship,
+  removeRelationship,
+} from '@/engine/command/relationship.cmd.helper';
+import { getColumn } from '@/engine/store/helper/column.helper';
+import { IStore } from '@/internal-types/store';
 import { BatchCommand } from '@@types/engine/command';
-import { Index } from '@@types/engine/store/table.state';
-import { Relationship } from '@@types/engine/store/relationship.state';
-import { Column } from '@@types/engine/store/table.state';
 import {
   AddColumn,
   AddCustomColumn,
-  RemoveColumn,
-  ChangeColumnValue,
   ChangeColumnOption,
+  ChangeColumnValue,
   MoveColumn,
+  RemoveColumn,
 } from '@@types/engine/command/column.cmd';
-import { IStore } from '@/internal-types/store';
-import { createCommand } from '@/engine/command/helper';
-import { getData, cloneDeep, getIndex } from '@/core/helper';
-import { getColumn } from '@/engine/store/helper/column.helper';
-import {
-  removeRelationship,
-  loadRelationship,
-} from '@/engine/command/relationship.cmd.helper';
-import { removeIndex, loadIndex } from '@/engine/command/index.cmd.helper';
-import {
-  removeColumn,
-  loadColumn,
-  removeOnlyColumn,
-} from '@/engine/command/column.cmd.helper';
+import { Relationship } from '@@types/engine/store/relationship.state';
+import { Index } from '@@types/engine/store/table.state';
+import { Column } from '@@types/engine/store/table.state';
 
 export function executeAddColumn(
   store: IStore,

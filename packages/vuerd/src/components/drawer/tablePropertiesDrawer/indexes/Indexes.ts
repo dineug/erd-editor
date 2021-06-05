@@ -1,26 +1,28 @@
 import './IndexAddColumn';
 import './IndexColumn';
 
-import { Table, Index } from '@@types/engine/store/table.state';
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
   beforeMount,
+  defineComponent,
+  FunctionalComponent,
+  html,
   watch,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { repeat } from 'lit-html/directives/repeat';
+
+import { onPreventDefault } from '@/core/helper/dom.helper';
 import { useContext } from '@/core/hooks/context.hook';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import {
   addIndex,
-  removeIndex,
-  changeIndexUnique,
   changeIndexName,
+  changeIndexUnique,
+  removeIndex,
 } from '@/engine/command/index.cmd.helper';
-import { onPreventDefault } from '@/core/helper/dom.helper';
+import { Index, Table } from '@@types/engine/store/table.state';
+
 import { IndexStyle } from './index.style';
 
 declare global {

@@ -1,6 +1,6 @@
 import { Store } from '../store';
-import { CommandType } from './index';
 import { drawStartAddRelationship$ } from './editor.cmd.helper';
+import { CommandType } from './index';
 
 export declare function addTable$(
   store: Store,

@@ -1,6 +1,6 @@
 import {
-  RelationshipType,
   Relationship,
+  RelationshipType,
   StartRelationshipType,
 } from '../store/relationship.state';
 

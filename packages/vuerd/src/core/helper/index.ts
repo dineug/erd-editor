@@ -1,7 +1,7 @@
 import camelCase from 'lodash/camelCase';
 import upperFirst from 'lodash/upperFirst';
-import { Subscription } from 'rxjs';
 import * as R from 'ramda';
+import { Subscription } from 'rxjs';
 
 type TypeofName =
   | 'object'
@@ -11,9 +11,9 @@ type TypeofName =
   | 'number'
   | 'boolean';
 
-export { v4 as uuid } from 'uuid';
-export { default as snakeCase } from 'lodash/snakeCase';
 export { default as camelCase } from 'lodash/camelCase';
+export { default as snakeCase } from 'lodash/snakeCase';
+export { v4 as uuid } from 'uuid';
 export const pascalCase = R.pipe<string | undefined, string, string>(
   camelCase,
   upperFirst

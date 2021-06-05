@@ -1,5 +1,6 @@
 import { html } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
+
 import { FilterRadioEditorProps, RadioItem } from './FilterRadioEditor';
 
 export interface RadioGroupProps {

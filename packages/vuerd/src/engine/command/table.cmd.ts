@@ -1,23 +1,23 @@
+import { getData } from '@/core/helper';
+import { SIZE_TABLE_BORDER, SIZE_TABLE_PADDING } from '@/core/layout';
+import { commentWidthBalanceRange } from '@/engine/store/helper/column.helper';
+import {
+  removeValidTableIndex,
+  removeValidTableRelationship,
+} from '@/engine/store/helper/valid.helper';
+import { TableModel } from '@/engine/store/models/table.model';
+import { ExecuteCommand } from '@/internal-types/command';
 import { TableCommandMap } from '@@types/engine/command/table.cmd';
-import { State } from '@@types/engine/store';
-import { PureTable } from '@@types/engine/store/table.state';
 import {
   AddTable,
+  ChangeTableValue,
+  DragSelectTable,
   MoveTable,
   RemoveTable,
   SelectTable,
-  ChangeTableValue,
-  DragSelectTable,
 } from '@@types/engine/command/table.cmd';
-import { ExecuteCommand } from '@/internal-types/command';
-import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from '@/core/layout';
-import { getData } from '@/core/helper';
-import { TableModel } from '@/engine/store/models/table.model';
-import {
-  removeValidTableRelationship,
-  removeValidTableIndex,
-} from '@/engine/store/helper/valid.helper';
-import { commentWidthBalanceRange } from '@/engine/store/helper/column.helper';
+import { State } from '@@types/engine/store';
+import { PureTable } from '@@types/engine/store/table.state';
 
 const TABLE_PADDING = (SIZE_TABLE_PADDING + SIZE_TABLE_BORDER) * 2;
 const TABLE_SORT_PADDING = TABLE_PADDING * 4;

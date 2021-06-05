@@ -1,13 +1,14 @@
 import {
-  PropName,
+  NextTrigger,
   Observer,
-  Unsubscribe,
+  PropName,
+  Subject,
   SubjectObserver,
   Trigger,
-  NextTrigger,
-  Subject,
+  Unsubscribe,
 } from '@@types/observable';
-import { isObject, isArray } from './helper';
+
+import { isArray, isObject } from './helper';
 
 const rawToProxy = new WeakMap();
 const rawToObservers = new WeakMap<object, Array<Observer>>();

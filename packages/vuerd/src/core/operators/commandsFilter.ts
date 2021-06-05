@@ -1,6 +1,7 @@
-import { CommandKey, CommandTypeAll } from '@@types/engine/command';
 import { Observable } from 'rxjs';
+
 import { notEmptyCommands } from '@/core/operators/notEmptyCommands';
+import { CommandKey, CommandTypeAll } from '@@types/engine/command';
 
 export const commandsFilter =
   (commandTypes: CommandKey[]) =>

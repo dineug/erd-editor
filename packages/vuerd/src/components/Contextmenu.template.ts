@@ -1,5 +1,6 @@
-import { Menu } from '@@types/core/contextmenu';
 import { html } from '@vuerd/lit-observable';
+
+import { Menu } from '@@types/core/contextmenu';
 
 export const iconTpl = (menu: Menu) =>
   menu.icon

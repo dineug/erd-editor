@@ -1,7 +1,7 @@
+import { changeDatabase } from '@/engine/command/canvas.cmd.helper';
+import { databaseList } from '@/engine/store/canvas.state';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { databaseList } from '@/engine/store/canvas.state';
-import { changeDatabase } from '@/engine/command/canvas.cmd.helper';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 80,

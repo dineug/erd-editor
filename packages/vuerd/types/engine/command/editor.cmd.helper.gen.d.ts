@@ -1,8 +1,8 @@
-import { CommandType } from './index';
 import { Store } from '../store';
 import { MoveKey } from '../store/editor.state';
 import { RelationshipType } from '../store/relationship.state';
 import { addColumn$ } from './column.cmd.helper';
+import { CommandType } from './index';
 import { selectEndTable$ } from './table.cmd.helper.gen';
 
 export declare function focusMoveTable$(

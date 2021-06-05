@@ -1,5 +1,6 @@
-import { PanelConfig } from '@@types/core/panel';
 import { observable } from '@vuerd/lit-observable';
+
+import { PanelConfig } from '@@types/core/panel';
 
 export const panels: PanelConfig[] = observable([]);
 

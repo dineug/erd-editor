@@ -1,7 +1,7 @@
+import { changeCanvasShow } from '@/engine/command/canvas.cmd.helper';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { ShowKey } from '@@types/engine/store/canvas.state';
-import { changeCanvasShow } from '@/engine/command/canvas.cmd.helper';
 
 interface ShowMenu {
   name: string;

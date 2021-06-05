@@ -1,11 +1,12 @@
-import { Memo } from '@@types/engine/store/memo.state';
 import {
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
 } from '@vuerd/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
+
 import { SIZE_MEMO_PADDING } from '@/core/layout';
+import { Memo } from '@@types/engine/store/memo.state';
 
 declare global {
   interface HTMLElementTagNameMap {

@@ -1,12 +1,13 @@
-import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import {
   defineComponent,
+  getContext,
   html,
   ProviderElement,
-  getContext,
 } from '@vuerd/lit-observable';
-import { themeToString } from '@/core/theme';
+
 import { SIZE_FONT } from '@/core/layout';
+import { themeToString } from '@/core/theme';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 
 declare global {
   interface HTMLElementTagNameMap {

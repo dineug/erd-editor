@@ -1,19 +1,19 @@
+import { getData } from '@/core/helper';
+import { SIZE_MEMO_PADDING } from '@/core/layout';
+import { MemoModel } from '@/engine/store/models/memo.model';
+import { ExecuteCommand } from '@/internal-types/command';
 import { MemoCommandMap } from '@@types/engine/command/memo.cmd';
-import { State } from '@@types/engine/store';
 import {
   AddMemo,
+  ChangeMemoValue,
+  DragSelectMemo,
   MoveMemo,
   RemoveMemo,
-  SelectMemo,
-  ChangeMemoValue,
   ResizeMemo,
-  DragSelectMemo,
+  SelectMemo,
 } from '@@types/engine/command/memo.cmd';
+import { State } from '@@types/engine/store';
 import { Memo } from '@@types/engine/store/memo.state';
-import { ExecuteCommand } from '@/internal-types/command';
-import { SIZE_MEMO_PADDING } from '@/core/layout';
-import { getData } from '@/core/helper';
-import { MemoModel } from '@/engine/store/models/memo.model';
 
 const MEMO_PADDING = SIZE_MEMO_PADDING * 2;
 

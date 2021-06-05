@@ -1,12 +1,12 @@
-import { Menu, MenuOptions } from '@@types/core/contextmenu';
-import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import {
   createJsonStringify,
-  exportPNG,
   exportJSON,
+  exportPNG,
   exportSQLDDL,
 } from '@/core/file';
 import { createDDL } from '@/core/sql/ddl';
+import { Menu, MenuOptions } from '@@types/core/contextmenu';
+import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 60,

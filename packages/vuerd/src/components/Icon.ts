@@ -1,5 +1,6 @@
 import { defineComponent, svg } from '@vuerd/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
+
 import { getIcon } from '@/core/icon';
 
 declare global {

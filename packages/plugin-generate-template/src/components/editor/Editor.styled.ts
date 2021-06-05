@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+
 import { Props } from '@/components/editor/Editor';
 
 type ContainerProps = Pick<Props, 'sidebarWidth'>;

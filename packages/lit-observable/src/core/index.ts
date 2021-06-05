@@ -1,9 +1,9 @@
-export * from './observable';
-export * from './defineComponent';
 export * from './context';
+export * from './defineComponent';
 export {
   closestElement,
   queryShadowSelector,
   queryShadowSelectorAll,
 } from './helper';
-export { html, svg, TemplateResult, SVGTemplateResult } from 'lit-html';
+export * from './observable';
+export { html, svg, SVGTemplateResult, TemplateResult } from 'lit-html';

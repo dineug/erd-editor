@@ -1,6 +1,7 @@
-import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { beforeMount } from '@vuerd/lit-observable';
+
 import { getVuerdContext } from '@/components/ERDEditorProvider';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 
 export function useContext(ctx: Element) {
   const ref: { value: IERDEditorContext | null } = { value: null };

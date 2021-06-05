@@ -1,6 +1,8 @@
-import { html } from 'lit-html';
 import '@dist/vuerd.min.js';
-import { initializeStyle, getTheme } from '@/stories/example/ERDEditor.helper';
+
+import { html } from 'lit-html';
+
+import { getTheme, initializeStyle } from '@/stories/example/ERDEditor.helper';
 
 export interface ERDEditorProps {
   readonly?: boolean;

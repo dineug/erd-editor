@@ -1,5 +1,6 @@
+import { mdiFileCode, mdiFileFind, mdiViewSplitVertical } from '@mdi/js';
+
 import { IconDefinition } from '@/internal-types/icon';
-import { mdiViewSplitVertical, mdiFileFind, mdiFileCode } from '@mdi/js';
 
 export const createMDI = (name: string, icon: string): IconDefinition => ({
   prefix: 'mdi',

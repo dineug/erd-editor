@@ -1,5 +1,6 @@
-import { PanelConfig, addIcon } from 'vuerd';
 import { mdiFileCog } from '@mdi/js';
+import { addIcon, PanelConfig } from 'vuerd';
+
 import { GenerateTemplatePanel } from '@/components';
 import { createMDI } from '@/core/icon';
 

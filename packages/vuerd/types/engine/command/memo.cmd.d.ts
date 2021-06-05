@@ -1,4 +1,4 @@
-import { MemoUI, Memo } from '../store/memo.state';
+import { Memo, MemoUI } from '../store/memo.state';
 import { Point } from '../store/relationship.state';
 
 export interface AddMemo {

@@ -1,16 +1,17 @@
 import * as path from 'path';
 import {
-  ExtensionContext,
-  Uri,
   commands,
-  window,
-  WebviewPanel,
-  workspace,
+  ExtensionContext,
   TextDocument,
+  Uri,
+  WebviewPanel,
+  window,
+  workspace,
 } from 'vscode';
+
+import { ERDEditorProvider } from './ERDEditorProvider';
 import { trackEvent } from './GoogleAnalytics';
 import { webviewManager } from './WebviewManager';
-import { ERDEditorProvider } from './ERDEditorProvider';
 
 export function activate(context: ExtensionContext) {
   context.subscriptions.push(ERDEditorProvider.register(context));

@@ -1,12 +1,12 @@
-import { CommandType } from '../index';
 import { Store } from '../../store';
+import { MoveKey } from '../../store/editor.state';
 import {
   ColumnType,
-  TextFilterCode,
-  OperatorType,
   FocusFilterType,
+  OperatorType,
+  TextFilterCode,
 } from '../../store/editor/filter.state';
-import { MoveKey } from '../../store/editor.state';
+import { CommandType } from '../index';
 
 export * from './filter.cmd.helper.gen';
 

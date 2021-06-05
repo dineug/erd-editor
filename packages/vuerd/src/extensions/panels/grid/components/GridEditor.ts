@@ -1,16 +1,18 @@
 import './GridEditorProvider';
 import './filter/Filter';
 
-import { ERDEditorContext } from '@@types/index';
 import {
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
 } from '@vuerd/lit-observable';
+
+import { GridContext } from '@/extensions/panels/grid/core/gridContext';
+import { useGrid } from '@/extensions/panels/grid/hooks/grid.hook';
 import { useGridKeymap } from '@/extensions/panels/grid/hooks/gridKeymap.hook';
 import { useKeydown } from '@/extensions/panels/grid/hooks/keydown.hook';
-import { useGrid } from '@/extensions/panels/grid/hooks/grid.hook';
-import { GridContext } from '@/extensions/panels/grid/core/gridContext';
+import { ERDEditorContext } from '@@types/index';
+
 import { IndexStyle } from './index.style';
 
 declare global {

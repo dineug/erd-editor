@@ -1,9 +1,10 @@
-import { Move } from '@/internal-types/event.helper';
 import { FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
-import Sidebar from '@/components/sidebar/Sidebar';
+
 import Editor from '@/components/editor/Editor';
 import { Container } from '@/components/GenerateTemplate.styled';
+import Sidebar from '@/components/sidebar/Sidebar';
+import { Move } from '@/internal-types/event.helper';
 
 const GenerateTemplate: FunctionalComponent = () => {
   const [width, setWidth] = useState(200);

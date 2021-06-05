@@ -1,11 +1,12 @@
-import { JsonFormat } from '@@types/core/file';
-import { Store } from '@@types/engine/store';
-import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import domToImage from 'dom-to-image';
 import { DDLParser } from '@vuerd/sql-ddl-parser';
+import domToImage from 'dom-to-image';
+
 import { createJson } from '@/core/parser/SQLParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
+import { ERDEditorContext } from '@@types/core/ERDEditorContext';
+import { JsonFormat } from '@@types/core/file';
+import { Store } from '@@types/engine/store';
 
 let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
   null;

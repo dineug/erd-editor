@@ -1,8 +1,9 @@
-import { CommandTypeAll } from '@@types/engine/command';
 import { Observable } from 'rxjs';
-import { debounceTime, groupBy, mergeMap, buffer, map } from 'rxjs/operators';
-import { streamCommandTypes } from '@/engine/command/helper';
+import { buffer, debounceTime, groupBy, map, mergeMap } from 'rxjs/operators';
+
 import { notEmptyCommands } from '@/core/operators/notEmptyCommands';
+import { streamCommandTypes } from '@/engine/command/helper';
+import { CommandTypeAll } from '@@types/engine/command';
 
 export const groupByStreamCommands = (
   source$: Observable<Array<CommandTypeAll>>

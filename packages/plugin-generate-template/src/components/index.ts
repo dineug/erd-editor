@@ -1,6 +1,6 @@
 import '@/components/GenerateTemplateElement';
 
-import { Panel, PanelProps, ERDEditorContext } from 'vuerd';
+import { ERDEditorContext, Panel, PanelProps } from 'vuerd';
 
 export class GenerateTemplatePanel implements Panel {
   el = document.createElement('vuerd-plugin-generate-template');
