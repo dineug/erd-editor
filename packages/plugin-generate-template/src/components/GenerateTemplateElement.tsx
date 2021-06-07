@@ -5,8 +5,9 @@ import { ERDEditorContext } from 'vuerd';
 import GenerateTemplate from '@/components/GenerateTemplate';
 import { GlobalStyle } from '@/components/GenerateTemplateElement.styled';
 import { GenerateTemplate as Context } from '@/core/GenerateTemplateContext';
-import { createGlobalEventObservable } from '@/core/helper/event.helper';
+import { createGlobalEventObservable } from '@/helpers/event.helper';
 import { GenerateTemplateContext } from '@/internal-types/GenerateTemplateContext';
+import { UIStore } from '@/stores/ui.store';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -18,23 +19,16 @@ export class GenerateTemplateElement extends HTMLElement {
   renderRoot = this.attachShadow({ mode: 'open' });
   api!: ERDEditorContext;
   context!: GenerateTemplateContext;
-
-  _width = 0;
-  _height = 0;
-
-  set width(value: number) {
-    this._width = value;
-  }
-
-  set height(value: number) {
-    this._height = value;
-  }
+  stores = {
+    ui: new UIStore(),
+  };
 
   connectedCallback() {
     this.context = {
       api: this.api,
       host: this.renderRoot,
       globalEvent: createGlobalEventObservable(),
+      stores: this.stores,
     };
 
     Object.assign(this.style, {

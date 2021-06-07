@@ -1,21 +1,48 @@
 import { FunctionalComponent } from 'preact';
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 
 import Editor from '@/components/editor/Editor';
 import { Container } from '@/components/GenerateTemplate.styled';
 import Sidebar from '@/components/sidebar/Sidebar';
+import { SIDEBAR_MIN_WIDTH, SIDEBAR_WIDTH } from '@/core/layout';
 import { Move } from '@/internal-types/event.helper';
 
 const GenerateTemplate: FunctionalComponent = () => {
-  const [width, setWidth] = useState(200);
+  const [width, setWidth] = useState(SIDEBAR_WIDTH);
+  const clientXRef = useRef(0);
 
-  const onGlobalMove = ({ movementX }: Move) => {
-    setWidth(prevState => prevState + movementX);
+  const handleMousedown = ({ clientX }: React.MouseEvent) => {
+    clientXRef.current = clientX;
+  };
+
+  const handleGlobalMove = ({ movementX, x }: Move) => {
+    setWidth(prevWidth => {
+      const width = prevWidth + movementX;
+      const position = movementX < 0 ? 'left' : 'right';
+
+      if (
+        position === 'left' &&
+        SIDEBAR_MIN_WIDTH <= width &&
+        x < clientXRef.current
+      ) {
+        clientXRef.current += movementX;
+        return width;
+      } else if (position === 'right' && x > clientXRef.current) {
+        clientXRef.current += movementX;
+        return width;
+      }
+
+      return prevWidth;
+    });
   };
 
   return (
     <Container>
-      <Sidebar width={width} onGlobalMove={onGlobalMove} />
+      <Sidebar
+        width={width}
+        onGlobalMove={handleGlobalMove}
+        onMousedown={handleMousedown}
+      />
       <Editor sidebarWidth={width} />
     </Container>
   );

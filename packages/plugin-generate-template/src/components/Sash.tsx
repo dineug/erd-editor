@@ -1,8 +1,8 @@
 import { FunctionalComponent } from 'preact';
 
 import { Container } from '@/components/Sash.styled';
-import { useContext } from '@/core/hooks/useContext';
 import { SIZE_SASH } from '@/core/layout';
+import { useContext } from '@/hooks/useContext';
 import { Move } from '@/internal-types/event.helper';
 
 type Cursor =
@@ -21,7 +21,8 @@ export interface Props {
   cursor: Cursor;
   top: number;
   left: number;
-  onGlobalMove(move: Move): void;
+  onGlobalMove?: (move: Move) => void;
+  onMousedown?: (event: React.MouseEvent) => void;
 }
 
 const Sash: FunctionalComponent<Partial<Props>> = ({
@@ -32,11 +33,14 @@ const Sash: FunctionalComponent<Partial<Props>> = ({
   top = 0,
   left = 0,
   onGlobalMove,
+  onMousedown,
 }) => {
   const context = useContext();
 
-  const onMousedown = () => {
+  const handleMousedown = (event: React.MouseEvent) => {
     if (!onGlobalMove) return;
+
+    onMousedown && onMousedown(event);
 
     const { drag$ } = context.globalEvent;
     drag$.subscribe(move => {
@@ -59,7 +63,7 @@ const Sash: FunctionalComponent<Partial<Props>> = ({
       vertical={vertical}
       horizontal={horizontal}
       edge={edge}
-      onMouseDown={onMousedown}
+      onMouseDown={handleMousedown}
     />
   );
 };

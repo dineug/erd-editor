@@ -6,7 +6,7 @@ import { EditorView, keymap } from '@codemirror/view';
 import { Ref } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 
-import { useContext } from './useContext';
+import { useContext } from '@/hooks/useContext';
 
 type EditorTuple = readonly [Ref<any>, { current: EditorView }];
 

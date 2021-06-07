@@ -9,16 +9,23 @@ export class GridPanel implements Panel {
   constructor(props: PanelProps, api: ERDEditorContext) {
     this.props = props;
     this.el.api = api;
-    this.updated();
+    this.setViewport();
   }
 
-  updated() {
+  setViewport() {
     this.el.width = this.props.width;
     this.el.height = this.props.height;
   }
 
+  beforeFirstUpdate() {
+    this.setViewport();
+  }
+
+  beforeUpdate() {
+    this.setViewport();
+  }
+
   render() {
-    this.updated();
     return this.el;
   }
 }

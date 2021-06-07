@@ -1,8 +1,9 @@
+import replace from '@rollup/plugin-replace';
+import strip from '@rollup/plugin-strip';
+import { terser } from 'rollup-plugin-terser';
+
 import pkg from './package.json';
 import config from './rollup.config.common';
-import strip from '@rollup/plugin-strip';
-import replace from '@rollup/plugin-replace';
-import { terser } from 'rollup-plugin-terser';
 
 const { plugins, banner, onwarn } = config();
 

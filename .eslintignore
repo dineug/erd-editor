@@ -5,4 +5,5 @@ coverage
 docs
 storybook-static
 docker/**/data
-*.js
+
+packages/vuerd-vscode/out

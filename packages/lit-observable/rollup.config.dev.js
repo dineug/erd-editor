@@ -1,7 +1,8 @@
+import browsersync from 'rollup-plugin-browsersync';
+import html from 'rollup-plugin-generate-html-template';
+
 import pkg from './package.json';
 import config from './rollup.config.common';
-import html from 'rollup-plugin-generate-html-template';
-import browsersync from 'rollup-plugin-browsersync';
 
 const { plugins, banner } = config();
 

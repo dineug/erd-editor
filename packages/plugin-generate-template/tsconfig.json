@@ -14,7 +14,7 @@
         "tags": ["styled"]
       }
     ],
-    "types": ["vite/client"]
+    "types": ["preact", "vite/client"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "types/**/*.ts"],
   "exclude": ["node_modules"]

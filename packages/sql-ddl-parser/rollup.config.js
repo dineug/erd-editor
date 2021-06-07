@@ -1,9 +1,10 @@
-import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
+import resolve from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
-import visualizer from 'rollup-plugin-visualizer';
 import filesize from 'rollup-plugin-filesize';
 import { uglify } from 'rollup-plugin-uglify';
+import visualizer from 'rollup-plugin-visualizer';
+
 import pkg from './package.json';
 
 const banner = `/*!
