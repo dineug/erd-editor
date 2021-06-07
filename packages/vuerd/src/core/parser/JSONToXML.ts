@@ -21,43 +21,33 @@ export function spacing(depth: number): string {
 export function createXML(store: Store, database?: Database): string {
   const currentDatabase = database ? database : store.canvasState.database;
   switch (currentDatabase) {
-    // case 'MariaDB':
-    //     return createDDLMariaDB(store);
-    // case 'MSSQL':
-    //     return createDDLMSSQL(store);
-    // case 'MySQL':
-    //     return createDDLMySQL(store);
-    // case 'Oracle':
-    //     return createDDLOracle(store);
     case 'PostgreSQL':
       return createXMLPostgreSQL(store);
-    // case 'SQLite':
-    //     return createDDLSQLite(store);
+    default:
+      alert(`${currentDatabase} not supported`);
+      return '';
   }
-  // todo delete
-  return createXMLPostgreSQL(store);
-  return 'no database selected';
+  return 'database not supported';
 }
 
 export const createXMLPostgreSQL = ({
   tableState,
   relationshipState,
 }: Store) => {
-  const stringBuffer: string[] = [''];
+  const stringBuffer: string[] = [];
   const tables = orderByNameASC(tableState.tables);
   const relationships = relationshipState.relationships;
   const indexes = tableState.indexes;
   const depth = 1;
 
-  // todo pridat niekde ziskanie tychto hodnot
   const author = {
-    name: 'test-meno',
-    id: '123456',
+    id: prompt('Please enter the name of changeset', 'unknown'),
+    name: prompt('Please enter your name', 'unknown'),
   };
 
   stringBuffer.push(
     `<?xml version="1.0" encoding="UTF-8"?>`,
-    `<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd">`
+    `<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd">\n`
   );
 
   stringBuffer.push(
@@ -95,10 +85,6 @@ export const createXMLPostgreSQL = ({
   });
 
   stringBuffer.push(`${spacing(depth)}</changeSet>`);
-
-  // todo zmazat
-  console.log(tableState);
-  console.log(relationshipState);
 
   stringBuffer.push(`</databaseChangeLog>`);
 
@@ -140,6 +126,7 @@ export function formatColumn({ column, buffer, depth }: FormatColumnOptions) {
   if (column.default) col += ` defaultValue="${column.default}"`;
   if (column.comment) col += ` remarks="${column.comment}"`;
 
+  // if constraints
   if (
     !column.option.notNull ||
     column.option.primaryKey ||

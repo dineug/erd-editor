@@ -35,6 +35,7 @@ import {
   mdiFormatLetterCase,
   mdiTableCog,
   mdiCodeBrackets,
+  mdiXml,
 } from '@mdi/js';
 
 export const createMDI = (name: string, icon: string): IconDefinition => ({
@@ -76,6 +77,7 @@ const icons = [
   createMDI('format-letter-case', mdiFormatLetterCase),
   createMDI('table-cog', mdiTableCog),
   createMDI('code-brackets', mdiCodeBrackets),
+  createMDI('xml', mdiXml),
 ] as IconDefinition[];
 
 export const getIcon = (prefix: string, iconName: string) =>
