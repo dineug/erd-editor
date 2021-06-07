@@ -94,5 +94,4 @@ export interface AlterTableAddForeignKey {
   columnNames: string[];
   refTableName: string;
   refColumnNames: string[];
-  baseTableName: string;
 }

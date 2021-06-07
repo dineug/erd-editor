@@ -16,9 +16,6 @@ export const XMLParser = (input: string): Statement[] => {
     parseChangeSet(changeSets[i], statements);
   }
 
-  // bind foreign key to table
-  bindTableToFK(statements);
-
   return statements;
 };
 
@@ -145,29 +142,9 @@ export const parseAddForeignKeyConstraint = (
 
   statements.push({
     type: 'alter.table.add.foreignKey',
-    name: addForeignKey.getAttribute('constraintName') || '',
+    name: addForeignKey.getAttribute('baseTableName') || '',
     columnNames: columnNames,
     refTableName: addForeignKey.getAttribute('referencedTableName') || '',
     refColumnNames: refColumnNames,
-    baseTableName: addForeignKey.getAttribute('baseTableName') || '',
-  });
-};
-
-export const bindTableToFK = (statements: Statement[]) => {
-  statements.forEach(addForeignKey => {
-    if (addForeignKey.type === 'alter.table.add.foreignKey') {
-      statements.forEach(table => {
-        if (
-          table.type === 'create.table' &&
-          table.name === addForeignKey.baseTableName
-        ) {
-          table.foreignKeys.push({
-            columnNames: addForeignKey.columnNames,
-            refTableName: addForeignKey.refTableName,
-            refColumnNames: addForeignKey.refColumnNames,
-          });
-        }
-      });
-    }
   });
 };
