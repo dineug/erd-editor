@@ -5,6 +5,7 @@ import Preview from '@/components/editor/Preview';
 import TemplateEditor from '@/components/editor/TemplateEditor';
 import Toolbar from '@/components/editor/Toolbar';
 import { SIDEBAR_WIDTH } from '@/core/layout';
+import { useContext } from '@/hooks/useContext';
 
 export interface Props {
   sidebarWidth: number;
@@ -13,8 +14,12 @@ export interface Props {
 const Editor: FunctionalComponent<Partial<Props>> = ({
   sidebarWidth = SIDEBAR_WIDTH,
 }) => {
+  const { stores } = useContext();
+
   return (
-    <Container style={{ width: `calc(100% - ${sidebarWidth}px)` }}>
+    <Container
+      style={{ width: `${stores.ui.viewport.width - sidebarWidth}px` }}
+    >
       <Toolbar />
       <TemplateEditor />
     </Container>
