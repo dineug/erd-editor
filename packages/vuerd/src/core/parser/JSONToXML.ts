@@ -128,7 +128,7 @@ export function formatColumn({ column, buffer, depth }: FormatColumnOptions) {
 
   // if constraints
   if (
-    !column.option.notNull ||
+    column.option.notNull ||
     column.option.primaryKey ||
     column.option.unique
   ) {
@@ -138,7 +138,7 @@ export function formatColumn({ column, buffer, depth }: FormatColumnOptions) {
     formatConstraints({
       constraints: {
         primaryKey: column.option.primaryKey,
-        nullable: column.option.notNull,
+        nullable: !column.option.notNull,
         unique: column.option.unique,
       },
       buffer,
@@ -165,7 +165,7 @@ export function formatConstraints({
   if (constraints.primaryKey)
     constraintDescription += ` primaryKey="${constraints.primaryKey}"`;
   if (constraints.nullable === false)
-    constraintDescription += ` nullable="${!constraints.nullable}"`;
+    constraintDescription += ` nullable="${constraints.nullable}"`;
   if (constraints.unique)
     constraintDescription += ` unique="${constraints.unique}"`;
 

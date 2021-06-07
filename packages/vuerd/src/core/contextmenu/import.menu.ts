@@ -1,6 +1,6 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { importJSON, importSQLDDL } from '@/core/file';
+import { importJSON, importSQLDDL, importXML } from '@/core/file';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 60,
@@ -26,5 +26,14 @@ export const createImportMenus = (context: ERDEditorContext): Menu[] =>
       },
       name: 'SQL DDL',
       execute: () => importSQLDDL(context),
+    },
+    {
+      icon: {
+        prefix: 'mdi',
+        name: 'xml',
+        size: 18,
+      },
+      name: 'XML (WIP)',
+      execute: () => importXML(context),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

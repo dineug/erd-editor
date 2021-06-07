@@ -6,6 +6,7 @@ import { DDLParser } from '@vuerd/sql-ddl-parser';
 import { createJson } from '@/core/parser/SQLParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
+import { XMLParser } from '@/core/parser/XMLParser';
 
 let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
   null;
@@ -110,21 +111,37 @@ export function importJSON({ store }: ERDEditorContext) {
 }
 
 export function importSQLDDL(context: ERDEditorContext) {
+  importWrapper(context, 'sql', DDLParser);
+}
+
+export function importXML(context: ERDEditorContext) {
+  importWrapper(context, 'xml', XMLParser);
+}
+
+export function importWrapper(
+  context: ERDEditorContext,
+  type: string,
+  parser: Function
+) {
   const { store, helper } = context;
-  const importHelperSQL = document.createElement('input');
-  importHelperSQL.setAttribute('type', 'file');
-  importHelperSQL.setAttribute('accept', '.sql');
-  importHelperSQL.addEventListener('change', event => {
+  const importHelper = document.createElement('input');
+  importHelper.setAttribute('type', 'file');
+  importHelper.setAttribute('accept', `.${type}`);
+  importHelper.addEventListener('change', event => {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length) {
       const file = input.files[0];
-      if (/\.(sql)$/i.test(file.name)) {
+      const regex = new RegExp(`\.(${type})$`, 'i');
+      if (regex.test(file.name)) {
         const reader = new FileReader();
         reader.readAsText(file);
         reader.onload = () => {
           const value = reader.result;
           if (typeof value === 'string') {
-            const statements = DDLParser(value);
+            const statements = parser(value);
+            // todo delete
+            console.log(statements);
+
             const json = createJson(
               statements,
               helper,
@@ -134,9 +151,9 @@ export function importSQLDDL(context: ERDEditorContext) {
           }
         };
       } else {
-        alert('Just upload the sql file');
+        alert(`Just upload the ${type} file`);
       }
     }
   });
-  importHelperSQL.click();
+  importHelper.click();
 }
