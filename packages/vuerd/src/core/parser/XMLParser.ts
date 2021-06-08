@@ -1,5 +1,5 @@
 import { Statement, Column, IndexColumn } from '@/core/parser/index';
-import { Constraints } from '@/core/parser/helper';
+import { Constraints, ParserCallback } from '@/core/parser/helper';
 
 export const XMLParser = (input: string): Statement[] => {
   // todo delete
@@ -11,7 +11,7 @@ export const XMLParser = (input: string): Statement[] => {
   var xmlDoc = parser.parseFromString(input, 'text/xml');
   var changeSets = xmlDoc.getElementsByTagName('changeSet');
 
-  // parse entire change set
+  // parse all changesets
   for (let i = 0; i < changeSets.length; i++) {
     parseChangeSet(changeSets[i], statements);
   }
@@ -20,21 +20,26 @@ export const XMLParser = (input: string): Statement[] => {
 };
 
 export const parseChangeSet = (changeSet: Element, statements: Statement[]) => {
-  const createTables = changeSet.getElementsByTagName('createTable');
-  for (let i = 0; i < createTables.length; i++) {
-    parseCreateTable(createTables[i], statements);
-  }
-
-  const createIndexes = changeSet.getElementsByTagName('createIndex');
-  for (let i = 0; i < createIndexes.length; i++) {
-    parseCreateIndex(createIndexes[i], statements);
-  }
-
-  const createRelationship = changeSet.getElementsByTagName(
-    'addForeignKeyConstraint'
+  parseElement('createTable', changeSet, statements, parseCreateTable);
+  parseElement('createIndex', changeSet, statements, parseCreateIndex);
+  parseElement(
+    'addForeignKeyConstraint',
+    changeSet,
+    statements,
+    parseAddForeignKeyConstraint
   );
-  for (let i = 0; i < createRelationship.length; i++) {
-    parseAddForeignKeyConstraint(createRelationship[i], statements);
+  parseElement('addPrimaryKey', changeSet, statements, parseAddPrimaryKey);
+};
+
+export const parseElement = (
+  type: string,
+  element: Element,
+  statements: Statement[],
+  parser: ParserCallback
+) => {
+  const elements = element.getElementsByTagName(type);
+  for (let i = 0; i < elements.length; i++) {
+    parser(elements[i], statements);
   }
 };
 
@@ -146,5 +151,22 @@ export const parseAddForeignKeyConstraint = (
     columnNames: columnNames,
     refTableName: addForeignKey.getAttribute('referencedTableName') || '',
     refColumnNames: refColumnNames,
+  });
+};
+
+export const parseAddPrimaryKey = (
+  addPrimaryKey: Element,
+  statements: Statement[]
+) => {
+  var columnNames: string[] =
+    addPrimaryKey
+      .getAttribute('columnNames')
+      ?.split(',')
+      .map(item => item.trim()) || [];
+
+  statements.push({
+    type: 'alter.table.add.primaryKey',
+    name: addPrimaryKey.getAttribute('tableName') || '',
+    columnNames: columnNames,
   });
 };

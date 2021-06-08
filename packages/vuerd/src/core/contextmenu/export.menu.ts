@@ -8,7 +8,7 @@ import {
   exportXML,
 } from '@/core/file';
 import { createDDL } from '@/core/sql/ddl';
-import { createXML } from '@/core/parser/JSONToXML';
+import { createXMLPostgreOracleMSS } from '@/core/parser/JSONToXML';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 60,
@@ -59,6 +59,9 @@ export const createExportMenus = (
       },
       name: 'XML',
       execute: () =>
-        exportXML(createXML(store), store.canvasState.databaseName),
+        exportXML(
+          createXMLPostgreOracleMSS(store),
+          store.canvasState.databaseName
+        ),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

@@ -7,6 +7,14 @@ import { createJson } from '@/core/parser/SQLParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
 import { XMLParser } from '@/core/parser/XMLParser';
+import { addColumn$ } from '@/engine/command/column.cmd.helper.gen';
+import { getData } from '@/core/helper';
+import {
+  changeColumnName,
+  addColumn,
+  addCustomColumn,
+} from '@/engine/command/column.cmd.helper';
+import { Statement } from './parser';
 
 let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
   null;
@@ -118,10 +126,14 @@ export function importXML(context: ERDEditorContext) {
   importWrapper(context, 'xml', XMLParser);
 }
 
+export interface ParserCallback {
+  (input: string): Statement[];
+}
+
 export function importWrapper(
   context: ERDEditorContext,
   type: string,
-  parser: Function
+  parser: ParserCallback
 ) {
   const { store, helper } = context;
   const importHelper = document.createElement('input');
@@ -148,6 +160,40 @@ export function importWrapper(
               store.canvasState.database
             );
             store.dispatch(loadJson$(json), sortTable());
+
+            // todo delete -------
+            let tmp = JSON.parse(json);
+            // console.log(tmp.table.tables[0].id);
+            const tableId = tmp.table.tables[0].id;
+
+            store.dispatch(
+              addCustomColumn(
+                {
+                  autoIncrement: false,
+                  primaryKey: false,
+                  unique: false,
+                  notNull: true,
+                },
+                {
+                  active: true,
+                  fk: false,
+                  pk: false,
+                  pfk: false,
+                },
+                {
+                  comment: '',
+                  dataType: '',
+                  name: 'super stlpec',
+                  default: '',
+                  widthComment: helper.getTextWidth(''),
+                  widthDataType: helper.getTextWidth(''),
+                  widthDefault: helper.getTextWidth(''),
+                  widthName: helper.getTextWidth('super stlpec'),
+                },
+                [tableId]
+              )
+            );
+            // up until here delete -------
           }
         };
       } else {

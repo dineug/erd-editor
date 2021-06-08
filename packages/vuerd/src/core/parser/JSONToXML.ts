@@ -11,6 +11,8 @@ import {
   FormatIndexOptions,
   KeyColumn,
   formatNames,
+  Author,
+  FormatChangeSet,
 } from '@/core/parser/helper';
 
 export function spacing(depth: number): string {
@@ -22,7 +24,7 @@ export function createXML(store: Store, database?: Database): string {
   const currentDatabase = database ? database : store.canvasState.database;
   switch (currentDatabase) {
     case 'PostgreSQL':
-      return createXMLPostgreSQL(store);
+      return createXMLPostgreOracleMSS(store);
     default:
       alert(`${currentDatabase} not supported`);
       return '';
@@ -30,19 +32,15 @@ export function createXML(store: Store, database?: Database): string {
   return 'database not supported';
 }
 
-export const createXMLPostgreSQL = ({
+export const createXMLPostgreOracleMSS = ({
   tableState,
   relationshipState,
 }: Store) => {
   const stringBuffer: string[] = [];
-  const tables = orderByNameASC(tableState.tables);
-  const relationships = relationshipState.relationships;
-  const indexes = tableState.indexes;
-  const depth = 1;
 
-  const author = {
-    id: prompt('Please enter the name of changeset', 'unknown'),
-    name: prompt('Please enter your name', 'unknown'),
+  const author: Author = {
+    id: prompt('Please enter the name of changeset', 'unknown') || '',
+    name: prompt('Please enter your name', 'unknown') || '',
   };
 
   stringBuffer.push(
@@ -50,10 +48,42 @@ export const createXMLPostgreSQL = ({
     `<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd">\n`
   );
 
+  createChangeSet({
+    type: 'postgresql',
+    tableState,
+    relationshipState,
+    stringBuffer,
+    author,
+  });
+  createChangeSet({
+    type: 'oracle',
+    tableState,
+    relationshipState,
+    stringBuffer,
+    author,
+  });
+
+  stringBuffer.push(`</databaseChangeLog>`);
+
+  return stringBuffer.join('\n');
+};
+
+export const createChangeSet = ({
+  type,
+  tableState,
+  relationshipState,
+  stringBuffer,
+  author,
+}: FormatChangeSet) => {
+  const tables = orderByNameASC(tableState.tables);
+  const relationships = relationshipState.relationships;
+  const indexes = tableState.indexes;
+  const depth: number = 1;
+
   stringBuffer.push(
     `${spacing(depth)}<changeSet author="${author.name}" id="${
       author.id
-    }" dbms="postgresql">`
+    }-${type}" dbms="${type}">`
   );
 
   tables.forEach(table => {
@@ -85,10 +115,6 @@ export const createXMLPostgreSQL = ({
   });
 
   stringBuffer.push(`${spacing(depth)}</changeSet>`);
-
-  stringBuffer.push(`</databaseChangeLog>`);
-
-  return stringBuffer.join('\n');
 };
 
 export function createTable({ table, buffer, depth }: FormatTableOptions) {
@@ -209,8 +235,8 @@ function formatRelation({
       `${spacing(depth + 1)}constraintName="FK_${endTable.name}_TO_${
         startTable.name
       }"`,
-      `${spacing(depth + 1)}onDelete="???"`,
-      `${spacing(depth + 1)}onUpdate="???"`,
+      `${spacing(depth + 1)}deferrable="false"`,
+      `${spacing(depth + 1)}initiallyDeferred="false"`,
       `${spacing(depth + 1)}referencedColumnNames="${formatNames(
         columns.start
       )}"`,

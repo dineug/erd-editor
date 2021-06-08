@@ -2,6 +2,9 @@ import { Table, Column, Index } from '@@types/engine/store/table.state';
 import { BracketType } from '@@types/engine/store/canvas.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { bracketTypeMap } from '@/engine/store/canvas.state';
+import { RelationshipState } from '@@types/engine/store/relationship.state';
+import { TableState } from '@@types/engine/store/table.state';
+import { Statement } from '@/core/parser/index';
 
 export interface FormatTableOptions {
   table: Table;
@@ -46,9 +49,28 @@ export interface Name {
   name: string;
 }
 
+export interface Author {
+  id: string;
+  name: string;
+}
+
+export interface FormatChangeSet {
+  type: DatabaseType;
+  author: Author;
+  tableState: TableState;
+  relationshipState: RelationshipState;
+  stringBuffer: string[];
+}
+
+export type DatabaseType = 'postgresql' | 'oracle' | 'mssql';
+
 export interface KeyColumn {
   start: Column[];
   end: Column[];
+}
+
+export interface ParserCallback {
+  (element: Element, statements: Statement[]): void;
 }
 
 export function formatNames<T extends { name: string }>(list: T[]): string {
