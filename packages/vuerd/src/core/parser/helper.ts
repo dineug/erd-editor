@@ -1,21 +1,25 @@
 import { Table, Column, Index } from '@@types/engine/store/table.state';
-import { BracketType } from '@@types/engine/store/canvas.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
-import { bracketTypeMap } from '@/engine/store/canvas.state';
 import { RelationshipState } from '@@types/engine/store/relationship.state';
 import { TableState } from '@@types/engine/store/table.state';
 import { Statement } from '@/core/parser/index';
+import { translations } from './translations';
+
+export type Dialect = 'postgresql' | 'oracle' | 'mssql';
+export type DialectFrom = 'postgresql';
 
 export interface FormatTableOptions {
   table: Table;
   buffer: string[];
   depth: number;
+  dialect: Dialect;
 }
 
 export interface FormatColumnOptions {
   column: Column;
   buffer: string[];
   depth: number;
+  dialect: Dialect;
 }
 
 export interface FormatConstraintsOptions {
@@ -55,14 +59,12 @@ export interface Author {
 }
 
 export interface FormatChangeSet {
-  type: DatabaseType;
+  dialect: Dialect;
   author: Author;
   tableState: TableState;
   relationshipState: RelationshipState;
   stringBuffer: string[];
 }
-
-export type DatabaseType = 'postgresql' | 'oracle' | 'mssql';
 
 export interface KeyColumn {
   start: Column[];
@@ -83,3 +85,48 @@ export function formatNames<T extends { name: string }>(list: T[]): string {
   });
   return buf.join('');
 }
+
+/**
+ * Translation between dialects for liquibase
+ * @param dialectFrom Source dialect
+ * @param dialectTo Destination dialect
+ * @param value Value to be translated
+ * @returns Translated string
+ */
+export const translate = (
+  dialectFrom: DialectFrom,
+  dialectTo: Dialect,
+  value: string
+): string => {
+  switch (dialectFrom) {
+    case 'postgresql':
+      const retVal = translateFromPostgreSQL(dialectTo, value);
+      if (!retVal)
+        alert(
+          `Error translating "${value}" from ${dialectFrom} to ${dialectTo}`
+        );
+      return retVal;
+    default:
+      return '';
+  }
+};
+
+export const translateFromPostgreSQL = (
+  dialectTo: Dialect,
+  value: string
+): string => {
+  const searchValue = translations.find(
+    trans => trans.PostgresDatabase.toLowerCase() === value.toLowerCase()
+  );
+
+  switch (dialectTo) {
+    case 'postgresql':
+      return searchValue?.PostgresDatabase || '';
+    case 'mssql':
+      return searchValue?.MSSQLDatabase || '';
+    case 'oracle':
+      return searchValue?.OracleDatabase || '';
+    default:
+      return '';
+  }
+};

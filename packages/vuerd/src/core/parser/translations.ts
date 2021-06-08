@@ -1,5 +1,5 @@
 export interface Traslation {
-  type: string;
+  Liquibase: string;
   MySQLDatabase: string;
   SQLiteDatabase: string;
   H2Database: string;
@@ -18,7 +18,7 @@ export interface Traslation {
 
 export const translations: Traslation[] = [
   {
-    type: 'boolean',
+    Liquibase: 'boolean',
     MySQLDatabase: 'BIT(1)',
     SQLiteDatabase: 'BOOLEAN',
     H2Database: 'BOOLEAN',
@@ -35,7 +35,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'BIT',
   },
   {
-    type: 'tinyint',
+    Liquibase: 'tinyint',
     MySQLDatabase: 'TINYINT',
     SQLiteDatabase: 'TINYINT',
     H2Database: 'TINYINT',
@@ -52,7 +52,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'TINYINT',
   },
   {
-    type: 'int',
+    Liquibase: 'int',
     MySQLDatabase: 'INT',
     SQLiteDatabase: 'INTEGER',
     H2Database: 'INT',
@@ -69,7 +69,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'INT',
   },
   {
-    type: 'mediumint',
+    Liquibase: 'mediumint',
     MySQLDatabase: 'MEDIUMINT',
     SQLiteDatabase: 'MEDIUMINT',
     H2Database: 'MEDIUMINT',
@@ -86,7 +86,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'MEDIUMINT',
   },
   {
-    type: 'bigint',
+    Liquibase: 'bigint',
     MySQLDatabase: 'BIGINT',
     SQLiteDatabase: 'BIGINT',
     H2Database: 'BIGINT',
@@ -103,7 +103,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'BIGINT',
   },
   {
-    type: 'float',
+    Liquibase: 'float',
     MySQLDatabase: 'FLOAT',
     SQLiteDatabase: 'FLOAT',
     H2Database: 'FLOAT',
@@ -120,7 +120,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'FLOAT',
   },
   {
-    type: 'double',
+    Liquibase: 'double',
     MySQLDatabase: 'DOUBLE',
     SQLiteDatabase: 'DOUBLE',
     H2Database: 'DOUBLE',
@@ -137,7 +137,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'DOUBLE',
   },
   {
-    type: 'decimal',
+    Liquibase: 'decimal',
     MySQLDatabase: 'DECIMAL',
     SQLiteDatabase: 'DECIMAL',
     H2Database: 'DECIMAL',
@@ -154,7 +154,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'DECIMAL',
   },
   {
-    type: 'number',
+    Liquibase: 'number',
     MySQLDatabase: 'numeric',
     SQLiteDatabase: 'NUMBER',
     H2Database: 'NUMBER',
@@ -171,7 +171,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'numeric',
   },
   {
-    type: 'blob',
+    Liquibase: 'blob',
     MySQLDatabase: 'LONGBLOB',
     SQLiteDatabase: 'BLOB',
     H2Database: 'BLOB',
@@ -188,7 +188,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'LONG BINARY',
   },
   {
-    type: 'function',
+    Liquibase: 'function',
     MySQLDatabase: 'FUNCTION',
     SQLiteDatabase: 'FUNCTION',
     H2Database: 'FUNCTION',
@@ -205,7 +205,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'FUNCTION',
   },
   {
-    type: 'UNKNOWN',
+    Liquibase: 'UNKNOWN',
     MySQLDatabase: 'UNKNOWN',
     SQLiteDatabase: 'UNKNOWN',
     H2Database: 'UNKNOWN',
@@ -222,7 +222,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'UNKNOWN',
   },
   {
-    type: 'datetime',
+    Liquibase: 'datetime',
     MySQLDatabase: 'datetime',
     SQLiteDatabase: 'TEXT',
     H2Database: 'TIMESTAMP',
@@ -239,7 +239,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'datetime',
   },
   {
-    type: 'time',
+    Liquibase: 'time',
     MySQLDatabase: 'time',
     SQLiteDatabase: 'time',
     H2Database: 'time',
@@ -256,7 +256,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'time',
   },
   {
-    type: 'timestamp',
+    Liquibase: 'timestamp',
     MySQLDatabase: 'timestamp',
     SQLiteDatabase: 'TEXT',
     H2Database: 'TIMESTAMP',
@@ -273,7 +273,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'timestamp',
   },
   {
-    type: 'date',
+    Liquibase: 'date',
     MySQLDatabase: 'date',
     SQLiteDatabase: 'date',
     H2Database: 'date',
@@ -290,7 +290,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'date',
   },
   {
-    type: 'char',
+    Liquibase: 'char',
     MySQLDatabase: 'CHAR',
     SQLiteDatabase: 'CHAR',
     H2Database: 'CHAR',
@@ -307,7 +307,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'CHAR',
   },
   {
-    type: 'varchar',
+    Liquibase: 'varchar',
     MySQLDatabase: 'VARCHAR',
     SQLiteDatabase: 'VARCHAR',
     H2Database: 'VARCHAR',
@@ -324,7 +324,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'VARCHAR',
   },
   {
-    type: 'nchar',
+    Liquibase: 'nchar',
     MySQLDatabase: 'NCHAR',
     SQLiteDatabase: 'NCHAR',
     H2Database: 'NCHAR',
@@ -341,7 +341,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'NCHAR',
   },
   {
-    type: 'nvarchar',
+    Liquibase: 'nvarchar',
     MySQLDatabase: 'NVARCHAR',
     SQLiteDatabase: 'NVARCHAR',
     H2Database: 'NVARCHAR',
@@ -358,7 +358,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'NVARCHAR',
   },
   {
-    type: 'clob',
+    Liquibase: 'clob',
     MySQLDatabase: 'LONGTEXT',
     SQLiteDatabase: 'TEXT',
     H2Database: 'CLOB',
@@ -375,7 +375,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'LONG VARCHAR',
   },
   {
-    type: 'currency',
+    Liquibase: 'currency',
     MySQLDatabase: 'DECIMAL',
     SQLiteDatabase: 'REAL',
     H2Database: 'DECIMAL',
@@ -392,7 +392,7 @@ export const translations: Traslation[] = [
     SybaseASADatabase: 'MONEY',
   },
   {
-    type: 'uuid',
+    Liquibase: 'uuid',
     MySQLDatabase: 'char(36)',
     SQLiteDatabase: 'TEXT',
     H2Database: 'UUID',

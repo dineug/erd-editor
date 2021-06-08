@@ -13,6 +13,7 @@ import {
   formatNames,
   Author,
   FormatChangeSet,
+  translate,
 } from '@/core/parser/helper';
 
 export function spacing(depth: number): string {
@@ -20,13 +21,18 @@ export function spacing(depth: number): string {
   else return '';
 }
 
+/**
+ * Creates XML file with export (*only supports source dialect 'PostgreSQL' and creates changeSet in 'oracle', 'mssql' and 'postgresql')
+ */
 export function createXML(store: Store, database?: Database): string {
   const currentDatabase = database ? database : store.canvasState.database;
   switch (currentDatabase) {
     case 'PostgreSQL':
       return createXMLPostgreOracleMSS(store);
     default:
-      alert(`${currentDatabase} not supported`);
+      alert(
+        `Export from ${currentDatabase} dialect not supported, please use PostgreSQL`
+      );
       return '';
   }
   return 'database not supported';
@@ -49,14 +55,21 @@ export const createXMLPostgreOracleMSS = ({
   );
 
   createChangeSet({
-    type: 'postgresql',
+    dialect: 'postgresql',
     tableState,
     relationshipState,
     stringBuffer,
     author,
   });
   createChangeSet({
-    type: 'oracle',
+    dialect: 'oracle',
+    tableState,
+    relationshipState,
+    stringBuffer,
+    author,
+  });
+  createChangeSet({
+    dialect: 'mssql',
     tableState,
     relationshipState,
     stringBuffer,
@@ -69,7 +82,7 @@ export const createXMLPostgreOracleMSS = ({
 };
 
 export const createChangeSet = ({
-  type,
+  dialect,
   tableState,
   relationshipState,
   stringBuffer,
@@ -83,7 +96,7 @@ export const createChangeSet = ({
   stringBuffer.push(
     `${spacing(depth)}<changeSet author="${author.name}" id="${
       author.id
-    }-${type}" dbms="${type}">`
+    }-${dialect}" dbms="${dialect}">`
   );
 
   tables.forEach(table => {
@@ -91,6 +104,7 @@ export const createChangeSet = ({
       table,
       buffer: stringBuffer,
       depth: depth + 1,
+      dialect,
     });
   });
 
@@ -117,7 +131,12 @@ export const createChangeSet = ({
   stringBuffer.push(`${spacing(depth)}</changeSet>`);
 };
 
-export function createTable({ table, buffer, depth }: FormatTableOptions) {
+export function createTable({
+  table,
+  buffer,
+  depth,
+  dialect,
+}: FormatTableOptions) {
   let tableDescription = `${spacing(depth)}<createTable tableName="${
     table.name
   }"`;
@@ -133,6 +152,7 @@ export function createTable({ table, buffer, depth }: FormatTableOptions) {
       column,
       buffer,
       depth: depth + 1,
+      dialect,
     });
   });
 
@@ -142,10 +162,16 @@ export function createTable({ table, buffer, depth }: FormatTableOptions) {
 /**
  * Formatting of one column
  */
-export function formatColumn({ column, buffer, depth }: FormatColumnOptions) {
+export function formatColumn({
+  column,
+  buffer,
+  depth,
+  dialect,
+}: FormatColumnOptions) {
   let col = `${spacing(depth)}<column name="${column.name}"`;
 
-  if (column.dataType) col += ` type="${column.dataType}"`;
+  if (column.dataType)
+    col += ` type="${translate('postgresql', dialect, column.dataType)}"`;
   if (column.option.autoIncrement)
     col += ` autoIncrement="${column.option.autoIncrement}"`;
 

@@ -33,7 +33,7 @@ export const createImportMenus = (context: ERDEditorContext): Menu[] =>
         name: 'xml',
         size: 18,
       },
-      name: 'XML (WIP)',
+      name: 'Liquibase (WIP)',
       execute: () => importXML(context),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

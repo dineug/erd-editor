@@ -57,7 +57,7 @@ export const createExportMenus = (
         name: 'xml',
         size: 18,
       },
-      name: 'XML',
+      name: 'Liquibase (WIP)',
       execute: () =>
         exportXML(
           createXMLPostgreOracleMSS(store),
