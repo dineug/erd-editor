@@ -10,22 +10,12 @@ export type DialectFrom = 'postgresql';
 
 export interface FormatTableOptions {
   table: Table;
-  buffer: string[];
-  depth: number;
   dialect: Dialect;
 }
 
 export interface FormatColumnOptions {
   column: Column;
-  buffer: string[];
-  depth: number;
   dialect: Dialect;
-}
-
-export interface FormatConstraintsOptions {
-  constraints: Constraints;
-  buffer: string[];
-  depth: number;
 }
 
 export interface Constraints {
@@ -37,15 +27,11 @@ export interface Constraints {
 export interface FormatRelationOptions {
   tables: Table[];
   relationship: Relationship;
-  buffer: string[];
-  depth: number;
 }
 
 export interface FormatIndexOptions {
   table: Table;
   index: Index;
-  buffer: string[];
-  depth: number;
 }
 
 export interface Name {
@@ -63,7 +49,6 @@ export interface FormatChangeSet {
   author: Author;
   tableState: TableState;
   relationshipState: RelationshipState;
-  stringBuffer: string[];
 }
 
 export interface KeyColumn {
@@ -129,4 +114,54 @@ export const translateFromPostgreSQL = (
     default:
       return '';
   }
+};
+
+export interface Attribute {
+  name: string;
+  value: string;
+}
+
+export interface XMLNode {
+  name: string;
+  attributes: Attribute[];
+  children: XMLNode[];
+}
+
+/**
+ * Converts array of XML nodes to string
+ * @param xmlNodes Array of XMLNodes that will be converted to string
+ * @returns XML in string form
+ */
+export const createXMLString = (xmlNodes: XMLNode[]): string => {
+  let xmlSerializer = new XMLSerializer();
+  var parser = new DOMParser();
+  var root = parser.parseFromString('</>', 'text/xml');
+  var stringBuffer: string[] = [];
+
+  xmlNodes.forEach(node => {
+    stringBuffer.push(xmlSerializer.serializeToString(createNode(node, root)));
+  });
+
+  return stringBuffer.join('\n');
+};
+
+/**
+ * Recursive function, that traverses all nodes
+ * @param xmlNode One node that will be converted to string
+ * @param root Root html element used to create elements
+ * @returns Node converted to XML in string form
+ */
+const createNode = (xmlNode: XMLNode, root: Document): HTMLElement => {
+  let element = root.createElement(xmlNode.name);
+
+  xmlNode.attributes.forEach(attr => {
+    element.setAttribute(attr.name, attr.value);
+  });
+
+  xmlNode.children.forEach(child => {
+    if (child.name)
+      element.insertAdjacentElement('beforeend', createNode(child, root));
+  });
+
+  return element;
 };

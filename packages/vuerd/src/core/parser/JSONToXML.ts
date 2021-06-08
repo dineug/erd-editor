@@ -6,7 +6,7 @@ import { getData, uuid, autoName } from '@/core/helper';
 import {
   FormatTableOptions,
   FormatColumnOptions,
-  FormatConstraintsOptions,
+  Constraints,
   FormatRelationOptions,
   FormatIndexOptions,
   KeyColumn,
@@ -14,12 +14,9 @@ import {
   Author,
   FormatChangeSet,
   translate,
+  createXMLString,
+  XMLNode,
 } from '@/core/parser/helper';
-
-export function spacing(depth: number): string {
-  if (depth) return `    ${spacing(depth - 1)}`;
-  else return '';
-}
 
 /**
  * Creates XML file with export (*only supports source dialect 'PostgreSQL' and creates changeSet in 'oracle', 'mssql' and 'postgresql')
@@ -45,38 +42,37 @@ export const createXMLPostgreOracleMSS = ({
   const stringBuffer: string[] = [];
 
   const author: Author = {
-    id: prompt('Please enter the name of changeset', 'unknown') || '',
-    name: prompt('Please enter your name', 'unknown') || '',
+    id: prompt('Please enter the name of changeset', 'unknown') || 'unknown',
+    name: prompt('Please enter your name', 'unknown') || 'unknown',
   };
+
+  const changeSets: XMLNode[] = [
+    createChangeSet({
+      dialect: 'postgresql',
+      tableState,
+      relationshipState,
+      author,
+    }),
+    createChangeSet({
+      dialect: 'oracle',
+      tableState,
+      relationshipState,
+      author,
+    }),
+    createChangeSet({
+      dialect: 'mssql',
+      tableState,
+      relationshipState,
+      author,
+    }),
+  ];
 
   stringBuffer.push(
     `<?xml version="1.0" encoding="UTF-8"?>`,
-    `<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd">\n`
+    `<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd">`,
+    createXMLString(changeSets),
+    `</databaseChangeLog>`
   );
-
-  createChangeSet({
-    dialect: 'postgresql',
-    tableState,
-    relationshipState,
-    stringBuffer,
-    author,
-  });
-  createChangeSet({
-    dialect: 'oracle',
-    tableState,
-    relationshipState,
-    stringBuffer,
-    author,
-  });
-  createChangeSet({
-    dialect: 'mssql',
-    tableState,
-    relationshipState,
-    stringBuffer,
-    author,
-  });
-
-  stringBuffer.push(`</databaseChangeLog>`);
 
   return stringBuffer.join('\n');
 };
@@ -85,98 +81,111 @@ export const createChangeSet = ({
   dialect,
   tableState,
   relationshipState,
-  stringBuffer,
   author,
-}: FormatChangeSet) => {
+}: FormatChangeSet): XMLNode => {
+  var changeSet: XMLNode = { name: 'changeSet', attributes: [], children: [] };
+
   const tables = orderByNameASC(tableState.tables);
   const relationships = relationshipState.relationships;
   const indexes = tableState.indexes;
-  const depth: number = 1;
 
-  stringBuffer.push(
-    `${spacing(depth)}<changeSet author="${author.name}" id="${
-      author.id
-    }-${dialect}" dbms="${dialect}">`
+  changeSet.attributes.push(
+    { name: 'author', value: author.name },
+    { name: 'id', value: `${author.id}-${dialect}` },
+    { name: 'dbms', value: dialect }
   );
 
   tables.forEach(table => {
-    createTable({
-      table,
-      buffer: stringBuffer,
-      depth: depth + 1,
-      dialect,
-    });
+    changeSet.children.push(
+      createTable({
+        table,
+        dialect,
+      })
+    );
   });
 
   relationships.forEach(relationship => {
-    formatRelation({
-      tables,
-      relationship,
-      buffer: stringBuffer,
-      depth: depth + 1,
-    });
+    changeSet.children.push(
+      formatRelation({
+        tables,
+        relationship,
+      })
+    );
   });
 
   indexes.forEach(index => {
     const table = getData(tables, index.tableId);
     if (table)
-      formatIndex({
-        table,
-        index,
-        buffer: stringBuffer,
-        depth: depth + 1,
-      });
+      changeSet.children.push(
+        formatIndex({
+          table,
+          index,
+        })
+      );
   });
 
-  stringBuffer.push(`${spacing(depth)}</changeSet>`);
+  return changeSet;
 };
 
-export function createTable({
+export const createTable = ({
   table,
-  buffer,
-  depth,
   dialect,
-}: FormatTableOptions) {
-  let tableDescription = `${spacing(depth)}<createTable tableName="${
-    table.name
-  }"`;
+}: FormatTableOptions): XMLNode => {
+  var createTable: XMLNode = {
+    name: 'createTable',
+    attributes: [],
+    children: [],
+  };
 
-  if (table.comment) tableDescription += ` remarks="${table.comment}"`;
+  createTable.attributes.push({ name: 'tableName', value: table.name });
 
-  tableDescription += '>';
-
-  buffer.push('', tableDescription);
+  if (table.comment)
+    createTable.attributes.push({ name: 'remarks', value: table.comment });
 
   table.columns.forEach((column, i) => {
-    formatColumn({
-      column,
-      buffer,
-      depth: depth + 1,
-      dialect,
-    });
+    createTable.children.push(
+      formatColumn({
+        column,
+        dialect,
+      })
+    );
   });
 
-  buffer.push(`${spacing(depth)}</createTable>`);
-}
+  return createTable;
+};
 
 /**
  * Formatting of one column
  */
-export function formatColumn({
+export const formatColumn = ({
   column,
-  buffer,
-  depth,
   dialect,
-}: FormatColumnOptions) {
-  let col = `${spacing(depth)}<column name="${column.name}"`;
+}: FormatColumnOptions): XMLNode => {
+  var columnXML: XMLNode = { name: 'column', attributes: [], children: [] };
+
+  columnXML.attributes.push({ name: 'name', value: column.name });
+  columnXML.attributes.push({
+    name: 'type',
+    value: translate('postgresql', dialect, column.dataType),
+  });
 
   if (column.dataType)
-    col += ` type="${translate('postgresql', dialect, column.dataType)}"`;
-  if (column.option.autoIncrement)
-    col += ` autoIncrement="${column.option.autoIncrement}"`;
+    columnXML.attributes.push({
+      name: 'type',
+      value: translate('postgresql', dialect, column.dataType),
+    });
 
-  if (column.default) col += ` defaultValue="${column.default}"`;
-  if (column.comment) col += ` remarks="${column.comment}"`;
+  if (column.option.autoIncrement)
+    columnXML.attributes.push({
+      name: 'autoIncrement',
+      value: column.option.autoIncrement.toString(),
+    });
+
+  if (column.default)
+    columnXML.attributes.push({ name: 'defaultValue', value: column.default });
+
+  if (column.comment)
+    columnXML.attributes.push({ name: 'remarks', value: column.comment });
 
   // if constraints
   if (
@@ -184,57 +193,63 @@ export function formatColumn({
     column.option.primaryKey ||
     column.option.unique
   ) {
-    col += '>';
-    buffer.push(col);
-
-    formatConstraints({
-      constraints: {
+    columnXML.children.push(
+      formatConstraints({
         primaryKey: column.option.primaryKey,
         nullable: !column.option.notNull,
         unique: column.option.unique,
-      },
-      buffer,
-      depth: depth + 1,
-    });
-
-    buffer.push(`${spacing(depth)}</column>`);
-  } else {
-    col += '/>';
-    buffer.push(col);
+      })
+    );
   }
-}
+
+  return columnXML;
+};
 
 /**
  * Formatting constraints inside one column
  */
-export function formatConstraints({
-  constraints,
-  buffer,
-  depth,
-}: FormatConstraintsOptions) {
-  let constraintDescription = `${spacing(depth)}<constraints`;
+export const formatConstraints = (constraints: Constraints): XMLNode => {
+  var constraintsXML: XMLNode = {
+    name: 'constraints',
+    attributes: [],
+    children: [],
+  };
 
   if (constraints.primaryKey)
-    constraintDescription += ` primaryKey="${constraints.primaryKey}"`;
+    constraintsXML.attributes.push({
+      name: 'primaryKey',
+      value: constraints.primaryKey.toString(),
+    });
+
   if (constraints.nullable === false)
-    constraintDescription += ` nullable="${constraints.nullable}"`;
+    constraintsXML.attributes.push({
+      name: 'nullable',
+      value: constraints.nullable.toString(),
+    });
+
   if (constraints.unique)
-    constraintDescription += ` unique="${constraints.unique}"`;
+    constraintsXML.attributes.push({
+      name: 'unique',
+      value: constraints.unique.toString(),
+    });
 
-  constraintDescription += '/>';
-  buffer.push(constraintDescription);
-}
+  return constraintsXML;
+};
 
-function formatRelation({
+export const formatRelation = ({
   tables,
   relationship,
-  buffer,
-  depth,
-}: FormatRelationOptions) {
+}: FormatRelationOptions): XMLNode => {
   const startTable = getData(tables, relationship.start.tableId);
   const endTable = getData(tables, relationship.end.tableId);
 
   if (startTable && endTable) {
+    var relationshipXML: XMLNode = {
+      name: 'addForeignKeyConstraint',
+      attributes: [],
+      children: [],
+    };
+
     const columns: KeyColumn = {
       start: [],
       end: [],
@@ -252,34 +267,29 @@ function formatRelation({
       }
     });
 
-    buffer.push(
-      '',
-      `${spacing(depth)}<addForeignKeyConstraint baseColumnNames="${formatNames(
-        columns.end
-      )}"`,
-      `${spacing(depth + 1)}baseTableName="${endTable.name}"`,
-      `${spacing(depth + 1)}constraintName="FK_${endTable.name}_TO_${
-        startTable.name
-      }"`,
-      `${spacing(depth + 1)}deferrable="false"`,
-      `${spacing(depth + 1)}initiallyDeferred="false"`,
-      `${spacing(depth + 1)}referencedColumnNames="${formatNames(
-        columns.start
-      )}"`,
-      `${spacing(depth + 1)}referencedTableName="${startTable.name}"/>`
+    relationshipXML.attributes.push(
+      { name: 'baseColumnNames', value: formatNames(columns.end) },
+      { name: 'baseTableName', value: endTable.name },
+      {
+        name: 'constraintName',
+        value: `FK_${endTable.name}_TO_${startTable.name}`,
+      },
+      { name: 'deferrable', value: 'false' },
+      { name: 'initiallyDeferred', value: 'false' },
+      { name: 'referencedColumnNames', value: formatNames(columns.start) },
+      { name: 'referencedTableName', value: startTable.name }
     );
+
+    return relationshipXML;
   }
-}
+
+  return { name: '', attributes: [], children: [] };
+};
 
 /**
  * Creating index
  */
-export function formatIndex({
-  table,
-  index,
-  buffer,
-  depth,
-}: FormatIndexOptions) {
+export const formatIndex = ({ table, index }: FormatIndexOptions): XMLNode => {
   // gets real columns, using id
   const colsWithIndex = index.columns
     .map(indexColumn => {
@@ -298,26 +308,46 @@ export function formatIndex({
   }[];
 
   if (colsWithIndex.length !== 0) {
+    var indexXML: XMLNode = {
+      name: 'createIndex',
+      attributes: [],
+      children: [],
+    };
+
     let indexName = index.name;
     if (index.name.trim() === '') {
       indexName = `${table.name}`;
     }
 
-    buffer.push(
-      '',
-      `${spacing(depth)}<createIndex indexName="${indexName}" tableName="${
-        table.name
-      }">`
+    indexXML.attributes.push(
+      { name: 'indexName', value: indexName },
+      { name: 'tableName', value: table.name }
     );
 
+    if (index.unique)
+      indexXML.attributes.push({
+        name: 'unique',
+        value: index.unique.toString(),
+      });
+
     colsWithIndex.forEach(column => {
-      buffer.push(
-        `${spacing(depth + 1)}<column name="${column.name}"${
-          column.descending ? ` descending="${column.descending}"` : ''
-        }/>`
-      );
+      var columnXML = {
+        name: 'column',
+        attributes: [{ name: 'name', value: column.name }],
+        children: [],
+      };
+
+      if (column.descending)
+        columnXML.attributes.push({
+          name: 'descending',
+          value: column.descending.toString(),
+        });
+
+      indexXML.children.push(columnXML);
     });
 
-    buffer.push(`${spacing(depth)}</createIndex>`);
+    return indexXML;
   }
-}
+
+  return { name: '', attributes: [], children: [] };
+};
