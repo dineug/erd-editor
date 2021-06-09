@@ -8,7 +8,10 @@ import {
   exportXML,
 } from '@/core/file';
 import { createDDL } from '@/core/sql/ddl';
-import { createXMLPostgreOracleMSS } from '@/core/parser/JSONToXML';
+import {
+  createLiquibase,
+  createXMLPostgreOracleMSS,
+} from '@/core/parser/JSONToLiquibase';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 60,
@@ -57,11 +60,8 @@ export const createExportMenus = (
         name: 'xml',
         size: 18,
       },
-      name: 'Liquibase (WIP)',
+      name: 'Liquibase',
       execute: () =>
-        exportXML(
-          createXMLPostgreOracleMSS(store),
-          store.canvasState.databaseName
-        ),
+        exportXML(createLiquibase(store), store.canvasState.databaseName),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

@@ -6,15 +6,9 @@ import { DDLParser } from '@vuerd/sql-ddl-parser';
 import { createJson } from '@/core/parser/SQLParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
-import { XMLParser } from '@/core/parser/XMLParser';
-import { addColumn$ } from '@/engine/command/column.cmd.helper.gen';
-import { getData } from '@/core/helper';
-import {
-  changeColumnName,
-  addColumn,
-  addCustomColumn,
-} from '@/engine/command/column.cmd.helper';
-import { Statement } from './parser';
+import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
+import { Statement } from '@/core/parser';
+import { Dialect } from '@/core/parser/helper';
 
 let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
   null;
@@ -122,18 +116,19 @@ export function importSQLDDL(context: ERDEditorContext) {
   importWrapper(context, 'sql', DDLParser);
 }
 
-export function importXML(context: ERDEditorContext) {
-  importWrapper(context, 'xml', XMLParser);
+export function importLiquibase(context: ERDEditorContext, dialect: Dialect) {
+  importWrapper(context, 'xml', LiquibaseParser, dialect);
 }
 
 export interface ParserCallback {
-  (input: string): Statement[];
+  (input: string, dialect?: Dialect): Statement[];
 }
 
 export function importWrapper(
   context: ERDEditorContext,
   type: string,
-  parser: ParserCallback
+  parser: ParserCallback,
+  dialect?: Dialect
 ) {
   const { store, helper } = context;
   const importHelper = document.createElement('input');
@@ -150,9 +145,7 @@ export function importWrapper(
         reader.onload = () => {
           const value = reader.result;
           if (typeof value === 'string') {
-            const statements = parser(value);
-            // todo delete
-            console.log(statements);
+            const statements = parser(value, dialect);
 
             const json = createJson(
               statements,
@@ -160,40 +153,6 @@ export function importWrapper(
               store.canvasState.database
             );
             store.dispatch(loadJson$(json), sortTable());
-
-            // todo delete -------
-            let tmp = JSON.parse(json);
-            // console.log(tmp.table.tables[0].id);
-            const tableId = tmp.table.tables[0].id;
-
-            store.dispatch(
-              addCustomColumn(
-                {
-                  autoIncrement: false,
-                  primaryKey: false,
-                  unique: false,
-                  notNull: true,
-                },
-                {
-                  active: true,
-                  fk: false,
-                  pk: false,
-                  pfk: false,
-                },
-                {
-                  comment: '',
-                  dataType: '',
-                  name: 'super stlpec',
-                  default: '',
-                  widthComment: helper.getTextWidth(''),
-                  widthDataType: helper.getTextWidth(''),
-                  widthDefault: helper.getTextWidth(''),
-                  widthName: helper.getTextWidth('super stlpec'),
-                },
-                [tableId]
-              )
-            );
-            // up until here delete -------
           }
         };
       } else {

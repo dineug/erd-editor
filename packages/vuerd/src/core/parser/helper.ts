@@ -3,10 +3,15 @@ import { Relationship } from '@@types/engine/store/relationship.state';
 import { RelationshipState } from '@@types/engine/store/relationship.state';
 import { TableState } from '@@types/engine/store/table.state';
 import { Statement } from '@/core/parser/index';
-import { translations } from './translations';
+import { translations, Translation } from '@/core/parser/translations';
+import { Logger } from '@/core/logger';
 
 export type Dialect = 'postgresql' | 'oracle' | 'mssql';
-export type DialectFrom = 'postgresql';
+export type Operation =
+  | 'createTable'
+  | 'createIndex'
+  | 'addForeignKeyConstraint'
+  | 'addPrimaryKey';
 
 export interface FormatTableOptions {
   table: Table;
@@ -57,7 +62,7 @@ export interface KeyColumn {
 }
 
 export interface ParserCallback {
-  (element: Element, statements: Statement[]): void;
+  (element: Element, statements: Statement[], dialect?: Dialect): void;
 }
 
 export function formatNames<T extends { name: string }>(list: T[]): string {
@@ -79,41 +84,66 @@ export function formatNames<T extends { name: string }>(list: T[]): string {
  * @returns Translated string
  */
 export const translate = (
-  dialectFrom: DialectFrom,
+  dialectFrom: Dialect,
   dialectTo: Dialect,
   value: string
 ): string => {
+  var translation: Translation | undefined;
   switch (dialectFrom) {
     case 'postgresql':
-      const retVal = translateFromPostgreSQL(dialectTo, value);
-      if (!retVal)
-        alert(
-          `Error translating "${value}" from ${dialectFrom} to ${dialectTo}`
-        );
-      return retVal;
+      translation = findTranslationPostgreSQL(value);
+      break;
+    case 'oracle':
+      translation = findTranslationOracle(value);
+      break;
+    case 'mssql':
+      translation = findTranslationMSSQL(value);
+      break;
+    default:
+      return value;
+  }
+
+  if (!translation) {
+    Logger.log(
+      `Error translating "${value}" from ${dialectFrom} to ${dialectTo}`
+    );
+    return value;
+  }
+
+  switch (dialectTo) {
+    case 'postgresql':
+      return translation?.PostgresDatabase || '';
+    case 'mssql':
+      return translation?.MSSQLDatabase || '';
+    case 'oracle':
+      return translation?.OracleDatabase || '';
     default:
       return '';
   }
 };
 
-export const translateFromPostgreSQL = (
-  dialectTo: Dialect,
+export const findTranslationPostgreSQL = (
   value: string
-): string => {
-  const searchValue = translations.find(
+): Translation | undefined => {
+  return translations.find(
     trans => trans.PostgresDatabase.toLowerCase() === value.toLowerCase()
   );
+};
 
-  switch (dialectTo) {
-    case 'postgresql':
-      return searchValue?.PostgresDatabase || '';
-    case 'mssql':
-      return searchValue?.MSSQLDatabase || '';
-    case 'oracle':
-      return searchValue?.OracleDatabase || '';
-    default:
-      return '';
-  }
+export const findTranslationOracle = (
+  value: string
+): Translation | undefined => {
+  return translations.find(
+    trans => trans.OracleDatabase.toLowerCase() === value.toLowerCase()
+  );
+};
+
+export const findTranslationMSSQL = (
+  value: string
+): Translation | undefined => {
+  return translations.find(
+    trans => trans.MSSQLDatabase.toLowerCase() === value.toLowerCase()
+  );
 };
 
 export interface Attribute {

@@ -1,4 +1,4 @@
-export interface Traslation {
+export interface Translation {
   Liquibase: string;
   MySQLDatabase: string;
   SQLiteDatabase: string;
@@ -16,7 +16,7 @@ export interface Traslation {
   SybaseASADatabase: string;
 }
 
-export const translations: Traslation[] = [
+export const translations: Translation[] = [
   {
     Liquibase: 'boolean',
     MySQLDatabase: 'BIT(1)',
@@ -226,7 +226,7 @@ export const translations: Traslation[] = [
     MySQLDatabase: 'datetime',
     SQLiteDatabase: 'TEXT',
     H2Database: 'TIMESTAMP',
-    PostgresDatabase: 'TIMESTAMP WITHOUT TIME ZONE',
+    PostgresDatabase: 'TIMESTAMP',
     UnsupportedDatabase: 'datetime',
     DB2Database: 'TIMESTAMP',
     MSSQLDatabase: 'datetime',
@@ -243,7 +243,7 @@ export const translations: Traslation[] = [
     MySQLDatabase: 'time',
     SQLiteDatabase: 'time',
     H2Database: 'time',
-    PostgresDatabase: 'TIME WITHOUT TIME ZONE',
+    PostgresDatabase: 'TIME',
     UnsupportedDatabase: 'time',
     DB2Database: 'time',
     MSSQLDatabase: 'time(7)',
@@ -260,7 +260,7 @@ export const translations: Traslation[] = [
     MySQLDatabase: 'timestamp',
     SQLiteDatabase: 'TEXT',
     H2Database: 'TIMESTAMP',
-    PostgresDatabase: 'TIMESTAMP WITHOUT TIME ZONE',
+    PostgresDatabase: 'TIMESTAMP',
     UnsupportedDatabase: 'timestamp',
     DB2Database: 'timestamp',
     MSSQLDatabase: 'datetime',

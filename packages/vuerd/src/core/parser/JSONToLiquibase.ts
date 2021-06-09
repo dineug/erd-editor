@@ -19,9 +19,9 @@ import {
 } from '@/core/parser/helper';
 
 /**
- * Creates XML file with export (*only supports source dialect 'PostgreSQL' and creates changeSet in 'oracle', 'mssql' and 'postgresql')
+ * Creates Liquibase XML file with export (*only supports source dialect 'PostgreSQL' and creates changeSet in 'oracle', 'mssql' and 'postgresql')
  */
-export function createXML(store: Store, database?: Database): string {
+export function createLiquibase(store: Store, database?: Database): string {
   const currentDatabase = database ? database : store.canvasState.database;
   switch (currentDatabase) {
     case 'PostgreSQL':

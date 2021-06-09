@@ -1,10 +1,24 @@
 import { Statement, Column, IndexColumn } from '@/core/parser/index';
-import { Constraints, ParserCallback } from '@/core/parser/helper';
+import {
+  Constraints,
+  Dialect,
+  Operation,
+  ParserCallback,
+  translate,
+} from '@/core/parser/helper';
 
-export const XMLParser = (input: string): Statement[] => {
-  // todo delete
-  console.log(input);
+const dialectTo: Dialect = 'postgresql';
 
+/**
+ * Parser for Liquibase XML file
+ * @param input Entire XML file
+ * @param dialect Dialect that the result will have datataypes in
+ * @returns List of Statements to execute
+ */
+export const LiquibaseParser = (
+  input: string,
+  dialect: Dialect = 'postgresql'
+): Statement[] => {
   var statements: Statement[] = [];
 
   var parser = new DOMParser();
@@ -13,14 +27,20 @@ export const XMLParser = (input: string): Statement[] => {
 
   // parse all changesets
   for (let i = 0; i < changeSets.length; i++) {
-    parseChangeSet(changeSets[i], statements);
+    const dbms: string = changeSets[i].getAttribute('dbms') || '';
+    if (dbms === '' || dbms == dialect)
+      parseChangeSet(changeSets[i], statements, dialect);
   }
 
   return statements;
 };
 
-export const parseChangeSet = (changeSet: Element, statements: Statement[]) => {
-  parseElement('createTable', changeSet, statements, parseCreateTable);
+export const parseChangeSet = (
+  changeSet: Element,
+  statements: Statement[],
+  dialect: Dialect
+) => {
+  parseElement('createTable', changeSet, statements, parseCreateTable, dialect);
   parseElement('createIndex', changeSet, statements, parseCreateIndex);
   parseElement(
     'addForeignKeyConstraint',
@@ -32,22 +52,24 @@ export const parseChangeSet = (changeSet: Element, statements: Statement[]) => {
 };
 
 export const parseElement = (
-  type: string,
+  type: Operation,
   element: Element,
   statements: Statement[],
-  parser: ParserCallback
+  parser: ParserCallback,
+  dialect?: Dialect
 ) => {
   const elements = element.getElementsByTagName(type);
   for (let i = 0; i < elements.length; i++) {
-    parser(elements[i], statements);
+    parser(elements[i], statements, dialect);
   }
 };
 
 export const parseCreateTable = (
   createTable: Element,
-  statements: Statement[]
+  statements: Statement[],
+  dialect: Dialect = 'postgresql'
 ) => {
-  var columns: Column[] = parseColumns(createTable);
+  var columns: Column[] = parseColumns(createTable, dialect);
 
   statements.push({
     type: 'create.table',
@@ -59,17 +81,20 @@ export const parseCreateTable = (
   });
 };
 
-const parseColumns = (element: Element): Column[] => {
+const parseColumns = (element: Element, dialect: Dialect): Column[] => {
   var columns: Column[] = [];
 
   const cols = element.getElementsByTagName('column');
   for (let i = 0; i < cols.length; i++) {
-    columns.push(parseSingleColumn(cols[i]));
+    columns.push(parseSingleColumn(cols[i], dialect));
   }
   return columns;
 };
 
-export const parseSingleColumn = (column: Element): Column => {
+export const parseSingleColumn = (
+  column: Element,
+  dialect: Dialect
+): Column => {
   const constr = column.getElementsByTagName('constraints');
 
   var constraints: Constraints;
@@ -88,9 +113,15 @@ export const parseSingleColumn = (column: Element): Column => {
     };
   }
 
+  var dataType = translate(
+    dialect,
+    dialectTo,
+    column.getAttribute('type') || ''
+  );
+
   return {
     name: column.getAttribute('name') || '',
-    dataType: column.getAttribute('type') || '',
+    dataType: dataType,
     default: column.getAttribute('defaultValue') || '',
     comment: column.getAttribute('remarks') || '',
     primaryKey: constraints.primaryKey,

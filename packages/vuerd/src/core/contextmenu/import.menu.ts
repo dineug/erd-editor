@@ -1,6 +1,6 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { importJSON, importSQLDDL, importXML } from '@/core/file';
+import { importJSON, importSQLDDL, importLiquibase } from '@/core/file';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 60,
@@ -34,6 +34,34 @@ export const createImportMenus = (context: ERDEditorContext): Menu[] =>
         size: 18,
       },
       name: 'Liquibase (WIP)',
-      execute: () => importXML(context),
+      children: [
+        {
+          icon: {
+            prefix: 'mdi',
+            name: 'xml',
+            size: 18,
+          },
+          name: 'PostgreSQL',
+          execute: () => importLiquibase(context, 'postgresql'),
+        },
+        {
+          icon: {
+            prefix: 'mdi',
+            name: 'xml',
+            size: 18,
+          },
+          name: 'Oracle',
+          execute: () => importLiquibase(context, 'oracle'),
+        },
+        {
+          icon: {
+            prefix: 'mdi',
+            name: 'xml',
+            size: 18,
+          },
+          name: 'MSSQL',
+          execute: () => importLiquibase(context, 'mssql'),
+        },
+      ],
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));
