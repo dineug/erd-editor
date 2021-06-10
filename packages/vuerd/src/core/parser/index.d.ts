@@ -24,7 +24,8 @@ export type Statement =
   | CreateIndex
   | AlterTableAddPrimaryKey
   | AlterTableAddForeignKey
-  | AlterTableAddUnique;
+  | AlterTableAddUnique
+  | AlterTableAddColumn;
 
 export interface CreateTable {
   type: 'create.table';
@@ -94,4 +95,10 @@ export interface AlterTableAddForeignKey {
   columnNames: string[];
   refTableName: string;
   refColumnNames: string[];
+}
+
+export interface AlterTableAddColumn {
+  type: 'alter.table.add.column';
+  name: string;
+  columns: Column[];
 }

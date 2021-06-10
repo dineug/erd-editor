@@ -8,6 +8,7 @@ import {
 } from '@/core/parser/helper';
 
 const dialectTo: Dialect = 'postgresql';
+const defaultDialect: Dialect = 'postgresql';
 
 /**
  * Parser for Liquibase XML file
@@ -17,7 +18,7 @@ const dialectTo: Dialect = 'postgresql';
  */
 export const LiquibaseParser = (
   input: string,
-  dialect: Dialect = 'postgresql'
+  dialect: Dialect = defaultDialect
 ): Statement[] => {
   var statements: Statement[] = [];
 
@@ -49,6 +50,7 @@ export const parseChangeSet = (
     parseAddForeignKeyConstraint
   );
   parseElement('addPrimaryKey', changeSet, statements, parseAddPrimaryKey);
+  parseElement('addColumn', changeSet, statements, parseAddColumn);
 };
 
 export const parseElement = (
@@ -67,13 +69,13 @@ export const parseElement = (
 export const parseCreateTable = (
   createTable: Element,
   statements: Statement[],
-  dialect: Dialect = 'postgresql'
+  dialect: Dialect = defaultDialect
 ) => {
   var columns: Column[] = parseColumns(createTable, dialect);
 
   statements.push({
     type: 'create.table',
-    name: createTable.getAttribute('tableName') || 'unknown',
+    name: createTable.getAttribute('tableName') || '',
     comment: createTable.getAttribute('remarks') || '',
     columns: columns,
     indexes: [],
@@ -199,5 +201,19 @@ export const parseAddPrimaryKey = (
     type: 'alter.table.add.primaryKey',
     name: addPrimaryKey.getAttribute('tableName') || '',
     columnNames: columnNames,
+  });
+};
+
+export const parseAddColumn = (
+  addColumn: Element,
+  statements: Statement[],
+  dialect: Dialect = defaultDialect
+) => {
+  const tableName: string = addColumn.getAttribute('tableName') || '';
+
+  statements.push({
+    type: 'alter.table.add.column',
+    name: tableName,
+    columns: parseColumns(addColumn, dialect),
   });
 };

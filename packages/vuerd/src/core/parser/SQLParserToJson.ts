@@ -12,7 +12,6 @@ import { createTableState } from '@/engine/store/table.state';
 import { createMemoState } from '@/engine/store/memo.state';
 import { createRelationshipState } from '@/engine/store/relationship.state';
 import {
-  Statement,
   CreateTable,
   Column,
   CreateIndex,
@@ -21,12 +20,15 @@ import {
   AlterTableAddUnique,
 } from '@vuerd/sql-ddl-parser';
 
+import { AlterTableAddColumn, Statement } from '@/core/parser';
+
 interface Shape {
   tables: CreateTable[];
   indexes: CreateIndex[];
   primaryKeys: AlterTableAddPrimaryKey[];
   foreignKeys: AlterTableAddForeignKey[];
   uniques: AlterTableAddUnique[];
+  addColumns: AlterTableAddColumn[];
 }
 
 function reshape(statements: Statement[]): Shape {
@@ -36,6 +38,7 @@ function reshape(statements: Statement[]): Shape {
     primaryKeys: [],
     foreignKeys: [],
     uniques: [],
+    addColumns: [],
   };
 
   statements.forEach(statement => {
@@ -76,6 +79,12 @@ function reshape(statements: Statement[]): Shape {
           shape.uniques.push(unique);
         }
         break;
+      case 'alter.table.add.column':
+        const addColumns = statement;
+        if (addColumns.name && addColumns.columns.length) {
+          shape.addColumns.push(addColumns);
+        }
+        break;
     }
   });
 
@@ -95,7 +104,8 @@ function findByName<T extends { name: string }>(
 }
 
 function mergeTable(shape: Shape): CreateTable[] {
-  const { tables, indexes, primaryKeys, foreignKeys, uniques } = shape;
+  const { tables, indexes, primaryKeys, foreignKeys, uniques, addColumns } =
+    shape;
   indexes.forEach(index => {
     const table = findByName(tables, index.tableName);
     if (table) {
@@ -135,6 +145,15 @@ function mergeTable(shape: Shape): CreateTable[] {
         columnNames: foreignKey.columnNames,
         refTableName: foreignKey.refTableName,
         refColumnNames: foreignKey.refColumnNames,
+      });
+    }
+  });
+
+  addColumns.forEach(addColumn => {
+    const table = findByName(tables, addColumn.name);
+    if (table) {
+      addColumn.columns.forEach(column => {
+        table.columns.push(column);
       });
     }
   });

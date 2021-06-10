@@ -11,7 +11,8 @@ export type Operation =
   | 'createTable'
   | 'createIndex'
   | 'addForeignKeyConstraint'
-  | 'addPrimaryKey';
+  | 'addPrimaryKey'
+  | 'addColumn';
 
 export interface FormatTableOptions {
   table: Table;
