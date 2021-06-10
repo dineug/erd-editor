@@ -1,10 +1,11 @@
+import { getIndex } from '@/core/helper';
+import { focusFilterTypes } from '@/engine/store/editor/filter.state';
+import { FocusMove } from '@@types/engine/command/editor/filter.cmd';
 import {
   FilterState,
   FocusType,
 } from '@@types/engine/store/editor/filter.state';
-import { FocusMove } from '@@types/engine/command/editor/filter.cmd';
-import { focusFilterTypes } from '@/engine/store/editor/filter.state';
-import { getIndex } from '@/core/helper';
+
 import { appendSelectFilters } from './filter.helper';
 
 export const isFilterFocusType = (focusType: FocusType) =>

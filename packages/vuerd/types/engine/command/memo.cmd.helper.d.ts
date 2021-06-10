@@ -1,7 +1,7 @@
 import { Store } from '../store';
-import { CommandType } from './index';
 import { Memo } from '../store/memo.state';
 import { Point } from '../store/relationship.state';
+import { CommandType } from './index';
 
 export * from './memo.cmd.helper.gen';
 

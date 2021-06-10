@@ -1,5 +1,5 @@
+import { SIZE_FONT, SIZE_MEMO_PADDING } from '@/core/layout';
 import { css } from '@/core/tagged';
-import { SIZE_MEMO_PADDING, SIZE_FONT } from '@/core/layout';
 
 export const MemoStyle = css`
   .vuerd-memo {

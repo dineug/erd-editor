@@ -1,6 +1,6 @@
 import './GridEditor';
 
-import { Panel, PanelProps, ERDEditorContext } from '@@types/index';
+import { ERDEditorContext, Panel, PanelProps } from '@@types/index';
 
 export class GridPanel implements Panel {
   el = document.createElement('vuerd-grid-editor');
@@ -9,16 +9,23 @@ export class GridPanel implements Panel {
   constructor(props: PanelProps, api: ERDEditorContext) {
     this.props = props;
     this.el.api = api;
-    this.updated();
+    this.setViewport();
   }
 
-  updated() {
+  setViewport() {
     this.el.width = this.props.width;
     this.el.height = this.props.height;
   }
 
+  beforeFirstUpdate() {
+    this.setViewport();
+  }
+
+  beforeUpdate() {
+    this.setViewport();
+  }
+
   render() {
-    this.updated();
     return this.el;
   }
 }

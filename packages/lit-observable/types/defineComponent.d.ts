@@ -1,4 +1,4 @@
-import { TemplateResult, SVGTemplateResult } from 'lit-html';
+import { SVGTemplateResult, TemplateResult } from 'lit-html';
 
 export type Callback = () => void;
 export type Template = () =>

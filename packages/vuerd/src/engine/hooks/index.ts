@@ -1,10 +1,12 @@
+import { Observable, Subscription } from 'rxjs';
+
 import { Helper } from '@@types/core/helper';
 import { CommandTypeAll } from '@@types/engine/command';
 import { State } from '@@types/engine/store';
-import { Observable, Subscription } from 'rxjs';
+
+import { useRecalculatingTableWidth } from './recalculatingTableWidth.hook';
 import { useRelationshipSort } from './relationshipSort.hook';
 import { useResetZIndex } from './resetZIndex.hook';
-import { useRecalculatingTableWidth } from './recalculatingTableWidth.hook';
 
 export const useHooks = (
   hook$: Observable<Array<CommandTypeAll>>,

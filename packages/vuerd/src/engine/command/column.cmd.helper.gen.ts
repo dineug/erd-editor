@@ -1,17 +1,18 @@
+import { createCommand } from '@/engine/command/helper';
+import { getRemoveFirstColumnId } from '@/engine/command/helper/editor.focus.helper';
+import { getColumn } from '@/engine/store/helper/column.helper';
 import { Store } from '@@types/engine/store';
 import { ColumnType } from '@@types/engine/store/canvas.state';
+
 import {
   addColumn,
-  removeColumn,
-  changeColumnPrimaryKey,
   changeColumnNotNull,
+  changeColumnPrimaryKey,
   moveColumn,
+  removeColumn,
 } from './column.cmd.helper';
 import { focusColumn, focusTable } from './editor.cmd.helper';
 import { selectTable } from './table.cmd.helper';
-import { getRemoveFirstColumnId } from '@/engine/command/helper/editor.focus.helper';
-import { getColumn } from '@/engine/store/helper/column.helper';
-import { createCommand } from '@/engine/command/helper';
 
 export function* addColumn$(store: Store, tableId?: string) {
   const addColumnCmd = addColumn(store, tableId);

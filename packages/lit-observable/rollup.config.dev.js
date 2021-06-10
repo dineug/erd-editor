@@ -1,14 +1,15 @@
+import browsersync from 'rollup-plugin-browsersync';
+import html from 'rollup-plugin-generate-html-template';
+
 import pkg from './package.json';
 import config from './rollup.config.common';
-import html from 'rollup-plugin-generate-html-template';
-import browsersync from 'rollup-plugin-browsersync';
 
 const { plugins, banner } = config();
 
 export default {
   input: 'src/index.dev.ts',
   output: {
-    name: 'lito',
+    name: pkg.name,
     file: pkg.main,
     format: 'umd',
     banner,

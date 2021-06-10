@@ -1,20 +1,21 @@
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
-  query,
-  mounted,
   beforeMount,
   closestElement,
+  defineComponent,
+  FunctionalComponent,
+  html,
+  mounted,
+  query,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
-import { unsafeHTML } from 'lit-html/directives/unsafe-html';
 import { repeat } from 'lit-html/directives/repeat';
+import { unsafeHTML } from 'lit-html/directives/unsafe-html';
 import { fromEvent } from 'rxjs';
-import { useDataTypeHint } from '@/extensions/panels/grid/hooks/dataTypeHint.hook';
+
+import { lastCursorFocus } from '@/core/helper/dom.helper';
 import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { lastCursorFocus } from '@/core/helper/dom.helper';
+import { useDataTypeHint } from '@/extensions/panels/grid/hooks/dataTypeHint.hook';
 
 declare global {
   interface HTMLElementTagNameMap {

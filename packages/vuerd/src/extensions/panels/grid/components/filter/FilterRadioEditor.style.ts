@@ -1,9 +1,9 @@
-import { css } from '@/core/tagged';
 import {
-  SIZE_FONT,
   SIZE_COLUMN_MARGIN_RIGHT,
+  SIZE_FONT,
   SIZE_INPUT_EDIT_HEIGHT,
 } from '@/core/layout';
+import { css } from '@/core/tagged';
 
 export const FilterRadioEditorStyle = css`
   .vuerd-filter-radio-editor {

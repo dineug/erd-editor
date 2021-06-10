@@ -1,23 +1,23 @@
-export { observable, observer, createSubject, watch } from './observable';
+export { getContext, ProviderElement } from './context';
 export {
-  FunctionalComponent,
-  beforeMount,
-  mounted,
-  unmounted,
   beforeFirstUpdate,
-  firstUpdated,
+  beforeMount,
   beforeUpdate,
-  updated,
+  defineComponent,
+  firstUpdated,
+  FunctionalComponent,
+  mounted,
   query,
   queryAll,
   queryShadow,
   queryShadowAll,
-  defineComponent,
+  unmounted,
+  updated,
 } from './defineComponent';
-export { ProviderElement, getContext } from './context';
 export {
   closestElement,
   queryShadowSelector,
   queryShadowSelectorAll,
 } from './helper';
-export { html, svg, TemplateResult, SVGTemplateResult } from 'lit-html';
+export { createSubject, observable, observer, watch } from './observable';
+export { html, svg, SVGTemplateResult, TemplateResult } from 'lit-html';

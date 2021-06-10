@@ -1,5 +1,6 @@
+import { beforeMount, defineComponent, getContext, html } from '@/core';
 import { ProviderElement } from '@@types/context';
-import { html, defineComponent, getContext, beforeMount } from '@/core';
+
 import { Store } from './Store';
 
 declare global {

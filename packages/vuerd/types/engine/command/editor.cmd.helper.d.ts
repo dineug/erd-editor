@@ -1,11 +1,11 @@
-import { CommandType } from './index';
 import { Store } from '../store';
 import { ColumnType } from '../store/canvas.state';
-import { TableType, MoveKey } from '../store/editor.state';
+import { MoveKey, TableType } from '../store/editor.state';
 import { RelationshipType } from '../store/relationship.state';
+import { CommandType } from './index';
 
-export * from './editor/filter.cmd.helper';
 export * from './editor.cmd.helper.gen';
+export * from './editor/filter.cmd.helper';
 
 export declare function hasUndoRedo(
   hasUndo: boolean,

@@ -1,5 +1,5 @@
-import { css } from '@/core/tagged';
 import { SIZE_FONT } from '@/core/layout';
+import { css } from '@/core/tagged';
 
 export const ERDEditorStyle = css`
   .vuerd-editor {

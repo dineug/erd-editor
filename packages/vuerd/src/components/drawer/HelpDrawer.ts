@@ -1,8 +1,9 @@
 import {
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
 } from '@vuerd/lit-observable';
+
 import { useContext } from '@/core/hooks/context.hook';
 import { keymapOptionsToString } from '@/core/keymap';
 

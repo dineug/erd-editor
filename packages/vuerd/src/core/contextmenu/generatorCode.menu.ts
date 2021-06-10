@@ -1,9 +1,10 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { createLanguageMenus } from './language.menu';
-import { createHighlightThemeMenus } from './highlightTheme.menu';
-import { createTableNameCaseMenus } from './tableNameCase.menu';
+
 import { createColumnNameCaseMenus } from './columnNameCase.menu';
+import { createHighlightThemeMenus } from './highlightTheme.menu';
+import { createLanguageMenus } from './language.menu';
+import { createTableNameCaseMenus } from './tableNameCase.menu';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 120,

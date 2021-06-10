@@ -1,8 +1,8 @@
+import { Helper } from '../../core/helper';
 import { Store } from '../store';
-import { CommandType } from './index';
 import { Point } from '../store/relationship.state';
 import { PureTable } from '../store/table.state';
-import { Helper } from '../../core/helper';
+import { CommandType } from './index';
 
 export * from './table.cmd.helper.gen';
 

@@ -1,6 +1,7 @@
-import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { beforeMount, closestElement } from '@vuerd/lit-observable';
+
 import { VisualizationElement } from '@/extensions/panels/visualization/components/Visualization';
+import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 
 export function useAPI(ctx: HTMLElement) {
   const ref: { value: ERDEditorContext | null } = { value: null };

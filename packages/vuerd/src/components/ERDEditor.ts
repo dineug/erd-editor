@@ -11,42 +11,44 @@ import './drawer/SettingDrawer';
 import './drawer/tablePropertiesDrawer/TablePropertiesDrawer';
 
 import {
-  ERDEditorProps,
-  ERDEditorElement,
-} from '@@types/components/ERDEditorElement';
-import {
   defineComponent,
-  html,
   FunctionalComponent,
-  query,
+  html,
   mounted,
+  query,
   unmounted,
   watch,
 } from '@vuerd/lit-observable';
-import { styleMap } from 'lit-html/directives/style-map';
 import { cache } from 'lit-html/directives/cache';
+import { styleMap } from 'lit-html/directives/style-map';
 import { fromEvent } from 'rxjs';
+
 import { createdERDEditorContext } from '@/core/ERDEditorContext';
-import { keymapMatchAndStop } from '@/core/keymap';
-import {
-  DEFAULT_WIDTH,
-  DEFAULT_HEIGHT,
-  SIZE_MENUBAR_HEIGHT,
-} from '@/core/layout';
-import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { useERDEditorGhost } from '@/core/hooks/ERDEditorGhost.hook';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { useERDEditorDrawer } from '@/core/hooks/ERDEditorDrawer.hook';
 import { useERDEditorElement } from '@/core/hooks/ERDEditorElement.hook';
+import { useERDEditorGhost } from '@/core/hooks/ERDEditorGhost.hook';
 import { usePanelView } from '@/core/hooks/panelView.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { keymapMatchAndStop } from '@/core/keymap';
 import {
-  editTableEnd,
-  editFilterEnd,
+  DEFAULT_HEIGHT,
+  DEFAULT_WIDTH,
+  SIZE_MENUBAR_HEIGHT,
+} from '@/core/layout';
+import { Logger } from '@/core/logger';
+import { ignoreEnterProcess } from '@/core/operators/ignoreEnterProcess';
+import {
   changeViewport,
+  editFilterEnd,
+  editTableEnd,
   readonlyEditor$,
 } from '@/engine/command/editor.cmd.helper';
-import { ignoreEnterProcess } from '@/core/operators/ignoreEnterProcess';
-import { Bus } from '@/core/helper/eventBus.helper';
-import { Logger } from '@/core/logger';
+import {
+  ERDEditorElement,
+  ERDEditorProps,
+} from '@@types/components/ERDEditorElement';
+
 import { IndexStyle } from './index.style';
 
 const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (

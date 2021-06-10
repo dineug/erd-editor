@@ -1,11 +1,11 @@
+import { MoveKey } from '../../store/editor.state';
 import {
   ColumnType,
-  TextFilterCode,
-  OperatorType,
   Draggable,
   FocusFilterType,
+  OperatorType,
+  TextFilterCode,
 } from '../../store/editor/filter.state';
-import { MoveKey } from '../../store/editor.state';
 
 export interface AddFilter {
   id: string;

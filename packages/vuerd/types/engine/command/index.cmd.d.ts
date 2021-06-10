@@ -1,4 +1,4 @@
-import { OrderType, Index } from '../store/table.state';
+import { Index, OrderType } from '../store/table.state';
 
 export interface AddIndex {
   id: string;

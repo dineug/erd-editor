@@ -1,10 +1,10 @@
-import { css } from '@/core/tagged';
 import {
   SIZE_FONT,
-  SIZE_TABLE_PADDING,
   SIZE_TABLE_BORDER,
   SIZE_TABLE_HEADER_BODY_HEIGHT,
+  SIZE_TABLE_PADDING,
 } from '@/core/layout';
+import { css } from '@/core/tagged';
 
 export const TableStyle = css`
   .vuerd-table {

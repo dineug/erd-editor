@@ -1,10 +1,10 @@
-import { NameCase, Database } from '@@types/engine/store/canvas.state';
-import {
-  PrimitiveType,
-  DataTypeHint,
-  databaseHints,
-} from '@/core/sql/dataType';
 import { camelCase, pascalCase, snakeCase } from '@/core/helper';
+import {
+  databaseHints,
+  DataTypeHint,
+  PrimitiveType,
+} from '@/core/sql/dataType';
+import { Database, NameCase } from '@@types/engine/store/canvas.state';
 
 export function getPrimitiveType(
   dataType: string,

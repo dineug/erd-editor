@@ -1,15 +1,16 @@
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
 import {
   Disposable,
-  WebviewPanel,
-  Uri,
   ExtensionContext,
-  window,
+  Uri,
   ViewColumn,
+  WebviewPanel,
+  window,
   workspace,
 } from 'vscode';
-import { getHtmlForWebview, getTheme, getKeymap } from './util';
+
+import { getHtmlForWebview, getKeymap, getTheme } from './util';
 import WebviewManager from './WebviewManager';
 
 const viewType = 'vuerd.webview';

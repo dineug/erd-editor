@@ -1,12 +1,12 @@
-import { ColumnWidth, Column } from '@@types/engine/store/table.state';
-import { Show, ShowKey } from '@@types/engine/store/canvas.state';
 import {
-  SIZE_MIN_WIDTH,
-  SIZE_COLUMN_OPTION_NN,
-  SIZE_COLUMN_OPTION_AI,
-  SIZE_COLUMN_OPTION_UQ,
   SIZE_COLUMN_MARGIN_RIGHT,
+  SIZE_COLUMN_OPTION_AI,
+  SIZE_COLUMN_OPTION_NN,
+  SIZE_COLUMN_OPTION_UQ,
+  SIZE_MIN_WIDTH,
 } from '@/core/layout';
+import { Show, ShowKey } from '@@types/engine/store/canvas.state';
+import { Column, ColumnWidth } from '@@types/engine/store/table.state';
 
 type ColumnWidthKey =
   | 'width'

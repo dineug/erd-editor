@@ -1,9 +1,9 @@
+import { AddFilter } from '@@types/engine/command/editor/filter.cmd';
 import {
-  Filter,
   ColumnType,
+  Filter,
   TextFilterCode,
 } from '@@types/engine/store/editor/filter.state';
-import { AddFilter } from '@@types/engine/command/editor/filter.cmd';
 
 interface FilterData {
   addFilter?: AddFilter;

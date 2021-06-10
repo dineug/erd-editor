@@ -1,12 +1,12 @@
 import {
+  BracketType,
   CanvasState,
-  ColumnType,
   CanvasType,
+  ColumnType,
   Database,
+  HighlightTheme,
   Language,
   NameCase,
-  HighlightTheme,
-  BracketType,
 } from '@@types/engine/store/canvas.state';
 
 export const columnTypes: ColumnType[] = [

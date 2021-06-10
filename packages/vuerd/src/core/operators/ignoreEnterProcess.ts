@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs';
-import { groupBy, mergeMap, filter, throttleTime } from 'rxjs/operators';
+import { filter, groupBy, mergeMap, throttleTime } from 'rxjs/operators';
 
 export const ignoreEnterProcess = (source$: Observable<KeyboardEvent>) =>
   new Observable<KeyboardEvent>(subscriber =>

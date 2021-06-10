@@ -1,14 +1,15 @@
-import { Token, AlterTableAddForeignKey } from '@@types/index';
+import { AlterTableAddForeignKey, Token } from '@@types/index';
+
+import { parserForeignKey } from './create.table';
 import {
   Current,
-  isTable,
   isConstraint,
-  isForeign,
-  isString,
-  isPeriod,
   isCurrent,
+  isForeign,
+  isPeriod,
+  isString,
+  isTable,
 } from './SQLParserHelper';
-import { parserForeignKey } from './create.table';
 
 export function alterTableAddForeignKey(
   tokens: Token[]

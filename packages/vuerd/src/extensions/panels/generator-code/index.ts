@@ -1,4 +1,5 @@
 import { PanelConfig } from '@@types/index';
+
 import { GeneratorCodePanel } from './components';
 
 export const generatorCodePanelConfig: PanelConfig = {

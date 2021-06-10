@@ -1,5 +1,7 @@
+import { fromEvent, Subject } from 'rxjs';
+
 import { IHelper } from '@/internal-types/helper';
-import { Subject, fromEvent } from 'rxjs';
+
 import { onInputClear } from './dom.helper';
 import { createSubscriptionHelper } from './index';
 

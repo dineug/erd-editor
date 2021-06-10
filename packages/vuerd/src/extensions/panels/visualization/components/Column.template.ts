@@ -1,7 +1,9 @@
-import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { ColumnType } from '@@types/engine/store/canvas.state';
 import { html, TemplateResult } from '@vuerd/lit-observable';
 import { repeat } from 'lit-html/directives/repeat';
+
+import { ERDEditorContext } from '@@types/core/ERDEditorContext';
+import { ColumnType } from '@@types/engine/store/canvas.state';
+
 import { VisualizationColumnProps } from './Column';
 
 interface ReshapeColumn {

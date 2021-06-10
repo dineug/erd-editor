@@ -1,36 +1,37 @@
 import { Store } from '@@types/engine/store';
-import { Table } from '@@types/engine/store/table.state';
 import { Database } from '@@types/engine/store/canvas.state';
-import { Name, getBracket } from './helper';
+import { Table } from '@@types/engine/store/table.state';
+
+import { getBracket, Name } from './helper';
 import {
   createDDL as createDDLMariaDB,
-  formatTable as formatTableMariaDB,
   formatIndex as formatIndexMariaDB,
+  formatTable as formatTableMariaDB,
 } from './MariaDB';
 import {
   createDDL as createDDLMSSQL,
-  formatTable as formatTableMSSQL,
   formatIndex as formatIndexMSSQL,
+  formatTable as formatTableMSSQL,
 } from './MSSQL';
 import {
   createDDL as createDDLMySQL,
-  formatTable as formatTableMySQL,
   formatIndex as formatIndexMySQL,
+  formatTable as formatTableMySQL,
 } from './MySQL';
 import {
   createDDL as createDDLOracle,
-  formatTable as formatTableOracle,
   formatIndex as formatIndexOracle,
+  formatTable as formatTableOracle,
 } from './Oracle';
 import {
   createDDL as createDDLPostgreSQL,
-  formatTable as formatTablePostgreSQL,
   formatIndex as formatIndexPostgreSQL,
+  formatTable as formatTablePostgreSQL,
 } from './PostgreSQL';
 import {
   createDDL as createDDLSQLite,
-  formatTable as formatTableSQLite,
   formatIndex as formatIndexSQLite,
+  formatTable as formatTableSQLite,
 } from './SQLite';
 
 export function createDDL(store: Store, database?: Database): string {

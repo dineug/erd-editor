@@ -1,5 +1,5 @@
-import { css } from '@/core/tagged';
 import { SIZE_CONTEXTMENU_HEIGHT, SIZE_FONT } from '@/core/layout';
+import { css } from '@/core/tagged';
 
 export const ContextmenuStyle = css`
   .vuerd-contextmenu {

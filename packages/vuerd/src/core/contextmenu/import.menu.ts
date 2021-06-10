@@ -1,6 +1,6 @@
+import { importJSON, importLiquibase,importSQLDDL } from '@/core/file';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { importJSON, importSQLDDL, importLiquibase } from '@/core/file';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 60,

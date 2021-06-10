@@ -1,16 +1,18 @@
-import { CommandTypeAll, BatchCommand } from '@@types/engine/command';
-import { IStore } from '@/internal-types/store';
-import { History } from '@/internal-types/history';
 import * as R from 'ramda';
-import { Logger } from '@/core/logger';
+
 import { flat } from '@/core/helper';
+import { Logger } from '@/core/logger';
+import { History } from '@/internal-types/history';
+import { IStore } from '@/internal-types/store';
+import { BatchCommand, CommandTypeAll } from '@@types/engine/command';
+
 import { executeCanvasCommandMap } from './canvas.cmd';
-import { executeMemoCommandMap } from './memo.cmd';
-import { executeTableCommandMap } from './table.cmd';
 import { executeColumnCommandMap } from './column.cmd';
 import { executeEditorCommandMap } from './editor.cmd';
+import { executeMemoCommandMap } from './memo.cmd';
 import { executeRelationshipCommandMap } from './relationship.cmd';
 import { executeStreamCommandMap } from './stream.cmd';
+import { executeTableCommandMap } from './table.cmd';
 
 const executeCommandMap: any = {
   ...executeCanvasCommandMap,

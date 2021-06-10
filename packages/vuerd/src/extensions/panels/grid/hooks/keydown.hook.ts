@@ -1,7 +1,8 @@
 import { beforeMount } from '@vuerd/lit-observable';
-import { Subject, fromEvent } from 'rxjs';
-import { ignoreEnterProcess } from '@/core/operators/ignoreEnterProcess';
+import { fromEvent, Subject } from 'rxjs';
+
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { ignoreEnterProcess } from '@/core/operators/ignoreEnterProcess';
 import { useEditorElement } from '@/extensions/panels/grid/hooks/editorElement.hook';
 
 export function useKeydown(ctx: HTMLElement) {

@@ -1,18 +1,20 @@
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
-  closestElement,
   beforeMount,
-  unmounted,
+  closestElement,
+  defineComponent,
+  FunctionalComponent,
+  html,
   queryShadowSelector,
+  unmounted,
   watch,
 } from '@vuerd/lit-observable';
 import { fromEvent, Subscription } from 'rxjs';
+
+import { lastCursorFocus } from '@/core/helper/dom.helper';
 import { useDataTypeHint } from '@/core/hooks/dataTypeHint.hook';
 import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { lastCursorFocus } from '@/core/helper/dom.helper';
+
 import { dataTypeHintTpl } from './ColumnDataType.template';
 
 declare global {

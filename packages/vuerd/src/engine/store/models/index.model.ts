@@ -1,6 +1,6 @@
-import { Index, IndexColumn } from '@@types/engine/store/table.state';
+import { cloneDeep, isArray, isBoolean, isString } from '@/core/helper';
 import { AddIndex } from '@@types/engine/command/index.cmd';
-import { cloneDeep, isString, isBoolean, isArray } from '@/core/helper';
+import { Index, IndexColumn } from '@@types/engine/store/table.state';
 
 interface IndexData {
   addIndex?: AddIndex;

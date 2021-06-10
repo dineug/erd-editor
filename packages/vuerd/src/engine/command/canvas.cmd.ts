@@ -1,26 +1,27 @@
+import round from 'lodash/round';
+
+import { createBalanceRange } from '@/core/helper';
+import { zoomBalanceRange } from '@/engine/store/helper/canvas.helper';
+import { ExecuteCommand } from '@/internal-types/command';
 import { CanvasCommandMap } from '@@types/engine/command/canvas.cmd';
-import { State } from '@@types/engine/store';
 import {
-  MoveCanvas,
-  MovementCanvas,
-  ResizeCanvas,
-  ZoomCanvas,
-  MovementZoomCanvas,
+  ChangeBracketType,
   ChangeCanvasShow,
+  ChangeCanvasType,
   ChangeDatabase,
   ChangeDatabaseName,
-  ChangeCanvasType,
+  ChangeHighlightTheme,
   ChangeLanguage,
   ChangeNameCase,
   ChangeRelationshipDataTypeSync,
+  MoveCanvas,
   MoveColumnOrder,
-  ChangeHighlightTheme,
-  ChangeBracketType,
+  MovementCanvas,
+  MovementZoomCanvas,
+  ResizeCanvas,
+  ZoomCanvas,
 } from '@@types/engine/command/canvas.cmd';
-import { ExecuteCommand } from '@/internal-types/command';
-import round from 'lodash/round';
-import { zoomBalanceRange } from '@/engine/store/helper/canvas.helper';
-import { createBalanceRange } from '@/core/helper';
+import { State } from '@@types/engine/store';
 
 export function executeMoveCanvas(
   { canvasState, editorState: { viewport } }: State,

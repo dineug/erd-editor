@@ -1,32 +1,33 @@
 import {
-  Table,
-  OrderType,
-  Column,
-  Index,
-} from '@@types/engine/store/table.state';
-import {
+  beforeMount,
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
   observable,
   queryAll,
   updated,
-  beforeMount,
   watch,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { repeat } from 'lit-html/directives/repeat';
+
+import { FlipAnimation } from '@/core/flipAnimation';
 import { cloneDeep, getData } from '@/core/helper';
 import { useContext } from '@/core/hooks/context.hook';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { FlipAnimation } from '@/core/flipAnimation';
+import { fromShadowDraggable } from '@/core/observable/fromShadowDraggable';
 import {
-  removeIndexColumn,
   changeIndexColumnOrderType,
   moveIndexColumn,
+  removeIndexColumn,
 } from '@/engine/command/index.cmd.helper';
-import { fromShadowDraggable } from '@/core/observable/fromShadowDraggable';
+import {
+  Column,
+  Index,
+  OrderType,
+  Table,
+} from '@@types/engine/store/table.state';
 
 declare global {
   interface HTMLElementTagNameMap {

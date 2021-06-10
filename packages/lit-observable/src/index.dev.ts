@@ -1,4 +1,5 @@
 import './example';
+
 // @ts-ignore
 import Stats from 'stats.js';
 

@@ -1,25 +1,27 @@
-import { Table } from '@@types/engine/store/table.state';
-import { Menu } from '@@types/core/contextmenu';
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
-  observable,
   beforeMount,
+  defineComponent,
+  FunctionalComponent,
+  html,
+  observable,
   watch,
 } from '@vuerd/lit-observable';
 import { unsafeHTML } from 'lit-html/directives/unsafe-html';
-import { createDDL, createDDLTable } from '@/core/sql/ddl';
-import { hljs, highlightThemeMap } from '@/core/highlight';
-import { createSQLDDLMenus } from '@/core/contextmenu/sql-ddl.menu';
-import { createHighlightThemeMenus } from '@/core/contextmenu/highlightTheme.menu';
-import { createDatabaseMenus } from '@/core/contextmenu/database.menu';
-import { createBracketTypeMenus } from '@/core/contextmenu/bracketType.menu';
-import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { useContext } from '@/core/hooks/context.hook';
-import { SQLDDLStyle } from './SQLDDL.style';
+
 import { ScrollbarStyle } from '@/components/css/scrollbar.style';
+import { createBracketTypeMenus } from '@/core/contextmenu/bracketType.menu';
+import { createDatabaseMenus } from '@/core/contextmenu/database.menu';
+import { createHighlightThemeMenus } from '@/core/contextmenu/highlightTheme.menu';
+import { createSQLDDLMenus } from '@/core/contextmenu/sql-ddl.menu';
 import { Bus } from '@/core/helper/eventBus.helper';
+import { highlightThemeMap, hljs } from '@/core/highlight';
+import { useContext } from '@/core/hooks/context.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { createDDL, createDDLTable } from '@/core/sql/ddl';
+import { Menu } from '@@types/core/contextmenu';
+import { Table } from '@@types/engine/store/table.state';
+
+import { SQLDDLStyle } from './SQLDDL.style';
 
 declare global {
   interface HTMLElementTagNameMap {

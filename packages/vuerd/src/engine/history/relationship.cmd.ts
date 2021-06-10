@@ -1,20 +1,20 @@
+import { cloneDeep, getData } from '@/core/helper';
+import { createCommand } from '@/engine/command/helper';
+import {
+  changeIdentification,
+  loadRelationship,
+  removeRelationship,
+} from '@/engine/command/relationship.cmd.helper';
+import { IStore } from '@/internal-types/store';
 import { BatchCommand } from '@@types/engine/command';
 import {
   AddRelationship,
-  RemoveRelationship,
-  ChangeRelationshipType,
   ChangeIdentification,
+  ChangeRelationshipType,
   ChangeStartRelationshipType,
+  RemoveRelationship,
 } from '@@types/engine/command/relationship.cmd';
 import { Relationship } from '@@types/engine/store/relationship.state';
-import { IStore } from '@/internal-types/store';
-import { createCommand } from '@/engine/command/helper';
-import {
-  removeRelationship,
-  loadRelationship,
-  changeIdentification,
-} from '@/engine/command/relationship.cmd.helper';
-import { getData, cloneDeep } from '@/core/helper';
 
 export function executeAddRelationship(
   store: IStore,

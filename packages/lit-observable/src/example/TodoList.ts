@@ -1,5 +1,7 @@
 import './TodoItem';
-import { html, defineComponent } from '@/core';
+
+import { defineComponent, html } from '@/core';
+
 import { getTodoContextRef } from './TodoProvider';
 
 declare global {

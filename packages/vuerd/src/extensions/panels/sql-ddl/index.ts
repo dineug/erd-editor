@@ -1,4 +1,5 @@
 import { PanelConfig } from '@@types/index';
+
 import { SQLDDLPanel } from './components';
 
 export const SQLDDLPanelConfig: PanelConfig = {

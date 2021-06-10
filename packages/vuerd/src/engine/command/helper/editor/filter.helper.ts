@@ -1,6 +1,7 @@
-import { Filter } from '@@types/engine/store/editor/filter.state';
 import * as R from 'ramda';
+
 import { getIndex, range } from '@/core/helper';
+import { Filter } from '@@types/engine/store/editor/filter.state';
 
 export const appendSelectFilters = (filterIds: string[], filterId: string) =>
   R.uniq([...filterIds, filterId]);

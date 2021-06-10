@@ -1,16 +1,17 @@
-import { Store } from '@@types/engine/store';
-import { Table, Column } from '@@types/engine/store/table.state';
-import { Database, NameCase } from '@@types/engine/store/canvas.state';
-import { Relationship } from '@@types/engine/store/relationship.state';
-import {
-  oneRelationshipTypes,
-  nRelationshipTypes,
-} from '@/engine/store/relationship.state';
-import { getPrimitiveType, getNameCase } from './helper';
-import { orderByNameASC } from '@/engine/store/helper/table.helper';
 import { getData } from '@/core/helper';
 import { PrimitiveTypeMap } from '@/core/sql/dataType';
 import { primaryKey, primaryKeyColumns } from '@/core/sql/ddl/helper';
+import { orderByNameASC } from '@/engine/store/helper/table.helper';
+import {
+  nRelationshipTypes,
+  oneRelationshipTypes,
+} from '@/engine/store/relationship.state';
+import { Store } from '@@types/engine/store';
+import { Database, NameCase } from '@@types/engine/store/canvas.state';
+import { Relationship } from '@@types/engine/store/relationship.state';
+import { Column, Table } from '@@types/engine/store/table.state';
+
+import { getNameCase, getPrimitiveType } from './helper';
 
 const convertTypeMap: PrimitiveTypeMap = {
   int: 'Integer',

@@ -1,6 +1,7 @@
-import { Column } from '@@types/engine/store/table.state';
 import * as R from 'ramda';
+
 import { getIndex, range } from '@/core/helper';
+import { Column } from '@@types/engine/store/table.state';
 
 export const appendSelectColumns = (columnIds: string[], columnId: string) =>
   R.uniq([...columnIds, columnId]);

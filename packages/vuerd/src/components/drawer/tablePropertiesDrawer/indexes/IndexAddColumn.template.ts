@@ -2,6 +2,7 @@ import { html } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { repeat } from 'lit-html/directives/repeat';
 import { unsafeHTML } from 'lit-html/directives/unsafe-html';
+
 import { Hint, HintState } from '@/core/hooks/columnHint.hook';
 
 export interface HintProps {

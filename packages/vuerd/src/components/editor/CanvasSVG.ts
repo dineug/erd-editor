@@ -1,18 +1,20 @@
-import { Relationship } from '@@types/engine/store/relationship.state';
 import {
   defineComponent,
-  svg,
   FunctionalComponent,
   observable,
+  svg,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
-import { styleMap } from 'lit-html/directives/style-map';
 import { repeat } from 'lit-html/directives/repeat';
+import { styleMap } from 'lit-html/directives/style-map';
+
 import { useContext } from '@/core/hooks/context.hook';
 import {
   activeColumn,
   activeEndColumn,
 } from '@/engine/command/column.cmd.helper';
+import { Relationship } from '@@types/engine/store/relationship.state';
+
 import { relationshipTpl } from './Relationship.template';
 
 declare global {

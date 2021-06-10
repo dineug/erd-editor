@@ -1,9 +1,10 @@
-import { Relationship } from '@@types/engine/store/relationship.state';
 import { svg } from '@vuerd/lit-observable';
+
 import {
-  RelationshipPath,
   getRelationshipPath,
+  RelationshipPath,
 } from '@/engine/store/helper/relationship.helper';
+import { Relationship } from '@@types/engine/store/relationship.state';
 
 const relationshipZeroOneN = ({ path, line }: RelationshipPath) =>
   svg`

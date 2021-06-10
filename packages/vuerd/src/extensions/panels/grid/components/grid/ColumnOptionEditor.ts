@@ -1,20 +1,21 @@
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
-  observable,
   beforeMount,
+  closestElement,
+  defineComponent,
+  firstUpdated,
+  FunctionalComponent,
+  html,
+  observable,
   queryAll,
   updated,
-  firstUpdated,
-  closestElement,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { fromEvent } from 'rxjs';
-import { SimpleOption } from '@/extensions/panels/grid/core/helper';
+
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { useContext } from '@/extensions/panels/grid/hooks/context.hook';
 import { moveKeys } from '@/engine/store/editor.state';
+import { SimpleOption } from '@/extensions/panels/grid/core/helper';
+import { useContext } from '@/extensions/panels/grid/hooks/context.hook';
 
 declare global {
   interface HTMLElementTagNameMap {

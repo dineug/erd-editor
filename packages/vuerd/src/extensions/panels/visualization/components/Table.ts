@@ -1,14 +1,15 @@
 import './Column';
 
-import { Table } from '@@types/engine/store/table.state';
 import {
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
 } from '@vuerd/lit-observable';
-import { styleMap } from 'lit-html/directives/style-map';
 import { repeat } from 'lit-html/directives/repeat';
+import { styleMap } from 'lit-html/directives/style-map';
+
 import { useAPI } from '@/extensions/panels/visualization/hooks/api.hook';
+import { Table } from '@@types/engine/store/table.state';
 
 declare global {
   interface HTMLElementTagNameMap {

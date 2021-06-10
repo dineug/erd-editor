@@ -3,21 +3,22 @@ import './Memo';
 import './MinimapHandle';
 
 import {
+  beforeMount,
   defineComponent,
+  FunctionalComponent,
   html,
   svg,
-  FunctionalComponent,
-  beforeMount,
   watch,
 } from '@vuerd/lit-observable';
-import { styleMap } from 'lit-html/directives/style-map';
 import { classMap } from 'lit-html/directives/class-map';
 import { repeat } from 'lit-html/directives/repeat';
-import { SIZE_MINIMAP_WIDTH, SIZE_MINIMAP_MARGIN } from '@/core/layout';
+import { styleMap } from 'lit-html/directives/style-map';
+
+import { relationshipTpl } from '@/components/editor/Relationship.template';
 import { useContext } from '@/core/hooks/context.hook';
 import { useRenderTrigger } from '@/core/hooks/renderTrigger.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { relationshipTpl } from '@/components/editor/Relationship.template';
+import { SIZE_MINIMAP_MARGIN, SIZE_MINIMAP_WIDTH } from '@/core/layout';
 
 declare global {
   interface HTMLElementTagNameMap {

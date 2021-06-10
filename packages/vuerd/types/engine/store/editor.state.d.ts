@@ -1,8 +1,8 @@
 import { PanelConfig } from '../../core/panel';
 import { ColumnType } from './canvas.state';
-import { Table, Column } from './table.state';
-import { RelationshipType, Point } from './relationship.state';
 import { FilterState } from './editor/filter.state';
+import { Point, RelationshipType } from './relationship.state';
+import { Column, Table } from './table.state';
 
 export interface EditorState {
   panels: PanelConfig[];

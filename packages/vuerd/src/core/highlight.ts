@@ -1,9 +1,9 @@
-import { HighlightTheme } from '@@types/engine/store/canvas.state';
-import { MonokaiSublimeStyle } from '@/components/css/highlight/monokai-sublime.style';
 import { AtomOneDarkStyle } from '@/components/css/highlight/atom-one-dark.style';
 import { AtomOneLightStyle } from '@/components/css/highlight/atom-one-light.style';
 import { GithubGistStyle } from '@/components/css/highlight/github-gist.style';
+import { MonokaiSublimeStyle } from '@/components/css/highlight/monokai-sublime.style';
 import { VS2015Style } from '@/components/css/highlight/vs2015.style';
+import { HighlightTheme } from '@@types/engine/store/canvas.state';
 
 export { hljs } from '@/core/config/highlight.config';
 

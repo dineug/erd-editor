@@ -1,16 +1,17 @@
 import { Token } from '@@types/index';
-import { MariaDBKeywords } from './keyword/MariaDB';
-import { MSSQLKeywords } from './keyword/MSSQL';
-import { MySQLKeywords } from './keyword/MySQL';
-import { OracleKeywords } from './keyword/Oracle';
-import { PostgreSQLKeywords } from './keyword/PostgreSQL';
-import { SQLiteKeywords } from './keyword/SQLite';
+
 import { MariaDBTypes } from './dataType/MariaDB';
 import { MSSQLTypes } from './dataType/MSSQL';
 import { MySQLTypes } from './dataType/MySQL';
 import { OracleTypes } from './dataType/Oracle';
 import { PostgreSQLTypes } from './dataType/PostgreSQL';
 import { SQLiteTypes } from './dataType/SQLite';
+import { MariaDBKeywords } from './keyword/MariaDB';
+import { MSSQLKeywords } from './keyword/MSSQL';
+import { MySQLKeywords } from './keyword/MySQL';
+import { OracleKeywords } from './keyword/Oracle';
+import { PostgreSQLKeywords } from './keyword/PostgreSQL';
+import { SQLiteKeywords } from './keyword/SQLite';
 
 export interface Current {
   value: number;

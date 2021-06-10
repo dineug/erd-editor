@@ -1,19 +1,19 @@
-import { IndexCommandMap } from '@@types/engine/command/index.cmd';
-import { State } from '@@types/engine/store';
-import { Index } from '@@types/engine/store/table.state';
-import {
-  AddIndex,
-  RemoveIndex,
-  ChangeIndexValue,
-  ChangeIndexUnique,
-  AddIndexColumn,
-  RemoveIndexColumn,
-  MoveIndexColumn,
-  ChangeIndexColumnOrderType,
-} from '@@types/engine/command/index.cmd';
-import { ExecuteCommand } from '@/internal-types/command';
 import { getData, getIndex } from '@/core/helper';
 import { IndexModel } from '@/engine/store/models/index.model';
+import { ExecuteCommand } from '@/internal-types/command';
+import { IndexCommandMap } from '@@types/engine/command/index.cmd';
+import {
+  AddIndex,
+  AddIndexColumn,
+  ChangeIndexColumnOrderType,
+  ChangeIndexUnique,
+  ChangeIndexValue,
+  MoveIndexColumn,
+  RemoveIndex,
+  RemoveIndexColumn,
+} from '@@types/engine/command/index.cmd';
+import { State } from '@@types/engine/store';
+import { Index } from '@@types/engine/store/table.state';
 
 export function executeAddIndex(
   { tableState: { indexes } }: State,

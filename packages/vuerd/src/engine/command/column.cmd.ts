@@ -1,30 +1,30 @@
-import { ColumnCommandMap } from '@@types/engine/command/column.cmd';
-import { State } from '@@types/engine/store';
-import { Column } from '@@types/engine/store/table.state';
-import {
-  AddColumn,
-  AddCustomColumn,
-  RemoveColumn,
-  ChangeColumnValue,
-  ChangeColumnOption,
-  MoveColumn,
-  ActiveColumn,
-  LoadColumn,
-} from '@@types/engine/command/column.cmd';
-import { ExecuteCommand } from '@/internal-types/command';
 import { getData, getIndex } from '@/core/helper';
-import { ColumnModel } from '@/engine/store/models/column.model';
 import {
+  commentWidthBalanceRange,
   getColumn,
   getDataTypeSyncColumns,
-  commentWidthBalanceRange,
 } from '@/engine/store/helper/column.helper';
 import {
+  removeValidColumnIndex,
   removeValidColumnRelationship,
   validIdentification,
-  removeValidColumnIndex,
   validStartRelationship,
 } from '@/engine/store/helper/valid.helper';
+import { ColumnModel } from '@/engine/store/models/column.model';
+import { ExecuteCommand } from '@/internal-types/command';
+import { ColumnCommandMap } from '@@types/engine/command/column.cmd';
+import {
+  ActiveColumn,
+  AddColumn,
+  AddCustomColumn,
+  ChangeColumnOption,
+  ChangeColumnValue,
+  LoadColumn,
+  MoveColumn,
+  RemoveColumn,
+} from '@@types/engine/command/column.cmd';
+import { State } from '@@types/engine/store';
+import { Column } from '@@types/engine/store/table.state';
 
 export function executeAddColumn(
   { tableState: { tables } }: State,

@@ -1,4 +1,5 @@
 import { PanelConfig } from '@@types/index';
+
 import { GridPanel } from './components';
 
 export const gridPanelConfig: PanelConfig = {

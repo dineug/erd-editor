@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { Webview, Uri, ExtensionContext, workspace } from 'vscode';
+import { ExtensionContext, Uri, Webview, workspace } from 'vscode';
 
 export function getNonce() {
   let text = '';

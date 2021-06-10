@@ -1,7 +1,8 @@
+import { removeRelationship } from '@/engine/command/relationship.cmd.helper';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { Relationship } from '@@types/engine/store/relationship.state';
-import { removeRelationship } from '@/engine/command/relationship.cmd.helper';
+
 import { createSingleRelationship } from './singleRelationship.menu';
 
 const defaultOptions: MenuOptions = {

@@ -1,22 +1,22 @@
+import { createJsonStringify } from '@/core/file';
+import { cloneDeep, getData } from '@/core/helper';
+import { loadJson$ } from '@/engine/command/editor.cmd.helper';
+import { createCommand } from '@/engine/command/helper';
+import { loadIndex, removeIndex } from '@/engine/command/index.cmd.helper';
+import {
+  loadRelationship,
+  removeRelationship,
+} from '@/engine/command/relationship.cmd.helper';
+import { loadTable, removeTable } from '@/engine/command/table.cmd.helper';
+import { IStore } from '@/internal-types/store';
 import { BatchCommand } from '@@types/engine/command';
-import { PureTable, Index } from '@@types/engine/store/table.state';
-import { Relationship } from '@@types/engine/store/relationship.state';
 import {
   AddTable,
-  RemoveTable,
   ChangeTableValue,
+  RemoveTable,
 } from '@@types/engine/command/table.cmd';
-import { IStore } from '@/internal-types/store';
-import { createCommand } from '@/engine/command/helper';
-import { getData, cloneDeep } from '@/core/helper';
-import { createJsonStringify } from '@/core/file';
-import { removeTable, loadTable } from '@/engine/command/table.cmd.helper';
-import { loadJson$ } from '@/engine/command/editor.cmd.helper';
-import {
-  removeRelationship,
-  loadRelationship,
-} from '@/engine/command/relationship.cmd.helper';
-import { removeIndex, loadIndex } from '@/engine/command/index.cmd.helper';
+import { Relationship } from '@@types/engine/store/relationship.state';
+import { Index, PureTable } from '@@types/engine/store/table.state';
 
 export function executeAddTable(
   store: IStore,

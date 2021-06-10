@@ -1,5 +1,5 @@
-import { css } from '@/core/tagged';
 import { SIZE_COLUMN_MARGIN_RIGHT, SIZE_FONT } from '@/core/layout';
+import { css } from '@/core/tagged';
 
 export const IndexesStyle = css`
   .vuerd-indexes {

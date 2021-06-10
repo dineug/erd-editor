@@ -1,9 +1,10 @@
-import { Store } from '@@types/engine/store';
-import { Table, Column } from '@@types/engine/store/table.state';
-import { Database, NameCase } from '@@types/engine/store/canvas.state';
-import { getPrimitiveType, getNameCase } from './helper';
-import { orderByNameASC } from '@/engine/store/helper/table.helper';
 import { PrimitiveTypeMap } from '@/core/sql/dataType';
+import { orderByNameASC } from '@/engine/store/helper/table.helper';
+import { Store } from '@@types/engine/store';
+import { Database, NameCase } from '@@types/engine/store/canvas.state';
+import { Column, Table } from '@@types/engine/store/table.state';
+
+import { getNameCase, getPrimitiveType } from './helper';
 
 const convertTypeMap: PrimitiveTypeMap = {
   int: 'Integer',

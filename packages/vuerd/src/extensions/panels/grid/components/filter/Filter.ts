@@ -2,32 +2,34 @@ import './FilterRadioEditor';
 import './FilterItem';
 import './FilterInput';
 
-import { OperatorType } from '@@types/engine/store/editor/filter.state';
-import { BatchCommand } from '@@types/engine/command';
+import { Easing, Tween } from '@tweenjs/tween.js';
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
-  observable,
   beforeMount,
+  defineComponent,
+  FunctionalComponent,
+  html,
+  observable,
   updated,
   watch,
 } from '@vuerd/lit-observable';
-import { styleMap } from 'lit-html/directives/style-map';
 import { repeat } from 'lit-html/directives/repeat';
+import { styleMap } from 'lit-html/directives/style-map';
 import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
-import { Tween, Easing } from '@tweenjs/tween.js';
-import { useContext } from '@/extensions/panels/grid/hooks/context.hook';
-import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { useTooltip } from '@/core/hooks/tooltip.hook';
-import { useHasFilter } from '@/extensions/panels/grid/hooks/hasFilter.hook';
-import { keymapOptionsToString } from '@/core/keymap';
-import { RadioItem } from './FilterRadioEditor';
-import { operatorTypes } from '@/engine/store/editor/filter.state';
+
 import { FlipAnimation } from '@/core/flipAnimation';
 import { onPreventDefault } from '@/core/helper/dom.helper';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { keymapOptionsToString } from '@/core/keymap';
 import { SIZE_COLUMN_HEIGHT } from '@/core/layout';
+import { operatorTypes } from '@/engine/store/editor/filter.state';
+import { useContext } from '@/extensions/panels/grid/hooks/context.hook';
+import { useHasFilter } from '@/extensions/panels/grid/hooks/hasFilter.hook';
+import { BatchCommand } from '@@types/engine/command';
+import { OperatorType } from '@@types/engine/store/editor/filter.state';
+
+import { RadioItem } from './FilterRadioEditor';
 
 declare global {
   interface HTMLElementTagNameMap {

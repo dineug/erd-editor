@@ -1,4 +1,5 @@
 import { css } from '@/core/tagged';
+
 import { ScrollbarStyle } from './scrollbar.style';
 
 export const DefaultStyle = css`

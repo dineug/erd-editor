@@ -1,6 +1,6 @@
-import { CommandType } from '../index';
 import { Store } from '../../store';
 import { MoveKey } from '../../store/editor.state';
+import { CommandType } from '../index';
 
 export declare function filterActive$(): Generator<
   CommandType<'editor.filter.active'> | CommandType<'editor.filter.focus'>

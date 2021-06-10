@@ -1,35 +1,37 @@
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
-  watch,
   beforeMount,
+  defineComponent,
+  FunctionalComponent,
+  html,
+  watch,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
+
+import { onNumberOnly } from '@/core/helper/dom.helper';
+import { Bus } from '@/core/helper/eventBus.helper';
+import { useContext } from '@/core/hooks/context.hook';
+import { useMenubarPanels } from '@/core/hooks/menubarPanels.hook';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { keymapOptionsToString } from '@/core/keymap';
+import { panels } from '@/core/panel';
 import {
   changeDatabaseName,
   resizeCanvas,
   zoomCanvas,
 } from '@/engine/command/canvas.cmd.helper';
 import {
-  findActive$,
-  findActiveEnd,
   filterActive$,
   filterActiveEnd$,
+  findActive$,
+  findActiveEnd,
 } from '@/engine/command/editor.cmd.helper';
 import {
   canvasSizeRange,
-  zoomLevelRange,
   zoomDisplayFormat,
+  zoomLevelRange,
 } from '@/engine/store/helper/canvas.helper';
-import { onNumberOnly } from '@/core/helper/dom.helper';
-import { Bus } from '@/core/helper/eventBus.helper';
-import { useTooltip } from '@/core/hooks/tooltip.hook';
-import { useMenubarPanels } from '@/core/hooks/menubarPanels.hook';
-import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { useContext } from '@/core/hooks/context.hook';
-import { panels } from '@/core/panel';
-import { keymapOptionsToString } from '@/core/keymap';
+
 import { MenubarStyle } from './Menubar.style';
 
 declare global {

@@ -1,8 +1,8 @@
-import { Table, TableUI } from '@@types/engine/store/table.state';
+import { SIZE_START_ADD, SIZE_START_X, SIZE_START_Y } from '@/core/layout';
+import { Store } from '@@types/engine/store';
 import { Memo, MemoUI } from '@@types/engine/store/memo.state';
 import { Point } from '@@types/engine/store/relationship.state';
-import { Store } from '@@types/engine/store';
-import { SIZE_START_X, SIZE_START_Y, SIZE_START_ADD } from '@/core/layout';
+import { Table, TableUI } from '@@types/engine/store/table.state';
 
 const zIndexMap = (data: Table | Memo) => data.ui.zIndex;
 

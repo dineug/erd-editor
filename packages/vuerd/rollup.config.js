@@ -1,10 +1,11 @@
-import pkg from './package.json';
-import config from './rollup.config.common';
-import strip from '@rollup/plugin-strip';
-import visualizer from 'rollup-plugin-visualizer';
 import replace from '@rollup/plugin-replace';
+import strip from '@rollup/plugin-strip';
 import filesize from 'rollup-plugin-filesize';
 import { terser } from 'rollup-plugin-terser';
+import visualizer from 'rollup-plugin-visualizer';
+
+import pkg from './package.json';
+import config from './rollup.config.common';
 
 const { plugins, banner, onwarn } = config();
 
@@ -17,13 +18,13 @@ export default {
       banner,
     },
     {
-      name: 'vuerd',
+      name: pkg.name,
       file: pkg.main,
       format: 'umd',
       banner,
     },
     {
-      name: 'vuerd',
+      name: pkg.name,
       file: pkg.browser,
       format: 'umd',
       banner,

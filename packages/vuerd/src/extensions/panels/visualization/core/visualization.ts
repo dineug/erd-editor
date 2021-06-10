@@ -1,15 +1,16 @@
-import { Store } from '@@types/engine/store';
 import {
-  scaleOrdinal,
-  schemeCategory10,
+  create,
   drag,
-  forceSimulation,
   forceLink,
   forceManyBody,
+  forceSimulation,
   forceX,
   forceY,
-  create,
+  scaleOrdinal,
+  schemeCategory10,
 } from 'd3';
+
+import { Store } from '@@types/engine/store';
 
 type Group = 'table' | 'column';
 

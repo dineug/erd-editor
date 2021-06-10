@@ -1,49 +1,50 @@
-import { EditorCommandMap } from '@@types/engine/command/editor.cmd';
-import { State } from '@@types/engine/store';
-import { Index, PureTable } from '@@types/engine/store/table.state';
-import { Memo } from '@@types/engine/store/memo.state';
-import { Relationship } from '@@types/engine/store/relationship.state';
-import { DraggableColumn, Viewport } from '@@types/engine/store/editor.state';
+import { cloneDeep, getData, isEmpty, isObject } from '@/core/helper';
+import { panels as globalPanels } from '@/core/panel';
 import {
-  HasUndoRedo,
-  FocusTable,
-  FocusColumn,
-  FocusMoveTable,
-  DrawStartRelationship,
-  DrawStartAddRelationship,
-  DrawRelationship,
-  LoadJson,
-  CopyColumn,
-  ReadonlyEditor,
-} from '@@types/engine/command/editor.cmd';
-import { JsonFormat } from '@@types/core/file';
-import { ExecuteCommand } from '@/internal-types/command';
-import { getData, isObject, isEmpty, cloneDeep } from '@/core/helper';
-import {
-  appendSelectColumns,
-  selectRangeColumns,
-  appendSelectRangeColumns,
-} from './helper/editor.helper';
-import {
-  arrowUp,
-  arrowRight,
-  arrowDown,
-  arrowLeft,
-} from './helper/editor.focus.helper';
-import {
-  databaseList,
-  nameCaseList,
-  languageList,
-  highlightThemes,
   bracketTypes,
+  databaseList,
+  highlightThemes,
+  languageList,
+  nameCaseList,
 } from '@/engine/store/canvas.state';
 import { validStartRelationship } from '@/engine/store/helper/valid.helper';
-import { panels as globalPanels } from '@/core/panel';
-import { executeLoadTable } from './table.cmd';
-import { executeLoadMemo } from './memo.cmd';
-import { executeLoadIndex } from './index.cmd';
-import { executeLoadRelationship } from './relationship.cmd';
+import { ExecuteCommand } from '@/internal-types/command';
+import { JsonFormat } from '@@types/core/file';
+import { EditorCommandMap } from '@@types/engine/command/editor.cmd';
+import {
+  CopyColumn,
+  DrawRelationship,
+  DrawStartAddRelationship,
+  DrawStartRelationship,
+  FocusColumn,
+  FocusMoveTable,
+  FocusTable,
+  HasUndoRedo,
+  LoadJson,
+  ReadonlyEditor,
+} from '@@types/engine/command/editor.cmd';
+import { State } from '@@types/engine/store';
+import { DraggableColumn, Viewport } from '@@types/engine/store/editor.state';
+import { Memo } from '@@types/engine/store/memo.state';
+import { Relationship } from '@@types/engine/store/relationship.state';
+import { Index, PureTable } from '@@types/engine/store/table.state';
+
 import { executeFilterCommandMap } from './editor/filter.cmd';
+import {
+  arrowDown,
+  arrowLeft,
+  arrowRight,
+  arrowUp,
+} from './helper/editor.focus.helper';
+import {
+  appendSelectColumns,
+  appendSelectRangeColumns,
+  selectRangeColumns,
+} from './helper/editor.helper';
+import { executeLoadIndex } from './index.cmd';
+import { executeLoadMemo } from './memo.cmd';
+import { executeLoadRelationship } from './relationship.cmd';
+import { executeLoadTable } from './table.cmd';
 
 export function executeHasUndoRedo({ editorState }: State, data: HasUndoRedo) {
   editorState.hasUndo = data.hasUndo;

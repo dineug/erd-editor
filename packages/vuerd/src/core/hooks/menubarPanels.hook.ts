@@ -1,10 +1,12 @@
-import { PanelConfig } from '@@types/core/panel';
-import { IIcon } from '@/internal-types/panel';
 import { html } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
-import { useContext } from './context.hook';
-import { changeCanvasType } from '@/engine/command/canvas.cmd.helper';
+
 import { panels } from '@/core/panel';
+import { changeCanvasType } from '@/engine/command/canvas.cmd.helper';
+import { IIcon } from '@/internal-types/panel';
+import { PanelConfig } from '@@types/core/panel';
+
+import { useContext } from './context.hook';
 
 interface Menu {
   title: string;

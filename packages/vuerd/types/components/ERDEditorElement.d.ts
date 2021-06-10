@@ -1,6 +1,6 @@
-import { Theme } from '../core/theme';
-import { Keymap } from '../core/keymap';
 import { ExtensionConfig } from '../core/extension';
+import { Keymap } from '../core/keymap';
+import { Theme } from '../core/theme';
 import { Database } from '../engine/store/canvas.state';
 
 export interface ERDEditorProps {

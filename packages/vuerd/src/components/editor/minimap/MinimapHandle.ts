@@ -1,13 +1,14 @@
-import { Move } from '@/internal-types/event.helper';
 import {
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
 } from '@vuerd/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
-import { SIZE_MINIMAP_WIDTH, SIZE_MINIMAP_MARGIN } from '@/core/layout';
+
 import { useContext } from '@/core/hooks/context.hook';
+import { SIZE_MINIMAP_MARGIN, SIZE_MINIMAP_WIDTH } from '@/core/layout';
 import { movementCanvas } from '@/engine/command/canvas.cmd.helper';
+import { Move } from '@/internal-types/event.helper';
 
 declare global {
   interface HTMLElementTagNameMap {

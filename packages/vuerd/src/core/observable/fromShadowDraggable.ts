@@ -1,5 +1,5 @@
-import { merge, fromEvent } from 'rxjs';
-import { throttleTime, debounceTime, takeUntil, map } from 'rxjs/operators';
+import { fromEvent, merge } from 'rxjs';
+import { debounceTime, map, takeUntil, throttleTime } from 'rxjs/operators';
 
 export const fromShadowDraggable = (elements: HTMLElement[]) =>
   merge(

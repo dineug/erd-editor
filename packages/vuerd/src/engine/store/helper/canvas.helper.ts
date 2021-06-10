@@ -1,10 +1,10 @@
+import { createBalanceRange, isString } from '@/core/helper';
 import {
-  SIZE_CANVAS_MIN,
   SIZE_CANVAS_MAX,
-  SIZE_CANVAS_ZOOM_MIN,
+  SIZE_CANVAS_MIN,
   SIZE_CANVAS_ZOOM_MAX,
+  SIZE_CANVAS_ZOOM_MIN,
 } from '@/core/layout';
-import { isString, createBalanceRange } from '@/core/helper';
 
 export const canvasSizeBalanceRange = createBalanceRange(
   SIZE_CANVAS_MIN,

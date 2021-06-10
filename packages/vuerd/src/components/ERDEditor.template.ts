@@ -1,5 +1,6 @@
+import { html, mounted, query } from '@vuerd/lit-observable';
+
 import { IHelper } from '@/internal-types/helper';
-import { html, query, mounted } from '@vuerd/lit-observable';
 
 export function ghostTpl(helper: IHelper) {
   const ghostTextRef = query<HTMLSpanElement>('.vuerd-ghost-text-helper');

@@ -1,15 +1,16 @@
 import {
-  mounted,
-  unmounted,
-  queryAll,
   closestElement,
+  mounted,
+  queryAll,
+  unmounted,
 } from '@vuerd/lit-observable';
 import tippy, {
   createSingleton,
   CreateSingletonInstance,
-  Props,
   Instance,
+  Props,
 } from 'tippy.js';
+
 import { flat, isArray } from '@/core/helper';
 
 export function useTooltip(

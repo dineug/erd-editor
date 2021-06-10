@@ -1,7 +1,7 @@
+import { changeLanguage } from '@/engine/command/canvas.cmd.helper';
+import { languageList } from '@/engine/store/canvas.state';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { languageList } from '@/engine/store/canvas.state';
-import { changeLanguage } from '@/engine/command/canvas.cmd.helper';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 70,

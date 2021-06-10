@@ -1,10 +1,11 @@
-import { MoveKey } from '@@types/engine/store/editor.state';
 import { beforeMount, closestElement, watch } from '@vuerd/lit-observable';
-import { GridEditorElement } from '@/extensions/panels/grid/components/GridEditor';
+
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { useKeydown } from '@/extensions/panels/grid/hooks/keydown.hook';
-import { moveKeys } from '@/engine/store/editor.state';
 import { keymapMatchAndStop } from '@/core/keymap';
+import { moveKeys } from '@/engine/store/editor.state';
+import { GridEditorElement } from '@/extensions/panels/grid/components/GridEditor';
+import { useKeydown } from '@/extensions/panels/grid/hooks/keydown.hook';
+import { MoveKey } from '@@types/engine/store/editor.state';
 
 export function useGridKeymap(ctx: GridEditorElement) {
   const { unmountedGroup } = useUnmounted();

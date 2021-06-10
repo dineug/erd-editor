@@ -4,39 +4,41 @@ import './ColumnNotNull';
 import './ColumnUnique';
 import './ColumnAutoIncrement';
 
-import { Column } from '@@types/engine/store/table.state';
-import { ColumnType } from '@@types/engine/store/canvas.state';
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
   beforeMount,
+  defineComponent,
+  FunctionalComponent,
+  html,
   watch,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { Subject } from 'rxjs';
 import { throttleTime } from 'rxjs/operators';
-import { keymapOptionsToString } from '@/core/keymap';
-import { useTooltip } from '@/core/hooks/tooltip.hook';
+
 import { useContext } from '@/core/hooks/context.hook';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { keymapOptionsToString } from '@/core/keymap';
 import { removeColumn$ } from '@/engine/command/column.cmd.helper';
 import {
-  draggableColumn,
-  draggableColumnEnd,
-  focusColumn,
-  editTableEnd,
-  editTable,
-} from '@/engine/command/editor.cmd.helper';
-import {
-  changeColumnName,
+  changeColumnAutoIncrement,
   changeColumnComment,
   changeColumnDataType,
   changeColumnDefault,
+  changeColumnName,
   changeColumnNotNull,
   changeColumnUnique,
-  changeColumnAutoIncrement,
 } from '@/engine/command/column.cmd.helper';
+import {
+  draggableColumn,
+  draggableColumnEnd,
+  editTable,
+  editTableEnd,
+  focusColumn,
+} from '@/engine/command/editor.cmd.helper';
+import { ColumnType } from '@@types/engine/store/canvas.state';
+import { Column } from '@@types/engine/store/table.state';
+
 import { columnTpl } from './Column.template';
 
 declare global {

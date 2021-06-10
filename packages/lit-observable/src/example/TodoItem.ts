@@ -1,4 +1,5 @@
-import { html, defineComponent } from '@/core';
+import { defineComponent, html } from '@/core';
+
 import { Todo } from './Store';
 
 declare global {

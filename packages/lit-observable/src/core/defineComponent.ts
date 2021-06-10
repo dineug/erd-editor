@@ -1,22 +1,24 @@
+import { html, render } from 'lit-html';
+import camelCase from 'lodash/camelCase';
+import kebabCase from 'lodash/kebabCase';
+
 import {
   Callback,
-  Template,
   Options,
-  Ref,
   PropOptions,
+  Ref,
+  Template,
 } from '@@types/defineComponent';
 import { Unsubscribe } from '@@types/observable';
-import { render, html } from 'lit-html';
-import kebabCase from 'lodash/kebabCase';
-import camelCase from 'lodash/camelCase';
-import { observable, observer } from './observable';
-import { isSheet, isStyle } from './styleSheets';
+
 import {
   isObject,
   isUndefined,
   queryShadowSelector,
   queryShadowSelectorAll,
 } from './helper';
+import { observable, observer } from './observable';
+import { isSheet, isStyle } from './styleSheets';
 
 const BEFORE_MOUNT = Symbol('beforeMount');
 const MOUNTED = Symbol('mounted');

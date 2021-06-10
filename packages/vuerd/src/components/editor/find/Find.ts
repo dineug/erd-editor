@@ -1,20 +1,22 @@
+import { Easing, Tween } from '@tweenjs/tween.js';
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
-  observable,
   beforeMount,
-  watch,
+  defineComponent,
+  FunctionalComponent,
+  html,
+  observable,
   query,
+  watch,
 } from '@vuerd/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
-import { Tween, Easing } from '@tweenjs/tween.js';
+
 import { useContext } from '@/core/hooks/context.hook';
+import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
+import { useTableHint } from '@/core/hooks/tableHint.hook';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { useTableHint } from '@/core/hooks/tableHint.hook';
-import { useFlipAnimation } from '@/core/hooks/flipAnimation.hook';
 import { keymapOptionsToString } from '@/core/keymap';
+
 import { hintTpl } from './Find.template';
 
 declare global {

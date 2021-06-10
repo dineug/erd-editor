@@ -1,30 +1,32 @@
-import { Memo } from '@@types/engine/store/memo.state';
-import { Move } from '@/internal-types/event.helper';
+import { Easing, Tween } from '@tweenjs/tween.js';
 import {
+  beforeMount,
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
   mounted,
   query,
-  beforeMount,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
-import { Tween, Easing } from '@tweenjs/tween.js';
-import { SIZE_MEMO_PADDING } from '@/core/layout';
-import { useContext } from '@/core/hooks/context.hook';
-import { useResizeMemo } from '@/core/hooks/resizeMemo.hook';
-import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { useTooltip } from '@/core/hooks/tooltip.hook';
-import {
-  selectMemo$,
-  moveMemo,
-  removeMemo,
-  changeMemoValue,
-} from '@/engine/command/memo.cmd.helper';
-import { keymapOptionsToString } from '@/core/keymap';
+
 import { onStopPropagation } from '@/core/helper/dom.helper';
 import { Bus } from '@/core/helper/eventBus.helper';
+import { useContext } from '@/core/hooks/context.hook';
+import { useResizeMemo } from '@/core/hooks/resizeMemo.hook';
+import { useTooltip } from '@/core/hooks/tooltip.hook';
+import { useUnmounted } from '@/core/hooks/unmounted.hook';
+import { keymapOptionsToString } from '@/core/keymap';
+import { SIZE_MEMO_PADDING } from '@/core/layout';
+import {
+  changeMemoValue,
+  moveMemo,
+  removeMemo,
+  selectMemo$,
+} from '@/engine/command/memo.cmd.helper';
+import { Move } from '@/internal-types/event.helper';
+import { Memo } from '@@types/engine/store/memo.state';
+
 import { sashTpl } from './Memo.template';
 
 declare global {

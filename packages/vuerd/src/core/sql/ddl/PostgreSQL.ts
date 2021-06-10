@@ -1,21 +1,22 @@
+import { autoName, getData, uuid } from '@/core/helper';
+import { orderByNameASC } from '@/engine/store/helper/table.helper';
 import { Store } from '@@types/engine/store';
-import { getData, uuid, autoName } from '@/core/helper';
+
 import {
+  FormatColumnOptions,
+  FormatCommentOptions,
+  FormatIndexOptions,
   formatNames,
+  FormatRelationOptions,
   formatSize,
   formatSpace,
+  FormatTableOptions,
+  getBracket,
+  KeyColumn,
+  Name,
   primaryKey,
   primaryKeyColumns,
-  Name,
-  KeyColumn,
-  getBracket,
-  FormatTableOptions,
-  FormatColumnOptions,
-  FormatRelationOptions,
-  FormatIndexOptions,
-  FormatCommentOptions,
 } from './helper';
-import { orderByNameASC } from '@/engine/store/helper/table.helper';
 
 export function createDDL({
   tableState,

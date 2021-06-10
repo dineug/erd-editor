@@ -1,9 +1,10 @@
 import {
   defineComponent,
+  getContext,
   html,
   ProviderElement,
-  getContext,
 } from '@vuerd/lit-observable';
+
 import { GridContext } from '@/extensions/panels/grid/core/gridContext';
 
 declare global {

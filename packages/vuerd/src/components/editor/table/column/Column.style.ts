@@ -1,5 +1,5 @@
-import { css } from '@/core/tagged';
 import { SIZE_COLUMN_HEIGHT } from '@/core/layout';
+import { css } from '@/core/tagged';
 
 export const ColumnStyle = css`
   .vuerd-column {

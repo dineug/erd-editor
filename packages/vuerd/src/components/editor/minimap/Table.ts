@@ -1,10 +1,11 @@
-import { Table } from '@@types/engine/store/table.state';
 import {
   defineComponent,
-  html,
   FunctionalComponent,
+  html,
 } from '@vuerd/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
+
+import { Table } from '@@types/engine/store/table.state';
 
 declare global {
   interface HTMLElementTagNameMap {

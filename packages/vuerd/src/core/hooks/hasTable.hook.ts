@@ -1,12 +1,12 @@
-import { FocusType } from '@@types/engine/store/editor.state';
 import { TableProps } from '@/components/editor/table/Table';
 import { useContext } from '@/core/hooks/context.hook';
 import {
+  isDraggableColumn,
+  isEdit,
   isFocus,
   isSelectColumn,
-  isEdit,
-  isDraggableColumn,
 } from '@/engine/store/helper/editor.helper';
+import { FocusType } from '@@types/engine/store/editor.state';
 
 export function useHasTable(props: TableProps, ctx: HTMLElement) {
   const contextRef = useContext(ctx);

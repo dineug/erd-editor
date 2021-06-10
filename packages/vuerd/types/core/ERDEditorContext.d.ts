@@ -1,8 +1,8 @@
-import { Theme } from './theme';
-import { Keymap } from './keymap';
-import { Store } from '../engine/store';
 import { Command } from '../engine/command';
+import { Store } from '../engine/store';
 import { Helper } from './helper';
+import { Keymap } from './keymap';
+import { Theme } from './theme';
 
 export interface ERDEditorContext {
   theme: Theme;

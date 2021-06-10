@@ -1,8 +1,9 @@
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
+
+import { createBracketTypeMenus } from './bracketType.menu';
 import { createDatabaseMenus } from './database.menu';
 import { createHighlightThemeMenus } from './highlightTheme.menu';
-import { createBracketTypeMenus } from './bracketType.menu';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 100,

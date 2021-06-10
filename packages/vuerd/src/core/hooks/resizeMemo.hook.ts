@@ -1,8 +1,9 @@
-import { Move } from '@/internal-types/event.helper';
-import { useContext } from './context.hook';
-import { SIZE_MEMO_WIDTH, SIZE_MEMO_HEIGHT } from '@/core/layout';
 import { MemoProps } from '@/components/editor/memo/Memo';
+import { SIZE_MEMO_HEIGHT, SIZE_MEMO_WIDTH } from '@/core/layout';
 import { resizeMemo } from '@/engine/command/memo.cmd.helper';
+import { Move } from '@/internal-types/event.helper';
+
+import { useContext } from './context.hook';
 
 type Direction = 'left' | 'right' | 'top' | 'bottom';
 export type Position =

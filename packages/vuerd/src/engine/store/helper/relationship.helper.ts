@@ -1,3 +1,6 @@
+import { getData } from '@/core/helper';
+import { SIZE_TABLE_BORDER, SIZE_TABLE_PADDING } from '@/core/layout';
+import { DrawRelationship } from '@@types/engine/store/editor.state';
 import {
   Direction,
   Point,
@@ -5,9 +8,6 @@ import {
   RelationshipPoint,
 } from '@@types/engine/store/relationship.state';
 import { Table } from '@@types/engine/store/table.state';
-import { DrawRelationship } from '@@types/engine/store/editor.state';
-import { SIZE_TABLE_PADDING, SIZE_TABLE_BORDER } from '@/core/layout';
-import { getData } from '@/core/helper';
 
 const TABLE_PADDING = (SIZE_TABLE_PADDING + SIZE_TABLE_BORDER) * 2;
 const PATH_HEIGHT = 30;

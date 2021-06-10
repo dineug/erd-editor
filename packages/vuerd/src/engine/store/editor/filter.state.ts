@@ -1,9 +1,9 @@
 import {
-  FilterState,
-  TextFilterCode,
-  OperatorType,
   ColumnType,
+  FilterState,
   FocusFilterType,
+  OperatorType,
+  TextFilterCode,
 } from '@@types/engine/store/editor/filter.state';
 
 export const createFilterState = (): FilterState => ({

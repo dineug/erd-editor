@@ -1,5 +1,5 @@
 {
-  "name": "vuerd-monorepo",
+  "name": "@vuerd/monorepo",
   "private": true,
   "workspaces": [
     "packages/*"
@@ -9,9 +9,9 @@
     "build": "lerna run build",
     "test": "lerna run test",
     "format": "npm run format:eslint && npm run format:prettier",
-    "format:eslint": "eslint \"**/*.{js,ts}\" --fix",
-    "format:prettier": "prettier \"**/*.{cjs,html,js,json,md,ts}\" --write",
-    "lint": "eslint \"**/*.{js,ts}\"",
+    "format:eslint": "eslint \"**/*.{js,ts,tsx}\" --fix",
+    "format:prettier": "prettier \"**/*.{cjs,html,js,json,md,ts,tsx}\" --write",
+    "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "lint-staged": "lint-staged",
     "prepare": "husky install"
   },
@@ -22,13 +22,14 @@
     "eslint": "^7.26.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^3.4.0",
+    "eslint-plugin-simple-import-sort": "^7.0.0",
     "husky": "^6.0.0",
     "lint-staged": "^10.4.0",
     "prettier": "^2.3.0",
     "typescript": "^4.2.4"
   },
   "lint-staged": {
-    "**/*.{cjs,html,js,json,md,ts}": "prettier --write",
-    "**/*.{js,ts}": "eslint --fix"
+    "**/*.{cjs,html,js,json,md,ts,tsx}": "prettier --write",
+    "**/*.{js,ts,tsx}": "eslint --fix"
   }
 }

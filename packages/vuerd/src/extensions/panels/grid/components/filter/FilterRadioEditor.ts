@@ -1,18 +1,20 @@
 import {
-  defineComponent,
-  html,
-  FunctionalComponent,
-  observable,
   beforeMount,
+  defineComponent,
+  FunctionalComponent,
+  html,
+  observable,
   watch,
 } from '@vuerd/lit-observable';
-import { Subscription } from 'rxjs';
-import { styleMap } from 'lit-html/directives/style-map';
 import { classMap } from 'lit-html/directives/class-map';
+import { styleMap } from 'lit-html/directives/style-map';
+import { Subscription } from 'rxjs';
+
 import { uuid } from '@/core/helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { useContext } from '@/extensions/panels/grid/hooks/context.hook';
 import { moveKeys } from '@/engine/store/editor.state';
+import { useContext } from '@/extensions/panels/grid/hooks/context.hook';
+
 import { radioGroupTpl } from './FilterRadioEditor.template';
 
 declare global {
