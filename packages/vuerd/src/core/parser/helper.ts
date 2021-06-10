@@ -1,10 +1,10 @@
-import { Table, Column, Index } from '@@types/engine/store/table.state';
+import { Logger } from '@/core/logger';
+import { Statement } from '@/core/parser/index';
+import { Translation,translations } from '@/core/parser/translations';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { RelationshipState } from '@@types/engine/store/relationship.state';
+import { Column, Index,Table } from '@@types/engine/store/table.state';
 import { TableState } from '@@types/engine/store/table.state';
-import { Statement } from '@/core/parser/index';
-import { translations, Translation } from '@/core/parser/translations';
-import { Logger } from '@/core/logger';
 
 export type Dialect = 'postgresql' | 'oracle' | 'mssql';
 export type Operation =
@@ -55,6 +55,13 @@ export interface FormatChangeSet {
   author: Author;
   tableState: TableState;
   relationshipState: RelationshipState;
+}
+
+export interface FormatTableDiff {
+  author: Author;
+  tableState: TableState;
+  relationshipState: RelationshipState;
+  snapshotTableState: TableState;
 }
 
 export interface KeyColumn {

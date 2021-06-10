@@ -19,3 +19,10 @@ export interface Store extends State {
   undo(): void;
   redo(): void;
 }
+
+export interface ExportedStore {
+  canvas: CanvasState;
+  table: TableState;
+  memo: MemoState;
+  relationship: RelationshipState;
+}

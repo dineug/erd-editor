@@ -23,6 +23,7 @@ export function createdERDEditorContext(): IERDEditorContext {
     store: createStore(helper),
     command: createCommand(),
     helper,
+    snapshots: [],
   };
 }
 

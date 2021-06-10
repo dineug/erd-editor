@@ -8,8 +8,7 @@ import { createJson } from '@/core/parser/SQLParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { JsonFormat } from '@@types/core/file';
-import { Store } from '@@types/engine/store';
+import { ExportedStore, Store } from '@@types/engine/store';
 
 let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
   null;
@@ -19,7 +18,7 @@ export const createJsonFormat = ({
   tableState,
   memoState,
   relationshipState,
-}: Store): JsonFormat => ({
+}: Store): ExportedStore => ({
   canvas: canvasState,
   table: tableState,
   memo: memoState,
@@ -121,6 +120,10 @@ export function importLiquibase(context: ERDEditorContext, dialect: Dialect) {
   importWrapper(context, 'xml', LiquibaseParser, dialect);
 }
 
+export function createStoreCopy(store: Store): ExportedStore {
+  return JSON.parse(createJsonStringify(store));
+}
+
 export interface ParserCallback {
   (input: string, dialect?: Dialect): Statement[];
 }
@@ -154,6 +157,13 @@ export function importWrapper(
               store.canvasState.database
             );
             store.dispatch(loadJson$(json), sortTable());
+
+            // todo make it synchronous
+            setTimeout(() => {
+              var { snapshots } = context;
+              snapshots.push(createStoreCopy(store));
+              console.log('AFTER', snapshots);
+            }, 50);
           }
         };
       } else {

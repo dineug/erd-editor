@@ -1,52 +1,90 @@
-import { Store } from '@@types/engine/store';
-import { Database } from '@@types/engine/store/canvas.state';
-import { orderByNameASC } from '@/engine/store/helper/table.helper';
-import { getData, uuid, autoName } from '@/core/helper';
-
+import { autoName,getData, uuid } from '@/core/helper';
 import {
-  FormatTableOptions,
-  FormatColumnOptions,
-  Constraints,
-  FormatRelationOptions,
-  FormatIndexOptions,
-  KeyColumn,
-  formatNames,
+  Attribute,
   Author,
-  FormatChangeSet,
-  translate,
+  Constraints,
   createXMLString,
+  Dialect,
+  FormatChangeSet,
+  FormatColumnOptions,
+  FormatIndexOptions,
+  formatNames,
+  FormatRelationOptions,
+  FormatTableDiff,
+  FormatTableOptions,
+  KeyColumn,
+  translate,
   XMLNode,
 } from '@/core/parser/helper';
+import { orderByNameASC } from '@/engine/store/helper/table.helper';
+import { ExportedStore, State,Store } from '@@types/engine/store';
+import { Database } from '@@types/engine/store/canvas.state';
+import { Column, Index,Table } from '@@types/engine/store/table.state';
 
 /**
  * Creates Liquibase XML file with export (*only supports source dialect 'PostgreSQL' and creates changeSet in 'oracle', 'mssql' and 'postgresql')
  */
-export function createLiquibase(store: Store, database?: Database): string {
+export function createLiquibase(
+  store: Store,
+  snapshot: ExportedStore,
+  database?: Database
+): string {
   const currentDatabase = database ? database : store.canvasState.database;
-  switch (currentDatabase) {
-    case 'PostgreSQL':
-      return createXMLPostgreOracleMSS(store);
-    default:
-      alert(
-        `Export from ${currentDatabase} dialect not supported, please use PostgreSQL`
-      );
-      return '';
-  }
-  return 'database not supported';
-}
-
-export const createXMLPostgreOracleMSS = ({
-  tableState,
-  relationshipState,
-}: Store) => {
-  const stringBuffer: string[] = [];
 
   const author: Author = {
     id: prompt('Please enter the name of changeset', 'unknown') || 'unknown',
     name: prompt('Please enter your name', 'unknown') || 'unknown',
   };
 
-  const changeSets: XMLNode[] = [
+  var changeSets: XMLNode[];
+
+  switch (currentDatabase) {
+    case 'PostgreSQL':
+      changeSets = createXMLPostgreOracleMSS(store, snapshot, author);
+      break;
+    default:
+      alert(
+        `Export from ${currentDatabase} dialect not supported, please use PostgreSQL`
+      );
+      return '';
+  }
+
+  return [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd">`,
+    createXMLString(changeSets),
+    `</databaseChangeLog>`,
+  ].join('\n');
+}
+
+export const createXMLPostgreOracleMSS = (
+  { tableState, relationshipState }: Store,
+  snapshot: ExportedStore,
+  author: Author
+): XMLNode[] => {
+  console.log(snapshot);
+
+  let changeSets: XMLNode[] = [];
+
+  if (snapshot.table !== tableState) {
+    console.log('Tables were changed, generating diff...');
+
+    tableState.tables[0].name;
+    changeSets.push(
+      ...createTableDiff({
+        tableState,
+        relationshipState,
+        author,
+        snapshotTableState: snapshot.table,
+      })
+    );
+
+    console.log('DIFF:', changeSets[changeSets.length - 1]);
+
+    return changeSets;
+  }
+
+  return [
     createChangeSet({
       dialect: 'postgresql',
       tableState,
@@ -66,15 +104,156 @@ export const createXMLPostgreOracleMSS = ({
       author,
     }),
   ];
+};
 
-  stringBuffer.push(
-    `<?xml version="1.0" encoding="UTF-8"?>`,
-    `<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd">`,
-    createXMLString(changeSets),
-    `</databaseChangeLog>`
+export const generateChangeSetAttr = (
+  author: Author,
+  dialect: Dialect
+): Attribute[] => {
+  return [
+    { name: 'author', value: author.name },
+    { name: 'id', value: `${author.id}-${dialect}` },
+    { name: 'dbms', value: dialect },
+  ];
+};
+
+export const createTableDiff = ({
+  tableState,
+  relationshipState,
+  author,
+  snapshotTableState,
+}: FormatTableDiff): XMLNode[] => {
+  var changeSets: XMLNode[] = [];
+
+  var changeSetModifyPG: XMLNode = {
+    name: 'changeSet',
+    attributes: [],
+    children: [],
+  };
+  var changeSetModifyOracle: XMLNode = {
+    name: 'changeSet',
+    attributes: [],
+    children: [],
+  };
+  var changeSetModifyMssql: XMLNode = {
+    name: 'changeSet',
+    attributes: [],
+    children: [],
+  };
+  var changeSetDrop: XMLNode = {
+    name: 'changeSet',
+    attributes: [],
+    children: [],
+  };
+
+  const tables = orderByNameASC(tableState.tables);
+  // const relationships = relationshipState.relationships;
+  // const indexes = tableState.indexes;
+
+  changeSetModifyPG.attributes.push(
+    ...generateChangeSetAttr(author, 'postgresql')
+  );
+  changeSetModifyOracle.attributes.push(
+    ...generateChangeSetAttr(author, 'oracle')
+  );
+  changeSetModifyMssql.attributes.push(
+    ...generateChangeSetAttr(author, 'mssql')
   );
 
-  return stringBuffer.join('\n');
+  changeSetDrop.attributes.push(
+    { name: 'author', value: author.name },
+    { name: 'id', value: `${author.id}-drop` }
+  );
+
+  tables.forEach(table => {
+    var oldTable: Table | undefined = getData(
+      snapshotTableState.tables,
+      table.id
+    );
+
+    // new table was added
+    if (oldTable === undefined) {
+      changeSetModifyPG.children.push(
+        createTable({ table, dialect: 'postgresql' })
+      );
+      changeSetModifyOracle.children.push(
+        createTable({ table, dialect: 'oracle' })
+      );
+      changeSetModifyMssql.children.push(
+        createTable({ table, dialect: 'mssql' })
+      );
+    }
+
+    // table was modified
+    if (oldTable != table) {
+      var columnsToAdd: Column[] = [];
+
+      table.columns.forEach(column => {
+        if (oldTable) {
+          var oldColumn = getData(oldTable.columns, column.id);
+
+          // column is new
+          if (oldColumn === undefined) {
+            columnsToAdd.push(column);
+          }
+
+          // column was modified
+          if (oldColumn != column) {
+            // todo edit column
+          }
+        }
+      });
+
+      // check for drop column
+      if (oldTable) {
+        oldTable.columns.forEach(oldColumn => {
+          var newColumn = getData(table.columns, oldColumn.id);
+
+          // if drop column
+          if (!newColumn) {
+            changeSetDrop.children.push(dropColumn(table, oldColumn));
+          }
+        });
+      }
+
+      // if found new columns
+      if (columnsToAdd.length) {
+        changeSetModifyPG.children.push(
+          addColumn(table, columnsToAdd, 'postgresql')
+        );
+        changeSetModifyOracle.children.push(
+          addColumn(table, columnsToAdd, 'oracle')
+        );
+        changeSetModifyMssql.children.push(
+          addColumn(table, columnsToAdd, 'mssql')
+        );
+      }
+    }
+  });
+
+  // check for drop table
+  snapshotTableState.tables.forEach(oldTable => {
+    var newTable = getData(tableState.tables, oldTable.id);
+
+    // old table was dropped
+    if (!newTable) {
+      changeSetDrop.children.push(dropTable(oldTable));
+    }
+  });
+
+  // if modification
+  if (changeSetModifyPG.children.length) {
+    changeSets.push(changeSetModifyPG);
+    changeSets.push(changeSetModifyOracle);
+    changeSets.push(changeSetModifyMssql);
+  }
+
+  // if drop
+  if (changeSetDrop.children.length) {
+    changeSets.push(changeSetDrop);
+  }
+
+  return changeSets;
 };
 
 export const createChangeSet = ({
@@ -350,4 +529,51 @@ export const formatIndex = ({ table, index }: FormatIndexOptions): XMLNode => {
   }
 
   return { name: '', attributes: [], children: [] };
+};
+
+export const dropTable = (table: Table): XMLNode => {
+  var createTable: XMLNode = {
+    name: 'dropTable',
+    attributes: [],
+    children: [],
+  };
+
+  createTable.attributes.push({ name: 'tableName', value: table.name });
+
+  return createTable;
+};
+
+export const addColumn = (
+  table: Table,
+  columns: Column[],
+  dialect: Dialect
+): XMLNode => {
+  var addColumn: XMLNode = {
+    name: 'addColumn',
+    attributes: [],
+    children: [],
+  };
+
+  addColumn.attributes.push({ name: 'tableName', value: table.name });
+
+  columns.forEach(column => {
+    addColumn.children.push(formatColumn({ column, dialect }));
+  });
+
+  return addColumn;
+};
+
+export const dropColumn = (table: Table, column: Column): XMLNode => {
+  var dropColumn: XMLNode = {
+    name: 'dropColumn',
+    attributes: [],
+    children: [],
+  };
+
+  dropColumn.attributes.push(
+    { name: 'tableName', value: table.name },
+    { name: 'columnName', value: column.name }
+  );
+
+  return dropColumn;
 };

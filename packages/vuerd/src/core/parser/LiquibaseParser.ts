@@ -1,4 +1,3 @@
-import { Statement, Column, IndexColumn } from '@/core/parser/index';
 import {
   Constraints,
   Dialect,
@@ -6,6 +5,7 @@ import {
   ParserCallback,
   translate,
 } from '@/core/parser/helper';
+import { Column, IndexColumn,Statement } from '@/core/parser/index';
 
 const dialectTo: Dialect = 'postgresql';
 const defaultDialect: Dialect = 'postgresql';
@@ -174,9 +174,6 @@ export const parseAddForeignKeyConstraint = (
       .getAttribute('baseColumnNames')
       ?.split(',')
       .map(item => item.trim()) || [];
-
-  console.log('refColumnNames', refColumnNames);
-  console.log('columnNames', columnNames);
 
   statements.push({
     type: 'alter.table.add.foreignKey',
