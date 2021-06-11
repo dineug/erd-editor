@@ -83,6 +83,7 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
     watch(props, propName => {
       if (propName !== 'menus') return;
 
+      state.menu = null;
       resetTooltip();
     })
   );
