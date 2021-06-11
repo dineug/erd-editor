@@ -33,6 +33,7 @@ import {
   mdiPalette,
   mdiTableCog,
   mdiVectorLine,
+  mdiXml,
 } from '@mdi/js';
 
 import { IconDefinition } from '@@types/core/icon';
@@ -77,6 +78,7 @@ const icons = [
   createMDI('format-letter-case', mdiFormatLetterCase),
   createMDI('table-cog', mdiTableCog),
   createMDI('code-brackets', mdiCodeBrackets),
+  createMDI('xml', mdiXml),
 ] as IconDefinition[];
 
 export const getIcon = (prefix: string, iconName: string) =>

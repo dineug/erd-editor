@@ -1,12 +1,14 @@
 import { DDLParser } from '@vuerd/sql-ddl-parser';
 import domToImage from 'dom-to-image';
 
+import { Statement } from '@/core/parser';
+import { Dialect } from '@/core/parser/helper';
+import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
 import { createJson } from '@/core/parser/SQLParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { JsonFormat } from '@@types/core/file';
-import { Store } from '@@types/engine/store';
+import { ExportedStore, Store } from '@@types/engine/store';
 
 let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
   null;
@@ -16,7 +18,7 @@ export const createJsonFormat = ({
   tableState,
   memoState,
   relationshipState,
-}: Store): JsonFormat => ({
+}: Store): ExportedStore => ({
   canvas: canvasState,
   table: tableState,
   memo: memoState,
@@ -56,6 +58,16 @@ export const exportSQLDDL = (sql: string, name?: string) =>
       ? `unnamed-${new Date().getTime()}.sql`
       : `${name}-${new Date().getTime()}.sql`
   );
+
+export const exportXML = (xml: string, name?: string) => {
+  if (xml)
+    executeExport(
+      new Blob([xml]),
+      name?.trim() === ''
+        ? `unnamed-${new Date().getTime()}.xml`
+        : `${name}-${new Date().getTime()}.xml`
+    );
+};
 
 const executeExport = (blob: Blob, fileName: string) =>
   executeExportFileExtra
@@ -101,33 +113,63 @@ export function importJSON({ store }: ERDEditorContext) {
 }
 
 export function importSQLDDL(context: ERDEditorContext) {
+  importWrapper(context, 'sql', DDLParser);
+}
+
+export function importLiquibase(context: ERDEditorContext, dialect: Dialect) {
+  importWrapper(context, 'xml', LiquibaseParser, dialect);
+}
+
+export function createStoreCopy(store: Store): ExportedStore {
+  return JSON.parse(createJsonStringify(store));
+}
+
+export interface ParserCallback {
+  (input: string, dialect?: Dialect): Statement[];
+}
+
+export function importWrapper(
+  context: ERDEditorContext,
+  type: string,
+  parser: ParserCallback,
+  dialect?: Dialect
+) {
   const { store, helper } = context;
-  const importHelperSQL = document.createElement('input');
-  importHelperSQL.setAttribute('type', 'file');
-  importHelperSQL.setAttribute('accept', '.sql');
-  importHelperSQL.addEventListener('change', event => {
+  const importHelper = document.createElement('input');
+  importHelper.setAttribute('type', 'file');
+  importHelper.setAttribute('accept', `.${type}`);
+  importHelper.addEventListener('change', event => {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length) {
       const file = input.files[0];
-      if (/\.(sql)$/i.test(file.name)) {
+      const regex = new RegExp(`\.(${type})$`, 'i');
+      if (regex.test(file.name)) {
         const reader = new FileReader();
         reader.readAsText(file);
         reader.onload = () => {
           const value = reader.result;
           if (typeof value === 'string') {
-            const statements = DDLParser(value);
+            const statements = parser(value, dialect);
+
             const json = createJson(
               statements,
               helper,
               store.canvasState.database
             );
             store.dispatch(loadJson$(json), sortTable());
+
+            // todo make it synchronous
+            setTimeout(() => {
+              var { snapshots } = context;
+              snapshots.push(createStoreCopy(store));
+              console.log('AFTER', snapshots);
+            }, 50);
           }
         };
       } else {
-        alert('Just upload the sql file');
+        alert(`Just upload the ${type} file`);
       }
     }
   });
-  importHelperSQL.click();
+  importHelper.click();
 }

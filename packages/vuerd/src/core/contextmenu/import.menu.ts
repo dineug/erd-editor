@@ -1,4 +1,4 @@
-import { importJSON, importSQLDDL } from '@/core/file';
+import { importJSON, importLiquibase,importSQLDDL } from '@/core/file';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 
@@ -26,5 +26,42 @@ export const createImportMenus = (context: ERDEditorContext): Menu[] =>
       },
       name: 'SQL DDL',
       execute: () => importSQLDDL(context),
+    },
+    {
+      icon: {
+        prefix: 'mdi',
+        name: 'xml',
+        size: 18,
+      },
+      name: 'Liquibase (WIP)',
+      children: [
+        {
+          icon: {
+            prefix: 'mdi',
+            name: 'xml',
+            size: 18,
+          },
+          name: 'PostgreSQL',
+          execute: () => importLiquibase(context, 'postgresql'),
+        },
+        {
+          icon: {
+            prefix: 'mdi',
+            name: 'xml',
+            size: 18,
+          },
+          name: 'Oracle',
+          execute: () => importLiquibase(context, 'oracle'),
+        },
+        {
+          icon: {
+            prefix: 'mdi',
+            name: 'xml',
+            size: 18,
+          },
+          name: 'MSSQL',
+          execute: () => importLiquibase(context, 'mssql'),
+        },
+      ],
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));
