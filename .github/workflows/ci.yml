@@ -30,7 +30,7 @@ jobs:
           node-version: 14
 
       - name: Bootstrap
-        run: yarn bootstrap
+        run: yarn install
 
       - name: Build
         run: yarn build

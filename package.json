@@ -5,7 +5,6 @@
     "packages/*"
   ],
   "scripts": {
-    "bootstrap": "lerna bootstrap",
     "build": "lerna run build",
     "test": "lerna run test",
     "format": "npm run format:eslint && npm run format:prettier",
