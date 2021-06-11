@@ -1,5 +1,5 @@
 import { Command } from '../engine/command';
-import { ExportedStore,Store } from '../engine/store';
+import { ExportedStore, Store } from '../engine/store';
 import { Helper } from './helper';
 import { Keymap } from './keymap';
 import { Theme } from './theme';

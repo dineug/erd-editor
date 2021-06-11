@@ -1,9 +1,9 @@
 import { Logger } from '@/core/logger';
 import { Statement } from '@/core/parser/index';
-import { Translation,translations } from '@/core/parser/translations';
+import { Translation, translations } from '@/core/parser/translations';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { RelationshipState } from '@@types/engine/store/relationship.state';
-import { Column, Index,Table } from '@@types/engine/store/table.state';
+import { Column, Index, Table } from '@@types/engine/store/table.state';
 import { TableState } from '@@types/engine/store/table.state';
 
 export type Dialect = 'postgresql' | 'oracle' | 'mssql';

@@ -1,4 +1,4 @@
-import { autoName,getData, uuid } from '@/core/helper';
+import { autoName, getData, uuid } from '@/core/helper';
 import {
   Attribute,
   Author,
@@ -17,9 +17,9 @@ import {
   XMLNode,
 } from '@/core/parser/helper';
 import { orderByNameASC } from '@/engine/store/helper/table.helper';
-import { ExportedStore, State,Store } from '@@types/engine/store';
+import { ExportedStore, State, Store } from '@@types/engine/store';
 import { Database } from '@@types/engine/store/canvas.state';
-import { Column, Index,Table } from '@@types/engine/store/table.state';
+import { Column, Index, Table } from '@@types/engine/store/table.state';
 
 /**
  * Creates Liquibase XML file with export (*only supports source dialect 'PostgreSQL' and creates changeSet in 'oracle', 'mssql' and 'postgresql')

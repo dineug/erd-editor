@@ -5,7 +5,7 @@ import {
   ParserCallback,
   translate,
 } from '@/core/parser/helper';
-import { Column, IndexColumn,Statement } from '@/core/parser/index';
+import { Column, IndexColumn, Statement } from '@/core/parser/index';
 
 const dialectTo: Dialect = 'postgresql';
 const defaultDialect: Dialect = 'postgresql';

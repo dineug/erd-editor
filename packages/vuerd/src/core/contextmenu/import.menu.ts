@@ -1,4 +1,4 @@
-import { importJSON, importLiquibase,importSQLDDL } from '@/core/file';
+import { importJSON, importLiquibase, importSQLDDL } from '@/core/file';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 
