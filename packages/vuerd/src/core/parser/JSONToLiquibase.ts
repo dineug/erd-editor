@@ -26,7 +26,7 @@ import { Column, Index, Table } from '@@types/engine/store/table.state';
  */
 export function createLiquibase(
   store: Store,
-  snapshot: ExportedStore,
+  snapshot?: ExportedStore,
   database?: Database
 ): string {
   const currentDatabase = database ? database : store.canvasState.database;
@@ -59,14 +59,14 @@ export function createLiquibase(
 
 export const createXMLPostgreOracleMSS = (
   { tableState, relationshipState }: Store,
-  snapshot: ExportedStore,
+  snapshot: ExportedStore | undefined,
   author: Author
 ): XMLNode[] => {
   console.log(snapshot);
 
   let changeSets: XMLNode[] = [];
 
-  if (snapshot.table !== tableState) {
+  if (snapshot && snapshot.table !== tableState) {
     console.log('Tables were changed, generating diff...');
 
     tableState.tables[0].name;

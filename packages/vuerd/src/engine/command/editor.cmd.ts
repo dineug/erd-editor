@@ -9,7 +9,6 @@ import {
 } from '@/engine/store/canvas.state';
 import { validStartRelationship } from '@/engine/store/helper/valid.helper';
 import { ExecuteCommand } from '@/internal-types/command';
-import { JsonFormat } from '@@types/core/file';
 import { EditorCommandMap } from '@@types/engine/command/editor.cmd';
 import {
   CopyColumn,
@@ -23,6 +22,7 @@ import {
   LoadJson,
   ReadonlyEditor,
 } from '@@types/engine/command/editor.cmd';
+import { ExportedStore } from '@@types/engine/store';
 import { State } from '@@types/engine/store';
 import { DraggableColumn, Viewport } from '@@types/engine/store/editor.state';
 import { Memo } from '@@types/engine/store/memo.state';
@@ -243,7 +243,7 @@ export function executeLoadJson(state: State, data: LoadJson) {
   const panelNames = [...globalPanels, ...editorState.panels].map(
     panel => panel.key
   );
-  const json = JSON.parse(data.value) as JsonFormat;
+  const json = JSON.parse(data.value) as ExportedStore;
   const canvasStateAny = canvasState as any;
   const canvasJson = json.canvas as any;
 

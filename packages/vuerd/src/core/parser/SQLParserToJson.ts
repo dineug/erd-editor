@@ -18,8 +18,8 @@ import { createCanvasState } from '@/engine/store/canvas.state';
 import { createMemoState } from '@/engine/store/memo.state';
 import { createRelationshipState } from '@/engine/store/relationship.state';
 import { createTableState } from '@/engine/store/table.state';
-import { JsonFormat } from '@@types/core/file';
 import { Helper } from '@@types/core/helper';
+import { ExportedStore } from '@@types/engine/store';
 import { Database } from '@@types/engine/store/canvas.state';
 
 interface Shape {
@@ -161,7 +161,10 @@ function mergeTable(shape: Shape): CreateTable[] {
   return tables;
 }
 
-function createJsonFormat(canvasSize: number, database: Database): JsonFormat {
+function createJsonFormat(
+  canvasSize: number,
+  database: Database
+): ExportedStore {
   const canvas = createCanvasState();
   canvas.width = canvasSize;
   canvas.height = canvasSize;
@@ -277,7 +280,7 @@ function createColumn(helper: Helper, column: Column): any {
   return newColumn;
 }
 
-function createRelationship(data: JsonFormat, tables: CreateTable[]) {
+function createRelationship(data: ExportedStore, tables: CreateTable[]) {
   tables.forEach(table => {
     if (table.foreignKeys) {
       const endTable = findByName(data.table.tables, table.name);
@@ -340,7 +343,7 @@ function createRelationship(data: JsonFormat, tables: CreateTable[]) {
   });
 }
 
-function createIndex(data: JsonFormat, tables: CreateTable[]) {
+function createIndex(data: ExportedStore, tables: CreateTable[]) {
   tables.forEach(table => {
     if (table.indexes) {
       table.indexes.forEach(index => {

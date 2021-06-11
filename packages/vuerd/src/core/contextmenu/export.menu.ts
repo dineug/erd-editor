@@ -18,7 +18,7 @@ const defaultOptions: MenuOptions = {
 
 export const getLatestSnapshot = (
   snapshots: ExportedStore[]
-): ExportedStore => {
+): ExportedStore | undefined => {
   return snapshots[snapshots.length - 1];
 };
 

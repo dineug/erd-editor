@@ -35,7 +35,7 @@ export default {
     strip({
       debugger: true,
       include: '**/*.ts',
-      functions: ['Logger.debug', 'Logger.log'],
+      functions: ['Logger.debug', 'Logger.log', 'console.log'],
     }),
     replace({
       preventAssignment: true,
