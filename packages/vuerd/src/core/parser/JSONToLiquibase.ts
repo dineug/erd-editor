@@ -605,7 +605,7 @@ export const dropColumn = (table: Table, column: Column): XMLNode => {
 export const modifyDataType = (
   table: Table,
   newColumn: Column,
-  dialect: Dialect
+  dialectTo: Dialect
 ): XMLNode => {
   var modifyDataType: XMLNode = {
     name: 'modifyDataType',
@@ -616,7 +616,10 @@ export const modifyDataType = (
   modifyDataType.attributes.push(
     { name: 'tableName', value: table.name },
     { name: 'columnName', value: newColumn.name },
-    { name: 'newDataType', value: newColumn.dataType }
+    {
+      name: 'newDataType',
+      value: translate('postgresql', dialectTo, newColumn.dataType),
+    }
   );
 
   return modifyDataType;
