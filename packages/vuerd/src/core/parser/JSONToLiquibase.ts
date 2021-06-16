@@ -1,4 +1,4 @@
-import { autoName, getData, uuid } from '@/core/helper';
+import { getData } from '@/core/helper';
 import {
   Attribute,
   Author,
@@ -17,8 +17,9 @@ import {
   XMLNode,
 } from '@/core/parser/helper';
 import { orderByNameASC } from '@/engine/store/helper/table.helper';
-import { ExportedStore, State, Store } from '@@types/engine/store';
+import { ExportedStore, Store } from '@@types/engine/store';
 import { Database } from '@@types/engine/store/canvas.state';
+import { Relationship } from '@@types/engine/store/relationship.state';
 import { Column, Index, Table } from '@@types/engine/store/table.state';
 
 /**
@@ -76,6 +77,7 @@ export const createXMLPostgreOracleMSS = (
         relationshipState,
         author,
         snapshotTableState: snapshot.table,
+        snapshotRelationshipState: snapshot.relationship,
       })
     );
 
@@ -122,6 +124,7 @@ export const createTableDiff = ({
   relationshipState,
   author,
   snapshotTableState,
+  snapshotRelationshipState,
 }: FormatTableDiff): XMLNode[] => {
   var changeSets: XMLNode[] = [];
 
@@ -165,6 +168,7 @@ export const createTableDiff = ({
     { name: 'id', value: `${author.id}-common` }
   );
 
+  // TABLES
   tables.forEach(newTable => {
     var oldTable: Table | undefined = getData(
       snapshotTableState.tables,
@@ -265,6 +269,76 @@ export const createTableDiff = ({
     }
   });
 
+  // INDEXES
+  if (tableState.indexes != snapshotTableState.indexes) {
+    // check for new index
+    tableState.indexes.forEach(newIndex => {
+      const oldIndex: Index | undefined = getData(
+        snapshotTableState.indexes,
+        newIndex.id
+      );
+
+      // if new index
+      if (oldIndex === undefined) {
+        var newTable: Table | undefined = getData(
+          tableState.tables,
+          newIndex.tableId
+        );
+
+        if (newTable) {
+          changeSetCommon.children.push(
+            formatIndex({ table: newTable, index: newIndex })
+          );
+        }
+      }
+    });
+
+    // check for drop index
+    snapshotTableState.indexes.forEach(oldIndex => {
+      const newIndex: Index | undefined = getData(
+        tableState.indexes,
+        oldIndex.id
+      );
+
+      // if new index
+      if (newIndex === undefined) {
+        const oldTable: Table | undefined = getData(
+          snapshotTableState.tables,
+          oldIndex.tableId
+        );
+
+        if (oldTable) {
+          changeSetCommon.children.push(dropIndex(oldTable, oldIndex));
+        }
+      }
+    });
+  }
+
+  // RELATIONSHIP
+  if (
+    relationshipState.relationships != snapshotRelationshipState.relationships
+  ) {
+    const newRelationships = relationshipState.relationships;
+    const oldRelationships = snapshotRelationshipState.relationships;
+
+    // relationship drop
+    oldRelationships.forEach(oldRelationship => {
+      const newRelationship = getData(newRelationships, oldRelationship.id);
+      const oldTable = getData(
+        snapshotTableState.tables,
+        oldRelationship.end.tableId
+      );
+
+      if (newRelationship === undefined) {
+        changeSetCommon.children.push(
+          dropForeignKeyConstraint(oldTable, oldRelationship)
+        );
+      }
+    });
+
+    // todo relationship add
+  }
+
   // if modification
   if (changeSetModifyPG.children.length) {
     changeSets.push(changeSetModifyPG);
@@ -272,7 +346,7 @@ export const createTableDiff = ({
     changeSets.push(changeSetModifyMssql);
   }
 
-  // if drop
+  // if common
   if (changeSetCommon.children.length) {
     changeSets.push(changeSetCommon);
   }
@@ -659,3 +733,38 @@ export const renameTable = (newTable: Table, oldTable: Table): XMLNode => {
 
   return renameTable;
 };
+
+export const dropIndex = (table: Table, index: Index): XMLNode => {
+  var dropIndex: XMLNode = {
+    name: 'dropIndex',
+    attributes: [],
+    children: [],
+  };
+
+  dropIndex.attributes.push(
+    { name: 'indexName', value: index.name },
+    { name: 'tableName', value: table.name }
+  );
+
+  return dropIndex;
+};
+
+function dropForeignKeyConstraint(
+  table: any,
+  relationship: Relationship
+): XMLNode {
+  var dropForeignKeyConstraint: XMLNode = {
+    name: 'dropForeignKeyConstraint',
+    attributes: [],
+    children: [],
+  };
+
+  dropForeignKeyConstraint.attributes.push(
+    { name: 'baseTableName', value: table.name },
+
+    // TODO FIX ERROR
+    { name: 'constraintName', value: relationship.constraintName || '???' }
+  );
+
+  return dropForeignKeyConstraint;
+}

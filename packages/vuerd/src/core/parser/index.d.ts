@@ -57,6 +57,7 @@ export interface ForeignKey {
   columnNames: string[];
   refTableName: string;
   refColumnNames: string[];
+  constraintName: string;
 }
 
 export interface CreateTableColumns {
@@ -95,6 +96,7 @@ export interface AlterTableAddForeignKey {
   columnNames: string[];
   refTableName: string;
   refColumnNames: string[];
+  constraintName: string;
 }
 
 export interface AlterTableAddColumn {

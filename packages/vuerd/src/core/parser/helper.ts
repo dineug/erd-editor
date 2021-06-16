@@ -62,6 +62,7 @@ export interface FormatTableDiff {
   tableState: TableState;
   relationshipState: RelationshipState;
   snapshotTableState: TableState;
+  snapshotRelationshipState: RelationshipState;
 }
 
 export interface KeyColumn {

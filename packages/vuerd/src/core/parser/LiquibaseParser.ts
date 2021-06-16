@@ -181,6 +181,7 @@ export const parseAddForeignKeyConstraint = (
     columnNames: columnNames,
     refTableName: addForeignKey.getAttribute('referencedTableName') || '',
     refColumnNames: refColumnNames,
+    constraintName: addForeignKey.getAttribute('constraintName') || '',
   });
 };
 

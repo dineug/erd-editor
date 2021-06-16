@@ -145,6 +145,7 @@ function mergeTable(shape: Shape): CreateTable[] {
         columnNames: foreignKey.columnNames,
         refTableName: foreignKey.refTableName,
         refColumnNames: foreignKey.refColumnNames,
+        constraintName: foreignKey.constraintName,
       });
     }
   });
@@ -335,6 +336,7 @@ function createRelationship(data: ExportedStore, tables: CreateTable[]) {
                 y: 0,
                 direction: 'top',
               },
+              constraintName: foreignKey.constraintName,
             });
           }
         });

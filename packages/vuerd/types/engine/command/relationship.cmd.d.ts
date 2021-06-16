@@ -14,6 +14,7 @@ export interface AddRelationship {
   relationshipType: RelationshipType;
   start: AddRelationshipPoint;
   end: AddRelationshipPoint;
+  constraintName: string;
 }
 
 export interface RemoveRelationship {

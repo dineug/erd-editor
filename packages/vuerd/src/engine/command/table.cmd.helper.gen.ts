@@ -35,10 +35,15 @@ export function* selectTable$(store: Store, ctrlKey: boolean, tableId: string) {
   if (!drawRelationship) return;
 
   if (drawRelationship.start) {
+    const endTable = getData(store.tableState.tables, tableId);
+    const fkName: string =
+      `fk_${drawRelationship.start.table.name}_to_${endTable?.name}`.toLowerCase();
+
     const addRelationshipCmd = addRelationship(
       drawRelationship.relationshipType,
       drawRelationship.start.table,
-      tableId
+      tableId,
+      fkName
     );
     const startTable = drawRelationship.start.table;
     const { start, end } = addRelationshipCmd.data;
