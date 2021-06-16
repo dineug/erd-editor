@@ -140,7 +140,7 @@ export const createTableDiff = ({
     attributes: [],
     children: [],
   };
-  var changeSetDrop: XMLNode = {
+  var changeSetCommon: XMLNode = {
     name: 'changeSet',
     attributes: [],
     children: [],
@@ -160,73 +160,97 @@ export const createTableDiff = ({
     ...generateChangeSetAttr(author, 'mssql')
   );
 
-  changeSetDrop.attributes.push(
+  changeSetCommon.attributes.push(
     { name: 'author', value: author.name },
-    { name: 'id', value: `${author.id}-drop` }
+    { name: 'id', value: `${author.id}-common` }
   );
 
-  tables.forEach(table => {
+  tables.forEach(newTable => {
     var oldTable: Table | undefined = getData(
       snapshotTableState.tables,
-      table.id
+      newTable.id
     );
 
     // new table was added
     if (oldTable === undefined) {
       changeSetModifyPG.children.push(
-        createTable({ table, dialect: 'postgresql' })
+        createTable({ table: newTable, dialect: 'postgresql' })
       );
       changeSetModifyOracle.children.push(
-        createTable({ table, dialect: 'oracle' })
+        createTable({ table: newTable, dialect: 'oracle' })
       );
       changeSetModifyMssql.children.push(
-        createTable({ table, dialect: 'mssql' })
+        createTable({ table: newTable, dialect: 'mssql' })
       );
     }
 
     // table was modified
-    if (oldTable != table) {
+    if (oldTable != newTable) {
       var columnsToAdd: Column[] = [];
 
-      table.columns.forEach(column => {
-        if (oldTable) {
-          var oldColumn = getData(oldTable.columns, column.id);
+      // check columns
+      newTable.columns.forEach(newColumn => {
+        var oldColumn = getData(
+          oldTable ? oldTable?.columns : [],
+          newColumn.id
+        );
 
-          // column is new
-          if (oldColumn === undefined) {
-            columnsToAdd.push(column);
+        // column is new
+        if (oldColumn === undefined) {
+          columnsToAdd.push(newColumn);
+        }
+
+        // column was modified
+        else if (oldColumn != newColumn) {
+          // todo edit column
+          // datatype was changed
+          if (oldColumn?.dataType !== newColumn.dataType) {
+            changeSetModifyPG.children.push(
+              modifyDataType(newTable, newColumn, 'postgresql')
+            );
+            changeSetModifyOracle.children.push(
+              modifyDataType(newTable, newColumn, 'oracle')
+            );
+            changeSetModifyMssql.children.push(
+              modifyDataType(newTable, newColumn, 'mssql')
+            );
           }
 
-          // column was modified
-          if (oldColumn != column) {
-            // todo edit column
+          // name was changed
+          if (oldColumn?.name !== newColumn.name) {
+            changeSetCommon.children.push(
+              renameColumn(newTable, newColumn, oldColumn)
+            );
           }
         }
       });
 
-      // check for drop column
-      if (oldTable) {
-        oldTable.columns.forEach(oldColumn => {
-          var newColumn = getData(table.columns, oldColumn.id);
-
-          // if drop column
-          if (!newColumn) {
-            changeSetDrop.children.push(dropColumn(table, oldColumn));
-          }
-        });
-      }
-
       // if found new columns
       if (columnsToAdd.length) {
         changeSetModifyPG.children.push(
-          addColumn(table, columnsToAdd, 'postgresql')
+          addColumn(newTable, columnsToAdd, 'postgresql')
         );
         changeSetModifyOracle.children.push(
-          addColumn(table, columnsToAdd, 'oracle')
+          addColumn(newTable, columnsToAdd, 'oracle')
         );
         changeSetModifyMssql.children.push(
-          addColumn(table, columnsToAdd, 'mssql')
+          addColumn(newTable, columnsToAdd, 'mssql')
         );
+      }
+
+      // check for drop column
+      oldTable?.columns.forEach(oldColumn => {
+        var newColumn = getData(newTable.columns, oldColumn.id);
+
+        // if drop column
+        if (!newColumn) {
+          changeSetCommon.children.push(dropColumn(newTable, oldColumn));
+        }
+      });
+
+      // if rename table
+      if (oldTable && oldTable.name !== newTable.name) {
+        changeSetCommon.children.push(renameTable(oldTable, newTable));
       }
     }
   });
@@ -237,7 +261,7 @@ export const createTableDiff = ({
 
     // old table was dropped
     if (!newTable) {
-      changeSetDrop.children.push(dropTable(oldTable));
+      changeSetCommon.children.push(dropTable(oldTable));
     }
   });
 
@@ -249,8 +273,8 @@ export const createTableDiff = ({
   }
 
   // if drop
-  if (changeSetDrop.children.length) {
-    changeSets.push(changeSetDrop);
+  if (changeSetCommon.children.length) {
+    changeSets.push(changeSetCommon);
   }
 
   return changeSets;
@@ -576,4 +600,59 @@ export const dropColumn = (table: Table, column: Column): XMLNode => {
   );
 
   return dropColumn;
+};
+
+export const modifyDataType = (
+  table: Table,
+  newColumn: Column,
+  dialect: Dialect
+): XMLNode => {
+  var modifyDataType: XMLNode = {
+    name: 'modifyDataType',
+    attributes: [],
+    children: [],
+  };
+
+  modifyDataType.attributes.push(
+    { name: 'tableName', value: table.name },
+    { name: 'columnName', value: newColumn.name },
+    { name: 'newDataType', value: newColumn.dataType }
+  );
+
+  return modifyDataType;
+};
+
+export const renameColumn = (
+  table: Table,
+  newColumn: Column,
+  oldColumn: Column
+): XMLNode => {
+  var renameColumn: XMLNode = {
+    name: 'renameColumn',
+    attributes: [],
+    children: [],
+  };
+
+  renameColumn.attributes.push(
+    { name: 'tableName', value: table.name },
+    { name: 'newColumnName', value: newColumn.name },
+    { name: 'oldColumnName', value: oldColumn.name }
+  );
+
+  return renameColumn;
+};
+
+export const renameTable = (newTable: Table, oldTable: Table): XMLNode => {
+  var renameTable: XMLNode = {
+    name: 'renameTable',
+    attributes: [],
+    children: [],
+  };
+
+  renameTable.attributes.push(
+    { name: 'newTableName', value: newTable.name },
+    { name: 'oldTableName', value: oldTable.name }
+  );
+
+  return renameTable;
 };
