@@ -160,7 +160,7 @@ export interface Attribute {
   value: string;
 }
 
-export interface XMLNode {
+export interface IXMLNode {
   name: string;
   attributes: Attribute[];
   children: XMLNode[];
@@ -204,3 +204,27 @@ const createNode = (xmlNode: XMLNode, root: Document): HTMLElement => {
 
   return element;
 };
+
+export class XMLNode implements IXMLNode {
+  name: string;
+  attributes: Attribute[];
+  children: XMLNode[];
+
+  constructor(
+    name: string,
+    attributes: Attribute[] = [],
+    children: XMLNode[] = []
+  ) {
+    this.name = name;
+    this.attributes = attributes;
+    this.children = children;
+  }
+
+  addAttribute(...attributes: Attribute[]) {
+    this.attributes.push(...attributes);
+  }
+
+  addChildren(...children: XMLNode[]) {
+    this.children.push(...children);
+  }
+}

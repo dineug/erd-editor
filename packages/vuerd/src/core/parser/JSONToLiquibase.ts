@@ -22,6 +22,8 @@ import { Database } from '@@types/engine/store/canvas.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { Column, Index, Table } from '@@types/engine/store/table.state';
 
+import { parseAddForeignKeyConstraint } from './LiquibaseParser';
+
 /**
  * Creates Liquibase XML file with export (*only supports source dialect 'PostgreSQL' and creates changeSet in 'oracle', 'mssql' and 'postgresql')
  */
@@ -128,62 +130,43 @@ export const createTableDiff = ({
 }: FormatTableDiff): XMLNode[] => {
   var changeSets: XMLNode[] = [];
 
-  var changeSetModifyPG: XMLNode = {
-    name: 'changeSet',
-    attributes: [],
-    children: [],
-  };
-  var changeSetModifyOracle: XMLNode = {
-    name: 'changeSet',
-    attributes: [],
-    children: [],
-  };
-  var changeSetModifyMssql: XMLNode = {
-    name: 'changeSet',
-    attributes: [],
-    children: [],
-  };
-  var changeSetCommon: XMLNode = {
-    name: 'changeSet',
-    attributes: [],
-    children: [],
-  };
+  var changeSetModifyPG: XMLNode = new XMLNode('changeSet');
+  var changeSetModifyOracle: XMLNode = new XMLNode('changeSet');
+  var changeSetModifyMssql: XMLNode = new XMLNode('changeSet');
+  var changeSetCommon: XMLNode = new XMLNode('changeSet');
 
-  const tables = orderByNameASC(tableState.tables);
-  // const relationships = relationshipState.relationships;
-  // const indexes = tableState.indexes;
+  const newTables = orderByNameASC(tableState.tables);
+  const oldTables = orderByNameASC(snapshotTableState.tables);
 
-  changeSetModifyPG.attributes.push(
+  const newRelationships = relationshipState.relationships;
+  const oldRelationships = snapshotRelationshipState.relationships;
+
+  changeSetModifyPG.addAttribute(
     ...generateChangeSetAttr(author, 'postgresql')
   );
-  changeSetModifyOracle.attributes.push(
+  changeSetModifyOracle.addAttribute(
     ...generateChangeSetAttr(author, 'oracle')
   );
-  changeSetModifyMssql.attributes.push(
-    ...generateChangeSetAttr(author, 'mssql')
-  );
+  changeSetModifyMssql.addAttribute(...generateChangeSetAttr(author, 'mssql'));
 
-  changeSetCommon.attributes.push(
+  changeSetCommon.addAttribute(
     { name: 'author', value: author.name },
     { name: 'id', value: `${author.id}-common` }
   );
 
   // TABLES
-  tables.forEach(newTable => {
-    var oldTable: Table | undefined = getData(
-      snapshotTableState.tables,
-      newTable.id
-    );
+  newTables.forEach(newTable => {
+    var oldTable: Table | undefined = getData(oldTables, newTable.id);
 
     // new table was added
     if (oldTable === undefined) {
-      changeSetModifyPG.children.push(
+      changeSetModifyPG.addChildren(
         createTable({ table: newTable, dialect: 'postgresql' })
       );
-      changeSetModifyOracle.children.push(
+      changeSetModifyOracle.addChildren(
         createTable({ table: newTable, dialect: 'oracle' })
       );
-      changeSetModifyMssql.children.push(
+      changeSetModifyMssql.addChildren(
         createTable({ table: newTable, dialect: 'mssql' })
       );
     }
@@ -206,23 +189,22 @@ export const createTableDiff = ({
 
         // column was modified
         else if (oldColumn != newColumn) {
-          // todo edit column
           // datatype was changed
           if (oldColumn?.dataType !== newColumn.dataType) {
-            changeSetModifyPG.children.push(
+            changeSetModifyPG.addChildren(
               modifyDataType(newTable, newColumn, 'postgresql')
             );
-            changeSetModifyOracle.children.push(
+            changeSetModifyOracle.addChildren(
               modifyDataType(newTable, newColumn, 'oracle')
             );
-            changeSetModifyMssql.children.push(
+            changeSetModifyMssql.addChildren(
               modifyDataType(newTable, newColumn, 'mssql')
             );
           }
 
           // name was changed
           if (oldColumn?.name !== newColumn.name) {
-            changeSetCommon.children.push(
+            changeSetCommon.addChildren(
               renameColumn(newTable, newColumn, oldColumn)
             );
           }
@@ -231,13 +213,13 @@ export const createTableDiff = ({
 
       // if found new columns
       if (columnsToAdd.length) {
-        changeSetModifyPG.children.push(
+        changeSetModifyPG.addChildren(
           addColumn(newTable, columnsToAdd, 'postgresql')
         );
-        changeSetModifyOracle.children.push(
+        changeSetModifyOracle.addChildren(
           addColumn(newTable, columnsToAdd, 'oracle')
         );
-        changeSetModifyMssql.children.push(
+        changeSetModifyMssql.addChildren(
           addColumn(newTable, columnsToAdd, 'mssql')
         );
       }
@@ -248,24 +230,24 @@ export const createTableDiff = ({
 
         // if drop column
         if (!newColumn) {
-          changeSetCommon.children.push(dropColumn(newTable, oldColumn));
+          changeSetCommon.addChildren(dropColumn(newTable, oldColumn));
         }
       });
 
       // if rename table
       if (oldTable && oldTable.name !== newTable.name) {
-        changeSetCommon.children.push(renameTable(oldTable, newTable));
+        changeSetCommon.addChildren(renameTable(oldTable, newTable));
       }
     }
   });
 
   // check for drop table
-  snapshotTableState.tables.forEach(oldTable => {
-    var newTable = getData(tableState.tables, oldTable.id);
+  oldTables.forEach(oldTable => {
+    var newTable = getData(newTables, oldTable.id);
 
     // old table was dropped
     if (!newTable) {
-      changeSetCommon.children.push(dropTable(oldTable));
+      changeSetCommon.addChildren(dropTable(oldTable));
     }
   });
 
@@ -280,14 +262,11 @@ export const createTableDiff = ({
 
       // if new index
       if (oldIndex === undefined) {
-        var newTable: Table | undefined = getData(
-          tableState.tables,
-          newIndex.tableId
-        );
+        var newTable: Table | undefined = getData(newTables, newIndex.tableId);
 
         if (newTable) {
-          changeSetCommon.children.push(
-            formatIndex({ table: newTable, index: newIndex })
+          changeSetCommon.addChildren(
+            createIndex({ table: newTable, index: newIndex })
           );
         }
       }
@@ -303,40 +282,44 @@ export const createTableDiff = ({
       // if new index
       if (newIndex === undefined) {
         const oldTable: Table | undefined = getData(
-          snapshotTableState.tables,
+          oldTables,
           oldIndex.tableId
         );
 
         if (oldTable) {
-          changeSetCommon.children.push(dropIndex(oldTable, oldIndex));
+          changeSetCommon.addChildren(dropIndex(oldTable, oldIndex));
         }
       }
     });
   }
 
   // RELATIONSHIP
-  if (
-    relationshipState.relationships != snapshotRelationshipState.relationships
-  ) {
-    const newRelationships = relationshipState.relationships;
-    const oldRelationships = snapshotRelationshipState.relationships;
-
+  if (newRelationships != oldRelationships) {
     // relationship drop
     oldRelationships.forEach(oldRelationship => {
       const newRelationship = getData(newRelationships, oldRelationship.id);
-      const oldTable = getData(
-        snapshotTableState.tables,
-        oldRelationship.end.tableId
-      );
+      const oldTable = getData(oldTables, oldRelationship.end.tableId);
 
       if (newRelationship === undefined) {
-        changeSetCommon.children.push(
+        changeSetCommon.addChildren(
           dropForeignKeyConstraint(oldTable, oldRelationship)
         );
       }
     });
 
-    // todo relationship add
+    // add relationship
+    newRelationships.forEach(newRelationship => {
+      const oldRelationship = getData(oldRelationships, newRelationship.id);
+
+      if (oldRelationship === undefined) {
+        changeSetCommon.addChildren(
+          addForeignKeyConstraint({
+            tables: newTables,
+            relationship: newRelationship,
+          })
+        );
+      }
+    });
   }
 
   // if modification
@@ -360,20 +343,20 @@ export const createChangeSet = ({
   relationshipState,
   author,
 }: FormatChangeSet): XMLNode => {
-  var changeSet: XMLNode = { name: 'changeSet', attributes: [], children: [] };
+  var changeSet: XMLNode = new XMLNode('changeSet');
 
   const tables = orderByNameASC(tableState.tables);
   const relationships = relationshipState.relationships;
   const indexes = tableState.indexes;
 
-  changeSet.attributes.push(
+  changeSet.addAttribute(
     { name: 'author', value: author.name },
     { name: 'id', value: `${author.id}-${dialect}` },
     { name: 'dbms', value: dialect }
   );
 
   tables.forEach(table => {
-    changeSet.children.push(
+    changeSet.addChildren(
       createTable({
         table,
         dialect,
@@ -382,8 +365,8 @@ export const createChangeSet = ({
   });
 
   relationships.forEach(relationship => {
-    changeSet.children.push(
-      formatRelation({
+    changeSet.addChildren(
+      addForeignKeyConstraint({
         tables,
         relationship,
       })
@@ -393,8 +376,8 @@ export const createChangeSet = ({
   indexes.forEach(index => {
     const table = getData(tables, index.tableId);
     if (table)
-      changeSet.children.push(
-        formatIndex({
+      changeSet.addChildren(
+        createIndex({
           table,
           index,
         })
@@ -408,19 +391,15 @@ export const createTable = ({
   table,
   dialect,
 }: FormatTableOptions): XMLNode => {
-  var createTable: XMLNode = {
-    name: 'createTable',
-    attributes: [],
-    children: [],
-  };
+  var createTable: XMLNode = new XMLNode('createTable');
 
-  createTable.attributes.push({ name: 'tableName', value: table.name });
+  createTable.addAttribute({ name: 'tableName', value: table.name });
 
   if (table.comment)
-    createTable.attributes.push({ name: 'remarks', value: table.comment });
+    createTable.addAttribute({ name: 'remarks', value: table.comment });
 
   table.columns.forEach((column, i) => {
-    createTable.children.push(
+    createTable.addChildren(
       formatColumn({
         column,
         dialect,
@@ -438,31 +417,31 @@ export const formatColumn = ({
   column,
   dialect,
 }: FormatColumnOptions): XMLNode => {
-  var columnXML: XMLNode = { name: 'column', attributes: [], children: [] };
-
-  columnXML.attributes.push({ name: 'name', value: column.name });
-  columnXML.attributes.push({
-    name: 'type',
-    value: translate('postgresql', dialect, column.dataType),
-  });
+  var columnXML: XMLNode = new XMLNode('column', [
+    { name: 'name', value: column.name },
+    {
+      name: 'type',
+      value: translate('postgresql', dialect, column.dataType),
+    },
+  ]);
 
   if (column.dataType)
-    columnXML.attributes.push({
+    columnXML.addAttribute({
       name: 'type',
       value: translate('postgresql', dialect, column.dataType),
     });
 
   if (column.option.autoIncrement)
-    columnXML.attributes.push({
+    columnXML.addAttribute({
       name: 'autoIncrement',
       value: column.option.autoIncrement.toString(),
     });
 
   if (column.default)
-    columnXML.attributes.push({ name: 'defaultValue', value: column.default });
+    columnXML.addAttribute({ name: 'defaultValue', value: column.default });
 
   if (column.comment)
-    columnXML.attributes.push({ name: 'remarks', value: column.comment });
+    columnXML.addAttribute({ name: 'remarks', value: column.comment });
 
   // if constraints
   if (
@@ -470,7 +449,7 @@ export const formatColumn = ({
     column.option.primaryKey ||
     column.option.unique
   ) {
-    columnXML.children.push(
+    columnXML.addChildren(
       formatConstraints({
         primaryKey: column.option.primaryKey,
         nullable: !column.option.notNull,
@@ -486,26 +465,22 @@ export const formatColumn = ({
  * Formatting constraints inside one column
  */
 export const formatConstraints = (constraints: Constraints): XMLNode => {
-  var constraintsXML: XMLNode = {
-    name: 'constraints',
-    attributes: [],
-    children: [],
-  };
+  var constraintsXML: XMLNode = new XMLNode('constraints');
 
   if (constraints.primaryKey)
-    constraintsXML.attributes.push({
+    constraintsXML.addAttribute({
       name: 'primaryKey',
       value: constraints.primaryKey.toString(),
     });
 
   if (constraints.nullable === false)
-    constraintsXML.attributes.push({
+    constraintsXML.addAttribute({
       name: 'nullable',
       value: constraints.nullable.toString(),
     });
 
   if (constraints.unique)
-    constraintsXML.attributes.push({
+    constraintsXML.addAttribute({
       name: 'unique',
       value: constraints.unique.toString(),
     });
@@ -513,7 +488,7 @@ export const formatConstraints = (constraints: Constraints): XMLNode => {
   return constraintsXML;
 };
 
-export const formatRelation = ({
+export const addForeignKeyConstraint = ({
   tables,
   relationship,
 }: FormatRelationOptions): XMLNode => {
@@ -521,12 +496,6 @@ export const formatRelation = ({
   const endTable = getData(tables, relationship.end.tableId);
 
   if (startTable && endTable) {
-    var relationshipXML: XMLNode = {
-      name: 'addForeignKeyConstraint',
-      attributes: [],
-      children: [],
-    };
-
     const columns: KeyColumn = {
       start: [],
       end: [],
@@ -544,7 +513,7 @@ export const formatRelation = ({
       }
     });
 
-    relationshipXML.attributes.push(
+    return new XMLNode('addForeignKeyConstraint', [
       { name: 'baseColumnNames', value: formatNames(columns.end) },
       { name: 'baseTableName', value: endTable.name },
       {
@@ -554,19 +523,17 @@ export const formatRelation = ({
       { name: 'deferrable', value: 'false' },
       { name: 'initiallyDeferred', value: 'false' },
       { name: 'referencedColumnNames', value: formatNames(columns.start) },
-      { name: 'referencedTableName', value: startTable.name }
-    );
-
-    return relationshipXML;
+      { name: 'referencedTableName', value: startTable.name },
+    ]);
   }
 
-  return { name: '', attributes: [], children: [] };
+  return new XMLNode('');
 };
 
 /**
  * Creating index
  */
-export const formatIndex = ({ table, index }: FormatIndexOptions): XMLNode => {
+export const createIndex = ({ table, index }: FormatIndexOptions): XMLNode => {
   // gets real columns, using id
   const colsWithIndex = index.columns
     .map(indexColumn => {
@@ -585,60 +552,46 @@ export const formatIndex = ({ table, index }: FormatIndexOptions): XMLNode => {
   }[];
 
   if (colsWithIndex.length !== 0) {
-    var indexXML: XMLNode = {
-      name: 'createIndex',
-      attributes: [],
-      children: [],
-    };
+    var createIndex: XMLNode = new XMLNode('createIndex');
 
     let indexName = index.name;
     if (index.name.trim() === '') {
       indexName = `${table.name}`;
     }
 
-    indexXML.attributes.push(
+    createIndex.addAttribute(
       { name: 'indexName', value: indexName },
       { name: 'tableName', value: table.name }
     );
 
     if (index.unique)
-      indexXML.attributes.push({
+      createIndex.addAttribute({
         name: 'unique',
         value: index.unique.toString(),
       });
 
     colsWithIndex.forEach(column => {
-      var columnXML = {
-        name: 'column',
-        attributes: [{ name: 'name', value: column.name }],
-        children: [],
-      };
+      var columnXML = new XMLNode('column', [
+        { name: 'name', value: column.name },
+      ]);
 
       if (column.descending)
-        columnXML.attributes.push({
+        columnXML.addAttribute({
           name: 'descending',
           value: column.descending.toString(),
         });
 
-      indexXML.children.push(columnXML);
+      createIndex.addChildren(columnXML);
     });
 
-    return indexXML;
+    return createIndex;
   }
 
-  return { name: '', attributes: [], children: [] };
+  return new XMLNode('');
 };
 
 export const dropTable = (table: Table): XMLNode => {
-  var createTable: XMLNode = {
-    name: 'dropTable',
-    attributes: [],
-    children: [],
-  };
-
-  createTable.attributes.push({ name: 'tableName', value: table.name });
-
-  return createTable;
+  return new XMLNode('dropTable', [{ name: 'tableName', value: table.name }]);
 };
 
 export const addColumn = (
@@ -646,34 +599,22 @@ export const addColumn = (
   columns: Column[],
   dialect: Dialect
 ): XMLNode => {
-  var addColumn: XMLNode = {
-    name: 'addColumn',
-    attributes: [],
-    children: [],
-  };
-
-  addColumn.attributes.push({ name: 'tableName', value: table.name });
+  var addColumn: XMLNode = new XMLNode('addColumn', [
+    { name: 'tableName', value: table.name },
+  ]);
 
   columns.forEach(column => {
-    addColumn.children.push(formatColumn({ column, dialect }));
+    addColumn.addChildren(formatColumn({ column, dialect }));
   });
 
   return addColumn;
 };
 
 export const dropColumn = (table: Table, column: Column): XMLNode => {
-  var dropColumn: XMLNode = {
-    name: 'dropColumn',
-    attributes: [],
-    children: [],
-  };
-
-  dropColumn.attributes.push(
+  return new XMLNode('dropColumn', [
     { name: 'tableName', value: table.name },
-    { name: 'columnName', value: column.name }
-  );
-
-  return dropColumn;
+    { name: 'columnName', value: column.name },
+  ]);
 };
 
 export const modifyDataType = (
@@ -681,22 +622,14 @@ export const modifyDataType = (
   newColumn: Column,
   dialectTo: Dialect
 ): XMLNode => {
-  var modifyDataType: XMLNode = {
-    name: 'modifyDataType',
-    attributes: [],
-    children: [],
-  };
-
-  modifyDataType.attributes.push(
+  return new XMLNode('modifyDataType', [
     { name: 'tableName', value: table.name },
     { name: 'columnName', value: newColumn.name },
     {
       name: 'newDataType',
       value: translate('postgresql', dialectTo, newColumn.dataType),
-    }
-  );
-
-  return modifyDataType;
+    },
+  ]);
 };
 
 export const renameColumn = (
@@ -704,67 +637,33 @@ export const renameColumn = (
   newColumn: Column,
   oldColumn: Column
 ): XMLNode => {
-  var renameColumn: XMLNode = {
-    name: 'renameColumn',
-    attributes: [],
-    children: [],
-  };
-
-  renameColumn.attributes.push(
+  return new XMLNode('renameColumn', [
     { name: 'tableName', value: table.name },
     { name: 'newColumnName', value: newColumn.name },
-    { name: 'oldColumnName', value: oldColumn.name }
-  );
-
-  return renameColumn;
+    { name: 'oldColumnName', value: oldColumn.name },
+  ]);
 };
 
 export const renameTable = (newTable: Table, oldTable: Table): XMLNode => {
-  var renameTable: XMLNode = {
-    name: 'renameTable',
-    attributes: [],
-    children: [],
-  };
-
-  renameTable.attributes.push(
+  return new XMLNode('renameTable', [
     { name: 'newTableName', value: newTable.name },
-    { name: 'oldTableName', value: oldTable.name }
-  );
-
-  return renameTable;
+    { name: 'oldTableName', value: oldTable.name },
+  ]);
 };
 
 export const dropIndex = (table: Table, index: Index): XMLNode => {
-  var dropIndex: XMLNode = {
-    name: 'dropIndex',
-    attributes: [],
-    children: [],
-  };
-
-  dropIndex.attributes.push(
+  return new XMLNode('dropIndex', [
     { name: 'indexName', value: index.name },
-    { name: 'tableName', value: table.name }
-  );
-
-  return dropIndex;
+    { name: 'tableName', value: table.name },
+  ]);
 };
 
 function dropForeignKeyConstraint(
   table: any,
   relationship: Relationship
 ): XMLNode {
-  var dropForeignKeyConstraint: XMLNode = {
-    name: 'dropForeignKeyConstraint',
-    attributes: [],
-    children: [],
-  };
-
-  dropForeignKeyConstraint.attributes.push(
+  return new XMLNode('dropForeignKeyConstraint', [
     { name: 'baseTableName', value: table.name },
-
-    // TODO FIX ERROR
-    { name: 'constraintName', value: relationship.constraintName || '???' }
-  );
-
-  return dropForeignKeyConstraint;
+    { name: 'constraintName', value: relationship.constraintName || '???' },
+  ]);
 }
