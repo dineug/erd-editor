@@ -4,22 +4,14 @@ import { Container } from '@/components/editor/Editor.styled';
 import Preview from '@/components/editor/Preview';
 import TemplateEditor from '@/components/editor/TemplateEditor';
 import Toolbar from '@/components/editor/Toolbar';
-import { SIDEBAR_WIDTH } from '@/core/layout';
-import { useContext } from '@/hooks/useContext';
 
 export interface Props {
-  sidebarWidth: number;
+  width: number;
 }
 
-const Editor: FunctionalComponent<Partial<Props>> = ({
-  sidebarWidth = SIDEBAR_WIDTH,
-}) => {
-  const { stores } = useContext();
-
+const Editor: FunctionalComponent<Partial<Props>> = ({ width = 0 }) => {
   return (
-    <Container
-      style={{ width: `${stores.ui.viewport.width - sidebarWidth}px` }}
-    >
+    <Container style={{ width: `${width}px` }}>
       <Toolbar />
       <TemplateEditor />
     </Container>
