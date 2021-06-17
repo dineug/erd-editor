@@ -136,7 +136,7 @@ export function importWrapper(
   resetDiagram: boolean = true,
   dialect?: Dialect
 ) {
-  const { store, helper, snapshots } = context;
+  const { store, helper } = context;
   const importHelper = document.createElement('input');
   importHelper.setAttribute('type', 'file');
   importHelper.setAttribute('accept', `.${type}`);
@@ -159,7 +159,7 @@ export function importWrapper(
                 helper,
                 store.canvasState.database
               );
-              store.dispatch(loadJson$(json), sortTable());
+              store.dispatchSync(loadJson$(json), sortTable());
             } else {
               var { snapshots } = context;
               snapshots.push(createStoreCopy(store));
@@ -170,15 +170,12 @@ export function importWrapper(
                 store.canvasState.database,
                 getLatestSnapshot(snapshots)
               );
-              store.dispatch(loadJson$(json));
+              store.dispatchSync(loadJson$(json));
             }
 
-            // todo make it synchronous
-            setTimeout(() => {
-              var { snapshots } = context;
-              snapshots.push(createStoreCopy(store));
-              console.log('SNAPSHOTS', snapshots);
-            }, 50);
+            var { snapshots } = context;
+            snapshots.push(createStoreCopy(store));
+            console.log('SNAPSHOTS', snapshots);
           }
         };
       } else {

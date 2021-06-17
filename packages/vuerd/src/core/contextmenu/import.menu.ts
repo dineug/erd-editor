@@ -3,7 +3,12 @@ import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 
 const defaultOptions: MenuOptions = {
-  nameWidth: 80,
+  nameWidth: 60,
+  keymapWidth: 0,
+};
+
+const liquibaseOptions: MenuOptions = {
+  nameWidth: 75,
   keymapWidth: 0,
 };
 
@@ -62,6 +67,6 @@ export const createImportMenus = (context: ERDEditorContext): Menu[] =>
           name: 'MSSQL',
           execute: () => importLiquibase(context, 'mssql'),
         },
-      ],
+      ].map(menu => ({ ...menu, options: { ...liquibaseOptions } })),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));
