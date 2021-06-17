@@ -53,6 +53,12 @@ export const parseChangeSet = (
   parseElement('addColumn', changeSet, statements, parseAddColumn);
   parseElement('dropColumn', changeSet, statements, parseDropColumn);
   parseElement('dropTable', changeSet, statements, parseDropTable);
+  parseElement(
+    'dropForeignKeyConstraint',
+    changeSet,
+    statements,
+    parseDropForeignKeyConstraint
+  );
 };
 
 export const parseElement = (
@@ -248,5 +254,16 @@ export const parseDropTable = (dropTable: Element, statements: Statement[]) => {
   statements.push({
     type: 'drop.table',
     name: tableName,
+  });
+};
+
+export const parseDropForeignKeyConstraint = (
+  dropFk: Element,
+  statements: Statement[]
+) => {
+  statements.push({
+    type: 'alter.table.drop.foreignKey',
+    name: dropFk.getAttribute('constraintName') || '',
+    baseTableName: dropFk.getAttribute('baseTableName') || '',
   });
 };

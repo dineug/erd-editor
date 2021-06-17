@@ -16,6 +16,7 @@ import {
 import {
   AlterTableAddColumn,
   AlterTableDropColumn,
+  AlterTableDropForeignKey,
   DropTable,
   IndexColumn,
   Statement,
@@ -33,6 +34,7 @@ interface Shape {
   indexes: CreateIndex[];
   primaryKeys: AlterTableAddPrimaryKey[];
   foreignKeys: AlterTableAddForeignKey[];
+  dropForeignKeys: AlterTableDropForeignKey[];
   uniques: AlterTableAddUnique[];
   addColumns: AlterTableAddColumn[];
   dropColumns: AlterTableDropColumn[];
@@ -52,6 +54,7 @@ function reshape(
     indexes: [],
     primaryKeys: [],
     foreignKeys: [],
+    dropForeignKeys: [],
     uniques: [],
     addColumns: [],
     dropColumns: [],
@@ -114,6 +117,12 @@ function reshape(
           shape.dropTable.push(dropTable);
         }
         break;
+      case 'alter.table.drop.foreignKey':
+        const dropForeignKey = statement;
+        if (dropForeignKey.name && dropForeignKey.baseTableName) {
+          shape.dropForeignKeys.push(dropForeignKey);
+        }
+        break;
     }
   });
 
@@ -145,6 +154,7 @@ function mergeTable(shape: Shape): CreateTable[] {
     uniques,
     addColumns,
     dropColumns,
+    dropForeignKeys,
     dropTable,
   } = shape;
   var { tables } = shape;
@@ -217,6 +227,17 @@ function mergeTable(shape: Shape): CreateTable[] {
     tables = tables.filter(table => table.name !== dropTable.name);
   });
 
+  console.log(dropForeignKeys);
+
+  dropForeignKeys.forEach(dropForeignKey => {
+    const table = findByName(tables, dropForeignKey.baseTableName);
+    if (table) {
+      table.foreignKeys = table.foreignKeys.filter(
+        fk => fk.constraintName !== dropForeignKey.name
+      );
+    }
+  });
+
   return tables;
 }
 
@@ -236,6 +257,7 @@ function snapshotToShape({
     indexes: [],
     primaryKeys: [],
     foreignKeys: [],
+    dropForeignKeys: [],
     uniques: [],
     addColumns: [],
     dropColumns: [],

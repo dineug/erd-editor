@@ -24,6 +24,7 @@ export type Statement =
   | CreateIndex
   | AlterTableAddPrimaryKey
   | AlterTableAddForeignKey
+  | AlterTableDropForeignKey
   | AlterTableAddUnique
   | AlterTableAddColumn
   | AlterTableDropColumn
@@ -104,6 +105,12 @@ export interface AlterTableAddForeignKey {
   refTableName: string;
   refColumnNames: string[];
   constraintName: string;
+}
+
+export interface AlterTableDropForeignKey {
+  type: 'alter.table.drop.foreignKey';
+  name: string;
+  baseTableName: string;
 }
 
 export interface AlterTableAddColumn {

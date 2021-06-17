@@ -14,7 +14,8 @@ export type Operation =
   | 'addPrimaryKey'
   | 'addColumn'
   | 'dropColumn'
-  | 'dropTable';
+  | 'dropTable'
+  | 'dropForeignKeyConstraint';
 
 export interface FormatTableOptions {
   table: Table;
