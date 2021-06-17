@@ -11,7 +11,8 @@ import { createCommand } from './helper';
 export function addRelationship(
   relationshipType: RelationshipType,
   startTable: Table,
-  endTableId: string
+  endTableId: string,
+  constraintName: string
 ) {
   const columnIds = startTable.columns
     .filter(column => column.option.primaryKey)
@@ -28,6 +29,7 @@ export function addRelationship(
       tableId: endTableId,
       columnIds: columnIds.map(() => uuid()),
     },
+    constraintName: constraintName,
   });
 }
 

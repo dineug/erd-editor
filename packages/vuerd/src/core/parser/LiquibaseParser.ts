@@ -51,6 +51,14 @@ export const parseChangeSet = (
   );
   parseElement('addPrimaryKey', changeSet, statements, parseAddPrimaryKey);
   parseElement('addColumn', changeSet, statements, parseAddColumn);
+  parseElement('dropColumn', changeSet, statements, parseDropColumn);
+  parseElement('dropTable', changeSet, statements, parseDropTable);
+  parseElement(
+    'dropForeignKeyConstraint',
+    changeSet,
+    statements,
+    parseDropForeignKeyConstraint
+  );
 };
 
 export const parseElement = (
@@ -97,15 +105,15 @@ export const parseSingleColumn = (
   column: Element,
   dialect: Dialect
 ): Column => {
-  const constr = column.getElementsByTagName('constraints');
+  const constr = column.getElementsByTagName('constraints')[0];
 
   var constraints: Constraints;
 
-  if (constr[0]) {
+  if (constr) {
     constraints = {
-      primaryKey: constr[0].getAttribute('primaryKey') === 'true',
-      nullable: constr[0].getAttribute('nullable') !== 'false',
-      unique: constr[0].getAttribute('unique') === 'true',
+      primaryKey: constr.getAttribute('primaryKey') === 'true',
+      nullable: !(constr.getAttribute('nullable') === 'true'),
+      unique: constr.getAttribute('unique') === 'true',
     };
   } else {
     constraints = {
@@ -181,6 +189,7 @@ export const parseAddForeignKeyConstraint = (
     columnNames: columnNames,
     refTableName: addForeignKey.getAttribute('referencedTableName') || '',
     refColumnNames: refColumnNames,
+    constraintName: addForeignKey.getAttribute('constraintName') || '',
   });
 };
 
@@ -212,5 +221,49 @@ export const parseAddColumn = (
     type: 'alter.table.add.column',
     name: tableName,
     columns: parseColumns(addColumn, dialect),
+  });
+};
+
+export const parseDropColumn = (
+  dropColumn: Element,
+  statements: Statement[],
+  dialect: Dialect = defaultDialect
+) => {
+  const tableName: string = dropColumn.getAttribute('tableName') || '';
+  const column: Column = {
+    name: dropColumn.getAttribute('columnName') || '',
+    dataType: '',
+    default: '',
+    comment: '',
+    primaryKey: false,
+    autoIncrement: false,
+    unique: false,
+    nullable: false,
+  };
+
+  statements.push({
+    type: 'alter.table.drop.column',
+    name: tableName,
+    columns: [column, ...parseColumns(dropColumn, dialect)],
+  });
+};
+
+export const parseDropTable = (dropTable: Element, statements: Statement[]) => {
+  const tableName: string = dropTable.getAttribute('tableName') || '';
+
+  statements.push({
+    type: 'drop.table',
+    name: tableName,
+  });
+};
+
+export const parseDropForeignKeyConstraint = (
+  dropFk: Element,
+  statements: Statement[]
+) => {
+  statements.push({
+    type: 'alter.table.drop.foreignKey',
+    name: dropFk.getAttribute('constraintName') || '',
+    baseTableName: dropFk.getAttribute('baseTableName') || '',
   });
 };

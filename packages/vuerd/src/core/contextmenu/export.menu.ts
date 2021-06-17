@@ -1,5 +1,6 @@
 import {
   createJsonStringify,
+  createStoreCopy,
   exportJSON,
   exportPNG,
   exportSQLDDL,
@@ -65,10 +66,17 @@ export const createExportMenus = (
         size: 18,
       },
       name: 'Liquibase',
-      execute: () =>
-        exportXML(
-          createLiquibase(store, getLatestSnapshot(snapshots)),
-          store.canvasState.databaseName
-        ),
+      execute: () => {
+        const liquibase = createLiquibase(store, getLatestSnapshot(snapshots));
+
+        exportXML(liquibase, store.canvasState.databaseName);
+
+        if (liquibase)
+          // todo make it synchronous
+          setTimeout(() => {
+            snapshots.push(createStoreCopy(store));
+            console.log('AFTER', snapshots);
+          }, 50);
+      },
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

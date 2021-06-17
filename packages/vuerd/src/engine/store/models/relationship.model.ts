@@ -56,10 +56,12 @@ export class RelationshipModel implements Relationship {
     y: 0,
     direction: 'bottom',
   };
+  constraintName: string = '';
 
   constructor({ addRelationship, loadRelationship }: RelationshipData) {
     if (addRelationship) {
-      const { id, relationshipType, start, end } = addRelationship;
+      const { id, relationshipType, start, end, constraintName } =
+        addRelationship;
 
       this.id = id;
       this.relationshipType = migrationRelationshipType(relationshipType);
@@ -67,6 +69,7 @@ export class RelationshipModel implements Relationship {
       this.start.columnIds = [...start.columnIds];
       this.end.tableId = end.tableId;
       this.end.columnIds = [...end.columnIds];
+      this.constraintName = constraintName;
     } else if (loadRelationship && isLoadRelationship(loadRelationship)) {
       const {
         id,
@@ -75,6 +78,7 @@ export class RelationshipModel implements Relationship {
         startRelationshipType,
         start,
         end,
+        constraintName,
       } = cloneDeep(loadRelationship);
 
       this.id = id;
@@ -82,6 +86,7 @@ export class RelationshipModel implements Relationship {
       this.relationshipType = migrationRelationshipType(relationshipType);
       this.start = start;
       this.end = end;
+      this.constraintName = constraintName;
       if (startRelationshipType) {
         this.startRelationshipType = startRelationshipType;
       }

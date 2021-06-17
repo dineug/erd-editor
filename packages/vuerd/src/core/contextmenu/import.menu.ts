@@ -33,7 +33,7 @@ export const createImportMenus = (context: ERDEditorContext): Menu[] =>
         name: 'xml',
         size: 18,
       },
-      name: 'Liquibase (WIP)',
+      name: 'Liquibase',
       children: [
         {
           icon: {

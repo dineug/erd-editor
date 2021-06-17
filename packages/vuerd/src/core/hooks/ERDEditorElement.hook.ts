@@ -5,7 +5,7 @@ import { createJsonStringify } from '@/core/file';
 import { isArray, isString } from '@/core/helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { loadKeymap } from '@/core/keymap';
-import { createJson } from '@/core/parser/SQLParserToJson';
+import { createJson } from '@/core/parser/ParserToJson';
 import { createDDL } from '@/core/sql/ddl';
 import { loadTheme } from '@/core/theme';
 import {
