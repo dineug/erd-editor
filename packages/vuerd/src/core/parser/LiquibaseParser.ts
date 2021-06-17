@@ -97,15 +97,15 @@ export const parseSingleColumn = (
   column: Element,
   dialect: Dialect
 ): Column => {
-  const constr = column.getElementsByTagName('constraints');
+  const constr = column.getElementsByTagName('constraints')[0];
 
   var constraints: Constraints;
 
-  if (constr[0]) {
+  if (constr) {
     constraints = {
-      primaryKey: constr[0].getAttribute('primaryKey') === 'true',
-      nullable: constr[0].getAttribute('nullable') !== 'false',
-      unique: constr[0].getAttribute('unique') === 'true',
+      primaryKey: constr.getAttribute('primaryKey') === 'true',
+      nullable: !(constr.getAttribute('nullable') === 'true'),
+      unique: constr.getAttribute('unique') === 'true',
     };
   } else {
     constraints = {
