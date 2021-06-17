@@ -10,6 +10,8 @@ import { sortTable } from '@/engine/command/table.cmd.helper';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { ExportedStore, Store } from '@@types/engine/store';
 
+import { getLatestSnapshot } from './contextmenu/export.menu';
+
 let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
   null;
 
@@ -117,7 +119,7 @@ export function importSQLDDL(context: ERDEditorContext) {
 }
 
 export function importLiquibase(context: ERDEditorContext, dialect: Dialect) {
-  importWrapper(context, 'xml', LiquibaseParser, dialect);
+  importWrapper(context, 'xml', LiquibaseParser, false, dialect);
 }
 
 export function createStoreCopy(store: Store): ExportedStore {
@@ -132,9 +134,10 @@ export function importWrapper(
   context: ERDEditorContext,
   type: string,
   parser: ParserCallback,
+  resetDiagram: boolean = true,
   dialect?: Dialect
 ) {
-  const { store, helper } = context;
+  const { store, helper, snapshots } = context;
   const importHelper = document.createElement('input');
   importHelper.setAttribute('type', 'file');
   importHelper.setAttribute('accept', `.${type}`);
@@ -151,18 +154,29 @@ export function importWrapper(
           if (typeof value === 'string') {
             const statements = parser(value, dialect);
 
-            const json = createJson(
-              statements,
-              helper,
-              store.canvasState.database
-            );
-            store.dispatch(loadJson$(json), sortTable());
+            if (resetDiagram) {
+              const json = createJson(
+                statements,
+                helper,
+                store.canvasState.database
+              );
+              store.dispatch(loadJson$(json), sortTable());
+            } else {
+              // todo (WIP) converting statements to commands
+              const json = createJson(
+                statements,
+                helper,
+                store.canvasState.database,
+                getLatestSnapshot(snapshots)
+              );
+              store.dispatch(loadJson$(json), sortTable());
+            }
 
             // todo make it synchronous
             setTimeout(() => {
               var { snapshots } = context;
               snapshots.push(createStoreCopy(store));
-              console.log('AFTER', snapshots);
+              console.log('SNAPSHOTS', snapshots);
             }, 50);
           }
         };

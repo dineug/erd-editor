@@ -7,13 +7,13 @@ import {
   CreateTable,
 } from '@vuerd/sql-ddl-parser';
 
-import { uuid } from '@/core/helper';
+import { getData, uuid } from '@/core/helper';
 import {
   SIZE_CANVAS_MAX,
   SIZE_CANVAS_MIN,
   SIZE_MIN_WIDTH,
 } from '@/core/layout';
-import { AlterTableAddColumn, Statement } from '@/core/parser';
+import { AlterTableAddColumn, IndexColumn, Statement } from '@/core/parser';
 import { createCanvasState } from '@/engine/store/canvas.state';
 import { createMemoState } from '@/engine/store/memo.state';
 import { createRelationshipState } from '@/engine/store/relationship.state';
@@ -31,16 +31,23 @@ interface Shape {
   addColumns: AlterTableAddColumn[];
 }
 
-function reshape(statements: Statement[]): Shape {
-  const shape: Shape = {
+/**
+ * Sorts statements and adds them to shape
+ * @param statements List of statements
+ * @param shape (optional) Already existing shape that will just add new statements to itself
+ * @returns Shape with sorted statements
+ */
+function reshape(
+  statements: Statement[],
+  shape: Shape = {
     tables: [],
     indexes: [],
     primaryKeys: [],
     foreignKeys: [],
     uniques: [],
     addColumns: [],
-  };
-
+  }
+): Shape {
   statements.forEach(statement => {
     switch (statement.type) {
       case 'create.table':
@@ -103,6 +110,11 @@ function findByName<T extends { name: string }>(
   return null;
 }
 
+/**
+ * Adds all statements to CreateTable[]
+ * @param shape Shape with all statements
+ * @returns Final list of CreateTable[]
+ */
 function mergeTable(shape: Shape): CreateTable[] {
   const { tables, indexes, primaryKeys, foreignKeys, uniques, addColumns } =
     shape;
@@ -162,6 +174,106 @@ function mergeTable(shape: Shape): CreateTable[] {
   return tables;
 }
 
+/**
+ * Converts latest snapshot to shape, so there can be added more new statements
+ * @param snaphot Latest snapshot
+ * @returns Shape with all statements needed to replicate latest snapshot
+ */
+function snapshotToShape({
+  canvas,
+  memo,
+  table,
+  relationship,
+}: ExportedStore): Shape {
+  const shape: Shape = {
+    tables: [],
+    indexes: [],
+    primaryKeys: [],
+    foreignKeys: [],
+    uniques: [],
+    addColumns: [],
+  };
+
+  shape.tables.push(
+    ...table.tables.map(table => {
+      const columns: Column[] = table.columns.map(column => {
+        return {
+          name: column.name,
+          dataType: column.dataType,
+          default: column.default,
+          comment: column.comment,
+          primaryKey: column.option.primaryKey,
+          autoIncrement: column.option.autoIncrement,
+          unique: column.option.unique,
+          nullable: !column.option.notNull,
+        };
+      });
+      var createTable: CreateTable = {
+        type: 'create.table',
+        columns: columns,
+        comment: table.comment,
+        foreignKeys: [],
+        indexes: [],
+        name: table.name,
+      };
+
+      return createTable;
+    })
+  );
+
+  shape.indexes.push(
+    ...table.indexes.map(index => {
+      const indexedTable = getData(table.tables, index.tableId);
+      const indexedColumns: IndexColumn[] = [];
+
+      if (indexedTable) {
+        index.columns.forEach(col => {
+          const column = getData(indexedTable.columns, col.id);
+          if (column)
+            indexedColumns.push({ name: column.name, sort: col.orderType });
+        });
+      }
+
+      var createIndex: CreateIndex = {
+        type: 'create.index',
+        name: index.name,
+        unique: index.unique,
+        tableName: indexedTable?.name || '',
+        columns: indexedColumns,
+      };
+
+      return createIndex;
+    })
+  );
+
+  shape.foreignKeys.push(
+    ...relationship.relationships.map(relationship => {
+      const baseTable = getData(table.tables, relationship.end.tableId);
+      const baseColumnNames = relationship.end.columnIds.map(colId => {
+        return getData(baseTable?.columns || [], colId)?.name || '';
+      });
+
+      const refTable = getData(table.tables, relationship.start.tableId);
+      const refColumnNames = relationship.start.columnIds.map(colId => {
+        return getData(refTable?.columns || [], colId)?.name || '';
+      });
+
+      const fk: AlterTableAddForeignKey = {
+        type: 'alter.table.add.foreignKey',
+        name: baseTable?.name || '',
+        columnNames: baseColumnNames,
+        refTableName: refTable?.name || '',
+        refColumnNames: refColumnNames,
+        constraintName: relationship.constraintName,
+      };
+
+      return fk;
+    })
+  );
+
+  return shape;
+}
+
 function createJsonFormat(
   canvasSize: number,
   database: Database
@@ -181,10 +293,19 @@ function createJsonFormat(
 export function createJson(
   statements: Statement[],
   helper: Helper,
-  database: Database
+  database: Database,
+  snapshot?: ExportedStore
 ): string {
-  const shape = reshape(statements);
-  const tables = mergeTable(shape);
+  var shape: Shape;
+
+  if (snapshot) {
+    shape = snapshotToShape(snapshot);
+    shape = reshape(statements, shape);
+  } else {
+    shape = reshape(statements);
+  }
+
+  const tables: CreateTable[] = mergeTable(shape);
 
   let canvasSize = tables.length * 100;
   if (canvasSize < SIZE_CANVAS_MIN) {
@@ -194,7 +315,7 @@ export function createJson(
     canvasSize = SIZE_CANVAS_MAX;
   }
 
-  const data = createJsonFormat(canvasSize, database);
+  const data: ExportedStore = createJsonFormat(canvasSize, database);
   tables.forEach(table => {
     data.table.tables.push(createTable(helper, table));
   });
