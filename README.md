@@ -24,3 +24,10 @@
 - [Import SQL DDL support syntax](https://github.com/vuerd/vuerd/blob/master/packages/sql-ddl-parser/src/SQL_DDL_Test_Case.md)
 - [vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
 - [atom extension](https://atom.io/packages/vuerd-atom)
+
+## Contributors
+
+Thanks to all the people who contribute.  
+<a href="https://github.com/vuerd/vuerd/graphs/contributors">
+<img src="https://contrib.rocks/image?repo=vuerd/vuerd" />
+</a>
