@@ -35,8 +35,10 @@ export function createStore(helper: Helper): IStore {
   const subscriptionHelper = createSubscriptionHelper();
   const state = createState();
   const { dispatch$, history$, change$, hook$ } = createStream();
+  const dispatchSync = (...commands: BatchCommand) =>
+    dispatch$.next([...flat<CommandTypeAll>(commands)]);
   const dispatch = (...commands: BatchCommand) =>
-    queueMicrotask(() => dispatch$.next([...flat<CommandTypeAll>(commands)]));
+    queueMicrotask(() => dispatchSync(...commands));
   const history = createHistory(() =>
     dispatch(hasUndoRedo(history.hasUndo(), history.hasRedo()))
   );
@@ -61,6 +63,7 @@ export function createStore(helper: Helper): IStore {
   const store: IStore = {
     ...state,
     dispatch,
+    dispatchSync,
     undo,
     redo,
     history$,

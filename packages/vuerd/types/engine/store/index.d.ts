@@ -16,6 +16,8 @@ export interface State {
 export interface Store extends State {
   dispatch(...commands: BatchCommand): void;
   dispatch(...commands: unknown[]): void;
+  dispatchSync(...commands: BatchCommand): void;
+  dispatchSync(...commands: unknown[]): void;
   undo(): void;
   redo(): void;
 }
