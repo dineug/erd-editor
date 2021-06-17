@@ -53,7 +53,7 @@ const GenerateTemplate: FunctionalComponent = () => {
         onGlobalMove={handleGlobalMove}
         onMousedown={handleMousedown}
       />
-      <Editor sidebarWidth={width} />
+      <Editor width={stores.ui.viewport.width - width} />
     </Container>
   );
 };
