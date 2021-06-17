@@ -12,7 +12,9 @@ export type Operation =
   | 'createIndex'
   | 'addForeignKeyConstraint'
   | 'addPrimaryKey'
-  | 'addColumn';
+  | 'addColumn'
+  | 'dropColumn'
+  | 'dropTable';
 
 export interface FormatTableOptions {
   table: Table;

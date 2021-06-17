@@ -67,16 +67,16 @@ export const createExportMenus = (
       },
       name: 'Liquibase',
       execute: () => {
-        exportXML(
-          createLiquibase(store, getLatestSnapshot(snapshots)),
-          store.canvasState.databaseName
-        );
+        const liquibase = createLiquibase(store, getLatestSnapshot(snapshots));
 
-        // todo make it synchronous
-        setTimeout(() => {
-          snapshots.push(createStoreCopy(store));
-          console.log('AFTER', snapshots);
-        }, 50);
+        exportXML(liquibase, store.canvasState.databaseName);
+
+        if (liquibase)
+          // todo make it synchronous
+          setTimeout(() => {
+            snapshots.push(createStoreCopy(store));
+            console.log('AFTER', snapshots);
+          }, 50);
       },
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

@@ -22,8 +22,6 @@ import { Database } from '@@types/engine/store/canvas.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { Column, Index, Table } from '@@types/engine/store/table.state';
 
-import { parseAddForeignKeyConstraint } from './LiquibaseParser';
-
 /**
  * Creates Liquibase XML file with export (*only supports source dialect 'PostgreSQL' and creates changeSet in 'oracle', 'mssql' and 'postgresql')
  */
@@ -34,15 +32,16 @@ export function createLiquibase(
 ): string {
   const currentDatabase = database ? database : store.canvasState.database;
 
-  const author: Author = {
-    id: prompt('Please enter the name of changeset', 'unknown') || 'unknown',
-    name: prompt('Please enter your name', 'unknown') || 'unknown',
-  };
-
   var changeSets: XMLNode[];
 
   switch (currentDatabase) {
     case 'PostgreSQL':
+      const author: Author = {
+        id:
+          prompt('Please enter the name of changeset', 'unknown') || 'unknown',
+        name: prompt('Please enter your name', 'unknown') || 'unknown',
+      };
+
       changeSets = createXMLPostgreOracleMSS(store, snapshot, author);
       break;
     default:

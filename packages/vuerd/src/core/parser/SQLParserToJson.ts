@@ -13,7 +13,13 @@ import {
   SIZE_CANVAS_MIN,
   SIZE_MIN_WIDTH,
 } from '@/core/layout';
-import { AlterTableAddColumn, IndexColumn, Statement } from '@/core/parser';
+import {
+  AlterTableAddColumn,
+  AlterTableDropColumn,
+  DropTable,
+  IndexColumn,
+  Statement,
+} from '@/core/parser';
 import { createCanvasState } from '@/engine/store/canvas.state';
 import { createMemoState } from '@/engine/store/memo.state';
 import { createRelationshipState } from '@/engine/store/relationship.state';
@@ -29,6 +35,8 @@ interface Shape {
   foreignKeys: AlterTableAddForeignKey[];
   uniques: AlterTableAddUnique[];
   addColumns: AlterTableAddColumn[];
+  dropColumns: AlterTableDropColumn[];
+  dropTable: DropTable[];
 }
 
 /**
@@ -46,6 +54,8 @@ function reshape(
     foreignKeys: [],
     uniques: [],
     addColumns: [],
+    dropColumns: [],
+    dropTable: [],
   }
 ): Shape {
   statements.forEach(statement => {
@@ -92,6 +102,18 @@ function reshape(
           shape.addColumns.push(addColumns);
         }
         break;
+      case 'alter.table.drop.column':
+        const dropColumns = statement;
+        if (dropColumns.name && dropColumns.columns.length) {
+          shape.dropColumns.push(dropColumns);
+        }
+        break;
+      case 'drop.table':
+        const dropTable = statement;
+        if (dropTable.name) {
+          shape.dropTable.push(dropTable);
+        }
+        break;
     }
   });
 
@@ -116,8 +138,17 @@ function findByName<T extends { name: string }>(
  * @returns Final list of CreateTable[]
  */
 function mergeTable(shape: Shape): CreateTable[] {
-  const { tables, indexes, primaryKeys, foreignKeys, uniques, addColumns } =
-    shape;
+  const {
+    indexes,
+    primaryKeys,
+    foreignKeys,
+    uniques,
+    addColumns,
+    dropColumns,
+    dropTable,
+  } = shape;
+  var { tables } = shape;
+
   indexes.forEach(index => {
     const table = findByName(tables, index.tableName);
     if (table) {
@@ -171,6 +202,21 @@ function mergeTable(shape: Shape): CreateTable[] {
     }
   });
 
+  dropColumns.forEach(dropColumn => {
+    const table = findByName(tables, dropColumn.name);
+    if (table) {
+      dropColumn.columns.forEach(columnToDrop => {
+        table.columns = table.columns.filter(
+          column => columnToDrop.name !== column.name
+        );
+      });
+    }
+  });
+
+  dropTable.forEach(dropTable => {
+    tables = tables.filter(table => table.name !== dropTable.name);
+  });
+
   return tables;
 }
 
@@ -192,6 +238,8 @@ function snapshotToShape({
     foreignKeys: [],
     uniques: [],
     addColumns: [],
+    dropColumns: [],
+    dropTable: [],
   };
 
   shape.tables.push(

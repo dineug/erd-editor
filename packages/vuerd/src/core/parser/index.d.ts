@@ -25,7 +25,9 @@ export type Statement =
   | AlterTableAddPrimaryKey
   | AlterTableAddForeignKey
   | AlterTableAddUnique
-  | AlterTableAddColumn;
+  | AlterTableAddColumn
+  | AlterTableDropColumn
+  | DropTable;
 
 export interface CreateTable {
   type: 'create.table';
@@ -34,6 +36,11 @@ export interface CreateTable {
   columns: Column[];
   indexes: Index[];
   foreignKeys: ForeignKey[];
+}
+
+export interface DropTable {
+  type: 'drop.table';
+  name: string;
 }
 
 export interface Column {
@@ -101,6 +108,12 @@ export interface AlterTableAddForeignKey {
 
 export interface AlterTableAddColumn {
   type: 'alter.table.add.column';
+  name: string;
+  columns: Column[];
+}
+
+export interface AlterTableDropColumn {
+  type: 'alter.table.drop.column';
   name: string;
   columns: Column[];
 }

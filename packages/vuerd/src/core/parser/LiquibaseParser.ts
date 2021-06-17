@@ -51,6 +51,8 @@ export const parseChangeSet = (
   );
   parseElement('addPrimaryKey', changeSet, statements, parseAddPrimaryKey);
   parseElement('addColumn', changeSet, statements, parseAddColumn);
+  parseElement('dropColumn', changeSet, statements, parseDropColumn);
+  parseElement('dropTable', changeSet, statements, parseDropTable);
 };
 
 export const parseElement = (
@@ -213,5 +215,38 @@ export const parseAddColumn = (
     type: 'alter.table.add.column',
     name: tableName,
     columns: parseColumns(addColumn, dialect),
+  });
+};
+
+export const parseDropColumn = (
+  dropColumn: Element,
+  statements: Statement[],
+  dialect: Dialect = defaultDialect
+) => {
+  const tableName: string = dropColumn.getAttribute('tableName') || '';
+  const column: Column = {
+    name: dropColumn.getAttribute('columnName') || '',
+    dataType: '',
+    default: '',
+    comment: '',
+    primaryKey: false,
+    autoIncrement: false,
+    unique: false,
+    nullable: false,
+  };
+
+  statements.push({
+    type: 'alter.table.drop.column',
+    name: tableName,
+    columns: [column, ...parseColumns(dropColumn, dialect)],
+  });
+};
+
+export const parseDropTable = (dropTable: Element, statements: Statement[]) => {
+  const tableName: string = dropTable.getAttribute('tableName') || '';
+
+  statements.push({
+    type: 'drop.table',
+    name: tableName,
   });
 };
