@@ -27,7 +27,9 @@ import { createRelationshipState } from '@/engine/store/relationship.state';
 import { createTableState } from '@/engine/store/table.state';
 import { Helper } from '@@types/core/helper';
 import { ExportedStore } from '@@types/engine/store';
-import { Database } from '@@types/engine/store/canvas.state';
+import { CanvasState, Database } from '@@types/engine/store/canvas.state';
+import { MemoState } from '@@types/engine/store/memo.state';
+import { Table } from '@@types/engine/store/table.state';
 
 interface Shape {
   tables: CreateTable[];
@@ -346,16 +348,18 @@ function snapshotToShape({
 
 function createJsonFormat(
   canvasSize: number,
-  database: Database
+  database: Database,
+  originalCanvas?: CanvasState,
+  originalMemo?: MemoState
 ): ExportedStore {
-  const canvas = createCanvasState();
+  const canvas: CanvasState = createCanvasState();
   canvas.width = canvasSize;
   canvas.height = canvasSize;
   canvas.database = database;
   return {
-    canvas,
+    canvas: originalCanvas ? originalCanvas : canvas,
     table: createTableState(),
-    memo: createMemoState(),
+    memo: originalMemo ? originalMemo : createMemoState(),
     relationship: createRelationshipState(),
   };
 }
@@ -385,30 +389,49 @@ export function createJson(
     canvasSize = SIZE_CANVAS_MAX;
   }
 
-  const data: ExportedStore = createJsonFormat(canvasSize, database);
-  tables.forEach(table => {
-    data.table.tables.push(createTable(helper, table));
-  });
-  createRelationship(data, tables);
-  createIndex(data, tables);
+  var store: ExportedStore;
+  if (snapshot) {
+    store = createJsonFormat(
+      canvasSize,
+      database,
+      snapshot.canvas,
+      snapshot.memo
+    );
+  } else {
+    store = createJsonFormat(canvasSize, database);
+  }
 
-  return JSON.stringify(data);
+  tables.forEach(table => {
+    store.table.tables.push(createTable(helper, table, snapshot?.table.tables));
+  });
+  createRelationship(store, tables);
+  createIndex(store, tables);
+
+  return JSON.stringify(store);
 }
 
-function createTable(helper: Helper, table: CreateTable): any {
+function createTable(
+  helper: Helper,
+  table: CreateTable,
+  snapTables?: Table[]
+): any {
+  const originalTable = findByName(snapTables || [], table.name);
+
   const newTable = {
     id: uuid(),
     name: table.name,
     comment: table.comment,
     columns: [],
-    ui: {
-      active: false,
-      top: 0,
-      left: 0,
-      widthName: SIZE_MIN_WIDTH,
-      widthComment: SIZE_MIN_WIDTH,
-      zIndex: 2,
-    },
+    ui: originalTable
+      ? originalTable.ui
+      : {
+          active: false,
+          top: 0,
+          left: 0,
+          widthName: SIZE_MIN_WIDTH,
+          widthComment: SIZE_MIN_WIDTH,
+          zIndex: 2,
+        },
   } as any;
 
   const widthName = helper.getTextWidth(newTable.name);

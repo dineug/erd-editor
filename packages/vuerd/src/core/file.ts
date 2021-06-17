@@ -1,16 +1,15 @@
 import { DDLParser } from '@vuerd/sql-ddl-parser';
 import domToImage from 'dom-to-image';
 
+import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
 import { Statement } from '@/core/parser';
 import { Dialect } from '@/core/parser/helper';
 import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
-import { createJson } from '@/core/parser/SQLParserToJson';
+import { createJson } from '@/core/parser/ParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { ExportedStore, Store } from '@@types/engine/store';
-
-import { getLatestSnapshot } from './contextmenu/export.menu';
 
 let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
   null;
@@ -162,14 +161,16 @@ export function importWrapper(
               );
               store.dispatch(loadJson$(json), sortTable());
             } else {
-              // todo (WIP) converting statements to commands
+              var { snapshots } = context;
+              snapshots.push(createStoreCopy(store));
+
               const json = createJson(
                 statements,
                 helper,
                 store.canvasState.database,
                 getLatestSnapshot(snapshots)
               );
-              store.dispatch(loadJson$(json), sortTable());
+              store.dispatch(loadJson$(json));
             }
 
             // todo make it synchronous
