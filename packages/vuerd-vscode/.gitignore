@@ -1,6 +1,5 @@
 .DS_Store
 node_modules
-out
 *.vsix
 
 # local env files

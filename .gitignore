@@ -5,6 +5,7 @@ coverage
 docs
 storybook-static
 docker/**/data
+packages/vuerd-vscode/out
 
 # Log files
 npm-debug.log*
