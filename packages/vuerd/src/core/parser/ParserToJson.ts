@@ -1,10 +1,8 @@
 import {
-  AlterTableAddForeignKey,
   AlterTableAddPrimaryKey,
   AlterTableAddUnique,
   Column,
   CreateIndex,
-  CreateTable,
 } from '@vuerd/sql-ddl-parser';
 
 import { getData, uuid } from '@/core/helper';
@@ -15,8 +13,10 @@ import {
 } from '@/core/layout';
 import {
   AlterTableAddColumn,
+  AlterTableAddForeignKey,
   AlterTableDropColumn,
   AlterTableDropForeignKey,
+  CreateTable,
   DropTable,
   IndexColumn,
   Statement,
