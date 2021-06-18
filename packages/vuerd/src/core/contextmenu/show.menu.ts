@@ -44,7 +44,7 @@ const showMenus: ShowMenu[] = [
 ];
 
 const defaultOptions: MenuOptions = {
-  nameWidth: 105,
+  nameWidth: 115,
   keymapWidth: 0,
   close: false,
 };

@@ -1,6 +1,6 @@
 {
   "name": "vuerd-vscode",
-  "version": "0.7.23",
+  "version": "0.8.0",
   "displayName": "ERD Editor",
   "description": "ERD Editor vscode extension",
   "main": "./out/extension.js",
