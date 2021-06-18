@@ -56,7 +56,7 @@ export class RelationshipModel implements Relationship {
     y: 0,
     direction: 'bottom',
   };
-  constraintName: string = '';
+  constraintName = '';
 
   constructor({ addRelationship, loadRelationship }: RelationshipData) {
     if (addRelationship) {
@@ -86,7 +86,7 @@ export class RelationshipModel implements Relationship {
       this.relationshipType = migrationRelationshipType(relationshipType);
       this.start = start;
       this.end = end;
-      this.constraintName = constraintName;
+      this.constraintName = constraintName || '';
       if (startRelationshipType) {
         this.startRelationshipType = startRelationshipType;
       }

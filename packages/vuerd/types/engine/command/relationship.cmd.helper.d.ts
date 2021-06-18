@@ -9,7 +9,8 @@ import { CommandType } from './index';
 export function addRelationship(
   relationshipType: RelationshipType,
   startTable: Table,
-  endTableId: string
+  endTableId: string,
+  constraintName: string
 ): CommandType<'relationship.add'>;
 
 export function removeRelationship(

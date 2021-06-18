@@ -29,7 +29,7 @@ export function addRelationship(
       tableId: endTableId,
       columnIds: columnIds.map(() => uuid()),
     },
-    constraintName: constraintName,
+    constraintName,
   });
 }
 

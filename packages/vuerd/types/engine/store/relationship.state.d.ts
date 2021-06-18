@@ -9,7 +9,7 @@ export interface Relationship {
   startRelationshipType?: StartRelationshipType; // ADD: version 2.0.3
   start: RelationshipPoint;
   end: RelationshipPoint;
-  constraintName: string;
+  constraintName: string; // ADD: version 2.1.0
 }
 
 export interface RelationshipPoint {
