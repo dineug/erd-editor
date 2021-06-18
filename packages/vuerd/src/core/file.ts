@@ -114,6 +114,7 @@ export function importJSON({ store }: ERDEditorContext) {
 }
 
 export function importSQLDDL(context: ERDEditorContext) {
+  // @ts-ignore
   importWrapper(context, 'sql', DDLParser);
 }
 

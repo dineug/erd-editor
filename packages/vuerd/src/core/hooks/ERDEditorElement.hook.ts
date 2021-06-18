@@ -68,6 +68,7 @@ export function useERDEditorElement(
   ctx.loadSQLDDL = (sql: string) => {
     if (isString(sql) && sql.trim()) {
       const statements = DDLParser(sql);
+      // @ts-ignore
       const json = createJson(statements, helper, store.canvasState.database);
       store.dispatch(loadJson$(json), sortTable());
     }
