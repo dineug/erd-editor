@@ -2,7 +2,7 @@ import { PanelConfig } from '@@types/index';
 
 import { GeneratorCodePanel } from './components';
 
-export const generatorCodePanelConfig: PanelConfig = {
+const generatorCodePanelConfig: PanelConfig = {
   type: GeneratorCodePanel,
   icon: {
     prefix: 'fas',
@@ -11,3 +11,5 @@ export const generatorCodePanelConfig: PanelConfig = {
   key: 'GeneratorCode',
   name: 'Generator Code',
 };
+
+export const generatorCodePanel = () => generatorCodePanelConfig;

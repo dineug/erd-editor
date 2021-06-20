@@ -1,9 +1,9 @@
 import { PanelConfig } from '@@types/index';
 
-import { SQLDDLPanel } from './components';
+import { SQLDDLPanel as SQLDDLPanelUI } from './components';
 
-export const SQLDDLPanelConfig: PanelConfig = {
-  type: SQLDDLPanel,
+const SQLDDLPanelConfig: PanelConfig = {
+  type: SQLDDLPanelUI,
   icon: {
     prefix: 'mdi',
     name: 'database-export',
@@ -12,3 +12,5 @@ export const SQLDDLPanelConfig: PanelConfig = {
   key: 'SQLDDL',
   name: 'SQL DDL',
 };
+
+export const SQLDDLPanel = () => SQLDDLPanelConfig;

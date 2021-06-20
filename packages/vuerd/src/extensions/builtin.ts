@@ -1,15 +1,15 @@
 import { extension } from '@/core/extension';
 
-import { generatorCodePanelConfig } from './panels/generator-code';
-import { gridPanelConfig } from './panels/grid';
-import { SQLDDLPanelConfig } from './panels/sql-ddl';
-import { visualizationPanelConfig } from './panels/visualization';
+import { generatorCodePanel } from './panels/generator-code';
+import { gridPanel } from './panels/grid';
+import { SQLDDLPanel } from './panels/sql-ddl';
+import { visualizationPanel } from './panels/visualization';
 
 extension({
   panels: [
-    gridPanelConfig,
-    visualizationPanelConfig,
-    SQLDDLPanelConfig,
-    generatorCodePanelConfig,
+    gridPanel(),
+    visualizationPanel(),
+    SQLDDLPanel(),
+    generatorCodePanel(),
   ],
 });

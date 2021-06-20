@@ -2,10 +2,10 @@
 import Stats from 'stats.js';
 import { extension } from 'vuerd';
 
-import { generateTemplatePanelConfig } from './index';
+import { generateTemplatePanel } from './index';
 
 extension({
-  panels: [generateTemplatePanelConfig],
+  panels: [generateTemplatePanel()],
 });
 
 function runStats() {

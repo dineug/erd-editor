@@ -8,7 +8,7 @@ import { VisualizationPanel } from './components';
 
 addIcon(createMDI('chart-bubble', mdiChartBubble));
 
-export const visualizationPanelConfig: PanelConfig = {
+const visualizationPanelConfig: PanelConfig = {
   type: VisualizationPanel,
   icon: {
     prefix: 'mdi',
@@ -18,3 +18,5 @@ export const visualizationPanelConfig: PanelConfig = {
   key: 'Visualization',
   name: 'Visualization',
 };
+
+export const visualizationPanel = () => visualizationPanelConfig;

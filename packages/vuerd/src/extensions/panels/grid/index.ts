@@ -2,7 +2,7 @@ import { PanelConfig } from '@@types/index';
 
 import { GridPanel } from './components';
 
-export const gridPanelConfig: PanelConfig = {
+const gridPanelConfig: PanelConfig = {
   type: GridPanel,
   icon: {
     prefix: 'fas',
@@ -11,3 +11,5 @@ export const gridPanelConfig: PanelConfig = {
   key: 'Grid',
   name: 'Grid',
 };
+
+export const gridPanel = () => gridPanelConfig;
