@@ -1,4 +1,5 @@
 import { getData } from '@/core/helper';
+import { Logger } from '@/core/logger';
 import {
   Attribute,
   Author,
@@ -12,7 +13,9 @@ import {
   FormatRelationOptions,
   FormatTableDiff,
   FormatTableOptions,
+  generateSeqName,
   KeyColumn,
+  supportedDialects,
   translate,
   XMLNode,
 } from '@/core/parser/helper';
@@ -20,7 +23,12 @@ import { orderByNameASC } from '@/engine/store/helper/table.helper';
 import { ExportedStore, Store } from '@@types/engine/store';
 import { Database } from '@@types/engine/store/canvas.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
-import { Column, Index, Table } from '@@types/engine/store/table.state';
+import {
+  Column,
+  Index,
+  Table,
+  TableState,
+} from '@@types/engine/store/table.state';
 
 /**
  * Creates Liquibase XML file with export (*only supports source dialect 'PostgreSQL' and creates changeSet in 'oracle', 'mssql' and 'postgresql')
@@ -64,14 +72,10 @@ export const createXMLPostgreOracleMSS = (
   snapshot: ExportedStore | undefined,
   author: Author
 ): XMLNode[] => {
-  console.log(snapshot);
-
-  let changeSets: XMLNode[] = [];
-
   if (snapshot && snapshot.table !== tableState) {
-    console.log('Tables were changed, generating diff...');
+    let changeSets: XMLNode[] = [];
+    Logger.log('Tables were changed, generating diff...');
 
-    tableState.tables[0].name;
     changeSets.push(
       ...createTableDiff({
         tableState,
@@ -82,32 +86,78 @@ export const createXMLPostgreOracleMSS = (
       })
     );
 
-    console.log('DIFF:', changeSets[changeSets.length - 1]);
+    Logger.log('DIFF:', changeSets[changeSets.length - 1]);
 
     return changeSets;
+  } else {
+    return [
+      createSequences(tableState, author),
+      ...supportedDialects.map(dbName =>
+        createChangeSet({
+          dialect: dbName,
+          tableState,
+          relationshipState,
+          author,
+        })
+      ),
+    ];
   }
-
-  return [
-    createChangeSet({
-      dialect: 'postgresql',
-      tableState,
-      relationshipState,
-      author,
-    }),
-    createChangeSet({
-      dialect: 'oracle',
-      tableState,
-      relationshipState,
-      author,
-    }),
-    createChangeSet({
-      dialect: 'mssql',
-      tableState,
-      relationshipState,
-      author,
-    }),
-  ];
 };
+
+function generateChangeSetSequence(author: Author): XMLNode {
+  return new XMLNode(
+    'changeSet',
+    [
+      { name: 'author', value: author.name },
+      { name: 'id', value: `${author.id}-common-sequences` },
+    ],
+    [
+      new XMLNode(
+        'preConditions',
+        [{ name: 'onFail', value: 'MARK_RAN' }],
+        [
+          new XMLNode(
+            'or',
+            [],
+            supportedDialects.map(
+              dbName => new XMLNode('dbms', [{ name: 'type', value: dbName }])
+            )
+          ),
+        ]
+      ),
+    ]
+  );
+}
+
+export function createSequence(tableName: string, columnName: string): XMLNode {
+  return new XMLNode('createSequence', [
+    { name: 'sequenceName', value: generateSeqName(tableName, columnName) },
+    { name: 'startValue', value: '1' },
+  ]);
+}
+
+export function dropSequence(tableName: string, columnName: string): XMLNode {
+  return new XMLNode('dropSequence', [
+    { name: 'sequenceName', value: generateSeqName(tableName, columnName) },
+  ]);
+}
+
+export function createSequences(
+  tableState: TableState,
+  author: Author
+): XMLNode {
+  var changeSet: XMLNode = generateChangeSetSequence(author);
+
+  tableState.tables.forEach(table => {
+    table.columns.forEach(column => {
+      if (column.option.autoIncrement) {
+        changeSet.addChildren(createSequence(table.name, column.name));
+      }
+    });
+  });
+
+  return changeSet;
+}
 
 export const generateChangeSetAttr = (
   author: Author,
@@ -129,10 +179,23 @@ export const createTableDiff = ({
 }: FormatTableDiff): XMLNode[] => {
   var changeSets: XMLNode[] = [];
 
-  var changeSetModifyPG: XMLNode = new XMLNode('changeSet');
-  var changeSetModifyOracle: XMLNode = new XMLNode('changeSet');
-  var changeSetModifyMssql: XMLNode = new XMLNode('changeSet');
-  var changeSetCommon: XMLNode = new XMLNode('changeSet');
+  var changeSetSequences: XMLNode = generateChangeSetSequence(author);
+  var changeSetModifyPG: XMLNode = new XMLNode(
+    'changeSet',
+    generateChangeSetAttr(author, 'postgresql')
+  );
+  var changeSetModifyOracle: XMLNode = new XMLNode(
+    'changeSet',
+    generateChangeSetAttr(author, 'oracle')
+  );
+  var changeSetModifyMssql: XMLNode = new XMLNode(
+    'changeSet',
+    generateChangeSetAttr(author, 'mssql')
+  );
+  var changeSetCommon: XMLNode = new XMLNode('changeSet', [
+    { name: 'author', value: author.name },
+    { name: 'id', value: `${author.id}-common` },
+  ]);
 
   const newTables = orderByNameASC(tableState.tables);
   const oldTables = orderByNameASC(snapshotTableState.tables);
@@ -140,25 +203,17 @@ export const createTableDiff = ({
   const newRelationships = relationshipState.relationships;
   const oldRelationships = snapshotRelationshipState.relationships;
 
-  changeSetModifyPG.addAttribute(
-    ...generateChangeSetAttr(author, 'postgresql')
-  );
-  changeSetModifyOracle.addAttribute(
-    ...generateChangeSetAttr(author, 'oracle')
-  );
-  changeSetModifyMssql.addAttribute(...generateChangeSetAttr(author, 'mssql'));
-
-  changeSetCommon.addAttribute(
-    { name: 'author', value: author.name },
-    { name: 'id', value: `${author.id}-common` }
-  );
-
   // TABLES
   newTables.forEach(newTable => {
     var oldTable: Table | undefined = getData(oldTables, newTable.id);
 
     // new table was added
     if (oldTable === undefined) {
+      changeSetSequences.addChildren(
+        ...newTable.columns
+          .filter(col => col.option.autoIncrement)
+          .map(col => createSequence(newTable.name, col.name))
+      );
       changeSetModifyPG.addChildren(
         createTable({ table: newTable, dialect: 'postgresql' })
       );
@@ -171,7 +226,7 @@ export const createTableDiff = ({
     }
 
     // table was modified
-    if (oldTable != newTable) {
+    else if (oldTable != newTable) {
       var columnsToAdd: Column[] = [];
 
       // check columns
@@ -206,6 +261,21 @@ export const createTableDiff = ({
             changeSetCommon.addChildren(
               renameColumn(newTable, newColumn, oldColumn)
             );
+          }
+
+          // auto increment changed
+          if (
+            oldColumn?.option.autoIncrement !== newColumn.option.autoIncrement
+          ) {
+            if (newColumn.option.autoIncrement === true) {
+              changeSetSequences.addChildren(
+                createSequence(newTable.name, newColumn.name)
+              );
+            } else {
+              changeSetSequences.addChildren(
+                dropSequence(newTable.name, newColumn.name)
+              );
+            }
           }
         }
       });
@@ -321,16 +391,21 @@ export const createTableDiff = ({
     });
   }
 
-  // if modification
-  if (changeSetModifyPG.children.length) {
-    changeSets.push(changeSetModifyPG);
-    changeSets.push(changeSetModifyOracle);
-    changeSets.push(changeSetModifyMssql);
+  // sequences
+  if (changeSetSequences.children.length) {
+    changeSets.push(changeSetSequences);
   }
 
   // if common
   if (changeSetCommon.children.length) {
     changeSets.push(changeSetCommon);
+  }
+
+  // if modification
+  if (changeSetModifyPG.children.length) {
+    changeSets.push(changeSetModifyPG);
+    changeSets.push(changeSetModifyOracle);
+    changeSets.push(changeSetModifyMssql);
   }
 
   return changeSets;
@@ -400,6 +475,7 @@ export const createTable = ({
   table.columns.forEach((column, i) => {
     createTable.addChildren(
       formatColumn({
+        table,
         column,
         dialect,
       })
@@ -413,6 +489,7 @@ export const createTable = ({
  * Formatting of one column
  */
 export const formatColumn = ({
+  table,
   column,
   dialect,
 }: FormatColumnOptions): XMLNode => {
@@ -430,11 +507,22 @@ export const formatColumn = ({
       value: translate('postgresql', dialect, column.dataType),
     });
 
-  if (column.option.autoIncrement)
-    columnXML.addAttribute({
-      name: 'autoIncrement',
-      value: column.option.autoIncrement.toString(),
-    });
+  if (column.option.autoIncrement) {
+    if (dialect === 'postgresql') {
+      columnXML.addAttribute({
+        name: 'defaultValueComputed',
+        value: `nextval('${generateSeqName(
+          table.name,
+          column.name
+        )}'::regclass)`,
+      });
+    } else {
+      columnXML.addAttribute({
+        name: 'autoIncrement',
+        value: column.option.autoIncrement.toString(),
+      });
+    }
+  }
 
   if (column.default)
     columnXML.addAttribute({ name: 'defaultValue', value: column.default });
@@ -603,7 +691,7 @@ export const addColumn = (
   ]);
 
   columns.forEach(column => {
-    addColumn.addChildren(formatColumn({ column, dialect }));
+    addColumn.addChildren(formatColumn({ table, column, dialect }));
   });
 
   return addColumn;
