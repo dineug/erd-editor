@@ -121,6 +121,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
   const onOpenHelp = () => ctx.dispatchEvent(new CustomEvent('open-help'));
   const onOpenSetting = () =>
     ctx.dispatchEvent(new CustomEvent('open-setting'));
+  const onOpenTree = () => ctx.dispatchEvent(new CustomEvent('open-tree'));
 
   beforeMount(() => {
     const { editorState, canvasState } = contextRef.value.store;
@@ -189,6 +190,13 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
         />
         ${panelMenusTpl()}
         <div class="vuerd-menubar-menu-vertical"></div>
+        <div
+          class="vuerd-menubar-menu"
+          data-tippy-content="Tree"
+          @click=${onOpenTree}
+        >
+          <vuerd-icon name="tree" size="16"></vuerd-icon>
+        </div>
         <div
           class="vuerd-menubar-menu"
           data-tippy-content="Help"

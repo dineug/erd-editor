@@ -21,6 +21,7 @@ import {
   faSyncAlt,
   faTable,
   faTimes,
+  faTree,
   faUndoAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import {
@@ -69,6 +70,7 @@ const icons = [
   faMousePointer,
   faCode,
   faSyncAlt,
+  faTree,
   createMDI('vector-line', mdiVectorLine),
   createMDI('code-json', mdiCodeJson),
   createMDI('database', mdiDatabase),

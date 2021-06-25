@@ -8,6 +8,7 @@ import './editor/ERD';
 import './drawer/Drawer';
 import './drawer/HelpDrawer';
 import './drawer/SettingDrawer';
+import './drawer/TreeDrawer';
 import './drawer/tablePropertiesDrawer/TablePropertiesDrawer';
 
 import {
@@ -62,10 +63,8 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
     context,
     ctx
   );
-  const { drawerTpl, closeDrawer, openHelp, openSetting } = useERDEditorDrawer(
-    props,
-    context
-  );
+  const { drawerTpl, closeDrawer, openHelp, openSetting, openTree } =
+    useERDEditorDrawer(props, context);
   const { hasPanel, panelTpl } = usePanelView(props, context);
   const { unmountedGroup } = useUnmounted();
   useERDEditorElement(context, ctx, { setFocus });
@@ -163,6 +162,7 @@ key: ${event.key}
             .focusState=${ghostState.focus}
             @open-help=${openHelp}
             @open-setting=${openSetting}
+            @open-tree=${openTree}
           ></vuerd-menubar>
           ${cache(
             !hasPanel()
