@@ -1,3 +1,4 @@
+import { observer } from 'mobx-react-lite';
 import { FunctionalComponent } from 'preact';
 import { useRef, useState } from 'preact/hooks';
 
@@ -21,7 +22,7 @@ const GenerateTemplate: FunctionalComponent = () => {
     clientXRef.current = clientX;
   };
 
-  const handleGlobalMove = ({ movementX, x }: Move) => {
+  const handleGlobalMove = ({ movementX, x }: Move) =>
     setWidth(prevWidth => {
       const width = prevWidth + movementX;
       const position = movementX < 0 ? 'left' : 'right';
@@ -44,7 +45,6 @@ const GenerateTemplate: FunctionalComponent = () => {
 
       return prevWidth;
     });
-  };
 
   return (
     <Container>
@@ -58,4 +58,4 @@ const GenerateTemplate: FunctionalComponent = () => {
   );
 };
 
-export default GenerateTemplate;
+export default observer(GenerateTemplate);

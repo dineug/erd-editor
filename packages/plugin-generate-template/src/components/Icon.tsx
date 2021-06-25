@@ -5,13 +5,15 @@ import { getIcon } from '@/core/icon';
 
 export type Cursor = 'default' | 'pointer';
 
-interface Props {
+export interface Props {
   prefix: string;
   name: string;
   size: number;
   color: string | null;
   transition: boolean;
   cursor: Cursor;
+  active: boolean;
+  onClick(event: React.MouseEvent): void;
 }
 
 const SIZE = 24;
@@ -24,6 +26,8 @@ const Icon: FunctionalComponent<Partial<Props>> = ({
   color = null,
   transition = true,
   cursor = 'default',
+  active = false,
+  onClick,
 }) => {
   const icon = getIcon(prefix, name);
   if (!icon) return null;
@@ -32,7 +36,7 @@ const Icon: FunctionalComponent<Partial<Props>> = ({
   const rem = SIZE_REM * (size / SIZE);
 
   return (
-    <Container cursor={cursor}>
+    <Container cursor={cursor} active={active} onClick={onClick}>
       <Canvas
         style={{
           width: `${rem}rem`,

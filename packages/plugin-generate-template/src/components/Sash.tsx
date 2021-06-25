@@ -21,8 +21,8 @@ export interface Props {
   cursor: Cursor;
   top: number;
   left: number;
-  onGlobalMove?: (move: Move) => void;
-  onMousedown?: (event: React.MouseEvent) => void;
+  onGlobalMove(move: Move): void;
+  onMousedown(event: React.MouseEvent): void;
 }
 
 const Sash: FunctionalComponent<Partial<Props>> = ({
