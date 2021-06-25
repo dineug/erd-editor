@@ -7,6 +7,7 @@ import {
   defineComponent,
   FunctionalComponent,
   html,
+  observable,
   updated,
   watch,
 } from '@vuerd/lit-observable';
@@ -19,6 +20,7 @@ import { debounceTime } from 'rxjs/operators';
 import { FlipAnimation } from '@/core/flipAnimation';
 import { onPreventDefault } from '@/core/helper/dom.helper';
 import { Bus } from '@/core/helper/eventBus.helper';
+import { useColorPicker } from '@/core/hooks/colorPicker.hook';
 import { useContext } from '@/core/hooks/context.hook';
 import { useHasTable } from '@/core/hooks/hasTable.hook';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
@@ -73,6 +75,8 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   );
   const draggable$ = new Subject<CustomEvent<DragoverColumnDetail>>();
   const { unmountedGroup } = useUnmounted();
+  const state = observable({ color: '' });
+  useColorPicker('.vuerd-table-header-color', ctx, state);
   let leftTween: Tween<{ left: number }> | null = null;
   let topTween: Tween<{ top: number }> | null = null;
 
@@ -225,6 +229,11 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
         if (propName !== 'tableComment') return;
 
         resetTooltip();
+      }),
+      watch(state, propName => {
+        if (propName !== 'color') return;
+        // TODO: create command - table.changeColor
+        props.table.ui.color = state.color;
       })
     );
   });
@@ -258,6 +267,13 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
         @touchstart=${onMoveStart}
       >
         <div class="vuerd-table-header">
+          <div
+            class="vuerd-table-header-color"
+            style=${styleMap({
+              width: `${table.width() + SIZE_TABLE_PADDING * 2}px`,
+              backgroundColor: ui.color ?? '',
+            })}
+          ></div>
           <div class="vuerd-table-header-top">
             <vuerd-icon
               class="vuerd-button vuerd-table-button"

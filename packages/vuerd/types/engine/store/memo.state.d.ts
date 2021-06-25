@@ -15,4 +15,5 @@ export interface MemoUI {
   width: number;
   height: number;
   zIndex: number;
+  color?: string; // ADD: version 2.1.?
 }

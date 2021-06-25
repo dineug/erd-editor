@@ -1,4 +1,5 @@
 import { DefaultStyle } from '@/components/css';
+import { ColorPicker } from '@/components/css/colorPicker.style';
 import { IconStyle } from '@/components/Icon.style';
 
 import { CanvasStyle } from './Canvas.style';
@@ -21,6 +22,7 @@ import { HighLevelTableStyle } from './table/HighLevelTable.style';
 import { TableStyle } from './table/Table.style';
 
 export const IndexStyle = [
+  ColorPicker,
   DefaultStyle,
   ERDStyle,
   CanvasStyle,
