@@ -3,14 +3,37 @@ import { FunctionalComponent } from 'preact';
 import { Container } from '@/components/editor/Toolbar.styled';
 import Icon from '@/components/Icon';
 
-interface Props {}
+export type EditorMode = 'code' | 'preview' | 'vertical';
 
-const Toolbar: FunctionalComponent<Props> = () => {
+interface Props {
+  mode: EditorMode;
+  onChangeMode(mode: EditorMode): void;
+}
+
+const Toolbar: FunctionalComponent<Props> = ({ mode, onChangeMode }) => {
   return (
     <Container>
-      <Icon name="file-code" size={20} />
-      <Icon name="file-find" size={20} />
-      <Icon name="view-split-vertical" size={20} />
+      <Icon
+        name="file-code"
+        cursor="pointer"
+        size={20}
+        active={mode === 'code'}
+        onClick={() => onChangeMode('code')}
+      />
+      <Icon
+        name="file-find"
+        cursor="pointer"
+        size={20}
+        active={mode === 'preview'}
+        onClick={() => onChangeMode('preview')}
+      />
+      <Icon
+        name="view-split-vertical"
+        cursor="pointer"
+        size={20}
+        active={mode === 'vertical'}
+        onClick={() => onChangeMode('vertical')}
+      />
     </Container>
   );
 };

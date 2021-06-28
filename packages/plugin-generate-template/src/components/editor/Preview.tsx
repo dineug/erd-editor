@@ -5,7 +5,7 @@ import { FunctionalComponent } from 'preact';
 interface Props {}
 
 const Preview: FunctionalComponent<Props> = () => {
-  return <div></div>;
+  return <div>Preview</div>;
 };
 
 export default Preview;
