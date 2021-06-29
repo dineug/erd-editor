@@ -8,6 +8,7 @@ import { styleMap } from 'lit-html/directives/style-map';
 
 import { TreeNode } from '@/core/tableTree/tableTree';
 import { css } from '@/core/tagged';
+import { ColumnUI } from '@@types/engine/store/table.state';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -66,6 +67,17 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
       cursor: props.node.disabled ? 'default' : '',
     })}
   >
+    <vuerd-icon
+      id="table"
+      name="table"
+      size="12"
+      @click=${toggleNode}
+      style=${styleMap({
+        fill: props.node.disabled ? 'var(--vuerd-color-font-placeholder)' : '',
+      })}
+    >
+    </vuerd-icon>
+
     <span
       @click=${toggleNode}
       style=${styleMap({
@@ -75,18 +87,20 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
         color: props.node.disabled ? 'var(--vuerd-color-font-placeholder)' : '',
       })}
     >
-      ${props.node.table.name}
+      ${props.node.table?.name}
     </span>
 
     ${state.hover
       ? html`
           <vuerd-icon
+            id="eye"
             name="eye${props.node.selected === state.iconHover ? '-slash' : ''}"
             size="15"
             @click=${toggleSelectNode}
             @mouseover=${() => (state.iconHover = true)}
             @mouseleave=${() => (state.iconHover = false)}
-          />
+          >
+          </vuerd-icon>
         `
       : null}
   </div> `;
@@ -113,12 +127,13 @@ const style = css`
     padding: 0 3px;
   }
 
-  .vuerd-tree-table-name .vuerd-icon {
+  .vuerd-tree-table-name #eye,
+  .vuerd-tree-table-name #table {
     margin: 0 3px;
     fill: var(--vuerd-color-font);
   }
 
-  .vuerd-tree-table-name .vuerd-icon:hover {
+  .vuerd-tree-table-name #eye:hover {
     fill: var(--vuerd-color-font-active);
   }
 `;

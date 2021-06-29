@@ -9,10 +9,9 @@ import { Table } from '@@types/engine/store/table.state';
  */
 export class TreeNode implements ITreeNode {
   context: ERDEditorContext;
-  openNodes: string[] = [];
 
   id: string;
-  table: Table;
+  table: Table | null;
   open: boolean;
   selected: boolean;
   disabled: boolean;
@@ -22,7 +21,7 @@ export class TreeNode implements ITreeNode {
   constructor(
     context: ERDEditorContext,
     id: string,
-    table: Table,
+    table: Table | null,
     parent: TreeNode | null,
     children: TreeNode[] = []
   ) {
@@ -35,9 +34,6 @@ export class TreeNode implements ITreeNode {
     this.disabled = this.verifyParent(parent);
     this.parent = parent;
     this.children = children;
-
-    findChildren(this.context, this);
-    this.children.forEach(child => findChildren(this.context, child));
   }
 
   /**
@@ -62,6 +58,10 @@ export class TreeNode implements ITreeNode {
   toggleOpen(): boolean {
     if (this.disabled) return false;
     this.open = !this.open;
+
+    if (this.open) {
+      findChildren(this.context, this);
+    }
     return true;
   }
 
@@ -71,10 +71,7 @@ export class TreeNode implements ITreeNode {
    */
   toggleSelect(): boolean {
     if (this.disabled) return false;
-
-    if (this.parent) this.selectChildren(this.parent, this.id, 'parent');
-    else this.selectChildren(this, this.id, 'child');
-
+    this.selectChildren(this.parent || this, this.id, !this.selected, 'parent');
     return true;
   }
 
@@ -84,20 +81,25 @@ export class TreeNode implements ITreeNode {
    * @param id Id of table to select/unselect
    * @param traversing Direction of recursive traversing
    */
-  selectChildren(node: TreeNode, id: string, traversing: 'parent' | 'child') {
+  selectChildren(
+    node: TreeNode,
+    id: string,
+    selected: boolean,
+    traversing: 'parent' | 'child'
+  ) {
     if (node.disabled) return;
 
     if (traversing === 'parent' && node.parent) {
-      node.selectChildren(node.parent, id, 'parent');
+      node.selectChildren(node.parent, id, selected, 'parent');
       return;
     }
 
     if (node.id === id) {
-      node.selected = !node.selected;
+      node.selected = selected;
     }
 
     node.children.forEach(child => {
-      node.selectChildren(child, id, 'child');
+      node.selectChildren(child, id, selected, 'child');
     });
   }
 }
@@ -108,27 +110,25 @@ export class TreeNode implements ITreeNode {
  * @param rootTableId (optional) Id of the root table
  * @returns Root node if found
  */
-export const generateRoot = (
-  context: ERDEditorContext,
-  rootTableId: string = ''
-): TreeNode | null => {
+export const generateRoot = (context: ERDEditorContext): TreeNode | null => {
   if (context === null) return null;
 
   const { store } = context;
   const { tables } = store.tableState;
 
-  if (!rootTableId)
-    rootTableId = getTableMostRelationship(store.relationshipState);
+  var root = new TreeNode(context, '', null, null);
+  root.children.push(
+    ...tables.map(table => new TreeNode(context, table.id, table, root))
+  );
 
-  if (!rootTableId) rootTableId = tables[0]?.id || '';
+  root.children.sort((a, b) => {
+    if (!a.table || !b.table) return 0;
+    if (a.table.name < b.table.name) return -1;
+    if (a.table.name > b.table.name) return 1;
+    return 0;
+  });
 
-  const rootTable = getData(tables, rootTableId);
-
-  if (rootTable) {
-    return new TreeNode(context, rootTableId, rootTable, null);
-  } else {
-    return null;
-  }
+  return root;
 };
 
 /**
