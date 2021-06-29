@@ -4,6 +4,7 @@ export interface ITreeNode {
   id: string;
   table: Table;
   open: boolean;
+  selected: boolean;
   disabled: boolean;
   parent: ITreeNode | null;
   children: ITreeNode[];

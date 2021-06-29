@@ -9,10 +9,12 @@ import { Table } from '@@types/engine/store/table.state';
  */
 export class TreeNode implements ITreeNode {
   context: ERDEditorContext;
+  openNodes: string[] = [];
 
   id: string;
   table: Table;
   open: boolean;
+  selected: boolean;
   disabled: boolean;
   parent: TreeNode | null;
   children: TreeNode[];
@@ -29,6 +31,7 @@ export class TreeNode implements ITreeNode {
     this.id = id;
     this.table = table;
     this.open = false;
+    this.selected = false;
     this.disabled = this.verifyParent(parent);
     this.parent = parent;
     this.children = children;
@@ -56,10 +59,46 @@ export class TreeNode implements ITreeNode {
    * Toggles between open/closed state
    * @returns True if toggle was succesfull
    */
-  toggle(): boolean {
+  toggleOpen(): boolean {
     if (this.disabled) return false;
     this.open = !this.open;
     return true;
+  }
+
+  /**
+   * Toggles between selected/unselected state
+   * @returns True if toggle was succesfull
+   */
+  toggleSelect(): boolean {
+    if (this.disabled) return false;
+
+    if (this.parent) this.selectChildren(this.parent, this.id, 'parent');
+    else this.selectChildren(this, this.id, 'child');
+
+    return true;
+  }
+
+  /**
+   * Recursively traverses all nodes and toggles selected/unselected state if ID is matched
+   * @param node Node to be traversed
+   * @param id Id of table to select/unselect
+   * @param traversing Direction of recursive traversing
+   */
+  selectChildren(node: TreeNode, id: string, traversing: 'parent' | 'child') {
+    if (node.disabled) return;
+
+    if (traversing === 'parent' && node.parent) {
+      node.selectChildren(node.parent, id, 'parent');
+      return;
+    }
+
+    if (node.id === id) {
+      node.selected = !node.selected;
+    }
+
+    node.children.forEach(child => {
+      node.selectChildren(child, id, 'child');
+    });
   }
 }
 
@@ -80,6 +119,8 @@ export const generateRoot = (
 
   if (!rootTableId)
     rootTableId = getTableMostRelationship(store.relationshipState);
+
+  if (!rootTableId) rootTableId = tables[0]?.id || '';
 
   const rootTable = getData(tables, rootTableId);
 
