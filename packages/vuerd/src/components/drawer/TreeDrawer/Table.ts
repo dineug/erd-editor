@@ -48,7 +48,7 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
     } else if (props.node.open && !props.node.selected) {
       if (props.node.toggleSelect()) props.update();
     } else {
-      if (props.node.toggleOpen() && props.node.toggleSelect()) props.update();
+      if (props.node.toggleSelect() && props.node.toggleOpen()) props.update();
     }
   };
 

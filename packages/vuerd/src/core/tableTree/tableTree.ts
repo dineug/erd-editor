@@ -1,7 +1,12 @@
-import { getData } from '@/core/helper';
+import { cloneDeep, getData } from '@/core/helper';
 import { Entry, ITreeNode } from '@/core/tableTree';
+import { loadRelationship } from '@/engine/command/relationship.cmd.helper';
+import { loadTable, removeTable } from '@/engine/command/table.cmd.helper';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import { RelationshipState } from '@@types/engine/store/relationship.state';
+import {
+  Relationship,
+  RelationshipState,
+} from '@@types/engine/store/relationship.state';
 import { Table } from '@@types/engine/store/table.state';
 
 /**
@@ -19,6 +24,8 @@ export class TreeNode implements ITreeNode {
   children: TreeNode[];
 
   root: TreeNode | null;
+
+  relationshipBackup: Relationship[] = [];
 
   constructor(
     context: ERDEditorContext,
@@ -108,12 +115,46 @@ export class TreeNode implements ITreeNode {
     if (node.disabled) return;
 
     if (node.id === id) {
-      node.selected = selected;
+      node.setSelected(selected);
     }
 
     node.children.forEach(child => {
       node.selectChildren(child, id, selected);
     });
+  }
+
+  /**
+   * Setter for selected
+   */
+  setSelected(selected: boolean) {
+    this.selected = selected;
+
+    if (this.table && this.parent === this.root) {
+      if (this.selected) {
+        loadTableInEditor(this);
+      } else {
+        removeTableInEditor(this);
+      }
+    }
+  }
+
+  getRelationships(): Relationship[] {
+    // @ts-ignore
+    var relationships: Relationship[] =
+      this.context.store.relationshipState.relationships
+        .map(relationship => {
+          if (
+            relationship.start.tableId === this.id ||
+            relationship.end.tableId === this.id
+          ) {
+            return relationship;
+          } else {
+            return null;
+          }
+        })
+        .filter(value => value !== null);
+
+    return relationships || [];
   }
 }
 
@@ -214,4 +255,76 @@ export const findChildren = (context: ERDEditorContext, node: TreeNode) => {
         else return null;
       })
       .filter(child => child !== null) || [];
+};
+
+/**
+ * Removes table from editor
+ * @param node Node of which table will be removed from editor
+ */
+export const removeTableInEditor = (node: TreeNode) => {
+  if (!node.root) return;
+
+  // clone table
+  node.table = cloneDeep(node.table);
+
+  // clone backup relationships
+  var relationshipSet: Set<Relationship> = new Set([
+    ...cloneDeep([...node.root.relationshipBackup, ...node.getRelationships()]),
+  ]);
+  node.root.relationshipBackup = [...relationshipSet];
+
+  const { store } = node.context;
+  store.dispatchSync(removeTable(store, node.table?.id || ''));
+};
+
+/**
+ * Adds table to editor
+ * @param node Node of which table will be added back to editor
+ */
+export const loadTableInEditor = (node: TreeNode) => {
+  const { context, table, id, root } = node;
+  if (!table || !node.root) return;
+
+  const { store } = context;
+  store.dispatchSync(loadTable(table));
+  store.dispatchSync(
+    node.root.relationshipBackup.map(relation => loadRelationship(relation))
+  );
+
+  // remove relationships from backup that were valid
+  const tables = store.tableState.tables;
+  node.root.relationshipBackup = node.root.relationshipBackup.filter(
+    relation => {
+      if (
+        getData(tables, relation.end.tableId) &&
+        getData(tables, relation.start.tableId)
+      ) {
+        return false;
+      } else {
+        return true;
+      }
+    }
+  );
+
+  // update object reference to loaded table
+  const newTable = getData(store.tableState.tables, id);
+  if (newTable) updateReferenceToTable(root, newTable);
+};
+
+/**
+ * Recursively updates all references to a single table (by ID)
+ * @param node Node to update
+ * @param table New reference of table
+ */
+export const updateReferenceToTable = (node: TreeNode | null, table: Table) => {
+  if (!node) return;
+  if (node.disabled) return;
+
+  if (node.id === table.id) {
+    node.table = table;
+  }
+
+  node.children.forEach(child => {
+    updateReferenceToTable(child, table);
+  });
 };

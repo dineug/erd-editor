@@ -43,21 +43,16 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     root: null,
   });
 
-  // console.log('REF:', contextRef);
-
   /**
    * Draws entire tree of tables
    */
-  const drawNodes = () => {
+  const refreshAll = () => {
+    state.root = generateRoot(contextRef.value);
+    updateTree();
+  };
+
+  const updateTree = () => {
     state.tree = [];
-
-    console.log(contextRef.value);
-
-    // if no root found, try to generate new
-    if (!state.root) state.root = generateRoot(contextRef.value);
-
-    // console.log("ROOT", state.root);
-
     if (state.root) {
       state.tree.push(...showChildren(state.root));
     } else {
@@ -82,7 +77,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         var childRows: TemplateResult[] = [];
         childRows.push(html`<div class="vuerd-tree-row">
           ${makeTreeLines(depth, 'table', child === lastChild)}
-          <vuerd-tree-table-name .node=${child} .update=${drawNodes} />
+          <vuerd-tree-table-name .node=${child} .update=${updateTree} />
         </div>`);
 
         if (child.open) {
@@ -110,7 +105,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         col => html`
           <div class="vuerd-tree-row">
             ${makeTreeLines(depth, 'column')}
-            <vuerd-tree-column-name .column=${col} .update=${drawNodes} />
+            <vuerd-tree-column-name .column=${col} .update=${updateTree} />
           </div>
         `
       ) || [];
@@ -152,7 +147,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         .visible=${props.visible}
         @close=${onClose}
       >
-        <div class="vuerd-tree-refresh" @click=${() => drawNodes()}>
+        <div class="vuerd-tree-refresh" @click=${refreshAll}>
           <span>Refresh</span>
           <vuerd-icon name="sync-alt" size="12"></vuerd-icon>
         </div>
