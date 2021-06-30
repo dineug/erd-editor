@@ -69,7 +69,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
    * Returns array of html children of one node
    * @param node Node of which children will be returned
    * @param depth How many parents are there to root
-   * @returns Array of html children
+   * @returns Array of html containing rows of tables
    */
   const showChildren = (
     node: TreeNode,
@@ -96,6 +96,12 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     } else return [];
   };
 
+  /**
+   * Returns array of html columns belonging to one table inside node
+   * @param node Node of which columns will be returned
+   * @param depth How many parents are there to root
+   * @returns Array of html containing rows of columns
+   */
   const showColumns = (node: TreeNode, depth: number = 0): TemplateResult[] => {
     var columns: TemplateResult[] = [];
 

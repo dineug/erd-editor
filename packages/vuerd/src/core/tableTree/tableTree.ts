@@ -18,11 +18,14 @@ export class TreeNode implements ITreeNode {
   parent: TreeNode | null;
   children: TreeNode[];
 
+  root: TreeNode | null;
+
   constructor(
     context: ERDEditorContext,
     id: string,
     table: Table | null,
     parent: TreeNode | null,
+    root: TreeNode | null,
     children: TreeNode[] = []
   ) {
     this.context = context;
@@ -30,10 +33,11 @@ export class TreeNode implements ITreeNode {
     this.id = id;
     this.table = table;
     this.open = false;
-    this.selected = false;
     this.disabled = this.verifyParent(parent);
     this.parent = parent;
+    this.root = root;
     this.children = children;
+    this.selected = this.verifySelected();
   }
 
   /**
@@ -49,6 +53,25 @@ export class TreeNode implements ITreeNode {
     } else {
       return false;
     }
+  }
+
+  /**
+   * Checks if node should be selected
+   * @returns True if any children of root with matching ID is selected
+   */
+  verifySelected(): boolean {
+    if (!this.root) return false;
+    if (this.disabled) return false;
+
+    var isSelected = false;
+
+    this.root?.children.forEach(child => {
+      if (child.id === this.id && child.selected) {
+        isSelected = true;
+      }
+    });
+
+    return isSelected;
   }
 
   /**
@@ -71,7 +94,7 @@ export class TreeNode implements ITreeNode {
    */
   toggleSelect(): boolean {
     if (this.disabled) return false;
-    this.selectChildren(this.parent || this, this.id, !this.selected, 'parent');
+    this.selectChildren(this.root, this.id, !this.selected);
     return true;
   }
 
@@ -79,27 +102,17 @@ export class TreeNode implements ITreeNode {
    * Recursively traverses all nodes and toggles selected/unselected state if ID is matched
    * @param node Node to be traversed
    * @param id Id of table to select/unselect
-   * @param traversing Direction of recursive traversing
    */
-  selectChildren(
-    node: TreeNode,
-    id: string,
-    selected: boolean,
-    traversing: 'parent' | 'child'
-  ) {
+  selectChildren(node: TreeNode | null, id: string, selected: boolean) {
+    if (!node) return;
     if (node.disabled) return;
-
-    if (traversing === 'parent' && node.parent) {
-      node.selectChildren(node.parent, id, selected, 'parent');
-      return;
-    }
 
     if (node.id === id) {
       node.selected = selected;
     }
 
     node.children.forEach(child => {
-      node.selectChildren(child, id, selected, 'child');
+      node.selectChildren(child, id, selected);
     });
   }
 }
@@ -116,9 +129,13 @@ export const generateRoot = (context: ERDEditorContext): TreeNode | null => {
   const { store } = context;
   const { tables } = store.tableState;
 
-  var root = new TreeNode(context, '', null, null);
+  var root = new TreeNode(context, '', null, null, null);
   root.children.push(
-    ...tables.map(table => new TreeNode(context, table.id, table, root))
+    ...tables.map(table => {
+      var node = new TreeNode(context, table.id, table, root, root);
+      node.selected = true;
+      return node;
+    })
   );
 
   root.children.sort((a, b) => {
@@ -193,7 +210,7 @@ export const findChildren = (context: ERDEditorContext, node: TreeNode) => {
     partnersIDs
       .map(id => {
         const table = getData(tables, id);
-        if (table) return new TreeNode(context, id, table, node);
+        if (table) return new TreeNode(context, id, table, node, node.root);
         else return null;
       })
       .filter(child => child !== null) || [];
