@@ -137,6 +137,18 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     return lines;
   };
 
+  /**
+   * Hides all tables
+   */
+  const hideAll = () => {
+    state.root?.children.forEach(child => {
+      if (child.selected) {
+        child.toggleSelect();
+      }
+    });
+    updateTree();
+  };
+
   const onClose = () => ctx.dispatchEvent(new CustomEvent('close'));
 
   return () => {
@@ -151,6 +163,10 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
           <span>Refresh</span>
           <vuerd-icon name="sync-alt" size="12"></vuerd-icon>
         </div>
+        <div class="vuerd-tree-hideall" @click=${hideAll}>
+          <span>Hide all</span>
+          <vuerd-icon name="eye-slash" size="14"></vuerd-icon>
+        </div>
 
         ${state.tree}
       </vuerd-drawer>
@@ -164,7 +180,8 @@ const style = css`
     flex-direction: row;
   }
 
-  .vuerd-tree-refresh {
+  .vuerd-tree-refresh,
+  .vuerd-tree-hideall {
     box-sizing: border-box;
     padding: 5px;
     display: inline-block;
@@ -172,7 +189,8 @@ const style = css`
     fill: var(--vuerd-color-font);
     font-size: 15px;
   }
-  .vuerd-tree-refresh:hover {
+  .vuerd-tree-refresh:hover,
+  .vuerd-tree-hideall:hover {
     color: var(--vuerd-color-font-active);
     background-color: var(--vuerd-color-contextmenu-active);
     fill: var(--vuerd-color-font-active);
