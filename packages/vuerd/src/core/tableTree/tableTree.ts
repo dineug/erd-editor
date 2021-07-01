@@ -1,7 +1,11 @@
 import { cloneDeep, getData } from '@/core/helper';
 import { Entry, ITreeNode } from '@/core/tableTree';
 import { loadRelationship } from '@/engine/command/relationship.cmd.helper';
-import { loadTable, removeTable } from '@/engine/command/table.cmd.helper';
+import {
+  loadTable,
+  moveTable,
+  removeTable,
+} from '@/engine/command/table.cmd.helper';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import {
   Relationship,
@@ -290,6 +294,7 @@ export const loadTableInEditor = (node: TreeNode) => {
   store.dispatchSync(
     node.root.relationshipBackup.map(relation => loadRelationship(relation))
   );
+  store.dispatchSync(moveTable(store, false, 0, 0, table.id));
 
   // remove relationships from backup that were valid
   const tables = store.tableState.tables;

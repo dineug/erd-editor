@@ -6,9 +6,10 @@ import {
 } from '@vuerd/lit-observable';
 import { styleMap } from 'lit-html/directives/style-map';
 
-import { TreeNode } from '@/core/tableTree/tableTree';
+import { onPreventDefault } from '@/core/helper/dom.helper';
+import { useContext } from '@/core/hooks/context.hook';
+import { TreeNode, updateReferenceToTable } from '@/core/tableTree/tableTree';
 import { css } from '@/core/tagged';
-import { ColumnUI } from '@@types/engine/store/table.state';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -34,6 +35,8 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
   props,
   ctx
 ) => {
+  const contextRef = useContext(ctx);
+
   const state = observable<TreeTableState>({
     hover: false,
     iconHover: false,
@@ -59,8 +62,33 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
     if (props.node.toggleSelect()) props.update();
   };
 
+  /**
+   * When drag ends, recalculate position of table inside canvas and load it
+   * @param ev MouseEvent
+   */
+  const onDragEnd = (ev: MouseEvent) => {
+    if (!props.node.table) return;
+
+    if (props.node.selected || props.node.disabled) return;
+
+    const { store } = contextRef.value;
+    const { height, width, scrollTop, scrollLeft, zoomLevel } =
+      store.canvasState;
+
+    var diffX = (width - width * zoomLevel + scrollLeft * 2) / 2;
+    var diffY = (height - height * zoomLevel + scrollTop * 2) / 2;
+
+    props.node.table.ui.left = (ev.clientX - diffX) / zoomLevel;
+    props.node.table.ui.top = (ev.clientY - 30 - diffY) / zoomLevel;
+
+    updateReferenceToTable(props.node.root, props.node.table);
+    toggleSelectNode();
+  };
+
   return () => html`<div
     class="vuerd-tree-table-name"
+    @dragenter=${onPreventDefault}
+    @dragover=${onPreventDefault}
     @mouseover=${() => (state.hover = true)}
     @mouseleave=${() => (state.hover = false)}
     style=${styleMap({
@@ -79,12 +107,17 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
     </vuerd-icon>
 
     <span
+      draggable="${props.node.disabled || props.node.selected
+        ? 'false'
+        : 'true'}"
+      @dragend=${onDragEnd}
       @click=${toggleNode}
       style=${styleMap({
         backgroundColor: props.node.selected
           ? 'var(--vuerd-color-contextmenu-active)'
           : '',
         color: props.node.disabled ? 'var(--vuerd-color-font-placeholder)' : '',
+        cursor: !props.node.selected ? 'grab' : 'pointer',
       })}
     >
       ${props.node.table?.name}

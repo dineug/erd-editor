@@ -29,11 +29,11 @@ const TreeLine: FunctionalComponent<TreeLineProps, TreeLineElement> = (
   const getLine = () => {
     switch (props.type) {
       case 'L':
-        return '5,0 5,10 15,10';
+        return 'M5,0 L5,10 L15,10';
       case 'X':
-        return '5,0 5,20 5,10 15,10';
+        return 'M5,0 L5,20 M5,10 L15,10';
       case 'I':
-        return '5,0 5,20';
+        return 'M5,0 L5,20';
       case 'NULL':
         return '';
     }
@@ -42,7 +42,7 @@ const TreeLine: FunctionalComponent<TreeLineProps, TreeLineElement> = (
   return () => html`
     <div class="vuerd-tree-line">
       <svg class="vuerd-tree-line-svg">
-        <polyline points="${getLine()}" />
+        <path d="${getLine()}" />
       </svg>
     </div>
   `;
@@ -58,7 +58,7 @@ const style = css`
     height: 20px;
   }
 
-  .vuerd-tree-line-svg > polyline {
+  .vuerd-tree-line-svg > path {
     strokewidth: 2;
     stroke: var(--vuerd-color-font);
     fill: transparent;
