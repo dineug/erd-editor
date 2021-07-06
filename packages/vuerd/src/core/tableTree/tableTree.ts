@@ -142,6 +142,10 @@ export class TreeNode implements ITreeNode {
     }
   }
 
+  /**
+   * Gets all relationships inside editor of this node
+   * @returns Relationships inside editor
+   */
   getRelationships(): Relationship[] {
     // @ts-ignore
     var relationships: Relationship[] =
@@ -228,18 +232,26 @@ export const getTableMostRelationship = ({
 };
 
 /**
- * Recursively searches through nodes to find all children
+ * Searches through relationships to find all related children
  * @param context Context of entire app
- * @param node Single node to be traversed
+ * @param node Single
  */
 export const findChildren = (context: ERDEditorContext, node: TreeNode) => {
-  if (node.disabled) return;
-  const { tables } = context.store.tableState;
+  if (node.disabled || !node.root) return;
+
+  const possibleRelationships = [
+    ...context.store.relationshipState.relationships,
+    ...node.root.relationshipBackup.filter(
+      relationship =>
+        relationship.start.tableId === node.id ||
+        relationship.end.tableId === node.id
+    ),
+  ];
 
   // @ts-ignore
-  var partnersIDs: string[] = [
+  var childrenIDs: string[] = [
     ...new Set(
-      context.store.relationshipState.relationships
+      possibleRelationships
         .map(relation => {
           if (relation.end.tableId === node.id) return relation.start.tableId;
           else if (relation.start.tableId === node.id)
@@ -252,10 +264,11 @@ export const findChildren = (context: ERDEditorContext, node: TreeNode) => {
 
   // @ts-ignore
   node.children =
-    partnersIDs
+    childrenIDs
       .map(id => {
-        const table = getData(tables, id);
-        if (table) return new TreeNode(context, id, table, node, node.root);
+        if (node.root) var child = getData(node.root.children, id);
+        if (child)
+          return new TreeNode(context, id, child.table, node, node.root);
         else return null;
       })
       .filter(child => child !== null) || [];
@@ -268,7 +281,7 @@ export const findChildren = (context: ERDEditorContext, node: TreeNode) => {
 export const removeTableInEditor = (node: TreeNode) => {
   if (!node.root) return;
 
-  // clone table
+  // clone table, so reference will not be lost once deleted
   node.table = cloneDeep(node.table);
 
   // clone backup relationships
