@@ -3,8 +3,10 @@ import * as path from 'path';
 import {
   Disposable,
   ExtensionContext,
+  RelativePattern,
   Uri,
   ViewColumn,
+  Webview,
   WebviewPanel,
   window,
   workspace,
@@ -50,6 +52,7 @@ export default class WebviewERD {
         }
       );
     }
+    const folder = workspace.workspaceFolders?.[0];
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
     this.panel.webview.html = getHtmlForWebview(this.panel.webview, context);
@@ -104,18 +107,34 @@ export default class WebviewERD {
               });
             break;
           case 'loadLiquibase':
-            workspace.findFiles('*.vuerd.json', null, 1).then(paths =>
-              this.panel.webview.postMessage({
-                command: 'loadLiquibase',
-                value: loadLiquibaseFiles(paths[0]),
-              })
-            );
+            if (folder)
+              workspace
+                .findFiles(new RelativePattern(folder, '*.vuerd.json'), null, 1)
+                .then(uris =>
+                  loadLiquibase(this.panel.webview, uris[0].fsPath)
+                );
             break;
         }
       },
       null,
       this.disposables
     );
+
+    if (folder) {
+      const watcher = workspace.createFileSystemWatcher(
+        new RelativePattern(folder, 'changelog/*.xml')
+      );
+
+      watcher.onDidChange(uri =>
+        loadLiquibase(this.panel.webview, path.dirname(uri.fsPath))
+      );
+      watcher.onDidCreate(uri =>
+        loadLiquibase(this.panel.webview, path.dirname(uri.fsPath))
+      );
+      watcher.onDidDelete(uri =>
+        loadLiquibase(this.panel.webview, path.dirname(uri.fsPath))
+      );
+    }
   }
 
   public dispose() {
@@ -129,3 +148,10 @@ export default class WebviewERD {
     }
   }
 }
+
+const loadLiquibase = (webview: Webview, uri: string) => {
+  webview.postMessage({
+    command: 'loadLiquibase',
+    value: loadLiquibaseFiles(uri),
+  });
+};

@@ -7,11 +7,12 @@ const regexXML = new RegExp(`\.(xml)$`, 'i');
 
 /**
  * Loads all Liquibase changelog files from `changelog` directory
+ * @param uri Uri of file next to `changelog` directory
  * @returns Contents of all `*.xml` files in `changelog` directory
  */
-export const loadLiquibaseFiles = (uri: Uri): string[] => {
+export const loadLiquibaseFiles = (uri: string): string[] => {
   const vuerdFolder = path.dirname(
-    uri.fsPath || window.activeTextEditor?.document.fileName || ''
+    uri || window.activeTextEditor?.document.fileName || ''
   );
 
   const allFiles: string[] = [];

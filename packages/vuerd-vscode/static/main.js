@@ -110,8 +110,8 @@
         }
       } else if (type === 'keymap') {
         editor.setKeymap(body.value.keymap);
-      } else if (type === 'liquibase') {
-        console.log("LIQUIBASE custom editor API");
+      } else if (type === 'loadLiquibase') {
+        editor.loadLiquibase(message.value);
       }
     }
   });
