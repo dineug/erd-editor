@@ -17,6 +17,7 @@ export interface ERDEditorElement extends ERDEditorProps, HTMLElement {
   clear(): void;
   initLoadJson(json: string): void;
   loadSQLDDL(sql: string): void;
+  loadLiquibase(xml: string[]): void;
   setTheme(theme: Partial<Theme>): void;
   setKeymap(keymap: Partial<Keymap>): void;
   getSQLDDL(database?: Database): string;

@@ -10,6 +10,7 @@ import {
   workspace,
 } from 'vscode';
 
+import { loadLiquibaseFiles } from './importLiquibase';
 import { getHtmlForWebview, getKeymap, getTheme } from './util';
 import WebviewManager from './WebviewManager';
 
@@ -101,6 +102,14 @@ export default class WebviewERD {
                   );
                 }
               });
+            break;
+          case 'loadLiquibase':
+            workspace.findFiles('*.vuerd.json', null, 1).then(paths =>
+              this.panel.webview.postMessage({
+                command: 'loadLiquibase',
+                value: loadLiquibaseFiles(paths[0]),
+              })
+            );
             break;
         }
       },

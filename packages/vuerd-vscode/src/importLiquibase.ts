@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { window } from 'vscode';
+import { Uri, window } from 'vscode';
 
 const liquibaseDirectory = 'changelog';
 const regexXML = new RegExp(`\.(xml)$`, 'i');
@@ -9,22 +9,22 @@ const regexXML = new RegExp(`\.(xml)$`, 'i');
  * Loads all Liquibase changelog files from `changelog` directory
  * @returns Contents of all `*.xml` files in `changelog` directory
  */
-export const loadLiquibaseFiles = (): string[] => {
-  const openedFile = path.dirname(
-    window.activeTextEditor?.document.fileName || ''
+export const loadLiquibaseFiles = (uri: Uri): string[] => {
+  const vuerdFolder = path.dirname(
+    uri.fsPath || window.activeTextEditor?.document.fileName || ''
   );
 
   const allFiles: string[] = [];
 
-  if (!openedFile) {
+  if (!vuerdFolder) {
     return allFiles;
   }
 
   var foundChangelog = false;
-  fs.readdirSync(openedFile).forEach(directory => {
+  fs.readdirSync(vuerdFolder).forEach(directory => {
     if (directory === liquibaseDirectory) {
       foundChangelog = true;
-      const changeLog = path.join(openedFile, directory);
+      const changeLog = path.join(vuerdFolder, directory);
 
       allFiles.push(
         ...fs

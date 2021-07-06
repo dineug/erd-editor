@@ -73,6 +73,9 @@
         case 'keymap':
           editor.setKeymap(message.value.keymap);
           break;
+        case 'loadLiquibase':
+          editor.loadLiquibase(message.value)
+          break;
       }
     } else if (message.type) {
       // custom editor API
@@ -107,11 +110,17 @@
         }
       } else if (type === 'keymap') {
         editor.setKeymap(body.value.keymap);
+      } else if (type === 'liquibase') {
+        console.log("LIQUIBASE custom editor API");
       }
     }
   });
 
   vscode.postMessage({
     command: 'getValue',
+  });
+
+  vscode.postMessage({
+    command: 'loadLiquibase',
   });
 })();

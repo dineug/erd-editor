@@ -1,10 +1,11 @@
 import { beforeMount } from '@vuerd/lit-observable';
 import { DDLParser } from '@vuerd/sql-ddl-parser';
 
-import { createJsonStringify } from '@/core/file';
+import { createJsonStringify, parseFile } from '@/core/file';
 import { isArray, isString } from '@/core/helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { loadKeymap } from '@/core/keymap';
+import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
 import { createJson } from '@/core/parser/ParserToJson';
 import { createDDL } from '@/core/sql/ddl';
 import { loadTheme } from '@/core/theme';
@@ -72,6 +73,16 @@ export function useERDEditorElement(
       const json = createJson(statements, helper, store.canvasState.database);
       store.dispatch(loadJson$(json), sortTable());
     }
+  };
+
+  ctx.loadLiquibase = (xmls: string[]) => {
+    store.dispatchSync(clear());
+
+    xmls.forEach(xml => {
+      if (isString(xml) && xml.trim()) {
+        parseFile(context, xml, LiquibaseParser, false, 'postgresql');
+      }
+    });
   };
 
   ctx.getSQLDDL = (database?: Database) => {
