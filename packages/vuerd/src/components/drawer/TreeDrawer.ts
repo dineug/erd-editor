@@ -9,8 +9,8 @@ import {
   observable,
   TemplateResult,
 } from '@vuerd/lit-observable';
-import { styleMap } from 'lit-html/directives/style-map';
 
+import { LineShape } from '@/components/drawer/TreeDrawer/TreeLine';
 import { useContext } from '@/core/hooks/context.hook';
 import { generateRoot, TreeNode } from '@/core/tableTree/tableTree';
 import { css } from '@/core/tagged';
@@ -63,48 +63,58 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
   /**
    * Returns array of html children of one node
    * @param node Node of which children will be returned
-   * @param depth How many parents are there to root
-   * @returns Array of html containing rows of tables
+   * @param lines Lines before this node
+   * @returns Array of html containing rows with tables/columns
    */
   const showChildren = (
     node: TreeNode,
-    depth: number = 0
+    lines: LineShape[] = []
   ): TemplateResult[] => {
     if (node.children.length) {
       const lastChild = node.children[node.children.length - 1];
 
       var rows = node.children.map(child => {
+        if (child === lastChild) lines[lines.length - 1] = 'L';
+
         var childRows: TemplateResult[] = [];
         childRows.push(html`<div class="vuerd-tree-row">
-          ${makeTreeLines(depth, 'table', child === lastChild)}
+          ${makeTreeLines(lines)}
           <vuerd-tree-table-name .node=${child} .update=${updateTree} />
         </div>`);
 
         if (child.open) {
-          childRows.push(...showColumns(child, depth + 1));
-          childRows.push(...showChildren(child, depth + 1));
+          if (lastChild.id === child.id) {
+            lines[lines.length - 1] = 'NULL';
+          } else {
+            lines[lines.length - 1] = 'I';
+          }
+          childRows.push(...showColumns(child, [...lines, 'I']));
+          childRows.push(...showChildren(child, [...lines, 'X']));
         }
         return childRows;
       });
 
-      return rows.reduce((acc, val) => acc.concat(val), []);
+      return rows.reduce((acc, val) => acc.concat(val), []); // flatten array [][] --> []
     } else return [];
   };
 
   /**
    * Returns array of html columns belonging to one table inside node
    * @param node Node of which columns will be returned
-   * @param depth How many parents are there to root
+   * @param lines Lines to draw
    * @returns Array of html containing rows of columns
    */
-  const showColumns = (node: TreeNode, depth: number = 0): TemplateResult[] => {
+  const showColumns = (
+    node: TreeNode,
+    lines: LineShape[]
+  ): TemplateResult[] => {
     var columns: TemplateResult[] = [];
 
     columns =
       node.table?.columns.map(
         col => html`
           <div class="vuerd-tree-row">
-            ${makeTreeLines(depth, 'column')}
+            ${makeTreeLines(lines)}
             <vuerd-tree-column-name .column=${col} .update=${updateTree} />
           </div>
         `
@@ -114,27 +124,12 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
   };
 
   /**
-   * Creates lines based on depth and state of row
-   * @param depth How many lines before text
-   * @param last Is this row last?
-   * @param type `table` or `column` is in this row
+   * Creates lines
+   * @param lines Array of lines to draw
    * @returns Array of lines
    */
-  const makeTreeLines = (
-    depth: number,
-    type: 'table' | 'column',
-    last: boolean = false
-  ) => {
-    var lines: TemplateResult[] = [];
-
-    for (var i = 0; i < depth - 1; i++) {
-      lines.push(html`<vuerd-tree-line .type=${'I'} />"`);
-    }
-    if (depth > 0) {
-      const lineType = type === 'table' ? (last ? 'L' : 'X') : 'I';
-      lines.push(html`<vuerd-tree-line .type="${lineType}" />"`);
-    }
-    return lines;
+  const makeTreeLines = (lines: LineShape[]) => {
+    return lines.map(line => html`<vuerd-tree-line .shape=${line} />"`);
   };
 
   /**

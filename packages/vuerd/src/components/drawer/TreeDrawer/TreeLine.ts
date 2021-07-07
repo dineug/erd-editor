@@ -12,8 +12,10 @@ declare global {
   }
 }
 
+export type LineShape = 'I' | 'L' | 'X' | 'NULL';
+
 export interface TreeLineProps {
-  type: 'I' | 'L' | 'X' | 'NULL';
+  shape: LineShape;
 }
 
 export interface TreeLineElement extends TreeLineProps, HTMLElement {}
@@ -27,7 +29,7 @@ const TreeLine: FunctionalComponent<TreeLineProps, TreeLineElement> = (
    * @returns Svg coordinates
    */
   const getLine = () => {
-    switch (props.type) {
+    switch (props.shape) {
       case 'L':
         return 'M5,0 L5,10 L15,10';
       case 'X':
@@ -68,8 +70,8 @@ const style = css`
 defineComponent('vuerd-tree-line', {
   observedProps: [
     {
-      name: 'type',
-      default: 'X',
+      name: 'shape',
+      default: 'NULL',
     },
   ],
   style,
