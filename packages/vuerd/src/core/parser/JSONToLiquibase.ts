@@ -111,19 +111,21 @@ function generateChangeSetSequence(author: Author): XMLNode {
       { name: 'author', value: author.name },
       { name: 'id', value: `${author.id}-common-sequences` },
     ],
+    [generatePreConditions()]
+  );
+}
+
+function generatePreConditions(): XMLNode {
+  return new XMLNode(
+    'preConditions',
+    [{ name: 'onFail', value: 'MARK_RAN' }],
     [
       new XMLNode(
-        'preConditions',
-        [{ name: 'onFail', value: 'MARK_RAN' }],
-        [
-          new XMLNode(
-            'or',
-            [],
-            supportedDialects.map(
-              dbName => new XMLNode('dbms', [{ name: 'type', value: dbName }])
-            )
-          ),
-        ]
+        'or',
+        [],
+        supportedDialects.map(
+          dbName => new XMLNode('dbms', [{ name: 'type', value: dbName }])
+        )
       ),
     ]
   );
@@ -391,8 +393,8 @@ export const createTableDiff = ({
     });
   }
 
-  // sequences
-  if (changeSetSequences.children.length) {
+  // sequences - first child is always preconditions
+  if (changeSetSequences.children.length > 1) {
     changeSets.push(changeSetSequences);
   }
 
