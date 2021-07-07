@@ -67,25 +67,30 @@ function reshape(
     switch (statement.type) {
       case 'create.table':
         const table = statement;
-        if (table.name) {
+        const duplicateTable = findByName(shape.tables, table.name);
+        if (!duplicateTable && table.name) {
           shape.tables.push(table);
         }
         break;
       case 'create.index':
         const index = statement;
-        if (index.tableName && index.columns.length) {
+        const duplicateIndex = findByName(shape.indexes, index.name);
+        if (!duplicateIndex && index.tableName && index.columns.length) {
           shape.indexes.push(index);
         }
         break;
       case 'alter.table.add.primaryKey':
         const primaryKey = statement;
-        if (primaryKey.name && primaryKey.columnNames.length) {
+        const duplicatePK = findByName(shape.primaryKeys, primaryKey.name);
+        if (!duplicatePK && primaryKey.name && primaryKey.columnNames.length) {
           shape.primaryKeys.push(primaryKey);
         }
         break;
       case 'alter.table.add.foreignKey':
         const foreignKey = statement;
+        const duplicateFK = findByName(shape.foreignKeys, foreignKey.name);
         if (
+          !duplicateFK &&
           foreignKey.name &&
           foreignKey.columnNames.length &&
           foreignKey.refTableName &&
@@ -97,31 +102,57 @@ function reshape(
         break;
       case 'alter.table.add.unique':
         const unique = statement;
-        if (unique.name && unique.columnNames.length) {
+        const duplicateUnique = findByName(shape.uniques, unique.name);
+        if (!duplicateUnique && unique.name && unique.columnNames.length) {
           shape.uniques.push(unique);
         }
         break;
       case 'alter.table.add.column':
         const addColumns = statement;
-        if (addColumns.name && addColumns.columns.length) {
+        const duplicateAddColumns = findByName(
+          shape.addColumns,
+          addColumns.name
+        );
+        if (
+          !duplicateAddColumns &&
+          addColumns.name &&
+          addColumns.columns.length
+        ) {
           shape.addColumns.push(addColumns);
         }
         break;
       case 'alter.table.drop.column':
         const dropColumns = statement;
-        if (dropColumns.name && dropColumns.columns.length) {
+        const duplicateDropColumns = findByName(
+          shape.dropColumns,
+          dropColumns.name
+        );
+        if (
+          !duplicateDropColumns &&
+          dropColumns.name &&
+          dropColumns.columns.length
+        ) {
           shape.dropColumns.push(dropColumns);
         }
         break;
       case 'drop.table':
         const dropTable = statement;
-        if (dropTable.name) {
+        const duplicateDropTable = findByName(shape.dropTable, dropTable.name);
+        if (!duplicateDropTable && dropTable.name) {
           shape.dropTable.push(dropTable);
         }
         break;
       case 'alter.table.drop.foreignKey':
         const dropForeignKey = statement;
-        if (dropForeignKey.name && dropForeignKey.baseTableName) {
+        const duplicateDropFK = findByName(
+          shape.dropForeignKeys,
+          dropForeignKey.name
+        );
+        if (
+          !duplicateDropFK &&
+          dropForeignKey.name &&
+          dropForeignKey.baseTableName
+        ) {
           shape.dropForeignKeys.push(dropForeignKey);
         }
         break;
@@ -209,7 +240,10 @@ function mergeTable(shape: Shape): CreateTable[] {
     const table = findByName(tables, addColumn.name);
     if (table) {
       addColumn.columns.forEach(column => {
-        table.columns.push(column);
+        const duplicateColumn = findByName(table.columns, column.name);
+        if (!duplicateColumn) {
+          table.columns.push(column);
+        }
       });
     }
   });
@@ -229,8 +263,6 @@ function mergeTable(shape: Shape): CreateTable[] {
     tables = tables.filter(table => table.name !== dropTable.name);
   });
 
-  console.log(dropForeignKeys);
-
   dropForeignKeys.forEach(dropForeignKey => {
     const table = findByName(tables, dropForeignKey.baseTableName);
     if (table) {
@@ -248,12 +280,7 @@ function mergeTable(shape: Shape): CreateTable[] {
  * @param snaphot Latest snapshot
  * @returns Shape with all statements needed to replicate latest snapshot
  */
-function snapshotToShape({
-  canvas,
-  memo,
-  table,
-  relationship,
-}: ExportedStore): Shape {
+function snapshotToShape({ table, relationship }: ExportedStore): Shape {
   const shape: Shape = {
     tables: [],
     indexes: [],

@@ -76,8 +76,6 @@ export function useERDEditorElement(
   };
 
   ctx.loadLiquibase = (xmls: string[]) => {
-    store.dispatchSync(clear());
-
     xmls.forEach(xml => {
       if (isString(xml) && xml.trim()) {
         parseFile(context, xml, LiquibaseParser, false, 'postgresql');
