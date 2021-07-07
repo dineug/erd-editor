@@ -66,7 +66,8 @@ const CanvasSVG: FunctionalComponent<CanvasSVGProps, CanvasSVGElement> = (
         relationships,
         relationship => relationship.id,
         relationship =>
-          svg`
+          relationship.visible
+            ? svg`
             <g class=${classMap({
               'vuerd-relationship': true,
               identification:
@@ -81,6 +82,7 @@ const CanvasSVG: FunctionalComponent<CanvasSVGProps, CanvasSVGElement> = (
               ${relationshipTpl(relationship)}
             </g>
           `
+            : null
       )}
     </svg>
 `;

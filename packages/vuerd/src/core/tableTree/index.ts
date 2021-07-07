@@ -9,17 +9,3 @@ export interface ITreeNode {
   parent: ITreeNode | null;
   children: ITreeNode[];
 }
-
-export class Entry {
-  count: number = 0;
-  id: string;
-
-  constructor(id: string) {
-    this.count = 0;
-    this.id = id;
-  }
-
-  add() {
-    this.count++;
-  }
-}

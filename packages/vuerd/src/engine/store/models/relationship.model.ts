@@ -57,6 +57,7 @@ export class RelationshipModel implements Relationship {
     direction: 'bottom',
   };
   constraintName = '';
+  visible = true;
 
   constructor({ addRelationship, loadRelationship }: RelationshipData) {
     if (addRelationship) {
@@ -79,6 +80,7 @@ export class RelationshipModel implements Relationship {
         start,
         end,
         constraintName,
+        visible,
       } = cloneDeep(loadRelationship);
 
       this.id = id;
@@ -90,6 +92,7 @@ export class RelationshipModel implements Relationship {
       if (startRelationshipType) {
         this.startRelationshipType = startRelationshipType;
       }
+      if (isBoolean(visible)) this.visible = visible;
     } else {
       throw new Error('not found relationship');
     }

@@ -1,16 +1,7 @@
-import { cloneDeep, getData } from '@/core/helper';
-import { Entry, ITreeNode } from '@/core/tableTree';
-import { loadRelationship } from '@/engine/command/relationship.cmd.helper';
-import {
-  loadTable,
-  moveTable,
-  removeTable,
-} from '@/engine/command/table.cmd.helper';
+import { getData } from '@/core/helper';
+import { ITreeNode } from '@/core/tableTree';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
-import {
-  Relationship,
-  RelationshipState,
-} from '@@types/engine/store/relationship.state';
+import { Relationship } from '@@types/engine/store/relationship.state';
 import { Table } from '@@types/engine/store/table.state';
 
 /**
@@ -28,8 +19,6 @@ export class TreeNode implements ITreeNode {
   children: TreeNode[];
 
   root: TreeNode | null;
-
-  relationshipBackup: Relationship[] = [];
 
   constructor(
     context: ERDEditorContext,
@@ -68,21 +57,13 @@ export class TreeNode implements ITreeNode {
 
   /**
    * Checks if node should be selected
-   * @returns True if any children of root with matching ID is selected
+   * @returns True if table is visible
    */
   verifySelected(): boolean {
     if (!this.root) return false;
     if (this.disabled) return false;
 
-    var isSelected = false;
-
-    this.root?.children.forEach(child => {
-      if (child.id === this.id && child.selected) {
-        isSelected = true;
-      }
-    });
-
-    return isSelected;
+    return this.table?.visible ? true : false;
   }
 
   /**
@@ -134,12 +115,33 @@ export class TreeNode implements ITreeNode {
     this.selected = selected;
 
     if (this.table && this.parent === this.root) {
-      if (this.selected) {
-        loadTableInEditor(this);
-      } else {
-        removeTableInEditor(this);
-      }
+      this.table.visible = selected;
+      this.showRelationships(selected);
     }
+  }
+
+  showRelationships(visible: boolean) {
+    const relationships = this.context.store.relationshipState.relationships;
+    const tables = this.context.store.tableState.tables;
+
+    relationships.forEach(relationship => {
+      if (
+        relationship.end.tableId === this.id ||
+        relationship.start.tableId === this.id
+      ) {
+        if (visible) {
+          if (relationship.end.tableId === this.id) {
+            const startTable = getData(tables, relationship.start.tableId);
+            relationship.visible = startTable?.visible ? true : false;
+          } else {
+            const endTable = getData(tables, relationship.end.tableId);
+            relationship.visible = endTable?.visible ? true : false;
+          }
+        } else {
+          relationship.visible = false;
+        }
+      }
+    });
   }
 
   /**
@@ -182,7 +184,6 @@ export const generateRoot = (context: ERDEditorContext): TreeNode | null => {
   root.children.push(
     ...tables.map(table => {
       var node = new TreeNode(context, table.id, table, root, root);
-      node.selected = true;
       return node;
     })
   );
@@ -198,40 +199,6 @@ export const generateRoot = (context: ERDEditorContext): TreeNode | null => {
 };
 
 /**
- * Finds table with the most relationships
- * @param relationships All relationships
- * @returns Table with the most relationships
- */
-export const getTableMostRelationship = ({
-  relationships,
-}: RelationshipState): string => {
-  var histogram: { [id: string]: Entry } = {};
-
-  relationships.forEach(rel => {
-    const table1 = rel.end.tableId;
-    const table2 = rel.start.tableId;
-    if (!histogram[table1]) {
-      histogram[table1] = new Entry(table1);
-    }
-    if (!histogram[table2]) {
-      histogram[table2] = new Entry(table2);
-    }
-
-    histogram[table1].add();
-    histogram[table2].add();
-  });
-
-  var max: Entry = new Entry('');
-  for (const key in histogram) {
-    if (max.count <= histogram[key].count) {
-      max = histogram[key];
-    }
-  }
-
-  return max.id;
-};
-
-/**
  * Searches through relationships to find all related children
  * @param context Context of entire app
  * @param node Single
@@ -239,19 +206,10 @@ export const getTableMostRelationship = ({
 export const findChildren = (context: ERDEditorContext, node: TreeNode) => {
   if (node.disabled || !node.root) return;
 
-  const possibleRelationships = [
-    ...context.store.relationshipState.relationships,
-    ...node.root.relationshipBackup.filter(
-      relationship =>
-        relationship.start.tableId === node.id ||
-        relationship.end.tableId === node.id
-    ),
-  ];
-
   // @ts-ignore
   var childrenIDs: string[] = [
     ...new Set(
-      possibleRelationships
+      context.store.relationshipState.relationships
         .map(relation => {
           if (relation.end.tableId === node.id) return relation.start.tableId;
           else if (relation.start.tableId === node.id)
@@ -272,77 +230,4 @@ export const findChildren = (context: ERDEditorContext, node: TreeNode) => {
         else return null;
       })
       .filter(child => child !== null) || [];
-};
-
-/**
- * Removes table from editor
- * @param node Node of which table will be removed from editor
- */
-export const removeTableInEditor = (node: TreeNode) => {
-  if (!node.root) return;
-
-  // clone table, so reference will not be lost once deleted
-  node.table = cloneDeep(node.table);
-
-  // clone backup relationships
-  var relationshipSet: Set<Relationship> = new Set([
-    ...cloneDeep([...node.root.relationshipBackup, ...node.getRelationships()]),
-  ]);
-  node.root.relationshipBackup = [...relationshipSet];
-
-  const { store } = node.context;
-  store.dispatchSync(removeTable(store, node.table?.id || ''));
-};
-
-/**
- * Adds table to editor
- * @param node Node of which table will be added back to editor
- */
-export const loadTableInEditor = (node: TreeNode) => {
-  const { context, table, id, root } = node;
-  if (!table || !node.root) return;
-
-  const { store } = context;
-  store.dispatchSync(loadTable(table));
-  store.dispatchSync(
-    node.root.relationshipBackup.map(relation => loadRelationship(relation))
-  );
-  store.dispatchSync(moveTable(store, false, 0, 0, table.id));
-
-  // remove relationships from backup that were valid
-  const tables = store.tableState.tables;
-  node.root.relationshipBackup = node.root.relationshipBackup.filter(
-    relation => {
-      if (
-        getData(tables, relation.end.tableId) &&
-        getData(tables, relation.start.tableId)
-      ) {
-        return false;
-      } else {
-        return true;
-      }
-    }
-  );
-
-  // update object reference to loaded table
-  const newTable = getData(store.tableState.tables, id);
-  if (newTable) updateReferenceToTable(root, newTable);
-};
-
-/**
- * Recursively updates all references to a single table (by ID)
- * @param node Node to update
- * @param table New reference of table
- */
-export const updateReferenceToTable = (node: TreeNode | null, table: Table) => {
-  if (!node) return;
-  if (node.disabled) return;
-
-  if (node.id === table.id) {
-    node.table = table;
-  }
-
-  node.children.forEach(child => {
-    updateReferenceToTable(child, table);
-  });
 };

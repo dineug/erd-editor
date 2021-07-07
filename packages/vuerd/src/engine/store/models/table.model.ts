@@ -59,6 +59,7 @@ export class TableModel implements Table {
     widthName: SIZE_MIN_WIDTH,
     widthComment: SIZE_MIN_WIDTH,
   };
+  visible = true;
 
   private _show: Show;
 
@@ -70,14 +71,16 @@ export class TableModel implements Table {
 
       this.id = id;
       this.ui = Object.assign(this.ui, ui);
+      this.visible = true;
     } else if (loadTable && isLoadTable(loadTable)) {
-      const { id, name, comment, columns, ui } = cloneDeep(loadTable);
+      const { id, name, comment, columns, ui, visible } = cloneDeep(loadTable);
 
       this.id = id;
       this.name = name;
       this.comment = comment;
       this.columns = columns;
       this.ui = Object.assign(this.ui, ui);
+      if (isBoolean(visible)) this.visible = visible;
     } else {
       throw new Error('not found table');
     }

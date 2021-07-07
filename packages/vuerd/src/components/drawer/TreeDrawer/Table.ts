@@ -8,8 +8,9 @@ import { styleMap } from 'lit-html/directives/style-map';
 
 import { onPreventDefault } from '@/core/helper/dom.helper';
 import { useContext } from '@/core/hooks/context.hook';
-import { TreeNode, updateReferenceToTable } from '@/core/tableTree/tableTree';
+import { TreeNode } from '@/core/tableTree/tableTree';
 import { css } from '@/core/tagged';
+import { moveTable } from '@/engine/command/table.cmd.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -81,8 +82,8 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
     props.node.table.ui.left = (ev.clientX - diffX) / zoomLevel;
     props.node.table.ui.top = (ev.clientY - 30 - diffY) / zoomLevel;
 
-    updateReferenceToTable(props.node.root, props.node.table);
     toggleSelectNode();
+    store.dispatch(moveTable(store, false, 0, 0, props.node.table.id));
   };
 
   return () => html`<div
