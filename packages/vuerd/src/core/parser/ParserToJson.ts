@@ -88,7 +88,11 @@ function reshape(
         break;
       case 'alter.table.add.foreignKey':
         const foreignKey = statement;
-        const duplicateFK = findByName(shape.foreignKeys, foreignKey.name);
+        const duplicateFK = findByConstraintName(
+          shape.foreignKeys,
+          foreignKey.constraintName
+        );
+
         if (
           !duplicateFK &&
           foreignKey.name &&
@@ -168,6 +172,18 @@ function findByName<T extends { name: string }>(
 ): T | null {
   for (const item of list) {
     if (item.name.toUpperCase() === name.toUpperCase()) {
+      return item;
+    }
+  }
+  return null;
+}
+
+function findByConstraintName<T extends { constraintName: string }>(
+  list: T[],
+  constraintName: string
+): T | null {
+  for (const item of list) {
+    if (item.constraintName.toUpperCase() === constraintName.toUpperCase()) {
       return item;
     }
   }
