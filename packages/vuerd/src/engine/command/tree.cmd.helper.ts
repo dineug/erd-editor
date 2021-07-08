@@ -11,6 +11,12 @@ export function refreshTree(store: Store) {
   });
 }
 
+export function refreshTreeDiff(store: Store) {
+  return createCommand('tree.refresh.diff', {
+    id: uuid(),
+  });
+}
+
 export function hideTree(store: Store) {
   store.dispatchSync(refreshTree(store));
 

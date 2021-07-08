@@ -8,4 +8,8 @@ export interface ITreeNode {
   disabled: boolean;
   parent: ITreeNode | null;
   children: ITreeNode[];
+
+  changes: Changes;
 }
+
+export type Changes = 'add' | 'modify' | 'remove' | 'none';

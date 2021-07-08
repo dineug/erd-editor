@@ -2,6 +2,7 @@ import { DDLParser } from '@vuerd/sql-ddl-parser';
 import domToImage from 'dom-to-image';
 
 import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
+import { calculateDiff } from '@/core/diff/helper';
 import { Logger } from '@/core/logger';
 import { Statement } from '@/core/parser';
 import { Dialect } from '@/core/parser/helper';
@@ -124,9 +125,9 @@ export function importLiquibase(context: ERDEditorContext, dialect: Dialect) {
 
   if (
     !snapshot ||
-    !checkForChanges(createStoreCopy(context.store), snapshot) ||
-    !window.confirm(
-      'Found changes, are you sure you want to loose them? If you want to save changes (diff), please, make sure to export them first. Press OK to import file, press CANCEL to abort importing.'
+    calculateDiff(context).length === 0 ||
+    window.confirm(
+      'Found changes, are you sure you want to loose them? If you want to save changes (diff), please, make sure to EXPORT them first.\nPress OK to continue importing file, press CANCEL to abort importing.'
     )
   ) {
     importWrapper(context, 'xml', LiquibaseParser, true, false, dialect);
@@ -210,20 +211,4 @@ export function parseFile(
   var { snapshots } = context;
   snapshots.push(createStoreCopy(store));
   Logger.log('SNAPSHOTS', snapshots);
-}
-
-function checkForChanges(
-  newest: ExportedStore,
-  snapshot: ExportedStore
-): boolean {
-  if (
-    newest.relationship.relationships.length !=
-    snapshot.relationship.relationships.length
-  )
-    return true;
-  if (newest.table.tables.length != snapshot.table.tables.length) return true;
-
-  // todo make more checks for each table and relationship excluding ui changes
-
-  return false;
 }

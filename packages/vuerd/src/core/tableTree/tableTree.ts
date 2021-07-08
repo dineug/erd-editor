@@ -1,5 +1,5 @@
 import { getData } from '@/core/helper';
-import { ITreeNode } from '@/core/tableTree';
+import { Changes, ITreeNode } from '@/core/tableTree';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { Table } from '@@types/engine/store/table.state';
@@ -17,6 +17,8 @@ export class TreeNode implements ITreeNode {
   disabled: boolean;
   parent: TreeNode | null;
   children: TreeNode[];
+
+  changes: Changes;
 
   root: TreeNode | null;
 
@@ -38,6 +40,7 @@ export class TreeNode implements ITreeNode {
     this.root = root;
     this.children = children;
     this.selected = this.verifySelected();
+    this.changes = 'none';
   }
 
   /**

@@ -190,5 +190,6 @@ export const readonlyCommandTypes: CommandKey[] = [
   'editor.filter.draggableEnd',
   // tree
   'tree.refresh',
+  'tree.refresh.diff',
   'tree.hide',
 ];

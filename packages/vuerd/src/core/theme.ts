@@ -24,6 +24,9 @@ export const createTheme = (): Theme => ({
   scrollbarThumbActive: '#a2a2a2',
   menubar: 'black',
   visualization: '#191919',
+  diffAdd: '#74c56ad5',
+  diffModify: '#f7894aac',
+  diffRemove: '#dda8b1',
 });
 
 export const loadTheme = (theme: Theme, newTheme: Partial<Theme>) =>

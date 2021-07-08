@@ -4,10 +4,12 @@ import {
   html,
   observable,
 } from '@vuerd/lit-observable';
+import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
 
 import { onPreventDefault } from '@/core/helper/dom.helper';
 import { useContext } from '@/core/hooks/context.hook';
+import { Changes } from '@/core/tableTree';
 import { TreeNode } from '@/core/tableTree/tableTree';
 import { css } from '@/core/tagged';
 import { moveTable } from '@/engine/command/table.cmd.helper';
@@ -19,6 +21,7 @@ declare global {
 }
 
 export interface TreeTableProps {
+  changes: Changes;
   node: TreeNode;
   update: {
     (): void;
@@ -87,7 +90,12 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
   };
 
   return () => html`<div
-    class="vuerd-tree-table-name"
+    class=${classMap({
+      'vuerd-tree-table-name': true,
+      'diff-modify': props.node.changes === 'modify',
+      'diff-add': props.node.changes === 'add',
+      'diff-remove': props.node.changes === 'remove',
+    })}
     @dragenter=${onPreventDefault}
     @dragover=${onPreventDefault}
     @mouseover=${() => (state.hover = true)}
@@ -153,6 +161,22 @@ const style = css`
 
     font-size: 15px;
   }
+
+  .vuerd-tree-table-name.diff-modify {
+    color: var(--vuerd-color-diff-modify);
+    font-weight: bold;
+  }
+
+  .vuerd-tree-table-name.diff-add {
+    color: var(--vuerd-color-diff-add);
+    font-weight: bold;
+  }
+
+  .vuerd-tree-table-name.diff-remove {
+    color: var(--vuerd-color-diff-remove);
+    font-weight: bold;
+  }
+
   .vuerd-tree-table-name > span:hover {
     color: var(--vuerd-color-font-active);
   }
@@ -169,6 +193,16 @@ const style = css`
 
   .vuerd-tree-table-name #eye:hover {
     fill: var(--vuerd-color-font-active);
+  }
+
+  .vuerd-tree-table-name.diff-add #table {
+    fill: var(--vuerd-color-diff-add);
+  }
+  .vuerd-tree-table-name.diff-modify #table {
+    fill: var(--vuerd-color-diff-modify);
+  }
+  .vuerd-tree-table-name.diff-remove #table {
+    fill: var(--vuerd-color-diff-remove);
   }
 `;
 
