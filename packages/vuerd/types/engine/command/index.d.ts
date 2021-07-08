@@ -12,6 +12,8 @@ import { RelationshipCommandMap } from './relationship.cmd';
 import * as RelationshipCommand from './relationship.cmd.helper';
 import { TableCommandMap } from './table.cmd';
 import * as TableCommand from './table.com.helper';
+import { TreeCommandMap } from './tree.cmd';
+import * as TreeCommand from './tree.cmd.helper';
 
 export interface CommandMap
   extends CanvasCommandMap,
@@ -20,7 +22,8 @@ export interface CommandMap
     ColumnCommandMap,
     EditorCommandMap,
     RelationshipCommandMap,
-    IndexCommandMap {}
+    IndexCommandMap,
+    TreeCommandMap {}
 
 export type CommandKey = keyof CommandMap;
 
@@ -50,4 +53,5 @@ export interface Command {
   editor: typeof EditorCommand;
   relationship: typeof RelationshipCommand;
   index: typeof IndexCommand;
+  tree: typeof TreeCommand;
 }

@@ -14,6 +14,7 @@ import { LineShape } from '@/components/drawer/TreeDrawer/TreeLine';
 import { useContext } from '@/core/hooks/context.hook';
 import { generateRoot, TreeNode } from '@/core/tableTree/tableTree';
 import { css } from '@/core/tagged';
+import { hideTree, refreshTree } from '@/engine/command/tree.cmd.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -26,7 +27,10 @@ export interface TreeDrawerProps {
   visible: boolean;
 }
 
-export interface TreeDrawerElement extends TreeDrawerProps, HTMLElement {}
+export interface TreeDrawerElement extends TreeDrawerProps, HTMLElement {
+  refresh: () => void;
+  hideAll: () => void;
+}
 
 interface TreeDrawerState {
   tree: TemplateResult[];
@@ -43,17 +47,20 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     root: null,
   });
 
+  const editor = document.querySelector('erd-editor');
+  if (editor) editor.treeDrawerRef = ctx;
+
   /**
    * Draws entire tree of tables
    */
-  const refreshAll = () => {
+  ctx.refresh = () => {
     state.root = generateRoot(contextRef.value);
     updateTree();
   };
 
   const updateTree = () => {
     state.tree = [];
-    if (state.root) {
+    if (state.root?.children.length) {
       state.tree.push(...showChildren(state.root));
     } else {
       state.tree[0] = html`No table found`;
@@ -79,7 +86,10 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         var childRows: TemplateResult[] = [];
         childRows.push(html`<div class="vuerd-tree-row">
           ${makeTreeLines(lines)}
-          <vuerd-tree-table-name .node=${child} .update=${updateTree} />
+          <vuerd-tree-table-name
+            .node=${child}
+            .update=${updateTree}
+          ></vuerd-tree-table-name>
         </div>`);
 
         if (child.open) {
@@ -115,7 +125,10 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         col => html`
           <div class="vuerd-tree-row">
             ${makeTreeLines(lines)}
-            <vuerd-tree-column-name .column=${col} .update=${updateTree} />
+            <vuerd-tree-column-name
+              .column=${col}
+              .update=${updateTree}
+            ></vuerd-tree-column-name>
           </div>
         `
       ) || [];
@@ -129,13 +142,15 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
    * @returns Array of lines
    */
   const makeTreeLines = (lines: LineShape[]) => {
-    return lines.map(line => html`<vuerd-tree-line .shape=${line} />"`);
+    return lines.map(
+      line => html`<vuerd-tree-line .shape=${line}></vuerd-tree-line>"`
+    );
   };
 
   /**
    * Hides all tables
    */
-  const hideAll = () => {
+  ctx.hideAll = () => {
     state.root?.children.forEach(child => {
       if (child.selected) {
         child.toggleSelect();
@@ -154,11 +169,21 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         .visible=${props.visible}
         @close=${onClose}
       >
-        <div class="vuerd-tree-refresh" @click=${refreshAll}>
+        <div
+          class="vuerd-tree-refresh"
+          @click=${() =>
+            contextRef.value.store.dispatch(
+              refreshTree(contextRef.value.store)
+            )}
+        >
           <span>Refresh</span>
           <vuerd-icon name="sync-alt" size="12"></vuerd-icon>
         </div>
-        <div class="vuerd-tree-hideall" @click=${hideAll}>
+        <div
+          class="vuerd-tree-hideall"
+          @click=${() =>
+            contextRef.value.store.dispatch(hideTree(contextRef.value.store))}
+        >
           <span>Hide all</span>
           <vuerd-icon name="eye-slash" size="14"></vuerd-icon>
         </div>

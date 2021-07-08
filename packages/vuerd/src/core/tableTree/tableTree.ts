@@ -169,14 +169,11 @@ export class TreeNode implements ITreeNode {
 }
 
 /**
- * Generates entire graph with root being the table with the most connections (or table if ID provided)
+ * Generates entire graph with root having all tables as children
  * @param context Context of entire app
- * @param rootTableId (optional) Id of the root table
  * @returns Root node if found
  */
-export const generateRoot = (context: ERDEditorContext): TreeNode | null => {
-  if (context === null) return null;
-
+export const generateRoot = (context: ERDEditorContext): TreeNode => {
   const { store } = context;
   const { tables } = store.tableState;
 

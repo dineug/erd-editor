@@ -1,3 +1,5 @@
+import { TreeDrawerElement } from '@/components/drawer/TreeDrawer';
+
 import { ExtensionConfig } from '../core/extension';
 import { Keymap } from '../core/keymap';
 import { Theme } from '../core/theme';
@@ -22,4 +24,5 @@ export interface ERDEditorElement extends ERDEditorProps, HTMLElement {
   setKeymap(keymap: Partial<Keymap>): void;
   getSQLDDL(database?: Database): string;
   extension(config: Partial<ExtensionConfig>): void;
+  treeDrawerRef: TreeDrawerElement;
 }
