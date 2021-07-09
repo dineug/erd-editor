@@ -4,7 +4,9 @@ import {
   html,
   observable,
 } from '@vuerd/lit-observable';
+import { classMap } from 'lit-html/directives/class-map';
 
+import { Changes } from '@/core/tableTree';
 import { css } from '@/core/tagged';
 import { Column } from '@@types/engine/store/table.state';
 
@@ -15,6 +17,7 @@ declare global {
 }
 
 export interface TreeColumnProps {
+  changes: Changes;
   column: Column;
   update: {
     (): void;
@@ -45,35 +48,42 @@ const Column: FunctionalComponent<TreeColumnProps, TreeColumnElement> = (
     console.log('todo select column');
   };
 
-  return () => html`<div
-    class="vuerd-tree-column-name"
-    @mouseover=${() => {
-      state.hover = true;
-    }}
-    @mouseleave=${() => (state.hover = false)}
-  >
-    ${props.column.option.primaryKey
-      ? html` <vuerd-icon id="pk" name="key" size="12"> </vuerd-icon> `
-      : null}
-    ${props.column.ui.fk
-      ? html` <vuerd-icon id="fk" name="key" size="12"> </vuerd-icon> `
-      : null}
+  return () => html`
+    <div
+      class=${classMap({
+        'vuerd-tree-column-name': true,
+        'diff-modify': props.changes === 'modify',
+        'diff-add': props.changes === 'add',
+        'diff-remove': props.changes === 'remove',
+      })}
+      @mouseover=${() => {
+        state.hover = true;
+      }}
+      @mouseleave=${() => (state.hover = false)}
+    >
+      ${props.column.option.primaryKey
+        ? html` <vuerd-icon id="pk" name="key" size="12"> </vuerd-icon> `
+        : null}
+      ${props.column.ui.fk
+        ? html` <vuerd-icon id="fk" name="key" size="12"> </vuerd-icon> `
+        : null}
 
-    <span> ${props.column.name} </span>
+      <span> ${props.column.name} </span>
 
-    ${state.hover
-      ? html`
-          <vuerd-icon
-            name="eye${state.iconHover ? '-slash' : ''}"
-            size="15"
-            @click=${toggleSelectColumn}
-            @mouseover=${() => (state.iconHover = true)}
-            @mouseleave=${() => (state.iconHover = false)}
-          >
-          </vuerd-icon>
-        `
-      : null}
-  </div> `;
+      ${state.hover
+        ? html`
+            <vuerd-icon
+              name="eye${state.iconHover ? '-slash' : ''}"
+              size="15"
+              @click=${toggleSelectColumn}
+              @mouseover=${() => (state.iconHover = true)}
+              @mouseleave=${() => (state.iconHover = false)}
+            >
+            </vuerd-icon>
+          `
+        : null}
+    </div>
+  `;
 };
 
 const style = css`
@@ -116,10 +126,20 @@ const style = css`
   .vuerd-tree-column-name #fk {
     fill: var(--vuerd-color-key-fk);
   }
+
+  .vuerd-tree-column-name.diff-add {
+    font-weight: bold;
+  }
+  .vuerd-tree-column-name.diff-modify {
+    font-weight: bold;
+  }
+  .vuerd-tree-column-name.diff-remove {
+    font-weight: bold;
+  }
 `;
 
 defineComponent('vuerd-tree-column-name', {
-  observedProps: ['column', 'update'],
+  observedProps: ['changes', 'column', 'update'],
   style,
   render: Column,
 });

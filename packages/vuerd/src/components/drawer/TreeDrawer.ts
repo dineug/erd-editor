@@ -8,11 +8,14 @@ import {
   html,
   observable,
   TemplateResult,
+  updated,
 } from '@vuerd/lit-observable';
+import { classMap } from 'lit-html/directives/class-map';
 
 import { LineShape } from '@/components/drawer/TreeDrawer/TreeLine';
 import { calculateDiff } from '@/core/diff/helper';
 import { useContext } from '@/core/hooks/context.hook';
+import { Changes } from '@/core/tableTree';
 import { generateRoot, TreeNode } from '@/core/tableTree/tableTree';
 import { css } from '@/core/tagged';
 import {
@@ -41,6 +44,7 @@ export interface TreeDrawerElement extends TreeDrawerProps, HTMLElement {
 interface TreeDrawerState {
   tree: TemplateResult[];
   root: TreeNode | null;
+  forbidUpdate: boolean;
 }
 
 const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
@@ -51,6 +55,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
   const state = observable<TreeDrawerState>({
     tree: [],
     root: null,
+    forbidUpdate: false,
   });
 
   const editor = document.querySelector('erd-editor');
@@ -61,7 +66,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
    */
   ctx.refresh = () => {
     state.root = generateRoot(contextRef.value);
-    updateTree();
+    contextRef.value.store.dispatch(refreshTreeDiff(contextRef.value.store));
   };
 
   const updateTree = () => {
@@ -76,23 +81,39 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
   ctx.refreshDiff = () => {
     const diffs = calculateDiff(contextRef.value);
     const tableDiffs = diffs.filter(diff => diff.type === 'table');
+    const columnDiffs = diffs.filter(diff => diff.type === 'column');
 
     state.root?.children.forEach(child => {
       child.changes = 'none';
+      child.diffs = [];
 
       tableDiffs.forEach(diff => {
         if (diff.changes === 'modify' && child.id === diff.data.newTable?.id) {
           child.changes = 'modify';
+          child.diffs.push(diff);
         } else if (
           diff.changes === 'add' &&
           child.id === diff.data.newTable?.id
         ) {
           child.changes = 'add';
+          child.diffs.push(diff);
+        } else if (
+          diff.changes === 'remove' &&
+          child.id === diff.data.oldTable?.id
+        ) {
+          child.changes = 'remove';
+          child.diffs.push(diff);
+        }
+      });
+
+      columnDiffs.forEach(diff => {
+        if (child.id === diff.data.table?.id) {
+          child.diffs.push(diff);
         }
       });
     });
 
-    // updateTree();
+    updateTree();
   };
 
   /**
@@ -112,7 +133,14 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         if (child === lastChild) lines[lines.length - 1] = 'L';
 
         var childRows: TemplateResult[] = [];
-        childRows.push(html`<div class="vuerd-tree-row">
+        childRows.push(html`<div
+          class=${classMap({
+            'vuerd-tree-row': true,
+            'diff-modify': child.changes === 'modify',
+            'diff-add': child.changes === 'add',
+            'diff-remove': child.changes === 'remove',
+          })}
+        >
           ${makeTreeLines(lines)}
           <vuerd-tree-table-name
             .node=${child}
@@ -148,18 +176,54 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
   ): TemplateResult[] => {
     var columns: TemplateResult[] = [];
 
-    columns =
-      node.table?.columns.map(
-        col => html`
-          <div class="vuerd-tree-row">
+    if (node.table)
+      columns = node.table?.columns.map(col => {
+        var changes: Changes = 'none';
+
+        for (let diff of node.diffs) {
+          if (diff.type === 'table') {
+            if (diff.changes === 'add') {
+              changes = 'add';
+              break;
+            }
+          } else if (diff.type === 'column') {
+            if (diff.changes === 'add' && diff.data.newColumn?.id === col.id) {
+              changes = 'add';
+              break;
+            } else if (
+              diff.changes === 'modify' &&
+              diff.data.newColumn?.id === col.id
+            ) {
+              changes = 'modify';
+              break;
+            } else if (
+              diff.changes === 'remove' &&
+              diff.data.oldColumn?.id === col.id
+            ) {
+              changes = 'remove';
+              break;
+            }
+          }
+        }
+
+        return html`
+          <div
+            class=${classMap({
+              'vuerd-tree-row': true,
+              'diff-modify': changes === 'modify',
+              'diff-add': changes === 'add',
+              'diff-remove': changes === 'remove',
+            })}
+          >
             ${makeTreeLines(lines)}
             <vuerd-tree-column-name
+              .changes=${changes}
               .column=${col}
               .update=${updateTree}
             ></vuerd-tree-column-name>
           </div>
-        `
-      ) || [];
+        `;
+      });
 
     return columns;
   };
@@ -171,7 +235,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
    */
   const makeTreeLines = (lines: LineShape[]) => {
     return lines.map(
-      line => html`<vuerd-tree-line .shape=${line}></vuerd-tree-line>"`
+      line => html`<vuerd-tree-line .shape=${line}></vuerd-tree-line>`
     );
   };
 
@@ -188,6 +252,16 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
   };
 
   const onClose = () => ctx.dispatchEvent(new CustomEvent('close'));
+
+  updated(() => {
+    // S-R latch so we dont create infinite loop of updates
+    if (props.visible === true && state.forbidUpdate === false) {
+      state.forbidUpdate = true;
+      contextRef.value.store.dispatch(refreshTreeDiff(contextRef.value.store));
+    } else if (props.visible === false && state.forbidUpdate === true) {
+      state.forbidUpdate = false;
+    }
+  });
 
   return () => {
     return html`
@@ -256,6 +330,16 @@ const style = css`
     color: var(--vuerd-color-font-active);
     background-color: var(--vuerd-color-contextmenu-active);
     fill: var(--vuerd-color-font-active);
+  }
+
+  .vuerd-tree-row.diff-add {
+    background-color: var(--vuerd-color-diff-add);
+  }
+  .vuerd-tree-row.diff-modify {
+    background-color: var(--vuerd-color-diff-modify);
+  }
+  .vuerd-tree-row.diff-remove {
+    background-color: var(--vuerd-color-diff-remove);
   }
 `;
 

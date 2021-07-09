@@ -1,3 +1,4 @@
+import { Diff } from '@/core/diff';
 import { getData } from '@/core/helper';
 import { Changes, ITreeNode } from '@/core/tableTree';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
@@ -19,6 +20,7 @@ export class TreeNode implements ITreeNode {
   children: TreeNode[];
 
   changes: Changes;
+  diffs: Diff[];
 
   root: TreeNode | null;
 
@@ -41,6 +43,7 @@ export class TreeNode implements ITreeNode {
     this.children = children;
     this.selected = this.verifySelected();
     this.changes = 'none';
+    this.diffs = [];
   }
 
   /**

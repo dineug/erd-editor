@@ -163,17 +163,14 @@ const style = css`
   }
 
   .vuerd-tree-table-name.diff-modify {
-    color: var(--vuerd-color-diff-modify);
     font-weight: bold;
   }
 
   .vuerd-tree-table-name.diff-add {
-    color: var(--vuerd-color-diff-add);
     font-weight: bold;
   }
 
   .vuerd-tree-table-name.diff-remove {
-    color: var(--vuerd-color-diff-remove);
     font-weight: bold;
   }
 
@@ -193,16 +190,6 @@ const style = css`
 
   .vuerd-tree-table-name #eye:hover {
     fill: var(--vuerd-color-font-active);
-  }
-
-  .vuerd-tree-table-name.diff-add #table {
-    fill: var(--vuerd-color-diff-add);
-  }
-  .vuerd-tree-table-name.diff-modify #table {
-    fill: var(--vuerd-color-diff-modify);
-  }
-  .vuerd-tree-table-name.diff-remove #table {
-    fill: var(--vuerd-color-diff-remove);
   }
 `;
 
