@@ -23,7 +23,7 @@ import {
   refreshTree,
   refreshTreeDiff,
 } from '@/engine/command/tree.cmd.helper';
-import { Column } from '@@types/engine/store/table.state';
+import { Column, Table } from '@@types/engine/store/table.state';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -114,6 +114,30 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
       });
     });
 
+    tableDiffs.forEach(diff => {
+      if (diff.changes === 'remove' && diff.data.oldTable) {
+        var node: TreeNode = new TreeNode(
+          contextRef.value,
+          diff.data.oldTable.id,
+          diff.data.oldTable,
+          state.root,
+          state.root,
+          []
+        );
+
+        node.changes = 'remove';
+        node.diffs = [diff];
+
+        const duplicate = state.root?.children.some(node => {
+          if (node.id === diff.data.oldTable?.id) return true;
+        });
+
+        if (!duplicate) state.root?.children.push(node);
+
+        console.log(state.root?.children);
+      }
+    });
+
     updateTree();
   };
 
@@ -130,24 +154,28 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     if (node.children.length) {
       const lastChild = node.children[node.children.length - 1];
 
-      var rows = node.children.map(child => {
-        if (child === lastChild) lines[lines.length - 1] = 'L';
-
-        var childRows: TemplateResult[] = [];
-        childRows.push(html`<div
+      function tableRow(changes: Changes, node: TreeNode) {
+        return html`<div
           class=${classMap({
             'vuerd-tree-row': true,
-            'diff-modify': child.changes === 'modify',
-            'diff-add': child.changes === 'add',
-            'diff-remove': child.changes === 'remove',
+            'diff-modify': changes === 'modify',
+            'diff-add': changes === 'add',
+            'diff-remove': changes === 'remove',
           })}
         >
           ${makeTreeLines(lines)}
           <vuerd-tree-table-name
-            .node=${child}
+            .node=${node}
             .update=${updateTree}
           ></vuerd-tree-table-name>
-        </div>`);
+        </div>`;
+      }
+
+      var rows = node.children.map(child => {
+        if (child === lastChild) lines[lines.length - 1] = 'L';
+
+        var childRows: TemplateResult[] = [];
+        childRows.push(tableRow(child.changes, child));
 
         if (child.open) {
           if (lastChild.id === child.id) {
@@ -160,6 +188,8 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         }
         return childRows;
       });
+
+      // const removedTables: TemplateResult[] = node.diffs;
 
       return rows.reduce((acc, val) => acc.concat(val), []); // flatten array [][] --> []
     } else return [];
@@ -200,8 +230,11 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     if (node.table)
       columns = node.table?.columns.map(col => {
         for (let diff of node.diffs) {
-          if (diff.type === 'table' && diff.changes === 'add') {
-            return columnRow('add', col);
+          if (
+            diff.type === 'table' &&
+            (diff.changes === 'add' || diff.changes === 'remove')
+          ) {
+            return columnRow(diff.changes, col);
           } else if (diff.type === 'column') {
             if (diff.changes === 'add' && diff.data.newColumn?.id === col.id) {
               return columnRow('add', col);
