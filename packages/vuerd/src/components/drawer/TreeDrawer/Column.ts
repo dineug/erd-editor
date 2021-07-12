@@ -126,16 +126,6 @@ const style = css`
   .vuerd-tree-column-name #fk {
     fill: var(--vuerd-color-key-fk);
   }
-
-  .vuerd-tree-column-name.diff-add {
-    font-weight: bold;
-  }
-  .vuerd-tree-column-name.diff-modify {
-    font-weight: bold;
-  }
-  .vuerd-tree-column-name.diff-remove {
-    font-weight: bold;
-  }
 `;
 
 defineComponent('vuerd-tree-column-name', {

@@ -23,6 +23,7 @@ import {
   refreshTree,
   refreshTreeDiff,
 } from '@/engine/command/tree.cmd.helper';
+import { Column } from '@@types/engine/store/table.state';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -176,54 +177,64 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
   ): TemplateResult[] => {
     var columns: TemplateResult[] = [];
 
+    function columnRow(changes: Changes, column: Column) {
+      return html`
+        <div
+          class=${classMap({
+            'vuerd-tree-row': true,
+            'diff-modify': changes === 'modify',
+            'diff-add': changes === 'add',
+            'diff-remove': changes === 'remove',
+          })}
+        >
+          ${makeTreeLines(lines)}
+          <vuerd-tree-column-name
+            .changes=${changes}
+            .column=${column}
+            .update=${updateTree}
+          ></vuerd-tree-column-name>
+        </div>
+      `;
+    }
+
     if (node.table)
       columns = node.table?.columns.map(col => {
-        var changes: Changes = 'none';
-
         for (let diff of node.diffs) {
-          if (diff.type === 'table') {
-            if (diff.changes === 'add') {
-              changes = 'add';
-              break;
-            }
+          if (diff.type === 'table' && diff.changes === 'add') {
+            return columnRow('add', col);
           } else if (diff.type === 'column') {
             if (diff.changes === 'add' && diff.data.newColumn?.id === col.id) {
-              changes = 'add';
-              break;
+              return columnRow('add', col);
             } else if (
               diff.changes === 'modify' &&
               diff.data.newColumn?.id === col.id
             ) {
-              changes = 'modify';
-              break;
+              return columnRow('modify', col);
             } else if (
               diff.changes === 'remove' &&
               diff.data.oldColumn?.id === col.id
             ) {
-              changes = 'remove';
-              break;
+              return columnRow('remove', col);
             }
           }
         }
 
-        return html`
-          <div
-            class=${classMap({
-              'vuerd-tree-row': true,
-              'diff-modify': changes === 'modify',
-              'diff-add': changes === 'add',
-              'diff-remove': changes === 'remove',
-            })}
-          >
-            ${makeTreeLines(lines)}
-            <vuerd-tree-column-name
-              .changes=${changes}
-              .column=${col}
-              .update=${updateTree}
-            ></vuerd-tree-column-name>
-          </div>
-        `;
+        return columnRow('none', col);
       });
+
+    //@ts-ignore
+    const removedColumns: TemplateResult[] = node.diffs
+      .map(diff => {
+        if (
+          diff.changes === 'remove' &&
+          diff.type === 'column' &&
+          diff.data.oldColumn
+        )
+          return columnRow('remove', diff.data.oldColumn);
+      })
+      .filter(row => row);
+
+    columns.push(...removedColumns);
 
     return columns;
   };

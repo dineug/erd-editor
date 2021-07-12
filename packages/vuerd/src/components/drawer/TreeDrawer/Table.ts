@@ -162,18 +162,6 @@ const style = css`
     font-size: 15px;
   }
 
-  .vuerd-tree-table-name.diff-modify {
-    font-weight: bold;
-  }
-
-  .vuerd-tree-table-name.diff-add {
-    font-weight: bold;
-  }
-
-  .vuerd-tree-table-name.diff-remove {
-    font-weight: bold;
-  }
-
   .vuerd-tree-table-name > span:hover {
     color: var(--vuerd-color-font-active);
   }
