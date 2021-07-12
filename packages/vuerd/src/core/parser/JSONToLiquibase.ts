@@ -607,7 +607,7 @@ export const addForeignKeyConstraint = ({
       { name: 'baseTableName', value: endTable.name },
       {
         name: 'constraintName',
-        value: `FK_${endTable.name}_TO_${startTable.name}`,
+        value: `FK_${startTable.name}_TO_${endTable.name}`.toLowerCase(),
       },
       { name: 'deferrable', value: 'false' },
       { name: 'initiallyDeferred', value: 'false' },
