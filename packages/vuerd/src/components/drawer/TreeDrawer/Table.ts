@@ -12,7 +12,12 @@ import { useContext } from '@/core/hooks/context.hook';
 import { Changes } from '@/core/tableTree';
 import { TreeNode } from '@/core/tableTree/tableTree';
 import { css } from '@/core/tagged';
-import { moveTable } from '@/engine/command/table.cmd.helper';
+import { focusTable, focusTableEnd } from '@/engine/command/editor.cmd.helper';
+import {
+  moveTable,
+  selectEndTable,
+  selectTable,
+} from '@/engine/command/table.cmd.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -98,8 +103,16 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
     })}
     @dragenter=${onPreventDefault}
     @dragover=${onPreventDefault}
-    @mouseover=${() => (state.hover = true)}
-    @mouseleave=${() => (state.hover = false)}
+    @mouseover=${() => {
+      state.hover = true;
+      contextRef.value.store.dispatch(
+        selectTable(contextRef.value.store, false, props.node.id)
+      );
+    }}
+    @mouseleave=${() => {
+      state.hover = false;
+      contextRef.value.store.dispatch(selectEndTable());
+    }}
     style=${styleMap({
       cursor: props.node.disabled ? 'default' : '',
     })}

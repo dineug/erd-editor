@@ -6,8 +6,14 @@ import {
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 
+import { useContext } from '@/core/hooks/context.hook';
 import { Changes } from '@/core/tableTree';
 import { css } from '@/core/tagged';
+import {
+  focusColumn,
+  focusTable,
+  focusTableEnd,
+} from '@/engine/command/editor.cmd.helper';
 import { Column } from '@@types/engine/store/table.state';
 
 declare global {
@@ -19,6 +25,7 @@ declare global {
 export interface TreeColumnProps {
   changes: Changes;
   column: Column;
+  tableId: string;
   update: {
     (): void;
   };
@@ -35,6 +42,7 @@ const Column: FunctionalComponent<TreeColumnProps, TreeColumnElement> = (
   props,
   ctx
 ) => {
+  const contextRef = useContext(ctx);
   const state = observable<TreeColumnState>({
     hover: false,
     iconHover: false,
@@ -58,8 +66,15 @@ const Column: FunctionalComponent<TreeColumnProps, TreeColumnElement> = (
       })}
       @mouseover=${() => {
         state.hover = true;
+        contextRef.value.store.dispatch(
+          focusTable(props.tableId, 'tableName'),
+          focusColumn(props.tableId, props.column.id, 'columnName')
+        );
       }}
-      @mouseleave=${() => (state.hover = false)}
+      @mouseleave=${() => {
+        state.hover = false;
+        contextRef.value.store.dispatch(focusTableEnd());
+      }}
     >
       ${props.column.option.primaryKey
         ? html` <vuerd-icon id="pk" name="key" size="12"> </vuerd-icon> `
@@ -129,7 +144,7 @@ const style = css`
 `;
 
 defineComponent('vuerd-tree-column-name', {
-  observedProps: ['changes', 'column', 'update'],
+  observedProps: ['changes', 'column', 'update', 'tableId'],
   style,
   render: Column,
 });

@@ -219,6 +219,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         >
           ${makeTreeLines(lines)}
           <vuerd-tree-column-name
+            .tableId=${node.id}
             .changes=${changes}
             .column=${column}
             .update=${updateTree}
