@@ -30,8 +30,13 @@ import {
   TableState,
 } from '@@types/engine/store/table.state';
 
+const xmlns = 'http://www.liquibase.org/xml/ns/dbchangelog';
+const xmlnsxsi = 'http://www.w3.org/2001/XMLSchema-instance';
+const xsiSchemaLocation =
+  'http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd';
+
 /**
- * Creates Liquibase XML file with export (*only supports source dialect 'PostgreSQL' and creates changeSet in 'oracle', 'mssql' and 'postgresql')
+ * Creates Liquibase XML file with export (*only supports source dialect `PostgreSQL` and creates changeSet in `oracle`, `mssql` and `postgresql`)
  */
 export function createLiquibase(
   store: Store,
@@ -45,9 +50,8 @@ export function createLiquibase(
   switch (currentDatabase) {
     case 'PostgreSQL':
       const author: Author = {
-        id:
-          prompt('Please enter the name of changeset', 'unknown') || 'unknown',
-        name: prompt('Please enter your name', 'unknown') || 'unknown',
+        id: prompt('Please enter the name of changeset') || 'unknown',
+        name: prompt('Please enter your name') || 'unknown',
       };
 
       changeSets = createXMLPostgreOracleMSS(store, snapshot, author);
@@ -61,7 +65,7 @@ export function createLiquibase(
 
   return [
     `<?xml version="1.0" encoding="UTF-8"?>`,
-    `<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd">`,
+    `<databaseChangeLog xmlns="${xmlns}" xmlns:xsi="${xmlnsxsi}" xsi:schemaLocation="${xsiSchemaLocation}">`,
     createXMLString(changeSets),
     `</databaseChangeLog>`,
   ].join('\n');

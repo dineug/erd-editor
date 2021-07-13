@@ -179,7 +179,10 @@ export class TreeNode implements ITreeNode {
  * @param context Context of entire app
  * @returns Root node if found
  */
-export const generateRoot = (context: ERDEditorContext): TreeNode => {
+export const generateRoot = (
+  context: ERDEditorContext,
+  oldRoot?: TreeNode
+): TreeNode => {
   const { store } = context;
   const { tables } = store.tableState;
 
@@ -196,6 +199,13 @@ export const generateRoot = (context: ERDEditorContext): TreeNode => {
     if (a.table.name < b.table.name) return -1;
     if (a.table.name > b.table.name) return 1;
     return 0;
+  });
+
+  oldRoot?.children.forEach(oldChild => {
+    const newChild = getData(root.children, oldChild.id);
+    if (newChild?.table) {
+      newChild.table.visible = oldChild.table?.visible;
+    }
   });
 
   return root;

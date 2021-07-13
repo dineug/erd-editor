@@ -37,6 +37,7 @@ export interface CreateTable {
   columns: Column[];
   indexes: Index[];
   foreignKeys: ForeignKey[];
+  visible?: boolean;
 }
 
 export interface DropTable {
@@ -66,6 +67,7 @@ export interface ForeignKey {
   refTableName: string;
   refColumnNames: string[];
   constraintName: string;
+  visible?: boolean;
 }
 
 export interface CreateTableColumns {
@@ -105,6 +107,7 @@ export interface AlterTableAddForeignKey {
   refTableName: string;
   refColumnNames: string[];
   constraintName: string;
+  visible?: boolean;
 }
 
 export interface AlterTableDropForeignKey {

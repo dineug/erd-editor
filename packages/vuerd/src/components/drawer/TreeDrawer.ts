@@ -66,7 +66,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
    * Draws entire tree of tables
    */
   ctx.refresh = () => {
-    state.root = generateRoot(contextRef.value);
+    state.root = generateRoot(contextRef.value, state.root || undefined);
     contextRef.value.store.dispatch(refreshTreeDiff(contextRef.value.store));
   };
 

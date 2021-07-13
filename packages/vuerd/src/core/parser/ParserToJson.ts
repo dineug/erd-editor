@@ -248,6 +248,7 @@ function mergeTable(shape: Shape): CreateTable[] {
         refTableName: foreignKey.refTableName,
         refColumnNames: foreignKey.refColumnNames,
         constraintName: foreignKey.constraintName,
+        visible: foreignKey.visible,
       });
     }
   });
@@ -330,6 +331,7 @@ function snapshotToShape({ table, relationship }: ExportedStore): Shape {
         foreignKeys: [],
         indexes: [],
         name: table.name,
+        visible: table.visible,
       };
 
       return createTable;
@@ -380,6 +382,7 @@ function snapshotToShape({ table, relationship }: ExportedStore): Shape {
         refTableName: refTable?.name || '',
         refColumnNames: refColumnNames,
         constraintName: relationship.constraintName,
+        visible: relationship.visible,
       };
 
       return fk;
@@ -475,6 +478,7 @@ function createTable(
           widthComment: SIZE_MIN_WIDTH,
           zIndex: 2,
         },
+    visible: table.visible === undefined ? true : table.visible,
   } as any;
 
   const widthName = helper.getTextWidth(newTable.name);
@@ -575,6 +579,12 @@ function createRelationship(data: ExportedStore, tables: CreateTable[]) {
               }
             });
 
+            if (startTable.visible && endTable.visible) {
+              foreignKey.visible = true;
+            } else {
+              foreignKey.visible = false;
+            }
+
             data.relationship.relationships.push({
               id: uuid(),
               identification: !endColumns.some(column => !column.ui.pfk),
@@ -594,6 +604,7 @@ function createRelationship(data: ExportedStore, tables: CreateTable[]) {
                 direction: 'top',
               },
               constraintName: foreignKey.constraintName,
+              visible: foreignKey.visible,
             });
           }
         });
