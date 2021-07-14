@@ -4,7 +4,9 @@ import { RelationshipModel } from '@/engine/store/models/relationship.model';
 import { ExecuteCommand } from '@/internal-types/command';
 import {
   ChangeStartRelationshipType,
+  HideRelationship,
   RelationshipCommandMap,
+  ShowRelationship,
 } from '@@types/engine/command/relationship.cmd';
 import {
   AddRelationship,
@@ -107,6 +109,22 @@ export function executeLoadRelationship(
   });
 }
 
+export function executeHideRelationship(
+  { relationshipState: { relationships } }: State,
+  data: HideRelationship
+) {
+  const relationship = getData(relationships, data.relationshipId);
+  if (relationship) relationship.visible = false;
+}
+
+export function executeShowRelationship(
+  { relationshipState: { relationships } }: State,
+  data: ShowRelationship
+) {
+  const relationship = getData(relationships, data.relationshipId);
+  if (relationship) relationship.visible = true;
+}
+
 export const executeRelationshipCommandMap: Record<
   keyof RelationshipCommandMap,
   ExecuteCommand
@@ -118,4 +136,6 @@ export const executeRelationshipCommandMap: Record<
     executeChangeStartRelationshipType,
   'relationship.changeIdentification': executeChangeIdentification,
   'relationship.load': executeLoadRelationship,
+  'relationship.hide': executeHideRelationship,
+  'relationship.show': executeShowRelationship,
 };
