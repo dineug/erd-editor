@@ -1,6 +1,7 @@
 import { Diff } from '@/core/diff';
 import { getData } from '@/core/helper';
 import { Changes, ITreeNode } from '@/core/tableTree';
+import { hideTable, showTable } from '@/engine/command/table.cmd.helper';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { Table } from '@@types/engine/store/table.state';
@@ -121,33 +122,12 @@ export class TreeNode implements ITreeNode {
     this.selected = selected;
 
     if (this.table && this.parent === this.root) {
-      this.table.visible = selected;
-      this.showRelationships(selected);
-    }
-  }
-
-  showRelationships(visible: boolean) {
-    const relationships = this.context.store.relationshipState.relationships;
-    const tables = this.context.store.tableState.tables;
-
-    relationships.forEach(relationship => {
-      if (
-        relationship.end.tableId === this.id ||
-        relationship.start.tableId === this.id
-      ) {
-        if (visible) {
-          if (relationship.end.tableId === this.id) {
-            const startTable = getData(tables, relationship.start.tableId);
-            relationship.visible = startTable?.visible ? true : false;
-          } else {
-            const endTable = getData(tables, relationship.end.tableId);
-            relationship.visible = endTable?.visible ? true : false;
-          }
-        } else {
-          relationship.visible = false;
-        }
+      if (selected) {
+        this.context.store.dispatch(showTable(this.table.id));
+      } else {
+        this.context.store.dispatch(hideTable(this.table.id));
       }
-    });
+    }
   }
 
   /**

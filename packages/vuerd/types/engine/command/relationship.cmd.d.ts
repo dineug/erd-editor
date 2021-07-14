@@ -36,6 +36,14 @@ export interface ChangeIdentification {
   identification: boolean;
 }
 
+export interface HideRelationship {
+  relationshipId: string;
+}
+
+export interface ShowRelationship {
+  relationshipId: string;
+}
+
 export interface RelationshipCommandMap {
   'relationship.add': AddRelationship;
   'relationship.remove': RemoveRelationship;
@@ -43,4 +51,6 @@ export interface RelationshipCommandMap {
   'relationship.changeStartRelationshipType': ChangeStartRelationshipType;
   'relationship.changeIdentification': ChangeIdentification;
   'relationship.load': Relationship;
+  'relationship.hide': HideRelationship;
+  'relationship.show': ShowRelationship;
 }

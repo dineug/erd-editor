@@ -2,8 +2,10 @@ import { cloneDeep, getData } from '@/core/helper';
 import { createCommand } from '@/engine/command/helper';
 import {
   changeIdentification,
+  hideRelationship,
   loadRelationship,
   removeRelationship,
+  showRelationship,
 } from '@/engine/command/relationship.cmd.helper';
 import { IStore } from '@/internal-types/store';
 import { BatchCommand } from '@@types/engine/command';
@@ -12,7 +14,9 @@ import {
   ChangeIdentification,
   ChangeRelationshipType,
   ChangeStartRelationshipType,
+  HideRelationship,
   RemoveRelationship,
+  ShowRelationship,
 } from '@@types/engine/command/relationship.cmd';
 import { Relationship } from '@@types/engine/store/relationship.state';
 
@@ -81,6 +85,22 @@ export function executeChangeIdentification(
   batchUndoCommand.push(changeIdentification(relationshipId, !identification));
 }
 
+export function executeHideRelationship(
+  store: IStore,
+  batchUndoCommand: BatchCommand,
+  { relationshipId }: HideRelationship
+) {
+  batchUndoCommand.push(showRelationship(relationshipId));
+}
+
+export function executeShowRelationship(
+  store: IStore,
+  batchUndoCommand: BatchCommand,
+  { relationshipId }: ShowRelationship
+) {
+  batchUndoCommand.push(hideRelationship(relationshipId));
+}
+
 export const executeRelationshipCommandMap = {
   'relationship.add': executeAddRelationship,
   'relationship.remove': executeRemoveRelationship,
@@ -88,4 +108,6 @@ export const executeRelationshipCommandMap = {
   'relationship.changeStartRelationshipType':
     executeChangeStartRelationshipType,
   'relationship.changeIdentification': executeChangeIdentification,
+  'relationship.hide': executeHideRelationship,
+  'relationship.show': executeShowRelationship,
 };

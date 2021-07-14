@@ -18,6 +18,7 @@ export interface Keymap {
   addColumn: KeymapOption[];
   addMemo: KeymapOption[];
   removeTable: KeymapOption[];
+  hideTable: KeymapOption[];
   removeColumn: KeymapOption[];
   primaryKey: KeymapOption[];
   selectAllTable: KeymapOption[];

@@ -34,6 +34,7 @@ import {
 import {
   changeTableComment,
   changeTableName,
+  hideTable,
   moveTable,
   removeTable,
   selectTable$,
@@ -126,6 +127,11 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   const onRemoveTable = () => {
     const { store } = contextRef.value;
     store.dispatch(removeTable(store, props.table.id));
+  };
+
+  const onHideTable = () => {
+    const { store } = contextRef.value;
+    store.dispatch(hideTable(props.table.id));
   };
 
   const onAddColumn = () => {
@@ -265,6 +271,13 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
               name="times"
               size="12"
               @click=${onRemoveTable}
+            ></vuerd-icon>
+            <vuerd-icon
+              class="vuerd-button vuerd-table-button"
+              data-tippy-content=${keymapOptionsToString(keymap.hideTable)}
+              name="eye-slash"
+              size="13"
+              @click=${onHideTable}
             ></vuerd-icon>
             <vuerd-icon
               class="vuerd-button vuerd-table-button"

@@ -65,3 +65,9 @@ export const changeIdentification = (
 
 export const loadRelationship = (relationship: Relationship) =>
   createCommand('relationship.load', relationship);
+
+export const hideRelationship = (relationshipId: string) =>
+  createCommand('relationship.hide', { relationshipId });
+
+export const showRelationship = (relationshipId: string) =>
+  createCommand('relationship.show', { relationshipId });
