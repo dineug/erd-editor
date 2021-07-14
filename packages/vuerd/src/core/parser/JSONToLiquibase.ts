@@ -402,16 +402,16 @@ export const createTableDiff = ({
     changeSets.push(changeSetSequences);
   }
 
-  // if common
-  if (changeSetCommon.children.length) {
-    changeSets.push(changeSetCommon);
-  }
-
   // if modification
   if (changeSetModifyPG.children.length) {
     changeSets.push(changeSetModifyPG);
     changeSets.push(changeSetModifyOracle);
     changeSets.push(changeSetModifyMssql);
+  }
+
+  // if common
+  if (changeSetCommon.children.length) {
+    changeSets.push(changeSetCommon);
   }
 
   return changeSets;
