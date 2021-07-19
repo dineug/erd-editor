@@ -73,17 +73,22 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
             ? repeat(
                 tables,
                 table => table.id,
-                table => html`<vuerd-table .table=${table}></vuerd-table>`
+                table =>
+                  table.visible
+                    ? html`<vuerd-table .table=${table}></vuerd-table>`
+                    : null
               )
             : repeat(
                 tables,
                 table => table.id,
                 table =>
-                  html`
-                    <vuerd-high-level-table
-                      .table=${table}
-                    ></vuerd-high-level-table>
-                  `
+                  table.visible
+                    ? html`
+                        <vuerd-high-level-table
+                          .table=${table}
+                        ></vuerd-high-level-table>
+                      `
+                    : null
               )
         )}
         ${repeat(

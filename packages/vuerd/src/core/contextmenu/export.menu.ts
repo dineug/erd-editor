@@ -71,12 +71,10 @@ export const createExportMenus = (
 
         exportXML(liquibase, store.canvasState.databaseName);
 
-        if (liquibase)
-          // todo make it synchronous
-          setTimeout(() => {
-            snapshots.push(createStoreCopy(store));
-            console.log('AFTER', snapshots);
-          }, 50);
+        if (liquibase) {
+          snapshots.push(createStoreCopy(store));
+          console.log('AFTER', snapshots);
+        }
       },
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

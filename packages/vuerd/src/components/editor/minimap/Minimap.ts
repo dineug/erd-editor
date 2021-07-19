@@ -132,6 +132,7 @@ const Minimap: FunctionalComponent<MinimapProps, MinimapElement> = (
                 relationships,
                 relationship => relationship.id,
                 relationship => {
+                  if (!relationship.visible) return null;
                   const shape = relationshipTpl(relationship, 12);
                   return svg`
                   <g

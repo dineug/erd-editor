@@ -17,12 +17,15 @@ export type Operation =
   | 'dropTable'
   | 'dropForeignKeyConstraint';
 
+export const supportedDialects: Dialect[] = ['oracle', 'postgresql', 'mssql'];
+
 export interface FormatTableOptions {
   table: Table;
   dialect: Dialect;
 }
 
 export interface FormatColumnOptions {
+  table: Table;
   column: Column;
   dialect: Dialect;
 }
@@ -231,3 +234,10 @@ export class XMLNode implements IXMLNode {
     this.children.push(...children);
   }
 }
+
+export const generateSeqName = (
+  tableName: string,
+  columnName: string
+): string => {
+  return `${tableName}_${columnName}_seq`.toLowerCase();
+};

@@ -9,6 +9,7 @@ export interface PureTable {
   comment: string;
   columns: Column[];
   ui: TableUI;
+  visible?: boolean;
 }
 
 export interface Table extends PureTable {

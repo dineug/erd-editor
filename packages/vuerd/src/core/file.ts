@@ -2,6 +2,8 @@ import { DDLParser } from '@vuerd/sql-ddl-parser';
 import domToImage from 'dom-to-image';
 
 import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
+import { calculateDiff } from '@/core/diff/helper';
+import { Logger } from '@/core/logger';
 import { Statement } from '@/core/parser';
 import { Dialect } from '@/core/parser/helper';
 import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
@@ -115,11 +117,21 @@ export function importJSON({ store }: ERDEditorContext) {
 
 export function importSQLDDL(context: ERDEditorContext) {
   // @ts-ignore
-  importWrapper(context, 'sql', DDLParser);
+  importWrapper(context, 'sql', DDLParser, false, true);
 }
 
 export function importLiquibase(context: ERDEditorContext, dialect: Dialect) {
-  importWrapper(context, 'xml', LiquibaseParser, false, dialect);
+  const snapshot = getLatestSnapshot(context.snapshots);
+
+  if (
+    !snapshot ||
+    calculateDiff(context).length === 0 ||
+    window.confirm(
+      'Found changes, are you sure you want to loose them? If you want to save changes (diff), please, make sure to EXPORT them first.\nPress OK to continue importing file, press CANCEL to abort importing.'
+    )
+  ) {
+    importWrapper(context, 'xml', LiquibaseParser, true, false, dialect);
+  }
 }
 
 export function createStoreCopy(store: Store): ExportedStore {
@@ -134,55 +146,69 @@ export function importWrapper(
   context: ERDEditorContext,
   type: string,
   parser: ParserCallback,
+  multipleFiles: boolean = false,
   resetDiagram: boolean = true,
   dialect?: Dialect
 ) {
-  const { store, helper } = context;
   const importHelper = document.createElement('input');
   importHelper.setAttribute('type', 'file');
+  if (multipleFiles) {
+    importHelper.setAttribute('multiple', 'true');
+  }
   importHelper.setAttribute('accept', `.${type}`);
   importHelper.addEventListener('change', event => {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length) {
-      const file = input.files[0];
-      const regex = new RegExp(`\.(${type})$`, 'i');
-      if (regex.test(file.name)) {
-        const reader = new FileReader();
-        reader.readAsText(file);
-        reader.onload = () => {
-          const value = reader.result;
-          if (typeof value === 'string') {
-            const statements = parser(value, dialect);
-
-            if (resetDiagram) {
-              const json = createJson(
-                statements,
-                helper,
-                store.canvasState.database
-              );
-              store.dispatchSync(loadJson$(json), sortTable());
-            } else {
-              var { snapshots } = context;
-              snapshots.push(createStoreCopy(store));
-
-              const json = createJson(
-                statements,
-                helper,
-                store.canvasState.database,
-                getLatestSnapshot(snapshots)
-              );
-              store.dispatchSync(loadJson$(json));
-            }
-
-            var { snapshots } = context;
-            snapshots.push(createStoreCopy(store));
-            console.log('SNAPSHOTS', snapshots);
+      Array.from(input.files)
+        .sort((a: File, b: File) => a.name.localeCompare(b.name))
+        .forEach(file => {
+          const regex = new RegExp(`\.(${type})$`, 'i');
+          if (regex.test(file.name)) {
+            const reader = new FileReader();
+            reader.readAsText(file);
+            reader.onload = () => {
+              const value = reader.result;
+              if (typeof value === 'string') {
+                parseFile(context, value, parser, resetDiagram, dialect);
+              }
+            };
+          } else {
+            alert(`Just upload the ${type} file`);
           }
-        };
-      } else {
-        alert(`Just upload the ${type} file`);
-      }
+        });
     }
   });
   importHelper.click();
+}
+
+export function parseFile(
+  context: ERDEditorContext,
+  value: string,
+  parser: ParserCallback,
+  resetDiagram: boolean,
+  dialect?: Dialect
+) {
+  const { store, helper } = context;
+
+  const statements = parser(value, dialect);
+
+  if (resetDiagram) {
+    const json = createJson(statements, helper, store.canvasState.database);
+    store.dispatchSync(loadJson$(json), sortTable());
+  } else {
+    var { snapshots } = context;
+    snapshots.push(createStoreCopy(store));
+
+    const json = createJson(
+      statements,
+      helper,
+      store.canvasState.database,
+      getLatestSnapshot(snapshots)
+    );
+    store.dispatchSync(loadJson$(json));
+  }
+
+  var { snapshots } = context;
+  snapshots.push(createStoreCopy(store));
+  Logger.log('SNAPSHOTS', snapshots);
 }

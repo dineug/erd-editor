@@ -19,6 +19,9 @@ export interface Theme {
   scrollbarThumbActive: string;
   menubar: string;
   visualization: string;
+  diffAdd: string;
+  diffModify: string;
+  diffRemove: string;
 }
 
 export type ThemeKey = keyof Theme;

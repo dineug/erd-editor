@@ -86,11 +86,10 @@ export function executeLoadRelationship(
   { relationshipState: { relationships }, tableState: { tables } }: State,
   data: Relationship
 ) {
-  relationships.push(new RelationshipModel({ loadRelationship: data }));
-
-  // valid end column ui key
   const table = getData(tables, data.end.tableId);
-  if (!table) return;
+  if (!table || !getData(tables, data.start.tableId)) return;
+
+  relationships.push(new RelationshipModel({ loadRelationship: data }));
 
   data.end.columnIds.forEach(columnId => {
     const column = getData(table.columns, columnId);

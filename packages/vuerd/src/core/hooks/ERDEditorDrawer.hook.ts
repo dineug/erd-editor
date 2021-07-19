@@ -20,6 +20,7 @@ interface DrawerState {
   help: boolean;
   setting: boolean;
   tableProperties: boolean;
+  tree: boolean;
 }
 
 type DrawerKey = keyof DrawerState;
@@ -32,6 +33,7 @@ export function useERDEditorDrawer(
     help: false,
     setting: false,
     tableProperties: false,
+    tree: false,
   });
   const { unmountedGroup } = useUnmounted();
   let tableId = '';
@@ -54,6 +56,8 @@ export function useERDEditorDrawer(
   const closeSetting = createClose('setting');
   const openTableProperties = createOpen('tableProperties');
   const closeTableProperties = createClose('tableProperties');
+  const openTree = createOpen('tree');
+  const closeTree = createClose('tree');
 
   const closeDrawer = () => {
     if (state.tableProperties && tableId) {
@@ -63,6 +67,7 @@ export function useERDEditorDrawer(
     closeHelp();
     closeSetting();
     closeTableProperties();
+    closeTree();
     tableId = '';
   };
 
@@ -93,6 +98,11 @@ export function useERDEditorDrawer(
         .visible=${state.setting}
         @close=${closeSetting}
       ></vuerd-setting-drawer>
+      <vuerd-tree-drawer
+        .width=${props.width}
+        .visible=${state.tree}
+        @close=${closeTree}
+      ></vuerd-tree-drawer>
       <vuerd-table-properties-drawer
         .width=${props.width}
         .visible=${state.tableProperties}
@@ -108,5 +118,7 @@ export function useERDEditorDrawer(
     closeSetting,
     openTableProperties,
     closeTableProperties,
+    openTree,
+    closeTree,
   };
 }
