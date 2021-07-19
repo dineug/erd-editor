@@ -14,6 +14,7 @@ import { classMap } from 'lit-html/directives/class-map';
 
 import { LineShape } from '@/components/drawer/TreeDrawer/TreeLine';
 import { calculateDiff } from '@/core/diff/helper';
+import { getData } from '@/core/helper';
 import { useContext } from '@/core/hooks/context.hook';
 import { Changes } from '@/core/tableTree';
 import { generateRoot, TreeNode } from '@/core/tableTree/tableTree';
@@ -23,7 +24,7 @@ import {
   refreshTree,
   refreshTreeDiff,
 } from '@/engine/command/tree.cmd.helper';
-import { Column, Table } from '@@types/engine/store/table.state';
+import { Column } from '@@types/engine/store/table.state';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -133,8 +134,6 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         });
 
         if (!duplicate) state.root?.children.push(node);
-
-        console.log(state.root?.children);
       }
     });
 
@@ -173,6 +172,9 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
 
       var rows = node.children.map(child => {
         if (child === lastChild) lines[lines.length - 1] = 'L';
+
+        const primaryNode = getData(child.root?.children || [], child.id);
+        if (primaryNode && !child.disabled) child.changes = primaryNode.changes;
 
         var childRows: TemplateResult[] = [];
         childRows.push(tableRow(child.changes, child));
@@ -228,9 +230,11 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
       `;
     }
 
-    if (node.table)
-      columns = node.table?.columns.map(col => {
-        for (let diff of node.diffs) {
+    const primaryNode = getData(node.root?.children || [], node.id);
+
+    if (primaryNode?.table) {
+      columns = primaryNode.table?.columns.map(col => {
+        for (let diff of primaryNode.diffs) {
           if (
             diff.type === 'table' &&
             (diff.changes === 'add' || diff.changes === 'remove')
@@ -256,19 +260,20 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         return columnRow('none', col);
       });
 
-    //@ts-ignore
-    const removedColumns: TemplateResult[] = node.diffs
-      .map(diff => {
-        if (
-          diff.changes === 'remove' &&
-          diff.type === 'column' &&
-          diff.data.oldColumn
-        )
-          return columnRow('remove', diff.data.oldColumn);
-      })
-      .filter(row => row);
+      //@ts-ignore
+      const removedColumns: TemplateResult[] = primaryNode.diffs
+        .map(diff => {
+          if (
+            diff.changes === 'remove' &&
+            diff.type === 'column' &&
+            diff.data.oldColumn
+          )
+            return columnRow('remove', diff.data.oldColumn);
+        })
+        .filter(row => row);
 
-    columns.push(...removedColumns);
+      columns.push(...removedColumns);
+    }
 
     return columns;
   };
