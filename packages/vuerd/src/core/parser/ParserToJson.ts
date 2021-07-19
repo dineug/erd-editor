@@ -1,8 +1,6 @@
 import {
   AlterTableAddPrimaryKey,
   AlterTableAddUnique,
-  Column,
-  CreateIndex,
 } from '@vuerd/sql-ddl-parser';
 
 import { getData, uuid } from '@/core/helper';
@@ -16,6 +14,8 @@ import {
   AlterTableAddForeignKey,
   AlterTableDropColumn,
   AlterTableDropForeignKey,
+  Column,
+  CreateIndex,
   CreateTable,
   DropTable,
   IndexColumn,
@@ -215,6 +215,7 @@ function mergeTable(shape: Shape): CreateTable[] {
         name: index.name,
         unique: index.unique,
         columns: index.columns,
+        id: index.id,
       });
     }
   });
@@ -249,6 +250,7 @@ function mergeTable(shape: Shape): CreateTable[] {
         refColumnNames: foreignKey.refColumnNames,
         constraintName: foreignKey.constraintName,
         visible: foreignKey.visible,
+        id: foreignKey.id,
       });
     }
   });
@@ -322,10 +324,12 @@ function snapshotToShape({ table, relationship }: ExportedStore): Shape {
           autoIncrement: column.option.autoIncrement,
           unique: column.option.unique,
           nullable: !column.option.notNull,
+          id: column.id,
         };
       });
       var createTable: CreateTable = {
         type: 'create.table',
+        id: table.id,
         columns: columns,
         comment: table.comment,
         foreignKeys: [],
@@ -353,6 +357,7 @@ function snapshotToShape({ table, relationship }: ExportedStore): Shape {
 
       var createIndex: CreateIndex = {
         type: 'create.index',
+        id: index.id,
         name: index.name,
         unique: index.unique,
         tableName: indexedTable?.name || '',
@@ -377,6 +382,7 @@ function snapshotToShape({ table, relationship }: ExportedStore): Shape {
 
       const fk: AlterTableAddForeignKey = {
         type: 'alter.table.add.foreignKey',
+        id: relationship.id,
         name: baseTable?.name || '',
         columnNames: baseColumnNames,
         refTableName: refTable?.name || '',
@@ -464,7 +470,7 @@ function createTable(
   const originalTable = findByName(snapTables || [], table.name);
 
   const newTable = {
-    id: uuid(),
+    id: table.id || uuid(),
     name: table.name,
     comment: table.comment,
     columns: [],
@@ -499,7 +505,7 @@ function createTable(
 
 function createColumn(helper: Helper, column: Column): any {
   const newColumn = {
-    id: uuid(),
+    id: column.id || uuid(),
     name: column.name,
     comment: column.comment,
     dataType: column.dataType,
@@ -586,7 +592,7 @@ function createRelationship(data: ExportedStore, tables: CreateTable[]) {
             }
 
             data.relationship.relationships.push({
-              id: uuid(),
+              id: foreignKey.id || uuid(),
               identification: !endColumns.some(column => !column.ui.pfk),
               relationshipType: 'ZeroOneN',
               start: {
@@ -634,7 +640,7 @@ function createIndex(data: ExportedStore, tables: CreateTable[]) {
           });
           if (indexColumns.length !== 0) {
             data.table.indexes.push({
-              id: uuid(),
+              id: index.id || uuid(),
               name: index.name,
               tableId: targetTable.id,
               columns: indexColumns,

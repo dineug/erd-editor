@@ -38,6 +38,7 @@ export interface CreateTable {
   indexes: Index[];
   foreignKeys: ForeignKey[];
   visible?: boolean;
+  id?: string;
 }
 
 export interface DropTable {
@@ -54,12 +55,14 @@ export interface Column {
   autoIncrement: boolean;
   unique: boolean;
   nullable: boolean;
+  id?: string;
 }
 
 export interface Index {
   name: string;
   unique: boolean;
   columns: IndexColumn[];
+  id?: string;
 }
 
 export interface ForeignKey {
@@ -68,6 +71,7 @@ export interface ForeignKey {
   refColumnNames: string[];
   constraintName: string;
   visible?: boolean;
+  id?: string;
 }
 
 export interface CreateTableColumns {
@@ -82,6 +86,7 @@ export interface CreateIndex {
   unique: boolean;
   tableName: string;
   columns: IndexColumn[];
+  id?: string;
 }
 export interface IndexColumn {
   name: string;
@@ -108,6 +113,7 @@ export interface AlterTableAddForeignKey {
   refColumnNames: string[];
   constraintName: string;
   visible?: boolean;
+  id?: string;
 }
 
 export interface AlterTableDropForeignKey {
