@@ -41,8 +41,12 @@ export function executeMoveTable(
     const table = getData(tables, tableId);
     if (!table) return;
 
-    table.ui.left += data.movementX;
-    table.ui.top += data.movementY;
+    table.ui.left =
+      Math.round((table.ui.left + data.movementX + Number.EPSILON) * 10000) /
+      10000;
+    table.ui.top =
+      Math.round((table.ui.top + data.movementY + Number.EPSILON) * 10000) /
+      10000;
   });
 
   data.memoIds.forEach(memoId => {
