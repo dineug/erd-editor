@@ -30,6 +30,7 @@ import { useERDEditorDrawer } from '@/core/hooks/ERDEditorDrawer.hook';
 import { useERDEditorElement } from '@/core/hooks/ERDEditorElement.hook';
 import { useERDEditorGhost } from '@/core/hooks/ERDEditorGhost.hook';
 import { usePanelView } from '@/core/hooks/panelView.hook';
+import { usePrompt } from '@/core/hooks/prompt.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { keymapMatchAndStop } from '@/core/keymap';
 import {
@@ -66,8 +67,9 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   const { drawerTpl, closeDrawer, openHelp, openSetting, openTree } =
     useERDEditorDrawer(props, context);
   const { hasPanel, panelTpl } = usePanelView(props, context);
+  const { showPrompt, promptTpl } = usePrompt(props, context);
   const { unmountedGroup } = useUnmounted();
-  useERDEditorElement(context, ctx, { setFocus });
+  useERDEditorElement(context, ctx, { setFocus, showPrompt });
 
   // @ts-ignore
   const resizeObserver = new ResizeObserver(entries => {
@@ -118,12 +120,12 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
         .pipe(ignoreEnterProcess)
         .subscribe(event => {
           Logger.debug(`
-metaKey: ${event.metaKey}
-ctrlKey: ${event.ctrlKey}
-altKey: ${event.altKey}
-shiftKey: ${event.shiftKey}
-code: ${event.code}
-key: ${event.key}
+            metaKey: ${event.metaKey}
+            ctrlKey: ${event.ctrlKey}
+            altKey: ${event.altKey}
+            shiftKey: ${event.shiftKey}
+            code: ${event.code}
+            key: ${event.key}
         `);
 
           helper.keydown$.next(event);
@@ -169,7 +171,7 @@ key: ${event.key}
               ? html`<vuerd-erd .width=${width} .height=${height}></vuerd-erd>`
               : null
           )}
-          ${panelTpl()} ${drawerTpl()} ${ghostTpl}
+          ${panelTpl()} ${drawerTpl()} ${ghostTpl} ${promptTpl()}
         </div>
       </vuerd-provider>
     `;

@@ -1,4 +1,5 @@
 import { TreeDrawerElement } from '@/components/drawer/TreeDrawer';
+import { showPromptDef } from '@/core/hooks/prompt.hook';
 
 import { ExtensionConfig } from '../core/extension';
 import { Keymap } from '../core/keymap';
@@ -25,4 +26,5 @@ export interface ERDEditorElement extends ERDEditorProps, HTMLElement {
   getSQLDDL(database?: Database): string;
   extension(config: Partial<ExtensionConfig>): void;
   treeDrawerRef: TreeDrawerElement;
+  showPrompt: showPromptDef;
 }

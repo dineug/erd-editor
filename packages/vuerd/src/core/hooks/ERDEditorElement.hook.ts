@@ -3,6 +3,7 @@ import { DDLParser } from '@vuerd/sql-ddl-parser';
 
 import { createJsonStringify, parseFile } from '@/core/file';
 import { isArray, isString } from '@/core/helper';
+import { showPromptDef } from '@/core/hooks/prompt.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { loadKeymap } from '@/core/keymap';
 import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
@@ -27,7 +28,13 @@ import { Database } from '@@types/engine/store/canvas.state';
 export function useERDEditorElement(
   context: IERDEditorContext,
   ctx: ERDEditorElement,
-  { setFocus }: { setFocus: () => void }
+  {
+    setFocus,
+    showPrompt,
+  }: {
+    setFocus: () => void;
+    showPrompt: showPromptDef;
+  }
 ) {
   const { store, helper } = context;
   const { editorState } = store;
@@ -98,6 +105,8 @@ export function useERDEditorElement(
     isArray(config.panels) &&
       editorState.panels.push(...(config.panels as PanelConfig[]));
   };
+
+  ctx.showPrompt = showPrompt;
 
   beforeMount(() =>
     unmountedGroup.push(
