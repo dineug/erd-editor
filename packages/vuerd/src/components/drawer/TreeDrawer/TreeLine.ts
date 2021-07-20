@@ -61,7 +61,6 @@ const style = css`
   }
 
   .vuerd-tree-line-svg > path {
-    strokewidth: 2;
     stroke: var(--vuerd-color-font);
     fill: transparent;
   }
