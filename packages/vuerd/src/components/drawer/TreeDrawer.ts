@@ -312,6 +312,11 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     // S-R latch so we dont create infinite loop of updates
     if (props.visible === true && state.forbidUpdate === false) {
       state.forbidUpdate = true;
+      if (!state.root?.children.length) {
+        contextRef.value.store.dispatchSync(
+          refreshTree(contextRef.value.store)
+        );
+      }
       contextRef.value.store.dispatch(refreshTreeDiff(contextRef.value.store));
     } else if (props.visible === false && state.forbidUpdate === true) {
       state.forbidUpdate = false;
