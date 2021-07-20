@@ -26,18 +26,19 @@ const PromptStyle = css`
 defineComponent('vuerd-prompt', {
   observedProps: ['prompt', 'onSubmit', 'visible'],
   styleMap: {
+    width: '200px',
     position: 'absolute',
     color: 'var(--vuerd-color-font-active)',
     backgroundColor: 'var(--vuerd-color-contextmenu)',
     margin: '10px',
-    padding: '10px',
+    padding: '5px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 1px 6px var(--vuerd-color-minimap-shadow)',
     left: '50%',
-    marginLeft: '-30px',
+    marginLeft: '-100px',
   },
   style: PromptStyle,
   render(props: PromptProps, ctx: PromptElement) {
@@ -51,6 +52,7 @@ defineComponent('vuerd-prompt', {
     const onSubmit = (e: Event) => {
       e.preventDefault();
       props.onSubmit(state.input);
+      state.input = '';
     };
 
     return () => html` <div class="vuerd-prompt">
@@ -58,8 +60,9 @@ defineComponent('vuerd-prompt', {
       <vuerd-input
         .width=${60}
         .edit=${true}
+        .value=${state.input}
+        .placeholder=${'unknown'}
         class="vuerd-prompt-input"
-        placeholder="unknown"
         @input=${(event: InputEvent) => onInput(event)}
       ></vuerd-input>
       <button @click=${onSubmit}>Confirm</button>
