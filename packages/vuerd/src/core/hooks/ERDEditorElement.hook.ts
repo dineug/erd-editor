@@ -1,7 +1,7 @@
 import { beforeMount } from '@vuerd/lit-observable';
 import { DDLParser } from '@vuerd/sql-ddl-parser';
 
-import { createJsonStringify, parseFile } from '@/core/file';
+import { createJsonStringify, loadLiquibaseChangelog } from '@/core/file';
 import { isArray, isString } from '@/core/helper';
 import { showPromptDef } from '@/core/hooks/prompt.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
@@ -84,11 +84,11 @@ export function useERDEditorElement(
   };
 
   ctx.loadLiquibase = (xmls: LiquibaseFile[]) => {
-    xmls.forEach(xml => {
-      if (isString(xml.value) && xml.value.trim()) {
-        parseFile(context, xml.value, LiquibaseParser, false, 'postgresql');
-      }
-    });
+    // xmls.forEach(xml => {
+    //   if (isString(xml.value) && xml.value.trim()) {
+    loadLiquibaseChangelog(context, xmls, 'postgresql');
+    // }
+    // });
   };
 
   ctx.getSQLDDL = (database?: Database) => {
