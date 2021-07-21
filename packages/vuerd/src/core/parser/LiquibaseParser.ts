@@ -1,3 +1,5 @@
+import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
+import { createStoreCopy } from '@/core/file';
 import {
   Constraints,
   Dialect,
@@ -6,6 +8,10 @@ import {
   translate,
 } from '@/core/parser/helper';
 import { Column, IndexColumn, Statement } from '@/core/parser/index';
+import { createJson } from '@/core/parser/ParserToJson';
+import { loadJson$ } from '@/engine/command/editor.cmd.helper.gen';
+import { ERDEditorContext } from '@@types/core/ERDEditorContext';
+import { LiquibaseFile } from '@@types/core/liquibaseParser';
 
 const dialectTo: Dialect = 'postgresql';
 const defaultDialect: Dialect = 'postgresql';
@@ -17,23 +23,71 @@ const defaultDialect: Dialect = 'postgresql';
  * @returns List of Statements to execute
  */
 export const LiquibaseParser = (
-  input: string,
-  dialect: Dialect = defaultDialect
-): Statement[] => {
-  var statements: Statement[] = [];
+  context: ERDEditorContext,
+  files: LiquibaseFile[],
+  dialect: Dialect = defaultDialect,
+  rootFile?: LiquibaseFile
+) => {
+  console.log('PARSING...', files);
 
-  var parser = new DOMParser();
-  var xmlDoc = parser.parseFromString(input, 'text/xml');
-  var changeSets = xmlDoc.getElementsByTagName('changeSet');
+  function parseFile(file: LiquibaseFile) {
+    var parser = new DOMParser();
+    var xmlDoc = parser.parseFromString(file.value, 'text/xml');
 
-  // parse all changesets
-  for (let i = 0; i < changeSets.length; i++) {
-    const dbms: string = changeSets[i].getAttribute('dbms') || '';
-    if (dbms === '' || dbms == dialect)
-      parseChangeSet(changeSets[i], statements, dialect);
+    const databaseChangeLog = xmlDoc.querySelector('databaseChangeLog');
+    if (!databaseChangeLog) return;
+    console.log(file.path, databaseChangeLog.children);
+
+    Array.from(databaseChangeLog.children).forEach(element => {
+      if (element.tagName === 'changeSet') {
+        handleChangeSetParsing(element);
+      } else if (element.tagName === 'include') {
+        handleImportParsing(element, file);
+      }
+    });
   }
 
-  return statements;
+  function handleImportParsing(include: Element, file: LiquibaseFile) {
+    const fileName = include.getAttribute('file');
+
+    var myDirectory = file.path.split('/').slice(0, -1).join('/');
+    if (myDirectory) myDirectory += '/';
+    const dstDirectory = `${myDirectory}${fileName}`;
+
+    const dstFile = files.find(file => file.path === dstDirectory);
+    if (dstFile) parseFile(dstFile);
+  }
+
+  function handleChangeSetParsing(element: Element) {
+    const dbms: string = element.getAttribute('dbms') || '';
+    if (dbms === '' || dbms == dialect) {
+      var statements: Statement[] = [];
+      parseChangeSet(element, statements, dialect);
+      applyStatements(context, statements);
+    }
+  }
+
+  if (rootFile) {
+    parseFile(rootFile);
+  } else {
+    files.forEach(file => parseFile(file));
+  }
+};
+
+export const applyStatements = (
+  context: ERDEditorContext,
+  statements: Statement[]
+) => {
+  var { snapshots, store, helper } = context;
+  snapshots.push(createStoreCopy(store));
+
+  const json = createJson(
+    statements,
+    helper,
+    store.canvasState.database,
+    getLatestSnapshot(snapshots)
+  );
+  store.dispatchSync(loadJson$(json));
 };
 
 export const parseChangeSet = (

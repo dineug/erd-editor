@@ -48,7 +48,7 @@ export const loadLiquibaseFiles = (uri: string): LiquibaseFile[] => {
         value: fs.readFileSync(rootFileFullPath, 'utf8'),
       });
 
-      allFiles.push(...loadNestedIncludes(rootFileFullPath));
+      allFiles.push(...loadNestedIncludes(rootFileFullPath, changeLog));
     }
   });
 
@@ -70,7 +70,10 @@ export const loadLiquibaseFiles = (uri: string): LiquibaseFile[] => {
  * @param uri File to check
  * @returns Liquibase files that were included
  */
-export const loadNestedIncludes = (uri: string): LiquibaseFile[] => {
+export const loadNestedIncludes = (
+  uri: string,
+  rootUri: string
+): LiquibaseFile[] => {
   const files: LiquibaseFile[] = [];
 
   const file = fs.readFileSync(uri, 'utf8');
@@ -88,11 +91,11 @@ export const loadNestedIncludes = (uri: string): LiquibaseFile[] => {
     const includeFullPath = path.join(path.dirname(uri), includePath);
 
     files.push({
-      path: includePath,
+      path: path.relative(rootUri, includeFullPath).replace('\\', '/'),
       value: fs.readFileSync(includeFullPath, 'utf8'),
     });
 
-    files.push(...loadNestedIncludes(includeFullPath));
+    files.push(...loadNestedIncludes(includeFullPath, rootUri));
   }
 
   return files;
