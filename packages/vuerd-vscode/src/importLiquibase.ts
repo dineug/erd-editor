@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { window } from 'vscode';
+import parse from 'xml-parser';
 
 const liquibaseDirectory = 'changelog';
 const liquibaseRootFile = 'changelog.xml';
@@ -46,6 +47,8 @@ export const loadLiquibaseFiles = (uri: string): LiquibaseFile[] => {
         path: rootFileName,
         value: fs.readFileSync(rootFileFullPath, 'utf8'),
       });
+
+      allFiles.push(...loadNestedIncludes(rootFileFullPath));
     }
   });
 
@@ -57,5 +60,40 @@ export const loadLiquibaseFiles = (uri: string): LiquibaseFile[] => {
     );
   }
 
+  console.log(allFiles);
+
   return allFiles;
+};
+
+/**
+ * Recursively load all files inside of <include file="file_name"/>
+ * @param uri File to check
+ * @returns Liquibase files that were included
+ */
+export const loadNestedIncludes = (uri: string): LiquibaseFile[] => {
+  const files: LiquibaseFile[] = [];
+
+  const file = fs.readFileSync(uri, 'utf8');
+
+  const parsedFile = parse(file).root;
+
+  if (parsedFile.name !== 'databaseChangeLog') return [];
+
+  const includes = parsedFile.children.filter(node => node.name === 'include');
+
+  for (const include of includes) {
+    var includePath = include.attributes.file;
+    if (!includePath) continue;
+
+    const includeFullPath = path.join(path.dirname(uri), includePath);
+
+    files.push({
+      path: includePath,
+      value: fs.readFileSync(includeFullPath, 'utf8'),
+    });
+
+    files.push(...loadNestedIncludes(includeFullPath));
+  }
+
+  return files;
 };

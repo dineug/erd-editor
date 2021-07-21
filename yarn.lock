@@ -3970,6 +3970,11 @@
     anymatch "^3.0.0"
     source-map "^0.6.0"
 
+"@types/xml-parser@^1.2.30":
+  version "1.2.30"
+  resolved "https://registry.yarnpkg.com/@types/xml-parser/-/xml-parser-1.2.30.tgz#16792b77a8dd5514bd0533931259fca17d6d4ad9"
+  integrity sha512-QBCRpkCoGdtUgLzLHcA5E7Dg9fJNdhuZd6IshuPxmf3EbVqrslWVTHOIDEWGx//16FoMElpOXxIR3utIWsPoIA==
+
 "@types/yargs-parser@*":
   version "20.2.0"
   resolved "https://registry.yarnpkg.com/@types/yargs-parser/-/yargs-parser-20.2.0.tgz#dd3e6699ba3237f0348cd085e4698780204842f9"
@@ -15733,6 +15738,13 @@ xml-name-validator@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/xml-name-validator/-/xml-name-validator-3.0.0.tgz#6ae73e06de4d8c6e47f9fb181f78d648ad457c6a"
   integrity sha512-A5CUptxDsvxKJEU3yO6DuWBSJz/qizqzJKOMIfUJHETbBw/sFaDxgd6fxm1ewUaM0jZ444Fc5vC5ROYurg/4Pw==
+
+xml-parser@^1.2.1:
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/xml-parser/-/xml-parser-1.2.1.tgz#c31f4c34f2975db82ad013222120592736156fcd"
+  integrity sha1-wx9MNPKXXbgq0BMiISBZJzYVb80=
+  dependencies:
+    debug "^2.2.0"
 
 xmlchars@^2.2.0:
   version "2.2.0"
