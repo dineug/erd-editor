@@ -9,6 +9,7 @@ import {
 } from '@/core/parser/helper';
 import { Column, IndexColumn, Statement } from '@/core/parser/index';
 import { createJson } from '@/core/parser/ParserToJson';
+import { zoomCanvas } from '@/engine/command/canvas.cmd.helper';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper.gen';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { LiquibaseFile } from '@@types/core/liquibaseParser';
@@ -30,48 +31,56 @@ export const LiquibaseParser = (
 ) => {
   console.log('PARSING...', files);
 
-  function parseFile(file: LiquibaseFile) {
-    var parser = new DOMParser();
-    var xmlDoc = parser.parseFromString(file.value, 'text/xml');
+  const { store } = context;
+  const zoom = store.canvasState.zoomLevel;
+  store.dispatchSync(zoomCanvas(0.7));
 
-    const databaseChangeLog = xmlDoc.querySelector('databaseChangeLog');
-    if (!databaseChangeLog) return;
-    console.log(file.path, databaseChangeLog.children);
+  setTimeout(() => {
+    function parseFile(file: LiquibaseFile) {
+      var parser = new DOMParser();
+      var xmlDoc = parser.parseFromString(file.value, 'text/xml');
 
-    Array.from(databaseChangeLog.children).forEach(element => {
-      if (element.tagName === 'changeSet') {
-        handleChangeSetParsing(element);
-      } else if (element.tagName === 'include') {
-        handleImportParsing(element, file);
-      }
-    });
-  }
+      const databaseChangeLog = xmlDoc.querySelector('databaseChangeLog');
+      if (!databaseChangeLog) return;
+      console.log(file.path, databaseChangeLog.children);
 
-  function handleImportParsing(include: Element, file: LiquibaseFile) {
-    const fileName = include.getAttribute('file');
-
-    var myDirectory = file.path.split('/').slice(0, -1).join('/');
-    if (myDirectory) myDirectory += '/';
-    const dstDirectory = `${myDirectory}${fileName}`;
-
-    const dstFile = files.find(file => file.path === dstDirectory);
-    if (dstFile) parseFile(dstFile);
-  }
-
-  function handleChangeSetParsing(element: Element) {
-    const dbms: string = element.getAttribute('dbms') || '';
-    if (dbms === '' || dbms == dialect) {
-      var statements: Statement[] = [];
-      parseChangeSet(element, statements, dialect);
-      applyStatements(context, statements);
+      Array.from(databaseChangeLog.children).forEach(element => {
+        if (element.tagName === 'changeSet') {
+          handleChangeSetParsing(element);
+        } else if (element.tagName === 'include') {
+          handleImportParsing(element, file);
+        }
+      });
     }
-  }
 
-  if (rootFile) {
-    parseFile(rootFile);
-  } else {
-    files.forEach(file => parseFile(file));
-  }
+    function handleImportParsing(include: Element, file: LiquibaseFile) {
+      const fileName = include.getAttribute('file');
+
+      var myDirectory = file.path.split('/').slice(0, -1).join('/');
+      if (myDirectory) myDirectory += '/';
+      const dstDirectory = `${myDirectory}${fileName}`;
+
+      const dstFile = files.find(file => file.path === dstDirectory);
+      if (dstFile) parseFile(dstFile);
+    }
+
+    function handleChangeSetParsing(element: Element) {
+      const dbms: string = element.getAttribute('dbms') || '';
+      if (dbms === '' || dbms == dialect) {
+        var statements: Statement[] = [];
+        parseChangeSet(element, statements, dialect);
+        applyStatements(context, statements);
+      }
+    }
+
+    if (rootFile) {
+      parseFile(rootFile);
+    } else {
+      files.forEach(file => parseFile(file));
+    }
+
+    store.dispatchSync(zoomCanvas(zoom));
+  }, 10);
 };
 
 export const applyStatements = (
