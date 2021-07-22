@@ -145,6 +145,20 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
       ${props.node.table?.name}
     </span>
 
+    ${props.node.nestedChanges !== 'none'
+      ? html`
+          <svg
+            class=${classMap({
+              'vuerd-tree-table-nested-change': true,
+              'diff-modify': props.node.nestedChanges === 'modify',
+              'diff-add': props.node.nestedChanges === 'add',
+              'diff-remove': props.node.nestedChanges === 'remove',
+            })}
+          >
+            <circle cx="5" cy="5" r="5" />
+          </svg>
+        `
+      : null}
     ${state.hover
       ? html`
           <vuerd-icon
@@ -191,6 +205,22 @@ const style = css`
 
   .vuerd-tree-table-name #eye:hover {
     fill: var(--vuerd-color-font-active);
+  }
+
+  .vuerd-tree-table-nested-change {
+    width: 10px;
+    height: 10px;
+    margin-left: 5px;
+  }
+
+  .vuerd-tree-table-nested-change.diff-remove {
+    fill: var(--vuerd-color-diff-remove);
+  }
+  .vuerd-tree-table-nested-change.diff-add {
+    fill: var(--vuerd-color-diff-add);
+  }
+  .vuerd-tree-table-nested-change.diff-modify {
+    fill: var(--vuerd-color-diff-modify);
   }
 `;
 
