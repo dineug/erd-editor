@@ -32,6 +32,7 @@ import {
   focusTable,
 } from '@/engine/command/editor.cmd.helper';
 import {
+  addTableDefault,
   changeTableComment,
   changeTableName,
   hideTable,
@@ -152,6 +153,12 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   const onEdit = () => {
     const { store } = contextRef.value;
     store.dispatch(editTable());
+  };
+
+  const onAddDefault = () => {
+    const { table } = props;
+    const { store, helper } = contextRef.value;
+    store.dispatch(addTableDefault(table.id, helper));
   };
 
   const onDragoverGroupColumn = (event: CustomEvent<DragoverColumnDetail>) =>
@@ -285,7 +292,15 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
               name="plus"
               size="12"
               @click=${onAddColumn}
-            ></vuerd-icon>
+            ></vuerd-icon
+            >${columns.length
+              ? null
+              : html`<div
+                  class="vuerd-table-default vuerd-button vuerd-table-button "
+                  @click=${onAddDefault}
+                >
+                  Default
+                </div>`}
           </div>
           <div class="vuerd-table-header-body">
             <vuerd-input
