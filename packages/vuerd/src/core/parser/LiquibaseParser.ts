@@ -88,6 +88,8 @@ export const applyStatements = (
     getLatestSnapshot(snapshots)
   );
   store.dispatchSync(loadJson$(json));
+
+  snapshots.push(createStoreCopy(store));
 };
 
 export const parseChangeSet = (
