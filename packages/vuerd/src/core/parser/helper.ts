@@ -15,7 +15,8 @@ export type Operation =
   | 'addColumn'
   | 'dropColumn'
   | 'dropTable'
-  | 'dropForeignKeyConstraint';
+  | 'dropForeignKeyConstraint'
+  | 'addUniqueConstraint';
 
 export const supportedDialects: Dialect[] = ['oracle', 'postgresql', 'mssql'];
 

@@ -28,7 +28,8 @@ export type Statement =
   | AlterTableAddUnique
   | AlterTableAddColumn
   | AlterTableDropColumn
-  | DropTable;
+  | DropTable
+  | AlterTableAddUnique;
 
 export interface CreateTable {
   type: 'create.table';
@@ -132,4 +133,10 @@ export interface AlterTableDropColumn {
   type: 'alter.table.drop.column';
   name: string;
   columns: Column[];
+}
+
+export interface AlterTableAddUnique {
+  type: 'alter.table.add.unique';
+  name: string;
+  columnNames: string[];
 }

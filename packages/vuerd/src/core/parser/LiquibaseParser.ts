@@ -115,6 +115,12 @@ export const parseChangeSet = (
     statements,
     parseDropForeignKeyConstraint
   );
+  parseElement(
+    'addUniqueConstraint',
+    changeSet,
+    statements,
+    parseAddUniqueConstraint
+  );
 };
 
 export const parseElement = (
@@ -321,5 +327,21 @@ export const parseDropForeignKeyConstraint = (
     type: 'alter.table.drop.foreignKey',
     name: dropFk.getAttribute('constraintName') || '',
     baseTableName: dropFk.getAttribute('baseTableName') || '',
+  });
+};
+
+export const parseAddUniqueConstraint = (
+  addUniqueConstraint: Element,
+  statements: Statement[]
+) => {
+  const columnNames = addUniqueConstraint.getAttribute('columnNames');
+  if (!columnNames) return;
+
+  const columns: string[] = columnNames.split(',').map(col => col.trim());
+
+  statements.push({
+    type: 'alter.table.add.unique',
+    name: addUniqueConstraint.getAttribute('tableName') || '',
+    columnNames: columns,
   });
 };
