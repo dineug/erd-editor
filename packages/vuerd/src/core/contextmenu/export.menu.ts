@@ -94,13 +94,4 @@ export const createExportMenus = (
         }
       },
     },
-    {
-      name: 'TEST',
-      execute: () => {
-        const editor = document.querySelector('erd-editor');
-        editor?.showPrompt('Enter your name:', reply =>
-          console.log('REPLY:', reply)
-        );
-      },
-    },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));
