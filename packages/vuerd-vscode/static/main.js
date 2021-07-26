@@ -116,6 +116,19 @@
     }
   });
 
+  editor.onProgress((message) => {
+    vscode.postMessage({
+      command: 'progress',
+      message: message,
+    });
+  })
+
+  editor.onProgressEnd(() => {
+    vscode.postMessage({
+      command: 'progressEnd',
+    });
+  })
+
   vscode.postMessage({
     command: 'getValue',
   });

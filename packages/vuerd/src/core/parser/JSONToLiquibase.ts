@@ -21,7 +21,6 @@ import {
 } from '@/core/parser/helper';
 import { orderByNameASC } from '@/engine/store/helper/table.helper';
 import { ExportedStore, Store } from '@@types/engine/store';
-import { Database } from '@@types/engine/store/canvas.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import {
   Column,

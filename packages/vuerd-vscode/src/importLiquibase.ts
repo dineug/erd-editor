@@ -52,15 +52,11 @@ export const loadLiquibaseFiles = (uri: string): LiquibaseFile[] => {
     }
   });
 
-  if (foundChangelog) {
-    window.showInformationMessage('Succesfully found all files');
-  } else {
+  if (!foundChangelog) {
     window.showErrorMessage(
       "Cannot find 'changelog.xml' inside 'changelog' folder"
     );
   }
-
-  console.log(allFiles);
 
   return allFiles;
 };
@@ -90,12 +86,15 @@ export const loadNestedIncludes = (
 
     const includeFullPath = path.join(path.dirname(uri), includePath);
 
-    files.push({
-      path: path.relative(rootUri, includeFullPath).replace('\\', '/'),
-      value: fs.readFileSync(includeFullPath, 'utf8'),
-    });
-
-    files.push(...loadNestedIncludes(includeFullPath, rootUri));
+    try {
+      files.push({
+        path: path.relative(rootUri, includeFullPath).replace('\\', '/'),
+        value: fs.readFileSync(includeFullPath, 'utf8'),
+      });
+      files.push(...loadNestedIncludes(includeFullPath, rootUri));
+    } catch (e) {
+      window.showErrorMessage(`Cannot find ${includeFullPath}`);
+    }
   }
 
   return files;

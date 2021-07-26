@@ -6,7 +6,6 @@ import { isArray, isString } from '@/core/helper';
 import { showPromptDef } from '@/core/hooks/prompt.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { loadKeymap } from '@/core/keymap';
-import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
 import { createJson } from '@/core/parser/ParserToJson';
 import { createDDL } from '@/core/sql/ddl';
 import { loadTheme } from '@/core/theme';
@@ -84,11 +83,7 @@ export function useERDEditorElement(
   };
 
   ctx.loadLiquibase = (xmls: LiquibaseFile[]) => {
-    // xmls.forEach(xml => {
-    //   if (isString(xml.value) && xml.value.trim()) {
     loadLiquibaseChangelog(context, xmls, 'postgresql');
-    // }
-    // });
   };
 
   ctx.getSQLDDL = (database?: Database) => {
@@ -108,6 +103,29 @@ export function useERDEditorElement(
   };
 
   ctx.showPrompt = showPrompt;
+
+  var progressListeners: ((message: string) => void)[] = [];
+  var progressEndListeners: (() => void)[] = [];
+
+  ctx.triggerProgress = (message: string) => {
+    progressListeners.forEach(progress => {
+      progress.call(window, message);
+    });
+  };
+
+  ctx.triggerProgressEnd = () => {
+    progressEndListeners.forEach(progress => {
+      progress.call(window);
+    });
+  };
+
+  ctx.onProgressEnd = (cb: () => void) => {
+    progressEndListeners.push(cb);
+  };
+
+  ctx.onProgress = (cb: (message: string) => void) => {
+    progressListeners.push(cb);
+  };
 
   beforeMount(() =>
     unmountedGroup.push(

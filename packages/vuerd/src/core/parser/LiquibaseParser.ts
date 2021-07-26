@@ -35,8 +35,13 @@ export const LiquibaseParser = (
   const zoom = store.canvasState.zoomLevel;
   store.dispatchSync(zoomCanvas(0.7));
 
-  setTimeout(() => {
-    function parseFile(file: LiquibaseFile) {
+  setTimeout(async () => {
+    async function parseFile(file: LiquibaseFile) {
+      updateProgressBar(file);
+
+      // workaround so code is non-blocking
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       var parser = new DOMParser();
       var xmlDoc = parser.parseFromString(file.value, 'text/xml');
 
@@ -44,16 +49,16 @@ export const LiquibaseParser = (
       if (!databaseChangeLog) return;
       console.log(file.path, databaseChangeLog.children);
 
-      Array.from(databaseChangeLog.children).forEach(element => {
+      for (const element of databaseChangeLog.children) {
         if (element.tagName === 'changeSet') {
           handleChangeSetParsing(element);
         } else if (element.tagName === 'include') {
-          handleImportParsing(element, file);
+          await handleImportParsing(element, file);
         }
-      });
+      }
     }
 
-    function handleImportParsing(include: Element, file: LiquibaseFile) {
+    async function handleImportParsing(include: Element, file: LiquibaseFile) {
       const fileName = include.getAttribute('file');
 
       var myDirectory = file.path.split('/').slice(0, -1).join('/');
@@ -61,7 +66,7 @@ export const LiquibaseParser = (
       const dstDirectory = `${myDirectory}${fileName}`;
 
       const dstFile = files.find(file => file.path === dstDirectory);
-      if (dstFile) parseFile(dstFile);
+      if (dstFile) await parseFile(dstFile);
     }
 
     function handleChangeSetParsing(element: Element) {
@@ -74,12 +79,13 @@ export const LiquibaseParser = (
     }
 
     if (rootFile) {
-      parseFile(rootFile);
+      await parseFile(rootFile);
     } else {
       files.forEach(file => parseFile(file));
     }
 
     store.dispatchSync(zoomCanvas(zoom));
+    updateProgressBarEnd();
   }, 10);
 };
 
@@ -384,3 +390,13 @@ export const parsers: Record<Operation, ParserCallback> = {
   dropForeignKeyConstraint: parseDropForeignKeyConstraint,
   addUniqueConstraint: parseAddUniqueConstraint,
 };
+
+function updateProgressBar(file: LiquibaseFile) {
+  const editor = document.querySelector('erd-editor');
+  editor?.triggerProgress(file.path);
+}
+
+function updateProgressBarEnd() {
+  const editor = document.querySelector('erd-editor');
+  editor?.triggerProgressEnd();
+}
