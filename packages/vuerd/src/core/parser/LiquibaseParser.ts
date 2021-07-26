@@ -68,8 +68,8 @@ export const LiquibaseParser = (
       const dbms: string = element.getAttribute('dbms') || '';
       if (dbms === '' || dbms == dialect) {
         var statements: Statement[] = [];
-        parseChangeSet(element, statements, dialect);
-        applyStatements(context, statements);
+        if (parseChangeSet(element, statements, dialect))
+          applyStatements(context, statements);
       }
     }
 
@@ -105,31 +105,49 @@ export const parseChangeSet = (
   changeSet: Element,
   statements: Statement[],
   dialect: Dialect
-) => {
-  parseElement('createTable', changeSet, statements, parseCreateTable, dialect);
-  parseElement('createIndex', changeSet, statements, parseCreateIndex);
-  parseElement(
-    'addForeignKeyConstraint',
-    changeSet,
-    statements,
-    parseAddForeignKeyConstraint
-  );
-  parseElement('addPrimaryKey', changeSet, statements, parseAddPrimaryKey);
-  parseElement('addColumn', changeSet, statements, parseAddColumn);
-  parseElement('dropColumn', changeSet, statements, parseDropColumn);
-  parseElement('dropTable', changeSet, statements, parseDropTable);
-  parseElement(
-    'dropForeignKeyConstraint',
-    changeSet,
-    statements,
-    parseDropForeignKeyConstraint
-  );
-  parseElement(
-    'addUniqueConstraint',
-    changeSet,
-    statements,
-    parseAddUniqueConstraint
-  );
+): boolean => {
+  if (!checkPreConditions(changeSet, dialect)) return false;
+
+  function parse(operation: Operation) {
+    parseElement(operation, changeSet, statements, parsers[operation], dialect);
+  }
+
+  parse('createTable');
+  parse('createIndex');
+  parse('addForeignKeyConstraint');
+  parse('addPrimaryKey');
+  parse('addColumn');
+  parse('dropColumn');
+  parse('dropTable');
+  parse('dropForeignKeyConstraint');
+  parse('addUniqueConstraint');
+
+  return true;
+};
+
+export const checkPreConditions = (
+  changeSet: Element,
+  dialect: Dialect
+): boolean => {
+  const preConditions = changeSet.getElementsByTagName('preConditions')[0];
+  if (!preConditions) return true;
+
+  const preConditionsOr = preConditions.getElementsByTagName('or')[0];
+
+  var preConditionsDbms: HTMLCollectionOf<Element>;
+  if (preConditionsOr) {
+    preConditionsDbms = preConditionsOr.getElementsByTagName('dbms');
+  } else {
+    preConditionsDbms = preConditions.getElementsByTagName('dbms');
+  }
+
+  for (const dbms of preConditionsDbms) {
+    if (dbms.getAttribute('type') === dialect) {
+      return true;
+    }
+  }
+
+  return false;
 };
 
 export const parseElement = (
@@ -353,4 +371,16 @@ export const parseAddUniqueConstraint = (
     name: addUniqueConstraint.getAttribute('tableName') || '',
     columnNames: columns,
   });
+};
+
+export const parsers: Record<Operation, ParserCallback> = {
+  createTable: parseCreateTable,
+  createIndex: parseCreateIndex,
+  addForeignKeyConstraint: parseAddForeignKeyConstraint,
+  addPrimaryKey: parseAddPrimaryKey,
+  addColumn: parseAddColumn,
+  dropColumn: parseDropColumn,
+  dropTable: parseDropTable,
+  dropForeignKeyConstraint: parseDropForeignKeyConstraint,
+  addUniqueConstraint: parseAddUniqueConstraint,
 };
