@@ -6,6 +6,8 @@ import { Store } from '@@types/engine/store';
 import { Point } from '@@types/engine/store/relationship.state';
 import { PureTable } from '@@types/engine/store/table.state';
 
+import { ColumnModel } from '../store/models/column.model';
+import { loadColumn } from './column.cmd.helper';
 import { createCommand } from './helper';
 
 export * from './table.cmd.helper.gen';
@@ -113,3 +115,31 @@ export const hideTable = (tableId: string) =>
 
 export const showTable = (tableId: string) =>
   createCommand('table.show', { tableId });
+
+export const addTableDefault = (tableId: string, helper: Helper) => {
+  const idCol = new ColumnModel({
+    addColumn: { tableId: tableId, id: uuid() },
+  });
+  idCol.name = 'id';
+  idCol.dataType = 'INT';
+  idCol.option.autoIncrement = true;
+  idCol.option.primaryKey = true;
+  idCol.ui.pk = true;
+
+  const createdAt = new ColumnModel({
+    addColumn: { tableId, id: uuid() },
+  });
+  createdAt.name = 'created_at';
+  createdAt.dataType = 'timestamp';
+  createdAt.ui.widthName = helper.getTextWidth('created_at');
+
+  const updatedAt = new ColumnModel({
+    addColumn: { tableId, id: uuid() },
+  });
+  updatedAt.name = 'updated_at';
+  updatedAt.dataType = 'timestamp';
+  createdAt.ui.widthName = helper.getTextWidth('updated_at');
+  createdAt.ui.widthDataType = helper.getTextWidth('timestamp');
+
+  return loadColumn(tableId, [updatedAt, createdAt, idCol], []);
+};

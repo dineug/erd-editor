@@ -21,6 +21,7 @@ export class TreeNode implements ITreeNode {
   children: TreeNode[];
 
   changes: Changes;
+  nestedChanges: Changes;
   diffs: Diff[];
 
   root: TreeNode | null;
@@ -44,6 +45,7 @@ export class TreeNode implements ITreeNode {
     this.children = children;
     // this.selected = this.verifySelected();
     this.changes = 'none';
+    this.nestedChanges = 'none';
     this.diffs = [];
   }
 

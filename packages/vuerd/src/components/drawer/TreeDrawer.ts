@@ -87,6 +87,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
 
     state.root?.children.forEach(child => {
       child.changes = 'none';
+      child.nestedChanges = 'none';
       child.diffs = [];
 
       tableDiffs.forEach(diff => {
@@ -110,6 +111,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
 
       columnDiffs.forEach(diff => {
         if (child.id === diff.data.table?.id) {
+          child.nestedChanges = diff.changes;
           child.diffs.push(diff);
         }
       });
@@ -174,7 +176,10 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         if (child === lastChild) lines[lines.length - 1] = 'L';
 
         const primaryNode = getData(child.root?.children || [], child.id);
-        if (primaryNode && !child.disabled) child.changes = primaryNode.changes;
+        if (primaryNode && !child.disabled) {
+          child.changes = primaryNode.changes;
+          child.nestedChanges = primaryNode.nestedChanges;
+        }
 
         var childRows: TemplateResult[] = [];
         childRows.push(tableRow(child.changes, child));
@@ -307,6 +312,11 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     // S-R latch so we dont create infinite loop of updates
     if (props.visible === true && state.forbidUpdate === false) {
       state.forbidUpdate = true;
+      if (!state.root?.children.length) {
+        contextRef.value.store.dispatchSync(
+          refreshTree(contextRef.value.store)
+        );
+      }
       contextRef.value.store.dispatch(refreshTreeDiff(contextRef.value.store));
     } else if (props.visible === false && state.forbidUpdate === true) {
       state.forbidUpdate = false;

@@ -13,6 +13,7 @@ export const TableStyle = css`
     padding: ${SIZE_TABLE_PADDING}px;
     font-size: ${SIZE_FONT}px;
     fill: #fff0;
+    color: #fff0;
     background-color: var(--vuerd-color-table);
     border: solid #fff0 ${SIZE_TABLE_BORDER}px;
     border-radius: 5px;
@@ -20,6 +21,7 @@ export const TableStyle = css`
 
   .vuerd-table:hover {
     fill: var(--vuerd-color-font);
+    color: var(--vuerd-color-font);
   }
 
   .vuerd-table.active {
@@ -48,5 +50,13 @@ export const TableStyle = css`
   /* animation flip */
   .vuerd-column-move {
     transition: transform 0.3s;
+  }
+
+  .vuerd-table-default {
+    transition: color 0.15s;
+  }
+
+  .vuerd-table-default:hover {
+    color: var(--vuerd-color-font-active);
   }
 `;
