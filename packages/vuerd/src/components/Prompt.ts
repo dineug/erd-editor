@@ -20,6 +20,26 @@ const PromptStyle = css`
     display: flex;
     flex-direction: column;
     align-items: center;
+    width: 100%;
+  }
+
+  .vuerd-prompt-header {
+    width: 100%;
+  }
+
+  .vuerd-prompt > .vuerd-prompt-message,
+  .vuerd-prompt > .vuerd-prompt-input {
+    margin-bottom: 5px;
+  }
+
+  .vuerd-button {
+    fill: var(--vuerd-color-font);
+    float: right;
+  }
+
+  .vuerd-button:hover {
+    fill: var(--vuerd-color-font-active);
+    cursor: pointer;
   }
 `;
 
@@ -49,16 +69,24 @@ defineComponent('vuerd-prompt', {
       state.input = input.value;
     };
 
-    const onSubmit = (e: Event) => {
+    const onSubmit = (e: Event, cancel: boolean) => {
       e.preventDefault();
-      props.onSubmit(state.input);
+      props.onSubmit(cancel ? '' : state.input);
       state.input = '';
     };
 
     return () => html` <div class="vuerd-prompt">
-      <span> ${props.prompt} </span>
+      <div class="vuerd-prompt-header">
+        <vuerd-icon
+          class="vuerd-button"
+          name="times"
+          size="12"
+          @click=${(e: Event) => onSubmit(e, true)}
+        ></vuerd-icon>
+      </div>
+      <span class="vuerd-prompt-message"> ${props.prompt} </span>
       <vuerd-input
-        .width=${60}
+        .width=${150}
         .edit=${true}
         .value=${state.input}
         .placeholder=${'unknown'}
