@@ -12,6 +12,8 @@ import { createEventBus } from './helper/eventBus.helper';
 import { createKeymap } from './keymap';
 import { createTheme } from './theme';
 
+const noop = () => {};
+
 export function createdERDEditorContext(): IERDEditorContext {
   const helper = createHelper();
 
@@ -24,6 +26,7 @@ export function createdERDEditorContext(): IERDEditorContext {
     command: createCommand(),
     helper,
     snapshots: [],
+    showPrompt: noop,
   };
 }
 
@@ -40,7 +43,7 @@ export const omitERDEditorContext = R.pipe<
   any,
   ERDEditorContext
 >(
-  R.omit(['globalEvent', 'eventBus']),
+  R.omit(['globalEvent', 'eventBus', 'snapshots', 'showPrompt']),
   R.dissocPath(['store', 'history$']),
   R.dissocPath(['store', 'change$']),
   R.dissocPath(['store', 'destroy']),

@@ -18,7 +18,12 @@ import { relationshipTpl } from '@/components/editor/Relationship.template';
 import { useContext } from '@/core/hooks/context.hook';
 import { useRenderTrigger } from '@/core/hooks/renderTrigger.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import { SIZE_MINIMAP_MARGIN, SIZE_MINIMAP_WIDTH } from '@/core/layout';
+import {
+  SIZE_MENUBAR_HEIGHT,
+  SIZE_MINIMAP_MARGIN,
+  SIZE_MINIMAP_WIDTH,
+} from '@/core/layout';
+import { movementCanvas } from '@/engine/command/canvas.cmd.helper';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -68,6 +73,32 @@ const Minimap: FunctionalComponent<MinimapProps, MinimapElement> = (
     };
   };
 
+  const onClickMove = (ev: MouseEvent) => {
+    const { store } = contextRef.value;
+    // minimap position
+    const mapPosLeft = props.width - SIZE_MINIMAP_WIDTH - SIZE_MINIMAP_MARGIN;
+    const mapPosTop = SIZE_MINIMAP_MARGIN + SIZE_MENUBAR_HEIGHT;
+
+    // mouse on minimap
+    const leftMap = ev.x - mapPosLeft;
+    const topMap = ev.y - mapPosTop;
+
+    // ratio size of minimap
+    const { width } = contextRef.value.store.canvasState;
+    const ratio = SIZE_MINIMAP_WIDTH / width;
+
+    // the orange square showing what user sees position
+    const mapDetailTop = (props.height * ratio) / 2;
+    const mapDetailLeft = (props.width * ratio) / 2;
+
+    // real movement
+    const { scrollLeft, scrollTop } = contextRef.value.store.canvasState;
+    const movementX = scrollLeft + (leftMap - mapDetailLeft) / ratio;
+    const movementY = scrollTop + (topMap - mapDetailTop) / ratio;
+
+    store.dispatch(movementCanvas(-movementX, -movementY));
+  };
+
   beforeMount(() => {
     const {
       memoState: { memos },
@@ -95,7 +126,11 @@ const Minimap: FunctionalComponent<MinimapProps, MinimapElement> = (
         class="vuerd-minimap-shadow"
         style=${styleMap(getShadowStyle())}
       ></div>
-      <div class="vuerd-minimap" style=${styleMap(getStyleMap())}>
+      <div
+        class="vuerd-minimap"
+        style=${styleMap(getStyleMap())}
+        @click=${onClickMove}
+      >
         <div class="vuerd-erd-background"></div>
         <div
           class="vuerd-canvas"
@@ -109,9 +144,11 @@ const Minimap: FunctionalComponent<MinimapProps, MinimapElement> = (
             tables,
             table => table.id,
             table =>
-              html`
-                <vuerd-minimap-table .table=${table}></vuerd-minimap-table>
-              `
+              table.visible
+                ? html`
+                    <vuerd-minimap-table .table=${table}></vuerd-minimap-table>
+                  `
+                : null
           )}
           ${repeat(
             memos,
@@ -131,19 +168,19 @@ const Minimap: FunctionalComponent<MinimapProps, MinimapElement> = (
               ${repeat(
                 relationships,
                 relationship => relationship.id,
-                relationship => {
-                  const shape = relationshipTpl(relationship, 12);
-                  return svg`
-                  <g
-                    class=${classMap({
-                      'vuerd-relationship': true,
-                      identification: relationship.identification,
-                    })}
-                  >
-                    ${shape}
-                  </g>
-                `;
-                }
+                relationship =>
+                  relationship.visible
+                    ? svg`
+                    <g
+                      class=${classMap({
+                        'vuerd-relationship': true,
+                        identification: relationship.identification,
+                      })}
+                    >
+                      ${relationshipTpl(relationship, 12)}
+                    </g>
+                `
+                    : null
               )}
               </svg>
           `

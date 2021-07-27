@@ -1,3 +1,4 @@
+import { showPromptDef } from '@/core/hooks/prompt.hook';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 
 import { EventBus, GlobalEventObservable } from './event.helper';
@@ -9,4 +10,5 @@ export interface IERDEditorContext extends ERDEditorContext {
   eventBus: EventBus;
   store: IStore;
   helper: IHelper;
+  showPrompt: showPromptDef;
 }

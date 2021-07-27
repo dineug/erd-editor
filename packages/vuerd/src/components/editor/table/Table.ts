@@ -34,6 +34,7 @@ import {
   focusTable,
 } from '@/engine/command/editor.cmd.helper';
 import {
+  addTableDefault,
   changeTableComment,
   changeTableName,
   moveTable,

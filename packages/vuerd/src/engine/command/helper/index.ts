@@ -17,6 +17,8 @@ export const changeCommandTypes: CommandKey[] = [
   'table.changeName',
   'table.changeComment',
   'table.sort',
+  'table.hide',
+  'table.show',
   // column
   'column.add',
   'column.addCustom',
@@ -33,6 +35,8 @@ export const changeCommandTypes: CommandKey[] = [
   // relationship
   'relationship.add',
   'relationship.remove',
+  'relationship.hide',
+  'relationship.show',
   'relationship.changeRelationshipType',
   'relationship.changeStartRelationshipType',
   'relationship.changeIdentification',
@@ -81,6 +85,8 @@ export const historyCommandTypes: CommandKey[] = [
   'table.changeName',
   'table.changeComment',
   'table.sort',
+  'table.hide',
+  'table.show',
   // column
   'column.add',
   'column.addCustom',
@@ -97,6 +103,8 @@ export const historyCommandTypes: CommandKey[] = [
   // relationship
   'relationship.add',
   'relationship.remove',
+  'relationship.hide',
+  'relationship.show',
   'relationship.changeRelationshipType',
   'relationship.changeStartRelationshipType',
   'relationship.changeIdentification',

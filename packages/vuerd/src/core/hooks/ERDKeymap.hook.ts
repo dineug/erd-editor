@@ -33,6 +33,7 @@ import {
 } from '@/engine/command/memo.cmd.helper';
 import {
   addTable$,
+  hideTable,
   removeTable,
   selectAllTable,
   selectEndTable$,
@@ -104,6 +105,16 @@ export function useERDKeymap(ctx: HTMLElement) {
           commands.push(removeMemo(store));
 
         store.dispatch(...commands);
+      }
+
+      if (
+        keymapMatchAndStop(event, keymap.hideTable) &&
+        (store.tableState.tables.some(table => table.ui.active) ||
+          store.memoState.memos.some(memo => memo.ui.active))
+      ) {
+        const table = store.tableState.tables.find(table => table.ui.active);
+
+        if (table) store.dispatch(hideTable(table.id));
       }
 
       if (

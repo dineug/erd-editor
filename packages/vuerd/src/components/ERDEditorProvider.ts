@@ -27,7 +27,7 @@ defineComponent('vuerd-provider', {
           --vuerd-font-family: 'Noto Sans', sans-serif;
           font-size: ${SIZE_FONT}px;
           font-family: var(--vuerd-font-family) !important;
-          ${themeToString(ctx.value.theme)}
+          ${themeToString(ctx.value.theme)};
         }
       </style>
       <slot></slot>

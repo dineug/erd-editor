@@ -4,7 +4,9 @@ import { RelationshipModel } from '@/engine/store/models/relationship.model';
 import { ExecuteCommand } from '@/internal-types/command';
 import {
   ChangeStartRelationshipType,
+  HideRelationship,
   RelationshipCommandMap,
+  ShowRelationship,
 } from '@@types/engine/command/relationship.cmd';
 import {
   AddRelationship,
@@ -86,11 +88,10 @@ export function executeLoadRelationship(
   { relationshipState: { relationships }, tableState: { tables } }: State,
   data: Relationship
 ) {
-  relationships.push(new RelationshipModel({ loadRelationship: data }));
-
-  // valid end column ui key
   const table = getData(tables, data.end.tableId);
-  if (!table) return;
+  if (!table || !getData(tables, data.start.tableId)) return;
+
+  relationships.push(new RelationshipModel({ loadRelationship: data }));
 
   data.end.columnIds.forEach(columnId => {
     const column = getData(table.columns, columnId);
@@ -108,6 +109,22 @@ export function executeLoadRelationship(
   });
 }
 
+export function executeHideRelationship(
+  { relationshipState: { relationships } }: State,
+  data: HideRelationship
+) {
+  const relationship = getData(relationships, data.relationshipId);
+  if (relationship) relationship.visible = false;
+}
+
+export function executeShowRelationship(
+  { relationshipState: { relationships } }: State,
+  data: ShowRelationship
+) {
+  const relationship = getData(relationships, data.relationshipId);
+  if (relationship) relationship.visible = true;
+}
+
 export const executeRelationshipCommandMap: Record<
   keyof RelationshipCommandMap,
   ExecuteCommand
@@ -119,4 +136,6 @@ export const executeRelationshipCommandMap: Record<
     executeChangeStartRelationshipType,
   'relationship.changeIdentification': executeChangeIdentification,
   'relationship.load': executeLoadRelationship,
+  'relationship.hide': executeHideRelationship,
+  'relationship.show': executeShowRelationship,
 };

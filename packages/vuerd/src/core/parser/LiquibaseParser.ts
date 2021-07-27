@@ -1,3 +1,6 @@
+import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
+import { createStoreCopy } from '@/core/file';
+import { Bus } from '@/core/helper/eventBus.helper';
 import {
   Constraints,
   Dialect,
@@ -6,6 +9,11 @@ import {
   translate,
 } from '@/core/parser/helper';
 import { Column, IndexColumn, Statement } from '@/core/parser/index';
+import { createJson } from '@/core/parser/ParserToJson';
+import { zoomCanvas } from '@/engine/command/canvas.cmd.helper';
+import { loadJson$ } from '@/engine/command/editor.cmd.helper.gen';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
+import { LiquibaseFile } from '@@types/core/liquibaseParser';
 
 const dialectTo: Dialect = 'postgresql';
 const defaultDialect: Dialect = 'postgresql';
@@ -17,48 +25,136 @@ const defaultDialect: Dialect = 'postgresql';
  * @returns List of Statements to execute
  */
 export const LiquibaseParser = (
-  input: string,
-  dialect: Dialect = defaultDialect
-): Statement[] => {
-  var statements: Statement[] = [];
+  context: IERDEditorContext,
+  files: LiquibaseFile[],
+  dialect: Dialect = defaultDialect,
+  rootFile?: LiquibaseFile
+) => {
+  console.log('PARSING...', files);
 
-  var parser = new DOMParser();
-  var xmlDoc = parser.parseFromString(input, 'text/xml');
-  var changeSets = xmlDoc.getElementsByTagName('changeSet');
+  const { store, eventBus } = context;
+  const zoom = store.canvasState.zoomLevel;
+  store.dispatchSync(zoomCanvas(0.7));
 
-  // parse all changesets
-  for (let i = 0; i < changeSets.length; i++) {
-    const dbms: string = changeSets[i].getAttribute('dbms') || '';
-    if (dbms === '' || dbms == dialect)
-      parseChangeSet(changeSets[i], statements, dialect);
-  }
+  setTimeout(async () => {
+    async function parseFile(file: LiquibaseFile) {
+      eventBus.emit(Bus.Liquibase.progress, file.path);
 
-  return statements;
+      // workaround so code is non-blocking
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      var parser = new DOMParser();
+      var xmlDoc = parser.parseFromString(file.value, 'text/xml');
+
+      const databaseChangeLog = xmlDoc.querySelector('databaseChangeLog');
+      if (!databaseChangeLog) return;
+      console.log(file.path, databaseChangeLog.children);
+
+      for (const element of databaseChangeLog.children) {
+        if (element.tagName === 'changeSet') {
+          handleChangeSetParsing(element);
+        } else if (element.tagName === 'include') {
+          await handleImportParsing(element, file);
+        }
+      }
+    }
+
+    async function handleImportParsing(include: Element, file: LiquibaseFile) {
+      const fileName = include.getAttribute('file');
+
+      var myDirectory = file.path.split('/').slice(0, -1).join('/');
+      if (myDirectory) myDirectory += '/';
+      const dstDirectory = `${myDirectory}${fileName}`;
+
+      const dstFile = files.find(file => file.path === dstDirectory);
+      if (dstFile) await parseFile(dstFile);
+    }
+
+    function handleChangeSetParsing(element: Element) {
+      const dbms: string = element.getAttribute('dbms') || '';
+      if (dbms === '' || dbms == dialect) {
+        var statements: Statement[] = [];
+        if (parseChangeSet(element, statements, dialect))
+          applyStatements(context, statements);
+      }
+    }
+
+    if (rootFile) {
+      await parseFile(rootFile);
+    } else {
+      files.forEach(file => parseFile(file));
+    }
+
+    store.dispatchSync(zoomCanvas(zoom));
+    eventBus.emit(Bus.Liquibase.progressEnd);
+  }, 10);
+};
+
+export const applyStatements = (
+  context: IERDEditorContext,
+  statements: Statement[]
+) => {
+  var { snapshots, store, helper } = context;
+  snapshots.push(createStoreCopy(store));
+
+  const json = createJson(
+    statements,
+    helper,
+    store.canvasState.database,
+    getLatestSnapshot(snapshots)
+  );
+  store.dispatchSync(loadJson$(json));
+
+  snapshots.push(createStoreCopy(store));
 };
 
 export const parseChangeSet = (
   changeSet: Element,
   statements: Statement[],
   dialect: Dialect
-) => {
-  parseElement('createTable', changeSet, statements, parseCreateTable, dialect);
-  parseElement('createIndex', changeSet, statements, parseCreateIndex);
-  parseElement(
-    'addForeignKeyConstraint',
-    changeSet,
-    statements,
-    parseAddForeignKeyConstraint
-  );
-  parseElement('addPrimaryKey', changeSet, statements, parseAddPrimaryKey);
-  parseElement('addColumn', changeSet, statements, parseAddColumn);
-  parseElement('dropColumn', changeSet, statements, parseDropColumn);
-  parseElement('dropTable', changeSet, statements, parseDropTable);
-  parseElement(
-    'dropForeignKeyConstraint',
-    changeSet,
-    statements,
-    parseDropForeignKeyConstraint
-  );
+): boolean => {
+  if (!checkPreConditions(changeSet, dialect)) return false;
+
+  function parse(operation: Operation) {
+    parseElement(operation, changeSet, statements, parsers[operation], dialect);
+  }
+
+  parse('createTable');
+  parse('createIndex');
+  parse('addForeignKeyConstraint');
+  parse('addPrimaryKey');
+  parse('addColumn');
+  parse('dropColumn');
+  parse('dropTable');
+  parse('dropForeignKeyConstraint');
+  parse('addUniqueConstraint');
+
+  return true;
+};
+
+export const checkPreConditions = (
+  changeSet: Element,
+  dialect: Dialect
+): boolean => {
+  const preConditions = changeSet.getElementsByTagName('preConditions')[0];
+  if (!preConditions) return true;
+
+  const preConditionsOr = preConditions.getElementsByTagName('or')[0];
+
+  var preConditionsDbms: HTMLCollectionOf<Element>;
+  if (preConditionsOr) {
+    preConditionsDbms = preConditionsOr.getElementsByTagName('dbms');
+  } else {
+    preConditionsDbms = preConditions.getElementsByTagName('dbms');
+  }
+
+  for (const dbms of preConditionsDbms) {
+    if (dbms.getAttribute('type') === dialect) {
+      return true;
+    }
+  }
+
+  return false;
 };
 
 export const parseElement = (
@@ -266,4 +362,32 @@ export const parseDropForeignKeyConstraint = (
     name: dropFk.getAttribute('constraintName') || '',
     baseTableName: dropFk.getAttribute('baseTableName') || '',
   });
+};
+
+export const parseAddUniqueConstraint = (
+  addUniqueConstraint: Element,
+  statements: Statement[]
+) => {
+  const columnNames = addUniqueConstraint.getAttribute('columnNames');
+  if (!columnNames) return;
+
+  const columns: string[] = columnNames.split(',').map(col => col.trim());
+
+  statements.push({
+    type: 'alter.table.add.unique',
+    name: addUniqueConstraint.getAttribute('tableName') || '',
+    columnNames: columns,
+  });
+};
+
+export const parsers: Record<Operation, ParserCallback> = {
+  createTable: parseCreateTable,
+  createIndex: parseCreateIndex,
+  addForeignKeyConstraint: parseAddForeignKeyConstraint,
+  addPrimaryKey: parseAddPrimaryKey,
+  addColumn: parseAddColumn,
+  dropColumn: parseDropColumn,
+  dropTable: parseDropTable,
+  dropForeignKeyConstraint: parseDropForeignKeyConstraint,
+  addUniqueConstraint: parseAddUniqueConstraint,
 };

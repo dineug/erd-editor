@@ -4,6 +4,7 @@ import {
   faCode,
   faCog,
   faEye,
+  faEyeSlash,
   faFileCode,
   faFileExport,
   faFileImage,
@@ -21,6 +22,7 @@ import {
   faSyncAlt,
   faTable,
   faTimes,
+  faTree,
   faUndoAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import {
@@ -29,10 +31,10 @@ import {
   mdiDatabase,
   mdiDatabaseExport,
   mdiDatabaseImport,
+  mdiDotsVertical,
   mdiFormatLetterCase,
   mdiPalette,
   mdiTableCog,
-  mdiVectorLine,
   mdiXml,
 } from '@mdi/js';
 
@@ -63,13 +65,14 @@ const icons = [
   faFileImage,
   faFileExport,
   faEye,
+  faEyeSlash,
   faFileImport,
   faFileCode,
   faCog,
   faMousePointer,
   faCode,
   faSyncAlt,
-  createMDI('vector-line', mdiVectorLine),
+  faTree,
   createMDI('code-json', mdiCodeJson),
   createMDI('database', mdiDatabase),
   createMDI('database-import', mdiDatabaseImport),
@@ -79,6 +82,7 @@ const icons = [
   createMDI('table-cog', mdiTableCog),
   createMDI('code-brackets', mdiCodeBrackets),
   createMDI('xml', mdiXml),
+  createMDI('dots-vertical', mdiDotsVertical),
 ] as IconDefinition[];
 
 export const getIcon = (prefix: string, iconName: string) =>

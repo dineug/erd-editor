@@ -10,6 +10,7 @@ export interface Relationship {
   start: RelationshipPoint;
   end: RelationshipPoint;
   constraintName: string; // ADD: version 2.1.0
+  visible?: boolean;
 }
 
 export interface RelationshipPoint {

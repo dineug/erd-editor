@@ -8,6 +8,7 @@ import './editor/ERD';
 import './drawer/Drawer';
 import './drawer/HelpDrawer';
 import './drawer/SettingDrawer';
+import './drawer/TreeDrawer';
 import './drawer/tablePropertiesDrawer/TablePropertiesDrawer';
 
 import {
@@ -29,6 +30,7 @@ import { useERDEditorDrawer } from '@/core/hooks/ERDEditorDrawer.hook';
 import { useERDEditorElement } from '@/core/hooks/ERDEditorElement.hook';
 import { useERDEditorGhost } from '@/core/hooks/ERDEditorGhost.hook';
 import { usePanelView } from '@/core/hooks/panelView.hook';
+import { usePrompt } from '@/core/hooks/prompt.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { keymapMatchAndStop } from '@/core/keymap';
 import {
@@ -62,13 +64,13 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
     context,
     ctx
   );
-  const { drawerTpl, closeDrawer, openHelp, openSetting } = useERDEditorDrawer(
-    props,
-    context
-  );
+  const { drawerTpl, closeDrawer, openHelp, openSetting, openTree } =
+    useERDEditorDrawer(props, context);
   const { hasPanel, panelTpl } = usePanelView(props, context);
+  const { showPrompt, promptTpl } = usePrompt();
   const { unmountedGroup } = useUnmounted();
   useERDEditorElement(context, ctx, { setFocus });
+  context.showPrompt = showPrompt;
 
   // @ts-ignore
   const resizeObserver = new ResizeObserver(entries => {
@@ -119,12 +121,12 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
         .pipe(ignoreEnterProcess)
         .subscribe(event => {
           Logger.debug(`
-metaKey: ${event.metaKey}
-ctrlKey: ${event.ctrlKey}
-altKey: ${event.altKey}
-shiftKey: ${event.shiftKey}
-code: ${event.code}
-key: ${event.key}
+            metaKey: ${event.metaKey}
+            ctrlKey: ${event.ctrlKey}
+            altKey: ${event.altKey}
+            shiftKey: ${event.shiftKey}
+            code: ${event.code}
+            key: ${event.key}
         `);
 
           helper.keydown$.next(event);
@@ -163,13 +165,14 @@ key: ${event.key}
             .focusState=${ghostState.focus}
             @open-help=${openHelp}
             @open-setting=${openSetting}
+            @open-tree=${openTree}
           ></vuerd-menubar>
           ${cache(
             !hasPanel()
               ? html`<vuerd-erd .width=${width} .height=${height}></vuerd-erd>`
               : null
           )}
-          ${panelTpl()} ${drawerTpl()} ${ghostTpl}
+          ${panelTpl()} ${drawerTpl()} ${ghostTpl} ${promptTpl()}
         </div>
       </vuerd-provider>
     `;

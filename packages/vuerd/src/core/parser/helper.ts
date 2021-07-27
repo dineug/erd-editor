@@ -6,7 +6,7 @@ import { RelationshipState } from '@@types/engine/store/relationship.state';
 import { Column, Index, Table } from '@@types/engine/store/table.state';
 import { TableState } from '@@types/engine/store/table.state';
 
-export type Dialect = 'postgresql' | 'oracle' | 'mssql';
+export type Dialect = keyof Translation;
 export type Operation =
   | 'createTable'
   | 'createIndex'
@@ -15,7 +15,10 @@ export type Operation =
   | 'addColumn'
   | 'dropColumn'
   | 'dropTable'
-  | 'dropForeignKeyConstraint';
+  | 'dropForeignKeyConstraint'
+  | 'addUniqueConstraint';
+
+export const supportedDialects: Dialect[] = ['oracle', 'postgresql', 'mssql'];
 
 export interface FormatTableOptions {
   table: Table;
@@ -23,6 +26,7 @@ export interface FormatTableOptions {
 }
 
 export interface FormatColumnOptions {
+  table: Table;
   column: Column;
   dialect: Dialect;
 }
@@ -101,19 +105,9 @@ export const translate = (
   value: string
 ): string => {
   var translation: Translation | undefined;
-  switch (dialectFrom) {
-    case 'postgresql':
-      translation = findTranslationPostgreSQL(value);
-      break;
-    case 'oracle':
-      translation = findTranslationOracle(value);
-      break;
-    case 'mssql':
-      translation = findTranslationMSSQL(value);
-      break;
-    default:
-      return value;
-  }
+  value = value.trim();
+
+  translation = findTranslation(value, dialectFrom);
 
   if (!translation) {
     Logger.log(
@@ -122,39 +116,15 @@ export const translate = (
     return value;
   }
 
-  switch (dialectTo) {
-    case 'postgresql':
-      return translation?.PostgresDatabase || '';
-    case 'mssql':
-      return translation?.MSSQLDatabase || '';
-    case 'oracle':
-      return translation?.OracleDatabase || '';
-    default:
-      return '';
-  }
+  return translation[dialectTo];
 };
 
-export const findTranslationPostgreSQL = (
-  value: string
+export const findTranslation = (
+  value: string,
+  dialect: Dialect
 ): Translation | undefined => {
   return translations.find(
-    trans => trans.PostgresDatabase.toLowerCase() === value.toLowerCase()
-  );
-};
-
-export const findTranslationOracle = (
-  value: string
-): Translation | undefined => {
-  return translations.find(
-    trans => trans.OracleDatabase.toLowerCase() === value.toLowerCase()
-  );
-};
-
-export const findTranslationMSSQL = (
-  value: string
-): Translation | undefined => {
-  return translations.find(
-    trans => trans.MSSQLDatabase.toLowerCase() === value.toLowerCase()
+    trans => trans[dialect].toLowerCase() === value.toLowerCase()
   );
 };
 
@@ -224,10 +194,19 @@ export class XMLNode implements IXMLNode {
   }
 
   addAttribute(...attributes: Attribute[]) {
-    this.attributes.push(...attributes);
+    attributes.forEach(attr => {
+      this.attributes.push({ name: attr.name, value: attr.value.trim() });
+    });
   }
 
   addChildren(...children: XMLNode[]) {
     this.children.push(...children);
   }
 }
+
+export const generateSeqName = (
+  tableName: string,
+  columnName: string
+): string => {
+  return `${tableName}_${columnName}_seq`.toLowerCase();
+};

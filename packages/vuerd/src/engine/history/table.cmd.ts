@@ -7,13 +7,20 @@ import {
   loadRelationship,
   removeRelationship,
 } from '@/engine/command/relationship.cmd.helper';
-import { loadTable, removeTable } from '@/engine/command/table.cmd.helper';
+import {
+  hideTable,
+  loadTable,
+  removeTable,
+  showTable,
+} from '@/engine/command/table.cmd.helper';
 import { IStore } from '@/internal-types/store';
 import { BatchCommand } from '@@types/engine/command';
 import {
   AddTable,
   ChangeTableValue,
+  HideTable,
   RemoveTable,
+  ShowTable,
 } from '@@types/engine/command/table.cmd';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { Index, PureTable } from '@@types/engine/store/table.state';
@@ -119,10 +126,28 @@ export function executeSortTable(
   batchUndoCommand.push(loadJson$(createJsonStringify(store)));
 }
 
+export function executeHideTable(
+  store: IStore,
+  batchUndoCommand: BatchCommand,
+  { tableId }: HideTable
+) {
+  batchUndoCommand.push(showTable(tableId));
+}
+
+export function executeShowTable(
+  store: IStore,
+  batchUndoCommand: BatchCommand,
+  { tableId }: ShowTable
+) {
+  batchUndoCommand.push(hideTable(tableId));
+}
+
 export const executeTableCommandMap = {
   'table.add': executeAddTable,
   'table.remove': executeRemoveTable,
   'table.changeName': executeChangeTableName,
   'table.changeComment': executeChangeTableComment,
   'table.sort': executeSortTable,
+  'table.hide': executeHideTable,
+  'table.show': executeShowTable,
 };

@@ -25,6 +25,10 @@
 
 1. ERD data [filename].vuerd Save a file as a form
 
+### Liquibase
+
+1. project root changelog/changelog.xml auto load
+
 ## Theme settings.json
 
 ### Synchronize the current vscode theme

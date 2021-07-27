@@ -1,8 +1,6 @@
 import {
   AlterTableAddPrimaryKey,
   AlterTableAddUnique,
-  Column,
-  CreateIndex,
 } from '@vuerd/sql-ddl-parser';
 
 import { getData, uuid } from '@/core/helper';
@@ -16,6 +14,8 @@ import {
   AlterTableAddForeignKey,
   AlterTableDropColumn,
   AlterTableDropForeignKey,
+  Column,
+  CreateIndex,
   CreateTable,
   DropTable,
   IndexColumn,
@@ -67,25 +67,34 @@ function reshape(
     switch (statement.type) {
       case 'create.table':
         const table = statement;
-        if (table.name) {
+        const duplicateTable = findByName(shape.tables, table.name);
+        if (!duplicateTable && table.name) {
           shape.tables.push(table);
         }
         break;
       case 'create.index':
         const index = statement;
-        if (index.tableName && index.columns.length) {
+        const duplicateIndex = findByName(shape.indexes, index.name);
+        if (!duplicateIndex && index.tableName && index.columns.length) {
           shape.indexes.push(index);
         }
         break;
       case 'alter.table.add.primaryKey':
         const primaryKey = statement;
-        if (primaryKey.name && primaryKey.columnNames.length) {
+        const duplicatePK = findByName(shape.primaryKeys, primaryKey.name);
+        if (!duplicatePK && primaryKey.name && primaryKey.columnNames.length) {
           shape.primaryKeys.push(primaryKey);
         }
         break;
       case 'alter.table.add.foreignKey':
         const foreignKey = statement;
+        const duplicateFK = findByConstraintName(
+          shape.foreignKeys,
+          foreignKey.constraintName
+        );
+
         if (
+          !duplicateFK &&
           foreignKey.name &&
           foreignKey.columnNames.length &&
           foreignKey.refTableName &&
@@ -97,31 +106,57 @@ function reshape(
         break;
       case 'alter.table.add.unique':
         const unique = statement;
-        if (unique.name && unique.columnNames.length) {
+        const duplicateUnique = findByName(shape.uniques, unique.name);
+        if (!duplicateUnique && unique.name && unique.columnNames.length) {
           shape.uniques.push(unique);
         }
         break;
       case 'alter.table.add.column':
         const addColumns = statement;
-        if (addColumns.name && addColumns.columns.length) {
+        const duplicateAddColumns = findByName(
+          shape.addColumns,
+          addColumns.name
+        );
+        if (
+          !duplicateAddColumns &&
+          addColumns.name &&
+          addColumns.columns.length
+        ) {
           shape.addColumns.push(addColumns);
         }
         break;
       case 'alter.table.drop.column':
         const dropColumns = statement;
-        if (dropColumns.name && dropColumns.columns.length) {
+        const duplicateDropColumns = findByName(
+          shape.dropColumns,
+          dropColumns.name
+        );
+        if (
+          !duplicateDropColumns &&
+          dropColumns.name &&
+          dropColumns.columns.length
+        ) {
           shape.dropColumns.push(dropColumns);
         }
         break;
       case 'drop.table':
         const dropTable = statement;
-        if (dropTable.name) {
+        const duplicateDropTable = findByName(shape.dropTable, dropTable.name);
+        if (!duplicateDropTable && dropTable.name) {
           shape.dropTable.push(dropTable);
         }
         break;
       case 'alter.table.drop.foreignKey':
         const dropForeignKey = statement;
-        if (dropForeignKey.name && dropForeignKey.baseTableName) {
+        const duplicateDropFK = findByName(
+          shape.dropForeignKeys,
+          dropForeignKey.name
+        );
+        if (
+          !duplicateDropFK &&
+          dropForeignKey.name &&
+          dropForeignKey.baseTableName
+        ) {
           shape.dropForeignKeys.push(dropForeignKey);
         }
         break;
@@ -137,6 +172,18 @@ function findByName<T extends { name: string }>(
 ): T | null {
   for (const item of list) {
     if (item.name.toUpperCase() === name.toUpperCase()) {
+      return item;
+    }
+  }
+  return null;
+}
+
+function findByConstraintName<T extends { constraintName: string }>(
+  list: T[],
+  constraintName: string
+): T | null {
+  for (const item of list) {
+    if (item.constraintName.toUpperCase() === constraintName.toUpperCase()) {
       return item;
     }
   }
@@ -168,6 +215,7 @@ function mergeTable(shape: Shape): CreateTable[] {
         name: index.name,
         unique: index.unique,
         columns: index.columns,
+        id: index.id,
       });
     }
   });
@@ -201,6 +249,8 @@ function mergeTable(shape: Shape): CreateTable[] {
         refTableName: foreignKey.refTableName,
         refColumnNames: foreignKey.refColumnNames,
         constraintName: foreignKey.constraintName,
+        visible: foreignKey.visible,
+        id: foreignKey.id,
       });
     }
   });
@@ -209,7 +259,10 @@ function mergeTable(shape: Shape): CreateTable[] {
     const table = findByName(tables, addColumn.name);
     if (table) {
       addColumn.columns.forEach(column => {
-        table.columns.push(column);
+        const duplicateColumn = findByName(table.columns, column.name);
+        if (!duplicateColumn) {
+          table.columns.push(column);
+        }
       });
     }
   });
@@ -229,8 +282,6 @@ function mergeTable(shape: Shape): CreateTable[] {
     tables = tables.filter(table => table.name !== dropTable.name);
   });
 
-  console.log(dropForeignKeys);
-
   dropForeignKeys.forEach(dropForeignKey => {
     const table = findByName(tables, dropForeignKey.baseTableName);
     if (table) {
@@ -248,12 +299,7 @@ function mergeTable(shape: Shape): CreateTable[] {
  * @param snaphot Latest snapshot
  * @returns Shape with all statements needed to replicate latest snapshot
  */
-function snapshotToShape({
-  canvas,
-  memo,
-  table,
-  relationship,
-}: ExportedStore): Shape {
+function snapshotToShape({ table, relationship }: ExportedStore): Shape {
   const shape: Shape = {
     tables: [],
     indexes: [],
@@ -278,15 +324,18 @@ function snapshotToShape({
           autoIncrement: column.option.autoIncrement,
           unique: column.option.unique,
           nullable: !column.option.notNull,
+          id: column.id,
         };
       });
       var createTable: CreateTable = {
         type: 'create.table',
+        id: table.id,
         columns: columns,
         comment: table.comment,
         foreignKeys: [],
         indexes: [],
         name: table.name,
+        visible: table.visible,
       };
 
       return createTable;
@@ -308,6 +357,7 @@ function snapshotToShape({
 
       var createIndex: CreateIndex = {
         type: 'create.index',
+        id: index.id,
         name: index.name,
         unique: index.unique,
         tableName: indexedTable?.name || '',
@@ -332,11 +382,13 @@ function snapshotToShape({
 
       const fk: AlterTableAddForeignKey = {
         type: 'alter.table.add.foreignKey',
+        id: relationship.id,
         name: baseTable?.name || '',
         columnNames: baseColumnNames,
         refTableName: refTable?.name || '',
         refColumnNames: refColumnNames,
         constraintName: relationship.constraintName,
+        visible: relationship.visible,
       };
 
       return fk;
@@ -418,7 +470,7 @@ function createTable(
   const originalTable = findByName(snapTables || [], table.name);
 
   const newTable = {
-    id: uuid(),
+    id: table.id || uuid(),
     name: table.name,
     comment: table.comment,
     columns: [],
@@ -432,6 +484,7 @@ function createTable(
           widthComment: SIZE_MIN_WIDTH,
           zIndex: 2,
         },
+    visible: table.visible === undefined ? true : table.visible,
   } as any;
 
   const widthName = helper.getTextWidth(newTable.name);
@@ -452,7 +505,7 @@ function createTable(
 
 function createColumn(helper: Helper, column: Column): any {
   const newColumn = {
-    id: uuid(),
+    id: column.id || uuid(),
     name: column.name,
     comment: column.comment,
     dataType: column.dataType,
@@ -532,8 +585,14 @@ function createRelationship(data: ExportedStore, tables: CreateTable[]) {
               }
             });
 
+            if (startTable.visible && endTable.visible) {
+              foreignKey.visible = true;
+            } else {
+              foreignKey.visible = false;
+            }
+
             data.relationship.relationships.push({
-              id: uuid(),
+              id: foreignKey.id || uuid(),
               identification: !endColumns.some(column => !column.ui.pfk),
               relationshipType: 'ZeroOneN',
               start: {
@@ -551,6 +610,7 @@ function createRelationship(data: ExportedStore, tables: CreateTable[]) {
                 direction: 'top',
               },
               constraintName: foreignKey.constraintName,
+              visible: foreignKey.visible,
             });
           }
         });
@@ -580,7 +640,7 @@ function createIndex(data: ExportedStore, tables: CreateTable[]) {
           });
           if (indexColumns.length !== 0) {
             data.table.indexes.push({
-              id: uuid(),
+              id: index.id || uuid(),
               name: index.name,
               tableId: targetTable.id,
               columns: indexColumns,

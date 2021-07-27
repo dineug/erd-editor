@@ -3,13 +3,17 @@ import * as path from 'path';
 import {
   Disposable,
   ExtensionContext,
+  ProgressLocation,
+  RelativePattern,
   Uri,
   ViewColumn,
+  Webview,
   WebviewPanel,
   window,
   workspace,
 } from 'vscode';
 
+import { LiquibaseFile, loadLiquibaseFiles } from './importLiquibase';
 import { getHtmlForWebview, getKeymap, getTheme } from './util';
 import WebviewManager from './WebviewManager';
 
@@ -49,6 +53,7 @@ export default class WebviewERD {
         }
       );
     }
+    const folder = workspace.workspaceFolders?.[0];
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
     this.panel.webview.html = getHtmlForWebview(this.panel.webview, context);
@@ -102,11 +107,35 @@ export default class WebviewERD {
                 }
               });
             break;
+          case 'loadLiquibase':
+            if (folder)
+              workspace
+                .findFiles(new RelativePattern(folder, '*.vuerd.json'), null, 1)
+                .then(uris =>
+                  this.loadLiquibase(this.panel.webview, uris[0].fsPath)
+                );
+            break;
         }
       },
       null,
       this.disposables
     );
+
+    if (folder) {
+      const watcher = workspace.createFileSystemWatcher(
+        new RelativePattern(folder, 'changelog/changelog.xml')
+      );
+
+      watcher.onDidChange(uri =>
+        this.loadLiquibase(this.panel.webview, path.dirname(uri.fsPath))
+      );
+      watcher.onDidCreate(uri =>
+        this.loadLiquibase(this.panel.webview, path.dirname(uri.fsPath))
+      );
+      watcher.onDidDelete(uri =>
+        this.loadLiquibase(this.panel.webview, path.dirname(uri.fsPath))
+      );
+    }
   }
 
   public dispose() {
@@ -119,4 +148,63 @@ export default class WebviewERD {
       }
     }
   }
+
+  loadLiquibase = (webview: Webview, uri: string) => {
+    const liquibaseFiles: LiquibaseFile[] = loadLiquibaseFiles(uri);
+
+    const increment = 100 / liquibaseFiles.length;
+    var currentFile = 0;
+
+    // progress bar
+    window.withProgress(
+      {
+        location: ProgressLocation.Notification,
+        title: 'Importing Liquibase changelogs',
+        cancellable: true,
+      },
+      (progress, token) => {
+        const returnPromise = new Promise<void>(resolve => {
+          // listen to event `progress` and increment bar
+          const listener = this.panel.webview.onDidReceiveMessage(message => {
+            if (
+              message.command === 'progress' &&
+              currentFile < liquibaseFiles.length
+            ) {
+              currentFile++;
+              progress.report({
+                increment: increment,
+                message: message.message,
+              });
+            } else if (message.command === 'progressEnd') {
+              console.log('Done loading files');
+              listener.dispose();
+              progress.report({
+                increment: 0,
+                message: 'Done loading files...',
+              });
+              setTimeout(() => {
+                resolve();
+              }, 5000);
+            }
+          });
+
+          token.onCancellationRequested(() => {
+            listener.dispose();
+          });
+        });
+
+        progress.report({
+          increment: currentFile,
+          message: liquibaseFiles[0].path,
+        });
+
+        return returnPromise;
+      }
+    );
+
+    webview.postMessage({
+      command: 'loadLiquibase',
+      value: liquibaseFiles,
+    });
+  };
 }

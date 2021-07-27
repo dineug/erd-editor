@@ -55,6 +55,12 @@ const Input: FunctionalComponent<InputProps, InputElement> = (props, ctx) => {
       })
     );
 
+  const onKeyup = (event: KeyboardEvent) => {
+    if (event.code === 'Enter') {
+      ctx.dispatchEvent(new CustomEvent('keyup-enter'));
+    }
+  };
+
   beforeMount(() =>
     unmountedGroup.push(
       watch(props, propName => {
@@ -83,6 +89,7 @@ const Input: FunctionalComponent<InputProps, InputElement> = (props, ctx) => {
             spellcheck="false"
             .value=${props.value}
             placeholder=${props.placeholder}
+            @keyup=${onKeyup}
             @blur=${onBlur}
           />
         `

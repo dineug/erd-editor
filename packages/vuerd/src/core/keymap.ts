@@ -93,6 +93,22 @@ export const createKeymap = (): Keymap => ({
       key: 'Backspace',
     },
   ],
+  hideTable: [
+    {
+      ctrlKey: true,
+      shiftKey: true,
+      key: 'H',
+      preventDefault: true,
+      stopPropagation: true,
+    },
+    {
+      metaKey: true,
+      shiftKey: true,
+      key: 'H',
+      preventDefault: true,
+      stopPropagation: true,
+    },
+  ],
   removeColumn: [
     {
       altKey: true,

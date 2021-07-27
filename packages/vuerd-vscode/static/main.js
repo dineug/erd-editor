@@ -73,6 +73,9 @@
         case 'keymap':
           editor.setKeymap(message.value.keymap);
           break;
+        case 'loadLiquibase':
+          editor.loadLiquibase(message.value);
+          break;
       }
     } else if (message.type) {
       // custom editor API
@@ -107,11 +110,30 @@
         }
       } else if (type === 'keymap') {
         editor.setKeymap(body.value.keymap);
+      } else if (type === 'loadLiquibase') {
+        editor.loadLiquibase(message.value);
       }
     }
   });
 
+  editor.addEventListener('liquibase-progress', event => {
+    vscode.postMessage({
+      command: 'progress',
+      message: event.detail,
+    });
+  });
+
+  editor.addEventListener('liquibase-progress-end', () => {
+    vscode.postMessage({
+      command: 'progressEnd',
+    });
+  });
+
   vscode.postMessage({
     command: 'getValue',
+  });
+
+  vscode.postMessage({
+    command: 'loadLiquibase',
   });
 })();

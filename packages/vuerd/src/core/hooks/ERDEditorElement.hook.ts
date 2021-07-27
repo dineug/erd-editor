@@ -1,8 +1,9 @@
 import { beforeMount } from '@vuerd/lit-observable';
 import { DDLParser } from '@vuerd/sql-ddl-parser';
 
-import { createJsonStringify } from '@/core/file';
+import { createJsonStringify, loadLiquibaseChangelog } from '@/core/file';
 import { isArray, isString } from '@/core/helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { loadKeymap } from '@/core/keymap';
 import { createJson } from '@/core/parser/ParserToJson';
@@ -19,6 +20,7 @@ import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { ERDEditorElement } from '@@types/components/ERDEditorElement';
 import { ExtensionConfig } from '@@types/core/extension';
 import { Keymap } from '@@types/core/keymap';
+import { LiquibaseFile } from '@@types/core/liquibaseParser';
 import { PanelConfig } from '@@types/core/panel';
 import { Theme } from '@@types/core/theme';
 import { Database } from '@@types/engine/store/canvas.state';
@@ -26,9 +28,13 @@ import { Database } from '@@types/engine/store/canvas.state';
 export function useERDEditorElement(
   context: IERDEditorContext,
   ctx: ERDEditorElement,
-  { setFocus }: { setFocus: () => void }
+  {
+    setFocus,
+  }: {
+    setFocus: () => void;
+  }
 ) {
-  const { store, helper } = context;
+  const { store, helper, eventBus } = context;
   const { editorState } = store;
   const { unmountedGroup } = useUnmounted();
 
@@ -74,6 +80,10 @@ export function useERDEditorElement(
     }
   };
 
+  ctx.loadLiquibase = (xmls: LiquibaseFile[]) => {
+    loadLiquibaseChangelog(context, xmls, 'postgresql');
+  };
+
   ctx.getSQLDDL = (database?: Database) => {
     return database && databaseList.includes(database)
       ? createDDL(store, database)
@@ -89,6 +99,20 @@ export function useERDEditorElement(
     isArray(config.panels) &&
       editorState.panels.push(...(config.panels as PanelConfig[]));
   };
+
+  eventBus.on(Bus.Liquibase.progress).subscribe(message =>
+    ctx.dispatchEvent(
+      new CustomEvent('liquibase-progress', {
+        detail: message,
+      })
+    )
+  );
+
+  eventBus
+    .on(Bus.Liquibase.progressEnd)
+    .subscribe(() =>
+      ctx.dispatchEvent(new CustomEvent('liquibase-progress-end'))
+    );
 
   beforeMount(() =>
     unmountedGroup.push(
