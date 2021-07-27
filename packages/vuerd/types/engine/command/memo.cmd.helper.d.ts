@@ -52,3 +52,10 @@ export declare function dragSelectMemo(
 ): CommandType<'memo.dragSelect'>;
 
 export declare function loadMemo(memo: Memo): CommandType<'memo.load'>;
+
+export declare function changeColorMemo(
+  store: Store,
+  ctrlKey: boolean,
+  color: string,
+  memoId: string
+): CommandType<'memo.changeColor'>;

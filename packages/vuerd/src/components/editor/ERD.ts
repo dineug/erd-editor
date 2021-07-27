@@ -144,9 +144,14 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
     const {
       store,
       globalEvent: { drag$ },
+      eventBus,
     } = contextRef.value;
 
     onCloseContextmenu();
+
+    if (!el.closest('.vuerd-table-header-color')) {
+      eventBus.emit(Bus.ColorPicker.close);
+    }
 
     if (!el.closest('.vuerd-find')) {
       onCloseFind();

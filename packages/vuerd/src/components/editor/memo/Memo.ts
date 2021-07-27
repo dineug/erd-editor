@@ -22,6 +22,7 @@ import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { keymapOptionsToString } from '@/core/keymap';
 import { SIZE_MEMO_PADDING } from '@/core/layout';
 import {
+  changeColorMemo,
   changeMemoValue,
   moveMemo,
   removeMemo,
@@ -143,13 +144,17 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
   };
 
   beforeMount(() => {
-    const { eventBus } = contextRef.value;
+    const { eventBus, store } = contextRef.value;
+
+    state.color = props.memo.ui.color || '';
+
     unmountedGroup.push(
       eventBus.on(Bus.BalanceRange.move).subscribe(moveBalance),
       watch(state, propName => {
         if (propName !== 'color') return;
-        // TODO: create command - memo.changeColor
-        props.memo.ui.color = state.color;
+        store.dispatch(
+          changeColorMemo(store, true, state.color, props.memo.id)
+        );
       })
     );
   });

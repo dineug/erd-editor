@@ -34,7 +34,7 @@ import {
   focusTable,
 } from '@/engine/command/editor.cmd.helper';
 import {
-  addTableDefault,
+  changeColorTable,
   changeTableComment,
   changeTableName,
   moveTable,
@@ -211,12 +211,12 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   updated(() => flipAnimation.play());
 
   beforeMount(() => {
+    const { eventBus, store } = contextRef.value;
     const {
-      eventBus,
-      store: {
-        canvasState: { show },
-      },
-    } = contextRef.value;
+      canvasState: { show },
+    } = store;
+
+    state.color = props.table.ui.color || '';
 
     unmountedGroup.push(
       draggable$.pipe(debounceTime(50)).subscribe(onDraggableColumn),
@@ -233,8 +233,9 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
       }),
       watch(state, propName => {
         if (propName !== 'color') return;
-        // TODO: create command - table.changeColor
-        props.table.ui.color = state.color;
+        store.dispatch(
+          changeColorTable(store, true, state.color, props.table.id)
+        );
       })
     );
   });

@@ -91,3 +91,19 @@ export const dragSelectMemo = (min: Point, max: Point) =>
   createCommand('memo.dragSelect', { min, max });
 
 export const loadMemo = (memo: Memo) => createCommand('memo.load', memo);
+
+export const changeColorMemo = (
+  { tableState: { tables }, memoState: { memos } }: Store,
+  ctrlKey: boolean,
+  color: string,
+  memoId: string
+) =>
+  createCommand('memo.changeColor', {
+    tableIds: ctrlKey
+      ? tables.filter(table => table.ui.active).map(table => table.id)
+      : [],
+    memoIds: ctrlKey
+      ? memos.filter(memo => memo.ui.active).map(memo => memo.id)
+      : [memoId],
+    color,
+  });
