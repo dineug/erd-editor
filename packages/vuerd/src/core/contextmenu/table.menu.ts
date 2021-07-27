@@ -6,7 +6,7 @@ import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 
 const defaultOptions: MenuOptions = {
-  nameWidth: 100,
+  nameWidth: 105,
   keymapWidth: 100,
 };
 
