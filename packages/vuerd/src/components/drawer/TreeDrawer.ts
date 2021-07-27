@@ -32,11 +32,7 @@ export interface TreeDrawerProps {
   visible: boolean;
 }
 
-export interface TreeDrawerElement extends TreeDrawerProps, HTMLElement {
-  refresh: () => void;
-  hideAll: () => void;
-  refreshDiff: () => void;
-}
+export interface TreeDrawerElement extends TreeDrawerProps, HTMLElement {}
 
 interface TreeDrawerState {
   tree: TemplateResult[];
@@ -286,6 +282,16 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     );
   };
 
+  const showAll = () => {
+    refresh();
+    state.root?.children.forEach(child => {
+      if (!child.table.visible) {
+        child.toggleVisible();
+      }
+    });
+    updateTree();
+  };
+
   /**
    * Hides all tables
    */
@@ -325,6 +331,11 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         <div class="vuerd-tree-refresh" @click=${refresh}>
           <span>Refresh</span>
           <vuerd-icon name="sync-alt" size="12"></vuerd-icon>
+        </div>
+
+        <div class="vuerd-tree-hideall" @click=${showAll}>
+          <span>Show all</span>
+          <vuerd-icon name="eye" size="14"></vuerd-icon>
         </div>
 
         <div class="vuerd-tree-hideall" @click=${hideAll}>

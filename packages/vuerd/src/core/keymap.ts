@@ -98,11 +98,15 @@ export const createKeymap = (): Keymap => ({
       ctrlKey: true,
       shiftKey: true,
       key: 'H',
+      preventDefault: true,
+      stopPropagation: true,
     },
     {
       metaKey: true,
       shiftKey: true,
       key: 'H',
+      preventDefault: true,
+      stopPropagation: true,
     },
   ],
   removeColumn: [

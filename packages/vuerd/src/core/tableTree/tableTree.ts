@@ -1,8 +1,7 @@
 import { Diff } from '@/core/diff';
-import { getData, uuid } from '@/core/helper';
+import { getData } from '@/core/helper';
 import { Changes, ITreeNode } from '@/core/tableTree';
 import { hideTable, showTable } from '@/engine/command/table.cmd.helper';
-import { TableModel } from '@/engine/store/models/table.model';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { Table } from '@@types/engine/store/table.state';
