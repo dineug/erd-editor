@@ -49,6 +49,12 @@ export interface ShowTable {
   tableId: string;
 }
 
+export interface ChangeColorTable {
+  tableIds: string[];
+  memoIds: string[];
+  color: string;
+}
+
 export interface TableCommandMap {
   'table.add': AddTable;
   'table.move': MoveTable;
@@ -63,4 +69,5 @@ export interface TableCommandMap {
   'table.load': PureTable;
   'table.hide': HideTable;
   'table.show': ShowTable;
+  'table.changeColor': ChangeColorTable;
 }

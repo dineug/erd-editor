@@ -39,6 +39,10 @@ enum Contextmenu {
   close = 'Contextmenu.close',
 }
 
+enum ColorPicker {
+  close = 'ColorPicker.close',
+}
+
 enum Liquibase {
   progress = 'Liquibase.liquibase-progress',
   progressEnd = 'Liquibase.liquibase-progress-end',
@@ -49,4 +53,5 @@ export const Bus = {
   Drawer,
   Contextmenu,
   Liquibase,
+  ColorPicker,
 };

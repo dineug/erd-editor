@@ -22,6 +22,18 @@ export const MemoStyle = css`
   .vuerd-memo-header {
     padding: ${SIZE_MEMO_PADDING}px;
     cursor: move;
+    position: relative;
+  }
+
+  .vuerd-memo-header-color {
+    position: absolute;
+    width: 100%;
+    height: 4px;
+    top: 0;
+    left: 0;
+    border-radius: 5px 5px 0 0;
+    opacity: 0.9;
+    cursor: pointer;
   }
 
   .vuerd-memo-header .vuerd-button {

@@ -16,10 +16,10 @@ const createSash = (
     position: 'right',
     left,
   },
-  {
-    horizontal: true,
-    position: 'top',
-  },
+  // {
+  //   horizontal: true,
+  //   position: 'top',
+  // },
   {
     horizontal: true,
     position: 'bottom',

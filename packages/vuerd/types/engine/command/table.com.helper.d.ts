@@ -54,3 +54,19 @@ export declare function dragSelectTable(
 export declare function sortTable(): CommandType<'table.sort'>;
 
 export declare function loadTable(table: PureTable): CommandType<'table.load'>;
+
+export declare function hideTable(tableId: string): CommandType<'table.hide'>;
+
+export declare function showTable(tableId: string): CommandType<'table.show'>;
+
+export declare function addTableDefault(
+  tableId: string,
+  helper: Helper
+): CommandType<'column.load'>;
+
+export declare function changeColorTable(
+  store: Store,
+  ctrlKey: boolean,
+  color: string,
+  tableId: string
+): CommandType<'table.changeColor'>;

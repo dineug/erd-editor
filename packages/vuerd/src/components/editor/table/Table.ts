@@ -7,6 +7,7 @@ import {
   defineComponent,
   FunctionalComponent,
   html,
+  observable,
   updated,
   watch,
 } from '@vuerd/lit-observable';
@@ -19,6 +20,7 @@ import { debounceTime } from 'rxjs/operators';
 import { FlipAnimation } from '@/core/flipAnimation';
 import { onPreventDefault } from '@/core/helper/dom.helper';
 import { Bus } from '@/core/helper/eventBus.helper';
+import { useColorPicker } from '@/core/hooks/colorPicker.hook';
 import { useContext } from '@/core/hooks/context.hook';
 import { useHasTable } from '@/core/hooks/hasTable.hook';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
@@ -32,7 +34,7 @@ import {
   focusTable,
 } from '@/engine/command/editor.cmd.helper';
 import {
-  addTableDefault,
+  changeColorTable,
   changeTableComment,
   changeTableName,
   moveTable,
@@ -74,6 +76,8 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   );
   const draggable$ = new Subject<CustomEvent<DragoverColumnDetail>>();
   const { unmountedGroup } = useUnmounted();
+  const state = observable({ color: '' });
+  useColorPicker('.vuerd-table-header-color', ctx, state);
   let leftTween: Tween<{ left: number }> | null = null;
   let topTween: Tween<{ top: number }> | null = null;
 
@@ -207,12 +211,12 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   updated(() => flipAnimation.play());
 
   beforeMount(() => {
+    const { eventBus, store } = contextRef.value;
     const {
-      eventBus,
-      store: {
-        canvasState: { show },
-      },
-    } = contextRef.value;
+      canvasState: { show },
+    } = store;
+
+    state.color = props.table.ui.color || '';
 
     unmountedGroup.push(
       draggable$.pipe(debounceTime(50)).subscribe(onDraggableColumn),
@@ -226,6 +230,12 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
         if (propName !== 'tableComment') return;
 
         resetTooltip();
+      }),
+      watch(state, propName => {
+        if (propName !== 'color') return;
+        store.dispatch(
+          changeColorTable(store, true, state.color, props.table.id)
+        );
       })
     );
   });
@@ -259,6 +269,13 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
         @touchstart=${onMoveStart}
       >
         <div class="vuerd-table-header">
+          <div
+            class="vuerd-table-header-color"
+            style=${styleMap({
+              width: `${table.width() + SIZE_TABLE_PADDING * 2}px`,
+              backgroundColor: ui.color ?? '',
+            })}
+          ></div>
           <div class="vuerd-table-header-top">
             <vuerd-icon
               class="vuerd-button vuerd-table-button"

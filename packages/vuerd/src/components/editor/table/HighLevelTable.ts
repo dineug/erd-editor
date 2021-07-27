@@ -154,6 +154,15 @@ const HighLevelTable: FunctionalComponent<
         @mousedown=${onMoveStart}
         @touchstart=${onMoveStart}
       >
+        <div class="vuerd-table-header">
+          <div
+            class="vuerd-table-header-color"
+            style=${styleMap({
+              width: `${table.width() + SIZE_TABLE_PADDING * 2}px`,
+              backgroundColor: ui.color ?? '',
+            })}
+          ></div>
+        </div>
         <div
           class="vuerd-high-level-table vuerd-scrollbar"
           style=${styleMap({

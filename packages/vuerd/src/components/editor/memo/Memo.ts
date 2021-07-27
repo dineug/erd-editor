@@ -5,13 +5,16 @@ import {
   FunctionalComponent,
   html,
   mounted,
+  observable,
   query,
+  watch,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
 
 import { onStopPropagation } from '@/core/helper/dom.helper';
 import { Bus } from '@/core/helper/eventBus.helper';
+import { useColorPicker } from '@/core/hooks/colorPicker.hook';
 import { useContext } from '@/core/hooks/context.hook';
 import { useResizeMemo } from '@/core/hooks/resizeMemo.hook';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
@@ -19,6 +22,7 @@ import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { keymapOptionsToString } from '@/core/keymap';
 import { SIZE_MEMO_PADDING } from '@/core/layout';
 import {
+  changeColorMemo,
   changeMemoValue,
   moveMemo,
   removeMemo,
@@ -50,6 +54,8 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
   const { onMousedownSash } = useResizeMemo(props, ctx);
   const { unmountedGroup } = useUnmounted();
   const textareaRef = query<HTMLTextAreaElement>('.vuerd-memo-textarea');
+  const state = observable({ color: '' });
+  useColorPicker('.vuerd-memo-header-color', ctx, state);
   useTooltip(['.vuerd-button'], ctx);
   let leftTween: Tween<{ left: number }> | null = null;
   let topTween: Tween<{ top: number }> | null = null;
@@ -138,9 +144,18 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
   };
 
   beforeMount(() => {
-    const { eventBus } = contextRef.value;
+    const { eventBus, store } = contextRef.value;
+
+    state.color = props.memo.ui.color || '';
+
     unmountedGroup.push(
-      eventBus.on(Bus.BalanceRange.move).subscribe(moveBalance)
+      eventBus.on(Bus.BalanceRange.move).subscribe(moveBalance),
+      watch(state, propName => {
+        if (propName !== 'color') return;
+        store.dispatch(
+          changeColorMemo(store, true, state.color, props.memo.id)
+        );
+      })
     );
   });
 
@@ -179,6 +194,12 @@ const Memo: FunctionalComponent<MemoProps, MemoElement> = (props, ctx) => {
         @touchstart=${onMoveStart}
       >
         <div class="vuerd-memo-header">
+          <div
+            class="vuerd-memo-header-color"
+            style=${styleMap({
+              backgroundColor: memo.ui.color ?? '',
+            })}
+          ></div>
           <vuerd-icon
             class="vuerd-button"
             name="times"

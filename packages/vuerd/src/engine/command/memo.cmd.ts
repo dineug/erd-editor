@@ -5,6 +5,7 @@ import { ExecuteCommand } from '@/internal-types/command';
 import { MemoCommandMap } from '@@types/engine/command/memo.cmd';
 import {
   AddMemo,
+  ChangeColorMemo,
   ChangeMemoValue,
   DragSelectMemo,
   MoveMemo,
@@ -122,6 +123,25 @@ export function executeLoadMemo({ memoState: { memos } }: State, data: Memo) {
   memos.push(new MemoModel({ loadMemo: data }));
 }
 
+export function executeChangeColorMemo(
+  { tableState: { tables }, memoState: { memos } }: State,
+  data: ChangeColorMemo
+) {
+  data.tableIds.forEach(tableId => {
+    const table = getData(tables, tableId);
+    if (!table) return;
+
+    table.ui.color = data.color;
+  });
+
+  data.memoIds.forEach(memoId => {
+    const memo = getData(memos, memoId);
+    if (!memo) return;
+
+    memo.ui.color = data.color;
+  });
+}
+
 export const executeMemoCommandMap: Record<
   keyof MemoCommandMap,
   ExecuteCommand
@@ -136,4 +156,5 @@ export const executeMemoCommandMap: Record<
   'memo.resize': executeResizeMemo,
   'memo.dragSelect': executeDragSelectMemo,
   'memo.load': executeLoadMemo,
+  'memo.changeColor': executeChangeColorMemo,
 };

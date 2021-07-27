@@ -8,6 +8,7 @@ import {
 import { TableModel } from '@/engine/store/models/table.model';
 import { ExecuteCommand } from '@/internal-types/command';
 import {
+  ChangeColorTable,
   HideTable,
   ShowTable,
   TableCommandMap,
@@ -217,6 +218,25 @@ export function executeShowTable(
   }
 }
 
+export function executeChangeColorTable(
+  { tableState: { tables }, memoState: { memos } }: State,
+  data: ChangeColorTable
+) {
+  data.tableIds.forEach(tableId => {
+    const table = getData(tables, tableId);
+    if (!table) return;
+
+    table.ui.color = data.color;
+  });
+
+  data.memoIds.forEach(memoId => {
+    const memo = getData(memos, memoId);
+    if (!memo) return;
+
+    memo.ui.color = data.color;
+  });
+}
+
 export const executeTableCommandMap: Record<
   keyof TableCommandMap,
   ExecuteCommand
@@ -234,4 +254,5 @@ export const executeTableCommandMap: Record<
   'table.load': executeLoadTable,
   'table.hide': executeHideTable,
   'table.show': executeShowTable,
+  'table.changeColor': executeChangeColorTable,
 };

@@ -8,6 +8,7 @@ import {
 import { repeat } from 'lit-html/directives/repeat';
 import { styleMap } from 'lit-html/directives/style-map';
 
+import { SIZE_TABLE_PADDING } from '@/core/layout';
 import { useAPI } from '@/extensions/panels/visualization/hooks/api.hook';
 import { Table } from '@@types/engine/store/table.state';
 
@@ -51,7 +52,15 @@ const VisualizationTable: FunctionalComponent<
         })}
       >
         <div class="vuerd-table-header">
-          <div class="vuerd-table-header-top"></div>
+          <div class="vuerd-table-header-top">
+            <div
+              class="vuerd-table-header-color"
+              style=${styleMap({
+                width: `${table.width() + SIZE_TABLE_PADDING * 2}px`,
+                backgroundColor: table.ui.color ?? '',
+              })}
+            ></div>
+          </div>
           <div class="vuerd-table-header-body">
             <vuerd-input
               class="vuerd-table-name"

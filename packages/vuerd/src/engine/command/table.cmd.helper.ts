@@ -143,3 +143,19 @@ export const addTableDefault = (tableId: string, helper: Helper) => {
 
   return loadColumn(tableId, [updatedAt, createdAt, idCol], []);
 };
+
+export const changeColorTable = (
+  { tableState: { tables }, memoState: { memos } }: Store,
+  ctrlKey: boolean,
+  color: string,
+  tableId: string
+) =>
+  createCommand('table.changeColor', {
+    tableIds: ctrlKey
+      ? tables.filter(table => table.ui.active).map(table => table.id)
+      : [tableId],
+    memoIds: ctrlKey
+      ? memos.filter(memo => memo.ui.active).map(memo => memo.id)
+      : [],
+    color,
+  });

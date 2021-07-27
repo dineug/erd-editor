@@ -24,4 +24,12 @@ export const ERDEditorStyle = css`
     position: fixed;
     top: -100px;
   }
+
+  .easylogic-colorpicker {
+    display: none;
+  }
+
+  .easylogic-colorpicker[data-show] {
+    display: block;
+  }
 `;

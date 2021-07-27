@@ -1321,6 +1321,11 @@
   resolved "https://registry.yarnpkg.com/@dineug/vscode-google-analytics/-/vscode-google-analytics-0.1.2.tgz#03243673d41bc22eb6d247d3ad619708b428c72b"
   integrity sha512-M7/Hc9GBh08vUm0W3rqxlAYyByrX/YVcolhknqUvcQ5mGje/FzgWhmfpb6VOthoEsFsYEB+xdT5h8C86w6hfbQ==
 
+"@easylogic/colorpicker@^1.10.5":
+  version "1.10.5"
+  resolved "https://registry.yarnpkg.com/@easylogic/colorpicker/-/colorpicker-1.10.5.tgz#bfbc3a7ed7a14c29eefeed8e29b07ce5c431cfed"
+  integrity sha512-pv2b18+E7t7/FT1wwX42ho40DYwyc8gkbFsHzzXn5VxWmqGbWbaqgE6MopxzaG6SN8P+tzMN01+Nvh3mGHAF3w==
+
 "@emmetio/extract-abbreviation@0.1.6":
   version "0.1.6"
   resolved "https://registry.yarnpkg.com/@emmetio/extract-abbreviation/-/extract-abbreviation-0.1.6.tgz#e4a9856c1057f0aff7d443b8536477c243abe28c"

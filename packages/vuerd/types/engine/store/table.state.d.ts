@@ -36,6 +36,7 @@ export interface TableUI {
   zIndex: number;
   widthName: number;
   widthComment: number;
+  color?: string; // ADD: version 2.1.?
 }
 
 export interface Column {

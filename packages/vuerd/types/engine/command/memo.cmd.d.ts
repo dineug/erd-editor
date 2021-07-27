@@ -41,6 +41,12 @@ export interface DragSelectMemo {
   max: Point;
 }
 
+export interface ChangeColorMemo {
+  tableIds: string[];
+  memoIds: string[];
+  color: string;
+}
+
 export interface MemoCommandMap {
   'memo.add': AddMemo;
   'memo.move': MoveMemo;
@@ -52,4 +58,5 @@ export interface MemoCommandMap {
   'memo.resize': ResizeMemo;
   'memo.dragSelect': DragSelectMemo;
   'memo.load': Memo;
+  'memo.changeColor': ChangeColorMemo;
 }

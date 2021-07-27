@@ -19,6 +19,7 @@ export const changeCommandTypes: CommandKey[] = [
   'table.sort',
   'table.hide',
   'table.show',
+  'table.changeColor',
   // column
   'column.add',
   'column.addCustom',
@@ -55,6 +56,7 @@ export const changeCommandTypes: CommandKey[] = [
   'memo.remove',
   'memo.changeValue',
   'memo.resize',
+  'memo.changeColor',
   // canvas
   'canvas.move',
   'canvas.movement',
