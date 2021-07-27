@@ -96,26 +96,28 @@ defineComponent('vuerd-prompt', {
       state.input = '';
     };
 
-    return () => html` <div class="vuerd-prompt">
-      <div class="vuerd-prompt-header">
-        <vuerd-icon
-          class="vuerd-button"
-          name="times"
-          size="12"
-          @click=${(e: Event) => onSubmit(e, true)}
-        ></vuerd-icon>
+    return () => html`
+      <div class="vuerd-prompt">
+        <div class="vuerd-prompt-header">
+          <vuerd-icon
+            class="vuerd-button"
+            name="times"
+            size="12"
+            @click=${(e: Event) => onSubmit(e, true)}
+          ></vuerd-icon>
+        </div>
+        <span class="vuerd-prompt-message"> ${props.prompt} </span>
+        <vuerd-input
+          .width=${170}
+          .edit=${true}
+          .value=${state.input}
+          .placeholder=${'unknown'}
+          class="vuerd-prompt-input"
+          @input=${onInput}
+          @keyup-enter=${onSubmit}
+        ></vuerd-input>
+        <div class="vuerd-prompt-button" @click=${onSubmit}>Confirm</div>
       </div>
-      <span class="vuerd-prompt-message"> ${props.prompt} </span>
-      <vuerd-input
-        .width=${170}
-        .edit=${true}
-        .value=${state.input}
-        .placeholder=${'unknown'}
-        class="vuerd-prompt-input"
-        @input=${onInput}
-        @keyup-enter=${onSubmit}
-      ></vuerd-input>
-      <div class="vuerd-prompt-button" @click=${onSubmit}>Confirm</div>
-    </div>`;
+    `;
   },
 });
