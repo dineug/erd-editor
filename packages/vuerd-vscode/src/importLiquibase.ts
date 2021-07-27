@@ -27,10 +27,8 @@ export const loadLiquibaseFiles = (uri: string): LiquibaseFile[] => {
     return allFiles;
   }
 
-  var foundChangelog = false;
   fs.readdirSync(vuerdFolder).forEach(directory => {
     if (directory === liquibaseDirectory) {
-      foundChangelog = true;
       const changeLog = path.join(vuerdFolder, directory);
 
       // get root file from folder
@@ -39,8 +37,6 @@ export const loadLiquibaseFiles = (uri: string): LiquibaseFile[] => {
         .find(file => liquibaseRootFile === file);
 
       if (!rootFileName) return;
-
-      foundChangelog = true;
 
       const rootFileFullPath = path.join(changeLog, rootFileName);
       allFiles.push({
@@ -51,12 +47,6 @@ export const loadLiquibaseFiles = (uri: string): LiquibaseFile[] => {
       allFiles.push(...loadNestedIncludes(rootFileFullPath, changeLog));
     }
   });
-
-  if (!foundChangelog) {
-    window.showErrorMessage(
-      "Cannot find 'changelog.xml' inside 'changelog' folder"
-    );
-  }
 
   return allFiles;
 };
