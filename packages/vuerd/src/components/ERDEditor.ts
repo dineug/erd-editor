@@ -69,7 +69,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   const { hasPanel, panelTpl } = usePanelView(props, context);
   const { showPrompt, promptTpl } = usePrompt();
   const { unmountedGroup } = useUnmounted();
-  useERDEditorElement(context, ctx, { setFocus, showPrompt });
+  useERDEditorElement(context, ctx, { setFocus });
   context.showPrompt = showPrompt;
 
   // @ts-ignore

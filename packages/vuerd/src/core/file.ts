@@ -9,7 +9,7 @@ import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
 import { createJson } from '@/core/parser/ParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
-import { ERDEditorContext } from '@@types/core/ERDEditorContext';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { LiquibaseFile } from '@@types/core/liquibaseParser';
 import { ExportedStore, Store } from '@@types/engine/store';
 
@@ -94,7 +94,7 @@ export function setExportFileCallback(
   executeExportFileExtra = callback;
 }
 
-export function importJSON({ store }: ERDEditorContext) {
+export function importJSON({ store }: IERDEditorContext) {
   const importHelperJSON = document.createElement('input');
   importHelperJSON.setAttribute('type', 'file');
   importHelperJSON.setAttribute('accept', '.json');
@@ -119,7 +119,7 @@ export function importJSON({ store }: ERDEditorContext) {
   importHelperJSON.click();
 }
 
-export function importSQLDDL(context: ERDEditorContext) {
+export function importSQLDDL(context: IERDEditorContext) {
   const importHelper = document.createElement('input');
   importHelper.setAttribute('type', 'file');
   importHelper.setAttribute('accept', `.sql`);
@@ -162,7 +162,7 @@ export function importSQLDDL(context: ERDEditorContext) {
   importHelper.click();
 }
 
-export function importLiquibase(context: ERDEditorContext, dialect: Dialect) {
+export function importLiquibase(context: IERDEditorContext, dialect: Dialect) {
   const snapshot = getLatestSnapshot(context.snapshots);
 
   if (
@@ -219,7 +219,7 @@ export async function loadFileSync(file: File, type: string): Promise<string> {
 }
 
 export function loadLiquibaseChangelog(
-  context: ERDEditorContext,
+  context: IERDEditorContext,
   files: LiquibaseFile[],
   dialect: Dialect
 ) {

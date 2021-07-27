@@ -39,8 +39,14 @@ enum Contextmenu {
   close = 'Contextmenu.close',
 }
 
+enum Liquibase {
+  progress = 'Liquibase.liquibase-progress',
+  progressEnd = 'Liquibase.liquibase-progress-end',
+}
+
 export const Bus = {
   BalanceRange,
   Drawer,
   Contextmenu,
+  Liquibase,
 };

@@ -1,8 +1,8 @@
 import { keymapOptionsToString, keymapOptionToString } from '@/core/keymap';
 import { addMemo$ } from '@/engine/command/memo.cmd.helper';
 import { addTable$ } from '@/engine/command/table.cmd.helper';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
-import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 
 import { createDatabaseMenus } from './database.menu';
 import { createDrawRelationshipMenus } from './drawRelationship.menu';
@@ -16,7 +16,7 @@ const defaultOptions: MenuOptions = {
 };
 
 export function createERDMenus(
-  context: ERDEditorContext,
+  context: IERDEditorContext,
   canvas: Element
 ): Menu[] {
   const { store, keymap } = context;

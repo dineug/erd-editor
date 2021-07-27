@@ -1,5 +1,6 @@
 import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
 import { createStoreCopy } from '@/core/file';
+import { Bus } from '@/core/helper/eventBus.helper';
 import {
   Constraints,
   Dialect,
@@ -11,7 +12,7 @@ import { Column, IndexColumn, Statement } from '@/core/parser/index';
 import { createJson } from '@/core/parser/ParserToJson';
 import { zoomCanvas } from '@/engine/command/canvas.cmd.helper';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper.gen';
-import { ERDEditorContext } from '@@types/core/ERDEditorContext';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { LiquibaseFile } from '@@types/core/liquibaseParser';
 
 const dialectTo: Dialect = 'postgresql';
@@ -24,20 +25,20 @@ const defaultDialect: Dialect = 'postgresql';
  * @returns List of Statements to execute
  */
 export const LiquibaseParser = (
-  context: ERDEditorContext,
+  context: IERDEditorContext,
   files: LiquibaseFile[],
   dialect: Dialect = defaultDialect,
   rootFile?: LiquibaseFile
 ) => {
   console.log('PARSING...', files);
 
-  const { store } = context;
+  const { store, eventBus } = context;
   const zoom = store.canvasState.zoomLevel;
   store.dispatchSync(zoomCanvas(0.7));
 
   setTimeout(async () => {
     async function parseFile(file: LiquibaseFile) {
-      updateProgressBar(file);
+      eventBus.emit(Bus.Liquibase.progress, file.path);
 
       // workaround so code is non-blocking
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -85,12 +86,12 @@ export const LiquibaseParser = (
     }
 
     store.dispatchSync(zoomCanvas(zoom));
-    updateProgressBarEnd();
+    eventBus.emit(Bus.Liquibase.progressEnd);
   }, 10);
 };
 
 export const applyStatements = (
-  context: ERDEditorContext,
+  context: IERDEditorContext,
   statements: Statement[]
 ) => {
   var { snapshots, store, helper } = context;
@@ -390,13 +391,3 @@ export const parsers: Record<Operation, ParserCallback> = {
   dropForeignKeyConstraint: parseDropForeignKeyConstraint,
   addUniqueConstraint: parseAddUniqueConstraint,
 };
-
-function updateProgressBar(file: LiquibaseFile) {
-  const editor = document.querySelector('erd-editor');
-  editor?.triggerProgress(file.path);
-}
-
-function updateProgressBarEnd() {
-  const editor = document.querySelector('erd-editor');
-  editor?.triggerProgressEnd();
-}

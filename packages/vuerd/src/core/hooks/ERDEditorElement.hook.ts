@@ -3,6 +3,7 @@ import { DDLParser } from '@vuerd/sql-ddl-parser';
 
 import { createJsonStringify, loadLiquibaseChangelog } from '@/core/file';
 import { isArray, isString } from '@/core/helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { loadKeymap } from '@/core/keymap';
 import { createJson } from '@/core/parser/ParserToJson';
@@ -33,7 +34,7 @@ export function useERDEditorElement(
     setFocus: () => void;
   }
 ) {
-  const { store, helper } = context;
+  const { store, helper, eventBus } = context;
   const { editorState } = store;
   const { unmountedGroup } = useUnmounted();
 
@@ -99,15 +100,19 @@ export function useERDEditorElement(
       editorState.panels.push(...(config.panels as PanelConfig[]));
   };
 
-  ctx.triggerProgress = (message: string) =>
+  eventBus.on(Bus.Liquibase.progress).subscribe(message =>
     ctx.dispatchEvent(
       new CustomEvent('liquibase-progress', {
         detail: message,
       })
-    );
+    )
+  );
 
-  ctx.triggerProgressEnd = () =>
-    ctx.dispatchEvent(new CustomEvent('liquibase-progress-end'));
+  eventBus
+    .on(Bus.Liquibase.progressEnd)
+    .subscribe(() =>
+      ctx.dispatchEvent(new CustomEvent('liquibase-progress-end'))
+    );
 
   beforeMount(() =>
     unmountedGroup.push(

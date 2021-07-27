@@ -43,7 +43,7 @@ export const omitERDEditorContext = R.pipe<
   any,
   ERDEditorContext
 >(
-  R.omit(['globalEvent', 'eventBus']),
+  R.omit(['globalEvent', 'eventBus', 'snapshots', 'showPrompt']),
   R.dissocPath(['store', 'history$']),
   R.dissocPath(['store', 'change$']),
   R.dissocPath(['store', 'destroy']),

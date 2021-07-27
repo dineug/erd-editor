@@ -26,7 +26,4 @@ export interface ERDEditorElement extends ERDEditorProps, HTMLElement {
   getSQLDDL(database?: Database): string;
   extension(config: Partial<ExtensionConfig>): void;
   treeDrawerRef: TreeDrawerElement;
-
-  triggerProgress(message: string): void;
-  triggerProgressEnd(): void;
 }
