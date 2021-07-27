@@ -1,16 +1,17 @@
 import { Bus } from '@/core/helper/eventBus.helper';
 import { keymapOptionsToString, keymapOptionToString } from '@/core/keymap';
 import { changeColumnPrimaryKey$ } from '@/engine/command/column.cmd.helper';
+import { addTableDefault, hideTable } from '@/engine/command/table.cmd.helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 100,
-  keymapWidth: 75,
+  keymapWidth: 100,
 };
 
 export const createTableMenus = (
-  { keymap, eventBus, store }: IERDEditorContext,
+  { keymap, eventBus, store, helper }: IERDEditorContext,
   tableId: string
 ): Menu[] =>
   [
@@ -53,5 +54,19 @@ export const createTableMenus = (
         eventBus.emit(Bus.Drawer.openTableProperties, {
           tableId,
         }),
+    },
+    {
+      icon: {
+        prefix: 'fas',
+        name: 'eye-slash',
+      },
+      name: 'Hide Table',
+      keymap: keymapOptionToString(keymap.hideTable[0]),
+      keymapTooltip: keymapOptionsToString(keymap.hideTable),
+      execute: () => store.dispatch(hideTable(tableId)),
+    },
+    {
+      name: 'Default Template',
+      execute: () => store.dispatch(addTableDefault(tableId, helper)),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

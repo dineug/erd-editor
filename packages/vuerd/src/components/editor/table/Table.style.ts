@@ -52,10 +52,6 @@ export const TableStyle = css`
     transition: transform 0.3s;
   }
 
-  .vuerd-table-default {
-    transition: color 0.15s;
-  }
-
   .vuerd-table-default:hover {
     color: var(--vuerd-color-font-active);
   }

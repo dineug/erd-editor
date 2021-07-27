@@ -35,7 +35,6 @@ import {
   addTableDefault,
   changeTableComment,
   changeTableName,
-  hideTable,
   moveTable,
   removeTable,
   selectTable$,
@@ -130,11 +129,6 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     store.dispatch(removeTable(store, props.table.id));
   };
 
-  const onHideTable = () => {
-    const { store } = contextRef.value;
-    store.dispatch(hideTable(props.table.id));
-  };
-
   const onAddColumn = () => {
     const { store } = contextRef.value;
     store.dispatch(addColumn$(store, props.table.id));
@@ -153,12 +147,6 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   const onEdit = () => {
     const { store } = contextRef.value;
     store.dispatch(editTable());
-  };
-
-  const onAddDefault = () => {
-    const { table } = props;
-    const { store, helper } = contextRef.value;
-    store.dispatch(addTableDefault(table.id, helper));
   };
 
   const onDragoverGroupColumn = (event: CustomEvent<DragoverColumnDetail>) =>
@@ -281,26 +269,11 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
             ></vuerd-icon>
             <vuerd-icon
               class="vuerd-button vuerd-table-button"
-              data-tippy-content=${keymapOptionsToString(keymap.hideTable)}
-              name="eye-slash"
-              size="13"
-              @click=${onHideTable}
-            ></vuerd-icon>
-            <vuerd-icon
-              class="vuerd-button vuerd-table-button"
               data-tippy-content=${keymapOptionsToString(keymap.addColumn)}
               name="plus"
               size="12"
               @click=${onAddColumn}
-            ></vuerd-icon
-            >${columns.length
-              ? null
-              : html`<div
-                  class="vuerd-table-default vuerd-button vuerd-table-button "
-                  @click=${onAddDefault}
-                >
-                  Default
-                </div>`}
+            ></vuerd-icon>
           </div>
           <div class="vuerd-table-header-body">
             <vuerd-input

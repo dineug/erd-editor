@@ -31,10 +31,10 @@ import {
   mdiDatabase,
   mdiDatabaseExport,
   mdiDatabaseImport,
+  mdiDotsVertical,
   mdiFormatLetterCase,
   mdiPalette,
   mdiTableCog,
-  mdiVectorLine,
   mdiXml,
 } from '@mdi/js';
 
@@ -73,7 +73,6 @@ const icons = [
   faCode,
   faSyncAlt,
   faTree,
-  createMDI('vector-line', mdiVectorLine),
   createMDI('code-json', mdiCodeJson),
   createMDI('database', mdiDatabase),
   createMDI('database-import', mdiDatabaseImport),
@@ -83,6 +82,7 @@ const icons = [
   createMDI('table-cog', mdiTableCog),
   createMDI('code-brackets', mdiCodeBrackets),
   createMDI('xml', mdiXml),
+  createMDI('dots-vertical', mdiDotsVertical),
 ] as IconDefinition[];
 
 export const getIcon = (prefix: string, iconName: string) =>
