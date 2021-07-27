@@ -2,18 +2,12 @@ import '@/components/Prompt';
 
 import { html, observable } from '@vuerd/lit-observable';
 
-import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
-import { ERDEditorProps } from '@@types/components/ERDEditorElement';
-
 export type showPromptDef = (
   prompt: string,
   callback: (reply: string) => void
 ) => void;
 
-export function usePrompt(
-  props: ERDEditorProps,
-  { store: { editorState, canvasState } }: IERDEditorContext
-) {
+export function usePrompt() {
   const state = observable({
     prompt: '',
     callback: (reply: string) => {},

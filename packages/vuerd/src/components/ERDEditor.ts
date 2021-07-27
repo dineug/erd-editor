@@ -67,9 +67,10 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   const { drawerTpl, closeDrawer, openHelp, openSetting, openTree } =
     useERDEditorDrawer(props, context);
   const { hasPanel, panelTpl } = usePanelView(props, context);
-  const { showPrompt, promptTpl } = usePrompt(props, context);
+  const { showPrompt, promptTpl } = usePrompt();
   const { unmountedGroup } = useUnmounted();
   useERDEditorElement(context, ctx, { setFocus, showPrompt });
+  context.showPrompt = showPrompt;
 
   // @ts-ignore
   const resizeObserver = new ResizeObserver(entries => {

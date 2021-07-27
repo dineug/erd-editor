@@ -8,8 +8,8 @@ import {
 } from '@/core/file';
 import { createLiquibase } from '@/core/parser/JSONToLiquibase';
 import { createDDL } from '@/core/sql/ddl';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
-import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { ExportedStore } from '@@types/engine/store';
 
 const defaultOptions: MenuOptions = {
@@ -24,7 +24,7 @@ export const getLatestSnapshot = (
 };
 
 export const createExportMenus = (
-  { store, snapshots }: ERDEditorContext,
+  { store, snapshots, showPrompt }: IERDEditorContext,
   canvas: Element
 ): Menu[] =>
   [
@@ -68,10 +68,8 @@ export const createExportMenus = (
       name: 'Liquibase',
       execute: () => {
         if (store.canvasState.database === 'PostgreSQL') {
-          const editor = document.querySelector('erd-editor');
-
-          editor?.showPrompt('Please enter the name of changeset:', id =>
-            editor?.showPrompt('Please enter name of the author:', name => {
+          showPrompt('Please enter the name of changeset:', id =>
+            showPrompt('Please enter name of the author:', name => {
               const liquibase = createLiquibase(
                 store,
                 id,

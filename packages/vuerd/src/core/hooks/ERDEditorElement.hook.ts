@@ -3,7 +3,6 @@ import { DDLParser } from '@vuerd/sql-ddl-parser';
 
 import { createJsonStringify, loadLiquibaseChangelog } from '@/core/file';
 import { isArray, isString } from '@/core/helper';
-import { showPromptDef } from '@/core/hooks/prompt.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { loadKeymap } from '@/core/keymap';
 import { createJson } from '@/core/parser/ParserToJson';
@@ -30,10 +29,8 @@ export function useERDEditorElement(
   ctx: ERDEditorElement,
   {
     setFocus,
-    showPrompt,
   }: {
     setFocus: () => void;
-    showPrompt: showPromptDef;
   }
 ) {
   const { store, helper } = context;
@@ -101,8 +98,6 @@ export function useERDEditorElement(
     isArray(config.panels) &&
       editorState.panels.push(...(config.panels as PanelConfig[]));
   };
-
-  ctx.showPrompt = showPrompt;
 
   ctx.triggerProgress = (message: string) =>
     ctx.dispatchEvent(
