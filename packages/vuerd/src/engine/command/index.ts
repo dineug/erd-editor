@@ -24,8 +24,6 @@ import { executeRelationshipCommandMap } from './relationship.cmd';
 import * as relationshipCommand from './relationship.cmd.helper';
 import { executeTableCommandMap } from './table.cmd';
 import * as tableCommand from './table.cmd.helper';
-import { executeTreeCommandMap } from './tree.cmd';
-import * as treeCommand from './tree.cmd.helper';
 
 const executeCommandMap: Record<CommandKey, ExecuteCommand> = {
   ...executeCanvasCommandMap,
@@ -35,7 +33,6 @@ const executeCommandMap: Record<CommandKey, ExecuteCommand> = {
   ...executeEditorCommandMap,
   ...executeRelationshipCommandMap,
   ...executeIndexCommandMap,
-  ...executeTreeCommandMap,
 };
 
 export const createCommand = (): Command => ({
@@ -46,7 +43,6 @@ export const createCommand = (): Command => ({
   editor: editorCommand,
   relationship: relationshipCommand,
   index: indexCommand,
-  tree: treeCommand,
 });
 
 export function createStream() {

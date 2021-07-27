@@ -19,11 +19,6 @@ import { useContext } from '@/core/hooks/context.hook';
 import { Changes } from '@/core/tableTree';
 import { generateRoot, TreeNode } from '@/core/tableTree/tableTree';
 import { css } from '@/core/tagged';
-import {
-  hideTree,
-  refreshTree,
-  refreshTreeDiff,
-} from '@/engine/command/tree.cmd.helper';
 import { Column } from '@@types/engine/store/table.state';
 
 declare global {
@@ -60,15 +55,12 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     forbidUpdate: false,
   });
 
-  const editor = document.querySelector('erd-editor');
-  if (editor) editor.treeDrawerRef = ctx;
-
   /**
    * Draws entire tree of tables
    */
-  ctx.refresh = () => {
+  const refresh = () => {
     state.root = generateRoot(contextRef.value, state.root || undefined);
-    contextRef.value.store.dispatch(refreshTreeDiff(contextRef.value.store));
+    refreshDiff();
   };
 
   const updateTree = () => {
@@ -80,7 +72,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     }
   };
 
-  ctx.refreshDiff = () => {
+  const refreshDiff = () => {
     const diffs = calculateDiff(contextRef.value);
     const tableDiffs = diffs.filter(diff => diff.type === 'table');
     const columnDiffs = diffs.filter(diff => diff.type === 'column');
@@ -297,7 +289,8 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
   /**
    * Hides all tables
    */
-  ctx.hideAll = () => {
+  const hideAll = () => {
+    refresh();
     state.root?.children.forEach(child => {
       if (child.table.visible) {
         child.toggleVisible();
@@ -313,11 +306,9 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     if (props.visible === true && state.forbidUpdate === false) {
       state.forbidUpdate = true;
       if (!state.root?.children.length) {
-        contextRef.value.store.dispatchSync(
-          refreshTree(contextRef.value.store)
-        );
+        refresh();
       }
-      contextRef.value.store.dispatch(refreshTreeDiff(contextRef.value.store));
+      refreshDiff();
     } else if (props.visible === false && state.forbidUpdate === true) {
       state.forbidUpdate = false;
     }
@@ -331,33 +322,17 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         .visible=${props.visible}
         @close=${onClose}
       >
-        <div
-          class="vuerd-tree-refresh"
-          @click=${() =>
-            contextRef.value.store.dispatch(
-              refreshTree(contextRef.value.store)
-            )}
-        >
+        <div class="vuerd-tree-refresh" @click=${refresh}>
           <span>Refresh</span>
           <vuerd-icon name="sync-alt" size="12"></vuerd-icon>
         </div>
 
-        <div
-          class="vuerd-tree-hideall"
-          @click=${() =>
-            contextRef.value.store.dispatch(hideTree(contextRef.value.store))}
-        >
+        <div class="vuerd-tree-hideall" @click=${hideAll}>
           <span>Hide all</span>
           <vuerd-icon name="eye-slash" size="14"></vuerd-icon>
         </div>
 
-        <div
-          class="vuerd-tree-diff"
-          @click=${() =>
-            contextRef.value.store.dispatch(
-              refreshTreeDiff(contextRef.value.store)
-            )}
-        >
+        <div class="vuerd-tree-diff" @click=${refreshDiff}>
           <span>Get diff</span>
           <vuerd-icon name="sync-alt" size="12"></vuerd-icon>
         </div>
