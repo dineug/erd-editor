@@ -1,11 +1,11 @@
 import { beforeMount } from '@vuerd/lit-observable';
 import { DDLParser } from '@vuerd/sql-ddl-parser';
 
-import { createJsonStringify, parseFile } from '@/core/file';
+import { createJsonStringify, loadLiquibaseChangelog } from '@/core/file';
 import { isArray, isString } from '@/core/helper';
+import { showPromptDef } from '@/core/hooks/prompt.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { loadKeymap } from '@/core/keymap';
-import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
 import { createJson } from '@/core/parser/ParserToJson';
 import { createDDL } from '@/core/sql/ddl';
 import { loadTheme } from '@/core/theme';
@@ -20,6 +20,7 @@ import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { ERDEditorElement } from '@@types/components/ERDEditorElement';
 import { ExtensionConfig } from '@@types/core/extension';
 import { Keymap } from '@@types/core/keymap';
+import { LiquibaseFile } from '@@types/core/liquibaseParser';
 import { PanelConfig } from '@@types/core/panel';
 import { Theme } from '@@types/core/theme';
 import { Database } from '@@types/engine/store/canvas.state';
@@ -27,7 +28,13 @@ import { Database } from '@@types/engine/store/canvas.state';
 export function useERDEditorElement(
   context: IERDEditorContext,
   ctx: ERDEditorElement,
-  { setFocus }: { setFocus: () => void }
+  {
+    setFocus,
+    showPrompt,
+  }: {
+    setFocus: () => void;
+    showPrompt: showPromptDef;
+  }
 ) {
   const { store, helper } = context;
   const { editorState } = store;
@@ -75,12 +82,8 @@ export function useERDEditorElement(
     }
   };
 
-  ctx.loadLiquibase = (xmls: string[]) => {
-    xmls.forEach(xml => {
-      if (isString(xml) && xml.trim()) {
-        parseFile(context, xml, LiquibaseParser, false, 'postgresql');
-      }
-    });
+  ctx.loadLiquibase = (xmls: LiquibaseFile[]) => {
+    loadLiquibaseChangelog(context, xmls, 'postgresql');
   };
 
   ctx.getSQLDDL = (database?: Database) => {
@@ -97,6 +100,31 @@ export function useERDEditorElement(
   ctx.extension = (config: Partial<ExtensionConfig>) => {
     isArray(config.panels) &&
       editorState.panels.push(...(config.panels as PanelConfig[]));
+  };
+
+  ctx.showPrompt = showPrompt;
+
+  var progressListeners: ((message: string) => void)[] = [];
+  var progressEndListeners: (() => void)[] = [];
+
+  ctx.triggerProgress = (message: string) => {
+    progressListeners.forEach(progress => {
+      progress.call(window, message);
+    });
+  };
+
+  ctx.triggerProgressEnd = () => {
+    progressEndListeners.forEach(progress => {
+      progress.call(window);
+    });
+  };
+
+  ctx.onProgressEnd = (cb: () => void) => {
+    progressEndListeners.push(cb);
+  };
+
+  ctx.onProgress = (cb: (message: string) => void) => {
+    progressListeners.push(cb);
   };
 
   beforeMount(() =>

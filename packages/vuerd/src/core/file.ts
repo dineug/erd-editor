@@ -4,13 +4,13 @@ import domToImage from 'dom-to-image';
 import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
 import { calculateDiff } from '@/core/diff/helper';
 import { Logger } from '@/core/logger';
-import { Statement } from '@/core/parser';
 import { Dialect } from '@/core/parser/helper';
 import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
 import { createJson } from '@/core/parser/ParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
+import { LiquibaseFile } from '@@types/core/liquibaseParser';
 import { ExportedStore, Store } from '@@types/engine/store';
 
 let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
@@ -27,6 +27,10 @@ export const createJsonFormat = ({
   memo: memoState,
   relationship: relationshipState,
 });
+
+export function createStoreCopy(store: Store): ExportedStore {
+  return JSON.parse(createJsonStringify(store));
+}
 
 export const createJsonStringify = (store: Store, space?: number) =>
   JSON.stringify(
@@ -116,8 +120,46 @@ export function importJSON({ store }: ERDEditorContext) {
 }
 
 export function importSQLDDL(context: ERDEditorContext) {
-  // @ts-ignore
-  importWrapper(context, 'sql', DDLParser, false, true);
+  const importHelper = document.createElement('input');
+  importHelper.setAttribute('type', 'file');
+  importHelper.setAttribute('accept', `.sql`);
+  importHelper.addEventListener('change', event => {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length) {
+      Array.from(input.files)
+        .sort((a: File, b: File) => a.name.localeCompare(b.name))
+        .forEach(file => {
+          const regex = new RegExp(`\.(sql)$`, 'i');
+          if (regex.test(file.name)) {
+            const reader = new FileReader();
+            reader.readAsText(file);
+            reader.onload = () => {
+              const value = reader.result;
+              if (typeof value === 'string') {
+                const { helper, store } = context;
+
+                const statements = DDLParser(value);
+
+                const json = createJson(
+                  //@ts-ignore
+                  statements,
+                  helper,
+                  store.canvasState.database
+                );
+                store.dispatchSync(loadJson$(json), sortTable());
+
+                var { snapshots } = context;
+                snapshots.push(createStoreCopy(store));
+                Logger.log('SNAPSHOTS', snapshots);
+              }
+            };
+          } else {
+            alert(`Just upload the sql file`);
+          }
+        });
+    }
+  });
+  importHelper.click();
 }
 
 export function importLiquibase(context: ERDEditorContext, dialect: Dialect) {
@@ -130,85 +172,64 @@ export function importLiquibase(context: ERDEditorContext, dialect: Dialect) {
       'Found changes, are you sure you want to loose them? If you want to save changes (diff), please, make sure to EXPORT them first.\nPress OK to continue importing file, press CANCEL to abort importing.'
     )
   ) {
-    importWrapper(context, 'xml', LiquibaseParser, true, false, dialect);
-  }
-}
-
-export function createStoreCopy(store: Store): ExportedStore {
-  return JSON.parse(createJsonStringify(store));
-}
-
-export interface ParserCallback {
-  (input: string, dialect?: Dialect): Statement[];
-}
-
-export function importWrapper(
-  context: ERDEditorContext,
-  type: string,
-  parser: ParserCallback,
-  multipleFiles: boolean = false,
-  resetDiagram: boolean = true,
-  dialect?: Dialect
-) {
-  const importHelper = document.createElement('input');
-  importHelper.setAttribute('type', 'file');
-  if (multipleFiles) {
+    const importHelper = document.createElement('input');
+    importHelper.setAttribute('type', 'file');
     importHelper.setAttribute('multiple', 'true');
+    importHelper.setAttribute('accept', `.xml`);
+    importHelper.addEventListener('change', async event => {
+      const input = event.target as HTMLInputElement;
+      if (input.files && input.files.length) {
+        const files = Array.from(input.files).sort((a: File, b: File) =>
+          a.name.localeCompare(b.name)
+        );
+
+        var liquiFiles: LiquibaseFile[] = [];
+
+        for (const file of files) {
+          try {
+            liquiFiles.push({
+              path: file.name,
+              value: await loadFileSync(file, 'xml'),
+            });
+          } catch (e) {}
+        }
+
+        LiquibaseParser(context, liquiFiles, dialect);
+
+        var { snapshots } = context;
+        Logger.log('SNAPSHOTS', snapshots);
+      }
+    });
+    importHelper.click();
   }
-  importHelper.setAttribute('accept', `.${type}`);
-  importHelper.addEventListener('change', event => {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length) {
-      Array.from(input.files)
-        .sort((a: File, b: File) => a.name.localeCompare(b.name))
-        .forEach(file => {
-          const regex = new RegExp(`\.(${type})$`, 'i');
-          if (regex.test(file.name)) {
-            const reader = new FileReader();
-            reader.readAsText(file);
-            reader.onload = () => {
-              const value = reader.result;
-              if (typeof value === 'string') {
-                parseFile(context, value, parser, resetDiagram, dialect);
-              }
-            };
-          } else {
-            alert(`Just upload the ${type} file`);
-          }
-        });
-    }
-  });
-  importHelper.click();
 }
 
-export function parseFile(
+export async function loadFileSync(file: File, type: string): Promise<string> {
+  const regex = new RegExp(`\.(${type})$`, 'i');
+  if (regex.test(file.name)) {
+    return await new Promise<string>(resolve => {
+      let reader = new FileReader();
+      reader.readAsText(file);
+      reader.onload = () => {
+        const value = reader.result;
+        if (typeof value === 'string') resolve(value);
+      };
+    });
+  } else throw new Error();
+}
+
+export function loadLiquibaseChangelog(
   context: ERDEditorContext,
-  value: string,
-  parser: ParserCallback,
-  resetDiagram: boolean,
-  dialect?: Dialect
+  files: LiquibaseFile[],
+  dialect: Dialect
 ) {
-  const { store, helper } = context;
-
-  const statements = parser(value, dialect);
-
-  if (resetDiagram) {
-    const json = createJson(statements, helper, store.canvasState.database);
-    store.dispatchSync(loadJson$(json), sortTable());
-  } else {
-    var { snapshots } = context;
-    snapshots.push(createStoreCopy(store));
-
-    const json = createJson(
-      statements,
-      helper,
-      store.canvasState.database,
-      getLatestSnapshot(snapshots)
-    );
-    store.dispatchSync(loadJson$(json));
+  var root: LiquibaseFile | undefined = undefined;
+  if (files[0].path === 'changelog.xml') {
+    root = files[0];
   }
+
+  LiquibaseParser(context, files, dialect, root);
 
   var { snapshots } = context;
-  snapshots.push(createStoreCopy(store));
   Logger.log('SNAPSHOTS', snapshots);
 }

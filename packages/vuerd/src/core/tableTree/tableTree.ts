@@ -1,7 +1,8 @@
 import { Diff } from '@/core/diff';
-import { getData } from '@/core/helper';
+import { getData, uuid } from '@/core/helper';
 import { Changes, ITreeNode } from '@/core/tableTree';
 import { hideTable, showTable } from '@/engine/command/table.cmd.helper';
+import { TableModel } from '@/engine/store/models/table.model';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { Table } from '@@types/engine/store/table.state';
@@ -13,9 +14,8 @@ export class TreeNode implements ITreeNode {
   context: ERDEditorContext;
 
   id: string;
-  table: Table | null;
+  table: Table;
   open: boolean;
-  selected: boolean;
   disabled: boolean;
   parent: TreeNode | null;
   children: TreeNode[];
@@ -29,7 +29,7 @@ export class TreeNode implements ITreeNode {
   constructor(
     context: ERDEditorContext,
     id: string,
-    table: Table | null,
+    table: Table,
     parent: TreeNode | null,
     root: TreeNode | null,
     children: TreeNode[] = []
@@ -43,7 +43,7 @@ export class TreeNode implements ITreeNode {
     this.parent = parent;
     this.root = root;
     this.children = children;
-    this.selected = this.verifySelected();
+    // this.selected = this.verifySelected();
     this.changes = 'none';
     this.nestedChanges = 'none';
     this.diffs = [];
@@ -65,17 +65,6 @@ export class TreeNode implements ITreeNode {
   }
 
   /**
-   * Checks if node should be selected
-   * @returns True if table is visible
-   */
-  verifySelected(): boolean {
-    if (!this.root) return false;
-    if (this.disabled) return false;
-
-    return this.table?.visible ? true : false;
-  }
-
-  /**
    * Toggles between open/closed state
    * @returns True if toggle was succesfull
    */
@@ -90,45 +79,24 @@ export class TreeNode implements ITreeNode {
   }
 
   /**
-   * Toggles between selected/unselected state
+   * Toggles between visible/hidden state
    * @returns True if toggle was succesfull
    */
-  toggleSelect(): boolean {
+  toggleVisible(): boolean {
     if (this.disabled) return false;
-    this.selectChildren(this.root, this.id, !this.selected);
+
+    this.setVisible(!this.table.visible);
     return true;
   }
 
   /**
-   * Recursively traverses all nodes and toggles selected/unselected state if ID is matched
-   * @param node Node to be traversed
-   * @param id Id of table to select/unselect
+   * Setter for visible
    */
-  selectChildren(node: TreeNode | null, id: string, selected: boolean) {
-    if (!node) return;
-    if (node.disabled) return;
-
-    if (node.id === id) {
-      node.setSelected(selected);
-    }
-
-    node.children.forEach(child => {
-      node.selectChildren(child, id, selected);
-    });
-  }
-
-  /**
-   * Setter for selected
-   */
-  setSelected(selected: boolean) {
-    this.selected = selected;
-
-    if (this.table && this.parent === this.root) {
-      if (selected) {
-        this.context.store.dispatch(showTable(this.table.id));
-      } else {
-        this.context.store.dispatch(hideTable(this.table.id));
-      }
+  setVisible(visible: boolean) {
+    if (visible) {
+      this.context.store.dispatch(showTable(this.table.id));
+    } else {
+      this.context.store.dispatch(hideTable(this.table.id));
     }
   }
 
@@ -168,6 +136,7 @@ export const generateRoot = (
   const { store } = context;
   const { tables } = store.tableState;
 
+  //@ts-ignore
   var root = new TreeNode(context, '', null, null, null);
   root.children.push(
     ...tables.map(table => {

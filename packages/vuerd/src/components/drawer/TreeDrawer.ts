@@ -299,8 +299,8 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
    */
   ctx.hideAll = () => {
     state.root?.children.forEach(child => {
-      if (child.selected) {
-        child.toggleSelect();
+      if (child.table.visible) {
+        child.toggleVisible();
       }
     });
     updateTree();

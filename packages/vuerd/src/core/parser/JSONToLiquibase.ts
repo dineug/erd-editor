@@ -21,7 +21,6 @@ import {
 } from '@/core/parser/helper';
 import { orderByNameASC } from '@/engine/store/helper/table.helper';
 import { ExportedStore, Store } from '@@types/engine/store';
-import { Database } from '@@types/engine/store/canvas.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import {
   Column,
@@ -40,18 +39,19 @@ const xsiSchemaLocation =
  */
 export function createLiquibase(
   store: Store,
-  snapshot?: ExportedStore,
-  database?: Database
+  id: string,
+  name: string,
+  snapshot?: ExportedStore
 ): string {
-  const currentDatabase = database ? database : store.canvasState.database;
+  const currentDatabase = store.canvasState.database;
 
   var changeSets: XMLNode[];
 
   switch (currentDatabase) {
     case 'PostgreSQL':
       const author: Author = {
-        id: prompt('Please enter the name of changeset') || 'unknown',
-        name: prompt('Please enter your name') || 'unknown',
+        id: id,
+        name: name,
       };
 
       changeSets = createXMLPostgreOracleMSS(store, snapshot, author);

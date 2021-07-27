@@ -9,10 +9,8 @@ import { styleMap } from 'lit-html/directives/style-map';
 
 import { onPreventDefault } from '@/core/helper/dom.helper';
 import { useContext } from '@/core/hooks/context.hook';
-import { Changes } from '@/core/tableTree';
 import { TreeNode } from '@/core/tableTree/tableTree';
 import { css } from '@/core/tagged';
-import { focusTable, focusTableEnd } from '@/engine/command/editor.cmd.helper';
 import {
   moveTable,
   selectEndTable,
@@ -26,7 +24,6 @@ declare global {
 }
 
 export interface TreeTableProps {
-  changes: Changes;
   node: TreeNode;
   update: {
     (): void;
@@ -55,12 +52,12 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
    * Toggle open/close and select/unselect state of a single node
    */
   const toggleNode = () => {
-    if (!props.node.open && props.node.selected) {
+    if (!props.node.open && props.node.table.visible) {
       if (props.node.toggleOpen()) props.update();
-    } else if (props.node.open && !props.node.selected) {
-      if (props.node.toggleSelect()) props.update();
+    } else if (props.node.open && !props.node.table.visible) {
+      if (props.node.toggleVisible()) props.update();
     } else {
-      if (props.node.toggleSelect() && props.node.toggleOpen()) props.update();
+      if (props.node.toggleVisible() && props.node.toggleOpen()) props.update();
     }
   };
 
@@ -68,7 +65,7 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
    * Toggle select/unselect state of a single node
    */
   const toggleSelectNode = () => {
-    if (props.node.toggleSelect()) props.update();
+    if (props.node.toggleVisible()) props.update();
   };
 
   /**
@@ -78,7 +75,7 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
   const onDragEnd = (ev: MouseEvent) => {
     if (!props.node.table) return;
 
-    if (props.node.selected || props.node.disabled) return;
+    if (props.node.table.visible || props.node.disabled) return;
 
     const { store } = contextRef.value;
     const { height, width, scrollTop, scrollLeft, zoomLevel } =
@@ -129,20 +126,24 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
     </vuerd-icon>
 
     <span
-      draggable="${props.node.disabled || props.node.selected
+      draggable="${props.node.disabled ||
+      !props.node.table ||
+      props.node.table.visible
         ? 'false'
         : 'true'}"
       @dragend=${onDragEnd}
       @click=${toggleNode}
       style=${styleMap({
-        backgroundColor: props.node.selected
-          ? 'var(--vuerd-color-contextmenu-active)'
-          : '',
+        backgroundColor:
+          props.node.table.visible && !props.node.disabled
+            ? 'var(--vuerd-color-contextmenu-active)'
+            : '',
         color: props.node.disabled ? 'var(--vuerd-color-font-placeholder)' : '',
-        cursor: !props.node.selected ? 'grab' : 'pointer',
+        cursor:
+          props.node.disabled || props.node.table.visible ? 'pointer' : 'grab',
       })}
     >
-      ${props.node.table?.name}
+      ${props.node.table.name}
     </span>
 
     ${props.node.nestedChanges !== 'none'
@@ -163,7 +164,9 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
       ? html`
           <vuerd-icon
             id="eye"
-            name="eye${props.node.selected === state.iconHover ? '-slash' : ''}"
+            name="eye${props.node.table.visible === state.iconHover
+              ? '-slash'
+              : ''}"
             size="15"
             @click=${toggleSelectNode}
             @mouseover=${() => (state.iconHover = true)}

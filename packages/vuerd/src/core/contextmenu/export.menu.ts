@@ -67,13 +67,30 @@ export const createExportMenus = (
       },
       name: 'Liquibase',
       execute: () => {
-        const liquibase = createLiquibase(store, getLatestSnapshot(snapshots));
+        if (store.canvasState.database === 'PostgreSQL') {
+          const editor = document.querySelector('erd-editor');
 
-        exportXML(liquibase, store.canvasState.databaseName);
+          editor?.showPrompt('Please enter the name of changeset:', id =>
+            editor?.showPrompt('Please enter name of the author:', name => {
+              const liquibase = createLiquibase(
+                store,
+                id,
+                name,
+                getLatestSnapshot(snapshots)
+              );
 
-        if (liquibase) {
-          snapshots.push(createStoreCopy(store));
-          console.log('AFTER', snapshots);
+              exportXML(liquibase, store.canvasState.databaseName);
+
+              if (liquibase) {
+                snapshots.push(createStoreCopy(store));
+                console.log('AFTER', snapshots);
+              }
+            })
+          );
+        } else {
+          alert(
+            `Export from ${store.canvasState.database} dialect not supported, please use PostgreSQL`
+          );
         }
       },
     },
