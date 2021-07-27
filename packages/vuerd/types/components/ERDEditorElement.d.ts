@@ -28,8 +28,6 @@ export interface ERDEditorElement extends ERDEditorProps, HTMLElement {
   extension(config: Partial<ExtensionConfig>): void;
   treeDrawerRef: TreeDrawerElement;
   showPrompt: showPromptDef;
-  onProgress(cb: (message: string) => void): void;
-  onProgressEnd(cb: () => void): void;
   triggerProgress(message: string): void;
   triggerProgressEnd(): void;
 }

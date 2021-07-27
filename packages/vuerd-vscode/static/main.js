@@ -74,7 +74,7 @@
           editor.setKeymap(message.value.keymap);
           break;
         case 'loadLiquibase':
-          editor.loadLiquibase(message.value)
+          editor.loadLiquibase(message.value);
           break;
       }
     } else if (message.type) {
@@ -116,18 +116,18 @@
     }
   });
 
-  editor.onProgress((message) => {
+  editor.addEventListener('liquibase-progress', event => {
     vscode.postMessage({
       command: 'progress',
-      message: message,
+      message: event.detail,
     });
-  })
+  });
 
-  editor.onProgressEnd(() => {
+  editor.addEventListener('liquibase-progress-end', () => {
     vscode.postMessage({
       command: 'progressEnd',
     });
-  })
+  });
 
   vscode.postMessage({
     command: 'getValue',

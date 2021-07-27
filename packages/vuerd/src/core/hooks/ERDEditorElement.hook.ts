@@ -104,28 +104,15 @@ export function useERDEditorElement(
 
   ctx.showPrompt = showPrompt;
 
-  var progressListeners: ((message: string) => void)[] = [];
-  var progressEndListeners: (() => void)[] = [];
+  ctx.triggerProgress = (message: string) =>
+    ctx.dispatchEvent(
+      new CustomEvent('liquibase-progress', {
+        detail: message,
+      })
+    );
 
-  ctx.triggerProgress = (message: string) => {
-    progressListeners.forEach(progress => {
-      progress.call(window, message);
-    });
-  };
-
-  ctx.triggerProgressEnd = () => {
-    progressEndListeners.forEach(progress => {
-      progress.call(window);
-    });
-  };
-
-  ctx.onProgressEnd = (cb: () => void) => {
-    progressEndListeners.push(cb);
-  };
-
-  ctx.onProgress = (cb: (message: string) => void) => {
-    progressListeners.push(cb);
-  };
+  ctx.triggerProgressEnd = () =>
+    ctx.dispatchEvent(new CustomEvent('liquibase-progress-end'));
 
   beforeMount(() =>
     unmountedGroup.push(
