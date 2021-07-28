@@ -1,4 +1,4 @@
-import { themes } from '@storybook/theming';
+import { theme } from './one-dark.theme';
 
 export const parameters = {
   actions: { argTypesRegex: '^on[A-Z].*' },
@@ -9,6 +9,6 @@ export const parameters = {
     },
   },
   docs: {
-    theme: themes.dark,
+    theme,
   },
 };
