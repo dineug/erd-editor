@@ -4,15 +4,22 @@ import {
   defineComponent,
   FunctionalComponent,
   html,
+  observable,
+  watch,
 } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 import { styleMap } from 'lit-html/directives/style-map';
 
 import { Bus } from '@/core/helper/eventBus.helper';
+import { useColorPicker } from '@/core/hooks/colorPicker.hook';
 import { useContext } from '@/core/hooks/context.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { SIZE_TABLE_BORDER, SIZE_TABLE_PADDING } from '@/core/layout';
-import { moveTable, selectTable$ } from '@/engine/command/table.cmd.helper';
+import {
+  changeColorTable,
+  moveTable,
+  selectTable$,
+} from '@/engine/command/table.cmd.helper';
 import { relationshipSort } from '@/engine/store/helper/relationship.helper';
 import { Move } from '@/internal-types/event.helper';
 import { Table } from '@@types/engine/store/table.state';
@@ -40,6 +47,8 @@ const HighLevelTable: FunctionalComponent<
 > = (props, ctx) => {
   const contextRef = useContext(ctx);
   const { unmountedGroup } = useUnmounted();
+  const state = observable({ color: '' });
+  useColorPicker('.vuerd-table-header-color', ctx, state);
   let leftTween: Tween<{ left: number }> | null = null;
   let topTween: Tween<{ top: number }> | null = null;
 
@@ -127,9 +136,15 @@ const HighLevelTable: FunctionalComponent<
   };
 
   beforeMount(() => {
-    const { eventBus } = contextRef.value;
+    const { eventBus, store } = contextRef.value;
     unmountedGroup.push(
-      eventBus.on(Bus.BalanceRange.move).subscribe(moveBalance)
+      eventBus.on(Bus.BalanceRange.move).subscribe(moveBalance),
+      watch(state, propName => {
+        if (propName !== 'color') return;
+        store.dispatch(
+          changeColorTable(store, true, state.color, props.table.id)
+        );
+      })
     );
   });
 
