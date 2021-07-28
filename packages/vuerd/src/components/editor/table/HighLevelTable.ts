@@ -137,6 +137,8 @@ const HighLevelTable: FunctionalComponent<
 
   beforeMount(() => {
     const { eventBus, store } = contextRef.value;
+    state.color = props.table.ui.color || '';
+
     unmountedGroup.push(
       eventBus.on(Bus.BalanceRange.move).subscribe(moveBalance),
       watch(state, propName => {
