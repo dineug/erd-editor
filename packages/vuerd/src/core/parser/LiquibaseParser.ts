@@ -11,7 +11,8 @@ import {
 import { Column, IndexColumn, Statement } from '@/core/parser/index';
 import { createJson } from '@/core/parser/ParserToJson';
 import { zoomCanvas } from '@/engine/command/canvas.cmd.helper';
-import { loadJson$ } from '@/engine/command/editor.cmd.helper.gen';
+import { initLoadJson$ } from '@/engine/command/editor.cmd.helper.gen';
+import { recalculatingTableWidth } from '@/engine/store/helper/table.helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { LiquibaseFile } from '@@types/core/liquibaseParser';
 
@@ -30,11 +31,11 @@ export const LiquibaseParser = (
   dialect: Dialect = defaultDialect,
   rootFile?: LiquibaseFile
 ) => {
-  console.log('PARSING...', files);
-
-  const { store, eventBus } = context;
+  const { store, eventBus, helper, snapshots } = context;
   const zoom = store.canvasState.zoomLevel;
+
   store.dispatchSync(zoomCanvas(0.7));
+  snapshots.push(createStoreCopy(store));
 
   setTimeout(async () => {
     async function parseFile(file: LiquibaseFile) {
@@ -82,11 +83,17 @@ export const LiquibaseParser = (
     if (rootFile) {
       await parseFile(rootFile);
     } else {
-      files.forEach(file => parseFile(file));
+      for (const file of files) {
+        await parseFile(file);
+      }
     }
 
-    store.dispatchSync(zoomCanvas(zoom));
     eventBus.emit(Bus.Liquibase.progressEnd);
+
+    setTimeout(async () => {
+      recalculatingTableWidth(store.tableState.tables, helper);
+      store.dispatchSync(zoomCanvas(zoom));
+    }, 0);
   }, 10);
 };
 
@@ -95,7 +102,6 @@ export const applyStatements = (
   statements: Statement[]
 ) => {
   var { snapshots, store, helper } = context;
-  snapshots.push(createStoreCopy(store));
 
   const json = createJson(
     statements,
@@ -103,7 +109,8 @@ export const applyStatements = (
     store.canvasState.database,
     getLatestSnapshot(snapshots)
   );
-  store.dispatchSync(loadJson$(json));
+
+  store.dispatchSync(initLoadJson$(json));
 
   snapshots.push(createStoreCopy(store));
 };

@@ -133,7 +133,7 @@
     command: 'getValue',
   });
 
-  vscode.postMessage({
-    command: 'loadLiquibase',
-  });
+  // vscode.postMessage({
+  //   command: 'loadLiquibase',
+  // });
 })();
