@@ -41,6 +41,7 @@ enum Contextmenu {
 
 enum ColorPicker {
   close = 'ColorPicker.close',
+  open = 'ColorPicker.open',
 }
 
 enum Liquibase {

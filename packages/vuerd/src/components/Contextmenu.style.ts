@@ -46,7 +46,6 @@ export const ContextmenuStyle = css`
   }
   .vuerd-contextmenu > li > span.name {
     width: 70px;
-    height: 17px;
   }
   .vuerd-contextmenu > li > span.keymap {
     width: 60px;
