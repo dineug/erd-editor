@@ -15,6 +15,7 @@ import { useUnmounted } from '@/core/hooks/unmounted.hook';
 
 interface Props {
   color: string;
+  id?: string;
 }
 
 export function useColorPicker(
@@ -31,7 +32,9 @@ export function useColorPicker(
   let toggle = false;
   let container: Element | null = null;
 
-  const onShow = () => {
+  const onShow = (id?: string) => {
+    if (id && id !== props.id) return;
+
     colorPicker = ColorPickerUI.create({
       type: 'sketch',
       position: 'inline',
@@ -80,7 +83,10 @@ export function useColorPicker(
 
   beforeMount(() => {
     const { eventBus } = contextRef.value;
-    unmountedGroup.push(eventBus.on(Bus.ColorPicker.close).subscribe(onHide));
+    unmountedGroup.push(
+      eventBus.on(Bus.ColorPicker.close).subscribe(onHide),
+      eventBus.on(Bus.ColorPicker.open).subscribe(onShow)
+    );
   });
 
   mounted(() => {

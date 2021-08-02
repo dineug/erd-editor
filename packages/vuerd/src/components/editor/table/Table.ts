@@ -76,7 +76,7 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
   );
   const draggable$ = new Subject<CustomEvent<DragoverColumnDetail>>();
   const { unmountedGroup } = useUnmounted();
-  const state = observable({ color: '' });
+  const state = observable({ color: '', id: props.table?.id });
   useColorPicker('.vuerd-table-header-color', ctx, state);
   let leftTween: Tween<{ left: number }> | null = null;
   let topTween: Tween<{ top: number }> | null = null;
@@ -250,6 +250,8 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
     const { table } = props;
     const { ui, columns } = table;
     const widthColumn = table.maxWidthColumn();
+
+    state.id = table.id;
 
     return html`
       <div

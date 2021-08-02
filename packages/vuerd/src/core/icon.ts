@@ -3,6 +3,7 @@ import {
   faChevronRight,
   faCode,
   faCog,
+  faColumns,
   faEye,
   faEyeSlash,
   faFileCode,
@@ -13,6 +14,7 @@ import {
   faKey,
   faList,
   faMousePointer,
+  faPalette,
   faPlus,
   faProjectDiagram,
   faQuestion,
@@ -35,6 +37,7 @@ import {
   mdiFormatLetterCase,
   mdiPalette,
   mdiTableCog,
+  mdiVectorLine,
   mdiXml,
 } from '@mdi/js';
 
@@ -73,6 +76,8 @@ const icons = [
   faCode,
   faSyncAlt,
   faTree,
+  faPalette,
+  faColumns,
   createMDI('code-json', mdiCodeJson),
   createMDI('database', mdiDatabase),
   createMDI('database-import', mdiDatabaseImport),
@@ -83,6 +88,7 @@ const icons = [
   createMDI('code-brackets', mdiCodeBrackets),
   createMDI('xml', mdiXml),
   createMDI('dots-vertical', mdiDotsVertical),
+  createMDI('vector-line', mdiVectorLine),
 ] as IconDefinition[];
 
 export const getIcon = (prefix: string, iconName: string) =>
