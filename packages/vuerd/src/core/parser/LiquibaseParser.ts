@@ -36,7 +36,10 @@ export const LiquibaseParser = (
 
   store.dispatchSync(zoomCanvas(0.7));
   store.canvasState.zoomLevel = 0.7;
-  createSnapshot(context);
+  createSnapshot(context, {
+    filename: rootFile?.path || '',
+    type: 'before-import',
+  });
 
   setTimeout(async () => {
     async function parseFile(file: LiquibaseFile) {
@@ -54,7 +57,7 @@ export const LiquibaseParser = (
 
       for (const element of databaseChangeLog.children) {
         if (element.tagName === 'changeSet') {
-          handleChangeSetParsing(element);
+          handleChangeSetParsing(element, file);
         } else if (element.tagName === 'include') {
           await handleImportParsing(element, file);
         }
@@ -72,12 +75,17 @@ export const LiquibaseParser = (
       if (dstFile) await parseFile(dstFile);
     }
 
-    function handleChangeSetParsing(element: Element) {
+    function handleChangeSetParsing(element: Element, file: LiquibaseFile) {
       const dbms: string = element.getAttribute('dbms') || '';
       if (dbms === '' || dbms == dialect) {
         var statements: Statement[] = [];
-        if (parseChangeSet(element, statements, dialect))
+        if (parseChangeSet(element, statements, dialect)) {
+          createSnapshot(context, {
+            filename: file.path,
+            type: 'before-import',
+          });
           applyStatements(context, statements);
+        }
       }
     }
 
@@ -94,7 +102,10 @@ export const LiquibaseParser = (
     setTimeout(async () => {
       recalculatingTableWidth(store.tableState.tables, helper);
       store.dispatchSync(zoomCanvas(zoom));
-      createSnapshot(context);
+      createSnapshot(context, {
+        filename: rootFile?.path || '',
+        type: 'after-import',
+      });
     }, 0);
   }, 10);
 };
@@ -104,8 +115,6 @@ export const applyStatements = (
   statements: Statement[]
 ) => {
   var { store, helper } = context;
-
-  createSnapshot(context);
 
   const json = createJson(
     statements,

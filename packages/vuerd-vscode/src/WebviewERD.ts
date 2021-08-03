@@ -202,6 +202,7 @@ export default class WebviewERD {
       }
     );
 
+    console.log(liquibaseFiles.map(f => f.path));
     webview.postMessage({
       command: 'loadLiquibase',
       value: { files: liquibaseFiles, type: 'vscode' },
