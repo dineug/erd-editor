@@ -204,7 +204,7 @@ export default class WebviewERD {
 
     webview.postMessage({
       command: 'loadLiquibase',
-      value: liquibaseFiles,
+      value: { files: liquibaseFiles, type: 'vscode' },
     });
   };
 }

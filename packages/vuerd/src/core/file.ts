@@ -10,7 +10,7 @@ import { createJson } from '@/core/parser/ParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
-import { LiquibaseFile } from '@@types/core/liquibaseParser';
+import { LiquibaseFile, LoadLiquibaseData } from '@@types/core/liquibaseParser';
 import { ExportedStore, Store } from '@@types/engine/store';
 
 let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
@@ -195,9 +195,6 @@ export function importLiquibase(context: IERDEditorContext, dialect: Dialect) {
         }
 
         LiquibaseParser(context, liquiFiles, dialect);
-
-        var { snapshots } = context;
-        Logger.log('SNAPSHOTS', snapshots);
       }
     });
     importHelper.click();
@@ -220,16 +217,13 @@ export async function loadFileSync(file: File, type: string): Promise<string> {
 
 export function loadLiquibaseChangelog(
   context: IERDEditorContext,
-  files: LiquibaseFile[],
+  { files, type }: LoadLiquibaseData,
   dialect: Dialect
 ) {
   var root: LiquibaseFile | undefined = undefined;
-  if (files[0].path === 'changelog.xml') {
+  if (type === 'vscode' && files[0].path === 'changelog.xml') {
     root = files[0];
   }
 
   LiquibaseParser(context, files, dialect, root);
-
-  var { snapshots } = context;
-  Logger.log('SNAPSHOTS', snapshots);
 }

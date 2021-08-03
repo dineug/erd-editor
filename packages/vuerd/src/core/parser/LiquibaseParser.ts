@@ -32,9 +32,10 @@ export const LiquibaseParser = (
   rootFile?: LiquibaseFile
 ) => {
   const { store, eventBus, helper, snapshots } = context;
-  const zoom = store.canvasState.zoomLevel;
+  const zoom = JSON.parse(JSON.stringify(store.canvasState.zoomLevel));
 
   store.dispatchSync(zoomCanvas(0.7));
+  store.canvasState.zoomLevel = 0.7;
   snapshots.push(createStoreCopy(store));
 
   setTimeout(async () => {
@@ -93,6 +94,7 @@ export const LiquibaseParser = (
     setTimeout(async () => {
       recalculatingTableWidth(store.tableState.tables, helper);
       store.dispatchSync(zoomCanvas(zoom));
+      snapshots.push(createStoreCopy(store));
     }, 0);
   }, 10);
 };
@@ -103,6 +105,8 @@ export const applyStatements = (
 ) => {
   var { snapshots, store, helper } = context;
 
+  snapshots.push(createStoreCopy(store));
+
   const json = createJson(
     statements,
     helper,
@@ -111,8 +115,6 @@ export const applyStatements = (
   );
 
   store.dispatchSync(initLoadJson$(json));
-
-  snapshots.push(createStoreCopy(store));
 };
 
 export const parseChangeSet = (
