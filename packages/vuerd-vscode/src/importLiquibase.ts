@@ -78,7 +78,7 @@ export const loadNestedIncludes = (
 
     try {
       files.push({
-        path: path.relative(rootUri, includeFullPath).replace('\\', '/'),
+        path: path.relative(rootUri, includeFullPath).replace(/\\/g, '/'),
         value: fs.readFileSync(includeFullPath, 'utf8'),
       });
       files.push(...loadNestedIncludes(includeFullPath, rootUri));
