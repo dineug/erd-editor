@@ -173,7 +173,7 @@ export default class WebviewERD {
               currentFile++;
               progress.report({
                 increment: increment,
-                message: message.message,
+                message: `[${currentFile}/${liquibaseFiles.length}] ${message.message}`,
               });
             } else if (message.command === 'progressEnd') {
               console.log('Done loading files');
@@ -195,7 +195,7 @@ export default class WebviewERD {
 
         progress.report({
           increment: currentFile,
-          message: liquibaseFiles[0].path,
+          message: `Please open Vuerd to import Liquibase changes.`,
         });
 
         return returnPromise;
