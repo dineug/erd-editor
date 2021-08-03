@@ -1,5 +1,5 @@
 import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
-import { createStoreCopy } from '@/core/file';
+import { createSnapshot } from '@/core/file';
 import { Bus } from '@/core/helper/eventBus.helper';
 import {
   Constraints,
@@ -31,12 +31,12 @@ export const LiquibaseParser = (
   dialect: Dialect = defaultDialect,
   rootFile?: LiquibaseFile
 ) => {
-  const { store, eventBus, helper, snapshots } = context;
+  const { store, eventBus, helper } = context;
   const zoom = JSON.parse(JSON.stringify(store.canvasState.zoomLevel));
 
   store.dispatchSync(zoomCanvas(0.7));
   store.canvasState.zoomLevel = 0.7;
-  snapshots.push(createStoreCopy(store));
+  createSnapshot(context);
 
   setTimeout(async () => {
     async function parseFile(file: LiquibaseFile) {
@@ -94,7 +94,7 @@ export const LiquibaseParser = (
     setTimeout(async () => {
       recalculatingTableWidth(store.tableState.tables, helper);
       store.dispatchSync(zoomCanvas(zoom));
-      snapshots.push(createStoreCopy(store));
+      createSnapshot(context);
     }, 0);
   }, 10);
 };
@@ -103,15 +103,15 @@ export const applyStatements = (
   context: IERDEditorContext,
   statements: Statement[]
 ) => {
-  var { snapshots, store, helper } = context;
+  var { store, helper } = context;
 
-  snapshots.push(createStoreCopy(store));
+  createSnapshot(context);
 
   const json = createJson(
     statements,
     helper,
     store.canvasState.database,
-    getLatestSnapshot(snapshots)
+    getLatestSnapshot(context)?.data
   );
 
   store.dispatchSync(initLoadJson$(json));

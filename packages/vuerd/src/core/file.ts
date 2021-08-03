@@ -12,6 +12,7 @@ import { sortTable } from '@/engine/command/table.cmd.helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { LiquibaseFile, LoadLiquibaseData } from '@@types/core/liquibaseParser';
 import { ExportedStore, Store } from '@@types/engine/store';
+import { SnapshotMetadata } from '@@types/engine/store/snapshot';
 
 let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
   null;
@@ -27,6 +28,17 @@ export const createJsonFormat = ({
   memo: memoState,
   relationship: relationshipState,
 });
+
+export function createSnapshot(
+  context: IERDEditorContext,
+  metadata?: SnapshotMetadata
+) {
+  context.snapshots.push({
+    data: createStoreCopy(context.store),
+    metadata: metadata,
+  });
+  getLatestSnapshot;
+}
 
 export function createStoreCopy(store: Store): ExportedStore {
   return JSON.parse(createJsonStringify(store));
@@ -149,7 +161,7 @@ export function importSQLDDL(context: IERDEditorContext) {
                 store.dispatchSync(loadJson$(json), sortTable());
 
                 var { snapshots } = context;
-                snapshots.push(createStoreCopy(store));
+                createSnapshot(context);
                 Logger.log('SNAPSHOTS', snapshots);
               }
             };
@@ -163,7 +175,7 @@ export function importSQLDDL(context: IERDEditorContext) {
 }
 
 export function importLiquibase(context: IERDEditorContext, dialect: Dialect) {
-  const snapshot = getLatestSnapshot(context.snapshots);
+  const snapshot = getLatestSnapshot(context);
 
   if (
     !snapshot ||

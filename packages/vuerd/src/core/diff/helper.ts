@@ -4,11 +4,11 @@ import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
 import { Diff } from '@/core/diff';
 import { createStoreCopy } from '@/core/file';
 import { getData } from '@/core/helper';
-import { ERDEditorContext } from '@@types/index';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 
-export function calculateDiff(context: ERDEditorContext): Diff[] {
+export function calculateDiff(context: IERDEditorContext): Diff[] {
   const newest = createStoreCopy(context.store);
-  const snapshot = getLatestSnapshot(context.snapshots);
+  const snapshot = getLatestSnapshot(context)?.data;
   if (!snapshot) return [];
 
   const newTables = newest.table.tables;

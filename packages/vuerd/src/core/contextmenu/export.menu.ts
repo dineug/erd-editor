@@ -1,6 +1,6 @@
 import {
   createJsonStringify,
-  createStoreCopy,
+  createSnapshot,
   exportJSON,
   exportPNG,
   exportSQLDDL,
@@ -10,7 +10,7 @@ import { createLiquibase } from '@/core/parser/JSONToLiquibase';
 import { createDDL } from '@/core/sql/ddl';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
-import { ExportedStore } from '@@types/engine/store';
+import { Snapshot } from '@@types/engine/store/snapshot';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 60,
@@ -18,16 +18,17 @@ const defaultOptions: MenuOptions = {
 };
 
 export const getLatestSnapshot = (
-  snapshots: ExportedStore[]
-): ExportedStore | undefined => {
-  return snapshots[snapshots.length - 1];
+  context: IERDEditorContext
+): Snapshot | undefined => {
+  return context.snapshots[context.snapshots.length - 1];
 };
 
 export const createExportMenus = (
-  { store, snapshots, showPrompt }: IERDEditorContext,
+  context: IERDEditorContext,
   canvas: Element
-): Menu[] =>
-  [
+): Menu[] => {
+  const { store, snapshots, showPrompt } = context;
+  return [
     {
       icon: {
         prefix: 'mdi',
@@ -74,13 +75,13 @@ export const createExportMenus = (
                 store,
                 id,
                 name,
-                getLatestSnapshot(snapshots)
+                getLatestSnapshot(context)?.data
               );
 
               exportXML(liquibase, store.canvasState.databaseName);
 
               if (liquibase) {
-                snapshots.push(createStoreCopy(store));
+                createSnapshot(context);
                 console.log('AFTER', snapshots);
               }
             })
@@ -93,3 +94,4 @@ export const createExportMenus = (
       },
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));
+};
