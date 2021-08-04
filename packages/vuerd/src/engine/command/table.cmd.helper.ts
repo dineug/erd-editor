@@ -6,8 +6,6 @@ import { Store } from '@@types/engine/store';
 import { Point } from '@@types/engine/store/relationship.state';
 import { PureTable } from '@@types/engine/store/table.state';
 
-import { ColumnModel } from '../store/models/column.model';
-import { loadColumn } from './column.cmd.helper';
 import { createCommand } from './helper';
 
 export * from './table.cmd.helper.gen';
