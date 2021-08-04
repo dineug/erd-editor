@@ -50,7 +50,7 @@ export function createLiquibase(
   switch (currentDatabase) {
     case 'PostgreSQL':
       const author: Author = {
-        id: id,
+        id: id.replace(/\.xml$/, ''),
         name: name,
       };
 
@@ -114,7 +114,8 @@ export const createXMLPostgreOracleMSS = (
   for (let i = snapshots.length - 1; i >= 0; i--) {
     if (
       snapshots[i].metadata?.type === 'before-import' &&
-      snapshots[i].metadata?.filename === author.id
+      snapshots[i].metadata?.filename.replace(/\.xml$/, '').toLowerCase() ===
+        author.id.toLowerCase()
     ) {
       newSnap = snapshots[i + 1];
       oldSnap = snapshots[i];
