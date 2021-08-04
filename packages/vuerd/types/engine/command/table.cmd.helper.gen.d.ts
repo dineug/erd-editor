@@ -1,3 +1,4 @@
+import { Helper } from '../../core/helper';
 import { Store } from '../store';
 import { drawStartAddRelationship$ } from './editor.cmd.helper';
 import { CommandType } from './index';
@@ -29,3 +30,8 @@ export declare function selectTable$(
 export declare function selectEndTable$(): Generator<
   CommandType<'table.selectEnd'> | CommandType<'editor.focusTableEnd'>
 >;
+
+export declare function addTableDefault$(
+  tableId: string,
+  helper: Helper
+): Generator<CommandType<'column.load'>>;
