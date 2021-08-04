@@ -31,7 +31,6 @@
     "editor.codeActionsOnSave": {
       "source.fixAll": true
     },
-    "editor.fontFamily": "Cascadia Code, JetBrains Mono, D2Coding, Menlo, Monaco, 'Courier New', monospace",
     "editor.tabSize": 2,
     "editor.suggestSelection": "first",
     "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -60,7 +59,8 @@
       "davidanson.vscode-markdownlint",
       "esbenp.prettier-vscode",
       "visualstudioexptteam.vscodeintellicode",
-      "jpoissonnier.vscode-styled-components"
+      "jpoissonnier.vscode-styled-components",
+      "dineug.vuerd-vscode"
     ]
   }
 }
