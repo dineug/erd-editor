@@ -1,5 +1,4 @@
-import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
-import { calculateDiff } from '@/core/diff/helper';
+import { calculateDiff, mergeDiffs } from '@/core/diff/helper';
 import { getData } from '@/core/helper';
 import { Logger } from '@/core/logger';
 import {
@@ -76,15 +75,30 @@ export const createXMLPostgreOracleMSS = (
   context: IERDEditorContext,
   author: Author
 ): XMLNode[] => {
-  const snapshot = getLatestSnapshot(context)?.data;
   const { snapshots, store } = context;
   const { tableState, relationshipState } = store;
 
-  console.log(snapshots);
+  // check if no previous snapshots (if size==1 --> first snapshot is the current state)
+  if (snapshots.length <= 1) {
+    return [
+      createSequences(tableState, author),
+      ...supportedDialects.map(dbName =>
+        createChangeSet({
+          dialect: dbName,
+          tableState,
+          relationshipState,
+          author,
+        })
+      ),
+    ];
+  }
+
+  Logger.log('Tables were changed, generating diff...');
+  Logger.log({ snapshots });
 
   var oldSnap = snapshots[snapshots.length - 1];
   var newSnap = snapshots[snapshots.length - 1];
-  for (let i = snapshots.length - 1; i >= 0; i--) {
+  for (let i = snapshots.length - 1; i > 0; i--) {
     if (snapshots[i].metadata?.type === 'user') {
       newSnap = snapshots[i];
       oldSnap = snapshots[i - 1];
@@ -92,8 +106,8 @@ export const createXMLPostgreOracleMSS = (
     }
   }
 
-  const diffs1 = calculateDiff(oldSnap.data, newSnap.data);
-  console.log({ diffs1 });
+  const latestDiff = calculateDiff(oldSnap.data, newSnap.data);
+  Logger.log({ latestDiff });
 
   var oldSnap = snapshots[snapshots.length - 1];
   var newSnap = snapshots[snapshots.length - 1];
@@ -115,31 +129,13 @@ export const createXMLPostgreOracleMSS = (
     }
   }
 
-  const diffs2 = calculateDiff(oldSnap.data, newSnap.data);
-  console.log({ diffs2, oldSnap, newSnap });
+  const historicalDiff = calculateDiff(oldSnap.data, newSnap.data);
+  Logger.log({ historicalDiff, oldSnap, newSnap });
 
-  if (snapshot && snapshot.table !== tableState) {
-    let changeSets: XMLNode[] = [];
-    Logger.log('Tables were changed, generating diff...');
-
-    changeSets.push(...createTableDiff({ author, diffs: diffs1 }));
-
-    Logger.log('DIFF:', changeSets[changeSets.length - 1]);
-
-    return changeSets;
-  } else {
-    return [
-      createSequences(tableState, author),
-      ...supportedDialects.map(dbName =>
-        createChangeSet({
-          dialect: dbName,
-          tableState,
-          relationshipState,
-          author,
-        })
-      ),
-    ];
-  }
+  return createTableDiff({
+    author,
+    diffs: mergeDiffs(latestDiff, historicalDiff),
+  });
 };
 
 function generateChangeSetSequence(author: Author): XMLNode {
