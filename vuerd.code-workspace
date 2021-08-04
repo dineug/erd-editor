@@ -51,5 +51,16 @@
     "javascript.format.enable": false,
     "lit-plugin.rules.no-invalid-css": "off",
     "lit-plugin.rules.no-incompatible-type-binding": "off"
+  },
+  "extensions": {
+    "recommendations": [
+      "editorconfig.editorconfig",
+      "dbaeumer.vscode-eslint",
+      "runem.lit-plugin",
+      "davidanson.vscode-markdownlint",
+      "esbenp.prettier-vscode",
+      "visualstudioexptteam.vscodeintellicode",
+      "jpoissonnier.vscode-styled-components"
+    ]
   }
 }
