@@ -12,7 +12,6 @@ import { Column, IndexColumn, Statement } from '@/core/parser/index';
 import { createJson } from '@/core/parser/ParserToJson';
 import { zoomCanvas } from '@/engine/command/canvas.cmd.helper';
 import { initLoadJson$ } from '@/engine/command/editor.cmd.helper.gen';
-import { recalculatingTableWidth } from '@/engine/store/helper/table.helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { LiquibaseFile } from '@@types/core/liquibaseParser';
 
@@ -100,7 +99,6 @@ export const LiquibaseParser = (
     eventBus.emit(Bus.Liquibase.progressEnd);
 
     setTimeout(async () => {
-      recalculatingTableWidth(store.tableState.tables, helper);
       store.dispatchSync(zoomCanvas(zoom));
       createSnapshot(context, {
         filename: rootFile?.path || '',

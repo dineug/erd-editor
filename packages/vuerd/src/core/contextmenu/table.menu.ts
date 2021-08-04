@@ -66,7 +66,19 @@ export const createTableMenus = (
       execute: () => store.dispatch(hideTable(tableId)),
     },
     {
+      icon: {
+        prefix: 'fas',
+        name: 'columns',
+      },
       name: 'Default Template',
       execute: () => store.dispatch(addTableDefault(tableId, helper)),
+    },
+    {
+      icon: {
+        prefix: 'fas',
+        name: 'palette',
+      },
+      name: 'Color',
+      execute: () => eventBus.emit(Bus.ColorPicker.open, tableId),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

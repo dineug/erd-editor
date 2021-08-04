@@ -13,7 +13,7 @@ export const useHooks = (
   state: State,
   helper: Helper
 ): Subscription[] => [
-  // useRecalculatingTableWidth(hook$, state, helper),
+  useRecalculatingTableWidth(hook$, state, helper),
   useRelationshipSort(hook$, state, helper),
   useResetZIndex(hook$, state, helper),
 ];

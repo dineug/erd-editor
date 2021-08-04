@@ -1,4 +1,5 @@
 import { Observable, Subscription } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 
 import { commandsFilter } from '@/core/operators/commandsFilter';
 import { recalculatingTableWidth } from '@/engine/store/helper/table.helper';
@@ -14,5 +15,5 @@ export const useRecalculatingTableWidth = (
   helper: Helper
 ): Subscription =>
   hook$
-    .pipe(commandsFilter(hookKeys))
+    .pipe(commandsFilter(hookKeys), debounceTime(1000))
     .subscribe(() => recalculatingTableWidth(tables, helper));

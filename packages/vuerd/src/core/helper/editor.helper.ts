@@ -31,6 +31,8 @@ export function createHelper(): IHelper {
     return ghostText.offsetWidth + TEXT_PADDING;
   };
 
+  const getLightTextWidth = (value: string) => value.length * 10 + TEXT_PADDING;
+
   const focus = () => {
     if (!ghostInput) return;
     ghostInput.focus();
@@ -48,6 +50,7 @@ export function createHelper(): IHelper {
     setGhostText,
     setGhostInput,
     getTextWidth,
+    getLightTextWidth,
     focus,
     blur,
     destroy,

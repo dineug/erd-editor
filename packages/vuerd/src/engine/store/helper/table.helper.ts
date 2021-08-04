@@ -99,9 +99,6 @@ function firstTableIndex(tables: Table[], tableIds: string[]): number {
 }
 
 export function recalculatingTableWidth(tables: Table[], helper: Helper) {
-  // todo fix this function - it is extremely slow, when having a lot of tables
-  // return;
-
   tables.forEach(table => {
     table.ui.widthName = widthBalanceRange(helper.getTextWidth(table.name));
     table.ui.widthComment = commentWidthBalanceRange(
