@@ -5,18 +5,26 @@ import { Diff } from '@/core/diff';
 import { createStoreCopy } from '@/core/file';
 import { getData } from '@/core/helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
+import { ExportedStore } from '@@types/engine/store';
 
-export function calculateDiff(context: IERDEditorContext): Diff[] {
+export function calculateLatestDiff(context: IERDEditorContext): Diff[] {
   const newest = createStoreCopy(context.store);
   const snapshot = getLatestSnapshot(context)?.data;
   if (!snapshot) return [];
 
-  const newTables = newest.table.tables;
-  const oldTables = snapshot.table.tables;
-  const newRelationships = newest.relationship.relationships;
-  const oldRelationships = snapshot.relationship.relationships;
-  const newIndexes = newest.table.indexes;
-  const oldIndexes = snapshot.table.indexes;
+  return calculateDiff(snapshot, newest);
+}
+
+export function calculateDiff(
+  oldSnapshot: ExportedStore,
+  newSnapshot: ExportedStore
+): Diff[] {
+  const newTables = newSnapshot.table.tables;
+  const oldTables = oldSnapshot.table.tables;
+  const newRelationships = newSnapshot.relationship.relationships;
+  const oldRelationships = oldSnapshot.relationship.relationships;
+  const newIndexes = newSnapshot.table.indexes;
+  const oldIndexes = oldSnapshot.table.indexes;
 
   const diffs: Diff[] = [];
 
@@ -131,6 +139,7 @@ export function calculateDiff(context: IERDEditorContext): Diff[] {
             changes: 'add',
             data: {
               newIndex: newIndex,
+              table: newTable,
             },
           });
       }
@@ -150,6 +159,7 @@ export function calculateDiff(context: IERDEditorContext): Diff[] {
             changes: 'remove',
             data: {
               oldIndex: oldIndex,
+              table: oldTable,
             },
           });
       }
@@ -161,29 +171,43 @@ export function calculateDiff(context: IERDEditorContext): Diff[] {
     // relationship drop
     oldRelationships.forEach(oldRelationship => {
       const newRelationship = getData(newRelationships, oldRelationship.id);
-      if (!newRelationship)
+      if (!newRelationship) {
+        const table = getData(oldTables, oldRelationship.end.tableId);
         diffs.push({
           type: 'relationship',
           changes: 'remove',
           data: {
             oldRelationship: oldRelationship,
+            table: table,
           },
         });
+      }
     });
 
     // add relationship
     newRelationships.forEach(newRelationship => {
       const oldRelationship = getData(oldRelationships, newRelationship.id);
-      if (!oldRelationship)
+      if (!oldRelationship) {
+        const startTable = getData(newTables, newRelationship.start.tableId);
+        const endTable = getData(newTables, newRelationship.end.tableId);
+
         diffs.push({
           type: 'relationship',
-          changes: 'remove',
+          changes: 'add',
           data: {
             newRelationship: newRelationship,
+            startTable: startTable,
+            endTable: endTable,
           },
         });
+      }
     });
   }
 
   return diffs;
+}
+
+export function mergeDiffs(diffs1: Diff[], diffs2: Diff[]): Diff[] {
+  // todo check for overlaps
+  return [...diffs1, ...diffs2];
 }

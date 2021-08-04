@@ -25,4 +25,7 @@ export interface DiffData {
 
   oldRelationship?: Relationship;
   newRelationship?: Relationship;
+
+  startTable?: Table;
+  endTable?: Table;
 }

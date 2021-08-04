@@ -1,3 +1,5 @@
+import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
+import { calculateDiff } from '@/core/diff/helper';
 import { getData } from '@/core/helper';
 import { Logger } from '@/core/logger';
 import {
@@ -20,7 +22,7 @@ import {
   XMLNode,
 } from '@/core/parser/helper';
 import { orderByNameASC } from '@/engine/store/helper/table.helper';
-import { ExportedStore, Store } from '@@types/engine/store';
+import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import {
   Column,
@@ -38,12 +40,11 @@ const xsiSchemaLocation =
  * Creates Liquibase XML file with export (*only supports source dialect `PostgreSQL` and creates changeSet in `oracle`, `mssql` and `postgresql`)
  */
 export function createLiquibase(
-  store: Store,
+  context: IERDEditorContext,
   id: string,
-  name: string,
-  snapshot?: ExportedStore
+  name: string
 ): string {
-  const currentDatabase = store.canvasState.database;
+  const currentDatabase = context.store.canvasState.database;
 
   var changeSets: XMLNode[];
 
@@ -54,7 +55,7 @@ export function createLiquibase(
         name: name,
       };
 
-      changeSets = createXMLPostgreOracleMSS(store, snapshot, author);
+      changeSets = createXMLPostgreOracleMSS(context, author);
       break;
     default:
       alert(
@@ -72,23 +73,56 @@ export function createLiquibase(
 }
 
 export const createXMLPostgreOracleMSS = (
-  { tableState, relationshipState }: Store,
-  snapshot: ExportedStore | undefined,
+  context: IERDEditorContext,
   author: Author
 ): XMLNode[] => {
+  const snapshot = getLatestSnapshot(context)?.data;
+  const { snapshots, store } = context;
+  const { tableState, relationshipState } = store;
+
+  console.log(snapshots);
+
+  var oldSnap = snapshots[snapshots.length - 1];
+  var newSnap = snapshots[snapshots.length - 1];
+  for (let i = snapshots.length - 1; i >= 0; i--) {
+    if (snapshots[i].metadata?.type === 'user') {
+      newSnap = snapshots[i];
+      oldSnap = snapshots[i - 1];
+      break;
+    }
+  }
+
+  const diffs1 = calculateDiff(oldSnap.data, newSnap.data);
+  console.log({ diffs1 });
+
+  var oldSnap = snapshots[snapshots.length - 1];
+  var newSnap = snapshots[snapshots.length - 1];
+  for (let i = snapshots.length - 1; i >= 0; i--) {
+    if (
+      snapshots[i].metadata?.type === 'before-import' &&
+      snapshots[i].metadata?.filename === author.id
+    ) {
+      newSnap = snapshots[i + 1];
+      oldSnap = snapshots[i];
+
+      for (let j = i; j >= 0; j--) {
+        if (snapshots[j].metadata?.filename !== author.id) {
+          oldSnap = snapshots[j];
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  const diffs2 = calculateDiff(oldSnap.data, newSnap.data);
+  console.log({ diffs2, oldSnap, newSnap });
+
   if (snapshot && snapshot.table !== tableState) {
     let changeSets: XMLNode[] = [];
     Logger.log('Tables were changed, generating diff...');
 
-    changeSets.push(
-      ...createTableDiff({
-        tableState,
-        relationshipState,
-        author,
-        snapshotTableState: snapshot.table,
-        snapshotRelationshipState: snapshot.relationship,
-      })
-    );
+    changeSets.push(...createTableDiff({ author, diffs: diffs1 }));
 
     Logger.log('DIFF:', changeSets[changeSets.length - 1]);
 
@@ -177,11 +211,8 @@ export const generateChangeSetAttr = (
 };
 
 export const createTableDiff = ({
-  tableState,
-  relationshipState,
   author,
-  snapshotTableState,
-  snapshotRelationshipState,
+  diffs,
 }: FormatTableDiff): XMLNode[] => {
   var changeSets: XMLNode[] = [];
 
@@ -203,23 +234,17 @@ export const createTableDiff = ({
     { name: 'id', value: `${author.id}-common` },
   ]);
 
-  const newTables = orderByNameASC(tableState.tables);
-  const oldTables = orderByNameASC(snapshotTableState.tables);
-
-  const newRelationships = relationshipState.relationships;
-  const oldRelationships = snapshotRelationshipState.relationships;
-
-  // TABLES
-  newTables.forEach(newTable => {
-    var oldTable: Table | undefined = getData(oldTables, newTable.id);
-
-    // new table was added
-    if (oldTable === undefined) {
+  let columnsToAdd: Map<Table, Column[]> = new Map();
+  diffs.forEach(diff => {
+    // add table
+    if (diff.type === 'table' && diff.changes === 'add' && diff.data.newTable) {
+      const newTable = diff.data.newTable;
       changeSetSequences.addChildren(
         ...newTable.columns
           .filter(col => col.option.autoIncrement)
           .map(col => createSequence(newTable.name, col.name))
       );
+
       changeSetModifyPG.addChildren(
         createTable({ table: newTable, dialect: 'postgresql' })
       );
@@ -230,174 +255,168 @@ export const createTableDiff = ({
         createTable({ table: newTable, dialect: 'mssql' })
       );
     }
-
-    // table was modified
-    else if (oldTable != newTable) {
-      var columnsToAdd: Column[] = [];
-
-      // check columns
-      newTable.columns.forEach(newColumn => {
-        var oldColumn = getData(
-          oldTable ? oldTable?.columns : [],
-          newColumn.id
-        );
-
-        // column is new
-        if (oldColumn === undefined) {
-          columnsToAdd.push(newColumn);
-        }
-
-        // column was modified
-        else if (oldColumn != newColumn) {
-          // datatype was changed
-          if (oldColumn?.dataType !== newColumn.dataType) {
-            changeSetModifyPG.addChildren(
-              modifyDataType(newTable, newColumn, 'postgresql')
-            );
-            changeSetModifyOracle.addChildren(
-              modifyDataType(newTable, newColumn, 'oracle')
-            );
-            changeSetModifyMssql.addChildren(
-              modifyDataType(newTable, newColumn, 'mssql')
-            );
-          }
-
-          // name was changed
-          if (oldColumn?.name !== newColumn.name) {
-            changeSetCommon.addChildren(
-              renameColumn(newTable, newColumn, oldColumn)
-            );
-          }
-
-          // auto increment changed
-          if (
-            oldColumn?.option.autoIncrement !== newColumn.option.autoIncrement
-          ) {
-            if (newColumn.option.autoIncrement === true) {
-              changeSetSequences.addChildren(
-                createSequence(newTable.name, newColumn.name)
-              );
-            } else {
-              changeSetSequences.addChildren(
-                dropSequence(newTable.name, newColumn.name)
-              );
-            }
-          }
-        }
-      });
-
-      // if found new columns
-      if (columnsToAdd.length) {
-        changeSetModifyPG.addChildren(
-          addColumn(newTable, columnsToAdd, 'postgresql')
-        );
-        changeSetModifyOracle.addChildren(
-          addColumn(newTable, columnsToAdd, 'oracle')
-        );
-        changeSetModifyMssql.addChildren(
-          addColumn(newTable, columnsToAdd, 'mssql')
+    // drop table
+    else if (
+      diff.type === 'table' &&
+      diff.changes === 'remove' &&
+      diff.data.oldTable
+    ) {
+      changeSetCommon.addChildren(dropTable(diff.data.oldTable));
+    }
+    // rename table
+    else if (
+      diff.type === 'table' &&
+      diff.changes === 'modify' &&
+      diff.data.oldTable &&
+      diff.data.newTable
+    ) {
+      if (diff.data.oldTable.name !== diff.data.newTable.name) {
+        changeSetCommon.addChildren(
+          renameTable(diff.data.oldTable, diff.data.newTable)
         );
       }
-
-      // check for drop column
-      oldTable?.columns.forEach(oldColumn => {
-        var newColumn = getData(newTable.columns, oldColumn.id);
-
-        // if drop column
-        if (!newColumn) {
-          changeSetCommon.addChildren(dropColumn(newTable, oldColumn));
-        }
-      });
-
-      // if rename table
-      if (oldTable && oldTable.name !== newTable.name) {
-        changeSetCommon.addChildren(renameTable(oldTable, newTable));
-      }
     }
-  });
-
-  // check for drop table
-  oldTables.forEach(oldTable => {
-    var newTable = getData(newTables, oldTable.id);
-
-    // old table was dropped
-    if (!newTable) {
-      changeSetCommon.addChildren(dropTable(oldTable));
+    // add column
+    else if (
+      diff.type === 'column' &&
+      diff.changes === 'add' &&
+      diff.data.newColumn &&
+      diff.data.table
+    ) {
+      const table = diff.data.table;
+      columnsToAdd.set(table, [
+        ...(columnsToAdd.get(table) || []),
+        diff.data.newColumn,
+      ]);
     }
-  });
-
-  // INDEXES
-  if (tableState.indexes != snapshotTableState.indexes) {
-    // check for new index
-    tableState.indexes.forEach(newIndex => {
-      const oldIndex: Index | undefined = getData(
-        snapshotTableState.indexes,
-        newIndex.id
+    // drop column
+    else if (
+      diff.type === 'column' &&
+      diff.changes === 'remove' &&
+      diff.data.oldColumn &&
+      diff.data.table
+    ) {
+      changeSetCommon.addChildren(
+        dropColumn(diff.data.table, diff.data.oldColumn)
       );
+    }
+    // add index
+    else if (
+      diff.type === 'index' &&
+      diff.changes === 'add' &&
+      diff.data.newIndex &&
+      diff.data.table
+    ) {
+      changeSetCommon.addChildren(
+        createIndex({ table: diff.data.table, index: diff.data.newIndex })
+      );
+    }
+    // drop index
+    else if (
+      diff.type === 'index' &&
+      diff.changes === 'remove' &&
+      diff.data.oldIndex &&
+      diff.data.table
+    ) {
+      changeSetCommon.addChildren(
+        dropIndex(diff.data.table, diff.data.oldIndex)
+      );
+    }
+    // add FK
+    else if (
+      diff.type === 'relationship' &&
+      diff.changes === 'add' &&
+      diff.data.newRelationship &&
+      diff.data.startTable &&
+      diff.data.endTable
+    ) {
+      changeSetCommon.addChildren(
+        addForeignKeyConstraint({
+          startTable: diff.data.startTable,
+          endTable: diff.data.endTable,
+          relationship: diff.data.newRelationship,
+        })
+      );
+    }
+    // drop FK
+    else if (
+      diff.type === 'relationship' &&
+      diff.changes === 'remove' &&
+      diff.data.oldRelationship &&
+      diff.data.table
+    ) {
+      changeSetCommon.addChildren(
+        dropForeignKeyConstraint(diff.data.table, diff.data.oldRelationship)
+      );
+    }
 
-      // if new index
-      if (oldIndex === undefined) {
-        var newTable: Table | undefined = getData(newTables, newIndex.tableId);
+    // modify column
+    else if (
+      diff.type === 'column' &&
+      diff.changes === 'modify' &&
+      diff.data.oldColumn &&
+      diff.data.newColumn &&
+      diff.data.table
+    ) {
+      const { oldColumn, newColumn, table } = diff.data;
+      // name was changed
+      if (oldColumn.name !== newColumn.name) {
+        changeSetCommon.addChildren(renameColumn(table, newColumn, oldColumn));
+      }
 
-        if (newTable) {
-          changeSetCommon.addChildren(
-            createIndex({ table: newTable, index: newIndex })
+      // auto increment changed
+      if (oldColumn.option.autoIncrement !== newColumn.option.autoIncrement) {
+        if (newColumn.option.autoIncrement === true) {
+          changeSetSequences.addChildren(
+            createSequence(table.name, newColumn.name)
+          );
+        } else {
+          changeSetSequences.addChildren(
+            dropSequence(table.name, newColumn.name)
           );
         }
       }
-    });
 
-    // check for drop index
-    snapshotTableState.indexes.forEach(oldIndex => {
-      const newIndex: Index | undefined = getData(
-        tableState.indexes,
-        oldIndex.id
-      );
-
-      // if new index
-      if (newIndex === undefined) {
-        const oldTable: Table | undefined = getData(
-          oldTables,
-          oldIndex.tableId
-        );
-
-        if (oldTable) {
-          changeSetCommon.addChildren(dropIndex(oldTable, oldIndex));
+      // primary key changed
+      if (oldColumn.option.primaryKey !== newColumn.option.primaryKey) {
+        if (newColumn.option.primaryKey === true) {
+          changeSetCommon.addChildren(addPrimaryKey(table, [newColumn]));
+        } else {
+          changeSetCommon.addChildren(dropPrimaryKey(table));
         }
       }
-    });
-  }
 
-  // RELATIONSHIP
-  if (newRelationships != oldRelationships) {
-    // relationship drop
-    oldRelationships.forEach(oldRelationship => {
-      const newRelationship = getData(newRelationships, oldRelationship.id);
-      const oldTable = getData(oldTables, oldRelationship.end.tableId);
+      // unique changed
+      if (oldColumn.option.unique !== newColumn.option.unique) {
+        if (newColumn.option.unique === true) {
+          changeSetCommon.addChildren(addUniqueConstraint(table, [newColumn]));
+        } else {
+          changeSetCommon.addChildren(dropUniqueConstraint(table));
+        }
+      }
 
-      if (newRelationship === undefined) {
-        changeSetCommon.addChildren(
-          dropForeignKeyConstraint(oldTable, oldRelationship)
+      // datatype was changed
+      if (oldColumn.dataType !== newColumn.dataType) {
+        changeSetModifyPG.addChildren(
+          modifyDataType(table, newColumn, 'postgresql')
+        );
+        changeSetModifyOracle.addChildren(
+          modifyDataType(table, newColumn, 'oracle')
+        );
+        changeSetModifyMssql.addChildren(
+          modifyDataType(table, newColumn, 'mssql')
         );
       }
-    });
+    }
+  });
 
-    // add relationship
-    newRelationships.forEach(newRelationship => {
-      const oldRelationship = getData(oldRelationships, newRelationship.id);
+  columnsToAdd.forEach((colums, table) => {
+    changeSetModifyPG.addChildren(addColumn(table, colums, 'postgresql'));
+    changeSetModifyOracle.addChildren(addColumn(table, colums, 'oracle'));
+    changeSetModifyMssql.addChildren(addColumn(table, colums, 'mssql'));
+  });
 
-      if (oldRelationship === undefined) {
-        changeSetCommon.addChildren(
-          addForeignKeyConstraint({
-            tables: newTables,
-            relationship: newRelationship,
-          })
-        );
-      }
-    });
-  }
-
-  // sequences - first child is always preconditions
+  // sequences - (minus) first child is always preconditions
   if (changeSetSequences.children.length > 1) {
     changeSets.push(changeSetSequences);
   }
@@ -445,12 +464,16 @@ export const createChangeSet = ({
   });
 
   relationships.forEach(relationship => {
-    changeSet.addChildren(
-      addForeignKeyConstraint({
-        tables,
-        relationship,
-      })
-    );
+    const startTable = getData(tables, relationship.start.tableId);
+    const endTable = getData(tables, relationship.end.tableId);
+    if (startTable && endTable)
+      changeSet.addChildren(
+        addForeignKeyConstraint({
+          startTable,
+          endTable,
+          relationship,
+        })
+      );
   });
 
   indexes.forEach(index => {
@@ -582,12 +605,10 @@ export const formatConstraints = (constraints: Constraints): XMLNode => {
 };
 
 export const addForeignKeyConstraint = ({
-  tables,
+  startTable,
+  endTable,
   relationship,
 }: FormatRelationOptions): XMLNode => {
-  const startTable = getData(tables, relationship.start.tableId);
-  const endTable = getData(tables, relationship.end.tableId);
-
   if (startTable && endTable) {
     const columns: KeyColumn = {
       start: [],
@@ -752,11 +773,38 @@ export const dropIndex = (table: Table, index: Index): XMLNode => {
 };
 
 function dropForeignKeyConstraint(
-  table: any,
+  table: Table,
   relationship: Relationship
 ): XMLNode {
   return new XMLNode('dropForeignKeyConstraint', [
     { name: 'baseTableName', value: table.name },
     { name: 'constraintName', value: relationship.constraintName || '???' },
+  ]);
+}
+
+function addPrimaryKey(table: Table, columns: Column[]): XMLNode {
+  return new XMLNode('addPrimaryKey', [
+    { name: 'tableName', value: table.name },
+    { name: 'columnNames', value: formatNames(columns) },
+  ]);
+}
+
+function dropPrimaryKey(table: Table): XMLNode {
+  return new XMLNode('dropPrimaryKey', [
+    { name: 'tableName', value: table.name },
+  ]);
+}
+
+function addUniqueConstraint(table: Table, columns: Column[]): XMLNode {
+  return new XMLNode('addUniqueConstraint', [
+    { name: 'tableName', value: table.name },
+    { name: 'columnNames', value: formatNames(columns) },
+  ]);
+}
+
+function dropUniqueConstraint(table: Table): XMLNode {
+  return new XMLNode('dropUniqueConstraint', [
+    { name: 'tableName', value: table.name },
+    { name: 'constraintName', value: '???' },
   ]);
 }

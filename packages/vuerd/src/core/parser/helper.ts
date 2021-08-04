@@ -1,3 +1,4 @@
+import { Diff } from '@/core/diff';
 import { Logger } from '@/core/logger';
 import { Statement } from '@/core/parser/index';
 import { Translation, translations } from '@/core/parser/translations';
@@ -38,7 +39,8 @@ export interface Constraints {
 }
 
 export interface FormatRelationOptions {
-  tables: Table[];
+  startTable: Table;
+  endTable: Table;
   relationship: Relationship;
 }
 
@@ -66,10 +68,7 @@ export interface FormatChangeSet {
 
 export interface FormatTableDiff {
   author: Author;
-  tableState: TableState;
-  relationshipState: RelationshipState;
-  snapshotTableState: TableState;
-  snapshotRelationshipState: RelationshipState;
+  diffs: Diff[];
 }
 
 export interface KeyColumn {

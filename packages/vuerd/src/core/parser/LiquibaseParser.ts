@@ -38,7 +38,7 @@ export const LiquibaseParser = (
   store.canvasState.zoomLevel = 0.7;
   createSnapshot(context, {
     filename: rootFile?.path || '',
-    type: 'before-import',
+    type: rootFile?.path ? 'before-import' : 'user',
   });
 
   setTimeout(async () => {

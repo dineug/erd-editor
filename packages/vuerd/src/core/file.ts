@@ -2,7 +2,7 @@ import { DDLParser } from '@vuerd/sql-ddl-parser';
 import domToImage from 'dom-to-image';
 
 import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
-import { calculateDiff } from '@/core/diff/helper';
+import { calculateLatestDiff } from '@/core/diff/helper';
 import { Logger } from '@/core/logger';
 import { Dialect } from '@/core/parser/helper';
 import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
@@ -179,7 +179,7 @@ export function importLiquibase(context: IERDEditorContext, dialect: Dialect) {
 
   if (
     !snapshot ||
-    calculateDiff(context).length === 0 ||
+    calculateLatestDiff(context).length === 0 ||
     window.confirm(
       'Found changes, are you sure you want to loose them? If you want to save changes (diff), please, make sure to EXPORT them first.\nPress OK to continue importing file, press CANCEL to abort importing.'
     )

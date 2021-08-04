@@ -7,5 +7,10 @@ export interface Snapshot {
 
 export interface SnapshotMetadata {
   filename: string;
-  type: 'before-import' | 'after-import' | 'before-export' | 'after-export';
+  type:
+    | 'before-import'
+    | 'after-import'
+    | 'before-export'
+    | 'after-export'
+    | 'user';
 }

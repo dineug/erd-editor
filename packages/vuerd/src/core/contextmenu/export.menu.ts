@@ -71,12 +71,9 @@ export const createExportMenus = (
         if (store.canvasState.database === 'PostgreSQL') {
           showPrompt('Please enter the name of changeset:', id =>
             showPrompt('Please enter name of the author:', name => {
-              const liquibase = createLiquibase(
-                store,
-                id,
-                name,
-                getLatestSnapshot(context)?.data
-              );
+              createSnapshot(context, { type: 'user', filename: '' });
+
+              const liquibase = createLiquibase(context, id, name);
 
               exportXML(liquibase, store.canvasState.databaseName);
 
