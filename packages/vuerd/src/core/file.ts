@@ -6,7 +6,7 @@ import { calculateDiff } from '@/core/diff/helper';
 import { Logger } from '@/core/logger';
 import { Dialect } from '@/core/parser/helper';
 import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
-import { createJson } from '@/core/parser/ParserToJson';
+import { createJson } from '@/core/parser/SQLParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
@@ -141,7 +141,6 @@ export function importSQLDDL(context: IERDEditorContext) {
                 const statements = DDLParser(value);
 
                 const json = createJson(
-                  //@ts-ignore
                   statements,
                   helper,
                   store.canvasState.database

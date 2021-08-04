@@ -391,7 +391,7 @@ function snapshotToShape({ table, relationship }: ExportedStore): Shape {
         columnNames: baseColumnNames,
         refTableName: refTable?.name || '',
         refColumnNames: refColumnNames,
-        constraintName: relationship.constraintName,
+        constraintName: relationship.constraintName ?? '',
         visible: relationship.visible,
       };
 
