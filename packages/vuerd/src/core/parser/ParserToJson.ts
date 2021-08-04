@@ -491,11 +491,11 @@ function createTable(
     visible: table.visible === undefined ? true : table.visible,
   };
 
-  const widthName = helper.getLightTextWidth(newTable.name);
+  const widthName = helper.getFastTextWidth(newTable.name);
   if (SIZE_MIN_WIDTH < widthName) {
     newTable.ui.widthName = widthName;
   }
-  const widthComment = helper.getLightTextWidth(newTable.comment);
+  const widthComment = helper.getFastTextWidth(newTable.comment);
   if (SIZE_MIN_WIDTH < widthComment) {
     newTable.ui.widthComment = widthComment;
   }
@@ -532,19 +532,19 @@ function createColumn(helper: Helper, column: Column): any {
     },
   };
 
-  const widthName = helper.getLightTextWidth(newColumn.name);
+  const widthName = helper.getFastTextWidth(newColumn.name);
   if (SIZE_MIN_WIDTH < widthName) {
     newColumn.ui.widthName = widthName;
   }
-  const widthComment = helper.getLightTextWidth(newColumn.comment);
+  const widthComment = helper.getFastTextWidth(newColumn.comment);
   if (SIZE_MIN_WIDTH < widthComment) {
     newColumn.ui.widthComment = widthComment;
   }
-  const widthDataType = helper.getLightTextWidth(newColumn.dataType);
+  const widthDataType = helper.getFastTextWidth(newColumn.dataType);
   if (SIZE_MIN_WIDTH < widthDataType) {
     newColumn.ui.widthDataType = widthDataType;
   }
-  const widthDefault = helper.getLightTextWidth(newColumn.default);
+  const widthDefault = helper.getFastTextWidth(newColumn.default);
   if (SIZE_MIN_WIDTH < widthDefault) {
     newColumn.ui.widthDefault = widthDefault;
   }
