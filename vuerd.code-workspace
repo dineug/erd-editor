@@ -24,5 +24,32 @@
       "name": "monorepo",
       "path": "."
     }
-  ]
+  ],
+  "settings": {
+    "files.autoSave": "onFocusChange",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": true
+    },
+    "editor.fontFamily": "Cascadia Code, JetBrains Mono, D2Coding, Menlo, Monaco, 'Courier New', monospace",
+    "editor.tabSize": 2,
+    "editor.suggestSelection": "first",
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabCompletion": "on",
+    "[json]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "vsintellicode.modify.editor.suggestSelection": "automaticallyOverrodeDefaultValue",
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "javascript.updateImportsOnFileMove.enabled": "always",
+    "javascript.format.enable": false,
+    "lit-plugin.rules.no-invalid-css": "off",
+    "lit-plugin.rules.no-incompatible-type-binding": "off"
+  }
 }
