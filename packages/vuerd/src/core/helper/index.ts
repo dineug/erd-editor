@@ -53,6 +53,8 @@ export const isNumber = isTypeof('number');
 export const isBoolean = isTypeof('boolean');
 export const isNull = (value: any) => value === null;
 
+export const noop = () => {};
+
 export const getData = <T extends { id: string }>(list: Array<T>, id: string) =>
   list.find(data => data.id === id);
 

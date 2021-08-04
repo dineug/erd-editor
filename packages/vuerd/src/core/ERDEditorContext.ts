@@ -1,6 +1,7 @@
 import { observable } from '@vuerd/lit-observable';
 import * as R from 'ramda';
 
+import { noop } from '@/core/helper';
 import { createHelper } from '@/core/helper/editor.helper';
 import { createCommand } from '@/engine/command';
 import { createStore } from '@/engine/store';
@@ -11,8 +12,6 @@ import { createGlobalEventObservable } from './helper/event.helper';
 import { createEventBus } from './helper/eventBus.helper';
 import { createKeymap } from './keymap';
 import { createTheme } from './theme';
-
-const noop = () => {};
 
 export function createdERDEditorContext(): IERDEditorContext {
   const helper = createHelper();

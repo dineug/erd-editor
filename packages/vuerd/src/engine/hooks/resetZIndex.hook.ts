@@ -1,4 +1,5 @@
 import { Observable, Subscription } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 
 import { commandsFilter } from '@/core/operators/commandsFilter';
 import { Helper } from '@@types/core/helper';
@@ -12,7 +13,7 @@ export const useResetZIndex = (
   { tableState: { tables }, memoState: { memos } }: State,
   helper: Helper
 ): Subscription =>
-  hook$.pipe(commandsFilter(hookKeys)).subscribe(() => {
+  hook$.pipe(commandsFilter(hookKeys), debounceTime(1000)).subscribe(() => {
     const uiList = [
       ...tables.map(table => table.ui),
       ...memos.map(memo => memo.ui),
