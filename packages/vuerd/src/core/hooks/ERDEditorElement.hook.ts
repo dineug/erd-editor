@@ -20,7 +20,7 @@ import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { ERDEditorElement } from '@@types/components/ERDEditorElement';
 import { ExtensionConfig } from '@@types/core/extension';
 import { Keymap } from '@@types/core/keymap';
-import { LiquibaseFile } from '@@types/core/liquibaseParser';
+import { LoadLiquibaseData } from '@@types/core/liquibaseParser';
 import { PanelConfig } from '@@types/core/panel';
 import { Theme } from '@@types/core/theme';
 import { Database } from '@@types/engine/store/canvas.state';
@@ -80,8 +80,8 @@ export function useERDEditorElement(
     }
   };
 
-  ctx.loadLiquibase = (xmls: LiquibaseFile[]) => {
-    loadLiquibaseChangelog(context, xmls, 'postgresql');
+  ctx.loadLiquibase = (data: LoadLiquibaseData) => {
+    loadLiquibaseChangelog(context, data, 'postgresql');
   };
 
   ctx.getSQLDDL = (database?: Database) => {

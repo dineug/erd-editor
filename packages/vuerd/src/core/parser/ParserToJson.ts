@@ -29,7 +29,11 @@ import { Helper } from '@@types/core/helper';
 import { ExportedStore } from '@@types/engine/store';
 import { CanvasState, Database } from '@@types/engine/store/canvas.state';
 import { MemoState } from '@@types/engine/store/memo.state';
-import { Table } from '@@types/engine/store/table.state';
+import {
+  Column as PureColumn,
+  PureTable,
+  Table,
+} from '@@types/engine/store/table.state';
 
 interface Shape {
   tables: CreateTable[];
@@ -469,7 +473,7 @@ function createTable(
 ): any {
   const originalTable = findByName(snapTables || [], table.name);
 
-  const newTable = {
+  const newTable: PureTable = {
     id: table.id || uuid(),
     name: table.name,
     comment: table.comment,
@@ -485,8 +489,9 @@ function createTable(
           zIndex: 2,
         },
     visible: table.visible === undefined ? true : table.visible,
-  } as any;
+  };
 
+  /*
   const widthName = helper.getTextWidth(newTable.name);
   if (SIZE_MIN_WIDTH < widthName) {
     newTable.ui.widthName = widthName;
@@ -495,6 +500,7 @@ function createTable(
   if (SIZE_MIN_WIDTH < widthComment) {
     newTable.ui.widthComment = widthComment;
   }
+  */
 
   table.columns.forEach(column => {
     newTable.columns.push(createColumn(helper, column));
@@ -504,7 +510,7 @@ function createTable(
 }
 
 function createColumn(helper: Helper, column: Column): any {
-  const newColumn = {
+  const newColumn: PureColumn = {
     id: column.id || uuid(),
     name: column.name,
     comment: column.comment,
@@ -526,8 +532,9 @@ function createColumn(helper: Helper, column: Column): any {
       widthDataType: SIZE_MIN_WIDTH,
       widthDefault: SIZE_MIN_WIDTH,
     },
-  } as any;
+  };
 
+  /*
   const widthName = helper.getTextWidth(newColumn.name);
   if (SIZE_MIN_WIDTH < widthName) {
     newColumn.ui.widthName = widthName;
@@ -544,6 +551,7 @@ function createColumn(helper: Helper, column: Column): any {
   if (SIZE_MIN_WIDTH < widthDefault) {
     newColumn.ui.widthDefault = widthDefault;
   }
+  */
 
   return newColumn;
 }
