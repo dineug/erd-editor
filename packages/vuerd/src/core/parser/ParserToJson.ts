@@ -182,12 +182,14 @@ function findByName<T extends { name: string }>(
   return null;
 }
 
-function findByConstraintName<T extends { constraintName: string }>(
+function findByConstraintName<T extends { constraintName?: string }>(
   list: T[],
-  constraintName: string
+  constraintName?: string
 ): T | null {
+  if (!constraintName) return null;
+
   for (const item of list) {
-    if (item.constraintName.toUpperCase() === constraintName.toUpperCase()) {
+    if (item.constraintName?.toUpperCase() === constraintName?.toUpperCase()) {
       return item;
     }
   }
