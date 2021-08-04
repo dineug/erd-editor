@@ -114,6 +114,14 @@ export function useERDEditorElement(
       ctx.dispatchEvent(new CustomEvent('liquibase-progress-end'))
     );
 
+  eventBus.on(Bus.Console.log).subscribe(message =>
+    ctx.dispatchEvent(
+      new CustomEvent('console-log', {
+        detail: message,
+      })
+    )
+  );
+
   beforeMount(() =>
     unmountedGroup.push(
       store.change$.subscribe(

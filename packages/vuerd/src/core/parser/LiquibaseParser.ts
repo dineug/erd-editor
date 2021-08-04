@@ -106,6 +106,7 @@ export const LiquibaseParser = (
         filename: rootFile?.path || '',
         type: 'after-import',
       });
+      eventBus.emit(Bus.Console.log, context.snapshots);
     }, 0);
   }, 10);
 };

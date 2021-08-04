@@ -48,10 +48,15 @@ enum Liquibase {
   progressEnd = 'Liquibase.liquibase-progress-end',
 }
 
+enum Console {
+  log = 'Console.console-log',
+}
+
 export const Bus = {
   BalanceRange,
   Drawer,
   Contextmenu,
   Liquibase,
   ColorPicker,
+  Console,
 };
