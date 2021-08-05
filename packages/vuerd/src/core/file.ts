@@ -153,7 +153,7 @@ export function importSQLDDL(context: IERDEditorContext) {
                 const statements = DDLParser(value);
 
                 const json = createJson(
-                  //@ts-ignore
+                  // @ts-ignore
                   statements,
                   helper,
                   store.canvasState.database

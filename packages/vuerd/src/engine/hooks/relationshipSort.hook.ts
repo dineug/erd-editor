@@ -22,8 +22,6 @@ const hookKeys: CommandKey[] = [
   'column.changeDataType',
   'column.changeDefault',
   'column.move',
-  'editor.loadJson',
-  'editor.initLoadJson',
 ];
 
 export const useRelationshipSort = (

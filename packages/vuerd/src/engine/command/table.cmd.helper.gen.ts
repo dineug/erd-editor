@@ -1,8 +1,11 @@
-import { getData } from '@/core/helper';
+import { getData, uuid } from '@/core/helper';
 import { createCommand } from '@/engine/command/helper';
+import { Helper } from '@@types/core/helper';
 import { AddCustomColumn } from '@@types/engine/command/column.cmd';
 import { Store } from '@@types/engine/store';
 
+import { ColumnModel } from '../store/models/column.model';
+import { loadColumn } from './column.cmd.helper';
 import {
   drawEndRelationship,
   drawStartAddRelationship$,
@@ -92,4 +95,32 @@ export function* selectTable$(store: Store, ctrlKey: boolean, tableId: string) {
 export function* selectEndTable$() {
   yield selectEndTable();
   yield focusTableEnd();
+}
+
+export function* addTableDefault$(tableId: string, helper: Helper) {
+  const idCol = new ColumnModel({
+    addColumn: { tableId: tableId, id: uuid() },
+  });
+  idCol.name = 'id';
+  idCol.dataType = 'INT';
+  idCol.option.autoIncrement = true;
+  idCol.option.primaryKey = true;
+  idCol.ui.pk = true;
+
+  const createdAt = new ColumnModel({
+    addColumn: { tableId, id: uuid() },
+  });
+  createdAt.name = 'created_at';
+  createdAt.dataType = 'timestamp';
+  createdAt.ui.widthName = helper.getTextWidth('created_at');
+
+  const updatedAt = new ColumnModel({
+    addColumn: { tableId, id: uuid() },
+  });
+  updatedAt.name = 'updated_at';
+  updatedAt.dataType = 'timestamp';
+  createdAt.ui.widthName = helper.getTextWidth('updated_at');
+  createdAt.ui.widthDataType = helper.getTextWidth('timestamp');
+
+  yield loadColumn(tableId, [updatedAt, createdAt, idCol], []);
 }

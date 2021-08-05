@@ -1,5 +1,6 @@
 import { fromEvent, Subject } from 'rxjs';
 
+import { getTextWidth as getTinyTextWidth } from '@/core/helper/text.helper';
 import { IHelper } from '@/internal-types/helper';
 
 import { onInputClear } from './dom.helper';
@@ -24,14 +25,17 @@ export function createHelper(): IHelper {
     );
   };
 
-  const getTextWidth = (value: string) => {
-    if (!ghostText) return value.length * 10 + TEXT_PADDING;
+  const getTextWidth = (value: string) =>
+    getTinyTextWidth(value) + TEXT_PADDING;
+
+  const getFastTextWidth = (value: string) => value.length * 10 + TEXT_PADDING;
+
+  const getTextWidthLegacy = (value: string) => {
+    if (!ghostText) return getFastTextWidth(value);
 
     ghostText.innerText = value;
     return ghostText.offsetWidth + TEXT_PADDING;
   };
-
-  const getLightTextWidth = (value: string) => value.length * 10 + TEXT_PADDING;
 
   const focus = () => {
     if (!ghostInput) return;
@@ -50,7 +54,8 @@ export function createHelper(): IHelper {
     setGhostText,
     setGhostInput,
     getTextWidth,
-    getLightTextWidth,
+    getTextWidthLegacy,
+    getFastTextWidth,
     focus,
     blur,
     destroy,

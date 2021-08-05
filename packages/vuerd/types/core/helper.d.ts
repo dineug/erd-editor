@@ -1,4 +1,5 @@
 export interface Helper {
   getTextWidth(value: string): number;
-  getLightTextWidth(value: string): number;
+  getTextWidthLegacy(value: string): number;
+  getFastTextWidth(value: string): number;
 }

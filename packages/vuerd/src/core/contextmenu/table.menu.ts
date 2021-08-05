@@ -1,7 +1,7 @@
 import { Bus } from '@/core/helper/eventBus.helper';
 import { keymapOptionsToString, keymapOptionToString } from '@/core/keymap';
 import { changeColumnPrimaryKey$ } from '@/engine/command/column.cmd.helper';
-import { addTableDefault, hideTable } from '@/engine/command/table.cmd.helper';
+import { addTableDefault$, hideTable } from '@/engine/command/table.cmd.helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 
@@ -71,7 +71,7 @@ export const createTableMenus = (
         name: 'columns',
       },
       name: 'Default Template',
-      execute: () => store.dispatch(addTableDefault(tableId, helper)),
+      execute: () => store.dispatch(addTableDefault$(tableId, helper)),
     },
     {
       icon: {
