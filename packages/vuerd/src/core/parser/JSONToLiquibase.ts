@@ -2,7 +2,6 @@ import { calculateDiff, mergeDiffs } from '@/core/diff/helper';
 import { getData } from '@/core/helper';
 import { Logger } from '@/core/logger';
 import {
-  Attribute,
   Author,
   changeSetAttributes,
   Constraints,
@@ -16,7 +15,6 @@ import {
   FormatTableDiff,
   FormatTableOptions,
   generateSeqName,
-  getIdChangeSet,
   KeyColumn,
   supportedDialects,
   translate,
