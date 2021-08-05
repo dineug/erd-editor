@@ -44,7 +44,6 @@
     "[typescript]": {
       "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
-    "vsintellicode.modify.editor.suggestSelection": "automaticallyOverrodeDefaultValue",
     "typescript.updateImportsOnFileMove.enabled": "always",
     "javascript.updateImportsOnFileMove.enabled": "always",
     "javascript.format.enable": false,
@@ -58,7 +57,6 @@
       "runem.lit-plugin",
       "davidanson.vscode-markdownlint",
       "esbenp.prettier-vscode",
-      "visualstudioexptteam.vscodeintellicode",
       "jpoissonnier.vscode-styled-components",
       "dineug.vuerd-vscode"
     ]
