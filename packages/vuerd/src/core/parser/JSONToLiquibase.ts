@@ -508,12 +508,12 @@ export const formatColumn = ({
   dialect,
 }: FormatColumnOptions): XMLNode => {
   var columnXML: XMLNode = new XMLNode('column', [
+    { name: 'name', value: column.name },
     {
       name: 'type',
       value: translate('postgresql', dialect, column.dataType),
     },
   ]);
-  columnXML.addAttribute({ name: 'name', value: column.name });
 
   if (column.dataType)
     columnXML.addAttribute({
