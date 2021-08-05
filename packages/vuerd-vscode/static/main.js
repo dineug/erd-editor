@@ -111,7 +111,6 @@
       } else if (type === 'keymap') {
         editor.setKeymap(body.value.keymap);
       } else if (type === 'loadLiquibase') {
-        console.log(message);
         editor.loadLiquibase(message.value);
       }
     }

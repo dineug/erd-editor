@@ -223,7 +223,7 @@ export const changeSetAttributes = ({
   dialect?: Dialect;
   suffix?: string;
 }): Attribute[] => {
-  const attr = [
+  const attr: Attribute[] = [
     {
       name: 'id',
       value: `${getIdChangeSet(author)}${suffix ? `-${suffix}` : ''}`,

@@ -43,7 +43,6 @@ export function createSnapshot(
     data: createStoreCopy(context.store),
     metadata: metadata,
   });
-  getLatestSnapshot;
 }
 
 export function createStoreCopy(store: Store): ExportedStore {

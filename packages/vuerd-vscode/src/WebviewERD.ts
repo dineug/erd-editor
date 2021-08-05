@@ -94,8 +94,6 @@ export default class WebviewERD {
             }
             return;
           case 'exportFile':
-            console.log(message);
-
             if (message.options.saveDirectly && folder) {
               let uri = Uri.joinPath(
                 folder.uri,
