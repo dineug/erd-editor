@@ -94,18 +94,33 @@ export default class WebviewERD {
             }
             return;
           case 'exportFile':
-            window
-              .showSaveDialog({
-                defaultUri: Uri.file(path.join(os.homedir(), message.fileName)),
-              })
-              .then(uri => {
-                if (uri) {
-                  workspace.fs.writeFile(
-                    uri,
-                    Buffer.from(message.value.split(',')[1], 'base64')
-                  );
-                }
-              });
+            console.log(message);
+
+            if (message.options.saveDirectly && folder) {
+              let uri = Uri.joinPath(
+                folder.uri,
+                'changelog',
+                message.options.fileName
+              );
+              let content = Buffer.from(message.value.split(',')[1], 'base64');
+
+              workspace.fs.writeFile(uri, content);
+            } else {
+              window
+                .showSaveDialog({
+                  defaultUri: Uri.file(
+                    path.join(os.homedir(), message.options.fileName)
+                  ),
+                })
+                .then(uri => {
+                  if (uri) {
+                    workspace.fs.writeFile(
+                      uri,
+                      Buffer.from(message.value.split(',')[1], 'base64')
+                    );
+                  }
+                });
+            }
             break;
           case 'loadLiquibase':
             if (folder)

@@ -4,6 +4,7 @@ import { Logger } from '@/core/logger';
 import {
   Attribute,
   Author,
+  changeSetAttributes,
   Constraints,
   createXMLString,
   Dialect,
@@ -15,6 +16,7 @@ import {
   FormatTableDiff,
   FormatTableOptions,
   generateSeqName,
+  getIdChangeSet,
   KeyColumn,
   supportedDialects,
   translate,
@@ -50,7 +52,7 @@ export function createLiquibase(
   switch (currentDatabase) {
     case 'PostgreSQL':
       const author: Author = {
-        id: id.replace(/\.xml$/, ''),
+        id: id.replace(/\.xml$/g, ''),
         name: name,
       };
 
@@ -114,15 +116,19 @@ export const createXMLPostgreOracleMSS = (
   for (let i = snapshots.length - 1; i >= 0; i--) {
     if (
       snapshots[i].metadata?.type === 'before-import' &&
-      snapshots[i].metadata?.filename.replace(/\.xml$/, '').toLowerCase() ===
+      snapshots[i].metadata?.filename.replace(/\.xml$/g, '').toLowerCase() ===
         author.id.toLowerCase()
     ) {
       newSnap = snapshots[i + 1];
       oldSnap = snapshots[i];
 
       for (let j = i; j >= 0; j--) {
-        if (snapshots[j].metadata?.filename !== author.id) {
-          oldSnap = snapshots[j];
+        if (
+          snapshots[j].metadata?.filename
+            .replace(/\.xml$/g, '')
+            .toLowerCase() !== author.id.toLowerCase()
+        ) {
+          oldSnap = snapshots[j + 1];
           break;
         }
       }
@@ -142,10 +148,7 @@ export const createXMLPostgreOracleMSS = (
 function generateChangeSetSequence(author: Author): XMLNode {
   return new XMLNode(
     'changeSet',
-    [
-      { name: 'author', value: author.name },
-      { name: 'id', value: `${author.id}-common-sequences` },
-    ],
+    changeSetAttributes({ author, suffix: 'common-sequences' }),
     [generatePreConditions()]
   );
 }
@@ -196,17 +199,6 @@ export function createSequences(
   return changeSet;
 }
 
-export const generateChangeSetAttr = (
-  author: Author,
-  dialect: Dialect
-): Attribute[] => {
-  return [
-    { name: 'author', value: author.name },
-    { name: 'id', value: `${author.id}-${dialect}` },
-    { name: 'dbms', value: dialect },
-  ];
-};
-
 export const createTableDiff = ({
   author,
   diffs,
@@ -216,20 +208,20 @@ export const createTableDiff = ({
   var changeSetSequences: XMLNode = generateChangeSetSequence(author);
   var changeSetModifyPG: XMLNode = new XMLNode(
     'changeSet',
-    generateChangeSetAttr(author, 'postgresql')
+    changeSetAttributes({ author, dialect: 'postgresql', suffix: 'postgresql' })
   );
   var changeSetModifyOracle: XMLNode = new XMLNode(
     'changeSet',
-    generateChangeSetAttr(author, 'oracle')
+    changeSetAttributes({ author, dialect: 'oracle', suffix: 'oracle' })
   );
   var changeSetModifyMssql: XMLNode = new XMLNode(
     'changeSet',
-    generateChangeSetAttr(author, 'mssql')
+    changeSetAttributes({ author, dialect: 'mssql', suffix: 'mssql' })
   );
-  var changeSetCommon: XMLNode = new XMLNode('changeSet', [
-    { name: 'author', value: author.name },
-    { name: 'id', value: `${author.id}-common` },
-  ]);
+  var changeSetCommon: XMLNode = new XMLNode(
+    'changeSet',
+    changeSetAttributes({ author, suffix: 'common' })
+  );
 
   let columnsToAdd: Map<Table, Column[]> = new Map();
   diffs.forEach(diff => {
@@ -446,9 +438,7 @@ export const createChangeSet = ({
   const indexes = tableState.indexes;
 
   changeSet.addAttribute(
-    { name: 'author', value: author.name },
-    { name: 'id', value: `${author.id}-${dialect}` },
-    { name: 'dbms', value: dialect }
+    ...changeSetAttributes({ author, dialect, suffix: dialect })
   );
 
   tables.forEach(table => {

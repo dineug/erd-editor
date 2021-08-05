@@ -75,7 +75,8 @@ export const createExportMenus = (
 
               const liquibase = createLiquibase(context, id, name);
 
-              exportXML(liquibase, store.canvasState.databaseName);
+              id = `${id.replace(/\.xml$/g, '')}.xml`;
+              exportXML(liquibase, id);
 
               if (liquibase) {
                 createSnapshot(context);

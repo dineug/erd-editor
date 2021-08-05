@@ -209,3 +209,28 @@ export const generateSeqName = (
 ): string => {
   return `${tableName}_${columnName}_seq`.toLowerCase();
 };
+
+export const getIdChangeSet = (author: Author): string => {
+  return author.id.replace(/\\/g, '/').split('/').pop() || '';
+};
+
+export const changeSetAttributes = ({
+  author,
+  dialect,
+  suffix,
+}: {
+  author: Author;
+  dialect?: Dialect;
+  suffix?: string;
+}): Attribute[] => {
+  const attr = [
+    {
+      name: 'id',
+      value: `${getIdChangeSet(author)}${suffix ? `-${suffix}` : ''}`,
+    },
+    { name: 'author', value: author.name },
+  ];
+  if (dialect) attr.push({ name: 'dbms', value: dialect });
+
+  return attr;
+};

@@ -14,8 +14,14 @@ import { LiquibaseFile, LoadLiquibaseData } from '@@types/core/liquibaseParser';
 import { ExportedStore, Store } from '@@types/engine/store';
 import { SnapshotMetadata } from '@@types/engine/store/snapshot';
 
-let executeExportFileExtra: ((blob: Blob, fileName: string) => void) | null =
-  null;
+export interface ExportOptions {
+  fileName: string;
+  saveDirectly?: boolean;
+}
+
+let executeExportFileExtra:
+  | ((blob: Blob, options: ExportOptions) => void)
+  | null = null;
 
 export const createJsonFormat = ({
   canvasState,
@@ -52,56 +58,68 @@ export const createJsonStringify = (store: Store, space?: number) =>
   );
 
 export function exportPNG(root: Element, name?: string) {
-  domToImage.toBlob(root).then(blob => {
-    executeExport(
-      blob,
+  const options: ExportOptions = {
+    fileName:
       name?.trim() === ''
         ? `unnamed-${new Date().getTime()}.png`
-        : `${name}-${new Date().getTime()}.png`
-    );
+        : `${name}-${new Date().getTime()}.png`,
+  };
+
+  domToImage.toBlob(root).then(blob => {
+    executeExport(blob, options);
   });
 }
 
-export const exportJSON = (json: string, name?: string) =>
-  executeExport(
-    new Blob([json], { type: 'application/json' }),
-    name?.trim() === ''
-      ? `unnamed-${new Date().getTime()}.vuerd.json`
-      : `${name}-${new Date().getTime()}.vuerd.json`
-  );
-
-export const exportSQLDDL = (sql: string, name?: string) =>
-  executeExport(
-    new Blob([sql]),
-    name?.trim() === ''
-      ? `unnamed-${new Date().getTime()}.sql`
-      : `${name}-${new Date().getTime()}.sql`
-  );
-
-export const exportXML = (xml: string, name?: string) => {
-  if (xml)
-    executeExport(
-      new Blob([xml]),
+export const exportJSON = (json: string, name?: string) => {
+  const options: ExportOptions = {
+    fileName:
       name?.trim() === ''
-        ? `unnamed-${new Date().getTime()}.xml`
-        : `${name}-${new Date().getTime()}.xml`
-    );
+        ? `unnamed-${new Date().getTime()}.vuerd.json`
+        : `${name}-${new Date().getTime()}.vuerd.json`,
+  };
+
+  executeExport(new Blob([json], { type: 'application/json' }), options);
 };
 
-const executeExport = (blob: Blob, fileName: string) =>
-  executeExportFileExtra
-    ? executeExportFileExtra(blob, fileName)
-    : executeExportBuiltin(blob, fileName);
+export const exportSQLDDL = (sql: string, name?: string) => {
+  const options: ExportOptions = {
+    fileName:
+      name?.trim() === ''
+        ? `unnamed-${new Date().getTime()}.sql`
+        : `${name}-${new Date().getTime()}.sql`,
+  };
 
-function executeExportBuiltin(blob: Blob, fileName: string) {
+  executeExport(new Blob([sql]), options);
+};
+
+export const exportXML = (
+  xml: string,
+  name?: string,
+  saveDirectly?: boolean
+) => {
+  const options: ExportOptions = {
+    saveDirectly: name ? true : false,
+    fileName:
+      name?.trim() === '' ? `unnamed-${new Date().getTime()}.xml` : `${name}`,
+  };
+
+  if (xml) executeExport(new Blob([xml]), options);
+};
+
+const executeExport = (blob: Blob, options: ExportOptions) =>
+  executeExportFileExtra
+    ? executeExportFileExtra(blob, options)
+    : executeExportBuiltin(blob, options);
+
+function executeExportBuiltin(blob: Blob, options: ExportOptions) {
   const exportHelper = document.createElement('a');
   exportHelper.href = window.URL.createObjectURL(blob);
-  exportHelper.download = fileName;
+  exportHelper.download = options.fileName;
   exportHelper.click();
 }
 
 export function setExportFileCallback(
-  callback: (blob: Blob, fileName: string) => void
+  callback: (blob: Blob, options: ExportOptions) => void
 ) {
   executeExportFileExtra = callback;
 }
