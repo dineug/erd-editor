@@ -1,6 +1,7 @@
 import {
   createJsonStringify,
   createSnapshot,
+  createStoreCopy,
   exportJSON,
   exportPNG,
   exportSQLDDL,
@@ -17,10 +18,20 @@ const defaultOptions: MenuOptions = {
   keymapWidth: 0,
 };
 
-export const getLatestSnapshot = (
-  context: IERDEditorContext
-): Snapshot | undefined => {
-  return context.snapshots[context.snapshots.length - 1];
+export const getLatestSnapshot = (context: IERDEditorContext): Snapshot => {
+  if (context.snapshots.length) {
+    return context.snapshots[context.snapshots.length - 1];
+  } else {
+    const snapshot: Snapshot = {
+      data: createStoreCopy(context.store),
+      metadata: { type: 'user', filename: '' },
+    };
+    snapshot.data.relationship.relationships = [];
+    snapshot.data.table.indexes = [];
+    snapshot.data.table.tables = [];
+
+    return snapshot;
+  }
 };
 
 export const createExportMenus = (

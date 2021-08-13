@@ -53,7 +53,7 @@ export default class WebviewERD {
         }
       );
     }
-    const folder = workspace.workspaceFolders?.[0];
+    const folder = Uri.parse(path.dirname(this.uri.path));
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
     this.panel.webview.html = getHtmlForWebview(this.panel.webview, context);
@@ -95,7 +95,7 @@ export default class WebviewERD {
             return;
           case 'exportFile':
             if (message.options.saveDirectly && folder) {
-              let uri = Uri.joinPath(folder.uri, message.options.fileName);
+              let uri = Uri.joinPath(folder, message.options.fileName);
               let content = Buffer.from(message.value.split(',')[1], 'base64');
 
               workspace.fs.writeFile(uri, content);
@@ -144,6 +144,8 @@ export default class WebviewERD {
       watcher.onDidDelete(uri =>
         this.loadLiquibase(this.panel.webview, path.dirname(uri.fsPath))
       );
+
+      this.disposables.push(watcher);
     }
   }
 
@@ -211,7 +213,6 @@ export default class WebviewERD {
       }
     );
 
-    console.log(liquibaseFiles.map(f => f.path));
     webview.postMessage({
       command: 'loadLiquibase',
       value: { files: liquibaseFiles, type: 'vscode' },

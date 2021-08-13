@@ -11,12 +11,13 @@ import { ExportedStore } from '@@types/engine/store';
 export function calculateLatestDiff(context: IERDEditorContext): Diff[] {
   Logger.log('calculateLatestDiff');
   const newest = createStoreCopy(context.store);
-  const snapshot = getLatestSnapshot(context)?.data;
+  const snapshot = getLatestSnapshot(context).data;
   if (!snapshot) return [];
   Logger.log('got diff');
-  Logger.log(snapshot);
+  const diffs = calculateDiff(snapshot, newest);
+  Logger.log(diffs);
 
-  return calculateDiff(snapshot, newest);
+  return diffs;
 }
 
 export function calculateDiff(

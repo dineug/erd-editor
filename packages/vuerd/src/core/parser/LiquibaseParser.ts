@@ -119,7 +119,7 @@ export const applyStatements = (
     statements,
     helper,
     store.canvasState.database,
-    getLatestSnapshot(context)?.data
+    getLatestSnapshot(context).data
   );
 
   store.dispatchSync(initLoadJson$(json));
