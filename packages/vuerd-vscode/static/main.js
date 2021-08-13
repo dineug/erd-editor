@@ -129,10 +129,6 @@
     });
   });
 
-  editor.addEventListener('console-log', event => {
-    console.log(event.detail);
-  });
-
   vscode.postMessage({
     command: 'getValue',
   });

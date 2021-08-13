@@ -95,11 +95,7 @@ export default class WebviewERD {
             return;
           case 'exportFile':
             if (message.options.saveDirectly && folder) {
-              let uri = Uri.joinPath(
-                folder.uri,
-                'changelog',
-                message.options.fileName
-              );
+              let uri = Uri.joinPath(folder.uri, message.options.fileName);
               let content = Buffer.from(message.value.split(',')[1], 'base64');
 
               workspace.fs.writeFile(uri, content);
@@ -136,7 +132,7 @@ export default class WebviewERD {
 
     if (folder) {
       const watcher = workspace.createFileSystemWatcher(
-        new RelativePattern(folder, 'changelog/changelog.xml')
+        new RelativePattern(folder, 'changelog.xml')
       );
 
       watcher.onDidChange(uri =>
