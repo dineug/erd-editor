@@ -4,13 +4,17 @@ import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
 import { Diff } from '@/core/diff';
 import { createStoreCopy } from '@/core/file';
 import { getData } from '@/core/helper';
+import { Logger } from '@/core/logger';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { ExportedStore } from '@@types/engine/store';
 
 export function calculateLatestDiff(context: IERDEditorContext): Diff[] {
+  Logger.log('calculateLatestDiff');
   const newest = createStoreCopy(context.store);
   const snapshot = getLatestSnapshot(context)?.data;
   if (!snapshot) return [];
+  Logger.log('got diff');
+  Logger.log(snapshot);
 
   return calculateDiff(snapshot, newest);
 }
