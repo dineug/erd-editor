@@ -568,6 +568,8 @@ export function relationshipSort(
   const graphs: RelationshipGraph[] = [];
 
   relationships.forEach(relationship => {
+    if (!relationship.visible) return;
+
     const tableStart = getData(tables, relationship.start.tableId);
     const tableEnd = getData(tables, relationship.end.tableId);
 
