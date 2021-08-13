@@ -2,6 +2,7 @@ import { Diff } from '@/core/diff';
 import { Logger } from '@/core/logger';
 import { Statement } from '@/core/parser/index';
 import { Translation, translations } from '@/core/parser/translations';
+import { Database } from '@@types/engine/store/canvas.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
 import { RelationshipState } from '@@types/engine/store/relationship.state';
 import { Column, Index, Table } from '@@types/engine/store/table.state';
@@ -233,4 +234,13 @@ export const changeSetAttributes = ({
   if (dialect) attr.push({ name: 'dbms', value: dialect });
 
   return attr;
+};
+
+export const mapppingTranslationsDatabase: Record<Dialect, Database> = {
+  postgresql: 'PostgreSQL',
+  mssql: 'MSSQL',
+  oracle: 'Oracle',
+
+  liquibase: 'MySQL',
+  unsupportedDatabase: 'MySQL',
 };

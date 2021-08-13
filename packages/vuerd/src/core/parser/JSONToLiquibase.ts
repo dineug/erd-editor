@@ -1,4 +1,5 @@
 import { calculateDiff, mergeDiffs } from '@/core/diff/helper';
+import { getPrimitiveType } from '@/core/generator/code/helper';
 import { getData } from '@/core/helper';
 import { Logger } from '@/core/logger';
 import {
@@ -16,6 +17,7 @@ import {
   FormatTableOptions,
   generateSeqName,
   KeyColumn,
+  mapppingTranslationsDatabase,
   supportedDialects,
   translate,
   XMLNode,
@@ -522,7 +524,15 @@ export const formatColumn = ({
     });
 
   if (column.option.autoIncrement) {
-    if (dialect === 'postgresql') {
+    const primitive = getPrimitiveType(
+      column.dataType,
+      mapppingTranslationsDatabase[dialect]
+    );
+
+    if (
+      dialect === 'postgresql' &&
+      (primitive === 'int' || primitive === 'long')
+    ) {
       columnXML.addAttribute({
         name: 'defaultValueComputed',
         value: `nextval('${generateSeqName(
