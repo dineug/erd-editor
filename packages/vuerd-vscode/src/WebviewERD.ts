@@ -117,12 +117,7 @@ export default class WebviewERD {
             }
             break;
           case 'loadLiquibase':
-            if (folder)
-              workspace
-                .findFiles(new RelativePattern(folder, '*.vuerd.json'), null, 1)
-                .then(uris =>
-                  this.loadLiquibase(this.panel.webview, uris[0].fsPath)
-                );
+            this.loadLiquibase(this.panel.webview, folder.fsPath);
             break;
         }
       },
