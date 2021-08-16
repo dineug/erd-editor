@@ -18,8 +18,16 @@ export function getHtmlForWebview(
   const vuerdUri = webview.asWebviewUri(
     Uri.file(path.join(context.extensionPath, 'static', 'vuerd.min.js'))
   );
+  const pluginGenerateTemplateUri = webview.asWebviewUri(
+    Uri.file(
+      path.join(context.extensionPath, 'static', 'generate-template.min.js')
+    )
+  );
   const mainUri = webview.asWebviewUri(
     Uri.file(path.join(context.extensionPath, 'static', 'main.js'))
+  );
+  const lazyLoadUri = webview.asWebviewUri(
+    Uri.file(path.join(context.extensionPath, 'static', 'lazy-load.js'))
   );
   const nonce = getNonce();
   const cspSource = webview.cspSource;
@@ -29,18 +37,20 @@ export function getHtmlForWebview(
     <html lang="en">
     <head>
       <meta charset="UTF-8">
-      <meta http-equiv="Content-Security-Policy" 
+      <meta http-equiv="Content-Security-Policy"
       content="default-src * ${cspSource} https: 'unsafe-inline' 'unsafe-eval';
         script-src ${cspSource} blob: data: https: 'unsafe-inline' 'unsafe-eval' 'nonce-${nonce}';
         style-src ${cspSource} https: 'unsafe-inline';
         img-src ${cspSource} data: https:;
-        connect-src ${cspSource} blob: data: https: http:;">          
+        connect-src ${cspSource} blob: data: https: http:;">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>vuerd</title>
     </head>
     <body>
       <script nonce="${nonce}" src=${vuerdUri}></script>
       <script nonce="${nonce}" src=${mainUri}></script>
+      <script nonce="${nonce}" src=${pluginGenerateTemplateUri} defer></script>
+      <script nonce="${nonce}" src=${lazyLoadUri} defer></script>
     </body>
     </html>`;
 }
