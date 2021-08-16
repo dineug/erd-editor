@@ -1,10 +1,12 @@
 import { render } from 'preact';
-import { StyleSheetManager } from 'styled-components';
-import { ERDEditorContext } from 'vuerd';
+import { createGlobalStyle, StyleSheetManager } from 'styled-components';
+import { ERDEditorContext, watch } from 'vuerd';
 
 import GenerateTemplate from '@/components/GenerateTemplate';
 import { GlobalStyle } from '@/components/GenerateTemplateElement.styled';
 import { GenerateTemplate as Context } from '@/core/GenerateTemplateContext';
+import { noop } from '@/core/helper';
+import { highlightThemeMap } from '@/core/highlight';
 import { createGlobalEventObservable } from '@/helpers/event.helper';
 import { GenerateTemplateContext } from '@/internal-types/GenerateTemplateContext';
 import { UIStore } from '@/stores/ui.store';
@@ -22,6 +24,7 @@ export class GenerateTemplateElement extends HTMLElement {
   stores = {
     ui: new UIStore(),
   };
+  unsubscribe: () => void = noop;
 
   connectedCallback() {
     this.context = {
@@ -36,15 +39,25 @@ export class GenerateTemplateElement extends HTMLElement {
       height: '100%',
     });
 
+    this.unsubscribe = watch(this.context.api.store.canvasState, propName => {
+      if (propName !== 'highlightTheme') return;
+      this.render();
+    });
+
     this.render();
   }
 
   render() {
+    const HighlightStyle = createGlobalStyle`${
+      highlightThemeMap[this.context.api.store.canvasState.highlightTheme]
+    }`;
+
     render(
       <Context.Provider value={this.context}>
         <StyleSheetManager target={this.renderRoot as any}>
           <>
             <GlobalStyle />
+            <HighlightStyle />
             <GenerateTemplate />
           </>
         </StyleSheetManager>

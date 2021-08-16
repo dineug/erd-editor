@@ -1,6 +1,10 @@
+import '@/config';
+
+import { EditorView } from '@codemirror/view';
+import { debounce } from 'lodash';
 import { observer } from 'mobx-react-lite';
 import { FunctionalComponent } from 'preact';
-import { useRef, useState } from 'preact/hooks';
+import { useCallback, useRef, useState } from 'preact/hooks';
 
 import Editor from '@/components/editor/Editor';
 import { Container } from '@/components/GenerateTemplate.styled';
@@ -15,6 +19,8 @@ import { Move } from '@/internal-types/event.helper';
 
 const GenerateTemplate: FunctionalComponent = () => {
   const [width, setWidth] = useState(SIDEBAR_WIDTH);
+  const [value, setValue] = useState('');
+  const [previewValue, setPreviewValue] = useState('');
   const clientXRef = useRef(0);
   const { stores } = useContext();
 
@@ -46,6 +52,18 @@ const GenerateTemplate: FunctionalComponent = () => {
       return prevWidth;
     });
 
+  const handleChangeMode = () => {
+    setValue(previewValue);
+  };
+
+  const handleChange = useCallback(
+    debounce((editor: EditorView) => {
+      const text = editor.state.doc.toString();
+      setPreviewValue(text);
+    }, 200),
+    []
+  );
+
   return (
     <Container>
       <Sidebar
@@ -53,7 +71,13 @@ const GenerateTemplate: FunctionalComponent = () => {
         onGlobalMove={handleGlobalMove}
         onMousedown={handleMousedown}
       />
-      <Editor width={stores.ui.viewport.width - width} />
+      <Editor
+        width={stores.ui.viewport.width - width}
+        value={value}
+        previewValue={previewValue}
+        onChange={handleChange}
+        onChangeMode={handleChangeMode}
+      />
     </Container>
   );
 };

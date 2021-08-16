@@ -1,3 +1,4 @@
+import { EditorView } from '@codemirror/view';
 import { round } from 'lodash';
 import { FunctionalComponent } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -17,16 +18,31 @@ const MIN_WIDTH = 100;
 
 export interface Props {
   width: number;
+  value: string;
+  previewValue: string;
+  onChange(editor: EditorView): void;
+  onChangeMode(mode: EditorMode): void;
 }
 
-const Editor: FunctionalComponent<Partial<Props>> = ({ width = 0 }) => {
-  const [mode, setMode] = useState<EditorMode>('code');
+const Editor: FunctionalComponent<Partial<Props>> = ({
+  width = 0,
+  value = '',
+  previewValue = '',
+  onChange,
+  onChangeMode,
+}) => {
+  const [mode, setMode] = useState<EditorMode>('vertical');
   const [containerWidth, setContainerWidth] = useState({
     editor: width / 2,
     preview: width / 2,
   });
   const prevWidthRef = useRef(width);
   const clientXRef = useRef(0);
+
+  const handleChangeMode = (mode: EditorMode) => {
+    setMode(mode);
+    onChangeMode && onChangeMode(mode);
+  };
 
   const handleMousedown = ({ clientX }: React.MouseEvent) => {
     clientXRef.current = clientX;
@@ -91,17 +107,21 @@ const Editor: FunctionalComponent<Partial<Props>> = ({ width = 0 }) => {
   }, [width]);
 
   return (
-    <Container style={{ width: `${width}px` }}>
-      <Toolbar mode={mode} onChangeMode={setMode} />
+    <Container style={{ width: width ? `${width}px` : '' }}>
+      <Toolbar mode={mode} onChangeMode={handleChangeMode} />
       {mode === 'code' ? (
-        <TemplateEditor />
+        <TemplateEditor value={value} onChange={onChange} />
       ) : mode === 'preview' ? (
-        <Preview />
+        <Preview value={previewValue} />
       ) : (
         <EditorContainer>
-          <TemplateEditor width={containerWidth.editor} />
+          <TemplateEditor
+            width={containerWidth.editor}
+            value={value}
+            onChange={onChange}
+          />
           <ResizeContainer>
-            <Preview width={containerWidth.preview} />
+            <Preview width={containerWidth.preview} value={previewValue} />
             <Sash
               vertical
               onMousedown={handleMousedown}

@@ -1,4 +1,5 @@
 import { FunctionalComponent } from 'preact';
+import { useEffect, useState } from 'preact/hooks';
 
 import { Canvas, Container } from '@/components/Icon.styled';
 import { getIcon } from '@/core/icon';
@@ -29,13 +30,32 @@ const Icon: FunctionalComponent<Partial<Props>> = ({
   active = false,
   onClick,
 }) => {
-  const icon = getIcon(prefix, name);
-  if (!icon) return null;
+  const [data, setData] = useState({ width: 0, height: 0, d: '' });
+  const [rem, setRem] = useState(SIZE_REM * (size / SIZE));
 
-  const [width, height, , , d] = icon.icon;
-  const rem = SIZE_REM * (size / SIZE);
+  useEffect(() => {
+    setRem(SIZE_REM * (size / SIZE));
+  }, [size]);
 
-  return (
+  useEffect(() => {
+    const icon = getIcon(prefix, name);
+    if (icon) {
+      const [width, height, , , d] = icon.icon;
+      setData({
+        width,
+        height,
+        d,
+      });
+    } else {
+      setData({
+        width: 0,
+        height: 0,
+        d: '',
+      });
+    }
+  }, [prefix, name]);
+
+  return data.d ? (
     <Container cursor={cursor} active={active} onClick={onClick}>
       <Canvas
         style={{
@@ -43,12 +63,16 @@ const Icon: FunctionalComponent<Partial<Props>> = ({
           height: `${rem}rem`,
         }}
         transition={transition}
-        viewBox={`0 0 ${width} ${height}`}
+        viewBox={`0 0 ${data.width} ${data.height}`}
       >
-        {color ? <path d={d} fill={color}></path> : <path d={d}></path>}
+        {color ? (
+          <path d={data.d} fill={color}></path>
+        ) : (
+          <path d={data.d}></path>
+        )}
       </Canvas>
     </Container>
-  );
+  ) : null;
 };
 
 export default Icon;

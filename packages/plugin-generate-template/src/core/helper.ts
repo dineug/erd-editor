@@ -11,5 +11,7 @@ export const closestElement = (
     ? target
     : closestElement(selector, el.getRootNode().host);
 
+export const noop = () => {};
+
 const encodeBase64 = R.pipe(encodeURIComponent, unescape, btoa);
 const decodeBase64 = R.pipe(atob, escape, decodeURIComponent);
