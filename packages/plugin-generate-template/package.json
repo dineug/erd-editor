@@ -28,7 +28,8 @@
   "scripts": {
     "serve": "vite",
     "serve:rollup": "rollup -c rollup.config.dev.js -w",
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "build:vscode": "rollup -c rollup.config.vscode.js"
   },
   "author": "dineug <dineug2@gmail.com>",
   "license": "MIT",
@@ -48,7 +49,6 @@
     "@types/styled-components": "^5.1.9",
     "@types/uuid": "^8.3.0",
     "ejs": "^3.1.6",
-    "ejs-lint": "^1.2.1",
     "highlight.js": "^10.7.2",
     "highlightjs-graphql": "^1.0.2",
     "lodash": "^4.17.21",
@@ -72,6 +72,6 @@
     "vite": "^2.3.3"
   },
   "dependencies": {
-    "vuerd": "^2.1.0"
+    "vuerd": "^2.2.1"
   }
 }

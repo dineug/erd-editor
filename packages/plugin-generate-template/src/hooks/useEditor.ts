@@ -17,7 +17,7 @@ export interface Options {
 export function useEditor(options?: Partial<Options>): EditorTuple {
   const context = useContext();
   const parentRef = useRef<Element>();
-  const editorRef = useRef<EditorView>();
+  const editorRef = useRef<EditorView>() as { current: EditorView };
 
   useEffect(() => {
     editorRef.current = new EditorView({
@@ -30,6 +30,7 @@ export function useEditor(options?: Partial<Options>): EditorTuple {
           EditorView.updateListener.of((view: ViewUpdate) => {
             view.docChanged &&
               options?.onChange &&
+              editorRef.current &&
               options.onChange(editorRef.current);
           }),
         ],
@@ -38,7 +39,7 @@ export function useEditor(options?: Partial<Options>): EditorTuple {
       parent: parentRef.current,
     });
 
-    return () => editorRef.current.destroy();
+    return () => editorRef.current?.destroy();
   }, []);
 
   return [parentRef, editorRef];
