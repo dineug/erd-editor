@@ -142,6 +142,8 @@ export default class WebviewERD {
 
       this.disposables.push(watcher);
     }
+
+    this.loadLiquibase(this.panel.webview, folder.fsPath);
   }
 
   public dispose() {
@@ -157,6 +159,7 @@ export default class WebviewERD {
 
   loadLiquibase = (webview: Webview, uri: string) => {
     const liquibaseFiles: LiquibaseFile[] = loadLiquibaseFiles(uri);
+    if (!liquibaseFiles.length) return;
 
     const increment = 100 / liquibaseFiles.length;
     var currentFile = 0;
@@ -194,9 +197,12 @@ export default class WebviewERD {
             }
           });
 
-          token.onCancellationRequested(() => {
-            listener.dispose();
-          });
+          this.disposables.push(
+            listener,
+            token.onCancellationRequested(() => {
+              listener.dispose();
+            })
+          );
         });
 
         progress.report({
