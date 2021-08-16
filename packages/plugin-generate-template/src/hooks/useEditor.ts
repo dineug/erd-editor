@@ -1,5 +1,5 @@
 import { basicSetup, EditorState } from '@codemirror/basic-setup';
-import { defaultTabBinding } from '@codemirror/commands';
+import { indentWithTab } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView, keymap, ViewUpdate } from '@codemirror/view';
@@ -24,7 +24,7 @@ export function useEditor(options?: Partial<Options>): EditorTuple {
       state: EditorState.create({
         extensions: [
           basicSetup,
-          keymap.of([defaultTabBinding]),
+          keymap.of([indentWithTab]),
           javascript(),
           oneDark,
           EditorView.updateListener.of((view: ViewUpdate) => {

@@ -19,6 +19,11 @@ const Preview: FunctionalComponent<Partial<Props>> = ({
   const [code, setCode] = useState('');
 
   useEffect(() => {
+    if (!value.trim()) {
+      setCode('');
+      return;
+    }
+
     try {
       const result = ejs.render(`<%= ${value} %>`, {}, { escape: identity });
       const html = hljs.highlightAuto(result).value;

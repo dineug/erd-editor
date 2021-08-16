@@ -24,7 +24,7 @@ export class GenerateTemplateElement extends HTMLElement {
   stores = {
     ui: new UIStore(),
   };
-  unsubscribe: () => void = noop;
+  unsubscribe = noop;
 
   connectedCallback() {
     this.context = {
@@ -45,6 +45,10 @@ export class GenerateTemplateElement extends HTMLElement {
     });
 
     this.render();
+  }
+
+  disconnectedCallback() {
+    this.unsubscribe();
   }
 
   render() {
