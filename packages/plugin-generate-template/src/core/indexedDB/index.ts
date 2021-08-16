@@ -1,6 +1,7 @@
 import { Observable } from 'rxjs';
 
 import { findAll } from '@/core/indexedDB/operators/findAll';
+import { findOne } from '@/core/indexedDB/operators/findOne';
 import { objectStore } from '@/core/indexedDB/operators/objectStore';
 
 export type Mode = 'readwrite' | 'readonly';
@@ -54,47 +55,38 @@ export const createTemplate = (data: Template) =>
 
 export const updateByTemplateName = (data: Template) =>
   new Observable<IDBValidKey>(subscriber =>
-    openIndexedDB.pipe(objectStore('template', DB.mode.RW)).subscribe({
-      next(store) {
-        const getReq: IDBRequest<Template> = store.get(data.name);
-        const onError = (e: any) => subscriber.error(e);
-
-        getReq.onsuccess = () => {
-          const old = getReq.result;
-          const req = store.put({ ...old, ...data });
+    openIndexedDB
+      .pipe(findOne<Template>(data.name, 'template', DB.mode.RW))
+      .subscribe({
+        next([prev, store]) {
+          const req = store.put({ ...prev, ...data });
 
           req.onsuccess = () => {
             subscriber.next(req.result);
             subscriber.complete();
           };
-          req.onerror = onError;
-        };
-        getReq.onerror = onError;
-      },
-      error: e => subscriber.error(e),
-      complete: () => subscriber.complete(),
-    })
+          req.onerror = e => subscriber.error(e);
+        },
+        error: e => subscriber.error(e),
+        complete: () => subscriber.complete(),
+      })
   );
 
 export const deleteByTemplateName = (name: string) =>
   new Observable<Template>(subscriber =>
-    openIndexedDB.pipe(objectStore('template', DB.mode.RW)).subscribe({
-      next(store) {
-        const getReq: IDBRequest<Template> = store.get(name);
-        const onError = (e: any) => subscriber.error(e);
-
-        getReq.onsuccess = () => {
+    openIndexedDB
+      .pipe(findOne<Template>(name, 'template', DB.mode.RW))
+      .subscribe({
+        next([data, store]) {
           const req = store.delete(name);
 
           req.onsuccess = () => {
-            subscriber.next(getReq.result);
+            subscriber.next(data);
             subscriber.complete();
           };
-          req.onerror = onError;
-        };
-        getReq.onerror = onError;
-      },
-      error: e => subscriber.error(e),
-      complete: () => subscriber.complete(),
-    })
+          req.onerror = e => subscriber.error(e);
+        },
+        error: e => subscriber.error(e),
+        complete: () => subscriber.complete(),
+      })
   );

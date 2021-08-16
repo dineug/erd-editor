@@ -1,13 +1,13 @@
 import { Observable } from 'rxjs';
 
-import { DB, Store } from '@/core/indexedDB';
+import { DB, Mode, Store } from '@/core/indexedDB';
 import { objectStore } from '@/core/indexedDB/operators/objectStore';
 
 export const findAll =
-  <T>(store: Store) =>
+  <T = any>(storeName: Store, mode: Mode = DB.mode.R) =>
   (source$: Observable<IDBDatabase>) =>
     new Observable<Array<T>>(subscriber =>
-      source$.pipe(objectStore(store, DB.mode.R)).subscribe({
+      source$.pipe(objectStore(storeName, mode)).subscribe({
         next(store) {
           const list: Array<T> = [];
           const req = store.openCursor();
