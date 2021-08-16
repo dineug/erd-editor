@@ -1,3 +1,5 @@
+import { Statement } from '@/core/parser';
+
 import { ExportedStore } from '.';
 
 export interface Snapshot {
@@ -13,4 +15,5 @@ export interface SnapshotMetadata {
     | 'before-export'
     | 'after-export'
     | 'user';
+  statements?: Statement[];
 }

@@ -1,4 +1,8 @@
-import { calculateDiff, mergeDiffs } from '@/core/diff/helper';
+import {
+  calculateDiff,
+  mergeDiffs,
+  statementsToDiff,
+} from '@/core/diff/helper';
 import { getPrimitiveType } from '@/core/generator/code/helper';
 import { getData } from '@/core/helper';
 import { Logger } from '@/core/logger';
@@ -25,12 +29,15 @@ import {
 import { orderByNameASC } from '@/engine/store/helper/table.helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { Relationship } from '@@types/engine/store/relationship.state';
+import { Snapshot } from '@@types/engine/store/snapshot';
 import {
   Column,
   Index,
   Table,
   TableState,
 } from '@@types/engine/store/table.state';
+
+import { Diff } from '../diff';
 
 const xmlns = 'http://www.liquibase.org/xml/ns/dbchangelog';
 const xmlnsxsi = 'http://www.w3.org/2001/XMLSchema-instance';
@@ -101,26 +108,28 @@ export const createXMLPostgreOracleMSS = (
   var oldSnap = snapshots[snapshots.length - 1];
   var newSnap = snapshots[snapshots.length - 1];
   for (let i = snapshots.length - 1; i > 0; i--) {
-    if (snapshots[i].metadata?.type === 'user') {
+    if (
+      snapshots[i].metadata?.type === 'user' ||
+      snapshots[i].metadata?.type === 'before-export'
+    ) {
       newSnap = snapshots[i];
       oldSnap = snapshots[i - 1];
       break;
     }
   }
 
-  const latestDiff = calculateDiff(oldSnap.data, newSnap.data);
+  const latestDiff = calculateDiff(oldSnap, newSnap);
   Logger.log({ latestDiff });
 
-  var oldSnap = snapshots[snapshots.length - 1];
-  var newSnap = snapshots[snapshots.length - 1];
+  const snapshotRange: Snapshot[] = [];
+
   for (let i = snapshots.length - 1; i >= 0; i--) {
     if (
       snapshots[i].metadata?.type === 'before-import' &&
       snapshots[i].metadata?.filename.replace(/\.xml$/g, '').toLowerCase() ===
         author.id.toLowerCase()
     ) {
-      newSnap = snapshots[i + 1];
-      oldSnap = snapshots[i];
+      snapshotRange.push(snapshots[i + 1]);
 
       for (let j = i; j >= 0; j--) {
         if (
@@ -128,20 +137,32 @@ export const createXMLPostgreOracleMSS = (
             .replace(/\.xml$/g, '')
             .toLowerCase() !== author.id.toLowerCase()
         ) {
-          oldSnap = snapshots[j + 1];
           break;
         }
+        snapshotRange.push(snapshots[j]);
       }
       break;
     }
   }
+  var newSnap = snapshotRange[0];
+  var oldSnap = snapshotRange[snapshotRange.length - 1];
 
-  const historicalDiff = calculateDiff(oldSnap.data, newSnap.data);
-  Logger.log({ historicalDiff, oldSnap, newSnap });
+  var historicalDiffs: Diff[][] = [];
+  historicalDiffs.push(calculateDiff(oldSnap, newSnap));
+
+  console.log('HistoricalDiff', historicalDiffs);
+  console.log('SnapshotRange', snapshotRange);
+  if (!historicalDiffs[0].length) {
+    for (let i = 1; i < snapshotRange.length; i++) {
+      historicalDiffs.push(statementsToDiff(snapshotRange[i], context));
+      console.log('StatementsDiff', historicalDiffs, snapshotRange[i]);
+    }
+  }
+  Logger.log({ historicalDiffs, oldSnap, newSnap });
 
   return createTableDiff({
     author,
-    diffs: mergeDiffs(latestDiff, historicalDiff),
+    diffs: mergeDiffs(latestDiff, ...historicalDiffs),
   });
 };
 
@@ -203,6 +224,7 @@ export const createTableDiff = ({
   author,
   diffs,
 }: FormatTableDiff): XMLNode[] => {
+  Logger.log('Exporting diffs', diffs);
   var changeSets: XMLNode[] = [];
 
   var changeSetSequences: XMLNode = generateChangeSetSequence(author);

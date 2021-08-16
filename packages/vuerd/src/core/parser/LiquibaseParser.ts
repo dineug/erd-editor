@@ -82,6 +82,7 @@ export const LiquibaseParser = (
           createSnapshot(context, {
             filename: file.path,
             type: 'before-import',
+            statements: statements,
           });
           applyStatements(context, statements);
         }
