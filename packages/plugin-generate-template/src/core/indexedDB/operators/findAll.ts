@@ -10,21 +10,21 @@ export const findAll =
       source$.pipe(objectStore(storeName, mode)).subscribe({
         next(store) {
           const list: Array<T> = [];
-          const req = store.openCursor();
+          const cursorReq = store.openCursor();
 
-          req.onsuccess = (event: any) => {
-            const cursor: IDBCursorWithValue | null = event.target.result;
+          cursorReq.onsuccess = () => {
+            const cursor = cursorReq.result;
 
             if (cursor) {
               const req = store.get(cursor.key);
-              req.onsuccess = (event: any) => list.push(event.target.result);
+              req.onsuccess = () => list.push(req.result);
               cursor.continue();
             } else {
               subscriber.next(list);
               subscriber.complete();
             }
           };
-          req.onerror = e => subscriber.error(e);
+          cursorReq.onerror = e => subscriber.error(e);
         },
         error: e => subscriber.error(e),
         complete: () => subscriber.complete(),
