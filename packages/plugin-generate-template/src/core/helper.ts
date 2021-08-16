@@ -1,3 +1,5 @@
+import * as R from 'ramda';
+
 export const closestElement = (
   selector: string,
   el: any,
@@ -8,3 +10,6 @@ export const closestElement = (
     : target
     ? target
     : closestElement(selector, el.getRootNode().host);
+
+const encodeBase64 = R.pipe(encodeURIComponent, unescape, btoa);
+const decodeBase64 = R.pipe(atob, escape, decodeURIComponent);

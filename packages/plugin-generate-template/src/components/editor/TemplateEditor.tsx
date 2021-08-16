@@ -4,21 +4,32 @@ import { useEffect } from 'preact/hooks';
 import { Container } from '@/components/editor/TemplateEditor.styled';
 import { useEditor } from '@/hooks/useEditor';
 
-interface Props {}
+interface Props {
+  value: string;
+  width: number;
+}
 
-const TemplateEditor: FunctionalComponent<Props> = () => {
+const TemplateEditor: FunctionalComponent<Partial<Props>> = ({
+  value = '',
+  width = 0,
+}) => {
   const [parentRef, editorRef] = useEditor();
 
   useEffect(() => {
     const editor = editorRef.current;
-    console.log(editor);
-    // setInterval(() => {
-    //   const data = editor.state.doc.toJSON().join('\n');
-    //   console.log(data);
-    // }, 1000);
-  }, []);
+    const text = editor.state.doc.toString();
 
-  return <Container ref={parentRef} />;
+    editor.dispatch({
+      changes: [
+        { from: 0, to: text.length, insert: '' },
+        { from: 0, insert: value },
+      ],
+    });
+  }, [value]);
+
+  return (
+    <Container style={{ width: width ? `${width}px` : '' }} ref={parentRef} />
+  );
 };
 
 export default TemplateEditor;

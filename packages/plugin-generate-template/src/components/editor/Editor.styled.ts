@@ -5,3 +5,12 @@ export const Container = styled.div`
   display: flex;
   flex-direction: column;
 `;
+
+export const EditorContainer = styled.div`
+  height: 100%;
+  display: flex;
+`;
+
+export const ResizeContainer = styled.div`
+  position: relative;
+`;
