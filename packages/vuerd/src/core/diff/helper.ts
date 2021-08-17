@@ -239,19 +239,6 @@ export function statementsToDiff(
   const { helper } = context;
   const statements = snapshot.metadata.statements;
 
-  // const json = createJson(
-  //   statements,
-  //   context.helper,
-  //   context.store.canvasState.database
-  // );
-  // const changeSnapshot = JSON.parse(json) as ExportedStore;
-  // const emptySnapshot = createJsonFormat(1, context.store.canvasState.database);
-
-  // const diffs: Diff[] = calculateDiff(
-  //   { data: emptySnapshot },
-  //   { data: changeSnapshot }
-  // );
-
   const diffs: Diff[] = [];
   const { tables: snapTables, indexes: snapIndexes } = snapshot.data.table;
   const { relationships: snapRelationships } = snapshot.data.relationship;

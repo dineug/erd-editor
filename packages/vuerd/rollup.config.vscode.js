@@ -20,7 +20,7 @@ export default {
     strip({
       debugger: true,
       include: '**/*.ts',
-      functions: ['Logger.debug'],
+      functions: ['Logger.debug', 'Logger.log', 'console.log'],
     }),
     replace({
       preventAssignment: true,
