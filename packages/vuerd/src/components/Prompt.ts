@@ -92,7 +92,7 @@ defineComponent('vuerd-prompt', {
 
     const onSubmit = (e: Event, cancel: boolean) => {
       e.preventDefault();
-      props.onSubmit(cancel ? '' : state.input);
+      props.onSubmit(cancel ? '' : state.input.trim());
       state.input = '';
     };
 

@@ -31,13 +31,13 @@
   };
   let isInit = false;
 
-  vuerd.setExportFileCallback((blob, fileName) => {
+  vuerd.setExportFileCallback((blob, options) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       vscode.postMessage({
         command: 'exportFile',
         value: reader.result,
-        fileName,
+        options,
       });
     };
     reader.readAsDataURL(blob);
@@ -132,8 +132,4 @@
   vscode.postMessage({
     command: 'getValue',
   });
-
-  // vscode.postMessage({
-  //   command: 'loadLiquibase',
-  // });
 })();

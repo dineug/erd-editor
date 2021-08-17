@@ -54,7 +54,7 @@ export default class WebviewERD {
         }
       );
     }
-    const folder = workspace.workspaceFolders?.[0];
+    const folder = Uri.parse(path.dirname(this.uri.path));
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
     this.panel.webview.html = getHtmlForWebview(this.panel.webview, context);
@@ -95,26 +95,30 @@ export default class WebviewERD {
             }
             return;
           case 'exportFile':
-            window
-              .showSaveDialog({
-                defaultUri: Uri.file(path.join(os.homedir(), message.fileName)),
-              })
-              .then(uri => {
-                if (uri) {
-                  workspace.fs.writeFile(
-                    uri,
-                    Buffer.from(message.value.split(',')[1], 'base64')
-                  );
-                }
-              });
+            if (message.options.saveDirectly && folder) {
+              let uri = Uri.joinPath(folder, message.options.fileName);
+              let content = Buffer.from(message.value.split(',')[1], 'base64');
+
+              workspace.fs.writeFile(uri, content);
+            } else {
+              window
+                .showSaveDialog({
+                  defaultUri: Uri.file(
+                    path.join(os.homedir(), message.options.fileName)
+                  ),
+                })
+                .then(uri => {
+                  if (uri) {
+                    workspace.fs.writeFile(
+                      uri,
+                      Buffer.from(message.value.split(',')[1], 'base64')
+                    );
+                  }
+                });
+            }
             break;
           case 'loadLiquibase':
-            if (folder)
-              workspace
-                .findFiles(new RelativePattern(folder, '*.vuerd.json'), null, 1)
-                .then(uris =>
-                  this.loadLiquibase(this.panel.webview, uris[0].fsPath)
-                );
+            this.loadLiquibase(this.panel.webview, folder.fsPath);
             break;
         }
       },
@@ -124,7 +128,7 @@ export default class WebviewERD {
 
     if (folder) {
       const watcher = workspace.createFileSystemWatcher(
-        new RelativePattern(folder, 'changelog/changelog.xml')
+        new RelativePattern(folder, 'changelog.xml')
       );
 
       watcher.onDidChange(uri =>
@@ -136,7 +140,11 @@ export default class WebviewERD {
       watcher.onDidDelete(uri =>
         this.loadLiquibase(this.panel.webview, path.dirname(uri.fsPath))
       );
+
+      this.disposables.push(watcher);
     }
+
+    this.loadLiquibase(this.panel.webview, folder.fsPath);
   }
 
   public dispose() {
@@ -152,6 +160,7 @@ export default class WebviewERD {
 
   loadLiquibase = (webview: Webview, uri: string) => {
     const liquibaseFiles: LiquibaseFile[] = loadLiquibaseFiles(uri);
+    if (!liquibaseFiles.length) return;
 
     const increment = 100 / liquibaseFiles.length;
     var currentFile = 0;
@@ -189,9 +198,12 @@ export default class WebviewERD {
             }
           });
 
-          token.onCancellationRequested(() => {
-            listener.dispose();
-          });
+          this.disposables.push(
+            listener,
+            token.onCancellationRequested(() => {
+              listener.dispose();
+            })
+          );
         });
 
         progress.report({
