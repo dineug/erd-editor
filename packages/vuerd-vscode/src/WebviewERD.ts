@@ -46,6 +46,7 @@ export default class WebviewERD {
         path.basename(uri.fsPath),
         column || ViewColumn.One,
         {
+          retainContextWhenHidden: true,
           enableScripts: true,
           localResourceRoots: [
             Uri.file(path.join(context.extensionPath, 'static')),
