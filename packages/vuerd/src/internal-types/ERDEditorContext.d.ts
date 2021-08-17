@@ -1,3 +1,4 @@
+import { showAlertDef } from '@/core/hooks/alert.hook';
 import { showPromptDef } from '@/core/hooks/prompt.hook';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 
@@ -11,4 +12,5 @@ export interface IERDEditorContext extends ERDEditorContext {
   store: IStore;
   helper: IHelper;
   showPrompt: showPromptDef;
+  showAlert: showAlertDef;
 }

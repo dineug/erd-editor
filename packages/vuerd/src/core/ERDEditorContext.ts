@@ -26,6 +26,7 @@ export function createdERDEditorContext(): IERDEditorContext {
     helper,
     snapshots: [],
     showPrompt: noop,
+    showAlert: noop,
   };
 }
 
@@ -42,7 +43,7 @@ export const omitERDEditorContext = R.pipe<
   any,
   ERDEditorContext
 >(
-  R.omit(['globalEvent', 'eventBus', 'snapshots', 'showPrompt']),
+  R.omit(['globalEvent', 'eventBus', 'snapshots', 'showPrompt', 'showAlert']),
   R.dissocPath(['store', 'history$']),
   R.dissocPath(['store', 'change$']),
   R.dissocPath(['store', 'destroy']),

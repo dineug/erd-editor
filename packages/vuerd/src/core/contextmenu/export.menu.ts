@@ -38,7 +38,7 @@ export const createExportMenus = (
   context: IERDEditorContext,
   canvas: Element
 ): Menu[] => {
-  const { store, snapshots, showPrompt } = context;
+  const { store, snapshots, showPrompt, showAlert } = context;
   return [
     {
       icon: {
@@ -104,7 +104,7 @@ export const createExportMenus = (
             })
           );
         } else {
-          alert(
+          showAlert(
             `Export from ${store.canvasState.database} dialect not supported, please use PostgreSQL`
           );
         }
