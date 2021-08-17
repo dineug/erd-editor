@@ -24,7 +24,7 @@ export const getLatestSnapshot = (
 };
 
 export const createExportMenus = (
-  { store, snapshots, showPrompt }: IERDEditorContext,
+  { store, snapshots, showPrompt, showAlert }: IERDEditorContext,
   canvas: Element
 ): Menu[] =>
   [
@@ -86,7 +86,7 @@ export const createExportMenus = (
             })
           );
         } else {
-          alert(
+          showAlert(
             `Export from ${store.canvasState.database} dialect not supported, please use PostgreSQL`
           );
         }

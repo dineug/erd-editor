@@ -26,6 +26,7 @@ import { fromEvent } from 'rxjs';
 
 import { createdERDEditorContext } from '@/core/ERDEditorContext';
 import { Bus } from '@/core/helper/eventBus.helper';
+import { useAlert } from '@/core/hooks/alert.hook';
 import { useERDEditorDrawer } from '@/core/hooks/ERDEditorDrawer.hook';
 import { useERDEditorElement } from '@/core/hooks/ERDEditorElement.hook';
 import { useERDEditorGhost } from '@/core/hooks/ERDEditorGhost.hook';
@@ -68,9 +69,11 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
     useERDEditorDrawer(props, context);
   const { hasPanel, panelTpl } = usePanelView(props, context);
   const { showPrompt, promptTpl } = usePrompt();
+  const { showAlert, alertTpl } = useAlert();
   const { unmountedGroup } = useUnmounted();
   useERDEditorElement(context, ctx, { setFocus });
   context.showPrompt = showPrompt;
+  context.showAlert = showAlert;
 
   // @ts-ignore
   const resizeObserver = new ResizeObserver(entries => {
@@ -172,7 +175,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
               ? html`<vuerd-erd .width=${width} .height=${height}></vuerd-erd>`
               : null
           )}
-          ${panelTpl()} ${drawerTpl()} ${ghostTpl} ${promptTpl()}
+          ${panelTpl()} ${drawerTpl()} ${ghostTpl} ${promptTpl()} ${alertTpl()}
         </div>
       </vuerd-provider>
     `;
