@@ -13,7 +13,7 @@ import {
 import { classMap } from 'lit-html/directives/class-map';
 
 import { LineShape } from '@/components/drawer/TreeDrawer/TreeLine';
-import { calculateDiff } from '@/core/diff/helper';
+import { calculateLatestDiff } from '@/core/diff/helper';
 import { getData } from '@/core/helper';
 import { useContext } from '@/core/hooks/context.hook';
 import { Changes } from '@/core/tableTree';
@@ -69,7 +69,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
   };
 
   const refreshDiff = () => {
-    const diffs = calculateDiff(contextRef.value);
+    const diffs = calculateLatestDiff(contextRef.value);
     const tableDiffs = diffs.filter(diff => diff.type === 'table');
     const columnDiffs = diffs.filter(diff => diff.type === 'column');
 

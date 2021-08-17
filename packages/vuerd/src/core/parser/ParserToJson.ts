@@ -170,7 +170,7 @@ function reshape(
   return shape;
 }
 
-function findByName<T extends { name: string }>(
+export function findByName<T extends { name: string }>(
   list: T[],
   name: string
 ): T | null {
@@ -182,7 +182,7 @@ function findByName<T extends { name: string }>(
   return null;
 }
 
-function findByConstraintName<T extends { constraintName?: string }>(
+export function findByConstraintName<T extends { constraintName?: string }>(
   list: T[],
   constraintName?: string
 ): T | null {
@@ -404,7 +404,7 @@ function snapshotToShape({ table, relationship }: ExportedStore): Shape {
   return shape;
 }
 
-function createJsonFormat(
+export function createJsonFormat(
   canvasSize: number,
   database: Database,
   originalCanvas?: CanvasState,
@@ -509,7 +509,7 @@ function createTable(
   return newTable;
 }
 
-function createColumn(helper: Helper, column: Column): any {
+export function createColumn(helper: Helper, column: Column): any {
   const newColumn: PureColumn = {
     id: column.id || uuid(),
     name: column.name,

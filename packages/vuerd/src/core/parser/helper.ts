@@ -1,3 +1,4 @@
+import { Diff } from '@/core/diff';
 import { Logger } from '@/core/logger';
 import { Statement } from '@/core/parser/index';
 import { Translation, translations } from '@/core/parser/translations';
@@ -39,7 +40,8 @@ export interface Constraints {
 }
 
 export interface FormatRelationOptions {
-  tables: Table[];
+  startTable: Table;
+  endTable: Table;
   relationship: Relationship;
 }
 
@@ -67,10 +69,7 @@ export interface FormatChangeSet {
 
 export interface FormatTableDiff {
   author: Author;
-  tableState: TableState;
-  relationshipState: RelationshipState;
-  snapshotTableState: TableState;
-  snapshotRelationshipState: RelationshipState;
+  diffs: Diff[];
 }
 
 export interface KeyColumn {
@@ -210,6 +209,31 @@ export const generateSeqName = (
   columnName: string
 ): string => {
   return `${tableName}_${columnName}_seq`.toLowerCase();
+};
+
+export const getIdChangeSet = (author: Author): string => {
+  return author.id.replace(/\\/g, '/').split('/').pop() || '';
+};
+
+export const changeSetAttributes = ({
+  author,
+  dialect,
+  suffix,
+}: {
+  author: Author;
+  dialect?: Dialect;
+  suffix?: string;
+}): Attribute[] => {
+  const attr: Attribute[] = [
+    {
+      name: 'id',
+      value: `${getIdChangeSet(author)}${suffix ? `-${suffix}` : ''}`,
+    },
+    { name: 'author', value: author.name },
+  ];
+  if (dialect) attr.push({ name: 'dbms', value: dialect });
+
+  return attr;
 };
 
 export const mapppingTranslationsDatabase: Record<Dialect, Database> = {

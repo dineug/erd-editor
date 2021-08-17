@@ -1,5 +1,5 @@
 import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
-import { createStoreCopy } from '@/core/file';
+import { createSnapshot } from '@/core/file';
 import { Bus } from '@/core/helper/eventBus.helper';
 import {
   Constraints,
@@ -30,12 +30,15 @@ export const LiquibaseParser = (
   dialect: Dialect = defaultDialect,
   rootFile?: LiquibaseFile
 ) => {
-  const { store, eventBus, helper, snapshots } = context;
+  const { store, eventBus, helper } = context;
   const zoom = JSON.parse(JSON.stringify(store.canvasState.zoomLevel));
 
   store.dispatchSync(zoomCanvas(0.7));
   store.canvasState.zoomLevel = 0.7;
-  snapshots.push(createStoreCopy(store));
+  createSnapshot(context, {
+    filename: rootFile?.path || '',
+    type: rootFile?.path ? 'before-import' : 'user',
+  });
 
   setTimeout(async () => {
     async function parseFile(file: LiquibaseFile) {
@@ -53,7 +56,7 @@ export const LiquibaseParser = (
 
       for (const element of databaseChangeLog.children) {
         if (element.tagName === 'changeSet') {
-          handleChangeSetParsing(element);
+          handleChangeSetParsing(element, file);
         } else if (element.tagName === 'include') {
           await handleImportParsing(element, file);
         }
@@ -71,12 +74,18 @@ export const LiquibaseParser = (
       if (dstFile) await parseFile(dstFile);
     }
 
-    function handleChangeSetParsing(element: Element) {
+    function handleChangeSetParsing(element: Element, file: LiquibaseFile) {
       const dbms: string = element.getAttribute('dbms') || '';
       if (dbms === '' || dbms == dialect) {
         var statements: Statement[] = [];
-        if (parseChangeSet(element, statements, dialect))
+        if (parseChangeSet(element, statements, dialect)) {
+          createSnapshot(context, {
+            filename: file.path,
+            type: 'before-import',
+            statements: statements,
+          });
           applyStatements(context, statements);
+        }
       }
     }
 
@@ -92,7 +101,11 @@ export const LiquibaseParser = (
 
     setTimeout(async () => {
       store.dispatchSync(zoomCanvas(zoom));
-      snapshots.push(createStoreCopy(store));
+      createSnapshot(context, {
+        filename: rootFile?.path || '',
+        type: 'after-import',
+      });
+      console.log('SNAPSHOTS', context.snapshots);
     }, 0);
   }, 10);
 };
@@ -101,15 +114,13 @@ export const applyStatements = (
   context: IERDEditorContext,
   statements: Statement[]
 ) => {
-  var { snapshots, store, helper } = context;
-
-  snapshots.push(createStoreCopy(store));
+  var { store, helper } = context;
 
   const json = createJson(
     statements,
     helper,
     store.canvasState.database,
-    getLatestSnapshot(snapshots)
+    getLatestSnapshot(context).data
   );
 
   store.dispatchSync(initLoadJson$(json));
