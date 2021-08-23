@@ -277,7 +277,7 @@ export const createTableDiff = ({
   let columnsToAdd: Map<Table, Column[]> = new Map();
   diffs.forEach(diff => {
     // add table
-    if (diff.type === 'table' && diff.changes === 'add' && diff.data.newTable) {
+    if (diff.type === 'table' && diff.changes === 'add') {
       const newTable = diff.data.newTable;
       changeSetSequences.addChildren(
         ...newTable.columns
@@ -296,20 +296,11 @@ export const createTableDiff = ({
       );
     }
     // drop table
-    else if (
-      diff.type === 'table' &&
-      diff.changes === 'remove' &&
-      diff.data.oldTable
-    ) {
+    else if (diff.type === 'table' && diff.changes === 'remove') {
       changeSetCommon.addChildren(dropTable(diff.data.oldTable));
     }
     // rename table
-    else if (
-      diff.type === 'table' &&
-      diff.changes === 'modify' &&
-      diff.data.oldTable &&
-      diff.data.newTable
-    ) {
+    else if (diff.type === 'table' && diff.changes === 'modify') {
       if (diff.data.oldTable.name !== diff.data.newTable.name) {
         changeSetCommon.addChildren(
           renameTable(diff.data.oldTable, diff.data.newTable)
@@ -317,12 +308,7 @@ export const createTableDiff = ({
       }
     }
     // add column
-    else if (
-      diff.type === 'column' &&
-      diff.changes === 'add' &&
-      diff.data.newColumn &&
-      diff.data.table
-    ) {
+    else if (diff.type === 'column' && diff.changes === 'add') {
       const table = diff.data.table;
       columnsToAdd.set(table, [
         ...(columnsToAdd.get(table) || []),
@@ -330,46 +316,25 @@ export const createTableDiff = ({
       ]);
     }
     // drop column
-    else if (
-      diff.type === 'column' &&
-      diff.changes === 'remove' &&
-      diff.data.oldColumn &&
-      diff.data.table
-    ) {
+    else if (diff.type === 'column' && diff.changes === 'remove') {
       changeSetCommon.addChildren(
         dropColumn(diff.data.table, diff.data.oldColumn)
       );
     }
     // add index
-    else if (
-      diff.type === 'index' &&
-      diff.changes === 'add' &&
-      diff.data.newIndex &&
-      diff.data.table
-    ) {
+    else if (diff.type === 'index' && diff.changes === 'add') {
       changeSetCommon.addChildren(
         createIndex({ table: diff.data.table, index: diff.data.newIndex })
       );
     }
     // drop index
-    else if (
-      diff.type === 'index' &&
-      diff.changes === 'remove' &&
-      diff.data.oldIndex &&
-      diff.data.table
-    ) {
+    else if (diff.type === 'index' && diff.changes === 'remove') {
       changeSetCommon.addChildren(
         dropIndex(diff.data.table, diff.data.oldIndex)
       );
     }
     // add FK
-    else if (
-      diff.type === 'relationship' &&
-      diff.changes === 'add' &&
-      diff.data.newRelationship &&
-      diff.data.startTable &&
-      diff.data.endTable
-    ) {
+    else if (diff.type === 'relationship' && diff.changes === 'add') {
       changeSetCommon.addChildren(
         addForeignKeyConstraint({
           startTable: diff.data.startTable,
@@ -379,25 +344,14 @@ export const createTableDiff = ({
       );
     }
     // drop FK
-    else if (
-      diff.type === 'relationship' &&
-      diff.changes === 'remove' &&
-      diff.data.oldRelationship &&
-      diff.data.table
-    ) {
+    else if (diff.type === 'relationship' && diff.changes === 'remove') {
       changeSetCommon.addChildren(
         dropForeignKeyConstraint(diff.data.table, diff.data.oldRelationship)
       );
     }
 
     // modify column
-    else if (
-      diff.type === 'column' &&
-      diff.changes === 'modify' &&
-      diff.data.oldColumn &&
-      diff.data.newColumn &&
-      diff.data.table
-    ) {
+    else if (diff.type === 'column' && diff.changes === 'modify') {
       const { oldColumn, newColumn, table } = diff.data;
       // name was changed
       if (oldColumn.name !== newColumn.name) {

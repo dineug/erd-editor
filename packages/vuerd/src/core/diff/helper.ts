@@ -187,6 +187,7 @@ export function calculateDiff(
       const newRelationship = getData(newRelationships, oldRelationship.id);
       if (!newRelationship) {
         const table = getData(oldTables, oldRelationship.end.tableId);
+        if (!table) return;
         diffs.push({
           type: 'relationship',
           changes: 'remove',
@@ -204,6 +205,7 @@ export function calculateDiff(
       if (!oldRelationship) {
         const startTable = getData(newTables, newRelationship.start.tableId);
         const endTable = getData(newTables, newRelationship.end.tableId);
+        if (!startTable || !endTable) return;
 
         diffs.push({
           type: 'relationship',
@@ -308,17 +310,20 @@ export function statementsToDiff(
       case 'create.index':
         const index = statement;
         const duplicateIndex = findByName(snapIndexes, index.name);
+        const targetTable = findByName(snapTables, index.tableName);
 
-        if (duplicateIndex) {
+        if (duplicateIndex && targetTable) {
           diffs.push({
             type: 'index',
             changes: 'add',
-            data: { newIndex: duplicateIndex },
+            data: {
+              newIndex: duplicateIndex,
+              table: targetTable,
+            },
           });
           break;
         }
 
-        const targetTable = findByName(snapTables, index.tableName);
         if (!targetTable) break;
 
         const indexColumns: any[] = [];
@@ -344,6 +349,7 @@ export function statementsToDiff(
               columns: indexColumns,
               unique: index.unique,
             },
+            table: targetTable,
           },
         });
         break;
