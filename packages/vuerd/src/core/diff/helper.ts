@@ -523,7 +523,7 @@ export function statementsToDiff(
         );
 
         if (!duplicateDropFK) break;
-        const dfkTable = findByName(snapTables, duplicateDropFK.end.tableId);
+        const dfkTable = getData(snapTables, duplicateDropFK.end.tableId);
 
         if (!dfkTable) break;
 
