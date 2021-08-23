@@ -104,7 +104,6 @@ export const createXMLPostgreOracleMSS = (
 
   Logger.log('Tables were changed, generating diff...');
   Logger.log({ snapshots });
-  Logger.log('TETETETEST');
 
   /**
    * Latest change
