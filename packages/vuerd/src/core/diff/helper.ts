@@ -211,6 +211,7 @@ export function mergeDiffs(...diffs: Diff[][]): Diff[] {
       currentDiffs = changes;
     } else {
       changes.forEach(diff => {
+        // TODO: add more checks
         // deduplication
         //  --  add table ONE -> drop table ONE -> should result to: no change
         //  --  add table ONE -> rename table ONE to TWO -> should result to: add table TWO
@@ -240,13 +241,6 @@ export function mergeDiffs(...diffs: Diff[][]): Diff[] {
   });
 
   return currentDiffs;
-
-  // todo check for overlaps
-  const mergedDiff: Diff[] = [];
-  diffs.forEach(diff => {
-    mergedDiff.push(...diff);
-  });
-  return mergedDiff;
 }
 
 export function statementsToDiff(
