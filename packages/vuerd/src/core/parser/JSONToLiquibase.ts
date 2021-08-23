@@ -104,65 +104,100 @@ export const createXMLPostgreOracleMSS = (
 
   Logger.log('Tables were changed, generating diff...');
   Logger.log({ snapshots });
+  Logger.log('TETETETEST');
 
-  var oldSnap = snapshots[snapshots.length - 1];
-  var newSnap = snapshots[snapshots.length - 1];
-  for (let i = snapshots.length - 1; i > 0; i--) {
-    if (
-      snapshots[i].metadata?.type === 'user' ||
-      snapshots[i].metadata?.type === 'before-export'
-    ) {
-      newSnap = snapshots[i];
-      oldSnap = snapshots[i - 1];
-      break;
-    }
-  }
-
-  const latestDiff = calculateDiff(oldSnap, newSnap);
-  Logger.log({ latestDiff });
-
-  const snapshotRange: Snapshot[] = [];
-
-  for (let i = snapshots.length - 1; i >= 0; i--) {
-    if (
-      snapshots[i].metadata?.type === 'before-import' &&
-      snapshots[i].metadata?.filename.replace(/\.xml$/g, '').toLowerCase() ===
-        author.id.toLowerCase()
-    ) {
-      snapshotRange.push(snapshots[i + 1]);
-
-      for (let j = i; j >= 0; j--) {
-        if (
-          snapshots[j].metadata?.filename
-            .replace(/\.xml$/g, '')
-            .toLowerCase() !== author.id.toLowerCase()
-        ) {
-          break;
-        }
-        snapshotRange.push(snapshots[j]);
+  /**
+   * Latest change
+   */
+  function mostRecentDiff(): Diff[] {
+    var oldSnap = snapshots[snapshots.length - 1];
+    var newSnap = snapshots[snapshots.length - 1];
+    for (let i = snapshots.length - 1; i > 0; i--) {
+      if (
+        snapshots[i].metadata?.type === 'user' ||
+        snapshots[i].metadata?.type === 'before-export'
+      ) {
+        newSnap = snapshots[i];
+        oldSnap = snapshots[i - 1];
+        break;
       }
-      break;
     }
+    console.log('mostRecentDiff()', calculateDiff(oldSnap, newSnap));
+
+    return calculateDiff(oldSnap, newSnap);
   }
-  var newSnap = snapshotRange[0];
-  var oldSnap = snapshotRange[snapshotRange.length - 1];
 
-  var historicalDiffs: Diff[][] = [];
-  historicalDiffs.push(calculateDiff(oldSnap, newSnap));
+  /**
+   * Original file that was imported
+   */
+  function originalFileImport(): Diff[][] {
+    const snapsWithStatements: Snapshot[] = [];
 
-  console.log('HistoricalDiff', historicalDiffs);
-  console.log('SnapshotRange', snapshotRange);
-  if (!historicalDiffs[0].length) {
-    for (let i = 1; i < snapshotRange.length; i++) {
-      historicalDiffs.push(statementsToDiff(snapshotRange[i], context));
-      console.log('StatementsDiff', historicalDiffs, snapshotRange[i]);
+    for (let i = snapshots.length - 1; i >= 0; i--) {
+      if (
+        snapshots[i].metadata?.type === 'before-import' &&
+        snapshots[i].metadata?.filename.replace(/\.xml$/g, '').toLowerCase() ===
+          author.id.toLowerCase()
+      ) {
+        for (let j = i; j >= 0; j--) {
+          if (
+            snapshots[j].metadata?.filename
+              .replace(/\.xml$/g, '')
+              .toLowerCase() !== author.id.toLowerCase()
+          ) {
+            break;
+          }
+          snapsWithStatements.push(snapshots[j]);
+        }
+        break;
+      }
     }
+
+    const historicalDiffs: Diff[][] = [];
+
+    // console.log('snapsWithStatements', { snapsWithStatements });
+    for (let i = 0; i < snapsWithStatements.length; i++) {
+      historicalDiffs.push(statementsToDiff(snapsWithStatements[i], context));
+      // console.log('StatementsDiff', historicalDiffs, snapsWithStatements[i]);
+    }
+
+    Logger.log('originalFileImport()', { historicalDiffs });
+
+    return historicalDiffs;
   }
-  Logger.log({ historicalDiffs, oldSnap, newSnap });
+
+  /**
+   * Files that were changed and snapshot changes are only stored in memory
+   */
+  function updatedFileImport(): Diff[][] {
+    const diffs: Diff[][] = [];
+
+    for (let i = snapshots.length - 1; i >= 0; i--) {
+      if (
+        snapshots[i].metadata?.type === 'before-export' &&
+        snapshots[i + 1]?.metadata?.type === 'after-export' &&
+        snapshots[i].metadata?.filename.replace(/\.xml$/g, '').toLowerCase() ===
+          author.id.toLowerCase()
+      ) {
+        let oldS = snapshots[i - 1];
+        let newS = snapshots[i];
+        console.log({ oldS, newS });
+
+        diffs.push(calculateDiff(snapshots[i - 1], snapshots[i]));
+      }
+    }
+
+    console.log('updatedFileImport()', { diffs });
+    return diffs;
+  }
 
   return createTableDiff({
     author,
-    diffs: mergeDiffs(latestDiff, ...historicalDiffs),
+    diffs: mergeDiffs(
+      mostRecentDiff(),
+      ...updatedFileImport(),
+      ...originalFileImport()
+    ),
   });
 };
 
