@@ -50,9 +50,7 @@ export function calculateDiff(
       diffs.push({
         type: 'table',
         changes: 'add',
-        data: {
-          newTable: newTable,
-        },
+        newTable: newTable,
       });
     // table was modified
     else if (oldTable != newTable) {
@@ -68,10 +66,8 @@ export function calculateDiff(
           diffs.push({
             type: 'column',
             changes: 'add',
-            data: {
-              table: newTable,
-              newColumn: newColumn,
-            },
+            table: newTable,
+            newColumn: newColumn,
           });
         // column was modified
         else if (
@@ -82,11 +78,9 @@ export function calculateDiff(
           diffs.push({
             type: 'column',
             changes: 'modify',
-            data: {
-              table: newTable,
-              oldColumn: oldColumn,
-              newColumn: newColumn,
-            },
+            table: newTable,
+            oldColumn: oldColumn,
+            newColumn: newColumn,
           });
         }
       });
@@ -100,10 +94,8 @@ export function calculateDiff(
           diffs.push({
             type: 'column',
             changes: 'remove',
-            data: {
-              table: oldTable,
-              oldColumn: oldColumn,
-            },
+            table: oldTable,
+            oldColumn: oldColumn,
           });
         }
       });
@@ -113,10 +105,8 @@ export function calculateDiff(
         diffs.push({
           type: 'table',
           changes: 'modify',
-          data: {
-            oldTable: oldTable,
-            newTable: newTable,
-          },
+          oldTable: oldTable,
+          newTable: newTable,
         });
       }
     }
@@ -131,9 +121,7 @@ export function calculateDiff(
       diffs.push({
         type: 'table',
         changes: 'remove',
-        data: {
-          oldTable: oldTable,
-        },
+        oldTable: oldTable,
       });
   });
 
@@ -151,10 +139,8 @@ export function calculateDiff(
           diffs.push({
             type: 'index',
             changes: 'add',
-            data: {
-              newIndex: newIndex,
-              table: newTable,
-            },
+            newIndex: newIndex,
+            table: newTable,
           });
       }
     });
@@ -171,10 +157,8 @@ export function calculateDiff(
           diffs.push({
             type: 'index',
             changes: 'remove',
-            data: {
-              oldIndex: oldIndex,
-              table: oldTable,
-            },
+            oldIndex: oldIndex,
+            table: oldTable,
           });
       }
     });
@@ -191,10 +175,8 @@ export function calculateDiff(
         diffs.push({
           type: 'relationship',
           changes: 'remove',
-          data: {
-            oldRelationship: oldRelationship,
-            table: table,
-          },
+          oldRelationship: oldRelationship,
+          table: table,
         });
       }
     });
@@ -210,11 +192,9 @@ export function calculateDiff(
         diffs.push({
           type: 'relationship',
           changes: 'add',
-          data: {
-            newRelationship: newRelationship,
-            startTable: startTable,
-            endTable: endTable,
-          },
+          newRelationship: newRelationship,
+          startTable: startTable,
+          endTable: endTable,
         });
       }
     });
@@ -224,6 +204,39 @@ export function calculateDiff(
 }
 
 export function mergeDiffs(...diffs: Diff[][]): Diff[] {
+  let currentDiffs: Diff[] = [];
+
+  diffs.reverse().forEach((changes, index) => {
+    if (index === 0) {
+      currentDiffs = changes;
+    } else {
+      changes.forEach(diff => {
+        // deduplication
+        //  --  add table ONE -> drop table ONE -> should result to: no change
+        //  --  add table ONE -> rename table ONE to TWO -> should result to: add table TWO
+        if (diff.type === 'table' && diff.changes === 'remove') {
+          currentDiffs = currentDiffs.filter(
+            origDiff =>
+              origDiff.type === 'table' &&
+              origDiff.changes === 'add' &&
+              origDiff.newTable.name === diff.oldTable.name
+          );
+        } else if (diff.type === 'column' && diff.changes === 'remove') {
+          currentDiffs = currentDiffs.filter(
+            origDiff =>
+              origDiff.type === 'column' &&
+              origDiff.changes === 'add' &&
+              origDiff.newColumn.name === diff.oldColumn.name
+          );
+        } else {
+          currentDiffs.push(diff);
+        }
+      });
+    }
+  });
+
+  return currentDiffs;
+
   // todo check for overlaps
   const mergedDiff: Diff[] = [];
   diffs.forEach(diff => {
@@ -304,7 +317,7 @@ export function statementsToDiff(
         diffs.push({
           type: 'table',
           changes: 'add',
-          data: { newTable: newTable },
+          newTable: newTable,
         });
         break;
       case 'create.index':
@@ -316,10 +329,8 @@ export function statementsToDiff(
           diffs.push({
             type: 'index',
             changes: 'add',
-            data: {
-              newIndex: duplicateIndex,
-              table: targetTable,
-            },
+            newIndex: duplicateIndex,
+            table: targetTable,
           });
           break;
         }
@@ -341,16 +352,14 @@ export function statementsToDiff(
         diffs.push({
           type: 'index',
           changes: 'add',
-          data: {
-            newIndex: {
-              id: index.id || uuid(),
-              name: index.name,
-              tableId: targetTable.id,
-              columns: indexColumns,
-              unique: index.unique,
-            },
-            table: targetTable,
+          newIndex: {
+            id: index.id || uuid(),
+            name: index.name,
+            tableId: targetTable.id,
+            columns: indexColumns,
+            unique: index.unique,
           },
+          table: targetTable,
         });
         break;
       case 'alter.table.add.primaryKey':
@@ -369,11 +378,9 @@ export function statementsToDiff(
           diffs.push({
             type: 'column',
             changes: 'modify',
-            data: {
-              table: pkTable,
-              oldColumn: oldPKColumn,
-              newColumn: newPKColumn,
-            },
+            table: pkTable,
+            oldColumn: oldPKColumn,
+            newColumn: newPKColumn,
           });
         });
 
@@ -439,11 +446,9 @@ export function statementsToDiff(
           diffs.push({
             type: 'relationship',
             changes: 'add',
-            data: {
-              newRelationship: newRelationship,
-              startTable: startTable,
-              endTable: endTable,
-            },
+            newRelationship: newRelationship,
+            startTable: startTable,
+            endTable: endTable,
           });
         }
 
@@ -464,11 +469,9 @@ export function statementsToDiff(
           diffs.push({
             type: 'column',
             changes: 'modify',
-            data: {
-              table: uqTable,
-              oldColumn: oldUQColumn,
-              newColumn: newUQColumn,
-            },
+            table: uqTable,
+            oldColumn: oldUQColumn,
+            newColumn: newUQColumn,
           });
         });
 
@@ -485,10 +488,8 @@ export function statementsToDiff(
           diffs.push({
             type: 'column',
             changes: 'add',
-            data: {
-              table: acTable,
-              newColumn: addColumn,
-            },
+            table: acTable,
+            newColumn: addColumn,
           });
         });
 
@@ -502,10 +503,8 @@ export function statementsToDiff(
           diffs.push({
             type: 'column',
             changes: 'remove',
-            data: {
-              table: dcTable,
-              oldColumn: col,
-            },
+            table: dcTable,
+            oldColumn: col,
           });
         });
 
@@ -517,7 +516,7 @@ export function statementsToDiff(
           diffs.push({
             type: 'table',
             changes: 'remove',
-            data: { oldTable: dropTable },
+            oldTable: dropTable,
           });
         }
         break;
@@ -536,10 +535,8 @@ export function statementsToDiff(
         diffs.push({
           type: 'relationship',
           changes: 'remove',
-          data: {
-            oldRelationship: duplicateDropFK,
-            table: dfkTable,
-          },
+          oldRelationship: duplicateDropFK,
+          table: dfkTable,
         });
 
         break;

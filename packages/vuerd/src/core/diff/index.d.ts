@@ -13,7 +13,7 @@ export type Diff =
   | RelationshipRemove
   | RelationshipAdd;
 
-export interface Difference {
+interface Difference {
   type: DiffType;
   changes: Changes;
   data: DiffData;
@@ -42,92 +42,82 @@ export interface DiffData {
   endTable?: Table;
 }
 
-interface TableRemove extends Difference {
+export interface TableRemove {
   type: 'table';
   changes: 'remove';
-  data: {
-    oldTable: Table;
-  };
+
+  oldTable: Table;
 }
 
-interface TableAdd extends Difference {
+export interface TableAdd {
   type: 'table';
   changes: 'add';
-  data: {
-    newTable: Table;
-  };
+
+  newTable: Table;
 }
 
-interface TableModify extends Difference {
+export interface TableModify {
   type: 'table';
   changes: 'modify';
-  data: {
-    oldTable: Table;
-    newTable: Table;
-  };
+
+  oldTable: Table;
+  newTable: Table;
 }
 
-interface ColumnRemove extends Difference {
+export interface ColumnRemove {
   type: 'column';
   changes: 'remove';
-  data: {
-    table: Table;
-    oldColumn: Column;
-  };
+
+  table: Table;
+  oldColumn: Column;
 }
 
-interface ColumnAdd extends Difference {
+export interface ColumnAdd {
   type: 'column';
   changes: 'add';
-  data: {
-    table: Table;
-    newColumn: Column;
-  };
+
+  table: Table;
+  newColumn: Column;
 }
 
-interface ColumnModify extends Difference {
+export interface ColumnModify {
   type: 'column';
   changes: 'modify';
-  data: {
-    table: Table;
-    oldColumn: Column;
-    newColumn: Column;
-  };
+
+  table: Table;
+  oldColumn: Column;
+  newColumn: Column;
 }
 
-interface IndexRemove extends Difference {
+export interface IndexRemove {
   type: 'index';
   changes: 'remove';
-  data: {
-    oldIndex: Index;
-    table: Table;
-  };
+
+  oldIndex: Index;
+  table: Table;
 }
 
-interface IndexAdd extends Difference {
+export interface IndexAdd {
   type: 'index';
   changes: 'add';
-  data: {
-    newIndex: Index;
-    table: Table;
-  };
+
+  newIndex: Index;
+  table: Table;
 }
 
-interface RelationshipRemove extends Difference {
+export interface RelationshipRemove {
   type: 'relationship';
   changes: 'remove';
-  data: {
-    oldRelationship: Relationship;
-    table: Table;
-  };
+
+  oldRelationship: Relationship;
+  table: Table;
 }
 
-interface RelationshipAdd extends Difference {
+export interface RelationshipAdd {
   type: 'relationship';
   changes: 'add';
-  data: {
-    newRelationship: Relationship;
-    startTable: Table;
-    endTable: Table;
-  };
+
+  newRelationship: Relationship;
+  startTable: Table;
+  endTable: Table;
 }

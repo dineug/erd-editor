@@ -278,7 +278,7 @@ export const createTableDiff = ({
   diffs.forEach(diff => {
     // add table
     if (diff.type === 'table' && diff.changes === 'add') {
-      const newTable = diff.data.newTable;
+      const newTable = diff.newTable;
       changeSetSequences.addChildren(
         ...newTable.columns
           .filter(col => col.option.autoIncrement)
@@ -297,62 +297,56 @@ export const createTableDiff = ({
     }
     // drop table
     else if (diff.type === 'table' && diff.changes === 'remove') {
-      changeSetCommon.addChildren(dropTable(diff.data.oldTable));
+      changeSetCommon.addChildren(dropTable(diff.oldTable));
     }
     // rename table
     else if (diff.type === 'table' && diff.changes === 'modify') {
-      if (diff.data.oldTable.name !== diff.data.newTable.name) {
-        changeSetCommon.addChildren(
-          renameTable(diff.data.oldTable, diff.data.newTable)
-        );
+      if (diff.oldTable.name !== diff.newTable.name) {
+        changeSetCommon.addChildren(renameTable(diff.oldTable, diff.newTable));
       }
     }
     // add column
     else if (diff.type === 'column' && diff.changes === 'add') {
-      const table = diff.data.table;
+      const table = diff.table;
       columnsToAdd.set(table, [
         ...(columnsToAdd.get(table) || []),
-        diff.data.newColumn,
+        diff.newColumn,
       ]);
     }
     // drop column
     else if (diff.type === 'column' && diff.changes === 'remove') {
-      changeSetCommon.addChildren(
-        dropColumn(diff.data.table, diff.data.oldColumn)
-      );
+      changeSetCommon.addChildren(dropColumn(diff.table, diff.oldColumn));
     }
     // add index
     else if (diff.type === 'index' && diff.changes === 'add') {
       changeSetCommon.addChildren(
-        createIndex({ table: diff.data.table, index: diff.data.newIndex })
+        createIndex({ table: diff.table, index: diff.newIndex })
       );
     }
     // drop index
     else if (diff.type === 'index' && diff.changes === 'remove') {
-      changeSetCommon.addChildren(
-        dropIndex(diff.data.table, diff.data.oldIndex)
-      );
+      changeSetCommon.addChildren(dropIndex(diff.table, diff.oldIndex));
     }
     // add FK
     else if (diff.type === 'relationship' && diff.changes === 'add') {
       changeSetCommon.addChildren(
         addForeignKeyConstraint({
-          startTable: diff.data.startTable,
-          endTable: diff.data.endTable,
-          relationship: diff.data.newRelationship,
+          startTable: diff.startTable,
+          endTable: diff.endTable,
+          relationship: diff.newRelationship,
         })
       );
     }
     // drop FK
     else if (diff.type === 'relationship' && diff.changes === 'remove') {
       changeSetCommon.addChildren(
-        dropForeignKeyConstraint(diff.data.table, diff.data.oldRelationship)
+        dropForeignKeyConstraint(diff.table, diff.oldRelationship)
       );
     }
 
     // modify column
     else if (diff.type === 'column' && diff.changes === 'modify') {
-      const { oldColumn, newColumn, table } = diff.data;
+      const { oldColumn, newColumn, table } = diff;
       // name was changed
       if (oldColumn.name !== newColumn.name) {
         changeSetCommon.addChildren(renameColumn(table, newColumn, oldColumn));

@@ -13,6 +13,14 @@ import {
 import { classMap } from 'lit-html/directives/class-map';
 
 import { LineShape } from '@/components/drawer/TreeDrawer/TreeLine';
+import {
+  ColumnAdd,
+  ColumnModify,
+  ColumnRemove,
+  TableAdd,
+  TableModify,
+  TableRemove,
+} from '@/core/diff';
 import { calculateLatestDiff } from '@/core/diff/helper';
 import { getData } from '@/core/helper';
 import { useContext } from '@/core/hooks/context.hook';
@@ -70,8 +78,13 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
 
   const refreshDiff = () => {
     const diffs = calculateLatestDiff(contextRef.value);
-    const tableDiffs = diffs.filter(diff => diff.type === 'table');
-    const columnDiffs = diffs.filter(diff => diff.type === 'column');
+    // @ts-ignore
+    const tableDiffs: (TableModify | TableAdd | TableRemove)[] = diffs.filter(
+      diff => diff.type === 'table'
+    );
+    // @ts-ignore
+    const columnDiffs: (ColumnModify | ColumnAdd | ColumnRemove)[] =
+      diffs.filter(diff => diff.type === 'column');
 
     state.root?.children.forEach(child => {
       child.changes = 'none';
@@ -79,26 +92,20 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
       child.diffs = [];
 
       tableDiffs.forEach(diff => {
-        if (diff.changes === 'modify' && child.id === diff.data.newTable?.id) {
+        if (diff.changes === 'modify' && child.id === diff.newTable.id) {
           child.changes = 'modify';
           child.diffs.push(diff);
-        } else if (
-          diff.changes === 'add' &&
-          child.id === diff.data.newTable?.id
-        ) {
+        } else if (diff.changes === 'add' && child.id === diff.newTable.id) {
           child.changes = 'add';
           child.diffs.push(diff);
-        } else if (
-          diff.changes === 'remove' &&
-          child.id === diff.data.oldTable?.id
-        ) {
+        } else if (diff.changes === 'remove' && child.id === diff.oldTable.id) {
           child.changes = 'remove';
           child.diffs.push(diff);
         }
       });
 
       columnDiffs.forEach(diff => {
-        if (child.id === diff.data.table?.id) {
+        if (child.id === diff.table.id) {
           child.nestedChanges = diff.changes;
           child.diffs.push(diff);
         }
@@ -106,11 +113,11 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
     });
 
     tableDiffs.forEach(diff => {
-      if (diff.changes === 'remove' && diff.data.oldTable) {
+      if (diff.changes === 'remove') {
         var node: TreeNode = new TreeNode(
           contextRef.value,
-          diff.data.oldTable.id,
-          diff.data.oldTable,
+          diff.oldTable.id,
+          diff.oldTable,
           state.root,
           state.root,
           []
@@ -120,7 +127,7 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
         node.diffs = [diff];
 
         const duplicate = state.root?.children.some(node => {
-          if (node.id === diff.data.oldTable?.id) return true;
+          if (node.id === diff.oldTable.id) return true;
         });
 
         if (!duplicate) state.root?.children.push(node);
@@ -234,16 +241,16 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
           ) {
             return columnRow(diff.changes, col);
           } else if (diff.type === 'column') {
-            if (diff.changes === 'add' && diff.data.newColumn?.id === col.id) {
+            if (diff.changes === 'add' && diff.newColumn.id === col.id) {
               return columnRow('add', col);
             } else if (
               diff.changes === 'modify' &&
-              diff.data.newColumn?.id === col.id
+              diff.newColumn.id === col.id
             ) {
               return columnRow('modify', col);
             } else if (
               diff.changes === 'remove' &&
-              diff.data.oldColumn?.id === col.id
+              diff.oldColumn.id === col.id
             ) {
               return columnRow('remove', col);
             }
@@ -259,9 +266,9 @@ const TreeDrawer: FunctionalComponent<TreeDrawerProps, TreeDrawerElement> = (
           if (
             diff.changes === 'remove' &&
             diff.type === 'column' &&
-            diff.data.oldColumn
+            diff.oldColumn
           )
-            return columnRow('remove', diff.data.oldColumn);
+            return columnRow('remove', diff.oldColumn);
         })
         .filter(row => row);
 
