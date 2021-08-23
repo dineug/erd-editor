@@ -217,16 +217,20 @@ export function mergeDiffs(...diffs: Diff[][]): Diff[] {
         if (diff.type === 'table' && diff.changes === 'remove') {
           currentDiffs = currentDiffs.filter(
             origDiff =>
-              origDiff.type === 'table' &&
-              origDiff.changes === 'add' &&
-              origDiff.newTable.name === diff.oldTable.name
+              !(
+                origDiff.type === 'table' &&
+                origDiff.changes === 'add' &&
+                origDiff.newTable.name === diff.oldTable.name
+              )
           );
         } else if (diff.type === 'column' && diff.changes === 'remove') {
           currentDiffs = currentDiffs.filter(
             origDiff =>
-              origDiff.type === 'column' &&
-              origDiff.changes === 'add' &&
-              origDiff.newColumn.name === diff.oldColumn.name
+              !(
+                origDiff.type === 'column' &&
+                origDiff.changes === 'add' &&
+                origDiff.newColumn.name === diff.oldColumn.name
+              )
           );
         } else {
           currentDiffs.push(diff);
