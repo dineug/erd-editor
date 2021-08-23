@@ -96,8 +96,8 @@ export const createExportMenus = (
 
               if (liquibase) {
                 createSnapshot(context, {
-                  filename: fileName,
                   type: 'after-export',
+                  filename: fileName,
                 });
                 console.log('AFTER', snapshots);
               }
