@@ -122,7 +122,7 @@ export const createXMLPostgreOracleMSS = (
         break;
       }
     }
-    console.log('mostRecentDiff()', calculateDiff(oldSnap, newSnap));
+    Logger.log('mostRecentDiff()', calculateDiff(oldSnap, newSnap));
 
     return calculateDiff(oldSnap, newSnap);
   }
@@ -155,10 +155,8 @@ export const createXMLPostgreOracleMSS = (
 
     const historicalDiffs: Diff[][] = [];
 
-    // console.log('snapsWithStatements', { snapsWithStatements });
     for (let i = 0; i < snapsWithStatements.length; i++) {
       historicalDiffs.push(statementsToDiff(snapsWithStatements[i], context));
-      // console.log('StatementsDiff', historicalDiffs, snapsWithStatements[i]);
     }
 
     Logger.log('originalFileImport()', { historicalDiffs });
@@ -179,15 +177,11 @@ export const createXMLPostgreOracleMSS = (
         snapshots[i].metadata?.filename.replace(/\.xml$/g, '').toLowerCase() ===
           author.id.toLowerCase()
       ) {
-        let oldS = snapshots[i - 1];
-        let newS = snapshots[i];
-        console.log({ oldS, newS });
-
         diffs.push(calculateDiff(snapshots[i - 1], snapshots[i]));
       }
     }
 
-    console.log('updatedFileImport()', { diffs });
+    Logger.log('updatedFileImport()', { diffs });
     return diffs;
   }
 
