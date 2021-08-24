@@ -105,64 +105,92 @@ export const createXMLPostgreOracleMSS = (
   Logger.log('Tables were changed, generating diff...');
   Logger.log({ snapshots });
 
-  var oldSnap = snapshots[snapshots.length - 1];
-  var newSnap = snapshots[snapshots.length - 1];
-  for (let i = snapshots.length - 1; i > 0; i--) {
-    if (
-      snapshots[i].metadata?.type === 'user' ||
-      snapshots[i].metadata?.type === 'before-export'
-    ) {
-      newSnap = snapshots[i];
-      oldSnap = snapshots[i - 1];
-      break;
-    }
-  }
-
-  const latestDiff = calculateDiff(oldSnap, newSnap);
-  Logger.log({ latestDiff });
-
-  const snapshotRange: Snapshot[] = [];
-
-  for (let i = snapshots.length - 1; i >= 0; i--) {
-    if (
-      snapshots[i].metadata?.type === 'before-import' &&
-      snapshots[i].metadata?.filename.replace(/\.xml$/g, '').toLowerCase() ===
-        author.id.toLowerCase()
-    ) {
-      snapshotRange.push(snapshots[i + 1]);
-
-      for (let j = i; j >= 0; j--) {
-        if (
-          snapshots[j].metadata?.filename
-            .replace(/\.xml$/g, '')
-            .toLowerCase() !== author.id.toLowerCase()
-        ) {
-          break;
-        }
-        snapshotRange.push(snapshots[j]);
+  /**
+   * Latest change
+   */
+  function mostRecentDiff(): Diff[] {
+    var oldSnap = snapshots[snapshots.length - 1];
+    var newSnap = snapshots[snapshots.length - 1];
+    for (let i = snapshots.length - 1; i > 0; i--) {
+      if (
+        snapshots[i].metadata?.type === 'user' ||
+        snapshots[i].metadata?.type === 'before-export'
+      ) {
+        newSnap = snapshots[i];
+        oldSnap = snapshots[i - 1];
+        break;
       }
-      break;
     }
+    Logger.log('mostRecentDiff()', calculateDiff(oldSnap, newSnap));
+
+    return calculateDiff(oldSnap, newSnap);
   }
-  var newSnap = snapshotRange[0];
-  var oldSnap = snapshotRange[snapshotRange.length - 1];
 
-  var historicalDiffs: Diff[][] = [];
-  historicalDiffs.push(calculateDiff(oldSnap, newSnap));
+  /**
+   * Original file that was imported
+   */
+  function originalFileImport(): Diff[][] {
+    const snapsWithStatements: Snapshot[] = [];
 
-  console.log('HistoricalDiff', historicalDiffs);
-  console.log('SnapshotRange', snapshotRange);
-  if (!historicalDiffs[0].length) {
-    for (let i = 1; i < snapshotRange.length; i++) {
-      historicalDiffs.push(statementsToDiff(snapshotRange[i], context));
-      console.log('StatementsDiff', historicalDiffs, snapshotRange[i]);
+    for (let i = snapshots.length - 1; i >= 0; i--) {
+      if (
+        snapshots[i].metadata?.type === 'before-import' &&
+        snapshots[i].metadata?.filename.replace(/\.xml$/g, '').toLowerCase() ===
+          author.id.toLowerCase()
+      ) {
+        for (let j = i; j >= 0; j--) {
+          if (
+            snapshots[j].metadata?.filename
+              .replace(/\.xml$/g, '')
+              .toLowerCase() !== author.id.toLowerCase()
+          ) {
+            break;
+          }
+          snapsWithStatements.push(snapshots[j]);
+        }
+        break;
+      }
     }
+
+    const historicalDiffs: Diff[][] = [];
+
+    for (let i = 0; i < snapsWithStatements.length; i++) {
+      historicalDiffs.push(statementsToDiff(snapsWithStatements[i], context));
+    }
+
+    Logger.log('originalFileImport()', { historicalDiffs });
+
+    return historicalDiffs;
   }
-  Logger.log({ historicalDiffs, oldSnap, newSnap });
+
+  /**
+   * Files that were changed and snapshot changes are only stored in memory
+   */
+  function updatedFileImport(): Diff[][] {
+    const diffs: Diff[][] = [];
+
+    for (let i = snapshots.length - 1; i >= 0; i--) {
+      if (
+        snapshots[i].metadata?.type === 'before-export' &&
+        snapshots[i + 1]?.metadata?.type === 'after-export' &&
+        snapshots[i].metadata?.filename.replace(/\.xml$/g, '').toLowerCase() ===
+          author.id.toLowerCase()
+      ) {
+        diffs.push(calculateDiff(snapshots[i - 1], snapshots[i]));
+      }
+    }
+
+    Logger.log('updatedFileImport()', { diffs });
+    return diffs;
+  }
 
   return createTableDiff({
     author,
-    diffs: mergeDiffs(latestDiff, ...historicalDiffs),
+    diffs: mergeDiffs(
+      mostRecentDiff(),
+      ...updatedFileImport(),
+      ...originalFileImport()
+    ),
   });
 };
 
@@ -248,8 +276,8 @@ export const createTableDiff = ({
   let columnsToAdd: Map<Table, Column[]> = new Map();
   diffs.forEach(diff => {
     // add table
-    if (diff.type === 'table' && diff.changes === 'add' && diff.data.newTable) {
-      const newTable = diff.data.newTable;
+    if (diff.type === 'table' && diff.changes === 'add') {
+      const newTable = diff.newTable;
       changeSetSequences.addChildren(
         ...newTable.columns
           .filter(col => col.option.autoIncrement)
@@ -267,109 +295,57 @@ export const createTableDiff = ({
       );
     }
     // drop table
-    else if (
-      diff.type === 'table' &&
-      diff.changes === 'remove' &&
-      diff.data.oldTable
-    ) {
-      changeSetCommon.addChildren(dropTable(diff.data.oldTable));
+    else if (diff.type === 'table' && diff.changes === 'remove') {
+      changeSetCommon.addChildren(dropTable(diff.oldTable));
     }
     // rename table
-    else if (
-      diff.type === 'table' &&
-      diff.changes === 'modify' &&
-      diff.data.oldTable &&
-      diff.data.newTable
-    ) {
-      if (diff.data.oldTable.name !== diff.data.newTable.name) {
-        changeSetCommon.addChildren(
-          renameTable(diff.data.oldTable, diff.data.newTable)
-        );
+    else if (diff.type === 'table' && diff.changes === 'modify') {
+      if (diff.oldTable.name !== diff.newTable.name) {
+        changeSetCommon.addChildren(renameTable(diff.oldTable, diff.newTable));
       }
     }
     // add column
-    else if (
-      diff.type === 'column' &&
-      diff.changes === 'add' &&
-      diff.data.newColumn &&
-      diff.data.table
-    ) {
-      const table = diff.data.table;
+    else if (diff.type === 'column' && diff.changes === 'add') {
+      const table = diff.table;
       columnsToAdd.set(table, [
         ...(columnsToAdd.get(table) || []),
-        diff.data.newColumn,
+        diff.newColumn,
       ]);
     }
     // drop column
-    else if (
-      diff.type === 'column' &&
-      diff.changes === 'remove' &&
-      diff.data.oldColumn &&
-      diff.data.table
-    ) {
-      changeSetCommon.addChildren(
-        dropColumn(diff.data.table, diff.data.oldColumn)
-      );
+    else if (diff.type === 'column' && diff.changes === 'remove') {
+      changeSetCommon.addChildren(dropColumn(diff.table, diff.oldColumn));
     }
     // add index
-    else if (
-      diff.type === 'index' &&
-      diff.changes === 'add' &&
-      diff.data.newIndex &&
-      diff.data.table
-    ) {
+    else if (diff.type === 'index' && diff.changes === 'add') {
       changeSetCommon.addChildren(
-        createIndex({ table: diff.data.table, index: diff.data.newIndex })
+        createIndex({ table: diff.table, index: diff.newIndex })
       );
     }
     // drop index
-    else if (
-      diff.type === 'index' &&
-      diff.changes === 'remove' &&
-      diff.data.oldIndex &&
-      diff.data.table
-    ) {
-      changeSetCommon.addChildren(
-        dropIndex(diff.data.table, diff.data.oldIndex)
-      );
+    else if (diff.type === 'index' && diff.changes === 'remove') {
+      changeSetCommon.addChildren(dropIndex(diff.table, diff.oldIndex));
     }
     // add FK
-    else if (
-      diff.type === 'relationship' &&
-      diff.changes === 'add' &&
-      diff.data.newRelationship &&
-      diff.data.startTable &&
-      diff.data.endTable
-    ) {
+    else if (diff.type === 'relationship' && diff.changes === 'add') {
       changeSetCommon.addChildren(
         addForeignKeyConstraint({
-          startTable: diff.data.startTable,
-          endTable: diff.data.endTable,
-          relationship: diff.data.newRelationship,
+          startTable: diff.startTable,
+          endTable: diff.endTable,
+          relationship: diff.newRelationship,
         })
       );
     }
     // drop FK
-    else if (
-      diff.type === 'relationship' &&
-      diff.changes === 'remove' &&
-      diff.data.oldRelationship &&
-      diff.data.table
-    ) {
+    else if (diff.type === 'relationship' && diff.changes === 'remove') {
       changeSetCommon.addChildren(
-        dropForeignKeyConstraint(diff.data.table, diff.data.oldRelationship)
+        dropForeignKeyConstraint(diff.table, diff.oldRelationship)
       );
     }
 
     // modify column
-    else if (
-      diff.type === 'column' &&
-      diff.changes === 'modify' &&
-      diff.data.oldColumn &&
-      diff.data.newColumn &&
-      diff.data.table
-    ) {
-      const { oldColumn, newColumn, table } = diff.data;
+    else if (diff.type === 'column' && diff.changes === 'modify') {
+      const { oldColumn, newColumn, table } = diff;
       // name was changed
       if (oldColumn.name !== newColumn.name) {
         changeSetCommon.addChildren(renameColumn(table, newColumn, oldColumn));

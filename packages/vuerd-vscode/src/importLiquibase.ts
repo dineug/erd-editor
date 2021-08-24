@@ -3,7 +3,6 @@ import * as path from 'path';
 import { window } from 'vscode';
 import parse from 'xml-parser';
 
-const liquibaseDirectory = 'changelog';
 const liquibaseRootFile = 'changelog.xml';
 
 export interface LiquibaseFile {
@@ -28,24 +27,22 @@ export const loadLiquibaseFiles = (uri: string): LiquibaseFile[] => {
   }
 
   fs.readdirSync(vuerdFolder).forEach(directory => {
-    if (directory === liquibaseDirectory) {
-      const changeLog = path.join(vuerdFolder, directory);
+    const changeLog = path.join(vuerdFolder, directory);
 
-      // get root file from folder
-      const rootFileName = fs
-        .readdirSync(changeLog)
-        .find(file => liquibaseRootFile === file);
+    // get root file from folder
+    const rootFileName = fs
+      .readdirSync(changeLog)
+      .find(file => liquibaseRootFile === file);
 
-      if (!rootFileName) return;
+    if (!rootFileName) return;
 
-      const rootFileFullPath = path.join(changeLog, rootFileName);
-      allFiles.push({
-        path: rootFileName,
-        value: fs.readFileSync(rootFileFullPath, 'utf8'),
-      });
+    const rootFileFullPath = path.join(changeLog, rootFileName);
+    allFiles.push({
+      path: rootFileName,
+      value: fs.readFileSync(rootFileFullPath, 'utf8'),
+    });
 
-      allFiles.push(...loadNestedIncludes(rootFileFullPath, changeLog));
-    }
+    allFiles.push(...loadNestedIncludes(rootFileFullPath, changeLog));
   });
 
   return allFiles;
