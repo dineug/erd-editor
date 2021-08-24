@@ -1,7 +1,7 @@
+import parser from 'fast-xml-parser';
 import * as fs from 'fs';
 import * as path from 'path';
 import { window } from 'vscode';
-import parse from 'xml-parser';
 
 const liquibaseRootFile = 'changelog.xml';
 
@@ -61,14 +61,18 @@ export const loadNestedIncludes = (
 
   const file = fs.readFileSync(uri, 'utf8');
 
-  const parsedFile = parse(file).root;
+  const parsedFile: LiquibaseFileStructure = parser.parse(file, {
+    attributeNamePrefix: '',
+    ignoreAttributes: false,
+    parseNodeValue: true,
+  });
 
-  if (parsedFile.name !== 'databaseChangeLog') return [];
+  if (!parsedFile.databaseChangeLog) return [];
 
-  const includes = parsedFile.children.filter(node => node.name === 'include');
+  const includes = parsedFile.databaseChangeLog.include || [];
 
   for (const include of includes) {
-    var includePath = include.attributes.file;
+    var includePath = include.file;
     if (!includePath) continue;
 
     const includeFullPath = path.join(path.dirname(uri), includePath);
@@ -86,3 +90,11 @@ export const loadNestedIncludes = (
 
   return files;
 };
+
+interface LiquibaseFileStructure {
+  databaseChangeLog?: {
+    include?: {
+      file: string;
+    }[];
+  };
+}
