@@ -1,5 +1,6 @@
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
+import replace from '@rollup/plugin-replace';
 import typescript from '@rollup/plugin-typescript';
 import filesize from 'rollup-plugin-filesize';
 
@@ -37,6 +38,10 @@ export default {
     'net',
   ],
   plugins: [
+    replace({
+      preventAssignment: true,
+      'process.env.VUERD_VSCODE_VERSION': JSON.stringify(pkg.version),
+    }),
     resolve(),
     commonjs(),
     typescript(),
