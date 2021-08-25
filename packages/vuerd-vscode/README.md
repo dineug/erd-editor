@@ -16,18 +16,21 @@
 
 ### [Webview API](https://code.visualstudio.com/api/extension-guides/webview)
 
-1. ERD data [filename].vuerd.json Save a file as a form
-1. Focus on the saved file and click the vuerd icon in the upper right corner of the Editor window  
+1. Create `[any_filename].vuerd.json`
+2. Open the file and click the Vuerd icon in the upper right corner of the Editor window **or** right click on file -> Open editor
+
    ![Image](./img/vuerd-vscode-2.png)  
    ![Image](./img/vuerd-vscode-1.png)
 
 ### [Custom Editor API](https://code.visualstudio.com/api/extension-guides/custom-editors)
 
-1. ERD data [filename].vuerd Save a file as a form
+1. Create `[any_filename].vuerd`
 
-### Liquibase
+### [Using Liquibase](https://www.liquibase.org/)
 
-1. project root changelog/changelog.xml auto load
+1. Create `[any_filename].vuerd.json` in the same folder as Liquibase changelog with name `changelog.xml`
+2. Open Vuerd and `changelog.xml` will be automatically loaded
+3. When exporting, set `changelog id` to the save location (if the location has changelog that was previously imported, Vuerd will try to add the changes to that file)
 
 ## Theme settings.json
 
@@ -36,7 +39,7 @@
 ```json
 {
   "dineug.vuerd-vscode.themeSync": true,
-  // not synchronize color list
+  // will NOT synchronize the color list
   "dineug.vuerd-vscode.theme": {
     "keyPK": "#B4B400",
     "keyFK": "#dda8b1",
