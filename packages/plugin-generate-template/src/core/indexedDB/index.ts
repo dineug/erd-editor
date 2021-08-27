@@ -10,6 +10,8 @@ export type Store = 'template';
 export interface Template {
   name: string;
   value: string;
+  updatedAt: number;
+  createdAt: number;
 }
 
 export const DB = {
@@ -36,11 +38,15 @@ export const openIndexedDB = new Observable<IDBDatabase>(subscriber => {
 
 export const findTemplates = openIndexedDB.pipe(findAll<Template>('template'));
 
-export const createTemplate = (data: Template) =>
+export const createTemplate = (data: Pick<Template, 'name' | 'value'>) =>
   new Observable<IDBValidKey>(subscriber =>
     openIndexedDB.pipe(objectStore('template', DB.mode.RW)).subscribe({
       next(store) {
-        const req = store.add(data);
+        const req = store.add({
+          ...data,
+          updatedAt: Date.now(),
+          createdAt: Date.now(),
+        });
 
         req.onsuccess = () => {
           subscriber.next(req.result);
@@ -53,13 +59,13 @@ export const createTemplate = (data: Template) =>
     })
   );
 
-export const updateByTemplateName = (data: Template) =>
+export const updateByTemplateName = (data: Pick<Template, 'name' | 'value'>) =>
   new Observable<IDBValidKey>(subscriber =>
     openIndexedDB
       .pipe(findOne<Template>(data.name, 'template', DB.mode.RW))
       .subscribe({
         next([prev, store]) {
-          const req = store.put({ ...prev, ...data });
+          const req = store.put({ ...prev, ...data, updatedAt: Date.now() });
 
           req.onsuccess = () => {
             subscriber.next(req.result);

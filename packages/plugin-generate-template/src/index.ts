@@ -13,7 +13,7 @@ const generateTemplatePanelConfig: PanelConfig = {
     name: 'file-cog',
     size: 20,
   },
-  key: 'generate-template',
+  key: '@vuerd/plugin-generate-template',
   name: 'Generate Template',
 };
 

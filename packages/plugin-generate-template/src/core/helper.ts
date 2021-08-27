@@ -13,5 +13,5 @@ export const closestElement = (
 
 export const noop = () => {};
 
-const encodeBase64 = R.pipe(encodeURIComponent, unescape, btoa);
-const decodeBase64 = R.pipe(atob, escape, decodeURIComponent);
+export const encodeBase64 = R.pipe(encodeURIComponent, unescape, btoa);
+export const decodeBase64 = R.pipe(atob, escape, decodeURIComponent);

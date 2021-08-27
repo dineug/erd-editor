@@ -1,5 +1,7 @@
 import { createGlobalStyle } from 'styled-components';
 
+import { TippyStyle } from '@/components/css/tippy.style';
+
 export const GlobalStyle = createGlobalStyle`
   ::-webkit-scrollbar {
     width: 12px;
@@ -27,4 +29,6 @@ export const GlobalStyle = createGlobalStyle`
   .cm-editor {
     height: 100%
   }
+
+  ${TippyStyle}
 `;
