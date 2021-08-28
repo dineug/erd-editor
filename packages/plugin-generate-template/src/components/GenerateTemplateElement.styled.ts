@@ -1,6 +1,10 @@
 import { createGlobalStyle } from 'styled-components';
 
 import { TippyStyle } from '@/components/css/tippy.style';
+import { TuiGridStyle } from '@/components/css/tui-grid/tui-grid.style';
+import { TuiGridThemeStyle } from '@/components/css/tui-grid/tui-grid-theme.style';
+import { GridTextEditorStyle } from '@/components/grid/GridTextEditor.style';
+import { GridTextRenderStyle } from '@/components/grid/GridTextRender.style';
 
 export const GlobalStyle = createGlobalStyle`
   ::-webkit-scrollbar {
@@ -30,5 +34,14 @@ export const GlobalStyle = createGlobalStyle`
     height: 100%
   }
 
+  .tooltip {
+    display: flex;
+    align-items: center;
+  }
+
   ${TippyStyle}
+  ${TuiGridStyle}
+  ${TuiGridThemeStyle}
+  ${GridTextEditorStyle}
+  ${GridTextRenderStyle}
 `;

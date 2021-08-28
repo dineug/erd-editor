@@ -1,11 +1,24 @@
 // @ts-ignore
 import ejs from 'ejs/ejs.min.js';
 import { FunctionalComponent } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { identity } from 'ramda';
+import { ERDEditorContext } from 'vuerd';
 
 import { Container } from '@/components/editor/TemplateEditor.styled';
 import { hljs } from '@/config/highlight.config';
+import { camelCase, createState, pascalCase, snakeCase } from '@/core/helper';
+import { useContext } from '@/hooks/useContext';
+
+interface Data {
+  state: Partial<
+    Pick<
+      ERDEditorContext['store'],
+      'canvasState' | 'tableState' | 'memoState' | 'relationshipState'
+    >
+  >;
+  helper: any;
+}
 
 interface Props {
   width: number;
@@ -17,6 +30,19 @@ const Preview: FunctionalComponent<Partial<Props>> = ({
   value = '',
 }) => {
   const [code, setCode] = useState('');
+  const dataRef = useRef<Data>({
+    state: {},
+    helper: {
+      camelCase,
+      snakeCase,
+      pascalCase,
+    },
+  });
+  const { api } = useContext();
+
+  useEffect(() => {
+    dataRef.current.state = createState(api.store);
+  }, []);
 
   useEffect(() => {
     if (!value.trim()) {
@@ -25,7 +51,13 @@ const Preview: FunctionalComponent<Partial<Props>> = ({
     }
 
     try {
-      const result = ejs.render(`<%= ${value} %>`, {}, { escape: identity });
+      const result = ejs.render(
+        `<%= ${value} %>`,
+        {
+          DATA: dataRef.current,
+        },
+        { escape: identity }
+      );
       const html = hljs.highlightAuto(result).value;
 
       setCode(html);

@@ -1,4 +1,5 @@
 import { render } from 'preact';
+import { fromEvent } from 'rxjs';
 import { createGlobalStyle, StyleSheetManager } from 'styled-components';
 import { ERDEditorContext, watch } from 'vuerd';
 
@@ -9,6 +10,8 @@ import { noop } from '@/core/helper';
 import { highlightThemeMap } from '@/core/highlight';
 import { createGlobalEventObservable } from '@/helpers/event.helper';
 import { GenerateTemplateContext } from '@/internal-types/GenerateTemplateContext';
+import { DataTypeStore } from '@/stores/dataType.store';
+import { TemplateStore } from '@/stores/template.store';
 import { UIStore } from '@/stores/ui.store';
 
 declare global {
@@ -23,8 +26,18 @@ export class GenerateTemplateElement extends HTMLElement {
   context!: GenerateTemplateContext;
   stores = {
     ui: new UIStore(),
+    template: new TemplateStore(),
+    dataType: new DataTypeStore(),
   };
+  keydown$ = fromEvent<KeyboardEvent>(this.renderRoot, 'keydown');
   unsubscribe = noop;
+
+  constructor() {
+    super();
+
+    this.stores.template.fetch();
+    this.stores.dataType.fetch();
+  }
 
   connectedCallback() {
     this.context = {
@@ -32,6 +45,7 @@ export class GenerateTemplateElement extends HTMLElement {
       host: this.renderRoot,
       globalEvent: createGlobalEventObservable(),
       stores: this.stores,
+      keydown$: this.keydown$,
     };
 
     Object.assign(this.style, {

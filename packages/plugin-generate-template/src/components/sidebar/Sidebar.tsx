@@ -1,3 +1,4 @@
+import { observer } from 'mobx-react-lite';
 import { FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
 
@@ -5,10 +6,12 @@ import Icon from '@/components/Icon';
 import Sash from '@/components/Sash';
 import { Container, Tab, TabGroup } from '@/components/sidebar/Sidebar.styled';
 import { SIDEBAR_WIDTH } from '@/core/layout';
+import { useContext } from '@/hooks/useContext';
+import { useGrid } from '@/hooks/useGrid';
 import { useTooltip } from '@/hooks/useTooltip';
 import { Move } from '@/internal-types/event.helper';
 
-type TabType = 'Templates' | 'DataTypeMap';
+type TabType = 'Templates' | 'DataTypes';
 
 export interface Props {
   width: number;
@@ -16,21 +19,31 @@ export interface Props {
   onMousedown(event: React.MouseEvent): void;
 }
 
+const Grid = () => {
+  const [parentRef] = useGrid();
+  return <div ref={parentRef} />;
+};
+
 const Sidebar: FunctionalComponent<Partial<Props>> = ({
   width = SIDEBAR_WIDTH,
   onGlobalMove,
   onMousedown,
 }) => {
-  const [tab, setTab] = useState<TabType>('Templates');
+  const [tabName, setTab] = useState<TabType>('Templates');
   const [tooltipRef] = useTooltip(2);
+  const { stores } = useContext();
 
-  const isTab = (target: TabType) => tab === target;
+  const isTab = (target: TabType) => tabName === target;
 
   return (
     <Container style={{ width: `${width}px` }}>
       <TabGroup>
-        <span ref={tooltipRef.current[0]} data-tippy-content="Templates">
-          <Tab active={isTab('Templates')} onClick={() => setTab('Templates')}>
+        <Tab active={isTab('Templates')} onClick={() => setTab('Templates')}>
+          <div
+            class="tooltip"
+            data-tippy-content="Templates"
+            ref={tooltipRef.current[0]}
+          >
             <Icon
               active={isTab('Templates')}
               name="view-list"
@@ -38,22 +51,23 @@ const Sidebar: FunctionalComponent<Partial<Props>> = ({
               size={20}
               transition={false}
             />
-          </Tab>
-        </span>
-        <span ref={tooltipRef.current[1]} data-tippy-content="DataTypeMap">
-          <Tab
-            active={isTab('DataTypeMap')}
-            onClick={() => setTab('DataTypeMap')}
+          </div>
+        </Tab>
+        <Tab active={isTab('DataTypes')} onClick={() => setTab('DataTypes')}>
+          <div
+            class="tooltip"
+            data-tippy-content="DataTypes"
+            ref={tooltipRef.current[1]}
           >
             <Icon
-              active={isTab('DataTypeMap')}
+              active={isTab('DataTypes')}
               name="table"
               cursor="pointer"
               size={20}
               transition={false}
             />
-          </Tab>
-        </span>
+          </div>
+        </Tab>
       </TabGroup>
       <Sash
         vertical
@@ -61,8 +75,9 @@ const Sidebar: FunctionalComponent<Partial<Props>> = ({
         onGlobalMove={onGlobalMove}
         onMousedown={onMousedown}
       />
+      {isTab('Templates') ? <></> : <Grid />}
     </Container>
   );
 };
 
-export default Sidebar;
+export default observer(Sidebar);

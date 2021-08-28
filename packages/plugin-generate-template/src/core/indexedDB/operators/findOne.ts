@@ -6,7 +6,11 @@ import { objectStore } from '@/core/indexedDB/operators/objectStore';
 type DataTuple<T> = [T, IDBObjectStore];
 
 export const findOne =
-  <T = any>(id: string, storeName: Store, mode: Mode = DB.mode.R) =>
+  <T = any>(
+    id: string | IDBValidKey,
+    storeName: Store,
+    mode: Mode = DB.mode.R
+  ) =>
   (source$: Observable<IDBDatabase>) =>
     new Observable<DataTuple<T>>(subscriber =>
       source$.pipe(objectStore(storeName, mode)).subscribe({

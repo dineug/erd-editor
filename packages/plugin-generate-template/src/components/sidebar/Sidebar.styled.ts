@@ -5,6 +5,7 @@ import { Container as IconContainer } from '@/components/Icon.styled';
 export const Container = styled.div`
   height: 100%;
   background-color: var(--vuerd-color-contextmenu);
+  overflow: hidden;
 `;
 
 export const TabGroup = styled.div`
