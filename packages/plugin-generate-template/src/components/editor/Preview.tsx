@@ -18,6 +18,7 @@ interface Data {
     >
   >;
   helper: any;
+  dataTypes: Array<{ name: string; type: string }>;
 }
 
 interface Props {
@@ -37,11 +38,16 @@ const Preview: FunctionalComponent<Partial<Props>> = ({
       snakeCase,
       pascalCase,
     },
+    dataTypes: [],
   });
-  const { api } = useContext();
+  const { api, stores } = useContext();
 
   useEffect(() => {
     dataRef.current.state = createState(api.store);
+    dataRef.current.dataTypes = stores.dataType.dataTypes.map(dataType => ({
+      name: dataType.name,
+      type: dataType.primitiveType,
+    }));
   }, []);
 
   useEffect(() => {

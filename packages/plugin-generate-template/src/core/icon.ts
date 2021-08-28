@@ -1,6 +1,8 @@
 import {
   mdiFileCode,
   mdiFileFind,
+  mdiMinus,
+  mdiPlus,
   mdiTable,
   mdiViewList,
   mdiViewSplitVertical,
@@ -20,6 +22,8 @@ const icons = [
   createMDI('file-code', mdiFileCode),
   createMDI('table', mdiTable),
   createMDI('view-list', mdiViewList),
+  createMDI('plus', mdiPlus),
+  createMDI('minus', mdiMinus),
 ] as IconDefinition[];
 
 export const getIcon = (prefix: string, iconName: string) =>

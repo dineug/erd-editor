@@ -11,6 +11,9 @@ export const GridTextRenderStyle = css`
     color: var(--vuerd-color-font-active);
     border-bottom: solid #fff0 1.5px;
     box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .vuerd-grid-text.placeholder {

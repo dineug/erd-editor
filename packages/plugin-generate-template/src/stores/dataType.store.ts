@@ -1,5 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 
+import { orderByNameASC } from '@/core/helper';
 import {
   createDataType,
   DataType,
@@ -9,6 +10,7 @@ import {
   updateByDataTypeUUID,
 } from '@/core/indexedDB';
 import { findOne } from '@/core/indexedDB/operators/findOne';
+import { dataTypes as defaultDataTypes } from '@/data/defaultDataTypes';
 
 export class DataTypeStore {
   dataTypes: DataType[] = [];
@@ -23,15 +25,18 @@ export class DataTypeStore {
   }
 
   create(data: Pick<DataType, 'name' | 'primitiveType'>) {
-    createDataType(data).subscribe(key => {
-      const subscription = openIndexedDB
-        .pipe(findOne(key, 'dataType'))
-        .subscribe(([dataType]) => {
-          runInAction(() => {
-            this.dataTypes.push(dataType);
+    return new Promise(resolve => {
+      createDataType(data).subscribe(key => {
+        const subscription = openIndexedDB
+          .pipe(findOne(key, 'dataType'))
+          .subscribe(([dataType]) => {
+            runInAction(() => {
+              this.dataTypes.push(dataType);
+              resolve(dataType);
+            });
+            subscription.unsubscribe();
           });
-          subscription.unsubscribe();
-        });
+      });
     });
   }
 
@@ -57,23 +62,15 @@ export class DataTypeStore {
 
   fetch() {
     findDataTypes.subscribe(dataTypes => {
-      // TODO: create exampleTemplates
-      // templates.length === 0
-
-      this.setDataTypes(dataTypes);
+      if (dataTypes.length) {
+        this.setDataTypes(dataTypes);
+      } else {
+        defaultDataTypes.forEach(data => this.create(data));
+      }
     });
   }
 
   sort() {
-    this.dataTypes.sort((a, b) => {
-      const nameA = a.name.toLowerCase();
-      const nameB = b.name.toLowerCase();
-      if (nameA < nameB) {
-        return -1;
-      } else if (nameA > nameB) {
-        return 1;
-      }
-      return 0;
-    });
+    this.dataTypes.sort(orderByNameASC);
   }
 }

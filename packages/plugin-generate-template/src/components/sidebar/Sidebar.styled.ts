@@ -2,10 +2,23 @@ import styled from 'styled-components';
 
 import { Container as IconContainer } from '@/components/Icon.styled';
 
+export const Action = styled.div`
+  display: flex;
+  align-items: center;
+  height: 100%;
+`;
+
 export const Container = styled.div`
   height: 100%;
   background-color: var(--vuerd-color-contextmenu);
   overflow: hidden;
+
+  & ${Action} {
+    display: none;
+  }
+  &:hover ${Action} {
+    display: flex;
+  }
 `;
 
 export const TabGroup = styled.div`

@@ -118,8 +118,8 @@ export const TuiGridThemeStyle = css`
     border-right-style: hidden;
   }
   .tui-grid-cell-row-header {
-    background-color: #fff;
-    border-color: #eee;
+    background-color: var(--vuerd-color-table);
+    border-color: var(--vuerd-color-table);
     border-left-width: 0;
     border-right-width: 0;
     border-top-width: 1px;
@@ -154,7 +154,7 @@ export const TuiGridThemeStyle = css`
     color: var(--vuerd-color-font);
   }
   .tui-grid-cell-row-header.tui-grid-cell-selected {
-    background-color: #e5f6ff;
+    background-color: var(--vuerd-color-table);
   }
   .tui-grid-layer-focus-border {
     background-color: var(--vuerd-color-focus);

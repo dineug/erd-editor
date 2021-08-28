@@ -32,3 +32,14 @@ export const createState = (store: ERDEditorContext['store']) =>
   cloneDeep(
     pick(store, ['canvasState', 'tableState', 'memoState', 'relationshipState'])
   );
+
+export const orderByNameASC = <T extends { name: string }>(a: T, b: T) => {
+  const nameA = a.name.toLowerCase();
+  const nameB = b.name.toLowerCase();
+  if (nameA < nameB) {
+    return -1;
+  } else if (nameA > nameB) {
+    return 1;
+  }
+  return 0;
+};

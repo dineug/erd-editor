@@ -9,6 +9,7 @@ export type Mode = 'readwrite' | 'readonly';
 export type Store = 'template' | 'dataType';
 
 export interface Template {
+  uuid: string;
   name: string;
   value: string;
   updatedAt: number;
@@ -39,7 +40,7 @@ export const openIndexedDB = new Observable<IDBDatabase>(subscriber => {
   openDB.onerror = event => subscriber.error(event);
   openDB.onupgradeneeded = (event: any) => {
     const db = event.currentTarget.result;
-    db.createObjectStore('template', { keyPath: 'name' });
+    db.createObjectStore('template', { keyPath: 'uuid' });
     db.createObjectStore('dataType', { keyPath: 'uuid' });
   };
 
@@ -54,6 +55,7 @@ export const createTemplate = (data: Pick<Template, 'name' | 'value'>) =>
       next(store) {
         const req = store.add({
           ...data,
+          uuid: uuid(),
           updatedAt: Date.now(),
           createdAt: Date.now(),
         });
@@ -69,10 +71,12 @@ export const createTemplate = (data: Pick<Template, 'name' | 'value'>) =>
     })
   );
 
-export const updateByTemplateName = (data: Pick<Template, 'name' | 'value'>) =>
+export const updateByTemplateUUID = (
+  data: Pick<Template, 'name' | 'value' | 'uuid'>
+) =>
   new Observable<IDBValidKey>(subscriber =>
     openIndexedDB
-      .pipe(findOne<Template>(data.name, 'template', DB.mode.RW))
+      .pipe(findOne<Template>(data.uuid, 'template', DB.mode.RW))
       .subscribe({
         next([prev, store]) {
           const req = store.put({ ...prev, ...data, updatedAt: Date.now() });
@@ -88,13 +92,13 @@ export const updateByTemplateName = (data: Pick<Template, 'name' | 'value'>) =>
       })
   );
 
-export const deleteByTemplateName = (name: string) =>
+export const deleteByTemplateUUID = (uuid: string) =>
   new Observable<Template>(subscriber =>
     openIndexedDB
-      .pipe(findOne<Template>(name, 'template', DB.mode.RW))
+      .pipe(findOne<Template>(uuid, 'template', DB.mode.RW))
       .subscribe({
         next([data, store]) {
-          const req = store.delete(name);
+          const req = store.delete(uuid);
 
           req.onsuccess = () => {
             subscriber.next(data);

@@ -1,14 +1,16 @@
-import { makeAutoObservable } from 'mobx';
+import { makeAutoObservable, runInAction } from 'mobx';
 
+import { orderByNameASC } from '@/core/helper';
 import {
   createTemplate,
-  deleteByTemplateName,
+  deleteByTemplateUUID,
   findTemplates,
   openIndexedDB,
   Template,
-  updateByTemplateName,
+  updateByTemplateUUID,
 } from '@/core/indexedDB';
 import { findOne } from '@/core/indexedDB/operators/findOne';
+import { templates as defaultTemplates } from '@/data/defaultTemplates';
 
 export class TemplateStore {
   templates: Template[] = [];
@@ -22,54 +24,53 @@ export class TemplateStore {
     this.sort();
   }
 
-  add(data: Pick<Template, 'name' | 'value'>) {
-    createTemplate(data).subscribe(key => {
-      const subscription = openIndexedDB
-        .pipe(findOne(key, 'template'))
-        .subscribe(([template]) => {
-          this.templates.push(template);
-          subscription.unsubscribe();
-        });
+  create(data: Pick<Template, 'name' | 'value'>) {
+    return new Promise(resolve => {
+      createTemplate(data).subscribe(key => {
+        const subscription = openIndexedDB
+          .pipe(findOne(key, 'template'))
+          .subscribe(([template]) => {
+            runInAction(() => {
+              this.templates.push(template);
+              resolve(template);
+            });
+            subscription.unsubscribe();
+          });
+      });
     });
   }
 
-  update(data: Pick<Template, 'name' | 'value'>) {
-    updateByTemplateName(data).subscribe(key => {
-      const template = this.templates.find(template => template.name === key);
+  update(data: Pick<Template, 'name' | 'value' | 'uuid'>) {
+    updateByTemplateUUID(data).subscribe(key => {
+      const template = this.templates.find(template => template.uuid === key);
       if (!template) return;
 
-      template.name = data.name;
-      template.value = data.value;
+      runInAction(() => {
+        template.name = data.name;
+        template.value = data.value;
+      });
     });
   }
 
-  delete(name: string) {
-    deleteByTemplateName(name).subscribe(old => {
+  delete(uuid: string) {
+    deleteByTemplateUUID(uuid).subscribe(old => {
       this.setTemplates(
-        this.templates.filter(template => template.name !== old.name)
+        this.templates.filter(template => template.uuid !== old.uuid)
       );
     });
   }
 
   fetch() {
     findTemplates.subscribe(templates => {
-      // TODO: create exampleTemplates
-      // templates.length === 0
-
-      this.setTemplates(templates);
+      if (templates.length) {
+        this.setTemplates(templates);
+      } else {
+        defaultTemplates.forEach(data => this.create(data));
+      }
     });
   }
 
   sort() {
-    this.templates.sort((a, b) => {
-      const nameA = a.name.toLowerCase();
-      const nameB = b.name.toLowerCase();
-      if (nameA < nameB) {
-        return -1;
-      } else if (nameA > nameB) {
-        return 1;
-      }
-      return 0;
-    });
+    this.templates.sort(orderByNameASC);
   }
 }
