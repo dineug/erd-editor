@@ -1,5 +1,6 @@
 import { EditorView } from '@codemirror/view';
 import { round } from 'lodash';
+import { observer } from 'mobx-react-lite';
 import { FunctionalComponent } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
@@ -12,6 +13,7 @@ import Preview from '@/components/editor/Preview';
 import TemplateEditor from '@/components/editor/TemplateEditor';
 import Toolbar, { EditorMode } from '@/components/editor/Toolbar';
 import Sash from '@/components/Sash';
+import { useContext } from '@/hooks/useContext';
 import { Move } from '@/internal-types/event.helper';
 
 const MIN_WIDTH = 100;
@@ -38,6 +40,7 @@ const Editor: FunctionalComponent<Partial<Props>> = ({
   });
   const prevWidthRef = useRef(width);
   const clientXRef = useRef(0);
+  const { stores } = useContext();
 
   const handleChangeMode = (mode: EditorMode) => {
     setMode(mode);
@@ -114,7 +117,9 @@ const Editor: FunctionalComponent<Partial<Props>> = ({
       ) : mode === 'preview' ? (
         <Preview value={previewValue} />
       ) : (
-        <EditorContainer>
+        <EditorContainer
+          style={{ height: `${stores.ui.viewport.height - 30}px` }}
+        >
           <TemplateEditor
             width={containerWidth.editor}
             value={value}
@@ -134,4 +139,4 @@ const Editor: FunctionalComponent<Partial<Props>> = ({
   );
 };
 
-export default Editor;
+export default observer(Editor);
