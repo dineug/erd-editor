@@ -22,3 +22,41 @@ extension({
   panels: [generateTemplatePanel()],
 });
 ```
+
+## CDN Quick Start
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>vuerd demo</title>
+    <style>
+      body {
+        margin: 0;
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <erd-editor></erd-editor>
+    <script src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@vuerd/plugin-generate-template/dist/generate-template.min.js"></script>
+    <script>
+      const { extension } = window['vuerd'];
+      const { generateTemplatePanel } =
+        window['@vuerd/plugin-generate-template'];
+
+      extension({
+        panels: [generateTemplatePanel()],
+      });
+
+      const editor = document.querySelector('erd-editor');
+      window.addEventListener('resize', () => {
+        editor.width = window.innerWidth;
+        editor.height = window.innerHeight;
+      });
+      window.dispatchEvent(new Event('resize'));
+    </script>
+  </body>
+</html>
+```

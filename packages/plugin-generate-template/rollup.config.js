@@ -35,7 +35,7 @@ export default [
     plugins: [
       strip({
         debugger: true,
-        include: '**/*.ts',
+        include: '**/*.tsx',
         functions: ['Logger.debug', 'Logger.log', 'console.log'],
       }),
       replace({

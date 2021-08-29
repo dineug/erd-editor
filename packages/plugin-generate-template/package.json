@@ -1,6 +1,6 @@
 {
   "name": "@vuerd/plugin-generate-template",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "vuerd plugin generate template",
   "main": "dist/generate-template.js",
   "module": "dist/generate-template.esm.js",
