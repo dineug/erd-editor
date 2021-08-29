@@ -1,3 +1,4 @@
+import { Ref, RefObject } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import tippy, {
   createSingleton,
@@ -8,7 +9,12 @@ import tippy, {
 
 import { useContext } from '@/hooks/useContext';
 
-export function useTooltip(tooltipCount: number, options: Partial<Props> = {}) {
+type TooltipTuple = readonly [{ current: Array<RefObject<any>> }, () => void];
+
+export function useTooltip(
+  tooltipCount: number,
+  options: Partial<Props> = {}
+): TooltipTuple {
   const { host } = useContext();
   const instancesRef = useRef<Array<Instance>>([]);
   const singletonRef = useRef<CreateSingletonInstance>(null);
@@ -47,6 +53,11 @@ export function useTooltip(tooltipCount: number, options: Partial<Props> = {}) {
     instancesRef.current = [];
   };
 
+  const resetTooltip = () => {
+    destroyTooltip();
+    createTooltip();
+  };
+
   useEffect(
     () => {
       createTooltip();
@@ -55,5 +66,5 @@ export function useTooltip(tooltipCount: number, options: Partial<Props> = {}) {
     elementsRef.current.map(elRef => elRef.current)
   );
 
-  return [elementsRef];
+  return [elementsRef, resetTooltip];
 }

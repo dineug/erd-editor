@@ -39,6 +39,10 @@ export const GlobalStyle = createGlobalStyle`
     align-items: center;
   }
 
+  .hljs {
+    padding: 0 !important;
+  }
+
   ${TippyStyle}
   ${TuiGridStyle}
   ${TuiGridThemeStyle}

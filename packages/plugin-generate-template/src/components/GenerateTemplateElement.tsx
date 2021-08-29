@@ -32,11 +32,15 @@ export class GenerateTemplateElement extends HTMLElement {
   keydown$ = fromEvent<KeyboardEvent>(this.renderRoot, 'keydown');
   unsubscribe = noop;
 
+  ready: Promise<any>;
+
   constructor() {
     super();
 
-    this.stores.template.fetch();
-    this.stores.dataType.fetch();
+    this.ready = Promise.all([
+      this.stores.template.fetch(),
+      this.stores.dataType.fetch(),
+    ]);
   }
 
   connectedCallback() {

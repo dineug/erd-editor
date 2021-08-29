@@ -61,12 +61,17 @@ export class DataTypeStore {
   }
 
   fetch() {
-    findDataTypes.subscribe(dataTypes => {
-      if (dataTypes.length) {
-        this.setDataTypes(dataTypes);
-      } else {
-        defaultDataTypes.forEach(data => this.create(data));
-      }
+    return new Promise(resolve => {
+      findDataTypes.subscribe({
+        next: dataTypes => {
+          if (dataTypes.length) {
+            this.setDataTypes(dataTypes);
+          } else {
+            defaultDataTypes.forEach(data => this.create(data));
+          }
+        },
+        complete: () => resolve(null),
+      });
     });
   }
 

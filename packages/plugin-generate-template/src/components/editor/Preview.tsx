@@ -1,5 +1,6 @@
 // @ts-ignore
 import ejs from 'ejs/ejs.min.js';
+import { observer } from 'mobx-react-lite';
 import { FunctionalComponent } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { identity } from 'ramda';
@@ -51,6 +52,13 @@ const Preview: FunctionalComponent<Partial<Props>> = ({
   }, []);
 
   useEffect(() => {
+    dataRef.current.dataTypes = stores.dataType.dataTypes.map(dataType => ({
+      name: dataType.name,
+      type: dataType.primitiveType,
+    }));
+  }, [stores.dataType.dataTypes.length]);
+
+  useEffect(() => {
     if (!value.trim()) {
       setCode('');
       return;
@@ -84,4 +92,4 @@ const Preview: FunctionalComponent<Partial<Props>> = ({
   );
 };
 
-export default Preview;
+export default observer(Preview);

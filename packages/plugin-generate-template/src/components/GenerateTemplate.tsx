@@ -9,6 +9,7 @@ import { useCallback, useRef, useState } from 'preact/hooks';
 import Editor from '@/components/editor/Editor';
 import { Container } from '@/components/GenerateTemplate.styled';
 import Sidebar from '@/components/sidebar/Sidebar';
+import { encodeBase64 } from '@/core/helper';
 import {
   EDITOR_MIN_WIDTH,
   SIDEBAR_MIN_WIDTH,
@@ -83,6 +84,7 @@ const GenerateTemplate: FunctionalComponent = () => {
     templateUUIDRef.current = uuid;
     setValue(template.value);
     setPreviewValue(template.value);
+    console.log(`template ${template.name}`, encodeBase64(template.value));
   };
 
   return (

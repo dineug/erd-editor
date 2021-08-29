@@ -34,7 +34,7 @@ const Sidebar: FunctionalComponent<Partial<Props>> = ({
   onChangeTemplate,
 }) => {
   const [tabName, setTab] = useState<TabType>('Templates');
-  const [tooltipRef] = useTooltip(4);
+  const [tooltipRef, resetTooltip] = useTooltip(4);
   const { stores } = useContext();
   const [dataTypeParentRef, dataTypeGridRef] = useDataTypeGrid(width);
   const [templateParentRef, templateGridRef] = useTemplateGrid(width);
@@ -96,6 +96,7 @@ const Sidebar: FunctionalComponent<Partial<Props>> = ({
   useEffect(() => {
     dataTypeGridRef.current?.setWidth(width);
     templateGridRef.current?.setWidth(width);
+    resetTooltip();
   }, [tabName]);
 
   useEffect(() => {

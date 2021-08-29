@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 
-import { orderByNameASC } from '@/core/helper';
+import { decodeBase64, orderByNameASC } from '@/core/helper';
 import {
   createTemplate,
   deleteByTemplateUUID,
@@ -61,12 +61,22 @@ export class TemplateStore {
   }
 
   fetch() {
-    findTemplates.subscribe(templates => {
-      if (templates.length) {
-        this.setTemplates(templates);
-      } else {
-        defaultTemplates.forEach(data => this.create(data));
-      }
+    return new Promise(resolve => {
+      findTemplates.subscribe({
+        next: templates => {
+          if (templates.length) {
+            this.setTemplates(templates);
+          } else {
+            defaultTemplates.forEach(({ name, value }) =>
+              this.create({
+                name,
+                value: decodeBase64(value).trim(),
+              })
+            );
+          }
+        },
+        complete: () => resolve(null),
+      });
     });
   }
 
