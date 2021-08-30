@@ -8,7 +8,7 @@ const gridPanelConfig: PanelConfig = {
     prefix: 'fas',
     name: 'list',
   },
-  key: 'Grid',
+  key: '@vuerd/builtin-grid',
   name: 'Grid',
 };
 

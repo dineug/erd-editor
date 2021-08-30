@@ -8,7 +8,7 @@ const generatorCodePanelConfig: PanelConfig = {
     prefix: 'fas',
     name: 'file-code',
   },
-  key: 'GeneratorCode',
+  key: '@vuerd/builtin-generator-code',
   name: 'Generator Code',
 };
 

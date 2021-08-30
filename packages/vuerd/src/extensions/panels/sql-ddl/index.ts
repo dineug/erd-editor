@@ -9,7 +9,7 @@ const SQLDDLPanelConfig: PanelConfig = {
     name: 'database-export',
     size: 20,
   },
-  key: 'SQLDDL',
+  key: '@vuerd/builtin-sql-ddl',
   name: 'SQL DDL',
 };
 

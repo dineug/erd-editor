@@ -250,7 +250,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
                 <vuerd-icon name="redo-alt" size="16"></vuerd-icon>
               </div>
             `
-          : canvasType === 'Grid'
+          : canvasType === '@vuerd/builtin-grid'
           ? html`
               <div
                 class=${classMap({

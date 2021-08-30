@@ -15,7 +15,7 @@ const visualizationPanelConfig: PanelConfig = {
     name: 'chart-bubble',
     size: 24,
   },
-  key: 'Visualization',
+  key: '@vuerd/builtin-visualization',
   name: 'Visualization',
 };
 

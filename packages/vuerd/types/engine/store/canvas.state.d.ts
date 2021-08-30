@@ -46,10 +46,10 @@ export type ColumnType =
 
 export type CanvasType =
   | 'ERD'
-  | 'SQL'
-  | 'Grid'
-  | 'GeneratorCode'
-  | 'Visualization';
+  | '@vuerd/builtin-sql-ddl'
+  | '@vuerd/builtin-grid'
+  | '@vuerd/builtin-generator-code'
+  | '@vuerd/builtin-visualization';
 
 export type Database =
   | 'MariaDB'

@@ -48,7 +48,7 @@ export declare function changeDatabaseName(
 ): CommandType<'canvas.changeDatabaseName'>;
 
 export declare function changeCanvasType(
-  canvasType: CanvasType
+  canvasType: string
 ): CommandType<'canvas.changeCanvasType'>;
 
 export declare function changeLanguage(
