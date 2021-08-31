@@ -1,21 +1,16 @@
-import { makeAutoObservable, runInAction } from 'mobx';
+import { makeAutoObservable } from 'mobx';
+import { Subject } from 'rxjs';
 
-import { orderByNameASC } from '@/core/helper';
-import {
-  createDataType,
-  DataType,
-  deleteByDataTypeUUID,
-  findDataTypes,
-  openIndexedDB,
-  updateByDataTypeUUID,
-} from '@/core/indexedDB';
-import { findOne } from '@/core/indexedDB/operators/findOne';
+import { orderByNameASC, uuid } from '@/core/helper';
+import { DataType } from '@/core/indexedDB';
 import { dataTypes as defaultDataTypes } from '@/data/defaultDataTypes';
 
 export class DataTypeStore {
   dataTypes: DataType[] = [];
+  eventBus: Subject<any>;
 
-  constructor() {
+  constructor(eventBus: Subject<any>) {
+    this.eventBus = eventBus;
     makeAutoObservable(this);
   }
 
@@ -25,54 +20,40 @@ export class DataTypeStore {
   }
 
   create(data: Pick<DataType, 'name' | 'primitiveType'>) {
-    return new Promise(resolve => {
-      createDataType(data).subscribe(key => {
-        const subscription = openIndexedDB
-          .pipe(findOne(key, 'dataType'))
-          .subscribe(([dataType]) => {
-            runInAction(() => {
-              this.dataTypes.push(dataType);
-              resolve(dataType);
-            });
-            subscription.unsubscribe();
-          });
-      });
+    this.dataTypes.push({
+      ...data,
+      uuid: uuid(),
+      updatedAt: Date.now(),
+      createdAt: Date.now(),
     });
+    this.eventBus.next('DataTypeStore.create');
   }
 
   update(data: Pick<DataType, 'name' | 'primitiveType' | 'uuid'>) {
-    updateByDataTypeUUID(data).subscribe(key => {
-      const dataType = this.dataTypes.find(dataType => dataType.uuid === key);
-      if (!dataType) return;
+    const dataType = this.dataTypes.find(
+      dataType => dataType.uuid === data.uuid
+    );
+    if (!dataType) return;
 
-      runInAction(() => {
-        dataType.name = data.name;
-        dataType.primitiveType = data.primitiveType;
-      });
-    });
+    dataType.name = data.name;
+    dataType.primitiveType = data.primitiveType;
+    dataType.updatedAt = Date.now();
+    this.eventBus.next('DataTypeStore.update');
   }
 
   delete(uuid: string) {
-    deleteByDataTypeUUID(uuid).subscribe(old => {
-      this.setDataTypes(
-        this.dataTypes.filter(dataType => dataType.uuid !== old.uuid)
-      );
-    });
+    this.setDataTypes(
+      this.dataTypes.filter(dataType => dataType.uuid !== uuid)
+    );
+    this.eventBus.next('DataTypeStore.delete');
   }
 
-  fetch() {
-    return new Promise(resolve => {
-      findDataTypes.subscribe({
-        next: dataTypes => {
-          if (dataTypes.length) {
-            this.setDataTypes(dataTypes);
-          } else {
-            defaultDataTypes.forEach(data => this.create(data));
-          }
-        },
-        complete: () => resolve(null),
-      });
-    });
+  fetch(dataTypes: DataType[]) {
+    if (dataTypes.length) {
+      this.setDataTypes(dataTypes);
+    } else {
+      defaultDataTypes.forEach(data => this.create(data));
+    }
   }
 
   sort() {

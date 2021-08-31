@@ -73,6 +73,11 @@ export interface ChangeBracketType {
   bracketType: BracketType;
 }
 
+export interface ChangePluginSerialization {
+  key: string;
+  value: string;
+}
+
 export interface CanvasCommandMap {
   'canvas.move': MoveCanvas;
   'canvas.movement': MovementCanvas;
@@ -90,4 +95,5 @@ export interface CanvasCommandMap {
   'canvas.moveColumnOrder': MoveColumnOrder;
   'canvas.changeHighlightTheme': ChangeHighlightTheme;
   'canvas.changeBracketType': ChangeBracketType;
+  'canvas.changePluginSerialization': ChangePluginSerialization;
 }

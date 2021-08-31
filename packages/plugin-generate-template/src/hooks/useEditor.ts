@@ -12,6 +12,7 @@ type EditorTuple = readonly [Ref<any>, { current: EditorView }];
 
 export interface Options {
   onChange(editor: EditorView): void;
+  typescript: boolean;
 }
 
 export function useEditor(options?: Partial<Options>): EditorTuple {
@@ -25,7 +26,9 @@ export function useEditor(options?: Partial<Options>): EditorTuple {
         extensions: [
           basicSetup,
           keymap.of([indentWithTab]),
-          javascript(),
+          javascript({
+            typescript: options?.typescript,
+          }),
           oneDark,
           EditorView.updateListener.of((view: ViewUpdate) => {
             view.docChanged &&

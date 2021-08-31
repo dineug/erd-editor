@@ -335,6 +335,12 @@ export function executeLoadJson(state: State, data: LoadJson) {
               );
             }
             break;
+          case 'pluginSerializationMap':
+            if (isObject(canvasJson.pluginSerializationMap)) {
+              canvasState.pluginSerializationMap =
+                canvasJson.pluginSerializationMap;
+            }
+            break;
         }
       }
     });

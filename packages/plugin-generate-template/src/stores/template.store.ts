@@ -1,21 +1,16 @@
-import { makeAutoObservable, runInAction } from 'mobx';
+import { makeAutoObservable } from 'mobx';
+import { Subject } from 'rxjs';
 
-import { decodeBase64, orderByNameASC } from '@/core/helper';
-import {
-  createTemplate,
-  deleteByTemplateUUID,
-  findTemplates,
-  openIndexedDB,
-  Template,
-  updateByTemplateUUID,
-} from '@/core/indexedDB';
-import { findOne } from '@/core/indexedDB/operators/findOne';
+import { decodeBase64, orderByNameASC, uuid } from '@/core/helper';
+import { Template } from '@/core/indexedDB';
 import { templates as defaultTemplates } from '@/data/defaultTemplates';
 
 export class TemplateStore {
   templates: Template[] = [];
+  eventBus: Subject<any>;
 
-  constructor() {
+  constructor(eventBus: Subject<any>) {
+    this.eventBus = eventBus;
     makeAutoObservable(this);
   }
 
@@ -25,59 +20,45 @@ export class TemplateStore {
   }
 
   create(data: Pick<Template, 'name' | 'value'>) {
-    return new Promise(resolve => {
-      createTemplate(data).subscribe(key => {
-        const subscription = openIndexedDB
-          .pipe(findOne(key, 'template'))
-          .subscribe(([template]) => {
-            runInAction(() => {
-              this.templates.push(template);
-              resolve(template);
-            });
-            subscription.unsubscribe();
-          });
-      });
+    this.templates.push({
+      ...data,
+      uuid: uuid(),
+      updatedAt: Date.now(),
+      createdAt: Date.now(),
     });
+    this.eventBus.next('TemplateStore.create');
   }
 
   update(data: Pick<Template, 'name' | 'value' | 'uuid'>) {
-    updateByTemplateUUID(data).subscribe(key => {
-      const template = this.templates.find(template => template.uuid === key);
-      if (!template) return;
+    const template = this.templates.find(
+      template => template.uuid === data.uuid
+    );
+    if (!template) return;
 
-      runInAction(() => {
-        template.name = data.name;
-        template.value = data.value;
-      });
-    });
+    template.name = data.name;
+    template.value = data.value;
+    template.updatedAt = Date.now();
+    this.eventBus.next('TemplateStore.update');
   }
 
   delete(uuid: string) {
-    deleteByTemplateUUID(uuid).subscribe(old => {
-      this.setTemplates(
-        this.templates.filter(template => template.uuid !== old.uuid)
-      );
-    });
+    this.setTemplates(
+      this.templates.filter(template => template.uuid !== uuid)
+    );
+    this.eventBus.next('TemplateStore.delete');
   }
 
-  fetch() {
-    return new Promise(resolve => {
-      findTemplates.subscribe({
-        next: templates => {
-          if (templates.length) {
-            this.setTemplates(templates);
-          } else {
-            defaultTemplates.forEach(({ name, value }) =>
-              this.create({
-                name,
-                value: decodeBase64(value).trim(),
-              })
-            );
-          }
-        },
-        complete: () => resolve(null),
-      });
-    });
+  fetch(templates: Template[]) {
+    if (templates.length) {
+      this.setTemplates(templates);
+    } else {
+      defaultTemplates.forEach(({ name, value }) =>
+        this.create({
+          name,
+          value: decodeBase64(value).trim(),
+        })
+      );
+    }
   }
 
   sort() {

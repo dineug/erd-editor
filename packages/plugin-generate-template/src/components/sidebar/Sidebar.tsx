@@ -44,30 +44,16 @@ const Sidebar: FunctionalComponent<Partial<Props>> = ({
   const addGridColumn = () => {
     if (isTab('Templates')) {
       if (!templateGridRef.current) return;
-      stores.template
-        .create({
-          name: '',
-          value: '',
-        })
-        .then(() => {
-          templateGridRef.current?.focus(
-            templateGridRef.current.getData().length - 1,
-            'name'
-          );
-        });
+      stores.template.create({
+        name: '',
+        value: '',
+      });
     } else {
       if (!dataTypeGridRef.current) return;
-      stores.dataType
-        .create({
-          name: '',
-          primitiveType: '',
-        })
-        .then(() => {
-          dataTypeGridRef.current?.focus(
-            dataTypeGridRef.current.getData().length - 1,
-            'name'
-          );
-        });
+      stores.dataType.create({
+        name: '',
+        primitiveType: '',
+      });
     }
   };
 

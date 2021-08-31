@@ -1,7 +1,6 @@
 import { Store } from '../store';
 import {
   BracketType,
-  CanvasType,
   ColumnType,
   Database,
   HighlightTheme,
@@ -79,3 +78,8 @@ export declare function changeHighlightTheme(
 export declare function changeBracketType(
   bracketType: BracketType
 ): CommandType<'canvas.changeBracketType'>;
+
+export declare function changePluginSerialization(
+  key: string,
+  value: string
+): CommandType<'canvas.changePluginSerialization'>;

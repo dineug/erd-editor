@@ -74,6 +74,7 @@ export const changeCommandTypes: CommandKey[] = [
   'canvas.moveColumnOrder',
   'canvas.changeHighlightTheme',
   'canvas.changeBracketType',
+  'canvas.changePluginSerialization',
   // editor
   'editor.loadJson',
   'editor.clear',

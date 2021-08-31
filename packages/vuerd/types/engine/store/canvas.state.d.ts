@@ -15,6 +15,7 @@ export interface CanvasState {
   highlightTheme: HighlightTheme; // ADD: version 2.0.0
   bracketType: BracketType; // ADD: version 2.0.11
   setting: Setting; // ADD: version 1.1.0
+  pluginSerializationMap: Record<string, string>; // ADD: version 2.2.3
 }
 
 export interface Show {

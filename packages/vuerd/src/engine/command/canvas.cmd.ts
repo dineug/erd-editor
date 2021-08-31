@@ -13,6 +13,7 @@ import {
   ChangeHighlightTheme,
   ChangeLanguage,
   ChangeNameCase,
+  ChangePluginSerialization,
   ChangeRelationshipDataTypeSync,
   MoveCanvas,
   MoveColumnOrder,
@@ -169,6 +170,13 @@ export function executeChangeBracketType(
   canvasState.bracketType = data.bracketType;
 }
 
+export function executeChangePluginSerialization(
+  { canvasState }: State,
+  data: ChangePluginSerialization
+) {
+  canvasState.pluginSerializationMap[data.key] = data.value;
+}
+
 export const executeCanvasCommandMap: Record<
   keyof CanvasCommandMap,
   ExecuteCommand
@@ -190,4 +198,5 @@ export const executeCanvasCommandMap: Record<
   'canvas.moveColumnOrder': executeMoveColumnOrder,
   'canvas.changeHighlightTheme': executeChangeHighlightTheme,
   'canvas.changeBracketType': executeChangeBracketType,
+  'canvas.changePluginSerialization': executeChangePluginSerialization,
 };

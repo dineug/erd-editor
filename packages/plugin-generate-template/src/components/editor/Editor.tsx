@@ -9,6 +9,7 @@ import {
   EditorContainer,
   ResizeContainer,
 } from '@/components/editor/Editor.styled';
+import Help from '@/components/editor/Help';
 import Preview from '@/components/editor/Preview';
 import TemplateEditor from '@/components/editor/TemplateEditor';
 import Toolbar, { EditorMode } from '@/components/editor/Toolbar';
@@ -116,6 +117,8 @@ const Editor: FunctionalComponent<Partial<Props>> = ({
         <TemplateEditor value={value} onChange={onChange} />
       ) : mode === 'preview' ? (
         <Preview value={previewValue} />
+      ) : mode === 'help' ? (
+        <Help />
       ) : (
         <EditorContainer
           style={{ height: `${stores.ui.viewport.height - 30}px` }}

@@ -21,10 +21,10 @@ export const columnTypes: ColumnType[] = [
 
 export const canvasTypeList: CanvasType[] = [
   'ERD',
-  'SQL',
-  'Grid',
-  'GeneratorCode',
-  'Visualization',
+  '@vuerd/builtin-sql-ddl',
+  '@vuerd/builtin-grid',
+  '@vuerd/builtin-generator-code',
+  '@vuerd/builtin-visualization',
 ];
 
 export const databaseList: Database[] = [
@@ -113,4 +113,5 @@ export const createCanvasState = (): CanvasState => ({
       'columnComment',
     ],
   },
+  pluginSerializationMap: {},
 });

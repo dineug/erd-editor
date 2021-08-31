@@ -67,3 +67,6 @@ export const changeHighlightTheme = (highlightTheme: HighlightTheme) =>
 
 export const changeBracketType = (bracketType: BracketType) =>
   createCommand('canvas.changeBracketType', { bracketType });
+
+export const changePluginSerialization = (key: string, value: string) =>
+  createCommand('canvas.changePluginSerialization', { key, value });
