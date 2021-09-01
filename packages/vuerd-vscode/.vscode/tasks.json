@@ -4,7 +4,23 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Build extension",
+      "label": "npm: watch",
+      "type": "npm",
+      "script": "watch",
+      "group": "build",
+      "detail": "rollup -c --watch",
+      "problemMatcher": {
+        "base": "$tsc",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "rollup\\s",
+          "endsPattern": "waiting for changes\\.\\.\\."
+        }
+      },
+      "isBackground": true
+    },
+    {
+      "label": "npm: build",
       "type": "npm",
       "script": "build",
       "presentation": {
