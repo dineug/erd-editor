@@ -53,6 +53,10 @@ export const isNumber = isTypeof('number');
 export const isBoolean = isTypeof('boolean');
 export const isNull = (value: any) => value === null;
 
+export const isRegExp = R.curry((exclude: RegExp[], key: string) =>
+  exclude.some(regexp => regexp.test(key))
+);
+
 export const noop = () => {};
 
 export const getData = <T extends { id: string }>(list: Array<T>, id: string) =>

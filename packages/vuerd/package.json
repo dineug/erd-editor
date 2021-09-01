@@ -1,6 +1,6 @@
 {
   "name": "vuerd",
-  "version": "2.2.3",
+  "version": "2.2.4",
   "description": "ERD editor",
   "main": "dist/vuerd.js",
   "module": "dist/vuerd.esm.js",
@@ -72,7 +72,7 @@
     "@types/lodash": "^4.14.169",
     "@types/ramda": "^0.27.40",
     "@types/uuid": "^8.3.0",
-    "@vuerd/lit-observable": "^0.2.1",
+    "@vuerd/lit-observable": "^0.2.2",
     "@vuerd/sql-ddl-parser": "^0.2.1",
     "babel-jest": "^26.6.3",
     "babel-loader": "^8.2.2",

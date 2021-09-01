@@ -98,6 +98,8 @@ export function useERDEditorElement(
   ctx.extension = (config: Partial<ExtensionConfig>) => {
     isArray(config.panels) &&
       editorState.panels.push(...(config.panels as PanelConfig[]));
+    isArray(config.excludePanel) &&
+      (editorState.excludePanel = config.excludePanel as RegExp[]);
   };
 
   eventBus.on(Bus.Liquibase.progress).subscribe(message =>

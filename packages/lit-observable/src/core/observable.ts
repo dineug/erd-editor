@@ -109,6 +109,10 @@ export function observable<T>(raw: T): T {
     get(target, p, receiver) {
       const value = Reflect.get(target, p, receiver);
 
+      if (value instanceof RegExp) {
+        return value;
+      }
+
       addObserver(raw);
       addTrigger(raw, p);
 

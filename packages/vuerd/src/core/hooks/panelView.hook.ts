@@ -5,8 +5,9 @@ import {
   observable,
 } from '@vuerd/lit-observable';
 
+import { isRegExp } from '@/core/helper';
 import { SIZE_MENUBAR_HEIGHT } from '@/core/layout';
-import { panels as globalPanels } from '@/core/panel';
+import { contextPanelConfig } from '@/core/panel';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { ERDEditorProps } from '@@types/components/ERDEditorElement';
 
@@ -22,7 +23,11 @@ export function usePanelView(
 
   const hasPanel = () => {
     const canvasType = canvasState.canvasType;
-    const panels = [...globalPanels, ...editorState.panels];
+    const panels = [...contextPanelConfig.panels, ...editorState.panels].filter(
+      panel =>
+        !isRegExp(contextPanelConfig.exclude, panel.key) &&
+        !isRegExp(editorState.excludePanel, panel.key)
+    );
     return (
       canvasType !== 'ERD' && panels.some(panel => panel.key === canvasType)
     );
@@ -43,7 +48,14 @@ export function usePanelView(
       const width = props.width;
       const height = props.height - SIZE_MENUBAR_HEIGHT;
       const canvasType = canvasState.canvasType;
-      const panels = [...globalPanels, ...editorState.panels];
+      const panels = [
+        ...contextPanelConfig.panels,
+        ...editorState.panels,
+      ].filter(
+        panel =>
+          !isRegExp(contextPanelConfig.exclude, panel.key) &&
+          !isRegExp(editorState.excludePanel, panel.key)
+      );
       const isPanel = hasPanel();
 
       data.isPanel = isPanel;

@@ -14,7 +14,7 @@ import { useMenubarPanels } from '@/core/hooks/menubarPanels.hook';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { keymapOptionsToString } from '@/core/keymap';
-import { panels } from '@/core/panel';
+import { contextPanelConfig } from '@/core/panel';
 import {
   changeDatabaseName,
   resizeCanvas,
@@ -128,7 +128,9 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
 
     unmountedGroup.push(
       watch(editorState.panels, () => resetTooltip()),
-      watch(panels, () => resetTooltip()),
+      watch(editorState.excludePanel, () => resetTooltip()),
+      watch(contextPanelConfig.panels, () => resetTooltip()),
+      watch(contextPanelConfig.exclude, () => resetTooltip()),
       watch(canvasState, propName => {
         if (propName !== 'canvasType') return;
 

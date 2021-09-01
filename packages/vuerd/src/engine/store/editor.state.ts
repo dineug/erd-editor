@@ -9,6 +9,7 @@ import { createFilterState } from './editor/filter.state';
 
 export const createEditorState = (): EditorState => ({
   panels: [],
+  excludePanel: [],
   hasUndo: false,
   hasRedo: false,
   focusTable: null,

@@ -1,5 +1,5 @@
-import { cloneDeep, getData, isEmpty, isObject } from '@/core/helper';
-import { panels as globalPanels } from '@/core/panel';
+import { cloneDeep, getData, isEmpty, isObject, isRegExp } from '@/core/helper';
+import { contextPanelConfig } from '@/core/panel';
 import {
   bracketTypes,
   databaseList,
@@ -240,9 +240,13 @@ export function executeDraggableColumnEnd({ editorState }: State) {
 // TODO: Refactoring
 export function executeLoadJson(state: State, data: LoadJson) {
   const { canvasState, editorState } = state;
-  const panelNames = [...globalPanels, ...editorState.panels].map(
-    panel => panel.key
-  );
+  const panelNames = [...contextPanelConfig.panels, ...editorState.panels]
+    .map(panel => panel.key)
+    .filter(
+      key =>
+        !isRegExp(contextPanelConfig.exclude, key) &&
+        !isRegExp(editorState.excludePanel, key)
+    );
   const json = JSON.parse(data.value) as ExportedStore;
   const canvasStateAny = canvasState as any;
   const canvasJson = json.canvas as any;

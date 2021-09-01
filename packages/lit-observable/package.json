@@ -1,6 +1,6 @@
 {
   "name": "@vuerd/lit-observable",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "lit-html + reactive",
   "main": "dist/lit-observable.js",
   "module": "dist/lit-observable.esm.js",

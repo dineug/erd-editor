@@ -2,7 +2,13 @@ import { observable } from '@vuerd/lit-observable';
 
 import { PanelConfig } from '@@types/core/panel';
 
-export const panels: PanelConfig[] = observable([]);
+export const contextPanelConfig = observable({
+  panels: [] as PanelConfig[],
+  exclude: [] as RegExp[],
+});
 
 export const addPanel = (...newPanels: PanelConfig[]) =>
-  panels.push(...newPanels);
+  contextPanelConfig.panels.push(...newPanels);
+
+export const setExcludePanel = (exclude: RegExp[]) =>
+  (contextPanelConfig.exclude = exclude);

@@ -1,7 +1,8 @@
 import { html } from '@vuerd/lit-observable';
 import { classMap } from 'lit-html/directives/class-map';
 
-import { panels } from '@/core/panel';
+import { isRegExp } from '@/core/helper';
+import { contextPanelConfig } from '@/core/panel';
 import { changeCanvasType } from '@/engine/command/canvas.cmd.helper';
 import { IIcon } from '@/internal-types/panel';
 import { PanelConfig } from '@@types/core/panel';
@@ -49,9 +50,13 @@ export function useMenubarPanels(ctx: HTMLElement) {
   const getMenus = () => {
     const { editorState } = contextRef.value.store;
     const menus: Menu[] = [ERD];
-    [...panels, ...editorState.panels].forEach(panel =>
-      menus.push(panelToMenu(panel))
-    );
+    [...contextPanelConfig.panels, ...editorState.panels]
+      .filter(
+        panel =>
+          !isRegExp(contextPanelConfig.exclude, panel.key) &&
+          !isRegExp(editorState.excludePanel, panel.key)
+      )
+      .forEach(panel => menus.push(panelToMenu(panel)));
 
     return menus;
   };

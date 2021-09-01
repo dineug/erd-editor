@@ -6,6 +6,7 @@ import { Column, Table } from './table.state';
 
 export interface EditorState {
   panels: PanelConfig[];
+  excludePanel: RegExp[];
   hasUndo: boolean;
   hasRedo: boolean;
   focusTable: FocusTable | null;
