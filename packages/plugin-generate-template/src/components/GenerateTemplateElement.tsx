@@ -1,4 +1,4 @@
-import { get } from 'lodash';
+import get from 'lodash/get';
 import { render } from 'preact';
 import { fromEvent, Subject, Subscription } from 'rxjs';
 import { createGlobalStyle, StyleSheetManager } from 'styled-components';

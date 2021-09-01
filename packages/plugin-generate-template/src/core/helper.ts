@@ -1,5 +1,6 @@
-import { cloneDeep, pick } from 'lodash';
 import camelCase from 'lodash/camelCase';
+import cloneDeep from 'lodash/cloneDeep';
+import pick from 'lodash/pick';
 import upperFirst from 'lodash/upperFirst';
 import * as R from 'ramda';
 import { ERDEditorContext } from 'vuerd';

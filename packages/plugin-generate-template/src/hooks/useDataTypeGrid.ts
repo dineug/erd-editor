@@ -1,4 +1,4 @@
-import { cloneDeep } from 'lodash';
+import cloneDeep from 'lodash/cloneDeep';
 import { observe, reaction } from 'mobx';
 import { Ref } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';

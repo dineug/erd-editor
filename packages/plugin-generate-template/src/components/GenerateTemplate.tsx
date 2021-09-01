@@ -1,7 +1,7 @@
 import '@/config';
 
 import { EditorView } from '@codemirror/view';
-import { debounce } from 'lodash';
+import debounce from 'lodash/debounce';
 import { observer } from 'mobx-react-lite';
 import { FunctionalComponent } from 'preact';
 import { useCallback, useRef, useState } from 'preact/hooks';

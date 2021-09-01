@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import isEqual from 'lodash/isEqual';
 
 import { getLatestSnapshot } from '@/core/contextmenu/export.menu';
 import { Diff } from '@/core/diff';
@@ -73,7 +73,7 @@ export function calculateDiff(
         else if (
           oldColumn?.dataType !== newColumn.dataType ||
           oldColumn?.name !== newColumn.name ||
-          !_.isEqual(oldColumn?.option, newColumn.option)
+          !isEqual(oldColumn?.option, newColumn.option)
         ) {
           diffs.push({
             type: 'column',

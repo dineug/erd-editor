@@ -1,5 +1,5 @@
 import { EditorView } from '@codemirror/view';
-import { round } from 'lodash';
+import round from 'lodash/round';
 import { observer } from 'mobx-react-lite';
 import { FunctionalComponent } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
