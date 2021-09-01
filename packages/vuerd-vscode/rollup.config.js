@@ -3,8 +3,11 @@ import resolve from '@rollup/plugin-node-resolve';
 import replace from '@rollup/plugin-replace';
 import typescript from '@rollup/plugin-typescript';
 import filesize from 'rollup-plugin-filesize';
+import { terser } from 'rollup-plugin-terser';
 
 import pkg from './package.json';
+
+const isProd = process.env.NODE_ENV === 'production';
 
 const banner = `/*!
  * ${pkg.name}
@@ -12,6 +15,28 @@ const banner = `/*!
  * @author ${pkg.author}
  * @license ${pkg.license}
  */`;
+
+const buildPlugins = [
+  replace({
+    preventAssignment: true,
+    'process.env.NODE_ENV': JSON.stringify(
+      isProd ? 'production' : 'development'
+    ),
+    'process.env.VUERD_VSCODE_VERSION': JSON.stringify(pkg.version),
+  }),
+  resolve(),
+  commonjs(),
+  typescript(),
+];
+
+if (isProd) {
+  buildPlugins.push(
+    terser(),
+    filesize({
+      showBrotliSize: true,
+    })
+  );
+}
 
 export default {
   input: 'src/extension.ts',
@@ -37,16 +62,5 @@ export default {
     'http2',
     'net',
   ],
-  plugins: [
-    replace({
-      preventAssignment: true,
-      'process.env.VUERD_VSCODE_VERSION': JSON.stringify(pkg.version),
-    }),
-    resolve(),
-    commonjs(),
-    typescript(),
-    filesize({
-      showBrotliSize: true,
-    }),
-  ],
+  plugins: buildPlugins,
 };

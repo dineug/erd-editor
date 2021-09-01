@@ -74,6 +74,6 @@
     "vite": "^2.3.3"
   },
   "dependencies": {
-    "vuerd": "^2.2.1"
+    "vuerd": "^2.2.3"
   }
 }
