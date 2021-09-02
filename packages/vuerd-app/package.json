@@ -15,7 +15,7 @@
   "license": "MIT",
   "scripts": {
     "serve": "vite",
-    "build": "vue-tsc --noEmit --skipLibCheck && vite build"
+    "build:vite": "vue-tsc --noEmit --skipLibCheck && vite build"
   },
   "dependencies": {
     "vue": "^3.2.6",
