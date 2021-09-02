@@ -33,20 +33,20 @@
     "build": "rollup -c"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^19.0.0",
-    "@rollup/plugin-node-resolve": "^13.0.0",
-    "@rollup/plugin-typescript": "^8.2.1",
-    "@types/lodash": "^4.14.168",
+    "@rollup/plugin-commonjs": "^20.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.4",
+    "@rollup/plugin-typescript": "^8.2.5",
+    "@types/lodash": "^4.14.172",
     "lodash": "^4.17.21",
-    "rollup": "^2.47.0",
-    "rollup-plugin-browsersync": "^1.3.1",
+    "rollup": "^2.56.3",
+    "rollup-plugin-browsersync": "^1.3.3",
     "rollup-plugin-filesize": "^9.1.1",
     "rollup-plugin-generate-html-template": "^1.7.0",
     "rollup-plugin-terser": "^7.0.2",
-    "rollup-plugin-visualizer": "^5.5.0",
+    "rollup-plugin-visualizer": "^5.5.2",
     "stats.js": "^0.17.0",
     "typescript": "4.3.5",
-    "vite": "^2.3.3"
+    "vite": "^2.5.3"
   },
   "dependencies": {
     "lit-html": "^1.4.1"

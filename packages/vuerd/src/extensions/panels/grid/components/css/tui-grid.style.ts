@@ -6,7 +6,7 @@ import { css } from '@/core/tagged';
 export const TuiGridStyle = css`
   /*!
  * TOAST UI Grid
- * @version 4.17.0 | Tue Apr 27 2021
+ * @version 4.18.1 | Wed Jul 14 2021
  * @author NHN. FE Development Lab
  * @license MIT
  */
@@ -772,6 +772,7 @@ export const TuiGridStyle = css`
     top: 0;
     z-index: 100;
     left: 68px;
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.08);
   }
 
   .tui-grid-filter-container .tui-grid-btn-filter,
@@ -1140,5 +1141,49 @@ export const TuiGridStyle = css`
 
   .tui-grid-cell.parent-cell {
     background-color: rgba(0, 169, 255, 0.15);
+  }
+
+  .tui-grid-container .tui-grid-context-menu {
+    position: absolute;
+    z-index: 15;
+    width: auto;
+    min-width: 197px;
+    color: #333;
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.08);
+    border: 1px solid #ccc;
+    padding: 5px 0;
+    background-color: #fff;
+  }
+
+  .tui-grid-context-menu .menu-item {
+    position: relative;
+    height: 32px;
+    line-height: 32px;
+    padding: 0 14px;
+    cursor: pointer;
+  }
+
+  .tui-grid-context-menu .menu-item:hover {
+    background-color: #d4e9f2;
+  }
+
+  .tui-grid-context-menu .menu-item.disabled {
+    color: #ccc;
+  }
+
+  .tui-grid-context-menu .has-submenu::after {
+    position: absolute;
+    right: 10px;
+    content: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAICAQAAACb+P2wAAAANklEQVQI12MoWlkUWsQAggxFzkUfi2IhTIYim6L3RRkQJkORcdHroioEswSmIBOmLQ6iDW4YAA8qHUEC0QE+AAAAAElFTkSuQmCC);
+  }
+
+  .tui-grid-context-menu .menu-item.separator {
+    height: 1px;
+    background: #ccc;
+    margin: 5px 0;
+  }
+
+  .tui-grid-context-menu span {
+    display: inline-block;
   }
 `;
