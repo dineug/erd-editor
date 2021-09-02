@@ -4,6 +4,9 @@
   "workspaces": [
     "packages/*"
   ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "scripts": {
     "build": "lerna run build",
     "test": "lerna run test",
