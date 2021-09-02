@@ -9,6 +9,10 @@
       "path": "packages/vuerd-vscode"
     },
     {
+      "name": "vuerd-app",
+      "path": "packages/vuerd-app"
+    },
+    {
       "name": "plugin-generate-template",
       "path": "packages/plugin-generate-template"
     },
@@ -58,7 +62,9 @@
       "davidanson.vscode-markdownlint",
       "esbenp.prettier-vscode",
       "jpoissonnier.vscode-styled-components",
-      "dineug.vuerd-vscode"
-    ]
+      "dineug.vuerd-vscode",
+      "johnsoncodehk.volar"
+    ],
+    "unwantedRecommendations": ["octref.vetur"]
   }
 }

@@ -6,6 +6,8 @@
     "davidanson.vscode-markdownlint",
     "esbenp.prettier-vscode",
     "jpoissonnier.vscode-styled-components",
-    "dineug.vuerd-vscode"
-  ]
+    "dineug.vuerd-vscode",
+    "johnsoncodehk.volar"
+  ],
+  "unwantedRecommendations": ["octref.vetur"]
 }

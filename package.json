@@ -23,7 +23,7 @@
     "lint-staged": "^10.4.0",
     "husky": "^7.0.1",
     "prettier": "^2.3.0",
-    "typescript": "^4.2.4"
+    "typescript": "^4.3.2"
   },
   "husky": {
     "hooks": {

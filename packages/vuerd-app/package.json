@@ -1,0 +1,32 @@
+{
+  "name": "vuerd-app",
+  "version": "0.0.0",
+  "private": true,
+  "homepage": "https://github.com/vuerd/vuerd#readme",
+  "bugs": {
+    "url": "https://github.com/vuerd/vuerd/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vuerd/vuerd.git",
+    "directory": "packages/vuerd-app"
+  },
+  "author": "dineug <dineug2@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "serve": "vite",
+    "build": "vue-tsc --noEmit --skipLibCheck && vite build"
+  },
+  "dependencies": {
+    "vue": "^3.2.6",
+    "vuerd": "^2.2.4",
+    "@vuerd/plugin-generate-template": "^0.1.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^1.6.0",
+    "@vue/compiler-sfc": "^3.2.6",
+    "typescript": "^4.3.2",
+    "vite": "^2.5.2",
+    "vue-tsc": "^0.2.2"
+  }
+}
