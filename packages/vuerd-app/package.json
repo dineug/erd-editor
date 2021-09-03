@@ -18,9 +18,9 @@
     "build": "vue-tsc --noEmit --skipLibCheck && vite build"
   },
   "dependencies": {
+    "@vuerd/plugin-generate-template": "^0.1.2",
     "vue": "^3.2.7",
-    "vuerd": "^2.2.4",
-    "@vuerd/plugin-generate-template": "^0.1.2"
+    "vuerd": "^2.2.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^1.6.0",
