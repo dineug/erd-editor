@@ -1,5 +1,5 @@
 {
-  "name": "vuerd-app",
+  "name": "@vuerd/app",
   "version": "0.0.0",
   "private": true,
   "homepage": "https://github.com/vuerd/vuerd#readme",
@@ -15,7 +15,7 @@
   "license": "MIT",
   "scripts": {
     "serve": "vite",
-    "build": "vue-tsc --noEmit --skipLibCheck && vite build"
+    "build": "vue-tsc --noEmit --skipLibCheck && cross-env NODE_ENV=production vite build"
   },
   "dependencies": {
     "@vuerd/plugin-generate-template": "^0.1.2",
@@ -25,6 +25,10 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^1.6.0",
     "@vue/compiler-sfc": "^3.2.7",
+    "autoprefixer": "^10.3.4",
+    "postcss": "^8.3.6",
+    "sass": "^1.39.0",
+    "tailwindcss": "^2.2.9",
     "vue-tsc": "^0.3.0"
   }
 }

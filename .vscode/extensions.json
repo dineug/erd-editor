@@ -7,7 +7,8 @@
     "esbenp.prettier-vscode",
     "jpoissonnier.vscode-styled-components",
     "dineug.vuerd-vscode",
-    "johnsoncodehk.volar"
+    "johnsoncodehk.volar",
+    "bradlc.vscode-tailwindcss"
   ],
   "unwantedRecommendations": ["octref.vetur"]
 }

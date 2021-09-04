@@ -5,11 +5,18 @@
     "sourceMap": true,
     "baseUrl": ".",
     "useDefineForClassFields": true,
+    "allowJs": true,
     "paths": {
       "@/*": ["src/*"],
-      "@@types/*": ["types/*"]
+      "@@types/*": ["src/@types/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.js",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue"
+  ],
   "exclude": ["node_modules"]
 }

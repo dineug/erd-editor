@@ -75,7 +75,6 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
   context.showPrompt = showPrompt;
   context.showAlert = showAlert;
 
-  // @ts-ignore
   const resizeObserver = new ResizeObserver(entries => {
     entries.forEach((entry: any) => {
       const { width, height } = entry.contentRect;
