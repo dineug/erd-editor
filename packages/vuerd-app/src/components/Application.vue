@@ -10,10 +10,13 @@ import {
   toRefs,
   defineComponent,
   watch,
+  computed,
 } from 'vue';
 import { useViewportStore } from '@/store/ui/viewport.store';
 import round from 'lodash/round';
 import { Move } from '@/helpers/event.helper';
+import { useThemeStore } from '@/store/ui/theme.store';
+import { themeToString } from '@/helpers/theme.helper';
 
 const MIN_WIDTH = 100;
 
@@ -24,7 +27,15 @@ export default defineComponent({
     Sash,
   },
   setup() {
+    const resizeObserver = new ResizeObserver(entries => {
+      entries.forEach(({ contentRect: { width, height } }) => {
+        viewportActions.changeViewport(width, height);
+      });
+    });
+
     const [viewportState, viewportActions] = useViewportStore();
+    const [themeState] = useThemeStore();
+
     const state = reactive({
       sidebarWidth: 170,
       editorWidth: 0,
@@ -34,11 +45,7 @@ export default defineComponent({
 
     const appRef = ref<HTMLElement | null>(null);
 
-    const resizeObserver = new ResizeObserver(entries => {
-      entries.forEach(({ contentRect: { width, height } }) => {
-        viewportActions.changeViewport(width, height);
-      });
-    });
+    const theme = computed(() => `:root{${themeToString(themeState)}}`);
 
     const setState = (newState: Partial<typeof state>) => {
       Object.assign(state, newState);
@@ -103,6 +110,7 @@ export default defineComponent({
     return {
       ...toRefs(state),
       appRef,
+      theme,
       onMousedownSash,
       onMousemoveSash,
     };
@@ -111,6 +119,7 @@ export default defineComponent({
 </script>
 
 <template>
+  <component is="style" type="text/css" v-text="theme"></component>
   <div class="application flex flex-col" ref="appRef">
     <div class="workspace flex flex-row">
       <Sidebar :width="sidebarWidth" />
