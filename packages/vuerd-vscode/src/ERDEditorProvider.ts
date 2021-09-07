@@ -249,6 +249,26 @@ export class ERDEditorProvider
               );
             }
           });
+      } else if (e.command === 'importFile') {
+        vscode.window.showOpenDialog().then(async uris => {
+          if (!uris || !uris.length) return;
+          const uri = uris[0];
+
+          const regexp = new RegExp(`\.(${e.options.type})$`, 'i');
+          if (!regexp.test(uri.path)) {
+            vscode.window.showInformationMessage(
+              `Just import the ${e.options.type} file`
+            );
+            return;
+          }
+
+          const buffer = await vscode.workspace.fs.readFile(uris[0]);
+          const value = Buffer.from(buffer).toString('utf8');
+          this.postMessage(webviewPanel, 'importFile', {
+            value,
+            type: e.options.type,
+          });
+        });
       }
     });
   }

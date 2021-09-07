@@ -128,7 +128,7 @@ export function setImportFileCallback(
 
 export function importJSON({ store }: IERDEditorContext) {
   if (executeImportFileExtra) {
-    executeImportFileExtra({ accept: '.json' });
+    executeImportFileExtra({ accept: '.json', type: 'json' });
     return;
   }
 
@@ -149,7 +149,7 @@ export function importJSON({ store }: IERDEditorContext) {
           }
         };
       } else {
-        alert('Just upload the json file');
+        alert('Just import the json file');
       }
     }
   });
@@ -158,7 +158,7 @@ export function importJSON({ store }: IERDEditorContext) {
 
 export function importSQLDDL(context: IERDEditorContext) {
   if (executeImportFileExtra) {
-    executeImportFileExtra({ accept: '.sql' });
+    executeImportFileExtra({ accept: '.sql', type: 'sql' });
     return;
   }
 
@@ -171,8 +171,7 @@ export function importSQLDDL(context: IERDEditorContext) {
       Array.from(input.files)
         .sort((a: File, b: File) => a.name.localeCompare(b.name))
         .forEach(file => {
-          const regex = new RegExp(`\.(sql)$`, 'i');
-          if (regex.test(file.name)) {
+          if (/\.(sql)$/i.test(file.name)) {
             const reader = new FileReader();
             reader.readAsText(file);
             reader.onload = () => {
@@ -196,7 +195,7 @@ export function importSQLDDL(context: IERDEditorContext) {
               }
             };
           } else {
-            alert(`Just upload the sql file`);
+            alert(`Just import the sql file`);
           }
         });
     }

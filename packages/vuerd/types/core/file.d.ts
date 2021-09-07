@@ -8,6 +8,7 @@ export declare function setExportFileCallback(
 ): void;
 
 export interface ImportOptions {
+  type: 'json' | 'sql';
   accept: string;
 }
 

@@ -117,14 +117,36 @@ export default class WebviewERD {
                   ),
                 })
                 .then(uri => {
-                  if (uri) {
-                    workspace.fs.writeFile(
-                      uri,
-                      Buffer.from(message.value.split(',')[1], 'base64')
-                    );
-                  }
+                  if (!uri) return;
+
+                  workspace.fs.writeFile(
+                    uri,
+                    Buffer.from(message.value.split(',')[1], 'base64')
+                  );
                 });
             }
+            break;
+          case 'importFile':
+            window.showOpenDialog().then(async uris => {
+              if (!uris || !uris.length) return;
+              const uri = uris[0];
+
+              const regexp = new RegExp(`\.(${message.options.type})$`, 'i');
+              if (!regexp.test(uri.path)) {
+                window.showInformationMessage(
+                  `Just import the ${message.options.type} file`
+                );
+                return;
+              }
+
+              const buffer = await workspace.fs.readFile(uris[0]);
+              const value = Buffer.from(buffer).toString('utf8');
+              this.panel.webview.postMessage({
+                command: 'importFile',
+                value,
+                type: message.options.type,
+              });
+            });
             break;
           case 'loadLiquibase':
             this.loadLiquibase(this.panel.webview, folder.fsPath);

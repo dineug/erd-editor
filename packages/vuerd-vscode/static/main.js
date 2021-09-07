@@ -43,6 +43,13 @@
     reader.readAsDataURL(blob);
   });
 
+  vuerd.setImportFileCallback(options => {
+    vscode.postMessage({
+      command: 'importFile',
+      options,
+    });
+  });
+
   editor.automaticLayout = true;
 
   window.addEventListener('message', event => {
@@ -75,6 +82,13 @@
           break;
         case 'loadLiquibase':
           editor.loadLiquibase(message.value);
+          break;
+        case 'importFile':
+          if (message.type === 'sql') {
+            editor.loadSQLDDL(message.value);
+          } else if (message.type === 'json') {
+            editor.value = message.value;
+          }
           break;
       }
     } else if (message.type) {
@@ -112,6 +126,12 @@
         editor.setKeymap(body.value.keymap);
       } else if (type === 'loadLiquibase') {
         editor.loadLiquibase(message.value);
+      } else if (type === 'importFile') {
+        if (body.type === 'sql') {
+          editor.loadSQLDDL(body.value);
+        } else if (body.type === 'json') {
+          editor.value = body.value;
+        }
       }
     }
   });
