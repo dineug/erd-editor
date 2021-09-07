@@ -1,6 +1,6 @@
 {
   "name": "vuerd-vscode",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "displayName": "ERD Editor",
   "description": "ERD Editor vscode extension",
   "main": "./out/extension.js",
@@ -41,8 +41,10 @@
     "@types/node": "^16.7.10",
     "@types/vscode": "^1.47.0",
     "@types/xml-parser": "^1.2.30",
+    "cross-env": "^7.0.3",
     "fast-xml-parser": "^3.19.0",
-    "macaddress": "^0.5.2"
+    "macaddress": "^0.5.2",
+    "rollup": "^2.56.3"
   },
   "engines": {
     "vscode": "^1.47.0"

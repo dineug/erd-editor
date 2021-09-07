@@ -237,7 +237,9 @@ export class ERDEditorProvider
 
         vscode.window
           .showSaveDialog({
-            defaultUri: vscode.Uri.file(path.join(defaultPath, e.fileName)),
+            defaultUri: vscode.Uri.file(
+              path.join(defaultPath, e.options.fileName)
+            ),
           })
           .then(uri => {
             if (uri) {
