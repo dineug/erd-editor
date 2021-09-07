@@ -28,5 +28,6 @@ export default defineComponent({
 .editor {
   width: 100%;
   height: 100%;
+  background-color: var(--editor-background);
 }
 </style>

@@ -135,12 +135,13 @@ export default defineComponent({
   </div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss">
 .application {
   height: 100vh;
   position: relative;
   overflow: hidden;
   min-width: 400px;
+  color: var(--font-color);
 
   .workspace {
     height: 100%;
@@ -149,6 +150,33 @@ export default defineComponent({
       height: 100%;
       position: relative;
     }
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track-background);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: var(--scrollbar-track-background);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb-background);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover-background);
+  }
+
+  .scrollbar {
+    scrollbar-color: var(--scrollbar-thumb-background)
+      var(--scrollbar-track-background);
+    scrollbar-width: thin;
   }
 }
 </style>

@@ -19,13 +19,13 @@ export function themeToString(theme) {
       pipe(
         keys,
         map(k => [p, k])
-      )(prop(p)(theme))
+      )(prop(p, theme))
     ),
     filter(prop('length')),
     reduce(
       (acc, group) =>
         pipe(
-          map(keys => assoc(kebabCase(keys.join('.')), path(keys)(theme), acc)),
+          map(keys => assoc(kebabCase(keys.join('.')), path(keys, theme), acc)),
           mergeAll
         )(group),
       {}
