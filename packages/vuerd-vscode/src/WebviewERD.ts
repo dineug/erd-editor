@@ -90,7 +90,7 @@ export default class WebviewERD {
                 command: 'value',
                 value,
               });
-            } catch (err) {
+            } catch (err: any) {
               window.showErrorMessage(err.message);
             }
             return;
@@ -101,10 +101,19 @@ export default class WebviewERD {
 
               workspace.fs.writeFile(uri, content);
             } else {
+              let defaultPath = os.homedir();
+
+              if (
+                Array.isArray(workspace.workspaceFolders) &&
+                workspace.workspaceFolders.length
+              ) {
+                defaultPath = workspace.workspaceFolders[0].uri.fsPath;
+              }
+
               window
                 .showSaveDialog({
                   defaultUri: Uri.file(
-                    path.join(os.homedir(), message.options.fileName)
+                    path.join(defaultPath, message.options.fileName)
                   ),
                 })
                 .then(uri => {

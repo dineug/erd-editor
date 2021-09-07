@@ -226,9 +226,18 @@ export class ERDEditorProvider
           value: document.documentData,
         });
       } else if (e.command === 'exportFile') {
+        let defaultPath = os.homedir();
+
+        if (
+          Array.isArray(vscode.workspace.workspaceFolders) &&
+          vscode.workspace.workspaceFolders.length
+        ) {
+          defaultPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        }
+
         vscode.window
           .showSaveDialog({
-            defaultUri: vscode.Uri.file(path.join(os.homedir(), e.fileName)),
+            defaultUri: vscode.Uri.file(path.join(defaultPath, e.fileName)),
           })
           .then(uri => {
             if (uri) {
