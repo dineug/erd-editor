@@ -9,18 +9,16 @@ import { createJson } from '@/core/parser/ParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
+import { ExportOptions, ImportOptions } from '@@types/core/file';
 import { LiquibaseFile, LoadLiquibaseData } from '@@types/core/liquibaseParser';
 import { ExportedStore, Store } from '@@types/engine/store';
 import { SnapshotMetadata } from '@@types/engine/store/snapshot';
 
-export interface ExportOptions {
-  fileName: string;
-  saveDirectly?: boolean;
-}
-
 let executeExportFileExtra:
   | ((blob: Blob, options: ExportOptions) => void)
   | null = null;
+
+let executeImportFileExtra: ((options: ImportOptions) => void) | null = null;
 
 export const createJsonFormat = ({
   canvasState,
@@ -122,7 +120,18 @@ export function setExportFileCallback(
   executeExportFileExtra = callback;
 }
 
+export function setImportFileCallback(
+  callback: (options: ImportOptions) => void
+) {
+  executeImportFileExtra = callback;
+}
+
 export function importJSON({ store }: IERDEditorContext) {
+  if (executeImportFileExtra) {
+    executeImportFileExtra({ accept: '.json' });
+    return;
+  }
+
   const importHelperJSON = document.createElement('input');
   importHelperJSON.setAttribute('type', 'file');
   importHelperJSON.setAttribute('accept', '.json');
@@ -148,6 +157,11 @@ export function importJSON({ store }: IERDEditorContext) {
 }
 
 export function importSQLDDL(context: IERDEditorContext) {
+  if (executeImportFileExtra) {
+    executeImportFileExtra({ accept: '.sql' });
+    return;
+  }
+
   const importHelper = document.createElement('input');
   importHelper.setAttribute('type', 'file');
   importHelper.setAttribute('accept', `.sql`);
