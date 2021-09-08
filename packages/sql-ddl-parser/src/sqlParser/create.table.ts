@@ -234,6 +234,14 @@ function createTableColumns(
     if (isUnique(token)) {
       token = tokens[++current.value];
 
+      if (isKey(token)) {
+        token = tokens[++current.value];
+      }
+
+      if (isString(token)) {
+        token = tokens[++current.value];
+      }
+
       if (isLeftParen(token)) {
         token = tokens[++current.value];
 

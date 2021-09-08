@@ -1,0 +1,54 @@
+{
+  "statements": [
+    {
+      "columns": [
+        {
+          "autoIncrement": true,
+          "comment": "",
+          "dataType": "bigint",
+          "default": "",
+          "name": "id",
+          "nullable": false,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "autoIncrement": false,
+          "comment": "",
+          "dataType": "varchar(30)",
+          "default": "",
+          "name": "name",
+          "nullable": false,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "autoIncrement": false,
+          "comment": "",
+          "dataType": "varchar(30)",
+          "default": "",
+          "name": "email",
+          "nullable": false,
+          "primaryKey": false,
+          "unique": true
+        }
+      ],
+      "comment": "",
+      "foreignKeys": [],
+      "indexes": [
+        {
+          "columns": [
+            {
+              "name": "name",
+              "sort": "ASC"
+            }
+          ],
+          "name": "test_name_index",
+          "unique": false
+        }
+      ],
+      "name": "users",
+      "type": "create.table"
+    }
+  ]
+}

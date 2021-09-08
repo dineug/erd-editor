@@ -595,62 +595,71 @@ CREATE TABLE a (
 }
 ```
 
-### Column INDEX
+### Column PRIMARY KEY, UNIQUE KEY, KEY
 
 ```sql
-CREATE TABLE a (
- b varchar(255),
- c int,
- KEY IDX_A (b, c DESC)
-)
+CREATE TABLE 'users' (
+  'id' bigint unsigned NOT NULL AUTO_INCREMENT,
+  'name' varchar(30) NOT NULL,
+  'email' varchar(30) NOT NULL,
+  PRIMARY KEY ('id'),
+  UNIQUE KEY 'users_email_unique' ('email'),
+  KEY 'test_name_index' ('name'),
+);
 ```
 
 ```json
 {
   "statements": [
     {
-      "type": "create.table",
-      "name": "a",
-      "comment": "",
       "columns": [
         {
-          "name": "b",
-          "dataType": "varchar(255)",
-          "default": "",
+          "autoIncrement": true,
           "comment": "",
-          "primaryKey": false,
-          "autoIncrement": false,
-          "unique": false,
-          "nullable": true
+          "dataType": "bigint",
+          "default": "",
+          "name": "id",
+          "nullable": false,
+          "primaryKey": true,
+          "unique": false
         },
         {
-          "name": "c",
-          "dataType": "int",
-          "default": "",
-          "comment": "",
-          "primaryKey": false,
           "autoIncrement": false,
-          "unique": false,
-          "nullable": true
+          "comment": "",
+          "dataType": "varchar(30)",
+          "default": "",
+          "name": "name",
+          "nullable": false,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "autoIncrement": false,
+          "comment": "",
+          "dataType": "varchar(30)",
+          "default": "",
+          "name": "email",
+          "nullable": false,
+          "primaryKey": false,
+          "unique": true
         }
       ],
+      "comment": "",
+      "foreignKeys": [],
       "indexes": [
         {
-          "name": "IDX_A",
-          "unique": false,
           "columns": [
             {
-              "name": "b",
+              "name": "name",
               "sort": "ASC"
-            },
-            {
-              "name": "c",
-              "sort": "DESC"
             }
-          ]
+          ],
+          "name": "test_name_index",
+          "unique": false
         }
       ],
-      "foreignKeys": []
+      "name": "users",
+      "type": "create.table"
     }
   ]
 }
