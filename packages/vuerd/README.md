@@ -240,9 +240,6 @@ editor.setKeymap({
 ## Global API
 
 ```typescript
-function setExportFileCallback(
-  callback: (blob: Blob, fileName: string) => void
-): void;
 function addIcon(...newIcons: IconDefinition[]): void;
 function extension(config: Partial<ExtensionConfig>): void;
 ```
