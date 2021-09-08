@@ -595,6 +595,67 @@ CREATE TABLE a (
 }
 ```
 
+### Column INDEX
+
+```sql
+CREATE TABLE a (
+ b varchar(255),
+ c int,
+ KEY IDX_A (b, c DESC)
+)
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "a",
+      "comment": "",
+      "columns": [
+        {
+          "name": "b",
+          "dataType": "varchar(255)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "c",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_A",
+          "unique": false,
+          "columns": [
+            {
+              "name": "b",
+              "sort": "ASC"
+            },
+            {
+              "name": "c",
+              "sort": "DESC"
+            }
+          ]
+        }
+      ],
+      "foreignKeys": []
+    }
+  ]
+}
+```
+
 ### Column FOREIGN KEY
 
 ```sql

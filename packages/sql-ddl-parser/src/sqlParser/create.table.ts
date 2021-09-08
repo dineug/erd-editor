@@ -180,7 +180,7 @@ function createTableColumns(
       continue;
     }
 
-    if (isIndex(token)) {
+    if (isIndex(token) || isKey(token)) {
       token = tokens[++current.value];
 
       if (isString(token)) {
