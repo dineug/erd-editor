@@ -53,6 +53,7 @@
     "eslint-plugin-simple-import-sort": "^7.0.0",
     "eslint": "^7.32.0",
     "husky": "^7.0.2",
+    "ix": "^4.5.1",
     "jest": "^27.1.0",
     "lerna": "^4.0.0",
     "lint-staged": "^11.1.2",

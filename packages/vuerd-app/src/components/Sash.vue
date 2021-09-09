@@ -67,13 +67,12 @@ export default defineComponent({
 });
 </script>
 
-<template>
-  <div
-    class="sash"
-    :class="classMap"
-    :style="styleMap"
-    @mousedown="onMousedown"
-  ></div>
+<template lang="pug">
+.sash(
+  :class="classMap"
+  :style="styleMap"
+  @mousedown="onMousedown"
+)
 </template>
 
 <style scoped lang="scss">

@@ -1,3 +1,5 @@
+const isDev = import.meta.env.DEV;
+
 const logger = <A>(actions: any): A =>
   new Proxy(actions, {
     get(target, p, receiver) {
@@ -16,4 +18,4 @@ const logger = <A>(actions: any): A =>
 export const createStore =
   <S, A>(state: S, actions: A) =>
   (): [S, A] =>
-    [state, logger(actions)];
+    [state, isDev ? logger(actions) : actions];

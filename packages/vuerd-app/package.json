@@ -25,10 +25,9 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^1.6.0",
     "@vue/compiler-sfc": "^3.2.7",
-    "autoprefixer": "^10.3.4",
-    "postcss": "^8.3.6",
     "sass": "^1.39.0",
-    "tailwindcss": "^2.2.9",
-    "vue-tsc": "^0.3.0"
+    "vite-plugin-windicss": "^1.4.2",
+    "vue-tsc": "^0.3.0",
+    "windicss": "^3.1.7"
   }
 }

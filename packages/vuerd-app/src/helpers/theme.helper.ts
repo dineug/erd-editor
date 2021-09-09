@@ -12,20 +12,24 @@ import {
   reduce,
 } from 'ramda';
 
-export function themeToString(theme) {
+import { Theme } from '@/store/ui/theme.store';
+
+export function themeToString(theme: Theme) {
   const colorMap = pipe(
     keys,
     map(p =>
       pipe(
         keys,
         map(k => [p, k])
-      )(prop(p, theme))
+      )(prop(p)(theme))
     ),
-    filter(prop('length')),
+    filter(prop('length') as any),
     reduce(
       (acc, group) =>
         pipe(
-          map(keys => assoc(kebabCase(keys.join('.')), path(keys, theme), acc)),
+          map((keys: string[]) =>
+            assoc(kebabCase(keys.join('.')), path(keys, theme), acc)
+          ),
           mergeAll
         )(group),
       {}
@@ -34,7 +38,7 @@ export function themeToString(theme) {
 
   return pipe(
     keys,
-    map(p => `--${p}:${colorMap[p]}`),
+    map(p => `--${p}:${prop(p)(colorMap)}`),
     join(';')
   )(colorMap);
 }

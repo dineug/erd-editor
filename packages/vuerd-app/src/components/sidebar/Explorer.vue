@@ -10,20 +10,17 @@ export default defineComponent({
 });
 </script>
 
-<template>
-  <div class="explorer">
-    <Title label="Explorer" />
-    <Title label="Open Files" />
-    <Title label="Workspace" />
-  </div>
+<template lang="pug">
+.explorer
+  Title(label="Explorer")
+  Title(label="Open Files")
+  Title(label="Workspace")
 </template>
 
 <style scoped lang="scss">
 .explorer {
-  height: 100%;
-  border: transparent solid 1px;
+  @apply flex flex-col h-full border border-solid;
+  border-color: transparent;
   background-color: var(--sidebar-background);
-  display: flex;
-  flex-direction: column;
 }
 </style>

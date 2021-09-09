@@ -16,9 +16,15 @@ export class TreeNode {
   open = false;
   edit = false;
   value = '';
+  type: 'folder' | 'file' = 'folder';
 
   constructor({ node }: Partial<LoadData> = {}) {
     node && Object.assign(this, node);
+  }
+
+  *[Symbol.iterator](): Generator<TreeNode> {
+    yield this;
+    for (const node of this.children) yield* node;
   }
 }
 

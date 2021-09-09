@@ -11,34 +11,8 @@ export default defineComponent({
 });
 </script>
 
-<template>
-  <div class="title">
-    <div class="title-label">
-      <span>{{ label }}</span>
-    </div>
-  </div>
+<template lang="pug">
+div(class="flex overflow-hidden box-border pl-2 pr-2 h-9")
+  div(class="h-9 overflow-hidden overflow-ellipsis pl-3 whitespace-nowrap")
+    span(class="overflow-hidden text-sm") {{ label }}
 </template>
-
-<style scoped lang="scss">
-.title {
-  display: flex;
-  height: 35px;
-  box-sizing: border-box;
-  overflow: hidden;
-  padding-left: 8px;
-  padding-right: 8px;
-
-  .title-label {
-    line-height: 35px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding-left: 12px;
-
-    span {
-      font-size: 13px;
-      overflow: hidden;
-    }
-  }
-}
-</style>

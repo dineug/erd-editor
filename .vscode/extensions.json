@@ -8,7 +8,7 @@
     "jpoissonnier.vscode-styled-components",
     "dineug.vuerd-vscode",
     "johnsoncodehk.volar",
-    "bradlc.vscode-tailwindcss"
+    "voorjaar.windicss-intellisense"
   ],
   "unwantedRecommendations": ["octref.vetur"]
 }

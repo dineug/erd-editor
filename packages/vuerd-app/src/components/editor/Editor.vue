@@ -20,14 +20,13 @@ export default defineComponent({
 });
 </script>
 
-<template>
-  <div class="editor" :style="styleMap">editor</div>
+<template lang="pug">
+.editor(:style="styleMap") editor
 </template>
 
 <style scoped lang="scss">
 .editor {
-  width: 100%;
-  height: 100%;
+  @apply w-full h-full;
   background-color: var(--editor-background);
 }
 </style>

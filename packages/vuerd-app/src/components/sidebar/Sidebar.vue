@@ -24,14 +24,7 @@ export default defineComponent({
 });
 </script>
 
-<template>
-  <div class="sidebar" :style="styleMap">
-    <component is="Explorer"></component>
-  </div>
+<template lang="pug">
+div(class="h-full" :style="styleMap")
+  Component(is="Explorer")
 </template>
-
-<style scoped lang="scss">
-.sidebar {
-  height: 100%;
-}
-</style>
