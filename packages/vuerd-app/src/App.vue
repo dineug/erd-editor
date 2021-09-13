@@ -119,7 +119,7 @@ export default defineComponent({
 </script>
 
 <template lang="pug">
-Component(is="style" type="text/css" v-text="theme")
+component(is="style" type="text/css" v-text="theme")
 #application(ref="appRef")
   div(class="flex h-full")
     Sidebar(:width="sidebarWidth")

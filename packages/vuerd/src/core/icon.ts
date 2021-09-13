@@ -91,8 +91,15 @@ const icons = [
   createMDI('vector-line', mdiVectorLine),
 ] as IconDefinition[];
 
-export const getIcon = (prefix: string, iconName: string) =>
-  icons.find(icon => icon.prefix === prefix && icon.iconName === iconName);
+const iconMap = icons.reduce<Record<string, IconDefinition>>((acc, cur) => {
+  acc[`${cur.prefix}-${cur.iconName}`] = cur;
+  return acc;
+}, {});
+
+export const getIcon = (
+  prefix: string,
+  iconName: string
+): IconDefinition | undefined => iconMap[`${prefix}-${iconName}`];
 
 export const addIcon = (...newIcons: IconDefinition[]) =>
   icons.push(...newIcons);

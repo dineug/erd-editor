@@ -1,4 +1,4 @@
-<script lang="ts">
+<script lang="tsx">
 import { defineComponent, computed } from 'vue';
 import { globalEvent, Move } from '@/helpers/event.helper';
 
@@ -29,6 +29,7 @@ export default defineComponent({
   },
   setup(props, { emit }) {
     const classMap = computed(() => ({
+      sash: true,
       vertical: props.vertical,
       horizontal: props.horizontal,
     }));
@@ -58,22 +59,16 @@ export default defineComponent({
       });
     };
 
-    return {
-      classMap,
-      styleMap,
-      onMousedown,
-    };
+    return () => (
+      <div
+        class={classMap.value}
+        style={styleMap.value}
+        onMousedown={onMousedown}
+      />
+    );
   },
 });
 </script>
-
-<template lang="pug">
-.sash(
-  :class="classMap"
-  :style="styleMap"
-  @mousedown="onMousedown"
-)
-</template>
 
 <style scoped lang="scss">
 $size-sash: 5px;

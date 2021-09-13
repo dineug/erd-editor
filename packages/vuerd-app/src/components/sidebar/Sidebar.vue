@@ -26,5 +26,5 @@ export default defineComponent({
 
 <template lang="pug">
 div(class="h-full" :style="styleMap")
-  Component(is="Explorer")
+  component(is="Explorer")
 </template>

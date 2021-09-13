@@ -3,6 +3,7 @@ import { reactive } from 'vue';
 
 import { createStore } from '@/store';
 import * as actions from '@/store/tree/actions';
+import { createMock } from '@/store/tree/mock';
 
 interface LoadData {
   node: Partial<TreeNode>;
@@ -29,7 +30,7 @@ export class TreeNode {
 }
 
 export const state = reactive({
-  root: new TreeNode({ node: { open: true } }),
+  root: new TreeNode({ node: { open: true, children: [createMock()] } }),
 });
 
 export const useTreeStore = createStore(state, actions);
