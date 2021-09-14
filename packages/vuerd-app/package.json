@@ -15,7 +15,7 @@
   "license": "MIT",
   "scripts": {
     "serve": "vite",
-    "build": "vue-tsc --noEmit --skipLibCheck && cross-env NODE_ENV=production vite build"
+    "build": "cross-env NODE_ENV=production vite build"
   },
   "dependencies": {
     "@vuerd/plugin-generate-template": "^0.1.2",
