@@ -71,3 +71,6 @@ export const hideRelationship = (relationshipId: string) =>
 
 export const showRelationship = (relationshipId: string) =>
   createCommand('relationship.show', { relationshipId });
+
+export const colorRelationship = (relationshipId: string, color: string) =>
+  createCommand('relationship.color', { relationshipId, color });

@@ -41,6 +41,7 @@ export const changeCommandTypes: CommandKey[] = [
   'relationship.changeRelationshipType',
   'relationship.changeStartRelationshipType',
   'relationship.changeIdentification',
+  'relationship.color',
   // index
   'index.add',
   'index.remove',
@@ -111,6 +112,7 @@ export const historyCommandTypes: CommandKey[] = [
   'relationship.changeRelationshipType',
   'relationship.changeStartRelationshipType',
   'relationship.changeIdentification',
+  'relationship.color',
   // memo
   'memo.add',
   'memo.move',

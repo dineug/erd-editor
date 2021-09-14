@@ -44,6 +44,11 @@ export interface ShowRelationship {
   relationshipId: string;
 }
 
+export interface ColorRelationship {
+  relationshipId: string;
+  color: string;
+}
+
 export interface RelationshipCommandMap {
   'relationship.add': AddRelationship;
   'relationship.remove': RemoveRelationship;
@@ -53,4 +58,5 @@ export interface RelationshipCommandMap {
   'relationship.load': Relationship;
   'relationship.hide': HideRelationship;
   'relationship.show': ShowRelationship;
+  'relationship.color': ColorRelationship;
 }

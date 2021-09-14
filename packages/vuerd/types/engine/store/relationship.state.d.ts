@@ -2,6 +2,10 @@ export interface RelationshipState {
   relationships: Relationship[];
 }
 
+export interface RelationshipUI {
+  color: string;
+}
+
 export interface Relationship {
   id: string;
   identification: boolean;
@@ -11,6 +15,7 @@ export interface Relationship {
   end: RelationshipPoint;
   constraintName?: string; // ADD: version 2.1.0
   visible?: boolean;
+  ui?: RelationshipUI;
 }
 
 export interface RelationshipPoint {

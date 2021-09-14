@@ -75,6 +75,13 @@ const CanvasSVG: FunctionalComponent<CanvasSVGProps, CanvasSVGElement> = (
                 state.activeId !== relationship.id,
               active: state.activeId === relationship.id,
             })}
+              style=${
+                relationship.ui?.color
+                  ? styleMap({
+                      stroke: relationship.ui.color,
+                    })
+                  : null
+              }
               data-id=${relationship.id}
               @mouseover=${() => onMouseover(relationship)}
               @mouseleave=${() => onMouseleave(relationship)}

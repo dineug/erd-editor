@@ -4,6 +4,7 @@ import { RelationshipModel } from '@/engine/store/models/relationship.model';
 import { ExecuteCommand } from '@/internal-types/command';
 import {
   ChangeStartRelationshipType,
+  ColorRelationship,
   HideRelationship,
   RelationshipCommandMap,
   ShowRelationship,
@@ -125,6 +126,20 @@ export function executeShowRelationship(
   if (relationship) relationship.visible = true;
 }
 
+export function executeColorRelationship(
+  { relationshipState: { relationships } }: State,
+  data: ColorRelationship
+) {
+  const relationship = getData(relationships, data.relationshipId);
+  if (!relationship) return;
+
+  if (!relationship.ui) {
+    relationship.ui = { color: '' };
+  }
+
+  relationship.ui.color = data.color;
+}
+
 export const executeRelationshipCommandMap: Record<
   keyof RelationshipCommandMap,
   ExecuteCommand
@@ -138,4 +153,5 @@ export const executeRelationshipCommandMap: Record<
   'relationship.load': executeLoadRelationship,
   'relationship.hide': executeHideRelationship,
   'relationship.show': executeShowRelationship,
+  'relationship.color': executeColorRelationship,
 };

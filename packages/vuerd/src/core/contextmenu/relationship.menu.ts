@@ -1,4 +1,7 @@
-import { removeRelationship } from '@/engine/command/relationship.cmd.helper';
+import {
+  colorRelationship,
+  removeRelationship,
+} from '@/engine/command/relationship.cmd.helper';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { ERDEditorContext } from '@@types/core/ERDEditorContext';
 import { Relationship } from '@@types/engine/store/relationship.state';
@@ -28,6 +31,10 @@ export function createRelationshipMenus(
     {
       name: 'Delete',
       execute: () => store.dispatch(removeRelationship([relationship.id])),
+    },
+    {
+      name: 'Color',
+      execute: () => store.dispatch(colorRelationship(relationship.id, 'red')),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));
 }
