@@ -12,7 +12,7 @@ import { createImportMenus } from './import.menu';
 import { createShowMenus } from './show.menu';
 
 const defaultOptions: MenuOptions = {
-  nameWidth: 160,
+  nameWidth: 165,
   keymapWidth: 50,
 };
 
