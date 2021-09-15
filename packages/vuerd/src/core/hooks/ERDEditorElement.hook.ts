@@ -116,12 +116,13 @@ export function useERDEditorElement(
       ctx.dispatchEvent(new CustomEvent('liquibase-progress-end'))
     );
 
+  const emitChange = () =>
+    editorState.readonly || ctx.dispatchEvent(new CustomEvent('change'));
+
   beforeMount(() =>
     unmountedGroup.push(
-      store.change$.subscribe(
-        () =>
-          editorState.readonly || ctx.dispatchEvent(new CustomEvent('change'))
-      )
+      store.change$.subscribe(emitChange),
+      eventBus.on(Bus.Editor.change).subscribe(emitChange)
     )
   );
 }

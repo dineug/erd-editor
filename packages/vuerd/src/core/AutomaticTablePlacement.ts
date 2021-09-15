@@ -116,6 +116,7 @@ function releaseEditor(
   canvasState.zoomLevel = prevState.zoomLevel;
   // canvasState.scrollLeft = prevState.scrollLeft;
   // canvasState.scrollTop = prevState.scrollTop;
+  eventBus.emit(Bus.Editor.change);
 }
 
 export function runAutomaticTablePlacement(context: IERDEditorContext) {
