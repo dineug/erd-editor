@@ -1,3 +1,5 @@
+import { html } from '@vuerd/lit-observable';
+
 import {
   createJsonStringify,
   createSnapshot,
@@ -7,6 +9,7 @@ import {
   exportSQLDDL,
   exportXML,
 } from '@/core/file';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { createLiquibase } from '@/core/parser/JSONToLiquibase';
 import { createDDL } from '@/core/sql/ddl';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
@@ -38,7 +41,7 @@ export const createExportMenus = (
   context: IERDEditorContext,
   canvas: Element
 ): Menu[] => {
-  const { store, snapshots, showPrompt, showAlert } = context;
+  const { store, snapshots, showPrompt, eventBus } = context;
   return [
     {
       icon: {
@@ -104,9 +107,10 @@ export const createExportMenus = (
             })
           );
         } else {
-          showAlert(
-            `Export from ${store.canvasState.database} dialect not supported, please use PostgreSQL`
-          );
+          eventBus.emit(Bus.ToastBar.add, {
+            bodyTpl: html`Export from ${store.canvasState.database} dialect not
+            supported, please use PostgreSQL`,
+          });
         }
       },
     },

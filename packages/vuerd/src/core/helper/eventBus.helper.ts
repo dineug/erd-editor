@@ -44,6 +44,10 @@ enum ColorPicker {
   open = 'ColorPicker.open',
 }
 
+enum ToastBar {
+  add = 'ToastBar.add',
+}
+
 enum Liquibase {
   progress = 'Liquibase.liquibase-progress',
   progressEnd = 'Liquibase.liquibase-progress-end',
@@ -55,4 +59,5 @@ export const Bus = {
   Contextmenu,
   Liquibase,
   ColorPicker,
+  ToastBar,
 };

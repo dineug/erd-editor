@@ -28,6 +28,7 @@ import {
   faUndoAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import {
+  mdiAtom,
   mdiCodeBrackets,
   mdiCodeJson,
   mdiDatabase,
@@ -40,6 +41,7 @@ import {
   mdiVectorLine,
   mdiXml,
 } from '@mdi/js';
+import { observable } from '@vuerd/lit-observable';
 
 import { IconDefinition } from '@@types/core/icon';
 import { RelationshipType } from '@@types/engine/store/relationship.state';
@@ -89,20 +91,28 @@ const icons = [
   createMDI('xml', mdiXml),
   createMDI('dots-vertical', mdiDotsVertical),
   createMDI('vector-line', mdiVectorLine),
+  createMDI('atom', mdiAtom),
 ] as IconDefinition[];
 
-const iconMap = icons.reduce<Record<string, IconDefinition>>((acc, cur) => {
-  acc[`${cur.prefix}-${cur.iconName}`] = cur;
-  return acc;
-}, {});
+const iconMap: Record<string, IconDefinition> = observable({});
+
+const setIconMap = (newIcons: IconDefinition[]) =>
+  newIcons.reduce<Record<string, IconDefinition>>((acc, cur) => {
+    acc[`${cur.prefix}-${cur.iconName}`] = cur;
+    return acc;
+  }, iconMap);
+
+setIconMap(icons);
 
 export const getIcon = (
   prefix: string,
   iconName: string
 ): IconDefinition | undefined => iconMap[`${prefix}-${iconName}`];
 
-export const addIcon = (...newIcons: IconDefinition[]) =>
+export const addIcon = (...newIcons: IconDefinition[]) => {
   icons.push(...newIcons);
+  setIconMap(newIcons);
+};
 
 const base64Icons: Record<string, string> = {
   ZeroOneN:

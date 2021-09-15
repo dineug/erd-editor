@@ -17,6 +17,7 @@ export interface EditorState {
   findActive: boolean;
   readonly: boolean;
   filterState: FilterState;
+  erdUiEventNone: boolean;
 }
 
 export interface FocusTable {

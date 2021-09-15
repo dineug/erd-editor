@@ -168,6 +168,7 @@ const HighLevelTable: FunctionalComponent<
           width: `${table.width()}px`,
           height: `${table.height()}px`,
         })}
+        data-id=${table.id}
         @mousedown=${onMoveStart}
         @touchstart=${onMoveStart}
       >

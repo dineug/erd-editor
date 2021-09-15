@@ -24,7 +24,7 @@ export default defineComponent({
   setup(props) {
     const isRoot = computed(() => props.depth === 0);
     const isChildren = computed(
-      () => props.node.type === 'folder' && props.node.children.length
+      () => props.node.type === 'folder' && !!props.node.children.length
     );
 
     const styleMap = computed(() => ({
@@ -56,7 +56,7 @@ div(
   div {{ node.name }}
 
 TreeNode(
-  v-if="node.open && node.children.length"
+  v-if="isChildren && node.open"
   v-for="childNode in node.children"
   :key="childNode.id"
   :node="childNode"
