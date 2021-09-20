@@ -98,3 +98,8 @@ export function autoName<T extends { id: string; name: string }>(
   }
   return autoName(list, id, name.replace(/[0-9]/g, '') + num, num + 1);
 }
+
+export const getRandomColor = (): string => {
+  const color = Math.floor(Math.random() * 256 * 256 * 256);
+  return `#${color.toString(16)}`;
+};

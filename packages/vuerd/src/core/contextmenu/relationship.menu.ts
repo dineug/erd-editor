@@ -1,3 +1,4 @@
+import { getRandomColor } from '@/core/helper';
 import {
   colorRelationship,
   removeRelationship,
@@ -33,8 +34,13 @@ export function createRelationshipMenus(
       execute: () => store.dispatch(removeRelationship([relationship.id])),
     },
     {
-      name: 'Color',
-      execute: () => store.dispatch(colorRelationship(relationship.id, 'red')),
+      icon: {
+        prefix: 'mdi',
+        name: 'palette',
+        size: 18,
+      },
+      name: 'Random Color',
+      execute: () => store.dispatch(colorRelationship(relationship.id, getRandomColor())),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));
 }

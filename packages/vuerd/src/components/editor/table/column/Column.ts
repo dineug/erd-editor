@@ -182,6 +182,20 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
     }
   };
 
+  const getKeyColor = (): undefined | string => {
+    const { relationships } = contextRef.value.store.relationshipState;
+    const { column } = props;
+
+    var color;
+    relationships.find(relationship => {
+      if (relationship.end.columnIds.includes(column.id)) {
+        color = relationship.ui?.color;
+        return true;
+      }
+    });
+    return color;
+  };
+
   dragover$.pipe(throttleTime(300)).subscribe(onDragoverColumn);
 
   beforeMount(() => {
@@ -220,7 +234,7 @@ const Column: FunctionalComponent<ColumnProps, ColumnElement> = (
         @dragend=${onDragend}
         @dragover=${onDragover}
       >
-        <vuerd-column-key .ui=${ui}></vuerd-column-key>
+        <vuerd-column-key .ui=${ui} .color=${getKeyColor()}></vuerd-column-key>
         ${columnTpl(props, contextRef.value, {
           onInput,
           onFocus,
