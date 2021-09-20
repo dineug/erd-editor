@@ -12,6 +12,7 @@ import {
   Relationship,
   RelationshipPoint,
   RelationshipType,
+  RelationshipUI,
   StartRelationshipType,
 } from '@@types/engine/store/relationship.state';
 
@@ -58,10 +59,11 @@ export class RelationshipModel implements Relationship {
   };
   constraintName = '';
   visible = true;
+  ui: undefined | RelationshipUI;
 
   constructor({ addRelationship, loadRelationship }: RelationshipData) {
     if (addRelationship) {
-      const { id, relationshipType, start, end, constraintName } =
+      const { id, relationshipType, start, end, constraintName, ui } =
         addRelationship;
 
       this.id = id;
@@ -71,6 +73,7 @@ export class RelationshipModel implements Relationship {
       this.end.tableId = end.tableId;
       this.end.columnIds = [...end.columnIds];
       this.constraintName = constraintName;
+      this.ui = ui;
     } else if (loadRelationship && isLoadRelationship(loadRelationship)) {
       const {
         id,
@@ -81,6 +84,7 @@ export class RelationshipModel implements Relationship {
         end,
         constraintName,
         visible,
+        ui,
       } = cloneDeep(loadRelationship);
 
       this.id = id;
@@ -93,6 +97,7 @@ export class RelationshipModel implements Relationship {
         this.startRelationshipType = startRelationshipType;
       }
       if (isBoolean(visible)) this.visible = visible;
+      this.ui = ui;
     } else {
       throw new Error('not found relationship');
     }

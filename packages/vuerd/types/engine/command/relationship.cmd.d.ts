@@ -1,6 +1,7 @@
 import {
   Relationship,
   RelationshipType,
+  RelationshipUI,
   StartRelationshipType,
 } from '../store/relationship.state';
 
@@ -15,6 +16,7 @@ export interface AddRelationship {
   start: AddRelationshipPoint;
   end: AddRelationshipPoint;
   constraintName: string;
+  ui?: RelationshipUI;
 }
 
 export interface RemoveRelationship {
