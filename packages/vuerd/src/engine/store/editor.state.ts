@@ -23,6 +23,7 @@ export const createEditorState = (): EditorState => ({
   findActive: false,
   readonly: false,
   filterState: createFilterState(),
+  erdUiEventNone: false,
 });
 
 export const moveKeys: MoveKey[] = [

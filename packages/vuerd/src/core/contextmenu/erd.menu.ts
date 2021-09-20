@@ -1,3 +1,4 @@
+import { runAutomaticTablePlacement } from '@/core/AutomaticTablePlacement';
 import { keymapOptionsToString, keymapOptionToString } from '@/core/keymap';
 import { addMemo$ } from '@/engine/command/memo.cmd.helper';
 import { addTable$ } from '@/engine/command/table.cmd.helper';
@@ -11,7 +12,7 @@ import { createImportMenus } from './import.menu';
 import { createShowMenus } from './show.menu';
 
 const defaultOptions: MenuOptions = {
-  nameWidth: 75,
+  nameWidth: 165,
   keymapWidth: 50,
 };
 
@@ -19,7 +20,7 @@ export function createERDMenus(
   context: IERDEditorContext,
   canvas: Element
 ): Menu[] {
-  const { store, keymap } = context;
+  const { store, keymap, eventBus } = context;
   return [
     {
       icon: {
@@ -82,6 +83,15 @@ export function createERDMenus(
       },
       name: 'Export',
       children: createExportMenus(context, canvas),
+    },
+    {
+      icon: {
+        prefix: 'mdi',
+        name: 'atom',
+        size: 18,
+      },
+      name: 'Automatic Table Placement',
+      execute: () => runAutomaticTablePlacement(context),
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));
 }

@@ -211,7 +211,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
   return () => {
     const {
       store: {
-        editorState: { drawRelationship, findActive },
+        editorState: { drawRelationship, findActive, erdUiEventNone },
       },
     } = contextRef.value;
 
@@ -226,6 +226,8 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
                 drawRelationship.relationshipType
               )}") 16 16, auto`
             : '',
+          pointerEvents: erdUiEventNone ? 'none' : '',
+          touchAction: erdUiEventNone ? 'none' : '',
         })}
         @mousedown=${onDragSelect}
         @touchstart=${onDragSelect}

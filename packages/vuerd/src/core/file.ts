@@ -1,7 +1,9 @@
+import { html } from '@vuerd/lit-observable';
 import { DDLParser } from '@vuerd/sql-ddl-parser';
 import domToImage from 'dom-to-image';
 
 import { calculateLatestDiff } from '@/core/diff/helper';
+import { Bus } from '@/core/helper/eventBus.helper';
 import { Logger } from '@/core/logger';
 import { Dialect } from '@/core/parser/helper';
 import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
@@ -126,7 +128,7 @@ export function setImportFileCallback(
   executeImportFileExtra = callback;
 }
 
-export function importJSON({ store }: IERDEditorContext) {
+export function importJSON({ store, eventBus }: IERDEditorContext) {
   if (executeImportFileExtra) {
     executeImportFileExtra({ accept: '.json', type: 'json' });
     return;
@@ -149,7 +151,9 @@ export function importJSON({ store }: IERDEditorContext) {
           }
         };
       } else {
-        alert('Just import the json file');
+        eventBus.emit(Bus.ToastBar.add, {
+          bodyTpl: html`Just import the json file`,
+        });
       }
     }
   });
@@ -168,36 +172,35 @@ export function importSQLDDL(context: IERDEditorContext) {
   importHelper.addEventListener('change', event => {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length) {
-      Array.from(input.files)
-        .sort((a: File, b: File) => a.name.localeCompare(b.name))
-        .forEach(file => {
-          if (/\.(sql)$/i.test(file.name)) {
-            const reader = new FileReader();
-            reader.readAsText(file);
-            reader.onload = () => {
-              const value = reader.result;
-              if (typeof value === 'string') {
-                const { helper, store } = context;
+      const file = input.files[0];
+      const { helper, store, eventBus } = context;
 
-                const statements = DDLParser(value);
+      if (/\.(sql)$/i.test(file.name)) {
+        const reader = new FileReader();
+        reader.readAsText(file);
+        reader.onload = () => {
+          const value = reader.result;
+          if (typeof value === 'string') {
+            const statements = DDLParser(value);
 
-                const json = createJson(
-                  // @ts-ignore
-                  statements,
-                  helper,
-                  store.canvasState.database
-                );
-                store.dispatchSync(loadJson$(json), sortTable());
+            const json = createJson(
+              // @ts-ignore
+              statements,
+              helper,
+              store.canvasState.database
+            );
+            store.dispatchSync(loadJson$(json), sortTable());
 
-                var { snapshots } = context;
-                createSnapshot(context);
-                Logger.log('SNAPSHOTS', snapshots);
-              }
-            };
-          } else {
-            alert(`Just import the sql file`);
+            var { snapshots } = context;
+            createSnapshot(context);
+            Logger.log('SNAPSHOTS', snapshots);
           }
+        };
+      } else {
+        eventBus.emit(Bus.ToastBar.add, {
+          bodyTpl: html`Just import the sql file`,
         });
+      }
     }
   });
   importHelper.click();

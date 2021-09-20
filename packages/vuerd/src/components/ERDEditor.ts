@@ -10,6 +10,7 @@ import './drawer/HelpDrawer';
 import './drawer/SettingDrawer';
 import './drawer/TreeDrawer';
 import './drawer/tablePropertiesDrawer/TablePropertiesDrawer';
+import './ToastBar';
 
 import {
   defineComponent,
@@ -175,6 +176,7 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
               : null
           )}
           ${panelTpl()} ${drawerTpl()} ${ghostTpl} ${promptTpl()} ${alertTpl()}
+          <vuerd-toast-bar></vuerd-toast-bar>
         </div>
       </vuerd-provider>
     `;
