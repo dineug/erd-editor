@@ -1,4 +1,4 @@
-import {} from '@fortawesome/free-solid-svg-icons';
+import { faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { mdiChevronDown, mdiChevronRight } from '@mdi/js';
 
 export interface IconDefinition {
@@ -20,6 +20,7 @@ export const createMDI = (name: string, icon: string): IconDefinition => ({
 });
 
 const icons = [
+  faChevronRight,
   createMDI('chevron-down', mdiChevronDown),
   createMDI('chevron-right', mdiChevronRight),
 ] as IconDefinition[];
