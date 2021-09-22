@@ -70,7 +70,7 @@ export const state = reactive<State>({
 const isDev = import.meta.env.DEV;
 
 if (isDev) {
-  state.root.children.push(createMock(state));
+  state.root = actions.setParent(createMock());
 }
 
 export const useTreeStore = createStore(state, actions, 'tree');

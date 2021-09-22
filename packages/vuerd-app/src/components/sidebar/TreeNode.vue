@@ -112,7 +112,7 @@ export default defineComponent({
       Icon(v-else prefix="mdi" name="chevron-right" :size="16")
     div(v-else class="w-4")
   input.rename(v-if="node.edit" v-model="node.name" ref="renameRef" @blur="onBlur")
-  div(v-else) {{ node.name }}
+  div(v-else class="select-none") {{ node.name }}
 
 TreeNode(
   v-if="isChildren && node.open"

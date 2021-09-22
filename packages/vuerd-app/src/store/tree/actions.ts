@@ -1,5 +1,11 @@
+import uniqBy from 'lodash/uniqBy';
+
 import { state, TreeNode, TreeNodeType } from '@/store/tree';
-import { getCurrentNode, orderByNameASC } from '@/store/tree/helper';
+import {
+  getCurrentNode,
+  orderByNameASC,
+  rangeNodes,
+} from '@/store/tree/helper';
 
 export function setParent(parent: TreeNode) {
   for (const node of parent.children) {
@@ -9,9 +15,9 @@ export function setParent(parent: TreeNode) {
   return parent;
 }
 
-export function orderByTreeNodeASC(folder: TreeNode) {
+export function orderByTreeNodeASC(node: TreeNode) {
   const sortNodes: TreeNode[] = [];
-  const [folders, files] = folder.children.reduce<
+  const [folders, files] = node.children.reduce<
     [Array<TreeNode>, Array<TreeNode>]
   >(
     ([folders, files], node) => {
@@ -23,7 +29,7 @@ export function orderByTreeNodeASC(folder: TreeNode) {
   folders.sort(orderByNameASC);
   files.sort(orderByNameASC);
   sortNodes.push(...folders, ...files);
-  folder.children = sortNodes;
+  node.children = sortNodes;
 }
 
 export function open(node: TreeNode) {
@@ -47,7 +53,24 @@ export function selectNode(
   ctrlKey = false,
   shiftKey = false
 ) {
-  state.selectNodes = node ? [node] : [];
+  if (node && state.lastSelectNode && (ctrlKey || shiftKey)) {
+    const nodes = [...state.root.iterVisible()];
+    const index = nodes.findIndex(v => v.id === node.id);
+    const lastIndex = nodes.findIndex(v => v.id === state.lastSelectNode?.id);
+
+    if (ctrlKey && shiftKey) {
+      state.selectNodes = uniqBy(
+        [...state.selectNodes, ...rangeNodes(index, lastIndex, nodes)],
+        'id'
+      );
+    } else if (ctrlKey) {
+      state.selectNodes = uniqBy([...state.selectNodes, node], 'id');
+    } else if (shiftKey) {
+      state.selectNodes = uniqBy(rangeNodes(index, lastIndex, nodes), 'id');
+    }
+  } else {
+    state.selectNodes = node ? [node] : [];
+  }
   state.lastSelectNode = node;
 }
 
@@ -181,5 +204,13 @@ export function newFolder() {
   state.newNode = newNode;
   state.lastSelectNode = newNode;
   state.selectNodes = [newNode];
-  console.log(newNode);
+}
+
+export function remove() {
+  for (const node of state.selectNodes) {
+    node.parent?.children.splice(
+      node.parent.children.findIndex(v => v.id === node.id),
+      1
+    );
+  }
 }

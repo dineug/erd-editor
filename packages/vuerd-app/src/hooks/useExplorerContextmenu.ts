@@ -14,7 +14,14 @@ function createMenus(): Menu[] {
         },
         {
           name: 'Delete',
-          execute() {},
+          execute() {
+            if (
+              treeState.selectNodes.length &&
+              confirm('Do you want to delete it?')
+            ) {
+              treeActions.remove();
+            }
+          },
         },
       ]
     : [];
