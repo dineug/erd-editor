@@ -42,9 +42,9 @@ export default defineComponent({
       height: `${SIZE_VIEW_TAB_HEIGHT}px`,
     }));
 
-    let draggableListener: Subscription[] = [];
+    const draggable$: Subject<DragEvent> = new Subject();
     let dragenter$: Observable<DragEvent> | null = null;
-    let draggable$: Subject<DragEvent> = new Subject();
+    let draggableListener: Subscription[] = [];
     let subDragenter: Subscription | null | undefined = null;
     let subDraggable: Subscription | null | undefined = null;
 
@@ -89,7 +89,7 @@ export default defineComponent({
       viewActions.tabDraggableStart(tab);
       emit('dragstart', event);
       eventBus.emit(Bus.EditorTab.draggableStart);
-      eventBus.emit(Bus.TreeNode.draggableStart);
+      eventBus.emit(Bus.OpenFile.draggableStart);
       eventBus.emit(Bus.Editor.dragstart);
       event.dataTransfer && event.dataTransfer.setData('text/plain', tab.id);
     };
@@ -97,7 +97,7 @@ export default defineComponent({
     const onDragend = () => {
       eventBus.emit(Bus.EditorViewer.dropEnd, viewState.draggableTab);
       eventBus.emit(Bus.EditorTab.draggableEnd);
-      eventBus.emit(Bus.TreeNode.draggableEnd);
+      eventBus.emit(Bus.OpenFile.draggableEnd);
       eventBus.emit(Bus.Editor.dragend);
       viewActions.tabDraggableEnd();
     };
@@ -242,7 +242,7 @@ export default defineComponent({
 
       .name {
         padding-right: 7px;
-        font-size: 0.875rem;
+        @apply text-sm;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;

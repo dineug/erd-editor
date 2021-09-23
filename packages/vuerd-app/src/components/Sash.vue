@@ -1,4 +1,4 @@
-<script lang="tsx">
+<script lang="ts">
 import { defineComponent, computed } from 'vue';
 import { globalEvent, Move } from '@/helpers/event.helper';
 
@@ -29,7 +29,6 @@ export default defineComponent({
   },
   setup(props, { emit }) {
     const classMap = computed(() => ({
-      sash: true,
       vertical: props.vertical,
       horizontal: props.horizontal,
     }));
@@ -51,6 +50,11 @@ export default defineComponent({
       left: `${centerLeft.value}px`,
     }));
 
+    const lineStyleMap = computed(() => ({
+      top: `${Math.abs(centerTop.value)}px`,
+      left: `${Math.abs(centerLeft.value)}px`,
+    }));
+
     const onMousedown = (event: MouseEvent) => {
       emit('mousedownSash', event);
       globalEvent.drag$.subscribe(move => {
@@ -59,16 +63,21 @@ export default defineComponent({
       });
     };
 
-    return () => (
-      <div
-        class={classMap.value}
-        style={styleMap.value}
-        onMousedown={onMousedown}
-      />
-    );
+    return {
+      classMap,
+      styleMap,
+      lineStyleMap,
+      onMousedown,
+    };
   },
 });
 </script>
+
+<template lang="pug">
+.sash(:class="classMap" :style="styleMap" @mousedown="onMousedown")
+  .line-container(:class="classMap")
+    .line(:class="classMap" :style="lineStyleMap")
+</template>
 
 <style scoped lang="scss">
 $size-sash: 5px;
@@ -87,6 +96,42 @@ $size-sash: 5px;
     width: 100%;
     height: $size-sash;
     cursor: ns-resize;
+  }
+
+  .line-container {
+    position: relative;
+    pointer-events: none;
+
+    &.vertical {
+      height: 100%;
+    }
+
+    &.horizontal {
+      width: 100%;
+    }
+
+    .line {
+      position: absolute;
+      background-color: var(--sash-background);
+
+      &.vertical {
+        width: 1px;
+        height: 100%;
+      }
+
+      &.horizontal {
+        width: 100%;
+        height: 1px;
+      }
+    }
+  }
+
+  &:hover {
+    background-color: var(--sash-foreground);
+
+    .line {
+      background-color: var(--sash-foreground);
+    }
   }
 }
 </style>

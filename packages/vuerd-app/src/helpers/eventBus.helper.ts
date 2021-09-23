@@ -51,9 +51,15 @@ enum TreeNode {
   draggableEnd = 'TreeNode.draggableEnd',
 }
 
+enum OpenFile {
+  draggableStart = 'OpenFile.draggableStart',
+  draggableEnd = 'OpenFile.draggableEnd',
+}
+
 export const Bus = {
   EditorTab,
   EditorViewer,
   Editor,
   TreeNode,
+  OpenFile,
 };

@@ -59,6 +59,7 @@ export const state = reactive<Theme>({
   },
   sash: {
     background: 'black',
+    foreground: 'rgba(90, 99, 117)',
   },
   drop: {
     background: '#9DA5B4',

@@ -2,18 +2,20 @@
 import { defineComponent, toRefs } from 'vue';
 
 import Title from '@/components/sidebar/Title.vue';
-import TreeNode from '@/components/sidebar/TreeNode.vue';
+import TreeNode from '@/components/sidebar/explorer/TreeNode.vue';
 import { useTreeStore } from '@/store/tree';
 import { fromEvent } from 'rxjs';
 import { useUnsubscribe } from '@/hooks/useUnsubscribe';
 import { useExplorerKeymap } from '@/hooks/useExplorerKeymap';
 import Contextmenu from '@/components/Contextmenu.vue';
 import { useExplorerContextmenu } from '@/hooks/useExplorerContextmenu';
+import OpenFile from '@/components/sidebar/explorer/OpenFile.vue';
 
 export default defineComponent({
   components: {
     Title,
     TreeNode,
+    OpenFile,
     Contextmenu,
   },
   setup() {
@@ -57,6 +59,7 @@ export default defineComponent({
 .explorer(:class="{focus}" @mousedown="onFocusin" @contextmenu="onContextmenu")
   Title(label="Explorer")
   Title(label="Open Files")
+  OpenFile
   Title(label="Workspace")
   TreeNode(:node="root")
 

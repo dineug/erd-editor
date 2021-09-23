@@ -49,6 +49,7 @@ export default defineComponent({
 
 <style scoped lang="scss">
 .svg-icon {
+  display: inline-flex;
   transition: fill 0.15s;
 }
 </style>

@@ -28,10 +28,9 @@ export default defineComponent({
     let lastClientX = 0;
     let lastClientY = 0;
 
-    const getClassMap = (node: ViewNode, index: number) => ({
+    const getClassMap = (node: ViewNode) => ({
       vertical: node.vertical,
       horizontal: node.horizontal,
-      left: node.vertical && index,
     });
 
     const getStyleMap = (node: ViewNode) => ({
@@ -124,14 +123,12 @@ export default defineComponent({
 
       if (props.node.vertical) {
         if (movementX < 0) {
-          // left
           moveWidth(
             event,
             props.node.children[index - 1],
             props.node.children[index]
           );
         } else {
-          // right
           moveWidth(
             event,
             props.node.children[index],
@@ -140,14 +137,12 @@ export default defineComponent({
         }
       } else if (props.node.horizontal) {
         if (movementY < 0) {
-          // top
           moveHeight(
             event,
             props.node.children[index - 1],
             props.node.children[index]
           );
         } else {
-          // bottom
           moveHeight(
             event,
             props.node.children[index],
@@ -168,11 +163,10 @@ export default defineComponent({
 </script>
 
 <template lang="pug">
-.split-view(:class="getClassMap(node, 0)" :style="getStyleMap(node)")
+.split-view(:class="getClassMap(node)" :style="getStyleMap(node)")
   .view(
     v-for="(childNode, index) in node.children"
     :key="childNode.id"
-    :class="getClassMap(childNode, index)"
     :style="getStyleMap(childNode)"
   )
     Sash(
@@ -200,14 +194,6 @@ export default defineComponent({
 
   .view {
     position: relative;
-
-    &.left {
-      border-left: var(--sash-background) solid 1px;
-    }
-
-    &.top {
-      border-top: var(--sash-background) solid 1px;
-    }
   }
 }
 </style>

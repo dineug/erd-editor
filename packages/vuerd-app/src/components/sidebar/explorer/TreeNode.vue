@@ -12,8 +12,10 @@ import Icon from '@/components/Icon.vue';
 import { validFileName } from '@/helpers';
 import { useViewStore } from '@/store/view';
 
+const defaultPaddingLeft = 6;
 const paddingLeft = 10;
-const getPaddingLeft = (depth: number) => depth * paddingLeft;
+const getPaddingLeft = (depth: number) =>
+  depth * paddingLeft + defaultPaddingLeft;
 const foldTypes = [TreeNodeType.root, TreeNodeType.folder];
 
 export default defineComponent({
