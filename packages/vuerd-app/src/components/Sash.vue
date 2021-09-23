@@ -75,6 +75,7 @@ $size-sash: 5px;
 
 .sash {
   position: absolute;
+  z-index: 1000;
 
   &.vertical {
     width: $size-sash;

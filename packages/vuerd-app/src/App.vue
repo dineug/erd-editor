@@ -125,11 +125,7 @@ component(is="style" type="text/css" v-text="theme")
     Sidebar(:width="sidebarWidth")
     div(class="h-full relative")
       Editor(:width="editorWidth")
-      Sash(
-        vertical
-        @mousedown-sash="onMousedownSash"
-        @global-move="onMousemoveSash"
-      )
+      Sash(vertical @mousedown-sash="onMousedownSash" @global-move="onMousemoveSash")
 </template>
 
 <style lang="scss">

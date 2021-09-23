@@ -18,7 +18,11 @@ export type ThemeProperties =
   | 'scrollbar-thumb'
   | 'scrollbar-thumb-hover'
   | 'focus'
-  | 'contextmenu';
+  | 'contextmenu'
+  | 'sash'
+  | 'drop'
+  | 'tab-bar'
+  | 'tab';
 
 export type Theme = Record<ThemeProperties, Partial<Color>>;
 
@@ -50,6 +54,19 @@ export const state = reactive<Theme>({
     foreground: 'rgba(78, 86, 102, 0.38)',
   },
   contextmenu: {
+    background: '#21252b',
+    foreground: '#282c34',
+  },
+  sash: {
+    background: 'black',
+  },
+  drop: {
+    background: '#9DA5B4',
+  },
+  'tab-bar': {
+    background: '#21252b',
+  },
+  tab: {
     background: '#21252b',
     foreground: '#282c34',
   },

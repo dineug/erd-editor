@@ -25,14 +25,14 @@ export enum TreeNodeType {
 }
 
 export class TreeNode {
-  id = uuid();
+  readonly id = uuid();
   name = '';
-  children: TreeNode[] = [];
-  parent: TreeNode | null = null;
   open = false;
   edit = false;
   value = '';
   type = TreeNodeType.folder;
+  parent: TreeNode | null = null;
+  children: TreeNode[] = [];
 
   constructor({ node }: Partial<LoadData> = {}) {
     node && Object.assign(this, node);

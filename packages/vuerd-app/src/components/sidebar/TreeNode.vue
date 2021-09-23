@@ -9,6 +9,8 @@ import {
 } from 'vue';
 import { TreeNode, useTreeStore, TreeNodeType } from '@/store/tree';
 import Icon from '@/components/Icon.vue';
+import { validFileName } from '@/helpers';
+import { useViewStore } from '@/store/view';
 
 const paddingLeft = 10;
 const getPaddingLeft = (depth: number) => depth * paddingLeft;
@@ -22,7 +24,7 @@ export default defineComponent({
   props: {
     node: {
       type: TreeNode,
-      default: new TreeNode(),
+      default: () => new TreeNode(),
     },
     depth: {
       type: Number,
@@ -31,6 +33,7 @@ export default defineComponent({
   },
   setup(props) {
     const [treeState, treeActions] = useTreeStore();
+    const [, viewActions] = useViewStore();
     const renameRef = ref<HTMLInputElement | null>(null);
 
     const isRoot = computed(() => props.depth === 0);
@@ -54,6 +57,12 @@ export default defineComponent({
         : treeActions.open(props.node);
     };
 
+    const onClick = () => {
+      onToggle();
+      props.node.type === TreeNodeType.file &&
+        viewActions.tabAddPreviewStart(props.node);
+    };
+
     const onSelect = (event: MouseEvent) => {
       treeActions.selectNode(
         props.node,
@@ -69,6 +78,17 @@ export default defineComponent({
     const onFocus = () => {
       if (!renameRef.value) return;
       renameRef.value.focus();
+    };
+
+    const onInput = (event: Event) => {
+      const el = event.target as HTMLInputElement | null;
+      if (!el) return;
+      el.value = validFileName(el.value);
+      props.node.name = el.value;
+    };
+
+    const onOpenFile = () => {
+      props.node.type === TreeNodeType.file && viewActions.tabAdd(props.node);
     };
 
     watch(
@@ -88,9 +108,11 @@ export default defineComponent({
       isChildren,
       styleMap,
       renameRef,
-      onToggle,
+      onClick,
       onSelect,
       onBlur,
+      onInput,
+      onOpenFile,
     };
   },
 });
@@ -102,7 +124,8 @@ export default defineComponent({
   class="flex items-center h-6 cursor-pointer"
   :style="styleMap"
   @mousedown="onSelect"
-  @click="onToggle"
+  @click="onClick"
+  @dblclick="onOpenFile"
 )
   div(
     class="flex items-center h-full"
@@ -111,7 +134,7 @@ export default defineComponent({
       Icon(v-if="node.open" prefix="mdi" name="chevron-down" :size="16")
       Icon(v-else prefix="mdi" name="chevron-right" :size="16")
     div(v-else class="w-4")
-  input.rename(v-if="node.edit" v-model="node.name" ref="renameRef" @blur="onBlur")
+  input.rename(v-if="node.edit" :value="node.name" ref="renameRef" @blur="onBlur" @input="onInput")
   div(v-else class="select-none") {{ node.name }}
 
 TreeNode(

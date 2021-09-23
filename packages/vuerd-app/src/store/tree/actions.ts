@@ -2,6 +2,8 @@ import uniqBy from 'lodash/uniqBy';
 
 import { state, TreeNode, TreeNodeType } from '@/store/tree';
 import {
+  createFileNode,
+  createFolderNode,
   getCurrentNode,
   orderByNameASC,
   rangeNodes,
@@ -53,10 +55,11 @@ export function selectNode(
   ctrlKey = false,
   shiftKey = false
 ) {
-  if (node && state.lastSelectNode && (ctrlKey || shiftKey)) {
+  const currentNode = getCurrentNode();
+  if (node && currentNode && (ctrlKey || shiftKey)) {
     const nodes = [...state.root.iterVisible()];
     const index = nodes.findIndex(v => v.id === node.id);
-    const lastIndex = nodes.findIndex(v => v.id === state.lastSelectNode?.id);
+    const lastIndex = nodes.findIndex(v => v.id === currentNode.id);
 
     if (ctrlKey && shiftKey) {
       state.selectNodes = uniqBy(
@@ -157,9 +160,7 @@ export function endRename(node: TreeNode) {
 }
 
 export function newFile() {
-  const newNode = new TreeNode({
-    node: { type: TreeNodeType.file, edit: true },
-  });
+  const newNode = createFileNode();
   let parent = state.root;
 
   if (state.lastSelectNode && state.lastSelectNode.parent) {
@@ -186,9 +187,7 @@ export function newFile() {
 }
 
 export function newFolder() {
-  const newNode = new TreeNode({
-    node: { type: TreeNodeType.folder, edit: true },
-  });
+  const newNode = createFolderNode();
   let parent = state.root;
 
   if (state.lastSelectNode && state.lastSelectNode.parent) {

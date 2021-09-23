@@ -19,6 +19,7 @@
     "tsc": "vue-tsc --noEmit --skipLibCheck"
   },
   "dependencies": {
+    "@tweenjs/tween.js": "^18.6.4",
     "@vuerd/plugin-generate-template": "^0.1.2",
     "vue": "^3.2.7",
     "vuerd": "^2.2.4"
