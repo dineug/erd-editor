@@ -44,7 +44,7 @@
     "mobx-react-lite": "^3.2.1",
     "mobx": "^6.3.3",
     "preact": "^10.5.14",
-    "styled-components": "^5.3.1",
+    "styled-components": "5.2.3",
     "tippy.js": "^6.3.1",
     "tui-grid": "^4.18.1"
   },
