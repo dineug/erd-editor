@@ -97,8 +97,8 @@
 
 ## Document
 
+- [Playground](https://vuerd.github.io/)
 - [Import SQL DDL support syntax](https://github.com/vuerd/vuerd/blob/master/packages/sql-ddl-parser/src/SQL_DDL_Test_Case.md)
-- [Live Demo](https://vuerd.github.io/vuerd/iframe.html?id=example-demo--erd-editor&args=&viewMode=story)
 
 ## Editor Keymap(default)
 

@@ -16,11 +16,13 @@
 | [@vuerd/sql-ddl-parser](https://github.com/vuerd/vuerd/tree/master/packages/sql-ddl-parser)                     | [![npm version](https://img.shields.io/npm/v/@vuerd/sql-ddl-parser.svg?style=flat-square&color=blue)](https://www.npmjs.com/package/@vuerd/sql-ddl-parser)                                                                            |
 | [@vuerd/lit-observable](https://github.com/vuerd/vuerd/tree/master/packages/lit-observable)                     | [![npm version](https://img.shields.io/npm/v/@vuerd/lit-observable.svg?style=flat-square&color=blue)](https://www.npmjs.com/package/@vuerd/lit-observable)                                                                            |
 | [@vuerd/plugin-generate-template](https://github.com/vuerd/vuerd/tree/master/packages/plugin-generate-template) | [![npm version](https://img.shields.io/npm/v/@vuerd/plugin-generate-template.svg?style=flat-square&color=blue)](https://www.npmjs.com/package/@vuerd/plugin-generate-template)                                                        |
+| [vuerd-app](https://github.com/vuerd/vuerd/tree/master/packages/vuerd-app)                                      |                                                                                                                                                                                                                                       |
 | [vuerd-vscode](https://github.com/vuerd/vuerd/tree/master/packages/vuerd-vscode)                                | [![VS Marketplace version](https://vsmarketplacebadge.apphb.com/version-short/dineug.vuerd-vscode.svg?style=flat-square&color=blue&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) |
 | [vuerd-atom](https://github.com/vuerd/vuerd-atom)                                                               | [![APM](https://img.shields.io/apm/v/vuerd-atom?color=blue&style=flat-square&logo=atom)](https://atom.io/packages/vuerd-atom)                                                                                                         |
 
 ## Document
 
+- [Playground](https://vuerd.github.io/)
 - [Storybook](https://vuerd.github.io/vuerd/)
 - [Import SQL DDL support syntax](https://github.com/vuerd/vuerd/blob/master/packages/sql-ddl-parser/src/SQL_DDL_Test_Case.md)
 - [vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
