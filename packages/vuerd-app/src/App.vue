@@ -22,6 +22,7 @@ import { Bus, eventBus } from '@/helpers/eventBus.helper';
 import { themeToString } from '@/helpers/theme.helper';
 import { useUnsubscribe } from '@/hooks/useUnsubscribe';
 import { TreeNode, useTreeStore } from '@/store/tree';
+import { createMock } from '@/store/tree/mock';
 import { useThemeStore } from '@/store/ui/theme.store';
 import { useViewportStore } from '@/store/ui/viewport.store';
 
@@ -90,6 +91,10 @@ export default defineComponent({
       if (node) {
         treeActions.setRoot(new TreeNode({ treeNode: node }));
         treeActions.setParent(treeState.root);
+      } else {
+        treeState.root.children.push(createMock());
+        treeActions.setParent(treeState.root);
+        onSave();
       }
     });
 

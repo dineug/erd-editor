@@ -15,14 +15,17 @@
   "license": "MIT",
   "scripts": {
     "serve": "vite",
+    "https-preview": "serve dist",
     "build": "cross-env NODE_ENV=production vite build",
     "tsc": "vue-tsc --noEmit --skipLibCheck"
   },
   "dependencies": {
     "@tweenjs/tween.js": "^18.6.4",
-    "@vuerd/plugin-generate-template": "^0.1.2",
+    "@vuerd/plugin-generate-template": "^0.1.3",
+    "https-localhost": "^4.7.0",
+    "vite-plugin-pwa": "^0.11.2",
     "vue": "^3.2.7",
-    "vuerd": "^2.2.4"
+    "vuerd": "^2.2.6"
   },
   "devDependencies": {
     "@vitejs/plugin-vue-jsx": "^1.1.8",

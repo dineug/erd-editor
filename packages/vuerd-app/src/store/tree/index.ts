@@ -4,7 +4,6 @@ import { reactive } from 'vue';
 import { Node } from '@/core/indexedDB';
 import { createStore } from '@/store';
 import * as actions from '@/store/tree/actions';
-import { createMock } from '@/store/tree/mock';
 
 export interface State {
   root: TreeNode;
@@ -76,11 +75,5 @@ export const state = reactive<State>({
   oldName: '',
   newNode: null,
 });
-
-const isDev = import.meta.env.DEV;
-
-if (isDev) {
-  state.root.children.push(actions.setParent(createMock()));
-}
 
 export const useTreeStore = createStore(state, actions, 'tree');
