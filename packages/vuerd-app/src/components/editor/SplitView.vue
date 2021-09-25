@@ -1,15 +1,16 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { ViewNode } from '@/store/view';
+
 import Viewer from '@/components/editor/Viewer.vue';
 import Sash from '@/components/Sash.vue';
 import { Move } from '@/helpers/event.helper';
+import { ViewNode } from '@/store/view';
 import { Placement } from '@/store/view/constants';
 import {
-  minVertical,
-  resetWidthRatio,
   minHorizontal,
+  minVertical,
   resetHeightRatio,
+  resetWidthRatio,
 } from '@/store/view/helper';
 
 export default defineComponent({

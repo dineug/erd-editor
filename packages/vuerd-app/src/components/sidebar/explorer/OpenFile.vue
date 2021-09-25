@@ -1,13 +1,14 @@
 <script lang="ts">
-import { defineComponent, computed, ref } from 'vue';
+import { fromEvent, Subject,Subscription } from 'rxjs';
+import { debounceTime,throttleTime } from 'rxjs/operators';
+import { computed, defineComponent, ref } from 'vue';
+
 import Icon from '@/components/Icon.vue';
-import { useViewStore, Tab, ViewNode } from '@/store/view';
-import { tabGroups } from '@/store/view/helper';
-import { fromEvent, Subscription, Subject } from 'rxjs';
-import { throttleTime, debounceTime } from 'rxjs/operators';
-import { eventBus, Bus } from '@/helpers/eventBus.helper';
-import { getData, findParentLiByElement } from '@/helpers';
+import { findParentLiByElement,getData } from '@/helpers';
+import { Bus,eventBus } from '@/helpers/eventBus.helper';
 import { useUnsubscribe } from '@/hooks/useUnsubscribe';
+import { Tab, useViewStore, ViewNode } from '@/store/view';
+import { tabGroups } from '@/store/view/helper';
 
 export default defineComponent({
   components: {

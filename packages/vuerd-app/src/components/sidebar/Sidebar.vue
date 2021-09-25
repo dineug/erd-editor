@@ -1,5 +1,6 @@
 <script lang="ts">
 import { computed, defineComponent } from 'vue';
+
 import Explorer from '@/components/sidebar/explorer/Explorer.vue';
 
 export default defineComponent({

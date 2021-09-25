@@ -1,22 +1,29 @@
 <script lang="ts">
-import Sidebar from '@/components/sidebar/Sidebar.vue';
-import Editor from '@/components/editor/Editor.vue';
-import Sash from '@/components/Sash.vue';
+import noop from 'lodash/noop';
+import round from 'lodash/round';
+import { debounceTime } from 'rxjs/operators';
 import {
-  ref,
+  computed,
+  defineComponent,
   onMounted,
   onUnmounted,
   reactive,
+  ref,
   toRefs,
-  defineComponent,
   watch,
-  computed,
 } from 'vue';
-import { useViewportStore } from '@/store/ui/viewport.store';
-import round from 'lodash/round';
+
+import Editor from '@/components/editor/Editor.vue';
+import Sash from '@/components/Sash.vue';
+import Sidebar from '@/components/sidebar/Sidebar.vue';
+import { createAndUpdateNode, findOenNode } from '@/core/indexedDB';
 import { Move } from '@/helpers/event.helper';
-import { useThemeStore } from '@/store/ui/theme.store';
+import { Bus, eventBus } from '@/helpers/eventBus.helper';
 import { themeToString } from '@/helpers/theme.helper';
+import { useUnsubscribe } from '@/hooks/useUnsubscribe';
+import { TreeNode, useTreeStore } from '@/store/tree';
+import { useThemeStore } from '@/store/ui/theme.store';
+import { useViewportStore } from '@/store/ui/viewport.store';
 
 const MIN_WIDTH = 100;
 
@@ -35,6 +42,8 @@ export default defineComponent({
 
     const [viewportState, viewportActions] = useViewportStore();
     const [themeState] = useThemeStore();
+    const [treeState, treeActions] = useTreeStore();
+    const { push } = useUnsubscribe();
 
     const state = reactive({
       sidebarWidth: 170,
@@ -73,6 +82,17 @@ export default defineComponent({
       }
     };
 
+    const onSave = () => {
+      createAndUpdateNode(treeState.root).subscribe(noop);
+    };
+
+    findOenNode.subscribe(node => {
+      if (node) {
+        treeActions.setRoot(new TreeNode({ treeNode: node }));
+        treeActions.setParent(treeState.root);
+      }
+    });
+
     watch(
       () => viewportState.width,
       (width, prevWidth) => {
@@ -94,6 +114,8 @@ export default defineComponent({
         }
       }
     );
+
+    push(eventBus.on(Bus.App.save).pipe(debounceTime(1000)).subscribe(onSave));
 
     onMounted(() => {
       if (!appRef.value) return;

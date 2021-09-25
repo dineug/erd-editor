@@ -3,12 +3,8 @@ import { state, useViewStore, ViewNode } from '@/store/view';
 import { tabGroups } from '@/store/view/helper';
 
 export function viewFocusStart(view: ViewNode) {
-  const [treeState] = useTreeStore();
   const [, viewActions] = useViewStore();
   state.focusView = view;
-  if (!treeState.focus) {
-    // pluginManagement.editorFocusStart(view);
-  }
   if (state.previewTab && view.id !== state.previewTab.viewNode?.id) {
     viewActions.tabAddPreviewEnd();
   }
@@ -16,21 +12,16 @@ export function viewFocusStart(view: ViewNode) {
 
 export function viewFocusEnd() {
   state.focusView = null;
-  // pluginManagement.editorFocusEnd();
   const views = tabGroups(state.root);
   views.length && viewFocusStart(views[0]);
 }
 
 export function viewExplorerFocusStart() {
   const [, treeActions] = useTreeStore();
-  // pluginManagement.editorFocusEnd();
   treeActions.focusin();
 }
 
 export function viewExplorerFocusEnd() {
   const [, treeActions] = useTreeStore();
   treeActions.focusout();
-  if (state.focusView) {
-    // pluginManagement.editorFocusStart(state.viewFocus);
-  }
 }

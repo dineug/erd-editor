@@ -56,10 +56,15 @@ enum OpenFile {
   draggableEnd = 'OpenFile.draggableEnd',
 }
 
+enum App {
+  save = 'App.save',
+}
+
 export const Bus = {
   EditorTab,
   EditorViewer,
   Editor,
   TreeNode,
   OpenFile,
+  App,
 };

@@ -1,5 +1,6 @@
 import uniqBy from 'lodash/uniqBy';
 
+import { Bus, eventBus } from '@/helpers/eventBus.helper';
 import { state, TreeNode, TreeNodeType } from '@/store/tree';
 import {
   createFileNode,
@@ -15,6 +16,10 @@ export function setParent(parent: TreeNode) {
     setParent(node);
   }
   return parent;
+}
+
+export function setRoot(root: TreeNode) {
+  state.root = root;
 }
 
 export function orderByTreeNodeASC(node: TreeNode) {
@@ -36,10 +41,12 @@ export function orderByTreeNodeASC(node: TreeNode) {
 
 export function open(node: TreeNode) {
   node.open = true;
+  eventBus.emit(Bus.App.save);
 }
 
 export function close(node: TreeNode) {
   node.open = false;
+  eventBus.emit(Bus.App.save);
 }
 
 export function focusin() {
@@ -157,6 +164,7 @@ export function endRename(node: TreeNode) {
   node.edit = false;
   state.oldName = '';
   state.newNode = null;
+  eventBus.emit(Bus.App.save);
 }
 
 export function newFile() {
@@ -212,4 +220,6 @@ export function remove() {
       1
     );
   }
+  state.selectNodes = [];
+  eventBus.emit(Bus.App.save);
 }

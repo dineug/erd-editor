@@ -56,14 +56,6 @@ export class Tab {
     return getPath(this.treeNode).reverse().join('/');
   }
 
-  get value() {
-    return this.treeNode.value;
-  }
-
-  set value(v: string) {
-    this.treeNode.value = v;
-  }
-
   constructor(treeNode: TreeNode) {
     this.treeNode = treeNode;
   }

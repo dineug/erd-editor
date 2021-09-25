@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { reactive } from 'vue';
 
+import { Node } from '@/core/indexedDB';
 import { createStore } from '@/store';
 import * as actions from '@/store/tree/actions';
 import { createMock } from '@/store/tree/mock';
@@ -16,6 +17,7 @@ export interface State {
 
 interface LoadData {
   node: Partial<TreeNode>;
+  treeNode: Node;
 }
 
 export enum TreeNodeType {
@@ -34,7 +36,14 @@ export class TreeNode {
   parent: TreeNode | null = null;
   children: TreeNode[] = [];
 
-  constructor({ node }: Partial<LoadData> = {}) {
+  constructor({ node, treeNode }: Partial<LoadData> = {}) {
+    if (treeNode) {
+      Object.assign(this, treeNode);
+      this.children = treeNode.children.map(
+        childNode => new TreeNode({ treeNode: childNode })
+      );
+    }
+
     node && Object.assign(this, node);
   }
 
@@ -56,6 +65,7 @@ export class TreeNode {
 export const state = reactive<State>({
   root: new TreeNode({
     node: {
+      name: 'root',
       type: TreeNodeType.root,
       open: true,
     },
@@ -70,7 +80,7 @@ export const state = reactive<State>({
 const isDev = import.meta.env.DEV;
 
 if (isDev) {
-  state.root = actions.setParent(createMock());
+  state.root.children.push(actions.setParent(createMock()));
 }
 
 export const useTreeStore = createStore(state, actions, 'tree');

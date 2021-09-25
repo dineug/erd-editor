@@ -1,23 +1,24 @@
 <script lang="ts">
+import { fromEvent, Observable, Subscription } from 'rxjs';
+import { throttleTime } from 'rxjs/operators';
 import {
+  computed,
   defineComponent,
-  reactive,
+  nextTick,
   onMounted,
+  reactive,
   ref,
   toRefs,
-  computed,
-  nextTick,
 } from 'vue';
-import { ViewNode, Tab, useViewStore } from '@/store/view';
+
 import DropGuide from '@/components/editor/DropGuide.vue';
 import ViewerTab from '@/components/editor/ViewerTab.vue';
 import { Bus, eventBus } from '@/helpers/eventBus.helper';
 import { useUnsubscribe } from '@/hooks/useUnsubscribe';
-import { SIZE_VIEW_TAB_HEIGHT, Placement } from '@/store/view/constants';
+import { useVuerd } from '@/hooks/useVuerd';
+import { Tab, useViewStore, ViewNode } from '@/store/view';
+import { Placement, SIZE_VIEW_TAB_HEIGHT } from '@/store/view/constants';
 import { split } from '@/store/view/helper';
-
-import { fromEvent, Observable, Subscription } from 'rxjs';
-import { throttleTime } from 'rxjs/operators';
 
 export default defineComponent({
   components: {
@@ -37,6 +38,7 @@ export default defineComponent({
     });
     const viewRef = ref<HTMLElement | null>(null);
     const { push } = useUnsubscribe();
+    const { getVuerd } = useVuerd();
     const [viewState, viewActions] = useViewStore();
 
     let dragover$: Observable<DragEvent> | null = null;
@@ -48,7 +50,7 @@ export default defineComponent({
     const height = computed(() => props.node.height - SIZE_VIEW_TAB_HEIGHT);
 
     const styleMap = computed(() => ({
-      width: `${width.value - 1}px`,
+      width: `${width.value}px`,
       height: `${height.value}px`,
       top: `${SIZE_VIEW_TAB_HEIGHT}px`,
     }));
@@ -140,12 +142,8 @@ export default defineComponent({
           viewRef.value.childNodes.forEach(node =>
             viewRef.value?.removeChild(node)
           );
-          const erdEditor = document.createElement('erd-editor');
-          erdEditor.automaticLayout = true;
-          erdEditor.initLoadJson(tab.value);
-          erdEditor.addEventListener('change', (event: any) => {
-            tab.value = event.target.value;
-          });
+
+          const erdEditor = getVuerd(tab);
           viewRef.value.appendChild(erdEditor);
         });
       }

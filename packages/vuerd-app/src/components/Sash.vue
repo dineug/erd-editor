@@ -1,5 +1,6 @@
 <script lang="ts">
-import { defineComponent, computed } from 'vue';
+import { computed,defineComponent } from 'vue';
+
 import { globalEvent, Move } from '@/helpers/event.helper';
 
 const SIZE_SASH = 5;

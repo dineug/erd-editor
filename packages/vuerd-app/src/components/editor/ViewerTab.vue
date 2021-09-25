@@ -1,13 +1,14 @@
 <script lang="ts">
-import { defineComponent, reactive, onMounted, ref, computed } from 'vue';
-import { ViewNode, useViewStore, Tab } from '@/store/view';
-import { SIZE_VIEW_TAB_HEIGHT } from '@/store/view/constants';
-import { Bus, eventBus } from '@/helpers/eventBus.helper';
+import { fromEvent, Observable, Subject,Subscription } from 'rxjs';
+import { debounceTime,throttleTime } from 'rxjs/operators';
+import { computed,defineComponent, onMounted, reactive, ref } from 'vue';
+
 import Icon from '@/components/Icon.vue';
-import { fromEvent, Observable, Subscription, Subject } from 'rxjs';
-import { throttleTime, debounceTime } from 'rxjs/operators';
 import { findParentLiByElement, getData } from '@/helpers';
+import { Bus, eventBus } from '@/helpers/eventBus.helper';
 import { useUnsubscribe } from '@/hooks/useUnsubscribe';
+import { Tab,useViewStore, ViewNode } from '@/store/view';
+import { SIZE_VIEW_TAB_HEIGHT } from '@/store/view/constants';
 
 const TAB_PADDING = 42.5;
 

@@ -1,18 +1,19 @@
 <script lang="ts">
-import {
-  defineComponent,
-  ref,
-  PropType,
-  reactive,
-  computed,
-  onMounted,
-  watch,
-} from 'vue';
-import { Placement, SIZE_VIEW_TAB_HEIGHT } from '@/store/view/constants';
+import { Easing, Tween } from '@tweenjs/tween.js';
 import { fromEvent } from 'rxjs';
 import { throttleTime } from 'rxjs/operators';
+import {
+  computed,
+  defineComponent,
+  onMounted,
+  PropType,
+  reactive,
+  ref,
+  watch,
+} from 'vue';
+
 import { useUnsubscribe } from '@/hooks/useUnsubscribe';
-import { Easing, Tween } from '@tweenjs/tween.js';
+import { Placement, SIZE_VIEW_TAB_HEIGHT } from '@/store/view/constants';
 
 interface State {
   top: number;

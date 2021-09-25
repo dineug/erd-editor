@@ -1,17 +1,18 @@
 <script lang="ts">
-import { defineComponent, computed, watch, onMounted, ref } from 'vue';
-import { useViewportStore } from '@/store/ui/viewport.store';
-import { useViewStore, ViewNode } from '@/store/view';
-import SplitView from '@/components/editor/SplitView.vue';
-import {
-  resetWidthRatio,
-  resetHeightRatio,
-  resetSize,
-} from '@/store/view/helper';
-import { Bus, eventBus } from '@/helpers/eventBus.helper';
-import { useUnsubscribe } from '@/hooks/useUnsubscribe';
 import { fromEvent, Subscription } from 'rxjs';
 import { throttleTime } from 'rxjs/operators';
+import { computed, defineComponent, onMounted, ref,watch } from 'vue';
+
+import SplitView from '@/components/editor/SplitView.vue';
+import { Bus, eventBus } from '@/helpers/eventBus.helper';
+import { useUnsubscribe } from '@/hooks/useUnsubscribe';
+import { useViewportStore } from '@/store/ui/viewport.store';
+import { useViewStore, ViewNode } from '@/store/view';
+import {
+  resetHeightRatio,
+  resetSize,
+  resetWidthRatio,
+} from '@/store/view/helper';
 
 export default defineComponent({
   components: {

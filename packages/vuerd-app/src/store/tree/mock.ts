@@ -3,7 +3,7 @@ import { TreeNode, TreeNodeType } from '@/store/tree';
 export const createMock = () =>
   new TreeNode({
     node: {
-      name: 'vuerd-app',
+      name: 'example',
       open: true,
       children: [
         new TreeNode({

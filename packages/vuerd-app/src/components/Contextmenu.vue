@@ -1,16 +1,17 @@
 <script lang="ts">
 import {
-  defineComponent,
-  reactive,
-  ref,
   computed,
-  toRefs,
+  defineComponent,
   onUnmounted,
   PropType,
+  reactive,
+  ref,
+  toRefs,
   watch,
 } from 'vue';
-import { Menu } from '@@types/menu';
+
 import Icon from '@/components/Icon.vue';
+import { Menu } from '@@types/menu';
 
 const SIZE_CONTEXTMENU_HEIGHT = 40;
 
@@ -115,7 +116,7 @@ Contextmenu(v-if="menu?.children?.length" :menus="menu.children" :x="childrenX" 
 <style scoped lang="scss">
 .contextmenu {
   @apply fixed flex flex-col;
-  z-index: 1;
+  z-index: 9000;
   background-color: var(--contextmenu-background);
 
   .contextmenu-item {

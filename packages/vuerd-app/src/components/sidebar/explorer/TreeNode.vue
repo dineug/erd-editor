@@ -1,15 +1,16 @@
 <script lang="ts">
 import {
-  defineComponent,
   computed,
-  ref,
-  watch,
+  defineComponent,
   nextTick,
   onMounted,
+  ref,
+  watch,
 } from 'vue';
-import { TreeNode, useTreeStore, TreeNodeType } from '@/store/tree';
+
 import Icon from '@/components/Icon.vue';
 import { validFileName } from '@/helpers';
+import { TreeNode, TreeNodeType, useTreeStore } from '@/store/tree';
 import { useViewStore } from '@/store/view';
 
 const defaultPaddingLeft = 6;
@@ -86,6 +87,7 @@ export default defineComponent({
       const el = event.target as HTMLInputElement | null;
       if (!el) return;
       el.value = validFileName(el.value);
+      // eslint-disable-next-line vue/no-mutating-props
       props.node.name = el.value;
     };
 
