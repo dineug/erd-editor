@@ -9,7 +9,7 @@ const resolvePath = (p: string) => path.resolve(__dirname, `./${p}`);
 const customElements = ['erd-editor'];
 
 export default ({ mode }) => {
-  const isSub = mode === 'sub';
+  const isSub = process.env.MODE_ENV === 'sub';
 
   return defineConfig({
     envDir: resolvePath('environment'),

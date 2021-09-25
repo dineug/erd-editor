@@ -17,7 +17,7 @@
     "serve": "vite",
     "https-preview": "serve dist",
     "build": "cross-env NODE_ENV=production vite build",
-    "build:sub": "cross-env NODE_ENV=production vite build --mode sub",
+    "build:sub": "cross-env NODE_ENV=production MODE_ENV=sub vite build",
     "tsc": "vue-tsc --noEmit --skipLibCheck"
   },
   "dependencies": {
