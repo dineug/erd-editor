@@ -1,11 +1,11 @@
 <script lang="ts">
-import { fromEvent, Subject,Subscription } from 'rxjs';
-import { debounceTime,throttleTime } from 'rxjs/operators';
+import { fromEvent, Subject, Subscription } from 'rxjs';
+import { debounceTime, throttleTime } from 'rxjs/operators';
 import { computed, defineComponent, ref } from 'vue';
 
 import Icon from '@/components/Icon.vue';
-import { findParentLiByElement,getData } from '@/helpers';
-import { Bus,eventBus } from '@/helpers/eventBus.helper';
+import { findParentLiByElement, getData } from '@/helpers';
+import { Bus, eventBus } from '@/helpers/eventBus.helper';
 import { useUnsubscribe } from '@/hooks/useUnsubscribe';
 import { Tab, useViewStore, ViewNode } from '@/store/view';
 import { tabGroups } from '@/store/view/helper';

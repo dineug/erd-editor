@@ -6,6 +6,7 @@ import {
   createFileNode,
   createFolderNode,
   getCurrentNode,
+  isChildren,
   orderByNameASC,
   rangeNodes,
 } from '@/store/tree/helper';
@@ -214,6 +215,8 @@ export function newFolder() {
 }
 
 export function remove() {
+  if (!state.selectNodes.length) return;
+
   for (const node of state.selectNodes) {
     node.parent?.children.splice(
       node.parent.children.findIndex(v => v.id === node.id),
@@ -221,5 +224,33 @@ export function remove() {
     );
   }
   state.selectNodes = [];
+  eventBus.emit(Bus.App.save);
+}
+
+export function move(targetNode: TreeNode | null) {
+  const nodes = targetNode
+    ? state.selectNodes.filter(node => !isChildren(node, targetNode.id))
+    : state.selectNodes;
+  if (!nodes.length) return;
+
+  nodes.forEach(node => {
+    if (!node.parent) return;
+
+    node.parent.children.splice(
+      node.parent.children.findIndex(v => v.id === node.id),
+      1
+    );
+  });
+
+  if (targetNode) {
+    targetNode.children.push(...nodes);
+    orderByTreeNodeASC(targetNode);
+    setParent(targetNode);
+  } else {
+    state.root.children.push(...nodes);
+    orderByTreeNodeASC(state.root);
+    setParent(state.root);
+  }
+
   eventBus.emit(Bus.App.save);
 }

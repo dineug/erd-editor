@@ -1,3 +1,6 @@
+import { from } from '@reactivex/ix-ts/iterable';
+import { filter, take } from '@reactivex/ix-ts/iterable/operators';
+
 import { range } from '@/helpers';
 import { state, TreeNode, TreeNodeType } from '@/store/tree';
 
@@ -24,3 +27,19 @@ export function getPath(node: TreeNode, paths: string[] = []) {
   node.parent && getPath(node.parent, paths);
   return paths;
 }
+
+export function getDeepChildrenNode(
+  parent: TreeNode,
+  targetId: string
+): TreeNode | null {
+  const [targetNode] = [
+    ...from(parent).pipe(
+      filter(node => node.id === targetId),
+      take(1)
+    ),
+  ];
+  return targetNode ?? null;
+}
+
+export const isChildren = (parent: TreeNode, targetId: string) =>
+  !!getDeepChildrenNode(parent, targetId);

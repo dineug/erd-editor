@@ -10,6 +10,7 @@ import {
 
 import Icon from '@/components/Icon.vue';
 import { validFileName } from '@/helpers';
+import { useTreeNodeDraggable } from '@/hooks/useTreeNodeDraggable';
 import { TreeNode, TreeNodeType, useTreeStore } from '@/store/tree';
 import { useViewStore } from '@/store/view';
 
@@ -38,6 +39,7 @@ export default defineComponent({
     const [treeState, treeActions] = useTreeStore();
     const [, viewActions] = useViewStore();
     const renameRef = ref<HTMLInputElement | null>(null);
+    const draggable = useTreeNodeDraggable(props.node);
 
     const isRoot = computed(() => props.depth === 0);
     const isFolder = computed(() => foldTypes.includes(props.node.type));
@@ -117,6 +119,7 @@ export default defineComponent({
       onBlur,
       onInput,
       onOpenFile,
+      ...draggable,
     };
   },
 });
@@ -126,10 +129,17 @@ export default defineComponent({
 .tree-node(
   v-if="!isRoot"
   class="flex items-center h-6 cursor-pointer"
+  :class="guideClassMap"
   :style="styleMap"
+  draggable="true"
   @mousedown="onSelect"
   @click="onClick"
   @dblclick="onOpenFile"
+  @dragstart="onDragstart"
+  @dragend="onDragend"
+  @dragenter.prevent="onDragenter"
+  @dragleave="onDragleave"
+  @dragover.prevent="onDragover"
 )
   div(
     class="flex items-center h-full"
@@ -151,15 +161,25 @@ TreeNode(
 </template>
 
 <style lang="scss">
-input.rename {
-  width: 100%;
-  outline: none;
+.tree-node {
   border: 1px solid transparent;
-  background-color: var(--sidebar-background);
-  color: var(--font-foreground);
+  box-sizing: border-box;
 
-  &:focus {
-    border-color: var(--focus-color);
+  &.guide-folder {
+    color: var(--font-foreground);
+    border: 1px solid var(--focus-color);
+  }
+
+  input.rename {
+    width: 100%;
+    outline: none;
+    border: 1px solid transparent;
+    background-color: var(--sidebar-background);
+    color: var(--font-foreground);
+
+    &:focus {
+      border-color: var(--focus-color);
+    }
   }
 }
 </style>
