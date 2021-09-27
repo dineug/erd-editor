@@ -1,5 +1,6 @@
-<script lang="tsx">
-import { defineComponent } from 'vue';
+<script lang="ts">
+import { computed, defineComponent } from 'vue';
+
 import { getIcon } from '@/core/icon';
 
 const SIZE = 24;
@@ -25,30 +26,38 @@ export default defineComponent({
     },
   },
   setup(props) {
-    const icon = getIcon(props.prefix, props.name);
-    if (!icon) return () => <div />;
+    const attr = computed(() => {
+      const icon = getIcon(props.prefix, props.name);
+      if (!icon) return null;
 
-    const [width, height, , , d] = icon.icon;
-    const rem = SIZE_REM * (props.size / SIZE);
+      const [width, height, , , d] = icon.icon;
+      const rem = SIZE_REM * (props.size / SIZE);
 
-    return () => (
-      <svg
-        class="svg-icon"
-        style={{
+      return {
+        style: {
           width: `${rem}rem`,
           height: `${rem}rem`,
-        }}
-        viewBox={`0 0 ${width} ${height}`}
-      >
-        <path d={d} fill={props.color}></path>
-      </svg>
-    );
+        },
+        viewBox: `0 0 ${width} ${height}`,
+        d,
+      };
+    });
+
+    return {
+      attr,
+    };
   },
 });
 </script>
 
+<template lang="pug">
+svg.svg-icon(v-if="attr" :style="attr.style" :viewBox="attr.viewBox")
+  path(:d="attr.d" :fill="color")
+</template>
+
 <style scoped lang="scss">
 .svg-icon {
+  display: inline-flex;
   transition: fill 0.15s;
 }
 </style>

@@ -1,5 +1,5 @@
-import {} from '@fortawesome/free-solid-svg-icons';
-import { mdiChevronDown, mdiChevronRight } from '@mdi/js';
+import { faChevronRight } from '@fortawesome/free-solid-svg-icons';
+import { mdiChevronDown, mdiChevronRight, mdiClose } from '@mdi/js';
 
 export interface IconDefinition {
   prefix: string;
@@ -20,8 +20,10 @@ export const createMDI = (name: string, icon: string): IconDefinition => ({
 });
 
 const icons = [
+  faChevronRight,
   createMDI('chevron-down', mdiChevronDown),
   createMDI('chevron-right', mdiChevronRight),
+  createMDI('close', mdiClose),
 ] as IconDefinition[];
 
 const iconMap = icons.reduce<Record<string, IconDefinition>>((acc, cur) => {

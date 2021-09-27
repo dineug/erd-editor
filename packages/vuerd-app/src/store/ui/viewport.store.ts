@@ -8,4 +8,4 @@ export const state = reactive({
   height: 0,
 });
 
-export const useViewportStore = createStore(state, actions);
+export const useViewportStore = createStore(state, actions, 'viewport');

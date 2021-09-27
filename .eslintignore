@@ -7,3 +7,4 @@ storybook-static
 docker/**/data
 
 packages/vuerd-vscode/out
+packages/vuerd-vscode/static
