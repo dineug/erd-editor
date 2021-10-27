@@ -190,65 +190,67 @@ export default class WebviewERD {
   }
 
   loadLiquibase = (webview: Webview, uri: string) => {
-    const liquibaseFiles: LiquibaseFile[] = loadLiquibaseFiles(uri);
-    if (!liquibaseFiles.length) return;
+    try {
+      const liquibaseFiles: LiquibaseFile[] = loadLiquibaseFiles(uri);
+      if (!liquibaseFiles.length) return;
 
-    const increment = 100 / liquibaseFiles.length;
-    var currentFile = 0;
+      const increment = 100 / liquibaseFiles.length;
+      var currentFile = 0;
 
-    // progress bar
-    window.withProgress(
-      {
-        location: ProgressLocation.Notification,
-        title: 'Importing Liquibase changelogs',
-        cancellable: true,
-      },
-      (progress, token) => {
-        const returnPromise = new Promise<void>(resolve => {
-          // listen to event `progress` and increment bar
-          const listener = this.panel.webview.onDidReceiveMessage(message => {
-            if (
-              message.command === 'progress' &&
-              currentFile < liquibaseFiles.length
-            ) {
-              currentFile++;
-              progress.report({
-                increment: increment,
-                message: `[${currentFile}/${liquibaseFiles.length}] ${message.message}`,
-              });
-            } else if (message.command === 'progressEnd') {
-              console.log('Done loading files');
-              listener.dispose();
-              progress.report({
-                increment: 0,
-                message: 'Done loading files...',
-              });
-              setTimeout(() => {
-                resolve();
-              }, 5000);
-            }
+      // progress bar
+      window.withProgress(
+        {
+          location: ProgressLocation.Notification,
+          title: 'Importing Liquibase changelogs',
+          cancellable: true,
+        },
+        (progress, token) => {
+          const returnPromise = new Promise<void>(resolve => {
+            // listen to event `progress` and increment bar
+            const listener = this.panel.webview.onDidReceiveMessage(message => {
+              if (
+                message.command === 'progress' &&
+                currentFile < liquibaseFiles.length
+              ) {
+                currentFile++;
+                progress.report({
+                  increment: increment,
+                  message: `[${currentFile}/${liquibaseFiles.length}] ${message.message}`,
+                });
+              } else if (message.command === 'progressEnd') {
+                console.log('Done loading files');
+                listener.dispose();
+                progress.report({
+                  increment: 0,
+                  message: 'Done loading files...',
+                });
+                setTimeout(() => {
+                  resolve();
+                }, 5000);
+              }
+            });
+
+            this.disposables.push(
+              listener,
+              token.onCancellationRequested(() => {
+                listener.dispose();
+              })
+            );
           });
 
-          this.disposables.push(
-            listener,
-            token.onCancellationRequested(() => {
-              listener.dispose();
-            })
-          );
-        });
+          progress.report({
+            increment: currentFile,
+            message: `Please open Vuerd to import Liquibase changes.`,
+          });
 
-        progress.report({
-          increment: currentFile,
-          message: `Please open Vuerd to import Liquibase changes.`,
-        });
+          return returnPromise;
+        }
+      );
 
-        return returnPromise;
-      }
-    );
-
-    webview.postMessage({
-      command: 'loadLiquibase',
-      value: { files: liquibaseFiles, type: 'vscode' },
-    });
+      webview.postMessage({
+        command: 'loadLiquibase',
+        value: { files: liquibaseFiles, type: 'vscode' },
+      });
+    } catch (e) {}
   };
 }
