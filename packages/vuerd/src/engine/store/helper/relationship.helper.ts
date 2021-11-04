@@ -544,11 +544,11 @@ function relationshipOverlaySort(
     graph[direction]
   );
 
-  if (distances.length > 1) {
-    if (!relationshipOverlayFirstCheck(direction, distances[0], point)) {
-      distances = distances.reverse();
-    }
-  }
+  // if (distances.length > 1) {
+  //   if (!relationshipOverlayFirstCheck(direction, distances[0], point)) {
+  //     distances = distances.reverse();
+  //   }
+  // }
 
   if (direction === 'left' || direction === 'right') {
     point.yArray.forEach((y, index) => {

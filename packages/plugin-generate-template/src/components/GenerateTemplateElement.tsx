@@ -100,7 +100,6 @@ export class GenerateTemplateElement extends HTMLElement {
     } catch (e) {
       this.stores.dataType.fetch([]);
       this.stores.template.fetch([]);
-      console.error(e);
     }
   }
 
