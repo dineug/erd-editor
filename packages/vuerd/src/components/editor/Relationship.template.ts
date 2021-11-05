@@ -265,7 +265,7 @@ export function relationshipTpl(
         }
       });
 
-      if (svgPaths.length) {
+      if (svgPaths.length > 1) {
         d = svgPaths.join(' ');
       }
     } catch (e) {}
