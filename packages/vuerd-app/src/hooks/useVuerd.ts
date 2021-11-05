@@ -17,7 +17,6 @@ const createVuerd = (node: TreeNode) => {
   erdEditor.initLoadJson(node.value);
   erdEditor.addEventListener('change', (event: any) => {
     node.value = event.target.value;
-    console.log(node.value);
     eventBus.emit(Bus.App.save);
   });
   return erdEditor;
