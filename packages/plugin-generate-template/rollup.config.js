@@ -12,6 +12,7 @@ const { plugins, banner } = config();
 export default [
   {
     input: 'src/index.ts',
+    context: 'globalThis',
     output: [
       {
         file: pkg.module,

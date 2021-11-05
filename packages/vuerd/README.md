@@ -11,7 +11,6 @@
 ## Document
 
 - [Playground](https://vuerd.github.io)
-- [Storybook](https://vuerd.github.io/vuerd/)
 - [Import SQL DDL support syntax](https://github.com/vuerd/vuerd/blob/master/packages/sql-ddl-parser/src/SQL_DDL_Test_Case.md)
 - [vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
 - [atom extension](https://atom.io/packages/vuerd-atom)

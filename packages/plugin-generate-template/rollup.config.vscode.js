@@ -9,6 +9,7 @@ const { plugins, banner } = config();
 
 export default {
   input: 'src/index.ts',
+  context: 'globalThis',
   output: {
     name: pkg.name,
     file: `../vuerd-vscode/static/generate-template.min.js`,
