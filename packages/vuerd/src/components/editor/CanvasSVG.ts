@@ -72,7 +72,7 @@ const CanvasSVG: FunctionalComponent<CanvasSVGProps, CanvasSVGElement> = (
         canvasState: { width, height },
       },
     } = contextRef.value;
-    const key = `${width},${height}`;
+    const key = `${width}:${height}`;
 
     return gridCache.has(key)
       ? (gridCache.get(key) as PF.Grid)
@@ -100,11 +100,13 @@ const CanvasSVG: FunctionalComponent<CanvasSVGProps, CanvasSVGElement> = (
         y + Math.round((table.height() + TABLE_MARGIN) * ratio)
       );
 
-      for (let i = range(x); i < maxWidth; i++) {
-        for (let j = range(y); j < maxHeight; j++) {
-          grid.setWalkableAt(i, j, false);
+      try {
+        for (let i = range(x); i < maxWidth; i++) {
+          for (let j = range(y); j < maxHeight; j++) {
+            grid.setWalkableAt(i, j, false);
+          }
         }
-      }
+      } catch (e) {}
     });
 
     return grid;
@@ -145,14 +147,7 @@ const CanvasSVG: FunctionalComponent<CanvasSVGProps, CanvasSVGElement> = (
               @mouseover=${() => onMouseover(relationship)}
               @mouseleave=${() => onMouseleave(relationship)}
             >
-              ${relationshipTpl(
-                relationship,
-                3,
-                grid.clone(),
-                ratio,
-                width,
-                height
-              )}
+              ${relationshipTpl(relationship, 3, grid, ratio, width, height)}
             </g>
           `
             : null

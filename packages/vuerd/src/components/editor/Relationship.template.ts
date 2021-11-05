@@ -240,7 +240,7 @@ export function relationshipTpl(
         Math.round(path.path.M.y * ratio),
         Math.round(path.path.L.x * ratio),
         Math.round(path.path.L.y * ratio),
-        grid
+        grid.clone()
       );
       const paths = PF.Util.compressPath(fullPaths);
       const len = paths.length;
