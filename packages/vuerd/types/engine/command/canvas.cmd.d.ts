@@ -60,6 +60,10 @@ export interface ChangeRelationshipDataTypeSync {
   value: boolean;
 }
 
+export interface ChangeRelationshipOptimization {
+  value: boolean;
+}
+
 export interface MoveColumnOrder {
   columnType: ColumnType;
   targetColumnType: ColumnType;
@@ -92,6 +96,7 @@ export interface CanvasCommandMap {
   'canvas.changeTableCase': ChangeNameCase;
   'canvas.changeColumnCase': ChangeNameCase;
   'canvas.changeRelationshipDataTypeSync': ChangeRelationshipDataTypeSync;
+  'canvas.changeRelationshipOptimization': ChangeRelationshipOptimization;
   'canvas.moveColumnOrder': MoveColumnOrder;
   'canvas.changeHighlightTheme': ChangeHighlightTheme;
   'canvas.changeBracketType': ChangeBracketType;

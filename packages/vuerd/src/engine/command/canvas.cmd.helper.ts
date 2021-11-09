@@ -57,6 +57,9 @@ export const changeColumnCase = (nameCase: NameCase) =>
 export const changeRelationshipDataTypeSync = (value: boolean) =>
   createCommand('canvas.changeRelationshipDataTypeSync', { value });
 
+export const changeRelationshipOptimization = (value: boolean) =>
+  createCommand('canvas.changeRelationshipOptimization', { value });
+
 export const moveColumnOrder = (
   columnType: ColumnType,
   targetColumnType: ColumnType

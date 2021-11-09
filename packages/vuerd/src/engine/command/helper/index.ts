@@ -71,6 +71,7 @@ export const changeCommandTypes: CommandKey[] = [
   'canvas.changeTableCase',
   'canvas.changeColumnCase',
   'canvas.changeRelationshipDataTypeSync',
+  'canvas.changeRelationshipOptimization',
   'canvas.moveColumnOrder',
   'canvas.changeHighlightTheme',
   'canvas.changeBracketType',

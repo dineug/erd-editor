@@ -15,6 +15,7 @@ import {
   ChangeNameCase,
   ChangePluginSerialization,
   ChangeRelationshipDataTypeSync,
+  ChangeRelationshipOptimization,
   MoveCanvas,
   MoveColumnOrder,
   MovementCanvas,
@@ -138,6 +139,13 @@ export function executeChangeRelationshipDataTypeSync(
   setting.relationshipDataTypeSync = data.value;
 }
 
+export function executeChangeRelationshipOptimization(
+  { canvasState: { setting } }: State,
+  data: ChangeRelationshipOptimization
+) {
+  setting.relationshipOptimization = data.value;
+}
+
 export function executeMoveColumnOrder(
   {
     canvasState: {
@@ -195,6 +203,8 @@ export const executeCanvasCommandMap: Record<
   'canvas.changeColumnCase': executeChangeColumnCase,
   'canvas.changeRelationshipDataTypeSync':
     executeChangeRelationshipDataTypeSync,
+  'canvas.changeRelationshipOptimization':
+    executeChangeRelationshipOptimization,
   'canvas.moveColumnOrder': executeMoveColumnOrder,
   'canvas.changeHighlightTheme': executeChangeHighlightTheme,
   'canvas.changeBracketType': executeChangeBracketType,

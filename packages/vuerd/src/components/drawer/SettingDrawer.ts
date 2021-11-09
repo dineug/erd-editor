@@ -15,6 +15,7 @@ import { useContext } from '@/core/hooks/context.hook';
 import { fromShadowDraggable } from '@/core/observable/fromShadowDraggable';
 import {
   changeRelationshipDataTypeSync,
+  changeRelationshipOptimization,
   moveColumnOrder,
 } from '@/engine/command/canvas.cmd.helper';
 import { relationshipSort } from '@/engine/store/helper/relationship.helper';
@@ -59,6 +60,12 @@ const SettingDrawer: FunctionalComponent<
     const checkbox = event.target as HTMLInputElement;
     const { store } = contextRef.value;
     store.dispatch(changeRelationshipDataTypeSync(checkbox.checked));
+  };
+
+  const onChangeRelationshipOptimization = (event: Event) => {
+    const checkbox = event.target as HTMLInputElement;
+    const { store } = contextRef.value;
+    store.dispatch(changeRelationshipOptimization(checkbox.checked));
   };
 
   const onMoveColumnOrder = (
@@ -128,6 +135,17 @@ const SettingDrawer: FunctionalComponent<
                   ?checked=${setting.relationshipDataTypeSync}
                   ?disabled=${readonly}
                   @change=${onChangeRelationshipDataTypeSync}
+                />
+              </td>
+            </tr>
+            <tr>
+              <td>Relationship Optimization</td>
+              <td>
+                <input
+                  type="checkbox"
+                  ?checked=${setting.relationshipOptimization}
+                  ?disabled=${readonly}
+                  @change=${onChangeRelationshipOptimization}
                 />
               </td>
             </tr>

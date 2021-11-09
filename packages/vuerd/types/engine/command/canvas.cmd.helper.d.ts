@@ -66,6 +66,10 @@ export declare function changeRelationshipDataTypeSync(
   value: boolean
 ): CommandType<'canvas.changeRelationshipDataTypeSync'>;
 
+export declare function changeRelationshipOptimization(
+  value: boolean
+): CommandType<'canvas.changeRelationshipOptimization'>;
+
 export declare function moveColumnOrder(
   columnType: ColumnType,
   targetColumnType: ColumnType

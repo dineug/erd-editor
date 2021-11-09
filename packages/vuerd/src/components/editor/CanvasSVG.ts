@@ -115,12 +115,16 @@ const CanvasSVG: FunctionalComponent<CanvasSVGProps, CanvasSVGElement> = (
   return () => {
     const {
       store: {
-        canvasState: { width, height },
+        canvasState: {
+          width,
+          height,
+          setting: { relationshipOptimization },
+        },
         relationshipState: { relationships },
       },
     } = contextRef.value;
     const ratio = getRatio();
-    const grid = createGrid();
+    const grid = relationshipOptimization ? createGrid() : null;
 
     return svg`
       <svg

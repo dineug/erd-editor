@@ -319,6 +319,12 @@ export function executeLoadJson(state: State, data: LoadJson) {
                 canvasJson.setting.relationshipDataTypeSync;
             }
             if (
+              typeof canvasJson.setting.relationshipOptimization === 'boolean'
+            ) {
+              canvasState.setting.relationshipOptimization =
+                canvasJson.setting.relationshipOptimization;
+            }
+            if (
               Array.isArray(canvasJson.setting.columnOrder) &&
               canvasJson.setting.columnOrder.length === 7 &&
               canvasJson.setting.columnOrder.indexOf('columnName') !== -1 &&

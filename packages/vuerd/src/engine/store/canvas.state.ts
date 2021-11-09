@@ -103,6 +103,7 @@ export const createCanvasState = (): CanvasState => ({
   bracketType: 'none',
   setting: {
     relationshipDataTypeSync: true,
+    relationshipOptimization: false,
     columnOrder: [
       'columnName',
       'columnDataType',

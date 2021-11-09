@@ -33,6 +33,7 @@ export type ShowKey = keyof Show;
 
 export interface Setting {
   relationshipDataTypeSync: boolean; // ADD: version 1.1.0
+  relationshipOptimization: boolean; // ADD: version 2.2.10
   columnOrder: ColumnType[]; // ADD: version 1.1.1
 }
 
