@@ -22,7 +22,8 @@ import {
   RemoveColumn,
 } from '@@types/engine/command/column.cmd';
 import { Relationship } from '@@types/engine/store/relationship.state';
-import { Column, Index } from '@@types/engine/store/table.state';
+import { Index } from '@@types/engine/store/table.state';
+import { Column } from '@@types/engine/store/table.state';
 
 export function executeAddColumn(
   store: IStore,

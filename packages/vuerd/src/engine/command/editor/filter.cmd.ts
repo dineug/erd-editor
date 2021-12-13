@@ -12,13 +12,13 @@ import {
 } from '@/engine/command/helper/editor/filter.helper';
 import { FilterModel } from '@/engine/store/models/filter.model';
 import { ExecuteCommand } from '@/internal-types/command';
+import { FilterCommandMap } from '@@types/engine/command/editor/filter.cmd';
 import {
   AddFilter,
   changeFilterCode,
   ChangeFilterColumnType,
   ChangeFilterValue,
   ChangeOperatorType,
-  FilterCommandMap,
   Focus,
   FocusFilter,
   FocusMove,

@@ -12,13 +12,13 @@ import {
 } from '@/engine/store/helper/valid.helper';
 import { ColumnModel } from '@/engine/store/models/column.model';
 import { ExecuteCommand } from '@/internal-types/command';
+import { ColumnCommandMap } from '@@types/engine/command/column.cmd';
 import {
   ActiveColumn,
   AddColumn,
   AddCustomColumn,
   ChangeColumnOption,
   ChangeColumnValue,
-  ColumnCommandMap,
   LoadColumn,
   MoveColumn,
   RemoveColumn,

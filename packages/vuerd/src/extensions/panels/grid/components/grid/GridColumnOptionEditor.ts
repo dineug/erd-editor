@@ -1,3 +1,5 @@
+import './ColumnOptionEditor';
+
 import { ColumnOptionEditorElement } from './ColumnOptionEditor';
 
 export class GridColumnOptionEditor {

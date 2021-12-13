@@ -3,16 +3,10 @@ import { Logger } from '@/core/logger';
 import { Statement } from '@/core/parser/index';
 import { Translation, translations } from '@/core/parser/translations';
 import { Database } from '@@types/engine/store/canvas.state';
-import {
-  Relationship,
-  RelationshipState,
-} from '@@types/engine/store/relationship.state';
-import {
-  Column,
-  Index,
-  Table,
-  TableState,
-} from '@@types/engine/store/table.state';
+import { Relationship } from '@@types/engine/store/relationship.state';
+import { RelationshipState } from '@@types/engine/store/relationship.state';
+import { Column, Index, Table } from '@@types/engine/store/table.state';
+import { TableState } from '@@types/engine/store/table.state';
 
 export type Dialect = keyof Translation;
 export type Operation =

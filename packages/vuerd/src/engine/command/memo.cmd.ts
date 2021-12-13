@@ -2,12 +2,12 @@ import { getData } from '@/core/helper';
 import { SIZE_MEMO_PADDING } from '@/core/layout';
 import { MemoModel } from '@/engine/store/models/memo.model';
 import { ExecuteCommand } from '@/internal-types/command';
+import { MemoCommandMap } from '@@types/engine/command/memo.cmd';
 import {
   AddMemo,
   ChangeColorMemo,
   ChangeMemoValue,
   DragSelectMemo,
-  MemoCommandMap,
   MoveMemo,
   RemoveMemo,
   ResizeMemo,

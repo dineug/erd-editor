@@ -1,4 +1,5 @@
 import '@/components/editor/Input';
+import './column/Column';
 
 import { Easing, Tween } from '@tweenjs/tween.js';
 import {

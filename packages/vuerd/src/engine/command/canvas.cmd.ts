@@ -3,8 +3,8 @@ import round from 'lodash/round';
 import { createBalanceRange } from '@/core/helper';
 import { zoomBalanceRange } from '@/engine/store/helper/canvas.helper';
 import { ExecuteCommand } from '@/internal-types/command';
+import { CanvasCommandMap } from '@@types/engine/command/canvas.cmd';
 import {
-  CanvasCommandMap,
   ChangeBracketType,
   ChangeCanvasShow,
   ChangeCanvasType,
