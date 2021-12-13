@@ -9,12 +9,12 @@ import {
 } from '@/engine/store/canvas.state';
 import { validStartRelationship } from '@/engine/store/helper/valid.helper';
 import { ExecuteCommand } from '@/internal-types/command';
-import { EditorCommandMap } from '@@types/engine/command/editor.cmd';
 import {
   CopyColumn,
   DrawRelationship,
   DrawStartAddRelationship,
   DrawStartRelationship,
+  EditorCommandMap,
   FocusColumn,
   FocusMoveTable,
   FocusTable,
@@ -22,8 +22,7 @@ import {
   LoadJson,
   ReadonlyEditor,
 } from '@@types/engine/command/editor.cmd';
-import { ExportedStore } from '@@types/engine/store';
-import { State } from '@@types/engine/store';
+import { ExportedStore, State } from '@@types/engine/store';
 import { DraggableColumn, Viewport } from '@@types/engine/store/editor.state';
 import { Memo } from '@@types/engine/store/memo.state';
 import { Relationship } from '@@types/engine/store/relationship.state';

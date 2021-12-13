@@ -1,3 +1,4 @@
+/* eslint-disable import/no-duplicates */
 import './FilterRadioEditor';
 import './FilterItem';
 import './FilterInput';

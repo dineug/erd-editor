@@ -8,18 +8,16 @@ import {
 import { TableModel } from '@/engine/store/models/table.model';
 import { ExecuteCommand } from '@/internal-types/command';
 import {
-  ChangeColorTable,
-  HideTable,
-  ShowTable,
-  TableCommandMap,
-} from '@@types/engine/command/table.cmd';
-import {
   AddTable,
+  ChangeColorTable,
   ChangeTableValue,
   DragSelectTable,
+  HideTable,
   MoveTable,
   RemoveTable,
   SelectTable,
+  ShowTable,
+  TableCommandMap,
 } from '@@types/engine/command/table.cmd';
 import { State } from '@@types/engine/store';
 import { PureTable } from '@@types/engine/store/table.state';

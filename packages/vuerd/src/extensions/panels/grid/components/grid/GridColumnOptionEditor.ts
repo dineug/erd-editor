@@ -1,3 +1,4 @@
+/* eslint-disable import/no-duplicates */
 import './ColumnOptionEditor';
 
 import { ColumnOptionEditorElement } from './ColumnOptionEditor';

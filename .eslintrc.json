@@ -4,7 +4,13 @@
     "browser": true,
     "node": true
   },
-  "plugins": ["prettier", "@typescript-eslint", "simple-import-sort", "vue"],
+  "plugins": [
+    "prettier",
+    "@typescript-eslint",
+    "simple-import-sort",
+    "import",
+    "vue"
+  ],
   "extends": ["plugin:vue/vue3-recommended", "prettier"],
   "parser": "vue-eslint-parser",
   "parserOptions": {
@@ -23,6 +29,9 @@
     "@typescript-eslint/ban-ts-comment": "off",
     "@typescript-eslint/ban-types": "off",
     "simple-import-sort/imports": "error",
-    "simple-import-sort/exports": "error"
+    "simple-import-sort/exports": "error",
+    "import/first": "error",
+    "import/newline-after-import": "error",
+    "import/no-duplicates": "error"
   }
 }

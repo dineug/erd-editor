@@ -1,3 +1,4 @@
+/* eslint-disable import/no-duplicates */
 import './ColumnDataTypeEditor';
 
 import { ColumnDataTypeEditorElement } from './ColumnDataTypeEditor';
