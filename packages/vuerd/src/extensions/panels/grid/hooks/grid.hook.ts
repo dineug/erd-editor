@@ -15,12 +15,10 @@ import {
 } from '@/extensions/panels/grid/components/GridEditor';
 import { gridColumns } from '@/extensions/panels/grid/core/config';
 import {
-  filterGridData,
-  SimpleOption,
-} from '@/extensions/panels/grid/core/helper';
-import {
   changeColumnOptionList,
   currentColumnOptionList,
+  filterGridData,
+  SimpleOption,
 } from '@/extensions/panels/grid/core/helper';
 import { CommandKey, CommandTypeAll } from '@@types/engine/command';
 import { ChangeTableValue } from '@@types/engine/command/table.cmd';

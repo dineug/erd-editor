@@ -1,4 +1,3 @@
-import './FilterRadioEditor';
 import './FilterItem';
 import './FilterInput';
 

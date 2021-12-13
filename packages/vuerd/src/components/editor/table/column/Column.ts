@@ -19,7 +19,6 @@ import { useContext } from '@/core/hooks/context.hook';
 import { useTooltip } from '@/core/hooks/tooltip.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { keymapOptionsToString } from '@/core/keymap';
-import { removeColumn$ } from '@/engine/command/column.cmd.helper';
 import {
   changeColumnAutoIncrement,
   changeColumnComment,
@@ -28,6 +27,7 @@ import {
   changeColumnName,
   changeColumnNotNull,
   changeColumnUnique,
+  removeColumn$,
 } from '@/engine/command/column.cmd.helper';
 import {
   draggableColumn,

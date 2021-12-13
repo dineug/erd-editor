@@ -1,5 +1,3 @@
-import './ColumnDataTypeEditor';
-
 import { ColumnDataTypeEditorElement } from './ColumnDataTypeEditor';
 
 export class GridColumnDataTypeEditor {

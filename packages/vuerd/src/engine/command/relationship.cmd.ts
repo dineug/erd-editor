@@ -3,16 +3,14 @@ import { removeValidRelationshipColumnId } from '@/engine/store/helper/valid.hel
 import { RelationshipModel } from '@/engine/store/models/relationship.model';
 import { ExecuteCommand } from '@/internal-types/command';
 import {
-  ChangeStartRelationshipType,
-  HideRelationship,
-  RelationshipCommandMap,
-  ShowRelationship,
-} from '@@types/engine/command/relationship.cmd';
-import {
   AddRelationship,
   ChangeIdentification,
   ChangeRelationshipType,
+  ChangeStartRelationshipType,
+  HideRelationship,
+  RelationshipCommandMap,
   RemoveRelationship,
+  ShowRelationship,
 } from '@@types/engine/command/relationship.cmd';
 import { State } from '@@types/engine/store';
 import { Relationship } from '@@types/engine/store/relationship.state';

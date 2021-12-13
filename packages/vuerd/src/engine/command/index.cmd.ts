@@ -1,13 +1,13 @@
 import { getData, getIndex } from '@/core/helper';
 import { IndexModel } from '@/engine/store/models/index.model';
 import { ExecuteCommand } from '@/internal-types/command';
-import { IndexCommandMap } from '@@types/engine/command/index.cmd';
 import {
   AddIndex,
   AddIndexColumn,
   ChangeIndexColumnOrderType,
   ChangeIndexUnique,
   ChangeIndexValue,
+  IndexCommandMap,
   MoveIndexColumn,
   RemoveIndex,
   RemoveIndexColumn,
