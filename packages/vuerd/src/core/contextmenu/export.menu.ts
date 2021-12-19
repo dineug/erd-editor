@@ -12,6 +12,7 @@ import {
 import { Bus } from '@/core/helper/eventBus.helper';
 import { createLiquibase } from '@/core/parser/JSONToLiquibase';
 import { createDDL } from '@/core/sql/ddl';
+import { moveCanvas } from '@/engine/command/canvas.cmd.helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 import { Snapshot } from '@@types/engine/store/snapshot';
@@ -72,7 +73,10 @@ export const createExportMenus = (
         name: 'file-image',
       },
       name: 'png',
-      execute: () => exportPNG(canvas, store.canvasState.databaseName),
+      execute: () => {
+        store.dispatchSync(moveCanvas(0, 0));
+        exportPNG(canvas, store.canvasState.databaseName);
+      },
     },
     {
       icon: {
