@@ -28,7 +28,7 @@
   },
   "scripts": {
     "build": "rollup -c",
-    "test": "jest src/SQLParser.spec.ts"
+    "test": "jest src/SQLParser.spec.ts src/tests/SQLParser.test.ts"
   },
   "author": "dineug <dineug2@gmail.com>",
   "license": "MIT"

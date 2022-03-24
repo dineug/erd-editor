@@ -316,6 +316,9 @@ function createTableColumns(
         current.value++;
       }
 
+      if (column.dataType && !column.name) {
+        column.name = column.dataType;
+      }
       column.dataType = value;
       continue;
     }
