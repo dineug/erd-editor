@@ -54,9 +54,11 @@ export function createTable(tokens: Token[]): CreateTable {
         tokens,
         current
       );
-      ast.columns = columns;
-      ast.indexes = indexes;
-      ast.foreignKeys = foreignKeys;
+      if (ast.columns.length === 0) {
+        ast.columns = columns;
+        ast.indexes = indexes;
+        ast.foreignKeys = foreignKeys;
+      }
       continue;
     }
 
