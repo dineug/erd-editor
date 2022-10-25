@@ -11,6 +11,8 @@ import {
 import {
   Current,
   isAutoIncrement,
+  isCharacter,
+  isCollate,
   isComma,
   isComment,
   isConstraint,
@@ -29,6 +31,7 @@ import {
   isPrimary,
   isReferences,
   isRightParen,
+  isSet,
   isString,
   isUnique,
 } from './SQLParserHelper';
@@ -170,6 +173,44 @@ function createTableColumns(
       continue;
     }
 
+    // 일반 인덱스 키 확인
+    if (isIndex(token)) {
+      token = tokens[++current.value];
+
+      if (isString(token)) {
+        token = tokens[++current.value];
+
+        const indexColumns: IndexColumn[] = [];
+        let index: Index = {
+          name: token.value,
+          unique: false,
+          columns: indexColumns,
+        };
+
+        if (isLeftParen(token)) {
+          token = tokens[++current.value];
+
+          while (isCurrent(tokens, current.value) && !isRightParen(token)) {
+            if (isString(token)) {
+              indexColumns.push({
+                name: token.value,
+                sort: 'ASC',
+              });
+            }
+            token = tokens[++current.value];
+          }
+
+          current.value++;
+        }
+
+        if (indexColumns.length) {
+          indexes.push(index);
+        }
+      }
+
+      continue;
+    }
+
     if (isForeign(token)) {
       const foreignKey = parserForeignKey(tokens, current);
 
@@ -293,6 +334,27 @@ function createTableColumns(
       continue;
     }
 
+    /**
+     * TODO: 문자셋 확인 (취급은 안하지만, 처리에 필요성이 있음)
+     *  type 이 중첩되어 처리하지 않는경우,타입이 SET 으로 지정됨
+     */
+    if (isCharacter(token)) {
+      token = tokens[++current.value];
+
+      if (isSet(token)) {
+        token = tokens[++current.value];
+      }
+      continue;
+    }
+
+    // TODO: 컬럼 문자열셋
+    if (isCollate(token)) {
+      token = tokens[++current.value];
+
+      if (isString(token)) {
+      }
+    }
+
     if (isAutoIncrement(token)) {
       column.autoIncrement = true;
       current.value++;
@@ -345,6 +407,8 @@ function createTableColumns(
 
     current.value++;
   }
+  // 테이블 내부 끝
+  // TODO: ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='';
 
   if (!columns.includes(column) && (column.name || column.dataType)) {
     columns.push(column);

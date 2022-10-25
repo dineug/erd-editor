@@ -123,6 +123,7 @@ export function isCurrent<T>(list: T[], current: number): boolean {
 }
 
 export function isNewStatement(token?: Token): boolean {
+  // 명령처리
   if (!token) return false;
   return (
     keywordEqual(token, 'CREATE') ||
@@ -180,6 +181,7 @@ export function isAlterTableAddPrimaryKey(tokens: Token[]): boolean {
 
 export function isAlterTableAddForeignKey(tokens: Token[]): boolean {
   return (
+    // 일반입력
     (tokens.length > 6 &&
       keywordEqual(tokens[0], 'ALTER') &&
       keywordEqual(tokens[1], 'TABLE') &&
@@ -299,4 +301,21 @@ export function isOn(token?: Token): boolean {
 export function isTable(token?: Token): boolean {
   if (!token) return false;
   return keywordEqual(token, 'TABLE');
+}
+
+// 문자셋
+export function isCharacter(token?: Token): boolean {
+  if (!token) return false;
+  return keywordEqual(token, 'CHARACTER');
+}
+
+// 문자셋 set
+export function isSet(token?: Token): boolean {
+  if (!token) return false;
+  return keywordEqual(token, 'SET');
+}
+
+export function isCollate(token?: Token): boolean {
+  if (!token) return false;
+  return keywordEqual(token, 'COLLATE');
 }
