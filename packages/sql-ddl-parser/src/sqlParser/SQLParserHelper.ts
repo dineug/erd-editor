@@ -128,7 +128,6 @@ export function isCurrent<T>(list: T[], current: number): boolean {
 }
 
 export function isNewStatement(token?: Token): boolean {
-  // 명령처리
   if (!token) return false;
   return (
     keywordEqual(token, 'CREATE') ||
