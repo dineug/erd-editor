@@ -307,13 +307,11 @@ export function isTable(token?: Token): boolean {
   return keywordEqual(token, 'TABLE');
 }
 
-// 문자셋
 export function isCharacter(token?: Token): boolean {
   if (!token) return false;
   return keywordEqual(token, 'CHARACTER');
 }
 
-// 문자셋 set
 export function isSet(token?: Token): boolean {
   if (!token) return false;
   return keywordEqual(token, 'SET');

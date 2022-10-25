@@ -348,7 +348,6 @@ function createTableColumns(
       continue;
     }
 
-    // TODO: 컬럼 문자열셋
     if (isCollate(token)) {
       token = tokens[++current.value];
 
