@@ -118,6 +118,11 @@ export function isComma(token?: Token): boolean {
   return token.type === 'comma';
 }
 
+export function isEqual(token?: Token): boolean {
+  if (!token) return false;
+  return token.type === 'equal';
+}
+
 export function isCurrent<T>(list: T[], current: number): boolean {
   return list.length > current;
 }

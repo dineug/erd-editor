@@ -20,6 +20,7 @@ import {
   isDataType,
   isDefault,
   isDESC,
+  isEqual,
   isForeign,
   isIndex,
   isKey,
@@ -88,6 +89,11 @@ export function createTable(tokens: Token[]): CreateTable {
         current.value++;
       }
 
+      if (isEqual(token)) {
+        token = tokens[++current.value];
+        ast.comment = token.value;
+        current.value++;
+      }
       continue;
     }
 
@@ -336,7 +342,7 @@ function createTableColumns(
 
     /**
      * TODO: 문자셋 확인 (취급은 안하지만, 처리에 필요성이 있음)
-     *  type 이 중첩되어 처리하지 않는경우,타입이 SET 으로 지정됨
+     *  type 이 중첩되어 처리하지 않는경우, name이 생겨 index지정식도 컬럼으로 생성됨
      */
     if (isCharacter(token)) {
       token = tokens[++current.value];
@@ -407,8 +413,6 @@ function createTableColumns(
 
     current.value++;
   }
-  // 테이블 내부 끝
-  // TODO: ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='';
 
   if (!columns.includes(column) && (column.name || column.dataType)) {
     columns.push(column);
