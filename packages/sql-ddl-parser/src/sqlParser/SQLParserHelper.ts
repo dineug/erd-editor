@@ -186,7 +186,6 @@ export function isAlterTableAddPrimaryKey(tokens: Token[]): boolean {
 
 export function isAlterTableAddForeignKey(tokens: Token[]): boolean {
   return (
-    // 일반입력
     (tokens.length > 6 &&
       keywordEqual(tokens[0], 'ALTER') &&
       keywordEqual(tokens[1], 'TABLE') &&

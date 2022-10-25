@@ -179,7 +179,6 @@ function createTableColumns(
       continue;
     }
 
-    // 일반 인덱스 키 확인
     if (isIndex(token)) {
       token = tokens[++current.value];
 
@@ -340,10 +339,6 @@ function createTableColumns(
       continue;
     }
 
-    /**
-     * TODO: 문자셋 확인 (취급은 안하지만, 처리에 필요성이 있음)
-     *  type 이 중첩되어 처리하지 않는경우, name이 생겨 index지정식도 컬럼으로 생성됨
-     */
     if (isCharacter(token)) {
       token = tokens[++current.value];
 
