@@ -36,7 +36,7 @@ export const tokenMatch = {
   dataTypes: getDataTypes(),
 };
 
-function getDataTypes(): string[] {
+export function getDataTypes(): string[] {
   const keywords: string[] = [
     ...MariaDBTypes,
     ...MSSQLTypes,
@@ -48,7 +48,7 @@ function getDataTypes(): string[] {
   return Array.from(new Set(keywords.map(keyword => keyword.toUpperCase())));
 }
 
-function getKeywords(): string[] {
+export function getKeywords(): string[] {
   const keywords: string[] = [
     ...MariaDBKeywords,
     ...MSSQLKeywords,
@@ -56,7 +56,7 @@ function getKeywords(): string[] {
     ...OracleKeywords,
     ...PostgreSQLKeywords,
     ...SQLiteKeywords,
-    ...getDataTypes(),
+    // ...getDataTypes(), // If you uncomment this syntax, the keywords and data types become ambiguous.
   ];
   return Array.from(new Set(keywords.map(keyword => keyword.toUpperCase())));
 }

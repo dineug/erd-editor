@@ -1,5 +1,8 @@
 export type SortType = 'ASC' | 'DESC';
 
+export function getDataTypes(): string[];
+export function getKeywords(): string[];
+
 export type TokenType =
   | 'leftParen'
   | 'rightParen'

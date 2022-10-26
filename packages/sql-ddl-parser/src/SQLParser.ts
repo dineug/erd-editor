@@ -20,6 +20,7 @@ import {
   tokenMatch,
 } from './sqlParser/SQLParserHelper';
 
+export { getDataTypes, getKeywords } from './sqlParser/SQLParserHelper';
 /**
  * https://github.com/jamiebuilds/the-super-tiny-compiler
  */
@@ -172,7 +173,7 @@ export function tokenizer(input: string): Token[] {
 
   tokens.forEach(token => {
     if (isExtraString(token)) {
-      token.type = 'string';
+      // token.type = 'string';
     } else if (isStringKeyword(token)) {
       token.type = 'keyword';
     }

@@ -21,6 +21,7 @@ import {
   isDefault,
   isDESC,
   isEqual,
+  isExtraString,
   isForeign,
   isIndex,
   isKey,
@@ -64,7 +65,7 @@ export function createTable(tokens: Token[]): CreateTable {
       continue;
     }
 
-    if (isString(token) && !ast.name) {
+    if ((isString(token) || isExtraString(token)) && !ast.name) {
       ast.name = token.value;
 
       token = tokens[++current.value];
@@ -72,7 +73,7 @@ export function createTable(tokens: Token[]): CreateTable {
       if (isPeriod(token)) {
         token = tokens[++current.value];
 
-        if (isString(token)) {
+        if (isString(token) || isExtraString(token)) {
           ast.name = token.value;
           current.value++;
         }
@@ -84,7 +85,7 @@ export function createTable(tokens: Token[]): CreateTable {
     if (isComment(token)) {
       token = tokens[++current.value];
 
-      if (isString(token)) {
+      if (isString(token) || isExtraString(token)) {
         ast.comment = token.value;
         current.value++;
       }
@@ -127,7 +128,10 @@ function createTableColumns(
   while (isCurrent(tokens, current.value)) {
     let token = tokens[current.value];
 
-    if (isString(token) && !column.name) {
+    if (
+      (isString(token) || isExtraString(token) || isExtraString(token)) &&
+      !column.name
+    ) {
       column.name = token.value;
       current.value++;
       continue;
@@ -147,7 +151,7 @@ function createTableColumns(
     if (isConstraint(token)) {
       token = tokens[++current.value];
 
-      if (isString(token)) {
+      if (isString(token) || isExtraString(token) || isExtraString(token)) {
         current.value++;
       }
 
@@ -164,7 +168,11 @@ function createTableColumns(
           token = tokens[++current.value];
 
           while (isCurrent(tokens, current.value) && !isRightParen(token)) {
-            if (isString(token)) {
+            if (
+              isString(token) ||
+              isExtraString(token) ||
+              isExtraString(token)
+            ) {
               primaryKeyColumnNames.push(token.value.toUpperCase());
             }
             token = tokens[++current.value];
@@ -192,7 +200,7 @@ function createTableColumns(
     if (isIndex(token) || isKey(token)) {
       token = tokens[++current.value];
 
-      if (isString(token)) {
+      if (isString(token) || isExtraString(token) || isExtraString(token)) {
         const name = token.value;
         const indexColumns: IndexColumn[] = [];
         token = tokens[++current.value];
@@ -205,7 +213,11 @@ function createTableColumns(
           };
 
           while (isCurrent(tokens, current.value) && !isRightParen(token)) {
-            if (isString(token)) {
+            if (
+              isString(token) ||
+              isExtraString(token) ||
+              isExtraString(token)
+            ) {
               indexColumn.name = token.value;
             }
             if (isDESC(token)) {
@@ -247,7 +259,7 @@ function createTableColumns(
         token = tokens[++current.value];
       }
 
-      if (isString(token)) {
+      if (isString(token) || isExtraString(token) || isExtraString(token)) {
         token = tokens[++current.value];
       }
 
@@ -255,7 +267,7 @@ function createTableColumns(
         token = tokens[++current.value];
 
         while (isCurrent(tokens, current.value) && !isRightParen(token)) {
-          if (isString(token)) {
+          if (isString(token) || isExtraString(token) || isExtraString(token)) {
             uniqueColumnNames.push(token.value.toUpperCase());
           }
           token = tokens[++current.value];
@@ -283,7 +295,12 @@ function createTableColumns(
     if (isDefault(token)) {
       token = tokens[++current.value];
 
-      if (isString(token) || isKeyword(token)) {
+      if (
+        isString(token) ||
+        isExtraString(token) ||
+        isKeyword(token) ||
+        isExtraString(token)
+      ) {
         column.default = token.value;
         current.value++;
       }
@@ -294,7 +311,7 @@ function createTableColumns(
     if (isComment(token)) {
       token = tokens[++current.value];
 
-      if (isString(token)) {
+      if (isString(token) || isExtraString(token) || isExtraString(token)) {
         column.comment = token.value;
         current.value++;
       }
@@ -314,7 +331,7 @@ function createTableColumns(
     if (isCollate(token)) {
       token = tokens[++current.value];
 
-      if (isString(token)) {
+      if (isString(token) || isExtraString(token) || isExtraString(token)) {
       }
     }
 
@@ -412,7 +429,7 @@ export function parserForeignKey(
       token = tokens[++current.value];
 
       while (isCurrent(tokens, current.value) && !isRightParen(token)) {
-        if (isString(token)) {
+        if (isString(token) || isExtraString(token) || isExtraString(token)) {
           foreignKey.columnNames.push(token.value);
         }
         token = tokens[++current.value];
@@ -424,7 +441,7 @@ export function parserForeignKey(
     if (isReferences(token)) {
       token = tokens[++current.value];
 
-      if (isString(token)) {
+      if (isString(token) || isExtraString(token) || isExtraString(token)) {
         foreignKey.refTableName = token.value;
 
         token = tokens[++current.value];
@@ -432,7 +449,7 @@ export function parserForeignKey(
         if (isPeriod(token)) {
           token = tokens[++current.value];
 
-          if (isString(token)) {
+          if (isString(token) || isExtraString(token) || isExtraString(token)) {
             foreignKey.refTableName = token.value;
             token = tokens[++current.value];
           }
@@ -442,7 +459,11 @@ export function parserForeignKey(
           token = tokens[++current.value];
 
           while (isCurrent(tokens, current.value) && !isRightParen(token)) {
-            if (isString(token)) {
+            if (
+              isString(token) ||
+              isExtraString(token) ||
+              isExtraString(token)
+            ) {
               foreignKey.refColumnNames.push(token.value);
             }
             token = tokens[++current.value];
