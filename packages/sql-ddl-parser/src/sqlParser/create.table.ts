@@ -298,10 +298,11 @@ function createTableColumns(
       if (
         isString(token) ||
         isExtraString(token) ||
-        isKeyword(token) ||
-        isExtraString(token)
+        isKeyword(token)
       ) {
-        column.default = token.value;
+        if ( isExtraString(token))
+          column.default = `'${token.value}'`;
+        else column.default = token.value;
         current.value++;
       }
 

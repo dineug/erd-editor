@@ -1,5 +1,3 @@
-import { getKeywords } from '@vuerd/sql-ddl-parser';
-
 import { autoName, getData, uuid } from '@/core/helper';
 import { orderByNameASC } from '@/engine/store/helper/table.helper';
 import { Store } from '@@types/engine/store';
@@ -135,11 +133,7 @@ function formatColumn({
     stringBuffer.push(`AUTO_INCREMENT`);
   } else {
     if (column.default.trim() !== '') {
-      if ( isNaN(parseFloat(column.default)) && !getKeywords().includes(column.default.toUpperCase())){
-        stringBuffer.push(`DEFAULT '${column.default}'`);
-      }else{
-        stringBuffer.push(`DEFAULT ${column.default}`);
-      }
+      stringBuffer.push(`DEFAULT ${column.default}`);
 
     }
   }
