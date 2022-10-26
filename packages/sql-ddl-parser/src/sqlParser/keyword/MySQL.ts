@@ -21,6 +21,7 @@ export const MySQLKeywords: string[] = [
   'IF',
   'INDEX',
   'KEY',
+  'BTREE',
   'LIKE',
   'NOT',
   'NULL',
@@ -36,4 +37,5 @@ export const MySQLKeywords: string[] = [
   'UNION',
   'UNIQUE',
   'USE',
+  'USING',
 ];

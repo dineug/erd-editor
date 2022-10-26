@@ -179,43 +179,6 @@ function createTableColumns(
       continue;
     }
 
-    if (isIndex(token)) {
-      token = tokens[++current.value];
-
-      if (isString(token)) {
-        token = tokens[++current.value];
-
-        const indexColumns: IndexColumn[] = [];
-        let index: Index = {
-          name: token.value,
-          unique: false,
-          columns: indexColumns,
-        };
-
-        if (isLeftParen(token)) {
-          token = tokens[++current.value];
-
-          while (isCurrent(tokens, current.value) && !isRightParen(token)) {
-            if (isString(token)) {
-              indexColumns.push({
-                name: token.value,
-                sort: 'ASC',
-              });
-            }
-            token = tokens[++current.value];
-          }
-
-          current.value++;
-        }
-
-        if (indexColumns.length) {
-          indexes.push(index);
-        }
-      }
-
-      continue;
-    }
-
     if (isForeign(token)) {
       const foreignKey = parserForeignKey(tokens, current);
 
@@ -361,6 +324,7 @@ function createTableColumns(
       continue;
     }
 
+    // 데이터 타입
     if (isDataType(token)) {
       let value = token.value;
       token = tokens[++current.value];
