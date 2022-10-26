@@ -341,7 +341,6 @@ function createTableColumns(
       continue;
     }
 
-    // 데이터 타입
     if (isDataType(token)) {
       let value = token.value;
       token = tokens[++current.value];
