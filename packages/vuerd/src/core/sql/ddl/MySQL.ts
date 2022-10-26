@@ -134,7 +134,6 @@ function formatColumn({
   } else {
     if (column.default.trim() !== '') {
       stringBuffer.push(`DEFAULT ${column.default}`);
-
     }
   }
   if (column.comment.trim() !== '') {
