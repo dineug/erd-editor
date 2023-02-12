@@ -27,8 +27,8 @@
     "vuerd": "^2.2.6"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue-jsx": "^1.1.8",
     "@vitejs/plugin-vue": "^1.6.0",
+    "@vitejs/plugin-vue-jsx": "^1.1.8",
     "@vue/compiler-sfc": "^3.2.7",
     "https-localhost": "^4.7.0",
     "sass": "^1.39.0",
