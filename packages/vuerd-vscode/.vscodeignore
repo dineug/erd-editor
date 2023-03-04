@@ -1,7 +1,0 @@
-node_modules
-.vscode
-src
-.*
-rollup.config.js
-tsconfig.json
-

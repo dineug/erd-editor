@@ -1,94 +1,57 @@
 {
-  "name": "@vuerd/monorepo",
+  "name": "@dineug/erd-editor-monorepo",
+  "packageManager": "yarn@3.4.1",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.14.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dineug/erd-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dineug/erd-editor/issues"
+  },
+  "homepage": "https://github.com/dineug/erd-editor#readme",
+  "author": "SeungHwan-Lee <dineug2@gmail.com>",
+  "license": "MIT",
   "scripts": {
-    "build": "lerna run build",
-    "test": "lerna run test",
+    "build": "turbo build",
+    "test": "yarn workspaces foreach run test",
+    "prepare": "husky install",
     "format": "npm run format:eslint && npm run format:prettier",
-    "format:eslint": "eslint \"**/*.{js,ts,tsx,vue}\" --fix",
-    "format:prettier": "prettier \"**/*.{cjs,html,js,json,md,ts,tsx}\" --write",
-    "lint": "eslint \"**/*.{js,ts,tsx}\""
+    "format:eslint": "eslint \"**/*.{js,ts}\" --fix",
+    "format:prettier": "prettier \"**/*.{html,js,json,md,ts}\" --write",
+    "lint": "eslint \"**/*.{js,ts}\""
+  },
+  "resolutions": {
+    "typescript": "4.9.5",
+    "rollup": "^3.18.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.15.0",
-    "@babel/preset-env": "^7.15.0",
-    "@babel/preset-typescript": "^7.15.0",
-    "@fortawesome/free-solid-svg-icons": "^5.15.4",
-    "@mdi/js": "^5.9.55",
-    "@reactivex/ix-ts": "^4.5.1",
-    "@rollup/plugin-alias": "^3.1.5",
-    "@rollup/plugin-commonjs": "20.0.0",
-    "@rollup/plugin-node-resolve": "^13.0.4",
-    "@rollup/plugin-replace": "^3.0.0",
-    "@rollup/plugin-strip": "^2.1.0",
-    "@rollup/plugin-typescript": "^8.2.5",
-    "@storybook/addon-actions": "^6.3.7",
-    "@storybook/addon-essentials": "^6.3.7",
-    "@storybook/addon-google-analytics": "^6.2.9",
-    "@storybook/addon-links": "^6.3.7",
-    "@storybook/addons": "^6.3.7",
-    "@storybook/storybook-deployer": "^2.8.10",
-    "@storybook/theming": "^6.3.7",
-    "@storybook/web-components": "^6.3.7",
-    "@types/jest": "^27.0.1",
-    "@types/lodash": "^4.14.172",
-    "@types/ramda": "^0.27.44",
-    "@types/uuid": "^8.3.1",
-    "@typescript-eslint/eslint-plugin": "^4.30.0",
-    "@typescript-eslint/parser": "^4.30.0",
-    "babel-jest": "^27.1.0",
-    "babel-loader": "^8.2.2",
-    "babel-plugin-inline-dotenv": "^1.6.0",
-    "babel-plugin-inline-json-import": "^0.3.2",
-    "babel-plugin-transform-remove-console": "^6.9.4",
-    "codecov": "^3.8.3",
-    "cross-env": "^7.0.3",
-    "eslint": "^7.32.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-import": "^2.25.3",
-    "eslint-plugin-prettier": "^4.0.0",
-    "eslint-plugin-simple-import-sort": "^7.0.0",
-    "eslint-plugin-vue": "^7.18.0",
-    "husky": "^7.0.2",
-    "jest": "^27.1.0",
-    "lerna": "^4.0.0",
-    "lint-staged": "^11.1.2",
-    "lodash": "^4.17.21",
-    "prettier": "^2.3.2",
-    "ramda": "^0.27.1",
-    "rollup": "^2.56.3",
-    "rollup-plugin-browsersync": "^1.3.3",
-    "rollup-plugin-filesize": "^9.1.1",
-    "rollup-plugin-generate-html-template": "^1.7.0",
-    "rollup-plugin-terser": "^7.0.2",
-    "rollup-plugin-uglify": "^6.0.4",
-    "rollup-plugin-visualizer": "^5.5.2",
-    "rxjs": "^7.3.0",
-    "stats.js": "^0.17.0",
-    "tslib": "^2.3.1",
-    "typedoc": "^0.21.9",
-    "typescript": "4.3.5",
-    "typescript-styled-plugin": "^0.18.1",
-    "uuid": "^8.3.2",
-    "vite": "^2.5.3",
-    "vue-eslint-parser": "^7.11.0"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
+    "@typescript-eslint/eslint-plugin": "^5.54.0",
+    "@typescript-eslint/parser": "^5.54.0",
+    "eslint": "^8.35.0",
+    "eslint-config-prettier": "^8.6.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.1.2",
+    "prettier": "^2.8.4",
+    "rollup": "^3.18.0",
+    "tslib": "^2.5.0",
+    "turbo": "^1.8.3",
+    "typescript": "4.9.5",
+    "vite": "^4.1.4"
   },
   "lint-staged": {
-    "**/*.{js,ts,tsx,vue}": [
-      "prettier --write",
+    "**/*.{js,ts}": [
       "eslint --fix",
-      "git add"
+      "prettier --write"
     ]
   }
 }

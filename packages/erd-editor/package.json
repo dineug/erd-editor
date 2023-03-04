@@ -1,0 +1,49 @@
+{
+  "name": "@dineug/erd-editor",
+  "version": "3.0.0",
+  "description": "ERD editor",
+  "main": "dist/erd-editor.js",
+  "module": "dist/erd-editor.esm.js",
+  "browser": "dist/erd-editor.min.js",
+  "typings": "types/index.d.ts",
+  "files": [
+    "dist/*.js",
+    "types"
+  ],
+  "keywords": [
+    "vuerd",
+    "editor",
+    "erd",
+    "db",
+    "database",
+    "diagram"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dineug/erd-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dineug/erd-editor/issues"
+  },
+  "homepage": "https://github.com/dineug/erd-editor#readme",
+  "author": "SeungHwan-Lee <dineug2@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "rollup -c"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^24.0.1",
+    "@rollup/plugin-node-resolve": "^15.0.1",
+    "rollup": "^3.18.0",
+    "rollup-plugin-filesize": "^10.0.0",
+    "rollup-plugin-terser": "^7.0.2",
+    "rollup-plugin-typescript2": "^0.34.1",
+    "rollup-plugin-visualizer": "^5.9.0",
+    "ttypescript": "^1.5.15",
+    "typescript": "4.9.5",
+    "typescript-transform-paths": "^3.4.6",
+    "vite": "^4.1.4",
+    "vite-tsconfig-paths": "^4.0.5"
+  }
+}

@@ -1,28 +1,8 @@
 {
   "folders": [
     {
-      "name": "vuerd",
-      "path": "packages/vuerd"
-    },
-    {
-      "name": "vuerd-vscode",
-      "path": "packages/vuerd-vscode"
-    },
-    {
-      "name": "vuerd-app",
-      "path": "packages/vuerd-app"
-    },
-    {
-      "name": "plugin-generate-template",
-      "path": "packages/plugin-generate-template"
-    },
-    {
-      "name": "sql-ddl-parser",
-      "path": "packages/sql-ddl-parser"
-    },
-    {
-      "name": "lit-observable",
-      "path": "packages/lit-observable"
+      "name": "erd-editor",
+      "path": "packages/erd-editor"
     },
     {
       "name": "monorepo",
@@ -52,20 +32,20 @@
     "javascript.updateImportsOnFileMove.enabled": "always",
     "javascript.format.enable": false,
     "lit-plugin.rules.no-invalid-css": "off",
-    "lit-plugin.rules.no-incompatible-type-binding": "off"
+    "lit-plugin.rules.no-incompatible-type-binding": "off",
+    "eslint.nodePath": "monorepo/.yarn/sdks",
+    "prettier.prettierPath": "monorepo/.yarn/sdks/prettier/index.js",
+    "typescript.tsdk": "monorepo/.yarn/sdks/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true
   },
   "extensions": {
     "recommendations": [
+      "arcanis.vscode-zipfs",
       "editorconfig.editorconfig",
-      "dbaeumer.vscode-eslint",
-      "runem.lit-plugin",
       "davidanson.vscode-markdownlint",
+      "dbaeumer.vscode-eslint",
       "esbenp.prettier-vscode",
-      "jpoissonnier.vscode-styled-components",
-      "dineug.vuerd-vscode",
-      "johnsoncodehk.volar",
-      "voorjaar.windicss-intellisense"
-    ],
-    "unwantedRecommendations": ["octref.vetur"]
+      "styled-components.vscode-styled-components"
+    ]
   }
 }

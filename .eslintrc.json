@@ -4,21 +4,11 @@
     "browser": true,
     "node": true
   },
-  "plugins": [
-    "prettier",
-    "@typescript-eslint",
-    "simple-import-sort",
-    "import",
-    "vue"
-  ],
-  "extends": ["plugin:vue/vue3-recommended", "prettier"],
-  "parser": "vue-eslint-parser",
+  "plugins": ["prettier", "@typescript-eslint", "simple-import-sort", "import"],
+  "extends": ["prettier"],
+  "parser": "@typescript-eslint/parser",
   "parserOptions": {
-    "parser": "@typescript-eslint/parser",
     "ecmaVersion": 2021,
-    "ecmaFeatures": {
-      "jsx": true
-    },
     "sourceType": "module"
   },
   "rules": {
