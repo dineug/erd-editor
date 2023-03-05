@@ -1,0 +1,27 @@
+{
+  "name": "@dineug/erd-editor-schema",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ERD editor schema",
+  "main": "dist/erd-editor-schema.esm.js",
+  "typings": "types/index.d.ts",
+  "author": "SeungHwan-Lee <dineug2@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "build": "rollup -c"
+  },
+  "dependencies": {
+    "@dineug/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^24.0.1",
+    "@rollup/plugin-node-resolve": "^15.0.1",
+    "rollup": "^3.18.0",
+    "rollup-plugin-filesize": "^10.0.0",
+    "rollup-plugin-typescript2": "^0.34.1",
+    "ttypescript": "^1.5.15",
+    "typescript": "4.9.5",
+    "typescript-transform-paths": "^3.4.6"
+  }
+}

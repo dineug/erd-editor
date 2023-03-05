@@ -30,9 +30,10 @@
     },
     "typescript.updateImportsOnFileMove.enabled": "always",
     "javascript.updateImportsOnFileMove.enabled": "always",
-    "javascript.format.enable": false,
-    "lit-plugin.rules.no-invalid-css": "off",
-    "lit-plugin.rules.no-incompatible-type-binding": "off",
+    "search.exclude": {
+      "**/.yarn": true,
+      "**/.pnp.*": true
+    },
     "eslint.nodePath": "monorepo/.yarn/sdks",
     "prettier.prettierPath": "monorepo/.yarn/sdks/prettier/index.js",
     "typescript.tsdk": "monorepo/.yarn/sdks/typescript/lib",

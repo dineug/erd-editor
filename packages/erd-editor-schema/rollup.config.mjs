@@ -3,9 +3,7 @@ import { readFileSync } from 'node:fs';
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import filesize from 'rollup-plugin-filesize';
-import { terser } from 'rollup-plugin-terser';
 import typescript from 'rollup-plugin-typescript2';
-import { visualizer } from 'rollup-plugin-visualizer';
 import ttypescript from 'ttypescript';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
@@ -22,22 +20,9 @@ export default {
   context: 'globalThis',
   output: [
     {
-      file: pkg.module,
+      file: pkg.main,
       format: 'es',
       banner,
-    },
-    {
-      name: pkg.name,
-      file: pkg.main,
-      format: 'umd',
-      banner,
-    },
-    {
-      name: pkg.name,
-      file: pkg.browser,
-      format: 'umd',
-      banner,
-      plugins: [terser()],
     },
   ],
   plugins: [
@@ -48,11 +33,9 @@ export default {
       useTsconfigDeclarationDir: true,
       importHelpers: false,
     }),
-    visualizer({
-      filename: './dist/stats.html',
-    }),
     filesize({
       showBrotliSize: true,
     }),
   ],
+  external: ['@dineug/shared'],
 };
