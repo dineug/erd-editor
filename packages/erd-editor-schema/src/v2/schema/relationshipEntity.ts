@@ -1,3 +1,5 @@
+import { ValuesType } from 'utility-types';
+
 export interface RelationshipEntity {
   relationships: Relationship[];
 }
@@ -21,15 +23,33 @@ export interface RelationshipPoint {
   direction: Direction;
 }
 
-export type RelationshipType =
-  | 'ZeroOneN'
-  | 'ZeroOne'
-  | 'ZeroN'
-  | 'OneOnly'
-  | 'OneN'
-  | 'One'
-  | 'N';
+export const RelationshipType = {
+  ZeroOneN: 'ZeroOneN',
+  ZeroOne: 'ZeroOne',
+  ZeroN: 'ZeroN',
+  OneOnly: 'OneOnly',
+  OneN: 'OneN',
+  One: 'One',
+  N: 'N',
+} as const;
+export type RelationshipType = ValuesType<typeof RelationshipType>;
+export const RelationshipTypeList: ReadonlyArray<string> =
+  Object.values(RelationshipType);
 
-export type StartRelationshipType = 'Ring' | 'Dash';
+export const StartRelationshipType = {
+  Ring: 'Ring',
+  Dash: 'Dash',
+} as const;
+export type StartRelationshipType = ValuesType<typeof StartRelationshipType>;
+export const StartRelationshipTypeList: ReadonlyArray<string> = Object.values(
+  StartRelationshipType
+);
 
-export type Direction = 'left' | 'right' | 'top' | 'bottom';
+export const Direction = {
+  left: 'left',
+  right: 'right',
+  top: 'top',
+  bottom: 'bottom',
+} as const;
+export type Direction = ValuesType<typeof Direction>;
+export const DirectionList: ReadonlyArray<string> = Object.values(Direction);

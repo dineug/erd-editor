@@ -1,3 +1,5 @@
+import { ValuesType } from 'utility-types';
+
 export interface CanvasEntity {
   version: string; // ADD: version 2.0.0
   width: number;
@@ -36,46 +38,77 @@ export interface Setting {
   columnOrder: ColumnType[]; // ADD: version 1.1.1
 }
 
-export type ColumnType =
-  | 'columnUnique'
-  | 'columnAutoIncrement'
-  | 'columnName'
-  | 'columnDataType'
-  | 'columnNotNull'
-  | 'columnDefault'
-  | 'columnComment';
+export const ColumnType = {
+  columnUnique: 'columnUnique',
+  columnAutoIncrement: 'columnAutoIncrement',
+  columnName: 'columnName',
+  columnDataType: 'columnDataType',
+  columnNotNull: 'columnNotNull',
+  columnDefault: 'columnDefault',
+  columnComment: 'columnComment',
+} as const;
+export type ColumnType = ValuesType<typeof ColumnType>;
+export const ColumnTypeList: ReadonlyArray<string> = Object.values(ColumnType);
 
-export type CanvasType =
-  | 'ERD'
-  | '@vuerd/builtin-sql-ddl'
-  | '@vuerd/builtin-grid'
-  | '@vuerd/builtin-generator-code'
-  | '@vuerd/builtin-visualization';
+export const CanvasType = {
+  ERD: 'ERD',
+  '@vuerd/builtin-sql-ddl': '@vuerd/builtin-sql-ddl',
+  '@vuerd/builtin-grid': '@vuerd/builtin-grid',
+  '@vuerd/builtin-generator-code': '@vuerd/builtin-generator-code',
+  '@vuerd/builtin-visualization': '@vuerd/builtin-visualization',
+} as const;
+export type CanvasType = ValuesType<typeof CanvasType>;
+export const CanvasTypeList: ReadonlyArray<string> = Object.values(CanvasType);
 
-export type Database =
-  | 'MariaDB'
-  | 'MSSQL'
-  | 'MySQL'
-  | 'Oracle'
-  | 'PostgreSQL'
-  | 'SQLite';
+export const Database = {
+  MariaDB: 'MariaDB',
+  MSSQL: 'MSSQL',
+  MySQL: 'MySQL',
+  Oracle: 'Oracle',
+  PostgreSQL: 'PostgreSQL',
+  SQLite: 'SQLite',
+} as const;
+export type Database = ValuesType<typeof Database>;
+export const DatabaseList: ReadonlyArray<string> = Object.values(Database);
 
-export type Language =
-  | 'GraphQL'
-  | 'C#'
-  | 'Java'
-  | 'Kotlin'
-  | 'TypeScript'
-  | 'JPA'
-  | 'Scala';
+export const Language = {
+  GraphQL: 'GraphQL',
+  'C#': 'C#',
+  Java: 'Java',
+  Kotlin: 'Kotlin',
+  TypeScript: 'TypeScript',
+  JPA: 'JPA',
+  Scala: 'Scala',
+} as const;
+export type Language = ValuesType<typeof Language>;
+export const LanguageList: ReadonlyArray<string> = Object.values(Language);
 
-export type NameCase = 'none' | 'camelCase' | 'pascalCase' | 'snakeCase';
+export const NameCase = {
+  none: 'none',
+  camelCase: 'camelCase',
+  pascalCase: 'pascalCase',
+  snakeCase: 'snakeCase',
+} as const;
+export type NameCase = ValuesType<typeof NameCase>;
+export const NameCaseList: ReadonlyArray<string> = Object.values(NameCase);
 
-export type HighlightTheme =
-  | 'AtomOneDark'
-  | 'AtomOneLight'
-  | 'MonokaiSublime'
-  | 'GithubGist'
-  | 'VS2015';
+export const HighlightTheme = {
+  AtomOneDark: 'AtomOneDark',
+  AtomOneLight: 'AtomOneLight',
+  MonokaiSublime: 'MonokaiSublime',
+  GithubGist: 'GithubGist',
+  VS2015: 'VS2015',
+} as const;
+export type HighlightTheme = ValuesType<typeof HighlightTheme>;
+export const HighlightThemeList: ReadonlyArray<string> =
+  Object.values(HighlightTheme);
 
-export type BracketType = 'none' | 'doubleQuote' | 'singleQuote' | 'backtick';
+export const BracketType = {
+  none: 'none',
+  doubleQuote: 'doubleQuote',
+  singleQuote: 'singleQuote',
+  backtick: 'backtick',
+} as const;
+export type BracketType = ValuesType<typeof BracketType>;
+export const BracketTypeList: ReadonlyArray<string> =
+  Object.values(BracketType);

@@ -1,3 +1,5 @@
+import { ValuesType } from 'utility-types';
+
 export interface TableEntity {
   tables: Table[];
   indexes: Index[]; // ADD: version 1.2.0
@@ -74,4 +76,9 @@ export interface IndexColumn {
   orderType: OrderType;
 }
 
-export type OrderType = 'ASC' | 'DESC';
+export const OrderType = {
+  ASC: 'ASC',
+  DESC: 'DESC',
+} as const;
+export type OrderType = ValuesType<typeof OrderType>;
+export const OrderTypeList: ReadonlyArray<string> = Object.assign(OrderType);
