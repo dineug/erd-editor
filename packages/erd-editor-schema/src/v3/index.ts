@@ -1,1 +1,1 @@
-export { ERDEditorSchemaV3 } from '@/v3/schema';
+export { ERDEditorSchemaV3, SchemaV3Constants } from '@/v3/schema';

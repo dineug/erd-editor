@@ -48,6 +48,7 @@ export const Database = {
   PostgreSQL: /* */ 0b0000000000000000000000000010000,
   SQLite: /*     */ 0b0000000000000000000000000100000,
 } as const;
+export const DatabaseList: ReadonlyArray<number> = Object.values(Database);
 
 export const Language = {
   GraphQL: /*    */ 0b0000000000000000000000000000001,
@@ -58,6 +59,7 @@ export const Language = {
   JPA: /*        */ 0b0000000000000000000000000100000,
   Scala: /*      */ 0b0000000000000000000000001000000,
 } as const;
+export const LanguageList: ReadonlyArray<number> = Object.values(Language);
 
 export const NameCase = {
   none: /*       */ 0b0000000000000000000000000000001,
@@ -65,6 +67,7 @@ export const NameCase = {
   pascalCase: /* */ 0b0000000000000000000000000000100,
   snakeCase: /*  */ 0b0000000000000000000000000001000,
 } as const;
+export const NameCaseList: ReadonlyArray<number> = Object.values(NameCase);
 
 export const BracketType = {
   none: /*        */ 0b0000000000000000000000000000001,
@@ -72,3 +75,5 @@ export const BracketType = {
   singleQuote: /* */ 0b0000000000000000000000000000100,
   backtick: /*    */ 0b0000000000000000000000000001000,
 } as const;
+export const BracketTypeList: ReadonlyArray<number> =
+  Object.values(BracketType);
