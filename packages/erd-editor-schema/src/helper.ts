@@ -1,5 +1,6 @@
 import { isString } from '@dineug/shared';
-import { DeepPartial } from 'utility-types';
+
+import { DeepPartial } from '@/internal-types';
 
 export function assign<T extends Object, K extends keyof T>(
   valid: (value: any) => boolean,

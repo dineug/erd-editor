@@ -1,5 +1,4 @@
-import { DeepPartial } from 'utility-types';
-
+import { DeepPartial } from '@/internal-types';
 import { createAndMergeCanvasEntity } from '@/v2/parser/canvas';
 import { createAndMergeMemoEntity } from '@/v2/parser/memo';
 import { createAndMergeRelationshipEntity } from '@/v2/parser/relationship';

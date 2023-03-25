@@ -1,4 +1,4 @@
-import { ValuesType } from 'utility-types';
+import { ValuesType } from '@/internal-types';
 
 export interface TableEntity {
   tables: Table[];

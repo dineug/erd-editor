@@ -424,8 +424,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["rollup-plugin-typescript2", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:0.34.1"],\
             ["ttypescript", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:1.5.15"],\
             ["typescript", "patch:typescript@npm%3A4.9.5#~builtin<compat/typescript>::version=4.9.5&hash=23ec76"],\
-            ["typescript-transform-paths", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:3.4.6"],\
-            ["utility-types", "npm:3.10.0"]\
+            ["typescript-transform-paths", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:3.4.6"]\
           ],\
           "linkType": "SOFT"\
         }]\
@@ -6127,15 +6126,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/util-deprecate-npm-1.0.2-e3fe1a219c-474acf1146.zip/node_modules/util-deprecate/",\
           "packageDependencies": [\
             ["util-deprecate", "npm:1.0.2"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["utility-types", [\
-        ["npm:3.10.0", {\
-          "packageLocation": "./.yarn/cache/utility-types-npm-3.10.0-747e7c6549-8f274415c6.zip/node_modules/utility-types/",\
-          "packageDependencies": [\
-            ["utility-types", "npm:3.10.0"]\
           ],\
           "linkType": "HARD"\
         }]\

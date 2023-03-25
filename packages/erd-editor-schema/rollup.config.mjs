@@ -37,5 +37,5 @@ export default {
       showBrotliSize: true,
     }),
   ],
-  external: ['@dineug/shared'],
+  external: ['@dineug/shared', 'lodash-es'],
 };

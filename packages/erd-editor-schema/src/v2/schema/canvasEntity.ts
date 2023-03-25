@@ -1,4 +1,4 @@
-import { ValuesType } from 'utility-types';
+import { ValuesType } from '@/internal-types';
 
 export interface CanvasEntity {
   version: string; // ADD: version 2.0.0

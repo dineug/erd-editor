@@ -1,7 +1,7 @@
 import { isArray, isBoolean, isNill, isNumber, isString } from '@dineug/shared';
-import { DeepPartial } from 'utility-types';
 
 import { assign, validString } from '@/helper';
+import { DeepPartial } from '@/internal-types';
 import {
   DirectionList,
   Relationship,

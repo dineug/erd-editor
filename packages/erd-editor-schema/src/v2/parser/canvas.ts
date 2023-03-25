@@ -6,9 +6,9 @@ import {
   isString,
 } from '@dineug/shared';
 import { difference } from 'lodash-es';
-import { DeepPartial } from 'utility-types';
 
 import { assign, validString } from '@/helper';
+import { DeepPartial } from '@/internal-types';
 import {
   BracketTypeList,
   CanvasEntity,
