@@ -130,7 +130,6 @@ export function isNewStatement(token?: Token): boolean {
     keywordEqual(token, 'DROP') ||
     keywordEqual(token, 'USE') ||
     keywordEqual(token, 'RENAME') ||
-    keywordEqual(token, 'DELETE') ||
     keywordEqual(token, 'SELECT')
   );
 }
