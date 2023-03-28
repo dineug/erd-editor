@@ -756,6 +756,118 @@ CREATE TABLE b (
   ]
 }
 ```
+### Column double FOREIGN KEY
+
+```sql
+CREATE TABLE users (
+  id int NOT NULL PRIMARY KEY AUTO_INCREMENT UNIQUE,
+)
+CREATE TABLE posts (
+  id int NOT NULL PRIMARY KEY AUTO_INCREMENT UNIQUE,
+)
+CREATE TABLE comments (
+  id int NOT NULL PRIMARY KEY AUTO_INCREMENT UNIQUE,
+  userId int NOT NULL,
+  postId int NOT NULL
+  CONSTRAINT author FOREIGN KEY(userId) REFERENCES users (id) ON DELETE CASCADE
+  CONSTRAINT post FOREIGN KEY(postId) REFERENCES posts (id) ON DELETE CASCADE
+)
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "users",
+      "comment": "",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": true,
+          "unique": true,
+          "nullable": false
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    },
+    {
+      "type": "create.table",
+      "name": "posts",
+      "comment": "",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": true,
+          "unique": true,
+          "nullable": false
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    },
+    {
+      "type": "create.table",
+      "name": "comments",
+      "comment": "",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": true,
+          "unique": true,
+          "nullable": false
+        },
+        {
+          "name": "userId",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "postId",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "columnNames": ["userId"],
+          "refTableName": "users",
+          "refColumnNames": ["id"]
+        },
+        {
+          "columnNames": ["postId"],
+          "refTableName": "posts",
+          "refColumnNames": ["id"]
+        }
+      ]
+    }
+  ]
+}
+```
 
 ### CREATE INDEX
 
