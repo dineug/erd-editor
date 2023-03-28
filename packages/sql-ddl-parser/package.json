@@ -1,6 +1,6 @@
 {
   "name": "@vuerd/sql-ddl-parser",
-  "version": "0.2.4",
+  "version": "0.2.6",
   "description": "Permissive SQL DDL Parser",
   "main": "dist/sql-ddl-parser.js",
   "module": "dist/sql-ddl-parser.esm.js",
