@@ -28,8 +28,8 @@ export const RelationshipTypeList: ReadonlyArray<number> =
   Object.values(RelationshipType);
 
 export const StartRelationshipType = {
-  Ring: /* */ 0b0000000000000000000000000000001,
-  Dash: /* */ 0b0000000000000000000000000000010,
+  ring: /* */ 0b0000000000000000000000000000001,
+  dash: /* */ 0b0000000000000000000000000000010,
 } as const;
 export const StartRelationshipTypeList: ReadonlyArray<number> = Object.values(
   StartRelationshipType

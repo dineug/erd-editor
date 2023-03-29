@@ -1,3 +1,5 @@
+import { ValuesType } from '@/internal-types';
+
 export type Settings = {
   width: number;
   height: number;
@@ -16,6 +18,15 @@ export type Settings = {
   relationshipOptimization: boolean;
   columnOrder: number[];
 };
+
+export const CanvasType = {
+  ERD: 'ERD',
+  visualization: '@dineug/builtin-visualization',
+  SQL_DDL: '@dineug/builtin-sql-ddl',
+  generatorCode: '@dineug/builtin-generator-code',
+} as const;
+export type CanvasType = ValuesType<typeof CanvasType>;
+export const CanvasTypeList: ReadonlyArray<string> = Object.values(CanvasType);
 
 export const Show = {
   tableComment: /*        */ 0b0000000000000000000000000000001,

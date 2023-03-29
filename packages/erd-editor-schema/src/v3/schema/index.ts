@@ -1,4 +1,5 @@
 import { PartialRecord } from '@/internal-types';
+import { Doc } from '@/v3/schema/doc';
 import { Index } from '@/v3/schema/index.entity';
 import {
   IndexColumn,
@@ -18,6 +19,8 @@ import {
 import {
   BracketType,
   BracketTypeList,
+  CanvasType,
+  CanvasTypeList,
   ColumnType,
   ColumnTypeList,
   Database,
@@ -39,17 +42,20 @@ import {
 export interface ERDEditorSchemaV3 {
   version: '3.0.0';
   settings: Settings;
+  doc: Doc;
   collections: {
     tableEntities: PartialRecord<Table>;
     tableColumnEntities: PartialRecord<Column>;
+    relationshipEntities: PartialRecord<Relationship>;
     indexEntities: PartialRecord<Index>;
     indexColumnEntities: PartialRecord<IndexColumn>;
     memoEntities: PartialRecord<Memo>;
-    relationshipEntities: PartialRecord<Relationship>;
   };
 }
 
 export const SchemaV3Constants = {
+  CanvasType,
+  CanvasTypeList,
   Show,
   ColumnType,
   ColumnTypeList,

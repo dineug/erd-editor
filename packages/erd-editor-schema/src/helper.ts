@@ -1,4 +1,4 @@
-import { isString } from '@dineug/shared';
+import { isNumber, isString } from '@dineug/shared';
 
 import { DeepPartial } from '@/internal-types';
 
@@ -19,4 +19,8 @@ export function assign<T extends Object, K extends keyof T>(
 
 export function validString(list: ReadonlyArray<string>) {
   return (value: any) => isString(value) && list.includes(value);
+}
+
+export function validNumber(list: ReadonlyArray<number>) {
+  return (value: any) => isNumber(value) && list.includes(value);
 }
