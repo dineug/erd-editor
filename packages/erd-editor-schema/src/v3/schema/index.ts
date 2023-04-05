@@ -19,6 +19,10 @@ import {
 import {
   BracketType,
   BracketTypeList,
+  CANVAS_SIZE_MAX,
+  CANVAS_SIZE_MIN,
+  CANVAS_ZOOM_MAX,
+  CANVAS_ZOOM_MIN,
   CanvasType,
   CanvasTypeList,
   ColumnType,
@@ -77,4 +81,8 @@ export const SchemaV3Constants = {
   ColumnUIKey,
   OrderType,
   OrderTypeList,
+  CANVAS_SIZE_MAX,
+  CANVAS_SIZE_MIN,
+  CANVAS_ZOOM_MAX,
+  CANVAS_ZOOM_MIN,
 } as const;

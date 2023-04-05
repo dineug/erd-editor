@@ -88,3 +88,8 @@ export const BracketType = {
 } as const;
 export const BracketTypeList: ReadonlyArray<number> =
   Object.values(BracketType);
+
+export const CANVAS_ZOOM_MIN = 0.1;
+export const CANVAS_ZOOM_MAX = 2;
+export const CANVAS_SIZE_MIN = 2_000;
+export const CANVAS_SIZE_MAX = 20_000;

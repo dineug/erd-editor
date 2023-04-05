@@ -2,6 +2,7 @@ import { isArray, isBoolean, isNill, isNumber, isString } from '@dineug/shared';
 
 import { assign, validString } from '@/helper';
 import { DeepPartial } from '@/internal-types';
+import { migrationRelationshipType } from '@/v2/migrations/relationshipType.migration';
 import {
   DirectionList,
   Relationship,
@@ -66,11 +67,16 @@ export function createAndMergeRelationshipEntity(
     assignString('constraintName');
     assignBoolean('identification');
     assignBoolean('visible');
+
     assign(
       validString(RelationshipTypeList),
       target,
       relationship
     )('relationshipType');
+    target.relationshipType = migrationRelationshipType(
+      target.relationshipType
+    );
+
     assign(
       validString(StartRelationshipTypeList),
       target,

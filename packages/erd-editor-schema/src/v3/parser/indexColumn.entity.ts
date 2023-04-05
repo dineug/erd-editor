@@ -8,7 +8,7 @@ import {
   OrderTypeList,
 } from '@/v3/schema/indexColumn.entity';
 
-const createIndexColumn = (): IndexColumn => ({
+export const createIndexColumn = (): IndexColumn => ({
   id: '',
   columnId: '',
   orderType: OrderType.ASC,

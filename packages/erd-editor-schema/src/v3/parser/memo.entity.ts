@@ -10,7 +10,7 @@ import { assign } from '@/helper';
 import { DeepPartial, PartialRecord } from '@/internal-types';
 import { Memo } from '@/v3/schema/memo.entity';
 
-const createMemo = (): Memo => ({
+export const createMemo = (): Memo => ({
   id: '',
   value: '',
   ui: {

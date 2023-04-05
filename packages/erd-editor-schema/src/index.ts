@@ -1,3 +1,4 @@
+export { parser } from '@/parser';
 export {
   type ERDEditorSchemaV2,
   SchemaV2Constants,

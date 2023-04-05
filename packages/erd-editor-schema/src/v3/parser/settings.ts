@@ -1,4 +1,11 @@
-import { isArray, isBoolean, isNill, isNumber, isString } from '@dineug/shared';
+import {
+  createInRange,
+  isArray,
+  isBoolean,
+  isNill,
+  isNumber,
+  isString,
+} from '@dineug/shared';
 import { difference } from 'lodash-es';
 
 import { assign, validNumber } from '@/helper';
@@ -6,6 +13,10 @@ import { DeepPartial } from '@/internal-types';
 import {
   BracketType,
   BracketTypeList,
+  CANVAS_SIZE_MAX,
+  CANVAS_SIZE_MIN,
+  CANVAS_ZOOM_MAX,
+  CANVAS_ZOOM_MIN,
   CanvasType,
   ColumnType,
   ColumnTypeList,
@@ -55,6 +66,9 @@ const createSettings = (): Settings => ({
   ],
 });
 
+const sizeInRange = createInRange(CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
+const zoomInRange = createInRange(CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
+
 export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   const settings = createSettings();
   if (isNill(json)) return settings;
@@ -63,11 +77,18 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   const assignString = assign(isString, settings, json);
   const assignBoolean = assign(isBoolean, settings, json);
 
-  assignNumber('width');
-  assignNumber('height');
+  if (isNumber(json.width)) {
+    settings.width = sizeInRange(json.width);
+  }
+  if (isNumber(json.height)) {
+    settings.height = sizeInRange(json.height);
+  }
+  if (isNumber(json.zoomLevel)) {
+    settings.zoomLevel = zoomInRange(json.zoomLevel);
+  }
+
   assignNumber('scrollTop');
   assignNumber('scrollLeft');
-  assignNumber('zoomLevel');
   assignNumber('show');
   assignString('databaseName');
   assignString('canvasType');

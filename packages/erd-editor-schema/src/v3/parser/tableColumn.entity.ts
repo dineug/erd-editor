@@ -10,7 +10,7 @@ import { assign } from '@/helper';
 import { DeepPartial, PartialRecord } from '@/internal-types';
 import { Column } from '@/v3/schema/tableColumn.entity';
 
-const createColumn = (): Column => ({
+export const createColumn = (): Column => ({
   id: '',
   name: '',
   comment: '',

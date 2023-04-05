@@ -19,7 +19,7 @@ import {
   StartRelationshipTypeList,
 } from '@/v3/schema/relationship.entity';
 
-const createRelationship = (): Relationship => ({
+export const createRelationship = (): Relationship => ({
   id: '',
   identification: false,
   relationshipType: RelationshipType.ZeroN,

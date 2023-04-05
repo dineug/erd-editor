@@ -112,3 +112,8 @@ export const BracketType = {
 export type BracketType = ValuesType<typeof BracketType>;
 export const BracketTypeList: ReadonlyArray<string> =
   Object.values(BracketType);
+
+export const CANVAS_ZOOM_MIN = 0.1;
+export const CANVAS_ZOOM_MAX = 1;
+export const CANVAS_SIZE_MIN = 2_000;
+export const CANVAS_SIZE_MAX = 20_000;

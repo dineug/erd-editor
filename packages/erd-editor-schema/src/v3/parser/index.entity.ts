@@ -4,7 +4,7 @@ import { assign } from '@/helper';
 import { DeepPartial, PartialRecord } from '@/internal-types';
 import { Index } from '@/v3/schema/index.entity';
 
-const createIndex = (): Index => ({
+export const createIndex = (): Index => ({
   id: '',
   name: '',
   tableId: '',

@@ -418,13 +418,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@rollup/plugin-commonjs", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:24.0.1"],\
             ["@rollup/plugin-node-resolve", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:15.0.1"],\
             ["@types/lodash-es", "npm:4.17.6"],\
+            ["@types/uuid", "npm:9.0.1"],\
             ["lodash-es", "npm:4.17.21"],\
             ["rollup", "npm:3.18.0"],\
             ["rollup-plugin-filesize", "npm:10.0.0"],\
             ["rollup-plugin-typescript2", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:0.34.1"],\
             ["ttypescript", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:1.5.15"],\
             ["typescript", "patch:typescript@npm%3A4.9.5#~builtin<compat/typescript>::version=4.9.5&hash=23ec76"],\
-            ["typescript-transform-paths", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:3.4.6"]\
+            ["typescript-transform-paths", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:3.4.6"],\
+            ["uuid", "npm:9.0.0"]\
           ],\
           "linkType": "SOFT"\
         }]\
@@ -1219,6 +1221,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/@types-semver-npm-7.3.13-56212b60da-00c0724d54.zip/node_modules/@types/semver/",\
           "packageDependencies": [\
             ["@types/semver", "npm:7.3.13"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["@types/uuid", [\
+        ["npm:9.0.1", {\
+          "packageLocation": "./.yarn/cache/@types-uuid-npm-9.0.1-b44e45eb8a-c472b8a77c.zip/node_modules/@types/uuid/",\
+          "packageDependencies": [\
+            ["@types/uuid", "npm:9.0.1"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -6126,6 +6137,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/util-deprecate-npm-1.0.2-e3fe1a219c-474acf1146.zip/node_modules/util-deprecate/",\
           "packageDependencies": [\
             ["util-deprecate", "npm:1.0.2"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["uuid", [\
+        ["npm:9.0.0", {\
+          "packageLocation": "./.yarn/cache/uuid-npm-9.0.0-46c41e3e43-8dd2c83c43.zip/node_modules/uuid/",\
+          "packageDependencies": [\
+            ["uuid", "npm:9.0.0"]\
           ],\
           "linkType": "HARD"\
         }]\

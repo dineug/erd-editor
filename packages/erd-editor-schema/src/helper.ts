@@ -24,3 +24,11 @@ export function validString(list: ReadonlyArray<string>) {
 export function validNumber(list: ReadonlyArray<number>) {
   return (value: any) => isNumber(value) && list.includes(value);
 }
+
+export function propOr<T extends object, P extends string | number | symbol, R>(
+  target: T,
+  propertyKey: P,
+  defaultValue: R
+): P extends keyof T ? T[P] : R {
+  return (Reflect.get(target, propertyKey) as unknown as any) ?? defaultValue;
+}

@@ -11,7 +11,7 @@ import { assign } from '@/helper';
 import { DeepPartial, PartialRecord } from '@/internal-types';
 import { Table } from '@/v3/schema/table.entity';
 
-const createTable = (): Table => ({
+export const createTable = (): Table => ({
   id: '',
   name: '',
   comment: '',

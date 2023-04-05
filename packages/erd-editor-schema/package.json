@@ -13,12 +13,14 @@
   },
   "dependencies": {
     "@dineug/shared": "workspace:*",
-    "lodash-es": "^4.17.21"
+    "lodash-es": "^4.17.21",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^24.0.1",
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@types/lodash-es": "^4.17.6",
+    "@types/uuid": "^9.0.1",
     "rollup": "^3.18.0",
     "rollup-plugin-filesize": "^10.0.0",
     "rollup-plugin-typescript2": "^0.34.1",

@@ -1,4 +1,5 @@
 import {
+  createInRange,
   isBoolean,
   isNill,
   isNumber,
@@ -11,6 +12,10 @@ import { assign, validString } from '@/helper';
 import { DeepPartial } from '@/internal-types';
 import {
   BracketTypeList,
+  CANVAS_SIZE_MAX,
+  CANVAS_SIZE_MIN,
+  CANVAS_ZOOM_MAX,
+  CANVAS_ZOOM_MIN,
   CanvasEntity,
   CanvasTypeList,
   ColumnType,
@@ -63,6 +68,9 @@ const createCanvasEntity = (): CanvasEntity => ({
   pluginSerializationMap: {},
 });
 
+const sizeInRange = createInRange(CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
+const zoomInRange = createInRange(CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
+
 export function createAndMergeCanvasEntity(
   json?: DeepPartial<CanvasEntity>
 ): CanvasEntity {
@@ -74,13 +82,20 @@ export function createAndMergeCanvasEntity(
   const showAssignBoolean = assign(isBoolean, entity.show, json.show);
   const settingAssignBoolean = assign(isBoolean, entity.setting, json.setting);
 
+  if (isNumber(json.width)) {
+    entity.width = sizeInRange(json.width);
+  }
+  if (isNumber(json.height)) {
+    entity.height = sizeInRange(json.height);
+  }
+  if (isNumber(json.zoomLevel)) {
+    entity.zoomLevel = zoomInRange(json.zoomLevel);
+  }
+
   assignString('version');
   assignString('databaseName');
-  assignNumber('width');
-  assignNumber('height');
   assignNumber('scrollTop');
   assignNumber('scrollLeft');
-  assignNumber('zoomLevel');
 
   assign(validString(DatabaseList), entity, json)('database');
   assign(validString(CanvasTypeList), entity, json)('canvasType');

@@ -16,13 +16,13 @@ export interface RelationshipPoint {
 }
 
 export const RelationshipType = {
-  ZeroOneN: /* */ 0b0000000000000000000000000000001,
+  // ZeroOneN: /* */ 0b0000000000000000000000000000001,
   ZeroOne: /*  */ 0b0000000000000000000000000000010,
   ZeroN: /*    */ 0b0000000000000000000000000000100,
   OneOnly: /*  */ 0b0000000000000000000000000001000,
   OneN: /*     */ 0b0000000000000000000000000010000,
-  One: /*      */ 0b0000000000000000000000000100000,
-  N: /*        */ 0b0000000000000000000000001000000,
+  // One: /*      */ 0b0000000000000000000000000100000,
+  // N: /*        */ 0b0000000000000000000000001000000,
 } as const;
 export const RelationshipTypeList: ReadonlyArray<number> =
   Object.values(RelationshipType);

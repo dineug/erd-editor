@@ -1,6 +1,10 @@
 import {
   BracketType,
   BracketTypeList,
+  CANVAS_SIZE_MAX,
+  CANVAS_SIZE_MIN,
+  CANVAS_ZOOM_MAX,
+  CANVAS_ZOOM_MIN,
   CanvasEntity,
   CanvasType,
   CanvasTypeList,
@@ -57,4 +61,8 @@ export const SchemaV2Constants = {
   DirectionList,
   OrderType,
   OrderTypeList,
+  CANVAS_SIZE_MAX,
+  CANVAS_SIZE_MIN,
+  CANVAS_ZOOM_MAX,
+  CANVAS_ZOOM_MIN,
 } as const;
