@@ -7,6 +7,7 @@ storybook-static
 docker/**/data
 types
 .turbo
+.vscode
 
 # Log files
 npm-debug.log*

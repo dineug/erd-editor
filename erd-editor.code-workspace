@@ -5,6 +5,14 @@
       "path": "packages/erd-editor"
     },
     {
+      "name": "erd-editor-schema",
+      "path": "packages/erd-editor-schema"
+    },
+    {
+      "name": "shared",
+      "path": "packages/shared"
+    },
+    {
       "name": "monorepo",
       "path": "."
     }
@@ -34,8 +42,8 @@
       "**/.yarn": true,
       "**/.pnp.*": true
     },
-    "eslint.nodePath": "monorepo/.yarn/sdks",
-    "prettier.prettierPath": "monorepo/.yarn/sdks/prettier/index.js",
+    "eslint.nodePath": "../../.yarn/sdks",
+    "prettier.prettierPath": ".yarn/sdks/prettier/index.js",
     "typescript.tsdk": "monorepo/.yarn/sdks/typescript/lib",
     "typescript.enablePromptUseWorkspaceTsdk": true
   },
