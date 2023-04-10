@@ -5,7 +5,6 @@ export interface Memo {
 }
 
 export interface MemoUI {
-  active: boolean;
   top: number;
   left: number;
   width: number;

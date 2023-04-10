@@ -1,11 +1,4 @@
-import {
-  isArray,
-  isBoolean,
-  isNill,
-  isNumber,
-  isObject,
-  isString,
-} from '@dineug/shared';
+import { isArray, isNill, isNumber, isObject, isString } from '@dineug/shared';
 
 import { assign } from '@/helper';
 import { DeepPartial, PartialRecord } from '@/internal-types';
@@ -17,7 +10,6 @@ export const createTable = (): Table => ({
   comment: '',
   columnIds: [],
   ui: {
-    active: false,
     left: 200,
     top: 100,
     zIndex: 2,
@@ -39,7 +31,6 @@ export function createAndMergeTableEntities(
     const assignString = assign(isString, target, value);
     const assignArray = assign(isArray, target, value);
     const uiAssignNumber = assign(isNumber, target.ui, value.ui);
-    const uiAssignBoolean = assign(isBoolean, target.ui, value.ui);
     const uiAssignString = assign(isString, target.ui, value.ui);
 
     assignString('id');
@@ -47,7 +38,6 @@ export function createAndMergeTableEntities(
     assignString('comment');
     assignArray('columnIds');
 
-    uiAssignBoolean('active');
     uiAssignString('color');
     uiAssignNumber('left');
     uiAssignNumber('top');

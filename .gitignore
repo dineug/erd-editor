@@ -7,7 +7,6 @@ storybook-static
 docker/**/data
 types
 .turbo
-.vscode
 
 # Log files
 npm-debug.log*
@@ -16,6 +15,7 @@ yarn-error.log*
 
 # Editor directories and files
 .idea
+.vscode
 *.suo
 *.ntvs*
 *.njsproj

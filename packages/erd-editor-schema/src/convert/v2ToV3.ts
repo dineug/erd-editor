@@ -109,7 +109,6 @@ function assignTable(
     newTable.name = table.name;
     newTable.comment = table.comment;
     newTable.columnIds = table.columns.map(({ id }) => id);
-    newTable.ui.active = table.ui.active;
     newTable.ui.top = table.ui.top;
     newTable.ui.left = table.ui.left;
     newTable.ui.zIndex = table.ui.zIndex;
@@ -137,7 +136,6 @@ function assignTable(
         return acc;
       }, 0);
 
-      newColumn.ui.active = column.ui.active;
       newColumn.ui.widthName = column.ui.widthName;
       newColumn.ui.widthComment = column.ui.widthComment;
       newColumn.ui.widthDataType = column.ui.widthDataType;
@@ -201,7 +199,6 @@ function assignMemo(
 
     newValue.id = value.id;
     newValue.value = value.value;
-    newValue.ui.active = value.ui.active;
     newValue.ui.top = value.ui.top;
     newValue.ui.left = value.ui.left;
     newValue.ui.width = value.ui.width;

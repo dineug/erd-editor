@@ -1,10 +1,4 @@
-import {
-  isBoolean,
-  isNill,
-  isNumber,
-  isObject,
-  isString,
-} from '@dineug/shared';
+import { isNill, isNumber, isObject, isString } from '@dineug/shared';
 
 import { assign } from '@/helper';
 import { DeepPartial, PartialRecord } from '@/internal-types';
@@ -18,7 +12,6 @@ export const createColumn = (): Column => ({
   default: '',
   options: 0,
   ui: {
-    active: false,
     keys: 0,
     widthName: 60,
     widthComment: 60,
@@ -39,7 +32,6 @@ export function createAndMergeTableColumnEntities(
     const assignString = assign(isString, target, value);
     const assignNumber = assign(isNumber, target, value);
     const uiAssignNumber = assign(isNumber, target.ui, value.ui);
-    const uiAssignBoolean = assign(isBoolean, target.ui, value.ui);
 
     assignString('id');
     assignString('name');
@@ -48,7 +40,6 @@ export function createAndMergeTableColumnEntities(
     assignString('default');
     assignNumber('options');
 
-    uiAssignBoolean('active');
     uiAssignNumber('keys');
     uiAssignNumber('widthName');
     uiAssignNumber('widthComment');

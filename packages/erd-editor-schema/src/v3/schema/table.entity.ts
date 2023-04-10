@@ -7,7 +7,6 @@ export interface Table {
 }
 
 export interface TableUI {
-  active: boolean;
   top: number;
   left: number;
   zIndex: number;

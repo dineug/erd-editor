@@ -9,7 +9,6 @@ export interface Column {
 }
 
 export interface ColumnUI {
-  active: boolean;
   keys: number;
   widthName: number;
   widthComment: number;

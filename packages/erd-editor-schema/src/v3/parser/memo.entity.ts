@@ -1,10 +1,4 @@
-import {
-  isBoolean,
-  isNill,
-  isNumber,
-  isObject,
-  isString,
-} from '@dineug/shared';
+import { isNill, isNumber, isObject, isString } from '@dineug/shared';
 
 import { assign } from '@/helper';
 import { DeepPartial, PartialRecord } from '@/internal-types';
@@ -14,7 +8,6 @@ export const createMemo = (): Memo => ({
   id: '',
   value: '',
   ui: {
-    active: false,
     left: 200,
     top: 200,
     zIndex: 2,
@@ -35,13 +28,11 @@ export function createAndMergeMemoEntities(
     const target = createMemo();
     const assignString = assign(isString, target, value);
     const uiAssignNumber = assign(isNumber, target.ui, value.ui);
-    const uiAssignBoolean = assign(isBoolean, target.ui, value.ui);
     const uiAssignString = assign(isString, target.ui, value.ui);
 
     assignString('id');
     assignString('value');
 
-    uiAssignBoolean('active');
     uiAssignString('color');
     uiAssignNumber('left');
     uiAssignNumber('top');
