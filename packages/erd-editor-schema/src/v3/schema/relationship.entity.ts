@@ -1,19 +1,21 @@
-export interface Relationship {
+import { EntityType } from '@/internal-types';
+
+export type Relationship = EntityType<{
   id: string;
   identification: boolean;
   relationshipType: number;
   startRelationshipType: number;
   start: RelationshipPoint;
   end: RelationshipPoint;
-}
+}>;
 
-export interface RelationshipPoint {
+export type RelationshipPoint = {
   tableId: string;
   columnIds: string[];
   x: number;
   y: number;
   direction: number;
-}
+};
 
 export const RelationshipType = {
   // ZeroOneN: /* */ 0b0000000000000000000000000000001,

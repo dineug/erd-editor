@@ -7,7 +7,12 @@ import {
   isString,
 } from '@dineug/shared';
 
-import { assign, validNumber } from '@/helper';
+import {
+  assign,
+  assignMeta,
+  getDefaultEntityMeta,
+  validNumber,
+} from '@/helper';
 import { DeepPartial, PartialRecord } from '@/internal-types';
 import {
   Direction,
@@ -38,6 +43,7 @@ export const createRelationship = (): Relationship => ({
     y: 0,
     direction: Direction.bottom,
   },
+  meta: getDefaultEntityMeta(),
 });
 
 export function createAndMergeRelationshipEntities(
@@ -80,6 +86,8 @@ export function createAndMergeRelationshipEntities(
     endAssignNumber('y');
     assign(validNumber(DirectionList), target.end, value.end)('direction');
     assign(isArray, target.end, value.end)('columnIds');
+
+    assignMeta(target.meta, value.meta);
 
     if (target.id) {
       entities[target.id] = target;

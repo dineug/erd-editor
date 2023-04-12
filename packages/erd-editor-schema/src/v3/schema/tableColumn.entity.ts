@@ -1,4 +1,6 @@
-export interface Column {
+import { EntityType } from '@/internal-types';
+
+export type Column = EntityType<{
   id: string;
   name: string;
   comment: string;
@@ -6,15 +8,15 @@ export interface Column {
   default: string;
   options: number;
   ui: ColumnUI;
-}
+}>;
 
-export interface ColumnUI {
+export type ColumnUI = {
   keys: number;
   widthName: number;
   widthComment: number;
   widthDataType: number;
   widthDefault: number;
-}
+};
 
 export const ColumnOption = {
   autoIncrement: /* */ 0b0000000000000000000000000000001,

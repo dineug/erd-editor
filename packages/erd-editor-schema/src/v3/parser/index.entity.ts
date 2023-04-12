@@ -1,6 +1,6 @@
 import { isArray, isBoolean, isNill, isObject, isString } from '@dineug/shared';
 
-import { assign } from '@/helper';
+import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
 import { DeepPartial, PartialRecord } from '@/internal-types';
 import { Index } from '@/v3/schema/index.entity';
 
@@ -10,6 +10,7 @@ export const createIndex = (): Index => ({
   tableId: '',
   indexColumnIds: [],
   unique: false,
+  meta: getDefaultEntityMeta(),
 });
 
 export function createAndMergeIndexEntities(
@@ -30,6 +31,8 @@ export function createAndMergeIndexEntities(
     assignString('tableId');
     assignBoolean('unique');
     assignArray('indexColumnIds');
+
+    assignMeta(target.meta, value.meta);
 
     if (target.id) {
       entities[target.id] = target;

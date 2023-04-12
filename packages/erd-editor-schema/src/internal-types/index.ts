@@ -18,3 +18,12 @@ export type DeepPartial<T> = T extends
     };
 
 export type PartialRecord<T> = Partial<Record<string, T>>;
+
+export type EntityMeta = {
+  updateAt: string;
+  createAt: string;
+};
+
+export type EntityType<T> = T & {
+  meta: EntityMeta;
+};

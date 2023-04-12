@@ -1,8 +1,10 @@
-export interface IndexColumn {
+import { EntityType } from '@/internal-types';
+
+export type IndexColumn = EntityType<{
   id: string;
   columnId: string;
   orderType: number;
-}
+}>;
 
 export const OrderType = {
   ASC: /*  */ 0b0000000000000000000000000000001,

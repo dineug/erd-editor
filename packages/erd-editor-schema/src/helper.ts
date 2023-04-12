@@ -1,6 +1,7 @@
 import { isNumber, isString } from '@dineug/shared';
+import { DateTime } from 'luxon';
 
-import { DeepPartial } from '@/internal-types';
+import { DeepPartial, EntityMeta } from '@/internal-types';
 
 export function assign<T extends Object, K extends keyof T>(
   valid: (value: any) => boolean,
@@ -31,4 +32,22 @@ export function propOr<T extends object, P extends string | number | symbol, R>(
   defaultValue: R
 ): P extends keyof T ? T[P] : R {
   return (Reflect.get(target, propertyKey) as unknown as any) ?? defaultValue;
+}
+
+export function getDefaultEntityMeta(): EntityMeta {
+  const now = DateTime.now().toISO() ?? '';
+  return {
+    updateAt: now,
+    createAt: now,
+  };
+}
+
+export function assignMeta(
+  target: EntityMeta,
+  source?: DeepPartial<EntityMeta>
+) {
+  const assignString = assign(isString, target, source);
+
+  assignString('updateAt');
+  assignString('createAt');
 }

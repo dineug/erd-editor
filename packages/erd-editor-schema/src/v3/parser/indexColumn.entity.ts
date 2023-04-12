@@ -1,6 +1,11 @@
 import { isNill, isObject, isString } from '@dineug/shared';
 
-import { assign, validNumber } from '@/helper';
+import {
+  assign,
+  assignMeta,
+  getDefaultEntityMeta,
+  validNumber,
+} from '@/helper';
 import { DeepPartial, PartialRecord } from '@/internal-types';
 import {
   IndexColumn,
@@ -12,6 +17,7 @@ export const createIndexColumn = (): IndexColumn => ({
   id: '',
   columnId: '',
   orderType: OrderType.ASC,
+  meta: getDefaultEntityMeta(),
 });
 
 export function createAndMergeIndexColumnEntities(
@@ -28,6 +34,8 @@ export function createAndMergeIndexColumnEntities(
     assignString('id');
     assignString('columnId');
     assign(validNumber(OrderTypeList), target, value)('orderType');
+
+    assignMeta(target.meta, value.meta);
 
     if (target.id) {
       entities[target.id] = target;

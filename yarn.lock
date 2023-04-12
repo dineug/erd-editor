@@ -290,8 +290,10 @@ __metadata:
     "@rollup/plugin-commonjs": ^24.0.1
     "@rollup/plugin-node-resolve": ^15.0.1
     "@types/lodash-es": ^4.17.6
+    "@types/luxon": ^3.3.0
     "@types/uuid": ^9.0.1
     lodash-es: ^4.17.21
+    luxon: ^3.3.0
     rollup: ^3.18.0
     rollup-plugin-filesize: ^10.0.0
     rollup-plugin-typescript2: ^0.34.1
@@ -314,8 +316,10 @@ __metadata:
     "@rollup/plugin-commonjs": ^24.0.1
     "@rollup/plugin-node-resolve": ^15.0.1
     "@types/lodash-es": ^4.17.6
+    "@types/luxon": ^3.3.0
     "@types/uuid": ^9.0.1
     lodash-es: ^4.17.21
+    luxon: ^3.3.0
     rollup: ^3.18.0
     rollup-plugin-filesize: ^10.0.0
     rollup-plugin-terser: ^7.0.2
@@ -907,6 +911,13 @@ __metadata:
   version: 4.14.191
   resolution: "@types/lodash@npm:4.14.191"
   checksum: ba0d5434e10690869f32d5ea49095250157cae502f10d57de0a723fd72229ce6c6a4979576f0f13e0aa9fbe3ce2457bfb9fa7d4ec3d6daba56730a51906d1491
+  languageName: node
+  linkType: hard
+
+"@types/luxon@npm:^3.3.0":
+  version: 3.3.0
+  resolution: "@types/luxon@npm:3.3.0"
+  checksum: f7e3a89fc3ca404fbc3ea538653ed6860bc28f570a8c4d6d24449b89b9b553b7d6ad6cc94a9e129c5b8c9a2b97f0c365b3017f811e59c4a859a9c219a1c918e0
   languageName: node
   linkType: hard
 
@@ -3325,6 +3336,13 @@ __metadata:
   version: 7.18.1
   resolution: "lru-cache@npm:7.18.1"
   checksum: ab0ec1360c552f1ffa54b1eaf0026126c5116a07bee156b92d1e971f4c8c88e9160f0fad4ab6fed4e0fdea84f25a4590ece085bc57ed9ab1d90b17f0b138c556
+  languageName: node
+  linkType: hard
+
+"luxon@npm:^3.3.0":
+  version: 3.3.0
+  resolution: "luxon@npm:3.3.0"
+  checksum: 50cf17a0dc155c3dcacbeae8c0b7e80db425e0ba97b9cbdf12a7fc142d841ff1ab1560919f033af46240ed44e2f70c49f76e3422524c7fc8bb8d81ca47c66187
   languageName: node
   linkType: hard
 
