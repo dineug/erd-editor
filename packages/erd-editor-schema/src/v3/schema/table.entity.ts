@@ -9,8 +9,8 @@ export type Table = EntityType<{
 }>;
 
 export type TableUI = {
-  top: number;
-  left: number;
+  x: number;
+  y: number;
   zIndex: number;
   widthName: number;
   widthComment: number;

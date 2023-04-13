@@ -58,3 +58,6 @@ export const isGenerator = (
   isFunction(value.next) &&
   isFunction(value.throw) &&
   isFunction(value.return);
+
+export const nonNullable = <T>(value: T): value is NonNullable<T> =>
+  value !== null && value !== undefined;

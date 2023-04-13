@@ -8,8 +8,8 @@ export const createMemo = (): Memo => ({
   id: '',
   value: '',
   ui: {
-    left: 200,
-    top: 200,
+    x: 200,
+    y: 200,
     zIndex: 2,
     width: 127,
     height: 127,
@@ -35,8 +35,8 @@ export function createAndMergeMemoEntities(
     assignString('value');
 
     uiAssignString('color');
-    uiAssignNumber('left');
-    uiAssignNumber('top');
+    uiAssignNumber('x');
+    uiAssignNumber('y');
     uiAssignNumber('zIndex');
     uiAssignNumber('width');
     uiAssignNumber('height');

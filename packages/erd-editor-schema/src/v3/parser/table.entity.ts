@@ -10,8 +10,8 @@ export const createTable = (): Table => ({
   comment: '',
   columnIds: [],
   ui: {
-    left: 200,
-    top: 100,
+    x: 200,
+    y: 100,
     zIndex: 2,
     widthName: 60,
     widthComment: 60,
@@ -40,8 +40,8 @@ export function createAndMergeTableEntities(
     assignArray('columnIds');
 
     uiAssignString('color');
-    uiAssignNumber('left');
-    uiAssignNumber('top');
+    uiAssignNumber('x');
+    uiAssignNumber('y');
     uiAssignNumber('zIndex');
     uiAssignNumber('widthName');
     uiAssignNumber('widthComment');

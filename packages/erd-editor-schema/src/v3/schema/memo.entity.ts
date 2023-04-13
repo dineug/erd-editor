@@ -7,8 +7,8 @@ export type Memo = EntityType<{
 }>;
 
 export type MemoUI = {
-  top: number;
-  left: number;
+  x: number;
+  y: number;
   width: number;
   height: number;
   zIndex: number;

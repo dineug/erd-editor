@@ -1,5 +1,5 @@
 import { difference } from 'lodash-es';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuid } from 'uuid';
 
 import { propOr } from '@/helper';
 import { type ERDEditorSchemaV2 } from '@/v2';
@@ -109,8 +109,8 @@ function assignTable(
     newTable.name = table.name;
     newTable.comment = table.comment;
     newTable.columnIds = table.columns.map(({ id }) => id);
-    newTable.ui.top = table.ui.top;
-    newTable.ui.left = table.ui.left;
+    newTable.ui.y = table.ui.top;
+    newTable.ui.x = table.ui.left;
     newTable.ui.zIndex = table.ui.zIndex;
     newTable.ui.widthName = table.ui.widthName;
     newTable.ui.widthComment = table.ui.widthComment;
@@ -166,7 +166,7 @@ function assignTable(
     newIndex.unique = index.unique;
 
     for (const indexColumn of index.columns) {
-      const id = uuidv4();
+      const id = uuid();
       const newIndexColumn = createIndexColumn();
 
       newIndex.indexColumnIds.push(id);
@@ -199,8 +199,8 @@ function assignMemo(
 
     newValue.id = value.id;
     newValue.value = value.value;
-    newValue.ui.top = value.ui.top;
-    newValue.ui.left = value.ui.left;
+    newValue.ui.y = value.ui.top;
+    newValue.ui.x = value.ui.left;
     newValue.ui.width = value.ui.width;
     newValue.ui.height = value.ui.height;
     newValue.ui.zIndex = value.ui.zIndex;
