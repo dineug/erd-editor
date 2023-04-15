@@ -4,7 +4,8 @@ import { buffer, debounceTime, groupBy, map, mergeMap, Observable } from 'rxjs';
 import { notEmptyActions } from '@/engine/operators/notEmptyActions';
 
 export const groupByStreamActions =
-  (streamActionTypes: string[]) => (source$: Observable<Array<AnyAction>>) =>
+  (streamActionTypes: Array<string> | ReadonlyArray<string>) =>
+  (source$: Observable<Array<AnyAction>>) =>
     new Observable<Array<AnyAction>>(subscriber =>
       source$.subscribe({
         next: actions => {

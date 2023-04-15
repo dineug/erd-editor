@@ -3,6 +3,7 @@ import { createStore as runStore, Store as StoreType } from '@dineug/r-html';
 
 import { RootActionMap } from '@/engine/actions';
 import { EngineContext } from '@/engine/context';
+import { editorReducers } from '@/engine/modules/editor/atom.actions';
 import { createEditor } from '@/engine/modules/editor/state';
 import { tableReducers } from '@/engine/modules/table/atom.actions';
 import { tableColumnReducers } from '@/engine/modules/tableColumn/atom.actions';
@@ -18,6 +19,7 @@ export function createStore(context: EngineContext): Store {
       editor: createEditor(),
     },
     reducers: {
+      ...editorReducers,
       ...tableReducers,
       ...tableColumnReducers,
     },

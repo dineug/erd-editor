@@ -2,6 +2,8 @@ import { ValuesType } from '@/internal-types';
 
 export type Editor = {
   selectedMap: Record<string, SelectType>;
+  hasUndo: boolean;
+  hasRedo: boolean;
 };
 
 export const SelectType = {
@@ -12,4 +14,6 @@ export type SelectType = ValuesType<typeof SelectType>;
 
 export const createEditor = (): Editor => ({
   selectedMap: {},
+  hasUndo: false,
+  hasRedo: false,
 });

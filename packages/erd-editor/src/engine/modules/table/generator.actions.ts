@@ -1,6 +1,7 @@
 import { GeneratorAction } from '@/engine/generator.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { nextPoint, nextZIndex, uuid } from '@/utils';
+
+import { addTableAction } from './atom.actions';
 
 export const addTable$ = (): GeneratorAction =>
   function* ({ settings, collections: { tableEntities, memoEntities } }) {

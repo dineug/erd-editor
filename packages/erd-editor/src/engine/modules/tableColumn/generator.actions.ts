@@ -1,7 +1,8 @@
 import { GeneratorAction } from '@/engine/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
-import { addColumnAction } from '@/engine/modules/tableColumn/atom.actions';
 import { uuid } from '@/utils';
+
+import { addColumnAction } from './atom.actions';
 
 export const addColumn$ = (tableId?: string): GeneratorAction =>
   function* ({ editor: { selectedMap } }) {

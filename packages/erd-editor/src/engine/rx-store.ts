@@ -3,9 +3,18 @@ import {
   CompositionActions,
   compositionActionsFlat,
 } from '@dineug/r-html';
-import { debounceTime, merge, Observable, Subject, Subscription } from 'rxjs';
+import { asap } from '@dineug/shared';
+import { debounceTime, Observable, Subject, Subscription } from 'rxjs';
 
+import {
+  ChangeActionTypes,
+  HistoryActionTypes,
+  StreamActionTypes,
+} from '@/engine/actions';
 import { EngineContext } from '@/engine/context';
+import { createHistory } from '@/engine/history';
+import { pushHistory } from '@/engine/history.actions';
+import { changeHasHistoryAction } from '@/engine/modules/editor/atom.actions';
 import {
   actionsFilter,
   groupByStreamActions,
@@ -14,30 +23,34 @@ import {
 import { createStore, Store } from '@/engine/store';
 
 export type RxStore = Store & {
+  undo: () => void;
+  redo: () => void;
   change$: Observable<Array<AnyAction>>;
 };
 
 export function createRxStore(context: EngineContext): RxStore {
-  const store = createStore(context);
-  const dispatch$ = new Subject<Array<AnyAction>>();
-  const history$ = new Subject<Array<AnyAction>>();
-  const change$ = merge(
-    history$,
-    dispatch$.pipe(
-      actionsFilter([]) // TODO: changeActionTypes
-    )
-  ).pipe(notEmptyActions, debounceTime(200));
   const subscriptions: Subscription[] = [];
+  const store = createStore(context);
+  const history = createHistory(payload =>
+    store.dispatch(changeHasHistoryAction(payload))
+  );
 
-  const getActions = (...compositionActions: CompositionActions) =>
-    compositionActionsFlat(store.state, context, compositionActions);
+  const dispatch$ = new Subject<Array<AnyAction>>();
+  const history$ = dispatch$.pipe(
+    actionsFilter(HistoryActionTypes),
+    groupByStreamActions(StreamActionTypes)
+  );
+  const change$ = new Observable<Array<AnyAction>>(subscriber =>
+    store.subscribe(actions => subscriber.next(actions))
+  ).pipe(actionsFilter(ChangeActionTypes), notEmptyActions, debounceTime(200));
 
   const dispatchSync = (...compositionActions: CompositionActions) => {
-    dispatch$.next(getActions(compositionActions));
+    dispatch$.next(
+      compositionActionsFlat(store.state, store.context, compositionActions)
+    );
   };
-
   const dispatch = (...compositionActions: CompositionActions) => {
-    queueMicrotask(() => dispatchSync(compositionActions));
+    asap(() => dispatchSync(compositionActions));
   };
 
   const destroy = () => {
@@ -45,21 +58,16 @@ export function createRxStore(context: EngineContext): RxStore {
     store.destroy();
   };
 
-  const run = (actions: AnyAction[]) => {
-    store.dispatchSync(actions);
+  const undo = () => {
+    history.undo();
+  };
+  const redo = () => {
+    history.redo();
   };
 
   subscriptions.push(
-    history$.pipe(notEmptyActions).subscribe(run),
-    dispatch$
-      .pipe(
-        actionsFilter([]), // TODO: historyActionTypes
-        groupByStreamActions([]) // TODO: streamActionTypes
-      )
-      .subscribe(() => {
-        // TODO: history stack
-      }),
-    dispatch$.subscribe(run)
+    history$.subscribe(pushHistory(store, history)),
+    dispatch$.subscribe(store.dispatchSync)
   );
 
   return {
@@ -67,6 +75,8 @@ export function createRxStore(context: EngineContext): RxStore {
     dispatch,
     dispatchSync,
     destroy,
+    undo,
+    redo,
     change$,
   };
 }

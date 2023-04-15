@@ -1,10 +1,6 @@
 import { createAction } from '@dineug/r-html';
 
-import {
-  ActionMap,
-  ActionType,
-  ReducerType,
-} from '@/engine/modules/tableColumn/actions';
+import { ActionMap, ActionType, ReducerType } from './actions';
 
 export const addColumnAction = createAction<
   ActionMap[typeof ActionType.addColumn]

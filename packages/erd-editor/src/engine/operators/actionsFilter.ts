@@ -4,7 +4,8 @@ import { Observable } from 'rxjs';
 import { notEmptyActions } from '@/engine/operators/notEmptyActions';
 
 export const actionsFilter =
-  (actionTypes: string[]) => (source$: Observable<Array<AnyAction>>) =>
+  (actionTypes: Array<string> | ReadonlyArray<string>) =>
+  (source$: Observable<Array<AnyAction>>) =>
     new Observable<Array<AnyAction>>(subscriber =>
       source$.subscribe({
         next: actions =>

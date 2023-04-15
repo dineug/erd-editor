@@ -1,10 +1,6 @@
 import { createAction } from '@dineug/r-html';
 
-import {
-  ActionMap,
-  ActionType,
-  ReducerType,
-} from '@/engine/modules/table/actions';
+import { ActionMap, ActionType, ReducerType } from './actions';
 
 export const addTableAction = createAction<
   ActionMap[typeof ActionType.addTable]
