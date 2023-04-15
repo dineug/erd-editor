@@ -1,7 +1,7 @@
 import { isNill, isNumber, isObject, isString } from '@dineug/shared';
 
 import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
-import { DeepPartial, PartialRecord } from '@/internal-types';
+import { DeepPartial } from '@/internal-types';
 import { Memo } from '@/v3/schema/memo.entity';
 
 export const createMemo = (): Memo => ({
@@ -19,9 +19,9 @@ export const createMemo = (): Memo => ({
 });
 
 export function createAndMergeMemoEntities(
-  json?: DeepPartial<PartialRecord<Memo>>
-): PartialRecord<Memo> {
-  const entities: PartialRecord<Memo> = {};
+  json?: DeepPartial<Record<string, Memo>>
+): Record<string, Memo> {
+  const entities: Record<string, Memo> = {};
   if (!isObject(json) || isNill(json)) return entities;
 
   for (const value of Object.values(json)) {

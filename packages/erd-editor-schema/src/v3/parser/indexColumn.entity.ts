@@ -6,7 +6,7 @@ import {
   getDefaultEntityMeta,
   validNumber,
 } from '@/helper';
-import { DeepPartial, PartialRecord } from '@/internal-types';
+import { DeepPartial } from '@/internal-types';
 import {
   IndexColumn,
   OrderType,
@@ -21,9 +21,9 @@ export const createIndexColumn = (): IndexColumn => ({
 });
 
 export function createAndMergeIndexColumnEntities(
-  json?: DeepPartial<PartialRecord<IndexColumn>>
-): PartialRecord<IndexColumn> {
-  const entities: PartialRecord<IndexColumn> = {};
+  json?: DeepPartial<Record<string, IndexColumn>>
+): Record<string, IndexColumn> {
+  const entities: Record<string, IndexColumn> = {};
   if (!isObject(json) || isNill(json)) return entities;
 
   for (const value of Object.values(json)) {

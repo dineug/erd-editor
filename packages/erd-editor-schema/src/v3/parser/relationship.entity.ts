@@ -13,7 +13,7 @@ import {
   getDefaultEntityMeta,
   validNumber,
 } from '@/helper';
-import { DeepPartial, PartialRecord } from '@/internal-types';
+import { DeepPartial } from '@/internal-types';
 import {
   Direction,
   DirectionList,
@@ -47,9 +47,9 @@ export const createRelationship = (): Relationship => ({
 });
 
 export function createAndMergeRelationshipEntities(
-  json?: DeepPartial<PartialRecord<Relationship>>
-): PartialRecord<Relationship> {
-  const entities: PartialRecord<Relationship> = {};
+  json?: DeepPartial<Record<string, Relationship>>
+): Record<string, Relationship> {
+  const entities: Record<string, Relationship> = {};
   if (!isObject(json) || isNill(json)) return entities;
 
   for (const value of Object.values(json)) {

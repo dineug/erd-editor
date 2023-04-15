@@ -1,7 +1,7 @@
 import { isNill, isNumber, isObject, isString } from '@dineug/shared';
 
 import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
-import { DeepPartial, PartialRecord } from '@/internal-types';
+import { DeepPartial } from '@/internal-types';
 import { Column } from '@/v3/schema/tableColumn.entity';
 
 export const createColumn = (): Column => ({
@@ -22,9 +22,9 @@ export const createColumn = (): Column => ({
 });
 
 export function createAndMergeTableColumnEntities(
-  json?: DeepPartial<PartialRecord<Column>>
-): PartialRecord<Column> {
-  const entities: PartialRecord<Column> = {};
+  json?: DeepPartial<Record<string, Column>>
+): Record<string, Column> {
+  const entities: Record<string, Column> = {};
   if (!isObject(json) || isNill(json)) return entities;
 
   for (const value of Object.values(json)) {

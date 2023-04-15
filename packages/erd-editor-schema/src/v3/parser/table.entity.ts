@@ -1,7 +1,7 @@
 import { isArray, isNill, isNumber, isObject, isString } from '@dineug/shared';
 
 import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
-import { DeepPartial, PartialRecord } from '@/internal-types';
+import { DeepPartial } from '@/internal-types';
 import { Table } from '@/v3/schema/table.entity';
 
 export const createTable = (): Table => ({
@@ -21,9 +21,9 @@ export const createTable = (): Table => ({
 });
 
 export function createAndMergeTableEntities(
-  json?: DeepPartial<PartialRecord<Table>>
-): PartialRecord<Table> {
-  const entities: PartialRecord<Table> = {};
+  json?: DeepPartial<Record<string, Table>>
+): Record<string, Table> {
+  const entities: Record<string, Table> = {};
   if (!isObject(json) || isNill(json)) return entities;
 
   for (const value of Object.values(json)) {

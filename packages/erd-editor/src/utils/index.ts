@@ -1,5 +1,3 @@
-import { nonNullable } from '@dineug/shared';
-
 import { START_ADD, START_X, START_Y } from '@/constants/layout';
 import {
   Memo,
@@ -12,7 +10,7 @@ import {
 
 export { v4 as uuid } from 'uuid';
 
-const toZIndex = (data?: Table | Memo) => data?.ui.zIndex ?? 0;
+const toZIndex = (data: Table | Memo) => data.ui.zIndex;
 
 export const nextZIndex = (
   tableEntities: TableEntities,
@@ -39,9 +37,7 @@ export function nextPoint(
   const points = [
     ...Object.values(tableEntities),
     ...Object.values(memoEntities),
-  ]
-    .filter(nonNullable)
-    .map(({ ui }) => ui);
+  ].map(({ ui }) => ui);
 
   while (points.some(isSamePoint(point))) {
     point.x += START_ADD;

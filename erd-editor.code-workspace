@@ -43,7 +43,7 @@
       "**/.pnp.*": true
     },
     "eslint.nodePath": "../../.yarn/sdks",
-    "prettier.prettierPath": ".yarn/sdks/prettier/index.js",
+    "prettier.prettierPath": "../../.yarn/sdks/prettier/index.js",
     "typescript.tsdk": "monorepo/.yarn/sdks/typescript/lib",
     "typescript.enablePromptUseWorkspaceTsdk": true
   },

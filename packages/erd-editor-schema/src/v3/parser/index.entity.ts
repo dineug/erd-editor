@@ -1,7 +1,7 @@
 import { isArray, isBoolean, isNill, isObject, isString } from '@dineug/shared';
 
 import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
-import { DeepPartial, PartialRecord } from '@/internal-types';
+import { DeepPartial } from '@/internal-types';
 import { Index } from '@/v3/schema/index.entity';
 
 export const createIndex = (): Index => ({
@@ -14,9 +14,9 @@ export const createIndex = (): Index => ({
 });
 
 export function createAndMergeIndexEntities(
-  json?: DeepPartial<PartialRecord<Index>>
-): PartialRecord<Index> {
-  const entities: PartialRecord<Index> = {};
+  json?: DeepPartial<Record<string, Index>>
+): Record<string, Index> {
+  const entities: Record<string, Index> = {};
   if (!isObject(json) || isNill(json)) return entities;
 
   for (const value of Object.values(json)) {

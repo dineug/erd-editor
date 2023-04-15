@@ -1,4 +1,3 @@
-import { PartialRecord } from '@/internal-types';
 import { Doc } from '@/v3/schema/doc';
 import { Index } from '@/v3/schema/index.entity';
 import {
@@ -48,12 +47,12 @@ export interface ERDEditorSchemaV3 {
   settings: Settings;
   doc: Doc;
   collections: {
-    tableEntities: PartialRecord<Table>;
-    tableColumnEntities: PartialRecord<Column>;
-    relationshipEntities: PartialRecord<Relationship>;
-    indexEntities: PartialRecord<Index>;
-    indexColumnEntities: PartialRecord<IndexColumn>;
-    memoEntities: PartialRecord<Memo>;
+    tableEntities: Record<string, Table>;
+    tableColumnEntities: Record<string, Column>;
+    relationshipEntities: Record<string, Relationship>;
+    indexEntities: Record<string, Index>;
+    indexColumnEntities: Record<string, IndexColumn>;
+    memoEntities: Record<string, Memo>;
   };
 }
 

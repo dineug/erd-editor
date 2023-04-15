@@ -1,6 +1,6 @@
 import { Reducer } from '@dineug/r-html';
 
-import { Context } from '@/engine/context';
+import { EngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
 import { ValuesType } from '@/internal-types';
 
@@ -24,5 +24,5 @@ export type ReducerType<T extends keyof ActionMap> = Reducer<
   RootState,
   T,
   ActionMap,
-  Context
+  EngineContext
 >;

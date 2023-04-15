@@ -17,8 +17,6 @@ export type DeepPartial<T> = T extends
       [K in keyof T]?: DeepPartial<T[K]>;
     };
 
-export type PartialRecord<T> = Partial<Record<string, T>>;
-
 export type EntityMeta = {
   updateAt: string;
   createAt: string;

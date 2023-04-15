@@ -1,3 +1,7 @@
 import { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
 
-export type RootState = ERDEditorSchemaV3 & {};
+import { Editor } from '@/engine/modules/editor/state';
+
+export type RootState = ERDEditorSchemaV3 & {
+  editor: Editor;
+};

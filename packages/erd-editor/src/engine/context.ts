@@ -1,1 +1,5 @@
-export type Context = {};
+export type EngineContext = {};
+
+export function createEngineContext(): EngineContext {
+  return {};
+}
