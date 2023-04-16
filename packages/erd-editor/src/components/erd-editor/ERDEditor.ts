@@ -1,6 +1,6 @@
-import { defineCustomElement, FC, html, reduxDevtools } from '@dineug/r-html';
+import { defineCustomElement, FC, html, useProvider } from '@dineug/r-html';
 
-import { createAppContext } from '@/components/context';
+import { appContext, createAppContext } from '@/components/context';
 
 import * as styles from './ERDEditor.styles';
 
@@ -15,11 +15,16 @@ export type ERDEditorProps = {};
 export interface ERDEditorElement extends ERDEditorProps, HTMLElement {}
 
 const ERDEditor: FC<ERDEditorProps, ERDEditorElement> = (props, ctx) => {
-  const appCtx = createAppContext();
+  const appContextValue = createAppContext();
+  useProvider(ctx, appContext, appContextValue);
 
-  reduxDevtools(appCtx.store);
-
-  return () => html`<r-erd-provider .value=${appCtx}></r-erd-provider>`;
+  return () => html`
+    <r-erd-canvas>
+      <r-erd-container>
+        <r-erd-container></r-erd-container>
+      </r-erd-container>
+    </r-erd-canvas>
+  `;
 };
 
 defineCustomElement('erd-editor', {

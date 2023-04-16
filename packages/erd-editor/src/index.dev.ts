@@ -27,6 +27,6 @@ function runEditor() {
   document.body.appendChild(editor);
 }
 
-hmr();
+// hmr();
 runStats();
 runEditor();

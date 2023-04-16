@@ -364,7 +364,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@dineug/erd-editor", "workspace:packages/erd-editor"],\
             ["@dineug/erd-editor-schema", "workspace:packages/erd-editor-schema"],\
             ["@dineug/go", "npm:0.1.5"],\
-            ["@dineug/r-html", "npm:0.1.1"],\
+            ["@dineug/r-html", "npm:0.1.3"],\
             ["@dineug/shared", "workspace:packages/shared"],\
             ["@dineug/vite-plugin-r-html", "npm:0.1.0"],\
             ["@rollup/plugin-commonjs", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:24.0.1"],\
@@ -450,10 +450,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]\
       ]],\
       ["@dineug/r-html", [\
-        ["npm:0.1.1", {\
-          "packageLocation": "./.yarn/cache/@dineug-r-html-npm-0.1.1-efafcfd03e-65ed53ccd2.zip/node_modules/@dineug/r-html/",\
+        ["npm:0.1.3", {\
+          "packageLocation": "./.yarn/cache/@dineug-r-html-npm-0.1.3-771fba4cdd-794fc423d4.zip/node_modules/@dineug/r-html/",\
           "packageDependencies": [\
-            ["@dineug/r-html", "npm:0.1.1"]\
+            ["@dineug/r-html", "npm:0.1.3"]\
           ],\
           "linkType": "HARD"\
         }]\

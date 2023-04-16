@@ -310,7 +310,7 @@ __metadata:
   dependencies:
     "@dineug/erd-editor-schema": "workspace:*"
     "@dineug/go": ^0.1.5
-    "@dineug/r-html": ^0.1.1
+    "@dineug/r-html": ^0.1.3
     "@dineug/shared": "workspace:*"
     "@dineug/vite-plugin-r-html": ^0.1.0
     "@rollup/plugin-commonjs": ^24.0.1
@@ -344,10 +344,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dineug/r-html@npm:^0.1.1":
-  version: 0.1.1
-  resolution: "@dineug/r-html@npm:0.1.1"
-  checksum: 65ed53ccd2aa390e9712c0563049ab81ad44f1f1eb4f4aa45c8610d9e31bd7ee68d6fe67ea14169d0ee80dd2c0960dc9b6f77f48e7f6b4556b81c1749ea5ab33
+"@dineug/r-html@npm:^0.1.3":
+  version: 0.1.3
+  resolution: "@dineug/r-html@npm:0.1.3"
+  checksum: 794fc423d4d06d98889854a0476a4c11c0cc8364491b545b884902c79cd2a0479aaa963af89faaf3fc5dc128cc1c315dbaf07f6eb2c925bbb00ccfd2ca43c7a6
   languageName: node
   linkType: hard
 
