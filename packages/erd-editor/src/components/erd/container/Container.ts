@@ -5,12 +5,12 @@ import {
   onBeforeMount,
   onMounted,
   onUnmounted,
-  useContext,
   useProvider,
 } from '@dineug/r-html';
-import * as PIXI from 'pixi.js';
+import { Container } from 'pixi.js';
 
-import { canvasContext } from '@/components/erd/canvas/Canvas';
+import { useContainerContext } from '@/hooks/useContainerContext';
+import { useFederatedEvents } from '@/hooks/useFederatedEvents';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -18,41 +18,55 @@ declare global {
   }
 }
 
-export type ContainerContext = PIXI.Container;
+export const containerContext = createContext<Container | null>(null);
 
-export const containerContext = createContext<ContainerContext | null>(null);
+export type ContainerProps = {} & Pick<
+  Container,
+  'x' | 'y' | 'sortableChildren' | 'eventMode'
+>;
 
-export interface ContainerElement extends HTMLElement {}
+export interface ContainerElement extends HTMLElement {
+  container: Container;
+}
 
-const Container: FC<{}, ContainerElement> = (props, ctx) => {
-  const container = new PIXI.Container();
-  const canvas = useContext(ctx, canvasContext);
-  const parentContainer = useContext(ctx, containerContext);
+const ERDContainer: FC<ContainerProps, ContainerElement> = (props, ctx) => {
+  const container = new Container();
+  const parentContainer = useContainerContext(ctx);
+  ctx.container = container;
+
+  let provider: ReturnType<typeof useProvider<Container | null>> | null = null;
+
+  useFederatedEvents(container, ctx);
 
   onBeforeMount(() => {
-    useProvider(ctx, containerContext, container);
+    provider = useProvider(ctx, containerContext, container);
   });
 
   onMounted(() => {
-    if (parentContainer.value) {
-      parentContainer.value.addChild(container);
-    } else {
-      canvas.value?.stage.addChild(container);
-    }
+    parentContainer.value?.addChild(container);
   });
 
   onUnmounted(() => {
-    if (parentContainer.value) {
-      parentContainer.value.removeChild(container);
-    } else {
-      canvas.value?.stage.removeChild(container);
-    }
+    provider?.destroy();
+    parentContainer.value?.removeChild(container);
   });
 
-  return () => null;
+  return () => {
+    const { x = 0, y = 0, sortableChildren, eventMode = 'static' } = props;
+
+    container.eventMode = eventMode;
+    container.x = x;
+    container.y = y;
+    container.sortableChildren = sortableChildren;
+  };
 };
 
 defineCustomElement('r-erd-container', {
   shadow: false,
-  render: Container,
+  observedProps: {
+    x: Number,
+    y: Number,
+    sortableChildren: Boolean,
+  },
+  render: ERDContainer,
 });

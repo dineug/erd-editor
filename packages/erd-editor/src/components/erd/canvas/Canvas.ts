@@ -5,7 +5,7 @@ import {
   html,
   useProvider,
 } from '@dineug/r-html';
-import * as PIXI from 'pixi.js';
+import { Application } from 'pixi.js';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -13,15 +13,18 @@ declare global {
   }
 }
 
-export type CanvasContext = PIXI.Application;
+export const canvasContext = createContext<Application | null>(null);
 
-export const canvasContext = createContext<CanvasContext | null>(null);
+export type CanvasProps = {};
 
-export interface CanvasElement extends HTMLElement {}
+export interface CanvasElement extends HTMLElement {
+  app: Application;
+}
 
-const Canvas: FC<{}, CanvasElement> = (props, ctx) => {
-  const app = new PIXI.Application();
+const Canvas: FC<CanvasProps, CanvasElement> = (props, ctx) => {
+  const app = new Application({ antialias: true });
   useProvider(ctx, canvasContext, app);
+  ctx.app = app;
 
   if (import.meta.env.DEV) {
     Reflect.set(globalThis, '__PIXI_APP__', app);

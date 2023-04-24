@@ -1,4 +1,5 @@
 import { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
+import { FederatedPointerEvent, FederatedWheelEvent } from 'pixi.js';
 
 export type ValuesType<T extends Record<string, string>> = T[keyof T];
 
@@ -30,3 +31,6 @@ export type Point = {
   x: number;
   y: number;
 };
+
+export type CustomPointerEvent = CustomEvent<FederatedPointerEvent>;
+export type CustomWheelEvent = CustomEvent<FederatedWheelEvent>;
