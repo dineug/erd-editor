@@ -3,7 +3,7 @@ import { nextPoint, nextZIndex, uuid } from '@/utils';
 
 import { addTableAction } from './atom.actions';
 
-export const addTable$ = (): GeneratorAction =>
+export const addTableAction$ = (): GeneratorAction =>
   function* ({ settings, collections: { tableEntities, memoEntities } }) {
     const point = nextPoint(settings, tableEntities, memoEntities);
 
@@ -16,3 +16,7 @@ export const addTable$ = (): GeneratorAction =>
       },
     });
   };
+
+export const actions$ = {
+  addTableAction$,
+};

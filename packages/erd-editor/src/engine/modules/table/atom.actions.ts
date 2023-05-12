@@ -15,3 +15,7 @@ const addTable: ReducerType<typeof ActionType.addTable> = (
 export const tableReducers = {
   [ActionType.addTable]: addTable,
 };
+
+export const actions = {
+  addTableAction,
+};

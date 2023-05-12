@@ -1,4 +1,4 @@
-import { createContext, reduxDevtools } from '@dineug/r-html';
+import { createContext, reduxDevtools, useContext } from '@dineug/r-html';
 
 import { createEngineContext, EngineContext } from '@/engine/context';
 import { createRxStore, RxStore } from '@/engine/rx-store';
@@ -15,10 +15,13 @@ export function createAppContext(): AppContext {
     reduxDevtools(store);
   }
 
-  return {
+  return Object.freeze({
     ...engineContext,
     store,
-  };
+  });
 }
 
 export const appContext = createContext<AppContext>({} as AppContext);
+
+export const useAppContext = (ctx: Parameters<typeof useContext>[0]) =>
+  useContext(ctx, appContext);

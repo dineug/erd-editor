@@ -15,3 +15,7 @@ const addColumn: ReducerType<typeof ActionType.addColumn> = (
 export const tableColumnReducers = {
   [ActionType.addColumn]: addColumn,
 };
+
+export const actions = {
+  addColumnAction,
+};

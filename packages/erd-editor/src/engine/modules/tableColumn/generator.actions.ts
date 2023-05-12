@@ -4,7 +4,7 @@ import { uuid } from '@/utils';
 
 import { addColumnAction } from './atom.actions';
 
-export const addColumn$ = (tableId?: string): GeneratorAction =>
+export const addColumnAction$ = (tableId?: string): GeneratorAction =>
   function* ({ editor: { selectedMap } }) {
     if (tableId) {
       yield addColumnAction({
@@ -25,3 +25,7 @@ export const addColumn$ = (tableId?: string): GeneratorAction =>
       });
     }
   };
+
+export const actions$ = {
+  addColumnAction$,
+};

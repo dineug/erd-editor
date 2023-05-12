@@ -17,3 +17,7 @@ const changeHasHistory: ReducerType<typeof ActionType.changeHasHistory> = (
 export const editorReducers = {
   [ActionType.changeHasHistory]: changeHasHistory,
 };
+
+export const actions = {
+  changeHasHistoryAction,
+};

@@ -17,7 +17,7 @@ export interface ERDEditorElement extends ERDEditorProps, HTMLElement {}
 
 const ERDEditor: FC<ERDEditorProps, ERDEditorElement> = (props, ctx) => {
   const appContextValue = createAppContext();
-  useProvider(ctx, appContext, appContextValue);
+  const provider = useProvider(ctx, appContext, appContextValue);
 
   return () => html`<div><${ERD} /></div>`;
 };
