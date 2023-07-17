@@ -8,13 +8,6 @@ import ttypescript from 'ttypescript';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
-const banner = `/*!
- * ${pkg.name}
- * @version ${pkg.version} | ${new Date().toDateString()}
- * @author ${pkg.author}
- * @license ${pkg.license}
- */`;
-
 export default {
   input: 'src/index.ts',
   context: 'globalThis',
@@ -22,7 +15,6 @@ export default {
     {
       file: pkg.main,
       format: 'es',
-      banner,
     },
   ],
   plugins: [

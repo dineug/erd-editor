@@ -369,9 +369,11 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@dineug/vite-plugin-r-html", "npm:0.1.0"],\
             ["@rollup/plugin-commonjs", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:24.0.1"],\
             ["@rollup/plugin-node-resolve", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:15.0.1"],\
+            ["@types/color", "npm:3.0.3"],\
             ["@types/lodash-es", "npm:4.17.6"],\
             ["@types/luxon", "npm:3.3.0"],\
             ["@types/uuid", "npm:9.0.1"],\
+            ["color", "npm:4.2.3"],\
             ["lodash-es", "npm:4.17.21"],\
             ["luxon", "npm:3.3.0"],\
             ["rollup", "npm:3.18.0"],\
@@ -1091,6 +1093,35 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [\
             ["@tufjs/models", "npm:1.0.0"],\
             ["minimatch", "npm:6.2.0"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["@types/color", [\
+        ["npm:3.0.3", {\
+          "packageLocation": "./.yarn/cache/@types-color-npm-3.0.3-dfc797f0a3-4a54a6eca6.zip/node_modules/@types/color/",\
+          "packageDependencies": [\
+            ["@types/color", "npm:3.0.3"],\
+            ["@types/color-convert", "npm:2.0.0"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["@types/color-convert", [\
+        ["npm:2.0.0", {\
+          "packageLocation": "./.yarn/cache/@types-color-convert-npm-2.0.0-f59f3c146a-027b68665d.zip/node_modules/@types/color-convert/",\
+          "packageDependencies": [\
+            ["@types/color-convert", "npm:2.0.0"],\
+            ["@types/color-name", "npm:1.1.1"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["@types/color-name", [\
+        ["npm:1.1.1", {\
+          "packageLocation": "./.yarn/cache/@types-color-name-npm-1.1.1-00b0925070-b71fcad728.zip/node_modules/@types/color-name/",\
+          "packageDependencies": [\
+            ["@types/color-name", "npm:1.1.1"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -1938,6 +1969,17 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
+      ["color", [\
+        ["npm:4.2.3", {\
+          "packageLocation": "./.yarn/cache/color-npm-4.2.3-4a23227581-0579629c02.zip/node_modules/color/",\
+          "packageDependencies": [\
+            ["color", "npm:4.2.3"],\
+            ["color-convert", "npm:2.0.1"],\
+            ["color-string", "npm:1.9.1"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
       ["color-convert", [\
         ["npm:1.9.3", {\
           "packageLocation": "./.yarn/cache/color-convert-npm-1.9.3-1fe690075e-fd7a64a17c.zip/node_modules/color-convert/",\
@@ -1968,6 +2010,17 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/color-name-npm-1.1.4-025792b0ea-b044585952.zip/node_modules/color-name/",\
           "packageDependencies": [\
             ["color-name", "npm:1.1.4"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["color-string", [\
+        ["npm:1.9.1", {\
+          "packageLocation": "./.yarn/cache/color-string-npm-1.9.1-dc020e56be-c13fe7cff7.zip/node_modules/color-string/",\
+          "packageDependencies": [\
+            ["color-string", "npm:1.9.1"],\
+            ["color-name", "npm:1.1.4"],\
+            ["simple-swizzle", "npm:0.2.2"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -3478,6 +3531,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["call-bind", "npm:1.0.2"],\
             ["get-intrinsic", "npm:1.2.0"],\
             ["is-typed-array", "npm:1.1.10"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["is-arrayish", [\
+        ["npm:0.3.2", {\
+          "packageLocation": "./.yarn/cache/is-arrayish-npm-0.3.2-f856180f79-977e64f54d.zip/node_modules/is-arrayish/",\
+          "packageDependencies": [\
+            ["is-arrayish", "npm:0.3.2"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -5272,6 +5334,16 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["sigstore", "npm:1.0.0"],\
             ["make-fetch-happen", "npm:11.0.3"],\
             ["tuf-js", "npm:1.1.1"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["simple-swizzle", [\
+        ["npm:0.2.2", {\
+          "packageLocation": "./.yarn/cache/simple-swizzle-npm-0.2.2-8dee37fad1-a7f3f2ab5c.zip/node_modules/simple-swizzle/",\
+          "packageDependencies": [\
+            ["simple-swizzle", "npm:0.2.2"],\
+            ["is-arrayish", "npm:0.3.2"]\
           ],\
           "linkType": "HARD"\
         }]\

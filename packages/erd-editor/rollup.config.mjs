@@ -55,4 +55,9 @@ export default {
       showBrotliSize: true,
     }),
   ],
+  onwarn: warning => {
+    if (warning.code !== 'CIRCULAR_DEPENDENCY') {
+      console.warn(`(!) ${warning.message}`);
+    }
+  },
 };

@@ -70,7 +70,7 @@ export function createRxStore(context: EngineContext): RxStore {
     dispatch$.subscribe(store.dispatchSync)
   );
 
-  return {
+  return Object.freeze({
     ...store,
     dispatch,
     dispatchSync,
@@ -78,5 +78,5 @@ export function createRxStore(context: EngineContext): RxStore {
     undo,
     redo,
     change$,
-  };
+  });
 }
