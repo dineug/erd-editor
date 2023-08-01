@@ -1,7 +1,6 @@
 // @ts-ignore
 import { readFileSync } from 'node:fs';
 
-import rHtml from '@dineug/vite-plugin-r-html';
 import typescript from '@rollup/plugin-typescript';
 import { visualizer } from 'rollup-plugin-visualizer';
 import ttypescript from 'ttypescript';
@@ -10,30 +9,17 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
-const banner = `/*!
- * ${pkg.name}
- * @version ${pkg.version} | ${new Date().toDateString()}
- * @author ${pkg.author}
- * @license ${pkg.license}
- */`;
-
 export default defineConfig({
   build: {
     lib: {
       entry: './src/index.ts',
       name: pkg.name,
-      fileName: 'erd-editor',
-      formats: ['es', 'umd'],
-    },
-    rollupOptions: {
-      output: {
-        banner,
-      },
+      fileName: 'shared',
+      formats: ['es'],
     },
   },
   plugins: [
     tsconfigPaths(),
-    rHtml(),
     visualizer({ filename: './dist/stats.html' }),
     typescript({
       typescript: ttypescript,

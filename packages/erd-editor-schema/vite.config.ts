@@ -1,7 +1,6 @@
 // @ts-ignore
 import { readFileSync } from 'node:fs';
 
-import rHtml from '@dineug/vite-plugin-r-html';
 import typescript from '@rollup/plugin-typescript';
 import { visualizer } from 'rollup-plugin-visualizer';
 import ttypescript from 'ttypescript';
@@ -22,10 +21,11 @@ export default defineConfig({
     lib: {
       entry: './src/index.ts',
       name: pkg.name,
-      fileName: 'erd-editor',
-      formats: ['es', 'umd'],
+      fileName: 'erd-editor-schema',
+      formats: ['es', 'cjs'],
     },
     rollupOptions: {
+      external: Object.keys(pkg.dependencies),
       output: {
         banner,
       },
@@ -33,7 +33,6 @@ export default defineConfig({
   },
   plugins: [
     tsconfigPaths(),
-    rHtml(),
     visualizer({ filename: './dist/stats.html' }),
     typescript({
       typescript: ttypescript,
