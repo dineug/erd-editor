@@ -17,40 +17,44 @@ const banner = `/*!
  * @license ${pkg.license}
  */`;
 
-export default defineConfig({
-  build: {
-    lib: {
-      entry: './src/index.ts',
-      name: pkg.name,
-      fileName: 'erd-editor',
-      formats: ['es', 'umd'],
-    },
-    rollupOptions: {
-      output: {
-        banner,
+export default defineConfig(({ command }) => {
+  const isServe = command === 'serve';
+
+  return {
+    build: {
+      lib: {
+        entry: './src/index.ts',
+        name: pkg.name,
+        fileName: 'erd-editor',
+        formats: ['es', 'umd'],
+      },
+      rollupOptions: {
+        output: {
+          banner,
+        },
       },
     },
-  },
-  plugins: [
-    tsconfigPaths(),
-    rHtml(),
-    visualizer({ filename: './dist/stats.html' }),
-    typescript({
-      typescript: ttypescript,
-      noEmitOnError: true,
-      compilerOptions: {
-        declaration: true,
-        outDir: './dist',
-        plugins: [
-          {
-            transform: 'typescript-transform-paths',
-            afterDeclarations: true,
-          },
-        ],
-      },
-    }),
-  ],
-  server: {
-    open: true,
-  },
+    plugins: [
+      tsconfigPaths(),
+      isServe && rHtml(),
+      visualizer({ filename: './dist/stats.html' }),
+      typescript({
+        typescript: ttypescript,
+        noEmitOnError: true,
+        compilerOptions: {
+          declaration: true,
+          outDir: './dist',
+          plugins: [
+            {
+              transform: 'typescript-transform-paths',
+              afterDeclarations: true,
+            },
+          ],
+        },
+      }),
+    ].filter(Boolean),
+    server: {
+      open: true,
+    },
+  };
 });
