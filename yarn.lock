@@ -324,9 +324,9 @@ __metadata:
   dependencies:
     "@dineug/erd-editor-schema": "workspace:*"
     "@dineug/go": ^0.1.6
-    "@dineug/r-html": ^0.1.3
+    "@dineug/r-html": "workspace:*"
     "@dineug/shared": "workspace:*"
-    "@dineug/vite-plugin-r-html": ^0.1.0
+    "@dineug/vite-plugin-r-html": "workspace:*"
     "@rollup/plugin-typescript": ^11.1.2
     "@types/color": ^3.0.3
     "@types/lodash-es": ^4.17.6
@@ -366,7 +366,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@dineug/r-html@^0.1.3, @dineug/r-html@workspace:*, @dineug/r-html@workspace:submodules/r-html/packages/r-html":
+"@dineug/r-html@workspace:*, @dineug/r-html@workspace:submodules/r-html/packages/r-html":
   version: 0.0.0-use.local
   resolution: "@dineug/r-html@workspace:submodules/r-html/packages/r-html"
   dependencies:
@@ -396,7 +396,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@dineug/vite-plugin-r-html@^0.1.0, @dineug/vite-plugin-r-html@workspace:*, @dineug/vite-plugin-r-html@workspace:submodules/r-html/packages/vite-plugin-r-html":
+"@dineug/vite-plugin-r-html@workspace:*, @dineug/vite-plugin-r-html@workspace:submodules/r-html/packages/vite-plugin-r-html":
   version: 0.0.0-use.local
   resolution: "@dineug/vite-plugin-r-html@workspace:submodules/r-html/packages/vite-plugin-r-html"
   dependencies:

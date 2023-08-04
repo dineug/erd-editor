@@ -13,6 +13,14 @@
       "path": "packages/shared"
     },
     {
+      "name": "@dineug/r-html",
+      "path": "submodules/r-html/packages/r-html"
+    },
+    {
+      "name": "@dineug/vite-plugin-r-html",
+      "path": "submodules/r-html/packages/vite-plugin-r-html"
+    },
+    {
       "name": "monorepo",
       "path": "."
     }
