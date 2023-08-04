@@ -13,6 +13,6 @@ jobs:
         with:
           node-version: 18
       - run: git submodule init
-      - run: git submodule update
+      - run: sh submodules/submodule-clone.sh
       - run: yarn
       - run: yarn build

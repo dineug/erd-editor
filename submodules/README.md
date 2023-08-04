@@ -1,4 +1,5 @@
+## git submodule clone
+
 ```sh
-git submodule init
-git submodule update --remote
+sh submodules/submodule-clone.sh
 ```
