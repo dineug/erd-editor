@@ -323,7 +323,7 @@ __metadata:
   resolution: "@dineug/erd-editor@workspace:packages/erd-editor"
   dependencies:
     "@dineug/erd-editor-schema": "workspace:*"
-    "@dineug/go": ^0.1.6
+    "@dineug/go": "workspace:*"
     "@dineug/r-html": "workspace:*"
     "@dineug/shared": "workspace:*"
     "@dineug/vite-plugin-r-html": "workspace:*"
@@ -348,12 +348,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@dineug/go@npm:^0.1.6":
-  version: 0.1.6
-  resolution: "@dineug/go@npm:0.1.6"
-  checksum: acc3917a41b9246cb512c88e1d0147707eff392a29e11f3ce8c443dddd4904c5c1be7e8e8bb90f200a66173dd93b266c9c9f2f85a31a0caa49bf24dfff92813a
-  languageName: node
-  linkType: hard
+"@dineug/go@workspace:*, @dineug/go@workspace:submodules/go/packages/go":
+  version: 0.0.0-use.local
+  resolution: "@dineug/go@workspace:submodules/go/packages/go"
+  dependencies:
+    "@rollup/plugin-typescript": ^11.1.2
+    rollup-plugin-visualizer: ^5.9.0
+    tslib: ^2.5.0
+    ttypescript: ^1.5.15
+    typescript: 4.9.5
+    typescript-transform-paths: ^3.4.6
+    vite: ^4.1.4
+    vite-tsconfig-paths: ^4.0.5
+  languageName: unknown
+  linkType: soft
 
 "@dineug/hmr@workspace:submodules/r-html/packages/hmr":
   version: 0.0.0-use.local

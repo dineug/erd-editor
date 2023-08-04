@@ -28,6 +28,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         "reference": "workspace:packages/shared"\
       },\
       {\
+        "name": "@dineug/go",\
+        "reference": "workspace:submodules/go/packages/go"\
+      },\
+      {\
         "name": "@dineug/hmr",\
         "reference": "workspace:submodules/r-html/packages/hmr"\
       },\
@@ -46,6 +50,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
       ["@dineug/erd-editor", ["workspace:packages/erd-editor"]],\
       ["@dineug/erd-editor-monorepo", ["workspace:."]],\
       ["@dineug/erd-editor-schema", ["workspace:packages/erd-editor-schema"]],\
+      ["@dineug/go", ["workspace:submodules/go/packages/go"]],\
       ["@dineug/hmr", ["workspace:submodules/r-html/packages/hmr"]],\
       ["@dineug/r-html", ["workspace:submodules/r-html/packages/r-html"]],\
       ["@dineug/shared", ["workspace:packages/shared"]],\
@@ -401,7 +406,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [\
             ["@dineug/erd-editor", "workspace:packages/erd-editor"],\
             ["@dineug/erd-editor-schema", "workspace:packages/erd-editor-schema"],\
-            ["@dineug/go", "npm:0.1.6"],\
+            ["@dineug/go", "workspace:submodules/go/packages/go"],\
             ["@dineug/r-html", "workspace:submodules/r-html/packages/r-html"],\
             ["@dineug/shared", "workspace:packages/shared"],\
             ["@dineug/vite-plugin-r-html", "workspace:submodules/r-html/packages/vite-plugin-r-html"],\
@@ -475,12 +480,20 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]\
       ]],\
       ["@dineug/go", [\
-        ["npm:0.1.6", {\
-          "packageLocation": "./.yarn/cache/@dineug-go-npm-0.1.6-5d070e38ba-acc3917a41.zip/node_modules/@dineug/go/",\
+        ["workspace:submodules/go/packages/go", {\
+          "packageLocation": "./submodules/go/packages/go/",\
           "packageDependencies": [\
-            ["@dineug/go", "npm:0.1.6"]\
+            ["@dineug/go", "workspace:submodules/go/packages/go"],\
+            ["@rollup/plugin-typescript", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:11.1.2"],\
+            ["rollup-plugin-visualizer", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:5.9.0"],\
+            ["tslib", "npm:2.5.0"],\
+            ["ttypescript", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:1.5.15"],\
+            ["typescript", "patch:typescript@npm%3A4.9.5#~builtin<compat/typescript>::version=4.9.5&hash=23ec76"],\
+            ["typescript-transform-paths", "virtual:eaa7abd60a277b021ae12ce14b19c7866645a6ef2e845cede75c1932567bf0f7283071c960905cc90df8db7afd78ef2d39f39e3bad5d3cee15114a306a1aaedb#npm:3.4.6"],\
+            ["vite", "virtual:3e742e852ad2700cdbc82c2e4f0190396317c6fb537b4896012ee74e6fede79e7e4946cea1baabccd8c165227ea08a4dca5c95f1036bfcaa5fa8bfb53d33c9e9#npm:4.1.4"],\
+            ["vite-tsconfig-paths", "npm:4.0.5"]\
           ],\
-          "linkType": "HARD"\
+          "linkType": "SOFT"\
         }]\
       ]],\
       ["@dineug/hmr", [\

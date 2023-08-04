@@ -4,7 +4,7 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "submodules/r-html/packages/*"
+    "submodules/*/packages/*"
   ],
   "engines": {
     "node": ">=18.14.0"

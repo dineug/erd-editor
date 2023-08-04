@@ -13,6 +13,10 @@
       "path": "packages/shared"
     },
     {
+      "name": "@dineug/go",
+      "path": "submodules/go/packages/go"
+    },
+    {
       "name": "@dineug/r-html",
       "path": "submodules/r-html/packages/r-html"
     },
