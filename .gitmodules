@@ -1,0 +1,6 @@
+[submodule "submodules/r-html"]
+	path = submodules/r-html
+	url = https://github.com/dineug/r-html.git
+[submodule "submodules/go"]
+	path = submodules/go
+	url = https://github.com/dineug/go.git
