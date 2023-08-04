@@ -1,0 +1,3 @@
+[submodule "submodules/r-html"]
+	path = submodules/r-html
+	url = https://github.com/dineug/r-html.git
