@@ -12,5 +12,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 18
+      - run: git submodule init
+      - run: git submodule update
       - run: yarn
       - run: yarn build
