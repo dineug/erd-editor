@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 
 import typescript from '@rollup/plugin-typescript';
 import { visualizer } from 'rollup-plugin-visualizer';
-import ttypescript from 'ttypescript';
+// @ts-ignore
+import tspCompiler from 'ts-patch/compiler';
 import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
@@ -22,7 +23,7 @@ export default defineConfig({
     tsconfigPaths(),
     visualizer({ filename: './dist/stats.html' }),
     typescript({
-      typescript: ttypescript,
+      typescript: tspCompiler,
       noEmitOnError: true,
       compilerOptions: {
         declaration: true,
