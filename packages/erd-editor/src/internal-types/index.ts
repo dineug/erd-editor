@@ -2,12 +2,10 @@ import { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
 
 export type ValuesType<T extends Record<string, string>> = T[keyof T];
 
-type GetEntity<T extends keyof ERDEditorSchemaV3['collections']> = Exclude<
-  ERDEditorSchemaV3['collections'][T][keyof ERDEditorSchemaV3['collections'][T]],
-  undefined
->;
+export type GetEntity<T extends keyof ERDEditorSchemaV3['collections']> =
+  ERDEditorSchemaV3['collections'][T][keyof ERDEditorSchemaV3['collections'][T]];
 
-type GetEntities<T extends keyof ERDEditorSchemaV3['collections']> =
+export type GetEntities<T extends keyof ERDEditorSchemaV3['collections']> =
   ERDEditorSchemaV3['collections'][T];
 
 export type Table = GetEntity<'tableEntities'>;
@@ -24,9 +22,16 @@ export type RelationshipEntities = GetEntities<'relationshipEntities'>;
 export type IndexEntities = GetEntities<'indexEntities'>;
 export type IndexColumnEntities = GetEntities<'indexColumnEntities'>;
 
+export type Doc = ERDEditorSchemaV3['doc'];
+export type Collections = ERDEditorSchemaV3['collections'];
 export type Settings = ERDEditorSchemaV3['settings'];
 
 export type Point = {
   x: number;
   y: number;
+};
+
+export type EntityMeta = {
+  updateAt: string;
+  createAt: string;
 };
