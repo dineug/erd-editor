@@ -3,13 +3,14 @@
   "version": "3.0.0",
   "private": true,
   "description": "ERD editor",
-  "main": "./dist/erd-editor.umd.js",
-  "module": "./dist/erd-editor.mjs",
+  "type": "module",
+  "main": "./dist/erd-editor.umd.cjs",
+  "module": "./dist/erd-editor.js",
   "typings": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/erd-editor.mjs",
-      "require": "./dist/erd-editor.umd.js"
+      "import": "./dist/erd-editor.js",
+      "require": "./dist/erd-editor.umd.cjs"
     }
   },
   "files": [

@@ -23,7 +23,7 @@ export default defineConfig({
       entry: './src/index.ts',
       name: pkg.name,
       fileName: 'erd-editor-schema',
-      formats: ['es', 'cjs'],
+      formats: ['es', 'umd'],
     },
     rollupOptions: {
       external: Object.keys(pkg.dependencies),

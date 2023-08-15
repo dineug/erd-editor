@@ -2,8 +2,8 @@
   "name": "@dineug/shared",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "shared",
+  "type": "module",
   "main": "./dist/shared.js",
   "typings": "./dist/index.d.ts",
   "files": [
