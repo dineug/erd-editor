@@ -4,13 +4,16 @@
   "private": true,
   "description": "ERD editor schema",
   "type": "module",
-  "main": "./dist/erd-editor-schema.cjs",
+  "main": "./dist/erd-editor-schema.umd.cjs",
   "module": "./dist/erd-editor-schema.js",
-  "typings": "./dist/index.d.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/erd-editor-schema.js",
-      "require": "./dist/erd-editor-schema.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/erd-editor-schema.js"
+      },
+      "require": "./dist/erd-editor-schema.umd.cjs"
     }
   },
   "files": [

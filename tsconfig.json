@@ -1,18 +1,16 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ESNext",
+    "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "moduleResolution": "node",
-    "allowJs": true,
-    "allowSyntheticDefaultImports": true,
-    "emitDecoratorMetadata": false,
-    "esModuleInterop": true,
-    "experimentalDecorators": true,
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "importHelpers": false,
+    "isolatedModules": true,
+    "moduleResolution": "bundler",
     "noImplicitAny": true,
     "resolveJsonModule": true,
     "strict": true,
     "strictPropertyInitialization": false,
-    "importHelpers": false
   }
 }

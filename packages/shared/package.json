@@ -5,7 +5,15 @@
   "description": "shared",
   "type": "module",
   "main": "./dist/shared.js",
-  "typings": "./dist/index.d.ts",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/shared.js"
+      }
+    }
+  },
   "files": [
     "dist/*.js",
     "dist/**/*.ts"

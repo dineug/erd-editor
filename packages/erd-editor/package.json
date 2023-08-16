@@ -6,7 +6,7 @@
   "type": "module",
   "main": "./dist/erd-editor.umd.cjs",
   "module": "./dist/erd-editor.js",
-  "typings": "./dist/index.d.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/erd-editor.js",
