@@ -24,10 +24,22 @@ const addTable: ReducerType<typeof ActionType.addTable> = (
   query(state.collections).collection('tableEntities').addOne(table);
 };
 
+export const moveTableAction = createAction<
+  ActionMap[typeof ActionType.moveTable]
+>(ActionType.moveTable);
+
+const moveTable: ReducerType<typeof ActionType.moveTable> = (
+  state,
+  payload,
+  ctx
+) => {};
+
 export const tableReducers = {
   [ActionType.addTable]: addTable,
+  [ActionType.moveTable]: moveTable,
 };
 
 export const actions = {
   addTableAction,
+  moveTableAction,
 };

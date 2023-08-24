@@ -1,6 +1,5 @@
 {
   "name": "@dineug/erd-editor-monorepo",
-  "packageManager": "yarn@3.6.1",
   "private": true,
   "workspaces": [
     "packages/*",
@@ -21,7 +20,6 @@
   "license": "MIT",
   "scripts": {
     "build": "turbo build",
-    "test": "yarn workspaces foreach run test",
     "prepare": "husky install",
     "format": "npm run format:eslint && npm run format:prettier",
     "format:eslint": "eslint \"**/*.{js,ts}\" --fix",

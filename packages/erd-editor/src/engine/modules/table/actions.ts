@@ -6,6 +6,7 @@ import { ValuesType } from '@/internal-types';
 
 export const ActionType = {
   addTable: 'table.add',
+  moveTable: 'table.move',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -17,6 +18,11 @@ export type ActionMap = {
       y: number;
       zIndex: number;
     };
+  };
+  [ActionType.moveTable]: {
+    movementX: number;
+    movementY: number;
+    tableIds: string[];
   };
 };
 
