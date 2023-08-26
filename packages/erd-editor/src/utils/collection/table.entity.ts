@@ -1,7 +1,7 @@
 import { Table } from '@/internal-types';
 import { getDefaultEntityMeta } from '@/utils';
 
-export const createTable = (): Table => ({
+export const createTable = (value?: Partial<Table>): Table => ({
   id: '',
   name: '',
   comment: '',
@@ -15,4 +15,5 @@ export const createTable = (): Table => ({
     color: '',
   },
   meta: getDefaultEntityMeta(),
+  ...value,
 });

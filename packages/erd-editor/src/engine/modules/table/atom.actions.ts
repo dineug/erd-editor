@@ -10,18 +10,17 @@ export const addTableAction = createAction<
 >(ActionType.addTable);
 
 const addTable: ReducerType<typeof ActionType.addTable> = (
-  state,
-  payload,
-  ctx
+  { doc, collections },
+  { id, ui }
 ) => {
-  if (!state.doc.tableIds.includes(payload.id)) {
-    state.doc.tableIds.push(payload.id);
+  if (!doc.tableIds.includes(id)) {
+    doc.tableIds.push(id);
   }
 
   const table = createTable();
-  table.id = payload.id;
-  Object.assign(table.ui, payload.ui);
-  query(state.collections).collection('tableEntities').addOne(table);
+  table.id = id;
+  Object.assign(table.ui, ui);
+  query(collections).collection('tableEntities').addOne(table);
 };
 
 export const moveTableAction = createAction<
@@ -29,10 +28,16 @@ export const moveTableAction = createAction<
 >(ActionType.moveTable);
 
 const moveTable: ReducerType<typeof ActionType.moveTable> = (
-  state,
-  payload,
-  ctx
-) => {};
+  { collections },
+  { tableIds, movementX, movementY }
+) => {
+  query(collections)
+    .collection('tableEntities')
+    .updateMany(tableIds, table => {
+      table.ui.x += movementX;
+      table.ui.y += movementY;
+    });
+};
 
 export const tableReducers = {
   [ActionType.addTable]: addTable,

@@ -1,7 +1,7 @@
 import { Memo } from '@/internal-types';
 import { getDefaultEntityMeta } from '@/utils';
 
-export const createMemo = (): Memo => ({
+export const createMemo = (value?: Partial<Memo>): Memo => ({
   id: '',
   value: '',
   ui: {
@@ -13,4 +13,5 @@ export const createMemo = (): Memo => ({
     color: '',
   },
   meta: getDefaultEntityMeta(),
+  ...value,
 });

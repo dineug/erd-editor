@@ -1,7 +1,7 @@
 import { Column } from '@/internal-types';
 import { getDefaultEntityMeta } from '@/utils';
 
-export const createColumn = (): Column => ({
+export const createColumn = (value?: Partial<Column>): Column => ({
   id: '',
   name: '',
   comment: '',
@@ -16,4 +16,5 @@ export const createColumn = (): Column => ({
     widthDefault: 60,
   },
   meta: getDefaultEntityMeta(),
+  ...value,
 });

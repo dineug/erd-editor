@@ -3,7 +3,9 @@ import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { Relationship } from '@/internal-types';
 import { getDefaultEntityMeta } from '@/utils';
 
-export const createRelationship = (): Relationship => ({
+export const createRelationship = (
+  value?: Partial<Relationship>
+): Relationship => ({
   id: '',
   identification: false,
   relationshipType: SchemaV3Constants.RelationshipType.ZeroN,
@@ -23,4 +25,5 @@ export const createRelationship = (): Relationship => ({
     direction: SchemaV3Constants.Direction.bottom,
   },
   meta: getDefaultEntityMeta(),
+  ...value,
 });

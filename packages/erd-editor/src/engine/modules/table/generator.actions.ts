@@ -1,4 +1,9 @@
 import { GeneratorAction } from '@/engine/generator.actions';
+import {
+  selectAction,
+  unselectAllAction,
+} from '@/engine/modules/editor/atom.actions';
+import { SelectType } from '@/engine/modules/editor/state';
 import { nextPoint, nextZIndex, uuid } from '@/utils';
 import { query } from '@/utils/collection/query';
 
@@ -13,15 +18,19 @@ export const addTableAction$ = (): GeneratorAction =>
       .collection('memoEntities')
       .selectByIds(memoIds);
     const point = nextPoint(settings, tables, memos);
+    const id = uuid();
 
+    yield unselectAllAction();
+    yield selectAction({ [id]: SelectType.table });
     yield addTableAction({
-      id: uuid(),
+      id,
       ui: {
         x: point.x,
         y: point.y,
         zIndex: nextZIndex(tables, memos),
       },
     });
+    // TODO: focus table
   };
 
 export const actions$ = {
