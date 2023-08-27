@@ -64,7 +64,8 @@ export const changeTableNameAction = createAction<
 
 const changeTableName: ReducerType<typeof ActionType.changeTableName> = (
   { collections },
-  { id, value }
+  { id, value },
+  { toWidth }
 ) => {
   const collection = query(collections).collection('tableEntities');
   if (!collection.selectById(id)) {
@@ -73,7 +74,7 @@ const changeTableName: ReducerType<typeof ActionType.changeTableName> = (
 
   collection.updateOne(id, table => {
     table.name = value;
-    // table.ui.widthName = ;
+    table.ui.widthName = toWidth(value);
   });
 };
 
@@ -83,7 +84,8 @@ export const changeTableCommentAction = createAction<
 
 const changeTableComment: ReducerType<typeof ActionType.changeTableComment> = (
   { collections },
-  { id, value }
+  { id, value },
+  { toWidth }
 ) => {
   const collection = query(collections).collection('tableEntities');
   if (!collection.selectById(id)) {
@@ -92,7 +94,7 @@ const changeTableComment: ReducerType<typeof ActionType.changeTableComment> = (
 
   collection.updateOne(id, table => {
     table.comment = value;
-    // table.ui.widthComment = ;
+    table.ui.widthComment = toWidth(value);
   });
 };
 

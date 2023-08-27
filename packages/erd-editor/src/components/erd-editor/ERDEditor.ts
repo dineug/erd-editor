@@ -10,6 +10,7 @@ import { appContext, createAppContext } from '@/components/context';
 import ERD from '@/components/erd/ERD';
 import { createDarkTheme } from '@/themes/darkTheme';
 import { themeToTokensString } from '@/themes/tokens';
+import { createText } from '@/utils/text';
 
 import * as styles from './ERDEditor.styles';
 
@@ -24,7 +25,8 @@ export type ERDEditorProps = {};
 export interface ERDEditorElement extends ERDEditorProps, HTMLElement {}
 
 const ERDEditor: FC<ERDEditorProps, ERDEditorElement> = (props, ctx) => {
-  const appContextValue = createAppContext();
+  const text = createText();
+  const appContextValue = createAppContext({ toWidth: text.toWidth });
   const provider = useProvider(ctx, appContext, appContextValue);
   const state = observable({ theme: createDarkTheme() }, { shallow: true });
 
@@ -36,6 +38,7 @@ const ERDEditor: FC<ERDEditorProps, ERDEditorElement> = (props, ctx) => {
     </style>
     <div class=${styles.warp}>
       <${ERD} />
+      ${text.span}
     </div>
   `;
 };
