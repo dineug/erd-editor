@@ -1,4 +1,5 @@
 import { createAction } from '@dineug/r-html';
+import { round } from 'lodash-es';
 
 import { query } from '@/utils/collection/query';
 import { createTable } from '@/utils/collection/table.entity';
@@ -17,8 +18,7 @@ const addTable: ReducerType<typeof ActionType.addTable> = (
     doc.tableIds.push(id);
   }
 
-  const table = createTable();
-  table.id = id;
+  const table = createTable({ id });
   Object.assign(table.ui, ui);
   query(collections).collection('tableEntities').addOne(table);
 };
@@ -29,22 +29,107 @@ export const moveTableAction = createAction<
 
 const moveTable: ReducerType<typeof ActionType.moveTable> = (
   { collections },
-  { tableIds, movementX, movementY }
+  { ids, movementX, movementY }
 ) => {
-  query(collections)
-    .collection('tableEntities')
-    .updateMany(tableIds, table => {
-      table.ui.x += movementX;
-      table.ui.y += movementY;
-    });
+  const collection = query(collections).collection('tableEntities');
+  for (const id of ids) {
+    if (!collection.selectById(id)) {
+      collection.addOne(createTable({ id }));
+    }
+  }
+
+  collection.updateMany(ids, table => {
+    table.ui.x = round(table.ui.x + movementX, 4);
+    table.ui.y = round(table.ui.y + movementY, 4);
+  });
+};
+
+export const removeTableAction = createAction<
+  ActionMap[typeof ActionType.removeTable]
+>(ActionType.removeTable);
+
+const removeTable: ReducerType<typeof ActionType.removeTable> = (
+  { doc },
+  { id }
+) => {
+  const index = doc.tableIds.indexOf(id);
+  if (index !== -1) {
+    doc.tableIds.splice(index, 1);
+  }
+};
+
+export const changeTableNameAction = createAction<
+  ActionMap[typeof ActionType.changeTableName]
+>(ActionType.changeTableName);
+
+const changeTableName: ReducerType<typeof ActionType.changeTableName> = (
+  { collections },
+  { id, value }
+) => {
+  const collection = query(collections).collection('tableEntities');
+  if (!collection.selectById(id)) {
+    collection.addOne(createTable({ id }));
+  }
+
+  collection.updateOne(id, table => {
+    table.name = value;
+    // table.ui.widthName = ;
+  });
+};
+
+export const changeTableCommentAction = createAction<
+  ActionMap[typeof ActionType.changeTableComment]
+>(ActionType.changeTableComment);
+
+const changeTableComment: ReducerType<typeof ActionType.changeTableComment> = (
+  { collections },
+  { id, value }
+) => {
+  const collection = query(collections).collection('tableEntities');
+  if (!collection.selectById(id)) {
+    collection.addOne(createTable({ id }));
+  }
+
+  collection.updateOne(id, table => {
+    table.comment = value;
+    // table.ui.widthComment = ;
+  });
+};
+
+export const changeTableColorAction = createAction<
+  ActionMap[typeof ActionType.changeTableColor]
+>(ActionType.changeTableColor);
+
+const changeTableColor: ReducerType<typeof ActionType.changeTableColor> = (
+  { collections },
+  { ids, color }
+) => {
+  const collection = query(collections).collection('tableEntities');
+  for (const id of ids) {
+    if (!collection.selectById(id)) {
+      collection.addOne(createTable({ id }));
+    }
+  }
+
+  collection.updateMany(ids, table => {
+    table.ui.color = color;
+  });
 };
 
 export const tableReducers = {
   [ActionType.addTable]: addTable,
   [ActionType.moveTable]: moveTable,
+  [ActionType.removeTable]: removeTable,
+  [ActionType.changeTableName]: changeTableName,
+  [ActionType.changeTableComment]: changeTableComment,
+  [ActionType.changeTableColor]: changeTableColor,
 };
 
 export const actions = {
   addTableAction,
   moveTableAction,
+  removeTableAction,
+  changeTableNameAction,
+  changeTableCommentAction,
+  changeTableColorAction,
 };

@@ -5,17 +5,17 @@ import { RootState } from '@/engine/state';
 import { ValuesType } from '@/internal-types';
 
 export const ActionType = {
-  addTable: 'table.add',
-  moveTable: 'table.move',
-  removeTable: 'table.remove',
-  changeTableName: 'table.changeName',
-  changeTableComment: 'table.changeComment',
-  changeTableColor: 'table.changeColor',
+  addMemo: 'memo.add',
+  moveMemo: 'memo.move',
+  removeMemo: 'memo.remove',
+  changeMemoValue: 'memo.changeValue',
+  changeMemoColor: 'memo.changeColor',
+  resizeMemo: 'memo.resize',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
 export type ActionMap = {
-  [ActionType.addTable]: {
+  [ActionType.addMemo]: {
     id: string;
     ui: {
       x: number;
@@ -23,25 +23,28 @@ export type ActionMap = {
       zIndex: number;
     };
   };
-  [ActionType.moveTable]: {
+  [ActionType.moveMemo]: {
     movementX: number;
     movementY: number;
     ids: string[];
   };
-  [ActionType.removeTable]: {
+  [ActionType.removeMemo]: {
     id: string;
   };
-  [ActionType.changeTableName]: {
-    id: string;
-    value: string;
-  };
-  [ActionType.changeTableComment]: {
+  [ActionType.changeMemoValue]: {
     id: string;
     value: string;
   };
-  [ActionType.changeTableColor]: {
+  [ActionType.changeMemoColor]: {
     ids: string[];
     color: string;
+  };
+  [ActionType.resizeMemo]: {
+    id: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
   };
 };
 

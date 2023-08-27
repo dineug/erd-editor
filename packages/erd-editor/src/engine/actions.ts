@@ -5,6 +5,7 @@ import { actions as indexActions } from '@/engine/modules/index/atom.actions';
 import { actions$ as indexActions$ } from '@/engine/modules/index/generator.actions';
 import { actions as indexColumnActions } from '@/engine/modules/indexColumn/atom.actions';
 import { actions$ as indexColumnActions$ } from '@/engine/modules/indexColumn/generator.actions';
+import { ActionMap as MemoActionMap } from '@/engine/modules/memo/actions';
 import { actions as memoActions } from '@/engine/modules/memo/atom.actions';
 import { actions$ as memoActions$ } from '@/engine/modules/memo/generator.actions';
 import { actions as relationshipActions } from '@/engine/modules/relationship/atom.actions';
@@ -37,7 +38,8 @@ export type Actions = typeof editorActions &
 
 export type RootActionMap = EditorActionMap &
   TableActionMap &
-  TableColumnActionMap;
+  TableColumnActionMap &
+  MemoActionMap;
 
 export const actions: Actions = Object.freeze({
   ...editorActions,
