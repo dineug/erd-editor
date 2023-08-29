@@ -31,14 +31,8 @@ export type ActionMap = {
   [ActionType.removeTable]: {
     id: string;
   };
-  [ActionType.changeTableName]: {
-    id: string;
-    value: string;
-  };
-  [ActionType.changeTableComment]: {
-    id: string;
-    value: string;
-  };
+  [ActionType.changeTableName]: ChangeTableValuePayload;
+  [ActionType.changeTableComment]: ChangeTableValuePayload;
   [ActionType.changeTableColor]: {
     ids: string[];
     color: string;
@@ -51,3 +45,8 @@ export type ReducerType<T extends keyof ActionMap> = Reducer<
   ActionMap,
   EngineContext
 >;
+
+type ChangeTableValuePayload = {
+  id: string;
+  value: string;
+};

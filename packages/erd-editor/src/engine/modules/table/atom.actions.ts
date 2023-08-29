@@ -33,9 +33,7 @@ const moveTable: ReducerType<typeof ActionType.moveTable> = (
 ) => {
   const collection = query(collections).collection('tableEntities');
   for (const id of ids) {
-    if (!collection.selectById(id)) {
-      collection.addOne(createTable({ id }));
-    }
+    collection.getOrCreate(id, id => createTable({ id }));
   }
 
   collection.updateMany(ids, table => {
@@ -68,9 +66,7 @@ const changeTableName: ReducerType<typeof ActionType.changeTableName> = (
   { toWidth }
 ) => {
   const collection = query(collections).collection('tableEntities');
-  if (!collection.selectById(id)) {
-    collection.addOne(createTable({ id }));
-  }
+  collection.getOrCreate(id, id => createTable({ id }));
 
   collection.updateOne(id, table => {
     table.name = value;
@@ -88,9 +84,7 @@ const changeTableComment: ReducerType<typeof ActionType.changeTableComment> = (
   { toWidth }
 ) => {
   const collection = query(collections).collection('tableEntities');
-  if (!collection.selectById(id)) {
-    collection.addOne(createTable({ id }));
-  }
+  collection.getOrCreate(id, id => createTable({ id }));
 
   collection.updateOne(id, table => {
     table.comment = value;
@@ -108,9 +102,7 @@ const changeTableColor: ReducerType<typeof ActionType.changeTableColor> = (
 ) => {
   const collection = query(collections).collection('tableEntities');
   for (const id of ids) {
-    if (!collection.selectById(id)) {
-      collection.addOne(createTable({ id }));
-    }
+    collection.getOrCreate(id, id => createTable({ id }));
   }
 
   collection.updateMany(ids, table => {

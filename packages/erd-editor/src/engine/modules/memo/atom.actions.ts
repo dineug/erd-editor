@@ -33,9 +33,7 @@ const moveMemo: ReducerType<typeof ActionType.moveMemo> = (
 ) => {
   const collection = query(collections).collection('memoEntities');
   for (const id of ids) {
-    if (!collection.selectById(id)) {
-      collection.addOne(createMemo({ id }));
-    }
+    collection.getOrCreate(id, id => createMemo({ id }));
   }
 
   collection.updateMany(ids, memo => {
@@ -67,9 +65,7 @@ const changeMemoValue: ReducerType<typeof ActionType.changeMemoValue> = (
   { id, value }
 ) => {
   const collection = query(collections).collection('memoEntities');
-  if (!collection.selectById(id)) {
-    collection.addOne(createMemo({ id }));
-  }
+  collection.getOrCreate(id, id => createMemo({ id }));
 
   collection.updateOne(id, memo => {
     memo.value = value;
@@ -86,9 +82,7 @@ const changeMemoColor: ReducerType<typeof ActionType.changeMemoColor> = (
 ) => {
   const collection = query(collections).collection('memoEntities');
   for (const id of ids) {
-    if (!collection.selectById(id)) {
-      collection.addOne(createMemo({ id }));
-    }
+    collection.getOrCreate(id, id => createMemo({ id }));
   }
 
   collection.updateMany(ids, memo => {
@@ -105,9 +99,7 @@ const resizeMemo: ReducerType<typeof ActionType.resizeMemo> = (
   { id, x, y, width, height }
 ) => {
   const collection = query(collections).collection('memoEntities');
-  if (!collection.selectById(id)) {
-    collection.addOne(createMemo({ id }));
-  }
+  collection.getOrCreate(id, id => createMemo({ id }));
 
   collection.updateOne(id, memo => {
     memo.ui.x = x;

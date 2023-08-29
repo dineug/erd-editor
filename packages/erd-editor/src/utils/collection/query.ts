@@ -68,6 +68,15 @@ class CollectionQuery<K extends keyof Collections> {
   updateMany(ids: string[], recipe: (entity: GetEntity<K>) => void) {
     ids.forEach(id => this.updateOne(id, recipe));
   }
+
+  getOrCreate(id: string, recipe: (id: string) => GetEntity<K>) {
+    const entity = this.selectById(id);
+    if (entity) return entity;
+
+    const newEntity = recipe(id);
+    this.addOne(newEntity);
+    return newEntity;
+  }
 }
 
 export const query = (collections: Collections) => new Query(collections);

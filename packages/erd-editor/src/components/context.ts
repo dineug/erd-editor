@@ -1,5 +1,6 @@
 import { createContext, reduxDevtools, useContext } from '@dineug/r-html';
 
+import { Actions, actions } from '@/engine/actions';
 import {
   createEngineContext,
   EngineContext,
@@ -8,6 +9,7 @@ import {
 import { createRxStore, RxStore } from '@/engine/rx-store';
 
 export type AppContext = EngineContext & {
+  actions: Actions;
   store: RxStore;
 };
 
@@ -23,6 +25,7 @@ export function createAppContext(ctx: InjectAppContext): AppContext {
 
   return Object.freeze({
     ...engineContext,
+    actions,
     store,
   });
 }

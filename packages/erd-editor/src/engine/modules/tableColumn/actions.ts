@@ -6,6 +6,15 @@ import { ValuesType } from '@/internal-types';
 
 export const ActionType = {
   addColumn: 'column.add',
+  removeColumn: 'column.remove',
+  changeColumnName: 'column.changeName',
+  changeColumnComment: 'column.changeComment',
+  changeColumnDataType: 'column.changeDataType',
+  changeColumnDefault: 'column.changeDefault',
+  changeColumnAutoIncrement: 'column.changeAutoIncrement',
+  changeColumnPrimaryKey: 'column.changePrimaryKey',
+  changeColumnUnique: 'column.changeUnique',
+  changeColumnNotNull: 'column.changeNotNull',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -14,6 +23,18 @@ export type ActionMap = {
     id: string;
     tableId: string;
   };
+  [ActionType.removeColumn]: {
+    tableId: string;
+    ids: string[];
+  };
+  [ActionType.changeColumnName]: ChangeColumnValuePayload;
+  [ActionType.changeColumnComment]: ChangeColumnValuePayload;
+  [ActionType.changeColumnDataType]: ChangeColumnValuePayload;
+  [ActionType.changeColumnDefault]: ChangeColumnValuePayload;
+  [ActionType.changeColumnAutoIncrement]: ChangeColumnOptionPayload;
+  [ActionType.changeColumnPrimaryKey]: ChangeColumnOptionPayload;
+  [ActionType.changeColumnUnique]: ChangeColumnOptionPayload;
+  [ActionType.changeColumnNotNull]: ChangeColumnOptionPayload;
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<
@@ -22,3 +43,15 @@ export type ReducerType<T extends keyof ActionMap> = Reducer<
   ActionMap,
   EngineContext
 >;
+
+type ChangeColumnValuePayload = {
+  tableId: string;
+  id: string;
+  value: string;
+};
+
+type ChangeColumnOptionPayload = {
+  tableId: string;
+  id: string;
+  value: boolean;
+};
