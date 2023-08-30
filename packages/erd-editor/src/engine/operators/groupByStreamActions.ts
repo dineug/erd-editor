@@ -1,11 +1,15 @@
 import { AnyAction } from '@dineug/r-html';
+import { arrayHas } from '@dineug/shared';
 import { buffer, debounceTime, groupBy, map, mergeMap, Observable } from 'rxjs';
 
 import { notEmptyActions } from '@/engine/operators/notEmptyActions';
 
-export const groupByStreamActions =
-  (streamActionTypes: Array<string> | ReadonlyArray<string>) =>
-  (source$: Observable<Array<AnyAction>>) =>
+export const groupByStreamActions = (
+  streamActionTypes: Array<string> | ReadonlyArray<string>
+) => {
+  const has = arrayHas(streamActionTypes);
+
+  return (source$: Observable<Array<AnyAction>>) =>
     new Observable<Array<AnyAction>>(subscriber =>
       source$.subscribe({
         next: actions => {
@@ -13,7 +17,7 @@ export const groupByStreamActions =
           const streamActions: AnyAction[] = [];
 
           actions.forEach(action =>
-            streamActionTypes.includes(action.type)
+            has(action.type)
               ? streamActions.push(action)
               : batchActions.push(action)
           );
@@ -26,9 +30,7 @@ export const groupByStreamActions =
       })
     ).pipe(
       notEmptyActions,
-      groupBy(actions =>
-        actions.some(action => streamActionTypes.includes(action.type))
-      ),
+      groupBy(actions => actions.some(action => has(action.type))),
       mergeMap(group$ =>
         group$.key
           ? group$.pipe(
@@ -38,3 +40,4 @@ export const groupByStreamActions =
           : group$
       )
     );
+};

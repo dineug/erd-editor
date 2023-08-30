@@ -1,8 +1,4 @@
-import type {
-  Channel,
-  CompositionGenerator,
-  CompositionPromise,
-} from '@dineug/go';
+import type { Channel, CoroutineCreator } from '@dineug/go';
 import { type AnyAction, createAction } from '@dineug/r-html';
 
 import type { EngineContext } from '@/engine/context';
@@ -14,8 +10,6 @@ export type CO = (
   channel: Channel<AnyAction>,
   state: RootState,
   ctx: EngineContext
-) => CompositionGenerator<
-  CompositionPromise<any> | Function | Array<any> | void
->;
+) => ReturnType<CoroutineCreator>;
 
 export type Hook = [Array<ActionCreator | string>, CO];

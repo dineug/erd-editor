@@ -1,5 +1,6 @@
 import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { throttle } from '@dineug/go';
+import { arrayHas } from '@dineug/shared';
 
 import type { CO, Hook } from '@/engine/hooks';
 import {
@@ -22,10 +23,11 @@ const identification: CO = function* (channel, { doc, collections }) {
           .selectById(end.tableId);
         if (!table) continue;
 
+        const has = arrayHas(table.columnIds);
         const columns = query(collections)
           .collection('tableColumnEntities')
           .selectByIds(end.columnIds)
-          .filter(column => table.columnIds.includes(column.id));
+          .filter(column => has(column.id));
         if (!columns.length) continue;
 
         const value = columns.every(
@@ -62,10 +64,11 @@ const startRelationship: CO = function* (channel, { doc, collections }) {
           .selectById(end.tableId);
         if (!table) continue;
 
+        const has = arrayHas(table.columnIds);
         const columns = query(collections)
           .collection('tableColumnEntities')
           .selectByIds(end.columnIds)
-          .filter(column => table.columnIds.includes(column.id));
+          .filter(column => has(column.id));
         if (!columns.length) continue;
 
         const value = columns.every(

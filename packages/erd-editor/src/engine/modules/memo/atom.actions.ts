@@ -1,4 +1,5 @@
 import { createAction } from '@dineug/r-html';
+import { arrayHas } from '@dineug/shared';
 import { round } from 'lodash-es';
 
 import { createMemo } from '@/utils/collection/memo.entity';
@@ -14,7 +15,7 @@ const addMemo: ReducerType<typeof ActionType.addMemo> = (
   { doc, collections },
   { id, ui }
 ) => {
-  if (!doc.memoIds.includes(id)) {
+  if (!arrayHas(doc.memoIds)(id)) {
     doc.memoIds.push(id);
   }
 

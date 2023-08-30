@@ -1,4 +1,5 @@
 import { createAction } from '@dineug/r-html';
+import { arrayHas } from '@dineug/shared';
 import { round } from 'lodash-es';
 
 import { query } from '@/utils/collection/query';
@@ -14,7 +15,7 @@ const addTable: ReducerType<typeof ActionType.addTable> = (
   { doc, collections },
   { id, ui }
 ) => {
-  if (!doc.tableIds.includes(id)) {
+  if (!arrayHas(doc.tableIds)(id)) {
     doc.tableIds.push(id);
   }
 
