@@ -21,6 +21,7 @@ import {
   notEmptyActions,
 } from '@/engine/operators';
 import { createStore, Store } from '@/engine/store';
+import { createHooks } from '@/engine/store.hooks';
 
 export type RxStore = Store & {
   undo: () => void;
@@ -31,6 +32,7 @@ export type RxStore = Store & {
 export function createRxStore(context: EngineContext): RxStore {
   const subscriptions: Subscription[] = [];
   const store = createStore(context);
+  const hooks = createHooks(store);
   const history = createHistory(payload =>
     store.dispatch(changeHasHistoryAction(payload))
   );
@@ -56,6 +58,8 @@ export function createRxStore(context: EngineContext): RxStore {
   const destroy = () => {
     subscriptions.forEach(sub => sub.unsubscribe());
     store.destroy();
+    hooks.destroy();
+    history.clear();
   };
 
   const undo = () => {
