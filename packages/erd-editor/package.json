@@ -45,6 +45,7 @@
     "@dineug/r-html": "workspace:*",
     "@dineug/shared": "workspace:*",
     "@dineug/vite-plugin-r-html": "workspace:*",
+    "@radix-ui/colors": "2.1.0",
     "@rollup/plugin-typescript": "^11.1.2",
     "@types/color": "^3.0.3",
     "@types/lodash-es": "^4.17.8",

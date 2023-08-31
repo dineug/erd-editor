@@ -8,7 +8,7 @@ import {
 
 import { appContext, createAppContext } from '@/components/context';
 import ERD from '@/components/erd/ERD';
-import { createDarkTheme } from '@/themes/darkTheme';
+import { createDefaultDarkTheme } from '@/themes/default.theme';
 import { themeToTokensString } from '@/themes/tokens';
 import { createText } from '@/utils/text';
 
@@ -28,7 +28,10 @@ const ERDEditor: FC<ERDEditorProps, ERDEditorElement> = (props, ctx) => {
   const text = createText();
   const appContextValue = createAppContext({ toWidth: text.toWidth });
   const provider = useProvider(ctx, appContext, appContextValue);
-  const state = observable({ theme: createDarkTheme() }, { shallow: true });
+  const state = observable(
+    { theme: createDefaultDarkTheme() },
+    { shallow: true }
+  );
 
   return () => html`
     <style type="text/css">

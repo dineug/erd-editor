@@ -71,6 +71,9 @@ importers:
       '@dineug/vite-plugin-r-html':
         specifier: workspace:*
         version: link:../../submodules/r-html/packages/vite-plugin-r-html
+      '@radix-ui/colors':
+        specifier: 2.1.0
+        version: 2.1.0
       '@rollup/plugin-typescript':
         specifier: ^11.1.2
         version: 11.1.2(tslib@2.6.1)(typescript@5.1.6)
@@ -825,6 +828,10 @@ packages:
       open: 9.1.0
       picocolors: 1.0.0
       tslib: 2.6.1
+    dev: true
+
+  /@radix-ui/colors@2.1.0:
+    resolution: {integrity: sha512-gcBnxjS2u2c6thQz/9K1+Pt2ZYcm5WKU4SLi0emYkRmYbVUw+37rlc5wgLtYOsSsRP9nxVtbJJYj6WVO7UUmZg==}
     dev: true
 
   /@rollup/plugin-typescript@11.1.2(tslib@2.6.1)(typescript@5.1.6):
