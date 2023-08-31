@@ -44,12 +44,13 @@ const ThemeToColor: Theme = {
 } as const;
 const ThemeKeys: ReadonlyArray<string> = Object.keys(ThemeToColor);
 
-export function createTheme(
-  name: string,
-  color: Record<string, string>,
-  colorA: Record<string, string>
-) {
-  return (): Theme =>
+export const createTheme =
+  (
+    name: string,
+    color: Record<string, string>,
+    colorA: Record<string, string>
+  ) =>
+  (): Theme =>
     ThemeKeys.reduce<Record<string, string>>((acc, key) => {
       const colorKey: string = get(ThemeToColor, key);
       const isAlpha = colorKey.startsWith('A');
@@ -61,4 +62,3 @@ export function createTheme(
 
       return acc;
     }, {}) as Theme;
-}

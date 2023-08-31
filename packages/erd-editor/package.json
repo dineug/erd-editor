@@ -9,7 +9,10 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/erd-editor.js",
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/erd-editor.js"
+      },
       "require": "./dist/erd-editor.umd.cjs"
     }
   },

@@ -39,20 +39,21 @@ export default defineConfig(({ command }) => {
       tsconfigPaths(),
       isServe && rHtml(),
       visualizer({ filename: './dist/stats.html' }),
-      typescript({
-        typescript: tspCompiler,
-        noEmitOnError: true,
-        compilerOptions: {
-          declaration: true,
-          outDir: './dist',
-          plugins: [
-            {
-              transform: 'typescript-transform-paths',
-              afterDeclarations: true,
-            },
-          ],
-        },
-      }),
+      !isServe &&
+        typescript({
+          typescript: tspCompiler,
+          noEmitOnError: true,
+          compilerOptions: {
+            declaration: true,
+            outDir: './dist',
+            plugins: [
+              {
+                transform: 'typescript-transform-paths',
+                afterDeclarations: true,
+              },
+            ],
+          },
+        }),
     ].filter(Boolean),
     server: {
       open: true,

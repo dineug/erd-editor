@@ -12,6 +12,7 @@ import { createDefaultDarkTheme } from '@/themes/default.theme';
 import { themeToTokensString } from '@/themes/tokens';
 import { createText } from '@/utils/text';
 
+import { createFontsStyle } from '../styles/fonts.styles';
 import * as styles from './ERDEditor.styles';
 
 declare global {
@@ -25,6 +26,7 @@ export type ERDEditorProps = {};
 export interface ERDEditorElement extends ERDEditorProps, HTMLElement {}
 
 const ERDEditor: FC<ERDEditorProps, ERDEditorElement> = (props, ctx) => {
+  const fontsStyle = createFontsStyle();
   const text = createText();
   const appContextValue = createAppContext({ toWidth: text.toWidth });
   const provider = useProvider(ctx, appContext, appContextValue);
@@ -34,7 +36,8 @@ const ERDEditor: FC<ERDEditorProps, ERDEditorElement> = (props, ctx) => {
   );
 
   return () => html`
-    <style type="text/css">
+    ${fontsStyle}
+    <style>
       :host {
         ${themeToTokensString(state.theme)}
       }
