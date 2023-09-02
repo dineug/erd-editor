@@ -1,18 +1,11 @@
-import {
-  defineCustomElement,
-  FC,
-  html,
-  observable,
-  useProvider,
-} from '@dineug/r-html';
+import { defineCustomElement, FC, html, useProvider } from '@dineug/r-html';
 
 import { appContext, createAppContext } from '@/components/context';
 import ERD from '@/components/erd/ERD';
-import { createDefaultDarkTheme } from '@/themes/default.theme';
-import { themeToTokensString } from '@/themes/tokens';
+import Toolbar from '@/components/toolbar/Toolbar';
+import { useGlobalStyles } from '@/hooks/useGlobalStyles';
 import { createText } from '@/utils/text';
 
-import { createFontsStyle } from '../styles/fonts.styles';
 import * as styles from './ERDEditor.styles';
 
 declare global {
@@ -26,24 +19,18 @@ export type ERDEditorProps = {};
 export interface ERDEditorElement extends ERDEditorProps, HTMLElement {}
 
 const ERDEditor: FC<ERDEditorProps, ERDEditorElement> = (props, ctx) => {
-  const fontsStyle = createFontsStyle();
+  const { globalStyles, getTheme } = useGlobalStyles();
   const text = createText();
   const appContextValue = createAppContext({ toWidth: text.toWidth });
   const provider = useProvider(ctx, appContext, appContextValue);
-  const state = observable(
-    { theme: createDefaultDarkTheme() },
-    { shallow: true }
-  );
 
   return () => html`
-    ${fontsStyle}
-    <style>
-      :host {
-        ${themeToTokensString(state.theme)}
-      }
-    </style>
-    <div class=${styles.warp}>
-      <${ERD} />
+    ${globalStyles} ${getTheme()}
+    <div class=${styles.root}>
+      <${Toolbar} />
+      <div class=${styles.main}>
+        <${ERD} />
+      </div>
       ${text.span}
     </div>
   `;

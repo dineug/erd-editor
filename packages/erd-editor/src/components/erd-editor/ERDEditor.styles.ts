@@ -1,9 +1,16 @@
 import { css } from '@dineug/r-html';
 
-export const warp = css`
+const container = css`
   display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
+  overflow: hidden;
+  position: relative;
+`;
+
+export const root = css`
+  ${container};
   background-color: var(--canvas-boundary-background);
   font-family: var(--text-font-family);
   color: var(--foreground);
@@ -16,4 +23,8 @@ export const warp = css`
     font-family: var(--text-font-family);
     white-space: nowrap;
   }
+`;
+
+export const main = css`
+  ${container};
 `;

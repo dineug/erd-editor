@@ -1,7 +1,14 @@
 import { amber, crimson, cyan } from '@radix-ui/colors';
 import { get } from 'lodash-es';
 
+import { ValuesType } from '@/internal-types';
 import { Theme } from '@/themes/tokens';
+
+export const ThemeMode = {
+  dark: 'dark',
+  light: 'light',
+} as const;
+export type ThemeMode = ValuesType<typeof ThemeMode>;
 
 const ThemeToColor: Theme = {
   canvasBackground: '2',
@@ -33,7 +40,7 @@ const ThemeToColor: Theme = {
 
   foreground: '11',
   active: '12',
-  placeholder: 'A11',
+  placeholder: 'A10',
 
   focus: '8',
   inputActive: '10',
@@ -62,3 +69,8 @@ export const createTheme =
 
       return acc;
     }, {}) as Theme;
+
+export const createThemeMode =
+  (createDarkTheme: () => Theme, createLightTheme: () => Theme) =>
+  (mode: ThemeMode) =>
+    mode === ThemeMode.dark ? createDarkTheme() : createLightTheme();
