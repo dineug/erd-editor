@@ -62,12 +62,12 @@ function assignCanvas(
           SchemaV3Constants.Language.GraphQL
         );
 
-  target.tableCase = propOr(
+  target.tableNameCase = propOr(
     SchemaV3Constants.NameCase,
     source.tableCase,
     SchemaV3Constants.NameCase.pascalCase
   );
-  target.columnCase = propOr(
+  target.columnNameCase = propOr(
     SchemaV3Constants.NameCase,
     source.columnCase,
     SchemaV3Constants.NameCase.camelCase

@@ -45,7 +45,7 @@ const identification: CO = function* (channel, { doc, collections }) {
     },
     500,
     {
-      leading: true,
+      leading: false,
       trailing: true,
     }
   );
@@ -88,7 +88,7 @@ const startRelationship: CO = function* (channel, { doc, collections }) {
     },
     500,
     {
-      leading: true,
+      leading: false,
       trailing: true,
     }
   );

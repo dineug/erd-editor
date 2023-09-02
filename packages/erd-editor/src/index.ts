@@ -1,3 +1,1 @@
 import '@/components/customElementRegistry';
-
-export {};

@@ -11,8 +11,8 @@ export type Settings = {
   databaseName: string;
   canvasType: string;
   language: number;
-  tableCase: number;
-  columnCase: number;
+  tableNameCase: number;
+  columnNameCase: number;
   bracketType: number;
   relationshipDataTypeSync: boolean;
   relationshipOptimization: boolean;

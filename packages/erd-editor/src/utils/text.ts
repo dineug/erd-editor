@@ -1,4 +1,4 @@
-import { TextFontFamily } from '@/components/styles/fonts.styles';
+import { TextFontFamily } from '@/styles/fonts.styles';
 
 let canvas: HTMLCanvasElement | null = null;
 let canvasContext: CanvasRenderingContext2D | null;
@@ -21,7 +21,7 @@ function getCanvasContext() {
 
   canvasContext = canvas.getContext('2d');
   if (canvasContext) {
-    canvasContext.font = `13px ${TextFontFamily}`;
+    canvasContext.font = `400 12px ${TextFontFamily}`;
   }
   return canvasContext;
 }

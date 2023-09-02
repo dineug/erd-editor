@@ -1,5 +1,3 @@
-import './index';
-
 import { cssUnwrap, hmr } from '@dineug/r-html';
 // @ts-ignore
 import Stats from 'stats.js';
@@ -27,7 +25,9 @@ function runEditor() {
   document.body.appendChild(editor);
 }
 
-// cssUnwrap();
+cssUnwrap();
 hmr();
 runStats();
 runEditor();
+
+await import('./index');

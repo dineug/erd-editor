@@ -1,5 +1,7 @@
 import { css } from '@dineug/r-html';
 
+import { typography } from '@/styles/typography.styles';
+
 const container = css`
   display: flex;
   flex-direction: column;
@@ -14,14 +16,15 @@ export const root = css`
   background-color: var(--canvas-boundary-background);
   font-family: var(--text-font-family);
   color: var(--foreground);
+  ${typography.normal};
 
   .ghost-text {
     visibility: hidden;
     position: fixed;
     top: -100px;
-    font-size: 13px;
-    font-family: var(--text-font-family);
     white-space: nowrap;
+    font-family: var(--text-font-family);
+    ${typography.paragraph};
   }
 `;
 

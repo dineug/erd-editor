@@ -182,7 +182,7 @@ export const CodeFontFamily =
 
 export function createFontsStyle() {
   const style = document.createElement('style');
-  style.textContent = `
+  style.textContent = /* css */ `
     ${fonts}
     :host {
       --text-font-family: ${TextFontFamily};

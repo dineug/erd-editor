@@ -50,8 +50,8 @@ const createSettings = (): Settings => ({
   databaseName: '',
   canvasType: CanvasType.ERD,
   language: Language.GraphQL,
-  tableCase: NameCase.pascalCase,
-  columnCase: NameCase.camelCase,
+  tableNameCase: NameCase.pascalCase,
+  columnNameCase: NameCase.camelCase,
   bracketType: BracketType.none,
   relationshipDataTypeSync: true,
   relationshipOptimization: false,
@@ -97,8 +97,8 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
 
   assign(validNumber(DatabaseList), settings, json)('database');
   assign(validNumber(LanguageList), settings, json)('language');
-  assign(validNumber(NameCaseList), settings, json)('tableCase');
-  assign(validNumber(NameCaseList), settings, json)('columnCase');
+  assign(validNumber(NameCaseList), settings, json)('tableNameCase');
+  assign(validNumber(NameCaseList), settings, json)('columnNameCase');
   assign(validNumber(BracketTypeList), settings, json)('bracketType');
 
   if (
