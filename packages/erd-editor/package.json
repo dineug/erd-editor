@@ -39,8 +39,8 @@
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite serve --mode lib",
+    "build": "vite build --mode lib",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
@@ -55,7 +55,6 @@
     "@storybook/addon-essentials": "^7.4.0",
     "@storybook/addon-interactions": "^7.4.0",
     "@storybook/addon-links": "^7.4.0",
-    "@storybook/addon-mdx-gfm": "^7.4.0",
     "@storybook/blocks": "^7.4.0",
     "@storybook/html": "^7.4.0",
     "@storybook/html-vite": "^7.4.0",

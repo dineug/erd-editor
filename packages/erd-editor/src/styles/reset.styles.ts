@@ -79,6 +79,15 @@ td,
 th {
   padding: 0;
 }
+
+:host {
+  font-family: var(--text-font-family);
+  color: var(--foreground);
+  font-size: var(--font-size-2);
+  letter-spacing: var(--letter-spacing-2);
+  line-height: var(--line-height-2);
+  font-weight: var(--font-weight-regular);
+}
 `;
 
 export function createResetStyle() {

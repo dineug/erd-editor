@@ -14,9 +14,6 @@ const container = css`
 export const root = css`
   ${container};
   background-color: var(--canvas-boundary-background);
-  font-family: var(--text-font-family);
-  color: var(--foreground);
-  ${typography.normal};
 
   .ghost-text {
     visibility: hidden;

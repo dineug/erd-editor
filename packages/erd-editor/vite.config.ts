@@ -6,7 +6,7 @@ import typescript from '@rollup/plugin-typescript';
 import { visualizer } from 'rollup-plugin-visualizer';
 // @ts-ignore
 import tspCompiler from 'ts-patch/compiler';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
@@ -18,8 +18,11 @@ const banner = `/*!
  * @license ${pkg.license}
  */`;
 
-export default defineConfig(({ command }) => {
+export default defineConfig(({ command, mode }) => {
+  process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
   const isServe = command === 'serve';
+  const isBuild = command === 'build';
+  const isLib = process.env.VITE_TARGET === 'lib';
 
   return {
     build: {
@@ -37,9 +40,10 @@ export default defineConfig(({ command }) => {
     },
     plugins: [
       tsconfigPaths(),
-      isServe && rHtml(),
-      visualizer({ filename: './dist/stats.html' }),
-      !isServe &&
+      isLib && isServe && rHtml(),
+      isLib && visualizer({ filename: './dist/stats.html' }),
+      isLib &&
+        isBuild &&
         typescript({
           typescript: tspCompiler,
           noEmitOnError: true,
