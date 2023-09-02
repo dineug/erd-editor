@@ -40,7 +40,9 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "devDependencies": {
     "@dineug/erd-editor-schema": "workspace:*",
@@ -50,6 +52,14 @@
     "@dineug/vite-plugin-r-html": "workspace:*",
     "@radix-ui/colors": "2.1.0",
     "@rollup/plugin-typescript": "^11.1.2",
+    "@storybook/addon-essentials": "^7.4.0",
+    "@storybook/addon-interactions": "^7.4.0",
+    "@storybook/addon-links": "^7.4.0",
+    "@storybook/addon-mdx-gfm": "^7.4.0",
+    "@storybook/blocks": "^7.4.0",
+    "@storybook/html": "^7.4.0",
+    "@storybook/html-vite": "^7.4.0",
+    "@storybook/testing-library": "^0.2.0",
     "@types/color": "^3.0.3",
     "@types/lodash-es": "^4.17.8",
     "@types/luxon": "^3.3.1",
@@ -57,9 +67,12 @@
     "color": "^4.2.3",
     "lodash-es": "^4.17.21",
     "luxon": "^3.3.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "rollup-plugin-visualizer": "^5.9.2",
     "rxjs": "^7.8.1",
     "stats.js": "^0.17.0",
+    "storybook": "^7.4.0",
     "ts-patch": "^3.0.2",
     "tslib": "^2.6.1",
     "typescript": "5.1.6",
