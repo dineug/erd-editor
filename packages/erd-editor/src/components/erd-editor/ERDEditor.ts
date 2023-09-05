@@ -29,7 +29,7 @@ export interface ERDEditorElement extends ERDEditorProps, HTMLElement {}
 const ERDEditor: FC<ERDEditorProps, ERDEditorElement> = (props, ctx) => {
   const text = createText();
   const appContextValue = createAppContext({ toWidth: text.toWidth });
-  const provider = useProvider(ctx, appContext, appContextValue);
+  useProvider(ctx, appContext, appContextValue);
 
   const state = observable(
     {

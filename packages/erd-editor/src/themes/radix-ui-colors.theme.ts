@@ -14,22 +14,22 @@ const ThemeToColor: Theme = {
   canvasBackground: '2',
   canvasBoundaryBackground: '1',
 
-  tableBackground: 'A3',
+  tableBackground: '3',
   tableSelect: '8',
 
-  memoBackground: 'A3',
+  memoBackground: '3',
   memoSelect: '8',
 
-  columnHover: '4',
-  columnSelect: '5',
+  columnHover: '6',
+  columnSelect: '7',
 
-  relationshipHover: '4',
+  relationshipHover: '6',
 
   toolbarBackground: '3',
 
-  contextMenuBackground: 'A3',
-  contextMenuHover: '4',
-  contextMenuSelect: '5',
+  contextMenuBackground: '3',
+  contextMenuHover: '7',
+  contextMenuSelect: '6',
 
   dargSelectBackground: 'A4',
   dargSelectBorder: '8',
