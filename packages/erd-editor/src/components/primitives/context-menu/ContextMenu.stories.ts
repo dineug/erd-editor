@@ -102,7 +102,6 @@ const ContextMenuTemplate: FC<ContextMenuTemplateProps> = (props, ctx) => {
 
 const meta = {
   title: 'Primitives/ContextMenu',
-  tags: ['autodocs'],
   render: args => {
     const fragment = document.createDocumentFragment();
     render(
