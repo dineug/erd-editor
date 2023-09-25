@@ -15,13 +15,17 @@ const addTable: ReducerType<typeof ActionType.addTable> = (
   { doc, collections },
   { id, ui }
 ) => {
-  if (!arrayHas(doc.tableIds)(id)) {
-    doc.tableIds.push(id);
-  }
-
   const table = createTable({ id });
   Object.assign(table.ui, ui);
-  query(collections).collection('tableEntities').addOne(table);
+
+  query(collections)
+    .collection('tableEntities')
+    .addOne(table)
+    .decrementDeleted(id, () => {
+      if (!arrayHas(doc.tableIds)(id)) {
+        doc.tableIds.push(id);
+      }
+    });
 };
 
 export const moveTableAction = createAction<
@@ -48,13 +52,17 @@ export const removeTableAction = createAction<
 >(ActionType.removeTable);
 
 const removeTable: ReducerType<typeof ActionType.removeTable> = (
-  { doc },
+  { doc, collections },
   { id }
 ) => {
-  const index = doc.tableIds.indexOf(id);
-  if (index !== -1) {
-    doc.tableIds.splice(index, 1);
-  }
+  query(collections)
+    .collection('tableEntities')
+    .incrementDeleted(id, () => {
+      const index = doc.tableIds.indexOf(id);
+      if (index !== -1) {
+        doc.tableIds.splice(index, 1);
+      }
+    });
 };
 
 export const changeTableNameAction = createAction<

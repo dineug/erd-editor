@@ -34,4 +34,5 @@ export type Point = {
 export type EntityMeta = {
   updateAt: string;
   createAt: string;
+  deleted: number;
 };

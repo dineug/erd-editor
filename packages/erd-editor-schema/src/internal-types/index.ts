@@ -20,6 +20,7 @@ export type DeepPartial<T> = T extends
 export type EntityMeta = {
   updateAt: string;
   createAt: string;
+  deleted: number;
 };
 
 export type EntityType<T> = T & {

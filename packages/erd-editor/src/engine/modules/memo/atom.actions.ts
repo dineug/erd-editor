@@ -15,13 +15,17 @@ const addMemo: ReducerType<typeof ActionType.addMemo> = (
   { doc, collections },
   { id, ui }
 ) => {
-  if (!arrayHas(doc.memoIds)(id)) {
-    doc.memoIds.push(id);
-  }
-
   const memo = createMemo({ id });
   Object.assign(memo.ui, ui);
-  query(collections).collection('memoEntities').addOne(memo);
+
+  query(collections)
+    .collection('memoEntities')
+    .addOne(memo)
+    .decrementDeleted(id, () => {
+      if (!arrayHas(doc.memoIds)(id)) {
+        doc.memoIds.push(id);
+      }
+    });
 };
 
 export const moveMemoAction = createAction<
@@ -48,13 +52,17 @@ export const removeMemoAction = createAction<
 >(ActionType.removeMemo);
 
 const removeMemo: ReducerType<typeof ActionType.removeMemo> = (
-  { doc },
+  { doc, collections },
   { id }
 ) => {
-  const index = doc.memoIds.indexOf(id);
-  if (index !== -1) {
-    doc.memoIds.splice(index, 1);
-  }
+  query(collections)
+    .collection('memoEntities')
+    .incrementDeleted(id, () => {
+      const index = doc.memoIds.indexOf(id);
+      if (index !== -1) {
+        doc.memoIds.splice(index, 1);
+      }
+    });
 };
 
 export const changeMemoValueAction = createAction<

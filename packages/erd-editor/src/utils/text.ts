@@ -1,7 +1,19 @@
+import { css } from '@dineug/r-html';
+
 import { TextFontFamily } from '@/styles/fonts.styles';
+import { typography } from '@/styles/typography.styles';
 
 let canvas: HTMLCanvasElement | null = null;
 let canvasContext: CanvasRenderingContext2D | null;
+
+const ghostText = css`
+  visibility: hidden;
+  position: fixed;
+  top: -100px;
+  white-space: nowrap;
+  font-family: var(--text-font-family);
+  ${typography.paragraph};
+`;
 
 function getCanvas() {
   if (canvas) {
@@ -29,7 +41,7 @@ function getCanvasContext() {
 export function createText() {
   const canvasContext = getCanvasContext();
   const span = document.createElement('span');
-  span.className = 'ghost-text';
+  span.className = ghostText.toString();
 
   const toWidth = (text: string) => {
     if (canvasContext) {

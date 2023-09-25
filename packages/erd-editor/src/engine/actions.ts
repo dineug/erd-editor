@@ -10,6 +10,7 @@ import { actions as memoActions } from '@/engine/modules/memo/atom.actions';
 import { actions$ as memoActions$ } from '@/engine/modules/memo/generator.actions';
 import { actions as relationshipActions } from '@/engine/modules/relationship/atom.actions';
 import { actions$ as relationshipActions$ } from '@/engine/modules/relationship/generator.actions';
+import { ActionMap as SettingsActionMap } from '@/engine/modules/settings/actions';
 import { actions as settingsActions } from '@/engine/modules/settings/atom.actions';
 import { actions$ as settingsActions$ } from '@/engine/modules/settings/generator.actions';
 import { ActionMap as TableActionMap } from '@/engine/modules/table/actions';
@@ -39,7 +40,8 @@ export type Actions = typeof editorActions &
 export type RootActionMap = EditorActionMap &
   TableActionMap &
   TableColumnActionMap &
-  MemoActionMap;
+  MemoActionMap &
+  SettingsActionMap;
 
 export const actions: Actions = Object.freeze({
   ...editorActions,

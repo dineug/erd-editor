@@ -1,6 +1,7 @@
 import { FC, html } from '@dineug/r-html';
 
 export type TextInputProps = {
+  title?: string;
   placeholder?: string;
   readonly?: boolean;
   width?: number;
@@ -15,10 +16,11 @@ const TextInput: FC<TextInputProps> = (props, ctx) => {
     <input
       style=${{ width: props.width ? `${props.width}px` : '' }}
       placeholder=${props.placeholder ?? ''}
+      title=${props.title ?? ''}
       type="text"
       spellcheck="false"
       ?readonly=${props.readonly}
-      .value=${props.value}
+      .value=${props.value ?? ''}
       @input=${props.onInput}
       @blur=${props.onBlur}
       @keyup=${props.onKeyup}

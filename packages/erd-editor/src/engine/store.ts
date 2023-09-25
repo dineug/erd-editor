@@ -6,6 +6,7 @@ import { EngineContext } from '@/engine/context';
 import { editorReducers } from '@/engine/modules/editor/atom.actions';
 import { createEditor } from '@/engine/modules/editor/state';
 import { memoReducers } from '@/engine/modules/memo/atom.actions';
+import { settingsReducers } from '@/engine/modules/settings/atom.actions';
 import { tableReducers } from '@/engine/modules/table/atom.actions';
 import { tableColumnReducers } from '@/engine/modules/tableColumn/atom.actions';
 import { RootState } from '@/engine/state';
@@ -24,6 +25,7 @@ export function createStore(context: EngineContext): Store {
       ...tableReducers,
       ...tableColumnReducers,
       ...memoReducers,
+      ...settingsReducers,
     },
   });
 }

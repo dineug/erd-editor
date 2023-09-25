@@ -11,6 +11,9 @@ const meta = {
     return fragment;
   },
   argTypes: {
+    title: {
+      control: 'text',
+    },
     placeholder: {
       control: 'text',
     },

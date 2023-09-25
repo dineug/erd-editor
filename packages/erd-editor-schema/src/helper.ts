@@ -39,6 +39,7 @@ export function getDefaultEntityMeta(): EntityMeta {
   return {
     updateAt: now,
     createAt: now,
+    deleted: 0,
   };
 }
 

@@ -18,15 +18,18 @@ const addColumn: ReducerType<typeof ActionType.addColumn> = (
 ) => {
   const tableCollection = query(collections).collection('tableEntities');
   const table = tableCollection.getOrCreate(tableId, id => createTable({ id }));
-
-  if (!arrayHas(table.columnIds)(id)) {
-    tableCollection.updateOne(tableId, table => {
-      table.columnIds.push(id);
-    });
-  }
-
   const column = createColumn({ id });
-  query(collections).collection('tableColumnEntities').addOne(column);
+
+  query(collections)
+    .collection('tableColumnEntities')
+    .addOne(column)
+    .decrementDeleted(id, () => {
+      if (!arrayHas(table.columnIds)(id)) {
+        tableCollection.updateOne(tableId, table => {
+          table.columnIds.push(id);
+        });
+      }
+    });
 };
 
 export const removeColumnAction = createAction<
@@ -35,22 +38,21 @@ export const removeColumnAction = createAction<
 
 const removeColumn: ReducerType<typeof ActionType.removeColumn> = (
   { collections },
-  { ids, tableId }
+  { id, tableId }
 ) => {
   const tableCollection = query(collections).collection('tableEntities');
-  const table = tableCollection.selectById(tableId);
-  if (!table) {
-    return;
-  }
+  const table = tableCollection.getOrCreate(tableId, id => createTable({ id }));
 
-  for (const id of ids) {
-    const index = table.columnIds.indexOf(id);
-    if (index !== -1) {
-      tableCollection.updateOne(tableId, table => {
-        table.columnIds.splice(index, 1);
-      });
-    }
-  }
+  query(collections)
+    .collection('tableColumnEntities')
+    .incrementDeleted(id, () => {
+      const index = table.columnIds.indexOf(id);
+      if (index !== -1) {
+        tableCollection.updateOne(tableId, table => {
+          table.columnIds.splice(index, 1);
+        });
+      }
+    });
 };
 
 export const changeColumnNameAction = createAction<

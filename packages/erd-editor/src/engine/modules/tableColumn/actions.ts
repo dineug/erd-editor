@@ -24,8 +24,8 @@ export type ActionMap = {
     tableId: string;
   };
   [ActionType.removeColumn]: {
+    id: string;
     tableId: string;
-    ids: string[];
   };
   [ActionType.changeColumnName]: ChangeColumnValuePayload;
   [ActionType.changeColumnComment]: ChangeColumnValuePayload;
