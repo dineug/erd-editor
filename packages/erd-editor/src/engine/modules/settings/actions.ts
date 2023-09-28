@@ -6,12 +6,17 @@ import { ValuesType } from '@/internal-types';
 
 export const ActionType = {
   changeDatabaseName: 'settings.changeDatabaseName',
+  resize: 'settings.resize',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
 export type ActionMap = {
   [ActionType.changeDatabaseName]: {
     value: string;
+  };
+  [ActionType.resize]: {
+    width: number;
+    height: number;
   };
 };
 

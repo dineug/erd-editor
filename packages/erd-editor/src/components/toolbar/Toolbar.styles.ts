@@ -9,4 +9,8 @@ export const root = css`
   white-space: nowrap;
   overflow: hidden;
   background-color: var(--toolbar-background);
+
+  & > input {
+    margin-right: 15px;
+  }
 `;
