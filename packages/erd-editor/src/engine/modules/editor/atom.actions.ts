@@ -62,11 +62,24 @@ const select: ReducerType<typeof ActionType.select> = ({ editor }, payload) => {
   Object.assign(editor.selectedMap, payload);
 };
 
+export const changeViewportAction = createAction<
+  ActionMap[typeof ActionType.changeViewport]
+>(ActionType.changeViewport);
+
+const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
+  { editor },
+  { width, height }
+) => {
+  editor.viewport.width = width;
+  editor.viewport.height = height;
+};
+
 export const editorReducers = {
   [ActionType.changeHasHistory]: changeHasHistory,
   [ActionType.selectAll]: selectAll,
   [ActionType.unselectAll]: unselectAll,
   [ActionType.select]: select,
+  [ActionType.changeViewport]: changeViewport,
 };
 
 export const actions = {
@@ -74,4 +87,5 @@ export const actions = {
   selectAllAction,
   unselectAllAction,
   selectAction,
+  changeViewportAction,
 };

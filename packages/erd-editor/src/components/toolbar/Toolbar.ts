@@ -4,9 +4,15 @@ import { useAppContext } from '@/components/context';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import {
   changeDatabaseNameAction,
+  changeZoomLevelAction,
   resizeAction,
 } from '@/engine/modules/settings/atom.actions';
-import { canvasSizeInRange } from '@/utils/validation';
+import {
+  canvasSizeInRange,
+  toNumString,
+  toZoomFormat,
+  zoomLevelInRange,
+} from '@/utils/validation';
 
 import * as styles from './Toolbar.styles';
 
@@ -33,6 +39,16 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     store.dispatch(resizeAction({ width: size, height: size }));
   };
 
+  const handleZoomLevel = (event: Event) => {
+    const el = event.target as HTMLInputElement | null;
+    if (!el) return;
+
+    const zoomLevel = zoomLevelInRange(Number(toNumString(el.value)) / 100);
+    const { store } = app.value;
+    el.value = toZoomFormat(zoomLevel);
+    store.dispatch(changeZoomLevelAction({ value: zoomLevel }));
+  };
+
   return () => {
     const { store } = app.value;
     const { settings } = store.state;
@@ -53,6 +69,14 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           value=${settings.width.toString()}
           numberOnly=${true}
           .onChange=${handleResize}
+        />
+        <${TextInput}
+          title="zoom level"
+          placeholder="zoom level"
+          width=${45}
+          value=${toZoomFormat(settings.zoomLevel)}
+          numberOnly=${true}
+          .onChange=${handleZoomLevel}
         />
       </div>
     `;

@@ -43,6 +43,8 @@ export type RootActionMap = EditorActionMap &
   MemoActionMap &
   SettingsActionMap;
 
+export type ActionType = keyof RootActionMap;
+
 export const actions: Actions = Object.freeze({
   ...editorActions,
   ...editorActions$,
@@ -63,10 +65,15 @@ export const actions: Actions = Object.freeze({
 });
 
 // TODO: changeActionTypes
-export const ChangeActionTypes: ReadonlyArray<string> = [];
+export const ChangeActionTypes: ReadonlyArray<ActionType> = [];
 
 // TODO: historyActionTypes
-export const HistoryActionTypes: ReadonlyArray<string> = [];
+export const HistoryActionTypes: ReadonlyArray<ActionType> = [];
 
-// TODO: streamActionTypes
-export const StreamActionTypes: ReadonlyArray<string> = [];
+export const StreamActionTypes: ReadonlyArray<ActionType> = [
+  'table.move',
+  'memo.move',
+  'memo.resize',
+  'settings.streamScrollTo',
+  'settings.streamZoomLevel',
+];

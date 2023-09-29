@@ -11,6 +11,7 @@ export const ActionType = {
   selectAll: 'editor.selectAll',
   unselectAll: 'editor.unselectAll',
   select: 'editor.select',
+  changeViewport: 'editor.changeViewport',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -22,6 +23,10 @@ export type ActionMap = {
   [ActionType.selectAll]: void;
   [ActionType.unselectAll]: void;
   [ActionType.select]: Record<string, SelectType>;
+  [ActionType.changeViewport]: {
+    width: number;
+    height: number;
+  };
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<

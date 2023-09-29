@@ -26,8 +26,14 @@ const meta = {
     value: {
       control: 'text',
     },
+    numberOnly: {
+      control: 'boolean',
+    },
     onInput: {
       action: 'onInput',
+    },
+    onChange: {
+      action: 'onChange',
     },
     onBlur: {
       action: 'onBlur',
