@@ -1,6 +1,8 @@
+import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { FC, html } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/context';
+import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import {
   changeDatabaseNameAction,
@@ -49,9 +51,19 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     store.dispatch(changeZoomLevelAction({ value: zoomLevel }));
   };
 
+  const handleUndo = () => {
+    const { store } = app.value;
+    store.undo();
+  };
+
+  const handleRedo = () => {
+    const { store } = app.value;
+    store.redo();
+  };
+
   return () => {
     const { store } = app.value;
-    const { settings } = store.state;
+    const { settings, editor } = store.state;
 
     return html`
       <div class=${styles.root}>
@@ -78,6 +90,37 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           numberOnly=${true}
           .onChange=${handleZoomLevel}
         />
+        <div class=${styles.vertical}></div>
+        ${settings.canvasType === SchemaV3Constants.CanvasType.ERD
+          ? html`
+              <div
+                class=${[
+                  'undo-redo',
+                  styles.menu,
+                  {
+                    active: editor.hasUndo,
+                  },
+                ]}
+                title="Undo"
+                @click=${handleUndo}
+              >
+                <${Icon} name="rotate-left" size=${16} />
+              </div>
+              <div
+                class=${[
+                  'undo-redo',
+                  styles.menu,
+                  {
+                    active: editor.hasRedo,
+                  },
+                ]}
+                title="Redo"
+                @click=${handleRedo}
+              >
+                <${Icon} name="rotate-right" size=${16} />
+              </div>
+            `
+          : null}
       </div>
     `;
   };
