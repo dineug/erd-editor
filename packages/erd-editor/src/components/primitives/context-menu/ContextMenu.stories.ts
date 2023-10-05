@@ -27,7 +27,7 @@ const ContextMenuTemplate: FC<ContextMenuTemplateProps> = (props, ctx) => {
         border: 1px solid blue;
       `}
       @contextmenu=${contextMenu.onContextmenu}
-      @click=${contextMenu.onClick}
+      @mousedown=${contextMenu.onMousedown}
     >
       Right-click here
       ${contextMenu.state.show

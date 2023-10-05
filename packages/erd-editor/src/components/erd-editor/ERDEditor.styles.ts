@@ -12,6 +12,7 @@ const container = css`
 export const root = css`
   ${container};
   background-color: var(--canvas-boundary-background);
+  outline: none;
 `;
 
 export const main = css`

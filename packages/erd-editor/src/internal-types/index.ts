@@ -36,3 +36,5 @@ export type EntityMeta = {
   createAt: string;
   deleted: number;
 };
+
+export type Unsubscribe = () => void;

@@ -113,6 +113,9 @@ importers:
       '@types/luxon':
         specifier: ^3.3.1
         version: 3.3.1
+      '@types/ua-parser-js':
+        specifier: ^0.7.37
+        version: 0.7.37
       '@types/uuid':
         specifier: ^9.0.2
         version: 9.0.2
@@ -125,12 +128,6 @@ importers:
       luxon:
         specifier: ^3.3.0
         version: 3.3.0
-      react:
-        specifier: ^18.2.0
-        version: 18.2.0
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.2.0(react@18.2.0)
       rollup-plugin-visualizer:
         specifier: ^5.9.2
         version: 5.9.2
@@ -155,6 +152,9 @@ importers:
       typescript-transform-paths:
         specifier: ^3.4.6
         version: 3.4.6(typescript@5.1.6)
+      ua-parser-js:
+        specifier: ^1.0.36
+        version: 1.0.36
       uuid:
         specifier: ^9.0.0
         version: 9.0.0
@@ -3876,6 +3876,10 @@ packages:
       '@types/http-errors': 2.0.1
       '@types/mime': 3.0.1
       '@types/node': 20.5.8
+    dev: true
+
+  /@types/ua-parser-js@0.7.37:
+    resolution: {integrity: sha512-4sOxS3ZWXC0uHJLYcWAaLMxTvjRX3hT96eF4YWUh1ovTaenvibaZOE5uXtIp4mksKMLRwo7YDiCBCw6vBiUPVg==}
     dev: true
 
   /@types/unist@2.0.8:
@@ -8583,6 +8587,10 @@ packages:
     resolution: {integrity: sha512-zaWCozRZ6DLEWAWFrVDz1H6FVXzUSfTy5FUMWsQlU8Ym5JP9eO4xkTIROFCQvhQf61z6O/G6ugw3SgAnvvm+HA==}
     engines: {node: '>=14.17'}
     hasBin: true
+    dev: true
+
+  /ua-parser-js@1.0.36:
+    resolution: {integrity: sha512-znuyCIXzl8ciS3+y3fHJI/2OhQIXbXw9MWC/o3qwyR+RGppjZHrM27CGFSKCJXi2Kctiz537iOu2KnXs1lMQhw==}
     dev: true
 
   /uglify-js@3.17.4:

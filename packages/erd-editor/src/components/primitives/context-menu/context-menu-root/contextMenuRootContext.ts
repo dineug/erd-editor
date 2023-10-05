@@ -52,7 +52,7 @@ export function useContextMenuRootProvider(
     });
   };
 
-  const onClick = (event: MouseEvent) => {
+  const onMousedown = (event: MouseEvent) => {
     const el = event.target as HTMLElement | null;
     if (!el) return;
 
@@ -65,6 +65,6 @@ export function useContextMenuRootProvider(
     provider,
     state,
     onContextmenu,
-    onClick,
+    onMousedown,
   };
 }
