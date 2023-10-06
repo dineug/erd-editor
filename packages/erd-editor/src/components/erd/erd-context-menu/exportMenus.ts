@@ -1,6 +1,18 @@
-import { AppContext } from '@/components/context';
+import { toJson } from '@dineug/erd-editor-schema';
+import { nextTick } from '@dineug/r-html';
 
-export function createExportMenus(app: AppContext, onClose: () => void) {
+import { AppContext } from '@/components/context';
+import { scrollToAction } from '@/engine/modules/settings/atom.actions';
+import { exportJSON, exportPNG, exportSQLDDL } from '@/utils/file/exportFile';
+
+export function createExportMenus(
+  app: AppContext,
+  onClose: () => void,
+  root: Element
+) {
+  const { store } = app;
+  const databaseName = store.state.settings.databaseName;
+
   return [
     {
       icon: {
@@ -9,8 +21,7 @@ export function createExportMenus(app: AppContext, onClose: () => void) {
       },
       name: 'json',
       onClick: () => {
-        // TODO: exportJSON
-        console.log('exportJSON');
+        exportJSON(toJson(store.state), databaseName);
         onClose();
       },
     },
@@ -23,6 +34,7 @@ export function createExportMenus(app: AppContext, onClose: () => void) {
       onClick: () => {
         // TODO: exportSQLDDL
         console.log('exportSQLDDL');
+        // exportSQLDDL(createDDL(store), store.state.settings.databaseName);
         onClose();
       },
     },
@@ -32,10 +44,17 @@ export function createExportMenus(app: AppContext, onClose: () => void) {
         name: 'file-image',
       },
       name: 'png',
-      execute: () => {
-        // TODO: exportPNG
-        console.log('exportPNG');
+      onClick: () => {
         onClose();
+        store.dispatchSync(
+          scrollToAction({
+            scrollTop: 0,
+            scrollLeft: 0,
+          })
+        );
+        nextTick(() => {
+          exportPNG(root, databaseName);
+        });
       },
     },
   ];

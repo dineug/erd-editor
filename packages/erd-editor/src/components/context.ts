@@ -12,7 +12,7 @@ import {
   InjectEngineContext,
 } from '@/engine/context';
 import { createRxStore, RxStore } from '@/engine/rx-store';
-import { createKeyBindingMap, KeyBindingMap } from '@/keyboard-shortcut';
+import { createKeyBindingMap, KeyBindingMap } from '@/utils/keyboard-shortcut';
 
 export type AppContext = EngineContext & {
   actions: Actions;

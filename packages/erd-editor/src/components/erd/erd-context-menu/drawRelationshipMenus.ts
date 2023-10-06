@@ -1,7 +1,7 @@
 import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/context';
-import { KeyBindingName } from '@/keyboard-shortcut';
+import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 type Menu = {
   iconName: string;

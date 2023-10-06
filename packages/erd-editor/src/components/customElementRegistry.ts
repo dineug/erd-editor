@@ -1,1 +1,1 @@
-import '@/components/erd-editor/ERDEditor';
+import '@/components/erd-editor/ErdEditor';

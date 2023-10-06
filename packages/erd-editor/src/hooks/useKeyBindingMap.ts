@@ -2,8 +2,8 @@ import { onMounted, Ref, watch } from '@dineug/r-html';
 import { Subject } from 'rxjs';
 
 import { useAppContext } from '@/components/context';
-import { KeyBindingName, shortcutToTuple } from '@/keyboard-shortcut';
-import { tinykeys } from '@/keyboard-shortcut/tinykeys';
+import { KeyBindingName, shortcutToTuple } from '@/utils/keyboard-shortcut';
+import { tinykeys } from '@/utils/keyboard-shortcut/tinykeys';
 
 import { useUnmounted } from './useUnmounted';
 

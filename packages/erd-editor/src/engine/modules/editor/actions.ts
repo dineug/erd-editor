@@ -12,6 +12,8 @@ export const ActionType = {
   unselectAll: 'editor.unselectAll',
   select: 'editor.select',
   changeViewport: 'editor.changeViewport',
+  clear: 'editor.clear',
+  loadJson: 'editor.loadJson',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -26,6 +28,10 @@ export type ActionMap = {
   [ActionType.changeViewport]: {
     width: number;
     height: number;
+  };
+  [ActionType.clear]: void;
+  [ActionType.loadJson]: {
+    value: string;
   };
 };
 

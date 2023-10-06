@@ -1,4 +1,5 @@
 import { AppContext } from '@/components/context';
+import { importJSON, importSQLDDL } from '@/utils/file/importFile';
 
 export function createImportMenus(app: AppContext, onClose: () => void) {
   return [
@@ -9,8 +10,7 @@ export function createImportMenus(app: AppContext, onClose: () => void) {
       },
       name: 'json',
       onClick: () => {
-        // TODO: importJSON
-        console.log('importJSON');
+        importJSON(app);
         onClose();
       },
     },
@@ -21,8 +21,7 @@ export function createImportMenus(app: AppContext, onClose: () => void) {
       },
       name: 'SQL DDL',
       onClick: () => {
-        // TODO: importSQLDDL
-        console.log('importSQLDDL');
+        importSQLDDL(app);
         onClose();
       },
     },

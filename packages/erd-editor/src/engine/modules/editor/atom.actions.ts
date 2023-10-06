@@ -1,3 +1,4 @@
+import { parser, schemaV3Parser } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
@@ -74,12 +75,39 @@ const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
   editor.viewport.height = height;
 };
 
+export const clearAction = createAction<ActionMap[typeof ActionType.clear]>(
+  ActionType.clear
+);
+
+const clear: ReducerType<typeof ActionType.clear> = state => {
+  const { doc, collections } = schemaV3Parser({});
+  state.doc = doc;
+  state.collections = collections;
+};
+
+export const loadJsonAction = createAction<
+  ActionMap[typeof ActionType.loadJson]
+>(ActionType.loadJson);
+
+const loadJson: ReducerType<typeof ActionType.loadJson> = (
+  state,
+  { value }
+) => {
+  const { version, settings, doc, collections } = parser(value);
+  state.version = version;
+  state.settings = settings;
+  state.doc = doc;
+  state.collections = collections;
+};
+
 export const editorReducers = {
   [ActionType.changeHasHistory]: changeHasHistory,
   [ActionType.selectAll]: selectAll,
   [ActionType.unselectAll]: unselectAll,
   [ActionType.select]: select,
   [ActionType.changeViewport]: changeViewport,
+  [ActionType.clear]: clear,
+  [ActionType.loadJson]: loadJson,
 };
 
 export const actions = {
@@ -88,4 +116,6 @@ export const actions = {
   unselectAllAction,
   selectAction,
   changeViewportAction,
+  clearAction,
+  loadJsonAction,
 };

@@ -1,6 +1,6 @@
 import { FC, html } from '@dineug/r-html';
 
-import { shortcutToTuple } from '@/keyboard-shortcut';
+import { shortcutToTuple } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Kbd.styles';
 

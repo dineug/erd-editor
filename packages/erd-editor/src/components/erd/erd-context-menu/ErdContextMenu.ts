@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC, html, Ref } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/context';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
@@ -23,6 +23,7 @@ export type ErdContextMenuType = ValuesType<typeof ErdContextMenuType>;
 
 export type ErdContextMenuProps = {
   type: ErdContextMenuType;
+  root: Ref<HTMLDivElement>;
   onClose: () => void;
 };
 
@@ -236,7 +237,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 />
                 <${ContextMenu.SubContent}
                   children=${html`
-                    ${createExportMenus(app.value, props.onClose).map(
+                    ${createExportMenus(
+                      app.value,
+                      props.onClose,
+                      props.root.value
+                    ).map(
                       menu => html`
                         <${ContextMenu.Item}
                           .onClick=${menu.onClick}

@@ -107,6 +107,9 @@ importers:
       '@types/color':
         specifier: ^3.0.3
         version: 3.0.3
+      '@types/dom-to-image':
+        specifier: ^2.6.5
+        version: 2.6.5
       '@types/lodash-es':
         specifier: ^4.17.8
         version: 4.17.8
@@ -122,6 +125,9 @@ importers:
       color:
         specifier: ^4.2.3
         version: 4.2.3
+      dom-to-image:
+        specifier: ^2.6.0
+        version: 2.6.0
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
@@ -3706,6 +3712,10 @@ packages:
     resolution: {integrity: sha512-w5jZ0ee+HaPOaX25X2/2oGR/7rgAQSYII7X7pp0m9KgBfMP7uKfMfTvcpl5Dj+eDBbpxKGiqE+flqDr6XTd2RA==}
     dev: true
 
+  /@types/dom-to-image@2.6.5:
+    resolution: {integrity: sha512-SMYQf4urvjHfSsaEMhIULyjfawUv2a92OfglcGF7dQdDHBjfnGPtWoxw6hmKMiwsdmowHn70mxLw+F5cA7Imyg==}
+    dev: true
+
   /@types/ejs@3.1.2:
     resolution: {integrity: sha512-ZmiaE3wglXVWBM9fyVC17aGPkLo/UgaOjEiI2FXQfyczrCefORPxIe+2dVmnmk3zkVIbizjrlQzmPGhSYGXG5g==}
     dev: true
@@ -4982,6 +4992,10 @@ packages:
 
   /dom-accessibility-api@0.5.16:
     resolution: {integrity: sha512-X7BJ2yElsnOJ30pZF4uIIDfBEVgF4XEBxL9Bxhy6dnrm5hkzqmsWHGTiHqRiITNhMyFLyAiWndIJP7Z1NTteDg==}
+    dev: true
+
+  /dom-to-image@2.6.0:
+    resolution: {integrity: sha512-Dt0QdaHmLpjURjU7Tnu3AgYSF2LuOmksSGsUcE6ItvJoCWTBEmiMXcqBdNSAm9+QbbwD7JMoVsuuKX6ZVQv1qA==}
     dev: true
 
   /dotenv-expand@10.0.0:

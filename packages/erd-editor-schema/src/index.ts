@@ -1,4 +1,4 @@
-export { parser } from '@/parser';
+export { parser, toJson } from '@/parser';
 export {
   type ERDEditorSchemaV2,
   SchemaV2Constants,

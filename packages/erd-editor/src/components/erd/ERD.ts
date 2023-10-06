@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { createRef, FC, html, ref } from '@dineug/r-html';
 
 import ErdContextMenu, {
   ErdContextMenuType,
@@ -11,6 +11,7 @@ export type ErdProps = {};
 
 const Erd: FC<ErdProps> = (props, ctx) => {
   const contextMenu = useContextMenuRootProvider(ctx);
+  const root = createRef<HTMLDivElement>();
 
   const handleContextmenu = (event: MouseEvent) => {
     contextMenu.onContextmenu(event);
@@ -24,15 +25,19 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     html`
       <div
         class=${styles.root}
+        ${ref(root)}
         @contextmenu=${handleContextmenu}
         @mousedown=${contextMenu.onMousedown}
       >
         ERD
         ${contextMenu.state.show
-          ? html`<${ErdContextMenu}
-              type=${ErdContextMenuType.ERD}
-              .onClose=${handleContextmenuClose}
-            />`
+          ? html`
+              <${ErdContextMenu}
+                type=${ErdContextMenuType.ERD}
+                root=${root}
+                .onClose=${handleContextmenuClose}
+              />
+            `
           : null}
       </div>
     `;
