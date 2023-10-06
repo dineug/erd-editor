@@ -19,7 +19,7 @@ const ContextMenuSubTrigger: FC<ContextMenuSubTriggerProps> = (props, ctx) => {
   return () =>
     html`
       <div
-        class=${styles.item}
+        class=${['context-menu-sub-trigger', styles.item]}
         data-id=${id}
         data-show=${sub.value.show}
         @mouseover=${handleMouseover}

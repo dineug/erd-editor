@@ -12,6 +12,7 @@ export type IconProps = {
   name: string;
   size?: number;
   color?: string;
+  useTransition?: boolean;
 };
 
 const Icon: FC<IconProps> = (props, ctx) => () => {
@@ -26,22 +27,32 @@ const Icon: FC<IconProps> = (props, ctx) => () => {
 
   return html`
     <div class=${styles.wrap}>
-      ${svg`
-        <svg
-          class=${styles.icon}
-          style=${{
-            width: `${rem}rem`,
-            height: `${rem}rem`,
-          }}
-          viewBox="0 0 ${width} ${height}"
-        >
-          ${
-            props.color
-              ? svg`<path d=${d} fill=${props.color}></path>`
-              : svg`<path d=${d}></path>`
-          }
-        </svg>
-      `}
+      ${prefix === 'base64'
+        ? html`
+            <img
+              style=${{
+                width: `${rem}rem`,
+                height: `${rem}rem`,
+              }}
+              src=${d}
+            />
+          `
+        : svg`
+            <svg
+              class=${props.useTransition ? styles.icon : null}
+              style=${{
+                width: `${rem}rem`,
+                height: `${rem}rem`,
+              }}
+              viewBox="0 0 ${width} ${height}"
+            >
+              ${
+                props.color
+                  ? svg`<path d=${d} fill=${props.color}></path>`
+                  : svg`<path d=${d}></path>`
+              }
+            </svg>
+    `}
     </div>
   `;
 };

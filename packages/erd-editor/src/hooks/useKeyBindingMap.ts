@@ -50,7 +50,12 @@ export function useKeyBindingMap(
   const perform = (name: KeyBindingName) => {
     const { store, keyBindingMap } = app.value;
     const { editor } = store.state;
-    console.log('shortcut:', name, shortcutToTuple(keyBindingMap[name]));
+    console.log(
+      `shortcut@${name}:`,
+      shortcutToTuple(keyBindingMap[name][0]?.shortcut)
+        .map(([mods, key]) => [...mods, key].join(' + '))
+        .join('|>')
+    );
   };
 
   onMounted(() => {

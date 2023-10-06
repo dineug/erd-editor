@@ -3,12 +3,12 @@ import {
   FC,
   observable,
   onBeforeMount,
-  onUnmounted,
   useProvider,
   watch,
 } from '@dineug/r-html';
 
 import { useContextMenuRootContext } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
+import { useUnmounted } from '@/hooks/useUnmounted';
 
 import {
   ContextMenuSubContext,
@@ -24,6 +24,7 @@ const ContextMenuSub: FC<ContextMenuSubProps> = (props, ctx) => {
   const root = useContextMenuRootContext(ctx);
   const sub = useContextMenuSubContext(ctx);
   const isSub = sub.value.init;
+  const { addUnsubscribe } = useUnmounted();
 
   const state = observable<ContextMenuSubContext>({
     init: false,
@@ -36,7 +37,12 @@ const ContextMenuSub: FC<ContextMenuSubProps> = (props, ctx) => {
       const el = event.target as HTMLElement | null;
       if (!el) return;
 
-      const { width, x, y } = el.getBoundingClientRect();
+      const trigger = el.closest(
+        '.context-menu-sub-trigger'
+      ) as HTMLElement | null;
+      if (!trigger) return;
+
+      const { width, x, y } = trigger.getBoundingClientRect();
       state.x = width + x;
       state.y = y - 8;
       state.triggerId = id;
@@ -47,32 +53,22 @@ const ContextMenuSub: FC<ContextMenuSubProps> = (props, ctx) => {
     },
   });
 
-  let provider: ReturnType<typeof useProvider<ContextMenuSubContext>> | null =
-    null;
-
   onBeforeMount(() => {
-    provider = useProvider(ctx, contextMenuSubContext, state);
-  });
-  onUnmounted(() => {
-    provider?.destroy();
-    provider = null;
-  });
+    const provider = useProvider(ctx, contextMenuSubContext, state);
 
-  const unsubscribeSet = new Set<() => void>();
+    addUnsubscribe(
+      provider.destroy,
+      watch(root.value).subscribe(name => {
+        if (name !== 'lastHoveredId') return;
 
-  onBeforeMount(() => {
-    if (isSub) {
-      unsubscribeSet.add(
-        watch(root.value).subscribe(name => {
-          if (name !== 'lastHoveredId') return;
+        if (state.triggerId !== root.value.lastHoveredId) {
+          state.show = false;
+        }
+      })
+    );
 
-          if (state.triggerId !== root.value.lastHoveredId) {
-            state.show = false;
-          }
-        })
-      );
-    } else {
-      unsubscribeSet.add(
+    if (!isSub) {
+      addUnsubscribe(
         watch(sub.value).subscribe(name => {
           if (name !== 'lastHoveredId') return;
 
@@ -82,12 +78,6 @@ const ContextMenuSub: FC<ContextMenuSubProps> = (props, ctx) => {
         })
       );
     }
-  });
-  onUnmounted(() => {
-    for (const unsubscribe of unsubscribeSet) {
-      unsubscribe();
-    }
-    unsubscribeSet.clear();
   });
 
   return () => props.children;

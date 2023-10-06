@@ -9,7 +9,7 @@ import {
 } from '@dineug/r-html';
 
 import { appContext, createAppContext } from '@/components/context';
-import ERD from '@/components/erd/ERD';
+import Erd from '@/components/erd/Erd';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import Theme from '@/components/theme/Theme';
 import Toolbar from '@/components/toolbar/Toolbar';
@@ -50,7 +50,7 @@ const ERDEditor: FC<ERDEditorProps, ERDEditorElement> = (props, ctx) => {
     <div class=${styles.root} tabindex="-1" ${ref(root)}>
       <${Toolbar} />
       <div class=${styles.main}>
-        <${ERD} />
+        <${Erd} />
       </div>
       ${text.span}
     </div>

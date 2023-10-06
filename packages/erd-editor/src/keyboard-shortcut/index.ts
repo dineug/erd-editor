@@ -35,30 +35,7 @@ export const KeyBindingName = {
 } as const;
 export type KeyBindingName = ValuesType<typeof KeyBindingName>;
 
-export type KeyBindingMap = {
-  [KeyBindingName.edit]: ShortcutOption[];
-  [KeyBindingName.stop]: ShortcutOption[];
-  [KeyBindingName.find]: ShortcutOption[];
-  [KeyBindingName.undo]: ShortcutOption[];
-  [KeyBindingName.redo]: ShortcutOption[];
-  [KeyBindingName.addTable]: ShortcutOption[];
-  [KeyBindingName.addColumn]: ShortcutOption[];
-  [KeyBindingName.addMemo]: ShortcutOption[];
-  [KeyBindingName.removeTable]: ShortcutOption[];
-  [KeyBindingName.removeColumn]: ShortcutOption[];
-  [KeyBindingName.primaryKey]: ShortcutOption[];
-  [KeyBindingName.selectAllTable]: ShortcutOption[];
-  [KeyBindingName.selectAllColumn]: ShortcutOption[];
-  [KeyBindingName.copyColumn]: ShortcutOption[];
-  [KeyBindingName.pasteColumn]: ShortcutOption[];
-  [KeyBindingName.relationshipZeroOne]: ShortcutOption[];
-  [KeyBindingName.relationshipZeroN]: ShortcutOption[];
-  [KeyBindingName.relationshipOneOnly]: ShortcutOption[];
-  [KeyBindingName.relationshipOneN]: ShortcutOption[];
-  [KeyBindingName.tableProperties]: ShortcutOption[];
-  [KeyBindingName.zoomIn]: ShortcutOption[];
-  [KeyBindingName.zoomOut]: ShortcutOption[];
-};
+export type KeyBindingMap = Record<KeyBindingName, ShortcutOption[]>;
 
 export const createKeyBindingMap = (): KeyBindingMap => ({
   [KeyBindingName.edit]: [{ shortcut: 'Enter' }],
@@ -150,8 +127,7 @@ function codeToString(code: string) {
   return code;
 }
 
-export function shortcutToTuple(options: ShortcutOption[]): KeyBindingPress[] {
-  const shortcut: string | null = options[0]?.shortcut ?? null;
+export function shortcutToTuple(shortcut?: string): KeyBindingPress[] {
   return shortcut
     ? parseKeybinding(shortcut).map(([mods, key]) => [
         mods.map(modifierKeyToString),

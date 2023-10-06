@@ -5,17 +5,17 @@ import { Subscription } from 'rxjs';
 import { Unsubscribe } from '@/internal-types';
 
 export function useUnmounted() {
-  let unsubscribeList: Array<Unsubscribe | Subscription> = [];
+  const unsubscribeSet = new Set<Unsubscribe | Subscription>();
 
   const addUnsubscribe = (...args: Array<Unsubscribe | Subscription>) => {
-    unsubscribeList.push(...args);
+    args.forEach(unsubscribe => unsubscribeSet.add(unsubscribe));
   };
 
   onUnmounted(() => {
-    unsubscribeList.forEach(unsubscribe =>
-      isFunction(unsubscribe) ? unsubscribe() : unsubscribe.unsubscribe()
-    );
-    unsubscribeList = [];
+    for (const unsubscribe of unsubscribeSet) {
+      isFunction(unsubscribe) ? unsubscribe() : unsubscribe.unsubscribe();
+    }
+    unsubscribeSet.clear();
   });
 
   return {

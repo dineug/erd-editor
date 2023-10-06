@@ -51,6 +51,7 @@ export const Icons: Story = {
                     prefix=${icon.prefix}
                     name=${icon.iconName}
                     size=${24}
+                    useTransition=${true}
                   />
                   <div
                     class=${css`

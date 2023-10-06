@@ -11,10 +11,12 @@ export const item = css`
   &:hover {
     background-color: var(--context-menu-hover);
     color: var(--active);
+    fill: var(--active);
   }
 
   &[data-show='true'] {
     background-color: var(--context-menu-hover);
     color: var(--active);
+    fill: var(--active);
   }
 `;
