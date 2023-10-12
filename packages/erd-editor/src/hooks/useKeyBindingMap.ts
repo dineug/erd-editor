@@ -1,8 +1,7 @@
 import { onMounted, Ref, watch } from '@dineug/r-html';
-import { Subject } from 'rxjs';
 
 import { useAppContext } from '@/components/context';
-import { KeyBindingName, shortcutToTuple } from '@/utils/keyboard-shortcut';
+import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { tinykeys } from '@/utils/keyboard-shortcut/tinykeys';
 
 import { useUnmounted } from './useUnmounted';
@@ -12,13 +11,12 @@ export function useKeyBindingMap(
   root: Ref<HTMLDivElement>
 ) {
   const app = useAppContext(ctx);
-  const perform$ = new Subject<KeyBindingName>();
   const { addUnsubscribe } = useUnmounted();
 
   let unbinding = () => {};
 
   const keyBinding = () => {
-    const { keyBindingMap } = app.value;
+    const { keyBindingMap, shortcut$ } = app.value;
     unbinding();
     unbinding = tinykeys(
       root.value,
@@ -38,7 +36,7 @@ export function useKeyBindingMap(
               event.stopPropagation();
             }
 
-            perform$.next(name);
+            shortcut$.next(name);
           };
         });
 
@@ -47,24 +45,11 @@ export function useKeyBindingMap(
     );
   };
 
-  const perform = (name: KeyBindingName) => {
-    const { store, keyBindingMap } = app.value;
-    const { editor } = store.state;
-    console.log(
-      `shortcut@${name}:`,
-      shortcutToTuple(keyBindingMap[name][0]?.shortcut)
-        .map(([mods, key]) => [...mods, key].join(' + '))
-        .join('|>')
-    );
-  };
-
   onMounted(() => {
     const { keyBindingMap } = app.value;
     keyBinding();
-    addUnsubscribe(
-      watch(keyBindingMap).subscribe(keyBinding),
-      () => unbinding(),
-      perform$.subscribe(perform)
-    );
+    addUnsubscribe(watch(keyBindingMap).subscribe(keyBinding), () => {
+      unbinding();
+    });
   });
 }

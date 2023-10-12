@@ -4,6 +4,7 @@ import {
   reduxDevtools,
   useContext,
 } from '@dineug/r-html';
+import { Subject } from 'rxjs';
 
 import { Actions, actions } from '@/engine/actions';
 import {
@@ -12,12 +13,18 @@ import {
   InjectEngineContext,
 } from '@/engine/context';
 import { createRxStore, RxStore } from '@/engine/rx-store';
-import { createKeyBindingMap, KeyBindingMap } from '@/utils/keyboard-shortcut';
+import {
+  createKeyBindingMap,
+  KeyBindingMap,
+  KeyBindingName,
+} from '@/utils/keyboard-shortcut';
 
 export type AppContext = EngineContext & {
   actions: Actions;
   store: RxStore;
   keyBindingMap: KeyBindingMap;
+  shortcut$: Subject<KeyBindingName>;
+  keydown$: Subject<KeyboardEvent>;
 };
 
 export type InjectAppContext = InjectEngineContext;
@@ -26,6 +33,8 @@ export function createAppContext(ctx: InjectAppContext): AppContext {
   const engineContext = createEngineContext(ctx);
   const store = createRxStore(engineContext);
   const keyBindingMap = observable(createKeyBindingMap(), { shallow: true });
+  const shortcut$ = new Subject<KeyBindingName>();
+  const keydown$ = new Subject<KeyboardEvent>();
 
   if (import.meta.env.DEV) {
     reduxDevtools(store);
@@ -36,6 +45,8 @@ export function createAppContext(ctx: InjectAppContext): AppContext {
     actions,
     store,
     keyBindingMap,
+    shortcut$,
+    keydown$,
   });
 }
 

@@ -4,6 +4,7 @@ import {
   FC,
   html,
   observable,
+  onMounted,
   ref,
   useProvider,
 } from '@dineug/r-html';
@@ -13,7 +14,9 @@ import Erd from '@/components/erd/Erd';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import Theme from '@/components/theme/Theme';
 import Toolbar from '@/components/toolbar/Toolbar';
+import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import { createDefaultTheme } from '@/themes/default.theme';
 import { createText } from '@/utils/text';
 
@@ -37,6 +40,8 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();
   useKeyBindingMap(ctx, root);
 
+  const { addUnsubscribe } = useUnmounted();
+
   const state = observable(
     {
       theme: createDefaultTheme('dark'),
@@ -44,10 +49,36 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     { shallow: true }
   );
 
+  const handleKeydown = (event: KeyboardEvent) => {
+    const { keydown$ } = appContextValue;
+    keydown$.next(event);
+  };
+
+  onMounted(() => {
+    const $root = root.value;
+    const { store } = appContextValue;
+    const resizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        store.dispatch(changeViewportAction({ width, height }));
+      }
+    });
+    resizeObserver.observe($root);
+    addUnsubscribe(() => {
+      resizeObserver.unobserve($root);
+      resizeObserver.disconnect();
+    });
+  });
+
   return () => html`
     <${GlobalStyles} />
     <${Theme} .theme=${state.theme} />
-    <div class=${styles.root} tabindex="-1" ${ref(root)}>
+    <div
+      ${ref(root)}
+      class=${styles.root}
+      tabindex="-1"
+      @keydown=${handleKeydown}
+    >
       <${Toolbar} />
       <div class=${styles.main}>
         <${Erd} />
