@@ -20,6 +20,8 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
       style=${{
         width: `${width}px`,
         height: `${height}px`,
+        'min-width': `${width}px`,
+        'min-height': `${height}px`,
         top: `${scrollTop}px`,
         left: `${scrollLeft}px`,
         transform: `scale(${zoomLevel})`,
