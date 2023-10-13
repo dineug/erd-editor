@@ -33,6 +33,20 @@ export const addTableAction$ = (): GeneratorAction =>
     // TODO: focus table
   };
 
+export const selectTableAction$ = (
+  id: string,
+  $mod: boolean
+): GeneratorAction =>
+  function* () {
+    if (!$mod) {
+      yield unselectAllAction();
+    }
+    yield selectAction({ [id]: SelectType.table });
+
+    // TODO: focusTable, drawRelationship
+  };
+
 export const actions$ = {
   addTableAction$,
+  selectTableAction$,
 };

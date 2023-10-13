@@ -1,7 +1,7 @@
 import { isString } from '@dineug/shared';
 
 import { AppContext } from '@/components/context';
-import { loadJson$ } from '@/engine/modules/editor/generator.actions';
+import { loadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 
 type ImportOptions = {
   type: 'json' | 'sql';
@@ -47,7 +47,7 @@ export function importJSON({ store }: AppContext) {
         return;
       }
 
-      store.dispatch(loadJson$(value));
+      store.dispatch(loadJsonAction$(value));
     };
   });
   input.click();

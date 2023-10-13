@@ -55,6 +55,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const el = event.target as HTMLElement | null;
     if (!el) return;
 
+    const canDrag = !el.closest('.table');
+    if (!canDrag) return;
+
     // TODO: dragSelect
     drag$.subscribe(handleMove);
   };

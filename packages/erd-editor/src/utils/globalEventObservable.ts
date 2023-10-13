@@ -3,9 +3,30 @@ import { filter, fromEvent, map, merge, takeUntil } from 'rxjs';
 export const mousedown$ = fromEvent<MouseEvent>(window, 'mousedown');
 export const mousemove$ = fromEvent<MouseEvent>(window, 'mousemove');
 export const mouseup$ = fromEvent<MouseEvent>(window, 'mouseup');
+
 export const touchstart$ = fromEvent<TouchEvent>(window, 'touchstart');
 export const touchmove$ = fromEvent<TouchEvent>(window, 'touchmove');
 export const touchend$ = fromEvent<TouchEvent>(window, 'touchend');
+
+export const moveStart$ = merge(mousedown$, touchstart$);
+export const moveEnd$ = merge(mouseup$, touchend$);
+
+function isMousedownEvent(event: MouseEvent | TouchEvent): event is MouseEvent {
+  return event.type === 'mousedown';
+}
+
+let prevX = 0;
+let prevY = 0;
+
+const subscription = moveStart$.subscribe(event => {
+  if (isMousedownEvent(event)) {
+    prevX = event.clientX;
+    prevY = event.clientY;
+  } else {
+    prevX = event.touches[0].clientX;
+    prevY = event.touches[0].clientY;
+  }
+});
 
 export type DragMove = {
   movementX: number;
@@ -15,50 +36,42 @@ export type DragMove = {
   event: MouseEvent | TouchEvent;
 };
 
-let touchX = 0;
-let touchY = 0;
-const subscription = touchstart$.subscribe(event => {
-  touchX = event.touches[0].clientX;
-  touchY = event.touches[0].clientY;
-});
-
 export const move$ = merge(
   mousemove$.pipe(
     map(event => {
-      let movementX = event.movementX;
-      let movementY = event.movementY;
-      // bug: OS windows10 - event.movementX / window.devicePixelRatio
-      // if (isRatio) {
-      //   movementX = event.movementX / window.devicePixelRatio;
-      //   movementY = event.movementY / window.devicePixelRatio;
-      // }
+      const x = event.clientX;
+      const y = event.clientY;
+      const movementX = x - prevX;
+      const movementY = y - prevY;
+      prevX = x;
+      prevY = y;
       return {
         event,
         movementX,
         movementY,
-        x: event.clientX,
-        y: event.clientY,
+        x,
+        y,
       };
     })
   ),
   touchmove$.pipe(
     filter(event => event.touches.length === 1),
     map(event => {
-      const movementX = event.touches[0].clientX - touchX;
-      const movementY = event.touches[0].clientY - touchY;
-      touchX = event.touches[0].clientX;
-      touchY = event.touches[0].clientY;
+      const x = event.touches[0].clientX;
+      const y = event.touches[0].clientY;
+      const movementX = x - prevX;
+      const movementY = y - prevY;
+      prevX = x;
+      prevY = y;
       return {
         event,
         movementX,
         movementY,
-        x: event.touches[0].clientX,
-        y: event.touches[0].clientY,
+        x,
+        y,
       };
     })
   )
 );
 
-export const moveStart$ = merge(mousedown$, touchstart$);
-export const moveEnd$ = merge(mouseup$, touchend$);
 export const drag$ = move$.pipe(takeUntil(moveEnd$));

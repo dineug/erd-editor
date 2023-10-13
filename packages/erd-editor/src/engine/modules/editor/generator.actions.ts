@@ -3,13 +3,47 @@ import {
   clearAction,
   loadJsonAction,
 } from '@/engine/modules/editor/atom.actions';
+import { SelectType } from '@/engine/modules/editor/state';
+import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
+import { moveTableAction } from '@/engine/modules/table/atom.actions';
 
-export const loadJson$ = (value: string): GeneratorAction =>
+export const loadJsonAction$ = (value: string): GeneratorAction =>
   function* () {
     yield clearAction();
     yield loadJsonAction({ value });
   };
 
+export const moveAllAction$ = (
+  movementX: number,
+  movementY: number
+): GeneratorAction =>
+  function* ({ editor: { selectedMap } }) {
+    const { tableIds, memoIds } = Object.entries(selectedMap).reduce(
+      (acc, [id, type]) => {
+        if (type === SelectType.table) {
+          acc.tableIds.push(id);
+        } else if (type === SelectType.memo) {
+          acc.memoIds.push(id);
+        }
+
+        return acc;
+      },
+      {
+        tableIds: [] as string[],
+        memoIds: [] as string[],
+      }
+    );
+
+    if (tableIds.length) {
+      yield moveTableAction({ ids: tableIds, movementX, movementY });
+    }
+
+    if (memoIds.length) {
+      yield moveMemoAction({ ids: memoIds, movementX, movementY });
+    }
+  };
+
 export const actions$ = {
-  loadJson$,
+  loadJsonAction$,
+  moveAllAction$,
 };
