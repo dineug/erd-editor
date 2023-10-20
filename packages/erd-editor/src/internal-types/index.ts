@@ -25,6 +25,7 @@ export type IndexColumnEntities = GetEntities<'indexColumnEntities'>;
 export type Doc = ERDEditorSchemaV3['doc'];
 export type Collections = ERDEditorSchemaV3['collections'];
 export type Settings = ERDEditorSchemaV3['settings'];
+export type LWW = ERDEditorSchemaV3['lww'];
 
 export type Point = {
   x: number;
@@ -34,7 +35,6 @@ export type Point = {
 export type EntityMeta = {
   updateAt: string;
   createAt: string;
-  deleted: number;
 };
 
 export type Unsubscribe = () => void;

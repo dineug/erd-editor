@@ -1,4 +1,4 @@
-import { isArray, isNill } from '@dineug/shared';
+import { isArray, isNill, isObject } from '@dineug/shared';
 
 import { assign } from '@/helper';
 import { DeepPartial } from '@/internal-types';
@@ -13,7 +13,7 @@ const createDoc = (): Doc => ({
 
 export function createAndMergeDoc(json?: DeepPartial<Doc>): Doc {
   const doc = createDoc();
-  if (isNill(json)) return doc;
+  if (!isObject(json) || isNill(json)) return doc;
 
   const assignArray = assign(isArray, doc, json);
 

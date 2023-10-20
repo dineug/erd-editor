@@ -39,7 +39,6 @@ export function getDefaultEntityMeta(): EntityMeta {
   return {
     updateAt: now,
     createAt: now,
-    deleted: 0,
   };
 }
 
@@ -48,9 +47,7 @@ export function assignMeta(
   source?: DeepPartial<EntityMeta>
 ) {
   const assignString = assign(isString, target, source);
-  const assignNumber = assign(isNumber, target, source);
 
   assignString('updateAt');
   assignString('createAt');
-  assignNumber('deleted');
 }

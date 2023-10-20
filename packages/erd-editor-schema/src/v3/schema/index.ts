@@ -5,6 +5,7 @@ import {
   OrderType,
   OrderTypeList,
 } from '@/v3/schema/indexColumn.entity';
+import { LWW } from '@/v3/schema/lww';
 import { Memo } from '@/v3/schema/memo.entity';
 import {
   Direction,
@@ -54,6 +55,7 @@ export interface ERDEditorSchemaV3 {
     indexColumnEntities: Record<string, IndexColumn>;
     memoEntities: Record<string, Memo>;
   };
+  lww: LWW;
 }
 
 export const SchemaV3Constants = {

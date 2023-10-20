@@ -13,8 +13,8 @@ export const addColumnAction = createAction<
 >(ActionType.addColumn);
 
 const addColumn: ReducerType<typeof ActionType.addColumn> = (
-  { collections },
-  { id, tableId }
+  { collections, lww },
+  { payload: { id, tableId }, timestamp }
 ) => {
   const tableCollection = query(collections).collection('tableEntities');
   const table = tableCollection.getOrCreate(tableId, id => createTable({ id }));
@@ -23,7 +23,7 @@ const addColumn: ReducerType<typeof ActionType.addColumn> = (
   query(collections)
     .collection('tableColumnEntities')
     .addOne(column)
-    .decrementDeleted(id, () => {
+    .addOperator(lww, timestamp, id, () => {
       if (!arrayHas(table.columnIds)(id)) {
         tableCollection.updateOne(tableId, table => {
           table.columnIds.push(id);
@@ -37,15 +37,15 @@ export const removeColumnAction = createAction<
 >(ActionType.removeColumn);
 
 const removeColumn: ReducerType<typeof ActionType.removeColumn> = (
-  { collections },
-  { id, tableId }
+  { collections, lww },
+  { payload: { id, tableId }, timestamp }
 ) => {
   const tableCollection = query(collections).collection('tableEntities');
   const table = tableCollection.getOrCreate(tableId, id => createTable({ id }));
 
   query(collections)
     .collection('tableColumnEntities')
-    .incrementDeleted(id, () => {
+    .removeOperator(lww, timestamp, id, () => {
       const index = table.columnIds.indexOf(id);
       if (index !== -1) {
         tableCollection.updateOne(tableId, table => {
@@ -61,7 +61,7 @@ export const changeColumnNameAction = createAction<
 
 const changeColumnName: ReducerType<typeof ActionType.changeColumnName> = (
   { collections },
-  { id, value },
+  { payload: { id, value } },
   { toWidth }
 ) => {
   const collection = query(collections).collection('tableColumnEntities');
@@ -78,7 +78,7 @@ export const changeColumnCommentAction = createAction<
 
 const changeColumnComment: ReducerType<
   typeof ActionType.changeColumnComment
-> = ({ collections }, { id, value }, { toWidth }) => {
+> = ({ collections }, { payload: { id, value } }, { toWidth }) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
   collection.updateOne(id, column => {
@@ -93,7 +93,7 @@ export const changeColumnDataTypeAction = createAction<
 
 const changeColumnDataType: ReducerType<
   typeof ActionType.changeColumnDataType
-> = ({ collections }, { id, value }, { toWidth }) => {
+> = ({ collections }, { payload: { id, value } }, { toWidth }) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
   collection.updateOne(id, column => {
@@ -108,7 +108,7 @@ export const changeColumnDefaultAction = createAction<
 
 const changeColumnDefault: ReducerType<
   typeof ActionType.changeColumnDefault
-> = ({ collections }, { id, value }, { toWidth }) => {
+> = ({ collections }, { payload: { id, value } }, { toWidth }) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
   collection.updateOne(id, column => {
@@ -123,7 +123,7 @@ export const changeColumnAutoIncrementAction = createAction<
 
 const changeColumnAutoIncrement: ReducerType<
   typeof ActionType.changeColumnAutoIncrement
-> = ({ collections }, { id, value }) => {
+> = ({ collections }, { payload: { id, value } }) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
   collection.updateOne(id, column => {
@@ -139,7 +139,7 @@ export const changeColumnPrimaryKeyAction = createAction<
 
 const changeColumnPrimaryKey: ReducerType<
   typeof ActionType.changeColumnPrimaryKey
-> = ({ collections }, { id, value }) => {
+> = ({ collections }, { payload: { id, value } }) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
   collection.updateOne(id, column => {
@@ -174,7 +174,7 @@ export const changeColumnUniqueAction = createAction<
 
 const changeColumnUnique: ReducerType<typeof ActionType.changeColumnUnique> = (
   { collections },
-  { id, value }
+  { payload: { id, value } }
 ) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
@@ -191,7 +191,7 @@ export const changeColumnNotNullAction = createAction<
 
 const changeColumnNotNull: ReducerType<
   typeof ActionType.changeColumnNotNull
-> = ({ collections }, { id, value }) => {
+> = ({ collections }, { payload: { id, value } }) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
   collection.updateOne(id, column => {

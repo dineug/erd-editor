@@ -12,8 +12,8 @@ export const addMemoAction = createAction<ActionMap[typeof ActionType.addMemo]>(
 );
 
 const addMemo: ReducerType<typeof ActionType.addMemo> = (
-  { doc, collections },
-  { id, ui }
+  { doc, collections, lww },
+  { payload: { id, ui }, timestamp }
 ) => {
   const memo = createMemo({ id });
   Object.assign(memo.ui, ui);
@@ -21,7 +21,7 @@ const addMemo: ReducerType<typeof ActionType.addMemo> = (
   query(collections)
     .collection('memoEntities')
     .addOne(memo)
-    .decrementDeleted(id, () => {
+    .addOperator(lww, timestamp, id, () => {
       if (!arrayHas(doc.memoIds)(id)) {
         doc.memoIds.push(id);
       }
@@ -34,7 +34,7 @@ export const moveMemoAction = createAction<
 
 const moveMemo: ReducerType<typeof ActionType.moveMemo> = (
   { collections },
-  { ids, movementX, movementY }
+  { payload: { ids, movementX, movementY } }
 ) => {
   const collection = query(collections).collection('memoEntities');
   for (const id of ids) {
@@ -52,12 +52,12 @@ export const removeMemoAction = createAction<
 >(ActionType.removeMemo);
 
 const removeMemo: ReducerType<typeof ActionType.removeMemo> = (
-  { doc, collections },
-  { id }
+  { doc, collections, lww },
+  { payload: { id }, timestamp }
 ) => {
   query(collections)
     .collection('memoEntities')
-    .incrementDeleted(id, () => {
+    .removeOperator(lww, timestamp, id, () => {
       const index = doc.memoIds.indexOf(id);
       if (index !== -1) {
         doc.memoIds.splice(index, 1);
@@ -71,7 +71,7 @@ export const changeMemoValueAction = createAction<
 
 const changeMemoValue: ReducerType<typeof ActionType.changeMemoValue> = (
   { collections },
-  { id, value }
+  { payload: { id, value } }
 ) => {
   const collection = query(collections).collection('memoEntities');
   collection.getOrCreate(id, id => createMemo({ id }));
@@ -87,7 +87,7 @@ export const changeMemoColorAction = createAction<
 
 const changeMemoColor: ReducerType<typeof ActionType.changeMemoColor> = (
   { collections },
-  { ids, color }
+  { payload: { ids, color } }
 ) => {
   const collection = query(collections).collection('memoEntities');
   for (const id of ids) {
@@ -105,7 +105,7 @@ export const resizeMemoAction = createAction<
 
 const resizeMemo: ReducerType<typeof ActionType.resizeMemo> = (
   { collections },
-  { id, x, y, width, height }
+  { payload: { id, x, y, width, height } }
 ) => {
   const collection = query(collections).collection('memoEntities');
   collection.getOrCreate(id, id => createMemo({ id }));

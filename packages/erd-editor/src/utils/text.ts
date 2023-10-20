@@ -44,12 +44,16 @@ export function createText() {
   span.className = ghostText.toString();
 
   const toWidth = (text: string) => {
+    let width = 0;
+
     if (canvasContext) {
-      return canvasContext.measureText(text).width;
+      width = canvasContext.measureText(text).width;
+    } else {
+      span.innerText = text;
+      width = span.offsetWidth;
     }
 
-    span.innerText = text;
-    return span.offsetWidth;
+    return Math.round(width);
   };
 
   return {

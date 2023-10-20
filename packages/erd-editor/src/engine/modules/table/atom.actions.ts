@@ -12,8 +12,8 @@ export const addTableAction = createAction<
 >(ActionType.addTable);
 
 const addTable: ReducerType<typeof ActionType.addTable> = (
-  { doc, collections },
-  { id, ui }
+  { doc, collections, lww },
+  { payload: { id, ui }, timestamp }
 ) => {
   const table = createTable({ id });
   Object.assign(table.ui, ui);
@@ -21,7 +21,7 @@ const addTable: ReducerType<typeof ActionType.addTable> = (
   query(collections)
     .collection('tableEntities')
     .addOne(table)
-    .decrementDeleted(id, () => {
+    .addOperator(lww, timestamp, id, () => {
       if (!arrayHas(doc.tableIds)(id)) {
         doc.tableIds.push(id);
       }
@@ -34,7 +34,7 @@ export const moveTableAction = createAction<
 
 const moveTable: ReducerType<typeof ActionType.moveTable> = (
   { collections },
-  { ids, movementX, movementY }
+  { payload: { ids, movementX, movementY } }
 ) => {
   const collection = query(collections).collection('tableEntities');
   for (const id of ids) {
@@ -52,12 +52,12 @@ export const removeTableAction = createAction<
 >(ActionType.removeTable);
 
 const removeTable: ReducerType<typeof ActionType.removeTable> = (
-  { doc, collections },
-  { id }
+  { doc, collections, lww },
+  { payload: { id }, timestamp }
 ) => {
   query(collections)
     .collection('tableEntities')
-    .incrementDeleted(id, () => {
+    .removeOperator(lww, timestamp, id, () => {
       const index = doc.tableIds.indexOf(id);
       if (index !== -1) {
         doc.tableIds.splice(index, 1);
@@ -71,7 +71,7 @@ export const changeTableNameAction = createAction<
 
 const changeTableName: ReducerType<typeof ActionType.changeTableName> = (
   { collections },
-  { id, value },
+  { payload: { id, value } },
   { toWidth }
 ) => {
   const collection = query(collections).collection('tableEntities');
@@ -89,7 +89,7 @@ export const changeTableCommentAction = createAction<
 
 const changeTableComment: ReducerType<typeof ActionType.changeTableComment> = (
   { collections },
-  { id, value },
+  { payload: { id, value } },
   { toWidth }
 ) => {
   const collection = query(collections).collection('tableEntities');
@@ -107,7 +107,7 @@ export const changeTableColorAction = createAction<
 
 const changeTableColor: ReducerType<typeof ActionType.changeTableColor> = (
   { collections },
-  { ids, color }
+  { payload: { ids, color } }
 ) => {
   const collection = query(collections).collection('tableEntities');
   for (const id of ids) {

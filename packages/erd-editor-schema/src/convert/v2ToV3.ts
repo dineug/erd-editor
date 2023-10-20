@@ -115,7 +115,6 @@ function assignTable(
     newTable.ui.widthName = table.ui.widthName;
     newTable.ui.widthComment = table.ui.widthComment;
     newTable.ui.color = table.ui.color ?? '';
-    newTable.meta.deleted--;
 
     for (const column of table.columns) {
       const newColumn = createColumn();
@@ -125,7 +124,6 @@ function assignTable(
       newColumn.comment = column.comment;
       newColumn.dataType = column.dataType;
       newColumn.default = column.default;
-      newColumn.meta.deleted--;
 
       newColumn.options = Object.keys(column.option).reduce((acc, key) => {
         const flag: boolean = propOr(column.option, key, false);
@@ -166,7 +164,6 @@ function assignTable(
     newIndex.name = index.name;
     newIndex.tableId = index.tableId;
     newIndex.unique = index.unique;
-    newIndex.meta.deleted--;
 
     for (const indexColumn of index.columns) {
       const id = uuid();
@@ -208,7 +205,6 @@ function assignMemo(
     newValue.ui.height = value.ui.height;
     newValue.ui.zIndex = value.ui.zIndex;
     newValue.ui.color = value.ui.color ?? '';
-    newValue.meta.deleted--;
 
     target.collections.memoEntities[newValue.id] = newValue;
   }
@@ -227,7 +223,6 @@ function assignRelationship(
 
     newValue.id = value.id;
     newValue.identification = value.identification;
-    newValue.meta.deleted--;
 
     newValue.relationshipType = propOr(
       SchemaV3Constants.RelationshipType,

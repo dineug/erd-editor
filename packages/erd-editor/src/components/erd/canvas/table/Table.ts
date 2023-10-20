@@ -4,6 +4,7 @@ import { useAppContext } from '@/components/context';
 import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
 import { Table } from '@/internal-types';
+import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
 
@@ -33,7 +34,11 @@ const Table: FC<TableProps> = (props, ctx) => {
   };
 
   return () => {
+    const { store } = app.value;
     const { table } = props;
+    const selected = Boolean(store.state.editor.selectedMap[table.id]);
+    const tableWidths = calcTableWidths(table, store.state);
+    const height = calcTableHeight(table);
 
     return html`
       <div
@@ -41,7 +46,11 @@ const Table: FC<TableProps> = (props, ctx) => {
         style=${{
           top: `${table.ui.y}px`,
           left: `${table.ui.x}px`,
+          zIndex: `${table.ui.zIndex}`,
+          width: `${tableWidths.width}px`,
+          height: `${height}px`,
         }}
+        ?selected=${selected}
         @mousedown=${handleMoveStart}
         @touchstart=${handleMoveStart}
       >

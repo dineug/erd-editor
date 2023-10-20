@@ -19,7 +19,7 @@ export const changeDatabaseNameAction = createAction<
 
 const changeDatabaseName: ReducerType<typeof ActionType.changeDatabaseName> = (
   { settings },
-  { value }
+  { payload: { value } }
 ) => {
   settings.databaseName = value;
 };
@@ -30,7 +30,7 @@ export const resizeAction = createAction<ActionMap[typeof ActionType.resize]>(
 
 const resize: ReducerType<typeof ActionType.resize> = (
   { settings },
-  { width, height }
+  { payload: { width, height } }
 ) => {
   settings.width = canvasSizeInRange(width);
   settings.height = canvasSizeInRange(height);
@@ -42,7 +42,7 @@ export const changeZoomLevelAction = createAction<
 
 const changeZoomLevel: ReducerType<typeof ActionType.changeZoomLevel> = (
   { settings },
-  { value }
+  { payload: { value } }
 ) => {
   settings.zoomLevel = zoomLevelInRange(value);
 };
@@ -53,7 +53,7 @@ export const streamZoomLevelAction = createAction<
 
 const streamZoomLevel: ReducerType<typeof ActionType.streamZoomLevel> = (
   { settings },
-  { value }
+  { payload: { value } }
 ) => {
   settings.zoomLevel = zoomLevelInRange(settings.zoomLevel + value);
 };
@@ -64,7 +64,7 @@ export const scrollToAction = createAction<
 
 const scrollTo: ReducerType<typeof ActionType.scrollTo> = (
   { settings, editor: { viewport } },
-  { scrollTop, scrollLeft }
+  { payload: { scrollTop, scrollLeft } }
 ) => {
   const scrollTopInRange = createInRange(viewport.height - settings.height, 0);
   const scrollLeftInRange = createInRange(viewport.width - settings.width, 0);
@@ -79,7 +79,7 @@ export const streamScrollToAction = createAction<
 
 const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
   { settings, editor: { viewport } },
-  { movementX, movementY }
+  { payload: { movementX, movementY } }
 ) => {
   const scrollTopInRange = createInRange(viewport.height - settings.height, 0);
   const scrollLeftInRange = createInRange(viewport.width - settings.width, 0);
@@ -94,7 +94,7 @@ export const changeShowAction = createAction<
 
 const changeShow: ReducerType<typeof ActionType.changeShow> = (
   { settings },
-  { show, value }
+  { payload: { show, value } }
 ) => {
   settings.show = value ? settings.show | show : settings.show & ~show;
 };
@@ -105,7 +105,7 @@ export const changeDatabaseAction = createAction<
 
 const changeDatabase: ReducerType<typeof ActionType.changeDatabase> = (
   { settings },
-  { value }
+  { payload: { value } }
 ) => {
   if (hasDatabase(value)) {
     settings.database = value;
@@ -118,7 +118,7 @@ export const changeCanvasTypeAction = createAction<
 
 const changeCanvasType: ReducerType<typeof ActionType.changeCanvasType> = (
   { settings },
-  { value }
+  { payload: { value } }
 ) => {
   settings.canvasType = value;
 };
@@ -129,7 +129,7 @@ export const changeLanguageAction = createAction<
 
 const changeLanguage: ReducerType<typeof ActionType.changeLanguage> = (
   { settings },
-  { value }
+  { payload: { value } }
 ) => {
   if (hasLanguage(value)) {
     settings.language = value;
@@ -142,7 +142,7 @@ export const changeTableNameCaseAction = createAction<
 
 const changeTableNameCase: ReducerType<
   typeof ActionType.changeTableNameCase
-> = ({ settings }, { value }) => {
+> = ({ settings }, { payload: { value } }) => {
   if (hasNameCase(value)) {
     settings.tableNameCase = value;
   }
@@ -154,7 +154,7 @@ export const changeColumnNameCaseAction = createAction<
 
 const changeColumnNameCase: ReducerType<
   typeof ActionType.changeColumnNameCase
-> = ({ settings }, { value }) => {
+> = ({ settings }, { payload: { value } }) => {
   if (hasNameCase(value)) {
     settings.columnNameCase = value;
   }
@@ -166,7 +166,7 @@ export const changeBracketTypeAction = createAction<
 
 const changeBracketType: ReducerType<typeof ActionType.changeBracketType> = (
   { settings },
-  { value }
+  { payload: { value } }
 ) => {
   if (hasBracketType(value)) {
     settings.bracketType = value;
@@ -179,7 +179,7 @@ export const changeRelationshipDataTypeSyncAction = createAction<
 
 const changeRelationshipDataTypeSync: ReducerType<
   typeof ActionType.changeRelationshipDataTypeSync
-> = ({ settings }, { value }) => {
+> = ({ settings }, { payload: { value } }) => {
   settings.relationshipDataTypeSync = value;
 };
 
@@ -189,7 +189,7 @@ export const changeRelationshipOptimizationAction = createAction<
 
 const changeRelationshipOptimization: ReducerType<
   typeof ActionType.changeRelationshipOptimization
-> = ({ settings }, { value }) => {
+> = ({ settings }, { payload: { value } }) => {
   settings.relationshipOptimization = value;
 };
 
@@ -199,7 +199,7 @@ export const changeColumnOrderAction = createAction<
 
 const changeColumnOrder: ReducerType<typeof ActionType.changeColumnOrder> = (
   { settings },
-  { value, target }
+  { payload: { value, target } }
 ) => {
   if (value === target || !hasColumnType(value) || !hasColumnType(target)) {
     return;

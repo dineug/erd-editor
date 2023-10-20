@@ -4,6 +4,7 @@ import {
   isBoolean,
   isNill,
   isNumber,
+  isObject,
   isString,
 } from '@dineug/shared';
 import { difference } from 'lodash-es';
@@ -71,7 +72,7 @@ const zoomInRange = createInRange(CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
 
 export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   const settings = createSettings();
-  if (isNill(json)) return settings;
+  if (!isObject(json) || isNill(json)) return settings;
 
   const assignNumber = assign(isNumber, settings, json);
   const assignString = assign(isString, settings, json);

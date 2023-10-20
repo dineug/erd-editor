@@ -1,17 +1,19 @@
 import { DateTime } from 'luxon';
 
-import { Collections, GetEntities, GetEntity } from '@/internal-types';
+import { Collections, GetEntities, GetEntity, LWW } from '@/internal-types';
+
+import { addOperator, removeOperator, replaceOperator } from './lww';
 
 class Query {
   constructor(private readonly collections: Collections) {}
 
   collection<K extends keyof Collections>(collection: K) {
-    return new CollectionQuery<K>(this.collections[collection]);
+    return new CollectionQuery<K>(this.collections[collection], collection);
   }
 }
 
 class CollectionQuery<K extends keyof Collections> {
-  constructor(private collection: GetEntities<K>) {}
+  constructor(private collection: GetEntities<K>, private collectionKey: K) {}
 
   selectById(id: string): GetEntity<K> | undefined {
     return this.collection[id] as GetEntity<K> | undefined;
@@ -88,25 +90,24 @@ class CollectionQuery<K extends keyof Collections> {
     return this.selectById(id) as GetEntity<K>;
   }
 
-  incrementDeleted(id: string, recipe: (deleted: number) => void) {
-    const entity = this.selectById(id);
-    if (entity) {
-      entity.meta.deleted++;
-      if (entity.meta.deleted >= 0) {
-        recipe(entity.meta.deleted);
-      }
-    }
+  addOperator(lww: LWW, timestamp: number, id: string, recipe: () => void) {
+    addOperator(lww, timestamp, this.collectionKey, id, recipe);
     return this;
   }
 
-  decrementDeleted(id: string, recipe: (deleted: number) => void) {
-    const entity = this.selectById(id);
-    if (entity) {
-      entity.meta.deleted--;
-      if (entity.meta.deleted < 0) {
-        recipe(entity.meta.deleted);
-      }
-    }
+  removeOperator(lww: LWW, timestamp: number, id: string, recipe: () => void) {
+    removeOperator(lww, timestamp, this.collectionKey, id, recipe);
+    return this;
+  }
+
+  replaceOperator(
+    lww: LWW,
+    timestamp: number,
+    id: string,
+    path: string,
+    recipe: () => void
+  ) {
+    replaceOperator(lww, timestamp, this.collectionKey, id, path, recipe);
     return this;
   }
 }

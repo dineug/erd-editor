@@ -10,7 +10,7 @@ export const changeHasHistoryAction = createAction<
 
 const changeHasHistory: ReducerType<typeof ActionType.changeHasHistory> = (
   { editor },
-  { hasRedo, hasUndo }
+  { payload: { hasRedo, hasUndo } }
 ) => {
   editor.hasRedo = hasRedo;
   editor.hasUndo = hasUndo;
@@ -59,7 +59,10 @@ export const selectAction = createAction<ActionMap[typeof ActionType.select]>(
   ActionType.select
 );
 
-const select: ReducerType<typeof ActionType.select> = ({ editor }, payload) => {
+const select: ReducerType<typeof ActionType.select> = (
+  { editor },
+  { payload }
+) => {
   Object.assign(editor.selectedMap, payload);
 };
 
@@ -69,7 +72,7 @@ export const changeViewportAction = createAction<
 
 const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
   { editor },
-  { width, height }
+  { payload: { width, height } }
 ) => {
   editor.viewport.width = width;
   editor.viewport.height = height;
@@ -91,7 +94,7 @@ export const loadJsonAction = createAction<
 
 const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state,
-  { value }
+  { payload: { value } }
 ) => {
   const { version, settings, doc, collections } = parser(value);
   state.version = version;
