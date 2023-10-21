@@ -60,15 +60,18 @@ export const changeColumnNameAction = createAction<
 >(ActionType.changeColumnName);
 
 const changeColumnName: ReducerType<typeof ActionType.changeColumnName> = (
-  { collections },
-  { payload: { id, value } },
+  { collections, lww },
+  { payload: { id, value }, timestamp },
   { toWidth }
 ) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
-  collection.updateOne(id, column => {
-    column.name = value;
-    column.ui.widthName = toWidth(value);
+
+  collection.replaceOperator(lww, timestamp, id, 'name', () => {
+    collection.updateOne(id, column => {
+      column.name = value;
+      column.ui.widthName = toWidth(value);
+    });
   });
 };
 
@@ -78,12 +81,19 @@ export const changeColumnCommentAction = createAction<
 
 const changeColumnComment: ReducerType<
   typeof ActionType.changeColumnComment
-> = ({ collections }, { payload: { id, value } }, { toWidth }) => {
+> = (
+  { collections, lww },
+  { payload: { id, value }, timestamp },
+  { toWidth }
+) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
-  collection.updateOne(id, column => {
-    column.comment = value;
-    column.ui.widthComment = toWidth(value);
+
+  collection.replaceOperator(lww, timestamp, id, 'comment', () => {
+    collection.updateOne(id, column => {
+      column.comment = value;
+      column.ui.widthComment = toWidth(value);
+    });
   });
 };
 
@@ -93,12 +103,19 @@ export const changeColumnDataTypeAction = createAction<
 
 const changeColumnDataType: ReducerType<
   typeof ActionType.changeColumnDataType
-> = ({ collections }, { payload: { id, value } }, { toWidth }) => {
+> = (
+  { collections, lww },
+  { payload: { id, value }, timestamp },
+  { toWidth }
+) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
-  collection.updateOne(id, column => {
-    column.dataType = value;
-    column.ui.widthDataType = toWidth(value);
+
+  collection.replaceOperator(lww, timestamp, id, 'dataType', () => {
+    collection.updateOne(id, column => {
+      column.dataType = value;
+      column.ui.widthDataType = toWidth(value);
+    });
   });
 };
 
@@ -108,12 +125,19 @@ export const changeColumnDefaultAction = createAction<
 
 const changeColumnDefault: ReducerType<
   typeof ActionType.changeColumnDefault
-> = ({ collections }, { payload: { id, value } }, { toWidth }) => {
+> = (
+  { collections, lww },
+  { payload: { id, value }, timestamp },
+  { toWidth }
+) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
-  collection.updateOne(id, column => {
-    column.default = value;
-    column.ui.widthDefault = toWidth(value);
+
+  collection.replaceOperator(lww, timestamp, id, 'default', () => {
+    collection.updateOne(id, column => {
+      column.default = value;
+      column.ui.widthDefault = toWidth(value);
+    });
   });
 };
 
@@ -123,14 +147,23 @@ export const changeColumnAutoIncrementAction = createAction<
 
 const changeColumnAutoIncrement: ReducerType<
   typeof ActionType.changeColumnAutoIncrement
-> = ({ collections }, { payload: { id, value } }) => {
+> = ({ collections, lww }, { payload: { id, value }, timestamp }) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
-  collection.updateOne(id, column => {
-    column.options = value
-      ? column.options | SchemaV3Constants.ColumnOption.autoIncrement
-      : column.options & ~SchemaV3Constants.ColumnOption.autoIncrement;
-  });
+
+  collection.replaceOperator(
+    lww,
+    timestamp,
+    id,
+    'options(autoIncrement)',
+    () => {
+      collection.updateOne(id, column => {
+        column.options = value
+          ? column.options | SchemaV3Constants.ColumnOption.autoIncrement
+          : column.options & ~SchemaV3Constants.ColumnOption.autoIncrement;
+      });
+    }
+  );
 };
 
 export const changeColumnPrimaryKeyAction = createAction<
@@ -139,32 +172,35 @@ export const changeColumnPrimaryKeyAction = createAction<
 
 const changeColumnPrimaryKey: ReducerType<
   typeof ActionType.changeColumnPrimaryKey
-> = ({ collections }, { payload: { id, value } }) => {
+> = ({ collections, lww }, { payload: { id, value }, timestamp }) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
-  collection.updateOne(id, column => {
-    column.options = value
-      ? column.options | SchemaV3Constants.ColumnOption.primaryKey
-      : column.options & ~SchemaV3Constants.ColumnOption.primaryKey;
 
-    if (value) {
-      if (column.ui.keys & SchemaV3Constants.ColumnUIKey.foreignKey) {
-        column.ui.keys =
-          SchemaV3Constants.ColumnUIKey.primaryKey |
-          SchemaV3Constants.ColumnUIKey.foreignKey;
+  collection.replaceOperator(lww, timestamp, id, 'options(primaryKey)', () => {
+    collection.updateOne(id, column => {
+      column.options = value
+        ? column.options | SchemaV3Constants.ColumnOption.primaryKey
+        : column.options & ~SchemaV3Constants.ColumnOption.primaryKey;
+
+      if (value) {
+        if (column.ui.keys & SchemaV3Constants.ColumnUIKey.foreignKey) {
+          column.ui.keys =
+            SchemaV3Constants.ColumnUIKey.primaryKey |
+            SchemaV3Constants.ColumnUIKey.foreignKey;
+        } else {
+          column.ui.keys = SchemaV3Constants.ColumnUIKey.primaryKey;
+        }
       } else {
-        column.ui.keys = SchemaV3Constants.ColumnUIKey.primaryKey;
+        if (
+          column.ui.keys & SchemaV3Constants.ColumnUIKey.primaryKey &&
+          column.ui.keys & SchemaV3Constants.ColumnUIKey.foreignKey
+        ) {
+          column.ui.keys = SchemaV3Constants.ColumnUIKey.foreignKey;
+        } else {
+          column.ui.keys = 0;
+        }
       }
-    } else {
-      if (
-        column.ui.keys & SchemaV3Constants.ColumnUIKey.primaryKey &&
-        column.ui.keys & SchemaV3Constants.ColumnUIKey.foreignKey
-      ) {
-        column.ui.keys = SchemaV3Constants.ColumnUIKey.foreignKey;
-      } else {
-        column.ui.keys = 0;
-      }
-    }
+    });
   });
 };
 
@@ -173,15 +209,18 @@ export const changeColumnUniqueAction = createAction<
 >(ActionType.changeColumnUnique);
 
 const changeColumnUnique: ReducerType<typeof ActionType.changeColumnUnique> = (
-  { collections },
-  { payload: { id, value } }
+  { collections, lww },
+  { payload: { id, value }, timestamp }
 ) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
-  collection.updateOne(id, column => {
-    column.options = value
-      ? column.options | SchemaV3Constants.ColumnOption.unique
-      : column.options & ~SchemaV3Constants.ColumnOption.unique;
+
+  collection.replaceOperator(lww, timestamp, id, 'options(unique)', () => {
+    collection.updateOne(id, column => {
+      column.options = value
+        ? column.options | SchemaV3Constants.ColumnOption.unique
+        : column.options & ~SchemaV3Constants.ColumnOption.unique;
+    });
   });
 };
 
@@ -191,13 +230,16 @@ export const changeColumnNotNullAction = createAction<
 
 const changeColumnNotNull: ReducerType<
   typeof ActionType.changeColumnNotNull
-> = ({ collections }, { payload: { id, value } }) => {
+> = ({ collections, lww }, { payload: { id, value }, timestamp }) => {
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
-  collection.updateOne(id, column => {
-    column.options = value
-      ? column.options | SchemaV3Constants.ColumnOption.notNull
-      : column.options & ~SchemaV3Constants.ColumnOption.notNull;
+
+  collection.replaceOperator(lww, timestamp, id, 'options(notNull)', () => {
+    collection.updateOne(id, column => {
+      column.options = value
+        ? column.options | SchemaV3Constants.ColumnOption.notNull
+        : column.options & ~SchemaV3Constants.ColumnOption.notNull;
+    });
   });
 };
 

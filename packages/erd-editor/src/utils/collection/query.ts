@@ -91,12 +91,12 @@ class CollectionQuery<K extends keyof Collections> {
   }
 
   addOperator(lww: LWW, timestamp: number, id: string, recipe: () => void) {
-    addOperator(lww, timestamp, this.collectionKey, id, recipe);
+    addOperator(lww, timestamp, id, this.collectionKey, recipe);
     return this;
   }
 
   removeOperator(lww: LWW, timestamp: number, id: string, recipe: () => void) {
-    removeOperator(lww, timestamp, this.collectionKey, id, recipe);
+    removeOperator(lww, timestamp, id, this.collectionKey, recipe);
     return this;
   }
 
@@ -107,7 +107,13 @@ class CollectionQuery<K extends keyof Collections> {
     path: string,
     recipe: () => void
   ) {
-    replaceOperator(lww, timestamp, this.collectionKey, id, path, recipe);
+    replaceOperator(
+      lww,
+      timestamp,
+      id,
+      `${this.collectionKey}.${path}`,
+      recipe
+    );
     return this;
   }
 }

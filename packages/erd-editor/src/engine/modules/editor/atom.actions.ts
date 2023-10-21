@@ -83,9 +83,10 @@ export const clearAction = createAction<ActionMap[typeof ActionType.clear]>(
 );
 
 const clear: ReducerType<typeof ActionType.clear> = state => {
-  const { doc, collections } = schemaV3Parser({});
+  const { doc, collections, lww } = schemaV3Parser({});
   state.doc = doc;
   state.collections = collections;
+  state.lww = lww;
 };
 
 export const loadJsonAction = createAction<
@@ -96,11 +97,12 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state,
   { payload: { value } }
 ) => {
-  const { version, settings, doc, collections } = parser(value);
+  const { version, settings, doc, collections, lww } = parser(value);
   state.version = version;
   state.settings = settings;
   state.doc = doc;
   state.collections = collections;
+  state.lww = lww;
 };
 
 export const editorReducers = {

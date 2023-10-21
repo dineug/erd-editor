@@ -70,16 +70,18 @@ export const changeTableNameAction = createAction<
 >(ActionType.changeTableName);
 
 const changeTableName: ReducerType<typeof ActionType.changeTableName> = (
-  { collections },
-  { payload: { id, value } },
+  { collections, lww },
+  { payload: { id, value }, timestamp },
   { toWidth }
 ) => {
   const collection = query(collections).collection('tableEntities');
   collection.getOrCreate(id, id => createTable({ id }));
 
-  collection.updateOne(id, table => {
-    table.name = value;
-    table.ui.widthName = toWidth(value);
+  collection.replaceOperator(lww, timestamp, id, 'name', () => {
+    collection.updateOne(id, table => {
+      table.name = value;
+      table.ui.widthName = toWidth(value);
+    });
   });
 };
 
@@ -88,16 +90,18 @@ export const changeTableCommentAction = createAction<
 >(ActionType.changeTableComment);
 
 const changeTableComment: ReducerType<typeof ActionType.changeTableComment> = (
-  { collections },
-  { payload: { id, value } },
+  { collections, lww },
+  { payload: { id, value }, timestamp },
   { toWidth }
 ) => {
   const collection = query(collections).collection('tableEntities');
   collection.getOrCreate(id, id => createTable({ id }));
 
-  collection.updateOne(id, table => {
-    table.comment = value;
-    table.ui.widthComment = toWidth(value);
+  collection.replaceOperator(lww, timestamp, id, 'comment', () => {
+    collection.updateOne(id, table => {
+      table.comment = value;
+      table.ui.widthComment = toWidth(value);
+    });
   });
 };
 

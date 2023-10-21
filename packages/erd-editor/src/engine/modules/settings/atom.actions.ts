@@ -1,6 +1,7 @@
 import { createAction } from '@dineug/r-html';
 import { createInRange } from '@dineug/shared';
 
+import { replaceOperator } from '@/utils/collection/lww';
 import {
   canvasSizeInRange,
   hasBracketType,
@@ -18,10 +19,12 @@ export const changeDatabaseNameAction = createAction<
 >(ActionType.changeDatabaseName);
 
 const changeDatabaseName: ReducerType<typeof ActionType.changeDatabaseName> = (
-  { settings },
-  { payload: { value } }
+  { settings, lww },
+  { payload: { value }, timestamp }
 ) => {
-  settings.databaseName = value;
+  replaceOperator(lww, timestamp, '', 'settings.databaseName', () => {
+    settings.databaseName = value;
+  });
 };
 
 export const resizeAction = createAction<ActionMap[typeof ActionType.resize]>(

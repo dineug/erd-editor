@@ -70,14 +70,16 @@ export const changeMemoValueAction = createAction<
 >(ActionType.changeMemoValue);
 
 const changeMemoValue: ReducerType<typeof ActionType.changeMemoValue> = (
-  { collections },
-  { payload: { id, value } }
+  { collections, lww },
+  { payload: { id, value }, timestamp }
 ) => {
   const collection = query(collections).collection('memoEntities');
   collection.getOrCreate(id, id => createMemo({ id }));
 
-  collection.updateOne(id, memo => {
-    memo.value = value;
+  collection.replaceOperator(lww, timestamp, id, 'value', () => {
+    collection.updateOne(id, memo => {
+      memo.value = value;
+    });
   });
 };
 

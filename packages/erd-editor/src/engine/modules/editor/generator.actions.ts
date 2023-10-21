@@ -17,7 +17,7 @@ export const moveAllAction$ = (
   movementX: number,
   movementY: number
 ): GeneratorAction =>
-  function* ({ editor: { selectedMap } }) {
+  function* ({ editor: { selectedMap }, settings: { zoomLevel } }) {
     const { tableIds, memoIds } = Object.entries(selectedMap).reduce(
       (acc, [id, type]) => {
         if (type === SelectType.table) {
@@ -34,12 +34,23 @@ export const moveAllAction$ = (
       }
     );
 
+    const newMovementX = movementX / zoomLevel;
+    const newMovementY = movementY / zoomLevel;
+
     if (tableIds.length) {
-      yield moveTableAction({ ids: tableIds, movementX, movementY });
+      yield moveTableAction({
+        ids: tableIds,
+        movementX: newMovementX,
+        movementY: newMovementY,
+      });
     }
 
     if (memoIds.length) {
-      yield moveMemoAction({ ids: memoIds, movementX, movementY });
+      yield moveMemoAction({
+        ids: memoIds,
+        movementX: newMovementX,
+        movementY: newMovementY,
+      });
     }
   };
 

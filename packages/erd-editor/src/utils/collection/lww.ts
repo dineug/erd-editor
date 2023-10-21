@@ -1,4 +1,4 @@
-import { Collections, LWW, ValuesType } from '@/internal-types';
+import { LWW, ValuesType } from '@/internal-types';
 
 export const Operator = {
   add: 'add',
@@ -8,7 +8,7 @@ export const Operator = {
 export type Operator = ValuesType<typeof Operator>;
 
 export const LWWKeyPattern =
-  /^op\[(add|remove|replace)\].path\[(\S+)\].id\[(\S+)\]$/i;
+  /^op\[(add|remove|replace)\].path\[(\S+)\].id\[(\S*)\]$/i;
 
 export function createKey(op: Operator, path: string, id: string): string {
   return `op[${op}].path[${path}].id[${id}]`;
@@ -18,18 +18,18 @@ function getTimestamp(lww: LWW, key: string): number {
   return lww[key] ?? -1;
 }
 
-export function addOperator<K extends keyof Collections>(
+export function addOperator(
   lww: LWW,
   timestamp: number,
-  collection: K,
   id: string,
+  path: string,
   recipe: () => void
 ) {
-  const key = createKey(Operator.add, collection, id);
+  const key = createKey(Operator.add, path, id);
   const prevTimestamp = getTimestamp(lww, key);
   const removeTimestamp = getTimestamp(
     lww,
-    createKey(Operator.remove, collection, id)
+    createKey(Operator.remove, path, id)
   );
 
   if (prevTimestamp < timestamp) {
@@ -41,41 +41,37 @@ export function addOperator<K extends keyof Collections>(
   }
 }
 
-export function removeOperator<K extends keyof Collections>(
+export function removeOperator(
   lww: LWW,
   timestamp: number,
-  collection: K,
   id: string,
+  path: string,
   recipe: () => void
 ) {
-  const key = createKey(Operator.remove, collection, id);
+  const key = createKey(Operator.remove, path, id);
   const prevTimestamp = getTimestamp(lww, key);
-  const addTimestamp = getTimestamp(
-    lww,
-    createKey(Operator.add, collection, id)
-  );
+  const addTimestamp = getTimestamp(lww, createKey(Operator.add, path, id));
 
   if (prevTimestamp < timestamp) {
     lww[key] = timestamp;
   }
 
-  if (addTimestamp < timestamp) {
+  if (addTimestamp <= timestamp) {
     recipe();
   }
 }
 
-export function replaceOperator<K extends keyof Collections>(
+export function replaceOperator(
   lww: LWW,
   timestamp: number,
-  collection: K,
   id: string,
   path: string,
   recipe: () => void
 ) {
-  const key = createKey(Operator.replace, `${collection}.${path}`, id);
+  const key = createKey(Operator.replace, path, id);
   const prevTimestamp = getTimestamp(lww, key);
 
-  if (prevTimestamp < timestamp) {
+  if (prevTimestamp <= timestamp) {
     lww[key] = timestamp;
     recipe();
   }

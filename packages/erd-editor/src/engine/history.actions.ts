@@ -1,5 +1,6 @@
 import { AnyAction } from '@dineug/r-html';
 import { safeCallback } from '@dineug/shared';
+import { cloneDeep } from 'lodash-es';
 
 import { History } from '@/engine/history';
 import { Store } from '@/engine/store';
@@ -39,9 +40,16 @@ function push(store: Store, history: History, actions: AnyAction[]) {
   if (!undoActions.length || !redoActions.length) return;
 
   history.push({
-    undo: () => store.dispatchSync(undoActions),
-    redo: () => store.dispatchSync(redoActions),
+    undo: () => store.dispatchSync(undoActions.map(cloneAction)),
+    redo: () => store.dispatchSync(redoActions.map(cloneAction)),
   });
+}
+
+function cloneAction(action: AnyAction) {
+  return {
+    ...cloneDeep(action),
+    timestamp: Date.now(),
+  };
 }
 
 export const pushHistory =
