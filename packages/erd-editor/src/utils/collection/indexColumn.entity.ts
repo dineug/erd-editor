@@ -7,6 +7,7 @@ export const createIndexColumn = (
   value?: Partial<IndexColumn>
 ): IndexColumn => ({
   id: '',
+  indexId: '',
   columnId: '',
   orderType: SchemaV3Constants.OrderType.ASC,
   meta: getDefaultEntityMeta(),

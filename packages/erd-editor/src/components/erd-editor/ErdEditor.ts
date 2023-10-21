@@ -17,7 +17,7 @@ import Toolbar from '@/components/toolbar/Toolbar';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { createDefaultTheme } from '@/themes/default.theme';
+import { AccentColor, createTheme, GrayColor } from '@/themes/radix-ui-theme';
 import { createText } from '@/utils/text';
 
 import * as styles from './ErdEditor.styles';
@@ -44,7 +44,10 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 
   const state = observable(
     {
-      theme: createDefaultTheme('dark'),
+      theme: createTheme({
+        grayColor: GrayColor.slate,
+        accentColor: AccentColor.indigo,
+      })('dark'),
     },
     { shallow: true }
   );

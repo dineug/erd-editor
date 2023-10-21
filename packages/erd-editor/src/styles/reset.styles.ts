@@ -54,6 +54,7 @@ input::placeholder,
 textarea::placeholder {
   font-family: var(--text-font-family);
   color: var(--placeholder);
+  opacity: 1;
 }
 
 *, *::before, *::after {

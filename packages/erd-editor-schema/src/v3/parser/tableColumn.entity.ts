@@ -6,6 +6,7 @@ import { Column } from '@/v3/schema/tableColumn.entity';
 
 export const createColumn = (): Column => ({
   id: '',
+  tableId: '',
   name: '',
   comment: '',
   dataType: '',
@@ -35,6 +36,7 @@ export function createAndMergeTableColumnEntities(
     const uiAssignNumber = assign(isNumber, target.ui, value.ui);
 
     assignString('id');
+    assignString('tableId');
     assignString('name');
     assignString('comment');
     assignString('dataType');

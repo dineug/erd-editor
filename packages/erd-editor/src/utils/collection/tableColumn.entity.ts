@@ -3,6 +3,7 @@ import { getDefaultEntityMeta } from '@/utils';
 
 export const createColumn = (value?: Partial<Column>): Column => ({
   id: '',
+  tableId: '',
   name: '',
   comment: '',
   dataType: '',

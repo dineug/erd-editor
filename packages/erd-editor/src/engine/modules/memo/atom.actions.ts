@@ -120,6 +120,22 @@ const resizeMemo: ReducerType<typeof ActionType.resizeMemo> = (
   });
 };
 
+export const changeZIndexAction = createAction<
+  ActionMap[typeof ActionType.changeZIndex]
+>(ActionType.changeZIndex);
+
+const changeZIndex: ReducerType<typeof ActionType.changeZIndex> = (
+  { collections },
+  { payload: { id, zIndex } }
+) => {
+  const collection = query(collections).collection('memoEntities');
+  collection.getOrCreate(id, id => createMemo({ id }));
+
+  collection.updateOne(id, memo => {
+    memo.ui.zIndex = zIndex;
+  });
+};
+
 export const memoReducers = {
   [ActionType.addMemo]: addMemo,
   [ActionType.moveMemo]: moveMemo,
@@ -127,6 +143,7 @@ export const memoReducers = {
   [ActionType.changeMemoValue]: changeMemoValue,
   [ActionType.changeMemoColor]: changeMemoColor,
   [ActionType.resizeMemo]: resizeMemo,
+  [ActionType.changeZIndex]: changeZIndex,
 };
 
 export const actions = {
@@ -136,4 +153,5 @@ export const actions = {
   changeMemoValueAction,
   changeMemoColorAction,
   resizeMemoAction,
+  changeZIndexAction,
 };

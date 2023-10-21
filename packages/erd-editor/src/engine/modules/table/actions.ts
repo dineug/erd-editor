@@ -11,6 +11,7 @@ export const ActionType = {
   changeTableName: 'table.changeName',
   changeTableComment: 'table.changeComment',
   changeTableColor: 'table.changeColor',
+  changeZIndex: 'table.changeZIndex',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -36,6 +37,10 @@ export type ActionMap = {
   [ActionType.changeTableColor]: {
     ids: string[];
     color: string;
+  };
+  [ActionType.changeZIndex]: {
+    id: string;
+    zIndex: number;
   };
 };
 

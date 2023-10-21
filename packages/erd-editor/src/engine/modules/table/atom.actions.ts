@@ -123,6 +123,22 @@ const changeTableColor: ReducerType<typeof ActionType.changeTableColor> = (
   });
 };
 
+export const changeZIndexAction = createAction<
+  ActionMap[typeof ActionType.changeZIndex]
+>(ActionType.changeZIndex);
+
+const changeZIndex: ReducerType<typeof ActionType.changeZIndex> = (
+  { collections },
+  { payload: { id, zIndex } }
+) => {
+  const collection = query(collections).collection('tableEntities');
+  collection.getOrCreate(id, id => createTable({ id }));
+
+  collection.updateOne(id, table => {
+    table.ui.zIndex = zIndex;
+  });
+};
+
 export const tableReducers = {
   [ActionType.addTable]: addTable,
   [ActionType.moveTable]: moveTable,
@@ -130,6 +146,7 @@ export const tableReducers = {
   [ActionType.changeTableName]: changeTableName,
   [ActionType.changeTableComment]: changeTableComment,
   [ActionType.changeTableColor]: changeTableColor,
+  [ActionType.changeZIndex]: changeZIndex,
 };
 
 export const actions = {
@@ -139,4 +156,5 @@ export const actions = {
   changeTableNameAction,
   changeTableCommentAction,
   changeTableColorAction,
+  changeZIndexAction,
 };

@@ -120,6 +120,7 @@ function assignTable(
       const newColumn = createColumn();
 
       newColumn.id = column.id;
+      newColumn.tableId = table.id;
       newColumn.name = column.name;
       newColumn.comment = column.comment;
       newColumn.dataType = column.dataType;
@@ -171,6 +172,7 @@ function assignTable(
 
       newIndex.indexColumnIds.push(id);
       newIndexColumn.id = id;
+      newIndexColumn.indexId = index.id;
       newIndexColumn.columnId = indexColumn.id;
       newIndexColumn.orderType = propOr(
         SchemaV3Constants.OrderType,

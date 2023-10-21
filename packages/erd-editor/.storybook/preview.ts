@@ -3,8 +3,13 @@ import './preview.css';
 import type { Preview } from '@storybook/html';
 import { render, html, addCSSHost } from '@dineug/r-html';
 
-import { ThemeMode } from '../src/themes/radix-ui-colors.theme';
-import { PresetTheme, getPresetTheme } from '../src/themes/presetTheme';
+import {
+  createTheme,
+  Appearance,
+  GrayColor,
+  AccentColor,
+} from '../src/themes/radix-ui-theme';
+
 import { themeToTokensString } from '../src/themes/tokens';
 import ThemeProvider from './ThemeProvider';
 
@@ -20,8 +25,9 @@ const withThemeProvider = (Story, context) => {
     html`
       <${ThemeProvider}
         .story=${Story()}
-        .theme=${context.globals.theme}
-        .mode=${context.globals.themeMode}
+        .appearance=${context.globals.appearance}
+        .grayColor=${context.globals.grayColor}
+        .accentColor=${context.globals.accentColor}
       />
     `
   );
@@ -32,7 +38,10 @@ const withThemeProvider = (Story, context) => {
       <style>
         :root {
           ${themeToTokensString(
-          getPresetTheme(context.globals.theme)(context.globals.themeMode)
+          createTheme({
+            grayColor: context.globals.grayColor,
+            accentColor: context.globals.accentColor,
+          })(context.globals.appearance)
         )};
         }
       </style>
@@ -45,27 +54,35 @@ const withThemeProvider = (Story, context) => {
 
 const preview: Preview = {
   globalTypes: {
-    theme: {
-      description: 'Global PresetTheme for components',
-      defaultValue: PresetTheme.default,
+    grayColor: {
+      description: 'Theme gray color',
+      defaultValue: GrayColor.gray,
       toolbar: {
-        title: 'Theme',
-        items: Object.values(PresetTheme),
+        title: 'GrayColor',
+        items: Object.values(GrayColor),
       },
     },
-    themeMode: {
-      description: 'Global ThemeMode for components',
-      defaultValue: ThemeMode.dark,
+    accentColor: {
+      description: 'Theme accent color',
+      defaultValue: AccentColor.gray,
       toolbar: {
-        title: 'Mode',
+        title: 'AccentColor',
+        items: Object.values(AccentColor),
+      },
+    },
+    appearance: {
+      description: 'Theme appearance',
+      defaultValue: Appearance.dark,
+      toolbar: {
+        title: 'Appearance',
         items: [
           {
-            value: ThemeMode.dark,
+            value: Appearance.dark,
             title: 'Dark',
             icon: 'circle',
           },
           {
-            value: ThemeMode.light,
+            value: Appearance.light,
             title: 'Light',
             icon: 'circlehollow',
           },

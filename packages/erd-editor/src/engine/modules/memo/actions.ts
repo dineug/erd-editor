@@ -11,6 +11,7 @@ export const ActionType = {
   changeMemoValue: 'memo.changeValue',
   changeMemoColor: 'memo.changeColor',
   resizeMemo: 'memo.resize',
+  changeZIndex: 'memo.changeZIndex',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -45,6 +46,10 @@ export type ActionMap = {
     y: number;
     width: number;
     height: number;
+  };
+  [ActionType.changeZIndex]: {
+    id: string;
+    zIndex: number;
   };
 };
 

@@ -2,6 +2,7 @@ import { EntityType } from '@/internal-types';
 
 export type Column = EntityType<{
   id: string;
+  tableId: string;
   name: string;
   comment: string;
   dataType: string;

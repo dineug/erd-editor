@@ -1,6 +1,7 @@
 import { FC, html } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/context';
+import Icon from '@/components/primitives/icon/Icon';
 import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
 import { Table } from '@/internal-types';
@@ -46,7 +47,7 @@ const Table: FC<TableProps> = (props, ctx) => {
         style=${{
           top: `${table.ui.y}px`,
           left: `${table.ui.x}px`,
-          zIndex: `${table.ui.zIndex}`,
+          'z-index': `${table.ui.zIndex}`,
           width: `${tableWidths.width}px`,
           height: `${height}px`,
         }}
@@ -54,7 +55,23 @@ const Table: FC<TableProps> = (props, ctx) => {
         @mousedown=${handleMoveStart}
         @touchstart=${handleMoveStart}
       >
-        table
+        <div class=${styles.header}>
+          <div
+            class=${styles.headerColor}
+            style=${{
+              'background-color': table.ui.color,
+            }}
+          ></div>
+          <div class=${styles.headerButtonWrap}>
+            <${Icon} size=${12} name="plus" useTransition=${true} />
+            <${Icon} size=${12} name="xmark" useTransition=${true} />
+          </div>
+          <div class=${styles.headerInputWrap}>
+            <div>table</div>
+            <div>comment</div>
+          </div>
+        </div>
+        <div>columns</div>
       </div>
     `;
   };

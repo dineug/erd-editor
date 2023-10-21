@@ -2,6 +2,7 @@ import { EntityType } from '@/internal-types';
 
 export type IndexColumn = EntityType<{
   id: string;
+  indexId: string;
   columnId: string;
   orderType: number;
 }>;

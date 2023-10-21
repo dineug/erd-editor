@@ -7,7 +7,7 @@ import { SelectType } from '@/engine/modules/editor/state';
 import { nextPoint, nextZIndex, uuid } from '@/utils';
 import { query } from '@/utils/collection/query';
 
-import { addTableAction } from './atom.actions';
+import { addTableAction, changeZIndexAction } from './atom.actions';
 
 export const addTableAction$ = (): GeneratorAction =>
   function* ({ settings, doc: { tableIds, memoIds }, collections }) {
@@ -37,11 +37,19 @@ export const selectTableAction$ = (
   id: string,
   $mod: boolean
 ): GeneratorAction =>
-  function* () {
+  function* ({ doc: { tableIds, memoIds }, collections }) {
+    const tables = query(collections)
+      .collection('tableEntities')
+      .selectByIds(tableIds);
+    const memos = query(collections)
+      .collection('memoEntities')
+      .selectByIds(memoIds);
+
     if (!$mod) {
       yield unselectAllAction();
     }
     yield selectAction({ [id]: SelectType.table });
+    yield changeZIndexAction({ id, zIndex: nextZIndex(tables, memos) });
 
     // TODO: focusTable, drawRelationship
   };

@@ -15,6 +15,7 @@ import {
 
 export const createIndexColumn = (): IndexColumn => ({
   id: '',
+  indexId: '',
   columnId: '',
   orderType: OrderType.ASC,
   meta: getDefaultEntityMeta(),
@@ -32,6 +33,7 @@ export function createAndMergeIndexColumnEntities(
     const assignString = assign(isString, target, value);
 
     assignString('id');
+    assignString('indexId');
     assignString('columnId');
     assign(validNumber(OrderTypeList), target, value)('orderType');
 
