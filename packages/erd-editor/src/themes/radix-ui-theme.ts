@@ -124,7 +124,7 @@ import {
   yellowDark,
   yellowDarkA,
 } from '@radix-ui/colors';
-import { get, set } from 'lodash-es';
+import { get, identity, set } from 'lodash-es';
 
 import { ValuesType } from '@/internal-types';
 import { ThemeConfig } from '@/themes/radix-ui-theme.config';
@@ -344,7 +344,7 @@ function toTheme(radixUITheme: ReturnType<typeof createRadixUITheme>): Theme {
     }
 
     if (type.startsWith('gray') || type.startsWith('accent')) {
-      const value = get(radixUITheme, type)(color);
+      const value = get(radixUITheme, type, identity)(color);
       set(acc, key, value);
       return acc;
     }

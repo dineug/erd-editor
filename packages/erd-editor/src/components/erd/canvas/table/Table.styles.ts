@@ -1,6 +1,6 @@
 import { css } from '@dineug/r-html';
 
-import { TABLE_PADDING } from '@/constants/layout';
+import { INPUT_MARGIN_RIGHT, TABLE_PADDING } from '@/constants/layout';
 import { typography } from '@/styles/typography.styles';
 
 export const root = css`
@@ -57,4 +57,12 @@ export const headerButtonWrap = css`
 
 export const headerInputWrap = css`
   display: flex;
+
+  & > div {
+    margin-right: ${INPUT_MARGIN_RIGHT}px;
+  }
+
+  & > input {
+    margin-right: ${INPUT_MARGIN_RIGHT}px;
+  }
 `;

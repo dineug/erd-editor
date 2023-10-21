@@ -52,7 +52,9 @@ export const unselectAllAction = createAction<
 const unselectAll: ReducerType<typeof ActionType.unselectAll> = ({
   editor,
 }) => {
-  editor.selectedMap = {};
+  Object.keys(editor.selectedMap).forEach(id => {
+    Reflect.deleteProperty(editor.selectedMap, id);
+  });
 };
 
 export const selectAction = createAction<ActionMap[typeof ActionType.select]>(

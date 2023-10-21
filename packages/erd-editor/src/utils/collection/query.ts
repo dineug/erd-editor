@@ -55,7 +55,7 @@ class CollectionQuery<K extends keyof Collections> {
 
   removeOne(id: string) {
     if (this.selectById(id)) {
-      delete this.collection[id];
+      Reflect.deleteProperty(this.collection, id);
     }
     return this;
   }

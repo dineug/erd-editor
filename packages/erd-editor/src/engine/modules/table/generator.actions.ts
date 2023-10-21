@@ -7,7 +7,11 @@ import { SelectType } from '@/engine/modules/editor/state';
 import { nextPoint, nextZIndex, uuid } from '@/utils';
 import { query } from '@/utils/collection/query';
 
-import { addTableAction, changeZIndexAction } from './atom.actions';
+import {
+  addTableAction,
+  changeZIndexAction,
+  removeTableAction,
+} from './atom.actions';
 
 export const addTableAction$ = (): GeneratorAction =>
   function* ({ settings, doc: { tableIds, memoIds }, collections }) {
@@ -33,6 +37,21 @@ export const addTableAction$ = (): GeneratorAction =>
     // TODO: focus table
   };
 
+export const removeTableAction$ = (id?: string): GeneratorAction =>
+  function* ({ editor: { selectedMap } }) {
+    if (id) {
+      yield removeTableAction({ id });
+      return;
+    }
+
+    const selectedTables = Object.entries(selectedMap).filter(
+      ([, type]) => type === SelectType.table
+    );
+    for (const [id] of selectedTables) {
+      yield removeTableAction({ id });
+    }
+  };
+
 export const selectTableAction$ = (
   id: string,
   $mod: boolean
@@ -56,5 +75,6 @@ export const selectTableAction$ = (
 
 export const actions$ = {
   addTableAction$,
+  removeTableAction$,
   selectTableAction$,
 };

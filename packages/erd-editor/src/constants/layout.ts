@@ -7,11 +7,14 @@ const RATIO_HEIGHT = 9;
 export const DEFAULT_WIDTH = 1200;
 export const DEFAULT_HEIGHT = (DEFAULT_WIDTH / RATIO_WIDTH) * RATIO_HEIGHT;
 
-export const TABLE_PADDING = 8;
-export const TABLE_HEADER_HEIGHT = 36;
-export const COLUMN_HEIGHT = 24;
+export const INPUT_HEIGHT = 20;
+export const INPUT_MARGIN_RIGHT = 8;
 
-export const COLUMN_DELETE_WIDTH = 9;
+export const TABLE_BORDER = 1;
+export const TABLE_PADDING = 8;
+export const TABLE_HEADER_HEIGHT = 12 + INPUT_HEIGHT;
+
+export const COLUMN_DELETE_WIDTH = 12;
 export const COLUMN_KEY_WIDTH = 12;
 export const COLUMN_MIN_WIDTH = 60;
 export const COLUMN_NOT_NULL_WIDTH = 34;
