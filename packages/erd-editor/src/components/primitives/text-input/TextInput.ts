@@ -1,6 +1,6 @@
 import { FC, html } from '@dineug/r-html';
 
-import { onNumberOnly } from '@/utils/validation';
+import { onNumberOnly } from '@/utils/domEvent';
 
 export type TextInputProps = {
   title?: string;

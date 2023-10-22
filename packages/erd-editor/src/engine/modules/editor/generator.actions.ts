@@ -5,7 +5,9 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
+import { removeMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { moveTableAction } from '@/engine/modules/table/atom.actions';
+import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 
 export const loadJsonAction$ = (value: string): GeneratorAction =>
   function* () {
@@ -54,7 +56,14 @@ export const moveAllAction$ = (
     }
   };
 
+export const removeSelectedAction$ = (): GeneratorAction =>
+  function* () {
+    yield removeTableAction$();
+    yield removeMemoAction$();
+  };
+
 export const actions$ = {
   loadJsonAction$,
   moveAllAction$,
+  removeSelectedAction$,
 };

@@ -9,10 +9,10 @@ export const createMemo = (): Memo => ({
   value: '',
   ui: {
     x: 200,
-    y: 200,
+    y: 100,
     zIndex: 2,
-    width: 127,
-    height: 127,
+    width: 116,
+    height: 100,
     color: '',
   },
   meta: getDefaultEntityMeta(),

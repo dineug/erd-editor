@@ -13,6 +13,7 @@ export type IconProps = {
   size?: number;
   color?: string;
   useTransition?: boolean;
+  title?: string;
   onClick?: (event: MouseEvent) => void;
 };
 
@@ -27,7 +28,7 @@ const Icon: FC<IconProps> = (props, ctx) => () => {
   const rem = SIZE_REM * (size / SIZE);
 
   return html`
-    <div class=${styles.wrap} @click=${props.onClick}>
+    <div class=${styles.wrap} title=${props.title} @click=${props.onClick}>
       ${prefix === 'base64'
         ? html`
             <img

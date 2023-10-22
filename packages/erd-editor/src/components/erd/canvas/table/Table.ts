@@ -14,7 +14,7 @@ import { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
-import { isMod } from '@/utils/keyboard-shortcut';
+import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Table.styles';
 
@@ -52,7 +52,7 @@ const Table: FC<TableProps> = (props, ctx) => {
   };
 
   return () => {
-    const { store } = app.value;
+    const { store, keyBindingMap } = app.value;
     const { settings } = store.state;
     const { table } = props;
     const selected = Boolean(store.state.editor.selectedMap[table.id]);
@@ -69,7 +69,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           width: `${tableWidths.width}px`,
           height: `${height}px`,
         }}
-        ?selected=${selected}
+        ?data-selected=${selected}
         @mousedown=${handleMoveStart}
         @touchstart=${handleMoveStart}
       >
@@ -84,12 +84,18 @@ const Table: FC<TableProps> = (props, ctx) => {
             <${Icon}
               size=${12}
               name="plus"
+              title=${simpleShortcutToString(
+                keyBindingMap.addColumn[0]?.shortcut
+              )}
               useTransition=${true}
               .onClick=${handleAddColumn}
             />
             <${Icon}
               size=${12}
               name="xmark"
+              title=${simpleShortcutToString(
+                keyBindingMap.removeTable[0]?.shortcut
+              )}
               useTransition=${true}
               .onClick=${handleRemoveTable}
             />

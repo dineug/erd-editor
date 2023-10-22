@@ -25,12 +25,6 @@ export function zoomLevelInRange(zoom: number) {
   return round(zoomInRange(zoom), 2);
 }
 
-export function onNumberOnly(event: InputEvent) {
-  const input = event.target as HTMLInputElement | null;
-  if (!input) return;
-  input.value = toNumString(input.value);
-}
-
 export function toZoomFormat(zoomLevel: number) {
   return `${(zoomLevel * 100).toFixed()}%`;
 }

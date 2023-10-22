@@ -164,7 +164,7 @@ function calcMaxWidthColumn(columns: Column[], show: number): ColumnWidth {
   return columnWidth;
 }
 
-export function calcTableHeight(table: Table) {
+export function calcTableHeight(table: Table): number {
   return (
     TABLE_BORDER +
     TABLE_PADDING +

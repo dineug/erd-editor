@@ -3,20 +3,17 @@ import { css } from '@dineug/r-html';
 import {
   HEADER_ICON_HEIGHT,
   HEADER_ICON_MARGIN_BOTTOM,
-  INPUT_MARGIN_RIGHT,
-  TABLE_PADDING,
+  MEMO_PADDING,
 } from '@/constants/layout';
 import { typography } from '@/styles/typography.styles';
 
 export const root = css`
   position: absolute;
-  background-color: var(--table-background);
-  padding: ${TABLE_PADDING}px;
+  background-color: var(--memo-background);
   border-radius: 6px;
   border: 1px solid transparent;
   fill: transparent;
   color: transparent;
-  ${typography.paragraph};
 
   &:hover {
     fill: var(--foreground);
@@ -24,8 +21,17 @@ export const root = css`
   }
 
   &[data-selected] {
-    border: 1px solid var(--table-select);
+    border: 1px solid var(--memo-select);
   }
+`;
+
+export const container = css`
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: ${MEMO_PADDING}px;
+  width: 100%;
+  height: 100%;
 `;
 
 export const header = css`
@@ -36,9 +42,9 @@ export const header = css`
 
 export const headerColor = css`
   position: absolute;
-  top: -${TABLE_PADDING + 1}px;
-  left: -${TABLE_PADDING}px;
-  width: calc(100% + ${TABLE_PADDING * 2}px);
+  top: -${MEMO_PADDING + 1}px;
+  left: -${MEMO_PADDING}px;
+  width: calc(100% + ${MEMO_PADDING * 2}px);
   min-height: 4px;
   border-radius: 6px 6px 0 0;
   cursor: pointer;
@@ -61,14 +67,9 @@ export const headerButtonWrap = css`
   }
 `;
 
-export const headerInputWrap = css`
-  display: flex;
-
-  & > div {
-    margin-right: ${INPUT_MARGIN_RIGHT}px;
-  }
-
-  & > input {
-    margin-right: ${INPUT_MARGIN_RIGHT}px;
-  }
+export const textarea = css`
+  resize: none;
+  background-color: transparent;
+  ${typography.paragraph};
+  line-height: normal;
 `;

@@ -139,3 +139,9 @@ export function shortcutToTuple(shortcut?: string): KeyBindingPress[] {
 export function isMod(event: MouseEvent | TouchEvent | KeyboardEvent): boolean {
   return APPLE_DEVICE ? event.metaKey : event.ctrlKey;
 }
+
+export function simpleShortcutToString(shortcut?: string): string {
+  return shortcutToTuple(shortcut)
+    .map(([mods, key]) => [...mods, key].join(' + '))
+    .join(' ');
+}

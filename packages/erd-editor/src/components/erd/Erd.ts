@@ -14,6 +14,7 @@ import {
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 
 import * as styles from './Erd.styles';
+import { useErdShortcut } from './useErdShortcut';
 
 export type ErdProps = {};
 
@@ -21,6 +22,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   const contextMenu = useContextMenuRootProvider(ctx);
   const root = createRef<HTMLDivElement>();
   const app = useAppContext(ctx);
+  useErdShortcut(ctx);
 
   const resetScroll = () => {
     if (root.value.scrollTop === 0 && root.value.scrollLeft === 0) {
