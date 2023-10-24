@@ -16,22 +16,18 @@ export type EditInputProps = {
 const EditInput: FC<EditInputProps> = (props, ctx) => {
   const className = () => {
     const notEdit = !props.edit;
-
-    return [
-      styles.root,
-      {
-        placeholder: notEdit && !props.value.trim(),
-        focus: notEdit && props.focus,
-        edit: props.edit,
-      },
-    ];
+    return {
+      placeholder: notEdit && !props.value.trim(),
+      focus: notEdit && props.focus,
+      edit: props.edit,
+    };
   };
 
   return () =>
     props.edit
       ? html`
           <input
-            class=${className()}
+            class=${['edit-input', styles.root, className()]}
             style=${{ width: `${props.width}px` }}
             placeholder=${props.placeholder ?? ''}
             type="text"
@@ -43,7 +39,10 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
           />
         `
       : html`
-          <div class=${className()} style=${{ width: `${props.width}px` }}>
+          <div
+            class=${['edit-input', styles.root, className()]}
+            style=${{ width: `${props.width}px` }}
+          >
             ${props.value.trim() ? props.value : props.placeholder}
           </div>
         `;

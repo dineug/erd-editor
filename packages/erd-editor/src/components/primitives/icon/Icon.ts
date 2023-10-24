@@ -28,7 +28,11 @@ const Icon: FC<IconProps> = (props, ctx) => () => {
   const rem = SIZE_REM * (size / SIZE);
 
   return html`
-    <div class=${styles.wrap} title=${props.title} @click=${props.onClick}>
+    <div
+      class=${['icon', styles.wrap]}
+      title=${props.title}
+      @click=${props.onClick}
+    >
       ${prefix === 'base64'
         ? html`
             <img

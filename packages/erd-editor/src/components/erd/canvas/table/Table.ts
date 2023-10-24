@@ -1,7 +1,8 @@
 import { SchemaV3Constants } from '@dineug/erd-editor-schema';
-import { FC, html } from '@dineug/r-html';
+import { FC, html, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/context';
+import Column from '@/components/erd/canvas/table/column/Column';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import Icon from '@/components/primitives/icon/Icon';
 import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
@@ -13,6 +14,8 @@ import { addColumnAction$ } from '@/engine/modules/tableColumn/generator.actions
 import { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
+import { query } from '@/utils/collection/query';
+import { onPrevent } from '@/utils/domEvent';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
 
@@ -38,7 +41,9 @@ const Table: FC<TableProps> = (props, ctx) => {
     const { store } = app.value;
     store.dispatch(selectTableAction$(props.table.id, isMod(event)));
 
-    drag$.subscribe(handleMove);
+    if (!el.closest('.edit-input') && !el.closest('.icon')) {
+      drag$.subscribe(handleMove);
+    }
   };
 
   const handleAddColumn = () => {
@@ -53,11 +58,15 @@ const Table: FC<TableProps> = (props, ctx) => {
 
   return () => {
     const { store, keyBindingMap } = app.value;
-    const { settings } = store.state;
+    const { settings, collections } = store.state;
     const { table } = props;
     const selected = Boolean(store.state.editor.selectedMap[table.id]);
     const tableWidths = calcTableWidths(table, store.state);
     const height = calcTableHeight(table);
+
+    const columns = query(collections)
+      .collection('tableColumnEntities')
+      .selectByIds(table.columnIds);
 
     return html`
       <div
@@ -120,8 +129,12 @@ const Table: FC<TableProps> = (props, ctx) => {
               : null}
           </div>
         </div>
-        <div>
-          <!-- columns -->
+        <div @dragenter=${onPrevent} @dragover=${onPrevent}>
+          ${repeat(
+            columns,
+            column => column.id,
+            column => html`<${Column} column=${column} />`
+          )}
         </div>
       </div>
     `;

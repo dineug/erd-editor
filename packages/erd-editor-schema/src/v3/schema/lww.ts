@@ -1,13 +1,8 @@
 /**
  * Last write wins
- * @value timestamp
  * @example
- * ```json
- * {
- *   "op[add].path[tableEntities].id[uuid]": 1697823339875,
- *   "op[remove].path[tableEntities].id[uuid]": 1697823339875,
- *   "op[replace].path[tableEntities.ui.x].id[uuid]": 1697823339875
- * }
- * ```
+ * Record<uuid, [tag, add, remove, Record<path, timestamp>]>
  */
-export type LWW = Record<string, number>;
+export type LWW = Record<string, LWWTuple>;
+
+export type LWWTuple = [string, number, number, Record<string, number>];

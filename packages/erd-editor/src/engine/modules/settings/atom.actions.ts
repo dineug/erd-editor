@@ -22,9 +22,16 @@ const changeDatabaseName: ReducerType<typeof ActionType.changeDatabaseName> = (
   { settings, lww },
   { payload: { value }, timestamp }
 ) => {
-  replaceOperator(lww, timestamp, '', 'settings.databaseName', () => {
-    settings.databaseName = value;
-  });
+  replaceOperator(
+    lww,
+    timestamp,
+    'settings.databaseName',
+    'settings',
+    'databaseName',
+    () => {
+      settings.databaseName = value;
+    }
+  );
 };
 
 export const resizeAction = createAction<ActionMap[typeof ActionType.resize]>(

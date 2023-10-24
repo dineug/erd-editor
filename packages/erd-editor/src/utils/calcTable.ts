@@ -8,6 +8,7 @@ import {
   COLUMN_NOT_NULL_WIDTH,
   COLUMN_UNIQUE_WIDTH,
   INPUT_HEIGHT,
+  INPUT_MARGIN_BOTTOM,
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
   TABLE_HEADER_HEIGHT,
@@ -169,7 +170,8 @@ export function calcTableHeight(table: Table): number {
     TABLE_BORDER +
     TABLE_PADDING +
     TABLE_HEADER_HEIGHT +
-    table.columnIds.length * INPUT_HEIGHT +
+    (table.columnIds.length * (INPUT_HEIGHT + INPUT_MARGIN_BOTTOM) -
+      INPUT_MARGIN_BOTTOM) +
     TABLE_PADDING +
     TABLE_BORDER
   );

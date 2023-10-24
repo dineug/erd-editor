@@ -107,13 +107,7 @@ class CollectionQuery<K extends keyof Collections> {
     path: string,
     recipe: () => void
   ) {
-    replaceOperator(
-      lww,
-      timestamp,
-      id,
-      `${this.collectionKey}.${path}`,
-      recipe
-    );
+    replaceOperator(lww, timestamp, id, this.collectionKey, path, recipe);
     return this;
   }
 }

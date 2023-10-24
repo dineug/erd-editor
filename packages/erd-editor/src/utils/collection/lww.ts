@@ -1,39 +1,30 @@
-import { LWW, ValuesType } from '@/internal-types';
+import { LWW, LWWTuple } from '@/internal-types';
 
-export const Operator = {
-  add: 'add',
-  remove: 'remove',
-  replace: 'replace',
-} as const;
-export type Operator = ValuesType<typeof Operator>;
-
-export const LWWKeyPattern =
-  /^op\[(add|remove|replace)\].path\[(\S+)\].id\[(\S*)\]$/i;
-
-export function createKey(op: Operator, path: string, id: string): string {
-  return `op[${op}].path[${path}].id[${id}]`;
+function createLWWTuple(tag: string): LWWTuple {
+  return [tag, -1, -1, {}];
 }
 
-function getTimestamp(lww: LWW, key: string): number {
-  return lww[key] ?? -1;
+function getOrCreate(lww: LWW, id: string, tag: string) {
+  const value = lww[id];
+  if (value) return value;
+
+  lww[id] = createLWWTuple(tag);
+  return lww[id];
 }
 
 export function addOperator(
   lww: LWW,
   timestamp: number,
   id: string,
-  path: string,
+  tag: string,
   recipe: () => void
 ) {
-  const key = createKey(Operator.add, path, id);
-  const prevTimestamp = getTimestamp(lww, key);
-  const removeTimestamp = getTimestamp(
-    lww,
-    createKey(Operator.remove, path, id)
-  );
+  const tuple = getOrCreate(lww, id, tag);
+  const prevTimestamp = tuple[1];
+  const removeTimestamp = tuple[2];
 
   if (prevTimestamp < timestamp) {
-    lww[key] = timestamp;
+    tuple[1] = timestamp;
   }
 
   if (removeTimestamp < timestamp) {
@@ -45,15 +36,15 @@ export function removeOperator(
   lww: LWW,
   timestamp: number,
   id: string,
-  path: string,
+  tag: string,
   recipe: () => void
 ) {
-  const key = createKey(Operator.remove, path, id);
-  const prevTimestamp = getTimestamp(lww, key);
-  const addTimestamp = getTimestamp(lww, createKey(Operator.add, path, id));
+  const tuple = getOrCreate(lww, id, tag);
+  const prevTimestamp = tuple[2];
+  const addTimestamp = tuple[1];
 
   if (prevTimestamp < timestamp) {
-    lww[key] = timestamp;
+    tuple[2] = timestamp;
   }
 
   if (addTimestamp <= timestamp) {
@@ -65,14 +56,15 @@ export function replaceOperator(
   lww: LWW,
   timestamp: number,
   id: string,
+  tag: string,
   path: string,
   recipe: () => void
 ) {
-  const key = createKey(Operator.replace, path, id);
-  const prevTimestamp = getTimestamp(lww, key);
+  const tuple = getOrCreate(lww, id, tag);
+  const prevTimestamp = tuple[3][path] ?? -1;
 
   if (prevTimestamp <= timestamp) {
-    lww[key] = timestamp;
+    tuple[3][path] = timestamp;
     recipe();
   }
 }

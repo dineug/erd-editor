@@ -11,7 +11,7 @@ export const root = css`
   position: absolute;
   background-color: var(--memo-background);
   border-radius: 6px;
-  border: 1px solid transparent;
+  border: 1px solid var(--memo-border);
   fill: transparent;
   color: transparent;
 

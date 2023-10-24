@@ -3,6 +3,7 @@ import { css } from '@dineug/r-html';
 import {
   HEADER_ICON_HEIGHT,
   HEADER_ICON_MARGIN_BOTTOM,
+  INPUT_MARGIN_BOTTOM,
   INPUT_MARGIN_RIGHT,
   TABLE_PADDING,
 } from '@/constants/layout';
@@ -13,7 +14,7 @@ export const root = css`
   background-color: var(--table-background);
   padding: ${TABLE_PADDING}px;
   border-radius: 6px;
-  border: 1px solid transparent;
+  border: 1px solid var(--table-border);
   fill: transparent;
   color: transparent;
   ${typography.paragraph};
@@ -63,6 +64,7 @@ export const headerButtonWrap = css`
 
 export const headerInputWrap = css`
   display: flex;
+  margin-bottom: ${INPUT_MARGIN_BOTTOM}px;
 
   & > div {
     margin-right: ${INPUT_MARGIN_RIGHT}px;

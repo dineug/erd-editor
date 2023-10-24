@@ -6,9 +6,11 @@ export type Theme = {
 
   tableBackground: string;
   tableSelect: string;
+  tableBorder: string;
 
   memoBackground: string;
   memoSelect: string;
+  memoBorder: string;
 
   columnSelect: string;
   columnHover: string;
@@ -20,6 +22,7 @@ export type Theme = {
   contextMenuBackground: string;
   contextMenuSelect: string;
   contextMenuHover: string;
+  contextMenuBorder: string;
 
   dargSelectBackground: string;
   dargSelectBorder: string;

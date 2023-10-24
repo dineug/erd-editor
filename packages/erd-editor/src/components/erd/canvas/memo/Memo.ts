@@ -37,7 +37,11 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     const { store } = app.value;
     store.dispatch(selectMemoAction$(props.memo.id, isMod(event)));
 
-    if (!el.closest('.memo-textarea')) {
+    if (
+      !el.closest('.memo-textarea') &&
+      !el.closest('.icon') &&
+      !el.closest('.sash')
+    ) {
       drag$.subscribe(handleMove);
     }
   };

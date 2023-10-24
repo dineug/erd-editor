@@ -8,4 +8,5 @@ export const content = css`
   min-width: max-content;
   padding: 8px;
   background-color: var(--context-menu-background);
+  border: 1px solid var(--context-menu-border);
 `;
