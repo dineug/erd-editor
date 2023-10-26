@@ -5,21 +5,23 @@ import {
   useContext,
   useProvider,
 } from '@dineug/r-html';
+import { Subject } from 'rxjs';
 
 export type ContextMenuRootContext = {
   show: boolean;
   x: number;
   y: number;
-  lastHoveredId: string | null;
-  setHoveredId: (id: string) => void;
+  change$: Subject<{
+    parentId: string;
+    id: string;
+  }>;
 };
 
 export const contextMenuRootContext = createContext<ContextMenuRootContext>({
   show: false,
   x: 0,
   y: 0,
-  lastHoveredId: null,
-  setHoveredId: () => {},
+  change$: new Subject(),
 });
 
 export const useContextMenuRootContext = (
@@ -33,10 +35,7 @@ export function useContextMenuRootProvider(
     show: false,
     x: 0,
     y: 0,
-    lastHoveredId: null,
-    setHoveredId: (id: string) => {
-      state.lastHoveredId = id;
-    },
+    change$: new Subject(),
   });
 
   const provider = useProvider(ctx, contextMenuRootContext, state);

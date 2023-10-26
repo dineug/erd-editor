@@ -16,8 +16,8 @@ type ThemeProviderProps = {
   story: any;
 };
 
-const ThemeProvider: FC<ThemeProviderProps> = props => {
-  return () => html`
+const ThemeProvider: FC<ThemeProviderProps> = props => () =>
+  html`
     <${GlobalStyles} />
     <${Theme}
       .theme=${createTheme({
@@ -27,6 +27,5 @@ const ThemeProvider: FC<ThemeProviderProps> = props => {
     />
     ${props.story}
   `;
-};
 
 export default ThemeProvider;

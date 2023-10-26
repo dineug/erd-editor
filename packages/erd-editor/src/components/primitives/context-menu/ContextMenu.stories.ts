@@ -30,72 +30,82 @@ const ContextMenuTemplate: FC<ContextMenuTemplateProps> = (props, ctx) => {
       @mousedown=${contextMenu.onMousedown}
     >
       Right-click here
-      ${contextMenu.state.show
-        ? html`
-            <${ContextMenu.Content}
-              children=${html`
-                <${ContextMenu.Item}
-                  .onClick=${handleClick}
-                  children=${'Item 1'}
-                />
-                <${ContextMenu.Item}
-                  .onClick=${handleClick}
-                  children=${'Item 2'}
-                />
-                <${ContextMenu.Item}
-                  .onClick=${handleClick}
-                  children=${'Item 3'}
-                />
-                <${ContextMenu.Sub}
-                  children=${html`
-                    <${ContextMenu.SubTrigger} children=${'Submenu'} />
-                    <${ContextMenu.SubContent}
-                      children=${html`
-                        <${ContextMenu.Item}
-                          .onClick=${handleClick}
-                          children=${'Item 1'}
-                        />
-                        <${ContextMenu.Item}
-                          .onClick=${handleClick}
-                          children=${'Item 2'}
-                        />
-                        <${ContextMenu.Sub}
-                          children=${html`
-                            <${ContextMenu.SubTrigger} children=${'Submenu'} />
-                            <${ContextMenu.SubContent}
-                              children=${html`
-                                <${ContextMenu.Item}
-                                  .onClick=${handleClick}
-                                  children=${'Item 1'}
-                                />
-                                <${ContextMenu.Item}
-                                  .onClick=${handleClick}
-                                  children=${'Item 2'}
-                                />
-                                <${ContextMenu.Item}
-                                  .onClick=${handleClick}
-                                  children=${'Item 3'}
-                                />
-                              `}
-                            />
-                          `}
-                        />
-                        <${ContextMenu.Item}
-                          .onClick=${handleClick}
-                          children=${'Item 3'}
-                        />
-                      `}
-                    />
-                  `}
-                />
-                <${ContextMenu.Item}
-                  .onClick=${handleClick}
-                  children=${'Item 4'}
-                />
-              `}
-            />
-          `
-        : null}
+      <${ContextMenu.Root}
+        children=${html`
+          <${ContextMenu.Item} .onClick=${handleClick} children=${'Item 1'} />
+          <${ContextMenu.Item} .onClick=${handleClick} children=${'Item 2'} />
+          <${ContextMenu.Item} .onClick=${handleClick} children=${'Item 3'} />
+          <${ContextMenu.Item}
+            children=${'Submenu'}
+            subChildren=${html`
+              <${ContextMenu.Item}
+                .onClick=${handleClick}
+                children=${'Item 1'}
+              />
+              <${ContextMenu.Item}
+                .onClick=${handleClick}
+                children=${'Item 2'}
+              />
+              <${ContextMenu.Item}
+                children=${'Submenu'}
+                subChildren=${html`
+                  <${ContextMenu.Item}
+                    .onClick=${handleClick}
+                    children=${'Item 1'}
+                  />
+                  <${ContextMenu.Item}
+                    .onClick=${handleClick}
+                    children=${'Item 2'}
+                  />
+                  <${ContextMenu.Item}
+                    .onClick=${handleClick}
+                    children=${'Item 3'}
+                  />
+                `}
+              />
+              <${ContextMenu.Item}
+                .onClick=${handleClick}
+                children=${'Item 3'}
+              />
+            `}
+          />
+          <${ContextMenu.Item}
+            children=${'Submenu'}
+            subChildren=${html`
+              <${ContextMenu.Item}
+                .onClick=${handleClick}
+                children=${'Item 1'}
+              />
+              <${ContextMenu.Item}
+                .onClick=${handleClick}
+                children=${'Item 2'}
+              />
+              <${ContextMenu.Item}
+                .onClick=${handleClick}
+                children=${'Item 3'}
+              />
+            `}
+          />
+          <${ContextMenu.Item}
+            children=${'Submenu'}
+            subChildren=${html`
+              <${ContextMenu.Item}
+                .onClick=${handleClick}
+                children=${'Item 1'}
+              />
+              <${ContextMenu.Item}
+                .onClick=${handleClick}
+                children=${'Item 2'}
+              />
+              <${ContextMenu.Item}
+                .onClick=${handleClick}
+                children=${'Item 3'}
+              />
+            `}
+          />
+          <${ContextMenu.Item} .onClick=${handleClick} children=${'Item 4'} />
+        `}
+      />
     </div>
   `;
 };

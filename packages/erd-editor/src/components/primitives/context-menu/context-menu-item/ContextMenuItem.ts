@@ -1,22 +1,86 @@
-import { DOMTemplateLiterals, FC, html } from '@dineug/r-html';
+import {
+  createRef,
+  DOMTemplateLiterals,
+  FC,
+  html,
+  observable,
+  onMounted,
+  ref,
+} from '@dineug/r-html';
 
+import ContextMenuContent from '@/components/primitives/context-menu/context-menu-content/ContextMenuContent';
+import { useContextMenuRootContext } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import { uuid } from '@/utils';
 
 import * as styles from './ContextMenuItem.styles';
 
 export type ContextMenuItemProps = {
   children?: DOMTemplateLiterals;
+  subChildren?: DOMTemplateLiterals;
   onClick?: (event: MouseEvent) => void;
 };
 
 const ContextMenuItem: FC<ContextMenuItemProps> = (props, ctx) => {
+  const root = useContextMenuRootContext(ctx);
   const id = uuid();
+  const $div = createRef<HTMLDivElement>();
+  const state = observable({
+    show: false,
+    x: 0,
+    y: 0,
+  });
+  const { addUnsubscribe } = useUnmounted();
+
+  const handleMouseenter = () => {
+    const { width, x, y } = $div.value.getBoundingClientRect();
+    state.x = width + x;
+    state.y = y - 8;
+    state.show = true;
+
+    const parentId = $div.value.parentElement?.dataset.id;
+    if (parentId) {
+      root.value.change$.next({ parentId, id });
+    }
+  };
+
+  onMounted(() => {
+    if (!props.subChildren) {
+      return;
+    }
+
+    addUnsubscribe(
+      root.value.change$.subscribe(value => {
+        const parentId = $div.value.parentElement?.dataset.id;
+
+        if (parentId === value.parentId && id !== value.id) {
+          state.show = false;
+        }
+      })
+    );
+  });
 
   return () =>
     html`
-      <div class=${styles.item} data-id=${id} @click=${props.onClick}>
+      <div
+        ${ref($div)}
+        class=${styles.item}
+        data-id=${id}
+        @mouseenter=${handleMouseenter}
+        @click=${props.onClick}
+      >
         ${props.children}
       </div>
+      ${props.subChildren && state.show
+        ? html`
+            <${ContextMenuContent}
+              id=${id}
+              x=${state.x}
+              y=${state.y}
+              children=${props.subChildren}
+            />
+          `
+        : null}
     `;
 };
 

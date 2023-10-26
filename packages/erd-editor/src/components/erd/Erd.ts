@@ -80,15 +80,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         @wheel=${handleWheel}
       >
         <${Canvas} />
-        ${contextMenu.state.show
-          ? html`
-              <${ErdContextMenu}
-                type=${ErdContextMenuType.ERD}
-                root=${root}
-                .onClose=${handleContextmenuClose}
-              />
-            `
-          : null}
+        <${ErdContextMenu}
+          type=${ErdContextMenuType.ERD}
+          root=${root}
+          .onClose=${handleContextmenuClose}
+        />
       </div>
     `;
 };
