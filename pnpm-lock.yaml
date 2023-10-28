@@ -179,9 +179,6 @@ importers:
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
-      luxon:
-        specifier: ^3.3.0
-        version: 3.3.0
       uuid:
         specifier: ^9.0.0
         version: 9.0.0
@@ -192,9 +189,6 @@ importers:
       '@types/lodash-es':
         specifier: ^4.17.8
         version: 4.17.8
-      '@types/luxon':
-        specifier: ^3.3.1
-        version: 3.3.1
       '@types/uuid':
         specifier: ^9.0.2
         version: 9.0.2
@@ -6736,6 +6730,7 @@ packages:
   /luxon@3.3.0:
     resolution: {integrity: sha512-An0UCfG/rSiqtAIiBPO0Y9/zAnHUZxAMiCpTd5h2smgsj7GGmcenvrvww2cqNA8/4A5ZrD1gJpHN2mIHZQF+Mg==}
     engines: {node: '>=12'}
+    dev: true
 
   /lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}

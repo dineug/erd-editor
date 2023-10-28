@@ -89,33 +89,11 @@ const Table: FC<TableProps> = (props, ctx) => {
               'background-color': table.ui.color,
             }}
           ></div>
-          <div class=${styles.headerButtonWrap}>
-            <${Icon}
-              size=${12}
-              name="plus"
-              title=${simpleShortcutToString(
-                keyBindingMap.addColumn[0]?.shortcut
-              )}
-              useTransition=${true}
-              .onClick=${handleAddColumn}
-            />
-            <${Icon}
-              size=${12}
-              name="xmark"
-              title=${simpleShortcutToString(
-                keyBindingMap.removeTable[0]?.shortcut
-              )}
-              useTransition=${true}
-              .onClick=${handleRemoveTable}
-            />
-          </div>
           <div class=${styles.headerInputWrap}>
             <${EditInput}
               placeholder="table"
               width=${table.ui.widthName}
               value=${table.name}
-              focus=${true}
-              edit=${true}
             />
             ${bHas(settings.show, SchemaV3Constants.Show.tableComment)
               ? html`
@@ -123,17 +101,45 @@ const Table: FC<TableProps> = (props, ctx) => {
                     placeholder="comment"
                     width=${table.ui.widthComment}
                     value=${table.comment}
-                    focus=${true}
                   />
                 `
               : null}
+            <div class=${styles.headerButtonWrap}>
+              <${Icon}
+                size=${12}
+                name="plus"
+                title=${simpleShortcutToString(
+                  keyBindingMap.addColumn[0]?.shortcut
+                )}
+                useTransition=${true}
+                .onClick=${handleAddColumn}
+              />
+              <${Icon}
+                size=${12}
+                name="xmark"
+                title=${simpleShortcutToString(
+                  keyBindingMap.removeTable[0]?.shortcut
+                )}
+                useTransition=${true}
+                .onClick=${handleRemoveTable}
+              />
+            </div>
           </div>
         </div>
         <div @dragenter=${onPrevent} @dragover=${onPrevent}>
           ${repeat(
             columns,
             column => column.id,
-            column => html`<${Column} column=${column} />`
+            column =>
+              html`
+                <${Column}
+                  column=${column}
+                  widthName=${tableWidths.name}
+                  widthDataType=${tableWidths.dataType}
+                  widthDefault=${tableWidths.default}
+                  widthComment=${tableWidths.comment}
+                />
+              `
           )}
         </div>
       </div>

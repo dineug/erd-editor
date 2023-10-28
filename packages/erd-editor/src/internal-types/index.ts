@@ -34,8 +34,8 @@ export type Point = {
 };
 
 export type EntityMeta = {
-  updateAt: string;
-  createAt: string;
+  updateAt: number;
+  createAt: number;
 };
 
 export type Unsubscribe = () => void;

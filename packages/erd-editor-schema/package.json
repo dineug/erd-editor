@@ -28,13 +28,11 @@
   "dependencies": {
     "@dineug/shared": "workspace:*",
     "lodash-es": "^4.17.21",
-    "luxon": "^3.3.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.2",
     "@types/lodash-es": "^4.17.8",
-    "@types/luxon": "^3.3.1",
     "@types/uuid": "^9.0.2",
     "rollup-plugin-visualizer": "^5.9.2",
     "ts-patch": "^3.0.2",

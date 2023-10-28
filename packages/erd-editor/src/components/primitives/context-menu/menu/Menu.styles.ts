@@ -13,8 +13,6 @@ export const icon = css`
   margin-right: 8px;
 `;
 
-export const name = css``;
-
 export const right = css`
   display: flex;
   align-items: center;

@@ -26,6 +26,7 @@ const ContextMenuItem: FC<ContextMenuItemProps> = (props, ctx) => {
   const id = uuid();
   const $div = createRef<HTMLDivElement>();
   const state = observable({
+    selected: false,
     show: false,
     x: 0,
     y: 0,
@@ -56,6 +57,8 @@ const ContextMenuItem: FC<ContextMenuItemProps> = (props, ctx) => {
         if (parentId === value.parentId && id !== value.id) {
           state.show = false;
         }
+
+        state.selected = id === value.parentId;
       })
     );
   });
@@ -64,7 +67,7 @@ const ContextMenuItem: FC<ContextMenuItemProps> = (props, ctx) => {
     html`
       <div
         ${ref($div)}
-        class=${styles.item}
+        class=${[styles.item, { selected: state.selected }]}
         data-id=${id}
         @mouseenter=${handleMouseenter}
         @click=${props.onClick}

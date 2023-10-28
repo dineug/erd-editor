@@ -1,5 +1,3 @@
-import { DateTime } from 'luxon';
-
 import { START_ADD, START_X, START_Y } from '@/constants/layout';
 import { EntityMeta, Memo, Point, Settings, Table } from '@/internal-types';
 
@@ -38,7 +36,7 @@ export const toList = <T>(
 ): Array<T> => ids.map(id => entities[id]).filter(Boolean);
 
 export function getDefaultEntityMeta(): EntityMeta {
-  const now = DateTime.now().toISO() ?? '';
+  const now = Date.now();
   return {
     updateAt: now,
     createAt: now,

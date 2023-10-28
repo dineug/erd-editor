@@ -1,5 +1,4 @@
 import { isNumber, isString } from '@dineug/shared';
-import { DateTime } from 'luxon';
 
 import { DeepPartial, EntityMeta } from '@/internal-types';
 
@@ -35,7 +34,7 @@ export function propOr<T extends object, P extends string | number | symbol, R>(
 }
 
 export function getDefaultEntityMeta(): EntityMeta {
-  const now = DateTime.now().toISO() ?? '';
+  const now = Date.now();
   return {
     updateAt: now,
     createAt: now,
@@ -46,8 +45,8 @@ export function assignMeta(
   target: EntityMeta,
   source?: DeepPartial<EntityMeta>
 ) {
-  const assignString = assign(isString, target, source);
+  const assignNumber = assign(isNumber, target, source);
 
-  assignString('updateAt');
-  assignString('createAt');
+  assignNumber('updateAt');
+  assignNumber('createAt');
 }

@@ -6,6 +6,8 @@ import { typography } from '@/styles/typography.styles';
 let canvas: HTMLCanvasElement | null = null;
 let canvasContext: CanvasRenderingContext2D | null;
 
+const TEXT_PADDING = 2;
+
 const ghostText = css`
   visibility: hidden;
   position: fixed;
@@ -53,7 +55,7 @@ export function createText() {
       width = span.offsetWidth;
     }
 
-    return Math.round(width);
+    return Math.round(width) + TEXT_PADDING;
   };
 
   return {

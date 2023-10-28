@@ -8,6 +8,7 @@ const SIZE = 24;
 const SIZE_REM = 1.5;
 
 export type IconProps = {
+  class?: any;
   prefix?: string;
   name: string;
   size?: number;
@@ -29,7 +30,7 @@ const Icon: FC<IconProps> = (props, ctx) => () => {
 
   return html`
     <div
-      class=${['icon', styles.wrap]}
+      class=${['icon', styles.wrap, props.class]}
       title=${props.title}
       @click=${props.onClick}
     >

@@ -3,7 +3,9 @@ import { FC, html } from '@dineug/r-html';
 import * as styles from './EditInput.styles';
 
 export type EditInputProps = {
+  class?: any;
   placeholder?: string;
+  title?: string;
   edit: boolean;
   focus: boolean;
   width: number;
@@ -27,11 +29,15 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
     props.edit
       ? html`
           <input
-            class=${['edit-input', styles.root, className()]}
-            style=${{ width: `${props.width}px` }}
+            class=${['edit-input', styles.root, className(), props.class]}
+            style=${{
+              width: `${props.width}px`,
+              'min-width': `${props.width}px`,
+            }}
             placeholder=${props.placeholder ?? ''}
             type="text"
             spellcheck="false"
+            title=${props.title}
             .value=${props.value ?? ''}
             @input=${props.onInput}
             @blur=${props.onBlur}
@@ -40,8 +46,18 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
         `
       : html`
           <div
-            class=${['edit-input', styles.root, className()]}
-            style=${{ width: `${props.width}px` }}
+            class=${[
+              'edit-input',
+              styles.root,
+              styles.cursor,
+              className(),
+              props.class,
+            ]}
+            style=${{
+              width: `${props.width}px`,
+              'min-width': `${props.width}px`,
+            }}
+            title=${props.title}
           >
             ${props.value.trim() ? props.value : props.placeholder}
           </div>

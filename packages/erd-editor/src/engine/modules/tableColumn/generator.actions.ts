@@ -2,7 +2,7 @@ import { GeneratorAction } from '@/engine/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { uuid } from '@/utils';
 
-import { addColumnAction } from './atom.actions';
+import { addColumnAction, removeColumnAction } from './atom.actions';
 
 export const addColumnAction$ = (tableId?: string): GeneratorAction =>
   function* ({ editor: { selectedMap } }) {
@@ -26,6 +26,22 @@ export const addColumnAction$ = (tableId?: string): GeneratorAction =>
     }
   };
 
+export const removeColumnAction$ = (
+  tableId: string,
+  columnIds: string[]
+): GeneratorAction =>
+  function* () {
+    // TODO: valid index, relationship
+
+    for (const columnId of columnIds) {
+      yield removeColumnAction({
+        id: columnId,
+        tableId,
+      });
+    }
+  };
+
 export const actions$ = {
   addColumnAction$,
+  removeColumnAction$,
 };

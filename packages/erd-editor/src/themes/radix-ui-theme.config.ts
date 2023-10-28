@@ -14,16 +14,16 @@ export const ThemeConfig: Theme = {
   memoSelect: 'accent-8',
   memoBorder: 'gray-6',
 
-  columnHover: 'accent-6',
-  columnSelect: 'accent-7',
+  columnSelect: 'gray-5',
+  columnHover: 'gray-4',
 
-  relationshipHover: 'accent-6',
+  relationshipHover: 'accent-7',
 
   toolbarBackground: 'gray-1',
 
   contextMenuBackground: 'gray-2',
+  contextMenuSelect: 'gray-4',
   contextMenuHover: 'accent-7',
-  contextMenuSelect: 'accent-6',
   contextMenuBorder: 'gray-6',
 
   dargSelectBackground: 'grayA-4',

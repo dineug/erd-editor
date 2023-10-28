@@ -14,9 +14,7 @@ export const item = css`
     fill: var(--active);
   }
 
-  &[data-show='true'] {
-    background-color: var(--context-menu-hover);
-    color: var(--active);
-    fill: var(--active);
+  &.selected {
+    background-color: var(--context-menu-select);
   }
 `;

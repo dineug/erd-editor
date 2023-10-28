@@ -3,14 +3,14 @@ import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import {
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_DELETE_WIDTH,
+  COLUMN_HEIGHT,
   COLUMN_KEY_WIDTH,
   COLUMN_MIN_WIDTH,
   COLUMN_NOT_NULL_WIDTH,
   COLUMN_UNIQUE_WIDTH,
-  INPUT_HEIGHT,
-  INPUT_MARGIN_BOTTOM,
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
+  TABLE_HEADER_BUTTONS_WIDTH,
   TABLE_HEADER_HEIGHT,
   TABLE_PADDING,
 } from '@/constants/layout';
@@ -23,7 +23,8 @@ export function calcTableWidths(
   table: Table,
   { settings: { show }, collections }: RootState
 ): ColumnWidth {
-  let width = table.ui.widthName + INPUT_MARGIN_RIGHT;
+  let width =
+    table.ui.widthName + INPUT_MARGIN_RIGHT + TABLE_HEADER_BUTTONS_WIDTH;
   if (bHas(show, SchemaV3Constants.Show.tableComment)) {
     width += table.ui.widthComment + INPUT_MARGIN_RIGHT;
   }
@@ -44,7 +45,7 @@ export function calcTableWidths(
 
   return {
     ...maxWidthColumn,
-    width: TABLE_PADDING + width + TABLE_PADDING,
+    width: TABLE_BORDER + TABLE_PADDING + width + TABLE_PADDING + TABLE_BORDER,
   };
 }
 
@@ -82,9 +83,10 @@ function calcDefaultWidthColumns(show: number) {
   return DEFAULT_WIDTH_COLUMNS.reduce(
     (acc, { key, width }) =>
       bHas(show, key) ? acc + width + INPUT_MARGIN_RIGHT : acc,
-    COLUMN_MIN_WIDTH +
+    COLUMN_KEY_WIDTH +
       INPUT_MARGIN_RIGHT +
-      COLUMN_KEY_WIDTH +
+      COLUMN_MIN_WIDTH +
+      INPUT_MARGIN_RIGHT +
       COLUMN_DELETE_WIDTH
   );
 }
@@ -159,7 +161,7 @@ function calcMaxWidthColumn(columns: Column[], show: number): ColumnWidth {
 
       return acc + width + INPUT_MARGIN_RIGHT;
     },
-    COLUMN_KEY_WIDTH + COLUMN_DELETE_WIDTH
+    COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT + COLUMN_DELETE_WIDTH
   );
 
   return columnWidth;
@@ -170,8 +172,7 @@ export function calcTableHeight(table: Table): number {
     TABLE_BORDER +
     TABLE_PADDING +
     TABLE_HEADER_HEIGHT +
-    (table.columnIds.length * (INPUT_HEIGHT + INPUT_MARGIN_BOTTOM) -
-      INPUT_MARGIN_BOTTOM) +
+    table.columnIds.length * COLUMN_HEIGHT +
     TABLE_PADDING +
     TABLE_BORDER
   );

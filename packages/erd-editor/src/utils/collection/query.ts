@@ -1,5 +1,3 @@
-import { DateTime } from 'luxon';
-
 import { Collections, GetEntities, GetEntity, LWW } from '@/internal-types';
 
 import { addOperator, removeOperator, replaceOperator } from './lww';
@@ -72,7 +70,7 @@ class CollectionQuery<K extends keyof Collections> {
     const entity = this.selectById(id);
     if (entity) {
       recipe(entity);
-      entity.meta.updateAt = DateTime.now().toISO() ?? '';
+      entity.meta.updateAt = Date.now();
     }
     return this;
   }
