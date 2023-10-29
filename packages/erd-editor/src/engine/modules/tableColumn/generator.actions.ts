@@ -3,8 +3,12 @@ import { arrayHas } from '@dineug/shared';
 import { last } from 'lodash-es';
 
 import { GeneratorAction } from '@/engine/generator.actions';
-import { focusColumnAction } from '@/engine/modules/editor/atom.actions';
+import {
+  focusColumnAction,
+  focusTableAction,
+} from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
+import { getRemoveFirstColumnId } from '@/engine/modules/editor/utils/focus';
 import { uuid } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
@@ -79,11 +83,31 @@ export const removeColumnAction$ = (
   tableId: string,
   columnIds: string[]
 ): GeneratorAction =>
-  function* () {
+  function* (state) {
+    const {
+      editor: { focusTable },
+    } = state;
+
+    if (focusTable?.columnId) {
+      const columnId = getRemoveFirstColumnId(state, columnIds);
+
+      if (columnId) {
+        yield focusColumnAction({
+          tableId: focusTable.tableId,
+          columnId,
+          focusType: focusTable.focusType,
+          $mod: false,
+          shiftKey: false,
+        });
+      } else {
+        yield focusTableAction({
+          tableId: focusTable.tableId,
+          focusType: FocusType.tableName,
+        });
+      }
+    }
+
     // TODO: valid index, relationship
-
-    // getRemoveFirstColumnId - focusTable, focusColumn
-
     for (const columnId of columnIds) {
       yield removeColumnAction({
         id: columnId,

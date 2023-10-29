@@ -13,8 +13,8 @@ export function selectRangeColumns(
 ) {
   if (!fromColumnId || fromColumnId === toColumnId) return [toColumnId];
 
-  const fromIndex = columnIds.findIndex(id => id === fromColumnId);
-  const toIndex = columnIds.findIndex(id => id === toColumnId);
+  const fromIndex = columnIds.indexOf(fromColumnId);
+  const toIndex = columnIds.indexOf(toColumnId);
 
   if (fromIndex === -1) return [toColumnId];
 

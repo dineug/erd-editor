@@ -2,6 +2,7 @@ import { createRef, FC, html, onBeforeMount, ref, watch } from '@dineug/r-html';
 
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { lastCursorFocus } from '@/utils/focus';
+import { focusEvent } from '@/utils/internalEvents';
 
 import * as styles from './EditInput.styles';
 
@@ -31,6 +32,11 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
     };
   };
 
+  const handleBlur = (event: FocusEvent) => {
+    props.onBlur?.(event);
+    ctx.host.dispatchEvent(focusEvent());
+  };
+
   onBeforeMount(() => {
     addUnsubscribe(
       watch(props).subscribe(propName => {
@@ -40,6 +46,13 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
         }
 
         lastCursorFocus($input);
+      }),
+      watch(props).subscribe(propName => {
+        if (propName !== 'edit') return;
+
+        if (!props.edit) {
+          ctx.host.dispatchEvent(focusEvent());
+        }
       })
     );
   });
@@ -60,7 +73,7 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
             title=${props.title}
             .value=${props.value ?? ''}
             @input=${props.onInput}
-            @blur=${props.onBlur}
+            @blur=${handleBlur}
             @keyup=${props.onKeyup}
           />
         `

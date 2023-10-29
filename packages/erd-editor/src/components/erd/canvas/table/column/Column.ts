@@ -331,7 +331,6 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           title=${simpleShortcutToString(
             keyBindingMap.removeColumn[0]?.shortcut
           )}
-          useTransition=${true}
           .onClick=${handleRemoveColumn}
         />
       </div>

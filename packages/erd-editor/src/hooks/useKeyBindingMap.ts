@@ -17,9 +17,11 @@ export function useKeyBindingMap(
 
   const keyBinding = () => {
     const { keyBindingMap, shortcut$ } = app.value;
+    const $root = root.value;
+
     unbinding();
     unbinding = tinykeys(
-      root.value,
+      $root,
       Object.keys(keyBindingMap).reduce<
         Record<string, (event: KeyboardEvent) => void>
       >((acc, key) => {

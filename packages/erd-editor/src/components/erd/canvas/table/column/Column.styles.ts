@@ -15,7 +15,6 @@ export const root = css`
   fill: transparent;
   color: transparent;
   padding: 0 ${TABLE_PADDING}px;
-  transition: background-color 0.15s;
 
   &:hover {
     fill: var(--foreground);

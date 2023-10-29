@@ -8,6 +8,7 @@ import {
   ref,
   useProvider,
 } from '@dineug/r-html';
+import { fromEvent, merge, throttleTime } from 'rxjs';
 
 import { appContext, createAppContext } from '@/components/context';
 import Erd from '@/components/erd/Erd';
@@ -18,6 +19,7 @@ import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { AccentColor, createTheme, GrayColor } from '@/themes/radix-ui-theme';
+import { InternalEventType } from '@/utils/internalEvents';
 import { createText } from '@/utils/text';
 
 import * as styles from './ErdEditor.styles';
@@ -56,6 +58,29 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     const { keydown$ } = appContextValue;
     keydown$.next(event);
   };
+
+  const handleFocus = () => {
+    const $root = root.value;
+    setTimeout(() => {
+      if (document.activeElement !== ctx) {
+        $root.focus();
+      }
+    }, 1);
+  };
+
+  onMounted(() => {
+    const $root = root.value;
+    handleFocus();
+    addUnsubscribe(
+      merge(
+        fromEvent($root, 'mousedown'),
+        fromEvent($root, 'touchstart'),
+        fromEvent(ctx, InternalEventType.focus)
+      )
+        .pipe(throttleTime(50))
+        .subscribe(handleFocus)
+    );
+  });
 
   onMounted(() => {
     const $root = root.value;

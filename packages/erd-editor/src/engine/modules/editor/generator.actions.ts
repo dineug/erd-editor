@@ -1,22 +1,32 @@
 import { isEmpty } from 'lodash-es';
 
 import { GeneratorAction } from '@/engine/generator.actions';
-import {
-  clearAction,
-  focusTableEndAction,
-  loadJsonAction,
-  selectAction,
-  unselectAllAction,
-} from '@/engine/modules/editor/atom.actions';
-import { SelectType } from '@/engine/modules/editor/state';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import { removeMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { moveTableAction } from '@/engine/modules/table/atom.actions';
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
+import { addColumnAction$ } from '@/engine/modules/tableColumn/generator.actions';
 import { Point } from '@/internal-types';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { query } from '@/utils/collection/query';
+
+import {
+  clearAction,
+  focusMoveTableAction,
+  focusTableEndAction,
+  loadJsonAction,
+  selectAction,
+  unselectAllAction,
+} from './atom.actions';
+import { MoveKey, SelectType } from './state';
+import {
+  isColumns,
+  isLastColumn,
+  isLastRowColumn,
+  isLastTable,
+  isTableFocusType,
+} from './utils/focus';
 
 type SelectTypeIds = {
   tableIds: string[];
@@ -134,9 +144,37 @@ export const unselectAllAction$ = (): GeneratorAction =>
     yield focusTableEndAction();
   };
 
+export const focusMoveTableAction$ = (
+  moveKey: MoveKey,
+  shiftKey: boolean
+): GeneratorAction =>
+  function* (state) {
+    const {
+      editor: { focusTable },
+    } = state;
+    if (!focusTable) return;
+
+    if (
+      moveKey === MoveKey.Tab &&
+      !shiftKey &&
+      ((isTableFocusType(focusTable.focusType) &&
+        isLastTable(state) &&
+        !isColumns(state)) ||
+        (!isTableFocusType(focusTable.focusType) &&
+          isLastColumn(state) &&
+          isLastRowColumn(state)))
+    ) {
+      yield addColumnAction$(focusTable.tableId);
+    } else {
+      yield focusMoveTableAction({ moveKey, shiftKey });
+    }
+  };
+
 export const actions$ = {
   loadJsonAction$,
   moveAllAction$,
   removeSelectedAction$,
   dragSelectAction$,
+  unselectAllAction$,
+  focusMoveTableAction$,
 };

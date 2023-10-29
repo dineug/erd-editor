@@ -1,3 +1,5 @@
+import { arrayHas } from '@dineug/shared';
+
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
 import { ValuesType } from '@/internal-types';
 
@@ -50,6 +52,7 @@ export const MoveKey = {
   Tab: 'Tab',
 };
 export type MoveKey = ValuesType<typeof MoveKey>;
+export const hasMoveKeys = arrayHas(Object.values(MoveKey));
 
 export const createEditor = (): Editor => ({
   selectedMap: {},

@@ -5,6 +5,7 @@ import { query } from '@/utils/collection/query';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
 import { FocusType, MoveKey, SelectType } from './state';
+import { arrowDown, arrowLeft, arrowRight, arrowUp } from './utils/focus';
 import {
   appendSelectColumns,
   appendSelectRangeColumns,
@@ -238,19 +239,19 @@ const focusMoveTable: ReducerType<typeof ActionType.focusMoveTable> = (
 
   switch (payload.moveKey) {
     case MoveKey.ArrowUp:
-      // arrowUp
+      arrowUp(state, payload);
       break;
     case MoveKey.ArrowDown:
-      // arrowDown
+      arrowDown(state, payload);
       break;
     case MoveKey.ArrowLeft:
-      // arrowLeft
+      arrowLeft(state, payload);
       break;
     case MoveKey.ArrowRight:
-      // arrowRight
+      arrowRight(state, payload);
       break;
     case MoveKey.Tab:
-      // shiftKey ? arrowLeft : arrowRight
+      payload.shiftKey ? arrowLeft(state, payload) : arrowRight(state, payload);
       break;
   }
 };

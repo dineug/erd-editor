@@ -65,7 +65,10 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const el = event.target as HTMLElement | null;
     if (!el) return;
 
-    const canDrag = !el.closest('.table') && !el.closest('.memo');
+    const canDrag =
+      !el.closest('.table') &&
+      !el.closest('.memo') &&
+      !el.closest('.edit-input');
     if (!canDrag) return;
 
     const { store } = app.value;
