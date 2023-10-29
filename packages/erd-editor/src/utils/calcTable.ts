@@ -10,7 +10,6 @@ import {
   COLUMN_UNIQUE_WIDTH,
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
-  TABLE_HEADER_BUTTONS_WIDTH,
   TABLE_HEADER_HEIGHT,
   TABLE_PADDING,
 } from '@/constants/layout';
@@ -23,8 +22,7 @@ export function calcTableWidths(
   table: Table,
   { settings: { show }, collections }: RootState
 ): ColumnWidth {
-  let width =
-    table.ui.widthName + INPUT_MARGIN_RIGHT + TABLE_HEADER_BUTTONS_WIDTH;
+  let width = table.ui.widthName + INPUT_MARGIN_RIGHT;
   if (bHas(show, SchemaV3Constants.Show.tableComment)) {
     width += table.ui.widthComment + INPUT_MARGIN_RIGHT;
   }

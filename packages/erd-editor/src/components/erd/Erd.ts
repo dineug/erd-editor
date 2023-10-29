@@ -1,7 +1,8 @@
-import { createRef, FC, html, ref } from '@dineug/r-html';
+import { createRef, FC, html, observable, ref } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/context';
 import Canvas from '@/components/erd/canvas/Canvas';
+import DragSelect from '@/components/erd/drag-select/DragSelect';
 import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
@@ -12,6 +13,7 @@ import {
   streamZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
+import { isMod } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Erd.styles';
 import { useErdShortcut } from './useErdShortcut';
@@ -22,6 +24,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   const contextMenu = useContextMenuRootProvider(ctx);
   const root = createRef<HTMLDivElement>();
   const app = useAppContext(ctx);
+  const state = observable({
+    dragSelect: false,
+    dragSelectX: 0,
+    dragSelectY: 0,
+  });
   useErdShortcut(ctx);
 
   const resetScroll = () => {
@@ -64,8 +71,18 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const { store } = app.value;
     store.dispatch(unselectAllAction());
 
-    // TODO: dragSelect
-    drag$.subscribe(handleMove);
+    if (event.type === 'mousedown' && isMod(event)) {
+      const { x, y } = root.value.getBoundingClientRect();
+      state.dragSelect = true;
+      state.dragSelectX = event.clientX - x;
+      state.dragSelectY = event.clientY - y;
+    } else {
+      drag$.subscribe(handleMove);
+    }
+  };
+
+  const handleDragSelectEnd = () => {
+    state.dragSelect = false;
   };
 
   return () =>
@@ -80,6 +97,16 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         @wheel=${handleWheel}
       >
         <${Canvas} />
+        ${state.dragSelect
+          ? html`
+              <${DragSelect}
+                root=${root}
+                x=${state.dragSelectX}
+                y=${state.dragSelectY}
+                .onDragSelectEnd=${handleDragSelectEnd}
+              />
+            `
+          : null}
         <${ErdContextMenu}
           type=${ErdContextMenuType.ERD}
           root=${root}

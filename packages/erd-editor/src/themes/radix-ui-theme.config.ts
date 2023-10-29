@@ -26,7 +26,7 @@ export const ThemeConfig: Theme = {
   contextMenuHover: 'accent-7',
   contextMenuBorder: 'gray-6',
 
-  dargSelectBackground: 'grayA-4',
+  dargSelectBackground: 'accent-5',
   dargSelectBorder: 'accent-8',
 
   scrollbarTrack: 'grayA-3',

@@ -38,6 +38,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     store.dispatch(selectMemoAction$(props.memo.id, isMod(event)));
 
     if (
+      !el.closest('.memo-header-color') &&
       !el.closest('.memo-textarea') &&
       !el.closest('.icon') &&
       !el.closest('.sash')
@@ -88,7 +89,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
         <div class=${styles.container}>
           <div class=${styles.header}>
             <div
-              class=${styles.headerColor}
+              class=${['memo-header-color', styles.headerColor]}
               style=${{
                 'background-color': memo.ui.color,
               }}

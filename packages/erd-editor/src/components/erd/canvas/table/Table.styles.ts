@@ -1,9 +1,11 @@
 import { css } from '@dineug/r-html';
 
 import {
+  HEADER_ICON_HEIGHT,
   INPUT_MARGIN_RIGHT,
   TABLE_HEADER_BUTTON_MARGIN_LEFT,
-  TABLE_HEADER_HEIGHT,
+  TABLE_HEADER_ICON_MARGIN_BOTTOM,
+  TABLE_HEADER_INPUT_HEIGHT,
   TABLE_HEADER_PADDING,
   TABLE_PADDING,
 } from '@/constants/layout';
@@ -46,22 +48,11 @@ export const headerColor = css`
   cursor: pointer;
 `;
 
-export const headerInputWrap = css`
-  display: flex;
-  height: ${TABLE_HEADER_HEIGHT}px;
-  align-items: center;
-  padding: ${TABLE_HEADER_PADDING}px 0;
-
-  & > .edit-input {
-    margin-right: ${INPUT_MARGIN_RIGHT}px;
-  }
-`;
-
 export const headerButtonWrap = css`
   display: flex;
-  height: 100%;
-  align-items: center;
-  margin-left: auto;
+  height: ${HEADER_ICON_HEIGHT}px;
+  justify-content: flex-end;
+  margin-bottom: ${TABLE_HEADER_ICON_MARGIN_BOTTOM}px;
 
   & > .icon {
     cursor: pointer;
@@ -74,5 +65,16 @@ export const headerButtonWrap = css`
   & > .icon:hover {
     fill: var(--active);
     color: var(--active);
+  }
+`;
+
+export const headerInputWrap = css`
+  display: flex;
+  height: ${TABLE_HEADER_INPUT_HEIGHT}px;
+  align-items: center;
+  padding: ${TABLE_HEADER_PADDING}px 0;
+
+  & > .edit-input {
+    margin-right: ${INPUT_MARGIN_RIGHT}px;
   }
 `;

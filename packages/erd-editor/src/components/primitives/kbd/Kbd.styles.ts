@@ -7,7 +7,8 @@ export const root = css`
 `;
 
 export const kbd = css`
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
 
   padding-left: 0.5em;
   padding-right: 0.5em;

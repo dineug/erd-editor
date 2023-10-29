@@ -65,18 +65,6 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               />
             `;
             break;
-          case ColumnType.columnDataType:
-            template = bHas(settings.show, Show.columnDataType)
-              ? html`
-                  <${EditInput}
-                    class=${'column-col'}
-                    placeholder="dataType"
-                    width=${widthDataType}
-                    value=${column.dataType}
-                  />
-                `
-              : null;
-            break;
           case ColumnType.columnDefault:
             template = bHas(settings.show, Show.columnDefault)
               ? html`
@@ -97,6 +85,18 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                     placeholder="comment"
                     width=${widthComment}
                     value=${column.comment}
+                  />
+                `
+              : null;
+            break;
+          case ColumnType.columnDataType:
+            template = bHas(settings.show, Show.columnDataType)
+              ? html`
+                  <${EditInput}
+                    class=${'column-col'}
+                    placeholder="dataType"
+                    width=${widthDataType}
+                    value=${column.dataType}
                   />
                 `
               : null;
@@ -151,7 +151,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     const { column } = props;
 
     return html`
-      <div class=${styles.root}>
+      <div class=${['column-row', styles.root]}>
         <${ColumnKey} keys=${column.ui.keys} />
         ${repeat(
           getColumnOrder(),

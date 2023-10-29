@@ -41,7 +41,12 @@ const Table: FC<TableProps> = (props, ctx) => {
     const { store } = app.value;
     store.dispatch(selectTableAction$(props.table.id, isMod(event)));
 
-    if (!el.closest('.edit-input') && !el.closest('.icon')) {
+    if (
+      !el.closest('.table-header-color') &&
+      !el.closest('.column-row') &&
+      !el.closest('.icon') &&
+      !el.closest('.edit-input')
+    ) {
       drag$.subscribe(handleMove);
     }
   };
@@ -84,11 +89,31 @@ const Table: FC<TableProps> = (props, ctx) => {
       >
         <div class=${styles.header}>
           <div
-            class=${styles.headerColor}
+            class=${['table-header-color', styles.headerColor]}
             style=${{
               'background-color': table.ui.color,
             }}
           ></div>
+          <div class=${styles.headerButtonWrap}>
+            <${Icon}
+              size=${12}
+              name="plus"
+              title=${simpleShortcutToString(
+                keyBindingMap.addColumn[0]?.shortcut
+              )}
+              useTransition=${true}
+              .onClick=${handleAddColumn}
+            />
+            <${Icon}
+              size=${12}
+              name="xmark"
+              title=${simpleShortcutToString(
+                keyBindingMap.removeTable[0]?.shortcut
+              )}
+              useTransition=${true}
+              .onClick=${handleRemoveTable}
+            />
+          </div>
           <div class=${styles.headerInputWrap}>
             <${EditInput}
               placeholder="table"
@@ -104,26 +129,6 @@ const Table: FC<TableProps> = (props, ctx) => {
                   />
                 `
               : null}
-            <div class=${styles.headerButtonWrap}>
-              <${Icon}
-                size=${12}
-                name="plus"
-                title=${simpleShortcutToString(
-                  keyBindingMap.addColumn[0]?.shortcut
-                )}
-                useTransition=${true}
-                .onClick=${handleAddColumn}
-              />
-              <${Icon}
-                size=${12}
-                name="xmark"
-                title=${simpleShortcutToString(
-                  keyBindingMap.removeTable[0]?.shortcut
-                )}
-                useTransition=${true}
-                .onClick=${handleRemoveTable}
-              />
-            </div>
           </div>
         </div>
         <div @dragenter=${onPrevent} @dragover=${onPrevent}>

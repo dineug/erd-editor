@@ -56,12 +56,12 @@ export const headerButtonWrap = css`
   justify-content: flex-end;
   margin-bottom: ${HEADER_ICON_MARGIN_BOTTOM}px;
 
-  & > div {
+  & > .icon {
     margin-left: 4px;
     cursor: pointer;
   }
 
-  & > div:hover {
+  & > .icon:hover {
     fill: var(--active);
     color: var(--active);
   }
