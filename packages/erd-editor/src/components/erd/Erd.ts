@@ -7,7 +7,7 @@ import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
-import { unselectAllAction } from '@/engine/modules/editor/atom.actions';
+import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   streamScrollToAction,
   streamZoomLevelAction,
@@ -69,7 +69,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     if (!canDrag) return;
 
     const { store } = app.value;
-    store.dispatch(unselectAllAction());
+    store.dispatch(unselectAllAction$());
 
     if (event.type === 'mousedown' && isMod(event)) {
       const { x, y } = root.value.getBoundingClientRect();

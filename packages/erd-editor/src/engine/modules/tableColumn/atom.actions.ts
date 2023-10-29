@@ -5,6 +5,7 @@ import { arrayHas } from '@dineug/shared';
 import { query } from '@/utils/collection/query';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { textInRange } from '@/utils/validation';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
 
@@ -70,7 +71,7 @@ const changeColumnName: ReducerType<typeof ActionType.changeColumnName> = (
   collection.replaceOperator(lww, timestamp, id, 'name', () => {
     collection.updateOne(id, column => {
       column.name = value;
-      column.ui.widthName = toWidth(value);
+      column.ui.widthName = textInRange(toWidth(value));
     });
   });
 };
@@ -92,7 +93,7 @@ const changeColumnComment: ReducerType<
   collection.replaceOperator(lww, timestamp, id, 'comment', () => {
     collection.updateOne(id, column => {
       column.comment = value;
-      column.ui.widthComment = toWidth(value);
+      column.ui.widthComment = textInRange(toWidth(value));
     });
   });
 };
@@ -114,7 +115,7 @@ const changeColumnDataType: ReducerType<
   collection.replaceOperator(lww, timestamp, id, 'dataType', () => {
     collection.updateOne(id, column => {
       column.dataType = value;
-      column.ui.widthDataType = toWidth(value);
+      column.ui.widthDataType = textInRange(toWidth(value));
     });
   });
 };
@@ -136,7 +137,7 @@ const changeColumnDefault: ReducerType<
   collection.replaceOperator(lww, timestamp, id, 'default', () => {
     collection.updateOne(id, column => {
       column.default = value;
-      column.ui.widthDefault = toWidth(value);
+      column.ui.widthDefault = textInRange(toWidth(value));
     });
   });
 };

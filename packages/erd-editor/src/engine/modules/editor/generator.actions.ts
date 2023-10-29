@@ -3,6 +3,7 @@ import { isEmpty } from 'lodash-es';
 import { GeneratorAction } from '@/engine/generator.actions';
 import {
   clearAction,
+  focusTableEndAction,
   loadJsonAction,
   selectAction,
   unselectAllAction,
@@ -120,11 +121,17 @@ export const dragSelectAction$ = (min: Point, max: Point): GeneratorAction =>
         }, {}),
     };
 
-    yield unselectAllAction();
+    yield unselectAllAction$();
 
     if (!isEmpty(selectedMap)) {
       yield selectAction(selectedMap);
     }
+  };
+
+export const unselectAllAction$ = (): GeneratorAction =>
+  function* () {
+    yield unselectAllAction();
+    yield focusTableEndAction();
   };
 
 export const actions$ = {

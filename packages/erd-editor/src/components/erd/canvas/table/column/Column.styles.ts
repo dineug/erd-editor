@@ -14,7 +14,7 @@ export const root = css`
   align-items: center;
   fill: transparent;
   color: transparent;
-  padding: ${COLUMN_PADDING}px ${TABLE_PADDING}px;
+  padding: 0 ${TABLE_PADDING}px;
   transition: background-color 0.15s;
 
   &:hover {
@@ -28,7 +28,7 @@ export const root = css`
   }
 
   & > .column-col {
-    margin-right: ${INPUT_MARGIN_RIGHT}px;
+    padding: ${COLUMN_PADDING}px ${INPUT_MARGIN_RIGHT}px ${COLUMN_PADDING}px 0;
   }
 `;
 

@@ -5,7 +5,17 @@ import { useAppContext } from '@/components/context';
 import Column from '@/components/erd/canvas/table/column/Column';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import Icon from '@/components/primitives/icon/Icon';
+import {
+  editTableAction,
+  editTableEndAction,
+  focusTableAction,
+} from '@/engine/modules/editor/atom.actions';
 import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
+import { FocusType } from '@/engine/modules/editor/state';
+import {
+  changeTableCommentAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
 import {
   removeTableAction$,
   selectTableAction$,
@@ -20,6 +30,7 @@ import { drag$, DragMove } from '@/utils/globalEventObservable';
 import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Table.styles';
+import { useFocusTable } from './useFocusTable';
 
 export type TableProps = {
   table: Table;
@@ -27,6 +38,10 @@ export type TableProps = {
 
 const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const { hasEdit, hasFocus, hasSelectColumn } = useFocusTable(
+    ctx,
+    props.table.id
+  );
 
   const handleMove = ({ event, movementX, movementY }: DragMove) => {
     event.type === 'mousemove' && event.preventDefault();
@@ -45,7 +60,7 @@ const Table: FC<TableProps> = (props, ctx) => {
       !el.closest('.table-header-color') &&
       !el.closest('.column-row') &&
       !el.closest('.icon') &&
-      !el.closest('.edit-input')
+      !el.closest('.input-padding')
     ) {
       drag$.subscribe(handleMove);
     }
@@ -59,6 +74,40 @@ const Table: FC<TableProps> = (props, ctx) => {
   const handleRemoveTable = () => {
     const { store } = app.value;
     store.dispatch(removeTableAction$(props.table.id));
+  };
+
+  const handleFocus = (focusType: FocusType) => {
+    const { store } = app.value;
+    store.dispatch(focusTableAction({ tableId: props.table.id, focusType }));
+  };
+
+  const handleEdit = () => {
+    const { store } = app.value;
+    store.dispatch(editTableAction());
+  };
+
+  const handleEditEnd = () => {
+    const { store } = app.value;
+    store.dispatch(editTableEndAction());
+  };
+
+  const handleInput = (event: InputEvent, focusType: FocusType) => {
+    const { store } = app.value;
+    const input = event.target as HTMLInputElement | null;
+    if (!input) return;
+
+    switch (focusType) {
+      case FocusType.tableName:
+        store.dispatch(
+          changeTableNameAction({ id: props.table.id, value: input.value })
+        );
+        break;
+      case FocusType.tableComment:
+        store.dispatch(
+          changeTableCommentAction({ id: props.table.id, value: input.value })
+        );
+        break;
+    }
   };
 
   return () => {
@@ -115,18 +164,46 @@ const Table: FC<TableProps> = (props, ctx) => {
             />
           </div>
           <div class=${styles.headerInputWrap}>
-            <${EditInput}
-              placeholder="table"
-              width=${table.ui.widthName}
-              value=${table.name}
-            />
+            <div
+              class="input-padding"
+              @mousedown=${() => {
+                handleFocus(FocusType.tableName);
+              }}
+              @dblclick=${handleEdit}
+            >
+              <${EditInput}
+                placeholder="table"
+                width=${table.ui.widthName}
+                value=${table.name}
+                focus=${hasFocus(FocusType.tableName)}
+                edit=${hasEdit(FocusType.tableName)}
+                .onBlur=${handleEditEnd}
+                .onInput=${(event: InputEvent) => {
+                  handleInput(event, FocusType.tableName);
+                }}
+              />
+            </div>
             ${bHas(settings.show, SchemaV3Constants.Show.tableComment)
               ? html`
-                  <${EditInput}
-                    placeholder="comment"
-                    width=${table.ui.widthComment}
-                    value=${table.comment}
-                  />
+                  <div
+                    class="input-padding"
+                    @mousedown=${() => {
+                      handleFocus(FocusType.tableComment);
+                    }}
+                    @dblclick=${handleEdit}
+                  >
+                    <${EditInput}
+                      placeholder="comment"
+                      width=${table.ui.widthComment}
+                      value=${table.comment}
+                      focus=${hasFocus(FocusType.tableComment)}
+                      edit=${hasEdit(FocusType.tableComment)}
+                      .onBlur=${handleEditEnd}
+                      .onInput=${(event: InputEvent) => {
+                        handleInput(event, FocusType.tableComment);
+                      }}
+                    />
+                  </div>
                 `
               : null}
           </div>
@@ -139,10 +216,25 @@ const Table: FC<TableProps> = (props, ctx) => {
               html`
                 <${Column}
                   column=${column}
+                  selected=${hasSelectColumn(column.id)}
                   widthName=${tableWidths.name}
                   widthDataType=${tableWidths.dataType}
                   widthDefault=${tableWidths.default}
                   widthComment=${tableWidths.comment}
+                  focusName=${hasFocus(FocusType.columnName, column.id)}
+                  focusDataType=${hasFocus(FocusType.columnDataType, column.id)}
+                  focusNotNull=${hasFocus(FocusType.columnNotNull, column.id)}
+                  focusDefault=${hasFocus(FocusType.columnDefault, column.id)}
+                  focusComment=${hasFocus(FocusType.columnComment, column.id)}
+                  focusUnique=${hasFocus(FocusType.columnUnique, column.id)}
+                  focusAutoIncrement=${hasFocus(
+                    FocusType.columnAutoIncrement,
+                    column.id
+                  )}
+                  editName=${hasEdit(FocusType.columnName, column.id)}
+                  editDataType=${hasEdit(FocusType.columnDataType, column.id)}
+                  editDefault=${hasEdit(FocusType.columnDefault, column.id)}
+                  editComment=${hasEdit(FocusType.columnComment, column.id)}
                 />
               `
           )}

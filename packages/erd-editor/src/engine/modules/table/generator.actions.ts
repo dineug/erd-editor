@@ -1,5 +1,6 @@
 import { GeneratorAction } from '@/engine/generator.actions';
 import {
+  focusTableAction,
   selectAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -34,7 +35,7 @@ export const addTableAction$ = (): GeneratorAction =>
         zIndex: nextZIndex(tables, memos),
       },
     });
-    // TODO: focus table
+    yield focusTableAction({ tableId: id });
   };
 
 export const removeTableAction$ = (id?: string): GeneratorAction =>
@@ -67,10 +68,12 @@ export const selectTableAction$ = (
     if (!$mod) {
       yield unselectAllAction();
     }
+
     yield selectAction({ [id]: SelectType.table });
     yield changeZIndexAction({ id, zIndex: nextZIndex(tables, memos) });
+    yield focusTableAction({ tableId: id });
 
-    // TODO: focusTable, drawRelationship
+    // TODO: drawRelationship
   };
 
 export const actions$ = {

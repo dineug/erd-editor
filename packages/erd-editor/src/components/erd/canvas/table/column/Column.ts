@@ -11,10 +11,21 @@ import {
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_UNIQUE_WIDTH,
 } from '@/constants/layout';
-import { removeColumnAction$ } from '@/engine/modules/tableColumn/generator.actions';
+import {
+  editTableAction,
+  editTableEndAction,
+  focusColumnAction,
+} from '@/engine/modules/editor/atom.actions';
+import { FocusType } from '@/engine/modules/editor/state';
+import {
+  changeColumnValueAction$,
+  isToggleColumnTypes,
+  removeColumnAction$,
+  toggleColumnValueAction$,
+} from '@/engine/modules/tableColumn/generator.actions';
 import { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { simpleShortcutToString } from '@/utils/keyboard-shortcut';
+import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Column.styles';
 
@@ -23,10 +34,22 @@ const Show = SchemaV3Constants.Show;
 
 export type ColumnProps = {
   column: Column;
+  selected: boolean;
   widthName: number;
   widthDataType: number;
   widthDefault: number;
   widthComment: number;
+  focusName: boolean;
+  focusDataType: boolean;
+  focusNotNull: boolean;
+  focusDefault: boolean;
+  focusComment: boolean;
+  focusUnique: boolean;
+  focusAutoIncrement: boolean;
+  editName: boolean;
+  editDataType: boolean;
+  editDefault: boolean;
+  editComment: boolean;
 };
 
 type ColumnOrderTpl = {
@@ -44,6 +67,52 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     );
   };
 
+  const handleFocus = (event: MouseEvent, focusType: FocusType) => {
+    const { store } = app.value;
+    store.dispatch(
+      focusColumnAction({
+        tableId: props.column.tableId,
+        columnId: props.column.id,
+        focusType,
+        $mod: isMod(event),
+        shiftKey: event.shiftKey,
+      })
+    );
+  };
+
+  const handleEdit = (focusType: FocusType) => {
+    const { store } = app.value;
+    store.dispatch(
+      isToggleColumnTypes(focusType)
+        ? toggleColumnValueAction$(
+            focusType,
+            props.column.tableId,
+            props.column.id
+          )
+        : editTableAction()
+    );
+  };
+
+  const handleEditEnd = () => {
+    const { store } = app.value;
+    store.dispatch(editTableEndAction());
+  };
+
+  const handleInput = (event: InputEvent, focusType: FocusType) => {
+    const { store } = app.value;
+    const input = event.target as HTMLInputElement | null;
+    if (!input) return;
+
+    store.dispatch(
+      changeColumnValueAction$(
+        focusType,
+        props.column.tableId,
+        props.column.id,
+        input.value
+      )
+    );
+  };
+
   const getColumnOrder = (): ColumnOrderTpl[] => {
     const { store } = app.value;
     const { settings } = store.state;
@@ -57,82 +126,179 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         switch (columnType) {
           case ColumnType.columnName:
             template = html`
-              <${EditInput}
-                class=${'column-col'}
-                placeholder="column"
-                width=${widthName}
-                value=${column.name}
-              />
+              <div
+                class="column-col"
+                @mousedown=${(event: MouseEvent) => {
+                  handleFocus(event, FocusType.columnName);
+                }}
+                @dblclick=${() => {
+                  handleEdit(FocusType.columnName);
+                }}
+              >
+                <${EditInput}
+                  placeholder="column"
+                  width=${widthName}
+                  value=${column.name}
+                  focus=${props.focusName}
+                  edit=${props.editName}
+                  .onBlur=${handleEditEnd}
+                  .onInput=${(event: InputEvent) => {
+                    handleInput(event, FocusType.columnName);
+                  }}
+                />
+              </div>
             `;
             break;
           case ColumnType.columnDefault:
             template = bHas(settings.show, Show.columnDefault)
               ? html`
-                  <${EditInput}
-                    class=${'column-col'}
-                    placeholder="default"
-                    width=${widthDefault}
-                    value=${column.default}
-                  />
+                  <div
+                    class="column-col"
+                    @mousedown=${(event: MouseEvent) => {
+                      handleFocus(event, FocusType.columnDefault);
+                    }}
+                    @dblclick=${() => {
+                      handleEdit(FocusType.columnDefault);
+                    }}
+                  >
+                    <${EditInput}
+                      placeholder="default"
+                      width=${widthDefault}
+                      value=${column.default}
+                      focus=${props.focusDefault}
+                      edit=${props.editDefault}
+                      .onBlur=${handleEditEnd}
+                      .onInput=${(event: InputEvent) => {
+                        handleInput(event, FocusType.columnDefault);
+                      }}
+                    />
+                  </div>
                 `
               : null;
             break;
           case ColumnType.columnComment:
             template = bHas(settings.show, Show.columnComment)
               ? html`
-                  <${EditInput}
-                    class=${'column-col'}
-                    placeholder="comment"
-                    width=${widthComment}
-                    value=${column.comment}
-                  />
+                  <div
+                    class="column-col"
+                    @mousedown=${(event: MouseEvent) => {
+                      handleFocus(event, FocusType.columnComment);
+                    }}
+                    @dblclick=${() => {
+                      handleEdit(FocusType.columnComment);
+                    }}
+                  >
+                    <${EditInput}
+                      placeholder="comment"
+                      width=${widthComment}
+                      value=${column.comment}
+                      focus=${props.focusComment}
+                      edit=${props.editComment}
+                      .onBlur=${handleEditEnd}
+                      .onInput=${(event: InputEvent) => {
+                        handleInput(event, FocusType.columnComment);
+                      }}
+                    />
+                  </div>
                 `
               : null;
             break;
           case ColumnType.columnDataType:
             template = bHas(settings.show, Show.columnDataType)
               ? html`
-                  <${EditInput}
-                    class=${'column-col'}
-                    placeholder="dataType"
-                    width=${widthDataType}
-                    value=${column.dataType}
-                  />
+                  <div
+                    class="column-col"
+                    @mousedown=${(event: MouseEvent) => {
+                      handleFocus(event, FocusType.columnDataType);
+                    }}
+                    @dblclick=${() => {
+                      handleEdit(FocusType.columnDataType);
+                    }}
+                  >
+                    <${EditInput}
+                      placeholder="dataType"
+                      width=${widthDataType}
+                      value=${column.dataType}
+                      focus=${props.focusDataType}
+                      edit=${props.editDataType}
+                      .onBlur=${handleEditEnd}
+                      .onInput=${(event: InputEvent) => {
+                        handleInput(event, FocusType.columnDataType);
+                      }}
+                    />
+                  </div>
                 `
               : null;
             break;
           case ColumnType.columnNotNull:
             template = bHas(settings.show, Show.columnNotNull)
-              ? html`<${ColumnNotNull} options=${column.options} />`
+              ? html`
+                  <div
+                    class="column-col"
+                    @mousedown=${(event: MouseEvent) => {
+                      handleFocus(event, FocusType.columnNotNull);
+                    }}
+                    @dblclick=${() => {
+                      handleEdit(FocusType.columnNotNull);
+                    }}
+                  >
+                    <${ColumnNotNull}
+                      options=${column.options}
+                      focus=${props.focusNotNull}
+                    />
+                  </div>
+                `
               : null;
             break;
           case ColumnType.columnUnique:
             template = bHas(settings.show, Show.columnUnique)
               ? html`
-                  <${ColumnOption}
-                    checked=${bHas(
-                      column.options,
-                      SchemaV3Constants.ColumnOption.unique
-                    )}
-                    width=${COLUMN_UNIQUE_WIDTH}
-                    text="UQ"
-                    title="Unique"
-                  />
+                  <div
+                    class="column-col"
+                    @mousedown=${(event: MouseEvent) => {
+                      handleFocus(event, FocusType.columnUnique);
+                    }}
+                    @dblclick=${() => {
+                      handleEdit(FocusType.columnUnique);
+                    }}
+                  >
+                    <${ColumnOption}
+                      checked=${bHas(
+                        column.options,
+                        SchemaV3Constants.ColumnOption.unique
+                      )}
+                      width=${COLUMN_UNIQUE_WIDTH}
+                      text="UQ"
+                      title="Unique"
+                      focus=${props.focusUnique}
+                    />
+                  </div>
                 `
               : null;
             break;
           case ColumnType.columnAutoIncrement:
             template = bHas(settings.show, Show.columnAutoIncrement)
               ? html`
-                  <${ColumnOption}
-                    checked=${bHas(
-                      column.options,
-                      SchemaV3Constants.ColumnOption.autoIncrement
-                    )}
-                    width=${COLUMN_AUTO_INCREMENT_WIDTH}
-                    text="AI"
-                    title="Auto Increment"
-                  />
+                  <div
+                    class="column-col"
+                    @mousedown=${(event: MouseEvent) => {
+                      handleFocus(event, FocusType.columnAutoIncrement);
+                    }}
+                    @dblclick=${() => {
+                      handleEdit(FocusType.columnAutoIncrement);
+                    }}
+                  >
+                    <${ColumnOption}
+                      checked=${bHas(
+                        column.options,
+                        SchemaV3Constants.ColumnOption.autoIncrement
+                      )}
+                      width=${COLUMN_AUTO_INCREMENT_WIDTH}
+                      text="AI"
+                      title="Auto Increment"
+                      focus=${props.focusAutoIncrement}
+                    />
+                  </div>
                 `
               : null;
             break;
@@ -148,10 +314,10 @@ const Column: FC<ColumnProps> = (props, ctx) => {
 
   return () => {
     const { keyBindingMap } = app.value;
-    const { column } = props;
+    const { column, selected } = props;
 
     return html`
-      <div class=${['column-row', styles.root]}>
+      <div class=${['column-row', styles.root, { selected }]}>
         <${ColumnKey} keys=${column.ui.keys} />
         ${repeat(
           getColumnOrder(),

@@ -4,6 +4,7 @@ import { round } from 'lodash-es';
 
 import { query } from '@/utils/collection/query';
 import { createTable } from '@/utils/collection/table.entity';
+import { textInRange } from '@/utils/validation';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
 
@@ -80,7 +81,7 @@ const changeTableName: ReducerType<typeof ActionType.changeTableName> = (
   collection.replaceOperator(lww, timestamp, id, 'name', () => {
     collection.updateOne(id, table => {
       table.name = value;
-      table.ui.widthName = toWidth(value);
+      table.ui.widthName = textInRange(toWidth(value));
     });
   });
 };
@@ -100,7 +101,7 @@ const changeTableComment: ReducerType<typeof ActionType.changeTableComment> = (
   collection.replaceOperator(lww, timestamp, id, 'comment', () => {
     collection.updateOne(id, table => {
       table.comment = value;
-      table.ui.widthComment = toWidth(value);
+      table.ui.widthComment = textInRange(toWidth(value));
     });
   });
 };

@@ -72,9 +72,9 @@ export const headerInputWrap = css`
   display: flex;
   height: ${TABLE_HEADER_INPUT_HEIGHT}px;
   align-items: center;
-  padding: ${TABLE_HEADER_PADDING}px 0;
 
-  & > .edit-input {
-    margin-right: ${INPUT_MARGIN_RIGHT}px;
+  & > .input-padding {
+    padding: ${TABLE_HEADER_PADDING}px ${INPUT_MARGIN_RIGHT}px
+      ${TABLE_HEADER_PADDING}px 0;
   }
 `;

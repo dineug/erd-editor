@@ -4,7 +4,7 @@ import { EngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
 import { ValuesType } from '@/internal-types';
 
-import { SelectType } from './state';
+import { FocusType, MoveKey, SelectType } from './state';
 
 export const ActionType = {
   changeHasHistory: 'editor.changeHasHistory',
@@ -14,6 +14,13 @@ export const ActionType = {
   changeViewport: 'editor.changeViewport',
   clear: 'editor.clear',
   loadJson: 'editor.loadJson',
+  focusTable: 'editor.focusTable',
+  focusColumn: 'editor.focusColumn',
+  focusTableEnd: 'editor.focusTableEnd',
+  focusMoveTable: 'editor.focusMoveTable',
+  editTable: 'editor.editTable',
+  editTableEnd: 'editor.editTableEnd',
+  selectAllColumn: 'editor.selectAllColumn',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -33,6 +40,25 @@ export type ActionMap = {
   [ActionType.loadJson]: {
     value: string;
   };
+  [ActionType.focusTable]: {
+    tableId: string;
+    focusType?: FocusType;
+  };
+  [ActionType.focusColumn]: {
+    tableId: string;
+    columnId: string;
+    focusType: FocusType;
+    $mod: boolean;
+    shiftKey: boolean;
+  };
+  [ActionType.focusTableEnd]: void;
+  [ActionType.focusMoveTable]: {
+    moveKey: MoveKey;
+    shiftKey: boolean;
+  };
+  [ActionType.editTable]: void;
+  [ActionType.editTableEnd]: void;
+  [ActionType.selectAllColumn]: void;
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<

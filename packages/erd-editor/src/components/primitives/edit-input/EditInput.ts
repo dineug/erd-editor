@@ -1,4 +1,7 @@
-import { FC, html } from '@dineug/r-html';
+import { createRef, FC, html, onBeforeMount, ref, watch } from '@dineug/r-html';
+
+import { useUnmounted } from '@/hooks/useUnmounted';
+import { lastCursorFocus } from '@/utils/focus';
 
 import * as styles from './EditInput.styles';
 
@@ -16,6 +19,9 @@ export type EditInputProps = {
 };
 
 const EditInput: FC<EditInputProps> = (props, ctx) => {
+  const input = createRef<HTMLInputElement>();
+  const { addUnsubscribe } = useUnmounted();
+
   const className = () => {
     const notEdit = !props.edit;
     return {
@@ -25,10 +31,24 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
     };
   };
 
+  onBeforeMount(() => {
+    addUnsubscribe(
+      watch(props).subscribe(propName => {
+        const $input = input.value;
+        if (propName !== 'edit' || !props.edit || !input) {
+          return;
+        }
+
+        lastCursorFocus($input);
+      })
+    );
+  });
+
   return () =>
     props.edit
       ? html`
           <input
+            ${ref(input)}
             class=${['edit-input', styles.root, className(), props.class]}
             style=${{
               width: `${props.width}px`,
@@ -50,6 +70,7 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
               'edit-input',
               styles.root,
               styles.cursor,
+              styles.userSelect,
               className(),
               props.class,
             ]}

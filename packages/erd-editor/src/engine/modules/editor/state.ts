@@ -6,6 +6,7 @@ export type Editor = {
   hasUndo: boolean;
   hasRedo: boolean;
   viewport: Viewport;
+  focusTable: FocusTable | null;
 };
 
 export type Viewport = {
@@ -13,11 +14,42 @@ export type Viewport = {
   height: number;
 };
 
+export type FocusTable = {
+  tableId: string;
+  columnId: string | null;
+  focusType: FocusType;
+  selectColumnIds: string[];
+  prevSelectColumnId: string | null;
+  edit: boolean;
+};
+
 export const SelectType = {
   table: 'table',
   memo: 'memo',
 } as const;
 export type SelectType = ValuesType<typeof SelectType>;
+
+export const FocusType = {
+  tableName: 'tableName',
+  tableComment: 'tableComment',
+  columnName: 'columnName',
+  columnDataType: 'columnDataType',
+  columnNotNull: 'columnNotNull',
+  columnUnique: 'columnUnique',
+  columnAutoIncrement: 'columnAutoIncrement',
+  columnDefault: 'columnDefault',
+  columnComment: 'columnComment',
+} as const;
+export type FocusType = ValuesType<typeof FocusType>;
+
+export const MoveKey = {
+  ArrowUp: 'ArrowUp',
+  ArrowRight: 'ArrowRight',
+  ArrowDown: 'ArrowDown',
+  ArrowLeft: 'ArrowLeft',
+  Tab: 'Tab',
+};
+export type MoveKey = ValuesType<typeof MoveKey>;
 
 export const createEditor = (): Editor => ({
   selectedMap: {},
@@ -27,4 +59,5 @@ export const createEditor = (): Editor => ({
     width: DEFAULT_WIDTH,
     height: DEFAULT_HEIGHT,
   },
+  focusTable: null,
 });

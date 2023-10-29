@@ -1,8 +1,6 @@
 import { GeneratorAction } from '@/engine/generator.actions';
-import {
-  selectAction,
-  unselectAllAction,
-} from '@/engine/modules/editor/atom.actions';
+import { selectAction } from '@/engine/modules/editor/atom.actions';
+import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { nextPoint, nextZIndex, uuid } from '@/utils';
 import { query } from '@/utils/collection/query';
@@ -24,7 +22,7 @@ export const addMemoAction$ = (): GeneratorAction =>
     const point = nextPoint(settings, tables, memos);
     const id = uuid();
 
-    yield unselectAllAction();
+    yield unselectAllAction$();
     yield selectAction({ [id]: SelectType.memo });
     // TODO: focus table end
     yield addMemoAction({
@@ -62,7 +60,7 @@ export const selectMemoAction$ = (id: string, $mod: boolean): GeneratorAction =>
       .selectByIds(memoIds);
 
     if (!$mod) {
-      yield unselectAllAction();
+      yield unselectAllAction$();
     }
     yield selectAction({ [id]: SelectType.memo });
     yield changeZIndexAction({ id, zIndex: nextZIndex(tables, memos) });

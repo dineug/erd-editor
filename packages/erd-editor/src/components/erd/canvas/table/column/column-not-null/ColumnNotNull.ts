@@ -15,7 +15,7 @@ const ColumnNotNull: FC<ColumnNotNullProps> = (props, ctx) => {
   return () =>
     html`
       <div
-        class=${['column-col', styles.notNull, { focus: props.focus }]}
+        class=${[styles.notNull, { focus: props.focus }]}
         style=${{
           width: `${COLUMN_NOT_NULL_WIDTH}px`,
           'min-width': `${COLUMN_NOT_NULL_WIDTH}px`,

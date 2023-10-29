@@ -1,3 +1,5 @@
+import { range } from 'lodash-es';
+
 import { START_ADD, START_X, START_Y } from '@/constants/layout';
 import { EntityMeta, Memo, Point, Settings, Table } from '@/internal-types';
 
@@ -41,4 +43,8 @@ export function getDefaultEntityMeta(): EntityMeta {
     updateAt: now,
     createAt: now,
   };
+}
+
+export function safeRange(a: number, b: number) {
+  return a < b ? range(a, b + 1) : range(b, a + 1);
 }

@@ -13,11 +13,7 @@ export type ColumnOptionProps = {
 const ColumnOption: FC<ColumnOptionProps> = (props, ctx) => {
   return () => html`
     <div
-      class=${[
-        'column-col',
-        styles.option,
-        { focus: props.focus, checked: props.checked },
-      ]}
+      class=${[styles.option, { focus: props.focus, checked: props.checked }]}
       style=${{
         width: `${props.width}px`,
         'min-width': `${props.width}px`,

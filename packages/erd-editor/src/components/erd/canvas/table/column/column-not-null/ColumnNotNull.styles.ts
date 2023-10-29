@@ -13,6 +13,7 @@ export const notNull = css`
   ${typography.paragraph};
   line-height: normal;
   cursor: default;
+  user-select: none;
 
   &.focus {
     border-bottom: solid var(--focus) 1.5px;

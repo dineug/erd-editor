@@ -2,6 +2,8 @@ import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { arrayHas, createInRange, isString } from '@dineug/shared';
 import { round } from 'lodash-es';
 
+import { COLUMN_MIN_WIDTH } from '@/constants/layout';
+
 const NOT_NUM = /[^0-9]/g;
 
 export const toNumString = (value: string) => value.replace(NOT_NUM, '');
@@ -34,3 +36,7 @@ export const hasNameCase = arrayHas(SchemaV3Constants.NameCaseList);
 export const hasBracketType = arrayHas(SchemaV3Constants.BracketTypeList);
 export const hasLanguage = arrayHas(SchemaV3Constants.LanguageList);
 export const hasColumnType = arrayHas(SchemaV3Constants.ColumnTypeList);
+
+export function textInRange(width: number) {
+  return Math.max(width, COLUMN_MIN_WIDTH);
+}

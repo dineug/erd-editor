@@ -30,3 +30,7 @@ export const root = css`
 export const cursor = css`
   cursor: default;
 `;
+
+export const userSelect = css`
+  user-select: none;
+`;
