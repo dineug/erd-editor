@@ -141,6 +141,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                   value=${column.name}
                   focus=${props.focusName}
                   edit=${props.editName}
+                  autofocus=${true}
                   .onBlur=${handleEditEnd}
                   .onInput=${(event: InputEvent) => {
                     handleInput(event, FocusType.columnName);
@@ -167,6 +168,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                       value=${column.default}
                       focus=${props.focusDefault}
                       edit=${props.editDefault}
+                      autofocus=${true}
                       .onBlur=${handleEditEnd}
                       .onInput=${(event: InputEvent) => {
                         handleInput(event, FocusType.columnDefault);
@@ -194,6 +196,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                       value=${column.comment}
                       focus=${props.focusComment}
                       edit=${props.editComment}
+                      autofocus=${true}
                       .onBlur=${handleEditEnd}
                       .onInput=${(event: InputEvent) => {
                         handleInput(event, FocusType.columnComment);
@@ -221,6 +224,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                       value=${column.dataType}
                       focus=${props.focusDataType}
                       edit=${props.editDataType}
+                      autofocus=${true}
                       .onBlur=${handleEditEnd}
                       .onInput=${(event: InputEvent) => {
                         handleInput(event, FocusType.columnDataType);

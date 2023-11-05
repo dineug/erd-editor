@@ -1,4 +1,12 @@
-import { createRef, FC, html, onBeforeMount, ref, watch } from '@dineug/r-html';
+import {
+  createRef,
+  FC,
+  html,
+  onBeforeMount,
+  onMounted,
+  ref,
+  watch,
+} from '@dineug/r-html';
 
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { lastCursorFocus } from '@/utils/focus';
@@ -14,6 +22,7 @@ export type EditInputProps = {
   focus: boolean;
   width: number;
   value: string;
+  autofocus?: boolean;
   onInput?: (event: InputEvent) => void;
   onBlur?: (event: FocusEvent) => void;
   onKeyup?: (event: KeyboardEvent) => void;
@@ -41,7 +50,7 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
     addUnsubscribe(
       watch(props).subscribe(propName => {
         const $input = input.value;
-        if (propName !== 'edit' || !props.edit || !input) {
+        if (propName !== 'edit' || !props.edit || !$input) {
           return;
         }
 
@@ -55,6 +64,15 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
         }
       })
     );
+  });
+
+  onMounted(() => {
+    const $input = input.value;
+    if (!props.autofocus || !$input) {
+      return;
+    }
+
+    lastCursorFocus($input);
   });
 
   return () =>

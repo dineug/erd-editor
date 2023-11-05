@@ -177,6 +177,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 value=${table.name}
                 focus=${hasFocus(FocusType.tableName)}
                 edit=${hasEdit(FocusType.tableName)}
+                autofocus=${true}
                 .onBlur=${handleEditEnd}
                 .onInput=${(event: InputEvent) => {
                   handleInput(event, FocusType.tableName);
@@ -198,6 +199,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                       value=${table.comment}
                       focus=${hasFocus(FocusType.tableComment)}
                       edit=${hasEdit(FocusType.tableComment)}
+                      autofocus=${true}
                       .onBlur=${handleEditEnd}
                       .onInput=${(event: InputEvent) => {
                         handleInput(event, FocusType.tableComment);

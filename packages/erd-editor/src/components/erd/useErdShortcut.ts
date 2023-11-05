@@ -1,4 +1,5 @@
-import { nextTick, onMounted } from '@dineug/r-html';
+import { SchemaV3Constants } from '@dineug/erd-editor-schema';
+import { onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/context';
 import {
@@ -23,127 +24,123 @@ import {
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
+const CanvasType = SchemaV3Constants.CanvasType;
+
 export function useErdShortcut(ctx: Parameters<typeof useAppContext>[0]) {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
 
+  const handleKeydown = (event: KeyboardEvent) => {
+    const { store } = app.value;
+    const { editor, settings } = store.state;
+    if (settings.canvasType !== CanvasType.ERD) {
+      return;
+    }
+
+    if (
+      editor.focusTable &&
+      !editor.focusTable.edit &&
+      event.key !== MoveKey.Tab &&
+      hasMoveKeys(event.key)
+    ) {
+      store.dispatch(
+        focusMoveTableAction({
+          moveKey: event.key,
+          shiftKey: event.shiftKey,
+        })
+      );
+    }
+
+    if (editor.focusTable && event.key === MoveKey.Tab) {
+      event.preventDefault();
+      store.dispatch(focusMoveTableAction$(event.key, event.shiftKey));
+
+      window.setTimeout(() => {
+        if (
+          !editor.focusTable ||
+          isToggleColumnTypes(editor.focusTable.focusType)
+        ) {
+          return;
+        }
+
+        store.dispatch(editTableAction());
+      }, 1);
+    }
+  };
+
+  const handleShortcut = (action: KeyBindingName) => {
+    const { store } = app.value;
+    const { editor, settings } = store.state;
+    if (settings.canvasType !== CanvasType.ERD) {
+      return;
+    }
+
+    if (!editor.focusTable || !editor.focusTable.edit) {
+      action === KeyBindingName.addTable && store.dispatch(addTableAction$());
+      action === KeyBindingName.addColumn && store.dispatch(addColumnAction$());
+      action === KeyBindingName.addMemo && store.dispatch(addMemoAction$());
+
+      action === KeyBindingName.selectAllTable &&
+        store.dispatch(selectAllAction());
+
+      // drawStartRelationship
+
+      action === KeyBindingName.removeTable &&
+        store.dispatch(removeSelectedAction$());
+
+      // KeyBindingName.tableProperties
+
+      // KeyBindingName.find
+
+      action === KeyBindingName.zoomIn &&
+        store.dispatch(streamZoomLevelAction({ value: 0.1 }));
+      action === KeyBindingName.zoomOut &&
+        store.dispatch(streamZoomLevelAction({ value: -0.1 }));
+    }
+
+    if (editor.focusTable && !editor.focusTable.edit) {
+      // KeyBindingName.selectAllColumn
+      // KeyBindingName.removeColumn
+      // KeyBindingName.copyColumn
+      // KeyBindingName.pasteColumn
+      // KeyBindingName.primaryKey
+    }
+
+    if (editor.focusTable && action === KeyBindingName.edit) {
+      const focusTable = editor.focusTable;
+
+      if (focusTable.edit) {
+        store.dispatch(editTableEndAction());
+      } else if (
+        focusTable.columnId &&
+        isToggleColumnTypes(focusTable.focusType)
+      ) {
+        store.dispatch(
+          toggleColumnValueAction$(
+            focusTable.focusType,
+            focusTable.tableId,
+            focusTable.columnId
+          )
+        );
+      } else {
+        store.dispatch(editTableAction());
+      }
+    }
+
+    if (action === KeyBindingName.stop) {
+      // drawEndRelationship
+    }
+
+    action === KeyBindingName.undo && store.undo();
+    action === KeyBindingName.redo && store.redo();
+  };
+
   onMounted(() => {
-    const { store, shortcut$, keydown$ } = app.value;
+    const { keydown$, shortcut$ } = app.value;
 
     addUnsubscribe(
-      keydown$.subscribe(event => {
-        const { editor } = store.state;
-
-        if (
-          editor.focusTable &&
-          !editor.focusTable.edit &&
-          event.key !== MoveKey.Tab &&
-          hasMoveKeys(event.key)
-        ) {
-          store.dispatch(
-            focusMoveTableAction({
-              moveKey: event.key,
-              shiftKey: event.shiftKey,
-            })
-          );
-        }
-
-        if (editor.focusTable && event.key === MoveKey.Tab) {
-          event.preventDefault();
-          store.dispatch(focusMoveTableAction$(event.key, event.shiftKey));
-
-          nextTick(() => {
-            if (
-              !editor.focusTable ||
-              isToggleColumnTypes(editor.focusTable.focusType)
-            ) {
-              return;
-            }
-
-            store.dispatch(editTableAction());
-          });
-        }
-      }),
-      shortcut$.subscribe(action => {
-        const { editor } = store.state;
-
-        if (editor.focusTable && action === KeyBindingName.edit) {
-          const focusTable = editor.focusTable;
-
-          if (focusTable.edit) {
-            store.dispatch(editTableEndAction());
-          } else if (
-            focusTable.columnId &&
-            isToggleColumnTypes(focusTable.focusType)
-          ) {
-            store.dispatch(
-              toggleColumnValueAction$(
-                focusTable.focusType,
-                focusTable.tableId,
-                focusTable.columnId
-              )
-            );
-          } else {
-            store.dispatch(editTableAction());
-          }
-        }
-
-        switch (action) {
-          case KeyBindingName.edit:
-            break;
-          case KeyBindingName.stop:
-            break;
-          case KeyBindingName.find:
-            break;
-          case KeyBindingName.undo:
-            store.undo();
-            break;
-          case KeyBindingName.redo:
-            store.redo();
-            break;
-          case KeyBindingName.addTable:
-            store.dispatch(addTableAction$());
-            break;
-          case KeyBindingName.addColumn:
-            store.dispatch(addColumnAction$());
-            break;
-          case KeyBindingName.addMemo:
-            store.dispatch(addMemoAction$());
-            break;
-          case KeyBindingName.removeTable:
-            store.dispatch(removeSelectedAction$());
-            break;
-          case KeyBindingName.removeColumn:
-            break;
-          case KeyBindingName.primaryKey:
-            break;
-          case KeyBindingName.selectAllTable:
-            store.dispatch(selectAllAction());
-            break;
-          case KeyBindingName.selectAllColumn:
-            break;
-          case KeyBindingName.copyColumn:
-            break;
-          case KeyBindingName.pasteColumn:
-            break;
-          case KeyBindingName.relationshipZeroOne:
-            break;
-          case KeyBindingName.relationshipZeroN:
-            break;
-          case KeyBindingName.relationshipOneOnly:
-            break;
-          case KeyBindingName.relationshipOneN:
-            break;
-          case KeyBindingName.tableProperties:
-            break;
-          case KeyBindingName.zoomIn:
-            store.dispatch(streamZoomLevelAction({ value: 0.1 }));
-            break;
-          case KeyBindingName.zoomOut:
-            store.dispatch(streamZoomLevelAction({ value: -0.1 }));
-            break;
-        }
-      })
+      keydown$.subscribe(handleKeydown),
+      shortcut$.subscribe(handleShortcut)
     );
   });
 }
