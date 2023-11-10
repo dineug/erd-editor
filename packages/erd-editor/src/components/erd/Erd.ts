@@ -6,12 +6,14 @@ import DragSelect from '@/components/erd/drag-select/DragSelect';
 import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
+import Minimap from '@/components/erd/minimap/Minimap';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   streamScrollToAction,
   streamZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
+import { isMouseEvent } from '@/utils/domEvent';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
 
@@ -23,6 +25,7 @@ export type ErdProps = {};
 const Erd: FC<ErdProps> = (props, ctx) => {
   const contextMenu = useContextMenuRootProvider(ctx);
   const root = createRef<HTMLDivElement>();
+  const canvas = createRef<HTMLDivElement>();
   const app = useAppContext(ctx);
   const state = observable({
     dragSelect: false,
@@ -61,7 +64,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     resetScroll();
   };
 
-  const handleDragSelect = (event: DragEvent) => {
+  const handleDragSelect = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement | null;
     if (!el) return;
 
@@ -74,7 +77,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const { store } = app.value;
     store.dispatch(unselectAllAction$());
 
-    if (event.type === 'mousedown' && isMod(event)) {
+    if (isMouseEvent(event) && isMod(event)) {
       const { x, y } = root.value.getBoundingClientRect();
       state.dragSelect = true;
       state.dragSelectX = event.clientX - x;
@@ -99,7 +102,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         @touchstart=${handleDragSelect}
         @wheel=${handleWheel}
       >
-        <${Canvas} />
+        <${Canvas} canvas=${canvas} />
+        <${Minimap} />
         ${state.dragSelect
           ? html`
               <${DragSelect}
@@ -112,7 +116,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           : null}
         <${ErdContextMenu}
           type=${ErdContextMenuType.ERD}
-          root=${root}
+          root=${canvas}
           .onClose=${handleContextmenuClose}
         />
       </div>

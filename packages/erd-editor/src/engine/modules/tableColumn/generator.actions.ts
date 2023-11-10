@@ -21,6 +21,7 @@ import {
   changeColumnDefaultAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
+  changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
   removeColumnAction,
 } from './atom.actions';
@@ -194,9 +195,39 @@ export const changeColumnValueAction$ = (
     }
   };
 
+export const changeColumnPrimaryKeyAction$ = (
+  tableId: string,
+  columnId: string
+): GeneratorAction =>
+  function* ({ collections }) {
+    const column = query(collections)
+      .collection('tableColumnEntities')
+      .selectById(columnId);
+    if (!column) return;
+
+    const value = bHas(column.options, ColumnOption.primaryKey);
+
+    yield changeColumnPrimaryKeyAction({
+      tableId,
+      id: columnId,
+      value: !value,
+    });
+
+    if (!value || bHas(column.options, ColumnOption.notNull)) {
+      return;
+    }
+
+    yield changeColumnNotNullAction({
+      tableId,
+      id: columnId,
+      value: true,
+    });
+  };
+
 export const actions$ = {
   addColumnAction$,
   removeColumnAction$,
   toggleColumnValueAction$,
   changeColumnValueAction$,
+  changeColumnPrimaryKeyAction$,
 };

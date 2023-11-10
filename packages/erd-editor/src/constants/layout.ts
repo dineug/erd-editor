@@ -41,3 +41,8 @@ export const MEMO_HEADER_HEIGHT =
 
 export const MEMO_MIN_WIDTH = 100 + MEMO_HEADER_HEIGHT;
 export const MEMO_MIN_HEIGHT = 100;
+
+export const MINIMAP_SIZE = 150;
+export const MINIMAP_MARGIN = 20;
+
+export const TOOLBAR_HEIGHT = 30;

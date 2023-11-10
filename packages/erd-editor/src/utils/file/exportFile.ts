@@ -1,4 +1,4 @@
-import domToImage from 'dom-to-image';
+import { toBlob } from 'html-to-image';
 import { DateTime } from 'luxon';
 
 type ExportOptions = {
@@ -47,8 +47,10 @@ export function exportSQLDDL(sql: string, name?: string) {
   });
 }
 
-export function exportPNG(root: Element, name?: string) {
-  domToImage.toBlob(root).then(blob => {
+export function exportPNG(root: HTMLElement, name?: string) {
+  toBlob(root).then(blob => {
+    if (!blob) return;
+
     performExport(blob, {
       fileName: createName('.png', name),
     });

@@ -17,3 +17,11 @@ export function onStop(event: Event) {
 export function onStopImmediate(event: Event) {
   event.stopImmediatePropagation();
 }
+
+export function isMouseEvent(event: Event): event is MouseEvent {
+  return event instanceof MouseEvent;
+}
+
+export function isTouchEvent(event: Event): event is TouchEvent {
+  return event instanceof TouchEvent;
+}

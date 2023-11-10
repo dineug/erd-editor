@@ -7,6 +7,7 @@ import {
   editTableEndAction,
   focusMoveTableAction,
   selectAllAction,
+  selectAllColumnAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
   focusMoveTableAction$,
@@ -18,7 +19,9 @@ import { streamZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import {
   addColumnAction$,
+  changeColumnPrimaryKeyAction$,
   isToggleColumnTypes,
+  removeColumnAction$,
   toggleColumnValueAction$,
 } from '@/engine/modules/tableColumn/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -99,11 +102,32 @@ export function useErdShortcut(ctx: Parameters<typeof useAppContext>[0]) {
     }
 
     if (editor.focusTable && !editor.focusTable.edit) {
-      // KeyBindingName.selectAllColumn
-      // KeyBindingName.removeColumn
+      action === KeyBindingName.selectAllColumn &&
+        store.dispatch(selectAllColumnAction());
+
+      if (
+        action === KeyBindingName.removeColumn &&
+        editor.focusTable.selectColumnIds.length
+      ) {
+        store.dispatch(
+          removeColumnAction$(
+            editor.focusTable.tableId,
+            editor.focusTable.selectColumnIds
+          )
+        );
+      }
+
       // KeyBindingName.copyColumn
       // KeyBindingName.pasteColumn
-      // KeyBindingName.primaryKey
+
+      if (action === KeyBindingName.primaryKey && editor.focusTable.columnId) {
+        store.dispatch(
+          changeColumnPrimaryKeyAction$(
+            editor.focusTable.tableId,
+            editor.focusTable.columnId
+          )
+        );
+      }
     }
 
     if (editor.focusTable && action === KeyBindingName.edit) {

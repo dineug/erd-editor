@@ -8,7 +8,7 @@ import { exportJSON, exportPNG, exportSQLDDL } from '@/utils/file/exportFile';
 export function createExportMenus(
   app: AppContext,
   onClose: () => void,
-  root: Element
+  root: HTMLElement
 ) {
   const { store } = app;
   const databaseName = store.state.settings.databaseName;

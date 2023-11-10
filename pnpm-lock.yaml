@@ -107,9 +107,6 @@ importers:
       '@types/color':
         specifier: ^3.0.3
         version: 3.0.3
-      '@types/dom-to-image':
-        specifier: ^2.6.5
-        version: 2.6.5
       '@types/lodash-es':
         specifier: ^4.17.8
         version: 4.17.8
@@ -125,9 +122,9 @@ importers:
       color:
         specifier: ^4.2.3
         version: 4.2.3
-      dom-to-image:
-        specifier: ^2.6.0
-        version: 2.6.0
+      html-to-image:
+        specifier: ^1.11.11
+        version: 1.11.11
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
@@ -3706,10 +3703,6 @@ packages:
     resolution: {integrity: sha512-w5jZ0ee+HaPOaX25X2/2oGR/7rgAQSYII7X7pp0m9KgBfMP7uKfMfTvcpl5Dj+eDBbpxKGiqE+flqDr6XTd2RA==}
     dev: true
 
-  /@types/dom-to-image@2.6.5:
-    resolution: {integrity: sha512-SMYQf4urvjHfSsaEMhIULyjfawUv2a92OfglcGF7dQdDHBjfnGPtWoxw6hmKMiwsdmowHn70mxLw+F5cA7Imyg==}
-    dev: true
-
   /@types/ejs@3.1.2:
     resolution: {integrity: sha512-ZmiaE3wglXVWBM9fyVC17aGPkLo/UgaOjEiI2FXQfyczrCefORPxIe+2dVmnmk3zkVIbizjrlQzmPGhSYGXG5g==}
     dev: true
@@ -4988,10 +4981,6 @@ packages:
     resolution: {integrity: sha512-X7BJ2yElsnOJ30pZF4uIIDfBEVgF4XEBxL9Bxhy6dnrm5hkzqmsWHGTiHqRiITNhMyFLyAiWndIJP7Z1NTteDg==}
     dev: true
 
-  /dom-to-image@2.6.0:
-    resolution: {integrity: sha512-Dt0QdaHmLpjURjU7Tnu3AgYSF2LuOmksSGsUcE6ItvJoCWTBEmiMXcqBdNSAm9+QbbwD7JMoVsuuKX6ZVQv1qA==}
-    dev: true
-
   /dotenv-expand@10.0.0:
     resolution: {integrity: sha512-GopVGCpVS1UKH75VKHGuQFqS1Gusej0z4FyQkPdwjil2gNIv+LNsqBlboOzpJFZKVT95GkCyWJbBSdFEFUWI2A==}
     engines: {node: '>=12'}
@@ -5989,6 +5978,10 @@ packages:
 
   /hosted-git-info@2.8.9:
     resolution: {integrity: sha512-mxIDAb9Lsm6DoOJ7xH+5+X4y1LU/4Hi50L9C5sIswK3JzULS4bwk1FvjdBgvYR4bzT4tuUQiC15FE2f5HbLvYw==}
+    dev: true
+
+  /html-to-image@1.11.11:
+    resolution: {integrity: sha512-9gux8QhvjRO/erSnDPv28noDZcPZmYE7e1vFsBLKLlRlKDSqNJYebj6Qz1TGd5lsRV+X+xYyjCKjuZdABinWjA==}
     dev: true
 
   /http-errors@2.0.0:

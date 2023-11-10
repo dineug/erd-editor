@@ -15,6 +15,7 @@ import Erd from '@/components/erd/Erd';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import Theme from '@/components/theme/Theme';
 import Toolbar from '@/components/toolbar/Toolbar';
+import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -88,7 +89,9 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
-        store.dispatch(changeViewportAction({ width, height }));
+        store.dispatch(
+          changeViewportAction({ width, height: height - TOOLBAR_HEIGHT })
+        );
       }
     });
     resizeObserver.observe($root);

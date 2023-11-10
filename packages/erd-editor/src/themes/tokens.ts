@@ -24,6 +24,11 @@ export type Theme = {
   contextMenuHover: string;
   contextMenuBorder: string;
 
+  minimapBorder: string;
+  minimapShadow: string;
+  minimapViewportBorder: string;
+  minimapViewportBorderHover: string;
+
   dargSelectBackground: string;
   dargSelectBorder: string;
 

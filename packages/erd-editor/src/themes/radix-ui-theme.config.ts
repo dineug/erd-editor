@@ -26,6 +26,11 @@ export const ThemeConfig: Theme = {
   contextMenuHover: 'accent-7',
   contextMenuBorder: 'gray-6',
 
+  minimapBorder: 'override-black',
+  minimapShadow: 'override-black',
+  minimapViewportBorder: 'accent-7',
+  minimapViewportBorderHover: 'accent-8',
+
   dargSelectBackground: 'accent-5',
   dargSelectBorder: 'accent-8',
 
