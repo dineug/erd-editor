@@ -7,6 +7,8 @@ import {
 } from '@dineug/r-html';
 import { Subject } from 'rxjs';
 
+import { Ctx } from '@/internal-types';
+
 export type ContextMenuRootContext = {
   show: boolean;
   x: number;
@@ -24,13 +26,10 @@ export const contextMenuRootContext = createContext<ContextMenuRootContext>({
   change$: new Subject(),
 });
 
-export const useContextMenuRootContext = (
-  ctx: Parameters<typeof useContext>[0]
-) => useContext(ctx, contextMenuRootContext);
+export const useContextMenuRootContext = (ctx: Ctx) =>
+  useContext(ctx, contextMenuRootContext);
 
-export function useContextMenuRootProvider(
-  ctx: Parameters<typeof useContext>[0]
-) {
+export function useContextMenuRootProvider(ctx: Ctx) {
   const state = observable<ContextMenuRootContext>({
     show: false,
     x: 0,

@@ -13,6 +13,7 @@ import {
   InjectEngineContext,
 } from '@/engine/context';
 import { createRxStore, RxStore } from '@/engine/rx-store';
+import { Ctx } from '@/internal-types';
 import {
   createKeyBindingMap,
   KeyBindingMap,
@@ -52,5 +53,4 @@ export function createAppContext(ctx: InjectAppContext): AppContext {
 
 export const appContext = createContext<AppContext>({} as AppContext);
 
-export const useAppContext = (ctx: Parameters<typeof useContext>[0]) =>
-  useContext(ctx, appContext);
+export const useAppContext = (ctx: Ctx) => useContext(ctx, appContext);

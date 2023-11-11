@@ -169,17 +169,10 @@ importers:
         version: 4.2.0(typescript@5.1.6)(vite@4.4.9)
 
   packages/erd-editor-schema:
-    dependencies:
+    devDependencies:
       '@dineug/shared':
         specifier: workspace:*
         version: link:../shared
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
-      uuid:
-        specifier: ^9.0.0
-        version: 9.0.0
-    devDependencies:
       '@rollup/plugin-typescript':
         specifier: ^11.1.2
         version: 11.1.2(tslib@2.6.1)(typescript@5.1.6)
@@ -189,6 +182,9 @@ importers:
       '@types/uuid':
         specifier: ^9.0.2
         version: 9.0.2
+      lodash-es:
+        specifier: ^4.17.21
+        version: 4.17.21
       rollup-plugin-visualizer:
         specifier: ^5.9.2
         version: 5.9.2
@@ -204,6 +200,9 @@ importers:
       typescript-transform-paths:
         specifier: ^3.4.6
         version: 3.4.6(typescript@5.1.6)
+      uuid:
+        specifier: ^9.0.0
+        version: 9.0.0
       vite:
         specifier: ^4.4.9
         version: 4.4.9
@@ -6665,6 +6664,7 @@ packages:
 
   /lodash-es@4.17.21:
     resolution: {integrity: sha512-mKnC+QJ9pWVzv+C4/U3rRsHapFfHvQFoFB92e52xeyGMcX6/OlIl78je1u8vePzYZSkkogMPJ2yjxxsb89cxyw==}
+    dev: true
 
   /lodash.debounce@4.0.8:
     resolution: {integrity: sha512-FT1yDzDYEoYWhnSGnpE/4Kj1fLZkDFyqRb7fNt6FdYOSxlUWAtp42Eh6Wb0rGIv/m9Bgo7x4GhQbm5Ys4SG5ow==}
@@ -8763,6 +8763,7 @@ packages:
   /uuid@9.0.0:
     resolution: {integrity: sha512-MXcSTerfPa4uqyzStbRoTgt5XIe3x5+42+q1sDuy3R5MDk66URdLMOZe5aPX/SQd+kuYAh0FdP/pO28IkQyTeg==}
     hasBin: true
+    dev: true
 
   /validate-npm-package-license@3.0.4:
     resolution: {integrity: sha512-DpKm2Ui/xN7/HQKCtpZxoRWBhZ9Z0kqtygG8XCgNQ8ZlDnxuQmWhj566j8fN4Cu3/JmbhsDo7fcAJq4s9h27Ew==}

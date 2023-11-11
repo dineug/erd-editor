@@ -60,6 +60,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   const handleMove = ({ event, movementX, movementY }: DragMove) => {
     const { store } = app.value;
     event.type === 'mousemove' && event.preventDefault();
+    if (movementX === 0 && movementY === 0) {
+      return;
+    }
     store.dispatch(streamScrollToAction({ movementX, movementY }));
     resetScroll();
   };

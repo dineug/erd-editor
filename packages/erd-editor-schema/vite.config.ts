@@ -26,7 +26,6 @@ export default defineConfig({
       formats: ['es', 'umd'],
     },
     rollupOptions: {
-      external: Object.keys(pkg.dependencies),
       output: {
         banner,
       },

@@ -1,4 +1,5 @@
 import { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
+import { useContext } from '@dineug/r-html';
 
 export type ValuesType<T extends Record<string, string>> = T[keyof T];
 
@@ -39,3 +40,5 @@ export type EntityMeta = {
 };
 
 export type Unsubscribe = () => void;
+
+export type Ctx = Parameters<typeof useContext>[0];

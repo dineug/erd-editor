@@ -4,11 +4,13 @@ import { useAppContext } from '@/components/context';
 import * as CanvasStyle from '@/components/erd/canvas/Canvas.styles';
 import Memo from '@/components/erd/minimap/memo/Memo';
 import Table from '@/components/erd/minimap/table/Table';
+import { useMinimapScroll } from '@/components/erd/minimap/useMinimapScroll';
 import Viewport from '@/components/erd/minimap/viewport/Viewport';
 import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { query } from '@/utils/collection/query';
 import { isMouseEvent } from '@/utils/domEvent';
+import { forwardMoveStartEvent } from '@/utils/internalEvents';
 
 import * as styles from './Minimap.styles';
 
@@ -19,6 +21,7 @@ export type MinimapProps = {};
 const Minimap: FC<MinimapProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const minimap = createRef<HTMLDivElement>();
+  const { state, onScrollStart } = useMinimapScroll(ctx);
 
   const getRatio = () => {
     const { store } = app.value;
@@ -40,7 +43,7 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
     const top = y + MINIMAP_MARGIN;
 
     return {
-      transform: `scale(${ratio}, ${ratio})`,
+      transform: `scale(${ratio})`,
       width: `${width}px`,
       height: `${height}px`,
       right: `${right}px`,
@@ -87,6 +90,9 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
         scrollTop: -1 * scrollTop,
       })
     );
+
+    ctx.host.dispatchEvent(forwardMoveStartEvent({ originEvent: event }));
+    onScrollStart(event);
   };
 
   return () => {
@@ -136,7 +142,7 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
         </div>
       </div>
       <div class=${styles.border} style=${borderStyleMap()}></div>
-      <${Viewport} />
+      <${Viewport} selected=${state.selected} />
     `;
   };
 };

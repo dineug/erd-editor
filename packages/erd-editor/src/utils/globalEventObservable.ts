@@ -1,5 +1,8 @@
 import { filter, fromEvent, map, merge, takeUntil } from 'rxjs';
 
+import { isMouseEvent } from '@/utils/domEvent';
+import { forwardMoveStartEvent } from '@/utils/internalEvents';
+
 export const mousedown$ = fromEvent<MouseEvent>(window, 'mousedown');
 export const mousemove$ = fromEvent<MouseEvent>(window, 'mousemove');
 export const mouseup$ = fromEvent<MouseEvent>(window, 'mouseup');
@@ -8,18 +11,24 @@ export const touchstart$ = fromEvent<TouchEvent>(window, 'touchstart');
 export const touchmove$ = fromEvent<TouchEvent>(window, 'touchmove');
 export const touchend$ = fromEvent<TouchEvent>(window, 'touchend');
 
-export const moveStart$ = merge(mousedown$, touchstart$);
-export const moveEnd$ = merge(mouseup$, touchend$);
+const forwardMoveStartEvent$ = fromEvent<
+  CustomEvent<Parameters<typeof forwardMoveStartEvent>[0]>
+>(window, forwardMoveStartEvent.type).pipe(
+  map(event => event.detail.originEvent)
+);
 
-function isMousedownEvent(event: MouseEvent | TouchEvent): event is MouseEvent {
-  return event.type === 'mousedown';
-}
+export const moveStart$ = merge(
+  mousedown$,
+  touchstart$,
+  forwardMoveStartEvent$
+);
+export const moveEnd$ = merge(mouseup$, touchend$);
 
 let prevX = 0;
 let prevY = 0;
 
 const subscription = moveStart$.subscribe(event => {
-  if (isMousedownEvent(event)) {
+  if (isMouseEvent(event)) {
     prevX = event.clientX;
     prevY = event.clientY;
   } else {
