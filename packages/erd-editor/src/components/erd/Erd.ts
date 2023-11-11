@@ -15,6 +15,7 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import { isMouseEvent } from '@/utils/domEvent';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
+import { getRelationshipIcon } from '@/utils/icon';
 import { isMod } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Erd.styles';
@@ -102,10 +103,22 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     state.dragSelect = false;
   };
 
-  return () =>
-    html`
+  return () => {
+    const { store } = app.value;
+    const {
+      editor: { drawRelationship },
+    } = store.state;
+
+    const cursor = drawRelationship
+      ? `url("${getRelationshipIcon(
+          drawRelationship.relationshipType
+        )}") 16 16, auto`
+      : '';
+
+    return html`
       <div
         class=${styles.root}
+        style=${{ cursor }}
         ${ref(root)}
         @contextmenu=${handleContextmenu}
         @mousedown=${contextMenu.onMousedown}
@@ -132,6 +145,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         />
       </div>
     `;
+  };
 };
 
 export default Erd;

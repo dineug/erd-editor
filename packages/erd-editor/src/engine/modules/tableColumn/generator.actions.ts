@@ -1,7 +1,7 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { arrayHas } from '@dineug/shared';
 import { last } from 'lodash-es';
 
+import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
 import {
   focusColumnAction,
@@ -25,8 +25,6 @@ import {
   changeColumnUniqueAction,
   removeColumnAction,
 } from './atom.actions';
-
-const ColumnOption = SchemaV3Constants.ColumnOption;
 
 export const isToggleColumnTypes = arrayHas<FocusType>([
   FocusType.columnNotNull,
@@ -211,16 +209,6 @@ export const changeColumnPrimaryKeyAction$ = (
       tableId,
       id: columnId,
       value: !value,
-    });
-
-    if (!value || bHas(column.options, ColumnOption.notNull)) {
-      return;
-    }
-
-    yield changeColumnNotNullAction({
-      tableId,
-      id: columnId,
-      value: true,
     });
   };
 

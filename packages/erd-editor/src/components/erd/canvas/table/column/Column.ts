@@ -1,4 +1,3 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { DOMTemplateLiterals, FC, html, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/context';
@@ -11,6 +10,11 @@ import {
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_UNIQUE_WIDTH,
 } from '@/constants/layout';
+import {
+  ColumnOption as ColumnOptionType,
+  ColumnType,
+  Show,
+} from '@/constants/schema';
 import {
   editTableAction,
   editTableEndAction,
@@ -28,9 +32,6 @@ import { bHas } from '@/utils/bit';
 import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Column.styles';
-
-const ColumnType = SchemaV3Constants.ColumnType;
-const Show = SchemaV3Constants.Show;
 
 export type ColumnProps = {
   column: Column;
@@ -267,10 +268,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                     }}
                   >
                     <${ColumnOption}
-                      checked=${bHas(
-                        column.options,
-                        SchemaV3Constants.ColumnOption.unique
-                      )}
+                      checked=${bHas(column.options, ColumnOptionType.unique)}
                       width=${COLUMN_UNIQUE_WIDTH}
                       text="UQ"
                       title="Unique"
@@ -295,7 +293,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                     <${ColumnOption}
                       checked=${bHas(
                         column.options,
-                        SchemaV3Constants.ColumnOption.autoIncrement
+                        ColumnOptionType.autoIncrement
                       )}
                       width=${COLUMN_AUTO_INCREMENT_WIDTH}
                       text="AI"

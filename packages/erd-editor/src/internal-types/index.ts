@@ -42,3 +42,20 @@ export type EntityMeta = {
 export type Unsubscribe = () => void;
 
 export type Ctx = Parameters<typeof useContext>[0];
+
+export type DeepPartial<T> = T extends
+  | string
+  | number
+  | bigint
+  | boolean
+  | null
+  | undefined
+  | symbol
+  ? T | undefined
+  : T extends Array<infer ArrayType>
+  ? Array<DeepPartial<ArrayType>>
+  : T extends ReadonlyArray<infer ArrayType>
+  ? ReadonlyArray<ArrayType>
+  : {
+      [K in keyof T]?: DeepPartial<T[K]>;
+    };

@@ -1,7 +1,7 @@
 import { arrayHas } from '@dineug/shared';
 
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
-import { ValuesType } from '@/internal-types';
+import { Point, ValuesType } from '@/internal-types';
 
 export type Editor = {
   selectedMap: Record<string, SelectType>;
@@ -9,6 +9,7 @@ export type Editor = {
   hasRedo: boolean;
   viewport: Viewport;
   focusTable: FocusTable | null;
+  drawRelationship: DrawRelationship | null;
 };
 
 export type Viewport = {
@@ -23,6 +24,16 @@ export type FocusTable = {
   selectColumnIds: string[];
   prevSelectColumnId: string | null;
   edit: boolean;
+};
+
+export type DrawRelationship = {
+  relationshipType: number;
+  start:
+    | (Point & {
+        tableId: string;
+      })
+    | null;
+  end: Point;
 };
 
 export const SelectType = {
@@ -63,4 +74,5 @@ export const createEditor = (): Editor => ({
     height: DEFAULT_HEIGHT,
   },
   focusTable: null,
+  drawRelationship: null,
 });

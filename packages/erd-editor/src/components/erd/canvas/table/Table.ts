@@ -1,10 +1,10 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { FC, html, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/context';
 import Column from '@/components/erd/canvas/table/column/Column';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import Icon from '@/components/primitives/icon/Icon';
+import { Show } from '@/constants/schema';
 import {
   editTableAction,
   editTableEndAction,
@@ -158,7 +158,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 }}
               />
             </div>
-            ${bHas(settings.show, SchemaV3Constants.Show.tableComment)
+            ${bHas(settings.show, Show.tableComment)
               ? html`
                   <div
                     class="input-padding"

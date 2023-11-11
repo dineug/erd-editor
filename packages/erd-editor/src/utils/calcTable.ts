@@ -1,5 +1,3 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
-
 import {
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_DELETE_WIDTH,
@@ -13,6 +11,7 @@ import {
   TABLE_HEADER_HEIGHT,
   TABLE_PADDING,
 } from '@/constants/layout';
+import { Show } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
@@ -23,7 +22,7 @@ export function calcTableWidths(
   { settings: { show }, collections }: RootState
 ): ColumnWidth {
   let width = table.ui.widthName + INPUT_MARGIN_RIGHT;
-  if (bHas(show, SchemaV3Constants.Show.tableComment)) {
+  if (bHas(show, Show.tableComment)) {
     width += table.ui.widthComment + INPUT_MARGIN_RIGHT;
   }
 
@@ -52,27 +51,27 @@ const DEFAULT_WIDTH_COLUMNS: Array<{
   width: number;
 }> = [
   {
-    key: SchemaV3Constants.Show.columnComment,
+    key: Show.columnComment,
     width: COLUMN_MIN_WIDTH,
   },
   {
-    key: SchemaV3Constants.Show.columnDataType,
+    key: Show.columnDataType,
     width: COLUMN_MIN_WIDTH,
   },
   {
-    key: SchemaV3Constants.Show.columnDefault,
+    key: Show.columnDefault,
     width: COLUMN_MIN_WIDTH,
   },
   {
-    key: SchemaV3Constants.Show.columnNotNull,
+    key: Show.columnNotNull,
     width: COLUMN_NOT_NULL_WIDTH,
   },
   {
-    key: SchemaV3Constants.Show.columnAutoIncrement,
+    key: Show.columnAutoIncrement,
     width: COLUMN_AUTO_INCREMENT_WIDTH,
   },
   {
-    key: SchemaV3Constants.Show.columnUnique,
+    key: Show.columnUnique,
     width: COLUMN_UNIQUE_WIDTH,
   },
 ];
@@ -118,36 +117,36 @@ function calcMaxWidthColumn(columns: Column[], show: number): ColumnWidth {
     }
 
     if (
-      bHas(show, SchemaV3Constants.Show.columnComment) &&
+      bHas(show, Show.columnComment) &&
       columnWidth.comment < column.ui.widthComment
     ) {
       columnWidth.comment = column.ui.widthComment;
     }
 
     if (
-      bHas(show, SchemaV3Constants.Show.columnDataType) &&
+      bHas(show, Show.columnDataType) &&
       columnWidth.dataType < column.ui.widthDataType
     ) {
       columnWidth.dataType = column.ui.widthDataType;
     }
 
     if (
-      bHas(show, SchemaV3Constants.Show.columnDefault) &&
+      bHas(show, Show.columnDefault) &&
       columnWidth.default < column.ui.widthDefault
     ) {
       columnWidth.default = column.ui.widthDefault;
     }
   }
 
-  if (bHas(show, SchemaV3Constants.Show.columnNotNull)) {
+  if (bHas(show, Show.columnNotNull)) {
     columnWidth.notNull = COLUMN_NOT_NULL_WIDTH;
   }
 
-  if (bHas(show, SchemaV3Constants.Show.columnAutoIncrement)) {
+  if (bHas(show, Show.columnAutoIncrement)) {
     columnWidth.autoIncrement = COLUMN_AUTO_INCREMENT_WIDTH;
   }
 
-  if (bHas(show, SchemaV3Constants.Show.columnUnique)) {
+  if (bHas(show, Show.columnUnique)) {
     columnWidth.unique = COLUMN_UNIQUE_WIDTH;
   }
 

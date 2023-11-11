@@ -8,6 +8,7 @@ import { actions$ as indexColumnActions$ } from '@/engine/modules/indexColumn/ge
 import { ActionMap as MemoActionMap } from '@/engine/modules/memo/actions';
 import { actions as memoActions } from '@/engine/modules/memo/atom.actions';
 import { actions$ as memoActions$ } from '@/engine/modules/memo/generator.actions';
+import { ActionMap as RelationshipActionMap } from '@/engine/modules/relationship/actions';
 import { actions as relationshipActions } from '@/engine/modules/relationship/atom.actions';
 import { actions$ as relationshipActions$ } from '@/engine/modules/relationship/generator.actions';
 import { ActionMap as SettingsActionMap } from '@/engine/modules/settings/actions';
@@ -41,6 +42,7 @@ export type RootActionMap = EditorActionMap &
   TableActionMap &
   TableColumnActionMap &
   MemoActionMap &
+  RelationshipActionMap &
   SettingsActionMap;
 
 export type ActionType = keyof RootActionMap;

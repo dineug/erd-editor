@@ -1,8 +1,10 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { onMounted } from '@dineug/r-html';
+import { arrayHas } from '@dineug/shared';
 
 import { useAppContext } from '@/components/context';
+import { CanvasType, RelationshipType } from '@/constants/schema';
 import {
+  drawEndRelationshipAction,
   editTableAction,
   editTableEndAction,
   focusMoveTableAction,
@@ -10,8 +12,10 @@ import {
   selectAllColumnAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
+  drawStartRelationshipAction$,
   focusMoveTableAction$,
   removeSelectedAction$,
+  unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
 import { hasMoveKeys, MoveKey } from '@/engine/modules/editor/state';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
@@ -27,7 +31,19 @@ import {
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
-const CanvasType = SchemaV3Constants.CanvasType;
+const isRelationshipKeyBindingName = arrayHas<string>([
+  KeyBindingName.relationshipZeroOne,
+  KeyBindingName.relationshipZeroN,
+  KeyBindingName.relationshipOneOnly,
+  KeyBindingName.relationshipOneN,
+]);
+
+const keyBindingNameToRelationshipType: Record<string, number> = {
+  [KeyBindingName.relationshipZeroOne]: RelationshipType.ZeroOne,
+  [KeyBindingName.relationshipZeroN]: RelationshipType.ZeroN,
+  [KeyBindingName.relationshipOneOnly]: RelationshipType.OneOnly,
+  [KeyBindingName.relationshipOneN]: RelationshipType.OneN,
+};
 
 export function useErdShortcut(ctx: Parameters<typeof useAppContext>[0]) {
   const app = useAppContext(ctx);
@@ -86,7 +102,10 @@ export function useErdShortcut(ctx: Parameters<typeof useAppContext>[0]) {
       action === KeyBindingName.selectAllTable &&
         store.dispatch(selectAllAction());
 
-      // drawStartRelationship
+      if (isRelationshipKeyBindingName(action)) {
+        const relationshipType = keyBindingNameToRelationshipType[action];
+        store.dispatch(drawStartRelationshipAction$(relationshipType));
+      }
 
       action === KeyBindingName.removeTable &&
         store.dispatch(removeSelectedAction$());
@@ -152,7 +171,7 @@ export function useErdShortcut(ctx: Parameters<typeof useAppContext>[0]) {
     }
 
     if (action === KeyBindingName.stop) {
-      // drawEndRelationship
+      store.dispatch(drawEndRelationshipAction(), unselectAllAction$());
     }
 
     action === KeyBindingName.undo && store.undo();

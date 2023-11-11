@@ -1,7 +1,7 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { FC, html } from '@dineug/r-html';
 
 import Icon from '@/components/primitives/icon/Icon';
+import { ColumnUIKey } from '@/constants/schema';
 import { bHas } from '@/utils/bit';
 
 import * as styles from './ColumnKey.styles';
@@ -12,14 +12,8 @@ export type ColumnKeyProps = {
 
 const ColumnKey: FC<ColumnKeyProps> = (props, ctx) => {
   const className = () => {
-    const isPrimaryKey = bHas(
-      props.keys,
-      SchemaV3Constants.ColumnUIKey.primaryKey
-    );
-    const isForeignKey = bHas(
-      props.keys,
-      SchemaV3Constants.ColumnUIKey.foreignKey
-    );
+    const isPrimaryKey = bHas(props.keys, ColumnUIKey.primaryKey);
+    const isForeignKey = bHas(props.keys, ColumnUIKey.foreignKey);
 
     return {
       pk: isPrimaryKey && !isForeignKey,

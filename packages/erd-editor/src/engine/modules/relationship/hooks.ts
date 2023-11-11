@@ -1,7 +1,7 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { throttle } from '@dineug/go';
 import { arrayHas } from '@dineug/shared';
 
+import { ColumnOption, StartRelationshipType } from '@/constants/schema';
 import type { CO, Hook } from '@/engine/hooks';
 import {
   changeColumnNotNullAction,
@@ -31,7 +31,7 @@ const identification: CO = function* (channel, { doc, collections }) {
         if (!columns.length) continue;
 
         const value = columns.every(
-          column => column.options & SchemaV3Constants.ColumnOption.primaryKey
+          column => column.options & ColumnOption.primaryKey
         );
 
         if (value === identification) {
@@ -72,10 +72,10 @@ const startRelationship: CO = function* (channel, { doc, collections }) {
         if (!columns.length) continue;
 
         const value = columns.every(
-          column => column.options & SchemaV3Constants.ColumnOption.notNull
+          column => column.options & ColumnOption.notNull
         )
-          ? SchemaV3Constants.StartRelationshipType.dash
-          : SchemaV3Constants.StartRelationshipType.ring;
+          ? StartRelationshipType.dash
+          : StartRelationshipType.ring;
 
         if (value === startRelationshipType) {
           continue;

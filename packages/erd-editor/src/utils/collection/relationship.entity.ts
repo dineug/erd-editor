@@ -1,29 +1,37 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
+import merge from 'deepmerge';
 
-import { Relationship } from '@/internal-types';
+import {
+  Direction,
+  RelationshipType,
+  StartRelationshipType,
+} from '@/constants/schema';
+import { DeepPartial, Relationship } from '@/internal-types';
 import { getDefaultEntityMeta } from '@/utils';
 
 export const createRelationship = (
-  value?: Partial<Relationship>
-): Relationship => ({
-  id: '',
-  identification: false,
-  relationshipType: SchemaV3Constants.RelationshipType.ZeroN,
-  startRelationshipType: SchemaV3Constants.StartRelationshipType.dash,
-  start: {
-    tableId: '',
-    columnIds: [],
-    x: 0,
-    y: 0,
-    direction: SchemaV3Constants.Direction.bottom,
-  },
-  end: {
-    tableId: '',
-    columnIds: [],
-    x: 0,
-    y: 0,
-    direction: SchemaV3Constants.Direction.bottom,
-  },
-  meta: getDefaultEntityMeta(),
-  ...value,
-});
+  value?: DeepPartial<Relationship>
+): Relationship =>
+  merge(
+    {
+      id: '',
+      identification: false,
+      relationshipType: RelationshipType.ZeroN,
+      startRelationshipType: StartRelationshipType.dash,
+      start: {
+        tableId: '',
+        columnIds: [],
+        x: 0,
+        y: 0,
+        direction: Direction.bottom,
+      },
+      end: {
+        tableId: '',
+        columnIds: [],
+        x: 0,
+        y: 0,
+        direction: Direction.bottom,
+      },
+      meta: getDefaultEntityMeta(),
+    },
+    (value as Relationship) ?? {}
+  );

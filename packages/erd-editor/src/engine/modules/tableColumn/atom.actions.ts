@@ -1,7 +1,7 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
+import { ColumnOption, ColumnUIKey } from '@/constants/schema';
 import { query } from '@/utils/collection/query';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
@@ -160,8 +160,8 @@ const changeColumnAutoIncrement: ReducerType<
     () => {
       collection.updateOne(id, column => {
         column.options = value
-          ? column.options | SchemaV3Constants.ColumnOption.autoIncrement
-          : column.options & ~SchemaV3Constants.ColumnOption.autoIncrement;
+          ? column.options | ColumnOption.autoIncrement
+          : column.options & ~ColumnOption.autoIncrement;
       });
     }
   );
@@ -180,23 +180,21 @@ const changeColumnPrimaryKey: ReducerType<
   collection.replaceOperator(lww, timestamp, id, 'options(primaryKey)', () => {
     collection.updateOne(id, column => {
       column.options = value
-        ? column.options | SchemaV3Constants.ColumnOption.primaryKey
-        : column.options & ~SchemaV3Constants.ColumnOption.primaryKey;
+        ? column.options | ColumnOption.primaryKey
+        : column.options & ~ColumnOption.primaryKey;
 
       if (value) {
-        if (column.ui.keys & SchemaV3Constants.ColumnUIKey.foreignKey) {
-          column.ui.keys =
-            SchemaV3Constants.ColumnUIKey.primaryKey |
-            SchemaV3Constants.ColumnUIKey.foreignKey;
+        if (column.ui.keys & ColumnUIKey.foreignKey) {
+          column.ui.keys = ColumnUIKey.primaryKey | ColumnUIKey.foreignKey;
         } else {
-          column.ui.keys = SchemaV3Constants.ColumnUIKey.primaryKey;
+          column.ui.keys = ColumnUIKey.primaryKey;
         }
       } else {
         if (
-          column.ui.keys & SchemaV3Constants.ColumnUIKey.primaryKey &&
-          column.ui.keys & SchemaV3Constants.ColumnUIKey.foreignKey
+          column.ui.keys & ColumnUIKey.primaryKey &&
+          column.ui.keys & ColumnUIKey.foreignKey
         ) {
-          column.ui.keys = SchemaV3Constants.ColumnUIKey.foreignKey;
+          column.ui.keys = ColumnUIKey.foreignKey;
         } else {
           column.ui.keys = 0;
         }
@@ -219,8 +217,8 @@ const changeColumnUnique: ReducerType<typeof ActionType.changeColumnUnique> = (
   collection.replaceOperator(lww, timestamp, id, 'options(unique)', () => {
     collection.updateOne(id, column => {
       column.options = value
-        ? column.options | SchemaV3Constants.ColumnOption.unique
-        : column.options & ~SchemaV3Constants.ColumnOption.unique;
+        ? column.options | ColumnOption.unique
+        : column.options & ~ColumnOption.unique;
     });
   });
 };
@@ -238,9 +236,26 @@ const changeColumnNotNull: ReducerType<
   collection.replaceOperator(lww, timestamp, id, 'options(notNull)', () => {
     collection.updateOne(id, column => {
       column.options = value
-        ? column.options | SchemaV3Constants.ColumnOption.notNull
-        : column.options & ~SchemaV3Constants.ColumnOption.notNull;
+        ? column.options | ColumnOption.notNull
+        : column.options & ~ColumnOption.notNull;
     });
+  });
+};
+
+export const changeColumnForeignKeyAction = createAction<
+  ActionMap[typeof ActionType.changeColumnForeignKey]
+>(ActionType.changeColumnForeignKey);
+
+const changeColumnForeignKey: ReducerType<
+  typeof ActionType.changeColumnForeignKey
+> = ({ collections }, { payload: { id, value } }) => {
+  const collection = query(collections).collection('tableColumnEntities');
+  collection.getOrCreate(id, id => createColumn({ id }));
+
+  collection.updateOne(id, column => {
+    column.ui.keys = value
+      ? column.ui.keys | ColumnUIKey.foreignKey
+      : column.ui.keys & ~ColumnUIKey.foreignKey;
   });
 };
 
@@ -255,6 +270,7 @@ export const tableColumnReducers = {
   [ActionType.changeColumnPrimaryKey]: changeColumnPrimaryKey,
   [ActionType.changeColumnUnique]: changeColumnUnique,
   [ActionType.changeColumnNotNull]: changeColumnNotNull,
+  [ActionType.changeColumnForeignKey]: changeColumnForeignKey,
 };
 
 export const actions = {
@@ -268,4 +284,5 @@ export const actions = {
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
   changeColumnNotNullAction,
+  changeColumnForeignKeyAction,
 };

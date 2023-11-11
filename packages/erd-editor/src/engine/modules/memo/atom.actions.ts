@@ -15,8 +15,7 @@ const addMemo: ReducerType<typeof ActionType.addMemo> = (
   { doc, collections, lww },
   { payload: { id, ui }, timestamp }
 ) => {
-  const memo = createMemo({ id });
-  Object.assign(memo.ui, ui);
+  const memo = createMemo({ id, ui });
 
   query(collections)
     .collection('memoEntities')

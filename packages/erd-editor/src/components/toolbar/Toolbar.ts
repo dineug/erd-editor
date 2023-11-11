@@ -1,9 +1,9 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { FC, html } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/context';
 import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
+import { CanvasType } from '@/constants/schema';
 import {
   changeDatabaseNameAction,
   changeZoomLevelAction,
@@ -91,7 +91,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           .onChange=${handleZoomLevel}
         />
         <div class=${styles.vertical}></div>
-        ${settings.canvasType === SchemaV3Constants.CanvasType.ERD
+        ${settings.canvasType === CanvasType.ERD
           ? html`
               <div
                 class=${[

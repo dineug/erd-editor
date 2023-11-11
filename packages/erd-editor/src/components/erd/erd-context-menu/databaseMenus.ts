@@ -1,6 +1,5 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
-
 import { AppContext } from '@/components/context';
+import { Database } from '@/constants/schema';
 import { changeDatabaseAction } from '@/engine/modules/settings/atom.actions';
 
 type Menu = {
@@ -11,27 +10,27 @@ type Menu = {
 const menus: Menu[] = [
   {
     name: 'MSSQL',
-    value: SchemaV3Constants.Database.MSSQL,
+    value: Database.MSSQL,
   },
   {
     name: 'MariaDB',
-    value: SchemaV3Constants.Database.MariaDB,
+    value: Database.MariaDB,
   },
   {
     name: 'MySQL',
-    value: SchemaV3Constants.Database.MySQL,
+    value: Database.MySQL,
   },
   {
     name: 'Oracle',
-    value: SchemaV3Constants.Database.Oracle,
+    value: Database.Oracle,
   },
   {
     name: 'PostgreSQL',
-    value: SchemaV3Constants.Database.PostgreSQL,
+    value: Database.PostgreSQL,
   },
   {
     name: 'SQLite',
-    value: SchemaV3Constants.Database.SQLite,
+    value: Database.SQLite,
   },
 ];
 

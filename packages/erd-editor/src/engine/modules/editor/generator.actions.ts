@@ -1,25 +1,36 @@
 import { isEmpty } from 'lodash-es';
 
+import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import { removeMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { moveTableAction } from '@/engine/modules/table/atom.actions';
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
+import {
+  addColumnAction,
+  changeColumnPrimaryKeyAction,
+} from '@/engine/modules/tableColumn/atom.actions';
 import { addColumnAction$ } from '@/engine/modules/tableColumn/generator.actions';
 import { Point } from '@/internal-types';
+import { uuid } from '@/utils';
+import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { query } from '@/utils/collection/query';
 
 import {
   clearAction,
+  drawEndRelationshipAction,
+  drawStartAddRelationshipAction,
+  drawStartRelationshipAction,
+  focusColumnAction,
   focusMoveTableAction,
   focusTableEndAction,
   loadJsonAction,
   selectAction,
   unselectAllAction,
 } from './atom.actions';
-import { MoveKey, SelectType } from './state';
+import { FocusType, MoveKey, SelectType } from './state';
 import {
   isColumns,
   isLastColumn,
@@ -170,6 +181,55 @@ export const focusMoveTableAction$ = (
     }
   };
 
+export const drawStartRelationshipAction$ = (
+  relationshipType: number
+): GeneratorAction =>
+  function* ({ editor }) {
+    if (editor.drawRelationship?.relationshipType === relationshipType) {
+      yield drawEndRelationshipAction();
+    } else {
+      yield drawStartRelationshipAction({ relationshipType });
+    }
+  };
+
+export const drawStartAddRelationshipAction$ = (
+  tableId: string
+): GeneratorAction =>
+  function* ({ collections }) {
+    const table = query(collections)
+      .collection('tableEntities')
+      .selectById(tableId);
+    if (!table) return;
+
+    const columns = query(collections)
+      .collection('tableColumnEntities')
+      .selectByIds(table.columnIds);
+
+    if (
+      !columns.some(column => bHas(column.options, ColumnOption.primaryKey))
+    ) {
+      const columnId = uuid();
+      yield addColumnAction({
+        tableId,
+        id: columnId,
+      });
+      yield changeColumnPrimaryKeyAction({
+        tableId,
+        id: columnId,
+        value: true,
+      });
+      yield focusColumnAction({
+        tableId,
+        columnId,
+        focusType: FocusType.columnName,
+        $mod: false,
+        shiftKey: false,
+      });
+    }
+
+    yield drawStartAddRelationshipAction({ tableId });
+  };
+
 export const actions$ = {
   loadJsonAction$,
   moveAllAction$,
@@ -177,4 +237,6 @@ export const actions$ = {
   dragSelectAction$,
   unselectAllAction$,
   focusMoveTableAction$,
+  drawStartRelationshipAction$,
+  drawStartAddRelationshipAction$,
 };

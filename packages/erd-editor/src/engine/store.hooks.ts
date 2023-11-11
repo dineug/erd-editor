@@ -3,6 +3,7 @@ import { type AnyAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
 import { hooks as relationshipHooks } from '@/engine/modules/relationship/hooks';
+import { hooks as tableColumnHooks } from '@/engine/modules/tableColumn/hooks';
 import type { Store } from '@/engine/store';
 
 type Task = {
@@ -11,7 +12,7 @@ type Task = {
   proc: Promise<any>;
 };
 
-const hooks = [...relationshipHooks];
+const hooks = [...relationshipHooks, ...tableColumnHooks];
 
 export function createHooks(store: Store) {
   const tasks: Task[] = hooks.map(([pattern, hook]) => {

@@ -1,6 +1,6 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
-
 import { AppContext } from '@/components/context';
+import { RelationshipType } from '@/constants/schema';
+import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 type Menu = {
@@ -15,25 +15,25 @@ const menus: Menu[] = [
     iconName: 'ZeroOne',
     name: 'Zero One',
     keyBindingName: KeyBindingName.relationshipZeroOne,
-    relationshipType: SchemaV3Constants.RelationshipType.ZeroOne,
+    relationshipType: RelationshipType.ZeroOne,
   },
   {
     iconName: 'ZeroN',
     name: 'Zero N',
     keyBindingName: KeyBindingName.relationshipZeroN,
-    relationshipType: SchemaV3Constants.RelationshipType.ZeroN,
+    relationshipType: RelationshipType.ZeroN,
   },
   {
     iconName: 'OneOnly',
     name: 'One Only',
     keyBindingName: KeyBindingName.relationshipOneOnly,
-    relationshipType: SchemaV3Constants.RelationshipType.OneOnly,
+    relationshipType: RelationshipType.OneOnly,
   },
   {
     iconName: 'OneN',
     name: 'One N',
     keyBindingName: KeyBindingName.relationshipOneN,
-    relationshipType: SchemaV3Constants.RelationshipType.OneN,
+    relationshipType: RelationshipType.OneN,
   },
 ];
 
@@ -46,8 +46,7 @@ export function createDrawRelationshipMenus(
     name: menu.name,
     shortcut: keyBindingMap[menu.keyBindingName][0]?.shortcut,
     onClick: () => {
-      // TODO: drawStartRelationship$
-      console.log('drawStartRelationship$', menu.relationshipType);
+      store.dispatch(drawStartRelationshipAction$(menu.relationshipType));
       onClose();
     },
   }));

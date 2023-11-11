@@ -1,6 +1,5 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
-
 import { AppContext } from '@/components/context';
+import { Show } from '@/constants/schema';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 
 type Menu = {
@@ -11,35 +10,35 @@ type Menu = {
 const menus: Menu[] = [
   {
     name: 'Table Comment',
-    show: SchemaV3Constants.Show.tableComment,
+    show: Show.tableComment,
   },
   {
     name: 'Column Comment',
-    show: SchemaV3Constants.Show.columnComment,
+    show: Show.columnComment,
   },
   {
     name: 'DataType',
-    show: SchemaV3Constants.Show.columnDataType,
+    show: Show.columnDataType,
   },
   {
     name: 'Default',
-    show: SchemaV3Constants.Show.columnDefault,
+    show: Show.columnDefault,
   },
   {
     name: 'Not Null',
-    show: SchemaV3Constants.Show.columnNotNull,
+    show: Show.columnNotNull,
   },
   {
     name: 'Unique',
-    show: SchemaV3Constants.Show.columnUnique,
+    show: Show.columnUnique,
   },
   {
     name: 'Auto Increment',
-    show: SchemaV3Constants.Show.columnAutoIncrement,
+    show: Show.columnAutoIncrement,
   },
   {
     name: 'Relationship',
-    show: SchemaV3Constants.Show.relationship,
+    show: Show.relationship,
   },
 ];
 

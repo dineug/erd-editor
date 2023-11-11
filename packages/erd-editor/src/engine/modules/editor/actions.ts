@@ -21,6 +21,10 @@ export const ActionType = {
   editTable: 'editor.editTable',
   editTableEnd: 'editor.editTableEnd',
   selectAllColumn: 'editor.selectAllColumn',
+  drawStartRelationship: 'editor.drawStartRelationship',
+  drawStartAddRelationship: 'editor.drawStartAddRelationship',
+  drawEndRelationship: 'editor.drawEndRelationship',
+  drawRelationship: 'editor.drawRelationship',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -59,6 +63,17 @@ export type ActionMap = {
   [ActionType.editTable]: void;
   [ActionType.editTableEnd]: void;
   [ActionType.selectAllColumn]: void;
+  [ActionType.drawStartRelationship]: {
+    relationshipType: number;
+  };
+  [ActionType.drawStartAddRelationship]: {
+    tableId: string;
+  };
+  [ActionType.drawEndRelationship]: void;
+  [ActionType.drawRelationship]: {
+    x: number;
+    y: number;
+  };
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<

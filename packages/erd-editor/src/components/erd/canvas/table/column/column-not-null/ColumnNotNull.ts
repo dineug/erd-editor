@@ -1,7 +1,7 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { FC, html } from '@dineug/r-html';
 
 import { COLUMN_NOT_NULL_WIDTH } from '@/constants/layout';
+import { ColumnOption } from '@/constants/schema';
 import { bHas } from '@/utils/bit';
 
 import * as styles from './ColumnNotNull.styles';
@@ -22,9 +22,7 @@ const ColumnNotNull: FC<ColumnNotNullProps> = (props, ctx) => {
         }}
         title="Not Null"
       >
-        ${bHas(props.options, SchemaV3Constants.ColumnOption.notNull)
-          ? 'N-N'
-          : 'NULL'}
+        ${bHas(props.options, ColumnOption.notNull) ? 'N-N' : 'NULL'}
       </div>
     `;
 };

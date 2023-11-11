@@ -1,10 +1,9 @@
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { arrayHas } from '@dineug/shared';
 
+import { ColumnType, Show } from '@/constants/schema';
 import { ActionMap, ActionType } from '@/engine/modules/editor/actions';
-import { FocusTable, FocusType, MoveKey } from '@/engine/modules/editor/state';
+import { FocusType, MoveKey } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
-import { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
 
@@ -12,8 +11,6 @@ import { appendSelectColumns } from './selectRangeColumn';
 
 type Payload = ActionMap[typeof ActionType.focusMoveTable];
 
-const ColumnType = SchemaV3Constants.ColumnType;
-const Show = SchemaV3Constants.Show;
 const ColumnTypeToShowType: Record<number, number | true> = {
   [ColumnType.columnName]: true,
   [ColumnType.columnDataType]: Show.columnDataType,

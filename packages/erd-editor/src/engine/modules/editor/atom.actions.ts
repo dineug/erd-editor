@@ -296,6 +296,68 @@ const selectAllColumn: ReducerType<typeof ActionType.selectAllColumn> = ({
   focusTable.selectColumnIds = [...table.columnIds];
 };
 
+export const drawStartRelationshipAction = createAction<
+  ActionMap[typeof ActionType.drawStartRelationship]
+>(ActionType.drawStartRelationship);
+
+const drawStartRelationship: ReducerType<
+  typeof ActionType.drawStartRelationship
+> = ({ editor }, { payload: { relationshipType } }) => {
+  editor.drawRelationship = {
+    relationshipType,
+    start: null,
+    end: { x: 0, y: 0 },
+  };
+};
+
+export const drawStartAddRelationshipAction = createAction<
+  ActionMap[typeof ActionType.drawStartAddRelationship]
+>(ActionType.drawStartAddRelationship);
+
+const drawStartAddRelationship: ReducerType<
+  typeof ActionType.drawStartAddRelationship
+> = (
+  { editor: { drawRelationship }, collections },
+  { payload: { tableId } }
+) => {
+  if (!drawRelationship) return;
+
+  const table = query(collections)
+    .collection('tableEntities')
+    .selectById(tableId);
+  if (!table) return;
+
+  drawRelationship.start = {
+    tableId,
+    x: table.ui.x,
+    y: table.ui.y,
+  };
+};
+
+export const drawEndRelationshipAction = createAction<
+  ActionMap[typeof ActionType.drawEndRelationship]
+>(ActionType.drawEndRelationship);
+
+const drawEndRelationship: ReducerType<
+  typeof ActionType.drawEndRelationship
+> = ({ editor }) => {
+  editor.drawRelationship = null;
+};
+
+export const drawRelationshipAction = createAction<
+  ActionMap[typeof ActionType.drawRelationship]
+>(ActionType.drawRelationship);
+
+const drawRelationship: ReducerType<typeof ActionType.drawRelationship> = (
+  { editor: { drawRelationship }, settings: { scrollLeft, scrollTop } },
+  { payload: { x, y } }
+) => {
+  if (!drawRelationship?.start) return;
+
+  drawRelationship.end.x = x - scrollLeft;
+  drawRelationship.end.y = y - scrollTop;
+};
+
 export const editorReducers = {
   [ActionType.changeHasHistory]: changeHasHistory,
   [ActionType.selectAll]: selectAll,
@@ -311,6 +373,10 @@ export const editorReducers = {
   [ActionType.editTable]: editTable,
   [ActionType.editTableEnd]: editTableEnd,
   [ActionType.selectAllColumn]: selectAllColumn,
+  [ActionType.drawStartRelationship]: drawStartRelationship,
+  [ActionType.drawStartAddRelationship]: drawStartAddRelationship,
+  [ActionType.drawEndRelationship]: drawEndRelationship,
+  [ActionType.drawRelationship]: drawRelationship,
 };
 
 export const actions = {
@@ -328,4 +394,8 @@ export const actions = {
   editTableAction,
   editTableEndAction,
   selectAllColumnAction,
+  drawStartRelationshipAction,
+  drawStartAddRelationshipAction,
+  drawEndRelationshipAction,
+  drawRelationshipAction,
 };

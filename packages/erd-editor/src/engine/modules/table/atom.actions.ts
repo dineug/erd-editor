@@ -16,8 +16,7 @@ const addTable: ReducerType<typeof ActionType.addTable> = (
   { doc, collections, lww },
   { payload: { id, ui }, timestamp }
 ) => {
-  const table = createTable({ id });
-  Object.assign(table.ui, ui);
+  const table = createTable({ id, ui });
 
   query(collections)
     .collection('tableEntities')
