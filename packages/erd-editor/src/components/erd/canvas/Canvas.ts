@@ -1,6 +1,7 @@
 import { cache, FC, html, Ref, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/context';
+import HighLevelTable from '@/components/erd/canvas/high-level-table/HighLevelTable';
 import Memo from '@/components/erd/canvas/memo/Memo';
 import Table from '@/components/erd/canvas/table/Table';
 import { query } from '@/utils/collection/query';
@@ -49,7 +50,11 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
                 table => table.id,
                 table => html`<${Table} table=${table} />`
               )}`
-            : null
+            : html`${repeat(
+                tables,
+                table => table.id,
+                table => html`<${HighLevelTable} table=${table} />`
+              )}`
         )}
         ${repeat(
           memos,

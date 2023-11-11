@@ -1,18 +1,17 @@
 import { createRef, FC, html, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/context';
-import * as CanvasStyle from '@/components/erd/canvas/Canvas.styles';
+import * as canvasStyle from '@/components/erd/canvas/Canvas.styles';
 import Memo from '@/components/erd/minimap/memo/Memo';
 import Table from '@/components/erd/minimap/table/Table';
-import { useMinimapScroll } from '@/components/erd/minimap/useMinimapScroll';
 import Viewport from '@/components/erd/minimap/viewport/Viewport';
 import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { query } from '@/utils/collection/query';
 import { isMouseEvent } from '@/utils/domEvent';
-import { forwardMoveStartEvent } from '@/utils/internalEvents';
 
 import * as styles from './Minimap.styles';
+import { useMinimapScroll } from './useMinimapScroll';
 
 const BORDER = 1;
 
@@ -62,7 +61,6 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
   };
 
   const handleMove = (event: MouseEvent | TouchEvent) => {
-    event.stopPropagation();
     const { store } = app.value;
     const {
       editor: { viewport },
@@ -91,7 +89,6 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
       })
     );
 
-    ctx.host.dispatchEvent(forwardMoveStartEvent({ originEvent: event }));
     onScrollStart(event);
   };
 
@@ -113,14 +110,14 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
 
     return html`
       <div
-        class=${styles.minimap}
+        class=${['minimap', styles.minimap]}
         style=${styleMap()}
         ${ref(minimap)}
         @mousedown=${handleMove}
         @touchstart=${handleMove}
       >
         <div
-          class=${CanvasStyle.root}
+          class=${canvasStyle.root}
           style=${{
             width: `${width}px`,
             height: `${height}px`,

@@ -10,27 +10,23 @@ import {
   editTableEndAction,
   focusTableAction,
 } from '@/engine/modules/editor/atom.actions';
-import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { FocusType } from '@/engine/modules/editor/state';
 import {
   changeTableCommentAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
-import {
-  removeTableAction$,
-  selectTableAction$,
-} from '@/engine/modules/table/generator.actions';
+import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/tableColumn/generator.actions';
 import { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { query } from '@/utils/collection/query';
 import { onPrevent } from '@/utils/domEvent';
-import { drag$, DragMove } from '@/utils/globalEventObservable';
-import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
+import { simpleShortcutToString } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Table.styles';
 import { useFocusTable } from './useFocusTable';
+import { useMoveTable } from './useMoveTable';
 
 export type TableProps = {
   table: Table;
@@ -42,29 +38,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     ctx,
     props.table.id
   );
-
-  const handleMove = ({ event, movementX, movementY }: DragMove) => {
-    event.type === 'mousemove' && event.preventDefault();
-    const { store } = app.value;
-    store.dispatch(moveAllAction$(movementX, movementY));
-  };
-
-  const handleMoveStart = (event: MouseEvent | TouchEvent) => {
-    const el = event.target as HTMLElement | null;
-    if (!el) return;
-
-    const { store } = app.value;
-    store.dispatch(selectTableAction$(props.table.id, isMod(event)));
-
-    if (
-      !el.closest('.table-header-color') &&
-      !el.closest('.column-row') &&
-      !el.closest('.icon') &&
-      !el.closest('.input-padding')
-    ) {
-      drag$.subscribe(handleMove);
-    }
-  };
+  const { onMoveStart } = useMoveTable(ctx, props);
 
   const handleAddColumn = () => {
     const { store } = app.value;
@@ -133,8 +107,8 @@ const Table: FC<TableProps> = (props, ctx) => {
           height: `${height}px`,
         }}
         ?data-selected=${selected}
-        @mousedown=${handleMoveStart}
-        @touchstart=${handleMoveStart}
+        @mousedown=${onMoveStart}
+        @touchstart=${onMoveStart}
       >
         <div class=${styles.header}>
           <div

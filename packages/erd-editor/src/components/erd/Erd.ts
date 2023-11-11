@@ -71,14 +71,22 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const el = event.target as HTMLElement | null;
     if (!el) return;
 
-    const canDrag =
+    const canUnselectAll =
       !el.closest('.table') &&
       !el.closest('.memo') &&
       !el.closest('.edit-input');
-    if (!canDrag) return;
 
-    const { store } = app.value;
-    store.dispatch(unselectAllAction$());
+    const canDrag =
+      canUnselectAll &&
+      !el.closest('.minimap') &&
+      !el.closest('.minimap-viewport');
+
+    if (canUnselectAll) {
+      const { store } = app.value;
+      store.dispatch(unselectAllAction$());
+    }
+
+    if (!canDrag) return;
 
     if (isMouseEvent(event) && isMod(event)) {
       const { x, y } = root.value.getBoundingClientRect();

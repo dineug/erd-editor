@@ -46,7 +46,11 @@ const Viewport: FC<ViewportProps> = (props, ctx) => {
 
   return () => html`
     <div
-      class=${[styles.viewport, { selected: state.selected || props.selected }]}
+      class=${[
+        'minimap-viewport',
+        styles.viewport,
+        { selected: state.selected || props.selected },
+      ]}
       style=${styleMap()}
       @mousedown=${onScrollStart}
       @touchstart=${onScrollStart}
