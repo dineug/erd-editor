@@ -3,10 +3,10 @@ import { RootState } from '@/engine/state';
 import { query } from '@/utils/collection/query';
 import {
   DirectionName,
+  DirectionNameList,
   DrawLine,
   DrawPath,
   DrawPathLine,
-  isDirection,
   LINE_HEIGHT,
   LINE_SIZE,
   Path,
@@ -14,7 +14,7 @@ import {
   PATH_LINE_HEIGHT,
 } from '@/utils/draw-relationship';
 import {
-  manhattanDistance,
+  euclideanDistance,
   tableToObjectPoint,
 } from '@/utils/draw-relationship/calc';
 
@@ -89,24 +89,22 @@ function getDrawDirection(
   if (!table) return direction;
 
   const start = tableToObjectPoint(state, table);
-  let min = manhattanDistance(start.bottom, draw.end);
+  let min = euclideanDistance(start.bottom, draw.end);
   draw.start.x = start.bottom.x;
   draw.start.y = start.bottom.y;
 
-  Object.keys(start)
-    .filter(isDirection)
-    .forEach(key => {
-      const k = key as DirectionName;
-      const temp = manhattanDistance(start[k], draw.end);
-      if (min <= temp) return;
+  DirectionNameList.forEach(key => {
+    const k = key as DirectionName;
+    const temp = euclideanDistance(start[k], draw.end);
+    if (min <= temp) return;
 
-      min = temp;
-      direction = k;
-      if (!draw.start) return;
+    min = temp;
+    direction = k;
+    if (!draw.start) return;
 
-      draw.start.x = start[k].x;
-      draw.start.y = start[k].y;
-    });
+    draw.start.x = start[k].x;
+    draw.start.y = start[k].y;
+  });
 
   return direction;
 }

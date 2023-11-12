@@ -62,6 +62,8 @@ export const removeTableAction$ = (id?: string): GeneratorAction =>
     const selectedTables = Object.entries(selectedMap).filter(
       ([, type]) => type === SelectType.table
     );
+
+    // TODO: valid index, relationship
     for (const [id] of selectedTables) {
       yield removeTableAction({ id });
     }

@@ -5,7 +5,7 @@ import { useAppContext } from '@/components/appContext';
 import { drawRelationshipAction } from '@/engine/modules/editor/atom.actions';
 import { DrawRelationship as DrawRelationshipType } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { getDraw } from '@/utils/draw-relationship/drawRelationship';
+import { getDraw } from '@/utils/draw-relationship/draw';
 
 import * as styles from './DrawRelationship.styles';
 

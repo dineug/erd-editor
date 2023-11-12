@@ -1,10 +1,13 @@
 import { cache, FC, html, Ref, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import CanvasSvg from '@/components/erd/canvas/canvas-svg/CanvasSvg';
 import DrawRelationship from '@/components/erd/canvas/draw-relationship/DrawRelationship';
 import HighLevelTable from '@/components/erd/canvas/high-level-table/HighLevelTable';
 import Memo from '@/components/erd/canvas/memo/Memo';
 import Table from '@/components/erd/canvas/table/Table';
+import { Show } from '@/constants/schema';
+import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
 
 import * as styles from './Canvas.styles';
@@ -64,6 +67,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
           memo => memo.id,
           memo => html`<${Memo} memo=${memo} />`
         )}
+        ${bHas(show, Show.relationship) ? html`<${CanvasSvg} />` : null}
         ${drawRelationship?.start
           ? html`<${DrawRelationship}
               root=${props.root}

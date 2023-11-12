@@ -6,8 +6,8 @@ import { changeColumnPrimaryKeyAction } from '@/engine/modules/tableColumn/atom.
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
 
-const changeColumnNotNull: CO = function* (channel, { doc, collections }) {
-  yield takeEvery(channel, ({ payload: { id } }) => {
+const changeColumnNotNullHook: CO = function* (channel, { doc, collections }) {
+  yield takeEvery(channel, function* ({ payload: { id } }) {
     const collection = query(collections).collection('tableColumnEntities');
     const column = collection.selectById(id);
     if (!column) return;
@@ -25,5 +25,5 @@ const changeColumnNotNull: CO = function* (channel, { doc, collections }) {
 };
 
 export const hooks: Hook[] = [
-  [[changeColumnPrimaryKeyAction], changeColumnNotNull],
+  [[changeColumnPrimaryKeyAction], changeColumnNotNullHook],
 ];

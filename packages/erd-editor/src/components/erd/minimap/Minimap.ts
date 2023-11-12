@@ -2,11 +2,14 @@ import { createRef, FC, html, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import * as canvasStyle from '@/components/erd/canvas/Canvas.styles';
+import CanvasSvg from '@/components/erd/canvas/canvas-svg/CanvasSvg';
 import Memo from '@/components/erd/minimap/memo/Memo';
 import Table from '@/components/erd/minimap/table/Table';
 import Viewport from '@/components/erd/minimap/viewport/Viewport';
 import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
+import { Show } from '@/constants/schema';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
+import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
 import { isMouseEvent } from '@/utils/domEvent';
 
@@ -136,6 +139,9 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
             memo => memo.id,
             memo => html`<${Memo} memo=${memo} />`
           )}
+          ${bHas(show, Show.relationship)
+            ? html`<${CanvasSvg} class=${styles.canvasSvg} strokeWidth=${12} />`
+            : null}
         </div>
       </div>
       <div class=${styles.border} style=${borderStyleMap()}></div>

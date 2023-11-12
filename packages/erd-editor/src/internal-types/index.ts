@@ -34,6 +34,12 @@ export type Point = {
   y: number;
 };
 
+export type RelationshipPoint = {
+  x: number;
+  y: number;
+  direction: number;
+};
+
 export type EntityMeta = {
   updateAt: number;
   createAt: number;

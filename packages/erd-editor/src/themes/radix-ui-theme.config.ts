@@ -17,7 +17,7 @@ export const ThemeConfig: Theme = {
   columnSelect: 'gray-5',
   columnHover: 'gray-4',
 
-  relationshipHover: 'accent-7',
+  relationshipHover: 'accent-8',
 
   toolbarBackground: 'gray-1',
 
@@ -42,7 +42,7 @@ export const ThemeConfig: Theme = {
   active: 'gray-12',
   placeholder: 'grayA-10',
 
-  focus: 'accent-9',
+  focus: 'accent-8',
   inputActive: 'accent-10',
 
   keyPK: `override-${amber.amber9}`,

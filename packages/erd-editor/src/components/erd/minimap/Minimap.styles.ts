@@ -14,3 +14,7 @@ export const border = css`
   box-shadow: 0 1px 6px var(--minimap-shadow);
   background-color: transparent;
 `;
+
+export const canvasSvg = css`
+  pointer-events: none;
+`;

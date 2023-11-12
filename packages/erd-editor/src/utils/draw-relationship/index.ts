@@ -1,6 +1,6 @@
 import { arrayHas } from '@dineug/shared';
 
-import { Point, ValuesType } from '@/internal-types';
+import { Point, RelationshipPoint, ValuesType } from '@/internal-types';
 
 export const DirectionName = {
   left: 'left',
@@ -9,6 +9,8 @@ export const DirectionName = {
   bottom: 'bottom',
 } as const;
 export type DirectionName = ValuesType<typeof DirectionName>;
+export const DirectionNameList: ReadonlyArray<string> =
+  Object.values(DirectionName);
 
 export type PointToPoint = {
   x1: number;
@@ -40,6 +42,49 @@ export type Path = {
 export type DrawPath = {
   path: { path: Path; line: DrawPathLine };
   line: DrawLine;
+};
+
+export type PathLine = {
+  start: PointToPoint;
+  end: PointToPoint;
+};
+
+export type Line = {
+  start: {
+    base: PointToPoint;
+    base2: PointToPoint;
+    center: PointToPoint;
+    center2: PointToPoint;
+  };
+  end: {
+    base: PointToPoint;
+    base2: PointToPoint;
+    left: PointToPoint;
+    center: PointToPoint;
+    center2: PointToPoint;
+    right: PointToPoint;
+  };
+};
+
+export type Circle = {
+  cx: number;
+  cy: number;
+};
+
+export type RelationshipPath = {
+  path: { path: Path; line: PathLine };
+  line: { line: Line; circle: Circle; startCircle: Circle };
+};
+
+export type RelationshipMarginPoint = {
+  xArray: number[];
+  yArray: number[];
+};
+
+export type RelationshipOrder = {
+  start: RelationshipPoint;
+  end: RelationshipPoint;
+  distance: number;
 };
 
 export type ObjectPoint = {
