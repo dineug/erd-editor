@@ -2,6 +2,7 @@ import { parser, schemaV3Parser } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 
 import { query } from '@/utils/collection/query';
+import { getZoomViewport } from '@/utils/dragSelect';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
 import { FocusType, MoveKey, SelectType } from './state';
@@ -349,13 +350,28 @@ export const drawRelationshipAction = createAction<
 >(ActionType.drawRelationship);
 
 const drawRelationship: ReducerType<typeof ActionType.drawRelationship> = (
-  { editor: { drawRelationship }, settings: { scrollLeft, scrollTop } },
+  {
+    editor: { drawRelationship },
+    settings: { scrollLeft, scrollTop, zoomLevel, width, height },
+  },
   { payload: { x, y } }
 ) => {
   if (!drawRelationship?.start) return;
 
-  drawRelationship.end.x = x - scrollLeft;
-  drawRelationship.end.y = y - scrollTop;
+  const currentX = x - scrollLeft;
+  const currentY = y - scrollTop;
+  const zoomViewport = getZoomViewport(width, height, zoomLevel);
+  const zoomX = currentX * zoomLevel;
+  const zoomY = currentY * zoomLevel;
+  const absoluteZoomX = zoomViewport.x + zoomX;
+  const absoluteZoomY = zoomViewport.y + zoomY;
+  const diffZoomX = (currentX - absoluteZoomX) / zoomLevel;
+  const diffZoomY = (currentY - absoluteZoomY) / zoomLevel;
+  const absoluteX = currentX + diffZoomX;
+  const absoluteY = currentY + diffZoomY;
+
+  drawRelationship.end.x = absoluteX;
+  drawRelationship.end.y = absoluteY;
 };
 
 export const editorReducers = {

@@ -1,6 +1,6 @@
 import { FC, html, Ref } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Icon from '@/components/primitives/icon/Icon';
 import Kbd from '@/components/primitives/kbd/Kbd';

@@ -1,6 +1,6 @@
 import { DOMTemplateLiterals, FC, html, repeat } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import ColumnKey from '@/components/erd/canvas/table/column/column-key/ColumnKey';
 import ColumnNotNull from '@/components/erd/canvas/table/column/column-not-null/ColumnNotNull';
 import ColumnOption from '@/components/erd/canvas/table/column/column-option/ColumnOption';

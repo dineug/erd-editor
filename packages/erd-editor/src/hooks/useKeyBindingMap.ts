@@ -1,6 +1,6 @@
 import { onMounted, Ref, watch } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { tinykeys } from '@/utils/keyboard-shortcut/tinykeys';
 

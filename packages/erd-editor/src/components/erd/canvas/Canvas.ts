@@ -1,6 +1,7 @@
 import { cache, FC, html, Ref, ref, repeat } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
+import DrawRelationship from '@/components/erd/canvas/draw-relationship/DrawRelationship';
 import HighLevelTable from '@/components/erd/canvas/high-level-table/HighLevelTable';
 import Memo from '@/components/erd/canvas/memo/Memo';
 import Table from '@/components/erd/canvas/table/Table';
@@ -9,6 +10,7 @@ import { query } from '@/utils/collection/query';
 import * as styles from './Canvas.styles';
 
 export type CanvasProps = {
+  root: Ref<HTMLDivElement>;
   canvas: Ref<HTMLDivElement>;
 };
 
@@ -20,6 +22,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
     const {
       settings: { width, height, scrollTop, scrollLeft, zoomLevel, show },
       doc: { tableIds, memoIds },
+      editor: { drawRelationship },
       collections,
     } = store.state;
 
@@ -61,6 +64,12 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
           memo => memo.id,
           memo => html`<${Memo} memo=${memo} />`
         )}
+        ${drawRelationship?.start
+          ? html`<${DrawRelationship}
+              root=${props.root}
+              draw=${drawRelationship}
+            />`
+          : null}
       </div>
     `;
   };

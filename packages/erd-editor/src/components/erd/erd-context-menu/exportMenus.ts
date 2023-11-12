@@ -1,7 +1,7 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { nextTick } from '@dineug/r-html';
 
-import { AppContext } from '@/components/context';
+import { AppContext } from '@/components/appContext';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { exportJSON, exportPNG, exportSQLDDL } from '@/utils/file/exportFile';
 

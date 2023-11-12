@@ -1,6 +1,6 @@
 import { FC, html } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import { useMinimapScroll } from '@/components/erd/minimap/useMinimapScroll';
 import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
 

@@ -1,6 +1,6 @@
 import { FC, html } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import MemoSash from '@/components/erd/canvas/memo/memo-sash/MemoSash';
 import Icon from '@/components/primitives/icon/Icon';
 import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';

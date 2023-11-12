@@ -1,6 +1,6 @@
 import { isString } from '@dineug/shared';
 
-import { AppContext } from '@/components/context';
+import { AppContext } from '@/components/appContext';
 import { loadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 
 type ImportOptions = {

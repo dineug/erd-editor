@@ -1,6 +1,6 @@
 import { FC, html } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { CanvasType } from '@/constants/schema';

@@ -1,4 +1,4 @@
-import { AppContext } from '@/components/context';
+import { AppContext } from '@/components/appContext';
 import { Show } from '@/constants/schema';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 

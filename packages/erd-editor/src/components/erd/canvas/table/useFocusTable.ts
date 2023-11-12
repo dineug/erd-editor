@@ -1,4 +1,4 @@
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import { FocusType } from '@/engine/modules/editor/state';
 import { isEdit, isFocus, isSelectColumn } from '@/utils/focus';
 

@@ -1,7 +1,7 @@
 import { onMounted } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import { CanvasType, RelationshipType } from '@/constants/schema';
 import {
   drawEndRelationshipAction,

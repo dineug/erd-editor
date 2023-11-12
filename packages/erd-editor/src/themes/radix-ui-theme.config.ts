@@ -1,4 +1,4 @@
-import { amber, crimson, cyan } from '@radix-ui/colors';
+import { amber, cyan, ruby } from '@radix-ui/colors';
 
 import { Theme } from '@/themes/tokens';
 
@@ -46,6 +46,6 @@ export const ThemeConfig: Theme = {
   inputActive: 'accent-10',
 
   keyPK: `override-${amber.amber9}`,
-  keyFK: `override-${crimson.crimson9}`,
+  keyFK: `override-${ruby.ruby9}`,
   keyPFK: `override-${cyan.cyan9}`,
 } as const;

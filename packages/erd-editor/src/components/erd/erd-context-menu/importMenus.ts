@@ -1,4 +1,4 @@
-import { AppContext } from '@/components/context';
+import { AppContext } from '@/components/appContext';
 import { importJSON, importSQLDDL } from '@/utils/file/importFile';
 
 export function createImportMenus(app: AppContext, onClose: () => void) {

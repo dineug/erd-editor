@@ -10,7 +10,7 @@ import {
 } from '@dineug/r-html';
 import { fromEvent, merge, throttleTime } from 'rxjs';
 
-import { appContext, createAppContext } from '@/components/context';
+import { appContext, createAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import Theme from '@/components/theme/Theme';

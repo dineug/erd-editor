@@ -1,19 +1,12 @@
 import { observable } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import { MINIMAP_SIZE } from '@/constants/layout';
 import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
-import { Ctx, ValuesType } from '@/internal-types';
+import { Ctx } from '@/internal-types';
 import { isMouseEvent } from '@/utils/domEvent';
+import { DirectionName } from '@/utils/draw-relationship';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
-
-const Direction = {
-  left: 'left',
-  right: 'right',
-  top: 'top',
-  bottom: 'bottom',
-} as const;
-type Direction = ValuesType<typeof Direction>;
 
 export function useMinimapScroll(ctx: Ctx) {
   const app = useAppContext(ctx);
@@ -46,17 +39,17 @@ export function useMinimapScroll(ctx: Ctx) {
     const scrollLeft = settings.scrollLeft + absoluteMovement(movementX);
     const min = viewport.width - settings.width;
     const max = 0;
-    const direction: Direction = movementX < 0 ? 'left' : 'right';
+    const direction = movementX < 0 ? DirectionName.left : DirectionName.right;
     let change = false;
 
     switch (direction) {
-      case 'left':
+      case DirectionName.left:
         if (scrollLeft < max && x < clientX) {
           clientX += movementX;
           change = true;
         }
         break;
-      case 'right':
+      case DirectionName.right:
         if (scrollLeft > min && x > clientX) {
           clientX += movementX;
           change = true;
@@ -76,17 +69,17 @@ export function useMinimapScroll(ctx: Ctx) {
     const scrollTop = settings.scrollTop + absoluteMovement(movementY);
     const min = viewport.height - settings.height;
     const max = 0;
-    const direction: Direction = movementY < 0 ? 'top' : 'bottom';
+    const direction = movementY < 0 ? DirectionName.top : DirectionName.bottom;
     let change = false;
 
     switch (direction) {
-      case 'top':
+      case DirectionName.top:
         if (scrollTop < max && y < clientY) {
           clientY += movementY;
           change = true;
         }
         break;
-      case 'bottom':
+      case DirectionName.bottom:
         if (scrollTop > min && y > clientY) {
           clientY += movementY;
           change = true;

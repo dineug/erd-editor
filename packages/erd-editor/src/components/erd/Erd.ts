@@ -1,6 +1,6 @@
 import { createRef, FC, html, observable, ref } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import DragSelect from '@/components/erd/drag-select/DragSelect';
 import ErdContextMenu, {
@@ -126,7 +126,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         @touchstart=${handleDragSelect}
         @wheel=${handleWheel}
       >
-        <${Canvas} canvas=${canvas} />
+        <${Canvas} root=${root} canvas=${canvas} />
         <${Minimap} />
         ${state.dragSelect
           ? html`

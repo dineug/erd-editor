@@ -1,4 +1,4 @@
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
 import { Ctx, Table } from '@/internal-types';

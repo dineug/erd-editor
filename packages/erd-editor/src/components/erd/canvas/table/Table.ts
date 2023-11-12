@@ -1,6 +1,6 @@
 import { FC, html, repeat } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import Column from '@/components/erd/canvas/table/column/Column';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import Icon from '@/components/primitives/icon/Icon';

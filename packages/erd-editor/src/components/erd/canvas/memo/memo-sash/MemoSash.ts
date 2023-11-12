@@ -1,10 +1,11 @@
 import { FC, html } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import Sash, { SashProps, SashType } from '@/components/primitives/sash/Sash';
 import { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
 import { resizeMemoAction } from '@/engine/modules/memo/atom.actions';
 import { Memo, ValuesType } from '@/internal-types';
+import { DirectionName } from '@/utils/draw-relationship';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 
 export type MemoSashProps = {
@@ -25,14 +26,6 @@ const Position = {
 } as const;
 type Position = ValuesType<typeof Position>;
 
-const Direction = {
-  left: 'left',
-  right: 'right',
-  top: 'top',
-  bottom: 'bottom',
-} as const;
-type Direction = ValuesType<typeof Direction>;
-
 const createSash = (
   top: number,
   left: number
@@ -43,42 +36,42 @@ const createSash = (
 > => [
   {
     type: SashType.vertical,
-    position: 'left',
+    position: Position.left,
   },
   {
     type: SashType.vertical,
-    position: 'right',
+    position: Position.right,
     left,
   },
   // {
   //   type: SashType.horizontal,
-  //   position: 'top',
+  //   position: Position.top,
   // },
   {
     type: SashType.horizontal,
-    position: 'bottom',
+    position: Position.bottom,
     top,
   },
   {
     type: SashType.edge,
-    position: 'lt',
+    position: Position.lt,
     cursor: 'nwse-resize',
   },
   {
     type: SashType.edge,
-    position: 'rt',
+    position: Position.rt,
     cursor: 'nesw-resize',
     left,
   },
   {
     type: SashType.edge,
-    position: 'lb',
+    position: Position.lb,
     cursor: 'nesw-resize',
     top,
   },
   {
     type: SashType.edge,
-    position: 'rb',
+    position: Position.rb,
     cursor: 'nwse-resize',
     top,
     left,
@@ -101,25 +94,28 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
 
   const resizeWidth = (
     { movementX, x }: DragMove,
-    direction: Direction
+    direction: DirectionName
   ): ResizeMemo => {
     const ui = Object.assign({ change: false }, props.memo.ui);
-    const mouseDirection: Direction = movementX < 0 ? 'left' : 'right';
+    const mouseDirection =
+      movementX < 0 ? DirectionName.left : DirectionName.right;
     const width =
-      direction === 'left' ? ui.width - movementX : ui.width + movementX;
+      direction === DirectionName.left
+        ? ui.width - movementX
+        : ui.width + movementX;
 
     switch (mouseDirection) {
-      case 'left':
+      case DirectionName.left:
         if (MEMO_MIN_WIDTH < width && x < clientX) {
-          direction === 'left' && (ui.x += movementX);
+          direction === DirectionName.left && (ui.x += movementX);
           clientX += movementX;
           ui.width = width;
           ui.change = true;
         }
         break;
-      case 'right':
+      case DirectionName.right:
         if (MEMO_MIN_WIDTH < width && x > clientX) {
-          direction === 'left' && (ui.x += movementX);
+          direction === DirectionName.left && (ui.x += movementX);
           clientX += movementX;
           ui.width = width;
           ui.change = true;
@@ -131,25 +127,28 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
 
   const resizeHeight = (
     { movementY, y }: DragMove,
-    direction: Direction
+    direction: DirectionName
   ): ResizeMemo => {
     const ui = Object.assign({ change: false }, props.memo.ui);
-    const mouseDirection: Direction = movementY < 0 ? 'top' : 'bottom';
+    const mouseDirection =
+      movementY < 0 ? DirectionName.top : DirectionName.bottom;
     const height =
-      direction === 'top' ? ui.height - movementY : ui.height + movementY;
+      direction === DirectionName.top
+        ? ui.height - movementY
+        : ui.height + movementY;
 
     switch (mouseDirection) {
-      case 'top':
+      case DirectionName.top:
         if (MEMO_MIN_HEIGHT < height && y < clientY) {
-          direction === 'top' && (ui.y += movementY);
+          direction === DirectionName.top && (ui.y += movementY);
           clientY += movementY;
           ui.height = height;
           ui.change = true;
         }
         break;
-      case 'bottom':
+      case DirectionName.bottom:
         if (MEMO_MIN_HEIGHT < height && y > clientY) {
-          direction === 'top' && (ui.y += movementY);
+          direction === DirectionName.top && (ui.y += movementY);
           clientY += movementY;
           ui.height = height;
           ui.change = true;
@@ -166,29 +165,29 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
     let horizontalUI: ResizeMemo | null = null;
 
     switch (position) {
-      case 'left':
-      case 'right':
+      case Position.left:
+      case Position.right:
         verticalUI = resizeWidth(dragMove, position);
         break;
-      case 'top':
-      case 'bottom':
+      case Position.top:
+      case Position.bottom:
         horizontalUI = resizeHeight(dragMove, position);
         break;
-      case 'lt':
-        verticalUI = resizeWidth(dragMove, 'left');
-        horizontalUI = resizeHeight(dragMove, 'top');
+      case Position.lt:
+        verticalUI = resizeWidth(dragMove, DirectionName.left);
+        horizontalUI = resizeHeight(dragMove, DirectionName.top);
         break;
-      case 'rt':
-        verticalUI = resizeWidth(dragMove, 'right');
-        horizontalUI = resizeHeight(dragMove, 'top');
+      case Position.rt:
+        verticalUI = resizeWidth(dragMove, DirectionName.right);
+        horizontalUI = resizeHeight(dragMove, DirectionName.top);
         break;
-      case 'lb':
-        verticalUI = resizeWidth(dragMove, 'left');
-        horizontalUI = resizeHeight(dragMove, 'bottom');
+      case Position.lb:
+        verticalUI = resizeWidth(dragMove, DirectionName.left);
+        horizontalUI = resizeHeight(dragMove, DirectionName.bottom);
         break;
-      case 'rb':
-        verticalUI = resizeWidth(dragMove, 'right');
-        horizontalUI = resizeHeight(dragMove, 'bottom');
+      case Position.rb:
+        verticalUI = resizeWidth(dragMove, DirectionName.right);
+        horizontalUI = resizeHeight(dragMove, DirectionName.bottom);
         break;
     }
 

@@ -1,4 +1,4 @@
-import { AppContext } from '@/components/context';
+import { AppContext } from '@/components/appContext';
 import { Database } from '@/constants/schema';
 import { changeDatabaseAction } from '@/engine/modules/settings/atom.actions';
 

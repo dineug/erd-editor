@@ -1,6 +1,6 @@
 import { createRef, FC, html, ref, repeat } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/context';
+import { useAppContext } from '@/components/appContext';
 import * as canvasStyle from '@/components/erd/canvas/Canvas.styles';
 import Memo from '@/components/erd/minimap/memo/Memo';
 import Table from '@/components/erd/minimap/table/Table';
