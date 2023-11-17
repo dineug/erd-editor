@@ -22,11 +22,9 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
       ? relationshipShapeTpl(relationshipPath)
       : null;
 
-    const d = path.path.d();
-
     return svg`
       <path
-        d=${d}
+        d=${path.path.d()}
         stroke-dasharray=${relationship.identification ? 0 : 10}
         stroke-width=${strokeWidth}
         fill="transparent"

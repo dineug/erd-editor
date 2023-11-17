@@ -19,7 +19,7 @@ import {
   actionsFilter,
   groupByStreamActions,
   notEmptyActions,
-} from '@/engine/operators';
+} from '@/engine/rx-operators';
 import { createStore, Store } from '@/engine/store';
 import { createHooks } from '@/engine/store.hooks';
 

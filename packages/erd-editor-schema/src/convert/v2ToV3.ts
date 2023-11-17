@@ -1,5 +1,5 @@
 import { difference } from 'lodash-es';
-import { v4 as uuid } from 'uuid';
+import { nanoid } from 'nanoid';
 
 import { propOr } from '@/helper';
 import { type ERDEditorSchemaV2 } from '@/v2';
@@ -167,7 +167,7 @@ function assignTable(
     newIndex.unique = index.unique;
 
     for (const indexColumn of index.columns) {
-      const id = uuid();
+      const id = nanoid();
       const newIndexColumn = createIndexColumn();
 
       newIndex.indexColumnIds.push(id);

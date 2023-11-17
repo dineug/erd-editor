@@ -1,4 +1,5 @@
 import { isEmpty } from 'lodash-es';
+import { nanoid } from 'nanoid';
 
 import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
@@ -12,7 +13,6 @@ import {
 } from '@/engine/modules/tableColumn/atom.actions';
 import { addColumnAction$ } from '@/engine/modules/tableColumn/generator.actions';
 import { Point } from '@/internal-types';
-import { uuid } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
@@ -208,7 +208,7 @@ export const drawStartAddRelationshipAction$ = (
     if (
       !columns.some(column => bHas(column.options, ColumnOption.primaryKey))
     ) {
-      const columnId = uuid();
+      const columnId = nanoid();
       yield addColumnAction({
         tableId,
         id: columnId,

@@ -3,8 +3,6 @@ import { range } from 'lodash-es';
 import { START_ADD, START_X, START_Y } from '@/constants/layout';
 import { EntityMeta, Memo, Point, Settings, Table } from '@/internal-types';
 
-export { v4 as uuid } from 'uuid';
-
 const toZIndex = (data: Table | Memo) => data.ui.zIndex;
 
 export const nextZIndex = (tables: Table[], memos: Memo[]) =>

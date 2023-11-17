@@ -81,4 +81,4 @@ export const OrderType = {
   DESC: 'DESC',
 } as const;
 export type OrderType = ValuesType<typeof OrderType>;
-export const OrderTypeList: ReadonlyArray<string> = Object.assign(OrderType);
+export const OrderTypeList: ReadonlyArray<string> = Object.values(OrderType);

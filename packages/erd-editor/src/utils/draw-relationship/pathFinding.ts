@@ -45,7 +45,31 @@ function getPath(
     L: { x: 0, y: 0 },
     Q: { x: 0, y: 0 },
     d(): string {
-      return `M ${this.M.x} ${this.M.y} L ${this.L.x} ${this.L.y}`;
+      const distanceX = this.M.x - this.L.x;
+      const distanceY = this.M.y - this.L.y;
+      const distanceHalfX = distanceX / 2;
+      const distanceHalfY = distanceY / 2;
+      const isAxisX = Math.abs(distanceY) <= Math.abs(distanceX);
+      const subDistance = isAxisX
+        ? Math.abs(distanceHalfY)
+        : Math.abs(distanceHalfX);
+
+      const addX1 = add(distanceX)(true)(subDistance);
+      const addY1 = add(distanceY)(true)(subDistance);
+      const addX2 = add(distanceX)(false)(subDistance);
+      const addY2 = add(distanceY)(false)(subDistance);
+
+      const x1 = isAxisX ? this.M.x - distanceHalfX + addX1 : this.M.x;
+      const y1 = isAxisX ? this.M.y : this.M.y - distanceHalfY + addY1;
+      const x2 = isAxisX ? this.L.x + distanceHalfX + addX2 : this.L.x;
+      const y2 = isAxisX ? this.L.y : this.L.y + distanceHalfY + addY2;
+
+      const pointStart = `M ${this.M.x} ${this.M.y}`;
+      const point1 = `L ${x1} ${y1}`;
+      const point2 = `L ${x2} ${y2}`;
+      const pointEnd = `L ${this.L.x} ${this.L.y}`;
+
+      return `${pointStart} ${point1} ${point2} ${pointEnd}`;
     },
   };
 
@@ -269,4 +293,11 @@ function getLine(
     circle,
     startCircle,
   };
+}
+
+function add(distance: number) {
+  return (leftNegativeMul: boolean) => (value: number) =>
+    distance < 0
+      ? (leftNegativeMul ? -1 : 1) * value
+      : (leftNegativeMul ? 1 : -1) * value;
 }

@@ -1,5 +1,6 @@
 import { arrayHas } from '@dineug/shared';
 import { last } from 'lodash-es';
+import { nanoid } from 'nanoid';
 
 import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
@@ -9,7 +10,6 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { getRemoveFirstColumnId } from '@/engine/modules/editor/utils/focus';
-import { uuid } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
 
@@ -42,7 +42,7 @@ export const isChangeColumnTypes = arrayHas<FocusType>([
 export const addColumnAction$ = (tableId?: string): GeneratorAction =>
   function* ({ editor: { selectedMap } }) {
     if (tableId) {
-      const id = uuid();
+      const id = nanoid();
       yield addColumnAction({
         id,
         tableId,
@@ -59,7 +59,7 @@ export const addColumnAction$ = (tableId?: string): GeneratorAction =>
 
     const addColumnActions = Object.entries(selectedMap)
       .filter(([, type]) => type === SelectType.table)
-      .map(([tableId]) => ({ tableId, id: uuid() }));
+      .map(([tableId]) => ({ tableId, id: nanoid() }));
 
     for (const payload of addColumnActions) {
       yield addColumnAction(payload);

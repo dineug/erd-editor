@@ -1,3 +1,5 @@
+import { nanoid } from 'nanoid';
+
 import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
 import {
@@ -18,7 +20,7 @@ import {
   changeColumnNameAction,
   changeColumnNotNullAction,
 } from '@/engine/modules/tableColumn/atom.actions';
-import { nextPoint, nextZIndex, uuid } from '@/utils';
+import { nextPoint, nextZIndex } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
 
@@ -37,7 +39,7 @@ export const addTableAction$ = (): GeneratorAction =>
       .collection('memoEntities')
       .selectByIds(memoIds);
     const point = nextPoint(settings, tables, memos);
-    const id = uuid();
+    const id = nanoid();
 
     yield unselectAllAction();
     yield selectAction({ [id]: SelectType.table });
@@ -107,7 +109,7 @@ export const selectTableAction$ = (
         .filter(({ options }) => bHas(options, ColumnOption.primaryKey));
       if (!startColumns.length) return;
 
-      const endColumnIds = startColumns.map(() => uuid());
+      const endColumnIds = startColumns.map(() => nanoid());
 
       for (let i = 0; i < startColumns.length; i++) {
         const startColumn = startColumns[i];
@@ -147,7 +149,7 @@ export const selectTableAction$ = (
       }
 
       yield addRelationshipAction({
-        id: uuid(),
+        id: nanoid(),
         relationshipType: drawRelationship.relationshipType,
         start: {
           tableId: startTable.id,

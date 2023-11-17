@@ -116,9 +116,6 @@ importers:
       '@types/ua-parser-js':
         specifier: ^0.7.37
         version: 0.7.37
-      '@types/uuid':
-        specifier: ^9.0.2
-        version: 9.0.2
       color:
         specifier: ^4.2.3
         version: 4.2.3
@@ -134,6 +131,9 @@ importers:
       luxon:
         specifier: ^3.3.0
         version: 3.3.0
+      nanoid:
+        specifier: ^5.0.3
+        version: 5.0.3
       rollup-plugin-visualizer:
         specifier: ^5.9.2
         version: 5.9.2
@@ -161,9 +161,6 @@ importers:
       ua-parser-js:
         specifier: ^1.0.36
         version: 1.0.36
-      uuid:
-        specifier: ^9.0.0
-        version: 9.0.0
       vite:
         specifier: ^4.4.9
         version: 4.4.9
@@ -182,12 +179,12 @@ importers:
       '@types/lodash-es':
         specifier: ^4.17.8
         version: 4.17.8
-      '@types/uuid':
-        specifier: ^9.0.2
-        version: 9.0.2
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
+      nanoid:
+        specifier: ^5.0.3
+        version: 5.0.3
       rollup-plugin-visualizer:
         specifier: ^5.9.2
         version: 5.9.2
@@ -203,9 +200,6 @@ importers:
       typescript-transform-paths:
         specifier: ^3.4.6
         version: 3.4.6(typescript@5.1.6)
-      uuid:
-        specifier: ^9.0.0
-        version: 9.0.0
       vite:
         specifier: ^4.4.9
         version: 4.4.9
@@ -3885,10 +3879,6 @@ packages:
     resolution: {integrity: sha512-d0XxK3YTObnWVp6rZuev3c49+j4Lo8g4L1ZRm9z5L0xpoZycUPshHgczK5gsUMaZOstjVYYi09p5gYvUtfChYw==}
     dev: true
 
-  /@types/uuid@9.0.2:
-    resolution: {integrity: sha512-kNnC1GFBLuhImSnV7w4njQkUiJi0ZXUycu1rUaouPqiKlXkh77JKgdRnTAp1x5eBwcIwbtI+3otwzuIDEuDoxQ==}
-    dev: true
-
   /@types/yargs-parser@21.0.0:
     resolution: {integrity: sha512-iO9ZQHkZxHn4mSakYV0vFHAVDyEOIJQrV2uZ06HxEPcx+mt8swXoZHIbaaJ2crJYFfErySgktuTZ3BeLz+XmFA==}
     dev: true
@@ -6949,6 +6939,12 @@ packages:
   /nanoid@3.3.6:
     resolution: {integrity: sha512-BGcqMMJuToF7i1rt+2PWSNVnWIkGCU78jBG3RxO/bZlnZPK2Cmi2QaffxGO/2RvWi9sL+FAiRiXMgsyxQ1DIDA==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
+    hasBin: true
+    dev: true
+
+  /nanoid@5.0.3:
+    resolution: {integrity: sha512-I7X2b22cxA4LIHXPSqbBCEQSL+1wv8TuoefejsX4HFWyC6jc5JG7CEaxOltiKjc1M+YCS2YkrZZcj4+dytw9GA==}
+    engines: {node: ^18 || >=20}
     hasBin: true
     dev: true
 

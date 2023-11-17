@@ -2,7 +2,7 @@ import { AnyAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 import { Observable } from 'rxjs';
 
-import { notEmptyActions } from '@/engine/operators/notEmptyActions';
+import { notEmptyActions } from '@/engine/rx-operators/notEmptyActions';
 
 export const actionsFilter = (
   actionTypes: Array<string> | ReadonlyArray<string>

@@ -17,6 +17,7 @@ class CollectionQuery<K extends keyof Collections> {
     return this.collection[id] as GetEntity<K> | undefined;
   }
   selectByIds(ids: string[]): Array<GetEntity<K>> {
+    ids.length; // observable dependency
     return ids.map(id => this.selectById(id)).filter(Boolean) as Array<
       GetEntity<K>
     >;

@@ -1,8 +1,10 @@
+import { nanoid } from 'nanoid';
+
 import { GeneratorAction } from '@/engine/generator.actions';
 import { selectAction } from '@/engine/modules/editor/atom.actions';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
-import { nextPoint, nextZIndex, uuid } from '@/utils';
+import { nextPoint, nextZIndex } from '@/utils';
 import { query } from '@/utils/collection/query';
 
 import {
@@ -20,7 +22,7 @@ export const addMemoAction$ = (): GeneratorAction =>
       .collection('memoEntities')
       .selectByIds(memoIds);
     const point = nextPoint(settings, tables, memos);
-    const id = uuid();
+    const id = nanoid();
 
     yield unselectAllAction$();
     yield selectAction({ [id]: SelectType.memo });

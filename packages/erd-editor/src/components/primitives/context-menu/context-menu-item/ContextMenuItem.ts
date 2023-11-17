@@ -7,11 +7,11 @@ import {
   onMounted,
   ref,
 } from '@dineug/r-html';
+import { nanoid } from 'nanoid';
 
 import ContextMenuContent from '@/components/primitives/context-menu/context-menu-content/ContextMenuContent';
 import { useContextMenuRootContext } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { uuid } from '@/utils';
 
 import * as styles from './ContextMenuItem.styles';
 
@@ -23,7 +23,7 @@ export type ContextMenuItemProps = {
 
 const ContextMenuItem: FC<ContextMenuItemProps> = (props, ctx) => {
   const root = useContextMenuRootContext(ctx);
-  const id = uuid();
+  const id = nanoid();
   const $div = createRef<HTMLDivElement>();
   const state = observable({
     selected: false,
