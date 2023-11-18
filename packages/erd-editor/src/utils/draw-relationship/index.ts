@@ -32,6 +32,13 @@ export type DrawLine = {
   };
 };
 
+export type PathPoint = {
+  M: Point;
+  L: Point;
+  Q: Point;
+  d(): Array<[Point, Point]>;
+};
+
 export type Path = {
   M: Point;
   L: Point;
@@ -72,7 +79,7 @@ export type Circle = {
 };
 
 export type RelationshipPath = {
-  path: { path: Path; line: PathLine };
+  path: { path: PathPoint; line: PathLine };
   line: { line: Line; circle: Circle; startCircle: Circle };
 };
 

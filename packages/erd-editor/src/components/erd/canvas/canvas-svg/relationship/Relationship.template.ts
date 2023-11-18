@@ -186,7 +186,7 @@ const relationshipN = ({ path, line }: RelationshipPath) =>
     ></line>
   `;
 
-export const relationshipShapeMap: Record<
+const relationshipShapeMap: Record<
   number,
   (value: RelationshipPath) => DOMTemplateLiterals
 > = {
@@ -198,3 +198,11 @@ export const relationshipShapeMap: Record<
   [0b0000000000000000000000000100000]: relationshipOne,
   [0b0000000000000000000000001000000]: relationshipN,
 };
+
+export function relationshipShape(
+  relationshipType: number,
+  relationshipPath: RelationshipPath
+): DOMTemplateLiterals | null {
+  const relationshipShapeTpl = relationshipShapeMap[relationshipType];
+  return relationshipShapeTpl?.(relationshipPath) ?? null;
+}

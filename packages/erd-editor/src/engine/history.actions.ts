@@ -40,16 +40,22 @@ function push(store: Store, history: History, actions: AnyAction[]) {
   if (!undoActions.length || !redoActions.length) return;
 
   history.push({
-    undo: () => store.dispatchSync(undoActions.map(cloneAction)),
-    redo: () => store.dispatchSync(redoActions.map(cloneAction)),
+    undo: () => {
+      const timestamp = Date.now();
+      store.dispatchSync(undoActions.map(cloneAction(timestamp)));
+    },
+    redo: () => {
+      const timestamp = Date.now();
+      store.dispatchSync(redoActions.map(cloneAction(timestamp)));
+    },
   });
 }
 
-function cloneAction(action: AnyAction) {
-  return {
+function cloneAction(timestamp: number) {
+  return (action: AnyAction) => ({
     ...cloneDeep(action),
-    timestamp: Date.now(),
-  };
+    timestamp,
+  });
 }
 
 export const pushHistory =

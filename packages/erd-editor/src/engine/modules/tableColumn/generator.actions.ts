@@ -10,6 +10,7 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { getRemoveFirstColumnId } from '@/engine/modules/editor/utils/focus';
+import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
 
@@ -83,8 +84,11 @@ export const removeColumnAction$ = (
   columnIds: string[]
 ): GeneratorAction =>
   function* (state) {
+    // TODO: valid index
     const {
+      doc: { relationshipIds },
       editor: { focusTable },
+      collections,
     } = state;
 
     if (focusTable?.columnId) {
@@ -106,7 +110,19 @@ export const removeColumnAction$ = (
       }
     }
 
-    // TODO: valid index, relationship
+    const hasColumnIds = arrayHas(columnIds);
+    const relationships = query(collections)
+      .collection('relationshipEntities')
+      .selectByIds(relationshipIds)
+      .filter(
+        ({ start, end }) =>
+          (start.tableId === tableId && start.columnIds.some(hasColumnIds)) ||
+          (end.tableId === tableId && end.columnIds.some(hasColumnIds))
+      );
+
+    for (const { id } of relationships) {
+      yield removeRelationshipAction({ id });
+    }
     for (const columnId of columnIds) {
       yield removeColumnAction({
         id: columnId,

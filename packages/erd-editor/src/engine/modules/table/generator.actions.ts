@@ -1,3 +1,4 @@
+import { arrayHas } from '@dineug/shared';
 import { nanoid } from 'nanoid';
 
 import { ColumnOption } from '@/constants/schema';
@@ -10,7 +11,10 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { drawStartAddRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
-import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import {
+  addRelationshipAction,
+  removeRelationshipAction,
+} from '@/engine/modules/relationship/atom.actions';
 import {
   addColumnAction,
   changeColumnCommentAction,
@@ -55,18 +59,40 @@ export const addTableAction$ = (): GeneratorAction =>
   };
 
 export const removeTableAction$ = (id?: string): GeneratorAction =>
-  function* ({ editor: { selectedMap } }) {
+  function* ({
+    doc: { relationshipIds },
+    editor: { selectedMap },
+    collections,
+  }) {
+    // TODO: valid index
+    const relationships = query(collections)
+      .collection('relationshipEntities')
+      .selectByIds(relationshipIds);
+
     if (id) {
+      const removeRelationships = relationships.filter(
+        ({ start, end }) => start.tableId === id || end.tableId === id
+      );
+      for (const { id } of removeRelationships) {
+        yield removeRelationshipAction({ id });
+      }
       yield removeTableAction({ id });
+
       return;
     }
 
-    const selectedTables = Object.entries(selectedMap).filter(
-      ([, type]) => type === SelectType.table
+    const selectedTableIds = Object.entries(selectedMap)
+      .filter(([, type]) => type === SelectType.table)
+      .map(([id]) => id);
+    const hasTableIds = arrayHas(selectedTableIds);
+    const removeRelationships = relationships.filter(
+      ({ start, end }) => hasTableIds(start.tableId) || hasTableIds(end.tableId)
     );
 
-    // TODO: valid index, relationship
-    for (const [id] of selectedTables) {
+    for (const { id } of removeRelationships) {
+      yield removeRelationshipAction({ id });
+    }
+    for (const id of selectedTableIds) {
       yield removeTableAction({ id });
     }
   };

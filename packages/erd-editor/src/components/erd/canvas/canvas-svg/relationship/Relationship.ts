@@ -4,7 +4,7 @@ import { StartRelationshipType } from '@/constants/schema';
 import { Relationship as RelationshipType } from '@/internal-types';
 import { getRelationshipPath } from '@/utils/draw-relationship/pathFinding';
 
-import { relationshipShapeMap } from './Relationship.template';
+import { relationshipShape } from './Relationship.template';
 
 export type RelationshipProps = {
   relationship: RelationshipType;
@@ -16,19 +16,25 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
     const { relationship, strokeWidth } = props;
     const relationshipPath = getRelationshipPath(relationship);
     const { path, line } = relationshipPath;
-    const relationshipShapeTpl =
-      relationshipShapeMap[relationship.relationshipType];
-    const shape = relationshipShapeTpl
-      ? relationshipShapeTpl(relationshipPath)
-      : null;
+    const lines = path.path.d();
+    const shape = relationshipShape(
+      relationship.relationshipType,
+      relationshipPath
+    );
 
     return svg`
-      <path
-        d=${path.path.d()}
-        stroke-dasharray=${relationship.identification ? 0 : 10}
-        stroke-width=${strokeWidth}
-        fill="transparent"
-      ></path>
+      ${lines.map(
+        ([a, b]) =>
+          svg`
+            <line
+              x1=${a.x} y1=${a.y}
+              x2=${b.x} y2=${b.y}
+              stroke-dasharray=${relationship.identification ? 0 : 10}
+              stroke-width=${strokeWidth}
+              fill="transparent"
+            ></line>
+          `
+      )}
       <line
         x1=${path.line.start.x1} y1=${path.line.start.y1}
         x2=${path.line.start.x2} y2=${path.line.start.y2}

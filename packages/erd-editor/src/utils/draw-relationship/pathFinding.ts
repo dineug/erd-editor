@@ -1,15 +1,14 @@
 import { Direction } from '@/constants/schema';
 import { Relationship, RelationshipPoint } from '@/internal-types';
 import {
-  Circle,
   CIRCLE_HEIGHT,
   Line,
   LINE_HEIGHT,
   LINE_SIZE,
-  Path,
   PATH_END_HEIGHT,
   PATH_LINE_HEIGHT,
   PathLine,
+  PathPoint,
   RelationshipPath,
 } from '@/utils/draw-relationship';
 
@@ -25,7 +24,7 @@ export function getRelationshipPath(
 function getPath(
   start: RelationshipPoint,
   end: RelationshipPoint
-): { path: Path; line: PathLine } {
+): RelationshipPath['path'] {
   const line: PathLine = {
     start: {
       x1: start.x,
@@ -40,11 +39,11 @@ function getPath(
       y2: end.y,
     },
   };
-  const path: Path = {
+  const path: PathPoint = {
     M: { x: 0, y: 0 },
     L: { x: 0, y: 0 },
     Q: { x: 0, y: 0 },
-    d(): string {
+    d() {
       const distanceX = this.M.x - this.L.x;
       const distanceY = this.M.y - this.L.y;
       const distanceHalfX = distanceX / 2;
@@ -54,22 +53,34 @@ function getPath(
         ? Math.abs(distanceHalfY)
         : Math.abs(distanceHalfX);
 
-      const addX1 = add(distanceX)(true)(subDistance);
-      const addY1 = add(distanceY)(true)(subDistance);
-      const addX2 = add(distanceX)(false)(subDistance);
-      const addY2 = add(distanceY)(false)(subDistance);
+      const add = createAdd(subDistance);
+      const addLeft = add(true);
+      const addRight = add(false);
+
+      const addX1 = addLeft(distanceX);
+      const addY1 = addLeft(distanceY);
+      const addX2 = addRight(distanceX);
+      const addY2 = addRight(distanceY);
 
       const x1 = isAxisX ? this.M.x - distanceHalfX + addX1 : this.M.x;
       const y1 = isAxisX ? this.M.y : this.M.y - distanceHalfY + addY1;
       const x2 = isAxisX ? this.L.x + distanceHalfX + addX2 : this.L.x;
       const y2 = isAxisX ? this.L.y : this.L.y + distanceHalfY + addY2;
 
-      const pointStart = `M ${this.M.x} ${this.M.y}`;
-      const point1 = `L ${x1} ${y1}`;
-      const point2 = `L ${x2} ${y2}`;
-      const pointEnd = `L ${this.L.x} ${this.L.y}`;
-
-      return `${pointStart} ${point1} ${point2} ${pointEnd}`;
+      return [
+        [
+          { x: this.M.x, y: this.M.y },
+          { x: x1, y: y1 },
+        ],
+        [
+          { x: x1, y: y1 },
+          { x: x2, y: y2 },
+        ],
+        [
+          { x: x2, y: y2 },
+          { x: this.L.x, y: this.L.y },
+        ],
+      ];
     },
   };
 
@@ -129,7 +140,7 @@ function getPath(
 function getLine(
   start: RelationshipPoint,
   end: RelationshipPoint
-): { line: Line; circle: Circle; startCircle: Circle } {
+): RelationshipPath['line'] {
   const line: Line = {
     start: {
       base: {
@@ -295,8 +306,8 @@ function getLine(
   };
 }
 
-function add(distance: number) {
-  return (leftNegativeMul: boolean) => (value: number) =>
+function createAdd(value: number) {
+  return (leftNegativeMul: boolean) => (distance: number) =>
     distance < 0
       ? (leftNegativeMul ? -1 : 1) * value
       : (leftNegativeMul ? 1 : -1) * value;
