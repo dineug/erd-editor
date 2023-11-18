@@ -1,6 +1,7 @@
 import { AppContext } from '@/components/appContext';
 import { Show } from '@/constants/schema';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import { bHas } from '@/utils/bit';
 
 type Menu = {
   name: string;
@@ -46,7 +47,7 @@ export function createShowMenus({ store }: AppContext) {
   const { settings } = store.state;
 
   return menus.map(menu => {
-    const checked = menu.show & settings.show;
+    const checked = bHas(settings.show, menu.show);
 
     return {
       checked,

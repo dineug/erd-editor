@@ -21,6 +21,7 @@ import {
   changeColumnPrimaryKeyAction,
   removeColumnAction,
 } from '@/engine/modules/tableColumn/atom.actions';
+import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
@@ -44,8 +45,8 @@ const identificationHook: CO = function* (channel, { doc, collections }) {
           .filter(column => has(column.id));
         if (!columns.length) continue;
 
-        const value = columns.every(
-          column => column.options & ColumnOption.primaryKey
+        const value = columns.every(column =>
+          bHas(column.options, ColumnOption.primaryKey)
         );
 
         if (value === identification) {
@@ -82,8 +83,8 @@ const startRelationshipHook: CO = function* (channel, { doc, collections }) {
           .filter(column => has(column.id));
         if (!columns.length) continue;
 
-        const value = columns.every(
-          column => column.options & ColumnOption.notNull
+        const value = columns.every(column =>
+          bHas(column.options, ColumnOption.notNull)
         )
           ? StartRelationshipType.dash
           : StartRelationshipType.ring;

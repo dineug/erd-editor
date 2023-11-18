@@ -2,6 +2,7 @@ import { createAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
+import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
@@ -184,15 +185,15 @@ const changeColumnPrimaryKey: ReducerType<
         : column.options & ~ColumnOption.primaryKey;
 
       if (value) {
-        if (column.ui.keys & ColumnUIKey.foreignKey) {
+        if (bHas(column.ui.keys, ColumnUIKey.foreignKey)) {
           column.ui.keys = ColumnUIKey.primaryKey | ColumnUIKey.foreignKey;
         } else {
           column.ui.keys = ColumnUIKey.primaryKey;
         }
       } else {
         if (
-          column.ui.keys & ColumnUIKey.primaryKey &&
-          column.ui.keys & ColumnUIKey.foreignKey
+          bHas(column.ui.keys, ColumnUIKey.primaryKey) &&
+          bHas(column.ui.keys, ColumnUIKey.foreignKey)
         ) {
           column.ui.keys = ColumnUIKey.foreignKey;
         } else {
