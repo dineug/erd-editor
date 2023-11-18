@@ -53,7 +53,7 @@ export function importJSON({ store }: AppContext) {
   input.click();
 }
 
-export function importSQLDDL({ store }: AppContext) {
+export function importSchemaSQL({ store }: AppContext) {
   if (performImportFileExtra) {
     performImportFileExtra({ accept: '.sql', type: 'sql' });
     return;
@@ -82,7 +82,7 @@ export function importSQLDDL({ store }: AppContext) {
       }
 
       // TODO: DDLParser
-      // const statements = DDLParser(value);
+      // const statements = schemaSQLParser(value);
       // const json = createJson(statements, helper, store.canvasState.database);
       // store.dispatch(loadJson$(json), sortTable());
     };

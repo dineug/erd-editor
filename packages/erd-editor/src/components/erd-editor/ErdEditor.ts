@@ -3,27 +3,30 @@ import {
   defineCustomElement,
   FC,
   html,
-  observable,
   onMounted,
   ref,
   useProvider,
 } from '@dineug/r-html';
-import { fromEvent, merge, throttleTime } from 'rxjs';
+import { fromEvent, throttleTime } from 'rxjs';
 
 import { appContext, createAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import Theme from '@/components/theme/Theme';
 import Toolbar from '@/components/toolbar/Toolbar';
+import { DatabaseVendor } from '@/constants/database';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { AccentColor, createTheme, GrayColor } from '@/themes/radix-ui-theme';
+import { ThemeOptions } from '@/themes/radix-ui-theme';
+import { Theme as ThemeType } from '@/themes/tokens';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
+import { KeyBindingMap, KeyBindingName } from '@/utils/keyboard-shortcut';
 import { createText } from '@/utils/text';
 
 import * as styles from './ErdEditor.styles';
+import { useErdEditorAttachElement } from './useErdEditorAttachElement';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -31,9 +34,36 @@ declare global {
   }
 }
 
-export type ErdEditorProps = {};
+export type ErdEditorProps = {
+  readonly: boolean;
+  systemDarkMode: boolean;
+};
 
-export interface ErdEditorElement extends ErdEditorProps, HTMLElement {}
+export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
+  value: string;
+  focus: () => void;
+  blur: () => void;
+  clear: () => void;
+  setInitialValue: (value: string) => void;
+  setPresetTheme: (themeOptions: Partial<ThemeOptions>) => void;
+  setTheme: (theme: Partial<ThemeType>) => void;
+  setKeyBindingMap: (
+    keyBindingMap: Partial<
+      Omit<
+        KeyBindingMap,
+        | typeof KeyBindingName.edit
+        | typeof KeyBindingName.stop
+        | typeof KeyBindingName.find
+        | typeof KeyBindingName.undo
+        | typeof KeyBindingName.redo
+        | typeof KeyBindingName.zoomIn
+        | typeof KeyBindingName.zoomOut
+      >
+    >
+  ) => void;
+  setSchemaSQL: (value: string) => void;
+  getSchemaSQL: (databaseVendor?: DatabaseVendor) => string;
+}
 
 const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const text = createText();
@@ -43,52 +73,39 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();
   useKeyBindingMap(ctx, root);
 
+  const { theme } = useErdEditorAttachElement({
+    props,
+    ctx,
+    app: appContextValue,
+    root,
+  });
+  const { store, keydown$ } = appContextValue;
   const { addUnsubscribe } = useUnmounted();
 
-  const state = observable(
-    {
-      theme: createTheme({
-        grayColor: GrayColor.slate,
-        accentColor: AccentColor.indigo,
-      })('dark'),
-    },
-    { shallow: true }
-  );
-
   const handleKeydown = (event: KeyboardEvent) => {
-    const { keydown$ } = appContextValue;
     keydown$.next(event);
   };
 
   const handleFocus = () => {
-    const $root = root.value;
     setTimeout(() => {
       if (document.activeElement !== ctx) {
-        $root.focus();
+        ctx.focus();
       }
     }, 1);
   };
 
   onMounted(() => {
-    const $root = root.value;
-    handleFocus();
+    ctx.focus();
     addUnsubscribe(
-      merge(
-        fromEvent($root, 'mousedown'),
-        fromEvent($root, 'touchstart'),
-        fromEvent(ctx, focusEvent.type)
-      )
+      fromEvent(ctx, focusEvent.type)
         .pipe(throttleTime(50))
         .subscribe(handleFocus),
-      fromEvent(ctx, forceFocusEvent.type).subscribe(() => {
-        $root.focus();
-      })
+      fromEvent(ctx, forceFocusEvent.type).subscribe(ctx.focus)
     );
   });
 
   onMounted(() => {
     const $root = root.value;
-    const { store } = appContextValue;
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
@@ -106,7 +123,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 
   return () => html`
     <${GlobalStyles} />
-    <${Theme} .theme=${state.theme} />
+    <${Theme} .theme=${theme} />
     <div
       ${ref(root)}
       class=${styles.root}
@@ -123,5 +140,10 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 };
 
 defineCustomElement('erd-editor', {
+  shadow: 'closed',
+  observedProps: {
+    readonly: Boolean,
+    systemDarkMode: Boolean,
+  },
   render: ErdEditor,
 });

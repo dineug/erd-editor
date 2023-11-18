@@ -14,6 +14,8 @@ export const ActionType = {
   changeViewport: 'editor.changeViewport',
   clear: 'editor.clear',
   loadJson: 'editor.loadJson',
+  initialClear: 'editor.initialClear',
+  initialLoadJson: 'editor.initialLoadJson',
   focusTable: 'editor.focusTable',
   focusColumn: 'editor.focusColumn',
   focusTableEnd: 'editor.focusTableEnd',
@@ -42,6 +44,10 @@ export type ActionMap = {
   };
   [ActionType.clear]: void;
   [ActionType.loadJson]: {
+    value: string;
+  };
+  [ActionType.initialClear]: void;
+  [ActionType.initialLoadJson]: {
     value: string;
   };
   [ActionType.focusTable]: {

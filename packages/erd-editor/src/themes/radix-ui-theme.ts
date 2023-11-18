@@ -262,6 +262,7 @@ export const Appearance = {
   light: 'light',
 } as const;
 export type Appearance = ValuesType<typeof Appearance>;
+export const AppearanceList = Object.values(Appearance);
 
 export const GrayColor = {
   gray: 'gray',
@@ -272,6 +273,7 @@ export const GrayColor = {
   sand: 'sand',
 } as const;
 export type GrayColor = ValuesType<typeof GrayColor>;
+export const GrayColorList = Object.values(GrayColor);
 
 export const AccentColor = {
   gray: 'gray',
@@ -302,8 +304,9 @@ export const AccentColor = {
   sky: 'sky',
 } as const;
 export type AccentColor = ValuesType<typeof AccentColor>;
+export const AccentColorList = Object.values(AccentColor);
 
-type ThemeOptions = {
+export type ThemeOptions = {
   appearance: Appearance;
   grayColor: GrayColor;
   accentColor: AccentColor;
@@ -353,21 +356,15 @@ function toTheme(radixUITheme: ReturnType<typeof createRadixUITheme>): Theme {
   }, {}) as Theme;
 }
 
-export const createTheme =
-  ({ grayColor, accentColor }: Omit<ThemeOptions, 'appearance'>) =>
-  (appearance: Appearance) =>
-    appearance === Appearance.dark
-      ? toTheme(
-          createRadixUITheme({
-            appearance: Appearance.dark,
-            grayColor,
-            accentColor,
-          })
-        )
-      : toTheme(
-          createRadixUITheme({
-            appearance: Appearance.light,
-            grayColor,
-            accentColor,
-          })
-        );
+export const createTheme = ({
+  grayColor,
+  accentColor,
+  appearance,
+}: ThemeOptions) =>
+  toTheme(
+    createRadixUITheme({
+      appearance,
+      grayColor,
+      accentColor,
+    })
+  );

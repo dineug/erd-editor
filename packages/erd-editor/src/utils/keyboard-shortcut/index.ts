@@ -34,6 +34,7 @@ export const KeyBindingName = {
   zoomOut: 'zoomOut',
 } as const;
 export type KeyBindingName = ValuesType<typeof KeyBindingName>;
+export const KeyBindingNameList = Object.values(KeyBindingName);
 
 export type KeyBindingMap = Record<KeyBindingName, ShortcutOption[]>;
 

@@ -181,23 +181,19 @@ export function recalculateTableWidth(
   { doc: { tableIds }, collections }: RootState,
   { toWidth }: EngineContext
 ) {
-  const tables = query(collections)
+  query(collections)
     .collection('tableEntities')
-    .selectByIds(tableIds);
+    .updateMany(tableIds, table => {
+      table.ui.widthName = textInRange(toWidth(table.name));
+      table.ui.widthComment = textInRange(toWidth(table.comment));
 
-  for (const table of tables) {
-    table.ui.widthName = textInRange(toWidth(table.name));
-    table.ui.widthComment = textInRange(toWidth(table.comment));
-
-    const columns = query(collections)
-      .collection('tableColumnEntities')
-      .selectByIds(table.columnIds);
-
-    for (const column of columns) {
-      column.ui.widthName = textInRange(toWidth(column.name));
-      column.ui.widthDataType = textInRange(toWidth(column.dataType));
-      column.ui.widthDefault = textInRange(toWidth(column.default));
-      column.ui.widthComment = textInRange(toWidth(column.comment));
-    }
-  }
+      query(collections)
+        .collection('tableColumnEntities')
+        .updateMany(table.columnIds, column => {
+          column.ui.widthName = textInRange(toWidth(column.name));
+          column.ui.widthDataType = textInRange(toWidth(column.dataType));
+          column.ui.widthDefault = textInRange(toWidth(column.default));
+          column.ui.widthComment = textInRange(toWidth(column.comment));
+        });
+    });
 }

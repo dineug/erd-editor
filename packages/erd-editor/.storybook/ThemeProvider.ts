@@ -23,7 +23,8 @@ const ThemeProvider: FC<ThemeProviderProps> = props => () =>
       .theme=${createTheme({
         grayColor: props.grayColor,
         accentColor: props.accentColor,
-      })(props.appearance)}
+        appearance: props.appearance,
+      })}
     />
     ${props.story}
   `;

@@ -44,13 +44,11 @@ const addColumnForeignKeyHook: CO = function* (
     }: ReturnType<typeof addRelationshipAction>) {
       if (!relationshipIds.includes(id)) return;
 
-      const columns = query(collections)
+      query(collections)
         .collection('tableColumnEntities')
-        .selectByIds(end.columnIds);
-
-      for (const { ui } of columns) {
-        ui.keys = ui.keys | ColumnUIKey.foreignKey;
-      }
+        .updateMany(end.columnIds, column => {
+          column.ui.keys = column.ui.keys | ColumnUIKey.foreignKey;
+        });
     }
   );
 };
@@ -71,14 +69,11 @@ const removeColumnForeignKeyHook: CO = function* (
         .selectById(id);
       if (!relationship) return;
 
-      const { end } = relationship;
-      const columns = query(collections)
+      query(collections)
         .collection('tableColumnEntities')
-        .selectByIds(end.columnIds);
-
-      for (const { ui } of columns) {
-        ui.keys = ui.keys & ~ColumnUIKey.foreignKey;
-      }
+        .updateMany(relationship.end.columnIds, column => {
+          column.ui.keys = column.ui.keys & ~ColumnUIKey.foreignKey;
+        });
     }
   );
 };

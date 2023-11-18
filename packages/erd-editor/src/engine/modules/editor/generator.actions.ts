@@ -26,6 +26,8 @@ import {
   focusColumnAction,
   focusMoveTableAction,
   focusTableEndAction,
+  initialClearAction,
+  initialLoadJsonAction,
   loadJsonAction,
   selectAction,
   unselectAllAction,
@@ -65,6 +67,12 @@ export const loadJsonAction$ = (value: string): GeneratorAction =>
   function* () {
     yield clearAction();
     yield loadJsonAction({ value });
+  };
+
+export const initialLoadJsonAction$ = (value: string): GeneratorAction =>
+  function* () {
+    yield initialClearAction();
+    yield initialLoadJsonAction({ value });
   };
 
 export const moveAllAction$ = (
@@ -232,6 +240,7 @@ export const drawStartAddRelationshipAction$ = (
 
 export const actions$ = {
   loadJsonAction$,
+  initialLoadJsonAction$,
   moveAllAction$,
   removeSelectedAction$,
   dragSelectAction$,

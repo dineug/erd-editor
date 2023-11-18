@@ -44,3 +44,7 @@ export const hasColumnType = arrayHas(ColumnTypeList);
 export function textInRange(width: number) {
   return Math.max(width, COLUMN_MIN_WIDTH);
 }
+
+export function toSafeString(value: any): string {
+  return isString(value) ? value.trim() : '';
+}

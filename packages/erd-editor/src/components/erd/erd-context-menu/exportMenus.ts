@@ -3,7 +3,11 @@ import { nextTick } from '@dineug/r-html';
 
 import { AppContext } from '@/components/appContext';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
-import { exportJSON, exportPNG, exportSQLDDL } from '@/utils/file/exportFile';
+import {
+  exportJSON,
+  exportPNG,
+  exportSchemaSQL,
+} from '@/utils/file/exportFile';
 
 export function createExportMenus(
   app: AppContext,
@@ -30,11 +34,11 @@ export function createExportMenus(
         prefix: 'mdi',
         name: 'database-import',
       },
-      name: 'SQL DDL',
+      name: 'Schema SQL',
       onClick: () => {
         // TODO: exportSQLDDL
-        console.log('exportSQLDDL');
-        // exportSQLDDL(createDDL(store), store.state.settings.databaseName);
+        console.log('exportSchemaSQL');
+        // exportSchemaSQL(createSchemaSQL(store), store.state.settings.databaseName);
         onClose();
       },
     },

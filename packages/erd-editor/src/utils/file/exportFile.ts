@@ -41,7 +41,7 @@ export function exportJSON(json: string, name?: string) {
   });
 }
 
-export function exportSQLDDL(sql: string, name?: string) {
+export function exportSchemaSQL(sql: string, name?: string) {
   performExport(new Blob([sql]), {
     fileName: createName('.sql', name),
   });

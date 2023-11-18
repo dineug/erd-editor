@@ -116,6 +116,33 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state.lww = lww;
 };
 
+export const initialClearAction = createAction<
+  ActionMap[typeof ActionType.initialClear]
+>(ActionType.initialClear);
+
+const initialClear: ReducerType<typeof ActionType.initialClear> = state => {
+  const { doc, collections, lww } = schemaV3Parser({});
+  state.doc = doc;
+  state.collections = collections;
+  state.lww = lww;
+};
+
+export const initialLoadJsonAction = createAction<
+  ActionMap[typeof ActionType.initialLoadJson]
+>(ActionType.initialLoadJson);
+
+const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
+  state,
+  { payload: { value } }
+) => {
+  const { version, settings, doc, collections, lww } = parser(value);
+  state.version = version;
+  state.settings = settings;
+  state.doc = doc;
+  state.collections = collections;
+  state.lww = lww;
+};
+
 export const focusTableAction = createAction<
   ActionMap[typeof ActionType.focusTable]
 >(ActionType.focusTable);
@@ -382,6 +409,8 @@ export const editorReducers = {
   [ActionType.changeViewport]: changeViewport,
   [ActionType.clear]: clear,
   [ActionType.loadJson]: loadJson,
+  [ActionType.initialClear]: initialClear,
+  [ActionType.initialLoadJson]: initialLoadJson,
   [ActionType.focusTable]: focusTable,
   [ActionType.focusColumn]: focusColumn,
   [ActionType.focusTableEnd]: focusTableEnd,
@@ -403,6 +432,8 @@ export const actions = {
   changeViewportAction,
   clearAction,
   loadJsonAction,
+  initialClearAction,
+  initialLoadJsonAction,
   focusTableAction,
   focusColumnAction,
   focusTableEndAction,

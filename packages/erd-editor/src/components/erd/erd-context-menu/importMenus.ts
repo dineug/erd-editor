@@ -1,5 +1,5 @@
 import { AppContext } from '@/components/appContext';
-import { importJSON, importSQLDDL } from '@/utils/file/importFile';
+import { importJSON, importSchemaSQL } from '@/utils/file/importFile';
 
 export function createImportMenus(app: AppContext, onClose: () => void) {
   return [
@@ -19,9 +19,9 @@ export function createImportMenus(app: AppContext, onClose: () => void) {
         prefix: 'mdi',
         name: 'database-import',
       },
-      name: 'SQL DDL',
+      name: 'Schema SQL',
       onClick: () => {
-        importSQLDDL(app);
+        importSchemaSQL(app);
         onClose();
       },
     },

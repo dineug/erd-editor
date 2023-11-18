@@ -48,6 +48,54 @@ export type Theme = {
   keyPFK: string;
 };
 
+export const ThemeTokens: ReadonlyArray<keyof Theme> = [
+  'canvasBackground',
+  'canvasBoundaryBackground',
+
+  'tableBackground',
+  'tableSelect',
+  'tableBorder',
+
+  'memoBackground',
+  'memoSelect',
+  'memoBorder',
+
+  'columnSelect',
+  'columnHover',
+
+  'relationshipHover',
+
+  'toolbarBackground',
+
+  'contextMenuBackground',
+  'contextMenuSelect',
+  'contextMenuHover',
+  'contextMenuBorder',
+
+  'minimapBorder',
+  'minimapShadow',
+  'minimapViewportBorder',
+  'minimapViewportBorderHover',
+
+  'dargSelectBackground',
+  'dargSelectBorder',
+
+  'scrollbarTrack',
+  'scrollbarThumb',
+  'scrollbarThumbHover',
+
+  'foreground',
+  'active',
+  'placeholder',
+
+  'focus',
+  'inputActive',
+
+  'keyPK',
+  'keyFK',
+  'keyPFK',
+];
+
 export const themeToTokensString = (theme: Theme) =>
   Object.keys(theme)
     .map(key => {

@@ -1,5 +1,5 @@
 import './preview.css';
-
+import { kebabCase } from 'lodash-es';
 import type { Preview } from '@storybook/html';
 import { render, html, addCSSHost } from '@dineug/r-html';
 
@@ -10,39 +10,40 @@ import {
   AccentColor,
 } from '../src/themes/radix-ui-theme';
 
-import { themeToTokensString } from '../src/themes/tokens';
+import { themeToTokensString, Theme } from '../src/themes/tokens';
 import ThemeProvider from './ThemeProvider';
+
+const themeToGlobalTokensString = (theme: Theme) =>
+  Object.keys(theme)
+    .map(key => `--erd-editor-${kebabCase(key)}: ${Reflect.get(theme, key)};`)
+    .join('\n');
 
 const withThemeProvider = (Story, context) => {
   const fragment = document.createDocumentFragment();
   const div = document.createElement('div');
   const shadowRoot = div.attachShadow({ mode: 'open' });
+  const themeOptions = {
+    grayColor: context.globals.grayColor,
+    accentColor: context.globals.accentColor,
+    appearance: context.globals.appearance,
+  };
 
   addCSSHost(shadowRoot);
 
   render(
     shadowRoot,
-    html`
-      <${ThemeProvider}
-        .story=${Story()}
-        .appearance=${context.globals.appearance}
-        .grayColor=${context.globals.grayColor}
-        .accentColor=${context.globals.accentColor}
-      />
-    `
+    html`<${ThemeProvider} .story=${Story()} ...${themeOptions} />`
   );
 
   render(
     fragment,
     html`
       <style>
+        ${context.parameters.css}
+
         :root {
-          ${themeToTokensString(
-          createTheme({
-            grayColor: context.globals.grayColor,
-            accentColor: context.globals.accentColor,
-          })(context.globals.appearance)
-        )};
+          ${themeToGlobalTokensString(createTheme(themeOptions))}
+          ${themeToTokensString(createTheme(themeOptions))}
         }
       </style>
       ${div}
