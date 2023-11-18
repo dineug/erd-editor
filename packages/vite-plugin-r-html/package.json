@@ -1,0 +1,38 @@
+{
+  "name": "@dineug/vite-plugin-r-html",
+  "version": "0.1.0",
+  "private": true,
+  "description": "vite r-html hmr plugin",
+  "main": "./dist/vite-plugin-r-html.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/*.js",
+    "dist/**/*.ts"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dineug/r-html.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dineug/r-html/issues"
+  },
+  "homepage": "https://github.com/dineug/r-html#readme",
+  "author": "SeungHwan-Lee <dineug2@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@babel/core": "^7.22.10"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.2",
+    "@rollup/pluginutils": "^5.0.2",
+    "rollup-plugin-visualizer": "^5.9.2",
+    "ts-patch": "^3.0.2",
+    "typescript": "5.1.6",
+    "typescript-transform-paths": "^3.4.6",
+    "vite": "^4.4.9",
+    "vite-tsconfig-paths": "^4.2.0"
+  }
+}

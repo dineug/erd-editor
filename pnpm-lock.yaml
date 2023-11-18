@@ -60,17 +60,17 @@ importers:
         specifier: workspace:*
         version: link:../erd-editor-schema
       '@dineug/go':
-        specifier: workspace:*
-        version: link:../../submodules/go/packages/go
+        specifier: ^0.1.7
+        version: 0.1.7
       '@dineug/r-html':
         specifier: workspace:*
-        version: link:../../submodules/r-html/packages/r-html
+        version: link:../r-html
       '@dineug/shared':
         specifier: workspace:*
         version: link:../shared
       '@dineug/vite-plugin-r-html':
         specifier: workspace:*
-        version: link:../../submodules/r-html/packages/vite-plugin-r-html
+        version: link:../vite-plugin-r-html
       '@fortawesome/free-solid-svg-icons':
         specifier: 6.4.2
         version: 6.4.2
@@ -207,6 +207,33 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(typescript@5.1.6)(vite@4.4.9)
 
+  packages/r-html:
+    devDependencies:
+      '@rollup/plugin-typescript':
+        specifier: ^11.1.2
+        version: 11.1.2(tslib@2.6.1)(typescript@5.1.6)
+      rollup-plugin-visualizer:
+        specifier: ^5.9.2
+        version: 5.9.2
+      ts-patch:
+        specifier: ^3.0.2
+        version: 3.0.2
+      tslib:
+        specifier: ^2.6.1
+        version: 2.6.1
+      typescript:
+        specifier: 5.1.6
+        version: 5.1.6
+      typescript-transform-paths:
+        specifier: ^3.4.6
+        version: 3.4.6(typescript@5.1.6)
+      vite:
+        specifier: ^4.4.9
+        version: 4.4.9
+      vite-tsconfig-paths:
+        specifier: ^4.2.0
+        version: 4.2.0(typescript@5.1.6)(vite@4.4.9)
+
   packages/shared:
     devDependencies:
       '@rollup/plugin-typescript':
@@ -234,77 +261,7 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(typescript@5.1.6)(vite@4.4.9)
 
-  submodules/go/packages/go:
-    devDependencies:
-      '@rollup/plugin-typescript':
-        specifier: ^11.1.2
-        version: 11.1.2(tslib@2.6.1)(typescript@5.1.6)
-      rollup-plugin-visualizer:
-        specifier: ^5.9.2
-        version: 5.9.2
-      ts-patch:
-        specifier: ^3.0.2
-        version: 3.0.2
-      tslib:
-        specifier: ^2.6.1
-        version: 2.6.1
-      typescript:
-        specifier: 5.1.6
-        version: 5.1.6
-      typescript-transform-paths:
-        specifier: ^3.4.6
-        version: 3.4.6(typescript@5.1.6)
-      vite:
-        specifier: ^4.4.9
-        version: 4.4.9
-      vite-tsconfig-paths:
-        specifier: ^4.2.0
-        version: 4.2.0(typescript@5.1.6)(vite@4.4.9)
-
-  submodules/r-html/packages/hmr:
-    dependencies:
-      '@dineug/r-html':
-        specifier: workspace:*
-        version: link:../r-html
-      '@dineug/vite-plugin-r-html':
-        specifier: workspace:*
-        version: link:../vite-plugin-r-html
-    devDependencies:
-      vite:
-        specifier: ^4.1.4
-        version: 4.4.9
-      vite-tsconfig-paths:
-        specifier: ^4.0.5
-        version: 4.2.0(typescript@5.1.6)(vite@4.4.9)
-
-  submodules/r-html/packages/r-html:
-    devDependencies:
-      '@rollup/plugin-typescript':
-        specifier: ^11.1.2
-        version: 11.1.2(tslib@2.6.1)(typescript@5.1.6)
-      rollup-plugin-visualizer:
-        specifier: ^5.9.2
-        version: 5.9.2
-      ts-patch:
-        specifier: ^3.0.2
-        version: 3.0.2
-      tslib:
-        specifier: ^2.6.1
-        version: 2.6.1
-      typescript:
-        specifier: 5.1.6
-        version: 5.1.6
-      typescript-transform-paths:
-        specifier: ^3.4.6
-        version: 3.4.6(typescript@5.1.6)
-      vite:
-        specifier: ^4.4.9
-        version: 4.4.9
-      vite-tsconfig-paths:
-        specifier: ^4.2.0
-        version: 4.2.0(typescript@5.1.6)(vite@4.4.9)
-
-  submodules/r-html/packages/vite-plugin-r-html:
+  packages/vite-plugin-r-html:
     dependencies:
       '@babel/core':
         specifier: ^7.22.10
@@ -315,7 +272,7 @@ importers:
         version: 11.1.2(tslib@2.6.1)(typescript@5.1.6)
       '@rollup/pluginutils':
         specifier: ^5.0.2
-        version: 5.0.2
+        version: 5.0.3
       rollup-plugin-visualizer:
         specifier: ^5.9.2
         version: 5.9.2
@@ -380,7 +337,7 @@ packages:
       '@babel/parser': 7.22.10
       '@babel/template': 7.22.5
       '@babel/traverse': 7.22.10
-      '@babel/types': 7.22.10
+      '@babel/types': 7.22.11
       convert-source-map: 1.9.0
       debug: 4.3.4
       gensync: 1.0.0-beta.2
@@ -393,7 +350,7 @@ packages:
     resolution: {integrity: sha512-79KIf7YiWjjdZ81JnLujDRApWtl7BxTqWD88+FFdQEIOG8LJ0etDOM7CXuIgGJa55sGOwZVwuEsaLEm0PJ5/+A==}
     engines: {node: '>=6.9.0'}
     dependencies:
-      '@babel/types': 7.22.10
+      '@babel/types': 7.22.11
       '@jridgewell/gen-mapping': 0.3.3
       '@jridgewell/trace-mapping': 0.3.19
       jsesc: 2.5.2
@@ -495,7 +452,7 @@ packages:
     resolution: {integrity: sha512-8Dl6+HD/cKifutF5qGd/8ZJi84QeAKh+CEe1sBzz8UayBBGg1dAIJrdHOcOM5b2MpzWL2yuotJTtGjETq0qjXg==}
     engines: {node: '>=6.9.0'}
     dependencies:
-      '@babel/types': 7.22.10
+      '@babel/types': 7.22.11
 
   /@babel/helper-module-transforms@7.22.9(@babel/core@7.22.10):
     resolution: {integrity: sha512-t+WA2Xn5K+rTeGtC8jCsdAH52bjggG5TKRuRrAGNM/mjIbO4GxvlLMFOEz9wXY5I2XQ60PMFsAG2WIcG82dQMQ==}
@@ -550,7 +507,7 @@ packages:
     resolution: {integrity: sha512-n0H99E/K+Bika3++WNL17POvo4rKWZ7lZEp1Q+fStVbUi8nxPQEBOlTmCOxW/0JsS56SKKQ+ojAe2pHKJHN35w==}
     engines: {node: '>=6.9.0'}
     dependencies:
-      '@babel/types': 7.22.10
+      '@babel/types': 7.22.11
 
   /@babel/helper-skip-transparent-expression-wrappers@7.22.5:
     resolution: {integrity: sha512-tK14r66JZKiC43p8Ki33yLBVJKlQDFoA8GYN67lWCDCqoL6EMMSuM9b+Iff2jHaM/RRFYl7K+iiru7hbRqNx8Q==}
@@ -592,7 +549,7 @@ packages:
     dependencies:
       '@babel/template': 7.22.5
       '@babel/traverse': 7.22.10
-      '@babel/types': 7.22.10
+      '@babel/types': 7.22.11
     transitivePeerDependencies:
       - supports-color
 
@@ -1627,7 +1584,6 @@ packages:
       '@babel/helper-string-parser': 7.22.5
       '@babel/helper-validator-identifier': 7.22.5
       to-fast-properties: 2.0.0
-    dev: true
 
   /@colors/colors@1.5.0:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -1635,6 +1591,10 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@dineug/go@0.1.7:
+    resolution: {integrity: sha512-uwMMI51NKk9dbCzCrzBJhZuzRpNhRpOqkVclmAXAQZHbNGB50Bg/s+TxBVA7euw1VSsNkJGbVLxlquWDDkYZKw==}
+    dev: true
 
   /@discoveryjs/json-ext@0.5.7:
     resolution: {integrity: sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==}
@@ -2664,20 +2624,6 @@ packages:
       typescript: 5.1.6
     dev: true
 
-  /@rollup/pluginutils@5.0.2:
-    resolution: {integrity: sha512-pTd9rIsP92h+B6wWwFbW8RkZv4hiR/xKsqre4SIuAOaOEQRxi0lqLke9k2/7WegC85GgUs9pjmOjCUi3In4vwA==}
-    engines: {node: '>=14.0.0'}
-    peerDependencies:
-      rollup: ^1.20.0||^2.0.0||^3.0.0
-    peerDependenciesMeta:
-      rollup:
-        optional: true
-    dependencies:
-      '@types/estree': 1.0.1
-      estree-walker: 2.0.2
-      picomatch: 2.3.1
-    dev: true
-
   /@rollup/pluginutils@5.0.3:
     resolution: {integrity: sha512-hfllNN4a80rwNQ9QCxhxuHCGHMAvabXqxNdaChUSSadMre7t4iEUI6fFAhBOn/eIYTgYVhBv7vCLsAJ4u3lf3g==}
     engines: {node: '>=14.0.0'}
@@ -3217,7 +3163,7 @@ packages:
     dependencies:
       '@babel/core': 7.22.10
       '@babel/preset-env': 7.22.14(@babel/core@7.22.10)
-      '@babel/types': 7.22.10
+      '@babel/types': 7.22.11
       '@storybook/csf': 0.1.1
       '@storybook/csf-tools': 7.4.0
       '@storybook/node-logger': 7.4.0

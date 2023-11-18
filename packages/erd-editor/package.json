@@ -46,7 +46,7 @@
   },
   "devDependencies": {
     "@dineug/erd-editor-schema": "workspace:*",
-    "@dineug/go": "workspace:*",
+    "@dineug/go": "^0.1.7",
     "@dineug/r-html": "workspace:*",
     "@dineug/shared": "workspace:*",
     "@dineug/vite-plugin-r-html": "workspace:*",
