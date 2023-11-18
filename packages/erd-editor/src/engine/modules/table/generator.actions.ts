@@ -20,7 +20,6 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
-  changeColumnForeignKeyAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
 } from '@/engine/modules/tableColumn/atom.actions';
@@ -148,10 +147,6 @@ export const selectTableAction$ = (
         yield [
           addColumnAction(payload),
           changeColumnNotNullAction({
-            ...payload,
-            value: true,
-          }),
-          changeColumnForeignKeyAction({
             ...payload,
             value: true,
           }),

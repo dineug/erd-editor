@@ -15,7 +15,6 @@ export const ActionType = {
   changeColumnPrimaryKey: 'column.changePrimaryKey',
   changeColumnUnique: 'column.changeUnique',
   changeColumnNotNull: 'column.changeNotNull',
-  changeColumnForeignKey: 'column.changeForeignKey',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -36,7 +35,6 @@ export type ActionMap = {
   [ActionType.changeColumnPrimaryKey]: ChangeColumnOptionPayload;
   [ActionType.changeColumnUnique]: ChangeColumnOptionPayload;
   [ActionType.changeColumnNotNull]: ChangeColumnOptionPayload;
-  [ActionType.changeColumnForeignKey]: ChangeColumnOptionPayload;
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<

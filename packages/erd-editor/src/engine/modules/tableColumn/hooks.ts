@@ -2,7 +2,10 @@ import { takeEvery } from '@dineug/go';
 
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
 import type { CO, Hook } from '@/engine/hooks';
-import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import {
+  addRelationshipAction,
+  removeRelationshipAction,
+} from '@/engine/modules/relationship/atom.actions';
 import { changeColumnPrimaryKeyAction } from '@/engine/modules/tableColumn/atom.actions';
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
@@ -30,7 +33,29 @@ const changeColumnNotNullHook: CO = function* (channel, { collections }) {
   );
 };
 
-const changeColumnForeignKeyHook: CO = function* (
+const addColumnForeignKeyHook: CO = function* (
+  channel,
+  { doc: { relationshipIds }, collections }
+) {
+  yield takeEvery(
+    channel,
+    function* ({
+      payload: { id, end },
+    }: ReturnType<typeof addRelationshipAction>) {
+      if (!relationshipIds.includes(id)) return;
+
+      const columns = query(collections)
+        .collection('tableColumnEntities')
+        .selectByIds(end.columnIds);
+
+      for (const { ui } of columns) {
+        ui.keys = ui.keys | ColumnUIKey.foreignKey;
+      }
+    }
+  );
+};
+
+const removeColumnForeignKeyHook: CO = function* (
   channel,
   { doc: { relationshipIds }, collections }
 ) {
@@ -52,14 +77,7 @@ const changeColumnForeignKeyHook: CO = function* (
         .selectByIds(end.columnIds);
 
       for (const { ui } of columns) {
-        if (
-          bHas(ui.keys, ColumnUIKey.primaryKey) &&
-          bHas(ui.keys, ColumnUIKey.foreignKey)
-        ) {
-          ui.keys = ColumnUIKey.primaryKey;
-        } else if (bHas(ui.keys, ColumnUIKey.foreignKey)) {
-          ui.keys = 0;
-        }
+        ui.keys = ui.keys & ~ColumnUIKey.foreignKey;
       }
     }
   );
@@ -67,5 +85,6 @@ const changeColumnForeignKeyHook: CO = function* (
 
 export const hooks: Hook[] = [
   [[changeColumnPrimaryKeyAction], changeColumnNotNullHook],
-  [[removeRelationshipAction], changeColumnForeignKeyHook],
+  [[addRelationshipAction], addColumnForeignKeyHook],
+  [[removeRelationshipAction], removeColumnForeignKeyHook],
 ];

@@ -2,7 +2,6 @@ import { createAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
-import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
@@ -183,23 +182,9 @@ const changeColumnPrimaryKey: ReducerType<
       column.options = value
         ? column.options | ColumnOption.primaryKey
         : column.options & ~ColumnOption.primaryKey;
-
-      if (value) {
-        if (bHas(column.ui.keys, ColumnUIKey.foreignKey)) {
-          column.ui.keys = ColumnUIKey.primaryKey | ColumnUIKey.foreignKey;
-        } else {
-          column.ui.keys = ColumnUIKey.primaryKey;
-        }
-      } else {
-        if (
-          bHas(column.ui.keys, ColumnUIKey.primaryKey) &&
-          bHas(column.ui.keys, ColumnUIKey.foreignKey)
-        ) {
-          column.ui.keys = ColumnUIKey.foreignKey;
-        } else {
-          column.ui.keys = 0;
-        }
-      }
+      column.ui.keys = value
+        ? column.ui.keys | ColumnUIKey.primaryKey
+        : column.ui.keys & ~ColumnUIKey.primaryKey;
     });
   });
 };
@@ -243,23 +228,6 @@ const changeColumnNotNull: ReducerType<
   });
 };
 
-export const changeColumnForeignKeyAction = createAction<
-  ActionMap[typeof ActionType.changeColumnForeignKey]
->(ActionType.changeColumnForeignKey);
-
-const changeColumnForeignKey: ReducerType<
-  typeof ActionType.changeColumnForeignKey
-> = ({ collections }, { payload: { id, value } }) => {
-  const collection = query(collections).collection('tableColumnEntities');
-  collection.getOrCreate(id, id => createColumn({ id }));
-
-  collection.updateOne(id, column => {
-    column.ui.keys = value
-      ? column.ui.keys | ColumnUIKey.foreignKey
-      : column.ui.keys & ~ColumnUIKey.foreignKey;
-  });
-};
-
 export const tableColumnReducers = {
   [ActionType.addColumn]: addColumn,
   [ActionType.removeColumn]: removeColumn,
@@ -271,7 +239,6 @@ export const tableColumnReducers = {
   [ActionType.changeColumnPrimaryKey]: changeColumnPrimaryKey,
   [ActionType.changeColumnUnique]: changeColumnUnique,
   [ActionType.changeColumnNotNull]: changeColumnNotNull,
-  [ActionType.changeColumnForeignKey]: changeColumnForeignKey,
 };
 
 export const actions = {
@@ -285,5 +252,4 @@ export const actions = {
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
   changeColumnNotNullAction,
-  changeColumnForeignKeyAction,
 };
