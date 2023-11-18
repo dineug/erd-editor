@@ -53,4 +53,8 @@ export function createAppContext(ctx: InjectAppContext): AppContext {
 
 export const appContext = createContext<AppContext>({} as AppContext);
 
-export const useAppContext = (ctx: Ctx) => useContext(ctx, appContext);
+export const useAppContext = (ctx: Ctx, fallback?: AppContext) =>
+  useContext(ctx, {
+    ...appContext,
+    value: fallback ?? appContext.value,
+  });

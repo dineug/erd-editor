@@ -26,7 +26,6 @@ export const addMemoAction$ = (): GeneratorAction =>
 
     yield unselectAllAction$();
     yield selectAction({ [id]: SelectType.memo });
-    // TODO: focus table end
     yield addMemoAction({
       id,
       ui: {

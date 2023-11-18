@@ -2,12 +2,14 @@ import { ValuesType } from '@/internal-types';
 
 export const InternalEventType = {
   focus: 'erd-editor-internal-focus',
+  forceFocus: 'erd-editor-internal-force-focus',
   forwardMoveStart: 'erd-editor-internal-forward-move-start',
 } as const;
 export type InternalEventType = ValuesType<typeof InternalEventType>;
 
 export type InternalEventMap = {
   [InternalEventType.focus]: void;
+  [InternalEventType.forceFocus]: void;
   [InternalEventType.forwardMoveStart]: {
     originEvent: MouseEvent | TouchEvent;
   };
@@ -38,6 +40,10 @@ function createInternalEvent<P = void>(
 export const focusEvent = createInternalEvent<
   InternalEventMap[typeof InternalEventType.focus]
 >(InternalEventType.focus);
+
+export const forceFocusEvent = createInternalEvent<
+  InternalEventMap[typeof InternalEventType.forceFocus]
+>(InternalEventType.forceFocus);
 
 export const forwardMoveStartEvent = createInternalEvent<
   InternalEventMap[typeof InternalEventType.forwardMoveStart]

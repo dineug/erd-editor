@@ -1,6 +1,6 @@
-import { DOMTemplateLiterals, FC, html, repeat } from '@dineug/r-html';
+import { DOMTemplateLiterals, FC, html, Ref, repeat } from '@dineug/r-html';
 
-import { useAppContext } from '@/components/appContext';
+import { AppContext, useAppContext } from '@/components/appContext';
 import ColumnKey from '@/components/erd/canvas/table/column/column-key/ColumnKey';
 import ColumnNotNull from '@/components/erd/canvas/table/column/column-not-null/ColumnNotNull';
 import ColumnOption from '@/components/erd/canvas/table/column/column-option/ColumnOption';
@@ -34,6 +34,7 @@ import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
 import * as styles from './Column.styles';
 
 export type ColumnProps = {
+  app: Ref<AppContext>;
   column: Column;
   selected: boolean;
   widthName: number;
@@ -59,7 +60,7 @@ type ColumnOrderTpl = {
 };
 
 const Column: FC<ColumnProps> = (props, ctx) => {
-  const app = useAppContext(ctx);
+  const app = useAppContext(ctx, props.app?.value);
 
   const handleRemoveColumn = () => {
     const { store } = app.value;

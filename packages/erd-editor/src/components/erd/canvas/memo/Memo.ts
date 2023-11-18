@@ -13,6 +13,7 @@ import { Memo } from '@/internal-types';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { onStop } from '@/utils/domEvent';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
+import { focusEvent } from '@/utils/internalEvents';
 import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Memo.styles';
@@ -63,6 +64,10 @@ const Memo: FC<MemoProps> = (props, ctx) => {
         value: el.value,
       })
     );
+  };
+
+  const handleBlur = () => {
+    ctx.host.dispatchEvent(focusEvent());
   };
 
   return () => {
@@ -116,6 +121,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
             .value=${memo.value}
             @input=${handleInput}
             @wheel=${onStop}
+            @blur=${handleBlur}
           ></textarea>
           <${MemoSash} memo=${memo} top=${height} left=${width} />
         </div>

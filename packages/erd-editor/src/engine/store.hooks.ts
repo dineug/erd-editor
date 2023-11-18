@@ -2,6 +2,7 @@ import { cancel, type Channel, channel, go, put } from '@dineug/go';
 import { type AnyAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
+import { hooks as editorHooks } from '@/engine/modules/editor/hooks';
 import { hooks as relationshipHooks } from '@/engine/modules/relationship/hooks';
 import { hooks as tableColumnHooks } from '@/engine/modules/tableColumn/hooks';
 import type { Store } from '@/engine/store';
@@ -12,7 +13,7 @@ type Task = {
   proc: Promise<any>;
 };
 
-const hooks = [...relationshipHooks, ...tableColumnHooks];
+const hooks = [...relationshipHooks, ...tableColumnHooks, ...editorHooks];
 
 export function createHooks(store: Store) {
   const tasks: Task[] = hooks.map(([pattern, hook]) => {

@@ -29,6 +29,7 @@ import {
   toggleColumnValueAction$,
 } from '@/engine/modules/tableColumn/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 const isRelationshipKeyBindingName = arrayHas<string>([
@@ -107,8 +108,10 @@ export function useErdShortcut(ctx: Parameters<typeof useAppContext>[0]) {
         store.dispatch(drawStartRelationshipAction$(relationshipType));
       }
 
-      action === KeyBindingName.removeTable &&
+      if (action === KeyBindingName.removeTable) {
+        ctx.host.dispatchEvent(focusEvent());
         store.dispatch(removeSelectedAction$());
+      }
 
       // KeyBindingName.tableProperties
 
@@ -171,6 +174,7 @@ export function useErdShortcut(ctx: Parameters<typeof useAppContext>[0]) {
     }
 
     if (action === KeyBindingName.stop) {
+      ctx.host.dispatchEvent(forceFocusEvent());
       store.dispatch(drawEndRelationshipAction(), unselectAllAction$());
     }
 

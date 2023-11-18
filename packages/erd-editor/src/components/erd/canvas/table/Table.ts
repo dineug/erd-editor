@@ -191,6 +191,7 @@ const Table: FC<TableProps> = (props, ctx) => {
             column =>
               html`
                 <${Column}
+                  app=${app}
                   column=${column}
                   selected=${hasSelectColumn(column.id)}
                   widthName=${tableWidths.name}

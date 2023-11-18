@@ -20,7 +20,7 @@ import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { AccentColor, createTheme, GrayColor } from '@/themes/radix-ui-theme';
-import { InternalEventType } from '@/utils/internalEvents';
+import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { createText } from '@/utils/text';
 
 import * as styles from './ErdEditor.styles';
@@ -76,10 +76,13 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
       merge(
         fromEvent($root, 'mousedown'),
         fromEvent($root, 'touchstart'),
-        fromEvent(ctx, InternalEventType.focus)
+        fromEvent(ctx, focusEvent.type)
       )
         .pipe(throttleTime(50))
-        .subscribe(handleFocus)
+        .subscribe(handleFocus),
+      fromEvent(ctx, forceFocusEvent.type).subscribe(() => {
+        $root.focus();
+      })
     );
   });
 
