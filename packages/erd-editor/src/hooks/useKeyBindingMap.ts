@@ -1,15 +1,13 @@
 import { onMounted, Ref, watch } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { Ctx } from '@/internal-types';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { tinykeys } from '@/utils/keyboard-shortcut/tinykeys';
 
 import { useUnmounted } from './useUnmounted';
 
-export function useKeyBindingMap(
-  ctx: Parameters<typeof useAppContext>[0],
-  root: Ref<HTMLDivElement>
-) {
+export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
 

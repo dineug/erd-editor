@@ -14,6 +14,7 @@ import { removeRelationshipAction } from '@/engine/modules/relationship/atom.act
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
 
+import { ChangeColumnValuePayload } from './actions';
 import {
   addColumnAction,
   changeColumnAutoIncrementAction,
@@ -26,6 +27,7 @@ import {
   changeColumnUniqueAction,
   removeColumnAction,
 } from './atom.actions';
+import { getDataTypeSyncColumns } from './utils/dataType';
 
 export const isToggleColumnTypes = arrayHas<FocusType>([
   FocusType.columnNotNull,
@@ -171,6 +173,22 @@ export const toggleColumnValueAction$ = (
     }
   };
 
+export const changeColumnDataTypeAction$ = (
+  payload: ChangeColumnValuePayload
+): GeneratorAction =>
+  function* (state) {
+    const {
+      settings: { relationshipDataTypeSync },
+    } = state;
+    let payloads: ChangeColumnValuePayload[] = [payload];
+
+    if (relationshipDataTypeSync) {
+      payloads = getDataTypeSyncColumns([payload], state, payload);
+    }
+
+    yield payloads.map(changeColumnDataTypeAction);
+  };
+
 export const changeColumnValueAction$ = (
   focusType: FocusType,
   tableId: string,
@@ -198,7 +216,7 @@ export const changeColumnValueAction$ = (
         yield changeColumnNameAction(payload);
         break;
       case FocusType.columnDataType:
-        yield changeColumnDataTypeAction(payload);
+        yield changeColumnDataTypeAction$(payload);
         break;
       case FocusType.columnDefault:
         yield changeColumnDefaultAction(payload);
@@ -232,6 +250,7 @@ export const actions$ = {
   addColumnAction$,
   removeColumnAction$,
   toggleColumnValueAction$,
+  changeColumnDataTypeAction$,
   changeColumnValueAction$,
   changeColumnPrimaryKeyAction$,
 };

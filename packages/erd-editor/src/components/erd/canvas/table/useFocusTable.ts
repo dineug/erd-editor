@@ -1,11 +1,9 @@
 import { useAppContext } from '@/components/appContext';
 import { FocusType } from '@/engine/modules/editor/state';
+import { Ctx } from '@/internal-types';
 import { isEdit, isFocus, isSelectColumn } from '@/utils/focus';
 
-export function useFocusTable(
-  ctx: Parameters<typeof useAppContext>[0],
-  tableId: string
-) {
+export function useFocusTable(ctx: Ctx, tableId: string) {
   const app = useAppContext(ctx);
 
   const getFocusTable = () => app.value.store.state.editor.focusTable;

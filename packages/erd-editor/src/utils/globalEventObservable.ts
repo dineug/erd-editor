@@ -12,7 +12,7 @@ export const touchmove$ = fromEvent<TouchEvent>(window, 'touchmove');
 export const touchend$ = fromEvent<TouchEvent>(window, 'touchend');
 
 const forwardMoveStartEvent$ = fromEvent<
-  CustomEvent<Parameters<typeof forwardMoveStartEvent>[0]>
+  CustomEvent<ReturnType<typeof forwardMoveStartEvent>['detail']>
 >(window, forwardMoveStartEvent.type).pipe(
   map(event => event.detail.originEvent)
 );

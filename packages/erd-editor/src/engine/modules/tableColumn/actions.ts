@@ -44,7 +44,7 @@ export type ReducerType<T extends keyof ActionMap> = Reducer<
   EngineContext
 >;
 
-type ChangeColumnValuePayload = {
+export type ChangeColumnValuePayload = {
   tableId: string;
   id: string;
   value: string;

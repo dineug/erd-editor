@@ -29,6 +29,7 @@ import {
   toggleColumnValueAction$,
 } from '@/engine/modules/tableColumn/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { Ctx } from '@/internal-types';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { isHighLevelTable } from '@/utils/validation';
@@ -47,7 +48,7 @@ const keyBindingNameToRelationshipType: Record<string, number> = {
   [KeyBindingName.relationshipOneN]: RelationshipType.OneN,
 };
 
-export function useErdShortcut(ctx: Parameters<typeof useAppContext>[0]) {
+export function useErdShortcut(ctx: Ctx) {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
 

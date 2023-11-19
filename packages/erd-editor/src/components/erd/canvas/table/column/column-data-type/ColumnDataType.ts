@@ -15,7 +15,7 @@ import { useAppContext } from '@/components/appContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import HighlightedText from '@/components/primitives/highlighted-text/HighlightedText';
 import { DatabaseHintMap, DataTypeHint } from '@/constants/sql/dataType';
-import { changeColumnDataTypeAction } from '@/engine/modules/tableColumn/atom.actions';
+import { changeColumnDataTypeAction$ } from '@/engine/modules/tableColumn/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { lastCursorFocus } from '@/utils/focus';
 
@@ -76,7 +76,7 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
 
     const { store } = app.value;
     store.dispatch(
-      changeColumnDataTypeAction({
+      changeColumnDataTypeAction$({
         id: props.columnId,
         tableId: props.tableId,
         value: hint.name,

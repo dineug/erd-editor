@@ -5,6 +5,7 @@ import { typography } from '@/styles/typography.styles';
 
 export const root = css`
   position: relative;
+  outline: none;
 `;
 
 export const hint = css`
