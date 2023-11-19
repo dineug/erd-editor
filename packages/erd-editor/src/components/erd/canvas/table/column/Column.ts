@@ -229,6 +229,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                       focus=${props.focusDataType}
                       edit=${props.editDataType}
                       .onBlur=${handleEditEnd}
+                      .onEditEnd=${handleEditEnd}
                       .onInput=${(event: InputEvent) => {
                         handleInput(event, FocusType.columnDataType);
                       }}

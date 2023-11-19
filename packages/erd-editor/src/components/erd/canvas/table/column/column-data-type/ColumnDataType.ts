@@ -30,19 +30,21 @@ export type ColumnDataTypeProps = {
   value: string;
   onInput?: (event: InputEvent) => void;
   onBlur?: (event: FocusEvent) => void;
+  onEditEnd?: () => void;
 };
 
 export interface State {
   hints: DataTypeHint[];
   index: number;
-  holdFilter: boolean;
 }
 
-const hasArrowKey = arrayHas([
+const hasAutocompleteKey = arrayHas([
   'ArrowUp',
   'ArrowDown',
   'ArrowLeft',
   'ArrowRight',
+  'Tab',
+  'Enter',
 ]);
 
 const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
@@ -50,24 +52,21 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
   const state = observable<State>({
     hints: [],
     index: -1,
-    holdFilter: false,
   });
   const root = createRef<HTMLDivElement>();
   const { addUnsubscribe } = useUnmounted();
 
-  const setHints = () => {
-    if (state.holdFilter) return;
-
+  const setHints = (value: string) => {
     const { store } = app.value;
     const { settings } = store.state;
     const hints = DatabaseHintMap[settings.database] ?? [];
-    const value = props.value.trim();
+    const newValue = value.trim();
 
     state.index = -1;
-    state.hints = isEmpty(value)
+    state.hints = isEmpty(newValue)
       ? []
       : hints.filter(
-          hint => hint.name.toLowerCase().indexOf(value.toLowerCase()) !== -1
+          hint => hint.name.toLowerCase().indexOf(newValue.toLowerCase()) !== -1
         );
   };
 
@@ -76,7 +75,6 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
     if (!hint) return;
 
     const { store } = app.value;
-    state.holdFilter = true;
     store.dispatch(
       changeColumnDataTypeAction({
         id: props.columnId,
@@ -84,6 +82,7 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
         value: hint.name,
       })
     );
+    setHints('');
   };
 
   const handleArrowUp = (event: KeyboardEvent) => {
@@ -113,18 +112,35 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
     handleSelectHint(state.index);
   };
 
+  const handleTab = (event: KeyboardEvent) => {
+    if (state.index === -1) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    handleSelectHint(state.index);
+  };
+
+  const handleEnter = (event: KeyboardEvent) => {
+    if (state.index === -1) return;
+    event.stopPropagation();
+
+    handleSelectHint(state.index);
+    props.onEditEnd?.();
+  };
+
   const keyMap: Record<string, (event: KeyboardEvent) => void> = {
     ArrowUp: handleArrowUp,
     ArrowDown: handleArrowDown,
     ArrowLeft: handleArrowLeft,
     ArrowRight: handleArrowRight,
+    Tab: handleTab,
+    Enter: handleEnter,
   };
 
   const handleKeydown = (event: KeyboardEvent) => {
-    const { key } = event;
-    if (!hasArrowKey(key)) return;
+    if (!hasAutocompleteKey(event.key)) return;
 
-    keyMap[key]?.(event);
+    keyMap[event.key]?.(event);
   };
 
   let currentFocus = false;
@@ -142,16 +158,13 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
       const input = root.value?.querySelector('input');
       const isFocus = currentFocus && input && props.edit;
 
-      if (isFocus) {
-        lastCursorFocus(input);
-      } else {
-        props.onBlur?.(event);
-      }
+      isFocus ? lastCursorFocus(input) : props.onBlur?.(event);
     }, 1);
   };
 
   const handleInput = (event: InputEvent) => {
-    state.holdFilter = false;
+    const input = event.target as HTMLInputElement | null;
+    input && setHints(input.value);
     props.onInput?.(event);
   };
 
@@ -161,13 +174,12 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
 
     addUnsubscribe(
       watch(props).subscribe(propName => {
-        if (propName !== 'value') return;
-        setHints();
+        if (propName !== 'edit') return;
+        !props.edit && setHints('');
       }),
       watch(settings).subscribe(propName => {
         if (propName !== 'database') return;
-        state.holdFilter = false;
-        setHints();
+        setHints(props.value);
       })
     );
   });
