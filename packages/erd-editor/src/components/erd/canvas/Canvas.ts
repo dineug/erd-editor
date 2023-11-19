@@ -9,6 +9,7 @@ import Table from '@/components/erd/canvas/table/Table';
 import { Show } from '@/constants/schema';
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
+import { isHighLevelTable } from '@/utils/validation';
 
 import * as styles from './Canvas.styles';
 
@@ -50,16 +51,16 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
         }}
       >
         ${cache(
-          zoomLevel > 0.7
+          isHighLevelTable(zoomLevel)
             ? html`${repeat(
                 tables,
                 table => table.id,
-                table => html`<${Table} table=${table} />`
+                table => html`<${HighLevelTable} table=${table} />`
               )}`
             : html`${repeat(
                 tables,
                 table => table.id,
-                table => html`<${HighLevelTable} table=${table} />`
+                table => html`<${Table} table=${table} />`
               )}`
         )}
         ${repeat(

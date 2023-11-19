@@ -1,4 +1,5 @@
 import { FC, html } from '@dineug/r-html';
+import { isEmpty } from 'lodash-es';
 
 import { useAppContext } from '@/components/appContext';
 import * as styles from '@/components/erd/canvas/table/Table.styles';
@@ -52,6 +53,8 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
     const tableWidths = calcTableWidths(table, store.state);
     const height = calcTableHeight(table);
 
+    const isEmptyName = isEmpty(table.name.trim());
+
     return html`
       <div
         class=${['table', styles.root]}
@@ -74,8 +77,15 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
             }}
           ></div>
         </div>
-        <div class=${['scrollbar', highLevelTableStyle.name, fontSize()]}>
-          ${table.name}
+        <div
+          class=${[
+            'scrollbar',
+            highLevelTableStyle.name,
+            fontSize(),
+            { isEmptyName },
+          ]}
+        >
+          ${isEmptyName ? 'unnamed' : table.name}
         </div>
       </div>
     `;

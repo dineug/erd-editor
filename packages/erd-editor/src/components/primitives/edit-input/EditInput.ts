@@ -25,7 +25,7 @@ export type EditInputProps = {
   autofocus?: boolean;
   onInput?: (event: InputEvent) => void;
   onBlur?: (event: FocusEvent) => void;
-  onKeyup?: (event: KeyboardEvent) => void;
+  onKeydown?: (event: KeyboardEvent) => void;
 };
 
 const EditInput: FC<EditInputProps> = (props, ctx) => {
@@ -92,7 +92,7 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
             .value=${props.value ?? ''}
             @input=${props.onInput}
             @blur=${handleBlur}
-            @keyup=${props.onKeyup}
+            @keydown=${props.onKeydown}
           />
         `
       : html`

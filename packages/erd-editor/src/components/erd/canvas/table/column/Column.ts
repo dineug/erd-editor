@@ -1,6 +1,7 @@
 import { DOMTemplateLiterals, FC, html, Ref, repeat } from '@dineug/r-html';
 
 import { AppContext, useAppContext } from '@/components/appContext';
+import ColumnDataType from '@/components/erd/canvas/table/column/column-data-type/ColumnDataType';
 import ColumnKey from '@/components/erd/canvas/table/column/column-key/ColumnKey';
 import ColumnNotNull from '@/components/erd/canvas/table/column/column-not-null/ColumnNotNull';
 import ColumnOption from '@/components/erd/canvas/table/column/column-option/ColumnOption';
@@ -220,13 +221,13 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                       handleEdit(FocusType.columnDataType);
                     }}
                   >
-                    <${EditInput}
-                      placeholder="dataType"
+                    <${ColumnDataType}
+                      tableId=${column.tableId}
+                      columnId=${column.id}
                       width=${widthDataType}
                       value=${column.dataType}
                       focus=${props.focusDataType}
                       edit=${props.editDataType}
-                      autofocus=${true}
                       .onBlur=${handleEditEnd}
                       .onInput=${(event: InputEvent) => {
                         handleInput(event, FocusType.columnDataType);

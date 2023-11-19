@@ -14,8 +14,8 @@ import Erd from '@/components/erd/Erd';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import Theme from '@/components/theme/Theme';
 import Toolbar from '@/components/toolbar/Toolbar';
-import { DatabaseVendor } from '@/constants/database';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
+import { DatabaseVendor } from '@/constants/sql/database';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -87,7 +87,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   };
 
   const handleFocus = () => {
-    setTimeout(() => {
+    window.setTimeout(() => {
       if (document.activeElement !== ctx) {
         ctx.focus();
       }

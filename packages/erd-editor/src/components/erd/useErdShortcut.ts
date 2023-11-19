@@ -31,6 +31,7 @@ import {
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { isHighLevelTable } from '@/utils/validation';
 
 const isRelationshipKeyBindingName = arrayHas<string>([
   KeyBindingName.relationshipZeroOne,
@@ -53,7 +54,8 @@ export function useErdShortcut(ctx: Parameters<typeof useAppContext>[0]) {
   const handleKeydown = (event: KeyboardEvent) => {
     const { store } = app.value;
     const { editor, settings } = store.state;
-    if (settings.canvasType !== CanvasType.ERD) {
+    const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
+    if (settings.canvasType !== CanvasType.ERD || showHighLevelTable) {
       return;
     }
 
@@ -91,6 +93,7 @@ export function useErdShortcut(ctx: Parameters<typeof useAppContext>[0]) {
   const handleShortcut = (action: KeyBindingName) => {
     const { store } = app.value;
     const { editor, settings } = store.state;
+    const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
     if (settings.canvasType !== CanvasType.ERD) {
       return;
     }
@@ -123,53 +126,58 @@ export function useErdShortcut(ctx: Parameters<typeof useAppContext>[0]) {
         store.dispatch(streamZoomLevelAction({ value: -0.1 }));
     }
 
-    if (editor.focusTable && !editor.focusTable.edit) {
-      action === KeyBindingName.selectAllColumn &&
-        store.dispatch(selectAllColumnAction());
+    if (!showHighLevelTable) {
+      if (editor.focusTable && !editor.focusTable.edit) {
+        action === KeyBindingName.selectAllColumn &&
+          store.dispatch(selectAllColumnAction());
 
-      if (
-        action === KeyBindingName.removeColumn &&
-        editor.focusTable.selectColumnIds.length
-      ) {
-        store.dispatch(
-          removeColumnAction$(
-            editor.focusTable.tableId,
-            editor.focusTable.selectColumnIds
-          )
-        );
+        if (
+          action === KeyBindingName.removeColumn &&
+          editor.focusTable.selectColumnIds.length
+        ) {
+          store.dispatch(
+            removeColumnAction$(
+              editor.focusTable.tableId,
+              editor.focusTable.selectColumnIds
+            )
+          );
+        }
+
+        // KeyBindingName.copyColumn
+        // KeyBindingName.pasteColumn
+
+        if (
+          action === KeyBindingName.primaryKey &&
+          editor.focusTable.columnId
+        ) {
+          store.dispatch(
+            changeColumnPrimaryKeyAction$(
+              editor.focusTable.tableId,
+              editor.focusTable.columnId
+            )
+          );
+        }
       }
 
-      // KeyBindingName.copyColumn
-      // KeyBindingName.pasteColumn
+      if (editor.focusTable && action === KeyBindingName.edit) {
+        const focusTable = editor.focusTable;
 
-      if (action === KeyBindingName.primaryKey && editor.focusTable.columnId) {
-        store.dispatch(
-          changeColumnPrimaryKeyAction$(
-            editor.focusTable.tableId,
-            editor.focusTable.columnId
-          )
-        );
-      }
-    }
-
-    if (editor.focusTable && action === KeyBindingName.edit) {
-      const focusTable = editor.focusTable;
-
-      if (focusTable.edit) {
-        store.dispatch(editTableEndAction());
-      } else if (
-        focusTable.columnId &&
-        isToggleColumnTypes(focusTable.focusType)
-      ) {
-        store.dispatch(
-          toggleColumnValueAction$(
-            focusTable.focusType,
-            focusTable.tableId,
-            focusTable.columnId
-          )
-        );
-      } else {
-        store.dispatch(editTableAction());
+        if (focusTable.edit) {
+          store.dispatch(editTableEndAction());
+        } else if (
+          focusTable.columnId &&
+          isToggleColumnTypes(focusTable.focusType)
+        ) {
+          store.dispatch(
+            toggleColumnValueAction$(
+              focusTable.focusType,
+              focusTable.tableId,
+              focusTable.columnId
+            )
+          );
+        } else {
+          store.dispatch(editTableAction());
+        }
       }
     }
 

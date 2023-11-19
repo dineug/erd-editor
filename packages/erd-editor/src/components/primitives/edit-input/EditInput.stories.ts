@@ -32,8 +32,8 @@ const meta = {
     onBlur: {
       action: 'onBlur',
     },
-    onKeyup: {
-      action: 'onKeyup',
+    onKeydown: {
+      action: 'onKeydown',
     },
   },
 } satisfies Meta<EditInputProps>;

@@ -107,6 +107,9 @@ importers:
       '@types/color':
         specifier: ^3.0.3
         version: 3.0.3
+      '@types/highlight-words-core':
+        specifier: ^1.2.3
+        version: 1.2.3
       '@types/lodash-es':
         specifier: ^4.17.8
         version: 4.17.8
@@ -122,6 +125,9 @@ importers:
       deepmerge:
         specifier: ^4.3.1
         version: 4.3.1
+      highlight-words-core:
+        specifier: ^1.2.2
+        version: 1.2.2
       html-to-image:
         specifier: ^1.11.11
         version: 1.11.11
@@ -3685,6 +3691,10 @@ packages:
       '@types/node': 20.5.8
     dev: true
 
+  /@types/highlight-words-core@1.2.3:
+    resolution: {integrity: sha512-PWNU/NR0CaYEsK38mcCTyDzeS2TlEGK9kRhRMz1i86jVAe836ZlA3gl6QYpu+CG6IpfNKTgWpEnJuRededvC0g==}
+    dev: true
+
   /@types/http-errors@2.0.1:
     resolution: {integrity: sha512-/K3ds8TRAfBvi5vfjuz8y6+GiAYBZ0x4tXv1Av6CWBWn0IlADc+ZX9pMq7oU0fNQPnBwIZl3rmeLp6SBApbxSQ==}
     dev: true
@@ -5917,6 +5927,10 @@ packages:
     engines: {node: '>= 0.4.0'}
     dependencies:
       function-bind: 1.1.1
+    dev: true
+
+  /highlight-words-core@1.2.2:
+    resolution: {integrity: sha512-BXUKIkUuh6cmmxzi5OIbUJxrG8OAk2MqoL1DtO3Wo9D2faJg2ph5ntyuQeLqaHJmzER6H5tllCDA9ZnNe9BVGg==}
     dev: true
 
   /hosted-git-info@2.8.9:

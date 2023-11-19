@@ -48,3 +48,7 @@ export function textInRange(width: number) {
 export function toSafeString(value: any): string {
   return isString(value) ? value.trim() : '';
 }
+
+export function isHighLevelTable(zoomLevel: number): boolean {
+  return zoomLevel <= 0.7;
+}

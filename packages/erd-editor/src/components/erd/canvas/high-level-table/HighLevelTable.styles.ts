@@ -10,4 +10,8 @@ export const name = css`
   word-break: break-all;
   color: var(--active);
   font-weight: var(--font-weight-bold);
+
+  &.isEmptyName {
+    color: var(--placeholder);
+  }
 `;
