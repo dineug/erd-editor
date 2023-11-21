@@ -35,8 +35,9 @@ export type ActionMap = {
   [ActionType.changeTableName]: ChangeTableValuePayload;
   [ActionType.changeTableComment]: ChangeTableValuePayload;
   [ActionType.changeTableColor]: {
-    ids: string[];
+    id: string;
     color: string;
+    prevColor: string;
   };
   [ActionType.changeZIndex]: {
     id: string;

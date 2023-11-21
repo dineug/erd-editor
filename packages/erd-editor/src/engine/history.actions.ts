@@ -3,23 +3,51 @@ import { safeCallback } from '@dineug/shared';
 import { cloneDeep } from 'lodash-es';
 
 import { History } from '@/engine/history';
+import { editorPushUndoHistoryMap } from '@/engine/modules/editor/history';
+import {
+  memoPushStreamHistoryMap,
+  memoPushUndoHistoryMap,
+} from '@/engine/modules/memo/history';
+import { relationshipPushUndoHistoryMap } from '@/engine/modules/relationship/history';
+import {
+  settingsPushStreamHistoryMap,
+  settingsPushUndoHistoryMap,
+} from '@/engine/modules/settings/history';
+import {
+  tablePushStreamHistoryMap,
+  tablePushUndoHistoryMap,
+} from '@/engine/modules/table/history';
+import { tableColumnPushUndoHistoryMap } from '@/engine/modules/tableColumn/history';
+import { RootState } from '@/engine/state';
 import { Store } from '@/engine/store';
 
 export type PushUndoHistory = (
-  store: Store,
   undoActions: AnyAction[],
-  action: AnyAction
+  action: AnyAction,
+  state: RootState
 ) => void;
 
 export type PushStreamHistory = (
-  actions: AnyAction[],
   undoActions: AnyAction[],
-  redoActions: AnyAction[]
+  redoActions: AnyAction[],
+  actions: AnyAction[],
+  state: RootState
 ) => void;
 
-const pushUndoHistoryMap: Record<string, PushUndoHistory> = {};
+export const pushUndoHistoryMap: Record<string, PushUndoHistory> = {
+  ...tablePushUndoHistoryMap,
+  ...tableColumnPushUndoHistoryMap,
+  ...relationshipPushUndoHistoryMap,
+  ...memoPushUndoHistoryMap,
+  ...settingsPushUndoHistoryMap,
+  ...editorPushUndoHistoryMap,
+};
 
-const pushStreamHistoryMap: Record<string, PushStreamHistory> = {};
+export const pushStreamHistoryMap: Record<string, PushStreamHistory> = {
+  ...tablePushStreamHistoryMap,
+  ...memoPushStreamHistoryMap,
+  ...settingsPushStreamHistoryMap,
+};
 
 function push(store: Store, history: History, actions: AnyAction[]) {
   const undoActions: AnyAction[] = [];
@@ -27,14 +55,14 @@ function push(store: Store, history: History, actions: AnyAction[]) {
 
   for (const action of actions) {
     const pushUndoHistory = pushUndoHistoryMap[action.type];
-    if (!pushUndoHistory) return;
+    if (!pushUndoHistory) continue;
 
-    pushUndoHistory(store, undoActions, action);
+    pushUndoHistory(undoActions, action, store.state);
     redoActions.push(action);
   }
 
   for (const key of Object.keys(pushStreamHistoryMap)) {
-    pushStreamHistoryMap[key](actions, undoActions, redoActions);
+    pushStreamHistoryMap[key](undoActions, redoActions, actions, store.state);
   }
 
   if (!undoActions.length || !redoActions.length) return;

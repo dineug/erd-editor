@@ -87,16 +87,16 @@ export const changeMemoColorAction = createAction<
 >(ActionType.changeMemoColor);
 
 const changeMemoColor: ReducerType<typeof ActionType.changeMemoColor> = (
-  { collections },
-  { payload: { ids, color } }
+  { collections, lww },
+  { payload: { id, color }, timestamp }
 ) => {
   const collection = query(collections).collection('memoEntities');
-  for (const id of ids) {
-    collection.getOrCreate(id, id => createMemo({ id }));
-  }
+  collection.getOrCreate(id, id => createMemo({ id }));
 
-  collection.updateMany(ids, memo => {
-    memo.ui.color = color;
+  collection.replaceOperator(lww, timestamp, id, 'ui.color', () => {
+    collection.updateOne(id, memo => {
+      memo.ui.color = color;
+    });
   });
 };
 

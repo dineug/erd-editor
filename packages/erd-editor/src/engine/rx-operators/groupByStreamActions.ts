@@ -4,6 +4,8 @@ import { buffer, debounceTime, groupBy, map, mergeMap, Observable } from 'rxjs';
 
 import { notEmptyActions } from '@/engine/rx-operators/notEmptyActions';
 
+const NONE_STREAM_KEY = '@@none-stream';
+
 export const groupByStreamActions = (
   streamActionTypes: Array<string> | ReadonlyArray<string>
 ) => {
@@ -13,31 +15,34 @@ export const groupByStreamActions = (
     new Observable<Array<AnyAction>>(subscriber =>
       source$.subscribe({
         next: actions => {
-          const batchActions: AnyAction[] = [];
-          const streamActions: AnyAction[] = [];
+          const group = actions.reduce((acc, action) => {
+            const type = has(action.type) ? action.type : NONE_STREAM_KEY;
+            if (!acc[type]) {
+              acc[type] = [];
+            }
 
-          actions.forEach(action =>
-            has(action.type)
-              ? streamActions.push(action)
-              : batchActions.push(action)
-          );
+            acc[type].push(action);
+            return acc;
+          }, {} as Record<string, Array<AnyAction>>);
 
-          subscriber.next(batchActions);
-          subscriber.next(streamActions);
+          Object.values(group).forEach(actions => subscriber.next(actions));
         },
         error: err => subscriber.error(err),
         complete: () => subscriber.complete(),
       })
     ).pipe(
       notEmptyActions,
-      groupBy(actions => actions.some(action => has(action.type))),
+      groupBy(actions => {
+        const type = actions[0].type;
+        return has(type) ? type : NONE_STREAM_KEY;
+      }),
       mergeMap(group$ =>
-        group$.key
-          ? group$.pipe(
+        group$.key === NONE_STREAM_KEY
+          ? group$
+          : group$.pipe(
               buffer(group$.pipe(debounceTime(200))),
-              map(buff => buff.reduce((acc, cur) => acc.concat(cur), []))
+              map(buff => buff.flat(2))
             )
-          : group$
       )
     );
 };

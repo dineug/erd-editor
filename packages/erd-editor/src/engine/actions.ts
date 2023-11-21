@@ -1,3 +1,7 @@
+import {
+  pushStreamHistoryMap,
+  pushUndoHistoryMap,
+} from '@/engine/history.actions';
 import { ActionMap as EditorActionMap } from '@/engine/modules/editor/actions';
 import { actions as editorActions } from '@/engine/modules/editor/atom.actions';
 import { actions$ as editorActions$ } from '@/engine/modules/editor/generator.actions';
@@ -67,15 +71,65 @@ export const actions: Actions = Object.freeze({
 });
 
 // TODO: changeActionTypes
-export const ChangeActionTypes: ReadonlyArray<ActionType> = [];
+export const ChangeActionTypes: ReadonlyArray<ActionType> = [
+  // table
+  'table.add',
+  'table.move',
+  'table.remove',
+  'table.changeName',
+  'table.changeComment',
+  'table.changeColor',
+  // column
+  'column.add',
+  'column.remove',
+  'column.changeName',
+  'column.changeComment',
+  'column.changeDataType',
+  'column.changeDefault',
+  'column.changeAutoIncrement',
+  'column.changePrimaryKey',
+  'column.changeUnique',
+  'column.changeNotNull',
+  // relationship
+  'relationship.add',
+  'relationship.remove',
+  'relationship.changeType',
+  // index
+  // indexColumn
+  // memo
+  'memo.add',
+  'memo.move',
+  'memo.remove',
+  'memo.changeValue',
+  'memo.changeColor',
+  'memo.resize',
+  // settings
+  'settings.changeDatabaseName',
+  'settings.resize',
+  'settings.changeZoomLevel',
+  'settings.streamZoomLevel',
+  'settings.scrollTo',
+  'settings.streamScrollTo',
+  'settings.changeShow',
+  'settings.changeDatabase',
+  'settings.changeCanvasType',
+  'settings.changeLanguage',
+  'settings.changeTableNameCase',
+  'settings.changeColumnNameCase',
+  'settings.changeBracketType',
+  'settings.changeRelationshipDataTypeSync',
+  'settings.changeRelationshipOptimization',
+  'settings.changeColumnOrder',
+  // editor
+  'editor.loadJson',
+  'editor.clear',
+];
 
-// TODO: historyActionTypes
-export const HistoryActionTypes: ReadonlyArray<ActionType> = [];
+export const HistoryActionTypes: ReadonlyArray<ActionType> = [
+  ...(Object.keys(pushUndoHistoryMap) as ActionType[]),
+  ...(Object.keys(pushStreamHistoryMap) as ActionType[]),
+];
 
 export const StreamActionTypes: ReadonlyArray<ActionType> = [
-  'table.move',
-  'memo.move',
-  'memo.resize',
-  'settings.streamScrollTo',
-  'settings.streamZoomLevel',
+  ...(Object.keys(pushStreamHistoryMap) as ActionType[]),
 ];

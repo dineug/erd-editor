@@ -1,9 +1,9 @@
 import { ValuesType } from '@/internal-types';
 
 export const InternalEventType = {
-  focus: 'erd-editor-internal-focus',
-  forceFocus: 'erd-editor-internal-force-focus',
-  forwardMoveStart: 'erd-editor-internal-forward-move-start',
+  focus: '@dineug/erd-editor/internal-focus',
+  forceFocus: '@dineug/erd-editor/internal-force-focus',
+  forwardMoveStart: '@dineug/erd-editor/internal-forward-move-start',
 } as const;
 export type InternalEventType = ValuesType<typeof InternalEventType>;
 

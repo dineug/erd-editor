@@ -78,8 +78,13 @@ export function useErdEditorAttachElement({
   const darkMode = useDarkMode();
   const { addUnsubscribe } = useUnmounted();
 
+  const emitChange = () => {
+    ctx.dispatchEvent(new CustomEvent('change'));
+  };
+
   onMounted(() => {
     addUnsubscribe(
+      store.change$.subscribe(emitChange),
       watch(props).subscribe(propName => {
         if (propName !== 'systemDarkMode' || !props.systemDarkMode) {
           return;

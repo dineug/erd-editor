@@ -55,12 +55,30 @@ const removeRelationship: ReducerType<typeof ActionType.removeRelationship> = (
     });
 };
 
+export const changeRelationshipTypeAction = createAction<
+  ActionMap[typeof ActionType.changeRelationshipType]
+>(ActionType.changeRelationshipType);
+
+const changeRelationshipType: ReducerType<
+  typeof ActionType.changeRelationshipType
+> = ({ collections, lww }, { payload: { id, value }, timestamp }) => {
+  const collection = query(collections).collection('relationshipEntities');
+
+  collection.replaceOperator(lww, timestamp, id, 'relationshipType', () => {
+    collection.updateOne(id, relationship => {
+      relationship.relationshipType = value;
+    });
+  });
+};
+
 export const relationshipReducers = {
   [ActionType.addRelationship]: addRelationship,
   [ActionType.removeRelationship]: removeRelationship,
+  [ActionType.changeRelationshipType]: changeRelationshipType,
 };
 
 export const actions = {
   addRelationshipAction,
   removeRelationshipAction,
+  changeRelationshipTypeAction,
 };

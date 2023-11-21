@@ -37,8 +37,9 @@ export type ActionMap = {
     value: string;
   };
   [ActionType.changeMemoColor]: {
-    ids: string[];
+    id: string;
     color: string;
+    prevColor: string;
   };
   [ActionType.resizeMemo]: {
     id: string;

@@ -7,6 +7,7 @@ import { ValuesType } from '@/internal-types';
 export const ActionType = {
   addRelationship: 'relationship.add',
   removeRelationship: 'relationship.remove',
+  changeRelationshipType: 'relationship.changeType',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -19,6 +20,10 @@ export type ActionMap = {
   };
   [ActionType.removeRelationship]: {
     id: string;
+  };
+  [ActionType.changeRelationshipType]: {
+    id: string;
+    value: number;
   };
 };
 

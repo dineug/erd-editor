@@ -3,9 +3,15 @@ import { nanoid } from 'nanoid';
 
 import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
-import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
+import {
+  changeMemoColorAction,
+  moveMemoAction,
+} from '@/engine/modules/memo/atom.actions';
 import { removeMemoAction$ } from '@/engine/modules/memo/generator.actions';
-import { moveTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  changeTableColorAction,
+  moveTableAction,
+} from '@/engine/modules/table/atom.actions';
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import {
   addColumnAction,
@@ -238,6 +244,24 @@ export const drawStartAddRelationshipAction$ = (
     yield drawStartAddRelationshipAction({ tableId });
   };
 
+const changeColorAllAction$ = (color: string): GeneratorAction =>
+  function* ({ editor: { selectedMap }, collections }) {
+    const { tableIds, memoIds } = getSelectTypeIds(selectedMap);
+    const tables = query(collections)
+      .collection('tableEntities')
+      .selectByIds(tableIds);
+    const memos = query(collections)
+      .collection('memoEntities')
+      .selectByIds(memoIds);
+
+    yield tables.map(table =>
+      changeTableColorAction({ id: table.id, color, prevColor: table.ui.color })
+    );
+    yield memos.map(memo =>
+      changeMemoColorAction({ id: memo.id, color, prevColor: memo.ui.color })
+    );
+  };
+
 export const actions$ = {
   loadJsonAction$,
   initialLoadJsonAction$,
@@ -248,4 +272,5 @@ export const actions$ = {
   focusMoveTableAction$,
   drawStartRelationshipAction$,
   drawStartAddRelationshipAction$,
+  changeColorAllAction$,
 };

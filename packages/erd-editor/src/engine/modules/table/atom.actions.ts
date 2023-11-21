@@ -110,16 +110,16 @@ export const changeTableColorAction = createAction<
 >(ActionType.changeTableColor);
 
 const changeTableColor: ReducerType<typeof ActionType.changeTableColor> = (
-  { collections },
-  { payload: { ids, color } }
+  { collections, lww },
+  { payload: { id, color }, timestamp }
 ) => {
   const collection = query(collections).collection('tableEntities');
-  for (const id of ids) {
-    collection.getOrCreate(id, id => createTable({ id }));
-  }
+  collection.getOrCreate(id, id => createTable({ id }));
 
-  collection.updateMany(ids, table => {
-    table.ui.color = color;
+  collection.replaceOperator(lww, timestamp, id, 'ui.color', () => {
+    collection.updateOne(id, table => {
+      table.ui.color = color;
+    });
   });
 };
 
