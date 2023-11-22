@@ -66,6 +66,7 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
           height: `${height}px`,
         }}
         ?data-selected=${selected}
+        data-id=${table.id}
         @mousedown=${onMoveStart}
         @touchstart=${onMoveStart}
       >

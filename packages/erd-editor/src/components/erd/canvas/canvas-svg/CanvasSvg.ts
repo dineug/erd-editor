@@ -40,10 +40,13 @@ const CanvasSvg: FC<CanvasSvgProps> = (props, ctx) => {
           relationships,
           relationship => relationship.id,
           relationship => svg`
-            <g class=${[
-              'relationship',
-              { identification: relationship.identification },
-            ]}>
+            <g
+              class=${[
+                'relationship',
+                { identification: relationship.identification },
+              ]}
+              data-id=${relationship.id}
+            >
               <${Relationship}
                 relationship=${relationship}
                 strokeWidth=${props.strokeWidth ?? 3}

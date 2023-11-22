@@ -4,7 +4,7 @@ import * as styles from './Menu.styles';
 
 export type MenuProps = {
   icon: DOMTemplateLiterals;
-  name: string;
+  name: DOMTemplateLiterals;
   right?: DOMTemplateLiterals;
 };
 

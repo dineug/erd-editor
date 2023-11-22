@@ -5,6 +5,7 @@ import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Icon from '@/components/primitives/icon/Icon';
 import Kbd from '@/components/primitives/kbd/Kbd';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
+import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { ValuesType } from '@/internal-types';
 
@@ -12,6 +13,7 @@ import { createDatabaseMenus } from './databaseMenus';
 import { createDrawRelationshipMenus } from './drawRelationshipMenus';
 import { createExportMenus } from './exportMenus';
 import { createImportMenus } from './importMenus';
+import { createRelationshipMenus } from './relationshipMenus';
 import { createShowMenus } from './showMenus';
 
 export const ErdContextMenuType = {
@@ -24,6 +26,8 @@ export type ErdContextMenuType = ValuesType<typeof ErdContextMenuType>;
 export type ErdContextMenuProps = {
   type: ErdContextMenuType;
   root: Ref<HTMLDivElement>;
+  relationshipId?: string;
+  tableId?: string;
   onClose: () => void;
 };
 
@@ -48,6 +52,16 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     props.onClose();
   };
 
+  const handleRemoveRelationship = () => {
+    if (!props.relationshipId) return;
+    const { store } = app.value;
+    store.dispatch(
+      removeRelationshipAction({
+        id: props.relationshipId,
+      })
+    );
+  };
+
   const chevronRightIcon = html`<${Icon} name="chevron-right" size=${14} />`;
 
   return () => {
@@ -56,7 +70,57 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     return props.type === ErdContextMenuType.table
       ? html``
       : props.type === ErdContextMenuType.relationship
-      ? html``
+      ? html`
+          <${ContextMenu.Root}
+            children=${html`
+              <${ContextMenu.Item}
+                children=${html`
+                  <${ContextMenu.Menu}
+                    icon=${html`
+                      <${Icon} prefix="mdi" name="vector-line" size=${14} />
+                    `}
+                    name="Relationship Type"
+                    right=${chevronRightIcon}
+                  />
+                `}
+                subChildren=${html`
+                  ${createRelationshipMenus(
+                    app.value,
+                    props.onClose,
+                    props.relationshipId
+                  ).map(
+                    menu => html`
+                      <${ContextMenu.Item}
+                        .onClick=${menu.onClick}
+                        children=${html`
+                          <${ContextMenu.Menu}
+                            icon=${menu.checked
+                              ? html`<${Icon} name="check" size=${14} />`
+                              : null}
+                            name=${html`
+                              <${ContextMenu.Menu}
+                                icon=${html` <${Icon}
+                                  prefix="base64"
+                                  name=${menu.iconName}
+                                  size=${14}
+                                />`}
+                                name=${menu.name}
+                              />
+                            `}
+                          />
+                        `}
+                      />
+                    `
+                  )}
+                `}
+              />
+              <${ContextMenu.Item}
+                .onClick=${handleRemoveRelationship}
+                children=${html`<${ContextMenu.Menu} name="Delete" />`}
+              />
+            `}
+          />
+        `
       : html`
           <${ContextMenu.Root}
             children=${html`

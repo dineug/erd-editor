@@ -32,6 +32,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     dragSelect: false,
     dragSelectX: 0,
     dragSelectY: 0,
+    contextMenuType: ErdContextMenuType.ERD as ErdContextMenuType,
+    relationshipId: '',
+    tableId: '',
   });
   useErdShortcut(ctx);
 
@@ -44,6 +47,22 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   const handleContextmenu = (event: MouseEvent) => {
+    const el = event.target as HTMLElement | null;
+    if (!el) return;
+
+    const $table = el.closest('.table') as HTMLElement | null;
+    const $relationship = el.closest('.relationship') as HTMLElement | null;
+
+    if ($table) {
+      state.tableId = $table.dataset.id as string;
+      state.contextMenuType = ErdContextMenuType.table;
+    } else if ($relationship) {
+      state.relationshipId = $relationship.dataset.id as string;
+      state.contextMenuType = ErdContextMenuType.relationship;
+    } else {
+      state.contextMenuType = ErdContextMenuType.ERD;
+    }
+
     contextMenu.onContextmenu(event);
   };
 
@@ -139,8 +158,10 @@ const Erd: FC<ErdProps> = (props, ctx) => {
             `
           : null}
         <${ErdContextMenu}
-          type=${ErdContextMenuType.ERD}
+          type=${state.contextMenuType}
           root=${canvas}
+          relationshipId=${state.relationshipId}
+          tableId=${state.tableId}
           .onClose=${handleContextmenuClose}
         />
       </div>

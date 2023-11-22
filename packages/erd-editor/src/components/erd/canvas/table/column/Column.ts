@@ -322,7 +322,10 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     const { column, selected } = props;
 
     return html`
-      <div class=${['column-row', styles.root, { selected }]}>
+      <div
+        class=${['column-row', styles.root, { selected }]}
+        data-id=${column.id}
+      >
         <${ColumnKey} keys=${column.ui.keys} />
         ${repeat(
           getColumnOrder(),
