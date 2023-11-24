@@ -12,6 +12,7 @@ import {
 import { Memo } from '@/internal-types';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { onStop } from '@/utils/domEvent';
+import { openColorPickerAction } from '@/utils/emitter';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 import { focusEvent } from '@/utils/internalEvents';
 import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
@@ -70,6 +71,17 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     ctx.host.dispatchEvent(focusEvent());
   };
 
+  const handleOpenColorPicker = (event: MouseEvent) => {
+    const { emitter } = app.value;
+    emitter.emit(
+      openColorPickerAction({
+        x: event.clientX,
+        y: event.clientY,
+        color: props.memo.ui.color,
+      })
+    );
+  };
+
   return () => {
     const { store, keyBindingMap } = app.value;
     const { memo } = props;
@@ -98,6 +110,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
               style=${{
                 'background-color': memo.ui.color,
               }}
+              @click=${handleOpenColorPicker}
             ></div>
             <div class=${styles.headerButtonWrap}>
               <${Icon}

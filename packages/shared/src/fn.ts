@@ -5,7 +5,7 @@ export function safeCallback<F extends Callback>(
   ...args: Parameters<F>
 ) {
   try {
-    callback?.(...args);
+    return callback?.(...args);
   } catch (e) {
     window.console.error(e);
   }

@@ -14,6 +14,7 @@ import {
 } from '@/engine/context';
 import { createRxStore, RxStore } from '@/engine/rx-store';
 import { Ctx } from '@/internal-types';
+import { Emitter } from '@/utils/emitter';
 import {
   createKeyBindingMap,
   KeyBindingMap,
@@ -26,6 +27,7 @@ export type AppContext = EngineContext & {
   keyBindingMap: KeyBindingMap;
   shortcut$: Subject<KeyBindingName>;
   keydown$: Subject<KeyboardEvent>;
+  emitter: Emitter;
 };
 
 export type InjectAppContext = InjectEngineContext;
@@ -36,6 +38,7 @@ export function createAppContext(ctx: InjectAppContext): AppContext {
   const keyBindingMap = observable(createKeyBindingMap(), { shallow: true });
   const shortcut$ = new Subject<KeyBindingName>();
   const keydown$ = new Subject<KeyboardEvent>();
+  const emitter = new Emitter();
 
   if (import.meta.env.DEV) {
     reduxDevtools(store);
@@ -48,6 +51,7 @@ export function createAppContext(ctx: InjectAppContext): AppContext {
     keyBindingMap,
     shortcut$,
     keydown$,
+    emitter,
   });
 }
 

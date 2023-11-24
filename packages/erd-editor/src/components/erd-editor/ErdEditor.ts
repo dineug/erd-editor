@@ -73,7 +73,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();
   useKeyBindingMap(ctx, root);
 
-  const { theme } = useErdEditorAttachElement({
+  const { theme, isDarkMode } = useErdEditorAttachElement({
     props,
     ctx,
     app: appContextValue,
@@ -126,7 +126,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     <${Theme} .theme=${theme} />
     <div
       ${ref(root)}
-      class=${styles.root}
+      class=${['root', styles.root, { dark: isDarkMode() }]}
       tabindex="-1"
       @keydown=${handleKeydown}
     >

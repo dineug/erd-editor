@@ -1,4 +1,11 @@
-import { createRef, FC, html, observable, ref } from '@dineug/r-html';
+import {
+  createRef,
+  FC,
+  html,
+  observable,
+  onMounted,
+  ref,
+} from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
@@ -7,13 +14,19 @@ import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
 import Minimap from '@/components/erd/minimap/Minimap';
+import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
-import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
+import {
+  changeColorAllAction$,
+  unselectAllAction$,
+} from '@/engine/modules/editor/generator.actions';
 import {
   streamScrollToAction,
   streamZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import { isMouseEvent } from '@/utils/domEvent';
+import { closeColorPickerAction } from '@/utils/emitter';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
 import { isMod } from '@/utils/keyboard-shortcut';
@@ -33,10 +46,16 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     dragSelectX: 0,
     dragSelectY: 0,
     contextMenuType: ErdContextMenuType.ERD as ErdContextMenuType,
-    relationshipId: '',
-    tableId: '',
+    relationshipId: '' as string | undefined,
+    tableId: '' as string | undefined,
+    colorPickerShow: false,
+    colorPickerX: 0,
+    colorPickerY: 0,
+    colorPickerInitialColor: '',
   });
   useErdShortcut(ctx);
+
+  const { addUnsubscribe } = useUnmounted();
 
   const resetScroll = () => {
     if (root.value.scrollTop === 0 && root.value.scrollLeft === 0) {
@@ -54,10 +73,10 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const $relationship = el.closest('.relationship') as HTMLElement | null;
 
     if ($table) {
-      state.tableId = $table.dataset.id as string;
+      state.tableId = $table.dataset.id;
       state.contextMenuType = ErdContextMenuType.table;
     } else if ($relationship) {
-      state.relationshipId = $relationship.dataset.id as string;
+      state.relationshipId = $relationship.dataset.id;
       state.contextMenuType = ErdContextMenuType.relationship;
     } else {
       state.contextMenuType = ErdContextMenuType.ERD;
@@ -91,19 +110,29 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const el = event.target as HTMLElement | null;
     if (!el) return;
 
+    const canHideColorPicker = !el.closest('.color-picker');
+
     const canUnselectAll =
       !el.closest('.table') &&
       !el.closest('.memo') &&
-      !el.closest('.edit-input');
+      !el.closest('.edit-input') &&
+      !el.closest('.context-menu-content') &&
+      canHideColorPicker;
 
     const canDrag =
       canUnselectAll &&
+      canHideColorPicker &&
       !el.closest('.minimap') &&
       !el.closest('.minimap-viewport');
 
     if (canUnselectAll) {
       const { store } = app.value;
       store.dispatch(unselectAllAction$());
+    }
+
+    if (canHideColorPicker) {
+      const { emitter } = app.value;
+      emitter.emit(closeColorPickerAction());
     }
 
     if (!canDrag) return;
@@ -121,6 +150,31 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   const handleDragSelectEnd = () => {
     state.dragSelect = false;
   };
+
+  const handleChangeColorPicker = (color: string) => {
+    const { store } = app.value;
+    store.dispatch(changeColorAllAction$(color));
+  };
+
+  onMounted(() => {
+    const { emitter } = app.value;
+    const $root = root.value;
+
+    addUnsubscribe(
+      emitter.on({
+        openColorPicker: ({ payload: { x, y, color } }) => {
+          const rect = $root.getBoundingClientRect();
+          state.colorPickerX = x - rect.x;
+          state.colorPickerY = y - rect.y;
+          state.colorPickerInitialColor = color;
+          state.colorPickerShow = true;
+        },
+        closeColorPicker: () => {
+          state.colorPickerShow = false;
+        },
+      })
+    );
+  });
 
   return () => {
     const { store } = app.value;
@@ -159,11 +213,21 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           : null}
         <${ErdContextMenu}
           type=${state.contextMenuType}
-          root=${canvas}
+          canvas=${canvas}
           relationshipId=${state.relationshipId}
           tableId=${state.tableId}
           .onClose=${handleContextmenuClose}
         />
+        ${state.colorPickerShow
+          ? html`
+              <${ColorPicker}
+                color=${state.colorPickerInitialColor}
+                x=${state.colorPickerX}
+                y=${state.colorPickerY}
+                .onChange=${handleChangeColorPicker}
+              />
+            `
+          : null}
       </div>
     `;
   };

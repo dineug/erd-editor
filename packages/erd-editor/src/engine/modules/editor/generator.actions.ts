@@ -244,7 +244,7 @@ export const drawStartAddRelationshipAction$ = (
     yield drawStartAddRelationshipAction({ tableId });
   };
 
-const changeColorAllAction$ = (color: string): GeneratorAction =>
+export const changeColorAllAction$ = (color: string): GeneratorAction =>
   function* ({ editor: { selectedMap }, collections }) {
     const { tableIds, memoIds } = getSelectTypeIds(selectedMap);
     const tables = query(collections)

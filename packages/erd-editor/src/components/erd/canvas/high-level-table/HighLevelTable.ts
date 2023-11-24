@@ -13,6 +13,7 @@ import {
   fontSize9,
 } from '@/styles/typography.styles';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
+import { openColorPickerAction } from '@/utils/emitter';
 
 import * as highLevelTableStyle from './HighLevelTable.styles';
 
@@ -46,6 +47,17 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
     return fontSize;
   };
 
+  const handleOpenColorPicker = (event: MouseEvent) => {
+    const { emitter } = app.value;
+    emitter.emit(
+      openColorPickerAction({
+        x: event.clientX,
+        y: event.clientY,
+        color: props.table.ui.color,
+      })
+    );
+  };
+
   return () => {
     const { store } = app.value;
     const { table } = props;
@@ -76,6 +88,7 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
             style=${{
               'background-color': table.ui.color,
             }}
+            @click=${handleOpenColorPicker}
           ></div>
         </div>
         <div

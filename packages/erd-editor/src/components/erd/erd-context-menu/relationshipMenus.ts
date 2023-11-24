@@ -34,7 +34,6 @@ const menus: Menu[] = [
 
 export function createRelationshipMenus(
   { store }: AppContext,
-  onClose: () => void,
   relationshipId?: string
 ) {
   if (!relationshipId) return [];
@@ -59,7 +58,6 @@ export function createRelationshipMenus(
             value: menu.relationshipType,
           })
         );
-        onClose();
       },
     };
   });

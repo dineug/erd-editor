@@ -22,6 +22,7 @@ import { bHas } from '@/utils/bit';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { query } from '@/utils/collection/query';
 import { onPrevent } from '@/utils/domEvent';
+import { openColorPickerAction } from '@/utils/emitter';
 import { simpleShortcutToString } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Table.styles';
@@ -84,6 +85,17 @@ const Table: FC<TableProps> = (props, ctx) => {
     }
   };
 
+  const handleOpenColorPicker = (event: MouseEvent) => {
+    const { emitter } = app.value;
+    emitter.emit(
+      openColorPickerAction({
+        x: event.clientX,
+        y: event.clientY,
+        color: props.table.ui.color,
+      })
+    );
+  };
+
   return () => {
     const { store, keyBindingMap } = app.value;
     const { settings, collections } = store.state;
@@ -117,6 +129,7 @@ const Table: FC<TableProps> = (props, ctx) => {
             style=${{
               'background-color': table.ui.color,
             }}
+            @click=${handleOpenColorPicker}
           ></div>
           <div class=${styles.headerButtonWrap}>
             <${Icon}
