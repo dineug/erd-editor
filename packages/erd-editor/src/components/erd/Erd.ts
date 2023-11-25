@@ -20,6 +20,7 @@ import {
   changeColorAllAction$,
   unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
+import { Viewport } from '@/engine/modules/editor/state';
 import {
   streamScrollToAction,
   streamZoomLevelAction,
@@ -51,6 +52,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     colorPickerShow: false,
     colorPickerX: 0,
     colorPickerY: 0,
+    colorPickerViewport: null as Viewport | null,
     colorPickerInitialColor: '',
   });
   useErdShortcut(ctx);
@@ -157,15 +159,18 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   onMounted(() => {
-    const { emitter } = app.value;
+    const { store, emitter } = app.value;
     const $root = root.value;
 
     addUnsubscribe(
       emitter.on({
         openColorPicker: ({ payload: { x, y, color } }) => {
+          const { editor } = store.state;
           const rect = $root.getBoundingClientRect();
+
           state.colorPickerX = x - rect.x;
           state.colorPickerY = y - rect.y;
+          state.colorPickerViewport = editor.viewport;
           state.colorPickerInitialColor = color;
           state.colorPickerShow = true;
         },
@@ -224,6 +229,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
                 color=${state.colorPickerInitialColor}
                 x=${state.colorPickerX}
                 y=${state.colorPickerY}
+                viewport=${state.colorPickerViewport}
                 .onChange=${handleChangeColorPicker}
               />
             `
