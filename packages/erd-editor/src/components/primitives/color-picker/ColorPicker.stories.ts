@@ -23,6 +23,9 @@ const meta = {
     onChange: {
       action: 'onChange',
     },
+    onLastUpdate: {
+      action: 'onLastUpdate',
+    },
   },
 } satisfies Meta<ColorPickerProps>;
 

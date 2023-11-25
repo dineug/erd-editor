@@ -5,6 +5,7 @@ import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { CanvasType } from '@/constants/schema';
 import {
+  changeCanvasTypeAction,
   changeDatabaseNameAction,
   changeZoomLevelAction,
   resizeAction,
@@ -51,6 +52,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     store.dispatch(changeZoomLevelAction({ value: zoomLevel }));
   };
 
+  const handleChangeCanvasType = (value: string) => {
+    const { store } = app.value;
+    store.dispatch(changeCanvasTypeAction({ value }));
+  };
+
   const handleUndo = () => {
     const { store } = app.value;
     store.undo();
@@ -90,6 +96,27 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           numberOnly=${true}
           .onChange=${handleZoomLevel}
         />
+        <div class=${styles.vertical}></div>
+        <div
+          class=${[
+            styles.menu,
+            { active: settings.canvasType === CanvasType.ERD },
+          ]}
+          title="Entity Relationship Diagram"
+          @click=${() => handleChangeCanvasType(CanvasType.ERD)}
+        >
+          <${Icon} name="diagram-project" size=${16} />
+        </div>
+        <div
+          class=${[
+            styles.menu,
+            { active: settings.canvasType === CanvasType.visualization },
+          ]}
+          title="Visualization"
+          @click=${() => handleChangeCanvasType(CanvasType.visualization)}
+        >
+          <${Icon} prefix="mdi" name="chart-scatter-plot" size=${16} />
+        </div>
         <div class=${styles.vertical}></div>
         ${settings.canvasType === CanvasType.ERD
           ? html`

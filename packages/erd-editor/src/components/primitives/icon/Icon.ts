@@ -1,5 +1,7 @@
 import { FC, html, svg } from '@dineug/r-html';
 
+import { restAttrs } from '@/utils/attribute';
+
 import * as styles from './Icon.styles';
 import { getIcon } from './icons';
 
@@ -31,7 +33,7 @@ const Icon: FC<IconProps> = (props, ctx) => () => {
   return html`
     <div
       class=${['icon', styles.wrap, props.class]}
-      title=${props.title}
+      ...${restAttrs({ title: props.title })}
       @click=${props.onClick}
     >
       ${prefix === 'base64'

@@ -318,12 +318,14 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   };
 
   return () => {
-    const { keyBindingMap } = app.value;
+    const { store, keyBindingMap } = app.value;
+    const { editor } = store.state;
     const { column, selected } = props;
+    const hover = Boolean(editor.hoverColumnMap[column.id]);
 
     return html`
       <div
-        class=${['column-row', styles.root, { selected }]}
+        class=${['column-row', styles.root, { selected, hover }]}
         data-id=${column.id}
       >
         <${ColumnKey} keys=${column.ui.keys} />

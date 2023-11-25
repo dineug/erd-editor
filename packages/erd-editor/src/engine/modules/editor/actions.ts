@@ -27,6 +27,7 @@ export const ActionType = {
   drawStartAddRelationship: 'editor.drawStartAddRelationship',
   drawEndRelationship: 'editor.drawEndRelationship',
   drawRelationship: 'editor.drawRelationship',
+  hoverColumnMap: 'editor.hoverColumnMap',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -79,6 +80,9 @@ export type ActionMap = {
   [ActionType.drawRelationship]: {
     x: number;
     y: number;
+  };
+  [ActionType.hoverColumnMap]: {
+    columnIds: string[];
   };
 };
 

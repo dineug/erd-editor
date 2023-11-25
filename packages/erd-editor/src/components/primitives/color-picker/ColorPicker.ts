@@ -10,7 +10,8 @@ export type ColorPickerProps = {
   x: number;
   y: number;
   color: string;
-  onChange: (color: string) => void;
+  onChange?: (color: string) => void;
+  onLastUpdate?: (color: string) => void;
 };
 
 const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
@@ -25,7 +26,10 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
       position: 'inline',
       color: props.color || '',
       onChange: (color: string) => {
-        props.onChange(color);
+        props.onChange?.(color);
+      },
+      onLastUpdate: (color: string) => {
+        props.onLastUpdate?.(color);
       },
     });
 

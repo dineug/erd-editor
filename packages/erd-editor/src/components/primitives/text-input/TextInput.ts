@@ -1,5 +1,6 @@
 import { FC, html } from '@dineug/r-html';
 
+import { restAttrs } from '@/utils/attribute';
 import { onNumberOnly } from '@/utils/domEvent';
 
 export type TextInputProps = {
@@ -19,8 +20,10 @@ const TextInput: FC<TextInputProps> = (props, ctx) => {
   return () => html`
     <input
       style=${{ width: props.width ? `${props.width}px` : '' }}
-      placeholder=${props.placeholder ?? ''}
-      title=${props.title ?? ''}
+      ...${restAttrs({
+        title: props.title,
+        placeholder: props.placeholder,
+      })}
       type="text"
       spellcheck="false"
       ?readonly=${props.readonly}

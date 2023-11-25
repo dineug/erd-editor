@@ -10,6 +10,7 @@ export type Editor = {
   viewport: Viewport;
   focusTable: FocusTable | null;
   drawRelationship: DrawRelationship | null;
+  hoverColumnMap: Record<string, boolean>;
 };
 
 export type Viewport = {
@@ -75,4 +76,5 @@ export const createEditor = (): Editor => ({
   },
   focusTable: null,
   drawRelationship: null,
+  hoverColumnMap: {},
 });

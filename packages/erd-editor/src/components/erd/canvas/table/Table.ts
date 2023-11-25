@@ -98,9 +98,9 @@ const Table: FC<TableProps> = (props, ctx) => {
 
   return () => {
     const { store, keyBindingMap } = app.value;
-    const { settings, collections } = store.state;
+    const { editor, settings, collections } = store.state;
     const { table } = props;
-    const selected = Boolean(store.state.editor.selectedMap[table.id]);
+    const selected = Boolean(editor.selectedMap[table.id]);
     const tableWidths = calcTableWidths(table, store.state);
     const height = calcTableHeight(table);
 

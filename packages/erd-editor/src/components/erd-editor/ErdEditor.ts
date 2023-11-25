@@ -1,4 +1,5 @@
 import {
+  cache,
   createRef,
   defineCustomElement,
   FC,
@@ -14,7 +15,9 @@ import Erd from '@/components/erd/Erd';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import Theme from '@/components/theme/Theme';
 import Toolbar from '@/components/toolbar/Toolbar';
+import Visualization from '@/components/visualization/Visualization';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
+import { CanvasType } from '@/constants/schema';
 import { DatabaseVendor } from '@/constants/sql/database';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
@@ -121,22 +124,32 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     });
   });
 
-  return () => html`
-    <${GlobalStyles} />
-    <${Theme} .theme=${theme} />
-    <div
-      ${ref(root)}
-      class=${['root', styles.root, { dark: isDarkMode() }]}
-      tabindex="-1"
-      @keydown=${handleKeydown}
-    >
-      <${Toolbar} />
-      <div class=${styles.main}>
-        <${Erd} />
+  return () => {
+    const { store } = appContextValue;
+    const { settings } = store.state;
+
+    return html`
+      <${GlobalStyles} />
+      <${Theme} .theme=${theme} />
+      <div
+        ${ref(root)}
+        class=${['root', styles.root, { dark: isDarkMode() }]}
+        tabindex="-1"
+        @keydown=${handleKeydown}
+      >
+        <${Toolbar} />
+        <div class=${styles.main}>
+          ${cache(
+            settings.canvasType === CanvasType.ERD ? html`<${Erd} />` : null
+          )}
+          ${settings.canvasType === CanvasType.visualization
+            ? html`<${Visualization} />`
+            : null}
+        </div>
+        ${text.span}
       </div>
-      ${text.span}
-    </div>
-  `;
+    `;
+  };
 };
 
 defineCustomElement('erd-editor', {

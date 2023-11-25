@@ -22,6 +22,10 @@ export const root = css`
     background-color: var(--column-hover);
   }
 
+  &.hover {
+    background-color: var(--column-hover);
+  }
+
   &.selected {
     background-color: var(--column-select);
   }

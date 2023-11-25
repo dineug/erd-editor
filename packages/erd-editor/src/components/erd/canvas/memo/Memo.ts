@@ -84,8 +84,9 @@ const Memo: FC<MemoProps> = (props, ctx) => {
 
   return () => {
     const { store, keyBindingMap } = app.value;
+    const { editor } = store.state;
     const { memo } = props;
-    const selected = Boolean(store.state.editor.selectedMap[memo.id]);
+    const selected = Boolean(editor.selectedMap[memo.id]);
     const width = calcMemoWidth(memo);
     const height = calcMemoHeight(memo);
 

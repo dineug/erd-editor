@@ -25,6 +25,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import {
   mdiAtom,
+  mdiChartScatterPlot,
   mdiCodeBrackets,
   mdiCodeJson,
   mdiDatabase,
@@ -111,9 +112,9 @@ const icons = [
   createMDI('format-letter-case', mdiFormatLetterCase),
   createMDI('table-cog', mdiTableCog),
   createMDI('code-brackets', mdiCodeBrackets),
-  createMDI('xml', mdiXml),
   createMDI('vector-line', mdiVectorLine),
   createMDI('atom', mdiAtom),
+  createMDI('chart-scatter-plot', mdiChartScatterPlot),
   ...Object.entries(BASE_64_ICON).map(([name, base64]) =>
     createBase64(name, base64)
   ),

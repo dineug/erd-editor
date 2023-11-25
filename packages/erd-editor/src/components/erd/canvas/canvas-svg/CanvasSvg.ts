@@ -2,6 +2,8 @@ import { FC, repeat, svg } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import Relationship from '@/components/erd/canvas/canvas-svg/relationship/Relationship';
+import { hoverColumnMapAction } from '@/engine/modules/editor/atom.actions';
+import { Relationship as RelationshipType } from '@/internal-types';
 import { query } from '@/utils/collection/query';
 
 import * as styles from './CanvasSvg.styles';
@@ -13,6 +15,23 @@ export type CanvasSvgProps = {
 
 const CanvasSvg: FC<CanvasSvgProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+
+  const handleMouseenter = (relationship: RelationshipType) => {
+    const { store } = app.value;
+    store.dispatch(
+      hoverColumnMapAction({
+        columnIds: [
+          ...relationship.start.columnIds,
+          ...relationship.end.columnIds,
+        ],
+      })
+    );
+  };
+
+  const handleMouseleave = () => {
+    const { store } = app.value;
+    store.dispatch(hoverColumnMapAction({ columnIds: [] }));
+  };
 
   return () => {
     const { store } = app.value;
@@ -46,6 +65,8 @@ const CanvasSvg: FC<CanvasSvgProps> = (props, ctx) => {
                 { identification: relationship.identification },
               ]}
               data-id=${relationship.id}
+              @mouseenter=${() => handleMouseenter(relationship)}
+              @mouseleave=${handleMouseleave}
             >
               <${Relationship}
                 relationship=${relationship}

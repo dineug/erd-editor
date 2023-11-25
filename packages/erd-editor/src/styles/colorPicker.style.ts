@@ -8,8 +8,8 @@ const colorPicker = /* css */ `
   width: 224px;
   z-index: 1000;
   display: inline-block;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  background-color: #fff;
+  border: 1px solid var(--context-menu-border);
+  background-color: var(--context-menu-background);
   border-radius: 3px;
   -webkit-box-shadow: 0 0px 10px 2px rgba(0, 0, 0, 0.12);
   box-shadow: 0 0px 10px 2px rgba(0, 0, 0, 0.12);
@@ -58,7 +58,7 @@ const colorPicker = /* css */ `
   height: 0;
   border-left: 3px solid transparent;
   border-right: 3px solid transparent;
-  border-bottom: 3px solid black;
+  border-bottom: 3px solid var(--active);
   pointer-events: none;
   margin: 2px;
   -webkit-box-sizing: border-box;
@@ -76,7 +76,7 @@ const colorPicker = /* css */ `
   height: 0;
   border-left: 3px solid transparent;
   border-right: 3px solid transparent;
-  border-top: 3px solid black;
+  border-top: 3px solid var(--active);
   pointer-events: none;
   margin: 2px;
   -webkit-box-sizing: border-box;
@@ -483,14 +483,14 @@ const colorPicker = /* css */ `
   padding: 3px;
   height: 21px;
   font-size: 11px;
-  color: #333;
+  color: var(--foreground);
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
   user-select: text;
-  border: 1px solid #cbcbcb;
+  border: 1px solid var(--context-menu-border);
   border-radius: 2px;
 }
 .easylogic-colorpicker
@@ -580,10 +580,10 @@ const colorPicker = /* css */ `
   color: #a3a3a3;
 }
 .easylogic-colorpicker .colorpicker-body .information > .input {
-  color: #333;
+  color: var(--foreground);
 }
 .easylogic-colorpicker .colorpicker-body .colorsets {
-  border-top: 1px solid #e2e2e2;
+  border-top: 1px solid var(--context-menu-border);
 }
 .easylogic-colorpicker .colorpicker-body .colorsets > .menu {
   float: right;
@@ -694,7 +694,7 @@ const colorPicker = /* css */ `
   font-size: 16px;
   font-weight: 400;
   font-family: serif, sans-serif;
-  color: #8e8e8e;
+  color: var(--foreground);
   vertical-align: middle;
 }
 .easylogic-colorpicker .colorpicker-body .color-chooser {
@@ -722,7 +722,7 @@ const colorPicker = /* css */ `
   left: 0px;
   right: 0px;
   bottom: 0px;
-  background-color: white;
+  background-color: var(--context-menu-background);
 }
 .easylogic-colorpicker
   .colorpicker-body
@@ -763,7 +763,7 @@ const colorPicker = /* css */ `
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #000;
+  color: var(--active);
   text-align: left;
 }
 .easylogic-colorpicker
@@ -839,7 +839,7 @@ const colorPicker = /* css */ `
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #000;
+  color: var(--active);
   text-align: left;
 }
 .easylogic-colorpicker
@@ -2135,7 +2135,7 @@ const colorPicker = /* css */ `
   .information-item
   > .input-field
   > .title {
-  color: black;
+  color: var(--active);
   font-size: 11px;
   cursor: pointer;
 }
@@ -2258,7 +2258,7 @@ const colorPicker = /* css */ `
   left: auto;
   right: auto;
   bottom: auto;
-  background-color: white;
+  background-color: var(--context-menu-background);
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
   border-radius: 2px;

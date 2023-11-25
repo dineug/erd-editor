@@ -9,6 +9,7 @@ import {
 } from '@dineug/r-html';
 
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { restAttrs } from '@/utils/attribute';
 import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
 
@@ -85,10 +86,12 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
               width: `${props.width}px`,
               'min-width': `${props.width}px`,
             }}
-            placeholder=${props.placeholder ?? ''}
+            ...${restAttrs({
+              title: props.title,
+              placeholder: props.placeholder,
+            })}
             type="text"
             spellcheck="false"
-            title=${props.title}
             .value=${props.value ?? ''}
             @input=${props.onInput}
             @blur=${handleBlur}
@@ -109,7 +112,7 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
               width: `${props.width}px`,
               'min-width': `${props.width}px`,
             }}
-            title=${props.title}
+            ...${restAttrs({ title: props.title })}
           >
             ${props.value.trim() ? props.value : props.placeholder}
           </div>

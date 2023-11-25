@@ -401,6 +401,23 @@ const drawRelationship: ReducerType<typeof ActionType.drawRelationship> = (
   drawRelationship.end.y = absoluteY;
 };
 
+export const hoverColumnMapAction = createAction<
+  ActionMap[typeof ActionType.hoverColumnMap]
+>(ActionType.hoverColumnMap);
+
+const hoverColumnMap: ReducerType<typeof ActionType.hoverColumnMap> = (
+  { editor },
+  { payload: { columnIds } }
+) => {
+  Object.keys(editor.hoverColumnMap).forEach(id => {
+    Reflect.deleteProperty(editor.hoverColumnMap, id);
+  });
+
+  for (const id of columnIds) {
+    editor.hoverColumnMap[id] = true;
+  }
+};
+
 export const editorReducers = {
   [ActionType.changeHasHistory]: changeHasHistory,
   [ActionType.selectAll]: selectAll,
@@ -422,6 +439,7 @@ export const editorReducers = {
   [ActionType.drawStartAddRelationship]: drawStartAddRelationship,
   [ActionType.drawEndRelationship]: drawEndRelationship,
   [ActionType.drawRelationship]: drawRelationship,
+  [ActionType.hoverColumnMap]: hoverColumnMap,
 };
 
 export const actions = {
@@ -445,4 +463,5 @@ export const actions = {
   drawStartAddRelationshipAction,
   drawEndRelationshipAction,
   drawRelationshipAction,
+  hoverColumnMapAction,
 };

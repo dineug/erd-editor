@@ -60,8 +60,9 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
 
   return () => {
     const { store } = app.value;
+    const { editor } = store.state;
     const { table } = props;
-    const selected = Boolean(store.state.editor.selectedMap[table.id]);
+    const selected = Boolean(editor.selectedMap[table.id]);
     const tableWidths = calcTableWidths(table, store.state);
     const height = calcTableHeight(table);
 
