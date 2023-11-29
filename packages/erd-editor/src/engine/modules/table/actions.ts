@@ -7,6 +7,7 @@ import { ValuesType } from '@/internal-types';
 export const ActionType = {
   addTable: 'table.add',
   moveTable: 'table.move',
+  moveToTable: 'table.moveTo',
   removeTable: 'table.remove',
   changeTableName: 'table.changeName',
   changeTableComment: 'table.changeComment',
@@ -28,6 +29,11 @@ export type ActionMap = {
     movementX: number;
     movementY: number;
     ids: string[];
+  };
+  [ActionType.moveToTable]: {
+    id: string;
+    x: number;
+    y: number;
   };
   [ActionType.removeTable]: {
     id: string;

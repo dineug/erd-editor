@@ -71,6 +71,10 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     const { store } = app.value;
     const { settings, editor } = store.state;
 
+    const showUndoRedo =
+      settings.canvasType === CanvasType.ERD &&
+      !editor.runAutomaticTablePlacement;
+
     return html`
       <div class=${styles.root}>
         <${TextInput}
@@ -118,7 +122,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           <${Icon} prefix="mdi" name="chart-scatter-plot" size=${16} />
         </div>
         <div class=${styles.vertical}></div>
-        ${settings.canvasType === CanvasType.ERD
+        ${showUndoRedo
           ? html`
               <div
                 class=${[

@@ -418,6 +418,26 @@ const hoverColumnMap: ReducerType<typeof ActionType.hoverColumnMap> = (
   }
 };
 
+export const startAutomaticTablePlacementAction = createAction<
+  ActionMap[typeof ActionType.startAutomaticTablePlacement]
+>(ActionType.startAutomaticTablePlacement);
+
+const startAutomaticTablePlacement: ReducerType<
+  typeof ActionType.startAutomaticTablePlacement
+> = ({ editor }) => {
+  editor.runAutomaticTablePlacement = true;
+};
+
+export const endAutomaticTablePlacementAction = createAction<
+  ActionMap[typeof ActionType.endAutomaticTablePlacement]
+>(ActionType.endAutomaticTablePlacement);
+
+const endAutomaticTablePlacement: ReducerType<
+  typeof ActionType.endAutomaticTablePlacement
+> = ({ editor }) => {
+  editor.runAutomaticTablePlacement = false;
+};
+
 export const editorReducers = {
   [ActionType.changeHasHistory]: changeHasHistory,
   [ActionType.selectAll]: selectAll,
@@ -440,6 +460,8 @@ export const editorReducers = {
   [ActionType.drawEndRelationship]: drawEndRelationship,
   [ActionType.drawRelationship]: drawRelationship,
   [ActionType.hoverColumnMap]: hoverColumnMap,
+  [ActionType.startAutomaticTablePlacement]: startAutomaticTablePlacement,
+  [ActionType.endAutomaticTablePlacement]: endAutomaticTablePlacement,
 };
 
 export const actions = {
@@ -464,4 +486,6 @@ export const actions = {
   drawEndRelationshipAction,
   drawRelationshipAction,
   hoverColumnMapAction,
+  startAutomaticTablePlacementAction,
+  endAutomaticTablePlacementAction,
 };

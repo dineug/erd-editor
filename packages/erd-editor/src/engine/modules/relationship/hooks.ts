@@ -10,6 +10,7 @@ import {
   changeTableCommentAction,
   changeTableNameAction,
   moveTableAction,
+  moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -123,6 +124,7 @@ export const hooks: Hook[] = [
       addRelationshipAction,
       moveMemoAction,
       moveTableAction,
+      moveToTableAction,
       changeTableNameAction,
       changeTableCommentAction,
       addColumnAction,

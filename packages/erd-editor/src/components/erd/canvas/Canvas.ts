@@ -70,10 +70,12 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
         )}
         ${bHas(show, Show.relationship) ? html`<${CanvasSvg} />` : null}
         ${drawRelationship?.start
-          ? html`<${DrawRelationship}
-              root=${props.root}
-              draw=${drawRelationship}
-            />`
+          ? html`
+              <${DrawRelationship}
+                root=${props.root}
+                draw=${drawRelationship}
+              />
+            `
           : null}
       </div>
     `;

@@ -14,6 +14,7 @@ import { appContext, createAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import Theme from '@/components/theme/Theme';
+import ToastContainer from '@/components/toast-container/ToastContainer';
 import Toolbar from '@/components/toolbar/Toolbar';
 import Visualization from '@/components/visualization/Visualization';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
@@ -146,6 +147,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
             ? html`<${Visualization} />`
             : null}
         </div>
+        <${ToastContainer} />
         ${text.span}
       </div>
     `;

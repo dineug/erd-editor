@@ -8,6 +8,9 @@ import {
 } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import AutomaticTablePlacement, {
+  TablePoint,
+} from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import Canvas from '@/components/erd/canvas/Canvas';
 import DragSelect from '@/components/erd/drag-select/DragSelect';
 import ErdContextMenu, {
@@ -25,6 +28,7 @@ import {
   streamScrollToAction,
   streamZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
+import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { isMouseEvent } from '@/utils/domEvent';
 import { closeColorPickerAction } from '@/utils/emitter';
@@ -158,6 +162,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     store.dispatch(changeColorAllAction$(color));
   };
 
+  const handleChangeAutomaticTablePlacement = (tables: TablePoint[]) => {
+    const { store } = app.value;
+    store.dispatch(tables.map(moveToTableAction));
+  };
+
   onMounted(() => {
     const { store, emitter } = app.value;
     const $root = root.value;
@@ -184,7 +193,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   return () => {
     const { store } = app.value;
     const {
-      editor: { drawRelationship },
+      editor: { drawRelationship, runAutomaticTablePlacement },
     } = store.state;
 
     const cursor = drawRelationship
@@ -231,6 +240,14 @@ const Erd: FC<ErdProps> = (props, ctx) => {
                 y=${state.colorPickerY}
                 viewport=${state.colorPickerViewport}
                 .onChange=${handleChangeColorPicker}
+              />
+            `
+          : null}
+        ${runAutomaticTablePlacement
+          ? html`
+              <${AutomaticTablePlacement}
+                app=${app}
+                .onChange=${handleChangeAutomaticTablePlacement}
               />
             `
           : null}

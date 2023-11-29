@@ -1,4 +1,9 @@
-import { Action, AnyAction, createAction } from '@dineug/r-html';
+import {
+  Action,
+  AnyAction,
+  createAction,
+  DOMTemplateLiterals,
+} from '@dineug/r-html';
 import { safeCallback } from '@dineug/shared';
 
 import { ValuesType } from '@/internal-types';
@@ -6,6 +11,7 @@ import { ValuesType } from '@/internal-types';
 const InternalActionType = {
   openColorPicker: 'openColorPicker',
   closeColorPicker: 'closeColorPicker',
+  openToast: 'openToast',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 
@@ -16,6 +22,10 @@ type InternalActionMap = {
     color: string;
   };
   [InternalActionType.closeColorPicker]: void;
+  [InternalActionType.openToast]: {
+    message: DOMTemplateLiterals;
+    close?: Promise<void>;
+  };
 };
 
 type Reducer<K extends keyof M, M> = (action: Action<K, M>) => void;
@@ -49,3 +59,7 @@ export const openColorPickerAction = createAction<
 export const closeColorPickerAction = createAction<
   InternalActionMap[typeof InternalActionType.closeColorPicker]
 >(InternalActionType.closeColorPicker);
+
+export const openToastAction = createAction<
+  InternalActionMap[typeof InternalActionType.openToast]
+>(InternalActionType.openToast);

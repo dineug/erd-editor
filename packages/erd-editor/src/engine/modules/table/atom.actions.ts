@@ -47,6 +47,23 @@ const moveTable: ReducerType<typeof ActionType.moveTable> = (
   });
 };
 
+export const moveToTableAction = createAction<
+  ActionMap[typeof ActionType.moveToTable]
+>(ActionType.moveToTable);
+
+const moveToTable: ReducerType<typeof ActionType.moveToTable> = (
+  { collections },
+  { payload: { id, x, y } }
+) => {
+  const collection = query(collections).collection('tableEntities');
+  collection.getOrCreate(id, id => createTable({ id }));
+
+  collection.updateOne(id, table => {
+    table.ui.x = x;
+    table.ui.y = y;
+  });
+};
+
 export const removeTableAction = createAction<
   ActionMap[typeof ActionType.removeTable]
 >(ActionType.removeTable);
@@ -142,6 +159,7 @@ const changeZIndex: ReducerType<typeof ActionType.changeZIndex> = (
 export const tableReducers = {
   [ActionType.addTable]: addTable,
   [ActionType.moveTable]: moveTable,
+  [ActionType.moveToTable]: moveToTable,
   [ActionType.removeTable]: removeTable,
   [ActionType.changeTableName]: changeTableName,
   [ActionType.changeTableComment]: changeTableComment,
@@ -152,6 +170,7 @@ export const tableReducers = {
 export const actions = {
   addTableAction,
   moveTableAction,
+  moveToTableAction,
   removeTableAction,
   changeTableNameAction,
   changeTableCommentAction,

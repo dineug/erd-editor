@@ -11,6 +11,7 @@ export type Editor = {
   focusTable: FocusTable | null;
   drawRelationship: DrawRelationship | null;
   hoverColumnMap: Record<string, boolean>;
+  runAutomaticTablePlacement: boolean;
 };
 
 export type Viewport = {
@@ -77,4 +78,5 @@ export const createEditor = (): Editor => ({
   focusTable: null,
   drawRelationship: null,
   hoverColumnMap: {},
+  runAutomaticTablePlacement: false,
 });

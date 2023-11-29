@@ -56,7 +56,12 @@ export function useErdShortcut(ctx: Ctx) {
     const { store } = app.value;
     const { editor, settings } = store.state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
-    if (settings.canvasType !== CanvasType.ERD || showHighLevelTable) {
+
+    if (
+      settings.canvasType !== CanvasType.ERD ||
+      showHighLevelTable ||
+      editor.runAutomaticTablePlacement
+    ) {
       return;
     }
 
@@ -95,7 +100,11 @@ export function useErdShortcut(ctx: Ctx) {
     const { store } = app.value;
     const { editor, settings } = store.state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
-    if (settings.canvasType !== CanvasType.ERD) {
+
+    if (
+      settings.canvasType !== CanvasType.ERD ||
+      editor.runAutomaticTablePlacement
+    ) {
       return;
     }
 

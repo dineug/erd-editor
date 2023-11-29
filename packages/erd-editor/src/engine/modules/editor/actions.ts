@@ -28,6 +28,8 @@ export const ActionType = {
   drawEndRelationship: 'editor.drawEndRelationship',
   drawRelationship: 'editor.drawRelationship',
   hoverColumnMap: 'editor.hoverColumnMap',
+  startAutomaticTablePlacement: 'editor.startAutomaticTablePlacement',
+  endAutomaticTablePlacement: 'editor.endAutomaticTablePlacement',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -84,6 +86,8 @@ export type ActionMap = {
   [ActionType.hoverColumnMap]: {
     columnIds: string[];
   };
+  [ActionType.startAutomaticTablePlacement]: void;
+  [ActionType.endAutomaticTablePlacement]: void;
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<

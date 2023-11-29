@@ -20,22 +20,22 @@ const Group = {
 } as const;
 type Group = ValuesType<typeof Group>;
 
-interface Node {
+type Node = {
   id: string;
   group: Group;
   name: string;
   tableId?: string;
-}
+};
 
-interface Link {
+type Link = {
   source: string;
   target: string;
-}
+};
 
-interface Visualization {
+type Visualization = {
   nodes: Node[];
   links: Link[];
-}
+};
 
 function convertVisualization({
   doc: { tableIds, relationshipIds },
@@ -52,6 +52,7 @@ function convertVisualization({
     nodes: [],
     links: [],
   };
+  const linkIdSet = new Set<string>();
 
   tables.forEach(table => {
     data.nodes.push({
@@ -78,33 +79,18 @@ function convertVisualization({
 
   relationships.forEach(relationship => {
     const { start, end } = relationship;
-    if (
-      start.tableId !== end.tableId &&
-      isLink(data.links, start.tableId, end.tableId)
-    ) {
+    const linkId = `${start.tableId}-${end.tableId}`;
+
+    if (start.tableId !== end.tableId && !linkIdSet.has(linkId)) {
       data.links.push({
         source: start.tableId,
         target: end.tableId,
       });
+      linkIdSet.add(linkId);
     }
   });
 
   return data;
-}
-
-function isLink(
-  links: Link[],
-  startTableId: string,
-  endTableId: string
-): boolean {
-  let result = true;
-  for (const link of links) {
-    if (link.source === startTableId && link.target === endTableId) {
-      result = false;
-      break;
-    }
-  }
-  return result;
 }
 
 const scale = scaleOrdinal(schemeCategory10);

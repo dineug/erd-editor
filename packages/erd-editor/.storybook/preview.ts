@@ -57,7 +57,7 @@ const preview: Preview = {
   globalTypes: {
     grayColor: {
       description: 'Theme gray color',
-      defaultValue: GrayColor.gray,
+      defaultValue: GrayColor.slate,
       toolbar: {
         title: 'GrayColor',
         items: Object.values(GrayColor),
@@ -65,7 +65,7 @@ const preview: Preview = {
     },
     accentColor: {
       description: 'Theme accent color',
-      defaultValue: AccentColor.gray,
+      defaultValue: AccentColor.indigo,
       toolbar: {
         title: 'AccentColor',
         items: Object.values(AccentColor),

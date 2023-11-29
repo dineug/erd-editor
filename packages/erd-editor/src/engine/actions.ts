@@ -125,11 +125,11 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'editor.clear',
 ];
 
-export const HistoryActionTypes: ReadonlyArray<ActionType> = [
-  ...(Object.keys(pushUndoHistoryMap) as ActionType[]),
+export const StreamActionTypes: ReadonlyArray<ActionType> = [
   ...(Object.keys(pushStreamHistoryMap) as ActionType[]),
 ];
 
-export const StreamActionTypes: ReadonlyArray<ActionType> = [
-  ...(Object.keys(pushStreamHistoryMap) as ActionType[]),
+export const HistoryActionTypes: ReadonlyArray<ActionType> = [
+  ...(Object.keys(pushUndoHistoryMap) as ActionType[]),
+  ...StreamActionTypes,
 ];

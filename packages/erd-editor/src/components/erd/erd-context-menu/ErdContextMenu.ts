@@ -4,6 +4,7 @@ import { useAppContext } from '@/components/appContext';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Icon from '@/components/primitives/icon/Icon';
 import Kbd from '@/components/primitives/kbd/Kbd';
+import { startAutomaticTablePlacementAction } from '@/engine/modules/editor/atom.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
@@ -12,12 +13,12 @@ import { ValuesType } from '@/internal-types';
 import { query } from '@/utils/collection/query';
 import { openColorPickerAction } from '@/utils/emitter';
 
-import { createDatabaseMenus } from './databaseMenus';
-import { createDrawRelationshipMenus } from './drawRelationshipMenus';
-import { createExportMenus } from './exportMenus';
-import { createImportMenus } from './importMenus';
-import { createRelationshipMenus } from './relationshipMenus';
-import { createShowMenus } from './showMenus';
+import { createDatabaseMenus } from './menus/databaseMenus';
+import { createDrawRelationshipMenus } from './menus/drawRelationshipMenus';
+import { createExportMenus } from './menus/exportMenus';
+import { createImportMenus } from './menus/importMenus';
+import { createRelationshipMenus } from './menus/relationshipMenus';
+import { createShowMenus } from './menus/showMenus';
 
 export const ErdContextMenuType = {
   ERD: 'ERD',
@@ -50,8 +51,8 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   };
 
   const handleAutomaticTablePlacement = () => {
-    // TODO: automaticTablePlacement
-    console.log('automaticTablePlacement');
+    const { store } = app.value;
+    store.dispatch(startAutomaticTablePlacementAction());
     props.onClose();
   };
 

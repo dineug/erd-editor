@@ -10,6 +10,7 @@ import {
   changeTableCommentAction,
   changeTableNameAction,
   moveTableAction,
+  moveToTableAction,
   removeTableAction,
 } from './atom.actions';
 
@@ -57,11 +58,29 @@ const changeTableComment: PushUndoHistory = (
   undoActions.push(changeTableCommentAction({ id, value: table.comment }));
 };
 
+const moveToTable: PushUndoHistory = (
+  undoActions,
+  { payload: { id } }: ReturnType<typeof moveToTableAction>,
+  { collections }
+) => {
+  const table = query(collections).collection('tableEntities').selectById(id);
+  if (!table) return;
+
+  undoActions.push(
+    moveToTableAction({
+      id,
+      x: table.ui.x,
+      y: table.ui.y,
+    })
+  );
+};
+
 export const tablePushUndoHistoryMap = {
   [ActionType.addTable]: addTable,
   [ActionType.removeTable]: removeTable,
   [ActionType.changeTableName]: changeTableName,
   [ActionType.changeTableComment]: changeTableComment,
+  [ActionType.moveToTable]: moveToTable,
 };
 
 const moveTable: PushStreamHistory = (undoActions, redoActions, actions) => {
