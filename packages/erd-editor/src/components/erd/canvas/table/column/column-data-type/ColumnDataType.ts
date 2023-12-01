@@ -152,6 +152,8 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
   };
 
   const handleFocusout = (event: FocusEvent) => {
+    if (!props.edit) return;
+
     currentFocus = false;
 
     window.clearTimeout(timerId);

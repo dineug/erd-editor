@@ -103,12 +103,21 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     keydown$.next(event);
   };
 
+  let currentFocus = false;
+  let timerId = -1;
+
   const handleFocus = () => {
+    currentFocus = true;
     state.isFocus = true;
   };
 
-  const handleFocusout = (event: FocusEvent) => {
-    state.isFocus = false;
+  const handleFocusout = () => {
+    currentFocus = false;
+
+    window.clearTimeout(timerId);
+    timerId = window.setTimeout(() => {
+      state.isFocus = currentFocus;
+    }, 10);
   };
 
   onMounted(() => {

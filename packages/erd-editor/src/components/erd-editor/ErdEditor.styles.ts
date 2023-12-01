@@ -18,7 +18,11 @@ export const root = css`
     div[data-focus-border] {
       border-color: var(--placeholder) !important;
     }
-    div[data-focus-border-bottom],
+
+    div[data-focus-border-bottom] {
+      border-bottom-color: var(--placeholder) !important;
+    }
+
     input[data-focus-border-bottom] {
       border-bottom-color: var(--placeholder) !important;
     }
