@@ -6,6 +6,7 @@ import * as styles from './Kbd.styles';
 
 export type KbdProps = {
   shortcut?: string;
+  mini?: boolean;
 };
 
 const Kbd: FC<KbdProps> = (props, ctx) => {
@@ -14,9 +15,12 @@ const Kbd: FC<KbdProps> = (props, ctx) => {
     const shortcuts = keys.map(([mods, key]) => [...mods, key].join(' + '));
 
     return html`
-      <div class=${styles.root}>
+      <div class=${['kbd', styles.root]}>
         ${shortcuts.map(
-          shortcut => html`<div class=${styles.kbd}>${shortcut}</div>`
+          shortcut =>
+            html`<div class=${props.mini ? styles.mini : styles.kbd}>
+              ${shortcut}
+            </div>`
         )}
       </div>
     `;

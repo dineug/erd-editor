@@ -19,6 +19,7 @@ const ColumnOption: FC<ColumnOptionProps> = (props, ctx) => {
         'min-width': `${props.width}px`,
       }}
       title=${props.title}
+      ?data-focus-border-bottom=${props.focus}
     >
       ${props.text}
     </div>

@@ -18,20 +18,30 @@ export const hint = css`
   border: 1px solid var(--table-border);
   white-space: nowrap;
   ${typography.paragraph};
+`;
 
-  & > div {
-    display: flex;
-    align-items: center;
-    padding: 0 4px;
-    height: 20px;
-    cursor: pointer;
-  }
+export const hintItem = css`
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  height: 20px;
+  cursor: pointer;
 
-  & > div:hover {
+  &:hover {
     background-color: var(--column-hover);
   }
 
-  & > div.selected {
+  &.selected {
     background-color: var(--column-select);
+
+    .kbd {
+      visibility: visible;
+    }
+  }
+
+  & > .kbd {
+    margin-left: auto;
+    padding-left: 6px;
+    visibility: hidden;
   }
 `;

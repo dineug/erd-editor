@@ -4,6 +4,7 @@ import {
   defineCustomElement,
   FC,
   html,
+  observable,
   onMounted,
   ref,
   useProvider,
@@ -86,11 +87,11 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const { store, keydown$ } = appContextValue;
   const { addUnsubscribe } = useUnmounted();
 
-  const handleKeydown = (event: KeyboardEvent) => {
-    keydown$.next(event);
-  };
+  const state = observable({
+    isFocus: false,
+  });
 
-  const handleFocus = () => {
+  const checkAndFocus = () => {
     window.setTimeout(() => {
       if (document.activeElement !== ctx) {
         ctx.focus();
@@ -98,12 +99,24 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     }, 1);
   };
 
+  const handleKeydown = (event: KeyboardEvent) => {
+    keydown$.next(event);
+  };
+
+  const handleFocus = () => {
+    state.isFocus = true;
+  };
+
+  const handleFocusout = (event: FocusEvent) => {
+    state.isFocus = false;
+  };
+
   onMounted(() => {
     ctx.focus();
     addUnsubscribe(
       fromEvent(ctx, focusEvent.type)
         .pipe(throttleTime(50))
-        .subscribe(handleFocus),
+        .subscribe(checkAndFocus),
       fromEvent(ctx, forceFocusEvent.type).subscribe(ctx.focus)
     );
   });
@@ -134,9 +147,16 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
       <${Theme} .theme=${theme} />
       <div
         ${ref(root)}
-        class=${['root', styles.root, { dark: isDarkMode() }]}
+        class=${[
+          'root',
+          styles.root,
+          { dark: isDarkMode(), 'none-focus': !state.isFocus },
+        ]}
         tabindex="-1"
         @keydown=${handleKeydown}
+        @focus=${handleFocus}
+        @focusin=${handleFocus}
+        @focusout=${handleFocusout}
       >
         <${Toolbar} />
         <div class=${styles.main}>

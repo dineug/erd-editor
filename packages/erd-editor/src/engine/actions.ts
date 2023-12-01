@@ -75,6 +75,7 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   // table
   'table.add',
   'table.move',
+  'table.moveTo',
   'table.remove',
   'table.changeName',
   'table.changeComment',

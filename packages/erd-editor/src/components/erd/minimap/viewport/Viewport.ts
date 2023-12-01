@@ -52,6 +52,7 @@ const Viewport: FC<ViewportProps> = (props, ctx) => {
         { selected: state.selected || props.selected },
       ]}
       style=${styleMap()}
+      data-focus-border
       @mousedown=${onScrollStart}
       @touchstart=${onScrollStart}
     ></div>

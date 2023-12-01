@@ -21,6 +21,7 @@ const ColumnNotNull: FC<ColumnNotNullProps> = (props, ctx) => {
           'min-width': `${COLUMN_NOT_NULL_WIDTH}px`,
         }}
         title="Not Null"
+        ?data-focus-border-bottom=${props.focus}
       >
         ${bHas(props.options, ColumnOption.notNull) ? 'N-N' : 'NULL'}
       </div>

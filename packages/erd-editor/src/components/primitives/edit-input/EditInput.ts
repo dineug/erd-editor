@@ -76,8 +76,10 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
     lastCursorFocus($input);
   });
 
-  return () =>
-    props.edit
+  return () => {
+    const isFocus = props.focus || props.edit;
+
+    return props.edit
       ? html`
           <input
             ${ref(input)}
@@ -92,6 +94,7 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
             })}
             type="text"
             spellcheck="false"
+            ?data-focus-border-bottom=${isFocus}
             .value=${props.value ?? ''}
             @input=${props.onInput}
             @blur=${handleBlur}
@@ -113,10 +116,12 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
               'min-width': `${props.width}px`,
             }}
             ...${restAttrs({ title: props.title })}
+            ?data-focus-border-bottom=${isFocus}
           >
             ${props.value.trim() ? props.value : props.placeholder}
           </div>
         `;
+  };
 };
 
 export default EditInput;

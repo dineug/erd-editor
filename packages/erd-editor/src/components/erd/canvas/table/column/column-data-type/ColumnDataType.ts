@@ -14,6 +14,7 @@ import { isEmpty } from 'lodash-es';
 import { useAppContext } from '@/components/appContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import HighlightedText from '@/components/primitives/highlighted-text/HighlightedText';
+import Kbd from '@/components/primitives/kbd/Kbd';
 import { DatabaseHintMap, DataTypeHint } from '@/constants/sql/dataType';
 import { changeColumnDataTypeAction$ } from '@/engine/modules/tableColumn/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -212,13 +213,17 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
                 (hint, index) =>
                   html`
                     <div
-                      class=${{ selected: index === state.index }}
+                      class=${[
+                        styles.hintItem,
+                        { selected: index === state.index },
+                      ]}
                       @click=${() => handleSelectHint(index)}
                     >
                       <${HighlightedText}
                         searchWords=${[props.value]}
                         textToHighlight=${hint.name}
                       />
+                      <${Kbd} mini=${true} shortcut="Tab" />
                     </div>
                   `
               )}

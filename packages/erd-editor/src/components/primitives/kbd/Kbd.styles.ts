@@ -25,3 +25,20 @@ export const kbd = css`
     margin-right: 0;
   }
 `;
+
+export const mini = css`
+  padding-left: 0.25em;
+  padding-right: 0.25em;
+  padding-bottom: 0.05em;
+  margin-right: 2px;
+  font-size: 10px;
+
+  white-space: nowrap;
+  color: var(--placeholder);
+  border: 1px solid var(--placeholder);
+  border-radius: 3px;
+
+  &:last-child {
+    margin-right: 0;
+  }
+`;

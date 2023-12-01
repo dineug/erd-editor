@@ -14,6 +14,9 @@ const meta = {
     shortcut: {
       control: 'text',
     },
+    mini: {
+      control: 'boolean',
+    },
   },
 } satisfies Meta<KbdProps>;
 
@@ -23,5 +26,6 @@ type Story = StoryObj<KbdProps>;
 export const Normal: Story = {
   args: {
     shortcut: '$mod+Alt+KeyA',
+    mini: false,
   },
 };

@@ -1,7 +1,11 @@
+import { html } from '@dineug/r-html';
 import { isString } from '@dineug/shared';
 
 import { AppContext } from '@/components/appContext';
+import Toast from '@/components/primitives/toast/Toast';
 import { loadJsonAction$ } from '@/engine/modules/editor/generator.actions';
+
+import { openToastAction } from '../emitter';
 
 type ImportOptions = {
   type: 'json' | 'sql';
@@ -19,7 +23,7 @@ export function setImportFileCallback(callback: ImportFileCallback | null) {
   performImportFileExtra = callback;
 }
 
-export function importJSON({ store }: AppContext) {
+export function importJSON({ store, emitter }: AppContext) {
   if (performImportFileExtra) {
     performImportFileExtra({ accept: '.json', type: 'json' });
     return;
@@ -33,9 +37,11 @@ export function importJSON({ store }: AppContext) {
     if (!file) return;
 
     if (!JSON_EXTENSION.test(file.name)) {
-      // eventBus.emit(Bus.ToastBar.add, {
-      //   bodyTpl: html`Just import the json file`,
-      // });
+      emitter.emit(
+        openToastAction({
+          message: html`<${Toast} description="Just import the json file" />`,
+        })
+      );
       return;
     }
 
@@ -53,7 +59,7 @@ export function importJSON({ store }: AppContext) {
   input.click();
 }
 
-export function importSchemaSQL({ store }: AppContext) {
+export function importSchemaSQL({ store, emitter }: AppContext) {
   if (performImportFileExtra) {
     performImportFileExtra({ accept: '.sql', type: 'sql' });
     return;
@@ -67,9 +73,11 @@ export function importSchemaSQL({ store }: AppContext) {
     if (!file) return;
 
     if (!SQL_EXTENSION.test(file.name)) {
-      // eventBus.emit(Bus.ToastBar.add, {
-      //   bodyTpl: html`Just import the sql file`,
-      // });
+      emitter.emit(
+        openToastAction({
+          message: html`<${Toast} description="Just import the sql file" />`,
+        })
+      );
       return;
     }
 

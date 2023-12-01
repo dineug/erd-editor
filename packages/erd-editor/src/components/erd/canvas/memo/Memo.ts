@@ -101,6 +101,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
           height: `${height}px`,
         }}
         ?data-selected=${selected}
+        ?data-focus-border=${selected}
         @mousedown=${handleMoveStart}
         @touchstart=${handleMoveStart}
       >
