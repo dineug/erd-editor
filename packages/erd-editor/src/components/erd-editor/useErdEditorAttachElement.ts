@@ -201,6 +201,6 @@ export function useErdEditorAttachElement({
 
   return {
     theme,
-    isDarkMode: () => themeState.options.appearance === Appearance.dark,
+    hasDarkMode: () => themeState.options.appearance === Appearance.dark,
   };
 }

@@ -13,7 +13,9 @@ import { createSchemaSQL } from '@/utils/schemaSQL';
 
 import * as styles from './SchemaSQL.styles';
 
-export type SchemaSQLProps = {};
+export type SchemaSQLProps = {
+  isDarkMode: boolean;
+};
 
 const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -69,7 +71,12 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
       @contextmenu=${contextMenu.onContextmenu}
       @mousedown=${contextMenu.onMousedown}
     >
-      <${CodeBlock} value=${state.sql} .onCopy=${handleCopy} />
+      <${CodeBlock}
+        lang="sql"
+        theme=${props.isDarkMode ? 'dark' : 'light'}
+        value=${state.sql}
+        .onCopy=${handleCopy}
+      />
       <${SchemaSQLContextMenu} .onClose=${handleContextmenuClose} />
     </div>
   `;

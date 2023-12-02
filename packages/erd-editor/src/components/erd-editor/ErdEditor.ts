@@ -79,7 +79,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();
   useKeyBindingMap(ctx, root);
 
-  const { theme, isDarkMode } = useErdEditorAttachElement({
+  const { theme, hasDarkMode } = useErdEditorAttachElement({
     props,
     ctx,
     app: appContextValue,
@@ -160,7 +160,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         class=${[
           'root',
           styles.root,
-          { dark: isDarkMode(), 'none-focus': !state.isFocus },
+          { dark: hasDarkMode(), 'none-focus': !state.isFocus },
         ]}
         tabindex="-1"
         @keydown=${handleKeydown}
@@ -176,7 +176,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           ${settings.canvasType === CanvasType.visualization
             ? html`<${Visualization} />`
             : settings.canvasType === CanvasType.schemaSQL
-            ? html`<${SchemaSQL} />`
+            ? html`<${SchemaSQL} isDarkMode=${hasDarkMode()} />`
             : null}
         </div>
         <${ToastContainer} />

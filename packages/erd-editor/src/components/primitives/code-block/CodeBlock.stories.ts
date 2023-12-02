@@ -14,6 +14,22 @@ const meta = {
     value: {
       control: 'text',
     },
+    lang: {
+      control: 'select',
+      options: [
+        'sql',
+        'typescript',
+        'graphql',
+        'csharp',
+        'java',
+        'kotlin',
+        'scala',
+      ],
+    },
+    theme: {
+      control: 'radio',
+      options: ['dark', 'light'],
+    },
     onCopy: {
       action: 'onCopy',
     },
@@ -26,5 +42,7 @@ type Story = StoryObj<CodeBlockProps>;
 export const Normal: Story = {
   args: {
     value: 'SELECT * FROM users;',
+    lang: 'sql',
+    theme: 'dark',
   },
 };
