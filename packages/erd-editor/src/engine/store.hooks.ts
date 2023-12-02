@@ -4,7 +4,7 @@ import { arrayHas } from '@dineug/shared';
 
 import { hooks as relationshipHooks } from '@/engine/modules/relationship/hooks';
 import { hooks as tableHooks } from '@/engine/modules/table/hooks';
-import { hooks as tableColumnHooks } from '@/engine/modules/tableColumn/hooks';
+import { hooks as tableColumnHooks } from '@/engine/modules/table-column/hooks';
 import type { Store } from '@/engine/store';
 
 type Task = {

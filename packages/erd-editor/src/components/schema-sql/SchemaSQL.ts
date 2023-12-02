@@ -9,7 +9,7 @@ import SchemaSQLContextMenu from '@/components/schema-sql/schema-sql-context-men
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { copyToClipboard } from '@/utils/clipboard';
 import { openToastAction } from '@/utils/emitter';
-import { createSchemaSQL } from '@/utils/schemaSQL';
+import { createSchemaSQL } from '@/utils/schema-sql';
 
 import * as styles from './SchemaSQL.styles';
 

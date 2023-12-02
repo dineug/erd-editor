@@ -6,7 +6,7 @@ import {
   addRelationshipAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
-import { changeColumnPrimaryKeyAction } from '@/engine/modules/tableColumn/atom.actions';
+import { changeColumnPrimaryKeyAction } from '@/engine/modules/table-column/atom.actions';
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
 

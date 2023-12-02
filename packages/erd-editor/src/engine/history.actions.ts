@@ -17,7 +17,7 @@ import {
   tablePushStreamHistoryMap,
   tablePushUndoHistoryMap,
 } from '@/engine/modules/table/history';
-import { tableColumnPushUndoHistoryMap } from '@/engine/modules/tableColumn/history';
+import { tableColumnPushUndoHistoryMap } from '@/engine/modules/table-column/history';
 import { RootState } from '@/engine/state';
 import { Store } from '@/engine/store';
 

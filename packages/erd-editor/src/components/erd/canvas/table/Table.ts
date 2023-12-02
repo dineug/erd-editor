@@ -16,7 +16,7 @@ import {
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
-import { addColumnAction$ } from '@/engine/modules/tableColumn/generator.actions';
+import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';

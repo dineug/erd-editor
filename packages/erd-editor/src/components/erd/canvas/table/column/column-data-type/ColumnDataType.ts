@@ -16,7 +16,7 @@ import EditInput from '@/components/primitives/edit-input/EditInput';
 import HighlightedText from '@/components/primitives/highlighted-text/HighlightedText';
 import Kbd from '@/components/primitives/kbd/Kbd';
 import { DatabaseHintMap, DataTypeHint } from '@/constants/sql/dataType';
-import { changeColumnDataTypeAction$ } from '@/engine/modules/tableColumn/generator.actions';
+import { changeColumnDataTypeAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { lastCursorFocus } from '@/utils/focus';
 

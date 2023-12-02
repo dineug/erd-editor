@@ -1,5 +1,5 @@
+import { ShikiService } from '@dineug/erd-editor-shiki-worker';
 import { cssUnwrap, hmr } from '@dineug/r-html';
-import { ShikiService } from '@dineug/shiki-worker';
 // @ts-ignore
 import Stats from 'stats.js';
 

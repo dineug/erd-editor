@@ -8,7 +8,7 @@ import {
   exportPNG,
   exportSchemaSQL,
 } from '@/utils/file/exportFile';
-import { createSchemaSQL } from '@/utils/schemaSQL';
+import { createSchemaSQL } from '@/utils/schema-sql';
 
 export function createExportMenus(
   app: AppContext,

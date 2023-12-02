@@ -1,25 +1,33 @@
 {
-  "name": "@dineug/shiki-worker",
+  "name": "@dineug/erd-editor-shiki-worker",
   "version": "0.1.0",
   "private": true,
-  "description": "shiki-worker",
+  "description": "Entity-Relationship Diagram Editor shiki-worker",
   "type": "module",
-  "main": "./dist/shiki-worker.umd.cjs",
-  "module": "./dist/shiki-worker.js",
+  "main": "./dist/erd-editor-shiki-worker.umd.cjs",
+  "module": "./dist/erd-editor-shiki-worker.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/shiki-worker.js"
+        "default": "./dist/erd-editor-shiki-worker.js"
       },
-      "require": "./dist/shiki-worker.umd.cjs"
+      "require": "./dist/erd-editor-shiki-worker.umd.cjs"
     }
   },
   "files": [
     "dist/*.js",
     "dist/**/*.ts"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dineug/erd-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dineug/erd-editor/issues"
+  },
+  "homepage": "https://github.com/dineug/erd-editor#readme",
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {

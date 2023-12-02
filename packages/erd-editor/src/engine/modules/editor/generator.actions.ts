@@ -16,8 +16,8 @@ import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import {
   addColumnAction,
   changeColumnPrimaryKeyAction,
-} from '@/engine/modules/tableColumn/atom.actions';
-import { addColumnAction$ } from '@/engine/modules/tableColumn/generator.actions';
+} from '@/engine/modules/table-column/atom.actions';
+import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { Point } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';

@@ -7,8 +7,8 @@ import { actions as editorActions } from '@/engine/modules/editor/atom.actions';
 import { actions$ as editorActions$ } from '@/engine/modules/editor/generator.actions';
 import { actions as indexActions } from '@/engine/modules/index/atom.actions';
 import { actions$ as indexActions$ } from '@/engine/modules/index/generator.actions';
-import { actions as indexColumnActions } from '@/engine/modules/indexColumn/atom.actions';
-import { actions$ as indexColumnActions$ } from '@/engine/modules/indexColumn/generator.actions';
+import { actions as indexColumnActions } from '@/engine/modules/index-column/atom.actions';
+import { actions$ as indexColumnActions$ } from '@/engine/modules/index-column/generator.actions';
 import { ActionMap as MemoActionMap } from '@/engine/modules/memo/actions';
 import { actions as memoActions } from '@/engine/modules/memo/atom.actions';
 import { actions$ as memoActions$ } from '@/engine/modules/memo/generator.actions';
@@ -21,9 +21,9 @@ import { actions$ as settingsActions$ } from '@/engine/modules/settings/generato
 import { ActionMap as TableActionMap } from '@/engine/modules/table/actions';
 import { actions as tableActions } from '@/engine/modules/table/atom.actions';
 import { actions$ as tableActions$ } from '@/engine/modules/table/generator.actions';
-import { ActionMap as TableColumnActionMap } from '@/engine/modules/tableColumn/actions';
-import { actions as tableColumnActions } from '@/engine/modules/tableColumn/atom.actions';
-import { actions$ as tableColumnActions$ } from '@/engine/modules/tableColumn/generator.actions';
+import { ActionMap as TableColumnActionMap } from '@/engine/modules/table-column/actions';
+import { actions as tableColumnActions } from '@/engine/modules/table-column/atom.actions';
+import { actions$ as tableColumnActions$ } from '@/engine/modules/table-column/generator.actions';
 
 export type Actions = typeof editorActions &
   typeof editorActions$ &

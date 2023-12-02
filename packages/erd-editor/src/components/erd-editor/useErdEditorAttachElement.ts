@@ -21,7 +21,7 @@ import {
 } from '@/themes/radix-ui-theme';
 import { Theme, ThemeTokens } from '@/themes/tokens';
 import { KeyBindingName, KeyBindingNameList } from '@/utils/keyboard-shortcut';
-import { createSchemaSQL } from '@/utils/schemaSQL';
+import { createSchemaSQL } from '@/utils/schema-sql';
 import { hasDatabaseVendor, toSafeString } from '@/utils/validation';
 
 import { ErdEditorElement, ErdEditorProps } from './ErdEditor';

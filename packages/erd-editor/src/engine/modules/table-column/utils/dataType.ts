@@ -1,4 +1,4 @@
-import { ChangeColumnValuePayload } from '@/engine/modules/tableColumn/actions';
+import { ChangeColumnValuePayload } from '@/engine/modules/table-column/actions';
 import { RootState } from '@/engine/state';
 import { query } from '@/utils/collection/query';
 

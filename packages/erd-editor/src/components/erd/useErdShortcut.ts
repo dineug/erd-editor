@@ -27,7 +27,7 @@ import {
   isToggleColumnTypes,
   removeColumnAction$,
   toggleColumnValueAction$,
-} from '@/engine/modules/tableColumn/generator.actions';
+} from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { Ctx } from '@/internal-types';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';

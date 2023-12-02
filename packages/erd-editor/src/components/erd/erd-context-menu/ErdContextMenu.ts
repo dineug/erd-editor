@@ -8,7 +8,7 @@ import { startAutomaticTablePlacementAction } from '@/engine/modules/editor/atom
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
-import { changeColumnPrimaryKeyAction$ } from '@/engine/modules/tableColumn/generator.actions';
+import { changeColumnPrimaryKeyAction$ } from '@/engine/modules/table-column/generator.actions';
 import { ValuesType } from '@/internal-types';
 import { query } from '@/utils/collection/query';
 import { openColorPickerAction } from '@/utils/emitter';

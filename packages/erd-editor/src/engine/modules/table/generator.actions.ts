@@ -22,7 +22,7 @@ import {
   changeColumnDefaultAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
-} from '@/engine/modules/tableColumn/atom.actions';
+} from '@/engine/modules/table-column/atom.actions';
 import { nextPoint, nextZIndex } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
