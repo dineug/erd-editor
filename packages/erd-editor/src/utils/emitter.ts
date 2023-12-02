@@ -12,6 +12,7 @@ const InternalActionType = {
   openColorPicker: 'openColorPicker',
   closeColorPicker: 'closeColorPicker',
   openToast: 'openToast',
+  loadShikiService: 'loadShikiService',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 
@@ -26,6 +27,7 @@ type InternalActionMap = {
     message: DOMTemplateLiterals;
     close?: Promise<void>;
   };
+  [InternalActionType.loadShikiService]: void;
 };
 
 type Reducer<K extends keyof M, M> = (action: Action<K, M>) => void;
@@ -63,3 +65,7 @@ export const closeColorPickerAction = createAction<
 export const openToastAction = createAction<
   InternalActionMap[typeof InternalActionType.openToast]
 >(InternalActionType.openToast);
+
+export const loadShikiServiceAction = createAction<
+  InternalActionMap[typeof InternalActionType.loadShikiService]
+>(InternalActionType.loadShikiService);

@@ -13,7 +13,8 @@ import { arrayHas } from '@dineug/shared';
 
 import Icon from '@/components/primitives/icon/Icon';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { ShikiService } from '@/utils/shikiService';
+import { globalEmitter } from '@/utils/globalEmitter';
+import { getShikiService, ShikiService } from '@/utils/services/shikiService';
 
 import * as styles from './CodeBlock.styles';
 
@@ -62,9 +63,9 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
     });
   };
 
-  onBeforeMount(() => {
-    ShikiService.getInstance()
-      .codeToHtml(props.value, {
+  const setHighlight = () => {
+    getShikiService()
+      ?.codeToHtml(props.value, {
         lang: props.lang,
         theme: props.theme,
       })
@@ -72,20 +73,17 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
         state.highlight = highlight;
         setBackgroundColor();
       });
+  };
+
+  onBeforeMount(() => {
+    setHighlight();
 
     addUnsubscribe(
+      globalEmitter.on({ loadShikiService: setHighlight }),
       watch(props).subscribe(propName => {
         if (!hasPropName(propName)) return;
 
-        ShikiService.getInstance()
-          .codeToHtml(props.value, {
-            theme: props.theme,
-            lang: props.lang,
-          })
-          .then(highlight => {
-            state.highlight = highlight;
-            setBackgroundColor();
-          });
+        setHighlight();
       }),
       () => {
         state.highlight = '';

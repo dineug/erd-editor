@@ -68,6 +68,9 @@ importers:
       '@dineug/shared':
         specifier: workspace:*
         version: link:../shared
+      '@dineug/shiki-worker':
+        specifier: workspace:*
+        version: link:../shiki-worker
       '@dineug/vite-plugin-r-html':
         specifier: workspace:*
         version: link:../vite-plugin-r-html
@@ -167,9 +170,6 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.1
-      shiki:
-        specifier: 0.14.5
-        version: 0.14.5
       stats.js:
         specifier: ^0.17.0
         version: 0.17.0
@@ -272,6 +272,39 @@ importers:
       rollup-plugin-visualizer:
         specifier: ^5.9.2
         version: 5.9.2
+      ts-patch:
+        specifier: ^3.0.2
+        version: 3.0.2
+      tslib:
+        specifier: ^2.6.1
+        version: 2.6.1
+      typescript:
+        specifier: 5.1.6
+        version: 5.1.6
+      typescript-transform-paths:
+        specifier: ^3.4.6
+        version: 3.4.6(typescript@5.1.6)
+      vite:
+        specifier: ^4.4.9
+        version: 4.4.9
+      vite-tsconfig-paths:
+        specifier: ^4.2.0
+        version: 4.2.0(typescript@5.1.6)(vite@4.4.9)
+
+  packages/shiki-worker:
+    devDependencies:
+      '@rollup/plugin-typescript':
+        specifier: ^11.1.2
+        version: 11.1.2(tslib@2.6.1)(typescript@5.1.6)
+      comlink:
+        specifier: 4.4.1
+        version: 4.4.1
+      rollup-plugin-visualizer:
+        specifier: ^5.9.2
+        version: 5.9.2
+      shiki:
+        specifier: 0.14.5
+        version: 0.14.5
       ts-patch:
         specifier: ^3.0.2
         version: 3.0.2

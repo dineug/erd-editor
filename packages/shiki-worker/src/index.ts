@@ -1,7 +1,7 @@
 import * as Comlink from 'comlink';
 
-import type { ShikiService as ShikiServiceType } from '@/workers/shiki.worker';
-import ShikiWorker from '@/workers/shiki.worker?worker&inline';
+import type { ShikiService as ShikiServiceType } from './shiki.worker';
+import ShikiWorker from './shiki.worker?worker&inline';
 
 class ShikiService {
   private static instance: ShikiService;

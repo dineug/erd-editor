@@ -1,8 +1,9 @@
-import './index';
-
 import { cssUnwrap, hmr } from '@dineug/r-html';
+import { ShikiService } from '@dineug/shiki-worker';
 // @ts-ignore
 import Stats from 'stats.js';
+
+import { setShikiService } from './index';
 
 function runStats() {
   const stats = new Stats();
@@ -31,3 +32,4 @@ function runEditor() {
 hmr();
 runStats();
 runEditor();
+setShikiService(ShikiService);

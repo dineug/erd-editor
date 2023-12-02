@@ -9,6 +9,10 @@
       "path": "packages/erd-editor-schema"
     },
     {
+      "name": "shiki-worker",
+      "path": "packages/shiki-worker"
+    },
+    {
       "name": "shared",
       "path": "packages/shared"
     },
