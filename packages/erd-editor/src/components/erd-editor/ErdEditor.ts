@@ -14,6 +14,7 @@ import { fromEvent, throttleTime } from 'rxjs';
 import { appContext, createAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
+import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import Theme from '@/components/theme/Theme';
 import ToastContainer from '@/components/toast-container/ToastContainer';
 import Toolbar from '@/components/toolbar/Toolbar';
@@ -174,6 +175,8 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           )}
           ${settings.canvasType === CanvasType.visualization
             ? html`<${Visualization} />`
+            : settings.canvasType === CanvasType.schemaSQL
+            ? html`<${SchemaSQL} />`
             : null}
         </div>
         <${ToastContainer} />

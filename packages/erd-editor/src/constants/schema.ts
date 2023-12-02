@@ -28,3 +28,10 @@ export const CANVAS_SIZE_MAX = SchemaV3Constants.CANVAS_SIZE_MAX;
 export const CANVAS_SIZE_MIN = SchemaV3Constants.CANVAS_SIZE_MIN;
 export const CANVAS_ZOOM_MAX = SchemaV3Constants.CANVAS_ZOOM_MAX;
 export const CANVAS_ZOOM_MIN = SchemaV3Constants.CANVAS_ZOOM_MIN;
+
+export const BracketTypeMap: Record<number, string> = {
+  [BracketType.none]: '',
+  [BracketType.backtick]: '`',
+  [BracketType.doubleQuote]: '"',
+  [BracketType.singleQuote]: "'",
+};

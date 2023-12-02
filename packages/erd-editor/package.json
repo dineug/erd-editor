@@ -53,6 +53,7 @@
     "@easylogic/colorpicker": "1.10.11",
     "@floating-ui/dom": "1.5.3",
     "@fortawesome/free-solid-svg-icons": "6.4.2",
+    "@fortawesome/free-regular-svg-icons": "6.4.2",
     "@mdi/js": "7.2.96",
     "@radix-ui/colors": "2.1.0",
     "@rollup/plugin-typescript": "^11.1.2",

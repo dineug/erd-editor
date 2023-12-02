@@ -121,6 +121,16 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
         >
           <${Icon} prefix="mdi" name="chart-scatter-plot" size=${16} />
         </div>
+        <div
+          class=${[
+            styles.menu,
+            { active: settings.canvasType === CanvasType.schemaSQL },
+          ]}
+          title="Schema SQL"
+          @click=${() => handleChangeCanvasType(CanvasType.schemaSQL)}
+        >
+          <${Icon} prefix="mdi" name="database-export" size=${16} />
+        </div>
         <div class=${styles.vertical}></div>
         ${showUndoRedo
           ? html`

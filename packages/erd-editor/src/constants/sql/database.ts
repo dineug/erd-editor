@@ -13,11 +13,11 @@ export type DatabaseVendor = ValuesType<typeof DatabaseVendor>;
 export const DatabaseVendorList: ReadonlyArray<string> =
   Object.values(DatabaseVendor);
 
-export const DatabaseToDatabaseVendor: Record<number, DatabaseVendor> = {
-  [Database.MariaDB]: DatabaseVendor.MariaDB,
-  [Database.MSSQL]: DatabaseVendor.MSSQL,
-  [Database.MySQL]: DatabaseVendor.MySQL,
-  [Database.Oracle]: DatabaseVendor.Oracle,
-  [Database.PostgreSQL]: DatabaseVendor.PostgreSQL,
-  [Database.SQLite]: DatabaseVendor.SQLite,
+export const DatabaseVendorToDatabase: Record<DatabaseVendor, number> = {
+  [DatabaseVendor.MariaDB]: Database.MariaDB,
+  [DatabaseVendor.MSSQL]: Database.MSSQL,
+  [DatabaseVendor.MySQL]: Database.MySQL,
+  [DatabaseVendor.Oracle]: Database.Oracle,
+  [DatabaseVendor.PostgreSQL]: Database.PostgreSQL,
+  [DatabaseVendor.SQLite]: Database.SQLite,
 };

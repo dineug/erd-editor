@@ -8,6 +8,7 @@ import {
   exportPNG,
   exportSchemaSQL,
 } from '@/utils/file/exportFile';
+import { createSchemaSQL } from '@/utils/schemaSQL';
 
 export function createExportMenus(
   app: AppContext,
@@ -32,13 +33,11 @@ export function createExportMenus(
     {
       icon: {
         prefix: 'mdi',
-        name: 'database-import',
+        name: 'database-export',
       },
       name: 'Schema SQL',
       onClick: () => {
-        // TODO: exportSQLDDL
-        console.log('exportSchemaSQL');
-        // exportSchemaSQL(createSchemaSQL(store), store.state.settings.databaseName);
+        exportSchemaSQL(createSchemaSQL(store.state), databaseName);
         onClose();
       },
     },

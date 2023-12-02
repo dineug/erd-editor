@@ -8,6 +8,7 @@ export const button = css`
   justify-content: center;
   flex-shrink: 0;
   border-radius: 6px;
+  cursor: pointer;
 `;
 
 export const soft = css`

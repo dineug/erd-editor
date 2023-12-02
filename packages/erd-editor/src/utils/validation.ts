@@ -13,6 +13,7 @@ import {
   LanguageList,
   NameCaseList,
 } from '@/constants/schema';
+import { DatabaseVendorList } from '@/constants/sql/database';
 
 const NOT_NUM = /[^0-9]/g;
 
@@ -40,6 +41,7 @@ export const hasNameCase = arrayHas(NameCaseList);
 export const hasBracketType = arrayHas(BracketTypeList);
 export const hasLanguage = arrayHas(LanguageList);
 export const hasColumnType = arrayHas(ColumnTypeList);
+export const hasDatabaseVendor = arrayHas(DatabaseVendorList);
 
 export function textInRange(width: number) {
   return Math.max(width, COLUMN_MIN_WIDTH);

@@ -22,7 +22,7 @@ export type Settings = {
 export const CanvasType = {
   ERD: 'ERD',
   visualization: '@dineug/builtin-visualization',
-  SQL_DDL: '@dineug/builtin-sql-ddl',
+  schemaSQL: '@dineug/builtin-schema-sql',
   generatorCode: '@dineug/builtin-generator-code',
 } as const;
 export type CanvasType = ValuesType<typeof CanvasType>;

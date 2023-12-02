@@ -4,6 +4,7 @@ import { arrayHas, isArray, isString } from '@dineug/shared';
 import { get, isEmpty, omit } from 'lodash-es';
 
 import { AppContext } from '@/components/appContext';
+import { DatabaseVendorToDatabase } from '@/constants/sql/database';
 import { clearAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { useDarkMode } from '@/hooks/useDarkMode';
@@ -20,7 +21,8 @@ import {
 } from '@/themes/radix-ui-theme';
 import { Theme, ThemeTokens } from '@/themes/tokens';
 import { KeyBindingName, KeyBindingNameList } from '@/utils/keyboard-shortcut';
-import { toSafeString } from '@/utils/validation';
+import { createSchemaSQL } from '@/utils/schemaSQL';
+import { hasDatabaseVendor, toSafeString } from '@/utils/validation';
 
 import { ErdEditorElement, ErdEditorProps } from './ErdEditor';
 
@@ -185,9 +187,11 @@ export function useErdEditorAttachElement({
   };
 
   ctx.getSchemaSQL = databaseVendor => {
-    // TODO: createSchemaSQL
-    // createSchemaSQL(store);
-    return '';
+    const isDatabaseVendor = hasDatabaseVendor(databaseVendor ?? '');
+    const database = isDatabaseVendor
+      ? get(DatabaseVendorToDatabase, databaseVendor ?? '')
+      : undefined;
+    return createSchemaSQL(store.state, database);
   };
 
   Object.defineProperty(ctx, 'value', {
