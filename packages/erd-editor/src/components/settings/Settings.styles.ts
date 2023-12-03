@@ -29,8 +29,8 @@ export const content = css`
 `;
 
 export const section = css`
-  max-width: 560px;
-  margin-right: 32px;
+  margin: 0 32px 32px 0;
+  min-width: 300px;
 `;
 
 export const row = css`
@@ -80,4 +80,9 @@ export const columnOrderItem = css`
   &.draggable {
     opacity: 0.5;
   }
+`;
+
+export const shortcutsSection = css`
+  margin: 0 32px 32px 0;
+  min-width: calc(100% - 364px);
 `;

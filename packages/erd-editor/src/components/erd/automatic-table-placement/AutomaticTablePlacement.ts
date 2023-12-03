@@ -1,13 +1,5 @@
 import { toJson } from '@dineug/erd-editor-schema';
-import {
-  createRef,
-  FC,
-  html,
-  onMounted,
-  onUnmounted,
-  Ref,
-  useProvider,
-} from '@dineug/r-html';
+import { createRef, FC, html, Ref, useProvider } from '@dineug/r-html';
 import { createInRange } from '@dineug/shared';
 import { round } from 'lodash-es';
 
@@ -27,8 +19,10 @@ import {
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import { query } from '@/utils/collection/query';
 import { openToastAction } from '@/utils/emitter';
+import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { closePromise } from '@/utils/promise';
 
 import * as styles from './AutomaticTablePlacement.styles';
@@ -55,15 +49,14 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   const appContextValue = createAppContext({
     toWidth: prevApp.toWidth,
   });
+  const { addUnsubscribe } = useUnmounted();
   const provider = useProvider(ctx, appContext, appContextValue);
-
-  onUnmounted(() => {
-    provider.destroy();
-  });
+  addUnsubscribe(provider.destroy);
 
   const {
     store: { state: prevState },
     emitter,
+    shortcut$,
   } = prevApp;
   const { store } = appContextValue;
 
@@ -149,6 +142,13 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     );
 
     simulation.on('end', handleStop);
+    addUnsubscribe(
+      shortcut$.subscribe(({ type }) => {
+        if (type === KeyBindingName.stop) {
+          handleCancel();
+        }
+      })
+    );
   } catch (e) {
     handleCancel();
   }

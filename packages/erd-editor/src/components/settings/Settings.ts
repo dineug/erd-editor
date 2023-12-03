@@ -8,6 +8,7 @@ import Icon from '@/components/primitives/icon/Icon';
 import Separator from '@/components/primitives/separator/Separator';
 import Switch from '@/components/primitives/switch/Switch';
 import Toast from '@/components/primitives/toast/Toast';
+import Shortcuts from '@/components/settings/shortcuts/Shortcuts';
 import { ColumnTypeToName } from '@/constants/schema';
 import {
   changeColumnOrderAction,
@@ -143,6 +144,9 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                 )}
               </div>
             </div>
+          </div>
+          <div class=${styles.shortcutsSection}>
+            <${Shortcuts} />
           </div>
         </div>
       </div>

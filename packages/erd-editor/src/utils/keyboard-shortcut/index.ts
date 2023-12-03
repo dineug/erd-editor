@@ -125,6 +125,10 @@ function codeToString(code: string) {
     return 'ESC';
   }
 
+  if (code === 'Equal') {
+    return 'Plus';
+  }
+
   return code;
 }
 
