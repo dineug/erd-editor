@@ -1,4 +1,4 @@
-import { range } from 'lodash-es';
+import { camelCase, range, upperFirst } from 'lodash-es';
 
 import { START_ADD, START_X, START_Y } from '@/constants/layout';
 import { EntityMeta, Memo, Point, Settings, Table } from '@/internal-types';
@@ -45,4 +45,8 @@ export function getDefaultEntityMeta(): EntityMeta {
 
 export function safeRange(a: number, b: number) {
   return a < b ? range(a, b + 1) : range(b, a + 1);
+}
+
+export function pascalCase(value?: string) {
+  return upperFirst(camelCase(value));
 }

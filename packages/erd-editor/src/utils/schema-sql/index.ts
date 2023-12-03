@@ -61,7 +61,7 @@ export function createSchemaSQLTable(state: RootState, table: Table) {
     doc: { indexIds },
     collections,
   } = state;
-  const stringBuffer: string[] = [''];
+  const buffer: string[] = [''];
   const database = settings.database;
   const indexNames: Name[] = [];
   const indexes = query(collections)
@@ -70,81 +70,78 @@ export function createSchemaSQLTable(state: RootState, table: Table) {
 
   switch (database) {
     case Database.MariaDB:
-      formatTableMariaDB(state, { table, buffer: stringBuffer });
-      stringBuffer.push('');
+      formatTableMariaDB(state, { buffer, table });
+      buffer.push('');
       indexes.forEach(index => {
         formatIndexMariaDB(state, {
           index,
-          buffer: stringBuffer,
+          buffer,
           indexNames,
         });
-        stringBuffer.push('');
+        buffer.push('');
       });
       break;
     case Database.MSSQL:
-      formatTableMSSQL(state, { table, buffer: stringBuffer });
-      stringBuffer.push('');
+      formatTableMSSQL(state, { buffer, table });
+      buffer.push('');
       indexes.forEach(index => {
         formatIndexMSSQL(state, {
           index,
-          buffer: stringBuffer,
+          buffer,
           indexNames,
         });
-        stringBuffer.push('');
+        buffer.push('');
       });
       break;
     case Database.MySQL:
-      formatTableMySQL(state, { table, buffer: stringBuffer });
-      stringBuffer.push('');
+      formatTableMySQL(state, { buffer, table });
+      buffer.push('');
       indexes.forEach(index => {
         formatIndexMySQL(state, {
           index,
-          buffer: stringBuffer,
+          buffer,
           indexNames,
         });
-        stringBuffer.push('');
+        buffer.push('');
       });
       break;
     case Database.Oracle:
-      formatTableOracle(state, { table, buffer: stringBuffer });
-      stringBuffer.push('');
+      formatTableOracle(state, { buffer, table });
+      buffer.push('');
       indexes.forEach(index => {
         formatIndexOracle(state, {
           index,
-          buffer: stringBuffer,
+          buffer,
           indexNames,
         });
-        stringBuffer.push('');
+        buffer.push('');
       });
       break;
     case Database.PostgreSQL:
-      formatTablePostgreSQL(state, { table, buffer: stringBuffer });
-      stringBuffer.push('');
+      formatTablePostgreSQL(state, { buffer, table });
+      buffer.push('');
       indexes.forEach(index => {
         formatIndexPostgreSQL(state, {
           index,
-          buffer: stringBuffer,
+          buffer,
           indexNames,
         });
-        stringBuffer.push('');
+        buffer.push('');
       });
       break;
     case Database.SQLite:
-      formatTableSQLite(state, {
-        table,
-        buffer: stringBuffer,
-      });
-      stringBuffer.push('');
+      formatTableSQLite(state, { buffer, table });
+      buffer.push('');
       indexes.forEach(index => {
         formatIndexSQLite(state, {
           index,
-          buffer: stringBuffer,
+          buffer,
           indexNames,
         });
-        stringBuffer.push('');
+        buffer.push('');
       });
       break;
   }
 
-  return stringBuffer.join('\n');
+  return buffer.join('\n');
 }

@@ -8,6 +8,7 @@ import {
   CANVAS_SIZE_MIN,
   CANVAS_ZOOM_MAX,
   CANVAS_ZOOM_MIN,
+  CanvasTypeList,
   ColumnTypeList,
   DatabaseList,
   LanguageList,
@@ -42,6 +43,7 @@ export const hasBracketType = arrayHas(BracketTypeList);
 export const hasLanguage = arrayHas(LanguageList);
 export const hasColumnType = arrayHas(ColumnTypeList);
 export const hasDatabaseVendor = arrayHas(DatabaseVendorList);
+export const hasCanvasType = arrayHas(CanvasTypeList);
 
 export function textInRange(width: number) {
   return Math.max(width, COLUMN_MIN_WIDTH);

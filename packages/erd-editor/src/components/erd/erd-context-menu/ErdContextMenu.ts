@@ -37,6 +37,7 @@ export type ErdContextMenuProps = {
 
 const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const chevronRightIcon = html`<${Icon} name="chevron-right" size=${14} />`;
 
   const handleAddTable = () => {
     const { store } = app.value;
@@ -107,8 +108,6 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     );
     props.onClose();
   };
-
-  const chevronRightIcon = html`<${Icon} name="chevron-right" size=${14} />`;
 
   return () => {
     const { keyBindingMap } = app.value;

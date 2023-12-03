@@ -13,6 +13,7 @@ import { fromEvent, throttleTime } from 'rxjs';
 
 import { appContext, createAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
+import GeneratorCode from '@/components/generator-code/GeneratorCode';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import Theme from '@/components/theme/Theme';
@@ -151,6 +152,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   return () => {
     const { store } = appContextValue;
     const { settings } = store.state;
+    const isDarkMode = hasDarkMode();
 
     return html`
       <${GlobalStyles} />
@@ -160,7 +162,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         class=${[
           'root',
           styles.root,
-          { dark: hasDarkMode(), 'none-focus': !state.isFocus },
+          { dark: isDarkMode, 'none-focus': !state.isFocus },
         ]}
         tabindex="-1"
         @keydown=${handleKeydown}
@@ -176,7 +178,9 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           ${settings.canvasType === CanvasType.visualization
             ? html`<${Visualization} />`
             : settings.canvasType === CanvasType.schemaSQL
-            ? html`<${SchemaSQL} isDarkMode=${hasDarkMode()} />`
+            ? html`<${SchemaSQL} isDarkMode=${isDarkMode} />`
+            : settings.canvasType === CanvasType.generatorCode
+            ? html`<${GeneratorCode} isDarkMode=${isDarkMode} />`
             : null}
         </div>
         <${ToastContainer} />

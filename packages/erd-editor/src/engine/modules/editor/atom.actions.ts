@@ -1,8 +1,10 @@
 import { parser, schemaV3Parser } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 
+import { CanvasType } from '@/constants/schema';
 import { query } from '@/utils/collection/query';
 import { getZoomViewport } from '@/utils/dragSelect';
+import { hasCanvasType } from '@/utils/validation';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
 import { FocusType, MoveKey, SelectType } from './state';
@@ -109,6 +111,10 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   { payload: { value } }
 ) => {
   const { version, settings, doc, collections, lww } = parser(value);
+  if (!hasCanvasType(settings.canvasType)) {
+    settings.canvasType = CanvasType.ERD;
+  }
+
   state.version = version;
   state.settings = settings;
   state.doc = doc;
@@ -136,6 +142,10 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   { payload: { value } }
 ) => {
   const { version, settings, doc, collections, lww } = parser(value);
+  if (!hasCanvasType(settings.canvasType)) {
+    settings.canvasType = CanvasType.ERD;
+  }
+
   state.version = version;
   state.settings = settings;
   state.doc = doc;

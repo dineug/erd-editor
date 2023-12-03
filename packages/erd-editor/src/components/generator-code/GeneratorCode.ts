@@ -3,44 +3,46 @@ import { FC, html, observable, onBeforeMount, watch } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
 import { useAppContext } from '@/components/appContext';
+import GeneratorCodeContextMenu from '@/components/generator-code/generator-code-context-menu/GeneratorCodeContextMenu';
 import CodeBlock from '@/components/primitives/code-block/CodeBlock';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import Toast from '@/components/primitives/toast/Toast';
-import SchemaSQLContextMenu from '@/components/schema-sql/schema-sql-context-menu/SchemaSQLContextMenu';
+import { LanguageToLangMap } from '@/constants/language';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { copyToClipboard } from '@/utils/clipboard';
 import { openToastAction } from '@/utils/emitter';
-import { createSchemaSQL } from '@/utils/schema-sql';
+import { createGeneratorCode } from '@/utils/generator-code';
 
-import * as styles from './SchemaSQL.styles';
+import * as styles from './GeneratorCode.styles';
 
 const hasPropName = arrayHas<string | number | symbol>([
-  'database',
-  'bracketType',
+  'language',
+  'tableNameCase',
+  'columnNameCase',
 ]);
 
-export type SchemaSQLProps = {
+export type GeneratorCodeProps = {
   isDarkMode: boolean;
 };
 
-const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
+const GeneratorCode: FC<GeneratorCodeProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
   const contextMenu = useContextMenuRootProvider(ctx);
 
   const state = observable({
-    sql: '',
+    code: '',
   });
 
-  const setSQL = () => {
+  const setCode = () => {
     const { store } = app.value;
-    state.sql = createSchemaSQL(store.state);
+    state.code = createGeneratorCode(store.state);
   };
 
   const handleCopy = () => {
     const { emitter } = app.value;
 
-    copyToClipboard(state.sql).then(() => {
+    copyToClipboard(state.code).then(() => {
       emitter.emit(
         openToastAction({
           close: delay(2000),
@@ -58,30 +60,38 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
     const { store } = app.value;
     const { settings } = store.state;
 
-    setSQL();
+    setCode();
 
     addUnsubscribe(
       watch(settings).subscribe(propName => {
-        hasPropName(propName) && setSQL();
+        hasPropName(propName) && setCode();
       })
     );
   });
 
-  return () => html`
-    <div
-      class=${styles.root}
-      @contextmenu=${contextMenu.onContextmenu}
-      @mousedown=${contextMenu.onMousedown}
-    >
-      <${CodeBlock}
-        lang="sql"
-        theme=${props.isDarkMode ? 'dark' : 'light'}
-        value=${state.sql}
-        .onCopy=${handleCopy}
-      />
-      <${SchemaSQLContextMenu} .onClose=${handleContextmenuClose} />
-    </div>
-  `;
+  return () => {
+    const { store } = app.value;
+    const {
+      settings: { language },
+    } = store.state;
+    const lang = LanguageToLangMap[language];
+
+    return html`
+      <div
+        class=${styles.root}
+        @contextmenu=${contextMenu.onContextmenu}
+        @mousedown=${contextMenu.onMousedown}
+      >
+        <${CodeBlock}
+          lang=${lang}
+          theme=${props.isDarkMode ? 'dark' : 'light'}
+          value=${state.code}
+          .onCopy=${handleCopy}
+        />
+        <${GeneratorCodeContextMenu} .onClose=${handleContextmenuClose} />
+      </div>
+    `;
+  };
 };
 
-export default SchemaSQL;
+export default GeneratorCode;

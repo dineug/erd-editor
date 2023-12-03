@@ -131,6 +131,16 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
         >
           <${Icon} prefix="mdi" name="database-export" size=${16} />
         </div>
+        <div
+          class=${[
+            styles.menu,
+            { active: settings.canvasType === CanvasType.generatorCode },
+          ]}
+          title="Generator Code"
+          @click=${() => handleChangeCanvasType(CanvasType.generatorCode)}
+        >
+          <${Icon} name="file-code" size=${16} />
+        </div>
         <div class=${styles.vertical}></div>
         ${showUndoRedo
           ? html`

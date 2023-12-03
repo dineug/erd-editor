@@ -81,9 +81,7 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
     addUnsubscribe(
       globalEmitter.on({ loadShikiService: setHighlight }),
       watch(props).subscribe(propName => {
-        if (!hasPropName(propName)) return;
-
-        setHighlight();
+        hasPropName(propName) && setHighlight();
       }),
       () => {
         state.highlight = '';
