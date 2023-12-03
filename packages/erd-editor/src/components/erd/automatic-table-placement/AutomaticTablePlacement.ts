@@ -1,5 +1,13 @@
 import { toJson } from '@dineug/erd-editor-schema';
-import { createRef, FC, html, Ref, useProvider } from '@dineug/r-html';
+import {
+  createRef,
+  FC,
+  html,
+  onMounted,
+  onUnmounted,
+  Ref,
+  useProvider,
+} from '@dineug/r-html';
 import { createInRange } from '@dineug/shared';
 import { round } from 'lodash-es';
 
@@ -47,7 +55,11 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   const appContextValue = createAppContext({
     toWidth: prevApp.toWidth,
   });
-  useProvider(ctx, appContext, appContextValue);
+  const provider = useProvider(ctx, appContext, appContextValue);
+
+  onUnmounted(() => {
+    provider.destroy();
+  });
 
   const {
     store: { state: prevState },
@@ -123,7 +135,12 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
           <${Toast}
             description="Automatic Table Placement..."
             action=${html`
-              <${Button} size="1" text=${'Stop'} .onClick=${handleStop} />
+              <${Button}
+                variant="soft"
+                size="1"
+                text=${'Stop'}
+                .onClick=${handleStop}
+              />
               <${Button} size="1" text=${'Cancel'} .onClick=${handleCancel} />
             `}
           />

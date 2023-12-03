@@ -16,6 +16,7 @@ import Erd from '@/components/erd/Erd';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
+import Settings from '@/components/settings/Settings';
 import Theme from '@/components/theme/Theme';
 import ToastContainer from '@/components/toast-container/ToastContainer';
 import Toolbar from '@/components/toolbar/Toolbar';
@@ -181,6 +182,8 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
             ? html`<${SchemaSQL} isDarkMode=${isDarkMode} />`
             : settings.canvasType === CanvasType.generatorCode
             ? html`<${GeneratorCode} isDarkMode=${isDarkMode} />`
+            : settings.canvasType === CanvasType.settings
+            ? html`<${Settings} />`
             : null}
         </div>
         <${ToastContainer} />

@@ -29,6 +29,8 @@ export type RxStore = Store & {
   change$: Observable<Array<AnyAction>>;
 };
 
+const HISTORY_LIMIT = 2000;
+
 export function createRxStore(context: EngineContext): RxStore {
   const subscriptions: Subscription[] = [];
   const store = createStore(context);
@@ -36,6 +38,7 @@ export function createRxStore(context: EngineContext): RxStore {
   const history = createHistory(payload =>
     store.dispatch(changeHasHistoryAction(payload))
   );
+  history.setLimit(HISTORY_LIMIT);
 
   const dispatch$ = new Subject<Array<AnyAction>>();
   const history$ = dispatch$.pipe(

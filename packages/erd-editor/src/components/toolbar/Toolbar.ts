@@ -141,6 +141,16 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
         >
           <${Icon} name="file-code" size=${16} />
         </div>
+        <div
+          class=${[
+            styles.menu,
+            { active: settings.canvasType === CanvasType.settings },
+          ]}
+          title="Settings"
+          @click=${() => handleChangeCanvasType(CanvasType.settings)}
+        >
+          <${Icon} name="gear" size=${16} />
+        </div>
         <div class=${styles.vertical}></div>
         ${showUndoRedo
           ? html`

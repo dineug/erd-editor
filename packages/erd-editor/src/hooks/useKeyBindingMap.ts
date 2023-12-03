@@ -23,8 +23,8 @@ export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
       Object.keys(keyBindingMap).reduce<
         Record<string, (event: KeyboardEvent) => void>
       >((acc, key) => {
-        const name = key as KeyBindingName;
-        const options = keyBindingMap[name];
+        const type = key as KeyBindingName;
+        const options = keyBindingMap[type];
 
         options.forEach(option => {
           acc[option.shortcut] = (event: KeyboardEvent) => {
@@ -36,7 +36,7 @@ export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
               event.stopPropagation();
             }
 
-            shortcut$.next(name);
+            shortcut$.next({ type, event });
           };
         });
 

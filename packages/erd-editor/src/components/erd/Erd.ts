@@ -245,10 +245,12 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           : null}
         ${runAutomaticTablePlacement
           ? html`
-              <${AutomaticTablePlacement}
-                app=${app}
-                .onChange=${handleChangeAutomaticTablePlacement}
-              />
+              <div>
+                <${AutomaticTablePlacement}
+                  app=${app}
+                  .onChange=${handleChangeAutomaticTablePlacement}
+                />
+              </div>
             `
           : null}
       </div>

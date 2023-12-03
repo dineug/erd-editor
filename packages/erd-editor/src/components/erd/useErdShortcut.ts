@@ -96,7 +96,12 @@ export function useErdShortcut(ctx: Ctx) {
     }
   };
 
-  const handleShortcut = (action: KeyBindingName) => {
+  const handleShortcut = ({
+    type,
+  }: {
+    type: KeyBindingName;
+    event: KeyboardEvent;
+  }) => {
     const { store } = app.value;
     const { editor, settings } = store.state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
@@ -109,19 +114,19 @@ export function useErdShortcut(ctx: Ctx) {
     }
 
     if (!editor.focusTable || !editor.focusTable.edit) {
-      action === KeyBindingName.addTable && store.dispatch(addTableAction$());
-      action === KeyBindingName.addColumn && store.dispatch(addColumnAction$());
-      action === KeyBindingName.addMemo && store.dispatch(addMemoAction$());
+      type === KeyBindingName.addTable && store.dispatch(addTableAction$());
+      type === KeyBindingName.addColumn && store.dispatch(addColumnAction$());
+      type === KeyBindingName.addMemo && store.dispatch(addMemoAction$());
 
-      action === KeyBindingName.selectAllTable &&
+      type === KeyBindingName.selectAllTable &&
         store.dispatch(selectAllAction());
 
-      if (isRelationshipKeyBindingName(action)) {
-        const relationshipType = keyBindingNameToRelationshipType[action];
+      if (isRelationshipKeyBindingName(type)) {
+        const relationshipType = keyBindingNameToRelationshipType[type];
         store.dispatch(drawStartRelationshipAction$(relationshipType));
       }
 
-      if (action === KeyBindingName.removeTable) {
+      if (type === KeyBindingName.removeTable) {
         ctx.host.dispatchEvent(focusEvent());
         store.dispatch(removeSelectedAction$());
       }
@@ -130,19 +135,19 @@ export function useErdShortcut(ctx: Ctx) {
 
       // KeyBindingName.find
 
-      action === KeyBindingName.zoomIn &&
+      type === KeyBindingName.zoomIn &&
         store.dispatch(streamZoomLevelAction({ value: 0.1 }));
-      action === KeyBindingName.zoomOut &&
+      type === KeyBindingName.zoomOut &&
         store.dispatch(streamZoomLevelAction({ value: -0.1 }));
     }
 
     if (!showHighLevelTable) {
       if (editor.focusTable && !editor.focusTable.edit) {
-        action === KeyBindingName.selectAllColumn &&
+        type === KeyBindingName.selectAllColumn &&
           store.dispatch(selectAllColumnAction());
 
         if (
-          action === KeyBindingName.removeColumn &&
+          type === KeyBindingName.removeColumn &&
           editor.focusTable.selectColumnIds.length
         ) {
           store.dispatch(
@@ -156,10 +161,7 @@ export function useErdShortcut(ctx: Ctx) {
         // KeyBindingName.copyColumn
         // KeyBindingName.pasteColumn
 
-        if (
-          action === KeyBindingName.primaryKey &&
-          editor.focusTable.columnId
-        ) {
+        if (type === KeyBindingName.primaryKey && editor.focusTable.columnId) {
           store.dispatch(
             changeColumnPrimaryKeyAction$(
               editor.focusTable.tableId,
@@ -169,7 +171,7 @@ export function useErdShortcut(ctx: Ctx) {
         }
       }
 
-      if (editor.focusTable && action === KeyBindingName.edit) {
+      if (editor.focusTable && type === KeyBindingName.edit) {
         const focusTable = editor.focusTable;
 
         if (focusTable.edit) {
@@ -191,13 +193,13 @@ export function useErdShortcut(ctx: Ctx) {
       }
     }
 
-    if (action === KeyBindingName.stop) {
+    if (type === KeyBindingName.stop) {
       ctx.host.dispatchEvent(forceFocusEvent());
       store.dispatch(drawEndRelationshipAction(), unselectAllAction$());
     }
 
-    action === KeyBindingName.undo && store.undo();
-    action === KeyBindingName.redo && store.redo();
+    type === KeyBindingName.undo && store.undo();
+    type === KeyBindingName.redo && store.redo();
   };
 
   onMounted(() => {

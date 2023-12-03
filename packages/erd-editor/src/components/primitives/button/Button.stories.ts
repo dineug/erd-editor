@@ -15,6 +15,10 @@ const meta = {
       control: 'radio',
       options: ['1', '2', '3'],
     },
+    variant: {
+      control: 'radio',
+      options: ['solid', 'soft'],
+    },
     text: {
       control: 'text',
     },
@@ -27,9 +31,18 @@ const meta = {
 export default meta;
 type Story = StoryObj<ButtonProps>;
 
-export const Normal: Story = {
+export const Solid: Story = {
   args: {
     size: '2',
+    variant: 'solid',
+    text: 'Button',
+  },
+};
+
+export const Soft: Story = {
+  args: {
+    size: '2',
+    variant: 'soft',
     text: 'Button',
   },
 };

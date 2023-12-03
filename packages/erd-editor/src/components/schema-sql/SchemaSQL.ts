@@ -44,7 +44,7 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
       emitter.emit(
         openToastAction({
           close: delay(2000),
-          message: html`<${Toast} description="Copied!" />`,
+          message: html`<${Toast} title="Copied!" />`,
         })
       );
     });

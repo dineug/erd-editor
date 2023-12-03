@@ -24,6 +24,7 @@ export const CanvasType = {
   visualization: '@dineug/erd-editor/builtin-visualization',
   schemaSQL: '@dineug/erd-editor/builtin-schema-sql',
   generatorCode: '@dineug/erd-editor/builtin-generator-code',
+  settings: 'settings',
 } as const;
 export type CanvasType = ValuesType<typeof CanvasType>;
 export const CanvasTypeList: ReadonlyArray<string> = Object.values(CanvasType);

@@ -25,7 +25,7 @@ export type AppContext = EngineContext & {
   actions: Actions;
   store: RxStore;
   keyBindingMap: KeyBindingMap;
-  shortcut$: Subject<KeyBindingName>;
+  shortcut$: Subject<{ type: KeyBindingName; event: KeyboardEvent }>;
   keydown$: Subject<KeyboardEvent>;
   emitter: Emitter;
 };
@@ -36,7 +36,10 @@ export function createAppContext(ctx: InjectAppContext): AppContext {
   const engineContext = createEngineContext(ctx);
   const store = createRxStore(engineContext);
   const keyBindingMap = observable(createKeyBindingMap(), { shallow: true });
-  const shortcut$ = new Subject<KeyBindingName>();
+  const shortcut$ = new Subject<{
+    type: KeyBindingName;
+    event: KeyboardEvent;
+  }>();
   const keydown$ = new Subject<KeyboardEvent>();
   const emitter = new Emitter();
 

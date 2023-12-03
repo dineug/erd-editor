@@ -42,7 +42,7 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   [KeyBindingName.edit]: [{ shortcut: 'Enter' }],
   [KeyBindingName.stop]: [{ shortcut: 'Escape' }],
   [KeyBindingName.find]: [
-    { shortcut: '$mod+KeyF', preventDefault: true, stopPropagation: true },
+    { shortcut: '$mod+KeyK', preventDefault: true, stopPropagation: true },
   ],
   [KeyBindingName.undo]: [{ shortcut: '$mod+KeyZ', preventDefault: true }],
   [KeyBindingName.redo]: [

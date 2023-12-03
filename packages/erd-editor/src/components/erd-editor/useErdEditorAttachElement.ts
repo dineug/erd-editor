@@ -6,7 +6,10 @@ import { get, isEmpty, omit } from 'lodash-es';
 import { AppContext } from '@/components/appContext';
 import { DatabaseVendorToDatabase } from '@/constants/sql/database';
 import { clearAction } from '@/engine/modules/editor/atom.actions';
-import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
+import {
+  initialLoadJsonAction$,
+  loadJsonAction$,
+} from '@/engine/modules/editor/generator.actions';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import {
@@ -129,12 +132,12 @@ export function useErdEditorAttachElement({
   };
 
   ctx.clear = () => {
-    store.dispatch(clearAction());
+    store.dispatchSync(clearAction());
   };
 
   ctx.setInitialValue = value => {
     const safeValue = toSafeString(value);
-    store.dispatch(
+    store.dispatchSync(
       initialLoadJsonAction$(isEmpty(safeValue) ? '{}' : safeValue)
     );
   };
@@ -196,7 +199,12 @@ export function useErdEditorAttachElement({
 
   Object.defineProperty(ctx, 'value', {
     get: () => toJson(store.state),
-    set: (value: string) => ctx.setInitialValue(value),
+    set: (value: string) => {
+      const safeValue = toSafeString(value);
+      store.dispatchSync(
+        loadJsonAction$(isEmpty(safeValue) ? '{}' : safeValue)
+      );
+    },
   });
 
   return {

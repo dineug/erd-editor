@@ -122,6 +122,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   <${ContextMenu.Menu}
                     icon=${html`<${Icon} name="key" size=${14} />`}
                     name="Primary Key"
+                    right=${html`
+                      <${Kbd}
+                        shortcut=${keyBindingMap.primaryKey[0]?.shortcut}
+                      />
+                    `}
                   />
                 `}
               />
@@ -133,6 +138,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                       <${Icon} prefix="mdi" name="table-cog" size=${14} />
                     `}
                     name="Table Properties"
+                    right=${html`
+                      <${Kbd}
+                        shortcut=${keyBindingMap.tableProperties[0]?.shortcut}
+                      />
+                    `}
                   />
                 `}
               />
