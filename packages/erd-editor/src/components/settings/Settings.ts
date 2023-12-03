@@ -1,21 +1,24 @@
 import { delay } from '@dineug/go';
-import { FC, html } from '@dineug/r-html';
+import { createRef, FC, html, onUpdated, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import Button from '@/components/primitives/button/Button';
+import Menu from '@/components/primitives/context-menu/menu/Menu';
 import Icon from '@/components/primitives/icon/Icon';
 import Separator from '@/components/primitives/separator/Separator';
 import Switch from '@/components/primitives/switch/Switch';
 import Toast from '@/components/primitives/toast/Toast';
+import { ColumnTypeToName } from '@/constants/schema';
 import {
   changeColumnOrderAction,
   changeRelationshipDataTypeSyncAction,
 } from '@/engine/modules/settings/atom.actions';
 import { recalculateTableWidth } from '@/utils/calcTable';
+import { onPrevent } from '@/utils/domEvent';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 import { openToastAction } from '@/utils/emitter';
 import { FlipAnimation } from '@/utils/flipAnimation';
-import { fromDraggable } from '@/utils/rx-operators/fromDraggable';
+import { fromShadowDraggable } from '@/utils/rx-operators/fromShadowDraggable';
 
 import * as styles from './Settings.styles';
 
@@ -23,6 +26,12 @@ export type SettingsProps = {};
 
 const Settings: FC<SettingsProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const root = createRef<HTMLDivElement>();
+  const flipAnimation = new FlipAnimation(
+    root,
+    `.${styles.columnOrderItem}`,
+    'column-order-move'
+  );
 
   const handleChangeRelationshipDataTypeSync = (value: boolean) => {
     const { store } = app.value;
@@ -41,12 +50,46 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
     );
   };
 
+  const handleChangeColumnOrderAction = (value: number, target: number) => {
+    const { store } = app.value;
+
+    if (value !== target) {
+      flipAnimation.snapshot();
+      store.dispatch(changeColumnOrderAction({ value, target }));
+    }
+  };
+
+  const handleDragstartColumnOrder = (event: DragEvent) => {
+    const $root = root.value;
+    const $target = event.target as HTMLElement | null;
+    if (!$root || !$target) return;
+
+    const columnType = Number($target.dataset.id);
+    const elements = Array.from<HTMLElement>(
+      $root.querySelectorAll(`.${styles.columnOrderItem}`)
+    );
+    elements.forEach(el => el.classList.add('none-hover'));
+    $target.classList.add('draggable');
+
+    fromShadowDraggable(elements).subscribe({
+      next: id => {
+        handleChangeColumnOrderAction(columnType, Number(id));
+      },
+      complete: () => {
+        $target.classList.remove('draggable');
+        elements.forEach(el => el.classList.remove('none-hover'));
+      },
+    });
+  };
+
+  onUpdated(() => flipAnimation.play());
+
   return () => {
     const { store } = app.value;
     const { settings } = store.state;
 
     return html`
-      <div class=${styles.root}>
+      <div class=${styles.root} ${ref(root)}>
         <div class=${styles.title}>Settings</div>
         <${Separator} space=${24} />
         <div class=${['scrollbar', styles.content]}>
@@ -72,6 +115,33 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                 `}
                 .onClick=${handleRecalculationTableWidth}
               />
+            </div>
+            <div class=${styles.columnOrderSection}>
+              <div>Column Order</div>
+              <${Separator} space=${12} />
+              <div
+                class=${styles.columnOrderList}
+                @dragenter=${onPrevent}
+                @dragover=${onPrevent}
+              >
+                ${repeat(
+                  settings.columnOrder,
+                  columnType => columnType,
+                  columnType => html`
+                    <div
+                      class=${styles.columnOrderItem}
+                      draggable="true"
+                      data-id=${columnType}
+                      @dragstart=${handleDragstartColumnOrder}
+                    >
+                      <${Menu}
+                        icon=${html`<${Icon} name="bars" size=${14} />`}
+                        name=${ColumnTypeToName[columnType]}
+                      />
+                    </div>
+                  `
+                )}
+              </div>
             </div>
           </div>
         </div>

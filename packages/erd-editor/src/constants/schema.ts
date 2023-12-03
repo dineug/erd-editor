@@ -35,3 +35,13 @@ export const BracketTypeMap: Record<number, string> = {
   [BracketType.doubleQuote]: '"',
   [BracketType.singleQuote]: "'",
 };
+
+export const ColumnTypeToName: Record<number, string> = {
+  [ColumnType.columnName]: 'Name',
+  [ColumnType.columnDataType]: 'DataType',
+  [ColumnType.columnDefault]: 'Default',
+  [ColumnType.columnComment]: 'Comment',
+  [ColumnType.columnAutoIncrement]: 'Auto Increment',
+  [ColumnType.columnUnique]: 'Unique',
+  [ColumnType.columnNotNull]: 'Not Null',
+};

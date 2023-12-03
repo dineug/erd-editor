@@ -3,9 +3,9 @@ import { DOMTemplateLiterals, FC, html } from '@dineug/r-html';
 import * as styles from './Menu.styles';
 
 export type MenuProps = {
-  icon: DOMTemplateLiterals;
-  name: DOMTemplateLiterals;
-  right?: DOMTemplateLiterals;
+  icon: DOMTemplateLiterals | string;
+  name: DOMTemplateLiterals | string;
+  right?: DOMTemplateLiterals | string;
 };
 
 const Menu: FC<MenuProps> = (props, ctx) => () =>

@@ -10,6 +10,10 @@ export const root = css`
   height: 100%;
   overflow: hidden;
   padding: 32px;
+
+  .column-order-move {
+    transition: transform 0.3s;
+  }
 `;
 
 export const title = css`
@@ -40,4 +44,40 @@ export const row = css`
 export const vertical = (size: number) => css`
   width: ${size}px;
   height: 100%;
+`;
+
+export const columnOrderSection = css`
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+`;
+
+export const columnOrderList = css`
+  display: flex;
+  flex-direction: column;
+`;
+
+export const columnOrderItem = css`
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  height: 32px;
+  cursor: move;
+  border-radius: 4px;
+
+  &:hover {
+    background-color: var(--context-menu-hover);
+    color: var(--active);
+    fill: var(--active);
+  }
+
+  &.none-hover {
+    background-color: transparent;
+    color: var(--foreground);
+    fill: var(--foreground);
+  }
+
+  &.draggable {
+    opacity: 0.5;
+  }
 `;

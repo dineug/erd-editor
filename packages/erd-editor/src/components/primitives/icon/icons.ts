@@ -1,5 +1,6 @@
 import { faCopy } from '@fortawesome/free-regular-svg-icons';
 import {
+  faBars,
   faCheck,
   faChevronRight,
   faCode,
@@ -107,6 +108,7 @@ const icons = [
   faPalette,
   faColumns,
   faCopy,
+  faBars,
   createMDI('code-json', mdiCodeJson),
   createMDI('database', mdiDatabase),
   createMDI('database-import', mdiDatabaseImport),
