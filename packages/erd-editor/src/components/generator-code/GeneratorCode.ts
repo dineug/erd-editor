@@ -10,8 +10,12 @@ import Toast from '@/components/primitives/toast/Toast';
 import { LanguageToLangMap } from '@/constants/language';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { copyToClipboard } from '@/utils/clipboard';
+import { query } from '@/utils/collection/query';
 import { openToastAction } from '@/utils/emitter';
-import { createGeneratorCode } from '@/utils/generator-code';
+import {
+  createGeneratorCode,
+  createGeneratorCodeTable,
+} from '@/utils/generator-code';
 
 import * as styles from './GeneratorCode.styles';
 
@@ -23,6 +27,7 @@ const hasPropName = arrayHas<string | number | symbol>([
 
 export type GeneratorCodeProps = {
   isDarkMode: boolean;
+  tableId?: string;
 };
 
 const GeneratorCode: FC<GeneratorCodeProps> = (props, ctx) => {
@@ -36,7 +41,19 @@ const GeneratorCode: FC<GeneratorCodeProps> = (props, ctx) => {
 
   const setCode = () => {
     const { store } = app.value;
-    state.code = createGeneratorCode(store.state);
+
+    if (props.tableId) {
+      const { collections } = store.state;
+      const table = query(collections)
+        .collection('tableEntities')
+        .selectById(props.tableId);
+
+      if (table) {
+        state.code = createGeneratorCodeTable(store.state, table);
+      }
+    } else {
+      state.code = createGeneratorCode(store.state);
+    }
   };
 
   const handleCopy = () => {
@@ -65,6 +82,9 @@ const GeneratorCode: FC<GeneratorCodeProps> = (props, ctx) => {
     addUnsubscribe(
       watch(settings).subscribe(propName => {
         hasPropName(propName) && setCode();
+      }),
+      watch(props).subscribe(propName => {
+        propName === 'tableId' && setCode();
       })
     );
   });

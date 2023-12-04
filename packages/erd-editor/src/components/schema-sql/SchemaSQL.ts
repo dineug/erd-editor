@@ -9,8 +9,9 @@ import Toast from '@/components/primitives/toast/Toast';
 import SchemaSQLContextMenu from '@/components/schema-sql/schema-sql-context-menu/SchemaSQLContextMenu';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { copyToClipboard } from '@/utils/clipboard';
+import { query } from '@/utils/collection/query';
 import { openToastAction } from '@/utils/emitter';
-import { createSchemaSQL } from '@/utils/schema-sql';
+import { createSchemaSQL, createSchemaSQLTable } from '@/utils/schema-sql';
 
 import * as styles from './SchemaSQL.styles';
 
@@ -21,6 +22,7 @@ const hasPropName = arrayHas<string | number | symbol>([
 
 export type SchemaSQLProps = {
   isDarkMode: boolean;
+  tableId?: string;
 };
 
 const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
@@ -34,7 +36,19 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
 
   const setSQL = () => {
     const { store } = app.value;
-    state.sql = createSchemaSQL(store.state);
+
+    if (props.tableId) {
+      const { collections } = store.state;
+      const table = query(collections)
+        .collection('tableEntities')
+        .selectById(props.tableId);
+
+      if (table) {
+        state.sql = createSchemaSQLTable(store.state, table);
+      }
+    } else {
+      state.sql = createSchemaSQL(store.state);
+    }
   };
 
   const handleCopy = () => {
@@ -63,6 +77,9 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
     addUnsubscribe(
       watch(settings).subscribe(propName => {
         hasPropName(propName) && setSQL();
+      }),
+      watch(props).subscribe(propName => {
+        propName === 'tableId' && setSQL();
       })
     );
   });

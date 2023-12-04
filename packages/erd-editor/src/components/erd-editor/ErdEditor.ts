@@ -174,7 +174,11 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         <${Toolbar} />
         ${cache(
           settings.canvasType === CanvasType.ERD
-            ? html`<div class=${styles.scope}><${Erd} /></div>`
+            ? html`
+                <div class=${styles.scope}>
+                  <${Erd} isDarkMode=${isDarkMode} />
+                </div>
+              `
             : null
         )}
         ${settings.canvasType === CanvasType.visualization

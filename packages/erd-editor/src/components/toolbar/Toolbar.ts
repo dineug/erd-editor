@@ -3,6 +3,7 @@ import { FC, html } from '@dineug/r-html';
 import { useAppContext } from '@/components/appContext';
 import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
+import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import {
   changeCanvasTypeAction,
@@ -71,9 +72,14 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     const { store } = app.value;
     const { settings, editor } = store.state;
 
+    const showAutomaticTablePlacement =
+      editor.openMap[Open.automaticTablePlacement];
+    const showTableProperties = editor.openMap[Open.tableProperties];
+
     const showUndoRedo =
       settings.canvasType === CanvasType.ERD &&
-      !editor.runAutomaticTablePlacement;
+      !showAutomaticTablePlacement &&
+      !showTableProperties;
 
     return html`
       <div class=${styles.root}>

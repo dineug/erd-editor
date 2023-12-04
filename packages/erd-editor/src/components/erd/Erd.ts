@@ -41,7 +41,9 @@ import { isMod } from '@/utils/keyboard-shortcut';
 import * as styles from './Erd.styles';
 import { useErdShortcut } from './useErdShortcut';
 
-export type ErdProps = {};
+export type ErdProps = {
+  isDarkMode: boolean;
+};
 
 const Erd: FC<ErdProps> = (props, ctx) => {
   const contextMenu = useContextMenuRootProvider(ctx);
@@ -61,6 +63,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     colorPickerViewport: null as Viewport | null,
     colorPickerInitialColor: '',
     tablePropertiesId: '',
+    tablePropertiesIds: [] as string[],
   });
   useErdShortcut(ctx);
 
@@ -170,6 +173,10 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     store.dispatch(tables.map(moveToTableAction));
   };
 
+  const handleChangeTableProperties = (tableId: string) => {
+    state.tablePropertiesId = tableId;
+  };
+
   onMounted(() => {
     const { store, emitter } = app.value;
     const $root = root.value;
@@ -190,6 +197,18 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           state.colorPickerShow = false;
         },
         openTableProperties: ({ payload: { tableId } }) => {
+          const { doc } = store.state;
+          const tablePropertiesIds = state.tablePropertiesIds.filter(id =>
+            doc.tableIds.includes(id)
+          );
+
+          if (tablePropertiesIds.includes(tableId)) {
+            const index = tablePropertiesIds.indexOf(tableId);
+            tablePropertiesIds.splice(index, 1);
+          }
+
+          tablePropertiesIds.unshift(tableId);
+          state.tablePropertiesIds = tablePropertiesIds.slice(0, 5);
           state.tablePropertiesId = tableId;
         },
       })
@@ -264,7 +283,14 @@ const Erd: FC<ErdProps> = (props, ctx) => {
             `
           : null}
         ${openMap[Open.tableProperties]
-          ? html`<${TableProperties} tableId=${state.tablePropertiesId} />`
+          ? html`
+              <${TableProperties}
+                tableId=${state.tablePropertiesId}
+                tableIds=${state.tablePropertiesIds}
+                isDarkMode=${props.isDarkMode}
+                .onChange=${handleChangeTableProperties}
+              />
+            `
           : null}
       </div>
     `;
