@@ -88,7 +88,11 @@ const GeneratorCode: FC<GeneratorCodeProps> = (props, ctx) => {
           value=${state.code}
           .onCopy=${handleCopy}
         />
-        <${GeneratorCodeContextMenu} .onClose=${handleContextmenuClose} />
+        ${contextMenu.state.show
+          ? html`
+              <${GeneratorCodeContextMenu} .onClose=${handleContextmenuClose} />
+            `
+          : null}
       </div>
     `;
   };

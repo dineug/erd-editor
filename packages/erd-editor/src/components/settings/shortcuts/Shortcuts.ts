@@ -2,7 +2,6 @@ import { FC, html } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import Kbd from '@/components/primitives/kbd/Kbd';
-import Separator from '@/components/primitives/separator/Separator';
 import { ShortcutOption } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Shortcuts.styles';
@@ -114,8 +113,6 @@ const Shortcuts: FC<ShortcutsProps> = (props, ctx) => {
 
   return () => {
     return html`
-      <div class=${styles.title}>Shortcuts</div>
-      <${Separator} space=${12} />
       <table class=${styles.table}>
         <thead>
           <tr>

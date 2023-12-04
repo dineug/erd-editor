@@ -13,6 +13,7 @@ const InternalActionType = {
   closeColorPicker: 'closeColorPicker',
   openToast: 'openToast',
   loadShikiService: 'loadShikiService',
+  openTableProperties: 'openTableProperties',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 
@@ -28,6 +29,9 @@ type InternalActionMap = {
     close?: Promise<void>;
   };
   [InternalActionType.loadShikiService]: void;
+  [InternalActionType.openTableProperties]: {
+    tableId: string;
+  };
 };
 
 type Reducer<K extends keyof M, M> = (action: Action<K, M>) => void;
@@ -69,3 +73,7 @@ export const openToastAction = createAction<
 export const loadShikiServiceAction = createAction<
   InternalActionMap[typeof InternalActionType.loadShikiService]
 >(InternalActionType.loadShikiService);
+
+export const openTablePropertiesAction = createAction<
+  InternalActionMap[typeof InternalActionType.openTableProperties]
+>(InternalActionType.openTableProperties);

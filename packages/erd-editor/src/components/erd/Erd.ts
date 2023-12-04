@@ -17,8 +17,10 @@ import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
 import Minimap from '@/components/erd/minimap/Minimap';
+import TableProperties from '@/components/erd/table-properties/TableProperties';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
+import { Open } from '@/constants/open';
 import {
   changeColorAllAction$,
   unselectAllAction$,
@@ -58,6 +60,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     colorPickerY: 0,
     colorPickerViewport: null as Viewport | null,
     colorPickerInitialColor: '',
+    tablePropertiesId: '',
   });
   useErdShortcut(ctx);
 
@@ -186,6 +189,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         closeColorPicker: () => {
           state.colorPickerShow = false;
         },
+        openTableProperties: ({ payload: { tableId } }) => {
+          state.tablePropertiesId = tableId;
+        },
       })
     );
   });
@@ -193,7 +199,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   return () => {
     const { store } = app.value;
     const {
-      editor: { drawRelationship, runAutomaticTablePlacement },
+      editor: { drawRelationship, openMap },
     } = store.state;
 
     const cursor = drawRelationship
@@ -225,13 +231,17 @@ const Erd: FC<ErdProps> = (props, ctx) => {
               />
             `
           : null}
-        <${ErdContextMenu}
-          type=${state.contextMenuType}
-          canvas=${canvas}
-          relationshipId=${state.relationshipId}
-          tableId=${state.tableId}
-          .onClose=${handleContextmenuClose}
-        />
+        ${contextMenu.state.show
+          ? html`
+              <${ErdContextMenu}
+                type=${state.contextMenuType}
+                canvas=${canvas}
+                relationshipId=${state.relationshipId}
+                tableId=${state.tableId}
+                .onClose=${handleContextmenuClose}
+              />
+            `
+          : null}
         ${state.colorPickerShow
           ? html`
               <${ColorPicker}
@@ -243,7 +253,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
               />
             `
           : null}
-        ${runAutomaticTablePlacement
+        ${openMap[Open.automaticTablePlacement]
           ? html`
               <div>
                 <${AutomaticTablePlacement}
@@ -252,6 +262,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
                 />
               </div>
             `
+          : null}
+        ${openMap[Open.tableProperties]
+          ? html`<${TableProperties} tableId=${state.tablePropertiesId} />`
           : null}
       </div>
     `;

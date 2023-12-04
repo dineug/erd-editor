@@ -2,8 +2,10 @@ import { onMounted } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
 import { useAppContext } from '@/components/appContext';
-import { CanvasType, RelationshipType } from '@/constants/schema';
+import { Open } from '@/constants/open';
+import { RelationshipType } from '@/constants/schema';
 import {
+  changeOpenMapAction,
   drawEndRelationshipAction,
   editTableAction,
   editTableEndAction,
@@ -17,7 +19,11 @@ import {
   removeSelectedAction$,
   unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
-import { hasMoveKeys, MoveKey } from '@/engine/modules/editor/state';
+import {
+  hasMoveKeys,
+  MoveKey,
+  SelectType,
+} from '@/engine/modules/editor/state';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { streamZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
@@ -30,9 +36,12 @@ import {
 } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { Ctx } from '@/internal-types';
+import { openTablePropertiesAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { isHighLevelTable } from '@/utils/validation';
+
+import { erdShortcutPerformCheck } from './erdShortcutPerformCheck';
 
 const isRelationshipKeyBindingName = arrayHas<string>([
   KeyBindingName.relationshipZeroOne,
@@ -57,11 +66,7 @@ export function useErdShortcut(ctx: Ctx) {
     const { editor, settings } = store.state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
 
-    if (
-      settings.canvasType !== CanvasType.ERD ||
-      showHighLevelTable ||
-      editor.runAutomaticTablePlacement
-    ) {
+    if (showHighLevelTable) {
       return;
     }
 
@@ -102,16 +107,9 @@ export function useErdShortcut(ctx: Ctx) {
     type: KeyBindingName;
     event: KeyboardEvent;
   }) => {
-    const { store } = app.value;
+    const { store, emitter } = app.value;
     const { editor, settings } = store.state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
-
-    if (
-      settings.canvasType !== CanvasType.ERD ||
-      editor.runAutomaticTablePlacement
-    ) {
-      return;
-    }
 
     if (!editor.focusTable || !editor.focusTable.edit) {
       type === KeyBindingName.addTable && store.dispatch(addTableAction$());
@@ -131,7 +129,18 @@ export function useErdShortcut(ctx: Ctx) {
         store.dispatch(removeSelectedAction$());
       }
 
-      // KeyBindingName.tableProperties
+      if (type === KeyBindingName.tableProperties) {
+        const selectedTable = Object.entries(editor.selectedMap).find(
+          ([, type]) => type === SelectType.table
+        );
+
+        if (selectedTable) {
+          emitter.emit(
+            openTablePropertiesAction({ tableId: selectedTable[0] })
+          );
+          store.dispatch(changeOpenMapAction({ [Open.tableProperties]: true }));
+        }
+      }
 
       // KeyBindingName.find
 
@@ -203,11 +212,15 @@ export function useErdShortcut(ctx: Ctx) {
   };
 
   onMounted(() => {
-    const { keydown$, shortcut$ } = app.value;
+    const { store, keydown$, shortcut$ } = app.value;
 
     addUnsubscribe(
-      keydown$.subscribe(handleKeydown),
-      shortcut$.subscribe(handleShortcut)
+      keydown$
+        .pipe(erdShortcutPerformCheck(store.state))
+        .subscribe(handleKeydown),
+      shortcut$
+        .pipe(erdShortcutPerformCheck(store.state))
+        .subscribe(handleShortcut)
     );
   });
 }

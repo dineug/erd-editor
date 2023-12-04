@@ -1,17 +1,23 @@
-import { FC, html, Ref } from '@dineug/r-html';
+import { FC, html, onMounted, Ref } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Icon from '@/components/primitives/icon/Icon';
 import Kbd from '@/components/primitives/kbd/Kbd';
-import { startAutomaticTablePlacementAction } from '@/engine/modules/editor/atom.actions';
+import { Open } from '@/constants/open';
+import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { changeColumnPrimaryKeyAction$ } from '@/engine/modules/table-column/generator.actions';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import { ValuesType } from '@/internal-types';
 import { query } from '@/utils/collection/query';
-import { openColorPickerAction } from '@/utils/emitter';
+import {
+  openColorPickerAction,
+  openTablePropertiesAction,
+} from '@/utils/emitter';
+import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import { createDatabaseMenus } from './menus/databaseMenus';
 import { createDrawRelationshipMenus } from './menus/drawRelationshipMenus';
@@ -38,6 +44,7 @@ export type ErdContextMenuProps = {
 const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const chevronRightIcon = html`<${Icon} name="chevron-right" size=${14} />`;
+  const { addUnsubscribe } = useUnmounted();
 
   const handleAddTable = () => {
     const { store } = app.value;
@@ -53,7 +60,9 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
 
   const handleAutomaticTablePlacement = () => {
     const { store } = app.value;
-    store.dispatch(startAutomaticTablePlacementAction());
+    store.dispatch(
+      changeOpenMapAction({ [Open.automaticTablePlacement]: true })
+    );
     props.onClose();
   };
 
@@ -84,8 +93,10 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
 
   const handleOpenTableProperties = () => {
     if (!props.tableId) return;
-    // TODO: handleOpenTableProperties
-    console.log('handleOpenTableProperties');
+
+    const { store, emitter } = app.value;
+    emitter.emit(openTablePropertiesAction({ tableId: props.tableId }));
+    store.dispatch(changeOpenMapAction({ [Open.tableProperties]: true }));
     props.onClose();
   };
 
@@ -108,6 +119,16 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     );
     props.onClose();
   };
+
+  onMounted(() => {
+    const { shortcut$ } = app.value;
+
+    addUnsubscribe(
+      shortcut$.subscribe(({ type }) => {
+        type === KeyBindingName.stop && props.onClose();
+      })
+    );
+  });
 
   return () => {
     const { keyBindingMap } = app.value;

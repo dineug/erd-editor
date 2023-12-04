@@ -29,6 +29,6 @@ export const root = css`
   }
 `;
 
-export const main = css`
+export const scope = css`
   ${container};
 `;

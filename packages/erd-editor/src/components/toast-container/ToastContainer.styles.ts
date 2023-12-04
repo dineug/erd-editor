@@ -19,7 +19,7 @@ export const root = css`
     display: flex;
     margin-top: 10px;
     justify-content: flex-end;
-    animation: showMove 0.3s ease;
+    animation: toastShowMove 0.3s ease;
 
     &[data-animation-one] {
       animation: none;
@@ -30,7 +30,7 @@ export const root = css`
     margin-top: 0;
   }
 
-  @keyframes showMove {
+  @keyframes toastShowMove {
     0% {
       transform: translateY(30px);
       opacity: 0;

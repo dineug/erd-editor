@@ -428,24 +428,15 @@ const hoverColumnMap: ReducerType<typeof ActionType.hoverColumnMap> = (
   }
 };
 
-export const startAutomaticTablePlacementAction = createAction<
-  ActionMap[typeof ActionType.startAutomaticTablePlacement]
->(ActionType.startAutomaticTablePlacement);
+export const changeOpenMapAction = createAction<
+  ActionMap[typeof ActionType.changeOpenMap]
+>(ActionType.changeOpenMap);
 
-const startAutomaticTablePlacement: ReducerType<
-  typeof ActionType.startAutomaticTablePlacement
-> = ({ editor }) => {
-  editor.runAutomaticTablePlacement = true;
-};
-
-export const endAutomaticTablePlacementAction = createAction<
-  ActionMap[typeof ActionType.endAutomaticTablePlacement]
->(ActionType.endAutomaticTablePlacement);
-
-const endAutomaticTablePlacement: ReducerType<
-  typeof ActionType.endAutomaticTablePlacement
-> = ({ editor }) => {
-  editor.runAutomaticTablePlacement = false;
+const changeOpenMap: ReducerType<typeof ActionType.changeOpenMap> = (
+  { editor },
+  { payload }
+) => {
+  Object.assign(editor.openMap, payload);
 };
 
 export const editorReducers = {
@@ -470,8 +461,7 @@ export const editorReducers = {
   [ActionType.drawEndRelationship]: drawEndRelationship,
   [ActionType.drawRelationship]: drawRelationship,
   [ActionType.hoverColumnMap]: hoverColumnMap,
-  [ActionType.startAutomaticTablePlacement]: startAutomaticTablePlacement,
-  [ActionType.endAutomaticTablePlacement]: endAutomaticTablePlacement,
+  [ActionType.changeOpenMap]: changeOpenMap,
 };
 
 export const actions = {
@@ -496,6 +486,5 @@ export const actions = {
   drawEndRelationshipAction,
   drawRelationshipAction,
   hoverColumnMapAction,
-  startAutomaticTablePlacementAction,
-  endAutomaticTablePlacementAction,
+  changeOpenMapAction,
 };

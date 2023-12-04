@@ -1,9 +1,11 @@
-import { FC, html } from '@dineug/r-html';
+import { FC, html, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { createDatabaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Icon from '@/components/primitives/icon/Icon';
+import { useUnmounted } from '@/hooks/useUnmounted';
+import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import { createBracketMenus } from './menus/bracketMenus';
 
@@ -14,6 +16,17 @@ export type SchemaSQLContextMenuProps = {
 const SchemaSQLContextMenu: FC<SchemaSQLContextMenuProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const chevronRightIcon = html`<${Icon} name="chevron-right" size=${14} />`;
+  const { addUnsubscribe } = useUnmounted();
+
+  onMounted(() => {
+    const { shortcut$ } = app.value;
+
+    addUnsubscribe(
+      shortcut$.subscribe(({ type }) => {
+        type === KeyBindingName.stop && props.onClose();
+      })
+    );
+  });
 
   return () =>
     html`

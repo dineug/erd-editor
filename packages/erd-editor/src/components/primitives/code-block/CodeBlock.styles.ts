@@ -11,6 +11,7 @@ export const clipboard = css`
   color: var(--foreground);
   opacity: 0;
   transition: opacity 0.15s;
+  user-select: none;
 
   &:hover {
     fill: var(--active);

@@ -1,23 +1,33 @@
 import { css } from '@dineug/r-html';
 
-import { fontSize6 } from '@/styles/typography.styles';
-
 export const root = css`
   display: flex;
-  flex-direction: column;
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
   padding: 32px;
+  background-color: var(--context-menu-background);
 
   .column-order-move {
     transition: transform 0.3s;
   }
 `;
 
-export const title = css`
-  ${fontSize6};
+export const lnbArea = css`
+  display: flex;
+  width: 200px;
+  height: 100%;
+  overflow: hidden;
+`;
+
+export const contentArea = css`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  padding-left: 16px;
 `;
 
 export const content = css`
@@ -80,9 +90,4 @@ export const columnOrderItem = css`
   &.draggable {
     opacity: 0.5;
   }
-`;
-
-export const shortcutsSection = css`
-  margin: 0 32px 32px 0;
-  min-width: calc(100% - 364px);
 `;

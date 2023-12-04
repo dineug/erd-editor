@@ -12,8 +12,9 @@ import Canvas from '@/components/erd/canvas/Canvas';
 import Minimap from '@/components/erd/minimap/Minimap';
 import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
+import { Open } from '@/constants/open';
 import { CANVAS_ZOOM_MIN } from '@/constants/schema';
-import { endAutomaticTablePlacementAction } from '@/engine/modules/editor/atom.actions';
+import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeZoomLevelAction,
@@ -93,7 +94,9 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
 
   const handleCancel = () => {
     onClose();
-    prevApp.store.dispatch(endAutomaticTablePlacementAction());
+    prevApp.store.dispatch(
+      changeOpenMapAction({ [Open.automaticTablePlacement]: false })
+    );
   };
 
   if (!tables.length) {
@@ -144,9 +147,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     simulation.on('end', handleStop);
     addUnsubscribe(
       shortcut$.subscribe(({ type }) => {
-        if (type === KeyBindingName.stop) {
-          handleCancel();
-        }
+        type === KeyBindingName.stop && handleCancel();
       })
     );
   } catch (e) {

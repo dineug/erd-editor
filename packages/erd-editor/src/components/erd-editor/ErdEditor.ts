@@ -172,20 +172,28 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         @focusout=${handleFocusout}
       >
         <${Toolbar} />
-        <div class=${styles.main}>
-          ${cache(
-            settings.canvasType === CanvasType.ERD ? html`<${Erd} />` : null
-          )}
-          ${settings.canvasType === CanvasType.visualization
-            ? html`<${Visualization} />`
-            : settings.canvasType === CanvasType.schemaSQL
-            ? html`<${SchemaSQL} isDarkMode=${isDarkMode} />`
-            : settings.canvasType === CanvasType.generatorCode
-            ? html`<${GeneratorCode} isDarkMode=${isDarkMode} />`
-            : settings.canvasType === CanvasType.settings
-            ? html`<${Settings} />`
-            : null}
-        </div>
+        ${cache(
+          settings.canvasType === CanvasType.ERD
+            ? html`<div class=${styles.scope}><${Erd} /></div>`
+            : null
+        )}
+        ${settings.canvasType === CanvasType.visualization
+          ? html`<div class=${styles.scope}><${Visualization} /></div>`
+          : settings.canvasType === CanvasType.schemaSQL
+          ? html`
+              <div class=${styles.scope}>
+                <${SchemaSQL} isDarkMode=${isDarkMode} />
+              </div>
+            `
+          : settings.canvasType === CanvasType.generatorCode
+          ? html`
+              <div class=${styles.scope}>
+                <${GeneratorCode} isDarkMode=${isDarkMode} />
+              </div>
+            `
+          : settings.canvasType === CanvasType.settings
+          ? html`<div class=${styles.scope}><${Settings} /></div>`
+          : null}
         <${ToastContainer} />
         ${text.span}
       </div>

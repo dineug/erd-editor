@@ -1,11 +1,5 @@
 import { css } from '@dineug/r-html';
 
-import { fontSize4 } from '@/styles/typography.styles';
-
-export const title = css`
-  ${fontSize4};
-`;
-
 const cell = css`
   padding: 12px;
   height: 44px;
