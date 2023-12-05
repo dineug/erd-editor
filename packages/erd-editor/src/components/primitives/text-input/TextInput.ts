@@ -4,6 +4,7 @@ import { restAttrs } from '@/utils/attribute';
 import { onNumberOnly } from '@/utils/domEvent';
 
 export type TextInputProps = {
+  class?: any;
   title?: string;
   placeholder?: string;
   readonly?: boolean;
@@ -19,6 +20,7 @@ export type TextInputProps = {
 const TextInput: FC<TextInputProps> = (props, ctx) => {
   return () => html`
     <input
+      class=${props.class}
       style=${{ width: props.width ? `${props.width}px` : '' }}
       ...${restAttrs({
         title: props.title,

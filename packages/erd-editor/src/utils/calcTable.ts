@@ -90,7 +90,7 @@ function calcDefaultWidthColumns(show: number) {
   );
 }
 
-type ColumnWidth = {
+export type ColumnWidth = {
   width: number;
   name: number;
   comment: number;

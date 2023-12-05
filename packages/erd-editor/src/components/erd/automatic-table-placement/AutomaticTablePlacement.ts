@@ -92,7 +92,10 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
 
   const [close, onClose] = closePromise();
 
-  const handleCancel = () => {
+  let isClosed = false;
+
+  const handleClose = () => {
+    isClosed = true;
     onClose();
     prevApp.store.dispatch(
       changeOpenMapAction({ [Open.automaticTablePlacement]: false })
@@ -100,7 +103,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   };
 
   if (!tables.length) {
-    handleCancel();
+    handleClose();
     emitter.emit(
       openToastAction({
         message: html`<${Toast} description="Not found tables" />`,
@@ -113,6 +116,8 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     const simulation = createAutomaticTablePlacement(store.state);
 
     const handleStop = () => {
+      if (isClosed) return;
+
       simulation.stop();
       props.onChange(
         tables.map(table => ({
@@ -121,7 +126,12 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
           y: table.ui.y,
         }))
       );
-      handleCancel();
+      handleClose();
+    };
+
+    const handleCancel = () => {
+      simulation.stop();
+      handleClose();
     };
 
     emitter.emit(
@@ -151,7 +161,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
       })
     );
   } catch (e) {
-    handleCancel();
+    handleClose();
   }
 
   return () =>
