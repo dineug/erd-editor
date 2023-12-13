@@ -3,6 +3,7 @@ import { arrayHas } from '@dineug/shared';
 
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
 import { query } from '@/utils/collection/query';
+import { addAndSort } from '@/utils/collection/sequence';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { textInRange } from '@/utils/validation';
@@ -27,7 +28,7 @@ const addColumn: ReducerType<typeof ActionType.addColumn> = (
     .addOperator(lww, timestamp, id, () => {
       if (!arrayHas(table.columnIds)(id)) {
         tableCollection.updateOne(tableId, table => {
-          table.columnIds.push(id);
+          addAndSort(table.columnIds, table.seqColumnIds, id);
         });
       }
     });

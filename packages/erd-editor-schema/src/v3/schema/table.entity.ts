@@ -5,6 +5,7 @@ export type Table = EntityType<{
   name: string;
   comment: string;
   columnIds: string[];
+  seqColumnIds: string[];
   ui: TableUI;
 }>;
 

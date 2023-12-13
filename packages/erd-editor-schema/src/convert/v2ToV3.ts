@@ -110,6 +110,7 @@ function assignTable(
     newTable.name = table.name;
     newTable.comment = table.comment;
     newTable.columnIds = table.columns.map(({ id }) => id);
+    newTable.seqColumnIds = [...newTable.columnIds];
     newTable.ui.y = table.ui.top;
     newTable.ui.x = table.ui.left;
     newTable.ui.zIndex = table.ui.zIndex;
@@ -172,6 +173,7 @@ function assignTable(
       const newIndexColumn = createIndexColumn();
 
       newIndex.indexColumnIds.push(id);
+      newIndex.seqIndexColumnIds.push(id);
       newIndexColumn.id = id;
       newIndexColumn.indexId = index.id;
       newIndexColumn.columnId = indexColumn.id;

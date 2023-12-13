@@ -5,5 +5,6 @@ export type Index = EntityType<{
   name: string;
   tableId: string;
   indexColumnIds: string[];
+  seqIndexColumnIds: string[];
   unique: boolean;
 }>;

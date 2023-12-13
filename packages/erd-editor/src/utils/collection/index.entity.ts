@@ -10,6 +10,7 @@ export const createIndex = (value?: DeepPartial<Index>): Index =>
       name: '',
       tableId: '',
       indexColumnIds: [],
+      seqIndexColumnIds: [],
       unique: false,
       meta: getDefaultEntityMeta(),
     },

@@ -9,6 +9,7 @@ export const createIndex = (): Index => ({
   name: '',
   tableId: '',
   indexColumnIds: [],
+  seqIndexColumnIds: [],
   unique: false,
   meta: getDefaultEntityMeta(),
 });
@@ -31,6 +32,7 @@ export function createAndMergeIndexEntities(
     assignString('tableId');
     assignBoolean('unique');
     assignArray('indexColumnIds');
+    assignArray('seqIndexColumnIds');
 
     assignMeta(target.meta, value.meta);
 
