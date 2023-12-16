@@ -6,6 +6,7 @@ import IndexesCheckboxColumn from '@/components/erd/table-properties/table-prope
 import IndexesColumn from '@/components/erd/table-properties/table-properties-indexes/indexes-column/IndexesColumn';
 import Icon from '@/components/primitives/icon/Icon';
 import { addIndexAction$ } from '@/engine/modules/index/generator.actions';
+import { attachSharedTag$ } from '@/engine/tag';
 import { Index } from '@/internal-types';
 import { query } from '@/utils/collection/query';
 
@@ -31,7 +32,7 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
 
   const handleAddIndex = () => {
     const { store } = app.value;
-    store.dispatch(addIndexAction$(props.tableId));
+    store.dispatch(attachSharedTag$(addIndexAction$(props.tableId)));
   };
 
   return () => {

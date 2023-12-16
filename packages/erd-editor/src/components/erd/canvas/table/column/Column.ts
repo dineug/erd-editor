@@ -222,6 +222,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                     }}
                   >
                     <${ColumnDataType}
+                      app=${app}
                       tableId=${column.tableId}
                       columnId=${column.id}
                       width=${widthDataType}

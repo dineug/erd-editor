@@ -7,11 +7,13 @@ export type Action<K extends keyof M, M> = {
   type: K;
   payload: M[K];
   timestamp: number;
+  tags?: number;
 };
 export type AnyAction<P = any> = {
   type: string;
   payload: P;
   timestamp: number;
+  tags?: number;
 };
 
 export type GeneratorAction<T = AnyAction> = Generator<

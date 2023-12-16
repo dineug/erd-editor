@@ -4,6 +4,7 @@ import {
   html,
   observable,
   onMounted,
+  Ref,
   ref,
   repeat,
   watch,
@@ -11,7 +12,7 @@ import {
 import { arrayHas } from '@dineug/shared';
 import { isEmpty } from 'lodash-es';
 
-import { useAppContext } from '@/components/appContext';
+import { AppContext, useAppContext } from '@/components/appContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import HighlightedText from '@/components/primitives/highlighted-text/HighlightedText';
 import Kbd from '@/components/primitives/kbd/Kbd';
@@ -23,6 +24,7 @@ import { lastCursorFocus } from '@/utils/focus';
 import * as styles from './ColumnDataType.styles';
 
 export type ColumnDataTypeProps = {
+  app: Ref<AppContext>;
   tableId: string;
   columnId: string;
   edit: boolean;
@@ -49,7 +51,7 @@ const hasAutocompleteKey = arrayHas([
 ]);
 
 const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
-  const app = useAppContext(ctx);
+  const app = useAppContext(ctx, props.app?.value);
   const state = observable<State>({
     hints: [],
     index: -1,

@@ -27,6 +27,8 @@ export const isNill = (value: any): value is null | undefined =>
 export const { isArray } = Array;
 export const isObject = <T = any>(value: any): value is T =>
   isObjectRaw(value) && !isNull(value) && !isArray(value);
+export const isInteger = (value: any): value is number =>
+  Number.isInteger(value);
 
 export const isPrimitive = (value: any) =>
   isBigint(value) ||

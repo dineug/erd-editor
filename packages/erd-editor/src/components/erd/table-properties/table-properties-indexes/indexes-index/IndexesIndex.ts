@@ -10,6 +10,7 @@ import {
   removeIndexAction,
 } from '@/engine/modules/index/atom.actions';
 import { changeIndexUniqueAction$ } from '@/engine/modules/index/generator.actions';
+import { attachSharedTag$ } from '@/engine/tag';
 import { Index } from '@/internal-types';
 
 import * as styles from './IndexesIndex.styles';
@@ -32,12 +33,12 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
     props.onSelect(null);
 
     const { store } = app.value;
-    store.dispatch(removeIndexAction({ id: props.index.id }));
+    store.dispatch(attachSharedTag$(removeIndexAction({ id: props.index.id })));
   };
 
   const handleChangeUniqueIndex = () => {
     const { store } = app.value;
-    store.dispatch(changeIndexUniqueAction$(props.index.id));
+    store.dispatch(attachSharedTag$(changeIndexUniqueAction$(props.index.id)));
   };
 
   const handleChangeIndexName = (event: InputEvent) => {
@@ -46,11 +47,13 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
 
     const { store } = app.value;
     store.dispatch(
-      changeIndexNameAction({
-        id: props.index.id,
-        tableId: props.index.tableId,
-        value: input.value,
-      })
+      attachSharedTag$(
+        changeIndexNameAction({
+          id: props.index.id,
+          tableId: props.index.tableId,
+          value: input.value,
+        })
+      )
     );
   };
 

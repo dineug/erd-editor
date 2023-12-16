@@ -18,10 +18,12 @@ import { changeHasHistoryAction } from '@/engine/modules/editor/atom.actions';
 import {
   actionsFilter,
   groupByStreamActions,
+  ignoreTagFilter,
   notEmptyActions,
 } from '@/engine/rx-operators';
 import { createStore, Store } from '@/engine/store';
 import { createHooks } from '@/engine/store.hooks';
+import { Tag } from '@/engine/tag';
 
 export type RxStore = Store & {
   undo: () => void;
@@ -43,6 +45,7 @@ export function createRxStore(context: EngineContext): RxStore {
   const dispatch$ = new Subject<Array<AnyAction>>();
   const history$ = dispatch$.pipe(
     actionsFilter(HistoryActionTypes),
+    ignoreTagFilter(Tag.shared),
     groupByStreamActions(StreamActionTypes)
   );
   const change$ = new Observable<Array<AnyAction>>(subscriber =>
