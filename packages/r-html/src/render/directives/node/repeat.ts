@@ -56,13 +56,13 @@ export const repeat = createNodeDirective<RepeatFn>(
             to === 0
               ? insertAfterNode(node, startNode)
               : parts.length
-              ? insertAfterNode(
-                  node,
-                  arrayLike[to - 1]
-                    ? arrayLike[to - 1].endNode
-                    : parts[to - 1].endNode
-                )
-              : insertBeforeNode(node, endNode);
+                ? insertAfterNode(
+                    node,
+                    arrayLike[to - 1]
+                      ? arrayLike[to - 1].endNode
+                      : parts[to - 1].endNode
+                  )
+                : insertBeforeNode(node, endNode);
 
             arrayLike[to] = new ItemPart(
               node,

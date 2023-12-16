@@ -15,8 +15,8 @@ const safeToString = (value: any) =>
   isPrimitive(value) && !isNull(value) && !isUndefined(value)
     ? String(value)
     : isCSSTemplateLiterals(value)
-    ? `.${String(value)}`
-    : '';
+      ? `.${String(value)}`
+      : '';
 
 const createCombine =
   (values: any[]) =>
@@ -100,8 +100,8 @@ export class RCNode {
     return this.value
       ? this.value
       : isSelector
-      ? `.${getStyleToIdentifier(this.style)}`
-      : getStyleToIdentifier(this.style);
+        ? `.${getStyleToIdentifier(this.style)}`
+        : getStyleToIdentifier(this.style);
   }
 
   *iterParent(): Generator<RCNode, RCNode | undefined> {

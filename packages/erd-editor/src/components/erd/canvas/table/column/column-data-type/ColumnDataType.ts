@@ -214,22 +214,21 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
               ${repeat(
                 state.hints,
                 hint => hint.name,
-                (hint, index) =>
-                  html`
-                    <div
-                      class=${[
-                        styles.hintItem,
-                        { selected: index === state.index },
-                      ]}
-                      @click=${() => handleSelectHint(index)}
-                    >
-                      <${HighlightedText}
-                        searchWords=${[props.value]}
-                        textToHighlight=${hint.name}
-                      />
-                      <${Kbd} mini=${true} shortcut="Tab" />
-                    </div>
-                  `
+                (hint, index) => html`
+                  <div
+                    class=${[
+                      styles.hintItem,
+                      { selected: index === state.index },
+                    ]}
+                    @click=${() => handleSelectHint(index)}
+                  >
+                    <${HighlightedText}
+                      searchWords=${[props.value]}
+                      textToHighlight=${hint.name}
+                    />
+                    <${Kbd} mini=${true} shortcut="Tab" />
+                  </div>
+                `
               )}
             </div>
           `

@@ -15,15 +15,18 @@ export const groupByStreamActions = (
     new Observable<Array<AnyAction>>(subscriber =>
       source$.subscribe({
         next: actions => {
-          const group = actions.reduce((acc, action) => {
-            const type = has(action.type) ? action.type : NONE_STREAM_KEY;
-            if (!acc[type]) {
-              acc[type] = [];
-            }
+          const group = actions.reduce(
+            (acc, action) => {
+              const type = has(action.type) ? action.type : NONE_STREAM_KEY;
+              if (!acc[type]) {
+                acc[type] = [];
+              }
 
-            acc[type].push(action);
-            return acc;
-          }, {} as Record<string, Array<AnyAction>>);
+              acc[type].push(action);
+              return acc;
+            },
+            {} as Record<string, Array<AnyAction>>
+          );
 
           Object.values(group).forEach(actions => subscriber.next(actions));
         },

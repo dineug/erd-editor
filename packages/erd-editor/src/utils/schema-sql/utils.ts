@@ -44,7 +44,7 @@ export interface KeyColumn {
 export function formatNames<
   T extends {
     name: string;
-  }
+  },
 >(list: T[], backtick?: string, backtick2?: string): string {
   const buf: string[] = [];
   list.forEach((v, i) => {

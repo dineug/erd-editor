@@ -12,10 +12,9 @@ const SwitchTemplate: FC<SwitchProps> = (props, ctx) => {
     state.value = value;
   };
 
-  return () =>
-    html`
-      <${Switch} ...${props} value=${state.value} .onChange=${handleChange} />
-    `;
+  return () => html`
+    <${Switch} ...${props} value=${state.value} .onChange=${handleChange} />
+  `;
 };
 
 const meta = {

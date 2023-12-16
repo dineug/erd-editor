@@ -16,17 +16,16 @@ type ThemeProviderProps = {
   story: any;
 };
 
-const ThemeProvider: FC<ThemeProviderProps> = props => () =>
-  html`
-    <${GlobalStyles} />
-    <${Theme}
-      .theme=${createTheme({
-        grayColor: props.grayColor,
-        accentColor: props.accentColor,
-        appearance: props.appearance,
-      })}
-    />
-    ${props.story}
-  `;
+const ThemeProvider: FC<ThemeProviderProps> = props => () => html`
+  <${GlobalStyles} />
+  <${Theme}
+    .theme=${createTheme({
+      grayColor: props.grayColor,
+      accentColor: props.accentColor,
+      appearance: props.appearance,
+    })}
+  />
+  ${props.story}
+`;
 
 export default ThemeProvider;

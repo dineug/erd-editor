@@ -71,16 +71,15 @@ const ToastContainer: FC<ToastContainerProps> = (props, ctx) => {
         ${repeat(
           toasts,
           toast => toast.id,
-          toast =>
-            html`
-              <div
-                class="toast-container"
-                ?data-animation-one=${animationOne.has(toast.id)}
-                @animationend=${() => handleAnimationend(toast.id)}
-              >
-                ${toast.message}
-              </div>
-            `
+          toast => html`
+            <div
+              class="toast-container"
+              ?data-animation-one=${animationOne.has(toast.id)}
+              @animationend=${() => handleAnimationend(toast.id)}
+            >
+              ${toast.message}
+            </div>
+          `
         )}
       </div>
     `;

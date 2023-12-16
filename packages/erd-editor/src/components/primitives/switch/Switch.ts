@@ -13,20 +13,19 @@ const Switch: FC<SwitchProps> = (props, ctx) => {
     props.onChange(!props.value);
   };
 
-  return () =>
-    html`
-      <button
-        class=${[
-          styles.switchButton,
-          Reflect.get(styles, `size${props.size ?? '2'}`),
-        ]}
-        type="button"
-        data-checked=${props.value}
-        @click=${handleChange}
-      >
-        <span class=${styles.switchThumb} ?data-checked=${props.value}></span>
-      </button>
-    `;
+  return () => html`
+    <button
+      class=${[
+        styles.switchButton,
+        Reflect.get(styles, `size${props.size ?? '2'}`),
+      ]}
+      type="button"
+      data-checked=${props.value}
+      @click=${handleChange}
+    >
+      <span class=${styles.switchThumb} ?data-checked=${props.value}></span>
+    </button>
+  `;
 };
 
 export default Switch;

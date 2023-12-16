@@ -9,8 +9,8 @@ export type ContextMenuContentProps = {
   children?: DOMTemplateLiterals;
 };
 
-const ContextMenuContent: FC<ContextMenuContentProps> = (props, ctx) => () =>
-  html`
+const ContextMenuContent: FC<ContextMenuContentProps> =
+  (props, ctx) => () => html`
     <div
       class=${['context-menu-content', styles.content]}
       style=${{ left: `${props.x}px`, top: `${props.y}px` }}

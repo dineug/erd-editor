@@ -53,14 +53,13 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
         ${repeat(
           indexes,
           index => index.id,
-          index =>
-            html`
-              <${IndexesIndex}
-                index=${index}
-                selected=${index.id === state.index?.id}
-                .onSelect=${handleSelectIndex}
-              />
-            `
+          index => html`
+            <${IndexesIndex}
+              index=${index}
+              selected=${index.id === state.index?.id}
+              .onSelect=${handleSelectIndex}
+            />
+          `
         )}
         <div
           class=${styles.addIndexButtonArea}

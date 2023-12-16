@@ -11,7 +11,10 @@ class Query {
 }
 
 class CollectionQuery<K extends keyof Collections> {
-  constructor(private collection: GetEntities<K>, private collectionKey: K) {}
+  constructor(
+    private collection: GetEntities<K>,
+    private collectionKey: K
+  ) {}
 
   selectById(id: string): GetEntity<K> | undefined {
     return this.collection[id] as GetEntity<K> | undefined;

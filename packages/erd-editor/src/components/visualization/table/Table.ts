@@ -76,17 +76,16 @@ const Table: FC<TableProps> = (props, ctx) => {
           ${repeat(
             columns,
             column => column.id,
-            column =>
-              html`
-                <${Column}
-                  column=${column}
-                  selected=${column.id === columnId}
-                  widthName=${tableWidths.name}
-                  widthDataType=${tableWidths.dataType}
-                  widthDefault=${tableWidths.default}
-                  widthComment=${tableWidths.comment}
-                />
-              `
+            column => html`
+              <${Column}
+                column=${column}
+                selected=${column.id === columnId}
+                widthName=${tableWidths.name}
+                widthDataType=${tableWidths.dataType}
+                widthDefault=${tableWidths.default}
+                widthComment=${tableWidths.comment}
+              />
+            `
           )}
         </div>
       </div>

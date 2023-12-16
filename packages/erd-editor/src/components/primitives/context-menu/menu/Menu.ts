@@ -8,15 +8,14 @@ export type MenuProps = {
   right?: DOMTemplateLiterals | string;
 };
 
-const Menu: FC<MenuProps> = (props, ctx) => () =>
-  html`
-    <div class=${styles.menu}>
-      <div class=${styles.icon}>${props.icon}</div>
-      <div>${props.name}</div>
-      ${props.right
-        ? html`<div class=${styles.right}>${props.right}</div>`
-        : null}
-    </div>
-  `;
+const Menu: FC<MenuProps> = (props, ctx) => () => html`
+  <div class=${styles.menu}>
+    <div class=${styles.icon}>${props.icon}</div>
+    <div>${props.name}</div>
+    ${props.right
+      ? html`<div class=${styles.right}>${props.right}</div>`
+      : null}
+  </div>
+`;
 
 export default Menu;

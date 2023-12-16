@@ -105,24 +105,24 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
                   </div>
                 `
               : state.tab === Tab.SchemaSQL
-              ? html`
-                  <div class=${styles.scope}>
-                    <${SchemaSQL}
-                      isDarkMode=${props.isDarkMode}
-                      tableId=${props.tableId}
-                    />
-                  </div>
-                `
-              : state.tab === Tab.GeneratorCode
-              ? html`
-                  <div class=${styles.scope}>
-                    <${GeneratorCode}
-                      isDarkMode=${props.isDarkMode}
-                      tableId=${props.tableId}
-                    />
-                  </div>
-                `
-              : null}
+                ? html`
+                    <div class=${styles.scope}>
+                      <${SchemaSQL}
+                        isDarkMode=${props.isDarkMode}
+                        tableId=${props.tableId}
+                      />
+                    </div>
+                  `
+                : state.tab === Tab.GeneratorCode
+                  ? html`
+                      <div class=${styles.scope}>
+                        <${GeneratorCode}
+                          isDarkMode=${props.isDarkMode}
+                          tableId=${props.tableId}
+                        />
+                      </div>
+                    `
+                  : null}
           </div>
         </div>
       </div>

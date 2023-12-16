@@ -20,8 +20,8 @@ export function addAndSort(ids: string[], seqIds: string[], id: string) {
       return indexA === undefined
         ? 1
         : indexB === undefined
-        ? -1
-        : indexA - indexB;
+          ? -1
+          : indexA - indexB;
     });
   } else {
     ids.push(id);

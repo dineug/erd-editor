@@ -67,27 +67,27 @@ export const getAttrType = (value: string): TAttrType =>
   isMarkerOnly(value)
     ? TAttrType.directive
     : isPrefixSpreadMarker(value)
-    ? TAttrType.spread
-    : isPrefixPropertyMarker(value)
-    ? TAttrType.property
-    : isPrefixEventMarker(value) || isPrefixOnEventMarker(value)
-    ? TAttrType.event
-    : isPrefixBooleanMarker(value)
-    ? TAttrType.boolean
-    : TAttrType.attribute;
+      ? TAttrType.spread
+      : isPrefixPropertyMarker(value)
+        ? TAttrType.property
+        : isPrefixEventMarker(value) || isPrefixOnEventMarker(value)
+          ? TAttrType.event
+          : isPrefixBooleanMarker(value)
+            ? TAttrType.boolean
+            : TAttrType.attribute;
 
 export const getAttrName = (value: string) =>
   isPrefixSpreadMarker(value)
     ? value.substring(3)
     : isMarkerOnly(value)
-    ? value
-    : isPrefixPropertyMarker(value) ||
-      isPrefixEventMarker(value) ||
-      isPrefixBooleanMarker(value)
-    ? (value as string).substring(1)
-    : isPrefixOnEventMarker(value)
-    ? (value as string).substring(2)
-    : value;
+      ? value
+      : isPrefixPropertyMarker(value) ||
+          isPrefixEventMarker(value) ||
+          isPrefixBooleanMarker(value)
+        ? (value as string).substring(1)
+        : isPrefixOnEventMarker(value)
+          ? (value as string).substring(2)
+          : value;
 
 export function getMarkers(value: string): MarkerTuple[] {
   const markers: MarkerTuple[] = [];

@@ -59,9 +59,9 @@ export type DeepPartial<T> = T extends
   | symbol
   ? T | undefined
   : T extends Array<infer ArrayType>
-  ? Array<DeepPartial<ArrayType>>
-  : T extends ReadonlyArray<infer ArrayType>
-  ? ReadonlyArray<ArrayType>
-  : {
-      [K in keyof T]?: DeepPartial<T[K]>;
-    };
+    ? Array<DeepPartial<ArrayType>>
+    : T extends ReadonlyArray<infer ArrayType>
+      ? ReadonlyArray<ArrayType>
+      : {
+          [K in keyof T]?: DeepPartial<T[K]>;
+        };

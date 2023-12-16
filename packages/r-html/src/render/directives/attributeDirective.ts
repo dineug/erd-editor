@@ -15,7 +15,7 @@ export function createAttributeDirective<
   D extends DirectiveCreator<AttributeDirectiveProps, F> = DirectiveCreator<
     AttributeDirectiveProps,
     F
-  >
+  >,
 >(
   f: F,
   directive: D

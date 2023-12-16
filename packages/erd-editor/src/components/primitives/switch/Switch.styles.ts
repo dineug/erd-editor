@@ -95,7 +95,8 @@ export const switchThumb = css`
   background-color: #fff;
   position: relative;
   border-radius: 9999px;
-  transition: transform 0.14s cubic-bezier(0.45, 0.05, 0.55, 0.95),
+  transition:
+    transform 0.14s cubic-bezier(0.45, 0.05, 0.55, 0.95),
     box-shadow 0.14s ease-in-out;
   transform: translateX(1px);
 `;

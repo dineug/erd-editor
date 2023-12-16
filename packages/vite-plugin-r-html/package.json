@@ -23,16 +23,16 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@babel/core": "^7.22.10"
+    "@babel/core": "^7.23.6"
   },
   "devDependencies": {
-    "@rollup/plugin-typescript": "^11.1.2",
-    "@rollup/pluginutils": "^5.0.2",
-    "rollup-plugin-visualizer": "^5.9.2",
-    "ts-patch": "^3.0.2",
-    "typescript": "5.1.6",
+    "@rollup/plugin-typescript": "^11.1.5",
+    "@rollup/pluginutils": "^5.1.0",
+    "rollup-plugin-visualizer": "^5.11.0",
+    "ts-patch": "^3.1.1",
+    "typescript": "5.3.3",
     "typescript-transform-paths": "^3.4.6",
-    "vite": "^4.4.9",
-    "vite-tsconfig-paths": "^4.2.0"
+    "vite": "^5.0.10",
+    "vite-tsconfig-paths": "^4.2.2"
   }
 }

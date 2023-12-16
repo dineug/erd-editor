@@ -28,40 +28,39 @@ export const Icons: Story = {
           `}
         >
           ${Object.values(iconMap).map(
-            icon =>
-              html`
+            icon => html`
+              <div
+                class=${css`
+                  display: inline-flex;
+                  min-width: 200px;
+                  height: 100px;
+                  align-items: center;
+                  justify-content: center;
+                  flex-direction: column;
+                  padding: 20px;
+                  transition: color 0.15s;
+
+                  &:hover {
+                    color: var(--active);
+                    fill: var(--active);
+                  }
+                `}
+              >
+                <${Icon}
+                  prefix=${icon.prefix}
+                  name=${icon.iconName}
+                  size=${24}
+                  useTransition=${true}
+                />
                 <div
                   class=${css`
-                    display: inline-flex;
-                    min-width: 200px;
-                    height: 100px;
-                    align-items: center;
-                    justify-content: center;
-                    flex-direction: column;
-                    padding: 20px;
-                    transition: color 0.15s;
-
-                    &:hover {
-                      color: var(--active);
-                      fill: var(--active);
-                    }
+                    ${typography.paragraph}
                   `}
                 >
-                  <${Icon}
-                    prefix=${icon.prefix}
-                    name=${icon.iconName}
-                    size=${24}
-                    useTransition=${true}
-                  />
-                  <div
-                    class=${css`
-                      ${typography.paragraph}
-                    `}
-                  >
-                    ${icon.prefix}-${icon.iconName}
-                  </div>
+                  ${icon.prefix}-${icon.iconName}
                 </div>
-              `
+              </div>
+            `
           )}
         </div>
       `

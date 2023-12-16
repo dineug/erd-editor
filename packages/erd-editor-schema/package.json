@@ -35,16 +35,16 @@
   },
   "devDependencies": {
     "@dineug/shared": "workspace:*",
-    "@rollup/plugin-typescript": "^11.1.2",
-    "@types/lodash-es": "^4.17.8",
+    "@rollup/plugin-typescript": "^11.1.5",
+    "@types/lodash-es": "^4.17.12",
     "lodash-es": "^4.17.21",
-    "rollup-plugin-visualizer": "^5.9.2",
-    "ts-patch": "^3.0.2",
-    "tslib": "^2.6.1",
+    "rollup-plugin-visualizer": "^5.11.0",
+    "ts-patch": "^3.1.1",
+    "tslib": "^2.6.2",
     "typescript-transform-paths": "^3.4.6",
-    "typescript": "5.1.6",
-    "nanoid": "^5.0.3",
-    "vite-tsconfig-paths": "^4.2.0",
-    "vite": "^4.4.9"
+    "typescript": "5.3.3",
+    "nanoid": "^5.0.4",
+    "vite-tsconfig-paths": "^4.2.2",
+    "vite": "^5.0.10"
   }
 }

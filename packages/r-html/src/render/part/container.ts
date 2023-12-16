@@ -61,8 +61,8 @@ export class ContainerPart implements Part {
     position === 'before'
       ? insertBeforeNode(this.#fragment, refNode)
       : position === 'after'
-      ? insertAfterNode(this.#fragment, refNode)
-      : refNode.appendChild(this.#fragment);
+        ? insertAfterNode(this.#fragment, refNode)
+        : refNode.appendChild(this.#fragment);
     this.#fragment = null;
   }
 

@@ -67,7 +67,7 @@ export interface IconDefinition {
     number, // height
     string[] | undefined, // ligatures
     string | undefined, // unicode
-    string // svgPathData
+    string, // svgPathData
   ];
 }
 

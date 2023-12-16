@@ -7,7 +7,7 @@ export enum DirectiveType {
 
 export type DirectiveTuple<P, F extends DirectiveFunction> = [
   ReturnType<F>,
-  DirectiveCreator<P, F>
+  DirectiveCreator<P, F>,
 ] & {
   [DIRECTIVE]: DirectiveType;
 };
@@ -23,7 +23,7 @@ export type Directive<F extends DirectiveFunction> = (
 export function createDirectiveTuple<
   P,
   F extends DirectiveFunction,
-  D extends DirectiveCreator<P, F>
+  D extends DirectiveCreator<P, F>,
 >(type: DirectiveType, tuple: [ReturnType<F>, D]): DirectiveTuple<P, F> {
   Reflect.set(tuple, DIRECTIVE, type);
   return tuple as unknown as DirectiveTuple<P, F>;

@@ -18,22 +18,20 @@ export type TablePropertiesTabsProps = {
 };
 
 const TablePropertiesTabs: FC<TablePropertiesTabsProps> = (props, ctx) => {
-  return () =>
-    html`
-      <div class=${styles.tabs}>
-        ${tabs.map(
-          tab =>
-            html`
-              <div
-                class=${[styles.tab, { selected: tab === props.value }]}
-                @click=${() => props.onChange(tab as Tab)}
-              >
-                ${tab}
-              </div>
-            `
-        )}
-      </div>
-    `;
+  return () => html`
+    <div class=${styles.tabs}>
+      ${tabs.map(
+        tab => html`
+          <div
+            class=${[styles.tab, { selected: tab === props.value }]}
+            @click=${() => props.onChange(tab as Tab)}
+          >
+            ${tab}
+          </div>
+        `
+      )}
+    </div>
+  `;
 };
 
 export default TablePropertiesTabs;

@@ -203,32 +203,31 @@ const Table: FC<TableProps> = (props, ctx) => {
           ${repeat(
             columns,
             column => column.id,
-            column =>
-              html`
-                <${Column}
-                  app=${app}
-                  column=${column}
-                  selected=${hasSelectColumn(column.id)}
-                  widthName=${tableWidths.name}
-                  widthDataType=${tableWidths.dataType}
-                  widthDefault=${tableWidths.default}
-                  widthComment=${tableWidths.comment}
-                  focusName=${hasFocus(FocusType.columnName, column.id)}
-                  focusDataType=${hasFocus(FocusType.columnDataType, column.id)}
-                  focusNotNull=${hasFocus(FocusType.columnNotNull, column.id)}
-                  focusDefault=${hasFocus(FocusType.columnDefault, column.id)}
-                  focusComment=${hasFocus(FocusType.columnComment, column.id)}
-                  focusUnique=${hasFocus(FocusType.columnUnique, column.id)}
-                  focusAutoIncrement=${hasFocus(
-                    FocusType.columnAutoIncrement,
-                    column.id
-                  )}
-                  editName=${hasEdit(FocusType.columnName, column.id)}
-                  editDataType=${hasEdit(FocusType.columnDataType, column.id)}
-                  editDefault=${hasEdit(FocusType.columnDefault, column.id)}
-                  editComment=${hasEdit(FocusType.columnComment, column.id)}
-                />
-              `
+            column => html`
+              <${Column}
+                app=${app}
+                column=${column}
+                selected=${hasSelectColumn(column.id)}
+                widthName=${tableWidths.name}
+                widthDataType=${tableWidths.dataType}
+                widthDefault=${tableWidths.default}
+                widthComment=${tableWidths.comment}
+                focusName=${hasFocus(FocusType.columnName, column.id)}
+                focusDataType=${hasFocus(FocusType.columnDataType, column.id)}
+                focusNotNull=${hasFocus(FocusType.columnNotNull, column.id)}
+                focusDefault=${hasFocus(FocusType.columnDefault, column.id)}
+                focusComment=${hasFocus(FocusType.columnComment, column.id)}
+                focusUnique=${hasFocus(FocusType.columnUnique, column.id)}
+                focusAutoIncrement=${hasFocus(
+                  FocusType.columnAutoIncrement,
+                  column.id
+                )}
+                editName=${hasEdit(FocusType.columnName, column.id)}
+                editDataType=${hasEdit(FocusType.columnDataType, column.id)}
+                editDefault=${hasEdit(FocusType.columnDefault, column.id)}
+                editComment=${hasEdit(FocusType.columnComment, column.id)}
+              />
+            `
           )}
         </div>
       </div>

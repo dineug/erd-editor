@@ -25,15 +25,14 @@ const SettingsLnb: FC<SettingsLnbProps> = (props, ctx) => {
       <${Separator} space=${12} />
       <div class=${['scrollbar', styles.list]}>
         ${LnbList.map(
-          lnb =>
-            html`
-              <div
-                class=${[styles.item, { selected: lnb === props.value }]}
-                @click=${() => props.onChange(lnb as Lnb)}
-              >
-                ${lnb}
-              </div>
-            `
+          lnb => html`
+            <div
+              class=${[styles.item, { selected: lnb === props.value }]}
+              @click=${() => props.onChange(lnb as Lnb)}
+            >
+              ${lnb}
+            </div>
+          `
         )}
       </div>
     </div>

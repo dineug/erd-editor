@@ -11,11 +11,11 @@ export const createAttrPart = (node: Element, attr: TAttr) =>
   attr.type === TAttrType.attribute
     ? new AttributePart(node, attr)
     : attr.type === TAttrType.boolean
-    ? new BooleanPart(node, attr)
-    : attr.type === TAttrType.event
-    ? new EventPart(node, attr)
-    : attr.type === TAttrType.property
-    ? new PropertyPart(node, attr)
-    : attr.type === TAttrType.spread
-    ? new SpreadPart(node, attr)
-    : new DirectivePart(node, attr);
+      ? new BooleanPart(node, attr)
+      : attr.type === TAttrType.event
+        ? new EventPart(node, attr)
+        : attr.type === TAttrType.property
+          ? new PropertyPart(node, attr)
+          : attr.type === TAttrType.spread
+            ? new SpreadPart(node, attr)
+            : new DirectivePart(node, attr);

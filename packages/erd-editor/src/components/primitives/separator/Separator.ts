@@ -8,23 +8,22 @@ export type SeparatorProps = {
 };
 
 const Separator: FC<SeparatorProps> = (props, ctx) => {
-  return () =>
-    html`
+  return () => html`
+    <div
+      style=${{
+        'padding-left': `${props.padding ?? 0}px`,
+        'padding-right': `${props.padding ?? 0}px`,
+      }}
+    >
       <div
+        class=${[styles.separator, styles.horizontal]}
         style=${{
-          'padding-left': `${props.padding ?? 0}px`,
-          'padding-right': `${props.padding ?? 0}px`,
+          'margin-top': `${props.space ?? 0}px`,
+          'margin-bottom': `${props.space ?? 0}px`,
         }}
-      >
-        <div
-          class=${[styles.separator, styles.horizontal]}
-          style=${{
-            'margin-top': `${props.space ?? 0}px`,
-            'margin-bottom': `${props.space ?? 0}px`,
-          }}
-        ></div>
-      </div>
-    `;
+      ></div>
+    </div>
+  `;
 };
 
 export default Separator;

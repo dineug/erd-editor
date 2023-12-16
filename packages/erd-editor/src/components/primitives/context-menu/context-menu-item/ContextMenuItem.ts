@@ -63,28 +63,27 @@ const ContextMenuItem: FC<ContextMenuItemProps> = (props, ctx) => {
     );
   });
 
-  return () =>
-    html`
-      <div
-        ${ref($div)}
-        class=${[styles.item, { selected: state.selected }]}
-        data-id=${id}
-        @mouseenter=${handleMouseenter}
-        @click=${props.onClick}
-      >
-        ${props.children}
-      </div>
-      ${props.subChildren && state.show
-        ? html`
-            <${ContextMenuContent}
-              id=${id}
-              x=${state.x}
-              y=${state.y}
-              children=${props.subChildren}
-            />
-          `
-        : null}
-    `;
+  return () => html`
+    <div
+      ${ref($div)}
+      class=${[styles.item, { selected: state.selected }]}
+      data-id=${id}
+      @mouseenter=${handleMouseenter}
+      @click=${props.onClick}
+    >
+      ${props.children}
+    </div>
+    ${props.subChildren && state.show
+      ? html`
+          <${ContextMenuContent}
+            id=${id}
+            x=${state.x}
+            y=${state.y}
+            children=${props.subChildren}
+          />
+        `
+      : null}
+  `;
 };
 
 export default ContextMenuItem;

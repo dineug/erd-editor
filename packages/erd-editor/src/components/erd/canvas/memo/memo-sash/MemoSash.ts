@@ -232,15 +232,14 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
 
   return () =>
     html`${createSash(props.top, props.left).map(
-      sashProps =>
-        html`
-          <${Sash}
-            ...${sashProps}
-            .onMousedown=${(event: MouseEvent) => {
-              handleMousedown(event, sashProps.position);
-            }}
-          />
-        `
+      sashProps => html`
+        <${Sash}
+          ...${sashProps}
+          .onMousedown=${(event: MouseEvent) => {
+            handleMousedown(event, sashProps.position);
+          }}
+        />
+      `
     )}`;
 };
 

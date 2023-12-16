@@ -29,8 +29,8 @@ export function calcTableWidths(
       maxWidthComment === -1
         ? table.ui.widthComment
         : maxWidthComment < table.ui.widthComment
-        ? maxWidthComment
-        : table.ui.widthComment;
+          ? maxWidthComment
+          : table.ui.widthComment;
     width += widthComment + INPUT_MARGIN_RIGHT;
   }
 
@@ -136,8 +136,8 @@ function calcMaxWidthColumn(
         maxWidthComment === -1
           ? column.ui.widthComment
           : maxWidthComment < column.ui.widthComment
-          ? maxWidthComment
-          : column.ui.widthComment;
+            ? maxWidthComment
+            : column.ui.widthComment;
       columnWidth.comment = widthComment;
     }
 

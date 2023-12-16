@@ -16,7 +16,7 @@ export function createNodeDirective<
   D extends DirectiveCreator<NodeDirectiveProps, F> = DirectiveCreator<
     NodeDirectiveProps,
     F
-  >
+  >,
 >(
   f: F,
   directive: D

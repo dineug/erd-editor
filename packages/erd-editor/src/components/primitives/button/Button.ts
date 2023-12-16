@@ -10,20 +10,19 @@ export type ButtonProps = {
 };
 
 const Button: FC<ButtonProps> = (props, ctx) => {
-  return () =>
-    html`
-      <button
-        class=${[
-          styles.button,
-          Reflect.get(styles, props.variant ?? 'solid'),
-          Reflect.get(styles, `size${props.size ?? '2'}`),
-        ]}
-        type="button"
-        @click=${props.onClick}
-      >
-        ${props.text}
-      </button>
-    `;
+  return () => html`
+    <button
+      class=${[
+        styles.button,
+        Reflect.get(styles, props.variant ?? 'solid'),
+        Reflect.get(styles, `size${props.size ?? '2'}`),
+      ]}
+      type="button"
+      @click=${props.onClick}
+    >
+      ${props.text}
+    </button>
+  `;
 };
 
 export default Button;

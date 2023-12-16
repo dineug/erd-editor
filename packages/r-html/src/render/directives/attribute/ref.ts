@@ -4,7 +4,7 @@ export interface Ref<T = unknown> {
   value: T;
 }
 
-export const createRef = <T>(value?: T): Ref<T> => ({ value } as Ref<T>);
+export const createRef = <T>(value?: T): Ref<T> => ({ value }) as Ref<T>;
 
 type RefFn = <T>(refObject: Ref<T>) => Ref<T>;
 

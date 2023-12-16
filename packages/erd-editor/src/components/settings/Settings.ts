@@ -221,8 +221,8 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                   </div>
                 `
               : state.lnb === Lnb.shortcuts
-              ? html`<${Shortcuts} />`
-              : null}
+                ? html`<${Shortcuts} />`
+                : null}
           </div>
         </div>
       </div>

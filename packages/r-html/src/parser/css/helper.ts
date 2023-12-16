@@ -7,8 +7,10 @@ type First<T> = T extends [infer U, ...any[]] ? U : any;
 const markerRegexp = new RegExp(`^${MARKER.replace('@@', '')}_\\d+_$`);
 
 const createEqual =
-  (prop: keyof Token) => (type: string) => (tokens: Token[]) => (pos: number) =>
-    tokens[pos] ? tokens[pos][prop] === type : false;
+  (prop: keyof Token) =>
+  (type: string) =>
+  (tokens: Token[]) =>
+  (pos: number) => (tokens[pos] ? tokens[pos][prop] === type : false);
 
 const createTypeEqual = createEqual('type');
 const createValueEqual = createEqual('value');

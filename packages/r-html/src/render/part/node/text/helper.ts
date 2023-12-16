@@ -46,16 +46,16 @@ export const getPartType = (value: any): PartType =>
   isPrimitive(value)
     ? PartType.primitive
     : isTemplateLiterals(value)
-    ? PartType.templateLiterals
-    : isDirective(value)
-    ? PartType.directive
-    : isArray(value)
-    ? PartType.array
-    : isNode(value)
-    ? PartType.node
-    : isFunction(value)
-    ? PartType.function
-    : PartType.object;
+      ? PartType.templateLiterals
+      : isDirective(value)
+        ? PartType.directive
+        : isArray(value)
+          ? PartType.array
+          : isNode(value)
+            ? PartType.node
+            : isFunction(value)
+              ? PartType.function
+              : PartType.object;
 
 const isPartMap: Record<PartType, ReturnType<typeof createInstanceof>> = {
   [PartType.primitive]: isPrimitivePart,

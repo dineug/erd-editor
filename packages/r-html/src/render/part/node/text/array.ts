@@ -42,13 +42,13 @@ export class ArrayPart implements Part {
           to === 0
             ? insertAfterNode(node, this.#startNode)
             : this.#parts.length
-            ? insertAfterNode(
-                node,
-                arrayLike[to - 1]
-                  ? arrayLike[to - 1].endNode
-                  : this.#parts[to - 1].endNode
-              )
-            : insertBeforeNode(node, this.#endNode);
+              ? insertAfterNode(
+                  node,
+                  arrayLike[to - 1]
+                    ? arrayLike[to - 1].endNode
+                    : this.#parts[to - 1].endNode
+                )
+              : insertBeforeNode(node, this.#endNode);
 
           arrayLike[to] = new ItemPart(node, values[to]);
           break;

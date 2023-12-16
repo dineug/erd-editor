@@ -127,12 +127,11 @@ const Shortcuts: FC<ShortcutsProps> = (props, ctx) => {
                 <td>${command}</td>
                 <td>
                   ${shortcuts.map(
-                    ({ shortcut }) =>
-                      html`
-                        <div class=${styles.shortcutGroup}>
-                          <${Kbd} shortcut=${shortcut} />
-                        </div>
-                      `
+                    ({ shortcut }) => html`
+                      <div class=${styles.shortcutGroup}>
+                        <${Kbd} shortcut=${shortcut} />
+                      </div>
+                    `
                   )}
                 </td>
               </tr>

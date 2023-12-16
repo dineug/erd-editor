@@ -34,8 +34,8 @@ export const getPropNames = (
   isArray(observedProps)
     ? observedProps
     : isUndefined(observedProps)
-    ? []
-    : Object.keys(observedProps);
+      ? []
+      : Object.keys(observedProps);
 
 export const getDefaultProps = (
   observedProps: Options['observedProps']
@@ -57,10 +57,10 @@ export const getDefaultProps = (
           return isObject<PropOptions>(value)
             ? [name, Reflect.get(value, 'default')]
             : value === Number
-            ? [name, 0]
-            : value === Boolean
-            ? [name, false]
-            : [name, ''];
+              ? [name, 0]
+              : value === Boolean
+                ? [name, false]
+                : [name, ''];
         });
 
 export const getPropTypes = (
@@ -91,8 +91,8 @@ export const closestElement = (
   !el || el === document || el === window
     ? null
     : target
-    ? target
-    : closestElement(selector, el.getRootNode().host);
+      ? target
+      : closestElement(selector, el.getRootNode().host);
 
 export const queryShadowSelector = (selectors: string[], el: Element) =>
   selectors.length

@@ -164,15 +164,14 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     handleClose();
   }
 
-  return () =>
-    html`
-      <div class=${styles.root}>
-        <div class=${styles.container}>
-          <${Canvas} root=${props.root} canvas=${canvas} />
-          <${Minimap} />
-        </div>
+  return () => html`
+    <div class=${styles.root}>
+      <div class=${styles.container}>
+        <${Canvas} root=${props.root} canvas=${canvas} />
+        <${Minimap} />
       </div>
-    `;
+    </div>
+  `;
 };
 
 export default AutomaticTablePlacement;

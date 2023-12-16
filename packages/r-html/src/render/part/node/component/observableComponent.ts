@@ -75,10 +75,10 @@ export class ObservableComponentPart implements Part {
       attr.type === TAttrType.directive
         ? this.#directiveAttrs.push(attr)
         : attr.type === TAttrType.spread
-        ? parts.push(new SpreadPart(this.#props, attr))
-        : attr.type === TAttrType.event
-        ? parts.push(new EventPart(this.#eventBus, attr))
-        : parts.push(new PropPart(this.#props, attr));
+          ? parts.push(new SpreadPart(this.#props, attr))
+          : attr.type === TAttrType.event
+            ? parts.push(new EventPart(this.#eventBus, attr))
+            : parts.push(new PropPart(this.#props, attr));
     });
   }
 

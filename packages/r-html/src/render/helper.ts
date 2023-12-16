@@ -11,7 +11,7 @@ import { TAttr, TNode } from '@/template/tNode';
 
 type EventTuple = [
   Function,
-  undefined | boolean | AddEventListenerOptions | EventListenerOptions
+  undefined | boolean | AddEventListenerOptions | EventListenerOptions,
 ];
 
 const createElement = (name: string, isSvg = false) =>
@@ -26,8 +26,8 @@ export const createNode = (
   type === VNodeType.element
     ? createElement(value, isSvg)
     : type === VNodeType.text
-    ? document.createTextNode(value)
-    : document.createComment(value);
+      ? document.createTextNode(value)
+      : document.createComment(value);
 
 export const isTruthy = (value?: string | null) =>
   Boolean(value) && value !== 'false';
