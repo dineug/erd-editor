@@ -29,7 +29,7 @@ export type RxStore = Store & {
   change$: Observable<Array<AnyAction>>;
 };
 
-const HISTORY_LIMIT = 2000;
+const HISTORY_LIMIT = 2048;
 
 export function createRxStore(context: EngineContext): RxStore {
   const subscriptions: Subscription[] = [];

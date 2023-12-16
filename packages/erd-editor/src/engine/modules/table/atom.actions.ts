@@ -16,11 +16,9 @@ const addTable: ReducerType<typeof ActionType.addTable> = (
   { doc, collections, lww },
   { payload: { id, ui }, timestamp }
 ) => {
-  const table = createTable({ id, ui });
-
   query(collections)
     .collection('tableEntities')
-    .addOne(table)
+    .addOne(createTable({ id, ui }))
     .addOperator(lww, timestamp, id, () => {
       if (!arrayHas(doc.tableIds)(id)) {
         doc.tableIds.push(id);

@@ -20,11 +20,10 @@ const addColumn: ReducerType<typeof ActionType.addColumn> = (
 ) => {
   const tableCollection = query(collections).collection('tableEntities');
   const table = tableCollection.getOrCreate(tableId, id => createTable({ id }));
-  const column = createColumn({ id, tableId });
 
   query(collections)
     .collection('tableColumnEntities')
-    .addOne(column)
+    .addOne(createColumn({ id, tableId }))
     .addOperator(lww, timestamp, id, () => {
       if (!arrayHas(table.columnIds)(id)) {
         tableCollection.updateOne(tableId, table => {

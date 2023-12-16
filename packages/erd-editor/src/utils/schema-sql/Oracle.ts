@@ -21,6 +21,7 @@ import {
   orderByNameASC,
   primaryKey,
   primaryKeyColumns,
+  toOrderName,
   unique,
   uniqueColumns,
 } from './utils';
@@ -288,10 +289,12 @@ export function formatIndex(
     .map(indexColumn => {
       const column = query(collections)
         .collection('tableColumnEntities')
-        .selectById(indexColumn.id);
+        .selectById(indexColumn.columnId);
       if (column) {
         return {
-          name: `${bracket}${column.name}${bracket} ${indexColumn.orderType}`,
+          name: `${bracket}${column.name}${bracket} ${toOrderName(
+            indexColumn.orderType
+          )}`,
         };
       }
       return null;

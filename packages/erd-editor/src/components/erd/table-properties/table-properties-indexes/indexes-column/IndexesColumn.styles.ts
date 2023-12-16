@@ -9,6 +9,10 @@ import {
 
 export const root = css`
   padding-top: 12px;
+
+  .index-column-order-move {
+    transition: transform 0.3s;
+  }
 `;
 
 export const row = css`
@@ -27,6 +31,14 @@ export const row = css`
 
   & > .column-col {
     padding: ${COLUMN_PADDING}px ${INPUT_MARGIN_RIGHT}px ${COLUMN_PADDING}px 0;
+  }
+
+  &.none-hover {
+    background-color: transparent;
+  }
+
+  &.draggable {
+    opacity: 0.5;
   }
 `;
 

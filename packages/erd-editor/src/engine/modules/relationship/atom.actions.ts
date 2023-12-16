@@ -14,22 +14,22 @@ const addRelationship: ReducerType<typeof ActionType.addRelationship> = (
   { doc, collections, lww },
   { payload: { id, relationshipType, start, end }, timestamp }
 ) => {
-  const relationship = createRelationship({
-    id,
-    relationshipType,
-    start: {
-      tableId: start.tableId,
-      columnIds: start.columnIds,
-    },
-    end: {
-      tableId: end.tableId,
-      columnIds: end.columnIds,
-    },
-  });
-
   query(collections)
     .collection('relationshipEntities')
-    .addOne(relationship)
+    .addOne(
+      createRelationship({
+        id,
+        relationshipType,
+        start: {
+          tableId: start.tableId,
+          columnIds: start.columnIds,
+        },
+        end: {
+          tableId: end.tableId,
+          columnIds: end.columnIds,
+        },
+      })
+    )
     .addOperator(lww, timestamp, id, () => {
       if (!arrayHas(doc.relationshipIds)(id)) {
         doc.relationshipIds.push(id);

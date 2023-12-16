@@ -67,7 +67,16 @@ export function valuesToDiffItems(values: any[]): DiffValue {
   };
 }
 
-export function difference(oldDiffValue: DiffValue, newDiffValue: DiffValue) {
+type DifferenceOptions = {
+  strict?: boolean;
+};
+
+export function difference(
+  oldDiffValue: DiffValue,
+  newDiffValue: DiffValue,
+  options?: DifferenceOptions
+) {
+  const strict = Boolean(options?.strict);
   const diff: Diff = {
     update: [],
     delete: [],
@@ -87,7 +96,11 @@ export function difference(oldDiffValue: DiffValue, newDiffValue: DiffValue) {
     );
 
     if (to === -1) {
-      updateOldItems.push(oldItem);
+      if (strict) {
+        diff.delete.push({ from });
+      } else {
+        updateOldItems.push(oldItem);
+      }
     } else {
       move.add(to);
       diff.update.push({ action: Action.move, from, to });

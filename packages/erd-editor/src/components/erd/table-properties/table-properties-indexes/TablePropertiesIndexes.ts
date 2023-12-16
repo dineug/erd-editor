@@ -5,7 +5,7 @@ import IndexesIndex from '@/components/erd/table-properties//table-properties-in
 import IndexesCheckboxColumn from '@/components/erd/table-properties/table-properties-indexes/indexes-checkbox-column/IndexesCheckboxColumn';
 import IndexesColumn from '@/components/erd/table-properties/table-properties-indexes/indexes-column/IndexesColumn';
 import Icon from '@/components/primitives/icon/Icon';
-import { useUnmounted } from '@/hooks/useUnmounted';
+import { addIndexAction$ } from '@/engine/modules/index/generator.actions';
 import { Index } from '@/internal-types';
 import { query } from '@/utils/collection/query';
 
@@ -20,7 +20,6 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
   ctx
 ) => {
   const app = useAppContext(ctx);
-  const { addUnsubscribe } = useUnmounted();
 
   const state = observable({
     index: null as Index | null,
@@ -31,8 +30,8 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
   };
 
   const handleAddIndex = () => {
-    // TODO: add index
-    console.log('handleAddIndex');
+    const { store } = app.value;
+    store.dispatch(addIndexAction$(props.tableId));
   };
 
   return () => {

@@ -43,7 +43,9 @@ export const repeat = createNodeDirective<RepeatFn>(
     return ([list, getKey, getResult]) => {
       const newDiffValue = valuesToDiffItems(list, getKey, getResult);
       const values = newDiffValue.values;
-      const diff = difference(partsToDiffItems(parts), newDiffValue);
+      const diff = difference(partsToDiffItems(parts), newDiffValue, {
+        strict: true,
+      });
       const arrayLike: any = { length: values.length };
 
       diff.update.forEach(({ action, from, to }) => {

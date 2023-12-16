@@ -4,6 +4,8 @@ import { cloneDeep } from 'lodash-es';
 
 import { History } from '@/engine/history';
 import { editorPushUndoHistoryMap } from '@/engine/modules/editor/history';
+import { indexPushUndoHistoryMap } from '@/engine/modules/index/history';
+import { indexColumnPushUndoHistoryMap } from '@/engine/modules/index-column/history';
 import {
   memoPushStreamHistoryMap,
   memoPushUndoHistoryMap,
@@ -41,6 +43,8 @@ export const pushUndoHistoryMap: Record<string, PushUndoHistory> = {
   ...memoPushUndoHistoryMap,
   ...settingsPushUndoHistoryMap,
   ...editorPushUndoHistoryMap,
+  ...indexPushUndoHistoryMap,
+  ...indexColumnPushUndoHistoryMap,
 };
 
 export const pushStreamHistoryMap: Record<string, PushStreamHistory> = {

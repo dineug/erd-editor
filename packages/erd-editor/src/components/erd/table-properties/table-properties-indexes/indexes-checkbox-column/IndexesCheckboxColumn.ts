@@ -17,6 +17,10 @@ import {
   ColumnType,
   Show,
 } from '@/constants/schema';
+import {
+  addIndexColumnAction$,
+  removeIndexColumnAction$,
+} from '@/engine/modules/index-column/generator.actions';
 import { Column, Index } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcTableWidths, ColumnWidth } from '@/utils/calcTable';
@@ -26,7 +30,7 @@ import * as styles from './IndexesCheckboxColumn.styles';
 
 export type IndexesCheckboxColumnProps = {
   tableId: string;
-  index: Index | null;
+  index: Index;
 };
 
 type ColumnOrderTpl = {
@@ -151,8 +155,15 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
   };
 
   const handleChangeIndexColumn = (event: InputEvent, column: Column) => {
-    // TODO: change index column
-    console.log('handleChangeIndexColumn', event, column);
+    const input = event.target as HTMLInputElement | null;
+    if (!input) return;
+
+    const { store } = app.value;
+    const action$ = input.checked
+      ? addIndexColumnAction$
+      : removeIndexColumnAction$;
+
+    store.dispatch(action$(props.index.id, column.id));
   };
 
   return () => {

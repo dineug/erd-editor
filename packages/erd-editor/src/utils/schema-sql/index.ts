@@ -66,7 +66,8 @@ export function createSchemaSQLTable(state: RootState, table: Table) {
   const indexNames: Name[] = [];
   const indexes = query(collections)
     .collection('indexEntities')
-    .selectByIds(indexIds);
+    .selectByIds(indexIds)
+    .filter(index => index.tableId === table.id);
 
   switch (database) {
     case Database.MariaDB:

@@ -5,6 +5,11 @@ import ColumnOption from '@/components/erd/canvas/table/column/column-option/Col
 import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { COLUMN_UNIQUE_WIDTH } from '@/constants/layout';
+import {
+  changeIndexNameAction,
+  removeIndexAction,
+} from '@/engine/modules/index/atom.actions';
+import { changeIndexUniqueAction$ } from '@/engine/modules/index/generator.actions';
 import { Index } from '@/internal-types';
 
 import * as styles from './IndexesIndex.styles';
@@ -18,21 +23,35 @@ export type IndexesIndexProps = {
 const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
   const app = useAppContext(ctx);
 
-  const handleRemoveIndex = (event: MouseEvent, index: Index) => {
-    // TODO: remove index
+  const handleSelect = () => {
+    props.onSelect(props.index);
+  };
+
+  const handleRemoveIndex = (event: MouseEvent) => {
     event.stopPropagation();
     props.onSelect(null);
-    console.log('handleRemoveIndex', index);
+
+    const { store } = app.value;
+    store.dispatch(removeIndexAction({ id: props.index.id }));
   };
 
-  const handleChangeUniqueIndex = (index: Index) => {
-    // TODO: change unique index
-    console.log('handleChangeUniqueIndex', index);
+  const handleChangeUniqueIndex = () => {
+    const { store } = app.value;
+    store.dispatch(changeIndexUniqueAction$(props.index.id));
   };
 
-  const handleChangeIndexName = (event: InputEvent, index: Index) => {
-    // TODO: change index name
-    console.log('handleChangeIndexName', event, index);
+  const handleChangeIndexName = (event: InputEvent) => {
+    const input = event.target as HTMLInputElement | null;
+    if (!input) return;
+
+    const { store } = app.value;
+    store.dispatch(
+      changeIndexNameAction({
+        id: props.index.id,
+        tableId: props.index.tableId,
+        value: input.value,
+      })
+    );
   };
 
   return () => {
@@ -41,9 +60,9 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
     return html`
       <div
         class=${[styles.row, { selected: props.selected }]}
-        @click=${() => props.onSelect(index)}
+        @click=${handleSelect}
       >
-        <div class="column-col" @click=${() => handleChangeUniqueIndex(index)}>
+        <div class="column-col" @click=${handleChangeUniqueIndex}>
           <${ColumnOption}
             class=${styles.unique}
             checked=${index.unique}
@@ -57,8 +76,7 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
             class=${styles.input}
             placeholder="name"
             value=${index.name}
-            .onInput=${(event: InputEvent) =>
-              handleChangeIndexName(event, index)}
+            .onInput=${handleChangeIndexName}
           />
         </div>
         <${Icon}
@@ -66,7 +84,7 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
           size=${12}
           name="xmark"
           title="Remove"
-          .onClick=${(event: MouseEvent) => handleRemoveIndex(event, index)}
+          .onClick=${handleRemoveIndex}
         />
       </div>
     `;

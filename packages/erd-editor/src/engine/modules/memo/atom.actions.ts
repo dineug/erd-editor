@@ -15,11 +15,9 @@ const addMemo: ReducerType<typeof ActionType.addMemo> = (
   { doc, collections, lww },
   { payload: { id, ui }, timestamp }
 ) => {
-  const memo = createMemo({ id, ui });
-
   query(collections)
     .collection('memoEntities')
-    .addOne(memo)
+    .addOne(createMemo({ id, ui }))
     .addOperator(lww, timestamp, id, () => {
       if (!arrayHas(doc.memoIds)(id)) {
         doc.memoIds.push(id);

@@ -5,8 +5,10 @@ import {
 import { ActionMap as EditorActionMap } from '@/engine/modules/editor/actions';
 import { actions as editorActions } from '@/engine/modules/editor/atom.actions';
 import { actions$ as editorActions$ } from '@/engine/modules/editor/generator.actions';
+import { ActionMap as IndexActionMap } from '@/engine/modules/index/actions';
 import { actions as indexActions } from '@/engine/modules/index/atom.actions';
 import { actions$ as indexActions$ } from '@/engine/modules/index/generator.actions';
+import { ActionMap as IndexColumnActionMap } from '@/engine/modules/index-column/actions';
 import { actions as indexColumnActions } from '@/engine/modules/index-column/atom.actions';
 import { actions$ as indexColumnActions$ } from '@/engine/modules/index-column/generator.actions';
 import { ActionMap as MemoActionMap } from '@/engine/modules/memo/actions';
@@ -47,7 +49,9 @@ export type RootActionMap = EditorActionMap &
   TableColumnActionMap &
   MemoActionMap &
   RelationshipActionMap &
-  SettingsActionMap;
+  SettingsActionMap &
+  IndexActionMap &
+  IndexColumnActionMap;
 
 export type ActionType = keyof RootActionMap;
 
@@ -70,7 +74,6 @@ export const actions: Actions = Object.freeze({
   ...tableColumnActions$,
 });
 
-// TODO: changeActionTypes
 export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   // table
   'table.add',
@@ -96,7 +99,15 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'relationship.remove',
   'relationship.changeType',
   // index
+  'index.add',
+  'index.remove',
+  'index.changeName',
+  'index.changeUnique',
   // indexColumn
+  'indexColumn.add',
+  'indexColumn.remove',
+  'indexColumn.move',
+  'indexColumn.changeOrderType',
   // memo
   'memo.add',
   'memo.move',

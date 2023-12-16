@@ -11,6 +11,7 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { drawStartAddRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
+import { removeIndexAction } from '@/engine/modules/index/atom.actions';
 import {
   addRelationshipAction,
   removeRelationshipAction,
@@ -59,19 +60,26 @@ export const addTableAction$ = (): GeneratorAction =>
 
 export const removeTableAction$ = (id?: string): GeneratorAction =>
   function* ({
-    doc: { relationshipIds },
+    doc: { relationshipIds, indexIds },
     editor: { selectedMap },
     collections,
   }) {
-    // TODO: valid index
     const relationships = query(collections)
       .collection('relationshipEntities')
       .selectByIds(relationshipIds);
+    const indexes = query(collections)
+      .collection('indexEntities')
+      .selectByIds(indexIds);
 
     if (id) {
       const removeRelationships = relationships.filter(
         ({ start, end }) => start.tableId === id || end.tableId === id
       );
+      const removeIndexes = indexes.filter(({ tableId }) => tableId === id);
+
+      for (const { id } of removeIndexes) {
+        yield removeIndexAction({ id });
+      }
       for (const { id } of removeRelationships) {
         yield removeRelationshipAction({ id });
       }
@@ -87,7 +95,11 @@ export const removeTableAction$ = (id?: string): GeneratorAction =>
     const removeRelationships = relationships.filter(
       ({ start, end }) => hasTableIds(start.tableId) || hasTableIds(end.tableId)
     );
+    const removeIndexes = indexes.filter(({ tableId }) => hasTableIds(tableId));
 
+    for (const { id } of removeIndexes) {
+      yield removeIndexAction({ id });
+    }
     for (const { id } of removeRelationships) {
       yield removeRelationshipAction({ id });
     }

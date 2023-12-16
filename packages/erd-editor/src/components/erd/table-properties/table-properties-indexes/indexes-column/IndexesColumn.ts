@@ -1,12 +1,19 @@
-import { FC, html, repeat } from '@dineug/r-html';
+import { createRef, FC, html, onUpdated, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import ColumnOption from '@/components/erd/canvas/table/column/column-option/ColumnOption';
 import Icon from '@/components/primitives/icon/Icon';
 import { OrderType } from '@/constants/schema';
+import {
+  changeIndexColumnOrderTypeAction$,
+  moveIndexColumnAction$,
+} from '@/engine/modules/index-column/generator.actions';
 import { Index, IndexColumn } from '@/internal-types';
 import { query } from '@/utils/collection/query';
 import { onPrevent } from '@/utils/domEvent';
+import { FlipAnimation } from '@/utils/flipAnimation';
+import { fromShadowDraggable } from '@/utils/rx-operators/fromShadowDraggable';
+import { toOrderName } from '@/utils/schema-sql/utils';
 
 import * as styles from './IndexesColumn.styles';
 
@@ -16,17 +23,12 @@ export type IndexesColumnProps = {
 
 const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
   const app = useAppContext(ctx);
-
-  const toOrderName = (orderType: number) => {
-    switch (orderType) {
-      case OrderType.ASC:
-        return 'ASC';
-      case OrderType.DESC:
-        return 'DESC';
-      default:
-        return '';
-    }
-  };
+  const root = createRef<HTMLDivElement>();
+  const flipAnimation = new FlipAnimation(
+    root,
+    `.${styles.row}`,
+    'index-column-order-move'
+  );
 
   const toOrderTitle = (orderType: number) => {
     switch (orderType) {
@@ -39,15 +41,44 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
     }
   };
 
+  const handleMove = (id: string, targetId: string) => {
+    const { store } = app.value;
+
+    if (id !== targetId) {
+      flipAnimation.snapshot();
+      store.dispatch(moveIndexColumnAction$(id, targetId));
+    }
+  };
+
   const handleDragstart = (event: DragEvent) => {
-    // TODO: change order indexColumn
-    console.log('handleDragstart', event);
+    const $root = root.value;
+    const $target = event.target as HTMLElement | null;
+    if (!$root || !$target) return;
+
+    const id = $target.dataset.id as string;
+    const elements = Array.from<HTMLElement>(
+      $root.querySelectorAll(`.${styles.row}`)
+    );
+    elements.forEach(el => el.classList.add('none-hover'));
+    $target.classList.add('draggable');
+
+    fromShadowDraggable(elements).subscribe({
+      next: targetId => {
+        handleMove(id, targetId);
+      },
+      complete: () => {
+        $target.classList.remove('draggable');
+        elements.forEach(el => el.classList.remove('none-hover'));
+      },
+    });
   };
 
   const handleChangeOrderType = (indexColumn: IndexColumn) => {
-    // TODO: change indexColumn orderType
-    console.log('handleChangeOrderType', indexColumn);
+    const { store } = app.value;
+    store.dispatch(changeIndexColumnOrderTypeAction$(indexColumn.id));
   };
+
+  onUpdated(() => flipAnimation.play());
 
   return () => {
     const { store } = app.value;
@@ -64,7 +95,12 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
       }));
 
     return html`
-      <div class=${styles.root} @dragenter=${onPrevent} @dragover=${onPrevent}>
+      <div
+        class=${styles.root}
+        ${ref(root)}
+        @dragenter=${onPrevent}
+        @dragover=${onPrevent}
+      >
         ${repeat(
           indexColumns,
           indexColumn => indexColumn.id,

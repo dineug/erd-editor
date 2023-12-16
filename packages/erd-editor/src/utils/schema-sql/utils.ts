@@ -1,4 +1,4 @@
-import { BracketTypeMap, ColumnOption } from '@/constants/schema';
+import { BracketTypeMap, ColumnOption, OrderType } from '@/constants/schema';
 import { Column, Index, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
@@ -144,4 +144,15 @@ export function autoName<T extends { id: string; name: string }>(
     return name;
   }
   return autoName(list, id, name.replace(/[0-9]/g, '') + num, num + 1);
+}
+
+export function toOrderName(orderType: number) {
+  switch (orderType) {
+    case OrderType.ASC:
+      return 'ASC';
+    case OrderType.DESC:
+      return 'DESC';
+    default:
+      return '';
+  }
 }
