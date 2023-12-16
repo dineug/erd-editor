@@ -13,6 +13,10 @@
       "path": "packages/erd-editor-shiki-worker"
     },
     {
+      "name": "schema-sql-parser",
+      "path": "packages/schema-sql-parser"
+    },
+    {
       "name": "shared",
       "path": "packages/shared"
     },

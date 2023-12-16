@@ -49,6 +49,7 @@
     "@dineug/erd-editor-shiki-worker": "workspace:*",
     "@dineug/go": "^0.1.7",
     "@dineug/r-html": "workspace:*",
+    "@dineug/schema-sql-parser": "workspace:*",
     "@dineug/shared": "workspace:*",
     "@dineug/vite-plugin-r-html": "workspace:*",
     "@easylogic/colorpicker": "1.10.11",

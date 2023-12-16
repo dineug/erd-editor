@@ -24,35 +24,51 @@ export const isWhiteSpaceToken = createTypeEqual(TokenType.whiteSpace);
 export const isStartCommentValue = createValueEqual('!--');
 export const isEndCommentValue = createValueEqual('--');
 
-export const isStartTag = (tokens: Token[]) => (pos: number) =>
-  isLtToken(tokens)(pos) && isStringToken(tokens)(pos + 1);
+export const isStartTag = (tokens: Token[]) => {
+  const isLt = isLtToken(tokens);
+  const isString = isStringToken(tokens);
+  return (pos: number) => isLt(pos) && isString(pos + 1);
+};
 
-export const isEndTag = (tokens: Token[]) => (pos: number) =>
-  isLtToken(tokens)(pos) &&
-  isSlashToken(tokens)(pos + 1) &&
-  isStringToken(tokens)(pos + 2) &&
-  isGtToken(tokens)(pos + 3);
+export const isEndTag = (tokens: Token[]) => {
+  const isLt = isLtToken(tokens);
+  const isSlash = isSlashToken(tokens);
+  const isString = isStringToken(tokens);
+  const isGt = isGtToken(tokens);
+  return (pos: number) =>
+    isLt(pos) && isSlash(pos + 1) && isString(pos + 2) && isGt(pos + 3);
+};
 
-export const isSkipEndTag = (tokens: Token[]) => (pos: number) =>
-  isLtToken(tokens)(pos) &&
-  isSlashToken(tokens)(pos + 1) &&
-  isSlashToken(tokens)(pos + 2) &&
-  isGtToken(tokens)(pos + 3);
+export const isSkipEndTag = (tokens: Token[]) => {
+  const isLt = isLtToken(tokens);
+  const isSlash = isSlashToken(tokens);
+  const isGt = isGtToken(tokens);
+  return (pos: number) =>
+    isLt(pos) && isSlash(pos + 1) && isSlash(pos + 2) && isGt(pos + 3);
+};
 
-export const isEmptyTag = (tokens: Token[]) => (pos: number) =>
-  isSlashToken(tokens)(pos) && isGtToken(tokens)(pos + 1);
+export const isEmptyTag = (tokens: Token[]) => {
+  const isSlash = isSlashToken(tokens);
+  const isGt = isGtToken(tokens);
+  return (pos: number) => isSlash(pos) && isGt(pos + 1);
+};
 
 export const isEmptyTagName = (name: string) => emptyTagNamesRegexp.test(name);
 
-export const isStartCommentTag = (tokens: Token[]) => (pos: number) =>
-  isLtToken(tokens)(pos) &&
-  isStringToken(tokens)(pos + 1) &&
-  isStartCommentValue(tokens)(pos + 1);
+export const isStartCommentTag = (tokens: Token[]) => {
+  const isLt = isLtToken(tokens);
+  const isString = isStringToken(tokens);
+  const isStartComment = isStartCommentValue(tokens);
+  return (pos: number) =>
+    isLt(pos) && isString(pos + 1) && isStartComment(pos + 1);
+};
 
-export const isEndCommentTag = (tokens: Token[]) => (pos: number) =>
-  isStringToken(tokens)(pos) &&
-  isEndCommentValue(tokens)(pos) &&
-  isGtToken(tokens)(pos + 1);
+export const isEndCommentTag = (tokens: Token[]) => {
+  const isString = isStringToken(tokens);
+  const isEndComment = isEndCommentValue(tokens);
+  const isGt = isGtToken(tokens);
+  return (pos: number) => isString(pos) && isEndComment(pos) && isGt(pos + 1);
+};
 
 const createAdd =
   <K extends keyof Pick<VNode, 'attrs' | 'children'>>(prop: K) =>

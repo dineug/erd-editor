@@ -1,0 +1,38 @@
+{
+  "name": "@dineug/schema-sql-parser",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Permissive schema SQL parser",
+  "type": "module",
+  "main": "./dist/schema-sql-parser.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/schema-sql-parser.js"
+      }
+    }
+  },
+  "files": [
+    "dist/*.js",
+    "dist/**/*.ts"
+  ],
+  "author": "SeungHwan-Lee <dineug2@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "build": "vite build --mode lib",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.5",
+    "rollup-plugin-visualizer": "^5.11.0",
+    "ts-patch": "^3.1.1",
+    "tslib": "^2.6.2",
+    "typescript": "5.3.3",
+    "typescript-transform-paths": "^3.4.6",
+    "vite": "^5.0.10",
+    "vite-tsconfig-paths": "^4.2.2",
+    "vitest": "^1.0.4"
+  }
+}
