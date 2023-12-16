@@ -34,3 +34,8 @@ export const cursor = css`
 export const userSelect = css`
   user-select: none;
 `;
+
+export const ellipsis = css`
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;

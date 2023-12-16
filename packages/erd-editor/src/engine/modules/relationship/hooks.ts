@@ -5,7 +5,10 @@ import { ColumnOption, StartRelationshipType } from '@/constants/schema';
 import type { CO, Hook } from '@/engine/hooks';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
-import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeMaxWidthCommentAction,
+  changeShowAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   changeTableCommentAction,
   changeTableNameAction,
@@ -121,6 +124,7 @@ export const hooks: Hook[] = [
   [
     [
       changeShowAction,
+      changeMaxWidthCommentAction,
       addRelationshipAction,
       moveMemoAction,
       moveTableAction,

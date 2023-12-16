@@ -17,6 +17,7 @@ export type Settings = {
   relationshipDataTypeSync: boolean;
   relationshipOptimization: boolean;
   columnOrder: number[];
+  maxWidthComment: number;
 };
 
 export const CanvasType = {

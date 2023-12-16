@@ -19,7 +19,6 @@ import {
   actionsFilter,
   groupByStreamActions,
   ignoreTagFilter,
-  notEmptyActions,
 } from '@/engine/rx-operators';
 import { createStore, Store } from '@/engine/store';
 import { createHooks } from '@/engine/store.hooks';
@@ -50,7 +49,7 @@ export function createRxStore(context: EngineContext): RxStore {
   );
   const change$ = new Observable<Array<AnyAction>>(subscriber =>
     store.subscribe(actions => subscriber.next(actions))
-  ).pipe(actionsFilter(ChangeActionTypes), notEmptyActions, debounceTime(200));
+  ).pipe(actionsFilter(ChangeActionTypes), debounceTime(200));
 
   const dispatchSync = (...compositionActions: CompositionActions) => {
     dispatch$.next(

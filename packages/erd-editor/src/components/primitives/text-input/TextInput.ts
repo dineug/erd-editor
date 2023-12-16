@@ -8,6 +8,7 @@ export type TextInputProps = {
   title?: string;
   placeholder?: string;
   readonly?: boolean;
+  disabled?: boolean;
   width?: number;
   value: string;
   numberOnly?: boolean;
@@ -29,6 +30,7 @@ const TextInput: FC<TextInputProps> = (props, ctx) => {
       type="text"
       spellcheck="false"
       ?readonly=${props.readonly}
+      ?disabled=${props.disabled}
       .value=${props.value ?? ''}
       @input=${props.numberOnly ? onNumberOnly : null}
       @input=${props.onInput}

@@ -21,6 +21,7 @@ export const ActionType = {
   changeRelationshipDataTypeSync: 'settings.changeRelationshipDataTypeSync',
   changeRelationshipOptimization: 'settings.changeRelationshipOptimization',
   changeColumnOrder: 'settings.changeColumnOrder',
+  changeMaxWidthComment: 'settings.changeMaxWidthComment',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -77,6 +78,9 @@ export type ActionMap = {
   [ActionType.changeColumnOrder]: {
     value: number;
     target: number;
+  };
+  [ActionType.changeMaxWidthComment]: {
+    value: number;
   };
 };
 

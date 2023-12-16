@@ -57,6 +57,12 @@ textarea::placeholder {
   opacity: 1;
 }
 
+input:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }

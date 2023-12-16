@@ -118,7 +118,9 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
             ...${restAttrs({ title: props.title })}
             ?data-focus-border-bottom=${isFocus}
           >
-            ${props.value.trim() ? props.value : props.placeholder}
+            <span class=${styles.ellipsis}>
+              ${props.value.trim() ? props.value : props.placeholder}
+            </span>
           </div>
         `;
   };

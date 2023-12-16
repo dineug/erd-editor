@@ -194,6 +194,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                     }}
                   >
                     <${EditInput}
+                      title=${column.comment}
                       placeholder="comment"
                       width=${widthComment}
                       value=${column.comment}

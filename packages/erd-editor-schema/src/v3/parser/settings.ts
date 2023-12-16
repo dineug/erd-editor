@@ -65,10 +65,12 @@ const createSettings = (): Settings => ({
     ColumnType.columnDefault,
     ColumnType.columnComment,
   ],
+  maxWidthComment: -1,
 });
 
 const sizeInRange = createInRange(CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
 const zoomInRange = createInRange(CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
+const maxWidthCommentInRange = createInRange(60, 200);
 
 export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   const settings = createSettings();
@@ -86,6 +88,9 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   }
   if (isNumber(json.zoomLevel)) {
     settings.zoomLevel = zoomInRange(json.zoomLevel);
+  }
+  if (isNumber(json.maxWidthComment) && json.maxWidthComment !== -1) {
+    settings.maxWidthComment = maxWidthCommentInRange(json.maxWidthComment);
   }
 
   assignNumber('scrollTop');

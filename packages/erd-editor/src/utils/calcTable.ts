@@ -21,11 +21,17 @@ import { textInRange } from '@/utils/validation';
 
 export function calcTableWidths(
   table: Table,
-  { settings: { show }, collections }: RootState
+  { settings: { show, maxWidthComment }, collections }: RootState
 ): ColumnWidth {
   let width = table.ui.widthName + INPUT_MARGIN_RIGHT;
   if (bHas(show, Show.tableComment)) {
-    width += table.ui.widthComment + INPUT_MARGIN_RIGHT;
+    const widthComment =
+      maxWidthComment === -1
+        ? table.ui.widthComment
+        : maxWidthComment < table.ui.widthComment
+        ? maxWidthComment
+        : table.ui.widthComment;
+    width += widthComment + INPUT_MARGIN_RIGHT;
   }
 
   const defaultWidthColumns = calcDefaultWidthColumns(show);
@@ -37,7 +43,7 @@ export function calcTableWidths(
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
 
-  const maxWidthColumn = calcMaxWidthColumn(columns, show);
+  const maxWidthColumn = calcMaxWidthColumn(columns, show, maxWidthComment);
   if (width < maxWidthColumn.width) {
     width = maxWidthColumn.width;
   }
@@ -101,7 +107,11 @@ export type ColumnWidth = {
   unique: number;
 };
 
-function calcMaxWidthColumn(columns: Column[], show: number): ColumnWidth {
+function calcMaxWidthColumn(
+  columns: Column[],
+  show: number,
+  maxWidthComment: number
+): ColumnWidth {
   const columnWidth: ColumnWidth = {
     width: 0,
     name: 0,
@@ -122,7 +132,13 @@ function calcMaxWidthColumn(columns: Column[], show: number): ColumnWidth {
       bHas(show, Show.columnComment) &&
       columnWidth.comment < column.ui.widthComment
     ) {
-      columnWidth.comment = column.ui.widthComment;
+      const widthComment =
+        maxWidthComment === -1
+          ? column.ui.widthComment
+          : maxWidthComment < column.ui.widthComment
+          ? maxWidthComment
+          : column.ui.widthComment;
+      columnWidth.comment = widthComment;
     }
 
     if (

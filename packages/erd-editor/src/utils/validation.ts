@@ -24,6 +24,8 @@ const canvasInRange = createInRange(CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
 
 const zoomInRange = createInRange(CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
 
+export const maxWidthCommentInRange = createInRange(COLUMN_MIN_WIDTH, 200);
+
 export function canvasSizeInRange(size: number | string) {
   const value = isString(size) ? Number(toNumString(size)) : size;
   return canvasInRange(value);
@@ -31,6 +33,11 @@ export function canvasSizeInRange(size: number | string) {
 
 export function zoomLevelInRange(zoom: number) {
   return round(zoomInRange(zoom), 2);
+}
+
+export function toMaxWidthCommentFormat(width: number) {
+  const value = isString(width) ? Number(toNumString(width)) : width;
+  return `${maxWidthCommentInRange(value)}px`;
 }
 
 export function toZoomFormat(zoomLevel: number) {

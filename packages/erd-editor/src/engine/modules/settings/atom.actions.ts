@@ -9,6 +9,7 @@ import {
   hasDatabase,
   hasLanguage,
   hasNameCase,
+  maxWidthCommentInRange,
   zoomLevelInRange,
 } from '@/utils/validation';
 
@@ -225,6 +226,17 @@ const changeColumnOrder: ReducerType<typeof ActionType.changeColumnOrder> = (
   settings.columnOrder.splice(targetIndex, 0, value);
 };
 
+export const changeMaxWidthCommentAction = createAction<
+  ActionMap[typeof ActionType.changeMaxWidthComment]
+>(ActionType.changeMaxWidthComment);
+
+const changeMaxWidthComment: ReducerType<
+  typeof ActionType.changeMaxWidthComment
+> = ({ settings }, { payload: { value } }) => {
+  settings.maxWidthComment =
+    value === -1 ? value : maxWidthCommentInRange(value);
+};
+
 export const settingsReducers = {
   [ActionType.changeDatabaseName]: changeDatabaseName,
   [ActionType.resize]: resize,
@@ -242,6 +254,7 @@ export const settingsReducers = {
   [ActionType.changeRelationshipDataTypeSync]: changeRelationshipDataTypeSync,
   [ActionType.changeRelationshipOptimization]: changeRelationshipOptimization,
   [ActionType.changeColumnOrder]: changeColumnOrder,
+  [ActionType.changeMaxWidthComment]: changeMaxWidthComment,
 };
 
 export const actions = {
@@ -261,4 +274,5 @@ export const actions = {
   changeRelationshipDataTypeSyncAction,
   changeRelationshipOptimizationAction,
   changeColumnOrderAction,
+  changeMaxWidthCommentAction,
 };

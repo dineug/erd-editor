@@ -15,14 +15,17 @@ import Menu from '@/components/primitives/context-menu/menu/Menu';
 import Icon from '@/components/primitives/icon/Icon';
 import Separator from '@/components/primitives/separator/Separator';
 import Switch from '@/components/primitives/switch/Switch';
+import TextInput from '@/components/primitives/text-input/TextInput';
 import Toast from '@/components/primitives/toast/Toast';
 import SettingsLnb, {
   Lnb,
 } from '@/components/settings/settings-lnb/SettingsLnb';
 import Shortcuts from '@/components/settings/shortcuts/Shortcuts';
+import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { ColumnTypeToName } from '@/constants/schema';
 import {
   changeColumnOrderAction,
+  changeMaxWidthCommentAction,
   changeRelationshipDataTypeSyncAction,
 } from '@/engine/modules/settings/atom.actions';
 import { fontSize6 } from '@/styles/typography.styles';
@@ -32,6 +35,11 @@ import { relationshipSort } from '@/utils/draw-relationship/sort';
 import { openToastAction } from '@/utils/emitter';
 import { FlipAnimation } from '@/utils/flipAnimation';
 import { fromShadowDraggable } from '@/utils/rx-operators/fromShadowDraggable';
+import {
+  maxWidthCommentInRange,
+  toMaxWidthCommentFormat,
+  toNumString,
+} from '@/utils/validation';
 
 import * as styles from './Settings.styles';
 
@@ -105,9 +113,29 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
     state.lnb = value;
   };
 
+  const handleSwitchMaxWidthComment = (checked: boolean) => {
+    const { store } = app.value;
+    store.dispatch(
+      changeMaxWidthCommentAction({ value: checked ? COLUMN_MIN_WIDTH : -1 })
+    );
+  };
+
+  const handleChangeMaxWidthComment = (event: Event) => {
+    const el = event.target as HTMLInputElement | null;
+    if (!el) return;
+
+    const maxWidthComment = maxWidthCommentInRange(
+      Number(toNumString(el.value))
+    );
+    const { store } = app.value;
+    el.value = toMaxWidthCommentFormat(maxWidthComment);
+    store.dispatch(changeMaxWidthCommentAction({ value: maxWidthComment }));
+  };
+
   return () => {
     const { store } = app.value;
     const { settings } = store.state;
+    const maxWidthCommentDisabled = settings.maxWidthComment === -1;
 
     return html`
       <div class=${styles.root} ${ref(root)}>
@@ -127,6 +155,26 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                       <${Switch}
                         value=${settings.relationshipDataTypeSync}
                         .onChange=${handleChangeRelationshipDataTypeSync}
+                      />
+                    </div>
+                    <div class=${styles.row}>
+                      <div>Maximum comment width</div>
+                      <div class=${styles.vertical(16)}></div>
+                      <${Switch}
+                        value=${!maxWidthCommentDisabled}
+                        .onChange=${handleSwitchMaxWidthComment}
+                      />
+                      <div class=${styles.vertical(8)}></div>
+                      <${TextInput}
+                        title="Maximum comment width"
+                        placeholder="Maximum comment width"
+                        width=${45}
+                        value=${maxWidthCommentDisabled
+                          ? toMaxWidthCommentFormat(COLUMN_MIN_WIDTH)
+                          : toMaxWidthCommentFormat(settings.maxWidthComment)}
+                        disabled=${maxWidthCommentDisabled}
+                        numberOnly=${true}
+                        .onChange=${handleChangeMaxWidthComment}
                       />
                     </div>
                     <div class=${styles.row}>
