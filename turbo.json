@@ -3,6 +3,9 @@
   "pipeline": {
     "build": {
       "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["build"]
     }
   }
 }

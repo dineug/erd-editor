@@ -183,10 +183,7 @@ export function useErdEditorAttachElement({
     const safeValue = toSafeString(value);
     if (isEmpty(safeValue)) return;
 
-    // TODO: DDLParser
-    // const statements = schemaSQLParser(value);
-    // const json = createJson(statements, helper, store.canvasState.database);
-    // store.dispatch(loadJson$(json), sortTable());
+    store.dispatchSync(loadJsonAction$(safeValue));
   };
 
   ctx.getSchemaSQL = databaseVendor => {

@@ -38,4 +38,5 @@ export const userSelect = css`
 export const ellipsis = css`
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 `;

@@ -22,7 +22,8 @@
   "license": "MIT",
   "scripts": {
     "build": "vite build --mode lib",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:dev": "vitest dev"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.5",

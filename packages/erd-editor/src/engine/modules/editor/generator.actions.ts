@@ -1,4 +1,4 @@
-import { isEmpty } from 'lodash-es';
+import { cloneDeep, isEmpty, omit } from 'lodash-es';
 import { nanoid } from 'nanoid';
 
 import { ColumnOption } from '@/constants/schema';
@@ -11,6 +11,7 @@ import { removeMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
   changeTableColorAction,
   moveTableAction,
+  sortTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import {
@@ -23,6 +24,7 @@ import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { query } from '@/utils/collection/query';
+import { schemaSQLParserToSchemaJson } from '@/utils/schema-sql-parser';
 
 import {
   clearAction,
@@ -262,6 +264,26 @@ export const changeColorAllAction$ = (color: string): GeneratorAction =>
     );
   };
 
+export const loadSchemaSQLAction$ = (value: string): GeneratorAction =>
+  function* ({ settings }, ctx) {
+    yield loadJsonAction$(
+      schemaSQLParserToSchemaJson(value, ctx, schema => {
+        schema.settings = {
+          ...schema.settings,
+          ...omit(cloneDeep(settings), [
+            'width',
+            'height',
+            'scrollTop',
+            'scrollLeft',
+            'zoomLevel',
+          ]),
+        };
+        return schema;
+      })
+    );
+    yield sortTableAction();
+  };
+
 export const actions$ = {
   loadJsonAction$,
   initialLoadJsonAction$,
@@ -273,4 +295,5 @@ export const actions$ = {
   drawStartRelationshipAction$,
   drawStartAddRelationshipAction$,
   changeColorAllAction$,
+  loadSchemaSQLAction$,
 };

@@ -1,4 +1,5 @@
 import merge from 'deepmerge';
+import { nanoid } from 'nanoid';
 
 import { OrderType } from '@/constants/schema';
 import { DeepPartial, IndexColumn } from '@/internal-types';
@@ -9,7 +10,7 @@ export const createIndexColumn = (
 ): IndexColumn =>
   merge(
     {
-      id: '',
+      id: nanoid(),
       indexId: '',
       columnId: '',
       orderType: OrderType.ASC,

@@ -19,6 +19,7 @@
   "license": "MIT",
   "scripts": {
     "build": "turbo build",
+    "test": "turbo test",
     "prepare": "husky install",
     "format": "npm run format:eslint && npm run format:prettier",
     "format:eslint": "eslint \"**/*.{js,ts}\" --fix",

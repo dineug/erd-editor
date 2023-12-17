@@ -2,6 +2,7 @@ import { createAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 import { round } from 'lodash-es';
 
+import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { query } from '@/utils/collection/query';
 import { createTable } from '@/utils/collection/table.entity';
 import { textInRange } from '@/utils/validation';
@@ -154,6 +155,44 @@ const changeZIndex: ReducerType<typeof ActionType.changeZIndex> = (
   });
 };
 
+export const sortTableAction = createAction<
+  ActionMap[typeof ActionType.sortTable]
+>(ActionType.sortTable);
+
+const sortTable: ReducerType<typeof ActionType.sortTable> = state => {
+  const { doc, settings, collections } = state;
+  const canvasWidth = settings.width;
+  const tables = query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds);
+  const TABLE_MARGIN = 80;
+
+  tables.sort((a, b) => a.columnIds.length - b.columnIds.length);
+
+  let widthSum = 50;
+  let currentHeight = 50;
+  let maxHeight = 50;
+
+  tables.forEach(table => {
+    const width = calcTableWidths(table, state).width + TABLE_MARGIN;
+    const height = calcTableHeight(table) + TABLE_MARGIN;
+
+    if (widthSum + width > canvasWidth) {
+      currentHeight += maxHeight;
+      maxHeight = 0;
+      widthSum = 50;
+    }
+
+    if (maxHeight < height) {
+      maxHeight = height;
+    }
+
+    table.ui.y = currentHeight;
+    table.ui.x = widthSum;
+    widthSum += width;
+  });
+};
+
 export const tableReducers = {
   [ActionType.addTable]: addTable,
   [ActionType.moveTable]: moveTable,
@@ -163,6 +202,7 @@ export const tableReducers = {
   [ActionType.changeTableComment]: changeTableComment,
   [ActionType.changeTableColor]: changeTableColor,
   [ActionType.changeZIndex]: changeZIndex,
+  [ActionType.sortTable]: sortTable,
 };
 
 export const actions = {
@@ -174,4 +214,5 @@ export const actions = {
   changeTableCommentAction,
   changeTableColorAction,
   changeZIndexAction,
+  sortTableAction,
 };

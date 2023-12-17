@@ -9,5 +9,5 @@
 ## Document
 
 - [Playground](https://vuerd.github.io)
-- [Import SQL DDL support syntax](https://github.com/dineug/erd-editor/blob/master/packages/sql-ddl-parser/src/SQL_DDL_Test_Case.md)
+- [Import Schema SQL Support Syntax](https://github.com/dineug/erd-editor/tree/main/packages/schema-sql-parser/src/schema_sql_test_case.md)
 - [vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)

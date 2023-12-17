@@ -14,6 +14,7 @@ import {
   changeTableNameAction,
   moveTableAction,
   moveToTableAction,
+  sortTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -137,6 +138,7 @@ export const hooks: Hook[] = [
       changeColumnCommentAction,
       changeColumnDataTypeAction,
       changeColumnDefaultAction,
+      sortTableAction,
     ],
     relationshipSortHook,
   ],

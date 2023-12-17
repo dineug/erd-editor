@@ -1,4 +1,5 @@
 import merge from 'deepmerge';
+import { nanoid } from 'nanoid';
 
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { Column, DeepPartial } from '@/internal-types';
@@ -7,7 +8,7 @@ import { getDefaultEntityMeta } from '@/utils';
 export const createColumn = (value?: DeepPartial<Column>): Column =>
   merge(
     {
-      id: '',
+      id: nanoid(),
       tableId: '',
       name: '',
       comment: '',

@@ -75,12 +75,15 @@ const moveToTable: PushUndoHistory = (
   );
 };
 
+const sortTable: PushUndoHistory = () => {};
+
 export const tablePushUndoHistoryMap = {
   [ActionType.addTable]: addTable,
   [ActionType.removeTable]: removeTable,
   [ActionType.changeTableName]: changeTableName,
   [ActionType.changeTableComment]: changeTableComment,
   [ActionType.moveToTable]: moveToTable,
+  [ActionType.sortTable]: sortTable,
 };
 
 const moveTable: PushStreamHistory = (undoActions, redoActions, actions) => {

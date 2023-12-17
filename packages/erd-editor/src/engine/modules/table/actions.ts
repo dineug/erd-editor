@@ -13,6 +13,7 @@ export const ActionType = {
   changeTableComment: 'table.changeComment',
   changeTableColor: 'table.changeColor',
   changeZIndex: 'table.changeZIndex',
+  sortTable: 'table.sort',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -49,6 +50,7 @@ export type ActionMap = {
     id: string;
     zIndex: number;
   };
+  [ActionType.sortTable]: void;
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<

@@ -3,9 +3,11 @@ import { isString } from '@dineug/shared';
 
 import { AppContext } from '@/components/appContext';
 import Toast from '@/components/primitives/toast/Toast';
-import { loadJsonAction$ } from '@/engine/modules/editor/generator.actions';
-
-import { openToastAction } from '../emitter';
+import {
+  loadJsonAction$,
+  loadSchemaSQLAction$,
+} from '@/engine/modules/editor/generator.actions';
+import { openToastAction } from '@/utils/emitter';
 
 type ImportOptions = {
   type: 'json' | 'sql';
@@ -89,10 +91,7 @@ export function importSchemaSQL({ store, emitter }: AppContext) {
         return;
       }
 
-      // TODO: DDLParser
-      // const statements = schemaSQLParser(value);
-      // const json = createJson(statements, helper, store.canvasState.database);
-      // store.dispatch(loadJson$(json), sortTable());
+      store.dispatch(loadSchemaSQLAction$(value));
     };
   });
   input.click();
