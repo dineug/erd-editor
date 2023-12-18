@@ -12,6 +12,8 @@ export type Editor = {
   drawRelationship: DrawRelationship | null;
   hoverColumnMap: Record<string, boolean>;
   openMap: Record<string, boolean>;
+  draggableColumn: DraggableColumn | null;
+  draggingColumnMap: Record<string, boolean>;
 };
 
 export type Viewport = {
@@ -36,6 +38,11 @@ export type DrawRelationship = {
       })
     | null;
   end: Point;
+};
+
+export type DraggableColumn = {
+  tableId: string;
+  columnIds: string[];
 };
 
 export const SelectType = {
@@ -79,4 +86,6 @@ export const createEditor = (): Editor => ({
   drawRelationship: null,
   hoverColumnMap: {},
   openMap: {},
+  draggableColumn: null,
+  draggingColumnMap: {},
 });

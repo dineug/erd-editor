@@ -37,7 +37,7 @@ export const row = css`
     background-color: transparent;
   }
 
-  &.draggable {
+  &.dragging {
     opacity: 0.5;
   }
 `;

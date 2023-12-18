@@ -94,6 +94,7 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'column.changePrimaryKey',
   'column.changeUnique',
   'column.changeNotNull',
+  'column.move',
   // relationship
   'relationship.add',
   'relationship.remove',

@@ -12,6 +12,7 @@ import {
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
+  moveColumnAction,
   removeColumnAction,
 } from './atom.actions';
 
@@ -171,6 +172,34 @@ const changeColumnUnique: PushUndoHistory = (
   );
 };
 
+const moveColumn: PushUndoHistory = (
+  undoActions,
+  { payload: { id, tableId, targetId } }: ReturnType<typeof moveColumnAction>,
+  { collections }
+) => {
+  const table = query(collections)
+    .collection('tableEntities')
+    .selectById(tableId);
+  if (!table) return;
+
+  const index = table.columnIds.indexOf(id);
+  if (index === -1) return;
+
+  const targetIndex = table.columnIds.indexOf(targetId);
+  if (targetIndex === -1) return;
+
+  const revertIndex = index < targetIndex ? index + 1 : index - 1;
+  const newTargetId = table.columnIds[revertIndex];
+
+  undoActions.push(
+    moveColumnAction({
+      id,
+      tableId,
+      targetId: newTargetId,
+    })
+  );
+};
+
 export const tableColumnPushUndoHistoryMap = {
   [ActionType.addColumn]: addColumn,
   [ActionType.removeColumn]: removeColumn,
@@ -182,4 +211,5 @@ export const tableColumnPushUndoHistoryMap = {
   [ActionType.changeColumnNotNull]: changeColumnNotNull,
   [ActionType.changeColumnPrimaryKey]: changeColumnPrimaryKey,
   [ActionType.changeColumnUnique]: changeColumnUnique,
+  [ActionType.moveColumn]: moveColumn,
 };

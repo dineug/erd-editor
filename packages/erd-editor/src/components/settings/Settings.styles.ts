@@ -87,7 +87,7 @@ export const columnOrderItem = css`
     fill: var(--foreground);
   }
 
-  &.draggable {
+  &.dragging {
     opacity: 0.5;
   }
 `;

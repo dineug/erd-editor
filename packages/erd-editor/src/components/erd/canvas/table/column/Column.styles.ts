@@ -22,16 +22,28 @@ export const root = css`
     background-color: var(--column-hover);
   }
 
-  &.hover {
+  &[data-hover] {
     background-color: var(--column-hover);
   }
 
-  &.selected {
+  &[data-selected] {
     background-color: var(--column-select);
   }
 
   & > .column-col {
     padding: ${COLUMN_PADDING}px ${INPUT_MARGIN_RIGHT}px ${COLUMN_PADDING}px 0;
+  }
+
+  &.none-hover {
+    background-color: transparent;
+  }
+
+  &[data-dragging] {
+    opacity: 0.5;
+  }
+
+  &[data-ghost] {
+    visibility: hidden;
   }
 `;
 

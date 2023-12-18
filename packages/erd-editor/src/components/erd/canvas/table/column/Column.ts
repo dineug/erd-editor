@@ -53,6 +53,10 @@ export type ColumnProps = {
   editDataType: boolean;
   editDefault: boolean;
   editComment: boolean;
+  draggable?: boolean;
+  ghost?: boolean;
+  onDragstart?: (event: DragEvent) => void;
+  onDragend?: (event: DragEvent) => void;
 };
 
 type ColumnOrderTpl = {
@@ -324,11 +328,20 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     const { editor } = store.state;
     const { column, selected } = props;
     const hover = Boolean(editor.hoverColumnMap[column.id]);
+    const dragging = editor.draggingColumnMap[column.id];
 
     return html`
       <div
-        class=${['column-row', styles.root, { selected, hover }]}
+        class=${['column-row', styles.root]}
         data-id=${column.id}
+        data-table-id=${column.tableId}
+        ?data-selected=${selected}
+        ?data-hover=${hover}
+        ?data-dragging=${dragging}
+        ?data-ghost=${props.ghost}
+        draggable=${props.draggable ? 'true' : 'false'}
+        @dragstart=${props.onDragstart}
+        @dragend=${props.onDragend}
       >
         <${ColumnKey} keys=${column.ui.keys} />
         ${repeat(

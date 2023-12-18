@@ -228,6 +228,41 @@ const changeColumnNotNull: ReducerType<
   });
 };
 
+export const moveColumnAction = createAction<
+  ActionMap[typeof ActionType.moveColumn]
+>(ActionType.moveColumn);
+
+const moveColumn: ReducerType<typeof ActionType.moveColumn> = (
+  { collections },
+  { payload: { id, tableId, targetId } }
+) => {
+  if (id === targetId) {
+    return;
+  }
+
+  const tableCollection = query(collections).collection('tableEntities');
+  const table = tableCollection.getOrCreate(tableId, id => createTable({ id }));
+
+  const index = table.columnIds.indexOf(id);
+  if (index === -1) return;
+
+  const targetIndex = table.columnIds.indexOf(targetId);
+  if (targetIndex === -1) return;
+
+  tableCollection.updateOne(tableId, table => {
+    table.columnIds.splice(index, 1);
+    table.columnIds.splice(targetIndex, 0, id);
+
+    const seqIndex = table.seqColumnIds.indexOf(id);
+    const seqTargetIndex = table.seqColumnIds.indexOf(targetId);
+
+    if (seqIndex !== -1 && seqTargetIndex !== -1) {
+      table.seqColumnIds.splice(seqIndex, 1);
+      table.seqColumnIds.splice(seqTargetIndex, 0, id);
+    }
+  });
+};
+
 export const tableColumnReducers = {
   [ActionType.addColumn]: addColumn,
   [ActionType.removeColumn]: removeColumn,
@@ -239,6 +274,7 @@ export const tableColumnReducers = {
   [ActionType.changeColumnPrimaryKey]: changeColumnPrimaryKey,
   [ActionType.changeColumnUnique]: changeColumnUnique,
   [ActionType.changeColumnNotNull]: changeColumnNotNull,
+  [ActionType.moveColumn]: moveColumn,
 };
 
 export const actions = {
@@ -252,4 +288,5 @@ export const actions = {
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
   changeColumnNotNullAction,
+  moveColumnAction,
 };

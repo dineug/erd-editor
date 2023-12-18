@@ -29,6 +29,10 @@ export const root = css`
   &[data-selected] {
     border: 1px solid var(--table-select);
   }
+
+  .column-row-move {
+    transition: transform 0.3s;
+  }
 `;
 
 export const header = css`

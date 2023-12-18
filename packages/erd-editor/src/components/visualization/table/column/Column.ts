@@ -153,8 +153,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
 
     return html`
       <div
-        class=${['column-row', styles.root, { selected }]}
+        class=${['column-row', styles.root]}
         data-id=${column.id}
+        ?data-selected=${selected}
       >
         <${ColumnKey} keys=${column.ui.keys} />
         ${repeat(

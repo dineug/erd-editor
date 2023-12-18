@@ -89,19 +89,22 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
     const $target = event.target as HTMLElement | null;
     if (!$root || !$target) return;
 
-    const columnType = Number($target.dataset.id);
+    const id = $target.dataset?.id;
+    if (!id) return;
+
+    const columnType = Number(id);
     const elements = Array.from<HTMLElement>(
       $root.querySelectorAll(`.${styles.columnOrderItem}`)
     );
     elements.forEach(el => el.classList.add('none-hover'));
-    $target.classList.add('draggable');
+    $target.classList.add('dragging');
 
-    fromShadowDraggable(elements).subscribe({
-      next: id => {
-        handleChangeColumnOrderAction(columnType, Number(id));
+    fromShadowDraggable(elements, el => el.dataset.id as string).subscribe({
+      next: target => {
+        handleChangeColumnOrderAction(columnType, Number(target));
       },
       complete: () => {
-        $target.classList.remove('draggable');
+        $target.classList.remove('dragging');
         elements.forEach(el => el.classList.remove('none-hover'));
       },
     });

@@ -29,6 +29,8 @@ export const ActionType = {
   drawRelationship: 'editor.drawRelationship',
   hoverColumnMap: 'editor.hoverColumnMap',
   changeOpenMap: 'editor.changeOpenMap',
+  dragstartColumn: 'editor.dragstartColumn',
+  dragendColumn: 'editor.dragendColumn',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -86,6 +88,11 @@ export type ActionMap = {
     columnIds: string[];
   };
   [ActionType.changeOpenMap]: Record<string, boolean>;
+  [ActionType.dragstartColumn]: {
+    tableId: string;
+    columnIds: string[];
+  };
+  [ActionType.dragendColumn]: void;
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<

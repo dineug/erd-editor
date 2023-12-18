@@ -56,19 +56,21 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
     const $target = event.target as HTMLElement | null;
     if (!$root || !$target) return;
 
-    const id = $target.dataset.id as string;
+    const id = $target.dataset?.id;
+    if (!id) return;
+
     const elements = Array.from<HTMLElement>(
       $root.querySelectorAll(`.${styles.row}`)
     );
     elements.forEach(el => el.classList.add('none-hover'));
-    $target.classList.add('draggable');
+    $target.classList.add('dragging');
 
-    fromShadowDraggable(elements).subscribe({
+    fromShadowDraggable(elements, el => el.dataset.id as string).subscribe({
       next: targetId => {
         handleMove(id, targetId);
       },
       complete: () => {
-        $target.classList.remove('draggable');
+        $target.classList.remove('dragging');
         elements.forEach(el => el.classList.remove('none-hover'));
       },
     });

@@ -16,9 +16,20 @@ import {
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import {
   addColumnAction,
+  changeColumnAutoIncrementAction,
+  changeColumnCommentAction,
+  changeColumnDataTypeAction,
+  changeColumnDefaultAction,
+  changeColumnNameAction,
+  changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
+  changeColumnUniqueAction,
+  moveColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
-import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
+import {
+  addColumnAction$,
+  removeColumnAction$,
+} from '@/engine/modules/table-column/generator.actions';
 import { Point } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
@@ -28,6 +39,7 @@ import { schemaSQLParserToSchemaJson } from '@/utils/schema-sql-parser';
 
 import {
   clearAction,
+  dragstartColumnAction,
   drawEndRelationshipAction,
   drawStartAddRelationshipAction,
   drawStartRelationshipAction,
@@ -284,6 +296,122 @@ export const loadSchemaSQLAction$ = (value: string): GeneratorAction =>
     yield sortTableAction();
   };
 
+export const dragstartColumnAction$ = ($mod: boolean): GeneratorAction =>
+  function* ({ editor: { focusTable } }) {
+    if (!focusTable || !focusTable.columnId) return;
+
+    yield dragstartColumnAction({
+      tableId: focusTable.tableId,
+      columnIds: $mod ? [...focusTable.selectColumnIds] : [focusTable.columnId],
+    });
+  };
+
+export const dragoverColumnAction$ = (
+  targetId: string,
+  targetTableId: string
+): GeneratorAction =>
+  function* ({ editor: { draggableColumn }, collections }) {
+    if (!draggableColumn || draggableColumn.columnIds.length === 0) {
+      return;
+    }
+
+    const { tableId, columnIds } = draggableColumn;
+    const tableCollection = query(collections).collection('tableEntities');
+    const table = tableCollection.selectById(tableId);
+    if (!table) return;
+
+    if (targetTableId === tableId) {
+      const index = table.columnIds.indexOf(columnIds[0]);
+      if (index === -1) return;
+
+      const targetIndex = table.columnIds.indexOf(targetId);
+      if (targetIndex === -1) return;
+
+      const actions = columnIds.map(id =>
+        moveColumnAction({ tableId, id, targetId })
+      );
+
+      if (index < targetIndex) {
+        actions.reverse();
+      }
+
+      yield actions;
+      return;
+    }
+
+    const targetTable = tableCollection.selectById(targetTableId);
+    if (!targetTable) return;
+
+    const columns = query(collections)
+      .collection('tableColumnEntities')
+      .selectByIds(columnIds);
+    if (columns.length === 0) return;
+
+    yield removeColumnAction$(tableId, columnIds);
+    const newColumnIds = columns.map(() => nanoid());
+
+    for (let i = 0; i < columns.length; i++) {
+      const column = columns[i];
+      const newColumnId = newColumnIds[i];
+      const payload = {
+        id: newColumnId,
+        tableId: targetTableId,
+      };
+
+      yield [
+        addColumnAction(payload),
+        changeColumnNameAction({
+          ...payload,
+          value: column.name,
+        }),
+        changeColumnDataTypeAction({
+          ...payload,
+          value: column.dataType,
+        }),
+        changeColumnDefaultAction({
+          ...payload,
+          value: column.default,
+        }),
+        changeColumnCommentAction({
+          ...payload,
+          value: column.comment,
+        }),
+        changeColumnPrimaryKeyAction({
+          ...payload,
+          value: bHas(column.options, ColumnOption.primaryKey),
+        }),
+        changeColumnNotNullAction({
+          ...payload,
+          value: bHas(column.options, ColumnOption.notNull),
+        }),
+        changeColumnUniqueAction({
+          ...payload,
+          value: bHas(column.options, ColumnOption.unique),
+        }),
+        changeColumnAutoIncrementAction({
+          ...payload,
+          value: bHas(column.options, ColumnOption.autoIncrement),
+        }),
+        moveColumnAction({
+          ...payload,
+          targetId,
+        }),
+        focusColumnAction({
+          tableId: targetTableId,
+          columnId: newColumnId,
+          focusType: FocusType.columnName,
+          $mod: true,
+          shiftKey: false,
+        }),
+      ];
+    }
+
+    yield dragstartColumnAction({
+      tableId: targetTableId,
+      columnIds: newColumnIds,
+    });
+  };
+
 export const actions$ = {
   loadJsonAction$,
   initialLoadJsonAction$,
@@ -296,4 +424,6 @@ export const actions$ = {
   drawStartAddRelationshipAction$,
   changeColorAllAction$,
   loadSchemaSQLAction$,
+  dragstartColumnAction$,
+  dragoverColumnAction$,
 };

@@ -14,6 +14,7 @@ const InternalActionType = {
   openToast: 'openToast',
   loadShikiService: 'loadShikiService',
   openTableProperties: 'openTableProperties',
+  dragendColumnAll: 'dragendColumnAll',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 
@@ -32,6 +33,7 @@ type InternalActionMap = {
   [InternalActionType.openTableProperties]: {
     tableId: string;
   };
+  [InternalActionType.dragendColumnAll]: void;
 };
 
 type Reducer<K extends keyof M, M> = (action: Action<K, M>) => void;
@@ -77,3 +79,7 @@ export const loadShikiServiceAction = createAction<
 export const openTablePropertiesAction = createAction<
   InternalActionMap[typeof InternalActionType.openTableProperties]
 >(InternalActionType.openTableProperties);
+
+export const dragendColumnAllAction = createAction<
+  InternalActionMap[typeof InternalActionType.dragendColumnAll]
+>(InternalActionType.dragendColumnAll);

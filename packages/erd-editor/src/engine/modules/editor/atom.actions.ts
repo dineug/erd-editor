@@ -439,6 +439,33 @@ const changeOpenMap: ReducerType<typeof ActionType.changeOpenMap> = (
   Object.assign(editor.openMap, payload);
 };
 
+export const dragstartColumnAction = createAction<
+  ActionMap[typeof ActionType.dragstartColumn]
+>(ActionType.dragstartColumn);
+
+const dragstartColumn: ReducerType<typeof ActionType.dragstartColumn> = (
+  { editor },
+  { payload }
+) => {
+  editor.draggableColumn = payload;
+  payload.columnIds.forEach(id => {
+    editor.draggingColumnMap[id] = true;
+  });
+};
+
+export const dragendColumnAction = createAction<
+  ActionMap[typeof ActionType.dragendColumn]
+>(ActionType.dragendColumn);
+
+const dragendColumn: ReducerType<typeof ActionType.dragendColumn> = ({
+  editor,
+}) => {
+  editor.draggableColumn = null;
+  Object.keys(editor.draggingColumnMap).forEach(id => {
+    Reflect.deleteProperty(editor.draggingColumnMap, id);
+  });
+};
+
 export const editorReducers = {
   [ActionType.changeHasHistory]: changeHasHistory,
   [ActionType.selectAll]: selectAll,
@@ -462,6 +489,8 @@ export const editorReducers = {
   [ActionType.drawRelationship]: drawRelationship,
   [ActionType.hoverColumnMap]: hoverColumnMap,
   [ActionType.changeOpenMap]: changeOpenMap,
+  [ActionType.dragstartColumn]: dragstartColumn,
+  [ActionType.dragendColumn]: dragendColumn,
 };
 
 export const actions = {
@@ -487,4 +516,6 @@ export const actions = {
   drawRelationshipAction,
   hoverColumnMapAction,
   changeOpenMapAction,
+  dragstartColumnAction,
+  dragendColumnAction,
 };

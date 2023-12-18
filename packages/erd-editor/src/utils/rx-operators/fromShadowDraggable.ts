@@ -7,12 +7,15 @@ import {
   throttleTime,
 } from 'rxjs';
 
-export const fromShadowDraggable = (elements: HTMLElement[]) =>
+export const fromShadowDraggable = <R>(
+  elements: HTMLElement[],
+  prepare: (el: HTMLElement) => R
+) =>
   merge(
     ...elements.map(el =>
       fromEvent<DragEvent>(el, 'dragover').pipe(
         throttleTime(300),
-        map(() => el.dataset.id as string)
+        map(() => prepare(el))
       )
     )
   ).pipe(
