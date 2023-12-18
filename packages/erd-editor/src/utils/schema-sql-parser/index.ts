@@ -327,6 +327,7 @@ function convertIndex(
             .setOne(indexColumn);
         });
 
+        doc.indexIds.push(newIndex.id);
         query(collections).collection('indexEntities').setOne(newIndex);
       }
     });
