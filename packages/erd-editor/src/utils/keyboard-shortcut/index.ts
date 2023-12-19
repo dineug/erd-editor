@@ -1,7 +1,7 @@
 import { ValuesType } from '@/internal-types';
 import { isIOS, isMacOs } from '@/utils/device-detect';
 
-import { KeyBindingPress, parseKeybinding } from './tinykeys';
+import { KeyBindingPress, parseKeybinding } from './utils';
 
 export type ShortcutOption = {
   shortcut: string;
@@ -23,8 +23,6 @@ export const KeyBindingName = {
   primaryKey: 'primaryKey',
   selectAllTable: 'selectAllTable',
   selectAllColumn: 'selectAllColumn',
-  copyColumn: 'copyColumn',
-  pasteColumn: 'pasteColumn',
   relationshipZeroOne: 'relationshipZeroOne',
   relationshipZeroN: 'relationshipZeroN',
   relationshipOneOnly: 'relationshipOneOnly',
@@ -62,8 +60,6 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   [KeyBindingName.primaryKey]: [{ shortcut: 'Alt+KeyK' }],
   [KeyBindingName.selectAllTable]: [{ shortcut: '$mod+Alt+KeyA' }],
   [KeyBindingName.selectAllColumn]: [{ shortcut: 'Alt+KeyA' }],
-  [KeyBindingName.copyColumn]: [{ shortcut: '$mod+KeyC' }],
-  [KeyBindingName.pasteColumn]: [{ shortcut: '$mod+KeyV' }],
   [KeyBindingName.relationshipZeroOne]: [{ shortcut: '$mod+Alt+Digit1' }],
   [KeyBindingName.relationshipZeroN]: [{ shortcut: '$mod+Alt+Digit2' }],
   [KeyBindingName.relationshipOneOnly]: [{ shortcut: '$mod+Alt+Digit3' }],

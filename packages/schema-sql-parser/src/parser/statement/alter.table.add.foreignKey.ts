@@ -1,4 +1,3 @@
-import { parserForeignKeyParser } from '@/parser/create.table';
 import {
   isConstraintValue,
   isForeignValue,
@@ -12,6 +11,7 @@ import {
   RefPos,
   StatementType,
 } from '@/parser/statement';
+import { parserForeignKeyParser } from '@/parser/statement/create.table';
 import { Token } from '@/parser/tokenizer';
 
 export function alterTableAddForeignKeyParser(tokens: Token[], $pos: RefPos) {

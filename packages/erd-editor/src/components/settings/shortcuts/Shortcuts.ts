@@ -73,14 +73,6 @@ const Shortcuts: FC<ShortcutsProps> = (props, ctx) => {
         shortcuts: keyBindingMap.selectAllColumn,
       },
       {
-        command: 'Copy Column',
-        shortcuts: keyBindingMap.copyColumn,
-      },
-      {
-        command: 'Paste Column',
-        shortcuts: keyBindingMap.pasteColumn,
-      },
-      {
         command: 'Relationship Zero One',
         shortcuts: keyBindingMap.relationshipZeroOne,
       },

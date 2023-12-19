@@ -15,6 +15,8 @@ const InternalActionType = {
   loadShikiService: 'loadShikiService',
   openTableProperties: 'openTableProperties',
   dragendColumnAll: 'dragendColumnAll',
+  copy: 'copy',
+  paste: 'paste',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 
@@ -34,6 +36,12 @@ type InternalActionMap = {
     tableId: string;
   };
   [InternalActionType.dragendColumnAll]: void;
+  [InternalActionType.copy]: {
+    event: ClipboardEvent;
+  };
+  [InternalActionType.paste]: {
+    event: ClipboardEvent;
+  };
 };
 
 type Reducer<K extends keyof M, M> = (action: Action<K, M>) => void;
@@ -83,3 +91,11 @@ export const openTablePropertiesAction = createAction<
 export const dragendColumnAllAction = createAction<
   InternalActionMap[typeof InternalActionType.dragendColumnAll]
 >(InternalActionType.dragendColumnAll);
+
+export const copyAction = createAction<
+  InternalActionMap[typeof InternalActionType.copy]
+>(InternalActionType.copy);
+
+export const pasteAction = createAction<
+  InternalActionMap[typeof InternalActionType.paste]
+>(InternalActionType.paste);

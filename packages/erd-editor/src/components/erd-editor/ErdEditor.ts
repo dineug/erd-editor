@@ -29,6 +29,7 @@ import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { ThemeOptions } from '@/themes/radix-ui-theme';
 import { Theme as ThemeType } from '@/themes/tokens';
+import { copyAction, pasteAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingMap, KeyBindingName } from '@/utils/keyboard-shortcut';
 import { createText } from '@/utils/text';
@@ -87,7 +88,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     app: appContextValue,
     root,
   });
-  const { store, keydown$ } = appContextValue;
+  const { store, keydown$, emitter } = appContextValue;
   const { addUnsubscribe } = useUnmounted();
 
   const state = observable({
@@ -123,8 +124,17 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     }, 10);
   };
 
+  const handleCopy = (event: ClipboardEvent) => {
+    emitter.emit(copyAction({ event }));
+  };
+
+  const handlePaste = (event: ClipboardEvent) => {
+    emitter.emit(pasteAction({ event }));
+  };
+
   onMounted(() => {
     ctx.focus();
+
     addUnsubscribe(
       fromEvent(ctx, focusEvent.type)
         .pipe(throttleTime(50))
@@ -143,7 +153,9 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         );
       }
     });
+
     resizeObserver.observe($root);
+
     addUnsubscribe(() => {
       resizeObserver.unobserve($root);
       resizeObserver.disconnect();
@@ -170,6 +182,8 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         @focus=${handleFocus}
         @focusin=${handleFocus}
         @focusout=${handleFocusout}
+        @copy=${handleCopy}
+        @paste=${handlePaste}
       >
         <${Toolbar} />
         ${cache(

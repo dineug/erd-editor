@@ -5,6 +5,7 @@ import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
+import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeCanvasTypeAction,
   changeDatabaseNameAction,
@@ -68,6 +69,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     store.redo();
   };
 
+  const handleUnselectAll = () => {
+    const { store } = app.value;
+    store.dispatch(unselectAllAction$());
+  };
+
   return () => {
     const { store } = app.value;
     const { settings, editor } = store.state;
@@ -82,7 +88,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
       !showTableProperties;
 
     return html`
-      <div class=${styles.root}>
+      <div
+        class=${styles.root}
+        @mousedown=${handleUnselectAll}
+        @touchstart=${handleUnselectAll}
+      >
         <${TextInput}
           title="database name"
           placeholder="database name"

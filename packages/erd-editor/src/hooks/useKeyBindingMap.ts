@@ -1,9 +1,10 @@
 import { onMounted, Ref, watch } from '@dineug/r-html';
+// @ts-ignore
+import { tinykeys } from 'tinykeys';
 
 import { useAppContext } from '@/components/appContext';
 import { Ctx } from '@/internal-types';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
-import { tinykeys } from '@/utils/keyboard-shortcut/tinykeys';
 
 import { useUnmounted } from './useUnmounted';
 

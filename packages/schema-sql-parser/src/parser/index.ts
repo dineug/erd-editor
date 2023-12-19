@@ -1,8 +1,3 @@
-import { alterTableAddForeignKeyParser } from '@/parser/alter.table.add.foreignKey';
-import { alterTableAddPrimaryKeyParser } from '@/parser/alter.table.add.primaryKey';
-import { alterTableAddUniqueParser } from '@/parser/alter.table.add.unique';
-import { createIndexParser } from '@/parser/create.index';
-import { createTableParser } from '@/parser/create.table';
 import {
   isAlterTableAddForeignKey,
   isAlterTableAddPrimaryKey,
@@ -11,6 +6,11 @@ import {
   isCreateTable,
 } from '@/parser/helper';
 import { RefPos, Statement } from '@/parser/statement';
+import { alterTableAddForeignKeyParser } from '@/parser/statement/alter.table.add.foreignKey';
+import { alterTableAddPrimaryKeyParser } from '@/parser/statement/alter.table.add.primaryKey';
+import { alterTableAddUniqueParser } from '@/parser/statement/alter.table.add.unique';
+import { createIndexParser } from '@/parser/statement/create.index';
+import { createTableParser } from '@/parser/statement/create.table';
 import { Token, tokenizer } from '@/parser/tokenizer';
 
 function parser(tokens: Token[]) {

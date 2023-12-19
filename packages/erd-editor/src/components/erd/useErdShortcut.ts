@@ -39,6 +39,9 @@ import { Ctx } from '@/internal-types';
 import { openTablePropertiesAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { fromCopy } from '@/utils/rx-operators/fromCopy';
+import { fromPaste } from '@/utils/rx-operators/fromPaste';
+import { tableCopyToHtml, tableCopyToText } from '@/utils/table-clipboard/copy';
 import { isHighLevelTable } from '@/utils/validation';
 
 import { erdShortcutPerformCheck } from './erdShortcutPerformCheck';
@@ -167,9 +170,6 @@ export function useErdShortcut(ctx: Ctx) {
           );
         }
 
-        // KeyBindingName.copyColumn
-        // KeyBindingName.pasteColumn
-
         if (type === KeyBindingName.primaryKey && editor.focusTable.columnId) {
           store.dispatch(
             changeColumnPrimaryKeyAction$(
@@ -211,8 +211,38 @@ export function useErdShortcut(ctx: Ctx) {
     type === KeyBindingName.redo && store.redo();
   };
 
+  const handleCopy = (event: ClipboardEvent) => {
+    const { store } = app.value;
+    const { editor, settings } = store.state;
+    const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
+
+    if (
+      !showHighLevelTable &&
+      editor.focusTable &&
+      !editor.focusTable.edit &&
+      editor.focusTable.selectColumnIds.length !== 0
+    ) {
+      event.preventDefault();
+      event.clipboardData?.clearData();
+      event.clipboardData?.setData('text/plain', tableCopyToText(store.state));
+      event.clipboardData?.setData('text/html', tableCopyToHtml(store.state));
+    }
+  };
+
+  const handlePaste = (event: ClipboardEvent) => {
+    const { store } = app.value;
+    const { editor, settings } = store.state;
+    const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
+
+    if (!showHighLevelTable && !editor.focusTable?.edit) {
+      event.preventDefault();
+      const text = event.clipboardData?.getData('text/plain');
+      const html = event.clipboardData?.getData('text/html');
+    }
+  };
+
   onMounted(() => {
-    const { store, keydown$, shortcut$ } = app.value;
+    const { store, keydown$, shortcut$, emitter } = app.value;
 
     addUnsubscribe(
       keydown$
@@ -220,7 +250,13 @@ export function useErdShortcut(ctx: Ctx) {
         .subscribe(handleKeydown),
       shortcut$
         .pipe(erdShortcutPerformCheck(store.state))
-        .subscribe(handleShortcut)
+        .subscribe(handleShortcut),
+      fromCopy(emitter)
+        .pipe(erdShortcutPerformCheck(store.state))
+        .subscribe(handleCopy),
+      fromPaste(emitter)
+        .pipe(erdShortcutPerformCheck(store.state))
+        .subscribe(handlePaste)
     );
   });
 }

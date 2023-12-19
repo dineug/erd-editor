@@ -86,6 +86,7 @@
     "rxjs": "^7.8.1",
     "stats.js": "^0.17.0",
     "storybook": "^7.6.5",
+    "tinykeys": "^2.1.0",
     "ts-patch": "^3.1.1",
     "tslib": "^2.6.2",
     "typescript-transform-paths": "^3.4.6",
