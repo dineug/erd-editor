@@ -139,6 +139,16 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'editor.clear',
 ];
 
+export const StreamRegroupMoveActionTypes: ReadonlyArray<ActionType> = [
+  'table.move',
+  'memo.move',
+];
+
+export const StreamRegroupScrollActionTypes: ReadonlyArray<ActionType> = [
+  'settings.streamZoomLevel',
+  'settings.streamScrollTo',
+];
+
 export const StreamActionTypes: ReadonlyArray<ActionType> = [
   ...(Object.keys(pushStreamHistoryMap) as ActionType[]),
 ];

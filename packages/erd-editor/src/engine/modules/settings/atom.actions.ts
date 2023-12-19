@@ -1,5 +1,6 @@
 import { createAction } from '@dineug/r-html';
 import { createInRange } from '@dineug/shared';
+import { round } from 'lodash-es';
 
 import { replaceOperator } from '@/utils/collection/lww';
 import {
@@ -80,8 +81,8 @@ const scrollTo: ReducerType<typeof ActionType.scrollTo> = (
   const scrollTopInRange = createInRange(viewport.height - settings.height, 0);
   const scrollLeftInRange = createInRange(viewport.width - settings.width, 0);
 
-  settings.scrollTop = scrollTopInRange(scrollTop);
-  settings.scrollLeft = scrollLeftInRange(scrollLeft);
+  settings.scrollTop = round(scrollTopInRange(scrollTop), 4);
+  settings.scrollLeft = round(scrollLeftInRange(scrollLeft), 4);
 };
 
 export const streamScrollToAction = createAction<
@@ -95,8 +96,14 @@ const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
   const scrollTopInRange = createInRange(viewport.height - settings.height, 0);
   const scrollLeftInRange = createInRange(viewport.width - settings.width, 0);
 
-  settings.scrollTop = scrollTopInRange(settings.scrollTop + movementY);
-  settings.scrollLeft = scrollLeftInRange(settings.scrollLeft + movementX);
+  settings.scrollTop = round(
+    scrollTopInRange(settings.scrollTop + movementY),
+    4
+  );
+  settings.scrollLeft = round(
+    scrollLeftInRange(settings.scrollLeft + movementX),
+    4
+  );
 };
 
 export const changeShowAction = createAction<

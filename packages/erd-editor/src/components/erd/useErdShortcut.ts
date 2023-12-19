@@ -25,7 +25,7 @@ import {
   SelectType,
 } from '@/engine/modules/editor/state';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
-import { streamZoomLevelAction } from '@/engine/modules/settings/atom.actions';
+import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import {
   addTableAction$,
   pasteTableAction$,
@@ -155,9 +155,9 @@ export function useErdShortcut(ctx: Ctx) {
       // KeyBindingName.find
 
       type === KeyBindingName.zoomIn &&
-        store.dispatch(streamZoomLevelAction({ value: 0.1 }));
+        store.dispatch(streamZoomLevelAction$(0.1));
       type === KeyBindingName.zoomOut &&
-        store.dispatch(streamZoomLevelAction({ value: -0.1 }));
+        store.dispatch(streamZoomLevelAction$(-0.1));
     }
 
     if (!showHighLevelTable) {

@@ -9,9 +9,9 @@ import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeCanvasTypeAction,
   changeDatabaseNameAction,
-  changeZoomLevelAction,
   resizeAction,
 } from '@/engine/modules/settings/atom.actions';
+import { changeZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import {
   canvasSizeInRange,
   toNumString,
@@ -51,7 +51,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     const zoomLevel = zoomLevelInRange(Number(toNumString(el.value)) / 100);
     const { store } = app.value;
     el.value = toZoomFormat(zoomLevel);
-    store.dispatch(changeZoomLevelAction({ value: zoomLevel }));
+    store.dispatch(changeZoomLevelAction$(zoomLevel));
   };
 
   const handleChangeCanvasType = (value: string) => {

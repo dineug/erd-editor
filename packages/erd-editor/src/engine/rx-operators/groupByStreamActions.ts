@@ -6,10 +6,26 @@ import { notEmptyActions } from '@/engine/rx-operators/notEmptyActions';
 
 const NONE_STREAM_KEY = '@@none-stream';
 
+type Regroup = [string, Array<string> | ReadonlyArray<string>];
+type HasRegroup = [string, (type: string) => boolean];
+
+const createToKey =
+  (has: (type: string) => boolean, hasRegroups: HasRegroup[]) =>
+  (type: string) => {
+    const hasRegroup = hasRegroups.find(([, has]) => has(type));
+    return hasRegroup ? hasRegroup[0] : has(type) ? type : NONE_STREAM_KEY;
+  };
+
 export const groupByStreamActions = (
-  streamActionTypes: Array<string> | ReadonlyArray<string>
+  streamActionTypes: Array<string> | ReadonlyArray<string>,
+  regroups: Regroup[] = []
 ) => {
   const has = arrayHas(streamActionTypes);
+  const hasRegroups: HasRegroup[] = regroups.map(([key, types]) => [
+    key,
+    arrayHas(types),
+  ]);
+  const toKey = createToKey(has, hasRegroups);
 
   return (source$: Observable<Array<AnyAction>>) =>
     new Observable<Array<AnyAction>>(subscriber =>
@@ -17,12 +33,12 @@ export const groupByStreamActions = (
         next: actions => {
           const group = actions.reduce(
             (acc, action) => {
-              const type = has(action.type) ? action.type : NONE_STREAM_KEY;
-              if (!acc[type]) {
-                acc[type] = [];
+              const key = toKey(action.type);
+              if (!acc[key]) {
+                acc[key] = [];
               }
 
-              acc[type].push(action);
+              acc[key].push(action);
               return acc;
             },
             {} as Record<string, Array<AnyAction>>
@@ -35,10 +51,7 @@ export const groupByStreamActions = (
       })
     ).pipe(
       notEmptyActions,
-      groupBy(actions => {
-        const type = actions[0].type;
-        return has(type) ? type : NONE_STREAM_KEY;
-      }),
+      groupBy(actions => toKey(actions[0].type)),
       mergeMap(group$ =>
         group$.key === NONE_STREAM_KEY
           ? group$

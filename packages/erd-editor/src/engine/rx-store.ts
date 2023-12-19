@@ -10,6 +10,8 @@ import {
   ChangeActionTypes,
   HistoryActionTypes,
   StreamActionTypes,
+  StreamRegroupMoveActionTypes,
+  StreamRegroupScrollActionTypes,
 } from '@/engine/actions';
 import { EngineContext } from '@/engine/context';
 import { createHistory } from '@/engine/history';
@@ -45,7 +47,10 @@ export function createRxStore(context: EngineContext): RxStore {
   const history$ = dispatch$.pipe(
     actionsFilter(HistoryActionTypes),
     ignoreTagFilter(Tag.shared),
-    groupByStreamActions(StreamActionTypes)
+    groupByStreamActions(StreamActionTypes, [
+      ['@@move', StreamRegroupMoveActionTypes],
+      ['@@scroll', StreamRegroupScrollActionTypes],
+    ])
   );
   const change$ = new Observable<Array<AnyAction>>(subscriber =>
     store.subscribe(actions => subscriber.next(actions))

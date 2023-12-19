@@ -26,10 +26,8 @@ import {
   unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
 import { Viewport } from '@/engine/modules/editor/state';
-import {
-  streamScrollToAction,
-  streamZoomLevelAction,
-} from '@/engine/modules/settings/atom.actions';
+import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
+import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { isMouseEvent } from '@/utils/domEvent';
@@ -103,9 +101,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
   const handleWheel = (event: WheelEvent) => {
     const { store } = app.value;
-    store.dispatch(
-      streamZoomLevelAction({ value: event.deltaY < 0 ? 0.1 : -0.1 })
-    );
+    store.dispatch(streamZoomLevelAction$(event.deltaY < 0 ? 0.1 : -0.1));
   };
 
   const handleMove = ({ event, movementX, movementY }: DragMove) => {
