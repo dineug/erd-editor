@@ -183,6 +183,7 @@ function convertTable(
 
   table.columns.forEach(column => {
     const newColumn = createColumn({
+      tableId: newTable.id,
       name: column.name,
       comment: column.comment,
       dataType: column.dataType,

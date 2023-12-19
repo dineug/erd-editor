@@ -26,7 +26,10 @@ import {
 } from '@/engine/modules/editor/state';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { streamZoomLevelAction } from '@/engine/modules/settings/atom.actions';
-import { addTableAction$ } from '@/engine/modules/table/generator.actions';
+import {
+  addTableAction$,
+  pasteTableAction$,
+} from '@/engine/modules/table/generator.actions';
 import {
   addColumnAction$,
   changeColumnPrimaryKeyAction$,
@@ -35,13 +38,17 @@ import {
   toggleColumnValueAction$,
 } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { Ctx } from '@/internal-types';
+import { Column, Ctx } from '@/internal-types';
 import { openTablePropertiesAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { fromCopy } from '@/utils/rx-operators/fromCopy';
 import { fromPaste } from '@/utils/rx-operators/fromPaste';
 import { tableCopyToHtml, tableCopyToText } from '@/utils/table-clipboard/copy';
+import {
+  tablePasteFromHtmlToColumns,
+  tablePasteFromTextToColumns,
+} from '@/utils/table-clipboard/paste';
 import { isHighLevelTable } from '@/utils/validation';
 
 import { erdShortcutPerformCheck } from './erdShortcutPerformCheck';
@@ -220,12 +227,13 @@ export function useErdShortcut(ctx: Ctx) {
       !showHighLevelTable &&
       editor.focusTable &&
       !editor.focusTable.edit &&
-      editor.focusTable.selectColumnIds.length !== 0
+      editor.focusTable.selectColumnIds.length !== 0 &&
+      event.clipboardData
     ) {
       event.preventDefault();
-      event.clipboardData?.clearData();
-      event.clipboardData?.setData('text/plain', tableCopyToText(store.state));
-      event.clipboardData?.setData('text/html', tableCopyToHtml(store.state));
+      event.clipboardData.clearData();
+      event.clipboardData.setData('text/plain', tableCopyToText(store.state));
+      event.clipboardData.setData('text/html', tableCopyToHtml(store.state));
     }
   };
 
@@ -233,12 +241,29 @@ export function useErdShortcut(ctx: Ctx) {
     const { store } = app.value;
     const { editor, settings } = store.state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
-
-    if (!showHighLevelTable && !editor.focusTable?.edit) {
-      event.preventDefault();
-      const text = event.clipboardData?.getData('text/plain');
-      const html = event.clipboardData?.getData('text/html');
+    if (showHighLevelTable || editor.focusTable?.edit || !event.clipboardData) {
+      return;
     }
+
+    const selectedTables = Object.entries(editor.selectedMap).filter(
+      ([, type]) => type === SelectType.table
+    );
+    if (selectedTables.length === 0) return;
+
+    const html = event.clipboardData.getData('text/html');
+    const text = event.clipboardData.getData('text/plain');
+    let columns: Column[] = [];
+
+    if (html.trim()) {
+      columns = tablePasteFromHtmlToColumns(store.state, html);
+    } else if (text.trim()) {
+      columns = tablePasteFromTextToColumns(store.state, text);
+    }
+
+    if (columns.length === 0) return;
+
+    event.preventDefault();
+    store.dispatch(pasteTableAction$(columns));
   };
 
   onMounted(() => {

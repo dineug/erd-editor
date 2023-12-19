@@ -1,8 +1,13 @@
+import { arrayHas } from '@dineug/shared';
+
 import { ColumnType, Show } from '@/constants/schema';
 import { ValuesType } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
-export const ColType = {
+export type Cell = [CellType | '', string];
+export type Row = Cell[];
+
+export const CellType = {
   columnName: 'columnName',
   columnDataType: 'columnDataType',
   columnNotNull: 'columnNotNull',
@@ -11,7 +16,8 @@ export const ColType = {
   columnDefault: 'columnDefault',
   columnComment: 'columnComment',
 } as const;
-export type ColType = ValuesType<typeof ColType>;
+export type CellType = ValuesType<typeof CellType>;
+export const hasCellType = arrayHas<string>(Object.values(CellType));
 
 export function getShowColumnOrder(show: number, columnOrder: number[]) {
   return columnOrder.filter(columnType => {

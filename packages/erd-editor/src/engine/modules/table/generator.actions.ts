@@ -1,16 +1,20 @@
+import { AnyAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 import { nanoid } from 'nanoid';
 
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, ColumnType } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
 import {
   drawEndRelationshipAction,
+  focusColumnAction,
   focusTableAction,
+  focusTableEndAction,
   selectAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import { drawStartAddRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
+import { isTableFocusType } from '@/engine/modules/editor/utils/focus';
 import { removeIndexAction } from '@/engine/modules/index/atom.actions';
 import {
   addRelationshipAction,
@@ -18,15 +22,19 @@ import {
 } from '@/engine/modules/relationship/atom.actions';
 import {
   addColumnAction,
+  changeColumnAutoIncrementAction,
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
+  changeColumnUniqueAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { Column } from '@/internal-types';
 import { nextPoint, nextZIndex } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
+import { getShowColumnOrder } from '@/utils/table-clipboard';
 
 import {
   addTableAction,
@@ -199,8 +207,212 @@ export const selectTableAction$ = (
     }
   };
 
+export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
+  function* ({
+    editor: { selectedMap, focusTable },
+    settings: { show, columnOrder },
+    collections,
+  }) {
+    const isFit = focusTable && !isTableFocusType(focusTable.focusType);
+    const selectedTableIds = Object.entries(selectedMap)
+      .filter(([, type]) => type === SelectType.table)
+      .map(([id]) => id)
+      .filter(id => (isFit ? id !== focusTable?.tableId : true));
+
+    for (const tableId of selectedTableIds) {
+      for (const column of columns) {
+        const id = nanoid();
+        const payload = {
+          id,
+          tableId,
+        };
+
+        yield [
+          addColumnAction(payload),
+          changeColumnNameAction({
+            ...payload,
+            value: column.name,
+          }),
+          changeColumnDataTypeAction({
+            ...payload,
+            value: column.dataType,
+          }),
+          changeColumnDefaultAction({
+            ...payload,
+            value: column.default,
+          }),
+          changeColumnCommentAction({
+            ...payload,
+            value: column.comment,
+          }),
+          changeColumnNotNullAction({
+            ...payload,
+            value: bHas(column.options, ColumnOption.notNull),
+          }),
+          changeColumnUniqueAction({
+            ...payload,
+            value: bHas(column.options, ColumnOption.unique),
+          }),
+          changeColumnAutoIncrementAction({
+            ...payload,
+            value: bHas(column.options, ColumnOption.autoIncrement),
+          }),
+        ];
+      }
+    }
+
+    if (!focusTable || !isFit) return;
+
+    const table = query(collections)
+      .collection('tableEntities')
+      .selectById(focusTable.tableId);
+    if (!table) return;
+
+    const columnIds = table.columnIds.filter(
+      arrayHas(focusTable.selectColumnIds)
+    );
+    if (columnIds.length === 0) return;
+
+    const additionalColumnIds = table.columnIds.slice(
+      table.columnIds.indexOf(columnIds[columnIds.length - 1]) + 1
+    );
+    const columnIdsRange = [...columnIds, ...additionalColumnIds];
+    const showColumnOrder = getShowColumnOrder(show, columnOrder);
+
+    yield focusTableEndAction();
+
+    for (let i = 0; i < columnIdsRange.length; i++) {
+      const columnId = columnIdsRange[i];
+      const column = columns[i];
+      if (!column) break;
+
+      const payload = {
+        id: columnId,
+        tableId: table.id,
+      };
+
+      yield [
+        ...(showColumnOrder
+          .map(columnType => {
+            switch (columnType) {
+              case ColumnType.columnName:
+                return changeColumnNameAction({
+                  ...payload,
+                  value: column.name,
+                });
+              case ColumnType.columnDataType:
+                return changeColumnDataTypeAction({
+                  ...payload,
+                  value: column.dataType,
+                });
+              case ColumnType.columnDefault:
+                return changeColumnDefaultAction({
+                  ...payload,
+                  value: column.default,
+                });
+              case ColumnType.columnComment:
+                return changeColumnCommentAction({
+                  ...payload,
+                  value: column.comment,
+                });
+              case ColumnType.columnAutoIncrement:
+                return changeColumnAutoIncrementAction({
+                  ...payload,
+                  value: bHas(column.options, ColumnOption.autoIncrement),
+                });
+              case ColumnType.columnUnique:
+                return changeColumnUniqueAction({
+                  ...payload,
+                  value: bHas(column.options, ColumnOption.unique),
+                });
+              case ColumnType.columnNotNull:
+                return changeColumnNotNullAction({
+                  ...payload,
+                  value: bHas(column.options, ColumnOption.notNull),
+                });
+              default:
+                return null;
+            }
+          })
+          .filter(Boolean) as AnyAction[]),
+        focusColumnAction({
+          tableId: table.id,
+          columnId: columnId,
+          focusType: focusTable.focusType,
+          $mod: true,
+          shiftKey: false,
+        }),
+      ];
+    }
+
+    const addColumns = columns.slice(columnIdsRange.length);
+
+    for (const column of addColumns) {
+      const id = nanoid();
+      const payload = {
+        id,
+        tableId: table.id,
+      };
+
+      yield [
+        addColumnAction(payload),
+        ...(showColumnOrder
+          .map(columnType => {
+            switch (columnType) {
+              case ColumnType.columnName:
+                return changeColumnNameAction({
+                  ...payload,
+                  value: column.name,
+                });
+              case ColumnType.columnDataType:
+                return changeColumnDataTypeAction({
+                  ...payload,
+                  value: column.dataType,
+                });
+              case ColumnType.columnDefault:
+                return changeColumnDefaultAction({
+                  ...payload,
+                  value: column.default,
+                });
+              case ColumnType.columnComment:
+                return changeColumnCommentAction({
+                  ...payload,
+                  value: column.comment,
+                });
+              case ColumnType.columnAutoIncrement:
+                return changeColumnAutoIncrementAction({
+                  ...payload,
+                  value: bHas(column.options, ColumnOption.autoIncrement),
+                });
+              case ColumnType.columnUnique:
+                return changeColumnUniqueAction({
+                  ...payload,
+                  value: bHas(column.options, ColumnOption.unique),
+                });
+              case ColumnType.columnNotNull:
+                return changeColumnNotNullAction({
+                  ...payload,
+                  value: bHas(column.options, ColumnOption.notNull),
+                });
+              default:
+                return null;
+            }
+          })
+          .filter(Boolean) as AnyAction[]),
+        focusColumnAction({
+          tableId: table.id,
+          columnId: id,
+          focusType: focusTable.focusType,
+          $mod: true,
+          shiftKey: false,
+        }),
+      ];
+    }
+  };
+
 export const actions$ = {
   addTableAction$,
   removeTableAction$,
   selectTableAction$,
+  pasteTableAction$,
 };

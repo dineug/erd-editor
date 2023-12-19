@@ -4,10 +4,7 @@ import { ColumnOption, ColumnType } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 import { query } from '@/utils/collection/query';
-import { ColType, getShowColumnOrder } from '@/utils/table-clipboard';
-
-type Column = [ColType | '', string];
-type Row = Column[];
+import { CellType, getShowColumnOrder, Row } from '@/utils/table-clipboard';
 
 export function tableCopyToText(state: RootState): string {
   return getTableData(state)
@@ -60,26 +57,26 @@ function getTableData({
     showColumnOrder.map(columnType => {
       switch (columnType) {
         case ColumnType.columnName:
-          return [ColType.columnName, column.name];
+          return [CellType.columnName, column.name];
         case ColumnType.columnDataType:
-          return [ColType.columnDataType, column.dataType];
+          return [CellType.columnDataType, column.dataType];
         case ColumnType.columnDefault:
-          return [ColType.columnDefault, column.default];
+          return [CellType.columnDefault, column.default];
         case ColumnType.columnComment:
-          return [ColType.columnComment, column.comment];
+          return [CellType.columnComment, column.comment];
         case ColumnType.columnAutoIncrement:
           return [
-            ColType.columnAutoIncrement,
+            CellType.columnAutoIncrement,
             bHas(column.options, ColumnOption.autoIncrement) ? 'TRUE' : 'FALSE',
           ];
         case ColumnType.columnUnique:
           return [
-            ColType.columnUnique,
+            CellType.columnUnique,
             bHas(column.options, ColumnOption.unique) ? 'TRUE' : 'FALSE',
           ];
         case ColumnType.columnNotNull:
           return [
-            ColType.columnNotNull,
+            CellType.columnNotNull,
             bHas(column.options, ColumnOption.notNull) ? 'NOT NULL' : 'NULL',
           ];
         default:
