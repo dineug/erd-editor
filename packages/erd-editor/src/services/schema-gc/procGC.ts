@@ -1,9 +1,10 @@
-import { RootState } from '@/engine/state';
+import { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
+
 import { GCIds } from '@/services/schema-gc';
 import { query } from '@/utils/collection/query';
 
 export function procGC(
-  { collections, lww }: RootState,
+  { collections, lww }: ERDEditorSchemaV3,
   {
     tableIds,
     tableColumnIds,
