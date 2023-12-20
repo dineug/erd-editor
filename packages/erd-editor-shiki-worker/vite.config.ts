@@ -52,6 +52,9 @@ export default defineConfig({
       },
     }),
   ],
+  worker: {
+    // plugins: () => [tsconfigPaths()],
+  },
   server: {
     open: true,
   },

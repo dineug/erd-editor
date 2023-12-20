@@ -25,6 +25,9 @@ export default defineConfig(({ command, mode }) => {
   const isLib = process.env.VITE_TARGET === 'lib';
 
   return {
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version),
+    },
     build: {
       lib: {
         entry: './src/index.ts',
@@ -59,6 +62,9 @@ export default defineConfig(({ command, mode }) => {
           },
         }),
     ].filter(Boolean),
+    worker: {
+      plugins: () => [tsconfigPaths()],
+    },
     server: {
       open: true,
     },

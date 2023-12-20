@@ -1,6 +1,6 @@
 import * as Comlink from 'comlink';
 
-import { ShikiService } from './shiki.service';
+import { ShikiService } from '../services/shikiService';
 
 const service = new ShikiService();
 

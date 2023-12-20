@@ -14,7 +14,7 @@ import { arrayHas } from '@dineug/shared';
 import Icon from '@/components/primitives/icon/Icon';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { globalEmitter } from '@/utils/globalEmitter';
-import { getShikiService, ShikiService } from '@/utils/services/shikiService';
+import { getShikiService, ShikiService } from '@/services/shikiService';
 
 import * as styles from './CodeBlock.styles';
 

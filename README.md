@@ -1,4 +1,4 @@
-# vuerd
+# erd-editor
 
 > Entity-Relationship Diagram Editor
 
