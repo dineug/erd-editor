@@ -7,7 +7,7 @@ export function safeCallback<F extends Callback>(
   try {
     return callback?.(...args);
   } catch (e) {
-    window.console.error(e);
+    console.error(e);
   }
 }
 
@@ -15,4 +15,4 @@ const queueMicrotaskFallback = (callback: () => void) => {
   Promise.resolve().then(callback);
 };
 
-export const asap = window.queueMicrotask ?? queueMicrotaskFallback;
+export const asap = queueMicrotask ?? queueMicrotaskFallback;

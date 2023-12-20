@@ -1,3 +1,4 @@
+import { toJson } from '@dineug/erd-editor-schema';
 import {
   cache,
   createRef,
@@ -27,8 +28,11 @@ import { DatabaseVendor } from '@/constants/sql/database';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { getSchemaGCService } from '@/services/schema-gc';
+import { procGC } from '@/services/schema-gc/procGC';
 import { ThemeOptions } from '@/themes/radix-ui-theme';
 import { Theme as ThemeType } from '@/themes/tokens';
+import { query } from '@/utils/collection/query';
 import { copyAction, pasteAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingMap, KeyBindingName } from '@/utils/keyboard-shortcut';
@@ -132,18 +136,28 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     emitter.emit(pasteAction({ event }));
   };
 
+  const handleSchemaGC = () => {
+    getSchemaGCService()
+      ?.run(toJson(store.state))
+      .then(gcIds => {
+        const isChange =
+          gcIds.tableIds.length ||
+          gcIds.tableColumnIds.length ||
+          gcIds.relationshipIds.length ||
+          gcIds.indexIds.length ||
+          gcIds.indexColumnIds.length ||
+          gcIds.memoIds.length;
+
+        if (isChange) {
+          procGC(store.state, gcIds);
+          ctx.dispatchEvent(new CustomEvent('change'));
+        }
+      });
+  };
+
   onMounted(() => {
     ctx.focus();
 
-    addUnsubscribe(
-      fromEvent(ctx, focusEvent.type)
-        .pipe(throttleTime(50))
-        .subscribe(checkAndFocus),
-      fromEvent(ctx, forceFocusEvent.type).subscribe(ctx.focus)
-    );
-  });
-
-  onMounted(() => {
     const $root = root.value;
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
@@ -156,10 +170,17 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 
     resizeObserver.observe($root);
 
-    addUnsubscribe(() => {
-      resizeObserver.unobserve($root);
-      resizeObserver.disconnect();
-    });
+    addUnsubscribe(
+      () => {
+        resizeObserver.unobserve($root);
+        resizeObserver.disconnect();
+      },
+      fromEvent(ctx, focusEvent.type)
+        .pipe(throttleTime(50))
+        .subscribe(checkAndFocus),
+      fromEvent(ctx, forceFocusEvent.type).subscribe(ctx.focus),
+      emitter.on({ schemaGC: handleSchemaGC })
+    );
   });
 
   return () => {

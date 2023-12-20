@@ -100,7 +100,7 @@ export class ShikiService {
         | 'scala';
       theme?: 'dark' | 'light';
     }
-  ) {
+  ): Promise<string> {
     return await this.ready.then(async () => {
       const highlighter = await getHighlighter({
         theme: toShikiTheme(Reflect.get(themeMap, getThemeKey(theme))),

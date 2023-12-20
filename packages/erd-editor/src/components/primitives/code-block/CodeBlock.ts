@@ -13,8 +13,8 @@ import { arrayHas } from '@dineug/shared';
 
 import Icon from '@/components/primitives/icon/Icon';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { globalEmitter } from '@/utils/globalEmitter';
 import { getShikiService, ShikiService } from '@/services/shikiService';
+import { globalEmitter } from '@/utils/globalEmitter';
 
 import * as styles from './CodeBlock.styles';
 

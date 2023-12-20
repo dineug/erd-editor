@@ -17,6 +17,7 @@ const InternalActionType = {
   dragendColumnAll: 'dragendColumnAll',
   copy: 'copy',
   paste: 'paste',
+  schemaGC: 'schemaGC',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 
@@ -42,6 +43,7 @@ type InternalActionMap = {
   [InternalActionType.paste]: {
     event: ClipboardEvent;
   };
+  [InternalActionType.schemaGC]: void;
 };
 
 type Reducer<K extends keyof M, M> = (action: Action<K, M>) => void;
@@ -99,3 +101,7 @@ export const copyAction = createAction<
 export const pasteAction = createAction<
   InternalActionMap[typeof InternalActionType.paste]
 >(InternalActionType.paste);
+
+export const schemaGCAction = createAction<
+  InternalActionMap[typeof InternalActionType.schemaGC]
+>(InternalActionType.schemaGC);

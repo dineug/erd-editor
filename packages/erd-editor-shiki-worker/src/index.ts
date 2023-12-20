@@ -1,1 +1,2 @@
-export { ShikiService } from '@/services';
+export { getShikiService } from '@/services';
+export type { ShikiService } from '@/services/shikiService';

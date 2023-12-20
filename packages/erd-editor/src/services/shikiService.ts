@@ -1,10 +1,6 @@
 import { loadShikiServiceAction } from '@/utils/emitter';
 import { globalEmitter } from '@/utils/globalEmitter';
 
-type LazyShikiService = {
-  getInstance(): ShikiService;
-};
-
 export type ShikiService = {
   codeToHtml(
     code: string,
@@ -25,13 +21,15 @@ export type ShikiService = {
   ): Promise<string>;
 };
 
-let shikiService: LazyShikiService | null;
+let getService: () => ShikiService | null = () => null;
 
-export function setShikiService(service: LazyShikiService) {
-  shikiService = service;
+export function setGetShikiServiceCallback(
+  callback: () => ShikiService | null
+) {
+  getService = callback;
   globalEmitter.emit(loadShikiServiceAction());
 }
 
 export function getShikiService() {
-  return shikiService?.getInstance() ?? null;
+  return getService();
 }

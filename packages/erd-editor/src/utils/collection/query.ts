@@ -28,6 +28,9 @@ class CollectionQuery<K extends keyof Collections> {
   selectEntities(): GetEntities<K> {
     return this.collection;
   }
+  selectAll(): Array<GetEntity<K>> {
+    return Object.values(this.collection);
+  }
 
   setOne(entity: GetEntity<K>) {
     this.collection[entity.id] = entity;

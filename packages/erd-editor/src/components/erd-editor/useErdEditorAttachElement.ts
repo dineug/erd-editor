@@ -23,6 +23,7 @@ import {
   ThemeOptions,
 } from '@/themes/radix-ui-theme';
 import { Theme, ThemeTokens } from '@/themes/tokens';
+import { schemaGCAction } from '@/utils/emitter';
 import { KeyBindingName, KeyBindingNameList } from '@/utils/keyboard-shortcut';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import { hasDatabaseVendor, toSafeString } from '@/utils/validation';
@@ -59,7 +60,7 @@ type Props = {
 export function useErdEditorAttachElement({
   props,
   ctx,
-  app: { store, keyBindingMap },
+  app: { store, keyBindingMap, emitter },
   root,
 }: Props) {
   const themeState = observable<{
@@ -140,6 +141,7 @@ export function useErdEditorAttachElement({
     store.dispatchSync(
       initialLoadJsonAction$(isEmpty(safeValue) ? '{}' : safeValue)
     );
+    emitter.emit(schemaGCAction());
   };
 
   ctx.setPresetTheme = newThemeOptions => {
