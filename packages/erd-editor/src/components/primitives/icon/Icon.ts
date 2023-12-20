@@ -17,6 +17,7 @@ export type IconProps = {
   color?: string;
   useTransition?: boolean;
   title?: string;
+  rotate?: number;
   onClick?: (event: MouseEvent) => void;
 };
 
@@ -33,6 +34,9 @@ const Icon: FC<IconProps> = (props, ctx) => () => {
   return html`
     <div
       class=${['icon', styles.wrap, props.class]}
+      style=${{
+        transform: `rotate(${props.rotate ?? 0}deg)`,
+      }}
       ...${restAttrs({ title: props.title })}
       @click=${props.onClick}
     >

@@ -16,6 +16,7 @@ import DragSelect from '@/components/erd/drag-select/DragSelect';
 import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
+import HideSign from '@/components/erd/hide-sign/HideSign';
 import Minimap from '@/components/erd/minimap/Minimap';
 import TableProperties from '@/components/erd/table-properties/TableProperties';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
@@ -125,6 +126,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       !el.closest('.memo') &&
       !el.closest('.edit-input') &&
       !el.closest('.context-menu-content') &&
+      !el.closest('.hide-sign') &&
       canHideColorPicker;
 
     const canDrag =
@@ -236,6 +238,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       >
         <${Canvas} root=${root} canvas=${canvas} />
         <${Minimap} />
+        <${HideSign} root=${root} />
         ${state.dragSelect
           ? html`
               <${DragSelect}

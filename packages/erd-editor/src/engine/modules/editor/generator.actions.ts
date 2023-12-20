@@ -30,11 +30,11 @@ import {
   addColumnAction$,
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
-import { Point } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { query } from '@/utils/collection/query';
+import { isOverlapPosition, Rect } from '@/utils/dragSelect';
 import { schemaSQLParserToSchemaJson } from '@/utils/schema-sql-parser';
 
 import {
@@ -65,6 +65,8 @@ type SelectTypeIds = {
   tableIds: string[];
   memoIds: string[];
 };
+
+const CENTER_BOX_SIZE = 15;
 
 function getSelectTypeIds(
   selectedMap: Record<string, SelectType>
@@ -127,15 +129,12 @@ export const removeSelectedAction$ = (): GeneratorAction =>
     yield removeMemoAction$();
   };
 
-export const dragSelectAction$ = (min: Point, max: Point): GeneratorAction =>
+export const dragSelectAction$ = (dragRect: Rect): GeneratorAction =>
   function* (state) {
     const {
       doc: { tableIds, memoIds },
       collections,
     } = state;
-
-    const inRange = (x: number, y: number) =>
-      min.x <= x && max.x >= x && min.y <= y && max.y >= y;
 
     const selectedMap: Record<string, SelectType> = {
       ...query(collections)
@@ -144,10 +143,17 @@ export const dragSelectAction$ = (min: Point, max: Point): GeneratorAction =>
         .reduce<Record<string, SelectType>>((acc, table) => {
           const width = calcTableWidths(table, state).width;
           const height = calcTableHeight(table);
-          const centerX = table.ui.x + width / 2;
-          const centerY = table.ui.y + height / 2;
+          const x = table.ui.x + width / 2 - CENTER_BOX_SIZE;
+          const y = table.ui.y + height / 2 - CENTER_BOX_SIZE;
 
-          if (inRange(centerX, centerY)) {
+          if (
+            isOverlapPosition(dragRect, {
+              x,
+              y,
+              w: CENTER_BOX_SIZE,
+              h: CENTER_BOX_SIZE,
+            })
+          ) {
             acc[table.id] = SelectType.table;
           }
 
@@ -159,10 +165,17 @@ export const dragSelectAction$ = (min: Point, max: Point): GeneratorAction =>
         .reduce<Record<string, SelectType>>((acc, memo) => {
           const width = calcMemoWidth(memo);
           const height = calcMemoHeight(memo);
-          const centerX = memo.ui.x + width / 2;
-          const centerY = memo.ui.y + height / 2;
+          const x = memo.ui.x + width / 2 - CENTER_BOX_SIZE;
+          const y = memo.ui.y + height / 2 - CENTER_BOX_SIZE;
 
-          if (inRange(centerX, centerY)) {
+          if (
+            isOverlapPosition(dragRect, {
+              x,
+              y,
+              w: CENTER_BOX_SIZE,
+              h: CENTER_BOX_SIZE,
+            })
+          ) {
             acc[memo.id] = SelectType.memo;
           }
 

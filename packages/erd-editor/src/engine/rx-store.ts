@@ -10,6 +10,7 @@ import {
   ChangeActionTypes,
   HistoryActionTypes,
   StreamActionTypes,
+  StreamRegroupColorActionTypes,
   StreamRegroupMoveActionTypes,
   StreamRegroupScrollActionTypes,
 } from '@/engine/actions';
@@ -50,6 +51,7 @@ export function createRxStore(context: EngineContext): RxStore {
     groupByStreamActions(StreamActionTypes, [
       ['@@move', StreamRegroupMoveActionTypes],
       ['@@scroll', StreamRegroupScrollActionTypes],
+      ['@@color', StreamRegroupColorActionTypes],
     ])
   );
   const change$ = new Observable<Array<AnyAction>>(subscriber =>

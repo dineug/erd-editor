@@ -65,25 +65,27 @@ const ToastContainer: FC<ToastContainerProps> = (props, ctx) => {
     );
   });
 
-  return () => {
-    return html`
-      <div class=${styles.root} ${ref(root)}>
-        ${repeat(
-          toasts,
-          toast => toast.id,
-          toast => html`
-            <div
-              class="toast-container"
-              ?data-animation-one=${animationOne.has(toast.id)}
-              @animationend=${() => handleAnimationend(toast.id)}
-            >
-              ${toast.message}
-            </div>
-          `
-        )}
-      </div>
-    `;
-  };
+  return () => html`
+    <div
+      class=${styles.root}
+      ${ref(root)}
+      ?data-pointer-none=${toasts.length === 0}
+    >
+      ${repeat(
+        toasts,
+        toast => toast.id,
+        toast => html`
+          <div
+            class="toast-container"
+            ?data-animation-one=${animationOne.has(toast.id)}
+            @animationend=${() => handleAnimationend(toast.id)}
+          >
+            ${toast.message}
+          </div>
+        `
+      )}
+    </div>
+  `;
 };
 
 export default ToastContainer;

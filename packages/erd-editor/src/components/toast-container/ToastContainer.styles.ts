@@ -11,6 +11,10 @@ export const root = css`
   max-width: 100%;
   padding: 25px;
 
+  &[data-pointer-none] {
+    pointer-events: none;
+  }
+
   .toast-move {
     transition: transform 0.3s;
   }

@@ -164,6 +164,8 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
     let verticalUI: ResizeMemo | null = null;
     let horizontalUI: ResizeMemo | null = null;
 
+    // TODO: zoomLevel
+
     switch (position) {
       case Position.left:
       case Position.right:

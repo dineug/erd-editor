@@ -4,11 +4,7 @@ import { fromEvent } from 'rxjs';
 import { useAppContext } from '@/components/appContext';
 import { dragSelectAction$ } from '@/engine/modules/editor/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import {
-  getAbsolutePosition,
-  getOverlapPosition,
-  getZoomViewport,
-} from '@/utils/dragSelect';
+import { getAbsolutePoint, Rect } from '@/utils/dragSelect';
 import { mouseup$ } from '@/utils/globalEventObservable';
 
 import * as styles from './DragSelect.styles';
@@ -27,13 +23,15 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
 
   onBeforeMount(() => {
     const { store } = app.value;
-    const { settings } = store.state;
     const $root = props.root.value;
 
     addUnsubscribe(
       mouseup$.subscribe(props.onDragSelectEnd),
       fromEvent<MouseEvent>($root, 'mousemove').subscribe(event => {
         event.preventDefault();
+        const {
+          settings: { width, height, zoomLevel, scrollLeft, scrollTop },
+        } = store.state;
         const rect = $root.getBoundingClientRect();
         const currentX = event.clientX - rect.x;
         const currentY = event.clientY - rect.y;
@@ -61,40 +59,31 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
         const ghostMin = Object.assign({}, min);
         const ghostMax = Object.assign({}, max);
 
-        ghostMin.x -= settings.scrollLeft;
-        ghostMin.y -= settings.scrollTop;
-        ghostMax.x -= settings.scrollLeft;
-        ghostMax.y -= settings.scrollTop;
+        ghostMin.x -= scrollLeft;
+        ghostMin.y -= scrollTop;
+        ghostMax.x -= scrollLeft;
+        ghostMax.y -= scrollTop;
 
-        const zoomViewportRect = getZoomViewport(
-          settings.width,
-          settings.height,
-          settings.zoomLevel
+        const absoluteMin = getAbsolutePoint(
+          ghostMin,
+          width,
+          height,
+          zoomLevel
+        );
+        const absoluteMax = getAbsolutePoint(
+          ghostMax,
+          width,
+          height,
+          zoomLevel
         );
 
-        const overlapPosition = getOverlapPosition(
-          {
-            ...ghostMin,
-            w: ghostMax.x - ghostMin.x,
-            h: ghostMax.y - ghostMin.y,
-          },
-          zoomViewportRect
+        store.dispatch(
+          dragSelectAction$({
+            ...absoluteMin,
+            w: absoluteMax.x - absoluteMin.x,
+            h: absoluteMax.y - absoluteMin.y,
+          })
         );
-
-        if (!overlapPosition) return;
-
-        const absolutePosition = getAbsolutePosition(
-          overlapPosition,
-          zoomViewportRect,
-          settings.zoomLevel
-        );
-
-        ghostMin.x = absolutePosition.x1;
-        ghostMin.y = absolutePosition.y1;
-        ghostMax.x = absolutePosition.x2;
-        ghostMax.y = absolutePosition.y2;
-
-        store.dispatch(dragSelectAction$(ghostMin, ghostMax));
       })
     );
   });

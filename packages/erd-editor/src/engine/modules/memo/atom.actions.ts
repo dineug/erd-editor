@@ -44,6 +44,23 @@ const moveMemo: ReducerType<typeof ActionType.moveMemo> = (
   });
 };
 
+export const moveToMemoAction = createAction<
+  ActionMap[typeof ActionType.moveToMemo]
+>(ActionType.moveToMemo);
+
+const moveToMemo: ReducerType<typeof ActionType.moveToMemo> = (
+  { collections },
+  { payload: { id, x, y } }
+) => {
+  const collection = query(collections).collection('memoEntities');
+  collection.getOrCreate(id, id => createMemo({ id }));
+
+  collection.updateOne(id, memo => {
+    memo.ui.x = x;
+    memo.ui.y = y;
+  });
+};
+
 export const removeMemoAction = createAction<
   ActionMap[typeof ActionType.removeMemo]
 >(ActionType.removeMemo);
@@ -136,6 +153,7 @@ const changeZIndex: ReducerType<typeof ActionType.changeZIndex> = (
 export const memoReducers = {
   [ActionType.addMemo]: addMemo,
   [ActionType.moveMemo]: moveMemo,
+  [ActionType.moveToMemo]: moveToMemo,
   [ActionType.removeMemo]: removeMemo,
   [ActionType.changeMemoValue]: changeMemoValue,
   [ActionType.changeMemoColor]: changeMemoColor,
@@ -146,6 +164,7 @@ export const memoReducers = {
 export const actions = {
   addMemoAction,
   moveMemoAction,
+  moveToMemoAction,
   removeMemoAction,
   changeMemoValueAction,
   changeMemoColorAction,

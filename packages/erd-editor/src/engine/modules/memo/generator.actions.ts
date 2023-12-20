@@ -29,8 +29,7 @@ export const addMemoAction$ = (): GeneratorAction =>
     yield addMemoAction({
       id,
       ui: {
-        x: point.x,
-        y: point.y,
+        ...point,
         zIndex: nextZIndex(tables, memos),
       },
     });

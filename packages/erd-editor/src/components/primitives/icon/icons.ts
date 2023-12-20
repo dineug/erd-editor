@@ -12,6 +12,7 @@ import {
   faFileImage,
   faFileImport,
   faKey,
+  faLocationDot,
   faMousePointer,
   faNoteSticky,
   faPalette,
@@ -36,7 +37,6 @@ import {
   mdiFormatLetterCase,
   mdiTableCog,
   mdiVectorLine,
-  mdiXml,
 } from '@mdi/js';
 
 import { ValuesType } from '@/internal-types';
@@ -109,6 +109,7 @@ const icons = [
   faColumns,
   faCopy,
   faBars,
+  faLocationDot,
   createMDI('code-json', mdiCodeJson),
   createMDI('database', mdiDatabase),
   createMDI('database-import', mdiDatabaseImport),

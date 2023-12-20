@@ -9,6 +9,7 @@ import {
   changeMemoColorAction,
   changeMemoValueAction,
   moveMemoAction,
+  moveToMemoAction,
   removeMemoAction,
   resizeMemoAction,
 } from './atom.actions';
@@ -46,10 +47,28 @@ const changeMemoValue: PushUndoHistory = (
   undoActions.push(changeMemoValueAction({ id, value: memo.value }));
 };
 
+const moveToMemo: PushUndoHistory = (
+  undoActions,
+  { payload: { id } }: ReturnType<typeof moveToMemoAction>,
+  { collections }
+) => {
+  const memo = query(collections).collection('memoEntities').selectById(id);
+  if (!memo) return;
+
+  undoActions.push(
+    moveToMemoAction({
+      id,
+      x: memo.ui.x,
+      y: memo.ui.y,
+    })
+  );
+};
+
 export const memoPushUndoHistoryMap = {
   [ActionType.addMemo]: addMemo,
   [ActionType.removeMemo]: removeMemo,
   [ActionType.changeMemoValue]: changeMemoValue,
+  [ActionType.moveToMemo]: moveToMemo,
 };
 
 const moveMemo: PushStreamHistory = (undoActions, redoActions, actions) => {

@@ -58,8 +58,7 @@ export const addTableAction$ = (): GeneratorAction =>
     yield addTableAction({
       id,
       ui: {
-        x: point.x,
-        y: point.y,
+        ...point,
         zIndex: nextZIndex(tables, memos),
       },
     });

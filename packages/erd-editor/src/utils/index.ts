@@ -2,6 +2,7 @@ import { camelCase, range, upperFirst } from 'lodash-es';
 
 import { START_ADD, START_X, START_Y } from '@/constants/layout';
 import { EntityMeta, Memo, Point, Settings, Table } from '@/internal-types';
+import { getAbsolutePoint } from '@/utils/dragSelect';
 
 const toZIndex = (data: Table | Memo) => data.ui.zIndex;
 
@@ -11,14 +12,19 @@ export const nextZIndex = (tables: Table[], memos: Memo[]) =>
 const isSamePoint = (a: Point) => (b: Point) => a.y === b.y && a.x === b.x;
 
 export function nextPoint(
-  { scrollLeft, scrollTop }: Settings,
+  { width, height, zoomLevel, scrollLeft, scrollTop }: Settings,
   tables: Table[],
   memos: Memo[]
 ): Point {
-  const point: Point = {
-    x: START_X - scrollLeft,
-    y: START_Y - scrollTop,
-  };
+  const point = getAbsolutePoint(
+    {
+      x: START_X - scrollLeft,
+      y: START_Y - scrollTop,
+    },
+    width,
+    height,
+    zoomLevel
+  );
 
   const points = [...tables, ...memos].map(({ ui }) => ui);
 

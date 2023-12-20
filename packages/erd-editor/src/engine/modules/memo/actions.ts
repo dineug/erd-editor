@@ -7,6 +7,7 @@ import { ValuesType } from '@/internal-types';
 export const ActionType = {
   addMemo: 'memo.add',
   moveMemo: 'memo.move',
+  moveToMemo: 'memo.moveTo',
   removeMemo: 'memo.remove',
   changeMemoValue: 'memo.changeValue',
   changeMemoColor: 'memo.changeColor',
@@ -28,6 +29,11 @@ export type ActionMap = {
     movementX: number;
     movementY: number;
     ids: string[];
+  };
+  [ActionType.moveToMemo]: {
+    id: string;
+    x: number;
+    y: number;
   };
   [ActionType.removeMemo]: {
     id: string;

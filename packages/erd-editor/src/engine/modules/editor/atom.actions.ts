@@ -3,7 +3,7 @@ import { createAction } from '@dineug/r-html';
 
 import { CanvasType } from '@/constants/schema';
 import { query } from '@/utils/collection/query';
-import { getZoomViewport } from '@/utils/dragSelect';
+import { getAbsolutePoint } from '@/utils/dragSelect';
 import { hasCanvasType } from '@/utils/validation';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
@@ -115,8 +115,8 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
     settings.canvasType = CanvasType.ERD;
   }
 
+  Object.assign(state.settings, settings);
   state.version = version;
-  state.settings = settings;
   state.doc = doc;
   state.collections = collections;
   state.lww = lww;
@@ -146,8 +146,8 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
     settings.canvasType = CanvasType.ERD;
   }
 
+  Object.assign(state.settings, settings);
   state.version = version;
-  state.settings = settings;
   state.doc = doc;
   state.collections = collections;
   state.lww = lww;
@@ -395,20 +395,15 @@ const drawRelationship: ReducerType<typeof ActionType.drawRelationship> = (
 ) => {
   if (!drawRelationship?.start) return;
 
-  const currentX = x - scrollLeft;
-  const currentY = y - scrollTop;
-  const zoomViewport = getZoomViewport(width, height, zoomLevel);
-  const zoomX = currentX * zoomLevel;
-  const zoomY = currentY * zoomLevel;
-  const absoluteZoomX = zoomViewport.x + zoomX;
-  const absoluteZoomY = zoomViewport.y + zoomY;
-  const diffZoomX = (currentX - absoluteZoomX) / zoomLevel;
-  const diffZoomY = (currentY - absoluteZoomY) / zoomLevel;
-  const absoluteX = currentX + diffZoomX;
-  const absoluteY = currentY + diffZoomY;
+  const absolutePoint = getAbsolutePoint(
+    { x: x - scrollLeft, y: y - scrollTop },
+    width,
+    height,
+    zoomLevel
+  );
 
-  drawRelationship.end.x = absoluteX;
-  drawRelationship.end.y = absoluteY;
+  drawRelationship.end.x = absolutePoint.x;
+  drawRelationship.end.y = absolutePoint.y;
 };
 
 export const hoverColumnMapAction = createAction<

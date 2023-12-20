@@ -112,6 +112,7 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   // memo
   'memo.add',
   'memo.move',
+  'memo.moveTo',
   'memo.remove',
   'memo.changeValue',
   'memo.changeColor',
@@ -142,6 +143,11 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
 export const StreamRegroupMoveActionTypes: ReadonlyArray<ActionType> = [
   'table.move',
   'memo.move',
+];
+
+export const StreamRegroupColorActionTypes: ReadonlyArray<ActionType> = [
+  'table.changeColor',
+  'memo.changeColor',
 ];
 
 export const StreamRegroupScrollActionTypes: ReadonlyArray<ActionType> = [
