@@ -152,8 +152,6 @@ export function useErdShortcut(ctx: Ctx) {
         }
       }
 
-      // KeyBindingName.find
-
       type === KeyBindingName.zoomIn &&
         store.dispatch(streamZoomLevelAction$(0.1));
       type === KeyBindingName.zoomOut &&

@@ -33,7 +33,7 @@ import { ErdEditorElement, ErdEditorProps } from './ErdEditor';
 const ExternalKeyBindingNameList = omit(KeyBindingNameList, [
   KeyBindingName.edit,
   KeyBindingName.stop,
-  KeyBindingName.find,
+  KeyBindingName.search,
   KeyBindingName.undo,
   KeyBindingName.redo,
   KeyBindingName.zoomIn,

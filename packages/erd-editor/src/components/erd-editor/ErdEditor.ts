@@ -16,6 +16,7 @@ import { appContext, createAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
+import QuickSearch from '@/components/quick-search/QuickSearch';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import Settings from '@/components/settings/Settings';
 import Theme from '@/components/theme/Theme';
@@ -32,7 +33,6 @@ import { getSchemaGCService } from '@/services/schema-gc';
 import { procGC } from '@/services/schema-gc/procGC';
 import { ThemeOptions } from '@/themes/radix-ui-theme';
 import { Theme as ThemeType } from '@/themes/tokens';
-import { query } from '@/utils/collection/query';
 import { copyAction, pasteAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingMap, KeyBindingName } from '@/utils/keyboard-shortcut';
@@ -66,7 +66,7 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
         KeyBindingMap,
         | typeof KeyBindingName.edit
         | typeof KeyBindingName.stop
-        | typeof KeyBindingName.find
+        | typeof KeyBindingName.search
         | typeof KeyBindingName.undo
         | typeof KeyBindingName.redo
         | typeof KeyBindingName.zoomIn
@@ -234,6 +234,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
                 ? html`<div class=${styles.scope}><${Settings} /></div>`
                 : null}
         <${ToastContainer} />
+        <${QuickSearch} />
         ${text.span}
       </div>
     `;

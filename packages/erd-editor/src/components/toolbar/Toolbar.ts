@@ -12,6 +12,7 @@ import {
   resizeAction,
 } from '@/engine/modules/settings/atom.actions';
 import { changeZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
+import { toggleSearchAction } from '@/utils/emitter';
 import {
   canvasSizeInRange,
   toNumString,
@@ -72,6 +73,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
   const handleUnselectAll = () => {
     const { store } = app.value;
     store.dispatch(unselectAllAction$());
+  };
+
+  const handleSearch = () => {
+    const { emitter } = app.value;
+    emitter.emit(toggleSearchAction());
   };
 
   return () => {
@@ -166,6 +172,10 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           @click=${() => handleChangeCanvasType(CanvasType.settings)}
         >
           <${Icon} name="gear" size=${16} />
+        </div>
+        <div class=${styles.vertical}></div>
+        <div class=${styles.menu} title="Search" @click=${handleSearch}>
+          <${Icon} name="magnifying-glass" size=${16} />
         </div>
         <div class=${styles.vertical}></div>
         ${showUndoRedo

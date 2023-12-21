@@ -30,7 +30,7 @@ const Shortcuts: FC<ShortcutsProps> = (props, ctx) => {
       },
       {
         command: 'Search',
-        shortcuts: keyBindingMap.find,
+        shortcuts: keyBindingMap.search,
       },
       {
         command: 'Undo',

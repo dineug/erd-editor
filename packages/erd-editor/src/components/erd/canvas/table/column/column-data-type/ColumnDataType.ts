@@ -36,11 +36,6 @@ export type ColumnDataTypeProps = {
   onEditEnd?: () => void;
 };
 
-export interface State {
-  hints: DataTypeHint[];
-  index: number;
-}
-
 const hasAutocompleteKey = arrayHas([
   'ArrowUp',
   'ArrowDown',
@@ -52,8 +47,8 @@ const hasAutocompleteKey = arrayHas([
 
 const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
   const app = useAppContext(ctx, props.app?.value);
-  const state = observable<State>({
-    hints: [],
+  const state = observable({
+    hints: [] as DataTypeHint[],
     index: -1,
   });
   const root = createRef<HTMLDivElement>();

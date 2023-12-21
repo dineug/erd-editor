@@ -53,7 +53,7 @@ export default defineConfig({
     }),
   ],
   worker: {
-    // plugins: () => [tsconfigPaths()],
+    plugins: () => [tsconfigPaths()],
   },
   server: {
     open: true,

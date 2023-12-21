@@ -27,7 +27,7 @@ const ToastContainer: FC<ToastContainerProps> = (props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
   const toasts = observable<
     Array<ReturnType<typeof openToastAction>['payload'] & { id: string }>
-  >([], { shallow: true });
+  >([]);
 
   const animationOne = new Set<string>();
 

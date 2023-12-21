@@ -21,7 +21,8 @@ const createTagged =
     if (templateCache.has(strings)) {
       const template = templateCache.get(strings) as Template;
       templateLiterals.template = template;
-      return Object.freeze(templateLiterals);
+      // return Object.freeze(templateLiterals);
+      return templateLiterals;
     }
 
     const tpl = strings
@@ -34,7 +35,8 @@ const createTagged =
 
     templateLiterals.template = Object.freeze({ node });
     templateCache.set(strings, templateLiterals.template);
-    return Object.freeze(templateLiterals);
+    // return Object.freeze(templateLiterals);
+    return templateLiterals;
   };
 
 export const html = createTagged(TemplateLiteralsType.html);

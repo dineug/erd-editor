@@ -66,8 +66,8 @@
     "@storybook/addon-interactions": "^7.6.5",
     "@storybook/addon-links": "^7.6.5",
     "@storybook/blocks": "^7.6.5",
-    "@storybook/html-vite": "^7.6.5",
     "@storybook/html": "^7.6.5",
+    "@storybook/html-vite": "^7.6.5",
     "@storybook/testing-library": "^0.2.2",
     "@types/color": "^3.0.6",
     "@types/d3": "7.4.3",
@@ -80,6 +80,7 @@
     "d3": "7.8.5",
     "deepmerge": "^4.3.1",
     "framer-motion": "^10.16.16",
+    "fuse.js": "^7.0.0",
     "highlight-words-core": "^1.2.2",
     "html-to-image": "^1.11.11",
     "lodash-es": "^4.17.21",
@@ -92,10 +93,10 @@
     "tinykeys": "^2.1.0",
     "ts-patch": "^3.1.1",
     "tslib": "^2.6.2",
-    "typescript-transform-paths": "^3.4.6",
     "typescript": "5.3.3",
+    "typescript-transform-paths": "^3.4.6",
     "ua-parser-js": "^1.0.37",
-    "vite-tsconfig-paths": "^4.2.2",
-    "vite": "^5.0.10"
+    "vite": "^5.0.10",
+    "vite-tsconfig-paths": "3.6.0"
   }
 }

@@ -18,6 +18,7 @@ const InternalActionType = {
   copy: 'copy',
   paste: 'paste',
   schemaGC: 'schemaGC',
+  toggleSearch: 'toggleSearch',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 
@@ -44,6 +45,7 @@ type InternalActionMap = {
     event: ClipboardEvent;
   };
   [InternalActionType.schemaGC]: void;
+  [InternalActionType.toggleSearch]: void;
 };
 
 type Reducer<K extends keyof M, M> = (action: Action<K, M>) => void;
@@ -105,3 +107,7 @@ export const pasteAction = createAction<
 export const schemaGCAction = createAction<
   InternalActionMap[typeof InternalActionType.schemaGC]
 >(InternalActionType.schemaGC);
+
+export const toggleSearchAction = createAction<
+InternalActionMap[typeof InternalActionType.toggleSearch]
+>(InternalActionType.toggleSearch);

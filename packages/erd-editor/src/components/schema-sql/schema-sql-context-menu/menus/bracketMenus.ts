@@ -7,7 +7,7 @@ type Menu = {
   value: number;
 };
 
-const menus: Menu[] = [
+export const menus: Menu[] = [
   {
     name: 'SingleQuote',
     value: BracketType.singleQuote,

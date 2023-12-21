@@ -26,7 +26,8 @@ export const css = (
 
     templateLiterals.template = template;
     templateLiterals.toString = () => identifier;
-    return Object.freeze(templateLiterals);
+    // return Object.freeze(templateLiterals);
+    return templateLiterals;
   }
 
   const tpl = strings.raw
@@ -42,5 +43,6 @@ export const css = (
   templateLiterals.template = Object.freeze({ node });
   templateLiterals.toString = () => identifier;
   cssTemplateCache.set(strings, templateLiterals.template);
-  return Object.freeze(templateLiterals);
+  // return Object.freeze(templateLiterals);
+  return templateLiterals;
 };

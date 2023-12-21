@@ -83,7 +83,8 @@ const exclude = (value: any) =>
   value instanceof WeakSet ||
   value instanceof RegExp ||
   value instanceof Date ||
-  value instanceof Promise;
+  value instanceof Promise ||
+  ((isArray(value) || isObject(value)) && Object.isFrozen(value));
 
 export function observable<T>(
   raw: T,

@@ -13,12 +13,14 @@ export const erdShortcutPerformCheck =
           const showAutomaticTablePlacement =
             editor.openMap[Open.automaticTablePlacement];
           const showTableProperties = editor.openMap[Open.tableProperties];
+          const showSearch = editor.openMap[Open.search];
           const isCanvasType = settings.canvasType === CanvasType.ERD;
 
           const canPerform =
             isCanvasType &&
             !showAutomaticTablePlacement &&
-            !showTableProperties;
+            !showTableProperties &&
+            !showSearch;
 
           if (canPerform) {
             subscriber.next(value);

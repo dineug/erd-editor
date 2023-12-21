@@ -40,7 +40,7 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
     const el = event.target as HTMLElement | null;
     if (!el) return;
 
-    const canClose = !el.closest(`.${styles.container}`);
+    const canClose = !el.closest('.table-properties');
     canClose && handleClose();
   };
 
@@ -76,7 +76,7 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
         @wheel=${onStop}
         @click=${handleOutsideClick}
       >
-        <div class=${styles.container}>
+        <div class=${['table-properties', styles.container]}>
           <div class=${['scrollbar', styles.header]}>
             ${tables.map(
               table => html`

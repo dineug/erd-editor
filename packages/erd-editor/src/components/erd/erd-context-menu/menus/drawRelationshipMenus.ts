@@ -10,7 +10,7 @@ type Menu = {
   relationshipType: number;
 };
 
-const menus: Menu[] = [
+export const menus: Menu[] = [
   {
     iconName: 'ZeroOne',
     name: 'Zero One',
