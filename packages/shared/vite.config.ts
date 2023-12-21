@@ -1,9 +1,7 @@
-// @ts-ignore
 import { readFileSync } from 'node:fs';
 
 import typescript from '@rollup/plugin-typescript';
 import { visualizer } from 'rollup-plugin-visualizer';
-// @ts-ignore
 import tspCompiler from 'ts-patch/compiler';
 import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';

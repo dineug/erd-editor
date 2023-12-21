@@ -1,10 +1,8 @@
-// @ts-ignore
 import { readFileSync } from 'node:fs';
 
 import rHtml from '@dineug/vite-plugin-r-html';
 import typescript from '@rollup/plugin-typescript';
 import { visualizer } from 'rollup-plugin-visualizer';
-// @ts-ignore
 import tspCompiler from 'ts-patch/compiler';
 import { defineConfig, loadEnv } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
@@ -19,12 +17,17 @@ const banner = `/*!
  */`;
 
 export default defineConfig(({ command, mode }) => {
-  process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
+  const envDir = './environment';
+  process.env = {
+    ...process.env,
+    ...loadEnv(mode, envDir),
+  };
   const isServe = command === 'serve';
   const isBuild = command === 'build';
   const isLib = process.env.VITE_TARGET === 'lib';
 
   return {
+    envDir,
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
     },
