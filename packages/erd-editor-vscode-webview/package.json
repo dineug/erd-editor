@@ -1,0 +1,19 @@
+{
+  "name": "@dineug/erd-editor-vscode-webview",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Entity-Relationship Diagram Editor vscode webview",
+  "author": "SeungHwan-Lee <dineug2@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "@dineug/erd-editor": "workspace:*",
+    "@dineug/erd-editor-shiki-worker": "workspace:*",
+    "@types/vscode-webview": "1.57.4",
+    "typescript": "5.3.3",
+    "vite-tsconfig-paths": "^4.2.2",
+    "vite": "^5.0.10"
+  }
+}

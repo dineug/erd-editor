@@ -13,6 +13,14 @@
       "path": "packages/erd-editor-shiki-worker"
     },
     {
+      "name": "erd-editor-vscode",
+      "path": "packages/erd-editor-vscode"
+    },
+    {
+      "name": "erd-editor-vscode-webview",
+      "path": "packages/erd-editor-vscode-webview"
+    },
+    {
       "name": "schema-sql-parser",
       "path": "packages/schema-sql-parser"
     },

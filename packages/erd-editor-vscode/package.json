@@ -1,0 +1,68 @@
+{
+  "name": "vuerd-vscode",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Entity-Relationship Diagram Editor vscode extension",
+  "icon": "./assets/erd-editor.png",
+  "displayName": "ERD Editor",
+  "publisher": "dineug",
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "vuerd",
+    "editor",
+    "erd",
+    "db",
+    "database",
+    "diagram",
+    "entity",
+    "relationship",
+    "sql",
+    "vscode"
+  ],
+  "homepage": "https://github.com/dineug/erd-editor#readme",
+  "bugs": {
+    "url": "https://github.com/dineug/erd-editor/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dineug/erd-editor.git"
+  },
+  "author": "dineug <dineug2@gmail.com>",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "scripts": {
+    "vscode:prepublish": "webpack --mode production",
+    "webpack": "webpack --mode development",
+    "webpack:dev": "webpack --mode development --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^18.15.0",
+    "@types/vscode": "^1.85.0",
+    "crypto-js": "^4.2.0",
+    "macaddress": "^0.5.3",
+    "node-fetch": "^3.3.2",
+    "ts-loader": "^9.5.1",
+    "tsconfig-paths-webpack-plugin": "^4.1.0",
+    "typescript": "5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "main": "./dist/extension",
+  "activationEvents": [
+    "onWebviewPanel:catCoding"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "catCoding.start",
+        "title": "Start cat coding session",
+        "category": "Cat Coding"
+      }
+    ]
+  }
+}
