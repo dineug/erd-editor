@@ -56,6 +56,8 @@ export const action = css`
   white-space: nowrap;
   overflow: hidden;
   cursor: pointer;
+  min-height: 45px;
+  height: 45px;
 
   &:hover {
     background-color: var(--column-hover);

@@ -13,50 +13,54 @@ import {
   vscodeSaveValueAction,
 } from '@dineug/erd-editor-vscode-bridge';
 
-const emitter = new Emitter();
+const bridge = new Emitter();
 const vscode = window.acquireVsCodeApi();
 const editor = document.createElement('erd-editor');
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
 
-function dispatch(action: AnyAction) {
+const dispatch = (action: AnyAction) => {
   vscode.postMessage(action);
-}
+};
 
 setGetShikiServiceCallback(getShikiService);
 setImportFileCallback(options => {
   dispatch(vscodeImportFileAction(options));
 });
-setExportFileCallback((blob, options) => {
-  const reader = new FileReader();
-
-  reader.onloadend = () => {
-    dispatch(
-      vscodeExportFileAction({
-        base64: reader.result as string,
-        fileName: options.fileName,
-      })
-    );
-  };
-  reader.readAsDataURL(blob);
+setExportFileCallback(async (blob, options) => {
+  const arrayBuffer = await blob.arrayBuffer();
+  dispatch(
+    vscodeExportFileAction({
+      value: Array.from(new Uint8Array(arrayBuffer)),
+      fileName: options.fileName,
+    })
+  );
 });
 
 const handleChange = () => {
-  dispatch(vscodeSaveValueAction({ value: editor.value }));
+  dispatch(
+    vscodeSaveValueAction({
+      value: Array.from(textEncoder.encode(editor.value)),
+    })
+  );
 };
 
-emitter.on({
+bridge.on({
   webviewImportFile: ({ payload: { type, value } }) => {
+    const result = textDecoder.decode(new Uint8Array(value));
     switch (type) {
       case 'json':
-        editor.value = value;
+        editor.value = result;
         break;
       case 'sql':
-        editor.setSchemaSQL(value);
+        editor.setSchemaSQL(result);
         break;
     }
   },
   webviewInitialValue: ({ payload: { value } }) => {
+    const result = textDecoder.decode(new Uint8Array(value));
     editor.addEventListener('change', handleChange);
-    editor.setInitialValue(value);
+    editor.setInitialValue(result);
     document.body.appendChild(editor);
   },
 });
@@ -66,6 +70,6 @@ document.body.setAttribute(
   `padding: 0; margin: 0; width: 100%; height:100vh;`
 );
 
-window.addEventListener('message', event => emitter.emit(event.data));
+window.addEventListener('message', event => bridge.emit(event.data));
 
 dispatch(vscodeInitialAction());

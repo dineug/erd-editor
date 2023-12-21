@@ -35,11 +35,108 @@
   "engines": {
     "vscode": "^1.85.0"
   },
+  "main": "./dist/extension",
+  "activationEvents": [],
+  "contributes": {
+    "capabilities": {
+      "untrustedWorkspaces": {
+        "supported": true
+      }
+    },
+    "commands": [
+      {
+        "command": "vuerd.showSource",
+        "category": "vuerd",
+        "title": "Open Source",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "vuerd.showEditor",
+        "category": "vuerd",
+        "title": "Open ERD Editor",
+        "icon": {
+          "dark": "./assets/erd-editor.png",
+          "light": "./assets/erd-editor.png"
+        }
+      },
+      {
+        "command": "vuerd.showSourceToSide",
+        "category": "vuerd",
+        "title": "Open Source to the Side",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "vuerd.showEditorToSide",
+        "category": "vuerd",
+        "title": "Open ERD Editor to the Side",
+        "icon": {
+          "dark": "./assets/erd-editor.png",
+          "light": "./assets/erd-editor.png"
+        }
+      }
+    ],
+    "configurationDefaults": {
+      "files.associations": {
+        "*.erd": "json",
+        "*.vuerd": "json"
+      }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "vuerd.showSource",
+          "when": "false"
+        },
+        {
+          "command": "vuerd.showEditor",
+          "when": "false"
+        },
+        {
+          "command": "vuerd.showSourceToSide",
+          "when": "false"
+        },
+        {
+          "command": "vuerd.showEditorToSide",
+          "when": "false"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "vuerd.showEditor",
+          "alt": "vuerd.showEditorToSide",
+          "when": "activeCustomEditorId != 'editor.erd' && resourceFilename =~ /^.+\\.erd(.json)?$/",
+          "group": "navigation"
+        },
+        {
+          "command": "vuerd.showSource",
+          "alt": "vuerd.showSourceToSide",
+          "group": "navigation",
+          "when": "activeCustomEditorId == 'editor.erd' && resourceFilename =~ /^.+\\.erd(.json)?$/"
+        }
+      ]
+    },
+    "customEditors": [
+      {
+        "viewType": "editor.erd",
+        "displayName": "erd-editor",
+        "priority": "default",
+        "selector": [
+          {
+            "filenamePattern": "*.erd"
+          },
+          {
+            "filenamePattern": "*.erd.json"
+          }
+        ]
+      }
+    ]
+  },
   "scripts": {
-    "vscode:prepublish": "webpack --mode production",
+    "vscode:prepublish": "pnpm build",
     "build": "webpack --mode production",
     "webpack": "webpack --mode development",
-    "webpack:dev": "webpack --mode development --watch"
+    "webpack:dev": "webpack --mode development --watch",
+    "package": "pnpm vsce package --no-dependencies"
   },
   "devDependencies": {
     "@dineug/erd-editor-vscode-webview": "workspace:*",
@@ -54,18 +151,5 @@
     "typescript": "5.3.3",
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4"
-  },
-  "main": "./dist/extension",
-  "activationEvents": [
-    "onWebviewPanel:catCoding"
-  ],
-  "contributes": {
-    "commands": [
-      {
-        "command": "catCoding.start",
-        "title": "Start cat coding session",
-        "category": "Cat Coding"
-      }
-    ]
   }
 }

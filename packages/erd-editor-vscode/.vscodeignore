@@ -3,3 +3,5 @@ node_modules
 src/**
 tsconfig.json
 webpack.config.js
+.turbo
+.gitignore

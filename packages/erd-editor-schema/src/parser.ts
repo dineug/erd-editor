@@ -21,5 +21,5 @@ export function toJson(schemaV3: ERDEditorSchemaV3) {
     'collections',
     'lww',
   ]);
-  return JSON.stringify(source);
+  return JSON.stringify(source, null, 2);
 }

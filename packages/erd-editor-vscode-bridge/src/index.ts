@@ -19,7 +19,7 @@ type BridgeActionType = ValuesType<typeof BridgeActionType>;
 
 type BridgeActionMap = {
   [BridgeActionType.vscodeExportFile]: {
-    base64: string;
+    value: number[];
     fileName: string;
   };
   [BridgeActionType.vscodeImportFile]: {
@@ -27,15 +27,15 @@ type BridgeActionMap = {
     accept: string;
   };
   [BridgeActionType.vscodeSaveValue]: {
-    value: string;
+    value: number[];
   };
   [BridgeActionType.vscodeInitial]: void;
   [BridgeActionType.webviewImportFile]: {
     type: 'json' | 'sql';
-    value: string;
+    value: number[];
   };
   [BridgeActionType.webviewInitialValue]: {
-    value: string;
+    value: number[];
   };
 };
 

@@ -1,64 +1,36 @@
 import * as vscode from 'vscode';
 
+import { ErdEditorProvider } from '@/erd-editor-provider';
+
 export function activate(context: vscode.ExtensionContext) {
+  context.subscriptions.push(ErdEditorProvider.register(context));
   context.subscriptions.push(
-    vscode.commands.registerCommand('catCoding.start', () => {
-      const extensionUri = context.extensionUri;
-
-      const column = vscode.window.activeTextEditor
-        ? vscode.window.activeTextEditor.viewColumn
-        : undefined;
-
-      // Otherwise, create a new panel.
-      const panel = vscode.window.createWebviewPanel(
-        'catCoding',
-        'Cat Coding',
-        column || vscode.ViewColumn.One,
-        {
-          enableScripts: true,
-          localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'public')],
-        }
-      );
-
-      _getHtmlForWebview(extensionUri, panel.webview).then(html => {
-        panel.webview.html = html;
-      });
-    })
+    vscode.commands.registerCommand('vuerd.showSource', showSource)
   );
-}
-
-async function _getHtmlForWebview(
-  extensionUri: vscode.Uri,
-  webview: vscode.Webview
-) {
-  const textDecoder = new TextDecoder();
-  const publicUri = vscode.Uri.joinPath(extensionUri, 'public');
-  const content = await vscode.workspace.fs.readFile(
-    vscode.Uri.joinPath(publicUri, 'index.html')
+  context.subscriptions.push(
+    vscode.commands.registerCommand('vuerd.showEditor', showEditor)
   );
-  const nonce = getNonce();
-  const cspSource = webview.cspSource;
-  const scriptUri = webview
-    .asWebviewUri(
-      vscode.Uri.joinPath(extensionUri, 'public', 'webview.iife.js')
+  context.subscriptions.push(
+    vscode.commands.registerCommand('vuerd.showEditorToSide', uri =>
+      showEditor(uri, vscode.ViewColumn.Beside)
     )
-    .toString();
-
-  let html = textDecoder.decode(content);
-
-  html = html.replace('{{nonce}}', nonce);
-  html = html.replace('{{cspSource}}', cspSource);
-  html = html.replace('{{webview}}', scriptUri);
-
-  return html;
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('vuerd.showSourceToSide', uri =>
+      showSource(uri, vscode.ViewColumn.Beside)
+    )
+  );
 }
 
-function getNonce() {
-  let text = '';
-  const possible =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
+function showSource(uri: vscode.Uri, viewColumn?: vscode.ViewColumn) {
+  vscode.window.showTextDocument(uri, { viewColumn });
+}
+
+function showEditor(uri: vscode.Uri, viewColumn?: vscode.ViewColumn) {
+  vscode.commands.executeCommand(
+    'vscode.openWith',
+    uri,
+    'editor.erd',
+    viewColumn
+  );
 }
