@@ -1,10 +1,10 @@
+import { query } from '@dineug/erd-editor-schema';
 import { FC, repeat, svg } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import Relationship from '@/components/erd/canvas/canvas-svg/relationship/Relationship';
 import { hoverColumnMapAction } from '@/engine/modules/editor/atom.actions';
 import { Relationship as RelationshipType } from '@/internal-types';
-import { query } from '@/utils/collection/query';
 
 import * as styles from './CanvasSvg.styles';
 

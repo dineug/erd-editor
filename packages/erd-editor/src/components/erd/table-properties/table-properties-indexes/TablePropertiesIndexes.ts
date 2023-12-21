@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { FC, html, observable, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
@@ -8,7 +9,6 @@ import Icon from '@/components/primitives/icon/Icon';
 import { addIndexAction$ } from '@/engine/modules/index/generator.actions';
 import { attachSharedTag$ } from '@/engine/tag';
 import { Index } from '@/internal-types';
-import { query } from '@/utils/collection/query';
 
 import * as styles from './TablePropertiesIndexes.styles';
 

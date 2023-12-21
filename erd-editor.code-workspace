@@ -21,6 +21,10 @@
       "path": "packages/erd-editor-vscode-webview"
     },
     {
+      "name": "erd-editor-vscode-bridge",
+      "path": "packages/erd-editor-vscode-bridge"
+    },
+    {
       "name": "schema-sql-parser",
       "path": "packages/schema-sql-parser"
     },

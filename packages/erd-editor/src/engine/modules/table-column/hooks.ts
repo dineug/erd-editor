@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { takeEvery } from '@dineug/go';
 
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
@@ -8,7 +9,6 @@ import {
 } from '@/engine/modules/relationship/atom.actions';
 import { changeColumnPrimaryKeyAction } from '@/engine/modules/table-column/atom.actions';
 import { bHas } from '@/utils/bit';
-import { query } from '@/utils/collection/query';
 
 const changeColumnNotNullHook: CO = function* (channel, { collections }) {
   yield takeEvery(

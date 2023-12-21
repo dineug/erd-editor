@@ -1,7 +1,7 @@
+import { query } from '@dineug/erd-editor-schema';
 import { first, groupBy, last, pick } from 'lodash-es';
 
 import { PushStreamHistory, PushUndoHistory } from '@/engine/history.actions';
-import { query } from '@/utils/collection/query';
 
 import { ActionType } from './actions';
 import {

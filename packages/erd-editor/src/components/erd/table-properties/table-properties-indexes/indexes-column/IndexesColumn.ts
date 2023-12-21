@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { createRef, FC, html, onUpdated, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
@@ -10,7 +11,6 @@ import {
 } from '@/engine/modules/index-column/generator.actions';
 import { attachSharedTag$ } from '@/engine/tag';
 import { Index, IndexColumn } from '@/internal-types';
-import { query } from '@/utils/collection/query';
 import { onPrevent } from '@/utils/domEvent';
 import { FlipAnimation } from '@/utils/flipAnimation';
 import { fromShadowDraggable } from '@/utils/rx-operators/fromShadowDraggable';

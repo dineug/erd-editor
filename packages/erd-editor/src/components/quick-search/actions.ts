@@ -1,4 +1,4 @@
-import { toJson } from '@dineug/erd-editor-schema';
+import { query, toJson } from '@dineug/erd-editor-schema';
 import { DOMTemplateLiterals, html } from '@dineug/r-html';
 import Fues from 'fuse.js';
 import { isEmpty } from 'lodash-es';
@@ -30,7 +30,6 @@ import {
   addTableAction$,
   selectTableAction$,
 } from '@/engine/modules/table/generator.actions';
-import { query } from '@/utils/collection/query';
 import { getAbsoluteZoomPoint } from '@/utils/dragSelect';
 import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
 import { importJSON, importSchemaSQL } from '@/utils/file/importFile';

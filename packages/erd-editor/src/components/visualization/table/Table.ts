@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { FC, html, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
@@ -8,7 +9,6 @@ import { Show } from '@/constants/schema';
 import { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
-import { query } from '@/utils/collection/query';
 
 export type TableProps = {
   table: Table;

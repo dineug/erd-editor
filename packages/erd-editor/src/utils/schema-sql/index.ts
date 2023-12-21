@@ -1,7 +1,8 @@
+import { query } from '@dineug/erd-editor-schema';
+
 import { Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
-import { query } from '@/utils/collection/query';
 
 import {
   createSchema as createSchemaMariaDB,

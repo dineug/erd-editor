@@ -1,7 +1,8 @@
+import { query } from '@dineug/erd-editor-schema';
+
 import { AppContext } from '@/components/appContext';
 import { RelationshipType } from '@/constants/schema';
 import { changeRelationshipTypeAction } from '@/engine/modules/relationship/atom.actions';
-import { query } from '@/utils/collection/query';
 
 type Menu = {
   iconName: string;

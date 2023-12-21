@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 import { nanoid } from 'nanoid';
@@ -33,7 +34,6 @@ import {
 import { Column } from '@/internal-types';
 import { nextPoint, nextZIndex } from '@/utils';
 import { bHas } from '@/utils/bit';
-import { query } from '@/utils/collection/query';
 import { getShowColumnOrder } from '@/utils/table-clipboard';
 
 import {

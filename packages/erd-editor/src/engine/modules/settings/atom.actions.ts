@@ -1,8 +1,8 @@
+import { replaceOperator } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 import { createInRange } from '@dineug/shared';
 import { round } from 'lodash-es';
 
-import { replaceOperator } from '@/utils/collection/lww';
 import {
   canvasSizeInRange,
   hasBracketType,

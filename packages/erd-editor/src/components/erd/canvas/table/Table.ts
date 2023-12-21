@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import {
   createRef,
   FC,
@@ -36,7 +37,6 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
-import { query } from '@/utils/collection/query';
 import { onPrevent } from '@/utils/domEvent';
 import { dragendColumnAllAction, openColorPickerAction } from '@/utils/emitter';
 import { FlipAnimation } from '@/utils/flipAnimation';

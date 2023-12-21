@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
 import { GeneratorAction } from '@/engine/generator.actions';
@@ -5,7 +6,6 @@ import { selectAction } from '@/engine/modules/editor/atom.actions';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { nextPoint, nextZIndex } from '@/utils';
-import { query } from '@/utils/collection/query';
 
 import {
   addMemoAction,

@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import {
   forceCollide,
   forceLink,
@@ -10,7 +11,6 @@ import {
 import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
-import { query } from '@/utils/collection/query';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
 type Node = {

@@ -1,9 +1,9 @@
+import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
-import { query } from '@/utils/collection/query';
 import { addAndSort } from '@/utils/collection/sequence';
 
 import { ActionMap, ActionType, ReducerType } from './actions';

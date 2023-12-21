@@ -1,9 +1,9 @@
+import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
 import { ColumnOption } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
-import { query } from '@/utils/collection/query';
 
 import {
   autoName,

@@ -1,9 +1,9 @@
+import { query } from '@dineug/erd-editor-schema';
 import { arrayHas } from '@dineug/shared';
 
 import { ColumnOption, ColumnType } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
-import { query } from '@/utils/collection/query';
 import { CellType, getShowColumnOrder, Row } from '@/utils/table-clipboard';
 
 export function tableCopyToText(state: RootState): string {

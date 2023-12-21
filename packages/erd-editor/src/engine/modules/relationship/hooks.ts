@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { throttle } from '@dineug/go';
 import { arrayHas } from '@dineug/shared';
 
@@ -27,7 +28,6 @@ import {
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { bHas } from '@/utils/bit';
-import { query } from '@/utils/collection/query';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
 const identificationHook: CO = function* (channel, { doc, collections }) {

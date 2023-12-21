@@ -1,6 +1,15 @@
-import { Collections, GetEntities, GetEntity, LWW } from '@/internal-types';
+import { ERDEditorSchemaV3 } from '@/v3';
+import { LWW } from '@/v3/schema/lww';
 
 import { addOperator, removeOperator, replaceOperator } from './lww';
+
+export type Collections = ERDEditorSchemaV3['collections'];
+
+export type GetEntity<T extends keyof ERDEditorSchemaV3['collections']> =
+  ERDEditorSchemaV3['collections'][T][keyof ERDEditorSchemaV3['collections'][T]];
+
+export type GetEntities<T extends keyof ERDEditorSchemaV3['collections']> =
+  ERDEditorSchemaV3['collections'][T];
 
 class Query {
   constructor(private readonly collections: Collections) {}

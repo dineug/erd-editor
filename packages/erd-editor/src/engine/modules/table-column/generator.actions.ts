@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { arrayHas } from '@dineug/shared';
 import { last } from 'lodash-es';
 import { nanoid } from 'nanoid';
@@ -13,7 +14,6 @@ import { getRemoveFirstColumnId } from '@/engine/modules/editor/utils/focus';
 import { removeIndexAction } from '@/engine/modules/index/atom.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { bHas } from '@/utils/bit';
-import { query } from '@/utils/collection/query';
 
 import { ChangeColumnValuePayload } from './actions';
 import {

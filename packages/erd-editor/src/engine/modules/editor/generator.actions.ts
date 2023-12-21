@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { cloneDeep, isEmpty, omit } from 'lodash-es';
 import { nanoid } from 'nanoid';
 
@@ -33,7 +34,6 @@ import {
 import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
-import { query } from '@/utils/collection/query';
 import { isOverlapPosition, Rect } from '@/utils/dragSelect';
 import { schemaSQLParserToSchemaJson } from '@/utils/schema-sql-parser';
 

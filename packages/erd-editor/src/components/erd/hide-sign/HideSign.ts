@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import {
   FC,
   html,
@@ -20,7 +21,6 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import { Memo, Point, Table, ValuesType } from '@/internal-types';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
-import { query } from '@/utils/collection/query';
 import {
   getAbsolutePoint,
   getAbsoluteZoomPoint,

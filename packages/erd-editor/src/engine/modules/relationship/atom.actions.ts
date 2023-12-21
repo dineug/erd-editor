@@ -1,7 +1,7 @@
+import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
-import { query } from '@/utils/collection/query';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 
 import { ActionMap, ActionType, ReducerType } from './actions';

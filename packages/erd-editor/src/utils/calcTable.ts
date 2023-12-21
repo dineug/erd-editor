@@ -1,3 +1,5 @@
+import { query } from '@dineug/erd-editor-schema';
+
 import {
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_DELETE_WIDTH,
@@ -16,7 +18,6 @@ import { EngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { query } from '@/utils/collection/query';
 import { textInRange } from '@/utils/validation';
 
 export function calcTableWidths(

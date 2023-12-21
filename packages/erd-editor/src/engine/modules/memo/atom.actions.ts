@@ -1,9 +1,9 @@
+import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 import { round } from 'lodash-es';
 
 import { createMemo } from '@/utils/collection/memo.entity';
-import { query } from '@/utils/collection/query';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
 

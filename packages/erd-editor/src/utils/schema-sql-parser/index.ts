@@ -1,5 +1,6 @@
 import {
   ERDEditorSchemaV3,
+  query,
   schemaV3Parser,
   toJson,
 } from '@dineug/erd-editor-schema';
@@ -26,7 +27,6 @@ import { Column, IndexColumn } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
-import { query } from '@/utils/collection/query';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';

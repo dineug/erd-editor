@@ -1,7 +1,6 @@
-import { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
+import { ERDEditorSchemaV3, query } from '@dineug/erd-editor-schema';
 
 import { GCIds } from '@/services/schema-gc';
-import { query } from '@/utils/collection/query';
 
 export function procGC(
   { collections, lww }: ERDEditorSchemaV3,

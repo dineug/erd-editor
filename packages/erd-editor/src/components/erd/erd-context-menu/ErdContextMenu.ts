@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { FC, html, onMounted, Ref } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
@@ -12,7 +13,6 @@ import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { changeColumnPrimaryKeyAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { ValuesType } from '@/internal-types';
-import { query } from '@/utils/collection/query';
 import {
   openColorPickerAction,
   openTablePropertiesAction,

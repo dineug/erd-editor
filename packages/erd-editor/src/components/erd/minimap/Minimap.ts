@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { createRef, FC, html, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
@@ -10,7 +11,6 @@ import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
 import { Show } from '@/constants/schema';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { bHas } from '@/utils/bit';
-import { query } from '@/utils/collection/query';
 import { isMouseEvent } from '@/utils/domEvent';
 
 import * as styles from './Minimap.styles';

@@ -1,10 +1,9 @@
-import { schemaV3Parser } from '@dineug/erd-editor-schema';
+import { query, schemaV3Parser } from '@dineug/erd-editor-schema';
 import { arrayHas } from '@dineug/shared';
 import { uniq } from 'lodash-es';
 import { DateTime } from 'luxon';
 
 import type { GCIds } from '@/services/schema-gc';
-import { query } from '@/utils/collection/query';
 
 import { procGC } from './procGC';
 

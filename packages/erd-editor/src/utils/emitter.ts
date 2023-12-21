@@ -109,5 +109,5 @@ export const schemaGCAction = createAction<
 >(InternalActionType.schemaGC);
 
 export const toggleSearchAction = createAction<
-InternalActionMap[typeof InternalActionType.toggleSearch]
+  InternalActionMap[typeof InternalActionType.toggleSearch]
 >(InternalActionType.toggleSearch);

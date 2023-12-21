@@ -281,6 +281,12 @@ importers:
 
   packages/erd-editor-vscode:
     devDependencies:
+      '@dineug/erd-editor-vscode-bridge':
+        specifier: workspace:*
+        version: link:../erd-editor-vscode-bridge
+      '@dineug/erd-editor-vscode-webview':
+        specifier: workspace:*
+        version: link:../erd-editor-vscode-webview
       '@types/node':
         specifier: ^18.15.0
         version: 18.18.13
@@ -312,6 +318,33 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(webpack@5.89.0)
 
+  packages/erd-editor-vscode-bridge:
+    devDependencies:
+      '@rollup/plugin-typescript':
+        specifier: ^11.1.5
+        version: 11.1.5(tslib@2.6.2)(typescript@5.3.3)
+      rollup-plugin-visualizer:
+        specifier: ^5.11.0
+        version: 5.11.0
+      ts-patch:
+        specifier: ^3.1.1
+        version: 3.1.1
+      tslib:
+        specifier: ^2.6.2
+        version: 2.6.2
+      typescript:
+        specifier: 5.3.3
+        version: 5.3.3
+      typescript-transform-paths:
+        specifier: ^3.4.6
+        version: 3.4.6(typescript@5.3.3)
+      vite:
+        specifier: ^5.0.10
+        version: 5.0.10
+      vite-tsconfig-paths:
+        specifier: ^4.2.2
+        version: 4.2.2(typescript@5.3.3)(vite@5.0.10)
+
   packages/erd-editor-vscode-webview:
     devDependencies:
       '@dineug/erd-editor':
@@ -320,6 +353,9 @@ importers:
       '@dineug/erd-editor-shiki-worker':
         specifier: workspace:*
         version: link:../erd-editor-shiki-worker
+      '@dineug/erd-editor-vscode-bridge':
+        specifier: workspace:*
+        version: link:../erd-editor-vscode-bridge
       '@types/vscode-webview':
         specifier: 1.57.4
         version: 1.57.4

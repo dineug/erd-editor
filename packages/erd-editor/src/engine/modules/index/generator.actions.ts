@@ -1,7 +1,7 @@
+import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
 import { GeneratorAction } from '@/engine/generator.actions';
-import { query } from '@/utils/collection/query';
 
 import { addIndexAction, changeIndexUniqueAction } from './atom.actions';
 

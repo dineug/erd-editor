@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { FC, html, observable, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
@@ -10,7 +11,6 @@ import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { query } from '@/utils/collection/query';
 import { onStop } from '@/utils/domEvent';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 

@@ -1,8 +1,7 @@
-import { parser, schemaV3Parser } from '@dineug/erd-editor-schema';
+import { parser, query, schemaV3Parser } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 
 import { CanvasType } from '@/constants/schema';
-import { query } from '@/utils/collection/query';
 import { getAbsolutePoint } from '@/utils/dragSelect';
 import { hasCanvasType } from '@/utils/validation';
 

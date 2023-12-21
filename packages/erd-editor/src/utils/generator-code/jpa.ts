@@ -1,9 +1,10 @@
+import { query } from '@dineug/erd-editor-schema';
+
 import { ColumnOption, ColumnUIKey, NameCase } from '@/constants/schema';
 import { PrimitiveTypeMap } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { query } from '@/utils/collection/query';
 import {
   orderByNameASC,
   primaryKey,

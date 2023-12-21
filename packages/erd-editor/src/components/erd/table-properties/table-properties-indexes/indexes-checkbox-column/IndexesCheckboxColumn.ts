@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { DOMTemplateLiterals, FC, html, repeat } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
@@ -25,7 +26,6 @@ import { attachSharedTag$ } from '@/engine/tag';
 import { Column, Index } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcTableWidths, ColumnWidth } from '@/utils/calcTable';
-import { query } from '@/utils/collection/query';
 
 import * as styles from './IndexesCheckboxColumn.styles';
 

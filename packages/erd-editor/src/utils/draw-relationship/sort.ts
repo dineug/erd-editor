@@ -1,9 +1,9 @@
+import { query } from '@dineug/erd-editor-schema';
 import { arrayHas } from '@dineug/shared';
 
 import { Direction } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Relationship, RelationshipPoint, Table } from '@/internal-types';
-import { query } from '@/utils/collection/query';
 import {
   DirectionName,
   DirectionNameList,

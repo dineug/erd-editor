@@ -1,8 +1,8 @@
+import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
-import { query } from '@/utils/collection/query';
 import { addAndSort } from '@/utils/collection/sequence';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';

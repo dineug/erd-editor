@@ -1,0 +1,36 @@
+{
+  "name": "@dineug/erd-editor-vscode-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "vscode <=> webview bridge",
+  "type": "module",
+  "main": "./dist/bridge.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/bridge.js"
+      }
+    }
+  },
+  "files": [
+    "dist/*.js",
+    "dist/**/*.ts"
+  ],
+  "author": "SeungHwan-Lee <dineug2@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.5",
+    "rollup-plugin-visualizer": "^5.11.0",
+    "ts-patch": "^3.1.1",
+    "tslib": "^2.6.2",
+    "typescript": "5.3.3",
+    "typescript-transform-paths": "^3.4.6",
+    "vite": "^5.0.10",
+    "vite-tsconfig-paths": "^4.2.2"
+  }
+}

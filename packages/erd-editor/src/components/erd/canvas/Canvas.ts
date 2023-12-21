@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { cache, FC, html, Ref, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
@@ -8,7 +9,6 @@ import Memo from '@/components/erd/canvas/memo/Memo';
 import Table from '@/components/erd/canvas/table/Table';
 import { Show } from '@/constants/schema';
 import { bHas } from '@/utils/bit';
-import { query } from '@/utils/collection/query';
 import { isHighLevelTable } from '@/utils/validation';
 
 import * as styles from './Canvas.styles';

@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import {
   create,
   drag,
@@ -12,7 +13,6 @@ import {
 
 import { RootState } from '@/engine/state';
 import { ValuesType } from '@/internal-types';
-import { query } from '@/utils/collection/query';
 
 const Group = {
   table: 'table',

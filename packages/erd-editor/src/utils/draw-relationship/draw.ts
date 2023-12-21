@@ -1,6 +1,7 @@
+import { query } from '@dineug/erd-editor-schema';
+
 import { DrawRelationship } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
-import { query } from '@/utils/collection/query';
 import {
   DirectionName,
   DirectionNameList,

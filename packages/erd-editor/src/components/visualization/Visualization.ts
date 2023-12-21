@@ -1,10 +1,10 @@
+import { query } from '@dineug/erd-editor-schema';
 import { FC, html, observable, onBeforeMount, watch } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import Table from '@/components/visualization/table/Table';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { Table as TableType } from '@/internal-types';
-import { query } from '@/utils/collection/query';
 
 import { createVisualization } from './createVisualization';
 import * as styles from './Visualization.styles';

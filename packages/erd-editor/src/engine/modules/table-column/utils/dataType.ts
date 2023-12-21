@@ -1,6 +1,7 @@
+import { query } from '@dineug/erd-editor-schema';
+
 import { ChangeColumnValuePayload } from '@/engine/modules/table-column/actions';
 import { RootState } from '@/engine/state';
-import { query } from '@/utils/collection/query';
 
 export function getDataTypeSyncColumns(
   stack: ChangeColumnValuePayload[],

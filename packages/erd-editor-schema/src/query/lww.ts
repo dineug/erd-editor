@@ -1,4 +1,4 @@
-import { LWW, LWWTuple } from '@/internal-types';
+import { LWW, LWWTuple } from '@/v3/schema/lww';
 
 function createLWWTuple(tag: string): LWWTuple {
   return [tag, -1, -1, {}];

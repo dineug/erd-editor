@@ -1,6 +1,7 @@
+import { query } from '@dineug/erd-editor-schema';
+
 import { PrimitiveTypeMap } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
-import { query } from '@/utils/collection/query';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 
 import {
