@@ -16,3 +16,14 @@ import { getShikiService } from '@dineug/erd-editor-shiki-worker';
 
 setGetShikiServiceCallback(getShikiService);
 ```
+
+### CDN
+
+```html
+<script type="module">
+  import { setGetShikiServiceCallback } from 'https://esm.run/@dineug/erd-editor';
+  import { getShikiService } from 'https://esm.run/@dineug/erd-editor-shiki-worker';
+
+  setGetShikiServiceCallback(getShikiService);
+</script>
+```

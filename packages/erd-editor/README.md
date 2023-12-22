@@ -26,6 +26,16 @@ const editor = document.createElement('erd-editor');
 <erd-editor readonly system-dark-mode enable-theme-builder></erd-editor>
 ```
 
+### CDN
+
+```html
+<script type="module">
+  import 'https://esm.run/@dineug/erd-editor';
+
+  const editor = document.createElement('erd-editor');
+</script>
+```
+
 ## ErdEditorElement
 
 ```ts
