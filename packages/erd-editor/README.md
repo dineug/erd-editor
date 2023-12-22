@@ -275,7 +275,7 @@ type Theme = {
 editor.setTheme({...});
 ```
 
-#### css
+#### CSS Variables
 
 ```css
 :root {

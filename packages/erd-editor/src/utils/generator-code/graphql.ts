@@ -127,6 +127,8 @@ function formatRelation(
     .collection('relationshipEntities')
     .selectByIds(relationshipIds);
 
+  // TODO: https://github.com/dineug/erd-editor/issues/292
+
   relationships
     .filter(relationship => relationship.end.tableId === table.id)
     .forEach(relationship => {

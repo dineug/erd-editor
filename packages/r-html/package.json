@@ -18,6 +18,7 @@
   },
   "files": [
     "dist/*.js",
+    "dist/*.cjs",
     "dist/**/*.ts"
   ],
   "repository": {

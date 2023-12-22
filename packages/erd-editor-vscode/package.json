@@ -40,6 +40,7 @@
     "vscode:prepublish": "pnpm build",
     "build": "webpack --mode production",
     "build:vsce": "pnpm vsce package --no-dependencies",
+    "publish:vsce": "pnpm vsce publish --no-dependencies",
     "webpack": "webpack --mode development",
     "webpack:dev": "webpack --mode development --watch"
   },
