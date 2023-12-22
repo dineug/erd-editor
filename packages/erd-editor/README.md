@@ -2,7 +2,7 @@
 
 > Entity-Relationship Diagram Editor
 
-![vuerd](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
+![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
 
 ## Install
 
@@ -31,7 +31,7 @@ const editor = document.createElement('erd-editor');
 ```ts
 interface ErdEditorElement extends HTMLElement {
   readonly: boolean;
-  systemDarkMode: boolean;
+  systemDarkMode: boolean; // system dark/light auto
   enableThemeBuilder: boolean;
   value: string;
   focus: () => void;
