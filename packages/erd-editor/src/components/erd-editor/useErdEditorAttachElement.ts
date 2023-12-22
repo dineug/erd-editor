@@ -9,6 +9,7 @@ import { clearAction } from '@/engine/modules/editor/atom.actions';
 import {
   initialLoadJsonAction$,
   loadJsonAction$,
+  loadSchemaSQLAction$,
 } from '@/engine/modules/editor/generator.actions';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -199,7 +200,7 @@ export function useErdEditorAttachElement({
     const safeValue = toSafeString(value);
     if (isEmpty(safeValue)) return;
 
-    store.dispatchSync(loadJsonAction$(safeValue));
+    store.dispatchSync(loadSchemaSQLAction$(safeValue));
   };
 
   ctx.getSchemaSQL = databaseVendor => {
