@@ -41,6 +41,22 @@
       "path": "packages/vite-plugin-r-html"
     },
     {
+      "name": "vuerd",
+      "path": "legacy-packages/vuerd"
+    },
+    {
+      "name": "@vuerd/sql-ddl-parser",
+      "path": "legacy-packages/sql-ddl-parser"
+    },
+    {
+      "name": "@vuerd/lit-observable",
+      "path": "legacy-packages/lit-observable"
+    },
+    {
+      "name": "@vuerd/plugin-generate-template",
+      "path": "legacy-packages/plugin-generate-template"
+    },
+    {
       "name": "monorepo",
       "path": "."
     }

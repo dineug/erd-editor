@@ -1,0 +1,33 @@
+{
+  "name": "@vuerd/lit-observable",
+  "version": "0.2.2",
+  "private": true,
+  "description": "lit-html + reactive",
+  "type": "module",
+  "main": "./dist/lit-observable.js",
+  "typings": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./types/index.d.ts",
+        "default": "./dist/lit-observable.js"
+      }
+    }
+  },
+  "author": "dineug <dineug2@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite serve",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "lit-html": "^1.4.1"
+  },
+  "devDependencies": {
+    "@types/lodash-es": "^4.17.12",
+    "lodash-es": "^4.17.21",
+    "typescript": "5.3.3",
+    "vite-tsconfig-paths": "^4.2.2",
+    "vite": "^5.0.10"
+  }
+}

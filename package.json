@@ -2,7 +2,8 @@
   "name": "@dineug/erd-editor-monorepo",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "legacy-packages/*"
   ],
   "engines": {
     "node": ">=18.14.0"

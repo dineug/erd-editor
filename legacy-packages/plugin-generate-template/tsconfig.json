@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@@types/*": ["types/*"]
+    },
+    "types": ["preact", "vite/client"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

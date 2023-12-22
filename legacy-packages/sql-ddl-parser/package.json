@@ -1,0 +1,30 @@
+{
+  "name": "@vuerd/sql-ddl-parser",
+  "version": "0.2.2",
+  "private": true,
+  "description": "Permissive SQL DDL Parser",
+  "type": "module",
+  "main": "./dist/sql-ddl-parser.js",
+  "typings": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./types/index.d.ts",
+        "default": "./dist/sql-ddl-parser.js"
+      }
+    }
+  },
+  "author": "dineug <dineug2@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run",
+    "test:dev": "vitest dev"
+  },
+  "devDependencies": {
+    "typescript": "5.3.3",
+    "vite": "^5.0.10",
+    "vite-tsconfig-paths": "^4.2.2",
+    "vitest": "^1.0.4"
+  }
+}
