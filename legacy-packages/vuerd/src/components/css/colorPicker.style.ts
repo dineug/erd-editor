@@ -347,7 +347,11 @@ export const ColorPicker = css`
       linear-gradient(45deg, transparent 75%, #ccc 75%),
       linear-gradient(-45deg, transparent 75%, #ccc 75%);
     background-size: 10px 10px;
-    background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+    background-position:
+      0 0,
+      0 5px,
+      5px -5px,
+      -5px 0px;
   }
   .easylogic-colorpicker
     .colorpicker-body
@@ -371,7 +375,11 @@ export const ColorPicker = css`
       linear-gradient(45deg, transparent 75%, #ccc 75%),
       linear-gradient(-45deg, transparent 75%, #ccc 75%);
     background-size: 10px 10px;
-    background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+    background-position:
+      0 0,
+      0 5px,
+      5px -5px,
+      -5px 0px;
   }
   .easylogic-colorpicker .colorpicker-body .control .drag-bar,
   .easylogic-colorpicker .colorpicker-body .control .drag-bar2 {
@@ -654,7 +662,11 @@ export const ColorPicker = css`
       linear-gradient(45deg, transparent 75%, #ccc 75%),
       linear-gradient(-45deg, transparent 75%, #ccc 75%);
     background-size: 10px 10px;
-    background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+    background-position:
+      0 0,
+      0 5px,
+      5px -5px,
+      -5px 0px;
     width: 100%;
     height: 100%;
     padding: 0px;
@@ -878,7 +890,11 @@ export const ColorPicker = css`
       linear-gradient(45deg, transparent 75%, #ccc 75%),
       linear-gradient(-45deg, transparent 75%, #ccc 75%);
     background-size: 10px 10px;
-    background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+    background-position:
+      0 0,
+      0 5px,
+      5px -5px,
+      -5px 0px;
     background-size: contain;
     border: 1px solid #dddddd;
     overflow: hidden;
@@ -1027,7 +1043,11 @@ export const ColorPicker = css`
       linear-gradient(45deg, transparent 75%, #ccc 75%),
       linear-gradient(-45deg, transparent 75%, #ccc 75%);
     background-size: 10px 10px;
-    background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+    background-position:
+      0 0,
+      0 5px,
+      5px -5px,
+      -5px 0px;
     pointer-events: all;
   }
   .easylogic-colorpicker .gradient-editor .hue {
@@ -1403,7 +1423,11 @@ export const ColorPicker = css`
       linear-gradient(45deg, transparent 75%, #ccc 75%),
       linear-gradient(-45deg, transparent 75%, #ccc 75%);
     background-size: 10px 10px;
-    background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+    background-position:
+      0 0,
+      0 5px,
+      5px -5px,
+      -5px 0px;
   }
   .easylogic-colorpicker
     .gradient-editor
@@ -1512,7 +1536,9 @@ export const ColorPicker = css`
     background: #556375;
     border: 0px solid #010101;
     border-radius: 0px;
-    box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
+    box-shadow:
+      0px 0px 0px #000000,
+      0px 0px 0px #0d0d0d;
   }
   .easylogic-colorpicker .gradient-editor input[type='range']::-ms-fill-upper {
     background: #556375;
@@ -1578,7 +1604,11 @@ export const ColorPicker = css`
       linear-gradient(45deg, transparent 75%, #ccc 75%),
       linear-gradient(-45deg, transparent 75%, #ccc 75%);
     background-size: 10px 10px;
-    background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+    background-position:
+      0 0,
+      0 5px,
+      5px -5px,
+      -5px 0px;
   }
   .easylogic-colorpicker.gradient-picker .gradient-preview .gradient-view {
     position: absolute;
@@ -1835,7 +1865,11 @@ export const ColorPicker = css`
       linear-gradient(45deg, transparent 75%, #ccc 75%),
       linear-gradient(-45deg, transparent 75%, #ccc 75%);
     background-size: 10px 10px;
-    background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+    background-position:
+      0 0,
+      0 5px,
+      5px -5px,
+      -5px 0px;
     -webkit-box-shadow: 0 0 1px 0 rgba(0, 0, 0, 0.1);
     box-shadow: 0 0 1px 0 rgba(0, 0, 0, 0.1);
   }
@@ -2615,8 +2649,12 @@ export const ColorPicker = css`
     border: 2px solid white;
     width: 7px;
     height: 7px;
-    -webkit-box-shadow: 0 0 1px 0px black, inset 0 0 1px 0px black;
-    box-shadow: 0 0 1px 0px black, inset 0 0 1px 0px black;
+    -webkit-box-shadow:
+      0 0 1px 0px black,
+      inset 0 0 1px 0px black;
+    box-shadow:
+      0 0 1px 0px black,
+      inset 0 0 1px 0px black;
   }
   .easylogic-colorpicker.xd .control {
     height: 170px;
@@ -2676,8 +2714,12 @@ export const ColorPicker = css`
     border: 0px;
     background-color: transparent;
     border: 2px solid white;
-    -webkit-box-shadow: 0 0 1px 0px black, inset 0 0 1px 0px black;
-    box-shadow: 0 0 1px 0px black, inset 0 0 1px 0px black;
+    -webkit-box-shadow:
+      0 0 1px 0px black,
+      inset 0 0 1px 0px black;
+    box-shadow:
+      0 0 1px 0px black,
+      inset 0 0 1px 0px black;
     width: 10px;
     height: 10px;
     -webkit-box-sizing: border-box;
@@ -2713,7 +2755,11 @@ export const ColorPicker = css`
       linear-gradient(45deg, transparent 75%, #ccc 75%),
       linear-gradient(-45deg, transparent 75%, #ccc 75%);
     background-size: 10px 10px;
-    background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+    background-position:
+      0 0,
+      0 5px,
+      5px -5px,
+      -5px 0px;
   }
   .easylogic-colorpicker.vscode
     .colorpicker-body
@@ -2804,8 +2850,12 @@ export const ColorPicker = css`
     transform: translateY(-50%) translateX(-2px);
     border: 1px solid rgba(255, 255, 255, 0);
     border-radius: 0px;
-    -webkit-box-shadow: 0 0 2px 0 black, inset 0 0 0 0 black;
-    box-shadow: 0 0 2px 0 black, inset 0 0 0 0 black;
+    -webkit-box-shadow:
+      0 0 2px 0 black,
+      inset 0 0 0 0 black;
+    box-shadow:
+      0 0 2px 0 black,
+      inset 0 0 0 0 black;
   }
   .easylogic-colorpicker.hide-colorsets .colorsets {
     display: none !important;

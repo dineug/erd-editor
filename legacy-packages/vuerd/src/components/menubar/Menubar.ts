@@ -253,21 +253,21 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
               </div>
             `
           : canvasType === '@vuerd/builtin-grid'
-          ? html`
-              <div
-                class=${classMap({
-                  'vuerd-menubar-menu': true,
-                  active: !!filterState.filters.length,
-                })}
-                data-tippy-content="Filter [${keymapOptionsToString(
-                  keymap.find
-                )}]"
-                @click=${onFilter}
-              >
-                <vuerd-icon name="filter" size="16"></vuerd-icon>
-              </div>
-            `
-          : null}
+            ? html`
+                <div
+                  class=${classMap({
+                    'vuerd-menubar-menu': true,
+                    active: !!filterState.filters.length,
+                  })}
+                  data-tippy-content="Filter [${keymapOptionsToString(
+                    keymap.find
+                  )}]"
+                  @click=${onFilter}
+                >
+                  <vuerd-icon name="filter" size="16"></vuerd-icon>
+                </div>
+              `
+            : null}
       </div>
     `;
   };

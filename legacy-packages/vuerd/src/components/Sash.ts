@@ -84,14 +84,13 @@ const Sash: FunctionalComponent<SashProps, SashElement> = (props, ctx) => {
     });
   };
 
-  return () =>
-    html`
-      <div
-        class=${classMap(getClassMap())}
-        style=${styleMap(getStyleMap())}
-        @mousedown=${onMousedown}
-      ></div>
-    `;
+  return () => html`
+    <div
+      class=${classMap(getClassMap())}
+      style=${styleMap(getStyleMap())}
+      @mousedown=${onMousedown}
+    ></div>
+  `;
 };
 
 defineComponent('vuerd-sash', {

@@ -338,34 +338,33 @@ const Table: FunctionalComponent<TableProps, TableElement> = (props, ctx) => {
           ${repeat(
             columns,
             column => column.id,
-            column =>
-              html`
-                <vuerd-column
-                  .tableId=${table.id}
-                  .column=${column}
-                  .select=${hasSelectColumn(column.id)}
-                  .draggable=${hasDraggableColumn(column.id)}
-                  .focusName=${hasFocusState('columnName', column.id)}
-                  .focusDataType=${hasFocusState('columnDataType', column.id)}
-                  .focusNotNull=${hasFocusState('columnNotNull', column.id)}
-                  .focusDefault=${hasFocusState('columnDefault', column.id)}
-                  .focusComment=${hasFocusState('columnComment', column.id)}
-                  .focusUnique=${hasFocusState('columnUnique', column.id)}
-                  .focusAutoIncrement=${hasFocusState(
-                    'columnAutoIncrement',
-                    column.id
-                  )}
-                  .editName=${hasEdit('columnName', column.id)}
-                  .editComment=${hasEdit('columnComment', column.id)}
-                  .editDataType=${hasEdit('columnDataType', column.id)}
-                  .editDefault=${hasEdit('columnDefault', column.id)}
-                  .widthName=${widthColumn.name}
-                  .widthComment=${widthColumn.comment}
-                  .widthDataType=${widthColumn.dataType}
-                  .widthDefault=${widthColumn.default}
-                  @dragover-column=${onDragoverGroupColumn}
-                ></vuerd-column>
-              `
+            column => html`
+              <vuerd-column
+                .tableId=${table.id}
+                .column=${column}
+                .select=${hasSelectColumn(column.id)}
+                .draggable=${hasDraggableColumn(column.id)}
+                .focusName=${hasFocusState('columnName', column.id)}
+                .focusDataType=${hasFocusState('columnDataType', column.id)}
+                .focusNotNull=${hasFocusState('columnNotNull', column.id)}
+                .focusDefault=${hasFocusState('columnDefault', column.id)}
+                .focusComment=${hasFocusState('columnComment', column.id)}
+                .focusUnique=${hasFocusState('columnUnique', column.id)}
+                .focusAutoIncrement=${hasFocusState(
+                  'columnAutoIncrement',
+                  column.id
+                )}
+                .editName=${hasEdit('columnName', column.id)}
+                .editComment=${hasEdit('columnComment', column.id)}
+                .editDataType=${hasEdit('columnDataType', column.id)}
+                .editDefault=${hasEdit('columnDefault', column.id)}
+                .widthName=${widthColumn.name}
+                .widthComment=${widthColumn.comment}
+                .widthDataType=${widthColumn.dataType}
+                .widthDefault=${widthColumn.default}
+                @dragover-column=${onDragoverGroupColumn}
+              ></vuerd-column>
+            `
           )}
         </div>
       </div>

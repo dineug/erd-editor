@@ -57,17 +57,16 @@ export const sashTpl = (
   onMousedownSash: (event: MouseEvent, position: Position) => void
 ) =>
   createSash(top, left).map(
-    sash =>
-      html`
-        <vuerd-sash
-          ?vertical=${sash.vertical}
-          ?horizontal=${sash.horizontal}
-          ?edge=${sash.edge}
-          .cursor=${sash.cursor}
-          .top=${sash.top ?? 0}
-          .left=${sash.left ?? 0}
-          @mousedown=${(event: MouseEvent) =>
-            onMousedownSash(event, sash.position)}
-        ></vuerd-sash>
-      `
+    sash => html`
+      <vuerd-sash
+        ?vertical=${sash.vertical}
+        ?horizontal=${sash.horizontal}
+        ?edge=${sash.edge}
+        .cursor=${sash.cursor}
+        .top=${sash.top ?? 0}
+        .left=${sash.left ?? 0}
+        @mousedown=${(event: MouseEvent) =>
+          onMousedownSash(event, sash.position)}
+      ></vuerd-sash>
+    `
   );

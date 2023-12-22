@@ -16,15 +16,15 @@ export const Container = styled.div<ContainerProps>`
           cursor: 'ew-resize',
         }
       : horizontal
-      ? {
-          width: '100%',
-          height: `${SIZE_SASH}px`,
-          cursor: 'ns-resize',
-        }
-      : edge
-      ? {
-          width: `${SIZE_SASH}px`,
-          height: `${SIZE_SASH}px`,
-        }
-      : null}
+        ? {
+            width: '100%',
+            height: `${SIZE_SASH}px`,
+            cursor: 'ns-resize',
+          }
+        : edge
+          ? {
+              width: `${SIZE_SASH}px`,
+              height: `${SIZE_SASH}px`,
+            }
+          : null}
 `;

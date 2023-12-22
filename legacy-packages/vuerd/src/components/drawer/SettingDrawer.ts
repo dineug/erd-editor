@@ -155,20 +155,19 @@ const SettingDrawer: FunctionalComponent<
                 ${repeat(
                   setting.columnOrder,
                   columnType => columnType,
-                  columnType =>
-                    html`
-                      <div
-                        class=${classMap({
-                          'vuerd-column-order': true,
-                          draggable: state.currentColumnType === columnType,
-                        })}
-                        data-id=${columnType}
-                        draggable="true"
-                        @dragstart=${() => onDragstartColumnOrder(columnType)}
-                      >
-                        ${columnType}
-                      </div>
-                    `
+                  columnType => html`
+                    <div
+                      class=${classMap({
+                        'vuerd-column-order': true,
+                        draggable: state.currentColumnType === columnType,
+                      })}
+                      data-id=${columnType}
+                      draggable="true"
+                      @dragstart=${() => onDragstartColumnOrder(columnType)}
+                    >
+                      ${columnType}
+                    </div>
+                  `
                 )}
               </td>
             </tr>

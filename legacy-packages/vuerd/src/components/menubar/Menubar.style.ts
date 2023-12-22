@@ -16,7 +16,9 @@ export const MenubarStyle = css`
     height: 10px;
     margin-left: 15px;
     border-radius: 50%;
-    transition: box-shadow 0.4s ease-in-out, background-color 0.4s ease-in-out;
+    transition:
+      box-shadow 0.4s ease-in-out,
+      background-color 0.4s ease-in-out;
   }
 
   .vuerd-editor-status.focus {

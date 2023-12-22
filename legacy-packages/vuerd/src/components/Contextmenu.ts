@@ -90,66 +90,63 @@ const Contextmenu: FunctionalComponent<ContextmenuProps, ContextmenuElement> = (
 
   unmounted(() => (state.menu = null));
 
-  return () =>
-    html`
-      <ul
-        class="vuerd-contextmenu"
-        style=${styleMap({
-          left: `${props.x}px`,
-          top: `${props.y}px`,
-        })}
-        @mousedown=${onMousedown}
-        @touchstart=${onTouchstart}
-      >
-        ${props.menus.map(
-          menu => html`
-            <li
-              @mouseover=${() => onMouseover(menu)}
-              @click=${() => onExecute(menu)}
+  return () => html`
+    <ul
+      class="vuerd-contextmenu"
+      style=${styleMap({
+        left: `${props.x}px`,
+        top: `${props.y}px`,
+      })}
+      @mousedown=${onMousedown}
+      @touchstart=${onTouchstart}
+    >
+      ${props.menus.map(
+        menu => html`
+          <li
+            @mouseover=${() => onMouseover(menu)}
+            @click=${() => onExecute(menu)}
+          >
+            ${iconTpl(menu)}
+            <span
+              class="name"
+              style=${styleMap({
+                width: `${menu.options?.nameWidth ?? 70}px`,
+              })}
+              title=${menu.name}
             >
-              ${iconTpl(menu)}
-              <span
-                class="name"
-                style=${styleMap({
-                  width: `${menu.options?.nameWidth ?? 70}px`,
-                })}
-                title=${menu.name}
-              >
-                ${menu.name}
-              </span>
-              <span
-                class="keymap"
-                style=${styleMap({
-                  width: `${menu.options?.keymapWidth ?? 60}px`,
-                })}
-                data-tippy-content=${menu.keymapTooltip
-                  ? menu.keymapTooltip
-                  : ''}
-              >
-                ${menu.keymap}
-              </span>
-              ${menu.children && menu.children.length
-                ? html`
-                    <span class="arrow">
-                      <vuerd-icon size="13" name="chevron-right"></vuerd-icon>
-                    </span>
-                  `
-                : null}
-            </li>
-          `
-        )}
-      </ul>
-      ${state.menu?.children?.length
-        ? html`
-            <vuerd-contextmenu
-              .menus=${state.menu.children}
-              .x=${childrenX()}
-              .y=${childrenY()}
-              @close=${onClose}
-            ></vuerd-contextmenu>
-          `
-        : null}
-    `;
+              ${menu.name}
+            </span>
+            <span
+              class="keymap"
+              style=${styleMap({
+                width: `${menu.options?.keymapWidth ?? 60}px`,
+              })}
+              data-tippy-content=${menu.keymapTooltip ? menu.keymapTooltip : ''}
+            >
+              ${menu.keymap}
+            </span>
+            ${menu.children && menu.children.length
+              ? html`
+                  <span class="arrow">
+                    <vuerd-icon size="13" name="chevron-right"></vuerd-icon>
+                  </span>
+                `
+              : null}
+          </li>
+        `
+      )}
+    </ul>
+    ${state.menu?.children?.length
+      ? html`
+          <vuerd-contextmenu
+            .menus=${state.menu.children}
+            .x=${childrenX()}
+            .y=${childrenY()}
+            @close=${onClose}
+          ></vuerd-contextmenu>
+        `
+      : null}
+  `;
 };
 
 defineComponent('vuerd-contextmenu', {

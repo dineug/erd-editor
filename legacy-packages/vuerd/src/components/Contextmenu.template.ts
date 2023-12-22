@@ -15,9 +15,9 @@ export const iconTpl = (menu: Menu) =>
         </span>
       `
     : menu.iconBase64
-    ? html`
-        <span class="icon">
-          <img src=${menu.iconBase64} />
-        </span>
-      `
-    : html`<span class="icon"></span>`;
+      ? html`
+          <span class="icon">
+            <img src=${menu.iconBase64} />
+          </span>
+        `
+      : html`<span class="icon"></span>`;

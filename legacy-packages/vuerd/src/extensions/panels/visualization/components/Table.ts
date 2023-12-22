@@ -84,18 +84,17 @@ const VisualizationTable: FunctionalComponent<
           ${repeat(
             props.table.columns,
             column => column.id,
-            column =>
-              html`
-                <vuerd-visualization-column
-                  .column=${column}
-                  .active=${props.columnId === column.id}
-                  .widthName=${widthColumn.name}
-                  .widthDataType=${widthColumn.dataType}
-                  .widthNotNull=${widthColumn.notNull}
-                  .widthDefault=${widthColumn.default}
-                  .widthComment=${widthColumn.comment}
-                ></vuerd-visualization-column>
-              `
+            column => html`
+              <vuerd-visualization-column
+                .column=${column}
+                .active=${props.columnId === column.id}
+                .widthName=${widthColumn.name}
+                .widthDataType=${widthColumn.dataType}
+                .widthNotNull=${widthColumn.notNull}
+                .widthDefault=${widthColumn.default}
+                .widthComment=${widthColumn.comment}
+              ></vuerd-visualization-column>
+            `
           )}
         </div>
       </div>

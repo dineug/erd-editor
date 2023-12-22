@@ -8,7 +8,9 @@ const migrationRelationshipTypeMap = {
   N: 'OneN',
 };
 
-export const migrationRelationshipType = (relationshipType: RelationshipType) =>
+export const migrationRelationshipType = (
+  relationshipType: RelationshipType
+) =>
   migrationRelationshipTypes.includes(relationshipType)
     ? (migrationRelationshipTypeMap as any)[relationshipType]
     : relationshipType;

@@ -91,91 +91,98 @@ const Table: FunctionalComponent<TreeTableProps, TreeTableElement> = (
     store.dispatch(moveTable(store, false, 0, 0, props.node.table.id));
   };
 
-  return () => html`<div
-    class=${classMap({
-      'vuerd-tree-table-name': true,
-      'diff-modify': props.node.changes === 'modify',
-      'diff-add': props.node.changes === 'add',
-      'diff-remove': props.node.changes === 'remove',
-    })}
-    @dragenter=${onPreventDefault}
-    @dragover=${onPreventDefault}
-    @mouseover=${() => {
-      state.hover = true;
-      contextRef.value.store.dispatch(
-        selectTable(contextRef.value.store, false, props.node.id)
-      );
-    }}
-    @mouseleave=${() => {
-      state.hover = false;
-      contextRef.value.store.dispatch(selectEndTable());
-    }}
-    style=${styleMap({
-      cursor: props.node.disabled ? 'default' : '',
-    })}
-  >
-    <vuerd-icon
-      id="table"
-      name="table"
-      size="12"
-      @click=${toggleNode}
+  return () =>
+    html`<div
+      class=${classMap({
+        'vuerd-tree-table-name': true,
+        'diff-modify': props.node.changes === 'modify',
+        'diff-add': props.node.changes === 'add',
+        'diff-remove': props.node.changes === 'remove',
+      })}
+      @dragenter=${onPreventDefault}
+      @dragover=${onPreventDefault}
+      @mouseover=${() => {
+        state.hover = true;
+        contextRef.value.store.dispatch(
+          selectTable(contextRef.value.store, false, props.node.id)
+        );
+      }}
+      @mouseleave=${() => {
+        state.hover = false;
+        contextRef.value.store.dispatch(selectEndTable());
+      }}
       style=${styleMap({
-        fill: props.node.disabled ? 'var(--vuerd-color-font-placeholder)' : '',
+        cursor: props.node.disabled ? 'default' : '',
       })}
     >
-    </vuerd-icon>
-
-    <span
-      draggable="${props.node.disabled ||
-      !props.node.table ||
-      props.node.table.visible
-        ? 'false'
-        : 'true'}"
-      @dragend=${onDragEnd}
-      @click=${toggleNode}
-      style=${styleMap({
-        backgroundColor:
-          props.node.table.visible && !props.node.disabled
-            ? 'var(--vuerd-color-contextmenu-active)'
+      <vuerd-icon
+        id="table"
+        name="table"
+        size="12"
+        @click=${toggleNode}
+        style=${styleMap({
+          fill: props.node.disabled
+            ? 'var(--vuerd-color-font-placeholder)'
             : '',
-        color: props.node.disabled ? 'var(--vuerd-color-font-placeholder)' : '',
-        cursor:
-          props.node.disabled || props.node.table.visible ? 'pointer' : 'grab',
-      })}
-    >
-      ${props.node.table.name}
-    </span>
+        })}
+      >
+      </vuerd-icon>
 
-    ${props.node.nestedChanges !== 'none'
-      ? html`
-          <svg
-            class=${classMap({
-              'vuerd-tree-table-nested-change': true,
-              'diff-modify': props.node.nestedChanges === 'modify',
-              'diff-add': props.node.nestedChanges === 'add',
-              'diff-remove': props.node.nestedChanges === 'remove',
-            })}
-          >
-            <circle cx="5" cy="5" r="5" />
-          </svg>
-        `
-      : null}
-    ${state.hover
-      ? html`
-          <vuerd-icon
-            id="eye"
-            name="eye${props.node.table.visible === state.iconHover
-              ? '-slash'
-              : ''}"
-            size="15"
-            @click=${toggleSelectNode}
-            @mouseover=${() => (state.iconHover = true)}
-            @mouseleave=${() => (state.iconHover = false)}
-          >
-          </vuerd-icon>
-        `
-      : null}
-  </div> `;
+      <span
+        draggable="${props.node.disabled ||
+        !props.node.table ||
+        props.node.table.visible
+          ? 'false'
+          : 'true'}"
+        @dragend=${onDragEnd}
+        @click=${toggleNode}
+        style=${styleMap({
+          backgroundColor:
+            props.node.table.visible && !props.node.disabled
+              ? 'var(--vuerd-color-contextmenu-active)'
+              : '',
+          color: props.node.disabled
+            ? 'var(--vuerd-color-font-placeholder)'
+            : '',
+          cursor:
+            props.node.disabled || props.node.table.visible
+              ? 'pointer'
+              : 'grab',
+        })}
+      >
+        ${props.node.table.name}
+      </span>
+
+      ${props.node.nestedChanges !== 'none'
+        ? html`
+            <svg
+              class=${classMap({
+                'vuerd-tree-table-nested-change': true,
+                'diff-modify': props.node.nestedChanges === 'modify',
+                'diff-add': props.node.nestedChanges === 'add',
+                'diff-remove': props.node.nestedChanges === 'remove',
+              })}
+            >
+              <circle cx="5" cy="5" r="5" />
+            </svg>
+          `
+        : null}
+      ${state.hover
+        ? html`
+            <vuerd-icon
+              id="eye"
+              name="eye${props.node.table.visible === state.iconHover
+                ? '-slash'
+                : ''}"
+              size="15"
+              @click=${toggleSelectNode}
+              @mouseover=${() => (state.iconHover = true)}
+              @mouseleave=${() => (state.iconHover = false)}
+            >
+            </vuerd-icon>
+          `
+        : null}
+    </div> `;
 };
 
 const style = css`

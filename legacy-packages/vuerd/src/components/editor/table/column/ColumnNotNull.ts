@@ -25,20 +25,19 @@ export interface ColumnNotNullElement extends ColumnNotNullProps, HTMLElement {}
 const ColumnNotNull: FunctionalComponent<
   ColumnNotNullProps,
   ColumnNotNullElement
-> = props => () =>
-  html`
-    <div
-      class=${classMap({
-        'vuerd-column-not-null': true,
-        focus: props.focusState,
-      })}
-      style=${styleMap({
-        width: `${SIZE_COLUMN_OPTION_NN}px`,
-      })}
-    >
-      ${props.columnOption.notNull ? 'N-N' : 'NULL'}
-    </div>
-  `;
+> = props => () => html`
+  <div
+    class=${classMap({
+      'vuerd-column-not-null': true,
+      focus: props.focusState,
+    })}
+    style=${styleMap({
+      width: `${SIZE_COLUMN_OPTION_NN}px`,
+    })}
+  >
+    ${props.columnOption.notNull ? 'N-N' : 'NULL'}
+  </div>
+`;
 
 defineComponent('vuerd-column-not-null', {
   observedProps: [

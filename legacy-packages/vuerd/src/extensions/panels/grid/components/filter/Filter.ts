@@ -221,21 +221,20 @@ const Filter: FunctionalComponent<FilterProps, FilterElement> = (
               ${repeat(
                 filterState.filters,
                 filter => filter.id,
-                filter =>
-                  html`
-                    <vuerd-filter-item
-                      .filter=${filter}
-                      .select=${hasSelectFilter(filter.id)}
-                      .draggable=${hasDraggableFilter(filter.id)}
-                      .focusColumnType=${hasFocusState('columnType', filter.id)}
-                      .focusFilterCode=${hasFocusState('filterCode', filter.id)}
-                      .focusValue=${hasFocusState('value', filter.id)}
-                      .editColumnType=${hasEdit('columnType', filter.id)}
-                      .editFilterCode=${hasEdit('filterCode', filter.id)}
-                      .editValue=${hasEdit('value', filter.id)}
-                      @dragover-filter=${onDragoverGroupFilter}
-                    ></vuerd-filter-item>
-                  `
+                filter => html`
+                  <vuerd-filter-item
+                    .filter=${filter}
+                    .select=${hasSelectFilter(filter.id)}
+                    .draggable=${hasDraggableFilter(filter.id)}
+                    .focusColumnType=${hasFocusState('columnType', filter.id)}
+                    .focusFilterCode=${hasFocusState('filterCode', filter.id)}
+                    .focusValue=${hasFocusState('value', filter.id)}
+                    .editColumnType=${hasEdit('columnType', filter.id)}
+                    .editFilterCode=${hasEdit('filterCode', filter.id)}
+                    .editValue=${hasEdit('value', filter.id)}
+                    @dragover-filter=${onDragoverGroupFilter}
+                  ></vuerd-filter-item>
+                `
               )}
             </div>
           </div>

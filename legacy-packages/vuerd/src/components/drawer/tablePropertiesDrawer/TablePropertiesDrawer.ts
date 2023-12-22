@@ -82,17 +82,16 @@ const TablePropertiesDrawer: FunctionalComponent<
         <div class="vuerd-table-properties">
           <ul class="vuerd-table-properties-tab">
             ${tabs.map(
-              tab =>
-                html`
-                  <li
-                    class=${classMap({
-                      active: tab.type === state.tabType,
-                    })}
-                    @click=${() => onChangeTab(tab.type)}
-                  >
-                    ${tab.name}
-                  </li>
-                `
+              tab => html`
+                <li
+                  class=${classMap({
+                    active: tab.type === state.tabType,
+                  })}
+                  @click=${() => onChangeTab(tab.type)}
+                >
+                  ${tab.name}
+                </li>
+              `
             )}
           </ul>
           <div class="vuerd-table-properties-body">
@@ -100,18 +99,18 @@ const TablePropertiesDrawer: FunctionalComponent<
               ? state.tabType === 'indexes'
                 ? html`<vuerd-indexes .table=${table}></vuerd-indexes>`
                 : state.tabType === 'SQL'
-                ? html`<vuerd-sql-ddl
-                    mode="table"
-                    .table=${table}
-                  ></vuerd-sql-ddl>`
-                : state.tabType === 'GeneratorCode'
-                ? html`
-                    <vuerd-generator-code
+                  ? html`<vuerd-sql-ddl
                       mode="table"
                       .table=${table}
-                    ></vuerd-generator-code>
-                  `
-                : null
+                    ></vuerd-sql-ddl>`
+                  : state.tabType === 'GeneratorCode'
+                    ? html`
+                        <vuerd-generator-code
+                          mode="table"
+                          .table=${table}
+                        ></vuerd-generator-code>
+                      `
+                    : null
               : null}
           </div>
         </div>
