@@ -114,6 +114,26 @@ editor.setKeyBindingMap({
 | `=`           | `=`             | `=`           | `Equal`                        |
 | `+`           | `+`             | `+`           | `Equal`\*                      |
 
+## Events
+
+### change
+
+```js
+editor.addEventListener('change', event => {
+  const data = event.target.value;
+});
+```
+
+### changePresetTheme
+
+enableThemeBuilder: true will cause an event.
+
+```js
+editor.addEventListener('changePresetTheme', event => {
+  const themeOptions = event.detail;
+});
+```
+
 ## Theme
 
 ### setPresetTheme
