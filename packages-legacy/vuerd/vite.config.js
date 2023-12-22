@@ -9,6 +9,7 @@ const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    'process.env.NODE_ENV': JSON.stringify('production'),
   },
   build: {
     lib: {

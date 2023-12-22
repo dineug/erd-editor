@@ -42,19 +42,19 @@
     },
     {
       "name": "vuerd",
-      "path": "legacy-packages/vuerd"
+      "path": "packages-legacy/vuerd"
     },
     {
       "name": "@vuerd/sql-ddl-parser",
-      "path": "legacy-packages/sql-ddl-parser"
+      "path": "packages-legacy/sql-ddl-parser"
     },
     {
       "name": "@vuerd/lit-observable",
-      "path": "legacy-packages/lit-observable"
+      "path": "packages-legacy/lit-observable"
     },
     {
       "name": "@vuerd/plugin-generate-template",
-      "path": "legacy-packages/plugin-generate-template"
+      "path": "packages-legacy/plugin-generate-template"
     },
     {
       "name": "monorepo",

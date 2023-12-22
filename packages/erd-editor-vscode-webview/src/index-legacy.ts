@@ -58,6 +58,7 @@ bridge.on({
   webviewInitialValue: ({ payload: { value } }) => {
     const result = textDecoder.decode(new Uint8Array(value));
     editor.addEventListener('change', handleChange);
+    editor.automaticLayout = true;
     editor.initLoadJson(result);
     document.body.appendChild(editor);
   },

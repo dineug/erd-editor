@@ -7,6 +7,9 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
 export default defineConfig({
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production'),
+  },
   build: {
     lib: {
       entry: './src/index.ts',

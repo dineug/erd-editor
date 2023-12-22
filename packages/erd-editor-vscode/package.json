@@ -125,14 +125,14 @@
         {
           "command": "vuerd.showEditor",
           "alt": "vuerd.showEditorToSide",
-          "when": "activeCustomEditorId != 'editor.erd' && resourceFilename =~ /^.+\\.erd(.json)?$/",
+          "when": "activeCustomEditorId != 'editor.erd' && activeCustomEditorId != 'vuerd.editor' && resourceFilename =~ /^.+\\.(erd|vuerd)(.json)?$/",
           "group": "navigation"
         },
         {
           "command": "vuerd.showSource",
           "alt": "vuerd.showSourceToSide",
           "group": "navigation",
-          "when": "activeCustomEditorId == 'editor.erd' && resourceFilename =~ /^.+\\.erd(.json)?$/"
+          "when": "(activeCustomEditorId == 'editor.erd' || activeCustomEditorId == 'vuerd.editor') && resourceFilename =~ /^.+\\.(erd|vuerd)(.json)?$/"
         }
       ]
     },
@@ -147,6 +147,19 @@
           },
           {
             "filenamePattern": "*.erd.json"
+          }
+        ]
+      },
+      {
+        "viewType": "vuerd.editor",
+        "displayName": "erd-editor",
+        "priority": "default",
+        "selector": [
+          {
+            "filenamePattern": "*.vuerd"
+          },
+          {
+            "filenamePattern": "*.vuerd.json"
           }
         ]
       }

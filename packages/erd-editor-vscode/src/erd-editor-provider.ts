@@ -1,40 +1,42 @@
 import * as vscode from 'vscode';
 
+import { CreateEditor } from '@/editor';
 import { ErdDocument } from '@/erd-document';
-import { ErdEditor } from '@/erd-editor';
 import { trackEvent } from '@/utils/googleAnalytics';
 
 export class ErdEditorProvider
   implements vscode.CustomEditorProvider<ErdDocument>
 {
-  private static readonly viewType = 'editor.erd';
-
   private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<
     vscode.CustomDocumentContentChangeEvent<ErdDocument>
   >();
   public readonly onDidChangeCustomDocument =
     this._onDidChangeCustomDocument.event;
 
-  constructor(private readonly context: vscode.ExtensionContext) {}
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly viewType: string,
+    private readonly createEditor: CreateEditor
+  ) {}
 
-  static register(context: vscode.ExtensionContext): vscode.Disposable {
-    const provider = new ErdEditorProvider(context);
+  static register(
+    context: vscode.ExtensionContext,
+    viewType: string,
+    createEditor: CreateEditor
+  ): vscode.Disposable {
+    const provider = new ErdEditorProvider(context, viewType, createEditor);
 
-    return vscode.window.registerCustomEditorProvider(
-      ErdEditorProvider.viewType,
-      provider,
-      {
-        webviewOptions: { retainContextWhenHidden: true },
-        supportsMultipleEditorsPerDocument: false,
-      }
-    );
+    return vscode.window.registerCustomEditorProvider(viewType, provider, {
+      webviewOptions: { retainContextWhenHidden: true },
+      supportsMultipleEditorsPerDocument: false,
+    });
   }
 
   async openCustomDocument(
     uri: vscode.Uri,
     openContext: vscode.CustomDocumentOpenContext
   ): Promise<ErdDocument> {
-    trackEvent(ErdEditorProvider.viewType);
+    trackEvent(this.viewType);
     const content = await vscode.workspace.fs.readFile(
       openContext.backupId ? vscode.Uri.parse(openContext.backupId) : uri
     );
@@ -54,7 +56,11 @@ export class ErdEditorProvider
     document: ErdDocument,
     webviewPanel: vscode.WebviewPanel
   ) {
-    const editor = new ErdEditor(document, webviewPanel.webview, this.context);
+    const editor = this.createEditor(
+      document,
+      webviewPanel.webview,
+      this.context
+    );
     const editorDisposable = await editor.bootstrapWebview();
 
     webviewPanel.onDidDispose(() => {

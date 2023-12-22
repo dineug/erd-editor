@@ -41,7 +41,7 @@ export function useERDEditorElement(
   Object.defineProperty(ctx, 'value', {
     get() {
       const { store } = context;
-      return createJsonStringify(store);
+      return createJsonStringify(store, 2);
     },
     set(json: string) {
       const { store } = context;

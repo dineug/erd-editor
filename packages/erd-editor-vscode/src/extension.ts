@@ -1,9 +1,28 @@
 import * as vscode from 'vscode';
 
+import { widthEditor } from '@/editor';
+import { ErdEditor } from '@/erd-editor';
+import { ErdEditorLegacy } from '@/erd-editor-legacy';
 import { ErdEditorProvider } from '@/erd-editor-provider';
 
+const MODERN_VIEW_TYPE = 'editor.erd';
+const LEGACY_VIEW_TYPE = 'vuerd.editor';
+
 export function activate(context: vscode.ExtensionContext) {
-  context.subscriptions.push(ErdEditorProvider.register(context));
+  context.subscriptions.push(
+    ErdEditorProvider.register(
+      context,
+      MODERN_VIEW_TYPE,
+      widthEditor(ErdEditor)
+    )
+  );
+  context.subscriptions.push(
+    ErdEditorProvider.register(
+      context,
+      LEGACY_VIEW_TYPE,
+      widthEditor(ErdEditorLegacy)
+    )
+  );
   context.subscriptions.push(
     vscode.commands.registerCommand('vuerd.showSource', showSource)
   );
@@ -27,10 +46,9 @@ function showSource(uri: vscode.Uri, viewColumn?: vscode.ViewColumn) {
 }
 
 function showEditor(uri: vscode.Uri, viewColumn?: vscode.ViewColumn) {
-  vscode.commands.executeCommand(
-    'vscode.openWith',
-    uri,
-    'editor.erd',
-    viewColumn
-  );
+  const viewType = /^.+\.erd(.json)?$/.test(uri.path)
+    ? MODERN_VIEW_TYPE
+    : LEGACY_VIEW_TYPE;
+
+  vscode.commands.executeCommand('vscode.openWith', uri, viewType, viewColumn);
 }

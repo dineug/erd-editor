@@ -2,23 +2,15 @@ import {
   AnyAction,
   webviewImportFileAction,
   webviewInitialValueAction,
-  webviewUpdateThemeAction,
 } from '@dineug/erd-editor-vscode-bridge';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-import { getTheme, saveTheme } from '@/configuration';
 import { Editor } from '@/editor';
 
-const THEME_KEYS = [
-  'dineug.erd-editor.theme.appearance',
-  'dineug.erd-editor.theme.grayColor',
-  'dineug.erd-editor.theme.accentColor',
-];
-
-export class ErdEditor extends Editor {
-  assetsDir = 'public';
+export class ErdEditorLegacy extends Editor {
+  assetsDir = 'public-legacy';
 
   async bootstrapWebview() {
     this.webview.options = {
@@ -31,7 +23,6 @@ export class ErdEditor extends Editor {
 
     const unsubscribe = this.bridge.on({
       vscodeInitial: () => {
-        dispatch(webviewUpdateThemeAction(getTheme()));
         dispatch(
           webviewInitialValueAction({
             value: Array.from(this.document.content),
@@ -73,21 +64,10 @@ export class ErdEditor extends Editor {
 
         await vscode.workspace.fs.writeFile(uri, new Uint8Array(value));
       },
-      vscodeSaveTheme: ({ payload }) => {
-        saveTheme(payload);
-      },
     });
 
     const listeners: vscode.Disposable[] = [
       this.webview.onDidReceiveMessage(action => this.bridge.emit(action)),
-      ...THEME_KEYS.map(key =>
-        vscode.workspace.onDidChangeConfiguration(event => {
-          if (!event.affectsConfiguration(key, this.document.uri)) {
-            return;
-          }
-          dispatch(webviewUpdateThemeAction(getTheme()));
-        })
-      ),
     ];
 
     this.webview.html = await this.buildHtmlForWebview();
