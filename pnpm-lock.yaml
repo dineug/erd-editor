@@ -181,6 +181,9 @@ importers:
 
   packages-legacy/vuerd:
     devDependencies:
+      '@dineug/erd-editor-schema':
+        specifier: workspace:*
+        version: link:../../packages/erd-editor-schema
       '@easylogic/colorpicker':
         specifier: ^1.10.11
         version: 1.10.11
@@ -209,8 +212,8 @@ importers:
         specifier: ^0.0.9
         version: 0.0.9
       '@types/ramda':
-        specifier: ^0.29.9
-        version: 0.29.9
+        specifier: 0.27.44
+        version: 0.27.44
       '@types/uuid':
         specifier: ^9.0.7
         version: 9.0.7
@@ -242,8 +245,8 @@ importers:
         specifier: ^0.4.18
         version: 0.4.18
       ramda:
-        specifier: ^0.29.1
-        version: 0.29.1
+        specifier: 0.27.1
+        version: 0.27.1
       rxjs:
         specifier: ^7.8.1
         version: 7.8.1
@@ -5016,6 +5019,12 @@ packages:
     resolution: {integrity: sha512-u95svzDlTysU5xecFNTgfFG5RUWu1A9P0VzgpcIiGZA9iraHOdSzcxMxQ55DyeRaGCSxQi7LxXDI4rzq/MYfdg==}
     dev: true
 
+  /@types/ramda@0.27.44:
+    resolution: {integrity: sha512-SlEHKcLG36PlU+rLJwp8p4dpC9Hp/LiH6n0REX2m4iEB15PWe1qKQzgNSZrYKhTHDFvkeEM/F2gcYwfighsEuQ==}
+    dependencies:
+      ts-toolbelt: 6.15.5
+    dev: true
+
   /@types/ramda@0.29.9:
     resolution: {integrity: sha512-X3yEG6tQCWBcUAql+RPC/O1Hm9BSU+MXu2wJnCETuAgUlrEDwTA1kIOdEEE4YXDtf0zfQLHa9CCE7WYp9kqPIQ==}
     dependencies:
@@ -9716,6 +9725,10 @@ packages:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
     dev: true
 
+  /ramda@0.27.1:
+    resolution: {integrity: sha512-PgIdVpn5y5Yns8vqb8FzBUEYn98V3xcPgawAkkgj0YJ0qDsnHCiNmZYfOGMgOvoB0eWFLpYbhxUR3mxfDIMvpw==}
+    dev: true
+
   /ramda@0.29.0:
     resolution: {integrity: sha512-BBea6L67bYLtdbOqfp8f58fPMqEwx0doL+pAi8TZyp2YWz8R9G8z9x75CZI8W+ftqhFHCpEX2cRnUUXK130iKA==}
     dev: true
@@ -10860,6 +10873,10 @@ packages:
       resolve: 1.22.4
       semver: 7.5.4
       strip-ansi: 6.0.1
+    dev: true
+
+  /ts-toolbelt@6.15.5:
+    resolution: {integrity: sha512-FZIXf1ksVyLcfr7M317jbB67XFJhOO1YqdTcuGaq9q5jLUoTikukZ+98TPjKiP2jC5CgmYdWWYs0s2nLSU0/1A==}
     dev: true
 
   /ts-toolbelt@9.6.0:

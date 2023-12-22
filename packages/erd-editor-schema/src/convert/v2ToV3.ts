@@ -14,7 +14,6 @@ import { createMemo } from '@/v3/parser/memo.entity';
 import { createRelationship } from '@/v3/parser/relationship.entity';
 import { createTable } from '@/v3/parser/table.entity';
 import { createColumn } from '@/v3/parser/tableColumn.entity';
-import { CanvasType } from '@/v3/schema/settings';
 
 export function v2ToV3(schemaV2: ERDEditorSchemaV2): ERDEditorSchemaV3 {
   const schemaV3 = schemaV3Parser({});
@@ -37,7 +36,7 @@ function assignCanvas(
   target.scrollLeft = source.scrollLeft;
   target.zoomLevel = source.zoomLevel;
   target.databaseName = source.databaseName;
-  target.canvasType = CanvasType.ERD;
+  target.canvasType = SchemaV3Constants.CanvasType.ERD;
 
   target.show = Object.keys(source.show).reduce((acc, key) => {
     const flag: boolean = propOr(source.show, key, false);

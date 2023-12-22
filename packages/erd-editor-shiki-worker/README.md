@@ -1,6 +1,6 @@
 # erd-editor-shiki-worker
 
-> Code Highlight the on the sharedWorker
+> Code highlighting task on sharedWorker
 
 ## Install
 

@@ -112,7 +112,7 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
     ColumnTypeList.length === json.columnOrder.length &&
     difference(ColumnTypeList, json.columnOrder).length === 0
   ) {
-    settings.columnOrder = settings.columnOrder;
+    settings.columnOrder = json.columnOrder as number[];
   }
 
   return settings;

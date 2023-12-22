@@ -2,7 +2,7 @@
 
 > Entity-Relationship Diagram Editor
 
-![vuerd](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
+![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
 
 ## Document
 

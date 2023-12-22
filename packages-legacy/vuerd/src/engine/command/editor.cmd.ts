@@ -1,12 +1,6 @@
-import { cloneDeep, getData, isEmpty, isObject, isRegExp } from '@/core/helper';
-import { contextPanelConfig } from '@/core/panel';
-import {
-  bracketTypes,
-  databaseList,
-  highlightThemes,
-  languageList,
-  nameCaseList,
-} from '@/engine/store/canvas.state';
+import { parserV2 } from '@dineug/erd-editor-schema';
+
+import { cloneDeep, getData, isObject } from '@/core/helper';
 import { validStartRelationship } from '@/engine/store/helper/valid.helper';
 import { ExecuteCommand } from '@/internal-types/command';
 import {
@@ -22,7 +16,7 @@ import {
   LoadJson,
   ReadonlyEditor,
 } from '@@types/engine/command/editor.cmd';
-import { ExportedStore, State } from '@@types/engine/store';
+import { State } from '@@types/engine/store';
 import { DraggableColumn, Viewport } from '@@types/engine/store/editor.state';
 import { Memo } from '@@types/engine/store/memo.state';
 import { Relationship } from '@@types/engine/store/relationship.state';
@@ -236,126 +230,12 @@ export function executeDraggableColumnEnd({ editorState }: State) {
   editorState.draggableColumn = null;
 }
 
-// TODO: Refactoring
 export function executeLoadJson(state: State, data: LoadJson) {
-  const { canvasState, editorState } = state;
-  const panelNames = [...contextPanelConfig.panels, ...editorState.panels]
-    .map(panel => panel.key)
-    .filter(
-      key =>
-        !isRegExp(contextPanelConfig.exclude, key) &&
-        !isRegExp(editorState.excludePanel, key)
-    );
-  const json = JSON.parse(data.value) as ExportedStore;
-  const canvasStateAny = canvasState as any;
-  const canvasJson = json.canvas as any;
+  const schema = parserV2(data.value);
 
-  if (isObject(canvasJson)) {
-    Object.keys(canvasStateAny).forEach(key => {
-      if (!isEmpty(canvasJson[key])) {
-        switch (key) {
-          case 'show':
-            Object.keys(canvasState.show).forEach(showKey => {
-              if (typeof canvasJson.show[showKey] === 'boolean') {
-                canvasStateAny.show[showKey] = canvasJson.show[showKey];
-              }
-            });
-            break;
-          case 'database':
-            if (databaseList.includes(canvasJson.database)) {
-              canvasState.database = canvasJson.database;
-            }
-            break;
-          case 'canvasType':
-            if (panelNames.includes(canvasJson.canvasType)) {
-              canvasState.canvasType = canvasJson.canvasType;
-            }
-            break;
-          case 'language':
-            if (languageList.includes(canvasJson.language)) {
-              canvasState.language = canvasJson.language;
-            }
-            break;
-          case 'tableCase':
-            if (nameCaseList.includes(canvasJson.tableCase)) {
-              canvasState.tableCase = canvasJson.tableCase;
-            }
-            break;
-          case 'columnCase':
-            if (nameCaseList.includes(canvasJson.columnCase)) {
-              canvasState.columnCase = canvasJson.columnCase;
-            }
-            break;
-          case 'highlightTheme':
-            if (highlightThemes.includes(canvasJson.highlightTheme)) {
-              canvasState.highlightTheme = canvasJson.highlightTheme;
-            }
-            break;
-          case 'bracketType':
-            if (bracketTypes.includes(canvasJson.bracketType)) {
-              canvasState.bracketType = canvasJson.bracketType;
-            }
-            break;
-          case 'width':
-          case 'height':
-          case 'scrollTop':
-          case 'scrollLeft':
-          case 'zoomLevel':
-            if (typeof canvasJson[key] === 'number') {
-              canvasState[key] = canvasJson[key];
-            }
-            break;
-          case 'databaseName':
-            if (typeof canvasJson[key] === 'string') {
-              canvasState[key] = canvasJson[key];
-            }
-            break;
-          case 'setting':
-            if (
-              typeof canvasJson.setting.relationshipDataTypeSync === 'boolean'
-            ) {
-              canvasState.setting.relationshipDataTypeSync =
-                canvasJson.setting.relationshipDataTypeSync;
-            }
-            if (
-              typeof canvasJson.setting.relationshipOptimization === 'boolean'
-            ) {
-              canvasState.setting.relationshipOptimization =
-                canvasJson.setting.relationshipOptimization;
-            }
-            if (
-              Array.isArray(canvasJson.setting.columnOrder) &&
-              canvasJson.setting.columnOrder.length === 7 &&
-              canvasJson.setting.columnOrder.indexOf('columnName') !== -1 &&
-              canvasJson.setting.columnOrder.indexOf('columnDataType') !== -1 &&
-              canvasJson.setting.columnOrder.indexOf('columnNotNull') !== -1 &&
-              canvasJson.setting.columnOrder.indexOf('columnDefault') !== -1 &&
-              canvasJson.setting.columnOrder.indexOf('columnComment') !== -1 &&
-              canvasJson.setting.columnOrder.indexOf('columnUnique') !== -1 &&
-              canvasJson.setting.columnOrder.indexOf('columnAutoIncrement') !==
-                -1
-            ) {
-              canvasState.setting.columnOrder.splice(
-                0,
-                canvasState.setting.columnOrder.length
-              );
-              canvasState.setting.columnOrder.push(
-                ...canvasJson.setting.columnOrder
-              );
-            }
-            break;
-          case 'pluginSerializationMap':
-            if (isObject(canvasJson.pluginSerializationMap)) {
-              canvasState.pluginSerializationMap =
-                canvasJson.pluginSerializationMap;
-            }
-            break;
-        }
-      }
-    });
-  }
+  Object.assign(state.canvasState, schema.canvas);
 
-  const tableJson = json.table as any;
+  const tableJson = schema.table as any;
   if (isObject(tableJson)) {
     Array.isArray(tableJson.tables) &&
       tableJson.tables.forEach((loadTable: PureTable) =>
@@ -368,14 +248,14 @@ export function executeLoadJson(state: State, data: LoadJson) {
       );
   }
 
-  const memoJson = json.memo as any;
+  const memoJson = schema.memo as any;
   if (isObject(memoJson) && Array.isArray(memoJson.memos)) {
     memoJson.memos.forEach((loadMemo: Memo) =>
       executeLoadMemo(state, loadMemo)
     );
   }
 
-  const relationshipJson = json.relationship as any;
+  const relationshipJson = schema.relationship as any;
   if (
     isObject(relationshipJson) &&
     Array.isArray(relationshipJson.relationships)
