@@ -32,41 +32,4 @@ export const createImportMenus = (context: IERDEditorContext): Menu[] =>
       name: 'SQL DDL',
       execute: () => importSQLDDL(context),
     },
-    {
-      icon: {
-        prefix: 'mdi',
-        name: 'xml',
-        size: 18,
-      },
-      name: 'Liquibase',
-      children: [
-        {
-          icon: {
-            prefix: 'mdi',
-            name: 'xml',
-            size: 18,
-          },
-          name: 'PostgreSQL',
-          execute: () => importLiquibase(context, 'postgresql'),
-        },
-        {
-          icon: {
-            prefix: 'mdi',
-            name: 'xml',
-            size: 18,
-          },
-          name: 'Oracle',
-          execute: () => importLiquibase(context, 'oracle'),
-        },
-        {
-          icon: {
-            prefix: 'mdi',
-            name: 'xml',
-            size: 18,
-          },
-          name: 'MSSQL',
-          execute: () => importLiquibase(context, 'mssql'),
-        },
-      ].map(menu => ({ ...menu, options: { ...liquibaseOptions } })),
-    },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

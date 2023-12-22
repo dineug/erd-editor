@@ -1,16 +1,10 @@
-import { html } from '@vuerd/lit-observable';
-
 import {
   createJsonStringify,
-  createSnapshot,
   createStoreCopy,
   exportJSON,
   exportPNG,
   exportSQLDDL,
-  exportXML,
 } from '@/core/file';
-import { Bus } from '@/core/helper/eventBus.helper';
-import { createLiquibase } from '@/core/parser/JSONToLiquibase';
 import { createDDL } from '@/core/sql/ddl';
 import { moveCanvas } from '@/engine/command/canvas.cmd.helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
@@ -76,46 +70,6 @@ export const createExportMenus = (
       execute: () => {
         store.dispatchSync(moveCanvas(0, 0));
         exportPNG(canvas, store.canvasState.databaseName);
-      },
-    },
-    {
-      icon: {
-        prefix: 'mdi',
-        name: 'xml',
-        size: 18,
-      },
-      name: 'Liquibase',
-      execute: () => {
-        if (store.canvasState.database === 'PostgreSQL') {
-          showPrompt('Please enter the name of changeset:', id =>
-            showPrompt('Please enter name of the author:', name => {
-              id = id.replace(/\\/g, '/');
-              const fileName = `${id.replace(/\.xml$/g, '')}.xml`;
-
-              createSnapshot(context, {
-                type: 'before-export',
-                filename: fileName,
-              });
-
-              const liquibase = createLiquibase(context, id, name);
-
-              exportXML(liquibase, fileName);
-
-              if (liquibase) {
-                createSnapshot(context, {
-                  type: 'after-export',
-                  filename: fileName,
-                });
-                console.log('AFTER', snapshots);
-              }
-            })
-          );
-        } else {
-          eventBus.emit(Bus.ToastBar.add, {
-            bodyTpl: html`Export from ${store.canvasState.database} dialect not
-            supported, please use PostgreSQL`,
-          });
-        }
       },
     },
   ].map(menu => ({ ...menu, options: { ...defaultOptions } }));

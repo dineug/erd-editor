@@ -107,10 +107,6 @@ const HelpDrawer: FunctionalComponent<HelpDrawerProps, HelpDrawerElement> = (
         keymap: keymapOptionsToString(keymap.removeTable),
       },
       {
-        name: 'Hide table',
-        keymap: keymapOptionsToString(keymap.hideTable),
-      },
-      {
         name: 'Delete - column, filter',
         keymap: keymapOptionsToString(keymap.removeColumn),
       },

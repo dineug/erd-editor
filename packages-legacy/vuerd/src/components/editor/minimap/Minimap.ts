@@ -143,12 +143,9 @@ const Minimap: FunctionalComponent<MinimapProps, MinimapElement> = (
           ${repeat(
             tables,
             table => table.id,
-            table =>
-              table.visible
-                ? html`
-                    <vuerd-minimap-table .table=${table}></vuerd-minimap-table>
-                  `
-                : null
+            table => html`
+              <vuerd-minimap-table .table=${table}></vuerd-minimap-table>
+            `
           )}
           ${repeat(
             memos,
@@ -169,18 +166,16 @@ const Minimap: FunctionalComponent<MinimapProps, MinimapElement> = (
                 relationships,
                 relationship => relationship.id,
                 relationship =>
-                  relationship.visible
-                    ? svg`
-                    <g
-                      class=${classMap({
-                        'vuerd-relationship': true,
-                        identification: relationship.identification,
-                      })}
-                    >
-                      ${relationshipTpl(relationship, 12)}
-                    </g>
-                `
-                    : null
+                  svg`
+                      <g
+                        class=${classMap({
+                          'vuerd-relationship': true,
+                          identification: relationship.identification,
+                        })}
+                      >
+                        ${relationshipTpl(relationship, 12)}
+                      </g>
+                  `
               )}
               </svg>
           `

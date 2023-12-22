@@ -108,16 +108,6 @@ export function useERDKeymap(ctx: HTMLElement) {
       }
 
       if (
-        keymapMatchAndStop(event, keymap.hideTable) &&
-        (store.tableState.tables.some(table => table.ui.active) ||
-          store.memoState.memos.some(memo => memo.ui.active))
-      ) {
-        const table = store.tableState.tables.find(table => table.ui.active);
-
-        if (table) store.dispatch(hideTable(table.id));
-      }
-
-      if (
         keymapMatchAndStop(event, keymap.tableProperties) &&
         store.tableState.tables.some(table => table.ui.active)
       ) {

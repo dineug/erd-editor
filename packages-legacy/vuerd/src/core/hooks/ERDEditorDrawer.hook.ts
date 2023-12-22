@@ -98,11 +98,6 @@ export function useERDEditorDrawer(
         .visible=${state.setting}
         @close=${closeSetting}
       ></vuerd-setting-drawer>
-      <vuerd-tree-drawer
-        .width=${props.width}
-        .visible=${state.tree}
-        @close=${closeTree}
-      ></vuerd-tree-drawer>
       <vuerd-table-properties-drawer
         .width=${props.width}
         .visible=${state.tableProperties}

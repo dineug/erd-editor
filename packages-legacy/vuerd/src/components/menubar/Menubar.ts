@@ -194,13 +194,6 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
         <div class="vuerd-menubar-menu-vertical"></div>
         <div
           class="vuerd-menubar-menu"
-          data-tippy-content="Table Tree"
-          @click=${onOpenTree}
-        >
-          <vuerd-icon name="tree" size="16"></vuerd-icon>
-        </div>
-        <div
-          class="vuerd-menubar-menu"
           data-tippy-content="Help"
           @click=${onOpenHelp}
         >

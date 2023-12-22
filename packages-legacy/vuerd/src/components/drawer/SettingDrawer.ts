@@ -139,17 +139,6 @@ const SettingDrawer: FunctionalComponent<
               </td>
             </tr>
             <tr>
-              <td>Relationship Optimization</td>
-              <td>
-                <input
-                  type="checkbox"
-                  ?checked=${setting.relationshipOptimization}
-                  ?disabled=${readonly}
-                  @change=${onChangeRelationshipOptimization}
-                />
-              </td>
-            </tr>
-            <tr>
               <td>ColumnType Order</td>
               <td @dragenter=${onPreventDefault} @dragover=${onPreventDefault}>
                 ${repeat(

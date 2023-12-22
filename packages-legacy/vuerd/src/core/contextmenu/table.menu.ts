@@ -58,16 +58,6 @@ export const createTableMenus = (
     {
       icon: {
         prefix: 'fas',
-        name: 'eye-slash',
-      },
-      name: 'Hide Table',
-      keymap: keymapOptionToString(keymap.hideTable[0]),
-      keymapTooltip: keymapOptionsToString(keymap.hideTable),
-      execute: () => store.dispatch(hideTable(tableId)),
-    },
-    {
-      icon: {
-        prefix: 'fas',
         name: 'columns',
       },
       name: 'Default Template',

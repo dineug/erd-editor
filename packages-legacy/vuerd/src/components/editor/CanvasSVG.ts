@@ -115,16 +115,11 @@ const CanvasSVG: FunctionalComponent<CanvasSVGProps, CanvasSVGElement> = (
   return () => {
     const {
       store: {
-        canvasState: {
-          width,
-          height,
-          setting: { relationshipOptimization },
-        },
+        canvasState: { width, height },
         relationshipState: { relationships },
       },
     } = contextRef.value;
     const ratio = getRatio();
-    const grid = relationshipOptimization ? createGrid() : null;
 
     return svg`
       <svg
@@ -138,8 +133,7 @@ const CanvasSVG: FunctionalComponent<CanvasSVGProps, CanvasSVGElement> = (
         relationships,
         relationship => relationship.id,
         relationship =>
-          relationship.visible
-            ? svg`
+          svg`
             <g class=${classMap({
               'vuerd-relationship': true,
               identification:
@@ -151,10 +145,9 @@ const CanvasSVG: FunctionalComponent<CanvasSVGProps, CanvasSVGElement> = (
               @mouseover=${() => onMouseover(relationship)}
               @mouseleave=${() => onMouseleave(relationship)}
             >
-              ${relationshipTpl(relationship, 3, grid, ratio, width, height)}
+              ${relationshipTpl(relationship, 3, null, ratio, width, height)}
             </g>
           `
-            : null
       )}
     </svg>
 `;

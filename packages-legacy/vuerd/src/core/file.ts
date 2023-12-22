@@ -192,10 +192,6 @@ export function importSQLDDL(context: IERDEditorContext) {
               store.canvasState.database
             );
             store.dispatchSync(loadJson$(json), sortTable());
-
-            var { snapshots } = context;
-            createSnapshot(context);
-            Logger.log('SNAPSHOTS', snapshots);
           }
         };
       } else {
