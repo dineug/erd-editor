@@ -225,6 +225,122 @@
             ]
           }
         }
+      },
+      {
+        "title": "vuerd",
+        "properties": {
+          "dineug.vuerd-vscode.themeSync": {
+            "description": "Synchronize the current vscode theme",
+            "type": "boolean",
+            "default": false
+          },
+          "dineug.vuerd-vscode.theme": {
+            "description": "Custom Theme",
+            "type": "object",
+            "properties": {
+              "canvas": {
+                "description": "background color",
+                "type": "string",
+                "default": "#282828"
+              },
+              "table": {
+                "description": "background color",
+                "type": "string",
+                "default": "#191919"
+              },
+              "tableActive": {
+                "description": "active color",
+                "type": "string",
+                "default": "#14496d"
+              },
+              "focus": {
+                "description": "focus color",
+                "type": "string",
+                "default": "#00a9ff"
+              },
+              "keyPK": {
+                "description": "primaryKey color",
+                "type": "string",
+                "default": "#b4b400"
+              },
+              "keyFK": {
+                "description": "foreignKey color",
+                "type": "string",
+                "default": "#dda8b1"
+              },
+              "keyPFK": {
+                "description": "identification color",
+                "type": "string",
+                "default": "#60b9c4"
+              },
+              "font": {
+                "description": "font color",
+                "type": "string",
+                "default": "#a2a2a2"
+              },
+              "fontActive": {
+                "description": "active color",
+                "type": "string",
+                "default": "white"
+              },
+              "fontPlaceholder": {
+                "description": "placeholder color",
+                "type": "string",
+                "default": "#6d6d6d"
+              },
+              "contextmenu": {
+                "description": "background color",
+                "type": "string",
+                "default": "#191919"
+              },
+              "contextmenuActive": {
+                "description": "active color",
+                "type": "string",
+                "default": "#383d41"
+              },
+              "edit": {
+                "description": "edit color",
+                "type": "string",
+                "default": "#ffc107"
+              },
+              "columnSelect": {
+                "description": "select color",
+                "type": "string",
+                "default": "#232a2f"
+              },
+              "columnActive": {
+                "description": "active color",
+                "type": "string",
+                "default": "#372908"
+              },
+              "minimapShadow": {
+                "description": "shadow color",
+                "type": "string",
+                "default": "black"
+              },
+              "scrollbarThumb": {
+                "description": "thumb color",
+                "type": "string",
+                "default": "#6d6d6d"
+              },
+              "scrollbarThumbActive": {
+                "description": "active color",
+                "type": "string",
+                "default": "#a2a2a2"
+              },
+              "menubar": {
+                "description": "background color",
+                "type": "string",
+                "default": "black"
+              },
+              "visualization": {
+                "description": "background color",
+                "type": "string",
+                "default": "#191919"
+              }
+            }
+          }
+        }
       }
     ]
   }

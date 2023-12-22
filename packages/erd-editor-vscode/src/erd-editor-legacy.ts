@@ -2,12 +2,20 @@ import {
   AnyAction,
   webviewImportFileAction,
   webviewInitialValueAction,
+  webviewUpdateThemeLegacyAction,
 } from '@dineug/erd-editor-vscode-bridge';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { getThemeLegacy } from '@/configuration';
 import { Editor } from '@/editor';
+
+const THEME_KEYS = [
+  'dineug.vuerd-vscode.themeSync',
+  'dineug.vuerd-vscode.theme',
+  'workbench.colorTheme',
+];
 
 export class ErdEditorLegacy extends Editor {
   assetsDir = 'public-legacy';
@@ -23,6 +31,7 @@ export class ErdEditorLegacy extends Editor {
 
     const unsubscribe = this.bridge.on({
       vscodeInitial: () => {
+        dispatch(webviewUpdateThemeLegacyAction(getThemeLegacy()));
         dispatch(
           webviewInitialValueAction({
             value: Array.from(this.document.content),
@@ -68,6 +77,14 @@ export class ErdEditorLegacy extends Editor {
 
     const listeners: vscode.Disposable[] = [
       this.webview.onDidReceiveMessage(action => this.bridge.emit(action)),
+      ...THEME_KEYS.map(key =>
+        vscode.workspace.onDidChangeConfiguration(event => {
+          if (!event.affectsConfiguration(key, this.document.uri)) {
+            return;
+          }
+          dispatch(webviewUpdateThemeLegacyAction(getThemeLegacy()));
+        })
+      ),
     ];
 
     this.webview.html = await this.buildHtmlForWebview();

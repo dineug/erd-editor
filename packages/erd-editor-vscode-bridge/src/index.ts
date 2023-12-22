@@ -24,6 +24,7 @@ const BridgeActionType = {
   webviewImportFile: 'webviewImportFile',
   webviewInitialValue: 'webviewInitialValue',
   webviewUpdateTheme: 'webviewUpdateTheme',
+  webviewUpdateThemeLegacy: 'webviewUpdateThemeLegacy',
 } as const;
 type BridgeActionType = ValuesType<typeof BridgeActionType>;
 
@@ -49,6 +50,31 @@ type BridgeActionMap = {
     value: number[];
   };
   [BridgeActionType.webviewUpdateTheme]: Partial<ThemeOptions>;
+  [BridgeActionType.webviewUpdateThemeLegacy]: {
+    themeSync: boolean;
+    theme: Partial<{
+      canvas: string;
+      table: string;
+      tableActive: string;
+      focus: string;
+      keyPK: string;
+      keyFK: string;
+      keyPFK: string;
+      font: string;
+      fontActive: string;
+      fontPlaceholder: string;
+      contextmenu: string;
+      contextmenuActive: string;
+      edit: string;
+      columnSelect: string;
+      columnActive: string;
+      minimapShadow: string;
+      scrollbarThumb: string;
+      scrollbarThumbActive: string;
+      menubar: string;
+      visualization: string;
+    }>;
+  };
 };
 
 function safeCallback<F extends Callback>(
@@ -122,3 +148,7 @@ export const webviewInitialValueAction = createAction<
 export const webviewUpdateThemeAction = createAction<
   BridgeActionMap[typeof BridgeActionType.webviewUpdateTheme]
 >(BridgeActionType.webviewUpdateTheme);
+
+export const webviewUpdateThemeLegacyAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.webviewUpdateThemeLegacy]
+>(BridgeActionType.webviewUpdateThemeLegacy);
