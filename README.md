@@ -4,7 +4,7 @@
 
 ## ERD
 
-![vuerd](https://github.com/dineug/erd-editor/blob/main/img/vuerd-erd.gif?raw=true)
+![vuerd](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
 
 ## Document
 

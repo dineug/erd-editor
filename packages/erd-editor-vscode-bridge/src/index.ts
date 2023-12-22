@@ -25,6 +25,7 @@ const BridgeActionType = {
   webviewInitialValue: 'webviewInitialValue',
   webviewUpdateTheme: 'webviewUpdateTheme',
   webviewUpdateThemeLegacy: 'webviewUpdateThemeLegacy',
+  webviewUpdateReadonly: 'webviewReadonly',
 } as const;
 type BridgeActionType = ValuesType<typeof BridgeActionType>;
 
@@ -75,6 +76,7 @@ type BridgeActionMap = {
       visualization: string;
     }>;
   };
+  [BridgeActionType.webviewUpdateReadonly]: boolean;
 };
 
 function safeCallback<F extends Callback>(
@@ -152,3 +154,7 @@ export const webviewUpdateThemeAction = createAction<
 export const webviewUpdateThemeLegacyAction = createAction<
   BridgeActionMap[typeof BridgeActionType.webviewUpdateThemeLegacy]
 >(BridgeActionType.webviewUpdateThemeLegacy);
+
+export const webviewUpdateReadonlyAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.webviewUpdateReadonly]
+>(BridgeActionType.webviewUpdateReadonly);

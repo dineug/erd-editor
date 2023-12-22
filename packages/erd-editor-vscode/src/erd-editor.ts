@@ -2,6 +2,7 @@ import {
   AnyAction,
   webviewImportFileAction,
   webviewInitialValueAction,
+  webviewUpdateReadonlyAction,
   webviewUpdateThemeAction,
 } from '@dineug/erd-editor-vscode-bridge';
 import * as os from 'os';
@@ -32,6 +33,7 @@ export class ErdEditor extends Editor {
     const unsubscribe = this.bridge.on({
       vscodeInitial: () => {
         dispatch(webviewUpdateThemeAction(getTheme()));
+        dispatch(webviewUpdateReadonlyAction(this.readonly));
         dispatch(
           webviewInitialValueAction({
             value: Array.from(this.document.content),

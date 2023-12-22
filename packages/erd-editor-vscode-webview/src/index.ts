@@ -82,6 +82,9 @@ bridge.on({
         payload.appearance === 'auto' ? getSystemTheme() : payload.appearance,
     });
   },
+  webviewReadonly: ({ payload }) => {
+    editor.readonly = payload;
+  },
 });
 
 window.addEventListener('message', event => bridge.emit(event.data));

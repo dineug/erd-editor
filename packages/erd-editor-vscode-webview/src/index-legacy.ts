@@ -125,6 +125,9 @@ bridge.on({
       )
     );
   },
+  webviewReadonly: ({ payload }) => {
+    editor.readonly = payload;
+  },
 });
 
 window.addEventListener('message', event => bridge.emit(event.data));
