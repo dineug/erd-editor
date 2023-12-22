@@ -23,6 +23,7 @@ import {
   groupByStreamActions,
   ignoreTagFilter,
 } from '@/engine/rx-operators';
+import { readonlyIgnoreFilter } from '@/engine/rx-operators/readonlyIgnoreFilter';
 import { createStore, Store } from '@/engine/store';
 import { createHooks } from '@/engine/store.hooks';
 import { Tag } from '@/engine/tag';
@@ -35,7 +36,10 @@ export type RxStore = Store & {
 
 const HISTORY_LIMIT = 2048;
 
-export function createRxStore(context: EngineContext): RxStore {
+export function createRxStore(
+  context: EngineContext,
+  getReadonly: () => boolean = () => false
+): RxStore {
   const subscriptions: Subscription[] = [];
   const store = createStore(context);
   const hooks = createHooks(store);
@@ -48,6 +52,7 @@ export function createRxStore(context: EngineContext): RxStore {
   const history$ = dispatch$.pipe(
     actionsFilter(HistoryActionTypes),
     ignoreTagFilter(Tag.shared),
+    readonlyIgnoreFilter(getReadonly),
     groupByStreamActions(StreamActionTypes, [
       ['@@move', StreamRegroupMoveActionTypes],
       ['@@scroll', StreamRegroupScrollActionTypes],
@@ -56,7 +61,11 @@ export function createRxStore(context: EngineContext): RxStore {
   );
   const change$ = new Observable<Array<AnyAction>>(subscriber =>
     store.subscribe(actions => subscriber.next(actions))
-  ).pipe(actionsFilter(ChangeActionTypes), debounceTime(200));
+  ).pipe(
+    actionsFilter(ChangeActionTypes),
+    readonlyIgnoreFilter(getReadonly),
+    debounceTime(200)
+  );
 
   const dispatchSync = (...compositionActions: CompositionActions) => {
     dispatch$.next(
@@ -83,7 +92,9 @@ export function createRxStore(context: EngineContext): RxStore {
 
   subscriptions.push(
     history$.subscribe(pushHistory(store, history)),
-    dispatch$.subscribe(store.dispatchSync)
+    dispatch$
+      .pipe(readonlyIgnoreFilter(getReadonly))
+      .subscribe(store.dispatchSync)
   );
 
   return Object.freeze({

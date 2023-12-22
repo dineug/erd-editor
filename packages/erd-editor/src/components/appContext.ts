@@ -32,9 +32,12 @@ export type AppContext = EngineContext & {
 
 export type InjectAppContext = InjectEngineContext;
 
-export function createAppContext(ctx: InjectAppContext): AppContext {
+export function createAppContext(
+  ctx: InjectAppContext,
+  getReadonly?: () => boolean
+): AppContext {
   const engineContext = createEngineContext(ctx);
-  const store = createRxStore(engineContext);
+  const store = createRxStore(engineContext, getReadonly);
   const keyBindingMap = observable(createKeyBindingMap(), { shallow: true });
   const shortcut$ = new Subject<{
     type: KeyBindingName;

@@ -2,8 +2,6 @@
 
 > [erd-editor](https://github.com/dineug/erd-editor) Entity-Relationship Diagram Editor vscode extension
 
-## ERD
-
 ![erd-editor](./assets/erd-editor-vscode.png)
 
 ## Usage
@@ -12,5 +10,4 @@ create an empty file with a `.erd`, `.erd.json` extension and open it in Visual 
 
 ## Document
 
-- [Playground](https://vuerd.github.io)
 - [Import Schema SQL Support Syntax](https://github.com/dineug/erd-editor/blob/main/packages/schema-sql-parser/src/schema_sql_test_case.md)

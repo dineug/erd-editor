@@ -63,6 +63,7 @@ export function useErdEditorAttachElement({
   app: { store, keyBindingMap, emitter },
   root,
 }: Props) {
+  const getReadonly = () => props.readonly;
   const themeState = observable<{
     options: ThemeOptions;
     preset: Theme;
@@ -85,7 +86,7 @@ export function useErdEditorAttachElement({
   const { addUnsubscribe } = useUnmounted();
 
   const emitChange = () => {
-    ctx.dispatchEvent(new CustomEvent('change'));
+    getReadonly() || ctx.dispatchEvent(new CustomEvent('change'));
   };
 
   const listeners: Array<() => void> = [

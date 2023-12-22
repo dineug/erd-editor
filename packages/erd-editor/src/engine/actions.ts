@@ -1,3 +1,5 @@
+import { arrayHas } from '@dineug/shared';
+
 import {
   pushStreamHistoryMap,
   pushUndoHistoryMap,
@@ -139,6 +141,25 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'editor.loadJson',
   'editor.clear',
 ];
+
+const hasReadonlyIgnore = arrayHas([
+  'settings.changeZoomLevel',
+  'settings.streamZoomLevel',
+  'settings.scrollTo',
+  'settings.streamScrollTo',
+  'settings.changeShow',
+  'settings.changeDatabase',
+  'settings.changeCanvasType',
+  'settings.changeLanguage',
+  'settings.changeTableNameCase',
+  'settings.changeColumnNameCase',
+  'settings.changeBracketType',
+  'settings.changeColumnOrder',
+  'settings.changeMaxWidthComment',
+]);
+
+export const ReadonlyIgnoreActionTypes: ReadonlyArray<ActionType> =
+  ChangeActionTypes.filter(type => !hasReadonlyIgnore(type));
 
 export const StreamRegroupMoveActionTypes: ReadonlyArray<ActionType> = [
   'table.move',

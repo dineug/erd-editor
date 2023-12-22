@@ -86,7 +86,11 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
 
 const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const text = createText();
-  const appContextValue = createAppContext({ toWidth: text.toWidth });
+  const getReadonly = () => props.readonly;
+  const appContextValue = createAppContext(
+    { toWidth: text.toWidth },
+    getReadonly
+  );
   useProvider(ctx, appContext, appContextValue);
 
   const root = createRef<HTMLDivElement>();

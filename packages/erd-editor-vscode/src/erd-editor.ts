@@ -16,6 +16,7 @@ const THEME_KEYS = [
   'dineug.erd-editor.theme.appearance',
   'dineug.erd-editor.theme.grayColor',
   'dineug.erd-editor.theme.accentColor',
+  'workbench.colorTheme',
 ];
 
 export class ErdEditor extends Editor {
