@@ -16,7 +16,7 @@ type ImportOptions = {
 
 type ImportFileCallback = (options: ImportOptions) => void;
 
-const JSON_EXTENSION = /\.json$/i;
+const JSON_EXTENSION = /\.(json|erd|vuerd)$/i;
 const SQL_EXTENSION = /\.sql$/i;
 
 let performImportFileExtra: ImportFileCallback | null = null;
@@ -27,13 +27,13 @@ export function setImportFileCallback(callback: ImportFileCallback | null) {
 
 export function importJSON({ store, emitter }: AppContext) {
   if (performImportFileExtra) {
-    performImportFileExtra({ accept: '.json', type: 'json' });
+    performImportFileExtra({ accept: '.json,.erd,.vuerd', type: 'json' });
     return;
   }
 
   const input = document.createElement('input');
   input.setAttribute('type', 'file');
-  input.setAttribute('accept', '.json');
+  input.setAttribute('accept', '.json,.erd,.vuerd');
   input.addEventListener('change', () => {
     const file = input.files?.[0];
     if (!file) return;

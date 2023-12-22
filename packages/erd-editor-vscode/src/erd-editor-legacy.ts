@@ -48,7 +48,7 @@ export class ErdEditorLegacy extends Editor {
         if (!uris || !uris.length) return;
 
         const uri = uris[0];
-        const regexp = new RegExp(`\.(${type})$`, 'i');
+        const regexp = new RegExp(`\.(${type}|erd|vuerd)$`, 'i');
 
         if (!regexp.test(uri.path)) {
           vscode.window.showInformationMessage(`Just import the ${type} file`);

@@ -132,18 +132,18 @@ export function setImportFileCallback(
 
 export function importJSON({ store, eventBus }: IERDEditorContext) {
   if (executeImportFileExtra) {
-    executeImportFileExtra({ accept: '.json', type: 'json' });
+    executeImportFileExtra({ accept: '.json,.erd,.vuerd', type: 'json' });
     return;
   }
 
   const importHelperJSON = document.createElement('input');
   importHelperJSON.setAttribute('type', 'file');
-  importHelperJSON.setAttribute('accept', '.json');
+  importHelperJSON.setAttribute('accept', '.json,.erd,.vuerd');
   importHelperJSON.addEventListener('change', event => {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length) {
       const file = input.files[0];
-      if (/\.(json)$/i.test(file.name)) {
+      if (/\.(json|erd|vuerd)$/i.test(file.name)) {
         const reader = new FileReader();
         reader.readAsText(file);
         reader.onload = () => {

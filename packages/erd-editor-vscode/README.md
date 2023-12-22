@@ -2,7 +2,7 @@
 
 > [erd-editor](https://github.com/dineug/erd-editor) Entity-Relationship Diagram Editor vscode extension
 
-![erd-editor](./assets/erd-editor-vscode.png)
+![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
 
 ## Usage
 

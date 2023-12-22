@@ -39,9 +39,9 @@
   "scripts": {
     "vscode:prepublish": "pnpm build",
     "build": "webpack --mode production",
+    "build:vsce": "pnpm vsce package --no-dependencies",
     "webpack": "webpack --mode development",
-    "webpack:dev": "webpack --mode development --watch",
-    "package": "pnpm vsce package --no-dependencies"
+    "webpack:dev": "webpack --mode development --watch"
   },
   "devDependencies": {
     "@dineug/erd-editor-vscode-webview": "workspace:*",
@@ -57,7 +57,9 @@
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4"
   },
-  "activationEvents": [],
+  "activationEvents": [
+    "workspaceContains:**/*.{erd,vuerd}"
+  ],
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": true
