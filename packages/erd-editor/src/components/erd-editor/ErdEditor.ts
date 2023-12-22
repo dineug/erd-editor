@@ -20,13 +20,18 @@ import QuickSearch from '@/components/quick-search/QuickSearch';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import Settings from '@/components/settings/Settings';
 import Theme from '@/components/theme/Theme';
+import ThemeBuilder from '@/components/theme-builder/ThemeBuilder';
 import ToastContainer from '@/components/toast-container/ToastContainer';
 import Toolbar from '@/components/toolbar/Toolbar';
 import Visualization from '@/components/visualization/Visualization';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
+import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import { DatabaseVendor } from '@/constants/sql/database';
-import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeOpenMapAction,
+  changeViewportAction,
+} from '@/engine/modules/editor/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getSchemaGCService } from '@/services/schema-gc';
@@ -50,6 +55,7 @@ declare global {
 export type ErdEditorProps = {
   readonly: boolean;
   systemDarkMode: boolean;
+  enableThemeBuilder: boolean;
 };
 
 export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
@@ -86,7 +92,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();
   useKeyBindingMap(ctx, root);
 
-  const { theme, hasDarkMode } = useErdEditorAttachElement({
+  const { theme, themeState, hasDarkMode } = useErdEditorAttachElement({
     props,
     ctx,
     app: appContextValue,
@@ -183,6 +189,20 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     );
   });
 
+  const handleOutsideClick = (event: MouseEvent) => {
+    const el = event.target as HTMLElement | null;
+    if (!el) return;
+
+    const { store } = appContextValue;
+    if (
+      store.state.editor.openMap[Open.themeBuilder] &&
+      !el.closest('.toolbar') &&
+      !el.closest('.theme-builder')
+    ) {
+      store.dispatch(changeOpenMapAction({ [Open.themeBuilder]: false }));
+    }
+  };
+
   return () => {
     const { store } = appContextValue;
     const { settings } = store.state;
@@ -205,8 +225,9 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         @focusout=${handleFocusout}
         @copy=${handleCopy}
         @paste=${handlePaste}
+        @mousedown=${handleOutsideClick}
       >
-        <${Toolbar} />
+        <${Toolbar} enableThemeBuilder=${props.enableThemeBuilder} />
         ${cache(
           settings.canvasType === CanvasType.ERD
             ? html`
@@ -234,6 +255,9 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
                 ? html`<div class=${styles.scope}><${Settings} /></div>`
                 : null}
         <${ToastContainer} />
+        ${props.enableThemeBuilder
+          ? html`<${ThemeBuilder} ...${themeState} />`
+          : null}
         <${QuickSearch} />
         ${text.span}
       </div>
@@ -246,6 +270,7 @@ defineCustomElement('erd-editor', {
   observedProps: {
     readonly: Boolean,
     systemDarkMode: Boolean,
+    enableThemeBuilder: Boolean,
   },
   render: ErdEditor,
 });

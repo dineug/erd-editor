@@ -3,6 +3,7 @@ import {
   faBars,
   faCheck,
   faChevronRight,
+  faCircleHalfStroke,
   faCode,
   faCog,
   faColumns,
@@ -37,6 +38,8 @@ import {
   mdiFormatLetterCase,
   mdiTableCog,
   mdiVectorLine,
+  mdiWeatherNight,
+  mdiWhiteBalanceSunny,
 } from '@mdi/js';
 
 import { ValuesType } from '@/internal-types';
@@ -110,6 +113,7 @@ const icons = [
   faCopy,
   faBars,
   faLocationDot,
+  faCircleHalfStroke,
   createMDI('code-json', mdiCodeJson),
   createMDI('database', mdiDatabase),
   createMDI('database-import', mdiDatabaseImport),
@@ -120,6 +124,8 @@ const icons = [
   createMDI('vector-line', mdiVectorLine),
   createMDI('atom', mdiAtom),
   createMDI('chart-scatter-plot', mdiChartScatterPlot),
+  createMDI('white-balance-sunny', mdiWhiteBalanceSunny),
+  createMDI('weather-might', mdiWeatherNight),
   ...Object.entries(BASE_64_ICON).map(([name, base64]) =>
     createBase64(name, base64)
   ),

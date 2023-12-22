@@ -9,6 +9,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { ErdDocument } from '@/erd-document';
+import { getNonce } from '@/utils';
 
 export class ErdEditor {
   private bridge = new Emitter();
@@ -19,6 +20,13 @@ export class ErdEditor {
     readonly webview: vscode.Webview,
     readonly context: vscode.ExtensionContext
   ) {}
+
+  isViewOnly() {
+    return (
+      this.document.uri.scheme === 'git' ||
+      this.document.uri.scheme === 'conflictResolution'
+    );
+  }
 
   async bootstrapWebview() {
     this.webview.options = {
@@ -94,13 +102,7 @@ export class ErdEditor {
     const nonce = getNonce();
     const cspSource = this.webview.cspSource;
     const scriptUri = this.webview
-      .asWebviewUri(
-        vscode.Uri.joinPath(
-          this.context.extensionUri,
-          'public',
-          'webview.iife.js'
-        )
-      )
+      .asWebviewUri(vscode.Uri.joinPath(publicUri, 'webview.iife.js'))
       .toString();
 
     const html = this.textDecoder
@@ -111,14 +113,4 @@ export class ErdEditor {
 
     return html;
   }
-}
-
-function getNonce() {
-  let text = '';
-  const possible =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
 }

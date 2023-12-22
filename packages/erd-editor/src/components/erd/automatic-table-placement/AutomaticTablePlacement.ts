@@ -161,6 +161,8 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     );
   } catch (e) {
     handleClose();
+
+    return () => null;
   }
 
   return () => html`

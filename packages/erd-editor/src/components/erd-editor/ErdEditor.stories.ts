@@ -9,7 +9,7 @@ const meta = {
   title: 'ErdEditor',
   render: args => {
     const fragment = document.createDocumentFragment();
-    render(fragment, html`<erd-editor ...${args} />`);
+    render(fragment, html`<erd-editor enable-theme-builder ...${args} />`);
     return fragment;
   },
   argTypes: {

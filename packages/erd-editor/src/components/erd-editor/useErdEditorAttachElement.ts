@@ -1,7 +1,7 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { observable, onMounted, Ref, watch } from '@dineug/r-html';
 import { arrayHas, isArray, isString } from '@dineug/shared';
-import { get, isEmpty, omit } from 'lodash-es';
+import { cloneDeep, get, isEmpty, omit } from 'lodash-es';
 
 import { AppContext } from '@/components/appContext';
 import { DatabaseVendorToDatabase } from '@/constants/sql/database';
@@ -119,6 +119,16 @@ export function useErdEditorAttachElement({
         if (propName !== 'custom') return;
 
         Object.assign(theme, themeState.preset, themeState.custom);
+      }),
+      emitter.on({
+        setThemeOptions: ({ payload }) => {
+          ctx.setPresetTheme(payload);
+          ctx.dispatchEvent(
+            new CustomEvent('changePresetTheme', {
+              detail: cloneDeep(themeState.options),
+            })
+          );
+        },
       })
     );
   });
@@ -208,6 +218,7 @@ export function useErdEditorAttachElement({
 
   return {
     theme,
+    themeState,
     hasDarkMode: () => themeState.options.appearance === Appearance.dark,
   };
 }

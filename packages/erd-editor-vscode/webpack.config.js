@@ -8,7 +8,11 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
+const webpack = require('webpack');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
+
+const pkg = JSON.parse(fs.readFileSync('package.json', { encoding: 'utf8' }));
 
 /**@type {import('webpack').Configuration}*/
 const config = {
@@ -44,6 +48,11 @@ const config = {
             }]
         }]
     },
+    plugins: [
+      new webpack.DefinePlugin({
+        'process.env.VUERD_VSCODE_VERSION': JSON.stringify(pkg.version),
+      })
+    ],
 }
 
 module.exports = config;

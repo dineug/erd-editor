@@ -25,6 +25,7 @@ function runStats() {
 
 function runEditor() {
   const editor = document.createElement('erd-editor');
+  editor.enableThemeBuilder = true;
   document.body.appendChild(editor);
 }
 

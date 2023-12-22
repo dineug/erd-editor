@@ -12,7 +12,7 @@ import {
   resizeAction,
 } from '@/engine/modules/settings/atom.actions';
 import { changeZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
-import { toggleSearchAction } from '@/utils/emitter';
+import { openThemeBuilderAction, toggleSearchAction } from '@/utils/emitter';
 import {
   canvasSizeInRange,
   toNumString,
@@ -22,7 +22,9 @@ import {
 
 import * as styles from './Toolbar.styles';
 
-export type ToolbarProps = {};
+export type ToolbarProps = {
+  enableThemeBuilder: boolean;
+};
 
 const Toolbar: FC<ToolbarProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -80,6 +82,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     emitter.emit(toggleSearchAction());
   };
 
+  const handleTheme = () => {
+    const { emitter } = app.value;
+    emitter.emit(openThemeBuilderAction());
+  };
+
   return () => {
     const { store } = app.value;
     const { settings, editor } = store.state;
@@ -95,7 +102,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
 
     return html`
       <div
-        class=${styles.root}
+        class=${['toolbar', styles.root]}
         @mousedown=${handleUnselectAll}
         @touchstart=${handleUnselectAll}
       >
@@ -177,6 +184,13 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
         <div class=${styles.menu} title="Search" @click=${handleSearch}>
           <${Icon} name="magnifying-glass" size=${16} />
         </div>
+        ${props.enableThemeBuilder
+          ? html`
+              <div class=${styles.menu} title="Theme" @click=${handleTheme}>
+                <${Icon} name="circle-half-stroke" size=${16} />
+              </div>
+            `
+          : null}
         <div class=${styles.vertical}></div>
         ${showUndoRedo
           ? html`

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { ErdDocument } from '@/erd-document';
 import { ErdEditor } from '@/erd-editor';
+import { trackEvent } from '@/utils/googleAnalytics';
 
 export class ErdEditorProvider
   implements vscode.CustomEditorProvider<ErdDocument>
@@ -33,6 +34,7 @@ export class ErdEditorProvider
     uri: vscode.Uri,
     openContext: vscode.CustomDocumentOpenContext
   ): Promise<ErdDocument> {
+    trackEvent(ErdEditorProvider.viewType);
     const content = await vscode.workspace.fs.readFile(
       openContext.backupId ? vscode.Uri.parse(openContext.backupId) : uri
     );

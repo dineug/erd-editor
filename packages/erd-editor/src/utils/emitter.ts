@@ -7,6 +7,7 @@ import {
 import { safeCallback } from '@dineug/shared';
 
 import { ValuesType } from '@/internal-types';
+import { ThemeOptions } from '@/themes/radix-ui-theme';
 
 const InternalActionType = {
   openColorPicker: 'openColorPicker',
@@ -19,6 +20,8 @@ const InternalActionType = {
   paste: 'paste',
   schemaGC: 'schemaGC',
   toggleSearch: 'toggleSearch',
+  openThemeBuilder: 'openThemeBuilder',
+  setThemeOptions: 'setThemeOptions',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 
@@ -46,6 +49,8 @@ type InternalActionMap = {
   };
   [InternalActionType.schemaGC]: void;
   [InternalActionType.toggleSearch]: void;
+  [InternalActionType.openThemeBuilder]: void;
+  [InternalActionType.setThemeOptions]: Partial<ThemeOptions>;
 };
 
 type Reducer<K extends keyof M, M> = (action: Action<K, M>) => void;
@@ -111,3 +116,11 @@ export const schemaGCAction = createAction<
 export const toggleSearchAction = createAction<
   InternalActionMap[typeof InternalActionType.toggleSearch]
 >(InternalActionType.toggleSearch);
+
+export const openThemeBuilderAction = createAction<
+  InternalActionMap[typeof InternalActionType.openThemeBuilder]
+>(InternalActionType.openThemeBuilder);
+
+export const setThemeOptionsAction = createAction<
+  InternalActionMap[typeof InternalActionType.setThemeOptions]
+>(InternalActionType.setThemeOptions);

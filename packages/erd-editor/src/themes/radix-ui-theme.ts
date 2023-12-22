@@ -130,7 +130,7 @@ import { ValuesType } from '@/internal-types';
 import { ThemeConfig } from '@/themes/radix-ui-theme.config';
 import { Theme } from '@/themes/tokens';
 
-const Palette = {
+export const Palette = {
   amber,
   amberA,
   amberDark,

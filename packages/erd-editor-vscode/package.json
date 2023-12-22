@@ -19,8 +19,7 @@
     "diagram",
     "entity",
     "relationship",
-    "sql",
-    "vscode"
+    "sql"
   ],
   "homepage": "https://github.com/dineug/erd-editor#readme",
   "bugs": {
@@ -36,13 +35,34 @@
     "vscode": "^1.85.0"
   },
   "main": "./dist/extension",
+  "scripts": {
+    "vscode:prepublish": "pnpm build",
+    "build": "webpack --mode production",
+    "webpack": "webpack --mode development",
+    "webpack:dev": "webpack --mode development --watch",
+    "package": "pnpm vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@dineug/erd-editor-vscode-webview": "workspace:*",
+    "@dineug/erd-editor-vscode-bridge": "workspace:*",
+    "@types/node": "^18.15.0",
+    "@types/vscode": "^1.85.0",
+    "crypto-js": "^4.2.0",
+    "macaddress": "^0.5.3",
+    "node-fetch": "^3.3.2",
+    "ts-loader": "^9.5.1",
+    "tsconfig-paths-webpack-plugin": "^4.1.0",
+    "typescript": "5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  },
   "activationEvents": [],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
   "contributes": {
-    "capabilities": {
-      "untrustedWorkspaces": {
-        "supported": true
-      }
-    },
     "commands": [
       {
         "command": "vuerd.showSource",
@@ -130,26 +150,5 @@
         ]
       }
     ]
-  },
-  "scripts": {
-    "vscode:prepublish": "pnpm build",
-    "build": "webpack --mode production",
-    "webpack": "webpack --mode development",
-    "webpack:dev": "webpack --mode development --watch",
-    "package": "pnpm vsce package --no-dependencies"
-  },
-  "devDependencies": {
-    "@dineug/erd-editor-vscode-webview": "workspace:*",
-    "@dineug/erd-editor-vscode-bridge": "workspace:*",
-    "@types/node": "^18.15.0",
-    "@types/vscode": "^1.85.0",
-    "crypto-js": "^4.2.0",
-    "macaddress": "^0.5.3",
-    "node-fetch": "^3.3.2",
-    "ts-loader": "^9.5.1",
-    "tsconfig-paths-webpack-plugin": "^4.1.0",
-    "typescript": "5.3.3",
-    "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.4"
   }
 }

@@ -167,7 +167,12 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
         state.prevActions = actions;
         state.actions = actions;
         clearKeyword();
-        store.dispatch(changeOpenMapAction({ [Open.tableProperties]: false }));
+        store.dispatch(
+          changeOpenMapAction({
+            [Open.tableProperties]: false,
+            [Open.themeBuilder]: false,
+          })
+        );
       } else {
         emitFocus();
       }
