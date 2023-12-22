@@ -16,6 +16,7 @@
     "erd",
     "db",
     "database",
+    "draw",
     "diagram",
     "entity",
     "relationship",
@@ -148,6 +149,69 @@
             "filenamePattern": "*.erd.json"
           }
         ]
+      }
+    ],
+    "configuration": [
+      {
+        "title": "ERD Editor",
+        "properties": {
+          "dineug.erd-editor.theme.appearance": {
+            "description": "Theme appearance",
+            "type": "string",
+            "default": "dark",
+            "enum": [
+              "auto",
+              "light",
+              "dark"
+            ]
+          },
+          "dineug.erd-editor.theme.grayColor": {
+            "description": "Gray color",
+            "type": "string",
+            "default": "slate",
+            "enum": [
+              "gray",
+              "mauve",
+              "slate",
+              "sage",
+              "olive",
+              "sand"
+            ]
+          },
+          "dineug.erd-editor.theme.accentColor": {
+            "description": "Accent color",
+            "type": "string",
+            "default": "indigo",
+            "enum": [
+              "gray",
+              "gold",
+              "bronze",
+              "brown",
+              "yellow",
+              "amber",
+              "orange",
+              "tomato",
+              "red",
+              "ruby",
+              "crimson",
+              "pink",
+              "plum",
+              "purple",
+              "violet",
+              "iris",
+              "indigo",
+              "blue",
+              "cyan",
+              "teal",
+              "jade",
+              "green",
+              "grass",
+              "lime",
+              "mint",
+              "sky"
+            ]
+          }
+        }
       }
     ]
   }

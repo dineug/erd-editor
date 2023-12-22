@@ -88,38 +88,41 @@ export function useErdEditorAttachElement({
     ctx.dispatchEvent(new CustomEvent('change'));
   };
 
+  const listeners: Array<() => void> = [
+    watch(props).subscribe(propName => {
+      if (propName !== 'systemDarkMode' || !props.systemDarkMode) {
+        return;
+      }
+
+      themeState.options.appearance = darkMode.state.isDark
+        ? Appearance.dark
+        : Appearance.light;
+    }),
+    watch(darkMode.state).subscribe(propName => {
+      if (propName !== 'isDark' || !props.systemDarkMode) {
+        return;
+      }
+
+      themeState.options.appearance = darkMode.state.isDark
+        ? Appearance.dark
+        : Appearance.light;
+    }),
+    watch(themeState.options).subscribe(() => {
+      Object.assign(themeState.preset, createTheme(themeState.options));
+    }),
+    watch(themeState.preset).subscribe(() => {
+      Object.assign(theme, themeState.preset, themeState.custom);
+    }),
+    watch(themeState).subscribe(propName => {
+      if (propName !== 'custom') return;
+
+      Object.assign(theme, themeState.preset, themeState.custom);
+    }),
+  ];
+
   onMounted(() => {
     addUnsubscribe(
       store.change$.subscribe(emitChange),
-      watch(props).subscribe(propName => {
-        if (propName !== 'systemDarkMode' || !props.systemDarkMode) {
-          return;
-        }
-
-        themeState.options.appearance = darkMode.state.isDark
-          ? Appearance.dark
-          : Appearance.light;
-      }),
-      watch(darkMode.state).subscribe(propName => {
-        if (propName !== 'isDark' || !props.systemDarkMode) {
-          return;
-        }
-
-        themeState.options.appearance = darkMode.state.isDark
-          ? Appearance.dark
-          : Appearance.light;
-      }),
-      watch(themeState.options).subscribe(() => {
-        Object.assign(themeState.preset, createTheme(themeState.options));
-      }),
-      watch(themeState.preset).subscribe(() => {
-        Object.assign(theme, themeState.preset, themeState.custom);
-      }),
-      watch(themeState).subscribe(propName => {
-        if (propName !== 'custom') return;
-
-        Object.assign(theme, themeState.preset, themeState.custom);
-      }),
       emitter.on({
         setThemeOptions: ({ payload }) => {
           ctx.setPresetTheme(payload);

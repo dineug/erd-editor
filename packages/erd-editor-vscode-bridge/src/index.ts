@@ -4,16 +4,26 @@ import {
   ReducerRecord,
   ValuesType,
 } from '@/internal-types';
+import {
+  AccentColor,
+  Appearance,
+  GrayColor,
+  ThemeOptions,
+} from '@/themes/radix-ui-theme';
 
-export type { AnyAction };
+export type { AnyAction, ThemeOptions };
+
+export { AccentColor, Appearance, GrayColor };
 
 const BridgeActionType = {
   vscodeExportFile: 'vscodeExportFile',
   vscodeImportFile: 'vscodeImportFile',
   vscodeSaveValue: 'vscodeSaveValue',
   vscodeInitial: 'vscodeInitial',
+  vscodeSaveTheme: 'vscodeSaveTheme',
   webviewImportFile: 'webviewImportFile',
   webviewInitialValue: 'webviewInitialValue',
+  webviewUpdateTheme: 'webviewUpdateTheme',
 } as const;
 type BridgeActionType = ValuesType<typeof BridgeActionType>;
 
@@ -30,6 +40,7 @@ type BridgeActionMap = {
     value: number[];
   };
   [BridgeActionType.vscodeInitial]: void;
+  [BridgeActionType.vscodeSaveTheme]: ThemeOptions;
   [BridgeActionType.webviewImportFile]: {
     type: 'json' | 'sql';
     value: number[];
@@ -37,6 +48,7 @@ type BridgeActionMap = {
   [BridgeActionType.webviewInitialValue]: {
     value: number[];
   };
+  [BridgeActionType.webviewUpdateTheme]: Partial<ThemeOptions>;
 };
 
 function safeCallback<F extends Callback>(
@@ -95,6 +107,10 @@ export const vscodeInitialAction = createAction<
   BridgeActionMap[typeof BridgeActionType.vscodeInitial]
 >(BridgeActionType.vscodeInitial);
 
+export const vscodeSaveThemeAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.vscodeSaveTheme]
+>(BridgeActionType.vscodeSaveTheme);
+
 export const webviewImportFileAction = createAction<
   BridgeActionMap[typeof BridgeActionType.webviewImportFile]
 >(BridgeActionType.webviewImportFile);
@@ -102,3 +118,7 @@ export const webviewImportFileAction = createAction<
 export const webviewInitialValueAction = createAction<
   BridgeActionMap[typeof BridgeActionType.webviewInitialValue]
 >(BridgeActionType.webviewInitialValue);
+
+export const webviewUpdateThemeAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.webviewUpdateTheme]
+>(BridgeActionType.webviewUpdateTheme);

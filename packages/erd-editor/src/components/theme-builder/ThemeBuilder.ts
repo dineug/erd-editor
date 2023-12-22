@@ -15,7 +15,6 @@ import {
   Palette,
   ThemeOptions,
 } from '@/themes/radix-ui-theme';
-import { Theme } from '@/themes/tokens';
 import { setThemeOptionsAction } from '@/utils/emitter';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -23,9 +22,7 @@ import Icon from '../primitives/icon/Icon';
 import * as styles from './ThemeBuilder.styles';
 
 export type ThemeBuilderProps = {
-  options: ThemeOptions;
-  preset: Theme;
-  custom: Partial<Theme>;
+  theme: ThemeOptions;
 };
 
 const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
@@ -84,7 +81,7 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
     } = store.state;
     if (!openMap[Open.themeBuilder]) return null;
 
-    const { options } = props;
+    const { theme } = props;
 
     return html`
       <div class=${['theme-builder', styles.root]}>
@@ -94,10 +91,7 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
           ${AccentColorList.map(
             key => html`
               <span
-                class=${[
-                  styles.color,
-                  { selected: key === options.accentColor },
-                ]}
+                class=${[styles.color, { selected: key === theme.accentColor }]}
                 style=${{
                   'background-color': get(Palette, [key, `${key}9`]),
                 }}
@@ -112,7 +106,7 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
           ${GrayColorList.map(
             key => html`
               <span
-                class=${[styles.color, { selected: key === options.grayColor }]}
+                class=${[styles.color, { selected: key === theme.grayColor }]}
                 style=${{
                   'background-color': get(Palette, [key, `${key}9`]),
                 }}
@@ -127,7 +121,7 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
           <div
             class=${[
               styles.lightDarkButton,
-              { selected: options.appearance === Appearance.light },
+              { selected: theme.appearance === Appearance.light },
             ]}
             @click=${() => handleChangeAppearance(Appearance.light)}
           >
@@ -139,7 +133,7 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
             class=${[
               styles.lightDarkButton,
               ,
-              { selected: options.appearance === Appearance.dark },
+              { selected: theme.appearance === Appearance.dark },
             ]}
             @click=${() => handleChangeAppearance(Appearance.dark)}
           >

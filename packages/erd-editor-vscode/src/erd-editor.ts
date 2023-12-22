@@ -3,13 +3,21 @@ import {
   Emitter,
   webviewImportFileAction,
   webviewInitialValueAction,
+  webviewUpdateThemeAction,
 } from '@dineug/erd-editor-vscode-bridge';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { getTheme, saveTheme } from '@/configuration';
 import { ErdDocument } from '@/erd-document';
 import { getNonce } from '@/utils';
+
+const THEME_KEYS = [
+  'dineug.erd-editor.theme.appearance',
+  'dineug.erd-editor.theme.grayColor',
+  'dineug.erd-editor.theme.accentColor',
+];
 
 export class ErdEditor {
   private bridge = new Emitter();
@@ -39,6 +47,7 @@ export class ErdEditor {
 
     const unsubscribe = this.bridge.on({
       vscodeInitial: () => {
+        dispatch(webviewUpdateThemeAction(getTheme()));
         dispatch(
           webviewInitialValueAction({
             value: Array.from(this.document.content),
@@ -80,10 +89,21 @@ export class ErdEditor {
 
         await vscode.workspace.fs.writeFile(uri, new Uint8Array(value));
       },
+      vscodeSaveTheme: ({ payload }) => {
+        saveTheme(payload);
+      },
     });
 
     const listeners: vscode.Disposable[] = [
       this.webview.onDidReceiveMessage(action => this.bridge.emit(action)),
+      ...THEME_KEYS.map(key =>
+        vscode.workspace.onDidChangeConfiguration(event => {
+          if (!event.affectsConfiguration(key, this.document.uri)) {
+            return;
+          }
+          dispatch(webviewUpdateThemeAction(getTheme()));
+        })
+      ),
     ];
 
     this.webview.html = await this.buildHtmlForWebview();
@@ -101,6 +121,9 @@ export class ErdEditor {
     );
     const nonce = getNonce();
     const cspSource = this.webview.cspSource;
+    const styleUri = this.webview
+      .asWebviewUri(vscode.Uri.joinPath(publicUri, 'webview.css'))
+      .toString();
     const scriptUri = this.webview
       .asWebviewUri(vscode.Uri.joinPath(publicUri, 'webview.iife.js'))
       .toString();
@@ -109,7 +132,8 @@ export class ErdEditor {
       .decode(content)
       .replace(/{{nonce}}/gi, nonce)
       .replace(/{{cspSource}}/gi, cspSource)
-      .replace('{{webview}}', scriptUri);
+      .replace('{{webview.css}}', styleUri)
+      .replace('{{webview.js}}', scriptUri);
 
     return html;
   }

@@ -210,7 +210,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 
     return html`
       <${GlobalStyles} />
-      <${Theme} .theme=${theme} />
+      <${Theme} theme=${theme} />
       <div
         ${ref(root)}
         class=${[
@@ -256,7 +256,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
                 : null}
         <${ToastContainer} />
         ${props.enableThemeBuilder
-          ? html`<${ThemeBuilder} ...${themeState} />`
+          ? html`<${ThemeBuilder} theme=${themeState.options} />`
           : null}
         <${QuickSearch} />
         ${text.span}

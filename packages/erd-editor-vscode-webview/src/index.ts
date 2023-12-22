@@ -7,9 +7,11 @@ import { getShikiService } from '@dineug/erd-editor-shiki-worker';
 import {
   AnyAction,
   Emitter,
+  ThemeOptions,
   vscodeExportFileAction,
   vscodeImportFileAction,
   vscodeInitialAction,
+  vscodeSaveThemeAction,
   vscodeSaveValueAction,
 } from '@dineug/erd-editor-vscode-bridge';
 
@@ -37,12 +39,20 @@ setExportFileCallback(async (blob, options) => {
   );
 });
 
+const getSystemTheme = () =>
+  document.body.classList.contains('vscode-light') ? 'light' : 'dark';
+
 const handleChange = () => {
   dispatch(
     vscodeSaveValueAction({
       value: Array.from(textEncoder.encode(editor.value)),
     })
   );
+};
+
+const handleChangePresetTheme = (event: Event) => {
+  const e = event as CustomEvent<ThemeOptions>;
+  dispatch(vscodeSaveThemeAction(e.detail));
 };
 
 bridge.on({
@@ -60,15 +70,19 @@ bridge.on({
   webviewInitialValue: ({ payload: { value } }) => {
     const result = textDecoder.decode(new Uint8Array(value));
     editor.addEventListener('change', handleChange);
+    editor.addEventListener('changePresetTheme', handleChangePresetTheme);
     editor.setInitialValue(result);
+    editor.enableThemeBuilder = true;
     document.body.appendChild(editor);
   },
+  webviewUpdateTheme: ({ payload }) => {
+    editor.setPresetTheme({
+      ...payload,
+      appearance:
+        payload.appearance === 'auto' ? getSystemTheme() : payload.appearance,
+    });
+  },
 });
-
-document.body.setAttribute(
-  'style',
-  `padding: 0; margin: 0; width: 100%; height:100vh;`
-);
 
 window.addEventListener('message', event => bridge.emit(event.data));
 
