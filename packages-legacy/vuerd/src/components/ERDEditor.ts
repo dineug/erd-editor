@@ -211,4 +211,4 @@ const componentOptions = {
 };
 
 defineComponent('vuerd-editor', componentOptions);
-defineComponent('erd-editor', componentOptions);
+// defineComponent('erd-editor', componentOptions);

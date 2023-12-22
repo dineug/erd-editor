@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "legacy-packages/*"
+    "packages-legacy/*"
   ],
   "engines": {
     "node": ">=18.14.0"

@@ -125,7 +125,7 @@ export class ErdEditor {
       .asWebviewUri(vscode.Uri.joinPath(publicUri, 'webview.css'))
       .toString();
     const scriptUri = this.webview
-      .asWebviewUri(vscode.Uri.joinPath(publicUri, 'webview.iife.js'))
+      .asWebviewUri(vscode.Uri.joinPath(publicUri, 'webview.js'))
       .toString();
 
     const html = this.textDecoder

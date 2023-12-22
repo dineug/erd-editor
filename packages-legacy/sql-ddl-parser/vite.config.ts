@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 
-import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import { defineConfig } from 'vitest/config';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 

@@ -10,7 +10,6 @@ export * from './core/panel';
 
 declare global {
   interface HTMLElementTagNameMap {
-    'erd-editor': ERDEditorElement;
     'vuerd-editor': ERDEditorElement;
   }
 }

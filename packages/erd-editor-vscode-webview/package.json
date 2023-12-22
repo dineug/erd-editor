@@ -6,15 +6,19 @@
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "vite build"
+    "build": "pnpm build:modern && pnpm build:legacy",
+    "build:modern": "vite build --mode modern",
+    "build:legacy": "vite build --mode legacy"
   },
   "devDependencies": {
-    "@dineug/erd-editor": "workspace:*",
     "@dineug/erd-editor-shiki-worker": "workspace:*",
     "@dineug/erd-editor-vscode-bridge": "workspace:*",
+    "@dineug/erd-editor": "workspace:*",
     "@types/vscode-webview": "1.57.4",
+    "@vuerd/plugin-generate-template": "workspace:*",
     "typescript": "5.3.3",
     "vite-tsconfig-paths": "^4.2.2",
-    "vite": "^5.0.10"
+    "vite": "^5.0.10",
+    "vuerd": "workspace:*"
   }
 }
