@@ -38,6 +38,7 @@ export function createHooks(store: Store) {
 
   const destroy = () => {
     tasks.forEach(({ proc }) => cancel(proc));
+    tasks.splice(0, tasks.length);
     unsubscribe();
   };
 

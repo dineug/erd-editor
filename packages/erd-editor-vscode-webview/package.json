@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Entity-Relationship Diagram Editor vscode webview",
+  "type": "module",
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {

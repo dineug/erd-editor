@@ -28,7 +28,8 @@
     "diagram",
     "entity",
     "relationship",
-    "sql"
+    "sql",
+    "draw"
   ],
   "repository": {
     "type": "git",
@@ -42,14 +43,14 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite serve --mode lib",
+    "dev:storybook": "storybook dev -p 6006",
     "build": "vite build --mode lib",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build:storybook": "storybook build"
   },
   "devDependencies": {
     "@dineug/erd-editor-schema": "workspace:*",
     "@dineug/erd-editor-shiki-worker": "workspace:*",
-    "@dineug/go": "^0.1.7",
+    "@dineug/go": "^0.1.8",
     "@dineug/r-html": "workspace:*",
     "@dineug/schema-sql-parser": "workspace:*",
     "@dineug/shared": "workspace:*",

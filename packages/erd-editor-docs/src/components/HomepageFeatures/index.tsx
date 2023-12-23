@@ -1,5 +1,6 @@
-import clsx from 'clsx';
 import Heading from '@theme/Heading';
+import clsx from 'clsx';
+
 import styles from './styles.module.css';
 
 type FeatureItem = {
@@ -41,7 +42,7 @@ const FeatureList: FeatureItem[] = [
   },
 ];
 
-function Feature({title, Svg, description}: FeatureItem) {
+function Feature({ title, Svg, description }: FeatureItem) {
   return (
     <div className={clsx('col col--4')}>
       <div className="text--center">

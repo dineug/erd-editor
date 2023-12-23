@@ -14,7 +14,10 @@ import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
 import { Open } from '@/constants/open';
 import { CANVAS_ZOOM_MIN } from '@/constants/schema';
-import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeOpenMapAction,
+  initialClearAction,
+} from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeZoomLevelAction,
@@ -51,7 +54,6 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   });
   const { addUnsubscribe } = useUnmounted();
   const provider = useProvider(ctx, appContext, appContextValue);
-  addUnsubscribe(provider.destroy);
 
   const {
     store: { state: prevState },
@@ -59,6 +61,10 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     shortcut$,
   } = prevApp;
   const { store } = appContextValue;
+
+  addUnsubscribe(provider.destroy, store.destroy, () => {
+    store.dispatch(initialClearAction());
+  });
 
   const zoomInRange = createInRange(CANVAS_ZOOM_MIN, 0.7);
   const zoomLevelInRange = (zoom: number) => round(zoomInRange(zoom), 2);

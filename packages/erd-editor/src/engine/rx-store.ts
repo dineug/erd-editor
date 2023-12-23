@@ -40,7 +40,7 @@ export function createRxStore(
   context: EngineContext,
   getReadonly: () => boolean = () => false
 ): RxStore {
-  const subscriptions: Subscription[] = [];
+  const subscriptionSet = new Set<Subscription>();
   const store = createStore(context);
   const hooks = createHooks(store);
   const history = createHistory(payload =>
@@ -77,7 +77,8 @@ export function createRxStore(
   };
 
   const destroy = () => {
-    subscriptions.forEach(sub => sub.unsubscribe());
+    Array.from(subscriptionSet).forEach(sub => sub.unsubscribe());
+    subscriptionSet.clear();
     store.destroy();
     hooks.destroy();
     history.clear();
@@ -90,12 +91,13 @@ export function createRxStore(
     history.redo();
   };
 
-  subscriptions.push(
-    history$.subscribe(pushHistory(store, history)),
-    dispatch$
-      .pipe(readonlyIgnoreFilter(getReadonly))
-      .subscribe(store.dispatchSync)
-  );
+  subscriptionSet
+    .add(history$.subscribe(pushHistory(store, history)))
+    .add(
+      dispatch$
+        .pipe(readonlyIgnoreFilter(getReadonly))
+        .subscribe(store.dispatchSync)
+    );
 
   return Object.freeze({
     ...store,
