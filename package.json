@@ -6,7 +6,7 @@
     "packages-legacy/*"
   ],
   "engines": {
-    "node": ">=18.14.0"
+    "node": ">=18.0"
   },
   "repository": {
     "type": "git",
