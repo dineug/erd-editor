@@ -10,6 +10,7 @@ import {
   watch,
 } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
+import Fues from 'fuse.js';
 import { isEmpty } from 'lodash-es';
 
 import { AppContext, useAppContext } from '@/components/appContext';
@@ -63,9 +64,11 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
     state.index = -1;
     state.hints = isEmpty(newValue)
       ? []
-      : hints.filter(
-          hint => hint.name.toLowerCase().indexOf(newValue.toLowerCase()) !== -1
-        );
+      : new Fues(hints, {
+          keys: ['name'],
+        })
+          .search(newValue)
+          .map(result => result.item);
   };
 
   const handleSelectHint = (index: number) => {

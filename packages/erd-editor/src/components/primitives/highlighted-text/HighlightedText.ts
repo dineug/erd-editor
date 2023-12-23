@@ -10,7 +10,7 @@ export type HighlightedTextProps = Parameters<typeof findAll>[0] & {
 
 const HighlightedText: FC<HighlightedTextProps> = (props, ctx) => {
   return () => {
-    const chunks = findAll(props);
+    const chunks = findAll({ ...props, autoEscape: true });
 
     return chunks.map(({ end, highlight, start }) => {
       const text = props.textToHighlight.substring(start, end);
