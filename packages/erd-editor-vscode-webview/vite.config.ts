@@ -3,11 +3,8 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig(({ command, mode }) => {
   const envDir = './environment';
-  process.env = {
-    ...process.env,
-    ...loadEnv(mode, envDir),
-  };
-  const isModern = process.env.VITE_TARGET === 'modern';
+  const env = loadEnv(mode, envDir);
+  const isModern = env.VITE_TARGET === 'modern';
   const entry = isModern ? './src/index.ts' : './src/index-legacy.ts';
   const outDir = '../erd-editor-vscode/'.concat(
     isModern ? 'public' : 'public-legacy'

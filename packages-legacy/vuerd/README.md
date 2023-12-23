@@ -2,18 +2,15 @@
 
 > Entity-Relationship Diagram Editor
 
-[![npm version](https://img.shields.io/npm/v/vuerd.svg?style=flat-square&color=blue)](https://www.npmjs.com/package/vuerd) [![VS Marketplace version](https://vsmarketplacebadge.apphb.com/version-short/dineug.vuerd-vscode.svg?style=flat-square&color=blue&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) [![APM](https://img.shields.io/apm/v/vuerd-atom?color=blue&style=flat-square&logo=atom)](https://atom.io/packages/vuerd-atom) [![GitHub](https://img.shields.io/github/license/vuerd/vuerd?style=flat-square&color=blue)](https://github.com/vuerd/vuerd/blob/master/LICENSE) [![PRs](https://img.shields.io/badge/PRs-welcome-blue?style=flat-square)](https://github.com/vuerd/vuerd/pulls) [![CI](https://img.shields.io/github/workflow/status/vuerd/vuerd/CI?label=CI&logo=github&style=flat-square)](https://github.com/vuerd/vuerd/actions)
-
 ## ERD
 
-![vuerd](https://github.com/vuerd/vuerd/blob/master/img/vuerd-erd.gif?raw=true)
+![vuerd](https://github.com/dineug/erd-editor/blob/main/img/vuerd-erd.gif?raw=true)
 
 ## Document
 
 - [Playground](https://vuerd.github.io)
-- [Import SQL DDL support syntax](https://github.com/vuerd/vuerd/blob/master/packages/sql-ddl-parser/src/SQL_DDL_Test_Case.md)
+- [Import SQL DDL support syntax](https://github.com/dineug/erd-editor/blob/main/packages-legacy/sql-ddl-parser/src/SQL_DDL_Test_Case.md)
 - [vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
-- [atom extension](https://atom.io/packages/vuerd-atom)
 
 ## interface ERDEditorElement
 
@@ -275,7 +272,7 @@ container.appendChild(editor);
 ## CDN Quick Start
 
 ```html
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <title>vuerd demo</title>
@@ -299,8 +296,6 @@ container.appendChild(editor);
   <body>
     <erd-editor></erd-editor>
     <script src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.min.js"></script>
-    <!-- or module -->
-    <!-- <script type="module" src="https://cdn.jsdelivr.net/npm/vuerd/dist/vuerd.esm.js"></script> -->
     <script>
       const editor = document.querySelector('erd-editor');
       window.addEventListener('resize', () => {

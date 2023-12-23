@@ -1,11 +1,6 @@
-import { isObject } from '@dineug/shared';
+import { isObject, safeCallback } from '@dineug/shared';
 
-import {
-  AnyAction,
-  Callback,
-  ReducerRecord,
-  ValuesType,
-} from '@/internal-types';
+import { AnyAction, ReducerRecord, ValuesType } from '@/internal-types';
 import {
   AccentColor,
   Appearance,
@@ -80,17 +75,6 @@ type BridgeActionMap = {
   };
   [BridgeActionType.webviewUpdateReadonly]: boolean;
 };
-
-function safeCallback<F extends Callback>(
-  callback?: F | void,
-  ...args: Parameters<F>
-) {
-  try {
-    return callback?.(...args);
-  } catch (e) {
-    console.error(e);
-  }
-}
 
 function createAction<P = void>(type: string) {
   function actionCreator(payload: P): AnyAction<P> {

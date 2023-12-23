@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import typescript from '@rollup/plugin-typescript';
 import { visualizer } from 'rollup-plugin-visualizer';
+// @ts-ignore
 import tspCompiler from 'ts-patch/compiler';
 import { loadEnv } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
@@ -11,9 +12,9 @@ const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
 export default defineConfig(({ command, mode }) => {
   const envDir = './environment';
-  process.env = { ...process.env, ...loadEnv(mode, envDir) };
+  const env = loadEnv(mode, envDir);
   const isBuild = command === 'build';
-  const isLib = process.env.VITE_TARGET === 'lib';
+  const isLib = env.VITE_TARGET === 'lib';
 
   return {
     envDir,

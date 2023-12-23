@@ -1,17 +1,19 @@
 {
   "name": "vuerd",
-  "version": "2.2.11",
+  "version": "2.2.12",
   "private": true,
   "description": "ERD editor",
   "type": "module",
-  "main": "./dist/vuerd.js",
+  "main": "./dist/vuerd.min.js",
+  "module": "./dist/vuerd.js",
   "typings": "./types/index.d.ts",
   "exports": {
     ".": {
       "import": {
         "types": "./types/index.d.ts",
         "default": "./dist/vuerd.js"
-      }
+      },
+      "require": "./dist/vuerd.min.js"
     }
   },
   "files": [
@@ -27,15 +29,14 @@
     "database",
     "diagram"
   ],
-  "homepage": "https://github.com/vuerd/vuerd#readme",
-  "bugs": {
-    "url": "https://github.com/vuerd/vuerd/issues"
-  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/vuerd/vuerd.git",
-    "directory": "packages/vuerd"
+    "url": "https://github.com/dineug/erd-editor.git"
   },
+  "bugs": {
+    "url": "https://github.com/dineug/erd-editor/issues"
+  },
+  "homepage": "https://github.com/dineug/erd-editor#readme",
   "author": "dineug <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {

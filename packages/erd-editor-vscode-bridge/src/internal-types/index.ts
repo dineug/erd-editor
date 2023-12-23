@@ -15,5 +15,3 @@ type Reducer<K extends keyof M, M> = (action: Action<K, M>) => void;
 export type ReducerRecord<K extends keyof M, M> = {
   [P in K]: Reducer<P, M>;
 };
-
-export type Callback = (...args: any[]) => any;
