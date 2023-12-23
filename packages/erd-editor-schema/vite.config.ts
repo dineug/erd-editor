@@ -20,7 +20,8 @@ export default defineConfig({
     lib: {
       entry: './src/index.ts',
       name: pkg.name,
-      fileName: 'erd-editor-schema',
+      fileName: format =>
+        format === 'es' ? 'erd-editor-schema.js' : 'erd-editor-schema.min.js',
       formats: ['es', 'umd'],
     },
     rollupOptions: {

@@ -20,7 +20,7 @@ export default defineConfig({
     lib: {
       entry: './src/index.ts',
       name: pkg.name,
-      fileName: 'r-html',
+      fileName: format => (format === 'es' ? 'r-html.js' : 'r-html.min.js'),
       formats: ['es', 'umd'],
     },
     rollupOptions: {

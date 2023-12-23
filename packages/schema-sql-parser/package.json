@@ -16,7 +16,6 @@
   },
   "files": [
     "dist/*.js",
-    "dist/*.cjs",
     "dist/**/*.ts"
   ],
   "author": "SeungHwan-Lee <dineug2@gmail.com>",

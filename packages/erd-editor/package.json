@@ -1,9 +1,9 @@
 {
   "name": "@dineug/erd-editor",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "Entity-Relationship Diagram Editor",
   "type": "module",
-  "main": "./dist/erd-editor.umd.cjs",
+  "main": "./dist/erd-editor.min.js",
   "module": "./dist/erd-editor.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -12,12 +12,11 @@
         "types": "./dist/index.d.ts",
         "default": "./dist/erd-editor.js"
       },
-      "require": "./dist/erd-editor.umd.cjs"
+      "require": "./dist/erd-editor.min.js"
     }
   },
   "files": [
     "dist/*.js",
-    "dist/*.cjs",
     "dist/**/*.ts"
   ],
   "keywords": [

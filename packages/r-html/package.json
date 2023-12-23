@@ -4,7 +4,7 @@
   "private": true,
   "description": "Tagged templates framework",
   "type": "module",
-  "main": "./dist/r-html.umd.cjs",
+  "main": "./dist/r-html.min.js",
   "module": "./dist/r-html.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -13,7 +13,7 @@
         "types": "./dist/index.d.ts",
         "default": "./dist/r-html.js"
       },
-      "require": "./dist/r-html.umd.cjs"
+      "require": "./dist/r-html.min.js"
     }
   },
   "files": [
