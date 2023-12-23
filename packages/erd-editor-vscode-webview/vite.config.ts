@@ -23,6 +23,7 @@ export default defineConfig(({ command, mode }) => {
         formats: ['iife'],
       },
       outDir,
+      emptyOutDir: true,
     },
     plugins: [tsconfigPaths()],
   };

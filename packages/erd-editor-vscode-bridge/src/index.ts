@@ -1,3 +1,5 @@
+import { isObject } from '@dineug/shared';
+
 import {
   AnyAction,
   Callback,
@@ -112,6 +114,7 @@ export class Emitter<M extends BridgeActionMap> {
   }
 
   emit(action: AnyAction) {
+    if (!isObject(action)) return;
     this.#observers.forEach(reducers => {
       const reducer = Reflect.get(reducers, action.type);
       safeCallback(reducer, action);

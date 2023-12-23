@@ -12,8 +12,6 @@ npm install @dineug/erd-editor
 
 ## Usage
 
-### javascript
-
 ```js
 import '@dineug/erd-editor';
 
@@ -34,6 +32,8 @@ const editor = document.createElement('erd-editor');
 
   const editor = document.createElement('erd-editor');
 </script>
+<!-- or -->
+<script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor/dist/erd-editor.min.js"></script>
 ```
 
 ## ErdEditorElement

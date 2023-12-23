@@ -535,6 +535,9 @@ importers:
 
   packages/erd-editor-vscode-bridge:
     devDependencies:
+      '@dineug/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@rollup/plugin-typescript':
         specifier: ^11.1.5
         version: 11.1.5(tslib@2.6.2)(typescript@5.3.3)

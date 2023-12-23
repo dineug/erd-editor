@@ -26,4 +26,13 @@ setGetShikiServiceCallback(getShikiService);
 
   setGetShikiServiceCallback(getShikiService);
 </script>
+<!-- or -->
+<script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor/dist/erd-editor.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor-shiki-worker/dist/erd-editor-shiki-worker.min.js"></script>
+<script>
+  const { setGetShikiServiceCallback } = window['@dineug/erd-editor'];
+  const { getShikiService } = window['@dineug/erd-editor-shiki-worker'];
+
+  setGetShikiServiceCallback(getShikiService);
+</script>
 ```

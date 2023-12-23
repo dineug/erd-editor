@@ -224,7 +224,10 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
               (action, index) => html`
                 <div
                   class=${[styles.action, { selected: index === state.index }]}
-                  @click=${() => handlePerform(index)}
+                  @click=${(event: MouseEvent) => {
+                    event.stopPropagation();
+                    handlePerform(index);
+                  }}
                 >
                   ${action.icon
                     ? html`<div class=${styles.icon}>${action.icon}</div>`
