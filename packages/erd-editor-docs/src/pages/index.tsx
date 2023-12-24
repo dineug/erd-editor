@@ -16,12 +16,13 @@ function HomepageHeader() {
           {siteConfig.title}
         </Heading>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
+        <img src={require('@site/static/img/erd-editor-vscode.png').default} />
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/guide/introduction"
+            to="/docs/category/guides"
           >
-            Docusaurus Tutorial - 5min ⏱️
+            Tutorial - 5min ⏱️
           </Link>
         </div>
       </div>
@@ -33,7 +34,7 @@ export default function Home(): JSX.Element {
   const { siteConfig } = useDocusaurusContext();
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
+      title={`${siteConfig.tagline}`}
       description="Description will go into a meta tag in <head />"
     >
       <HomepageHeader />

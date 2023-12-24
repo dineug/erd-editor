@@ -49,7 +49,7 @@ const config: Config = {
 
   themeConfig: {
     // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    image: 'img/erd-editor-vscode.png',
     navbar: {
       title: 'erd-editor',
       logo: {
@@ -63,12 +63,12 @@ const config: Config = {
           sidebarId: 'docs',
           label: 'Guide',
         },
-        {
-          type: 'docSidebar',
-          position: 'left',
-          sidebarId: 'api',
-          label: 'API',
-        },
+        // {
+        //   type: 'docSidebar',
+        //   position: 'left',
+        //   sidebarId: 'api',
+        //   label: 'API',
+        // },
         {
           type: 'localeDropdown',
           position: 'right',
