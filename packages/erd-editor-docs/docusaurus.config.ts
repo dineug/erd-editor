@@ -5,7 +5,7 @@ import { themes as prismThemes } from 'prism-react-renderer';
 const config: Config = {
   title: 'erd-editor',
   tagline: 'Entity-Relationship Diagram Editor',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/vuerd.png',
 
   // Set the production url of your site here
   url: 'https://your-docusaurus-site.example.com',
@@ -25,8 +25,8 @@ const config: Config = {
   // useful metadata like html lang. For example, if your site is Chinese, you
   // may want to replace "en" with "zh-Hans".
   i18n: {
-    defaultLocale: 'ko',
-    locales: ['ko', 'en'],
+    defaultLocale: 'en',
+    locales: ['en', 'ko'],
   },
 
   presets: [
@@ -54,7 +54,7 @@ const config: Config = {
       title: 'erd-editor',
       logo: {
         alt: 'erd-editor Logo',
-        src: 'img/logo.svg',
+        src: 'img/vuerd.png',
       },
       items: [
         {
@@ -75,12 +75,17 @@ const config: Config = {
         },
         {
           href: 'https://github.com/dineug/erd-editor',
-          label: 'GitHub',
           position: 'right',
+          className: 'header-github-link',
+          'aria-label': 'GitHub repository',
         },
       ],
     },
+    colorMode: {
+      defaultMode: 'dark',
+    },
     prism: {
+      additionalLanguages: ['bash', 'typescript', 'json', 'javascript'],
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
     },

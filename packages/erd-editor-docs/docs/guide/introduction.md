@@ -2,13 +2,13 @@
 sidebar_position: 1
 ---
 
-# 소개
+# Introduction
 
 ![erd-editor](/img/erd-editor-vscode.png)
 
-## 이 프로젝트가 탄생한 이유
+## Reason Behind This Project
 
-기존에 있던 모델링툴들은 제가 원하는 수준의 사용자 경험을 제공해주지 못했습니다.  
-그래서 최고의 사용자 경험을 위해 프로젝트를 시작헀습니다.  
-프로젝트 최우선순위는 사용자 편집 경험에 집중합니다.  
-편집에 대해 당신에게 놀라운 경험을 제공해줄겁니다.
+Existing modeling tools didn't provide the level of user experience I desired.  
+Hence, I initiated this project to deliver the ultimate user experience.  
+The top priority of the project is focusing on user editing experience.  
+It will offer you an astounding experience in editing.
