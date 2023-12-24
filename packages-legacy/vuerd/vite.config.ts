@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import strip from '@rollup/plugin-strip';
 import { defineConfig } from 'vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
@@ -37,10 +37,12 @@ export default defineConfig(({ command }) => {
       },
     },
     resolve: {
+      alias: {
+        '@': join(__dirname, 'src'),
+      },
       dedupe: ['lit-html'],
     },
     plugins: [
-      tsconfigPaths(),
       isBuild &&
         strip({
           debugger: true,

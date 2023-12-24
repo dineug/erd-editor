@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import preact from '@preact/preset-vite';
 import { defineConfig } from 'vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
@@ -11,7 +11,9 @@ export default defineConfig(({ command }) => {
 
   return {
     define: {
-      ...(isBuild ? {'process.env.NODE_ENV': JSON.stringify('production')} : {}),
+      ...(isBuild
+        ? { 'process.env.NODE_ENV': JSON.stringify('production') }
+        : {}),
     },
     build: {
       lib: {
@@ -24,7 +26,12 @@ export default defineConfig(({ command }) => {
         external: ['vuerd'],
       },
     },
-    plugins: [tsconfigPaths(), preact()],
+    resolve: {
+      alias: {
+        '@': join(__dirname, 'src'),
+      },
+    },
+    plugins: [preact()],
     server: {
       open: true,
     },

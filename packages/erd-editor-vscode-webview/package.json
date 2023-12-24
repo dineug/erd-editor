@@ -18,7 +18,6 @@
     "@types/vscode-webview": "1.57.4",
     "@vuerd/plugin-generate-template": "workspace:*",
     "typescript": "5.3.3",
-    "vite-tsconfig-paths": "^4.2.2",
     "vite": "^5.0.10",
     "vuerd": "workspace:*"
   }

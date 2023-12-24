@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import typescript from '@rollup/plugin-typescript';
 import { visualizer } from 'rollup-plugin-visualizer';
 import tspCompiler from 'ts-patch/compiler';
 import { defineConfig } from 'vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
@@ -17,8 +17,12 @@ export default defineConfig({
       formats: ['es'],
     },
   },
+  resolve: {
+    alias: {
+      '@': join(__dirname, 'src'),
+    },
+  },
   plugins: [
-    tsconfigPaths(),
     visualizer({ filename: './dist/stats.html' }),
     typescript({
       typescript: tspCompiler,

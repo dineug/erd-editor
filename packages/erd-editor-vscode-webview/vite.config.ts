@@ -1,5 +1,6 @@
+import { join } from 'node:path';
+
 import { defineConfig, loadEnv } from 'vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig(({ command, mode }) => {
   const envDir = './environment';
@@ -22,6 +23,10 @@ export default defineConfig(({ command, mode }) => {
       outDir,
       emptyOutDir: true,
     },
-    plugins: [tsconfigPaths()],
+    resolve: {
+      alias: {
+        '@': join(__dirname, 'src'),
+      },
+    },
   };
 });

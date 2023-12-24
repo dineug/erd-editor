@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-import tsconfigPaths from 'vite-tsconfig-paths';
 import { defineConfig } from 'vitest/config';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
@@ -14,7 +14,11 @@ export default defineConfig({
       formats: ['es'],
     },
   },
-  plugins: [tsconfigPaths()],
+  resolve: {
+    alias: {
+      '@': join(__dirname, 'src'),
+    },
+  },
   server: {
     open: true,
   },

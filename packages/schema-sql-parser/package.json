@@ -33,7 +33,6 @@
     "typescript": "5.3.3",
     "typescript-transform-paths": "^3.4.6",
     "vite": "^5.0.10",
-    "vite-tsconfig-paths": "^4.2.2",
     "vitest": "^1.0.4"
   }
 }

@@ -8,6 +8,9 @@ docker/**/data
 types
 .turbo
 *.vsix
+build
+.docusaurus
+.cache-loader
 
 # Log files
 npm-debug.log*

@@ -41,7 +41,7 @@
     "tslib": "^2.6.2",
     "typescript-transform-paths": "^3.4.6",
     "typescript": "5.3.3",
-    "vite-tsconfig-paths": "3.6.0",
+    "vite-tsconfig-paths": "4.2.2",
     "vite": "^5.0.10"
   }
 }
