@@ -74,6 +74,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
         id: props.relationshipId,
       })
     );
+    props.onClose();
   };
 
   const handleChangeColumnPrimaryKey = () => {

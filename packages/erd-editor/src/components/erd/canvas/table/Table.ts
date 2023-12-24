@@ -316,7 +316,11 @@ const Table: FC<TableProps> = (props, ctx) => {
                   >
                     <${EditInput}
                       placeholder="comment"
-                      width=${table.ui.widthComment}
+                      width=${settings.maxWidthComment === -1
+                        ? table.ui.widthComment
+                        : settings.maxWidthComment < table.ui.widthComment
+                          ? settings.maxWidthComment
+                          : table.ui.widthComment}
                       value=${table.comment}
                       focus=${hasFocus(FocusType.tableComment)}
                       edit=${hasEdit(FocusType.tableComment)}
