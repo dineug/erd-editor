@@ -57,6 +57,7 @@ export const headerButtonWrap = css`
   height: ${HEADER_ICON_HEIGHT}px;
   justify-content: flex-end;
   margin-bottom: ${TABLE_HEADER_ICON_MARGIN_BOTTOM}px;
+  cursor: move;
 
   & > .icon {
     cursor: pointer;

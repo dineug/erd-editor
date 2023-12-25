@@ -10,9 +10,15 @@ export default defineConfig(({ command, mode }) => {
   const outDir = '../erd-editor-vscode/'.concat(
     isModern ? 'public' : 'public-legacy'
   );
+  const isBuild = command === 'build';
 
   return {
     envDir,
+    define: {
+      ...(isBuild
+        ? { 'process.env.NODE_ENV': JSON.stringify('production') }
+        : {}),
+    },
     build: {
       lib: {
         entry,

@@ -5,6 +5,10 @@ import { defineConfig } from 'vite';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
+const external = new RegExp(
+  `^(${Object.keys(pkg.dependencies || {}).join('|')})$`
+);
+
 export default defineConfig({
   build: {
     lib: {
@@ -14,7 +18,7 @@ export default defineConfig({
       formats: ['es'],
     },
     rollupOptions: {
-      external: ['lit-html'],
+      external,
     },
   },
   resolve: {

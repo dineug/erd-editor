@@ -21,11 +21,11 @@
     "build": "vite build"
   },
   "dependencies": {
-    "lit-html": "^1.4.1"
+    "lit-html": "^1.4.1",
+    "lodash-es": "^4.17.21"
   },
   "devDependencies": {
     "@types/lodash-es": "^4.17.12",
-    "lodash-es": "^4.17.21",
     "typescript": "5.3.3",
     "vite": "^5.0.10"
   }

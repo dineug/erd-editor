@@ -59,13 +59,13 @@ importers:
       lit-html:
         specifier: ^1.4.1
         version: 1.4.1
+      lodash-es:
+        specifier: ^4.17.21
+        version: 4.17.21
     devDependencies:
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
       typescript:
         specifier: 5.3.3
         version: 5.3.3
@@ -75,6 +75,30 @@ importers:
 
   packages-legacy/plugin-generate-template:
     dependencies:
+      highlight.js:
+        specifier: ^10.7.3
+        version: 10.7.3
+      highlightjs-graphql:
+        specifier: ^1.0.2
+        version: 1.0.2
+      lodash-es:
+        specifier: ^4.17.21
+        version: 4.17.21
+      ramda:
+        specifier: 0.27.1
+        version: 0.27.1
+      rxjs:
+        specifier: ^7.8.1
+        version: 7.8.1
+      tippy.js:
+        specifier: ^6.3.7
+        version: 6.3.7
+      tui-grid:
+        specifier: ^4.21.21
+        version: 4.21.21
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
       vuerd:
         specifier: workspace:*
         version: link:../vuerd
@@ -104,8 +128,8 @@ importers:
         specifier: ^4.17.12
         version: 4.17.12
       '@types/ramda':
-        specifier: ^0.29.9
-        version: 0.29.9
+        specifier: 0.27.44
+        version: 0.27.44
       '@types/styled-components':
         specifier: ^5.1.34
         version: 5.1.34
@@ -115,15 +139,6 @@ importers:
       ejs:
         specifier: ^3.1.9
         version: 3.1.9
-      highlight.js:
-        specifier: ^10.7.3
-        version: 10.7.3
-      highlightjs-graphql:
-        specifier: ^1.0.2
-        version: 1.0.2
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
       mobx:
         specifier: ^6.12.0
         version: 6.12.0
@@ -133,27 +148,12 @@ importers:
       preact:
         specifier: ^10.19.3
         version: 10.19.3
-      ramda:
-        specifier: ^0.29.1
-        version: 0.29.1
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.1
       styled-components:
         specifier: 5.2.3
         version: 5.2.3(@babel/core@7.23.6)(react-dom@18.2.0)(react-is@18.2.0)(react@18.2.0)
-      tippy.js:
-        specifier: ^6.3.7
-        version: 6.3.7
-      tui-grid:
-        specifier: ^4.18.1
-        version: 4.21.21
       typescript:
         specifier: 5.3.3
         version: 5.3.3
-      uuid:
-        specifier: ^9.0.1
-        version: 9.0.1
       vite:
         specifier: ^5.0.10
         version: 5.0.10
@@ -171,6 +171,31 @@ importers:
         version: 1.0.4
 
   packages-legacy/vuerd:
+    dependencies:
+      highlight.js:
+        specifier: ^10.7.3
+        version: 10.7.3
+      highlightjs-graphql:
+        specifier: ^1.0.2
+        version: 1.0.2
+      lodash-es:
+        specifier: ^4.17.21
+        version: 4.17.21
+      ramda:
+        specifier: 0.27.1
+        version: 0.27.1
+      rxjs:
+        specifier: ^7.8.1
+        version: 7.8.1
+      tippy.js:
+        specifier: ^6.3.7
+        version: 6.3.7
+      tui-grid:
+        specifier: ^4.21.21
+        version: 4.21.21
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
     devDependencies:
       '@dineug/erd-editor-schema':
         specifier: workspace:*
@@ -217,42 +242,18 @@ importers:
       d3:
         specifier: ^7.8.5
         version: 7.8.5
-      highlight.js:
-        specifier: ^10.7.3
-        version: 10.7.3
-      highlightjs-graphql:
-        specifier: ^1.0.2
-        version: 1.0.2
       html-to-image:
         specifier: ^1.11.11
         version: 1.11.11
       lit-html:
         specifier: ^1.4.1
         version: 1.4.1
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
       pathfinding:
         specifier: ^0.4.18
         version: 0.4.18
-      ramda:
-        specifier: 0.27.1
-        version: 0.27.1
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.1
-      tippy.js:
-        specifier: ^6.3.7
-        version: 6.3.7
-      tui-grid:
-        specifier: ^4.18.1
-        version: 4.21.21
       typescript:
         specifier: 5.3.3
         version: 5.3.3
-      uuid:
-        specifier: ^9.0.1
-        version: 9.0.1
       vite:
         specifier: ^5.0.10
         version: 5.0.10
@@ -4106,7 +4107,6 @@ packages:
 
   /@popperjs/core@2.9.3:
     resolution: {integrity: sha512-xDu17cEfh7Kid/d95kB6tZsLOmSWKCZKtprnhVepjsSaCij+lM3mItSJDuuHDMbCWTh8Ejmebwb+KONcCJ0eXQ==}
-    dev: true
 
   /@preact/preset-vite@2.7.0(@babel/core@7.23.6)(preact@10.19.3)(vite@5.0.10):
     resolution: {integrity: sha512-m5N0FVtxbCCDxNk55NGhsRpKJChYcupcuQHzMJc/Bll07IKZKn8amwYciyKFS9haU6AgzDAJ/ewvApr6Qg1DHw==}
@@ -6275,12 +6275,6 @@ packages:
       ts-toolbelt: 6.15.5
     dev: true
 
-  /@types/ramda@0.29.9:
-    resolution: {integrity: sha512-X3yEG6tQCWBcUAql+RPC/O1Hm9BSU+MXu2wJnCETuAgUlrEDwTA1kIOdEEE4YXDtf0zfQLHa9CCE7WYp9kqPIQ==}
-    dependencies:
-      types-ramda: 0.29.6
-    dev: true
-
   /@types/range-parser@1.2.4:
     resolution: {integrity: sha512-EEhsLsD6UsDM1yFhAvy0Cjr6VwmpMWqFBCb9w07wVugF7w9nfajxLuVmngTIpgS6svCnm6Vaw+MZhoDCKnOfsw==}
 
@@ -6774,12 +6768,12 @@ packages:
     dependencies:
       exit-on-epipe: 1.0.1
       printj: 1.1.2
-    dev: true
+    dev: false
 
   /adler-32@1.3.1:
     resolution: {integrity: sha512-ynZ4w/nUUv5rrsR8UUGoe1VC9hZj6V5hU9Qw1HlMDJGEJw5S7TfTErWTjMys6M7vr0YWcPqs3qAr4ss0nDfP+A==}
     engines: {node: '>=0.8'}
-    dev: true
+    dev: false
 
   /agent-base@5.1.1:
     resolution: {integrity: sha512-TMeqbNl2fMW0nMjTEPOwe3J/PRFP4vqeoNuQMG0HlMrtm5QxKqdvAkZ1pRBQ/ulIyDD5Yq0nJ7YbdD8ey0TO3g==}
@@ -7467,7 +7461,7 @@ packages:
     dependencies:
       adler-32: 1.3.1
       crc-32: 1.2.2
-    dev: true
+    dev: false
 
   /chai@4.3.10:
     resolution: {integrity: sha512-0UXG04VuVbruMUYbJ6JctvH0YnC/4q3/AkT18q4NaITo91CUm0liMS9VqzT9vZhVQ/1eqPanMWjBM+Juhfb/9g==}
@@ -7664,7 +7658,7 @@ packages:
   /codepage@1.15.0:
     resolution: {integrity: sha512-3g6NUTPd/YtuuGrhMnOMRjFc+LJw/bnMp3+0r/Wcz3IXUuCosKRJvMphm5+Q+bvTVGcJJuRvVLuYba+WojaFaA==}
     engines: {node: '>=0.8'}
-    dev: true
+    dev: false
 
   /collapse-white-space@2.1.0:
     resolution: {integrity: sha512-loKTxY1zCOuG4j9f6EPnuyyYkf58RnhhWTvRoZEokgB+WbdXehfjFviyOVYkqzEWz1Q5kRiZdBYS5SwxbQYwzw==}
@@ -7932,7 +7926,7 @@ packages:
     resolution: {integrity: sha512-ROmzCKrTnOwybPcJApAA6WBWij23HVfGVNKqqrZpuyZOHqK2CwHSvpGuyt/UNNvaIjEd8X5IFGp4Mh+Ie1IHJQ==}
     engines: {node: '>=0.8'}
     hasBin: true
-    dev: true
+    dev: false
 
   /crelt@1.0.6:
     resolution: {integrity: sha512-VQ2MBenTq1fWZUH9DJNGti7kKv6EeAuYr3cLwxUWhIu1baTaXh4Ib5W2CqHVqib4/MqbYGJqiL3Zb8GJZr3l4g==}
@@ -8728,7 +8722,7 @@ packages:
 
   /dompurify@2.4.7:
     resolution: {integrity: sha512-kxxKlPEDa6Nc5WJi+qRgPbOAbgTpSULL+vI3NUXsZMlkJxTqYI9wg5ZTay2sFrdZRWHPWNi+EdAhcJf81WtoMQ==}
-    dev: true
+    dev: false
 
   /domutils@2.8.0:
     resolution: {integrity: sha512-w96Cjofp72M5IIhpjgobBimYEfoPjx1Vx0BSX9P30WBdZW2WIKU0T1Bd0kz2eNZ9ikjKgHbEyKx8BB6H1L3h3A==}
@@ -9394,7 +9388,7 @@ packages:
   /exit-on-epipe@1.0.1:
     resolution: {integrity: sha512-h2z5mrROTxce56S+pnvAV890uu7ls7f1kEvVGJbw1OlFH3/mlJ5bkXu0KRyW94v37zzHPiUd55iLn3DA7TjWpw==}
     engines: {node: '>=0.8'}
-    dev: true
+    dev: false
 
   /express@4.18.2:
     resolution: {integrity: sha512-5/PsL6iGPdfQ/lKM1UuielYgv3BUoJfz1aUwU9vHZ+J7gyvwdQXFEBIEIaxeGf0GIcreATNyBExtalisDbuMqQ==}
@@ -9755,7 +9749,7 @@ packages:
   /frac@1.1.2:
     resolution: {integrity: sha512-w/XBfkibaTl3YDqASwfDUqkna4Z2p9cFSr1aHDt0WoMTECnRfBOv2WArlZILlqgWlmdIlALXGpM2AOhEk5W3IA==}
     engines: {node: '>=0.8'}
-    dev: true
+    dev: false
 
   /fraction.js@4.3.7:
     resolution: {integrity: sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==}
@@ -10291,11 +10285,11 @@ packages:
 
   /highlight.js@10.7.3:
     resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}
-    dev: true
+    dev: false
 
   /highlightjs-graphql@1.0.2:
     resolution: {integrity: sha512-jShTftpKQDwMXc+7OHOpHXRYSweT08EO2YOIcLbwU00e9yuwJMYXGLF1eiDO0aUPeQU4/5EjAh5HtPt3ly7rvg==}
-    dev: true
+    dev: false
 
   /history@4.10.1:
     resolution: {integrity: sha512-36nwAD620w12kuzPAsyINPWJqlNbij+hpK1k9XRloDtym8mxzGYl2c17LnV6IAGB2Dmg4tEa7G7DlawS0+qjew==}
@@ -11399,7 +11393,6 @@ packages:
 
   /lodash-es@4.17.21:
     resolution: {integrity: sha512-mKnC+QJ9pWVzv+C4/U3rRsHapFfHvQFoFB92e52xeyGMcX6/OlIl78je1u8vePzYZSkkogMPJ2yjxxsb89cxyw==}
-    dev: true
 
   /lodash.debounce@4.0.8:
     resolution: {integrity: sha512-FT1yDzDYEoYWhnSGnpE/4Kj1fLZkDFyqRb7fNt6FdYOSxlUWAtp42Eh6Wb0rGIv/m9Bgo7x4GhQbm5Ys4SG5ow==}
@@ -13453,7 +13446,7 @@ packages:
     resolution: {integrity: sha512-zA2SmoLaxZyArQTOPj5LXecR+RagfPSU5Kw1qP+jkWeNlrq+eJZyY2oS68SU1Z/7/myXM4lo9716laOFAVStCQ==}
     engines: {node: '>=0.8'}
     hasBin: true
-    dev: true
+    dev: false
 
   /prism-react-renderer@2.3.1(react@18.2.0):
     resolution: {integrity: sha512-Rdf+HzBLR7KYjzpJ1rSoxT9ioO85nZngQEoFIhL07XhtJHlCU3SOz0GJ6+qvMyQe0Se+BV3qpe6Yd/NmQF5Juw==}
@@ -13602,14 +13595,10 @@ packages:
 
   /ramda@0.27.1:
     resolution: {integrity: sha512-PgIdVpn5y5Yns8vqb8FzBUEYn98V3xcPgawAkkgj0YJ0qDsnHCiNmZYfOGMgOvoB0eWFLpYbhxUR3mxfDIMvpw==}
-    dev: true
+    dev: false
 
   /ramda@0.29.0:
     resolution: {integrity: sha512-BBea6L67bYLtdbOqfp8f58fPMqEwx0doL+pAi8TZyp2YWz8R9G8z9x75CZI8W+ftqhFHCpEX2cRnUUXK130iKA==}
-    dev: true
-
-  /ramda@0.29.1:
-    resolution: {integrity: sha512-OfxIeWzd4xdUNxlWhgFazxsA/nl3mS4/jGZI5n00uWOoSSFRhC1b6gl6xvmzUamgmqELraWp0J/qqVlXYPDPyA==}
     dev: true
 
   /randombytes@2.1.0:
@@ -14327,7 +14316,6 @@ packages:
     resolution: {integrity: sha512-AA3TVj+0A2iuIoQkWEK/tqFjBq2j+6PO6Y0zJcvzLAFhEFIO3HL0vls9hWLncZbAAbK0mar7oZ4V079I/qPMxg==}
     dependencies:
       tslib: 2.6.2
-    dev: true
 
   /safe-array-concat@1.0.0:
     resolution: {integrity: sha512-9dVEFruWIsnie89yym+xWTAYASdpw3CJV7Li/6zBewGf9z2i1j31rP6jnY0pHEO4QZh6N0K11bFjWmdR8UGdPQ==}
@@ -14739,7 +14727,7 @@ packages:
     engines: {node: '>=0.8'}
     dependencies:
       frac: 1.1.2
-    dev: true
+    dev: false
 
   /stable@0.1.8:
     resolution: {integrity: sha512-ji9qxRnOVfcuLDySj9qzhGSEFVobyt1kIOSkj1qZzYLzq7Tos/oUUWvotUPQLlrsidqsK6tBH89Bc9kL5zHA6w==}
@@ -15179,7 +15167,7 @@ packages:
     resolution: {integrity: sha512-E1d3oP2emgJ9dRQZdf3Kkn0qJgI6ZLpyS5z6ZkY1DF3kaQaBsGZsndEpHwx+eC+tYM41HaSNvNtLx8tU57FzTQ==}
     dependencies:
       '@popperjs/core': 2.9.3
-    dev: true
+    dev: false
 
   /titleize@3.0.0:
     resolution: {integrity: sha512-KxVu8EYHDPBdUYdKZdKtU2aj2XfEx9AfjXxE/Aj0vT06w2icA09Vus1rh6eSu1y01akYg6BjIK/hxyLJINoMLQ==}
@@ -15271,10 +15259,6 @@ packages:
     resolution: {integrity: sha512-FZIXf1ksVyLcfr7M317jbB67XFJhOO1YqdTcuGaq9q5jLUoTikukZ+98TPjKiP2jC5CgmYdWWYs0s2nLSU0/1A==}
     dev: true
 
-  /ts-toolbelt@9.6.0:
-    resolution: {integrity: sha512-nsZd8ZeNUzukXPlJmTBwUAuABDe/9qtVDelJeT/qW0ow3ZS3BsQJtNkan1802aM9Uf68/Y8ljw86Hu0h5IUW3w==}
-    dev: true
-
   /tsconfck@2.1.2(typescript@5.3.3):
     resolution: {integrity: sha512-ghqN1b0puy3MhhviwO2kGF8SeMDNhEbnKxjK7h6+fvY9JAxqvXi8y5NAHSQv687OVboS2uZIByzGd45/YxrRHg==}
     engines: {node: ^14.13.1 || ^16 || >=18}
@@ -15326,7 +15310,7 @@ packages:
     resolution: {integrity: sha512-/2YoLnj5c1e+Ag1ZZYOgzEs2o0v7Ol7c5UAnBj438zGlkwkMxyH0HwP2pVqqIYX05WE7K0+6nTWVMybS8otBgw==}
     dependencies:
       tui-time-picker: 2.1.6
-    dev: true
+    dev: false
 
   /tui-grid@4.21.21:
     resolution: {integrity: sha512-/YXdI4b5RLpxS+GSRk1z8K+RSc59HPkkW78endKFNV0J0ZbrQyoENi6sQUvlxtHx68kGvnvy7hL9qeo5+9Gxxw==}
@@ -15335,15 +15319,15 @@ packages:
       tui-date-picker: 4.3.3
       tui-pagination: 3.4.1
       xlsx: 0.17.5
-    dev: true
+    dev: false
 
   /tui-pagination@3.4.1:
     resolution: {integrity: sha512-W09L0wPMSFstthBhQjcLNDnN1yuCEDn/tIXmaKdTpNFYa11eNrNo/rOwXzrugXvP2arZ60KmVhkFzoAOEuV0Sg==}
-    dev: true
+    dev: false
 
   /tui-time-picker@2.1.6:
     resolution: {integrity: sha512-4Jmo3wjGS+Ii4/qQgt5DaFEohHpB3U6BzWeTODVVFHD9sx3NOsbomY9K0xMobSLODi+tQEH7wfOtNU0IJmcQ6Q==}
-    dev: true
+    dev: false
 
   /turbo-darwin-64@1.11.2:
     resolution: {integrity: sha512-toFmRG/adriZY3hOps7nYCfqHAS+Ci6xqgX3fbo82kkLpC6OBzcXnleSwuPqjHVAaRNhVoB83L5njcE9Qwi2og==}
@@ -15502,12 +15486,6 @@ packages:
 
   /typedarray@0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
-    dev: true
-
-  /types-ramda@0.29.6:
-    resolution: {integrity: sha512-VJoOk1uYNh9ZguGd3eZvqkdhD4hTGtnjRBUx5Zc0U9ftmnCgiWcSj/lsahzKunbiwRje1MxxNkEy1UdcXRCpYw==}
-    dependencies:
-      ts-toolbelt: 9.6.0
     dev: true
 
   /typescript-transform-paths@3.4.6(typescript@5.3.3):
@@ -15814,7 +15792,6 @@ packages:
   /uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
     hasBin: true
-    dev: true
 
   /validate-npm-package-license@3.0.4:
     resolution: {integrity: sha512-DpKm2Ui/xN7/HQKCtpZxoRWBhZ9Z0kqtygG8XCgNQ8ZlDnxuQmWhj566j8fN4Cu3/JmbhsDo7fcAJq4s9h27Ew==}
@@ -16307,12 +16284,12 @@ packages:
   /wmf@1.0.2:
     resolution: {integrity: sha512-/p9K7bEh0Dj6WbXg4JG0xvLQmIadrner1bi45VMJTfnbVHsc7yIajZyoSoK60/dtVBs12Fm6WkUI5/3WAVsNMw==}
     engines: {node: '>=0.8'}
-    dev: true
+    dev: false
 
   /word@0.3.0:
     resolution: {integrity: sha512-OELeY0Q61OXpdUfTp+oweA/vtLVg5VDOXh+3he3PNzLGG/y0oylSOC1xRVj0+l4vQ3tj/bB1HVHv1ocXkQceFA==}
     engines: {node: '>=0.8'}
-    dev: true
+    dev: false
 
   /wordwrap@1.0.0:
     resolution: {integrity: sha512-gvVzJFlPycKc5dZN4yPkP8w7Dc37BtP1yczEneOb4uq34pXZcvrtRTmWV8W+Ume+XCxKgbjM+nevkyFPMybd4Q==}
@@ -16428,7 +16405,7 @@ packages:
       ssf: 0.11.2
       wmf: 1.0.2
       word: 0.3.0
-    dev: true
+    dev: false
 
   /xml-js@1.6.11:
     resolution: {integrity: sha512-7rVi2KMfwfWFl+GpPg6m80IVMWXLRjO+PxTq7V2CDhoGak0wzYzFgUY2m4XJ47OGdXd8eLE8EmwfAmdjw7lC1g==}
