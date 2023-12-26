@@ -4,7 +4,7 @@ import { fromEvent } from 'rxjs';
 import { useAppContext } from '@/components/appContext';
 import { dragSelectAction$ } from '@/engine/modules/editor/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { getAbsolutePoint, Rect } from '@/utils/dragSelect';
+import { getAbsolutePoint } from '@/utils/dragSelect';
 import { mouseup$ } from '@/utils/globalEventObservable';
 
 import * as styles from './DragSelect.styles';

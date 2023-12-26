@@ -23,6 +23,7 @@ import TableProperties from '@/components/erd/table-properties/TableProperties';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { Open } from '@/constants/open';
+import { CanvasType } from '@/constants/schema';
 import {
   changeColorAllAction$,
   unselectAllAction$,
@@ -65,6 +66,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     tablePropertiesId: '',
     tablePropertiesIds: [] as string[],
     grabMove: false,
+    grabCursor: 'grab',
   });
   useErdShortcut(ctx);
 
@@ -155,7 +157,16 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       state.dragSelectX = event.clientX - x;
       state.dragSelectY = event.clientY - y;
     } else {
-      drag$.subscribe(handleMove);
+      if (state.grabMove) {
+        state.grabCursor = 'grabbing';
+      }
+
+      drag$.subscribe({
+        next: handleMove,
+        complete: () => {
+          state.grabCursor = 'grab';
+        },
+      });
     }
   };
 
@@ -218,14 +229,17 @@ const Erd: FC<ErdProps> = (props, ctx) => {
             const el = event.target as HTMLElement | null;
             if (!el) return false;
 
-            const {
-              editor: { openMap },
-            } = store.state;
+            const { editor, settings } = store.state;
             const showAutomaticTablePlacement =
-              openMap[Open.automaticTablePlacement];
-            const showTableProperties = openMap[Open.tableProperties];
+              editor.openMap[Open.automaticTablePlacement];
+            const showTableProperties = editor.openMap[Open.tableProperties];
+            const isCanvasType = settings.canvasType === CanvasType.ERD;
+
             const canGrabMove =
-              !showAutomaticTablePlacement && !showTableProperties;
+              isCanvasType &&
+              !showAutomaticTablePlacement &&
+              !showTableProperties;
+
             if (!canGrabMove) return false;
 
             return event.code === 'Space' && el.tagName === 'DIV';
@@ -250,7 +264,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const showTableProperties = openMap[Open.tableProperties];
 
     const cursor = state.grabMove
-      ? 'grab'
+      ? state.grabCursor
       : drawRelationship
         ? `url("${getRelationshipIcon(
             drawRelationship.relationshipType
