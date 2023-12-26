@@ -3,6 +3,7 @@ const { DefinePlugin } = require('webpack');
 const { InjectManifest } = require('workbox-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const WebpackPwaManifest = require('webpack-pwa-manifest');
@@ -18,17 +19,25 @@ module.exports = (env, args) => {
     mode,
     devtool: isDevelopment ? 'eval-source-map' : 'source-map',
     devServer: {
-      static: resolvePath('public'),
+      static: {
+        directory: resolvePath('public'),
+      },
+      compress: true,
       historyApiFallback: true,
       open: true,
       hot: true,
     },
-    entry: './src/main.tsx',
+    entry: './src/main',
     output: {
       path: resolvePath('dist'),
       publicPath: '/',
-      filename: 'js/bundle.[id].[contenthash].js',
-      chunkFilename: 'js/[id].[contenthash].js',
+      filename: isProduction
+        ? 'static/js/[name].[contenthash:8].js'
+        : 'static/js/bundle.js',
+      chunkFilename: isProduction
+        ? 'static/js/[name].[contenthash:8].chunk.js'
+        : 'static/js/[name].chunk.js',
+      assetModuleFilename: 'static/media/[name].[hash][ext]',
       clean: true,
     },
     resolve: {
@@ -67,7 +76,10 @@ module.exports = (env, args) => {
         },
         {
           test: /\.css$/i,
-          use: ['style-loader', 'css-loader'],
+          use: [
+            isProduction ? MiniCssExtractPlugin.loader : 'style-loader',
+            'css-loader',
+          ],
         },
         {
           test: /\.(png|svg|jpg|jpeg|gif)$/i,
@@ -87,7 +99,8 @@ module.exports = (env, args) => {
         new InjectManifest({
           swSrc: './src/sw.ts',
           swDest: 'sw.js',
-          exclude: [/\.(html|js.map|txt)$/],
+          exclude: [/\.html$/, /\.map$/, /manifest\.json$/, /LICENSE/],
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         }),
       new WebpackPwaManifest({
         filename: 'manifest.json',
@@ -119,6 +132,11 @@ module.exports = (env, args) => {
           },
         ],
       }),
+      isProduction &&
+        new MiniCssExtractPlugin({
+          filename: 'static/css/[name].[contenthash:8].css',
+          chunkFilename: 'static/css/[name].[contenthash:8].chunk.css',
+        }),
       new HtmlWebpackPlugin({
         inject: true,
         template: resolvePath('public/index.html'),
@@ -128,6 +146,7 @@ module.exports = (env, args) => {
       // }),
       isDevelopment && new ReactRefreshWebpackPlugin(),
     ].filter(Boolean),
+    performance: false,
   };
 
   return config;
