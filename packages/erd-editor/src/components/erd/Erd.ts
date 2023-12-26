@@ -6,6 +6,7 @@ import {
   onMounted,
   ref,
 } from '@dineug/r-html';
+import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import AutomaticTablePlacement, {
@@ -33,7 +34,7 @@ import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { isMouseEvent } from '@/utils/domEvent';
 import { closeColorPickerAction } from '@/utils/emitter';
-import { drag$, DragMove } from '@/utils/globalEventObservable';
+import { drag$, DragMove, keyup$ } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
 import { isMod } from '@/utils/keyboard-shortcut';
 
@@ -63,6 +64,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     colorPickerInitialColor: '',
     tablePropertiesId: '',
     tablePropertiesIds: [] as string[],
+    grabMove: false,
   });
   useErdShortcut(ctx);
 
@@ -176,7 +178,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   onMounted(() => {
-    const { store, emitter } = app.value;
+    const { store, emitter, keydown$ } = app.value;
     const $root = root.value;
 
     addUnsubscribe(
@@ -209,6 +211,31 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           state.tablePropertiesIds = tablePropertiesIds.slice(0, 5);
           state.tablePropertiesId = tableId;
         },
+      }),
+      keydown$
+        .pipe(
+          filter(event => {
+            const el = event.target as HTMLElement | null;
+            if (!el) return false;
+
+            const {
+              editor: { openMap },
+            } = store.state;
+            const showAutomaticTablePlacement =
+              openMap[Open.automaticTablePlacement];
+            const showTableProperties = openMap[Open.tableProperties];
+            const canGrabMove =
+              !showAutomaticTablePlacement && !showTableProperties;
+            if (!canGrabMove) return false;
+
+            return event.code === 'Space' && el.tagName === 'DIV';
+          })
+        )
+        .subscribe(() => {
+          state.grabMove = true;
+        }),
+      keyup$.pipe(filter(event => event.code === 'Space')).subscribe(() => {
+        state.grabMove = false;
       })
     );
   });
@@ -219,11 +246,16 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       editor: { drawRelationship, openMap },
     } = store.state;
 
-    const cursor = drawRelationship
-      ? `url("${getRelationshipIcon(
-          drawRelationship.relationshipType
-        )}") 16 16, auto`
-      : '';
+    const showAutomaticTablePlacement = openMap[Open.automaticTablePlacement];
+    const showTableProperties = openMap[Open.tableProperties];
+
+    const cursor = state.grabMove
+      ? 'grab'
+      : drawRelationship
+        ? `url("${getRelationshipIcon(
+            drawRelationship.relationshipType
+          )}") 16 16, auto`
+        : '';
 
     return html`
       <div
@@ -236,7 +268,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         @touchstart=${handleDragSelect}
         @wheel=${handleWheel}
       >
-        <${Canvas} root=${root} canvas=${canvas} />
+        <${Canvas} root=${root} canvas=${canvas} grabMove=${state.grabMove} />
         <${Minimap} />
         <${HideSign} root=${root} />
         ${state.dragSelect
@@ -271,7 +303,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
               />
             `
           : null}
-        ${openMap[Open.automaticTablePlacement]
+        ${showAutomaticTablePlacement
           ? html`
               <div>
                 <${AutomaticTablePlacement}
@@ -281,7 +313,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
               </div>
             `
           : null}
-        ${openMap[Open.tableProperties]
+        ${showTableProperties
           ? html`
               <${TableProperties}
                 tableId=${state.tablePropertiesId}

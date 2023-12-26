@@ -3,6 +3,8 @@ import { filter, fromEvent, map, merge, takeUntil } from 'rxjs';
 import { isMouseEvent } from '@/utils/domEvent';
 import { forwardMoveStartEvent } from '@/utils/internalEvents';
 
+export const keyup$ = fromEvent<KeyboardEvent>(window, 'keyup');
+
 export const mousedown$ = fromEvent<MouseEvent>(window, 'mousedown');
 export const mousemove$ = fromEvent<MouseEvent>(window, 'mousemove');
 export const mouseup$ = fromEvent<MouseEvent>(window, 'mouseup');

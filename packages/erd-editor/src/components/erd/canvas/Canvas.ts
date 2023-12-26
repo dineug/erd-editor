@@ -16,6 +16,7 @@ import * as styles from './Canvas.styles';
 export type CanvasProps = {
   root: Ref<HTMLDivElement>;
   canvas: Ref<HTMLDivElement>;
+  grabMove?: boolean;
 };
 
 const Canvas: FC<CanvasProps> = (props, ctx) => {
@@ -48,6 +49,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
           'min-width': `${width}px`,
           'min-height': `${height}px`,
           transform: `translate(${scrollLeft}px, ${scrollTop}px) scale(${zoomLevel})`,
+          'pointer-events': props.grabMove ? 'none' : 'auto',
         }}
       >
         ${cache(

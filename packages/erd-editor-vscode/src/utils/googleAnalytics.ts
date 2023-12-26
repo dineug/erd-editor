@@ -35,7 +35,7 @@ function send(action: string) {
               name: 'select_content',
               params: {
                 content_type: 'vscode',
-                content_id: action,
+                item_id: action,
                 vscode_extension_version: version,
               },
             },

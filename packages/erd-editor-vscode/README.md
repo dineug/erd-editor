@@ -8,7 +8,17 @@
 
 create an empty file with a `.erd`, `.erd.json` extension and open it in Visual Studio Code.
 
-### [Editing Guide](https://docs.erd-editor.io/docs/category/guides)
+## [Guides](https://docs.erd-editor.io/docs/category/guides)
+
+- Editing Start
+- Importing or Exporting Files
+- Table Editing
+- Table-related Functions
+- Relationship Editing
+- Quick Search
+- Visualization
+- Undo, Redo
+- Settings
 
 ## Migration Guide
 
