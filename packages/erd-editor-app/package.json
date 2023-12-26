@@ -1,0 +1,37 @@
+{
+  "name": "@dineug/erd-editor-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Entity-Relationship Diagram Editor App",
+  "author": "SeungHwan-Lee <dineug2@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "dev": "webpack serve",
+    "build": "webpack --mode production"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "workbox-core": "^7.0.0",
+    "workbox-precaching": "^7.0.0"
+  },
+  "devDependencies": {
+    "@pmmmwh/react-refresh-webpack-plugin": "^0.5.11",
+    "@swc/core": "^1.3.101",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "copy-webpack-plugin": "^11.0.0",
+    "core-js": "^3.34.0",
+    "css-loader": "^6.8.1",
+    "html-webpack-plugin": "^5.6.0",
+    "react-refresh": "^0.14.0",
+    "style-loader": "^3.3.3",
+    "swc-loader": "^0.2.3",
+    "tsconfig-paths-webpack-plugin": "^4.1.0",
+    "typescript": "5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-pwa-manifest": "^4.3.0",
+    "workbox-webpack-plugin": "^7.0.0"
+  }
+}

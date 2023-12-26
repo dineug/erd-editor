@@ -43,6 +43,7 @@ export function useEditor(options?: Partial<Options>): EditorTuple {
     });
 
     return () => editorRef.current?.destroy();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return [parentRef, editorRef];

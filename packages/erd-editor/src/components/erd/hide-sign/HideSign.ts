@@ -204,7 +204,6 @@ const HideSign: FC<HideSignProps> = (props, ctx) => {
   };
 
   onMounted(() => {
-    const app = useAppContext(ctx);
     const { store } = app.value;
     const { settings } = store.state;
     const scroll$ = new Observable<{ scrollLeft: number; scrollTop: number }>(

@@ -19,6 +19,7 @@ export function useTooltip(
   const instancesRef = useRef<Array<Instance>>([]);
   const singletonRef = useRef<CreateSingletonInstance>(null);
   const elementsRef = useRef(
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     Array.from({ length: tooltipCount }, () => useRef<any>(null))
   );
 
@@ -63,6 +64,7 @@ export function useTooltip(
       createTooltip();
       return () => destroyTooltip();
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     elementsRef.current.map(elRef => elRef.current)
   );
 

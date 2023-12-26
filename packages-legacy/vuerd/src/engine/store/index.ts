@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import { observable } from '@vuerd/lit-observable';
 
 import { createSubscriptionHelper, flat } from '@/core/helper';

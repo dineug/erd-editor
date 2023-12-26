@@ -135,6 +135,7 @@ export function useTemplateGrid(width: number): GridTuple {
       offGridEvent();
       gridRef.current.destroy();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

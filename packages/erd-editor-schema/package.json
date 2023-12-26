@@ -16,6 +16,7 @@
       "require": "./dist/erd-editor-schema.min.js"
     }
   },
+  "sideEffects": false,
   "files": [
     "dist/*.js",
     "dist/**/*.ts"

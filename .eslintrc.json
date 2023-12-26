@@ -4,8 +4,14 @@
     "browser": true,
     "node": true
   },
-  "plugins": ["prettier", "@typescript-eslint", "simple-import-sort", "import"],
-  "extends": ["prettier"],
+  "extends": ["prettier", "plugin:react-hooks/recommended"],
+  "plugins": [
+    "prettier",
+    "@typescript-eslint",
+    "simple-import-sort",
+    "import",
+    "react-refresh"
+  ],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "ecmaVersion": 2021,
@@ -22,6 +28,10 @@
     "simple-import-sort/exports": "error",
     "import/first": "error",
     "import/newline-after-import": "error",
-    "import/no-duplicates": "error"
+    "import/no-duplicates": "error",
+    "react-refresh/only-export-components": [
+      "warn",
+      { "allowConstantExport": true }
+    ]
   }
 }

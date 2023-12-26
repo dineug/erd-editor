@@ -25,6 +25,10 @@
       "path": "packages/erd-editor-vscode-bridge"
     },
     {
+      "name": "erd-editor-app",
+      "path": "packages/erd-editor-app"
+    },
+    {
       "name": "erd-editor-docs",
       "path": "packages/erd-editor-docs"
     },
