@@ -31,8 +31,10 @@ export default defineConfig(({ command, mode }) => {
     },
     build: {
       lib: {
-        entry: './src/index.ts',
-        fileName: 'erd-editor',
+        entry: {
+          'erd-editor': './src/index.ts',
+          engine: './src/engine/index.ts',
+        },
         formats: ['es'],
       },
       rollupOptions: {

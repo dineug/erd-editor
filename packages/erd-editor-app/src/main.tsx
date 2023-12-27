@@ -2,6 +2,7 @@ import './styles.css';
 import './main.css';
 
 import { Theme } from '@radix-ui/themes';
+import { DevTools } from 'jotai-devtools';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -10,6 +11,7 @@ import App from '@/App';
 const root = createRoot(document.getElementById('app')!);
 root.render(
   <React.StrictMode>
+    <DevTools theme="dark" />
     <Theme
       appearance="dark"
       accentColor="indigo"

@@ -3,6 +3,7 @@
   "compilerOptions": {
     "lib": ["ES2020", "DOM", "DOM.Iterable", "WebWorker"],
     "jsx": "react-jsx",
+    "jsxImportSource": "@emotion/react",
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "baseUrl": ".",

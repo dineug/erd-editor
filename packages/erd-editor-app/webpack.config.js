@@ -52,6 +52,11 @@ module.exports = (env, args) => {
           use: {
             loader: 'swc-loader',
             options: {
+              env: {
+                targets: 'defaults',
+                mode: 'entry',
+                coreJs: '3.34',
+              },
               jsc: {
                 parser: {
                   syntax: 'typescript',
@@ -60,16 +65,17 @@ module.exports = (env, args) => {
                 transform: {
                   react: {
                     runtime: 'automatic',
-                    importSource: 'react',
+                    importSource: '@emotion/react',
                     development: isDevelopment,
                     refresh: isDevelopment,
                   },
                 },
-              },
-              env: {
-                targets: 'defaults',
-                mode: 'entry',
-                coreJs: '3.34',
+                experimental: {
+                  plugins: [
+                    ['@swc-jotai/debug-label', {}],
+                    ['@swc-jotai/react-refresh', {}],
+                  ],
+                },
               },
             },
           },
