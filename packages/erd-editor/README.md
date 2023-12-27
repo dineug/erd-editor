@@ -47,6 +47,7 @@ interface ErdEditorElement extends HTMLElement {
   focus: () => void;
   blur: () => void;
   clear: () => void;
+  destroy: () => void;
   setInitialValue: (value: string) => void;
   setPresetTheme: (themeOptions: Partial<ThemeOptions>) => void;
   setTheme: (theme: Partial<Theme>) => void;

@@ -62,9 +62,13 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   } = prevApp;
   const { store } = appContextValue;
 
-  addUnsubscribe(provider.destroy, store.destroy, () => {
-    store.dispatch(initialClearAction());
-  });
+  addUnsubscribe(
+    provider.destroy,
+    () => {
+      store.dispatch(initialClearAction());
+    },
+    store.destroy
+  );
 
   const zoomInRange = createInRange(CANVAS_ZOOM_MIN, 0.7);
   const zoomLevelInRange = (zoom: number) => round(zoomInRange(zoom), 2);

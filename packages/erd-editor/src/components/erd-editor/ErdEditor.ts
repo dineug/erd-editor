@@ -63,6 +63,7 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   focus: () => void;
   blur: () => void;
   clear: () => void;
+  destroy: () => void;
   setInitialValue: (value: string) => void;
   setPresetTheme: (themeOptions: Partial<ThemeOptions>) => void;
   setTheme: (theme: Partial<ThemeType>) => void;
@@ -91,19 +92,22 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     { toWidth: text.toWidth },
     getReadonly
   );
-  useProvider(ctx, appContext, appContextValue);
+  const provider = useProvider(ctx, appContext, appContextValue);
 
   const root = createRef<HTMLDivElement>();
   useKeyBindingMap(ctx, root);
 
-  const { theme, themeState, hasDarkMode } = useErdEditorAttachElement({
-    props,
-    ctx,
-    app: appContextValue,
-    root,
-  });
+  const { theme, themeState, destroySet, hasDarkMode } =
+    useErdEditorAttachElement({
+      props,
+      ctx,
+      app: appContextValue,
+      root,
+    });
   const { store, keydown$, emitter } = appContextValue;
   const { addUnsubscribe } = useUnmounted();
+
+  destroySet.add(provider.destroy);
 
   const state = observable({
     isFocus: false,

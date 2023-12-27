@@ -1,27 +1,15 @@
 import './styles.css';
-import './main.css';
+import './config';
 
-import { Theme } from '@radix-ui/themes';
-import { DevTools } from 'jotai-devtools';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
-import App from '@/App';
+import App from '@/components/app/App';
 
 const root = createRoot(document.getElementById('app')!);
 root.render(
   <React.StrictMode>
-    <DevTools theme="dark" />
-    <Theme
-      appearance="dark"
-      accentColor="indigo"
-      grayColor="slate"
-      radius="medium"
-      scaling="100%"
-      panelBackground="translucent"
-    >
-      <App />
-    </Theme>
+    <App />
   </React.StrictMode>
 );
 

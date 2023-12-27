@@ -5,7 +5,10 @@ import { cloneDeep, get, isEmpty, omit } from 'lodash-es';
 
 import { AppContext } from '@/components/appContext';
 import { DatabaseVendorToDatabase } from '@/constants/sql/database';
-import { clearAction } from '@/engine/modules/editor/atom.actions';
+import {
+  clearAction,
+  initialClearAction,
+} from '@/engine/modules/editor/atom.actions';
 import {
   initialLoadJsonAction$,
   loadJsonAction$,
@@ -13,6 +16,7 @@ import {
 } from '@/engine/modules/editor/generator.actions';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { Unsubscribe } from '@/internal-types';
 import {
   AccentColor,
   AccentColorList,
@@ -61,7 +65,7 @@ type Props = {
 export function useErdEditorAttachElement({
   props,
   ctx,
-  app: { store, keyBindingMap, emitter },
+  app: { store, keyBindingMap, emitter, shortcut$, keydown$ },
   root,
 }: Props) {
   const getReadonly = () => props.readonly;
@@ -90,7 +94,7 @@ export function useErdEditorAttachElement({
     getReadonly() || ctx.dispatchEvent(new CustomEvent('change'));
   };
 
-  const listeners: Array<() => void> = [
+  const destroySet = new Set<Unsubscribe>([
     watch(props).subscribe(propName => {
       if (propName !== 'systemDarkMode' || !props.systemDarkMode) {
         return;
@@ -120,7 +124,7 @@ export function useErdEditorAttachElement({
 
       Object.assign(theme, themeState.preset, themeState.custom);
     }),
-  ];
+  ]);
 
   onMounted(() => {
     addUnsubscribe(
@@ -149,6 +153,18 @@ export function useErdEditorAttachElement({
 
   ctx.clear = () => {
     store.dispatchSync(clearAction());
+  };
+
+  ctx.destroy = () => {
+    store.dispatch(initialClearAction());
+    store.destroy();
+    shortcut$.complete();
+    keydown$.complete();
+
+    for (const destroy of destroySet) {
+      destroy();
+    }
+    destroySet.clear();
   };
 
   ctx.setInitialValue = value => {
@@ -224,6 +240,7 @@ export function useErdEditorAttachElement({
   return {
     theme,
     themeState,
+    destroySet,
     hasDarkMode: () => themeState.options.appearance === Appearance.dark,
   };
 }
