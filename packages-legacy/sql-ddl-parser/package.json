@@ -5,13 +5,12 @@
   "description": "Permissive SQL DDL Parser",
   "type": "module",
   "main": "./dist/sql-ddl-parser.js",
+  "module": "./dist/sql-ddl-parser.js",
   "typings": "./types/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./types/index.d.ts",
-        "default": "./dist/sql-ddl-parser.js"
-      }
+      "types": "./types/index.d.ts",
+      "default": "./dist/sql-ddl-parser.js"
     }
   },
   "author": "dineug <dineug2@gmail.com>",

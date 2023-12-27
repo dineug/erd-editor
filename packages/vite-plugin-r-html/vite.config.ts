@@ -20,7 +20,6 @@ export default defineConfig({
     minify: false,
     lib: {
       entry: './src/index.ts',
-      name: pkg.name,
       fileName: 'vite-plugin-r-html',
       formats: ['cjs'],
     },

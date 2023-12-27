@@ -5,13 +5,12 @@
   "description": "vuerd plugin generate template",
   "type": "module",
   "main": "./dist/generate-template.js",
+  "module": "./dist/generate-template.js",
   "typings": "./types/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./types/index.d.ts",
-        "default": "./dist/generate-template.js"
-      }
+      "types": "./types/index.d.ts",
+      "default": "./dist/generate-template.js"
     }
   },
   "author": "dineug <dineug2@gmail.com>",

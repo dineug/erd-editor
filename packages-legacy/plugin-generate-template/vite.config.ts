@@ -22,7 +22,6 @@ export default defineConfig(({ command }) => {
     build: {
       lib: {
         entry: './src/index.ts',
-        name: pkg.name,
         fileName: 'generate-template',
         formats: ['es'],
       },

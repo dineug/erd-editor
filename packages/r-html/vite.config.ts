@@ -19,9 +19,8 @@ export default defineConfig({
   build: {
     lib: {
       entry: './src/index.ts',
-      name: pkg.name,
-      fileName: format => (format === 'es' ? 'r-html.js' : 'r-html.min.js'),
-      formats: ['es', 'umd'],
+      fileName: 'r-html',
+      formats: ['es'],
     },
     rollupOptions: {
       output: {

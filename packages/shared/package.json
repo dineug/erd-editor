@@ -5,13 +5,12 @@
   "description": "shared",
   "type": "module",
   "main": "./dist/shared.js",
+  "module": "./dist/shared.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/shared.js"
-      }
+      "types": "./dist/index.d.ts",
+      "default": "./dist/shared.js"
     }
   },
   "sideEffects": false,

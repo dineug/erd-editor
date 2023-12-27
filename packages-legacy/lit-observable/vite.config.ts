@@ -13,7 +13,6 @@ export default defineConfig({
   build: {
     lib: {
       entry: './src/index.ts',
-      name: pkg.name,
       fileName: 'lit-observable',
       formats: ['es'],
     },

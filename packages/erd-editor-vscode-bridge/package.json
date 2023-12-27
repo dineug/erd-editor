@@ -5,13 +5,12 @@
   "description": "vscode <=> webview bridge",
   "type": "module",
   "main": "./dist/bridge.js",
+  "module": "./dist/bridge.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/bridge.js"
-      }
+      "types": "./dist/index.d.ts",
+      "default": "./dist/bridge.js"
     }
   },
   "sideEffects": false,

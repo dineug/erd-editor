@@ -21,7 +21,6 @@ export default defineConfig(({ command, mode }) => {
     build: {
       lib: {
         entry: './src/index.ts',
-        name: pkg.name,
         fileName: 'schema-sql-parser',
         formats: ['es'],
       },

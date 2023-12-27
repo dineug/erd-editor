@@ -33,7 +33,7 @@ const editor = document.createElement('erd-editor');
   const editor = document.createElement('erd-editor');
 </script>
 <!-- or -->
-<script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor/dist/erd-editor.min.js"></script>
+<script type="module" src="https://esm.run/@dineug/erd-editor"></script>
 ```
 
 ## ErdEditorElement

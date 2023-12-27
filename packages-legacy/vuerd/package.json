@@ -5,13 +5,12 @@
   "description": "ERD editor",
   "type": "module",
   "main": "./dist/vuerd.js",
+  "module": "./dist/vuerd.js",
   "typings": "./types/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./types/index.d.ts",
-        "default": "./dist/vuerd.js"
-      }
+      "types": "./types/index.d.ts",
+      "default": "./dist/vuerd.js"
     }
   },
   "author": "dineug <dineug2@gmail.com>",

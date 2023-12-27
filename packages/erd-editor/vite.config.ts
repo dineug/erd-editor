@@ -32,10 +32,8 @@ export default defineConfig(({ command, mode }) => {
     build: {
       lib: {
         entry: './src/index.ts',
-        name: pkg.name,
-        fileName: format =>
-          format === 'es' ? 'erd-editor.js' : 'erd-editor.min.js',
-        formats: ['es', 'umd'],
+        fileName: 'erd-editor',
+        formats: ['es'],
       },
       rollupOptions: {
         output: {

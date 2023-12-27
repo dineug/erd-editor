@@ -4,16 +4,13 @@
   "private": true,
   "description": "Entity-Relationship Diagram Editor Schema",
   "type": "module",
-  "main": "./dist/erd-editor-schema.min.js",
+  "main": "./dist/erd-editor-schema.js",
   "module": "./dist/erd-editor-schema.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/erd-editor-schema.js"
-      },
-      "require": "./dist/erd-editor-schema.min.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/erd-editor-schema.js"
     }
   },
   "sideEffects": false,

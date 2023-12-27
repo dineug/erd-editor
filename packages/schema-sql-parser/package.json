@@ -5,13 +5,12 @@
   "description": "Permissive schema SQL parser",
   "type": "module",
   "main": "./dist/schema-sql-parser.js",
+  "module": "./dist/schema-sql-parser.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/schema-sql-parser.js"
-      }
+      "types": "./dist/index.d.ts",
+      "default": "./dist/schema-sql-parser.js"
     }
   },
   "files": [

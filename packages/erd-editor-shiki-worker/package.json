@@ -3,16 +3,13 @@
   "version": "0.1.2",
   "description": "Entity-Relationship Diagram Editor shiki-worker",
   "type": "module",
-  "main": "./dist/erd-editor-shiki-worker.min.js",
+  "main": "./dist/erd-editor-shiki-worker.js",
   "module": "./dist/erd-editor-shiki-worker.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/erd-editor-shiki-worker.js"
-      },
-      "require": "./dist/erd-editor-shiki-worker.min.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/erd-editor-shiki-worker.js"
     }
   },
   "files": [

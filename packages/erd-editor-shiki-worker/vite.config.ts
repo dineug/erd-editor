@@ -23,12 +23,8 @@ export default defineConfig({
   build: {
     lib: {
       entry: './src/index.ts',
-      name: pkg.name,
-      fileName: format =>
-        format === 'es'
-          ? 'erd-editor-shiki-worker.js'
-          : 'erd-editor-shiki-worker.min.js',
-      formats: ['es', 'umd'],
+      fileName: 'erd-editor-shiki-worker',
+      formats: ['es'],
     },
     rollupOptions: {
       output: {

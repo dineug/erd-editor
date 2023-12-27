@@ -3,16 +3,13 @@
   "version": "3.0.4",
   "description": "Entity-Relationship Diagram Editor",
   "type": "module",
-  "main": "./dist/erd-editor.min.js",
+  "main": "./dist/erd-editor.js",
   "module": "./dist/erd-editor.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/erd-editor.js"
-      },
-      "require": "./dist/erd-editor.min.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/erd-editor.js"
     }
   },
   "files": [
