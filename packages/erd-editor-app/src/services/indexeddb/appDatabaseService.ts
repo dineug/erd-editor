@@ -21,10 +21,13 @@ export class AppDatabase extends Dexie {
   }
 }
 
-const db: AppDatabase | null = null;
+let db: AppDatabase | null = null;
 
 function getDB() {
-  return db ? db : new AppDatabase();
+  if (db) return db;
+
+  db = new AppDatabase();
+  return db;
 }
 
 export class AppDatabaseService {
