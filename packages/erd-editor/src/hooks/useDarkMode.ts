@@ -3,7 +3,7 @@ import { observable, onMounted } from '@dineug/r-html';
 import { useUnmounted } from '@/hooks/useUnmounted';
 
 export function useDarkMode() {
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  const mediaQuery = globalThis.matchMedia('(prefers-color-scheme: dark)');
   const state = observable(
     {
       isDark: mediaQuery.matches,

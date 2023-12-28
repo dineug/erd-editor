@@ -1,7 +1,7 @@
 import { Flex, Link, Text } from '@radix-ui/themes';
 import { lazy, Suspense } from 'react';
 
-import { useSchemaEntity } from '@/store/modules/sidebar';
+import { useSchemaEntity } from '@/atoms/modules/sidebar';
 
 import * as styles from './Viewer.styles';
 

@@ -114,7 +114,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   });
 
   const checkAndFocus = () => {
-    window.setTimeout(() => {
+    setTimeout(() => {
       if (document.activeElement !== ctx) {
         ctx.focus();
       }
@@ -126,7 +126,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   };
 
   let currentFocus = false;
-  let timerId = -1;
+  let timerId: any = -1;
 
   const handleFocus = () => {
     currentFocus = true;
@@ -136,8 +136,8 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const handleFocusout = () => {
     currentFocus = false;
 
-    window.clearTimeout(timerId);
-    timerId = window.setTimeout(() => {
+    clearTimeout(timerId);
+    timerId = setTimeout(() => {
       state.isFocus = currentFocus;
     }, 10);
   };

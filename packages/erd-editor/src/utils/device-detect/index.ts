@@ -32,7 +32,7 @@ export const isSafari =
   browser.name === BrowserTypes.MobileSafari;
 
 function getIOS13() {
-  const nav = window.navigator || navigator;
+  const nav = globalThis.navigator || navigator;
   return (
     nav &&
     (/iPad|iPhone|iPod/.test(nav.platform) ||

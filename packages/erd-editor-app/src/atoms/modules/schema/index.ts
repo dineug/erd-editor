@@ -1,9 +1,9 @@
 import { atom, useAtomValue, useSetAtom } from 'jotai';
 import { atomWithImmer } from 'jotai-immer';
 
+import { selectedSchemaIdAtom } from '@/atoms/modules/sidebar';
 import { getAppDatabaseService } from '@/services/indexeddb';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
-import { selectedSchemaIdAtom } from '@/store/modules/sidebar';
 
 const schemaEntitiesAtom = atomWithImmer<Array<Omit<SchemaEntity, 'value'>>>(
   []

@@ -2,16 +2,16 @@ import { Button, Flex, ScrollArea } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
 import { useEffect, useState } from 'react';
 
-import SidebarAddItem from '@/components/sidebar/sidebar-add-item/SidebarAddItem';
-import SidebarItem from '@/components/sidebar/sidebar-item/SidebarItem';
 import {
   useAddSchemaEntity,
   useDeleteSchemaEntity,
   useSchemaEntities,
   useUpdateSchemaEntities,
   useUpdateSchemaEntity,
-} from '@/store/modules/schema';
-import { selectedSchemaIdAtom } from '@/store/modules/sidebar';
+} from '@/atoms/modules/schema';
+import { selectedSchemaIdAtom } from '@/atoms/modules/sidebar';
+import SidebarAddItem from '@/components/sidebar/sidebar-add-item/SidebarAddItem';
+import SidebarItem from '@/components/sidebar/sidebar-item/SidebarItem';
 
 import * as styles from './Sidebar.styles';
 

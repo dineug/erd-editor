@@ -2,17 +2,18 @@ import {
   ErdEditorElement,
   setGetShikiServiceCallback,
 } from '@dineug/erd-editor';
-import { getShikiService } from '@dineug/erd-editor-shiki-worker';
 import { useAtom } from 'jotai';
 import { useLayoutEffect, useRef } from 'react';
 
+import { useUpdateSchemaEntityValue } from '@/atoms/modules/sidebar';
+import { themeAtom } from '@/atoms/modules/theme';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
-import { useUpdateSchemaEntityValue } from '@/store/modules/sidebar';
-import { themeAtom } from '@/store/modules/theme';
 
 import * as styles from './Editor.styles';
 
-setGetShikiServiceCallback(getShikiService);
+import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
+  setGetShikiServiceCallback(getShikiService);
+});
 
 interface EditorProps {
   entity: SchemaEntity;

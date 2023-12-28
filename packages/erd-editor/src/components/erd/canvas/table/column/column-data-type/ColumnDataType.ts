@@ -145,7 +145,7 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
   };
 
   let currentFocus = false;
-  let timerId = -1;
+  let timerId: any = -1;
 
   const handleFocus = () => {
     currentFocus = true;
@@ -156,8 +156,8 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
 
     currentFocus = false;
 
-    window.clearTimeout(timerId);
-    timerId = window.setTimeout(() => {
+    clearTimeout(timerId);
+    timerId = setTimeout(() => {
       const input = root.value?.querySelector('input');
       const isFocus = currentFocus && input && props.edit;
 

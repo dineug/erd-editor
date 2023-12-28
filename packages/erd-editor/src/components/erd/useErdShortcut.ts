@@ -98,7 +98,7 @@ export function useErdShortcut(ctx: Ctx) {
       event.preventDefault();
       store.dispatch(focusMoveTableAction$(event.key, event.shiftKey));
 
-      window.setTimeout(() => {
+      setTimeout(() => {
         if (
           !editor.focusTable ||
           isToggleColumnTypes(editor.focusTable.focusType)

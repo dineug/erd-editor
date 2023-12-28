@@ -3,9 +3,9 @@ import { Theme } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
 import { DevTools } from 'jotai-devtools';
 
+import { themeAtom } from '@/atoms/modules/theme';
 import Sidebar from '@/components/sidebar/Sidebar';
 import Viewer from '@/components/viewer/Viewer';
-import { themeAtom } from '@/store/modules/theme';
 
 import * as styles from './App.styles';
 
