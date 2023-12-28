@@ -25,7 +25,7 @@ const cssSharedContext: CSSSharedContext = {
 };
 
 let supportsAdoptingStyleSheets =
-  window.ShadowRoot &&
+  globalThis.ShadowRoot &&
   'adoptedStyleSheets' in Document.prototype &&
   'replace' in CSSStyleSheet.prototype;
 

@@ -7,7 +7,7 @@ import * as styles from './Viewer.styles';
 
 interface ViewerProps {}
 
-const EditorLazy = lazy(() => import('@/components/viewer/editor/Editor'));
+const LazyEditor = lazy(() => import('@/components/viewer/editor/Editor'));
 
 const Viewer: React.FC<ViewerProps> = () => {
   const value = useSchemaEntity();
@@ -29,7 +29,7 @@ const Viewer: React.FC<ViewerProps> = () => {
         loading
       ) : (
         <Suspense fallback={loading}>
-          <EditorLazy entity={value.data} />
+          <LazyEditor entity={value.data} />
         </Suspense>
       )}
     </Flex>

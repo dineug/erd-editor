@@ -117,14 +117,14 @@ function executeIdle() {
 
     if (queue.length) {
       tickCount++;
-      window.requestIdleCallback(run, idleOptions);
+      requestIdleCallback(run, idleOptions);
     } else {
       executable = true;
       tickCount = 0;
     }
   };
 
-  window.requestIdleCallback(run, idleOptions);
+  requestIdleCallback(run, idleOptions);
 }
 
 function executeAsap() {
