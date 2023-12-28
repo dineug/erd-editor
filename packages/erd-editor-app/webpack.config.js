@@ -116,11 +116,15 @@ module.exports = (env, argv) => {
         start_url: '/',
         display: 'standalone',
         scope: '/',
-        theme_color: '#282c34',
+        theme_color: '#000',
         icons: [
           {
             src: resolvePath('src/assets/erd-editor.png'),
             size: '128x128',
+          },
+          {
+            src: resolvePath('src/assets/erd-editor-192x192.png'),
+            size: '192x192',
           },
           {
             src: resolvePath('src/assets/erd-editor-256x256.png'),
@@ -134,7 +138,7 @@ module.exports = (env, argv) => {
           {
             src: resolvePath('src/assets/erd-editor-512x512.png'),
             size: '512x512',
-            purpose: 'maskable',
+            purpose: 'any maskable',
           },
         ],
       }),
@@ -143,13 +147,21 @@ module.exports = (env, argv) => {
           filename: 'static/css/bundle.[contenthash:8].css',
           chunkFilename: 'static/css/[id].[contenthash:8].css',
         }),
+      new CopyPlugin({
+        patterns: [
+          {
+            from: 'public/**',
+            to: '[name][ext]',
+            globOptions: {
+              ignore: ['**/index.html'],
+            },
+          },
+        ],
+      }),
       new HtmlWebpackPlugin({
         inject: true,
         template: resolvePath('public/index.html'),
       }),
-      // new CopyPlugin({
-      //   patterns: [{ from: 'public/manifest.json' }],
-      // }),
       isDevelopment && new ReactRefreshWebpackPlugin(),
       // new BundleAnalyzerPlugin(),
     ].filter(Boolean),
