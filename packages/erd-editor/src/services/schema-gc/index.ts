@@ -1,8 +1,7 @@
 import * as Comlink from 'comlink';
 
-import SchemaGCSharedWorker from '@/workers/schemaGC.shared-worker?sharedworker&inline';
-import SchemaGCWorker from '@/workers/schemaGC.worker?worker&inline';
-
+import SchemaGCSharedWorker from './schemaGC.shared-worker?sharedworker&inline';
+import SchemaGCWorker from './schemaGC.worker?worker&inline';
 import { SchemaGCService } from './schemaGCService';
 
 export type GCIds = {

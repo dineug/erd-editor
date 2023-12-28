@@ -1,5 +1,6 @@
 const path = require('path');
 const { DefinePlugin } = require('webpack');
+const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const { InjectManifest } = require('workbox-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -10,9 +11,9 @@ const WebpackPwaManifest = require('webpack-pwa-manifest');
 
 const resolvePath = value => path.resolve(__dirname, value);
 
-module.exports = (env, args) => {
-  const isProduction = args.mode === 'production';
-  const isDevelopment = args.mode !== 'production';
+module.exports = (env, argv) => {
+  const isProduction = argv.mode === 'production';
+  const isDevelopment = argv.mode !== 'production';
   const mode = isDevelopment ? 'development' : 'production';
 
   const config = {
@@ -32,12 +33,11 @@ module.exports = (env, args) => {
       path: resolvePath('dist'),
       publicPath: '/',
       filename: isProduction
-        ? 'static/js/[name].[contenthash:8].js'
+        ? 'static/js/bundle.[contenthash:8].js'
         : 'static/js/bundle.js',
       chunkFilename: isProduction
-        ? 'static/js/[name].[contenthash:8].chunk.js'
-        : 'static/js/[name].chunk.js',
-      assetModuleFilename: 'static/media/[name].[hash][ext]',
+        ? 'static/js/[id].[contenthash:8].js'
+        : 'static/js/[name].js',
       clean: true,
     },
     resolve: {
@@ -140,8 +140,8 @@ module.exports = (env, args) => {
       }),
       isProduction &&
         new MiniCssExtractPlugin({
-          filename: 'static/css/[name].[contenthash:8].css',
-          chunkFilename: 'static/css/[name].[contenthash:8].chunk.css',
+          filename: 'static/css/bundle.[contenthash:8].css',
+          chunkFilename: 'static/css/[id].[contenthash:8].css',
         }),
       new HtmlWebpackPlugin({
         inject: true,
@@ -151,6 +151,7 @@ module.exports = (env, args) => {
       //   patterns: [{ from: 'public/manifest.json' }],
       // }),
       isDevelopment && new ReactRefreshWebpackPlugin(),
+      // new BundleAnalyzerPlugin(),
     ].filter(Boolean),
     performance: false,
   };

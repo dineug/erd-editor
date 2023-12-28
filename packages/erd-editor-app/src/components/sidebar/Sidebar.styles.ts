@@ -2,6 +2,7 @@ import { css } from '@emotion/react';
 
 export const root = css`
   width: 260px;
+  min-width: 260px;
   height: 100%;
   overflow: hidden;
   background-color: var(--gray-2);
@@ -14,6 +15,8 @@ export const header = css`
 `;
 
 export const contentArea = css`
+  width: 260px;
+  min-width: 260px;
   padding: 0 12px;
   height: 100%;
 `;

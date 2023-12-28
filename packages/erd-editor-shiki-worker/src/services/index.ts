@@ -1,8 +1,7 @@
 import * as Comlink from 'comlink';
 
-import ShikiSharedWorker from '@/workers/shiki.shared-worker?sharedworker&inline';
-
-// import ShikiWorker from '@/workers/shiki.worker?worker&inline';
+import ShikiSharedWorker from './shiki.shared-worker?sharedworker&inline';
+// import ShikiWorker from './shiki.worker?worker&inline';
 import { ShikiService } from './shikiService';
 
 const WORKER_NAME = `@dineug/erd-editor-shiki-worker?v${__APP_VERSION__}`;

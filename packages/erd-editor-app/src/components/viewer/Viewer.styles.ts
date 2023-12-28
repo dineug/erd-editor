@@ -6,8 +6,7 @@ export const root = css`
   height: 100%;
   overflow: hidden;
   position: relative;
-
-  erd-editor {
-    width: 100%;
-  }
+  align-items: center;
+  justify-content: center;
+  background-color: var(--gray-3);
 `;
