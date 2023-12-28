@@ -29,10 +29,6 @@
       "path": "packages/erd-editor-app"
     },
     {
-      "name": "erd-editor-docs",
-      "path": "packages/erd-editor-docs"
-    },
-    {
       "name": "schema-sql-parser",
       "path": "packages/schema-sql-parser"
     },
