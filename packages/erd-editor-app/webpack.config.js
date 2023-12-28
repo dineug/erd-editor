@@ -105,7 +105,7 @@ module.exports = (env, argv) => {
         new InjectManifest({
           swSrc: './src/sw.ts',
           swDest: 'sw.js',
-          exclude: [/\.map$/, /manifest\.json$/, /LICENSE/],
+          exclude: [/\.map$/, /LICENSE/],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         }),
       new WebpackPwaManifest({

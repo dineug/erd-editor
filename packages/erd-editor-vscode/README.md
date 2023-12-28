@@ -23,3 +23,7 @@ create an empty file with a `.erd`, `.erd.json` extension and open it in Visual 
 ## Migration Guide
 
 rename files with the extensions `.vuerd` and `.vuerd.json` to `.erd` and `.erd.json` respectively.
+
+## Reference
+
+- [Web App](https://erd-editor.io)
