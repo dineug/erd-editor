@@ -1,4 +1,4 @@
-import { Flex, Text } from '@radix-ui/themes';
+import { Flex, Link, Text } from '@radix-ui/themes';
 import { lazy, Suspense } from 'react';
 
 import { useSchemaEntity } from '@/store/modules/sidebar';
@@ -14,9 +14,17 @@ const Viewer: React.FC<ViewerProps> = () => {
   const loading = <Text size="4">Loading...</Text>;
 
   return (
-    <Flex css={styles.root}>
+    <Flex css={styles.root} direction="column" align="center" justify="center">
       {value.state === 'hasError' ? (
-        <Text size="4">Please choose Schema</Text>
+        <>
+          <Text size="4">Select or create a schema.</Text>
+          <Link
+            href="https://docs.erd-editor.io/docs/category/guides"
+            target="_blank"
+          >
+            Editing Guide
+          </Link>
+        </>
       ) : value.state === 'loading' ? (
         loading
       ) : (

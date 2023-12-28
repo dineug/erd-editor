@@ -57,7 +57,5 @@ export async function getSchemaEntities(
   db: AppDatabase
 ): Promise<Array<Omit<SchemaEntity, 'value'>>> {
   const list = await db.table<SchemaEntity>('schemas').toArray();
-  return list
-    .map(item => omit(item, 'value'))
-    .sort((a, b) => b.updateAt - a.updateAt);
+  return list.map(item => omit(item, 'value'));
 }

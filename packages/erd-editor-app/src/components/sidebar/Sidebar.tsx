@@ -1,9 +1,11 @@
-import { Flex, ScrollArea } from '@radix-ui/themes';
+import { Button, Flex, ScrollArea } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
+import SidebarAddItem from '@/components/sidebar/sidebar-add-item/SidebarAddItem';
 import SidebarItem from '@/components/sidebar/sidebar-item/SidebarItem';
 import {
+  useAddSchemaEntity,
   useDeleteSchemaEntity,
   useSchemaEntities,
   useUpdateSchemaEntities,
@@ -20,7 +22,17 @@ const Sidebar: React.FC<SidebarProps> = () => {
   const updateSchemaEntities = useUpdateSchemaEntities();
   const updateSchemaEntity = useUpdateSchemaEntity();
   const deleteSchemaEntity = useDeleteSchemaEntity();
+  const addSchemaEntity = useAddSchemaEntity();
   const [schemaId, setSchemaId] = useAtom(selectedSchemaIdAtom);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleStartEditing = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEditing = () => {
+    setIsEditing(false);
+  };
 
   useEffect(() => {
     updateSchemaEntities();
@@ -28,7 +40,16 @@ const Sidebar: React.FC<SidebarProps> = () => {
 
   return (
     <Flex css={styles.root} direction="column">
-      <Flex css={styles.header}>header</Flex>
+      <Flex css={styles.header}>
+        <Button
+          css={styles.addButton}
+          size="3"
+          variant="soft"
+          onClick={handleStartEditing}
+        >
+          New Schema
+        </Button>
+      </Flex>
       <ScrollArea scrollbars="vertical">
         <Flex css={styles.contentArea} direction="column">
           {schemaEntities.map(entity => (
@@ -43,6 +64,15 @@ const Sidebar: React.FC<SidebarProps> = () => {
               onSelect={() => setSchemaId(entity.id)}
             />
           ))}
+          {isEditing ? (
+            <SidebarAddItem
+              onConfirm={name => {
+                handleCancelEditing();
+                addSchemaEntity({ name });
+              }}
+              onCancel={handleCancelEditing}
+            />
+          ) : null}
         </Flex>
       </ScrollArea>
     </Flex>

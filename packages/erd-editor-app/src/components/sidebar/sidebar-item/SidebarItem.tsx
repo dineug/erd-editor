@@ -31,12 +31,13 @@ const SidebarItem: React.FC<SidebarItemProps> = props => {
   };
 
   const handleStopEditing = () => {
-    const newName = isEmpty(name.trim()) ? props.value : name;
-    if (newName !== props.value) {
-      props.onChange(newName);
+    const value = name.trim();
+    const newValue = isEmpty(value) ? props.value : value;
+    if (newValue !== props.value) {
+      props.onChange(newValue);
     }
     setIsEditing(false);
-    setName(newName);
+    setName(newValue);
   };
 
   const handleCancelEditing = () => {

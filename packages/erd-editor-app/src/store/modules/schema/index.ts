@@ -14,6 +14,11 @@ const updateSchemaEntitiesAtom = atom(null, async (get, set) => {
   if (!service) throw new Error('Database service is not initialized');
 
   const entities = await service.getSchemaEntities();
+  entities.sort((a, b) => {
+    const nameA = a.name.toLowerCase();
+    const nameB = b.name.toLowerCase();
+    return nameA < nameB ? -1 : nameA > nameB ? 1 : 0;
+  });
   set(schemaEntitiesAtom, entities);
 });
 
