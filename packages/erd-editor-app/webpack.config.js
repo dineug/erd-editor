@@ -119,16 +119,8 @@ module.exports = (env, argv) => {
         theme_color: '#000',
         icons: [
           {
-            src: resolvePath('src/assets/erd-editor.png'),
-            size: '128x128',
-          },
-          {
             src: resolvePath('src/assets/erd-editor-192x192.png'),
             size: '192x192',
-          },
-          {
-            src: resolvePath('src/assets/erd-editor-256x256.png'),
-            size: '256x256',
           },
           {
             src: resolvePath('src/assets/erd-editor-512x512.png'),

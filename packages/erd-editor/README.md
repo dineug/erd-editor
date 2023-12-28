@@ -345,5 +345,5 @@ editor.setTheme({...});
 ## Document
 
 - [Web App](https://erd-editor.io)
-- [vscode extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
+- [VSCode Extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
 - [Editing Guide](https://docs.erd-editor.io/docs/category/guides)
