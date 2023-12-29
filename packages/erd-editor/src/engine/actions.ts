@@ -85,6 +85,7 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'table.changeName',
   'table.changeComment',
   'table.changeColor',
+  'table.sort',
   // column
   'column.add',
   'column.remove',
@@ -158,8 +159,23 @@ const hasReadonlyIgnore = arrayHas([
   'settings.changeMaxWidthComment',
 ]);
 
-export const ReadonlyIgnoreActionTypes: ReadonlyArray<ActionType> =
-  ChangeActionTypes.filter(type => !hasReadonlyIgnore(type));
+export const ReadonlyIgnoreActionTypes: ReadonlyArray<ActionType> = [
+  ...ChangeActionTypes.filter(type => !hasReadonlyIgnore(type)),
+];
+
+const hasSharedIgnore = arrayHas([
+  'settings.changeZoomLevel',
+  'settings.streamZoomLevel',
+  'settings.scrollTo',
+  'settings.streamScrollTo',
+  'settings.changeCanvasType',
+  'settings.changeRelationshipDataTypeSync',
+  'settings.changeRelationshipOptimization',
+]);
+
+export const SharedActionTypes: ReadonlyArray<ActionType> = [
+  ...ChangeActionTypes.filter(type => !hasSharedIgnore(type)),
+];
 
 export const StreamRegroupMoveActionTypes: ReadonlyArray<ActionType> = [
   'table.move',

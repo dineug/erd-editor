@@ -8,12 +8,14 @@ export type Action<K extends keyof M, M> = {
   payload: M[K];
   timestamp: number;
   tags?: number;
+  meta?: Record<string, any>;
 };
 export type AnyAction<P = any> = {
   type: string;
   payload: P;
   timestamp: number;
   tags?: number;
+  meta?: Record<string, any>;
 };
 
 export type GeneratorAction<T = AnyAction> = Generator<
@@ -47,6 +49,7 @@ type Options<S, M, C> = {
   context: C;
   state: S;
   reducers: ReducerRecord<S, keyof M, M, C>;
+  enableObservable?: boolean;
 };
 
 export type DispatchOperator = (
@@ -120,8 +123,9 @@ export function createStore<S, M, C = {}>({
   context,
   state: initialState,
   reducers,
+  enableObservable = true,
 }: Options<S, M, C>): Store<S, C> {
-  const state = observable(initialState);
+  const state = enableObservable ? observable(initialState) : initialState;
   const beforeSubject = createSubject<Array<AnyAction>>();
   const subject = createSubject<Array<AnyAction>>();
   let operator: DispatchOperator = pipe(notEmptyActions);

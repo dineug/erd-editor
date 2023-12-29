@@ -32,8 +32,7 @@ export type PushUndoHistory = (
 export type PushStreamHistory = (
   undoActions: AnyAction[],
   redoActions: AnyAction[],
-  actions: AnyAction[],
-  state: RootState
+  actions: AnyAction[]
 ) => void;
 
 export const pushUndoHistoryMap: Record<string, PushUndoHistory> = {
@@ -62,11 +61,11 @@ function push(store: Store, history: History, actions: AnyAction[]) {
     if (!pushUndoHistory) continue;
 
     pushUndoHistory(undoActions, action, store.state);
-    redoActions.push(action);
+    redoActions.push(cloneDeep(action));
   }
 
   for (const key of Object.keys(pushStreamHistoryMap)) {
-    pushStreamHistoryMap[key](undoActions, redoActions, actions, store.state);
+    pushStreamHistoryMap[key](undoActions, redoActions, actions);
   }
 
   if (!undoActions.length || !redoActions.length) return;

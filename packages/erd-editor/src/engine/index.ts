@@ -1,2 +1,2 @@
 export { type Actions, actions } from './actions';
-export { createRxStore, type RxStore } from './rx-store';
+export { createRxStoreReplication } from './rx-store-replication';

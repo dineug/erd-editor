@@ -12,9 +12,9 @@ export function useUnmounted() {
   };
 
   onUnmounted(() => {
-    for (const unsubscribe of unsubscribeSet) {
-      isFunction(unsubscribe) ? unsubscribe() : unsubscribe.unsubscribe();
-    }
+    Array.from(unsubscribeSet).forEach(unsubscribe =>
+      isFunction(unsubscribe) ? unsubscribe() : unsubscribe.unsubscribe()
+    );
     unsubscribeSet.clear();
   });
 

@@ -26,11 +26,27 @@ function runStats() {
 function runEditor() {
   const editor = document.createElement('erd-editor');
   editor.enableThemeBuilder = true;
+  editor.setAttribute('style', 'display: block; height: 50%;');
   document.body.appendChild(editor);
+
+  return editor;
 }
 
+setGetShikiServiceCallback(getShikiService);
 // cssUnwrap();
 hmr();
 runStats();
-runEditor();
-setGetShikiServiceCallback(getShikiService);
+
+const editor1 = runEditor();
+const editor2 = runEditor();
+
+const sharedStore1 = editor1.getSharedStore({ nickname: 'editor1' });
+const sharedStore2 = editor2.getSharedStore({ nickname: 'editor2' });
+
+sharedStore1.subscribe(actions => {
+  sharedStore2.dispatch(actions);
+});
+
+sharedStore2.subscribe(actions => {
+  sharedStore1.dispatch(actions);
+});

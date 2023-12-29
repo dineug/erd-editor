@@ -9,7 +9,8 @@ import { cloneDeep } from 'lodash-es';
 import { GeneratorAction } from '@/engine/generator.actions';
 
 export const Tag = {
-  shared: /* */ 0b0000000000000000000000000000001,
+  shared: /*     */ 0b0000000000000000000000000000001,
+  changeOnly: /* */ 0b0000000000000000000000000000010,
 } as const;
 
 export function attachActionTag(
@@ -31,3 +32,4 @@ const createAttachActionTag =
     };
 
 export const attachSharedTag$ = createAttachActionTag(Tag.shared);
+export const attachChangeOnlyTag$ = createAttachActionTag(Tag.changeOnly);

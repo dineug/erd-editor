@@ -75,6 +75,10 @@ export class Emitter<M extends InternalActionMap = InternalActionMap> {
       safeCallback(reducer, action);
     });
   }
+
+  clear() {
+    this.#observers.clear();
+  }
 }
 
 export const openColorPickerAction = createAction<

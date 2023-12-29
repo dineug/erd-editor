@@ -25,7 +25,7 @@ import {
 } from '@/engine/rx-operators';
 import { readonlyIgnoreFilter } from '@/engine/rx-operators/readonlyIgnoreFilter';
 import { createStore, Store } from '@/engine/store';
-import { createHooks } from '@/engine/store.hooks';
+import { createHooks } from '@/engine/store-hooks';
 import { Tag } from '@/engine/tag';
 
 export type RxStore = Store & {
@@ -51,7 +51,7 @@ export function createRxStore(
   const dispatch$ = new Subject<Array<AnyAction>>();
   const history$ = dispatch$.pipe(
     actionsFilter(HistoryActionTypes),
-    ignoreTagFilter(Tag.shared),
+    ignoreTagFilter([Tag.changeOnly, Tag.shared]),
     readonlyIgnoreFilter(getReadonly),
     groupByStreamActions(StreamActionTypes, [
       ['@@move', StreamRegroupMoveActionTypes],
@@ -63,7 +63,7 @@ export function createRxStore(
     store.subscribe(actions => subscriber.next(actions))
   ).pipe(
     actionsFilter(ChangeActionTypes),
-    readonlyIgnoreFilter(getReadonly),
+    readonlyIgnoreFilter(getReadonly, [Tag.shared]),
     debounceTime(200)
   );
 
@@ -82,6 +82,7 @@ export function createRxStore(
     store.destroy();
     hooks.destroy();
     history.clear();
+    dispatch$.complete();
   };
 
   const undo = () => {
@@ -95,7 +96,7 @@ export function createRxStore(
     .add(history$.subscribe(pushHistory(store, history)))
     .add(
       dispatch$
-        .pipe(readonlyIgnoreFilter(getReadonly))
+        .pipe(readonlyIgnoreFilter(getReadonly, [Tag.shared]))
         .subscribe(store.dispatchSync)
     );
 

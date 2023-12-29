@@ -22,7 +22,7 @@ import {
   addIndexColumnAction$,
   removeIndexColumnAction$,
 } from '@/engine/modules/index-column/generator.actions';
-import { attachSharedTag$ } from '@/engine/tag';
+import { attachChangeOnlyTag$ } from '@/engine/tag';
 import { Column, Index } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcTableWidths, ColumnWidth } from '@/utils/calcTable';
@@ -164,7 +164,7 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
       ? addIndexColumnAction$
       : removeIndexColumnAction$;
 
-    store.dispatch(attachSharedTag$(action$(props.index.id, column.id)));
+    store.dispatch(attachChangeOnlyTag$(action$(props.index.id, column.id)));
   };
 
   return () => {

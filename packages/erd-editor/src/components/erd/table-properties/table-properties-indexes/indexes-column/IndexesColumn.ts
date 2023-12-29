@@ -9,7 +9,7 @@ import {
   changeIndexColumnOrderTypeAction$,
   moveIndexColumnAction$,
 } from '@/engine/modules/index-column/generator.actions';
-import { attachSharedTag$ } from '@/engine/tag';
+import { attachChangeOnlyTag$ } from '@/engine/tag';
 import { Index, IndexColumn } from '@/internal-types';
 import { onPrevent } from '@/utils/domEvent';
 import { FlipAnimation } from '@/utils/flipAnimation';
@@ -47,7 +47,9 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
 
     if (id !== targetId) {
       flipAnimation.snapshot();
-      store.dispatch(attachSharedTag$(moveIndexColumnAction$(id, targetId)));
+      store.dispatch(
+        attachChangeOnlyTag$(moveIndexColumnAction$(id, targetId))
+      );
     }
   };
 
@@ -79,7 +81,7 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
   const handleChangeOrderType = (indexColumn: IndexColumn) => {
     const { store } = app.value;
     store.dispatch(
-      attachSharedTag$(changeIndexColumnOrderTypeAction$(indexColumn.id))
+      attachChangeOnlyTag$(changeIndexColumnOrderTypeAction$(indexColumn.id))
     );
   };
 

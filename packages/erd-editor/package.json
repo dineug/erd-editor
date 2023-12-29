@@ -11,7 +11,7 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/erd-editor.js"
     },
-    "./engine": {
+    "./engine.js": {
       "types": "./dist/engine/index.d.ts",
       "default": "./dist/engine.js"
     }

@@ -54,6 +54,7 @@ interface ErdEditorElement extends HTMLElement {
   setKeyBindingMap: (keyBindingMap: Partial<KeyBindingMap>) => void;
   setSchemaSQL: (value: string) => void;
   getSchemaSQL: (databaseVendor?: DatabaseVendor) => string;
+  getSharedStore: (config?: SharedStoreConfig) => SharedStore;
 }
 ```
 

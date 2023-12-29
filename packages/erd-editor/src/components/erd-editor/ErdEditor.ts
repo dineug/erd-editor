@@ -32,6 +32,7 @@ import {
   changeOpenMapAction,
   changeViewportAction,
 } from '@/engine/modules/editor/atom.actions';
+import { SharedStore, SharedStoreConfig } from '@/engine/shared-store';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getSchemaGCService } from '@/services/schema-gc';
@@ -83,6 +84,7 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   ) => void;
   setSchemaSQL: (value: string) => void;
   getSchemaSQL: (databaseVendor?: DatabaseVendor) => string;
+  getSharedStore: (config?: SharedStoreConfig) => SharedStore;
 }
 
 const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
@@ -212,7 +214,6 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   };
 
   return () => {
-    const { store } = appContextValue;
     const { settings } = store.state;
     const isDarkMode = hasDarkMode();
 

@@ -14,6 +14,7 @@ import {
   loadJsonAction$,
   loadSchemaSQLAction$,
 } from '@/engine/modules/editor/generator.actions';
+import { createSharedStore } from '@/engine/shared-store';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { Unsubscribe } from '@/internal-types';
@@ -160,10 +161,8 @@ export function useErdEditorAttachElement({
     store.destroy();
     shortcut$.complete();
     keydown$.complete();
-
-    for (const destroy of destroySet) {
-      destroy();
-    }
+    emitter.clear();
+    Array.from(destroySet).forEach(destroy => destroy());
     destroySet.clear();
   };
 
@@ -225,6 +224,19 @@ export function useErdEditorAttachElement({
       ? get(DatabaseVendorToDatabase, databaseVendor ?? '')
       : undefined;
     return createSchemaSQL(store.state, database);
+  };
+
+  ctx.getSharedStore = config => {
+    const sharedStore = createSharedStore(store, config);
+    destroySet.add(sharedStore.destroy);
+
+    return {
+      ...sharedStore,
+      destroy: () => {
+        sharedStore.destroy();
+        destroySet.delete(sharedStore.destroy);
+      },
+    };
   };
 
   Object.defineProperty(ctx, 'value', {

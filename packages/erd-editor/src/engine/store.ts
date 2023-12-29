@@ -16,7 +16,10 @@ import { RootState } from '@/engine/state';
 
 export type Store = StoreType<RootState, EngineContext>;
 
-export function createStore(context: EngineContext): Store {
+export function createStore(
+  context: EngineContext,
+  enableObservable?: boolean
+): Store {
   return runStore<RootState, RootActionMap, EngineContext>({
     context,
     state: {
@@ -33,5 +36,6 @@ export function createStore(context: EngineContext): Store {
       ...indexReducers,
       ...indexColumnReducers,
     },
+    enableObservable: enableObservable ?? true,
   });
 }
