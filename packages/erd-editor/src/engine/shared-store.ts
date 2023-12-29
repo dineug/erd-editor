@@ -1,21 +1,13 @@
 import { AnyAction } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
-import { last, pick } from 'lodash-es';
-import { map, Observable, Subscription, throttleTime } from 'rxjs';
+import { pick } from 'lodash-es';
+import { map, Observable, Subject, Subscription } from 'rxjs';
 
-import {
-  SharedActionTypes,
-  SharedStreamActionTypes,
-  StreamActionTypes,
-  StreamRegroupColorActionTypes,
-  StreamRegroupMoveActionTypes,
-  StreamRegroupScrollActionTypes,
-} from '@/engine/actions';
-import { pushStreamHistoryMap } from '@/engine/history.actions';
+import { SharedActionTypes } from '@/engine/actions';
 import {
   actionsFilter,
-  groupByStreamActions,
+  bufferCircuitBreaker,
   ignoreTagFilter,
+  sharedStreamActionsCompressor,
 } from '@/engine/rx-operators';
 import { RxStore } from '@/engine/rx-store';
 import { attachActionTag, Tag } from '@/engine/tag';
@@ -25,6 +17,8 @@ type CompositionSharedAction = AnyAction | Array<CompositionSharedAction>;
 type CompositionSharedActions = Array<CompositionSharedAction>;
 
 export type SharedStore = {
+  connection: () => void;
+  disconnect: () => void;
   dispatch: (...actions: CompositionSharedActions) => void;
   dispatchSync: (...actions: CompositionSharedActions) => void;
   subscribe: (fn: (value: AnyAction[]) => void) => Unsubscribe;
@@ -35,9 +29,6 @@ export type SharedStoreConfig = {
   nickname?: string;
 };
 
-const hasStreamActionTypes = arrayHas<string>(StreamActionTypes);
-const hasSharedStreamActionTypes = arrayHas<string>(SharedStreamActionTypes);
-
 export function createSharedStore(
   store: RxStore,
   config?: SharedStoreConfig
@@ -45,44 +36,66 @@ export function createSharedStore(
   const editorId = store.state.editor.id;
   const sharedMeta = { ...pick(config, 'nickname'), editorId };
   const subscriptionSet = new Set<Subscription>();
-  const subscribe$ = new Observable<Array<AnyAction>>(subscriber =>
-    store.subscribe(actions => subscriber.next(actions))
-  ).pipe(
-    actionsFilter(SharedActionTypes),
-    ignoreTagFilter([Tag.shared]),
-    groupByStreamActions(SharedStreamActionTypes, [], throttleTime(100)),
-    map(actions =>
-      hasSharedStreamActionTypes(actions[0]?.type)
-        ? [last(actions) as AnyAction]
-        : actions
-    ),
-    groupByStreamActions(StreamActionTypes, [
-      ['@@move', StreamRegroupMoveActionTypes],
-      ['@@scroll', StreamRegroupScrollActionTypes],
-      ['@@color', StreamRegroupColorActionTypes],
-    ]),
-    map(actions => {
-      if (!hasStreamActionTypes(actions[0]?.type)) {
-        return actions;
-      }
+  const observerSubscriptionSet = new Set<Subscription>();
+  const observer$ = new Subject<Array<AnyAction>>();
+  const openingNotifier$ = new Subject<void>();
+  const closingNotifier$ = new Subject<void>();
 
-      const redoActions: AnyAction[] = [];
-      for (const key of Object.keys(pushStreamHistoryMap)) {
-        pushStreamHistoryMap[key]([], redoActions, actions);
-      }
+  let isConnection = true;
 
-      return redoActions.length ? redoActions : actions;
-    }),
-    map(actions =>
-      attachActionTag(
-        Tag.shared,
-        actions.map(action => ({
-          ...action,
-          meta: Object.assign({}, action.meta ?? {}, sharedMeta),
-        }))
-      )
+  subscriptionSet.add(
+    new Observable<Array<AnyAction>>(subscriber =>
+      store.subscribe(actions => subscriber.next(actions))
     )
+      .pipe(
+        actionsFilter(SharedActionTypes),
+        ignoreTagFilter([Tag.shared]),
+        sharedStreamActionsCompressor,
+        bufferCircuitBreaker(openingNotifier$, closingNotifier$),
+        sharedStreamActionsCompressor,
+        map(actions =>
+          attachActionTag(
+            Tag.shared,
+            actions.map(action => ({
+              ...action,
+              meta: Object.assign({}, action.meta ?? {}, sharedMeta),
+            }))
+          )
+        )
+      )
+      .subscribe(actions => observer$.next(actions))
   );
+
+  const halfOpenNotify = () => {
+    const isSubscribe = 0 < observerSubscriptionSet.size;
+    if (isConnection && isSubscribe) {
+      openingNotifier$.next();
+    } else {
+      closingNotifier$.next();
+    }
+  };
+
+  const subscribe = (fn: (value: AnyAction[]) => void) => {
+    const subscription = observer$.subscribe(actions => fn(actions));
+    observerSubscriptionSet.add(subscription);
+    halfOpenNotify();
+
+    return () => {
+      subscription.unsubscribe();
+      observerSubscriptionSet.delete(subscription);
+      halfOpenNotify();
+    };
+  };
+
+  const connection = () => {
+    isConnection = true;
+    halfOpenNotify();
+  };
+
+  const disconnect = () => {
+    isConnection = false;
+    halfOpenNotify();
+  };
 
   const dispatchSync = (...actions: CompositionSharedActions) => {
     store.dispatchSync(actions);
@@ -92,22 +105,16 @@ export function createSharedStore(
     store.dispatch(actions);
   };
 
-  const subscribe = (fn: (value: AnyAction[]) => void) => {
-    const subscription = subscribe$.subscribe(actions => fn(actions));
-    subscriptionSet.add(subscription);
-
-    return () => {
-      subscription.unsubscribe();
-      subscriptionSet.delete(subscription);
-    };
-  };
-
   const destroy = () => {
     Array.from(subscriptionSet).forEach(sub => sub.unsubscribe());
+    Array.from(observerSubscriptionSet).forEach(sub => sub.unsubscribe());
     subscriptionSet.clear();
+    observerSubscriptionSet.clear();
   };
 
   return Object.freeze({
+    connection,
+    disconnect,
     dispatch,
     dispatchSync,
     subscribe,

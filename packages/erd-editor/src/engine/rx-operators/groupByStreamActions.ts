@@ -68,7 +68,7 @@ export const groupByStreamActions = (
           ? group$
           : group$.pipe(
               buffer(group$.pipe(bufferClosingNotifierOperator)),
-              map(buff => buff.flat(2))
+              map(buff => buff.flat())
             )
       )
     );

@@ -148,15 +148,12 @@ const hasReadonlyIgnore = arrayHas([
   'settings.streamZoomLevel',
   'settings.scrollTo',
   'settings.streamScrollTo',
-  'settings.changeShow',
   'settings.changeDatabase',
   'settings.changeCanvasType',
   'settings.changeLanguage',
   'settings.changeTableNameCase',
   'settings.changeColumnNameCase',
   'settings.changeBracketType',
-  'settings.changeColumnOrder',
-  'settings.changeMaxWidthComment',
 ]);
 
 export const ReadonlyIgnoreActionTypes: ReadonlyArray<ActionType> = [
@@ -169,8 +166,6 @@ const hasSharedIgnore = arrayHas([
   'settings.scrollTo',
   'settings.streamScrollTo',
   'settings.changeCanvasType',
-  'settings.changeRelationshipDataTypeSync',
-  'settings.changeRelationshipOptimization',
 ]);
 
 export const SharedStreamActionTypes: ReadonlyArray<ActionType> = [

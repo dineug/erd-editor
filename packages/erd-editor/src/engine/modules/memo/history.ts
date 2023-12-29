@@ -76,36 +76,41 @@ const moveMemo: PushStreamHistory = (undoActions, redoActions, actions) => {
     actions.filter(action => action.type === moveMemoAction.type);
   if (!moveMemoActions.length) return;
 
-  const {
-    payload: { ids },
-  } = first(moveMemoActions) as ReturnType<typeof moveMemoAction>;
+  const group = groupBy(moveMemoActions, action =>
+    action.payload.ids.join(',')
+  );
 
-  let accX = 0;
-  let accY = 0;
+  for (const [, actions] of Object.entries(group)) {
+    const {
+      payload: { ids },
+    } = first(actions) as ReturnType<typeof moveMemoAction>;
 
-  for (const {
-    payload: { movementX, movementY },
-  } of moveMemoActions) {
-    accX += movementX;
-    accY += movementY;
+    const { x, y } = actions.reduce(
+      (acc, { payload: { movementX, movementY } }) => {
+        acc.x += movementX;
+        acc.y += movementY;
+        return acc;
+      },
+      { x: 0, y: 0 }
+    );
+
+    if (Math.abs(x) + Math.abs(y) < MOVE_MIN) continue;
+
+    undoActions.push(
+      moveMemoAction({
+        ids,
+        movementX: -1 * x,
+        movementY: -1 * y,
+      })
+    );
+    redoActions.push(
+      moveMemoAction({
+        ids,
+        movementX: x,
+        movementY: y,
+      })
+    );
   }
-
-  if (Math.abs(accX) + Math.abs(accY) < MOVE_MIN) return;
-
-  undoActions.push(
-    moveMemoAction({
-      ids,
-      movementX: -1 * accX,
-      movementY: -1 * accY,
-    })
-  );
-  redoActions.push(
-    moveMemoAction({
-      ids,
-      movementX: accX,
-      movementY: accY,
-    })
-  );
 };
 
 const changeMemoColor: PushStreamHistory = (
@@ -148,10 +153,19 @@ const changeMemoColor: PushStreamHistory = (
 const resizeMemo: PushStreamHistory = (undoActions, redoActions, actions) => {
   const resizeMemoActions: Array<ReturnType<typeof resizeMemoAction>> =
     actions.filter(action => action.type === resizeMemoAction.type);
-  if (resizeMemoActions.length < 2) return;
+  if (!resizeMemoActions.length) return;
 
-  undoActions.push(first(resizeMemoActions)!);
-  redoActions.push(last(resizeMemoActions)!);
+  const group = groupBy(resizeMemoActions, action => action.payload.id);
+
+  for (const [, actions] of Object.entries(group)) {
+    if (actions.length < 2) continue;
+
+    const firstAction = first(actions) as ReturnType<typeof resizeMemoAction>;
+    const lastAction = last(actions) as ReturnType<typeof resizeMemoAction>;
+
+    undoActions.push(firstAction);
+    redoActions.push(lastAction);
+  }
 };
 
 export const memoPushStreamHistoryMap = {

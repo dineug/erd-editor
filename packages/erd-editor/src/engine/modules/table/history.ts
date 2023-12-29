@@ -91,36 +91,41 @@ const moveTable: PushStreamHistory = (undoActions, redoActions, actions) => {
     actions.filter(action => action.type === moveTableAction.type);
   if (!moveTableActions.length) return;
 
-  const {
-    payload: { ids },
-  } = first(moveTableActions) as ReturnType<typeof moveTableAction>;
+  const group = groupBy(moveTableActions, action =>
+    action.payload.ids.join(',')
+  );
 
-  let accX = 0;
-  let accY = 0;
+  for (const [, actions] of Object.entries(group)) {
+    const {
+      payload: { ids },
+    } = first(actions) as ReturnType<typeof moveTableAction>;
 
-  for (const {
-    payload: { movementX, movementY },
-  } of moveTableActions) {
-    accX += movementX;
-    accY += movementY;
+    const { x, y } = actions.reduce(
+      (acc, { payload: { movementX, movementY } }) => {
+        acc.x += movementX;
+        acc.y += movementY;
+        return acc;
+      },
+      { x: 0, y: 0 }
+    );
+
+    if (Math.abs(x) + Math.abs(y) < MOVE_MIN) continue;
+
+    undoActions.push(
+      moveTableAction({
+        ids,
+        movementX: -1 * x,
+        movementY: -1 * y,
+      })
+    );
+    redoActions.push(
+      moveTableAction({
+        ids,
+        movementX: x,
+        movementY: y,
+      })
+    );
   }
-
-  if (Math.abs(accX) + Math.abs(accY) < MOVE_MIN) return;
-
-  undoActions.push(
-    moveTableAction({
-      ids,
-      movementX: -1 * accX,
-      movementY: -1 * accY,
-    })
-  );
-  redoActions.push(
-    moveTableAction({
-      ids,
-      movementX: accX,
-      movementY: accY,
-    })
-  );
 };
 
 const changeTableColor: PushStreamHistory = (

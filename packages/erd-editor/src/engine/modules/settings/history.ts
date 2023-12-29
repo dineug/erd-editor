@@ -54,28 +54,27 @@ const streamScrollTo: PushStreamHistory = (
     actions.filter(action => action.type === streamScrollToAction.type);
   if (!streamScrollToActions.length) return;
 
-  let accX = 0;
-  let accY = 0;
+  const { x, y } = streamScrollToActions.reduce(
+    (acc, { payload: { movementX, movementY } }) => {
+      acc.x += movementX;
+      acc.y += movementY;
+      return acc;
+    },
+    { x: 0, y: 0 }
+  );
 
-  for (const {
-    payload: { movementX, movementY },
-  } of streamScrollToActions) {
-    accX += movementX;
-    accY += movementY;
-  }
-
-  if (Math.abs(accX) + Math.abs(accY) < MOVE_MIN) return;
+  if (Math.abs(x) + Math.abs(y) < MOVE_MIN) return;
 
   undoActions.push(
     streamScrollToAction({
-      movementX: -1 * accX,
-      movementY: -1 * accY,
+      movementX: -1 * x,
+      movementY: -1 * y,
     })
   );
   redoActions.push(
     streamScrollToAction({
-      movementX: accX,
-      movementY: accY,
+      movementX: x,
+      movementY: y,
     })
   );
 };
