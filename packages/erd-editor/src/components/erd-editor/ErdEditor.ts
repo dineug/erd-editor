@@ -84,7 +84,9 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   ) => void;
   setSchemaSQL: (value: string) => void;
   getSchemaSQL: (databaseVendor?: DatabaseVendor) => string;
-  getSharedStore: (config?: SharedStoreConfig) => SharedStore;
+  getSharedStore: (
+    config?: SharedStoreConfig & { mouseTracker?: boolean }
+  ) => SharedStore;
 }
 
 const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {

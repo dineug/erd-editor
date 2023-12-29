@@ -14,7 +14,7 @@ import {
   loadJsonAction$,
   loadSchemaSQLAction$,
 } from '@/engine/modules/editor/generator.actions';
-import { createSharedStore } from '@/engine/shared-store';
+import { createSharedStore, SharedStore } from '@/engine/shared-store';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { Unsubscribe } from '@/internal-types';
@@ -29,7 +29,11 @@ import {
   ThemeOptions,
 } from '@/themes/radix-ui-theme';
 import { Theme, ThemeTokens } from '@/themes/tokens';
-import { schemaGCAction } from '@/utils/emitter';
+import {
+  mouseTrackerEndAction,
+  mouseTrackerStartAction,
+  schemaGCAction,
+} from '@/utils/emitter';
 import { KeyBindingName, KeyBindingNameList } from '@/utils/keyboard-shortcut';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import { hasDatabaseVendor, toSafeString } from '@/utils/validation';
@@ -90,6 +94,7 @@ export function useErdEditorAttachElement({
 
   const darkMode = useDarkMode();
   const { addUnsubscribe } = useUnmounted();
+  const sharedStoreSet = new Set<SharedStore>();
 
   const emitChange = () => {
     getReadonly() || ctx.dispatchEvent(new CustomEvent('change'));
@@ -163,7 +168,9 @@ export function useErdEditorAttachElement({
     keydown$.complete();
     emitter.clear();
     Array.from(destroySet).forEach(destroy => destroy());
+    Array.from(sharedStoreSet).forEach(sharedStore => sharedStore.destroy());
     destroySet.clear();
+    sharedStoreSet.clear();
   };
 
   ctx.setInitialValue = value => {
@@ -227,16 +234,25 @@ export function useErdEditorAttachElement({
   };
 
   ctx.getSharedStore = config => {
+    const mouseTracker = config?.mouseTracker ?? true;
     const sharedStore = createSharedStore(store, config);
-    destroySet.add(sharedStore.destroy);
+    sharedStoreSet.add(sharedStore);
 
-    return {
+    if (mouseTracker) {
+      emitter.emit(mouseTrackerStartAction());
+    }
+
+    return Object.freeze({
       ...sharedStore,
       destroy: () => {
         sharedStore.destroy();
-        destroySet.delete(sharedStore.destroy);
+        sharedStoreSet.delete(sharedStore);
+
+        if (sharedStoreSet.size === 0) {
+          emitter.emit(mouseTrackerEndAction());
+        }
       },
-    };
+    });
   };
 
   Object.defineProperty(ctx, 'value', {

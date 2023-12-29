@@ -1,6 +1,14 @@
 import { AnyAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
-import { buffer, debounceTime, groupBy, map, mergeMap, Observable } from 'rxjs';
+import {
+  buffer,
+  debounceTime,
+  groupBy,
+  map,
+  mergeMap,
+  MonoTypeOperatorFunction,
+  Observable,
+} from 'rxjs';
 
 import { notEmptyActions } from '@/engine/rx-operators/notEmptyActions';
 
@@ -18,7 +26,10 @@ const createToKey =
 
 export const groupByStreamActions = (
   streamActionTypes: Array<string> | ReadonlyArray<string>,
-  regroups: Regroup[] = []
+  regroups: Regroup[] = [],
+  bufferClosingNotifierOperator: MonoTypeOperatorFunction<
+    Array<AnyAction>
+  > = debounceTime(200)
 ) => {
   const has = arrayHas(streamActionTypes);
   const hasRegroups: HasRegroup[] = regroups.map(([key, types]) => [
@@ -56,7 +67,7 @@ export const groupByStreamActions = (
         group$.key === NONE_STREAM_KEY
           ? group$
           : group$.pipe(
-              buffer(group$.pipe(debounceTime(200))),
+              buffer(group$.pipe(bufferClosingNotifierOperator)),
               map(buff => buff.flat(2))
             )
       )

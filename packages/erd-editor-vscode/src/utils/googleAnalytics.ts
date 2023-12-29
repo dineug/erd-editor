@@ -6,7 +6,7 @@ import fetch from 'node-fetch';
 
 const measurement_id = `G-3VBWD4V1JX`;
 const api_secret = `KXIe32DtSvWX1OFrjchz5g`;
-const version = process.env.VUERD_VSCODE_VERSION || 'NONE';
+const version = process.env.ERD_EDITOR_VSCODE_VERSION || 'NONE';
 
 let client_id: string | null = null;
 

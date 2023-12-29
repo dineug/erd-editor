@@ -22,6 +22,8 @@ const InternalActionType = {
   toggleSearch: 'toggleSearch',
   openThemeBuilder: 'openThemeBuilder',
   setThemeOptions: 'setThemeOptions',
+  mouseTrackerStart: 'mouseTrackerStart',
+  mouseTrackerEnd: 'mouseTrackerEnd',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 
@@ -51,6 +53,8 @@ type InternalActionMap = {
   [InternalActionType.toggleSearch]: void;
   [InternalActionType.openThemeBuilder]: void;
   [InternalActionType.setThemeOptions]: Partial<ThemeOptions>;
+  [InternalActionType.mouseTrackerStart]: void;
+  [InternalActionType.mouseTrackerEnd]: void;
 };
 
 type Reducer<K extends keyof M, M> = (action: Action<K, M>) => void;
@@ -128,3 +132,11 @@ export const openThemeBuilderAction = createAction<
 export const setThemeOptionsAction = createAction<
   InternalActionMap[typeof InternalActionType.setThemeOptions]
 >(InternalActionType.setThemeOptions);
+
+export const mouseTrackerStartAction = createAction<
+  InternalActionMap[typeof InternalActionType.mouseTrackerStart]
+>(InternalActionType.mouseTrackerStart);
+
+export const mouseTrackerEndAction = createAction<
+  InternalActionMap[typeof InternalActionType.mouseTrackerEnd]
+>(InternalActionType.mouseTrackerEnd);

@@ -1,4 +1,12 @@
-import { filter, fromEvent, map, merge, takeUntil } from 'rxjs';
+import {
+  animationFrames,
+  filter,
+  fromEvent,
+  map,
+  merge,
+  share,
+  takeUntil,
+} from 'rxjs';
 
 import { isMouseEvent } from '@/utils/domEvent';
 import { forwardMoveStartEvent } from '@/utils/internalEvents';
@@ -12,6 +20,8 @@ export const mouseup$ = fromEvent<MouseEvent>(window, 'mouseup');
 export const touchstart$ = fromEvent<TouchEvent>(window, 'touchstart');
 export const touchmove$ = fromEvent<TouchEvent>(window, 'touchmove');
 export const touchend$ = fromEvent<TouchEvent>(window, 'touchend');
+
+export const animationFrames$ = animationFrames().pipe(share());
 
 const forwardMoveStartEvent$ = fromEvent<
   CustomEvent<ReturnType<typeof forwardMoveStartEvent>['detail']>

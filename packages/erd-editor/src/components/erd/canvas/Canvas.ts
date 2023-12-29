@@ -6,6 +6,7 @@ import CanvasSvg from '@/components/erd/canvas/canvas-svg/CanvasSvg';
 import DrawRelationship from '@/components/erd/canvas/draw-relationship/DrawRelationship';
 import HighLevelTable from '@/components/erd/canvas/high-level-table/HighLevelTable';
 import Memo from '@/components/erd/canvas/memo/Memo';
+import SharedMouseTracker from '@/components/erd/canvas/shared-mouse-tracker/SharedMouseTracker';
 import Table from '@/components/erd/canvas/table/Table';
 import { Show } from '@/constants/schema';
 import { bHas } from '@/utils/bit';
@@ -79,6 +80,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
               />
             `
           : null}
+        <${SharedMouseTracker} />
       </div>
     `;
   };

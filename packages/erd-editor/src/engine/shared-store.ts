@@ -1,11 +1,11 @@
 import { AnyAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
-import { pick } from 'lodash-es';
-import { nanoid } from 'nanoid';
-import { map, Observable, Subscription } from 'rxjs';
+import { last, pick } from 'lodash-es';
+import { map, Observable, Subscription, throttleTime } from 'rxjs';
 
 import {
   SharedActionTypes,
+  SharedStreamActionTypes,
   StreamActionTypes,
   StreamRegroupColorActionTypes,
   StreamRegroupMoveActionTypes,
@@ -36,19 +36,26 @@ export type SharedStoreConfig = {
 };
 
 const hasStreamActionTypes = arrayHas<string>(StreamActionTypes);
+const hasSharedStreamActionTypes = arrayHas<string>(SharedStreamActionTypes);
 
 export function createSharedStore(
   store: RxStore,
   config?: SharedStoreConfig
 ): SharedStore {
-  const sharedId = nanoid();
-  const sharedMeta = { ...pick(config, 'nickname'), sharedId };
+  const editorId = store.state.editor.id;
+  const sharedMeta = { ...pick(config, 'nickname'), editorId };
   const subscriptionSet = new Set<Subscription>();
   const subscribe$ = new Observable<Array<AnyAction>>(subscriber =>
     store.subscribe(actions => subscriber.next(actions))
   ).pipe(
     actionsFilter(SharedActionTypes),
     ignoreTagFilter([Tag.shared]),
+    groupByStreamActions(SharedStreamActionTypes, [], throttleTime(100)),
+    map(actions =>
+      hasSharedStreamActionTypes(actions[0]?.type)
+        ? [last(actions) as AnyAction]
+        : actions
+    ),
     groupByStreamActions(StreamActionTypes, [
       ['@@move', StreamRegroupMoveActionTypes],
       ['@@scroll', StreamRegroupScrollActionTypes],
@@ -100,10 +107,10 @@ export function createSharedStore(
     subscriptionSet.clear();
   };
 
-  return {
+  return Object.freeze({
     dispatch,
     dispatchSync,
     subscribe,
     destroy,
-  };
+  });
 }

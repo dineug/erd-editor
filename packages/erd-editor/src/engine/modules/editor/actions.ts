@@ -31,6 +31,7 @@ export const ActionType = {
   changeOpenMap: 'editor.changeOpenMap',
   dragstartColumn: 'editor.dragstartColumn',
   dragendColumn: 'editor.dragendColumn',
+  sharedMouseTracker: 'editor.sharedMouseTracker',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -93,6 +94,10 @@ export type ActionMap = {
     columnIds: string[];
   };
   [ActionType.dragendColumn]: void;
+  [ActionType.sharedMouseTracker]: {
+    x: number;
+    y: number;
+  };
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<

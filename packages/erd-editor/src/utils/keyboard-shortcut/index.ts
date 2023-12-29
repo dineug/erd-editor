@@ -1,5 +1,5 @@
 import { ValuesType } from '@/internal-types';
-import { isIOS, isMacOs } from '@/utils/device-detect';
+import { hasAppleDevice } from '@/utils/device-detect';
 
 import { KeyBindingPress, parseKeybinding } from './utils';
 
@@ -73,8 +73,6 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   ],
 });
 
-const APPLE_DEVICE = isMacOs || isIOS;
-
 const ModifierKey = {
   Shift: 'Shift',
   Meta: 'Meta',
@@ -98,7 +96,7 @@ const WindowsModifierKeyMap: Record<ModifierKey, string> = {
 };
 
 function modifierKeyToString(key: string) {
-  const modifierKeyMap = APPLE_DEVICE
+  const modifierKeyMap = hasAppleDevice()
     ? MacModifierKeyMap
     : WindowsModifierKeyMap;
   return modifierKeyMap[key as ModifierKey] ?? key;
@@ -138,7 +136,7 @@ export function shortcutToTuple(shortcut?: string): KeyBindingPress[] {
 }
 
 export function isMod(event: MouseEvent | TouchEvent | KeyboardEvent): boolean {
-  return APPLE_DEVICE ? event.metaKey : event.ctrlKey;
+  return hasAppleDevice() ? event.metaKey : event.ctrlKey;
 }
 
 export function simpleShortcutToString(shortcut?: string): string {

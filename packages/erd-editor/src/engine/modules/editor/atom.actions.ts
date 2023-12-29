@@ -1,7 +1,10 @@
 import { parser, query, schemaV3Parser } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
+import { isNill, isString } from '@dineug/shared';
 
 import { CanvasType } from '@/constants/schema';
+import { Tag } from '@/engine/tag';
+import { bHas } from '@/utils/bit';
 import { getAbsolutePoint } from '@/utils/dragSelect';
 import { hasCanvasType } from '@/utils/validation';
 
@@ -13,6 +16,8 @@ import {
   appendSelectRangeColumns,
   selectRangeColumns,
 } from './utils/selectRangeColumn';
+
+const SHARED_MOUSE_TRACKER_TIMEOUT = 1000 * 30;
 
 export const changeHasHistoryAction = createAction<
   ActionMap[typeof ActionType.changeHasHistory]
@@ -460,6 +465,47 @@ const dragendColumn: ReducerType<typeof ActionType.dragendColumn> = ({
   });
 };
 
+export const sharedMouseTrackerAction = createAction<
+  ActionMap[typeof ActionType.sharedMouseTracker]
+>(ActionType.sharedMouseTracker);
+
+const sharedMouseTracker: ReducerType<typeof ActionType.sharedMouseTracker> = (
+  { editor },
+  { payload, tags, meta }
+) => {
+  if (
+    isNill(tags) ||
+    !bHas(tags, Tag.shared) ||
+    !isString(meta?.editorId) ||
+    editor.id === meta.editorId
+  ) {
+    return;
+  }
+
+  const sharedMouseTracker = editor.sharedMouseTrackerMap[meta.editorId];
+  const nickname = meta.nickname ?? 'user';
+
+  if (sharedMouseTracker) {
+    sharedMouseTracker.x = payload.x;
+    sharedMouseTracker.y = payload.y;
+    sharedMouseTracker.nickname = nickname;
+
+    clearTimeout(sharedMouseTracker.timeoutId);
+    sharedMouseTracker.timeoutId = setTimeout(() => {
+      Reflect.deleteProperty(editor.sharedMouseTrackerMap, meta.editorId);
+    }, SHARED_MOUSE_TRACKER_TIMEOUT);
+  } else {
+    editor.sharedMouseTrackerMap[meta.editorId] = {
+      ...payload,
+      id: meta.editorId,
+      nickname,
+      timeoutId: setTimeout(() => {
+        Reflect.deleteProperty(editor.sharedMouseTrackerMap, meta.editorId);
+      }, SHARED_MOUSE_TRACKER_TIMEOUT),
+    };
+  }
+};
+
 export const editorReducers = {
   [ActionType.changeHasHistory]: changeHasHistory,
   [ActionType.selectAll]: selectAll,
@@ -485,6 +531,7 @@ export const editorReducers = {
   [ActionType.changeOpenMap]: changeOpenMap,
   [ActionType.dragstartColumn]: dragstartColumn,
   [ActionType.dragendColumn]: dragendColumn,
+  [ActionType.sharedMouseTracker]: sharedMouseTracker,
 };
 
 export const actions = {
@@ -512,4 +559,5 @@ export const actions = {
   changeOpenMapAction,
   dragstartColumnAction,
   dragendColumnAction,
+  sharedMouseTrackerAction,
 };

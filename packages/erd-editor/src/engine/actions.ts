@@ -173,8 +173,13 @@ const hasSharedIgnore = arrayHas([
   'settings.changeRelationshipOptimization',
 ]);
 
+export const SharedStreamActionTypes: ReadonlyArray<ActionType> = [
+  'editor.sharedMouseTracker',
+];
+
 export const SharedActionTypes: ReadonlyArray<ActionType> = [
   ...ChangeActionTypes.filter(type => !hasSharedIgnore(type)),
+  ...SharedStreamActionTypes,
 ];
 
 export const StreamRegroupMoveActionTypes: ReadonlyArray<ActionType> = [

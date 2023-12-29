@@ -57,6 +57,7 @@
     "@dineug/shared": "workspace:*",
     "@dineug/vite-plugin-r-html": "workspace:*",
     "@easylogic/colorpicker": "1.10.11",
+    "@egjs/agent": "^2.4.3",
     "@floating-ui/dom": "1.5.3",
     "@fortawesome/free-regular-svg-icons": "6.5.1",
     "@fortawesome/free-solid-svg-icons": "6.5.1",
@@ -75,7 +76,6 @@
     "@types/highlight-words-core": "^1.2.3",
     "@types/lodash-es": "^4.17.12",
     "@types/luxon": "^3.3.7",
-    "@types/ua-parser-js": "^0.7.39",
     "color": "^4.2.3",
     "comlink": "4.4.1",
     "d3": "7.8.5",
@@ -96,7 +96,6 @@
     "tslib": "^2.6.2",
     "typescript": "5.3.3",
     "typescript-transform-paths": "^3.4.6",
-    "ua-parser-js": "^1.0.37",
     "vite": "^5.0.10"
   }
 }

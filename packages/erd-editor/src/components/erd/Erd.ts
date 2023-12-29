@@ -5,8 +5,9 @@ import {
   observable,
   onMounted,
   ref,
+  watch,
 } from '@dineug/r-html';
-import { filter } from 'rxjs';
+import { filter, fromEvent, Subscription, throttleTime } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import AutomaticTablePlacement, {
@@ -24,6 +25,7 @@ import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
+import { sharedMouseTrackerAction } from '@/engine/modules/editor/atom.actions';
 import {
   changeColorAllAction$,
   unselectAllAction$,
@@ -34,6 +36,7 @@ import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.acti
 import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { isMouseEvent } from '@/utils/domEvent';
+import { getAbsolutePoint } from '@/utils/dragSelect';
 import { closeColorPickerAction } from '@/utils/emitter';
 import { drag$, DragMove, keyup$ } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
@@ -67,6 +70,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     tablePropertiesIds: [] as string[],
     grabMove: false,
     grabCursor: 'grab',
+  });
+  const mouseTrackerState = observable({
+    tracking: false,
   });
   useErdShortcut(ctx);
 
@@ -188,11 +194,69 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     state.tablePropertiesId = tableId;
   };
 
+  let mouseTrackerSubscription: Subscription | null = null;
+
+  const handleMouseTrackerEnd = () => {
+    mouseTrackerSubscription?.unsubscribe();
+    mouseTrackerSubscription = null;
+  };
+
+  const handleMouseTrackerStart = () => {
+    const { store } = app.value;
+    const $root = root.value;
+    if (!$root) return;
+
+    handleMouseTrackerEnd();
+    mouseTrackerSubscription = fromEvent<MouseEvent>($root, 'mousemove')
+      .pipe(
+        throttleTime(100, undefined, {
+          leading: false,
+          trailing: true,
+        })
+      )
+      .subscribe(event => {
+        const rect = $root.getBoundingClientRect();
+        const {
+          settings: { scrollLeft, scrollTop, width, height, zoomLevel },
+        } = store.state;
+        const x = event.clientX - rect.x - scrollLeft;
+        const y = event.clientY - rect.y - scrollTop;
+        const absolutePoint = getAbsolutePoint(
+          { x, y },
+          width,
+          height,
+          zoomLevel
+        );
+
+        store.dispatch(sharedMouseTrackerAction(absolutePoint));
+      });
+  };
+
+  app.value.emitter.on({
+    mouseTrackerStart: () => {
+      mouseTrackerState.tracking = true;
+    },
+    mouseTrackerEnd: () => {
+      mouseTrackerState.tracking = false;
+    },
+  });
+
   onMounted(() => {
     const { store, emitter, keydown$ } = app.value;
     const $root = root.value;
 
+    if (mouseTrackerState.tracking) {
+      handleMouseTrackerStart();
+    }
+
     addUnsubscribe(
+      watch(mouseTrackerState).subscribe(propName => {
+        if (propName !== 'tracking') return;
+
+        mouseTrackerState.tracking
+          ? handleMouseTrackerStart()
+          : handleMouseTrackerEnd();
+      }),
       emitter.on({
         openColorPicker: ({ payload: { x, y, color } }) => {
           const { editor } = store.state;

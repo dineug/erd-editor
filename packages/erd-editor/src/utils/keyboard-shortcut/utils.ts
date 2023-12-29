@@ -1,11 +1,9 @@
-import { isIOS, isMacOs } from '@/utils/device-detect';
+import { hasAppleDevice } from '@/utils/device-detect';
 
 export type KeyBindingPress = [string[], string];
 
-let APPLE_DEVICE = isMacOs || isIOS;
-let MOD = APPLE_DEVICE ? 'Meta' : 'Control';
-
 export function parseKeybinding(str: string): KeyBindingPress[] {
+  const MOD = hasAppleDevice() ? 'Meta' : 'Control';
   return str
     .trim()
     .split(' ')

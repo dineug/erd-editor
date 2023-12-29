@@ -1,41 +1,34 @@
-import UAParser from 'ua-parser-js';
+import getAgent, { getAccurateAgent } from '@egjs/agent';
 
-const ua = new UAParser();
-const browser = ua.getBrowser();
-const os = ua.getOS();
+const agent = getAgent();
 
-const BrowserTypes = {
-  Chrome: 'Chrome',
-  Firefox: 'Firefox',
-  Safari: 'Safari',
-  MobileSafari: 'Mobile Safari',
-} as const;
+let isMacintosh = agent.os.name === 'mac';
+let isIOS = agent.os.name === 'ios';
+let isAndroid = agent.os.name === 'android';
+let isWindows = agent.os.name === 'window';
 
-const OsTypes = {
-  IOS: 'iOS',
-  Android: 'Android',
-  Windows: 'Windows',
-  MAC_OS: 'Mac OS',
-} as const;
+let isChrome = agent.browser.name === 'chrome';
+let isSafari = agent.browser.name === 'safari';
+let isFirefox = agent.browser.name === 'firefox';
 
-// os types
-export const isAndroid = os.name === OsTypes.Android;
-export const isWindows = os.name === OsTypes.Windows;
-export const isMacOs = os.name === OsTypes.MAC_OS;
-export const isIOS = os.name === OsTypes.IOS || getIOS13();
+getAccurateAgent(agent => {
+  isMacintosh = agent.os.name === 'mac';
+  isIOS = agent.os.name === 'ios';
+  isAndroid = agent.os.name === 'android';
+  isWindows = agent.os.name === 'window';
 
-// browser types
-export const isChrome = browser.name === BrowserTypes.Chrome;
-export const isFirefox = browser.name === BrowserTypes.Firefox;
-export const isSafari =
-  browser.name === BrowserTypes.Safari ||
-  browser.name === BrowserTypes.MobileSafari;
+  isChrome = agent.browser.name === 'chrome';
+  isSafari = agent.browser.name === 'safari';
+  isFirefox = agent.browser.name === 'firefox';
+});
 
-function getIOS13() {
-  const nav = globalThis.navigator || navigator;
-  return (
-    nav &&
-    (/iPad|iPhone|iPod/.test(nav.platform) ||
-      (nav.platform === 'MacIntel' && nav.maxTouchPoints > 1))
-  );
-}
+export const hasAppleDevice = () => isMacintosh || isIOS;
+
+export const hasMacintosh = () => isMacintosh;
+export const hasIOS = () => isIOS;
+export const hasAndroid = () => isAndroid;
+export const hasWindows = () => isWindows;
+
+export const hasChrome = () => isChrome;
+export const hasSafari = () => isSafari;
+export const hasFirefox = () => isFirefox;

@@ -1,9 +1,11 @@
 import { arrayHas } from '@dineug/shared';
+import { nanoid } from 'nanoid';
 
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
 import { Point, ValuesType } from '@/internal-types';
 
 export type Editor = {
+  id: string;
   selectedMap: Record<string, SelectType>;
   hasUndo: boolean;
   hasRedo: boolean;
@@ -14,6 +16,7 @@ export type Editor = {
   openMap: Record<string, boolean>;
   draggableColumn: DraggableColumn | null;
   draggingColumnMap: Record<string, boolean>;
+  sharedMouseTrackerMap: Record<string, SharedMouseTracker>;
 };
 
 export type Viewport = {
@@ -43,6 +46,14 @@ export type DrawRelationship = {
 export type DraggableColumn = {
   tableId: string;
   columnIds: string[];
+};
+
+export type SharedMouseTracker = {
+  id: string;
+  x: number;
+  y: number;
+  nickname: string;
+  timeoutId: any;
 };
 
 export const SelectType = {
@@ -75,6 +86,7 @@ export type MoveKey = ValuesType<typeof MoveKey>;
 export const hasMoveKeys = arrayHas(Object.values(MoveKey));
 
 export const createEditor = (): Editor => ({
+  id: nanoid(),
   selectedMap: {},
   hasUndo: false,
   hasRedo: false,
@@ -88,4 +100,5 @@ export const createEditor = (): Editor => ({
   openMap: {},
   draggableColumn: null,
   draggingColumnMap: {},
+  sharedMouseTrackerMap: {},
 });
