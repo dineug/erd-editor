@@ -153,6 +153,9 @@ module.exports = (env, argv) => {
       new HtmlWebpackPlugin({
         inject: true,
         template: resolvePath('public/index.html'),
+        templateParameters: {
+          gtag: isProduction ? toGtag() : '',
+        },
       }),
       isDevelopment && new ReactRefreshWebpackPlugin(),
       // new BundleAnalyzerPlugin(),
@@ -162,3 +165,16 @@ module.exports = (env, argv) => {
 
   return config;
 };
+
+function toGtag() {
+  return /*html*/ `
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3VBWD4V1JX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag('js', new Date());
+  gtag('config', 'G-3VBWD4V1JX');
+</script>`;
+}

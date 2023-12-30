@@ -1,13 +1,7 @@
 import Dexie, { Table } from 'dexie';
 
-import {
-  addSchemaEntity,
-  deleteSchemaEntity,
-  getSchemaEntities,
-  getSchemaEntity,
-  SchemaEntity,
-  updateSchemaEntity,
-} from '@/services/indexeddb/modules/schema';
+import { SchemaEntity } from '@/services/indexeddb/modules/schema';
+import { SchemaService } from '@/services/indexeddb/modules/schema/service';
 
 export class AppDatabase extends Dexie {
   schemas!: Table<SchemaEntity, string>;
@@ -31,30 +25,33 @@ function getDB() {
 }
 
 export class AppDatabaseService {
-  private get db() {
-    return getDB();
-  }
+  private db = getDB();
+  private schemaService = new SchemaService(this.db);
 
   async addSchemaEntity(entityValue: Pick<SchemaEntity, 'name'>) {
-    return await addSchemaEntity(this.db, entityValue);
+    return await this.schemaService.add(entityValue);
   }
 
   async updateSchemaEntity(
     id: string,
     entityValue: Partial<Pick<SchemaEntity, 'value' | 'name'>>
   ) {
-    return await updateSchemaEntity(this.db, id, entityValue);
+    return await this.schemaService.update(id, entityValue);
   }
 
   async deleteSchemaEntity(id: string) {
-    return await deleteSchemaEntity(this.db, id);
+    return await this.schemaService.delete(id);
   }
 
   async getSchemaEntity(id: string) {
-    return await getSchemaEntity(this.db, id);
+    return await this.schemaService.get(id);
   }
 
   async getSchemaEntities() {
-    return await getSchemaEntities(this.db);
+    return await this.schemaService.getEntities();
+  }
+
+  async replicationSchemaEntity(id: string, actions: any) {
+    await this.schemaService.replication(id, actions);
   }
 }
