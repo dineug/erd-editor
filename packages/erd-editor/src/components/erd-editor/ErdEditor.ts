@@ -238,7 +238,10 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         @paste=${handlePaste}
         @mousedown=${handleOutsideClick}
       >
-        <${Toolbar} enableThemeBuilder=${props.enableThemeBuilder} />
+        <${Toolbar}
+          enableThemeBuilder=${props.enableThemeBuilder}
+          readonly=${props.readonly}
+        />
         ${cache(
           settings.canvasType === CanvasType.ERD
             ? html`

@@ -2,6 +2,7 @@ import './styles.css';
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { Workbox } from 'workbox-window';
 
 import App from '@/components/app/App';
 
@@ -14,14 +15,7 @@ root.render(
 
 if (import.meta.env.MODE === 'production') {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then(() => {
-        console.log('Service worker registered!');
-      })
-      .catch(error => {
-        console.warn('Error registering service worker:');
-        console.warn(error);
-      });
+    const wb = new Workbox('/sw.js');
+    wb.register();
   }
 }

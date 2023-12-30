@@ -72,6 +72,7 @@ export function createRxStore(
       compositionActionsFlat(store.state, store.context, compositionActions)
     );
   };
+
   const dispatch = (...compositionActions: CompositionActions) => {
     asap(() => dispatchSync(compositionActions));
   };
@@ -86,9 +87,12 @@ export function createRxStore(
   };
 
   const undo = () => {
+    if (getReadonly()) return;
     history.undo();
   };
+
   const redo = () => {
+    if (getReadonly()) return;
     history.redo();
   };
 

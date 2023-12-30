@@ -110,6 +110,10 @@ export function createSharedStore(
     Array.from(observerSubscriptionSet).forEach(sub => sub.unsubscribe());
     subscriptionSet.clear();
     observerSubscriptionSet.clear();
+    store.destroy();
+    observer$.complete();
+    openingNotifier$.complete();
+    closingNotifier$.complete();
   };
 
   return Object.freeze({

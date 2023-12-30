@@ -24,6 +24,7 @@ import * as styles from './Toolbar.styles';
 
 export type ToolbarProps = {
   enableThemeBuilder: boolean;
+  readonly: boolean;
 };
 
 const Toolbar: FC<ToolbarProps> = (props, ctx) => {
@@ -98,7 +99,8 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     const showUndoRedo =
       settings.canvasType === CanvasType.ERD &&
       !showAutomaticTablePlacement &&
-      !showTableProperties;
+      !showTableProperties &&
+      !props.readonly;
 
     return html`
       <div
