@@ -23,7 +23,7 @@
     "test": "turbo test",
     "prepare": "husky install",
     "format": "npm run format:eslint && npm run format:prettier",
-    "format:eslint": "eslint --ignore-path .gitignore \"**/*.{js,ts}\" --fix",
+    "format:eslint": "eslint \"**/*.{js,ts}\" --fix",
     "format:prettier": "prettier \"**/*.{js,ts}\" --write",
     "lint": "eslint \"**/*.{js,ts}\""
   },

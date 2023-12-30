@@ -12,6 +12,7 @@ build
 .docusaurus
 .cache-loader
 
+packages-external
 packages/erd-editor-vscode/public
 packages/erd-editor-vscode/public-legacy
 

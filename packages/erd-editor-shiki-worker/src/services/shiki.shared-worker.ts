@@ -2,7 +2,7 @@ import * as Comlink from 'comlink';
 
 import { ShikiService } from '@/services/shikiService';
 
-declare var self: SharedWorkerGlobalScope;
+declare let self: SharedWorkerGlobalScope;
 
 const service = new ShikiService();
 

@@ -86,7 +86,8 @@
     },
     "typescript.updateImportsOnFileMove.enabled": "always",
     "javascript.updateImportsOnFileMove.enabled": "always",
-    "typescript.enablePromptUseWorkspaceTsdk": true
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "deno.enablePaths": ["./packages-external/erd-editor-app-websocket"]
   },
   "extensions": {
     "recommendations": [

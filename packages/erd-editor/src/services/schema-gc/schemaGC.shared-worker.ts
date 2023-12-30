@@ -2,7 +2,7 @@ import * as Comlink from 'comlink';
 
 import { SchemaGCService } from '@/services/schema-gc/schemaGCService';
 
-declare var self: SharedWorkerGlobalScope;
+declare let self: SharedWorkerGlobalScope;
 
 const service = new SchemaGCService();
 
