@@ -1,8 +1,10 @@
 import { replaceOperator } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
-import { createInRange } from '@dineug/shared';
+import { createInRange, isNill } from '@dineug/shared';
 import { round } from 'lodash-es';
 
+import { Tag } from '@/engine/tag';
+import { bHas } from '@/utils/bit';
 import {
   canvasSizeInRange,
   hasBracketType,
@@ -54,8 +56,12 @@ export const changeZoomLevelAction = createAction<
 
 const changeZoomLevel: ReducerType<typeof ActionType.changeZoomLevel> = (
   { settings },
-  { payload: { value } }
+  { payload: { value }, tags }
 ) => {
+  if (!isNill(tags) && bHas(tags, Tag.following)) {
+    return;
+  }
+
   settings.zoomLevel = zoomLevelInRange(value);
 };
 
@@ -65,8 +71,12 @@ export const streamZoomLevelAction = createAction<
 
 const streamZoomLevel: ReducerType<typeof ActionType.streamZoomLevel> = (
   { settings },
-  { payload: { value } }
+  { payload: { value }, tags }
 ) => {
+  if (!isNill(tags) && bHas(tags, Tag.following)) {
+    return;
+  }
+
   settings.zoomLevel = zoomLevelInRange(settings.zoomLevel + value);
 };
 
@@ -76,8 +86,12 @@ export const scrollToAction = createAction<
 
 const scrollTo: ReducerType<typeof ActionType.scrollTo> = (
   { settings, editor: { viewport } },
-  { payload: { scrollTop, scrollLeft } }
+  { payload: { scrollTop, scrollLeft }, tags }
 ) => {
+  if (!isNill(tags) && bHas(tags, Tag.following)) {
+    return;
+  }
+
   const scrollTopInRange = createInRange(viewport.height - settings.height, 0);
   const scrollLeftInRange = createInRange(viewport.width - settings.width, 0);
 
@@ -91,8 +105,12 @@ export const streamScrollToAction = createAction<
 
 const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
   { settings, editor: { viewport } },
-  { payload: { movementX, movementY } }
+  { payload: { movementX, movementY }, tags }
 ) => {
+  if (!isNill(tags) && bHas(tags, Tag.following)) {
+    return;
+  }
+
   const scrollTopInRange = createInRange(viewport.height - settings.height, 0);
   const scrollLeftInRange = createInRange(viewport.width - settings.width, 0);
 
@@ -136,8 +154,12 @@ export const changeCanvasTypeAction = createAction<
 
 const changeCanvasType: ReducerType<typeof ActionType.changeCanvasType> = (
   { settings },
-  { payload: { value } }
+  { payload: { value }, tags }
 ) => {
+  if (!isNill(tags) && bHas(tags, Tag.following)) {
+    return;
+  }
+
   settings.canvasType = value;
 };
 

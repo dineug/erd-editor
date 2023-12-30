@@ -160,21 +160,21 @@ export const ReadonlyIgnoreActionTypes: ReadonlyArray<ActionType> = [
   ...ChangeActionTypes.filter(type => !hasReadonlyIgnore(type)),
 ];
 
-const hasSharedIgnore = arrayHas([
-  'settings.changeZoomLevel',
-  'settings.streamZoomLevel',
-  'settings.scrollTo',
-  'settings.streamScrollTo',
-  'settings.changeCanvasType',
-]);
-
 export const SharedStreamActionTypes: ReadonlyArray<ActionType> = [
   'editor.sharedMouseTracker',
 ];
 
 export const SharedActionTypes: ReadonlyArray<ActionType> = [
-  ...ChangeActionTypes.filter(type => !hasSharedIgnore(type)),
+  ...ChangeActionTypes,
   ...SharedStreamActionTypes,
+];
+
+export const SharedFollowingActionTypes: ReadonlyArray<ActionType> = [
+  'settings.changeZoomLevel',
+  'settings.streamZoomLevel',
+  'settings.scrollTo',
+  'settings.streamScrollTo',
+  'settings.changeCanvasType',
 ];
 
 export const StreamRegroupMoveActionTypes: ReadonlyArray<ActionType> = [

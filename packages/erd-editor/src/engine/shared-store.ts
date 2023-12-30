@@ -1,8 +1,12 @@
 import { AnyAction } from '@dineug/r-html';
+import { arrayHas } from '@dineug/shared';
 import { pick } from 'lodash-es';
 import { map, Observable, Subject, Subscription } from 'rxjs';
 
-import { SharedActionTypes } from '@/engine/actions';
+import {
+  SharedActionTypes,
+  SharedFollowingActionTypes,
+} from '@/engine/actions';
 import {
   actionsFilter,
   bufferCircuitBreaker,
@@ -10,17 +14,14 @@ import {
   sharedStreamActionsCompressor,
 } from '@/engine/rx-operators';
 import { RxStore } from '@/engine/rx-store';
-import { attachActionTag, Tag } from '@/engine/tag';
+import { attachActionsTag, attachActionTag, Tag } from '@/engine/tag';
 import { Unsubscribe } from '@/internal-types';
-
-type CompositionSharedAction = AnyAction | Array<CompositionSharedAction>;
-type CompositionSharedActions = Array<CompositionSharedAction>;
 
 export type SharedStore = {
   connection: () => void;
   disconnect: () => void;
-  dispatch: (...actions: CompositionSharedActions) => void;
-  dispatchSync: (...actions: CompositionSharedActions) => void;
+  dispatch: (actions: Array<AnyAction> | AnyAction) => void;
+  dispatchSync: (actions: Array<AnyAction> | AnyAction) => void;
   subscribe: (fn: (value: AnyAction[]) => void) => Unsubscribe;
   destroy: () => void;
 };
@@ -28,6 +29,10 @@ export type SharedStore = {
 export type SharedStoreConfig = {
   nickname?: string;
 };
+
+const hasSharedFollowingActionTypes = arrayHas<string>(
+  SharedFollowingActionTypes
+);
 
 export function createSharedStore(
   store: RxStore,
@@ -54,12 +59,18 @@ export function createSharedStore(
         bufferCircuitBreaker(openingNotifier$, closingNotifier$),
         sharedStreamActionsCompressor,
         map(actions =>
-          attachActionTag(
+          attachActionsTag(
             Tag.shared,
-            actions.map(action => ({
-              ...action,
-              meta: Object.assign({}, action.meta ?? {}, sharedMeta),
-            }))
+            actions.map(action => {
+              const newAction = {
+                ...action,
+                meta: Object.assign({}, action.meta ?? {}, sharedMeta),
+              };
+
+              return hasSharedFollowingActionTypes(action.type)
+                ? attachActionTag(Tag.following, newAction)
+                : newAction;
+            })
           )
         )
       )
@@ -97,11 +108,11 @@ export function createSharedStore(
     halfOpenNotify();
   };
 
-  const dispatchSync = (...actions: CompositionSharedActions) => {
+  const dispatchSync = (actions: Array<AnyAction> | AnyAction) => {
     store.dispatchSync(actions);
   };
 
-  const dispatch = (...actions: CompositionSharedActions) => {
+  const dispatch = (actions: Array<AnyAction> | AnyAction) => {
     store.dispatch(actions);
   };
 

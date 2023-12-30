@@ -35,7 +35,7 @@ export const bufferCircuitBreaker = (
           return subscription;
         })
       ),
-      map(actions => actions.flat()),
+      map(buff => buff.flat()),
       notEmptyActions
     );
 };
