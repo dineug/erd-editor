@@ -11,6 +11,8 @@ import { actionsFilter } from '@/engine/rx-operators';
 import { createStore } from '@/engine/store';
 import { createHooks } from '@/engine/store-hooks';
 import { Unsubscribe, ValuesType } from '@/internal-types';
+import { procGC } from '@/services/schema-gc/procGC';
+import { SchemaGCService } from '@/services/schema-gc/schemaGCService';
 import { toSafeString } from '@/utils/validation';
 
 type ReducerRecord = {
@@ -45,6 +47,7 @@ export function createReplicationStore(
     store.subscribe(actions => subscriber.next(actions))
   ).pipe(actionsFilter(ChangeActionTypes), debounceTime(200));
   const observers = new Set<Partial<ReducerRecord>>();
+  const schemaGCService = new SchemaGCService();
 
   const on = (reducers: Partial<ReducerRecord>): Unsubscribe => {
     observers.has(reducers) || observers.add(reducers);
@@ -69,6 +72,20 @@ export function createReplicationStore(
     store.dispatchSync(
       initialLoadJsonAction$(isEmpty(safeValue) ? '{}' : safeValue)
     );
+    schemaGCService.run(toJson(store.state)).then(gcIds => {
+      const isChange =
+        gcIds.tableIds.length ||
+        gcIds.tableColumnIds.length ||
+        gcIds.relationshipIds.length ||
+        gcIds.indexIds.length ||
+        gcIds.indexColumnIds.length ||
+        gcIds.memoIds.length;
+
+      if (isChange) {
+        procGC(store.state, gcIds);
+        emit(InternalActionType.change, undefined);
+      }
+    });
   };
 
   const dispatchSync = (actions: Array<AnyAction> | AnyAction) => {

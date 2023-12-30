@@ -41,6 +41,10 @@ export class SchemaService {
     const prev = this.cache.get(id);
     if (prev && result) {
       this.cache.set(id, { ...prev, ...entityValue });
+
+      if (entityValue.value) {
+        prev.store.setInitialValue(entityValue.value);
+      }
     }
 
     return result;
