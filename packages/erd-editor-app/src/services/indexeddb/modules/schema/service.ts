@@ -52,7 +52,13 @@ export class SchemaService {
 
   async delete(id: string) {
     const result = await deleteSchemaEntity(this.db, id);
-    this.cache.delete(id);
+    const prev = this.cache.get(id);
+
+    if (prev) {
+      this.cache.delete(id);
+      prev.store.destroy();
+    }
+
     return result;
   }
 

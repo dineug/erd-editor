@@ -15,6 +15,7 @@ module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
   const isDevelopment = argv.mode !== 'production';
   const mode = isDevelopment ? 'development' : 'production';
+  const isAnalyzer = env.target === 'analyzer';
 
   const config = {
     mode,
@@ -158,7 +159,7 @@ module.exports = (env, argv) => {
         },
       }),
       isDevelopment && new ReactRefreshWebpackPlugin(),
-      // new BundleAnalyzerPlugin(),
+      isAnalyzer && new BundleAnalyzerPlugin(),
     ].filter(Boolean),
     performance: false,
   };
