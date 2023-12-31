@@ -2,7 +2,7 @@ import * as Comlink from 'comlink';
 
 import { AppDatabaseService } from '@/services/indexeddb/appDatabaseService';
 
-declare var self: SharedWorkerGlobalScope;
+declare let self: SharedWorkerGlobalScope;
 
 const service = new AppDatabaseService();
 

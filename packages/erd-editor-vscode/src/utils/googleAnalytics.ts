@@ -23,6 +23,10 @@ function getClientId(): Promise<string> {
 }
 
 function send(action: string) {
+  if (process.env.ERD_WEBPACK_MODE !== 'production') {
+    return;
+  }
+
   getClientId().then(clientId => {
     fetch(
       `https://www.google-analytics.com/mp/collect?measurement_id=${measurement_id}&api_secret=${api_secret}`,

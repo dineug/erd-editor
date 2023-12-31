@@ -51,6 +51,7 @@ module.exports = (env, argv) => {
     plugins: [
       new webpack.DefinePlugin({
         'process.env.ERD_EDITOR_VSCODE_VERSION': JSON.stringify(pkg.version),
+        'process.env.ERD_WEBPACK_MODE': JSON.stringify(mode),
       }),
     ].filter(Boolean),
   };
