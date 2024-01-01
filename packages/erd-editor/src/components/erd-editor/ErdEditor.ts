@@ -110,12 +110,22 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     });
   const { store, keydown$, emitter } = appContextValue;
   const { addUnsubscribe } = useUnmounted();
-
-  destroySet.add(provider.destroy);
-
   const state = observable({
     isFocus: false,
+    mouseTracking: false,
   });
+
+  destroySet.add(provider.destroy);
+  destroySet.add(
+    emitter.on({
+      mouseTrackerStart: () => {
+        state.mouseTracking = true;
+      },
+      mouseTrackerEnd: () => {
+        state.mouseTracking = false;
+      },
+    })
+  );
 
   const checkAndFocus = () => {
     setTimeout(() => {
@@ -246,7 +256,10 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           settings.canvasType === CanvasType.ERD
             ? html`
                 <div class=${styles.scope}>
-                  <${Erd} isDarkMode=${isDarkMode} />
+                  <${Erd}
+                    isDarkMode=${isDarkMode}
+                    mouseTracking=${state.mouseTracking}
+                  />
                 </div>
               `
             : null

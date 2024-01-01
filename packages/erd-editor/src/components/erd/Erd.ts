@@ -47,6 +47,7 @@ import { useErdShortcut } from './useErdShortcut';
 
 export type ErdProps = {
   isDarkMode: boolean;
+  mouseTracking: boolean;
 };
 
 const Erd: FC<ErdProps> = (props, ctx) => {
@@ -70,9 +71,6 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     tablePropertiesIds: [] as string[],
     grabMove: false,
     grabCursor: 'grab',
-  });
-  const mouseTrackerState = observable({
-    tracking: false,
   });
   useErdShortcut(ctx);
 
@@ -232,28 +230,19 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       });
   };
 
-  app.value.emitter.on({
-    mouseTrackerStart: () => {
-      mouseTrackerState.tracking = true;
-    },
-    mouseTrackerEnd: () => {
-      mouseTrackerState.tracking = false;
-    },
-  });
-
   onMounted(() => {
     const { store, emitter, keydown$ } = app.value;
     const $root = root.value;
 
-    if (mouseTrackerState.tracking) {
+    if (props.mouseTracking) {
       handleMouseTrackerStart();
     }
 
     addUnsubscribe(
-      watch(mouseTrackerState).subscribe(propName => {
-        if (propName !== 'tracking') return;
+      watch(props).subscribe(propName => {
+        if (propName !== 'mouseTracking') return;
 
-        mouseTrackerState.tracking
+        props.mouseTracking
           ? handleMouseTrackerStart()
           : handleMouseTrackerEnd();
       }),

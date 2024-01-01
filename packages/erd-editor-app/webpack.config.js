@@ -28,6 +28,9 @@ module.exports = (env, argv) => {
       historyApiFallback: true,
       open: true,
       hot: true,
+      client: {
+        overlay: false,
+      },
     },
     entry: './src/main',
     output: {
@@ -101,6 +104,9 @@ module.exports = (env, argv) => {
     plugins: [
       new DefinePlugin({
         'import.meta.env.MODE': JSON.stringify(mode),
+        'import.meta.env.WEBSOCKET_URL': JSON.stringify(
+          isProduction ? 'https://erd-editor.deno.dev' : 'http://localhost:3000'
+        ),
       }),
       isProduction &&
         new InjectManifest({
@@ -158,7 +164,7 @@ module.exports = (env, argv) => {
           gtag: isProduction ? toGtag() : '',
         },
       }),
-      isDevelopment && new ReactRefreshWebpackPlugin(),
+      isDevelopment && new ReactRefreshWebpackPlugin({ overlay: false }),
       isAnalyzer && new BundleAnalyzerPlugin(),
     ].filter(Boolean),
     performance: false,

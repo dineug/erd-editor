@@ -35,15 +35,16 @@ const Editor: React.FC<EditorProps> = props => {
     editorRef.current = editor;
     editor.enableThemeBuilder = true;
     editor.setInitialValue(props.entity.value);
-
-    const sharedStore = editor.getSharedStore({ mouseTracker: false });
+    const sharedStore = editor.getSharedStore();
 
     unsubscribeSet
       .add(
         sharedStore.subscribe(actions => {
           replicationSchemaEntity({
             id: props.entity.id,
-            actions,
+            actions: actions.filter(
+              action => action.type !== 'editor.sharedMouseTracker'
+            ),
           });
         })
       )

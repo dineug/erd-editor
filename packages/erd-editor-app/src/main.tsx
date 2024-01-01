@@ -3,40 +3,53 @@ import './styles.css';
 import { Provider } from 'jotai';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+} from 'react-router-dom';
 
 import App from '@/components/app/App';
+import LiveCollaborativeError from '@/components/live-collaborative/live-collaborative-error/LiveCollaborativeError';
+import { registerSW } from '@/registerSW';
+import Root from '@/routes/root/Root';
 import { store } from '@/store';
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Root />,
+    children: [
+      {
+        index: true,
+        element: <App />,
+      },
+      {
+        path: 'live',
+        lazy: async () => {
+          const { default: Component } = await import(
+            '@/components/live-collaborative/LiveCollaborative'
+          );
+          return { Component };
+        },
+        errorElement: <LiveCollaborativeError />,
+      },
+    ],
+  },
+  {
+    path: '*',
+    element: <Navigate to="/" replace />,
+  },
+]);
 
 const root = createRoot(document.getElementById('app')!);
 root.render(
   <React.StrictMode>
     <Provider store={store}>
-      <App />
+      <RouterProvider router={router} />
     </Provider>
   </React.StrictMode>
 );
-
-async function registerSW() {
-  if ('serviceWorker' in navigator) {
-    const { Workbox } = await import('workbox-window');
-    const wb = new Workbox('/sw.js', { scope: '/' });
-
-    wb.addEventListener('activated', event => {
-      if (event.isUpdate || event.isExternal) {
-        // autoUpdate
-        window.location.reload();
-      }
-    });
-
-    wb.register()
-      .then(() => {
-        console.log('Service Worker registered');
-      })
-      .catch(e => {
-        console.error('Service Worker registration error!', e);
-      });
-  }
-}
 
 if (import.meta.env.MODE === 'production') {
   registerSW();
