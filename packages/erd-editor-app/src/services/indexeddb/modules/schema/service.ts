@@ -27,7 +27,7 @@ export class SchemaService {
     store.setInitialValue(entity.value);
     store.on({
       change: () => {
-        this.update(entity.id, { value: store.value });
+        updateSchemaEntity(this.db, entity.id, { value: store.value });
       },
     });
     this.cache.set(entity.id, { ...entity, store });
@@ -45,8 +45,8 @@ export class SchemaService {
     entityValue: Partial<Pick<SchemaEntity, 'value' | 'name'>>
   ) {
     const result = await updateSchemaEntity(this.db, id, entityValue);
-
     const prev = this.cache.get(id);
+
     if (prev && result) {
       this.cache.set(id, { ...prev, ...entityValue });
 
