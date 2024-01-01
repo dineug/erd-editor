@@ -1,16 +1,30 @@
 import { isObject, safeCallback } from '@dineug/shared';
 
 import { AnyAction, ReducerRecord, ValuesType } from '@/internal-types';
+import { SchemaEntity } from '@/services/indexeddb/modules/schema';
 
 const BridgeActionType = {
-  replicationValue: 'replicationValue',
+  replicationSchemaEntity: 'replicationSchemaEntity',
+  addSchemaEntity: 'addSchemaEntity',
+  updateSchemaEntity: 'updateSchemaEntity',
+  deleteSchemaEntity: 'deleteSchemaEntity',
 } as const;
 type BridgeActionType = ValuesType<typeof BridgeActionType>;
 
 type BridgeActionMap = {
-  [BridgeActionType.replicationValue]: {
+  [BridgeActionType.replicationSchemaEntity]: {
     id: string;
     actions: any;
+  };
+  [BridgeActionType.addSchemaEntity]: {
+    value: SchemaEntity;
+  };
+  [BridgeActionType.updateSchemaEntity]: {
+    id: string;
+    entityValue: Partial<{ name: string }>;
+  };
+  [BridgeActionType.deleteSchemaEntity]: {
+    id: string;
   };
 };
 
@@ -56,6 +70,18 @@ channel.addEventListener('message', event => {
   bridge.emit(action);
 });
 
-export const replicationValueAction = createAction<
-  BridgeActionMap[typeof BridgeActionType.replicationValue]
->(BridgeActionType.replicationValue);
+export const replicationSchemaEntityAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.replicationSchemaEntity]
+>(BridgeActionType.replicationSchemaEntity);
+
+export const addSchemaEntityAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.addSchemaEntity]
+>(BridgeActionType.addSchemaEntity);
+
+export const updateSchemaEntityAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.updateSchemaEntity]
+>(BridgeActionType.updateSchemaEntity);
+
+export const deleteSchemaEntityAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.deleteSchemaEntity]
+>(BridgeActionType.deleteSchemaEntity);

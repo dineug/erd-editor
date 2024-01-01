@@ -18,17 +18,25 @@ export class SchemaService {
   private cache = new Map<string, SchemaEntity & { store: ReplicationStore }>();
   constructor(private db: AppDatabase) {}
 
+  private createCache(entity: SchemaEntity) {
+    if (this.cache.has(entity.id)) return;
+
+    const store = createReplicationStore({
+      toWidth: value => value.length * 11,
+    });
+    store.setInitialValue(entity.value);
+    store.on({
+      change: () => {
+        this.update(entity.id, { value: store.value });
+      },
+    });
+    this.cache.set(entity.id, { ...entity, store });
+  }
+
   async add(entityValue: Pick<SchemaEntity, 'name'>) {
     const result = await addSchemaEntity(this.db, entityValue);
 
-    const store = createReplicationStore({ toWidth });
-    store.on({
-      change: () => {
-        this.update(result.id, { value: store.value });
-      },
-    });
-    this.cache.set(result.id, { ...result, store });
-
+    this.createCache(result);
     return result;
   }
 
@@ -51,15 +59,13 @@ export class SchemaService {
   }
 
   async delete(id: string) {
-    const result = await deleteSchemaEntity(this.db, id);
+    await deleteSchemaEntity(this.db, id);
     const prev = this.cache.get(id);
 
     if (prev) {
       this.cache.delete(id);
       prev.store.destroy();
     }
-
-    return result;
   }
 
   async get(id: string) {
@@ -67,21 +73,12 @@ export class SchemaService {
     if (prev) return omit(prev, 'store');
 
     const result = await getSchemaEntity(this.db, id);
-    if (result) {
-      const store = createReplicationStore({ toWidth });
-      store.setInitialValue(result.value);
-      store.on({
-        change: () => {
-          this.update(result.id, { value: store.value });
-        },
-      });
-      this.cache.set(id, { ...result, store });
-    }
+    result && this.createCache(result);
 
     return result;
   }
 
-  async getEntities() {
+  async getAll() {
     return await getSchemaEntities(this.db);
   }
 
@@ -97,8 +94,4 @@ export class SchemaService {
       prev.store.dispatch(actions as any);
     }
   }
-}
-
-function toWidth(value: string) {
-  return value.length * 11;
 }

@@ -1,14 +1,18 @@
 import './styles.css';
 
+import { Provider } from 'jotai';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
 import App from '@/components/app/App';
+import { store } from '@/store';
 
 const root = createRoot(document.getElementById('app')!);
 root.render(
   <React.StrictMode>
-    <App />
+    <Provider store={store}>
+      <App />
+    </Provider>
   </React.StrictMode>
 );
 

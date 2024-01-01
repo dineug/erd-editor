@@ -4,10 +4,16 @@ import { atomWithImmer } from 'jotai-immer';
 import { selectedSchemaIdAtom } from '@/atoms/modules/sidebar';
 import { getAppDatabaseService } from '@/services/indexeddb';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
+import {
+  addSchemaEntityAction,
+  deleteSchemaEntityAction,
+  dispatch,
+  updateSchemaEntityAction,
+} from '@/utils/broadcastChannel';
 
-const schemaEntitiesAtom = atomWithImmer<Array<Omit<SchemaEntity, 'value'>>>(
-  []
-);
+export const schemaEntitiesAtom = atomWithImmer<
+  Array<Omit<SchemaEntity, 'value'>>
+>([]);
 
 const updateSchemaEntitiesAtom = atom(null, async (get, set) => {
   const service = getAppDatabaseService();
@@ -34,6 +40,7 @@ const addSchemaEntityAtom = atom(
       draft.push(result);
     });
     set(selectedSchemaIdAtom, result.id);
+    dispatch(addSchemaEntityAction({ value: result }));
 
     return result;
   }
@@ -44,24 +51,37 @@ const updateSchemaEntityAtom = atom(
   async (
     get,
     set,
-    {
-      id,
-      entityValue,
-    }: {
+    payload: {
       id: string;
-      entityValue: Partial<{ name: string; value: string }>;
+      entityValue: Partial<{ name: string }>;
     }
   ) => {
     const service = getAppDatabaseService();
     if (!service) throw new Error('Database service is not initialized');
 
-    set(schemaEntitiesAtom, draft => {
-      const value = draft.find(item => item.id === id);
-      if (!value) return;
-      Object.assign(value, entityValue);
-    });
+    const { id, entityValue } = payload;
+    const entities = get(schemaEntitiesAtom);
+    const prev = entities.find(item => item.id === id);
 
-    return await service.updateSchemaEntity(id, entityValue);
+    const update = (newValue?: Partial<{ name: string }>) => {
+      set(schemaEntitiesAtom, draft => {
+        const value = draft.find(item => item.id === id);
+        if (!value || !newValue) return;
+        Object.assign(value, newValue);
+      });
+    };
+
+    update(entityValue);
+
+    try {
+      const result = await service.updateSchemaEntity(id, entityValue);
+
+      result ? dispatch(updateSchemaEntityAction(payload)) : update(prev);
+      return result;
+    } catch (error) {
+      update(prev);
+      throw error;
+    }
   }
 );
 
@@ -69,18 +89,25 @@ const deleteSchemaEntityAtom = atom(null, async (get, set, id: string) => {
   const service = getAppDatabaseService();
   if (!service) throw new Error('Database service is not initialized');
 
+  const prev = get(schemaEntitiesAtom);
+  const selectedSchemaId = get(selectedSchemaIdAtom);
+
   set(schemaEntitiesAtom, draft => {
     const index = draft.findIndex(item => item.id === id);
     if (index === -1) return;
     draft.splice(index, 1);
   });
 
-  const selectedSchemaId = get(selectedSchemaIdAtom);
-  if (selectedSchemaId === id) {
-    set(selectedSchemaIdAtom, null);
+  try {
+    await service.deleteSchemaEntity(id);
+    if (selectedSchemaId === id) {
+      set(selectedSchemaIdAtom, null);
+    }
+    dispatch(deleteSchemaEntityAction({ id }));
+  } catch (error) {
+    set(schemaEntitiesAtom, prev);
+    throw error;
   }
-
-  await service.deleteSchemaEntity(id);
 });
 
 export const useSchemaEntities = () => useAtomValue(schemaEntitiesAtom);

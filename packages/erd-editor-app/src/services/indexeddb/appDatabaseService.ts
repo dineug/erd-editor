@@ -48,7 +48,7 @@ export class AppDatabaseService {
   }
 
   async getSchemaEntities() {
-    return await this.schemaService.getEntities();
+    return await this.schemaService.getAll();
   }
 
   async replicationSchemaEntity(id: string, actions: any) {

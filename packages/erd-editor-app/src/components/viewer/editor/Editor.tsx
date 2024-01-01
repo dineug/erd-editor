@@ -49,7 +49,7 @@ const Editor: React.FC<EditorProps> = props => {
       )
       .add(
         bridge.on({
-          replicationValue: ({ payload: { id, actions } }) => {
+          replicationSchemaEntity: ({ payload: { id, actions } }) => {
             if (id === props.entity.id) {
               sharedStore.dispatch(actions);
             }
