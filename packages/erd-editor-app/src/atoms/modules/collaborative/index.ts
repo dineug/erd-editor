@@ -1,8 +1,12 @@
 import { atom, useAtomValue, useSetAtom } from 'jotai';
-import { atomWithStorage, createJSONStorage } from 'jotai/utils';
-import { withImmer } from 'jotai-immer';
+import { atomWithImmer } from 'jotai-immer';
 
 import { getAppDatabaseService } from '@/services/indexeddb';
+import {
+  dispatch,
+  startSessionAction,
+  stopSessionAction,
+} from '@/utils/broadcastChannel';
 
 type SchemaId = string;
 type RoomId = string;
@@ -11,11 +15,15 @@ type SecretKey = string;
 type Token = [RoomId, SecretKey];
 type CollaborativeState = Record<SchemaId, Token>;
 
-const storage = createJSONStorage<CollaborativeState>(
-  () => globalThis.sessionStorage
-);
-const collaborativeStorageAtom = atomWithStorage('@collaborative', {}, storage);
-const collaborativeAtom = withImmer(collaborativeStorageAtom);
+export const collaborativeAtom = atomWithImmer<CollaborativeState>({});
+
+const updateCollaborativeSessionAllAtom = atom(null, async (get, set) => {
+  const service = getAppDatabaseService();
+  if (!service) throw new Error('Database service is not initialized');
+
+  const sessions = await service.collaborativeSessionAll();
+  set(collaborativeAtom, sessions);
+});
 
 const startSessionAtom = atom(null, async (get, set, schemaId: string) => {
   const service = getAppDatabaseService();
@@ -27,6 +35,7 @@ const startSessionAtom = atom(null, async (get, set, schemaId: string) => {
   set(collaborativeAtom, draft => {
     draft[schemaId] = [roomId, secretKey];
   });
+  dispatch(startSessionAction({ schemaId, roomId, secretKey }));
 });
 
 const stopSessionAtom = atom(null, async (get, set, schemaId: string) => {
@@ -38,8 +47,11 @@ const stopSessionAtom = atom(null, async (get, set, schemaId: string) => {
   set(collaborativeAtom, draft => {
     Reflect.deleteProperty(draft, schemaId);
   });
+  dispatch(stopSessionAction({ schemaId }));
 });
 
 export const useCollaborativeMap = () => useAtomValue(collaborativeAtom);
+export const useUpdateCollaborativeSessionAll = () =>
+  useSetAtom(updateCollaborativeSessionAllAtom);
 export const useStartSession = () => useSetAtom(startSessionAtom);
 export const useStopSession = () => useSetAtom(stopSessionAtom);

@@ -105,7 +105,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ entity }) => {
         </Text>
       )}
 
-      {/* <SidebarCollaborative entity={entity} /> */}
+      <SidebarCollaborative entity={entity} />
 
       <AlertDialog.Root>
         <DropdownMenu.Root open={open} onOpenChange={setOpen}>

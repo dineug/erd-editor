@@ -46,6 +46,7 @@ export class AppDatabaseService {
 
   async replicationSchemaEntity(id: string, actions: any) {
     await this.#schemaService.replication(id, actions);
+    await this.#collaborativeService.dispatch(id, actions);
   }
 
   async collaborativeStartSession(schemaId: string) {
@@ -54,5 +55,9 @@ export class AppDatabaseService {
 
   async collaborativeStopSession(schemaId: string) {
     return await this.#collaborativeService.stopSession(schemaId);
+  }
+
+  async collaborativeSessionAll() {
+    return await this.#collaborativeService.sessionAll();
   }
 }

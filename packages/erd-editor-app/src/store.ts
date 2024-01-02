@@ -1,5 +1,6 @@
 import { createStore } from 'jotai';
 
+import { collaborativeAtom } from '@/atoms/modules/collaborative';
 import { schemaEntitiesAtom } from '@/atoms/modules/schema';
 import { selectedSchemaIdAtom } from '@/atoms/modules/sidebar';
 import { bridge } from '@/utils/broadcastChannel';
@@ -29,6 +30,16 @@ bridge.on({
       const index = draft.findIndex(item => item.id === id);
       if (index === -1) return;
       draft.splice(index, 1);
+    });
+  },
+  startSession: ({ payload: { schemaId, roomId, secretKey } }) => {
+    store.set(collaborativeAtom, draft => {
+      draft[schemaId] = [roomId, secretKey];
+    });
+  },
+  stopSession: ({ payload: { schemaId } }) => {
+    store.set(collaborativeAtom, draft => {
+      Reflect.deleteProperty(draft, schemaId);
     });
   },
 });

@@ -2,7 +2,7 @@ import {
   ErdEditorElement,
   setGetShikiServiceCallback,
 } from '@dineug/erd-editor';
-import { attachCancel, cancel, go } from '@dineug/go';
+import { attachCancel, cancel, go, isCancel } from '@dineug/go';
 import { Flex } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -16,7 +16,11 @@ import {
   encryptToJson,
   importKey,
 } from '@/utils/crypto';
-import { InvalidHashError } from '@/utils/errors';
+import {
+  HostStopSessionError,
+  InvalidHashError,
+  NotFoundHostError,
+} from '@/utils/errors';
 
 import * as styles from './LiveCollaborative.styles';
 
@@ -48,12 +52,11 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
       const key: Awaited<ReturnType<typeof importKey>> =
         yield importKey(secretKey);
       const socket = io(import.meta.env.WEBSOCKET_URL);
-
       const unsubscribeSet = new Set<() => void>();
       const editor = document.createElement('erd-editor');
+      const sharedStore = editor.getSharedStore();
       editorRef.current = editor;
       editor.enableThemeBuilder = true;
-      const sharedStore = editor.getSharedStore();
 
       let readyResolve: ((value: string) => void) | null = null;
       let readyReject: ((error: unknown) => void) | null = null;
@@ -69,35 +72,42 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
         })
         .catch(setError);
 
-      socket.on('connect', () => {
-        socket.emit('join-room', roomId);
-        socket.emit('request-host-schema', roomId);
+      const timerId = setTimeout(() => {
+        readyReject?.(new NotFoundHostError());
+      }, 15000);
 
-        // setTimeout: host-schema
-      });
+      socket
+        .on('host-leave', () => {
+          setError(new HostStopSessionError());
+        })
+        .on(
+          'host-schema',
+          async ({ value }: { roomId: string; value: EncryptJson }) => {
+            if (!readyResolve) return;
+            clearTimeout(timerId);
 
-      socket.on('host-schema', async (value: EncryptJson) => {
-        if (!readyResolve) return;
+            try {
+              const json = await decryptFromJson(value, key);
+              readyResolve(json);
+            } catch (error) {
+              readyReject?.(error);
+            } finally {
+              readyResolve = null;
+              readyReject = null;
+            }
+          }
+        )
+        .on(
+          'dispatch',
+          async ({ value }: { roomId: string; value: EncryptJson }) => {
+            const json = await decryptFromJson(value, key);
+            const actions = JSON.parse(json);
+            sharedStore.dispatch(actions);
+          }
+        );
 
-        try {
-          const json = await decryptFromJson(value, key);
-          readyResolve(json);
-        } catch (error) {
-          readyReject?.(error);
-        } finally {
-          readyResolve = null;
-          readyReject = null;
-        }
-      });
-
-      socket.on(
-        'dispatch',
-        async ({ value }: { roomId: string; value: EncryptJson }) => {
-          const json = await decryptFromJson(value, key);
-          const actions = JSON.parse(json);
-          sharedStore.dispatch(actions);
-        }
-      );
+      socket.emit('guest-join-room', roomId);
+      socket.emit('request-host-schema', roomId);
 
       unsubscribeSet.add(
         sharedStore.subscribe(async actions => {
@@ -119,6 +129,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
       editor.addEventListener('changePresetTheme', handleChangePresetTheme);
 
       yield attachCancel(new Promise(() => {}), () => {
+        socket.emit('guest-leave-room', roomId);
         socket.disconnect();
         if ($viewer === editor.parentElement) {
           $viewer.removeChild(editor);
@@ -134,7 +145,10 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
       });
     });
 
-    task.catch(setError);
+    task.catch(error => {
+      if (isCancel(error)) return;
+      setError(error);
+    });
 
     return () => {
       cancel(task);

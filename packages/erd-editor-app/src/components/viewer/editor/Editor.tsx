@@ -36,10 +36,10 @@ const Editor: React.FC<EditorProps> = props => {
 
     const unsubscribeSet = new Set<() => void>();
     const editor = document.createElement('erd-editor');
+    const sharedStore = editor.getSharedStore();
     editorRef.current = editor;
     editor.enableThemeBuilder = true;
     editor.setInitialValue(props.entity.value);
-    const sharedStore = editor.getSharedStore();
 
     unsubscribeSet
       .add(

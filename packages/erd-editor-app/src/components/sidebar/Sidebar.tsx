@@ -1,6 +1,7 @@
 import { Button, Flex, ScrollArea } from '@radix-ui/themes';
 import { useEffect, useState } from 'react';
 
+import { useUpdateCollaborativeSessionAll } from '@/atoms/modules/collaborative';
 import {
   useAddSchemaEntity,
   useSchemaEntities,
@@ -16,6 +17,7 @@ interface SidebarProps {}
 const Sidebar: React.FC<SidebarProps> = () => {
   const schemaEntities = useSchemaEntities();
   const updateSchemaEntities = useUpdateSchemaEntities();
+  const updateCollaborativeSessionAll = useUpdateCollaborativeSessionAll();
   const addSchemaEntity = useAddSchemaEntity();
   const [isEditing, setIsEditing] = useState(false);
 
@@ -29,7 +31,8 @@ const Sidebar: React.FC<SidebarProps> = () => {
 
   useEffect(() => {
     updateSchemaEntities();
-  }, [updateSchemaEntities]);
+    updateCollaborativeSessionAll();
+  }, [updateSchemaEntities, updateCollaborativeSessionAll]);
 
   return (
     <Flex css={styles.root} direction="column">

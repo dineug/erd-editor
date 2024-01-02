@@ -8,6 +8,8 @@ const BridgeActionType = {
   addSchemaEntity: 'addSchemaEntity',
   updateSchemaEntity: 'updateSchemaEntity',
   deleteSchemaEntity: 'deleteSchemaEntity',
+  startSession: 'startSession',
+  stopSession: 'stopSession',
 } as const;
 type BridgeActionType = ValuesType<typeof BridgeActionType>;
 
@@ -25,6 +27,14 @@ type BridgeActionMap = {
   };
   [BridgeActionType.deleteSchemaEntity]: {
     id: string;
+  };
+  [BridgeActionType.startSession]: {
+    schemaId: string;
+    roomId: string;
+    secretKey: string;
+  };
+  [BridgeActionType.stopSession]: {
+    schemaId: string;
   };
 };
 
@@ -85,3 +95,11 @@ export const updateSchemaEntityAction = createAction<
 export const deleteSchemaEntityAction = createAction<
   BridgeActionMap[typeof BridgeActionType.deleteSchemaEntity]
 >(BridgeActionType.deleteSchemaEntity);
+
+export const startSessionAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.startSession]
+>(BridgeActionType.startSession);
+
+export const stopSessionAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.stopSession]
+>(BridgeActionType.stopSession);
