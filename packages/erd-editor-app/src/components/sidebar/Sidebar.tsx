@@ -1,15 +1,11 @@
 import { Button, Flex, ScrollArea } from '@radix-ui/themes';
-import { useAtom } from 'jotai';
 import { useEffect, useState } from 'react';
 
 import {
   useAddSchemaEntity,
-  useDeleteSchemaEntity,
   useSchemaEntities,
   useUpdateSchemaEntities,
-  useUpdateSchemaEntity,
 } from '@/atoms/modules/schema';
-import { selectedSchemaIdAtom } from '@/atoms/modules/sidebar';
 import SidebarAddItem from '@/components/sidebar/sidebar-add-item/SidebarAddItem';
 import SidebarItem from '@/components/sidebar/sidebar-item/SidebarItem';
 
@@ -20,10 +16,7 @@ interface SidebarProps {}
 const Sidebar: React.FC<SidebarProps> = () => {
   const schemaEntities = useSchemaEntities();
   const updateSchemaEntities = useUpdateSchemaEntities();
-  const updateSchemaEntity = useUpdateSchemaEntity();
-  const deleteSchemaEntity = useDeleteSchemaEntity();
   const addSchemaEntity = useAddSchemaEntity();
-  const [schemaId, setSchemaId] = useAtom(selectedSchemaIdAtom);
   const [isEditing, setIsEditing] = useState(false);
 
   const handleStartEditing = () => {
@@ -53,16 +46,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
       <ScrollArea scrollbars="vertical">
         <Flex css={styles.contentArea} direction="column">
           {schemaEntities.map(entity => (
-            <SidebarItem
-              key={entity.id}
-              value={entity.name}
-              selected={schemaId === entity.id}
-              onChange={name => {
-                updateSchemaEntity({ id: entity.id, entityValue: { name } });
-              }}
-              onDelete={() => deleteSchemaEntity(entity.id)}
-              onSelect={() => setSchemaId(entity.id)}
-            />
+            <SidebarItem key={entity.id} entity={entity} />
           ))}
           {isEditing ? (
             <SidebarAddItem

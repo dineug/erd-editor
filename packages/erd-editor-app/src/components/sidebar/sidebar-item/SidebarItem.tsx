@@ -8,41 +8,52 @@ import {
   Text,
   TextField,
 } from '@radix-ui/themes';
+import { useAtom } from 'jotai';
 import { isEmpty } from 'lodash-es';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+
+import {
+  useDeleteSchemaEntity,
+  useUpdateSchemaEntity,
+} from '@/atoms/modules/schema';
+import { selectedSchemaIdAtom } from '@/atoms/modules/sidebar';
+import SidebarCollaborative from '@/components/sidebar/sidebar-item/sidebar-collaborative/SidebarCollaborative';
+import { SchemaEntity } from '@/services/indexeddb/modules/schema';
 
 import * as styles from './SidebarItem.styles';
 
 interface SidebarItemProps {
-  selected?: boolean;
-  value: string;
-  onChange: (value: string) => void;
-  onDelete: () => void;
-  onSelect: () => void;
+  entity: Omit<SchemaEntity, 'value'>;
 }
 
-const SidebarItem: React.FC<SidebarItemProps> = props => {
-  const [name, setName] = useState(props.value);
+const SidebarItem: React.FC<SidebarItemProps> = ({ entity }) => {
+  const [name, setName] = useState(entity.name);
   const [isEditing, setIsEditing] = useState(false);
   const [open, setOpen] = useState(false);
+  const updateSchemaEntity = useUpdateSchemaEntity();
+  const deleteSchemaEntity = useDeleteSchemaEntity();
+  const [schemaId, setSchemaId] = useAtom(selectedSchemaIdAtom);
+  const selected = schemaId === entity.id;
 
   const handleStartEditing = () => {
+    setName(entity.name);
     setIsEditing(true);
   };
 
   const handleStopEditing = () => {
     const value = name.trim();
-    const newValue = isEmpty(value) ? props.value : value;
-    if (newValue !== props.value) {
-      props.onChange(newValue);
+    const newValue = isEmpty(value) ? entity.name : value;
+    if (newValue !== entity.name) {
+      updateSchemaEntity({
+        id: entity.id,
+        entityValue: { name: newValue },
+      });
     }
     setIsEditing(false);
-    setName(newValue);
   };
 
   const handleCancelEditing = () => {
     setIsEditing(false);
-    setName(props.value);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -61,10 +72,6 @@ const SidebarItem: React.FC<SidebarItemProps> = props => {
     setName(event.target.value);
   };
 
-  useEffect(() => {
-    setName(props.value);
-  }, [props.value]);
-
   return (
     <Flex
       css={[
@@ -73,9 +80,9 @@ const SidebarItem: React.FC<SidebarItemProps> = props => {
         styles.item,
       ]}
       align="center"
-      data-selected={props.selected && !isEditing}
+      data-selected={selected && !isEditing}
       data-open-menu={open}
-      onClick={props.onSelect}
+      onClick={() => setSchemaId(entity.id)}
     >
       {isEditing ? (
         <TextField.Root css={styles.text}>
@@ -94,9 +101,12 @@ const SidebarItem: React.FC<SidebarItemProps> = props => {
           size="2"
           onDoubleClick={handleStartEditing}
         >
-          {props.value}
+          {entity.name}
         </Text>
       )}
+
+      {/* <SidebarCollaborative entity={entity} /> */}
+
       <AlertDialog.Root>
         <DropdownMenu.Root open={open} onOpenChange={setOpen}>
           <DropdownMenu.Trigger>
@@ -115,7 +125,7 @@ const SidebarItem: React.FC<SidebarItemProps> = props => {
         <AlertDialog.Content style={{ maxWidth: 450 }}>
           <AlertDialog.Title>Delete</AlertDialog.Title>
           <AlertDialog.Description size="2">
-            Are you sure? <Quote>{props.value}</Quote>
+            Are you sure? <Quote>{entity.name}</Quote>
           </AlertDialog.Description>
 
           <Flex gap="3" mt="4" justify="end">
@@ -124,7 +134,7 @@ const SidebarItem: React.FC<SidebarItemProps> = props => {
                 Cancel
               </Button>
             </AlertDialog.Cancel>
-            <AlertDialog.Action onClick={props.onDelete}>
+            <AlertDialog.Action onClick={() => deleteSchemaEntity(entity.id)}>
               <Button variant="solid" color="red">
                 Delete
               </Button>

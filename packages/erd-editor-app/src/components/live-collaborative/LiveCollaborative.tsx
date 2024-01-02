@@ -62,10 +62,12 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
         readyReject = reject;
       });
 
-      ready.then(value => {
-        editor.setInitialValue(value);
-        $viewer.appendChild(editor);
-      });
+      ready
+        .then(value => {
+          editor.setInitialValue(value);
+          $viewer.appendChild(editor);
+        })
+        .catch(setError);
 
       socket.on('connect', () => {
         socket.emit('join-room', roomId);
@@ -81,7 +83,6 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
           const json = await decryptFromJson(value, key);
           readyResolve(json);
         } catch (error) {
-          setError(error);
           readyReject?.(error);
         } finally {
           readyResolve = null;
@@ -89,11 +90,14 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
         }
       });
 
-      socket.on('dispatch', async (value: EncryptJson) => {
-        const json = await decryptFromJson(value, key);
-        const actions = JSON.parse(json);
-        sharedStore.dispatch(actions);
-      });
+      socket.on(
+        'dispatch',
+        async ({ value }: { roomId: string; value: EncryptJson }) => {
+          const json = await decryptFromJson(value, key);
+          const actions = JSON.parse(json);
+          sharedStore.dispatch(actions);
+        }
+      );
 
       unsubscribeSet.add(
         sharedStore.subscribe(async actions => {
@@ -129,6 +133,8 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
         editorRef.current = null;
       });
     });
+
+    task.catch(setError);
 
     return () => {
       cancel(task);

@@ -11,7 +11,11 @@ export const item = css`
 
   & > svg {
     cursor: pointer;
-    margin-left: auto;
+    margin-left: 4px;
+    visibility: hidden;
+  }
+
+  & > .collaborative {
     visibility: hidden;
   }
 
@@ -27,6 +31,10 @@ export const hover = css`
     background-color: var(--accent-7);
 
     & > svg {
+      visibility: visible;
+    }
+
+    & > .collaborative {
       visibility: visible;
     }
   }

@@ -2,10 +2,6 @@ import { atom, useAtomValue, useSetAtom } from 'jotai';
 import { loadable } from 'jotai/utils';
 
 import { getAppDatabaseService } from '@/services/indexeddb';
-import {
-  dispatch,
-  replicationSchemaEntityAction,
-} from '@/utils/broadcastChannel';
 
 export const selectedSchemaIdAtom = atom<string | null>(null);
 
@@ -41,7 +37,6 @@ const replicationSchemaEntityAtom = atom(
     if (!service) throw new Error('Database service is not initialized');
 
     service.replicationSchemaEntity(id, actions);
-    dispatch(replicationSchemaEntityAction({ id, actions }));
   }
 );
 

@@ -27,7 +27,10 @@ export class SchemaService {
     store.setInitialValue(entity.value);
     store.on({
       change: () => {
-        updateSchemaEntity(this.db, entity.id, { value: store.value });
+        const value = store.value;
+        const prev = this.cache.get(entity.id);
+        updateSchemaEntity(this.db, entity.id, { value });
+        prev && this.cache.set(entity.id, { ...prev, value });
       },
     });
     this.cache.set(entity.id, { ...entity, store });

@@ -20,7 +20,7 @@ function decode(value: ArrayBuffer) {
 }
 
 export function generateKey(): Promise<CryptoKey> {
-  return window.crypto.subtle.generateKey(
+  return globalThis.crypto.subtle.generateKey(
     {
       name: 'AES-GCM',
       length: 128,
@@ -31,7 +31,7 @@ export function generateKey(): Promise<CryptoKey> {
 }
 
 export function importKey(key: string): Promise<CryptoKey> {
-  return window.crypto.subtle.importKey(
+  return globalThis.crypto.subtle.importKey(
     'jwk',
     {
       alg: 'A128GCM',
@@ -49,16 +49,16 @@ export function importKey(key: string): Promise<CryptoKey> {
 }
 
 export function exportKey(key: CryptoKey): Promise<JsonWebKey> {
-  return window.crypto.subtle.exportKey('jwk', key);
+  return globalThis.crypto.subtle.exportKey('jwk', key);
 }
 
 function generateIv(): Uint8Array {
-  return window.crypto.getRandomValues(new Uint8Array(12));
+  return globalThis.crypto.getRandomValues(new Uint8Array(12));
 }
 
 async function encrypt(value: string, key: CryptoKey): Promise<EncryptValue> {
   const iv = generateIv();
-  const encrypted = await window.crypto.subtle.encrypt(
+  const encrypted = await globalThis.crypto.subtle.encrypt(
     {
       name: 'AES-GCM',
       iv,
@@ -74,7 +74,7 @@ async function decrypt(
   iv: Uint8Array,
   key: CryptoKey
 ): Promise<string> {
-  const value = await window.crypto.subtle.decrypt(
+  const value = await globalThis.crypto.subtle.decrypt(
     {
       name: 'AES-GCM',
       iv,

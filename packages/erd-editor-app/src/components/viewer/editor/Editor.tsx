@@ -8,7 +8,11 @@ import { useLayoutEffect, useRef } from 'react';
 import { useReplicationSchemaEntity } from '@/atoms/modules/sidebar';
 import { themeAtom } from '@/atoms/modules/theme';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
-import { bridge } from '@/utils/broadcastChannel';
+import {
+  bridge,
+  dispatch,
+  replicationSchemaEntityAction,
+} from '@/utils/broadcastChannel';
 
 import * as styles from './Editor.styles';
 
@@ -42,10 +46,16 @@ const Editor: React.FC<EditorProps> = props => {
         sharedStore.subscribe(actions => {
           replicationSchemaEntity({
             id: props.entity.id,
-            actions: actions.filter(
-              action => action.type !== 'editor.sharedMouseTracker'
-            ),
+            actions,
           });
+          dispatch(
+            replicationSchemaEntityAction({
+              id: props.entity.id,
+              actions: actions.filter(
+                action => action.type !== 'editor.sharedMouseTracker'
+              ),
+            })
+          );
         })
       )
       .add(
