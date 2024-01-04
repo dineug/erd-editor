@@ -1,6 +1,5 @@
 import { AnyAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
-import { pick } from 'lodash-es';
 import { map, Observable, Subject, Subscription } from 'rxjs';
 
 import {
@@ -27,7 +26,7 @@ export type SharedStore = {
 };
 
 export type SharedStoreConfig = {
-  nickname?: string;
+  getNickname?: () => string;
 };
 
 const hasSharedFollowingActionTypes = arrayHas<string>(
@@ -39,7 +38,7 @@ export function createSharedStore(
   config?: SharedStoreConfig
 ): SharedStore {
   const editorId = store.state.editor.id;
-  const sharedMeta = { ...pick(config, 'nickname'), editorId };
+  const sharedMeta = { editorId };
   const subscriptionSet = new Set<Subscription>();
   const observerSubscriptionSet = new Set<Subscription>();
   const observer$ = new Subject<Array<AnyAction>>();
@@ -64,7 +63,10 @@ export function createSharedStore(
             actions.map(action => {
               const newAction = {
                 ...action,
-                meta: Object.assign({}, action.meta ?? {}, sharedMeta),
+                meta: Object.assign({}, action.meta ?? {}, {
+                  ...sharedMeta,
+                  nickname: config?.getNickname?.(),
+                }),
               };
 
               return hasSharedFollowingActionTypes(action.type)

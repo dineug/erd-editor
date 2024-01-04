@@ -1,6 +1,7 @@
 import { parser, query, schemaV3Parser } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 import { isNill, isString } from '@dineug/shared';
+import { isEmpty } from 'lodash-es';
 
 import { CanvasType } from '@/constants/schema';
 import { Tag } from '@/engine/tag';
@@ -483,7 +484,10 @@ const sharedMouseTracker: ReducerType<typeof ActionType.sharedMouseTracker> = (
   }
 
   const sharedMouseTracker = editor.sharedMouseTrackerMap[meta.editorId];
-  const nickname = meta.nickname ?? 'user';
+  const nickname =
+    !isString(meta.nickname) || isEmpty(meta.nickname.trim())
+      ? 'user'
+      : meta.nickname.trim();
 
   if (sharedMouseTracker) {
     sharedMouseTracker.x = payload.x;

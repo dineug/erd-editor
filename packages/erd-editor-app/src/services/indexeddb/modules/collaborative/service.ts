@@ -19,6 +19,7 @@ type Session = {
   roomId: string;
   secretKey: string;
   key: CryptoKey;
+  listeners: Array<() => void>;
 };
 
 export class CollaborativeService {
@@ -29,22 +30,33 @@ export class CollaborativeService {
 
   get socket(): Socket {
     if (!this.#socket) {
-      const socket = io(import.meta.env.WEBSOCKET_URL);
+      const socket = io(import.meta.env.WEBSOCKET_URL, {
+        withCredentials: true,
+      });
 
       socket
-        .on('request-host-schema', async roomId => {
-          const schemaId = this.roomIdToSchemaIdMap.get(roomId);
-          if (!schemaId) return;
+        .on(
+          'request-host-schema',
+          async ({
+            roomId,
+            socketId,
+          }: {
+            roomId: string;
+            socketId: string;
+          }) => {
+            const schemaId = this.roomIdToSchemaIdMap.get(roomId);
+            if (!schemaId) return;
 
-          const session = this.sessionMap.get(schemaId);
-          if (!session) return;
+            const session = this.sessionMap.get(schemaId);
+            if (!session) return;
 
-          const result = await this.service.get(schemaId);
-          if (!result) return;
+            const result = await this.service.get(schemaId);
+            if (!result) return;
 
-          const value = await encryptToJson(result.value, session.key);
-          socket.emit('host-schema', { roomId, value });
-        })
+            const value = await encryptToJson(result.value, session.key);
+            socket.emit('host-schema', { roomId, socketId, value });
+          }
+        )
         .on(
           'dispatch',
           async ({ roomId, value }: { roomId: string; value: EncryptJson }) => {
@@ -83,9 +95,19 @@ export class CollaborativeService {
     const secretKey = jwk.k!;
     const roomId = nanoid();
 
-    this.sessionMap.set(schemaId, { schemaId, roomId, secretKey, key });
+    const onConnect = () => {
+      this.socket.emit('host-join-room', roomId);
+    };
+
+    this.sessionMap.set(schemaId, {
+      schemaId,
+      roomId,
+      secretKey,
+      key,
+      listeners: [onConnect],
+    });
     this.roomIdToSchemaIdMap.set(roomId, schemaId);
-    this.socket.emit('host-join-room', roomId);
+    this.socket.on('connect', onConnect).emit('host-join-room', roomId);
 
     return { roomId, secretKey };
   }
@@ -94,9 +116,13 @@ export class CollaborativeService {
     const session = this.sessionMap.get(schemaId);
     if (!session) return;
 
+    const [onConnect] = session.listeners;
+
     this.sessionMap.delete(schemaId);
     this.roomIdToSchemaIdMap.delete(session.roomId);
-    this.socket.emit('host-leave-room', session.roomId);
+    this.socket
+      .off('connect', onConnect)
+      .emit('host-leave-room', session.roomId);
 
     if (this.sessionMap.size === 0) {
       this.disconnect();
@@ -109,6 +135,7 @@ export class CollaborativeService {
     const session = this.sessionMap.get(schemaId);
     if (!session) return;
 
+    // TODO: disconnect buffer
     const value = await encryptToJson(JSON.stringify(actions), session.key);
     this.#socket.emit('dispatch', { roomId: session.roomId, value });
   }

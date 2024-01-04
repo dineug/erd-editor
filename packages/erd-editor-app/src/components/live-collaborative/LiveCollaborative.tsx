@@ -3,7 +3,7 @@ import {
   setGetShikiServiceCallback,
 } from '@dineug/erd-editor';
 import { attachCancel, cancel, go, isCancel } from '@dineug/go';
-import { Flex } from '@radix-ui/themes';
+import { Flex, Text } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -30,18 +30,22 @@ import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
 
 interface LiveCollaborativeProps {}
 
+const TIMEOUT = 1000 * 15;
+
 const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
   const location = useLocation();
   const [roomId, secretKey] = useMemo(
     () => location.hash.replace('#', '').split(','),
     [location.hash]
   );
-  const [error, setError] = useState<unknown | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ErdEditorElement | null>(null);
   const [theme, setTheme] = useAtom(themeAtom);
+  const [error, setError] = useState<unknown | null>(null);
+  const [initializationLoading, setInitializationLoading] = useState(true);
+  const [hostLeaveLoading, setHostLeaveLoading] = useState(false);
 
-  if (!roomId || !secretKey) throw new InvalidHashError();
+  if (!roomId?.trim() || !secretKey?.trim()) throw new InvalidHashError();
   if (error) throw error;
 
   useLayoutEffect(() => {
@@ -51,7 +55,9 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
     const task = go(function* () {
       const key: Awaited<ReturnType<typeof importKey>> =
         yield importKey(secretKey);
-      const socket = io(import.meta.env.WEBSOCKET_URL);
+      const socket = io(import.meta.env.WEBSOCKET_URL, {
+        withCredentials: true,
+      });
       const unsubscribeSet = new Set<() => void>();
       const editor = document.createElement('erd-editor');
       const sharedStore = editor.getSharedStore();
@@ -72,19 +78,41 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
         })
         .catch(setError);
 
-      const timerId = setTimeout(() => {
+      const initializationTimerId = setTimeout(() => {
         readyReject?.(new NotFoundHostError());
-      }, 15000);
+      }, TIMEOUT);
+      const clearInitializationTimer = () => {
+        clearTimeout(initializationTimerId);
+      };
+
+      let hostLeaveStartLoadingTimerId = -1;
+      let hostLeaveTimerId = -1;
 
       socket
         .on('host-leave', () => {
-          setError(new HostStopSessionError());
+          editor.blur();
+          sharedStore.disconnect();
+          clearTimeout(hostLeaveStartLoadingTimerId);
+          clearTimeout(hostLeaveTimerId);
+
+          hostLeaveStartLoadingTimerId = setTimeout(() => {
+            setHostLeaveLoading(true);
+          }, 1000 * 3);
+          hostLeaveTimerId = setTimeout(() => {
+            setError(new HostStopSessionError());
+          }, TIMEOUT);
+        })
+        .on('host-join', () => {
+          sharedStore.connection();
+          clearTimeout(hostLeaveStartLoadingTimerId);
+          clearTimeout(hostLeaveTimerId);
+          setHostLeaveLoading(false);
         })
         .on(
           'host-schema',
           async ({ value }: { roomId: string; value: EncryptJson }) => {
             if (!readyResolve) return;
-            clearTimeout(timerId);
+            clearInitializationTimer();
 
             try {
               const json = await decryptFromJson(value, key);
@@ -94,6 +122,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
             } finally {
               readyResolve = null;
               readyReject = null;
+              setInitializationLoading(false);
             }
           }
         )
@@ -104,10 +133,16 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
             const actions = JSON.parse(json);
             sharedStore.dispatch(actions);
           }
-        );
-
-      socket.emit('guest-join-room', roomId);
-      socket.emit('request-host-schema', roomId);
+        )
+        .on('connect', () => {
+          socket.emit('guest-join-room', roomId);
+          sharedStore.connection();
+        })
+        .on('disconnect', () => {
+          sharedStore.disconnect();
+        })
+        .emit('guest-join-room', roomId)
+        .emit('request-host-schema', roomId);
 
       unsubscribeSet.add(
         sharedStore.subscribe(async actions => {
@@ -129,6 +164,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
       editor.addEventListener('changePresetTheme', handleChangePresetTheme);
 
       yield attachCancel(new Promise(() => {}), () => {
+        clearInitializationTimer();
         socket.emit('guest-leave-room', roomId);
         socket.disconnect();
         if ($viewer === editor.parentElement) {
@@ -169,6 +205,26 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
   return (
     <Flex css={styles.root} direction="column" align="center" justify="center">
       <div css={styles.scope} ref={viewerRef} />
+      {initializationLoading ? (
+        <Flex
+          css={styles.overlay}
+          direction="column"
+          align="center"
+          justify="center"
+        >
+          <Text size="6">Looking for a host...</Text>
+        </Flex>
+      ) : null}
+      {hostLeaveLoading ? (
+        <Flex
+          css={styles.overlay}
+          direction="column"
+          align="center"
+          justify="center"
+        >
+          <Text size="6">Waiting for a host...</Text>
+        </Flex>
+      ) : null}
     </Flex>
   );
 };

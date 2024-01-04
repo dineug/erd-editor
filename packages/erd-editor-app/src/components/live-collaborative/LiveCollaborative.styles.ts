@@ -13,3 +13,12 @@ export const scope = css`
   height: 100%;
   overflow: hidden;
 `;
+
+export const overlay = css`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--gray-3);
+`;

@@ -1,8 +1,10 @@
 import { ClipboardIcon, LightningBoltIcon } from '@radix-ui/react-icons';
-import { Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes';
+import { Badge, Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes';
+import { useAtom } from 'jotai';
 import { useRef, useState } from 'react';
 
 import {
+  nicknameStorageAtom,
   useCollaborativeMap,
   useStartSession,
   useStopSession,
@@ -25,8 +27,9 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
   const collaborative = collaborativeMap[entity.id];
   const hasCollaborative = Boolean(collaborative);
   const [roomId, secretKey] = hasCollaborative ? collaborative : ['', ''];
-  const link = `https://erd-editor.io/live/#${roomId},${secretKey}`;
+  const link = `${location.origin}/live/#${roomId},${secretKey}`;
 
+  const [nickname, setNickname] = useAtom(nicknameStorageAtom);
   const [copyState, setCopyState] = useState(false);
   const timerId = useRef(-1);
 
@@ -46,6 +49,10 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
     stopSession(entity.id);
   };
 
+  const handleChangeNickname = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setNickname(event.target.value);
+  };
+
   return (
     <Dialog.Root>
       <Dialog.Trigger>
@@ -59,9 +66,14 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
       </Dialog.Trigger>
 
       <Dialog.Content style={{ maxWidth: 450 }}>
-        <Dialog.Title>Collaborative editing</Dialog.Title>
+        <Dialog.Title>
+          Collaborative editing{' '}
+          <Badge radius="full" color="orange">
+            Experiment
+          </Badge>
+        </Dialog.Title>
         <Dialog.Description size="2" mb="4">
-          end to end encrypted.....
+          We exchange messages using end-to-end encryption.
         </Dialog.Description>
 
         {hasCollaborative ? (
@@ -70,7 +82,12 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
               <Text as="div" size="2" mb="1" weight="bold">
                 Nickname
               </Text>
-              <TextField.Input placeholder="Your nickname" />
+              <TextField.Input
+                placeholder="Your nickname"
+                value={nickname}
+                maxLength={30}
+                onChange={handleChangeNickname}
+              />
             </label>
             <label>
               <Text as="div" size="2" mb="1" weight="bold">

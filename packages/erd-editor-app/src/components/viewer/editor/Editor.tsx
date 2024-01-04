@@ -2,17 +2,14 @@ import {
   ErdEditorElement,
   setGetShikiServiceCallback,
 } from '@dineug/erd-editor';
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { useLayoutEffect, useRef } from 'react';
 
+import { nicknameStorageAtom } from '@/atoms/modules/collaborative';
 import { useReplicationSchemaEntity } from '@/atoms/modules/sidebar';
 import { themeAtom } from '@/atoms/modules/theme';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
-import {
-  bridge,
-  dispatch,
-  replicationSchemaEntityAction,
-} from '@/utils/broadcastChannel';
+import { bridge } from '@/utils/broadcastChannel';
 
 import * as styles from './Editor.styles';
 
@@ -29,6 +26,9 @@ const Editor: React.FC<EditorProps> = props => {
   const editorRef = useRef<ErdEditorElement | null>(null);
   const [theme, setTheme] = useAtom(themeAtom);
   const replicationSchemaEntity = useReplicationSchemaEntity();
+  const nickname = useAtomValue(nicknameStorageAtom);
+  const nicknameRef = useRef(nickname);
+  nicknameRef.current = nickname;
 
   useLayoutEffect(() => {
     const $viewer = viewerRef.current;
@@ -36,7 +36,9 @@ const Editor: React.FC<EditorProps> = props => {
 
     const unsubscribeSet = new Set<() => void>();
     const editor = document.createElement('erd-editor');
-    const sharedStore = editor.getSharedStore();
+    const sharedStore = editor.getSharedStore({
+      getNickname: () => nicknameRef.current,
+    });
     editorRef.current = editor;
     editor.enableThemeBuilder = true;
     editor.setInitialValue(props.entity.value);
@@ -48,14 +50,6 @@ const Editor: React.FC<EditorProps> = props => {
             id: props.entity.id,
             actions,
           });
-          dispatch(
-            replicationSchemaEntityAction({
-              id: props.entity.id,
-              actions: actions.filter(
-                action => action.type !== 'editor.sharedMouseTracker'
-              ),
-            })
-          );
         })
       )
       .add(

@@ -1,5 +1,6 @@
 import { atom, useAtomValue, useSetAtom } from 'jotai';
-import { atomWithImmer } from 'jotai-immer';
+import { atomWithStorage } from 'jotai/utils';
+import { atomWithImmer, withImmer } from 'jotai-immer';
 
 import { getAppDatabaseService } from '@/services/indexeddb';
 import {
@@ -14,6 +15,8 @@ type SecretKey = string;
 
 type Token = [RoomId, SecretKey];
 type CollaborativeState = Record<SchemaId, Token>;
+
+export const nicknameStorageAtom = atomWithStorage<string>('@nickname', '');
 
 export const collaborativeAtom = atomWithImmer<CollaborativeState>({});
 

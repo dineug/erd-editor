@@ -1,11 +1,13 @@
+import * as base64 from 'base64-arraybuffer';
+
 type EncryptValue = {
   encrypted: ArrayBuffer;
   iv: Uint8Array;
 };
 
 export type EncryptJson = {
-  encrypted: number[];
-  iv: number[];
+  encrypted: string;
+  iv: string;
 };
 
 const textEncoder = new TextEncoder();
@@ -70,8 +72,8 @@ async function encrypt(value: string, key: CryptoKey): Promise<EncryptValue> {
 }
 
 async function decrypt(
-  encrypted: Uint8Array,
-  iv: Uint8Array,
+  encrypted: ArrayBuffer,
+  iv: ArrayBuffer,
   key: CryptoKey
 ): Promise<string> {
   const value = await globalThis.crypto.subtle.decrypt(
@@ -85,22 +87,14 @@ async function decrypt(
   return decode(value);
 }
 
-function pack(buffer: ArrayBuffer) {
-  return Array.from(new Uint8Array(buffer));
-}
-
-function unpack(value: number[]) {
-  return new Uint8Array(value);
-}
-
 export async function encryptToJson(
   value: string,
   key: CryptoKey
 ): Promise<EncryptJson> {
   const { encrypted, iv } = await encrypt(value, key);
   return {
-    encrypted: pack(encrypted),
-    iv: pack(iv),
+    encrypted: base64.encode(encrypted),
+    iv: base64.encode(iv),
   };
 }
 
@@ -108,5 +102,5 @@ export function decryptFromJson(
   { encrypted, iv }: EncryptJson,
   key: CryptoKey
 ): Promise<string> {
-  return decrypt(unpack(encrypted), unpack(iv), key);
+  return decrypt(base64.decode(encrypted), base64.decode(iv), key);
 }

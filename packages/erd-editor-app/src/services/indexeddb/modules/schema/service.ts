@@ -13,6 +13,7 @@ import {
   SchemaEntity,
   updateSchemaEntity,
 } from '@/services/indexeddb/modules/schema';
+import { toWidth } from '@/utils/text';
 
 export class SchemaService {
   private cache = new Map<string, SchemaEntity & { store: ReplicationStore }>();
@@ -21,9 +22,7 @@ export class SchemaService {
   private createCache(entity: SchemaEntity) {
     if (this.cache.has(entity.id)) return;
 
-    const store = createReplicationStore({
-      toWidth: value => value.length * 11,
-    });
+    const store = createReplicationStore({ toWidth });
     store.setInitialValue(entity.value);
     store.on({
       change: () => {

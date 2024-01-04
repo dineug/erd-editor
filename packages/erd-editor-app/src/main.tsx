@@ -19,6 +19,7 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <Root />,
+    errorElement: <LiveCollaborativeError />,
     children: [
       {
         index: true,
