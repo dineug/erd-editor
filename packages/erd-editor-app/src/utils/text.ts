@@ -35,13 +35,9 @@ function getCanvasContext() {
 
 export function toWidth(text: string) {
   const canvasContext = getCanvasContext();
-  let width = 0;
-
-  if (canvasContext) {
-    width = canvasContext
-      ? canvasContext.measureText(text).width
-      : text.length * 11;
-  }
+  const width = canvasContext
+    ? canvasContext.measureText(text).width
+    : text.length * 11;
 
   return Math.round(width) + TEXT_PADDING;
 }
