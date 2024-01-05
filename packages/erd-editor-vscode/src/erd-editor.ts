@@ -5,6 +5,7 @@ import {
   webviewUpdateReadonlyAction,
   webviewUpdateThemeAction,
 } from '@dineug/erd-editor-vscode-bridge';
+import { decode } from 'base64-arraybuffer';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -37,12 +38,12 @@ export class ErdEditor extends Editor {
         dispatch(webviewUpdateReadonlyAction(this.readonly));
         dispatch(
           webviewInitialValueAction({
-            value: Array.from(this.document.content),
+            value: this.textDecoder.decode(this.document.content),
           })
         );
       },
       vscodeSaveValue: async ({ payload: { value } }) => {
-        await this.document.update(new Uint8Array(value));
+        await this.document.update(this.textEncoder.encode(value));
       },
       vscodeImportFile: async ({ payload: { type } }) => {
         const uris = await vscode.window.showOpenDialog();
@@ -57,7 +58,12 @@ export class ErdEditor extends Editor {
         }
 
         const value = await vscode.workspace.fs.readFile(uris[0]);
-        dispatch(webviewImportFileAction({ type, value: Array.from(value) }));
+        dispatch(
+          webviewImportFileAction({
+            type,
+            value: this.textDecoder.decode(value),
+          })
+        );
       },
       vscodeExportFile: async ({ payload: { value, fileName } }) => {
         let defaultPath = os.homedir();
@@ -74,7 +80,7 @@ export class ErdEditor extends Editor {
         });
         if (!uri) return;
 
-        await vscode.workspace.fs.writeFile(uri, new Uint8Array(value));
+        await vscode.workspace.fs.writeFile(uri, new Uint8Array(decode(value)));
       },
       vscodeSaveTheme: ({ payload }) => {
         saveTheme(payload);

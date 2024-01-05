@@ -26,9 +26,11 @@ const BridgeActionType = {
 } as const;
 type BridgeActionType = ValuesType<typeof BridgeActionType>;
 
+type Base64 = string;
+
 type BridgeActionMap = {
   [BridgeActionType.vscodeExportFile]: {
-    value: number[];
+    value: Base64;
     fileName: string;
   };
   [BridgeActionType.vscodeImportFile]: {
@@ -36,16 +38,16 @@ type BridgeActionMap = {
     accept: string;
   };
   [BridgeActionType.vscodeSaveValue]: {
-    value: number[];
+    value: string;
   };
   [BridgeActionType.vscodeInitial]: void;
   [BridgeActionType.vscodeSaveTheme]: ThemeOptions;
   [BridgeActionType.webviewImportFile]: {
     type: 'json' | 'sql';
-    value: number[];
+    value: string;
   };
   [BridgeActionType.webviewInitialValue]: {
-    value: number[];
+    value: string;
   };
   [BridgeActionType.webviewUpdateTheme]: Partial<ThemeOptions>;
   [BridgeActionType.webviewUpdateThemeLegacy]: {

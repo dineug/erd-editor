@@ -14,12 +14,11 @@ import {
   vscodeSaveThemeAction,
   vscodeSaveValueAction,
 } from '@dineug/erd-editor-vscode-bridge';
+import { encode } from 'base64-arraybuffer';
 
 const bridge = new Emitter();
 const vscode = window.acquireVsCodeApi();
 const editor = document.createElement('erd-editor');
-const textEncoder = new TextEncoder();
-const textDecoder = new TextDecoder();
 
 const dispatch = (action: AnyAction) => {
   vscode.postMessage(action);
@@ -33,7 +32,7 @@ setExportFileCallback(async (blob, options) => {
   const arrayBuffer = await blob.arrayBuffer();
   dispatch(
     vscodeExportFileAction({
-      value: Array.from(new Uint8Array(arrayBuffer)),
+      value: encode(arrayBuffer),
       fileName: options.fileName,
     })
   );
@@ -45,7 +44,7 @@ const getSystemTheme = () =>
 const handleChange = () => {
   dispatch(
     vscodeSaveValueAction({
-      value: Array.from(textEncoder.encode(editor.value)),
+      value: editor.value,
     })
   );
 };
@@ -57,21 +56,19 @@ const handleChangePresetTheme = (event: Event) => {
 
 bridge.on({
   webviewImportFile: ({ payload: { type, value } }) => {
-    const result = textDecoder.decode(new Uint8Array(value));
     switch (type) {
       case 'json':
-        editor.value = result;
+        editor.value = value;
         break;
       case 'sql':
-        editor.setSchemaSQL(result);
+        editor.setSchemaSQL(value);
         break;
     }
   },
   webviewInitialValue: ({ payload: { value } }) => {
-    const result = textDecoder.decode(new Uint8Array(value));
     editor.addEventListener('change', handleChange);
     editor.addEventListener('changePresetTheme', handleChangePresetTheme);
-    editor.setInitialValue(result);
+    editor.setInitialValue(value);
     editor.enableThemeBuilder = true;
     document.body.appendChild(editor);
   },

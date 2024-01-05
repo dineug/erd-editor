@@ -10,6 +10,7 @@ export type CreateEditor = (
 
 export abstract class Editor {
   protected bridge = new Emitter();
+  protected textEncoder = new TextEncoder();
   protected textDecoder = new TextDecoder();
   protected abstract assetsDir: string;
 

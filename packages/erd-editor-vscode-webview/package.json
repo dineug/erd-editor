@@ -12,11 +12,12 @@
     "build:legacy": "vite build --mode legacy"
   },
   "devDependencies": {
+    "@dineug/erd-editor": "workspace:*",
     "@dineug/erd-editor-shiki-worker": "workspace:*",
     "@dineug/erd-editor-vscode-bridge": "workspace:*",
-    "@dineug/erd-editor": "workspace:*",
     "@types/vscode-webview": "1.57.4",
     "@vuerd/plugin-generate-template": "workspace:*",
+    "base64-arraybuffer": "^1.0.2",
     "typescript": "5.3.3",
     "vite": "^5.0.10",
     "vuerd": "workspace:*"
