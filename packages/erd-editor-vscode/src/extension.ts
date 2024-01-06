@@ -1,20 +1,17 @@
 import * as vscode from 'vscode';
 
+import { LEGACY_VIEW_TYPE, MODERN_VIEW_TYPE } from '@/constants/viewType';
 import { widthEditor } from '@/editor';
 import { ErdEditor } from '@/erd-editor';
 import { ErdEditorLegacy } from '@/erd-editor-legacy';
 import { ErdEditorProvider } from '@/erd-editor-provider';
-
-const MODERN_VIEW_TYPE = 'editor.erd';
-const LEGACY_VIEW_TYPE = 'vuerd.editor';
 
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     ErdEditorProvider.register(
       context,
       MODERN_VIEW_TYPE,
-      widthEditor(ErdEditor),
-      true
+      widthEditor(ErdEditor)
     )
   );
   context.subscriptions.push(

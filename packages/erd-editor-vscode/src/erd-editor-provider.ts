@@ -1,8 +1,13 @@
+// @ts-ignore
+import { createReplicationStore } from '@dineug/erd-editor/engine.js';
 import * as vscode from 'vscode';
 
+import { MODERN_VIEW_TYPE } from '@/constants/viewType';
 import { CreateEditor } from '@/editor';
 import { ErdDocument } from '@/erd-document';
+import { textDecoder, textEncoder } from '@/utils';
 import { trackEvent } from '@/utils/googleAnalytics';
+import { createFont, toWidth } from '@/utils/text';
 
 export class ErdEditorProvider
   implements vscode.CustomEditorProvider<ErdDocument>
@@ -13,7 +18,7 @@ export class ErdEditorProvider
   public readonly onDidChangeCustomDocument =
     this._onDidChangeCustomDocument.event;
 
-  private docToWebviewMap = new Map<ErdDocument, Set<vscode.Webview>>();
+  private docToTupleMap = new Map<ErdDocument, [Set<vscode.Webview>, any]>();
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -24,14 +29,13 @@ export class ErdEditorProvider
   static register(
     context: vscode.ExtensionContext,
     viewType: string,
-    createEditor: CreateEditor,
-    supportsMultipleEditorsPerDocument = false
+    createEditor: CreateEditor
   ): vscode.Disposable {
     const provider = new ErdEditorProvider(context, viewType, createEditor);
 
     return vscode.window.registerCustomEditorProvider(viewType, provider, {
       webviewOptions: { retainContextWhenHidden: true },
-      supportsMultipleEditorsPerDocument,
+      supportsMultipleEditorsPerDocument: viewType === MODERN_VIEW_TYPE,
     });
   }
 
@@ -47,14 +51,29 @@ export class ErdEditorProvider
     const listener = document.onDidChangeContent(() => {
       this._onDidChangeCustomDocument.fire({ document });
     });
+    let unsubscribe = () => {};
 
-    if (!this.docToWebviewMap.has(document)) {
-      this.docToWebviewMap.set(document, new Set());
+    await createFont(this.context);
+
+    if (
+      this.viewType === MODERN_VIEW_TYPE &&
+      !this.docToTupleMap.has(document)
+    ) {
+      const store = createReplicationStore({ toWidth });
+      this.docToTupleMap.set(document, [new Set(), store]);
+      store.setInitialValue(textDecoder.decode(document.content));
+      unsubscribe = store.on({
+        change: () => {
+          const value = store.value;
+          document.update(textEncoder.encode(value));
+        },
+      });
     }
 
     document.onDidDispose(() => {
       listener.dispose();
-      this.docToWebviewMap.delete(document);
+      unsubscribe();
+      this.docToTupleMap.delete(document);
     });
 
     return document;
@@ -64,14 +83,14 @@ export class ErdEditorProvider
     document: ErdDocument,
     webviewPanel: vscode.WebviewPanel
   ) {
-    const webviewSet = this.docToWebviewMap.get(document);
+    const [webviewSet] = this.docToTupleMap.get(document) ?? [];
     webviewSet?.add(webviewPanel.webview);
 
     const editor = this.createEditor(
       document,
       webviewPanel.webview,
       this.context,
-      this.docToWebviewMap
+      this.docToTupleMap
     );
     const editorDisposable = await editor.bootstrapWebview();
 

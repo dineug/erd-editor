@@ -2,7 +2,7 @@ import { Emitter } from '@dineug/erd-editor-vscode-bridge';
 import * as vscode from 'vscode';
 
 import { ErdDocument } from '@/erd-document';
-import { getNonce } from '@/utils';
+import { getNonce, textDecoder } from '@/utils';
 
 export type CreateEditor = (
   ...args: ConstructorParameters<typeof Editor>
@@ -10,15 +10,13 @@ export type CreateEditor = (
 
 export abstract class Editor {
   protected bridge = new Emitter();
-  protected textEncoder = new TextEncoder();
-  protected textDecoder = new TextDecoder();
   protected abstract assetsDir: string;
 
   constructor(
     readonly document: ErdDocument,
     readonly webview: vscode.Webview,
     readonly context: vscode.ExtensionContext,
-    readonly docToWebviewMap: Map<ErdDocument, Set<vscode.Webview>>
+    readonly docToTupleMap: Map<ErdDocument, [Set<vscode.Webview>, any]>
   ) {}
 
   get readonly() {
@@ -50,7 +48,7 @@ export abstract class Editor {
       .asWebviewUri(vscode.Uri.joinPath(publicUri, 'lazy.js'))
       .toString();
 
-    const html = this.textDecoder
+    const html = textDecoder
       .decode(content)
       .replace(/{{nonce}}/gi, nonce)
       .replace(/{{cspSource}}/gi, cspSource)

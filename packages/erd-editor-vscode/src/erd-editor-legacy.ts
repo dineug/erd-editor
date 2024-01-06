@@ -12,6 +12,7 @@ import * as vscode from 'vscode';
 
 import { getThemeLegacy } from '@/configuration';
 import { Editor } from '@/editor';
+import { textDecoder, textEncoder } from '@/utils';
 
 const THEME_KEYS = [
   'dineug.vuerd-vscode.themeSync',
@@ -37,12 +38,12 @@ export class ErdEditorLegacy extends Editor {
         dispatch(webviewUpdateReadonlyAction(this.readonly));
         dispatch(
           webviewInitialValueAction({
-            value: this.textDecoder.decode(this.document.content),
+            value: textDecoder.decode(this.document.content),
           })
         );
       },
       vscodeSaveValue: async ({ payload: { value } }) => {
-        await this.document.update(this.textEncoder.encode(value));
+        await this.document.update(textEncoder.encode(value));
       },
       vscodeImportFile: async ({ payload: { type } }) => {
         const uris = await vscode.window.showOpenDialog();
@@ -60,7 +61,7 @@ export class ErdEditorLegacy extends Editor {
         dispatch(
           webviewImportFileAction({
             type,
-            value: this.textDecoder.decode(value),
+            value: textDecoder.decode(value),
           })
         );
       },

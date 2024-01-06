@@ -1,5 +1,3 @@
-// @ts-ignore
-import { createReplicationStore } from '@dineug/erd-editor/engine.js';
 import {
   AnyAction,
   webviewImportFileAction,
@@ -15,7 +13,7 @@ import * as vscode from 'vscode';
 
 import { getTheme, saveTheme } from '@/configuration';
 import { Editor } from '@/editor';
-import { createFont, toWidth } from '@/utils/text';
+import { textDecoder, textEncoder } from '@/utils';
 
 const THEME_KEYS = [
   'dineug.erd-editor.theme.appearance',
@@ -32,17 +30,13 @@ export class ErdEditor extends Editor {
       enableScripts: true,
     };
 
-    const unsubscribeSet = new Set<() => void>();
-
-    await createFont(this.context);
-    const store = createReplicationStore({ toWidth });
+    const [webviewSet, store] = this.docToTupleMap.get(this.document) ?? [];
 
     const dispatch = (action: AnyAction) => {
       this.webview.postMessage(action);
     };
 
     const dispatchBroadcast = (action: AnyAction) => {
-      const webviewSet = this.docToWebviewMap.get(this.document);
       if (!webviewSet) return;
 
       Array.from(webviewSet)
@@ -50,78 +44,64 @@ export class ErdEditor extends Editor {
         .forEach(webview => webview.postMessage(action));
     };
 
-    unsubscribeSet
-      .add(
-        store.on({
-          change: () => {
-            const value = store.value;
-            this.document.update(this.textEncoder.encode(value));
-          },
-        })
-      )
-      .add(
-        this.bridge.on({
-          vscodeInitial: () => {
-            const value = this.textDecoder.decode(this.document.content);
-            store.setInitialValue(value);
-            dispatch(webviewUpdateThemeAction(getTheme()));
-            dispatch(webviewUpdateReadonlyAction(this.readonly));
-            dispatch(webviewInitialValueAction({ value }));
-          },
-          vscodeSaveValue: async ({ payload: { value } }) => {
-            await this.document.update(this.textEncoder.encode(value));
-          },
-          vscodeSaveReplication: ({ payload: { actions } }) => {
-            store.dispatch(actions);
-            dispatchBroadcast(webviewReplicationAction({ actions }));
-          },
-          vscodeImportFile: async ({ payload: { type } }) => {
-            const uris = await vscode.window.showOpenDialog();
-            if (!uris || !uris.length) return;
+    const unsubscribe = this.bridge.on({
+      vscodeInitial: () => {
+        dispatch(webviewUpdateThemeAction(getTheme()));
+        dispatch(webviewUpdateReadonlyAction(this.readonly));
+        dispatch(
+          webviewInitialValueAction({
+            value: textDecoder.decode(this.document.content),
+          })
+        );
+      },
+      vscodeSaveValue: async ({ payload: { value } }) => {
+        await this.document.update(textEncoder.encode(value));
+      },
+      vscodeSaveReplication: ({ payload: { actions } }) => {
+        store.dispatch(actions);
+        dispatchBroadcast(webviewReplicationAction({ actions }));
+      },
+      vscodeImportFile: async ({ payload: { type } }) => {
+        const uris = await vscode.window.showOpenDialog();
+        if (!uris || !uris.length) return;
 
-            const uri = uris[0];
-            const regexp = new RegExp(`\.(${type}|erd|vuerd)$`, 'i');
+        const uri = uris[0];
+        const regexp = new RegExp(`\.(${type}|erd|vuerd)$`, 'i');
 
-            if (!regexp.test(uri.path)) {
-              vscode.window.showInformationMessage(
-                `Just import the ${type} file`
-              );
-              return;
-            }
+        if (!regexp.test(uri.path)) {
+          vscode.window.showInformationMessage(`Just import the ${type} file`);
+          return;
+        }
 
-            const value = await vscode.workspace.fs.readFile(uris[0]);
-            dispatch(
-              webviewImportFileAction({
-                type,
-                value: this.textDecoder.decode(value),
-              })
-            );
-          },
-          vscodeExportFile: async ({ payload: { value, fileName } }) => {
-            let defaultPath = os.homedir();
+        const value = await vscode.workspace.fs.readFile(uris[0]);
+        dispatch(
+          webviewImportFileAction({
+            type,
+            value: textDecoder.decode(value),
+          })
+        );
+      },
+      vscodeExportFile: async ({ payload: { value, fileName } }) => {
+        let defaultPath = os.homedir();
 
-            if (
-              Array.isArray(vscode.workspace.workspaceFolders) &&
-              vscode.workspace.workspaceFolders.length
-            ) {
-              defaultPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-            }
+        if (
+          Array.isArray(vscode.workspace.workspaceFolders) &&
+          vscode.workspace.workspaceFolders.length
+        ) {
+          defaultPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        }
 
-            const uri = await vscode.window.showSaveDialog({
-              defaultUri: vscode.Uri.file(path.join(defaultPath, fileName)),
-            });
-            if (!uri) return;
+        const uri = await vscode.window.showSaveDialog({
+          defaultUri: vscode.Uri.file(path.join(defaultPath, fileName)),
+        });
+        if (!uri) return;
 
-            await vscode.workspace.fs.writeFile(
-              uri,
-              new Uint8Array(decode(value))
-            );
-          },
-          vscodeSaveTheme: ({ payload }) => {
-            saveTheme(payload);
-          },
-        })
-      );
+        await vscode.workspace.fs.writeFile(uri, new Uint8Array(decode(value)));
+      },
+      vscodeSaveTheme: ({ payload }) => {
+        saveTheme(payload);
+      },
+    });
 
     const listeners: vscode.Disposable[] = [
       this.webview.onDidReceiveMessage(action => this.bridge.emit(action)),
@@ -138,9 +118,8 @@ export class ErdEditor extends Editor {
     this.webview.html = await this.buildHtmlForWebview();
 
     return new vscode.Disposable(() => {
-      Array.from(unsubscribeSet).forEach(unsubscribe => unsubscribe());
+      unsubscribe();
       listeners.forEach(listener => listener.dispose());
-      unsubscribeSet.clear();
     });
   }
 }
