@@ -1,5 +1,5 @@
+import { nanoid } from '@dineug/shared';
 import merge from 'deepmerge';
-import { nanoid } from 'nanoid';
 
 import { DeepPartial, Index } from '@/internal-types';
 import { getDefaultEntityMeta } from '@/utils';

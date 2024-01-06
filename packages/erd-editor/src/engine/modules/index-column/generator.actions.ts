@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { nanoid } from 'nanoid';
+import { nanoid } from '@dineug/shared';
 
 import { OrderType } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';

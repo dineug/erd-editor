@@ -1,5 +1,4 @@
-import { arrayHas } from '@dineug/shared';
-import { nanoid } from 'nanoid';
+import { arrayHas, nanoid } from '@dineug/shared';
 
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
 import { Point, ValuesType } from '@/internal-types';

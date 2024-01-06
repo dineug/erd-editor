@@ -1,4 +1,4 @@
-import { nanoid } from 'nanoid';
+import { nanoid } from '@dineug/shared';
 import { io, Socket } from 'socket.io-client';
 
 import { SchemaService } from '@/services/indexeddb/modules/schema/service';

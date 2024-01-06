@@ -15,14 +15,16 @@ export { AccentColor, Appearance, GrayColor };
 const BridgeActionType = {
   vscodeExportFile: 'vscodeExportFile',
   vscodeImportFile: 'vscodeImportFile',
-  vscodeSaveValue: 'vscodeSaveValue',
   vscodeInitial: 'vscodeInitial',
+  vscodeSaveValue: 'vscodeSaveValue',
+  vscodeSaveReplication: 'vscodeSaveReplication',
   vscodeSaveTheme: 'vscodeSaveTheme',
   webviewImportFile: 'webviewImportFile',
   webviewInitialValue: 'webviewInitialValue',
   webviewUpdateTheme: 'webviewUpdateTheme',
   webviewUpdateThemeLegacy: 'webviewUpdateThemeLegacy',
   webviewUpdateReadonly: 'webviewReadonly',
+  webviewReplication: 'webviewReplication',
 } as const;
 type BridgeActionType = ValuesType<typeof BridgeActionType>;
 
@@ -37,10 +39,13 @@ type BridgeActionMap = {
     type: 'json' | 'sql';
     accept: string;
   };
+  [BridgeActionType.vscodeInitial]: void;
   [BridgeActionType.vscodeSaveValue]: {
     value: string;
   };
-  [BridgeActionType.vscodeInitial]: void;
+  [BridgeActionType.vscodeSaveReplication]: {
+    actions: any;
+  };
   [BridgeActionType.vscodeSaveTheme]: ThemeOptions;
   [BridgeActionType.webviewImportFile]: {
     type: 'json' | 'sql';
@@ -76,6 +81,9 @@ type BridgeActionMap = {
     }>;
   };
   [BridgeActionType.webviewUpdateReadonly]: boolean;
+  [BridgeActionType.webviewReplication]: {
+    actions: any;
+  };
 };
 
 function createAction<P = void>(type: string) {
@@ -116,13 +124,17 @@ export const vscodeImportFileAction = createAction<
   BridgeActionMap[typeof BridgeActionType.vscodeImportFile]
 >(BridgeActionType.vscodeImportFile);
 
+export const vscodeInitialAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.vscodeInitial]
+>(BridgeActionType.vscodeInitial);
+
 export const vscodeSaveValueAction = createAction<
   BridgeActionMap[typeof BridgeActionType.vscodeSaveValue]
 >(BridgeActionType.vscodeSaveValue);
 
-export const vscodeInitialAction = createAction<
-  BridgeActionMap[typeof BridgeActionType.vscodeInitial]
->(BridgeActionType.vscodeInitial);
+export const vscodeSaveReplicationAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.vscodeSaveReplication]
+>(BridgeActionType.vscodeSaveReplication);
 
 export const vscodeSaveThemeAction = createAction<
   BridgeActionMap[typeof BridgeActionType.vscodeSaveTheme]
@@ -147,3 +159,7 @@ export const webviewUpdateThemeLegacyAction = createAction<
 export const webviewUpdateReadonlyAction = createAction<
   BridgeActionMap[typeof BridgeActionType.webviewUpdateReadonly]
 >(BridgeActionType.webviewUpdateReadonly);
+
+export const webviewReplicationAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.webviewReplication]
+>(BridgeActionType.webviewReplication);

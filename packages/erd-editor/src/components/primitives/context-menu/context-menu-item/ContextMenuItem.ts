@@ -7,7 +7,7 @@ import {
   onMounted,
   ref,
 } from '@dineug/r-html';
-import { nanoid } from 'nanoid';
+import { nanoid } from '@dineug/shared';
 
 import ContextMenuContent from '@/components/primitives/context-menu/context-menu-content/ContextMenuContent';
 import { useContextMenuRootContext } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';

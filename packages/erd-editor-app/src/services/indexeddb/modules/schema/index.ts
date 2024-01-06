@@ -1,5 +1,5 @@
+import { nanoid } from '@dineug/shared';
 import { omit } from 'lodash-es';
-import { nanoid } from 'nanoid';
 
 import { EntityType } from '@/internal-types';
 import type { AppDatabase } from '@/services/indexeddb/appDatabaseService';

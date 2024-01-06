@@ -10,6 +10,7 @@ import {
   vscodeExportFileAction,
   vscodeImportFileAction,
   vscodeInitialAction,
+  vscodeSaveReplicationAction,
   vscodeSaveThemeAction,
   vscodeSaveValueAction,
 } from '@dineug/erd-editor-vscode-bridge';
@@ -19,6 +20,7 @@ const LAZY_KEY = Symbol.for('@dineug/erd-editor');
 const bridge = new Emitter();
 const vscode = globalThis.acquireVsCodeApi();
 const editor = document.createElement('erd-editor');
+const sharedStore = editor.getSharedStore({ mouseTracker: false });
 
 const dispatch = (action: AnyAction) => {
   vscode.postMessage(action);
@@ -68,11 +70,17 @@ bridge.on({
     }
   },
   webviewInitialValue: ({ payload: { value } }) => {
-    editor.addEventListener('change', handleChange);
+    // editor.addEventListener('change', handleChange);
     editor.addEventListener('changePresetTheme', handleChangePresetTheme);
     editor.setInitialValue(value);
     editor.enableThemeBuilder = true;
+    sharedStore.subscribe(actions => {
+      dispatch(vscodeSaveReplicationAction({ actions }));
+    });
     document.body.appendChild(editor);
+  },
+  webviewReplication: ({ payload: { actions } }) => {
+    sharedStore.dispatch(actions);
   },
   webviewUpdateTheme: ({ payload }) => {
     editor.setPresetTheme({

@@ -1,5 +1,5 @@
+import { nanoid } from '@dineug/shared';
 import merge from 'deepmerge';
-import { nanoid } from 'nanoid';
 
 import { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
 import { DeepPartial, Memo } from '@/internal-types';

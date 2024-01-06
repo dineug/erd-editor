@@ -13,7 +13,8 @@ export function activate(context: vscode.ExtensionContext) {
     ErdEditorProvider.register(
       context,
       MODERN_VIEW_TYPE,
-      widthEditor(ErdEditor)
+      widthEditor(ErdEditor),
+      true
     )
   );
   context.subscriptions.push(

@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
+import { nanoid } from '@dineug/shared';
 import { cloneDeep, isEmpty, omit } from 'lodash-es';
-import { nanoid } from 'nanoid';
 
 import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';

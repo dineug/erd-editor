@@ -1,5 +1,5 @@
+import { nanoid } from '@dineug/shared';
 import merge from 'deepmerge';
-import { nanoid } from 'nanoid';
 
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { Column, DeepPartial } from '@/internal-types';

@@ -1,7 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
-import { nanoid } from 'nanoid';
+import { arrayHas, nanoid } from '@dineug/shared';
 
 import { ColumnOption, ColumnType } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';

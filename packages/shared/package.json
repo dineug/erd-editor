@@ -25,6 +25,8 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.5",
+    "@types/node": "^18.15.0",
+    "nanoid": "^5.0.4",
     "rollup-plugin-visualizer": "^5.11.0",
     "ts-patch": "^3.1.1",
     "tslib": "^2.6.2",

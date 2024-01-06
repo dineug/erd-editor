@@ -58,7 +58,7 @@ importers:
         version: 5.3.3
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
 
   packages-legacy/lit-observable:
     dependencies:
@@ -77,7 +77,7 @@ importers:
         version: 5.3.3
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
 
   packages-legacy/plugin-generate-template:
     dependencies:
@@ -162,7 +162,7 @@ importers:
         version: 5.3.3
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
 
   packages-legacy/sql-ddl-parser:
     devDependencies:
@@ -171,7 +171,7 @@ importers:
         version: 5.3.3
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
       vitest:
         specifier: ^1.0.4
         version: 1.0.4
@@ -262,7 +262,7 @@ importers:
         version: 5.3.3
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
 
   packages/erd-editor:
     devDependencies:
@@ -377,9 +377,6 @@ importers:
       luxon:
         specifier: ^3.4.4
         version: 3.4.4
-      nanoid:
-        specifier: ^5.0.4
-        version: 5.0.4
       rollup-plugin-visualizer:
         specifier: ^5.11.0
         version: 5.11.0
@@ -409,7 +406,7 @@ importers:
         version: 3.4.6(typescript@5.3.3)
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
 
   packages/erd-editor-app:
     dependencies:
@@ -458,9 +455,6 @@ importers:
       luxon:
         specifier: ^3.4.4
         version: 3.4.4
-      nanoid:
-        specifier: ^5.0.4
-        version: 5.0.4
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -573,9 +567,6 @@ importers:
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
-      nanoid:
-        specifier: ^5.0.4
-        version: 5.0.4
       rollup-plugin-visualizer:
         specifier: ^5.11.0
         version: 5.11.0
@@ -593,7 +584,7 @@ importers:
         version: 3.4.6(typescript@5.3.3)
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
 
   packages/erd-editor-shiki-worker:
     devDependencies:
@@ -623,13 +614,16 @@ importers:
         version: 3.4.6(typescript@5.3.3)
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
       vite-tsconfig-paths:
         specifier: 4.2.2
         version: 4.2.2(typescript@5.3.3)(vite@5.0.10)
 
   packages/erd-editor-vscode:
     devDependencies:
+      '@dineug/erd-editor':
+        specifier: workspace:*
+        version: link:../erd-editor
       '@dineug/erd-editor-vscode-bridge':
         specifier: workspace:*
         version: link:../erd-editor-vscode-bridge
@@ -639,6 +633,9 @@ importers:
       '@types/node':
         specifier: ^18.15.0
         version: 18.18.13
+      '@types/opentype.js':
+        specifier: ^1.3.8
+        version: 1.3.8
       '@types/vscode':
         specifier: ^1.85.0
         version: 1.85.0
@@ -698,7 +695,7 @@ importers:
         version: 3.4.6(typescript@5.3.3)
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
 
   packages/erd-editor-vscode-webview:
     devDependencies:
@@ -725,7 +722,7 @@ importers:
         version: 5.3.3
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
       vuerd:
         specifier: workspace:*
         version: link:../../packages-legacy/vuerd
@@ -752,7 +749,7 @@ importers:
         version: 3.4.6(typescript@5.3.3)
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
 
   packages/schema-sql-parser:
     devDependencies:
@@ -776,7 +773,7 @@ importers:
         version: 3.4.6(typescript@5.3.3)
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
       vitest:
         specifier: ^1.0.4
         version: 1.0.4
@@ -786,6 +783,12 @@ importers:
       '@rollup/plugin-typescript':
         specifier: ^11.1.5
         version: 11.1.5(tslib@2.6.2)(typescript@5.3.3)
+      '@types/node':
+        specifier: ^18.15.0
+        version: 18.18.13
+      nanoid:
+        specifier: ^5.0.4
+        version: 5.0.4
       rollup-plugin-visualizer:
         specifier: ^5.11.0
         version: 5.11.0
@@ -803,7 +806,7 @@ importers:
         version: 3.4.6(typescript@5.3.3)
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
 
   packages/vite-plugin-r-html:
     dependencies:
@@ -831,7 +834,7 @@ importers:
         version: 3.4.6(typescript@5.3.3)
       vite:
         specifier: ^5.0.10
-        version: 5.0.10
+        version: 5.0.10(@types/node@18.18.13)
 
 packages:
 
@@ -3801,7 +3804,7 @@ packages:
       debug: 4.3.4(supports-color@5.5.0)
       kolorist: 1.8.0
       resolve: 1.22.8
-      vite: 5.0.10
+      vite: 5.0.10(@types/node@18.18.13)
     transitivePeerDependencies:
       - preact
       - supports-color
@@ -3835,7 +3838,7 @@ packages:
       '@prefresh/utils': 1.2.0
       '@rollup/pluginutils': 4.2.1
       preact: 10.19.3
-      vite: 5.0.10
+      vite: 5.0.10(@types/node@18.18.13)
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -5718,7 +5721,7 @@ packages:
       magic-string: 0.30.3
       rollup: 3.28.1
       typescript: 5.3.3
-      vite: 5.0.10
+      vite: 5.0.10(@types/node@18.18.13)
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -6780,6 +6783,10 @@ packages:
 
   /@types/normalize-package-data@2.4.1:
     resolution: {integrity: sha512-Gj7cI7z+98M282Tqmp2K5EIsoouUEzbBJhQQzDE3jSIRk6r9gsz0oUokqIUR4u1R3dMHo0pDHM7sNOHyhulypw==}
+    dev: true
+
+  /@types/opentype.js@1.3.8:
+    resolution: {integrity: sha512-H6qeTp03jrknklSn4bpT1/9+1xCAEIU2CnjcWPkicJy8A1SKuthanbvoHYMiv79/2W3Xn1XE4gfSJFzt2U3JSw==}
     dev: true
 
   /@types/parse-json@4.0.2:
@@ -11748,6 +11755,7 @@ packages:
     resolution: {integrity: sha512-vAjmBf13gsmhXSgBrtIclinISzFFy22WwCYoyilZlsrRXNIHSwgFQ1bEdjRwMT3aoadeIF6HMuDRlOxzfXV8ig==}
     engines: {node: ^18 || >=20}
     hasBin: true
+    dev: true
 
   /natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
@@ -14560,7 +14568,7 @@ packages:
       debug: 4.3.4(supports-color@5.5.0)
       pathe: 1.1.1
       picocolors: 1.0.0
-      vite: 5.0.10
+      vite: 5.0.10(@types/node@18.18.13)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -14583,13 +14591,13 @@ packages:
       debug: 4.3.4(supports-color@5.5.0)
       globrex: 0.1.2
       tsconfck: 2.1.2(typescript@5.3.3)
-      vite: 5.0.10
+      vite: 5.0.10(@types/node@18.18.13)
     transitivePeerDependencies:
       - supports-color
       - typescript
     dev: true
 
-  /vite@5.0.10:
+  /vite@5.0.10(@types/node@18.18.13):
     resolution: {integrity: sha512-2P8J7WWgmc355HUMlFrwofacvr98DAjoE52BfdbwQtyLH06XKwaL/FMnmKM2crF0iX4MpmMKoDlNCB1ok7zHCw==}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
@@ -14617,6 +14625,7 @@ packages:
       terser:
         optional: true
     dependencies:
+      '@types/node': 18.18.13
       esbuild: 0.19.9
       postcss: 8.4.32
       rollup: 4.9.0
@@ -14667,7 +14676,7 @@ packages:
       strip-literal: 1.3.0
       tinybench: 2.5.1
       tinypool: 0.8.1
-      vite: 5.0.10
+      vite: 5.0.10(@types/node@18.18.13)
       vite-node: 1.0.4
       why-is-node-running: 2.2.2
     transitivePeerDependencies:

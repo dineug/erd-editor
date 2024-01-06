@@ -26,7 +26,6 @@
     "jotai-immer": "^0.2.0",
     "lodash-es": "^4.17.21",
     "luxon": "^3.4.4",
-    "nanoid": "^5.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.1",

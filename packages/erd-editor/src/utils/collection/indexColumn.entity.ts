@@ -1,5 +1,5 @@
+import { nanoid } from '@dineug/shared';
 import merge from 'deepmerge';
-import { nanoid } from 'nanoid';
 
 import { OrderType } from '@/constants/schema';
 import { DeepPartial, IndexColumn } from '@/internal-types';

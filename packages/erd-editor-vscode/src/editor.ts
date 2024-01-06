@@ -17,7 +17,8 @@ export abstract class Editor {
   constructor(
     readonly document: ErdDocument,
     readonly webview: vscode.Webview,
-    readonly context: vscode.ExtensionContext
+    readonly context: vscode.ExtensionContext,
+    readonly docToWebviewMap: Map<ErdDocument, Set<vscode.Webview>>
   ) {}
 
   get readonly() {

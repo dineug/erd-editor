@@ -13,6 +13,8 @@ export class ErdEditorProvider
   public readonly onDidChangeCustomDocument =
     this._onDidChangeCustomDocument.event;
 
+  private docToWebviewMap = new Map<ErdDocument, Set<vscode.Webview>>();
+
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly viewType: string,
@@ -22,13 +24,14 @@ export class ErdEditorProvider
   static register(
     context: vscode.ExtensionContext,
     viewType: string,
-    createEditor: CreateEditor
+    createEditor: CreateEditor,
+    supportsMultipleEditorsPerDocument = false
   ): vscode.Disposable {
     const provider = new ErdEditorProvider(context, viewType, createEditor);
 
     return vscode.window.registerCustomEditorProvider(viewType, provider, {
       webviewOptions: { retainContextWhenHidden: true },
-      supportsMultipleEditorsPerDocument: false,
+      supportsMultipleEditorsPerDocument,
     });
   }
 
@@ -45,8 +48,13 @@ export class ErdEditorProvider
       this._onDidChangeCustomDocument.fire({ document });
     });
 
+    if (!this.docToWebviewMap.has(document)) {
+      this.docToWebviewMap.set(document, new Set());
+    }
+
     document.onDidDispose(() => {
       listener.dispose();
+      this.docToWebviewMap.delete(document);
     });
 
     return document;
@@ -56,15 +64,20 @@ export class ErdEditorProvider
     document: ErdDocument,
     webviewPanel: vscode.WebviewPanel
   ) {
+    const webviewSet = this.docToWebviewMap.get(document);
+    webviewSet?.add(webviewPanel.webview);
+
     const editor = this.createEditor(
       document,
       webviewPanel.webview,
-      this.context
+      this.context,
+      this.docToWebviewMap
     );
     const editorDisposable = await editor.bootstrapWebview();
 
     webviewPanel.onDidDispose(() => {
       editorDisposable.dispose();
+      webviewSet?.delete(webviewPanel.webview);
     });
   }
 
