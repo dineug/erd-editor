@@ -24,6 +24,12 @@ create an empty file with a `.erd`, `.erd.json` extension and open it in Visual 
 
 rename files with the extensions `.vuerd` and `.vuerd.json` to `.erd` and `.erd.json` respectively.
 
+## New Features
+
+### Multiple editors supported per document.
+
+![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/supports-multiple-editors-per-document.webp?raw=true)
+
 ## Reference
 
 - [Web App](https://erd-editor.io)
