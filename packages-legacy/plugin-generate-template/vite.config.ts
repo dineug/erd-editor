@@ -6,6 +6,13 @@ import { defineConfig } from 'vite';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
+const banner = `/*!
+ * ${pkg.name}
+ * @version ${pkg.version} | ${new Date().toDateString()}
+ * @author ${pkg.author}
+ * @license ${pkg.license}
+ */`;
+
 const external = new RegExp(
   `^(${Object.keys(pkg.dependencies || {}).join('|')})$`
 );
@@ -27,6 +34,9 @@ export default defineConfig(({ command }) => {
       },
       rollupOptions: {
         external: [external, /^highlight.js\/lib/],
+        output: {
+          banner,
+        },
       },
     },
     resolve: {

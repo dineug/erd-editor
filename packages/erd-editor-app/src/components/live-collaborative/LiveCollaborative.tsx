@@ -90,12 +90,12 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
 
       socket
         .on('host-leave', () => {
-          editor.blur();
           sharedStore.disconnect();
           clearTimeout(hostLeaveStartLoadingTimerId);
           clearTimeout(hostLeaveTimerId);
 
           hostLeaveStartLoadingTimerId = setTimeout(() => {
+            editor.blur();
             setHostLeaveLoading(true);
           }, 1000 * 3);
           hostLeaveTimerId = setTimeout(() => {

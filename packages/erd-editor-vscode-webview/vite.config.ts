@@ -5,11 +5,43 @@ import { defineConfig, loadEnv } from 'vite';
 export default defineConfig(({ command, mode }) => {
   const envDir = './environment';
   const env = loadEnv(mode, envDir);
-  const isModern = env.VITE_TARGET === 'modern';
-  const entry = isModern ? './src/index.ts' : './src/index-legacy.ts';
-  const outDir = '../erd-editor-vscode/'.concat(
-    isModern ? 'public' : 'public-legacy'
-  );
+
+  const targetMap = {
+    modern: {
+      entry: './src/index.ts',
+      name: 'webview',
+      fileName: () => 'webview.js',
+      outDir: '../erd-editor-vscode/public',
+      emptyOutDir: true,
+    },
+    'modern-lazy': {
+      entry: './src/lazy.ts',
+      name: 'lazy',
+      fileName: () => 'lazy.js',
+      outDir: '../erd-editor-vscode/public',
+      emptyOutDir: false,
+    },
+    legacy: {
+      entry: './src/legacy/index.ts',
+      name: 'webview',
+      fileName: () => 'webview.js',
+      outDir: '../erd-editor-vscode/public-legacy',
+      emptyOutDir: true,
+    },
+    'legacy-lazy': {
+      entry: './src/legacy/lazy.ts',
+      name: 'lazy',
+      fileName: () => 'lazy.js',
+      outDir: '../erd-editor-vscode/public-legacy',
+      emptyOutDir: false,
+    },
+  };
+
+  const entry = targetMap[env.VITE_TARGET].entry;
+  const name = targetMap[env.VITE_TARGET].name;
+  const fileName = targetMap[env.VITE_TARGET].fileName;
+  const outDir = targetMap[env.VITE_TARGET].outDir;
+  const emptyOutDir = targetMap[env.VITE_TARGET].emptyOutDir;
   const isBuild = command === 'build';
 
   return {
@@ -22,12 +54,12 @@ export default defineConfig(({ command, mode }) => {
     build: {
       lib: {
         entry,
-        name: 'webview',
-        fileName: () => 'webview.js',
+        name,
+        fileName,
         formats: ['iife'],
       },
       outDir,
-      emptyOutDir: true,
+      emptyOutDir,
     },
     resolve: {
       alias: {

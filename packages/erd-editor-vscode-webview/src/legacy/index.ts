@@ -10,14 +10,18 @@ import { generateTemplatePanel } from '@vuerd/plugin-generate-template';
 import { encode } from 'base64-arraybuffer';
 import { extension, setExportFileCallback, setImportFileCallback } from 'vuerd';
 
+const LAZY_KEY = Symbol.for('vuerd');
 const bridge = new Emitter();
-const vscode = window.acquireVsCodeApi();
+const vscode = globalThis.acquireVsCodeApi();
 const editor = document.createElement('vuerd-editor');
 
 const dispatch = (action: AnyAction) => {
   vscode.postMessage(action);
 };
 
+Reflect.set(globalThis, LAZY_KEY, {
+  extension,
+});
 setImportFileCallback(options => {
   dispatch(vscodeImportFileAction(options));
 });
@@ -30,7 +34,7 @@ setExportFileCallback(async (blob, options) => {
     })
   );
 });
-extension({
+extension?.({
   panels: [generateTemplatePanel()],
 });
 
@@ -127,5 +131,5 @@ bridge.on({
   },
 });
 
-window.addEventListener('message', event => bridge.emit(event.data));
+globalThis.addEventListener('message', event => bridge.emit(event.data));
 dispatch(vscodeInitialAction());

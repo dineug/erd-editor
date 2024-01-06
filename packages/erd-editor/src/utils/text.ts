@@ -1,12 +1,13 @@
 import { css } from '@dineug/r-html';
 
-import { TextFontFamily } from '@/styles/fonts.styles';
 import { typography } from '@/styles/typography.styles';
+
+const TEXT_PADDING = 2;
+const TextFontFamily =
+  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Open Sans Regular', system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'" as const;
 
 let canvas: HTMLCanvasElement | null = null;
 let canvasContext: CanvasRenderingContext2D | null;
-
-const TEXT_PADDING = 2;
 
 const ghostText = css`
   visibility: hidden;

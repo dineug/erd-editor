@@ -8,8 +8,8 @@
   "license": "MIT",
   "scripts": {
     "build": "pnpm build:modern && pnpm build:legacy",
-    "build:modern": "vite build --mode modern",
-    "build:legacy": "vite build --mode legacy"
+    "build:modern": "vite build --mode modern && vite build --mode modern-lazy",
+    "build:legacy": "vite build --mode legacy && vite build --mode legacy-lazy"
   },
   "devDependencies": {
     "@dineug/erd-editor": "workspace:*",

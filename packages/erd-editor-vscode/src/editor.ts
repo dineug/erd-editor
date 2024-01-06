@@ -42,8 +42,11 @@ export abstract class Editor {
     const styleUri = this.webview
       .asWebviewUri(vscode.Uri.joinPath(publicUri, 'webview.css'))
       .toString();
-    const scriptUri = this.webview
+    const webviewScriptUri = this.webview
       .asWebviewUri(vscode.Uri.joinPath(publicUri, 'webview.js'))
+      .toString();
+    const lazyScriptUri = this.webview
+      .asWebviewUri(vscode.Uri.joinPath(publicUri, 'lazy.js'))
       .toString();
 
     const html = this.textDecoder
@@ -51,7 +54,8 @@ export abstract class Editor {
       .replace(/{{nonce}}/gi, nonce)
       .replace(/{{cspSource}}/gi, cspSource)
       .replace('{{webview.css}}', styleUri)
-      .replace('{{webview.js}}', scriptUri);
+      .replace('{{webview.js}}', webviewScriptUri)
+      .replace('{{lazy.js}}', lazyScriptUri);
 
     return html;
   }

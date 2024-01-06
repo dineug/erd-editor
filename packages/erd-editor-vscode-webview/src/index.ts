@@ -3,7 +3,6 @@ import {
   setGetShikiServiceCallback,
   setImportFileCallback,
 } from '@dineug/erd-editor';
-import { getShikiService } from '@dineug/erd-editor-shiki-worker';
 import {
   AnyAction,
   Emitter,
@@ -16,15 +15,18 @@ import {
 } from '@dineug/erd-editor-vscode-bridge';
 import { encode } from 'base64-arraybuffer';
 
+const LAZY_KEY = Symbol.for('@dineug/erd-editor');
 const bridge = new Emitter();
-const vscode = window.acquireVsCodeApi();
+const vscode = globalThis.acquireVsCodeApi();
 const editor = document.createElement('erd-editor');
 
 const dispatch = (action: AnyAction) => {
   vscode.postMessage(action);
 };
 
-setGetShikiServiceCallback(getShikiService);
+Reflect.set(globalThis, LAZY_KEY, {
+  setGetShikiServiceCallback,
+});
 setImportFileCallback(options => {
   dispatch(vscodeImportFileAction(options));
 });
@@ -84,5 +86,5 @@ bridge.on({
   },
 });
 
-window.addEventListener('message', event => bridge.emit(event.data));
+globalThis.addEventListener('message', event => bridge.emit(event.data));
 dispatch(vscodeInitialAction());
