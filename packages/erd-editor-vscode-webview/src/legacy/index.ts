@@ -34,7 +34,7 @@ setExportFileCallback(async (blob, options) => {
     })
   );
 });
-extension?.({
+extension({
   panels: [generateTemplatePanel()],
 });
 

@@ -84,7 +84,8 @@ export class ErdEditorProvider
     webviewPanel: vscode.WebviewPanel
   ) {
     const [webviewSet] = this.docToTupleMap.get(document) ?? [];
-    webviewSet?.add(webviewPanel.webview);
+    const webview = webviewPanel.webview;
+    webviewSet?.add(webview);
 
     const editor = this.createEditor(
       document,
@@ -96,7 +97,7 @@ export class ErdEditorProvider
 
     webviewPanel.onDidDispose(() => {
       editorDisposable.dispose();
-      webviewSet?.delete(webviewPanel.webview);
+      webviewSet?.delete(webview);
     });
   }
 
