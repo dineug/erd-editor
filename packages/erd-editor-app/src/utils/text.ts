@@ -1,6 +1,6 @@
 const TEXT_PADDING = 2;
 const TextFontFamily =
-  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Open Sans Regular', system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'" as const;
+  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Open Sans', system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'" as const;
 
 let canvas: OffscreenCanvas | null = null;
 let canvasContext: OffscreenCanvasRenderingContext2D | null = null;
