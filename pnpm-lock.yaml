@@ -467,10 +467,22 @@ importers:
       socket.io-client:
         specifier: ^4.7.2
         version: 4.7.2
+      workbox-cacheable-response:
+        specifier: ^7.0.0
+        version: 7.0.0
       workbox-core:
         specifier: ^7.0.0
         version: 7.0.0
+      workbox-expiration:
+        specifier: ^7.0.0
+        version: 7.0.0
       workbox-precaching:
+        specifier: ^7.0.0
+        version: 7.0.0
+      workbox-routing:
+        specifier: ^7.0.0
+        version: 7.0.0
+      workbox-strategies:
         specifier: ^7.0.0
         version: 7.0.0
       workbox-window:
@@ -10500,7 +10512,6 @@ packages:
 
   /idb@7.1.1:
     resolution: {integrity: sha512-gchesWBzyvGHRO9W8tzUWFDycow5gwjvFKfyV9FF32Y7F50yZMp7mP+T2mJIWFx49zicqyC4uefHM17o6xKIVQ==}
-    dev: true
 
   /ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
@@ -15177,7 +15188,6 @@ packages:
     resolution: {integrity: sha512-0lrtyGHn/LH8kKAJVOQfSu3/80WDc9Ma8ng0p2i/5HuUndGttH+mGMSvOskjOdFImLs2XZIimErp7tSOPmu/6g==}
     dependencies:
       workbox-core: 7.0.0
-    dev: true
 
   /workbox-core@7.0.0:
     resolution: {integrity: sha512-81JkAAZtfVP8darBpfRTovHg8DGAVrKFgHpOArZbdFd78VqHr5Iw65f2guwjE2NlCFbPFDoez3D3/6ZvhI/rwQ==}
@@ -15187,7 +15197,6 @@ packages:
     dependencies:
       idb: 7.1.1
       workbox-core: 7.0.0
-    dev: true
 
   /workbox-google-analytics@7.0.0:
     resolution: {integrity: sha512-MEYM1JTn/qiC3DbpvP2BVhyIH+dV/5BjHk756u9VbwuAhu0QHyKscTnisQuz21lfRpOwiS9z4XdqeVAKol0bzg==}
