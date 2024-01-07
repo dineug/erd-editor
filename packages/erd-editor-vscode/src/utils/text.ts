@@ -28,7 +28,7 @@ export function toWidth(text: string) {
 
     width = (advance / font.unitsPerEm) * SIZE;
   } else {
-    width = text.length * 11;
+    width = text.length * 10;
   }
 
   return Math.round(width) + TEXT_PADDING;

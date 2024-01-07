@@ -36,7 +36,7 @@ export function toWidth(text: string) {
   const canvasContext = getCanvasContext();
   const width = canvasContext
     ? canvasContext.measureText(text).width
-    : text.length * 11;
+    : text.length * 10;
 
   return Math.round(width) + TEXT_PADDING;
 }
