@@ -4,9 +4,9 @@
 
 ![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
 
-## Install
+# Install
 
-```shell
+```sh
 npm install @dineug/erd-editor
 ```
 
@@ -16,12 +16,7 @@ npm install @dineug/erd-editor
 import '@dineug/erd-editor';
 
 const editor = document.createElement('erd-editor');
-```
-
-### html
-
-```html
-<erd-editor readonly system-dark-mode enable-theme-builder></erd-editor>
+document.body.appendChild(editor);
 ```
 
 ### CDN
@@ -31,12 +26,24 @@ const editor = document.createElement('erd-editor');
   import 'https://esm.run/@dineug/erd-editor';
 
   const editor = document.createElement('erd-editor');
+  document.body.appendChild(editor);
 </script>
 <!-- or -->
 <script type="module" src="https://esm.run/@dineug/erd-editor"></script>
 ```
 
-## ErdEditorElement
+### html
+
+```html
+<erd-editor readonly system-dark-mode enable-theme-builder></erd-editor>
+<script type="module">
+  import 'https://esm.run/@dineug/erd-editor';
+
+  const editor = document.querySelector('erd-editor');
+</script>
+```
+
+# ErdEditorElement
 
 ```ts
 interface ErdEditorElement extends HTMLElement {
@@ -58,22 +65,131 @@ interface ErdEditorElement extends HTMLElement {
 }
 ```
 
-### value getter, setter
+## readonly
+
+Sets the editing capability of the editor.
 
 ```js
-const data = editor.value; // get editor data
-editor.value = 'json...'; // Write to History
+editor.readonly = true;
+// or
+editor.setAttribute('readonly', 'true');
 ```
 
-### setInitialValue
+```html
+<erd-editor readonly></erd-editor>
+```
 
-Do not create history
+## systemDarkMode
+
+Determines whether to automatically synchronize with the system's dark/light mode.
+
+```js
+editor.systemDarkMode = true;
+// or
+editor.setAttribute('systemDarkMode', 'true');
+```
+
+```html
+<erd-editor system-dark-mode></erd-editor>
+```
+
+## enableThemeBuilder
+
+Determines if a UI for easily setting preset themes is provided.
+
+![theme-builder](https://github.com/dineug/erd-editor/blob/main/img/theme-builder.png?raw=true)
+
+```js
+editor.enableThemeBuilder = true;
+// or
+editor.setAttribute('enableThemeBuilder', 'true');
+```
+
+```html
+<erd-editor enable-theme-builder></erd-editor>
+```
+
+Triggers the `changePresetTheme` event upon changing the preset theme.
+
+```js
+editor.addEventListener('changePresetTheme', event => {
+  const themeOptions = event.detail;
+});
+```
+
+## value
+
+### getter
+
+Retrieves the current editor state as JSON data.
+
+```js
+const data = editor.value;
+```
+
+### setter
+
+Loads a previously saved editor state. It is recorded in the history list, enabling `Undo, Redo`.
+
+```js
+editor.value = 'json...';
+```
+
+## setInitialValue
+
+Loads a previously saved editor state. It is not recorded in the history list, so `Undo, Redo` is not possible.
 
 ```js
 editor.setInitialValue('json...');
 ```
 
-### setKeyBindingMap
+## Event
+
+### change
+
+When there are changes in the editor, it emits an event.
+
+```js
+editor.addEventListener('change', event => {
+  const data = event.target.value;
+});
+```
+
+## focus
+
+Focuses on the editor.
+
+```js
+editor.focus();
+```
+
+## blur
+
+Removes focus from the editor.
+
+```js
+editor.blur();
+```
+
+## clear
+
+Resets the editor state.
+
+```js
+editor.clear();
+```
+
+## destroy
+
+Completely disables reusing the editor instance.
+
+```js
+editor.destroy();
+```
+
+## setKeyBindingMap
+
+Redefines keyboard shortcuts.
 
 ```ts
 type ShortcutOption = {
@@ -106,10 +222,15 @@ editor.setKeyBindingMap({
 
 ### $mod
 
+Switches `Control` key depending on the environment.
+
 - Mac: $mod = Meta (⌘)
 - Windows/Linux: $mod = Control
 
-[Shortcut Table](https://github.com/jamiebuilds/tinykeys?tab=readme-ov-file#commonly-used-keys-and-codes)
+### Shortcut Table
+
+Uses keyboard event `key, code` properties.  
+Use `code` for absolute positions and `key` for input values.
 
 | Windows       | macOS           | `key`         | `code`                         |
 | ------------- | --------------- | ------------- | ------------------------------ |
@@ -126,31 +247,11 @@ editor.setKeyBindingMap({
 | `=`           | `=`             | `=`           | `Equal`                        |
 | `+`           | `+`             | `+`           | `Equal`\*                      |
 
-## Events
-
-### change
-
-```js
-editor.addEventListener('change', event => {
-  const data = event.target.value;
-});
-```
-
-### changePresetTheme
-
-enableThemeBuilder: true will cause an event.
-
-```js
-editor.addEventListener('changePresetTheme', event => {
-  const themeOptions = event.detail;
-});
-```
-
 ## Theme
 
 ### setPresetTheme
 
-Basic theme
+Sets a preset theme.
 
 ```ts
 type ThemeOptions = {
@@ -191,9 +292,9 @@ editor.setPresetTheme({ appearance: 'light' });
 
 ### setTheme
 
-Theme Tokens
+Allows customizing the theme.
 
-#### javascript
+#### JavaScript
 
 ```ts
 type Theme = {
@@ -273,6 +374,7 @@ type Theme = {
   keyPFK: string;
 };
 
+
 // example
 editor.setTheme({...});
 ```
@@ -343,7 +445,32 @@ editor.setTheme({...});
 }
 ```
 
-## Document
+## setSchemaSQL
+
+Loads a schema SQL file.
+
+```js
+editor.setSchemaSQL('Schema SQL...');
+```
+
+## getSchemaSQL
+
+Extracts the current editor state into a schema SQL.  
+If `databaseVendor` is not specified, it operates based on the currently set vendor.
+
+```ts
+type DatabaseVendor =
+  | 'MariaDB'
+  | 'MSSQL'
+  | 'MySQL'
+  | 'Oracle'
+  | 'PostgreSQL'
+  | 'SQLite';
+
+const schemaSQL = editor.getSchemaSQL();
+```
+
+# Document
 
 - [Web App](https://erd-editor.io)
 - [VSCode Extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
