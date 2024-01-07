@@ -97,7 +97,7 @@ editor.setAttribute('systemDarkMode', 'true');
 
 Determines if a UI for easily setting preset themes is provided.
 
-![theme-builder](https://github.com/dineug/erd-editor/blob/main/img/theme-builder.png?raw=true)
+<img src="https://github.com/dineug/erd-editor/blob/main/img/theme-builder.png?raw=true" width="400" />
 
 ```js
 editor.enableThemeBuilder = true;
