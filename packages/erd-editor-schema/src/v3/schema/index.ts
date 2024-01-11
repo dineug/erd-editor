@@ -44,6 +44,7 @@ import {
 } from '@/v3/schema/tableColumn.entity';
 
 export interface ERDEditorSchemaV3 {
+  $schema: 'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json';
   version: '3.0.0';
   settings: Settings;
   doc: Doc;

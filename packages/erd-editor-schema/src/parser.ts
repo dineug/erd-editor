@@ -15,6 +15,7 @@ export function parser(source: string): ERDEditorSchemaV3 {
 
 export function toJson(schemaV3: ERDEditorSchemaV3) {
   const source = pick(schemaV3, [
+    '$schema',
     'version',
     'settings',
     'doc',
