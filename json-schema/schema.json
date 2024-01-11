@@ -5,6 +5,9 @@
   "description": "Entity-Relationship Diagram Editor Schema",
   "type": "object",
   "properties": {
+    "$schema": {
+      "type": "string"
+    },
     "version": {
       "description": "Version of the schema",
       "const": "3.0.0"
