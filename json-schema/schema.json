@@ -119,6 +119,7 @@
           "type": "boolean"
         },
         "columnOrder": {
+          "description": "bit value (columnName: 1) | (columnDataType: 2) | (columnNotNull: 4) | (columnUnique: 8) | (columnAutoIncrement: 16) | (columnDefault: 32) | (columnComment: 64)",
           "type": "array",
           "prefixItems": [
             { "type": "integer" },
@@ -128,7 +129,9 @@
             { "type": "integer" },
             { "type": "integer" },
             { "type": "integer" }
-          ]
+          ],
+          "minItems": 7,
+          "maxItems": 7
         },
         "maxWidthComment": {
           "type": "integer"
