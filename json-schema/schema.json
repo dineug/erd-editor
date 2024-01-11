@@ -528,9 +528,13 @@
         },
         "y": {
           "type": "number"
+        },
+        "direction": {
+          "description": "bit value (left: 1) | (right: 2) | (top: 4) | (bottom: 8)",
+          "type": "integer"
         }
       },
-      "required": ["tableId", "columnIds", "x", "y"]
+      "required": ["tableId", "columnIds", "x", "y", "direction"]
     }
   }
 }
