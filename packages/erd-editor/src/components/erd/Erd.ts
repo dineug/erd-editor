@@ -21,6 +21,7 @@ import ErdContextMenu, {
 import HideSign from '@/components/erd/hide-sign/HideSign';
 import Minimap from '@/components/erd/minimap/Minimap';
 import TableProperties from '@/components/erd/table-properties/TableProperties';
+import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { Open } from '@/constants/open';
@@ -109,8 +110,18 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   const handleWheel = (event: WheelEvent) => {
+    event.preventDefault();
+    const $mod = isMod(event);
     const { store } = app.value;
-    store.dispatch(streamZoomLevelAction$(event.deltaY < 0 ? 0.1 : -0.1));
+
+    store.dispatch(
+      $mod
+        ? streamZoomLevelAction$(event.deltaY < 0 ? 0.1 : -0.1)
+        : streamScrollToAction({
+            movementX: event.deltaX * -1,
+            movementY: event.deltaY * -1,
+          })
+    );
   };
 
   const handleMove = ({ event, movementX, movementY }: DragMove) => {
@@ -141,7 +152,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       canUnselectAll &&
       canHideColorPicker &&
       !el.closest('.minimap') &&
-      !el.closest('.minimap-viewport');
+      !el.closest('.minimap-viewport') &&
+      !el.closest('.virtual-scroll');
 
     if (canUnselectAll) {
       const { store } = app.value;
@@ -336,6 +348,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         @wheel=${handleWheel}
       >
         <${Canvas} root=${root} canvas=${canvas} grabMove=${state.grabMove} />
+        <${VirtualScroll} />
         <${Minimap} />
         <${HideSign} root=${root} />
         ${state.dragSelect
