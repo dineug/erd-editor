@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.9
+
+- Improvement in Scroll Usability
+
 ## 1.0.5
 
 - Multiple editors supported per document.
