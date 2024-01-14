@@ -6,6 +6,7 @@ import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
 
 import { ChangeActionTypes } from '@/engine/actions';
 import { EngineContext } from '@/engine/context';
+import { validationIdsAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { actionsFilter } from '@/engine/rx-operators';
 import { createStore } from '@/engine/store';
@@ -83,6 +84,7 @@ export function createReplicationStore(
 
       if (isChange) {
         procGC(store.state, gcIds);
+        store.dispatchSync(validationIdsAction());
         emit(InternalActionType.change, undefined);
       }
     });

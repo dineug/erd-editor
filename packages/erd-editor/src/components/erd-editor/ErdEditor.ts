@@ -31,6 +31,7 @@ import { DatabaseVendor } from '@/constants/sql/database';
 import {
   changeOpenMapAction,
   changeViewportAction,
+  validationIdsAction,
 } from '@/engine/modules/editor/atom.actions';
 import { SharedStore, SharedStoreConfig } from '@/engine/shared-store';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
@@ -178,6 +179,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 
         if (isChange) {
           procGC(store.state, gcIds);
+          store.dispatchSync(validationIdsAction());
           ctx.dispatchEvent(new CustomEvent('change'));
         }
       });

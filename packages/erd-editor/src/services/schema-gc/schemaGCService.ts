@@ -1,13 +1,12 @@
 import { query, schemaV3Parser } from '@dineug/erd-editor-schema';
 import { arrayHas } from '@dineug/shared';
-import { uniq } from 'lodash-es';
 import { DateTime } from 'luxon';
 
 import type { GCIds } from '@/services/schema-gc';
 
 import { procGC } from './procGC';
 
-const GC_DAYS = 30;
+const GC_DAYS = 3;
 const hasCollectionKey = arrayHas([
   'tableEntities',
   'tableColumnEntities',
@@ -46,76 +45,68 @@ export class SchemaGCService {
     );
     const memoCollection = query(collections).collection('memoEntities');
 
-    const gcIds: GCIds = {
-      tableIds: [
-        ...tableCollection
-          .selectAll()
-          .filter(isGC(hasTableIds))
-          .map(({ id }) => id),
-      ],
-      tableColumnIds: [],
-      relationshipIds: [
-        ...relationshipCollection
-          .selectAll()
-          .filter(isGC(hasRelationshipIds))
-          .map(({ id }) => id),
-      ],
-      indexIds: [
-        ...indexCollection
-          .selectAll()
-          .filter(isGC(hasIndexIds))
-          .map(({ id }) => id),
-      ],
-      indexColumnIds: [],
-      memoIds: [
-        ...memoCollection
-          .selectAll()
-          .filter(isGC(hasMemoIds))
-          .map(({ id }) => id),
-      ],
-    };
-
-    const hasGCTableIds = arrayHas(gcIds.tableIds);
-    const hasGCRelationshipIds = arrayHas(gcIds.relationshipIds);
-    let hasGCIndexIds = arrayHas(gcIds.indexIds);
-
-    gcIds.tableColumnIds.push(
-      ...tableColumnCollection
+    const gcTableIdsSet = new Set<string>(
+      tableCollection
         .selectAll()
-        .filter(({ tableId }) => hasGCTableIds(tableId))
+        .filter(isGC(hasTableIds))
+        .map(({ id }) => id)
+    );
+    const gcTableColumnIdsSet = new Set<string>();
+    const gcRelationshipIdsSet = new Set<string>(
+      relationshipCollection
+        .selectAll()
+        .filter(isGC(hasRelationshipIds))
+        .map(({ id }) => id)
+    );
+    const gcIndexIdsSet = new Set<string>(
+      indexCollection
+        .selectAll()
+        .filter(isGC(hasIndexIds))
+        .map(({ id }) => id)
+    );
+    const gcIndexColumnIdsSet = new Set<string>();
+    const gcMemoIdsSet = new Set<string>(
+      memoCollection
+        .selectAll()
+        .filter(isGC(hasMemoIds))
         .map(({ id }) => id)
     );
 
-    gcIds.relationshipIds.push(
-      ...relationshipCollection
-        .selectAll()
-        .filter(
-          ({ id, start, end }) =>
-            !hasGCRelationshipIds(id) &&
-            (hasGCTableIds(start.tableId) || hasGCTableIds(end.tableId))
-        )
-        .map(({ id }) => id)
-    );
+    tableColumnCollection
+      .selectAll()
+      .filter(({ tableId }) => gcTableIdsSet.has(tableId))
+      .forEach(({ id }) => gcTableColumnIdsSet.add(id));
 
-    gcIds.indexIds.push(
-      ...indexCollection
-        .selectAll()
-        .filter(
-          ({ id, tableId }) => !hasGCIndexIds(id) && hasGCTableIds(tableId)
-        )
-        .map(({ id }) => id)
-    );
+    relationshipCollection
+      .selectAll()
+      .filter(
+        ({ id, start, end }) =>
+          !gcRelationshipIdsSet.has(id) &&
+          (gcTableIdsSet.has(start.tableId) || gcTableIdsSet.has(end.tableId))
+      )
+      .forEach(({ id }) => gcRelationshipIdsSet.add(id));
 
-    hasGCIndexIds = arrayHas(gcIds.indexIds);
+    indexCollection
+      .selectAll()
+      .filter(
+        ({ id, tableId }) =>
+          !gcIndexIdsSet.has(id) && gcTableIdsSet.has(tableId)
+      )
+      .forEach(({ id }) => gcIndexIdsSet.add(id));
 
-    gcIds.indexColumnIds.push(
-      ...indexColumnCollection
-        .selectAll()
-        .filter(({ indexId }) => hasGCIndexIds(indexId))
-        .map(({ id }) => id)
-    );
+    indexColumnCollection
+      .selectAll()
+      .filter(({ indexId }) => gcIndexIdsSet.has(indexId))
+      .forEach(({ id }) => gcIndexColumnIdsSet.add(id));
 
-    procGC(state, gcIds);
+    procGC(state, {
+      tableIds: [...gcTableIdsSet],
+      tableColumnIds: [...gcTableColumnIdsSet],
+      relationshipIds: [...gcRelationshipIdsSet],
+      indexIds: [...gcIndexIdsSet],
+      indexColumnIds: [...gcIndexColumnIdsSet],
+      memoIds: [...gcMemoIdsSet],
+    });
 
     const hasTableIdsAll = arrayHas(
       tableCollection.selectAll().map(({ id }) => id)
@@ -136,58 +127,54 @@ export class SchemaGCService {
       memoCollection.selectAll().map(({ id }) => id)
     );
 
-    gcIds.tableColumnIds.push(
-      ...tableColumnCollection
-        .selectAll()
-        .filter(
-          ({ tableId, id, meta }) =>
-            !hasTableIdsAll(tableId) && isGC(() => false)({ id, meta })
-        )
-        .map(({ id }) => id)
-    );
+    tableColumnCollection
+      .selectAll()
+      .filter(
+        ({ tableId, id, meta }) =>
+          !hasTableIdsAll(tableId) && isGC(() => false)({ id, meta })
+      )
+      .forEach(({ id }) => gcTableColumnIdsSet.add(id));
 
-    gcIds.indexColumnIds.push(
-      ...indexColumnCollection
-        .selectAll()
-        .filter(
-          ({ indexId, id, meta }) =>
-            !hasIndexIdsAll(indexId) && isGC(() => false)({ id, meta })
-        )
-        .map(({ id }) => id)
-    );
+    indexColumnCollection
+      .selectAll()
+      .filter(
+        ({ indexId, id, meta }) =>
+          !hasIndexIdsAll(indexId) && isGC(() => false)({ id, meta })
+      )
+      .forEach(({ id }) => gcIndexColumnIdsSet.add(id));
 
     Object.entries(lww).forEach(([id, [key]]) => {
       if (!hasCollectionKey(key)) return;
 
       switch (key) {
         case 'tableEntities':
-          !hasTableIdsAll(id) && gcIds.tableIds.push(id);
+          !hasTableIdsAll(id) && gcTableIdsSet.add(id);
           break;
         case 'tableColumnEntities':
-          !hasTableColumnIdsAll(id) && gcIds.tableColumnIds.push(id);
+          !hasTableColumnIdsAll(id) && gcTableColumnIdsSet.add(id);
           break;
         case 'relationshipEntities':
-          !hasRelationshipIdsAll(id) && gcIds.relationshipIds.push(id);
+          !hasRelationshipIdsAll(id) && gcRelationshipIdsSet.add(id);
           break;
         case 'indexEntities':
-          !hasIndexIdsAll(id) && gcIds.indexIds.push(id);
+          !hasIndexIdsAll(id) && gcIndexIdsSet.add(id);
           break;
         case 'indexColumnEntities':
-          !hasIndexColumnIdsAll(id) && gcIds.indexColumnIds.push(id);
+          !hasIndexColumnIdsAll(id) && gcIndexColumnIdsSet.add(id);
           break;
         case 'memoEntities':
-          !hasMemoIdsAll(id) && gcIds.memoIds.push(id);
+          !hasMemoIdsAll(id) && gcMemoIdsSet.add(id);
           break;
       }
     });
 
     return {
-      tableIds: uniq(gcIds.tableIds),
-      tableColumnIds: uniq(gcIds.tableColumnIds),
-      relationshipIds: uniq(gcIds.relationshipIds),
-      indexIds: uniq(gcIds.indexIds),
-      indexColumnIds: uniq(gcIds.indexColumnIds),
-      memoIds: uniq(gcIds.memoIds),
+      tableIds: [...gcTableIdsSet],
+      tableColumnIds: [...gcTableColumnIdsSet],
+      relationshipIds: [...gcRelationshipIdsSet],
+      indexIds: [...gcIndexIdsSet],
+      indexColumnIds: [...gcIndexColumnIdsSet],
+      memoIds: [...gcMemoIdsSet],
     };
   }
 }

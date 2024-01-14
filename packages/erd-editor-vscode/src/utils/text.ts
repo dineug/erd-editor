@@ -23,10 +23,14 @@ export function toWidth(text: string) {
   let width = 0;
 
   if (font) {
-    const glyphs = font.stringToGlyphs(text);
-    const advance = glyphs.reduce((acc, g) => acc + (g.advanceWidth ?? 0), 0);
+    try {
+      const glyphs = font.stringToGlyphs(text);
+      const advance = glyphs.reduce((acc, g) => acc + (g.advanceWidth ?? 0), 0);
 
-    width = (advance / font.unitsPerEm) * SIZE;
+      width = (advance / font.unitsPerEm) * SIZE;
+    } catch {
+      width = text.length * 10;
+    }
   } else {
     width = text.length * 10;
   }
