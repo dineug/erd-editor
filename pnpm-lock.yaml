@@ -565,6 +565,60 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(webpack@5.89.0)
 
+  packages/erd-editor-jetbrains-webview:
+    devDependencies:
+      '@dineug/erd-editor':
+        specifier: workspace:*
+        version: link:../erd-editor
+      '@dineug/erd-editor-shiki-worker':
+        specifier: workspace:*
+        version: link:../erd-editor-shiki-worker
+      '@dineug/erd-editor-vscode-bridge':
+        specifier: workspace:*
+        version: link:../erd-editor-vscode-bridge
+      '@swc/core':
+        specifier: ^1.3.101
+        version: 1.3.101
+      base64-arraybuffer:
+        specifier: ^1.0.2
+        version: 1.0.2
+      core-js:
+        specifier: ^3.34.0
+        version: 3.34.0
+      css-loader:
+        specifier: ^6.8.1
+        version: 6.8.1(webpack@5.89.0)
+      html-webpack-plugin:
+        specifier: ^5.6.0
+        version: 5.6.0(webpack@5.89.0)
+      mini-css-extract-plugin:
+        specifier: ^2.7.6
+        version: 2.7.6(webpack@5.89.0)
+      style-loader:
+        specifier: ^3.3.3
+        version: 3.3.3(webpack@5.89.0)
+      swc-loader:
+        specifier: ^0.2.3
+        version: 0.2.3(@swc/core@1.3.101)(webpack@5.89.0)
+      tsconfig-paths-webpack-plugin:
+        specifier: ^4.1.0
+        version: 4.1.0
+      typescript:
+        specifier: 5.3.3
+        version: 5.3.3
+      webpack:
+        specifier: ^5.89.0
+        version: 5.89.0(@swc/core@1.3.101)(webpack-cli@5.1.4)
+      webpack-bundle-analyzer:
+        specifier: ^4.10.1
+        version: 4.10.1
+      webpack-cli:
+        specifier: ^5.1.4
+        version: 5.1.4(webpack-bundle-analyzer@4.10.1)(webpack-dev-server@4.15.1)(webpack@5.89.0)
+      webpack-dev-server:
+        specifier: ^4.15.1
+        version: 4.15.1(webpack-cli@5.1.4)(webpack@5.89.0)
+
   packages/erd-editor-schema:
     devDependencies:
       '@dineug/shared':

@@ -5,6 +5,7 @@ import { defineConfig, loadEnv } from 'vite';
 export default defineConfig(({ command, mode }) => {
   const envDir = './environment';
   const env = loadEnv(mode, envDir);
+  const target = env.VITE_TARGET;
 
   const targetMap = {
     modern: {
@@ -37,11 +38,11 @@ export default defineConfig(({ command, mode }) => {
     },
   };
 
-  const entry = targetMap[env.VITE_TARGET].entry;
-  const name = targetMap[env.VITE_TARGET].name;
-  const fileName = targetMap[env.VITE_TARGET].fileName;
-  const outDir = targetMap[env.VITE_TARGET].outDir;
-  const emptyOutDir = targetMap[env.VITE_TARGET].emptyOutDir;
+  const entry = targetMap[target].entry;
+  const name = targetMap[target].name;
+  const fileName = targetMap[target].fileName;
+  const outDir = targetMap[target].outDir;
+  const emptyOutDir = targetMap[target].emptyOutDir;
   const isBuild = command === 'build';
 
   return {
