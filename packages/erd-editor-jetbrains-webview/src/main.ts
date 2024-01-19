@@ -19,12 +19,16 @@ import {
 import { encode } from 'base64-arraybuffer';
 
 const bridge = new Emitter();
-// const vscode = globalThis.acquireVsCodeApi();
 const editor = document.createElement('erd-editor');
 const sharedStore = editor.getSharedStore({ mouseTracker: false });
 
 const dispatch = (action: AnyAction) => {
-  // vscode.postMessage(action);
+  window.cefQuery({
+    request: JSON.stringify(action),
+    persistent: false,
+    onSuccess: () => {},
+    onFailure: () => {},
+  });
 };
 
 import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
@@ -95,5 +99,5 @@ bridge.on({
   },
 });
 
-globalThis.addEventListener('message', event => bridge.emit(event.data));
+window.addEventListener('message', event => bridge.emit(event.data));
 dispatch(vscodeInitialAction());
