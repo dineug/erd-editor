@@ -49,6 +49,6 @@
     "lit-html": "^1.4.1",
     "pathfinding": "^0.4.18",
     "typescript": "5.3.3",
-    "vite": "^5.0.10"
+    "vite": "^5.0.12"
   }
 }

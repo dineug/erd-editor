@@ -48,6 +48,6 @@
     "preact": "^10.19.3",
     "styled-components": "5.2.3",
     "typescript": "5.3.3",
-    "vite": "^5.0.10"
+    "vite": "^5.0.12"
   }
 }
