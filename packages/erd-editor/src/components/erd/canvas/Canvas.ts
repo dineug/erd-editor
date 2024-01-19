@@ -42,8 +42,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
 
     return html`
       <div
-        class=${styles.root}
-        ${ref(props.canvas)}
+        class=${styles.controller}
         style=${{
           width: `${width}px`,
           height: `${height}px`,
@@ -53,34 +52,45 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
           'pointer-events': props.grabMove ? 'none' : 'auto',
         }}
       >
-        ${cache(
-          isHighLevelTable(zoomLevel)
-            ? html`${repeat(
-                tables,
-                table => table.id,
-                table => html`<${HighLevelTable} table=${table} />`
-              )}`
-            : html`${repeat(
-                tables,
-                table => table.id,
-                table => html`<${Table} table=${table} />`
-              )}`
-        )}
-        ${repeat(
-          memos,
-          memo => memo.id,
-          memo => html`<${Memo} memo=${memo} />`
-        )}
-        ${bHas(show, Show.relationship) ? html`<${CanvasSvg} />` : null}
-        ${drawRelationship?.start
-          ? html`
-              <${DrawRelationship}
-                root=${props.root}
-                draw=${drawRelationship}
-              />
-            `
-          : null}
-        <${SharedMouseTracker} />
+        <div
+          class=${styles.root}
+          ${ref(props.canvas)}
+          style=${{
+            width: `${width}px`,
+            height: `${height}px`,
+            'min-width': `${width}px`,
+            'min-height': `${height}px`,
+          }}
+        >
+          ${cache(
+            isHighLevelTable(zoomLevel)
+              ? html`${repeat(
+                  tables,
+                  table => table.id,
+                  table => html`<${HighLevelTable} table=${table} />`
+                )}`
+              : html`${repeat(
+                  tables,
+                  table => table.id,
+                  table => html`<${Table} table=${table} />`
+                )}`
+          )}
+          ${repeat(
+            memos,
+            memo => memo.id,
+            memo => html`<${Memo} memo=${memo} />`
+          )}
+          ${bHas(show, Show.relationship) ? html`<${CanvasSvg} />` : null}
+          ${drawRelationship?.start
+            ? html`
+                <${DrawRelationship}
+                  root=${props.root}
+                  draw=${drawRelationship}
+                />
+              `
+            : null}
+          <${SharedMouseTracker} />
+        </div>
       </div>
     `;
   };

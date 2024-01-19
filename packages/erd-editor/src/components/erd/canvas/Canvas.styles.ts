@@ -7,3 +7,7 @@ export const root = css`
   left: 0;
   will-change: transform;
 `;
+
+export const controller = css`
+  will-change: transform;
+`;

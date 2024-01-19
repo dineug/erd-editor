@@ -1,8 +1,6 @@
 import { toJson } from '@dineug/erd-editor-schema';
-import { nextTick } from '@dineug/r-html';
 
 import { AppContext } from '@/components/appContext';
-import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import {
   exportJSON,
   exportPNG,
@@ -26,8 +24,8 @@ export function createExportMenus(
       },
       name: 'json',
       onClick: () => {
-        exportJSON(toJson(store.state), databaseName);
         onClose();
+        exportJSON(toJson(store.state), databaseName);
       },
     },
     {
@@ -37,8 +35,8 @@ export function createExportMenus(
       },
       name: 'Schema SQL',
       onClick: () => {
-        exportSchemaSQL(createSchemaSQL(store.state), databaseName);
         onClose();
+        exportSchemaSQL(createSchemaSQL(store.state), databaseName);
       },
     },
     {
@@ -49,15 +47,7 @@ export function createExportMenus(
       name: 'png',
       onClick: () => {
         onClose();
-        store.dispatchSync(
-          scrollToAction({
-            scrollTop: 0,
-            scrollLeft: 0,
-          })
-        );
-        nextTick(() => {
-          exportPNG(root, databaseName);
-        });
+        exportPNG(root, databaseName);
       },
     },
   ];

@@ -89,7 +89,7 @@ export class ErdEditorProvider
 
     const editor = this.createEditor(
       document,
-      webviewPanel.webview,
+      webview,
       this.context,
       this.docToTupleMap
     );
