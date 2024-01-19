@@ -565,7 +565,7 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(webpack@5.89.0)
 
-  packages/erd-editor-jetbrains-webview:
+  packages/erd-editor-intellij-webview:
     devDependencies:
       '@dineug/erd-editor':
         specifier: workspace:*

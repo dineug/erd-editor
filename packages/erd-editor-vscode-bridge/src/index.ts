@@ -23,7 +23,7 @@ const BridgeActionType = {
   webviewInitialValue: 'webviewInitialValue',
   webviewUpdateTheme: 'webviewUpdateTheme',
   webviewUpdateThemeLegacy: 'webviewUpdateThemeLegacy',
-  webviewUpdateReadonly: 'webviewReadonly',
+  webviewUpdateReadonly: 'webviewUpdateReadonly',
   webviewReplication: 'webviewReplication',
 } as const;
 type BridgeActionType = ValuesType<typeof BridgeActionType>;

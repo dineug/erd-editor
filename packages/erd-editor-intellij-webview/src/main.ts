@@ -34,9 +34,9 @@ const dispatch = (action: AnyAction) => {
 import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
   setGetShikiServiceCallback(getShikiService);
 });
-setImportFileCallback(options => {
-  dispatch(vscodeImportFileAction(options));
-});
+// setImportFileCallback(options => {
+//   dispatch(vscodeImportFileAction(options));
+// });
 setExportFileCallback(async (blob, options) => {
   const arrayBuffer = await blob.arrayBuffer();
   dispatch(
@@ -75,7 +75,7 @@ bridge.on({
     }
   },
   webviewInitialValue: ({ payload: { value } }) => {
-    // editor.addEventListener('change', handleChange);
+    editor.addEventListener('change', handleChange);
     editor.addEventListener('changePresetTheme', handleChangePresetTheme);
     editor.setInitialValue(value);
     editor.enableThemeBuilder = true;
@@ -94,7 +94,7 @@ bridge.on({
         payload.appearance === 'auto' ? getSystemTheme() : payload.appearance,
     });
   },
-  webviewReadonly: ({ payload }) => {
+  webviewUpdateReadonly: ({ payload }) => {
     editor.readonly = payload;
   },
 });

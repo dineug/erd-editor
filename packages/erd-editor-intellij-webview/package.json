@@ -1,8 +1,8 @@
 {
-  "name": "@dineug/erd-editor-jetbrains-webview",
+  "name": "@dineug/erd-editor-intellij-webview",
   "version": "0.1.0",
   "private": true,
-  "description": "Entity-Relationship Diagram Editor jetbrains webview",
+  "description": "Entity-Relationship Diagram Editor intellij webview",
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {

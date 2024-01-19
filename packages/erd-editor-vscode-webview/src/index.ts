@@ -89,7 +89,7 @@ bridge.on({
         payload.appearance === 'auto' ? getSystemTheme() : payload.appearance,
     });
   },
-  webviewReadonly: ({ payload }) => {
+  webviewUpdateReadonly: ({ payload }) => {
     editor.readonly = payload;
   },
 });

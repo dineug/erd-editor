@@ -25,8 +25,8 @@
       "path": "packages/erd-editor-vscode-bridge"
     },
     {
-      "name": "erd-editor-jetbrains-webview",
-      "path": "packages/erd-editor-jetbrains-webview"
+      "name": "erd-editor-intellij-webview",
+      "path": "packages/erd-editor-intellij-webview"
     },
     {
       "name": "erd-editor-app",
