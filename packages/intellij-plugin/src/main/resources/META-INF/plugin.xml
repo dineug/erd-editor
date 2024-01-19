@@ -1,7 +1,7 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <id>com.github.dineug.erdeditorintellijplugin</id>
-    <name>erd-editor-intellij-plugin Template</name>
+    <name>ERD Editor</name>
     <vendor>dineug</vendor>
 
     <depends>com.intellij.modules.platform</depends>
@@ -9,10 +9,6 @@
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.dineug.erdeditorintellijplugin.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
+        <fileEditorProvider implementation="com.github.dineug.erdeditorintellijplugin.editor.ErdEditorProvider" />
     </extensions>
-
-    <applicationListeners>
-        <listener class="com.github.dineug.erdeditorintellijplugin.listeners.MyApplicationActivationListener" topic="com.intellij.openapi.application.ApplicationActivationListener"/>
-    </applicationListeners>
 </idea-plugin>

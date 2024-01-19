@@ -2,3 +2,4 @@
 .idea
 .qodana
 build
+src/main/resources/assets
