@@ -1,7 +1,7 @@
 <!-- Plugin description -->
 # erd-editor
 
-> Entity-Relationship Diagram Editor VSCode Extension
+> Entity-Relationship Diagram Editor IntelliJ Plugin
 
 ![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-intellij.png?raw=true)
 
