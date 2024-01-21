@@ -3,3 +3,4 @@
 .qodana
 build
 src/main/resources/assets
+.DS_Store

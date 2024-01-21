@@ -1,5 +1,6 @@
 package com.github.dineug.erdeditorintellijplugin.editor
 
+import com.github.dineug.erdeditorintellijplugin.files.ErdEditorFiles
 import com.intellij.openapi.fileEditor.AsyncFileEditorProvider
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorPolicy
@@ -11,15 +12,7 @@ import com.intellij.openapi.vfs.VirtualFile
 class ErdEditorProvider : AsyncFileEditorProvider, DumbAware {
     private val docToEditorsMap = HashMap<VirtualFile, HashSet<ErdEditor>>()
 
-    override fun accept(project: Project, file: VirtualFile): Boolean {
-        return when {
-            file.isDirectory || !file.exists() -> false
-
-            file.name.endsWith(".erd.json") -> true
-
-            else -> false
-        }
-    }
+    override fun accept(project: Project, file: VirtualFile): Boolean = ErdEditorFiles.isErdEditorFile(file)
     override fun createEditor(project: Project, file: VirtualFile): FileEditor = createEditorAsync(project, file).build()
     override fun getEditorTypeId() = "erd-editor-jcef"
     override fun getPolicy() = FileEditorPolicy.HIDE_DEFAULT_EDITOR

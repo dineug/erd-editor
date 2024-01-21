@@ -1,10 +1,9 @@
 package com.github.dineug.erdeditorintellijplugin.editor
 
+import com.github.dineug.erdeditorintellijplugin.settings.ErdEditorAppSettings
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAndWriteAction
 import com.intellij.openapi.diagnostic.thisLogger
-import com.intellij.openapi.editor.colors.EditorColorsListener
-import com.intellij.openapi.editor.colors.EditorColorsScheme
 import com.intellij.openapi.fileChooser.FileChooserFactory
 import com.intellij.openapi.fileChooser.FileSaverDescriptor
 import com.intellij.openapi.fileEditor.FileEditor
@@ -35,8 +34,7 @@ class ErdEditor(
         private val docToEditorsMap: HashMap<VirtualFile, HashSet<ErdEditor>>
 ) : UserDataHolderBase(),
         FileEditor,
-        EditorColorsListener,
-        DumbAware {
+        DumbAware, ErdEditorAppSettings.SettingsChangedListener {
 
     private var isDisposed: Boolean = false
     private val logger = thisLogger()
@@ -54,6 +52,9 @@ class ErdEditor(
 
     init {
         val busConnection = ApplicationManager.getApplication().messageBus.connect(this)
+        with(busConnection) {
+            subscribe(ErdEditorAppSettings.SettingsChangedListener.TOPIC, this@ErdEditor)
+        }
 
         initViewIfSupported().also {
             toolbarAndWebView = object : JPanel(BorderLayout()) {
@@ -75,7 +76,21 @@ class ErdEditor(
             bridge.subscribe(coroutineScope) { action ->
                 when (action) {
                     is VscodeBridgeAction.VscodeInitial -> {
+                        val settings = ErdEditorAppSettings.instance
                         val value = file.inputStream.reader().readText()
+
+                        webviewPanel.dispatch(
+                            WebviewBridgeAction.WebviewUpdateTheme(
+                                WebviewUpdateThemePayload(
+                                    settings.state.appearance,
+                                    settings.state.grayColor,
+                                    settings.state.accentColor
+                                )
+                            )
+                        )
+                        webviewPanel.dispatch(
+                            WebviewBridgeAction.WebviewUpdateReadonly(file.isWritable.not())
+                        )
                         webviewPanel.dispatch(
                             WebviewBridgeAction.WebviewInitialValue(
                                 WebviewInitialValuePayload(value)
@@ -158,7 +173,14 @@ class ErdEditor(
                             }
                     }
 
-                    is VscodeBridgeAction.VscodeSaveTheme -> {}
+                    is VscodeBridgeAction.VscodeSaveTheme -> {
+                        val settings = ErdEditorAppSettings.instance
+                        settings.setTheme(ErdEditorAppSettings.State(
+                            action.payload.appearance,
+                            action.payload.grayColor,
+                            action.payload.accentColor
+                        ))
+                    }
                 }
             }
 
@@ -175,7 +197,7 @@ class ErdEditor(
 
     private fun launchSaveJob() = coroutineScope.launch {
         payload
-            .debounce(150.milliseconds)
+            .debounce(100.milliseconds)
             .filterNotNull()
             .collectLatest { value ->
                 if (isDisposed) {
@@ -204,10 +226,17 @@ class ErdEditor(
             }
     }
 
-    override fun globalSchemeChange(scheme: EditorColorsScheme?) {
+    override fun onSettingsChange(settings: ErdEditorAppSettings) {
         if (this::webviewPanel.isInitialized) {
-            logger.debug("globalSchemeChange")
-//            viewController.changeTheme(uiThemeFromConfig().key)
+            webviewPanel.dispatch(
+                WebviewBridgeAction.WebviewUpdateTheme(
+                    WebviewUpdateThemePayload(
+                        settings.state.appearance,
+                        settings.state.grayColor,
+                        settings.state.accentColor
+                    )
+                )
+            )
         }
     }
 

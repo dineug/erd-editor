@@ -2,13 +2,12 @@
 <idea-plugin>
     <id>com.github.dineug.erdeditorintellijplugin</id>
     <name>ERD Editor</name>
-    <vendor>dineug</vendor>
+    <vendor>erd-editor.io</vendor>
 
     <depends>com.intellij.modules.platform</depends>
 
-    <resource-bundle>messages.MyBundle</resource-bundle>
-
     <extensions defaultExtensionNs="com.intellij">
         <fileEditorProvider implementation="com.github.dineug.erdeditorintellijplugin.editor.ErdEditorProvider" />
+        <iconProvider implementation="com.github.dineug.erdeditorintellijplugin.files.ErdEditorIconProvider" />
     </extensions>
 </idea-plugin>
