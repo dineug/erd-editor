@@ -126,18 +126,25 @@ module.exports = (env, argv) => {
         theme_color: '#000',
         icons: [
           {
-            src: resolvePath('src/assets/erd-editor-192x192.png'),
-            size: '192x192',
+            src: resolvePath('public/pwa-64x64.png'),
+            sizes: '64x64',
+            type: 'image/png',
           },
           {
-            src: resolvePath('src/assets/erd-editor-512x512.png'),
-            size: '512x512',
-            purpose: 'any',
+            src: resolvePath('public/pwa-192x192.png'),
+            sizes: '192x192',
+            type: 'image/png',
           },
           {
-            src: resolvePath('src/assets/erd-editor-512x512.png'),
-            size: '512x512',
-            purpose: 'any maskable',
+            src: resolvePath('public/pwa-512x512.png'),
+            sizes: '512x512',
+            type: 'image/png',
+          },
+          {
+            src: resolvePath('public/maskable-icon-512x512.png'),
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       }),

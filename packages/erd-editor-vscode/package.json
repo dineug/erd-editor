@@ -83,8 +83,8 @@
         "category": "vuerd",
         "title": "Open ERD Editor",
         "icon": {
-          "dark": "./assets/erd-editor.png",
-          "light": "./assets/erd-editor.png"
+          "dark": "./assets/menu-icon.svg",
+          "light": "./assets/menu-icon.svg"
         }
       },
       {
@@ -98,8 +98,8 @@
         "category": "vuerd",
         "title": "Open ERD Editor to the Side",
         "icon": {
-          "dark": "./assets/erd-editor.png",
-          "light": "./assets/erd-editor.png"
+          "dark": "./assets/menu-icon.svg",
+          "light": "./assets/menu-icon.svg"
         }
       }
     ],
