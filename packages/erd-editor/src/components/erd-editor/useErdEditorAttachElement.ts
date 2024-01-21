@@ -40,7 +40,7 @@ import { hasDatabaseVendor, toSafeString } from '@/utils/validation';
 
 import { ErdEditorElement, ErdEditorProps } from './ErdEditor';
 
-const ExternalKeyBindingNameList = omit(KeyBindingNameList, [
+const hasOmitKeyBindingName = arrayHas<string>([
   KeyBindingName.edit,
   KeyBindingName.stop,
   KeyBindingName.search,
@@ -48,7 +48,11 @@ const ExternalKeyBindingNameList = omit(KeyBindingNameList, [
   KeyBindingName.redo,
   KeyBindingName.zoomIn,
   KeyBindingName.zoomOut,
-]) as string[];
+]);
+
+const ExternalKeyBindingNameList = KeyBindingNameList.filter(
+  key => !hasOmitKeyBindingName(key)
+);
 
 const defaultThemeOptions: ThemeOptions = {
   grayColor: GrayColor.slate,
