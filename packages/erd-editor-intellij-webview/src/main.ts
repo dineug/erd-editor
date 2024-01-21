@@ -47,9 +47,6 @@ setExportFileCallback(async (blob, options) => {
   );
 });
 
-const getSystemTheme = () =>
-  document.body.classList.contains('vscode-light') ? 'light' : 'dark';
-
 const handleChange = () => {
   dispatch(
     vscodeSaveValueAction({
@@ -90,8 +87,7 @@ bridge.on({
   webviewUpdateTheme: ({ payload }) => {
     editor.setPresetTheme({
       ...payload,
-      appearance:
-        payload.appearance === 'auto' ? getSystemTheme() : payload.appearance,
+      appearance: payload.appearance === 'auto' ? 'dark' : payload.appearance,
     });
   },
   webviewUpdateReadonly: ({ payload }) => {
