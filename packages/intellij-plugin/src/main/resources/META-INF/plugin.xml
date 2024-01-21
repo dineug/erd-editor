@@ -2,7 +2,7 @@
 <idea-plugin>
     <id>com.github.dineug.erdeditorintellijplugin</id>
     <name>ERD Editor</name>
-    <vendor>erd-editor.io</vendor>
+    <vendor>dineug</vendor>
 
     <depends>com.intellij.modules.platform</depends>
 
