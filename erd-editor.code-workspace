@@ -61,10 +61,6 @@
       "path": "packages-legacy/lit-observable"
     },
     {
-      "name": "@vuerd/plugin-generate-template",
-      "path": "packages-legacy/plugin-generate-template"
-    },
-    {
       "name": "monorepo",
       "path": "."
     }

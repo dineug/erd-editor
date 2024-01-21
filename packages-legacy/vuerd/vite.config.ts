@@ -13,10 +13,6 @@ const banner = `/*!
  * @license ${pkg.license}
  */`;
 
-const external = new RegExp(
-  `^(${Object.keys(pkg.dependencies || {}).join('|')})$`
-);
-
 export default defineConfig(({ command }) => {
   const isBuild = command === 'build';
 
@@ -34,7 +30,6 @@ export default defineConfig(({ command }) => {
         formats: ['es'],
       },
       rollupOptions: {
-        external: [external, /^highlight.js\/lib/],
         output: {
           banner,
         },

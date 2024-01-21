@@ -6,7 +6,6 @@ import {
   vscodeInitialAction,
   vscodeSaveValueAction,
 } from '@dineug/erd-editor-vscode-bridge';
-import { generateTemplatePanel } from '@vuerd/plugin-generate-template';
 import { encode } from 'base64-arraybuffer';
 import { extension, setExportFileCallback, setImportFileCallback } from 'vuerd';
 
@@ -33,9 +32,6 @@ setExportFileCallback(async (blob, options) => {
       fileName: options.fileName,
     })
   );
-});
-extension({
-  panels: [generateTemplatePanel()],
 });
 
 const getTheme = (name: string) =>
@@ -126,7 +122,7 @@ bridge.on({
       )
     );
   },
-  webviewReadonly: ({ payload }) => {
+  webviewUpdateReadonly: ({ payload }) => {
     editor.readonly = payload;
   },
 });
