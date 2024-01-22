@@ -87,7 +87,10 @@ tasks {
                 if (!containsAll(listOf(start, end))) {
                     throw GradleException("Plugin description section not found in README.md:\n$start ... $end")
                 }
-                subList(indexOf(start) + 1, indexOf(end)).joinToString("\n").let(::markdownToHTML)
+                subList(indexOf(start) + 1, indexOf(end))
+                    .joinToString("\n")
+                    .replace("![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-intellij.png?raw=true)", "")
+                    .let(::markdownToHTML)
             }
         }
 
