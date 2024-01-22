@@ -21,11 +21,11 @@ class ErdEditorAppSettings : PersistentStateComponent<ErdEditorAppSettings.State
     }
 
     override fun loadState(state: State) {
-        XmlSerializerUtil.copyBean(state, myState);
+        XmlSerializerUtil.copyBean(state, myState)
     }
 
     fun setTheme(state: State) {
-        XmlSerializerUtil.copyBean(state, myState);
+        XmlSerializerUtil.copyBean(state, myState)
 
         ApplicationManager.getApplication().messageBus.syncPublisher(SettingsChangedListener.TOPIC)
             .onSettingsChange(this)

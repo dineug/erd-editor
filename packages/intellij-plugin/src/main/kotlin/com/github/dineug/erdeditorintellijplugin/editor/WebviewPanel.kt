@@ -13,10 +13,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.cef.CefApp
+import org.cef.CefSettings
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.browser.CefMessageRouter
 import org.cef.callback.CefQueryCallback
+import org.cef.handler.CefDisplayHandlerAdapter
 import org.cef.handler.CefMessageRouterHandlerAdapter
 import org.intellij.lang.annotations.Language
 import java.io.BufferedInputStream
@@ -106,6 +108,41 @@ class WebviewPanel(
                 logger.debug("${file.name}: removing message router")
                 webview.jbCefBrowser.jbCefClient.cefClient.removeMessageRouter(messageRouter)
                 messageRouter.dispose()
+            }
+        }
+
+        object : CefDisplayHandlerAdapter() {
+            override fun onConsoleMessage(
+                browser: CefBrowser?,
+                level: CefSettings.LogSeverity?,
+                message: String?,
+                source: String?,
+                line: Int
+            ): Boolean {
+                if (level == null || message == null || source == null) {
+                    logger.warn("${file.name}: Some of required message values were null!")
+                    logger.warn("${file.name}: level: $level source: $source:$line\n\tmessage: $message")
+                } else {
+                    val formattedMessage = "${file.name}: [$level][$source:$line]:\n${message}"
+
+                    when (level) {
+                        CefSettings.LogSeverity.LOGSEVERITY_ERROR, CefSettings.LogSeverity.LOGSEVERITY_FATAL -> logger.error(formattedMessage)
+                        CefSettings.LogSeverity.LOGSEVERITY_INFO -> logger.info(formattedMessage)
+                        CefSettings.LogSeverity.LOGSEVERITY_WARNING -> logger.warn(formattedMessage)
+                        CefSettings.LogSeverity.LOGSEVERITY_VERBOSE -> logger.debug(formattedMessage)
+                        else -> logger.info(formattedMessage)
+                    }
+                }
+                return super.onConsoleMessage(browser, level, message, source, line)
+            }
+        }.also { displayHandler ->
+            webview.jbCefBrowser.jbCefClient.addDisplayHandler(displayHandler, webview.jbCefBrowser.cefBrowser)
+            Disposer.register(this) {
+                logger.debug("${file.name}: removing display handler")
+                webview.jbCefBrowser.jbCefClient.removeDisplayHandler(
+                    displayHandler,
+                    webview.jbCefBrowser.cefBrowser
+                )
             }
         }
     }

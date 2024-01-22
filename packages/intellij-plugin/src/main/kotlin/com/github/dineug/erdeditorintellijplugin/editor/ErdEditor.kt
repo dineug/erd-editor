@@ -3,13 +3,11 @@ package com.github.dineug.erdeditorintellijplugin.editor
 import com.github.dineug.erdeditorintellijplugin.settings.ErdEditorAppSettings
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAndWriteAction
-import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.fileChooser.FileChooserFactory
 import com.intellij.openapi.fileChooser.FileSaverDescriptor
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.project.DumbAware
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import kotlinx.coroutines.*
@@ -29,7 +27,6 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(FlowPreview::class)
 class ErdEditor(
-        private val project: Project,
         private val file: VirtualFile,
         private val docToEditorsMap: HashMap<VirtualFile, HashSet<ErdEditor>>
 ) : UserDataHolderBase(),
@@ -37,7 +34,6 @@ class ErdEditor(
         DumbAware, ErdEditorAppSettings.SettingsChangedListener {
 
     private var isDisposed: Boolean = false
-    private val logger = thisLogger()
 
     override fun getFile() = file
 
@@ -250,11 +246,11 @@ class ErdEditor(
     }
 
     override fun isModified(): Boolean {
-        return false;
+        return false
     }
 
     override fun isValid(): Boolean {
-        return true;
+        return true
     }
 
     override fun addPropertyChangeListener(listener: PropertyChangeListener) {

@@ -23,7 +23,7 @@ class ErdEditorProvider : AsyncFileEditorProvider, DumbAware {
                         NonProjectFileWritingAccessProvider.allowWriting(listOf(file))
                     }
 
-                    val editor = ErdEditor(project, file, docToEditorsMap)
+                    val editor = ErdEditor(file, docToEditorsMap)
                     docToEditorsMap.getOrPut(file) { HashSet() }.add(editor)
                     return editor
                 }

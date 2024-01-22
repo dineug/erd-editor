@@ -4,10 +4,8 @@ import com.intellij.CommonBundle
 import com.intellij.ide.plugins.MultiPanel
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.invokeLater
-import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.EditorBundle
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.ui.components.JBLoadingPanel
 import com.intellij.ui.jcef.JBCefBrowser
@@ -28,7 +26,6 @@ class Webview(
         private const val CONTENT_KEY = 0
     }
 
-    private val logger = thisLogger()
     private val alarm = Alarm(this)
     private val loadingPanel = JBLoadingPanel(BorderLayout(), this).apply {
         setLoadingText(CommonBundle.getLoadingTreeNodeText())
@@ -45,7 +42,7 @@ class Webview(
 
     val jbCefBrowser = JBCefBrowser.createBuilder()
         .setEnableOpenDevToolsMenuItem(false)
-        .setOffScreenRendering(isOffScreenRenderingEnabled())
+        .setOffScreenRendering(false)
         .build()
 
     init {
@@ -91,22 +88,5 @@ class Webview(
         }, jbCefBrowser.cefBrowser)
     }
 
-    override fun dispose() = Unit;
-
-    private fun isOffScreenRenderingEnabled(): Boolean {
-        // Off-screen rendering prevents keyboard access to the editor on Linux and macOS in old versions,
-        // therefore disabling it.
-        // see: https://youtrack.jetbrains.com/issue/JBR-5348
-        // 17.0.6+10-b829.5
-        val jvmVersion = System.getProperty("java.vm.version")
-        val build: Double = try {
-            jvmVersion.replace("[^-]*-b([0-9]*)".toRegex(), "$1").toDouble()
-        } catch (e: NumberFormatException) {
-            0.0
-        }
-        // starting from 231.8770.17 / 2023.1.1 EAP off-screen-rendering starts to work
-        val result = SystemInfoRt.isWindows || build >= 829.9
-        logger.debug("isOffScreenRenderingEnabled: $result")
-        return result
-    }
+    override fun dispose() = Unit
 }
