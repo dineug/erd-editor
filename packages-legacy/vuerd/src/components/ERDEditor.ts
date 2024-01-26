@@ -8,7 +8,6 @@ import './editor/ERD';
 import './drawer/Drawer';
 import './drawer/HelpDrawer';
 import './drawer/SettingDrawer';
-import './drawer/TreeDrawer';
 import './drawer/tablePropertiesDrawer/TablePropertiesDrawer';
 import './ToastBar';
 
@@ -66,8 +65,10 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
     context,
     ctx
   );
-  const { drawerTpl, closeDrawer, openHelp, openSetting, openTree } =
-    useERDEditorDrawer(props, context);
+  const { drawerTpl, closeDrawer, openHelp, openSetting } = useERDEditorDrawer(
+    props,
+    context
+  );
   const { hasPanel, panelTpl } = usePanelView(props, context);
   const { showPrompt, promptTpl } = usePrompt();
   const { showAlert, alertTpl } = useAlert();
@@ -168,7 +169,6 @@ const ERDEditor: FunctionalComponent<ERDEditorProps, ERDEditorElement> = (
             .focusState=${ghostState.focus}
             @open-help=${openHelp}
             @open-setting=${openSetting}
-            @open-tree=${openTree}
           ></vuerd-menubar>
           ${cache(
             !hasPanel()

@@ -59,47 +59,57 @@ const Canvas: FunctionalComponent<CanvasProps, CanvasElement> = (
 
     return html`
       <div
-        class="vuerd-canvas"
+        class="vuerd-canvas-controller"
         style=${styleMap({
           width: `${width}px`,
           height: `${height}px`,
-          top: `${scrollTop}px`,
-          left: `${scrollLeft}px`,
-          transform: `scale(${zoomLevel})`,
+          minWidth: `${width}px`,
+          minHeight: `${height}px`,
+          transform: `translate(${scrollLeft}px, ${scrollTop}px) scale(${zoomLevel})`,
         })}
       >
-        ${cache(
-          zoomLevel > 0.7
-            ? repeat(
-                tables,
-                table => table.id,
-                table => html`<vuerd-table .table=${table}></vuerd-table>`
-              )
-            : repeat(
-                tables,
-                table => table.id,
-                table => html`
-                  <vuerd-high-level-table
-                    .table=${table}
-                  ></vuerd-high-level-table>
-                `
-              )
-        )}
-        ${repeat(
-          memos,
-          memo => memo.id,
-          memo => html`<vuerd-memo .memo=${memo}></vuerd-memo>`
-        )}
-        ${show.relationship
-          ? html`<vuerd-canvas-svg></vuerd-canvas-svg>`
-          : null}
-        ${drawRelationship?.start
-          ? html`
-              <vuerd-draw-relationship
-                .draw=${drawRelationship}
-              ></vuerd-draw-relationship>
-            `
-          : null}
+        <div
+          class="vuerd-canvas"
+          style=${styleMap({
+            width: `${width}px`,
+            height: `${height}px`,
+            minWidth: `${width}px`,
+            minHeight: `${height}px`,
+          })}
+        >
+          ${cache(
+            zoomLevel > 0.7
+              ? repeat(
+                  tables,
+                  table => table.id,
+                  table => html`<vuerd-table .table=${table}></vuerd-table>`
+                )
+              : repeat(
+                  tables,
+                  table => table.id,
+                  table => html`
+                    <vuerd-high-level-table
+                      .table=${table}
+                    ></vuerd-high-level-table>
+                  `
+                )
+          )}
+          ${repeat(
+            memos,
+            memo => memo.id,
+            memo => html`<vuerd-memo .memo=${memo}></vuerd-memo>`
+          )}
+          ${show.relationship
+            ? html`<vuerd-canvas-svg></vuerd-canvas-svg>`
+            : null}
+          ${drawRelationship?.start
+            ? html`
+                <vuerd-draw-relationship
+                  .draw=${drawRelationship}
+                ></vuerd-draw-relationship>
+              `
+            : null}
+        </div>
       </div>
     `;
   };

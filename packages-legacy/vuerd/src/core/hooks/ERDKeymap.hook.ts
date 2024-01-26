@@ -33,7 +33,6 @@ import {
 } from '@/engine/command/memo.cmd.helper';
 import {
   addTable$,
-  hideTable,
   removeTable,
   selectAllTable,
   selectEndTable$,

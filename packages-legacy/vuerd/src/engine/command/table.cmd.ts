@@ -12,11 +12,9 @@ import {
   ChangeColorTable,
   ChangeTableValue,
   DragSelectTable,
-  HideTable,
   MoveTable,
   RemoveTable,
   SelectTable,
-  ShowTable,
   TableCommandMap,
 } from '@@types/engine/command/table.cmd';
 import { State } from '@@types/engine/store';
@@ -176,46 +174,6 @@ export function executeLoadTable(
   tables.push(new TableModel({ loadTable: data }, show));
 }
 
-export function executeHideTable(
-  { tableState: { tables }, relationshipState: { relationships } }: State,
-  data: HideTable
-) {
-  const table = getData(tables, data.tableId);
-  if (table) {
-    table.visible = false;
-
-    relationships.forEach(relationship => {
-      if (
-        relationship.end.tableId === data.tableId ||
-        relationship.start.tableId === data.tableId
-      ) {
-        relationship.visible = false;
-      }
-    });
-  }
-}
-
-export function executeShowTable(
-  { tableState: { tables }, relationshipState: { relationships } }: State,
-  data: ShowTable
-) {
-  const table = getData(tables, data.tableId);
-  if (table) {
-    table.visible = true;
-
-    relationships.forEach(relationship => {
-      if (relationship.end.tableId === data.tableId) {
-        const startTable = getData(tables, relationship.start.tableId);
-        if (startTable?.visible) relationship.visible = true;
-      }
-      if (relationship.start.tableId === data.tableId) {
-        const endTable = getData(tables, relationship.end.tableId);
-        if (endTable?.visible) relationship.visible = true;
-      }
-    });
-  }
-}
-
 export function executeChangeColorTable(
   { tableState: { tables }, memoState: { memos } }: State,
   data: ChangeColorTable
@@ -250,7 +208,5 @@ export const executeTableCommandMap: Record<
   'table.dragSelect': executeDragSelectTable,
   'table.sort': executeSortTable,
   'table.load': executeLoadTable,
-  'table.hide': executeHideTable,
-  'table.show': executeShowTable,
   'table.changeColor': executeChangeColorTable,
 };

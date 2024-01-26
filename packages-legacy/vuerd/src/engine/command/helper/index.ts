@@ -17,8 +17,6 @@ export const changeCommandTypes: CommandKey[] = [
   'table.changeName',
   'table.changeComment',
   'table.sort',
-  'table.hide',
-  'table.show',
   'table.changeColor',
   // column
   'column.add',
@@ -89,8 +87,6 @@ export const historyCommandTypes: CommandKey[] = [
   'table.changeName',
   'table.changeComment',
   'table.sort',
-  'table.hide',
-  'table.show',
   // column
   'column.add',
   'column.addCustom',

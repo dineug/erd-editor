@@ -19,6 +19,7 @@ import { ColumnNotNullStyle } from './table/column/ColumnNotNull.style';
 import { ColumnUniqueStyle } from './table/column/ColumnUnique.style';
 import { HighLevelTableStyle } from './table/HighLevelTable.style';
 import { TableStyle } from './table/Table.style';
+import { VirtualScrollStyle } from './virtual-scroll/VirtualScroll.style';
 
 export const IndexStyle = [
   DefaultStyle,
@@ -41,4 +42,5 @@ export const IndexStyle = [
   MinimapHandleStyle,
   FindStyle,
   IconStyle,
+  VirtualScrollStyle,
 ].join('');

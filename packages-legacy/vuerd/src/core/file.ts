@@ -2,17 +2,12 @@ import { html } from '@vuerd/lit-observable';
 import { DDLParser } from '@vuerd/sql-ddl-parser';
 import { toBlob } from 'html-to-image';
 
-import { calculateLatestDiff } from '@/core/diff/helper';
 import { Bus } from '@/core/helper/eventBus.helper';
-import { Logger } from '@/core/logger';
-import { Dialect } from '@/core/parser/helper';
-import { LiquibaseParser } from '@/core/parser/LiquibaseParser';
 import { createJson } from '@/core/parser/ParserToJson';
 import { loadJson$ } from '@/engine/command/editor.cmd.helper';
 import { sortTable } from '@/engine/command/table.cmd.helper';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { ExportOptions, ImportOptions } from '@@types/core/file';
-import { LiquibaseFile, LoadLiquibaseData } from '@@types/core/liquibaseParser';
 import { ExportedStore, Store } from '@@types/engine/store';
 import { SnapshotMetadata } from '@@types/engine/store/snapshot';
 
@@ -202,67 +197,4 @@ export function importSQLDDL(context: IERDEditorContext) {
     }
   });
   importHelper.click();
-}
-
-export function importLiquibase(context: IERDEditorContext, dialect: Dialect) {
-  if (
-    calculateLatestDiff(context).length === 0 ||
-    window.confirm(
-      'Found changes, are you sure you want to loose them? If you want to save changes (diff), please, make sure to EXPORT them first.\nPress OK to continue importing file, press CANCEL to abort importing.'
-    )
-  ) {
-    const importHelper = document.createElement('input');
-    importHelper.setAttribute('type', 'file');
-    importHelper.setAttribute('multiple', 'true');
-    importHelper.setAttribute('accept', `.xml`);
-    importHelper.addEventListener('change', async event => {
-      const input = event.target as HTMLInputElement;
-      if (input.files && input.files.length) {
-        const files = Array.from(input.files).sort((a: File, b: File) =>
-          a.name.localeCompare(b.name)
-        );
-
-        var liquiFiles: LiquibaseFile[] = [];
-
-        for (const file of files) {
-          try {
-            liquiFiles.push({
-              path: file.name,
-              value: await loadFileSync(file, 'xml'),
-            });
-          } catch (e) {}
-        }
-
-        LiquibaseParser(context, liquiFiles, dialect);
-      }
-    });
-    importHelper.click();
-  }
-}
-
-export async function loadFileSync(file: File, type: string): Promise<string> {
-  const regex = new RegExp(`\.(${type})$`, 'i');
-  if (regex.test(file.name)) {
-    return await new Promise<string>(resolve => {
-      let reader = new FileReader();
-      reader.readAsText(file);
-      reader.onload = () => {
-        const value = reader.result;
-        if (typeof value === 'string') resolve(value);
-      };
-    });
-  } else throw new Error();
-}
-
-export function loadLiquibaseChangelog(
-  context: IERDEditorContext,
-  { files, type }: LoadLiquibaseData,
-  dialect: Dialect
-) {
-  var root: LiquibaseFile | undefined = undefined;
-  if (type === 'vscode' && files[0].path === 'changelog.xml') {
-    root = files[0];
-  }
-
-  LiquibaseParser(context, files, dialect, root);
 }

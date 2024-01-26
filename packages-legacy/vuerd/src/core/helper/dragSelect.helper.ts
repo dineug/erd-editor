@@ -1,3 +1,7 @@
+import { SIZE_MENUBAR_HEIGHT } from '@/core/layout';
+import { IStore } from '@/internal-types/store';
+import { Viewport } from '@@types/engine/store/editor.state';
+
 interface PointToPoint {
   x1: number;
   y1: number;
@@ -58,3 +62,10 @@ export const getAbsolutePosition = (
   x2: overlapPosition.x2 / zoomLevel,
   y2: overlapPosition.y2 / zoomLevel,
 });
+
+export function getViewport(store: IStore): Viewport {
+  return {
+    width: store.editorState.viewport.width,
+    height: store.editorState.viewport.height - SIZE_MENUBAR_HEIGHT,
+  };
+}

@@ -1,7 +1,7 @@
 import { beforeMount } from '@vuerd/lit-observable';
 import { DDLParser } from '@vuerd/sql-ddl-parser';
 
-import { createJsonStringify, loadLiquibaseChangelog } from '@/core/file';
+import { createJsonStringify } from '@/core/file';
 import { isArray, isString } from '@/core/helper';
 import { Bus } from '@/core/helper/eventBus.helper';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
@@ -20,7 +20,6 @@ import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { ERDEditorElement } from '@@types/components/ERDEditorElement';
 import { ExtensionConfig } from '@@types/core/extension';
 import { Keymap } from '@@types/core/keymap';
-import { LoadLiquibaseData } from '@@types/core/liquibaseParser';
 import { PanelConfig } from '@@types/core/panel';
 import { Theme } from '@@types/core/theme';
 import { Database } from '@@types/engine/store/canvas.state';
@@ -80,10 +79,6 @@ export function useERDEditorElement(
     }
   };
 
-  ctx.loadLiquibase = (data: LoadLiquibaseData) => {
-    loadLiquibaseChangelog(context, data, 'postgresql');
-  };
-
   ctx.getSQLDDL = (database?: Database) => {
     return database && databaseList.includes(database)
       ? createDDL(store, database)
@@ -101,20 +96,6 @@ export function useERDEditorElement(
     isArray(config.excludePanel) &&
       (editorState.excludePanel = config.excludePanel as RegExp[]);
   };
-
-  eventBus.on(Bus.Liquibase.progress).subscribe(message =>
-    ctx.dispatchEvent(
-      new CustomEvent('liquibase-progress', {
-        detail: message,
-      })
-    )
-  );
-
-  eventBus
-    .on(Bus.Liquibase.progressEnd)
-    .subscribe(() =>
-      ctx.dispatchEvent(new CustomEvent('liquibase-progress-end'))
-    );
 
   const emitChange = () =>
     editorState.readonly || ctx.dispatchEvent(new CustomEvent('change'));

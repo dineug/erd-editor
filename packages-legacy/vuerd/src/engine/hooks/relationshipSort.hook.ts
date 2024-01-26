@@ -22,8 +22,6 @@ const hookKeys: CommandKey[] = [
   'column.changeDataType',
   'column.changeDefault',
   'column.move',
-  'table.hide',
-  'table.show',
 ];
 
 export const useRelationshipSort = (

@@ -1,14 +1,9 @@
-import { importJSON, importLiquibase, importSQLDDL } from '@/core/file';
+import { importJSON, importSQLDDL } from '@/core/file';
 import { IERDEditorContext } from '@/internal-types/ERDEditorContext';
 import { Menu, MenuOptions } from '@@types/core/contextmenu';
 
 const defaultOptions: MenuOptions = {
   nameWidth: 60,
-  keymapWidth: 0,
-};
-
-const liquibaseOptions: MenuOptions = {
-  nameWidth: 75,
   keymapWidth: 0,
 };
 

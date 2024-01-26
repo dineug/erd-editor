@@ -3,10 +3,13 @@ import { filter, map, takeUntil } from 'rxjs/operators';
 
 import { GlobalEventObservable } from '@/internal-types/event.helper';
 
-const userAgent = window.navigator.userAgent.toLowerCase();
-const isRatio = ['macintosh', 'firefox'].every(
-  target => userAgent.indexOf(target) === -1
-);
+export type DragMove = {
+  event: MouseEvent | TouchEvent;
+  movementX: number;
+  movementY: number;
+  x: number;
+  y: number;
+};
 
 export function createGlobalEventObservable(): GlobalEventObservable {
   const mousedown$ = fromEvent<MouseEvent>(window, 'mousedown');
@@ -26,12 +29,8 @@ export function createGlobalEventObservable(): GlobalEventObservable {
   const move$ = merge(
     mousemove$.pipe(
       map(event => {
-        let movementX = event.movementX;
-        let movementY = event.movementY;
-        if (isRatio) {
-          movementX = event.movementX / window.devicePixelRatio;
-          movementY = event.movementY / window.devicePixelRatio;
-        }
+        const movementX = event.movementX;
+        const movementY = event.movementY;
         return {
           event,
           movementX,

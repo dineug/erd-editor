@@ -41,14 +41,6 @@ export interface DragSelectTable {
   max: Point;
 }
 
-export interface HideTable {
-  tableId: string;
-}
-
-export interface ShowTable {
-  tableId: string;
-}
-
 export interface ChangeColorTable {
   tableIds: string[];
   memoIds: string[];
@@ -67,7 +59,5 @@ export interface TableCommandMap {
   'table.dragSelect': DragSelectTable;
   'table.sort': null;
   'table.load': PureTable;
-  'table.hide': HideTable;
-  'table.show': ShowTable;
   'table.changeColor': ChangeColorTable;
 }

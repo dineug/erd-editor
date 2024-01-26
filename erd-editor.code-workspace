@@ -49,15 +49,15 @@
       "path": "packages/vite-plugin-r-html"
     },
     {
-      "name": "vuerd",
+      "name": "@legacy/vuerd",
       "path": "packages-legacy/vuerd"
     },
     {
-      "name": "@vuerd/sql-ddl-parser",
+      "name": "@legacy/sql-ddl-parser",
       "path": "packages-legacy/sql-ddl-parser"
     },
     {
-      "name": "@vuerd/lit-observable",
+      "name": "@legacy/lit-observable",
       "path": "packages-legacy/lit-observable"
     },
     {

@@ -56,8 +56,6 @@ export function useERDEditorDrawer(
   const closeSetting = createClose('setting');
   const openTableProperties = createOpen('tableProperties');
   const closeTableProperties = createClose('tableProperties');
-  const openTree = createOpen('tree');
-  const closeTree = createClose('tree');
 
   const closeDrawer = () => {
     if (state.tableProperties && tableId) {
@@ -67,7 +65,6 @@ export function useERDEditorDrawer(
     closeHelp();
     closeSetting();
     closeTableProperties();
-    closeTree();
     tableId = '';
   };
 
@@ -113,7 +110,5 @@ export function useERDEditorDrawer(
     closeSetting,
     openTableProperties,
     closeTableProperties,
-    openTree,
-    closeTree,
   };
 }

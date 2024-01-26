@@ -68,7 +68,6 @@ export const createExportMenus = (
       },
       name: 'png',
       execute: () => {
-        store.dispatchSync(moveCanvas(0, 0));
         exportPNG(canvas, store.canvasState.databaseName);
       },
     },

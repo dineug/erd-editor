@@ -108,12 +108,6 @@ export const sortTable = () => createCommand('table.sort', null);
 export const loadTable = (table: PureTable) =>
   createCommand('table.load', table);
 
-export const hideTable = (tableId: string) =>
-  createCommand('table.hide', { tableId });
-
-export const showTable = (tableId: string) =>
-  createCommand('table.show', { tableId });
-
 export const changeColorTable = (
   { tableState: { tables }, memoState: { memos } }: Store,
   ctrlKey: boolean,

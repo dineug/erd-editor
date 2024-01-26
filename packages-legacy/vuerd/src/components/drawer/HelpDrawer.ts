@@ -35,11 +35,11 @@ const HelpDrawer: FunctionalComponent<HelpDrawerProps, HelpDrawerElement> = (
     const { keymap } = contextRef.value;
     return [
       {
-        name: 'Editing - ERD',
+        name: 'Editing',
         keymap: `dblclick, ${keymapOptionsToString(keymap.edit)}`,
       },
       {
-        name: 'Editing - Grid',
+        name: 'Editing',
         keymap: 'dblclick, Enter',
       },
       {
@@ -47,15 +47,15 @@ const HelpDrawer: FunctionalComponent<HelpDrawerProps, HelpDrawerElement> = (
         keymap: keymapOptionsToString(keymap.stop),
       },
       {
-        name: 'Search - find, filter',
+        name: 'Search',
         keymap: keymapOptionsToString(keymap.find),
       },
       {
-        name: 'Undo - ERD',
+        name: 'Undo',
         keymap: keymapOptionsToString(keymap.undo),
       },
       {
-        name: 'Redo - ERD',
+        name: 'Redo',
         keymap: keymapOptionsToString(keymap.redo),
       },
       {
@@ -65,13 +65,13 @@ const HelpDrawer: FunctionalComponent<HelpDrawerProps, HelpDrawerElement> = (
         )}`,
       },
       {
-        name: 'Selection - column, filter',
+        name: 'Selection - column',
         keymap: `Click, Ctrl + Click, Cmd + Click, Shift + Click, Shift + Arrow key(up, down), ${keymapOptionsToString(
           keymap.selectAllColumn
         )}`,
       },
       {
-        name: 'Movement - table, memo, column, filter',
+        name: 'Movement - table, memo, column',
         keymap: 'Drag, Ctrl + Drag, Cmd + Drag',
       },
       {
@@ -121,14 +121,6 @@ const HelpDrawer: FunctionalComponent<HelpDrawerProps, HelpDrawerElement> = (
       {
         name: 'Primary Key',
         keymap: keymapOptionsToString(keymap.primaryKey),
-      },
-      {
-        name: 'checkbox - Grid, filter',
-        keymap: 'Space, Click',
-      },
-      {
-        name: 'Move checkbox - Grid, filter',
-        keymap: 'Arrow key(up, down, left, right)',
       },
       {
         name: 'Relationship - Zero One',

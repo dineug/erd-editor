@@ -61,68 +61,62 @@ export const createKeymap = (): Keymap => ({
     {
       altKey: true,
       key: 'N',
+      preventDefault: true,
     },
   ],
   addColumn: [
     {
       altKey: true,
       key: 'Enter',
+      preventDefault: true,
     },
   ],
   addMemo: [
     {
       altKey: true,
       key: 'M',
+      preventDefault: true,
     },
   ],
   removeTable: [
     {
       ctrlKey: true,
       key: 'Delete',
+      preventDefault: true,
     },
     {
       ctrlKey: true,
       key: 'Backspace',
+      preventDefault: true,
     },
     {
       metaKey: true,
       key: 'Delete',
+      preventDefault: true,
     },
     {
       metaKey: true,
       key: 'Backspace',
-    },
-  ],
-  hideTable: [
-    {
-      ctrlKey: true,
-      shiftKey: true,
-      key: 'H',
       preventDefault: true,
-      stopPropagation: true,
-    },
-    {
-      metaKey: true,
-      shiftKey: true,
-      key: 'H',
-      preventDefault: true,
-      stopPropagation: true,
     },
   ],
   removeColumn: [
     {
       altKey: true,
       key: 'Delete',
+      preventDefault: true,
     },
     {
       altKey: true,
       key: 'Backspace',
+      preventDefault: true,
     },
   ],
   primaryKey: [
     {
       altKey: true,
       key: 'K',
+      preventDefault: true,
     },
   ],
   selectAllTable: [
@@ -130,17 +124,20 @@ export const createKeymap = (): Keymap => ({
       ctrlKey: true,
       altKey: true,
       key: 'A',
+      preventDefault: true,
     },
     {
       metaKey: true,
       altKey: true,
       key: 'A',
+      preventDefault: true,
     },
   ],
   selectAllColumn: [
     {
       altKey: true,
       key: 'A',
+      preventDefault: true,
     },
   ],
   copyColumn: [
@@ -168,11 +165,13 @@ export const createKeymap = (): Keymap => ({
       ctrlKey: true,
       altKey: true,
       key: '1',
+      preventDefault: true,
     },
     {
       metaKey: true,
       altKey: true,
       key: '1',
+      preventDefault: true,
     },
   ],
   relationshipZeroN: [
@@ -180,11 +179,13 @@ export const createKeymap = (): Keymap => ({
       ctrlKey: true,
       altKey: true,
       key: '2',
+      preventDefault: true,
     },
     {
       metaKey: true,
       altKey: true,
       key: '2',
+      preventDefault: true,
     },
   ],
   relationshipOneOnly: [
@@ -192,11 +193,13 @@ export const createKeymap = (): Keymap => ({
       ctrlKey: true,
       altKey: true,
       key: '3',
+      preventDefault: true,
     },
     {
       metaKey: true,
       altKey: true,
       key: '3',
+      preventDefault: true,
     },
   ],
   relationshipOneN: [
@@ -204,21 +207,25 @@ export const createKeymap = (): Keymap => ({
       ctrlKey: true,
       altKey: true,
       key: '4',
+      preventDefault: true,
     },
     {
       metaKey: true,
       altKey: true,
       key: '4',
+      preventDefault: true,
     },
   ],
   tableProperties: [
     {
       altKey: true,
       key: 'Space',
+      preventDefault: true,
     },
     {
       ctrlKey: true,
       key: 'Space',
+      preventDefault: true,
     },
   ],
   zoomIn: [

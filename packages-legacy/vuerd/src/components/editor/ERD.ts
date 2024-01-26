@@ -2,6 +2,7 @@ import './Canvas';
 import './DragSelect';
 import './minimap/Minimap';
 import './find/Find';
+import './virtual-scroll/VirtualScroll';
 
 import {
   beforeMount,
@@ -160,7 +161,8 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
     if (
       !el.closest('.vuerd-table') &&
       !el.closest('.vuerd-memo') &&
-      !el.closest('.vuerd-input')
+      !el.closest('.vuerd-input') &&
+      !el.closest('.virtual-scroll')
     ) {
       store.dispatch(selectEndTable$(), selectEndMemo());
 
@@ -176,8 +178,15 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
   };
 
   const onWheel = (event: WheelEvent) => {
+    event.preventDefault();
     const { store } = contextRef.value;
-    store.dispatch(movementZoomCanvas(event.deltaY < 0 ? 0.1 : -0.1));
+    const mod = event.ctrlKey || event.metaKey;
+
+    store.dispatch(
+      mod
+        ? movementZoomCanvas(event.deltaY < 0 ? 0.1 : -0.1)
+        : movementCanvas(event.deltaX * -1, event.deltaY * -1)
+    );
   };
 
   const onDragSelectEnd = () => (state.dragSelect = false);
@@ -236,6 +245,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
       >
         <div class="vuerd-erd-background"></div>
         <vuerd-canvas></vuerd-canvas>
+        <vuerd-virtual-scroll></vuerd-virtual-scroll>
         <vuerd-minimap
           .width=${props.width}
           .height=${props.height}
