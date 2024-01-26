@@ -42,29 +42,49 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   [KeyBindingName.search]: [
     { shortcut: '$mod+KeyK', preventDefault: true, stopPropagation: true },
   ],
-  [KeyBindingName.undo]: [{ shortcut: '$mod+KeyZ', preventDefault: true }],
-  [KeyBindingName.redo]: [
-    { shortcut: '$mod+Shift+KeyZ', preventDefault: true },
+  [KeyBindingName.undo]: [
+    { shortcut: '$mod+KeyZ', preventDefault: true, stopPropagation: true },
   ],
-  [KeyBindingName.addTable]: [{ shortcut: 'Alt+KeyN' }],
-  [KeyBindingName.addColumn]: [{ shortcut: 'Alt+Enter' }],
-  [KeyBindingName.addMemo]: [{ shortcut: 'Alt+KeyM' }],
+  [KeyBindingName.redo]: [
+    {
+      shortcut: '$mod+Shift+KeyZ',
+      preventDefault: true,
+      stopPropagation: true,
+    },
+  ],
+  [KeyBindingName.addTable]: [{ shortcut: 'Alt+KeyN', preventDefault: true }],
+  [KeyBindingName.addColumn]: [{ shortcut: 'Alt+Enter', preventDefault: true }],
+  [KeyBindingName.addMemo]: [{ shortcut: 'Alt+KeyM', preventDefault: true }],
   [KeyBindingName.removeTable]: [
-    { shortcut: '$mod+Backspace' },
-    { shortcut: '$mod+Delete' },
+    { shortcut: '$mod+Backspace', preventDefault: true },
+    { shortcut: '$mod+Delete', preventDefault: true },
   ],
   [KeyBindingName.removeColumn]: [
-    { shortcut: 'Alt+Backspace' },
-    { shortcut: 'Alt+Delete' },
+    { shortcut: 'Alt+Backspace', preventDefault: true },
+    { shortcut: 'Alt+Delete', preventDefault: true },
   ],
-  [KeyBindingName.primaryKey]: [{ shortcut: 'Alt+KeyK' }],
-  [KeyBindingName.selectAllTable]: [{ shortcut: '$mod+Alt+KeyA' }],
-  [KeyBindingName.selectAllColumn]: [{ shortcut: 'Alt+KeyA' }],
-  [KeyBindingName.relationshipZeroOne]: [{ shortcut: '$mod+Alt+Digit1' }],
-  [KeyBindingName.relationshipZeroN]: [{ shortcut: '$mod+Alt+Digit2' }],
-  [KeyBindingName.relationshipOneOnly]: [{ shortcut: '$mod+Alt+Digit3' }],
-  [KeyBindingName.relationshipOneN]: [{ shortcut: '$mod+Alt+Digit4' }],
-  [KeyBindingName.tableProperties]: [{ shortcut: 'Alt+Space' }],
+  [KeyBindingName.primaryKey]: [{ shortcut: 'Alt+KeyK', preventDefault: true }],
+  [KeyBindingName.selectAllTable]: [
+    { shortcut: '$mod+Alt+KeyA', preventDefault: true },
+  ],
+  [KeyBindingName.selectAllColumn]: [
+    { shortcut: 'Alt+KeyA', preventDefault: true },
+  ],
+  [KeyBindingName.relationshipZeroOne]: [
+    { shortcut: '$mod+Alt+Digit1', preventDefault: true },
+  ],
+  [KeyBindingName.relationshipZeroN]: [
+    { shortcut: '$mod+Alt+Digit2', preventDefault: true },
+  ],
+  [KeyBindingName.relationshipOneOnly]: [
+    { shortcut: '$mod+Alt+Digit3', preventDefault: true },
+  ],
+  [KeyBindingName.relationshipOneN]: [
+    { shortcut: '$mod+Alt+Digit4', preventDefault: true },
+  ],
+  [KeyBindingName.tableProperties]: [
+    { shortcut: 'Alt+Space', preventDefault: true },
+  ],
   [KeyBindingName.zoomIn]: [
     { shortcut: '$mod+Equal', preventDefault: true, stopPropagation: true },
   ],
