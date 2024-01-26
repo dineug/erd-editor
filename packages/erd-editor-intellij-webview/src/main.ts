@@ -22,28 +22,6 @@ const bridge = new Emitter();
 const editor = document.createElement('erd-editor');
 const sharedStore = editor.getSharedStore({ mouseTracker: false });
 
-editor.setKeyBindingMap({
-  addTable: [{ shortcut: 'Alt+KeyN', preventDefault: true }],
-  addColumn: [{ shortcut: 'Alt+Enter', preventDefault: true }],
-  addMemo: [{ shortcut: 'Alt+KeyM', preventDefault: true }],
-  removeTable: [
-    { shortcut: '$mod+Backspace', preventDefault: true },
-    { shortcut: '$mod+Delete', preventDefault: true },
-  ],
-  removeColumn: [
-    { shortcut: 'Alt+Backspace', preventDefault: true },
-    { shortcut: 'Alt+Delete', preventDefault: true },
-  ],
-  primaryKey: [{ shortcut: 'Alt+KeyK', preventDefault: true }],
-  selectAllTable: [{ shortcut: '$mod+Alt+KeyA', preventDefault: true }],
-  selectAllColumn: [{ shortcut: 'Alt+KeyA', preventDefault: true }],
-  relationshipZeroOne: [{ shortcut: '$mod+Alt+Digit1', preventDefault: true }],
-  relationshipZeroN: [{ shortcut: '$mod+Alt+Digit2', preventDefault: true }],
-  relationshipOneOnly: [{ shortcut: '$mod+Alt+Digit3', preventDefault: true }],
-  relationshipOneN: [{ shortcut: '$mod+Alt+Digit4', preventDefault: true }],
-  tableProperties: [{ shortcut: 'Alt+Space', preventDefault: true }],
-});
-
 const dispatch = (action: AnyAction) => {
   window.cefQuery({
     request: JSON.stringify(action),
