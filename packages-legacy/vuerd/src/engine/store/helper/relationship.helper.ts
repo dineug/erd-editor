@@ -43,6 +43,13 @@ export interface Coordinate {
   rb: Point;
 }
 
+export type PathPoint = {
+  M: Point;
+  L: Point;
+  Q: Point;
+  d(): Array<[Point, Point]>;
+};
+
 interface Path {
   M: Point;
   L: Point;
@@ -74,7 +81,7 @@ interface Line {
 }
 
 export interface RelationshipPath {
-  path: { path: Path; line: PathLine };
+  path: { path: PathPoint; line: PathLine };
   line: { line: Line; circle: Circle; startCircle: Circle };
 }
 
@@ -159,7 +166,7 @@ export function getCoordinate(table: Table): Coordinate {
 }
 
 const getDistance = (a: Point, b: Point) =>
-  Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
+  Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 
 const directionFilter = (key: string) => directions.includes(key as any);
 
@@ -473,6 +480,7 @@ function relationshipOverlayOrder(
 ): RelationshipOrder[] {
   const startPoints: RelationshipPoint[] = [];
   const endPoints: RelationshipPoint[] = [];
+  const isX = direction === 'top' || direction === 'bottom';
 
   relationships.forEach(relationship => {
     if (relationship.start.tableId === relationship.end.tableId) {
@@ -493,20 +501,16 @@ function relationshipOverlayOrder(
     }
   });
 
-  const start: Point = {
-    x: startPoints[0].x,
-    y: startPoints[0].y,
-  };
   const distances: RelationshipOrder[] = [];
   endPoints.forEach((endPoint, index) => {
     distances.push({
       start: startPoints[index],
       end: endPoints[index],
-      distance: getDistance(start, endPoint),
+      distance: isX ? endPoint.x : endPoint.y,
     });
   });
-  distances.sort(sortDistance);
-  return distances;
+
+  return distances.sort(sortDistance);
 }
 
 function relationshipOverlayFirstCheck(
@@ -543,12 +547,6 @@ function relationshipOverlaySort(
     graph.table,
     graph[direction]
   );
-
-  // if (distances.length > 1) {
-  //   if (!relationshipOverlayFirstCheck(direction, distances[0], point)) {
-  //     distances = distances.reverse();
-  //   }
-  // }
 
   if (direction === 'left' || direction === 'right') {
     point.yArray.forEach((y, index) => {
@@ -660,7 +658,7 @@ export function relationshipSort(
 function getPath(
   start: RelationshipPoint,
   end: RelationshipPoint
-): { path: Path; line: PathLine } {
+): { path: PathPoint; line: PathLine } {
   const line: PathLine = {
     start: {
       x1: start.x,
@@ -675,12 +673,48 @@ function getPath(
       y2: end.y,
     },
   };
-  const path: Path = {
+  const path: PathPoint = {
     M: { x: 0, y: 0 },
     L: { x: 0, y: 0 },
     Q: { x: 0, y: 0 },
-    d(): string {
-      return `M ${this.M.x} ${this.M.y} L ${this.L.x} ${this.L.y}`;
+    d() {
+      const distanceX = this.M.x - this.L.x;
+      const distanceY = this.M.y - this.L.y;
+      const distanceHalfX = distanceX / 2;
+      const distanceHalfY = distanceY / 2;
+      const isAxisX = Math.abs(distanceY) <= Math.abs(distanceX);
+      const subDistance = isAxisX
+        ? Math.abs(distanceHalfY)
+        : Math.abs(distanceHalfX);
+
+      const add = createAdd(subDistance);
+      const addLeft = add(true);
+      const addRight = add(false);
+
+      const addX1 = addLeft(distanceX);
+      const addY1 = addLeft(distanceY);
+      const addX2 = addRight(distanceX);
+      const addY2 = addRight(distanceY);
+
+      const x1 = isAxisX ? this.M.x - distanceHalfX + addX1 : this.M.x;
+      const y1 = isAxisX ? this.M.y : this.M.y - distanceHalfY + addY1;
+      const x2 = isAxisX ? this.L.x + distanceHalfX + addX2 : this.L.x;
+      const y2 = isAxisX ? this.L.y : this.L.y + distanceHalfY + addY2;
+
+      return [
+        [
+          { x: this.M.x, y: this.M.y },
+          { x: x1, y: y1 },
+        ],
+        [
+          { x: x1, y: y1 },
+          { x: x2, y: y2 },
+        ],
+        [
+          { x: x2, y: y2 },
+          { x: this.L.x, y: this.L.y },
+        ],
+      ];
     },
   };
 
@@ -895,4 +929,11 @@ export function getRelationshipPath(
     path: getPath(relationship.start, relationship.end),
     line: getLine(relationship.start, relationship.end),
   };
+}
+
+function createAdd(value: number) {
+  return (leftNegativeMul: boolean) => (distance: number) =>
+    distance < 0
+      ? (leftNegativeMul ? -1 : 1) * value
+      : (leftNegativeMul ? 1 : -1) * value;
 }

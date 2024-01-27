@@ -36,17 +36,4 @@ setGetShikiServiceCallback(getShikiService);
 // cssUnwrap();
 hmr();
 runStats();
-
-const editor1 = runEditor();
-const editor2 = runEditor();
-
-const sharedStore1 = editor1.getSharedStore({ getNickname: () => 'editor1' });
-const sharedStore2 = editor2.getSharedStore({ getNickname: () => 'editor2' });
-
-sharedStore1.subscribe(actions => {
-  sharedStore2.dispatch(actions);
-});
-
-sharedStore2.subscribe(actions => {
-  sharedStore1.dispatch(actions);
-});
+runEditor();

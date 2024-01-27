@@ -1,6 +1,7 @@
 import { SIZE_MENUBAR_HEIGHT } from '@/core/layout';
-import { IStore } from '@/internal-types/store';
+import { Store } from '@@types/engine/store';
 import { Viewport } from '@@types/engine/store/editor.state';
+import { Point } from '@@types/engine/store/relationship.state';
 
 interface PointToPoint {
   x1: number;
@@ -63,9 +64,45 @@ export const getAbsolutePosition = (
   y2: overlapPosition.y2 / zoomLevel,
 });
 
-export function getViewport(store: IStore): Viewport {
+export function getViewport(store: Store): Viewport {
   return {
     width: store.editorState.viewport.width,
     height: store.editorState.viewport.height - SIZE_MENUBAR_HEIGHT,
   };
+}
+
+export function getAbsoluteZoomPoint(
+  { x, y }: Point,
+  width: number,
+  height: number,
+  zoomLevel: number
+) {
+  const zoomViewport = getZoomViewport(width, height, zoomLevel);
+  const zoomX = x * zoomLevel;
+  const zoomY = y * zoomLevel;
+  const absoluteZoomX = zoomViewport.x + zoomX;
+  const absoluteZoomY = zoomViewport.y + zoomY;
+
+  return { x: absoluteZoomX, y: absoluteZoomY };
+}
+
+export function getAbsolutePoint(
+  point: Point,
+  width: number,
+  height: number,
+  zoomLevel: number
+): Point {
+  const { x, y } = point;
+  const { x: absoluteZoomX, y: absoluteZoomY } = getAbsoluteZoomPoint(
+    point,
+    width,
+    height,
+    zoomLevel
+  );
+  const diffZoomX = (x - absoluteZoomX) / zoomLevel;
+  const diffZoomY = (y - absoluteZoomY) / zoomLevel;
+  const absoluteX = x + diffZoomX;
+  const absoluteY = y + diffZoomY;
+
+  return { x: absoluteX, y: absoluteY };
 }

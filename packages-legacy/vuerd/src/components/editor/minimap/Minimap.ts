@@ -7,6 +7,7 @@ import {
   defineComponent,
   FunctionalComponent,
   html,
+  query,
   svg,
   watch,
 } from '@vuerd/lit-observable';
@@ -15,15 +16,15 @@ import { repeat } from 'lit-html/directives/repeat';
 import { styleMap } from 'lit-html/directives/style-map';
 
 import { relationshipTpl } from '@/components/editor/Relationship.template';
+import { isMouseEvent } from '@/core/helper/dom.helper';
+import { getViewport } from '@/core/helper/dragSelect.helper';
 import { useContext } from '@/core/hooks/context.hook';
 import { useRenderTrigger } from '@/core/hooks/renderTrigger.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
-import {
-  SIZE_MENUBAR_HEIGHT,
-  SIZE_MINIMAP_MARGIN,
-  SIZE_MINIMAP_WIDTH,
-} from '@/core/layout';
-import { movementCanvas } from '@/engine/command/canvas.cmd.helper';
+import { SIZE_MINIMAP_MARGIN, SIZE_MINIMAP_WIDTH } from '@/core/layout';
+import { moveCanvas } from '@/engine/command/canvas.cmd.helper';
+
+import { useMinimapScroll } from './useMinimapScroll';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -45,58 +46,63 @@ const Minimap: FunctionalComponent<MinimapProps, MinimapElement> = (
   const contextRef = useContext(ctx);
   const { unmountedGroup } = useUnmounted();
   const { renderTrigger } = useRenderTrigger();
+  const { state, onScrollStart } = useMinimapScroll(ctx);
+  const minimapRef = query<HTMLElement>('.vuerd-minimap');
+
+  const getRatio = () => {
+    const { store } = contextRef.value;
+    return SIZE_MINIMAP_WIDTH / store.canvasState.width;
+  };
 
   const getStyleMap = () => {
     const { width, height } = contextRef.value.store.canvasState;
     const ratio = SIZE_MINIMAP_WIDTH / width;
     const x = (-1 * width) / 2 + SIZE_MINIMAP_WIDTH / 2;
     const y = (-1 * height) / 2 + (height * ratio) / 2;
-    const left = x - SIZE_MINIMAP_WIDTH - SIZE_MINIMAP_MARGIN + props.width;
+    const right = x + SIZE_MINIMAP_MARGIN;
     const top = y + SIZE_MINIMAP_MARGIN;
     return {
-      transform: `scale(${ratio}, ${ratio})`,
+      transform: `scale(${ratio})`,
       width: `${width}px`,
       height: `${height}px`,
-      left: `${left}px`,
+      right: `${right}px`,
       top: `${top}px`,
     };
   };
 
   const getShadowStyle = () => {
-    const left = props.width - SIZE_MINIMAP_WIDTH - SIZE_MINIMAP_MARGIN;
     const top = SIZE_MINIMAP_MARGIN;
     return {
       width: `${SIZE_MINIMAP_WIDTH}px`,
       height: `${SIZE_MINIMAP_WIDTH}px`,
-      left: `${left}px`,
+      right: `${SIZE_MINIMAP_MARGIN}px`,
       top: `${top}px`,
     };
   };
 
-  const onClickMove = (ev: MouseEvent) => {
+  const handleMove = (event: MouseEvent | TouchEvent) => {
     const { store } = contextRef.value;
-    // minimap position
-    const mapPosLeft = props.width - SIZE_MINIMAP_WIDTH - SIZE_MINIMAP_MARGIN;
-    const mapPosTop = SIZE_MINIMAP_MARGIN + SIZE_MENUBAR_HEIGHT;
+    const viewport = getViewport(store);
+    const ratio = getRatio();
+    const $minimap = minimapRef.value;
+    const rect = $minimap.getBoundingClientRect();
+    const clientX = isMouseEvent(event)
+      ? event.clientX
+      : event.touches[0].clientX;
+    const clientY = isMouseEvent(event)
+      ? event.clientY
+      : event.touches[0].clientY;
 
-    // mouse on minimap
-    const leftMap = ev.x - mapPosLeft;
-    const topMap = ev.y - mapPosTop;
+    const x = clientX - rect.x;
+    const y = clientY - rect.y;
+    const absoluteX = x / ratio;
+    const absoluteY = y / ratio;
+    const scrollLeft = absoluteX - viewport.width / 2;
+    const scrollTop = absoluteY - viewport.height / 2;
 
-    // ratio size of minimap
-    const { width } = contextRef.value.store.canvasState;
-    const ratio = SIZE_MINIMAP_WIDTH / width;
+    store.dispatch(moveCanvas(-1 * scrollTop, -1 * scrollLeft));
 
-    // the orange square showing what user sees position
-    const mapDetailTop = (props.height * ratio) / 2;
-    const mapDetailLeft = (props.width * ratio) / 2;
-
-    // real movement
-    const { scrollLeft, scrollTop } = contextRef.value.store.canvasState;
-    const movementX = scrollLeft + (leftMap - mapDetailLeft) / ratio;
-    const movementY = scrollTop + (topMap - mapDetailTop) / ratio;
-
-    store.dispatch(movementCanvas(-movementX, -movementY));
+    onScrollStart(event);
   };
 
   beforeMount(() => {
@@ -129,7 +135,8 @@ const Minimap: FunctionalComponent<MinimapProps, MinimapElement> = (
       <div
         class="vuerd-minimap"
         style=${styleMap(getStyleMap())}
-        @click=${onClickMove}
+        @mousedown=${handleMove}
+        @touchstart=${handleMove}
       >
         <div class="vuerd-erd-background"></div>
         <div
@@ -182,10 +189,7 @@ const Minimap: FunctionalComponent<MinimapProps, MinimapElement> = (
             : null}
         </div>
       </div>
-      <vuerd-minimap-handle
-        .width=${props.width}
-        .height=${props.height}
-      ></vuerd-minimap-handle>
+      <vuerd-minimap-handle .selected=${state.selected}></vuerd-minimap-handle>
     `;
   };
 };

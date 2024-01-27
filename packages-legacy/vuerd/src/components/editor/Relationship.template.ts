@@ -207,16 +207,22 @@ export function relationshipTpl(relationship: Relationship, strokeWidth = 3) {
   const shape = relationshipShapeTpl
     ? relationshipShapeTpl(relationshipPath)
     : null;
-  const d = path.path.d();
+  const lines = path.path.d();
 
   return relationship.startRelationshipType === 'Ring'
     ? svg`
-        <path
-          d=${d}
-          stroke-dasharray=${relationship.identification ? 0 : 10}
-          stroke-width=${strokeWidth}
-          fill="transparent"
-        ></path>
+        ${lines.map(
+          ([a, b]) =>
+            svg`
+              <line
+                x1=${a.x} y1=${a.y}
+                x2=${b.x} y2=${b.y}
+                stroke-dasharray=${relationship.identification ? 0 : 10}
+                stroke-width=${strokeWidth}
+                fill="transparent"
+              ></line>
+            `
+        )}
         <line
           x1=${path.line.start.x1} y1=${path.line.start.y1}
           x2=${path.line.start.x2} y2=${path.line.start.y2}
@@ -240,12 +246,18 @@ export function relationshipTpl(relationship: Relationship, strokeWidth = 3) {
         ${shape}
     `
     : svg`
-        <path
-          d=${d}
-          stroke-dasharray=${relationship.identification ? 0 : 10}
-          stroke-width=${strokeWidth}
-          fill="transparent"
-        ></path>
+        ${lines.map(
+          ([a, b]) =>
+            svg`
+              <line
+                x1=${a.x} y1=${a.y}
+                x2=${b.x} y2=${b.y}
+                stroke-dasharray=${relationship.identification ? 0 : 10}
+                stroke-width=${strokeWidth}
+                fill="transparent"
+              ></line>
+            `
+        )}
         <line
           x1=${path.line.start.x1} y1=${path.line.start.y1}
           x2=${path.line.start.x2} y2=${path.line.start.y2}

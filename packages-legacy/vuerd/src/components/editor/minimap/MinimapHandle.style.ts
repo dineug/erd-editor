@@ -11,4 +11,8 @@ export const MinimapHandleStyle = css`
   .vuerd-minimap-handle:hover {
     opacity: 1;
   }
+
+  .vuerd-minimap-handle[data-selected] {
+    opacity: 1;
+  }
 `;

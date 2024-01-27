@@ -3,7 +3,7 @@ import { beforeMount } from '@vuerd/lit-observable';
 import { relationshipMenus } from '@/core/contextmenu/drawRelationship.menu';
 import { Bus } from '@/core/helper/eventBus.helper';
 import { keymapMatchAndStop } from '@/core/keymap';
-import { movementZoomCanvas } from '@/engine/command/canvas.cmd.helper';
+import { movementZoomCanvas$ } from '@/engine/command/canvas.cmd.helper.gen';
 import {
   addColumn$,
   changeColumnAutoIncrement,
@@ -131,9 +131,9 @@ export function useERDKeymap(ctx: HTMLElement) {
       }
 
       keymapMatchAndStop(event, keymap.zoomIn) &&
-        store.dispatch(movementZoomCanvas(0.1));
+        store.dispatch(movementZoomCanvas$(store, 0.1));
       keymapMatchAndStop(event, keymap.zoomOut) &&
-        store.dispatch(movementZoomCanvas(-0.1));
+        store.dispatch(movementZoomCanvas$(store, -0.1));
     }
 
     if (editorState.focusTable && !editorState.focusTable.edit) {

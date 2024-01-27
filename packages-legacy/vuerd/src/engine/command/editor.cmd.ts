@@ -1,6 +1,7 @@
 import { parserV2 } from '@dineug/erd-editor-schema';
 
 import { cloneDeep, getData, isObject } from '@/core/helper';
+import { getAbsolutePoint } from '@/core/helper/dragSelect.helper';
 import { validStartRelationship } from '@/engine/store/helper/valid.helper';
 import { ExecuteCommand } from '@/internal-types/command';
 import {
@@ -209,14 +210,21 @@ export function executeDrawEndRelationship({ editorState }: State) {
 export function executeDrawRelationship(
   {
     editorState: { drawRelationship },
-    canvasState: { scrollLeft, scrollTop },
+    canvasState: { scrollLeft, scrollTop, zoomLevel, width, height },
   }: State,
-  data: DrawRelationship
+  { x, y }: DrawRelationship
 ) {
   if (!drawRelationship?.start) return;
 
-  drawRelationship.end.x = data.x - scrollLeft;
-  drawRelationship.end.y = data.y - scrollTop;
+  const absolutePoint = getAbsolutePoint(
+    { x: x - scrollLeft, y: y - scrollTop },
+    width,
+    height,
+    zoomLevel
+  );
+
+  drawRelationship.end.x = absolutePoint.x;
+  drawRelationship.end.y = absolutePoint.y;
 }
 
 export function executeDraggableColumn(

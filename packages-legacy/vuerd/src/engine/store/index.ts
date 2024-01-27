@@ -81,7 +81,10 @@ export function createStore(helper: Helper): IStore {
       .pipe(
         readonlyCommands(state),
         commandsFilter(historyCommandTypes),
-        groupByStreamCommands
+        groupByStreamCommands([
+          ['@@move', ['table.move', 'memo.move']],
+          ['@@scroll', ['canvas.movement', 'canvas.movementZoom']],
+        ])
       )
       .subscribe(historyCommand),
     dispatch$.pipe(readonlyCommands(state)).subscribe(command),

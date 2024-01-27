@@ -120,9 +120,6 @@ importers:
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
-      '@types/pathfinding':
-        specifier: ^0.0.9
-        version: 0.0.9
       '@types/ramda':
         specifier: 0.27.44
         version: 0.27.44
@@ -153,9 +150,6 @@ importers:
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
-      pathfinding:
-        specifier: ^0.4.18
-        version: 0.4.18
       ramda:
         specifier: 0.27.1
         version: 0.27.1
@@ -6433,10 +6427,6 @@ packages:
   /@types/parse-json@4.0.2:
     resolution: {integrity: sha512-dISoDXWWQwUquiKsyZ4Ng+HX2KsPL7LyHKHQwgGFEA3IaKac4Obd+h2a/a6waisAoepJlBcx9paWqjA8/HVjCw==}
 
-  /@types/pathfinding@0.0.9:
-    resolution: {integrity: sha512-b7tf4+gVc8+sRETzJ7pCeqhknQ9XVgYqbH5+ekcHmO5Hf/fy9BTBzSstE9mcOQc81Y0qITda8tF/UsN3huIMwg==}
-    dev: true
-
   /@types/pretty-hrtime@1.0.1:
     resolution: {integrity: sha512-VjID5MJb1eGKthz2qUerWT8+R4b9N+CHvGCzg9fn4kWZgaF9AhdYikQio3R7wV8YY1NsQKPaCwKz1Yff+aHNUQ==}
     dev: true
@@ -9819,10 +9809,6 @@ packages:
     hasBin: true
     dev: true
 
-  /heap@0.2.5:
-    resolution: {integrity: sha512-G7HLD+WKcrOyJP5VQwYZNC3Z6FcQ7YYjEFiFoIj8PfEr73mu421o8B1N5DKUcc8K37EsJ2XXWA8DtrDz/2dReg==}
-    dev: true
-
   /highlight-words-core@1.2.2:
     resolution: {integrity: sha512-BXUKIkUuh6cmmxzi5OIbUJxrG8OAk2MqoL1DtO3Wo9D2faJg2ph5ntyuQeLqaHJmzER6H5tllCDA9ZnNe9BVGg==}
     dev: true
@@ -11689,12 +11675,6 @@ packages:
 
   /pathe@1.1.1:
     resolution: {integrity: sha512-d+RQGp0MAYTIaDBIMmOfMwz3E+LOZnxx1HZd5R18mmCZY0QBlK0LDZfPc8FW8Ed2DlvsuE6PRjroDY+wg4+j/Q==}
-    dev: true
-
-  /pathfinding@0.4.18:
-    resolution: {integrity: sha512-R0TGEQ9GRcFCDvAWlJAWC+KGJ9SLbW4c0nuZRcioVlXVTlw+F5RvXQ8SQgSqI9KXWC1ew95vgmIiyaWTlCe9Ag==}
-    dependencies:
-      heap: 0.2.5
     dev: true
 
   /pathval@1.1.1:

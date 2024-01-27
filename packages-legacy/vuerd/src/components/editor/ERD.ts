@@ -29,10 +29,8 @@ import { useERDKeymap } from '@/core/hooks/ERDKeymap.hook';
 import { useMousePosition } from '@/core/hooks/mousePosition.hook';
 import { useUnmounted } from '@/core/hooks/unmounted.hook';
 import { getBase64Icon } from '@/core/icon';
-import {
-  movementCanvas,
-  movementZoomCanvas,
-} from '@/engine/command/canvas.cmd.helper';
+import { movementCanvas } from '@/engine/command/canvas.cmd.helper';
+import { movementZoomCanvas$ } from '@/engine/command/canvas.cmd.helper.gen';
 import { findActiveEnd } from '@/engine/command/editor.cmd.helper';
 import { selectEndMemo } from '@/engine/command/memo.cmd.helper';
 import { selectEndTable$ } from '@/engine/command/table.cmd.helper';
@@ -162,7 +160,9 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
       !el.closest('.vuerd-table') &&
       !el.closest('.vuerd-memo') &&
       !el.closest('.vuerd-input') &&
-      !el.closest('.virtual-scroll')
+      !el.closest('.virtual-scroll') &&
+      !el.closest('.vuerd-minimap-handle') &&
+      !el.closest('.vuerd-minimap')
     ) {
       store.dispatch(selectEndTable$(), selectEndMemo());
 
@@ -184,7 +184,7 @@ const ERD: FunctionalComponent<ERDProps, ERDElement> = (props, ctx) => {
 
     store.dispatch(
       mod
-        ? movementZoomCanvas(event.deltaY < 0 ? 0.1 : -0.1)
+        ? movementZoomCanvas$(store, event.deltaY < 0 ? 0.1 : -0.1)
         : movementCanvas(event.deltaX * -1, event.deltaY * -1)
     );
   };

@@ -18,14 +18,9 @@ import { contextPanelConfig } from '@/core/panel';
 import {
   changeDatabaseName,
   resizeCanvas,
-  zoomCanvas,
 } from '@/engine/command/canvas.cmd.helper';
-import {
-  filterActive$,
-  filterActiveEnd$,
-  findActive$,
-  findActiveEnd,
-} from '@/engine/command/editor.cmd.helper';
+import { zoomCanvas$ } from '@/engine/command/canvas.cmd.helper.gen';
+import { findActive$, findActiveEnd } from '@/engine/command/editor.cmd.helper';
 import {
   canvasSizeRange,
   zoomDisplayFormat,
@@ -79,7 +74,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
     );
     const { store } = contextRef.value;
     input.value = zoomDisplayFormat(zoomLevel);
-    store.dispatch(zoomCanvas(zoomLevel));
+    store.dispatch(zoomCanvas$(store, zoomLevel));
   };
 
   const onFind = () => {
@@ -105,23 +100,9 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
     store.redo();
   };
 
-  const onFilter = () => {
-    const { store, eventBus } = contextRef.value;
-    const { filterState } = store.editorState;
-
-    if (filterState.active) {
-      store.dispatch(filterActiveEnd$());
-    } else {
-      store.dispatch(filterActive$());
-    }
-
-    eventBus.emit(Bus.Drawer.close);
-  };
-
   const onOpenHelp = () => ctx.dispatchEvent(new CustomEvent('open-help'));
   const onOpenSetting = () =>
     ctx.dispatchEvent(new CustomEvent('open-setting'));
-  const onOpenTree = () => ctx.dispatchEvent(new CustomEvent('open-tree'));
 
   beforeMount(() => {
     const { editorState, canvasState } = contextRef.value.store;
@@ -143,7 +124,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
     const { store, keymap } = contextRef.value;
     const {
       canvasState: { databaseName, width, zoomLevel, canvasType },
-      editorState: { hasUndo, hasRedo, readonly, filterState },
+      editorState: { hasUndo, hasRedo, readonly },
     } = store;
 
     return html`
@@ -245,22 +226,7 @@ const Menubar: FunctionalComponent<MenubarProps, MenubarElement> = (
                 <vuerd-icon name="redo-alt" size="16"></vuerd-icon>
               </div>
             `
-          : canvasType === '@vuerd/builtin-grid'
-            ? html`
-                <div
-                  class=${classMap({
-                    'vuerd-menubar-menu': true,
-                    active: !!filterState.filters.length,
-                  })}
-                  data-tippy-content="Filter [${keymapOptionsToString(
-                    keymap.find
-                  )}]"
-                  @click=${onFilter}
-                >
-                  <vuerd-icon name="filter" size="16"></vuerd-icon>
-                </div>
-              `
-            : null}
+          : null}
       </div>
     `;
   };

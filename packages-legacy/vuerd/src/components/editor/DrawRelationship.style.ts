@@ -7,5 +7,6 @@ export const DrawRelationshipStyle = css`
     left: 0;
     stroke: var(--vuerd-color-key-fk);
     pointer-events: none;
+    overflow: visible;
   }
 `;
