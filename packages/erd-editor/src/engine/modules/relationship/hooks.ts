@@ -30,10 +30,11 @@ import {
 import { bHas } from '@/utils/bit';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
-const identificationHook: CO = function* (channel, { doc, collections }) {
+const identificationHook: CO = function* (channel, state) {
   yield throttle(
     channel,
     function* () {
+      const { doc, collections } = state;
       const collection = query(collections).collection('relationshipEntities');
       const relationships = collection.selectByIds(doc.relationshipIds);
 
@@ -68,10 +69,11 @@ const identificationHook: CO = function* (channel, { doc, collections }) {
   );
 };
 
-const startRelationshipHook: CO = function* (channel, { doc, collections }) {
+const startRelationshipHook: CO = function* (channel, state) {
   yield throttle(
     channel,
     function* () {
+      const { doc, collections } = state;
       const collection = query(collections).collection('relationshipEntities');
       const relationships = collection.selectByIds(doc.relationshipIds);
 

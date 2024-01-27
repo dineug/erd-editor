@@ -10,12 +10,13 @@ import {
 import { changeColumnPrimaryKeyAction } from '@/engine/modules/table-column/atom.actions';
 import { bHas } from '@/utils/bit';
 
-const changeColumnNotNullHook: CO = function* (channel, { collections }) {
+const changeColumnNotNullHook: CO = function* (channel, state) {
   yield takeEvery(
     channel,
     function* ({
       payload: { id },
     }: ReturnType<typeof changeColumnPrimaryKeyAction>) {
+      const { collections } = state;
       const collection = query(collections).collection('tableColumnEntities');
       const column = collection.selectById(id);
       if (!column) return;
@@ -33,15 +34,16 @@ const changeColumnNotNullHook: CO = function* (channel, { collections }) {
   );
 };
 
-const addColumnForeignKeyHook: CO = function* (
-  channel,
-  { doc: { relationshipIds }, collections }
-) {
+const addColumnForeignKeyHook: CO = function* (channel, state) {
   yield takeEvery(
     channel,
     function* ({
       payload: { id, end },
     }: ReturnType<typeof addRelationshipAction>) {
+      const {
+        doc: { relationshipIds },
+        collections,
+      } = state;
       if (!relationshipIds.includes(id)) return;
 
       query(collections)
@@ -53,15 +55,16 @@ const addColumnForeignKeyHook: CO = function* (
   );
 };
 
-const removeColumnForeignKeyHook: CO = function* (
-  channel,
-  { doc: { relationshipIds }, collections }
-) {
+const removeColumnForeignKeyHook: CO = function* (channel, state) {
   yield takeEvery(
     channel,
     function* ({
       payload: { id },
     }: ReturnType<typeof removeRelationshipAction>) {
+      const {
+        doc: { relationshipIds },
+        collections,
+      } = state;
       if (relationshipIds.includes(id)) return;
 
       const relationship = query(collections)
