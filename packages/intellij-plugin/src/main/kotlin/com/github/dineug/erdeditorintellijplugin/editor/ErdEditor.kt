@@ -41,7 +41,7 @@ class ErdEditor(
     private val jcefUnsupported by lazy { JCEFUnsupportedViewPanel() }
     private val toolbarAndWebView: JPanel
     private val bridge = WebviewBridge()
-    private val payload = MutableStateFlow<String?>(null)
+    private val savePayload = MutableStateFlow<String?>(null)
 
     private val coroutineScope: CoroutineScope =
             CoroutineScope(SupervisorJob() + CoroutineName("${this::class.java.simpleName}:${file.name}"))
@@ -95,7 +95,7 @@ class ErdEditor(
                     }
 
                     is VscodeBridgeAction.VscodeSaveValue -> {
-                        payload.value = action.payload.value
+                        savePayload.value = action.payload.value
                     }
 
                     is VscodeBridgeAction.VscodeSaveReplication -> {
@@ -109,10 +109,6 @@ class ErdEditor(
                     }
 
                     is VscodeBridgeAction.VscodeImportFile -> {
-                        /**
-                         * TODO
-                         * java.lang.Throwable: AWT events are not allowed inside write action: java.awt.event.WindowEvent[WINDOW_OPENED,opposite=null,oldState=0,newState=0] on filedlg0
-                         */
 //                        val type = action.payload.type
 //                        val extensions = action.payload.accept.split(",")
 //                            .map { it.substringAfterLast(".", "") }
@@ -122,19 +118,20 @@ class ErdEditor(
 //                            "Choose the $type destination",
 //                            *extensions
 //                        )
-//                        val fc = FileChooserFactory.getInstance().createFileChooser(descriptor, null, null)
 //
-//                        readAndWriteAction {
-//                            writeAction {
-//                                fc.choose(null).also { files ->
-//                                    val file = files.first()
-//                                    val value = file.inputStream.reader().readText()
-//                                    webviewPanel.dispatch(
-//                                        WebviewBridgeAction.WebviewImportFile(
-//                                            WebviewImportFilePayload(type, value)
-//                                        )
-//                                    )
+//                        ApplicationManager.getApplication().invokeLater {
+//                            FileChooserFactory.getInstance().createFileChooser(descriptor, null, null).choose(null).also { files ->
+//                                if (files.isEmpty()) {
+//                                    return@invokeLater
 //                                }
+//
+//                                val file = files.first()
+//                                val value = file.inputStream.reader().readText()
+//                                webviewPanel.dispatch(
+//                                    WebviewBridgeAction.WebviewImportFile(
+//                                        WebviewImportFilePayload(type, value)
+//                                    )
+//                                )
 //                            }
 //                        }
                     }
@@ -147,26 +144,32 @@ class ErdEditor(
                             "Choose the $extension destination",
                             extension
                         )
-                        FileChooserFactory.getInstance()
-                            .createSaveFileDialog(descriptor, null)
-                            .save(file.parent, action.payload.fileName)?.also { destination ->
-                                readAndWriteAction {
-                                    writeAction {
-                                        val file = destination.getVirtualFile(true)!!
-                                        try {
-                                            file.getOutputStream(file).use { stream ->
-                                                with(stream) {
-                                                    write(byteArray)
+
+                        // https://youtrack.jetbrains.com/issue/IDEA-309222/java.lang.Throwable-Assert-must-be-called-on-EDT
+                        ApplicationManager.getApplication().invokeLater {
+                            FileChooserFactory.getInstance()
+                                .createSaveFileDialog(descriptor, null)
+                                .save(file.parent, action.payload.fileName)?.also { destination ->
+                                    coroutineScope.launch(Dispatchers.IO + CoroutineName(this::class.java.simpleName)) {
+                                        readAndWriteAction {
+                                            writeAction {
+                                                val file = destination.getVirtualFile(true)!!
+                                                try {
+                                                    file.getOutputStream(file).use { stream ->
+                                                        with(stream) {
+                                                            write(byteArray)
+                                                        }
+                                                    }
+                                                } catch (e: IOException) {
+                                                    // TODO: notifyAboutWriteError
+                                                } catch (e: IllegalArgumentException) {
+                                                    // TODO: notifyAboutWriteError
                                                 }
                                             }
-                                        } catch (e: IOException) {
-                                            // TODO: notifyAboutWriteError
-                                        } catch (e: IllegalArgumentException) {
-                                            // TODO: notifyAboutWriteError
                                         }
                                     }
                                 }
-                            }
+                        }
                     }
 
                     is VscodeBridgeAction.VscodeSaveTheme -> {
@@ -192,7 +195,7 @@ class ErdEditor(
     }
 
     private fun launchSaveJob() = coroutineScope.launch {
-        payload
+        savePayload
             .debounce(100.milliseconds)
             .filterNotNull()
             .collectLatest { value ->

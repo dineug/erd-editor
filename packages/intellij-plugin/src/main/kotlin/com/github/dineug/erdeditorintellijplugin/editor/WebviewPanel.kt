@@ -9,6 +9,7 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.jcef.JBCefApp
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -95,7 +96,7 @@ class WebviewPanel(
                     return false
                 }
 
-                coroutineScope.launch(Dispatchers.IO) {
+                coroutineScope.launch(Dispatchers.IO + CoroutineName(this::class.java.simpleName)) {
                     bridge.emit(action)
                 }
 
