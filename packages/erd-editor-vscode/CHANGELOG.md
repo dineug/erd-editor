@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.11
+
+- legacy back porting
+
 ## 1.0.9
 
 - Improvement in Scroll Usability
