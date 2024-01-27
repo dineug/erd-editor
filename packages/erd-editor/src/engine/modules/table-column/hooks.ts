@@ -4,6 +4,10 @@ import { takeEvery } from '@dineug/go';
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
 import type { CO, Hook } from '@/engine/hooks';
 import {
+  initialLoadJsonAction,
+  loadJsonAction,
+} from '@/engine/modules/editor/atom.actions';
+import {
   addRelationshipAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
@@ -81,8 +85,26 @@ const removeColumnForeignKeyHook: CO = function* (channel, state) {
   );
 };
 
+const validationForeignKeyHook: CO = function* (channel, state) {
+  yield takeEvery(channel, function* () {
+    const { doc, collections } = state;
+    const relationships = query(collections)
+      .collection('relationshipEntities')
+      .selectByIds(doc.relationshipIds);
+
+    for (const { end } of relationships) {
+      query(collections)
+        .collection('tableColumnEntities')
+        .updateMany(end.columnIds, column => {
+          column.ui.keys = column.ui.keys | ColumnUIKey.foreignKey;
+        });
+    }
+  });
+};
+
 export const hooks: Hook[] = [
   [[changeColumnPrimaryKeyAction], changeColumnNotNullHook],
   [[addRelationshipAction], addColumnForeignKeyHook],
   [[removeRelationshipAction], removeColumnForeignKeyHook],
+  [[loadJsonAction, initialLoadJsonAction], validationForeignKeyHook],
 ];
