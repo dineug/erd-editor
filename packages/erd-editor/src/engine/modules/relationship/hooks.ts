@@ -4,6 +4,10 @@ import { arrayHas } from '@dineug/shared';
 
 import { ColumnOption, StartRelationshipType } from '@/constants/schema';
 import type { CO, Hook } from '@/engine/hooks';
+import {
+  initialLoadJsonAction,
+  loadJsonAction,
+} from '@/engine/modules/editor/atom.actions';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
@@ -122,8 +126,24 @@ const relationshipSortHook: CO = function* (channel, state) {
 };
 
 export const hooks: Hook[] = [
-  [[removeColumnAction, changeColumnPrimaryKeyAction], identificationHook],
-  [[removeColumnAction, changeColumnNotNullAction], startRelationshipHook],
+  [
+    [
+      removeColumnAction,
+      changeColumnPrimaryKeyAction,
+      loadJsonAction,
+      initialLoadJsonAction,
+    ],
+    identificationHook,
+  ],
+  [
+    [
+      removeColumnAction,
+      changeColumnNotNullAction,
+      loadJsonAction,
+      initialLoadJsonAction,
+    ],
+    startRelationshipHook,
+  ],
   [
     [
       changeShowAction,
