@@ -34,6 +34,7 @@ import { getAbsoluteZoomPoint } from '@/utils/dragSelect';
 import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
 import { importJSON, importSchemaSQL } from '@/utils/file/importFile';
 import { createSchemaSQL } from '@/utils/schema-sql';
+import { orderByNameASC } from '@/utils/schema-sql/utils';
 
 export type Action = {
   icon?: DOMTemplateLiterals | null;
@@ -288,6 +289,7 @@ function createTableActions({ store }: AppContext): Action[] {
   return query(collections)
     .collection('tableEntities')
     .selectByIds(tableIds)
+    .sort(orderByNameASC)
     .map<Action>(table => ({
       name: isEmpty(table.name.trim()) ? 'unnamed' : table.name,
       keywords: 'Table',

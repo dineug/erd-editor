@@ -67,6 +67,14 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       : searchActions(getActions(), newValue);
   };
 
+  const scrollIntoView = () => {
+    nextTick(() => {
+      root.value?.querySelector('.selected')?.scrollIntoView({
+        block: 'nearest',
+      });
+    });
+  };
+
   const emitFocus = () => {
     nextTick(() => {
       ctx.host.dispatchEvent(focusEvent());
@@ -105,6 +113,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
 
     const index = state.index - 1;
     state.index = index < 0 ? actions.length - 1 : index;
+    scrollIntoView();
   };
 
   const handleArrowDown = (event: KeyboardEvent) => {
@@ -114,6 +123,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
 
     const index = state.index + 1;
     state.index = index > actions.length - 1 ? 0 : index;
+    scrollIntoView();
   };
 
   const handleArrowLeft = () => {

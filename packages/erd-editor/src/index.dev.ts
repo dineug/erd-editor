@@ -26,7 +26,7 @@ function runStats() {
 function runEditor() {
   const editor = document.createElement('erd-editor');
   editor.enableThemeBuilder = true;
-  editor.setAttribute('style', 'display: block; height: 50%;');
+  // editor.setAttribute('style', 'display: block; height: 50%;');
   document.body.appendChild(editor);
 
   return editor;
@@ -38,10 +38,10 @@ hmr();
 runStats();
 
 const editor1 = runEditor();
-const editor2 = runEditor();
+// const editor2 = runEditor();
 
-const sharedStore1 = editor1.getSharedStore();
-const sharedStore2 = editor2.getSharedStore();
+// const sharedStore1 = editor1.getSharedStore();
+// const sharedStore2 = editor2.getSharedStore();
 
-sharedStore1.subscribe(actions => sharedStore2.dispatch(actions));
-sharedStore2.subscribe(actions => sharedStore1.dispatch(actions));
+// sharedStore1.subscribe(actions => sharedStore2.dispatch(actions));
+// sharedStore2.subscribe(actions => sharedStore1.dispatch(actions));
