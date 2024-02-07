@@ -88,6 +88,7 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   getSharedStore: (
     config?: SharedStoreConfig & { mouseTracker?: boolean }
   ) => SharedStore;
+  setDiffValue: (value: string) => void;
 }
 
 const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {

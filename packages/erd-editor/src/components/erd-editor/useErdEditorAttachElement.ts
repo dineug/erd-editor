@@ -32,6 +32,7 @@ import { Theme, ThemeTokens } from '@/themes/tokens';
 import {
   mouseTrackerEndAction,
   mouseTrackerStartAction,
+  openDiffViewerAction,
   schemaGCAction,
 } from '@/utils/emitter';
 import { KeyBindingName, KeyBindingNameList } from '@/utils/keyboard-shortcut';
@@ -257,6 +258,13 @@ export function useErdEditorAttachElement({
         }
       },
     });
+  };
+
+  ctx.setDiffValue = value => {
+    const safeValue = toSafeString(value);
+    emitter.emit(
+      openDiffViewerAction({ value: isEmpty(safeValue) ? '{}' : safeValue })
+    );
   };
 
   Object.defineProperty(ctx, 'value', {

@@ -37,6 +37,7 @@ type BridgeActionMap = {
   };
   [BridgeActionType.vscodeImportFile]: {
     type: 'json' | 'sql';
+    op: 'set' | 'diff';
     accept: string;
   };
   [BridgeActionType.vscodeInitial]: void;
@@ -49,6 +50,7 @@ type BridgeActionMap = {
   [BridgeActionType.vscodeSaveTheme]: ThemeOptions;
   [BridgeActionType.webviewImportFile]: {
     type: 'json' | 'sql';
+    op: 'set' | 'diff';
     value: string;
   };
   [BridgeActionType.webviewInitialValue]: {

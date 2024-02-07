@@ -17,6 +17,7 @@ import {
   openColorPickerAction,
   openTablePropertiesAction,
 } from '@/utils/emitter';
+import { importDiffJSON } from '@/utils/file/importFile';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import { createDatabaseMenus } from './menus/databaseMenus';
@@ -63,6 +64,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     store.dispatch(
       changeOpenMapAction({ [Open.automaticTablePlacement]: true })
     );
+    props.onClose();
+  };
+
+  const handleOpenDiffViewer = () => {
+    importDiffJSON(app.value);
     props.onClose();
   };
 
@@ -407,6 +413,19 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                         size=${14}
                       />`}
                       name="Automatic Table Placement"
+                    />
+                  `}
+                />
+                <${ContextMenu.Item}
+                  .onClick=${handleOpenDiffViewer}
+                  children=${html`
+                    <${ContextMenu.Menu}
+                      icon=${html`<${Icon}
+                        prefix="mdi"
+                        name="plus-minus-box"
+                        size=${14}
+                      />`}
+                      name="Diff Viewer"
                     />
                   `}
                 />

@@ -7,10 +7,11 @@ import {
   loadJsonAction$,
   loadSchemaSQLAction$,
 } from '@/engine/modules/editor/generator.actions';
-import { openToastAction } from '@/utils/emitter';
+import { openDiffViewerAction, openToastAction } from '@/utils/emitter';
 
 type ImportOptions = {
   type: 'json' | 'sql';
+  op: 'set' | 'diff';
   accept: string;
 };
 
@@ -27,7 +28,11 @@ export function setImportFileCallback(callback: ImportFileCallback | null) {
 
 export function importJSON({ store, emitter }: AppContext) {
   if (performImportFileExtra) {
-    performImportFileExtra({ accept: '.json,.erd,.vuerd', type: 'json' });
+    performImportFileExtra({
+      type: 'json',
+      op: 'set',
+      accept: '.json,.erd,.vuerd',
+    });
     return;
   }
 
@@ -63,7 +68,7 @@ export function importJSON({ store, emitter }: AppContext) {
 
 export function importSchemaSQL({ store, emitter }: AppContext) {
   if (performImportFileExtra) {
-    performImportFileExtra({ accept: '.sql', type: 'sql' });
+    performImportFileExtra({ type: 'sql', op: 'set', accept: '.sql' });
     return;
   }
 
@@ -92,6 +97,46 @@ export function importSchemaSQL({ store, emitter }: AppContext) {
       }
 
       store.dispatch(loadSchemaSQLAction$(value));
+    };
+  });
+  input.click();
+}
+
+export function importDiffJSON({ emitter }: AppContext) {
+  if (performImportFileExtra) {
+    performImportFileExtra({
+      type: 'json',
+      op: 'diff',
+      accept: '.json,.erd,.vuerd',
+    });
+    return;
+  }
+
+  const input = document.createElement('input');
+  input.setAttribute('type', 'file');
+  input.setAttribute('accept', '.json,.erd,.vuerd');
+  input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!JSON_EXTENSION.test(file.name)) {
+      emitter.emit(
+        openToastAction({
+          message: html`<${Toast} description="Just import the json file" />`,
+        })
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsText(file);
+    reader.onload = () => {
+      const value = reader.result;
+      if (!isString(value)) {
+        return;
+      }
+
+      emitter.emit(openDiffViewerAction({ value }));
     };
   });
   input.click();

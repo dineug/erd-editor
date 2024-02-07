@@ -95,11 +95,13 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     const showAutomaticTablePlacement =
       editor.openMap[Open.automaticTablePlacement];
     const showTableProperties = editor.openMap[Open.tableProperties];
+    const showDiffViewer = editor.openMap[Open.diffViewer];
 
     const showUndoRedo =
       settings.canvasType === CanvasType.ERD &&
       !showAutomaticTablePlacement &&
       !showTableProperties &&
+      !showDiffViewer &&
       !props.readonly;
 
     return html`
