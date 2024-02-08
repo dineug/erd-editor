@@ -30,7 +30,7 @@ export class ErdEditor extends Editor {
       enableScripts: true,
     };
 
-    const [webviewSet, store] = this.docToTupleMap.get(this.document) ?? [];
+    const webviewSet = this.docToWebviewMap.get(this.document);
 
     const dispatch = (action: AnyAction) => {
       this.webview.postMessage(action);
@@ -58,7 +58,6 @@ export class ErdEditor extends Editor {
         await this.document.update(textEncoder.encode(value));
       },
       vscodeSaveReplication: ({ payload: { actions } }) => {
-        store.dispatch(actions);
         dispatchBroadcast(webviewReplicationAction({ actions }));
       },
       vscodeImportFile: async ({ payload: { type, op } }) => {

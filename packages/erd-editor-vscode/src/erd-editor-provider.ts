@@ -1,13 +1,9 @@
-// @ts-ignore
-import { createReplicationStore } from '@dineug/erd-editor/engine.js';
 import * as vscode from 'vscode';
 
 import { MODERN_VIEW_TYPE } from '@/constants/viewType';
 import { CreateEditor } from '@/editor';
 import { ErdDocument } from '@/erd-document';
-import { textDecoder, textEncoder } from '@/utils';
 import { trackEvent } from '@/utils/googleAnalytics';
-import { createFont, toWidth } from '@/utils/text';
 
 export class ErdEditorProvider
   implements vscode.CustomEditorProvider<ErdDocument>
@@ -18,7 +14,7 @@ export class ErdEditorProvider
   public readonly onDidChangeCustomDocument =
     this._onDidChangeCustomDocument.event;
 
-  private docToTupleMap = new Map<ErdDocument, [Set<vscode.Webview>, any]>();
+  private docToWebviewMap = new Map<ErdDocument, Set<vscode.Webview>>();
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -53,27 +49,17 @@ export class ErdEditorProvider
     });
     let unsubscribe = () => {};
 
-    await createFont(this.context);
-
     if (
       this.viewType === MODERN_VIEW_TYPE &&
-      !this.docToTupleMap.has(document)
+      !this.docToWebviewMap.has(document)
     ) {
-      const store = createReplicationStore({ toWidth });
-      this.docToTupleMap.set(document, [new Set(), store]);
-      store.setInitialValue(textDecoder.decode(document.content));
-      unsubscribe = store.on({
-        change: () => {
-          const value = store.value;
-          document.update(textEncoder.encode(value));
-        },
-      });
+      this.docToWebviewMap.set(document, new Set());
     }
 
     document.onDidDispose(() => {
       listener.dispose();
       unsubscribe();
-      this.docToTupleMap.delete(document);
+      this.docToWebviewMap.delete(document);
     });
 
     return document;
@@ -83,7 +69,7 @@ export class ErdEditorProvider
     document: ErdDocument,
     webviewPanel: vscode.WebviewPanel
   ) {
-    const [webviewSet] = this.docToTupleMap.get(document) ?? [];
+    const webviewSet = this.docToWebviewMap.get(document);
     const webview = webviewPanel.webview;
     webviewSet?.add(webview);
 
@@ -91,7 +77,7 @@ export class ErdEditorProvider
       document,
       webview,
       this.context,
-      this.docToTupleMap
+      this.docToWebviewMap
     );
     const editorDisposable = await editor.bootstrapWebview();
 

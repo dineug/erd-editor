@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.15
+
+- Diff Viewer
+
 ## 1.0.14
 
 - Validation foreignKey

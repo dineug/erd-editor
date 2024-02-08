@@ -13,17 +13,28 @@ import {
   vscodeSaveReplicationAction,
   vscodeSaveThemeAction,
   vscodeSaveValueAction,
+  webviewReplicationAction,
 } from '@dineug/erd-editor-vscode-bridge';
 import { encode } from 'base64-arraybuffer';
 
+import ReplicationStoreWorker from '@/services/replicationStore.worker?worker&inline';
+
 const LAZY_KEY = Symbol.for('@dineug/erd-editor');
 const bridge = new Emitter();
+const workerBridge = new Emitter();
 const vscode = globalThis.acquireVsCodeApi();
 const editor = document.createElement('erd-editor');
 const sharedStore = editor.getSharedStore({ mouseTracker: false });
+const replicationStoreWorker = new ReplicationStoreWorker({
+  name: '@dineug/erd-editor-vscode-webview/replication-store-worker',
+});
 
 const dispatch = (action: AnyAction) => {
   vscode.postMessage(action);
+};
+
+const dispatchWorker = (action: AnyAction) => {
+  replicationStoreWorker.postMessage(action);
 };
 
 Reflect.set(globalThis, LAZY_KEY, {
@@ -69,18 +80,27 @@ bridge.on({
         break;
     }
   },
-  webviewInitialValue: ({ payload: { value } }) => {
+  webviewInitialValue: action => {
+    const {
+      payload: { value },
+    } = action;
+    dispatchWorker(action);
     // editor.addEventListener('change', handleChange);
     editor.addEventListener('changePresetTheme', handleChangePresetTheme);
     editor.setInitialValue(value);
     editor.enableThemeBuilder = true;
     sharedStore.subscribe(actions => {
+      dispatchWorker(webviewReplicationAction({ actions }));
       dispatch(vscodeSaveReplicationAction({ actions }));
     });
     document.body.appendChild(editor);
   },
-  webviewReplication: ({ payload: { actions } }) => {
+  webviewReplication: action => {
+    const {
+      payload: { actions },
+    } = action;
     sharedStore.dispatch(actions);
+    dispatchWorker(action);
   },
   webviewUpdateTheme: ({ payload }) => {
     editor.setPresetTheme({
@@ -94,5 +114,14 @@ bridge.on({
   },
 });
 
+workerBridge.on({
+  vscodeSaveValue: action => {
+    dispatch(action);
+  },
+});
+
 globalThis.addEventListener('message', event => bridge.emit(event.data));
+replicationStoreWorker.addEventListener('message', event => {
+  workerBridge.emit(event.data);
+});
 dispatch(vscodeInitialAction());

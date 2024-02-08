@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "lib": ["ES2020", "DOM", "DOM.Iterable", "WebWorker"],
     "paths": {
       "@/*": ["src/*"]
     }

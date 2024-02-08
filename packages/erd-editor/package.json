@@ -1,6 +1,6 @@
 {
   "name": "@dineug/erd-editor",
-  "version": "3.1.8",
+  "version": "3.2.0",
   "description": "Entity-Relationship Diagram Editor",
   "type": "module",
   "main": "./dist/erd-editor.js",
