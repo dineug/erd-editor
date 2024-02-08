@@ -1,5 +1,3 @@
-import { amber, cyan, ruby } from '@radix-ui/colors';
-
 import { Theme } from '@/themes/tokens';
 
 export const ThemeConfig: Theme = {
@@ -74,7 +72,14 @@ export const ThemeConfig: Theme = {
   focus: 'accent-8',
   inputActive: 'accent-10',
 
-  keyPK: `override-${amber.amber9}`,
-  keyFK: `override-${ruby.ruby9}`,
-  keyPFK: `override-${cyan.cyan9}`,
+  keyPK: `custom-amber--9`,
+  keyFK: `custom-ruby--9`,
+  keyPFK: `custom-cyan--9`,
+
+  diffInsertBackground: `custom-green--4`,
+  diffDeleteBackground: `custom-red--4`,
+  diffCrossBackground: `custom-blue--4`,
+  diffInsertForeground: `custom-green--11`,
+  diffDeleteForeground: `custom-red--11`,
+  diffCrossForeground: `custom-blue--11`,
 } as const;

@@ -22,7 +22,7 @@ Reflect.set(globalThis, LAZY_KEY, {
   extension,
 });
 setImportFileCallback(options => {
-  dispatch(vscodeImportFileAction(options));
+  dispatch(vscodeImportFileAction({ ...options, op: 'set' }));
 });
 setExportFileCallback(async (blob, options) => {
   const arrayBuffer = await blob.arrayBuffer();

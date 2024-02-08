@@ -31,15 +31,16 @@ const Viewport: FC<ViewportProps> = (props, ctx) => {
     const ratio = getRatio();
     const x = scrollLeft * ratio;
     const y = scrollTop * ratio;
-    const left = viewport.width - MINIMAP_SIZE - MINIMAP_MARGIN - x;
-    const top = MINIMAP_MARGIN - y;
     const width = viewport.width * ratio;
     const height = viewport.height * ratio;
+    const top = MINIMAP_MARGIN - y;
+    // const left = viewport.width - MINIMAP_SIZE - MINIMAP_MARGIN - x;
+    const right = x - width + MINIMAP_SIZE + MINIMAP_MARGIN;
 
     return {
       width: `${width}px`,
       height: `${height}px`,
-      left: `${left}px`,
+      right: `${right}px`,
       top: `${top}px`,
     };
   };

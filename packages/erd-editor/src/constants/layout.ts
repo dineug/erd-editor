@@ -46,3 +46,5 @@ export const MINIMAP_SIZE = 150;
 export const MINIMAP_MARGIN = 20;
 
 export const TOOLBAR_HEIGHT = 30;
+
+export const DIFF_TREE_WIDTH = 200;

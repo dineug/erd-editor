@@ -12,6 +12,7 @@ import {
   EngineContext,
   InjectEngineContext,
 } from '@/engine/context';
+import { initialClearAction } from '@/engine/modules/editor/atom.actions';
 import { createRxStore, RxStore } from '@/engine/rx-store';
 import { Ctx } from '@/internal-types';
 import { Emitter } from '@/utils/emitter';
@@ -68,3 +69,11 @@ export const useAppContext = (ctx: Ctx, fallback?: AppContext) =>
     ...appContext,
     value: fallback ?? appContext.value,
   });
+
+export function appDestroy(app: AppContext) {
+  app.store.dispatchSync(initialClearAction());
+  app.store.destroy();
+  app.keydown$.complete();
+  app.shortcut$.complete();
+  app.emitter.clear();
+}

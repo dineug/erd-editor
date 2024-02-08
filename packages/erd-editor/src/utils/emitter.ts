@@ -24,6 +24,7 @@ const InternalActionType = {
   setThemeOptions: 'setThemeOptions',
   mouseTrackerStart: 'mouseTrackerStart',
   mouseTrackerEnd: 'mouseTrackerEnd',
+  openDiffViewer: 'openDiffViewer',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 
@@ -55,6 +56,9 @@ type InternalActionMap = {
   [InternalActionType.setThemeOptions]: Partial<ThemeOptions>;
   [InternalActionType.mouseTrackerStart]: void;
   [InternalActionType.mouseTrackerEnd]: void;
+  [InternalActionType.openDiffViewer]: {
+    value: string;
+  };
 };
 
 type Reducer<K extends keyof M, M> = (action: Action<K, M>) => void;
@@ -140,3 +144,7 @@ export const mouseTrackerStartAction = createAction<
 export const mouseTrackerEndAction = createAction<
   InternalActionMap[typeof InternalActionType.mouseTrackerEnd]
 >(InternalActionType.mouseTrackerEnd);
+
+export const openDiffViewerAction = createAction<
+  InternalActionMap[typeof InternalActionType.openDiffViewer]
+>(InternalActionType.openDiffViewer);

@@ -61,7 +61,7 @@ export class ErdEditor extends Editor {
         store.dispatch(actions);
         dispatchBroadcast(webviewReplicationAction({ actions }));
       },
-      vscodeImportFile: async ({ payload: { type } }) => {
+      vscodeImportFile: async ({ payload: { type, op } }) => {
         const uris = await vscode.window.showOpenDialog();
         if (!uris || !uris.length) return;
 
@@ -77,6 +77,7 @@ export class ErdEditor extends Editor {
         dispatch(
           webviewImportFileAction({
             type,
+            op,
             value: textDecoder.decode(value),
           })
         );

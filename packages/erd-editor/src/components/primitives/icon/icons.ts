@@ -36,6 +36,10 @@ import {
   mdiDatabaseExport,
   mdiDatabaseImport,
   mdiFormatLetterCase,
+  mdiMinus,
+  mdiPlus,
+  mdiPlusMinus,
+  mdiPlusMinusBox,
   mdiTableCog,
   mdiVectorLine,
   mdiWeatherNight,
@@ -126,6 +130,10 @@ const icons = [
   createMDI('chart-scatter-plot', mdiChartScatterPlot),
   createMDI('white-balance-sunny', mdiWhiteBalanceSunny),
   createMDI('weather-might', mdiWeatherNight),
+  createMDI('plus-minus-box', mdiPlusMinusBox),
+  createMDI('plus-minus', mdiPlusMinus),
+  createMDI('plus', mdiPlus),
+  createMDI('minus', mdiMinus),
   ...Object.entries(BASE_64_ICON).map(([name, base64]) =>
     createBase64(name, base64)
   ),

@@ -3,7 +3,7 @@ import { observable, onMounted, Ref, watch } from '@dineug/r-html';
 import { arrayHas, isArray, isString } from '@dineug/shared';
 import { cloneDeep, get, isEmpty, omit } from 'lodash-es';
 
-import { AppContext } from '@/components/appContext';
+import { AppContext, appDestroy } from '@/components/appContext';
 import { DatabaseVendorToDatabase } from '@/constants/sql/database';
 import {
   clearAction,
@@ -32,6 +32,7 @@ import { Theme, ThemeTokens } from '@/themes/tokens';
 import {
   mouseTrackerEndAction,
   mouseTrackerStartAction,
+  openDiffViewerAction,
   schemaGCAction,
 } from '@/utils/emitter';
 import { KeyBindingName, KeyBindingNameList } from '@/utils/keyboard-shortcut';
@@ -71,12 +72,8 @@ type Props = {
   root: Ref<HTMLDivElement>;
 };
 
-export function useErdEditorAttachElement({
-  props,
-  ctx,
-  app: { store, keyBindingMap, emitter, shortcut$, keydown$ },
-  root,
-}: Props) {
+export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
+  const { store, keyBindingMap, emitter, shortcut$, keydown$ } = app;
   const getReadonly = () => props.readonly;
   const themeState = observable<{
     options: ThemeOptions;
@@ -166,11 +163,7 @@ export function useErdEditorAttachElement({
   };
 
   ctx.destroy = () => {
-    store.dispatch(initialClearAction());
-    store.destroy();
-    shortcut$.complete();
-    keydown$.complete();
-    emitter.clear();
+    appDestroy(app);
     Array.from(destroySet).forEach(destroy => destroy());
     Array.from(sharedStoreSet).forEach(sharedStore => sharedStore.destroy());
     destroySet.clear();
@@ -257,6 +250,13 @@ export function useErdEditorAttachElement({
         }
       },
     });
+  };
+
+  ctx.setDiffValue = value => {
+    const safeValue = toSafeString(value);
+    emitter.emit(
+      openDiffViewerAction({ value: isEmpty(safeValue) ? '{}' : safeValue })
+    );
   };
 
   Object.defineProperty(ctx, 'value', {

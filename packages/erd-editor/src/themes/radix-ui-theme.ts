@@ -336,13 +336,26 @@ function createRadixUITheme({
 
 const ThemeKeys: ReadonlyArray<string> = Object.keys(ThemeConfig);
 
-function toTheme(radixUITheme: ReturnType<typeof createRadixUITheme>): Theme {
+function toTheme(
+  radixUITheme: ReturnType<typeof createRadixUITheme>,
+  appearance: Appearance
+): Theme {
   return ThemeKeys.reduce((acc, key) => {
     const colorKey: string = get(ThemeConfig, key);
-    const [type, color] = colorKey.split('-');
+    const [type, color, alpha, customNum] = colorKey.split('-');
 
     if (type === 'override') {
       set(acc, key, color);
+      return acc;
+    }
+
+    if (type === 'custom') {
+      const mode = appearance === Appearance.dark ? 'Dark' : '';
+      const value = get(
+        Palette,
+        `${color}${mode}${alpha}.${color}${alpha}${customNum}`
+      );
+      set(acc, key, value);
       return acc;
     }
 
@@ -366,5 +379,6 @@ export const createTheme = ({
       appearance,
       grayColor,
       accentColor,
-    })
+    }),
+    appearance
   );

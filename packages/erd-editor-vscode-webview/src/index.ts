@@ -59,13 +59,13 @@ const handleChangePresetTheme = (event: Event) => {
 };
 
 bridge.on({
-  webviewImportFile: ({ payload: { type, value } }) => {
+  webviewImportFile: ({ payload: { type, op, value } }) => {
     switch (type) {
       case 'json':
-        editor.value = value;
+        op === 'set' ? (editor.value = value) : editor.setDiffValue(value);
         break;
       case 'sql':
-        editor.setSchemaSQL(value);
+        op === 'set' && editor.setSchemaSQL(value);
         break;
     }
   },

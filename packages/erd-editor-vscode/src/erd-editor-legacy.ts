@@ -45,7 +45,7 @@ export class ErdEditorLegacy extends Editor {
       vscodeSaveValue: async ({ payload: { value } }) => {
         await this.document.update(textEncoder.encode(value));
       },
-      vscodeImportFile: async ({ payload: { type } }) => {
+      vscodeImportFile: async ({ payload: { type, op } }) => {
         const uris = await vscode.window.showOpenDialog();
         if (!uris || !uris.length) return;
 
@@ -61,6 +61,7 @@ export class ErdEditorLegacy extends Editor {
         dispatch(
           webviewImportFileAction({
             type,
+            op,
             value: textDecoder.decode(value),
           })
         );

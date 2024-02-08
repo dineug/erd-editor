@@ -1,11 +1,12 @@
 import { query, toJson } from '@dineug/erd-editor-schema';
-import { createRef, FC, html, Ref, useProvider } from '@dineug/r-html';
+import { createRef, FC, html, Ref, ref, useProvider } from '@dineug/r-html';
 import { createInRange } from '@dineug/shared';
 import { round } from 'lodash-es';
 
 import {
   AppContext,
   appContext,
+  appDestroy,
   createAppContext,
 } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
@@ -14,10 +15,7 @@ import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
 import { Open } from '@/constants/open';
 import { CANVAS_ZOOM_MIN } from '@/constants/schema';
-import {
-  changeOpenMapAction,
-  initialClearAction,
-} from '@/engine/modules/editor/atom.actions';
+import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeZoomLevelAction,
@@ -33,7 +31,6 @@ import { createAutomaticTablePlacement } from './createAutomaticTablePlacement';
 
 export type AutomaticTablePlacementProps = {
   app: Ref<AppContext>;
-  root: Ref<HTMLDivElement>;
   onChange: (tables: TablePoint[]) => void;
 };
 
@@ -47,47 +44,44 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   props,
   ctx
 ) => {
+  const root = createRef<HTMLDivElement>();
   const canvas = createRef<HTMLDivElement>();
-  const prevApp = props.app.value;
-  const appContextValue = createAppContext({
-    toWidth: prevApp.toWidth,
+  const originApp = props.app.value;
+  const app = createAppContext({
+    toWidth: originApp.toWidth,
   });
   const { addUnsubscribe } = useUnmounted();
-  const provider = useProvider(ctx, appContext, appContextValue);
+  const provider = useProvider(ctx, appContext, app);
 
   const {
-    store: { state: prevState },
-    emitter,
-    shortcut$,
-  } = prevApp;
-  const { store } = appContextValue;
+    store: { state: originState },
+  } = originApp;
+  const { store } = app;
 
   addUnsubscribe(() => {
     provider.destroy();
-    appContextValue.store.dispatch(initialClearAction());
-    appContextValue.store.destroy();
-    appContextValue.keydown$.complete();
-    appContextValue.shortcut$.complete();
-    appContextValue.emitter.clear();
+    appDestroy(app);
   });
 
   const zoomInRange = createInRange(CANVAS_ZOOM_MIN, 0.7);
   const zoomLevelInRange = (zoom: number) => round(zoomInRange(zoom), 2);
 
   store.dispatchSync(
-    initialLoadJsonAction$(toJson(prevState)),
+    initialLoadJsonAction$(toJson(originState)),
     changeZoomLevelAction({
       value: zoomLevelInRange(
-        prevState.editor.viewport.width / prevState.settings.width
+        originState.editor.viewport.width / originState.settings.width
       ),
     }),
     scrollToAction({
       scrollLeft:
         -1 *
-        (prevState.settings.width / 2 - prevState.editor.viewport.width / 2),
+        (originState.settings.width / 2 -
+          originState.editor.viewport.width / 2),
       scrollTop:
         -1 *
-        (prevState.settings.height / 2 - prevState.editor.viewport.height / 2),
+        (originState.settings.height / 2 -
+          originState.editor.viewport.height / 2),
     })
   );
 
@@ -107,14 +101,14 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   const handleClose = () => {
     isClosed = true;
     onClose();
-    prevApp.store.dispatch(
+    originApp.store.dispatch(
       changeOpenMapAction({ [Open.automaticTablePlacement]: false })
     );
   };
 
   if (!tables.length) {
     handleClose();
-    emitter.emit(
+    originApp.emitter.emit(
       openToastAction({
         message: html`<${Toast} description="Not found tables" />`,
       })
@@ -144,7 +138,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
       handleClose();
     };
 
-    emitter.emit(
+    originApp.emitter.emit(
       openToastAction({
         close,
         message: html`
@@ -154,10 +148,10 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
               <${Button}
                 variant="soft"
                 size="1"
-                text=${'Stop'}
+                text="Stop"
                 .onClick=${handleStop}
               />
-              <${Button} size="1" text=${'Cancel'} .onClick=${handleCancel} />
+              <${Button} size="1" text="Cancel" .onClick=${handleCancel} />
             `}
           />
         `,
@@ -166,7 +160,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
 
     simulation.on('end', handleStop);
     addUnsubscribe(
-      shortcut$.subscribe(({ type }) => {
+      originApp.shortcut$.subscribe(({ type }) => {
         type === KeyBindingName.stop && handleCancel();
       })
     );
@@ -178,8 +172,8 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
 
   return () => html`
     <div class=${styles.root}>
-      <div class=${styles.container}>
-        <${Canvas} root=${props.root} canvas=${canvas} />
+      <div class=${styles.container} ${ref(root)}>
+        <${Canvas} root=${root} canvas=${canvas} />
         <${Minimap} />
       </div>
     </div>
