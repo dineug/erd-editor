@@ -6,6 +6,7 @@ import { round } from 'lodash-es';
 import {
   AppContext,
   appContext,
+  appDestroy,
   createAppContext,
 } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
@@ -14,10 +15,7 @@ import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
 import { Open } from '@/constants/open';
 import { CANVAS_ZOOM_MIN } from '@/constants/schema';
-import {
-  changeOpenMapAction,
-  initialClearAction,
-} from '@/engine/modules/editor/atom.actions';
+import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeZoomLevelAction,
@@ -62,11 +60,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
 
   addUnsubscribe(() => {
     provider.destroy();
-    app.store.dispatchSync(initialClearAction());
-    app.store.destroy();
-    app.keydown$.complete();
-    app.shortcut$.complete();
-    app.emitter.clear();
+    appDestroy(app);
   });
 
   const zoomInRange = createInRange(CANVAS_ZOOM_MIN, 0.7);
@@ -154,10 +148,10 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
               <${Button}
                 variant="soft"
                 size="1"
-                text=${'Stop'}
+                text="Stop"
                 .onClick=${handleStop}
               />
-              <${Button} size="1" text=${'Cancel'} .onClick=${handleCancel} />
+              <${Button} size="1" text="Cancel" .onClick=${handleCancel} />
             `}
           />
         `,

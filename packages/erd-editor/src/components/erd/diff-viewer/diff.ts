@@ -6,9 +6,11 @@ import { Column, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
 /**
- * Map<uuid, Map<path, diff>>
+ * Map<uuid, [tag, Map<path, diff>]>
  */
-export type DiffMap = Map<string, Map<string, number>>;
+export type DiffMap = Map<string, DiffTuple>;
+
+type DiffTuple = [string, Map<string, number>];
 
 type NameToTableMap = Map<
   string,
@@ -19,9 +21,8 @@ type NameToTableMap = Map<
 >;
 
 export const Diff = {
-  insert: 1,
-  equal: 0,
-  delete: -1,
+  insert: 0b0000000000000000000000000000001,
+  delete: 0b0000000000000000000000000000010,
 } as const;
 
 export function diffState(
@@ -36,7 +37,7 @@ export function diffState(
   return [prevDiffMap, diffMap];
 }
 
-function getNameToTableMap({
+export function getNameToTableMap({
   doc: { tableIds },
   collections,
 }: RootState): NameToTableMap {
@@ -65,7 +66,7 @@ function getDiffMap(
   nameToTableMap: NameToTableMap,
   diff: number
 ): DiffMap {
-  const diffMap = new Map<string, Map<string, number>>();
+  const diffMap: DiffMap = new Map();
 
   query(collections)
     .collection('tableEntities')
@@ -73,7 +74,7 @@ function getDiffMap(
     .forEach(table => {
       const tableNameMap = nameToTableMap.get(table.name);
       const pathMap = new Map<string, number>();
-      diffMap.set(table.id, pathMap);
+      diffMap.set(table.id, ['tableEntities', pathMap]);
 
       pathMap.set(
         'tableName',
@@ -90,7 +91,7 @@ function getDiffMap(
         .forEach(column => {
           const columnNameMap = tableNameMap?.nameToColumnMap.get(column.name);
           const pathMap = new Map<string, number>();
-          diffMap.set(column.id, pathMap);
+          diffMap.set(column.id, ['tableColumnEntities', pathMap]);
 
           pathMap.set(
             'columnName',
@@ -151,17 +152,18 @@ function getDiffMap(
         });
     });
 
-  diffMap.forEach(map => {
-    Array.from(map).forEach(([path, diff]) => {
-      diff === Diff.equal && map.delete(path);
+  Array.from(diffMap).forEach(([id, [tag, pathMap]]) => {
+    Array.from(pathMap).forEach(([path, diff]) => {
+      diff === 0 && pathMap.delete(path);
     });
+    pathMap.size === 0 && diffMap.delete(id);
   });
 
   return diffMap;
 }
 
 function getDiffValue<T>(diff: number, value: T, prev: T): number {
-  return value === prev ? Diff.equal : diff;
+  return value === prev ? 0 : diff;
 }
 
 export function getDiffStyle(diff: number, diffMap: DiffMap) {
@@ -170,11 +172,11 @@ export function getDiffStyle(diff: number, diffMap: DiffMap) {
     diff === Diff.insert ? '.diff-viewer-insert' : '.diff-viewer-delete';
 
   const diffStyle = Array.from(diffMap)
-    .map(([id, pathMap]) => {
+    .map(([id, [tag, pathMap]]) => {
       const selector = `${rootClass} [data-id="${id}"]`;
       return Array.from(pathMap)
         .map(([path, diff]) =>
-          diff !== Diff.equal
+          diff !== 0
             ? /* css */ `
               ${selector} [data-type="${path}"] {
                 background-color: ${

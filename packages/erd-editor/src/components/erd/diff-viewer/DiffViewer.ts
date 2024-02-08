@@ -1,16 +1,22 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { FC, html, onMounted, Ref, watch } from '@dineug/r-html';
 
-import { AppContext, createAppContext } from '@/components/appContext';
-import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
-import { DIFF_TREE_WIDTH } from '@/constants/layout';
 import {
-  changeViewportAction,
-  initialClearAction,
-} from '@/engine/modules/editor/atom.actions';
+  AppContext,
+  appDestroy,
+  createAppContext,
+} from '@/components/appContext';
+import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
+import TreeViewer from '@/components/erd/diff-viewer/tree-viewer/TreeViewer';
+import Button from '@/components/primitives/button/Button';
+import Toast from '@/components/primitives/toast/Toast';
+import { DIFF_TREE_WIDTH } from '@/constants/layout';
+import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { openToastAction } from '@/utils/emitter';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { closePromise } from '@/utils/promise';
 
 import { Diff, diffState } from './diff';
 import * as styles from './DiffViewer.styles';
@@ -55,10 +61,31 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
     app.store.state
   );
 
+  const [close, onClose] = closePromise();
+
+  const handleClose = () => {
+    onClose();
+    props.onClose();
+  };
+
+  originApp.emitter.emit(
+    openToastAction({
+      close,
+      message: html`
+        <${Toast}
+          description="Diff Viewer..."
+          action=${html`
+            <${Button} size="1" text="Close" .onClick=${handleClose} />
+          `}
+        />
+      `,
+    })
+  );
+
   onMounted(() => {
     addUnsubscribe(
       originApp.shortcut$.subscribe(({ type }) => {
-        type === KeyBindingName.stop && props.onClose();
+        type === KeyBindingName.stop && handleClose();
       }),
       watch(originApp.store.state.editor.viewport).subscribe(() => {
         const viewport = getViewport();
@@ -66,17 +93,8 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
         app.store.dispatch(changeViewportAction(viewport));
       }),
       () => {
-        prevApp.store.dispatchSync(initialClearAction());
-        prevApp.store.destroy();
-        prevApp.keydown$.complete();
-        prevApp.shortcut$.complete();
-        prevApp.emitter.clear();
-
-        app.store.dispatchSync(initialClearAction());
-        app.store.destroy();
-        app.keydown$.complete();
-        app.shortcut$.complete();
-        app.emitter.clear();
+        appDestroy(prevApp);
+        appDestroy(app);
       }
     );
   });
@@ -84,7 +102,12 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
   return () => html`
     <div class=${styles.root}>
       <div class=${styles.container}>
-        <div class=${styles.tree}>tree-list</div>
+        <${TreeViewer}
+          prevApp=${prevApp}
+          prevDiffMap=${prevDiffMap}
+          app=${app}
+          diffMap=${diffMap}
+        />
         <div class=${styles.viewport}>
           <${ErdViewer}
             app=${prevApp}

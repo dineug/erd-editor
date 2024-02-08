@@ -76,8 +76,10 @@ export const ThemeConfig: Theme = {
   keyFK: `custom-ruby--9`,
   keyPFK: `custom-cyan--9`,
 
-  diffInsertBackground: `custom-green-A-5`,
-  diffDeleteBackground: `custom-red-A-5`,
-  diffInsertForeground: `custom-green--12`,
-  diffDeleteForeground: `custom-red--12`,
+  diffInsertBackground: `custom-green--4`,
+  diffDeleteBackground: `custom-red--4`,
+  diffCrossBackground: `custom-blue--4`,
+  diffInsertForeground: `custom-green--11`,
+  diffDeleteForeground: `custom-red--11`,
+  diffCrossForeground: `custom-blue--11`,
 } as const;

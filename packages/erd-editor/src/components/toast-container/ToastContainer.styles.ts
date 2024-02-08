@@ -7,9 +7,8 @@ export const root = css`
   right: 0;
   display: flex;
   flex-direction: column;
-  width: 390px;
-  max-width: 100%;
-  padding: 25px;
+  max-width: 390px;
+  margin: 25px;
 
   &[data-pointer-none] {
     pointer-events: none;

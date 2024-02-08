@@ -116,7 +116,7 @@ export function getBracket(bracketType: number) {
   return BracketTypeMap[bracketType] ?? '';
 }
 
-export function orderByNameASC(a: Table, b: Table) {
+export function orderByNameASC<T extends { name: string }>(a: T, b: T) {
   const nameA = a.name.toLowerCase();
   const nameB = b.name.toLowerCase();
   if (nameA < nameB) {

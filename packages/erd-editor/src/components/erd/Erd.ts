@@ -127,8 +127,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   const handleWheel = (event: WheelEvent) => {
-    event.preventDefault();
     if (getShowDiffViewer()) return;
+    event.preventDefault();
 
     const $mod = isMod(event);
     const { store } = app.value;

@@ -78,8 +78,10 @@ export type Theme = {
 
   diffInsertBackground: string;
   diffDeleteBackground: string;
+  diffCrossBackground: string;
   diffInsertForeground: string;
   diffDeleteForeground: string;
+  diffCrossForeground: string;
 };
 
 export const ThemeTokens: ReadonlyArray<keyof Theme> = [
@@ -160,8 +162,10 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
 
   'diffInsertBackground',
   'diffDeleteBackground',
+  'diffCrossBackground',
   'diffInsertForeground',
   'diffDeleteForeground',
+  'diffCrossForeground',
 ];
 
 export const themeToTokensString = (theme: Theme) =>
