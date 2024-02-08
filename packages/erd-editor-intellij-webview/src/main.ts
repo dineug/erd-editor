@@ -15,12 +15,20 @@ import {
   vscodeSaveReplicationAction,
   vscodeSaveThemeAction,
   vscodeSaveValueAction,
+  webviewReplicationAction,
 } from '@dineug/erd-editor-vscode-bridge';
 import { encode } from 'base64-arraybuffer';
 
 const bridge = new Emitter();
+const workerBridge = new Emitter();
 const editor = document.createElement('erd-editor');
 const sharedStore = editor.getSharedStore({ mouseTracker: false });
+const replicationStoreWorker = new Worker(
+  new URL('./services/replicationStore.worker', import.meta.url),
+  {
+    name: '@dineug/erd-editor-intellij-webview/replication-store-worker',
+  }
+);
 
 const dispatch = (action: AnyAction) => {
   window.cefQuery({
@@ -29,6 +37,10 @@ const dispatch = (action: AnyAction) => {
     onSuccess: () => {},
     onFailure: () => {},
   });
+};
+
+const dispatchWorker = (action: AnyAction) => {
+  replicationStoreWorker.postMessage(action);
 };
 
 import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
@@ -71,18 +83,27 @@ bridge.on({
         break;
     }
   },
-  webviewInitialValue: ({ payload: { value } }) => {
-    editor.addEventListener('change', handleChange);
+  webviewInitialValue: action => {
+    const {
+      payload: { value },
+    } = action;
+    dispatchWorker(action);
+    // editor.addEventListener('change', handleChange);
     editor.addEventListener('changePresetTheme', handleChangePresetTheme);
     editor.setInitialValue(value);
     editor.enableThemeBuilder = true;
     sharedStore.subscribe(actions => {
+      dispatchWorker(webviewReplicationAction({ actions }));
       dispatch(vscodeSaveReplicationAction({ actions }));
     });
     document.body.appendChild(editor);
   },
-  webviewReplication: ({ payload: { actions } }) => {
+  webviewReplication: action => {
+    const {
+      payload: { actions },
+    } = action;
     sharedStore.dispatch(actions);
+    dispatchWorker(action);
   },
   webviewUpdateTheme: ({ payload }) => {
     editor.setPresetTheme({
@@ -95,5 +116,14 @@ bridge.on({
   },
 });
 
+workerBridge.on({
+  vscodeSaveValue: action => {
+    dispatch(action);
+  },
+});
+
 window.addEventListener('message', event => bridge.emit(event.data));
+replicationStoreWorker.addEventListener('message', event => {
+  workerBridge.emit(event.data);
+});
 dispatch(vscodeInitialAction());
