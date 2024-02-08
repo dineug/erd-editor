@@ -24,8 +24,9 @@ const workerBridge = new Emitter();
 const editor = document.createElement('erd-editor');
 const sharedStore = editor.getSharedStore({ mouseTracker: false });
 const replicationStoreWorker = new Worker(
-  new URL('./services/replicationStore.worker', import.meta.url),
+  new URL('./services/replicationStore.worker.ts', import.meta.url),
   {
+    type: 'module',
     name: '@dineug/erd-editor-intellij-webview/replication-store-worker',
   }
 );

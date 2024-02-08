@@ -12,14 +12,14 @@ export function getAppDatabaseService(): AppDatabaseService | null {
   try {
     const worker = new SharedWorker(
       new URL('./indexeddb.shared-worker.ts', import.meta.url),
-      { name: WORKER_NAME }
+      { type: 'module', name: WORKER_NAME }
     );
     remoteService = Comlink.wrap(worker.port) as any;
   } catch (error) {
     try {
       const worker = new Worker(
         new URL('./indexeddb.worker.ts', import.meta.url),
-        { name: WORKER_NAME }
+        { type: 'module', name: WORKER_NAME }
       );
       remoteService = Comlink.wrap(worker) as any;
     } catch (error) {
