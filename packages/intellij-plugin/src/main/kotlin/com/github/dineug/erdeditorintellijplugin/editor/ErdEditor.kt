@@ -110,6 +110,7 @@ class ErdEditor(
 
                     is VscodeBridgeAction.VscodeImportFile -> {
 //                        val type = action.payload.type
+//                        val op = action.payload.op
 //                        val extensions = action.payload.accept.split(",")
 //                            .map { it.substringAfterLast(".", "") }
 //                            .toTypedArray()
@@ -120,18 +121,20 @@ class ErdEditor(
 //                        )
 //
 //                        ApplicationManager.getApplication().invokeLater {
-//                            FileChooserFactory.getInstance().createFileChooser(descriptor, null, null).choose(null).also { files ->
-//                                if (files.isEmpty()) {
-//                                    return@invokeLater
-//                                }
+//                            FileChooserFactory.getInstance()
+//                                .createFileChooser(descriptor, null, null)
+//                                .choose(null).also { files ->
+//                                    if (files.isEmpty()) {
+//                                        return@invokeLater
+//                                    }
 //
-//                                val file = files.first()
-//                                val value = file.inputStream.reader().readText()
-//                                webviewPanel.dispatch(
-//                                    WebviewBridgeAction.WebviewImportFile(
-//                                        WebviewImportFilePayload(type, value)
+//                                    val file = files.first()
+//                                    val value = file.inputStream.reader().readText()
+//                                    webviewPanel.dispatch(
+//                                        WebviewBridgeAction.WebviewImportFile(
+//                                            WebviewImportFilePayload(type, op, value)
+//                                        )
 //                                    )
-//                                )
 //                            }
 //                        }
                     }

@@ -48,7 +48,7 @@ sealed class VscodeBridgeAction {
     }
 }
 data class VscodeExportFilePayload(val value: String, val fileName: String)
-data class VscodeImportFilePayload(val type: String, val accept: String)
+data class VscodeImportFilePayload(val type: String, val op: String, val accept: String)
 data class VscodeSaveValuePayload(val value: String)
 data class VscodeSaveReplicationPayload(val actions: Any)
 data class VscodeSaveThemePayload(val appearance: String, val grayColor: String, val accentColor: String)
@@ -70,7 +70,7 @@ sealed class WebviewBridgeAction {
         val type = "webviewReplication"
     }
 }
-data class WebviewImportFilePayload(val type: String, val value: String)
+data class WebviewImportFilePayload(val type: String, val op: String, val value: String)
 data class WebviewInitialValuePayload(val value: String)
 data class WebviewUpdateThemePayload(val appearance: String?, val grayColor: String?, val accentColor: String?)
 data class WebviewReplicationPayload(val actions: Any)
