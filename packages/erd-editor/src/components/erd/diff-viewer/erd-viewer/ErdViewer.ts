@@ -9,6 +9,7 @@ import {
 
 import { AppContext, appContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
+import { Diff, DiffMap, getDiffStyle } from '@/components/erd/diff-viewer/diff';
 import Minimap from '@/components/erd/minimap/Minimap';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
@@ -24,6 +25,8 @@ import * as styles from './ErdViewer.styles';
 
 export type ErdViewerProps = {
   app: AppContext;
+  diff: number;
+  diffMap: DiffMap;
 };
 
 const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
@@ -35,6 +38,8 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
     grabCursor: 'grab',
   });
   const { addUnsubscribe } = useUnmounted();
+
+  const diffStyle = getDiffStyle(props.diff, props.diffMap);
 
   addUnsubscribe(() => {
     provider.destroy();
@@ -119,7 +124,12 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
 
   return () => html`
     <div
-      class=${styles.root}
+      class=${[
+        styles.root,
+        props.diff === Diff.insert
+          ? 'diff-viewer-insert'
+          : 'diff-viewer-delete',
+      ]}
       style=${{ cursor: state.grabCursor }}
       ${ref(root)}
       @contextmenu=${onPrevent}
@@ -127,6 +137,7 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
       @touchstart=${handleDragSelect}
       @wheel=${handleWheel}
     >
+      ${diffStyle}
       <${Canvas} root=${root} canvas=${canvas} grabMove=${true} />
       <${VirtualScroll} />
       <${Minimap} />

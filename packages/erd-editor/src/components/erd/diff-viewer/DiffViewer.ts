@@ -12,6 +12,7 @@ import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.action
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
+import { Diff, diffState } from './diff';
 import * as styles from './DiffViewer.styles';
 
 export type DiffViewerProps = {
@@ -25,8 +26,8 @@ const BORDER = 1;
 const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
   const originApp = props.app.value;
   const getReadonly = () => true;
-  const app = createAppContext({ toWidth: originApp.toWidth }, getReadonly);
   const prevApp = createAppContext({ toWidth: originApp.toWidth }, getReadonly);
+  const app = createAppContext({ toWidth: originApp.toWidth }, getReadonly);
   const { addUnsubscribe } = useUnmounted();
 
   const getViewport = () => {
@@ -40,13 +41,18 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
     };
   };
 
+  prevApp.store.dispatchSync(
+    initialLoadJsonAction$(props.initialValue),
+    changeViewportAction(getViewport())
+  );
   app.store.dispatchSync(
     initialLoadJsonAction$(toJson(originApp.store.state)),
     changeViewportAction(getViewport())
   );
-  prevApp.store.dispatchSync(
-    initialLoadJsonAction$(props.initialValue),
-    changeViewportAction(getViewport())
+
+  const [prevDiffMap, diffMap] = diffState(
+    prevApp.store.state,
+    app.store.state
   );
 
   onMounted(() => {
@@ -56,21 +62,21 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
       }),
       watch(originApp.store.state.editor.viewport).subscribe(() => {
         const viewport = getViewport();
-        app.store.dispatch(changeViewportAction(viewport));
         prevApp.store.dispatch(changeViewportAction(viewport));
+        app.store.dispatch(changeViewportAction(viewport));
       }),
       () => {
-        app.store.dispatchSync(initialClearAction());
-        app.store.destroy();
-        app.keydown$.complete();
-        app.shortcut$.complete();
-        app.emitter.clear();
-
         prevApp.store.dispatchSync(initialClearAction());
         prevApp.store.destroy();
         prevApp.keydown$.complete();
         prevApp.shortcut$.complete();
         prevApp.emitter.clear();
+
+        app.store.dispatchSync(initialClearAction());
+        app.store.destroy();
+        app.keydown$.complete();
+        app.shortcut$.complete();
+        app.emitter.clear();
       }
     );
   });
@@ -80,10 +86,14 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
       <div class=${styles.container}>
         <div class=${styles.tree}>tree-list</div>
         <div class=${styles.viewport}>
-          <${ErdViewer} app=${app} />
+          <${ErdViewer}
+            app=${prevApp}
+            diff=${Diff.delete}
+            diffMap=${prevDiffMap}
+          />
         </div>
         <div class=${styles.viewport}>
-          <${ErdViewer} app=${prevApp} />
+          <${ErdViewer} app=${app} diff=${Diff.insert} diffMap=${diffMap} />
         </div>
       </div>
     </div>

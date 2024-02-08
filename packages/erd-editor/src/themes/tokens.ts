@@ -75,6 +75,11 @@ export type Theme = {
   keyPK: string;
   keyFK: string;
   keyPFK: string;
+
+  diffInsertBackground: string;
+  diffDeleteBackground: string;
+  diffInsertForeground: string;
+  diffDeleteForeground: string;
 };
 
 export const ThemeTokens: ReadonlyArray<keyof Theme> = [
@@ -152,6 +157,11 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
   'keyPK',
   'keyFK',
   'keyPFK',
+
+  'diffInsertBackground',
+  'diffDeleteBackground',
+  'diffInsertForeground',
+  'diffDeleteForeground',
 ];
 
 export const themeToTokensString = (theme: Theme) =>

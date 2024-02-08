@@ -135,6 +135,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
             template = html`
               <div
                 class="column-col"
+                data-type="columnName"
                 @mousedown=${(event: MouseEvent) => {
                   handleFocus(event, FocusType.columnName);
                 }}
@@ -162,6 +163,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               ? html`
                   <div
                     class="column-col"
+                    data-type="columnDefault"
                     @mousedown=${(event: MouseEvent) => {
                       handleFocus(event, FocusType.columnDefault);
                     }}
@@ -190,6 +192,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               ? html`
                   <div
                     class="column-col"
+                    data-type="columnComment"
                     @mousedown=${(event: MouseEvent) => {
                       handleFocus(event, FocusType.columnComment);
                     }}
@@ -219,6 +222,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               ? html`
                   <div
                     class="column-col"
+                    data-type="columnDataType"
                     @mousedown=${(event: MouseEvent) => {
                       handleFocus(event, FocusType.columnDataType);
                     }}
@@ -249,6 +253,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               ? html`
                   <div
                     class="column-col"
+                    data-type="columnNotNull"
                     @mousedown=${(event: MouseEvent) => {
                       handleFocus(event, FocusType.columnNotNull);
                     }}
@@ -269,6 +274,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               ? html`
                   <div
                     class="column-col"
+                    data-type="columnUnique"
                     @mousedown=${(event: MouseEvent) => {
                       handleFocus(event, FocusType.columnUnique);
                     }}
@@ -292,6 +298,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               ? html`
                   <div
                     class="column-col"
+                    data-type="columnAutoIncrement"
                     @mousedown=${(event: MouseEvent) => {
                       handleFocus(event, FocusType.columnAutoIncrement);
                     }}

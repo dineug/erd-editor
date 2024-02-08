@@ -287,6 +287,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           <div class=${styles.headerInputWrap}>
             <div
               class="input-padding"
+              data-type="tableName"
               @mousedown=${() => {
                 handleFocus(FocusType.tableName);
               }}
@@ -309,6 +310,7 @@ const Table: FC<TableProps> = (props, ctx) => {
               ? html`
                   <div
                     class="input-padding"
+                    data-type="tableComment"
                     @mousedown=${() => {
                       handleFocus(FocusType.tableComment);
                     }}
