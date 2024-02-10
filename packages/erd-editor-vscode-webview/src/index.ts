@@ -22,7 +22,7 @@ import ReplicationStoreWorker from '@/services/replicationStore.worker?worker&in
 const LAZY_KEY = Symbol.for('@dineug/erd-editor');
 const bridge = new Emitter();
 const workerBridge = new Emitter();
-const vscode = globalThis.acquireVsCodeApi();
+const vscode = acquireVsCodeApi();
 const editor = document.createElement('erd-editor');
 const sharedStore = editor.getSharedStore({ mouseTracker: false });
 const replicationStoreWorker = new ReplicationStoreWorker({

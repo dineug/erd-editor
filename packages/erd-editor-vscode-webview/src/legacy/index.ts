@@ -7,20 +7,17 @@ import {
   vscodeSaveValueAction,
 } from '@dineug/erd-editor-vscode-bridge';
 import { encode } from 'base64-arraybuffer';
-import { extension, setExportFileCallback, setImportFileCallback } from 'vuerd';
+import { setExportFileCallback, setImportFileCallback } from 'vuerd';
 
 const LAZY_KEY = Symbol.for('vuerd');
 const bridge = new Emitter();
-const vscode = globalThis.acquireVsCodeApi();
+const vscode = acquireVsCodeApi();
 const editor = document.createElement('vuerd-editor');
 
 const dispatch = (action: AnyAction) => {
   vscode.postMessage(action);
 };
 
-Reflect.set(globalThis, LAZY_KEY, {
-  extension,
-});
 setImportFileCallback(options => {
   dispatch(vscodeImportFileAction({ ...options, op: 'set' }));
 });
