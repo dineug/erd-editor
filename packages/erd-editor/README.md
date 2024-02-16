@@ -4,7 +4,7 @@
 
 ![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
 
-# Install
+## Install
 
 ```sh
 npm install @dineug/erd-editor
@@ -43,7 +43,7 @@ document.body.appendChild(editor);
 </script>
 ```
 
-# Document
+## [Document](https://docs.erd-editor.io)
 
 - [Web App](https://erd-editor.io)
 - [VSCode Extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
