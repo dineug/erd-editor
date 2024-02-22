@@ -1,3 +1,4 @@
+import { GitHubLogoIcon } from '@radix-ui/react-icons';
 import { Flex, Link, Text } from '@radix-ui/themes';
 import { lazy, Suspense } from 'react';
 
@@ -17,12 +18,26 @@ const Viewer: React.FC<ViewerProps> = () => {
     <Flex css={styles.root} direction="column" align="center" justify="center">
       {value.state === 'hasError' ? (
         <>
-          <Text size="4">Select or create a schema.</Text>
+          <Text css={styles.description} size="4">
+            Select or create a schema.
+          </Text>
           <Link
+            css={styles.link}
             href="https://docs.erd-editor.io/docs/category/guides"
             target="_blank"
+            underline="hover"
           >
             Editing Guide
+          </Link>
+          <Link
+            href="https://github.com/dineug/erd-editor"
+            target="_blank"
+            underline="hover"
+          >
+            <Flex align="center">
+              <GitHubLogoIcon width="16" height="16" />
+              <Text css={styles.iconGap}>GitHub</Text>
+            </Flex>
           </Link>
         </>
       ) : value.state === 'loading' ? (
