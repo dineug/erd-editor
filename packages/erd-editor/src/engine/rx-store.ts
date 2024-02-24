@@ -15,7 +15,7 @@ import {
   StreamRegroupScrollActionTypes,
 } from '@/engine/actions';
 import { EngineContext } from '@/engine/context';
-import { createHistory } from '@/engine/history';
+import { createHistory, History, HistoryOptions } from '@/engine/history';
 import { pushHistory } from '@/engine/history.actions';
 import { changeHasHistoryAction } from '@/engine/modules/editor/atom.actions';
 import {
@@ -31,21 +31,29 @@ import { Tag } from '@/engine/tag';
 export type RxStore = Store & {
   undo: () => void;
   redo: () => void;
+  getHistoryClone: (options: HistoryOptions) => History;
   change$: Observable<Array<AnyAction>>;
+};
+
+export type RxStoreOptions = {
+  getReadonly?: () => boolean;
+  getHistory?: (options: HistoryOptions) => History;
 };
 
 const HISTORY_LIMIT = 2048;
 
 export function createRxStore(
   context: EngineContext,
-  getReadonly: () => boolean = () => false
+  { getReadonly = () => false, getHistory }: RxStoreOptions = {}
 ): RxStore {
   const subscriptionSet = new Set<Subscription>();
   const store = createStore(context);
   const hooks = createHooks(store);
-  const history = createHistory(payload =>
-    store.dispatch(changeHasHistoryAction(payload))
-  );
+  const historyOptions: HistoryOptions = {
+    notify: payload => store.dispatch(changeHasHistoryAction(payload)),
+    dispatch: store.dispatchSync,
+  };
+  const history = getHistory?.(historyOptions) ?? createHistory(historyOptions);
   history.setLimit(HISTORY_LIMIT);
 
   const dispatch$ = new Subject<Array<AnyAction>>();
@@ -96,6 +104,8 @@ export function createRxStore(
     history.redo();
   };
 
+  const getHistoryClone = (options: HistoryOptions) => history.clone(options);
+
   subscriptionSet
     .add(history$.subscribe(pushHistory(store, history)))
     .add(
@@ -111,6 +121,7 @@ export function createRxStore(
     destroy,
     undo,
     redo,
+    getHistoryClone,
     change$,
   });
 }

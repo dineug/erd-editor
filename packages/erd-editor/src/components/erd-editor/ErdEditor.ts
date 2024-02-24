@@ -96,7 +96,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const getReadonly = () => props.readonly;
   const appContextValue = createAppContext(
     { toWidth: text.toWidth },
-    getReadonly
+    { getReadonly }
   );
   const provider = useProvider(ctx, appContext, appContextValue);
 

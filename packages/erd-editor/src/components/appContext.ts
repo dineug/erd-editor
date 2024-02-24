@@ -13,7 +13,7 @@ import {
   InjectEngineContext,
 } from '@/engine/context';
 import { initialClearAction } from '@/engine/modules/editor/atom.actions';
-import { createRxStore, RxStore } from '@/engine/rx-store';
+import { createRxStore, RxStore, RxStoreOptions } from '@/engine/rx-store';
 import { Ctx } from '@/internal-types';
 import { Emitter } from '@/utils/emitter';
 import {
@@ -35,10 +35,10 @@ export type InjectAppContext = InjectEngineContext;
 
 export function createAppContext(
   ctx: InjectAppContext,
-  getReadonly?: () => boolean
+  options?: RxStoreOptions
 ): AppContext {
   const engineContext = createEngineContext(ctx);
-  const store = createRxStore(engineContext, getReadonly);
+  const store = createRxStore(engineContext, options);
   const keyBindingMap = observable(createKeyBindingMap(), { shallow: true });
   const shortcut$ = new Subject<{
     type: KeyBindingName;
