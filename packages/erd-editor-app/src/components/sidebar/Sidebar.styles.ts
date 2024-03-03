@@ -9,12 +9,10 @@ export const root = css`
   padding: 14px 0;
   border-right: 1px solid var(--gray-6);
   position: relative;
+`;
 
-  &:hover {
-    .fold-button {
-      display: block;
-    }
-  }
+export const hide = css`
+  display: none;
 `;
 
 export const header = css`
@@ -31,4 +29,11 @@ export const contentArea = css`
   min-width: 260px;
   padding: 0 12px;
   height: 100%;
+`;
+
+export const empty = css`
+  width: 5px;
+  min-width: 5px;
+  height: 100%;
+  background-color: var(--gray-6);
 `;
