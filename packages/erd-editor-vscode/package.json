@@ -38,11 +38,12 @@
   "main": "./dist/extension",
   "scripts": {
     "vscode:prepublish": "pnpm build",
+    "dev": "webpack --mode development",
     "build": "webpack --mode production",
     "build:vsce": "pnpm vsce package --no-dependencies",
     "publish:vsce": "pnpm vsce publish --no-dependencies",
-    "webpack": "webpack --mode development",
-    "webpack:dev": "webpack --mode development --watch"
+    "nx:dev": "nx run dev",
+    "nx:build": "nx run build"
   },
   "devDependencies": {
     "@dineug/erd-editor": "workspace:*",

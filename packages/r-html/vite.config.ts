@@ -3,8 +3,8 @@ import { join } from 'node:path';
 
 import typescript from '@rollup/plugin-typescript';
 import { visualizer } from 'rollup-plugin-visualizer';
-import tspCompiler from 'ts-patch/compiler';
 import { defineConfig } from 'vite';
+import dts from 'vite-plugin-dts';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
@@ -35,20 +35,8 @@ export default defineConfig({
   },
   plugins: [
     visualizer({ filename: './dist/stats.html' }),
-    typescript({
-      typescript: tspCompiler,
-      noEmitOnError: true,
-      compilerOptions: {
-        declaration: true,
-        outDir: './dist',
-        plugins: [
-          {
-            transform: 'typescript-transform-paths',
-            afterDeclarations: true,
-          },
-        ],
-      },
-    }),
+    dts(),
+    typescript({ noEmitOnError: true }),
   ],
   server: {
     open: true,

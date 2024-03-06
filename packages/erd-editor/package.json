@@ -46,7 +46,9 @@
     "dev": "vite serve --mode lib",
     "dev:storybook": "storybook dev -p 6006",
     "build": "vite build --mode lib",
-    "build:storybook": "storybook build"
+    "build:storybook": "storybook build",
+    "nx:dev": "nx run dev",
+    "nx:build": "nx run build"
   },
   "devDependencies": {
     "@dineug/erd-editor-schema": "workspace:*",
@@ -91,10 +93,9 @@
     "stats.js": "^0.17.0",
     "storybook": "^7.6.5",
     "tinykeys": "^2.1.0",
-    "ts-patch": "^3.1.1",
     "tslib": "^2.6.2",
     "typescript": "5.3.3",
-    "typescript-transform-paths": "^3.4.6",
-    "vite": "^5.0.12"
+    "vite": "^5.0.12",
+    "vite-plugin-dts": "^3.7.3"
   }
 }

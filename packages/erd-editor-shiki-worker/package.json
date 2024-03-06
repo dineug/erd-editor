@@ -34,11 +34,10 @@
     "comlink": "4.4.1",
     "rollup-plugin-visualizer": "^5.11.0",
     "shiki": "0.14.7",
-    "ts-patch": "^3.1.1",
     "tslib": "^2.6.2",
-    "typescript-transform-paths": "^3.4.6",
     "typescript": "5.3.3",
     "vite-tsconfig-paths": "4.2.2",
-    "vite": "^5.0.12"
+    "vite": "^5.0.12",
+    "vite-plugin-dts": "^3.7.3"
   }
 }

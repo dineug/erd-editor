@@ -4,9 +4,8 @@ import { join } from 'node:path';
 import rHtml from '@dineug/vite-plugin-r-html';
 import typescript from '@rollup/plugin-typescript';
 import { visualizer } from 'rollup-plugin-visualizer';
-// @ts-ignore
-import tspCompiler from 'ts-patch/compiler';
 import { defineConfig, loadEnv } from 'vite';
+import dts from 'vite-plugin-dts';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
@@ -51,22 +50,8 @@ export default defineConfig(({ command, mode }) => {
     plugins: [
       isLib && isServe && rHtml(),
       isLib && visualizer({ filename: './dist/stats.html' }),
-      isLib &&
-        isBuild &&
-        typescript({
-          typescript: tspCompiler,
-          noEmitOnError: true,
-          compilerOptions: {
-            declaration: true,
-            outDir: './dist',
-            plugins: [
-              {
-                transform: 'typescript-transform-paths',
-                afterDeclarations: true,
-              },
-            ],
-          },
-        }),
+      isLib && isBuild && dts(),
+      isLib && isBuild && typescript({ noEmitOnError: true }),
     ].filter(Boolean),
     server: {
       open: true,

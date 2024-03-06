@@ -19,8 +19,10 @@
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "turbo build",
-    "test": "turbo test",
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "nx:clear": "nx reset",
+    "nx:graph": "nx graph",
     "prepare": "husky install",
     "format": "npm run format:eslint && npm run format:prettier",
     "format:eslint": "eslint --ignore-path .gitignore \"**/*.{js,ts}\" --fix",
@@ -44,9 +46,9 @@
     "lint-staged": "^15.2.0",
     "prettier": "^3.1.1",
     "tslib": "^2.6.2",
-    "turbo": "^1.11.2",
     "typescript": "5.3.3",
-    "vite": "^5.0.12"
+    "vite": "^5.0.12",
+    "nx": "18.0.7"
   },
   "lint-staged": {
     "**/*.{js,ts}": [
