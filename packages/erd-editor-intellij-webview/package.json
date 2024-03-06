@@ -10,9 +10,9 @@
     "build": "webpack --mode production",
     "build:analyzer": "webpack --mode production --env target=analyzer",
     "build:webview": "webpack --mode production --env target=webview",
-    "nx:dev": "nx run dev",
-    "nx:build": "nx run build",
-    "nx:build:webview": "nx run build:webview"
+    "nx:dev": "nx dev",
+    "nx:build": "nx build",
+    "nx:build:webview": "nx build:webview"
   },
   "devDependencies": {
     "@dineug/erd-editor": "workspace:*",

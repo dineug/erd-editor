@@ -42,8 +42,8 @@
     "build": "webpack --mode production",
     "build:vsce": "pnpm vsce package --no-dependencies",
     "publish:vsce": "pnpm vsce publish --no-dependencies",
-    "nx:dev": "nx run dev",
-    "nx:build": "nx run build"
+    "nx:dev": "nx dev",
+    "nx:build": "nx build"
   },
   "devDependencies": {
     "@dineug/erd-editor": "workspace:*",

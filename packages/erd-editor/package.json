@@ -47,8 +47,8 @@
     "dev:storybook": "storybook dev -p 6006",
     "build": "vite build --mode lib",
     "build:storybook": "storybook build",
-    "nx:dev": "nx run dev",
-    "nx:build": "nx run build"
+    "nx:dev": "nx dev",
+    "nx:build": "nx build"
   },
   "devDependencies": {
     "@dineug/erd-editor-schema": "workspace:*",
