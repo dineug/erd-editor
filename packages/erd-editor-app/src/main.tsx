@@ -19,17 +19,9 @@ import { store } from '@/store';
 
 if (import.meta.env.MODE === 'production') {
   Sentry.init({
-    dsn: 'https://5b4c9b08f73bd4ac0eb48d0251500577@o245231.ingest.us.sentry.io/4506887368736768',
-    integrations: [
-      Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration({
-        maskAllText: false,
-        blockAllMedia: false,
-      }),
-    ],
+    dsn: 'https://77d8b1a5cdead25c1dea4978fba38a70@o245231.ingest.us.sentry.io/4506887372668928',
+    integrations: [Sentry.browserTracingIntegration()],
     tracesSampleRate: 1.0,
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
   });
 }
 
