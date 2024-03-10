@@ -1,5 +1,7 @@
 import './styles.css';
+import 'core-js/stable';
 
+import * as Sentry from '@sentry/react';
 import { Provider } from 'jotai';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
@@ -14,6 +16,22 @@ import LiveCollaborativeError from '@/components/live-collaborative/live-collabo
 import { registerSW } from '@/registerSW';
 import Root from '@/routes/root/Root';
 import { store } from '@/store';
+
+if (import.meta.env.MODE === 'production') {
+  Sentry.init({
+    dsn: 'https://5b4c9b08f73bd4ac0eb48d0251500577@o245231.ingest.us.sentry.io/4506887368736768',
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration({
+        maskAllText: false,
+        blockAllMedia: false,
+      }),
+    ],
+    tracesSampleRate: 1.0,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+  });
+}
 
 const router = createBrowserRouter([
   {
