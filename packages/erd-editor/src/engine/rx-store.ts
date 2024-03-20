@@ -31,7 +31,7 @@ import { Tag } from '@/engine/tag';
 export type RxStore = Store & {
   undo: () => void;
   redo: () => void;
-  getHistoryClone: (options: HistoryOptions) => History;
+  history: History;
   change$: Observable<Array<AnyAction>>;
 };
 
@@ -40,7 +40,7 @@ export type RxStoreOptions = {
   getHistory?: (options: HistoryOptions) => History;
 };
 
-const HISTORY_LIMIT = 2048;
+export const HISTORY_LIMIT = 2048;
 
 export function createRxStore(
   context: EngineContext,
@@ -104,8 +104,6 @@ export function createRxStore(
     history.redo();
   };
 
-  const getHistoryClone = (options: HistoryOptions) => history.clone(options);
-
   subscriptionSet
     .add(history$.subscribe(pushHistory(store, history)))
     .add(
@@ -121,7 +119,7 @@ export function createRxStore(
     destroy,
     undo,
     redo,
-    getHistoryClone,
+    history,
     change$,
   });
 }

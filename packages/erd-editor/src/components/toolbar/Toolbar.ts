@@ -5,6 +5,7 @@ import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
+import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeCanvasTypeAction,
@@ -88,6 +89,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     emitter.emit(openThemeBuilderAction());
   };
 
+  const handleOpenTimeTravel = () => {
+    const { store } = app.value;
+    store.dispatch(changeOpenMapAction({ [Open.timeTravel]: true }));
+  };
+
   return () => {
     const { store } = app.value;
     const { settings, editor } = store.state;
@@ -95,6 +101,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     const showAutomaticTablePlacement =
       editor.openMap[Open.automaticTablePlacement];
     const showTableProperties = editor.openMap[Open.tableProperties];
+    const showTimeTravel = editor.openMap[Open.timeTravel];
     const showDiffViewer = editor.openMap[Open.diffViewer];
 
     const showUndoRedo =
@@ -102,6 +109,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
       !showAutomaticTablePlacement &&
       !showTableProperties &&
       !showDiffViewer &&
+      !showTimeTravel &&
       !props.readonly;
 
     return html`
@@ -223,6 +231,22 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
                 @click=${handleRedo}
               >
                 <${Icon} name="rotate-right" size=${16} />
+              </div>
+              <div
+                class=${[
+                  'undo-redo',
+                  styles.menu,
+                  {
+                    active: editor.hasUndo || editor.hasRedo,
+                  },
+                ]}
+                title="Time Travel"
+                style=${{
+                  'max-width': '26px',
+                }}
+                @click=${handleOpenTimeTravel}
+              >
+                <${Icon} prefix="mdi" name="av-timer" size=${20} />
               </div>
             `
           : null}

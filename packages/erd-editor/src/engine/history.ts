@@ -109,7 +109,7 @@ export function createHistory(
     });
   };
 
-  return {
+  return Object.freeze({
     get cursor() {
       return cursor;
     },
@@ -124,5 +124,5 @@ export function createHistory(
     clear,
     setLimit,
     clone,
-  };
+  });
 }

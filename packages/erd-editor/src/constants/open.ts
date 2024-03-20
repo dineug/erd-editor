@@ -6,5 +6,6 @@ export const Open = {
   search: 'search',
   themeBuilder: 'themeBuilder',
   diffViewer: 'diffViewer',
+  timeTravel: 'timeTravel',
 } as const;
 export type Open = ValuesType<typeof Open>;

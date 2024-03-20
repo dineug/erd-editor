@@ -44,8 +44,8 @@ const Icon: FC<IconProps> = (props, ctx) => () => {
         ? html`
             <img
               style=${{
-                width: `${rem}rem`,
-                height: `${rem}rem`,
+                width: `${size}px`,
+                height: `${size}px`,
               }}
               src=${d}
             />
@@ -54,8 +54,8 @@ const Icon: FC<IconProps> = (props, ctx) => () => {
             <svg
               class=${props.useTransition ? styles.icon : null}
               style=${{
-                width: `${rem}rem`,
-                height: `${rem}rem`,
+                width: prefix === 'fas' ? `${rem}rem` : `${size}px`,
+                height: prefix === 'fas' ? `${rem}rem` : `${size}px`,
               }}
               viewBox="0 0 ${width} ${height}"
             >
