@@ -13,6 +13,7 @@ const LAZY_KEY = Symbol.for('vuerd');
 const bridge = new Emitter();
 const vscode = acquireVsCodeApi();
 const editor = document.createElement('vuerd-editor');
+const loading = document.querySelector('#loading');
 
 const dispatch = (action: AnyAction) => {
   vscode.postMessage(action);
@@ -108,6 +109,7 @@ bridge.on({
     editor.addEventListener('change', handleChange);
     editor.automaticLayout = true;
     editor.initLoadJson(value);
+    loading?.remove();
     document.body.appendChild(editor);
   },
   webviewUpdateThemeLegacy: ({ payload: { themeSync, theme } }) => {

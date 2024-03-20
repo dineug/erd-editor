@@ -28,6 +28,7 @@ const sharedStore = editor.getSharedStore({ mouseTracker: false });
 const replicationStoreWorker = new ReplicationStoreWorker({
   name: '@dineug/erd-editor-vscode-webview/replication-store-worker',
 });
+const loading = document.querySelector('#loading');
 
 const dispatch = (action: AnyAction) => {
   vscode.postMessage(action);
@@ -93,6 +94,7 @@ bridge.on({
       dispatchWorker(webviewReplicationAction({ actions }));
       dispatch(vscodeSaveReplicationAction({ actions }));
     });
+    loading?.remove();
     document.body.appendChild(editor);
   },
   webviewReplication: action => {
