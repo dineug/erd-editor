@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.18
+
+### Added
+
+- Table count
+
 ## 1.0.17
 
 ### Added
