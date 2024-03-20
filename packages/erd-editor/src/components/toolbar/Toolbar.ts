@@ -91,12 +91,16 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
 
   const handleOpenTimeTravel = () => {
     const { store } = app.value;
-    store.dispatch(changeOpenMapAction({ [Open.timeTravel]: true }));
+    const { editor } = store.state;
+
+    if (editor.hasUndo || editor.hasRedo) {
+      store.dispatch(changeOpenMapAction({ [Open.timeTravel]: true }));
+    }
   };
 
   return () => {
     const { store } = app.value;
-    const { settings, editor } = store.state;
+    const { settings, editor, doc } = store.state;
 
     const showAutomaticTablePlacement =
       editor.openMap[Open.automaticTablePlacement];
@@ -250,6 +254,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
               </div>
             `
           : null}
+        <div class=${styles.tableCount}>Table: ${doc.tableIds.length}</div>
       </div>
     `;
   };

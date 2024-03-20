@@ -1,6 +1,7 @@
 import { css } from '@dineug/r-html';
 
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
+import { typography } from '@/styles/typography.styles';
 
 export const root = css`
   display: flex;
@@ -46,4 +47,12 @@ export const menu = css`
     cursor: pointer;
     fill: var(--active);
   }
+`;
+
+export const tableCount = css`
+  display: flex;
+  align-self: center;
+  margin-left: auto;
+  white-space: nowrap;
+  ${typography.paragraph};
 `;
