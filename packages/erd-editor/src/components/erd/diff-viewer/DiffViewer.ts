@@ -32,8 +32,11 @@ const BORDER = 1;
 const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
   const originApp = props.app.value;
   const getReadonly = () => true;
-  const prevApp = createAppContext({ toWidth: originApp.toWidth }, getReadonly);
-  const app = createAppContext({ toWidth: originApp.toWidth }, getReadonly);
+  const prevApp = createAppContext(
+    { toWidth: originApp.toWidth },
+    { getReadonly }
+  );
+  const app = createAppContext({ toWidth: originApp.toWidth }, { getReadonly });
   const { addUnsubscribe } = useUnmounted();
 
   const getViewport = () => {

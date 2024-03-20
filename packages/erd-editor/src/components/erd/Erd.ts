@@ -22,6 +22,7 @@ import ErdContextMenu, {
 import HideSign from '@/components/erd/hide-sign/HideSign';
 import Minimap from '@/components/erd/minimap/Minimap';
 import TableProperties from '@/components/erd/table-properties/TableProperties';
+import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
@@ -39,6 +40,7 @@ import { Viewport } from '@/engine/modules/editor/state';
 import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { moveToTableAction } from '@/engine/modules/table/atom.actions';
+import { HISTORY_LIMIT } from '@/engine/rx-store';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { isMouseEvent } from '@/utils/domEvent';
 import { getAbsolutePoint } from '@/utils/dragSelect';
@@ -90,15 +92,26 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     root.value.scrollLeft = 0;
   };
 
-  const getShowDiffViewer = () => {
+  const getShowOverLayout = () => {
     const { store } = app.value;
     const { editor } = store.state;
-    return editor.openMap[Open.diffViewer];
+    const showAutomaticTablePlacement =
+      editor.openMap[Open.automaticTablePlacement];
+    const showTableProperties = editor.openMap[Open.tableProperties];
+    const showTimeTravel = editor.openMap[Open.timeTravel];
+    const showDiffViewer = editor.openMap[Open.diffViewer];
+
+    return (
+      showAutomaticTablePlacement ||
+      showTableProperties ||
+      showTimeTravel ||
+      showDiffViewer
+    );
   };
 
   const handleContextmenu = (event: MouseEvent) => {
     const el = event.target as HTMLElement | null;
-    if (!el || getShowDiffViewer()) return;
+    if (!el || getShowOverLayout()) return;
 
     const $table = el.closest('.table') as HTMLElement | null;
     const $relationship = el.closest('.relationship') as HTMLElement | null;
@@ -126,8 +139,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     state.diffValue = '{}';
   };
 
+  const handleTimeTravelClose = () => {
+    const { store } = app.value;
+    store.dispatch(changeOpenMapAction({ [Open.timeTravel]: false }));
+  };
+
   const handleWheel = (event: WheelEvent) => {
-    if (getShowDiffViewer()) return;
+    if (getShowOverLayout()) return;
     event.preventDefault();
 
     const $mod = isMod(event);
@@ -157,7 +175,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const el = event.target as HTMLElement | null;
     if (!el) return;
 
-    const showDiffViewer = getShowDiffViewer();
+    const showOverLayout = getShowOverLayout();
     const canHideColorPicker = !el.closest('.color-picker');
 
     const canUnselectAll =
@@ -174,7 +192,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       !el.closest('.minimap') &&
       !el.closest('.minimap-viewport') &&
       !el.closest('.virtual-scroll') &&
-      !showDiffViewer;
+      !showOverLayout;
 
     if (canUnselectAll) {
       const { store } = app.value;
@@ -223,6 +241,18 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
   const handleChangeTableProperties = (tableId: string) => {
     state.tablePropertiesId = tableId;
+  };
+
+  const handleChangeTimeTravel = (cursor: number) => {
+    const { store } = app.value;
+    const { history } = store;
+
+    let count = 0;
+
+    while (history.cursor !== cursor && count <= HISTORY_LIMIT) {
+      history.cursor < cursor ? history.redo() : history.undo();
+      count++;
+    }
   };
 
   let mouseTrackerSubscription: Subscription | null = null;
@@ -323,14 +353,16 @@ const Erd: FC<ErdProps> = (props, ctx) => {
             const showAutomaticTablePlacement =
               editor.openMap[Open.automaticTablePlacement];
             const showTableProperties = editor.openMap[Open.tableProperties];
-            const showDiffViewer = getShowDiffViewer();
+            const showTimeTravel = editor.openMap[Open.timeTravel];
+            const showDiffViewer = editor.openMap[Open.diffViewer];
             const isCanvasType = settings.canvasType === CanvasType.ERD;
 
             const canGrabMove =
               isCanvasType &&
               !showAutomaticTablePlacement &&
               !showTableProperties &&
-              !showDiffViewer;
+              !showDiffViewer &&
+              !showTimeTravel;
 
             if (!canGrabMove) return false;
 
@@ -354,7 +386,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     const showAutomaticTablePlacement = openMap[Open.automaticTablePlacement];
     const showTableProperties = openMap[Open.tableProperties];
-    const showDiffViewer = getShowDiffViewer();
+    const showTimeTravel = openMap[Open.timeTravel];
+    const showDiffViewer = openMap[Open.diffViewer];
 
     const cursor = state.grabMove
       ? state.grabCursor
@@ -438,6 +471,17 @@ const Erd: FC<ErdProps> = (props, ctx) => {
                   app=${app}
                   initialValue=${state.diffValue}
                   .onClose=${handleDiffViewerClose}
+                />
+              </div>
+            `
+          : null}
+        ${showTimeTravel
+          ? html`
+              <div>
+                <${TimeTravel}
+                  app=${app}
+                  .onChange=${handleChangeTimeTravel}
+                  .onClose=${handleTimeTravelClose}
                 />
               </div>
             `

@@ -13,6 +13,7 @@ export const erdShortcutPerformCheck =
           const showAutomaticTablePlacement =
             editor.openMap[Open.automaticTablePlacement];
           const showTableProperties = editor.openMap[Open.tableProperties];
+          const showTimeTravel = editor.openMap[Open.timeTravel];
           const showSearch = editor.openMap[Open.search];
           const showDiffViewer = editor.openMap[Open.diffViewer];
           const isCanvasType = settings.canvasType === CanvasType.ERD;
@@ -22,7 +23,8 @@ export const erdShortcutPerformCheck =
             !showAutomaticTablePlacement &&
             !showTableProperties &&
             !showSearch &&
-            !showDiffViewer;
+            !showDiffViewer &&
+            !showTimeTravel;
 
           if (canPerform) {
             subscriber.next(value);

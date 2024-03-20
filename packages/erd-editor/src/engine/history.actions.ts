@@ -71,13 +71,13 @@ function push(store: Store, history: History, actions: AnyAction[]) {
   if (!undoActions.length || !redoActions.length) return;
 
   history.push({
-    undo: () => {
+    undo: dispatch => {
       const timestamp = Date.now();
-      store.dispatchSync(undoActions.map(cloneAction(timestamp)));
+      dispatch(undoActions.map(cloneAction(timestamp)));
     },
-    redo: () => {
+    redo: dispatch => {
       const timestamp = Date.now();
-      store.dispatchSync(redoActions.map(cloneAction(timestamp)));
+      dispatch(redoActions.map(cloneAction(timestamp)));
     },
   });
 }
