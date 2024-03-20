@@ -18,8 +18,4 @@ export const container = css`
   overflow: hidden;
   position: relative;
   pointer-events: none;
-
-  .minimap-viewport {
-    display: none;
-  }
 `;
