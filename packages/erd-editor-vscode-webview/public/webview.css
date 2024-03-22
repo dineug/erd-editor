@@ -4,3 +4,11 @@ body {
   width: 100%;
   height: 100vh;
 }
+
+#loading {
+  font-size: 18px;
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}

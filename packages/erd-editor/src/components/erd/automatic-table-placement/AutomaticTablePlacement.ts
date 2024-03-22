@@ -1,5 +1,13 @@
 import { query, toJson } from '@dineug/erd-editor-schema';
-import { createRef, FC, html, Ref, ref, useProvider } from '@dineug/r-html';
+import {
+  createRef,
+  FC,
+  html,
+  Ref,
+  ref,
+  useProvider,
+  watch,
+} from '@dineug/r-html';
 import { createInRange } from '@dineug/shared';
 import { round } from 'lodash-es';
 
@@ -15,7 +23,10 @@ import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
 import { Open } from '@/constants/open';
 import { CANVAS_ZOOM_MIN } from '@/constants/schema';
-import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeOpenMapAction,
+  changeViewportAction,
+} from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeZoomLevelAction,
@@ -58,10 +69,19 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   } = originApp;
   const { store } = app;
 
-  addUnsubscribe(() => {
-    provider.destroy();
-    appDestroy(app);
-  });
+  addUnsubscribe(
+    watch(originApp.store.state.editor.viewport).subscribe(() => {
+      app.store.dispatch(
+        changeViewportAction({
+          ...originApp.store.state.editor.viewport,
+        })
+      );
+    }),
+    () => {
+      provider.destroy();
+      appDestroy(app);
+    }
+  );
 
   const zoomInRange = createInRange(CANVAS_ZOOM_MIN, 0.7);
   const zoomLevelInRange = (zoom: number) => round(zoomInRange(zoom), 2);
@@ -173,7 +193,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   return () => html`
     <div class=${styles.root}>
       <div class=${styles.container} ${ref(root)}>
-        <${Canvas} root=${root} canvas=${canvas} />
+        <${Canvas} root=${root} canvas=${canvas} grabMove=${true} />
         <${Minimap} />
       </div>
     </div>

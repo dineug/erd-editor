@@ -8,6 +8,7 @@ import {
   Ref,
   ref,
   useProvider,
+  watch,
 } from '@dineug/r-html';
 
 import {
@@ -20,6 +21,7 @@ import Canvas from '@/components/erd/canvas/Canvas';
 import Minimap from '@/components/erd/minimap/Minimap';
 import Button from '@/components/primitives/button/Button';
 import Slider from '@/components/primitives/slider/Slider';
+import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { HISTORY_LIMIT } from '@/engine/rx-store';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -50,13 +52,12 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
   const provider = useProvider(ctx, appContext, app);
 
-  const state = observable({
-    cursor: history.cursor,
-  });
-
   addUnsubscribe(() => {
     provider.destroy();
-    appDestroy(app);
+  });
+
+  const state = observable({
+    cursor: history.cursor,
   });
 
   store.dispatchSync(initialLoadJsonAction$(toJson(originApp.store.state)));
@@ -88,7 +89,17 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
     addUnsubscribe(
       originApp.shortcut$.subscribe(({ type }) => {
         type === KeyBindingName.stop && handleClose();
-      })
+      }),
+      watch(originApp.store.state.editor.viewport).subscribe(() => {
+        app.store.dispatch(
+          changeViewportAction({
+            ...originApp.store.state.editor.viewport,
+          })
+        );
+      }),
+      () => {
+        appDestroy(app);
+      }
     );
   });
 
