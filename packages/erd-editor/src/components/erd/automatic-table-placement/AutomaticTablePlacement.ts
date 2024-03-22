@@ -69,13 +69,11 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   } = originApp;
   const { store } = app;
 
+  const getViewport = () => ({ ...originApp.store.state.editor.viewport });
+
   addUnsubscribe(
     watch(originApp.store.state.editor.viewport).subscribe(() => {
-      app.store.dispatch(
-        changeViewportAction({
-          ...originApp.store.state.editor.viewport,
-        })
-      );
+      app.store.dispatch(changeViewportAction(getViewport()));
     }),
     () => {
       provider.destroy();
@@ -88,6 +86,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
 
   store.dispatchSync(
     initialLoadJsonAction$(toJson(originState)),
+    changeViewportAction(getViewport()),
     changeZoomLevelAction({
       value: zoomLevelInRange(
         originState.editor.viewport.width / originState.settings.width

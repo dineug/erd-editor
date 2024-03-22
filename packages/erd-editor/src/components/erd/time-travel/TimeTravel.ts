@@ -56,11 +56,16 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
     provider.destroy();
   });
 
+  const getViewport = () => ({ ...originApp.store.state.editor.viewport });
+
   const state = observable({
     cursor: history.cursor,
   });
 
-  store.dispatchSync(initialLoadJsonAction$(toJson(originApp.store.state)));
+  store.dispatchSync(
+    initialLoadJsonAction$(toJson(originApp.store.state)),
+    changeViewportAction(getViewport())
+  );
 
   const runTimeTravel = (cursor: number) => {
     let count = 0;
@@ -91,11 +96,7 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
         type === KeyBindingName.stop && handleClose();
       }),
       watch(originApp.store.state.editor.viewport).subscribe(() => {
-        app.store.dispatch(
-          changeViewportAction({
-            ...originApp.store.state.editor.viewport,
-          })
-        );
+        app.store.dispatch(changeViewportAction(getViewport()));
       }),
       () => {
         appDestroy(app);
