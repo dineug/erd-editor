@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
@@ -87,7 +86,7 @@ class WebviewPanel(
                 persistent: Boolean,
                 callback: CefQueryCallback?
             ): Boolean {
-                logger.debug { "${file.name} disposed: ${isDisposed}" }
+                logger.debug("${file.name} disposed: ${isDisposed}")
 
                 val action = mapper.readValue(request, VscodeBridgeAction::class.java)
 
