@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.19
+
+### Fixed
+
+- TimeTravel viewport
+
 ## 1.0.18
 
 ### Added
