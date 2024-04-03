@@ -18,7 +18,7 @@
     "@types/vscode-webview": "1.57.4",
     "base64-arraybuffer": "^1.0.2",
     "typescript": "5.3.3",
-    "vite": "^5.0.12",
+    "vite": "^5.0.13",
     "vuerd": "workspace:*"
   }
 }
