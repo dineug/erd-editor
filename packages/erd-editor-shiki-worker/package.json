@@ -37,7 +37,7 @@
     "tslib": "^2.6.2",
     "typescript": "5.3.3",
     "vite-tsconfig-paths": "4.2.2",
-    "vite": "^5.0.12",
+    "vite": "^5.0.13",
     "vite-plugin-dts": "^3.7.3"
   }
 }
