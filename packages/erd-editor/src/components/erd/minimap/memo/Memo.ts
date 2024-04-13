@@ -1,7 +1,7 @@
 import { FC, html } from '@dineug/r-html';
 
 import * as styles from '@/components/erd/canvas/memo/Memo.styles';
-import { Memo } from '@/internal-types';
+import type { Memo } from '@/internal-types';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 
 export type MemoProps = {

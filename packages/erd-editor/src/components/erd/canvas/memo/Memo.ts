@@ -9,7 +9,7 @@ import {
   removeMemoAction$,
   selectMemoAction$,
 } from '@/engine/modules/memo/generator.actions';
-import { Memo } from '@/internal-types';
+import type { Memo } from '@/internal-types';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { onStop } from '@/utils/domEvent';
 import { openColorPickerAction } from '@/utils/emitter';

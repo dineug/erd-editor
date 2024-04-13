@@ -34,7 +34,7 @@ import {
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { Table } from '@/internal-types';
+import type { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { onPrevent } from '@/utils/domEvent';

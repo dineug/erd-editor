@@ -23,14 +23,14 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@babel/core": "^7.23.6"
+    "@babel/core": "^7.24.4"
   },
   "devDependencies": {
-    "@rollup/plugin-typescript": "^11.1.5",
+    "@rollup/plugin-typescript": "^11.1.6",
     "@rollup/pluginutils": "^5.1.0",
-    "rollup-plugin-visualizer": "^5.11.0",
-    "typescript": "5.3.3",
-    "vite": "^5.0.13",
-    "vite-plugin-dts": "^3.7.3"
+    "rollup-plugin-visualizer": "^5.12.0",
+    "typescript": "5.4.5",
+    "vite": "^5.2.8",
+    "vite-plugin-dts": "^3.8.2"
   }
 }

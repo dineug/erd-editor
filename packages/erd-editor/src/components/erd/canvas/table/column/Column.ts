@@ -28,7 +28,7 @@ import {
   removeColumnAction$,
   toggleColumnValueAction$,
 } from '@/engine/modules/table-column/generator.actions';
-import { Column } from '@/internal-types';
+import type { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
 

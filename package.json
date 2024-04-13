@@ -30,25 +30,25 @@
     "lint": "eslint \"**/*.{js,ts}\""
   },
   "resolutions": {
-    "typescript": "5.3.3"
+    "typescript": "5.4.5"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.14.0",
-    "@typescript-eslint/parser": "^6.14.0",
-    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^7.6.0",
+    "@typescript-eslint/parser": "^7.6.0",
+    "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-prettier": "^5.0.1",
-    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-plugin-simple-import-sort": "^12.0.0",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.5",
-    "husky": "^8.0.3",
-    "lint-staged": "^15.2.0",
-    "prettier": "^3.1.1",
+    "eslint-plugin-react-refresh": "^0.4.6",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2",
+    "prettier": "^3.2.5",
     "tslib": "^2.6.2",
-    "typescript": "5.3.3",
-    "vite": "^5.0.13",
-    "nx": "18.0.7"
+    "typescript": "5.4.5",
+    "vite": "^5.2.8",
+    "nx": "18.2.4"
   },
   "lint-staged": {
     "**/*.{js,ts}": [

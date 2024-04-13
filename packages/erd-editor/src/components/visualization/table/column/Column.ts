@@ -16,7 +16,7 @@ import {
   ColumnType,
   Show,
 } from '@/constants/schema';
-import { Column } from '@/internal-types';
+import type { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
 export type ColumnProps = {

@@ -1,6 +1,6 @@
 import { FC, html } from '@dineug/r-html';
 
-import { Theme, themeToTokensString } from '@/themes/tokens';
+import { type Theme, themeToTokensString } from '@/themes/tokens';
 
 export type ThemeProps = {
   theme: Theme;

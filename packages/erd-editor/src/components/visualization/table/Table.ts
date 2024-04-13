@@ -6,7 +6,7 @@ import * as styles from '@/components/erd/canvas/table/Table.styles';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import Column from '@/components/visualization/table/column/Column';
 import { Show } from '@/constants/schema';
-import { Table } from '@/internal-types';
+import type { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 

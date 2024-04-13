@@ -2,7 +2,7 @@ import { FC, html } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import * as styles from '@/components/erd/canvas/table/Table.styles';
-import { Table } from '@/internal-types';
+import type { Table } from '@/internal-types';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 
 export type TableProps = {

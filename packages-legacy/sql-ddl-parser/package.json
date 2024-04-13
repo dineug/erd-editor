@@ -21,8 +21,8 @@
     "test:dev": "vitest dev"
   },
   "devDependencies": {
-    "typescript": "5.3.3",
-    "vite": "^5.0.13",
-    "vitest": "^1.0.4"
+    "typescript": "5.4.5",
+    "vite": "^5.2.8",
+    "vitest": "^1.5.0"
   }
 }

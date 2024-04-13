@@ -58,7 +58,7 @@ module.exports = (env, argv) => {
               env: {
                 targets: 'defaults',
                 mode: 'entry',
-                coreJs: '3.34',
+                coreJs: '3',
               },
             },
           },
