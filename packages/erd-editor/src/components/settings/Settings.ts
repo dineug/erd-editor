@@ -22,13 +22,15 @@ import SettingsLnb, {
 } from '@/components/settings/settings-lnb/SettingsLnb';
 import Shortcuts from '@/components/settings/shortcuts/Shortcuts';
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
-import { ColumnTypeToName } from '@/constants/schema';
+import { ColumnTypeToName, SaveSettingType } from '@/constants/schema';
 import {
   changeColumnOrderAction,
+  changeIgnoreSaveSettingsAction,
   changeMaxWidthCommentAction,
   changeRelationshipDataTypeSyncAction,
 } from '@/engine/modules/settings/atom.actions';
 import { fontSize6 } from '@/styles/typography.styles';
+import { bHas } from '@/utils/bit';
 import { recalculateTableWidth } from '@/utils/calcTable';
 import { onPrevent } from '@/utils/domEvent';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
@@ -135,6 +137,28 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
     store.dispatch(changeMaxWidthCommentAction({ value: maxWidthComment }));
   };
 
+  const handleChangeScrollSaveSettings = (value: boolean) => {
+    const { store } = app.value;
+
+    store.dispatch(
+      changeIgnoreSaveSettingsAction({
+        saveSettingType: SaveSettingType.scroll,
+        value: !value,
+      })
+    );
+  };
+
+  const handleChangeZoomLevelSaveSettings = (value: boolean) => {
+    const { store } = app.value;
+
+    store.dispatch(
+      changeIgnoreSaveSettingsAction({
+        saveSettingType: SaveSettingType.zoomLevel,
+        value: !value,
+      })
+    );
+  };
+
   return () => {
     const { store } = app.value;
     const { settings } = store.state;
@@ -160,6 +184,31 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                         .onChange=${handleChangeRelationshipDataTypeSync}
                       />
                     </div>
+
+                    <div class=${styles.row}>
+                      <div>Save Scroll Information</div>
+                      <div class=${styles.vertical(16)}></div>
+                      <${Switch}
+                        value=${!bHas(
+                          settings.ignoreSaveSettings,
+                          SaveSettingType.scroll
+                        )}
+                        .onChange=${handleChangeScrollSaveSettings}
+                      />
+                    </div>
+
+                    <div class=${styles.row}>
+                      <div>Save Zoom Information</div>
+                      <div class=${styles.vertical(16)}></div>
+                      <${Switch}
+                        value=${!bHas(
+                          settings.ignoreSaveSettings,
+                          SaveSettingType.zoomLevel
+                        )}
+                        .onChange=${handleChangeZoomLevelSaveSettings}
+                      />
+                    </div>
+
                     <div class=${styles.row}>
                       <div>Maximum comment width</div>
                       <div class=${styles.vertical(16)}></div>
@@ -180,6 +229,7 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                         .onChange=${handleChangeMaxWidthComment}
                       />
                     </div>
+
                     <div class=${styles.row}>
                       <div>Recalculation table width</div>
                       <div class=${styles.vertical(16)}></div>

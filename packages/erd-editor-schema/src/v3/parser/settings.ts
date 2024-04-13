@@ -66,6 +66,7 @@ const createSettings = (): Settings => ({
     ColumnType.columnComment,
   ],
   maxWidthComment: -1,
+  ignoreSaveSettings: 0,
 });
 
 const sizeInRange = createInRange(CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
@@ -96,6 +97,7 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   assignNumber('scrollTop');
   assignNumber('scrollLeft');
   assignNumber('show');
+  assignNumber('ignoreSaveSettings');
   assignString('databaseName');
   assignString('canvasType');
   assignBoolean('relationshipDataTypeSync');

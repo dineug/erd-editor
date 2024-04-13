@@ -95,27 +95,30 @@ const validationForeignKeyHook: CO = function* (channel, state) {
       .collection('tableEntities')
       .selectByIds(doc.tableIds);
     const foreignKeyColumnIdsSet = new Set<string>();
+    const columnCollection = query(collections).collection(
+      'tableColumnEntities'
+    );
 
     for (const { end } of relationships) {
-      query(collections)
-        .collection('tableColumnEntities')
-        .updateMany(end.columnIds, column => {
-          column.ui.keys = column.ui.keys | ColumnUIKey.foreignKey;
-          foreignKeyColumnIdsSet.add(column.id);
-        });
+      const columns = columnCollection.selectByIds(end.columnIds);
+
+      for (const column of columns) {
+        column.ui.keys = column.ui.keys | ColumnUIKey.foreignKey;
+        foreignKeyColumnIdsSet.add(column.id);
+      }
     }
 
     for (const table of tables) {
-      query(collections)
-        .collection('tableColumnEntities')
-        .updateMany(table.columnIds, column => {
-          if (
-            bHas(column.ui.keys, ColumnUIKey.foreignKey) &&
-            !foreignKeyColumnIdsSet.has(column.id)
-          ) {
-            column.ui.keys = column.ui.keys & ~ColumnUIKey.foreignKey;
-          }
-        });
+      const columns = columnCollection.selectByIds(table.columnIds);
+
+      for (const column of columns) {
+        if (
+          bHas(column.ui.keys, ColumnUIKey.foreignKey) &&
+          !foreignKeyColumnIdsSet.has(column.id)
+        ) {
+          column.ui.keys = column.ui.keys & ~ColumnUIKey.foreignKey;
+        }
+      }
     }
   });
 };

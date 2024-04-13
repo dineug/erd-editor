@@ -18,6 +18,7 @@ export type Settings = {
   relationshipOptimization: boolean;
   columnOrder: number[];
   maxWidthComment: number;
+  ignoreSaveSettings: number;
 };
 
 export const CanvasType = {
@@ -90,6 +91,11 @@ export const BracketType = {
 } as const;
 export const BracketTypeList: ReadonlyArray<number> =
   Object.values(BracketType);
+
+export const SaveSettingType = {
+  scroll: /*    */ 0b0000000000000000000000000000001,
+  zoomLevel: /* */ 0b0000000000000000000000000000010,
+};
 
 export const CANVAS_ZOOM_MIN = 0.1;
 export const CANVAS_ZOOM_MAX = 1;

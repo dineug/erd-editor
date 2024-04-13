@@ -24,6 +24,7 @@ export const ColumnOption = SchemaV3Constants.ColumnOption;
 export const ColumnUIKey = SchemaV3Constants.ColumnUIKey;
 export const OrderType = SchemaV3Constants.OrderType;
 export const OrderTypeList = SchemaV3Constants.OrderTypeList;
+export const SaveSettingType = SchemaV3Constants.SaveSettingType;
 export const CANVAS_SIZE_MAX = SchemaV3Constants.CANVAS_SIZE_MAX;
 export const CANVAS_SIZE_MIN = SchemaV3Constants.CANVAS_SIZE_MIN;
 export const CANVAS_ZOOM_MAX = SchemaV3Constants.CANVAS_ZOOM_MAX;

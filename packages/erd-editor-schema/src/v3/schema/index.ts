@@ -33,6 +33,7 @@ import {
   LanguageList,
   NameCase,
   NameCaseList,
+  SaveSettingType,
   Settings,
   Show,
 } from '@/v3/schema/settings';
@@ -83,6 +84,7 @@ export const SchemaV3Constants = {
   ColumnUIKey,
   OrderType,
   OrderTypeList,
+  SaveSettingType,
   CANVAS_SIZE_MAX,
   CANVAS_SIZE_MIN,
   CANVAS_ZOOM_MAX,

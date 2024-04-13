@@ -266,6 +266,18 @@ const changeMaxWidthComment: ReducerType<
     value === -1 ? value : maxWidthCommentInRange(value);
 };
 
+export const changeIgnoreSaveSettingsAction = createAction<
+  ActionMap[typeof ActionType.changeIgnoreSaveSettings]
+>(ActionType.changeIgnoreSaveSettings);
+
+const changeIgnoreSaveSettings: ReducerType<
+  typeof ActionType.changeIgnoreSaveSettings
+> = ({ settings }, { payload: { saveSettingType, value } }) => {
+  settings.ignoreSaveSettings = value
+    ? settings.ignoreSaveSettings | saveSettingType
+    : settings.ignoreSaveSettings & ~saveSettingType;
+};
+
 export const settingsReducers = {
   [ActionType.changeDatabaseName]: changeDatabaseName,
   [ActionType.resize]: resize,
@@ -284,6 +296,7 @@ export const settingsReducers = {
   [ActionType.changeRelationshipOptimization]: changeRelationshipOptimization,
   [ActionType.changeColumnOrder]: changeColumnOrder,
   [ActionType.changeMaxWidthComment]: changeMaxWidthComment,
+  [ActionType.changeIgnoreSaveSettings]: changeIgnoreSaveSettings,
 };
 
 export const actions = {
@@ -304,4 +317,5 @@ export const actions = {
   changeRelationshipOptimizationAction,
   changeColumnOrderAction,
   changeMaxWidthCommentAction,
+  changeIgnoreSaveSettingsAction,
 };

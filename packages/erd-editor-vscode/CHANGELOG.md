@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.20
+
+### Fixed
+
+- Improved Git status change
+
 ## 1.0.19
 
 ### Fixed

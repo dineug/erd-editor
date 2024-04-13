@@ -22,6 +22,7 @@ export const ActionType = {
   changeRelationshipOptimization: 'settings.changeRelationshipOptimization',
   changeColumnOrder: 'settings.changeColumnOrder',
   changeMaxWidthComment: 'settings.changeMaxWidthComment',
+  changeIgnoreSaveSettings: 'settings.changeIgnoreSaveSettings',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -81,6 +82,10 @@ export type ActionMap = {
   };
   [ActionType.changeMaxWidthComment]: {
     value: number;
+  };
+  [ActionType.changeIgnoreSaveSettings]: {
+    saveSettingType: number;
+    value: boolean;
   };
 };
 
