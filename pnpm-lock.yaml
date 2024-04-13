@@ -598,9 +598,6 @@ importers:
       '@types/node':
         specifier: ^18.15.0
         version: 18.18.13
-      '@types/opentype.js':
-        specifier: ^1.3.8
-        version: 1.3.8
       '@types/vscode':
         specifier: ^1.85.0
         version: 1.85.0
@@ -6252,10 +6249,6 @@ packages:
 
   /@types/normalize-package-data@2.4.1:
     resolution: {integrity: sha512-Gj7cI7z+98M282Tqmp2K5EIsoouUEzbBJhQQzDE3jSIRk6r9gsz0oUokqIUR4u1R3dMHo0pDHM7sNOHyhulypw==}
-    dev: true
-
-  /@types/opentype.js@1.3.8:
-    resolution: {integrity: sha512-H6qeTp03jrknklSn4bpT1/9+1xCAEIU2CnjcWPkicJy8A1SKuthanbvoHYMiv79/2W3Xn1XE4gfSJFzt2U3JSw==}
     dev: true
 
   /@types/parse-json@4.0.2:

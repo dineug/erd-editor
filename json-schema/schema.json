@@ -138,6 +138,10 @@
         },
         "maxWidthComment": {
           "type": "integer"
+        },
+        "ignoreSaveSettings": {
+          "description": "bit value (scroll: 1) | (zoomLevel: 2)",
+          "type": "integer"
         }
       },
       "required": [

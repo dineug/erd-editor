@@ -138,6 +138,7 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'settings.changeRelationshipOptimization',
   'settings.changeColumnOrder',
   'settings.changeMaxWidthComment',
+  'settings.changeIgnoreSaveSettings',
   // editor
   'editor.loadJson',
   'editor.clear',
