@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2024-04-13
+
+### Fixed
+- Improved Git status change
+
 ## [0.1.0] - 2024-03-22
 
 ### Added
