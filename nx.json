@@ -6,7 +6,7 @@
       "cache": true
     },
     "test": {
-      "dependsOn": ["^test"],
+      "dependsOn": ["^build"],
       "cache": true
     }
   }
