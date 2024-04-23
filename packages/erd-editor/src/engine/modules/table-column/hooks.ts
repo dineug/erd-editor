@@ -31,9 +31,7 @@ const changeColumnNotNullHook: CO = function* (channel, state) {
       const isNotNull = bHas(column.options, ColumnOption.notNull);
       if (isNotNull) return;
 
-      collection.updateOne(id, column => {
-        column.options = column.options | ColumnOption.notNull;
-      });
+      column.options = column.options | ColumnOption.notNull;
     }
   );
 };
@@ -50,11 +48,13 @@ const addColumnForeignKeyHook: CO = function* (channel, state) {
       } = state;
       if (!relationshipIds.includes(id)) return;
 
-      query(collections)
+      const columns = query(collections)
         .collection('tableColumnEntities')
-        .updateMany(end.columnIds, column => {
-          column.ui.keys = column.ui.keys | ColumnUIKey.foreignKey;
-        });
+        .selectByIds(end.columnIds);
+
+      for (const column of columns) {
+        column.ui.keys = column.ui.keys | ColumnUIKey.foreignKey;
+      }
     }
   );
 };
@@ -76,11 +76,13 @@ const removeColumnForeignKeyHook: CO = function* (channel, state) {
         .selectById(id);
       if (!relationship) return;
 
-      query(collections)
+      const columns = query(collections)
         .collection('tableColumnEntities')
-        .updateMany(relationship.end.columnIds, column => {
-          column.ui.keys = column.ui.keys & ~ColumnUIKey.foreignKey;
-        });
+        .selectByIds(relationship.end.columnIds);
+
+      for (const column of columns) {
+        column.ui.keys = column.ui.keys & ~ColumnUIKey.foreignKey;
+      }
     }
   );
 };

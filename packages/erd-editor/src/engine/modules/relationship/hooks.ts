@@ -42,7 +42,8 @@ const identificationHook: CO = function* (channel, state) {
       const collection = query(collections).collection('relationshipEntities');
       const relationships = collection.selectByIds(doc.relationshipIds);
 
-      for (const { id, end, identification } of relationships) {
+      for (const relationship of relationships) {
+        const { end, identification } = relationship;
         const table = query(collections)
           .collection('tableEntities')
           .selectById(end.tableId);
@@ -63,9 +64,7 @@ const identificationHook: CO = function* (channel, state) {
           continue;
         }
 
-        collection.updateOne(id, relationship => {
-          relationship.identification = value;
-        });
+        relationship.identification = value;
       }
     },
     10,
@@ -81,7 +80,8 @@ const startRelationshipHook: CO = function* (channel, state) {
       const collection = query(collections).collection('relationshipEntities');
       const relationships = collection.selectByIds(doc.relationshipIds);
 
-      for (const { id, end, startRelationshipType } of relationships) {
+      for (const relationship of relationships) {
+        const { end, startRelationshipType } = relationship;
         const table = query(collections)
           .collection('tableEntities')
           .selectById(end.tableId);
@@ -104,9 +104,7 @@ const startRelationshipHook: CO = function* (channel, state) {
           continue;
         }
 
-        collection.updateOne(id, relationship => {
-          relationship.startRelationshipType = value;
-        });
+        relationship.startRelationshipType = value;
       }
     },
     10,
