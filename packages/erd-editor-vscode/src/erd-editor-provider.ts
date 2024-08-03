@@ -24,15 +24,22 @@ export class ErdEditorProvider
 
   static register(
     context: vscode.ExtensionContext,
-    viewType: string,
     createEditor: CreateEditor
   ): vscode.Disposable {
-    const provider = new ErdEditorProvider(context, viewType, createEditor);
+    const provider = new ErdEditorProvider(
+      context,
+      MODERN_VIEW_TYPE,
+      createEditor
+    );
 
-    return vscode.window.registerCustomEditorProvider(viewType, provider, {
-      webviewOptions: { retainContextWhenHidden: true },
-      supportsMultipleEditorsPerDocument: viewType === MODERN_VIEW_TYPE,
-    });
+    return vscode.window.registerCustomEditorProvider(
+      MODERN_VIEW_TYPE,
+      provider,
+      {
+        webviewOptions: { retainContextWhenHidden: true },
+        supportsMultipleEditorsPerDocument: true,
+      }
+    );
   }
 
   async openCustomDocument(
@@ -49,10 +56,7 @@ export class ErdEditorProvider
     });
     let unsubscribe = () => {};
 
-    if (
-      this.viewType === MODERN_VIEW_TYPE &&
-      !this.docToWebviewMap.has(document)
-    ) {
+    if (!this.docToWebviewMap.has(document)) {
       this.docToWebviewMap.set(document, new Set());
     }
 

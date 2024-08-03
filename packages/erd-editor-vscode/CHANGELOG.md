@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0
+
+### Fixed
+
+- Legacy support for `.vuerd` and `.vuerd.json` has ended. They now operate with the new version.
+
 ## 1.0.20
 
 ### Fixed

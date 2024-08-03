@@ -20,10 +20,6 @@ create an empty file with a `.erd`, `.erd.json` extension and open it in Visual 
 - Undo, Redo
 - Settings
 
-## Migration Guide
-
-rename files with the extensions `.vuerd` and `.vuerd.json` to `.erd` and `.erd.json` respectively.
-
 ## New Features
 
 ### Multiple editors supported per document.

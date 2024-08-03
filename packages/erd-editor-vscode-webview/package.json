@@ -7,9 +7,8 @@
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "pnpm build:modern && pnpm build:legacy",
-    "build:modern": "vite build --mode modern && vite build --mode modern-lazy",
-    "build:legacy": "vite build --mode legacy && vite build --mode legacy-lazy"
+    "build": "vite build --mode modern && vite build --mode modern-lazy",
+    "build:modern": "vite build --mode modern && vite build --mode modern-lazy"
   },
   "devDependencies": {
     "@dineug/erd-editor": "workspace:*",
@@ -18,7 +17,6 @@
     "@types/vscode-webview": "1.57.5",
     "base64-arraybuffer": "^1.0.2",
     "typescript": "5.4.5",
-    "vite": "^5.2.8",
-    "vuerd": "workspace:*"
+    "vite": "^5.2.8"
   }
 }

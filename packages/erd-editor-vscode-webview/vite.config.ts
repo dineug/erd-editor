@@ -22,20 +22,6 @@ export default defineConfig(({ command, mode }) => {
       outDir: '../erd-editor-vscode/public',
       emptyOutDir: false,
     },
-    legacy: {
-      entry: './src/legacy/index.ts',
-      name: 'webview',
-      fileName: () => 'webview.js',
-      outDir: '../erd-editor-vscode/public-legacy',
-      emptyOutDir: true,
-    },
-    'legacy-lazy': {
-      entry: './src/legacy/lazy.ts',
-      name: 'lazy',
-      fileName: () => 'lazy.js',
-      outDir: '../erd-editor-vscode/public-legacy',
-      emptyOutDir: false,
-    },
   };
 
   const entry = targetMap[target].entry;

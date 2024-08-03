@@ -2,98 +2,86 @@
   "folders": [
     {
       "name": "erd-editor",
-      "path": "packages/erd-editor"
+      "path": "packages/erd-editor",
     },
     {
       "name": "erd-editor-schema",
-      "path": "packages/erd-editor-schema"
+      "path": "packages/erd-editor-schema",
     },
     {
       "name": "erd-editor-shiki-worker",
-      "path": "packages/erd-editor-shiki-worker"
+      "path": "packages/erd-editor-shiki-worker",
     },
     {
       "name": "erd-editor-vscode",
-      "path": "packages/erd-editor-vscode"
+      "path": "packages/erd-editor-vscode",
     },
     {
       "name": "erd-editor-vscode-webview",
-      "path": "packages/erd-editor-vscode-webview"
+      "path": "packages/erd-editor-vscode-webview",
     },
     {
       "name": "erd-editor-vscode-bridge",
-      "path": "packages/erd-editor-vscode-bridge"
+      "path": "packages/erd-editor-vscode-bridge",
     },
     {
       "name": "erd-editor-intellij-webview",
-      "path": "packages/erd-editor-intellij-webview"
+      "path": "packages/erd-editor-intellij-webview",
     },
     {
       "name": "erd-editor-app",
-      "path": "packages/erd-editor-app"
+      "path": "packages/erd-editor-app",
     },
     {
       "name": "schema-sql-parser",
-      "path": "packages/schema-sql-parser"
+      "path": "packages/schema-sql-parser",
     },
     {
       "name": "shared",
-      "path": "packages/shared"
+      "path": "packages/shared",
     },
     {
       "name": "r-html",
-      "path": "packages/r-html"
+      "path": "packages/r-html",
     },
     {
       "name": "vite-plugin-r-html",
-      "path": "packages/vite-plugin-r-html"
-    },
-    {
-      "name": "@legacy/vuerd",
-      "path": "packages-legacy/vuerd"
-    },
-    {
-      "name": "@legacy/sql-ddl-parser",
-      "path": "packages-legacy/sql-ddl-parser"
-    },
-    {
-      "name": "@legacy/lit-observable",
-      "path": "packages-legacy/lit-observable"
+      "path": "packages/vite-plugin-r-html",
     },
     {
       "name": "monorepo",
-      "path": "."
-    }
+      "path": ".",
+    },
   ],
   "settings": {
     "files.autoSave": "onFocusChange",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-      "source.fixAll": "explicit"
+      "source.fixAll": "explicit",
     },
     "editor.tabSize": 2,
     "editor.suggestSelection": "first",
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.tabCompletion": "on",
     "[json]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode"
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
     },
     "[javascript]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode"
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
     },
     "[typescript]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode"
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
     },
     "typescript.updateImportsOnFileMove.enabled": "always",
     "javascript.updateImportsOnFileMove.enabled": "always",
-    "typescript.enablePromptUseWorkspaceTsdk": true
+    "typescript.enablePromptUseWorkspaceTsdk": true,
   },
   "extensions": {
     "recommendations": [
       "editorconfig.editorconfig",
       "dbaeumer.vscode-eslint",
       "esbenp.prettier-vscode",
-      "styled-components.vscode-styled-components"
-    ]
-  }
+      "styled-components.vscode-styled-components",
+    ],
+  },
 }
