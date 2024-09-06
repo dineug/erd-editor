@@ -18,6 +18,7 @@ create an empty file with a `.erd`, `.erd.json` extension and open it in Intelli
 - Relationship Editing
 - Quick Search
 - Visualization
+- Code Generator
 - Undo, Redo
 - Settings
 
