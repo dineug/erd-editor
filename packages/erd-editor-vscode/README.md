@@ -17,6 +17,7 @@ create an empty file with a `.erd`, `.erd.json` extension and open it in Visual 
 - Relationship Editing
 - Quick Search
 - Visualization
+- Code Generator
 - Undo, Redo
 - Settings
 

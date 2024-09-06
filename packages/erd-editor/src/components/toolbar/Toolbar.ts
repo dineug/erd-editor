@@ -181,7 +181,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
             styles.menu,
             { active: settings.canvasType === CanvasType.generatorCode },
           ]}
-          title="Generator Code"
+          title="Code Generator"
           @click=${() => handleChangeCanvasType(CanvasType.generatorCode)}
         >
           <${Icon} name="file-code" size=${16} />

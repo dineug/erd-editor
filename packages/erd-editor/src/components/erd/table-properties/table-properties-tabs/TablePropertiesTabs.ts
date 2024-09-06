@@ -7,7 +7,7 @@ import * as styles from './TablePropertiesTabs.styles';
 export const Tab = {
   Indexes: 'Indexes',
   SchemaSQL: 'Schema SQL',
-  GeneratorCode: 'Generator Code',
+  GeneratorCode: 'Code Generator',
 } as const;
 export type Tab = ValuesType<typeof Tab>;
 const tabs: ReadonlyArray<string> = Object.values(Tab);
