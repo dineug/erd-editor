@@ -46,7 +46,6 @@
     "nx:build": "nx build"
   },
   "devDependencies": {
-    "@dineug/erd-editor": "workspace:*",
     "@dineug/erd-editor-vscode-bridge": "workspace:*",
     "@dineug/erd-editor-vscode-webview": "workspace:*",
     "@types/node": "^18.19.31",

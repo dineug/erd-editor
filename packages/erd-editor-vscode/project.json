@@ -1,10 +1,10 @@
 {
   "targets": {
-    "build": {
-      "dependsOn": ["^build"]
-    },
     "dev": {
-      "dependsOn": ["^build"]
+      "cache": false
+    },
+    "build": {
+      "cache": false
     }
   }
 }

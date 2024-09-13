@@ -1,13 +1,8 @@
 {
   "targets": {
-    "build": {
-      "dependsOn": ["^build"]
-    },
     "build:webview": {
-      "dependsOn": ["^build"]
-    },
-    "dev": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "cache": false
     }
   }
 }

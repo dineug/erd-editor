@@ -477,9 +477,6 @@ importers:
 
   packages/erd-editor-vscode:
     devDependencies:
-      '@dineug/erd-editor':
-        specifier: workspace:*
-        version: link:../erd-editor
       '@dineug/erd-editor-vscode-bridge':
         specifier: workspace:*
         version: link:../erd-editor-vscode-bridge
