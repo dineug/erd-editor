@@ -3,18 +3,15 @@ import './webview.css';
 import {
   setExportFileCallback,
   setGetShikiServiceCallback,
-  setImportFileCallback,
 } from '@dineug/erd-editor';
 import {
   AnyAction,
   Emitter,
   ThemeOptions,
   vscodeExportFileAction,
-  vscodeImportFileAction,
   vscodeInitialAction,
   vscodeSaveReplicationAction,
   vscodeSaveThemeAction,
-  vscodeSaveValueAction,
   webviewReplicationAction,
 } from '@dineug/erd-editor-vscode-bridge';
 import { encode } from 'base64-arraybuffer';
@@ -47,9 +44,6 @@ const dispatchWorker = (action: AnyAction) => {
 import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
   setGetShikiServiceCallback(getShikiService);
 });
-// setImportFileCallback(options => {
-//   dispatch(vscodeImportFileAction(options));
-// });
 setExportFileCallback(async (blob, options) => {
   const arrayBuffer = await blob.arrayBuffer();
   dispatch(
@@ -59,14 +53,6 @@ setExportFileCallback(async (blob, options) => {
     })
   );
 });
-
-const handleChange = () => {
-  dispatch(
-    vscodeSaveValueAction({
-      value: editor.value,
-    })
-  );
-};
 
 const handleChangePresetTheme = (event: Event) => {
   const e = event as CustomEvent<ThemeOptions>;
@@ -89,7 +75,7 @@ bridge.on({
       payload: { value },
     } = action;
     dispatchWorker(action);
-    // editor.addEventListener('change', handleChange);
+
     editor.addEventListener('changePresetTheme', handleChangePresetTheme);
     editor.setInitialValue(value);
     editor.enableThemeBuilder = true;

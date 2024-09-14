@@ -3,20 +3,32 @@
   "version": "0.1.0",
   "private": true,
   "description": "Entity-Relationship Diagram Editor vscode webview",
-  "type": "module",
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "vite build --mode modern && vite build --mode modern-lazy",
-    "build:modern": "vite build --mode modern && vite build --mode modern-lazy"
+    "build": "webpack --mode production",
+    "build:analyzer": "webpack --mode production --env target=analyzer",
+    "nx:build": "nx build"
   },
   "devDependencies": {
     "@dineug/erd-editor": "workspace:*",
     "@dineug/erd-editor-shiki-worker": "workspace:*",
     "@dineug/erd-editor-vscode-bridge": "workspace:*",
+    "@dineug/erd-editor-replication-store-worker": "workspace:*",
     "@types/vscode-webview": "1.57.5",
+    "@swc/core": "1.3.101",
     "base64-arraybuffer": "^1.0.2",
+    "core-js": "^3.36.1",
+    "css-loader": "^7.1.1",
+    "html-webpack-plugin": "^5.6.0",
+    "mini-css-extract-plugin": "^2.8.1",
+    "style-loader": "^4.0.0",
+    "swc-loader": "0.2.6",
+    "tsconfig-paths-webpack-plugin": "^4.1.0",
     "typescript": "5.4.5",
-    "vite": "^5.2.8"
+    "webpack": "^5.91.0",
+    "webpack-bundle-analyzer": "^4.10.2",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.4"
   }
 }

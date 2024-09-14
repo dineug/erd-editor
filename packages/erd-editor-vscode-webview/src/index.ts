@@ -1,8 +1,11 @@
+import './webview.css';
+
 import {
   setExportFileCallback,
   setGetShikiServiceCallback,
   setImportFileCallback,
 } from '@dineug/erd-editor';
+import { ReplicationStoreWorker } from '@dineug/erd-editor-replication-store-worker';
 import {
   AnyAction,
   Emitter,
@@ -12,14 +15,10 @@ import {
   vscodeInitialAction,
   vscodeSaveReplicationAction,
   vscodeSaveThemeAction,
-  vscodeSaveValueAction,
   webviewReplicationAction,
 } from '@dineug/erd-editor-vscode-bridge';
 import { encode } from 'base64-arraybuffer';
 
-import ReplicationStoreWorker from '@/services/replicationStore.worker?worker&inline';
-
-const LAZY_KEY = Symbol.for('@dineug/erd-editor');
 const bridge = new Emitter();
 const workerBridge = new Emitter();
 const vscode = acquireVsCodeApi();
@@ -38,8 +37,8 @@ const dispatchWorker = (action: AnyAction) => {
   replicationStoreWorker.postMessage(action);
 };
 
-Reflect.set(globalThis, LAZY_KEY, {
-  setGetShikiServiceCallback,
+import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
+  setGetShikiServiceCallback(getShikiService);
 });
 setImportFileCallback(options => {
   dispatch(vscodeImportFileAction(options));
@@ -56,14 +55,6 @@ setExportFileCallback(async (blob, options) => {
 
 const getSystemTheme = () =>
   document.body.classList.contains('vscode-light') ? 'light' : 'dark';
-
-const handleChange = () => {
-  dispatch(
-    vscodeSaveValueAction({
-      value: editor.value,
-    })
-  );
-};
 
 const handleChangePresetTheme = (event: Event) => {
   const e = event as CustomEvent<ThemeOptions>;
@@ -86,7 +77,7 @@ bridge.on({
       payload: { value },
     } = action;
     dispatchWorker(action);
-    // editor.addEventListener('change', handleChange);
+
     editor.addEventListener('changePresetTheme', handleChangePresetTheme);
     editor.setInitialValue(value);
     editor.enableThemeBuilder = true;

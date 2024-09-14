@@ -4,13 +4,13 @@
   "private": true,
   "description": "shared",
   "type": "module",
-  "main": "./dist/shared.js",
-  "module": "./dist/shared.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/shared.js"
+      "default": "./dist/index.js"
     }
   },
   "sideEffects": false,
@@ -27,7 +27,6 @@
     "@rollup/plugin-typescript": "^11.1.6",
     "@types/node": "^18.19.31",
     "nanoid": "^5.0.7",
-    "rollup-plugin-visualizer": "^5.12.0",
     "tslib": "^2.6.2",
     "typescript": "5.4.5",
     "vite": "^5.2.8",

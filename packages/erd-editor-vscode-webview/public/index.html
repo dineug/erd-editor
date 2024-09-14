@@ -2,21 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src * {{cspSource}} https: 'unsafe-inline' 'unsafe-eval';
-      script-src {{cspSource}} blob: data: https: 'unsafe-inline' 'unsafe-eval' 'nonce-{{nonce}}';
-      style-src {{cspSource}} https: 'unsafe-inline';
-      img-src {{cspSource}} data: https:;
-      connect-src {{cspSource}} blob: data: https: http:;"
-    />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title>erd-editor</title>
-    <link nonce="{{nonce}}" href="{{webview.css}}" rel="stylesheet" />
+    <base href="{{BASE_URL}}" />
   </head>
   <body>
-    <script nonce="{{nonce}}" src="{{webview.js}}" defer></script>
-    <script nonce="{{nonce}}" src="{{lazy.js}}" defer></script>
     <div id="loading">Loading...</div>
   </body>
 </html>

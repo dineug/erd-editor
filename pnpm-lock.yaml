@@ -415,6 +415,30 @@ importers:
         specifier: ^5.0.4
         version: 5.0.4(webpack-cli@5.1.4)(webpack@5.91.0)
 
+  packages/erd-editor-replication-store-worker:
+    devDependencies:
+      '@dineug/erd-editor':
+        specifier: workspace:*
+        version: link:../erd-editor
+      '@dineug/erd-editor-vscode-bridge':
+        specifier: workspace:*
+        version: link:../erd-editor-vscode-bridge
+      '@rollup/plugin-typescript':
+        specifier: ^11.1.6
+        version: 11.1.6(rollup@4.14.2)(tslib@2.6.2)(typescript@5.4.5)
+      tslib:
+        specifier: ^2.6.2
+        version: 2.6.2
+      typescript:
+        specifier: 5.4.5
+        version: 5.4.5
+      vite:
+        specifier: ^5.2.8
+        version: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+      vite-plugin-dts:
+        specifier: ^3.8.2
+        version: 3.8.2(@types/node@18.19.31)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
+
   packages/erd-editor-schema:
     devDependencies:
       '@dineug/shared':
@@ -429,9 +453,6 @@ importers:
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
-      rollup-plugin-visualizer:
-        specifier: ^5.12.0
-        version: 5.12.0(rollup@4.14.2)
       tslib:
         specifier: ^2.6.2
         version: 2.6.2
@@ -453,9 +474,6 @@ importers:
       comlink:
         specifier: 4.4.1
         version: 4.4.1
-      rollup-plugin-visualizer:
-        specifier: ^5.12.0
-        version: 5.12.0(rollup@4.14.2)
       shiki:
         specifier: 0.14.7
         version: 0.14.7
@@ -471,9 +489,6 @@ importers:
       vite-plugin-dts:
         specifier: ^3.8.2
         version: 3.8.2(@types/node@18.19.31)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
-      vite-tsconfig-paths:
-        specifier: 4.3.2
-        version: 4.3.2(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
 
   packages/erd-editor-vscode:
     devDependencies:
@@ -525,9 +540,6 @@ importers:
       '@rollup/plugin-typescript':
         specifier: ^11.1.6
         version: 11.1.6(rollup@4.14.2)(tslib@2.6.2)(typescript@5.4.5)
-      rollup-plugin-visualizer:
-        specifier: ^5.12.0
-        version: 5.12.0(rollup@4.14.2)
       tslib:
         specifier: ^2.6.2
         version: 2.6.2
@@ -546,24 +558,60 @@ importers:
       '@dineug/erd-editor':
         specifier: workspace:*
         version: link:../erd-editor
+      '@dineug/erd-editor-replication-store-worker':
+        specifier: workspace:*
+        version: link:../erd-editor-replication-store-worker
       '@dineug/erd-editor-shiki-worker':
         specifier: workspace:*
         version: link:../erd-editor-shiki-worker
       '@dineug/erd-editor-vscode-bridge':
         specifier: workspace:*
         version: link:../erd-editor-vscode-bridge
+      '@swc/core':
+        specifier: 1.3.101
+        version: 1.3.101
       '@types/vscode-webview':
         specifier: 1.57.5
         version: 1.57.5
       base64-arraybuffer:
         specifier: ^1.0.2
         version: 1.0.2
+      core-js:
+        specifier: ^3.36.1
+        version: 3.36.1
+      css-loader:
+        specifier: ^7.1.1
+        version: 7.1.1(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
+      html-webpack-plugin:
+        specifier: ^5.6.0
+        version: 5.6.0(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
+      mini-css-extract-plugin:
+        specifier: ^2.8.1
+        version: 2.8.1(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
+      style-loader:
+        specifier: ^4.0.0
+        version: 4.0.0(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
+      swc-loader:
+        specifier: 0.2.6
+        version: 0.2.6(@swc/core@1.3.101)(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
+      tsconfig-paths-webpack-plugin:
+        specifier: ^4.1.0
+        version: 4.1.0
       typescript:
         specifier: 5.4.5
         version: 5.4.5
-      vite:
-        specifier: ^5.2.8
-        version: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+      webpack:
+        specifier: ^5.91.0
+        version: 5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4)
+      webpack-bundle-analyzer:
+        specifier: ^4.10.2
+        version: 4.10.2
+      webpack-cli:
+        specifier: ^5.1.4
+        version: 5.1.4(webpack-bundle-analyzer@4.10.2)(webpack-dev-server@5.0.4)(webpack@5.91.0)
+      webpack-dev-server:
+        specifier: ^5.0.4
+        version: 5.0.4(webpack-cli@5.1.4)(webpack@5.91.0)
 
   packages/r-html:
     devDependencies:
@@ -591,9 +639,6 @@ importers:
       '@rollup/plugin-typescript':
         specifier: ^11.1.6
         version: 11.1.6(rollup@4.14.2)(tslib@2.6.2)(typescript@5.4.5)
-      rollup-plugin-visualizer:
-        specifier: ^5.12.0
-        version: 5.12.0(rollup@4.14.2)
       tslib:
         specifier: ^2.6.2
         version: 2.6.2
@@ -621,9 +666,6 @@ importers:
       nanoid:
         specifier: ^5.0.7
         version: 5.0.7
-      rollup-plugin-visualizer:
-        specifier: ^5.12.0
-        version: 5.12.0(rollup@4.14.2)
       tslib:
         specifier: ^2.6.2
         version: 2.6.2
@@ -3416,9 +3458,6 @@ packages:
   '@types/http-proxy@1.17.14':
     resolution: {integrity: sha512-SSrD0c1OQzlFX7pGu1eXxSEjemej64aaNPRhhVYUGqXh0BtldAAx37MG8btcumvpgKyZp1F5Gn3JkktdxiFv6w==}
 
-  '@types/json-schema@7.0.12':
-    resolution: {integrity: sha512-Hr5Jfhc9eYOQNPYO5WLDq/n4jqijdHNlDXjuAQkkt+mWdQR+XJToOHrsD4cPaMXpn6KO7y2+wM8AZEs8VpBLVA==}
-
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
@@ -5231,9 +5270,6 @@ packages:
     resolution: {integrity: sha512-jOMLD2Z7MAhyG8aJpNOpmziMOP4rPLcc95oQPKXBazW82z+CEgPFBQvEpRUa1KeIMUJo4Wsm+q6uzO/Q/4BksQ==}
     engines: {node: '>=18'}
 
-  globrex@0.1.2:
-    resolution: {integrity: sha512-uHJgbwAMwNFf5mLst7IWLNg14x1CkeqglJb/K3doi4dw6q2IvAAmM/Y81kevy83wP+Sst+nutFTYOGg3d1lsxg==}
-
   gopd@1.0.1:
     resolution: {integrity: sha512-d65bNlIadxvpb/A2abVdlqKqV563juRnZ1Wtk6s1sIR8uNsXR70xqIzVqxVf1eTqDunwT2MkczEeaezCKTZhwA==}
 
@@ -6979,9 +7015,6 @@ packages:
   serialize-javascript@4.0.0:
     resolution: {integrity: sha512-GaNA54380uFefWghODBWEGisLZFj00nS5ACs6yHa9nLqlLpVLO8ChDGeKRjZnV4Nh4n0Qi7nhYZD/9fCPzEqkw==}
 
-  serialize-javascript@6.0.1:
-    resolution: {integrity: sha512-owoXEFjWRllis8/M1Q+Cw5k8ZH40e3zhp/ovX+Xr/vi1qj6QesbyXXViFbpNvWvPNAD62SutwEXavefrLJWj7w==}
-
   serialize-javascript@6.0.2:
     resolution: {integrity: sha512-Saa1xPByTTq2gdeFZYLLo+RFE35NHZkAbqZeWNd3BpzppeVisAqpDjcp8dyf6uIvEqJRd46jemmyA4iFIeVk8g==}
 
@@ -7425,16 +7458,6 @@ packages:
       typescript: 5.4.5
       webpack: ^5.0.0
 
-  tsconfck@3.0.3:
-    resolution: {integrity: sha512-4t0noZX9t6GcPTfBAbIbbIU4pfpCwh0ueq3S4O/5qXI1VwK1outmxhe9dOiEWqMz3MW2LKgDTpqWV+37IWuVbA==}
-    engines: {node: ^18 || >=20}
-    hasBin: true
-    peerDependencies:
-      typescript: 5.4.5
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-
   tsconfig-paths-webpack-plugin@4.1.0:
     resolution: {integrity: sha512-xWFISjviPydmtmgeUAuXp4N1fky+VCtfhOkDUFIv5ea7p4wuTomI4QTrXvFBX2S4jZsmyTSrStQl+E+4w+RzxA==}
     engines: {node: '>=10.13.0'}
@@ -7675,14 +7698,6 @@ packages:
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
       typescript: 5.4.5
-      vite: '*'
-    peerDependenciesMeta:
-      vite:
-        optional: true
-
-  vite-tsconfig-paths@4.3.2:
-    resolution: {integrity: sha512-0Vd/a6po6Q+86rPlntHye7F31zA2URZMbH8M3saAZ/xR9QoGN/L21bxEGfXdWmFdNkqPpRdxFT7nmNe12e9/uA==}
-    peerDependencies:
       vite: '*'
     peerDependenciesMeta:
       vite:
@@ -9497,8 +9512,8 @@ snapshots:
 
   '@jridgewell/source-map@0.3.5':
     dependencies:
-      '@jridgewell/gen-mapping': 0.3.3
-      '@jridgewell/trace-mapping': 0.3.19
+      '@jridgewell/gen-mapping': 0.3.5
+      '@jridgewell/trace-mapping': 0.3.25
 
   '@jridgewell/sourcemap-codec@1.4.15': {}
 
@@ -11468,8 +11483,6 @@ snapshots:
     dependencies:
       '@types/node': 18.19.31
 
-  '@types/json-schema@7.0.12': {}
-
   '@types/json-schema@7.0.15': {}
 
   '@types/json5@0.0.29': {}
@@ -13208,7 +13221,7 @@ snapshots:
 
   estree-walker@3.0.3:
     dependencies:
-      '@types/estree': 1.0.1
+      '@types/estree': 1.0.5
 
   esutils@2.0.3: {}
 
@@ -13596,8 +13609,6 @@ snapshots:
       path-type: 5.0.0
       slash: 5.1.0
       unicorn-magic: 0.1.0
-
-  globrex@0.1.2: {}
 
   gopd@1.0.1:
     dependencies:
@@ -15334,7 +15345,7 @@ snapshots:
 
   schema-utils@3.3.0:
     dependencies:
-      '@types/json-schema': 7.0.12
+      '@types/json-schema': 7.0.15
       ajv: 6.12.6
       ajv-keywords: 3.5.2(ajv@6.12.6)
 
@@ -15383,10 +15394,6 @@ snapshots:
       - supports-color
 
   serialize-javascript@4.0.0:
-    dependencies:
-      randombytes: 2.1.0
-
-  serialize-javascript@6.0.1:
     dependencies:
       randombytes: 2.1.0
 
@@ -15790,7 +15797,7 @@ snapshots:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 3.3.0
-      serialize-javascript: 6.0.1
+      serialize-javascript: 6.0.2
       terser: 5.26.0
       webpack: 5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4)
     optionalDependencies:
@@ -15868,10 +15875,6 @@ snapshots:
       source-map: 0.7.4
       typescript: 5.4.5
       webpack: 5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4)
-
-  tsconfck@3.0.3(typescript@5.4.5):
-    optionalDependencies:
-      typescript: 5.4.5
 
   tsconfig-paths-webpack-plugin@4.1.0:
     dependencies:
@@ -16117,17 +16120,6 @@ snapshots:
       - '@types/node'
       - rollup
       - supports-color
-
-  vite-tsconfig-paths@4.3.2(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0)):
-    dependencies:
-      debug: 4.3.4
-      globrex: 0.1.2
-      tsconfck: 3.0.3(typescript@5.4.5)
-    optionalDependencies:
-      vite: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
-    transitivePeerDependencies:
-      - supports-color
-      - typescript
 
   vite@5.2.8(@types/node@18.19.31)(terser@5.26.0):
     dependencies:

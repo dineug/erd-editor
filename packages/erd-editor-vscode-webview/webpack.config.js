@@ -6,40 +6,16 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
 const resolvePath = value => path.resolve(__dirname, value);
 
-module.exports = (env, argv) => {
-  const isProduction = argv.mode === 'production';
-  const isDevelopment = argv.mode !== 'production';
-  const mode = isDevelopment ? 'development' : 'production';
+module.exports = env => {
   const isAnalyzer = env.target === 'analyzer';
-  const isWebview = env.target === 'webview';
 
   const config = {
-    mode,
-    devtool: isDevelopment ? 'eval-source-map' : undefined,
-    devServer: {
-      static: {
-        directory: resolvePath('public'),
-      },
-      compress: true,
-      historyApiFallback: true,
-      open: true,
-      hot: true,
-      client: {
-        overlay: false,
-      },
-    },
-    entry: './src/main',
+    entry: './src/index',
     output: {
-      path: isWebview
-        ? resolvePath('../../../src/main/resources/assets')
-        : resolvePath('dist'),
-      publicPath: '/',
-      filename: isProduction
-        ? 'static/js/bundle.[contenthash:8].js'
-        : 'static/js/bundle.js',
-      chunkFilename: isProduction
-        ? 'static/js/[id].[contenthash:8].js'
-        : 'static/js/[name].js',
+      path: resolvePath('../erd-editor-vscode/public'),
+      publicPath: './',
+      filename: 'static/js/bundle.[contenthash:8].js',
+      chunkFilename: 'static/js/[id].[contenthash:8].js',
       clean: true,
     },
     resolve: {
@@ -64,10 +40,7 @@ module.exports = (env, argv) => {
         },
         {
           test: /\.css$/i,
-          use: [
-            isProduction ? MiniCssExtractPlugin.loader : 'style-loader',
-            'css-loader',
-          ],
+          use: [MiniCssExtractPlugin.loader, 'css-loader'],
         },
         {
           test: /\.(png|svg|jpg|jpeg|gif)$/i,
@@ -80,11 +53,10 @@ module.exports = (env, argv) => {
       ],
     },
     plugins: [
-      isProduction &&
-        new MiniCssExtractPlugin({
-          filename: 'static/css/bundle.[contenthash:8].css',
-          chunkFilename: 'static/css/[id].[contenthash:8].css',
-        }),
+      new MiniCssExtractPlugin({
+        filename: 'static/css/bundle.[contenthash:8].css',
+        chunkFilename: 'static/css/[id].[contenthash:8].css',
+      }),
       new HtmlWebpackPlugin({
         inject: true,
         template: resolvePath('public/index.html'),

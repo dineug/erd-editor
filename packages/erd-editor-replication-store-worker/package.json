@@ -1,8 +1,7 @@
 {
-  "name": "@dineug/erd-editor-vscode-bridge",
+  "name": "@dineug/erd-editor-replication-store-worker",
   "version": "0.1.0",
   "private": true,
-  "description": "vscode <=> webview bridge",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -13,7 +12,6 @@
       "default": "./dist/index.js"
     }
   },
-  "sideEffects": false,
   "files": [
     "dist/*.js",
     "dist/**/*.ts"
@@ -24,7 +22,8 @@
     "build": "vite build"
   },
   "devDependencies": {
-    "@dineug/shared": "workspace:*",
+    "@dineug/erd-editor": "workspace:*",
+    "@dineug/erd-editor-vscode-bridge": "workspace:*",
     "@rollup/plugin-typescript": "^11.1.6",
     "tslib": "^2.6.2",
     "typescript": "5.4.5",

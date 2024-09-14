@@ -2,7 +2,7 @@ import { Emitter } from '@dineug/erd-editor-vscode-bridge';
 import * as vscode from 'vscode';
 
 import { ErdDocument } from '@/erd-document';
-import { getNonce, textDecoder } from '@/utils';
+import { textDecoder } from '@/utils';
 
 export type CreateEditor = (
   ...args: ConstructorParameters<typeof Editor>
@@ -41,25 +41,11 @@ export abstract class Editor {
     const content = await vscode.workspace.fs.readFile(
       vscode.Uri.joinPath(publicUri, 'index.html')
     );
-    const nonce = getNonce();
-    const cspSource = this.webview.cspSource;
-    const styleUri = this.webview
-      .asWebviewUri(vscode.Uri.joinPath(publicUri, 'webview.css'))
-      .toString();
-    const webviewScriptUri = this.webview
-      .asWebviewUri(vscode.Uri.joinPath(publicUri, 'webview.js'))
-      .toString();
-    const lazyScriptUri = this.webview
-      .asWebviewUri(vscode.Uri.joinPath(publicUri, 'lazy.js'))
+    const baseUrl = this.webview
+      .asWebviewUri(vscode.Uri.joinPath(publicUri, '/'))
       .toString();
 
-    const html = textDecoder
-      .decode(content)
-      .replace(/{{nonce}}/gi, nonce)
-      .replace(/{{cspSource}}/gi, cspSource)
-      .replace('{{webview.css}}', styleUri)
-      .replace('{{webview.js}}', webviewScriptUri)
-      .replace('{{lazy.js}}', lazyScriptUri);
+    const html = textDecoder.decode(content).replace('{{BASE_URL}}', baseUrl);
 
     return html;
   }
