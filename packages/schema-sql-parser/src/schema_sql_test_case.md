@@ -827,6 +827,30 @@ ALTER TABLE Persons ADD CONSTRAINT PK_Person PRIMARY KEY (ID,LastName)
 }
 ```
 
+### Alter database.Table Add PRIMARY KEY
+
+```sql
+ALTER TABLE "public".Persons ADD PRIMARY KEY (ID)
+ALTER TABLE "public".Persons ADD CONSTRAINT PK_Person PRIMARY KEY (ID,LastName)
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "Persons",
+      "columnNames": ["ID"]
+    },
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "Persons",
+      "columnNames": ["ID", "LastName"]
+    }
+  ]
+}
+```
+
 ### Alter Table Add FOREIGN KEY
 
 ```sql
@@ -859,11 +883,67 @@ FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)
 }
 ```
 
+### Alter database.Table Add FOREIGN KEY
+
+```sql
+ALTER TABLE "public".Orders
+ADD FOREIGN KEY (PersonID) REFERENCES "public".Persons(PersonID)
+
+ALTER TABLE "public".Orders
+ADD CONSTRAINT FK_PersonOrder
+FOREIGN KEY (PersonID) REFERENCES "public".Persons(PersonID)
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "alter.table.add.foreignKey",
+      "name": "Orders",
+      "columnNames": ["PersonID"],
+      "refTableName": "Persons",
+      "refColumnNames": ["PersonID"]
+    },
+    {
+      "type": "alter.table.add.foreignKey",
+      "name": "Orders",
+      "columnNames": ["PersonID"],
+      "refTableName": "Persons",
+      "refColumnNames": ["PersonID"]
+    }
+  ]
+}
+```
+
 ### Alter Table Add UNIQUE
 
 ```sql
 ALTER TABLE Persons ADD UNIQUE (ID)
 ALTER TABLE Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "alter.table.add.unique",
+      "name": "Persons",
+      "columnNames": ["ID"]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "Persons",
+      "columnNames": ["ID", "LastName"]
+    }
+  ]
+}
+```
+
+### Alter database.Table Add UNIQUE
+
+```sql
+ALTER TABLE "public".Persons ADD UNIQUE (ID)
+ALTER TABLE "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
 ```
 
 ```json

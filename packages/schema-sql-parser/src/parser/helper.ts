@@ -130,7 +130,18 @@ export const isAlterTableAddPrimaryKey = (tokens: Token[]) => {
       isAdd(pos + 3) &&
       isConstraint(pos + 4) &&
       isPrimary(pos + 6) &&
-      isKey(pos + 7));
+      isKey(pos + 7)) ||
+    (isAlter(pos) &&
+      isTable(pos + 1) &&
+      isAdd(pos + 5) &&
+      isPrimary(pos + 6) &&
+      isKey(pos + 7)) ||
+    (isAlter(pos) &&
+      isTable(pos + 1) &&
+      isAdd(pos + 5) &&
+      isConstraint(pos + 6) &&
+      isPrimary(pos + 8) &&
+      isKey(pos + 9));
 };
 
 export const isAlterTableAddForeignKey = (tokens: Token[]) => {
@@ -151,7 +162,18 @@ export const isAlterTableAddForeignKey = (tokens: Token[]) => {
       isAdd(pos + 3) &&
       isConstraint(pos + 4) &&
       isForeign(pos + 6) &&
-      isKey(pos + 7));
+      isKey(pos + 7)) ||
+    (isAlter(pos) &&
+      isTable(pos + 1) &&
+      isAdd(pos + 5) &&
+      isForeign(pos + 6) &&
+      isKey(pos + 7)) ||
+    (isAlter(pos) &&
+      isTable(pos + 1) &&
+      isAdd(pos + 5) &&
+      isConstraint(pos + 6) &&
+      isForeign(pos + 8) &&
+      isKey(pos + 9));
 };
 
 export const isAlterTableAddUnique = (tokens: Token[]) => {
@@ -166,7 +188,13 @@ export const isAlterTableAddUnique = (tokens: Token[]) => {
       isTable(pos + 1) &&
       isAdd(pos + 3) &&
       isConstraint(pos + 4) &&
-      isUnique(pos + 6));
+      isUnique(pos + 6)) ||
+    (isAlter(pos) && isTable(pos + 1) && isAdd(pos + 5) && isUnique(pos + 6)) ||
+    (isAlter(pos) &&
+      isTable(pos + 1) &&
+      isAdd(pos + 5) &&
+      isConstraint(pos + 6) &&
+      isUnique(pos + 8));
 };
 
 const DataTypes: ReadonlyArray<string> = Array.from(
