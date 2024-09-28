@@ -58,7 +58,7 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.2.8
-        version: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
 
   packages/erd-editor:
     devDependencies:
@@ -112,7 +112,7 @@ importers:
         version: 8.0.8(@types/react@18.2.77)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@storybook/addon-interactions':
         specifier: ^8.0.8
-        version: 8.0.8(vitest@1.5.0(@types/node@18.19.31)(terser@5.26.0))
+        version: 8.0.8(vitest@1.5.0(@types/node@20.16.10)(terser@5.26.0))
       '@storybook/addon-links':
         specifier: ^8.0.8
         version: 8.0.8(react@18.2.0)
@@ -124,10 +124,10 @@ importers:
         version: 8.0.8
       '@storybook/html-vite':
         specifier: ^8.0.8
-        version: 8.0.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
+        version: 8.0.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
       '@storybook/test':
         specifier: ^8.0.8
-        version: 8.0.8(vitest@1.5.0(@types/node@18.19.31)(terser@5.26.0))
+        version: 8.0.8(vitest@1.5.0(@types/node@20.16.10)(terser@5.26.0))
       '@types/color':
         specifier: ^3.0.6
         version: 3.0.6
@@ -196,10 +196,10 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.2.8
-        version: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
       vite-plugin-dts:
         specifier: ^3.8.2
-        version: 3.8.2(@types/node@18.19.31)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
+        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
 
   packages/erd-editor-app:
     dependencies:
@@ -434,10 +434,10 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.2.8
-        version: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
       vite-plugin-dts:
         specifier: ^3.8.2
-        version: 3.8.2(@types/node@18.19.31)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
+        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
 
   packages/erd-editor-schema:
     devDependencies:
@@ -461,10 +461,10 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.2.8
-        version: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
       vite-plugin-dts:
         specifier: ^3.8.2
-        version: 3.8.2(@types/node@18.19.31)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
+        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
 
   packages/erd-editor-shiki-worker:
     devDependencies:
@@ -485,10 +485,10 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.2.8
-        version: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
       vite-plugin-dts:
         specifier: ^3.8.2
-        version: 3.8.2(@types/node@18.19.31)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
+        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
 
   packages/erd-editor-vscode:
     devDependencies:
@@ -499,8 +499,8 @@ importers:
         specifier: workspace:*
         version: link:../erd-editor-vscode-webview
       '@types/node':
-        specifier: ^18.19.31
-        version: 18.19.31
+        specifier: ^20.16.10
+        version: 20.16.10
       '@types/vscode':
         specifier: ^1.85.0
         version: 1.85.0
@@ -548,10 +548,10 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.2.8
-        version: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
       vite-plugin-dts:
         specifier: ^3.8.2
-        version: 3.8.2(@types/node@18.19.31)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
+        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
 
   packages/erd-editor-vscode-webview:
     devDependencies:
@@ -629,10 +629,10 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.2.8
-        version: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
       vite-plugin-dts:
         specifier: ^3.8.2
-        version: 3.8.2(@types/node@18.19.31)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
+        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
 
   packages/schema-sql-parser:
     devDependencies:
@@ -647,13 +647,13 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.2.8
-        version: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
       vite-plugin-dts:
         specifier: ^3.8.2
-        version: 3.8.2(@types/node@18.19.31)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
+        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
       vitest:
         specifier: ^1.5.0
-        version: 1.5.0(@types/node@18.19.31)(terser@5.26.0)
+        version: 1.5.0(@types/node@20.16.10)(terser@5.26.0)
 
   packages/shared:
     devDependencies:
@@ -661,8 +661,8 @@ importers:
         specifier: ^11.1.6
         version: 11.1.6(rollup@4.14.2)(tslib@2.6.2)(typescript@5.4.5)
       '@types/node':
-        specifier: ^18.19.31
-        version: 18.19.31
+        specifier: ^20.16.10
+        version: 20.16.10
       nanoid:
         specifier: ^5.0.7
         version: 5.0.7
@@ -674,10 +674,10 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.2.8
-        version: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
       vite-plugin-dts:
         specifier: ^3.8.2
-        version: 3.8.2(@types/node@18.19.31)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
+        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
 
   packages/vite-plugin-r-html:
     dependencies:
@@ -699,10 +699,10 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.2.8
-        version: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
       vite-plugin-dts:
         specifier: ^3.8.2
-        version: 3.8.2(@types/node@18.19.31)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
+        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
 
 packages:
 
@@ -3493,6 +3493,9 @@ packages:
   '@types/node@18.19.31':
     resolution: {integrity: sha512-ArgCD39YpyyrtFKIqMDvjz79jto5fcI/SVUs2HwB+f0dAzq68yqOdyaSivLiLugSziTpNXLQrVb7RZFmdZzbhA==}
 
+  '@types/node@20.16.10':
+    resolution: {integrity: sha512-vQUKgWTjEIRFCvK6CyriPH3MZYiYlNy0fKiEYHWbcoWLEgs4opurGGKlebrTLqdSMIbXImH6XExNiIyNUv3WpA==}
+
   '@types/normalize-package-data@2.4.1':
     resolution: {integrity: sha512-Gj7cI7z+98M282Tqmp2K5EIsoouUEzbBJhQQzDE3jSIRk6r9gsz0oUokqIUR4u1R3dMHo0pDHM7sNOHyhulypw==}
 
@@ -5863,6 +5866,7 @@ packages:
     resolution: {integrity: sha512-Quz3MvAwHxVYNXsOByL7xI5EB2WYOeFswqaHIA3qOK3isRWTxiplBEocmmru6XmxDB2L7jDNYtYA4FyimoAFEw==}
     engines: {node: '>=8.17.0'}
     hasBin: true
+    bundledDependencies: []
 
   jsonfile@4.0.0:
     resolution: {integrity: sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg==}
@@ -7549,6 +7553,9 @@ packages:
 
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
+
+  undici-types@6.19.8:
+    resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
 
   unicode-canonical-property-names-ecmascript@2.0.0:
     resolution: {integrity: sha512-yY5PpDlfVIU5+y/BSCxAJRBIS1Zc2dDG3Ujq+sR0U+JjUevW2JhocOF+soROYDSaAezOzOKuyyixhD6mBknSmQ==}
@@ -9582,23 +9589,23 @@ snapshots:
       '@types/react': 18.2.77
       react: 18.2.0
 
-  '@microsoft/api-extractor-model@7.28.13(@types/node@18.19.31)':
+  '@microsoft/api-extractor-model@7.28.13(@types/node@20.16.10)':
     dependencies:
       '@microsoft/tsdoc': 0.14.2
       '@microsoft/tsdoc-config': 0.16.2
-      '@rushstack/node-core-library': 4.0.2(@types/node@18.19.31)
+      '@rushstack/node-core-library': 4.0.2(@types/node@20.16.10)
     transitivePeerDependencies:
       - '@types/node'
 
-  '@microsoft/api-extractor@7.43.0(@types/node@18.19.31)':
+  '@microsoft/api-extractor@7.43.0(@types/node@20.16.10)':
     dependencies:
-      '@microsoft/api-extractor-model': 7.28.13(@types/node@18.19.31)
+      '@microsoft/api-extractor-model': 7.28.13(@types/node@20.16.10)
       '@microsoft/tsdoc': 0.14.2
       '@microsoft/tsdoc-config': 0.16.2
-      '@rushstack/node-core-library': 4.0.2(@types/node@18.19.31)
+      '@rushstack/node-core-library': 4.0.2(@types/node@20.16.10)
       '@rushstack/rig-package': 0.5.2
-      '@rushstack/terminal': 0.10.0(@types/node@18.19.31)
-      '@rushstack/ts-command-line': 4.19.1(@types/node@18.19.31)
+      '@rushstack/terminal': 0.10.0(@types/node@20.16.10)
+      '@rushstack/ts-command-line': 4.19.1(@types/node@20.16.10)
       lodash: 4.17.21
       minimatch: 3.0.8
       resolve: 1.22.8
@@ -10508,7 +10515,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.14.2':
     optional: true
 
-  '@rushstack/node-core-library@4.0.2(@types/node@18.19.31)':
+  '@rushstack/node-core-library@4.0.2(@types/node@20.16.10)':
     dependencies:
       fs-extra: 7.0.1
       import-lazy: 4.0.0
@@ -10517,23 +10524,23 @@ snapshots:
       semver: 7.5.4
       z-schema: 5.0.5
     optionalDependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@rushstack/rig-package@0.5.2':
     dependencies:
       resolve: 1.22.8
       strip-json-comments: 3.1.1
 
-  '@rushstack/terminal@0.10.0(@types/node@18.19.31)':
+  '@rushstack/terminal@0.10.0(@types/node@20.16.10)':
     dependencies:
-      '@rushstack/node-core-library': 4.0.2(@types/node@18.19.31)
+      '@rushstack/node-core-library': 4.0.2(@types/node@20.16.10)
       supports-color: 8.1.1
     optionalDependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
-  '@rushstack/ts-command-line@4.19.1(@types/node@18.19.31)':
+  '@rushstack/ts-command-line@4.19.1(@types/node@20.16.10)':
     dependencies:
-      '@rushstack/terminal': 0.10.0(@types/node@18.19.31)
+      '@rushstack/terminal': 0.10.0(@types/node@20.16.10)
       '@types/argparse': 1.0.38
       argparse: 1.0.10
       string-argv: 0.3.2
@@ -10682,11 +10689,11 @@ snapshots:
     dependencies:
       '@storybook/global': 5.0.0
 
-  '@storybook/addon-interactions@8.0.8(vitest@1.5.0(@types/node@18.19.31)(terser@5.26.0))':
+  '@storybook/addon-interactions@8.0.8(vitest@1.5.0(@types/node@20.16.10)(terser@5.26.0))':
     dependencies:
       '@storybook/global': 5.0.0
       '@storybook/instrumenter': 8.0.8
-      '@storybook/test': 8.0.8(vitest@1.5.0(@types/node@18.19.31)(terser@5.26.0))
+      '@storybook/test': 8.0.8(vitest@1.5.0(@types/node@20.16.10)(terser@5.26.0))
       '@storybook/types': 8.0.8
       polished: 4.2.2
       ts-dedent: 2.2.0
@@ -10775,7 +10782,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@storybook/builder-vite@8.0.8(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))':
+  '@storybook/builder-vite@8.0.8(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))':
     dependencies:
       '@storybook/channels': 8.0.8
       '@storybook/client-logger': 8.0.8
@@ -10794,7 +10801,7 @@ snapshots:
       fs-extra: 11.1.1
       magic-string: 0.30.5
       ts-dedent: 2.2.0
-      vite: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+      vite: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
     optionalDependencies:
       typescript: 5.4.5
     transitivePeerDependencies:
@@ -11029,9 +11036,9 @@ snapshots:
 
   '@storybook/global@5.0.0': {}
 
-  '@storybook/html-vite@8.0.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))':
+  '@storybook/html-vite@8.0.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))':
     dependencies:
-      '@storybook/builder-vite': 8.0.8(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0))
+      '@storybook/builder-vite': 8.0.8(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
       '@storybook/core-server': 8.0.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@storybook/html': 8.0.8
       '@storybook/node-logger': 8.0.8
@@ -11143,14 +11150,14 @@ snapshots:
       - encoding
       - supports-color
 
-  '@storybook/test@8.0.8(vitest@1.5.0(@types/node@18.19.31)(terser@5.26.0))':
+  '@storybook/test@8.0.8(vitest@1.5.0(@types/node@20.16.10)(terser@5.26.0))':
     dependencies:
       '@storybook/client-logger': 8.0.8
       '@storybook/core-events': 8.0.8
       '@storybook/instrumenter': 8.0.8
       '@storybook/preview-api': 8.0.8
       '@testing-library/dom': 9.3.4
-      '@testing-library/jest-dom': 6.4.2(vitest@1.5.0(@types/node@18.19.31)(terser@5.26.0))
+      '@testing-library/jest-dom': 6.4.2(vitest@1.5.0(@types/node@20.16.10)(terser@5.26.0))
       '@testing-library/user-event': 14.5.2(@testing-library/dom@9.3.4)
       '@vitest/expect': 1.3.1
       '@vitest/spy': 1.4.0
@@ -11251,7 +11258,7 @@ snapshots:
       lz-string: 1.5.0
       pretty-format: 27.5.1
 
-  '@testing-library/jest-dom@6.4.2(vitest@1.5.0(@types/node@18.19.31)(terser@5.26.0))':
+  '@testing-library/jest-dom@6.4.2(vitest@1.5.0(@types/node@20.16.10)(terser@5.26.0))':
     dependencies:
       '@adobe/css-tools': 4.3.3
       '@babel/runtime': 7.23.6
@@ -11262,7 +11269,7 @@ snapshots:
       lodash: 4.17.21
       redent: 3.0.0
     optionalDependencies:
-      vitest: 1.5.0(@types/node@18.19.31)(terser@5.26.0)
+      vitest: 1.5.0(@types/node@20.16.10)(terser@5.26.0)
 
   '@testing-library/user-event@14.5.2(@testing-library/dom@9.3.4)':
     dependencies:
@@ -11279,11 +11286,11 @@ snapshots:
   '@types/body-parser@1.19.2':
     dependencies:
       '@types/connect': 3.4.35
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@types/bonjour@3.5.13':
     dependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@types/color-convert@2.0.0':
     dependencies:
@@ -11298,15 +11305,15 @@ snapshots:
   '@types/connect-history-api-fallback@1.5.4':
     dependencies:
       '@types/express-serve-static-core': 4.17.36
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@types/connect@3.4.35':
     dependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@types/cross-spawn@6.0.2':
     dependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@types/d3-array@3.2.1': {}
 
@@ -11451,7 +11458,7 @@ snapshots:
 
   '@types/express-serve-static-core@4.17.36':
     dependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
       '@types/qs': 6.9.8
       '@types/range-parser': 1.2.4
       '@types/send': 0.17.1
@@ -11486,7 +11493,7 @@ snapshots:
 
   '@types/http-proxy@1.17.14':
     dependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@types/json-schema@7.0.15': {}
 
@@ -11508,13 +11515,17 @@ snapshots:
 
   '@types/node-forge@1.3.10':
     dependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@types/node@16.9.1': {}
 
   '@types/node@18.19.31':
     dependencies:
       undici-types: 5.26.5
+
+  '@types/node@20.16.10':
+    dependencies:
+      undici-types: 6.19.8
 
   '@types/normalize-package-data@2.4.1': {}
 
@@ -11539,7 +11550,7 @@ snapshots:
 
   '@types/resolve@1.17.1':
     dependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@types/retry@0.12.0': {}
 
@@ -11552,7 +11563,7 @@ snapshots:
   '@types/send@0.17.1':
     dependencies:
       '@types/mime': 1.3.2
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@types/serve-index@1.9.4':
     dependencies:
@@ -11562,17 +11573,17 @@ snapshots:
     dependencies:
       '@types/http-errors': 2.0.1
       '@types/mime': 3.0.1
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@types/serve-static@1.15.7':
     dependencies:
       '@types/http-errors': 2.0.1
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
       '@types/send': 0.17.1
 
   '@types/sockjs@0.3.36':
     dependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@types/trusted-types@2.0.7': {}
 
@@ -11586,7 +11597,7 @@ snapshots:
 
   '@types/ws@8.5.10':
     dependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
 
   '@typescript-eslint/eslint-plugin@7.6.0(@typescript-eslint/parser@7.6.0(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5)':
     dependencies:
@@ -14059,13 +14070,13 @@ snapshots:
 
   jest-worker@26.6.2:
     dependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
       merge-stream: 2.0.0
       supports-color: 7.2.0
 
   jest-worker@27.5.1:
     dependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
@@ -15970,6 +15981,8 @@ snapshots:
 
   undici-types@5.26.5: {}
 
+  undici-types@6.19.8: {}
+
   unicode-canonical-property-names-ecmascript@2.0.0: {}
 
   unicode-match-property-ecmascript@2.0.0:
@@ -16092,13 +16105,13 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite-node@1.5.0(@types/node@18.19.31)(terser@5.26.0):
+  vite-node@1.5.0(@types/node@20.16.10)(terser@5.26.0):
     dependencies:
       cac: 6.7.14
       debug: 4.3.4
       pathe: 1.1.1
       picocolors: 1.0.0
-      vite: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+      vite: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -16109,9 +16122,9 @@ snapshots:
       - supports-color
       - terser
 
-  vite-plugin-dts@3.8.2(@types/node@18.19.31)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@18.19.31)(terser@5.26.0)):
+  vite-plugin-dts@3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0)):
     dependencies:
-      '@microsoft/api-extractor': 7.43.0(@types/node@18.19.31)
+      '@microsoft/api-extractor': 7.43.0(@types/node@20.16.10)
       '@rollup/pluginutils': 5.1.0(rollup@4.14.2)
       '@vue/language-core': 1.8.27(typescript@5.4.5)
       debug: 4.3.4
@@ -16120,23 +16133,23 @@ snapshots:
       typescript: 5.4.5
       vue-tsc: 1.8.27(typescript@5.4.5)
     optionalDependencies:
-      vite: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
+      vite: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
     transitivePeerDependencies:
       - '@types/node'
       - rollup
       - supports-color
 
-  vite@5.2.8(@types/node@18.19.31)(terser@5.26.0):
+  vite@5.2.8(@types/node@20.16.10)(terser@5.26.0):
     dependencies:
       esbuild: 0.20.2
       postcss: 8.4.38
       rollup: 4.14.2
     optionalDependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
       fsevents: 2.3.3
       terser: 5.26.0
 
-  vitest@1.5.0(@types/node@18.19.31)(terser@5.26.0):
+  vitest@1.5.0(@types/node@20.16.10)(terser@5.26.0):
     dependencies:
       '@vitest/expect': 1.5.0
       '@vitest/runner': 1.5.0
@@ -16155,11 +16168,11 @@ snapshots:
       strip-literal: 2.1.0
       tinybench: 2.5.1
       tinypool: 0.8.3
-      vite: 5.2.8(@types/node@18.19.31)(terser@5.26.0)
-      vite-node: 1.5.0(@types/node@18.19.31)(terser@5.26.0)
+      vite: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
+      vite-node: 1.5.0(@types/node@20.16.10)(terser@5.26.0)
       why-is-node-running: 2.2.2
     optionalDependencies:
-      '@types/node': 18.19.31
+      '@types/node': 20.16.10
     transitivePeerDependencies:
       - less
       - lightningcss

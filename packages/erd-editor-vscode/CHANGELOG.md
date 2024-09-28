@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.1
+
+### Fixed
+
+- zoom step
+- Add support for ALTER database.TABLE syntax in the parser
+
 ## 2.0.0
 
 ### Fixed
