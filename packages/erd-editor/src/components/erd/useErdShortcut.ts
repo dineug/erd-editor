@@ -153,9 +153,9 @@ export function useErdShortcut(ctx: Ctx) {
       }
 
       type === KeyBindingName.zoomIn &&
-        store.dispatch(streamZoomLevelAction$(0.1));
+        store.dispatch(streamZoomLevelAction$(0.04));
       type === KeyBindingName.zoomOut &&
-        store.dispatch(streamZoomLevelAction$(-0.1));
+        store.dispatch(streamZoomLevelAction$(-0.04));
     }
 
     if (!showHighLevelTable) {

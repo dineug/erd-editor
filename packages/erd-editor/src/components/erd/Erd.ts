@@ -153,7 +153,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     store.dispatch(
       $mod
-        ? streamZoomLevelAction$(event.deltaY < 0 ? 0.1 : -0.1)
+        ? streamZoomLevelAction$(event.deltaY < 0 ? 0.03 : -0.03)
         : streamScrollToAction({
             movementX: event.deltaX * -1,
             movementY: event.deltaY * -1,
