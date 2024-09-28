@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [0.1.2] - 2024-09-28
+
+### Fixed
+- zoom step
+- Add support for ALTER database.TABLE syntax in the parser
+
 ## [0.1.1] - 2024-04-13
 
 ### Fixed
