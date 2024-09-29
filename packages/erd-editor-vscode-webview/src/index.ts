@@ -8,6 +8,7 @@ import {
 import { ReplicationStoreWorker } from '@dineug/erd-editor-replication-store-worker';
 import {
   AnyAction,
+  Appearance,
   Emitter,
   ThemeOptions,
   vscodeExportFileAction,
@@ -28,6 +29,8 @@ const replicationStoreWorker = new ReplicationStoreWorker({
   name: '@dineug/erd-editor-vscode-webview/replication-store-worker',
 });
 const loading = document.querySelector('#loading');
+
+let appearance: Appearance | 'auto' = 'dark';
 
 const dispatch = (action: AnyAction) => {
   vscode.postMessage(action);
@@ -53,12 +56,22 @@ setExportFileCallback(async (blob, options) => {
   );
 });
 
-const getSystemTheme = () =>
-  document.body.classList.contains('vscode-light') ? 'light' : 'dark';
+function getSystemTheme(): Appearance {
+  const themeKind = document.body.dataset.vscodeThemeKind;
+
+  return themeKind
+    ? themeKind === 'vscode-light'
+      ? Appearance.light
+      : Appearance.dark
+    : document.body.classList.contains('vscode-light')
+      ? Appearance.light
+      : Appearance.dark;
+}
 
 const handleChangePresetTheme = (event: Event) => {
   const e = event as CustomEvent<ThemeOptions>;
   dispatch(vscodeSaveThemeAction(e.detail));
+  appearance = e.detail.appearance;
 };
 
 bridge.on({
@@ -96,6 +109,10 @@ bridge.on({
     dispatchWorker(action);
   },
   webviewUpdateTheme: ({ payload }) => {
+    if (payload.appearance) {
+      appearance = payload.appearance;
+    }
+
     editor.setPresetTheme({
       ...payload,
       appearance:
@@ -105,6 +122,18 @@ bridge.on({
   webviewUpdateReadonly: ({ payload }) => {
     editor.readonly = payload;
   },
+});
+
+const observer = new MutationObserver(() => {
+  if (appearance === 'auto') {
+    editor.setPresetTheme({
+      appearance: getSystemTheme(),
+    });
+  }
+});
+observer.observe(document.body, {
+  attributes: true,
+  attributeFilter: ['class', 'data-vscode-theme-kind'],
 });
 
 workerBridge.on({
