@@ -1,1 +1,1 @@
-export const MODERN_VIEW_TYPE = 'editor.erd';
+export const VIEW_TYPE = 'editor.erd';

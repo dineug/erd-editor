@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { MODERN_VIEW_TYPE } from '@/constants/viewType';
+import { VIEW_TYPE } from '@/constants/viewType';
 import { CreateEditor } from '@/editor';
 import { ErdDocument } from '@/erd-document';
 import { trackEvent } from '@/utils/googleAnalytics';
@@ -26,20 +26,12 @@ export class ErdEditorProvider
     context: vscode.ExtensionContext,
     createEditor: CreateEditor
   ): vscode.Disposable {
-    const provider = new ErdEditorProvider(
-      context,
-      MODERN_VIEW_TYPE,
-      createEditor
-    );
+    const provider = new ErdEditorProvider(context, VIEW_TYPE, createEditor);
 
-    return vscode.window.registerCustomEditorProvider(
-      MODERN_VIEW_TYPE,
-      provider,
-      {
-        webviewOptions: { retainContextWhenHidden: true },
-        supportsMultipleEditorsPerDocument: true,
-      }
-    );
+    return vscode.window.registerCustomEditorProvider(VIEW_TYPE, provider, {
+      webviewOptions: { retainContextWhenHidden: true },
+      supportsMultipleEditorsPerDocument: true,
+    });
   }
 
   async openCustomDocument(
@@ -54,7 +46,6 @@ export class ErdEditorProvider
     const listener = document.onDidChangeContent(() => {
       this._onDidChangeCustomDocument.fire({ document });
     });
-    let unsubscribe = () => {};
 
     if (!this.docToWebviewMap.has(document)) {
       this.docToWebviewMap.set(document, new Set());
@@ -62,7 +53,6 @@ export class ErdEditorProvider
 
     document.onDidDispose(() => {
       listener.dispose();
-      unsubscribe();
       this.docToWebviewMap.delete(document);
     });
 
