@@ -1,8 +1,7 @@
 {
   "targets": {
     "build": {
-      "outputs": ["{workspaceRoot}/packages/erd-editor-vscode/public"],
-      "cache": false
+      "outputs": ["{workspaceRoot}/packages/erd-editor-vscode/public"]
     }
   }
 }

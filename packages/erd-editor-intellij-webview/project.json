@@ -1,6 +1,7 @@
 {
   "targets": {
     "build:webview": {
+      "inputs": ["default", "^production"],
       "dependsOn": ["^build"],
       "cache": false
     }
