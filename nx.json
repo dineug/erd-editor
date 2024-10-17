@@ -9,7 +9,7 @@
       "inputs": ["default", "^production"],
       "outputs": ["{projectRoot}/dist"],
       "dependsOn": ["^build"],
-      "cache": true
+      "cache": false
     },
     "build": {
       "inputs": ["default", "^production"],
