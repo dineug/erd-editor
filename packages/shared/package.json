@@ -14,12 +14,6 @@
     }
   },
   "sideEffects": false,
-  "files": [
-    "dist/*.js",
-    "dist/**/*.ts"
-  ],
-  "author": "SeungHwan-Lee <dineug2@gmail.com>",
-  "license": "MIT",
   "scripts": {
     "build": "vite build"
   },

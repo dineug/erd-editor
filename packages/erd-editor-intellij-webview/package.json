@@ -14,12 +14,15 @@
     "nx:build": "nx build",
     "nx:build:webview": "nx build:webview"
   },
-  "devDependencies": {
+  "dependencies": {
     "@dineug/erd-editor": "workspace:*",
     "@dineug/erd-editor-shiki-worker": "workspace:*",
     "@dineug/erd-editor-vscode-bridge": "workspace:*",
+    "@dineug/shared": "workspace:*",
+    "base64-arraybuffer": "^1.0.2"
+  },
+  "devDependencies": {
     "@swc/core": "1.3.101",
-    "base64-arraybuffer": "^1.0.2",
     "core-js": "^3.36.1",
     "css-loader": "^7.1.1",
     "html-webpack-plugin": "^5.6.0",

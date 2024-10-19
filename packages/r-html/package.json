@@ -4,28 +4,15 @@
   "private": true,
   "description": "Tagged templates framework",
   "type": "module",
-  "main": "./dist/r-html.js",
-  "module": "./dist/r-html.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/r-html.js"
+      "default": "./dist/index.js"
     }
   },
-  "files": [
-    "dist/*.js",
-    "dist/*.cjs",
-    "dist/**/*.ts"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/dineug/r-html.git"
-  },
-  "bugs": {
-    "url": "https://github.com/dineug/r-html/issues"
-  },
-  "homepage": "https://github.com/dineug/r-html#readme",
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
@@ -34,7 +21,6 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.6",
-    "rollup-plugin-visualizer": "^5.12.0",
     "tslib": "^2.6.2",
     "typescript": "5.4.5",
     "vite": "^5.2.8",

@@ -1,10 +1,6 @@
 {
   "name": "@dineug/erd-editor-monorepo",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "packages-legacy/*"
-  ],
   "engines": {
     "node": ">=18.0"
   },
@@ -48,7 +44,7 @@
     "tslib": "^2.6.2",
     "typescript": "5.4.5",
     "vite": "^5.2.8",
-    "nx": "18.2.4"
+    "nx": "20.0.3"
   },
   "lint-staged": {
     "**/*.{js,ts,tsx}": [

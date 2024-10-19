@@ -14,17 +14,24 @@ const banner = `/*!
  * @license ${pkg.license}
  */`;
 
+const external = new RegExp(
+  `^(${Object.keys({
+    ...pkg.peerDependencies,
+    ...pkg.dependencies,
+  }).join('|')})(?:/.+)*$`
+);
+
 export default defineConfig({
   build: {
     lib: {
-      entry: './src/index.ts',
-      fileName: 'erd-editor-schema',
+      entry: ['./src/index.ts'],
       formats: ['es'],
     },
     rollupOptions: {
       output: {
         banner,
       },
+      external,
     },
   },
   resolve: {

@@ -45,7 +45,9 @@ export abstract class Editor {
       .asWebviewUri(vscode.Uri.joinPath(publicUri, '/'))
       .toString();
 
-    const html = textDecoder.decode(content).replace('{{BASE_URL}}', baseUrl);
+    const html = textDecoder
+      .decode(content)
+      .replace('{{extension-base-url}}', baseUrl);
 
     return html;
   }

@@ -48,6 +48,7 @@
   "devDependencies": {
     "@dineug/erd-editor-vscode-bridge": "workspace:*",
     "@dineug/erd-editor-vscode-webview": "workspace:*",
+    "@dineug/shared": "workspace:*",
     "@types/node": "^20.16.10",
     "@types/vscode": "^1.85.0",
     "base64-arraybuffer": "^1.0.2",
@@ -80,10 +81,7 @@
         "command": "vuerd.showEditor",
         "category": "vuerd",
         "title": "Open ERD Editor",
-        "icon": {
-          "dark": "./assets/menu-icon.svg",
-          "light": "./assets/menu-icon.svg"
-        }
+        "icon": "$(file-text)"
       },
       {
         "command": "vuerd.showSourceToSide",
@@ -95,10 +93,7 @@
         "command": "vuerd.showEditorToSide",
         "category": "vuerd",
         "title": "Open ERD Editor to the Side",
-        "icon": {
-          "dark": "./assets/menu-icon.svg",
-          "light": "./assets/menu-icon.svg"
-        }
+        "icon": "$(file-text)"
       }
     ],
     "configurationDefaults": {

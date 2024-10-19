@@ -12,10 +12,6 @@
       "default": "./dist/index.js"
     }
   },
-  "files": [
-    "dist/*.js",
-    "dist/**/*.ts"
-  ],
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
@@ -24,6 +20,7 @@
   "devDependencies": {
     "@dineug/erd-editor": "workspace:*",
     "@dineug/erd-editor-vscode-bridge": "workspace:*",
+    "@dineug/shared": "workspace:*",
     "@rollup/plugin-typescript": "^11.1.6",
     "tslib": "^2.6.2",
     "typescript": "5.4.5",

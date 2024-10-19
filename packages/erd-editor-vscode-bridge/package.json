@@ -2,7 +2,6 @@
   "name": "@dineug/erd-editor-vscode-bridge",
   "version": "0.1.0",
   "private": true,
-  "description": "vscode <=> webview bridge",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -14,14 +13,11 @@
     }
   },
   "sideEffects": false,
-  "files": [
-    "dist/*.js",
-    "dist/**/*.ts"
-  ],
-  "author": "SeungHwan-Lee <dineug2@gmail.com>",
-  "license": "MIT",
   "scripts": {
     "build": "vite build"
+  },
+  "peerDependencies": {
+    "@dineug/shared": "*"
   },
   "devDependencies": {
     "@dineug/shared": "workspace:*",

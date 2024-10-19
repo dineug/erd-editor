@@ -88,7 +88,6 @@
     "html-to-image": "^1.11.11",
     "lodash-es": "^4.17.21",
     "luxon": "^3.4.4",
-    "rollup-plugin-visualizer": "^5.12.0",
     "rxjs": "^7.8.1",
     "stats.js": "^0.17.0",
     "storybook": "^8.0.8",

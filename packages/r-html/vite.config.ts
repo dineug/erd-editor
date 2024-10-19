@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import typescript from '@rollup/plugin-typescript';
-import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
@@ -18,8 +17,7 @@ const banner = `/*!
 export default defineConfig({
   build: {
     lib: {
-      entry: './src/index.ts',
-      fileName: 'r-html',
+      entry: ['./src/index.ts'],
       formats: ['es'],
     },
     rollupOptions: {
@@ -33,11 +31,7 @@ export default defineConfig({
       '@': join(__dirname, 'src'),
     },
   },
-  plugins: [
-    visualizer({ filename: './dist/stats.html' }),
-    dts(),
-    typescript({ noEmitOnError: true }),
-  ],
+  plugins: [dts(), typescript({ noEmitOnError: true })],
   server: {
     open: true,
   },

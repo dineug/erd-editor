@@ -34,4 +34,4 @@ yarn-error.log*
 *.sw?
 
 
-.nx/cache
+.nx

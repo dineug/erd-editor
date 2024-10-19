@@ -4,23 +4,19 @@
   "private": true,
   "description": "Permissive schema SQL parser",
   "type": "module",
-  "main": "./dist/schema-sql-parser.js",
-  "module": "./dist/schema-sql-parser.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/schema-sql-parser.js"
+      "default": "./dist/index.js"
     }
   },
-  "files": [
-    "dist/*.js",
-    "dist/**/*.ts"
-  ],
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "vite build --mode lib",
+    "build": "vite build",
     "test": "vitest run",
     "test:dev": "vitest dev"
   },
