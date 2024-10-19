@@ -88,7 +88,7 @@ class WebviewPanel(
             ): Boolean {
                 logger.debug("${file.name} disposed: ${isDisposed}")
 
-                val action = mapper.readValue(request, VscodeBridgeAction::class.java)
+                val action = mapper.readValue(request, HostBridgeCommand::class.java)
 
                 if (isDisposed) {
                     logger.debug("${file.name}: disposed")
@@ -165,13 +165,13 @@ class WebviewPanel(
         )
     }
 
-    fun dispatch(action: WebviewBridgeAction) {
+    fun dispatch(action: WebviewBridgeCommand) {
         val json = mapper.writeValueAsString(action)
         logger.debug("${file.name}: dispatch")
         runJS("window.postMessage(JSON.parse(String.raw`$json`), 'https://$DOMAIN')")
     }
 
-    fun dispatchBroadcast(action: WebviewBridgeAction) {
+    fun dispatchBroadcast(action: WebviewBridgeCommand) {
         val json = mapper.writeValueAsString(action)
         logger.debug("${file.name}: dispatchBroadcast")
 

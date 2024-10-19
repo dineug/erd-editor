@@ -71,13 +71,13 @@ class ErdEditor(
         if (WebviewPanel.isSupported) {
             bridge.subscribe(coroutineScope) { action ->
                 when (action) {
-                    is VscodeBridgeAction.VscodeInitial -> {
+                    is HostBridgeCommand.Initial -> {
                         val settings = ErdEditorAppSettings.instance
                         val value = file.inputStream.reader().readText()
 
                         webviewPanel.dispatch(
-                            WebviewBridgeAction.WebviewUpdateTheme(
-                                WebviewUpdateThemePayload(
+                            WebviewBridgeCommand.UpdateTheme(
+                                WebviewUpdateThemeCommandPayload(
                                     settings.state.appearance,
                                     settings.state.grayColor,
                                     settings.state.accentColor
@@ -85,61 +85,32 @@ class ErdEditor(
                             )
                         )
                         webviewPanel.dispatch(
-                            WebviewBridgeAction.WebviewUpdateReadonly(file.isWritable.not())
+                            WebviewBridgeCommand.UpdateReadonly(file.isWritable.not())
                         )
                         webviewPanel.dispatch(
-                            WebviewBridgeAction.WebviewInitialValue(
-                                WebviewInitialValuePayload(value)
+                            WebviewBridgeCommand.InitialValue(
+                                WebviewInitialValueCommandPayload(value)
                             )
                         )
                     }
 
-                    is VscodeBridgeAction.VscodeSaveValue -> {
+                    is HostBridgeCommand.SaveValue -> {
                         savePayload.value = action.payload.value
                     }
 
-                    is VscodeBridgeAction.VscodeSaveReplication -> {
+                    is HostBridgeCommand.SaveReplication -> {
                         webviewPanel.dispatchBroadcast(
-                            WebviewBridgeAction.WebviewReplication(
-                                WebviewReplicationPayload(
+                            WebviewBridgeCommand.Replication(
+                                WebviewReplicationCommandPayload(
                                     action.payload.actions
                                 )
                             )
                         )
                     }
 
-                    is VscodeBridgeAction.VscodeImportFile -> {
-//                        val type = action.payload.type
-//                        val op = action.payload.op
-//                        val extensions = action.payload.accept.split(",")
-//                            .map { it.substringAfterLast(".", "") }
-//                            .toTypedArray()
-//                        val descriptor = FileSaverDescriptor(
-//                            "Import $type To",
-//                            "Choose the $type destination",
-//                            *extensions
-//                        )
-//
-//                        ApplicationManager.getApplication().invokeLater {
-//                            FileChooserFactory.getInstance()
-//                                .createFileChooser(descriptor, null, null)
-//                                .choose(null).also { files ->
-//                                    if (files.isEmpty()) {
-//                                        return@invokeLater
-//                                    }
-//
-//                                    val file = files.first()
-//                                    val value = file.inputStream.reader().readText()
-//                                    webviewPanel.dispatch(
-//                                        WebviewBridgeAction.WebviewImportFile(
-//                                            WebviewImportFilePayload(type, op, value)
-//                                        )
-//                                    )
-//                            }
-//                        }
-                    }
+                    is HostBridgeCommand.ImportFile -> {}
 
-                    is VscodeBridgeAction.VscodeExportFile -> {
+                    is HostBridgeCommand.ExportFile -> {
                         val byteArray = Base64.getDecoder().decode(action.payload.value)
                         val extension = action.payload.fileName.substringAfterLast(".", "")
                         val descriptor = FileSaverDescriptor(
@@ -175,7 +146,7 @@ class ErdEditor(
                         }
                     }
 
-                    is VscodeBridgeAction.VscodeSaveTheme -> {
+                    is HostBridgeCommand.SaveTheme -> {
                         val settings = ErdEditorAppSettings.instance
                         settings.setTheme(ErdEditorAppSettings.State(
                             action.payload.appearance,
@@ -231,8 +202,8 @@ class ErdEditor(
     override fun onSettingsChange(settings: ErdEditorAppSettings) {
         if (this::webviewPanel.isInitialized) {
             webviewPanel.dispatch(
-                WebviewBridgeAction.WebviewUpdateTheme(
-                    WebviewUpdateThemePayload(
+                WebviewBridgeCommand.UpdateTheme(
+                    WebviewUpdateThemeCommandPayload(
                         settings.state.appearance,
                         settings.state.grayColor,
                         settings.state.accentColor

@@ -6,12 +6,12 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
 class WebviewBridge {
-    private val _bridge = MutableSharedFlow<VscodeBridgeAction>(replay = 0)
+    private val _bridge = MutableSharedFlow<HostBridgeCommand>(replay = 0)
     private val bridge = _bridge.asSharedFlow()
 
-    suspend fun emit(appEvent: VscodeBridgeAction) = _bridge.emit(appEvent)
+    suspend fun emit(appEvent: HostBridgeCommand) = _bridge.emit(appEvent)
 
-    fun subscribe(scope: CoroutineScope, block: suspend (VscodeBridgeAction) -> Unit) = bridge.onEach(block).launchIn(scope)
+    fun subscribe(scope: CoroutineScope, block: suspend (HostBridgeCommand) -> Unit) = bridge.onEach(block).launchIn(scope)
 }
 
 @JsonTypeInfo(
@@ -20,57 +20,57 @@ class WebviewBridge {
     property = "type"
 )
 @JsonSubTypes(
-    JsonSubTypes.Type(value = VscodeBridgeAction.VscodeExportFile::class, name = "vscodeExportFile"),
-    JsonSubTypes.Type(value = VscodeBridgeAction.VscodeImportFile::class, name = "vscodeImportFile"),
-    JsonSubTypes.Type(value = VscodeBridgeAction.VscodeInitial::class, name = "vscodeInitial"),
-    JsonSubTypes.Type(value = VscodeBridgeAction.VscodeSaveValue::class, name = "vscodeSaveValue"),
-    JsonSubTypes.Type(value = VscodeBridgeAction.VscodeSaveReplication::class, name = "vscodeSaveReplication"),
-    JsonSubTypes.Type(value = VscodeBridgeAction.VscodeSaveTheme::class, name = "vscodeSaveTheme")
+    JsonSubTypes.Type(value = HostBridgeCommand.ExportFile::class, name = "hostExportFileCommand"),
+    JsonSubTypes.Type(value = HostBridgeCommand.ImportFile::class, name = "hostImportFileCommand"),
+    JsonSubTypes.Type(value = HostBridgeCommand.Initial::class, name = "hostInitialCommand"),
+    JsonSubTypes.Type(value = HostBridgeCommand.SaveValue::class, name = "hostSaveValueCommand"),
+    JsonSubTypes.Type(value = HostBridgeCommand.SaveReplication::class, name = "hostSaveReplicationCommand"),
+    JsonSubTypes.Type(value = HostBridgeCommand.SaveTheme::class, name = "hostSaveThemeCommand")
 )
-sealed class VscodeBridgeAction {
-    data class VscodeExportFile(val payload: VscodeExportFilePayload) : VscodeBridgeAction() {
-        val type = "vscodeExportFile"
+sealed class HostBridgeCommand {
+    data class ExportFile(val payload: HostExportFileCommandPayload) : HostBridgeCommand() {
+        val type = "hostExportFileCommand"
     }
-    data class VscodeImportFile(val payload: VscodeImportFilePayload) : VscodeBridgeAction() {
-        val type = "vscodeImportFile"
+    data class ImportFile(val payload: HostImportFileCommandPayload) : HostBridgeCommand() {
+        val type = "hostImportFileCommand"
     }
-    data object VscodeInitial: VscodeBridgeAction() {
-        val type = "vscodeInitial"
+    data object Initial: HostBridgeCommand() {
+        val type = "hostInitialCommand"
     }
-    data class VscodeSaveValue(val payload: VscodeSaveValuePayload): VscodeBridgeAction() {
-        val type = "vscodeSaveValue"
+    data class SaveValue(val payload: HostSaveValueCommandPayload): HostBridgeCommand() {
+        val type = "hostSaveValueCommand"
     }
-    data class VscodeSaveReplication(val payload: VscodeSaveReplicationPayload): VscodeBridgeAction() {
-        val type = "vscodeSaveReplication"
+    data class SaveReplication(val payload: HostSaveReplicationCommandPayload): HostBridgeCommand() {
+        val type = "hostSaveReplicationCommand"
     }
-    data class VscodeSaveTheme(val payload: VscodeSaveThemePayload): VscodeBridgeAction() {
-        val type = "vscodeSaveTheme"
+    data class SaveTheme(val payload: HostSaveThemeCommandPayload): HostBridgeCommand() {
+        val type = "hostSaveThemeCommand"
     }
 }
-data class VscodeExportFilePayload(val value: String, val fileName: String)
-data class VscodeImportFilePayload(val type: String, val op: String, val accept: String)
-data class VscodeSaveValuePayload(val value: String)
-data class VscodeSaveReplicationPayload(val actions: Any)
-data class VscodeSaveThemePayload(val appearance: String, val grayColor: String, val accentColor: String)
+data class HostExportFileCommandPayload(val value: String, val fileName: String)
+data class HostImportFileCommandPayload(val type: String, val op: String, val accept: String)
+data class HostSaveValueCommandPayload(val value: String)
+data class HostSaveReplicationCommandPayload(val actions: Any)
+data class HostSaveThemeCommandPayload(val appearance: String, val grayColor: String, val accentColor: String)
 
-sealed class WebviewBridgeAction {
-    data class WebviewImportFile(val payload: WebviewImportFilePayload) : WebviewBridgeAction() {
-        val type = "webviewImportFile"
+sealed class WebviewBridgeCommand {
+    data class ImportFile(val payload: WebviewImportFileCommandPayload) : WebviewBridgeCommand() {
+        val type = "webviewImportFileCommand"
     }
-    data class WebviewInitialValue(val payload: WebviewInitialValuePayload): WebviewBridgeAction() {
-        val type = "webviewInitialValue"
+    data class InitialValue(val payload: WebviewInitialValueCommandPayload): WebviewBridgeCommand() {
+        val type = "webviewInitialValueCommand"
     }
-    data class WebviewUpdateTheme(val payload: WebviewUpdateThemePayload): WebviewBridgeAction() {
-        val type = "webviewUpdateTheme"
+    data class UpdateTheme(val payload: WebviewUpdateThemeCommandPayload): WebviewBridgeCommand() {
+        val type = "webviewUpdateThemeCommand"
     }
-    data class WebviewUpdateReadonly(val payload: Boolean): WebviewBridgeAction() {
-        val type = "webviewUpdateReadonly"
+    data class UpdateReadonly(val payload: Boolean): WebviewBridgeCommand() {
+        val type = "webviewUpdateReadonlyCommand"
     }
-    data class WebviewReplication(val payload: WebviewReplicationPayload): WebviewBridgeAction() {
-        val type = "webviewReplication"
+    data class Replication(val payload: WebviewReplicationCommandPayload): WebviewBridgeCommand() {
+        val type = "webviewReplicationCommand"
     }
 }
-data class WebviewImportFilePayload(val type: String, val op: String, val value: String)
-data class WebviewInitialValuePayload(val value: String)
-data class WebviewUpdateThemePayload(val appearance: String?, val grayColor: String?, val accentColor: String?)
-data class WebviewReplicationPayload(val actions: Any)
+data class WebviewImportFileCommandPayload(val type: String, val op: String, val value: String)
+data class WebviewInitialValueCommandPayload(val value: String)
+data class WebviewUpdateThemeCommandPayload(val appearance: String?, val grayColor: String?, val accentColor: String?)
+data class WebviewReplicationCommandPayload(val actions: Any)
