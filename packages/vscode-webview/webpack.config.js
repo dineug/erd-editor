@@ -12,7 +12,7 @@ module.exports = env => {
   const config = {
     entry: './src/index',
     output: {
-      path: resolvePath('../erd-editor-vscode/public'),
+      path: resolvePath('../vscode-extension/public'),
       publicPath: './',
       filename: 'bundle.[contenthash:8].js',
       chunkFilename: '[id].[contenthash:8].js',

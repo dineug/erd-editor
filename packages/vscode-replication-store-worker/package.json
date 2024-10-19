@@ -1,5 +1,5 @@
 {
-  "name": "@dineug/erd-editor-replication-store-worker",
+  "name": "@dineug/erd-editor-vscode-replication-store-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",

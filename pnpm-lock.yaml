@@ -60,145 +60,7 @@ importers:
         specifier: ^5.2.8
         version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
 
-  packages/erd-editor:
-    devDependencies:
-      '@dineug/erd-editor-schema':
-        specifier: workspace:*
-        version: link:../erd-editor-schema
-      '@dineug/erd-editor-shiki-worker':
-        specifier: workspace:*
-        version: link:../erd-editor-shiki-worker
-      '@dineug/go':
-        specifier: ^0.1.8
-        version: 0.1.8
-      '@dineug/r-html':
-        specifier: workspace:*
-        version: link:../r-html
-      '@dineug/schema-sql-parser':
-        specifier: workspace:*
-        version: link:../schema-sql-parser
-      '@dineug/shared':
-        specifier: workspace:*
-        version: link:../shared
-      '@dineug/vite-plugin-r-html':
-        specifier: workspace:*
-        version: link:../vite-plugin-r-html
-      '@easylogic/colorpicker':
-        specifier: 1.10.11
-        version: 1.10.11
-      '@egjs/agent':
-        specifier: ^2.4.3
-        version: 2.4.3
-      '@floating-ui/dom':
-        specifier: 1.6.3
-        version: 1.6.3
-      '@fortawesome/free-regular-svg-icons':
-        specifier: 6.5.2
-        version: 6.5.2
-      '@fortawesome/free-solid-svg-icons':
-        specifier: 6.5.2
-        version: 6.5.2
-      '@mdi/js':
-        specifier: 7.4.47
-        version: 7.4.47
-      '@radix-ui/colors':
-        specifier: 3.0.0
-        version: 3.0.0
-      '@rollup/plugin-typescript':
-        specifier: ^11.1.6
-        version: 11.1.6(rollup@4.14.2)(tslib@2.6.2)(typescript@5.4.5)
-      '@storybook/addon-essentials':
-        specifier: ^8.0.8
-        version: 8.0.8(@types/react@18.2.77)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@storybook/addon-interactions':
-        specifier: ^8.0.8
-        version: 8.0.8(vitest@1.5.0(@types/node@20.16.10)(terser@5.26.0))
-      '@storybook/addon-links':
-        specifier: ^8.0.8
-        version: 8.0.8(react@18.2.0)
-      '@storybook/blocks':
-        specifier: ^8.0.8
-        version: 8.0.8(@types/react@18.2.77)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@storybook/html':
-        specifier: ^8.0.8
-        version: 8.0.8
-      '@storybook/html-vite':
-        specifier: ^8.0.8
-        version: 8.0.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
-      '@storybook/test':
-        specifier: ^8.0.8
-        version: 8.0.8(vitest@1.5.0(@types/node@20.16.10)(terser@5.26.0))
-      '@types/color':
-        specifier: ^3.0.6
-        version: 3.0.6
-      '@types/d3':
-        specifier: 7.4.3
-        version: 7.4.3
-      '@types/highlight-words-core':
-        specifier: ^1.2.3
-        version: 1.2.3
-      '@types/lodash-es':
-        specifier: ^4.17.12
-        version: 4.17.12
-      '@types/luxon':
-        specifier: ^3.4.2
-        version: 3.4.2
-      color:
-        specifier: ^4.2.3
-        version: 4.2.3
-      comlink:
-        specifier: 4.4.1
-        version: 4.4.1
-      d3:
-        specifier: 7.9.0
-        version: 7.9.0
-      deepmerge:
-        specifier: ^4.3.1
-        version: 4.3.1
-      framer-motion:
-        specifier: ^11.0.28
-        version: 11.0.28(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      fuse.js:
-        specifier: ^7.0.0
-        version: 7.0.0
-      highlight-words-core:
-        specifier: ^1.2.2
-        version: 1.2.2
-      html-to-image:
-        specifier: ^1.11.11
-        version: 1.11.11
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
-      luxon:
-        specifier: ^3.4.4
-        version: 3.4.4
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.1
-      stats.js:
-        specifier: ^0.17.0
-        version: 0.17.0
-      storybook:
-        specifier: ^8.0.8
-        version: 8.0.8(@babel/preset-env@7.23.6(@babel/core@7.24.4))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      tinykeys:
-        specifier: ^2.1.0
-        version: 2.1.0
-      tslib:
-        specifier: ^2.6.2
-        version: 2.6.2
-      typescript:
-        specifier: 5.4.5
-        version: 5.4.5
-      vite:
-        specifier: ^5.2.8
-        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
-      vite-plugin-dts:
-        specifier: ^3.8.2
-        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
-
-  packages/erd-editor-app:
+  packages/app:
     dependencies:
       '@dineug/erd-editor':
         specifier: workspace:*
@@ -358,78 +220,131 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
 
-  packages/erd-editor-intellij-webview:
-    dependencies:
-      '@dineug/erd-editor':
+  packages/erd-editor:
+    devDependencies:
+      '@dineug/erd-editor-schema':
         specifier: workspace:*
-        version: link:../erd-editor
+        version: link:../erd-editor-schema
       '@dineug/erd-editor-shiki-worker':
         specifier: workspace:*
         version: link:../erd-editor-shiki-worker
-      '@dineug/erd-editor-vscode-bridge':
+      '@dineug/go':
+        specifier: ^0.1.8
+        version: 0.1.8
+      '@dineug/r-html':
         specifier: workspace:*
-        version: link:../erd-editor-vscode-bridge
+        version: link:../r-html
+      '@dineug/schema-sql-parser':
+        specifier: workspace:*
+        version: link:../schema-sql-parser
       '@dineug/shared':
         specifier: workspace:*
         version: link:../shared
-      base64-arraybuffer:
-        specifier: ^1.0.2
-        version: 1.0.2
-    devDependencies:
-      '@swc/core':
-        specifier: 1.3.101
-        version: 1.3.101
-      core-js:
-        specifier: ^3.36.1
-        version: 3.36.1
-      css-loader:
-        specifier: ^7.1.1
-        version: 7.1.1(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
-      html-webpack-plugin:
-        specifier: ^5.6.0
-        version: 5.6.0(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
-      mini-css-extract-plugin:
-        specifier: ^2.8.1
-        version: 2.8.1(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
-      style-loader:
-        specifier: ^4.0.0
-        version: 4.0.0(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
-      swc-loader:
-        specifier: 0.2.6
-        version: 0.2.6(@swc/core@1.3.101)(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
-      tsconfig-paths-webpack-plugin:
-        specifier: ^4.1.0
-        version: 4.1.0
-      typescript:
-        specifier: 5.4.5
-        version: 5.4.5
-      webpack:
-        specifier: ^5.91.0
-        version: 5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4)
-      webpack-bundle-analyzer:
-        specifier: ^4.10.2
-        version: 4.10.2
-      webpack-cli:
-        specifier: ^5.1.4
-        version: 5.1.4(webpack-bundle-analyzer@4.10.2)(webpack-dev-server@5.0.4)(webpack@5.91.0)
-      webpack-dev-server:
-        specifier: ^5.0.4
-        version: 5.0.4(webpack-cli@5.1.4)(webpack@5.91.0)
-
-  packages/erd-editor-replication-store-worker:
-    devDependencies:
-      '@dineug/erd-editor':
+      '@dineug/vite-plugin-r-html':
         specifier: workspace:*
-        version: link:../erd-editor
-      '@dineug/erd-editor-vscode-bridge':
-        specifier: workspace:*
-        version: link:../erd-editor-vscode-bridge
-      '@dineug/shared':
-        specifier: workspace:*
-        version: link:../shared
+        version: link:../vite-plugin-r-html
+      '@easylogic/colorpicker':
+        specifier: 1.10.11
+        version: 1.10.11
+      '@egjs/agent':
+        specifier: ^2.4.3
+        version: 2.4.3
+      '@floating-ui/dom':
+        specifier: 1.6.3
+        version: 1.6.3
+      '@fortawesome/free-regular-svg-icons':
+        specifier: 6.5.2
+        version: 6.5.2
+      '@fortawesome/free-solid-svg-icons':
+        specifier: 6.5.2
+        version: 6.5.2
+      '@mdi/js':
+        specifier: 7.4.47
+        version: 7.4.47
+      '@radix-ui/colors':
+        specifier: 3.0.0
+        version: 3.0.0
       '@rollup/plugin-typescript':
         specifier: ^11.1.6
         version: 11.1.6(rollup@4.14.2)(tslib@2.6.2)(typescript@5.4.5)
+      '@storybook/addon-essentials':
+        specifier: ^8.0.8
+        version: 8.0.8(@types/react@18.2.77)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@storybook/addon-interactions':
+        specifier: ^8.0.8
+        version: 8.0.8(vitest@1.5.0(@types/node@20.16.10)(terser@5.26.0))
+      '@storybook/addon-links':
+        specifier: ^8.0.8
+        version: 8.0.8(react@18.2.0)
+      '@storybook/blocks':
+        specifier: ^8.0.8
+        version: 8.0.8(@types/react@18.2.77)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@storybook/html':
+        specifier: ^8.0.8
+        version: 8.0.8
+      '@storybook/html-vite':
+        specifier: ^8.0.8
+        version: 8.0.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
+      '@storybook/test':
+        specifier: ^8.0.8
+        version: 8.0.8(vitest@1.5.0(@types/node@20.16.10)(terser@5.26.0))
+      '@types/color':
+        specifier: ^3.0.6
+        version: 3.0.6
+      '@types/d3':
+        specifier: 7.4.3
+        version: 7.4.3
+      '@types/highlight-words-core':
+        specifier: ^1.2.3
+        version: 1.2.3
+      '@types/lodash-es':
+        specifier: ^4.17.12
+        version: 4.17.12
+      '@types/luxon':
+        specifier: ^3.4.2
+        version: 3.4.2
+      color:
+        specifier: ^4.2.3
+        version: 4.2.3
+      comlink:
+        specifier: 4.4.1
+        version: 4.4.1
+      d3:
+        specifier: 7.9.0
+        version: 7.9.0
+      deepmerge:
+        specifier: ^4.3.1
+        version: 4.3.1
+      framer-motion:
+        specifier: ^11.0.28
+        version: 11.0.28(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      fuse.js:
+        specifier: ^7.0.0
+        version: 7.0.0
+      highlight-words-core:
+        specifier: ^1.2.2
+        version: 1.2.2
+      html-to-image:
+        specifier: ^1.11.11
+        version: 1.11.11
+      lodash-es:
+        specifier: ^4.17.21
+        version: 4.17.21
+      luxon:
+        specifier: ^3.4.4
+        version: 3.4.4
+      rxjs:
+        specifier: ^7.8.1
+        version: 7.8.1
+      stats.js:
+        specifier: ^0.17.0
+        version: 0.17.0
+      storybook:
+        specifier: ^8.0.8
+        version: 8.0.8(@babel/preset-env@7.23.6(@babel/core@7.24.4))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      tinykeys:
+        specifier: ^2.1.0
+        version: 2.1.0
       tslib:
         specifier: ^2.6.2
         version: 2.6.2
@@ -495,86 +410,17 @@ importers:
         specifier: ^3.8.2
         version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
 
-  packages/erd-editor-vscode:
-    devDependencies:
-      '@dineug/erd-editor-vscode-bridge':
-        specifier: workspace:*
-        version: link:../erd-editor-vscode-bridge
-      '@dineug/erd-editor-vscode-webview':
-        specifier: workspace:*
-        version: link:../erd-editor-vscode-webview
-      '@dineug/shared':
-        specifier: workspace:*
-        version: link:../shared
-      '@types/node':
-        specifier: ^20.16.10
-        version: 20.16.10
-      '@types/vscode':
-        specifier: ^1.85.0
-        version: 1.85.0
-      base64-arraybuffer:
-        specifier: ^1.0.2
-        version: 1.0.2
-      crypto-js:
-        specifier: ^4.2.0
-        version: 4.2.0
-      macaddress:
-        specifier: ^0.5.3
-        version: 0.5.3
-      node-fetch:
-        specifier: ^3.3.2
-        version: 3.3.2
-      ts-loader:
-        specifier: ^9.5.1
-        version: 9.5.1(typescript@5.4.5)(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
-      tsconfig-paths-webpack-plugin:
-        specifier: ^4.1.0
-        version: 4.1.0
-      typescript:
-        specifier: 5.4.5
-        version: 5.4.5
-      webpack:
-        specifier: ^5.91.0
-        version: 5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4)
-      webpack-cli:
-        specifier: ^5.1.4
-        version: 5.1.4(webpack@5.91.0)
-
-  packages/erd-editor-vscode-bridge:
-    devDependencies:
-      '@dineug/shared':
-        specifier: workspace:*
-        version: link:../shared
-      '@rollup/plugin-typescript':
-        specifier: ^11.1.6
-        version: 11.1.6(rollup@4.14.2)(tslib@2.6.2)(typescript@5.4.5)
-      tslib:
-        specifier: ^2.6.2
-        version: 2.6.2
-      typescript:
-        specifier: 5.4.5
-        version: 5.4.5
-      vite:
-        specifier: ^5.2.8
-        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
-      vite-plugin-dts:
-        specifier: ^3.8.2
-        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
-
-  packages/erd-editor-vscode-webview:
+  packages/intellij-webview:
     dependencies:
       '@dineug/erd-editor':
         specifier: workspace:*
         version: link:../erd-editor
-      '@dineug/erd-editor-replication-store-worker':
-        specifier: workspace:*
-        version: link:../erd-editor-replication-store-worker
       '@dineug/erd-editor-shiki-worker':
         specifier: workspace:*
         version: link:../erd-editor-shiki-worker
       '@dineug/erd-editor-vscode-bridge':
         specifier: workspace:*
-        version: link:../erd-editor-vscode-bridge
+        version: link:../vscode-bridge
       '@dineug/shared':
         specifier: workspace:*
         version: link:../shared
@@ -585,9 +431,6 @@ importers:
       '@swc/core':
         specifier: 1.3.101
         version: 1.3.101
-      '@types/vscode-webview':
-        specifier: 1.57.5
-        version: 1.57.5
       core-js:
         specifier: ^3.36.1
         version: 3.36.1
@@ -612,9 +455,6 @@ importers:
       typescript:
         specifier: 5.4.5
         version: 5.4.5
-      vite:
-        specifier: ^5.2.8
-        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
       webpack:
         specifier: ^5.91.0
         version: 5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4)
@@ -712,6 +552,166 @@ importers:
       vite-plugin-dts:
         specifier: ^3.8.2
         version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
+
+  packages/vscode-bridge:
+    devDependencies:
+      '@dineug/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@rollup/plugin-typescript':
+        specifier: ^11.1.6
+        version: 11.1.6(rollup@4.14.2)(tslib@2.6.2)(typescript@5.4.5)
+      tslib:
+        specifier: ^2.6.2
+        version: 2.6.2
+      typescript:
+        specifier: 5.4.5
+        version: 5.4.5
+      vite:
+        specifier: ^5.2.8
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
+      vite-plugin-dts:
+        specifier: ^3.8.2
+        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
+
+  packages/vscode-extension:
+    devDependencies:
+      '@dineug/erd-editor-vscode-bridge':
+        specifier: workspace:*
+        version: link:../vscode-bridge
+      '@dineug/erd-editor-vscode-webview':
+        specifier: workspace:*
+        version: link:../vscode-webview
+      '@dineug/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@types/node':
+        specifier: ^20.16.10
+        version: 20.16.10
+      '@types/vscode':
+        specifier: ^1.85.0
+        version: 1.85.0
+      base64-arraybuffer:
+        specifier: ^1.0.2
+        version: 1.0.2
+      crypto-js:
+        specifier: ^4.2.0
+        version: 4.2.0
+      macaddress:
+        specifier: ^0.5.3
+        version: 0.5.3
+      node-fetch:
+        specifier: ^3.3.2
+        version: 3.3.2
+      ts-loader:
+        specifier: ^9.5.1
+        version: 9.5.1(typescript@5.4.5)(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
+      tsconfig-paths-webpack-plugin:
+        specifier: ^4.1.0
+        version: 4.1.0
+      typescript:
+        specifier: 5.4.5
+        version: 5.4.5
+      webpack:
+        specifier: ^5.91.0
+        version: 5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4)
+      webpack-cli:
+        specifier: ^5.1.4
+        version: 5.1.4(webpack@5.91.0)
+
+  packages/vscode-replication-store-worker:
+    devDependencies:
+      '@dineug/erd-editor':
+        specifier: workspace:*
+        version: link:../erd-editor
+      '@dineug/erd-editor-vscode-bridge':
+        specifier: workspace:*
+        version: link:../vscode-bridge
+      '@dineug/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@rollup/plugin-typescript':
+        specifier: ^11.1.6
+        version: 11.1.6(rollup@4.14.2)(tslib@2.6.2)(typescript@5.4.5)
+      tslib:
+        specifier: ^2.6.2
+        version: 2.6.2
+      typescript:
+        specifier: 5.4.5
+        version: 5.4.5
+      vite:
+        specifier: ^5.2.8
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
+      vite-plugin-dts:
+        specifier: ^3.8.2
+        version: 3.8.2(@types/node@20.16.10)(rollup@4.14.2)(typescript@5.4.5)(vite@5.2.8(@types/node@20.16.10)(terser@5.26.0))
+
+  packages/vscode-webview:
+    dependencies:
+      '@dineug/erd-editor':
+        specifier: workspace:*
+        version: link:../erd-editor
+      '@dineug/erd-editor-shiki-worker':
+        specifier: workspace:*
+        version: link:../erd-editor-shiki-worker
+      '@dineug/erd-editor-vscode-bridge':
+        specifier: workspace:*
+        version: link:../vscode-bridge
+      '@dineug/erd-editor-vscode-replication-store-worker':
+        specifier: workspace:*
+        version: link:../vscode-replication-store-worker
+      '@dineug/shared':
+        specifier: workspace:*
+        version: link:../shared
+      base64-arraybuffer:
+        specifier: ^1.0.2
+        version: 1.0.2
+    devDependencies:
+      '@swc/core':
+        specifier: 1.3.101
+        version: 1.3.101
+      '@types/vscode-webview':
+        specifier: 1.57.5
+        version: 1.57.5
+      core-js:
+        specifier: ^3.36.1
+        version: 3.36.1
+      css-loader:
+        specifier: ^7.1.1
+        version: 7.1.1(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
+      html-webpack-plugin:
+        specifier: ^5.6.0
+        version: 5.6.0(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
+      mini-css-extract-plugin:
+        specifier: ^2.8.1
+        version: 2.8.1(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
+      style-loader:
+        specifier: ^4.0.0
+        version: 4.0.0(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
+      swc-loader:
+        specifier: 0.2.6
+        version: 0.2.6(@swc/core@1.3.101)(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4))
+      tsconfig-paths-webpack-plugin:
+        specifier: ^4.1.0
+        version: 4.1.0
+      typescript:
+        specifier: 5.4.5
+        version: 5.4.5
+      vite:
+        specifier: ^5.2.8
+        version: 5.2.8(@types/node@20.16.10)(terser@5.26.0)
+      webpack:
+        specifier: ^5.91.0
+        version: 5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4)
+      webpack-bundle-analyzer:
+        specifier: ^4.10.2
+        version: 4.10.2
+      webpack-cli:
+        specifier: ^5.1.4
+        version: 5.1.4(webpack-bundle-analyzer@4.10.2)(webpack-dev-server@5.0.4)(webpack@5.91.0)
+      webpack-dev-server:
+        specifier: ^5.0.4
+        version: 5.0.4(webpack-cli@5.1.4)(webpack@5.91.0)
 
 packages:
 
@@ -3817,10 +3817,6 @@ packages:
     peerDependencies:
       acorn: ^6.0.0 || ^7.0.0 || ^8.0.0
 
-  acorn-walk@8.3.1:
-    resolution: {integrity: sha512-TgUZgYvqZprrl7YldZNoa9OciCAyZR+Ejm9eXzKCmjsF5IKp/wgQ7Z/ZpjpGTIUPwrHQIcYeI8qDh4PsEwxMbw==}
-    engines: {node: '>=0.4.0'}
-
   acorn-walk@8.3.2:
     resolution: {integrity: sha512-cjkyv4OtNCIeqhHrfS81QWXoCBPExR/J62oyEqepVw8WaQeSqpW2uhuLPh1m9eWhDuOo/jUXVTlifvesOWp/4A==}
     engines: {node: '>=0.4.0'}
@@ -4769,10 +4765,6 @@ packages:
     resolution: {integrity: sha512-9JktcM3u18nU9N2Lz3bWeBgxVgOKpw7yhRaoxQA3FUDZzzw+9WlA6p4G4u0RixNkg14fH7EfEc/RhpurtiROTQ==}
     engines: {node: '>=10.0.0'}
 
-  enhanced-resolve@5.15.0:
-    resolution: {integrity: sha512-LXYT42KJ7lpIKECr2mAXIaMldcNCh/7E0KBKOu4KSfkHmP+mZmSs+8V5gBAqisWBy0OO4W5Oyys0GO1Y8KtdKg==}
-    engines: {node: '>=10.13.0'}
-
   enhanced-resolve@5.16.0:
     resolution: {integrity: sha512-O+QWCviPNSSLAD9Ucn8Awv+poAkqn3T1XY5/N7kR7rQO9yfSGWkYZDwpJ+iKF7B8rxaQKWngSqACpgzeapSyoA==}
     engines: {node: '>=10.13.0'}
@@ -5015,10 +5007,6 @@ packages:
 
   fast-diff@1.3.0:
     resolution: {integrity: sha512-VxPP4NqbUjj6MaAOafWeUn2cXWLcCtljklUtZf0Ind4XQ+QPtmA0b18zZy0jIQx+ExRVCR/ZQpBmik5lXshNsw==}
-
-  fast-glob@3.3.1:
-    resolution: {integrity: sha512-kNFPyjhh5cKjrUltxs+wFx+ZkbRaxxmZ+X0ZU31SOsxCEtP9VPgtq2teZw1DebupL5GmDaNQ6yKMMVcM41iqDg==}
-    engines: {node: '>=8.6.0'}
 
   fast-glob@3.3.2:
     resolution: {integrity: sha512-oX2ruAFQwf/Orj8m737Y5adxDQO0LAB7/S5MnxCdTNDd4p6BsyIVsv9JQsATbTSq8KHRpLwIHbVlUNatxd+1Ow==}
@@ -6540,6 +6528,7 @@ packages:
 
   phin@2.9.3:
     resolution: {integrity: sha512-CzFr90qM24ju5f88quFC/6qohjC144rehe5n6DH900lgXmUe86+xCKc10ev56gRKC4/BkHUoG4uSiQgBiIXwDA==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   picocolors@1.0.0:
     resolution: {integrity: sha512-1fygroTLlHu66zi26VoTDv8yRgm0Fccecssto+MhsZ0D/DGW2sm8E8AjW7NU5VVTRt5GxbeZ5qBuJr+HyLYkjQ==}
@@ -9300,14 +9289,14 @@ snapshots:
 
   '@jimp/bmp@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
       bmp-js: 0.1.0
 
   '@jimp/core@0.16.13':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/utils': 0.16.13
       any-base: 1.1.0
       buffer: 5.7.1
@@ -9321,12 +9310,12 @@ snapshots:
 
   '@jimp/custom@0.16.13':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/core': 0.16.13
 
   '@jimp/gif@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
       gifwrap: 0.9.4
@@ -9334,39 +9323,39 @@ snapshots:
 
   '@jimp/jpeg@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
       jpeg-js: 0.4.4
 
   '@jimp/plugin-blit@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-blur@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-circle@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-color@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
       tinycolor2: 1.6.0
 
   '@jimp/plugin-contain@0.16.13(@jimp/custom@0.16.13)(@jimp/plugin-blit@0.16.13(@jimp/custom@0.16.13))(@jimp/plugin-resize@0.16.13(@jimp/custom@0.16.13))(@jimp/plugin-scale@0.16.13(@jimp/custom@0.16.13)(@jimp/plugin-resize@0.16.13(@jimp/custom@0.16.13)))':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/plugin-blit': 0.16.13(@jimp/custom@0.16.13)
       '@jimp/plugin-resize': 0.16.13(@jimp/custom@0.16.13)
@@ -9375,7 +9364,7 @@ snapshots:
 
   '@jimp/plugin-cover@0.16.13(@jimp/custom@0.16.13)(@jimp/plugin-crop@0.16.13(@jimp/custom@0.16.13))(@jimp/plugin-resize@0.16.13(@jimp/custom@0.16.13))(@jimp/plugin-scale@0.16.13(@jimp/custom@0.16.13)(@jimp/plugin-resize@0.16.13(@jimp/custom@0.16.13)))':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/plugin-crop': 0.16.13(@jimp/custom@0.16.13)
       '@jimp/plugin-resize': 0.16.13(@jimp/custom@0.16.13)
@@ -9384,62 +9373,62 @@ snapshots:
 
   '@jimp/plugin-crop@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-displace@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-dither@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-fisheye@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-flip@0.16.13(@jimp/custom@0.16.13)(@jimp/plugin-rotate@0.16.13(@jimp/custom@0.16.13)(@jimp/plugin-blit@0.16.13(@jimp/custom@0.16.13))(@jimp/plugin-crop@0.16.13(@jimp/custom@0.16.13))(@jimp/plugin-resize@0.16.13(@jimp/custom@0.16.13)))':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/plugin-rotate': 0.16.13(@jimp/custom@0.16.13)(@jimp/plugin-blit@0.16.13(@jimp/custom@0.16.13))(@jimp/plugin-crop@0.16.13(@jimp/custom@0.16.13))(@jimp/plugin-resize@0.16.13(@jimp/custom@0.16.13))
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-gaussian@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-invert@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-mask@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-normalize@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-print@0.16.13(@jimp/custom@0.16.13)(@jimp/plugin-blit@0.16.13(@jimp/custom@0.16.13))':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/plugin-blit': 0.16.13(@jimp/custom@0.16.13)
       '@jimp/utils': 0.16.13
@@ -9447,13 +9436,13 @@ snapshots:
 
   '@jimp/plugin-resize@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-rotate@0.16.13(@jimp/custom@0.16.13)(@jimp/plugin-blit@0.16.13(@jimp/custom@0.16.13))(@jimp/plugin-crop@0.16.13(@jimp/custom@0.16.13))(@jimp/plugin-resize@0.16.13(@jimp/custom@0.16.13))':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/plugin-blit': 0.16.13(@jimp/custom@0.16.13)
       '@jimp/plugin-crop': 0.16.13(@jimp/custom@0.16.13)
@@ -9462,14 +9451,14 @@ snapshots:
 
   '@jimp/plugin-scale@0.16.13(@jimp/custom@0.16.13)(@jimp/plugin-resize@0.16.13(@jimp/custom@0.16.13))':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/plugin-resize': 0.16.13(@jimp/custom@0.16.13)
       '@jimp/utils': 0.16.13
 
   '@jimp/plugin-shadow@0.16.13(@jimp/custom@0.16.13)(@jimp/plugin-blur@0.16.13(@jimp/custom@0.16.13))(@jimp/plugin-resize@0.16.13(@jimp/custom@0.16.13))':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/plugin-blur': 0.16.13(@jimp/custom@0.16.13)
       '@jimp/plugin-resize': 0.16.13(@jimp/custom@0.16.13)
@@ -9477,7 +9466,7 @@ snapshots:
 
   '@jimp/plugin-threshold@0.16.13(@jimp/custom@0.16.13)(@jimp/plugin-color@0.16.13(@jimp/custom@0.16.13))(@jimp/plugin-resize@0.16.13(@jimp/custom@0.16.13))':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/plugin-color': 0.16.13(@jimp/custom@0.16.13)
       '@jimp/plugin-resize': 0.16.13(@jimp/custom@0.16.13)
@@ -9485,7 +9474,7 @@ snapshots:
 
   '@jimp/plugins@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/plugin-blit': 0.16.13(@jimp/custom@0.16.13)
       '@jimp/plugin-blur': 0.16.13(@jimp/custom@0.16.13)
@@ -9512,20 +9501,20 @@ snapshots:
 
   '@jimp/png@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/utils': 0.16.13
       pngjs: 3.4.0
 
   '@jimp/tiff@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       utif: 2.0.1
 
   '@jimp/types@0.16.13(@jimp/custom@0.16.13)':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/bmp': 0.16.13(@jimp/custom@0.16.13)
       '@jimp/custom': 0.16.13
       '@jimp/gif': 0.16.13(@jimp/custom@0.16.13)
@@ -9536,7 +9525,7 @@ snapshots:
 
   '@jimp/utils@0.16.13':
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       regenerator-runtime: 0.13.11
 
   '@jridgewell/gen-mapping@0.3.3':
@@ -11983,8 +11972,6 @@ snapshots:
     dependencies:
       acorn: 8.10.0
 
-  acorn-walk@8.3.1: {}
-
   acorn-walk@8.3.2: {}
 
   acorn@8.10.0: {}
@@ -12957,11 +12944,6 @@ snapshots:
 
   engine.io-parser@5.2.1: {}
 
-  enhanced-resolve@5.15.0:
-    dependencies:
-      graceful-fs: 4.2.11
-      tapable: 2.2.1
-
   enhanced-resolve@5.16.0:
     dependencies:
       graceful-fs: 4.2.11
@@ -13357,14 +13339,6 @@ snapshots:
 
   fast-diff@1.3.0: {}
 
-  fast-glob@3.3.1:
-    dependencies:
-      '@nodelib/fs.stat': 2.0.5
-      '@nodelib/fs.walk': 1.2.8
-      glob-parent: 5.1.2
-      merge2: 1.4.1
-      micromatch: 4.0.5
-
   fast-glob@3.3.2:
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -13660,7 +13634,7 @@ snapshots:
     dependencies:
       array-union: 2.1.0
       dir-glob: 3.0.1
-      fast-glob: 3.3.1
+      fast-glob: 3.3.2
       ignore: 5.2.4
       merge2: 1.4.1
       slash: 3.0.0
@@ -14130,7 +14104,7 @@ snapshots:
 
   jimp@0.16.1:
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@jimp/custom': 0.16.13
       '@jimp/plugins': 0.16.13(@jimp/custom@0.16.13)
       '@jimp/types': 0.16.13(@jimp/custom@0.16.13)
@@ -15217,7 +15191,7 @@ snapshots:
 
   regenerator-transform@0.15.2:
     dependencies:
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
 
   regexp.prototype.flags@1.5.0:
     dependencies:
@@ -15328,7 +15302,7 @@ snapshots:
 
   rollup-plugin-terser@7.0.2(rollup@2.79.1):
     dependencies:
-      '@babel/code-frame': 7.23.5
+      '@babel/code-frame': 7.24.2
       jest-worker: 26.6.2
       rollup: 2.79.1
       serialize-javascript: 4.0.0
@@ -15914,9 +15888,9 @@ snapshots:
   ts-loader@9.5.1(typescript@5.4.5)(webpack@5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4)):
     dependencies:
       chalk: 4.1.2
-      enhanced-resolve: 5.15.0
+      enhanced-resolve: 5.16.0
       micromatch: 4.0.5
-      semver: 7.5.4
+      semver: 7.6.0
       source-map: 0.7.4
       typescript: 5.4.5
       webpack: 5.91.0(@swc/core@1.3.101)(webpack-cli@5.1.4)
@@ -15924,7 +15898,7 @@ snapshots:
   tsconfig-paths-webpack-plugin@4.1.0:
     dependencies:
       chalk: 4.1.2
-      enhanced-resolve: 5.15.0
+      enhanced-resolve: 5.16.0
       tsconfig-paths: 4.2.0
 
   tsconfig-paths@3.15.0:
@@ -16255,7 +16229,7 @@ snapshots:
     dependencies:
       '@discoveryjs/json-ext': 0.5.7
       acorn: 8.10.0
-      acorn-walk: 8.3.1
+      acorn-walk: 8.3.2
       commander: 7.2.0
       debounce: 1.2.1
       escape-string-regexp: 4.0.0
@@ -16551,7 +16525,7 @@ snapshots:
       '@apideck/better-ajv-errors': 0.3.6(ajv@8.12.0)
       '@babel/core': 7.24.4
       '@babel/preset-env': 7.23.6(@babel/core@7.24.4)
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.23.6
       '@rollup/plugin-babel': 5.3.1(@babel/core@7.24.4)(rollup@2.79.1)
       '@rollup/plugin-node-resolve': 11.2.1(rollup@2.79.1)
       '@rollup/plugin-replace': 2.4.2(rollup@2.79.1)

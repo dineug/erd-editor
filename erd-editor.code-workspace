@@ -13,28 +13,28 @@
       "path": "packages/erd-editor-shiki-worker",
     },
     {
-      "name": "erd-editor-vscode",
-      "path": "packages/erd-editor-vscode",
+      "name": "vscode-extension",
+      "path": "packages/vscode-extension",
     },
     {
-      "name": "erd-editor-vscode-webview",
-      "path": "packages/erd-editor-vscode-webview",
+      "name": "vscode-webview",
+      "path": "packages/vscode-webview",
     },
     {
-      "name": "erd-editor-vscode-bridge",
-      "path": "packages/erd-editor-vscode-bridge",
+      "name": "vscode-bridge",
+      "path": "packages/vscode-bridge",
     },
     {
-      "name": "erd-editor-replication-store-worker",
-      "path": "packages/erd-editor-replication-store-worker",
+      "name": "vscode-replication-store-worker",
+      "path": "packages/vscode-replication-store-worker",
     },
     {
-      "name": "erd-editor-intellij-webview",
-      "path": "packages/erd-editor-intellij-webview",
+      "name": "intellij-webview",
+      "path": "packages/intellij-webview",
     },
     {
-      "name": "erd-editor-app",
-      "path": "packages/erd-editor-app",
+      "name": "app",
+      "path": "packages/app",
     },
     {
       "name": "schema-sql-parser",
@@ -86,6 +86,7 @@
       "dbaeumer.vscode-eslint",
       "esbenp.prettier-vscode",
       "styled-components.vscode-styled-components",
+      "tobermory.es6-string-html",
     ],
   },
 }

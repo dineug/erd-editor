@@ -5,7 +5,6 @@ import {
   setGetShikiServiceCallback,
   setImportFileCallback,
 } from '@dineug/erd-editor';
-import { ReplicationStoreWorker } from '@dineug/erd-editor-replication-store-worker';
 import {
   AnyAction,
   Appearance,
@@ -18,6 +17,7 @@ import {
   vscodeSaveThemeAction,
   webviewReplicationAction,
 } from '@dineug/erd-editor-vscode-bridge';
+import { ReplicationStoreWorker } from '@dineug/erd-editor-vscode-replication-store-worker';
 import { encode } from 'base64-arraybuffer';
 
 const bridge = new Emitter();

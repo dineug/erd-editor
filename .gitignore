@@ -12,8 +12,7 @@ build
 .docusaurus
 .cache-loader
 
-packages/erd-editor-vscode/public
-packages/erd-editor-vscode/public-legacy
+packages/vscode-extension/public
 
 # Log files
 npm-debug.log*
