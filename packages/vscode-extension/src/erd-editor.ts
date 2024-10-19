@@ -1,10 +1,17 @@
 import {
   AnyAction,
-  webviewImportFileAction,
-  webviewInitialValueAction,
-  webviewReplicationAction,
-  webviewUpdateReadonlyAction,
-  webviewUpdateThemeAction,
+  Bridge,
+  hostExportFileCommand,
+  hostImportFileCommand,
+  hostInitialCommand,
+  hostSaveReplicationCommand,
+  hostSaveThemeCommand,
+  hostSaveValueCommand,
+  webviewImportFileCommand,
+  webviewInitialValueCommand,
+  webviewReplicationCommand,
+  webviewUpdateReadonlyCommand,
+  webviewUpdateThemeCommand,
 } from '@dineug/erd-editor-vscode-bridge';
 import { decode } from 'base64-arraybuffer';
 import * as os from 'os';
@@ -44,73 +51,93 @@ export class ErdEditor extends Editor {
         .forEach(webview => webview.postMessage(action));
     };
 
-    const unsubscribe = this.bridge.on({
-      vscodeInitial: () => {
-        dispatch(webviewUpdateThemeAction(getTheme()));
-        dispatch(webviewUpdateReadonlyAction(this.readonly));
+    const dispose = Bridge.mergeRegister(
+      this.bridge.registerCommand(hostInitialCommand, () => {
+        dispatch(Bridge.executeCommand(webviewUpdateThemeCommand, getTheme()));
         dispatch(
-          webviewInitialValueAction({
+          Bridge.executeCommand(webviewUpdateReadonlyCommand, this.readonly)
+        );
+        dispatch(
+          Bridge.executeCommand(webviewInitialValueCommand, {
             value: textDecoder.decode(this.document.content),
           })
         );
-      },
-      vscodeSaveValue: async ({ payload: { value } }) => {
+      }),
+      this.bridge.registerCommand(hostSaveValueCommand, async ({ value }) => {
         await this.document.update(textEncoder.encode(value));
-      },
-      vscodeSaveReplication: ({ payload: { actions } }) => {
-        dispatchBroadcast(webviewReplicationAction({ actions }));
-      },
-      vscodeImportFile: async ({ payload: { type, op } }) => {
-        const uris = await vscode.window.showOpenDialog();
-        if (!uris || !uris.length) return;
-
-        const uri = uris[0];
-        const regexp = new RegExp(`\.(${type}|erd|vuerd)$`, 'i');
-
-        if (!regexp.test(uri.path)) {
-          vscode.window.showInformationMessage(`Just import the ${type} file`);
-          return;
-        }
-
-        const value = await vscode.workspace.fs.readFile(uris[0]);
-        dispatch(
-          webviewImportFileAction({
-            type,
-            op,
-            value: textDecoder.decode(value),
-          })
+      }),
+      this.bridge.registerCommand(hostSaveReplicationCommand, ({ actions }) => {
+        dispatchBroadcast(
+          Bridge.executeCommand(webviewReplicationCommand, { actions })
         );
-      },
-      vscodeExportFile: async ({ payload: { value, fileName } }) => {
-        let defaultPath = os.homedir();
+      }),
+      this.bridge.registerCommand(
+        hostImportFileCommand,
+        async ({ type, op }) => {
+          const uris = await vscode.window.showOpenDialog();
+          if (!uris || !uris.length) return;
 
-        if (
-          Array.isArray(vscode.workspace.workspaceFolders) &&
-          vscode.workspace.workspaceFolders.length
-        ) {
-          defaultPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+          const uri = uris[0];
+          const regexp = new RegExp(`\.(${type}|erd|vuerd)$`, 'i');
+
+          if (!regexp.test(uri.path)) {
+            vscode.window.showInformationMessage(
+              `Just import the ${type} file`
+            );
+            return;
+          }
+
+          const value = await vscode.workspace.fs.readFile(uris[0]);
+          dispatch(
+            Bridge.executeCommand(webviewImportFileCommand, {
+              type,
+              op,
+              value: textDecoder.decode(value),
+            })
+          );
         }
+      ),
+      this.bridge.registerCommand(
+        hostExportFileCommand,
+        async ({ value, fileName }) => {
+          let defaultPath = os.homedir();
 
-        const uri = await vscode.window.showSaveDialog({
-          defaultUri: vscode.Uri.file(path.join(defaultPath, fileName)),
-        });
-        if (!uri) return;
+          if (
+            Array.isArray(vscode.workspace.workspaceFolders) &&
+            vscode.workspace.workspaceFolders.length
+          ) {
+            defaultPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+          }
 
-        await vscode.workspace.fs.writeFile(uri, new Uint8Array(decode(value)));
-      },
-      vscodeSaveTheme: ({ payload }) => {
+          const uri = await vscode.window.showSaveDialog({
+            defaultUri: vscode.Uri.file(path.join(defaultPath, fileName)),
+          });
+          if (!uri) return;
+
+          await vscode.workspace.fs.writeFile(
+            uri,
+            new Uint8Array(decode(value))
+          );
+        }
+      ),
+      this.bridge.registerCommand(hostSaveThemeCommand, payload => {
         saveTheme(payload);
-      },
-    });
+      })
+    );
 
     const listeners: vscode.Disposable[] = [
-      this.webview.onDidReceiveMessage(action => this.bridge.emit(action)),
+      this.webview.onDidReceiveMessage(action => {
+        this.bridge.executeAction(action);
+      }),
       ...THEME_KEYS.map(key =>
         vscode.workspace.onDidChangeConfiguration(event => {
           if (!event.affectsConfiguration(key, this.document.uri)) {
             return;
           }
-          dispatch(webviewUpdateThemeAction(getTheme()));
+
+          dispatch(
+            Bridge.executeCommand(webviewUpdateThemeCommand, getTheme())
+          );
         })
       ),
     ];
@@ -118,8 +145,8 @@ export class ErdEditor extends Editor {
     this.webview.html = await this.buildHtmlForWebview();
 
     return new vscode.Disposable(() => {
-      unsubscribe();
       listeners.forEach(listener => listener.dispose());
+      dispose();
     });
   }
 }

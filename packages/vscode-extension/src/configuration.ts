@@ -3,7 +3,6 @@ import {
   Appearance,
   GrayColor,
   ThemeOptions,
-  webviewUpdateThemeLegacyAction,
 } from '@dineug/erd-editor-vscode-bridge';
 import * as vscode from 'vscode';
 
@@ -48,16 +47,5 @@ export function getTheme(): ThemeOptions {
     appearance: config.get('appearance', Appearance.dark),
     grayColor: config.get('grayColor', GrayColor.slate),
     accentColor: config.get('accentColor', AccentColor.indigo),
-  };
-}
-
-export function getThemeLegacy(): ReturnType<
-  typeof webviewUpdateThemeLegacyAction
->['payload'] {
-  const config = vscode.workspace.getConfiguration('dineug.vuerd-vscode');
-
-  return {
-    themeSync: config.get('themeSync', false),
-    theme: config.get('theme', {}),
   };
 }

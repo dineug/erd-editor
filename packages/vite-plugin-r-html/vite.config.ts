@@ -30,5 +30,8 @@ export default defineConfig({
       '@': join(__dirname, 'src'),
     },
   },
-  plugins: [dts(), typescript({ noEmitOnError: true })],
+  plugins: [
+    dts({ compilerOptions: { declarationMap: true } }),
+    typescript({ noEmitOnError: true }),
+  ],
 });

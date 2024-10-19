@@ -8,20 +8,25 @@ import {
 import {
   AnyAction,
   Appearance,
-  Emitter,
+  Bridge,
+  hostExportFileCommand,
+  hostImportFileCommand,
+  hostInitialCommand,
+  hostSaveReplicationCommand,
+  hostSaveThemeCommand,
+  hostSaveValueCommand,
   ThemeOptions,
-  vscodeExportFileAction,
-  vscodeImportFileAction,
-  vscodeInitialAction,
-  vscodeSaveReplicationAction,
-  vscodeSaveThemeAction,
-  webviewReplicationAction,
+  webviewImportFileCommand,
+  webviewInitialValueCommand,
+  webviewReplicationCommand,
+  webviewUpdateReadonlyCommand,
+  webviewUpdateThemeCommand,
 } from '@dineug/erd-editor-vscode-bridge';
 import { ReplicationStoreWorker } from '@dineug/erd-editor-vscode-replication-store-worker';
 import { encode } from 'base64-arraybuffer';
 
-const bridge = new Emitter();
-const workerBridge = new Emitter();
+const bridge = new Bridge();
+const workerBridge = new Bridge();
 const vscode = acquireVsCodeApi();
 const editor = document.createElement('erd-editor');
 const sharedStore = editor.getSharedStore({ mouseTracker: false });
@@ -44,12 +49,12 @@ import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
   setGetShikiServiceCallback(getShikiService);
 });
 setImportFileCallback(options => {
-  dispatch(vscodeImportFileAction(options));
+  dispatch(Bridge.executeCommand(hostImportFileCommand, options));
 });
 setExportFileCallback(async (blob, options) => {
   const arrayBuffer = await blob.arrayBuffer();
   dispatch(
-    vscodeExportFileAction({
+    Bridge.executeCommand(hostExportFileCommand, {
       value: encode(arrayBuffer),
       fileName: options.fileName,
     })
@@ -70,12 +75,12 @@ function getSystemTheme(): Appearance {
 
 const handleChangePresetTheme = (event: Event) => {
   const e = event as CustomEvent<ThemeOptions>;
-  dispatch(vscodeSaveThemeAction(e.detail));
+  dispatch(Bridge.executeCommand(hostSaveThemeCommand, e.detail));
   appearance = e.detail.appearance;
 };
 
-bridge.on({
-  webviewImportFile: ({ payload: { type, op, value } }) => {
+Bridge.mergeRegister(
+  bridge.registerCommand(webviewImportFileCommand, ({ type, op, value }) => {
     switch (type) {
       case 'json':
         op === 'set' ? (editor.value = value) : editor.setDiffValue(value);
@@ -84,31 +89,31 @@ bridge.on({
         op === 'set' && editor.setSchemaSQL(value);
         break;
     }
-  },
-  webviewInitialValue: action => {
-    const {
-      payload: { value },
-    } = action;
-    dispatchWorker(action);
+  }),
+  bridge.registerCommand(webviewInitialValueCommand, ({ value }) => {
+    dispatchWorker(
+      Bridge.executeCommand(webviewInitialValueCommand, { value })
+    );
 
     editor.addEventListener('changePresetTheme', handleChangePresetTheme);
     editor.setInitialValue(value);
     editor.enableThemeBuilder = true;
     sharedStore.subscribe(actions => {
-      dispatchWorker(webviewReplicationAction({ actions }));
-      dispatch(vscodeSaveReplicationAction({ actions }));
+      dispatchWorker(
+        Bridge.executeCommand(webviewReplicationCommand, { actions })
+      );
+      dispatch(Bridge.executeCommand(hostSaveReplicationCommand, { actions }));
     });
     loading?.remove();
     document.body.appendChild(editor);
-  },
-  webviewReplication: action => {
-    const {
-      payload: { actions },
-    } = action;
+  }),
+  bridge.registerCommand(webviewReplicationCommand, ({ actions }) => {
     sharedStore.dispatch(actions);
-    dispatchWorker(action);
-  },
-  webviewUpdateTheme: ({ payload }) => {
+    dispatchWorker(
+      Bridge.executeCommand(webviewReplicationCommand, { actions })
+    );
+  }),
+  bridge.registerCommand(webviewUpdateThemeCommand, payload => {
     if (payload.appearance) {
       appearance = payload.appearance;
     }
@@ -118,11 +123,14 @@ bridge.on({
       appearance:
         payload.appearance === 'auto' ? getSystemTheme() : payload.appearance,
     });
-  },
-  webviewUpdateReadonly: ({ payload }) => {
-    editor.readonly = payload;
-  },
-});
+  }),
+  bridge.registerCommand(webviewUpdateReadonlyCommand, readonly => {
+    editor.readonly = readonly;
+  }),
+  workerBridge.registerCommand(hostSaveValueCommand, ({ value }) => {
+    dispatch(Bridge.executeCommand(hostSaveValueCommand, { value }));
+  })
+);
 
 const observer = new MutationObserver(() => {
   if (appearance === 'auto') {
@@ -136,14 +144,10 @@ observer.observe(document.body, {
   attributeFilter: ['class', 'data-vscode-theme-kind'],
 });
 
-workerBridge.on({
-  vscodeSaveValue: action => {
-    dispatch(action);
-  },
+globalThis.addEventListener('message', event => {
+  bridge.executeAction(event.data);
 });
-
-globalThis.addEventListener('message', event => bridge.emit(event.data));
 replicationStoreWorker.addEventListener('message', event => {
-  workerBridge.emit(event.data);
+  workerBridge.executeAction(event.data);
 });
-dispatch(vscodeInitialAction());
+dispatch(Bridge.executeCommand(hostInitialCommand, undefined));

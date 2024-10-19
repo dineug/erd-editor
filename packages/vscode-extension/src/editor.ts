@@ -1,4 +1,4 @@
-import { Emitter } from '@dineug/erd-editor-vscode-bridge';
+import { Bridge } from '@dineug/erd-editor-vscode-bridge';
 import * as vscode from 'vscode';
 
 import { ErdDocument } from '@/erd-document';
@@ -9,7 +9,7 @@ export type CreateEditor = (
 ) => Editor;
 
 export abstract class Editor {
-  protected bridge = new Emitter();
+  protected bridge = new Bridge();
   protected abstract assetsDir: string;
 
   constructor(
