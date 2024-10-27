@@ -1,4 +1,5 @@
 import './webview.css';
+import 'core-js/stable';
 
 import {
   setExportFileCallback,

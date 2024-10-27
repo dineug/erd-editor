@@ -150,14 +150,23 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     const $mod = isMod(event);
     const { store } = app.value;
+    const isReverse =
+      event.shiftKey && event.deltaX === 0 && event.deltaY !== 0;
 
     store.dispatch(
       $mod
         ? streamZoomLevelAction$(event.deltaY < 0 ? 0.03 : -0.03)
-        : streamScrollToAction({
-            movementX: event.deltaX * -1,
-            movementY: event.deltaY * -1,
-          })
+        : streamScrollToAction(
+            isReverse
+              ? {
+                  movementX: event.deltaY * -1,
+                  movementY: event.deltaX * -1,
+                }
+              : {
+                  movementX: event.deltaX * -1,
+                  movementY: event.deltaY * -1,
+                }
+          )
     );
   };
 
@@ -206,6 +215,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     if (!canDrag) return;
 
+    event.preventDefault();
     if (isMouseEvent(event) && isMod(event)) {
       const { x, y } = root.value.getBoundingClientRect();
       state.dragSelect = true;
