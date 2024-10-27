@@ -21,6 +21,10 @@ import {
   editTableEndAction,
   focusColumnAction,
 } from '@/engine/modules/editor/atom.actions';
+import {
+  columnKeyHoverEndAction$,
+  columnKeyHoverStartAction$,
+} from '@/engine/modules/editor/generator.actions';
 import { FocusType } from '@/engine/modules/editor/state';
 import {
   changeColumnValueAction$,
@@ -118,6 +122,19 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         input.value
       )
     );
+  };
+
+  const handleMouseenterKey = () => {
+    const { column } = props;
+    if (column.ui.keys === 0) return;
+
+    const { store } = app.value;
+    store.dispatch(columnKeyHoverStartAction$(column.id));
+  };
+
+  const handleMouseleaveKey = () => {
+    const { store } = app.value;
+    store.dispatch(columnKeyHoverEndAction$());
   };
 
   const getColumnOrder = (): ColumnOrderTpl[] => {
@@ -350,7 +367,11 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         @dragstart=${props.onDragstart}
         @dragend=${props.onDragend}
       >
-        <${ColumnKey} keys=${column.ui.keys} />
+        <${ColumnKey}
+          keys=${column.ui.keys}
+          .onMouseenter=${handleMouseenterKey}
+          .onMouseleave=${handleMouseleaveKey}
+        />
         ${repeat(
           getColumnOrder(),
           ({ columnType }) => columnType,

@@ -12,6 +12,7 @@ export type Editor = {
   focusTable: FocusTable | null;
   drawRelationship: DrawRelationship | null;
   hoverColumnMap: Record<string, boolean>;
+  hoverRelationshipMap: Record<string, boolean>;
   openMap: Record<string, boolean>;
   draggableColumn: DraggableColumn | null;
   draggingColumnMap: Record<string, boolean>;
@@ -96,6 +97,7 @@ export const createEditor = (): Editor => ({
   focusTable: null,
   drawRelationship: null,
   hoverColumnMap: {},
+  hoverRelationshipMap: {},
   openMap: {},
   draggableColumn: null,
   draggingColumnMap: {},

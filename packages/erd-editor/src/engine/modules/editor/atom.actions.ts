@@ -428,6 +428,22 @@ const hoverColumnMap: ReducerType<typeof ActionType.hoverColumnMap> = (
   }
 };
 
+export const hoverRelationshipMapAction = createAction<
+  ActionMap[typeof ActionType.hoverRelationshipMap]
+>(ActionType.hoverRelationshipMap);
+
+const hoverRelationshipMap: ReducerType<
+  typeof ActionType.hoverRelationshipMap
+> = ({ editor }, { payload: { relationshipIds } }) => {
+  Object.keys(editor.hoverRelationshipMap).forEach(id => {
+    Reflect.deleteProperty(editor.hoverRelationshipMap, id);
+  });
+
+  for (const id of relationshipIds) {
+    editor.hoverRelationshipMap[id] = true;
+  }
+};
+
 export const changeOpenMapAction = createAction<
   ActionMap[typeof ActionType.changeOpenMap]
 >(ActionType.changeOpenMap);
@@ -606,6 +622,7 @@ export const editorReducers = {
   [ActionType.drawEndRelationship]: drawEndRelationship,
   [ActionType.drawRelationship]: drawRelationship,
   [ActionType.hoverColumnMap]: hoverColumnMap,
+  [ActionType.hoverRelationshipMap]: hoverRelationshipMap,
   [ActionType.changeOpenMap]: changeOpenMap,
   [ActionType.dragstartColumn]: dragstartColumn,
   [ActionType.dragendColumn]: dragendColumn,
@@ -635,6 +652,7 @@ export const actions = {
   drawEndRelationshipAction,
   drawRelationshipAction,
   hoverColumnMapAction,
+  hoverRelationshipMapAction,
   changeOpenMapAction,
   dragstartColumnAction,
   dragendColumnAction,

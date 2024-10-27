@@ -215,8 +215,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     if (!canDrag) return;
 
-    event.preventDefault();
     if (isMouseEvent(event) && isMod(event)) {
+      event.preventDefault();
       const { x, y } = root.value.getBoundingClientRect();
       state.dragSelect = true;
       state.dragSelectX = event.clientX - x;

@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from '@dineug/shared';
-import { cloneDeep, isEmpty, omit } from 'lodash-es';
+import { cloneDeep, isEmpty, omit, uniq } from 'lodash-es';
 
 import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
@@ -46,6 +46,8 @@ import {
   focusColumnAction,
   focusMoveTableAction,
   focusTableEndAction,
+  hoverColumnMapAction,
+  hoverRelationshipMapAction,
   initialClearAction,
   initialLoadJsonAction,
   loadJsonAction,
@@ -53,6 +55,7 @@ import {
   unselectAllAction,
 } from './atom.actions';
 import { FocusType, MoveKey, SelectType } from './state';
+import { findRelationshipColumn } from './utils/findRelationshipColumn';
 import {
   isColumns,
   isLastColumn,
@@ -425,6 +428,35 @@ export const dragoverColumnAction$ = (
     });
   };
 
+export const columnKeyHoverStartAction$ = (columnId: string): GeneratorAction =>
+  function* (state) {
+    const { columnIds, relationshipIds } = findRelationshipColumn(
+      [{ columnId, relationshipIds: [] }],
+      state
+    ).reduce(
+      (
+        acc: { columnIds: string[]; relationshipIds: string[] },
+        { columnId, relationshipIds }
+      ) => {
+        acc.columnIds.push(columnId);
+        acc.relationshipIds.push(...relationshipIds);
+        return acc;
+      },
+      { columnIds: [], relationshipIds: [] }
+    );
+
+    yield hoverColumnMapAction({ columnIds: uniq(columnIds) });
+    yield hoverRelationshipMapAction({
+      relationshipIds: uniq(relationshipIds),
+    });
+  };
+
+export const columnKeyHoverEndAction$ = (): GeneratorAction =>
+  function* () {
+    yield hoverColumnMapAction({ columnIds: [] });
+    yield hoverRelationshipMapAction({ relationshipIds: [] });
+  };
+
 export const actions$ = {
   loadJsonAction$,
   initialLoadJsonAction$,
@@ -439,4 +471,6 @@ export const actions$ = {
   loadSchemaSQLAction$,
   dragstartColumnAction$,
   dragoverColumnAction$,
+  columnKeyHoverStartAction$,
+  columnKeyHoverEndAction$,
 };

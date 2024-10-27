@@ -110,7 +110,6 @@ export function useMinimapScroll(ctx: Ctx) {
   };
 
   const onScrollStart = (event: MouseEvent | TouchEvent) => {
-    event.preventDefault();
     state.selected = true;
 
     clientX = isMouseEvent(event) ? event.clientX : event.touches[0].clientX;

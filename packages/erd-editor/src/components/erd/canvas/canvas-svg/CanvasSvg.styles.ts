@@ -14,7 +14,9 @@ export const root = css`
     stroke: var(--key-pfk);
   }
 
-  .relationship:hover {
+  .relationship:hover,
+  .relationship[data-hover],
+  .relationship.identification[data-hover] {
     stroke: var(--relationship-hover);
   }
 `;

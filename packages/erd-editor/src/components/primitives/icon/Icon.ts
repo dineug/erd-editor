@@ -19,6 +19,8 @@ export type IconProps = {
   title?: string;
   rotate?: number;
   onClick?: (event: MouseEvent) => void;
+  onMouseenter?: (event: MouseEvent) => void;
+  onMouseleave?: (event: MouseEvent) => void;
 };
 
 const Icon: FC<IconProps> = (props, ctx) => () => {
@@ -39,6 +41,8 @@ const Icon: FC<IconProps> = (props, ctx) => () => {
       }}
       ...${restAttrs({ title: props.title })}
       @click=${props.onClick}
+      @mouseenter=${props.onMouseenter}
+      @mouseleave=${props.onMouseleave}
     >
       ${prefix === 'base64'
         ? html`

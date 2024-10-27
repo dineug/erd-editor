@@ -28,6 +28,7 @@ export const ActionType = {
   drawEndRelationship: 'editor.drawEndRelationship',
   drawRelationship: 'editor.drawRelationship',
   hoverColumnMap: 'editor.hoverColumnMap',
+  hoverRelationshipMap: 'editor.hoverRelationshipMap',
   changeOpenMap: 'editor.changeOpenMap',
   dragstartColumn: 'editor.dragstartColumn',
   dragendColumn: 'editor.dragendColumn',
@@ -88,6 +89,9 @@ export type ActionMap = {
   };
   [ActionType.hoverColumnMap]: {
     columnIds: string[];
+  };
+  [ActionType.hoverRelationshipMap]: {
+    relationshipIds: string[];
   };
   [ActionType.changeOpenMap]: Record<string, boolean>;
   [ActionType.dragstartColumn]: {

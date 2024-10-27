@@ -8,6 +8,8 @@ import * as styles from './ColumnKey.styles';
 
 export type ColumnKeyProps = {
   keys: number;
+  onMouseenter?: (event: MouseEvent) => void;
+  onMouseleave?: (event: MouseEvent) => void;
 };
 
 const ColumnKey: FC<ColumnKeyProps> = (props, ctx) => {
@@ -27,6 +29,8 @@ const ColumnKey: FC<ColumnKeyProps> = (props, ctx) => {
       class=${['column-col', styles.key, className()]}
       size=${12}
       name="key"
+      .onMouseenter=${props.onMouseenter}
+      .onMouseleave=${props.onMouseleave}
     />
   `;
 };
