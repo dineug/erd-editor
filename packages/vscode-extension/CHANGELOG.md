@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.2
+
+### Added
+
+- Shift for horizontal scroll
+- Column Key hover on relationship
+
 ## 2.0.1
 
 ### Fixed
