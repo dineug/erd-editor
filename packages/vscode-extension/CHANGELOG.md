@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.3
+
+### Fixed
+
+- Fixed a bug where schema GC was not triggered.
+
 ## 2.0.2
 
 ### Added

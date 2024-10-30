@@ -185,6 +185,8 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
       });
   };
 
+  destroySet.add(emitter.on({ schemaGC: handleSchemaGC }));
+
   onMounted(() => {
     ctx.focus();
 
@@ -208,8 +210,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
       fromEvent(ctx, focusEvent.type)
         .pipe(throttleTime(50))
         .subscribe(checkAndFocus),
-      fromEvent(ctx, forceFocusEvent.type).subscribe(ctx.focus),
-      emitter.on({ schemaGC: handleSchemaGC })
+      fromEvent(ctx, forceFocusEvent.type).subscribe(ctx.focus)
     );
   });
 
