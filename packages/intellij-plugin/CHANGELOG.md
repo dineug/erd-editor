@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [0.1.4] - 2024-10-31
+
+### Fixed
+
+- Fixed a bug where schema GC was not triggered.
+
 ## [0.1.3] - 2024-10-27
 
 ### Added
