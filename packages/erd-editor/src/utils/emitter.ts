@@ -61,26 +61,27 @@ type InternalActionMap = {
   };
 };
 
-type Reducer<K extends keyof M, M> = (action: Action<K, M>) => void;
-type ReducerRecord<K extends keyof M, M> = {
-  [P in K]: Reducer<P, M>;
+type ListenerRecord = {
+  [P in keyof InternalActionMap]: (
+    action: Action<P, InternalActionMap>
+  ) => void;
 };
 
-export class Emitter<M extends InternalActionMap = InternalActionMap> {
-  #observers = new Set<Partial<ReducerRecord<keyof M, M>>>();
+export class Emitter {
+  #observers = new Set<Partial<ListenerRecord>>();
 
-  on(reducers: Partial<ReducerRecord<keyof M, M>>) {
-    this.#observers.has(reducers) || this.#observers.add(reducers);
+  on(listeners: Partial<ListenerRecord>) {
+    this.#observers.has(listeners) || this.#observers.add(listeners);
 
     return () => {
-      this.#observers.delete(reducers);
+      this.#observers.delete(listeners);
     };
   }
 
   emit(action: AnyAction) {
-    this.#observers.forEach(reducers => {
-      const reducer = Reflect.get(reducers, action.type);
-      safeCallback(reducer, action);
+    this.#observers.forEach(listeners => {
+      const listener = Reflect.get(listeners, action.type);
+      safeCallback(listener, action);
     });
   }
 

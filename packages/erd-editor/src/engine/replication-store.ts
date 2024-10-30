@@ -16,7 +16,7 @@ import { procGC } from '@/services/schema-gc/procGC';
 import { SchemaGCService } from '@/services/schema-gc/schemaGCService';
 import { toSafeString } from '@/utils/validation';
 
-type ReducerRecord = {
+type ListenerRecord = {
   [P in keyof InternalActionMap]: (payload: InternalActionMap[P]) => void;
 };
 
@@ -30,7 +30,7 @@ type InternalActionMap = {
 
 export type ReplicationStore = {
   readonly value: string;
-  on: (reducers: Partial<ReducerRecord>) => Unsubscribe;
+  on: (listeners: Partial<ListenerRecord>) => Unsubscribe;
   setInitialValue: (value: string) => void;
   dispatch: (actions: Array<AnyAction> | AnyAction) => void;
   dispatchSync: (actions: Array<AnyAction> | AnyAction) => void;
@@ -47,14 +47,14 @@ export function createReplicationStore(
   const change$ = new Observable<Array<AnyAction>>(subscriber =>
     store.subscribe(actions => subscriber.next(actions))
   ).pipe(actionsFilter(ChangeActionTypes), debounceTime(200));
-  const observers = new Set<Partial<ReducerRecord>>();
+  const observers = new Set<Partial<ListenerRecord>>();
   const schemaGCService = new SchemaGCService();
 
-  const on = (reducers: Partial<ReducerRecord>): Unsubscribe => {
-    observers.has(reducers) || observers.add(reducers);
+  const on = (listeners: Partial<ListenerRecord>): Unsubscribe => {
+    observers.has(listeners) || observers.add(listeners);
 
     return () => {
-      observers.delete(reducers);
+      observers.delete(listeners);
     };
   };
 
@@ -62,9 +62,9 @@ export function createReplicationStore(
     type: T,
     payload: InternalActionMap[T]
   ) => {
-    observers.forEach(reducers => {
-      const reducer = Reflect.get(reducers, type);
-      safeCallback(reducer, payload);
+    observers.forEach(listeners => {
+      const listener = Reflect.get(listeners, type);
+      safeCallback(listener, payload);
     });
   };
 
@@ -85,7 +85,6 @@ export function createReplicationStore(
       if (isChange) {
         procGC(store.state, gcIds);
         store.dispatchSync(validationIdsAction());
-        emit(InternalActionType.change, undefined);
       }
     });
   };

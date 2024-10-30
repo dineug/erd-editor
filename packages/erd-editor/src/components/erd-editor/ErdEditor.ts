@@ -181,7 +181,6 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         if (isChange) {
           procGC(store.state, gcIds);
           store.dispatchSync(validationIdsAction());
-          ctx.dispatchEvent(new CustomEvent('change'));
         }
       });
   };
