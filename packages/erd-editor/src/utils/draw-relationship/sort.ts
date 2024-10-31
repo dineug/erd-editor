@@ -17,12 +17,18 @@ import {
 } from '@/utils/draw-relationship/calc';
 
 type RelationshipGraph = {
-  table: Table;
+  tableId: string;
   objectPoint: ObjectPoint;
-  top: Map<string, Relationship>;
-  bottom: Map<string, Relationship>;
-  left: Map<string, Relationship>;
-  right: Map<string, Relationship>;
+  top: Map<string, ChangeRelationship>;
+  bottom: Map<string, ChangeRelationship>;
+  left: Map<string, ChangeRelationship>;
+  right: Map<string, ChangeRelationship>;
+};
+
+type ChangeRelationship = {
+  id: string;
+  start: Pick<Relationship['start'], 'x' | 'y' | 'direction' | 'tableId'>;
+  end: Pick<Relationship['start'], 'x' | 'y' | 'direction' | 'tableId'>;
 };
 
 type DirectionTuple = [DirectionName, DirectionName];
@@ -49,15 +55,19 @@ export function relationshipSort(state: RootState) {
       ({ start, end }) => isTableIds(start.tableId) && isTableIds(end.tableId)
     );
   const graphMap = new Map<string, RelationshipGraph>();
+  const changeMap = new Map<Relationship, ChangeRelationship>();
 
   for (const relationship of relationships) {
-    const { start, end } = relationship;
+    const relationshipShape = createChangeRelationship(relationship);
+    const { start, end } = relationshipShape;
     const startTable = tableCollection.selectById(start.tableId);
     const endTable = tableCollection.selectById(end.tableId);
 
     if (!startTable || !endTable) {
       continue;
     }
+
+    changeMap.set(relationship, relationshipShape);
 
     if (start.tableId === end.tableId) {
       start.direction = Direction.top;
@@ -69,19 +79,19 @@ export function relationshipSort(state: RootState) {
       end.x = graph.objectPoint.rt.x;
       end.y = graph.objectPoint.rt.y + 20;
 
-      graph.top.set(relationship.id, relationship);
-      graph.right.set(relationship.id, relationship);
+      graph.top.set(relationshipShape.id, relationshipShape);
+      graph.right.set(relationshipShape.id, relationshipShape);
     } else {
       const startGraph = getOrCreateGraph(state, graphMap, startTable);
       const endGraph = getOrCreateGraph(state, graphMap, endTable);
       const [startDirection, endDirection] = getAndSetDirection(
         startGraph.objectPoint,
         endGraph.objectPoint,
-        relationship
+        relationshipShape
       );
 
-      startGraph[startDirection].set(relationship.id, relationship);
-      endGraph[endDirection].set(relationship.id, relationship);
+      startGraph[startDirection].set(relationshipShape.id, relationshipShape);
+      endGraph[endDirection].set(relationshipShape.id, relationshipShape);
     }
   }
 
@@ -94,6 +104,15 @@ export function relationshipSort(state: RootState) {
       relationshipOverlaySort(direction, graph);
     }
   }
+
+  for (const [origin, change] of changeMap.entries()) {
+    origin.start.direction = change.start.direction;
+    origin.start.x = change.start.x;
+    origin.start.y = change.start.y;
+    origin.end.direction = change.end.direction;
+    origin.end.x = change.end.x;
+    origin.end.y = change.end.y;
+  }
 }
 
 function getOrCreateGraph(
@@ -104,7 +123,7 @@ function getOrCreateGraph(
   let graph = graphMap.get(table.id);
   if (!graph) {
     graph = {
-      table,
+      tableId: table.id,
       objectPoint: tableToObjectPoint(state, table),
       top: new Map(),
       bottom: new Map(),
@@ -116,10 +135,30 @@ function getOrCreateGraph(
   return graph;
 }
 
+function createChangeRelationship(
+  relationship: Relationship
+): ChangeRelationship {
+  return {
+    id: relationship.id,
+    start: {
+      tableId: relationship.start.tableId,
+      x: relationship.start.x,
+      y: relationship.start.y,
+      direction: relationship.start.direction,
+    },
+    end: {
+      tableId: relationship.end.tableId,
+      x: relationship.end.x,
+      y: relationship.end.y,
+      direction: relationship.end.direction,
+    },
+  };
+}
+
 function getAndSetDirection(
   start: ObjectPoint,
   end: ObjectPoint,
-  relationship: Relationship
+  relationship: ChangeRelationship
 ): DirectionTuple {
   const direction: DirectionTuple = [
     DirectionName.bottom,
@@ -237,7 +276,7 @@ function relationshipOverlayOrder(
         startPoints.push(relationship.end);
         endPoints.push(relationship.start);
       }
-    } else if (relationship.start.tableId === graph.table.id) {
+    } else if (relationship.start.tableId === graph.tableId) {
       startPoints.push(relationship.start);
       endPoints.push(relationship.end);
     } else {
