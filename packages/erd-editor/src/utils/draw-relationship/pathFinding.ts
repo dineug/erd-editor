@@ -22,8 +22,8 @@ export function getRelationshipPath(
 }
 
 function getPath(
-  start: RelationshipPoint,
-  end: RelationshipPoint
+  start: Relationship['start'],
+  end: Relationship['end']
 ): RelationshipPath['path'] {
   const line: PathLine = {
     start: {
@@ -44,6 +44,15 @@ function getPath(
     L: { x: 0, y: 0 },
     Q: { x: 0, y: 0 },
     d() {
+      if (start.tableId === end.tableId) {
+        return [
+          [
+            { x: this.M.x, y: this.M.y },
+            { x: this.L.x, y: this.L.y },
+          ],
+        ];
+      }
+
       const distanceX = this.M.x - this.L.x;
       const distanceY = this.M.y - this.L.y;
       const distanceHalfX = distanceX / 2;
