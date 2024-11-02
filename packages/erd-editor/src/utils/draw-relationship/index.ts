@@ -107,6 +107,13 @@ export type ObjectPoint = {
   rb: Point;
 };
 
+export type GridObject = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export const isDirection = arrayHas<string>([
   DirectionName.top,
   DirectionName.bottom,

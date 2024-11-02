@@ -7,6 +7,8 @@ import {
   ref,
   watch,
 } from '@dineug/r-html';
+import { arrayHas } from '@dineug/shared';
+import { throttle } from 'lodash-es';
 import { filter, fromEvent, Subscription, throttleTime } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
@@ -42,8 +44,10 @@ import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.acti
 import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { HISTORY_LIMIT } from '@/engine/rx-store';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { getAStarService } from '@/services/a-star';
 import { isMouseEvent } from '@/utils/domEvent';
 import { getAbsolutePoint } from '@/utils/dragSelect';
+import type { GridObject } from '@/utils/draw-relationship';
 import { closeColorPickerAction } from '@/utils/emitter';
 import { drag$, DragMove, keyup$ } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
@@ -83,6 +87,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   useErdShortcut(ctx);
 
   const { addUnsubscribe } = useUnmounted();
+
+  const objectGridMap = new Map<string, GridObject>();
 
   const resetScroll = () => {
     if (root.value.scrollTop === 0 && root.value.scrollLeft === 0) {
@@ -303,6 +309,18 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       });
   };
 
+  const syncObjectGridMap = throttle(() => {
+    const { store } = app.value;
+    const {
+      doc: { tableIds },
+    } = store.state;
+    const hasId = arrayHas(tableIds);
+
+    Array.from(objectGridMap.keys()).forEach(id => {
+      !hasId(id) && objectGridMap.delete(id);
+    });
+  }, 200);
+
   onMounted(() => {
     const { store, emitter, keydown$ } = app.value;
     const $root = root.value;
@@ -351,6 +369,22 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         openDiffViewer: ({ payload: { value } }) => {
           state.diffValue = value;
           store.dispatch(changeOpenMapAction({ [Open.diffViewer]: true }));
+        },
+        updateObjectGridMap: ({ payload }) => {
+          objectGridMap.set(payload.id, payload);
+          syncObjectGridMap();
+        },
+        calcPathFinding: ({ payload: { id, start, end, resolve } }) => {
+          getAStarService()
+            ?.run({
+              id,
+              start,
+              end,
+              objectGridMap,
+            })
+            .then(lines => {
+              resolve(lines);
+            });
         },
       }),
       keydown$

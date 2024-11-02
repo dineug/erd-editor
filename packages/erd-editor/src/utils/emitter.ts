@@ -6,8 +6,9 @@ import {
 } from '@dineug/r-html';
 import { safeCallback } from '@dineug/shared';
 
-import { ValuesType } from '@/internal-types';
+import { type Point, ValuesType } from '@/internal-types';
 import { ThemeOptions } from '@/themes/radix-ui-theme';
+import type { GridObject } from '@/utils/draw-relationship';
 
 const InternalActionType = {
   openColorPicker: 'openColorPicker',
@@ -25,6 +26,8 @@ const InternalActionType = {
   mouseTrackerStart: 'mouseTrackerStart',
   mouseTrackerEnd: 'mouseTrackerEnd',
   openDiffViewer: 'openDiffViewer',
+  updateObjectGridMap: 'updateObjectGridMap',
+  calcPathFinding: 'calcPathFinding',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 
@@ -58,6 +61,15 @@ type InternalActionMap = {
   [InternalActionType.mouseTrackerEnd]: void;
   [InternalActionType.openDiffViewer]: {
     value: string;
+  };
+  [InternalActionType.updateObjectGridMap]: GridObject & {
+    id: string;
+  };
+  [InternalActionType.calcPathFinding]: {
+    id: string;
+    start: Point;
+    end: Point;
+    resolve: (lines: Array<[Point, Point]>) => void;
   };
 };
 
@@ -149,3 +161,11 @@ export const mouseTrackerEndAction = createAction<
 export const openDiffViewerAction = createAction<
   InternalActionMap[typeof InternalActionType.openDiffViewer]
 >(InternalActionType.openDiffViewer);
+
+export const updateObjectGridMapAction = createAction<
+  InternalActionMap[typeof InternalActionType.updateObjectGridMap]
+>(InternalActionType.updateObjectGridMap);
+
+export const calcPathFindingAction = createAction<
+  InternalActionMap[typeof InternalActionType.calcPathFinding]
+>(InternalActionType.calcPathFinding);

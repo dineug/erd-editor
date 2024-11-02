@@ -1,10 +1,12 @@
-import { FC, svg } from '@dineug/r-html';
+import { FC, nextTick, observable, svg } from '@dineug/r-html';
+import { debounce } from 'lodash-es';
 
 import { useAppContext } from '@/components/appContext';
 import { StartRelationshipType } from '@/constants/schema';
 import { hoverColumnMapAction } from '@/engine/modules/editor/atom.actions';
-import { Relationship as RelationshipType } from '@/internal-types';
+import { type Point, Relationship as RelationshipType } from '@/internal-types';
 import { getRelationshipPath } from '@/utils/draw-relationship/pathFinding';
+import { calcPathFindingAction } from '@/utils/emitter';
 
 import { relationshipShape } from './Relationship.template';
 
@@ -15,6 +17,12 @@ export type RelationshipProps = {
 
 const Relationship: FC<RelationshipProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+
+  const state = observable<{
+    lines: Array<[Point, Point]>;
+  }>({
+    lines: [],
+  });
 
   const handleMouseenter = (relationship: RelationshipType) => {
     const { store } = app.value;
@@ -33,18 +41,62 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
     store.dispatch(hoverColumnMapAction({ columnIds: [] }));
   };
 
+  let commitCalcPathFinding = false;
+
+  const resolve = (lines: Array<[Point, Point]>) => {
+    if (!lines.length) {
+      return;
+    }
+
+    commitCalcPathFinding = true;
+    state.lines = lines;
+    nextTick(() => {
+      commitCalcPathFinding = false;
+    });
+  };
+
+  const calcPathFinding = debounce(
+    (
+      payload: Omit<
+        ReturnType<typeof calcPathFindingAction>['payload'],
+        'resolve'
+      >
+    ) => {
+      const { emitter } = app.value;
+      emitter.emit(
+        calcPathFindingAction({
+          ...payload,
+          resolve,
+        })
+      );
+    },
+    300
+  );
+
   return () => {
     const { store } = app.value;
     const { editor } = store.state;
     const { relationship, strokeWidth } = props;
     const relationshipPath = getRelationshipPath(relationship);
     const { path, line } = relationshipPath;
-    const lines = path.path.d();
+    const calcLines = state.lines;
+    const lines = commitCalcPathFinding ? calcLines : path.path.d();
     const shape = relationshipShape(
       relationship.relationshipType,
       relationshipPath
     );
     const hover = Boolean(editor.hoverRelationshipMap[relationship.id]);
+
+    if (
+      !commitCalcPathFinding &&
+      relationship.start.tableId !== relationship.end.tableId
+    ) {
+      calcPathFinding({
+        id: relationship.id,
+        start: path.path.M,
+        end: path.path.L,
+      });
+    }
 
     return svg`
       <g
