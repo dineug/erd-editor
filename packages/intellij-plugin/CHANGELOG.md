@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [0.1.5] - 2024-11-09
+
+### Fixed
+
+- Optimize relationship to reduce unnecessary re-rendering.
+
 ## [0.1.4] - 2024-10-31
 
 ### Fixed
