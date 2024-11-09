@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.4
+
+### Fixed
+
+- Optimize relationship to reduce unnecessary re-rendering.
+
 ## 2.0.3
 
 ### Fixed
