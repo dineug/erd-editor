@@ -40,7 +40,6 @@ const directionNameToDirection: Record<string, number> = {
   [DirectionName.right]: Direction.right,
 };
 
-// TODO: concurrent
 export function relationshipSort(state: RootState) {
   const {
     doc: { tableIds, relationshipIds },

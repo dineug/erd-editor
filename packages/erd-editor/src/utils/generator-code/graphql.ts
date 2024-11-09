@@ -127,7 +127,8 @@ function formatRelation(
     .collection('relationshipEntities')
     .selectByIds(relationshipIds);
 
-  // TODO: https://github.com/dineug/erd-editor/issues/292
+  const startFieldNames = new Set<string>();
+  const endFieldNames = new Set<string>();
 
   relationships
     .filter(relationship => relationship.end.tableId === table.id)
@@ -137,11 +138,16 @@ function formatRelation(
       if (startTable) {
         const typeName = getNameCase(startTable.name, tableNameCase);
         const fieldName = getNameCase(startTable.name, columnNameCase);
+        const field = `  ${fieldName}: ${typeName}`;
+        if (startFieldNames.has(field)) {
+          return;
+        }
 
         if (startTable.comment.trim() !== '') {
           buffer.push(`  # ${startTable.comment}`);
         }
-        buffer.push(`  ${fieldName}: ${typeName}`);
+        buffer.push(field);
+        startFieldNames.add(field);
       }
     });
 
@@ -153,21 +159,24 @@ function formatRelation(
       if (endTable) {
         const typeName = getNameCase(endTable.name, tableNameCase);
         const fieldName = getNameCase(endTable.name, columnNameCase);
+        const field = hasOneRelationship(relationship.relationshipType)
+          ? `  ${fieldName}: ${typeName}`
+          : hasNRelationship(relationship.relationshipType)
+            ? `  ${getNameCase(
+                `${fieldName}List`,
+                columnNameCase
+              )}: [${typeName}!]!`
+            : null;
+
+        if (field === null || endFieldNames.has(field)) {
+          return;
+        }
 
         if (endTable.comment.trim() !== '') {
           buffer.push(`  # ${endTable.comment}`);
         }
-
-        if (hasOneRelationship(relationship.relationshipType)) {
-          buffer.push(`  ${fieldName}: ${typeName}`);
-        } else if (hasNRelationship(relationship.relationshipType)) {
-          buffer.push(
-            `  ${getNameCase(
-              `${fieldName}List`,
-              columnNameCase
-            )}: [${typeName}!]!`
-          );
-        }
+        buffer.push(field);
+        endFieldNames.add(field);
       }
     });
 }
