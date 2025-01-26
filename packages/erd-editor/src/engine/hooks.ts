@@ -8,7 +8,7 @@ type ActionCreator = ReturnType<typeof createAction<any>>;
 
 export type CO = (
   channel: Channel<AnyAction>,
-  state: RootState,
+  getState: () => RootState,
   ctx: EngineContext
 ) => ReturnType<CoroutineCreator>;
 

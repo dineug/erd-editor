@@ -14,13 +14,13 @@ import {
 import { changeColumnPrimaryKeyAction } from '@/engine/modules/table-column/atom.actions';
 import { bHas } from '@/utils/bit';
 
-const changeColumnNotNullHook: CO = function* (channel, state) {
+const changeColumnNotNullHook: CO = function* (channel, getState) {
   yield takeEvery(
     channel,
     function* ({
       payload: { id },
     }: ReturnType<typeof changeColumnPrimaryKeyAction>) {
-      const { collections } = state;
+      const { collections } = getState();
       const collection = query(collections).collection('tableColumnEntities');
       const column = collection.selectById(id);
       if (!column) return;
@@ -36,7 +36,7 @@ const changeColumnNotNullHook: CO = function* (channel, state) {
   );
 };
 
-const addColumnForeignKeyHook: CO = function* (channel, state) {
+const addColumnForeignKeyHook: CO = function* (channel, getState) {
   yield takeEvery(
     channel,
     function* ({
@@ -45,7 +45,7 @@ const addColumnForeignKeyHook: CO = function* (channel, state) {
       const {
         doc: { relationshipIds },
         collections,
-      } = state;
+      } = getState();
       if (!relationshipIds.includes(id)) return;
 
       const columns = query(collections)
@@ -59,7 +59,7 @@ const addColumnForeignKeyHook: CO = function* (channel, state) {
   );
 };
 
-const removeColumnForeignKeyHook: CO = function* (channel, state) {
+const removeColumnForeignKeyHook: CO = function* (channel, getState) {
   yield takeEvery(
     channel,
     function* ({
@@ -68,7 +68,7 @@ const removeColumnForeignKeyHook: CO = function* (channel, state) {
       const {
         doc: { relationshipIds },
         collections,
-      } = state;
+      } = getState();
       if (relationshipIds.includes(id)) return;
 
       const relationship = query(collections)
@@ -87,9 +87,9 @@ const removeColumnForeignKeyHook: CO = function* (channel, state) {
   );
 };
 
-const validationForeignKeyHook: CO = function* (channel, state) {
+const validationForeignKeyHook: CO = function* (channel, getState) {
   yield takeEvery(channel, function* () {
-    const { doc, collections } = state;
+    const { doc, collections } = getState();
     const relationships = query(collections)
       .collection('relationshipEntities')
       .selectByIds(doc.relationshipIds);

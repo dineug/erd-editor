@@ -8,10 +8,11 @@ import {
 import { recalculateTableWidth } from '@/utils/calcTable';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
-const recalculateTableWidthHook: CO = function* (channel, state, ctx) {
+const recalculateTableWidthHook: CO = function* (channel, getState, ctx) {
   yield throttle(
     channel,
     function* () {
+      const state = getState();
       recalculateTableWidth(state, ctx);
       relationshipSort(state);
     },

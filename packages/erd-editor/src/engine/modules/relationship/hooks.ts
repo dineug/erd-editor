@@ -34,11 +34,11 @@ import {
 import { bHas } from '@/utils/bit';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
-const identificationHook: CO = function* (channel, state) {
+const identificationHook: CO = function* (channel, getState) {
   yield throttle(
     channel,
     function* () {
-      const { doc, collections } = state;
+      const { doc, collections } = getState();
       const collection = query(collections).collection('relationshipEntities');
       const relationships = collection.selectByIds(doc.relationshipIds);
 
@@ -72,11 +72,11 @@ const identificationHook: CO = function* (channel, state) {
   );
 };
 
-const startRelationshipHook: CO = function* (channel, state) {
+const startRelationshipHook: CO = function* (channel, getState) {
   yield throttle(
     channel,
     function* () {
-      const { doc, collections } = state;
+      const { doc, collections } = getState();
       const collection = query(collections).collection('relationshipEntities');
       const relationships = collection.selectByIds(doc.relationshipIds);
 
@@ -112,11 +112,11 @@ const startRelationshipHook: CO = function* (channel, state) {
   );
 };
 
-const relationshipSortHook: CO = function* (channel, state) {
+const relationshipSortHook: CO = function* (channel, getState) {
   yield throttle(
     channel,
     function* () {
-      relationshipSort(state);
+      relationshipSort(getState());
     },
     5,
     { leading: false, trailing: true }

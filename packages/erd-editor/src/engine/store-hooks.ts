@@ -16,13 +16,15 @@ type Task = {
 const hooks = [...tableHooks, ...tableColumnHooks, ...relationshipHooks];
 
 export function createHooks(store: Store) {
+  const getState = () => store.state;
+
   const tasks: Task[] = hooks.map(([pattern, hook]) => {
     const ch = channel();
 
     return {
       pattern: arrayHas(pattern.map(String)),
       channel: ch,
-      proc: go(hook, ch, store.state, store.context),
+      proc: go(hook, ch, getState, store.context),
     };
   });
 
