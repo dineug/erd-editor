@@ -1,4 +1,5 @@
 import {
+  isAlterTableOnlyAddUnique,
   isConstraintValue,
   isLeftParentToken,
   isNewStatement,
@@ -20,6 +21,7 @@ export function alterTableAddUniqueParser(tokens: Token[], $pos: RefPos) {
   const isUnique = isUniqueValue(tokens);
   const isLeftParent = isLeftParentToken(tokens);
   const isRightParent = isRightParentToken(tokens);
+  const isOnly = isAlterTableOnlyAddUnique(tokens)($pos.value);
 
   const isToken = () => $pos.value < tokens.length;
 
@@ -36,6 +38,10 @@ export function alterTableAddUniqueParser(tokens: Token[], $pos: RefPos) {
 
     if (isTable($pos.value)) {
       token = tokens[++$pos.value];
+
+      if (isOnly) {
+        token = tokens[++$pos.value];
+      }
 
       if (isString($pos.value)) {
         ast.name = token.value;

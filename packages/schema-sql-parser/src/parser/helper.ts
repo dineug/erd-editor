@@ -51,6 +51,7 @@ export const isAuto_incrementValue = createValueEqual('AUTO_INCREMENT');
 export const isAutoincrementValue = createValueEqual('AUTOINCREMENT');
 export const isIfValue = createValueEqual('IF');
 export const isExistsValue = createValueEqual('EXISTS');
+export const isOnlyValue = createValueEqual('ONLY');
 
 export const isAutoIncrementValue = (tokens: Token[]) => {
   const isAuto_increment = isAuto_incrementValue(tokens);
@@ -112,89 +113,232 @@ export const isCreateIndex = (tokens: Token[]) => {
     (isCreate(pos) && isIndex(pos + 1)) || createUniqueIndex(pos);
 };
 
-export const isAlterTableAddPrimaryKey = (tokens: Token[]) => {
+export const isAlterTable = (tokens: Token[]) => {
   const isAlter = isAlterValue(tokens);
   const isTable = isTableValue(tokens);
+  return (pos: number) => isAlter(pos) && isTable(pos + 1);
+};
+
+export const isAlterTableOnly = (tokens: Token[]) => {
+  const alterTable = isAlterTable(tokens);
+  const isOnly = isOnlyValue(tokens);
+  return (pos: number) => alterTable(pos) && isOnly(pos + 2);
+};
+
+export const isAlterTableOnlyAddPrimaryKey = (tokens: Token[]) => {
+  const alterTableOnly = isAlterTableOnly(tokens);
   const isAdd = isAddValue(tokens);
   const isPrimary = isPrimaryValue(tokens);
   const isKey = isKeyValue(tokens);
   const isConstraint = isConstraintValue(tokens);
+
+  const expression1 = (pos: number) =>
+    alterTableOnly(pos) &&
+    isAdd(pos + 4) &&
+    isPrimary(pos + 5) &&
+    isKey(pos + 6);
+
+  const expression2 = (pos: number) =>
+    alterTableOnly(pos) &&
+    isAdd(pos + 4) &&
+    isConstraint(pos + 5) &&
+    isPrimary(pos + 7) &&
+    isKey(pos + 8);
+
+  const expression3 = (pos: number) =>
+    alterTableOnly(pos) &&
+    isAdd(pos + 6) &&
+    isPrimary(pos + 7) &&
+    isKey(pos + 8);
+
+  const expression4 = (pos: number) =>
+    alterTableOnly(pos) &&
+    isAdd(pos + 6) &&
+    isConstraint(pos + 7) &&
+    isPrimary(pos + 9) &&
+    isKey(pos + 10);
+
   return (pos: number) =>
-    (isAlter(pos) &&
-      isTable(pos + 1) &&
-      isAdd(pos + 3) &&
-      isPrimary(pos + 4) &&
-      isKey(pos + 5)) ||
-    (isAlter(pos) &&
-      isTable(pos + 1) &&
-      isAdd(pos + 3) &&
-      isConstraint(pos + 4) &&
-      isPrimary(pos + 6) &&
-      isKey(pos + 7)) ||
-    (isAlter(pos) &&
-      isTable(pos + 1) &&
-      isAdd(pos + 5) &&
-      isPrimary(pos + 6) &&
-      isKey(pos + 7)) ||
-    (isAlter(pos) &&
-      isTable(pos + 1) &&
-      isAdd(pos + 5) &&
-      isConstraint(pos + 6) &&
-      isPrimary(pos + 8) &&
-      isKey(pos + 9));
+    expression1(pos) ||
+    expression2(pos) ||
+    expression3(pos) ||
+    expression4(pos);
 };
 
-export const isAlterTableAddForeignKey = (tokens: Token[]) => {
-  const isAlter = isAlterValue(tokens);
-  const isTable = isTableValue(tokens);
+export const isAlterTableAddPrimaryKey = (tokens: Token[]) => {
+  const alterTableOnlyAddPrimaryKey = isAlterTableOnlyAddPrimaryKey(tokens);
+  const alterTable = isAlterTable(tokens);
+  const isAdd = isAddValue(tokens);
+  const isPrimary = isPrimaryValue(tokens);
+  const isKey = isKeyValue(tokens);
+  const isConstraint = isConstraintValue(tokens);
+
+  const expression1 = (pos: number) =>
+    alterTable(pos) && isAdd(pos + 3) && isPrimary(pos + 4) && isKey(pos + 5);
+
+  const expression2 = (pos: number) =>
+    alterTable(pos) &&
+    isAdd(pos + 3) &&
+    isConstraint(pos + 4) &&
+    isPrimary(pos + 6) &&
+    isKey(pos + 7);
+
+  const expression3 = (pos: number) =>
+    alterTable(pos) && isAdd(pos + 5) && isPrimary(pos + 6) && isKey(pos + 7);
+
+  const expression4 = (pos: number) =>
+    alterTable(pos) &&
+    isAdd(pos + 5) &&
+    isConstraint(pos + 6) &&
+    isPrimary(pos + 8) &&
+    isKey(pos + 9);
+
+  return (pos: number) =>
+    expression1(pos) ||
+    expression2(pos) ||
+    expression3(pos) ||
+    expression4(pos) ||
+    alterTableOnlyAddPrimaryKey(pos);
+};
+
+export const isAlterTableOnlyAddForeignKey = (tokens: Token[]) => {
+  const alterTableOnly = isAlterTableOnly(tokens);
   const isAdd = isAddValue(tokens);
   const isForeign = isForeignValue(tokens);
   const isKey = isKeyValue(tokens);
   const isConstraint = isConstraintValue(tokens);
+
+  const expression1 = (pos: number) =>
+    alterTableOnly(pos) &&
+    isAdd(pos + 4) &&
+    isForeign(pos + 5) &&
+    isKey(pos + 6);
+
+  const expression2 = (pos: number) =>
+    alterTableOnly(pos) &&
+    isAdd(pos + 4) &&
+    isConstraint(pos + 5) &&
+    isForeign(pos + 7) &&
+    isKey(pos + 8);
+
+  const expression3 = (pos: number) =>
+    alterTableOnly(pos) &&
+    isAdd(pos + 6) &&
+    isForeign(pos + 7) &&
+    isKey(pos + 8);
+
+  const expression4 = (pos: number) =>
+    alterTableOnly(pos) &&
+    isAdd(pos + 6) &&
+    isConstraint(pos + 7) &&
+    isForeign(pos + 9) &&
+    isKey(pos + 10);
+
   return (pos: number) =>
-    (isAlter(pos) &&
-      isTable(pos + 1) &&
-      isAdd(pos + 3) &&
-      isForeign(pos + 4) &&
-      isKey(pos + 5)) ||
-    (isAlter(pos) &&
-      isTable(pos + 1) &&
-      isAdd(pos + 3) &&
-      isConstraint(pos + 4) &&
-      isForeign(pos + 6) &&
-      isKey(pos + 7)) ||
-    (isAlter(pos) &&
-      isTable(pos + 1) &&
-      isAdd(pos + 5) &&
-      isForeign(pos + 6) &&
-      isKey(pos + 7)) ||
-    (isAlter(pos) &&
-      isTable(pos + 1) &&
-      isAdd(pos + 5) &&
-      isConstraint(pos + 6) &&
-      isForeign(pos + 8) &&
-      isKey(pos + 9));
+    expression1(pos) ||
+    expression2(pos) ||
+    expression3(pos) ||
+    expression4(pos);
 };
 
-export const isAlterTableAddUnique = (tokens: Token[]) => {
-  const isAlter = isAlterValue(tokens);
-  const isTable = isTableValue(tokens);
+export const isAlterTableAddForeignKey = (tokens: Token[]) => {
+  const alterTableOnlyAddForeignKey = isAlterTableOnlyAddForeignKey(tokens);
+  const alterTable = isAlterTable(tokens);
+  const isAdd = isAddValue(tokens);
+  const isForeign = isForeignValue(tokens);
+  const isKey = isKeyValue(tokens);
+  const isConstraint = isConstraintValue(tokens);
+
+  const expression1 = (pos: number) =>
+    alterTable(pos) && isAdd(pos + 3) && isForeign(pos + 4) && isKey(pos + 5);
+
+  const expression2 = (pos: number) =>
+    alterTable(pos) &&
+    isAdd(pos + 3) &&
+    isConstraint(pos + 4) &&
+    isForeign(pos + 6) &&
+    isKey(pos + 7);
+
+  const expression3 = (pos: number) =>
+    alterTable(pos) && isAdd(pos + 5) && isForeign(pos + 6) && isKey(pos + 7);
+
+  const expression4 = (pos: number) =>
+    alterTable(pos) &&
+    isAdd(pos + 5) &&
+    isConstraint(pos + 6) &&
+    isForeign(pos + 8) &&
+    isKey(pos + 9);
+
+  return (pos: number) =>
+    expression1(pos) ||
+    expression2(pos) ||
+    expression3(pos) ||
+    expression4(pos) ||
+    alterTableOnlyAddForeignKey(pos);
+};
+
+export const isAlterTableOnlyAddUnique = (tokens: Token[]) => {
+  const alterTableOnly = isAlterTableOnly(tokens);
   const isAdd = isAddValue(tokens);
   const isUnique = isUniqueValue(tokens);
   const isConstraint = isConstraintValue(tokens);
+
+  const expression1 = (pos: number) =>
+    alterTableOnly(pos) && isAdd(pos + 4) && isUnique(pos + 5);
+
+  const expression2 = (pos: number) =>
+    alterTableOnly(pos) &&
+    isAdd(pos + 4) &&
+    isConstraint(pos + 5) &&
+    isUnique(pos + 7);
+
+  const expression3 = (pos: number) =>
+    alterTableOnly(pos) && isAdd(pos + 6) && isUnique(pos + 7);
+
+  const expression4 = (pos: number) =>
+    alterTableOnly(pos) &&
+    isAdd(pos + 6) &&
+    isConstraint(pos + 7) &&
+    isUnique(pos + 9);
+
   return (pos: number) =>
-    (isAlter(pos) && isTable(pos + 1) && isAdd(pos + 3) && isUnique(pos + 4)) ||
-    (isAlter(pos) &&
-      isTable(pos + 1) &&
-      isAdd(pos + 3) &&
-      isConstraint(pos + 4) &&
-      isUnique(pos + 6)) ||
-    (isAlter(pos) && isTable(pos + 1) && isAdd(pos + 5) && isUnique(pos + 6)) ||
-    (isAlter(pos) &&
-      isTable(pos + 1) &&
-      isAdd(pos + 5) &&
-      isConstraint(pos + 6) &&
-      isUnique(pos + 8));
+    expression1(pos) ||
+    expression2(pos) ||
+    expression3(pos) ||
+    expression4(pos);
+};
+
+export const isAlterTableAddUnique = (tokens: Token[]) => {
+  const alterTableOnlyAddUnique = isAlterTableOnlyAddUnique(tokens);
+  const alterTable = isAlterTable(tokens);
+  const isAdd = isAddValue(tokens);
+  const isUnique = isUniqueValue(tokens);
+  const isConstraint = isConstraintValue(tokens);
+
+  const expression1 = (pos: number) =>
+    alterTable(pos) && isAdd(pos + 3) && isUnique(pos + 4);
+
+  const expression2 = (pos: number) =>
+    alterTable(pos) &&
+    isAdd(pos + 3) &&
+    isConstraint(pos + 4) &&
+    isUnique(pos + 6);
+
+  const expression3 = (pos: number) =>
+    alterTable(pos) && isAdd(pos + 5) && isUnique(pos + 6);
+
+  const expression4 = (pos: number) =>
+    alterTable(pos) &&
+    isAdd(pos + 5) &&
+    isConstraint(pos + 6) &&
+    isUnique(pos + 8);
+
+  return (pos: number) =>
+    expression1(pos) ||
+    expression2(pos) ||
+    expression3(pos) ||
+    expression4(pos) ||
+    alterTableOnlyAddUnique(pos);
 };
 
 const DataTypes: ReadonlyArray<string> = Array.from(

@@ -1,4 +1,5 @@
 import {
+  isAlterTableOnlyAddForeignKey,
   isConstraintValue,
   isForeignValue,
   isNewStatement,
@@ -21,6 +22,7 @@ export function alterTableAddForeignKeyParser(tokens: Token[], $pos: RefPos) {
   const isPeriod = isPeriodToken(tokens);
   const isTable = isTableValue(tokens);
   const isForeign = isForeignValue(tokens);
+  const isOnly = isAlterTableOnlyAddForeignKey(tokens)($pos.value);
 
   const isToken = () => $pos.value < tokens.length;
 
@@ -39,6 +41,10 @@ export function alterTableAddForeignKeyParser(tokens: Token[], $pos: RefPos) {
 
     if (isTable($pos.value)) {
       token = tokens[++$pos.value];
+
+      if (isOnly) {
+        token = tokens[++$pos.value];
+      }
 
       if (isString($pos.value)) {
         ast.name = token.value;

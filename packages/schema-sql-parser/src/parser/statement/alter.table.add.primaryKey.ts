@@ -1,4 +1,5 @@
 import {
+  isAlterTableOnlyAddPrimaryKey,
   isConstraintValue,
   isKeyValue,
   isLeftParentToken,
@@ -26,6 +27,7 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
   const isPeriod = isPeriodToken(tokens);
   const isKey = isKeyValue(tokens);
   const isTable = isTableValue(tokens);
+  const isOnly = isAlterTableOnlyAddPrimaryKey(tokens)($pos.value);
 
   const isToken = () => $pos.value < tokens.length;
 
@@ -42,6 +44,10 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
 
     if (isTable($pos.value)) {
       token = tokens[++$pos.value];
+
+      if (isOnly) {
+        token = tokens[++$pos.value];
+      }
 
       if (isString($pos.value)) {
         ast.name = token.value;

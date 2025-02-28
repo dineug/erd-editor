@@ -996,3 +996,95 @@ ALTER TABLE "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
   ]
 }
 ```
+
+### Alter Table Only
+
+```sql
+ALTER TABLE ONLY Persons ADD PRIMARY KEY (ID)
+ALTER TABLE ONLY Persons ADD CONSTRAINT PK_Person PRIMARY KEY (ID,LastName)
+ALTER TABLE ONLY "public".Persons ADD PRIMARY KEY (ID)
+ALTER TABLE ONLY "public".Persons ADD CONSTRAINT PK_Person PRIMARY KEY (ID,LastName)
+ALTER TABLE ONLY Orders ADD FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)
+ALTER TABLE ONLY Orders ADD CONSTRAINT FK_PersonOrder FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)
+ALTER TABLE ONLY "public".Orders ADD FOREIGN KEY (PersonID) REFERENCES "public".Persons(PersonID)
+ALTER TABLE ONLY "public".Orders ADD CONSTRAINT FK_PersonOrder FOREIGN KEY (PersonID) REFERENCES "public".Persons(PersonID)
+ALTER TABLE ONLY Persons ADD UNIQUE (ID)
+ALTER TABLE ONLY Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
+ALTER TABLE ONLY "public".Persons ADD UNIQUE (ID)
+ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "Persons",
+      "columnNames": ["ID"]
+    },
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "Persons",
+      "columnNames": ["ID", "LastName"]
+    },
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "Persons",
+      "columnNames": ["ID"]
+    },
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "Persons",
+      "columnNames": ["ID", "LastName"]
+    },
+    {
+      "type": "alter.table.add.foreignKey",
+      "name": "Orders",
+      "columnNames": ["PersonID"],
+      "refTableName": "Persons",
+      "refColumnNames": ["PersonID"]
+    },
+    {
+      "type": "alter.table.add.foreignKey",
+      "name": "Orders",
+      "columnNames": ["PersonID"],
+      "refTableName": "Persons",
+      "refColumnNames": ["PersonID"]
+    },
+    {
+      "type": "alter.table.add.foreignKey",
+      "name": "Orders",
+      "columnNames": ["PersonID"],
+      "refTableName": "Persons",
+      "refColumnNames": ["PersonID"]
+    },
+    {
+      "type": "alter.table.add.foreignKey",
+      "name": "Orders",
+      "columnNames": ["PersonID"],
+      "refTableName": "Persons",
+      "refColumnNames": ["PersonID"]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "Persons",
+      "columnNames": ["ID"]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "Persons",
+      "columnNames": ["ID", "LastName"]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "Persons",
+      "columnNames": ["ID"]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "Persons",
+      "columnNames": ["ID", "LastName"]
+    }
+  ]
+}
+```
