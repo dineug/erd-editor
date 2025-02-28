@@ -210,6 +210,14 @@ CREATE TABLE test.a (
 )
 ```
 
+### [database].[table]
+
+```sql
+CREATE TABLE [test].[a] (
+ b bigint
+)
+```
+
 ### Column Options
 
 ```sql

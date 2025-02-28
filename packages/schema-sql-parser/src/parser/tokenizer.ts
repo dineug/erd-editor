@@ -24,7 +24,7 @@ const pattern = {
   backtick: '`',
   whiteSpace: /\s/,
   string: /\S/,
-  breakString: /;|,|\(|\)|\[|\./,
+  breakString: /;|,|\(|\)|\[|\]|\./,
   equal: '=',
   period: '.',
   comma: ',',
@@ -86,18 +86,6 @@ export function tokenizer(source: string): Token[] {
       continue;
     }
 
-    if (match.leftBracket(char)) {
-      tokens.push({ type: TokenType.leftBracket, value: char });
-      pos++;
-      continue;
-    }
-
-    if (match.rightBracket(char)) {
-      tokens.push({ type: TokenType.rightBracket, value: char });
-      pos++;
-      continue;
-    }
-
     if (match.comma(char)) {
       tokens.push({ type: TokenType.comma, value: char });
       pos++;
@@ -118,6 +106,20 @@ export function tokenizer(source: string): Token[] {
 
     if (match.semicolon(char)) {
       tokens.push({ type: TokenType.semicolon, value: char });
+      pos++;
+      continue;
+    }
+
+    if (match.leftBracket(char)) {
+      let value = '';
+      char = source[++pos];
+
+      while (isChar() && !match.rightBracket(char)) {
+        value += char;
+        char = source[++pos];
+      }
+
+      tokens.push({ type: TokenType.string, value });
       pos++;
       continue;
     }
