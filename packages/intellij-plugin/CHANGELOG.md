@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+## [0.1.6] - 2025-02-28
+
+### Fixed
+
+- Support for Postgres `ALTER TABLE ONLY` syntax
+- Support for MSSQL bracket syntax
+
 ## [0.1.5] - 2024-11-09
 
 ### Fixed
