@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.5] - 2025-02-28
+
+### Fixed
+
+- Support for Postgres `ALTER TABLE ONLY` syntax
+- Support for MSSQL bracket syntax
+
 ## [2.0.4] - 2024-11-09
 
 ### Fixed
