@@ -73,14 +73,13 @@ export class ShikiService {
   private ready: Promise<void>;
 
   constructor() {
-    this.ready = new Promise(async (resolve, reject) => {
-      try {
-        const wasmResponse = await fetch(wasmUrl);
-        setWasm(wasmResponse);
-        resolve();
-      } catch (error) {
-        reject(error);
-      }
+    this.ready = new Promise((resolve, reject) => {
+      fetch(wasmUrl)
+        .then(wasmResponse => {
+          setWasm(wasmResponse);
+          resolve();
+        })
+        .catch(reject);
     });
   }
 

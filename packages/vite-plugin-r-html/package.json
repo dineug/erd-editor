@@ -9,13 +9,13 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@babel/core": "^7.24.4",
-    "@rollup/pluginutils": "^5.1.0"
+    "@babel/core": "^7.26.9",
+    "@rollup/pluginutils": "^5.1.4"
   },
   "devDependencies": {
-    "@rollup/plugin-typescript": "^11.1.6",
-    "typescript": "5.4.5",
-    "vite": "^5.2.8",
-    "vite-plugin-dts": "^3.8.2"
+    "@rollup/plugin-typescript": "^12.1.2",
+    "typescript": "5.8.2",
+    "vite": "^6.2.1",
+    "vite-plugin-dts": "^4.5.3"
   }
 }

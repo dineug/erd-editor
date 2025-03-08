@@ -12,7 +12,9 @@ function getCanvas(): OffscreenCanvas | null {
 
   try {
     canvas = new OffscreenCanvas(0, 0);
-  } catch {}
+  } catch {
+    // noop
+  }
 
   return canvas;
 }

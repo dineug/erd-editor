@@ -14,7 +14,7 @@ export function useProvider<T>(
   value: T
 ) {
   const target =
-    ctx instanceof HTMLElement ? ctx : ctx.parentElement ?? ctx.host;
+    ctx instanceof HTMLElement ? ctx : (ctx.parentElement ?? ctx.host);
   const subject = createSubject<T>();
   const unsubscribeMap = new Map<(value: T) => void, Unsubscribe>();
 

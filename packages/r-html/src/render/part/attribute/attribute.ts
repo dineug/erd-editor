@@ -160,7 +160,7 @@ function toClassList(value: any, list: string[] = []) {
         }
       }
     } else {
-      for (let k in value) {
+      for (const k in value) {
         if (value[k]) {
           list.push(safeToString(k));
         }

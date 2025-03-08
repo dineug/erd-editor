@@ -20,7 +20,7 @@ export function useContext<T>(
   };
 
   const getTarget = () =>
-    ctx instanceof HTMLElement ? ctx : ctx.parentElement ?? ctx.host;
+    ctx instanceof HTMLElement ? ctx : (ctx.parentElement ?? ctx.host);
 
   const subscribe = () => {
     const target = getTarget();

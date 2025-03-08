@@ -2,7 +2,7 @@ import { isNumber, isString } from '@dineug/shared';
 
 import { DeepPartial, EntityMeta } from '@/internal-types';
 
-export function assign<T extends Object, K extends keyof T>(
+export function assign<T extends object, K extends keyof T>(
   valid: (value: any) => boolean,
   target: T,
   source?: DeepPartial<T>

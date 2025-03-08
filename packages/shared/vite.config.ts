@@ -18,6 +18,6 @@ export default defineConfig({
   },
   plugins: [
     dts({ compilerOptions: { declarationMap: true } }),
-    typescript({ noEmitOnError: true }),
+    typescript({ noEmitOnError: true, noForceEmit: true }),
   ],
 });

@@ -49,7 +49,9 @@ export default defineConfig(({ command, mode }) => {
     plugins: [
       isLib && isServe && rHtml(),
       isLib && isBuild && dts(),
-      isLib && isBuild && typescript({ noEmitOnError: true }),
+      isLib &&
+        isBuild &&
+        typescript({ noEmitOnError: true, noForceEmit: true }),
     ].filter(Boolean),
     server: {
       open: true,

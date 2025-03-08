@@ -41,7 +41,9 @@ export class ErdDocument implements vscode.CustomDocument {
       delete: async () => {
         try {
           await vscode.workspace.fs.delete(destination);
-        } catch {}
+        } catch {
+          // noop
+        }
       },
     };
   }

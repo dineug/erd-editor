@@ -16,7 +16,7 @@ export class DirectivePart implements Part {
     DirectiveFunction
   > | null = null;
   #directive: Directive<DirectiveFunction> | null = null;
-  #directiveDestroy: (() => void) | void;
+  #directiveDestroy: (() => void) | void = void 0;
 
   constructor(startNode: Comment, endNode: Comment) {
     this.#startNode = startNode;

@@ -9,7 +9,7 @@ export function parseKeybinding(str: string): KeyBindingPress[] {
     .split(' ')
     .map(press => {
       let mods = press.split(/\b\+/);
-      let key = mods.pop() as string;
+      const key = mods.pop() as string;
       mods = mods.map(mod => (mod === '$mod' ? MOD : mod));
       return [mods, key];
     });

@@ -15,7 +15,8 @@ const hmrSubject = createSubject<FC>();
 let active = false;
 
 function handler(event: any) {
-  let { originComponent, newComponent }: any = event?.detail ?? {};
+  let originComponent: any = event?.detail?.originComponent;
+  const newComponent: any = event?.detail?.newComponent;
 
   if (isFunction(originComponent) && isFunction(newComponent)) {
     if (originComponentCache.has(originComponent)) {
