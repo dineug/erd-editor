@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-05-07
+
+### Fixed
+
+- Updated LWW data handling logic
+
 ## [0.1.6] - 2025-02-28
 
 ### Fixed
