@@ -45,6 +45,10 @@
       "path": "packages/shared",
     },
     {
+      "name": "go",
+      "path": "packages/go",
+    },
+    {
       "name": "r-html",
       "path": "packages/r-html",
     },

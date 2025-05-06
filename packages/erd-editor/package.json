@@ -53,7 +53,7 @@
   "devDependencies": {
     "@dineug/erd-editor-schema": "workspace:*",
     "@dineug/erd-editor-shiki-worker": "workspace:*",
-    "@dineug/go": "^0.1.8",
+    "@dineug/go": "workspace:*",
     "@dineug/r-html": "workspace:*",
     "@dineug/schema-sql-parser": "workspace:*",
     "@dineug/shared": "workspace:*",
