@@ -49,6 +49,10 @@
       "path": "packages/go",
     },
     {
+      "name": "store",
+      "path": "packages/store",
+    },
+    {
       "name": "r-html",
       "path": "packages/r-html",
     },
