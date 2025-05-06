@@ -7,14 +7,6 @@ import type { GCIds } from '@/services/schema-gc';
 import { procGC } from './procGC';
 
 const GC_DAYS = 3;
-const hasCollectionKey = arrayHas([
-  'tableEntities',
-  'tableColumnEntities',
-  'relationshipEntities',
-  'indexEntities',
-  'indexColumnEntities',
-  'memoEntities',
-]);
 
 export class SchemaGCService {
   async run(source: string): Promise<GCIds> {
@@ -23,7 +15,6 @@ export class SchemaGCService {
     const {
       doc: { tableIds, memoIds, indexIds, relationshipIds },
       collections,
-      lww,
     } = state;
 
     const hasTableIds = arrayHas(tableIds);
@@ -111,20 +102,8 @@ export class SchemaGCService {
     const hasTableIdsAll = arrayHas(
       tableCollection.selectAll().map(({ id }) => id)
     );
-    const hasTableColumnIdsAll = arrayHas(
-      tableColumnCollection.selectAll().map(({ id }) => id)
-    );
     const hasIndexIdsAll = arrayHas(
       indexCollection.selectAll().map(({ id }) => id)
-    );
-    const hasIndexColumnIdsAll = arrayHas(
-      indexColumnCollection.selectAll().map(({ id }) => id)
-    );
-    const hasRelationshipIdsAll = arrayHas(
-      relationshipCollection.selectAll().map(({ id }) => id)
-    );
-    const hasMemoIdsAll = arrayHas(
-      memoCollection.selectAll().map(({ id }) => id)
     );
 
     tableColumnCollection
@@ -142,31 +121,6 @@ export class SchemaGCService {
           !hasIndexIdsAll(indexId) && isGC(() => false)({ id, meta })
       )
       .forEach(({ id }) => gcIndexColumnIdsSet.add(id));
-
-    Object.entries(lww).forEach(([id, [key]]) => {
-      if (!hasCollectionKey(key)) return;
-
-      switch (key) {
-        case 'tableEntities':
-          !hasTableIdsAll(id) && gcTableIdsSet.add(id);
-          break;
-        case 'tableColumnEntities':
-          !hasTableColumnIdsAll(id) && gcTableColumnIdsSet.add(id);
-          break;
-        case 'relationshipEntities':
-          !hasRelationshipIdsAll(id) && gcRelationshipIdsSet.add(id);
-          break;
-        case 'indexEntities':
-          !hasIndexIdsAll(id) && gcIndexIdsSet.add(id);
-          break;
-        case 'indexColumnEntities':
-          !hasIndexColumnIdsAll(id) && gcIndexColumnIdsSet.add(id);
-          break;
-        case 'memoEntities':
-          !hasMemoIdsAll(id) && gcMemoIdsSet.add(id);
-          break;
-      }
-    });
 
     return {
       tableIds: [...gcTableIdsSet],

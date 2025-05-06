@@ -3,7 +3,7 @@ import { ERDEditorSchemaV3, query } from '@dineug/erd-editor-schema';
 import { GCIds } from '@/services/schema-gc';
 
 export function procGC(
-  { collections, lww }: ERDEditorSchemaV3,
+  { collections }: ERDEditorSchemaV3,
   {
     tableIds,
     tableColumnIds,
@@ -25,13 +25,4 @@ export function procGC(
     .collection('indexColumnEntities')
     .removeMany(indexColumnIds);
   query(collections).collection('memoEntities').removeMany(memoIds);
-
-  [
-    ...tableIds,
-    ...tableColumnIds,
-    ...relationshipIds,
-    ...indexIds,
-    ...indexColumnIds,
-    ...memoIds,
-  ].forEach(id => Reflect.deleteProperty(lww, id));
 }

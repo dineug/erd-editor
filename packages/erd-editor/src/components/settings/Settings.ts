@@ -67,7 +67,7 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
 
   const handleRecalculationTableWidth = () => {
     const { store, emitter, toWidth } = app.value;
-    recalculateTableWidth(store.state, { toWidth });
+    recalculateTableWidth(store.state, { toWidth, clock: store.context.clock });
     relationshipSort(store.state);
     emitter.emit(
       openToastAction({

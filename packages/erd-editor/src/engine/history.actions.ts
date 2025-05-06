@@ -72,20 +72,20 @@ function push(store: Store, history: History, actions: AnyAction[]) {
 
   history.push({
     undo: dispatch => {
-      const timestamp = Date.now();
-      dispatch(undoActions.map(cloneAction(timestamp)));
+      const version = store.context.clock.getNextVersion();
+      dispatch(undoActions.map(cloneAction(version)));
     },
     redo: dispatch => {
-      const timestamp = Date.now();
-      dispatch(redoActions.map(cloneAction(timestamp)));
+      const version = store.context.clock.getNextVersion();
+      dispatch(redoActions.map(cloneAction(version)));
     },
   });
 }
 
-function cloneAction(timestamp: number) {
+function cloneAction(version: number) {
   return (action: AnyAction) => ({
     ...cloneDeep(action),
-    timestamp,
+    version,
   });
 }
 

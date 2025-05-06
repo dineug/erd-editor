@@ -15,12 +15,14 @@ export const addTableAction = createAction<
 
 const addTable: ReducerType<typeof ActionType.addTable> = (
   { doc, collections, lww },
-  { payload: { id, ui }, timestamp }
+  { payload: { id, ui }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   query(collections)
     .collection('tableEntities')
     .addOne(createTable({ id, ui }))
-    .addOperator(lww, timestamp, id, () => {
+    .addOperator(lww, safeVersion, id, () => {
       if (!arrayHas(doc.tableIds)(id)) {
         doc.tableIds.push(id);
       }
@@ -69,11 +71,13 @@ export const removeTableAction = createAction<
 
 const removeTable: ReducerType<typeof ActionType.removeTable> = (
   { doc, collections, lww },
-  { payload: { id }, timestamp }
+  { payload: { id }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   query(collections)
     .collection('tableEntities')
-    .removeOperator(lww, timestamp, id, () => {
+    .removeOperator(lww, safeVersion, id, () => {
       const index = doc.tableIds.indexOf(id);
       if (index !== -1) {
         doc.tableIds.splice(index, 1);
@@ -87,13 +91,14 @@ export const changeTableNameAction = createAction<
 
 const changeTableName: ReducerType<typeof ActionType.changeTableName> = (
   { collections, lww },
-  { payload: { id, value }, timestamp },
-  { toWidth }
+  { payload: { id, value }, version },
+  { toWidth, clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableEntities');
   collection.getOrCreate(id, id => createTable({ id }));
 
-  collection.replaceOperator(lww, timestamp, id, 'name', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'name', () => {
     collection.updateOne(id, table => {
       table.name = value;
       table.ui.widthName = textInRange(toWidth(value));
@@ -107,13 +112,14 @@ export const changeTableCommentAction = createAction<
 
 const changeTableComment: ReducerType<typeof ActionType.changeTableComment> = (
   { collections, lww },
-  { payload: { id, value }, timestamp },
-  { toWidth }
+  { payload: { id, value }, version },
+  { toWidth, clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableEntities');
   collection.getOrCreate(id, id => createTable({ id }));
 
-  collection.replaceOperator(lww, timestamp, id, 'comment', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'comment', () => {
     collection.updateOne(id, table => {
       table.comment = value;
       table.ui.widthComment = textInRange(toWidth(value));
@@ -127,12 +133,14 @@ export const changeTableColorAction = createAction<
 
 const changeTableColor: ReducerType<typeof ActionType.changeTableColor> = (
   { collections, lww },
-  { payload: { id, color }, timestamp }
+  { payload: { id, color }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableEntities');
   collection.getOrCreate(id, id => createTable({ id }));
 
-  collection.replaceOperator(lww, timestamp, id, 'ui.color', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'ui.color', () => {
     collection.updateOne(id, table => {
       table.ui.color = color;
     });

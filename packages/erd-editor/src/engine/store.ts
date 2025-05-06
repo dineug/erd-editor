@@ -25,6 +25,7 @@ export function createStore(
     state: {
       ...schemaV3Parser({}),
       editor: createEditor(),
+      lww: {},
     },
     reducers: {
       ...editorReducers,

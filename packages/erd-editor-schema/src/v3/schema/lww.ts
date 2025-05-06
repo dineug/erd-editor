@@ -1,7 +1,7 @@
 /**
  * Last write wins
  * @example
- * Record<uuid, [tag, add, remove, Record<path, timestamp>]>
+ * Record<uuid, [tag, add, remove, Record<path, version>]>
  */
 export type LWW = Record<string, LWWTuple>;
 

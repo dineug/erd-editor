@@ -1,11 +1,16 @@
 import { AnyAction } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
-import { map, Observable, Subject, Subscription } from 'rxjs';
+import { arrayHas, isArray } from '@dineug/shared';
+import { isEmpty } from 'lodash-es';
+import { map, merge, Observable, Subject, Subscription } from 'rxjs';
 
 import {
   SharedActionTypes,
   SharedFollowingActionTypes,
 } from '@/engine/actions';
+import {
+  getLWWAction,
+  mergeLWWAction,
+} from '@/engine/modules/editor/atom.actions';
 import {
   actionsFilter,
   bufferCircuitBreaker,
@@ -42,14 +47,19 @@ export function createSharedStore(
   const subscriptionSet = new Set<Subscription>();
   const observerSubscriptionSet = new Set<Subscription>();
   const observer$ = new Subject<Array<AnyAction>>();
+  const internal$ = new Subject<Array<AnyAction>>();
   const openingNotifier$ = new Subject<void>();
   const closingNotifier$ = new Subject<void>();
 
   let isConnection = true;
+  let firstSubscribe = true;
 
   subscriptionSet.add(
-    new Observable<Array<AnyAction>>(subscriber =>
-      store.subscribe(actions => subscriber.next(actions))
+    merge(
+      new Observable<Array<AnyAction>>(subscriber =>
+        store.subscribe(actions => subscriber.next(actions))
+      ),
+      internal$
     )
       .pipe(
         actionsFilter(SharedActionTypes),
@@ -88,10 +98,37 @@ export function createSharedStore(
     }
   };
 
+  const toMergeLWWAction = (actions: Array<AnyAction> | AnyAction) => {
+    const safeActions = isArray(actions) ? actions : [actions];
+    const isGetLWWAction = safeActions.some(
+      action => action.type === getLWWAction.type
+    );
+    const lww = store.state.lww;
+
+    if (isGetLWWAction && !isEmpty(lww)) {
+      internal$.next([
+        {
+          ...mergeLWWAction({ lww }),
+          version: store.context.clock.getNextVersion(),
+        },
+      ]);
+    }
+  };
+
   const subscribe = (fn: (value: AnyAction[]) => void) => {
     const subscription = observer$.subscribe(actions => fn(actions));
     observerSubscriptionSet.add(subscription);
     halfOpenNotify();
+
+    if (firstSubscribe) {
+      internal$.next([
+        {
+          ...getLWWAction(),
+          version: store.context.clock.getNextVersion(),
+        },
+      ]);
+      firstSubscribe = false;
+    }
 
     return () => {
       subscription.unsubscribe();
@@ -112,10 +149,12 @@ export function createSharedStore(
 
   const dispatchSync = (actions: Array<AnyAction> | AnyAction) => {
     store.dispatchSync(actions);
+    toMergeLWWAction(actions);
   };
 
   const dispatch = (actions: Array<AnyAction> | AnyAction) => {
     store.dispatch(actions);
+    toMergeLWWAction(actions);
   };
 
   const destroy = () => {

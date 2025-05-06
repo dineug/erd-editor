@@ -2,7 +2,7 @@ import { Reducer } from '@dineug/r-html';
 
 import { EngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
-import { ValuesType } from '@/internal-types';
+import { type LWW, ValuesType } from '@/internal-types';
 
 import { FocusType, MoveKey, SelectType } from './state';
 
@@ -34,6 +34,8 @@ export const ActionType = {
   dragendColumn: 'editor.dragendColumn',
   sharedMouseTracker: 'editor.sharedMouseTracker',
   validationIds: 'editor.validationIds',
+  getLWW: 'editor.getLWW',
+  mergeLWW: 'editor.mergeLWW',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -104,6 +106,10 @@ export type ActionMap = {
     y: number;
   };
   [ActionType.validationIds]: void;
+  [ActionType.getLWW]: void;
+  [ActionType.mergeLWW]: {
+    lww: LWW;
+  };
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<

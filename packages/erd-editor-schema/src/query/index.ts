@@ -104,24 +104,24 @@ class CollectionQuery<K extends keyof Collections> {
     return this.selectById(id) as GetEntity<K>;
   }
 
-  addOperator(lww: LWW, timestamp: number, id: string, recipe: () => void) {
-    addOperator(lww, timestamp, id, this.collectionKey, recipe);
+  addOperator(lww: LWW, version: number, id: string, recipe: () => void) {
+    addOperator(lww, version, id, this.collectionKey, recipe);
     return this;
   }
 
-  removeOperator(lww: LWW, timestamp: number, id: string, recipe: () => void) {
-    removeOperator(lww, timestamp, id, this.collectionKey, recipe);
+  removeOperator(lww: LWW, version: number, id: string, recipe: () => void) {
+    removeOperator(lww, version, id, this.collectionKey, recipe);
     return this;
   }
 
   replaceOperator(
     lww: LWW,
-    timestamp: number,
+    version: number,
     id: string,
     path: string,
     recipe: () => void
   ) {
-    replaceOperator(lww, timestamp, id, this.collectionKey, path, recipe);
+    replaceOperator(lww, version, id, this.collectionKey, path, recipe);
     return this;
   }
 }

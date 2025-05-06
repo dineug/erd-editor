@@ -11,3 +11,4 @@ export {
   SchemaV3Constants,
   schemaV3Parser,
 } from '@/v3';
+export type { LWW, LWWTuple } from '@/v3/schema/lww';

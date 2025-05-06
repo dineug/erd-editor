@@ -5,7 +5,10 @@ import { isEmpty, omit } from 'lodash-es';
 import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
 
 import { ChangeActionTypes } from '@/engine/actions';
-import { EngineContext } from '@/engine/context';
+import {
+  createEngineContext,
+  type InjectEngineContext,
+} from '@/engine/context';
 import { validationIdsAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { actionsFilter } from '@/engine/rx-operators';
@@ -38,10 +41,11 @@ export type ReplicationStore = {
 };
 
 export function createReplicationStore(
-  context: EngineContext
+  context: InjectEngineContext
 ): ReplicationStore {
   const subscriptionSet = new Set<Subscription>();
-  const store = createStore(context, false);
+  const engineContext = createEngineContext(context);
+  const store = createStore(engineContext, false);
   const hooks = createHooks(store);
   const dispatch$ = new Subject<Array<AnyAction>>();
   const change$ = new Observable<Array<AnyAction>>(subscriber =>

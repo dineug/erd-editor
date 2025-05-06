@@ -2,7 +2,6 @@ import { DeepPartial } from '@/internal-types';
 import { createAndMergeDoc } from '@/v3/parser/doc';
 import { createAndMergeIndexEntities } from '@/v3/parser/index.entity';
 import { createAndMergeIndexColumnEntities } from '@/v3/parser/indexColumn.entity';
-import { createAndMergeLWW } from '@/v3/parser/lww';
 import { createAndMergeMemoEntities } from '@/v3/parser/memo.entity';
 import { createAndMergeRelationshipEntities } from '@/v3/parser/relationship.entity';
 import { createAndMergeSettings } from '@/v3/parser/settings';
@@ -15,7 +14,6 @@ export function parser(source: any): ERDEditorSchemaV3 {
 
   const settings = createAndMergeSettings(json.settings);
   const doc = createAndMergeDoc(json.doc);
-  const lww = createAndMergeLWW(json.lww);
 
   const tableEntities = createAndMergeTableEntities(
     json.collections?.tableEntities
@@ -50,6 +48,5 @@ export function parser(source: any): ERDEditorSchemaV3 {
       indexColumnEntities,
       memoEntities,
     },
-    lww,
   };
 }
