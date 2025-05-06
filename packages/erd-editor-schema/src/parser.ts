@@ -25,7 +25,6 @@ export function toJson(schemaV3: ERDEditorSchemaV3) {
     'settings',
     'doc',
     'collections',
-    'lww',
   ]);
 
   if (

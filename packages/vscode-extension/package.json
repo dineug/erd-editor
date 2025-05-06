@@ -1,6 +1,6 @@
 {
   "name": "vuerd-vscode",
-  "version": "2.0.5",
+  "version": "2.1.0",
   "private": true,
   "description": "Entity-Relationship Diagram Editor VSCode Extension",
   "icon": "./assets/erd-editor.png",

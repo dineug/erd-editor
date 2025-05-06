@@ -6,14 +6,14 @@ import { observable, Unsubscribe } from '@/observable';
 export type Action<K extends keyof M, M> = {
   type: K;
   payload: M[K];
-  timestamp: number;
+  version?: number;
   tags?: number;
   meta?: Record<string, any>;
 };
 export type AnyAction<P = any> = {
   type: string;
   payload: P;
-  timestamp: number;
+  version?: number;
   tags?: number;
   meta?: Record<string, any>;
 };
@@ -71,7 +71,6 @@ export function createAction<P = void>(type: string) {
     return {
       type,
       payload,
-      timestamp: Date.now(),
     };
   }
 

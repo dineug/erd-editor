@@ -1,6 +1,8 @@
 import { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
 import { useContext } from '@dineug/r-html';
 
+export type { LWW, LWWTuple } from '@dineug/erd-editor-schema';
+
 export type ValuesType<T extends Record<string, string>> = T[keyof T];
 
 export type GetEntity<T extends keyof ERDEditorSchemaV3['collections']> =
@@ -26,8 +28,6 @@ export type IndexColumnEntities = GetEntities<'indexColumnEntities'>;
 export type Doc = ERDEditorSchemaV3['doc'];
 export type Collections = ERDEditorSchemaV3['collections'];
 export type Settings = ERDEditorSchemaV3['settings'];
-export type LWW = ERDEditorSchemaV3['lww'];
-export type LWWTuple = LWW[keyof LWW];
 
 export type Point = {
   x: number;

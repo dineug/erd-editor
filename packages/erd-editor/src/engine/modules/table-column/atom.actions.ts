@@ -16,15 +16,17 @@ export const addColumnAction = createAction<
 
 const addColumn: ReducerType<typeof ActionType.addColumn> = (
   { collections, lww },
-  { payload: { id, tableId }, timestamp }
+  { payload: { id, tableId }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const tableCollection = query(collections).collection('tableEntities');
   const table = tableCollection.getOrCreate(tableId, id => createTable({ id }));
 
   query(collections)
     .collection('tableColumnEntities')
     .addOne(createColumn({ id, tableId }))
-    .addOperator(lww, timestamp, id, () => {
+    .addOperator(lww, safeVersion, id, () => {
       if (!arrayHas(table.columnIds)(id)) {
         tableCollection.updateOne(tableId, table => {
           addAndSort(table.columnIds, table.seqColumnIds, id);
@@ -39,14 +41,16 @@ export const removeColumnAction = createAction<
 
 const removeColumn: ReducerType<typeof ActionType.removeColumn> = (
   { collections, lww },
-  { payload: { id, tableId }, timestamp }
+  { payload: { id, tableId }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const tableCollection = query(collections).collection('tableEntities');
   const table = tableCollection.getOrCreate(tableId, id => createTable({ id }));
 
   query(collections)
     .collection('tableColumnEntities')
-    .removeOperator(lww, timestamp, id, () => {
+    .removeOperator(lww, safeVersion, id, () => {
       const index = table.columnIds.indexOf(id);
       if (index !== -1) {
         tableCollection.updateOne(tableId, table => {
@@ -62,13 +66,14 @@ export const changeColumnNameAction = createAction<
 
 const changeColumnName: ReducerType<typeof ActionType.changeColumnName> = (
   { collections, lww },
-  { payload: { id, value }, timestamp },
-  { toWidth }
+  { payload: { id, value }, version },
+  { toWidth, clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
 
-  collection.replaceOperator(lww, timestamp, id, 'name', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'name', () => {
     collection.updateOne(id, column => {
       column.name = value;
       column.ui.widthName = textInRange(toWidth(value));
@@ -84,13 +89,14 @@ const changeColumnComment: ReducerType<
   typeof ActionType.changeColumnComment
 > = (
   { collections, lww },
-  { payload: { id, value }, timestamp },
-  { toWidth }
+  { payload: { id, value }, version },
+  { toWidth, clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
 
-  collection.replaceOperator(lww, timestamp, id, 'comment', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'comment', () => {
     collection.updateOne(id, column => {
       column.comment = value;
       column.ui.widthComment = textInRange(toWidth(value));
@@ -106,13 +112,14 @@ const changeColumnDataType: ReducerType<
   typeof ActionType.changeColumnDataType
 > = (
   { collections, lww },
-  { payload: { id, value }, timestamp },
-  { toWidth }
+  { payload: { id, value }, version },
+  { toWidth, clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
 
-  collection.replaceOperator(lww, timestamp, id, 'dataType', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'dataType', () => {
     collection.updateOne(id, column => {
       column.dataType = value;
       column.ui.widthDataType = textInRange(toWidth(value));
@@ -128,13 +135,14 @@ const changeColumnDefault: ReducerType<
   typeof ActionType.changeColumnDefault
 > = (
   { collections, lww },
-  { payload: { id, value }, timestamp },
-  { toWidth }
+  { payload: { id, value }, version },
+  { toWidth, clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
 
-  collection.replaceOperator(lww, timestamp, id, 'default', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'default', () => {
     collection.updateOne(id, column => {
       column.default = value;
       column.ui.widthDefault = textInRange(toWidth(value));
@@ -148,13 +156,14 @@ export const changeColumnAutoIncrementAction = createAction<
 
 const changeColumnAutoIncrement: ReducerType<
   typeof ActionType.changeColumnAutoIncrement
-> = ({ collections, lww }, { payload: { id, value }, timestamp }) => {
+> = ({ collections, lww }, { payload: { id, value }, version }, { clock }) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
 
   collection.replaceOperator(
     lww,
-    timestamp,
+    safeVersion,
     id,
     'options(autoIncrement)',
     () => {
@@ -173,20 +182,27 @@ export const changeColumnPrimaryKeyAction = createAction<
 
 const changeColumnPrimaryKey: ReducerType<
   typeof ActionType.changeColumnPrimaryKey
-> = ({ collections, lww }, { payload: { id, value }, timestamp }) => {
+> = ({ collections, lww }, { payload: { id, value }, version }, { clock }) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
 
-  collection.replaceOperator(lww, timestamp, id, 'options(primaryKey)', () => {
-    collection.updateOne(id, column => {
-      column.options = value
-        ? column.options | ColumnOption.primaryKey
-        : column.options & ~ColumnOption.primaryKey;
-      column.ui.keys = value
-        ? column.ui.keys | ColumnUIKey.primaryKey
-        : column.ui.keys & ~ColumnUIKey.primaryKey;
-    });
-  });
+  collection.replaceOperator(
+    lww,
+    safeVersion,
+    id,
+    'options(primaryKey)',
+    () => {
+      collection.updateOne(id, column => {
+        column.options = value
+          ? column.options | ColumnOption.primaryKey
+          : column.options & ~ColumnOption.primaryKey;
+        column.ui.keys = value
+          ? column.ui.keys | ColumnUIKey.primaryKey
+          : column.ui.keys & ~ColumnUIKey.primaryKey;
+      });
+    }
+  );
 };
 
 export const changeColumnUniqueAction = createAction<
@@ -195,12 +211,14 @@ export const changeColumnUniqueAction = createAction<
 
 const changeColumnUnique: ReducerType<typeof ActionType.changeColumnUnique> = (
   { collections, lww },
-  { payload: { id, value }, timestamp }
+  { payload: { id, value }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
 
-  collection.replaceOperator(lww, timestamp, id, 'options(unique)', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'options(unique)', () => {
     collection.updateOne(id, column => {
       column.options = value
         ? column.options | ColumnOption.unique
@@ -215,11 +233,12 @@ export const changeColumnNotNullAction = createAction<
 
 const changeColumnNotNull: ReducerType<
   typeof ActionType.changeColumnNotNull
-> = ({ collections, lww }, { payload: { id, value }, timestamp }) => {
+> = ({ collections, lww }, { payload: { id, value }, version }, { clock }) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableColumnEntities');
   collection.getOrCreate(id, id => createColumn({ id }));
 
-  collection.replaceOperator(lww, timestamp, id, 'options(notNull)', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'options(notNull)', () => {
     collection.updateOne(id, column => {
       column.options = value
         ? column.options | ColumnOption.notNull

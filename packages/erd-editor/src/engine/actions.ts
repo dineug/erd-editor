@@ -168,6 +168,8 @@ export const SharedStreamActionTypes: ReadonlyArray<ActionType> = [
 export const SharedActionTypes: ReadonlyArray<ActionType> = [
   ...ChangeActionTypes,
   ...SharedStreamActionTypes,
+  'editor.getLWW',
+  'editor.mergeLWW',
 ];
 
 export const SharedFollowingActionTypes: ReadonlyArray<ActionType> = [

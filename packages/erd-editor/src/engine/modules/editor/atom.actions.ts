@@ -1,7 +1,14 @@
-import { parser, query, schemaV3Parser } from '@dineug/erd-editor-schema';
+import {
+  addOperator,
+  parser,
+  query,
+  removeOperator,
+  replaceOperator,
+  schemaV3Parser,
+} from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 import { isNill, isString } from '@dineug/shared';
-import { isEmpty } from 'lodash-es';
+import { isEmpty, noop } from 'lodash-es';
 
 import { CanvasType } from '@/constants/schema';
 import { Tag } from '@/engine/tag';
@@ -101,10 +108,9 @@ export const clearAction = createAction<ActionMap[typeof ActionType.clear]>(
 );
 
 const clear: ReducerType<typeof ActionType.clear> = state => {
-  const { doc, collections, lww } = schemaV3Parser({});
+  const { doc, collections } = schemaV3Parser({});
   state.doc = doc;
   state.collections = collections;
-  state.lww = lww;
 };
 
 export const loadJsonAction = createAction<
@@ -115,7 +121,7 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state,
   { payload: { value } }
 ) => {
-  const { version, settings, doc, collections, lww } = parser(value);
+  const { version, settings, doc, collections } = parser(value);
   if (!hasCanvasType(settings.canvasType)) {
     settings.canvasType = CanvasType.ERD;
   }
@@ -124,7 +130,6 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state.version = version;
   state.doc = doc;
   state.collections = collections;
-  state.lww = lww;
 };
 
 export const initialClearAction = createAction<
@@ -132,10 +137,9 @@ export const initialClearAction = createAction<
 >(ActionType.initialClear);
 
 const initialClear: ReducerType<typeof ActionType.initialClear> = state => {
-  const { doc, collections, lww } = schemaV3Parser({});
+  const { doc, collections } = schemaV3Parser({});
   state.doc = doc;
   state.collections = collections;
-  state.lww = lww;
 };
 
 export const initialLoadJsonAction = createAction<
@@ -146,7 +150,7 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state,
   { payload: { value } }
 ) => {
-  const { version, settings, doc, collections, lww } = parser(value);
+  const { version, settings, doc, collections } = parser(value);
   if (!hasCanvasType(settings.canvasType)) {
     settings.canvasType = CanvasType.ERD;
   }
@@ -155,7 +159,6 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state.version = version;
   state.doc = doc;
   state.collections = collections;
-  state.lww = lww;
 };
 
 export const focusTableAction = createAction<
@@ -600,6 +603,32 @@ const validationIds: ReducerType<typeof ActionType.validationIds> = ({
   });
 };
 
+export const getLWWAction = createAction<ActionMap[typeof ActionType.getLWW]>(
+  ActionType.getLWW
+);
+
+const getLWW: ReducerType<typeof ActionType.getLWW> = noop;
+
+export const mergeLWWAction = createAction<
+  ActionMap[typeof ActionType.mergeLWW]
+>(ActionType.mergeLWW);
+
+const mergeLWW: ReducerType<typeof ActionType.mergeLWW> = (
+  { lww },
+  { payload: { lww: remoteLWW } }
+) => {
+  Object.entries(remoteLWW).forEach(
+    ([id, [tag, addVersion, removeVersion, replaceRecord]]) => {
+      addOperator(lww, addVersion, id, tag, noop);
+      removeOperator(lww, removeVersion, id, tag, noop);
+
+      Object.entries(replaceRecord).forEach(([path, replaceVersion]) => {
+        replaceOperator(lww, replaceVersion, id, tag, path, noop);
+      });
+    }
+  );
+};
+
 export const editorReducers = {
   [ActionType.changeHasHistory]: changeHasHistory,
   [ActionType.selectAll]: selectAll,
@@ -628,6 +657,8 @@ export const editorReducers = {
   [ActionType.dragendColumn]: dragendColumn,
   [ActionType.sharedMouseTracker]: sharedMouseTracker,
   [ActionType.validationIds]: validationIds,
+  [ActionType.getLWW]: getLWW,
+  [ActionType.mergeLWW]: mergeLWW,
 };
 
 export const actions = {
@@ -658,4 +689,6 @@ export const actions = {
   dragendColumnAction,
   sharedMouseTrackerAction,
   validationIdsAction,
+  getLWWAction,
+  mergeLWWAction,
 };

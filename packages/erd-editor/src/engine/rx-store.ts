@@ -3,7 +3,7 @@ import {
   CompositionActions,
   compositionActionsFlat,
 } from '@dineug/r-html';
-import { asap } from '@dineug/shared';
+import { asap, isFunction, isNill } from '@dineug/shared';
 import { debounceTime, Observable, Subject, Subscription } from 'rxjs';
 
 import {
@@ -27,6 +27,7 @@ import { readonlyIgnoreFilter } from '@/engine/rx-operators/readonlyIgnoreFilter
 import { createStore, Store } from '@/engine/store';
 import { createHooks } from '@/engine/store-hooks';
 import { Tag } from '@/engine/tag';
+import type { Unsubscribe } from '@/internal-types';
 
 export type RxStore = Store & {
   undo: () => void;
@@ -46,7 +47,7 @@ export function createRxStore(
   context: EngineContext,
   { getReadonly = () => false, getHistory }: RxStoreOptions = {}
 ): RxStore {
-  const subscriptionSet = new Set<Subscription>();
+  const subscriptionSet = new Set<Subscription | Unsubscribe>();
   const store = createStore(context);
   const hooks = createHooks(store);
   const historyOptions: HistoryOptions = {
@@ -75,10 +76,25 @@ export function createRxStore(
     debounceTime(200)
   );
 
+  const toActions = (
+    ...compositionActions: CompositionActions
+  ): AnyAction[] => {
+    const version = context.clock.getNextVersion();
+    return compositionActionsFlat(
+      store.state,
+      store.context,
+      compositionActions
+    ).map(action => {
+      if (isNill(action.version)) {
+        action.version = version;
+      }
+      return action;
+    });
+  };
+
   const dispatchSync = (...compositionActions: CompositionActions) => {
-    dispatch$.next(
-      compositionActionsFlat(store.state, store.context, compositionActions)
-    );
+    const actions = toActions(compositionActions);
+    dispatch$.next(actions);
   };
 
   const dispatch = (...compositionActions: CompositionActions) => {
@@ -86,7 +102,9 @@ export function createRxStore(
   };
 
   const destroy = () => {
-    Array.from(subscriptionSet).forEach(sub => sub.unsubscribe());
+    Array.from(subscriptionSet).forEach(sub =>
+      isFunction(sub) ? sub() : sub.unsubscribe()
+    );
     subscriptionSet.clear();
     store.destroy();
     hooks.destroy();
@@ -104,13 +122,20 @@ export function createRxStore(
     history.redo();
   };
 
+  const mergeClock = () => {
+    return store.subscribe(actions => {
+      actions.forEach(action => context.clock.merge(action.version));
+    });
+  };
+
   subscriptionSet
     .add(history$.subscribe(pushHistory(store, history)))
     .add(
       dispatch$
         .pipe(readonlyIgnoreFilter(getReadonly, [Tag.shared]))
         .subscribe(store.dispatchSync)
-    );
+    )
+    .add(mergeClock());
 
   return Object.freeze({
     ...store,

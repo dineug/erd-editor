@@ -14,8 +14,10 @@ export const addIndexColumnAction = createAction<
 
 const addIndexColumn: ReducerType<typeof ActionType.addIndexColumn> = (
   { collections, lww },
-  { payload: { id, indexId, tableId, columnId }, timestamp }
+  { payload: { id, indexId, tableId, columnId }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const indexCollection = query(collections).collection('indexEntities');
   const index = indexCollection.getOrCreate(indexId, id =>
     createIndex({ id, tableId })
@@ -24,7 +26,7 @@ const addIndexColumn: ReducerType<typeof ActionType.addIndexColumn> = (
   query(collections)
     .collection('indexColumnEntities')
     .addOne(createIndexColumn({ id, indexId, columnId }))
-    .addOperator(lww, timestamp, id, () => {
+    .addOperator(lww, safeVersion, id, () => {
       if (!arrayHas(index.indexColumnIds)(id)) {
         indexCollection.updateOne(indexId, index => {
           addAndSort(index.indexColumnIds, index.seqIndexColumnIds, id);
@@ -39,8 +41,10 @@ export const removeIndexColumnAction = createAction<
 
 const removeIndexColumn: ReducerType<typeof ActionType.removeIndexColumn> = (
   { collections, lww },
-  { payload: { id, indexId, tableId }, timestamp }
+  { payload: { id, indexId, tableId }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const indexCollection = query(collections).collection('indexEntities');
   const index = indexCollection.getOrCreate(indexId, id =>
     createIndex({ id, tableId })
@@ -48,7 +52,7 @@ const removeIndexColumn: ReducerType<typeof ActionType.removeIndexColumn> = (
 
   query(collections)
     .collection('indexColumnEntities')
-    .removeOperator(lww, timestamp, id, () => {
+    .removeOperator(lww, safeVersion, id, () => {
       const i = index.indexColumnIds.indexOf(id);
       if (i !== -1) {
         indexCollection.updateOne(indexId, index => {
@@ -103,14 +107,16 @@ const changeIndexColumnOrderType: ReducerType<
   typeof ActionType.changeIndexColumnOrderType
 > = (
   { collections, lww },
-  { payload: { id, indexId, columnId, value }, timestamp }
+  { payload: { id, indexId, columnId, value }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('indexColumnEntities');
   collection.getOrCreate(id, id =>
     createIndexColumn({ id, indexId, columnId })
   );
 
-  collection.replaceOperator(lww, timestamp, id, 'orderType', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'orderType', () => {
     collection.updateOne(id, indexColumn => {
       indexColumn.orderType = value;
     });

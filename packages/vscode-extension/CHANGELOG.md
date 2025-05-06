@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.0] - 2025-05-07
+
+### Fixed
+
+- Updated LWW data handling logic
+
 ## [2.0.5] - 2025-02-28
 
 ### Fixed

@@ -12,8 +12,10 @@ export const addRelationshipAction = createAction<
 
 const addRelationship: ReducerType<typeof ActionType.addRelationship> = (
   { doc, collections, lww },
-  { payload: { id, relationshipType, start, end }, timestamp }
+  { payload: { id, relationshipType, start, end }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   query(collections)
     .collection('relationshipEntities')
     .addOne(
@@ -30,7 +32,7 @@ const addRelationship: ReducerType<typeof ActionType.addRelationship> = (
         },
       })
     )
-    .addOperator(lww, timestamp, id, () => {
+    .addOperator(lww, safeVersion, id, () => {
       if (!arrayHas(doc.relationshipIds)(id)) {
         doc.relationshipIds.push(id);
       }
@@ -43,11 +45,13 @@ export const removeRelationshipAction = createAction<
 
 const removeRelationship: ReducerType<typeof ActionType.removeRelationship> = (
   { doc, collections, lww },
-  { payload: { id }, timestamp }
+  { payload: { id }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   query(collections)
     .collection('relationshipEntities')
-    .removeOperator(lww, timestamp, id, () => {
+    .removeOperator(lww, safeVersion, id, () => {
       const index = doc.relationshipIds.indexOf(id);
       if (index !== -1) {
         doc.relationshipIds.splice(index, 1);
@@ -61,10 +65,11 @@ export const changeRelationshipTypeAction = createAction<
 
 const changeRelationshipType: ReducerType<
   typeof ActionType.changeRelationshipType
-> = ({ collections, lww }, { payload: { id, value }, timestamp }) => {
+> = ({ collections, lww }, { payload: { id, value }, version }, { clock }) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('relationshipEntities');
 
-  collection.replaceOperator(lww, timestamp, id, 'relationshipType', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'relationshipType', () => {
     collection.updateOne(id, relationship => {
       relationship.relationshipType = value;
     });

@@ -13,12 +13,14 @@ export const addMemoAction = createAction<ActionMap[typeof ActionType.addMemo]>(
 
 const addMemo: ReducerType<typeof ActionType.addMemo> = (
   { doc, collections, lww },
-  { payload: { id, ui }, timestamp }
+  { payload: { id, ui }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   query(collections)
     .collection('memoEntities')
     .addOne(createMemo({ id, ui }))
-    .addOperator(lww, timestamp, id, () => {
+    .addOperator(lww, safeVersion, id, () => {
       if (!arrayHas(doc.memoIds)(id)) {
         doc.memoIds.push(id);
       }
@@ -67,11 +69,13 @@ export const removeMemoAction = createAction<
 
 const removeMemo: ReducerType<typeof ActionType.removeMemo> = (
   { doc, collections, lww },
-  { payload: { id }, timestamp }
+  { payload: { id }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   query(collections)
     .collection('memoEntities')
-    .removeOperator(lww, timestamp, id, () => {
+    .removeOperator(lww, safeVersion, id, () => {
       const index = doc.memoIds.indexOf(id);
       if (index !== -1) {
         doc.memoIds.splice(index, 1);
@@ -85,12 +89,14 @@ export const changeMemoValueAction = createAction<
 
 const changeMemoValue: ReducerType<typeof ActionType.changeMemoValue> = (
   { collections, lww },
-  { payload: { id, value }, timestamp }
+  { payload: { id, value }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('memoEntities');
   collection.getOrCreate(id, id => createMemo({ id }));
 
-  collection.replaceOperator(lww, timestamp, id, 'value', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'value', () => {
     collection.updateOne(id, memo => {
       memo.value = value;
     });
@@ -103,12 +109,14 @@ export const changeMemoColorAction = createAction<
 
 const changeMemoColor: ReducerType<typeof ActionType.changeMemoColor> = (
   { collections, lww },
-  { payload: { id, color }, timestamp }
+  { payload: { id, color }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('memoEntities');
   collection.getOrCreate(id, id => createMemo({ id }));
 
-  collection.replaceOperator(lww, timestamp, id, 'ui.color', () => {
+  collection.replaceOperator(lww, safeVersion, id, 'ui.color', () => {
     collection.updateOne(id, memo => {
       memo.ui.color = color;
     });

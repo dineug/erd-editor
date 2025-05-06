@@ -24,11 +24,13 @@ export const changeDatabaseNameAction = createAction<
 
 const changeDatabaseName: ReducerType<typeof ActionType.changeDatabaseName> = (
   { settings, lww },
-  { payload: { value }, timestamp }
+  { payload: { value }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   replaceOperator(
     lww,
-    timestamp,
+    safeVersion,
     'settings.databaseName',
     'settings',
     'databaseName',
