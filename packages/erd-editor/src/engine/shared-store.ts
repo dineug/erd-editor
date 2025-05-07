@@ -109,7 +109,7 @@ export function createSharedStore(
       internal$.next([
         {
           ...mergeLWWAction({ lww }),
-          version: store.context.clock.getNextVersion(),
+          version: store.context.clock.getVersion(),
         },
       ]);
     }
@@ -124,7 +124,7 @@ export function createSharedStore(
       internal$.next([
         {
           ...getLWWAction(),
-          version: store.context.clock.getNextVersion(),
+          version: store.context.clock.getVersion(),
         },
       ]);
       firstSubscribe = false;
