@@ -8,6 +8,7 @@ import { bHas } from '@/utils/bit';
 import {
   autoName,
   FormatColumnOptions,
+  FormatCommentOptions,
   FormatIndexOptions,
   formatNames,
   FormatRelationOptions,
@@ -21,20 +22,16 @@ import {
   primaryKey,
   primaryKeyColumns,
   toOrderName,
-  unique,
-  uniqueColumns,
 } from './utils';
 
 export function createSchema(state: RootState): string {
   const {
-    settings: { bracketType },
     doc: { tableIds, relationshipIds, indexIds },
     collections,
   } = state;
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
   const stringBuffer: string[] = [''];
-  const bracket = getBracket(bracketType);
   const tables = query(collections)
     .collection('tableEntities')
     .selectByIds(tableIds)
@@ -49,22 +46,7 @@ export function createSchema(state: RootState): string {
   tables.forEach(table => {
     formatTable(state, { table, buffer: stringBuffer });
     stringBuffer.push('');
-
-    const columns = query(collections)
-      .collection('tableColumnEntities')
-      .selectByIds(table.columnIds);
-
-    // unique
-    if (unique(columns)) {
-      const uqColumns = uniqueColumns(columns);
-      uqColumns.forEach(column => {
-        stringBuffer.push(`ALTER TABLE ${bracket}${table.name}${bracket}`);
-        stringBuffer.push(
-          `  ADD CONSTRAINT ${bracket}UQ_${table.name}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
-        );
-        stringBuffer.push('');
-      });
-    }
+    formatComment(state, { table, buffer: stringBuffer });
   });
 
   relationships.forEach(relationship => {
@@ -101,7 +83,8 @@ export function formatTable(
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
 
-  buffer.push(`CREATE TABLE ${bracket}${table.name}${bracket}`);
+  // Snowflake uses CREATE OR REPLACE TABLE syntax
+  buffer.push(`CREATE OR REPLACE TABLE ${bracket}${table.name}${bracket}`);
   buffer.push(`(`);
   const pk = primaryKey(columns);
   const spaceSize = formatSize(columns);
@@ -124,15 +107,14 @@ export function formatTable(
     }
   });
 
+  // Snowflake: Primary keys are informational (not enforced)
   if (pk) {
     const pkColumns = primaryKeyColumns(columns);
-    buffer.push(`  PRIMARY KEY (${formatNames(pkColumns, bracket)})`);
+    buffer.push(
+      `  PRIMARY KEY (${formatNames(pkColumns, bracket)}) NOT ENFORCED`
+    );
   }
-  if (table.comment.trim() === '') {
-    buffer.push(`);`);
-  } else {
-    buffer.push(`) COMMENT '${table.comment}';`);
-  }
+  buffer.push(`);`);
 }
 
 function formatColumn(
@@ -150,22 +132,46 @@ function formatColumn(
     `${column.dataType}` +
       formatSpace(spaceSize.dataType - column.dataType.length)
   );
-
-  stringBuffer.push(
-    `${bHas(column.options, ColumnOption.notNull) ? 'NOT NULL' : 'NULL    '}`
-  );
-
+  if (bHas(column.options, ColumnOption.notNull)) {
+    stringBuffer.push(`NOT NULL`);
+  }
   if (bHas(column.options, ColumnOption.autoIncrement)) {
-    stringBuffer.push(`AUTO_INCREMENT`);
+    stringBuffer.push(`AUTOINCREMENT`);
   } else {
     if (column.default.trim() !== '') {
       stringBuffer.push(`DEFAULT ${column.default}`);
     }
   }
-  if (column.comment.trim() !== '') {
-    stringBuffer.push(`COMMENT '${column.comment}'`);
+  if (bHas(column.options, ColumnOption.unique)) {
+    stringBuffer.push(`UNIQUE`);
   }
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
+}
+
+function formatComment(
+  { settings: { bracketType }, collections }: RootState,
+  { buffer, table }: FormatCommentOptions
+) {
+  const bracket = getBracket(bracketType);
+
+  // Snowflake uses COMMENT clause directly on table
+  if (table.comment.trim() !== '') {
+    buffer.push(
+      `ALTER TABLE ${bracket}${table.name}${bracket} SET COMMENT = '${table.comment.replace(/'/g, "''")}';\n`
+    );
+    buffer.push('');
+  }
+  query(collections)
+    .collection('tableColumnEntities')
+    .selectByIds(table.columnIds)
+    .forEach(column => {
+      if (column.comment.trim() !== '') {
+        buffer.push(
+          `ALTER TABLE ${bracket}${table.name}${bracket} MODIFY COLUMN ${bracket}${column.name}${bracket} SET COMMENT = '${column.comment.replace(/'/g, "''")}';\n`
+        );
+        buffer.push('');
+      }
+    });
 }
 
 function formatRelation(
@@ -179,9 +185,9 @@ function formatRelation(
   const endTable = tableCollection.selectById(relationship.end.tableId);
 
   if (startTable && endTable) {
+    // Snowflake: Foreign keys are informational (not enforced by default)
     buffer.push(`ALTER TABLE ${bracket}${endTable.name}${bracket}`);
 
-    // FK
     let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
     fkName = autoName(fkNames, '', fkName);
     fkNames.push({
@@ -214,7 +220,7 @@ function formatRelation(
       `    REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
         columns.start,
         bracket
-      )});`
+      )}) NOT ENFORCED;`
     );
   }
 }
@@ -258,13 +264,17 @@ export function formatIndex(
       });
     }
 
+    // Snowflake: No explicit index creation, use clustering keys instead
+    // For now, we'll just generate a comment showing the index specification
     if (index.unique) {
-      buffer.push(`CREATE UNIQUE INDEX ${bracket}${indexName}${bracket}`);
+      buffer.push(
+        `-- UNIQUE INDEX ${bracket}${indexName}${bracket} on ${bracket}${table.name}${bracket} (${formatNames(columnNames)})`
+      );
     } else {
-      buffer.push(`CREATE INDEX ${bracket}${indexName}${bracket}`);
+      buffer.push(
+        `-- INDEX ${bracket}${indexName}${bracket} on ${bracket}${table.name}${bracket} (${formatNames(columnNames)})`
+      );
     }
-    buffer.push(
-      `  ON ${bracket}${table.name}${bracket} (${formatNames(columnNames)});`
-    );
+    buffer.push('');
   }
 }

@@ -8,6 +8,23 @@ export const root = css`
   outline: none;
 `;
 
+export const container = css`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+export const enumButton = css`
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--primary-color);
+  }
+`;
+
 export const hint = css`
   position: absolute;
   z-index: 1;

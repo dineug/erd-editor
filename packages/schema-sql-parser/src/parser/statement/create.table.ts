@@ -8,6 +8,7 @@ import {
   isDataType,
   isDefaultValue,
   isDescValue,
+  isEqualToken,
   isForeignValue,
   isIndexValue,
   isKeyValue,
@@ -41,6 +42,7 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
   const isLeftParent = isLeftParentToken(tokens);
   const isPeriod = isPeriodToken(tokens);
   const isComment = isCommentValue(tokens);
+  const isEqual = isEqualToken(tokens);
   const createTableIfNotExists = isCreateTableIfNotExists(tokens);
 
   const isToken = () => $pos.value < tokens.length;
@@ -91,6 +93,11 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
     if (isComment($pos.value)) {
       token = tokens[++$pos.value];
 
+      // Skip optional '=' after COMMENT
+      if (isEqual($pos.value)) {
+        token = tokens[++$pos.value];
+      }
+
       if (isString($pos.value)) {
         ast.comment = token.value;
         $pos.value++;
@@ -123,6 +130,7 @@ function createTableColumnsParser(
   const isNot = isNotValue(tokens);
   const isDefault = isDefaultValue(tokens);
   const isComment = isCommentValue(tokens);
+  const isEqual = isEqualToken(tokens);
   const isDesc = isDescValue(tokens);
   const isAsc = isAscValue(tokens);
   const isKey = isKeyValue(tokens);
@@ -329,6 +337,11 @@ function createTableColumnsParser(
 
     if (isComment($pos.value)) {
       token = tokens[++$pos.value];
+
+      // Skip optional '=' after COMMENT
+      if (isEqual($pos.value)) {
+        token = tokens[++$pos.value];
+      }
 
       if (isString($pos.value)) {
         column.comment = token.value;

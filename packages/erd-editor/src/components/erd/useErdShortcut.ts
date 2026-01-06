@@ -29,6 +29,7 @@ import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.acti
 import {
   addTableAction$,
   pasteTableAction$,
+  duplicateTablesAction$,
 } from '@/engine/modules/table/generator.actions';
 import {
   addColumnAction$,
@@ -221,6 +222,20 @@ export function useErdShortcut(ctx: Ctx) {
     const { editor, settings } = store.state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
 
+    // Try to copy table if tables are selected
+    const selectedTables = Object.entries(editor.selectedMap).filter(
+      ([, type]) => type === SelectType.table
+    );
+    if (selectedTables.length > 0 && !showHighLevelTable && event.clipboardData) {
+      event.preventDefault();
+      event.clipboardData.clearData();
+      // Store table IDs in a custom format
+      const tableIds = selectedTables.map(([id]) => id);
+      event.clipboardData.setData('application/x-erd-table-ids', JSON.stringify(tableIds));
+      return;
+    }
+
+    // Otherwise, try to copy columns
     if (
       !showHighLevelTable &&
       editor.focusTable &&
@@ -243,6 +258,22 @@ export function useErdShortcut(ctx: Ctx) {
       return;
     }
 
+    // Try to paste tables first
+    const tableIdsJson = event.clipboardData.getData('application/x-erd-table-ids');
+    if (tableIdsJson.trim()) {
+      try {
+        const tableIds = JSON.parse(tableIdsJson);
+        if (Array.isArray(tableIds) && tableIds.length > 0) {
+          event.preventDefault();
+          store.dispatch(duplicateTablesAction$(tableIds));
+          return;
+        }
+      } catch {
+        // Invalid JSON, continue to column paste
+      }
+    }
+
+    // Otherwise, try to paste columns into selected tables
     const selectedTables = Object.entries(editor.selectedMap).filter(
       ([, type]) => type === SelectType.table
     );

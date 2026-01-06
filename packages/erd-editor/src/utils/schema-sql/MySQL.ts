@@ -60,7 +60,7 @@ export function createSchema(state: RootState): string {
       uqColumns.forEach(column => {
         stringBuffer.push(`ALTER TABLE ${bracket}${table.name}${bracket}`);
         stringBuffer.push(
-          `  ADD CONSTRAINT ${bracket}UQ_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
+          `  ADD CONSTRAINT ${bracket}UQ_${table.name}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
         );
         stringBuffer.push('');
       });

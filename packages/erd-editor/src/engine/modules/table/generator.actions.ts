@@ -28,6 +28,7 @@ import {
   changeColumnDefaultAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
+  changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { Column } from '@/internal-types';
@@ -39,6 +40,7 @@ import {
   addTableAction,
   changeZIndexAction,
   removeTableAction,
+  changeTableCommentAction,
 } from './atom.actions';
 
 export const addTableAction$ = (): GeneratorAction =>
@@ -408,9 +410,99 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
     }
   };
 
+export const duplicateTablesAction$ = (tableIds: string[]): GeneratorAction =>
+  function* ({ doc: { tableIds: allTableIds, memoIds }, settings, collections }) {
+    const tables = query(collections)
+      .collection('tableEntities')
+      .selectByIds(tableIds);
+    const memos = query(collections)
+      .collection('memoEntities')
+      .selectByIds(memoIds);
+    const columnCollection = query(collections).collection('tableColumnEntities');
+
+    yield unselectAllAction();
+
+    for (const table of tables) {
+      const newTableId = nanoid();
+      const columns = columnCollection.selectByIds(table.columnIds);
+      const point = nextPoint(settings, tables, memos);
+
+      // Create the new table
+      yield selectAction({ [newTableId]: SelectType.table });
+      yield addTableAction({
+        id: newTableId,
+        ui: {
+          ...point,
+          zIndex: nextZIndex(tables, memos),
+        },
+      });
+
+      // Copy table comment
+      if (table.comment.trim() !== '') {
+        yield changeTableCommentAction({ id: newTableId, value: table.comment });
+      }
+
+      // Add all columns from source table to new table
+      for (const column of columns) {
+        const newColumnId = nanoid();
+        const payload = {
+          id: newColumnId,
+          tableId: newTableId,
+        };
+
+        const columnActions: AnyAction[] = [
+          addColumnAction(payload),
+          changeColumnNameAction({
+            ...payload,
+            value: column.name,
+          }),
+          changeColumnDataTypeAction({
+            ...payload,
+            value: column.dataType,
+          }),
+          changeColumnDefaultAction({
+            ...payload,
+            value: column.default,
+          }),
+          changeColumnCommentAction({
+            ...payload,
+            value: column.comment,
+          }),
+          changeColumnNotNullAction({
+            ...payload,
+            value: bHas(column.options, ColumnOption.notNull),
+          }),
+          changeColumnUniqueAction({
+            ...payload,
+            value: bHas(column.options, ColumnOption.unique),
+          }),
+          changeColumnAutoIncrementAction({
+            ...payload,
+            value: bHas(column.options, ColumnOption.autoIncrement),
+          }),
+        ];
+
+        if (bHas(column.options, ColumnOption.primaryKey)) {
+          columnActions.push(
+            changeColumnPrimaryKeyAction({
+              tableId: newTableId,
+              id: newColumnId,
+              value: true,
+            })
+          );
+        }
+
+        yield columnActions;
+      }
+
+      yield focusTableAction({ tableId: newTableId });
+    }
+  };
+
 export const actions$ = {
   addTableAction$,
   removeTableAction$,
   selectTableAction$,
   pasteTableAction$,
+  duplicateTablesAction$,
 };
