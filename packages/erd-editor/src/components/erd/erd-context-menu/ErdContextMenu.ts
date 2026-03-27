@@ -9,6 +9,7 @@ import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import { toggleGhostAction } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { changeColumnPrimaryKeyAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -107,6 +108,15 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     props.onClose();
   };
 
+  const handleToggleGhost = (event: MouseEvent) => {
+    if (!props.tableId) return;
+
+    const { store } = app.value;
+    store.dispatch(toggleGhostAction({ id: props.tableId }));
+
+    props.onClose();
+  };
+
   const handleOpenColorPicker = (event: MouseEvent) => {
     if (!props.tableId) return;
 
@@ -180,6 +190,15 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   <${ContextMenu.Menu}
                     icon=${html`<${Icon} name="palette" size=${14} />`}
                     name="Color"
+                  />
+                `}
+              />
+              <${ContextMenu.Item}
+                .onClick=${handleToggleGhost}
+                children=${html`
+                  <${ContextMenu.Menu}
+                    icon=${html`<${Icon} name="ghost" size=${14} />`}
+                    name="Toggle Ghost"
                   />
                 `}
               />

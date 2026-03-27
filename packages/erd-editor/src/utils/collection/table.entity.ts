@@ -22,6 +22,7 @@ export const createTable = (value?: DeepPartial<Table>): Table =>
         color: '',
       },
       meta: getDefaultEntityMeta(),
+      ghost: false,
     },
     (value as Table) ?? {}
   );

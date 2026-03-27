@@ -43,7 +43,7 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
         .collection('tableEntities')
         .selectById(props.tableId);
 
-      if (table) {
+      if (table && !table.ghost) {
         state.sql = createSchemaSQLTable(store.state, table);
       }
     } else {

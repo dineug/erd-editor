@@ -7,6 +7,7 @@ export type Table = EntityType<{
   columnIds: string[];
   seqColumnIds: string[];
   ui: TableUI;
+  ghost: boolean;
 }>;
 
 export type TableUI = {

@@ -1,4 +1,11 @@
-import { isArray, isNill, isNumber, isObject, isString } from '@dineug/shared';
+import {
+  isArray,
+  isBoolean,
+  isNill,
+  isNumber,
+  isObject,
+  isString,
+} from '@dineug/shared';
 
 import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
 import { DeepPartial } from '@/internal-types';
@@ -19,6 +26,7 @@ export const createTable = (): Table => ({
     color: '',
   },
   meta: getDefaultEntityMeta(),
+  ghost: false,
 });
 
 export function createAndMergeTableEntities(
@@ -32,6 +40,7 @@ export function createAndMergeTableEntities(
     const target = createTable();
     const assignString = assign(isString, target, value);
     const assignArray = assign(isArray, target, value);
+    const assignBoolean = assign(isBoolean, target, value);
     const uiAssignNumber = assign(isNumber, target.ui, value.ui);
     const uiAssignString = assign(isString, target.ui, value.ui);
 
@@ -40,6 +49,7 @@ export function createAndMergeTableEntities(
     assignString('comment');
     assignArray('columnIds');
     assignArray('seqColumnIds');
+    assignBoolean('ghost');
 
     uiAssignString('color');
     uiAssignNumber('x');
