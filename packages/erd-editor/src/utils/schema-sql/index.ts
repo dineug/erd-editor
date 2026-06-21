@@ -30,6 +30,11 @@ import {
   formatTable as formatTablePostgreSQL,
 } from './PostgreSQL';
 import {
+  createSchema as createSchemaSnowflake,
+  formatIndex as formatIndexSnowflake,
+  formatTable as formatTableSnowflake,
+} from './Snowflake';
+import {
   createSchema as createSchemaSQLite,
   formatIndex as formatIndexSQLite,
   formatTable as formatTableSQLite,
@@ -49,6 +54,8 @@ export function createSchemaSQL(state: RootState, database?: number): string {
       return createSchemaOracle(state);
     case Database.PostgreSQL:
       return createSchemaPostgreSQL(state);
+    case Database.Snowflake:
+      return createSchemaSnowflake(state);
     case Database.SQLite:
       return createSchemaSQLite(state);
   }
@@ -124,6 +131,18 @@ export function createSchemaSQLTable(state: RootState, table: Table) {
       buffer.push('');
       indexes.forEach(index => {
         formatIndexPostgreSQL(state, {
+          index,
+          buffer,
+          indexNames,
+        });
+        buffer.push('');
+      });
+      break;
+    case Database.Snowflake:
+      formatTableSnowflake(state, { buffer, table });
+      buffer.push('');
+      indexes.forEach(index => {
+        formatIndexSnowflake(state, {
           index,
           buffer,
           indexNames,

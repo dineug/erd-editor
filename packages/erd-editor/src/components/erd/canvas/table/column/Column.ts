@@ -34,6 +34,7 @@ import {
 } from '@/engine/modules/table-column/generator.actions';
 import type { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { getColumnAlternateKeyLabels } from '@/utils/alternate-key';
 import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Column.styles';
@@ -349,10 +350,15 @@ const Column: FC<ColumnProps> = (props, ctx) => {
 
   return () => {
     const { store, keyBindingMap } = app.value;
-    const { editor } = store.state;
+    const { editor, collections } = store.state;
     const { column, selected } = props;
     const hover = Boolean(editor.hoverColumnMap[column.id]);
     const dragging = editor.draggingColumnMap[column.id];
+    const alternateKeyLabels = getColumnAlternateKeyLabels(
+      column.id,
+      column.tableId,
+      collections
+    );
 
     return html`
       <div
@@ -369,6 +375,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
       >
         <${ColumnKey}
           keys=${column.ui.keys}
+          alternateKeyLabels=${alternateKeyLabels}
           .onMouseenter=${handleMouseenterKey}
           .onMouseleave=${handleMouseleaveKey}
         />

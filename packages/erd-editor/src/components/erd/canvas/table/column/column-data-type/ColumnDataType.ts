@@ -14,8 +14,10 @@ import Fues from 'fuse.js';
 import { isEmpty } from 'lodash-es';
 
 import { AppContext, useAppContext } from '@/components/appContext';
+import EnumTypeManager from '@/components/erd/canvas/table/column/enum-type-manager/EnumTypeManager';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import HighlightedText from '@/components/primitives/highlighted-text/HighlightedText';
+import Icon from '@/components/primitives/icon/Icon';
 import Kbd from '@/components/primitives/kbd/Kbd';
 import { DatabaseHintMap, DataTypeHint } from '@/constants/sql/dataType';
 import { changeColumnDataTypeAction$ } from '@/engine/modules/table-column/generator.actions';
@@ -51,6 +53,7 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
   const state = observable({
     hints: [] as DataTypeHint[],
     index: -1,
+    showEnumManager: false,
   });
   const root = createRef<HTMLDivElement>();
   const { addUnsubscribe } = useUnmounted();
@@ -171,6 +174,18 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
     props.onInput?.(event);
   };
 
+  const isEnumType = () => {
+    return /^(ENUM|SET)\s*\(/i.test(props.value);
+  };
+
+  const handleOpenEnumManager = () => {
+    state.showEnumManager = true;
+  };
+
+  const handleCloseEnumManager = () => {
+    state.showEnumManager = false;
+  };
+
   onMounted(() => {
     const { store } = app.value;
     const { settings } = store.state;
@@ -196,16 +211,29 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
       @focusin=${handleFocus}
       @focusout=${handleFocusout}
     >
-      <${EditInput}
-        placeholder="dataType"
-        width=${props.width}
-        value=${props.value}
-        focus=${props.focus}
-        edit=${props.edit}
-        autofocus=${true}
-        .onInput=${handleInput}
-        .onKeydown=${handleKeydown}
-      />
+      <div class=${styles.container}>
+        <${EditInput}
+          placeholder="dataType"
+          width=${props.width}
+          value=${props.value}
+          focus=${props.focus}
+          edit=${props.edit}
+          autofocus=${true}
+          .onInput=${handleInput}
+          .onKeydown=${handleKeydown}
+        />
+        ${props.edit && isEnumType()
+          ? html`
+              <${Icon}
+                class=${styles.enumButton}
+                name="pencil"
+                size=${14}
+                title="Edit ENUM values"
+                .onClick=${handleOpenEnumManager}
+              />
+            `
+          : null}
+      </div>
       ${props.edit
         ? html`
             <div class=${styles.hint}>
@@ -229,6 +257,16 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
                 `
               )}
             </div>
+          `
+        : null}
+      ${state.showEnumManager
+        ? html`
+            <${EnumTypeManager}
+              columnId=${props.columnId}
+              tableId=${props.tableId}
+              dataType=${props.value}
+              .onClose=${handleCloseEnumManager}
+            />
           `
         : null}
     </div>

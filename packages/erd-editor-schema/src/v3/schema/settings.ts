@@ -60,7 +60,8 @@ export const Database = {
   MySQL: /*      */ 0b0000000000000000000000000000100,
   Oracle: /*     */ 0b0000000000000000000000000001000,
   PostgreSQL: /* */ 0b0000000000000000000000000010000,
-  SQLite: /*     */ 0b0000000000000000000000000100000,
+  Snowflake: /*  */ 0b0000000000000000000000000100000,
+  SQLite: /*     */ 0b0000000000000000000000001000000,
 } as const;
 export const DatabaseList: ReadonlyArray<number> = Object.values(Database);
 
