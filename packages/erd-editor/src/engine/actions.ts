@@ -86,6 +86,7 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'table.changeComment',
   'table.changeColor',
   'table.sort',
+  'table.toggleGhost',
   // column
   'column.add',
   'column.remove',

@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { createAction } from '@dineug/r-html';
+import { createAction, Reducer } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 import { round } from 'lodash-es';
 
@@ -147,6 +147,23 @@ const changeTableColor: ReducerType<typeof ActionType.changeTableColor> = (
   });
 };
 
+export const toggleGhostAction = createAction<
+  ActionMap[typeof ActionType.toggleGhost]
+>(ActionType.toggleGhost);
+
+const toggleGhost: ReducerType<typeof ActionType.toggleGhost> = (
+  { collections, lww },
+  { payload: { id }, version },
+  { clock }
+) => {
+  const collection = query(collections).collection('tableEntities');
+  collection.getOrCreate(id, id => createTable({ id }));
+
+  collection.updateOne(id, table => {
+    table.ghost = !table.ghost;
+  });
+};
+
 export const changeZIndexAction = createAction<
   ActionMap[typeof ActionType.changeZIndex]
 >(ActionType.changeZIndex);
@@ -211,6 +228,7 @@ export const tableReducers = {
   [ActionType.changeTableColor]: changeTableColor,
   [ActionType.changeZIndex]: changeZIndex,
   [ActionType.sortTable]: sortTable,
+  [ActionType.toggleGhost]: toggleGhost,
 };
 
 export const actions = {
@@ -223,4 +241,5 @@ export const actions = {
   changeTableColorAction,
   changeZIndexAction,
   sortTableAction,
+  toggleGhostAction,
 };

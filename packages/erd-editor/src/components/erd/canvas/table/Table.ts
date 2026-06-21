@@ -248,6 +248,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           'z-index': `${table.ui.zIndex}`,
           width: `${tableWidths.width}px`,
           height: `${height}px`,
+          opacity: `${table.ghost ? 0.33 : 1}`,
         }}
         ${ref(root)}
         ?data-selected=${selected}

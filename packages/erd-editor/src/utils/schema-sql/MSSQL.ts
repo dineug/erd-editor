@@ -39,13 +39,30 @@ export function createSchema(state: RootState): string {
   const tables = query(collections)
     .collection('tableEntities')
     .selectByIds(tableIds)
+    .filter(table => !table.ghost)
     .sort(orderByNameASC);
   const relationships = query(collections)
     .collection('relationshipEntities')
-    .selectByIds(relationshipIds);
+    .selectByIds(relationshipIds)
+    .filter(
+      rel =>
+        !(
+          query(collections)
+            .collection('tableEntities')
+            .selectById(rel.end.tableId)!.ghost &&
+          query(collections)
+            .collection('tableEntities')
+            .selectById(rel.start.tableId)!.ghost
+        )
+    );
   const indexes = query(collections)
     .collection('indexEntities')
-    .selectByIds(indexIds);
+    .selectByIds(indexIds)
+    .filter(index => {
+      return !query(collections)
+        .collection('tableEntities')
+        .selectById(index.tableId)!.ghost;
+    });
 
   tables.forEach(table => {
     formatTable(state, { table, buffer: stringBuffer });

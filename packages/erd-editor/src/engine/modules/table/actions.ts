@@ -14,6 +14,7 @@ export const ActionType = {
   changeTableColor: 'table.changeColor',
   changeZIndex: 'table.changeZIndex',
   sortTable: 'table.sort',
+  toggleGhost: 'table.toggleGhost',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -51,6 +52,9 @@ export type ActionMap = {
     zIndex: number;
   };
   [ActionType.sortTable]: void;
+  [ActionType.toggleGhost]: {
+    id: string;
+  };
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<
