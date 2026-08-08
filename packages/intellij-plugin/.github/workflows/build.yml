@@ -1,9 +1,9 @@
 # GitHub Actions Workflow is created for testing and preparing the plugin release in the following steps:
 # - Validate Gradle Wrapper.
-# - Run 'test' and 'verifyPlugin' tasks.
+# - Build the ERD Editor webview bundle from the `erd-editor` submodule.
 # - Run Qodana inspections.
 # - Run the 'buildPlugin' task and prepare artifact for further tests.
-# - Run the 'runPluginVerifier' task.
+# - Run the 'verifyPlugin' task (IntelliJ Plugin Verifier).
 # - Create a draft release.
 #
 # The workflow is triggered on push and pull_request events.
@@ -20,6 +20,10 @@ on:
   # Trigger the workflow on any pull request
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
 
   # Prepare environment and build the plugin
@@ -29,29 +33,48 @@ jobs:
     outputs:
       version: ${{ steps.properties.outputs.version }}
       changelog: ${{ steps.properties.outputs.changelog }}
-      pluginVerifierHomeDir: ${{ steps.properties.outputs.pluginVerifierHomeDir }}
     steps:
 
-      # Check out current repository
+      # Check out current repository together with the `erd-editor` webview submodule
       - name: Fetch Sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
 
       # Validate wrapper
       - name: Gradle Wrapper Validation
-        uses: gradle/wrapper-validation-action@v1.1.0
+        uses: gradle/actions/wrapper-validation@v6
 
       # Set up Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: zulu
-          java-version: 17
+          java-version: 21
 
       # Setup Gradle
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v6
+
+      # Build the webview bundle into src/main/resources/assets - the plugin ships a blank
+      # editor without it, and the directory is intentionally not committed (.gitignore).
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          gradle-home-cache-cleanup: true
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: erd-editor/.nvmrc
+          cache: pnpm
+          cache-dependency-path: erd-editor/pnpm-lock.yaml
+
+      - name: Build Webview
+        working-directory: erd-editor
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @dineug/erd-editor-intellij-webview run nx:build:webview
 
       # Set environment variables
       - name: Export Properties
@@ -63,13 +86,23 @@ jobs:
           CHANGELOG="$(./gradlew getChangelog --unreleased --no-header --console=plain -q)"
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "pluginVerifierHomeDir=~/.pluginVerifier" >> $GITHUB_OUTPUT
-          
+
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-          ./gradlew listProductsReleases # prepare list of IDEs for Plugin Verifier
+          ./gradlew printProductsReleases # prepare list of IDEs for Plugin Verifier
+
+      # Run the JVM unit tests (and, through `check`, the Kover coverage report)
+      - name: Run tests
+        run: ./gradlew check
+
+      - name: Upload test report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-report
+          path: ./build/reports/tests/test
 
       # Build plugin
       - name: Build plugin
@@ -88,7 +121,7 @@ jobs:
 
       # Store already-built plugin as an artifact for downloading
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.artifact.outputs.filename }}
           path: ./build/distributions/content/*/*
@@ -106,25 +139,25 @@ jobs:
 
       # Free GitHub Actions Environment Disk Space
       - name: Maximize Build Space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@v1.3.1
         with:
           tool-cache: false
           large-packages: false
 
       # Check out current repository
       - name: Fetch Sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Set up Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: zulu
-          java-version: 17
+          java-version: 21
 
       # Run Qodana inspections
       - name: Qodana - Code Inspection
-        uses: JetBrains/qodana-action@v2023.3.0
+        uses: JetBrains/qodana-action@v2026.2.0
         with:
           cache-default-branch-only: true
 
@@ -137,43 +170,67 @@ jobs:
 
       # Free GitHub Actions Environment Disk Space
       - name: Maximize Build Space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@v1.3.1
         with:
           tool-cache: false
           large-packages: false
 
-      # Check out current repository
+      # Check out current repository together with the `erd-editor` webview submodule
       - name: Fetch Sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
 
       # Set up Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: zulu
-          java-version: 17
+          java-version: 21
 
       # Setup Gradle
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
-        with:
-          gradle-home-cache-cleanup: true
+        uses: gradle/actions/setup-gradle@v6
 
-      # Cache Plugin Verifier IDEs
+      # The Plugin Verifier inspects the assembled plugin, so the webview bundle has to exist here too
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: erd-editor/.nvmrc
+          cache: pnpm
+          cache-dependency-path: erd-editor/pnpm-lock.yaml
+
+      - name: Build Webview
+        working-directory: erd-editor
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @dineug/erd-editor-intellij-webview run nx:build:webview
+
+      # Cache Plugin Verifier IDEs. The IDE set is derived from platformVersion/pluginSinceBuild,
+      # so gradle.properties is what should invalidate this cache. (The pre-2.x key hashed
+      # build/listProductsReleases.txt, which `printProductsReleases` no longer writes and which
+      # was produced on a different runner anyway - hashFiles returned '' and the key never changed.)
       - name: Setup Plugin Verifier IDEs Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
-          path: ${{ needs.build.outputs.pluginVerifierHomeDir }}/ides
-          key: plugin-verifier-${{ hashFiles('build/listProductsReleases.txt') }}
+          path: ~/.pluginVerifier/ides
+          key: plugin-verifier-${{ hashFiles('gradle.properties') }}
+          restore-keys: plugin-verifier-
 
-      # Run Verify Plugin task and IntelliJ Plugin Verifier tool
+      # Run the IntelliJ Plugin Verifier tool.
+      # $HOME rather than ~: bash does not tilde-expand inside -Dkey=~/value.
       - name: Run Plugin Verification tasks
-        run: ./gradlew runPluginVerifier -Dplugin.verifier.home.dir=${{ needs.build.outputs.pluginVerifierHomeDir }}
+        run: ./gradlew verifyPlugin -Dplugin.verifier.home.dir=$HOME/.pluginVerifier
 
       # Collect Plugin Verifier Result
       - name: Collect Plugin Verifier Result
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pluginVerifier-result
           path: ${{ github.workspace }}/build/reports/pluginVerifier
@@ -191,14 +248,7 @@ jobs:
 
       # Check out current repository
       - name: Fetch Sources
-        uses: actions/checkout@v4
-
-      # Set up Java environment for the next steps
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: zulu
-          java-version: 17
+        uses: actions/checkout@v7
 
       # Remove old release drafts by using the curl request for the available releases with a draft flag
       - name: Remove Old Release Drafts
