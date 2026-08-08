@@ -7,7 +7,7 @@
 
 ## Usage
 
-create an empty file with a `.erd`, `.erd.json` extension and open it in IntelliJ.
+create an empty file with a `.erd.json` extension and open it in IntelliJ.
 
 ## [Guides](https://docs.erd-editor.io/docs/category/guides)
 

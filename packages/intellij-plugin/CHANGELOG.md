@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-08
+
+### Changed
+
+- Support for the latest IntelliJ IDEA (2026.x). The minimum supported IDE is now 2025.2.
+
 ## [0.2.0] - 2025-05-07
 
 ### Fixed
