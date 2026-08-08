@@ -4,7 +4,6 @@ import com.intellij.CommonBundle
 import com.intellij.ide.plugins.MultiPanel
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.invokeLater
-import com.intellij.openapi.editor.EditorBundle
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.ui.components.JBLoadingPanel
@@ -24,6 +23,10 @@ class Webview(
     companion object {
         private const val LOADING_KEY = 1
         private const val CONTENT_KEY = 0
+
+        // Inlined instead of EditorBundle.message("message.html.editor.timeout"): EditorBundle is
+        // marked @ApiStatus.Internal as of 2026.2 and the Plugin Verifier reports it as internal API.
+        private const val TIMEOUT_HTML = "<html><body>The page has not loaded in the given time.</body></html>"
     }
 
     private val alarm = Alarm(this)
@@ -58,7 +61,7 @@ class Webview(
                 transitionType: CefRequest.TransitionType?
             ) {
                 alarm.addRequest(
-                    { jbCefBrowser.loadHTML(EditorBundle.message("message.html.editor.timeout")) },
+                    { jbCefBrowser.loadHTML(TIMEOUT_HTML) },
                     Registry.intValue("html.editor.timeout", 10000)
                 )
             }

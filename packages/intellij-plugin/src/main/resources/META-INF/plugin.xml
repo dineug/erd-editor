@@ -6,7 +6,15 @@
 
     <depends>com.intellij.modules.platform</depends>
 
+    <!-- Needed for com.intellij.ui.jcef.*. Up to 2026.1 JCEF lives in the core platform, so nothing
+         has to be declared. From 2026.2 on it is a separate bundled plugin, and without this the
+         plugin class loader cannot see JBCefApp - the editor then dies with NoClassDefFoundError.
+         The dependency is optional because com.intellij.modules.jcef does not exist as a resolvable
+         plugin before 2026.2; declaring it mandatory would stop the plugin loading on 2025.2/2025.3. -->
+    <depends optional="true" config-file="jcef.xml">com.intellij.modules.jcef</depends>
+
     <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="ERD Editor" displayType="BALLOON" />
         <fileEditorProvider implementation="com.github.dineug.erdeditorintellijplugin.editor.ErdEditorProvider" />
         <iconProvider implementation="com.github.dineug.erdeditorintellijplugin.files.ErdEditorIconProvider" />
     </extensions>

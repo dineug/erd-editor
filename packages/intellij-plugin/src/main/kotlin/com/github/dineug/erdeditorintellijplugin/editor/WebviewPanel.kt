@@ -1,8 +1,5 @@
 package com.github.dineug.erdeditorintellijplugin.editor
 
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.util.Disposer
@@ -22,6 +19,8 @@ import org.cef.handler.CefDisplayHandlerAdapter
 import org.cef.handler.CefMessageRouterHandlerAdapter
 import org.intellij.lang.annotations.Language
 import java.io.BufferedInputStream
+import java.util.concurrent.ConcurrentMap
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.BorderFactory
 
 class WebviewPanel(
@@ -29,19 +28,32 @@ class WebviewPanel(
         private val coroutineScope: CoroutineScope,
         private val bridge: WebviewBridge,
         private val file: VirtualFile,
-        private val docToEditorsMap: HashMap<VirtualFile, HashSet<ErdEditor>>
+        private val docToEditorsMap: ConcurrentMap<VirtualFile, MutableSet<ErdEditor>>
 ) : Disposable {
     companion object {
-        private const val DOMAIN = "erd-editor-jetbrains-plugin"
-        private const val PLUGIN_URL = "https://$DOMAIN/index.html"
-        private val mapper = jacksonObjectMapper().apply {
-            configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-            setSerializationInclusion(JsonInclude.Include.NON_NULL)
-        }
+        private const val DOMAIN = WebviewScripts.DOMAIN
+        private const val PLUGIN_URL = WebviewScripts.PLUGIN_URL
+        private val mapper = WebviewScripts.mapper
         val isSupported = JBCefApp.isSupported()
 
+        private val schemeHandlerRegistered = AtomicBoolean(false)
+
+        /**
+         * Must run before any browser loads [PLUGIN_URL]. Out-of-process JCEF - the default since
+         * 2025.x - does not consult a factory registered after the load request has been issued, so
+         * Chromium falls through to real DNS and the editor shows DNS_PROBE_FINISHED_NXDOMAIN.
+         *
+         * Registering once per application also avoids the previous `clearSchemeHandlerFactories()`
+         * call, which is global and dropped handlers belonging to the IDE and to other plugins.
+         */
         private fun initSchemeHandler() {
-            CefApp.getInstance().clearSchemeHandlerFactories()
+            if (schemeHandlerRegistered.get()) return
+
+            // Let the platform bootstrap CEF first. Touching CefApp directly before JBCefApp has
+            // initialized creates an unconfigured CefApp, after which JBCefBrowser fails with
+            // "JCEF is not supported in this env or failed to initialize".
+            JBCefApp.getInstance()
+
             CefApp.getInstance().registerSchemeHandlerFactory(
                 "https", DOMAIN,
                 SchemeHandlerFactory { uri ->
@@ -52,11 +64,20 @@ class WebviewPanel(
                     }
                 }
             ).also { successful -> assert(successful) }
+
+            schemeHandlerRegistered.set(true)
         }
     }
 
     private val logger = thisLogger()
+
+    // Written on the EDT, read from CEF and coroutine threads.
+    @Volatile
     private var isDisposed: Boolean = false
+
+    init {
+        initSchemeHandler()
+    }
 
     private val webview = Webview(
             parentDisposable = this,
@@ -71,7 +92,6 @@ class WebviewPanel(
     }
 
     private fun initPanel() {
-        initSchemeHandler()
         Disposer.register(this, webview)
 
         webview.component.border = BorderFactory.createEmptyBorder(2, 2, 2, 2)
@@ -88,10 +108,17 @@ class WebviewPanel(
             ): Boolean {
                 logger.debug("${file.name} disposed: ${isDisposed}")
 
-                val action = mapper.readValue(request, HostBridgeCommand::class.java)
-
                 if (isDisposed) {
                     logger.debug("${file.name}: disposed")
+                    return false
+                }
+
+                // Parsing runs inside a native CEF upcall; an unknown command or malformed payload
+                // must not throw across that boundary.
+                val action = try {
+                    mapper.readValue(request, HostBridgeCommand::class.java)
+                } catch (e: Exception) {
+                    logger.warn("${file.name}: unparseable bridge command: $request", e)
                     return false
                 }
 
@@ -126,7 +153,10 @@ class WebviewPanel(
                     val formattedMessage = "${file.name}: [$level][$source:$line]:\n${message}"
 
                     when (level) {
-                        CefSettings.LogSeverity.LOGSEVERITY_ERROR, CefSettings.LogSeverity.LOGSEVERITY_FATAL -> logger.error(formattedMessage)
+                        // Deliberately warn, not error: Logger.error attaches a synthetic throwable
+                        // whose stack names this plugin, which makes the IDE raise a "plugin error"
+                        // notification for every console.error the bundled web app produces.
+                        CefSettings.LogSeverity.LOGSEVERITY_ERROR, CefSettings.LogSeverity.LOGSEVERITY_FATAL -> logger.warn(formattedMessage)
                         CefSettings.LogSeverity.LOGSEVERITY_INFO -> logger.info(formattedMessage)
                         CefSettings.LogSeverity.LOGSEVERITY_WARNING -> logger.warn(formattedMessage)
                         CefSettings.LogSeverity.LOGSEVERITY_VERBOSE -> logger.debug(formattedMessage)
@@ -168,16 +198,19 @@ class WebviewPanel(
     fun dispatch(action: WebviewBridgeCommand) {
         val json = mapper.writeValueAsString(action)
         logger.debug("${file.name}: dispatch")
-        runJS("window.postMessage(JSON.parse(String.raw`$json`), 'https://$DOMAIN')")
+        runJS(WebviewScripts.postMessageScript(json))
     }
 
     fun dispatchBroadcast(action: WebviewBridgeCommand) {
         val json = mapper.writeValueAsString(action)
         logger.debug("${file.name}: dispatchBroadcast")
 
-        docToEditorsMap[file]?.filter { it != parentDisposable }?.forEach { editor ->
-            editor.webviewPanel.runJS("window.postMessage(JSON.parse(String.raw`$json`), 'https://$DOMAIN')")
-        }
+        val script = WebviewScripts.postMessageScript(json)
+        // Snapshot before iterating: this runs on a background dispatcher while the EDT may be
+        // opening or closing peer editors for the same file.
+        docToEditorsMap[file].orEmpty().toList()
+            .filter { it !== parentDisposable && it.isWebviewPanelInitialized }
+            .forEach { editor -> editor.webviewPanel.runJS(script) }
     }
 
     override fun dispose() {
