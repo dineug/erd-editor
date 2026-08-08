@@ -8,9 +8,13 @@ import com.intellij.openapi.fileEditor.impl.NonProjectFileWritingAccessProvider
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentMap
 
 class ErdEditorProvider : AsyncFileEditorProvider, DumbAware {
-    private val docToEditorsMap = HashMap<VirtualFile, HashSet<ErdEditor>>()
+    // Application-scoped and touched from both the EDT (open/close) and background dispatchers
+    // (replication broadcast), so it has to be concurrent.
+    private val docToEditorsMap: ConcurrentMap<VirtualFile, MutableSet<ErdEditor>> = ConcurrentHashMap()
 
     override fun accept(project: Project, file: VirtualFile): Boolean = ErdEditorFiles.isErdEditorFile(file)
     override fun createEditor(project: Project, file: VirtualFile): FileEditor = createEditorAsync(project, file).build()
@@ -19,12 +23,15 @@ class ErdEditorProvider : AsyncFileEditorProvider, DumbAware {
     override fun createEditorAsync(project: Project, file: VirtualFile): AsyncFileEditorProvider.Builder =
             object : AsyncFileEditorProvider.Builder() {
                 override fun build(): FileEditor {
-                    if (NonProjectFileWritingAccessProvider.isWriteAccessAllowed(file, project)) {
+                    // Grant writing when the platform would otherwise deny it: isWriteAccessAllowed
+                    // returns false exactly for the non-project files that need unlocking, which is
+                    // how NonProjectFileWritingAccessProvider.requestWriting picks its denied set.
+                    if (!NonProjectFileWritingAccessProvider.isWriteAccessAllowed(file, project)) {
                         NonProjectFileWritingAccessProvider.allowWriting(listOf(file))
                     }
 
                     val editor = ErdEditor(file, docToEditorsMap)
-                    docToEditorsMap.getOrPut(file) { HashSet() }.add(editor)
+                    docToEditorsMap.computeIfAbsent(file) { ConcurrentHashMap.newKeySet() }.add(editor)
                     return editor
                 }
             }

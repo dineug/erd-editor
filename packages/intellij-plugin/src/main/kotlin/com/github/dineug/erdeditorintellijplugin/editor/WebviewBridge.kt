@@ -2,16 +2,37 @@ package com.github.dineug.erdeditorintellijplugin.editor
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import com.intellij.openapi.diagnostic.thisLogger
+import com.intellij.openapi.progress.ProcessCanceledException
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
 class WebviewBridge {
+    private val logger = thisLogger()
+
     private val _bridge = MutableSharedFlow<HostBridgeCommand>(replay = 0)
     private val bridge = _bridge.asSharedFlow()
 
     suspend fun emit(appEvent: HostBridgeCommand) = _bridge.emit(appEvent)
 
-    fun subscribe(scope: CoroutineScope, block: suspend (HostBridgeCommand) -> Unit) = bridge.onEach(block).launchIn(scope)
+    /**
+     * Failures in [block] are contained. Letting one escape would complete the single collecting job
+     * exceptionally, and because the owning scope uses a SupervisorJob nothing restarts it - the
+     * editor would keep rendering and acknowledging queries while silently saving nothing for the
+     * rest of the session.
+     */
+    fun subscribe(scope: CoroutineScope, block: suspend (HostBridgeCommand) -> Unit) =
+        bridge.onEach { command ->
+            try {
+                block(command)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ProcessCanceledException) {
+                throw e
+            } catch (e: Throwable) {
+                logger.warn("bridge handler failed for ${command::class.simpleName}", e)
+            }
+        }.launchIn(scope)
 }
 
 @JsonTypeInfo(

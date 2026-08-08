@@ -1,7 +1,10 @@
 package com.github.dineug.erdeditorintellijplugin.editor
 
 import com.github.dineug.erdeditorintellijplugin.settings.ErdEditorAppSettings
+import com.intellij.notification.NotificationGroupManager
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.application.readAndWriteAction
 import com.intellij.openapi.fileChooser.FileChooserFactory
 import com.intellij.openapi.fileChooser.FileSaverDescriptor
@@ -19,6 +22,7 @@ import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
 import java.io.IOException
 import java.util.*
+import java.util.concurrent.ConcurrentMap
 import javax.swing.JComponent
 import javax.swing.JPanel
 import kotlin.collections.HashMap
@@ -28,16 +32,23 @@ import kotlin.time.Duration.Companion.milliseconds
 @OptIn(FlowPreview::class)
 class ErdEditor(
         private val file: VirtualFile,
-        private val docToEditorsMap: HashMap<VirtualFile, HashSet<ErdEditor>>
+        private val docToEditorsMap: ConcurrentMap<VirtualFile, MutableSet<ErdEditor>>
 ) : UserDataHolderBase(),
         FileEditor,
         DumbAware, ErdEditorAppSettings.SettingsChangedListener {
 
+    // Flipped on the EDT in dispose(), read from coroutine and CEF threads.
+    @Volatile
     private var isDisposed: Boolean = false
+
+    @Volatile
+    private var lastWrittenValue: String? = null
 
     override fun getFile() = file
 
     lateinit var webviewPanel: WebviewPanel
+
+    val isWebviewPanelInitialized: Boolean get() = this::webviewPanel.isInitialized
     private val jcefUnsupported by lazy { JCEFUnsupportedViewPanel() }
     private val toolbarAndWebView: JPanel
     private val bridge = WebviewBridge()
@@ -73,7 +84,7 @@ class ErdEditor(
                 when (action) {
                     is HostBridgeCommand.Initial -> {
                         val settings = ErdEditorAppSettings.instance
-                        val value = file.inputStream.reader().readText()
+                        val value = file.inputStream.use { it.reader(Charsets.UTF_8).readText() }
 
                         webviewPanel.dispatch(
                             WebviewBridgeCommand.UpdateTheme(
@@ -178,25 +189,63 @@ class ErdEditor(
                 }
 
                 if (!file.isWritable) {
+                    // The read-only flag is otherwise pushed only once, during the initial
+                    // handshake. Without this the web app keeps accepting edits that are dropped.
+                    webviewPanel.dispatch(WebviewBridgeCommand.UpdateReadonly(true))
                     return@collectLatest
                 }
 
                 readAndWriteAction {
                     writeAction {
-                        try {
-                            file.getOutputStream(file).use { stream ->
-                                with(stream) {
-                                    write(value.toByteArray())
-                                }
-                            }
-                        } catch (e: IOException) {
-                            // TODO: notifyAboutWriteError
-                        } catch (e: IllegalArgumentException) {
-                            // TODO: notifyAboutWriteError
-                        }
+                        writeValue(value)
                     }
                 }
             }
+    }
+
+    private fun writeValue(value: String) {
+        try {
+            file.getOutputStream(file).use { stream ->
+                stream.write(value.toByteArray(Charsets.UTF_8))
+            }
+            lastWrittenValue = value
+        } catch (e: IOException) {
+            reportWriteFailure(e)
+        } catch (e: IllegalArgumentException) {
+            reportWriteFailure(e)
+        }
+    }
+
+    private fun reportWriteFailure(e: Exception) {
+        thisLogger().warn("Failed to save ${file.name}", e)
+        NotificationGroupManager.getInstance()
+            .getNotificationGroup("ERD Editor")
+            .createNotification(
+                "Could not save ${file.name}",
+                e.message ?: e.javaClass.simpleName,
+                NotificationType.ERROR
+            )
+            .notify(null)
+    }
+
+    /**
+     * The debounced save job bails out once [isDisposed] is set, so a value still inside the debounce
+     * window when the tab closes would be discarded without ever reaching disk. Write it here, before
+     * the scope is cancelled. [VirtualFile.isValid] keeps a deleted file from being recreated.
+     */
+    private fun flushPendingSave() {
+        val pending = savePayload.value ?: return
+        if (pending == lastWrittenValue) return
+        if (!file.isValid || !file.isWritable) return
+
+        val application = ApplicationManager.getApplication()
+        try {
+            application.invokeAndWait {
+                application.runWriteAction { writeValue(pending) }
+            }
+        } catch (e: Exception) {
+            thisLogger().warn("Failed to flush pending changes of ${file.name} on close", e)
+        }
     }
 
     override fun onSettingsChange(settings: ErdEditorAppSettings) {
@@ -238,6 +287,14 @@ class ErdEditor(
 
     override fun dispose() {
         isDisposed = true
-        docToEditorsMap[file]?.remove(this)
+        docToEditorsMap.computeIfPresent(file) { _, editors ->
+            editors.remove(this)
+            if (editors.isEmpty()) null else editors
+        }
+
+        // Order matters: flush before cancelling, otherwise the cancellation wins the race and the
+        // last edit is lost for good.
+        flushPendingSave()
+        coroutineScope.cancel()
     }
 }
