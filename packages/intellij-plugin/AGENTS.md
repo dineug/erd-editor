@@ -42,7 +42,7 @@ Kotlin 코드는 **얇은 호스트 레이어**입니다. 다이어그램 편집
 
 | File | Description |
 |------|-------------|
-| `editor/ErdEditorProvider.kt` | `AsyncFileEditorProvider`. `.erd` 파일을 가로채 `FileEditorPolicy.HIDE_DEFAULT_EDITOR`로 기본 에디터를 숨김. `docToEditorsMap`으로 같은 파일의 여러 에디터 인스턴스를 추적 |
+| `editor/ErdEditorProvider.kt` | `FileEditorProvider`. `.erd` 파일을 가로채 `FileEditorPolicy.HIDE_DEFAULT_EDITOR`로 기본 에디터를 숨김. `docToEditorsMap`으로 같은 파일의 여러 에디터 인스턴스를 추적 |
 | `editor/ErdEditor.kt` | `FileEditor` 구현체이자 브리지 명령 핸들러. 파일 로드, 100ms 디바운스 저장, 파일 내보내기 다이얼로그, 테마 변경 수신을 처리 |
 | `editor/WebviewPanel.kt` | JCEF 메시지 라우터 연결. `https://erd-editor-jetbrains-plugin/index.html` 커스텀 스킴 등록, `dispatch`/`dispatchBroadcast`로 웹뷰에 `window.postMessage` 실행 |
 | `editor/Webview.kt` | `JBCefBrowser` 래핑. 로딩 패널 ↔ 콘텐츠 패널을 `MultiPanel`로 전환, 로드 타임아웃 처리 |
@@ -99,11 +99,11 @@ JDK 21로 컴파일합니다. 머신에 JDK 21이 없어도 `settings.gradle.kts
 
 **브리지 프로토콜은 양쪽을 함께 바꿔야 합니다.** `WebviewBridge.kt`의 `type` 문자열(`hostSaveValueCommand`, `webviewUpdateThemeCommand` 등)은 `erd-editor/packages/vscode-bridge`의 정의와 정확히 일치해야 합니다. 한쪽만 바꾸면 메시지가 조용히 무시됩니다.
 
-**스레딩 규칙을 지키세요.** IntelliJ 파일 쓰기는 `readAndWriteAction { writeAction { ... } }` 안에서만 가능하고, 파일 선택 다이얼로그는 EDT에서 열어야 합니다(`ApplicationManager.getApplication().invokeLater`). 기존 코드가 이 패턴을 따르고 있으니 그대로 모방하세요.
+**스레딩 규칙을 지키세요.** IntelliJ 파일 쓰기는 `readAndEdtWriteAction { writeAction { ... } }` 안에서만 가능하고, 파일 선택 다이얼로그는 EDT에서 열어야 합니다(`ApplicationManager.getApplication().invokeLater`). 기존 코드가 이 패턴을 따르고 있으니 그대로 모방하세요.
 
 ### Testing Requirements
 
-**자동화된 테스트가 없습니다.** `src/test`가 존재하지 않으며 Kover는 설정만 되어 있고 측정할 테스트가 없습니다. 따라서 검증은 다음 순서로 수동 진행합니다.
+**순수 JVM 단위 테스트 13개가 있습니다**(`src/test/kotlin/`, `./gradlew test`). 브리지 직렬화·스크립트 인코딩·확장자 판별만 덮으며, JCEF 경로는 헤드리스에서 못 돌리므로 아래 절차를 병행하세요.
 
 1. `./gradlew buildPlugin` — 컴파일 및 매니페스트 패치 통과
 2. `./gradlew runIde --args="/경로/sample.erd.json"` — 샌드박스가 그 파일을 바로 열어줍니다. **다이어그램이 실제로 렌더되는지 눈으로 확인하세요.** 아래 JCEF 항목 참고
@@ -136,6 +136,15 @@ JDK 21로 컴파일합니다. 머신에 JDK 21이 없어도 `settings.gradle.kts
   - 등록이 `loadURL` **이후**로 밀리면: out-of-process JCEF(2025.x 이후 기본값)에서 팩토리가 반영되지 않아 Chromium이 `erd-editor-jetbrains-plugin`을 실제 DNS로 해석하고 `DNS_PROBE_FINISHED_NXDOMAIN`이 뜹니다. in-process에서는 경합에서 이겨 통과하므로 재현이 안 될 수 있습니다.
   - `JBCefApp` 초기화 **이전**에 raw `CefApp.getInstance()`를 만지면: CEF가 플랫폼 설정 없이 생성되어 `JBCefBrowser` 생성이 `IllegalStateException: JCEF is not supported in this env`로 죽고, 에디터 탭 자체가 열리지 않습니다.
   - `CefApp.clearSchemeHandlerFactories()`는 전역입니다. IDE와 다른 플러그인의 핸들러까지 지우므로 쓰지 마세요.
+- **`org.cef` 인터페이스는 IDE 버전 사이에서 넓어집니다.** 2026.2가 번들한 JCEF 144는 `CefResourceHandler`에 `open`/`read`/`skip`을 추가했습니다(261은 추상 메서드 4개, 262는 7개 — `javap`로 실측). 인터페이스를 직접 구현하면 하한 버전으로 컴파일한 익명 클래스가 262에서 3개를 미구현 상태로 남기고, Plugin Verifier가 `binary incompatible`로 잡습니다.
+  - 그래서 `SchemeHandlerFactory`는 `CefResourceHandlerAdapter`를 상속합니다. 이 클래스는 252/253/261/262에 모두 있고 각 버전의 인터페이스를 전부 구현하므로, 앞으로 메서드가 또 늘어도 하한 컴파일이 깨지지 않습니다.
+  - 어댑터의 `open`/`read`/`skip`은 CEF가 문서화한 하위호환 센티널(`handle_request=false`+`false`, `bytesRead=-1`, `bytesSkipped=-2`)을 세팅하므로 Chromium이 기존 `processRequest`/`readResponse` 경로로 되돌아갑니다. 동작은 그대로입니다.
+  - 262에서도 실제로는 렌더가 되던 이유: out-of-process JCEF의 thrift 프로토콜에는 `ProcessRequest`/`ReadResponse`만 있고 `Open`/`Read`/`Skip`이 없어 Java 쪽으로 호출이 오지 않습니다. in-process(`ide.browser.jcef.out-of-process.enabled=false`)로 전환하면 `AbstractMethodError`가 될 수 있던 잠재 결함이었습니다.
+  - 262에서 `processRequest`/`readResponse`는 `@Deprecated`입니다. 인터페이스를 직접 구현하던 때는 Marketplace가 262에만 deprecated 4건(다른 버전 2건)을 보고했지만, 어댑터를 상속하면서 오버라이드 대상이 deprecated가 아닌 어댑터 쪽으로 바뀌어 지금은 0건입니다. 하한이 252인 이상 `open`/`read`로 옮길 수는 없습니다 — 그 메서드들이 252~261에는 아예 없습니다.
+- **Verifier 경고 0건은 의도적으로 맞춘 상태입니다.** 되돌리기 쉬우니 아래 두 가지를 건드릴 때 주의하세요.
+  - `readAndWriteAction`은 `readAndEdtWriteAction`으로 개명됐고 구 이름은 `@Deprecated`입니다("unclear threading semantics"). 새 이름은 252부터 있으므로 하한과 무관하게 새 이름만 쓰면 됩니다.
+  - `ErdEditorProvider`가 `AsyncFileEditorProvider`를 구현하면 `@Experimental`인 `createFileEditor`가 **소스에 없어도** 기본 구현 상속으로 딸려 들어와 Verifier에 2건으로 잡힙니다. 그 기본 구현은 `createEditorAsync`를 EDT 밖에서 부른 뒤 `withContext(Dispatchers.EDT)`에서 빌더를 실행할 뿐이고, 이 프로바이더는 빌더 이전에 할 일이 없어 안정 API인 `FileEditorProvider`로 충분합니다.
+- **`com.intellij.modules.jcef` optional 의존성 미해결 경고는 남습니다.** 252~261에는 그 플러그인이 없으므로 Marketplace가 "couldn't be resolved"를 보고하지만, optional이라 런타임에서는 무시되고 코어 JCEF가 쓰입니다. 없애려면 262+ 전용으로 하한을 올리거나 262+ 지원을 포기하는 수밖에 없습니다.
 - `plugin.xml`에는 `applicationConfigurable`이 등록되어 있지 않습니다. 테마 설정 UI는 없고, 값은 오직 웹뷰가 보내는 `hostSaveThemeCommand`로만 갱신됩니다. `ErdEditorBundle.properties`의 `settings.erd-editor.name` 키는 현재 사용처가 없습니다.
 - `ErdEditor`의 `HostBridgeCommand.ImportFile` 분기는 비어 있습니다(웹뷰가 자체 처리). 파일 쓰기 실패 경로에는 `// TODO: notifyAboutWriteError` 주석만 있고 사용자 알림이 없습니다.
 - `.run/*.run.xml`의 로그 경로에는 플랫폼 버전(`IU-2026.1.4`)이 박혀 있습니다. `platformVersion`을 올리면 함께 고쳐야 합니다.
