@@ -5,6 +5,7 @@ import org.cef.browser.CefFrame
 import org.cef.callback.CefCallback
 import org.cef.callback.CefSchemeHandlerFactory
 import org.cef.handler.CefResourceHandler
+import org.cef.handler.CefResourceHandlerAdapter
 import org.cef.misc.IntRef
 import org.cef.misc.StringRef
 import org.cef.network.CefRequest
@@ -18,7 +19,14 @@ class SchemeHandlerFactory(val getStream: (uri: URI) -> InputStream?) : CefSchem
         val uri = URI(request.url)
         val stream = getStream(uri)
 
-        return object : CefResourceHandler {
+        // Extends the adapter rather than implementing CefResourceHandler directly. JCEF 144 (bundled
+        // from 2026.2) added open/read/skip to the interface, so an anonymous implementation compiled
+        // against an older platform is missing three abstract methods and risks AbstractMethodError -
+        // today it survives only because out-of-process JCEF never routes those calls to Java.
+        // CefResourceHandlerAdapter exists unchanged since 2025.2 and its open/read/skip bodies set
+        // the sentinels CEF documents for backwards compatibility (handle_request=false, bytesRead=-1,
+        // bytesSkipped=-2), which make Chromium fall back to processRequest/readResponse below.
+        return object : CefResourceHandlerAdapter() {
             override fun processRequest(req: CefRequest, callback: CefCallback): Boolean {
                 callback.Continue()
                 return true
