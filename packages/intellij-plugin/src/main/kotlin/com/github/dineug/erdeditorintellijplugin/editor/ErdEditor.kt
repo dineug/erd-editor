@@ -5,7 +5,7 @@ import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.thisLogger
-import com.intellij.openapi.application.readAndWriteAction
+import com.intellij.openapi.application.readAndEdtWriteAction
 import com.intellij.openapi.fileChooser.FileChooserFactory
 import com.intellij.openapi.fileChooser.FileSaverDescriptor
 import com.intellij.openapi.fileEditor.FileEditor
@@ -136,7 +136,7 @@ class ErdEditor(
                                 .createSaveFileDialog(descriptor, null)
                                 .save(file.parent, action.payload.fileName)?.also { destination ->
                                     coroutineScope.launch(Dispatchers.IO + CoroutineName(this::class.java.simpleName)) {
-                                        readAndWriteAction {
+                                        readAndEdtWriteAction {
                                             writeAction {
                                                 val file = destination.getVirtualFile(true)!!
                                                 try {
@@ -195,7 +195,7 @@ class ErdEditor(
                     return@collectLatest
                 }
 
-                readAndWriteAction {
+                readAndEdtWriteAction {
                     writeAction {
                         writeValue(value)
                     }
