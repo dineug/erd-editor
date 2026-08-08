@@ -1,20 +1,20 @@
 [versions]
 # libraries
-annotations = "24.1.0"
+junit = "4.13.2"
 
 # plugins
-kotlin = "1.9.22"
-changelog = "2.2.0"
-gradleIntelliJPlugin = "1.17.0"
-qodana = "0.1.13"
-kover = "0.7.5"
+kotlin = "2.3.21"
+changelog = "2.5.0"
+intelliJPlatform = "2.18.1"
+qodana = "2026.2.0"
+kover = "0.9.9"
 
 [libraries]
-annotations = { group = "org.jetbrains", name = "annotations", version.ref = "annotations" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
 changelog = { id = "org.jetbrains.changelog", version.ref = "changelog" }
-gradleIntelliJPlugin = { id = "org.jetbrains.intellij", version.ref = "gradleIntelliJPlugin" }
+intelliJPlatform = { id = "org.jetbrains.intellij.platform", version.ref = "intelliJPlatform" }
 kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 qodana = { id = "org.jetbrains.qodana", version.ref = "qodana" }

@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run Verifications" type="GradleRunConfiguration" factoryName="Gradle">
-    <log_file alias="idea.log" path="$PROJECT_DIR$/build/idea-sandbox/system/log/idea.log" />
+    <log_file alias="idea.log" path="$PROJECT_DIR$/.intellijPlatform/sandbox/erd-editor-intellij-plugin/IU-2026.1.4/log/idea.log" />
     <ExternalSystemSettings>
       <option name="executionName" />
       <option name="externalProjectPath" value="$PROJECT_DIR$" />
@@ -11,7 +11,7 @@
       </option>
       <option name="taskNames">
         <list>
-          <option value="runPluginVerifier" />
+          <option value="verifyPlugin" />
         </list>
       </option>
       <option name="vmOptions" value="" />
