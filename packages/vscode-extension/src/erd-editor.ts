@@ -78,7 +78,7 @@ export class ErdEditor extends Editor {
           if (!uris || !uris.length) return;
 
           const uri = uris[0];
-          const regexp = new RegExp(`\.(${type}|erd|vuerd)$`, 'i');
+          const regexp = new RegExp(`\.${type}$`, 'i');
 
           if (!regexp.test(uri.path)) {
             vscode.window.showInformationMessage(
