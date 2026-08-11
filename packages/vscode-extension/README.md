@@ -6,7 +6,7 @@
 
 ## Usage
 
-create an empty file with a `.erd`, `.erd.json` extension and open it in Visual Studio Code.
+create an empty file with a `.erd.json` extension and open it in Visual Studio Code.
 
 ## [Guides](https://docs.erd-editor.io/docs/category/guides)
 
