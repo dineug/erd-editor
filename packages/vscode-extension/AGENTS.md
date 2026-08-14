@@ -27,6 +27,11 @@ This is the only package that touches the `vscode` module.
 | `package.json`               | Also the extension manifest — `contributes`, `activationEvents`, `capabilities`                                                                                      |
 | `webpack.config.js`          | Node-target bundle to `dist/extension`                                                                                                                               |
 | `CHANGELOG.md`               | User-facing release notes — update on every published change                                                                                                         |
+| `vitest.config.mts`          | Unit suite — aliases the `vscode` specifier to the stub, `@` to `src`; coverage thresholds are `perFile: 80`                                                         |
+| `test/mocks/vscode.ts`       | The `vscode` stub. `EventEmitter`/`Uri`/`Disposable`/enums are real implementations; `workspace`/`window`/`commands` are `vi.fn()` spies                             |
+| `.vscode-test.mjs`           | Integration suite — `@vscode/test-cli` config; also relocates `--user-data-dir` off the unix-socket path limit                                                       |
+| `tsconfig.unit.json`         | Typechecks `src` + the stub (ESM/bundler resolution, since `tsconfig.json` is commonjs/node10 for webpack)                                                           |
+| `tsconfig.integration.json`  | Compiles `test/integration` to `out/` for the Extension Host, with no `@/` alias                                                                                     |
 
 ## Manifest surface (`package.json` → `contributes`)
 
@@ -75,14 +80,38 @@ This is the only package that touches the `vscode` module.
 
 - `pnpm --filter vuerd-vscode build`. Note `vscode:prepublish` runs `pnpm build`, so packaging always
   rebuilds.
-- **Launch the extension host** (`packages/vscode-extension/.vscode/` holds the launch config) and
-  verify the full matrix, because none of it is covered by automated tests:
-  - open/edit/save a `.erd` file; confirm dirty state and undo behave;
-  - the four `vuerd.*` commands and their editor-title icons;
-  - the same file in two editor groups (broadcast sync);
-  - a file opened from git history (readonly);
-  - changing `dineug.erd-editor.theme.*` and `workbench.colorTheme`;
-  - import/export file dialogs.
+
+Tests come in two layers, and which one a change belongs in is decided by whether it needs the real
+`vscode` module:
+
+- **Unit (`pnpm test`, part of `pnpm test` at the root).** Vitest, specs next to the source as
+  `src/**/*.test.ts`. `vitest.config.mts` aliases the `vscode` specifier to `test/mocks/vscode.ts`
+  because webpack declares `vscode` as an external and the module does not exist outside the host.
+  Types still come from `@types/vscode`, so a spec that needs a stub helper imports it by relative
+  path (`import { resetVscodeMock } from '../test/mocks/vscode'`) and casts at the call boundary.
+  Call `resetVscodeMock()` in `beforeEach` — the stub module is shared across a file.
+  `pnpm test:coverage` enforces 80% per file, with nothing excluded — every `src` file is
+  currently at 100%.
+- **Integration (`pnpm e2e`, not part of `pnpm test`).** `@vscode/test-cli` downloads a real VSCode,
+  launches it with this folder as `--extensionDevelopmentPath` and `test/fixtures/workspace` open,
+  and runs Mocha specs from `test/integration/` inside the Extension Host — so `require('vscode')`
+  is the genuine API. The script compiles `tsconfig.integration.json` to `out/` first; the Extension
+  Host has no TS loader and no bundler, so those specs must import only from `vscode`/node builtins,
+  never through the `@/` alias. **`nx build vuerd-vscode` must have run**, because the host loads
+  `dist/extension.js` and `Editor#buildHtmlForWebview` reads `public/index.html`. On Linux, wrap it
+  in `xvfb-run -a`.
+- Put an assertion in the integration layer when it depends on VSCode actually agreeing with us —
+  manifest contributions really being registered, a command really existing, a setting really
+  resolving to its contributed default, the custom editor really claiming `.erd`. The stub cannot
+  falsify any of those, since it is our own idea of the API.
+- Still **manual**, because neither layer reaches it — launch the extension host
+  (`packages/vscode-extension/.vscode/` holds the launch config) and verify:
+  - editing a `.erd` file end to end: dirty state, undo, save, and the webview actually rendering;
+  - the same file in two editor groups stays in sync (the host-side broadcast is unit-tested, but
+    the round trip through two live webviews is not);
+  - a file opened from git history is readonly;
+  - `dineug.erd-editor.theme.*` and `workbench.colorTheme` changes reaching the webview;
+  - the import/export file dialogs.
 - `pnpm build:vsce` produces the VSIX for a final install-from-file check.
 - Update `CHANGELOG.md` and the `version` field for any user-visible change.
 

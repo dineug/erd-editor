@@ -1,7 +1,16 @@
 .vscode
 node_modules
 src/**
+test/**
+out/**
+.vscode-test/**
+.vscode-test.mjs
+vitest.config.mts
 tsconfig.json
+tsconfig.unit.json
+tsconfig.integration.json
 webpack.config.js
 .turbo
 .gitignore
+coverage
+.omc

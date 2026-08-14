@@ -34,6 +34,13 @@ module.exports = (env, argv) => {
             {
               loader: 'ts-loader',
               options: {
+                // Typecheck what is actually bundled, not everything under the
+                // tsconfig `include`. Without this the unit specs join the
+                // program and fail the build: they import the `vscode` stub from
+                // outside `rootDir` (TS6059) and use `import.meta` under
+                // `module: commonjs` (TS1343). They are typechecked by
+                // `tsconfig.unit.json` instead — see `pnpm typecheck`.
+                onlyCompileBundledFiles: true,
                 compilerOptions: {
                   module: 'es6',
                 },

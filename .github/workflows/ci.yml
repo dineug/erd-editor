@@ -51,3 +51,37 @@ jobs:
           # out and the upload reports "No files were found" on a green run.
           include-hidden-files: true
           retention-days: 7
+
+  vscode-extension-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install
+      # The Extension Host loads `main` (`dist/extension.js`), and
+      # `Editor#buildHtmlForWebview` reads `public/index.html` emitted by
+      # `@dineug/erd-editor-vscode-webview` — so the extension cannot activate
+      # until its own build and its dependencies' builds have run.
+      - run: pnpm exec nx build vuerd-vscode
+      # `@vscode/test-cli` launches a real (Electron) VSCode, which needs a
+      # display even in `--disable-gpu` headless CI. This runs the whole matrix
+      # in `.vscode-test.mjs` — stable plus the `engines.vscode` floor — so it
+      # downloads two VSCode builds. `VSCODE_TEST_USER_DATA_DIR` is the base each
+      # version's profile hangs off; it keeps VSCode's IPC socket well under the
+      # unix socket path limit and puts the logs somewhere this job can upload.
+      - name: Run Extension Host tests
+        run: xvfb-run -a pnpm exec nx run vuerd-vscode:e2e
+        env:
+          VSCODE_TEST_USER_DATA_DIR: /tmp/vscode-test-user-data
+      - uses: actions/upload-artifact@v7
+        if: ${{ failure() }}
+        with:
+          name: vscode-extension-e2e-logs
+          path: /tmp/vscode-test-user-data/*/logs
+          retention-days: 7

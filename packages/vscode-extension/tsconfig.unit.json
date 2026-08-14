@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // The stub lives outside `src`, so `rootDir` has to widen to the package.
+    "rootDir": ".",
+    "noEmit": true,
+    // `tsconfig.json` targets the webpack build (commonjs + node10 resolution),
+    // which cannot read the `exports` map of an ESM-only package like vitest.
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["node", "vscode"],
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src", "test/mocks"]
+}

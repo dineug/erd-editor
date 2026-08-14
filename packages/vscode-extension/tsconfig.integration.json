@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "out",
+    "types": ["node", "mocha", "vscode"],
+    // The Extension Host runs the emitted JS directly with no bundler, so `@/*`
+    // would not resolve at runtime. Integration specs import from `vscode` only.
+    "paths": {}
+  },
+  "include": ["test/integration"]
+}

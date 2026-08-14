@@ -95,13 +95,24 @@ shared ── vscode-bridge ──┬── vscode-replication-store-worker ─�
 ### Testing Requirements
 
 - `pnpm test` runs `nx run-many -t test`. Eight packages define a Vitest `test` target — `shared`,
-  `go`, `r-html`, `schema-sql-parser`, `erd-editor-schema`, `erd-editor`, `vscode-bridge`, and `app`;
-  the rest no-op. New tests belong next to the source as `*.test.ts`, and each package carries its own
-  `vitest.config.ts` (`.mts` in `app`, whose `package.json` is CommonJS).
-- Two packages also carry a Playwright suite under `packages/<pkg>/e2e/` — `erd-editor` (the custom
-  element against the Vite dev server) and `app` (live collaboration across two browser contexts).
-  Neither runs in `pnpm test`; invoke them with `pnpm --filter <pkg> e2e`.
-- CI (`.github/workflows/ci.yml`) runs `pnpm install && pnpm test && pnpm build` on Node 22 / pnpm 10.
+  `r-html`, `schema-sql-parser`, `erd-editor-schema`, `erd-editor`, `vscode-bridge`, `app`, and
+  `vscode-extension`; the rest no-op. New tests belong next to the source as `*.test.ts`, and each
+  package carries its own `vitest.config.ts` (`.mts` in `app` and `vscode-extension`, whose
+  `package.json` files are CommonJS).
+- `vscode-extension` is the one package whose unit suite needs a module that does not exist outside
+  its host: `vitest.config.mts` aliases the `vscode` specifier to the stub in
+  `packages/vscode-extension/test/mocks/vscode.ts`. Types still come from `@types/vscode`.
+- Three packages carry an out-of-process suite under `packages/<pkg>/e2e/` or `test/integration/`,
+  none of which run in `pnpm test` — invoke them with `pnpm --filter <pkg> e2e`:
+  - `erd-editor` — Playwright, the custom element against the Vite dev server
+  - `app` — Playwright, live collaboration across two browser contexts
+  - `vscode-extension` — `@vscode/test-cli`, Mocha specs inside a real Extension Host. The script
+    compiles `tsconfig.integration.json` to `out/` first, and the extension must already be built
+    (`nx build vuerd-vscode`) because the host loads `dist/extension.js` and `public/index.html`.
+    On Linux it needs a display: `xvfb-run -a`.
+- CI (`.github/workflows/ci.yml`) has three jobs: `ci` (`pnpm install && pnpm test && pnpm build` on
+  Node 22 / pnpm 10), `e2e` (the `erd-editor` Playwright suite), and `vscode-extension-e2e` (the
+  Extension Host suite under `xvfb-run`).
   A change is not verified until `pnpm build` passes — type errors surface at build time because
   `@rollup/plugin-typescript` runs with `noEmitOnError: true`.
 - `pnpm lint` (`eslint .`) and `pnpm format` are the style gates; `.gitignore` is fed into ESLint via

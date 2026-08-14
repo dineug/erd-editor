@@ -13,6 +13,9 @@ build
 .cache-loader
 
 packages/vscode-extension/public
+# `tsc -p tsconfig.test.json` output + the VSCode build @vscode/test-cli downloads
+packages/vscode-extension/out
+packages/vscode-extension/.vscode-test
 
 # Log files
 npm-debug.log*
