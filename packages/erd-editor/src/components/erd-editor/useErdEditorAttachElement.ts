@@ -149,14 +149,29 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     );
   });
 
-  ctx.focus = () => {
-    root.value?.focus();
-  };
-
-  ctx.blur = () => {
-    ctx.focus();
-    root.value?.blur();
-  };
+  // `focus`/`blur` shadow HTMLElement.prototype methods. Environments that patch those
+  // methods can leave them as getter-only accessors on the prototype — Storybook's preview
+  // runtime does, via @testing-library/user-event — and a plain assignment then throws in
+  // strict mode. Defining own properties skips the prototype setter lookup entirely.
+  Object.defineProperties(ctx, {
+    focus: {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: () => {
+        root.value?.focus();
+      },
+    },
+    blur: {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: () => {
+        ctx.focus();
+        root.value?.blur();
+      },
+    },
+  });
 
   ctx.clear = () => {
     store.dispatchSync(clearAction());
