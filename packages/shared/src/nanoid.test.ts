@@ -1,5 +1,3 @@
-import { createRequire } from 'node:module';
-
 import { urlAlphabet } from 'nanoid';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -9,8 +7,7 @@ const alphabet = new Set(urlAlphabet.split(''));
 
 describe('nanoid', () => {
   afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.resetModules();
+    vi.restoreAllMocks();
   });
 
   it('generates a 21 character id', () => {
@@ -37,21 +34,34 @@ describe('nanoid', () => {
     expect(getRandomValues).toHaveBeenCalledTimes(1);
     expect(getRandomValues.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
     expect(id).toHaveLength(21);
-
-    getRandomValues.mockRestore();
   });
 
-  it('falls back to node:crypto webcrypto when globalThis.crypto is undefined', async () => {
-    vi.stubGlobal('crypto', undefined);
-    vi.stubGlobal('require', createRequire(import.meta.url));
-    vi.resetModules();
+  it('derives every character from the bytes globalThis.crypto.getRandomValues returns', () => {
+    const bytesFilledWith = (value: number) =>
+      vi
+        .spyOn(globalThis.crypto, 'getRandomValues')
+        .mockImplementation((array: any) => {
+          new Uint8Array(array.buffer).fill(value);
+          return array;
+        });
 
-    const { nanoid: fallbackNanoid } = await import('@/nanoid');
-    const id = fallbackNanoid();
+    const zeroed = bytesFilledWith(0);
+    expect(nanoid()).toBe(urlAlphabet[0].repeat(21));
+    zeroed.mockRestore();
 
-    expect(id).toHaveLength(21);
-    for (const char of id) {
-      expect(alphabet.has(char)).toBe(true);
-    }
+    const ones = bytesFilledWith(1);
+    expect(nanoid()).toBe(urlAlphabet[1].repeat(21));
+    ones.mockRestore();
+  });
+
+  it('has no fallback randomness source beyond globalThis.crypto', () => {
+    const getRandomValues = vi
+      .spyOn(globalThis.crypto, 'getRandomValues')
+      .mockImplementation(() => {
+        throw new Error('boom');
+      });
+
+    expect(() => nanoid()).toThrowError('boom');
+    expect(getRandomValues).toHaveBeenCalledTimes(1);
   });
 });
