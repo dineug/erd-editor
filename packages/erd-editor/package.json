@@ -65,14 +65,10 @@
     "@fortawesome/free-solid-svg-icons": "6.5.2",
     "@mdi/js": "7.4.47",
     "@radix-ui/colors": "3.0.0",
-    "@rollup/plugin-typescript": "^11.1.6",
-    "@storybook/addon-essentials": "^8.0.8",
-    "@storybook/addon-interactions": "^8.0.8",
-    "@storybook/addon-links": "^8.0.8",
-    "@storybook/blocks": "^8.0.8",
-    "@storybook/html": "^8.0.8",
-    "@storybook/html-vite": "^8.0.8",
-    "@storybook/test": "^8.0.8",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@storybook/addon-docs": "^10.5.8",
+    "@storybook/addon-links": "^10.5.8",
+    "@storybook/html-vite": "^10.5.8",
     "@types/color": "^3.0.6",
     "@types/d3": "7.4.3",
     "@types/highlight-words-core": "^1.2.3",
@@ -90,11 +86,11 @@
     "luxon": "^3.4.4",
     "rxjs": "^7.8.1",
     "stats.js": "^0.17.0",
-    "storybook": "^8.0.8",
+    "storybook": "^10.5.8",
     "tinykeys": "^2.1.0",
     "tslib": "^2.8.1",
     "typescript": "5.8.2",
-    "vite": "^6.2.1",
-    "vite-plugin-dts": "^4.5.3"
+    "vite": "^8.2.1",
+    "vite-plugin-dts": "^5.0.3"
   }
 }

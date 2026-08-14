@@ -73,7 +73,7 @@ None — leaf package.
 
 ### External
 
-Build/test only: `vite`, `vite-plugin-dts`, `@rollup/plugin-typescript`, `vitest`, `tslib`.
+Build/test only: `vite`, `vite-plugin-dts`, `@rollup/plugin-typescript`, `vitest`, `@types/node`, `tslib`.
 
 ### Consumers
 

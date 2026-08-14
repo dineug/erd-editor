@@ -1,6 +1,6 @@
 import './preview.css';
 import { kebabCase } from 'lodash-es';
-import type { Preview } from '@storybook/html';
+import type { Preview } from '@storybook/html-vite';
 import { render, html, addCSSHost } from '@dineug/r-html';
 
 import {
@@ -93,7 +93,6 @@ const preview: Preview = {
     },
   },
   parameters: {
-    actions: { argTypesRegex: '^on.*' },
     controls: {
       matchers: {
         color: /(background|color)$/i,
@@ -102,6 +101,7 @@ const preview: Preview = {
     },
   },
   decorators: [withThemeProvider],
+  tags: ['autodocs'],
 };
 
 export default preview;

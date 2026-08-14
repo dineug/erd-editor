@@ -1,5 +1,5 @@
 import { FC, html, observable, render } from '@dineug/r-html';
-import type { Meta, StoryObj } from '@storybook/html';
+import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import Switch, { SwitchProps } from './Switch';
 

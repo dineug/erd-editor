@@ -1,5 +1,5 @@
 import { html, render } from '@dineug/r-html';
-import type { Meta, StoryObj } from '@storybook/html';
+import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import EditInput, { EditInputProps } from './EditInput';
 

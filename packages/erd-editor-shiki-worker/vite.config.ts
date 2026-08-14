@@ -24,7 +24,7 @@ export default defineConfig({
       fileName: 'erd-editor-shiki-worker',
       formats: ['es'],
     },
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         banner,
       },
@@ -32,7 +32,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': join(__dirname, 'src'),
+      '@': join(import.meta.dirname, 'src'),
     },
   },
   plugins: [dts(), typescript({ noEmitOnError: true, noForceEmit: true })],

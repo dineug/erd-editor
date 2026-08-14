@@ -24,7 +24,7 @@ cross-tab sync, and undo/redo share one mechanism.
 | `eslint.config.js`          | Flat ESLint config; only lints `**/src/**/*.{ts,tsx}`                     |
 | `.prettierrc.json`          | Prettier: single quotes, es5 trailing comma, avoid arrow parens, 2 spaces |
 | `commitlint.config.js`      | Conventional Commits rules (ESM — the root is `"type": "module"`)         |
-| `.nvmrc`                    | Node 20.12.2 (package.json `engines` allows >=18)                         |
+| `.nvmrc`                    | Node 22.23.2 (package.json `engines` requires >=22.12.0, per Vite 8)      |
 | `erd-editor.code-workspace` | Multi-root VSCode workspace mapping each package                          |
 | `json-schema/schema.json`   | Public JSON Schema for `.erd` / `.vuerd` document files                   |
 
@@ -98,7 +98,7 @@ shared ── vscode-bridge ──┬── vscode-replication-store-worker ─�
 
 - `pnpm test` runs `nx run-many -t test`. Today only `schema-sql-parser` defines a `test` target
   (Vitest); every other package no-ops. New tests belong next to the source as `*.spec.ts`.
-- CI (`.github/workflows/ci.yml`) runs `pnpm install && pnpm test && pnpm build` on Node 20 / pnpm 9.
+- CI (`.github/workflows/ci.yml`) runs `pnpm install && pnpm test && pnpm build` on Node 22 / pnpm 10.
   A change is not verified until `pnpm build` passes — type errors surface at build time because
   `@rollup/plugin-typescript` runs with `noEmitOnError: true`.
 - `pnpm lint` (`eslint .`) and `pnpm format` are the style gates; `.gitignore` is fed into ESLint via
@@ -126,11 +126,13 @@ shared ── vscode-bridge ──┬── vscode-replication-store-worker ─�
 ### External
 
 - **Nx 20.5** — task graph and caching
-- **pnpm 9** — workspace/package management
-- **Vite 6** — library builds; **webpack 5** — application builds
+- **pnpm 10** — workspace/package management
+- **Vite 8** (Rolldown-based) — library builds; **webpack 5** — application builds
+- **Vitest 4** — the `schema-sql-parser` suite
+- **Storybook 10** (`@storybook/html-vite`) — component workbench in `packages/erd-editor`
 - **TypeScript 5.8.2** (libraries) / **5.4.5** (webpack packages)
 - **ESLint 9 flat config**, **Prettier 3**, **husky + lint-staged**
-- **commitlint 20** (`@commitlint/cli` + `@commitlint/config-conventional`) — pinned to v20 because
-  v21 requires Node >= 22.12, above this repo's `.nvmrc`
+- **commitlint 20** (`@commitlint/cli` + `@commitlint/config-conventional`) — the v20 pin was a Node
+  constraint (v21 needs Node >= 22.12); the `.nvmrc` bump to 22 lifts it, so v21 is now upgradable
 
 <!-- MANUAL: Any manually added notes below this line are preserved on regeneration -->

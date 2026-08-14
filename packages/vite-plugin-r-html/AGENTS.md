@@ -19,7 +19,7 @@ Used only during development: `packages/erd-editor/vite.config.ts` enables it wh
 | File             | Description                                                                            |
 | ---------------- | -------------------------------------------------------------------------------------- |
 | `src/index.ts`   | The entire plugin — `rHtml(options)` returning a Vite `Plugin` with a `transform` hook |
-| `vite.config.ts` | CJS/ESM lib build with `vite-plugin-dts`                                               |
+| `vite.config.mts` | CJS/ESM lib build with `vite-plugin-dts`                                               |
 | `tsconfig.json`  | Extends the root app config                                                            |
 
 ### Options

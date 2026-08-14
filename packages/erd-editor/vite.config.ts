@@ -35,7 +35,7 @@ export default defineConfig(({ command, mode }) => {
         },
         formats: ['es'],
       },
-      rollupOptions: {
+      rolldownOptions: {
         output: {
           banner,
         },
@@ -43,7 +43,7 @@ export default defineConfig(({ command, mode }) => {
     },
     resolve: {
       alias: {
-        '@': join(__dirname, 'src'),
+        '@': join(import.meta.dirname, 'src'),
       },
     },
     plugins: [

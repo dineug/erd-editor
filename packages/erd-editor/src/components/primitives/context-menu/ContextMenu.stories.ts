@@ -1,5 +1,5 @@
 import { css, FC, html, render } from '@dineug/r-html';
-import type { Meta, StoryObj } from '@storybook/html';
+import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import { useContextMenuRootProvider } from './context-menu-root/contextMenuRootContext';
 import ContextMenu from './ContextMenu';

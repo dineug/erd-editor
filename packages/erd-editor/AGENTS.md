@@ -89,7 +89,7 @@ schema        @dineug/erd-editor-schema — state shape, LWW merge, serializatio
 | `src/themes/`                                                                                                             | Radix-UI-derived theme tokens, `radix-ui-theme.config.ts`, `textColor.ts`                                                                                                                                                                                                |
 | `src/styles/`                                                                                                             | Global style fragments — reset, typography, fonts, scrollbar, color picker                                                                                                                                                                                               |
 | `src/hooks/`                                                                                                              | `useDarkMode`, `useFlipAnimation`, `useKeyBindingMap`, `useUnmounted`                                                                                                                                                                                                    |
-| `.storybook/`                                                                                                             | Storybook 8 (`@storybook/html-vite`) config; stories live beside components as `*.stories.ts`                                                                                                                                                                            |
+| `.storybook/`                                                                                                             | Storybook 10 (`@storybook/html-vite`) config; stories live beside components as `*.stories.ts`                                                                                                                                                                            |
 | `environment/`                                                                                                            | `.env.lib` — sets `VITE_TARGET=lib`, which gates the lib build in `vite.config.ts`                                                                                                                                                                                       |
 
 ### Engine module layout
@@ -147,7 +147,7 @@ Every module under `src/engine/modules/<name>/` follows the same five-file shape
 - No `test` target in this package. The verification loop is:
   1. `pnpm --filter @dineug/erd-editor build` — type-checks with `noEmitOnError: true`.
   2. `pnpm --filter @dineug/erd-editor dev` — Vite dev server with r-html HMR.
-  3. `pnpm --filter @dineug/erd-editor dev:storybook` — component-level checks (Storybook 8, stories
+  3. `pnpm --filter @dineug/erd-editor dev:storybook` — component-level checks (Storybook 10, stories
      colocated as `*.stories.ts`).
 - **Verify collaboration changes with two clients.** Open the diagram in two tabs (or run the web app's
   live mode) and confirm actions converge — LWW bugs only appear under concurrent edits.
@@ -188,7 +188,7 @@ Every module under `src/engine/modules/<name>/` follows the same five-file shape
   `@easylogic/colorpicker`, `highlight-words-core`
 - `@radix-ui/colors` — theme palette; `@mdi/js` + `@fortawesome/*` — icons
 - `comlink` — worker RPC for schema GC
-- Storybook 8 (`@storybook/html-vite`) — dev only
+- Storybook 10 (`@storybook/html-vite`) — dev only
 
 ### Consumers
 

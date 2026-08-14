@@ -20,13 +20,13 @@ export default defineConfig({
       entry: ['./src/index.ts'],
       formats: ['es'],
     },
-    rollupOptions: {
+    rolldownOptions: {
       external,
     },
   },
   resolve: {
     alias: {
-      '@': join(__dirname, 'src'),
+      '@': join(import.meta.dirname, 'src'),
     },
   },
   plugins: [

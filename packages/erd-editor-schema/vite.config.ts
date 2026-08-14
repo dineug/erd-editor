@@ -27,7 +27,7 @@ export default defineConfig({
       entry: ['./src/index.ts'],
       formats: ['es'],
     },
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         banner,
       },
@@ -36,7 +36,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': join(__dirname, 'src'),
+      '@': join(import.meta.dirname, 'src'),
     },
   },
   plugins: [
