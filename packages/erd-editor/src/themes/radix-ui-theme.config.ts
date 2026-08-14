@@ -58,8 +58,8 @@ export const ThemeConfig: Theme = {
   toastBackground: 'gray-2',
   toastBorder: 'gray-6',
 
-  dargSelectBackground: 'accent-5',
-  dargSelectBorder: 'accent-8',
+  dragSelectBackground: 'accent-5',
+  dragSelectBorder: 'accent-8',
 
   scrollbarTrack: 'grayA-3',
   scrollbarThumb: 'gray-9',

@@ -54,6 +54,12 @@ describe('ThemeTokens', () => {
       'diffCrossForeground',
     ]);
   });
+
+  it('spells the drag-select tokens correctly', () => {
+    expect(ThemeTokens).toContain('dragSelectBackground');
+    expect(ThemeTokens).toContain('dragSelectBorder');
+    expect(ThemeTokens.filter(token => token.startsWith('darg'))).toEqual([]);
+  });
 });
 
 describe('themeToTokensString', () => {
@@ -67,6 +73,20 @@ describe('themeToTokensString', () => {
       [
         '--canvas-background: var(--erd-editor-canvas-background, #f0f0f0);',
         '--table-border: var(--erd-editor-table-border, #d9d9d9);',
+      ].join('\n')
+    );
+  });
+
+  it('emits the drag-select properties the stylesheet actually reads', () => {
+    const theme = {
+      dragSelectBackground: '#435db1',
+      dragSelectBorder: '#3e63dd',
+    } as unknown as Theme;
+
+    expect(themeToTokensString(theme)).toBe(
+      [
+        '--drag-select-background: var(--erd-editor-drag-select-background, #435db1);',
+        '--drag-select-border: var(--erd-editor-drag-select-border, #3e63dd);',
       ].join('\n')
     );
   });

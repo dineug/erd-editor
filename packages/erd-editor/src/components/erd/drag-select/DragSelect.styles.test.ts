@@ -18,8 +18,8 @@ describe('DragSelect.styles', () => {
   it('themes the stroke and fill from the drag select custom properties', () => {
     const source = styles.dragSelect.strings.join('');
 
-    expect(source).toContain('stroke: var(--darg-select-border)');
-    expect(source).toContain('fill: var(--darg-select-background)');
+    expect(source).toContain('stroke: var(--drag-select-border)');
+    expect(source).toContain('fill: var(--drag-select-background)');
   });
 
   it('is a static template with no interpolated values', () => {

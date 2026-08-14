@@ -58,8 +58,8 @@ export type Theme = {
   toastBackground: string;
   toastBorder: string;
 
-  dargSelectBackground: string;
-  dargSelectBorder: string;
+  dragSelectBackground: string;
+  dragSelectBorder: string;
 
   scrollbarTrack: string;
   scrollbarThumb: string;
@@ -142,8 +142,8 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
   'toastBackground',
   'toastBorder',
 
-  'dargSelectBackground',
-  'dargSelectBorder',
+  'dragSelectBackground',
+  'dragSelectBorder',
 
   'scrollbarTrack',
   'scrollbarThumb',
