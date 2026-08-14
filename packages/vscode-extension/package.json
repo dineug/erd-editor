@@ -33,7 +33,7 @@
   "author": "dineug <dineug2@gmail.com>",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.90.0"
   },
   "main": "./dist/extension",
   "scripts": {
@@ -49,12 +49,9 @@
     "@dineug/erd-editor-vscode-bridge": "workspace:*",
     "@dineug/erd-editor-vscode-webview": "workspace:*",
     "@dineug/shared": "workspace:*",
-    "@types/node": "^22.20.1",
-    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.19.0",
+    "@types/vscode": "^1.90.0",
     "base64-arraybuffer": "^1.0.2",
-    "crypto-js": "^4.2.0",
-    "macaddress": "^0.5.3",
-    "node-fetch": "^3.3.2",
     "ts-loader": "^9.5.1",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "typescript": "5.4.5",

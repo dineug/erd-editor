@@ -1,12 +1,7 @@
 const path = require('path');
-const fs = require('fs');
-const webpack = require('webpack');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
-const pkg = JSON.parse(fs.readFileSync('package.json', { encoding: 'utf8' }));
-
 module.exports = (env, argv) => {
-  const isProduction = argv.mode === 'production';
   const isDevelopment = argv.mode !== 'production';
   const mode = isDevelopment ? 'development' : 'production';
 
@@ -48,12 +43,6 @@ module.exports = (env, argv) => {
         },
       ],
     },
-    plugins: [
-      new webpack.DefinePlugin({
-        'process.env.ERD_EDITOR_VSCODE_VERSION': JSON.stringify(pkg.version),
-        'process.env.ERD_WEBPACK_MODE': JSON.stringify(mode),
-      }),
-    ].filter(Boolean),
   };
 
   return config;

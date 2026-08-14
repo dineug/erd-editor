@@ -14,20 +14,19 @@ This is the only package that touches the `vscode` module.
 
 ## Key Files
 
-| File                           | Description                                                                                                                                                          |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/extension.ts`             | `activate()` — registers the provider and the four `vuerd.*` commands                                                                                                |
-| `src/erd-editor-provider.ts`   | `ErdEditorProvider` — the `vscode.CustomEditorProvider` implementation (open/save/backup/revert, webview resolution)                                                 |
-| `src/erd-document.ts`          | `ErdDocument implements vscode.CustomDocument` — holds file content as `Uint8Array`, with `onDidChangeContent` / `onDidDispose` events                               |
-| `src/editor.ts`                | Abstract `Editor` base — owns a `Bridge`, the webview, the `docToWebviewMap`, and the `readonly` determination (true for `git` and `conflictResolution` URI schemes) |
-| `src/erd-editor.ts`            | Concrete `ErdEditor extends Editor` — the whole host-side command wiring, theme sync, file import/export, and cross-webview broadcast                                |
-| `src/configuration.ts`         | Reads/writes `dineug.erd-editor.theme.*` settings at the right `ConfigurationTarget` scope (folder → workspace → global)                                             |
-| `src/constants/viewType.ts`    | `VIEW_TYPE = 'editor.erd'` — must match `contributes.customEditors[].viewType`                                                                                       |
-| `src/utils/index.ts`           | Shared `textEncoder` / `textDecoder`                                                                                                                                 |
-| `src/utils/googleAnalytics.ts` | Anonymous usage reporting (uses `macaddress` + `crypto-js` to derive a stable hashed client id)                                                                      |
-| `package.json`                 | Also the extension manifest — `contributes`, `activationEvents`, `capabilities`                                                                                      |
-| `webpack.config.js`            | Node-target bundle to `dist/extension`                                                                                                                               |
-| `CHANGELOG.md`                 | User-facing release notes — update on every published change                                                                                                         |
+| File                         | Description                                                                                                                                                          |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/extension.ts`           | `activate()` — registers the provider and the four `vuerd.*` commands                                                                                                |
+| `src/erd-editor-provider.ts` | `ErdEditorProvider` — the `vscode.CustomEditorProvider` implementation (open/save/backup/revert, webview resolution)                                                 |
+| `src/erd-document.ts`        | `ErdDocument implements vscode.CustomDocument` — holds file content as `Uint8Array`, with `onDidChangeContent` / `onDidDispose` events                               |
+| `src/editor.ts`              | Abstract `Editor` base — owns a `Bridge`, the webview, the `docToWebviewMap`, and the `readonly` determination (true for `git` and `conflictResolution` URI schemes) |
+| `src/erd-editor.ts`          | Concrete `ErdEditor extends Editor` — the whole host-side command wiring, theme sync, file import/export, and cross-webview broadcast                                |
+| `src/configuration.ts`       | Reads/writes `dineug.erd-editor.theme.*` settings at the right `ConfigurationTarget` scope (folder → workspace → global)                                             |
+| `src/constants/viewType.ts`  | `VIEW_TYPE = 'editor.erd'` — must match `contributes.customEditors[].viewType`                                                                                       |
+| `src/utils/index.ts`         | Shared `textEncoder` / `textDecoder`                                                                                                                                 |
+| `package.json`               | Also the extension manifest — `contributes`, `activationEvents`, `capabilities`                                                                                      |
+| `webpack.config.js`          | Node-target bundle to `dist/extension`                                                                                                                               |
+| `CHANGELOG.md`               | User-facing release notes — update on every published change                                                                                                         |
 
 ## Manifest surface (`package.json` → `contributes`)
 
@@ -38,7 +37,7 @@ This is the only package that touches the `vscode` module.
 | Settings      | `dineug.erd-editor.theme.appearance` (auto/light/dark), `.grayColor`, `.accentColor`       |
 | Activation    | `workspaceContains:**/*.{erd,vuerd}`                                                       |
 | Trust         | `untrustedWorkspaces.supported: true`                                                      |
-| Engine        | VSCode `^1.85.0`                                                                           |
+| Engine        | VSCode `^1.90.0`                                                                           |
 
 ## For AI Agents
 
@@ -47,6 +46,14 @@ This is the only package that touches the `vscode` module.
 - **`package.json` is both a manifest and a package descriptor.** Editing `contributes` changes user-
   visible behaviour. `VIEW_TYPE` in `src/constants/viewType.ts` must equal the manifest `viewType`; the
   theme setting keys in `src/erd-editor.ts` (`THEME_KEYS`) must equal the manifest configuration keys.
+- **`engines.vscode: ^1.90.0` is a Node baseline, not just a UI one.** 1.90 is the first VSCode on
+  Electron 29.4 / Node 20.9; 1.85–1.89 were Node 18. That is what makes global `fetch` and
+  `globalThis.crypto` usable here without a polyfill (the latter is unflagged only from Node 19).
+  Moving this field changes which Node APIs the host actually provides, so `@types/node` is pinned to
+  the matching major (`^20`) — keep the two in step.
+- **The extension sends nothing over the network and has no telemetry.** That is a deliberate
+  property, not an accident of the current code: it also means `activate()` needs no consent prompt
+  and the extension stays honest under `untrustedWorkspaces`. Don't reintroduce reporting silently.
 - **Untrusted workspaces are supported**, so the extension may run against files it should not trust.
   Never `eval` document content or execute anything derived from it.
 - **`docToWebviewMap: Map<ErdDocument, Set<Webview>>`** is how one document open in several editor
@@ -95,9 +102,8 @@ This is the only package that touches the `vscode` module.
 
 ### External
 
-- `@types/vscode` ^1.85 — the host API
+- `@types/vscode` ^1.90 — the host API
 - `base64-arraybuffer` — binary payload decoding
-- `crypto-js`, `macaddress`, `node-fetch` — anonymous analytics
 - webpack 5 + `ts-loader`, TypeScript 5.4.5
 
 <!-- MANUAL: -->

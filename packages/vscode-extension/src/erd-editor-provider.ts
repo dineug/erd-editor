@@ -3,7 +3,6 @@ import * as vscode from 'vscode';
 import { VIEW_TYPE } from '@/constants/viewType';
 import { CreateEditor } from '@/editor';
 import { ErdDocument } from '@/erd-document';
-import { trackEvent } from '@/utils/googleAnalytics';
 
 export class ErdEditorProvider
   implements vscode.CustomEditorProvider<ErdDocument>
@@ -18,7 +17,6 @@ export class ErdEditorProvider
 
   constructor(
     private readonly context: vscode.ExtensionContext,
-    private readonly viewType: string,
     private readonly createEditor: CreateEditor
   ) {}
 
@@ -26,7 +24,7 @@ export class ErdEditorProvider
     context: vscode.ExtensionContext,
     createEditor: CreateEditor
   ): vscode.Disposable {
-    const provider = new ErdEditorProvider(context, VIEW_TYPE, createEditor);
+    const provider = new ErdEditorProvider(context, createEditor);
 
     return vscode.window.registerCustomEditorProvider(VIEW_TYPE, provider, {
       webviewOptions: { retainContextWhenHidden: true },
@@ -38,7 +36,6 @@ export class ErdEditorProvider
     uri: vscode.Uri,
     openContext: vscode.CustomDocumentOpenContext
   ): Promise<ErdDocument> {
-    trackEvent(this.viewType);
     const content = await vscode.workspace.fs.readFile(
       openContext.backupId ? vscode.Uri.parse(openContext.backupId) : uri
     );
