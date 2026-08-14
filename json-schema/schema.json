@@ -82,7 +82,8 @@
         },
         "database": {
           "description": "bit value (MariaDB: 1) | (MSSQL: 2) | (MySQL: 4) | (Oracle: 8) | (PostgreSQL: 16) | (SQLite: 32)",
-          "type": "integer"
+          "type": "integer",
+          "enum": [1, 2, 4, 8, 16, 32]
         },
         "databaseName": {
           "type": "string"
@@ -98,19 +99,23 @@
         },
         "language": {
           "description": "bit value (GraphQL: 1) | (csharp: 2) | (Java: 4) | (Kotlin: 8) | (TypeScript: 16) | (JPA: 32) | (Scala: 64)",
-          "type": "integer"
+          "type": "integer",
+          "enum": [1, 2, 4, 8, 16, 32, 64]
         },
         "tableNameCase": {
           "description": "bit value (none: 1) | (camelCase: 2) | (pascalCase: 4) | (snakeCase: 8)",
-          "type": "integer"
+          "type": "integer",
+          "enum": [1, 2, 4, 8]
         },
         "columnNameCase": {
           "description": "bit value (none: 1) | (camelCase: 2) | (pascalCase: 4) | (snakeCase: 8)",
-          "type": "integer"
+          "type": "integer",
+          "enum": [1, 2, 4, 8]
         },
         "bracketType": {
           "description": "bit value (none: 1) | (doubleQuote: 2) | (singleQuote: 4) | (backtick: 8)",
-          "type": "integer"
+          "type": "integer",
+          "enum": [1, 2, 4, 8]
         },
         "relationshipDataTypeSync": {
           "type": "boolean"
@@ -130,7 +135,8 @@
             { "type": "integer" },
             { "type": "integer" }
           ],
-          "unevaluatedItems": false
+          "minItems": 7,
+          "maxItems": 7
         },
         "maxWidthComment": {
           "type": "integer"
