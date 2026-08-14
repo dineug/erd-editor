@@ -48,10 +48,14 @@ export default defineConfig(({ command, mode }) => {
     },
     plugins: [
       isLib && isServe && rHtml(),
-      isLib && isBuild && dts(),
+      isLib && isBuild && dts({ tsconfigPath: './tsconfig.build.json' }),
       isLib &&
         isBuild &&
-        typescript({ noEmitOnError: true, noForceEmit: true }),
+        typescript({
+          tsconfig: './tsconfig.build.json',
+          noEmitOnError: true,
+          noForceEmit: true,
+        }),
     ].filter(Boolean),
     server: {
       open: true,

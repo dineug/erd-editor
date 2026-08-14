@@ -48,7 +48,10 @@
     "build": "vite build --mode lib",
     "build:storybook": "storybook build",
     "nx:dev": "nx dev",
-    "nx:build": "nx build"
+    "nx:build": "nx build",
+    "test": "vitest run",
+    "test:dev": "vitest dev",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@dineug/erd-editor-schema": "workspace:*",
@@ -74,12 +77,14 @@
     "@types/highlight-words-core": "^1.2.3",
     "@types/lodash-es": "^4.17.12",
     "@types/luxon": "^3.4.2",
+    "@vitest/coverage-v8": "^4.1.10",
     "color": "^4.2.3",
     "comlink": "4.4.1",
     "d3": "7.9.0",
     "deepmerge": "^4.3.1",
     "framer-motion": "^11.0.28",
     "fuse.js": "^7.0.0",
+    "happy-dom": "^20.11.2",
     "highlight-words-core": "^1.2.2",
     "html-to-image": "^1.11.11",
     "lodash-es": "^4.17.21",
@@ -91,6 +96,7 @@
     "tslib": "^2.8.1",
     "typescript": "5.8.2",
     "vite": "^8.2.1",
-    "vite-plugin-dts": "^5.0.3"
+    "vite-plugin-dts": "^5.0.3",
+    "vitest": "^4.1.10"
   }
 }

@@ -18,11 +18,13 @@
   "scripts": {
     "build": "vite build",
     "test": "vitest run",
-    "test:dev": "vitest dev"
+    "test:dev": "vitest dev",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
     "@types/node": "^22.20.1",
+    "@vitest/coverage-v8": "^4.1.10",
     "tslib": "^2.8.1",
     "typescript": "5.8.2",
     "vite": "^8.2.1",

@@ -30,7 +30,14 @@ export default defineConfig({
     },
   },
   plugins: [
-    dts({ compilerOptions: { declarationMap: true } }),
-    typescript({ noEmitOnError: true, noForceEmit: true }),
+    dts({
+      tsconfigPath: './tsconfig.build.json',
+      compilerOptions: { declarationMap: true },
+    }),
+    typescript({
+      tsconfig: './tsconfig.build.json',
+      noEmitOnError: true,
+      noForceEmit: true,
+    }),
   ],
 });

@@ -17,7 +17,10 @@
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "vite build"
+    "build": "vite build",
+    "test": "vitest run",
+    "test:dev": "vitest dev",
+    "test:coverage": "vitest run --coverage"
   },
   "peerDependencies": {
     "@dineug/shared": "*"
@@ -29,9 +32,11 @@
     "@dineug/shared": "workspace:*",
     "@rollup/plugin-typescript": "^12.3.0",
     "@types/lodash-es": "^4.17.12",
+    "@vitest/coverage-v8": "^4.1.10",
     "tslib": "^2.8.1",
     "typescript": "5.8.2",
     "vite": "^8.2.1",
-    "vite-plugin-dts": "^5.0.3"
+    "vite-plugin-dts": "^5.0.3",
+    "vitest": "^4.1.10"
   }
 }
