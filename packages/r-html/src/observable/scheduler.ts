@@ -14,21 +14,16 @@ type AsyncFunction = () => Promise<void>;
 
 interface Task {
   type: 'observer' | 'nextTick';
-  tickCount: number;
   promise: Promise<void>;
   fn: Observer | VoidFunction | AsyncFunction;
   resolve: () => void;
 }
 
-const EXPIRATION_TICK = 1;
-
 const queue: Task[] = [];
 const queueMap = new Map<Observer | VoidFunction, Task>();
 const watchQueue = new Map<any, Set<PropName>>();
-const idleOptions = { timeout: 16 };
 
 let executable = true;
-let tickCount = 0;
 
 function isTrigger(raw: any, p: PropName, observer: Observer) {
   const triggers = observerToTriggers.get(observer);
@@ -54,7 +49,6 @@ const createNextTick =
     if (!prevTask) {
       const task: Task = {
         type,
-        tickCount,
         promise,
         fn,
         resolve: () => {
@@ -67,7 +61,7 @@ const createNextTick =
     }
 
     if (executable) {
-      asap(execute);
+      asap(executeAsap);
       executable = false;
     }
 
@@ -98,33 +92,6 @@ function runTask() {
     const result = safeCallback(task.fn);
     result instanceof Promise ? result.finally(task.resolve) : task.resolve();
   }
-
-  if (isNextTaskExpires()) {
-    runTask();
-  }
-}
-
-function isNextTaskExpires() {
-  const task = queue[0];
-  return task ? EXPIRATION_TICK <= tickCount - task.tickCount : false;
-}
-
-function executeIdle() {
-  const run = (deadline: IdleDeadline) => {
-    do {
-      runTask();
-    } while (queue.length && deadline.timeRemaining() > 0);
-
-    if (queue.length) {
-      tickCount++;
-      requestIdleCallback(run, idleOptions);
-    } else {
-      executable = true;
-      tickCount = 0;
-    }
-  };
-
-  requestIdleCallback(run, idleOptions);
 }
 
 function executeAsap() {
@@ -132,15 +99,6 @@ function executeAsap() {
     runTask();
   }
   executable = true;
-  tickCount = 0;
-}
-
-// const isIdle = 'requestIdleCallback' in window;
-const isIdle = false;
-
-function execute() {
-  const exec = isIdle ? executeIdle : executeAsap;
-  exec();
 }
 
 export function watchEffect(raw: any, p: PropName) {
