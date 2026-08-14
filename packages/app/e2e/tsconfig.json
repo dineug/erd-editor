@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["../e2e", "../playwright.config.ts"]
+}

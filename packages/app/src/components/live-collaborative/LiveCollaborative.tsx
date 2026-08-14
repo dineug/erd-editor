@@ -7,15 +7,13 @@ import { Flex, Text } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { io } from 'socket.io-client';
 
 import { themeAtom } from '@/atoms/modules/theme';
 import {
-  decryptFromJson,
-  EncryptJson,
-  encryptToJson,
-  importKey,
-} from '@/utils/crypto';
+  createCollaborativeGuest,
+  RELAY_TIMEOUT,
+} from '@/services/collaborative/guest';
+import { STRATEGIES } from '@/services/collaborative/room';
 import {
   HostStopSessionError,
   InvalidHashError,
@@ -30,7 +28,10 @@ import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
 
 interface LiveCollaborativeProps {}
 
-const TIMEOUT = 1000 * 15;
+/** Overall budget for receiving the host's snapshot, across every relay. */
+const INITIALIZATION_TIMEOUT = RELAY_TIMEOUT * (STRATEGIES.length + 1);
+const HOST_LEAVE_LOADING_DELAY = 1000 * 3;
+const HOST_LEAVE_TIMEOUT = 1000 * 15;
 
 const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
   const location = useLocation();
@@ -53,16 +54,13 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
     if (!$viewer) return;
 
     const task = go(function* () {
-      const key: Awaited<ReturnType<typeof importKey>> =
-        yield importKey(secretKey);
-      const socket = io(import.meta.env.WEBSOCKET_URL, {
-        withCredentials: true,
-      });
       const unsubscribeSet = new Set<() => void>();
       const editor = document.createElement('erd-editor');
       const sharedStore = editor.getSharedStore();
       editorRef.current = editor;
       editor.enableThemeBuilder = true;
+      // Nothing leaves this guest until a host has actually answered.
+      sharedStore.disconnect();
 
       let readyResolve: ((value: string) => void) | null = null;
       let readyReject: ((error: unknown) => void) | null = null;
@@ -80,74 +78,60 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
 
       const initializationTimerId = setTimeout(() => {
         readyReject?.(new NotFoundHostError());
-      }, TIMEOUT);
+      }, INITIALIZATION_TIMEOUT);
       const clearInitializationTimer = () => {
         clearTimeout(initializationTimerId);
       };
 
       let hostLeaveStartLoadingTimerId = -1;
       let hostLeaveTimerId = -1;
+      const clearHostLeaveTimer = () => {
+        clearTimeout(hostLeaveStartLoadingTimerId);
+        clearTimeout(hostLeaveTimerId);
+      };
 
-      socket
-        .on('host-leave', () => {
+      const guest = createCollaborativeGuest(roomId, secretKey, {
+        // A host re-announces itself on every reconnect; only the first snapshot
+        // seeds the editor, the action stream carries it from there.
+        onSchema: value => {
+          if (!readyResolve) return;
+          clearInitializationTimer();
+          readyResolve(value);
+          readyResolve = null;
+          readyReject = null;
+          setInitializationLoading(false);
+        },
+        onDispatch: actions => {
+          sharedStore.dispatch(actions);
+        },
+        onHostJoin: () => {
+          sharedStore.connection();
+          clearHostLeaveTimer();
+          setHostLeaveLoading(false);
+        },
+        onHostLeave: () => {
           sharedStore.disconnect();
-          clearTimeout(hostLeaveStartLoadingTimerId);
-          clearTimeout(hostLeaveTimerId);
-
-          hostLeaveStartLoadingTimerId = setTimeout(() => {
+          clearHostLeaveTimer();
+          hostLeaveStartLoadingTimerId = window.setTimeout(() => {
             editor.blur();
             setHostLeaveLoading(true);
-          }, 1000 * 3);
-          hostLeaveTimerId = setTimeout(() => {
+          }, HOST_LEAVE_LOADING_DELAY);
+          hostLeaveTimerId = window.setTimeout(() => {
             setError(new HostStopSessionError());
-          }, TIMEOUT);
-        })
-        .on('host-join', () => {
-          sharedStore.connection();
-          clearTimeout(hostLeaveStartLoadingTimerId);
-          clearTimeout(hostLeaveTimerId);
-          setHostLeaveLoading(false);
-        })
-        .on(
-          'host-schema',
-          async ({ value }: { roomId: string; value: EncryptJson }) => {
-            if (!readyResolve) return;
-            clearInitializationTimer();
-
-            try {
-              const json = await decryptFromJson(value, key);
-              readyResolve(json);
-            } catch (error) {
-              readyReject?.(error);
-            } finally {
-              readyResolve = null;
-              readyReject = null;
-              setInitializationLoading(false);
-            }
-          }
-        )
-        .on(
-          'dispatch',
-          async ({ value }: { roomId: string; value: EncryptJson }) => {
-            const json = await decryptFromJson(value, key);
-            const actions = JSON.parse(json);
-            sharedStore.dispatch(actions);
-          }
-        )
-        .on('connect', () => {
-          socket.emit('guest-join-room', roomId);
-          sharedStore.connection();
-        })
-        .on('disconnect', () => {
-          sharedStore.disconnect();
-        })
-        .emit('guest-join-room', roomId)
-        .emit('request-host-schema', roomId);
+          }, HOST_LEAVE_TIMEOUT);
+        },
+        onNotFoundHost: () => {
+          clearInitializationTimer();
+          readyReject?.(new NotFoundHostError());
+        },
+        onError: error => {
+          readyReject ? readyReject(error) : setError(error);
+        },
+      });
 
       unsubscribeSet.add(
-        sharedStore.subscribe(async actions => {
-          const value = await encryptToJson(JSON.stringify(actions), key);
-          socket.emit('dispatch', { roomId, value });
+        sharedStore.subscribe(actions => {
+          guest.dispatch(actions);
         })
       );
 
@@ -164,9 +148,9 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
       editor.addEventListener('changePresetTheme', handleChangePresetTheme);
 
       yield attachCancel(new Promise(() => {}), () => {
+        guest.close();
         clearInitializationTimer();
-        socket.emit('guest-leave-room', roomId);
-        socket.disconnect();
+        clearHostLeaveTimer();
         if ($viewer === editor.parentElement) {
           $viewer.removeChild(editor);
         }

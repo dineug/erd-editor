@@ -37,7 +37,7 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
     copyToClipboard(link).then(() => {
       setCopyState(true);
       clearTimeout(timerId.current);
-      timerId.current = setTimeout(() => setCopyState(false), 1000);
+      timerId.current = window.setTimeout(() => setCopyState(false), 1000);
     });
   };
 
@@ -73,7 +73,8 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
           </Badge>
         </Dialog.Title>
         <Dialog.Description size="2" mb="4">
-          We exchange messages using end-to-end encryption.
+          Peers connect directly over WebRTC and exchange messages using
+          end-to-end encryption.
         </Dialog.Description>
 
         {hasCollaborative ? (

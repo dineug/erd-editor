@@ -1,8 +1,12 @@
 import { atom, useAtomValue, useSetAtom } from 'jotai';
 import { loadable } from 'jotai/utils';
 
+import { collaborativeAtom } from '@/atoms/modules/collaborative';
+import { isLeader } from '@/services/collaborative/leader';
 import { getAppDatabaseService } from '@/services/indexeddb';
 import {
+  bridge,
+  collaborativeDispatchAction,
   dispatch,
   replicationSchemaEntityAction,
 } from '@/utils/broadcastChannel';
@@ -49,6 +53,15 @@ const replicationSchemaEntityAtom = atom(
         ),
       })
     );
+
+    // Peers get the unfiltered stream — shared cursors are part of the session
+    // even though they are noise for the cross-tab replica. Only the tab holding
+    // the leadership lock owns the peer connections, so everyone else has to hand
+    // the batch over the bridge.
+    if (!get(collaborativeAtom)[id]) return;
+
+    const action = collaborativeDispatchAction({ schemaId: id, actions });
+    isLeader() ? bridge.emit(action) : dispatch(action);
   }
 );
 

@@ -10,6 +10,7 @@ const BridgeActionType = {
   deleteSchemaEntity: 'deleteSchemaEntity',
   startSession: 'startSession',
   stopSession: 'stopSession',
+  collaborativeDispatch: 'collaborativeDispatch',
 } as const;
 type BridgeActionType = ValuesType<typeof BridgeActionType>;
 
@@ -35,6 +36,10 @@ type BridgeActionMap = {
   };
   [BridgeActionType.stopSession]: {
     schemaId: string;
+  };
+  [BridgeActionType.collaborativeDispatch]: {
+    schemaId: string;
+    actions: any;
   };
 };
 
@@ -75,6 +80,15 @@ export function dispatch(action: AnyAction) {
   channel.postMessage(action);
 }
 
+/**
+ * A BroadcastChannel never echoes back to the context that posted, so anything
+ * that has to reach *every* tab — this one included — takes both paths.
+ */
+export function dispatchAll(action: AnyAction) {
+  channel.postMessage(action);
+  bridge.emit(action);
+}
+
 channel.addEventListener('message', event => {
   const action = event.data;
   bridge.emit(action);
@@ -103,3 +117,7 @@ export const startSessionAction = createAction<
 export const stopSessionAction = createAction<
   BridgeActionMap[typeof BridgeActionType.stopSession]
 >(BridgeActionType.stopSession);
+
+export const collaborativeDispatchAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.collaborativeDispatch]
+>(BridgeActionType.collaborativeDispatch);

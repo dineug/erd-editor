@@ -19,7 +19,7 @@ export class AppDatabase extends Dexie {
 export class AppDatabaseService {
   #db = new AppDatabase();
   #schemaService = new SchemaService(this.#db);
-  #collaborativeService = new CollaborativeService(this.#schemaService);
+  #collaborativeService = new CollaborativeService();
 
   async addSchemaEntity(entityValue: Pick<SchemaEntity, 'name'>) {
     return await this.#schemaService.add(entityValue);
@@ -46,7 +46,6 @@ export class AppDatabaseService {
 
   async replicationSchemaEntity(id: string, actions: any) {
     await this.#schemaService.replication(id, actions);
-    await this.#collaborativeService.dispatch(id, actions);
   }
 
   async collaborativeStartSession(schemaId: string) {

@@ -96,8 +96,13 @@ shared ── vscode-bridge ──┬── vscode-replication-store-worker ─�
 
 ### Testing Requirements
 
-- `pnpm test` runs `nx run-many -t test`. Today only `schema-sql-parser` defines a `test` target
-  (Vitest); every other package no-ops. New tests belong next to the source as `*.spec.ts`.
+- `pnpm test` runs `nx run-many -t test`. Eight packages define a Vitest `test` target — `shared`,
+  `go`, `r-html`, `schema-sql-parser`, `erd-editor-schema`, `erd-editor`, `vscode-bridge`, and `app`;
+  the rest no-op. New tests belong next to the source as `*.test.ts`, and each package carries its own
+  `vitest.config.ts` (`.mts` in `app`, whose `package.json` is CommonJS).
+- Two packages also carry a Playwright suite under `packages/<pkg>/e2e/` — `erd-editor` (the custom
+  element against the Vite dev server) and `app` (live collaboration across two browser contexts).
+  Neither runs in `pnpm test`; invoke them with `pnpm --filter <pkg> e2e`.
 - CI (`.github/workflows/ci.yml`) runs `pnpm install && pnpm test && pnpm build` on Node 22 / pnpm 10.
   A change is not verified until `pnpm build` passes — type errors surface at build time because
   `@rollup/plugin-typescript` runs with `noEmitOnError: true`.

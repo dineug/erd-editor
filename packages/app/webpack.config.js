@@ -26,7 +26,8 @@ module.exports = (env, argv) => {
       },
       compress: true,
       historyApiFallback: true,
-      open: true,
+      // Playwright drives the browser itself; see playwright.config.ts.
+      open: !process.env.E2E,
       hot: true,
       client: {
         overlay: false,
@@ -104,8 +105,10 @@ module.exports = (env, argv) => {
     plugins: [
       new DefinePlugin({
         'import.meta.env.MODE': JSON.stringify(mode),
-        'import.meta.env.WEBSOCKET_URL': JSON.stringify(
-          isProduction ? 'https://erd-editor.deno.dev' : 'http://localhost:3000'
+        // Opt out of the public trystero relays by pointing at your own nostr
+        // relay(s); the e2e suite uses this to run the mesh offline.
+        'import.meta.env.NOSTR_RELAY_URLS': JSON.stringify(
+          process.env.ERD_EDITOR_NOSTR_RELAY_URLS ?? ''
         ),
       }),
       isProduction &&
