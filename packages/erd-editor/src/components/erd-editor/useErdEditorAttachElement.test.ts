@@ -356,6 +356,24 @@ describe('useErdEditorAttachElement', () => {
     sharedStore.destroy();
   });
 
+  it('ends mouse tracking when the last shared store is an opted-out one', async () => {
+    const { app, ctx } = await setup();
+    const mouseTrackerStart = vi.fn();
+    const mouseTrackerEnd = vi.fn();
+    app.emitter.on({ mouseTrackerStart, mouseTrackerEnd });
+
+    const tracked = ctx.getSharedStore();
+    const untracked = ctx.getSharedStore({ mouseTracker: false });
+
+    expect(mouseTrackerStart).toHaveBeenCalledTimes(1);
+
+    tracked.destroy();
+    expect(mouseTrackerEnd).not.toHaveBeenCalled();
+
+    untracked.destroy();
+    expect(mouseTrackerEnd).toHaveBeenCalledTimes(1);
+  });
+
   it('tears every watcher and shared store down on destroy()', async () => {
     const { api, app, ctx } = await setup();
     ctx.getSharedStore({ mouseTracker: false });

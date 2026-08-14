@@ -19,7 +19,7 @@ type Fixture = {
   reset: () => void;
 };
 
-const created: SharedStore[] = [];
+const created: Array<{ store: RxStore; shared: SharedStore }> = [];
 
 const addTable = (id: string) =>
   addTableAction({ id, ui: { x: 200, y: 100, zIndex: 2 } });
@@ -34,7 +34,7 @@ function createContext(): EngineContext {
 function make(config?: Parameters<typeof createSharedStore>[1]): Fixture {
   const store = createRxStore(createContext());
   const shared = createSharedStore(store, config);
-  created.push(shared);
+  created.push({ store, shared });
   const seen: Array<Array<AnyAction>> = [];
 
   return {
@@ -51,9 +51,15 @@ function make(config?: Parameters<typeof createSharedStore>[1]): Fixture {
 afterEach(() => {
   vi.useRealTimers();
   while (created.length) {
-    const shared = created.pop();
+    const entry = created.pop();
     try {
-      shared?.destroy();
+      entry?.shared.destroy();
+    } catch {
+      // already destroyed by the test
+    }
+    // a shared store only borrows the editor store, so it never tears it down
+    try {
+      entry?.store.destroy();
     } catch {
       // already destroyed by the test
     }
@@ -283,7 +289,7 @@ describe('createSharedStore', () => {
     expect(trackers.map(action => action.payload.x)).toEqual([1, 4]);
   });
 
-  it('destroy tears down the store and every subscription', () => {
+  it('destroy tears down its own subscriptions and leaves the borrowed store alive', () => {
     const fixture = make();
     fixture.shared.subscribe(actions => fixture.seen.push(actions));
     fixture.reset();
@@ -292,6 +298,6 @@ describe('createSharedStore', () => {
     fixture.store.dispatchSync(addTable('t1'));
 
     expect(fixture.seen).toHaveLength(0);
-    expect(fixture.store.state.doc.tableIds).toEqual([]);
+    expect(fixture.store.state.doc.tableIds).toEqual(['t1']);
   });
 });

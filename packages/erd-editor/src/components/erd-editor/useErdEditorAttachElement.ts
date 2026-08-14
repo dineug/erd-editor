@@ -248,23 +248,24 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   ctx.getSharedStore = config => {
     const mouseTracker = config?.mouseTracker ?? true;
     const sharedStore = createSharedStore(store, config);
-    sharedStoreSet.add(sharedStore);
-
-    if (mouseTracker) {
-      emitter.emit(mouseTrackerStartAction());
-    }
-
-    return Object.freeze({
+    const facade: SharedStore = Object.freeze({
       ...sharedStore,
       destroy: () => {
         sharedStore.destroy();
-        sharedStoreSet.delete(sharedStore);
+        sharedStoreSet.delete(facade);
 
         if (sharedStoreSet.size === 0) {
           emitter.emit(mouseTrackerEndAction());
         }
       },
     });
+    sharedStoreSet.add(facade);
+
+    if (mouseTracker) {
+      emitter.emit(mouseTrackerStartAction());
+    }
+
+    return facade;
   };
 
   ctx.setDiffValue = value => {
