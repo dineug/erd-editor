@@ -1,10 +1,11 @@
 import { AnyAction } from '@dineug/r-html';
 
 type Dispatch = (actions: AnyAction[]) => void;
+type GetNextVersion = () => number;
 
 export type Command = {
-  undo: (dispatch: Dispatch) => void;
-  redo: (dispatch: Dispatch) => void;
+  undo: (dispatch: Dispatch, getNextVersion: GetNextVersion) => void;
+  redo: (dispatch: Dispatch, getNextVersion: GetNextVersion) => void;
 };
 
 export type CommandKey = keyof Command;
@@ -30,6 +31,7 @@ type HasHistory = {
 export type HistoryOptions = {
   notify: (has: HasHistory) => void;
   dispatch: Dispatch;
+  getNextVersion: GetNextVersion;
 };
 
 type HistoryState = {
@@ -39,7 +41,7 @@ type HistoryState = {
 };
 
 export function createHistory(
-  { notify, dispatch }: HistoryOptions,
+  { notify, dispatch, getNextVersion }: HistoryOptions,
   initialState?: HistoryState
 ): History {
   let commands: Command[] = initialState?.commands ?? [];
@@ -58,7 +60,7 @@ export function createHistory(
 
   const execute = (command: Command, key: CommandKey) => {
     executable = false;
-    command[key](dispatch);
+    command[key](dispatch, getNextVersion);
     executable = true;
   };
 

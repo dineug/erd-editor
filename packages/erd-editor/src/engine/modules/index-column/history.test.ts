@@ -264,6 +264,7 @@ describe('index-column history round-trips', () => {
     const history = createHistory({
       notify: () => {},
       dispatch: actions => store.dispatchSync(actions),
+      getNextVersion: () => clock.getNextVersion(),
     });
     return { store, clock, history, push: pushHistory(store, history) };
   }

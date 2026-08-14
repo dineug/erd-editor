@@ -67,7 +67,11 @@ describe('createRxStore', () => {
     let seen: HistoryOptions | null = null;
     const setLimit = vi.fn();
     const injected = {
-      ...createHistory({ notify: () => {}, dispatch: () => {} }),
+      ...createHistory({
+        notify: () => {},
+        dispatch: () => {},
+        getNextVersion: () => 1,
+      }),
       setLimit,
     } as unknown as History;
 
@@ -83,6 +87,25 @@ describe('createRxStore', () => {
     expect(seen).not.toBeNull();
     expect(typeof seen!.notify).toBe('function');
     expect(typeof seen!.dispatch).toBe('function');
+    expect(typeof seen!.getNextVersion).toBe('function');
+  });
+
+  it('feeds the history options a version source bound to its own clock', () => {
+    const context = createContext();
+    let seen: HistoryOptions | null = null;
+
+    make(context, {
+      getHistory: options => {
+        seen = options;
+        return createHistory(options);
+      },
+    });
+
+    expect(seen!.getNextVersion()).toBe(1);
+
+    context.clock.merge(7);
+
+    expect(seen!.getNextVersion()).toBe(8);
   });
 
   it('dispatchSync applies the reducer and stamps the next clock version', () => {

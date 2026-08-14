@@ -42,6 +42,7 @@ function setup({ mergeClock = true }: { mergeClock?: boolean } = {}): Setup {
       dispatched.push(actions);
       store.dispatchSync(actions);
     },
+    getNextVersion: () => clock.getNextVersion(),
   });
 
   return {

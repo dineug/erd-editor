@@ -6,23 +6,28 @@ import { Command, createHistory } from '@/engine/history';
 const action = (type: string): AnyAction => ({ type, payload: {} });
 
 const createCommand = (name: string): Command => ({
-  undo: dispatch => dispatch([action(`undo:${name}`)]),
-  redo: dispatch => dispatch([action(`redo:${name}`)]),
+  undo: (dispatch, getNextVersion) =>
+    dispatch([{ ...action(`undo:${name}`), version: getNextVersion() }]),
+  redo: (dispatch, getNextVersion) =>
+    dispatch([{ ...action(`redo:${name}`), version: getNextVersion() }]),
 });
 
 function setup() {
   const notify = vi.fn();
   const dispatched: AnyAction[][] = [];
+  let version = 0;
   const history = createHistory({
     notify,
     dispatch: actions => {
       dispatched.push(actions);
     },
+    getNextVersion: () => ++version,
   });
 
   const types = () => dispatched.map(actions => actions[0].type);
+  const versions = () => dispatched.map(actions => actions[0].version);
 
-  return { notify, dispatched, history, types };
+  return { notify, dispatched, history, types, versions };
 }
 
 describe('createHistory', () => {
@@ -189,6 +194,16 @@ describe('createHistory', () => {
     expect(notify).toHaveBeenLastCalledWith({ hasUndo: false, hasRedo: false });
   });
 
+  it('hands the injected version source to every executed command', () => {
+    const { history, versions } = setup();
+
+    history.push(createCommand('a'));
+    history.undo();
+    history.redo();
+
+    expect(versions()).toEqual([1, 2]);
+  });
+
   it('clone copies commands, cursor and limit into an independent history', () => {
     const { history, dispatched } = setup();
 
@@ -198,11 +213,13 @@ describe('createHistory', () => {
 
     const clonedDispatched: AnyAction[][] = [];
     const clonedNotify = vi.fn();
+    let clonedVersion = 100;
     const cloned = history.clone({
       notify: clonedNotify,
       dispatch: actions => {
         clonedDispatched.push(actions);
       },
+      getNextVersion: () => ++clonedVersion,
     });
 
     expect(cloned.size).toBe(2);
@@ -213,6 +230,8 @@ describe('createHistory', () => {
     expect(clonedDispatched.map(actions => actions[0].type)).toEqual([
       'undo:b',
     ]);
+    // the cloned commands stamp from the CLONE's version source, not the origin's
+    expect(clonedDispatched.map(actions => actions[0].version)).toEqual([101]);
     expect(dispatched).toEqual([]);
     expect(clonedNotify).toHaveBeenCalledTimes(1);
 

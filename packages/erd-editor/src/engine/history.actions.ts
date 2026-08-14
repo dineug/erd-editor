@@ -71,13 +71,11 @@ function push(store: Store, history: History, actions: AnyAction[]) {
   if (!undoActions.length || !redoActions.length) return;
 
   history.push({
-    undo: dispatch => {
-      const version = store.context.clock.getNextVersion();
-      dispatch(undoActions.map(cloneAction(version)));
+    undo: (dispatch, getNextVersion) => {
+      dispatch(undoActions.map(cloneAction(getNextVersion())));
     },
-    redo: dispatch => {
-      const version = store.context.clock.getNextVersion();
-      dispatch(redoActions.map(cloneAction(version)));
+    redo: (dispatch, getNextVersion) => {
+      dispatch(redoActions.map(cloneAction(getNextVersion())));
     },
   });
 }

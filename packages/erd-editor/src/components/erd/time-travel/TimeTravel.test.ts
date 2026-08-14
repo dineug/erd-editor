@@ -255,21 +255,21 @@ describe('TimeTravel', () => {
       expect(clonedHistory.cursor).toBe(1);
     });
 
-    it('does not resurrect rewound tables when replaying forward', async () => {
-      // Known defect, asserted as it behaves today: the cloned history commands
-      // peek the ORIGIN store clock (history.actions.ts pushHistory) while
-      // dispatching into the preview store, so that clock never advances and
-      // every travel step reuses the same version. Once the undo has written
-      // that version as the LWW remove version, the replayed add loses the
-      // `removeVersion < version` check in addOperator and is dropped.
-      await setup({ tableIds: ['t1', 't2'] });
+    it('resurrects the rewound tables when replaying forward', async () => {
+      // The cloned history stamps versions from the PREVIEW store clock
+      // (HistoryOptions.getNextVersion), so every replayed add outranks the
+      // remove version the rewind wrote and passes addOperator's
+      // `removeVersion < version` check.
+      const { originApp } = await setup({ tableIds: ['t1', 't2'] });
 
       await slideTo(0);
       expect(tableCount()).toBe(0);
 
       await slideTo(1);
 
-      expect(tableCount()).toBe(0);
+      // one node per table on the canvas plus one on the minimap
+      expect(tableCount()).toBe(4);
+      expect(originApp.store.state.doc.tableIds).toEqual(['t1', 't2']);
     });
 
     it('moves the slider fill along with the cursor', async () => {

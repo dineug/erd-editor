@@ -53,6 +53,7 @@ export function createRxStore(
   const historyOptions: HistoryOptions = {
     notify: payload => store.dispatch(changeHasHistoryAction(payload)),
     dispatch: store.dispatchSync,
+    getNextVersion: () => context.clock.getNextVersion(),
   };
   const history = getHistory?.(historyOptions) ?? createHistory(historyOptions);
   history.setLimit(HISTORY_LIMIT);
