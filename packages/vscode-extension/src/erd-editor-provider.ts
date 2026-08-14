@@ -70,12 +70,24 @@ export class ErdEditorProvider
       this.context,
       this.docToWebviewMap
     );
-    const editorDisposable = await editor.bootstrapWebview();
-
+    // Subscribed before `bootstrapWebview` is awaited: it reads `index.html` off
+    // disk, so a tab closed while it is still in flight fires `onDidDispose`
+    // before there is anything to unregister, and the webview would be left in
+    // `docToWebviewMap` for a panel that no longer exists.
+    let disposed = false;
     webviewPanel.onDidDispose(() => {
-      editorDisposable.dispose();
+      disposed = true;
       webviewSet?.delete(webview);
     });
+
+    const editorDisposable = await editor.bootstrapWebview();
+
+    if (disposed) {
+      // The panel went away mid-bootstrap; nothing will fire for it again.
+      editorDisposable.dispose();
+    } else {
+      webviewPanel.onDidDispose(() => editorDisposable.dispose());
+    }
   }
 
   async saveCustomDocument(document: ErdDocument) {

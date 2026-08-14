@@ -45,9 +45,11 @@ export abstract class Editor {
       .asWebviewUri(vscode.Uri.joinPath(publicUri, '/'))
       .toString();
 
+    // Global: a string pattern would substitute only the first occurrence and
+    // ship the literal token for any later one.
     const html = textDecoder
       .decode(content)
-      .replace('{{extension-base-url}}', baseUrl);
+      .replace(/\{\{extension-base-url\}\}/g, baseUrl);
 
     return html;
   }

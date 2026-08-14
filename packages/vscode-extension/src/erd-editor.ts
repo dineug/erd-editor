@@ -78,7 +78,9 @@ export class ErdEditor extends Editor {
           if (!uris || !uris.length) return;
 
           const uri = uris[0];
-          const regexp = new RegExp(`\.${type}$`, 'i');
+          // The backslash has to survive the template literal, or the pattern
+          // becomes `.json$` — a wildcard — and `sample.xjson` passes as JSON.
+          const regexp = new RegExp(`\\.${type}$`, 'i');
 
           if (!regexp.test(uri.path)) {
             vscode.window.showInformationMessage(
@@ -129,17 +131,20 @@ export class ErdEditor extends Editor {
       this.webview.onDidReceiveMessage(action => {
         this.bridge.executeAction(action);
       }),
-      ...THEME_KEYS.map(key =>
-        vscode.workspace.onDidChangeConfiguration(event => {
-          if (!event.affectsConfiguration(key, this.document.uri)) {
-            return;
-          }
+      // One listener for all of THEME_KEYS, not one each: VSCode fires a single
+      // event that can report several keys as affected at once (switching a
+      // theme preset rewrites appearance, grayColor and accentColor together),
+      // and a listener per key pushed the same theme up to four times.
+      vscode.workspace.onDidChangeConfiguration(event => {
+        const affected = THEME_KEYS.some(key =>
+          event.affectsConfiguration(key, this.document.uri)
+        );
+        if (!affected) {
+          return;
+        }
 
-          dispatch(
-            Bridge.executeCommand(webviewUpdateThemeCommand, getTheme())
-          );
-        })
-      ),
+        dispatch(Bridge.executeCommand(webviewUpdateThemeCommand, getTheme()));
+      }),
     ];
 
     this.webview.html = await this.buildHtmlForWebview();

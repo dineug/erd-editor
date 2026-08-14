@@ -8,8 +8,12 @@ import { ErdEditorProvider } from '@/erd-editor-provider';
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     ErdEditorProvider.register(context, widthEditor(ErdEditor)),
-    vscode.commands.registerCommand('vuerd.showSource', showSource),
-    vscode.commands.registerCommand('vuerd.showEditor', showEditor),
+    // Wrapped rather than passed by reference: these are contributed to
+    // `editor/title`, where VSCode calls the handler with arguments beyond the
+    // resource uri, and a bare reference would take the second one as
+    // `viewColumn` and open in an unintended group.
+    vscode.commands.registerCommand('vuerd.showSource', uri => showSource(uri)),
+    vscode.commands.registerCommand('vuerd.showEditor', uri => showEditor(uri)),
     vscode.commands.registerCommand('vuerd.showEditorToSide', uri =>
       showEditor(uri, vscode.ViewColumn.Beside)
     ),
