@@ -2,7 +2,6 @@ import {
   ErdEditorElement,
   setGetShikiServiceCallback,
 } from '@dineug/erd-editor';
-import { attachCancel, cancel, go, isCancel } from '@dineug/go';
 import { Flex, Text } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -53,7 +52,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
     const $viewer = viewerRef.current;
     if (!$viewer) return;
 
-    const task = go(function* () {
+    try {
       const unsubscribeSet = new Set<() => void>();
       const editor = document.createElement('erd-editor');
       const sharedStore = editor.getSharedStore();
@@ -147,7 +146,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
 
       editor.addEventListener('changePresetTheme', handleChangePresetTheme);
 
-      yield attachCancel(new Promise(() => {}), () => {
+      return () => {
         guest.close();
         clearInitializationTimer();
         clearHostLeaveTimer();
@@ -162,17 +161,10 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
         unsubscribeSet.clear();
         editor.destroy();
         editorRef.current = null;
-      });
-    });
-
-    task.catch(error => {
-      if (isCancel(error)) return;
+      };
+    } catch (error) {
       setError(error);
-    });
-
-    return () => {
-      cancel(task);
-    };
+    }
   }, [roomId, secretKey, setTheme]);
 
   useLayoutEffect(() => {

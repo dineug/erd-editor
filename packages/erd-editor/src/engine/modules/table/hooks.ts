@@ -1,6 +1,6 @@
-import { throttle } from '@dineug/go';
+import { throttleTime } from 'rxjs';
 
-import type { CO, Hook } from '@/engine/hooks';
+import type { Hook, HookEffect } from '@/engine/hooks';
 import {
   initialLoadJsonAction,
   loadJsonAction,
@@ -8,18 +8,14 @@ import {
 import { recalculateTableWidth } from '@/utils/calcTable';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
-const recalculateTableWidthHook: CO = function* (channel, getState, ctx) {
-  yield throttle(
-    channel,
-    function* () {
+const recalculateTableWidthHook: HookEffect = (action$, getState, ctx) =>
+  action$
+    .pipe(throttleTime(5, undefined, { leading: false, trailing: true }))
+    .subscribe(() => {
       const state = getState();
       recalculateTableWidth(state, ctx);
       relationshipSort(state);
-    },
-    5,
-    { leading: false, trailing: true }
-  );
-};
+    });
 
 export const hooks: Hook[] = [
   [[loadJsonAction, initialLoadJsonAction], recalculateTableWidthHook],

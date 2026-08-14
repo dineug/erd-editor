@@ -32,7 +32,7 @@ cross-tab sync, and undo/redo share one mechanism.
 
 | Directory      | Purpose                                                                                                                     |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `packages/`    | All 14 workspace packages (see `packages/*/AGENTS.md`)                                                                      |
+| `packages/`    | All 13 workspace packages (see `packages/*/AGENTS.md`)                                                                      |
 | `data/`        | Sample SQL dumps (`sakila.sql`, `OKKY.sql`, …) and `test.json` used to exercise the SQL importer                            |
 | `docker/`      | Per-vendor `docker-compose.yml` files (MySQL, MariaDB, MSSQL, Oracle, PostgreSQL, SQLite) for validating generated DDL      |
 | `json-schema/` | JSON Schema definition for the persisted document format                                                                    |
@@ -47,8 +47,7 @@ Build order is derived by Nx from workspace dependencies. Leaves first:
 ```
 shared ──┬─────────────────────────────────────────────┐
          ├── erd-editor-schema ──┐                     │
-go ──────┤                       │                     ├── app
-r-html ──┼── erd-editor ─────────┤                     │
+r-html ──┼── erd-editor ─────────┤                     ├── app
 schema-sql-parser ───────────────┤                     │
 erd-editor-shiki-worker ─────────┤                     │
 vite-plugin-r-html (build-time) ─┘                     │
@@ -61,7 +60,6 @@ shared ── vscode-bridge ──┬── vscode-replication-store-worker ─�
 | Package                                    | npm name                                             | Kind                                                                    |
 | ------------------------------------------ | ---------------------------------------------------- | ----------------------------------------------------------------------- |
 | `packages/shared`                          | `@dineug/shared`                                     | Library — type guards, array/number utils, nanoid                       |
-| `packages/go`                              | `@dineug/go`                                         | Library — CSP-style channels/goroutines over Promises                   |
 | `packages/r-html`                          | `@dineug/r-html`                                     | Library — tagged-template rendering framework + store                   |
 | `packages/vite-plugin-r-html`              | `@dineug/vite-plugin-r-html`                         | Build tool — HMR plugin for r-html components                           |
 | `packages/schema-sql-parser`               | `@dineug/schema-sql-parser`                          | Library — permissive DDL parser                                         |

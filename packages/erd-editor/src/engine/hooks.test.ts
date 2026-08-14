@@ -1,11 +1,11 @@
-import { cancel, channel, go, put, take } from '@dineug/go';
 import { AnyAction, createAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
+import { Subject } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
-import type { CO, Hook } from '@/engine/hooks';
+import type { Hook, HookEffect } from '@/engine/hooks';
 import * as hooksModule from '@/engine/hooks';
 import { hooks as tableHooks } from '@/engine/modules/table/hooks';
 import { RootState } from '@/engine/state';
@@ -19,8 +19,8 @@ describe('hooks module', () => {
   });
 });
 
-describe('CO contract', () => {
-  it('receives the channel, a state getter and the engine context', async () => {
+describe('HookEffect contract', () => {
+  it('receives the action stream, a state getter and the engine context', () => {
     const store = createStore({
       toWidth: text => text.length * 10,
       clock: new Clock(),
@@ -29,67 +29,79 @@ describe('CO contract', () => {
     let seenState: RootState | null = null;
     let seenWidth = -1;
 
-    const co: CO = function* (ch, getState, ctx) {
-      const action: AnyAction = yield take(ch);
-      received.push(action);
-      seenState = getState();
-      seenWidth = ctx.toWidth('abc');
-    };
+    const effect: HookEffect = (action$, getState, ctx) =>
+      action$.subscribe(action => {
+        received.push(action);
+        seenState = getState();
+        seenWidth = ctx.toWidth('abc');
+      });
 
-    const ch = channel<AnyAction>();
+    const action$ = new Subject<AnyAction>();
     const ctx: EngineContext = store.context;
-    const proc = go(co, ch, () => store.state, ctx);
+    const subscription = effect(action$, () => store.state, ctx);
 
-    put(ch, pingAction({ value: 1 }));
-    await proc;
+    action$.next(pingAction({ value: 1 }));
 
     expect(received).toHaveLength(1);
     expect(received[0].type).toBe('test.ping');
     expect(received[0].payload).toEqual({ value: 1 });
     expect(seenState).toBe(store.state);
     expect(seenWidth).toBe(30);
+
+    subscription.unsubscribe();
     store.destroy();
   });
 
-  it('can be cancelled while it is parked on the channel', async () => {
-    const co: CO = function* (ch) {
-      while (true) {
-        yield take(ch);
-      }
-    };
+  it('stops receiving actions once its subscription is torn down', () => {
+    const seen: string[] = [];
+    const effect: HookEffect = action$ =>
+      action$.subscribe(action => {
+        seen.push(action.type);
+      });
 
-    const ch = channel<AnyAction>();
-    const proc = go(co, ch, () => ({}) as RootState, {} as EngineContext);
+    const action$ = new Subject<AnyAction>();
+    const subscription = effect(
+      action$,
+      () => ({}) as RootState,
+      {} as EngineContext
+    );
 
-    cancel(proc);
+    action$.next(pingAction({ value: 1 }));
+    subscription.unsubscribe();
+    action$.next(pingAction({ value: 2 }));
 
-    await expect(proc).rejects.toBeDefined();
+    expect(subscription.closed).toBe(true);
+    expect(seen).toEqual(['test.ping']);
   });
 });
 
 describe('Hook contract', () => {
-  it('pairs an action pattern with a coroutine', async () => {
+  it('pairs an action pattern with an effect', () => {
     const seen: string[] = [];
-    const co: CO = function* (ch) {
-      const action: AnyAction = yield take(ch);
-      seen.push(action.type);
-    };
-    const hook: Hook = [[pingAction, 'test.other'], co];
+    const effect: HookEffect = action$ =>
+      action$.subscribe(action => {
+        seen.push(action.type);
+      });
+    const hook: Hook = [[pingAction, 'test.other'], effect];
 
-    const [pattern, hookCo] = hook;
+    const [pattern, hookEffect] = hook;
 
     expect(pattern.map(String)).toEqual(['test.ping', 'test.other']);
-    expect(hookCo).toBe(co);
+    expect(hookEffect).toBe(effect);
 
     const has = arrayHas(pattern.map(String));
     expect(has('test.ping')).toBe(true);
     expect(has('test.other')).toBe(true);
     expect(has('test.unknown')).toBe(false);
 
-    const ch = channel<AnyAction>();
-    const proc = go(hookCo, ch, () => ({}) as RootState, {} as EngineContext);
-    put(ch, pingAction({ value: 2 }));
-    await proc;
+    const action$ = new Subject<AnyAction>();
+    const subscription = hookEffect(
+      action$,
+      () => ({}) as RootState,
+      {} as EngineContext
+    );
+    action$.next(pingAction({ value: 2 }));
+    subscription.unsubscribe();
 
     expect(seen).toEqual(['test.ping']);
   });
@@ -97,10 +109,10 @@ describe('Hook contract', () => {
   it('is the shape the table module already ships', () => {
     expect(tableHooks.length).toBeGreaterThan(0);
 
-    for (const [pattern, co] of tableHooks) {
+    for (const [pattern, effect] of tableHooks) {
       expect(Array.isArray(pattern)).toBe(true);
       expect(pattern.length).toBeGreaterThan(0);
-      expect(typeof co).toBe('function');
+      expect(typeof effect).toBe('function');
       for (const entry of pattern) {
         expect(typeof String(entry)).toBe('string');
         expect(String(entry)).not.toBe('');

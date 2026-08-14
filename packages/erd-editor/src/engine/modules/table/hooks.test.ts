@@ -1,5 +1,5 @@
-import { cancel, channel, go, put } from '@dineug/go';
 import { AnyAction } from '@dineug/r-html';
+import { Subject, Subscription } from 'rxjs';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { Clock } from '@/engine/clock';
@@ -19,14 +19,13 @@ const THROTTLE_WAIT = 40;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const running: Array<Promise<any>> = [];
+const running: Subscription[] = [];
 
 function runHook(store: Store) {
-  const [, co] = hooks[0];
-  const ch = channel<AnyAction>();
-  const proc = go(co, ch, () => store.state, store.context);
-  running.push(proc);
-  return { ch, proc };
+  const [, effect] = hooks[0];
+  const action$ = new Subject<AnyAction>();
+  running.push(effect(action$, () => store.state, store.context));
+  return { action$ };
 }
 
 function createFixture(toWidth = (text: string) => text.length * 10) {
@@ -86,35 +85,34 @@ function createFixture(toWidth = (text: string) => text.length * 10) {
   return store;
 }
 
-afterEach(async () => {
-  for (const proc of running.splice(0, running.length)) {
-    cancel(proc);
-    await proc.catch(() => undefined);
-  }
+afterEach(() => {
+  running
+    .splice(0, running.length)
+    .forEach(subscription => subscription.unsubscribe());
 });
 
 describe('table/hooks', () => {
   it('reacts to both loadJson variants', () => {
     expect(hooks).toHaveLength(1);
 
-    const [pattern, co] = hooks[0];
+    const [pattern, effect] = hooks[0];
     expect(pattern).toEqual([loadJsonAction, initialLoadJsonAction]);
     expect(pattern.map(String)).toEqual([
       'editor.loadJson',
       'editor.initialLoadJson',
     ]);
-    expect(typeof co).toBe('function');
+    expect(typeof effect).toBe('function');
   });
 
   it('recalculates every table and column width after loadJson', async () => {
     const store = createFixture();
-    const { ch } = runHook(store);
+    const { action$ } = runHook(store);
 
     expect(store.state.collections.tableEntities[TABLE_A].ui.widthName).toBe(
       999
     );
 
-    put(ch, loadJsonAction({ value: '{}' }));
+    action$.next(loadJsonAction({ value: '{}' }));
     await delay(THROTTLE_WAIT);
 
     const tableA = store.state.collections.tableEntities[TABLE_A];
@@ -135,14 +133,14 @@ describe('table/hooks', () => {
 
   it('re-sorts the relationship end points onto the table borders', async () => {
     const store = createFixture();
-    const { ch } = runHook(store);
+    const { action$ } = runHook(store);
 
     const relationship =
       store.state.collections.relationshipEntities[RELATIONSHIP];
     expect(relationship.start).toMatchObject({ x: 0, y: 0 });
     expect(relationship.end).toMatchObject({ x: 0, y: 0 });
 
-    put(ch, initialLoadJsonAction({ value: '{}' }));
+    action$.next(initialLoadJsonAction({ value: '{}' }));
     await delay(THROTTLE_WAIT);
 
     // both end points land on the border box of their own table
@@ -162,12 +160,12 @@ describe('table/hooks', () => {
       calls++;
       return text.length * 10;
     });
-    const { ch } = runHook(store);
+    const { action$ } = runHook(store);
     calls = 0;
 
-    put(ch, loadJsonAction({ value: '{}' }));
-    put(ch, loadJsonAction({ value: '{}' }));
-    put(ch, initialLoadJsonAction({ value: '{}' }));
+    action$.next(loadJsonAction({ value: '{}' }));
+    action$.next(loadJsonAction({ value: '{}' }));
+    action$.next(initialLoadJsonAction({ value: '{}' }));
     await delay(THROTTLE_WAIT);
 
     // 2 tables * 2 widths + 1 column * 4 widths
@@ -182,10 +180,10 @@ describe('table/hooks', () => {
       calls++;
       return text.length * 10;
     });
-    const { ch } = runHook(store);
+    const { action$ } = runHook(store);
     calls = 0;
 
-    put(ch, loadJsonAction({ value: '{}' }));
+    action$.next(loadJsonAction({ value: '{}' }));
 
     expect(calls).toBe(0);
 
@@ -201,12 +199,12 @@ describe('table/hooks', () => {
       calls++;
       return text.length * 10;
     });
-    const { ch } = runHook(store);
+    const { action$ } = runHook(store);
     calls = 0;
 
-    put(ch, loadJsonAction({ value: '{}' }));
+    action$.next(loadJsonAction({ value: '{}' }));
     await delay(THROTTLE_WAIT);
-    put(ch, loadJsonAction({ value: '{}' }));
+    action$.next(loadJsonAction({ value: '{}' }));
     await delay(THROTTLE_WAIT);
 
     expect(calls).toBe(16);

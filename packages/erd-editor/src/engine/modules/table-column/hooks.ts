@@ -1,8 +1,9 @@
 import { query } from '@dineug/erd-editor-schema';
-import { takeEvery } from '@dineug/go';
+import { type AnyAction } from '@dineug/r-html';
+import { asapScheduler, type Observable, observeOn } from 'rxjs';
 
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
-import type { CO, Hook } from '@/engine/hooks';
+import type { Hook, HookEffect } from '@/engine/hooks';
 import {
   initialLoadJsonAction,
   loadJsonAction,
@@ -14,12 +15,17 @@ import {
 import { changeColumnPrimaryKeyAction } from '@/engine/modules/table-column/atom.actions';
 import { bHas } from '@/utils/bit';
 
-const changeColumnNotNullHook: CO = function* (channel, getState) {
-  yield takeEvery(
-    channel,
-    function* ({
-      payload: { id },
-    }: ReturnType<typeof changeColumnPrimaryKeyAction>) {
+/**
+ * These hooks write straight into the observable state, so they must not run
+ * inside the dispatch that triggered them — the store is still notifying its
+ * observers at that point.
+ */
+const deferred = (action$: Observable<AnyAction>) =>
+  action$.pipe(observeOn(asapScheduler));
+
+const changeColumnNotNullHook: HookEffect = (action$, getState) =>
+  deferred(action$).subscribe(
+    ({ payload: { id } }: ReturnType<typeof changeColumnPrimaryKeyAction>) => {
       const { collections } = getState();
       const collection = query(collections).collection('tableColumnEntities');
       const column = collection.selectById(id);
@@ -34,14 +40,10 @@ const changeColumnNotNullHook: CO = function* (channel, getState) {
       column.options = column.options | ColumnOption.notNull;
     }
   );
-};
 
-const addColumnForeignKeyHook: CO = function* (channel, getState) {
-  yield takeEvery(
-    channel,
-    function* ({
-      payload: { id, end },
-    }: ReturnType<typeof addRelationshipAction>) {
+const addColumnForeignKeyHook: HookEffect = (action$, getState) =>
+  deferred(action$).subscribe(
+    ({ payload: { id, end } }: ReturnType<typeof addRelationshipAction>) => {
       const {
         doc: { relationshipIds },
         collections,
@@ -57,14 +59,10 @@ const addColumnForeignKeyHook: CO = function* (channel, getState) {
       }
     }
   );
-};
 
-const removeColumnForeignKeyHook: CO = function* (channel, getState) {
-  yield takeEvery(
-    channel,
-    function* ({
-      payload: { id },
-    }: ReturnType<typeof removeRelationshipAction>) {
+const removeColumnForeignKeyHook: HookEffect = (action$, getState) =>
+  deferred(action$).subscribe(
+    ({ payload: { id } }: ReturnType<typeof removeRelationshipAction>) => {
       const {
         doc: { relationshipIds },
         collections,
@@ -85,10 +83,9 @@ const removeColumnForeignKeyHook: CO = function* (channel, getState) {
       }
     }
   );
-};
 
-const validationForeignKeyHook: CO = function* (channel, getState) {
-  yield takeEvery(channel, function* () {
+const validationForeignKeyHook: HookEffect = (action$, getState) =>
+  deferred(action$).subscribe(() => {
     const { doc, collections } = getState();
     const relationships = query(collections)
       .collection('relationshipEntities')
@@ -123,7 +120,6 @@ const validationForeignKeyHook: CO = function* (channel, getState) {
       }
     }
   });
-};
 
 export const hooks: Hook[] = [
   [[changeColumnPrimaryKeyAction], changeColumnNotNullHook],

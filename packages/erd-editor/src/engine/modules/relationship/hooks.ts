@@ -1,9 +1,9 @@
 import { query } from '@dineug/erd-editor-schema';
-import { throttle } from '@dineug/go';
 import { arrayHas } from '@dineug/shared';
+import { throttleTime } from 'rxjs';
 
 import { ColumnOption, StartRelationshipType } from '@/constants/schema';
-import type { CO, Hook } from '@/engine/hooks';
+import type { Hook, HookEffect } from '@/engine/hooks';
 import {
   initialLoadJsonAction,
   loadJsonAction,
@@ -34,10 +34,10 @@ import {
 import { bHas } from '@/utils/bit';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
-const identificationHook: CO = function* (channel, getState) {
-  yield throttle(
-    channel,
-    function* () {
+const identificationHook: HookEffect = (action$, getState) =>
+  action$
+    .pipe(throttleTime(10, undefined, { leading: false, trailing: true }))
+    .subscribe(() => {
       const { doc, collections } = getState();
       const collection = query(collections).collection('relationshipEntities');
       const relationships = collection.selectByIds(doc.relationshipIds);
@@ -66,16 +66,12 @@ const identificationHook: CO = function* (channel, getState) {
 
         relationship.identification = value;
       }
-    },
-    10,
-    { leading: false, trailing: true }
-  );
-};
+    });
 
-const startRelationshipHook: CO = function* (channel, getState) {
-  yield throttle(
-    channel,
-    function* () {
+const startRelationshipHook: HookEffect = (action$, getState) =>
+  action$
+    .pipe(throttleTime(10, undefined, { leading: false, trailing: true }))
+    .subscribe(() => {
       const { doc, collections } = getState();
       const collection = query(collections).collection('relationshipEntities');
       const relationships = collection.selectByIds(doc.relationshipIds);
@@ -106,22 +102,14 @@ const startRelationshipHook: CO = function* (channel, getState) {
 
         relationship.startRelationshipType = value;
       }
-    },
-    10,
-    { leading: false, trailing: true }
-  );
-};
+    });
 
-const relationshipSortHook: CO = function* (channel, getState) {
-  yield throttle(
-    channel,
-    function* () {
+const relationshipSortHook: HookEffect = (action$, getState) =>
+  action$
+    .pipe(throttleTime(5, undefined, { leading: false, trailing: true }))
+    .subscribe(() => {
       relationshipSort(getState());
-    },
-    5,
-    { leading: false, trailing: true }
-  );
-};
+    });
 
 export const hooks: Hook[] = [
   [

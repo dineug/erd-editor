@@ -108,8 +108,10 @@ tab forwards its editor action stream to that tab over the BroadcastChannel brid
 - **Sentry is production-only** and initialized before the router. Don't let it run in dev.
 - **Service worker changes need a cache-invalidation story.** `src/sw.ts` distinguishes content-hashed
   assets (`CacheFirst`) from everything else; a wrong strategy strands users on a stale build.
-- Uses `@dineug/go` for cancellable async flows in the collaboration view (`go`, `cancel`,
-  `attachCancel`, `isCancel`) — prefer that over ad-hoc `AbortController` chains to match the codebase.
+- **The collaboration view tears down through the effect cleanup.** `LiveCollaborative` builds the
+  editor, the guest and every timer inside one `useLayoutEffect` and undoes all of it in the returned
+  cleanup; a resource added there needs a matching line in that cleanup or it leaks across a room
+  change.
 - Styling is Radix Themes + Emotion; component styles live in a sibling `*.styles.ts`.
 - Builds with **webpack + swc** (with `@swc-jotai/debug-label` and `@swc-jotai/react-refresh`) on
   TypeScript 5.4.5 — not Vite, and not the 5.8.2 the libraries use.
@@ -148,7 +150,6 @@ tab forwards its editor action stream to that tab over the BroadcastChannel brid
 
 - `@dineug/erd-editor` — the editor element
 - `@dineug/erd-editor-shiki-worker` — highlighting (lazily imported and registered)
-- `@dineug/go` — cancellable async flows
 - `@dineug/shared`
 
 ### External

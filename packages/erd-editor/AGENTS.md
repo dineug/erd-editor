@@ -89,7 +89,7 @@ schema        @dineug/erd-editor-schema — state shape, LWW merge, serializatio
 | `src/themes/`                                                                                                             | Radix-UI-derived theme tokens, `radix-ui-theme.config.ts`, `textColor.ts`                                                                                                                                                                                                |
 | `src/styles/`                                                                                                             | Global style fragments — reset, typography, fonts, scrollbar, color picker                                                                                                                                                                                               |
 | `src/hooks/`                                                                                                              | `useDarkMode`, `useFlipAnimation`, `useKeyBindingMap`, `useUnmounted`                                                                                                                                                                                                    |
-| `.storybook/`                                                                                                             | Storybook 10 (`@storybook/html-vite`) config; stories live beside components as `*.stories.ts`                                                                                                                                                                            |
+| `.storybook/`                                                                                                             | Storybook 10 (`@storybook/html-vite`) config; stories live beside components as `*.stories.ts`                                                                                                                                                                           |
 | `environment/`                                                                                                            | `.env.lib` — sets `VITE_TARGET=lib`, which gates the lib build in `vite.config.ts`                                                                                                                                                                                       |
 
 ### Engine module layout
@@ -100,9 +100,9 @@ Every module under `src/engine/modules/<name>/` follows the same five-file shape
 | ---------------------- | ------------------------------------------------------------------------- |
 | `actions.ts`           | `ActionMap` — the action-type → payload contract                          |
 | `atom.actions.ts`      | Action creators + reducers (the synchronous, LWW-aware state writes)      |
-| `generator.actions.ts` | `action$` generator actions for multi-step/async flows (via `@dineug/go`) |
+| `generator.actions.ts` | `action$` generator actions for multi-step/async flows (r-html runtime)   |
 | `history.ts`           | Undo/redo recipes for this module's actions                               |
-| `hooks.ts`             | Optional — cross-module reactions (e.g. `table/hooks.ts`)                 |
+| `hooks.ts`             | Optional — cross-module reactions as rxjs effects (e.g. `table/hooks.ts`) |
 
 ## For AI Agents
 
@@ -183,14 +183,13 @@ Every module under `src/engine/modules/<name>/` follows the same five-file shape
 - `@dineug/r-html` — rendering, components, store, context, observables
 - `@dineug/erd-editor-schema` — state shape, `toJson`, LWW operators, `query`
 - `@dineug/shared` — type guards, `arrayHas`, `asap`, nanoid
-- `@dineug/go` — generator-action runtime
 - `@dineug/schema-sql-parser` — SQL import
 - `@dineug/erd-editor-shiki-worker` — highlighting (injected, lazily imported)
 - `@dineug/vite-plugin-r-html` — dev-time HMR only
 
 ### External
 
-- `rxjs` — the action pipelines
+- `rxjs` — the action pipelines and the engine hook effects
 - `d3` — zoom/pan and layout math
 - `lodash-es`, `luxon`, `deepmerge`, `fuse.js` (quick search), `tinykeys` (shortcuts)
 - `@floating-ui/dom` (menus/popovers), `framer-motion`, `html-to-image` (export), `color`,

@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
-import { cancel, channel, go, put } from '@dineug/go';
 import { AnyAction } from '@dineug/r-html';
+import { Subject } from 'rxjs';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
@@ -45,9 +45,9 @@ function setup(): Runner {
     toWidth: text => text.length * 10,
     clock: new Clock(),
   });
-  const channels = hooks.map(() => channel<AnyAction>());
-  const procs = hooks.map(([, hook], index) =>
-    go(hook, channels[index], () => store.state, store.context)
+  const subjects = hooks.map(() => new Subject<AnyAction>());
+  const subscriptions = hooks.map(([, effect], index) =>
+    effect(subjects[index], () => store.state, store.context)
   );
   const patterns = hooks.map(([pattern]) => pattern.map(String));
 
@@ -55,7 +55,7 @@ function setup(): Runner {
     for (const action of actions) {
       patterns.forEach((types, index) => {
         if (types.includes(action.type)) {
-          put(channels[index], action);
+          subjects[index].next(action);
         }
       });
     }
@@ -63,9 +63,10 @@ function setup(): Runner {
 
   const runner: Runner = {
     store,
-    send: (index, action) => put(channels[index], action),
+    send: (index, action) => subjects[index].next(action),
     destroy: () => {
-      procs.forEach(proc => cancel(proc));
+      subscriptions.forEach(subscription => subscription.unsubscribe());
+      subjects.forEach(subject => subject.complete());
       unsubscribe();
       store.destroy();
     },

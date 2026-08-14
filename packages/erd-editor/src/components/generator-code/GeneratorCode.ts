@@ -1,5 +1,4 @@
 import { query } from '@dineug/erd-editor-schema';
-import { delay } from '@dineug/go';
 import { FC, html, observable, onBeforeMount, watch } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
@@ -16,6 +15,7 @@ import {
   createGeneratorCode,
   createGeneratorCodeTable,
 } from '@/utils/generator-code';
+import { delay } from '@/utils/promise';
 
 import * as styles from './GeneratorCode.styles';
 

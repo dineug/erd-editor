@@ -1,4 +1,3 @@
-import { delay } from '@dineug/go';
 import {
   createRef,
   FC,
@@ -14,6 +13,7 @@ import { useAppContext } from '@/components/appContext';
 import { useFlipAnimation } from '@/hooks/useFlipAnimation';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { openToastAction } from '@/utils/emitter';
+import { delay } from '@/utils/promise';
 
 import * as styles from './ToastContainer.styles';
 

@@ -1,4 +1,3 @@
-import { delay } from '@dineug/go';
 import {
   createRef,
   FC,
@@ -36,6 +35,7 @@ import { onPrevent } from '@/utils/domEvent';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 import { openToastAction } from '@/utils/emitter';
 import { FlipAnimation } from '@/utils/flipAnimation';
+import { delay } from '@/utils/promise';
 import { fromShadowDraggable } from '@/utils/rx-operators/fromShadowDraggable';
 import {
   maxWidthCommentInRange,

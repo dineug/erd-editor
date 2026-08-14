@@ -1,5 +1,5 @@
-import { cancel, channel, go, put } from '@dineug/go';
 import { AnyAction } from '@dineug/r-html';
+import { Subject, Subscription } from 'rxjs';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -8,7 +8,7 @@ import {
   StartRelationshipType,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
-import type { CO } from '@/engine/hooks';
+import type { HookEffect } from '@/engine/hooks';
 import { hooks } from '@/engine/modules/relationship/hooks';
 import { createStore, Store } from '@/engine/store';
 import { createRelationship } from '@/utils/collection/relationship.entity';
@@ -16,10 +16,10 @@ import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 
 const [identificationHook, startRelationshipHook, relationshipSortHook] =
-  hooks.map(([, co]) => co) as [CO, CO, CO];
+  hooks.map(([, effect]) => effect) as [HookEffect, HookEffect, HookEffect];
 
 const stores: Store[] = [];
-const runners: Array<() => void> = [];
+const subscriptions: Subscription[] = [];
 
 const tick = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms));
 /** throttle window is 10ms (5ms for the sort hook) with trailing only. */
@@ -34,15 +34,13 @@ function createTestStore(): Store {
   return store;
 }
 
-async function run(co: CO, store: Store) {
-  const ch = channel<AnyAction>();
-  const proc = go(co, ch, () => store.state, store.context);
-  proc.catch(() => {});
-  runners.push(() => cancel(proc));
+async function run(effect: HookEffect, store: Store) {
+  const action$ = new Subject<AnyAction>();
+  subscriptions.push(effect(action$, () => store.state, store.context));
   await tick();
 
   return {
-    fire: () => put(ch, { type: 'test.trigger', payload: undefined }),
+    fire: () => action$.next({ type: 'test.trigger', payload: undefined }),
   };
 }
 
@@ -73,17 +71,17 @@ const rel = (store: Store, id: string) =>
   store.state.collections.relationshipEntities[id];
 
 afterEach(() => {
-  runners.splice(0).forEach(stop => stop());
+  subscriptions.splice(0).forEach(subscription => subscription.unsubscribe());
   stores.splice(0).forEach(store => store.destroy());
 });
 
 describe('relationship/hooks registration', () => {
   it('registers exactly three hooks', () => {
     expect(hooks).toHaveLength(3);
-    for (const [pattern, co] of hooks) {
+    for (const [pattern, effect] of hooks) {
       expect(Array.isArray(pattern)).toBe(true);
       expect(pattern.length).toBeGreaterThan(0);
-      expect(typeof co).toBe('function');
+      expect(typeof effect).toBe('function');
     }
   });
 

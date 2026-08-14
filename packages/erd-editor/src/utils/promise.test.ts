@@ -1,6 +1,46 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { closePromise } from '@/utils/promise';
+import { closePromise, delay } from '@/utils/promise';
+
+describe('delay', () => {
+  it('resolves with undefined once the timer fires', async () => {
+    vi.useFakeTimers();
+    try {
+      const onResolved = vi.fn();
+      const promise = delay(2000).then(onResolved);
+
+      await vi.advanceTimersByTimeAsync(1999);
+      expect(onResolved).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      await promise;
+      expect(onResolved).toHaveBeenCalledTimes(1);
+      expect(onResolved).toHaveBeenCalledWith(undefined);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('creates an independent timer per call', async () => {
+    vi.useFakeTimers();
+    try {
+      const a = vi.fn();
+      const b = vi.fn();
+      delay(10).then(a);
+      const later = delay(30).then(b);
+
+      await vi.advanceTimersByTimeAsync(10);
+      expect(a).toHaveBeenCalledTimes(1);
+      expect(b).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(20);
+      await later;
+      expect(b).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
 
 describe('closePromise', () => {
   it('returns a pending promise and a resolver', async () => {

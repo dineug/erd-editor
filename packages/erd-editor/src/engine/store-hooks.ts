@@ -1,6 +1,6 @@
-import { cancel, type Channel, channel, go, put } from '@dineug/go';
 import { type AnyAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
+import { Subject, Subscription } from 'rxjs';
 
 import { hooks as relationshipHooks } from '@/engine/modules/relationship/hooks';
 import { hooks as tableHooks } from '@/engine/modules/table/hooks';
@@ -9,8 +9,8 @@ import type { Store } from '@/engine/store';
 
 type Task = {
   pattern: ReturnType<typeof arrayHas<string>>;
-  channel: Channel<AnyAction>;
-  proc: Promise<any>;
+  action$: Subject<AnyAction>;
+  subscription: Subscription;
 };
 
 const hooks = [...tableHooks, ...tableColumnHooks, ...relationshipHooks];
@@ -19,12 +19,12 @@ export function createHooks(store: Store) {
   const getState = () => store.state;
 
   const tasks: Task[] = hooks.map(([pattern, hook]) => {
-    const ch = channel();
+    const action$ = new Subject<AnyAction>();
 
     return {
       pattern: arrayHas(pattern.map(String)),
-      channel: ch,
-      proc: go(hook, ch, getState, store.context),
+      action$,
+      subscription: hook(action$, getState, store.context),
     };
   });
 
@@ -32,14 +32,17 @@ export function createHooks(store: Store) {
     for (const action of actions) {
       for (const task of tasks) {
         if (task.pattern(action.type)) {
-          put(task.channel, action);
+          task.action$.next(action);
         }
       }
     }
   });
 
   const destroy = () => {
-    tasks.forEach(({ proc }) => cancel(proc));
+    tasks.forEach(({ action$, subscription }) => {
+      subscription.unsubscribe();
+      action$.complete();
+    });
     tasks.splice(0, tasks.length);
     unsubscribe();
   };

@@ -1,5 +1,4 @@
 import { query } from '@dineug/erd-editor-schema';
-import { delay } from '@dineug/go';
 import { FC, html, observable, onBeforeMount, watch } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
@@ -11,6 +10,7 @@ import SchemaSQLContextMenu from '@/components/schema-sql/schema-sql-context-men
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { copyToClipboard } from '@/utils/clipboard';
 import { openToastAction } from '@/utils/emitter';
+import { delay } from '@/utils/promise';
 import { createSchemaSQL, createSchemaSQLTable } from '@/utils/schema-sql';
 
 import * as styles from './SchemaSQL.styles';
