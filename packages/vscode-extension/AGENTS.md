@@ -5,7 +5,7 @@
 
 ## Purpose
 
-The published VSCode extension (**ERD Editor**, publisher `dineug`, v2.1.1) — the Node-side host
+The published VSCode extension (**ERD Editor**, publisher `dineug`, v2.2.0) — the Node-side host
 process. It registers a `CustomEditorProvider` for `*.erd`, `*.erd.json`, `*.vuerd`, and `*.vuerd.json`,
 owns the document on disk, hosts the webview bundle from `@dineug/erd-editor-vscode-webview`, and
 translates between VSCode APIs and the `@dineug/erd-editor-vscode-bridge` command protocol.

@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.2.0] - 2026-08-15
+
+### Changed
+
+- Minimum supported VSCode is now `1.90.0` (was `1.85.0`), which is the first release running on
+  Node 20.
+
+### Fixed
+
+- Import no longer accepts a file whose extension merely ends with the expected one — `sample.xjson`
+  was being read as JSON.
+- Closing an ERD tab while it was still opening left the editor's resources behind.
+- Running an ERD command from the editor title bar could open the file in an unintended editor group.
+- Saving a theme could pick the wrong settings scope when the existing value was empty.
+- A single theme change no longer pushes the same update to the webview several times.
+
 ## [2.1.0] - 2025-05-07
 
 ### Fixed
