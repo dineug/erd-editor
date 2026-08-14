@@ -51,13 +51,12 @@ describe('helpers/array', () => {
       expect(groupBy([1, 2, 3], () => 'all')).toEqual({ all: [1, 2, 3] });
     });
 
-    it('calls identity twice for the first item of a group and once afterwards', () => {
+    it('calls identity exactly once per item', () => {
       const identity = vi.fn((value: string) => value);
 
       groupBy(['a', 'a', 'b'], identity);
 
-      // 'a' (miss -> 2 calls), 'a' (hit -> 1 call), 'b' (miss -> 2 calls)
-      expect(identity).toHaveBeenCalledTimes(5);
+      expect(identity).toHaveBeenCalledTimes(3);
     });
 
     it('coerces non-string identity results into object keys', () => {
@@ -69,12 +68,30 @@ describe('helpers/array', () => {
       expect(result['0']).toEqual([2, 4]);
     });
 
-    it('inherits prototype keys from the accumulator object literal', () => {
-      // `{}` inherits from Object.prototype, so a key such as `toString`
-      // resolves truthy on first lookup and `push` is attempted on it.
-      expect(() => groupBy(['toString'], value => value)).toThrowError(
-        TypeError
-      );
+    it('groups prototype-named keys correctly', () => {
+      const list = [
+        'toString',
+        'valueOf',
+        'constructor',
+        'hasOwnProperty',
+        '__proto__',
+        'toString',
+      ];
+
+      const result = groupBy(list, value => value);
+
+      expect(Object.keys(result)).toEqual([
+        'toString',
+        'valueOf',
+        'constructor',
+        'hasOwnProperty',
+        '__proto__',
+      ]);
+      expect(result['toString']).toEqual(['toString', 'toString']);
+      expect(result['valueOf']).toEqual(['valueOf']);
+      expect(result['constructor']).toEqual(['constructor']);
+      expect(result['hasOwnProperty']).toEqual(['hasOwnProperty']);
+      expect(result['__proto__']).toEqual(['__proto__']);
     });
   });
 });
