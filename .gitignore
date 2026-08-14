@@ -36,3 +36,10 @@ yarn-error.log*
 .nx
 .omc
 .playwright-mcp
+
+# Playwright
+test-results
+playwright-report
+blob-report
+packages/*/e2e/.results
+packages/*/e2e/.report

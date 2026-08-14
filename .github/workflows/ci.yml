@@ -20,3 +20,30 @@ jobs:
       - run: pnpm install
       - run: pnpm test
       - run: pnpm build
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install
+      - name: Install Playwright browsers
+        run: pnpm --filter @dineug/erd-editor exec playwright install --with-deps chromium
+      # The dev server resolves workspace deps to their `dist/`, and the e2e
+      # typecheck reads their `.d.ts`, so both need this first. Nx caches it, so
+      # the `e2e` target's own `dependsOn: ["^build"]` is a no-op after this.
+      - run: pnpm exec nx build @dineug/erd-editor
+      - run: pnpm --filter @dineug/erd-editor e2e:typecheck
+      - run: pnpm exec nx run @dineug/erd-editor:e2e
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: packages/erd-editor/e2e/.report
+          retention-days: 7

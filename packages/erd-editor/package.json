@@ -51,7 +51,12 @@
     "nx:build": "nx build",
     "test": "vitest run",
     "test:dev": "vitest dev",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "e2e": "playwright test",
+    "e2e:dev": "playwright test --ui",
+    "e2e:headed": "playwright test --headed",
+    "e2e:report": "playwright show-report e2e/.report",
+    "e2e:typecheck": "tsc -p e2e/tsconfig.json"
   },
   "devDependencies": {
     "@dineug/erd-editor-schema": "workspace:*",
@@ -67,6 +72,7 @@
     "@fortawesome/free-regular-svg-icons": "6.5.2",
     "@fortawesome/free-solid-svg-icons": "6.5.2",
     "@mdi/js": "7.4.47",
+    "@playwright/test": "^1.62.1",
     "@radix-ui/colors": "3.0.0",
     "@rollup/plugin-typescript": "^12.3.0",
     "@storybook/addon-docs": "^10.5.8",
@@ -77,6 +83,7 @@
     "@types/highlight-words-core": "^1.2.3",
     "@types/lodash-es": "^4.17.12",
     "@types/luxon": "^3.4.2",
+    "@types/node": "^22.20.1",
     "@vitest/coverage-v8": "^4.1.10",
     "color": "^4.2.3",
     "comlink": "4.4.1",

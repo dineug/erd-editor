@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "types": ["node"],
+    "noEmit": true
+  },
+  // `src/vite-env.d.ts` comes along because the fixture entry imports `@/index`,
+  // which pulls in modules that rely on `vite/client` types, `?worker` imports
+  // and the `__APP_VERSION__` define.
+  "include": ["../e2e", "../playwright.config.ts", "../src/vite-env.d.ts"]
+}

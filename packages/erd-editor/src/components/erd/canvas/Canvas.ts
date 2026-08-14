@@ -54,6 +54,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
       >
         <div
           class=${styles.root}
+          data-testid="erd-canvas"
           ${ref(props.canvas)}
           style=${{
             width: `${width}px`,

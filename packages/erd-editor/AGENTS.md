@@ -144,11 +144,20 @@ Every module under `src/engine/modules/<name>/` follows the same five-file shape
 
 ### Testing Requirements
 
-- No `test` target in this package. The verification loop is:
-  1. `pnpm --filter @dineug/erd-editor build` — type-checks with `noEmitOnError: true`.
-  2. `pnpm --filter @dineug/erd-editor dev` — Vite dev server with r-html HMR.
-  3. `pnpm --filter @dineug/erd-editor dev:storybook` — component-level checks (Storybook 10, stories
-     colocated as `*.stories.ts`).
+- Two suites, run separately and wired to separate CI jobs:
+  1. `pnpm --filter @dineug/erd-editor test` — Vitest over `src/**/*.test.ts` in happy-dom, with an
+     80% per-file coverage floor (`vitest.config.ts`). This is what `pnpm test` at the repo root runs.
+  2. `pnpm --filter @dineug/erd-editor e2e` — Playwright over `e2e/specs/*.spec.ts` in Chromium,
+     covering the keyboard/mouse interactions happy-dom cannot reproduce. **Read `e2e/README.md`
+     before touching it** — the closed shadow root, the minimap's duplicate render and the LWW
+     tombstones each have a trap that will waste an afternoon otherwise.
+- The `e2e` Nx target is deliberately NOT part of `nx run-many -t test`, so a missing browser binary
+  can never turn the unit suite red.
+- Still worth doing by hand for anything visual:
+  - `pnpm --filter @dineug/erd-editor build` — type-checks with `noEmitOnError: true`.
+  - `pnpm --filter @dineug/erd-editor dev` — Vite dev server with r-html HMR.
+  - `pnpm --filter @dineug/erd-editor dev:storybook` — component-level checks (Storybook 10, stories
+    colocated as `*.stories.ts`).
 - **Verify collaboration changes with two clients.** Open the diagram in two tabs (or run the web app's
   live mode) and confirm actions converge — LWW bugs only appear under concurrent edits.
 - **Verify undo/redo for every new action**, including the drag/stream case (one drag = one undo).

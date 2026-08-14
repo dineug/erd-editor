@@ -58,7 +58,9 @@ export default defineConfig(({ command, mode }) => {
         }),
     ].filter(Boolean),
     server: {
-      open: true,
+      // The Playwright `webServer` starts this same command; opening a browser
+      // there would race the run.
+      open: !process.env.E2E,
     },
   };
 });

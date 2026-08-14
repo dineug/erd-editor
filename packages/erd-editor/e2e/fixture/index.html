@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>erd-editor e2e fixture</title>
+    <script>
+      /**
+       * `<erd-editor>` is defined with `shadow: 'closed'`, which makes its
+       * internals unreachable from Playwright locators, `document.querySelector`
+       * and the accessibility tree alike.
+       *
+       * The e2e fixture — and only the e2e fixture — reopens the boundary so the
+       * suite can drive the real UI. Production code is untouched: nothing here
+       * is bundled into `dist/`, and this inline script runs before the module
+       * below, so the editor is registered after the patch is in place.
+       */
+      (function reopenShadowRoots() {
+        var attachShadow = Element.prototype.attachShadow;
+        Element.prototype.attachShadow = function (init) {
+          return attachShadow.call(
+            this,
+            Object.assign({}, init, { mode: 'open' })
+          );
+        };
+      })();
+    </script>
+  </head>
+  <!--
+    Layout lives in style attributes rather than a <style> block: the
+    `@dineug/vite-plugin-r-html` dev transform runs Babel over the inline CSS
+    that Vite proxies out of an HTML file, and chokes on it.
+  -->
+  <body style="margin: 0; padding: 0; overflow: hidden">
+    <div id="app" style="width: 100vw; height: 100vh"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
