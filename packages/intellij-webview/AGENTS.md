@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-08 | Updated: 2026-08-08 -->
+<!-- Generated: 2026-08-08 | Updated: 2026-08-15 -->
 
 # intellij-webview (`@dineug/erd-editor-intellij-webview`)
 
@@ -14,26 +14,26 @@ the HTML/JS bundle it embeds. `build:webview` is the target that emits the plugi
 
 ### Transport difference
 
-|                    | VSCode webview                                                          | IntelliJ webview                                                                                |
-| ------------------ | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| webview → host     | `vscode.postMessage(action)`                                            | `window.cefQuery({ request: JSON.stringify(action), persistent: false, onSuccess, onFailure })` |
-| host → webview     | `window.addEventListener('message')`                                    | host invokes an injected JS callback                                                            |
-| Replication worker | `@dineug/erd-editor-vscode-replication-store-worker` (inline `?worker`) | local `src/services/replicationStore.worker.ts` via `new Worker(new URL(...))`                  |
+|                    | VSCode webview                                                          | IntelliJ webview                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| webview → host     | `vscode.postMessage(action)`                                            | `window.cefQuery({ request: JSON.stringify(action), persistent: false, onSuccess, onFailure })`                  |
+| host → webview     | `globalThis.addEventListener('message')`                                | **Identical** — `src/main.ts:115` matches `vscode-webview/src/index.ts:148`. Only the outbound direction differs |
+| Replication worker | `@dineug/erd-editor-vscode-replication-store-worker` (inline `?worker`) | local `src/services/replicationStore.worker.ts` via `new Worker(new URL(...))`                                   |
 
 Because `cefQuery` takes a **string**, every payload must survive `JSON.stringify`/`parse`.
 
 ## Key Files
 
-| File                                      | Description                                                                                                                                                |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/main.ts`                             | The whole client — element creation, `bridge` (host) + `workerBridge` (worker), replication worker spawn, theme/readonly handling, lazy shiki registration |
-| `src/services/replicationStore.worker.ts` | Local headless replica built on `createReplicationStore` from `@dineug/erd-editor/engine.js`                                                               |
-| `src/utils/text.ts`                       | `toWidth` text metrics for the worker (near-copy of the vscode replication worker's)                                                                       |
-| `src/webview.css`                         | Layout for the editor host element                                                                                                                         |
-| `src/env.d.ts`                            | Ambient types, including `window.cefQuery`                                                                                                                 |
-| `public/`                                 | HTML shell and static assets                                                                                                                               |
-| `webpack.config.js`                       | Builds `dev` / production / `webview` targets                                                                                                              |
-| `project.json`                            | Nx targets, including `build:webview`                                                                                                                      |
+| File                                      | Description                                                                                                                                                  |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/main.ts`                             | The whole client — element creation, `bridge` (host) + `workerBridge` (worker), replication worker spawn, theme/readonly handling, lazy shiki registration   |
+| `src/services/replicationStore.worker.ts` | Local headless replica built on `createReplicationStore` from `@dineug/erd-editor/engine.js`                                                                 |
+| `src/utils/text.ts`                       | `toWidth` text metrics for the worker — a **byte-identical** copy of `vscode-replication-store-worker/src/utils/text.ts`; fix one and you must fix the other |
+| `src/webview.css`                         | Layout for the editor host element                                                                                                                           |
+| `src/env.d.ts`                            | Ambient types, including `window.cefQuery`                                                                                                                   |
+| `public/`                                 | HTML shell and static assets                                                                                                                                 |
+| `webpack.config.js`                       | Builds `dev` / production / `webview` targets                                                                                                                |
+| `project.json`                            | Nx targets, including `build:webview`                                                                                                                        |
 
 ## For AI Agents
 
@@ -42,6 +42,11 @@ Because `cefQuery` takes a **string**, every payload must survive `JSON.stringif
 - **This bundle is consumed by a different repository.** Changing the command protocol or the HTML
   shell's element ids can break the Kotlin plugin with no signal in this repo. Coordinate protocol
   changes with the plugin repo and keep them additive where possible.
+- **`build:webview` writes outside this repo.** With `--env target=webview`, webpack's `output.path` is
+  `resolvePath('../../../src/main/resources/assets')` — three levels up from this package, i.e. the
+  parent directory of the whole monorepo — and `clean: true` applies there. It only lands somewhere
+  useful if the plugin checkout is laid out around this repo as that config expects; run it deliberately,
+  and use plain `build` (→ `dist/`) for anything else.
 - **`window.cefQuery` is fire-and-forget over a JSON string.** No structured clone, no transferables,
   no `undefined` survival. Binary data is base64-encoded (`base64-arraybuffer`) by the caller.
 - **It reuses the _vscode_ bridge package** — that is intentional, not a mistake. Do not fork the

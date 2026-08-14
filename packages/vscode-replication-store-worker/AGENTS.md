@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-08 | Updated: 2026-08-08 -->
+<!-- Generated: 2026-08-08 | Updated: 2026-08-15 -->
 
 # vscode-replication-store-worker (`@dineug/erd-editor-vscode-replication-store-worker`)
 
@@ -14,7 +14,8 @@ stream to this worker; the worker feeds it into `createReplicationStore` from
 `@dineug/erd-editor/engine.js` (the DOM-free engine entry), and emits the fully serialized document
 back via `hostSaveValueCommand` only when the store reports a `change`.
 
-The whole package is ~40 lines of glue — its value is the boundary, not the code.
+`src/` is 88 lines total — a 3-line entry, the 40-line worker, and the 44-line `utils/text.ts` metrics
+helper. Its value is the boundary, not the volume.
 
 ## Key Files
 
@@ -34,9 +35,12 @@ The whole package is ~40 lines of glue — its value is the boundary, not the co
   external worker script unreliable. Do not "optimize" this into a plain worker URL.
 - **Import the engine entry, never the element entry.** `@dineug/erd-editor/engine.js` is DOM-free;
   `@dineug/erd-editor` registers custom elements and will throw in a worker.
-- **`toWidth` must stay canvas-free.** It runs in a worker with no `document`, so it is a metrics-table
-  implementation, not `ctx.measureText`. `packages/intellij-webview/src/utils/text.ts` is a near-copy —
-  keep the two in sync or extract them.
+- **`toWidth` must stay DOM-free.** It runs in a worker with no `document`, so it measures with a lazily
+  created `OffscreenCanvas` 2d context at `400 12px` and falls back to `text.length * 10` when
+  `OffscreenCanvas` is unavailable — never `document.createElement('canvas')`. Both the font string and
+  the `TEXT_PADDING` of 2 have to match the editor's own metrics or replicated column widths drift.
+  `packages/intellij-webview/src/utils/text.ts` is currently a byte-identical copy — keep the two in sync
+  or extract them.
 - Only three commands cross this boundary: in `webviewInitialValueCommand` and
   `webviewReplicationCommand`, out `hostSaveValueCommand`. Adding a fourth means touching
   `vscode-bridge` and `vscode-webview` too.
@@ -50,8 +54,10 @@ The whole package is ~40 lines of glue — its value is the boundary, not the co
 - Real verification requires the VSCode extension host: launch it from
   `packages/vscode-extension/.vscode/`, open a `.erd` file, edit, and confirm the file on disk updates.
   Failure here is silent — edits simply never persist — so check the webview devtools console.
-- After changing the engine's `createReplicationStore` signature, rebuild this package; it is the only
-  consumer of the `engine.js` entry.
+- After changing the engine's `createReplicationStore` signature, rebuild **all three** consumers of
+  the `@dineug/erd-editor/engine.js` entry — this package, `intellij-webview`
+  (`src/services/replicationStore.worker.ts`) and `app`
+  (`src/services/indexeddb/modules/schema/service.ts`). Rebuilding only this one hides two breakages.
 
 ### Common Patterns
 

@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-08 | Updated: 2026-08-08 -->
+<!-- Generated: 2026-08-08 | Updated: 2026-08-15 -->
 
 # vscode-webview (`@dineug/erd-editor-vscode-webview`)
 
@@ -10,7 +10,9 @@ creates the `<erd-editor>` element, wires it to the extension host over `acquire
 `postMessage`, and spawns the replication-store worker that keeps the host's copy of the document up
 to date.
 
-Its build output is copied into the extension's `public/` directory and served as a webview asset.
+There is no copy step: webpack's `output.path` is `../vscode-extension/public` (with `clean: true`), so
+this build writes straight into the extension's webview assets — which is also what `project.json`
+declares as the Nx output. Building this package wipes that directory first.
 
 ### Wiring
 
@@ -54,9 +56,12 @@ Three participants, two `Bridge` instances:
   `setGetShikiServiceCallback`). Keep it out of the initial chunk; webview startup latency is visible.
 - **`mouseTracker: false`** — the shared store is used for host replication, not collaboration. Turning
   it on would broadcast cursor positions with nothing to receive them.
-- **Theme comes from the host**, via `webviewUpdateThemeCommand`; `appearance` defaults to `'dark'` and
-  may be `'auto'`, in which case the system preference decides. Don't read VSCode theme variables
-  directly from CSS — the extension resolves them and pushes `ThemeOptions`.
+- **Theme comes from the host**, via `webviewUpdateThemeCommand`; `appearance` defaults to `'dark'`.
+  `'auto'` is resolved locally by `getSystemTheme()`, which reads VSCode's own theme kind off
+  `document.body` (`data-vscode-theme-kind`, falling back to the `vscode-light` class) — not
+  `prefers-color-scheme`. A `MutationObserver` on those two `body` attributes re-applies the preset
+  while `appearance === 'auto'`. Everything else about the theme is resolved by the extension and
+  pushed as `ThemeOptions`; don't reach into VSCode's CSS variables for it.
 - This package is **build-only** (`build`, `build:analyzer`) — there is no dev server. Iterate by
   running the extension host.
 - `private: true`.
@@ -94,6 +99,6 @@ Three participants, two `Bridge` instances:
 
 ### Consumers
 
-`vuerd-vscode` — copies this bundle into its webview assets.
+`vuerd-vscode` — serves this bundle from its `public/` directory, which this package's build owns.
 
 <!-- MANUAL: -->

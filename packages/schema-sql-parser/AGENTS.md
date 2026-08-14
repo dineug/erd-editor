@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-08 | Updated: 2026-08-08 -->
+<!-- Generated: 2026-08-08 | Updated: 2026-08-15 -->
 
 # schema-sql-parser (`@dineug/schema-sql-parser`)
 
@@ -13,19 +13,21 @@ columns, keys, and indexes.
 "Permissive" is the design goal. Real-world dumps contain vendor extensions, comments, and syntax this
 parser does not model; it must skip past them and keep going rather than fail the whole import.
 
-**This is the only package in the workspace with a real test suite.**
-
 ## Key Files
 
-| File                          | Description                                                                              |
-| ----------------------------- | ---------------------------------------------------------------------------------------- |
-| `src/index.ts`                | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, and the statement types |
-| `src/index.spec.ts`           | The workspace's only Vitest suite                                                        |
-| `src/schema_sql_test_case.md` | Curated real-world DDL snippets that document expected parse behaviour                   |
-| `src/parser/tokenizer.ts`     | Lexer producing `Token[]` (strings, keywords, punctuation, comments)                     |
-| `src/parser/index.ts`         | Top-level loop: probes each statement matcher at the current `$pos` and dispatches       |
-| `src/parser/helper.ts`        | `isCreateTable` / `isCreateIndex` / `isAlterTableAdd*` lookahead matchers                |
-| `src/internal-types/index.ts` | `ValuesType` and other internal type helpers                                             |
+| File                          | Description                                                                                                                   |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `src/index.ts`                | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, and the statement types                                      |
+| `src/index.test.ts`           | Markdown-driven `test.each` over `schema_sql_test_case.md`, plus entry-surface assertions                                     |
+| `src/schema_sql_test_case.md` | 20 curated real-world DDL snippets, each paired with its expected `{ statements }` JSON                                       |
+| `src/parser/tokenizer.ts`     | Lexer producing `Token[]`; `TokenType` is `string` plus eight punctuation kinds — quoted/bracketed spans collapse to `string` |
+| `src/parser/index.ts`         | Top-level loop: probes each statement matcher at the current `$pos` and dispatches                                            |
+| `src/parser/helper.ts`        | Token/value predicates plus the `isCreateTable` / `isCreateIndex` / `isAlterTableAdd*` lookahead matchers and `isDataType`    |
+| `src/internal-types/index.ts` | `ValuesType`                                                                                                                  |
+| `vitest.config.ts`            | Vitest run config — node env, `src/**/*.test.ts`, v8 coverage with per-file 80% thresholds                                    |
+| `vite.config.ts`              | Library build — ES-only lib entry, `vite-plugin-dts`, `@rollup/plugin-typescript` (`noEmitOnError`)                           |
+| `tsconfig.build.json`         | Build/dts tsconfig; excludes `src/**/*.test.ts` so tests never reach `dist/`                                                  |
+| `README.md`                   | The per-vendor data-type support matrix, mirroring `src/parser/dataType/`                                                     |
 
 ## Subdirectories
 
@@ -33,6 +35,10 @@ parser does not model; it must skip past them and keep going rather than fail th
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/parser/statement/` | One parser per statement kind — `create.table`, `create.index`, `alter.table.add.primaryKey`, `alter.table.add.unique`, `alter.table.add.foreignKey` — plus `index.ts` holding the `Statement` union, `StatementType`, `SortType`, and `RefPos` |
 | `src/parser/dataType/`  | Per-vendor data-type keyword lists: `MySQL`, `MariaDB`, `PostgreSQL`, `MSSQL`, `Oracle`, `SQLite`                                                                                                                                               |
+
+Every non-test `src/**/*.ts` has a sibling `*.test.ts` in the same directory except
+`src/internal-types/index.ts` (16 test files against 17 sources) — that one exception is
+institutionalised in `vitest.config.ts` as `coverage.exclude: ['src/internal-types/**']`.
 
 ## For AI Agents
 
@@ -44,26 +50,56 @@ parser does not model; it must skip past them and keep going rather than fail th
   parser. Each parser must leave `$pos` immediately after the statement it consumed — off-by-one here
   causes infinite loops or silently swallowed statements.
 - Adding a statement kind means four edits: the parser file, the `Statement` union and `StatementType`
-  in `statement/index.ts`, a matcher in `parser/helper.ts`, and a branch in `parser/index.ts`.
-- Data-type lists are per vendor but the parser is dialect-agnostic at parse time — vendor lists are
-  used for classification, not for rejecting input.
+  in `statement/index.ts`, a matcher in `parser/helper.ts`, and a branch in `parser/index.ts` — plus
+  the sibling `*.test.ts` for each, or `test:coverage` fails on its per-file threshold.
+- Matchers are hoisted out of the loop in `parser/index.ts` (`const createTable = isCreateTable(tokens)`)
+  because they are curried over `tokens`; a new matcher follows the same shape.
+- Data-type lists are per vendor but the parser is dialect-agnostic at parse time: `helper.ts` merges
+  all six lists into one deduped uppercase `DataTypes` set that `isDataType` tests against. Vendor
+  files are for classification and documentation, never for rejecting input — adding a type to one
+  vendor widens the parser for every dialect.
 - `private: true`.
 
 ### Testing Requirements
 
-- **`pnpm --filter @dineug/schema-sql-parser test`** (Vitest, `vitest run`); `test:dev` for watch mode.
-  This is the only package `pnpm test` actually exercises — keep it green.
-- Add a case to `src/index.spec.ts` for every parser change. `src/schema_sql_test_case.md` is the
-  source of real-world snippets; pull new fixtures from there or from the dumps in the repo root
-  `data/` directory (`sakila.sql`, `GNUBOARD5.sql`, `Magento2-sales.sql`, `OKKY.sql`, `YOUNGCART5.sql`).
-- End-to-end check: import a `data/*.sql` dump through the editor's SQL import and confirm the
-  resulting tables/relationships.
+- **`pnpm --filter @dineug/schema-sql-parser test`** (`vitest run`) — 16 files / 416 tests. `test:dev`
+  watches; `test:coverage` runs `vitest run --coverage`. It is one of eight packages `pnpm test`
+  exercises — keep it green.
+- Coverage is a gate: `vitest.config.ts` sets v8 coverage with `perFile: true` and 80% on
+  lines/functions/branches/statements over `src/**/*.ts`, excluding only `*.test.ts`, `*.d.ts` and
+  `src/internal-types/**`.
+- What the suite covers: `tokenizer.test.ts` (every token kind, the four quoting styles, whitespace
+  and break-character splitting), `helper.test.ts` (the
+  largest file — every token/value predicate and every `is*` lookahead matcher, including the
+  PostgreSQL `ALTER TABLE ONLY` and MSSQL bracket variants), one file per statement parser
+  (`create.table.test.ts` splits into table name / column options / table-level constraints /
+  truncated input), one file per vendor data-type list (each asserts the list verbatim and its sort
+  order), `parser/index.test.ts` for the dispatch loop and skip-and-continue behaviour, and
+  `index.test.ts` for the public entry surface.
+- **`src/schema_sql_test_case.md` is the end-to-end fixture.** `index.test.ts` reads it with
+  `fs.readFileSync`, splits on `### ` headings, and pulls the fenced `sql` block and the fenced
+  `json` block that follows it out of each section into a `test.each` case. Adding a real-world
+  snippet means adding a section there, not a new spec file — and the JSON block must be the exact
+  `{ statements }` output, since the test asserts deep equality against it.
+- The repo-root `data/` dumps (`sakila.sql`, `GNUBOARD5.sql`, `Magento2-sales.sql`, `OKKY.sql`,
+  `YOUNGCART5.sql`) are **not** referenced by any test — they are the manual end-to-end loop: import a
+  dump through the editor's SQL import and confirm the resulting tables/relationships. They are also
+  the source to mine when writing a new `schema_sql_test_case.md` section.
+- A change is not verified until `pnpm build` passes — `@rollup/plugin-typescript` runs with
+  `noEmitOnError: true`.
 
 ### Common Patterns
 
 - Tokenize once, then parse by lookahead — no backtracking.
+- **There is no keyword token and no comment token.** Keywords are plain `string` tokens matched by
+  value (`createValueEqual('CREATE')`, case-insensitive), and the tokenizer has no `--` / `/* */`
+  handling at all — SQL comments arrive as ordinary tokens that the statement matchers must fail to
+  match and the top-level loop then skips. `"x"`, `'x'`, `` `x` `` and MSSQL's `[x]` all collapse to a
+  single `string` token with the delimiters stripped.
 - Matchers are curried: `isCreateTable(tokens)` returns a `(pos) => boolean` predicate.
 - `StatementType` and `SortType` are `as const` objects paired with a same-named type via `ValuesType`.
+- Statement objects are fully populated — empty strings and empty arrays rather than optional fields —
+  so consumers never branch on `undefined`.
 
 ## Dependencies
 
@@ -73,7 +109,8 @@ None — leaf package.
 
 ### External
 
-Build/test only: `vite`, `vite-plugin-dts`, `@rollup/plugin-typescript`, `vitest`, `@types/node`, `tslib`.
+Build/test only: `vite` 8, `vite-plugin-dts`, `@rollup/plugin-typescript`, `vitest` 4,
+`@vitest/coverage-v8`, `typescript` 5.8.2, `@types/node`, `tslib`. No runtime dependencies.
 
 ### Consumers
 

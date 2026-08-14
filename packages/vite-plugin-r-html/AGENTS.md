@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-08 | Updated: 2026-08-08 -->
+<!-- Generated: 2026-08-08 | Updated: 2026-08-15 -->
 
 # vite-plugin-r-html (`@dineug/vite-plugin-r-html`)
 
@@ -16,11 +16,11 @@ Used only during development: `packages/erd-editor/vite.config.ts` enables it wh
 
 ## Key Files
 
-| File             | Description                                                                            |
-| ---------------- | -------------------------------------------------------------------------------------- |
-| `src/index.ts`   | The entire plugin — `rHtml(options)` returning a Vite `Plugin` with a `transform` hook |
-| `vite.config.mts` | CJS/ESM lib build with `vite-plugin-dts`                                               |
-| `tsconfig.json`  | Extends the root app config                                                            |
+| File              | Description                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `src/index.ts`    | The entire plugin — `rHtml(options)` returning a Vite `Plugin` with a `transform` hook |
+| `vite.config.mts` | CJS-only lib build (`formats: ['cjs']`) with `vite-plugin-dts`                         |
+| `tsconfig.json`   | Extends the root app config                                                            |
 
 ### Options
 
@@ -42,8 +42,10 @@ Used only during development: `packages/erd-editor/vite.config.ts` enables it wh
 - The injected snippet builds `import.meta.hot` from string fragments
   (`` `${'import'}.${'meta'}.${'hot'}` ``) on purpose — writing it literally would let Vite's own
   scanner rewrite it. Keep the indirection.
-- This is the only package that is CommonJS-shaped (no `"type": "module"`), because it runs inside
-  Vite's Node process.
+- This is the only _library_ package that is CommonJS-shaped (no `"type": "module"`, like the
+  webpack-built app packages), because it runs inside Vite's Node process. That is also why its own
+  build config is `vite.config.mts` — the explicit ESM extension is what lets Vite load it from a
+  CJS package.
 - `private: true`; `@babel/core` and `@rollup/pluginutils` are real runtime `dependencies` here, not
   dev deps.
 
