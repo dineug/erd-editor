@@ -46,4 +46,8 @@ jobs:
         with:
           name: playwright-report
           path: packages/erd-editor/e2e/.report
+          # The action skips hidden paths by default, and that includes anything
+          # inside a folder beginning with `.` — so the whole report is filtered
+          # out and the upload reports "No files were found" on a green run.
+          include-hidden-files: true
           retention-days: 7
