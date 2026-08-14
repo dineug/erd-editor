@@ -1,4 +1,5 @@
 import { AnyAction, FC, html, observable } from '@dineug/r-html';
+import { config as rxjsConfig } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -56,10 +57,10 @@ vi.mock('@easylogic/colorpicker', () => ({
 let mounted: Mounted | null = null;
 
 /**
- * `Erd` subscribes to the global `drag$` on every canvas mousedown but never
- * unsubscribes it on unmount - only a global mouseup/touchend completes it.
- * Ending the drag before unmounting keeps one test from leaking a live
- * subscription (and the shared movement bookkeeping) into the next one.
+ * `Erd` subscribes to the global `drag$` on every canvas mousedown, and only a
+ * global mouseup/touchend completes that subscription. Ending the drag before
+ * unmounting keeps one test from leaking a live subscription (and the shared
+ * movement bookkeeping) into the next one.
  */
 afterEach(() => {
   window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
@@ -514,6 +515,34 @@ describe('Erd - drag select and grab move', () => {
     expect(root.scrollTop).toBe(0);
     expect(root.scrollLeft).toBe(0);
     dispatchMouse(window, 'mouseup');
+  });
+
+  it('leaves the scroll alone when a drag move arrives after the canvas ref is gone', async () => {
+    const errors: unknown[] = [];
+    const onUnhandledError = rxjsConfig.onUnhandledError;
+    rxjsConfig.onUnhandledError = error => errors.push(error);
+
+    try {
+      const { root } = await setup();
+      root.scrollTop = 25;
+      root.scrollLeft = 35;
+
+      dispatchMouse(root, 'mousedown', { clientX: 100, clientY: 100 });
+      mounted?.unmount();
+      mounted = null;
+
+      dispatchMouse(window, 'mousemove', { clientX: 90, clientY: 90 });
+      await flush();
+      // rxjs reports subscriber errors on a macrotask, so let one elapse.
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(errors).toEqual([]);
+      expect(root.scrollTop).toBe(25);
+      expect(root.scrollLeft).toBe(35);
+    } finally {
+      rxjsConfig.onUnhandledError = onUnhandledError;
+      dispatchMouse(window, 'mouseup');
+    }
   });
 
   it('does not drag select while an overlay is open', async () => {

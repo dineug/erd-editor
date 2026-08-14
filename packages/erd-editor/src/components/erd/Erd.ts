@@ -85,11 +85,16 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
 
   const resetScroll = () => {
-    if (root.value.scrollTop === 0 && root.value.scrollLeft === 0) {
+    // Defensive: the drag subscription outlives the render part, so `root` can
+    // already be cleared by `ref`'s destroy when a move arrives.
+    const $root = root.value;
+    if (!$root) return;
+
+    if ($root.scrollTop === 0 && $root.scrollLeft === 0) {
       return;
     }
-    root.value.scrollTop = 0;
-    root.value.scrollLeft = 0;
+    $root.scrollTop = 0;
+    $root.scrollLeft = 0;
   };
 
   const getShowOverLayout = () => {
