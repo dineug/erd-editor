@@ -4,14 +4,24 @@ import { DataTypeHint, PrimitiveType } from '@/constants/sql/dataType';
 import { MySQLTypes } from '@/constants/sql/dataType/MySQL';
 
 /**
- * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: the first hint
- * whose lowercased name is a prefix of the lowercased data type wins.
+ * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: among the hints
+ * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
-  return MySQLTypes.find(
-    hint =>
-      dataType.toLocaleLowerCase().indexOf(hint.name.toLocaleLowerCase()) === 0
-  )?.primitiveType;
+  const value = dataType.toLocaleLowerCase();
+  let matched: DataTypeHint | undefined;
+
+  for (const hint of MySQLTypes) {
+    const name = hint.name.toLocaleLowerCase();
+    if (
+      value.indexOf(name) === 0 &&
+      (!matched || name.length > matched.name.length)
+    ) {
+      matched = hint;
+    }
+  }
+
+  return matched?.primitiveType;
 }
 
 function namesOf(primitiveType: PrimitiveType): string[] {
@@ -146,13 +156,14 @@ describe('MySQLTypes', () => {
     expect(resolvePrimitiveType('nope')).toBeUndefined();
   });
 
-  it('shadows DATETIME and TIMESTAMP behind their shorter prefixes', () => {
-    // Known quirk: `DATE` and `TIME` come first, so prefix matching never
-    // reaches the dateTime entries below them.
-    expect(resolvePrimitiveType('DATETIME')).toBe('date');
-    expect(resolvePrimitiveType('TIMESTAMP')).toBe('time');
+  it('resolves DATETIME and TIMESTAMP to dateTime despite their shorter prefixes', () => {
+    // `DATE` and `TIME` come first, but the longest matching hint wins.
+    expect(resolvePrimitiveType('DATETIME')).toBe('dateTime');
+    expect(resolvePrimitiveType('TIMESTAMP')).toBe('dateTime');
+    expect(resolvePrimitiveType('DATE')).toBe('date');
+    expect(resolvePrimitiveType('TIME')).toBe('time');
 
-    const shadowed = MySQLTypes.filter((hint, index) =>
+    const extendingAnEarlierName = MySQLTypes.filter((hint, index) =>
       MySQLTypes.slice(0, index).some(
         earlier =>
           hint.name.toLowerCase().indexOf(earlier.name.toLowerCase()) === 0 &&
@@ -160,9 +171,13 @@ describe('MySQLTypes', () => {
       )
     );
 
-    expect(shadowed).toEqual<DataTypeHint[]>([
+    expect(extendingAnEarlierName).toEqual<DataTypeHint[]>([
       { name: 'DATETIME', primitiveType: 'dateTime' },
       { name: 'TIMESTAMP', primitiveType: 'dateTime' },
     ]);
+
+    for (const hint of extendingAnEarlierName) {
+      expect(resolvePrimitiveType(hint.name)).toBe(hint.primitiveType);
+    }
   });
 });

@@ -4,14 +4,24 @@ import { DataTypeHint, PrimitiveType } from '@/constants/sql/dataType';
 import { OracleTypes } from '@/constants/sql/dataType/Oracle';
 
 /**
- * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: the first hint
- * whose lowercased name is a prefix of the lowercased data type wins.
+ * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: among the hints
+ * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
-  return OracleTypes.find(
-    hint =>
-      dataType.toLocaleLowerCase().indexOf(hint.name.toLocaleLowerCase()) === 0
-  )?.primitiveType;
+  const value = dataType.toLocaleLowerCase();
+  let matched: DataTypeHint | undefined;
+
+  for (const hint of OracleTypes) {
+    const name = hint.name.toLocaleLowerCase();
+    if (
+      value.indexOf(name) === 0 &&
+      (!matched || name.length > matched.name.length)
+    ) {
+      matched = hint;
+    }
+  }
+
+  return matched?.primitiveType;
 }
 
 function namesOf(primitiveType: PrimitiveType): string[] {
@@ -134,10 +144,11 @@ describe('OracleTypes', () => {
     expect(resolvePrimitiveType('')).toBeUndefined();
   });
 
-  it('shadows DATETIME behind the shorter DATE prefix', () => {
-    expect(resolvePrimitiveType('DATETIME')).toBe('date');
+  it('resolves DATETIME to dateTime despite the shorter DATE prefix', () => {
+    expect(resolvePrimitiveType('DATETIME')).toBe('dateTime');
+    expect(resolvePrimitiveType('DATE')).toBe('date');
 
-    const shadowed = OracleTypes.filter((hint, index) =>
+    const extendingAnEarlierName = OracleTypes.filter((hint, index) =>
       OracleTypes.slice(0, index).some(
         earlier =>
           hint.name.toLowerCase().indexOf(earlier.name.toLowerCase()) === 0 &&
@@ -145,8 +156,12 @@ describe('OracleTypes', () => {
       )
     );
 
-    expect(shadowed).toEqual<DataTypeHint[]>([
+    expect(extendingAnEarlierName).toEqual<DataTypeHint[]>([
       { name: 'DATETIME', primitiveType: 'dateTime' },
     ]);
+
+    for (const hint of extendingAnEarlierName) {
+      expect(resolvePrimitiveType(hint.name)).toBe(hint.primitiveType);
+    }
   });
 });

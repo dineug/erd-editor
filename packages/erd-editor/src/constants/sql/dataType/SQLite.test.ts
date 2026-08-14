@@ -1,17 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
-import { PrimitiveType } from '@/constants/sql/dataType';
+import { DataTypeHint, PrimitiveType } from '@/constants/sql/dataType';
 import { SQLiteTypes } from '@/constants/sql/dataType/SQLite';
 
 /**
- * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: the first hint
- * whose lowercased name is a prefix of the lowercased data type wins.
+ * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: among the hints
+ * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
-  return SQLiteTypes.find(
-    hint =>
-      dataType.toLocaleLowerCase().indexOf(hint.name.toLocaleLowerCase()) === 0
-  )?.primitiveType;
+  const value = dataType.toLocaleLowerCase();
+  let matched: DataTypeHint | undefined;
+
+  for (const hint of SQLiteTypes) {
+    const name = hint.name.toLocaleLowerCase();
+    if (
+      value.indexOf(name) === 0 &&
+      (!matched || name.length > matched.name.length)
+    ) {
+      matched = hint;
+    }
+  }
+
+  return matched?.primitiveType;
 }
 
 describe('SQLiteTypes', () => {

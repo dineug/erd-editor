@@ -4,14 +4,24 @@ import { DataTypeHint, PrimitiveType } from '@/constants/sql/dataType';
 import { MSSQLTypes } from '@/constants/sql/dataType/MSSQL';
 
 /**
- * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: the first hint
- * whose lowercased name is a prefix of the lowercased data type wins.
+ * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: among the hints
+ * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
-  return MSSQLTypes.find(
-    hint =>
-      dataType.toLocaleLowerCase().indexOf(hint.name.toLocaleLowerCase()) === 0
-  )?.primitiveType;
+  const value = dataType.toLocaleLowerCase();
+  let matched: DataTypeHint | undefined;
+
+  for (const hint of MSSQLTypes) {
+    const name = hint.name.toLocaleLowerCase();
+    if (
+      value.indexOf(name) === 0 &&
+      (!matched || name.length > matched.name.length)
+    ) {
+      matched = hint;
+    }
+  }
+
+  return matched?.primitiveType;
 }
 
 function namesOf(primitiveType: PrimitiveType): string[] {
@@ -123,16 +133,16 @@ describe('MSSQLTypes', () => {
     expect(resolvePrimitiveType('')).toBeUndefined();
   });
 
-  it('shadows every datetime variant behind the shorter date prefix', () => {
-    // Known quirk: `date` comes first, so the datetime hints below it are
-    // never reached by prefix matching.
-    expect(resolvePrimitiveType('datetime')).toBe('date');
-    expect(resolvePrimitiveType('datetime2(7)')).toBe('date');
-    expect(resolvePrimitiveType('datetimeoffset')).toBe('date');
-    // `smalldatetime` does not start with `date`, so it still resolves.
+  it('resolves every datetime variant to dateTime despite the shorter date prefix', () => {
+    // `date` comes first, but the longest matching hint wins.
+    expect(resolvePrimitiveType('datetime')).toBe('dateTime');
+    expect(resolvePrimitiveType('datetime2(7)')).toBe('dateTime');
+    expect(resolvePrimitiveType('datetimeoffset')).toBe('dateTime');
     expect(resolvePrimitiveType('smalldatetime')).toBe('dateTime');
+    // `date` itself keeps its own primitive type.
+    expect(resolvePrimitiveType('date')).toBe('date');
 
-    const shadowed = MSSQLTypes.filter((hint, index) =>
+    const extendingAnEarlierName = MSSQLTypes.filter((hint, index) =>
       MSSQLTypes.slice(0, index).some(
         earlier =>
           hint.name.toLowerCase().indexOf(earlier.name.toLowerCase()) === 0 &&
@@ -140,10 +150,14 @@ describe('MSSQLTypes', () => {
       )
     );
 
-    expect(shadowed).toEqual<DataTypeHint[]>([
+    expect(extendingAnEarlierName).toEqual<DataTypeHint[]>([
       { name: 'datetime', primitiveType: 'dateTime' },
       { name: 'datetime2', primitiveType: 'dateTime' },
       { name: 'datetimeoffset', primitiveType: 'dateTime' },
     ]);
+
+    for (const hint of extendingAnEarlierName) {
+      expect(resolvePrimitiveType(hint.name)).toBe(hint.primitiveType);
+    }
   });
 });

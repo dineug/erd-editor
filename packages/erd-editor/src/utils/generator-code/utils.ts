@@ -39,17 +39,22 @@ export function getPrimitiveType(
   dataType: string,
   database: number
 ): PrimitiveType {
-  const dataTypeHints = getDataTypeHints(database);
-  for (const dataTypeHint of dataTypeHints) {
+  const value = dataType.toLocaleLowerCase();
+  let matched: DataTypeHint | undefined;
+
+  // The hint lists are alphabetical, so a shorter name (DATE, int, time) can
+  // prefix a longer one (DATETIME, int8, timestamp). Pick the longest match.
+  for (const dataTypeHint of getDataTypeHints(database)) {
+    const name = dataTypeHint.name.toLocaleLowerCase();
     if (
-      dataType
-        .toLocaleLowerCase()
-        .indexOf(dataTypeHint.name.toLocaleLowerCase()) === 0
+      value.indexOf(name) === 0 &&
+      (!matched || name.length > matched.name.length)
     ) {
-      return dataTypeHint.primitiveType;
+      matched = dataTypeHint;
     }
   }
-  return 'string';
+
+  return matched?.primitiveType ?? 'string';
 }
 
 export function getDataTypeHints(database: number): DataTypeHint[] {

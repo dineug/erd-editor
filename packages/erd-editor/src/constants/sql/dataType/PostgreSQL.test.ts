@@ -4,14 +4,24 @@ import { DataTypeHint, PrimitiveType } from '@/constants/sql/dataType';
 import { PostgreSQLTypes } from '@/constants/sql/dataType/PostgreSQL';
 
 /**
- * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: the first hint
- * whose lowercased name is a prefix of the lowercased data type wins.
+ * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: among the hints
+ * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
-  return PostgreSQLTypes.find(
-    hint =>
-      dataType.toLocaleLowerCase().indexOf(hint.name.toLocaleLowerCase()) === 0
-  )?.primitiveType;
+  const value = dataType.toLocaleLowerCase();
+  let matched: DataTypeHint | undefined;
+
+  for (const hint of PostgreSQLTypes) {
+    const name = hint.name.toLocaleLowerCase();
+    if (
+      value.indexOf(name) === 0 &&
+      (!matched || name.length > matched.name.length)
+    ) {
+      matched = hint;
+    }
+  }
+
+  return matched?.primitiveType;
 }
 
 function namesOf(primitiveType: PrimitiveType): string[] {
@@ -188,17 +198,22 @@ describe('PostgreSQLTypes', () => {
     expect(resolvePrimitiveType('')).toBeUndefined();
   });
 
-  it('shadows int8, interval, serial8 and the timestamps behind shorter prefixes', () => {
-    // Known quirk: `int`, `serial` and `time` are listed before their longer
-    // siblings, so prefix matching resolves these to the wrong primitive.
-    expect(resolvePrimitiveType('int8')).toBe('int');
-    expect(resolvePrimitiveType('interval')).toBe('int');
-    expect(resolvePrimitiveType('serial8')).toBe('int');
-    expect(resolvePrimitiveType('timestamp')).toBe('time');
-    expect(resolvePrimitiveType('timestamptz')).toBe('time');
-    expect(resolvePrimitiveType('timestamp with time zone')).toBe('time');
+  it('resolves int8, interval, serial8 and the timestamps past their shorter prefixes', () => {
+    // `int`, `serial` and `time` are listed before their longer siblings, but
+    // the longest matching hint wins.
+    expect(resolvePrimitiveType('int8')).toBe('long');
+    expect(resolvePrimitiveType('interval')).toBe('time');
+    expect(resolvePrimitiveType('serial8')).toBe('long');
+    expect(resolvePrimitiveType('timestamp')).toBe('dateTime');
+    expect(resolvePrimitiveType('timestamptz')).toBe('dateTime');
+    expect(resolvePrimitiveType('timestamp with time zone')).toBe('dateTime');
+    // The shorter siblings keep their own primitive types.
+    expect(resolvePrimitiveType('int')).toBe('int');
+    expect(resolvePrimitiveType('serial')).toBe('int');
+    expect(resolvePrimitiveType('time')).toBe('time');
+    expect(resolvePrimitiveType('timetz')).toBe('time');
 
-    const shadowed = PostgreSQLTypes.filter((hint, index) =>
+    const extendingAnEarlierName = PostgreSQLTypes.filter((hint, index) =>
       PostgreSQLTypes.slice(0, index).some(
         earlier =>
           hint.name.toLowerCase().indexOf(earlier.name.toLowerCase()) === 0 &&
@@ -206,7 +221,7 @@ describe('PostgreSQLTypes', () => {
       )
     );
 
-    expect(shadowed).toEqual<DataTypeHint[]>([
+    expect(extendingAnEarlierName).toEqual<DataTypeHint[]>([
       { name: 'int8', primitiveType: 'long' },
       { name: 'interval', primitiveType: 'time' },
       { name: 'serial8', primitiveType: 'long' },
@@ -214,5 +229,9 @@ describe('PostgreSQLTypes', () => {
       { name: 'timestamp', primitiveType: 'dateTime' },
       { name: 'timestamptz', primitiveType: 'dateTime' },
     ]);
+
+    for (const hint of extendingAnEarlierName) {
+      expect(resolvePrimitiveType(hint.name)).toBe(hint.primitiveType);
+    }
   });
 });

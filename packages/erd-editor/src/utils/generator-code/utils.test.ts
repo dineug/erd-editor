@@ -70,11 +70,40 @@ describe('generator-code/utils', () => {
       expect(getPrimitiveType('INT', 0)).toBe('string');
     });
 
-    it('resolves to the first prefix match in list order, so DATETIME reports date and TIMESTAMP reports time', () => {
+    it('resolves to the longest prefix match, so DATETIME and TIMESTAMP report dateTime', () => {
       // `DATE` precedes `DATETIME` and `TIME` precedes `TIMESTAMP` in
-      // MySQLTypes, and the lookup returns the first prefix hit.
-      expect(getPrimitiveType('DATETIME', Database.MySQL)).toBe('date');
-      expect(getPrimitiveType('TIMESTAMP', Database.MySQL)).toBe('time');
+      // MySQLTypes, but the longer hint has to win over the shorter prefix.
+      expect(getPrimitiveType('DATETIME', Database.MySQL)).toBe('dateTime');
+      expect(getPrimitiveType('TIMESTAMP', Database.MySQL)).toBe('dateTime');
+      expect(getPrimitiveType('datetime(6)', Database.MariaDB)).toBe(
+        'dateTime'
+      );
+      expect(getPrimitiveType('TIMESTAMP', Database.MariaDB)).toBe('dateTime');
+      expect(getPrimitiveType('datetime2(7)', Database.MSSQL)).toBe('dateTime');
+      expect(getPrimitiveType('datetimeoffset', Database.MSSQL)).toBe(
+        'dateTime'
+      );
+      expect(getPrimitiveType('DATETIME', Database.Oracle)).toBe('dateTime');
+      expect(getPrimitiveType('int8', Database.PostgreSQL)).toBe('long');
+      expect(getPrimitiveType('serial8', Database.PostgreSQL)).toBe('long');
+      expect(getPrimitiveType('interval', Database.PostgreSQL)).toBe('time');
+      expect(getPrimitiveType('timestamptz', Database.PostgreSQL)).toBe(
+        'dateTime'
+      );
+      expect(
+        getPrimitiveType('timestamp with time zone', Database.PostgreSQL)
+      ).toBe('dateTime');
+    });
+
+    it('keeps resolving the shorter hint when no longer hint matches', () => {
+      expect(getPrimitiveType('DATE', Database.MySQL)).toBe('date');
+      expect(getPrimitiveType('TIME', Database.MySQL)).toBe('time');
+      expect(getPrimitiveType('INT(11)', Database.PostgreSQL)).toBe('int');
+      expect(getPrimitiveType('timetz', Database.PostgreSQL)).toBe('time');
+      expect(getPrimitiveType('smalldatetime', Database.MSSQL)).toBe(
+        'dateTime'
+      );
+      expect(getPrimitiveType('LONG RAW', Database.Oracle)).toBe('lob');
     });
   });
 

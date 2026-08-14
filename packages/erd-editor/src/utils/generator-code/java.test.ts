@@ -160,6 +160,96 @@ describe('generator-code/java', () => {
       expect(buffer).toContain('  private LocalDateTime createdAt;');
     });
 
+    it('maps the MySQL DATETIME and TIMESTAMP hints onto LocalDateTime', () => {
+      const columns = [
+        createColumn({
+          id: 'c1',
+          tableId: 't1',
+          name: 'created_at',
+          dataType: 'DATETIME',
+        }),
+        createColumn({
+          id: 'c2',
+          tableId: 't1',
+          name: 'updated_at',
+          dataType: 'TIMESTAMP',
+        }),
+        createColumn({
+          id: 'c3',
+          tableId: 't1',
+          name: 'birth_day',
+          dataType: 'DATE',
+        }),
+      ];
+      const table = createTable({
+        id: 't1',
+        name: 'log',
+        columnIds: columns.map(column => column.id),
+      });
+      const state = createState({
+        tables: [table],
+        columns,
+        settings: { database: Database.MySQL },
+      });
+      const buffer: string[] = [];
+
+      formatTable(state, { buffer, table });
+
+      expect(buffer).toEqual([
+        '@Data',
+        'public class Log {',
+        '  private LocalDateTime createdAt;',
+        '  private LocalDateTime updatedAt;',
+        '  private LocalDate birthDay;',
+        '}',
+      ]);
+    });
+
+    it('maps the PostgreSQL int8 and timestamptz hints past their shorter prefixes', () => {
+      const columns = [
+        createColumn({
+          id: 'c1',
+          tableId: 't1',
+          name: 'id',
+          dataType: 'int8',
+        }),
+        createColumn({
+          id: 'c2',
+          tableId: 't1',
+          name: 'created_at',
+          dataType: 'timestamptz',
+        }),
+        createColumn({
+          id: 'c3',
+          tableId: 't1',
+          name: 'duration',
+          dataType: 'interval',
+        }),
+      ];
+      const table = createTable({
+        id: 't1',
+        name: 'event',
+        columnIds: columns.map(column => column.id),
+      });
+      const state = createState({
+        tables: [table],
+        columns,
+        settings: { database: Database.PostgreSQL },
+      });
+      const buffer: string[] = [];
+
+      formatTable(state, { buffer, table });
+
+      expect(buffer).toEqual([
+        '@Data',
+        'public class Event {',
+        '  private Long id;',
+        '  private LocalDateTime createdAt;',
+        '  private LocalTime duration;',
+        '}',
+      ]);
+    });
+
     it('ignores comments that are only whitespace', () => {
       const column = createColumn({
         id: 'c1',
