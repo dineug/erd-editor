@@ -11,7 +11,6 @@ import {
   createRef,
   createStore,
   css,
-  cssUnwrap,
   defineCustomElement,
   hmr,
   html,
@@ -24,9 +23,10 @@ import {
   queryShadowSelector,
   queryShadowSelectorAll,
   ref,
-  removeCSSHost,
   render,
   repeat,
+  setCSSDiagnostics,
+  setGlobalStyleOrder,
   svg,
   useContext,
   useProvider,
@@ -62,7 +62,6 @@ describe('public surface', () => {
       createRef,
       createStore,
       css,
-      cssUnwrap,
       defineCustomElement,
       hmr,
       html,
@@ -75,9 +74,10 @@ describe('public surface', () => {
       queryShadowSelector,
       queryShadowSelectorAll,
       ref,
-      removeCSSHost,
       render,
       repeat,
+      setCSSDiagnostics,
+      setGlobalStyleOrder,
       svg,
       useContext,
       useProvider,
@@ -87,6 +87,10 @@ describe('public surface', () => {
     for (const [name, value] of Object.entries(api)) {
       expect(typeof value, name).toBe('function');
     }
+  });
+
+  it('hangs the global escape hatch off the css tag itself', () => {
+    expect(typeof css.global).toBe('function');
   });
 });
 

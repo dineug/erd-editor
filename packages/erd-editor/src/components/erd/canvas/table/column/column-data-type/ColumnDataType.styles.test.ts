@@ -94,7 +94,9 @@ describe('ColumnDataType.styles', () => {
   });
 
   it('reveals the Tab kbd badge only on the selected row', () => {
-    expect(ruleTextOf(`.${styles.hintItem} > .kbd`)).toContain(
+    // The compiler emits child combinators unspaced (`._x>.kbd`), which is what
+    // `adoptedStyleSheets` echoes back.
+    expect(ruleTextOf(`.${styles.hintItem}>.kbd`)).toContain(
       'visibility: hidden'
     );
     expect(ruleTextOf(`.${styles.hintItem}.selected .kbd`)).toContain(
@@ -103,7 +105,7 @@ describe('ColumnDataType.styles', () => {
   });
 
   it('pushes the kbd badge to the end of the row', () => {
-    const text = ruleTextOf(`.${styles.hintItem} > .kbd`);
+    const text = ruleTextOf(`.${styles.hintItem}>.kbd`);
 
     expect(text).toContain('margin-left: auto');
     expect(text).toContain('padding-left: 6px');

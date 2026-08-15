@@ -74,11 +74,14 @@ describe('Switch.styles', () => {
     });
 
     it('drives the on/off transition from the data-checked attribute', () => {
-      const on = ruleOf(String(switchButton), '[data-checked=true]::before');
-      const off = ruleOf(String(switchButton), '[data-checked=false]::before');
+      const on = ruleOf(String(switchButton), "[data-checked='true']::before");
+      const off = ruleOf(
+        String(switchButton),
+        "[data-checked='false']::before"
+      );
 
-      expect(on).toContain('transition-duration: 0.16s, 0.14s, 0.14s, 0.14s');
-      expect(off).toContain('transition-duration: 0.12s, 0.14s, 0.14s, 0.14s');
+      expect(on).toContain('transition-duration: 0.16s,0.14s,0.14s,0.14s');
+      expect(off).toContain('transition-duration: 0.12s,0.14s,0.14s,0.14s');
       expect(off).toContain('background-position-x: 100%');
     });
   });
@@ -105,8 +108,10 @@ describe('Switch.styles', () => {
         expect(ruleOf(identifier, '::before')).toContain(
           `background-size: calc(${width}px * 2 + ${height}px) 100%`
         );
-        expect(ruleOf(identifier, ' > span')).toContain(`width: ${thumb}px`);
-        expect(ruleOf(identifier, ' > span[data-checked]')).toContain(
+        // The compiler emits child combinators unspaced (`._x>span`), which is what
+        // `adoptedStyleSheets` echoes back.
+        expect(ruleOf(identifier, '>span')).toContain(`width: ${thumb}px`);
+        expect(ruleOf(identifier, '>span[data-checked]')).toContain(
           `translateX(calc(${width}px - ${thumb}px - 1px))`
         );
       }

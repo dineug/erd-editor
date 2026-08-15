@@ -19,6 +19,11 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install
       - run: pnpm test
+      # `pnpm test` does not enforce coverage. r-html's `vitest.config.ts` sets
+      # `perFile: true` at 80% on all four metrics, and the CSS compiler under
+      # `src/css/` is reached from `css``` through one narrow seam — a whole
+      # rule class can stop being exercised without a single test going red.
+      - run: pnpm --filter @dineug/r-html test:coverage
       - run: pnpm build
 
   e2e:
@@ -49,6 +54,47 @@ jobs:
           # The action skips hidden paths by default, and that includes anything
           # inside a folder beginning with `.` — so the whole report is filtered
           # out and the upload reports "No files were found" on a green run.
+          include-hidden-files: true
+          retention-days: 7
+
+  # Its own job rather than a few extra steps on `e2e`, for the same reason
+  # `e2e` is not part of `ci`: it needs a browser download. Keeping it separate
+  # also keeps it fast — unlike the erd-editor suite this one needs no `dist/`
+  # at all (the Vite dev server serves r-html's own `src/` through the `@`
+  # alias), so folding it in would park a build-free suite behind
+  # `nx build @dineug/erd-editor`.
+  #
+  # It earns a CI slot because `src/template/vCSSStyleSheet.ts` is built on two
+  # facts about a real engine that no unit test can see: `adoptedStyleSheets` is
+  # mutable in place, and a permuted sheet list is only re-resolved if something
+  # dirties a rule set the affected elements match. happy-dom has no style engine
+  # and will keep agreeing with us whatever Chromium does.
+  r-html-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install
+      - name: Install Playwright browsers
+        run: pnpm --filter @dineug/r-html exec playwright install --with-deps chromium
+      # `e2e/` is outside `tsconfig.build.json`'s program, so nothing else ever
+      # typechecks these files.
+      - run: pnpm --filter @dineug/r-html e2e:typecheck
+      - run: pnpm exec nx run @dineug/r-html:e2e
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: r-html-playwright-report
+          path: packages/r-html/e2e/.report
+          # Same trap as the erd-editor report: the action skips anything under a
+          # dot-prefixed folder unless told otherwise, and reports "No files were
+          # found" on a green run.
           include-hidden-files: true
           retention-days: 7
 

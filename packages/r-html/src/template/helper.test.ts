@@ -5,7 +5,6 @@ import { TemplateLiteralsType } from '@/template';
 import { css } from '@/template/css';
 import {
   createMarker,
-  generateClassSelectorName,
   getAttrName,
   getAttrType,
   getMarkers,
@@ -241,20 +240,6 @@ describe('template/helper', () => {
 
     it('parses multi digit indexes', () => {
       expect(getMarkers(createMarker(123))).toEqual([[createMarker(123), 123]]);
-    });
-  });
-
-  describe('generateClassSelectorName', () => {
-    it('generates an underscore prefixed name of the requested size', () => {
-      const name = generateClassSelectorName();
-      expect(name).toHaveLength(22);
-      expect(name).toMatch(/^_[0-9a-z_-]{21}$/);
-      expect(generateClassSelectorName(5)).toMatch(/^_[0-9a-z_-]{5}$/);
-      expect(generateClassSelectorName(0)).toBe('_');
-    });
-
-    it('generates different names on each call', () => {
-      expect(generateClassSelectorName()).not.toBe(generateClassSelectorName());
     });
   });
 });

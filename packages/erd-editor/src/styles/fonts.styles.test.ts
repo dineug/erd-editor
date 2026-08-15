@@ -1,17 +1,24 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  adoptedRules,
+  adoptedSheets,
+  SCOPE_CLASS,
+} from '@/__test-utils__/adoptedCss';
+import {
   CodeFontFamily,
-  createFontsStyle,
+  fontsStyle,
   TextFontFamily,
 } from '@/styles/fonts.styles';
 
-function hostRule(style: HTMLStyleElement) {
-  document.head.append(style);
-  const rules = Array.from(style.sheet?.cssRules ?? []) as CSSStyleRule[];
-  style.remove();
-  return rules;
-}
+/** The family list a stack declares, whatever the whitespace around its commas. */
+const families = (stack: string) => stack.split(',').map(part => part.trim());
+
+let rules: CSSStyleRule[] = [];
+
+beforeAll(() => {
+  rules = adoptedRules();
+});
 
 describe('fonts.styles', () => {
   describe('font family constants', () => {
@@ -39,51 +46,53 @@ describe('fonts.styles', () => {
     });
   });
 
-  describe('createFontsStyle', () => {
-    it('creates a detached <style> element', () => {
-      const style = createFontsStyle();
-
-      expect(style).toBeInstanceOf(HTMLStyleElement);
-      expect(style.tagName).toBe('STYLE');
-      expect(style.parentNode).toBeNull();
+  describe('fontsStyle', () => {
+    it('is a css.global literal, adopted rather than appended as a <style>', () => {
+      expect(fontsStyle.template.node.mode).toBe('global');
+      expect(document.querySelector('style')).toBeNull();
     });
 
-    it('returns a new element on every call so multiple hosts can adopt it', () => {
-      const a = createFontsStyle();
-      const b = createFontsStyle();
+    it('declares the font custom properties on an unscoped :host', () => {
+      const sheets = adoptedSheets();
 
-      expect(a).not.toBe(b);
-      expect(a.textContent).toBe(b.textContent);
-    });
-
-    it('declares the font custom properties on :host', () => {
-      const rules = hostRule(createFontsStyle());
-
+      expect(sheets).toHaveLength(1);
       expect(rules).toHaveLength(1);
       expect(rules[0].selectorText).toBe(':host');
       expect(rules[0].style.length).toBe(2);
+      expect(rules[0].cssText).not.toMatch(SCOPE_CLASS);
     });
 
     it('interpolates the exported stacks into the custom properties', () => {
-      const [rule] = hostRule(createFontsStyle());
+      const style = rules[0].style;
 
-      expect(rule.style.getPropertyValue('--text-font-family')).toBe(
-        TextFontFamily
+      expect(families(style.getPropertyValue('--text-font-family'))).toEqual(
+        families(TextFontFamily)
       );
-      expect(rule.style.getPropertyValue('--code-font-family')).toBe(
-        CodeFontFamily
+      expect(families(style.getPropertyValue('--code-font-family'))).toEqual(
+        families(CodeFontFamily)
       );
     });
 
-    it('writes the raw css text consumed by reset.styles', () => {
-      const style = createFontsStyle();
+    it('emits the stacks comma tight', () => {
+      // stylis removes the whitespace after a top level comma in a value, and happy-dom only
+      // restores it for properties it parses itself — a custom property is not one of those. The
+      // token stream is unchanged, so this is a serialization difference and nothing more.
+      const style = rules[0].style;
 
-      expect(style.textContent).toContain(
-        `--text-font-family: ${TextFontFamily};`
+      expect(style.getPropertyValue('--text-font-family')).toBe(
+        TextFontFamily.split(', ').join(',')
       );
-      expect(style.textContent).toContain(
-        `--code-font-family: ${CodeFontFamily};`
+      expect(style.getPropertyValue('--code-font-family')).toBe(
+        CodeFontFamily.split(', ').join(',')
       );
+    });
+
+    it('keeps the two slots as values, not as selectors', () => {
+      expect(fontsStyle.values).toEqual([TextFontFamily, CodeFontFamily]);
+      expect(fontsStyle.template.node.slots.map(slot => slot.kind)).toEqual([
+        'inline',
+        'inline',
+      ]);
     });
   });
 });

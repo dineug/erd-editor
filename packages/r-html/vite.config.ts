@@ -14,6 +14,13 @@ const banner = `/*!
  * @license ${pkg.license}
  */`;
 
+/**
+ * Runtime dependencies stay out of the bundle. Vite's library mode does not externalize them on
+ * its own, so without this every consumer that bundles `dist/` would inline its own copy.
+ * Derived from `package.json` so a new dependency is externalized without touching this file.
+ */
+const external = Object.keys(pkg.dependencies ?? {});
+
 export default defineConfig({
   build: {
     lib: {
@@ -21,6 +28,7 @@ export default defineConfig({
       formats: ['es'],
     },
     rolldownOptions: {
+      external,
       output: {
         banner,
       },

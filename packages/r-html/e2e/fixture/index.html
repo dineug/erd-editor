@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>r-html e2e fixture</title>
+  </head>
+  <!--
+    No <style> block and no stylesheet link: the whole point of the page is that
+    every rule a host sees arrives through `adoptedStyleSheets`, so the document
+    contributes nothing to the cascade beyond the UA sheet. Layout that the page
+    itself needs lives in style attributes.
+  -->
+  <body style="margin: 0; padding: 0">
+    <div id="app"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

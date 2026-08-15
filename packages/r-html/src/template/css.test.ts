@@ -12,7 +12,7 @@ type Css = (
   ...values: any[]
 ) => CSSTemplateLiterals;
 
-const identifierRegexp = /^_[0-9a-z\-_]{21}$/;
+const identifierRegexp = /^_[0-9a-z]{7}$/;
 
 let css: Css;
 let addCSSHost: (host: ShadowRoot) => void;
@@ -200,6 +200,31 @@ describe('template/css', () => {
 
     expect(a.strings).not.toBe(b.strings);
     expect(String(a)).toBe(String(b));
+  });
+
+  it('memoizes each set of slot values on the template', () => {
+    const make = (color: string) => css`
+      color: ${color};
+    `;
+    const first = make('red');
+
+    expect(first.template.node.memo.size).toBe(1);
+    expect(make('red').template.node.memo.size).toBe(1);
+    expect(make('blue').template.node.memo.size).toBe(2);
+  });
+
+  it('bounds the memo at 32 entries', () => {
+    const make = (size: number) => css`
+      width: ${size}px;
+    `;
+    const first = make(0);
+
+    for (let i = 1; i < 40; i++) make(i);
+
+    expect(first.template.node.memo.size).toBe(32);
+    // The oldest entries went first, and a re-render of one of them still compiles.
+    expect(String(make(0))).toBe(String(first));
+    expect(first.template.node.memo.size).toBe(32);
   });
 
   it('supports an at-rule with a nested block', () => {

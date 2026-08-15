@@ -1,105 +1,107 @@
-const reset = /* css */ `
-p,
-ol,
-ul,
-li,
-dl,
-dt,
-dd,
-blockquote,
-figure,
-fieldset,
-legend,
-textarea,
-pre,
-iframe,
-hr,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  margin: 0;
-  padding: 0;
-}
+import { css } from '@dineug/r-html';
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-size: 100%;
-  font-weight: normal;
-}
+/**
+ * Global, not scoped: every selector here is a type selector, the universal selector or `:host`,
+ * none of which survives having a component class prepended to it.
+ */
+export const resetStyle = css.global`
+  p,
+  ol,
+  ul,
+  li,
+  dl,
+  dt,
+  dd,
+  blockquote,
+  figure,
+  fieldset,
+  legend,
+  textarea,
+  pre,
+  iframe,
+  hr,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 0;
+    padding: 0;
+  }
 
-ul {
-  list-style: none;
-}
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-size: 100%;
+    font-weight: normal;
+  }
 
-button,
-input,
-select,
-textarea {
-  padding: 0;
-  border: none;
-  outline: none;
-  font-family: var(--text-font-family);
-  color: var(--active);
-  background-color: inherit;
-}
+  ul {
+    list-style: none;
+  }
 
-input::placeholder,
-textarea::placeholder {
-  font-family: var(--text-font-family);
-  color: var(--placeholder);
-  opacity: 1;
-}
+  button,
+  input,
+  select,
+  textarea {
+    padding: 0;
+    border: none;
+    outline: none;
+    font-family: var(--text-font-family);
+    color: var(--active);
+    background-color: inherit;
+  }
 
-input:disabled,
-textarea:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
+  input::placeholder,
+  textarea::placeholder {
+    font-family: var(--text-font-family);
+    color: var(--placeholder);
+    opacity: 1;
+  }
 
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+  input:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 
-img,
-video {
-  height: auto;
-  max-width: 100%;
-}
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
 
-iframe {
-  border: 0;
-}
+  img,
+  video {
+    height: auto;
+    max-width: 100%;
+  }
 
-table {
-  border-collapse: collapse;
-  border-spacing: 0;
-}
+  iframe {
+    border: 0;
+  }
 
-td,
-th {
-  padding: 0;
-}
+  table {
+    border-collapse: collapse;
+    border-spacing: 0;
+  }
 
-:host {
-  font-family: var(--text-font-family);
-  color: var(--foreground);
-  fill: var(--foreground);
-  font-size: var(--font-size-2);
-  letter-spacing: var(--letter-spacing-2);
-  line-height: var(--line-height-2);
-  font-weight: var(--font-weight-regular);
-}
+  td,
+  th {
+    padding: 0;
+  }
+
+  :host {
+    font-family: var(--text-font-family);
+    color: var(--foreground);
+    fill: var(--foreground);
+    font-size: var(--font-size-2);
+    letter-spacing: var(--letter-spacing-2);
+    line-height: var(--line-height-2);
+    font-weight: var(--font-weight-regular);
+  }
 `;
-
-export function createResetStyle() {
-  const style = document.createElement('style');
-  style.textContent = reset;
-  return style;
-}

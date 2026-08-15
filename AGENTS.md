@@ -119,22 +119,31 @@ shared ── vscode-bridge ──┬── vscode-replication-store-worker ─�
 - `vscode-extension` is the one package whose unit suite needs a module that does not exist outside
   its host: `vitest.config.mts` aliases the `vscode` specifier to the stub in
   `packages/vscode-extension/test/mocks/vscode.ts`. Types still come from `@types/vscode`.
-- Three packages carry an out-of-process suite under `packages/<pkg>/e2e/` or `test/integration/`,
+- Four packages carry an out-of-process suite under `packages/<pkg>/e2e/` or `test/integration/`,
   none of which run in `pnpm test` — invoke them with `pnpm --filter <pkg> e2e`:
   - `erd-editor` — Playwright, the custom element against the Vite dev server
   - `app` — Playwright, live collaboration across two browser contexts
+  - `r-html` — Playwright, the CSS pipeline against a real CSSOM and a real cascade. The one suite
+    here that needs **no** prior build: its Vite dev server serves r-html's own `src/` through the
+    `@` alias. It exists because happy-dom has no style engine, so the unit suite can assert what is
+    in an array but never which rule wins — see `packages/r-html/e2e/README.md`
   - `vscode-extension` — `@vscode/test-cli`, Mocha specs inside a real Extension Host. The script
     compiles `tsconfig.integration.json` to `out/` first, and the extension must already be built
     (`nx build vuerd-vscode`) because the host loads `dist/extension.js` and `public/index.html`.
     On Linux it needs a display: `xvfb-run -a`.
-- CI (`.github/workflows/ci.yml`) runs three independent jobs on `push`, `pull_request` and
+- CI (`.github/workflows/ci.yml`) runs four independent jobs on `push`, `pull_request` and
   `workflow_dispatch`, each on `ubuntu-latest` with pnpm 10 and the `.nvmrc` Node:
 
-  - `ci` — `pnpm install && pnpm test && pnpm build`
+  - `ci` — `pnpm install && pnpm test`, then `pnpm --filter @dineug/r-html test:coverage` (the
+    thresholds gate `test:coverage` only, so `pnpm test` alone never enforces them), then `pnpm build`
   - `e2e` — installs the Chromium browser, runs `nx build @dineug/erd-editor` (the dev server and the
     e2e typecheck both resolve workspace deps through their `dist/`), then `e2e:typecheck` and the
     Playwright suite. The report upload needs `include-hidden-files: true` because the output lands
     in the dot-prefixed `e2e/.report`.
+  - `r-html-e2e` — installs the Chromium browser, then `e2e:typecheck` and the Playwright suite. No
+    build step: nothing it touches resolves through `dist/`. Separate from `e2e` for the browser
+    download, and so a build-free suite does not queue behind `nx build @dineug/erd-editor`. The
+    `app` e2e suite is still not in CI.
   - `vscode-extension-e2e` — `nx build vuerd-vscode`, then the Extension Host suite under
     `xvfb-run -a`. `.vscode-test.mjs` declares a two-version matrix (stable plus the `engines.vscode`
     floor), so the job downloads two VSCode builds; `VSCODE_TEST_USER_DATA_DIR` keeps each profile's
@@ -171,7 +180,8 @@ shared ── vscode-bridge ──┬── vscode-replication-store-worker ─�
 - **pnpm 10** — workspace/package management
 - **Vite 8** (Rolldown-based) — library builds; **webpack 5** — application builds
 - **Vitest 4** — the unit suites in all eight testable packages
-- **Playwright** — the `erd-editor` and `app` e2e suites; **`@vscode/test-cli` + `@vscode/test-electron`**
+- **Playwright** — the `erd-editor`, `r-html` and `app` e2e suites (all pinned to the same `^1.62.1`,
+  so one browser download serves them all); **`@vscode/test-cli` + `@vscode/test-electron`**
   — the `vscode-extension` Extension Host suite
 - **Storybook 10** (`@storybook/html-vite`) — component workbench in `packages/erd-editor`
 - **rxjs** — the editor's store/action pipeline (`erd-editor/src/engine/rx-store.ts`,

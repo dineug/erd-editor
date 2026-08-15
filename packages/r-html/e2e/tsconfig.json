@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "types": ["node"],
+    "noEmit": true
+  },
+  // The fixture entry imports `@/index`, so the program covers `src` as well;
+  // `playwright.config.ts` is in here because nothing else typechecks it.
+  "include": ["../e2e", "../playwright.config.ts"]
+}

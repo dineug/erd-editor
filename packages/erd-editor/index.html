@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -7,6 +7,15 @@
     <title>erd-editor</title>
   </head>
   <body>
+    <!--
+      r-html's css diagnostics, on for the dev server only. It has to be a classic script and it
+      has to be here: the style modules compile at import time, so a call from inside
+      `index.dev.ts` would run after every template had already been compiled. This page is not
+      part of `vite build --mode lib`, so the published bundle never sets it.
+    -->
+    <script>
+      window.__RHTML_CSS_DIAGNOSTICS__ = true;
+    </script>
     <script type="module" src="/src/index.dev.ts"></script>
   </body>
 </html>

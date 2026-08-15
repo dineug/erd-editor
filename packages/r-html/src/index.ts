@@ -1,6 +1,12 @@
 export { type Context, createContext } from '@/context/createContext';
 export { useContext } from '@/context/useContext';
 export { useProvider } from '@/context/useProvider';
+export type {
+  CompileMode,
+  Diagnostic,
+  DiagnosticCode,
+  DiagnosticSeverity,
+} from '@/css';
 export { observable, observer, watch } from '@/observable';
 export { nextTick } from '@/observable/scheduler';
 export { reduxDevtools } from '@/reduxDevtools';
@@ -43,10 +49,12 @@ export type {
 } from '@/store';
 export { compositionActionsFlat, createAction, createStore } from '@/store';
 export type { CSSTemplateLiterals, DOMTemplateLiterals } from '@/template';
+export type { CSS, CSSTag } from '@/template/css';
 export { css } from '@/template/css';
+export type {
+  CSSDiagnosticContext,
+  CSSDiagnosticHandler,
+} from '@/template/cssDiagnostics';
+export { setCSSDiagnostics } from '@/template/cssDiagnostics';
 export { html, svg } from '@/template/html';
-export {
-  addCSSHost,
-  cssUnwrap,
-  removeCSSHost,
-} from '@/template/vCSSStyleSheet';
+export { addCSSHost, setGlobalStyleOrder } from '@/template/vCSSStyleSheet';

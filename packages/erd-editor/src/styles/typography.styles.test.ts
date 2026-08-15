@@ -1,8 +1,11 @@
-import { addCSSHost } from '@dineug/r-html';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
-  createTypographyStyle,
+  adoptedRules,
+  adoptedSheets,
+  SCOPE_CLASS,
+} from '@/__test-utils__/adoptedCss';
+import {
   fontSize1,
   fontSize2,
   fontSize3,
@@ -13,6 +16,7 @@ import {
   fontSize8,
   fontSize9,
   typography,
+  typographyStyle,
 } from '@/styles/typography.styles';
 
 const fontSizes = [
@@ -27,29 +31,29 @@ const fontSizes = [
   fontSize9,
 ];
 
-let adoptedRules: string[] = [];
+let rules: CSSStyleRule[] = [];
+let ruleTexts: string[] = [];
 
 function ruleTextOf(identifier: string) {
-  const rule = adoptedRules.find(text => text.startsWith(`.${identifier} `));
+  const rule = ruleTexts.find(text => text.startsWith(`.${identifier} `));
   if (!rule) {
     throw new Error(`missing rule for: ${identifier}`);
   }
   return rule;
 }
 
-function parse(style: HTMLStyleElement) {
-  document.head.append(style);
-  const rules = Array.from(style.sheet?.cssRules ?? []) as CSSStyleRule[];
-  style.remove();
-  return rules;
+/** The one global sheet this module registers — the design token block. */
+function tokenRule(): CSSStyleRule {
+  const rule = rules.find(candidate => candidate.selectorText === ':host');
+  if (!rule) {
+    throw new Error('missing rule for: :host');
+  }
+  return rule;
 }
 
 beforeAll(() => {
-  const host = document.createElement('div').attachShadow({ mode: 'open' });
-  addCSSHost(host);
-  adoptedRules = host.adoptedStyleSheets.flatMap(sheet =>
-    Array.from(sheet.cssRules).map(rule => rule.cssText)
-  );
+  rules = adoptedRules();
+  ruleTexts = rules.map(rule => rule.cssText);
 });
 
 describe('typography.styles', () => {
@@ -126,27 +130,31 @@ describe('typography.styles', () => {
     });
   });
 
-  describe('createTypographyStyle', () => {
-    it('creates a detached <style> element per call', () => {
-      const a = createTypographyStyle();
-      const b = createTypographyStyle();
-
-      expect(a).toBeInstanceOf(HTMLStyleElement);
-      expect(a.parentNode).toBeNull();
-      expect(a).not.toBe(b);
-      expect(a.textContent).toBe(b.textContent);
+  describe('typographyStyle', () => {
+    it('is a css.global literal, adopted rather than appended as a <style>', () => {
+      expect(typographyStyle.template.node.mode).toBe('global');
+      expect(document.querySelector('style')).toBeNull();
     });
 
-    it('declares the whole design token set on :host', () => {
-      const rules = parse(createTypographyStyle());
+    it('leads the adopted list, ahead of the scoped scale steps', () => {
+      // The global bucket is adopted before every component sheet, so the token block that the
+      // eleven scoped templates read through `var()` cannot end up behind them.
+      const sheets = adoptedSheets();
 
-      expect(rules).toHaveLength(1);
-      expect(rules[0].selectorText).toBe(':host');
-      expect(rules[0].style.length).toBe(31);
+      expect(sheets).toHaveLength(12);
+      expect(sheets[0]).toHaveLength(1);
+      expect(sheets[0][0].selectorText).toBe(':host');
+    });
+
+    it('declares the whole design token set on an unscoped :host', () => {
+      const rule = tokenRule();
+
+      expect(rule.style.length).toBe(31);
+      expect(rule.cssText).not.toMatch(SCOPE_CLASS);
     });
 
     it('defines the nine font sizes in pixels', () => {
-      const [rule] = parse(createTypographyStyle());
+      const rule = tokenRule();
       const values = fontSizes.map((_, index) =>
         rule.style.getPropertyValue(`--font-size-${index + 1}`)
       );
@@ -165,7 +173,7 @@ describe('typography.styles', () => {
     });
 
     it('tightens letter spacing only from step 4 upwards', () => {
-      const [rule] = parse(createTypographyStyle());
+      const rule = tokenRule();
 
       expect(rule.style.getPropertyValue('--letter-spacing-1')).toBe('0em');
       expect(rule.style.getPropertyValue('--letter-spacing-3')).toBe('0em');
@@ -178,7 +186,7 @@ describe('typography.styles', () => {
     });
 
     it('defines the nine line heights in pixels', () => {
-      const [rule] = parse(createTypographyStyle());
+      const rule = tokenRule();
       const values = fontSizes.map((_, index) =>
         rule.style.getPropertyValue(`--line-height-${index + 1}`)
       );
@@ -197,7 +205,7 @@ describe('typography.styles', () => {
     });
 
     it('defines the four font weights consumed by reset.styles', () => {
-      const [rule] = parse(createTypographyStyle());
+      const rule = tokenRule();
 
       expect(rule.style.getPropertyValue('--font-weight-light')).toBe('300');
       expect(rule.style.getPropertyValue('--font-weight-regular')).toBe('400');

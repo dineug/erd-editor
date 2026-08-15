@@ -101,21 +101,3 @@ export function getMarkers(value: string): MarkerTuple[] {
 
   return markers;
 }
-
-const characters = '0123456789abcdefghijklmnopqrstuvwxyz-_';
-
-function getRandomInt(min: number, max: number) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min)) + min;
-}
-
-export function generateClassSelectorName(size = 21): string {
-  let value = '_';
-
-  for (let i = 0; i < size; i++) {
-    value += characters.charAt(getRandomInt(0, characters.length));
-  }
-
-  return value;
-}

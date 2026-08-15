@@ -31,42 +31,39 @@ export const typography = {
   paragraph,
 } as const;
 
-export function createTypographyStyle() {
-  const style = document.createElement('style');
-  style.textContent = /* css */ `
-    :host {
-      --font-size-1: 12px;
-      --font-size-2: 14px;
-      --font-size-3: 16px;
-      --font-size-4: 18px;
-      --font-size-5: 20px;
-      --font-size-6: 24px;
-      --font-size-7: 28px;
-      --font-size-8: 35px;
-      --font-size-9: 60px;
-      --letter-spacing-1: 0em;
-      --letter-spacing-2: 0em;
-      --letter-spacing-3: 0em;
-      --letter-spacing-4: -0.0025em;
-      --letter-spacing-5: -0.005em;
-      --letter-spacing-6: -0.00625em;
-      --letter-spacing-7: -0.0075em;
-      --letter-spacing-8: -0.01em;
-      --letter-spacing-9: -0.025em;
-      --line-height-1: 16px;
-      --line-height-2: 20px;
-      --line-height-3: 24px;
-      --line-height-4: 26px;
-      --line-height-5: 28px;
-      --line-height-6: 30px;
-      --line-height-7: 36px;
-      --line-height-8: 40px;
-      --line-height-9: 60px;
-      --font-weight-light: 300;
-      --font-weight-regular: 400;
-      --font-weight-medium: 500;
-      --font-weight-bold: 700;
-    }
-  `;
-  return style;
-}
+/** Global, not scoped: `:host` is the shadow host, which no component class matches. */
+export const typographyStyle = css.global`
+  :host {
+    --font-size-1: 12px;
+    --font-size-2: 14px;
+    --font-size-3: 16px;
+    --font-size-4: 18px;
+    --font-size-5: 20px;
+    --font-size-6: 24px;
+    --font-size-7: 28px;
+    --font-size-8: 35px;
+    --font-size-9: 60px;
+    --letter-spacing-1: 0em;
+    --letter-spacing-2: 0em;
+    --letter-spacing-3: 0em;
+    --letter-spacing-4: -0.0025em;
+    --letter-spacing-5: -0.005em;
+    --letter-spacing-6: -0.00625em;
+    --letter-spacing-7: -0.0075em;
+    --letter-spacing-8: -0.01em;
+    --letter-spacing-9: -0.025em;
+    --line-height-1: 16px;
+    --line-height-2: 20px;
+    --line-height-3: 24px;
+    --line-height-4: 26px;
+    --line-height-5: 28px;
+    --line-height-6: 30px;
+    --line-height-7: 36px;
+    --line-height-8: 40px;
+    --line-height-9: 60px;
+    --font-weight-light: 300;
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-bold: 700;
+  }
+`;
