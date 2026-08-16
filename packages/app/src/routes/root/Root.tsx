@@ -1,7 +1,6 @@
 import { Global } from '@emotion/react';
 import { Theme } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
-import { DevTools } from 'jotai-devtools';
 import { Outlet } from 'react-router-dom';
 
 import { themeAtom } from '@/atoms/modules/theme';
@@ -16,7 +15,6 @@ const Root: React.FC<RootProps> = () => {
   return (
     <>
       <Global styles={styles.global} />
-      <DevTools theme="dark" />
       <Theme
         css={styles.app}
         appearance={theme.appearance}

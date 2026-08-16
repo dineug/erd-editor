@@ -85,16 +85,15 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ entity }) => {
       onClick={() => setSchemaId(entity.id)}
     >
       {isEditing ? (
-        <TextField.Root css={styles.text}>
-          <TextField.Input
-            value={name}
-            placeholder="schema name"
-            autoFocus
-            onChange={handleChange}
-            onBlur={handleStopEditing}
-            onKeyDown={handleKeyDown}
-          />
-        </TextField.Root>
+        <TextField.Root
+          css={styles.text}
+          value={name}
+          placeholder="schema name"
+          autoFocus
+          onChange={handleChange}
+          onBlur={handleStopEditing}
+          onKeyDown={handleKeyDown}
+        />
       ) : (
         <Text
           css={[styles.text, styles.ellipsis]}

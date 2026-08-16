@@ -20,7 +20,6 @@
     "@types/vscode-webview": "1.57.5",
     "core-js": "^3.36.1",
     "typescript": "7.0.2",
-    "webpack-dev-server": "^5.0.4",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   }

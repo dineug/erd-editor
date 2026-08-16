@@ -35,7 +35,7 @@ function gtag(isProduction: boolean): Plugin {
   };
 }
 
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production';
   const isTest = process.env.VITEST !== undefined;
 

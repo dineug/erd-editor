@@ -83,7 +83,7 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
               <Text as="div" size="2" mb="1" weight="bold">
                 Nickname
               </Text>
-              <TextField.Input
+              <TextField.Root
                 placeholder="Your nickname"
                 value={nickname}
                 maxLength={30}
@@ -94,8 +94,12 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
               <Text as="div" size="2" mb="1" weight="bold">
                 Link
               </Text>
-              <TextField.Root css={styles.link} onClick={handleCopyLink}>
-                <TextField.Input value={link} readOnly />
+              <TextField.Root
+                css={styles.link}
+                onClick={handleCopyLink}
+                value={link}
+                readOnly
+              >
                 <TextField.Slot pr="3">
                   <ClipboardIcon
                     color={copyState ? 'var(--accent-9)' : undefined}

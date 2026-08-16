@@ -39,16 +39,15 @@ const SidebarAddItem: React.FC<SidebarAddItemProps> = props => {
 
   return (
     <Flex css={[itemStyles.inputPadding, itemStyles.item]} align="center">
-      <TextField.Root css={itemStyles.text}>
-        <TextField.Input
-          value={name}
-          placeholder="schema name"
-          autoFocus
-          onChange={handleChange}
-          onBlur={handleStopEditing}
-          onKeyDown={handleKeyDown}
-        />
-      </TextField.Root>
+      <TextField.Root
+        css={itemStyles.text}
+        value={name}
+        placeholder="schema name"
+        autoFocus
+        onChange={handleChange}
+        onBlur={handleStopEditing}
+        onKeyDown={handleKeyDown}
+      />
     </Flex>
   );
 };
