@@ -1,7 +1,10 @@
 import { join } from 'node:path';
 
+import legacy from '@vitejs/plugin-legacy';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite-plus';
+
+import { BROWSER_TARGET, BROWSER_TARGET_QUERY } from '../../build-target';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const GTAG_ID = 'G-3VBWD4V1JX';
@@ -89,6 +92,27 @@ export default defineConfig(({ mode }) => {
         devOptions: { enabled: false },
       }),
 
+      /**
+       * Runtime API polyfills. `build.target` transpiles syntax and does nothing
+       * for APIs — a dependency calling `Array.prototype.toSorted` compiles
+       * cleanly and throws on any browser that lacks it, which is how
+       * `@radix-ui/themes@3` currently pushes the real floor to Chrome 110 /
+       * Firefox 115 while this config says 91 / 93.
+       *
+       * `modernPolyfills` derives the set from `modernTargets` and injects only
+       * what is missing, which is what swc's `mode: 'entry'` did before the
+       * bundler change — not the whole of `core-js/stable`, which measured 542
+       * modules / 63.93 kB gzip.
+       *
+       * `renderLegacyChunks: false` because there is no legacy build here; this
+       * plugin is present for the polyfill analysis alone.
+       */
+      legacy({
+        renderLegacyChunks: false,
+        modernPolyfills: true,
+        modernTargets: BROWSER_TARGET_QUERY,
+      }),
+
       gtag(isProduction),
     ],
 
@@ -110,14 +134,9 @@ export default defineConfig(({ mode }) => {
         },
 
     build: {
-      /**
-       * Pinned rather than left to Vite's default, which would be
-       * chrome111 / safari16.4 and quietly narrow who can load the app.
-       * Measured from the bundle this replaces: the highest syntax it emitted
-       * was private class fields (Safari 14.5); `.at()`, `static {}`,
-       * `structuredClone` and `findLast` did not appear at all.
-       */
-      target: ['chrome87', 'edge88', 'firefox78', 'safari14.1'],
+      // The repo's one browser floor — see `build-target.ts` for how those
+      // versions were measured and why `lib` stays a generation behind.
+      target: BROWSER_TARGET,
       sourcemap: true,
       rolldownOptions: {
         output: {

@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "ES2020",
+    // ES2022. Unlike the browser packages this config really emits —
+    // `tsconfig.integration.json` extends it to build `out/` — and the host is
+    // Node 20.9, which supports ES2022 in full.
+    "target": "ES2022",
     "lib": ["ES2020"],
     "outDir": "out",
     "sourceMap": true,

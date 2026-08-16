@@ -1,8 +1,17 @@
 {
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "target": "ES2020",
+    // ES2022, matching what actually ships: Rolldown emits `#private` fields and
+    // downlevels them at no `build.target`, so the bundles have required Safari
+    // 14.1 all along while this said ES2020.
+    "target": "ES2022",
     "useDefineForClassFields": true,
+    // `lib` deliberately stays a generation behind `target`. They guard different
+    // things: `target` is syntax, which the bundler can transpile, while `lib` is
+    // runtime APIs, which it can neither transpile nor polyfill. Raising this to
+    // ES2022 would make `.at()` and `Object.hasOwn` typecheck and then break
+    // Safari 14.1-15.3 at runtime with nothing going red. Today's usage of both
+    // is zero; this is what keeps it that way.
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
