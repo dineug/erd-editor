@@ -3,15 +3,11 @@ import * as t from '@babel/core';
 import { createFilter } from '@rollup/pluginutils';
 import type { Plugin } from 'vite';
 
-export { transformJsxToTagged } from './jsx/codegen';
-export { type JsxOptions, rHtmlJsx } from './jsx/plugin';
-
-export interface Options {
-  include?: string | RegExp | Array<string | RegExp>;
-  exclude?: string | RegExp | Array<string | RegExp>;
-}
+import type { RefreshOptions } from './options';
 
 const importMetaHot = `${'import'}.${'meta'}.${'hot'}`;
+
+const DEFAULT_EXPORT = /\bexport\s+default\b/;
 
 const hmr = (name: string) => `
 if (${importMetaHot}) {
@@ -23,7 +19,15 @@ if (${importMetaHot}) {
 }
 `;
 
-function rHtml(options: Options = {}): Plugin {
+/**
+ * Marks component modules as HMR boundaries so `r-html`'s `hmr.ts` can swap them
+ * in place. `apply: 'serve'` rather than a caller-side `isServe` gate: only the
+ * dev server has `import.meta.hot` to accept on.
+ *
+ * Must NOT be `enforce: 'pre'` — it calls Babel with no parser plugins, so it
+ * can only parse once `vite:oxc` has stripped the types ahead of it.
+ */
+export function rHtmlRefresh(options: RefreshOptions = {}): Plugin {
   const filter = createFilter(
     options.include,
     options.exclude ?? '**/node_modules/**'
@@ -31,8 +35,16 @@ function rHtml(options: Options = {}): Plugin {
 
   return {
     name: 'vite:r-html-refresh',
+    apply: 'serve',
     async transform(code, id) {
       if (!filter(id)) {
+        return;
+      }
+
+      // Nothing is injected without an `export default`, so modules that have
+      // none never need to be parsed. Without this the dev server runs Babel
+      // over every module in the graph on startup and on every change.
+      if (!DEFAULT_EXPORT.test(code)) {
         return;
       }
 
@@ -80,7 +92,20 @@ function rHtml(options: Options = {}): Plugin {
       );
 
       if (node?.type === 'ExportDefaultDeclaration') {
-        const name = (node.declaration as any).name;
+        const declaration = node.declaration as any;
+        // `export default A` is an Identifier; `export default function A() {}`
+        // carries the name on `.id`. Reading only `.name` made the second form
+        // inject `originComponent: undefined` — which still marks the module
+        // self-accepting, so Vite stops propagating and the edit does nothing
+        // at all, not even a reload.
+        const name =
+          declaration.type === 'Identifier'
+            ? declaration.name
+            : declaration.id?.name;
+
+        if (!name) {
+          return;
+        }
 
         return {
           code: code + hmr(name),
@@ -97,5 +122,3 @@ function isComponentLikeIdentifier(node: t.Node): boolean {
 function isComponentLikeName(name: string): boolean {
   return typeof name === 'string' && name[0] >= 'A' && name[0] <= 'Z';
 }
-
-export default rHtml;

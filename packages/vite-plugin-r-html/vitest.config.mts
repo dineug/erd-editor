@@ -15,9 +15,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json-summary'],
       include: ['src/**/*.ts'],
-      // `index.ts` is the HMR plugin's Vite hook surface; it is exercised by
-      // running a dev server, not by a unit test, and predates this suite.
-      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/index.ts'],
+      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],
       thresholds: {
         perFile: true,
         lines: 80,

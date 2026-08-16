@@ -41,12 +41,12 @@ the `html`/`svg` tagged templates the runtime already reads.
 ### Testing Requirements
 
 - `vp run --filter @dineug/vite-plugin-r-html --fail-if-no-match test` — `tsc --noEmit` then Vitest
-  over `src/**/*.test.ts` in the `node` env. `test:coverage` excludes `src/index.ts`, whose Vite
-  hooks are verified by running a dev server rather than by a unit test.
+  over `src/**/*.test.ts` in the `node` env. Both plugins' `transform` hooks are called directly.
 - The codegen suite is the transform's spec — every attribute mapping, rejected construct and
   escaping case. DOM-level parity against hand-written `html` lives in `packages/erd-editor`, the
   one package that has both r-html and this plugin.
-- HMR is still manual: `pnpm --filter @dineug/erd-editor dev`, edit a component, watch it swap.
+- Unit tests cover which modules become boundaries, not whether the swap works. That is still
+  manual: `pnpm --filter @dineug/erd-editor dev`, edit a component, watch it swap in place.
 
 ### Common Patterns
 
