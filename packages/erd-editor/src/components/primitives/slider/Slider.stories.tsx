@@ -1,4 +1,4 @@
-import { FC, html, observable, render } from '@dineug/r-html';
+import { FC, observable, render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import Slider, { SliderProps } from './Slider';
@@ -12,16 +12,16 @@ const SliderTemplate: FC<SliderProps> = (props, ctx) => {
     state.value = value;
   };
 
-  return () => html`
-    <${Slider} ...${props} value=${state.value} .onChange=${handleChange} />
-  `;
+  return () => (
+    <Slider {...props} value={state.value} onChange={handleChange} />
+  );
 };
 
 const meta = {
   title: 'Primitives/Slider',
   render: args => {
     const fragment = document.createDocumentFragment();
-    render(fragment, html`<${SliderTemplate} ...${args} />`);
+    render(fragment, <SliderTemplate {...args} />);
     return fragment;
   },
   argTypes: {

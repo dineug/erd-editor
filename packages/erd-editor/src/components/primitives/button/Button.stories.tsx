@@ -1,4 +1,4 @@
-import { html, render } from '@dineug/r-html';
+import { render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import Button, { ButtonProps } from './Button';
@@ -7,7 +7,7 @@ const meta = {
   title: 'Primitives/Button',
   render: args => {
     const fragment = document.createDocumentFragment();
-    render(fragment, html`<${Button} ...${args} />`);
+    render(fragment, <Button {...args} />);
     return fragment;
   },
   argTypes: {

@@ -1,4 +1,4 @@
-import { css, html, render } from '@dineug/r-html';
+import { css, render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import Sash, { Cursor, SashProps, SashType } from './Sash';
@@ -9,17 +9,15 @@ const meta = {
     const fragment = document.createDocumentFragment();
     render(
       fragment,
-      html`
-        <div
-          class=${css`
-            .sash {
-              background-color: red;
-            }
-          `}
-        >
-          <${Sash} ...${args} />
-        </div>
-      `
+      <div
+        class={css`
+          .sash {
+            background-color: red;
+          }
+        `}
+      >
+        <Sash {...args} />
+      </div>
     );
     return fragment;
   },

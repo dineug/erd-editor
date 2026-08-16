@@ -1,4 +1,4 @@
-import { html, render } from '@dineug/r-html';
+import { render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import ColorPicker, { ColorPickerProps } from './ColorPicker';
@@ -7,7 +7,7 @@ const meta = {
   title: 'Primitives/ColorPicker',
   render: args => {
     const fragment = document.createDocumentFragment();
-    render(fragment, html`<${ColorPicker} ...${args} />`);
+    render(fragment, <ColorPicker {...args} />);
     return fragment;
   },
   argTypes: {

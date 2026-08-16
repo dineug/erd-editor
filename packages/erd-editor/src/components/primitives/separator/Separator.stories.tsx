@@ -1,4 +1,4 @@
-import { html, render } from '@dineug/r-html';
+import { render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import Separator, { SeparatorProps } from './Separator';
@@ -7,7 +7,7 @@ const meta = {
   title: 'Primitives/Separator',
   render: args => {
     const fragment = document.createDocumentFragment();
-    render(fragment, html`<${Separator} ...${args} />`);
+    render(fragment, <Separator {...args} />);
     return fragment;
   },
   argTypes: {

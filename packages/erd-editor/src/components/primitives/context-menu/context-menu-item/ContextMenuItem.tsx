@@ -15,7 +15,9 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import * as styles from './ContextMenuItem.styles';
 
 export type ContextMenuItemProps = {
-  children?: DOMTemplateLiterals;
+  // Rendered straight into a text position, which takes a primitive as readily
+  // as a template — the stories pass bare strings.
+  children?: DOMTemplateLiterals | string;
   subChildren?: DOMTemplateLiterals;
   onClick?: (event: MouseEvent) => void;
 };

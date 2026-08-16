@@ -1,4 +1,4 @@
-import { html, render } from '@dineug/r-html';
+import { render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import HighlightedText, { HighlightedTextProps } from './HighlightedText';
@@ -7,7 +7,7 @@ const meta = {
   title: 'Primitives/HighlightedText',
   render: args => {
     const fragment = document.createDocumentFragment();
-    render(fragment, html`<${HighlightedText} ...${args} />`);
+    render(fragment, <HighlightedText {...args} />);
     return fragment;
   },
   argTypes: {

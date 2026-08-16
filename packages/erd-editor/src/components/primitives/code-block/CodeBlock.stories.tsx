@@ -1,4 +1,4 @@
-import { html, render } from '@dineug/r-html';
+import { render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import CodeBlock, { CodeBlockProps } from './CodeBlock';
@@ -7,7 +7,7 @@ const meta = {
   title: 'Primitives/CodeBlock',
   render: args => {
     const fragment = document.createDocumentFragment();
-    render(fragment, html`<${CodeBlock} ...${args} />`);
+    render(fragment, <CodeBlock {...args} />);
     return fragment;
   },
   argTypes: {

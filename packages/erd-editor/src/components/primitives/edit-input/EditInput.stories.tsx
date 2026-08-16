@@ -1,4 +1,4 @@
-import { html, render } from '@dineug/r-html';
+import { render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import EditInput, { EditInputProps } from './EditInput';
@@ -7,7 +7,7 @@ const meta = {
   title: 'Primitives/EditInput',
   render: args => {
     const fragment = document.createDocumentFragment();
-    render(fragment, html`<${EditInput} ...${args} />`);
+    render(fragment, <EditInput {...args} />);
     return fragment;
   },
   argTypes: {

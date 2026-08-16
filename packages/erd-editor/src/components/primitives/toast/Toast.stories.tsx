@@ -1,4 +1,4 @@
-import { html, render } from '@dineug/r-html';
+import { render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import Button from '@/components/primitives/button/Button';
@@ -11,10 +11,9 @@ const meta = {
     const fragment = document.createDocumentFragment();
     render(
       fragment,
-      html`<${Toast}
-        ...${args}
-        action=${html`<${Button} text=${args.action} />`}
-      />`
+      // `action` is an optional control, `Button`'s `text` is not: the tagged
+      // template passed `undefined` straight through and nothing checked it.
+      <Toast {...args} action={<Button text={args.action ?? ''} />} />
     );
     return fragment;
   },

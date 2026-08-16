@@ -1,4 +1,4 @@
-import { FC, html, observable, render } from '@dineug/r-html';
+import { FC, observable, render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import Switch, { SwitchProps } from './Switch';
@@ -12,16 +12,16 @@ const SwitchTemplate: FC<SwitchProps> = (props, ctx) => {
     state.value = value;
   };
 
-  return () => html`
-    <${Switch} ...${props} value=${state.value} .onChange=${handleChange} />
-  `;
+  return () => (
+    <Switch {...props} value={state.value} onChange={handleChange} />
+  );
 };
 
 const meta = {
   title: 'Primitives/Switch',
   render: args => {
     const fragment = document.createDocumentFragment();
-    render(fragment, html`<${SwitchTemplate} ...${args} />`);
+    render(fragment, <SwitchTemplate {...args} />);
     return fragment;
   },
   argTypes: {

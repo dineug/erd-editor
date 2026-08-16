@@ -1,4 +1,4 @@
-import { html, render } from '@dineug/r-html';
+import { render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import Kbd, { KbdProps } from './Kbd';
@@ -7,7 +7,7 @@ const meta = {
   title: 'Primitives/Kbd',
   render: args => {
     const fragment = document.createDocumentFragment();
-    render(fragment, html`<${Kbd} ...${args} />`);
+    render(fragment, <Kbd {...args} />);
     return fragment;
   },
   argTypes: {

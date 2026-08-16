@@ -1,6 +1,6 @@
 import './ErdEditor';
 
-import { html, render } from '@dineug/r-html';
+import { render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
 import type { ErdEditorProps } from './ErdEditor';
@@ -9,7 +9,7 @@ const meta = {
   title: 'ErdEditor',
   render: args => {
     const fragment = document.createDocumentFragment();
-    render(fragment, html`<erd-editor enable-theme-builder ...${args} />`);
+    render(fragment, <erd-editor enable-theme-builder {...args} />);
     return fragment;
   },
   argTypes: {
