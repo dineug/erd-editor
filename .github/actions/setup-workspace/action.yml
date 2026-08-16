@@ -1,0 +1,25 @@
+name: Setup workspace
+description: pnpm, Node and dependencies. Versions come only from what the repo already pins.
+
+runs:
+  using: composite
+  steps:
+    # No `version:` argument. pnpm comes from `packageManager` (10.34.3) and Node
+    # from `.nvmrc`; naming either here creates a second place to update and a
+    # way for the two to drift.
+    - uses: pnpm/action-setup@v6
+
+    - uses: actions/setup-node@v7
+      with:
+        # `.nvmrc`, not `.node-version`. Both exist with the same content —
+        # erd-editor-intellij-plugin reads `erd-editor/.nvmrc` from its own
+        # workflows, so that file is a contract, not a local convenience.
+        node-version-file: .nvmrc
+        # The pnpm store only. Vite Task's cache (`node_modules/.vite`) is
+        # deliberately not carried between runs: a cold cache is what makes the
+        # `input` declarations do real work, and a warm one would let a wrong
+        # declaration replay a green result it did not earn.
+        cache: pnpm
+
+    - run: pnpm install --frozen-lockfile
+      shell: bash

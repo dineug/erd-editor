@@ -23,14 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install
+      - uses: ./.github/actions/setup-workspace
       # One pass over format and lint, both from the root `vite.config.ts`.
       # Replaces `pnpm lint` + `prettier --check`; the job was green with those
       # and has to stay green with this, which is the point of adding it first.
@@ -41,19 +34,16 @@ jobs:
       # leaving its unit specs to `tsconfig.unit.json`.
       - run: pnpm --filter @dineug/erd-editor-app typecheck
       - run: pnpm --filter vuerd-vscode typecheck
+      # `app`'s e2e specs and its playwright.config are outside the package
+      # tsconfig's program, so this is the only thing that reads them. The
+      # erd-editor and r-html equivalents already run in their own e2e jobs.
+      - run: pnpm --filter @dineug/erd-editor-app e2e:typecheck
 
   ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install
+      - uses: ./.github/actions/setup-workspace
       - run: pnpm test
       # `pnpm test` does not enforce coverage. r-html's `vitest.config.ts` sets
       # `perFile: true` at 80% on all four metrics, and the CSS compiler under
@@ -66,20 +56,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install
+      - uses: ./.github/actions/setup-workspace
       - name: Install Playwright browsers
         run: pnpm --filter @dineug/erd-editor exec playwright install --with-deps chromium
       # The dev server resolves workspace deps to their `dist/`, and the e2e
       # typecheck reads their `.d.ts`, so both need this first. The `e2e` script
       # builds them too; Vite Task replays that from cache rather than rebuilding.
-      - run: pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build
+      # `--fail-if-no-match` because a filter that matches no package exits 0 and
+      # prints a line nobody reads. Rename or move this package and the job stays
+      # green while building nothing. A missing *task* name already exits 1.
+      - run: pnpm exec vp run --fail-if-no-match --filter @dineug/erd-editor build
       - run: pnpm --filter @dineug/erd-editor e2e:typecheck
       - run: pnpm --filter @dineug/erd-editor e2e
       - uses: actions/upload-artifact@v7
@@ -109,14 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install
+      - uses: ./.github/actions/setup-workspace
       - name: Install Playwright browsers
         run: pnpm --filter @dineug/r-html exec playwright install --with-deps chromium
       # `e2e/` is outside `tsconfig.build.json`'s program, so nothing else ever
@@ -138,19 +117,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install
+      - uses: ./.github/actions/setup-workspace
       # The Extension Host loads `main` (`dist/extension.js`), and
       # `Editor#buildHtmlForWebview` reads `public/index.html` emitted by
       # `@dineug/erd-editor-vscode-webview` — so the extension cannot activate
       # until its own build and its dependencies' builds have run.
-      - run: pnpm exec vp run --filter vuerd-vscode --fail-if-no-match build
+      - run: pnpm exec vp run --fail-if-no-match --filter vuerd-vscode build
       # `@vscode/test-cli` launches a real (Electron) VSCode, which needs a
       # display even in `--disable-gpu` headless CI. This runs the whole matrix
       # in `.vscode-test.mjs` — stable plus the `engines.vscode` floor — so it
