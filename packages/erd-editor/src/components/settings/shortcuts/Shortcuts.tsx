@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import Kbd from '@/components/primitives/kbd/Kbd';
@@ -104,8 +104,8 @@ const Shortcuts: FC<ShortcutsProps> = (props, ctx) => {
   };
 
   return () => {
-    return html`
-      <table class=${styles.table}>
+    return (
+      <table class={styles.table}>
         <thead>
           <tr>
             <th>Command</th>
@@ -113,25 +113,21 @@ const Shortcuts: FC<ShortcutsProps> = (props, ctx) => {
           </tr>
         </thead>
         <tbody>
-          ${getItems().map(
-            ({ command, shortcuts }) => html`
-              <tr>
-                <td>${command}</td>
-                <td>
-                  ${shortcuts.map(
-                    ({ shortcut }) => html`
-                      <div class=${styles.shortcutGroup}>
-                        <${Kbd} shortcut=${shortcut} />
-                      </div>
-                    `
-                  )}
-                </td>
-              </tr>
-            `
-          )}
+          {getItems().map(({ command, shortcuts }) => (
+            <tr>
+              <td>{command}</td>
+              <td>
+                {shortcuts.map(({ shortcut }) => (
+                  <div class={styles.shortcutGroup}>
+                    <Kbd shortcut={shortcut} />
+                  </div>
+                ))}
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
-    `;
+    );
   };
 };
 

@@ -106,7 +106,8 @@ export interface CommonAttributes extends Sigils, DatasetAttributes {
 
 export interface HTMLAttributes
   extends CommonAttributes, EventHandlers<HTMLElementEventMap> {
-  draggable?: boolean;
+  /** Enumerated, like `spellcheck`: the values are the strings. */
+  draggable?: boolean | 'true' | 'false';
   hidden?: boolean;
   role?: string;
   /** An enumerated attribute, not a boolean one: the values are the strings. */

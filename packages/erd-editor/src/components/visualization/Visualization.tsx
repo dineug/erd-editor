@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { FC, html, observable, onBeforeMount, watch } from '@dineug/r-html';
+import { FC, observable, onBeforeMount, watch } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import Table from '@/components/visualization/table/Table';
@@ -102,25 +102,25 @@ const Visualization: FC<VisualizationProps> = (props, ctx) => {
   });
 
   return () => {
-    const showPreview = state.table && !state.drag && state.preview;
+    // Read once into a const so the `showPreview` guard actually narrows it.
+    // `state` is an observable proxy, and a guard on one of its properties does
+    // not survive to the next read of that property.
+    const table = state.table;
+    const showPreview = table && !state.drag && state.preview;
 
-    return html`
-      <div class=${['scrollbar', styles.root]}>
-        ${d3SVG?.node()}
-        ${
-          showPreview
-            ? html`
-                <${Table}
-                  table=${state.table}
-                  columnId=${state.columnId}
-                  x=${state.x + MARGIN}
-                  y=${state.y}
-                />
-              `
-            : null
-        }
+    return (
+      <div class={['scrollbar', styles.root]}>
+        {d3SVG?.node()}
+        {showPreview ? (
+          <Table
+            table={table}
+            columnId={state.columnId}
+            x={state.x + MARGIN}
+            y={state.y}
+          />
+        ) : null}
       </div>
-    `;
+    );
   };
 };
 

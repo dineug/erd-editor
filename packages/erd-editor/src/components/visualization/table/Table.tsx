@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { FC, html, repeat } from '@dineug/r-html';
+import { FC, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import * as styles from '@/components/erd/canvas/table/Table.styles';
@@ -31,67 +31,63 @@ const Table: FC<TableProps> = (props, ctx) => {
       .collection('tableColumnEntities')
       .selectByIds(table.columnIds);
 
-    return html`
+    return (
       <div
-        class=${['table', styles.root]}
-        style=${{
+        class={['table', styles.root]}
+        style={{
           top: `${y}px`,
           left: `${x}px`,
           width: `${tableWidths.width}px`,
           height: `${height}px`,
           position: 'fixed',
         }}
-        data-id=${table.id}
+        data-id={table.id}
       >
-        <div class=${styles.header}>
+        <div class={styles.header}>
           <div
-            class=${['table-header-color', styles.headerColor]}
-            style=${{
+            class={['table-header-color', styles.headerColor]}
+            style={{
               'background-color': table.ui.color,
             }}
           ></div>
-          <div class=${styles.headerButtonWrap}></div>
-          <div class=${styles.headerInputWrap}>
+          <div class={styles.headerButtonWrap}></div>
+          <div class={styles.headerInputWrap}>
             <div class="input-padding">
-              <${EditInput}
+              <EditInput
                 placeholder="table"
-                width=${table.ui.widthName}
-                value=${table.name}
+                width={table.ui.widthName}
+                value={table.name}
               />
             </div>
-            ${
-              bHas(settings.show, Show.tableComment)
-                ? html`
-                    <div class="input-padding">
-                      <${EditInput}
-                        placeholder="comment"
-                        width=${table.ui.widthComment}
-                        value=${table.comment}
-                      />
-                    </div>
-                  `
-                : null
-            }
+            {bHas(settings.show, Show.tableComment) ? (
+              <div class="input-padding">
+                <EditInput
+                  placeholder="comment"
+                  width={table.ui.widthComment}
+                  value={table.comment}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
         <div>
-          ${repeat(
+          {repeat(
             columns,
             column => column.id,
-            column => html`
-              <${Column}
-                column=${column}
-                selected=${column.id === columnId}
-                widthName=${tableWidths.name}
-                widthDataType=${tableWidths.dataType}
-                widthDefault=${tableWidths.default}
-                widthComment=${tableWidths.comment}
+            column => (
+              <Column
+                column={column}
+                selected={column.id === columnId}
+                widthName={tableWidths.name}
+                widthDataType={tableWidths.dataType}
+                widthDefault={tableWidths.default}
+                widthComment={tableWidths.comment}
               />
-            `
+            )
           )}
         </div>
       </div>
-    `;
+    );
   };
 };
 

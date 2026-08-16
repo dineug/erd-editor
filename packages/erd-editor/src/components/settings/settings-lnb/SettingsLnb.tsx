@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import Separator from '@/components/primitives/separator/Separator';
 import { ValuesType } from '@/internal-types';
@@ -19,24 +19,22 @@ export type SettingsLnbProps = {
 };
 
 const SettingsLnb: FC<SettingsLnbProps> = (props, ctx) => {
-  return () => html`
-    <div class=${styles.lnb}>
-      <div class=${fontSize6}>Settings</div>
-      <${Separator} space=${12} />
-      <div class=${['scrollbar', styles.list]}>
-        ${LnbList.map(
-          lnb => html`
-            <div
-              class=${[styles.item, { selected: lnb === props.value }]}
-              @click=${() => props.onChange(lnb as Lnb)}
-            >
-              ${lnb}
-            </div>
-          `
-        )}
+  return () => (
+    <div class={styles.lnb}>
+      <div class={fontSize6}>Settings</div>
+      <Separator space={12} />
+      <div class={['scrollbar', styles.list]}>
+        {LnbList.map(lnb => (
+          <div
+            class={[styles.item, { selected: lnb === props.value }]}
+            on:click={() => props.onChange(lnb as Lnb)}
+          >
+            {lnb}
+          </div>
+        ))}
       </div>
     </div>
-  `;
+  );
 };
 
 export default SettingsLnb;

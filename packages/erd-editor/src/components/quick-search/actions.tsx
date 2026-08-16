@@ -1,5 +1,5 @@
 import { query, toJson } from '@dineug/erd-editor-schema';
-import { DOMTemplateLiterals, html } from '@dineug/r-html';
+import { DOMTemplateLiterals } from '@dineug/r-html';
 import { isEmpty } from 'es-toolkit/compat';
 import Fues from 'fuse.js';
 
@@ -60,13 +60,13 @@ export function createScopeActions(app: AppContext): Action[] {
   return [
     ...allScopeActions,
     {
-      icon: html`<${Icon} prefix="mdi" name="database" size=${16} />`,
+      icon: <Icon prefix="mdi" name="database" size={16} />,
       name: 'Database',
       next: databaseMenus.map<Action>(menu => ({
         icon:
-          menu.value === settings.database
-            ? html`<${Icon} name="check" size=${16} />`
-            : null,
+          menu.value === settings.database ? (
+            <Icon name="check" size={16} />
+          ) : null,
         name: menu.name,
         perform: ({ store }) => {
           store.dispatch(
@@ -84,22 +84,18 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     },
     {
-      icon: html`<${Icon} name="file-import" size=${16} />`,
+      icon: <Icon name="file-import" size={16} />,
       name: 'Import',
       next: [
         {
-          icon: html`<${Icon} prefix="mdi" name="code-json" size=${16} />`,
+          icon: <Icon prefix="mdi" name="code-json" size={16} />,
           name: 'json',
           perform: app => {
             importJSON(app);
           },
         },
         {
-          icon: html`<${Icon}
-            prefix="mdi"
-            name="database-import"
-            size=${16}
-          />`,
+          icon: <Icon prefix="mdi" name="database-import" size={16} />,
           name: 'Schema SQL',
           perform: app => {
             importSchemaSQL(app);
@@ -111,22 +107,18 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     },
     {
-      icon: html`<${Icon} name="file-export" size=${16} />`,
+      icon: <Icon name="file-export" size={16} />,
       name: 'Export',
       next: [
         {
-          icon: html`<${Icon} prefix="mdi" name="code-json" size=${16} />`,
+          icon: <Icon prefix="mdi" name="code-json" size={16} />,
           name: 'json',
           perform: ({ store }) => {
             exportJSON(toJson(store.state), store.state.settings.databaseName);
           },
         },
         {
-          icon: html`<${Icon}
-            prefix="mdi"
-            name="database-export"
-            size=${16}
-          />`,
+          icon: <Icon prefix="mdi" name="database-export" size={16} />,
           name: 'Schema SQL',
           perform: ({ store }) => {
             exportSchemaSQL(
@@ -141,7 +133,7 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     },
     {
-      icon: html`<${Icon} name="table" size=${16} />`,
+      icon: <Icon name="table" size={16} />,
       name: 'New Table',
       shortcut: keyBindingMap.addTable[0]?.shortcut,
       perform: ({ store }) => {
@@ -152,7 +144,7 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     },
     {
-      icon: html`<${Icon} name="note-sticky" size=${16} />`,
+      icon: <Icon name="note-sticky" size={16} />,
       name: 'New Memo',
       shortcut: keyBindingMap.addMemo[0]?.shortcut,
       perform: ({ store }) => {
@@ -163,7 +155,7 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     },
     ...drawRelationshipMenus.map<Action>(menu => ({
-      icon: html`<${Icon} prefix="base64" name=${menu.iconName} size=${16} />`,
+      icon: <Icon prefix="base64" name={menu.iconName} size={16} />,
       name: menu.name,
       keywords: 'Relationship',
       shortcut: keyBindingMap[menu.keyBindingName][0]?.shortcut,
@@ -175,7 +167,7 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     })),
     {
-      icon: html`<${Icon} prefix="mdi" name="atom" size=${16} />`,
+      icon: <Icon prefix="mdi" name="atom" size={16} />,
       name: 'Automatic Table Placement',
       perform: ({ store }) => {
         store.dispatch(
@@ -187,13 +179,13 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     },
     {
-      icon: html`<${Icon} prefix="mdi" name="code-brackets" size=${16} />`,
+      icon: <Icon prefix="mdi" name="code-brackets" size={16} />,
       name: 'Bracket',
       next: bracketMenus.map<Action>(menu => ({
         icon:
-          menu.value === settings.bracketType
-            ? html`<${Icon} name="check" size=${16} />`
-            : null,
+          menu.value === settings.bracketType ? (
+            <Icon name="check" size={16} />
+          ) : null,
         name: menu.name,
         perform: ({ store }) => {
           store.dispatch(
@@ -208,13 +200,13 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     },
     {
-      icon: html`<${Icon} name="code" size=${16} />`,
+      icon: <Icon name="code" size={16} />,
       name: 'Language',
       next: languageMenus.map<Action>(menu => ({
         icon:
-          menu.value === settings.language
-            ? html`<${Icon} name="check" size=${16} />`
-            : null,
+          menu.value === settings.language ? (
+            <Icon name="check" size={16} />
+          ) : null,
         name: menu.name,
         perform: ({ store }) => {
           store.dispatch(
@@ -229,15 +221,13 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     },
     {
-      icon: html`
-        <${Icon} prefix="mdi" name="format-letter-case" size=${16} />
-      `,
+      icon: <Icon prefix="mdi" name="format-letter-case" size={16} />,
       name: 'Table Name Case',
       next: tableNameCaseMenus.map<Action>(menu => ({
         icon:
-          menu.value === settings.tableNameCase
-            ? html`<${Icon} name="check" size=${16} />`
-            : null,
+          menu.value === settings.tableNameCase ? (
+            <Icon name="check" size={16} />
+          ) : null,
         name: menu.name,
         perform: ({ store }) => {
           store.dispatch(
@@ -252,15 +242,13 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     },
     {
-      icon: html`
-        <${Icon} prefix="mdi" name="format-letter-case" size=${16} />
-      `,
+      icon: <Icon prefix="mdi" name="format-letter-case" size={16} />,
       name: 'Column Name Case',
       next: columnNameCaseMenus.map<Action>(menu => ({
         icon:
-          menu.value === settings.columnNameCase
-            ? html`<${Icon} name="check" size=${16} />`
-            : null,
+          menu.value === settings.columnNameCase ? (
+            <Icon name="check" size={16} />
+          ) : null,
         name: menu.name,
         perform: ({ store }) => {
           store.dispatch(
@@ -319,7 +307,7 @@ export const allScopeActions: Action[] = [
     name: 'Tab',
     next: [
       {
-        icon: html`<${Icon} name="diagram-project" size=${16} />`,
+        icon: <Icon name="diagram-project" size={16} />,
         name: 'Entity Relationship Diagram',
         perform: ({ store }) => {
           store.dispatch(changeCanvasTypeAction({ value: CanvasType.ERD }));
@@ -329,11 +317,7 @@ export const allScopeActions: Action[] = [
         },
       },
       {
-        icon: html`<${Icon}
-          prefix="mdi"
-          name="chart-scatter-plot"
-          size=${16}
-        />`,
+        icon: <Icon prefix="mdi" name="chart-scatter-plot" size={16} />,
         name: 'Visualization',
         perform: ({ store }) => {
           store.dispatch(
@@ -345,7 +329,7 @@ export const allScopeActions: Action[] = [
         },
       },
       {
-        icon: html`<${Icon} prefix="mdi" name="database-export" size=${16} />`,
+        icon: <Icon prefix="mdi" name="database-export" size={16} />,
         name: 'Schema SQL',
         perform: ({ store }) => {
           store.dispatch(
@@ -357,7 +341,7 @@ export const allScopeActions: Action[] = [
         },
       },
       {
-        icon: html`<${Icon} name="file-code" size=${16} />`,
+        icon: <Icon name="file-code" size={16} />,
         name: 'Generator Code',
         perform: ({ store }) => {
           store.dispatch(
@@ -369,7 +353,7 @@ export const allScopeActions: Action[] = [
         },
       },
       {
-        icon: html`<${Icon} name="gear" size=${16} />`,
+        icon: <Icon name="gear" size={16} />,
         name: 'Settings',
         perform: ({ store }) => {
           store.dispatch(

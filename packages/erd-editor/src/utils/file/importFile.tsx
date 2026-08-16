@@ -1,4 +1,3 @@
-import { html } from '@dineug/r-html';
 import { isString } from '@dineug/shared';
 
 import { AppContext } from '@/components/appContext';
@@ -46,7 +45,7 @@ export function importJSON({ store, emitter }: AppContext) {
     if (!JSON_EXTENSION.test(file.name)) {
       emitter.emit(
         openToastAction({
-          message: html`<${Toast} description="Just import the json file" />`,
+          message: <Toast description="Just import the json file" />,
         })
       );
       return;
@@ -82,7 +81,7 @@ export function importSchemaSQL({ store, emitter }: AppContext) {
     if (!SQL_EXTENSION.test(file.name)) {
       emitter.emit(
         openToastAction({
-          message: html`<${Toast} description="Just import the sql file" />`,
+          message: <Toast description="Just import the sql file" />,
         })
       );
       return;
@@ -122,7 +121,7 @@ export function importDiffJSON({ emitter }: AppContext) {
     if (!JSON_EXTENSION.test(file.name)) {
       emitter.emit(
         openToastAction({
-          message: html`<${Toast} description="Just import the json file" />`,
+          message: <Toast description="Just import the json file" />,
         })
       );
       return;

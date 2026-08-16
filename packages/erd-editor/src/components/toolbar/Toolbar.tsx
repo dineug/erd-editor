@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import Icon from '@/components/primitives/icon/Icon';
@@ -116,151 +116,145 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
       !showTimeTravel &&
       !props.readonly;
 
-    return html`
+    return (
       <div
-        class=${['toolbar', styles.root]}
-        @mousedown=${handleUnselectAll}
-        @touchstart=${handleUnselectAll}
+        class={['toolbar', styles.root]}
+        on:mousedown={handleUnselectAll}
+        on:touchstart={handleUnselectAll}
       >
-        <${TextInput}
+        <TextInput
           title="database name"
           placeholder="database name"
-          width=${150}
-          value=${settings.databaseName}
-          .onInput=${handleChangeDatabaseName}
+          width={150}
+          value={settings.databaseName}
+          onInput={handleChangeDatabaseName}
         />
-        <${TextInput}
+        <TextInput
           title="canvas size"
           placeholder="canvas size"
-          width=${45}
-          value=${settings.width.toString()}
-          numberOnly=${true}
-          .onChange=${handleResize}
+          width={45}
+          value={settings.width.toString()}
+          numberOnly={true}
+          onChange={handleResize}
         />
-        <${TextInput}
+        <TextInput
           title="zoom level"
           placeholder="zoom level"
-          width=${45}
-          value=${toZoomFormat(settings.zoomLevel)}
-          numberOnly=${true}
-          .onChange=${handleZoomLevel}
+          width={45}
+          value={toZoomFormat(settings.zoomLevel)}
+          numberOnly={true}
+          onChange={handleZoomLevel}
         />
-        <div class=${styles.vertical}></div>
+        <div class={styles.vertical}></div>
         <div
-          class=${[
+          class={[
             styles.menu,
             { active: settings.canvasType === CanvasType.ERD },
           ]}
           title="Entity Relationship Diagram"
-          @click=${() => handleChangeCanvasType(CanvasType.ERD)}
+          on:click={() => handleChangeCanvasType(CanvasType.ERD)}
         >
-          <${Icon} name="diagram-project" size=${16} />
+          <Icon name="diagram-project" size={16} />
         </div>
         <div
-          class=${[
+          class={[
             styles.menu,
             { active: settings.canvasType === CanvasType.visualization },
           ]}
           title="Visualization"
-          @click=${() => handleChangeCanvasType(CanvasType.visualization)}
+          on:click={() => handleChangeCanvasType(CanvasType.visualization)}
         >
-          <${Icon} prefix="mdi" name="chart-scatter-plot" size=${16} />
+          <Icon prefix="mdi" name="chart-scatter-plot" size={16} />
         </div>
         <div
-          class=${[
+          class={[
             styles.menu,
             { active: settings.canvasType === CanvasType.schemaSQL },
           ]}
           title="Schema SQL"
-          @click=${() => handleChangeCanvasType(CanvasType.schemaSQL)}
+          on:click={() => handleChangeCanvasType(CanvasType.schemaSQL)}
         >
-          <${Icon} prefix="mdi" name="database-export" size=${16} />
+          <Icon prefix="mdi" name="database-export" size={16} />
         </div>
         <div
-          class=${[
+          class={[
             styles.menu,
             { active: settings.canvasType === CanvasType.generatorCode },
           ]}
           title="Code Generator"
-          @click=${() => handleChangeCanvasType(CanvasType.generatorCode)}
+          on:click={() => handleChangeCanvasType(CanvasType.generatorCode)}
         >
-          <${Icon} name="file-code" size=${16} />
+          <Icon name="file-code" size={16} />
         </div>
         <div
-          class=${[
+          class={[
             styles.menu,
             { active: settings.canvasType === CanvasType.settings },
           ]}
           title="Settings"
-          @click=${() => handleChangeCanvasType(CanvasType.settings)}
+          on:click={() => handleChangeCanvasType(CanvasType.settings)}
         >
-          <${Icon} name="gear" size=${16} />
+          <Icon name="gear" size={16} />
         </div>
-        <div class=${styles.vertical}></div>
-        <div class=${styles.menu} title="Search" @click=${handleSearch}>
-          <${Icon} name="magnifying-glass" size=${16} />
+        <div class={styles.vertical}></div>
+        <div class={styles.menu} title="Search" on:click={handleSearch}>
+          <Icon name="magnifying-glass" size={16} />
         </div>
-        ${
-          props.enableThemeBuilder
-            ? html`
-                <div class=${styles.menu} title="Theme" @click=${handleTheme}>
-                  <${Icon} name="circle-half-stroke" size=${16} />
-                </div>
-              `
-            : null
-        }
-        <div class=${styles.vertical}></div>
-        ${
-          showUndoRedo
-            ? html`
-                <div
-                  class=${[
-                    'undo-redo',
-                    styles.menu,
-                    {
-                      active: editor.hasUndo,
-                    },
-                  ]}
-                  title="Undo"
-                  @click=${handleUndo}
-                >
-                  <${Icon} name="rotate-left" size=${16} />
-                </div>
-                <div
-                  class=${[
-                    'undo-redo',
-                    styles.menu,
-                    {
-                      active: editor.hasRedo,
-                    },
-                  ]}
-                  title="Redo"
-                  @click=${handleRedo}
-                >
-                  <${Icon} name="rotate-right" size=${16} />
-                </div>
-                <div
-                  class=${[
-                    'undo-redo',
-                    styles.menu,
-                    {
-                      active: editor.hasUndo || editor.hasRedo,
-                    },
-                  ]}
-                  title="Time Travel"
-                  style=${{
-                    'max-width': '26px',
-                  }}
-                  @click=${handleOpenTimeTravel}
-                >
-                  <${Icon} prefix="mdi" name="av-timer" size=${20} />
-                </div>
-              `
-            : null
-        }
-        <div class=${styles.tableCount}>Table: ${doc.tableIds.length}</div>
+        {props.enableThemeBuilder ? (
+          <div class={styles.menu} title="Theme" on:click={handleTheme}>
+            <Icon name="circle-half-stroke" size={16} />
+          </div>
+        ) : null}
+        <div class={styles.vertical}></div>
+        {showUndoRedo ? (
+          <>
+            <div
+              class={[
+                'undo-redo',
+                styles.menu,
+                {
+                  active: editor.hasUndo,
+                },
+              ]}
+              title="Undo"
+              on:click={handleUndo}
+            >
+              <Icon name="rotate-left" size={16} />
+            </div>
+            <div
+              class={[
+                'undo-redo',
+                styles.menu,
+                {
+                  active: editor.hasRedo,
+                },
+              ]}
+              title="Redo"
+              on:click={handleRedo}
+            >
+              <Icon name="rotate-right" size={16} />
+            </div>
+            <div
+              class={[
+                'undo-redo',
+                styles.menu,
+                {
+                  active: editor.hasUndo || editor.hasRedo,
+                },
+              ]}
+              title="Time Travel"
+              style={{
+                'max-width': '26px',
+              }}
+              on:click={handleOpenTimeTravel}
+            >
+              <Icon prefix="mdi" name="av-timer" size={20} />
+            </div>
+          </>
+        ) : null}
+        <div class={styles.tableCount}>Table: {doc.tableIds.length}</div>
       </div>
-    `;
+    );
   };
 };
 

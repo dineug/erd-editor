@@ -4,7 +4,7 @@ import * as styles from './ColumnOption.styles';
 
 export type ColumnOptionProps = {
   class?: any;
-  focus: boolean;
+  focus?: boolean;
   width: number;
   checked: boolean;
   text: string;

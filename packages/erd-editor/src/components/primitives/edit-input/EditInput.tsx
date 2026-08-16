@@ -18,8 +18,8 @@ export type EditInputProps = {
   class?: any;
   placeholder?: string;
   title?: string;
-  edit: boolean;
-  focus: boolean;
+  edit?: boolean;
+  focus?: boolean;
   width: number;
   value: string;
   autofocus?: boolean;

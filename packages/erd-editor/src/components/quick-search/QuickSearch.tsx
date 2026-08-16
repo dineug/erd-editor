@@ -1,7 +1,6 @@
 import {
   createRef,
   FC,
-  html,
   nextTick,
   observable,
   onMounted,
@@ -218,67 +217,57 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     } = store.state;
     if (!openMap[Open.search]) return null;
 
-    return html`
-      <div class=${styles.root} @click=${handleOutsideClick}>
-        <div class=${['quick-search', styles.container]} ${ref(root)}>
-          <${TextInput}
-            class=${styles.search}
+    return (
+      <div class={styles.root} on:click={handleOutsideClick}>
+        <div class={['quick-search', styles.container]} use:ref={ref(root)}>
+          <TextInput
+            class={styles.search}
             placeholder="Search"
-            autofocus=${true}
-            value=${state.keyword}
-            .onInput=${handleInputKeyword}
-            .onKeydown=${handleKeydown}
+            autofocus={true}
+            value={state.keyword}
+            onInput={handleInputKeyword}
+            onKeydown={handleKeydown}
           />
-          <div class=${['scrollbar', styles.list]}>
-            ${getActions().map(
-              (action, index) => html`
-                <div
-                  class=${[styles.action, { selected: index === state.index }]}
-                  @click=${(event: MouseEvent) => {
-                    event.stopPropagation();
-                    handlePerform(index);
-                  }}
-                >
-                  ${
-                    action.icon
-                      ? html`<div class=${styles.icon}>${action.icon}</div>`
-                      : null
-                  }
-                  <span class=${styles.name}>
-                    <${HighlightedText}
-                      searchWords=${[state.keyword]}
-                      textToHighlight=${action.name}
-                    />
-                  </span>
-                  ${
-                    action.keywords
-                      ? html`
-                          <div class=${styles.vertical}></div>
-                          <span class=${styles.keyword}>
-                            <${HighlightedText}
-                              searchWords=${[state.keyword]}
-                              textToHighlight=${action.keywords}
-                            />
-                          </span>
-                        `
-                      : null
-                  }
-                  ${
-                    action.shortcut
-                      ? html`
-                          <div class=${styles.shortcut}>
-                            <${Kbd} shortcut=${action.shortcut} />
-                          </div>
-                        `
-                      : null
-                  }
-                </div>
-              `
-            )}
+          <div class={['scrollbar', styles.list]}>
+            {getActions().map((action, index) => (
+              <div
+                class={[styles.action, { selected: index === state.index }]}
+                on:click={(event: MouseEvent) => {
+                  event.stopPropagation();
+                  handlePerform(index);
+                }}
+              >
+                {action.icon ? (
+                  <div class={styles.icon}>{action.icon}</div>
+                ) : null}
+                <span class={styles.name}>
+                  <HighlightedText
+                    searchWords={[state.keyword]}
+                    textToHighlight={action.name}
+                  />
+                </span>
+                {action.keywords ? (
+                  <>
+                    <div class={styles.vertical}></div>
+                    <span class={styles.keyword}>
+                      <HighlightedText
+                        searchWords={[state.keyword]}
+                        textToHighlight={action.keywords}
+                      />
+                    </span>
+                  </>
+                ) : null}
+                {action.shortcut ? (
+                  <div class={styles.shortcut}>
+                    <Kbd shortcut={action.shortcut} />
+                  </div>
+                ) : null}
+              </div>
+            ))}
           </div>
         </div>
       </div>
-    `;
+    );
   };
 };
 

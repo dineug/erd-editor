@@ -1,7 +1,6 @@
 import {
   createRef,
   FC,
-  html,
   observable,
   onMounted,
   ref,
@@ -65,27 +64,27 @@ const ToastContainer: FC<ToastContainerProps> = (props, ctx) => {
     );
   });
 
-  return () => html`
+  return () => (
     <div
-      class=${styles.root}
-      ${ref(root)}
-      ?data-pointer-none=${toasts.length === 0}
+      class={styles.root}
+      use:ref={ref(root)}
+      bool:data-pointer-none={toasts.length === 0}
     >
-      ${repeat(
+      {repeat(
         toasts,
         toast => toast.id,
-        toast => html`
+        toast => (
           <div
             class="toast-container"
-            ?data-animation-one=${animationOne.has(toast.id)}
-            @animationend=${() => handleAnimationend(toast.id)}
+            bool:data-animation-one={animationOne.has(toast.id)}
+            on:animationend={() => handleAnimationend(toast.id)}
           >
-            ${toast.message}
+            {toast.message}
           </div>
-        `
+        )
       )}
     </div>
-  `;
+  );
 };
 
 export default ToastContainer;

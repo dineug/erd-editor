@@ -7,7 +7,7 @@ import { bHas } from '@/utils/bit';
 import * as styles from './ColumnNotNull.styles';
 
 export type ColumnNotNullProps = {
-  focus: boolean;
+  focus?: boolean;
   options: number;
 };
 

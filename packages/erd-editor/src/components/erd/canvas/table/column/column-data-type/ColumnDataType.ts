@@ -25,11 +25,11 @@ import { lastCursorFocus } from '@/utils/focus';
 import * as styles from './ColumnDataType.styles';
 
 export type ColumnDataTypeProps = {
-  app: Ref<AppContext>;
+  app?: Ref<AppContext>;
   tableId: string;
   columnId: string;
-  edit: boolean;
-  focus: boolean;
+  edit?: boolean;
+  focus?: boolean;
   width: number;
   value: string;
   onInput?: (event: InputEvent) => void;
