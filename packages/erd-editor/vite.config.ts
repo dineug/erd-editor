@@ -34,7 +34,7 @@ export default defineConfig({
         // 타입 게이트 ①. 배열은 순차 실행이자 독립 캐시 단위인데, 태스크 레벨
         // `input`은 두 서브태스크가 공유한다(실측) — 그래서 소스만 바뀌어도
         // 자동 추적에 안 잡히는 `tsc`가 다시 돈다.
-        command: ['tsc --noEmit', 'vp build --mode lib'],
+        command: ['tsc --noEmit', 'vp build'],
         dependsOn: [
           {
             task: 'build',

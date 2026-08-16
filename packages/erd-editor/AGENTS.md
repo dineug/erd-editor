@@ -47,7 +47,7 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 - `vp run --filter @dineug/erd-editor --fail-if-no-match test` — `tsc --noEmit`, then `vp test run` over `src/**/*.test.ts` in happy-dom. `vitest.setup.ts` polyfills `ResizeObserver`, `IntersectionObserver`, `matchMedia` and `requestIdleCallback`.
 - `pnpm --filter @dineug/erd-editor test:coverage` — v8, per-file 80% lines/functions/branches/statements; `test:dev` watches. Both are the built-in `vp test`: no type gate, no dependency builds.
 - `pnpm --filter @dineug/erd-editor e2e` — builds this package, then Playwright/Chromium over `e2e/specs/`; also `e2e:dev`, `e2e:headed`, `e2e:report`, `e2e:typecheck`. Read `e2e/README.md` first — the fixture reopens the closed shadow root before the element registers.
-- `pnpm --filter @dineug/erd-editor dev` builds the workspace deps then serves `vp dev --mode lib` with r-html HMR; `dev:storybook` / `build:storybook` drive the Storybook 10 workbench. 313 colocated `*.test.ts` files, all importing from `vite-plus/test`, never `vitest`. `tsconfig.json` includes all of `src/`, so a type error in a test or in `__test-utils__` turns the run red.
+- `pnpm --filter @dineug/erd-editor dev` builds the workspace deps then serves `vp dev` with r-html HMR; `dev:storybook` / `build:storybook` drive the Storybook 10 workbench. 313 colocated `*.test.ts` files, all importing from `vite-plus/test`, never `vitest`. `tsconfig.json` includes all of `src/`, so a type error in a test or in `__test-utils__` turns the run red.
 
 ### Common Patterns
 

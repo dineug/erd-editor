@@ -8,9 +8,8 @@ const BASE_URL = `http://localhost:${PORT}`;
  * The suite drives the real `<erd-editor>` element in Chromium against the Vite
  * dev server, using the deterministic page in `e2e/fixture/`.
  *
- * `--mode lib` matches what `vp build` uses, so the dev server the suite drives
- * resolves the same way the published bundle does. The
- * `@dineug/vite-plugin-r-html` transform is not conditional on it.
+ * The dev server runs the package's one and only Vite config, so what the suite
+ * drives is compiled exactly the way the published bundle is.
  */
 export default defineConfig({
   testDir: './e2e/specs',
@@ -45,7 +44,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm exec vp dev --mode lib --port ${PORT} --strictPort`,
+    command: `pnpm exec vp dev --port ${PORT} --strictPort`,
     url: `${BASE_URL}${'/e2e/fixture/index.html'}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -42,7 +42,7 @@
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "dev": "vp run --filter @dineug/erd-editor... --filter !@dineug/erd-editor build && vp dev --mode lib",
+    "dev": "vp run --filter @dineug/erd-editor... --filter !@dineug/erd-editor build && vp dev",
     "dev:storybook": "storybook dev -p 6006",
     "build:storybook": "storybook build",
     "test:dev": "vp test dev",
