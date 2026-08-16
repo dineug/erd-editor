@@ -29,7 +29,7 @@
     "base64-arraybuffer": "^1.0.2",
     "comlink": "^4.4.2",
     "dexie": "^3.2.7",
-    "immer": "^10.0.4",
+    "immer": "^11.1.17",
     "jotai": "^2.20.2",
     "jotai-immer": "^0.4.3",
     "lodash-es": "^4.17.21",
