@@ -19,7 +19,7 @@ import { flush } from '@/__test-utils__/index';
 /**
  * The regression harness the JSX conversion commits lean on.
  *
- * The type layer in `src/jsx-runtime.d.ts` says what an attribute *means*; the
+ * `@dineug/r-html/jsx-runtime` says what an attribute *means*; the
  * codegen in `@dineug/vite-plugin-r-html` decides what it *emits*. They are two
  * independent implementations of one mapping, and nothing makes them disagree
  * loudly — a wrong emit typechecks green and renders nothing. Every case here is
@@ -217,6 +217,22 @@ describe('markup parity', () => {
     // wrong, and it does not show up in `innerHTML`.
     expect(jsx.querySelector('line')?.namespaceURI).toBe(
       'http://www.w3.org/2000/svg'
+    );
+  });
+
+  it('keeps a shared HTML/SVG tag in the HTML namespace at the root', async () => {
+    // `style`, like `a`, `script` and `title`, is defined by both. A component
+    // whose root is one of them is HTML — the case `<style>` rules make common,
+    // since a `:host { … }` block cannot be written as JSX text.
+    const sheet = ':host { color: red; }';
+    const el = await both(
+      <style>{sheet}</style>,
+      html`<style>
+        ${sheet}
+      </style>`
+    );
+    expect(el.querySelector('style')?.namespaceURI).toBe(
+      'http://www.w3.org/1999/xhtml'
     );
   });
 

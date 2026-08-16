@@ -39,11 +39,17 @@ const SVG_ONLY_TAGS = new Set([
 ]);
 
 /**
- * Tags HTML and SVG both define. Inference cannot pick a namespace for these,
- * and picking wrong renders nothing without erroring, so the codegen refuses to
- * guess and asks for an explicit `<svg>` root instead.
+ * `a`, `script`, `style` and `title` are defined by both HTML and SVG and are
+ * deliberately absent above, so they resolve to HTML — the same way
+ * `JSX.IntrinsicElements` resolves them, since SVG only contributes the names
+ * HTML does not already define.
+ *
+ * The SVG spelling of those four still works: it has to sit inside an `<svg>`
+ * in the same template, where the namespace comes from that root rather than
+ * from this map. A component whose own root is an SVG `<title>` would be the
+ * one broken case, and the type layer already rules it out by giving those
+ * tags HTML attributes.
  */
-const AMBIGUOUS_TAGS = new Set(['a', 'script', 'style', 'title']);
 
 /** `on:click__2` — the escape hatch for the one thing JSX cannot say twice. */
 const DUPLICATE_EVENT_SUFFIX = /__\d+$/;
@@ -155,16 +161,6 @@ class Codegen {
     const name = element.openingElement.name;
     if (isComponentName(name)) return 'html';
     if (name.type !== 'JSXIdentifier') return 'html';
-
-    if (AMBIGUOUS_TAGS.has(name.name)) {
-      return fail(
-        element,
-        this.filename,
-        `\`<${name.name}>\` exists in both HTML and SVG, so the namespace of this ` +
-          `template cannot be inferred from its root. Wrap it in an explicit ` +
-          `<svg> root, or move it inside one.`
-      );
-    }
 
     return SVG_ONLY_TAGS.has(name.name) ? 'svg' : 'html';
   }

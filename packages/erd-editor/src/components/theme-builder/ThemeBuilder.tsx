@@ -1,4 +1,4 @@
-import { FC, html, onMounted } from '@dineug/r-html';
+import { FC, onMounted } from '@dineug/r-html';
 import { get } from 'es-toolkit/compat';
 import { filter } from 'rxjs';
 
@@ -83,67 +83,63 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
 
     const { theme } = props;
 
-    return html`
-      <div class=${['theme-builder', styles.root]}>
-        <div class=${styles.title}>Theme</div>
-        <div class=${styles.subTitle}>Accent color</div>
-        <div class=${styles.palette}>
-          ${AccentColorList.map(
-            key => html`
-              <span
-                class=${[styles.color, { selected: key === theme.accentColor }]}
-                style=${{
-                  'background-color': get(Palette, [key, `${key}9`]),
-                }}
-                title=${key}
-                @click=${() => handleChangeAccentColor(key)}
-              ></span>
-            `
-          )}
+    return (
+      <div class={['theme-builder', styles.root]}>
+        <div class={styles.title}>Theme</div>
+        <div class={styles.subTitle}>Accent color</div>
+        <div class={styles.palette}>
+          {AccentColorList.map(key => (
+            <span
+              class={[styles.color, { selected: key === theme.accentColor }]}
+              style={{
+                'background-color': get(Palette, [key, `${key}9`]),
+              }}
+              title={key}
+              on:click={() => handleChangeAccentColor(key)}
+            />
+          ))}
         </div>
-        <div class=${styles.subTitle}>Gray color</div>
-        <div class=${styles.palette}>
-          ${GrayColorList.map(
-            key => html`
-              <span
-                class=${[styles.color, { selected: key === theme.grayColor }]}
-                style=${{
-                  'background-color': get(Palette, [key, `${key}9`]),
-                }}
-                title=${key}
-                @click=${() => handleChangeGrayColor(key)}
-              ></span>
-            `
-          )}
+        <div class={styles.subTitle}>Gray color</div>
+        <div class={styles.palette}>
+          {GrayColorList.map(key => (
+            <span
+              class={[styles.color, { selected: key === theme.grayColor }]}
+              style={{
+                'background-color': get(Palette, [key, `${key}9`]),
+              }}
+              title={key}
+              on:click={() => handleChangeGrayColor(key)}
+            />
+          ))}
         </div>
-        <div class=${styles.subTitle}>Appearance</div>
-        <div class=${styles.lightDarkButtonGroup}>
+        <div class={styles.subTitle}>Appearance</div>
+        <div class={styles.lightDarkButtonGroup}>
           <div
-            class=${[
+            class={[
               styles.lightDarkButton,
               { selected: theme.appearance === Appearance.light },
             ]}
-            @click=${() => handleChangeAppearance(Appearance.light)}
+            on:click={() => handleChangeAppearance(Appearance.light)}
           >
-            <${Icon} prefix="mdi" name="white-balance-sunny" />
-            <span class=${styles.vertical}></span>
+            <Icon prefix="mdi" name="white-balance-sunny" />
+            <span class={styles.vertical} />
             <span>Light</span>
           </div>
           <div
-            class=${[
+            class={[
               styles.lightDarkButton,
               ,
               { selected: theme.appearance === Appearance.dark },
             ]}
-            @click=${() => handleChangeAppearance(Appearance.dark)}
+            on:click={() => handleChangeAppearance(Appearance.dark)}
           >
-            <${Icon} prefix="mdi" name="weather-might" />
-            <span class=${styles.vertical}></span>
+            <Icon prefix="mdi" name="weather-might" />
+            <span class={styles.vertical} />
             <span>Dark</span>
           </div>
         </div>
       </div>
-    `;
+    );
   };
 };
 

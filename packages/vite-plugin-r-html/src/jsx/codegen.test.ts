@@ -238,9 +238,18 @@ describe('svg', () => {
     expect(expr('<path d={d} />')).toBe('const a = __rSvg`<path d=${d} />`;');
   });
 
-  it('refuses to guess a namespace for a tag HTML and SVG share', () => {
-    expect(() => expr('<title>x</title>')).toThrow(
-      /exists in both HTML and SVG/
+  it('resolves a tag HTML and SVG share to HTML, as IntrinsicElements does', () => {
+    expect(expr('<title>x</title>')).toBe(
+      'const a = __rHtml`<title>x</title>`;'
+    );
+    expect(expr('<style>{sheet}</style>')).toBe(
+      'const a = __rHtml`<style>${sheet}</style>`;'
+    );
+  });
+
+  it('still puts a shared tag in the svg namespace under an svg root', () => {
+    expect(expr('<svg><title>x</title></svg>')).toBe(
+      'const a = __rSvg`<svg><title>x</title></svg>`;'
     );
   });
 });
@@ -283,7 +292,7 @@ describe('the file around the JSX', () => {
 
   it('reports the file and position of a rejected construct', () => {
     expect(() =>
-      transformJsxToTagged('\nconst a = <title>x</title>;', 'Foo.tsx')
-    ).toThrow(/\[r-html-jsx\] Foo\.tsx:2:11/);
+      transformJsxToTagged('\nconst a = <div wat:x={y} />;', 'Foo.tsx')
+    ).toThrow(/\[r-html-jsx\] Foo\.tsx:2:16/);
   });
 });

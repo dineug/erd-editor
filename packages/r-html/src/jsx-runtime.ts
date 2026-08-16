@@ -23,7 +23,7 @@
  * ```
  */
 import type { FunctionalComponent } from '@/render/part/node/component/observableComponent';
-import type { DOMTemplateLiterals } from '@/template';
+import type { CSSTemplateLiterals, DOMTemplateLiterals } from '@/template';
 
 export type Falsy = false | null | undefined;
 
@@ -37,6 +37,7 @@ export type Falsy = false | null | undefined;
 export type ClassValue =
   | string
   | number
+  | CSSTemplateLiterals
   | Record<string, unknown>
   | readonly ClassValue[]
   | Falsy;
@@ -232,10 +233,10 @@ export declare namespace JSX {
    * and reading them keeps this in step with the TypeScript version in use.
    *
    * SVG contributes only the names HTML does not already define — `a`,
-   * `script`, `style` and `title` exist in both, and HTML wins. Those four are
-   * exactly the tags the transform refuses to infer a namespace for, so an SVG
-   * one has to sit inside an `<svg>` root anyway, where the namespace comes
-   * from the root and not from this map.
+   * `script`, `style` and `title` exist in both, and HTML wins. The transform
+   * resolves the same four the same way, so the two agree. Their SVG spelling
+   * still works: it sits inside an `<svg>` in the same template, where the
+   * namespace comes from that root rather than from this map.
    *
    * There is deliberately no index signature: `<dvi>` is a typo, not an
    * element. Custom elements are added by merging — see the module doc above.
