@@ -21,6 +21,7 @@
   // cache key. Nothing about that failure is red.
   "include": [
     "vite.config.ts",
+    "build-target.ts",
     "packages/*/vite.config.ts",
     "packages/*/vite.config.mts",
     "packages/*/vitest.config.ts",

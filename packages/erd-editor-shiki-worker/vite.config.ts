@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { defineConfig, lazyPlugins } from 'vite-plus';
 import dts from 'vite-plugin-dts';
+import { BROWSER_TARGET } from '../../build-target';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
@@ -53,6 +54,8 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   build: {
+    // 공개 라이브러리의 하한은 한 곳에서 온다 — 루트 `build-target.ts`.
+    target: BROWSER_TARGET,
     lib: {
       entry: './src/index.ts',
       fileName: 'erd-editor-shiki-worker',
