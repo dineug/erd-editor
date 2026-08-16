@@ -15,17 +15,17 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
     environment: 'happy-dom',
     setupFiles: ['./vitest.setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
-      include: ['src/**/*.ts'],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
-        'src/**/*.test.ts',
+        'src/**/*.test.{ts,tsx}',
         'src/**/*.d.ts',
-        'src/**/*.stories.ts',
+        'src/**/*.stories.{ts,tsx}',
         'src/internal-types/**',
         'src/__test-utils__/**',
         'src/**/*.worker.ts',
