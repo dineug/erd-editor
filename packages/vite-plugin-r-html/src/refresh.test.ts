@@ -12,11 +12,61 @@ const run = (code: string, id = '/src/A.ts', options?: RefreshOptions) => {
 
 const COMPONENT = 'const A = () => {};\n';
 
+const virtual = (options?: RefreshOptions) => {
+  const plugin = rHtmlRefresh(options);
+  const resolve: any = plugin.resolveId;
+  const load: any = plugin.load;
+  const resolved = (
+    typeof resolve === 'function' ? resolve : resolve.handler
+  ).call({}, 'virtual:r-html-hmr');
+  return {
+    resolved,
+    code: (typeof load === 'function' ? load : load.handler).call({}, resolved),
+  };
+};
+
 describe('rHtmlRefresh', () => {
   it('accepts a module whose default export is a component identifier', async () => {
     const result = await run(`${COMPONENT}export default A;`);
     expect(result?.code).toContain('originComponent: A');
     expect(result?.code).toContain("new CustomEvent('hmr:r-html'");
+  });
+
+  it('makes every boundary import the module that switches the listener on', async () => {
+    const result = await run(`${COMPONENT}export default A;`);
+    expect(result?.code).toContain("import 'virtual:r-html-hmr';");
+  });
+
+  it('serves that module as the `hmr()` call itself', () => {
+    const { resolved, code } = virtual();
+    expect(resolved).toBe('\0virtual:r-html-hmr');
+    expect(code).toBe("import { hmr } from '@dineug/r-html';\nhmr();\n");
+  });
+
+  it('imports the activation from the configured source', () => {
+    expect(virtual({ importSource: '@scope/pkg' }).code).toContain(
+      "from '@scope/pkg'"
+    );
+  });
+
+  it('claims no id but its own', () => {
+    const plugin = rHtmlRefresh();
+    const resolve: any = plugin.resolveId;
+    const load: any = plugin.load;
+    const call = (hook: any, id: string) =>
+      (typeof hook === 'function' ? hook : hook.handler).call({}, id);
+
+    expect(call(resolve, '/src/A.ts')).toBeUndefined();
+    expect(call(load, '/src/A.ts')).toBeUndefined();
+  });
+
+  it('leaves the line count of the module it appends to alone', async () => {
+    const source = `${COMPONENT}export default A;`;
+    const result = await run(source);
+    const added = (result?.code ?? '').slice(source.length);
+
+    expect(result?.code.startsWith(source)).toBe(true);
+    expect(added).toContain("import 'virtual:r-html-hmr';");
   });
 
   it('names a default-exported function declaration', async () => {

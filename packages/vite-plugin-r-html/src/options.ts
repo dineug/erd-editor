@@ -3,6 +3,8 @@ export type Matcher = string | RegExp | Array<string | RegExp>;
 export interface RefreshOptions {
   include?: Matcher;
   exclude?: Matcher;
+  /** Where the injected `hmr()` activation is imported from. */
+  importSource?: string;
 }
 
 export interface JsxOptions {
@@ -15,7 +17,7 @@ export interface JsxOptions {
 export interface Options {
   include?: Matcher;
   exclude?: Matcher;
-  /** Where the JSX transform imports `html` / `svg` from. */
+  /** Where both halves import r-html from — `html` / `svg`, and `hmr`. */
   importSource?: string;
   /** Set `false` to compile no JSX, or narrow the transform on its own. */
   jsx?: JsxOptions | false;
