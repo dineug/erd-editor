@@ -28,6 +28,30 @@ jobs:
       # Replaces `pnpm lint` + `prettier --check`; the job was green with those
       # and has to stay green with this, which is the point of adding it first.
       - run: pnpm check
+      # The three typechecks below resolve their workspace dependencies through
+      # those packages' emitted `dist/**/*.d.ts`, so something has to build them
+      # first. Nothing in this job did, and the failure only showed on a runner:
+      # a developer's tree still has `dist/` lying around from the last build, so
+      # it passes locally and goes red here. Exactly the trap the cold Vite Task
+      # cache exists to expose, walked into by the job that is supposed to expose
+      # it.
+      #
+      # `<pkg>...` selects a package plus its dependencies; the two `!` filters
+      # drop the targets themselves, since building `app` or `vuerd-vscode` here
+      # would only re-run the same `tsc` the steps below run.
+      #
+      # Deliberately not solved with `paths` into the siblings' `src/`. That
+      # would typecheck against source and stop this gate ever seeing a broken
+      # declaration emit — which is a live failure mode here: `hmr.d.ts` was
+      # silently dropped by TS7 (TS4094) while `index.d.ts` kept re-exporting it,
+      # and only a typecheck against real `.d.ts` catches that.
+      - run: >-
+          pnpm exec vp run
+          --filter "@dineug/erd-editor-app..."
+          --filter "vuerd-vscode..."
+          --filter "!@dineug/erd-editor-app"
+          --filter "!vuerd-vscode"
+          --fail-if-no-match build
       # `app` and `vuerd-vscode` keep a `typecheck` script because each has a
       # program its `build` task does not cover — `app`'s is the same one, run
       # here for a clearer failure, and `vuerd-vscode`'s `tsconfig.unit.json`

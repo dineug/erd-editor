@@ -189,8 +189,14 @@ Recording these because "no test failed" is not the same as "this is covered".
   it did not earn.
 
   - `check` — `pnpm check` (`vp check`, the root `tsc --noEmit`, and the task-input sync script),
-    then the `app` and `vuerd-vscode` typechecks and the `app` e2e typecheck. Those three have no
-    other home: `app`'s e2e specs and `playwright.config.ts` sit outside every package program.
+    then a build of `app`'s and `vuerd-vscode`'s **dependencies**, then the `app` and
+    `vuerd-vscode` typechecks and the `app` e2e typecheck. Those three have no other home: `app`'s
+    e2e specs and `playwright.config.ts` sit outside every package program. ⚠️ The build step is
+    load-bearing and easy to delete by mistake — those typechecks resolve workspace deps through
+    `dist/**/*.d.ts`, and a developer's tree always has a stale `dist/` lying around, so removing it
+    passes locally and fails only on a runner. `paths` into the siblings' `src/` would "fix" it and
+    quietly destroy what the gate proves: a broken declaration emit (`hmr.d.ts` vanishing to TS4094
+    while `index.d.ts` still re-exported it) is invisible when you typecheck against source.
   - `ci` — `pnpm test`, then `pnpm --filter @dineug/r-html test:coverage`, then `pnpm build`
   - `e2e` — installs Chromium, builds `@dineug/erd-editor` (the dev server and the e2e typecheck
     both resolve workspace deps through their `dist/`), then `e2e:typecheck` and the Playwright
