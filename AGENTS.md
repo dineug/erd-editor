@@ -267,25 +267,33 @@ Recording these because "no test failed" is not the same as "this is covered".
 
 ### Deliberately Not Upgraded
 
-`app` was brought current alongside the React 19 move, with two exceptions. They are held back on
+`app` was brought current alongside the React 19 move, with one exception. It is held back on
 purpose, so a later sweep that "just updates dependencies" is a regression, not a chore.
 
 | Package | Held at | Why |
 | --- | --- | --- |
 | `dexie` | `^3.2.7` | **Do not upgrade.** It owns the IndexedDB store holding users' documents; a major there is a data-migration question, not a dependency bump |
-| `react-router-dom` | `^6.22.3` | v7 reshapes the data-router APIs this app builds its routes on |
 
-Two rows were retired rather than acted on, and one of them was retired because the reason written
-down was false. Recorded here because a wrong "why" survives review by looking like a decision
-someone already made.
+Three rows were retired, and two of them said something that was not true. Recorded here because a
+wrong "why" survives review by looking like a decision someone already made.
 
 - `immer` was held because "the LWW merge depends on its produce semantics." It does not. The
   Lamport-clock merge lives in `erd-editor-schema`, which has never depended on immer — `app` is the
   only package that declares it, and the atom whose name suggested otherwise is a session-credential
   registry, not the document. Now at `^11`.
+- `react-router-dom` was held because "v7 reshapes the data-router APIs this app builds its routes
+  on." It reshapes none of them — the route array survived 6→8 unedited, and only the five import
+  specifiers moved. Staying was also the riskier half of the choice: `6.22.3` sits inside two
+  advisories whose only patched version is `7.18.0`, and the declared `^6.22.3` range reaches
+  `6.30.4`, which has an open-redirect advisory with **no** patched version at all. Now
+  `react-router` at `^8`.
 - `@sentry/react` was held because "the init and integration surface changed." The surface did not —
   the same `init({ dsn, integrations, tracesSampleRate })` call compiles and runs unedited at v10.
   Three behaviours under it did change; see `packages/app/AGENTS.md`. Now at `^10`.
+
+The lesson generalises past these three: every one of those reasons was plausible, none was checked
+against the code, and two survived a full migration unchallenged. A held-back dependency needs the
+call site that justifies it named, or the row is a guess wearing a decision's clothes.
 
 `jotai/utils`'s `loadable` also warns about removal in v3. `unwrap` is not a rename — `Viewer.tsx`
 branches on the `hasError` state that `unwrap` does not surface — so that one needs a decision about

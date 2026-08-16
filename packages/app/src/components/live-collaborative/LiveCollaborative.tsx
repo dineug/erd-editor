@@ -5,7 +5,7 @@ import {
 import { Flex, Text } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 
 import { themeAtom } from '@/atoms/modules/theme';
 import {

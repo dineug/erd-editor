@@ -1,6 +1,6 @@
 import { ReloadIcon } from '@radix-ui/react-icons';
 import { Button, Flex, Text } from '@radix-ui/themes';
-import { useRouteError } from 'react-router-dom';
+import { useRouteError } from 'react-router';
 
 import {
   HostStopSessionError,

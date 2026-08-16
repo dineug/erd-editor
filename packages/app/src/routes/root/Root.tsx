@@ -1,7 +1,7 @@
 import { Global } from '@emotion/react';
 import { Theme } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
-import { Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router';
 
 import { themeAtom } from '@/atoms/modules/theme';
 

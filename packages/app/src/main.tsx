@@ -4,11 +4,11 @@ import * as Sentry from '@sentry/react';
 import { Provider } from 'jotai';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import {
-  createBrowserRouter,
-  Navigate,
-  RouterProvider,
-} from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router';
+// `RouterProvider` only from `react-router/dom` — the root export of the same
+// name omits the `ReactDOM.flushSync` wiring, and importing the wrong one
+// typechecks clean.
+import { RouterProvider } from 'react-router/dom';
 
 import App from '@/components/app/App';
 import LiveCollaborativeError from '@/components/live-collaborative/live-collaborative-error/LiveCollaborativeError';
@@ -29,6 +29,23 @@ const router = createBrowserRouter([
     path: '/',
     element: <Root />,
     errorElement: <LiveCollaborativeError />,
+    // Renders nothing, which is what initial hydration already rendered — the
+    // point is only to stop the router logging "No `HydrateFallback` element
+    // provided" on every cold load. That warning is in
+    // `react-router/dist/production/lib/hooks.js`, not just the development
+    // build, so it reaches real users' consoles.
+    //
+    // Two things about the spelling are load-bearing. It must sit on the
+    // outermost matched route: the router walks the branch and only warns at
+    // index 0, so declaring it on the `live` child does nothing. And it must be
+    // truthy — the branch scan is `if (route.HydrateFallback ||
+    // route.hydrateFallbackElement)`, so `null` registers no fallback at all
+    // and the warning survives. An empty fragment satisfies both while keeping
+    // the output identical.
+    //
+    // Showing an actual loading state here instead is a UX change, not part of
+    // the router upgrade.
+    hydrateFallbackElement: <></>,
     children: [
       {
         index: true,

@@ -50,7 +50,7 @@ that tab over the BroadcastChannel bridge (`collaborativeDispatch`).
 
 | File                          | Description                                                                                                                                                                                                                                                                                   |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/main.tsx`                | Entry — Sentry init (production only), the `react-router-dom` route table, jotai `Provider`, `registerSW` (production only)                                                                                                                                                                   |
+| `src/main.tsx`                | Entry — Sentry init (production only), the `react-router` route table, jotai `Provider`, `registerSW` (production only)                                                                                                                                                                   |
 | `src/store.ts`                | The jotai store instance, plus the `BroadcastChannel` handlers that apply remote tab mutations (schema list + session start/stop)                                                                                                                                                             |
 | `src/registerSW.ts`           | Workbox window-side registration of `/sw.js`. `vite-plugin-pwa` runs with `injectRegister: null`, so this file is the only registration path                                                                                                                                                  |
 | `src/sw.ts`                   | The service worker — precache manifest, `cleanupOutdatedCaches`, `CacheFirst` for content-hashed same-origin assets, `StaleWhileRevalidate` for un-hashed same-origin images/fonts, two Google Fonts routes                                                                                   |
@@ -258,7 +258,9 @@ that tab over the BroadcastChannel bridge (`collaborativeDispatch`).
 ### Common Patterns
 
 - `Component.tsx` + `Component.styles.ts`, one directory per component.
-- Route-level code splitting via `react-router-dom`'s `lazy` (see the `/live` route).
+- Route-level code splitting via `react-router`'s `lazy` route property (see the `/live` route). The
+  function form (`lazy: async () => ({ Component })`) is still current in v8 — the object form added
+  in 7.5 is an alternative, not a replacement.
 - Action-type maps declared as `as const` objects paired with a same-named type via `ValuesType`.
 - jotai modules export write-only `atom(null, async (get, set, arg) => ...)` setters wrapped in
   `useSetAtom` hooks (`useAddSchemaEntity`, `useStartSession`, …), never the raw atoms.
@@ -277,7 +279,10 @@ All three are real `dependencies` here, unlike the libraries, which keep their w
 
 ### External
 
-- `react` 19 + `react-dom` 19 + `react-router-dom` 6
+- `react` 19 + `react-dom` 19 + `react-router` 8. ⚠️ There is no `react-router-dom` v8 — v7 turned it
+  into a re-export shim and v8 deleted it, so DOM-only APIs come from `react-router/dom` and
+  everything else from `react-router`. `RouterProvider` exists in **both**, and the root one is
+  missing the `flushSync` wiring; importing the wrong one typechecks clean
 - `jotai` + `jotai-immer` + `immer` — state
 - `@radix-ui/themes` 3.3 + `@radix-ui/react-icons` + `@emotion/react` — UI. The 3.x line is what has a
   React 19 peer range; its text input is `TextField.Root` (the older `TextField.Input` is gone)
