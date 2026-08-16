@@ -38,7 +38,7 @@
   "main": "./dist/extension",
   "scripts": {
     "vscode:prepublish": "vp run --filter vuerd-vscode build",
-    "dev": "webpack --mode development",
+    "dev": "vp build --watch",
     "build:vsce": "pnpm vsce package --no-dependencies",
     "publish:vsce": "pnpm vsce publish --no-dependencies",
     "test:dev": "vp test dev",
@@ -58,13 +58,9 @@
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
     "base64-arraybuffer": "^1.0.2",
-    "ts-loader": "^9.5.1",
-    "tsconfig-paths-webpack-plugin": "^4.1.0",
     "typescript": "5.8.2",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "webpack": "^5.91.0",
-    "webpack-cli": "^5.1.4",
     "vite-plus": "catalog:"
   },
   "activationEvents": [

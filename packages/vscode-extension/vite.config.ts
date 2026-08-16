@@ -1,11 +1,70 @@
+import { builtinModules } from 'node:module';
+import { relative } from 'node:path';
+
 import { defineConfig } from 'vite-plus';
 
 /**
- * 이 패키지는 webpack이 번들한다. 이 파일이 존재하는 이유는 하나 —
- * `vp run`이 태스크를 발견할 자리를 주는 것이다. 번들러 설정은
- * `webpack.config.js`가 계속 소유한다.
+ * The extension host loads this bundle with `require`, from a `main` field that
+ * carries no extension: `"./dist/extension"`. Node resolves that to
+ * `dist/extension.js` and nothing else, so the emitted filename is a contract,
+ * not a preference — a default `.cjs` here means the extension does not
+ * activate at all.
+ *
+ * Everything the host does not ship stays external. `vscode` is injected by the
+ * host and is not resolvable at build time; the node builtins are present at
+ * runtime and bundling them would be wrong even where it is possible. Workspace
+ * dependencies are *not* external — the VSIX contains only this file, so they
+ * have to be inlined, which is what webpack did.
  */
+const external = [
+  'vscode',
+  ...builtinModules,
+  ...builtinModules.map(name => `node:${name}`),
+];
+
 export default defineConfig({
+  // `public/` here is not a static asset directory — it is where
+  // `@dineug/erd-editor-vscode-webview` writes its bundle, and `Editor#
+  // buildHtmlForWebview` reads `public/index.html` from there at runtime. Vite
+  // copies `publicDir` into `outDir` on build, so leaving this at its default
+  // duplicates 2.6MB of webview into `dist/` and into the VSIX.
+  publicDir: false,
+
+  build: {
+    // `ssr` puts Rolldown in Node resolution mode: no browser field, no
+    // `import.meta.env` shimming, and `require` left alone.
+    ssr: true,
+    // Derived from `engines.vscode: ^1.90.0`, not guessed: that build runs
+    // Electron 29.4.0 / Node 20.9.0, measured by running its own binary with
+    // `ELECTRON_RUN_AS_NODE=1`. Targeting lower only costs downlevelling the
+    // host never needed. Raising `engines.vscode` should raise this with it.
+    target: 'node20',
+    outDir: 'dist',
+    emptyOutDir: true,
+    // Vite defaults this to false. The VSIX has always carried a 32KB map and
+    // the Extension Host reads it when a stack trace crosses this file.
+    sourcemap: true,
+    lib: {
+      entry: './src/extension.ts',
+      formats: ['cjs'],
+      fileName: () => 'extension.js',
+    },
+    rolldownOptions: {
+      external,
+      output: {
+        // webpack wrote `devtoolModuleFilenameTemplate: '../[resource-path]'`,
+        // which makes map sources relative to the package rather than to
+        // `dist/`. Keeping that means a stack trace still points at
+        // `src/extension.ts` from wherever the VSIX is unpacked.
+        sourcemapPathTransform: (source, map) =>
+          relative(
+            import.meta.dirname,
+            new URL(source, `file://${map}`).pathname
+          ),
+      },
+    },
+  },
+
   /**
    * nx.json `targetDefaults`의 대체. `dependsOn`이 `^build`를, `output`이
    * `outputs: ["{projectRoot}/dist"]`를 잇는다.
@@ -20,10 +79,7 @@ export default defineConfig({
         // 타입 게이트 ①. 배열은 순차 실행이자 독립 캐시 단위인데, 태스크 레벨
         // `input`은 두 서브태스크가 공유한다(실측) — 그래서 소스만 바뀌어도
         // 자동 추적에 안 잡히는 `tsc`가 다시 돈다.
-        command: [
-          'tsc -p tsconfig.unit.json --noEmit',
-          'webpack --mode production',
-        ],
+        command: ['tsc -p tsconfig.unit.json --noEmit', 'vp build'],
         dependsOn: [
           {
             task: 'build',
@@ -35,7 +91,7 @@ export default defineConfig({
           'src/**',
           'vitest.config.*',
           'package.json',
-          'webpack.config.js',
+          'vite.config.ts',
           'public/**',
           'tsconfig.json',
           'tsconfig.unit.json',
@@ -70,7 +126,7 @@ export default defineConfig({
           'src/**',
           'vitest.config.*',
           'package.json',
-          'webpack.config.js',
+          'vite.config.ts',
           'public/**',
           'tsconfig.json',
           'tsconfig.unit.json',

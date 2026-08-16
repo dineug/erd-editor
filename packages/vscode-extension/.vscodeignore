@@ -9,7 +9,6 @@ vitest.config.mts
 tsconfig.json
 tsconfig.unit.json
 tsconfig.integration.json
-webpack.config.js
 .turbo
 .gitignore
 coverage
