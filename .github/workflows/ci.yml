@@ -6,6 +6,40 @@ on:
   - pull_request
 
 jobs:
+  # Lint, format and the two typecheck scripts have never had a CI slot — they
+  # exist only as `package.json` scripts and a pre-commit hook, and the hook
+  # lives in gitignored `.husky/_/`, so it does nothing until someone has run
+  # `pnpm install` in that working tree. A fresh clone pushes unlinted code and
+  # nothing goes red.
+  #
+  # It lands ahead of the toolchain migration on purpose. The commits that
+  # follow replace eslint and prettier wholesale, and swapping the tools that
+  # guard the repo while nothing guards them is how a rule silently stops being
+  # enforced. With this job in place the swap is observable: the job is green
+  # before it and must stay green after.
+  #
+  # `--check` rather than `--write`: CI reports, it does not rewrite the tree.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install
+      - run: pnpm lint
+      - run: pnpm exec prettier "**/*.{ts,mts,tsx}" --check
+      # These two are the only packages whose sources are not typechecked by a
+      # build: `app` bundles with swc, which strips types without reading them,
+      # and `vuerd-vscode` compiles only what it bundles (`onlyCompileBundledFiles`),
+      # leaving its unit specs to `tsconfig.unit.json`.
+      - run: pnpm --filter @dineug/erd-editor-app typecheck
+      - run: pnpm --filter vuerd-vscode typecheck
+
   ci:
     runs-on: ubuntu-latest
     steps:
