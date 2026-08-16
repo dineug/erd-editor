@@ -5,9 +5,16 @@
  * Declarations only. Nothing here exists at run time and nothing should: the
  * transform in `@dineug/vite-plugin-r-html` rewrites every JSX tree into an
  * `html` / `svg` tagged template before the file reaches a JS transform, so no
- * `jsx()` call is ever emitted. The package's `exports` entry offers `types`
- * and no `default`, so a build that lost the plugin dies on an unresolvable
- * import at its first `.tsx` instead of rendering the wrong thing quietly.
+ * `jsx()` call is ever emitted.
+ *
+ * Pair this with `jsx: "preserve"`. `jsxImportSource` still resolves this
+ * namespace under it, and it stops every other tool trying to compile JSX that
+ * is already spoken for — including Vite's dependency scanner, which runs its
+ * own pass without plugin `transform` hooks and would otherwise emit an import
+ * of the `jsx-dev-runtime` subpath this package deliberately does not export.
+ * It also keeps the failure loud: a build that lost the transform dies on JSX
+ * the bundler cannot parse, at the first `.tsx`, rather than rendering the
+ * wrong thing quietly.
  *
  * `IntrinsicElements` covers the standard tags. A consumer with custom elements
  * adds them by merging:

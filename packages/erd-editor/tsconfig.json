@@ -7,6 +7,17 @@
     // TS appends `/jsx-runtime`, which r-html exports as types only. The tags
     // it cannot know about are merged in from `src/jsx-tags.d.ts`.
     "jsxImportSource": "@dineug/r-html",
+    // `preserve` overrides the `react-jsx` in `tsconfig.app.json`, and it is
+    // what oxc reads too: nothing downstream of `rHtml()` should ever see JSX,
+    // so nothing downstream should try to transform it. Left as `react-jsx`,
+    // the dependency scanner — which runs its own pass and does not call plugin
+    // `transform` hooks — compiles `.tsx` with the automatic runtime and, in
+    // serve mode, emits an import of `@dineug/r-html/jsx-dev-runtime`, a
+    // subpath that deliberately does not exist. That failed the scan and
+    // silently skipped dep pre-bundling. `jsxImportSource` still resolves the
+    // `JSX` namespace under `preserve` (measured on TS 7.0.2), so the type
+    // layer is untouched. `app` keeps `react-jsx`: its JSX is really React.
+    "jsx": "preserve",
     "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"]
   },
   "include": ["src"]
