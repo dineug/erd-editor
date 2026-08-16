@@ -3,6 +3,9 @@ import * as t from '@babel/core';
 import { createFilter } from '@rollup/pluginutils';
 import type { Plugin } from 'vite';
 
+export { transformJsxToTagged } from './jsx/codegen';
+export { type JsxOptions, rHtmlJsx } from './jsx/plugin';
+
 export interface Options {
   include?: string | RegExp | Array<string | RegExp>;
   exclude?: string | RegExp | Array<string | RegExp>;

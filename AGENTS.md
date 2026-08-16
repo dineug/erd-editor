@@ -71,7 +71,7 @@ Build order is derived from workspace dependencies: the first five rows below ar
 
 ### Testing Requirements
 
-- `pnpm test` = `vp run -r test`. Eight packages define a `test` task — `shared`, `r-html`, `schema-sql-parser`, `erd-editor-schema`, `erd-editor`, `vscode-bridge`, `app`, `vscode-extension`; the other five no-op. Each runs `tsc --noEmit` before Vitest.
+- `pnpm test` = `vp run -r test`. Nine packages define a `test` task — `shared`, `r-html`, `schema-sql-parser`, `erd-editor-schema`, `erd-editor`, `vscode-bridge`, `vite-plugin-r-html`, `app`, `vscode-extension`; the other four no-op. Each runs `tsc --noEmit` before Vitest.
 - Vitest configs are uniform: `include: ['src/**/*.test.ts']` — a test outside `src/` is never collected — and a v8 coverage block at `perFile` 80%. Those thresholds gate `pnpm --filter <pkg> test:coverage` only; `pnpm test` and CI do not enforce them.
 - **A change is not verified until `pnpm build` passes.** Every `build` task runs `tsc --noEmit` first, so a green `pnpm test` proves nothing about the types of what ships.
 - `pnpm check` = `vp check` (oxfmt + oxlint in one pass) + the root `tsc --noEmit` + `scripts/check-task-inputs.mjs`. `pnpm format` is the writing half.

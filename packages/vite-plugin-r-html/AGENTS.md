@@ -5,19 +5,21 @@
 
 ## Purpose
 
-A Vite plugin (`vite:r-html-refresh`) giving `@dineug/r-html` components hot module replacement. Its
-`transform` hook parses each matched module with Babel, treats it as an HMR _boundary_ when every
-named export is component-shaped (uppercase first letter), and appends an `import.meta.hot.accept`
-block dispatching an `hmr:r-html` `CustomEvent` carrying `{ originComponent, newComponent }`.
-`packages/r-html/src/render/hmr.ts` listens for it and swaps the component in place. `private: true`,
-dev-only, never published.
+Two Vite plugins for `@dineug/r-html`, `private: true`, dev-only, never published. `rHtml()`
+(`vite:r-html-refresh`) gives components HMR: it treats a module as a _boundary_ when every named
+export is component-shaped (uppercase first letter) and appends an `import.meta.hot.accept` block
+dispatching an `hmr:r-html` `CustomEvent` carrying `{ originComponent, newComponent }`, which
+`packages/r-html/src/render/hmr.ts` swaps on. `rHtmlJsx()` (`vite:r-html-jsx`) compiles `.tsx` into
+the `html`/`svg` tagged templates the runtime already reads.
 
 ## Key Files
 
-| File              | Description                                                                                              |
-| ----------------- | -------------------------------------------------------------------------------------------------------- |
-| `src/index.ts`    | The entire plugin — `rHtml(options)` with `include`/`exclude` (default exclude `'**/node_modules/**'`)   |
-| `vite.config.mts` | `run.tasks.build` plus a CJS-only lib build (`formats: ['cjs']`, `minify: false`) with `vite-plugin-dts` |
+| File                 | Description                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/index.ts`       | `rHtml(options)` with `include`/`exclude` (default exclude `'**/node_modules/**'`), plus the JSX exports |
+| `src/jsx/codegen.ts` | JSX AST → tagged-template source; owns the attribute mapping, the SVG namespace call and the escaping   |
+| `src/jsx/plugin.ts`  | `rHtmlJsx(options)` — `enforce: 'pre'`, `.tsx` only, injects `html`/`svg` under aliases                 |
+| `vite.config.mts`    | `run.tasks` (`build`, `test`) plus a CJS-only lib build (`formats: ['cjs']`, `minify: false`) with dts  |
 
 ## For AI Agents
 
@@ -27,28 +29,29 @@ dev-only, never published.
   build is `formats: ['cjs']` and `main` is `./dist/index.js`.
 - The injected snippet assembles `import.meta.hot` from string fragments
   (`` `${'import'}.${'meta'}.${'hot'}` ``) so Vite's own scanner does not rewrite it before injection.
-- Babel runs with `ast: true, code: false` — the AST is inspected only for export shape and Babel's
-  output is discarded, so this plugin does no syntax downleveling.
+- `rHtml` runs Babel with `ast: true, code: false` and no parser plugins; the AST is read only for
+  export shape. **That makes the two plugins' ordering opposite** — `rHtmlJsx` is `enforce: 'pre'`
+  because it needs the raw JSX, while `rHtml` must not be, because it can only parse at all once
+  `vite:oxc` has stripped the types ahead of it.
 - The `accept` block is appended only when the module also has an `export default`; that identifier
   becomes `originComponent`. A boundary without one gets no HMR and no error.
-- The root `tsconfig.json` maps `@dineug/vite-plugin-r-html` to `src/index.ts`; the `check` CI job
-  typechecks `erd-editor/vite.config.ts` without building, and `types` points into `dist/`.
+- The root `tsconfig.json` maps this package to `src/index.ts` so the `check` CI job can typecheck
+  `erd-editor/vite.config.ts` without building; `types` still points into `dist/`.
 
 ### Testing Requirements
 
-- No unit suite, no `test` task, and `package.json` `scripts` is empty. The only task is
-  `vp run --filter @dineug/vite-plugin-r-html --fail-if-no-match build`
-  (`command: ['tsc --noEmit', 'vp build']`, `output: ['dist/**']`).
-- Manual verification: `pnpm --filter @dineug/erd-editor dev`, edit a component under
-  `packages/erd-editor/src/components/`, confirm the DOM updates without a full reload.
-- `vite.config.mts` itself is typechecked by the root `pnpm check`, which is what catches a typo in
-  the `run.tasks` block.
+- `vp run --filter @dineug/vite-plugin-r-html --fail-if-no-match test` — `tsc --noEmit` then Vitest
+  over `src/**/*.test.ts` in the `node` env. `test:coverage` excludes `src/index.ts`, whose Vite
+  hooks are verified by running a dev server rather than by a unit test.
+- The codegen suite is the transform's spec — every attribute mapping, rejected construct and
+  escaping case. DOM-level parity against hand-written `html` lives in `packages/erd-editor`, the
+  one package that has both r-html and this plugin.
+- HMR is still manual: `pnpm --filter @dineug/erd-editor dev`, edit a component, watch it swap.
 
 ### Common Patterns
 
-- `// @ts-ignore` on the Babel import and AST node access is intentional — no `@babel/core` types.
-- New runtime deps go in `dependencies`: the build's `external` RegExp is derived from
-  `dependencies` + `peerDependencies`, so they stay out of the bundle automatically.
+- `// @ts-ignore` on the Babel import and AST access is intentional — no `@babel/core` types.
+- New runtime deps go in `dependencies`; the build's `external` RegExp derives from it.
 
 ## Dependencies
 
@@ -58,13 +61,10 @@ None. Pairs with `@dineug/r-html`'s `hmr.ts` by event contract only; it imports 
 
 ### External
 
-- `@babel/core` — parses modules to an AST (runtime dependency)
-- `@rollup/pluginutils` — `createFilter` for `include`/`exclude` (runtime dependency)
-- `vite` — dev-only, for `import type { Plugin }`
+`@babel/core` (AST) and `@rollup/pluginutils` (`createFilter`) are runtime deps; `vite` is dev-only.
 
 ### Consumers
 
-`@dineug/erd-editor` only, at `vite.config.ts:152` — `isLib && isServe && rHtml()`. Its `build` and
-`test` tasks track `packages/vite-plugin-r-html/dist/**/*.d.ts` as an `input`.
+`@dineug/erd-editor` only (`vite.config.ts:152`), whose `build`/`test` tasks track this `dist/**/*.d.ts`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

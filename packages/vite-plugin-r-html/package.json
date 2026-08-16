@@ -5,15 +5,20 @@
   "description": "vite r-html hmr plugin",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "scripts": {},
+  "scripts": {
+    "test:dev": "vp test dev",
+    "test:coverage": "vp test run --coverage"
+  },
   "dependencies": {
     "@babel/core": "^7.26.9",
     "@rollup/pluginutils": "^5.1.4"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "catalog:",
     "typescript": "7.0.2",
     "vite": "catalog:",
     "vite-plugin-dts": "^5.0.3",
+    "vitest": "catalog:",
     "vite-plus": "catalog:",
     "@typescript/typescript6": "6.0.2"
   }

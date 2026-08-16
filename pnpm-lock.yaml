@@ -534,6 +534,9 @@ importers:
       '@typescript/typescript6':
         specifier: 6.0.2
         version: 6.0.2
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10)
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -545,7 +548,10 @@ importers:
         version: 5.0.3(@microsoft/api-extractor@7.51.1(@types/node@22.20.1))(@voidzero-dev/vite-plus-core@0.2.9(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(rolldown@1.2.4)(rollup@4.62.4)(typescript@7.0.2)(webpack@5.91.0)
       vite-plus:
         specifier: 'catalog:'
-        version: 0.2.9(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10))(@voidzero-dev/vite-plus-core@0.2.9(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(happy-dom@20.11.2)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0)
+        version: 0.2.9(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.9(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(happy-dom@20.11.2)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0)
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10))(@voidzero-dev/vite-plus-core@0.2.9(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(happy-dom@20.11.2)
 
   packages/vscode-bridge:
     devDependencies:

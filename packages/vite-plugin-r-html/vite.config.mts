@@ -40,6 +40,7 @@ export default defineConfig({
         input: [
           { auto: true },
           'src/**',
+          'vitest.config.*',
           'package.json',
           'tsconfig.json',
           { pattern: 'tsconfig.app.json', base: 'workspace' },
@@ -48,6 +49,26 @@ export default defineConfig({
         ],
         // 빠뜨리면 캐시 히트가 터미널 출력만 재생하고 산출물을 복원하지 않는다.
         output: ['dist/**'],
+      },
+      test: {
+        // 타입 게이트 ②. `vp test`(built-in)는 run.tasks를 무시하므로 이 게이트를
+        // 타지 않는다 — CI와 문서는 `vp run test`를 쓴다.
+        command: ['tsc --noEmit', 'vp test run'],
+        dependsOn: [
+          {
+            task: 'build',
+            from: ['dependencies', 'devDependencies', 'peerDependencies'],
+          },
+        ],
+        input: [
+          { auto: true },
+          'src/**',
+          'vitest.config.*',
+          'package.json',
+          'tsconfig.json',
+          { pattern: 'tsconfig.app.json', base: 'workspace' },
+          '!**/*.tsbuildinfo',
+        ],
       },
     },
   },
