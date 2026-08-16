@@ -135,7 +135,9 @@ export default defineConfig(({ mode }) => {
 
     build: {
       // The repo's one browser floor — see `build-target.ts` for how those
-      // versions were measured and why `lib` stays a generation behind.
+      // versions were measured. This transpiles syntax only; `lib` sits at the
+      // same ES2022 generation, and the APIs it admits are what the `legacy`
+      // plugin above polyfills.
       target: BROWSER_TARGET,
       sourcemap: true,
       rolldownOptions: {
