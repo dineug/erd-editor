@@ -186,6 +186,16 @@ export default defineConfig({
           // directive's job, and it takes the key function as its second
           // argument.
           'react/jsx-key': 'off',
+          // `children` is an ordinary prop of type `DOMTemplateLiterals` here,
+          // and forwarding one is not the same as nesting it: `<C>{t}</C>`
+          // compiles to `.children=${html`${t}`}`, a second template around the
+          // one you already had.
+          'react/no-children-prop': 'off',
+          // Reports a file as un-refreshable on React's boundary rule, which is
+          // not r-html's: `rHtml()` accepts any export whose name starts with a
+          // capital, so `export const Cursor = {…} as const` keeps the file a
+          // boundary while this rule calls it broken.
+          'react/only-export-components': 'off',
         },
       },
       {

@@ -1,4 +1,4 @@
-import { DOMTemplateLiterals, FC, html } from '@dineug/r-html';
+import { DOMTemplateLiterals, FC } from '@dineug/r-html';
 
 import * as styles from './Button.styles';
 
@@ -10,19 +10,19 @@ export type ButtonProps = {
 };
 
 const Button: FC<ButtonProps> = (props, ctx) => {
-  return () => html`
+  return () => (
     <button
-      class=${[
+      class={[
         styles.button,
         Reflect.get(styles, props.variant ?? 'solid'),
         Reflect.get(styles, `size${props.size ?? '2'}`),
       ]}
       type="button"
-      @click=${props.onClick}
+      on:click={props.onClick}
     >
-      ${props.text}
+      {props.text}
     </button>
-  `;
+  );
 };
 
 export default Button;

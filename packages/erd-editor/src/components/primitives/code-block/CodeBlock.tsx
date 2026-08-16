@@ -1,7 +1,6 @@
 import {
   createRef,
   FC,
-  html,
   innerHTML,
   nextTick,
   observable,
@@ -89,21 +88,21 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
     );
   });
 
-  return () => html`
-    <div class=${styles.root} ${ref(root)}>
+  return () => (
+    <div class={styles.root} use:ref={ref(root)}>
       <div
-        class=${['scrollbar', styles.code]}
-        style=${{
+        class={['scrollbar', styles.code]}
+        style={{
           'background-color': state.backgroundColor,
         }}
       >
-        ${innerHTML(state.highlight ? state.highlight : props.value)}
+        {innerHTML(state.highlight ? state.highlight : props.value)}
       </div>
-      <div class=${styles.clipboard} title="Copy" @click=${handleCopy}>
-        <${Icon} prefix="far" name="copy" useTransition=${true} />
+      <div class={styles.clipboard} title="Copy" on:click={handleCopy}>
+        <Icon prefix="far" name="copy" useTransition={true} />
       </div>
     </div>
-  `;
+  );
 };
 
 export default CodeBlock;

@@ -57,10 +57,22 @@ export type StyleValue = Record<string, string | number | Falsy>;
  */
 export type DuplicateSuffix = '' | '__2' | '__3';
 
+/**
+ * `EventPart` keeps only values that are a function or an
+ * `[handler, options]` tuple and silently drops everything else, so a
+ * conditional binding can hand it `null` to mean "not this time" without the
+ * component having to split its template in two.
+ */
+export type EventHandler<E> =
+  | ((event: E) => void)
+  | readonly [
+      (event: E) => void,
+      (undefined | boolean | AddEventListenerOptions | EventListenerOptions)?,
+    ]
+  | Falsy;
+
 export type EventHandlers<M> = {
-  [K in keyof M as `on:${string & K}${DuplicateSuffix}`]?: (
-    event: M[K]
-  ) => void;
+  [K in keyof M as `on:${string & K}${DuplicateSuffix}`]?: EventHandler<M[K]>;
 };
 
 /** The three sigils the transform maps onto r-html's attribute kinds. */
@@ -97,7 +109,8 @@ export interface HTMLAttributes
   draggable?: boolean;
   hidden?: boolean;
   role?: string;
-  spellcheck?: boolean;
+  /** An enumerated attribute, not a boolean one: the values are the strings. */
+  spellcheck?: boolean | 'true' | 'false';
   tabindex?: number;
 }
 

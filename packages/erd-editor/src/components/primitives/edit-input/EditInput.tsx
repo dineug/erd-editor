@@ -1,7 +1,6 @@
 import {
   createRef,
   FC,
-  html,
   onBeforeMount,
   onMounted,
   ref,
@@ -79,50 +78,48 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
   return () => {
     const isFocus = props.focus || props.edit;
 
-    return props.edit
-      ? html`
-          <input
-            ${ref(input)}
-            class=${['edit-input', styles.root, className(), props.class]}
-            style=${{
-              width: `${props.width}px`,
-              'min-width': `${props.width}px`,
-            }}
-            ...${restAttrs({
-              title: props.title,
-              placeholder: props.placeholder,
-            })}
-            type="text"
-            spellcheck="false"
-            ?data-focus-border-bottom=${isFocus}
-            .value=${props.value ?? ''}
-            @input=${props.onInput}
-            @blur=${handleBlur}
-            @keydown=${props.onKeydown}
-          />
-        `
-      : html`
-          <div
-            class=${[
-              'edit-input',
-              styles.root,
-              styles.cursor,
-              styles.userSelect,
-              className(),
-              props.class,
-            ]}
-            style=${{
-              width: `${props.width}px`,
-              'min-width': `${props.width}px`,
-            }}
-            ...${restAttrs({ title: props.title })}
-            ?data-focus-border-bottom=${isFocus}
-          >
-            <span class=${styles.ellipsis}>
-              ${props.value.trim() ? props.value : props.placeholder}
-            </span>
-          </div>
-        `;
+    return props.edit ? (
+      <input
+        use:ref={ref(input)}
+        class={['edit-input', styles.root, className(), props.class]}
+        style={{
+          width: `${props.width}px`,
+          'min-width': `${props.width}px`,
+        }}
+        {...restAttrs({
+          title: props.title,
+          placeholder: props.placeholder,
+        })}
+        type="text"
+        spellcheck="false"
+        bool:data-focus-border-bottom={isFocus}
+        prop:value={props.value ?? ''}
+        on:input={props.onInput}
+        on:blur={handleBlur}
+        on:keydown={props.onKeydown}
+      />
+    ) : (
+      <div
+        class={[
+          'edit-input',
+          styles.root,
+          styles.cursor,
+          styles.userSelect,
+          className(),
+          props.class,
+        ]}
+        style={{
+          width: `${props.width}px`,
+          'min-width': `${props.width}px`,
+        }}
+        {...restAttrs({ title: props.title })}
+        bool:data-focus-border-bottom={isFocus}
+      >
+        <span class={styles.ellipsis}>
+          {props.value.trim() ? props.value : props.placeholder}
+        </span>
+      </div>
+    );
   };
 };
 

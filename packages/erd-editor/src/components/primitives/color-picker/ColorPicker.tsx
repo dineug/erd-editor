@@ -1,11 +1,4 @@
-import {
-  createRef,
-  FC,
-  html,
-  observable,
-  onMounted,
-  ref,
-} from '@dineug/r-html';
+import { createRef, FC, observable, onMounted, ref } from '@dineug/r-html';
 // @ts-ignore
 import ColorPickerUI from '@easylogic/colorpicker';
 
@@ -71,16 +64,16 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
     });
   });
 
-  return () => html`
+  return () => (
     <div
-      class=${['color-picker', styles.container]}
-      style=${{
+      class={['color-picker', styles.container]}
+      style={{
         top: `${state.y}px`,
         left: `${state.x}px`,
       }}
-      ${ref(container)}
+      use:ref={ref(container)}
     ></div>
-  `;
+  );
 };
 
 export default ColorPicker;

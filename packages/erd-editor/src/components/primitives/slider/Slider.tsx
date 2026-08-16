@@ -1,4 +1,4 @@
-import { createRef, FC, html, ref } from '@dineug/r-html';
+import { createRef, FC, ref } from '@dineug/r-html';
 import { createInRange } from '@dineug/shared';
 import { round } from 'es-toolkit/compat';
 
@@ -56,18 +56,22 @@ const Slider: FC<SliderProps> = (props, ctx) => {
     const right = `${100 - percent}%`;
     const left = `calc(${percent}% - ${12 * ratioValue}px)`;
 
-    return html`
-      <div class=${styles.root} ${ref(root)} @mousedown=${handleMousedown}>
-        <div class=${styles.track}>
-          <div class=${styles.range} style=${{ right }}></div>
+    return (
+      <div
+        class={styles.root}
+        use:ref={ref(root)}
+        on:mousedown={handleMousedown}
+      >
+        <div class={styles.track}>
+          <div class={styles.range} style={{ right }}></div>
         </div>
         <div
-          class=${styles.thumb}
-          style=${{ left }}
-          @mousedown=${handleMoveStart}
+          class={styles.thumb}
+          style={{ left }}
+          on:mousedown={handleMoveStart}
         ></div>
       </div>
-    `;
+    );
   };
 };
 

@@ -2,7 +2,6 @@ import {
   createRef,
   DOMTemplateLiterals,
   FC,
-  html,
   observable,
   onMounted,
   ref,
@@ -63,29 +62,27 @@ const ContextMenuItem: FC<ContextMenuItemProps> = (props, ctx) => {
     );
   });
 
-  return () => html`
-    <div
-      ${ref($div)}
-      class=${[styles.item, { selected: state.selected }]}
-      data-id=${id}
-      @mouseenter=${handleMouseenter}
-      @click=${props.onClick}
-    >
-      ${props.children}
-    </div>
-    ${
-      props.subChildren && state.show
-        ? html`
-            <${ContextMenuContent}
-              id=${id}
-              x=${state.x}
-              y=${state.y}
-              children=${props.subChildren}
-            />
-          `
-        : null
-    }
-  `;
+  return () => (
+    <>
+      <div
+        use:ref={ref($div)}
+        class={[styles.item, { selected: state.selected }]}
+        data-id={id}
+        on:mouseenter={handleMouseenter}
+        on:click={props.onClick}
+      >
+        {props.children}
+      </div>
+      {props.subChildren && state.show ? (
+        <ContextMenuContent
+          id={id}
+          x={state.x}
+          y={state.y}
+          children={props.subChildren}
+        />
+      ) : null}
+    </>
+  );
 };
 
 export default ContextMenuItem;

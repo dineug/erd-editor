@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 import { findAll } from 'highlight-words-core';
 
 import * as styles from './HighlightedText.styles';
@@ -14,9 +14,7 @@ const HighlightedText: FC<HighlightedTextProps> = (props, ctx) => {
 
     return chunks.map(({ end, highlight, start }) => {
       const text = props.textToHighlight.substring(start, end);
-      return highlight
-        ? html`<span class=${styles.highlighted}>${text}</span>`
-        : text;
+      return highlight ? <span class={styles.highlighted}>{text}</span> : text;
     });
   };
 };

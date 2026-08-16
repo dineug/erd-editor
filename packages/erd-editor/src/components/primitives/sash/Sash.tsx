@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import { ValuesType } from '@/internal-types';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
@@ -58,9 +58,9 @@ const Sash: FC<SashProps> = (props, ctx) => {
     const horizontal = props.type === SashType.horizontal;
     const edge = props.type === SashType.edge;
 
-    return html`
+    return (
       <div
-        class=${[
+        class={[
           'sash',
           styles.sash,
           {
@@ -69,14 +69,14 @@ const Sash: FC<SashProps> = (props, ctx) => {
             edge,
           },
         ]}
-        style=${{
+        style={{
           top: `${centerTop()}px`,
           left: `${centerLeft()}px`,
           cursor: edge ? props.cursor : '',
         }}
-        @mousedown=${handleMousedown}
+        on:mousedown={handleMousedown}
       ></div>
-    `;
+    );
   };
 };
 

@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import { shortcutToTuple } from '@/utils/keyboard-shortcut';
 
@@ -14,16 +14,13 @@ const Kbd: FC<KbdProps> = (props, ctx) => {
     const keys = shortcutToTuple(props.shortcut);
     const shortcuts = keys.map(([mods, key]) => [...mods, key].join(' + '));
 
-    return html`
-      <div class=${['kbd', styles.root]}>
-        ${shortcuts.map(
-          shortcut =>
-            html`<div class=${props.mini ? styles.mini : styles.kbd}>
-              ${shortcut}
-            </div>`
-        )}
+    return (
+      <div class={['kbd', styles.root]}>
+        {shortcuts.map(shortcut => (
+          <div class={props.mini ? styles.mini : styles.kbd}>{shortcut}</div>
+        ))}
       </div>
-    `;
+    );
   };
 };
 
