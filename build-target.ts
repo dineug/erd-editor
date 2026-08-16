@@ -23,11 +23,16 @@
  * they carry `#private` fields, and Rolldown does not downlevel those at any
  * target, measured.
  *
- * ⚠️ `lib` in `tsconfig.app.json` deliberately stays at ES2020, one generation
- * behind. The two guard different things: `target` is syntax, which the bundler
- * transpiles, while `lib` is runtime APIs, which it can neither transpile nor
- * polyfill. Raising `lib` would let `.at()` and `Object.hasOwn` typecheck and
- * then fail at runtime on anything below Safari 15.4, with nothing going red.
+ * ⚠️ `lib` in `tsconfig.app.json` is ES2022 too, so runtime APIs of that
+ * generation typecheck. The bundler cannot transpile those the way it does
+ * syntax, which makes the polyfill layer load-bearing rather than optional:
+ * `app` carries core-js through `@vitejs/plugin-legacy`, whose set is derived
+ * from `BROWSER_TARGET_QUERY` below so the two cannot disagree.
+ *
+ * The nine published libraries have no such layer and should not grow one — a
+ * polyfill they inject is imposed on every npm consumer. An ES2022 API reaching
+ * a library's `dist` therefore becomes the consumer's problem, and nothing in
+ * this repo goes red when it happens.
  *
  * Every published library imports this. They are consumed by the web app, both
  * webviews and by third parties through npm, so their floor is the floor of

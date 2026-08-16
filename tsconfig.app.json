@@ -2,17 +2,23 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     // ES2022, matching what actually ships: Rolldown emits `#private` fields and
-    // downlevels them at no `build.target`, so the bundles have required Safari
-    // 14.1 all along while this said ES2020.
+    // downlevels them at no `build.target`, so the bundles required Safari 14.1
+    // all along while this said ES2020. `build-target.ts` carries the browser
+    // versions that spell out the same line.
     "target": "ES2022",
     "useDefineForClassFields": true,
-    // `lib` deliberately stays a generation behind `target`. They guard different
-    // things: `target` is syntax, which the bundler can transpile, while `lib` is
-    // runtime APIs, which it can neither transpile nor polyfill. Raising this to
-    // ES2022 would make `.at()` and `Object.hasOwn` typecheck and then break
-    // Safari 14.1-15.3 at runtime with nothing going red. Today's usage of both
-    // is zero; this is what keeps it that way.
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    // `lib` matches `target`, which means the two guard different things at the
+    // same generation. `target` is syntax and the bundler transpiles it; `lib`
+    // is runtime APIs and it cannot — `.at()` and `Object.hasOwn` now typecheck
+    // and reach the browser as-is.
+    //
+    // ⚠️ That is only safe where something polyfills them. `app` has core-js
+    // through `@vitejs/plugin-legacy`, which derives its set from the same
+    // browser target. The nine published libraries do not, and cannot: a
+    // polyfill they inject would be imposed on every npm consumer. So an ES2022
+    // API reaching a library's `dist` is a bill handed to whoever installs it,
+    // and no gate here will say so.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
 

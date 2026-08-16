@@ -3,7 +3,7 @@
   "compilerOptions": {
     "noEmit": true,
     "types": ["node"],
-    "lib": ["ES2020"],
+    "lib": ["ES2022"],
     "moduleDetection": "force",
     "allowImportingTsExtensions": false,
     // `erd-editor/vite.config.ts` imports the r-html plugin, whose `types` point
