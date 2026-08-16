@@ -5,7 +5,15 @@
     "types": ["node"],
     "lib": ["ES2020"],
     "moduleDetection": "force",
-    "allowImportingTsExtensions": false
+    "allowImportingTsExtensions": false,
+    // `erd-editor/vite.config.ts` imports the r-html plugin, whose `types` point
+    // at `dist/`. This program has to typecheck before anything is built — the
+    // check job never builds — so resolve that one workspace import to its
+    // source instead. Without it the job is red on a fresh runner and green on
+    // any machine that happens to have a `dist/` lying around.
+    "paths": {
+      "@dineug/vite-plugin-r-html": ["./packages/vite-plugin-r-html/src/index.ts"]
+    }
   },
   // Every `vite.config.*` in this repo sat outside all 13 package programs, so a
   // typo in a `run.tasks` block — `from: ['devDependencie']`, `base: 'pacakge'`,
