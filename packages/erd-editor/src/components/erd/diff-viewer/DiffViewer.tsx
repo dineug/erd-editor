@@ -1,5 +1,5 @@
 import { toJson } from '@dineug/erd-editor-schema';
-import { FC, html, onMounted, Ref, watch } from '@dineug/r-html';
+import { FC, onMounted, Ref, watch } from '@dineug/r-html';
 
 import {
   AppContext,
@@ -74,14 +74,12 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
   originApp.emitter.emit(
     openToastAction({
       close,
-      message: html`
-        <${Toast}
+      message: (
+        <Toast
           description="Diff Viewer..."
-          action=${html`
-            <${Button} size="1" text="Close" .onClick=${handleClose} />
-          `}
+          action={<Button size="1" text="Close" onClick={handleClose} />}
         />
-      `,
+      ),
     })
   );
 
@@ -102,28 +100,24 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
     );
   });
 
-  return () => html`
-    <div class=${styles.root}>
-      <div class=${styles.container}>
-        <${TreeViewer}
-          prevApp=${prevApp}
-          prevDiffMap=${prevDiffMap}
-          app=${app}
-          diffMap=${diffMap}
+  return () => (
+    <div class={styles.root}>
+      <div class={styles.container}>
+        <TreeViewer
+          prevApp={prevApp}
+          prevDiffMap={prevDiffMap}
+          app={app}
+          diffMap={diffMap}
         />
-        <div class=${styles.viewport}>
-          <${ErdViewer}
-            app=${prevApp}
-            diff=${Diff.delete}
-            diffMap=${prevDiffMap}
-          />
+        <div class={styles.viewport}>
+          <ErdViewer app={prevApp} diff={Diff.delete} diffMap={prevDiffMap} />
         </div>
-        <div class=${styles.viewport}>
-          <${ErdViewer} app=${app} diff=${Diff.insert} diffMap=${diffMap} />
+        <div class={styles.viewport}>
+          <ErdViewer app={app} diff={Diff.insert} diffMap={diffMap} />
         </div>
       </div>
     </div>
-  `;
+  );
 };
 
 export default DiffViewer;

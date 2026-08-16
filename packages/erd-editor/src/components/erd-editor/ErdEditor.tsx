@@ -4,7 +4,6 @@ import {
   createRef,
   defineCustomElement,
   FC,
-  html,
   observable,
   onMounted,
   ref,
@@ -232,70 +231,66 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     const { settings } = store.state;
     const isDarkMode = hasDarkMode();
 
-    return html`
-      <${GlobalStyles} />
-      <${Theme} theme=${theme} />
-      <div
-        ${ref(root)}
-        class=${[
-          'root',
-          styles.root,
-          { dark: isDarkMode, 'none-focus': !state.isFocus },
-        ]}
-        tabindex="-1"
-        @keydown=${handleKeydown}
-        @focus=${handleFocus}
-        @focusin=${handleFocus}
-        @focusout=${handleFocusout}
-        @copy=${handleCopy}
-        @paste=${handlePaste}
-        @mousedown=${handleOutsideClick}
-      >
-        <${Toolbar}
-          enableThemeBuilder=${props.enableThemeBuilder}
-          readonly=${props.readonly}
-        />
-        ${cache(
-          settings.canvasType === CanvasType.ERD
-            ? html`
-                <div class=${styles.scope}>
-                  <${Erd}
-                    isDarkMode=${isDarkMode}
-                    mouseTracking=${state.mouseTracking}
-                  />
-                </div>
-              `
-            : null
-        )}
-        ${
-          settings.canvasType === CanvasType.visualization
-            ? html`<div class=${styles.scope}><${Visualization} /></div>`
-            : settings.canvasType === CanvasType.schemaSQL
-              ? html`
-                  <div class=${styles.scope}>
-                    <${SchemaSQL} isDarkMode=${isDarkMode} />
-                  </div>
-                `
-              : settings.canvasType === CanvasType.generatorCode
-                ? html`
-                    <div class=${styles.scope}>
-                      <${GeneratorCode} isDarkMode=${isDarkMode} />
-                    </div>
-                  `
-                : settings.canvasType === CanvasType.settings
-                  ? html`<div class=${styles.scope}><${Settings} /></div>`
-                  : null
-        }
-        <${ToastContainer} />
-        ${
-          props.enableThemeBuilder
-            ? html`<${ThemeBuilder} theme=${themeState.options} />`
-            : null
-        }
-        <${QuickSearch} />
-        ${text.span}
-      </div>
-    `;
+    return (
+      <>
+        <GlobalStyles />
+        <Theme theme={theme} />
+        <div
+          use:ref={ref(root)}
+          class={[
+            'root',
+            styles.root,
+            { dark: isDarkMode, 'none-focus': !state.isFocus },
+          ]}
+          tabindex="-1"
+          on:keydown={handleKeydown}
+          on:focus={handleFocus}
+          on:focusin={handleFocus}
+          on:focusout={handleFocusout}
+          on:copy={handleCopy}
+          on:paste={handlePaste}
+          on:mousedown={handleOutsideClick}
+        >
+          <Toolbar
+            enableThemeBuilder={props.enableThemeBuilder}
+            readonly={props.readonly}
+          />
+          {cache(
+            settings.canvasType === CanvasType.ERD ? (
+              <div class={styles.scope}>
+                <Erd
+                  isDarkMode={isDarkMode}
+                  mouseTracking={state.mouseTracking}
+                />
+              </div>
+            ) : null
+          )}
+          {settings.canvasType === CanvasType.visualization ? (
+            <div class={styles.scope}>
+              <Visualization />
+            </div>
+          ) : settings.canvasType === CanvasType.schemaSQL ? (
+            <div class={styles.scope}>
+              <SchemaSQL isDarkMode={isDarkMode} />
+            </div>
+          ) : settings.canvasType === CanvasType.generatorCode ? (
+            <div class={styles.scope}>
+              <GeneratorCode isDarkMode={isDarkMode} />
+            </div>
+          ) : settings.canvasType === CanvasType.settings ? (
+            <div class={styles.scope}>
+              <Settings />
+            </div>
+          ) : null}
+          <ToastContainer />
+          {props.enableThemeBuilder ? (
+            <ThemeBuilder theme={themeState.options} />
+          ) : null}
+          <QuickSearch />
+          {text.span}
+        </div>
+      </>
+    );
   };
 };
 

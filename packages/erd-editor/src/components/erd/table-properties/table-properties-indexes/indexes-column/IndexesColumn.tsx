@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { createRef, FC, html, onUpdated, ref, repeat } from '@dineug/r-html';
+import { createRef, FC, onUpdated, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import ColumnOption from '@/components/erd/canvas/table/column/column-option/ColumnOption';
@@ -101,42 +101,42 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
           .selectById(indexColumn.columnId),
       }));
 
-    return html`
+    return (
       <div
-        class=${styles.root}
-        ${ref(root)}
-        @dragenter=${onPrevent}
-        @dragover=${onPrevent}
+        class={styles.root}
+        use:ref={ref(root)}
+        on:dragenter={onPrevent}
+        on:dragover={onPrevent}
       >
-        ${repeat(
+        {repeat(
           indexColumns,
           indexColumn => indexColumn.id,
-          indexColumn => html`
+          indexColumn => (
             <div
-              class=${styles.row}
+              class={styles.row}
               draggable="true"
-              data-id=${indexColumn.id}
-              @dragstart=${handleDragstart}
+              data-id={indexColumn.id}
+              on:dragstart={handleDragstart}
             >
-              <${Icon} class=${'column-col'} name="bars" size=${14} />
+              <Icon class={'column-col'} name="bars" size={14} />
               <div
                 class="column-col"
-                @click=${() => handleChangeOrderType(indexColumn)}
+                on:click={() => handleChangeOrderType(indexColumn)}
               >
-                <${ColumnOption}
-                  class=${styles.orderType}
-                  checked=${true}
-                  width=${40}
-                  text=${toOrderName(indexColumn.orderType)}
-                  title=${toOrderTitle(indexColumn.orderType)}
+                <ColumnOption
+                  class={styles.orderType}
+                  checked={true}
+                  width={40}
+                  text={toOrderName(indexColumn.orderType)}
+                  title={toOrderTitle(indexColumn.orderType)}
                 />
               </div>
-              <div class="column-col">${indexColumn.column?.name}</div>
+              <div class="column-col">{indexColumn.column?.name}</div>
             </div>
-          `
+          )
         )}
       </div>
-    `;
+    );
   };
 };
 

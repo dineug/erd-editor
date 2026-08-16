@@ -1,4 +1,4 @@
-import { FC, observable, onBeforeMount, Ref, svg } from '@dineug/r-html';
+import { FC, observable, onBeforeMount, Ref } from '@dineug/r-html';
 import { fromEvent } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
@@ -88,10 +88,10 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
     );
   });
 
-  return () => svg`
+  return () => (
     <svg
-      class=${styles.dragSelect}
-      style=${{
+      class={styles.dragSelect}
+      style={{
         top: `${state.top}px`,
         left: `${state.left}px`,
         width: `${state.width}px`,
@@ -99,16 +99,15 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
       }}
     >
       <rect
-        width=${state.width}
-        height=${state.height}
+        width={state.width}
+        height={state.height}
         stroke-width="1"
         stroke-opacity="1"
         stroke-dasharray="3"
         fill-opacity="0.3"
-      >
-      </rect>
+      ></rect>
     </svg>
-  `;
+  );
 };
 
 export default DragSelect;

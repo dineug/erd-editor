@@ -1,7 +1,6 @@
 import {
   createRef,
   FC,
-  html,
   observable,
   onMounted,
   ref,
@@ -412,111 +411,83 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           )}") 16 16, auto`
         : '';
 
-    return html`
+    return (
       <div
-        class=${styles.root}
-        style=${{ cursor }}
-        ${ref(root)}
-        @contextmenu=${handleContextmenu}
-        @mousedown=${contextMenu.onMousedown}
-        @mousedown=${handleDragSelect}
-        @touchstart=${handleDragSelect}
-        @wheel=${handleWheel}
+        class={styles.root}
+        style={{ cursor }}
+        use:ref={ref(root)}
+        on:contextmenu={handleContextmenu}
+        on:mousedown={contextMenu.onMousedown}
+        on:mousedown__2={handleDragSelect}
+        on:touchstart={handleDragSelect}
+        on:wheel={handleWheel}
       >
-        <${Canvas} root=${root} canvas=${canvas} grabMove=${state.grabMove} />
-        <${VirtualScroll} />
-        <${Minimap} />
-        <${HideSign} root=${root} />
-        ${
-          state.dragSelect
-            ? html`
-                <${DragSelect}
-                  root=${root}
-                  x=${state.dragSelectX}
-                  y=${state.dragSelectY}
-                  .onDragSelectEnd=${handleDragSelectEnd}
-                />
-              `
-            : null
-        }
-        ${
-          contextMenu.state.show
-            ? html`
-                <${ErdContextMenu}
-                  type=${state.contextMenuType}
-                  canvas=${canvas}
-                  relationshipId=${state.relationshipId}
-                  tableId=${state.tableId}
-                  .onClose=${handleContextmenuClose}
-                />
-              `
-            : null
-        }
-        ${
-          state.colorPickerShow
-            ? html`
-                <${ColorPicker}
-                  color=${state.colorPickerInitialColor}
-                  x=${state.colorPickerX}
-                  y=${state.colorPickerY}
-                  viewport=${state.colorPickerViewport}
-                  .onChange=${handleChangeColorPicker}
-                />
-              `
-            : null
-        }
-        ${
-          showAutomaticTablePlacement
-            ? html`
-                <div>
-                  <${AutomaticTablePlacement}
-                    app=${app}
-                    .onChange=${handleChangeAutomaticTablePlacement}
-                  />
-                </div>
-              `
-            : null
-        }
-        ${
-          showTableProperties
-            ? html`
-                <${TableProperties}
-                  tableId=${state.tablePropertiesId}
-                  tableIds=${state.tablePropertiesIds}
-                  isDarkMode=${props.isDarkMode}
-                  .onChange=${handleChangeTableProperties}
-                />
-              `
-            : null
-        }
-        ${
-          showDiffViewer
-            ? html`
-                <div>
-                  <${DiffViewer}
-                    app=${app}
-                    initialValue=${state.diffValue}
-                    .onClose=${handleDiffViewerClose}
-                  />
-                </div>
-              `
-            : null
-        }
-        ${
-          showTimeTravel
-            ? html`
-                <div>
-                  <${TimeTravel}
-                    app=${app}
-                    .onChange=${handleChangeTimeTravel}
-                    .onClose=${handleTimeTravelClose}
-                  />
-                </div>
-              `
-            : null
-        }
+        <Canvas root={root} canvas={canvas} grabMove={state.grabMove} />
+        <VirtualScroll />
+        <Minimap />
+        <HideSign root={root} />
+        {state.dragSelect ? (
+          <DragSelect
+            root={root}
+            x={state.dragSelectX}
+            y={state.dragSelectY}
+            onDragSelectEnd={handleDragSelectEnd}
+          />
+        ) : null}
+        {contextMenu.state.show ? (
+          <ErdContextMenu
+            type={state.contextMenuType}
+            canvas={canvas}
+            relationshipId={state.relationshipId}
+            tableId={state.tableId}
+            onClose={handleContextmenuClose}
+          />
+        ) : null}
+        {state.colorPickerShow ? (
+          <ColorPicker
+            color={state.colorPickerInitialColor}
+            x={state.colorPickerX}
+            y={state.colorPickerY}
+            viewport={state.colorPickerViewport}
+            onChange={handleChangeColorPicker}
+          />
+        ) : null}
+        {showAutomaticTablePlacement ? (
+          <div>
+            <AutomaticTablePlacement
+              app={app}
+              onChange={handleChangeAutomaticTablePlacement}
+            />
+          </div>
+        ) : null}
+        {showTableProperties ? (
+          <TableProperties
+            tableId={state.tablePropertiesId}
+            tableIds={state.tablePropertiesIds}
+            isDarkMode={props.isDarkMode}
+            onChange={handleChangeTableProperties}
+          />
+        ) : null}
+        {showDiffViewer ? (
+          <div>
+            <DiffViewer
+              app={app}
+              initialValue={state.diffValue}
+              onClose={handleDiffViewerClose}
+            />
+          </div>
+        ) : null}
+        {showTimeTravel ? (
+          <div>
+            <TimeTravel
+              app={app}
+              onChange={handleChangeTimeTravel}
+              onClose={handleTimeTravelClose}
+            />
+          </div>
+        ) : null}
       </div>
-    `;
+    );
   };
 };
 

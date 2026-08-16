@@ -1,13 +1,5 @@
 import { query, toJson } from '@dineug/erd-editor-schema';
-import {
-  createRef,
-  FC,
-  html,
-  Ref,
-  ref,
-  useProvider,
-  watch,
-} from '@dineug/r-html';
+import { createRef, FC, Ref, ref, useProvider, watch } from '@dineug/r-html';
 import { createInRange } from '@dineug/shared';
 import { round } from 'es-toolkit/compat';
 
@@ -129,7 +121,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     handleClose();
     originApp.emitter.emit(
       openToastAction({
-        message: html`<${Toast} description="Not found tables" />`,
+        message: <Toast description="Not found tables" />,
       })
     );
     return () => null;
@@ -160,20 +152,22 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     originApp.emitter.emit(
       openToastAction({
         close,
-        message: html`
-          <${Toast}
+        message: (
+          <Toast
             description="Automatic Table Placement..."
-            action=${html`
-              <${Button}
-                variant="soft"
-                size="1"
-                text="Stop"
-                .onClick=${handleStop}
-              />
-              <${Button} size="1" text="Cancel" .onClick=${handleCancel} />
-            `}
+            action={
+              <>
+                <Button
+                  variant="soft"
+                  size="1"
+                  text="Stop"
+                  onClick={handleStop}
+                />
+                <Button size="1" text="Cancel" onClick={handleCancel} />
+              </>
+            }
           />
-        `,
+        ),
       })
     );
 
@@ -189,14 +183,14 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     return () => null;
   }
 
-  return () => html`
-    <div class=${styles.root}>
-      <div class=${styles.container} ${ref(root)}>
-        <${Canvas} root=${root} canvas=${canvas} grabMove=${true} />
-        <${Minimap} />
+  return () => (
+    <div class={styles.root}>
+      <div class={styles.container} use:ref={ref(root)}>
+        <Canvas root={root} canvas={canvas} grabMove={true} />
+        <Minimap />
       </div>
     </div>
-  `;
+  );
 };
 
 export default AutomaticTablePlacement;

@@ -1,4 +1,4 @@
-import { createRef, FC, html, ref } from '@dineug/r-html';
+import { createRef, FC, ref } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
@@ -98,56 +98,50 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
     const showHorizontal = viewport.width < width;
     const showVertical = viewport.height < height;
 
-    return html`
-      ${
-        showHorizontal
-          ? html`
-              <div
-                class=${['virtual-scroll', styles.horizontal]}
-                ${ref(horizontal)}
-                @mousedown=${handleMoveLeft}
-              >
-                <div
-                  class=${['virtual-scroll-ghost-thumb', styles.ghostThumb]}
-                  style=${{
-                    width: `${w}px`,
-                    height: '100%',
-                    transform: `translate(${left}px, 0px)`,
-                  }}
-                  ?data-selected=${state.selected === 'horizontal'}
-                  @mousedown=${onScrollLeftStart}
-                >
-                  <div class=${styles.horizontalThumb}></div>
-                </div>
-              </div>
-            `
-          : null
-      }
-      ${
-        showVertical
-          ? html`
-              <div
-                class=${['virtual-scroll', styles.vertical]}
-                ${ref(vertical)}
-                @mousedown=${handleMoveTop}
-              >
-                <div
-                  class=${['virtual-scroll-ghost-thumb', styles.ghostThumb]}
-                  style=${{
-                    width: '100%',
-                    height: `${h}px`,
-                    transform: `translate(0px, ${top}px)`,
-                  }}
-                  ?data-selected=${state.selected === 'vertical'}
-                  @mousedown=${onScrollTopStart}
-                >
-                  <div class=${styles.verticalThumb}></div>
-                </div>
-              </div>
-            `
-          : null
-      }
-    `;
+    return (
+      <>
+        {showHorizontal ? (
+          <div
+            class={['virtual-scroll', styles.horizontal]}
+            use:ref={ref(horizontal)}
+            on:mousedown={handleMoveLeft}
+          >
+            <div
+              class={['virtual-scroll-ghost-thumb', styles.ghostThumb]}
+              style={{
+                width: `${w}px`,
+                height: '100%',
+                transform: `translate(${left}px, 0px)`,
+              }}
+              bool:data-selected={state.selected === 'horizontal'}
+              on:mousedown={onScrollLeftStart}
+            >
+              <div class={styles.horizontalThumb}></div>
+            </div>
+          </div>
+        ) : null}
+        {showVertical ? (
+          <div
+            class={['virtual-scroll', styles.vertical]}
+            use:ref={ref(vertical)}
+            on:mousedown={handleMoveTop}
+          >
+            <div
+              class={['virtual-scroll-ghost-thumb', styles.ghostThumb]}
+              style={{
+                width: '100%',
+                height: `${h}px`,
+                transform: `translate(0px, ${top}px)`,
+              }}
+              bool:data-selected={state.selected === 'vertical'}
+              on:mousedown={onScrollTopStart}
+            >
+              <div class={styles.verticalThumb}></div>
+            </div>
+          </div>
+        ) : null}
+      </>
+    );
   };
 };
 

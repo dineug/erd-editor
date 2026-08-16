@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import { ValuesType } from '@/internal-types';
 
@@ -18,20 +18,18 @@ export type TablePropertiesTabsProps = {
 };
 
 const TablePropertiesTabs: FC<TablePropertiesTabsProps> = (props, ctx) => {
-  return () => html`
-    <div class=${styles.tabs}>
-      ${tabs.map(
-        tab => html`
-          <div
-            class=${[styles.tab, { selected: tab === props.value }]}
-            @click=${() => props.onChange(tab as Tab)}
-          >
-            ${tab}
-          </div>
-        `
-      )}
+  return () => (
+    <div class={styles.tabs}>
+      {tabs.map(tab => (
+        <div
+          class={[styles.tab, { selected: tab === props.value }]}
+          on:click={() => props.onChange(tab as Tab)}
+        >
+          {tab}
+        </div>
+      ))}
     </div>
-  `;
+  );
 };
 
 export default TablePropertiesTabs;

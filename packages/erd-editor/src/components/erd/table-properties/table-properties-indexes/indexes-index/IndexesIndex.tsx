@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import ColumnOption from '@/components/erd/canvas/table/column/column-option/ColumnOption';
@@ -64,37 +64,37 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
   return () => {
     const { index } = props;
 
-    return html`
+    return (
       <div
-        class=${[styles.row, { selected: props.selected }]}
-        @click=${handleSelect}
+        class={[styles.row, { selected: props.selected }]}
+        on:click={handleSelect}
       >
-        <div class="column-col" @click=${handleChangeUniqueIndex}>
-          <${ColumnOption}
-            class=${styles.unique}
-            checked=${index.unique}
-            width=${COLUMN_UNIQUE_WIDTH}
+        <div class="column-col" on:click={handleChangeUniqueIndex}>
+          <ColumnOption
+            class={styles.unique}
+            checked={index.unique}
+            width={COLUMN_UNIQUE_WIDTH}
             text="UQ"
             title="Unique"
           />
         </div>
-        <div class=${['column-col', styles.input]}>
-          <${TextInput}
-            class=${styles.input}
+        <div class={['column-col', styles.input]}>
+          <TextInput
+            class={styles.input}
             placeholder="name"
-            value=${index.name}
-            .onInput=${handleChangeIndexName}
+            value={index.name}
+            onInput={handleChangeIndexName}
           />
         </div>
-        <${Icon}
-          class=${styles.iconButton}
-          size=${12}
+        <Icon
+          class={styles.iconButton}
+          size={12}
           name="xmark"
           title="Remove"
-          .onClick=${handleRemoveIndex}
+          onClick={handleRemoveIndex}
         />
       </div>
-    `;
+    );
   };
 };
 

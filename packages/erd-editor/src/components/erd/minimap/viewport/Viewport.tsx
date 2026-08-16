@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { useMinimapScroll } from '@/components/erd/minimap/useMinimapScroll';
@@ -45,19 +45,19 @@ const Viewport: FC<ViewportProps> = (props, ctx) => {
     };
   };
 
-  return () => html`
+  return () => (
     <div
-      class=${[
+      class={[
         'minimap-viewport',
         styles.viewport,
         { selected: state.selected || props.selected },
       ]}
-      style=${styleMap()}
+      style={styleMap()}
       data-focus-border
-      @mousedown=${onScrollStart}
-      @touchstart=${onScrollStart}
+      on:mousedown={onScrollStart}
+      on:touchstart={onScrollStart}
     ></div>
-  `;
+  );
 };
 
 export default Viewport;

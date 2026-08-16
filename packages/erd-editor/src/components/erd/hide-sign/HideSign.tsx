@@ -1,13 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import {
-  FC,
-  html,
-  observable,
-  onMounted,
-  Ref,
-  repeat,
-  watch,
-} from '@dineug/r-html';
+import { FC, observable, onMounted, Ref, repeat, watch } from '@dineug/r-html';
 import { isEmpty } from 'es-toolkit/compat';
 import { debounceTime, Observable } from 'rxjs';
 
@@ -277,43 +269,47 @@ const HideSign: FC<HideSignProps> = (props, ctx) => {
       return null;
     }
 
-    return html`
-      ${repeat(
-        tables,
-        table => table.id,
-        table => {
-          const [style, rotate] = getPositionStyle(table.ui);
-          const isEmptyName = isEmpty(table.name.trim());
-          return html`
-            <div
-              class=${['hide-sign', styles.sign]}
-              title=${isEmptyName ? 'unnamed' : table.name}
-              style=${style}
-              @click=${(event: MouseEvent) => handleMoveToTable(event, table)}
-            >
-              <${Icon} name="location-dot" rotate=${rotate} />
-            </div>
-          `;
-        }
-      )}
-      ${repeat(
-        memos,
-        memo => memo.id,
-        memo => {
-          const [style, rotate] = getPositionStyle(memo.ui);
-          return html`
-            <div
-              class=${['hide-sign', styles.sign]}
-              title="Memo"
-              style=${style}
-              @click=${(event: MouseEvent) => handleMoveToMemo(event, memo)}
-            >
-              <${Icon} name="location-dot" rotate=${rotate} />
-            </div>
-          `;
-        }
-      )}
-    `;
+    return (
+      <>
+        {repeat(
+          tables,
+          table => table.id,
+          table => {
+            const [style, rotate] = getPositionStyle(table.ui);
+            const isEmptyName = isEmpty(table.name.trim());
+            return (
+              <div
+                class={['hide-sign', styles.sign]}
+                title={isEmptyName ? 'unnamed' : table.name}
+                style={style}
+                on:click={(event: MouseEvent) =>
+                  handleMoveToTable(event, table)
+                }
+              >
+                <Icon name="location-dot" rotate={rotate} />
+              </div>
+            );
+          }
+        )}
+        {repeat(
+          memos,
+          memo => memo.id,
+          memo => {
+            const [style, rotate] = getPositionStyle(memo.ui);
+            return (
+              <div
+                class={['hide-sign', styles.sign]}
+                title="Memo"
+                style={style}
+                on:click={(event: MouseEvent) => handleMoveToMemo(event, memo)}
+              >
+                <Icon name="location-dot" rotate={rotate} />
+              </div>
+            );
+          }
+        )}
+      </>
+    );
   };
 };
 

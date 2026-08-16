@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import * as styles from '@/components/erd/canvas/memo/Memo.styles';
 import type { Memo } from '@/internal-types';
@@ -14,10 +14,10 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     const width = calcMemoWidth(memo);
     const height = calcMemoHeight(memo);
 
-    return html`
+    return (
       <div
-        class=${['memo', styles.root]}
-        style=${{
+        class={['memo', styles.root]}
+        style={{
           top: `${memo.ui.y}px`,
           left: `${memo.ui.x}px`,
           'z-index': `${memo.ui.zIndex}`,
@@ -25,7 +25,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
           height: `${height}px`,
         }}
       ></div>
-    `;
+    );
   };
 };
 

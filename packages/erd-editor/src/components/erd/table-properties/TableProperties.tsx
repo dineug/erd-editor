@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { FC, html, observable, onMounted } from '@dineug/r-html';
+import { FC, observable, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import TablePropertiesIndexes from '@/components/erd/table-properties/table-properties-indexes/TablePropertiesIndexes';
@@ -67,68 +67,52 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
       .collection('tableEntities')
       .selectByIds(tableIds);
 
-    return html`
+    return (
       <div
-        class=${styles.root}
-        @contextmenu=${onStop}
-        @mousedown=${onStop}
-        @touchstart=${onStop}
-        @wheel=${onStop}
-        @click=${handleOutsideClick}
+        class={styles.root}
+        on:contextmenu={onStop}
+        on:mousedown={onStop}
+        on:touchstart={onStop}
+        on:wheel={onStop}
+        on:click={handleOutsideClick}
       >
-        <div class=${['table-properties', styles.container]}>
-          <div class=${['scrollbar', styles.header]}>
-            ${tables.map(
-              table => html`
-                <div
-                  class=${[
-                    styles.tab,
-                    { selected: table.id === props.tableId },
-                  ]}
-                  title=${table.name}
-                  @click=${() => props.onChange(table.id)}
-                >
-                  <span>${table.name.trim() ? table.name : 'unnamed'}</span>
-                </div>
-              `
-            )}
+        <div class={['table-properties', styles.container]}>
+          <div class={['scrollbar', styles.header]}>
+            {tables.map(table => (
+              <div
+                class={[styles.tab, { selected: table.id === props.tableId }]}
+                title={table.name}
+                on:click={() => props.onChange(table.id)}
+              >
+                <span>{table.name.trim() ? table.name : 'unnamed'}</span>
+              </div>
+            ))}
           </div>
-          <${TablePropertiesTabs}
-            value=${state.tab}
-            .onChange=${handleChangeTab}
-          />
-          <div class=${['scrollbar', styles.scrollbarArea]}>
-            ${
-              state.tab === Tab.Indexes
-                ? html`
-                    <div class=${styles.scope}>
-                      <${TablePropertiesIndexes} tableId=${props.tableId} />
-                    </div>
-                  `
-                : state.tab === Tab.SchemaSQL
-                  ? html`
-                      <div class=${styles.scope}>
-                        <${SchemaSQL}
-                          isDarkMode=${props.isDarkMode}
-                          tableId=${props.tableId}
-                        />
-                      </div>
-                    `
-                  : state.tab === Tab.GeneratorCode
-                    ? html`
-                        <div class=${styles.scope}>
-                          <${GeneratorCode}
-                            isDarkMode=${props.isDarkMode}
-                            tableId=${props.tableId}
-                          />
-                        </div>
-                      `
-                    : null
-            }
+          <TablePropertiesTabs value={state.tab} onChange={handleChangeTab} />
+          <div class={['scrollbar', styles.scrollbarArea]}>
+            {state.tab === Tab.Indexes ? (
+              <div class={styles.scope}>
+                <TablePropertiesIndexes tableId={props.tableId} />
+              </div>
+            ) : state.tab === Tab.SchemaSQL ? (
+              <div class={styles.scope}>
+                <SchemaSQL
+                  isDarkMode={props.isDarkMode}
+                  tableId={props.tableId}
+                />
+              </div>
+            ) : state.tab === Tab.GeneratorCode ? (
+              <div class={styles.scope}>
+                <GeneratorCode
+                  isDarkMode={props.isDarkMode}
+                  tableId={props.tableId}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
-    `;
+    );
   };
 };
 

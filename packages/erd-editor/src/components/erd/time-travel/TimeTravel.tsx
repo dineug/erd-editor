@@ -2,7 +2,6 @@ import { toJson } from '@dineug/erd-editor-schema';
 import {
   createRef,
   FC,
-  html,
   observable,
   onMounted,
   Ref,
@@ -104,25 +103,27 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
     );
   });
 
-  return () => html`
-    <div class=${styles.root}>
-      <div class=${styles.container} ${ref(root)}>
-        <${Canvas} root=${root} canvas=${canvas} grabMove=${true} />
-        <${Minimap} />
+  return () => (
+    <>
+      <div class={styles.root}>
+        <div class={styles.container} use:ref={ref(root)}>
+          <Canvas root={root} canvas={canvas} grabMove={true} />
+          <Minimap />
+        </div>
       </div>
-    </div>
-    <div class=${styles.slider}>
-      <${Slider}
-        min=${-1}
-        max=${history.size - 1}
-        value=${state.cursor}
-        .onChange=${handleChange}
-      />
-      <div class=${styles.vertical}></div>
-      <${Button} variant="soft" size="1" text="Apply" .onClick=${handleApply} />
-      <${Button} size="1" text="Cancel" .onClick=${handleClose} />
-    </div>
-  `;
+      <div class={styles.slider}>
+        <Slider
+          min={-1}
+          max={history.size - 1}
+          value={state.cursor}
+          onChange={handleChange}
+        />
+        <div class={styles.vertical}></div>
+        <Button variant="soft" size="1" text="Apply" onClick={handleApply} />
+        <Button size="1" text="Cancel" onClick={handleClose} />
+      </div>
+    </>
+  );
 };
 
 export default TimeTravel;

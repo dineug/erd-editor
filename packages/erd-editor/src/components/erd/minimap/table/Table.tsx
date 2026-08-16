@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import * as styles from '@/components/erd/canvas/table/Table.styles';
@@ -18,10 +18,10 @@ const Table: FC<TableProps> = (props, ctx) => {
     const tableWidths = calcTableWidths(table, store.state);
     const height = calcTableHeight(table);
 
-    return html`
+    return (
       <div
-        class=${['table', styles.root]}
-        style=${{
+        class={['table', styles.root]}
+        style={{
           top: `${table.ui.y}px`,
           left: `${table.ui.x}px`,
           'z-index': `${table.ui.zIndex}`,
@@ -29,7 +29,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           height: `${height}px`,
         }}
       ></div>
-    `;
+    );
   };
 };
 

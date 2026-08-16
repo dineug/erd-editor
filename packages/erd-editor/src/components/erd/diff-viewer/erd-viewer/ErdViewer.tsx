@@ -1,11 +1,4 @@
-import {
-  createRef,
-  FC,
-  html,
-  observable,
-  ref,
-  useProvider,
-} from '@dineug/r-html';
+import { createRef, FC, observable, ref, useProvider } from '@dineug/r-html';
 
 import { AppContext, appContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
@@ -122,27 +115,27 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
     });
   };
 
-  return () => html`
+  return () => (
     <div
-      class=${[
+      class={[
         styles.root,
         props.diff === Diff.insert
           ? 'diff-viewer-insert'
           : 'diff-viewer-delete',
       ]}
-      style=${{ cursor: state.grabCursor }}
-      ${ref(root)}
-      @contextmenu=${onPrevent}
-      @mousedown=${handleDragSelect}
-      @touchstart=${handleDragSelect}
-      @wheel=${handleWheel}
+      style={{ cursor: state.grabCursor }}
+      use:ref={ref(root)}
+      on:contextmenu={onPrevent}
+      on:mousedown={handleDragSelect}
+      on:touchstart={handleDragSelect}
+      on:wheel={handleWheel}
     >
-      ${diffStyle}
-      <${Canvas} root=${root} canvas=${canvas} grabMove=${true} />
-      <${VirtualScroll} />
-      <${Minimap} />
+      {diffStyle}
+      <Canvas root={root} canvas={canvas} grabMove={true} />
+      <VirtualScroll />
+      <Minimap />
     </div>
-  `;
+  );
 };
 
 export default ErdViewer;

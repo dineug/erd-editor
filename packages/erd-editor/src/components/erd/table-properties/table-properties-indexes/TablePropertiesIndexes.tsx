@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { FC, html, observable, repeat } from '@dineug/r-html';
+import { FC, observable, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import IndexesIndex from '@/components/erd/table-properties//table-properties-indexes/indexes-index/IndexesIndex';
@@ -48,32 +48,34 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
       .selectByIds(indexIds)
       .filter(index => index.tableId === tableId);
 
-    return html`
-      <div class=${styles.leftArea}>
-        ${repeat(
-          indexes,
-          index => index.id,
-          index => html`
-            <${IndexesIndex}
-              index=${index}
-              selected=${index.id === state.index?.id}
-              .onSelect=${handleSelectIndex}
-            />
-          `
-        )}
-        <div
-          class=${styles.addIndexButtonArea}
-          title="Add Index"
-          @click=${handleAddIndex}
-        >
-          <${Icon} size=${12} name="plus" />
+    return (
+      <>
+        <div class={styles.leftArea}>
+          {repeat(
+            indexes,
+            index => index.id,
+            index => (
+              <IndexesIndex
+                index={index}
+                selected={index.id === state.index?.id}
+                onSelect={handleSelectIndex}
+              />
+            )
+          )}
+          <div
+            class={styles.addIndexButtonArea}
+            title="Add Index"
+            on:click={handleAddIndex}
+          >
+            <Icon size={12} name="plus" />
+          </div>
         </div>
-      </div>
-      <div class=${styles.rightArea}>
-        <${IndexesCheckboxColumn} tableId=${tableId} index=${state.index} />
-        ${state.index ? html`<${IndexesColumn} index=${state.index} />` : null}
-      </div>
-    `;
+        <div class={styles.rightArea}>
+          <IndexesCheckboxColumn tableId={tableId} index={state.index} />
+          {state.index ? <IndexesColumn index={state.index} /> : null}
+        </div>
+      </>
+    );
   };
 };
 

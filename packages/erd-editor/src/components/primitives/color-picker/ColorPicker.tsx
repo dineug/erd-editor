@@ -11,7 +11,7 @@ export type ColorPickerProps = {
   x: number;
   y: number;
   color: string;
-  viewport?: Viewport;
+  viewport?: Viewport | null;
   onChange?: (color: string) => void;
   onLastUpdate?: (color: string) => void;
 };

@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { createRef, FC, html, ref, repeat } from '@dineug/r-html';
+import { createRef, FC, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import * as canvasStyle from '@/components/erd/canvas/Canvas.styles';
@@ -111,47 +111,48 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
       .collection('memoEntities')
       .selectByIds(memoIds);
 
-    return html`
-      <div
-        class=${['minimap', styles.minimap]}
-        style=${styleMap()}
-        ${ref(minimap)}
-        @mousedown=${handleMove}
-        @touchstart=${handleMove}
-      >
+    return (
+      <>
         <div
-          class=${canvasStyle.root}
-          style=${{
-            width: `${width}px`,
-            height: `${height}px`,
-            'min-width': `${width}px`,
-            'min-height': `${height}px`,
-            transform: `scale(${zoomLevel})`,
-          }}
+          class={['minimap', styles.minimap]}
+          style={styleMap()}
+          use:ref={ref(minimap)}
+          on:mousedown={handleMove}
+          on:touchstart={handleMove}
         >
-          ${repeat(
-            tables,
-            table => table.id,
-            table => html`<${Table} table=${table} />`
-          )}
-          ${repeat(
-            memos,
-            memo => memo.id,
-            memo => html`<${Memo} memo=${memo} />`
-          )}
-          ${
-            bHas(show, Show.relationship)
-              ? html`<${CanvasSvg}
-                  class=${styles.canvasSvg}
-                  strokeWidth=${12}
-                />`
-              : null
-          }
+          <div
+            class={canvasStyle.root}
+            style={{
+              width: `${width}px`,
+              height: `${height}px`,
+              'min-width': `${width}px`,
+              'min-height': `${height}px`,
+              transform: `scale(${zoomLevel})`,
+            }}
+          >
+            {repeat(
+              tables,
+              table => table.id,
+              table => (
+                <Table table={table} />
+              )
+            )}
+            {repeat(
+              memos,
+              memo => memo.id,
+              memo => (
+                <Memo memo={memo} />
+              )
+            )}
+            {bHas(show, Show.relationship) ? (
+              <CanvasSvg class={styles.canvasSvg} strokeWidth={12} />
+            ) : null}
+          </div>
         </div>
-      </div>
-      <div class=${styles.border} style=${borderStyleMap()}></div>
-      <${Viewport} selected=${state.selected} />
-    `;
+        <div class={styles.border} style={borderStyleMap()}></div>
+        <Viewport selected={state.selected} />
+      </>
+    );
   };
 };
 

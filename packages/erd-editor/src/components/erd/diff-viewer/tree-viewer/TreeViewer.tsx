@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
 import { AppContext } from '@/components/appContext';
@@ -203,9 +203,9 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
     table.id && move(app, table.id);
   };
 
-  return () => html`
-    <div class=${styles.root}>
-      ${diffTables.map(table => {
+  return () => (
+    <div class={styles.root}>
+      {diffTables.map(table => {
         const tableName = table.name.trim() ? table.name : 'unnamed';
         const isInsert = bHas(table.diff, Diff.insert);
         const isDelete = bHas(table.diff, Diff.delete);
@@ -215,60 +215,52 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
           'diff-delete': !isInsert && isDelete,
         };
 
-        return html`
-          <div class=${styles.table} @click=${() => handleMove(table)}>
-            <div class=${[styles.icon, classMap]}>
-              ${
-                isInsert && isDelete
-                  ? html`<${Icon} prefix="mdi" name="plus-minus" size=${14} />`
-                  : isInsert
-                    ? html`<${Icon} prefix="mdi" name="plus" size=${14} />`
-                    : isDelete
-                      ? html`<${Icon} prefix="mdi" name="minus" size=${14} />`
-                      : html`<${Icon} name="table" size=${14} />`
-              }
-            </div>
-            <span class=${styles.ellipsis}>${tableName}</span>
-          </div>
-          ${table.columns.map(column => {
-            const columnName = column.name.trim() ? column.name : 'unnamed';
-            const isInsert = bHas(column.diff, Diff.insert);
-            const isDelete = bHas(column.diff, Diff.delete);
-            const classMap = {
-              'diff-cross': isInsert && isDelete,
-              'diff-insert': isInsert && !isDelete,
-              'diff-delete': !isInsert && isDelete,
-            };
-
-            return html`
-              <div class=${styles.column} @click=${() => handleMove(table)}>
-                <div class=${[styles.icon, classMap]}>
-                  ${
-                    isInsert && isDelete
-                      ? html`<${Icon}
-                          prefix="mdi"
-                          name="plus-minus"
-                          size=${14}
-                        />`
-                      : isInsert
-                        ? html`<${Icon} prefix="mdi" name="plus" size=${14} />`
-                        : isDelete
-                          ? html`<${Icon}
-                              prefix="mdi"
-                              name="minus"
-                              size=${14}
-                            />`
-                          : null
-                  }
-                </div>
-                <span class=${styles.ellipsis}>${columnName}</span>
+        return (
+          <>
+            <div class={styles.table} on:click={() => handleMove(table)}>
+              <div class={[styles.icon, classMap]}>
+                {isInsert && isDelete ? (
+                  <Icon prefix="mdi" name="plus-minus" size={14} />
+                ) : isInsert ? (
+                  <Icon prefix="mdi" name="plus" size={14} />
+                ) : isDelete ? (
+                  <Icon prefix="mdi" name="minus" size={14} />
+                ) : (
+                  <Icon name="table" size={14} />
+                )}
               </div>
-            `;
-          })}
-        `;
+              <span class={styles.ellipsis}>{tableName}</span>
+            </div>
+            {table.columns.map(column => {
+              const columnName = column.name.trim() ? column.name : 'unnamed';
+              const isInsert = bHas(column.diff, Diff.insert);
+              const isDelete = bHas(column.diff, Diff.delete);
+              const classMap = {
+                'diff-cross': isInsert && isDelete,
+                'diff-insert': isInsert && !isDelete,
+                'diff-delete': !isInsert && isDelete,
+              };
+
+              return (
+                <div class={styles.column} on:click={() => handleMove(table)}>
+                  <div class={[styles.icon, classMap]}>
+                    {isInsert && isDelete ? (
+                      <Icon prefix="mdi" name="plus-minus" size={14} />
+                    ) : isInsert ? (
+                      <Icon prefix="mdi" name="plus" size={14} />
+                    ) : isDelete ? (
+                      <Icon prefix="mdi" name="minus" size={14} />
+                    ) : null}
+                  </div>
+                  <span class={styles.ellipsis}>{columnName}</span>
+                </div>
+              );
+            })}
+          </>
+        );
       })}
     </div>
-  `;
+  );
 };
 
 export default TreeViewer;
