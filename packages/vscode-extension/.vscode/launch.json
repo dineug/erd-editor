@@ -5,10 +5,14 @@
       "name": "Launch Extension",
       "type": "extensionHost",
       "request": "launch",
-      "runtimeExecutable": "pnpm",
+      // For `extensionHost` this is the VSCode binary to start, not a package
+      // manager — `${execPath}` is the running instance. Anything else opens
+      // no Extension Development Host at all.
+      "runtimeExecutable": "${execPath}",
       "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "preLaunchTask": "npm: dev"
+      // The label from tasks.json, not the auto-detected `npm: dev`.
+      "preLaunchTask": "dev"
     }
   ]
 }

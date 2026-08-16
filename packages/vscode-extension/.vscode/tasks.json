@@ -1,0 +1,66 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // `dev` is `vp build --watch`, which never exits. Without this file
+      // VSCode auto-detects the package.json script as an ordinary foreground
+      // task, and `preLaunchTask` then blocks the Extension Host forever
+      // waiting for a process that is designed not to finish. `isBackground`
+      // plus the `background` matcher below is what tells VSCode the task is
+      // "done enough" to launch on.
+      "label": "dev",
+      "type": "shell",
+      "command": "pnpm run dev",
+      "isBackground": true,
+      "dependsOn": ["build:deps"],
+      "problemMatcher": {
+        "owner": "vuerd-vscode",
+        "source": "vite",
+        "fileLocation": "relative",
+        // Nothing in the watch output is a diagnostic, but a background
+        // matcher still requires a pattern. `\b\B` is the conventional regex
+        // that can never match; the group indices are placeholders it never
+        // reaches.
+        "pattern": {
+          "regexp": "\\b\\B",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        // Vite prints `build started...` / `built in <n>ms.` around every
+        // rebuild, so the same pair also re-arms the matcher on each change.
+        // The colours it wraps them in are stripped before matching, and the
+        // patterns are left unanchored so a stray escape cannot break them.
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "build started\\.\\.\\.",
+          "endsPattern": "built in \\d+"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      // `vp build --watch` is a built-in and skips `run.tasks`, so it never
+      // honours `dependsOn: ^build`. Nothing else populates
+      // `vscode-extension/public/`, which `Editor#buildHtmlForWebview` reads
+      // at runtime — so on a clean tree F5 would open a host whose editor is
+      // blank. This is that missing edge, run through the task cache: ~1s
+      // warm, and only as slow as the sources that actually changed.
+      //
+      // `^...` is what keeps it to the *dependencies*: vuerd-vscode's own
+      // build is the watch task's job. The quotes are load-bearing — zsh
+      // globs `^` under EXTENDED_GLOB and aborts the line.
+      "label": "build:deps",
+      "type": "shell",
+      "command": "pnpm exec vp run --filter 'vuerd-vscode^...' --fail-if-no-match build",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}
