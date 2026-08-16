@@ -25,9 +25,7 @@
   "homepage": "https://github.com/dineug/erd-editor#readme",
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
-  "scripts": {
-    "build": "vp build"
-  },
+  "scripts": {},
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
     "comlink": "4.4.1",

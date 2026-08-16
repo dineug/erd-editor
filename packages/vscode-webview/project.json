@@ -1,7 +1,0 @@
-{
-  "targets": {
-    "build": {
-      "outputs": ["{workspaceRoot}/packages/vscode-extension/public"]
-    }
-  }
-}

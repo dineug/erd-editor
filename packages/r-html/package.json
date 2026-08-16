@@ -17,8 +17,6 @@
   "license": "MIT",
   "scripts": {
     "dev": "vp dev",
-    "build": "vp build",
-    "test": "vp test run",
     "test:dev": "vp test dev",
     "test:coverage": "vp test run --coverage",
     "e2e": "playwright test",

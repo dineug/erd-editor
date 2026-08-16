@@ -6,12 +6,8 @@
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "dev": "webpack serve --mode development",
-    "build": "webpack --mode production",
-    "build:webview": "webpack --mode production --env target=webview",
-    "nx:dev": "nx dev",
-    "nx:build": "nx build",
-    "nx:build:webview": "nx build:webview"
+    "dev": "vp run --filter @dineug/erd-editor-intellij-webview^... build && webpack serve --mode development",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@dineug/erd-editor": "workspace:*",

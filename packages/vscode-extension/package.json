@@ -37,18 +37,14 @@
   },
   "main": "./dist/extension",
   "scripts": {
-    "vscode:prepublish": "pnpm build",
+    "vscode:prepublish": "vp run --filter vuerd-vscode build",
     "dev": "webpack --mode development",
-    "build": "webpack --mode production",
     "build:vsce": "pnpm vsce package --no-dependencies",
     "publish:vsce": "pnpm vsce publish --no-dependencies",
-    "nx:dev": "nx dev",
-    "nx:build": "nx build",
-    "test": "vp test run",
     "test:dev": "vp test dev",
     "test:coverage": "vp test run --coverage",
     "typecheck": "tsc -p tsconfig.unit.json",
-    "e2e": "tsc -p tsconfig.integration.json && vscode-test",
+    "e2e": "vp run --filter vuerd-vscode build && tsc -p tsconfig.integration.json && vscode-test",
     "e2e:typecheck": "tsc -p tsconfig.integration.json --noEmit"
   },
   "devDependencies": {

@@ -77,11 +77,11 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm --filter @dineug/erd-editor exec playwright install --with-deps chromium
       # The dev server resolves workspace deps to their `dist/`, and the e2e
-      # typecheck reads their `.d.ts`, so both need this first. Nx caches it, so
-      # the `e2e` target's own `dependsOn: ["^build"]` is a no-op after this.
-      - run: pnpm exec nx build @dineug/erd-editor
+      # typecheck reads their `.d.ts`, so both need this first. The `e2e` script
+      # builds them too; Vite Task replays that from cache rather than rebuilding.
+      - run: pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build
       - run: pnpm --filter @dineug/erd-editor e2e:typecheck
-      - run: pnpm exec nx run @dineug/erd-editor:e2e
+      - run: pnpm --filter @dineug/erd-editor e2e
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -98,7 +98,7 @@ jobs:
   # also keeps it fast — unlike the erd-editor suite this one needs no `dist/`
   # at all (the Vite dev server serves r-html's own `src/` through the `@`
   # alias), so folding it in would park a build-free suite behind
-  # `nx build @dineug/erd-editor`.
+  # `vp run --filter @dineug/erd-editor build`.
   #
   # It earns a CI slot because `src/template/vCSSStyleSheet.ts` is built on two
   # facts about a real engine that no unit test can see: `adoptedStyleSheets` is
@@ -122,7 +122,7 @@ jobs:
       # `e2e/` is outside `tsconfig.build.json`'s program, so nothing else ever
       # typechecks these files.
       - run: pnpm --filter @dineug/r-html e2e:typecheck
-      - run: pnpm exec nx run @dineug/r-html:e2e
+      - run: pnpm --filter @dineug/r-html e2e
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -150,7 +150,7 @@ jobs:
       # `Editor#buildHtmlForWebview` reads `public/index.html` emitted by
       # `@dineug/erd-editor-vscode-webview` — so the extension cannot activate
       # until its own build and its dependencies' builds have run.
-      - run: pnpm exec nx build vuerd-vscode
+      - run: pnpm exec vp run --filter vuerd-vscode --fail-if-no-match build
       # `@vscode/test-cli` launches a real (Electron) VSCode, which needs a
       # display even in `--disable-gpu` headless CI. This runs the whole matrix
       # in `.vscode-test.mjs` — stable plus the `engines.vscode` floor — so it
@@ -158,7 +158,7 @@ jobs:
       # version's profile hangs off; it keeps VSCode's IPC socket well under the
       # unix socket path limit and puts the logs somewhere this job can upload.
       - name: Run Extension Host tests
-        run: xvfb-run -a pnpm exec nx run vuerd-vscode:e2e
+        run: xvfb-run -a pnpm --filter vuerd-vscode e2e
         env:
           VSCODE_TEST_USER_DATA_DIR: /tmp/vscode-test-user-data
       - uses: actions/upload-artifact@v7

@@ -24,14 +24,13 @@
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "nx run-many -t build",
-    "test": "nx run-many -t test",
-    "nx:clear": "nx reset",
-    "nx:graph": "nx graph",
-    "prepare": "husky",
+    "build": "vp run -r build",
+    "test": "vp run -r test",
     "format": "vp fmt",
     "lint": "vp lint .",
-    "check": "vp check"
+    "check": "vp check && tsc --noEmit && node scripts/check-task-inputs.mjs",
+    "cache:clear": "vp cache clean",
+    "prepare": "husky"
   },
   "resolutions": {
     "typescript": "5.8.2"
@@ -39,10 +38,10 @@
   "devDependencies": {
     "@commitlint/cli": "^20.5.3",
     "@commitlint/config-conventional": "^20.5.3",
+    "@types/node": "^22.20.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "husky": "^9.1.7",
     "lint-staged": "^15.4.3",
-    "nx": "20.5.0",
     "tslib": "^2.8.1",
     "typescript": "5.8.2",
     "vite": "catalog:",

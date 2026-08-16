@@ -14,9 +14,7 @@
   },
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
-  "scripts": {
-    "build": "vp build"
-  },
+  "scripts": {},
   "devDependencies": {
     "@dineug/erd-editor": "workspace:*",
     "@dineug/erd-editor-vscode-bridge": "workspace:*",

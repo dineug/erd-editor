@@ -15,8 +15,6 @@
   },
   "sideEffects": false,
   "scripts": {
-    "build": "vp build",
-    "test": "vp test run",
     "test:dev": "vp test dev",
     "test:coverage": "vp test run --coverage"
   },

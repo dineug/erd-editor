@@ -6,8 +6,7 @@
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "webpack --mode production",
-    "nx:build": "nx build"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@dineug/erd-editor": "workspace:*",

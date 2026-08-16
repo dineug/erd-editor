@@ -15,3 +15,4 @@ webpack.config.js
 coverage
 .omc
 AGENTS.md
+vite.config.ts

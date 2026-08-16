@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "lib": ["ES2020"],
+    "moduleDetection": "force",
+    "allowImportingTsExtensions": false
+  },
+  // Every `vite.config.*` in this repo sat outside all 13 package programs, so a
+  // typo in a `run.tasks` block — `from: ['devDependencie']`, `base: 'pacakge'`,
+  // `input: ['scr/**']` — went unreported and silently narrowed the graph or the
+  // cache key. Nothing about that failure is red.
+  "include": [
+    "vite.config.ts",
+    "packages/*/vite.config.ts",
+    "packages/*/vite.config.mts",
+    "packages/*/vitest.config.ts",
+    "packages/*/vitest.config.mts"
+  ]
+}

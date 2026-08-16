@@ -5,9 +5,7 @@
   "description": "vite r-html hmr plugin",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "scripts": {
-    "build": "vp build"
-  },
+  "scripts": {},
   "dependencies": {
     "@babel/core": "^7.26.9",
     "@rollup/pluginutils": "^5.1.4"
