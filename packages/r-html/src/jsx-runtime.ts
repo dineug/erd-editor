@@ -112,7 +112,8 @@ export interface HTMLAttributes
   role?: string;
   /** An enumerated attribute, not a boolean one: the values are the strings. */
   spellcheck?: boolean | 'true' | 'false';
-  tabindex?: number;
+  /** An attribute value is a string; `tabindex="-1"` is the usual spelling. */
+  tabindex?: number | `${number}`;
 }
 
 export interface SVGAttributes

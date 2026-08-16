@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import Icon from '@/components/primitives/icon/Icon';
 import { ColumnUIKey } from '@/constants/schema';
@@ -24,15 +24,15 @@ const ColumnKey: FC<ColumnKeyProps> = (props, ctx) => {
     };
   };
 
-  return () => html`
-    <${Icon}
-      class=${['column-col', styles.key, className()]}
-      size=${12}
+  return () => (
+    <Icon
+      class={['column-col', styles.key, className()]}
+      size={12}
       name="key"
-      .onMouseenter=${props.onMouseenter}
-      .onMouseleave=${props.onMouseleave}
+      onMouseenter={props.onMouseenter}
+      onMouseleave={props.onMouseleave}
     />
-  `;
+  );
 };
 
 export default ColumnKey;

@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import * as styles from './ColumnOption.styles';
 
@@ -12,23 +12,23 @@ export type ColumnOptionProps = {
 };
 
 const ColumnOption: FC<ColumnOptionProps> = (props, ctx) => {
-  return () => html`
+  return () => (
     <div
-      class=${[
+      class={[
         styles.option,
         { focus: props.focus, checked: props.checked },
         props.class,
       ]}
-      style=${{
+      style={{
         width: `${props.width}px`,
         'min-width': `${props.width}px`,
       }}
-      title=${props.title}
-      ?data-focus-border-bottom=${props.focus}
+      title={props.title}
+      bool:data-focus-border-bottom={props.focus}
     >
-      ${props.text}
+      {props.text}
     </div>
-  `;
+  );
 };
 
 export default ColumnOption;

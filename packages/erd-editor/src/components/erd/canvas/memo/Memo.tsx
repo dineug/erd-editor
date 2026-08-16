@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import MemoSash from '@/components/erd/canvas/memo/memo-sash/MemoSash';
@@ -90,58 +90,58 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     const width = calcMemoWidth(memo);
     const height = calcMemoHeight(memo);
 
-    return html`
+    return (
       <div
-        class=${['memo', styles.root]}
-        style=${{
+        class={['memo', styles.root]}
+        style={{
           top: `${memo.ui.y}px`,
           left: `${memo.ui.x}px`,
           'z-index': `${memo.ui.zIndex}`,
           width: `${width}px`,
           height: `${height}px`,
         }}
-        ?data-selected=${selected}
-        ?data-focus-border=${selected}
-        @mousedown=${handleMoveStart}
-        @touchstart=${handleMoveStart}
+        bool:data-selected={selected}
+        bool:data-focus-border={selected}
+        on:mousedown={handleMoveStart}
+        on:touchstart={handleMoveStart}
       >
-        <div class=${styles.container}>
-          <div class=${styles.header}>
+        <div class={styles.container}>
+          <div class={styles.header}>
             <div
-              class=${['memo-header-color', styles.headerColor]}
-              style=${{
+              class={['memo-header-color', styles.headerColor]}
+              style={{
                 'background-color': memo.ui.color,
               }}
-              @click=${handleOpenColorPicker}
+              on:click={handleOpenColorPicker}
             ></div>
-            <div class=${styles.headerButtonWrap}>
-              <${Icon}
-                size=${12}
+            <div class={styles.headerButtonWrap}>
+              <Icon
+                size={12}
                 name="xmark"
-                title=${simpleShortcutToString(
+                title={simpleShortcutToString(
                   keyBindingMap.removeTable[0]?.shortcut
                 )}
-                useTransition=${true}
-                .onClick=${handleRemoveMemo}
+                useTransition={true}
+                onClick={handleRemoveMemo}
               />
             </div>
           </div>
           <textarea
-            class=${['memo-textarea', 'scrollbar', styles.textarea]}
-            style=${{
+            class={['memo-textarea', 'scrollbar', styles.textarea]}
+            style={{
               width: `${memo.ui.width}px`,
               height: `${memo.ui.height}px`,
             }}
             spellcheck="false"
-            .value=${memo.value}
-            @input=${handleInput}
-            @wheel=${onStop}
-            @blur=${handleBlur}
+            prop:value={memo.value}
+            on:input={handleInput}
+            on:wheel={onStop}
+            on:blur={handleBlur}
           ></textarea>
-          <${MemoSash} memo=${memo} top=${height} left=${width} />
+          <MemoSash memo={memo} top={height} left={width} />
         </div>
       </div>
-    `;
+    );
   };
 };
 

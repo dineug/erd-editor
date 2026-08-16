@@ -1,4 +1,4 @@
-import { FC, html, observable, onMounted } from '@dineug/r-html';
+import { FC, observable, onMounted } from '@dineug/r-html';
 
 import Icon from '@/components/primitives/icon/Icon';
 import { SharedMouseTracker } from '@/engine/modules/editor/state';
@@ -33,15 +33,15 @@ const SharedMouseCursor: FC<SharedMouseCursorProps> = (props, ctx) => {
       tracker: { nickname },
     } = props;
 
-    return html`
+    return (
       <div
-        class=${styles.cursor}
-        style=${{ left: `${state.x}px`, top: `${state.y}px` }}
+        class={styles.cursor}
+        style={{ left: `${state.x}px`, top: `${state.y}px` }}
       >
-        <${Icon} name="arrow-pointer" size=${16} />
-        <span>${nickname}</span>
+        <Icon name="arrow-pointer" size={16} />
+        <span>{nickname}</span>
       </div>
-    `;
+    );
   };
 };
 

@@ -1,4 +1,4 @@
-import { FC, onMounted, Ref, svg } from '@dineug/r-html';
+import { FC, onMounted, Ref } from '@dineug/r-html';
 import { fromEvent } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
@@ -45,10 +45,10 @@ const DrawRelationship: FC<DrawRelationshipProps> = (props, ctx) => {
 
     const { path, line } = getDraw(store.state, props.draw);
 
-    return svg`
+    return (
       <svg
-        class=${styles.root}
-        style=${{
+        class={styles.root}
+        style={{
           width: `${width}px`,
           height: `${height}px`,
           'min-width': `${width}px`,
@@ -57,34 +57,42 @@ const DrawRelationship: FC<DrawRelationshipProps> = (props, ctx) => {
       >
         <g>
           <path
-            d=${path.path.d()}
+            d={path.path.d()}
             stroke-dasharray="10"
             stroke-width="3"
             fill="transparent"
           ></path>
           <line
-            x1=${path.line.start.x1} y1=${path.line.start.y1}
-            x2=${path.line.start.x2} y2=${path.line.start.y2}
+            x1={path.line.start.x1}
+            y1={path.line.start.y1}
+            x2={path.line.start.x2}
+            y2={path.line.start.y2}
             stroke-width="3"
           ></line>
           <line
-            x1=${line.start.base.x1} y1=${line.start.base.y1}
-            x2=${line.start.base.x2} y2=${line.start.base.y2}
+            x1={line.start.base.x1}
+            y1={line.start.base.y1}
+            x2={line.start.base.x2}
+            y2={line.start.base.y2}
             stroke-width="3"
           ></line>
           <line
-            x1=${line.start.base2.x1} y1=${line.start.base2.y1}
-            x2=${line.start.base2.x2} y2=${line.start.base2.y2}
+            x1={line.start.base2.x1}
+            y1={line.start.base2.y1}
+            x2={line.start.base2.x2}
+            y2={line.start.base2.y2}
             stroke-width="3"
           ></line>
           <line
-            x1=${line.start.center2.x1} y1=${line.start.center2.y1}
-            x2=${line.start.center2.x2} y2=${line.start.center2.y2}
+            x1={line.start.center2.x1}
+            y1={line.start.center2.y1}
+            x2={line.start.center2.x2}
+            y2={line.start.center2.y2}
             stroke-width="3"
           ></line>
         </g>
       </svg>
-    `;
+    );
   };
 };
 

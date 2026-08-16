@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 import { isEmpty } from 'es-toolkit/compat';
 
 import { useAppContext } from '@/components/appContext';
@@ -68,42 +68,42 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
 
     const isEmptyName = isEmpty(table.name.trim());
 
-    return html`
+    return (
       <div
-        class=${['table', styles.root]}
-        style=${{
+        class={['table', styles.root]}
+        style={{
           top: `${table.ui.y}px`,
           left: `${table.ui.x}px`,
           'z-index': `${table.ui.zIndex}`,
           width: `${tableWidths.width}px`,
           height: `${height}px`,
         }}
-        ?data-selected=${selected}
-        data-id=${table.id}
-        @mousedown=${onMoveStart}
-        @touchstart=${onMoveStart}
+        bool:data-selected={selected}
+        data-id={table.id}
+        on:mousedown={onMoveStart}
+        on:touchstart={onMoveStart}
       >
-        <div class=${styles.header}>
+        <div class={styles.header}>
           <div
-            class=${['table-header-color', styles.headerColor]}
-            style=${{
+            class={['table-header-color', styles.headerColor]}
+            style={{
               'background-color': table.ui.color,
             }}
-            @click=${handleOpenColorPicker}
+            on:click={handleOpenColorPicker}
           ></div>
         </div>
         <div
-          class=${[
+          class={[
             'scrollbar',
             highLevelTableStyle.name,
             fontSize(),
             { isEmptyName },
           ]}
         >
-          ${isEmptyName ? 'unnamed' : table.name}
+          {isEmptyName ? 'unnamed' : table.name}
         </div>
       </div>
-    `;
+    );
   };
 };
 

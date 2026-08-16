@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import Sash, { SashProps, SashType } from '@/components/primitives/sash/Sash';
@@ -232,17 +232,18 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
     drag$.subscribe(dragMove => handleMousemove(dragMove, position));
   };
 
-  return () =>
-    html`${createSash(props.top, props.left).map(
-      sashProps => html`
-        <${Sash}
-          ...${sashProps}
-          .onMousedown=${(event: MouseEvent) => {
+  return () => (
+    <>
+      {createSash(props.top, props.left).map(sashProps => (
+        <Sash
+          {...sashProps}
+          onMousedown={(event: MouseEvent) => {
             handleMousedown(event, sashProps.position);
           }}
         />
-      `
-    )}`;
+      ))}
+    </>
+  );
 };
 
 export default MemoSash;

@@ -1,7 +1,6 @@
 import {
   createRef,
   FC,
-  html,
   observable,
   onMounted,
   Ref,
@@ -187,54 +186,47 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
     );
   });
 
-  return () => html`
+  return () => (
     <div
-      class=${styles.root}
-      ${ref(root)}
+      class={styles.root}
+      use:ref={ref(root)}
       tabindex="-1"
-      @focus=${handleFocus}
-      @focusin=${handleFocus}
-      @focusout=${handleFocusout}
+      on:focus={handleFocus}
+      on:focusin={handleFocus}
+      on:focusout={handleFocusout}
     >
-      <${EditInput}
+      <EditInput
         placeholder="dataType"
-        width=${props.width}
-        value=${props.value}
-        focus=${props.focus}
-        edit=${props.edit}
-        autofocus=${true}
-        .onInput=${handleInput}
-        .onKeydown=${handleKeydown}
+        width={props.width}
+        value={props.value}
+        focus={props.focus}
+        edit={props.edit}
+        autofocus={true}
+        onInput={handleInput}
+        onKeydown={handleKeydown}
       />
-      ${
-        props.edit
-          ? html`
-              <div class=${styles.hint}>
-                ${repeat(
-                  state.hints,
-                  hint => hint.name,
-                  (hint, index) => html`
-                    <div
-                      class=${[
-                        styles.hintItem,
-                        { selected: index === state.index },
-                      ]}
-                      @click=${() => handleSelectHint(index)}
-                    >
-                      <${HighlightedText}
-                        searchWords=${[props.value]}
-                        textToHighlight=${hint.name}
-                      />
-                      <${Kbd} mini=${true} shortcut="Tab" />
-                    </div>
-                  `
-                )}
+      {props.edit ? (
+        <div class={styles.hint}>
+          {repeat(
+            state.hints,
+            hint => hint.name,
+            (hint, index) => (
+              <div
+                class={[styles.hintItem, { selected: index === state.index }]}
+                on:click={() => handleSelectHint(index)}
+              >
+                <HighlightedText
+                  searchWords={[props.value]}
+                  textToHighlight={hint.name}
+                />
+                <Kbd mini={true} shortcut="Tab" />
               </div>
-            `
-          : null
-      }
+            )
+          )}
+        </div>
+      ) : null}
     </div>
-  `;
+  );
 };
 
 export default ColumnDataType;

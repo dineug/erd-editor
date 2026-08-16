@@ -1,4 +1,4 @@
-import { FC, html, observable, onMounted, repeat, watch } from '@dineug/r-html';
+import { FC, observable, onMounted, repeat, watch } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import SharedMouseCursor from '@/components/erd/canvas/shared-mouse-tracker/shared-mouse-cursor/SharedMouseCursor';
@@ -33,13 +33,17 @@ const SharedMouseTracker: FC<SharedMouseTrackerProps> = (props, ctx) => {
     // observable dependency
     state.force;
 
-    return html`
-      ${repeat(
-        Object.values(sharedMouseTrackerMap),
-        tracker => tracker.id,
-        tracker => html`<${SharedMouseCursor} tracker=${tracker} />`
-      )}
-    `;
+    return (
+      <>
+        {repeat(
+          Object.values(sharedMouseTrackerMap),
+          tracker => tracker.id,
+          tracker => (
+            <SharedMouseCursor tracker={tracker} />
+          )
+        )}
+      </>
+    );
   };
 };
 

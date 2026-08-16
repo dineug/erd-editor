@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { cache, FC, html, Ref, ref, repeat } from '@dineug/r-html';
+import { cache, FC, Ref, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import CanvasSvg from '@/components/erd/canvas/canvas-svg/CanvasSvg';
@@ -40,10 +40,10 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
       .collection('memoEntities')
       .selectByIds(memoIds);
 
-    return html`
+    return (
       <div
-        class=${styles.controller}
-        style=${{
+        class={styles.controller}
+        style={{
           width: `${width}px`,
           height: `${height}px`,
           'min-width': `${width}px`,
@@ -53,49 +53,54 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
         }}
       >
         <div
-          class=${styles.root}
+          class={styles.root}
           data-testid="erd-canvas"
-          ${ref(props.canvas)}
-          style=${{
+          use:ref={ref(props.canvas)}
+          style={{
             width: `${width}px`,
             height: `${height}px`,
             'min-width': `${width}px`,
             'min-height': `${height}px`,
           }}
         >
-          ${cache(
-            isHighLevelTable(zoomLevel)
-              ? html`${repeat(
+          {cache(
+            isHighLevelTable(zoomLevel) ? (
+              <>
+                {repeat(
                   tables,
                   table => table.id,
-                  table => html`<${HighLevelTable} table=${table} />`
-                )}`
-              : html`${repeat(
+                  table => (
+                    <HighLevelTable table={table} />
+                  )
+                )}
+              </>
+            ) : (
+              <>
+                {repeat(
                   tables,
                   table => table.id,
-                  table => html`<${Table} table=${table} />`
-                )}`
+                  table => (
+                    <Table table={table} />
+                  )
+                )}
+              </>
+            )
           )}
-          ${repeat(
+          {repeat(
             memos,
             memo => memo.id,
-            memo => html`<${Memo} memo=${memo} />`
+            memo => (
+              <Memo memo={memo} />
+            )
           )}
-          ${bHas(show, Show.relationship) ? html`<${CanvasSvg} />` : null}
-          ${
-            drawRelationship?.start
-              ? html`
-                  <${DrawRelationship}
-                    root=${props.root}
-                    draw=${drawRelationship}
-                  />
-                `
-              : null
-          }
-          <${SharedMouseTracker} />
+          {bHas(show, Show.relationship) ? <CanvasSvg /> : null}
+          {drawRelationship?.start ? (
+            <DrawRelationship root={props.root} draw={drawRelationship} />
+          ) : null}
+          <SharedMouseTracker />
         </div>
       </div>
-    `;
+    );
   };
 };
 

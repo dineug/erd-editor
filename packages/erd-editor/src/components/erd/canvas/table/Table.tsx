@@ -2,7 +2,6 @@ import { query } from '@dineug/erd-editor-schema';
 import {
   createRef,
   FC,
-  html,
   observable,
   onMounted,
   onUpdated,
@@ -239,149 +238,145 @@ const Table: FC<TableProps> = (props, ctx) => {
           : table.columnIds
       );
 
-    return html`
+    return (
       <div
-        class=${['table', styles.root]}
-        style=${{
+        class={['table', styles.root]}
+        style={{
           top: `${table.ui.y}px`,
           left: `${table.ui.x}px`,
           'z-index': `${table.ui.zIndex}`,
           width: `${tableWidths.width}px`,
           height: `${height}px`,
         }}
-        ${ref(root)}
-        ?data-selected=${selected}
-        ?data-focus-border=${selected}
-        data-id=${table.id}
-        @mousedown=${onMoveStart}
-        @touchstart=${onMoveStart}
+        use:ref={ref(root)}
+        bool:data-selected={selected}
+        bool:data-focus-border={selected}
+        data-id={table.id}
+        on:mousedown={onMoveStart}
+        on:touchstart={onMoveStart}
       >
-        <div class=${styles.header}>
+        <div class={styles.header}>
           <div
-            class=${['table-header-color', styles.headerColor]}
-            style=${{
+            class={['table-header-color', styles.headerColor]}
+            style={{
               'background-color': table.ui.color,
             }}
-            @click=${handleOpenColorPicker}
+            on:click={handleOpenColorPicker}
           ></div>
-          <div class=${styles.headerButtonWrap}>
-            <${Icon}
-              size=${12}
+          <div class={styles.headerButtonWrap}>
+            <Icon
+              size={12}
               name="plus"
-              title=${simpleShortcutToString(
+              title={simpleShortcutToString(
                 keyBindingMap.addColumn[0]?.shortcut
               )}
-              useTransition=${true}
-              .onClick=${handleAddColumn}
+              useTransition={true}
+              onClick={handleAddColumn}
             />
-            <${Icon}
-              size=${12}
+            <Icon
+              size={12}
               name="xmark"
-              title=${simpleShortcutToString(
+              title={simpleShortcutToString(
                 keyBindingMap.removeTable[0]?.shortcut
               )}
-              useTransition=${true}
-              .onClick=${handleRemoveTable}
+              useTransition={true}
+              onClick={handleRemoveTable}
             />
           </div>
-          <div class=${styles.headerInputWrap}>
+          <div class={styles.headerInputWrap}>
             <div
               class="input-padding"
               data-type="tableName"
-              @mousedown=${() => {
+              on:mousedown={() => {
                 handleFocus(FocusType.tableName);
               }}
-              @dblclick=${handleEdit}
+              on:dblclick={handleEdit}
             >
-              <${EditInput}
+              <EditInput
                 placeholder="table"
-                width=${table.ui.widthName}
-                value=${table.name}
-                focus=${hasFocus(FocusType.tableName)}
-                edit=${hasEdit(FocusType.tableName)}
-                autofocus=${true}
-                .onBlur=${handleEditEnd}
-                .onInput=${(event: InputEvent) => {
+                width={table.ui.widthName}
+                value={table.name}
+                focus={hasFocus(FocusType.tableName)}
+                edit={hasEdit(FocusType.tableName)}
+                autofocus={true}
+                onBlur={handleEditEnd}
+                onInput={(event: InputEvent) => {
                   handleInput(event, FocusType.tableName);
                 }}
               />
             </div>
-            ${
-              bHas(settings.show, Show.tableComment)
-                ? html`
-                    <div
-                      class="input-padding"
-                      data-type="tableComment"
-                      @mousedown=${() => {
-                        handleFocus(FocusType.tableComment);
-                      }}
-                      @dblclick=${handleEdit}
-                    >
-                      <${EditInput}
-                        placeholder="comment"
-                        width=${
-                          settings.maxWidthComment === -1
-                            ? table.ui.widthComment
-                            : settings.maxWidthComment < table.ui.widthComment
-                              ? settings.maxWidthComment
-                              : table.ui.widthComment
-                        }
-                        value=${table.comment}
-                        focus=${hasFocus(FocusType.tableComment)}
-                        edit=${hasEdit(FocusType.tableComment)}
-                        autofocus=${true}
-                        .onBlur=${handleEditEnd}
-                        .onInput=${(event: InputEvent) => {
-                          handleInput(event, FocusType.tableComment);
-                        }}
-                      />
-                    </div>
-                  `
-                : null
-            }
+            {bHas(settings.show, Show.tableComment) ? (
+              <div
+                class="input-padding"
+                data-type="tableComment"
+                on:mousedown={() => {
+                  handleFocus(FocusType.tableComment);
+                }}
+                on:dblclick={handleEdit}
+              >
+                <EditInput
+                  placeholder="comment"
+                  width={
+                    settings.maxWidthComment === -1
+                      ? table.ui.widthComment
+                      : settings.maxWidthComment < table.ui.widthComment
+                        ? settings.maxWidthComment
+                        : table.ui.widthComment
+                  }
+                  value={table.comment}
+                  focus={hasFocus(FocusType.tableComment)}
+                  edit={hasEdit(FocusType.tableComment)}
+                  autofocus={true}
+                  onBlur={handleEditEnd}
+                  onInput={(event: InputEvent) => {
+                    handleInput(event, FocusType.tableComment);
+                  }}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
         <div
-          @dragenter=${handleDragenter}
-          @dragenter=${onPrevent}
-          @dragover=${onPrevent}
+          on:dragenter={handleDragenter}
+          on:dragenter__2={onPrevent}
+          on:dragover={onPrevent}
         >
-          ${repeat(
+          {repeat(
             columns,
             column => column.id,
-            column => html`
-              <${Column}
-                app=${app}
-                column=${column}
-                selected=${hasSelectColumn(column.id)}
-                widthName=${tableWidths.name}
-                widthDataType=${tableWidths.dataType}
-                widthDefault=${tableWidths.default}
-                widthComment=${tableWidths.comment}
-                focusName=${hasFocus(FocusType.columnName, column.id)}
-                focusDataType=${hasFocus(FocusType.columnDataType, column.id)}
-                focusNotNull=${hasFocus(FocusType.columnNotNull, column.id)}
-                focusDefault=${hasFocus(FocusType.columnDefault, column.id)}
-                focusComment=${hasFocus(FocusType.columnComment, column.id)}
-                focusUnique=${hasFocus(FocusType.columnUnique, column.id)}
-                focusAutoIncrement=${hasFocus(
+            column => (
+              <Column
+                app={app}
+                column={column}
+                selected={hasSelectColumn(column.id)}
+                widthName={tableWidths.name}
+                widthDataType={tableWidths.dataType}
+                widthDefault={tableWidths.default}
+                widthComment={tableWidths.comment}
+                focusName={hasFocus(FocusType.columnName, column.id)}
+                focusDataType={hasFocus(FocusType.columnDataType, column.id)}
+                focusNotNull={hasFocus(FocusType.columnNotNull, column.id)}
+                focusDefault={hasFocus(FocusType.columnDefault, column.id)}
+                focusComment={hasFocus(FocusType.columnComment, column.id)}
+                focusUnique={hasFocus(FocusType.columnUnique, column.id)}
+                focusAutoIncrement={hasFocus(
                   FocusType.columnAutoIncrement,
                   column.id
                 )}
-                editName=${hasEdit(FocusType.columnName, column.id)}
-                editDataType=${hasEdit(FocusType.columnDataType, column.id)}
-                editDefault=${hasEdit(FocusType.columnDefault, column.id)}
-                editComment=${hasEdit(FocusType.columnComment, column.id)}
-                draggable=${true}
-                ghost=${isGhostColumn && column.id === state.dragstartId}
-                .onDragstart=${handleDragstartColumn}
-                .onDragend=${handleDragendColumn}
+                editName={hasEdit(FocusType.columnName, column.id)}
+                editDataType={hasEdit(FocusType.columnDataType, column.id)}
+                editDefault={hasEdit(FocusType.columnDefault, column.id)}
+                editComment={hasEdit(FocusType.columnComment, column.id)}
+                draggable={true}
+                ghost={isGhostColumn && column.id === state.dragstartId}
+                onDragstart={handleDragstartColumn}
+                onDragend={handleDragendColumn}
               />
-            `
+            )
           )}
         </div>
       </div>
-    `;
+    );
   };
 };
 
