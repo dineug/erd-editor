@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { FC, repeat, svg } from '@dineug/r-html';
+import { FC, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import Relationship from '@/components/erd/canvas/canvas-svg/relationship/Relationship';
@@ -26,24 +26,28 @@ const CanvasSvg: FC<CanvasSvgProps> = (props, ctx) => {
       .collection('relationshipEntities')
       .selectByIds(relationshipIds);
 
-    return svg`
+    return (
       <svg
-        class=${[styles.root, props.class]}
-        style=${{
+        class={[styles.root, props.class]}
+        style={{
           width: `${width}px`,
           height: `${height}px`,
           'min-width': `${width}px`,
           'min-height': `${height}px`,
         }}
       >
-        ${repeat(
+        {repeat(
           relationships,
           relationship => relationship.id,
-          relationship => svg`<${Relationship} relationship=${relationship} strokeWidth=${props.strokeWidth ?? 3} />
-          `
+          relationship => (
+            <Relationship
+              relationship={relationship}
+              strokeWidth={props.strokeWidth ?? 3}
+            />
+          )
         )}
       </svg>
-    `;
+    );
   };
 };
 

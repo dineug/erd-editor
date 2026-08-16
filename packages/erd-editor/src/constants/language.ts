@@ -1,6 +1,19 @@
 import { Language } from '@/constants/schema';
 
-export const LanguageToLangMap: Record<number, string> = {
+/**
+ * Shiki grammar names. Spelled out rather than left as `string`, which is what
+ * the annotation used to widen them to — `CodeBlock`'s `lang` is a union, and
+ * widening here meant nothing checked that these were members of it.
+ */
+export type Lang =
+  | 'csharp'
+  | 'graphql'
+  | 'java'
+  | 'kotlin'
+  | 'scala'
+  | 'typescript';
+
+export const LanguageToLangMap: Record<number, Lang> = {
   [Language.TypeScript]: 'typescript',
   [Language.GraphQL]: 'graphql',
   [Language.csharp]: 'csharp',
