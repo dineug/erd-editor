@@ -174,6 +174,20 @@ export default defineConfig({
         },
         jsPlugins: ['eslint-plugin-simple-import-sort'],
       },
+      {
+        /**
+         * `erd-editor`'s `.tsx` is JSX, not React: it compiles to r-html tagged
+         * templates. Scoped rather than global because `app` is React 19, where
+         * these rules mean what they say.
+         */
+        files: ['packages/erd-editor/src/**/*.tsx'],
+        rules: {
+          // There is no `key` prop to add. List identity is the `repeat()`
+          // directive's job, and it takes the key function as its second
+          // argument.
+          'react/jsx-key': 'off',
+        },
+      },
     ],
     /**
      * Type-aware lint is off. tsgolint targets TypeScript 7 and reads this repo

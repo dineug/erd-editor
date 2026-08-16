@@ -33,8 +33,22 @@ type ClassValue =
 /** `styleCommit` writes each entry with `setProperty`, so keys stay kebab-case. */
 type StyleValue = Record<string, string | number | Falsy>;
 
+/**
+ * JSX rejects a repeated attribute outright (TS17001), but r-html keeps every
+ * listener bound to one event name — `tNode` groups events and `EventPart` adds
+ * each separately, and the order is observable. `on:input__2` is the escape
+ * hatch: the codegen strips the suffix, so the second binding lands on `@input`
+ * exactly like the first.
+ *
+ * Spelling the suffixes out rather than reaching for an `on:${string}` index
+ * signature is what keeps `on:clik` a type error.
+ */
+type DuplicateSuffix = '' | '__2' | '__3';
+
 type EventHandlers<M> = {
-  [K in keyof M as `on:${string & K}`]?: (event: M[K]) => void;
+  [K in keyof M as `on:${string & K}${DuplicateSuffix}`]?: (
+    event: M[K]
+  ) => void;
 };
 
 /** The three sigils the transform maps onto r-html's attribute kinds. */
