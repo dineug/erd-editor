@@ -27,8 +27,7 @@ cross-tab sync, and undo/redo share one mechanism.
 | `commitlint.config.js`      | Conventional Commits rules (ESM — the root is `"type": "module"`). Kept because Vite+ has no commit-message linting                                     |
 | `.vite-hooks/`              | `pre-commit` runs `vp staged`, `commit-msg` runs commitlint. Both are committed; only the generated `_/` dispatcher is ignored                          |
 | `.nvmrc` / `.node-version`  | Node 22.23.2, both files, same content. ⚠️ `.nvmrc` is read by `erd-editor-intellij-plugin`'s workflows — deleting it breaks that repo's release        |
-| `.editorconfig`             | Editor defaults shared with oxfmt (LF, 2-space indent)                                                                                                  |
-| `erd-editor.code-workspace` | Multi-root VSCode workspace mapping each package                                                                                                        |
+| `erd-editor.code-workspace` | Multi-root VSCode workspace mapping each package, **and the editor half of the toolchain** — it points `.ts`/`.tsx` at the `oxc.oxc-vscode` formatter and carries the whitespace defaults `.editorconfig` used to. ⚠️ `editor.defaultFormatter` is set per language on purpose; see the comments in the file |
 | `json-schema/schema.json`   | Public JSON Schema for `.erd` / `.vuerd` document files                                                                                                 |
 
 ## Subdirectories
@@ -214,6 +213,21 @@ Recording these because "no test failed" is not the same as "this is covered".
 - ⚠️ **Formatting covers `.{ts,mts,tsx}` and nothing else.** oxfmt handles seventeen languages, and
   the root `fmt.ignorePatterns` closes the rest — Markdown above all, since the fourteen AGENTS.md
   files are hand-maintained and one unscoped run rewrites hundreds of lines of them.
+- **The editor runs the same rules, through `oxc.oxc-vscode`.** Vite+ installs `oxlint` and `oxfmt`
+  shims into `node_modules/.bin` that refuse to do any work themselves (`vp lint` / `vp fmt` is what
+  they tell you to run) and exist purely so that extension can start their LSP servers — and they
+  load the root `vite.config.ts` on the way. That is why there is **no `.oxlintrc.json` and no
+  `.oxfmtrc.json` here**, and why adding one would hand the editor a second, competing answer.
+  Measured, not assumed: through the shim, `const f = (x) => {return "hello"}` comes back as
+  `const f = x => {\n  return 'hello';\n};` — `arrowParens: 'avoid'`, `singleQuote`, `semi` and
+  `tabWidth` all from that file. The shims also honour `fmt.ignorePatterns`, returning json/css/md
+  buffers untouched, which is why `erd-editor.code-workspace` names the formatter per language
+  instead of globally.
+- **`.editorconfig` is gone, and it was never what its name suggested.** The root AGENTS.md used to
+  call it "editor defaults shared with oxfmt". oxfmt does not read it — planting `indent_size = 8`
+  in it changes nothing, because `vite.config.ts` sets `tabWidth` and `endOfLine` directly. The
+  whitespace defaults it really did provide, for the files oxfmt never formats, now live in
+  `erd-editor.code-workspace`.
 - **Commit messages are linted** by commitlint (Conventional Commits) via `.vite-hooks/commit-msg`.
   `subject-case` is deliberately disabled — this repo capitalizes subjects (`fix: LWW data processing`).
   The hook scripts are committed; only the generated `.vite-hooks/_/` dispatcher is ignored, so a

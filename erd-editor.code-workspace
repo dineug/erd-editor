@@ -58,33 +58,51 @@
     },
   ],
   "settings": {
-    "files.autoSave": "onFocusChange",
+    // Editor and CLI run the same rules, and not by coincidence: Vite+ installs
+    // `oxlint` and `oxfmt` shims into `node_modules/.bin` whose only purpose is
+    // to let this extension discover and start their LSP servers, and those
+    // shims load the root `vite.config.ts` before handing off. So the `lint`
+    // and `fmt` blocks there are the single source of truth for both — there is
+    // deliberately no `.oxlintrc.json` or `.oxfmtrc.json` in this repo, and
+    // adding one would give the editor a second, competing answer.
     "editor.formatOnSave": true,
+    // oxfmt formats whole files. The default, "modifications", would hand it
+    // only the changed ranges and produce output `vp fmt` disagrees with.
+    "editor.formatOnSaveMode": "file",
     "editor.codeActionsOnSave": {
-      "source.fixAll": "explicit",
+      "source.fixAll.oxc": "explicit",
     },
-    "editor.tabSize": 2,
-    "editor.suggestSelection": "first",
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.tabCompletion": "on",
-    "[json]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode",
-    },
-    "[javascript]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode",
-    },
+    // Named per language rather than globally. oxfmt honours the root
+    // `fmt.ignorePatterns`, which denies json/css/markdown/js among others, and
+    // for those it returns the buffer untouched — as the *default* formatter
+    // that reads to the editor as "formatting did nothing" while displacing
+    // VSCode's own built-ins. So it is declared only for what it actually
+    // formats: `.ts`/`.mts` (typescript) and `.tsx` (typescriptreact).
     "[typescript]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.defaultFormatter": "oxc.oxc-vscode",
     },
-    "typescript.updateImportsOnFileMove.enabled": "always",
-    "javascript.updateImportsOnFileMove.enabled": "always",
-    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "[typescriptreact]": {
+      "editor.defaultFormatter": "oxc.oxc-vscode",
+    },
+    // What `.editorconfig` used to carry. It was deleted because oxfmt never
+    // read it — `vite.config.ts` sets `tabWidth` and `endOfLine` itself, and a
+    // conflicting `indent_size` planted in that file provably changed nothing.
+    // These still matter for everything oxfmt does not format: the fourteen
+    // hand-maintained AGENTS.md files, the JSON/YAML configs, and the CSS.
+    "files.encoding": "utf8",
+    "files.eol": "\n",
+    "files.trimTrailingWhitespace": true,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    // Trailing whitespace is a hard line break in Markdown, so stripping it
+    // silently rewrites prose. This is the one exception `.editorconfig` made.
+    "[markdown]": {
+      "files.trimTrailingWhitespace": false,
+    },
   },
   "extensions": {
     "recommendations": [
-      "editorconfig.editorconfig",
-      "dbaeumer.vscode-eslint",
-      "esbenp.prettier-vscode",
+      "oxc.oxc-vscode",
       "styled-components.vscode-styled-components",
       "tobermory.es6-string-html",
     ],
