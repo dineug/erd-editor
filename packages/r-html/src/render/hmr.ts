@@ -8,8 +8,10 @@ import { TNode } from '@/template/tNode';
 
 const originComponentCache = new WeakMap<FC, FC>();
 const hmrComponentCache = new WeakMap<FC, FC>();
+/** The observables the currently mounted body created, in creation order. */
 const hmrObservableCache = new WeakMap<Part, Array<any>>();
-const hmrObservablePrevCache = new WeakMap<Part, Array<any>>();
+/** The observables the body being evaluated right now is creating. */
+const hmrObservablePendingCache = new WeakMap<Part, Array<any>>();
 const hmrSubject = createSubject<FC>();
 
 let active = false;
@@ -94,30 +96,53 @@ export const mixinHmrComponent = (
   return C;
 };
 
+/**
+ * Called from `observable()` for every proxy a component body creates, which
+ * only happens while that body is being evaluated — `getCurrentInstance()` is
+ * null everywhere else, including in the event handlers the body closes over.
+ */
 export function addHmrObservable(proxy: any) {
   if (!active) return;
   const hmrInstance = getCurrentInstance();
   if (!hmrInstance) return;
 
-  const observableList = hmrObservableCache.get(hmrInstance) ?? [];
-  if (!observableList.includes(proxy)) {
-    observableList.push(proxy);
-    hmrObservableCache.set(hmrInstance, observableList);
+  const pending = hmrObservablePendingCache.get(hmrInstance) ?? [];
+  if (!pending.includes(proxy)) {
+    pending.push(proxy);
+    hmrObservablePendingCache.set(hmrInstance, pending);
   }
 }
 
+/**
+ * Carries state across a hot swap, and is the reason a reload does not reset
+ * the component you are editing.
+ *
+ * `ObservableComponentPart#commit` calls this immediately after evaluating a
+ * body, and only when the component function's identity changed — so exactly
+ * once per mount and once per swap. The list collected during that evaluation
+ * is the new set of observables; the list already stored is the old set, still
+ * holding whatever the user did before saving the file. Copying old onto new
+ * by creation order is what makes the edit feel local.
+ *
+ * Pairing by index is the same contract as hooks: reorder or conditionally
+ * create your `observable()` calls between saves and the state lands on the
+ * wrong object. A full reload is the reset.
+ */
 export function hotReloadObservable(component: Part) {
   if (!active) return;
 
-  const prevObservableList = hmrObservablePrevCache.get(component);
-  const observableList = hmrObservableCache.get(component);
+  const pending = hmrObservablePendingCache.get(component);
+  if (!pending) return;
+  hmrObservablePendingCache.delete(component);
 
-  if (prevObservableList && observableList) {
-    observableList.forEach((observable, index) => {
-      const prevObservable = prevObservableList[index];
-      if (!prevObservable) return;
+  const previous = hmrObservableCache.get(component);
+  hmrObservableCache.set(component, pending);
+  if (!previous) return;
 
-      Object.assign(observable, prevObservable);
-    });
-  }
+  pending.forEach((proxy, index) => {
+    const prevProxy = previous[index];
+    if (!prevProxy) return;
+
+    Object.assign(proxy, prevProxy);
+  });
 }

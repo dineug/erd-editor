@@ -272,18 +272,94 @@ describe('render/hmr', () => {
       expect(() => hotReloadObservable(instance)).not.toThrow();
     });
 
-    it('does not restore previous observable state (the prev cache is never filled)', () => {
+    it('leaves the first mount alone — there is nothing to carry over yet', () => {
       activate();
       const instance = track(createInstance() as any) as any;
       const state = { count: 0 };
 
       setCurrentInstance(instance);
       addHmrObservable(state);
-
-      state.count = 42;
       hotReloadObservable(instance);
 
-      expect(state.count).toBe(42);
+      expect(state.count).toBe(0);
+    });
+
+    it('copies the live state onto the observables the reloaded body created', () => {
+      activate();
+      const instance = track(createInstance() as any) as any;
+
+      const first = { count: 0 };
+      setCurrentInstance(instance);
+      addHmrObservable(first);
+      hotReloadObservable(instance);
+
+      first.count = 42;
+
+      // The edited module re-runs the body, which builds a fresh observable.
+      const second = { count: 0 };
+      setCurrentInstance(instance);
+      addHmrObservable(second);
+      hotReloadObservable(instance);
+
+      expect(second.count).toBe(42);
+    });
+
+    it('pairs observables by creation order', () => {
+      activate();
+      const instance = track(createInstance() as any) as any;
+
+      setCurrentInstance(instance);
+      addHmrObservable({ a: 1 });
+      addHmrObservable({ b: 2 });
+      hotReloadObservable(instance);
+
+      const a = { a: 0 };
+      const b = { b: 0 };
+      setCurrentInstance(instance);
+      addHmrObservable(a);
+      addHmrObservable(b);
+      hotReloadObservable(instance);
+
+      expect(a).toEqual({ a: 1 });
+      expect(b).toEqual({ b: 2 });
+    });
+
+    it('leaves an observable the previous body never had at its defaults', () => {
+      activate();
+      const instance = track(createInstance() as any) as any;
+
+      setCurrentInstance(instance);
+      addHmrObservable({ a: 1 });
+      hotReloadObservable(instance);
+
+      const added = { fresh: 'default' };
+      setCurrentInstance(instance);
+      addHmrObservable({ a: 0 });
+      addHmrObservable(added);
+      hotReloadObservable(instance);
+
+      expect(added).toEqual({ fresh: 'default' });
+    });
+
+    it('carries state through repeated reloads without accumulating', () => {
+      activate();
+      const instance = track(createInstance() as any) as any;
+
+      const reload = (state: any) => {
+        setCurrentInstance(instance);
+        addHmrObservable(state);
+        hotReloadObservable(instance);
+        return state;
+      };
+
+      reload({ count: 0 }).count = 7;
+      const second = reload({ count: 0 });
+      expect(second.count).toBe(7);
+
+      second.count = 9;
+      // If the pending list were never drained, this third body's observable
+      // would pair against the *first* one and read 7.
+      expect(reload({ count: 0 }).count).toBe(9);
     });
 
     it('is a no-op for a component that never registered observables', () => {
