@@ -4,6 +4,10 @@
     "paths": {
       "@/*": ["./src/*"]
     },
+    // Resolves to `src/jsx-runtime.d.ts` through the alias above. Types only —
+    // the transform in `@dineug/vite-plugin-r-html` removes every JSX tree
+    // before a runtime import could be emitted.
+    "jsxImportSource": "@",
     "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"]
   },
   "include": ["src"]
