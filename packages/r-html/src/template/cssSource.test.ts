@@ -143,7 +143,7 @@ describe('slotText', () => {
       color: red;
     `;
 
-    // Prettier formats the contents of a `css` literal, so an unterminated declaration cannot be
+    // oxfmt formats the contents of a `css` literal, so an unterminated declaration cannot be
     // written here; `terminate()` covers that path against raw strings instead.
     expect(child[CSS_SOURCE]).toBe('\n      color: red;\n    ');
     expect(slotText(child, 'statement')).toBe('\n      color: red;\n    ');

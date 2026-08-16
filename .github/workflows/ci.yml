@@ -6,19 +6,19 @@ on:
   - pull_request
 
 jobs:
-  # Lint, format and the two typecheck scripts have never had a CI slot — they
-  # exist only as `package.json` scripts and a pre-commit hook, and the hook
-  # lives in gitignored `.husky/_/`, so it does nothing until someone has run
-  # `pnpm install` in that working tree. A fresh clone pushes unlinted code and
-  # nothing goes red.
+  # Style and types. This is the only place they are enforced for everyone: the
+  # `pre-commit` hook runs the same checks, but its dispatcher lives in
+  # gitignored `.vite-hooks/_/` and is written by `pnpm install`, so a clone
+  # that has never installed pushes unchecked code and nothing goes red.
   #
-  # It lands ahead of the toolchain migration on purpose. The commits that
-  # follow replace eslint and prettier wholesale, and swapping the tools that
-  # guard the repo while nothing guards them is how a rule silently stops being
-  # enforced. With this job in place the swap is observable: the job is green
-  # before it and must stay green after.
+  # It was added deliberately *before* the toolchain migration rather than
+  # alongside it. The commits that followed replaced eslint, prettier, husky,
+  # lint-staged and Nx wholesale, and swapping the tools that guard a repo while
+  # nothing guards them is how a rule silently stops being enforced. Having this
+  # job green beforehand is what made the swap observable — it had to stay green
+  # through every step, and it did.
   #
-  # `--check` rather than `--write`: CI reports, it does not rewrite the tree.
+  # `vp check` reports rather than rewrites; `pnpm format` is the writing half.
   check:
     runs-on: ubuntu-latest
     steps:

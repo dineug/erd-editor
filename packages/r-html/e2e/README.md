@@ -10,8 +10,9 @@ pnpm --filter @dineug/r-html e2e:headed     # watch it drive a real browser
 pnpm --filter @dineug/r-html e2e:typecheck  # tsc over e2e/ + playwright.config.ts
 ```
 
-`pnpm test` stays vitest-only. E2E is its own Nx target, so a missing browser
-binary can never turn the unit suite red. The dev server runs on **5176** —
+`pnpm test` stays vitest-only. E2E is a `package.json` script, never a
+`run.tasks` task, so a missing browser binary can never turn the unit suite red.
+The dev server runs on **5176** —
 5174 is `@dineug/erd-editor` and 5175 is the app, so all three can run at once.
 `E2E_PORT` overrides it.
 

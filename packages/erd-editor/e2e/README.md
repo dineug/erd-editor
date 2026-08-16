@@ -11,8 +11,9 @@ pnpm --filter @dineug/erd-editor e2e:headed     # watch it drive a real browser
 pnpm --filter @dineug/erd-editor e2e:typecheck  # tsc over e2e/ + playwright.config.ts
 ```
 
-`pnpm test` stays vitest-only. E2E is its own Nx target and its own CI job, so a
-missing browser binary can never turn the unit suite red.
+`pnpm test` stays vitest-only. E2E is a `package.json` script and its own CI job,
+never a `run.tasks` task, so a missing browser binary can never turn the unit
+suite red.
 
 ## Layout
 
