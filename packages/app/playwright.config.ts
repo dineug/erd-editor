@@ -69,7 +69,7 @@ export default defineConfig({
       stderr: 'pipe',
     },
     {
-      command: `pnpm exec webpack serve --mode development --port ${PORT}`,
+      command: `pnpm exec vp dev --port ${PORT} --strictPort`,
       url: BASE_URL,
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,

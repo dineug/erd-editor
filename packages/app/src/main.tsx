@@ -1,5 +1,4 @@
 import './styles.css';
-import 'core-js/stable';
 
 import * as Sentry from '@sentry/react';
 import { Provider } from 'jotai';
