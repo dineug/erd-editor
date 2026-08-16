@@ -1,13 +1,11 @@
 const path = require('path');
-const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
 const resolvePath = value => path.resolve(__dirname, value);
 
-module.exports = env => {
-  const isAnalyzer = env.target === 'analyzer';
+module.exports = () => {
 
   const config = {
     entry: './src/index',
@@ -61,7 +59,6 @@ module.exports = env => {
         inject: true,
         template: resolvePath('public/index.html'),
       }),
-      isAnalyzer && new BundleAnalyzerPlugin(),
     ].filter(Boolean),
     performance: false,
   };

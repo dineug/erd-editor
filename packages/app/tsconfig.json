@@ -2,9 +2,8 @@
   "extends": "../../tsconfig.app.json",
   "compilerOptions": {
     "jsxImportSource": "@emotion/react",
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "lib": ["ES2020", "DOM", "DOM.Iterable", "WebWorker"]
   },

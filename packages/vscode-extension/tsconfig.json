@@ -8,14 +8,17 @@
     "moduleResolution": "node",
     "strict": true,
     "rootDir": "src",
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
-    }
+      "@/*": ["./src/*"]
+    },
+    "types": ["node", "vscode"]
   },
-  "include": [
-    "src",
-    "./node_modules/vscode/vscode.d.ts",
-    "./node_modules/vscode/lib/*"
-  ]
+  "include": ["src"],
+  // The unit specs are typechecked by `tsconfig.unit.json`, not here. This
+  // config describes the webpack build: commonjs emit with node10 resolution,
+  // and `rootDir: src`. All three of those reject the specs — node10 cannot read
+  // vitest's `exports` map (TS2307), the `vscode` stub they import lives outside
+  // `src` (TS6059), and `import.meta` is not allowed under commonjs (TS1343).
+  // Excluding them removes 8 errors that no gate was ever meant to see.
+  "exclude": ["src/**/*.test.ts"]
 }

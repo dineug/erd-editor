@@ -10,8 +10,14 @@
     "moduleResolution": "bundler",
     "types": ["node", "vscode"],
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "test/mocks"]
+  "include": ["src", "test/mocks"],
+  // Overrides the parent's `exclude`, which drops `src/**/*.test.ts` so the
+  // webpack build's program does not choke on them. `extends` inherits that key,
+  // and inheriting it here would leave this config compiling zero specs — the
+  // one place they are typechecked — while still exiting 0. Measured: without
+  // this line a deliberate TS2322 in a spec produces no error at all.
+  "exclude": []
 }

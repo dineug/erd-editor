@@ -1,5 +1,4 @@
 const path = require('path');
-const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
@@ -10,7 +9,6 @@ module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
   const isDevelopment = argv.mode !== 'production';
   const mode = isDevelopment ? 'development' : 'production';
-  const isAnalyzer = env.target === 'analyzer';
   const isWebview = env.target === 'webview';
 
   const config = {
@@ -89,7 +87,6 @@ module.exports = (env, argv) => {
         inject: true,
         template: resolvePath('public/index.html'),
       }),
-      isAnalyzer && new BundleAnalyzerPlugin(),
     ].filter(Boolean),
     performance: false,
   };

@@ -22,7 +22,14 @@ export default tseslint.config(includeIgnoreFile(gitignorePath), {
   files: ['**/src/**/*.{ts,tsx}'],
   languageOptions: {
     parserOptions: {
-      project: ['./packages/*/tsconfig.json'],
+      project: [
+        './packages/*/tsconfig.json',
+        // `vscode-extension/tsconfig.json` excludes `src/**/*.test.ts` (its
+        // program is the webpack build's, which those files break). Without this
+        // second entry the specs belong to no project and the parser errors out
+        // on every one of them.
+        './packages/vscode-extension/tsconfig.unit.json',
+      ],
       tsconfigRootDir: import.meta.dirname,
     },
     ecmaVersion: 2020,

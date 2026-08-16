@@ -1,6 +1,5 @@
 const path = require('path');
 const { DefinePlugin } = require('webpack');
-const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const { InjectManifest } = require('workbox-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -11,11 +10,10 @@ const WebpackPwaManifest = require('webpack-pwa-manifest');
 
 const resolvePath = value => path.resolve(__dirname, value);
 
-module.exports = (env, argv) => {
+module.exports = (_env, argv) => {
   const isProduction = argv.mode === 'production';
   const isDevelopment = argv.mode !== 'production';
   const mode = isDevelopment ? 'development' : 'production';
-  const isAnalyzer = env.target === 'analyzer';
 
   const config = {
     mode,
@@ -175,7 +173,6 @@ module.exports = (env, argv) => {
         },
       }),
       isDevelopment && new ReactRefreshWebpackPlugin({ overlay: false }),
-      isAnalyzer && new BundleAnalyzerPlugin(),
     ].filter(Boolean),
     performance: false,
   };

@@ -71,7 +71,6 @@ Because `cefQuery` takes a **string**, every payload must survive `JSON.stringif
   the IntelliJ plugin from its own repository against this bundle.
 - Because a protocol mismatch fails silently (the host simply ignores an unknown action), log or
   breakpoint both directions when changing commands.
-- `build:analyzer` for bundle size.
 
 ### Common Patterns
 

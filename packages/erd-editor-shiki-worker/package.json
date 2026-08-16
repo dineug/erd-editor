@@ -13,8 +13,7 @@
     }
   },
   "files": [
-    "dist/*.js",
-    "dist/**/*.ts"
+    "dist"
   ],
   "repository": {
     "type": "git",

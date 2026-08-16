@@ -173,7 +173,6 @@ that tab over the BroadcastChannel bridge (`collaborativeDispatch`).
   only ever carries ciphertext.
 - **Service-worker changes**: build, serve the production bundle, and verify offline load plus that a
   second build actually supersedes the first.
-- `build:analyzer` runs webpack-bundle-analyzer.
 
 ### Common Patterns
 

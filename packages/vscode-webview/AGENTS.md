@@ -62,7 +62,7 @@ Three participants, two `Bridge` instances:
   `prefers-color-scheme`. A `MutationObserver` on those two `body` attributes re-applies the preset
   while `appearance === 'auto'`. Everything else about the theme is resolved by the extension and
   pushed as `ThemeOptions`; don't reach into VSCode's CSS variables for it.
-- This package is **build-only** (`build`, `build:analyzer`) — there is no dev server. Iterate by
+- This package is **build-only** (`build`) — there is no dev server. Iterate by
   running the extension host.
 - `private: true`.
 
@@ -74,8 +74,6 @@ Three participants, two `Bridge` instances:
   restyles; open the same file in two editor groups → both stay in sync (that path uses the host's
   broadcast, so test it with more than one webview).
 - Also verify readonly (`webviewUpdateReadonlyCommand`) by opening a file from git history.
-- `build:analyzer` runs webpack-bundle-analyzer — use it when adding a dependency; the webview bundle
-  ships inside the extension VSIX.
 
 ### Common Patterns
 

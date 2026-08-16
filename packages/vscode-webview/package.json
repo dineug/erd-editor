@@ -7,7 +7,6 @@
   "license": "MIT",
   "scripts": {
     "build": "webpack --mode production",
-    "build:analyzer": "webpack --mode production --env target=analyzer",
     "nx:build": "nx build"
   },
   "dependencies": {
@@ -28,9 +27,8 @@
     "style-loader": "^4.0.0",
     "swc-loader": "0.2.6",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
-    "typescript": "5.4.5",
+    "typescript": "5.8.2",
     "webpack": "^5.91.0",
-    "webpack-bundle-analyzer": "^4.10.2",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^5.0.4",
     "vite": "^8.2.1"
