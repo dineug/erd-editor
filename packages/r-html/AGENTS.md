@@ -5,13 +5,14 @@
 
 ## Purpose
 
-`@dineug/r-html` is the in-house rendering framework `@dineug/erd-editor` is built on — the only workspace package depending on it. It supplies tagged templates (`html`, `svg`, `css`) compiled to a virtual node tree, Proxy-based reactivity with a microtask scheduler, a functional component model with lifecycle hooks and a `defineCustomElement` adapter, and a Redux-like `createStore`. `private: true`, so its `version` is never published.
+`@dineug/r-html` is the in-house rendering framework `@dineug/erd-editor` is built on — the only workspace package depending on it. It supplies tagged templates (`html`, `svg`, `css`) compiled to a virtual node tree, Proxy-based reactivity with a microtask scheduler, a functional component model with lifecycle hooks and a `defineCustomElement` adapter, and a Redux-like `createStore`. A second, types-only entry at `./jsx-runtime` carries the JSX contract those templates can also be written in. `private: true`, so its `version` is never published.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
 | `src/index.ts` | The public API — named re-exports, plus `export *` over the two directive barrels; anything else is private |
+| `src/jsx-runtime.ts` | The `JSX` namespace behind `jsxImportSource`; intrinsic tags derived from the DOM lib's tag-name maps |
 | `src/constants.ts` | `MARKER` (per-load random suffix) and its regexps, `TAttrType`, 7 lifecycle `Symbol.for` keys |
 | `src/template/vCSSStyleSheet.ts` | Adopted-stylesheet registry: one sheet per template, global/component cascade buckets, `<style>` fallback |
 | `src/render/part/node/text/helper.ts` | `PartType`, `getPartType`, and the `isPartMap`/`partMap` registries every value kind goes through |
@@ -36,6 +37,7 @@
 
 ### Working In This Directory
 
+- `exports` is asymmetric on purpose: `.` ships `types` and `default`, `./jsx-runtime` ships `types` alone, so a build whose JSX transform went missing dies on `ERR_PACKAGE_PATH_NOT_EXPORTED` rather than rendering wrongly. That file is a `.ts` because `vite-plugin-dts` emits declarations and does not copy hand-written ones, which costs it a `typescript/no-namespace` exemption in the root `vite.config.ts` — `JSX` has to be a namespace, that being the shape `jsxImportSource` looks for.
 - `src/index.ts` is the contract; a symbol not re-exported there is private. `removeCSSHost` is deliberately absent — its only caller is the `disconnectedCallback` of the element class `defineCustomElement` registers.
 - `src/parser/` imports nothing from `src/constants.ts` — it tokenizes plain HTML. `MARKER` is injected by `template/html.ts` (`createMarker`) and read back only in `template/helper.ts` and `template/tNode.ts`, so those three move together.
 - Reactivity is batched through `observable/scheduler.ts`, so a DOM read taken right after a state write still sees the old tree — `await nextTick()` first.

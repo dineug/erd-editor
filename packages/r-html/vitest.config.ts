@@ -20,6 +20,8 @@ export default defineConfig({
         'src/**/*.d.ts',
         'src/internal-types/**',
         'src/index.dev.ts',
+        // Types only; every line is erased before a runtime could execute it.
+        'src/jsx-runtime.ts',
       ],
       thresholds: {
         perFile: true,

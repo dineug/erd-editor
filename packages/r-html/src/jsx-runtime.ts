@@ -1,36 +1,40 @@
 /**
- * The JSX type layer for `@dineug/vite-plugin-r-html`'s transform.
+ * The JSX contract for r-html, reached as `@dineug/r-html/jsx-runtime` through
+ * `jsxImportSource`.
  *
- * `jsxImportSource` names `@dineug/r-html` because that is whose contract these
- * describe, and `tsconfig.json` maps the `/jsx-runtime` subpath here. r-html
- * does not ship it yet — `vite-plugin-dts` emits no hand-written `.d.ts`, so
- * moving this there is its own piece of work. Everything below except the
- * `erd-editor` row is framework-level and would go with it.
+ * Declarations only. Nothing here exists at run time and nothing should: the
+ * transform in `@dineug/vite-plugin-r-html` rewrites every JSX tree into an
+ * `html` / `svg` tagged template before the file reaches a JS transform, so no
+ * `jsx()` call is ever emitted. The package's `exports` entry offers `types`
+ * and no `default`, so a build that lost the plugin dies on an unresolvable
+ * import at its first `.tsx` instead of rendering the wrong thing quietly.
  *
- * Declarations only, and nothing resolves them at run time. The transform
- * rewrites every JSX tree into an `html` / `svg` tagged template before
- * `vite:oxc` sees the file, so no `jsx()` call is ever emitted. If the plugin
- * goes missing, oxc's own transform runs and the build dies on
- * `@dineug/r-html/jsx-runtime` — the package exports no such subpath
- * (`ERR_PACKAGE_PATH_NOT_EXPORTED`) — loudly, at the first `.tsx`, rather than
- * silently rendering the wrong thing.
+ * `IntrinsicElements` covers the standard tags. A consumer with custom elements
+ * adds them by merging:
  *
- * A `.d.ts` is also the only spelling oxlint will accept for the
- * `export declare namespace JSX` this needs: `typescript/no-namespace` is an
- * error, and lint does not read `.d.ts`.
+ * ```ts
+ * declare module '@dineug/r-html/jsx-runtime' {
+ *   namespace JSX {
+ *     interface IntrinsicElements {
+ *       'my-element': HTMLAttributes;
+ *     }
+ *   }
+ * }
+ * ```
  */
-import type { DOMTemplateLiterals, FunctionalComponent } from '@dineug/r-html';
+import type { FunctionalComponent } from '@/render/part/node/component/observableComponent';
+import type { DOMTemplateLiterals } from '@/template';
 
-type Falsy = false | null | undefined;
+export type Falsy = false | null | undefined;
 
 /**
  * What `toClassList` walks. Note the asymmetry this cannot express: a static
  * `class="a b"` becomes a `staticAttrs` entry and is written verbatim, but a
  * dynamic `class={value}` goes through `classCommit`, which returns early
  * unless the value is an object or an array — a bare string there is a silent
- * no-op today, in tagged templates just as much as in JSX.
+ * no-op, in tagged templates just as much as in JSX.
  */
-type ClassValue =
+export type ClassValue =
   | string
   | number
   | Record<string, unknown>
@@ -38,28 +42,28 @@ type ClassValue =
   | Falsy;
 
 /** `styleCommit` writes each entry with `setProperty`, so keys stay kebab-case. */
-type StyleValue = Record<string, string | number | Falsy>;
+export type StyleValue = Record<string, string | number | Falsy>;
 
 /**
  * JSX rejects a repeated attribute outright (TS17001), but r-html keeps every
  * listener bound to one event name — `tNode` groups events and `EventPart` adds
  * each separately, and the order is observable. `on:input__2` is the escape
- * hatch: the codegen strips the suffix, so the second binding lands on `@input`
- * exactly like the first.
+ * hatch: the transform strips the suffix, so the second binding lands on
+ * `@input` exactly like the first.
  *
  * Spelling the suffixes out rather than reaching for an `on:${string}` index
  * signature is what keeps `on:clik` a type error.
  */
-type DuplicateSuffix = '' | '__2' | '__3';
+export type DuplicateSuffix = '' | '__2' | '__3';
 
-type EventHandlers<M> = {
+export type EventHandlers<M> = {
   [K in keyof M as `on:${string & K}${DuplicateSuffix}`]?: (
     event: M[K]
   ) => void;
 };
 
 /** The three sigils the transform maps onto r-html's attribute kinds. */
-interface Sigils {
+export interface Sigils {
   /** `?name` — coerced with `isTruthy`, so not restricted to booleans. */
   [bool: `bool:${string}`]: unknown;
   /** `.name` — set as a DOM property rather than an attribute. */
@@ -68,17 +72,17 @@ interface Sigils {
   [use: `use:${string}`]: unknown;
 }
 
-interface DatasetAttributes {
+export interface DatasetAttributes {
   [data: `data-${string}`]: string | number | boolean | Falsy;
   [aria: `aria-${string}`]: string | number | boolean | Falsy;
 }
 
-interface CommonAttributes extends Sigils, DatasetAttributes {
+export interface CommonAttributes extends Sigils, DatasetAttributes {
   /**
-   * Deliberately `unknown`: a text position in r-html accepts primitives,
-   * nested templates, arrays, DOM nodes, functions and directives, and
-   * `getPartType` picks a `Part` for whatever turns up. Components are stricter
-   * — their children land on the `children` prop and are typed by it.
+   * Deliberately `unknown`: a text position accepts primitives, nested
+   * templates, arrays, DOM nodes, functions and directives, and `getPartType`
+   * picks a `Part` for whatever turns up. Components are stricter — their
+   * children land on the `children` prop and are typed by it.
    */
   children?: unknown;
   class?: ClassValue;
@@ -87,7 +91,7 @@ interface CommonAttributes extends Sigils, DatasetAttributes {
   title?: string;
 }
 
-interface HTMLAttributes
+export interface HTMLAttributes
   extends CommonAttributes, EventHandlers<HTMLElementEventMap> {
   draggable?: boolean;
   hidden?: boolean;
@@ -96,7 +100,7 @@ interface HTMLAttributes
   tabindex?: number;
 }
 
-interface SVGAttributes
+export interface SVGAttributes
   extends CommonAttributes, EventHandlers<SVGElementEventMap> {
   fill?: string;
   'fill-opacity'?: number | string;
@@ -109,14 +113,14 @@ interface SVGAttributes
   transform?: string;
 }
 
-interface ButtonAttributes extends HTMLAttributes {
+export interface ButtonAttributes extends HTMLAttributes {
   disabled?: boolean;
   name?: string;
   type?: 'button' | 'reset' | 'submit';
   value?: string;
 }
 
-interface ImgAttributes extends HTMLAttributes {
+export interface ImgAttributes extends HTMLAttributes {
   alt?: string;
   height?: number | string;
   loading?: 'eager' | 'lazy';
@@ -124,7 +128,7 @@ interface ImgAttributes extends HTMLAttributes {
   width?: number | string;
 }
 
-interface InputAttributes extends HTMLAttributes {
+export interface InputAttributes extends HTMLAttributes {
   autocomplete?: string;
   checked?: boolean;
   disabled?: boolean;
@@ -139,7 +143,7 @@ interface InputAttributes extends HTMLAttributes {
   value?: number | string;
 }
 
-interface TextareaAttributes extends HTMLAttributes {
+export interface TextareaAttributes extends HTMLAttributes {
   cols?: number;
   disabled?: boolean;
   name?: string;
@@ -149,19 +153,12 @@ interface TextareaAttributes extends HTMLAttributes {
   value?: string;
 }
 
-interface TableCellAttributes extends HTMLAttributes {
+export interface TableCellAttributes extends HTMLAttributes {
   colspan?: number;
   rowspan?: number;
 }
 
-/** Mirrors `observedProps` on the `defineCustomElement('erd-editor', …)` call. */
-interface ErdEditorAttributes extends HTMLAttributes {
-  'enable-theme-builder'?: boolean;
-  readonly?: boolean;
-  'system-dark-mode'?: boolean;
-}
-
-interface SvgRootAttributes extends SVGAttributes {
+export interface SvgRootAttributes extends SVGAttributes {
   height?: number | string;
   preserveAspectRatio?: string;
   viewBox?: string;
@@ -169,20 +166,20 @@ interface SvgRootAttributes extends SVGAttributes {
   xmlns?: string;
 }
 
-interface LineAttributes extends SVGAttributes {
+export interface LineAttributes extends SVGAttributes {
   x1?: number | string;
   x2?: number | string;
   y1?: number | string;
   y2?: number | string;
 }
 
-interface CircleAttributes extends SVGAttributes {
+export interface CircleAttributes extends SVGAttributes {
   cx?: number | string;
   cy?: number | string;
   r?: number | string;
 }
 
-interface RectAttributes extends SVGAttributes {
+export interface RectAttributes extends SVGAttributes {
   height?: number | string;
   rx?: number | string;
   ry?: number | string;
@@ -191,7 +188,7 @@ interface RectAttributes extends SVGAttributes {
   y?: number | string;
 }
 
-interface PathAttributes extends SVGAttributes {
+export interface PathAttributes extends SVGAttributes {
   d?: string;
 }
 
@@ -223,35 +220,32 @@ export declare namespace JSX {
    * what an error names.
    *
    * The alternative was grafting on an `on:${string}` index signature for the
-   * `@event` binding r-html routes to a component's event bus. It would sit on
-   * top of every component's props — in completions and in every error message —
-   * to type a binding this package uses zero times: all 84 components take
-   * callbacks as props, and the two that dispatch do it on `ctx.host`, which is
-   * the custom element, not the bus. Reinstating it is a deliberate act for
-   * whoever first needs it.
+   * `@event` binding routed to a component's event bus. It would sit on top of
+   * every component's props — in completions and in every error message — to
+   * type a binding whose payload no type here can know. Adding it back is a
+   * deliberate act for whoever first needs it.
    */
 
   /**
-   * Every standard tag, taken straight from the DOM lib rather than listed by
-   * hand: `HTMLElementTagNameMap` and `SVGElementTagNameMap` already are that
-   * list, and reading them keeps this in step with the TypeScript version the
-   * repo pins instead of drifting behind it.
+   * Every standard tag, taken from the DOM lib rather than listed by hand:
+   * `HTMLElementTagNameMap` and `SVGElementTagNameMap` already are that list,
+   * and reading them keeps this in step with the TypeScript version in use.
    *
    * SVG contributes only the names HTML does not already define — `a`,
    * `script`, `style` and `title` exist in both, and HTML wins. Those four are
-   * exactly the tags the codegen refuses to infer a namespace for, so an SVG
+   * exactly the tags the transform refuses to infer a namespace for, so an SVG
    * one has to sit inside an `<svg>` root anyway, where the namespace comes
    * from the root and not from this map.
    *
-   * There is still no index signature: `<dvi>` is a typo, not an element.
+   * There is deliberately no index signature: `<dvi>` is a typo, not an
+   * element. Custom elements are added by merging — see the module doc above.
    */
   interface IntrinsicElements
     extends IntrinsicHTMLElements, IntrinsicSVGElements {
-    // Element-specific attributes, layered over the generic map above. Each is
-    // a subtype of what it overrides, so the two stay assignable.
+    // Element-specific attributes, layered over the generic map. Each is a
+    // subtype of what it overrides, so the two stay assignable.
     button: ButtonAttributes;
     circle: CircleAttributes;
-    'erd-editor': ErdEditorAttributes;
     img: ImgAttributes;
     input: InputAttributes;
     line: LineAttributes;

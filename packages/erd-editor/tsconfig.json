@@ -2,14 +2,10 @@
   "extends": "../../tsconfig.app.json",
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"],
-      // Types only. The transform rewrites every JSX tree before a runtime
-      // import could be emitted, so nothing ever resolves this at run time —
-      // which is why it can point at a source file r-html does not ship.
-      "@dineug/r-html/jsx-runtime": ["./src/jsx-runtime.d.ts"]
+      "@/*": ["./src/*"]
     },
-    // Names the framework whose contract these types describe. TS appends
-    // `/jsx-runtime`, and the path mapping above answers it.
+    // TS appends `/jsx-runtime`, which r-html exports as types only. The tags
+    // it cannot know about are merged in from `src/jsx-tags.d.ts`.
     "jsxImportSource": "@dineug/r-html",
     "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"]
   },

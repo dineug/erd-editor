@@ -11,6 +11,9 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.ts"
     }
   },
   "author": "SeungHwan-Lee <dineug2@gmail.com>",

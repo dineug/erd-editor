@@ -188,6 +188,18 @@ export default defineConfig({
           'react/jsx-key': 'off',
         },
       },
+      {
+        /**
+         * The JSX contract has to be a `namespace` — that is the shape
+         * `jsxImportSource` looks for — and it has to be a `.ts` rather than a
+         * `.d.ts`, because `vite-plugin-dts` emits declarations and does not
+         * copy hand-written ones.
+         */
+        files: ['packages/r-html/src/jsx-runtime.ts'],
+        rules: {
+          'typescript/no-namespace': 'off',
+        },
+      },
     ],
     /**
      * Type-aware lint is off. tsgolint targets TypeScript 7 and reads this repo
