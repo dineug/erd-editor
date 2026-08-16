@@ -84,27 +84,11 @@
     "[typescriptreact]": {
       "editor.defaultFormatter": "oxc.oxc-vscode",
     },
-    // What `.editorconfig` used to carry. It was deleted because oxfmt never
-    // read it — `vite.config.ts` sets `tabWidth` and `endOfLine` itself, and a
-    // conflicting `indent_size` planted in that file provably changed nothing.
-    // These still matter for everything oxfmt does not format: the fourteen
-    // hand-maintained AGENTS.md files, the JSON/YAML configs, and the CSS.
-    "files.encoding": "utf8",
-    "files.eol": "\n",
-    "files.trimTrailingWhitespace": true,
-    "editor.tabSize": 2,
-    "editor.insertSpaces": true,
-    // Trailing whitespace is a hard line break in Markdown, so stripping it
-    // silently rewrites prose. This is the one exception `.editorconfig` made.
-    "[markdown]": {
-      "files.trimTrailingWhitespace": false,
-    },
   },
   "extensions": {
     "recommendations": [
       "oxc.oxc-vscode",
       "styled-components.vscode-styled-components",
-      "tobermory.es6-string-html",
     ],
   },
 }

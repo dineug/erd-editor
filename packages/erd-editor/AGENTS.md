@@ -15,7 +15,7 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 | --- | --- |
 | `src/index.ts` | Public entry: side-effect-registers `<erd-editor>`, exports the `ErdEditorElement` type and the three host callbacks (`setGetShikiServiceCallback`, `setExportFileCallback`, `setImportFileCallback`) |
 | `src/engine/index.ts` | Second published entry (`@dineug/erd-editor/engine.js`) — `createReplicationStore` only, deliberately DOM-free |
-| `src/components/erd-editor/ErdEditor.ts` | The element: `shadow: 'closed'`, the full `ErdEditorElement` API, and the `readonly` / `systemDarkMode` / `enableThemeBuilder` props |
+| `src/components/erd-editor/ErdEditor.tsx` | The element: `shadow: 'closed'`, the full `ErdEditorElement` API, and the `readonly` / `systemDarkMode` / `enableThemeBuilder` props |
 | `src/engine/rx-store.ts` | UI store — stamps actions with `clock.getNextVersion()`, feeds the history and reducer pipelines, exposes `change$` (debounced 200 ms) and `HISTORY_LIMIT = 2048` |
 | `src/engine/actions.ts` | The action-type classification lists: `ChangeActionTypes`, `HistoryActionTypes`, `SharedActionTypes`, `ReadonlyIgnoreActionTypes`, `StreamRegroup*` |
 | `vite.config.ts` | `run.tasks` `build`/`test` (both lead with `tsc --noEmit`), two lib entries, `vite-plugin-dts` reading `tsconfig.build.json` (which drops `*.test.ts` and `__test-utils__` from `dist/`), `server.open` off under `E2E` |
@@ -39,19 +39,22 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 - Reducers must write through the LWW operators from `@dineug/erd-editor-schema` using `action.version`; a direct state write wins every merge and corrupts collaborative sessions.
 - `readonly` is enforced by `readonlyIgnoreFilter` over `ReadonlyIgnoreActionTypes`, not in components. Exemptions live in the `hasReadonlyIgnore` list in `src/engine/actions.ts`.
 - File IO and highlighting go through the three injected callbacks — the VSCode and IntelliJ webviews have no browser file dialog, so a direct `<input type=file>` is dead code there.
-- Everything renders inside a closed shadow root, so `document.querySelector` never finds editor internals; use `queryShadowSelector` / `closestElement` from `@dineug/r-html`.
-- Every dependency is a `devDependency` and the lib build declares no `external`, so anything added ships inside `dist/erd-editor.js` for all four consumers.
+- Everything renders inside a closed shadow root, so `document.querySelector` never finds editor internals; use `queryShadowSelector` / `closestElement`. Every dependency is a `devDependency` and the lib build declares no `external`, so anything added ships inside `dist/erd-editor.js` for all four consumers.
 
 ### Testing Requirements
 
 - `vp run --filter @dineug/erd-editor --fail-if-no-match test` — `tsc --noEmit`, then `vp test run` over `src/**/*.test.ts` in happy-dom. `vitest.setup.ts` polyfills `ResizeObserver`, `IntersectionObserver`, `matchMedia` and `requestIdleCallback`.
-- `pnpm --filter @dineug/erd-editor test:coverage` — v8, per-file 80% lines/functions/branches/statements; `test:dev` watches. Both are the built-in `vp test`: no type gate, no dependency builds.
+- `test:coverage` — v8, per-file 80%; `test:dev` watches. Both are the built-in `vp test`: no type gate, no dependency builds.
 - `pnpm --filter @dineug/erd-editor e2e` — builds this package, then Playwright/Chromium over `e2e/specs/`; also `e2e:dev`, `e2e:headed`, `e2e:report`, `e2e:typecheck`. Read `e2e/README.md` first — the fixture reopens the closed shadow root before the element registers.
 - `pnpm --filter @dineug/erd-editor dev` builds the workspace deps then serves `vp dev` with r-html HMR; `dev:storybook` / `build:storybook` drive the Storybook 10 workbench. 313 colocated `*.test.ts` files, all importing from `vite-plus/test`, never `vitest`. `tsconfig.json` includes all of `src/`, so a type error in a test or in `__test-utils__` turns the run red.
+- Specs stay `.ts` and keep tagged templates. `mount(template: DOMTemplateLiterals)` is orthogonal to how a component body is written, which is why all 313 went through the JSX migration unedited — and why they are the check that it changed nothing.
 
 ### Common Patterns
 
-- One directory per component: `Foo.ts` + `Foo.styles.ts` (r-html `css` tag) + `Foo.test.ts`, optionally `Foo.stories.ts`. Tests mount through `src/__test-utils__` (`mountAndFlush`, `flush`).
+- One directory per component: `Foo.tsx` + `Foo.styles.ts` (r-html `css` tag) + `Foo.test.ts`, optionally `Foo.stories.tsx`. Tests mount through `src/__test-utils__` (`mountAndFlush`, `flush`).
+- **Components are JSX.** `@dineug/vite-plugin-r-html` rewrites every tree into the `html`/`svg` tagged template r-html consumes before oxc sees the file, so the runtime never learns JSX exists. The mapping: `class`/`style` keep their names and array/object values; `?x` → `bool:x`, `@x` → `on:x`, `.x` → `prop:x` on a DOM element, a bare `${ref(r)}` → `use:ref={ref(r)}`, `...${o}` → `{...o}`; a mixed `attr="a ${x}"` becomes a template literal. On a component tag, drop the leading dot — the transform re-adds it to every attribute, which is what stops a prop named `onFoo` being classed as an event.
+- `children` stays an explicit prop where it already was: `<C>{t}</C>` compiles to `` .children=${html`${t}`} ``, a second template around the one you had.
+- JSX forbids a repeated attribute, so the second binding of one event is `on:x__2` — three tags need it. Empty templates have no JSX spelling: `GlobalStyles.ts` and one line of `Icon.tsx` keep theirs. `src/__jsx-parity__/parity.test.tsx` renders 28 shapes twice, JSX and tagged template, and compares the DOM — change the transform or the type layer and that is what says so.
 - Generator actions are `somethingAction$` in `generator.actions.ts`, plain creators `somethingAction` in `atom.actions.ts`; bitmask flags (`settings.show`, `Tag`) go through `src/utils/bit.ts`.
 - `@/*` → `src/*` is declared four times — `tsconfig.json`, `vite.config.ts`, `vitest.config.ts`, `e2e/tsconfig.json`. A new alias needs all four.
 

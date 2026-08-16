@@ -4,7 +4,7 @@
 
 ## Purpose
 
-`@dineug/erd-editor-monorepo` is a pnpm + Vite+ workspace building an Entity-Relationship Diagram editor, shipped through four surfaces: the web app at erd-editor.io, a VSCode extension, an IntelliJ plugin webview, and the standalone `<erd-editor>` custom element on npm. The editor core is framework-free, built on the in-house `@dineug/r-html` tagged-template framework. Its state lives in a Redux-like store whose actions carry a Lamport-style clock and merge through an LWW register set, which is what lets collaboration, cross-tab sync and undo/redo share one mechanism.
+`@dineug/erd-editor-monorepo` is a pnpm + Vite+ workspace building an Entity-Relationship Diagram editor, shipped through four surfaces: the web app at erd-editor.io, a VSCode extension, an IntelliJ plugin webview, and the standalone `<erd-editor>` custom element on npm. The editor core is framework-free, built on the in-house `@dineug/r-html` framework — authored in JSX, compiled back to that framework's tagged templates at build time. Its state lives in a Redux-like store whose actions carry a Lamport-style clock and merge through an LWW register set, which is what lets collaboration, cross-tab sync and undo/redo share one mechanism.
 
 ## Key Files
 
@@ -38,7 +38,7 @@ Build order is derived from workspace dependencies: the first five rows below ar
 | --- | --- | --- | --- |
 | `packages/shared` | `@dineug/shared` | Library | type guards, array/number helpers, nanoid |
 | `packages/r-html` | `@dineug/r-html` | Library | tagged-template rendering framework + store |
-| `packages/vite-plugin-r-html` | `@dineug/vite-plugin-r-html` | Build tool | HMR boundaries for r-html components |
+| `packages/vite-plugin-r-html` | `@dineug/vite-plugin-r-html` | Build tool | JSX → tagged templates, and HMR boundaries |
 | `packages/schema-sql-parser` | `@dineug/schema-sql-parser` | Library | permissive DDL parser for SQL import |
 | `packages/erd-editor-shiki-worker` | `@dineug/erd-editor-shiki-worker` | Worker | Shiki highlighting off the main thread (published, 0.1.2) |
 | `packages/erd-editor-schema` | `@dineug/erd-editor-schema` | Library | v2/v3 document schema, parsing, LWW operators |
@@ -81,6 +81,7 @@ Build order is derived from workspace dependencies: the first five rows below ar
 
 ### Common Patterns
 
+- **`erd-editor` is authored in JSX** (`.tsx`), compiled to `html`/`svg` tagged templates by `rHtml()` before any JS transform sees the file; `packages/r-html` itself stays tagged-template, and its ~180 sites are the format that transform targets. Sigils survive as JSX namespaces — `bool:`, `on:`, `prop:`, `use:` — and every component attribute is emitted with a leading dot, so a prop named `onFoo` is not read as an event. `packages/erd-editor/AGENTS.md` carries the full mapping.
 - Named exports, except that component modules default-export their component — every `export default` in the workspace is under `erd-editor/src/components/` or `app/src/components|routes/`. Imports and exports are sorted by `simple-import-sort`, bridged into oxlint through `lint.jsPlugins`.
 - Barrel `index.ts` per feature directory; a package's root `src/index.ts` is the public surface — named re-exports in most, blanket `export *` in `shared`, `r-html` and `vscode-bridge`.
 - The eight ESM library packages are `"type": "module"` with an `exports` map of `types` + `default`, and point `main` / `module` / `types` at `dist/`.
