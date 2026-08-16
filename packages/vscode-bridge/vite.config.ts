@@ -19,9 +19,10 @@ export default defineConfig({
    * nx.json `targetDefaults`의 대체. `dependsOn`이 `^build`를, `output`이
    * `outputs: ["{projectRoot}/dist"]`를 잇는다.
    *
-   * `from`에 셋을 다 적는 이유: 이 레포의 워크스페이스 의존 간선은 **전부**
-   * devDependencies에 있고 `dependencies`에는 하나도 없다. 기본값(`dependencies`)에
-   * 맡기면 그래프가 통째로 비고, 그 결과는 실패가 아니라 stale dist를 상대로 한 초록이다.
+   * `from`에 셋을 다 적는 이유: 워크스페이스 의존이 패키지마다 다른 필드에 있다 —
+   * 라이브러리 아홉은 전부 devDependencies에 걸고, 앱 형태 넷은 dependencies에 건다.
+   * 기본값(`dependencies`)에 맡기면 라이브러리 쪽 간선이 통째로 비고, 그 결과는
+   * 실패가 아니라 stale dist를 상대로 한 초록이다.
    */
   run: {
     tasks: {

@@ -23,8 +23,12 @@ const encoder = new TextEncoder();
  */
 const SHIPPED_TEMPLATE =
   '<!doctype html><html><head><base href="{{extension-base-url}}"/>' +
-  '<script defer="defer" src="./bundle.6468ad69.js"></script>' +
-  '<link href="./bundle.284f3800.css" rel="stylesheet"></head><body></body></html>';
+  // `type="module"`, and no `crossorigin`: Vite emits the former and the
+  // webview config strips the latter, because the asset origin returns no CORS
+  // headers. Kept faithful to the real output so this fixture goes stale loudly
+  // rather than quietly.
+  '<script type="module" src="./bundle.c489f6f5.js"></script>' +
+  '<link rel="stylesheet" href="./bundle.97d5c01d.css"></head><body></body></html>';
 
 /**
  * What the real `Webview.asWebviewUri` hands back for a local folder — the

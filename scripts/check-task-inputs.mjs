@@ -48,7 +48,18 @@ for (const dir of dirs) {
   ]) {
     for (const name of Object.keys(pkg[field] ?? {})) {
       const depDir = byName.get(name);
-      if (depDir && depDir !== dir) declared.add(depDir);
+      if (!depDir || depDir === dir) continue;
+      // Only dependencies that publish declarations. An app-shaped package —
+      // `vscode-webview` writes its bundle into `vscode-extension/public` and
+      // emits no `dist/` at all — is a build-ordering edge, which `dependsOn`
+      // already carries. Demanding an input glob for it would require a pattern
+      // that matches nothing, and a glob that is *supposed* to be empty is
+      // indistinguishable from a typo in one that is not.
+      const depManifest = JSON.parse(
+        fs.readFileSync(path.join(pkgDir, depDir, 'package.json'), 'utf8')
+      );
+      if (!depManifest.types && !depManifest.typings) continue;
+      declared.add(depDir);
     }
   }
 
@@ -69,8 +80,9 @@ for (const dir of dirs) {
   for (const dep of tracked) {
     if (!declared.has(dep)) {
       problems.push(
-        `${dir}: tracks packages/${dep}/dist but no longer depends on it — ` +
-          `this package wakes up for changes that cannot affect it`
+        `${dir}: tracks packages/${dep}/dist, which it either no longer ` +
+          `depends on or depends on only for build order — either way the ` +
+          `glob matches nothing, and an empty glob hides a typo in a real one`
       );
     }
   }

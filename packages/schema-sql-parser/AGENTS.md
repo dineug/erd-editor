@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-08 | Updated: 2026-08-15 -->
+<!-- Generated: 2026-08-08 | Updated: 2026-08-16 -->
 
 # schema-sql-parser (`@dineug/schema-sql-parser`)
 
@@ -24,9 +24,10 @@ parser does not model; it must skip past them and keep going rather than fail th
 | `src/parser/index.ts`         | Top-level loop: probes each statement matcher at the current `$pos` and dispatches                                            |
 | `src/parser/helper.ts`        | Token/value predicates plus the `isCreateTable` / `isCreateIndex` / `isAlterTableAdd*` lookahead matchers and `isDataType`    |
 | `src/internal-types/index.ts` | `ValuesType`                                                                                                                  |
-| `vitest.config.ts`            | Vitest run config — node env, `src/**/*.test.ts`, v8 coverage with per-file 80% thresholds                                    |
-| `vite.config.ts`              | Library build — ES-only lib entry, `vite-plugin-dts`, `@rollup/plugin-typescript` (`noEmitOnError`)                           |
-| `tsconfig.build.json`         | Build/dts tsconfig; excludes `src/**/*.test.ts` so tests never reach `dist/`                                                  |
+| `vitest.config.ts`            | Test config `vp test` reads — node env, `src/**/*.test.ts`, v8 coverage with per-file 80% thresholds                          |
+| `vite.config.ts`              | Library build **and** the package's `run.tasks` — ES-only lib entry, `BROWSER_TARGET`, `vite-plugin-dts`                      |
+| `tsconfig.json`               | The `tsc --noEmit` gate's program — `include: ["src"]`, so the 16 spec files are typechecked too                              |
+| `tsconfig.build.json`         | The dts pass's tsconfig; excludes `src/**/*.test.ts` so tests never reach `dist/`                                             |
 | `README.md`                   | The per-vendor data-type support matrix, mirroring `src/parser/dataType/`                                                     |
 
 ## Subdirectories
@@ -58,13 +59,37 @@ institutionalised in `vitest.config.ts` as `coverage.exclude: ['src/internal-typ
   all six lists into one deduped uppercase `DataTypes` set that `isDataType` tests against. Vendor
   files are for classification and documentation, never for rejecting input — adding a type to one
   vendor widens the parser for every dialect.
+- The package's two tasks live in `vite.config.ts` under `run.tasks`, and each is an array that runs
+  `tsc --noEmit` before the real command (`vp build`, `vp test run`). ⚠️ Their `input` globs are
+  spelled out by hand because TypeScript 7's `tsc` is a Go binary, invisible to Vite Task's automatic
+  file tracing — widen `tsconfig.json`'s `include` without widening `input` and the typecheck keeps
+  replaying a cache hit over files it never read. Nothing goes red.
+- ⚠️ `output: ['dist/**']` on the `build` task is load-bearing. Drop it and a cache hit replays the
+  terminal output without restoring `dist/`, which reads as a fast green build that produced nothing.
+- This is a leaf package, so the `dependsOn` block (`build`, `from` all three dependency fields)
+  resolves to an empty set and the `input` list carries no `packages/<dep>/dist/**/*.d.ts` line.
+  `scripts/check-task-inputs.mjs` — part of `pnpm check` — enforces that correspondence in both
+  directions, so adding a workspace dependency here means adding its `.d.ts` glob in the same commit.
+- `build.target` is the shared `BROWSER_TARGET` imported from the root `build-target.ts`
+  (chrome87 / edge88 / firefox78 / safari14.1). Every published library here imports the same value;
+  don't declare a local floor.
 - `private: true`.
 
 ### Testing Requirements
 
-- **`pnpm --filter @dineug/schema-sql-parser test`** (`vitest run`) — 16 files / 416 tests. `test:dev`
-  watches; `test:coverage` runs `vitest run --coverage`. It is one of eight packages `pnpm test`
-  exercises — keep it green.
+- **`pnpm exec vp run --filter @dineug/schema-sql-parser --fail-if-no-match test`** — 16 files /
+  416 tests. `test:dev` (`vp test dev`) watches; `test:coverage` (`vp test run --coverage`) adds the
+  thresholds below. It is one of eight packages `pnpm test` (`vp run -r test`) exercises — keep it
+  green.
+- ⚠️ `pnpm --filter @dineug/schema-sql-parser test` and its `build` twin no longer exist. `build` and
+  `test` are `run.tasks` task names now, and a `package.json` script of the same name makes the task
+  graph fail to load — so this package declares neither. Flags go **before** the task name, and
+  without `--fail-if-no-match` a filter that matches nothing exits 0 instead of failing.
+- ⚠️ `test:coverage` and `test:dev` call the built-in `vp test`, which does not read `run.tasks` —
+  they skip the `tsc --noEmit` gate that `vp run test` puts in front of the suite.
+- Specs import `describe` / `it` / `expect` from **`vite-plus/test`**, not from `vitest`; all 16 files
+  do. `vitest` is still the runner and `@vitest/coverage-v8` still the provider, but nothing in `src/`
+  names either.
 - Coverage is a gate: `vitest.config.ts` sets v8 coverage with `perFile: true` and 80% on
   lines/functions/branches/statements over `src/**/*.ts`, excluding only `*.test.ts`, `*.d.ts` and
   `src/internal-types/**`.
@@ -85,8 +110,11 @@ institutionalised in `vitest.config.ts` as `coverage.exclude: ['src/internal-typ
   `YOUNGCART5.sql`) are **not** referenced by any test — they are the manual end-to-end loop: import a
   dump through the editor's SQL import and confirm the resulting tables/relationships. They are also
   the source to mine when writing a new `schema_sql_test_case.md` section.
-- A change is not verified until `pnpm build` passes — `@rollup/plugin-typescript` runs with
-  `noEmitOnError: true`.
+- A change is not verified until `pnpm build` (`vp run -r build`) passes — the `build` task runs
+  `tsc --noEmit` ahead of `vp build`, and that gate reads `tsconfig.json` (`include: ["src"]`), so the
+  16 spec files are typechecked along with the sources. They were not while the gate was
+  `@rollup/plugin-typescript` over `tsconfig.build.json`: a type error inside a spec used to stay
+  invisible until someone opened the file.
 
 ### Common Patterns
 
@@ -109,8 +137,12 @@ None — leaf package.
 
 ### External
 
-Build/test only: `vite` 8, `vite-plugin-dts`, `@rollup/plugin-typescript`, `vitest` 4,
-`@vitest/coverage-v8`, `typescript` 5.8.2, `@types/node`, `tslib`. No runtime dependencies.
+Build/test only: `vite` — the pnpm catalog aliases that name to `@voidzero-dev/vite-plus-core` 0.2.9,
+so there is no `vite` binary in `node_modules/.bin` and every command here goes through `vp` — plus
+`vite-plus` 0.2.9, `vite-plugin-dts` 5, `@typescript/typescript6` 6.0.2 (`vite-plugin-dts` still calls
+the JS Compiler API that TypeScript 7 removed), `vitest` 4.1.10 and `@vitest/coverage-v8` 4.1.10 under
+`vite-plus/test`, `typescript` 7.0.2 (pinned repo-wide by `pnpm-workspace.yaml` `overrides`),
+`@types/node`, `tslib`. No runtime dependencies.
 
 ### Consumers
 

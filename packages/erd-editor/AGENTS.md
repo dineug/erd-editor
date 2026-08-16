@@ -1,14 +1,14 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-08 | Updated: 2026-08-15 -->
+<!-- Generated: 2026-08-08 | Updated: 2026-08-16 -->
 
 # erd-editor (`@dineug/erd-editor`)
 
 ## Purpose
 
-**The editor core** — the largest and most important package in the workspace (638 `.ts` files under
-`src/`: 312 source modules plus `vite-env.d.ts`, 310 colocated `*.test.ts`, 15 `*.stories.ts`), published to npm as
-`@dineug/erd-editor` (v3.3.1). It defines the `<erd-editor>` custom element that every surface (web
-app, VSCode webview, IntelliJ webview) embeds.
+**The editor core** — the largest and most important package in the workspace (642 `.ts` files under
+`src/`: 313 source modules plus `vite-env.d.ts`, 313 colocated `*.test.ts`, 15 `*.stories.ts`),
+published to npm as `@dineug/erd-editor` (v3.3.1). It defines the `<erd-editor>` custom element that
+every surface (web app, VSCode webview, IntelliJ webview) embeds.
 
 It is a framework-free Web Component: rendering goes through `@dineug/r-html`, state through a
 Redux-like store whose action stream is processed with RxJS, and persistence through
@@ -60,7 +60,7 @@ schema        @dineug/erd-editor-schema — state shape, LWW merge, serializatio
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `src/index.ts`                                 | Public entry — side-effect-imports `customElementRegistry`, re-exports `ErdEditorElement` as a **type-only** export, and the three injection points (`setGetShikiServiceCallback`, `setExportFileCallback`, `setImportFileCallback`). Six lines total; that is the entire public surface                                                         |
 | `src/engine/index.ts`                          | The second published entry (`@dineug/erd-editor/engine.js`) — exports only `createReplicationStore` + its `ReplicationStore` type                                                                                                                                                                                                                |
-| `src/index.dev.ts`                             | Dev-server entry (`vite serve --mode lib`) — wires the shiki service, `hmr()` and a `stats.js` FPS meter                                                                                                                                                                                                                                         |
+| `src/index.dev.ts`                             | Dev-server entry (`vp dev --mode lib`) — wires the shiki service, `hmr()` and a `stats.js` FPS meter                                                                                                                                                                                                                                             |
 | `src/components/erd-editor/ErdEditor.ts`       | The custom element itself (`shadow: 'closed'`); defines the full `ErdEditorElement` API (`value`, `focus`, `blur`, `clear`, `destroy`, `setInitialValue`, `setPresetTheme`, `setTheme`, `setKeyBindingMap`, `setSchemaSQL`, `getSchemaSQL`, `getSharedStore`, `setDiffValue`) and the `readonly` / `systemDarkMode` / `enableThemeBuilder` props |
 | `src/components/appContext.ts`                 | `createAppContext` — `EngineContext` extended with `store` (the RxStore), `actions`, `keyBindingMap`, `shortcut$`, `keydown$`, and `emitter`; provided via `useProvider`/`useAppContext`. `appDestroy` is the matching teardown                                                                                                                  |
 | `src/components/customElementRegistry.ts`      | A single side-effect `import '@/components/erd-editor/ErdEditor'`. The one and only `defineCustomElement` call lives in `ErdEditor.ts`; this file is just the hook that makes importing `src/index.ts` register `<erd-editor>`                                                                                                                   |
@@ -74,11 +74,12 @@ schema        @dineug/erd-editor-schema — state shape, LWW merge, serializatio
 | `src/engine/hooks.ts` / `store-hooks.ts`       | The `Hook` / `HookEffect` contract, and `createHooks` which routes matching actions into a per-hook rxjs `Subject`                                                                                                                                                                                                                               |
 | `src/engine/context.ts`                        | `EngineContext` — what reducers and generator actions can reach (`clock`, `toWidth`)                                                                                                                                                                                                                                                             |
 | `src/internal-types/index.ts`                  | The package-internal type vocabulary (`Table`, `Column`, `Doc`, `Point`, `Unsubscribe`, `Ctx`, `DeepPartial`, …) derived from `ERDEditorSchemaV3`                                                                                                                                                                                                |
-| `vite.config.ts`                               | Two lib entries (`erd-editor`, `engine`), banner injection, `__APP_VERSION__` define, r-html HMR on serve, dts + `@rollup/plugin-typescript` on build, `server.open` disabled under `E2E`                                                                                                                                                        |
-| `tsconfig.build.json`                          | Build/dts tsconfig — the same as `tsconfig.json` minus `src/**/*.test.ts` and `src/__test-utils__/**`                                                                                                                                                                                                                                            |
-| `vitest.config.ts`                             | `src/**/*.test.ts` in happy-dom, `@` alias, `__APP_VERSION__` define, v8 coverage with **per-file** 80% thresholds                                                                                                                                                                                                                               |
+| `vite.config.ts`                               | The `run.tasks` `build`/`test` definitions (both lead with `tsc --noEmit`), two lib entries (`erd-editor`, `engine`), `build.target` from the root `build-target.ts`, banner injection, `__APP_VERSION__` define, r-html HMR on serve, dts on build, `server.open` disabled under `E2E`                                                          |
+| `tsconfig.json`                                | `include: ["src"]` — the program `tsc --noEmit` gates. That is **all** of `src/`, `*.test.ts` and `src/__test-utils__/` included; widening it means widening the tasks' `input` globs too                                                                                                                                                        |
+| `tsconfig.build.json`                          | What `vite-plugin-dts` reads — `tsconfig.json` minus `src/**/*.test.ts` and `src/__test-utils__/**`, so test helpers never reach `dist/`. It is no longer a type gate; `tsc --noEmit` is                                                                                                                                                         |
+| `vitest.config.ts`                             | `defineConfig` from `vite-plus` — `src/**/*.test.ts` in happy-dom, `@` alias, `__APP_VERSION__` define, v8 coverage with **per-file** 80% thresholds                                                                                                                                                                                             |
 | `vitest.setup.ts`                              | Polyfills the browser globals happy-dom lacks — `ResizeObserver`, `IntersectionObserver`, `matchMedia`, `requestIdleCallback`                                                                                                                                                                                                                    |
-| `playwright.config.ts`                         | Chromium-only, pinned 1440x900 dark viewport, `webServer` = `vite serve --mode lib` on `E2E_PORT` (5174)                                                                                                                                                                                                                                         |
+| `playwright.config.ts`                         | Chromium-only, pinned 1440x900 dark viewport, `webServer` = `pnpm exec vp dev --mode lib` on `E2E_PORT` (5174)                                                                                                                                                                                                                                   |
 | `e2e/README.md`                                | The traps, gesture cheat sheet and determinism rules for the e2e suite — read before touching `e2e/`                                                                                                                                                                                                                                             |
 | `environment/.env.lib`                         | `VITE_TARGET='lib'` — what `--mode lib` loads to gate the lib build/serve path in `vite.config.ts`                                                                                                                                                                                                                                               |
 
@@ -168,6 +169,26 @@ fifth (`hooks.ts`) — five of the eight modules have only the four:
 - **Every dependency is a `devDependency`.** The lib build declares no `external`, so everything —
   rxjs, d3, lodash-es, the icon packs — is bundled into `dist/erd-editor.js`. Adding a dependency adds
   to the shipped bundle for all four consumers; there is no peer-dependency escape hatch here.
+- **Both `run.tasks` entries lead with `tsc --noEmit`.** `vite.config.ts` defines `build`
+  (`tsc --noEmit` → `vp build --mode lib`) and `test` (`tsc --noEmit` → `vp test run`), each with
+  `dependsOn: [{ task: 'build', from: ['dependencies', 'devDependencies', 'peerDependencies'] }]` —
+  all three fields, because every workspace edge here is a `devDependency` and the default
+  (`dependencies`) would leave the graph empty. That failure is not a red run; it is a green one
+  against a stale `dist/`. ⚠️ The built-in `vp build` / `vp test` **ignore `run.tasks`** — no type
+  gate, no dependency builds. Go through `vp run` unless you specifically want the raw one.
+- **The tasks' `input` globs are hand-maintained.** TypeScript 7's `tsc` is a Go binary, so Vite
+  Task's automatic file tracking never sees what it reads; each task therefore spells out `src/**`,
+  the tsconfigs, and every workspace dependency's `dist/**/*.d.ts`. Change `tsconfig.json`'s
+  `include` and the `input` lists have to move with it, or the cache key stops covering the files the
+  gate reads. Only the dependency half is enforced, by `scripts/check-task-inputs.mjs` (run by
+  `pnpm check`). `output: ['dist/**']` on `build` is the matching trap: drop it and a cache hit
+  replays the terminal output without restoring `dist/`. Neither config file is in this package's own
+  program — the root `tsconfig.json` includes `packages/*/vite.config.ts` and
+  `packages/*/vitest.config.ts`, so a typo inside a `run.tasks` block is a type error at `pnpm check`
+  and nowhere else.
+- **`build.target` is imported from the root `build-target.ts`**, not written here. This package is
+  consumed by all four surfaces and by third parties on npm, so its floor is theirs; a local `target`
+  would silently split the one answer the repo commits to.
 - **Components are `r-html` FCs**, not React. Use `html`/`svg`/`css` tagged templates, `observable`,
   and the `onMounted`/`onUnmounted` hooks. Styles live in a sibling `*.styles.ts` using the `css` tag.
 - **Everything is inside a closed shadow root** (`shadow: 'closed'` in `ErdEditor.ts`). Use
@@ -182,25 +203,45 @@ fifth (`hooks.ts`) — five of the eight modules have only the four:
 ### Testing Requirements
 
 - Two suites, run separately and wired to separate CI jobs:
-  1. `pnpm --filter @dineug/erd-editor test` — Vitest 4 over `src/**/*.test.ts` in happy-dom, with an
-     80% **per-file** floor on lines/functions/branches/statements (`vitest.config.ts`). This is what
-     `pnpm test` at the repo root runs. `test:dev` watches; `test:coverage` adds the v8 report.
+  1. `pnpm exec vp run --fail-if-no-match --filter @dineug/erd-editor test` — the `test` task:
+     `tsc --noEmit`, then `vp test run` over `src/**/*.test.ts` in happy-dom. This is what
+     `pnpm test` (`vp run -r test`) at the repo root runs for this package.
+     ⚠️ `pnpm --filter @dineug/erd-editor test` no longer works, and neither does the `build`
+     equivalent. The tasks own those two names now, and a `package.json` script of the same name
+     makes the task graph fail to load — so both scripts were deleted. `test:dev` (`vp test dev`)
+     still watches and `test:coverage` (`vp test run --coverage`) still adds the v8 report with the
+     80% **per-file** floor on lines/functions/branches/statements (`vitest.config.ts`), but both
+     are the built-in `vp test`, which ignores `run.tasks`: no `tsc --noEmit`, no dependency builds,
+     so they run against whatever is already sitting in the workspace deps' `dist/`.
   2. `pnpm --filter @dineug/erd-editor e2e` — Playwright over `e2e/specs/*.spec.ts` in Chromium,
      covering the keyboard/mouse interactions happy-dom cannot reproduce (`e2e:dev` for UI mode,
      `e2e:headed`, `e2e:report`, `e2e:typecheck`). **Read `e2e/README.md` before touching it** — the
      closed shadow root, the minimap's duplicate render and the LWW tombstones each have a trap that
      will waste an afternoon otherwise.
+- **Specs import from `vite-plus/test`, never `vitest`** — all 313 of them. `vitest` stays in
+  `devDependencies` because `vite-plus/test` is that engine, but a direct `from 'vitest'` import is
+  not the convention here and no file uses one.
+- **Test files are inside the type gate now.** `tsconfig.json` includes all of `src/`, and both tasks
+  lead with `tsc --noEmit`, so a type error in a `*.test.ts` or under `src/__test-utils__/` turns the
+  run red. It used to be invisible: the only build-time type check ran over `tsconfig.build.json`,
+  which excludes exactly those files. That config now feeds `vite-plugin-dts` alone.
 - Tests are colocated (`Foo.ts` → `Foo.test.ts`, including `*.styles.test.ts`) and mount through
   `src/__test-utils__` — `mountAndFlush(...)` plus `flush()` rather than a raw `render` call.
   `tsconfig.build.json` excludes both `*.test.ts` and `__test-utils__`, so test-only helpers never
   reach `dist/`.
-- The `e2e` Nx target is deliberately NOT part of `nx run-many -t test`, so a missing browser binary
-  can never turn the unit suite red. CI's `e2e` job installs Chromium, runs
-  `nx build @dineug/erd-editor` first (the dev server resolves workspace deps to their `dist/`), then
-  `e2e:typecheck` and `nx run @dineug/erd-editor:e2e`.
+- `e2e` is a plain `package.json` script, not a `run.tasks` task, so `vp run -r test` never reaches
+  it and a missing browser binary can never turn the unit suite red. The script builds this package
+  first (`vp run --filter @dineug/erd-editor build`) because the dev server resolves workspace deps
+  to their `dist/`; Vite Task replays that from cache when it is already built. CI's `e2e` job
+  installs Chromium, runs the same build, then `e2e:typecheck` and `e2e`.
+  ⚠️ CI adds `--fail-if-no-match` for a reason: a `--filter` that matches no package exits **0**, so
+  renaming or moving this package would leave the job green while building nothing.
 - Still worth doing by hand for anything visual:
-  - `pnpm --filter @dineug/erd-editor build` — type-checks with `noEmitOnError: true`.
-  - `pnpm --filter @dineug/erd-editor dev` — Vite dev server with r-html HMR.
+  - `pnpm exec vp run --fail-if-no-match --filter @dineug/erd-editor build` — `tsc --noEmit` then
+    `vp build --mode lib`, with the dependency builds ahead of both.
+  - `pnpm --filter @dineug/erd-editor dev` — builds the workspace deps, then `vp dev --mode lib`
+    (Vite dev server with r-html HMR). ⚠️ There is no `node_modules/.bin/vite` in this workspace —
+    `vite` is a catalog alias for `@voidzero-dev/vite-plus-core`, and the CLI is `vp`.
   - `pnpm --filter @dineug/erd-editor dev:storybook` — component-level checks (Storybook 10, stories
     colocated as `*.stories.ts`); `build:storybook` for the static build.
 - **Verify collaboration changes with two clients.** Open the diagram in two tabs (or run the web app's
@@ -209,7 +250,8 @@ fifth (`hooks.ts`) — five of the eight modules have only the four:
 - **Verify readonly mode** if you touched the action lists.
 - For SQL generation changes, spin up the matching vendor from the repo root `docker/` directory and
   run the generated DDL against it; `data/*.sql` provides realistic schemas.
-- Changes here ripple to four consumers — finish with a full `pnpm build` from the repo root.
+- Changes here ripple to four consumers — finish with a full `pnpm build` (`vp run -r build`) from
+  the repo root.
 
 ### Common Patterns
 
@@ -255,8 +297,12 @@ All of these are `devDependencies`; the lib build bundles the runtime ones.
 - `@egjs/agent` — platform detection (`src/utils/device-detect/`)
 - `comlink` — worker RPC for schema GC
 - `stats.js` — the dev-entry FPS meter only
-- Build: Vite 8 (Rolldown) + `vite-plugin-dts` + `@rollup/plugin-typescript`, TypeScript 5.8.2
-- Test: Vitest 4 + `@vitest/coverage-v8` + `happy-dom`, `@playwright/test`
+- Build: Vite+ (`vite` is a pnpm-catalog alias for `@voidzero-dev/vite-plus-core`, Rolldown
+  underneath) + `vite-plugin-dts`, TypeScript **7.0.2**. `@typescript/typescript6` (6.0.2) rides
+  along because `vite-plugin-dts` still calls the JS Compiler API that TS7 dropped; nothing in
+  `src/` imports it
+- Test: `vite-plus/test` (the Vitest 4 engine) + `@vitest/coverage-v8` + `happy-dom`,
+  `@playwright/test`
 - Storybook 10 (`storybook`, `@storybook/html-vite`, `@storybook/addon-docs`,
   `@storybook/addon-links`) — dev only
 

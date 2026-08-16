@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-08 | Updated: 2026-08-15 -->
+<!-- Generated: 2026-08-08 | Updated: 2026-08-16 -->
 
 # r-html (`@dineug/r-html`)
 
@@ -27,9 +27,10 @@ Four subsystems:
 | `src/index.dev.ts`     | Dev-server entry (a counter FC + custom element) loaded by `index.html`          |
 | `src/constants.ts`     | Marker/sentinel strings, `TAttrType`, and the seven lifecycle `Symbol.for` names |
 | `src/reduxDevtools.ts` | Optional Redux DevTools bridge for the store                                     |
-| `vite.config.ts`       | ESM-only lib build (`rolldownOptions` banner) + `vite-plugin-dts` + rollup-ts    |
+| `vite.config.ts`       | `run.tasks` type gates + ESM-only lib build (banner, `BROWSER_TARGET`) + dts     |
 | `vitest.config.ts`     | happy-dom env, `src/**/*.test.ts`, v8 coverage with **per-file 80% thresholds**  |
-| `playwright.config.ts` | Chromium e2e — `e2e/specs`, pinned 1280x720, Vite `webServer` on port 5176      |
+| `playwright.config.ts` | Chromium e2e — `e2e/specs`, pinned 1280x720, `vp dev` `webServer` on port 5176   |
+| `tsconfig.json`        | The type-gate program — `include: ["src"]`, so the specs are gated too           |
 | `tsconfig.build.json`  | Build/dts view of `tsconfig.json` that excludes `src/**/*.test.ts`               |
 
 ## Subdirectories
@@ -83,6 +84,17 @@ Four subsystems:
   `templateCache` (a `WeakMap<TemplateStringsArray, Template>` in `template/index.ts`) first and only
   parses on a miss, and a tagged template's `strings` object is identical across re-renders. Keep any
   new keyed-accumulator prototype-free.
+- **`build` and `test` are tasks, not scripts.** Both live in `vite.config.ts`'s `run.tasks`, and the
+  same-named `package.json` scripts were deleted — a task and a script sharing a name make the task
+  graph fail to load. Invoke them as
+  `pnpm exec vp run --filter @dineug/r-html --fail-if-no-match <task>`; the root `pnpm build` and
+  `pnpm test` (`vp run -r <task>`) sweep them up. `pnpm --filter @dineug/r-html build` is now an
+  `ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT` exit 1 — loud, at least. Everything else here (`dev`,
+  `test:dev`, `test:coverage`, the five `e2e*` entries) is still a script and keeps the
+  `pnpm --filter` form.
+- **The browser floor is not decided here.** `build.target` reads `BROWSER_TARGET` from the root
+  `build-target.ts` (chrome87 / edge88 / firefox78 / safari14.1) — the single value all nine library
+  builds import. Raising it is a workspace decision, and this package cannot narrow it on its own.
 - `private: true` — internal to the workspace, so `version` (0.1.3) is not published.
 
 ### Testing Requirements
@@ -92,21 +104,33 @@ capable of observing. Vitest runs on happy-dom, which has **no style engine at a
 computes a value and never resolves a cascade, so every styling assertion it can make is really an
 assertion about bookkeeping. The Playwright suite exists for the rest.
 
-**Unit — `pnpm --filter @dineug/r-html test`** (`vitest run`), plus `test:dev` (watch) and
-`test:coverage`. Nx picks the `test` target up through `pnpm test` at the root, so it inherits
-`cache: true` and `dependsOn: ["^build"]`.
+**Unit — `pnpm exec vp run --filter @dineug/r-html --fail-if-no-match test`**, a `run.tasks` entry
+whose `command` is `['tsc --noEmit', 'vp test run']`. The root `pnpm test` (`vp run -r test`) picks
+the same task up, so it inherits that task's cache key and its `dependsOn`. `test:dev`
+(`vp test dev`, watch) and `test:coverage` (`vp test run --coverage`) are still plain scripts.
 
+- ⚠️ **The built-in `vp test` skips the type gate.** `vp test` and `vp build` ignore `run.tasks`
+  altogether, so they run vitest / the bundler without the `tsc --noEmit` that precedes them. Nothing
+  warns — the suite just goes green with the types unread. CI and every command here use `vp run`.
 - Tests are colocated as `src/**/*.test.ts`; **every module under `src/` has one except
-  `src/index.dev.ts`** (76 files / 1457 tests, ~5s). Coverage: statements 99.5%, branches 97.9%,
+  `src/index.dev.ts`** (76 files / 1457 tests, ~7s). Coverage: statements 99.5%, branches 97.9%,
   functions 99.4%, lines 99.7%.
-- `vitest.config.ts` runs on `happy-dom` and mirrors the `@` → `src` alias. Coverage is v8 with
+- `vitest.config.ts` runs on `happy-dom` and mirrors the `@` → `src` alias. Specs import their
+  runner API from `vite-plus/test`, not from `vitest` — the `vite-plus/prefer-vite-plus-imports`
+  lint rule in the root config is what keeps that from drifting back. Coverage is v8 with
   `thresholds.perFile` at 80% for lines/functions/branches/statements — a new file below 80% fails
   the run, so add tests alongside new modules. **`pnpm test` does not enforce it**; the root CI job
   runs `test:coverage` as a separate step.
 - Coverage excludes `src/**/*.test.ts`, `src/**/*.d.ts`, `src/internal-types/**`, and
   `src/index.dev.ts`. `tsconfig.build.json` separately excludes `src/**/*.test.ts` (and a reserved
-  `src/__test-utils__/**`), so tests never reach `dist/` or the emitted `.d.ts`. `e2e/` is outside
-  both, which is why `e2e:typecheck` is the only thing that typechecks it.
+  `src/__test-utils__/**`), so tests never reach `dist/` or the emitted `.d.ts`.
+- **The type gate reads the specs now.** The task's `tsc --noEmit` runs against `tsconfig.json`,
+  which is `include: ["src"]` with no `exclude` — all 76 spec files are in the program (counted with
+  `tsc --noEmit --listFiles`). The gate used to run through `tsconfig.build.json`, which excludes
+  them, so a type error in a spec was simply invisible. `e2e/` is in neither program, which is why
+  `e2e:typecheck` (`tsc -p e2e/tsconfig.json`) is still the only thing that typechecks it; and
+  `vite.config.ts` / `vitest.config.ts` are in neither either — the root `tsconfig.json` `include`
+  reaches out for those, under `pnpm check`.
 - Covered end to end: the HTML tokenizer/parser and `tNode`, the CSS compiler under `src/css/`,
   `vCSSStyleSheet`, every attribute and node part (including `arrayDiff` and `ContainerPart`), the
   directives, hooks/`observableComponent`/`defineCustomElement`, observable + scheduler, context,
@@ -120,10 +144,12 @@ own `r-html-e2e` job because it needs a browser download. See `e2e/README.md`.
   (the typed `window.rHtmlE2E` contract and the `CssPage` page object). `playwright.config.ts` sits
   at the package root. Specs talk to the page through `CssPage`, never hand-rolled `page.evaluate`
   bodies; grow the fixture instead.
-- **No build step.** The Vite dev server serves r-html's own `src/` through the `@` alias, so unlike
+- **No build step.** The `vp dev` server serves r-html's own `src/` through the `@` alias, so unlike
   the erd-editor suite this one needs no `dist/`. Port **5176** (`E2E_PORT` overrides) — 5174 is
-  `@dineug/erd-editor` and 5175 is the app, so all three can run at once. The `webServer` command
-  passes `--no-open` because `vite.config.ts` sets `server.open: true` for `pnpm dev`.
+  `@dineug/erd-editor` and 5175 is the app, so all three can run at once. `webServer.command` is
+  `pnpm exec vp dev`, and since `vp dev` has no `--no-open` flag the headless run is arranged through
+  the environment instead: `server.open` is `!process.env.E2E` and the `webServer` block sets
+  `E2E: '1'`. Drop that env and every local run pops a browser.
 - `src/index.dev.ts` is a counter demo and is **not** the fixture. It registers at module scope,
   before any host exists, which is the one ordering the unit suite already covers.
 - **Two things in `src/template/vCSSStyleSheet.ts` are true only because a real engine says so**, and
@@ -139,9 +165,23 @@ own `r-html-e2e` job because it needs a browser download. See `e2e/README.md`.
 - **Never assert a wall-clock threshold.** `specs/register-cost.spec.ts` prints benchmark tables and
   asserts only shape — that per-item cost does not grow across an 8x batch range.
 
-`pnpm --filter @dineug/r-html build` remains the type gate — `@rollup/plugin-typescript` runs with
-`noEmitOnError: true`. For visual/rendering regressions the editor is still the integration
-environment: `pnpm --filter @dineug/erd-editor dev` or `dev:storybook`.
+`pnpm exec vp run --filter @dineug/r-html --fail-if-no-match build` is the other half of the type
+gate — its `command` is `['tsc --noEmit', 'vp build']`, the same pairing the `test` task uses. The
+`@rollup/plugin-typescript` that used to do this emitted nothing at all (it ran purely for its
+diagnostics); removing it left `dist/` byte-identical, and `tsc --noEmit` reports the same errors for
+both tasks.
+
+⚠️ **`tsc` is a Go binary in TypeScript 7, so Vite Task's automatic file tracking never sees what it
+reads.** That is why both tasks spell their `input` out by hand — `src/**`, `vitest.config.*`,
+`package.json`, both tsconfigs, and the root `tsconfig.app.json` they extend. Widen
+`tsconfig.json`'s `include` without widening `input` and the gate goes stale behind a cache hit:
+green, and reading nothing new. (r-html is a leaf, so unlike every other package its `input` carries
+no `packages/<dep>/dist/**/*.d.ts` glob — which is also why `scripts/check-task-inputs.mjs` has
+nothing to say about it.) `build` declares `output: ['dist/**']`; without it a cache hit replays the
+log and restores no artifact.
+
+For visual/rendering regressions the editor is still the integration environment:
+`pnpm --filter @dineug/erd-editor dev` or `dev:storybook`.
 
 ### Common Patterns
 
@@ -165,10 +205,14 @@ None — leaf package.
 
 Runtime: `stylis` 4.4.0 — the CSS compiler's parser/serializer.
 
-Build/test-only: `vite` 8 (Rolldown), `vite-plugin-dts` 5, `@rollup/plugin-typescript` 12,
-`typescript` 5.8.2, `tslib`, `vitest` 4, `@vitest/coverage-v8`, `happy-dom` 20,
-`@playwright/test` 1.62 (pinned to the same range as `@dineug/erd-editor` and the app, so one
-browser download serves all three).
+Build/test-only: `vite-plus` 0.2.9 and `vite` — which is a catalog alias for
+`@voidzero-dev/vite-plus-core@0.2.9`, so **there is no `vite` binary in `node_modules/.bin`** and any
+command written as `vite build` / `vite serve` is dead on arrival; `vite-plugin-dts` 5,
+`typescript` 7.0.2 (a single version across the workspace, pinned by `pnpm-workspace.yaml`
+`overrides`), `@typescript/typescript6` 6.0.2 — carried only because `vite-plugin-dts` still calls
+the JS Compiler API TypeScript 7 dropped — `tslib`, `vitest` 4.1.10, `@vitest/coverage-v8`,
+`happy-dom` 20, `@playwright/test` 1.62 (pinned to the same range as `@dineug/erd-editor` and the
+app, so one browser download serves all three).
 
 ### Consumers
 

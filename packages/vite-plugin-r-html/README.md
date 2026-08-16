@@ -4,7 +4,7 @@
 
 ```ts
 import rHtml from '@dineug/vite-plugin-r-html';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vite-plus';
 
 export default defineConfig({
   plugins: [rHtml()],

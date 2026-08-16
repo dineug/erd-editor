@@ -1,10 +1,10 @@
-<!-- Generated: 2026-08-08 | Updated: 2026-08-15 -->
+<!-- Generated: 2026-08-08 | Updated: 2026-08-16 -->
 
 # erd-editor (monorepo root)
 
 ## Purpose
 
-`@dineug/erd-editor-monorepo` is a pnpm + Nx workspace that builds an Entity-Relationship Diagram editor
+`@dineug/erd-editor-monorepo` is a pnpm + Vite+ workspace that builds an Entity-Relationship Diagram editor
 and ships it through four surfaces: a web app ([erd-editor.io](https://erd-editor.io)), a VSCode
 extension, an IntelliJ plugin webview, and a standalone `<erd-editor>` custom element published to npm.
 
@@ -17,15 +17,17 @@ cross-tab sync, and undo/redo share one mechanism.
 
 | File                        | Description                                                                                                                                             |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `package.json`              | Workspace root; `build`/`test` delegate to `nx run-many`, plus `lint`, `format`, `nx:clear`, `nx:graph`. Pins `typescript` to `5.8.2` via `resolutions` |
-| `pnpm-workspace.yaml`       | Declares `packages/*` as the only workspace glob                                                                                                        |
-| `nx.json`                   | Target defaults — `dev`/`build`/`test`/`e2e` all `dependsOn: ["^build"]`; only `build` and `test` are cached                                            |
+| `vite.config.ts`            | **Canonical tool config for the whole repo** — `lint` (oxlint), `fmt` (oxfmt) and `staged`. ⚠️ A package's own `lint`/`fmt` block is ignored; the root wins, so rules written there silently do nothing |
+| `package.json`              | Workspace root; `build`/`test` delegate to `vp run -r`, plus `lint`, `format`, `check`, `cache:clear`. Pins pnpm via `packageManager`                   |
+| `pnpm-workspace.yaml`       | `packages/*` glob, plus the `catalog` that aliases `vite` to `@voidzero-dev/vite-plus-core` and the `overrides` pinning `typescript` to `7.0.2`         |
 | `tsconfig.app.json`         | Base TS config every package extends (ES2020, strict, bundler resolution)                                                                               |
-| `eslint.config.js`          | Flat ESLint config; only lints `**/src/**/*.{ts,tsx}`                                                                                                   |
-| `.prettierrc.json`          | Prettier: single quotes, es5 trailing comma, avoid arrow parens, 2 spaces                                                                               |
-| `commitlint.config.js`      | Conventional Commits rules (ESM — the root is `"type": "module"`)                                                                                       |
-| `.nvmrc`                    | Node 22.23.2 (package.json `engines` requires >=22.12.0, per Vite 8)                                                                                    |
-| `.editorconfig`             | Editor defaults shared with Prettier (LF, 2-space indent)                                                                                               |
+| `tsconfig.json`             | Typechecks the 15 config files, which belong to no package program. Without it a typo in a `run.tasks` block is accepted silently                       |
+| `build-target.ts`           | The single browser floor the published libraries and the app compile against                                                                            |
+| `scripts/check-task-inputs.mjs` | Fails `pnpm check` when a package gains a workspace dependency without the matching `input` glob — the one thing the config type gate cannot see    |
+| `commitlint.config.js`      | Conventional Commits rules (ESM — the root is `"type": "module"`). Kept because Vite+ has no commit-message linting                                     |
+| `.vite-hooks/`              | `pre-commit` runs `vp staged`, `commit-msg` runs commitlint. Both are committed; only the generated `_/` dispatcher is ignored                          |
+| `.nvmrc` / `.node-version`  | Node 22.23.2, both files, same content. ⚠️ `.nvmrc` is read by `erd-editor-intellij-plugin`'s workflows — deleting it breaks that repo's release        |
+| `.editorconfig`             | Editor defaults shared with oxfmt (LF, 2-space indent)                                                                                                  |
 | `erd-editor.code-workspace` | Multi-root VSCode workspace mapping each package                                                                                                        |
 | `json-schema/schema.json`   | Public JSON Schema for `.erd` / `.vuerd` document files                                                                                                 |
 
@@ -38,12 +40,12 @@ cross-tab sync, and undo/redo share one mechanism.
 | `docker/`      | Per-vendor `docker-compose.yml` files (MySQL, MariaDB, MSSQL, Oracle, PostgreSQL, SQLite) for validating generated DDL                                 |
 | `json-schema/` | JSON Schema definition for the persisted document format                                                                                               |
 | `img/`         | Screenshots and marketing assets referenced by READMEs (plus `img/icons/`)                                                                             |
-| `.github/`     | `workflows/ci.yml` (three jobs — see Testing Requirements) and two issue templates                                                                     |
-| `.husky/`      | Git hooks — `pre-commit` runs `lint-staged` (eslint --fix + prettier --write on `**/*.{ts,mts,tsx}`), `commit-msg` runs commitlint                     |
+| `.github/`     | `workflows/ci.yml` (five jobs — see Testing Requirements), the `setup-workspace` composite action, and two issue templates                             |
+| `.vite-hooks/` | Git hooks — `pre-commit` runs `vp staged` (`vp check --fix` on `**/*.{ts,mts,tsx}`), `commit-msg` runs commitlint                                      |
 
 ## Package Map
 
-Build order is derived by Nx from workspace dependencies. Leaves first:
+Build order is derived by Vite Task from workspace dependencies. Leaves first:
 
 ```
 shared ──┬─────────────────────────────────────────────┐
@@ -79,32 +81,78 @@ shared ── vscode-bridge ──┬── vscode-replication-store-worker ─�
 ### Working In This Directory
 
 - **Package manager is pnpm.** Never run `npm install` or `yarn`; cross-package deps use `workspace:*`.
-- **Always go through Nx for builds.** `pnpm build` = `nx run-many -t build`, which respects
-  `dependsOn: ["^build"]`. Building a single package with `pnpm --filter <pkg> build` skips its
-  dependencies' builds and will resolve stale `dist/` output.
-- **Two toolchains coexist.** Nine packages build with Vite (`vite build` + `vite-plugin-dts` +
-  `@rollup/plugin-typescript`) — every library, worker and build tool, which includes the two
-  `vscode-*` packages that are easy to misfile: `vscode-bridge` and `vscode-replication-store-worker`.
-  The four app-shaped packages (`app`, `intellij-webview`, `vscode-webview`, `vscode-extension`)
-  build with webpack 5 — swc-loader everywhere except `vscode-extension`, which uses ts-loader.
-  Match the neighbouring package when adding config.
-- **Two TypeScript versions coexist.** Library packages pin `5.8.2` (also the root `resolutions`
-  value); the four webpack-based packages (`app`, `intellij-webview`, `vscode-extension`,
-  `vscode-webview`) pin `5.4.5`. Don't unify them casually.
-- **Config file extensions follow the package's module system.** A package whose `package.json` is
-  CommonJS (no `"type": "module"`) must name its ESM config `.mts` — hence `vitest.config.mts` in
-  `app` and `vscode-extension`, and `vite.config.mts` in `vite-plugin-r-html`. Everywhere else the
-  configs are plain `.ts`.
+- **Know which command surface you are on.** A name lives in `run.tasks` or in `package.json`
+  scripts, never both — declaring both makes the task graph fail to load.
+
+  | Target | Invocation |
+  | --- | --- |
+  | a `run.tasks` task (`build`, `test`, `build:webview`) | `vp run --filter <pkg> --fail-if-no-match <task>`, or `vp run -r <task>` for all |
+  | a `package.json` script (`e2e`, `typecheck`, `test:coverage`, `dev`) | `pnpm --filter <pkg> <script>` |
+
+  ⚠️ **`pnpm --filter <pkg> build` and `… test` no longer exist.** Those names are tasks now.
+  ⚠️ **Flags go before the task name.** `vp run build -r` passes `-r` to the task, builds a single
+  package and exits 0.
+  ⚠️ **`vp build` and `vp test` are built-ins that ignore `run.tasks`** — they skip the
+  `tsc --noEmit` gate and `dependsOn` entirely. CI and docs use `vp run`.
+  ⚠️ **A `--filter` matching no package exits 0**, printing a line nobody reads. Always pass
+  `--fail-if-no-match`, or renaming a package leaves the job green while it builds nothing.
+- **One bundler.** Every package builds with Vite (Rolldown). The nine libraries use library mode
+  plus `vite-plugin-dts`; the four app-shaped packages (`app`, `intellij-webview`, `vscode-webview`,
+  `vscode-extension`) build an entry from their own `vite.config.ts`. Match the neighbouring package
+  when adding config.
+- **One TypeScript.** `7.0.2` everywhere, pinned by `overrides` in `pnpm-workspace.yaml`. ⚠️ TS7's
+  `tsc` is a Go native binary, so Vite Task cannot observe which files it reads — every task
+  declares its `input` explicitly. **Change a tsconfig `include` and the matching `input` has to
+  change too**; only the workspace-dependency half of that is machine-enforced, by
+  `scripts/check-task-inputs.mjs`.
+- **Config file extensions are mostly historical.** `vitest.config.mts` in `app` and
+  `vscode-extension`, and `vite.config.mts` in `vite-plugin-r-html`, date from a rule that no longer
+  holds: four CommonJS packages (`app`, `intellij-webview`, `vscode-webview`, `vscode-extension`)
+  load a plain `vite.config.ts` without trouble. Prefer `.ts` for new configs. ⚠️ Renaming an
+  existing one means updating the root `tsconfig.json` `include`, which lists both extensions.
 - **Path alias `@/*` → `<package>/src/*`** in every package. It is declared twice per package —
-  `tsconfig.json` `paths` and the bundler alias (`vite.config.ts` `resolve.alias`, or
-  `tsconfig-paths-webpack-plugin` for the webpack packages). Adding a new alias means touching both,
-  and a package with a Vitest suite needs it in `vitest.config.ts` as well.
+  `tsconfig.json` `paths` and `vite.config.ts` `resolve.alias`. Adding a new alias means touching
+  both, and a package with a Vitest suite needs it in `vitest.config.ts` as well.
 - Cross-package imports must use the published package name (`@dineug/shared`), never a relative
   path into a sibling package's `src/`.
 
+### Contracts Outside This Repo
+
+Four things here are read by something that does not live in this repository. Changing them breaks
+a build you will not see fail.
+
+| What | Who reads it |
+| --- | --- |
+| `.nvmrc` | `erd-editor-intellij-plugin`'s `build.yml` and `release.yml`, as `node-version-file: erd-editor/.nvmrc`. `.node-version` exists for Vite+; both must stay and must agree |
+| `pnpm-lock.yaml` format | the same workflows, via `cache-dependency-path`. ⚠️ They install **pnpm 10**. A lockfile written by pnpm 11 — which grows a second YAML document for `packageManagerDependencies` — is unreadable there, which is why `packageManager` pins 10.34.3 |
+| `intellij-webview`'s `build:webview` | that repo's CI. It writes into its `src/main/resources/assets`, so `emptyOutDir` clears a directory in another checkout, and the task is `cache: false` because a cache hit cannot restore files Vite Task never archived |
+| `app`'s `dist/` | the erd-editor.io deploy, configured in an external dashboard rather than in this repo |
+
+⚠️ The plugin repo consumes this one as a **pinned git submodule**, so none of the above breaks the
+moment something lands on `main` — it breaks when someone advances that pointer. That commit is the
+place to check them, and it is also the only place an IntelliJ regression can be caught, since
+nothing here launches the IDE.
+
+### Where The Gates Are Not
+
+Recording these because "no test failed" is not the same as "this is covered".
+
+- **`app`'s e2e has no CI job.** Eight specs covering live collaboration across two browser
+  contexts, run by hand only. It is also the only thing that exercises the crypto round-trip and
+  the service worker's cache routes end to end.
+- **Seven of eight coverage thresholds never run.** Only r-html's `test:coverage` is in CI; the
+  other seven `perFile: 80%` blocks are declarations.
+- **Lint sees `**/src/**` and nothing else.** e2e specs, every config file, and
+  `vscode-extension/test/**` are outside it.
+- **`vuerd-vscode`'s type gate is `tsconfig.unit.json`**, which uses `module: esnext`. The CommonJS
+  semantics its `out/` build actually emits under (TS1343 and friends) are not checked.
+- **Nothing renders either webview.** The Extension Host suite asserts commands and editor
+  resolution, but its harness blocks the webview document request, so a panel that fails to load
+  its bundle still passes.
+
 ### Testing Requirements
 
-- `pnpm test` runs `nx run-many -t test`. Eight packages define a Vitest `test` target — `shared`,
+- `pnpm test` runs `vp run -r test`. Eight packages define a Vitest `test` task — `shared`,
   `r-html`, `schema-sql-parser`, `erd-editor-schema`, `erd-editor`, `vscode-bridge`, `app`, and
   `vscode-extension`; the rest no-op. New tests belong next to the source as `*.test.ts`, and each
   package carries its own `vitest.config.ts` (`.mts` in `app` and `vscode-extension`, whose
@@ -113,7 +161,11 @@ shared ── vscode-bridge ──┬── vscode-replication-store-worker ─�
   repeated from `tsconfig.json`, and a v8 coverage block with `perFile: true` at **80% lines /
   functions / branches / statements**. A test placed outside `src/` will not be collected. The
   thresholds gate `pnpm --filter <pkg> test:coverage` only — plain `test` (and therefore CI) does not
-  enforce them, so check coverage explicitly when adding a module.
+  enforce them, so check coverage explicitly when adding a module. ⚠️ Only r-html's `test:coverage`
+  actually runs in CI; the other seven thresholds are declarations nothing exercises.
+- Each `test` task runs `tsc --noEmit` before Vitest, so the suite and the type gate go red
+  together. ⚠️ `pnpm --filter <pkg> test:coverage` and `test:dev` call the built-in `vp test`, which
+  does **not** take that gate or `dependsOn` — they are for iterating, not for proving a change.
 - `environment` splits along what the code touches: `happy-dom` for `r-html`, `erd-editor` and `app`;
   `node` for the rest. Only `erd-editor` and `app` need a `vitest.setup.ts`.
 - `vscode-extension` is the one package whose unit suite needs a module that does not exist outside
@@ -128,36 +180,44 @@ shared ── vscode-bridge ──┬── vscode-replication-store-worker ─�
     `@` alias. It exists because happy-dom has no style engine, so the unit suite can assert what is
     in an array but never which rule wins — see `packages/r-html/e2e/README.md`
   - `vscode-extension` — `@vscode/test-cli`, Mocha specs inside a real Extension Host. The script
-    compiles `tsconfig.integration.json` to `out/` first, and the extension must already be built
-    (`nx build vuerd-vscode`) because the host loads `dist/extension.js` and `public/index.html`.
-    On Linux it needs a display: `xvfb-run -a`.
-- CI (`.github/workflows/ci.yml`) runs four independent jobs on `push`, `pull_request` and
-  `workflow_dispatch`, each on `ubuntu-latest` with pnpm 10 and the `.nvmrc` Node:
+    builds the extension and compiles `tsconfig.integration.json` to `out/` first, because the host
+    loads `dist/extension.js` and `public/index.html`. On Linux it needs a display: `xvfb-run -a`.
+- CI (`.github/workflows/ci.yml`) runs five independent jobs on `push`, `pull_request` and
+  `workflow_dispatch`, each on `ubuntu-latest` through the `setup-workspace` composite action —
+  which takes pnpm from `packageManager` and Node from `.nvmrc`, and caches only the pnpm store.
+  ⚠️ Vite Task's cache is deliberately not carried between runs: a cold cache is what makes the
+  `input` declarations do real work, and a warm one lets a wrong declaration replay a green result
+  it did not earn.
 
-  - `ci` — `pnpm install && pnpm test`, then `pnpm --filter @dineug/r-html test:coverage` (the
-    thresholds gate `test:coverage` only, so `pnpm test` alone never enforces them), then `pnpm build`
-  - `e2e` — installs the Chromium browser, runs `nx build @dineug/erd-editor` (the dev server and the
-    e2e typecheck both resolve workspace deps through their `dist/`), then `e2e:typecheck` and the
-    Playwright suite. The report upload needs `include-hidden-files: true` because the output lands
-    in the dot-prefixed `e2e/.report`.
-  - `r-html-e2e` — installs the Chromium browser, then `e2e:typecheck` and the Playwright suite. No
-    build step: nothing it touches resolves through `dist/`. Separate from `e2e` for the browser
-    download, and so a build-free suite does not queue behind `nx build @dineug/erd-editor`. The
-    `app` e2e suite is still not in CI.
-  - `vscode-extension-e2e` — `nx build vuerd-vscode`, then the Extension Host suite under
+  - `check` — `pnpm check` (`vp check`, the root `tsc --noEmit`, and the task-input sync script),
+    then the `app` and `vuerd-vscode` typechecks and the `app` e2e typecheck. Those three have no
+    other home: `app`'s e2e specs and `playwright.config.ts` sit outside every package program.
+  - `ci` — `pnpm test`, then `pnpm --filter @dineug/r-html test:coverage`, then `pnpm build`
+  - `e2e` — installs Chromium, builds `@dineug/erd-editor` (the dev server and the e2e typecheck
+    both resolve workspace deps through their `dist/`), then `e2e:typecheck` and the Playwright
+    suite. The report upload needs `include-hidden-files: true` because the output lands in the
+    dot-prefixed `e2e/.report`.
+  - `r-html-e2e` — installs Chromium, then `e2e:typecheck` and the Playwright suite. No build step:
+    nothing it touches resolves through `dist/`. Separate from `e2e` for the browser download, and
+    so a build-free suite does not queue behind a build. The `app` e2e suite is still not in CI.
+  - `vscode-extension-e2e` — builds `vuerd-vscode`, then the Extension Host suite under
     `xvfb-run -a`. `.vscode-test.mjs` declares a two-version matrix (stable plus the `engines.vscode`
     floor), so the job downloads two VSCode builds; `VSCODE_TEST_USER_DATA_DIR` keeps each profile's
     IPC socket under the unix path limit.
 
-- **A change is not verified until `pnpm build` passes** — type errors surface at build time because
-  `@rollup/plugin-typescript` runs with `noEmitOnError: true`, so a green `pnpm test` alone proves
-  nothing about types.
-- `pnpm lint` (`eslint .`) and `pnpm format` are the style gates; `.gitignore` is fed into ESLint via
-  `includeIgnoreFile`, so ignoring a path in git also un-lints it.
-- **Commit messages are linted** by commitlint (Conventional Commits) via the `commit-msg` hook.
+- **A change is not verified until `pnpm build` passes** — each `build` task runs `tsc --noEmit`
+  before the bundler, so a green `pnpm test` alone proves nothing about the types of what ships.
+- `pnpm check` is the style and type gate: `vp check` (oxfmt + oxlint in one pass), the root
+  `tsc --noEmit` over the config files, and `scripts/check-task-inputs.mjs`. `pnpm format` writes.
+  ⚠️ oxlint does **not** read `.gitignore`; its ignore list is spelled out in the root
+  `vite.config.ts`, so ignoring a path in git no longer un-lints it.
+- ⚠️ **Formatting covers `.{ts,mts,tsx}` and nothing else.** oxfmt handles seventeen languages, and
+  the root `fmt.ignorePatterns` closes the rest — Markdown above all, since the fourteen AGENTS.md
+  files are hand-maintained and one unscoped run rewrites hundreds of lines of them.
+- **Commit messages are linted** by commitlint (Conventional Commits) via `.vite-hooks/commit-msg`.
   `subject-case` is deliberately disabled — this repo capitalizes subjects (`fix: LWW data processing`).
-  The hooks live in gitignored `.husky/_/`, so they only exist after `pnpm install` has run in that
-  working tree; in a fresh clone or a new worktree the checks silently do nothing until then.
+  The hook scripts are committed; only the generated `.vite-hooks/_/` dispatcher is ignored, so a
+  fresh clone gets the gate as soon as `pnpm install` has run (`prepare` is `vp config`).
 - For SQL-generation changes, `docker/<vendor>/docker-compose.yml` plus the dumps in `data/` are the
   intended manual verification loop.
 
@@ -169,17 +229,24 @@ shared ── vscode-bridge ──┬── vscode-replication-store-worker ─�
   surface explicitly (no blanket `export *` at the package boundary except in `shared`).
 - Library `package.json` files are ESM-only (`"type": "module"`, `exports` with `types` + `default`)
   and point `main`/`module`/`types` at `dist/`.
-- Most `@typescript-eslint` strictness rules are deliberately disabled in `eslint.config.js`
+- Most `typescript/*` strictness rules are deliberately off in the root `vite.config.ts`
   (`no-explicit-any`, `no-unused-vars`, …). Don't reintroduce them as part of an unrelated change.
+- Lint scope is `**/src/**/*.{ts,tsx}`, the same single block the old flat config had. e2e specs,
+  config files and `vscode-extension/test/**` are outside it — widening that is its own decision,
+  not a side effect.
 
 ## Dependencies
 
 ### External
 
-- **Nx 20.5** — task graph and caching
-- **pnpm 10** — workspace/package management
-- **Vite 8** (Rolldown-based) — library builds; **webpack 5** — application builds
-- **Vitest 4** — the unit suites in all eight testable packages
+- **Vite+ 0.2.9** — one toolchain for tasks, lint, format, test and commit hooks. It bundles
+  Vite 8.2.1 / Rolldown 1.2.3 / Vitest 4.1.10 / oxlint 1.77 / oxfmt 0.62; `vp toolchain` is
+  canonical for those numbers. ⚠️ Still beta, and the oxlint JS-plugin bridge it carries
+  (`simple-import-sort`) is alpha and outside semver
+- **pnpm 10** — workspace/package management. ⚠️ `vite` in the catalog is an alias for
+  `@voidzero-dev/vite-plus-core`, so there is no `node_modules/.bin/vite`; anything invoking the
+  `vite` CLI directly is broken
+- **Vitest 4** — the unit suites in all eight testable packages, imported as `vite-plus/test`
 - **Playwright** — the `erd-editor`, `r-html` and `app` e2e suites (all pinned to the same `^1.62.1`,
   so one browser download serves them all); **`@vscode/test-cli` + `@vscode/test-electron`**
   — the `vscode-extension` Extension Host suite
@@ -188,9 +255,30 @@ shared ── vscode-bridge ──┬── vscode-replication-store-worker ─�
   `engine/rx-operators/`) and its DOM interaction streams (`utils/rx-operators/`). It replaced the
   in-house `@dineug/go` package, which was deleted from the workspace — nothing should reference it
   any more
-- **TypeScript 5.8.2** (libraries) / **5.4.5** (webpack packages)
-- **ESLint 9 flat config**, **Prettier 3**, **husky + lint-staged**
-- **commitlint 20** (`@commitlint/cli` + `@commitlint/config-conventional`) — the v20 pin was a Node
-  constraint (v21 needs Node >= 22.12); the `.nvmrc` bump to 22 lifts it, so v21 is now upgradable
+- **TypeScript 7.0.2** everywhere, plus **`@typescript/typescript6` 6.0.2** in the nine packages
+  that emit declarations — `vite-plugin-dts` still needs the JavaScript compiler API that TS7
+  removed. That bridge is what makes `.d.ts` output survive the version jump unchanged
+- **React 19** — `app` only. `@radix-ui/themes` had to go to 3.x with it; 2.x refuses React 19
+- **`eslint-plugin-simple-import-sort`** — the one ESLint package still installed. oxlint has no
+  equivalent rule, so it is bridged through `lint.jsPlugins`. Intended survival, not a leftover
+- **commitlint 20** (`@commitlint/cli` + `@commitlint/config-conventional`) — kept because Vite+ has
+  no commit-message linting of its own. The v20 pin was a Node constraint (v21 needs Node >= 22.12);
+  the `.nvmrc` bump to 22 lifts it, so v21 is now upgradable
+
+### Deliberately Not Upgraded
+
+`app` was brought current alongside the React 19 move, with four exceptions. They are held back on
+purpose, so a later sweep that "just updates dependencies" is a regression, not a chore.
+
+| Package | Held at | Why |
+| --- | --- | --- |
+| `dexie` | `^3.2.7` | **Do not upgrade.** It owns the IndexedDB store holding users' documents; a major there is a data-migration question, not a dependency bump |
+| `@sentry/react` | `^7.110.0` | Three majors behind; the SDK's init and integration surface changed across them |
+| `react-router-dom` | `^6.22.3` | v7 reshapes the data-router APIs this app builds its routes on |
+| `immer` | `^10.0.4` | Used through `jotai-immer` on the collaborative path, where the LWW merge depends on its produce semantics |
+
+`jotai/utils`'s `loadable` also warns about removal in v3. `unwrap` is not a rename — `Viewer.tsx`
+branches on the `hasError` state that `unwrap` does not surface — so that one needs a decision about
+the error path, not a substitution.
 
 <!-- MANUAL: Any manually added notes below this line are preserved on regeneration -->

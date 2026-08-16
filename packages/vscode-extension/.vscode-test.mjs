@@ -13,7 +13,8 @@ import { join } from 'node:path';
  *
  * The extension's `main` is `./dist/extension`, and `Editor#buildHtmlForWebview`
  * reads `public/index.html` (emitted by `@dineug/erd-editor-vscode-webview`), so
- * both must be built before this runs — hence the `nx build` in CI.
+ * both must be built before this runs — hence the build step in CI and in the
+ * `e2e` script.
  *
  * Two configurations run: the current stable build, and the oldest VSCode the
  * manifest claims to support. The second is the one that catches an API used
