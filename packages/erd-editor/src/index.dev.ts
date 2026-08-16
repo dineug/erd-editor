@@ -1,5 +1,4 @@
 import { getShikiService } from '@dineug/erd-editor-shiki-worker';
-import { hmr } from '@dineug/r-html';
 // @ts-ignore
 import Stats from 'stats.js';
 
@@ -33,7 +32,6 @@ function runEditor() {
 }
 
 setGetShikiServiceCallback(getShikiService);
-hmr();
 runStats();
 
 const editor1 = runEditor();
