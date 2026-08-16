@@ -5,7 +5,11 @@
     "lib": ["ES2020"],
     "outDir": "out",
     "sourceMap": true,
-    "moduleResolution": "node",
+    // `moduleResolution` is deliberately absent. TypeScript 7 removed
+    // `node10` (TS5108), and every explicit replacement breaks one of the
+    // three configs that extend this one — `node16` alone costs an error here
+    // and another in the integration program. The value TypeScript infers from
+    // `module: commonjs` satisfies all three.
     "strict": true,
     "rootDir": "src",
     "paths": {
@@ -15,10 +19,10 @@
   },
   "include": ["src"],
   // The unit specs are typechecked by `tsconfig.unit.json`, not here. This
-  // config describes the webpack build: commonjs emit with node10 resolution,
-  // and `rootDir: src`. All three of those reject the specs — node10 cannot read
-  // vitest's `exports` map (TS2307), the `vscode` stub they import lives outside
-  // `src` (TS6059), and `import.meta` is not allowed under commonjs (TS1343).
-  // Excluding them removes 8 errors that no gate was ever meant to see.
+  // config is the CommonJS half of the package: `tsconfig.integration.json`
+  // extends it to emit `out/`, which the Extension Host loads directly. Both of
+  // its constraints reject the specs — the `vscode` stub they import lives
+  // outside `rootDir` (TS6059), and `import.meta` is not allowed under
+  // commonjs (TS1343). Excluding them removes errors no gate was meant to see.
   "exclude": ["src/**/*.test.ts"]
 }

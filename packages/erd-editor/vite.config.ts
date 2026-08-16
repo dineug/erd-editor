@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import rHtml from '@dineug/vite-plugin-r-html';
-import typescript from '@rollup/plugin-typescript';
 import { defineConfig, loadEnv } from 'vite-plus';
 import dts from 'vite-plugin-dts';
 
@@ -145,13 +144,6 @@ export default defineConfig(({ command, mode }) => {
     plugins: [
       isLib && isServe && rHtml(),
       isLib && isBuild && dts({ tsconfigPath: './tsconfig.build.json' }),
-      isLib &&
-        isBuild &&
-        typescript({
-          tsconfig: './tsconfig.build.json',
-          noEmitOnError: true,
-          noForceEmit: true,
-        }),
     ].filter(Boolean),
     server: {
       // The Playwright `webServer` starts this same command; opening a browser

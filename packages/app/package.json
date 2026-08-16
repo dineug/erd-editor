@@ -68,7 +68,7 @@
     "style-loader": "^4.0.0",
     "swc-loader": "0.2.6",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
-    "typescript": "5.8.2",
+    "typescript": "7.0.2",
     "vite": "catalog:",
     "vitest": "catalog:",
     "webpack": "^5.91.0",

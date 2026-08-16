@@ -30,16 +30,16 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "@rollup/plugin-typescript": "^12.3.0",
     "@types/node": "^22.20.1",
     "@types/stylis": "^4.2.7",
     "@vitest/coverage-v8": "catalog:",
     "happy-dom": "^20.11.2",
     "tslib": "^2.8.1",
-    "typescript": "5.8.2",
+    "typescript": "7.0.2",
     "vite": "catalog:",
     "vite-plugin-dts": "^5.0.3",
     "vitest": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "@typescript/typescript6": "6.0.2"
   }
 }

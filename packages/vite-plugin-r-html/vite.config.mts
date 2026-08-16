@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import typescript from '@rollup/plugin-typescript';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 import dts from 'vite-plugin-dts';
 
@@ -67,6 +66,5 @@ export default defineConfig({
   },
   plugins: lazyPlugins(() => [
     dts({ compilerOptions: { declarationMap: true } }),
-    typescript({ noEmitOnError: true, noForceEmit: true }),
   ]),
 });

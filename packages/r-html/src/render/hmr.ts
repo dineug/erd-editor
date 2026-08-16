@@ -49,7 +49,20 @@ const hotReplaceComponent = (values: any[]): any[] =>
       )
     : values;
 
-export const mixinHmrComponent = (ComponentClass: ComponentPartClass) => {
+/**
+ * The return type is annotated rather than inferred. The class below is
+ * anonymous and carries `#private` fields, which TypeScript 6+ refuses to name
+ * in a declaration file (TS4094) — and `vite-plugin-dts` responds by skipping
+ * the whole module, so `dist/render/hmr.d.ts` silently disappears while
+ * `index.d.ts` keeps re-exporting from it. The build stays green; consumers get
+ * TS2307.
+ *
+ * `ComponentPartClass` is what the one caller already narrows the result to, so
+ * this widens nothing that was actually reachable.
+ */
+export const mixinHmrComponent = (
+  ComponentClass: ComponentPartClass
+): ComponentPartClass => {
   const C = class extends ComponentClass {
     #prevValues: any[] = [];
     #hmrUnsubscribe: Unsubscribe | null = null;
