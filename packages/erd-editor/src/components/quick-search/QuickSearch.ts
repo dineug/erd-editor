@@ -8,7 +8,7 @@ import {
   ref,
 } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
-import { isEmpty } from 'lodash-es';
+import { isEmpty } from 'es-toolkit/compat';
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';

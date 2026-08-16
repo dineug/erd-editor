@@ -1,4 +1,4 @@
-import { kebabCase } from 'lodash-es';
+import { kebabCase } from 'es-toolkit';
 
 export type Theme = {
   grayColor1: string;

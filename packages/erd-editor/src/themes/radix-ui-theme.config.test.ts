@@ -1,4 +1,4 @@
-import { get } from 'lodash-es';
+import { get } from 'es-toolkit/compat';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { Palette } from '@/themes/radix-ui-theme';

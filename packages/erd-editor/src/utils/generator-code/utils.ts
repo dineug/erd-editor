@@ -1,5 +1,5 @@
 import { arrayHas } from '@dineug/shared';
-import { camelCase, snakeCase } from 'lodash-es';
+import { camelCase, snakeCase } from 'es-toolkit';
 
 import { NameCase, RelationshipType } from '@/constants/schema';
 import {

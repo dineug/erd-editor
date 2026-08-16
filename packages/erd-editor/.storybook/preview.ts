@@ -1,5 +1,5 @@
 import './preview.css';
-import { kebabCase } from 'lodash-es';
+import { kebabCase } from 'es-toolkit';
 import type { Preview } from '@storybook/html-vite';
 import { render, html, addCSSHost } from '@dineug/r-html';
 

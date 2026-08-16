@@ -1,7 +1,8 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { asap, safeCallback } from '@dineug/shared';
-import { isEmpty, omit } from 'lodash-es';
+import { omit } from 'es-toolkit';
+import { isEmpty } from 'es-toolkit/compat';
 import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
 
 import { ChangeActionTypes } from '@/engine/actions';
@@ -115,7 +116,7 @@ export function createReplicationStore(
       dispatch$
         .pipe(
           actionsFilter(ChangeActionTypes),
-          map(actions => actions.map(action => omit(action, 'tags')))
+          map(actions => actions.map(action => omit(action, ['tags'])))
         )
         .subscribe(store.dispatchSync)
     );

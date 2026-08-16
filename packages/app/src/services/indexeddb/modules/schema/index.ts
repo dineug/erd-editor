@@ -1,5 +1,5 @@
 import { nanoid } from '@dineug/shared';
-import { omit } from 'lodash-es';
+import { omit } from 'es-toolkit';
 
 import { EntityType } from '@/internal-types';
 import type { AppDatabase } from '@/services/indexeddb/appDatabaseService';
@@ -57,5 +57,5 @@ export async function getSchemaEntities(
   db: AppDatabase
 ): Promise<Array<Omit<SchemaEntity, 'value'>>> {
   const list = await db.table<SchemaEntity>('schemas').toArray();
-  return list.map(item => omit(item, 'value'));
+  return list.map(item => omit(item, ['value']));
 }

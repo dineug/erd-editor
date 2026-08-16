@@ -1,5 +1,5 @@
 import { arrayHas, createInRange, isString } from '@dineug/shared';
-import { round } from 'lodash-es';
+import { round } from 'es-toolkit/compat';
 
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import {

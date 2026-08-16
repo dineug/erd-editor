@@ -1,7 +1,8 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { observable, onMounted, Ref, watch } from '@dineug/r-html';
 import { arrayHas, isArray, isString } from '@dineug/shared';
-import { cloneDeep, get, isEmpty, omit } from 'lodash-es';
+import { cloneDeep, omit } from 'es-toolkit';
+import { get, isEmpty } from 'es-toolkit/compat';
 
 import { AppContext, appDestroy } from '@/components/appContext';
 import { DatabaseVendorToDatabase } from '@/constants/sql/database';

@@ -10,8 +10,8 @@ import {
   watch,
 } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
+import { isEmpty } from 'es-toolkit/compat';
 import Fues from 'fuse.js';
-import { isEmpty } from 'lodash-es';
 
 import { AppContext, useAppContext } from '@/components/appContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';

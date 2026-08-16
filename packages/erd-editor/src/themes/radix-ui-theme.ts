@@ -124,7 +124,8 @@ import {
   yellowDark,
   yellowDarkA,
 } from '@radix-ui/colors';
-import { get, identity, set } from 'lodash-es';
+import { identity } from 'es-toolkit';
+import { get, set } from 'es-toolkit/compat';
 
 import { ValuesType } from '@/internal-types';
 import { ThemeConfig } from '@/themes/radix-ui-theme.config';

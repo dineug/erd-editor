@@ -1,5 +1,5 @@
 import { FC, html } from '@dineug/r-html';
-import { isEmpty } from 'lodash-es';
+import { isEmpty } from 'es-toolkit/compat';
 
 import { useAppContext } from '@/components/appContext';
 import * as styles from '@/components/erd/canvas/table/Table.styles';

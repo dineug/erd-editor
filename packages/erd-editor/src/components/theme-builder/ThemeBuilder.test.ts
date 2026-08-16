@@ -1,5 +1,5 @@
 import { html } from '@dineug/r-html';
-import { get } from 'lodash-es';
+import { get } from 'es-toolkit/compat';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {

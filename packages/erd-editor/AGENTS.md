@@ -167,7 +167,7 @@ fifth (`hooks.ts`) — five of the eight modules have only the four:
   and `src/engine/index.ts` (`createReplicationStore`, deliberately DOM-free). Never let the engine
   entry pull in a component.
 - **Every dependency is a `devDependency`.** The lib build declares no `external`, so everything —
-  rxjs, d3, lodash-es, the icon packs — is bundled into `dist/erd-editor.js`. Adding a dependency adds
+  rxjs, d3, es-toolkit, the icon packs — is bundled into `dist/erd-editor.js`. Adding a dependency adds
   to the shipped bundle for all four consumers; there is no peer-dependency escape hatch here.
 - **Both `run.tasks` entries lead with `tsc --noEmit`.** `vite.config.ts` defines `build`
   (`tsc --noEmit` → `vp build --mode lib`) and `test` (`tsc --noEmit` → `vp test run`), each with
@@ -288,7 +288,19 @@ All of these are `devDependencies`; the lib build bundles the runtime ones.
   and `components/erd/automatic-table-placement/createAutomaticTablePlacement.ts`. Canvas zoom/pan is
   **not** d3 — it runs through `settings.changeZoomLevel` / `settings.scrollTo` and
   `utils/rx-operators/fromDraggable.ts`
-- `lodash-es`, `luxon`, `deepmerge`, `fuse.js` (quick search), `tinykeys` (shortcuts)
+- `es-toolkit` (replaced `lodash-es`), `luxon`, `deepmerge`, `fuse.js` (quick search), `tinykeys`
+  (shortcuts). ⚠️ **Four names come from `es-toolkit/compat`, not the main entry, and the split is
+  deliberate.** `isEmpty`, `get` and `set` simply do not exist in the main entry. `round` does, but
+  it breaks exact `.xx5` ties the other way from lodash — `round(1.005, 2)` is `1` there and `1.01`
+  in both lodash and compat — and every caller here writes into persisted, LWW-replicated document
+  state (`settings.zoomLevel`, `settings.scroll*`, `table.ui.x/y`, `memo.ui.x/y`), where two clients
+  disagreeing about the same input is worth more than the bytes compat costs. The other fourteen —
+  `camelCase`, `snakeCase`, `kebabCase`, `upperFirst`, `cloneDeep`, `groupBy`, `head`, `last`,
+  `omit`, `pick`, `range`, `uniq`, `noop`, `identity` — were diffed against lodash on this repo's own
+  argument patterns and match, so they come from the main entry. Two call shapes did have to change:
+  lodash's `first` is `head`, and `omit` takes an array (`omit(action, ['tags'])`, never a bare
+  string). `camelCase` also takes a required `string` now, which is why `pascalCase` in
+  `utils/index.ts` spells out the `?? ''` lodash used to do silently
 - `html-to-image` (export), `color`, `@easylogic/colorpicker`, `highlight-words-core`
 - `@floating-ui/dom` and `framer-motion` are declared but **imported nowhere in `src/`** — dead
   entries, not the menu/animation implementation. Menus and popovers are hand-rolled in

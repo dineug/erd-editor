@@ -301,8 +301,10 @@ All three are real `dependencies` here, unlike the libraries, which keep their w
   what make the installed app open standalone, and losing one is invisible until someone installs it
 - `@sentry/react` — production error reporting
 - `base64-arraybuffer` (ciphertext/IV transport — the key itself travels as the `k` field of an
-  exported JWK, not through this), `lodash-es`. `luxon` is still declared but no longer
-  imported anywhere in `src`.
+  exported JWK, not through this), `es-toolkit` (replaced `lodash-es`; `omit` from the main entry in
+  the IndexedDB schema module, `isEmpty` from `es-toolkit/compat` in two sidebar components, because
+  the main entry has no `isEmpty`). `luxon` is still declared but no longer imported anywhere in
+  `src`.
 - `vite` (the catalog alias for `@voidzero-dev/vite-plus-core`), `vite-plus`, `@vitejs/plugin-react`,
   `typescript` 7.0.2 — build only
 

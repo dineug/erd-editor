@@ -1,4 +1,4 @@
-import { get } from 'lodash-es';
+import { get } from 'es-toolkit/compat';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {

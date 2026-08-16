@@ -91,7 +91,7 @@ describe('themeToTokensString', () => {
     );
   });
 
-  it('kebab-cases numeric suffixes and acronyms the same way lodash does', () => {
+  it('kebab-cases numeric suffixes and acronyms the way es-toolkit does', () => {
     const theme = {
       grayColor1: '#fcfcfc',
       grayColor10: '#838383',

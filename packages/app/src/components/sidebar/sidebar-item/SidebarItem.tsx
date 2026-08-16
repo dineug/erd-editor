@@ -8,8 +8,8 @@ import {
   Text,
   TextField,
 } from '@radix-ui/themes';
+import { isEmpty } from 'es-toolkit/compat';
 import { useAtom } from 'jotai';
-import { isEmpty } from 'lodash-es';
 import { useState } from 'react';
 
 import {

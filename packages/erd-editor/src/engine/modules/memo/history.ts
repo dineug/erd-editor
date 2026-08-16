@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { first, groupBy, last, pick } from 'lodash-es';
+import { groupBy, head, last, pick } from 'es-toolkit';
 
 import { PushStreamHistory, PushUndoHistory } from '@/engine/history.actions';
 
@@ -83,7 +83,7 @@ const moveMemo: PushStreamHistory = (undoActions, redoActions, actions) => {
   for (const [, actions] of Object.entries(group)) {
     const {
       payload: { ids },
-    } = first(actions) as ReturnType<typeof moveMemoAction>;
+    } = head(actions) as ReturnType<typeof moveMemoAction>;
 
     const { x, y } = actions.reduce(
       (acc, { payload: { movementX, movementY } }) => {
@@ -126,7 +126,7 @@ const changeMemoColor: PushStreamHistory = (
   const group = groupBy(changeMemoColorActions, action => action.payload.id);
 
   for (const [id, actions] of Object.entries(group)) {
-    const firstAction = first(actions) as ReturnType<
+    const firstAction = head(actions) as ReturnType<
       typeof changeMemoColorAction
     >;
     const lastAction = last(actions) as ReturnType<
@@ -160,7 +160,7 @@ const resizeMemo: PushStreamHistory = (undoActions, redoActions, actions) => {
   for (const [, actions] of Object.entries(group)) {
     if (actions.length < 2) continue;
 
-    const firstAction = first(actions) as ReturnType<typeof resizeMemoAction>;
+    const firstAction = head(actions) as ReturnType<typeof resizeMemoAction>;
     const lastAction = last(actions) as ReturnType<typeof resizeMemoAction>;
 
     undoActions.push(firstAction);

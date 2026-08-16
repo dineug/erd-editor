@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 import { arrayHas, nanoid } from '@dineug/shared';
-import { last } from 'lodash-es';
+import { last } from 'es-toolkit';
 
 import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';

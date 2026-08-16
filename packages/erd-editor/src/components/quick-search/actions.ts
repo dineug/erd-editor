@@ -1,7 +1,7 @@
 import { query, toJson } from '@dineug/erd-editor-schema';
 import { DOMTemplateLiterals, html } from '@dineug/r-html';
+import { isEmpty } from 'es-toolkit/compat';
 import Fues from 'fuse.js';
-import { isEmpty } from 'lodash-es';
 
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';

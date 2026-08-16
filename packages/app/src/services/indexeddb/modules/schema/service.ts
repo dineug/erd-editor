@@ -2,7 +2,7 @@ import {
   createReplicationStore,
   ReplicationStore,
 } from '@dineug/erd-editor/engine.js';
-import { omit } from 'lodash-es';
+import { omit } from 'es-toolkit';
 
 import { type AppDatabase } from '@/services/indexeddb/appDatabaseService';
 import {
@@ -72,7 +72,7 @@ export class SchemaService {
 
   async get(id: string) {
     const prev = this.cache.get(id);
-    if (prev) return omit(prev, 'store');
+    if (prev) return omit(prev, ['store']);
 
     const result = await getSchemaEntity(this.db, id);
     result && this.createCache(result);

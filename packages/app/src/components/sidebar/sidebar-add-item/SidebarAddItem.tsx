@@ -1,5 +1,5 @@
 import { Flex, TextField } from '@radix-ui/themes';
-import { isEmpty } from 'lodash-es';
+import { isEmpty } from 'es-toolkit/compat';
 import { useState } from 'react';
 
 import * as itemStyles from '@/components/sidebar/sidebar-item/SidebarItem.styles';

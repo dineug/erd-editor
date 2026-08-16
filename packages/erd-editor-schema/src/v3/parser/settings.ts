@@ -7,7 +7,7 @@ import {
   isObject,
   isString,
 } from '@dineug/shared';
-import { difference } from 'lodash-es';
+import { difference } from 'es-toolkit';
 
 import { assign, validNumber } from '@/helper';
 import { DeepPartial } from '@/internal-types';

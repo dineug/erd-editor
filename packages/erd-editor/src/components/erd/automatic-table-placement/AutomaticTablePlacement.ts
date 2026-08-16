@@ -9,7 +9,7 @@ import {
   watch,
 } from '@dineug/r-html';
 import { createInRange } from '@dineug/shared';
-import { round } from 'lodash-es';
+import { round } from 'es-toolkit/compat';
 
 import {
   AppContext,

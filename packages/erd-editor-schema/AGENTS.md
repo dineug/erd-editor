@@ -163,15 +163,18 @@ separate `test/` tree and no fixture directory.
 
 ### External
 
-- `lodash-es` — the only runtime dependency; `pick` in `toJson`, `difference` in the settings/canvas
-  parsers and both `convert/` directions
+- `es-toolkit` — the only runtime dependency (it replaced `lodash-es`, and ships its own types, so
+  there is no `@types/*` row for it); `pick` in `toJson`, `difference` in the settings/canvas
+  parsers and both `convert/` directions. Both come from the main entry — they were diffed against
+  lodash on the argument shapes used here and match. ⚠️ Being a `dependency` rather than a
+  `devDependency` puts it in `vite.config.ts`'s `external` regex, so unlike `@dineug/erd-editor` this
+  package does **not** bundle it
 - Build/test only: `vite` and `vite-plus` (both `catalog:`; ⚠️ `vite` is an alias for
   `npm:@voidzero-dev/vite-plus-core@0.2.9`, so there is no `node_modules/.bin/vite` and no raw
   `vite build` to fall back on), `vite-plugin-dts` 5, `vitest` 4.1.10 + `@vitest/coverage-v8` as the
   runner behind `vp test`, `typescript` 7.0.2 (the workspace `overrides` in `pnpm-workspace.yaml` is
   the authority, not this `devDependencies` entry), `@typescript/typescript6` 6.0.2 — carried only
-  because `vite-plugin-dts` still uses the JS Compiler API that TypeScript 7 removed —
-  `@types/lodash-es`, `tslib`
+  because `vite-plugin-dts` still uses the JS Compiler API that TypeScript 7 removed — `tslib`
 
 ### Consumers
 

@@ -275,6 +275,15 @@ Recording these because "no test failed" is not the same as "this is covered".
   `engine/rx-operators/`) and its DOM interaction streams (`utils/rx-operators/`). It replaced the
   in-house `@dineug/go` package, which was deleted from the workspace — nothing should reference it
   any more
+- **es-toolkit 1.50** — the utility belt in `erd-editor`, `erd-editor-schema` and `app`. It replaced
+  `lodash-es`, which is gone from the workspace along with `@types/lodash-es` (es-toolkit ships its
+  own types). ⚠️ **Two entry points, and which one an import uses is a decision, not a style
+  choice.** `isEmpty`, `get` and `set` come from `es-toolkit/compat` because the main entry has no
+  such export; `round` does too, because the main entry rounds exact `.xx5` ties down where lodash
+  and compat round up, and every caller writes into persisted, LWW-replicated document state. The
+  other fifteen names come from the main entry, having been diffed against lodash on this repo's
+  own argument patterns. `packages/erd-editor/AGENTS.md` carries the full table; don't "simplify" a
+  compat import to the main entry without redoing that comparison
 - **TypeScript 7.0.2** everywhere, plus **`@typescript/typescript6` 6.0.2** in the nine packages
   that emit declarations — `vite-plugin-dts` still needs the JavaScript compiler API that TS7
   removed. That bridge is what makes `.d.ts` output survive the version jump unchanged

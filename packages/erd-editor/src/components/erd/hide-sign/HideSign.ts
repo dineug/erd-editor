@@ -8,7 +8,7 @@ import {
   repeat,
   watch,
 } from '@dineug/r-html';
-import { isEmpty } from 'lodash-es';
+import { isEmpty } from 'es-toolkit/compat';
 import { debounceTime, Observable } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';

@@ -1,6 +1,6 @@
 import { AnyAction } from '@dineug/r-html';
 import { arrayHas, isArray } from '@dineug/shared';
-import { isEmpty } from 'lodash-es';
+import { isEmpty } from 'es-toolkit/compat';
 import { map, merge, Observable, Subject, Subscription } from 'rxjs';
 
 import {

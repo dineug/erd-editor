@@ -1,5 +1,5 @@
 import { FC, html, onMounted } from '@dineug/r-html';
-import { get } from 'lodash-es';
+import { get } from 'es-toolkit/compat';
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';

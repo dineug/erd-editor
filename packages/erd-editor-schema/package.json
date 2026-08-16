@@ -24,11 +24,10 @@
     "@dineug/shared": "*"
   },
   "dependencies": {
-    "lodash-es": "^4.17.21"
+    "es-toolkit": "^1.50.0"
   },
   "devDependencies": {
     "@dineug/shared": "workspace:*",
-    "@types/lodash-es": "^4.17.12",
     "@vitest/coverage-v8": "catalog:",
     "tslib": "^2.8.1",
     "typescript": "7.0.2",

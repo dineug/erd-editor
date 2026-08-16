@@ -1,4 +1,4 @@
-import { pick } from 'lodash-es';
+import { pick } from 'es-toolkit';
 
 import { v2ToV3, v3ToV2 } from '@/convert';
 import { bHas } from '@/utils/bit';

@@ -1,4 +1,4 @@
-import { round } from 'lodash-es';
+import { round } from 'es-toolkit/compat';
 
 import { GeneratorAction } from '@/engine/generator.actions';
 import { RootState } from '@/engine/state';

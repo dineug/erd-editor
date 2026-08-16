@@ -8,7 +8,8 @@ import {
 } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 import { isNill, isString } from '@dineug/shared';
-import { isEmpty, noop } from 'lodash-es';
+import { noop } from 'es-toolkit';
+import { isEmpty } from 'es-toolkit/compat';
 
 import { CanvasType } from '@/constants/schema';
 import { Tag } from '@/engine/tag';

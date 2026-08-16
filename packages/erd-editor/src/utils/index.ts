@@ -1,4 +1,4 @@
-import { camelCase, range, upperFirst } from 'lodash-es';
+import { camelCase, range, upperFirst } from 'es-toolkit';
 
 import { START_ADD, START_X, START_Y } from '@/constants/layout';
 import { EntityMeta, Memo, Point, Settings, Table } from '@/internal-types';
@@ -54,5 +54,6 @@ export function safeRange(a: number, b: number) {
 }
 
 export function pascalCase(value?: string) {
-  return upperFirst(camelCase(value));
+  // es-toolkit's camelCase takes a required string; lodash coerced undefined to ''.
+  return upperFirst(camelCase(value ?? ''));
 }

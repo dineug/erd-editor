@@ -1,5 +1,5 @@
 import { nanoid } from '@dineug/shared';
-import { difference } from 'lodash-es';
+import { difference } from 'es-toolkit';
 
 import { propOr } from '@/helper';
 import { type ERDEditorSchemaV2 } from '@/v2';

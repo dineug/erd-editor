@@ -1,6 +1,6 @@
 import { AnyAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
-import { last } from 'lodash-es';
+import { last } from 'es-toolkit';
 import { map, Observable, throttleTime } from 'rxjs';
 
 import {

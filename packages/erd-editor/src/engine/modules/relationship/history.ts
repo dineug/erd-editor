@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { pick } from 'lodash-es';
+import { pick } from 'es-toolkit';
 
 import { PushUndoHistory } from '@/engine/history.actions';
 

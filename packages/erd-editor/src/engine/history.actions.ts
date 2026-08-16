@@ -1,6 +1,6 @@
 import { AnyAction } from '@dineug/r-html';
 import { safeCallback } from '@dineug/shared';
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep } from 'es-toolkit';
 
 import { History } from '@/engine/history';
 import { editorPushUndoHistoryMap } from '@/engine/modules/editor/history';

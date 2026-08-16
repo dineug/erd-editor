@@ -4,7 +4,7 @@ import {
   compositionActionsFlat,
 } from '@dineug/r-html';
 import { isInteger } from '@dineug/shared';
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep } from 'es-toolkit';
 
 import { GeneratorAction } from '@/engine/generator.actions';
 
