@@ -30,7 +30,7 @@
     "lint": "vp lint .",
     "check": "vp check && tsc --noEmit && node scripts/check-task-inputs.mjs",
     "cache:clear": "vp cache clean",
-    "prepare": "husky"
+    "prepare": "vp config"
   },
   "resolutions": {
     "typescript": "5.8.2"
@@ -40,14 +40,9 @@
     "@commitlint/config-conventional": "^20.5.3",
     "@types/node": "^22.20.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
-    "husky": "^9.1.7",
-    "lint-staged": "^15.4.3",
     "tslib": "^2.8.1",
     "typescript": "5.8.2",
     "vite": "catalog:",
     "vite-plus": "catalog:"
-  },
-  "lint-staged": {
-    "**/*.{ts,mts,tsx}": "vp check --fix"
   }
 }

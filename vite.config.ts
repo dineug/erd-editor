@@ -1,6 +1,15 @@
 import { defineConfig } from 'vite-plus';
 
 export default defineConfig({
+  /**
+   * Replaces the root `lint-staged` field. `vp check --fix` is fmt -> lint --fix
+   * -> fmt in one pass. The glob is the one lint-staged used, `.mts` included.
+   * No type gate here — there was none before either; that lives in CI and in
+   * each package's `build` and `test` tasks.
+   */
+  staged: {
+    '**/*.{ts,mts,tsx}': 'vp check --fix',
+  },
   lint: {
     plugins: ['oxc', 'typescript', 'react'],
     categories: {
