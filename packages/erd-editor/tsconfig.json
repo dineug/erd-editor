@@ -2,12 +2,15 @@
   "extends": "../../tsconfig.app.json",
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // Types only. The transform rewrites every JSX tree before a runtime
+      // import could be emitted, so nothing ever resolves this at run time —
+      // which is why it can point at a source file r-html does not ship.
+      "@dineug/r-html/jsx-runtime": ["./src/jsx-runtime.d.ts"]
     },
-    // Resolves to `src/jsx-runtime.d.ts` through the alias above. Types only —
-    // the transform in `@dineug/vite-plugin-r-html` removes every JSX tree
-    // before a runtime import could be emitted.
-    "jsxImportSource": "@",
+    // Names the framework whose contract these types describe. TS appends
+    // `/jsx-runtime`, and the path mapping above answers it.
+    "jsxImportSource": "@dineug/r-html",
     "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"]
   },
   "include": ["src"]

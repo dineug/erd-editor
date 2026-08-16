@@ -1,12 +1,19 @@
 /**
  * The JSX type layer for `@dineug/vite-plugin-r-html`'s transform.
  *
- * Declarations only: there is no `@/jsx-runtime` module at runtime, and that is
- * deliberate. The transform rewrites every JSX tree into an `html` / `svg`
- * tagged template before `vite:oxc` sees the file, so nothing should ever emit
- * a `jsx()` call. If the plugin is missing, oxc's own transform runs instead
- * and the build dies on an unresolvable `@/jsx-runtime` import — loudly, at the
- * first `.tsx`, rather than silently rendering the wrong thing.
+ * `jsxImportSource` names `@dineug/r-html` because that is whose contract these
+ * describe, and `tsconfig.json` maps the `/jsx-runtime` subpath here. r-html
+ * does not ship it yet — `vite-plugin-dts` emits no hand-written `.d.ts`, so
+ * moving this there is its own piece of work. Everything below except the
+ * `erd-editor` row is framework-level and would go with it.
+ *
+ * Declarations only, and nothing resolves them at run time. The transform
+ * rewrites every JSX tree into an `html` / `svg` tagged template before
+ * `vite:oxc` sees the file, so no `jsx()` call is ever emitted. If the plugin
+ * goes missing, oxc's own transform runs and the build dies on
+ * `@dineug/r-html/jsx-runtime` — the package exports no such subpath
+ * (`ERR_PACKAGE_PATH_NOT_EXPORTED`) — loudly, at the first `.tsx`, rather than
+ * silently rendering the wrong thing.
  *
  * A `.d.ts` is also the only spelling oxlint will accept for the
  * `export declare namespace JSX` this needs: `typescript/no-namespace` is an
@@ -188,6 +195,17 @@ interface PathAttributes extends SVGAttributes {
   d?: string;
 }
 
+type IntrinsicHTMLElements = {
+  [Tag in keyof HTMLElementTagNameMap]: HTMLAttributes;
+};
+
+type IntrinsicSVGElements = {
+  [Tag in Exclude<
+    keyof SVGElementTagNameMap,
+    keyof HTMLElementTagNameMap
+  >]: SVGAttributes;
+};
+
 export declare namespace JSX {
   type ElementType = string | FunctionalComponent<any, any>;
 
@@ -200,38 +218,48 @@ export declare namespace JSX {
   interface IntrinsicAttributes {}
 
   /**
-   * `@event` on a component tag routes to `ctx.dispatchEvent` rather than to
-   * props, so it is not in `Props` and has to be grafted on here. The payload
-   * is whatever the component dispatched, which no type here can know.
+   * No `LibraryManagedAttributes` on purpose. A component's accepted attributes
+   * are exactly the props it declares, so that is what hovering a tag shows and
+   * what an error names.
+   *
+   * The alternative was grafting on an `on:${string}` index signature for the
+   * `@event` binding r-html routes to a component's event bus. It would sit on
+   * top of every component's props — in completions and in every error message —
+   * to type a binding this package uses zero times: all 84 components take
+   * callbacks as props, and the two that dispatch do it on `ctx.host`, which is
+   * the custom element, not the bus. Reinstating it is a deliberate act for
+   * whoever first needs it.
    */
-  type LibraryManagedAttributes<_Component, Props> = Props & {
-    [event: `on:${string}`]: ((event: any) => void) | undefined;
-  };
 
   /**
-   * Exactly the tags this package's templates use. There is no index signature:
-   * a tag missing here is a typo until someone adds it on purpose.
+   * Every standard tag, taken straight from the DOM lib rather than listed by
+   * hand: `HTMLElementTagNameMap` and `SVGElementTagNameMap` already are that
+   * list, and reading them keeps this in step with the TypeScript version the
+   * repo pins instead of drifting behind it.
+   *
+   * SVG contributes only the names HTML does not already define — `a`,
+   * `script`, `style` and `title` exist in both, and HTML wins. Those four are
+   * exactly the tags the codegen refuses to infer a namespace for, so an SVG
+   * one has to sit inside an `<svg>` root anyway, where the namespace comes
+   * from the root and not from this map.
+   *
+   * There is still no index signature: `<dvi>` is a typo, not an element.
    */
-  interface IntrinsicElements {
+  interface IntrinsicElements
+    extends IntrinsicHTMLElements, IntrinsicSVGElements {
+    // Element-specific attributes, layered over the generic map above. Each is
+    // a subtype of what it overrides, so the two stay assignable.
     button: ButtonAttributes;
     circle: CircleAttributes;
-    div: HTMLAttributes;
     'erd-editor': ErdEditorAttributes;
-    g: SVGAttributes;
     img: ImgAttributes;
     input: InputAttributes;
     line: LineAttributes;
     path: PathAttributes;
     rect: RectAttributes;
-    span: HTMLAttributes;
-    style: HTMLAttributes;
     svg: SvgRootAttributes;
-    table: HTMLAttributes;
-    tbody: HTMLAttributes;
     td: TableCellAttributes;
     textarea: TextareaAttributes;
     th: TableCellAttributes;
-    thead: HTMLAttributes;
-    tr: HTMLAttributes;
   }
 }
