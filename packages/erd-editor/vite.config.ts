@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import rHtml from '@dineug/vite-plugin-r-html';
 import typescript from '@rollup/plugin-typescript';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv } from 'vite-plus';
 import dts from 'vite-plugin-dts';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));

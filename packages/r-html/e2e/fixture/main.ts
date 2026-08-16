@@ -45,20 +45,21 @@ type ProbeProps = {
  * The bindings pass **arrays**: `AttributePart#classCommit` bails on anything
  * that is not an object or an array, so `class=${'a b'}` silently does nothing.
  */
-const CssProbe: FC<ProbeProps, HTMLElement> = props => () => html`
-  <div class=${['root', ...(props.rootClass ?? [])]} data-testid="root">
-    <span class=${['child', ...(props.childClass ?? [])]} data-testid="child"
-      >child</span
-    >
-    <div
-      class=${['scroller', ...(props.scrollerClass ?? [])]}
-      data-testid="scroller"
-      style="width: 100px; height: 60px; overflow: scroll"
-    >
-      <div style="width: 400px; height: 400px"></div>
+const CssProbe: FC<ProbeProps, HTMLElement> = props => () =>
+  html`
+    <div class=${['root', ...(props.rootClass ?? [])]} data-testid="root">
+      <span class=${['child', ...(props.childClass ?? [])]} data-testid="child"
+        >child</span
+      >
+      <div
+        class=${['scroller', ...(props.scrollerClass ?? [])]}
+        data-testid="scroller"
+        style="width: 100px; height: 60px; overflow: scroll"
+      >
+        <div style="width: 400px; height: 400px"></div>
+      </div>
     </div>
-  </div>
-`;
+  `;
 
 // The array form of `observedProps` declares no attribute conversion, which is
 // what lets the props hold real arrays when set as properties.

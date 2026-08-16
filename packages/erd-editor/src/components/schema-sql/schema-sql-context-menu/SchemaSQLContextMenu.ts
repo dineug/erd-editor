@@ -47,9 +47,11 @@ const SchemaSQLContextMenu: FC<SchemaSQLContextMenuProps> = (props, ctx) => {
                 .onClick=${menu.onClick}
                 children=${html`
                   <${ContextMenu.Menu}
-                    icon=${menu.checked
-                      ? html`<${Icon} name="check" size=${14} />`
-                      : null}
+                    icon=${
+                      menu.checked
+                        ? html`<${Icon} name="check" size=${14} />`
+                        : null
+                    }
                     name=${menu.name}
                   />
                 `}
@@ -73,9 +75,11 @@ const SchemaSQLContextMenu: FC<SchemaSQLContextMenuProps> = (props, ctx) => {
                 .onClick=${menu.onClick}
                 children=${html`
                   <${ContextMenu.Menu}
-                    icon=${menu.checked
-                      ? html`<${Icon} name="check" size=${14} />`
-                      : null}
+                    icon=${
+                      menu.checked
+                        ? html`<${Icon} name="check" size=${14} />`
+                        : null
+                    }
                     name=${menu.name}
                   />
                 `}

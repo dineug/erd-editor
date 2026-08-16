@@ -1,5 +1,5 @@
 import { AnyAction, compositionActionsFlat } from '@dineug/r-html';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { START_ADD, START_X, START_Y } from '@/constants/layout';
 import { ColumnOption, RelationshipType, Show } from '@/constants/schema';

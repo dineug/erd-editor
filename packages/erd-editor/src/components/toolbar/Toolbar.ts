@@ -200,60 +200,64 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
         <div class=${styles.menu} title="Search" @click=${handleSearch}>
           <${Icon} name="magnifying-glass" size=${16} />
         </div>
-        ${props.enableThemeBuilder
-          ? html`
-              <div class=${styles.menu} title="Theme" @click=${handleTheme}>
-                <${Icon} name="circle-half-stroke" size=${16} />
-              </div>
-            `
-          : null}
+        ${
+          props.enableThemeBuilder
+            ? html`
+                <div class=${styles.menu} title="Theme" @click=${handleTheme}>
+                  <${Icon} name="circle-half-stroke" size=${16} />
+                </div>
+              `
+            : null
+        }
         <div class=${styles.vertical}></div>
-        ${showUndoRedo
-          ? html`
-              <div
-                class=${[
-                  'undo-redo',
-                  styles.menu,
-                  {
-                    active: editor.hasUndo,
-                  },
-                ]}
-                title="Undo"
-                @click=${handleUndo}
-              >
-                <${Icon} name="rotate-left" size=${16} />
-              </div>
-              <div
-                class=${[
-                  'undo-redo',
-                  styles.menu,
-                  {
-                    active: editor.hasRedo,
-                  },
-                ]}
-                title="Redo"
-                @click=${handleRedo}
-              >
-                <${Icon} name="rotate-right" size=${16} />
-              </div>
-              <div
-                class=${[
-                  'undo-redo',
-                  styles.menu,
-                  {
-                    active: editor.hasUndo || editor.hasRedo,
-                  },
-                ]}
-                title="Time Travel"
-                style=${{
-                  'max-width': '26px',
-                }}
-                @click=${handleOpenTimeTravel}
-              >
-                <${Icon} prefix="mdi" name="av-timer" size=${20} />
-              </div>
-            `
-          : null}
+        ${
+          showUndoRedo
+            ? html`
+                <div
+                  class=${[
+                    'undo-redo',
+                    styles.menu,
+                    {
+                      active: editor.hasUndo,
+                    },
+                  ]}
+                  title="Undo"
+                  @click=${handleUndo}
+                >
+                  <${Icon} name="rotate-left" size=${16} />
+                </div>
+                <div
+                  class=${[
+                    'undo-redo',
+                    styles.menu,
+                    {
+                      active: editor.hasRedo,
+                    },
+                  ]}
+                  title="Redo"
+                  @click=${handleRedo}
+                >
+                  <${Icon} name="rotate-right" size=${16} />
+                </div>
+                <div
+                  class=${[
+                    'undo-redo',
+                    styles.menu,
+                    {
+                      active: editor.hasUndo || editor.hasRedo,
+                    },
+                  ]}
+                  title="Time Travel"
+                  style=${{
+                    'max-width': '26px',
+                  }}
+                  @click=${handleOpenTimeTravel}
+                >
+                  <${Icon} prefix="mdi" name="av-timer" size=${20} />
+                </div>
+              `
+            : null
+        }
         <div class=${styles.tableCount}>Table: ${doc.tableIds.length}</div>
       </div>
     `;

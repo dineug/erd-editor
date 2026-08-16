@@ -1,5 +1,5 @@
 import { AnyAction } from '@dineug/r-html';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
 import { Clock } from '@/engine/clock';

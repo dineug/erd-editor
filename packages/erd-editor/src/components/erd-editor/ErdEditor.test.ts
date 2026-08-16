@@ -7,7 +7,7 @@ import {
   expect,
   it,
   vi,
-} from 'vitest';
+} from 'vite-plus/test';
 
 import { flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';

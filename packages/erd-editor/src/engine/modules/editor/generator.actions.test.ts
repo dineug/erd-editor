@@ -1,6 +1,6 @@
 import { schemaV3Parser, toJson } from '@dineug/erd-editor-schema';
 import { AnyAction, compositionActionsFlat } from '@dineug/r-html';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { ColumnOption, RelationshipType } from '@/constants/schema';
 import { Clock } from '@/engine/clock';

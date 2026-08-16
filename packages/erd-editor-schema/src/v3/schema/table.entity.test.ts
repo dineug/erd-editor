@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as tableEntityModule from '@/v3/schema/table.entity';
 import { Table, TableUI } from '@/v3/schema/table.entity';

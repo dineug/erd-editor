@@ -1,6 +1,13 @@
 import { AnyAction } from '@dineug/r-html';
 import { Subject } from 'rxjs';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { sharedMouseTrackerAction } from '@/engine/modules/editor/atom.actions';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';

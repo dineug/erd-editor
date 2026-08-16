@@ -1,6 +1,6 @@
 import { AnyAction } from '@dineug/r-html';
 import { Subject, Subscription } from 'rxjs';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   ColumnOption,

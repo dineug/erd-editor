@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { Column, RefPos, SortType, StatementType } from '@/parser/statement';
 import {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as docModule from '@/v3/schema/doc';
 import { Doc } from '@/v3/schema/doc';

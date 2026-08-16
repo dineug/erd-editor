@@ -1,5 +1,5 @@
 import { createRef, html, Ref } from '@dineug/r-html';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createTestAppContext,

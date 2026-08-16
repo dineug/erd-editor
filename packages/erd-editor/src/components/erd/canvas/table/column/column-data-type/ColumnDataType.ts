@@ -206,31 +206,33 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
         .onInput=${handleInput}
         .onKeydown=${handleKeydown}
       />
-      ${props.edit
-        ? html`
-            <div class=${styles.hint}>
-              ${repeat(
-                state.hints,
-                hint => hint.name,
-                (hint, index) => html`
-                  <div
-                    class=${[
-                      styles.hintItem,
-                      { selected: index === state.index },
-                    ]}
-                    @click=${() => handleSelectHint(index)}
-                  >
-                    <${HighlightedText}
-                      searchWords=${[props.value]}
-                      textToHighlight=${hint.name}
-                    />
-                    <${Kbd} mini=${true} shortcut="Tab" />
-                  </div>
-                `
-              )}
-            </div>
-          `
-        : null}
+      ${
+        props.edit
+          ? html`
+              <div class=${styles.hint}>
+                ${repeat(
+                  state.hints,
+                  hint => hint.name,
+                  (hint, index) => html`
+                    <div
+                      class=${[
+                        styles.hintItem,
+                        { selected: index === state.index },
+                      ]}
+                      @click=${() => handleSelectHint(index)}
+                    >
+                      <${HighlightedText}
+                        searchWords=${[props.value]}
+                        textToHighlight=${hint.name}
+                      />
+                      <${Kbd} mini=${true} shortcut="Tab" />
+                    </div>
+                  `
+                )}
+              </div>
+            `
+          : null
+      }
     </div>
   `;
 };

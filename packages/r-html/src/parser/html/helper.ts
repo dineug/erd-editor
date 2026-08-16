@@ -7,10 +7,8 @@ const emptyTagNamesRegexp =
   /^(area|base|br|col|embed|hr|img|input|keygen|link|meta|param|source|track|wbr)$/i;
 
 const createEqual =
-  (prop: keyof Token) =>
-  (type: string) =>
-  (tokens: Token[]) =>
-  (pos: number) => (tokens[pos] ? tokens[pos][prop] === type : false);
+  (prop: keyof Token) => (type: string) => (tokens: Token[]) => (pos: number) =>
+    tokens[pos] ? tokens[pos][prop] === type : false;
 
 const createTypeEqual = createEqual('type');
 const createValueEqual = createEqual('value');

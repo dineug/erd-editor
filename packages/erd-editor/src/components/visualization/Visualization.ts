@@ -107,16 +107,18 @@ const Visualization: FC<VisualizationProps> = (props, ctx) => {
     return html`
       <div class=${['scrollbar', styles.root]}>
         ${d3SVG?.node()}
-        ${showPreview
-          ? html`
-              <${Table}
-                table=${state.table}
-                columnId=${state.columnId}
-                x=${state.x + MARGIN}
-                y=${state.y}
-              />
-            `
-          : null}
+        ${
+          showPreview
+            ? html`
+                <${Table}
+                  table=${state.table}
+                  columnId=${state.columnId}
+                  x=${state.x + MARGIN}
+                  y=${state.y}
+                />
+              `
+            : null
+        }
       </div>
     `;
   };

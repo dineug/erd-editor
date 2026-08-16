@@ -1,5 +1,5 @@
 import { html } from '@dineug/r-html';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   createTestAppContext,
@@ -567,7 +567,10 @@ describe('Table', () => {
     dragEvent(columnRows()[0], 'dragstart');
     await flush();
 
-    dragEvent(columnRows().find(el => el.dataset.id === secondId)!, 'dragover');
+    dragEvent(
+      columnRows().find(el => el.dataset.id === secondId)!,
+      'dragover'
+    );
     await wait(120);
     await flush();
 
@@ -618,13 +621,19 @@ describe('Table', () => {
     );
     await flush();
 
-    dragEvent(rowsOf(aEl).find(el => el.dataset.id === c1)!, 'dragstart');
+    dragEvent(
+      rowsOf(aEl).find(el => el.dataset.id === c1)!,
+      'dragstart'
+    );
     await flush();
 
     dragEvent(rowsOf(bEl)[0], 'dragenter');
     await flush();
 
-    dragEvent(rowsOf(bEl).find(el => el.dataset.id === d1)!, 'dragover');
+    dragEvent(
+      rowsOf(bEl).find(el => el.dataset.id === d1)!,
+      'dragover'
+    );
     await wait(120);
     await flush();
 

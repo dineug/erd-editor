@@ -10,9 +10,9 @@
     "build": "webpack --mode production",
     "nx:dev": "nx dev",
     "nx:build": "nx build",
-    "test": "vitest run",
-    "test:dev": "vitest dev",
-    "test:coverage": "vitest run --coverage",
+    "test": "vp test run",
+    "test:dev": "vp test dev",
+    "test:coverage": "vp test run --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "e2e": "playwright test",
     "e2e:dev": "playwright test --ui",
@@ -60,7 +60,7 @@
     "@types/node": "^22.20.1",
     "@types/react": "^18.2.77",
     "@types/react-dom": "^18.2.25",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "catalog:",
     "copy-webpack-plugin": "^12.0.2",
     "core-js": "^3.36.1",
     "css-loader": "^7.1.1",
@@ -73,12 +73,14 @@
     "swc-loader": "0.2.6",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "typescript": "5.8.2",
-    "vitest": "^4.1.10",
+    "vite": "catalog:",
+    "vitest": "catalog:",
     "webpack": "^5.91.0",
     "ws": "^8.18.3",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.2",
     "webpack-pwa-manifest": "^4.3.0",
-    "workbox-webpack-plugin": "^7.0.0"
+    "workbox-webpack-plugin": "^7.0.0",
+    "vite-plus": "catalog:"
   }
 }

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, parse as parsePath } from 'node:path';
 
 import { compile as stylisCompile, serialize, stringify } from 'stylis';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { compile } from '@/css/compile';
 

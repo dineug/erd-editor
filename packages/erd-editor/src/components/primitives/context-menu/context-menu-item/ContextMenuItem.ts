@@ -73,16 +73,18 @@ const ContextMenuItem: FC<ContextMenuItemProps> = (props, ctx) => {
     >
       ${props.children}
     </div>
-    ${props.subChildren && state.show
-      ? html`
-          <${ContextMenuContent}
-            id=${id}
-            x=${state.x}
-            y=${state.y}
-            children=${props.subChildren}
-          />
-        `
-      : null}
+    ${
+      props.subChildren && state.show
+        ? html`
+            <${ContextMenuContent}
+              id=${id}
+              x=${state.x}
+              y=${state.y}
+              children=${props.subChildren}
+            />
+          `
+        : null
+    }
   `;
 };
 

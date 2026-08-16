@@ -1,6 +1,13 @@
 import { AnyAction } from '@dineug/r-html';
 import { map, Subject } from 'rxjs';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { groupByStreamActions } from '@/engine/rx-operators/groupByStreamActions';
 

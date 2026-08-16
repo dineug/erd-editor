@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
 import { createMemo } from '@/utils/collection/memo.entity';

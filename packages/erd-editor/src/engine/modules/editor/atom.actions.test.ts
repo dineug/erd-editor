@@ -1,5 +1,12 @@
 import { type LWW } from '@dineug/erd-editor-schema';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { CanvasType, Show } from '@/constants/schema';
 import { Clock } from '@/engine/clock';

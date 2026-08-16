@@ -1,5 +1,5 @@
 import { AnyAction, compositionActionsFlat } from '@dineug/r-html';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { CANVAS_ZOOM_MAX, CANVAS_ZOOM_MIN } from '@/constants/schema';
 import { Clock } from '@/engine/clock';

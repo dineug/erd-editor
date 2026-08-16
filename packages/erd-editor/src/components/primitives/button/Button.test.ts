@@ -1,5 +1,5 @@
 import { FC, html, observable } from '@dineug/r-html';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import Button from '@/components/primitives/button/Button';

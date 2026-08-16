@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { actions as rootActions } from '@/engine/actions';
 import { actions } from '@/engine/modules/relationship/atom.actions';

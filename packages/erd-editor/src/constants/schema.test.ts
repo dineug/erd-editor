@@ -1,5 +1,5 @@
 import { SchemaV3Constants } from '@dineug/erd-editor-schema';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import {
   BracketType,

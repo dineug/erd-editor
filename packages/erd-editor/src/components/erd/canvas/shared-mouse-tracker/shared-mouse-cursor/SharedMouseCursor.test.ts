@@ -1,5 +1,5 @@
 import { html } from '@dineug/r-html';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import SharedMouseCursor from '@/components/erd/canvas/shared-mouse-tracker/shared-mouse-cursor/SharedMouseCursor';

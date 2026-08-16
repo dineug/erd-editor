@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { VIEW_TYPE } from '@/constants/viewType';
 import { ErdEditorProvider } from '@/erd-editor-provider';

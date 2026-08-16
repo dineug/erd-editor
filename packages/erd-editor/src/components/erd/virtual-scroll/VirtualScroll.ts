@@ -99,50 +99,54 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
     const showVertical = viewport.height < height;
 
     return html`
-      ${showHorizontal
-        ? html`
-            <div
-              class=${['virtual-scroll', styles.horizontal]}
-              ${ref(horizontal)}
-              @mousedown=${handleMoveLeft}
-            >
+      ${
+        showHorizontal
+          ? html`
               <div
-                class=${['virtual-scroll-ghost-thumb', styles.ghostThumb]}
-                style=${{
-                  width: `${w}px`,
-                  height: '100%',
-                  transform: `translate(${left}px, 0px)`,
-                }}
-                ?data-selected=${state.selected === 'horizontal'}
-                @mousedown=${onScrollLeftStart}
+                class=${['virtual-scroll', styles.horizontal]}
+                ${ref(horizontal)}
+                @mousedown=${handleMoveLeft}
               >
-                <div class=${styles.horizontalThumb}></div>
+                <div
+                  class=${['virtual-scroll-ghost-thumb', styles.ghostThumb]}
+                  style=${{
+                    width: `${w}px`,
+                    height: '100%',
+                    transform: `translate(${left}px, 0px)`,
+                  }}
+                  ?data-selected=${state.selected === 'horizontal'}
+                  @mousedown=${onScrollLeftStart}
+                >
+                  <div class=${styles.horizontalThumb}></div>
+                </div>
               </div>
-            </div>
-          `
-        : null}
-      ${showVertical
-        ? html`
-            <div
-              class=${['virtual-scroll', styles.vertical]}
-              ${ref(vertical)}
-              @mousedown=${handleMoveTop}
-            >
+            `
+          : null
+      }
+      ${
+        showVertical
+          ? html`
               <div
-                class=${['virtual-scroll-ghost-thumb', styles.ghostThumb]}
-                style=${{
-                  width: '100%',
-                  height: `${h}px`,
-                  transform: `translate(0px, ${top}px)`,
-                }}
-                ?data-selected=${state.selected === 'vertical'}
-                @mousedown=${onScrollTopStart}
+                class=${['virtual-scroll', styles.vertical]}
+                ${ref(vertical)}
+                @mousedown=${handleMoveTop}
               >
-                <div class=${styles.verticalThumb}></div>
+                <div
+                  class=${['virtual-scroll-ghost-thumb', styles.ghostThumb]}
+                  style=${{
+                    width: '100%',
+                    height: `${h}px`,
+                    transform: `translate(0px, ${top}px)`,
+                  }}
+                  ?data-selected=${state.selected === 'vertical'}
+                  @mousedown=${onScrollTopStart}
+                >
+                  <div class=${styles.verticalThumb}></div>
+                </div>
               </div>
-            </div>
-          `
-        : null}
+            `
+          : null
+      }
     `;
   };
 };

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { ThemeConfig } from '@/themes/radix-ui-theme.config';
 import { type Theme, ThemeTokens, themeToTokensString } from '@/themes/tokens';

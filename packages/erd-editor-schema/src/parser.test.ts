@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { parser, parserV2, toJson } from '@/parser';
 import { SchemaV3Constants } from '@/v3';

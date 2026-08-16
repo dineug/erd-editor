@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { CollaborativeService } from '@/services/indexeddb/modules/collaborative/service';
 import { encryptToJson, importKey } from '@/utils/crypto';

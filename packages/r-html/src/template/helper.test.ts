@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { MARKER, TAttrType, TEMPLATE_LITERALS } from '@/constants';
 import { TemplateLiteralsType } from '@/template';

@@ -15,7 +15,7 @@
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "vite build"
+    "build": "vp build"
   },
   "devDependencies": {
     "@dineug/erd-editor": "workspace:*",
@@ -24,7 +24,8 @@
     "@rollup/plugin-typescript": "^12.3.0",
     "tslib": "^2.8.1",
     "typescript": "5.8.2",
-    "vite": "^8.2.1",
-    "vite-plugin-dts": "^5.0.3"
+    "vite": "catalog:",
+    "vite-plugin-dts": "^5.0.3",
+    "vite-plus": "catalog:"
   }
 }

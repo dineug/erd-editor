@@ -1,5 +1,5 @@
 import { FC, html, observable } from '@dineug/r-html';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import EditInput, {
@@ -26,21 +26,22 @@ type HostProps = {
   handlers: Handlers;
 };
 
-const Host: FC<HostProps> = (props, ctx) => () => html`
-  <${EditInput}
-    class=${props.state.class}
-    placeholder=${props.state.placeholder}
-    title=${props.state.title}
-    edit=${props.state.edit}
-    focus=${props.state.focus}
-    width=${props.state.width}
-    value=${props.state.value}
-    autofocus=${props.state.autofocus}
-    .onInput=${props.handlers.onInput}
-    .onBlur=${props.handlers.onBlur}
-    .onKeydown=${props.handlers.onKeydown}
-  />
-`;
+const Host: FC<HostProps> = (props, ctx) => () =>
+  html`
+    <${EditInput}
+      class=${props.state.class}
+      placeholder=${props.state.placeholder}
+      title=${props.state.title}
+      edit=${props.state.edit}
+      focus=${props.state.focus}
+      width=${props.state.width}
+      value=${props.state.value}
+      autofocus=${props.state.autofocus}
+      .onInput=${props.handlers.onInput}
+      .onBlur=${props.handlers.onBlur}
+      .onKeydown=${props.handlers.onKeydown}
+    />
+  `;
 
 let mounted: Mounted | null = null;
 let focusEvents = 0;

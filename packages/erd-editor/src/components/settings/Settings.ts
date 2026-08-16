@@ -173,109 +173,115 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
           <div class=${fontSize6}>${state.lnb}</div>
           <${Separator} space=${12} />
           <div class=${['scrollbar', styles.content]}>
-            ${state.lnb === Lnb.preferences
-              ? html`
-                  <div class=${styles.section}>
-                    <div class=${styles.row}>
-                      <div>Relationship DataType Sync</div>
-                      <div class=${styles.vertical(16)}></div>
-                      <${Switch}
-                        value=${settings.relationshipDataTypeSync}
-                        .onChange=${handleChangeRelationshipDataTypeSync}
-                      />
-                    </div>
+            ${
+              state.lnb === Lnb.preferences
+                ? html`
+                    <div class=${styles.section}>
+                      <div class=${styles.row}>
+                        <div>Relationship DataType Sync</div>
+                        <div class=${styles.vertical(16)}></div>
+                        <${Switch}
+                          value=${settings.relationshipDataTypeSync}
+                          .onChange=${handleChangeRelationshipDataTypeSync}
+                        />
+                      </div>
 
-                    <div class=${styles.row}>
-                      <div>Save Scroll Information</div>
-                      <div class=${styles.vertical(16)}></div>
-                      <${Switch}
-                        value=${!bHas(
-                          settings.ignoreSaveSettings,
-                          SaveSettingType.scroll
-                        )}
-                        .onChange=${handleChangeScrollSaveSettings}
-                      />
-                    </div>
+                      <div class=${styles.row}>
+                        <div>Save Scroll Information</div>
+                        <div class=${styles.vertical(16)}></div>
+                        <${Switch}
+                          value=${!bHas(
+                            settings.ignoreSaveSettings,
+                            SaveSettingType.scroll
+                          )}
+                          .onChange=${handleChangeScrollSaveSettings}
+                        />
+                      </div>
 
-                    <div class=${styles.row}>
-                      <div>Save Zoom Information</div>
-                      <div class=${styles.vertical(16)}></div>
-                      <${Switch}
-                        value=${!bHas(
-                          settings.ignoreSaveSettings,
-                          SaveSettingType.zoomLevel
-                        )}
-                        .onChange=${handleChangeZoomLevelSaveSettings}
-                      />
-                    </div>
+                      <div class=${styles.row}>
+                        <div>Save Zoom Information</div>
+                        <div class=${styles.vertical(16)}></div>
+                        <${Switch}
+                          value=${!bHas(
+                            settings.ignoreSaveSettings,
+                            SaveSettingType.zoomLevel
+                          )}
+                          .onChange=${handleChangeZoomLevelSaveSettings}
+                        />
+                      </div>
 
-                    <div class=${styles.row}>
-                      <div>Maximum comment width</div>
-                      <div class=${styles.vertical(16)}></div>
-                      <${Switch}
-                        value=${!maxWidthCommentDisabled}
-                        .onChange=${handleSwitchMaxWidthComment}
-                      />
-                      <div class=${styles.vertical(8)}></div>
-                      <${TextInput}
-                        title="Maximum comment width"
-                        placeholder="Maximum comment width"
-                        width=${45}
-                        value=${maxWidthCommentDisabled
-                          ? toMaxWidthCommentFormat(COLUMN_MIN_WIDTH)
-                          : toMaxWidthCommentFormat(settings.maxWidthComment)}
-                        disabled=${maxWidthCommentDisabled}
-                        numberOnly=${true}
-                        .onChange=${handleChangeMaxWidthComment}
-                      />
-                    </div>
+                      <div class=${styles.row}>
+                        <div>Maximum comment width</div>
+                        <div class=${styles.vertical(16)}></div>
+                        <${Switch}
+                          value=${!maxWidthCommentDisabled}
+                          .onChange=${handleSwitchMaxWidthComment}
+                        />
+                        <div class=${styles.vertical(8)}></div>
+                        <${TextInput}
+                          title="Maximum comment width"
+                          placeholder="Maximum comment width"
+                          width=${45}
+                          value=${
+                            maxWidthCommentDisabled
+                              ? toMaxWidthCommentFormat(COLUMN_MIN_WIDTH)
+                              : toMaxWidthCommentFormat(
+                                  settings.maxWidthComment
+                                )
+                          }
+                          disabled=${maxWidthCommentDisabled}
+                          numberOnly=${true}
+                          .onChange=${handleChangeMaxWidthComment}
+                        />
+                      </div>
 
-                    <div class=${styles.row}>
-                      <div>Recalculation table width</div>
-                      <div class=${styles.vertical(16)}></div>
-                      <${Button}
-                        variant="soft"
-                        size="1"
-                        text=${html`
-                          <${Icon} size=${14} name="rotate" />
-                          <div class=${styles.vertical(8)}></div>
-                          <span>Sync</span>
-                        `}
-                        .onClick=${handleRecalculationTableWidth}
-                      />
-                    </div>
-                    <div class=${styles.columnOrderSection}>
-                      <div>Column Order</div>
-                      <${Separator} space=${12} />
-                      <div
-                        class=${styles.columnOrderList}
-                        @dragenter=${onPrevent}
-                        @dragover=${onPrevent}
-                      >
-                        ${repeat(
-                          settings.columnOrder,
-                          columnType => columnType,
-                          columnType => html`
-                            <div
-                              class=${styles.columnOrderItem}
-                              draggable="true"
-                              data-id=${columnType}
-                              @dragstart=${handleDragstartColumnOrder}
-                            >
-                              <${Menu}
-                                icon=${html`<${Icon} name="bars" size=${14} />`}
-                                name=${ColumnTypeToName[columnType]}
-                              />
-                            </div>
-                          `
-                        )}
+                      <div class=${styles.row}>
+                        <div>Recalculation table width</div>
+                        <div class=${styles.vertical(16)}></div>
+                        <${Button}
+                          variant="soft"
+                          size="1"
+                          text=${html`
+                            <${Icon} size=${14} name="rotate" />
+                            <div class=${styles.vertical(8)}></div>
+                            <span>Sync</span>
+                          `}
+                          .onClick=${handleRecalculationTableWidth}
+                        />
+                      </div>
+                      <div class=${styles.columnOrderSection}>
+                        <div>Column Order</div>
+                        <${Separator} space=${12} />
+                        <div
+                          class=${styles.columnOrderList}
+                          @dragenter=${onPrevent}
+                          @dragover=${onPrevent}
+                        >
+                          ${repeat(
+                            settings.columnOrder,
+                            columnType => columnType,
+                            columnType => html`
+                              <div
+                                class=${styles.columnOrderItem}
+                                draggable="true"
+                                data-id=${columnType}
+                                @dragstart=${handleDragstartColumnOrder}
+                              >
+                                <${Menu}
+                                  icon=${html`<${Icon} name="bars" size=${14} />`}
+                                  name=${ColumnTypeToName[columnType]}
+                                />
+                              </div>
+                            `
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                `
-              : state.lnb === Lnb.shortcuts
-                ? html`<${Shortcuts} />`
-                : null}
+                  `
+                : state.lnb === Lnb.shortcuts
+                  ? html`<${Shortcuts} />`
+                  : null
+            }
           </div>
         </div>
       </div>

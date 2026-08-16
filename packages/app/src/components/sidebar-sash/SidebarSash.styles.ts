@@ -3,13 +3,15 @@ import { css } from '@emotion/react';
 export const sash = (open: boolean) => css`
   position: absolute;
   top: 0;
-  ${open
-    ? css`
-        left: calc(260px - 5px / 2);
-      `
-    : css`
-        left: 0;
-      `}
+  ${
+    open
+      ? css`
+          left: calc(260px - 5px / 2);
+        `
+      : css`
+          left: 0;
+        `
+  }
   width: 5px;
   height: 100%;
   cursor: pointer;

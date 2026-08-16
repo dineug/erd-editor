@@ -7,7 +7,7 @@ import {
   hostSaveThemeCommand,
   hostSaveValueCommand,
 } from '@dineug/erd-editor-vscode-bridge';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { ErdDocument } from '@/erd-document';
 import { ErdEditor } from '@/erd-editor';

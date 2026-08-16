@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, Mock, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  Mock,
+  vi,
+} from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';

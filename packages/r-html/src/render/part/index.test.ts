@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { createElement, createTemplate, Part } from '@/render/part';
 import { AttributePart } from '@/render/part/attribute/attribute';

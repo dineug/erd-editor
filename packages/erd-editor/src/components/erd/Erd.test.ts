@@ -1,6 +1,6 @@
 import { AnyAction, FC, html, observable } from '@dineug/r-html';
 import { config as rxjsConfig } from 'rxjs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createTestAppContext,

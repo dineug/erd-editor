@@ -139,9 +139,14 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
             memo => memo.id,
             memo => html`<${Memo} memo=${memo} />`
           )}
-          ${bHas(show, Show.relationship)
-            ? html`<${CanvasSvg} class=${styles.canvasSvg} strokeWidth=${12} />`
-            : null}
+          ${
+            bHas(show, Show.relationship)
+              ? html`<${CanvasSvg}
+                  class=${styles.canvasSvg}
+                  strokeWidth=${12}
+                />`
+              : null
+          }
         </div>
       </div>
       <div class=${styles.border} style=${borderStyleMap()}></div>

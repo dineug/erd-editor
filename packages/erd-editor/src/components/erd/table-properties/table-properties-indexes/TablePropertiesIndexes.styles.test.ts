@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/erd/table-properties/table-properties-indexes/TablePropertiesIndexes.styles';
 import { COLUMN_HEIGHT, TABLE_PADDING } from '@/constants/layout';

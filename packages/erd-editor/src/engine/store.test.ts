@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 import { watch } from '@dineug/r-html';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { flush } from '@/__test-utils__/index';
 import { Clock } from '@/engine/clock';

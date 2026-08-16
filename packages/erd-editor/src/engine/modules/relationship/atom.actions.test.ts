@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   Direction,

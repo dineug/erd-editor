@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { migrationRelationshipType } from '@/v2/migrations/relationshipType.migration';
 import { RelationshipTypeList } from '@/v2/schema/relationshipEntity';

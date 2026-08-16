@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { copyAction, Emitter, pasteAction } from '@/utils/emitter';
 import { fromCopy } from '@/utils/rx-operators/fromCopy';

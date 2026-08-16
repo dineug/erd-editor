@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { ERDEditorSchemaV3, SchemaV3Constants } from '@/v3/schema';
 import { OrderType, OrderTypeList } from '@/v3/schema/indexColumn.entity';

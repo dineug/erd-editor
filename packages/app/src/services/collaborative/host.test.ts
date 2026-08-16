@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { createFakeRoom, FakeCollaborativeRoom } from '@/__test-utils__/room';
 import { CollaborativeHostService } from '@/services/collaborative/host';

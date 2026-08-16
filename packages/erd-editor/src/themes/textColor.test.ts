@@ -1,5 +1,5 @@
 import Color from 'color';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { toTextColor } from '@/themes/textColor';
 

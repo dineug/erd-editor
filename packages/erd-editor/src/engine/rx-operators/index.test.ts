@@ -1,6 +1,6 @@
 import { AnyAction } from '@dineug/r-html';
 import { Subject } from 'rxjs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as rxOperators from '@/engine/rx-operators';
 import { actionsFilter } from '@/engine/rx-operators/actionsFilter';

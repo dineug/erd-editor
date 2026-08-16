@@ -6,7 +6,7 @@ import {
   GrayColor,
   ThemeOptions,
 } from '@dineug/erd-editor-vscode-bridge';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { getTheme, saveTheme } from '@/configuration';
 

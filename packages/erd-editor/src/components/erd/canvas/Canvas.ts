@@ -82,14 +82,16 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
             memo => html`<${Memo} memo=${memo} />`
           )}
           ${bHas(show, Show.relationship) ? html`<${CanvasSvg} />` : null}
-          ${drawRelationship?.start
-            ? html`
-                <${DrawRelationship}
-                  root=${props.root}
-                  draw=${drawRelationship}
-                />
-              `
-            : null}
+          ${
+            drawRelationship?.start
+              ? html`
+                  <${DrawRelationship}
+                    root=${props.root}
+                    draw=${drawRelationship}
+                  />
+                `
+              : null
+          }
           <${SharedMouseTracker} />
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';

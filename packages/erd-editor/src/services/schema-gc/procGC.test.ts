@@ -3,7 +3,7 @@ import {
   query,
   schemaV3Parser,
 } from '@dineug/erd-editor-schema';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import type { GCIds } from '@/services/schema-gc';
 import { procGC } from '@/services/schema-gc/procGC';

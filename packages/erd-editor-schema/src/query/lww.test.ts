@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { addOperator, removeOperator, replaceOperator } from '@/query/lww';
 import { LWW } from '@/v3/schema/lww';

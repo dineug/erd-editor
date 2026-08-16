@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { Clock } from '@/engine/clock';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';

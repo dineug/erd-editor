@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/erd/diff-viewer/tree-viewer/TreeViewer.styles';
 import { DIFF_TREE_WIDTH } from '@/constants/layout';

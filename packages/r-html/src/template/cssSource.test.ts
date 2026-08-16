@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { TEMPLATE_LITERALS } from '@/constants';
 import { CSS_SOURCE, TemplateLiteralsType } from '@/template';

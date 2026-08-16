@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/erd/canvas/shared-mouse-tracker/shared-mouse-cursor/SharedMouseCursor.styles';
 

@@ -1,5 +1,12 @@
 import { AnyAction } from '@dineug/r-html';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';

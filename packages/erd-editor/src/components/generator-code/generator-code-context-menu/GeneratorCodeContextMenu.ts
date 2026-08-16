@@ -49,9 +49,11 @@ const GeneratorCodeContextMenu: FC<GeneratorCodeContextMenuProps> = (
                 .onClick=${menu.onClick}
                 children=${html`
                   <${ContextMenu.Menu}
-                    icon=${menu.checked
-                      ? html`<${Icon} name="check" size=${14} />`
-                      : null}
+                    icon=${
+                      menu.checked
+                        ? html`<${Icon} name="check" size=${14} />`
+                        : null
+                    }
                     name=${menu.name}
                   />
                 `}
@@ -75,9 +77,11 @@ const GeneratorCodeContextMenu: FC<GeneratorCodeContextMenuProps> = (
                 .onClick=${menu.onClick}
                 children=${html`
                   <${ContextMenu.Menu}
-                    icon=${menu.checked
-                      ? html`<${Icon} name="check" size=${14} />`
-                      : null}
+                    icon=${
+                      menu.checked
+                        ? html`<${Icon} name="check" size=${14} />`
+                        : null
+                    }
                     name=${menu.name}
                   />
                 `}
@@ -103,9 +107,11 @@ const GeneratorCodeContextMenu: FC<GeneratorCodeContextMenuProps> = (
                 .onClick=${menu.onClick}
                 children=${html`
                   <${ContextMenu.Menu}
-                    icon=${menu.checked
-                      ? html`<${Icon} name="check" size=${14} />`
-                      : null}
+                    icon=${
+                      menu.checked
+                        ? html`<${Icon} name="check" size=${14} />`
+                        : null
+                    }
                     name=${menu.name}
                   />
                 `}

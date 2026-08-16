@@ -14,7 +14,7 @@
  * Anything asserted through this stub is asserted against our idea of the API,
  * not the API — that gap is what `test/integration/` covers.
  */
-import { vi } from 'vitest';
+import { vi } from 'vite-plus/test';
 
 export class Disposable {
   static from(...disposables: Array<{ dispose(): any }>) {
@@ -205,9 +205,8 @@ export const workspace = {
     writeFile: vi.fn(async (_uri: Uri, _content: Uint8Array) => undefined),
     delete: vi.fn(async (_uri: Uri) => undefined),
   },
-  getConfiguration: vi.fn(
-    (_section?: string): MockWorkspaceConfiguration =>
-      createWorkspaceConfiguration()
+  getConfiguration: vi.fn((_section?: string): MockWorkspaceConfiguration =>
+    createWorkspaceConfiguration()
   ),
   onDidChangeConfiguration: vi.fn((listener: (e: any) => any) =>
     configurationEmitter.event(listener)

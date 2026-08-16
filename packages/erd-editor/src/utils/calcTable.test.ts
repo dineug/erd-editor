@@ -1,5 +1,5 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { COLUMN_HEIGHT } from '@/constants/layout';
 import { Show } from '@/constants/schema';

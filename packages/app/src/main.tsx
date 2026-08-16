@@ -38,9 +38,8 @@ const router = createBrowserRouter([
       {
         path: 'live',
         lazy: async () => {
-          const { default: Component } = await import(
-            '@/components/live-collaborative/LiveCollaborative'
-          );
+          const { default: Component } =
+            await import('@/components/live-collaborative/LiveCollaborative');
           return { Component };
         },
         errorElement: <LiveCollaborativeError />,

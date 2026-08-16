@@ -1,6 +1,6 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { Clock } from '@/engine/clock';
 import { ActionType } from '@/engine/modules/editor/actions';

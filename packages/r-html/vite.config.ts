@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import typescript from '@rollup/plugin-typescript';
-import { defineConfig } from 'vite';
+import { defineConfig, lazyPlugins } from 'vite-plus';
 import dts from 'vite-plugin-dts';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
@@ -46,7 +46,7 @@ export default defineConfig({
       '@': join(import.meta.dirname, 'src'),
     },
   },
-  plugins: [
+  plugins: lazyPlugins(() => [
     dts({
       tsconfigPath: './tsconfig.build.json',
       compilerOptions: { declarationMap: true },
@@ -56,8 +56,10 @@ export default defineConfig({
       noEmitOnError: true,
       noForceEmit: true,
     }),
-  ],
+  ]),
   server: {
-    open: true,
+    // `vp dev` has no `--no-open`, so the e2e run turns this off through the
+    // environment instead of a CLI flag — the same shape erd-editor already uses.
+    open: !process.env.E2E,
   },
 });

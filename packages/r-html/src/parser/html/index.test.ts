@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { htmlParser, parser } from '@/parser/html';
 import { Token, TokenType } from '@/parser/html/tokenizer';

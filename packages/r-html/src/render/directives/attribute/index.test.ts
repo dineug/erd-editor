@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as attributeDirectives from '@/render/directives/attribute';
 import { createRef, ref } from '@/render/directives/attribute/ref';

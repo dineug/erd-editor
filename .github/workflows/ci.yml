@@ -31,8 +31,10 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - run: pnpm install
-      - run: pnpm lint
-      - run: pnpm exec prettier "**/*.{ts,mts,tsx}" --check
+      # One pass over format and lint, both from the root `vite.config.ts`.
+      # Replaces `pnpm lint` + `prettier --check`; the job was green with those
+      # and has to stay green with this, which is the point of adding it first.
+      - run: pnpm check
       # These two are the only packages whose sources are not typechecked by a
       # build: `app` bundles with swc, which strips types without reading them,
       # and `vuerd-vscode` compiles only what it bundles (`onlyCompileBundledFiles`),

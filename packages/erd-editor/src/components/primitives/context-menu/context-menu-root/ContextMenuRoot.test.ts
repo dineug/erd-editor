@@ -1,5 +1,5 @@
 import { DOMTemplateLiterals, FC, html } from '@dineug/r-html';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import ContextMenuRoot from '@/components/primitives/context-menu/context-menu-root/ContextMenuRoot';

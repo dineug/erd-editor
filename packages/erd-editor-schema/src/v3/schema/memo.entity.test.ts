@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as memoEntityModule from '@/v3/schema/memo.entity';
 import { Memo, MemoUI } from '@/v3/schema/memo.entity';

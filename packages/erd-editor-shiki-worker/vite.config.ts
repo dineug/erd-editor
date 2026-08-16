@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import typescript from '@rollup/plugin-typescript';
-import { defineConfig } from 'vite';
+import { defineConfig, lazyPlugins } from 'vite-plus';
 import dts from 'vite-plugin-dts';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
@@ -35,5 +35,8 @@ export default defineConfig({
       '@': join(import.meta.dirname, 'src'),
     },
   },
-  plugins: [dts(), typescript({ noEmitOnError: true, noForceEmit: true })],
+  plugins: lazyPlugins(() => [
+    dts(),
+    typescript({ noEmitOnError: true, noForceEmit: true }),
+  ]),
 });

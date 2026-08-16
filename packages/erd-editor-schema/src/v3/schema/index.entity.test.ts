@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as indexEntityModule from '@/v3/schema/index.entity';
 import { Index } from '@/v3/schema/index.entity';

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { rangeNodes } from '@/render/helper';
 import { ObjectPart } from '@/render/part/node/text/object';

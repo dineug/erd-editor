@@ -98,31 +98,33 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
             .onChange=${handleChangeTab}
           />
           <div class=${['scrollbar', styles.scrollbarArea]}>
-            ${state.tab === Tab.Indexes
-              ? html`
-                  <div class=${styles.scope}>
-                    <${TablePropertiesIndexes} tableId=${props.tableId} />
-                  </div>
-                `
-              : state.tab === Tab.SchemaSQL
+            ${
+              state.tab === Tab.Indexes
                 ? html`
                     <div class=${styles.scope}>
-                      <${SchemaSQL}
-                        isDarkMode=${props.isDarkMode}
-                        tableId=${props.tableId}
-                      />
+                      <${TablePropertiesIndexes} tableId=${props.tableId} />
                     </div>
                   `
-                : state.tab === Tab.GeneratorCode
+                : state.tab === Tab.SchemaSQL
                   ? html`
                       <div class=${styles.scope}>
-                        <${GeneratorCode}
+                        <${SchemaSQL}
                           isDarkMode=${props.isDarkMode}
                           tableId=${props.tableId}
                         />
                       </div>
                     `
-                  : null}
+                  : state.tab === Tab.GeneratorCode
+                    ? html`
+                        <div class=${styles.scope}>
+                          <${GeneratorCode}
+                            isDarkMode=${props.isDarkMode}
+                            tableId=${props.tableId}
+                          />
+                        </div>
+                      `
+                    : null
+            }
           </div>
         </div>
       </div>

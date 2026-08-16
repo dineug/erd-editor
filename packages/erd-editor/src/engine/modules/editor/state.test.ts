@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
 import { Clock } from '@/engine/clock';

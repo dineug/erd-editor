@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vite-plus/test';
 
 import { css } from '@/template/css';
 import { addCSSHost } from '@/template/vCSSStyleSheet';

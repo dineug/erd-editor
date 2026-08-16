@@ -267,27 +267,31 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
               `
             : null
         )}
-        ${settings.canvasType === CanvasType.visualization
-          ? html`<div class=${styles.scope}><${Visualization} /></div>`
-          : settings.canvasType === CanvasType.schemaSQL
-            ? html`
-                <div class=${styles.scope}>
-                  <${SchemaSQL} isDarkMode=${isDarkMode} />
-                </div>
-              `
-            : settings.canvasType === CanvasType.generatorCode
+        ${
+          settings.canvasType === CanvasType.visualization
+            ? html`<div class=${styles.scope}><${Visualization} /></div>`
+            : settings.canvasType === CanvasType.schemaSQL
               ? html`
                   <div class=${styles.scope}>
-                    <${GeneratorCode} isDarkMode=${isDarkMode} />
+                    <${SchemaSQL} isDarkMode=${isDarkMode} />
                   </div>
                 `
-              : settings.canvasType === CanvasType.settings
-                ? html`<div class=${styles.scope}><${Settings} /></div>`
-                : null}
+              : settings.canvasType === CanvasType.generatorCode
+                ? html`
+                    <div class=${styles.scope}>
+                      <${GeneratorCode} isDarkMode=${isDarkMode} />
+                    </div>
+                  `
+                : settings.canvasType === CanvasType.settings
+                  ? html`<div class=${styles.scope}><${Settings} /></div>`
+                  : null
+        }
         <${ToastContainer} />
-        ${props.enableThemeBuilder
-          ? html`<${ThemeBuilder} theme=${themeState.options} />`
-          : null}
+        ${
+          props.enableThemeBuilder
+            ? html`<${ThemeBuilder} theme=${themeState.options} />`
+            : null
+        }
         <${QuickSearch} />
         ${text.span}
       </div>

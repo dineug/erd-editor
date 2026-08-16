@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { ActionType } from '@/engine/modules/index/actions';
 import { actions, indexReducers } from '@/engine/modules/index/atom.actions';

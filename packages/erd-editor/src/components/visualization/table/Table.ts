@@ -59,17 +59,19 @@ const Table: FC<TableProps> = (props, ctx) => {
                 value=${table.name}
               />
             </div>
-            ${bHas(settings.show, Show.tableComment)
-              ? html`
-                  <div class="input-padding">
-                    <${EditInput}
-                      placeholder="comment"
-                      width=${table.ui.widthComment}
-                      value=${table.comment}
-                    />
-                  </div>
-                `
-              : null}
+            ${
+              bHas(settings.show, Show.tableComment)
+                ? html`
+                    <div class="input-padding">
+                      <${EditInput}
+                        placeholder="comment"
+                        width=${table.ui.widthComment}
+                        value=${table.comment}
+                      />
+                    </div>
+                  `
+                : null
+            }
           </div>
         </div>
         <div>

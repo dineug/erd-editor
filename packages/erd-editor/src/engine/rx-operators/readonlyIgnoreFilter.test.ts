@@ -1,6 +1,6 @@
 import { AnyAction } from '@dineug/r-html';
 import { Subject } from 'rxjs';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { ReadonlyIgnoreActionTypes } from '@/engine/actions';
 import { readonlyIgnoreFilter } from '@/engine/rx-operators/readonlyIgnoreFilter';

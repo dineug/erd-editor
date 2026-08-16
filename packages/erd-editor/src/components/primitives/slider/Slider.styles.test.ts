@@ -1,5 +1,5 @@
 import { addCSSHost } from '@dineug/r-html';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vite-plus/test';
 
 import {
   range,

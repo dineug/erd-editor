@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { v2ToV3, v3ToV2 } from '@/convert';
 import { type ERDEditorSchemaV2, schemaV2Parser } from '@/v2';

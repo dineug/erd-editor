@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
 import typescript from '@rollup/plugin-typescript';
-import { defineConfig } from 'vite';
+import { defineConfig, lazyPlugins } from 'vite-plus';
 import dts from 'vite-plugin-dts';
 
 export default defineConfig({
@@ -16,7 +16,7 @@ export default defineConfig({
       '@': join(import.meta.dirname, 'src'),
     },
   },
-  plugins: [
+  plugins: lazyPlugins(() => [
     dts({
       tsconfigPath: './tsconfig.build.json',
       compilerOptions: { declarationMap: true },
@@ -26,5 +26,5 @@ export default defineConfig({
       noEmitOnError: true,
       noForceEmit: true,
     }),
-  ],
+  ]),
 });

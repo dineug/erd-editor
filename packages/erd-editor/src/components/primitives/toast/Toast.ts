@@ -15,23 +15,31 @@ const Toast: FC<ToastProps> = (props, ctx) => {
 
     return html`
       <div class=${styles.root}>
-        ${showText
-          ? html`
-              <div class=${styles.textWrap}>
-                ${props.title
-                  ? html`<div class=${styles.title}>${props.title}</div>`
-                  : null}
-                ${props.description
-                  ? html`<div class=${styles.description}>
-                      ${props.description}
-                    </div>`
-                  : null}
-              </div>
-            `
-          : null}
-        ${showButton
-          ? html`<div class=${styles.action}>${props.action}</div>`
-          : null}
+        ${
+          showText
+            ? html`
+                <div class=${styles.textWrap}>
+                  ${
+                    props.title
+                      ? html`<div class=${styles.title}>${props.title}</div>`
+                      : null
+                  }
+                  ${
+                    props.description
+                      ? html`<div class=${styles.description}>
+                          ${props.description}
+                        </div>`
+                      : null
+                  }
+                </div>
+              `
+            : null
+        }
+        ${
+          showButton
+            ? html`<div class=${styles.action}>${props.action}</div>`
+            : null
+        }
       </div>
     `;
   };

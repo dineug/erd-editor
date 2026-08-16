@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { TEMPLATE_LITERALS } from '@/constants';
 import {
@@ -96,9 +96,11 @@ describe('template/index', () => {
       expect(svg`<svg></svg>`[TEMPLATE_LITERALS]).toBe(
         TemplateLiteralsType.svg
       );
-      expect(css`
-        color: red;
-      `[TEMPLATE_LITERALS]).toBe(TemplateLiteralsType.css);
+      expect(
+        css`
+          color: red;
+        `[TEMPLATE_LITERALS]
+      ).toBe(TemplateLiteralsType.css);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { type Collections, query } from '@/query';
 import { LWW } from '@/v3/schema/lww';

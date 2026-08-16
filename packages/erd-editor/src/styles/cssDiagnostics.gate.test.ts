@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { css, Diagnostic, setCSSDiagnostics } from '@dineug/r-html';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 
 /**
  * The gate the compiler's diagnostics exist for.

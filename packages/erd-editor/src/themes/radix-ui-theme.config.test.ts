@@ -1,5 +1,5 @@
 import { get } from 'lodash-es';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { Palette } from '@/themes/radix-ui-theme';
 import { ThemeConfig } from '@/themes/radix-ui-theme.config';

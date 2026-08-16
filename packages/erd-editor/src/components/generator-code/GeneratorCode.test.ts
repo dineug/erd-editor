@@ -1,5 +1,12 @@
 import { FC, html, observable } from '@dineug/r-html';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import {
   createTestAppContext,

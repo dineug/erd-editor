@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';

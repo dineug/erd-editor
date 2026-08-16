@@ -6,7 +6,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "vite build"
+    "build": "vp build"
   },
   "dependencies": {
     "@babel/core": "^7.26.9",
@@ -15,7 +15,8 @@
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
     "typescript": "5.8.2",
-    "vite": "^8.2.1",
-    "vite-plugin-dts": "^5.0.3"
+    "vite": "catalog:",
+    "vite-plugin-dts": "^5.0.3",
+    "vite-plus": "catalog:"
   }
 }

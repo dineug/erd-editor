@@ -96,9 +96,11 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
         value=${state.sql}
         .onCopy=${handleCopy}
       />
-      ${contextMenu.state.show
-        ? html`<${SchemaSQLContextMenu} .onClose=${handleContextmenuClose} />`
-        : null}
+      ${
+        contextMenu.state.show
+          ? html`<${SchemaSQLContextMenu} .onClose=${handleContextmenuClose} />`
+          : null
+      }
     </div>
   `;
 };

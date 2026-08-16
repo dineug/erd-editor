@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/theme-builder/ThemeBuilder.styles';
 import { fontSize5, typography } from '@/styles/typography.styles';

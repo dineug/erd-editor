@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/primitives/button/Button.styles';
 import { fontSize1, fontSize2, fontSize3 } from '@/styles/typography.styles';

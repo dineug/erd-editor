@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { OrderType } from '@/constants/schema';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';

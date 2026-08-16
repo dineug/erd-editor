@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { DIRECTIVE } from '@/constants';
 import { createDirectiveTuple, DirectiveType } from '@/render/directives';

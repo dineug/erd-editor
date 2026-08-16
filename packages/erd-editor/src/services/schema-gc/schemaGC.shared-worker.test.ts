@@ -1,5 +1,5 @@
 import * as Comlink from 'comlink';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 
 import type { SchemaGCService } from '@/services/schema-gc/schemaGCService';
 

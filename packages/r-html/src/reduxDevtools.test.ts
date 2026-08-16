@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { reduxDevtools } from '@/reduxDevtools';
 import { createAction, createStore, type Store } from '@/store';

@@ -4,9 +4,7 @@ import { VIEW_TYPE } from '@/constants/viewType';
 import { CreateEditor } from '@/editor';
 import { ErdDocument } from '@/erd-document';
 
-export class ErdEditorProvider
-  implements vscode.CustomEditorProvider<ErdDocument>
-{
+export class ErdEditorProvider implements vscode.CustomEditorProvider<ErdDocument> {
   private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<
     vscode.CustomDocumentContentChangeEvent<ErdDocument>
   >();

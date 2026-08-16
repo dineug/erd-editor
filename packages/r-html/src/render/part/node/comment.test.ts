@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { CommentPart } from '@/render/part/node/comment';
 import { html } from '@/template/html';

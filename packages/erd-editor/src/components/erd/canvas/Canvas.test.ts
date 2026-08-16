@@ -1,5 +1,5 @@
 import { createRef, html } from '@dineug/r-html';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import Canvas from '@/components/erd/canvas/Canvas';

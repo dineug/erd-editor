@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { render } from '@/render';
 import { NoopComponent } from '@/render/part/node/component/helper';

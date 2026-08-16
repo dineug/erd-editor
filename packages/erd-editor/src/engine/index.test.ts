@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as engine from '@/engine';
 import { createReplicationStore as createFromModule } from '@/engine/replication-store';

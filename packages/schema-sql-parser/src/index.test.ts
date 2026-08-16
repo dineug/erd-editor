@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { describe, expect, it, test } from 'vitest';
+import { describe, expect, it, test } from 'vite-plus/test';
 
 import { schemaSQLParser, SortType, StatementType } from '@/index';
 

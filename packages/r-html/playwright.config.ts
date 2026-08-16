@@ -55,9 +55,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    // `vite.config.ts` sets `server.open: true` for `pnpm dev`; `--no-open`
-    // is the CLI override that keeps the e2e run headless.
-    command: `pnpm exec vite serve --port ${PORT} --strictPort --no-open`,
+    // `vite.config.ts` opens a browser for `pnpm dev`. `vp dev` has no
+    // `--no-open` flag, so `E2E` is what keeps this run headless.
+    command: `pnpm exec vp dev --port ${PORT} --strictPort`,
+    env: { E2E: '1' },
     url: `${BASE_URL}/e2e/fixture/index.html`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

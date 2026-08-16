@@ -1,6 +1,6 @@
 import '@/components/customElementRegistry';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 describe('customElementRegistry', () => {
   it('registers the <erd-editor> custom element', () => {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { ActionType } from '@/engine/modules/table-column/actions';
 import { tableColumnReducers } from '@/engine/modules/table-column/atom.actions';

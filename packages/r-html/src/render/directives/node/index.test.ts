@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import * as nodeDirectives from '@/render/directives/node';
 import { cache } from '@/render/directives/node/cache';

@@ -427,80 +427,94 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         <${VirtualScroll} />
         <${Minimap} />
         <${HideSign} root=${root} />
-        ${state.dragSelect
-          ? html`
-              <${DragSelect}
-                root=${root}
-                x=${state.dragSelectX}
-                y=${state.dragSelectY}
-                .onDragSelectEnd=${handleDragSelectEnd}
-              />
-            `
-          : null}
-        ${contextMenu.state.show
-          ? html`
-              <${ErdContextMenu}
-                type=${state.contextMenuType}
-                canvas=${canvas}
-                relationshipId=${state.relationshipId}
-                tableId=${state.tableId}
-                .onClose=${handleContextmenuClose}
-              />
-            `
-          : null}
-        ${state.colorPickerShow
-          ? html`
-              <${ColorPicker}
-                color=${state.colorPickerInitialColor}
-                x=${state.colorPickerX}
-                y=${state.colorPickerY}
-                viewport=${state.colorPickerViewport}
-                .onChange=${handleChangeColorPicker}
-              />
-            `
-          : null}
-        ${showAutomaticTablePlacement
-          ? html`
-              <div>
-                <${AutomaticTablePlacement}
-                  app=${app}
-                  .onChange=${handleChangeAutomaticTablePlacement}
+        ${
+          state.dragSelect
+            ? html`
+                <${DragSelect}
+                  root=${root}
+                  x=${state.dragSelectX}
+                  y=${state.dragSelectY}
+                  .onDragSelectEnd=${handleDragSelectEnd}
                 />
-              </div>
-            `
-          : null}
-        ${showTableProperties
-          ? html`
-              <${TableProperties}
-                tableId=${state.tablePropertiesId}
-                tableIds=${state.tablePropertiesIds}
-                isDarkMode=${props.isDarkMode}
-                .onChange=${handleChangeTableProperties}
-              />
-            `
-          : null}
-        ${showDiffViewer
-          ? html`
-              <div>
-                <${DiffViewer}
-                  app=${app}
-                  initialValue=${state.diffValue}
-                  .onClose=${handleDiffViewerClose}
+              `
+            : null
+        }
+        ${
+          contextMenu.state.show
+            ? html`
+                <${ErdContextMenu}
+                  type=${state.contextMenuType}
+                  canvas=${canvas}
+                  relationshipId=${state.relationshipId}
+                  tableId=${state.tableId}
+                  .onClose=${handleContextmenuClose}
                 />
-              </div>
-            `
-          : null}
-        ${showTimeTravel
-          ? html`
-              <div>
-                <${TimeTravel}
-                  app=${app}
-                  .onChange=${handleChangeTimeTravel}
-                  .onClose=${handleTimeTravelClose}
+              `
+            : null
+        }
+        ${
+          state.colorPickerShow
+            ? html`
+                <${ColorPicker}
+                  color=${state.colorPickerInitialColor}
+                  x=${state.colorPickerX}
+                  y=${state.colorPickerY}
+                  viewport=${state.colorPickerViewport}
+                  .onChange=${handleChangeColorPicker}
                 />
-              </div>
-            `
-          : null}
+              `
+            : null
+        }
+        ${
+          showAutomaticTablePlacement
+            ? html`
+                <div>
+                  <${AutomaticTablePlacement}
+                    app=${app}
+                    .onChange=${handleChangeAutomaticTablePlacement}
+                  />
+                </div>
+              `
+            : null
+        }
+        ${
+          showTableProperties
+            ? html`
+                <${TableProperties}
+                  tableId=${state.tablePropertiesId}
+                  tableIds=${state.tablePropertiesIds}
+                  isDarkMode=${props.isDarkMode}
+                  .onChange=${handleChangeTableProperties}
+                />
+              `
+            : null
+        }
+        ${
+          showDiffViewer
+            ? html`
+                <div>
+                  <${DiffViewer}
+                    app=${app}
+                    initialValue=${state.diffValue}
+                    .onClose=${handleDiffViewerClose}
+                  />
+                </div>
+              `
+            : null
+        }
+        ${
+          showTimeTravel
+            ? html`
+                <div>
+                  <${TimeTravel}
+                    app=${app}
+                    .onChange=${handleChangeTimeTravel}
+                    .onClose=${handleTimeTravelClose}
+                  />
+                </div>
+              `
+            : null
+        }
       </div>
     `;
   };

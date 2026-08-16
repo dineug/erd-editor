@@ -1,5 +1,5 @@
 import { AnyAction } from '@dineug/r-html';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { Command, createHistory } from '@/engine/history';
 

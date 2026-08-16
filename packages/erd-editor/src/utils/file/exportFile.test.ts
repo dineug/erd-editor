@@ -1,6 +1,13 @@
 import { toBlob } from 'html-to-image';
 import { DateTime } from 'luxon';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import {
   exportJSON,

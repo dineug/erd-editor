@@ -45,7 +45,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm exec vite serve --mode lib --port ${PORT} --strictPort`,
+    command: `pnpm exec vp dev --mode lib --port ${PORT} --strictPort`,
     url: `${BASE_URL}${'/e2e/fixture/index.html'}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

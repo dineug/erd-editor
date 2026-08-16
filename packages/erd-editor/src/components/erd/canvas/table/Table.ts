@@ -306,35 +306,39 @@ const Table: FC<TableProps> = (props, ctx) => {
                 }}
               />
             </div>
-            ${bHas(settings.show, Show.tableComment)
-              ? html`
-                  <div
-                    class="input-padding"
-                    data-type="tableComment"
-                    @mousedown=${() => {
-                      handleFocus(FocusType.tableComment);
-                    }}
-                    @dblclick=${handleEdit}
-                  >
-                    <${EditInput}
-                      placeholder="comment"
-                      width=${settings.maxWidthComment === -1
-                        ? table.ui.widthComment
-                        : settings.maxWidthComment < table.ui.widthComment
-                          ? settings.maxWidthComment
-                          : table.ui.widthComment}
-                      value=${table.comment}
-                      focus=${hasFocus(FocusType.tableComment)}
-                      edit=${hasEdit(FocusType.tableComment)}
-                      autofocus=${true}
-                      .onBlur=${handleEditEnd}
-                      .onInput=${(event: InputEvent) => {
-                        handleInput(event, FocusType.tableComment);
+            ${
+              bHas(settings.show, Show.tableComment)
+                ? html`
+                    <div
+                      class="input-padding"
+                      data-type="tableComment"
+                      @mousedown=${() => {
+                        handleFocus(FocusType.tableComment);
                       }}
-                    />
-                  </div>
-                `
-              : null}
+                      @dblclick=${handleEdit}
+                    >
+                      <${EditInput}
+                        placeholder="comment"
+                        width=${
+                          settings.maxWidthComment === -1
+                            ? table.ui.widthComment
+                            : settings.maxWidthComment < table.ui.widthComment
+                              ? settings.maxWidthComment
+                              : table.ui.widthComment
+                        }
+                        value=${table.comment}
+                        focus=${hasFocus(FocusType.tableComment)}
+                        edit=${hasEdit(FocusType.tableComment)}
+                        autofocus=${true}
+                        .onBlur=${handleEditEnd}
+                        .onInput=${(event: InputEvent) => {
+                          handleInput(event, FocusType.tableComment);
+                        }}
+                      />
+                    </div>
+                  `
+                : null
+            }
           </div>
         </div>
         <div

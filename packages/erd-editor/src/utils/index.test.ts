@@ -1,5 +1,5 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { START_ADD, START_X, START_Y } from '@/constants/layout';
 import { Memo, Settings, Table } from '@/internal-types';

@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { Clock } from '@/engine/clock';
 import { DrawRelationship } from '@/engine/modules/editor/state';

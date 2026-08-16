@@ -1,6 +1,6 @@
 import { FC, html } from '@dineug/r-html';
 import { Subject } from 'rxjs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import {

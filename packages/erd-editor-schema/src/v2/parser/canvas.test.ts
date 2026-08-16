@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { createAndMergeCanvasEntity } from '@/v2/parser/canvas';
 import {

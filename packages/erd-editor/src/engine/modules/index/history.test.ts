@@ -1,5 +1,5 @@
 import { AnyAction } from '@dineug/r-html';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { Clock } from '@/engine/clock';
 import { createHistory } from '@/engine/history';

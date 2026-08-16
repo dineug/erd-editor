@@ -239,33 +239,39 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
                     handlePerform(index);
                   }}
                 >
-                  ${action.icon
-                    ? html`<div class=${styles.icon}>${action.icon}</div>`
-                    : null}
+                  ${
+                    action.icon
+                      ? html`<div class=${styles.icon}>${action.icon}</div>`
+                      : null
+                  }
                   <span class=${styles.name}>
                     <${HighlightedText}
                       searchWords=${[state.keyword]}
                       textToHighlight=${action.name}
                     />
                   </span>
-                  ${action.keywords
-                    ? html`
-                        <div class=${styles.vertical}></div>
-                        <span class=${styles.keyword}>
-                          <${HighlightedText}
-                            searchWords=${[state.keyword]}
-                            textToHighlight=${action.keywords}
-                          />
-                        </span>
-                      `
-                    : null}
-                  ${action.shortcut
-                    ? html`
-                        <div class=${styles.shortcut}>
-                          <${Kbd} shortcut=${action.shortcut} />
-                        </div>
-                      `
-                    : null}
+                  ${
+                    action.keywords
+                      ? html`
+                          <div class=${styles.vertical}></div>
+                          <span class=${styles.keyword}>
+                            <${HighlightedText}
+                              searchWords=${[state.keyword]}
+                              textToHighlight=${action.keywords}
+                            />
+                          </span>
+                        `
+                      : null
+                  }
+                  ${
+                    action.shortcut
+                      ? html`
+                          <div class=${styles.shortcut}>
+                            <${Kbd} shortcut=${action.shortcut} />
+                          </div>
+                        `
+                      : null
+                  }
                 </div>
               `
             )}

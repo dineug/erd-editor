@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';

@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 
 /**
  * The two regression assertions the CSS compiler switch owes.
@@ -79,16 +79,13 @@ beforeAll(async () => {
     await styleModules[path]();
   }
 
-  const canvasSvg = await import(
-    '@/components/erd/canvas/canvas-svg/CanvasSvg.styles'
-  );
+  const canvasSvg =
+    await import('@/components/erd/canvas/canvas-svg/CanvasSvg.styles');
   const erdEditor = await import('@/components/erd-editor/ErdEditor.styles');
-  const codeBlock = await import(
-    '@/components/primitives/code-block/CodeBlock.styles'
-  );
-  const colorPicker = await import(
-    '@/components/primitives/color-picker/ColorPicker.styles'
-  );
+  const codeBlock =
+    await import('@/components/primitives/code-block/CodeBlock.styles');
+  const colorPicker =
+    await import('@/components/primitives/color-picker/ColorPicker.styles');
   const sash = await import('@/components/primitives/sash/Sash.styles');
   canvasSvgScope = `.${String(canvasSvg.root)}`;
   erdEditorScope = `.${String(erdEditor.root)}`;

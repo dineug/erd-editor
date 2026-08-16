@@ -44,17 +44,18 @@ const Icon: FC<IconProps> = (props, ctx) => () => {
       @mouseenter=${props.onMouseenter}
       @mouseleave=${props.onMouseleave}
     >
-      ${prefix === 'base64'
-        ? html`
-            <img
-              style=${{
-                width: `${size}px`,
-                height: `${size}px`,
-              }}
-              src=${d}
-            />
-          `
-        : svg`
+      ${
+        prefix === 'base64'
+          ? html`
+              <img
+                style=${{
+                  width: `${size}px`,
+                  height: `${size}px`,
+                }}
+                src=${d}
+              />
+            `
+          : svg`
             <svg
               class=${props.useTransition ? styles.icon : null}
               style=${{
@@ -69,7 +70,8 @@ const Icon: FC<IconProps> = (props, ctx) => () => {
                   : svg`<path d=${d}></path>`
               }
             </svg>
-    `}
+    `
+      }
     </div>
   `;
 };

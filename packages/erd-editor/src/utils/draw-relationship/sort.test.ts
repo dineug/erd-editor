@@ -1,5 +1,5 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { Direction } from '@/constants/schema';
 import { createEditor } from '@/engine/modules/editor/state';

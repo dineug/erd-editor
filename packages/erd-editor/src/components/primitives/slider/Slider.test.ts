@@ -1,5 +1,5 @@
 import { html } from '@dineug/r-html';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { mountAndFlush, Mounted } from '@/__test-utils__/index';
 import Slider, { SliderProps } from '@/components/primitives/slider/Slider';

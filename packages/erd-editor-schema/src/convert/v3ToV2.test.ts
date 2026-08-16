@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { v3ToV2 } from '@/convert/v3ToV2';
 import { SchemaV2Constants } from '@/v2';

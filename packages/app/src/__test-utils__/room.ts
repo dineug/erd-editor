@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi } from 'vite-plus/test';
 
 import { CollaborativeRoom, Strategy } from '@/services/collaborative/room';
 import { EncryptJson } from '@/utils/crypto';

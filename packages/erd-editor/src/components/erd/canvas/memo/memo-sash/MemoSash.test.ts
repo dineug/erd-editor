@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 import { html } from '@dineug/r-html';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   createTestAppContext,

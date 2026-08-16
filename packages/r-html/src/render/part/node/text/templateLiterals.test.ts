@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { TemplateLiteralsPart } from '@/render/part/node/text/templateLiterals';
 import { TemplateLiterals } from '@/template';

@@ -49,7 +49,7 @@ export function mount(
   // `useProvider` accepts a bare HTMLElement at runtime (`ctx instanceof HTMLElement`)
   // but its public type only admits a component context, hence the cast.
   // It is also r-html's useProvider, not a React hook — the rule cannot tell them apart.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // oxlint-disable-next-line react-hooks/rules-of-hooks
   const provider = useProvider(container as any, appContext, app);
   render(container, template);
 

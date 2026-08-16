@@ -1,7 +1,7 @@
 import { AnyAction, createAction } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 import { Subject } from 'rxjs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';

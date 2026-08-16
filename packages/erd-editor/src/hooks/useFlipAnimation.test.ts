@@ -1,5 +1,12 @@
 import { createRef, FC, html, observable, ref, repeat } from '@dineug/r-html';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import { useFlipAnimation } from '@/hooks/useFlipAnimation';

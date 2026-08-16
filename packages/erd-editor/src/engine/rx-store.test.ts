@@ -1,5 +1,5 @@
 import { AnyAction } from '@dineug/r-html';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';

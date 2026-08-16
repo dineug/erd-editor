@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { html, nextTick, render } from '@/index';
 import { innerHTML } from '@/render/directives/node/innerHTML';

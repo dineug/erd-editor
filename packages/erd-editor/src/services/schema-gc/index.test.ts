@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { SchemaGCService } from '@/services/schema-gc/schemaGCService';
 
@@ -105,9 +105,8 @@ describe('getSchemaGCService', () => {
 
     const { getSchemaGCService } = await importFresh();
     const service = await getSchemaGCService();
-    const { SchemaGCService: FreshSchemaGCService } = await import(
-      '@/services/schema-gc/schemaGCService'
-    );
+    const { SchemaGCService: FreshSchemaGCService } =
+      await import('@/services/schema-gc/schemaGCService');
 
     expect(mocks.wrap).not.toHaveBeenCalled();
     expect(service).toBeInstanceOf(FreshSchemaGCService);

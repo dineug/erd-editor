@@ -1,5 +1,5 @@
 import { FC, html, observable } from '@dineug/r-html';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import ColumnNotNull from '@/components/erd/canvas/table/column/column-not-null/ColumnNotNull';

@@ -218,13 +218,15 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
         return html`
           <div class=${styles.table} @click=${() => handleMove(table)}>
             <div class=${[styles.icon, classMap]}>
-              ${isInsert && isDelete
-                ? html`<${Icon} prefix="mdi" name="plus-minus" size=${14} />`
-                : isInsert
-                  ? html`<${Icon} prefix="mdi" name="plus" size=${14} />`
-                  : isDelete
-                    ? html`<${Icon} prefix="mdi" name="minus" size=${14} />`
-                    : html`<${Icon} name="table" size=${14} />`}
+              ${
+                isInsert && isDelete
+                  ? html`<${Icon} prefix="mdi" name="plus-minus" size=${14} />`
+                  : isInsert
+                    ? html`<${Icon} prefix="mdi" name="plus" size=${14} />`
+                    : isDelete
+                      ? html`<${Icon} prefix="mdi" name="minus" size=${14} />`
+                      : html`<${Icon} name="table" size=${14} />`
+              }
             </div>
             <span class=${styles.ellipsis}>${tableName}</span>
           </div>
@@ -241,17 +243,23 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
             return html`
               <div class=${styles.column} @click=${() => handleMove(table)}>
                 <div class=${[styles.icon, classMap]}>
-                  ${isInsert && isDelete
-                    ? html`<${Icon}
-                        prefix="mdi"
-                        name="plus-minus"
-                        size=${14}
-                      />`
-                    : isInsert
-                      ? html`<${Icon} prefix="mdi" name="plus" size=${14} />`
-                      : isDelete
-                        ? html`<${Icon} prefix="mdi" name="minus" size=${14} />`
-                        : null}
+                  ${
+                    isInsert && isDelete
+                      ? html`<${Icon}
+                          prefix="mdi"
+                          name="plus-minus"
+                          size=${14}
+                        />`
+                      : isInsert
+                        ? html`<${Icon} prefix="mdi" name="plus" size=${14} />`
+                        : isDelete
+                          ? html`<${Icon}
+                              prefix="mdi"
+                              name="minus"
+                              size=${14}
+                            />`
+                          : null
+                  }
                 </div>
                 <span class=${styles.ellipsis}>${columnName}</span>
               </div>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { TAttrType } from '@/constants';
 import { PropPart } from '@/render/part/node/component/prop';

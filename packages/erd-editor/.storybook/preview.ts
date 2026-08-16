@@ -40,7 +40,6 @@ const withThemeProvider = (Story, context) => {
     html`
       <style>
         ${context.parameters.css}
-
         :root {
           ${themeToGlobalTokensString(createTheme(themeOptions))}
           ${themeToTokensString(createTheme(themeOptions))}

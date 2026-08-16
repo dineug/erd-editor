@@ -1,5 +1,5 @@
 import { Subject } from 'rxjs';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__/index';
 import { erdShortcutPerformCheck } from '@/components/erd/erdShortcutPerformCheck';

@@ -1,5 +1,5 @@
 import { svg } from '@dineug/r-html';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { mountAndFlush, Mounted } from '@/__test-utils__/index';
 import { relationshipShape } from '@/components/erd/canvas/canvas-svg/relationship/Relationship.template';

@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { Clock } from '@/engine/clock';
 import { createHistory, History } from '@/engine/history';
