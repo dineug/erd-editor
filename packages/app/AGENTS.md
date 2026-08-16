@@ -130,7 +130,17 @@ that tab over the BroadcastChannel bridge (`collaborativeDispatch`).
   third persisted atom, `nicknameStorageAtom`, is a plain `atomWithStorage<string>` and is consumed
   raw; a `string` cannot take an immer draft.
 - **Sentry is production-only** and initialized before the router, as is `registerSW()`. Don't let
-  either run in dev.
+  either run in dev. ⚠️ That also means **nothing in this repo ever executes `Sentry.init()`** — not
+  the Vitest suite, not the Playwright e2e (which drives the dev server). `tsc` proves the types and
+  stops there. Verifying an SDK change takes a production build served locally, with the ingest host
+  blocked at the network layer so the smoke traffic never reaches the real project.
+- **v10 changed three behaviours the call site cannot show you.** The `init()` call looks identical
+  to the v7 one, so read these from here rather than from the code: user IPs are no longer inferred
+  (`sendDefaultPii` now gates it, effective 10.4.0) — events group anonymously; `cultureContext`
+  joined the default integrations, so every event now carries `locale`, `timezone` and `calendar`;
+  and `browserTracingIntegration()` self-disables for bot user agents, with no option to turn that
+  off. The first two were left at v10's defaults deliberately. Measured in a real browser, not read
+  from a changelog.
 - **Service worker changes need a cache-invalidation story.** `src/sw.ts` routes content-hashed
   same-origin assets through `CacheFirst` and un-hashed same-origin **images and fonts** through
   `StaleWhileRevalidate` (`ASSET_EXTENSIONS` — png/svg/jpg/jpeg/gif/woff/woff2/eot/ttf/otf). Nothing

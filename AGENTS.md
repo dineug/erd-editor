@@ -267,20 +267,25 @@ Recording these because "no test failed" is not the same as "this is covered".
 
 ### Deliberately Not Upgraded
 
-`app` was brought current alongside the React 19 move, with three exceptions. They are held back on
+`app` was brought current alongside the React 19 move, with two exceptions. They are held back on
 purpose, so a later sweep that "just updates dependencies" is a regression, not a chore.
 
 | Package | Held at | Why |
 | --- | --- | --- |
 | `dexie` | `^3.2.7` | **Do not upgrade.** It owns the IndexedDB store holding users' documents; a major there is a data-migration question, not a dependency bump |
-| `@sentry/react` | `^7.110.0` | Three majors behind; the SDK's init and integration surface changed across them |
 | `react-router-dom` | `^6.22.3` | v7 reshapes the data-router APIs this app builds its routes on |
 
-`immer` used to be a fourth row, held because "the LWW merge depends on its produce semantics."
-That was false, and it is recorded here because a wrong "why" survives review by looking like a
-decision someone already made. The Lamport-clock merge lives in `erd-editor-schema`, which has never
-depended on immer — `app` is the only package that declares it, and the atom whose name suggested
-otherwise is a session-credential registry, not the document. immer is now at `^11`.
+Two rows were retired rather than acted on, and one of them was retired because the reason written
+down was false. Recorded here because a wrong "why" survives review by looking like a decision
+someone already made.
+
+- `immer` was held because "the LWW merge depends on its produce semantics." It does not. The
+  Lamport-clock merge lives in `erd-editor-schema`, which has never depended on immer — `app` is the
+  only package that declares it, and the atom whose name suggested otherwise is a session-credential
+  registry, not the document. Now at `^11`.
+- `@sentry/react` was held because "the init and integration surface changed." The surface did not —
+  the same `init({ dsn, integrations, tracesSampleRate })` call compiles and runs unedited at v10.
+  Three behaviours under it did change; see `packages/app/AGENTS.md`. Now at `^10`.
 
 `jotai/utils`'s `loadable` also warns about removal in v3. `unwrap` is not a rename — `Viewer.tsx`
 branches on the `hasError` state that `unwrap` does not surface — so that one needs a decision about
