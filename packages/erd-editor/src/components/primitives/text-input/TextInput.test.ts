@@ -75,10 +75,10 @@ describe('TextInput', () => {
     expect(input.classList.contains('off')).toBe(false);
   });
 
-  it('silently ignores a plain string class prop', async () => {
+  it('applies a plain string class prop', async () => {
     const input = await setup({ value: '', class: 'my-input' });
 
-    expect(input.hasAttribute('class')).toBe(false);
+    expect(input.classList.contains('my-input')).toBe(true);
   });
 
   it('renders no class attribute when the class prop is omitted', async () => {

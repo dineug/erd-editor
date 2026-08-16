@@ -27,13 +27,7 @@ import type { CSSTemplateLiterals, DOMTemplateLiterals } from '@/template';
 
 export type Falsy = false | null | undefined;
 
-/**
- * What `toClassList` walks. Note the asymmetry this cannot express: a static
- * `class="a b"` becomes a `staticAttrs` entry and is written verbatim, but a
- * dynamic `class={value}` goes through `classCommit`, which returns early
- * unless the value is an object or an array — a bare string there is a silent
- * no-op, in tagged templates just as much as in JSX.
- */
+/** What `toClassList` walks; a falsy entry is skipped at any depth. */
 export type ClassValue =
   | string
   | number

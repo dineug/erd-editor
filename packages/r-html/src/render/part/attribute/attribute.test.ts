@@ -133,14 +133,25 @@ describe('AttributePart', () => {
       expect(el.classList.contains('a')).toBe(false);
     });
 
-    it('ignores primitive class values', () => {
+    it('applies a primitive class value, as it does inside an array', () => {
       const el = document.createElement('div');
       const part = new AttributePart(el, attr('class', m0));
 
       part.commit(['a']);
 
-      expect(el.classList.contains('a')).toBe(false);
-      expect(el.className).toBe('');
+      expect([...el.classList]).toEqual(['a']);
+    });
+
+    it('adds nothing for a falsy value, and does not throw on one', () => {
+      // `classList.add('')` is a SyntaxError, so an empty token must never
+      // reach it — the same rule the array branch has always applied.
+      for (const value of [null, undefined, '', false, 0]) {
+        const el = document.createElement('div');
+        const part = new AttributePart(el, attr('class', m0));
+
+        expect(() => part.commit([value])).not.toThrow();
+        expect(el.className).toBe('');
+      }
     });
 
     it('adds every truthy entry of an array value', () => {

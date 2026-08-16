@@ -98,6 +98,15 @@ describe('markup parity', () => {
     expect(el.innerHTML).toContain('is-active');
   });
 
+  it('binds a dynamic class from a bare string', async () => {
+    const value = 'from-a-string';
+    const el = await both(
+      <div class={value} />,
+      html`<div class=${value}></div>`
+    );
+    expect(el.querySelector('div')?.classList.contains(value)).toBe(true);
+  });
+
   it('binds a style object with kebab keys', async () => {
     const value = { top: '3px', 'z-index': '2' };
     const el = await both(

@@ -122,15 +122,15 @@ describe('html + render', () => {
     ]).toEqual(['a', 'b']);
   });
 
-  it('ignores a string class binding because only objects and arrays commit', async () => {
+  it('commits a string class binding, like every other value kind', async () => {
     const container = createContainer();
 
     render(container, html`<div class=${'box'}></div>`);
     await nextTick(() => {});
 
-    expect(
-      (container.querySelector('div') as HTMLDivElement).classList.length
-    ).toBe(0);
+    expect([
+      ...(container.querySelector('div') as HTMLDivElement).classList,
+    ]).toEqual(['box']);
   });
 
   it('renders nothing for a function child because FunctionPart is a stub', async () => {
