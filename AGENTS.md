@@ -81,7 +81,7 @@ Build order is derived from workspace dependencies: the first five rows below ar
 
 ### Common Patterns
 
-- Named exports, except that component modules default-export their component — every `export default` in the workspace is under `erd-editor/src/components/`, `app/src/components|routes/`, or `vite-plugin-r-html/src/index.ts` (the plugin factory). Imports and exports are sorted by `simple-import-sort`, bridged into oxlint through `lint.jsPlugins`.
+- Named exports, except that component modules default-export their component — every `export default` in the workspace is under `erd-editor/src/components/` or `app/src/components|routes/`. Imports and exports are sorted by `simple-import-sort`, bridged into oxlint through `lint.jsPlugins`.
 - Barrel `index.ts` per feature directory; a package's root `src/index.ts` is the public surface — named re-exports in most, blanket `export *` in `shared`, `r-html` and `vscode-bridge`.
 - The eight ESM library packages are `"type": "module"` with an `exports` map of `types` + `default`, and point `main` / `module` / `types` at `dist/`.
 - Most `typescript/*` strictness rules are deliberately off in the root `vite.config.ts` (`no-explicit-any`, `no-unused-vars`, …); don't reintroduce them inside an unrelated change.

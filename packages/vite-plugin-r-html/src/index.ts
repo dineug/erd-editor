@@ -29,5 +29,3 @@ export function rHtml(options: Options = {}): Plugin[] {
 
   return plugins;
 }
-
-export default rHtml;

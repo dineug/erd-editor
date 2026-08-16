@@ -49,5 +49,3 @@ export function rHtmlJsx(options: JsxOptions = {}): Plugin {
     },
   };
 }
-
-export default rHtmlJsx;

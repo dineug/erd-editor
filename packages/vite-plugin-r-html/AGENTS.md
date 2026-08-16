@@ -65,6 +65,8 @@ None. Pairs with `@dineug/r-html`'s `hmr.ts` by event contract only; it imports 
 
 ### Consumers
 
-`@dineug/erd-editor` only (`vite.config.ts:152`), whose `build`/`test` tasks track this `dist/**/*.d.ts`.
+`@dineug/erd-editor` only, unconditionally in its `plugins`, whose `build`/`test` tasks track this
+`dist/**/*.d.ts`. Import it by name — the CJS build exposes several exports, so a default import
+resolves to the namespace object instead of the factory.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

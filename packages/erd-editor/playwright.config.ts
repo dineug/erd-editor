@@ -8,9 +8,9 @@ const BASE_URL = `http://localhost:${PORT}`;
  * The suite drives the real `<erd-editor>` element in Chromium against the Vite
  * dev server, using the deterministic page in `e2e/fixture/`.
  *
- * `--mode lib` is what loads `environment/.env.lib`, which sets `VITE_TARGET`
- * and in turn enables the `@dineug/vite-plugin-r-html` transform the components
- * are authored against.
+ * `--mode lib` matches what `vp build` uses, so the dev server the suite drives
+ * resolves the same way the published bundle does. The
+ * `@dineug/vite-plugin-r-html` transform is not conditional on it.
  */
 export default defineConfig({
   testDir: './e2e/specs',
