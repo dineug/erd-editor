@@ -93,9 +93,17 @@ test.describe('emitted css survives the real CSSOM', () => {
   }) => {
     const [id] = await cssPage.hostIds();
 
+    // No two blocks here declare the same property, and that is load-bearing
+    // rather than tidy. `.root` is the first thing in a zero-margin body, so it
+    // covers the viewport origin — and where the pointer is understood to be
+    // before any mouse event is a platform decision, not a guarantee: headless
+    // Chromium on Linux treats it as (0, 0) and hovers `.root` from load, macOS
+    // treats it as nowhere. A `:hover` block declaring `color` therefore decided
+    // the base rule's assertion by operating system. Each state now owns a
+    // property no other state touches, so every read below means one thing.
     const identifier = await cssPage.registerStyle(
       'color: rgb(1, 2, 3);' +
-        '&:hover { color: rgb(4, 5, 6); }' +
+        '&:hover { padding-right: 13px; }' +
         '& > span { padding-left: 8px; }' +
         "&[data-checked='true']::before { content: 'x'; }"
     );
@@ -119,6 +127,17 @@ test.describe('emitted css survives the real CSSOM', () => {
       await cssPage.computed(id, 'child', 'padding-left'),
       'the nested child rule did not apply'
     ).toBe('8px');
+
+    // Rule count alone cannot tell `.x:hover` from `.x :hover` — both parse, and
+    // only one is what `&:hover` meant. Driving the pointer onto the element is
+    // what separates them, so the pseudo-class is asserted deliberately instead
+    // of being left to whatever the runner's mouse happened to be doing.
+    await cssPage.target(id, 'root').hover();
+    expect(
+      await cssPage.computed(id, 'root', 'padding-right'),
+      'the &:hover block did not apply under a real pointer, so `&` did not ' +
+        'attach the scope class to the pseudo-class'
+    ).toBe('13px');
   });
 
   test('keeps a conditional at-rule and applies it at the pinned viewport', async ({
