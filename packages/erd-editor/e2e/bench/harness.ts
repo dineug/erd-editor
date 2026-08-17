@@ -35,6 +35,16 @@ import type { ErdDocument } from '../support/schema';
  *
  * `loadMs`      `setInitialValue` to settled, which is the one path that runs
  *               `relationshipSort` over the whole document at once.
+ *
+ * ## Why the two passes observe different things
+ *
+ * The `MutationObserver` that produces `attrWrites` and `fanOut` costs time
+ * itself, and that cost scales with how many attributes the drag writes — which
+ * is exactly the quantity a routing change moves. Leaving it installed during
+ * the blocking pass charged the editor for the harness watching it, and the idle
+ * control it is subtracted against had no observer to cancel out against. So it
+ * runs in the frame pass only, where its cost lands in `frameMs` alongside the
+ * paint it belongs next to, and the blocking pass measures the editor alone.
  */
 
 export type Stats = {
@@ -53,6 +63,20 @@ export type BenchResult = {
   frameIdle: Stats;
   /** Main-thread blocking per move, with the idle floor already subtracted. */
   busyMsPerMove: number;
+  /**
+   * The two halves `busyMsPerMove` is the difference of, kept so the
+   * subtraction can be audited. A drag whose raw blocking barely clears the
+   * idle floor produces a small difference out of two large numbers, and the
+   * clamp at zero hides it entirely; without these a run cannot be told from a
+   * measurement that fell apart.
+   */
+  busyRaw: { dragMs: number; idleMs: number; clamped: boolean };
+  /**
+   * Share of one frame that main-thread blocking takes up. Blocking on its own
+   * says nothing about whether the drag keeps 60fps — this is the number that
+   * does, and above 1 the frame is script-bound rather than compositing-bound.
+   */
+  utilization: number;
   /** Distinct relationships whose DOM was rewritten by a single move. */
   fanOut: Stats;
   /** Side changes per move over the drag — how much the drawing jumps. */
@@ -87,7 +111,12 @@ type BenchHarness = {
     busyMs: number;
   }>;
   sideFlips(options: Required<DragBenchOptions>): Promise<number>;
-  drag(options: Required<DragBenchOptions> & { monitor: boolean }): Promise<{
+  drag(
+    options: Required<DragBenchOptions> & {
+      monitor: boolean;
+      observe: boolean;
+    }
+  ): Promise<{
     frameMs: number[];
     fanOut: number[];
     busyMs: number;
@@ -309,7 +338,14 @@ export async function installBench(page: Page) {
         return flips;
       },
 
-      async drag({ tableId, moves, stepX, stepY, monitor: useMonitor }) {
+      async drag({
+        tableId,
+        moves,
+        stepX,
+        stepY,
+        monitor: useMonitor,
+        observe,
+      }) {
         const header = root.querySelector(
           `[data-testid="erd-canvas"] .table[data-id="${tableId}"]`
         );
@@ -341,8 +377,12 @@ export async function installBench(page: Page) {
           }
         };
 
-        const observer = new MutationObserver(consume);
-        observer.observe(canvas(), { attributes: true, subtree: true });
+        // Installed for the frame pass only. Its cost rises with the number of
+        // attributes the drag writes, so leaving it on during the blocking pass
+        // billed the editor for the harness — and by an amount that grows with
+        // exactly what a routing change moves.
+        const observer = observe ? new MutationObserver(consume) : null;
+        observer?.observe(canvas(), { attributes: true, subtree: true });
 
         // The ping loop competes for the very thread it measures, which
         // stretches frame intervals under load. Frames and blocking are
@@ -362,9 +402,11 @@ export async function installBench(page: Page) {
             previous = now;
 
             // Attribute the previous frame's mutations before starting the next.
-            consume(observer.takeRecords());
-            fanOut.push(touched.size);
-            touched = new Set<string>();
+            if (observer) {
+              consume(observer.takeRecords());
+              fanOut.push(touched.size);
+              touched = new Set<string>();
+            }
 
             if (step++ >= moves) {
               resolve();
@@ -385,8 +427,10 @@ export async function installBench(page: Page) {
         window.dispatchEvent(mouse('mouseup', x, y));
         await settled();
 
-        consume(observer.takeRecords());
-        observer.disconnect();
+        if (observer) {
+          consume(observer.takeRecords());
+          observer.disconnect();
+        }
 
         // The first entry is the frame before any move was dispatched.
         return {
@@ -441,23 +485,27 @@ export async function runDragBench(
 
   await beforeMeasure?.(page);
 
-  // Pass 1 — frame pacing, with nothing else on the thread.
+  // Pass 1 — frame pacing and DOM writes, with no ping loop on the thread.
   const idleFrames = await page.evaluate(
     count => window.__erdBench!.idleFrames(count, false),
     resolved.moves
   );
   const framePass = await page.evaluate(
-    argument => window.__erdBench!.drag({ ...argument, monitor: false }),
+    argument =>
+      window.__erdBench!.drag({ ...argument, monitor: false, observe: true }),
     resolved
   );
 
-  // Pass 2 — main-thread blocking, whose ping loop would inflate pass 1.
+  // Pass 2 — main-thread blocking. The ping loop would inflate pass 1, and the
+  // observer would inflate this one; each pass carries only its own instrument,
+  // and the idle control it is measured against carries the same one.
   const idleBusy = await page.evaluate(
     count => window.__erdBench!.idleFrames(count, true),
     resolved.moves
   );
   const busyPass = await page.evaluate(
-    argument => window.__erdBench!.drag({ ...argument, monitor: true }),
+    argument =>
+      window.__erdBench!.drag({ ...argument, monitor: true, observe: false }),
     resolved
   );
 
@@ -466,15 +514,24 @@ export async function runDragBench(
     resolved
   );
 
+  // The idle run covers the same number of frames, so its blocking is the floor
+  // this measurement sits on rather than a separate quantity.
+  const busyAboveIdle = busyPass.busyMs - idleBusy.busyMs;
+  const frame = stats(framePass.frameMs);
+  const busyMsPerMove = Math.max(0, busyAboveIdle) / resolved.moves;
+
   return {
     loadMs,
     flipsPerMove: flips / resolved.moves,
-    frame: stats(framePass.frameMs),
+    frame,
     frameIdle: stats(idleFrames.frameMs),
-    // The idle run covers the same number of frames, so its blocking is the
-    // floor this measurement sits on rather than a separate quantity.
-    busyMsPerMove:
-      Math.max(0, busyPass.busyMs - idleBusy.busyMs) / resolved.moves,
+    busyMsPerMove,
+    busyRaw: {
+      dragMs: busyPass.busyMs,
+      idleMs: idleBusy.busyMs,
+      clamped: busyAboveIdle < 0,
+    },
+    utilization: frame.p50 > 0 ? busyMsPerMove / frame.p50 : 0,
     fanOut: stats(framePass.fanOut),
     attrWrites: {
       total: framePass.attrTotal,

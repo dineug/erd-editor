@@ -146,8 +146,11 @@ function print(report: Report, baseline: Report | null) {
       `${row.tables}T/${row.relationships}R/${row.columns}C`,
       ms(row.perf.loadMs),
       delta(row.perf.loadMs, old?.perf.loadMs),
-      ms(row.perf.busyMsPerMove),
+      // A clamped run means drag blocking came in under the idle floor, so the
+      // difference is noise and the number above it means nothing.
+      `${ms(row.perf.busyMsPerMove)}${row.perf.busyRaw.clamped ? '!' : ''}`,
       delta(row.perf.busyMsPerMove, old?.perf.busyMsPerMove),
+      `${(row.perf.utilization * 100).toFixed(0)}%`,
       ms(row.perf.frameIdle.p50),
       ms(row.perf.frame.p50),
       delta(row.perf.frame.p50, old?.perf.frame.p50),
@@ -188,7 +191,7 @@ function print(report: Report, baseline: Report | null) {
     [
       header,
       '',
-      'performance   (busy/move = main-thread blocking above idle; fan-out = relationships redrawn per move)',
+      'performance   (busy/move = main-thread blocking above idle, "!" = clamped and meaningless; util = its share of one frame; fan-out = relationships redrawn per move)',
       table(
         [
           'corpus',
@@ -197,6 +200,7 @@ function print(report: Report, baseline: Report | null) {
           'Δ',
           'busy/move',
           'Δ',
+          'util',
           'idle p50',
           'frame p50',
           'Δ',
