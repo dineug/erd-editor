@@ -162,7 +162,7 @@ describe('Oracle createSchema', () => {
         ');',
         '',
         'ALTER TABLE users',
-        '  ADD CONSTRAINT UQ_email UNIQUE (email);',
+        '  ADD CONSTRAINT UQ_users_email UNIQUE (email);',
         '',
         'CREATE SEQUENCE SEQ_users',
         'START WITH 1',
@@ -336,6 +336,23 @@ describe('Oracle createSchema', () => {
         '',
       ].join('\n')
     );
+  });
+
+  it('qualifies a unique constraint with its table so two tables can share a column name', () => {
+    const { state, posts } = createFixture();
+    state.collections.tableColumnEntities['c-post-email'] = createColumn({
+      id: 'c-post-email',
+      tableId: 't-posts',
+      name: 'email',
+      dataType: 'VARCHAR(255)',
+      options: ColumnOption.unique,
+    });
+    posts.columnIds.push('c-post-email');
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT UQ_users_email UNIQUE (email);\n');
+    expect(sql).toContain('  ADD CONSTRAINT UQ_posts_email UNIQUE (email);\n');
   });
 });
 
