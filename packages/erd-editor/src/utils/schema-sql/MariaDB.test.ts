@@ -316,7 +316,7 @@ describe('schema-sql/MariaDB', () => {
         ") COMMENT 'user table';",
         '',
         'ALTER TABLE users',
-        '  ADD CONSTRAINT UQ_name UNIQUE (name);',
+        '  ADD CONSTRAINT UQ_users_name UNIQUE (name);',
         '',
         'ALTER TABLE posts',
         '  ADD CONSTRAINT FK_users_TO_posts',
@@ -380,8 +380,27 @@ describe('schema-sql/MariaDB', () => {
       const sql = createSchema(state);
 
       expect(sql).toContain('ALTER TABLE `users`\n');
-      expect(sql).toContain('  ADD CONSTRAINT `UQ_name` UNIQUE (`name`);\n');
+      expect(sql).toContain(
+        '  ADD CONSTRAINT `UQ_users_name` UNIQUE (`name`);\n'
+      );
       expect(sql).toContain('    REFERENCES `users` (`id`);\n');
+    });
+
+    it('qualifies a unique constraint with its table so two tables can share a column name', () => {
+      const { state, posts } = createFixture();
+      state.collections.tableColumnEntities['col-post-name'] = createColumn({
+        id: 'col-post-name',
+        tableId: 'tbl-posts',
+        name: 'name',
+        dataType: 'VARCHAR(50)',
+        options: ColumnOption.unique,
+      });
+      posts.columnIds.push('col-post-name');
+
+      const sql = createSchema(state);
+
+      expect(sql).toContain('  ADD CONSTRAINT UQ_users_name UNIQUE (name);\n');
+      expect(sql).toContain('  ADD CONSTRAINT UQ_posts_name UNIQUE (name);\n');
     });
 
     it('produces byte-identical output to the MySQL generator', () => {

@@ -167,7 +167,7 @@ describe('MSSQL createSchema', () => {
         'GO',
         '',
         'ALTER TABLE users',
-        '  ADD CONSTRAINT UQ_email UNIQUE (email)',
+        '  ADD CONSTRAINT UQ_users_email UNIQUE (email)',
         'GO',
         '',
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',",
@@ -277,6 +277,23 @@ describe('MSSQL createSchema', () => {
         '',
       ].join('\n')
     );
+  });
+
+  it('qualifies a unique constraint with its table so two tables can share a column name', () => {
+    const { state, posts } = createFixture();
+    state.collections.tableColumnEntities['c-post-email'] = createColumn({
+      id: 'c-post-email',
+      tableId: 't-posts',
+      name: 'email',
+      dataType: 'VARCHAR(255)',
+      options: ColumnOption.unique,
+    });
+    posts.columnIds.push('c-post-email');
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT UQ_users_email UNIQUE (email)');
+    expect(sql).toContain('  ADD CONSTRAINT UQ_posts_email UNIQUE (email)');
   });
 });
 
