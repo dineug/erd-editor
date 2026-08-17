@@ -306,6 +306,30 @@ function getLine(
   };
 }
 
+/**
+ * The routing polyline as one `d`, so a connector is a single element whatever
+ * the router and the corner cuts made of it.
+ *
+ * The segments are contiguous by construction — they come from a polyline — so
+ * each one contributes its far end and nothing else.
+ */
+export function toPathD(segments: Array<[Point, Point]>) {
+  if (!segments.length) return '';
+
+  const [[first]] = segments;
+  let d = `M${round(first.x)} ${round(first.y)}`;
+  for (const [, end] of segments) {
+    d += `L${round(end.x)} ${round(end.y)}`;
+  }
+
+  return d;
+}
+
+/** Two decimals, well under the half pixel every geometry test works to. */
+function round(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
 function toSegments(points: Point[]): Array<[Point, Point]> {
   const segments: Array<[Point, Point]> = [];
   for (let index = 1; index < points.length; index++) {

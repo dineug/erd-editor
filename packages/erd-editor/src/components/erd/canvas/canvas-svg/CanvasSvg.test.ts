@@ -85,7 +85,9 @@ describe('CanvasSvg', () => {
     mounted.app.store.dispatchSync(addRelationship('r1'));
     await flush();
 
-    const line = root().querySelector('g.relationship line') as SVGLineElement;
-    expect(line.getAttribute('stroke-width')).toBe('12');
+    const route = root().querySelector(
+      'g.relationship path.route'
+    ) as SVGPathElement;
+    expect(route.getAttribute('stroke-width')).toBe('12');
   });
 });

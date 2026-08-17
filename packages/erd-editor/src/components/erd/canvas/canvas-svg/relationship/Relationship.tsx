@@ -4,7 +4,10 @@ import { useAppContext } from '@/components/appContext';
 import { StartRelationshipType } from '@/constants/schema';
 import { hoverColumnMapAction } from '@/engine/modules/editor/atom.actions';
 import { Relationship as RelationshipType } from '@/internal-types';
-import { getRelationshipPath } from '@/utils/draw-relationship/pathFinding';
+import {
+  getRelationshipPath,
+  toPathD,
+} from '@/utils/draw-relationship/pathFinding';
 
 import { relationshipShape } from './Relationship.template';
 
@@ -57,17 +60,13 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
         on:mouseenter={() => handleMouseenter(relationship)}
         on:mouseleave={handleMouseleave}
       >
-        {lines.map(([a, b]) => (
-          <line
-            x1={a.x}
-            y1={a.y}
-            x2={b.x}
-            y2={b.y}
-            stroke-dasharray={relationship.identification ? 0 : 10}
-            stroke-width={strokeWidth}
-            fill="transparent"
-          ></line>
-        ))}
+        <path
+          class="route"
+          d={toPathD(lines)}
+          stroke-dasharray={relationship.identification ? 0 : 10}
+          stroke-width={strokeWidth}
+          fill="none"
+        ></path>
         <line
           x1={path.line.start.x1}
           y1={path.line.start.y1}

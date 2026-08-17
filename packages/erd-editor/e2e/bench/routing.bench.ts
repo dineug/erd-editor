@@ -44,7 +44,7 @@ type Row = {
  * against numbers that were no longer the same quantity, and every one of them
  * was quoted as a result.
  */
-const METRICS_VERSION = 2;
+const METRICS_VERSION = 3;
 
 type Report = {
   label: string;

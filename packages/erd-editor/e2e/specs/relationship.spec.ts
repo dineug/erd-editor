@@ -18,20 +18,21 @@ const only = <T>(values: T[]): T => {
  *
  * | part         | elements                                                   |
  * | ------------ | ---------------------------------------------------------- |
- * | routing path | 3 dashed `<line>` — `pathFinding` needs three segments to   |
- * |              | join `users` (160,160) to `posts` (760,420) in this seed    |
+ * | routing path | one `path.route`, dashed unless the relationship identifies |
  * | start marker | 4 `<line>` — the stem, base, base2 and center2 of the       |
  * |              | `dash` start, which is what a `notNull` end column selects  |
  * | end marker   | varies per type, below — this is the cardinality symbol     |
  *
- * `line` is the total for the whole `<g>`, so it is `3 + 4 + <end lines>`.
+ * `line` is the total for the whole `<g>`, so it is `4 + <end lines>`: the route
+ * is one element however many runs and cut corners the router made of it, which
+ * is why this census no longer moves when the drawing changes shape.
  */
 const SHAPE = {
   // circle = the "zero" ring; the crow's foot adds left/center/right lines.
-  ZeroOne: { line: 10, circle: 1 },
-  ZeroN: { line: 11, circle: 1 },
-  OneOnly: { line: 11, circle: 0 },
-  OneN: { line: 12, circle: 0 },
+  ZeroOne: { line: 7, circle: 1 },
+  ZeroN: { line: 8, circle: 1 },
+  OneOnly: { line: 8, circle: 0 },
+  OneN: { line: 9, circle: 0 },
 } as const;
 
 /**
@@ -90,8 +91,8 @@ test.describe('relationship drawing', () => {
     // A non-identifying relationship draws its routing segments dashed.
     await expect(relationshipEl).not.toHaveClass(/\bidentification\b/);
     await expect(
-      relationshipEl.locator('line[stroke-dasharray="10"]')
-    ).toHaveCount(3);
+      relationshipEl.locator('path.route[stroke-dasharray="10"]')
+    ).toHaveCount(1);
     await expect(relationshipEl.locator('line')).toHaveCount(SHAPE.ZeroN.line);
     await expect(relationshipEl.locator('circle')).toHaveCount(
       SHAPE.ZeroN.circle

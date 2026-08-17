@@ -81,10 +81,11 @@ export type QualityMetrics = {
  * Reads the drawn routing segments and the table boxes, both in canvas
  * coordinates.
  *
- * `Relationship.tsx` renders the routing polyline as the only `<line>`s that
- * carry `fill="transparent"`; every cardinality decoration is a bare
- * `stroke-width="3"` line. Scoping to `[data-testid="erd-canvas"]` keeps the
- * minimap's second copy of the same SVG out of the count.
+ * `Relationship.tsx` renders the routing polyline as one `path.route` and every
+ * cardinality decoration as a bare `stroke-width="3"` line, so the route is read
+ * back out of that path's `d` — a run of `M`/`L` points, contiguous by
+ * construction. Scoping to `[data-testid="erd-canvas"]` keeps the minimap's
+ * second copy of the same SVG out of the count.
  */
 export async function readScene(page: Page): Promise<Scene> {
   return page.evaluate(() => {
@@ -99,15 +100,21 @@ export async function readScene(page: Page): Promise<Scene> {
     const segments: Segment[] = [];
     canvas.querySelectorAll('g.relationship').forEach(group => {
       const relationshipId = group.getAttribute('data-id') ?? '';
-      group.querySelectorAll('line[fill="transparent"]').forEach(line => {
+      const route = group.querySelector('path.route');
+      const numbers = (route?.getAttribute('d') ?? '').match(
+        /-?\d+(?:\.\d+)?/g
+      );
+      if (!numbers) return;
+
+      for (let index = 2; index + 1 < numbers.length; index += 2) {
         segments.push({
           relationshipId,
-          x1: Number(line.getAttribute('x1')),
-          y1: Number(line.getAttribute('y1')),
-          x2: Number(line.getAttribute('x2')),
-          y2: Number(line.getAttribute('y2')),
+          x1: Number(numbers[index - 2]),
+          y1: Number(numbers[index - 1]),
+          x2: Number(numbers[index]),
+          y2: Number(numbers[index + 1]),
         });
-      });
+      }
     });
 
     const rects: TableRect[] = [];
@@ -362,14 +369,21 @@ export function measureQuality(scene: Scene): QualityMetrics {
     }
   }
 
-  let nodeCrossings = 0;
+  // One connector through one table is one defect however many runs it is drawn
+  // in. Counted per segment — which is what this did until metrics v3 — cutting
+  // the corners of a route inflated it by a third without anything moving.
+  const penetrated = new Set<string>();
   for (const segment of segments) {
     const own = endpoints[segment.relationshipId] ?? [];
     for (const rect of rects) {
       if (own.includes(rect.id)) continue;
-      if (segmentIntersectsRect(segment, rect)) nodeCrossings++;
+      if (penetrated.has(`${segment.relationshipId}:${rect.id}`)) continue;
+      if (segmentIntersectsRect(segment, rect)) {
+        penetrated.add(`${segment.relationshipId}:${rect.id}`);
+      }
     }
   }
+  const nodeCrossings = penetrated.size;
 
   const totalLengthPx = segments.reduce(
     (sum, segment) =>

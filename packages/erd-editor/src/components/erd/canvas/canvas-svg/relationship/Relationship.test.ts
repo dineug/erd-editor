@@ -11,7 +11,10 @@ import {
 import { hoverRelationshipMapAction } from '@/engine/modules/editor/atom.actions';
 import { Relationship as RelationshipType_ } from '@/internal-types';
 import { createRelationship } from '@/utils/collection/relationship.entity';
-import { getRelationshipPath } from '@/utils/draw-relationship/pathFinding';
+import {
+  getRelationshipPath,
+  toPathD,
+} from '@/utils/draw-relationship/pathFinding';
 
 const makeRelationship = (
   value: Parameters<typeof createRelationship>[0] = {}
@@ -70,24 +73,20 @@ describe('Relationship', () => {
     expect(group().getAttribute('class')).toContain('identification');
   });
 
-  it('draws the path segments the path finder produced', async () => {
+  it('draws the route the path finder produced as one path', async () => {
     const relationship = makeRelationship();
     const expected = getRelationshipPath(relationship).path.path.d();
     mounted = await mountRelationship(relationship);
 
-    // path segments + start tick + start base + the dash pair + the shape.
     // Three runs, and a cut either side of both corners between them.
-    const lines = Array.from(mounted.container.querySelectorAll('line'));
     expect(expected).toHaveLength(5);
 
-    const segments = lines.slice(0, expected.length);
-    segments.forEach((line, index) => {
-      const [a, b] = expected[index];
-      expect(line.getAttribute('x1')).toBe(`${a.x}`);
-      expect(line.getAttribute('y1')).toBe(`${a.y}`);
-      expect(line.getAttribute('x2')).toBe(`${b.x}`);
-      expect(line.getAttribute('y2')).toBe(`${b.y}`);
-    });
+    const route = mounted.container.querySelector(
+      'path.route'
+    ) as SVGPathElement;
+    expect(route.getAttribute('d')).toBe(toPathD(expected));
+    // A path has no fill area to hit-test, which a transparent one would have.
+    expect(route.getAttribute('fill')).toBe('none');
   });
 
   it('collapses a self relationship into a single path segment', async () => {
@@ -110,31 +109,36 @@ describe('Relationship', () => {
     mounted = await mountRelationship(relationship);
 
     expect(getRelationshipPath(relationship).path.path.d()).toHaveLength(1);
+    expect(
+      mounted.container.querySelector('path.route')?.getAttribute('d')
+    ).toBe(toPathD(getRelationshipPath(relationship).path.path.d()));
   });
 
-  it('dashes the path segments unless the relationship is identifying', async () => {
+  it('dashes the route unless the relationship is identifying', async () => {
     mounted = await mountRelationship(makeRelationship());
-    let first = mounted.container.querySelector('line') as SVGLineElement;
-    expect(first.getAttribute('stroke-dasharray')).toBe('10');
+    let route = mounted.container.querySelector('path.route') as SVGPathElement;
+    expect(route.getAttribute('stroke-dasharray')).toBe('10');
 
     mounted.unmount();
     mounted = await mountRelationship(
       makeRelationship({ identification: true })
     );
-    first = mounted.container.querySelector('line') as SVGLineElement;
-    expect(first.getAttribute('stroke-dasharray')).toBe('0');
+    route = mounted.container.querySelector('path.route') as SVGPathElement;
+    expect(route.getAttribute('stroke-dasharray')).toBe('0');
   });
 
-  it('applies the strokeWidth prop to the path segments only', async () => {
+  it('applies the strokeWidth prop to the route only', async () => {
     const relationship = makeRelationship();
-    const segmentCount = getRelationshipPath(relationship).path.path.d().length;
     mounted = await mountRelationship(relationship, 7);
 
+    const route = mounted.container.querySelector(
+      'path.route'
+    ) as SVGPathElement;
+    expect(route.getAttribute('stroke-width')).toBe('7');
+
+    // Every remaining line is a cardinality decoration, drawn at a fixed width.
     const lines = Array.from(mounted.container.querySelectorAll('line'));
-    lines.slice(0, segmentCount).forEach(line => {
-      expect(line.getAttribute('stroke-width')).toBe('7');
-    });
-    lines.slice(segmentCount).forEach(line => {
+    lines.forEach(line => {
       expect(line.getAttribute('stroke-width')).toBe('3');
     });
   });

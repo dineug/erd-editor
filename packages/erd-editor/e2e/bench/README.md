@@ -73,10 +73,11 @@ between relationships that touch the same table to zero on its own, while
 crossings between independent pairs only fall to side re-assignment. Summing
 them hides which change did the work.
 
-`node-cross` counts segment-against-table incidences, not connectors: a run split
-into three by corner cuts is counted up to three times for the same table. It is
-comparable within a run and across changes that leave the segment count alone, and
-not across one that changes it.
+`node-cross` counts one connector through one table once, however many runs it is
+drawn in. Until metrics v3 it counted segment-against-table incidences, so cutting
+the corners of a route inflated it by a third with nothing having moved — a number
+that rose whenever the drawing gained segments was useless for judging a change
+that gains segments.
 
 `min pitch` is read from the document's anchors rather than from segment
 endpoints. The routing polyline starts one stub away from the table, so no
@@ -94,7 +95,8 @@ clustering chains 0-3-6-9 into one group.
 
 `metricsVersion` in each report is bumped whenever a metric changes what it
 *means* rather than what it measures, and deltas are suppressed across a bump.
-Re-record the baseline after one. This exists because the opposite happened: a
+Re-record the baseline after one. v3 is `node-cross`: connector-table pairs, where
+v2 counted segment-table incidences. This exists because the opposite happened: a
 baseline captured by an older harness kept printing percentages against numbers
 that were no longer the same quantity, and every one of them was quoted as a
 result.
@@ -225,8 +227,22 @@ rounds each, `busy/move` ran 1.31 / 1.35 / 1.35 against 1.49 / 1.46 / 1.45 on
 small and 4.04 / 4.39 / 4.12 against 4.54 / 4.57 / 4.48 on medium — both
 non-overlapping, so both real, at 8-9% — while large's 8.32 / 8.26 / 8.78 against
 9.07 / 8.57 / 9.05 does not resolve. `frame p50` stayed at one vsync throughout.
-Drawing a route as one `<path>` rather than a `<line>` per segment would take that
-back, and would also make `node-cross` mean what it used to.
+Drawing a route as one `<path>` rather than a `<line>` per segment took that back
+— see below. It did nothing for `node-cross`, which reads the geometry and not the
+markup; that needed the metric itself changing.
+
+**One `<path>` a connector, rather than a `<line>` a segment, paid the corner
+cuts back with interest.** The geometry is untouched — every quality figure came
+back byte-identical, which is what says the benchmark now reads the path's `d` as
+faithfully as it read the lines — while attribute writes per move fell 187 / 241 /
+350 to 116 / 136 / 217, a little under half. Measured alternately, three rounds
+each, `busy/move` ran 1.48 / 1.45 / 1.52 against 1.29 / 1.27 / 1.18 on small,
+4.55 / 4.62 / 4.39 against 3.96 / 4.14 / 4.21 on medium and
+9.38 / 9.54 / 8.74 against 8.45 / 8.47 / 8.65 on large: non-overlapping in all
+three, 8% to 15% faster, against the 8-9% the cuts had cost. Two things came with
+it — the dash pattern now runs continuously through a corner instead of restarting
+at each segment, and the element census in `e2e/specs/relationship.spec.ts` stopped
+depending on how many runs a route is drawn in, which is what had broken it.
 
 **The next lever is a channel-wide track assignment.** Runs are chained
 components of the span-overlap relation, so a chain that only ever overlaps its
