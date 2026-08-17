@@ -36,9 +36,21 @@ type Row = {
   quality: QualityMetrics;
 };
 
+/**
+ * Bumped whenever a metric changes what it means rather than what it measures.
+ *
+ * Deltas are suppressed across a bump. The alternative is what happened once
+ * already: a baseline captured by an older harness kept printing percentages
+ * against numbers that were no longer the same quantity, and every one of them
+ * was quoted as a result.
+ */
+const METRICS_VERSION = 2;
+
 type Report = {
   label: string;
   createdAt: string;
+  /** Absent on reports written before versioning — treated as version 1. */
+  metricsVersion?: number;
   rows: Row[];
 };
 
@@ -80,6 +92,7 @@ test.afterAll(() => {
   const report: Report = {
     label: process.env.E2E_BENCH_LABEL ?? 'unlabelled',
     createdAt: new Date().toISOString(),
+    metricsVersion: METRICS_VERSION,
     rows,
   };
 
@@ -132,12 +145,19 @@ function table(headers: string[], body: string[][]) {
   ].join('\n');
 }
 
-function print(report: Report, baseline: Report | null) {
+function print(report: Report, saved: Report | null) {
+  // A baseline from an older metrics version is kept on disk but not compared
+  // against: a percentage between two different definitions is worse than no
+  // percentage, because it reads exactly like a result.
+  const stale = !!saved && (saved.metricsVersion ?? 1) !== METRICS_VERSION;
+  const baseline = stale ? null : saved;
   const previous = new Map(baseline?.rows.map(row => [row.corpus, row]) ?? []);
 
-  const header = baseline
-    ? `\nrouting bench — ${report.label}  (vs baseline "${baseline.label}")`
-    : `\nrouting bench — ${report.label}  (no baseline saved)`;
+  const header = stale
+    ? `\nrouting bench — ${report.label}  (baseline "${saved!.label}" is metrics v${saved!.metricsVersion ?? 1}, this run is v${METRICS_VERSION} — no deltas; re-record with E2E_BENCH_BASELINE=1)`
+    : baseline
+      ? `\nrouting bench — ${report.label}  (vs baseline "${baseline.label}")`
+      : `\nrouting bench — ${report.label}  (no baseline saved)`;
 
   const perfRows = report.rows.map(row => {
     const old = previous.get(row.corpus);
@@ -215,7 +235,7 @@ function print(report: Report, baseline: Report | null) {
         perfRows
       ),
       '',
-      'quality   (cross-shared = same table, cross-free = independent pairs)',
+      'quality   (cross-shared = same table, cross-free = independent pairs; collinear = length two connectors run within one stroke width of each other)',
       table(
         [
           'corpus',

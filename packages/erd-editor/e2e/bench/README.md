@@ -28,7 +28,8 @@ request, so a comparison is always against a baseline someone chose.
 
 **`busy/move`** is main-thread blocking per mousemove, measured by a ping loop
 that runs outside every task the editor owns, minus the same measurement taken
-while idle.
+while idle. A trailing `!` means the drag came in *under* the idle floor, so the
+difference is noise and the number in front of it means nothing.
 
 It is not bracketed around the dispatch, and that is the whole point.
 `relationshipSortHook` is a 5ms trailing throttle, so the relationship update
@@ -36,10 +37,20 @@ lands in a *later task* than the move that caused it. A probe that bracketed one
 dispatch saw 8 attribute writes and zero relationship groups touched on the
 large corpus — the routing work is simply not in that window.
 
+**`util`** is `busy/move` as a share of one frame. Blocking on its own says
+nothing about whether a drag holds 60fps; this is the number that does, and past
+100% the frame is script-bound rather than compositing-bound.
+
 **`frame p50` / `idle p50`** are animation-frame intervals with and without a
-drag running. Idle is the floor; anything above it is the drag. These come from
-a separate pass, because the ping loop that measures blocking competes for the
-thread it is measuring and stretches frames under load.
+drag running. Idle is the floor; anything above it is the drag.
+
+Each pass carries one instrument and no more, and the idle control it is
+subtracted against carries the same one. The ping loop competes for the thread it
+measures and stretches frames, so it stays out of the frame pass. The
+`MutationObserver` behind `attr/move` costs time in proportion to how many
+attributes the drag writes — which is exactly what a routing change moves — so it
+stays out of the blocking pass; leaving it in charged the editor for the harness
+watching it, by an amount that grew with the thing under test.
 
 **`attr/move`** is attribute mutations committed inside the canvas, and
 **`fan-out`** is how many distinct relationships those mutations belong to.
@@ -67,6 +78,31 @@ endpoints. The routing polyline starts one stub away from the table, so no
 segment end is an anchor; an earlier version scanned for segment ends that
 happened to sit near a table box and reported whatever it found, including
 nothing at all once stub lengths changed.
+
+`collinear px` is how far two connectors run side by side within one stroke
+width of each other — 3px, the width they are drawn at. It is a visual
+complaint, so the threshold is the stroke and not equality. Pairs are compared
+directly rather than bucketed: a band is not an equivalence relation, and
+clustering chains 0-3-6-9 into one group.
+
+## Comparing runs
+
+`metricsVersion` in each report is bumped whenever a metric changes what it
+*means* rather than what it measures, and deltas are suppressed across a bump.
+Re-record the baseline after one. This exists because the opposite happened: a
+baseline captured by an older harness kept printing percentages against numbers
+that were no longer the same quantity, and every one of them was quoted as a
+result.
+
+Timings drift within a session by more than the effects worth resolving —
+a five-run sequence on the large corpus fell monotonically from 8.5ms to 6.4ms
+across changes that could not have caused it. **A performance claim needs the two
+variants measured alternately, several rounds each, and reported as a
+distribution.** The bounding-box prefilter below is the worked example: three
+rounds of A/B put `large` at [6.37, 6.48, 6.76] against [7.61, 7.60, 7.61] —
+non-overlapping, so real — while `small` gave [1.03, 1.50, 1.13] against
+[1.13, 1.25, 1.24], which is nothing at all. A single sequential pair had
+reported both as wins.
 
 ## What the diagnostics found
 
@@ -98,20 +134,41 @@ Scoring side pairs by obstacles is above. Flipping which axis the path leaves on
 is worse everywhere — the existing heuristic already picks the good one, and the
 alternative is 71% longer. Replacing the 45-degree middle segment with a plain
 orthogonal elbow, which costs no extra segments, cuts node crossings 7-15% but
-raises collinear overlap 783%: parallel orthogonal routes share a corridor where
-diagonals separate on their own. Only a router that bends around obstacles, with
-nudging in the same change, moved the number — and the residual it leaves on
-`large` is the entry below.
+raised collinear overlap 783% *by the metrics v1 count*: parallel orthogonal
+routes share a corridor where diagonals separate on their own. The direction of
+that result is what mattered and it still holds — nudging belongs in the same
+change as orthogonal routing — but the magnitude was measured by the definition
+corrected in v2 and should not be quoted.
 
 **What the router still gets wrong.** Node crossings are down 25-34% and the
-picture reads far better, but on the largest corpus collinear overlap is worse
-than the diagonal it replaced. The residual is long straight runs — a 1.8k-pixel
-vertical crossing the whole canvas — where nudging correctly declines to move,
-because at that length no lane is clear and shifting one only trades which
-tables it clips. Snapping channels to the nudge grid was tried and made it worse
-by a further 60%: it puts more routes on one coordinate than can be safely
-spaced apart. Fixing it properly means routes that do not run that far in a
-straight line, which is a search, not a channel heuristic.
+picture reads far better; collinear overlap is the open problem, and every
+figure quoted for it before metrics v2 was measured by a definition that could
+only see two segments on the *identical* coordinate. Under the stroke-width band
+the corpora hold 748 / 1329 / 8015 px of overlap, where the old count reported
+0 / 0 / 2616. The router's own effect on it is no longer a number anyone has:
+the pre-router diagonal was never measured this way.
+
+The worst pair in each corpus is 2px apart — `x=920` against `x=922` on small,
+`y=736` against `y=738` on medium, `y=1431` against `y=1433` on large. That is
+not a coincidence but `CHANNEL_EPSILON = 1` in `nudge.ts`, which buckets a
+channel by its coordinate rounded to the pixel: two segments 2px apart land in
+different buckets, are never seen as sharing a channel, and are never considered
+for separation. The nudge unit tests pass because they are built from pairs that
+share a coordinate exactly.
+
+Snapping channels to the nudge grid was tried and made the old count worse by
+60%: it puts more routes on one coordinate than can be safely spaced apart.
+
+**The router cannot get around a table directly between two aligned anchors.**
+With both turning points on the same line, the channel template degenerates —
+`[m, {x, y: m.y}, {x, y: l.y}, l]` with `m.y === l.y` is a straight line
+whatever `x` is — and the escape template steps out by a fixed
+`ROUTE_CLEARANCE` before turning, which lands inside the blocking table whenever
+it is wider than 16px from the anchor. Every candidate is blocked, so the
+cheapest blocked one wins and the connector is drawn straight through. Three
+tables in a row, 361px wide, reproduce it. Offset the two ends and the router
+bends around correctly, so this is a gap in the templates rather than in the
+scoring.
 
 **Side choice is stable enough.** `flips/move` is 0.05 at the largest corpus —
 about six jumps over a 240px drag of a hub table. Hysteresis was considered and

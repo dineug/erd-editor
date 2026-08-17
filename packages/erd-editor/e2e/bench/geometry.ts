@@ -214,41 +214,49 @@ function segmentIntersectsRect(segment: Segment, rect: TableRect) {
 }
 
 /**
- * Overlap length between segments that lie on the same axis-aligned line.
- * This is the direct read-out for stub sharing: two relationships leaving the
- * same table side currently run down the identical corridor.
+ * How far two connectors run side by side close enough to read as one line.
+ *
+ * The reader's complaint is visual, so the threshold is the stroke width, not
+ * equality. An earlier version bucketed segments by their coordinate rounded to
+ * one decimal, which answers a different question — how often two segments land
+ * on the *identical* line — and that question flatters any change that moves a
+ * shared channel by a pixel. It reported zero for the medium corpus while the
+ * same scene held 2008px of overlap a reader cannot distinguish from a single
+ * connector. Pairs are compared directly rather than clustered: clustering
+ * chains 0-3-6-9 into one group, and a band is not an equivalence relation.
  */
-type Span = { low: number; high: number; relationshipId: string };
+const STROKE_WIDTH = 3;
 
-export function collinearOverlap(segments: Segment[]) {
-  const buckets = new Map<string, Span[]>();
+type Run = {
+  low: number;
+  high: number;
+  coordinate: number;
+  relationshipId: string;
+};
+
+export function collinearOverlap(segments: Segment[], band = STROKE_WIDTH) {
+  const byAxis: Record<'h' | 'v', Run[]> = { h: [], v: [] };
 
   for (const segment of segments) {
     const horizontal = Math.abs(segment.y1 - segment.y2) < 0.5;
     const vertical = Math.abs(segment.x1 - segment.x2) < 0.5;
-    if (!horizontal && !vertical) continue;
+    if (horizontal === vertical) continue;
 
-    const key = horizontal
-      ? `h:${segment.y1.toFixed(1)}`
-      : `v:${segment.x1.toFixed(1)}`;
-    const span: Span = horizontal
-      ? {
-          low: Math.min(segment.x1, segment.x2),
-          high: Math.max(segment.x1, segment.x2),
-          relationshipId: segment.relationshipId,
-        }
-      : {
-          low: Math.min(segment.y1, segment.y2),
-          high: Math.max(segment.y1, segment.y2),
-          relationshipId: segment.relationshipId,
-        };
-
-    const bucket = buckets.get(key);
-    if (bucket) {
-      bucket.push(span);
-    } else {
-      buckets.set(key, [span]);
-    }
+    byAxis[horizontal ? 'h' : 'v'].push(
+      horizontal
+        ? {
+            low: Math.min(segment.x1, segment.x2),
+            high: Math.max(segment.x1, segment.x2),
+            coordinate: segment.y1,
+            relationshipId: segment.relationshipId,
+          }
+        : {
+            low: Math.min(segment.y1, segment.y2),
+            high: Math.max(segment.y1, segment.y2),
+            coordinate: segment.x1,
+            relationshipId: segment.relationshipId,
+          }
+    );
   }
 
   let total = 0;
@@ -258,21 +266,24 @@ export function collinearOverlap(segments: Segment[]) {
     a: string;
     b: string;
   } | null = null;
-  for (const [key, spans] of buckets.entries()) {
-    for (let i = 0; i < spans.length; i++) {
-      for (let j = i + 1; j < spans.length; j++) {
-        if (spans[i].relationshipId === spans[j].relationshipId) continue;
-        const low = Math.max(spans[i].low, spans[j].low);
-        const high = Math.min(spans[i].high, spans[j].high);
+
+  for (const axis of ['h', 'v'] as const) {
+    const runs = byAxis[axis];
+    for (let i = 0; i < runs.length; i++) {
+      for (let j = i + 1; j < runs.length; j++) {
+        if (runs[i].relationshipId === runs[j].relationshipId) continue;
+        if (Math.abs(runs[i].coordinate - runs[j].coordinate) >= band) continue;
+        const low = Math.max(runs[i].low, runs[j].low);
+        const high = Math.min(runs[i].high, runs[j].high);
         if (high <= low) continue;
         const length = high - low;
         total += length;
         if (!worst || length > worst.length) {
           worst = {
             length: Math.round(length),
-            axis: key.startsWith('h') ? 'horizontal' : 'vertical',
-            a: spans[i].relationshipId,
-            b: spans[j].relationshipId,
+            axis: axis === 'h' ? 'horizontal' : 'vertical',
+            a: runs[i].relationshipId,
+            b: runs[j].relationshipId,
           };
         }
       }
