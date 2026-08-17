@@ -81,20 +81,6 @@ const SELF_CORNER_STRIDE = 14;
 /** Gap kept between the outermost loop and the nearest ordinary anchor. */
 const SELF_CLEARANCE = 8;
 
-/** Shrinks each obstacle so a connector grazing an edge is not "through" it. */
-const OBSTACLE_INSET = 2;
-/** How many side pairs, in distance order, are checked for obstacles. */
-const SIDE_CANDIDATES = 8;
-/**
- * What one table in the way is worth, in pixels of extra connector.
- *
- * Blended into the distance rather than used as a hard rule: taking any clear
- * route regardless of length sends connectors on long detours across the
- * diagram, and a detour crosses far more relationships than the table it set
- * out to avoid.
- */
-const BLOCK_PENALTY = 400;
-
 /**
  * The angle at which each side's clockwise walk begins.
  *
