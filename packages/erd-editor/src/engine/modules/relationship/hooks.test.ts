@@ -14,6 +14,11 @@ import { createStore, Store } from '@/engine/store';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { getRoute } from '@/utils/draw-relationship';
+import {
+  collectObstacles,
+  countBlocked,
+} from '@/utils/draw-relationship/route';
 
 const [identificationHook, startRelationshipHook, relationshipSortHook] =
   hooks.map(([, effect]) => effect) as [HookEffect, HookEffect, HookEffect];
@@ -108,7 +113,10 @@ describe('relationship/hooks registration', () => {
       'settings.changeShow',
       'settings.changeMaxWidthComment',
       'relationship.add',
+      'relationship.remove',
       'memo.move',
+      'table.add',
+      'table.remove',
       'table.move',
       'table.moveTo',
       'table.changeName',
@@ -424,6 +432,44 @@ describe('relationship/hooks relationshipSortHook', () => {
     await settle();
 
     expect(rel(store, 'r1').start.x).not.toBe(0);
+  });
+
+  it('routes around a table that appeared between the two ends', async () => {
+    // Why `table.add` is on the subscription list. The route is recomputed from
+    // every table in the document, so one arriving in the corridor invalidates
+    // routes it has no other connection to; nothing else would wake the hook.
+    const store = createTestStore();
+    const start = addTable(store, 't1', []);
+    const end = addTable(store, 't2', []);
+    start.ui.x = 0;
+    start.ui.y = 0;
+    end.ui.x = 900;
+    end.ui.y = 300;
+    addRelationship(store, {
+      id: 'r1',
+      start: { tableId: 't1', columnIds: [] },
+      end: { tableId: 't2', columnIds: [] },
+    });
+
+    const { fire } = await run(relationshipSortHook, store);
+    fire();
+    await settle();
+
+    const obstacles = () => collectObstacles(store.state);
+    const routeOf = () => getRoute(rel(store, 'r1')) ?? [];
+    expect(countBlocked(routeOf(), obstacles(), 't1', 't2')).toBe(0);
+
+    // Sits on the corridor the route currently takes, and clear of both
+    // anchors so the router has somewhere to bend to.
+    const blocker = addTable(store, 't3', []);
+    blocker.ui.x = 450;
+    blocker.ui.y = 0;
+    expect(countBlocked(routeOf(), obstacles(), 't1', 't2')).toBe(1);
+
+    fire();
+    await settle();
+
+    expect(countBlocked(routeOf(), obstacles(), 't1', 't2')).toBe(0);
   });
 
   it('collapses a burst of triggers into a single trailing run', async () => {

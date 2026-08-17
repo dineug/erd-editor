@@ -9,16 +9,21 @@ import {
   loadJsonAction,
 } from '@/engine/modules/editor/atom.actions';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
-import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import {
+  addRelationshipAction,
+  removeRelationshipAction,
+} from '@/engine/modules/relationship/atom.actions';
 import {
   changeMaxWidthCommentAction,
   changeShowAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
+  addTableAction,
   changeTableCommentAction,
   changeTableNameAction,
   moveTableAction,
   moveToTableAction,
+  removeTableAction,
   sortTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
@@ -155,7 +160,16 @@ export const hooks: Hook[] = [
       changeShowAction,
       changeMaxWidthCommentAction,
       addRelationshipAction,
+      removeRelationshipAction,
       moveMemoAction,
+      // Routing reads every table in the document, not only the two a
+      // relationship connects, so the set of tables is part of its input. While
+      // a connector was a straight line between its own two ends this made no
+      // difference and neither action was here; now a table appearing between
+      // two connected ones leaves every route that should bend around it drawn
+      // straight through it until something else happens to trigger a sort.
+      addTableAction,
+      removeTableAction,
       moveTableAction,
       moveToTableAction,
       changeTableNameAction,
