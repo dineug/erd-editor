@@ -112,7 +112,16 @@ export function segmentHitsBox(
   );
 }
 
-/** How many tables a polyline passes through, ignoring the two it connects. */
+/**
+ * How many tables a polyline passes through, ignoring the two it connects.
+ *
+ * This is the hot function of the whole router: every candidate is scored with
+ * it, and the nudge pass calls it twice per lane it tries. The polyline's own
+ * bounding box is computed once and used to skip tables outright — a connector
+ * spans a small part of the canvas, so most tables fail it. Every segment's box
+ * sits inside the polyline's, so a table the polyline's box misses is a table
+ * every segment's cheap reject would have missed too; the count is unchanged.
+ */
 export function countBlocked(
   points: Point[],
   obstacles: Obstacles,
@@ -121,14 +130,29 @@ export function countBlocked(
 ) {
   let count = 0;
 
-  for (let index = 0; index < obstacles.ids.length; index++) {
-    const id = obstacles.ids[index];
-    if (id === skipA || id === skipB) continue;
+  let boundsLeft = Infinity;
+  let boundsRight = -Infinity;
+  let boundsTop = Infinity;
+  let boundsBottom = -Infinity;
+  for (let i = 0; i < points.length; i++) {
+    const point = points[i];
+    if (point.x < boundsLeft) boundsLeft = point.x;
+    if (point.x > boundsRight) boundsRight = point.x;
+    if (point.y < boundsTop) boundsTop = point.y;
+    if (point.y > boundsBottom) boundsBottom = point.y;
+  }
 
+  for (let index = 0; index < obstacles.ids.length; index++) {
     const left = obstacles.left[index];
     const right = obstacles.right[index];
     const top = obstacles.top[index];
     const bottom = obstacles.bottom[index];
+
+    if (boundsRight < left || boundsLeft > right) continue;
+    if (boundsBottom < top || boundsTop > bottom) continue;
+
+    const id = obstacles.ids[index];
+    if (id === skipA || id === skipB) continue;
 
     for (let i = 1; i < points.length; i++) {
       const a = points[i - 1];

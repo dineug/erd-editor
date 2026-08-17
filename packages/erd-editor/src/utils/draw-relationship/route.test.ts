@@ -84,6 +84,83 @@ describe('countBlocked', () => {
 
     expect(countBlocked(zigzag, boxes, 'a', 'b')).toBe(1);
   });
+
+  it('agrees with an unfiltered count over random scenes', () => {
+    // `countBlocked` skips whole tables using the polyline's bounding box. The
+    // saving is real — it is the router's hot function — but it is only allowed
+    // if it never changes an answer, which a handful of hand-picked cases
+    // cannot show. This is the same count without any of the skipping.
+    const naive = (
+      points: Point[],
+      boxes: Obstacles,
+      skipA: string,
+      skipB: string
+    ) => {
+      let count = 0;
+      for (let index = 0; index < boxes.ids.length; index++) {
+        const id = boxes.ids[index];
+        if (id === skipA || id === skipB) continue;
+        for (let i = 1; i < points.length; i++) {
+          const a = points[i - 1];
+          const b = points[i];
+          if (
+            segmentHitsBox(
+              a.x,
+              a.y,
+              b.x,
+              b.y,
+              boxes.left[index],
+              boxes.top[index],
+              boxes.right[index],
+              boxes.bottom[index]
+            )
+          ) {
+            count++;
+            break;
+          }
+        }
+      }
+      return count;
+    };
+
+    // Fixed seed: a benchmark that only reproduces sometimes is not a
+    // benchmark, and neither is a test.
+    let seed = 0x9e3779b9;
+    const random = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 0x100000000;
+    };
+    // Deliberately tight: the boxes have to sit close enough together that
+    // routes graze their edges, or every scene rejects trivially and the test
+    // exercises nothing.
+    const coordinate = () => Math.round(random() * 400) - 200;
+
+    for (let scene = 0; scene < 400; scene++) {
+      const boxes = obstacles(
+        Array.from({ length: 6 }, (_, index) => {
+          const x = coordinate();
+          const y = coordinate();
+          return {
+            id: `t${index}`,
+            left: x,
+            top: y,
+            right: x + Math.round(random() * 120) + 10,
+            bottom: y + Math.round(random() * 120) + 10,
+          };
+        })
+      );
+      const points: Point[] = Array.from(
+        { length: 2 + Math.floor(random() * 4) },
+        () => ({ x: coordinate(), y: coordinate() })
+      );
+      const skipA = `t${Math.floor(random() * 8)}`;
+      const skipB = `t${Math.floor(random() * 8)}`;
+
+      expect(countBlocked(points, boxes, skipA, skipB)).toBe(
+        naive(points, boxes, skipA, skipB)
+      );
+    }
+  });
 });
 
 describe('routeOrthogonal', () => {
