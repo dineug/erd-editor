@@ -146,6 +146,18 @@ export const ANCHOR_MAX_PITCH = 120;
 /** Keeps the outermost anchor of a side clear of the table's corners. */
 export const ANCHOR_EDGE_INSET = 12;
 
+/**
+ * How far back from a corner a connector turns, when the corner is drawn as a
+ * 45-degree cut rather than a right angle.
+ *
+ * Each cut is clamped to half of the shorter run it touches, so this is a ceiling
+ * rather than a length: a short run keeps its right angle instead of losing the
+ * whole of itself to two cuts. Two connectors turning the same way in
+ * neighbouring lanes stay `NUDGE_GAP` apart through the corner, so a bundle bends
+ * as a set of concentric cuts rather than converging on one.
+ */
+export const ROUTE_CHAMFER = 8;
+
 const EMPTY_SLOTS: readonly [number, number] = [0, 0];
 
 /**

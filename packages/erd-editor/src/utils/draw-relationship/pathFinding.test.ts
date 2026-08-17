@@ -31,18 +31,10 @@ describe('getRelationshipPath', () => {
       expect(path.line.end).toEqual({ x1: 365, y1: 50, x2: 350, y2: 50 });
     });
 
-    it('builds a three segment path along the x axis', () => {
+    it('draws one straight run when the two anchors line up', () => {
       expect(path.path.d()).toEqual([
         [
           { x: 150, y: 50 },
-          { x: 250, y: 50 },
-        ],
-        [
-          { x: 250, y: 50 },
-          { x: 250, y: 50 },
-        ],
-        [
-          { x: 250, y: 50 },
           { x: 350, y: 50 },
         ],
       ]);
@@ -112,18 +104,28 @@ describe('getRelationshipPath', () => {
       expect(path.line.end).toEqual({ x1: 300, y1: 465, x2: 300, y2: 450 });
     });
 
-    it('builds a three segment path along the y axis', () => {
+    it('turns at right angles on the y axis, with the corners cut', () => {
+      // Two turns at the midpoint, each drawn as a 45-degree cut of
+      // `ROUTE_CHAMFER` either side of the corner.
       expect(path.path.d()).toEqual([
         [
           { x: 100, y: 150 },
-          { x: 100, y: 200 },
+          { x: 100, y: 292 },
         ],
         [
-          { x: 100, y: 200 },
-          { x: 300, y: 400 },
+          { x: 100, y: 292 },
+          { x: 108, y: 300 },
         ],
         [
-          { x: 300, y: 400 },
+          { x: 108, y: 300 },
+          { x: 292, y: 300 },
+        ],
+        [
+          { x: 292, y: 300 },
+          { x: 300, y: 308 },
+        ],
+        [
+          { x: 300, y: 308 },
           { x: 300, y: 450 },
         ],
       ]);
@@ -206,20 +208,28 @@ describe('getRelationshipPath', () => {
       )
     );
 
-    it('offsets the middle segment by half of the perpendicular distance', () => {
+    it('crosses on the x axis at the midpoint, with the corners cut', () => {
       expect(path.path.M).toEqual({ x: 450, y: 200 });
       expect(path.path.L).toEqual({ x: 150, y: 260 });
       expect(path.path.d()).toEqual([
         [
           { x: 450, y: 200 },
-          { x: 330, y: 200 },
+          { x: 308, y: 200 },
         ],
         [
-          { x: 330, y: 200 },
-          { x: 270, y: 260 },
+          { x: 308, y: 200 },
+          { x: 300, y: 208 },
         ],
         [
-          { x: 270, y: 260 },
+          { x: 300, y: 208 },
+          { x: 300, y: 252 },
+        ],
+        [
+          { x: 300, y: 252 },
+          { x: 292, y: 260 },
+        ],
+        [
+          { x: 292, y: 260 },
           { x: 150, y: 260 },
         ],
       ]);
@@ -263,20 +273,12 @@ describe('getRelationshipPath', () => {
       )
     );
 
-    it('meets exactly halfway when the two anchors share an x', () => {
+    it('draws one straight run when the two anchors share an x', () => {
       expect(path.path.M).toEqual({ x: 200, y: 350 });
       expect(path.path.L).toEqual({ x: 200, y: 150 });
       expect(path.path.d()).toEqual([
         [
           { x: 200, y: 350 },
-          { x: 200, y: 250 },
-        ],
-        [
-          { x: 200, y: 250 },
-          { x: 200, y: 250 },
-        ],
-        [
-          { x: 200, y: 250 },
           { x: 200, y: 150 },
         ],
       ]);
@@ -376,14 +378,6 @@ describe('getRelationshipPath', () => {
       expect(path.path.M).toEqual({ x: 0, y: 0 });
       expect(path.path.L).toEqual({ x: 0, y: 0 });
       expect(path.path.d()).toEqual([
-        [
-          { x: 0, y: 0 },
-          { x: 0, y: 0 },
-        ],
-        [
-          { x: 0, y: 0 },
-          { x: 0, y: 0 },
-        ],
         [
           { x: 0, y: 0 },
           { x: 0, y: 0 },

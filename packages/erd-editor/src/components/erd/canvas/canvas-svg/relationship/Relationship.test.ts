@@ -75,9 +75,10 @@ describe('Relationship', () => {
     const expected = getRelationshipPath(relationship).path.path.d();
     mounted = await mountRelationship(relationship);
 
-    // path segments + start tick + start base + the dash pair + the shape
+    // path segments + start tick + start base + the dash pair + the shape.
+    // Three runs, and a cut either side of both corners between them.
     const lines = Array.from(mounted.container.querySelectorAll('line'));
-    expect(expected).toHaveLength(3);
+    expect(expected).toHaveLength(5);
 
     const segments = lines.slice(0, expected.length);
     segments.forEach((line, index) => {

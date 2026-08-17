@@ -11,8 +11,15 @@ import {
   PathLine,
   PathPoint,
   RelationshipPath,
+  ROUTE_CHAMFER,
 } from '@/utils/draw-relationship';
-import { clampStub, facingGap, stubFor } from '@/utils/draw-relationship/stub';
+import { chamferPolyline } from '@/utils/draw-relationship/chamfer';
+import {
+  clampStub,
+  facingGap,
+  isHorizontal,
+  stubFor,
+} from '@/utils/draw-relationship/stub';
 
 export function getRelationshipPath(
   relationship: Relationship
@@ -68,51 +75,12 @@ function getPath(
         ];
       }
 
-      if (route && route.length > 1) {
-        const segments: Array<[Point, Point]> = [];
-        for (let index = 1; index < route.length; index++) {
-          segments.push([route[index - 1], route[index]]);
-        }
-        return segments;
-      }
+      const polyline =
+        route && route.length > 1
+          ? route
+          : twoBend(this.M, this.L, start.direction);
 
-      const distanceX = this.M.x - this.L.x;
-      const distanceY = this.M.y - this.L.y;
-      const distanceHalfX = distanceX / 2;
-      const distanceHalfY = distanceY / 2;
-      const isAxisX = Math.abs(distanceY) <= Math.abs(distanceX);
-      const subDistance = isAxisX
-        ? Math.abs(distanceHalfY)
-        : Math.abs(distanceHalfX);
-
-      const add = createAdd(subDistance);
-      const addLeft = add(true);
-      const addRight = add(false);
-
-      const addX1 = addLeft(distanceX);
-      const addY1 = addLeft(distanceY);
-      const addX2 = addRight(distanceX);
-      const addY2 = addRight(distanceY);
-
-      const x1 = isAxisX ? this.M.x - distanceHalfX + addX1 : this.M.x;
-      const y1 = isAxisX ? this.M.y : this.M.y - distanceHalfY + addY1;
-      const x2 = isAxisX ? this.L.x + distanceHalfX + addX2 : this.L.x;
-      const y2 = isAxisX ? this.L.y : this.L.y + distanceHalfY + addY2;
-
-      return [
-        [
-          { x: this.M.x, y: this.M.y },
-          { x: x1, y: y1 },
-        ],
-        [
-          { x: x1, y: y1 },
-          { x: x2, y: y2 },
-        ],
-        [
-          { x: x2, y: y2 },
-          { x: this.L.x, y: this.L.y },
-        ],
-      ];
+      return toSegments(chamferPolyline(polyline, ROUTE_CHAMFER));
     },
   };
 
@@ -338,9 +306,27 @@ function getLine(
   };
 }
 
-function createAdd(value: number) {
-  return (leftNegativeMul: boolean) => (distance: number) =>
-    distance < 0
-      ? (leftNegativeMul ? -1 : 1) * value
-      : (leftNegativeMul ? 1 : -1) * value;
+function toSegments(points: Point[]): Array<[Point, Point]> {
+  const segments: Array<[Point, Point]> = [];
+  for (let index = 1; index < points.length; index++) {
+    segments.push([points[index - 1], points[index]]);
+  }
+  return segments;
+}
+
+/**
+ * What a relationship is drawn as before its first sort, which is the only time
+ * it has no route: the same shape `routeOrthogonal` falls back to. Deriving it
+ * any other way put a diagonal on screen that no corner had been cut from.
+ */
+function twoBend(m: Point, l: Point, direction: number): Point[] {
+  if (isHorizontal(direction)) {
+    if (Math.abs(m.y - l.y) < 0.5) return [m, l];
+    const middle = (m.x + l.x) / 2;
+    return [m, { x: middle, y: m.y }, { x: middle, y: l.y }, l];
+  }
+
+  if (Math.abs(m.x - l.x) < 0.5) return [m, l];
+  const middle = (m.y + l.y) / 2;
+  return [m, { x: m.x, y: middle }, { x: l.x, y: middle }, l];
 }

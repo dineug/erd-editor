@@ -73,6 +73,11 @@ between relationships that touch the same table to zero on its own, while
 crossings between independent pairs only fall to side re-assignment. Summing
 them hides which change did the work.
 
+`node-cross` counts segment-against-table incidences, not connectors: a run split
+into three by corner cuts is counted up to three times for the same table. It is
+comparable within a run and across changes that leave the segment count alone, and
+not across one that changes it.
+
 `min pitch` is read from the document's anchors rather than from segment
 endpoints. The routing polyline starts one stub away from the table, so no
 segment end is an anchor; an earlier version scanned for segment ends that
@@ -206,6 +211,22 @@ a veto. And neither ordering of a bundle wins on its own: by where each route
 arrives leaves large at 5486px, by where each segment already sits leaves it at
 7332 and medium at 508 while clearing small outright, so both are tried and
 scored.
+
+**Cutting the corners at 45 degrees is a render pass and costs a tenth of a
+millisecond a move.** The polyline the router and the nudge pass work on stays
+orthogonal; only what reaches the screen is cut, so channels, obstacle tests and
+the overlap metrics keep measuring right angles. Segments rise 72 / 228 / 452 to
+101 / 375 / 751 — two per cut corner — and with them `node-cross` (39 / 133 / 277
+to 52 / 196 / 385), which counts incidences and not connectors: the same run
+through the same table, in three pieces. Total length falls 1.2% on the large
+corpus, because a cut corner is shorter than the two legs it replaces, and
+collinear overlap falls with it for the same reason. Measured alternately, three
+rounds each, `busy/move` ran 1.31 / 1.35 / 1.35 against 1.49 / 1.46 / 1.45 on
+small and 4.04 / 4.39 / 4.12 against 4.54 / 4.57 / 4.48 on medium — both
+non-overlapping, so both real, at 8-9% — while large's 8.32 / 8.26 / 8.78 against
+9.07 / 8.57 / 9.05 does not resolve. `frame p50` stayed at one vsync throughout.
+Drawing a route as one `<path>` rather than a `<line>` per segment would take that
+back, and would also make `node-cross` mean what it used to.
 
 **The next lever is a channel-wide track assignment.** Runs are chained
 components of the span-overlap relation, so a chain that only ever overlaps its
