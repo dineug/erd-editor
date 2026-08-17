@@ -51,6 +51,7 @@
     "e2e:dev": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
     "e2e:report": "playwright show-report e2e/.report",
+    "e2e:bench": "vp run --filter @dineug/erd-editor build && playwright test -c playwright.bench.config.ts",
     "e2e:typecheck": "tsc -p e2e/tsconfig.json"
   },
   "devDependencies": {

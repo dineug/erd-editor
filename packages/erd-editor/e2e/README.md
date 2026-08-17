@@ -9,6 +9,7 @@ pnpm --filter @dineug/erd-editor e2e            # headless run
 pnpm --filter @dineug/erd-editor e2e:dev        # Playwright UI mode
 pnpm --filter @dineug/erd-editor e2e:headed     # watch it drive a real browser
 pnpm --filter @dineug/erd-editor e2e:typecheck  # tsc over e2e/ + playwright.config.ts
+pnpm --filter @dineug/erd-editor e2e:bench      # routing benchmark — see e2e/bench/README.md
 ```
 
 `pnpm test` stays vitest-only. E2E is a `package.json` script and its own CI job,
