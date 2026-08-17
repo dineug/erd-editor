@@ -55,6 +55,8 @@ export type BenchResult = {
   busyMsPerMove: number;
   /** Distinct relationships whose DOM was rewritten by a single move. */
   fanOut: Stats;
+  /** Side changes per move over the drag — how much the drawing jumps. */
+  flipsPerMove: number;
   attrWrites: { total: number; svg: number; perMove: number };
   moves: number;
 };
@@ -84,6 +86,7 @@ type BenchHarness = {
     frameMs: number[];
     busyMs: number;
   }>;
+  sideFlips(options: Required<DragBenchOptions>): Promise<number>;
   drag(options: Required<DragBenchOptions> & { monitor: boolean }): Promise<{
     frameMs: number[];
     fanOut: number[];
@@ -227,6 +230,83 @@ export async function installBench(page: Page) {
           };
           requestAnimationFrame(tick);
         });
+      },
+
+      /**
+       * How often a relationship changes which side of a table it leaves from,
+       * over the course of one drag.
+       *
+       * Side choice is remade from scratch on every mousemove, so a table
+       * crossing the point where a different pair of sides becomes marginally
+       * closer makes its connectors jump. Nothing else here can see that: the
+       * drawing is equally valid before and after, so no overlap metric moves,
+       * and a jump costs no measurable time.
+       *
+       * This runs as its own pass and serialises the document every frame,
+       * which is far too expensive to do while timing anything.
+       */
+      async sideFlips({ tableId, moves, stepX, stepY }) {
+        const editor = host as HTMLElement & { value: string };
+        const header = root.querySelector(
+          `[data-testid="erd-canvas"] .table[data-id="${tableId}"]`
+        );
+        if (!header) throw new Error(`table ${tableId} is not rendered`);
+
+        const box = (header as HTMLElement).getBoundingClientRect();
+        let x = box.x + box.width / 2;
+        let y = box.y + 8;
+
+        const target = root.elementFromPoint(x, y) ?? header;
+        target.dispatchEvent(mouse('mousedown', x, y));
+        await settled();
+
+        const read = () => {
+          const value = JSON.parse(editor.value) as {
+            doc: { relationshipIds: string[] };
+            collections: {
+              relationshipEntities: Record<
+                string,
+                { start: { direction: number }; end: { direction: number } }
+              >;
+            };
+          };
+          const sides = new Map<string, number>();
+          for (const id of value.doc.relationshipIds) {
+            const relationship = value.collections.relationshipEntities[id];
+            if (!relationship) continue;
+            sides.set(
+              id,
+              relationship.start.direction * 16 + relationship.end.direction
+            );
+          }
+          return sides;
+        };
+
+        let previous = read();
+        let flips = 0;
+
+        for (let step = 0; step < moves; step++) {
+          if (step === Math.floor(moves / 2)) {
+            stepX = -stepX;
+            stepY = -stepY;
+          }
+          x += stepX;
+          y += stepY;
+          window.dispatchEvent(mouse('mousemove', x, y));
+          await settled();
+          // The sort is a 5ms trailing throttle, so its result is one task away.
+          await new Promise<void>(resolve => setTimeout(resolve, 8));
+
+          const current = read();
+          for (const [id, sides] of current) {
+            if (previous.get(id) !== sides) flips++;
+          }
+          previous = current;
+        }
+
+        window.dispatchEvent(mouse('mouseup', x, y));
+        await settled();
+        return flips;
       },
 
       async drag({ tableId, moves, stepX, stepY, monitor: useMonitor }) {
@@ -381,8 +461,14 @@ export async function runDragBench(
     resolved
   );
 
+  const flips = await page.evaluate(
+    argument => window.__erdBench!.sideFlips(argument),
+    resolved
+  );
+
   return {
     loadMs,
+    flipsPerMove: flips / resolved.moves,
     frame: stats(framePass.frameMs),
     frameIdle: stats(idleFrames.frameMs),
     // The idle run covers the same number of frames, so its blocking is the

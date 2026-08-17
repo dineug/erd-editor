@@ -156,6 +156,8 @@ function print(report: Report, baseline: Report | null) {
       delta(row.perf.attrWrites.perMove, old?.perf.attrWrites.perMove),
       `${row.perf.fanOut.p50.toFixed(0)}/${row.relationships}`,
       delta(row.perf.fanOut.p50, old?.perf.fanOut.p50),
+      row.perf.flipsPerMove.toFixed(2),
+      delta(row.perf.flipsPerMove, old?.perf.flipsPerMove),
     ];
   });
 
@@ -202,6 +204,8 @@ function print(report: Report, baseline: Report | null) {
           'attr/move',
           'Δ',
           'fan-out',
+          'Δ',
+          'flips/move',
           'Δ',
         ],
         perfRows

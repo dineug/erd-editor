@@ -46,6 +46,14 @@ thread it is measuring and stretches frames under load.
 Neither has any timing noise, which makes them the sharpest regression signals
 here: a change claiming to cut render work has to move them.
 
+**`flips/move`** counts how often a relationship changes which side of a table
+it leaves from, over one drag. Side choice is remade from scratch on every
+mousemove, so a table crossing the point where a different pair of sides becomes
+marginally closer makes its connectors jump. No other metric can see that — the
+drawing is equally valid before and after, and a jump costs no measurable time.
+It has its own pass, because reading it means serialising the document every
+frame.
+
 **Quality** metrics are computed from the `<line>` elements the editor drew, not
 from a recomputation of the geometry — a routing change that edits anchors but
 never reaches the path still shows up. `cross-shared` and `cross-free` are kept
@@ -84,6 +92,20 @@ crossings between relationships rise 139–800% and total line length 24–46%.
 Sweeping the penalty just trades one against the other. With the path fixed at
 three segments the only way around a table is a different pair of sides; going
 round properly needs the path to bend. That change was reverted too.
+
+**Nothing cheap is left for table penetration.** Three attempts, all reverted.
+Scoring side pairs by obstacles is above. Flipping which axis the path leaves on
+is worse everywhere — the existing heuristic already picks the good one, and the
+alternative is 71% longer. Replacing the 45-degree middle segment with a proper
+orthogonal elbow — which costs no extra segments — cuts node crossings 7-15% but
+raises collinear overlap 783%, because parallel orthogonal routes share a
+corridor where diagonals separate naturally. That is the result the routing plan
+predicted for orthogonal routing shipped without nudging.
+
+**Side choice is stable enough.** `flips/move` is 0.05 at the largest corpus —
+about six jumps over a 240px drag of a hub table. Hysteresis was considered and
+is not worth its risk at that rate; the metric stays to catch a change that
+makes it worse.
 
 **Cost tracks the fan-out, not the document.** Holding tables and hub degree
 fixed and varying only the total relationship count gives roughly
