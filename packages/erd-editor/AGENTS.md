@@ -29,7 +29,7 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 | `src/utils/` | `schema-sql/` (six DDL vendors), `generator-code/` (seven languages), `schema-sql-parser/` (SQL import), `draw-relationship/`, `collection/`, `file/`, `keyboard-shortcut/`, `rx-operators/` |
 | `src/services/` | `schema-gc/` — orphan collection in a dedicated and a shared worker over comlink — plus `shikiService.ts` |
 | `src/themes/`, `src/styles/` | Theme tokens and the radix palette; global style fragments (reset, typography, fonts, scrollbar). `src/__test-utils__/` holds vitest-only mount helpers, excluded from the dts build and from coverage |
-| `e2e/` | Playwright — `fixture/` (deterministic mount page), `support/` (page object, seeds), `specs/` (six specs), `README.md` |
+| `e2e/` | Playwright — `fixture/` (deterministic mount page), `support/` (page object, seeds), `specs/` (six specs), `bench/` (routing benchmark, own config, never in CI), `README.md` |
 
 ## For AI Agents
 
@@ -39,6 +39,7 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 - Reducers must write through the LWW operators from `@dineug/erd-editor-schema` using `action.version`; a direct state write wins every merge and corrupts collaborative sessions.
 - `readonly` is enforced by `readonlyIgnoreFilter` over `ReadonlyIgnoreActionTypes`, not in components. Exemptions live in the `hasReadonlyIgnore` list in `src/engine/actions.ts`.
 - File IO and highlighting go through the three injected callbacks — the VSCode and IntelliJ webviews have no browser file dialog, so a direct `<input type=file>` is dead code there.
+- `draw-relationship/sort.ts` picks each end's side and orders that side's anchors by the angle of the opposite table, walking the boundary clockwise so anchors sharing a table cannot cross; `pathFinding.ts` turns them into segments. Anchors land in schema fields and therefore serialise, so a rendering-only value belongs in the `WeakMap` side channel in `draw-relationship/index.ts`, never a new field.
 - Everything renders inside a closed shadow root, so `document.querySelector` never finds editor internals; use `queryShadowSelector` / `closestElement`. Every dependency is a `devDependency` and the lib build declares no `external`, so anything added ships inside `dist/erd-editor.js` for all four consumers.
 
 ### Testing Requirements

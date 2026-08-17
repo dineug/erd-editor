@@ -3,13 +3,14 @@ import { arrayHas } from '@dineug/shared';
 
 import { Direction } from '@/constants/schema';
 import { RootState } from '@/engine/state';
-import { Relationship, RelationshipPoint, Table } from '@/internal-types';
+import { Relationship, Table } from '@/internal-types';
 import {
+  ANCHOR_EDGE_INSET,
+  ANCHOR_MAX_PITCH,
   DirectionName,
   DirectionNameList,
   ObjectPoint,
-  RelationshipMarginPoint,
-  RelationshipOrder,
+  setStubSlots,
 } from '@/utils/draw-relationship';
 import {
   euclideanDistance,
@@ -18,11 +19,15 @@ import {
 
 type RelationshipGraph = {
   tableId: string;
+  centerX: number;
+  centerY: number;
   objectPoint: ObjectPoint;
-  top: Map<string, ChangeRelationship>;
-  bottom: Map<string, ChangeRelationship>;
-  left: Map<string, ChangeRelationship>;
-  right: Map<string, ChangeRelationship>;
+  /** Loops placed on this table so far, which decides how far each is offset. */
+  selfCount: number;
+  top: SideEntry[];
+  bottom: SideEntry[];
+  left: SideEntry[];
+  right: SideEntry[];
 };
 
 type ChangeRelationship = {
@@ -31,13 +36,79 @@ type ChangeRelationship = {
   end: Pick<Relationship['start'], 'x' | 'y' | 'direction' | 'tableId'>;
 };
 
+/** One relationship end sitting on one table side, before it is given a slot. */
+type SideEntry = {
+  id: string;
+  /** True when the end on this side is the relationship's `start`. */
+  isStart: boolean;
+  point: ChangeRelationship['start'];
+  /**
+   * Where the opposite table lies, as an angle around this table, normalised so
+   * that walking the side clockwise means walking this key upwards.
+   */
+  angle: number;
+  /** Separates relationships that share both tables, and so share an angle. */
+  tie: number;
+};
+
 type DirectionTuple = [DirectionName, DirectionName];
+
+/** Slot index each end of a relationship took, indexed [start, end]. */
+type SlotPair = [number, number];
 
 const directionNameToDirection: Record<string, number> = {
   [DirectionName.top]: Direction.top,
   [DirectionName.bottom]: Direction.bottom,
   [DirectionName.left]: Direction.left,
   [DirectionName.right]: Direction.right,
+};
+
+const TAU = Math.PI * 2;
+
+/** Loop corner offset: a fraction of the table's shorter side, within bounds. */
+const SELF_CORNER_RATIO = 0.15;
+const SELF_CORNER_MIN = 20;
+const SELF_CORNER_MAX = 60;
+/** How far each additional loop on the same table steps out from the previous. */
+const SELF_CORNER_STRIDE = 14;
+/** Gap kept between the outermost loop and the nearest ordinary anchor. */
+const SELF_CLEARANCE = 8;
+
+/** Shrinks each obstacle so a connector grazing an edge is not "through" it. */
+const OBSTACLE_INSET = 2;
+/** How many side pairs, in distance order, are checked for obstacles. */
+const SIDE_CANDIDATES = 8;
+/**
+ * What one table in the way is worth, in pixels of extra connector.
+ *
+ * Blended into the distance rather than used as a hard rule: taking any clear
+ * route regardless of length sends connectors on long detours across the
+ * diagram, and a detour crosses far more relationships than the table it set
+ * out to avoid.
+ */
+const BLOCK_PENALTY = 400;
+
+/**
+ * The angle at which each side's clockwise walk begins.
+ *
+ * Reading the boundary as one clockwise loop — top left to right, right top to
+ * bottom, bottom right to left, left bottom to top — is what makes the anchor
+ * order planar: two relationships leaving the same table cannot cross when both
+ * are placed in the order their targets appear around it.
+ */
+const SIDE_START_ANGLE: Record<DirectionName, number> = {
+  [DirectionName.top]: -Math.PI,
+  [DirectionName.right]: -Math.PI / 2,
+  [DirectionName.bottom]: 0,
+  [DirectionName.left]: Math.PI / 2,
+};
+
+/** Sides whose clockwise walk runs against the axis it is measured on. */
+const WALKS_BACKWARDS: Record<DirectionName, boolean> = {
+  [DirectionName.top]: false,
+  [DirectionName.right]: false,
+  [DirectionName.bottom]: true,
+  [DirectionName.left]: true,
 };
 
 export function relationshipSort(state: RootState) {
@@ -55,6 +126,8 @@ export function relationshipSort(state: RootState) {
     );
   const graphMap = new Map<string, RelationshipGraph>();
   const changeMap = new Map<Relationship, ChangeRelationship>();
+  const slotMap = new Map<string, SlotPair>();
+  const pairs = pairIndexes(relationships);
 
   for (const relationship of relationships) {
     const relationshipShape = createChangeRelationship(relationship);
@@ -67,19 +140,13 @@ export function relationshipSort(state: RootState) {
     }
 
     changeMap.set(relationship, relationshipShape);
+    // Seeded here so `placeSide` only ever mutates an existing pair; looking it
+    // up with a fallback allocates a throwaway array for every side entry.
+    slotMap.set(relationshipShape.id, [0, 0]);
 
     if (start.tableId === end.tableId) {
-      start.direction = Direction.top;
-      end.direction = Direction.right;
-
       const graph = getOrCreateGraph(state, graphMap, startTable);
-      start.x = graph.objectPoint.rt.x - 20;
-      start.y = graph.objectPoint.rt.y;
-      end.x = graph.objectPoint.rt.x;
-      end.y = graph.objectPoint.rt.y + 20;
-
-      graph.top.set(relationshipShape.id, relationshipShape);
-      graph.right.set(relationshipShape.id, relationshipShape);
+      placeSelf(graph, relationshipShape);
     } else {
       const startGraph = getOrCreateGraph(state, graphMap, startTable);
       const endGraph = getOrCreateGraph(state, graphMap, endTable);
@@ -89,22 +156,31 @@ export function relationshipSort(state: RootState) {
         relationshipShape
       );
 
-      startGraph[startDirection].set(relationshipShape.id, relationshipShape);
-      endGraph[endDirection].set(relationshipShape.id, relationshipShape);
+      startGraph[startDirection].push({
+        id: relationshipShape.id,
+        isStart: true,
+        point: start,
+        angle: orderAngle(startDirection, startGraph, endGraph),
+        tie: pairs.tieAt(relationshipShape.id, start.tableId, end.tableId),
+      });
+      endGraph[endDirection].push({
+        id: relationshipShape.id,
+        isStart: false,
+        point: end,
+        angle: orderAngle(endDirection, endGraph, startGraph),
+        tie: pairs.tieAt(relationshipShape.id, end.tableId, start.tableId),
+      });
     }
   }
 
   for (const graph of graphMap.values()) {
     for (const key of DirectionNameList) {
-      const direction = key as DirectionName;
-      const size = graph[direction].size;
-      if (size < 2) continue;
-
-      relationshipOverlaySort(direction, graph);
+      placeSide(key as DirectionName, graph, slotMap);
     }
   }
 
   for (const [origin, change] of changeMap.entries()) {
+    setStubSlots(origin, slotMap.get(change.id) ?? [0, 0]);
     origin.start.direction = change.start.direction;
     origin.start.x = change.start.x;
     origin.start.y = change.start.y;
@@ -121,17 +197,79 @@ function getOrCreateGraph(
 ) {
   let graph = graphMap.get(table.id);
   if (!graph) {
+    const objectPoint = tableToObjectPoint(state, table);
     graph = {
       tableId: table.id,
-      objectPoint: tableToObjectPoint(state, table),
-      top: new Map(),
-      bottom: new Map(),
-      left: new Map(),
-      right: new Map(),
+      centerX: objectPoint.top.x,
+      centerY: objectPoint.left.y,
+      objectPoint,
+      selfCount: 0,
+      top: [],
+      bottom: [],
+      left: [],
+      right: [],
     };
     graphMap.set(table.id, graph);
   }
   return graph;
+}
+
+/**
+ * Places a loop around the table's top-right corner.
+ *
+ * Loops are kept out of the side lists entirely. Registering one on both the
+ * top and the right — which is what used to happen — inflated the count on two
+ * sides, tightening the spacing of every unrelated relationship there, and it
+ * pinned the loop to whichever slot the ordering happened to give it.
+ *
+ * The offset grows with the table so a loop on a large table is not a small
+ * scratch in one corner, and each further loop steps outwards from the last.
+ */
+function placeSelf(graph: RelationshipGraph, relationship: ChangeRelationship) {
+  const { rt, width, height } = graph.objectPoint;
+  const index = graph.selfCount++;
+  const offset =
+    clamp(
+      Math.min(width, height) * SELF_CORNER_RATIO,
+      SELF_CORNER_MIN,
+      SELF_CORNER_MAX
+    ) +
+    index * SELF_CORNER_STRIDE;
+
+  relationship.start.direction = Direction.top;
+  relationship.start.x = rt.x - offset;
+  relationship.start.y = rt.y;
+  relationship.end.direction = Direction.right;
+  relationship.end.x = rt.x;
+  relationship.end.y = rt.y + offset;
+}
+
+function selfOffset(graph: RelationshipGraph, index: number) {
+  const { width, height } = graph.objectPoint;
+  return (
+    clamp(
+      Math.min(width, height) * SELF_CORNER_RATIO,
+      SELF_CORNER_MIN,
+      SELF_CORNER_MAX
+    ) +
+    index * SELF_CORNER_STRIDE
+  );
+}
+
+/**
+ * How much of a side the loops in the top-right corner have taken.
+ *
+ * Loops are placed before the sides are laid out and are not part of the slot
+ * order, so without this the two collide: the anchor spread reaches the corner
+ * a loop already sits in, and the gap between them shrinks to nothing.
+ */
+function selfReserve(graph: RelationshipGraph) {
+  if (!graph.selfCount) return 0;
+  return selfOffset(graph, graph.selfCount - 1) + SELF_CLEARANCE;
+}
+
+function clamp(value: number, low: number, high: number) {
+  return Math.min(Math.max(value, low), high);
 }
 
 function createChangeRelationship(
@@ -154,6 +292,88 @@ function createChangeRelationship(
   };
 }
 
+/**
+ * Positions within the set of relationships connecting the same two tables.
+ *
+ * Those relationships all point at the same place, so the angle key ties and
+ * something else has to order them. Both ends read the same sorted list, and
+ * the end belonging to the larger table id reads it backwards — walking one
+ * table clockwise means walking the other anticlockwise, so matching the two in
+ * the same direction is exactly what would make parallel edges cross.
+ */
+function pairIndexes(relationships: Relationship[]) {
+  const groups = new Map<string, string[]>();
+
+  for (const { id, start, end } of relationships) {
+    const key = pairKey(start.tableId, end.tableId);
+    const group = groups.get(key);
+    if (group) {
+      group.push(id);
+    } else {
+      groups.set(key, [id]);
+    }
+  }
+
+  // Resolved up front into flat lookups. Searching the group on each call is
+  // two linear scans per relationship, and this runs on every mousemove of a
+  // drag.
+  const indexById = new Map<string, number>();
+  const sizeById = new Map<string, number>();
+  let anyShared = false;
+
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+
+    anyShared = true;
+    group.sort();
+    group.forEach((id, index) => {
+      indexById.set(id, index);
+      sizeById.set(id, group.length);
+    });
+  }
+
+  return {
+    tieAt(id: string, ownTableId: string, otherTableId: string) {
+      if (!anyShared) return 0;
+
+      const index = indexById.get(id) ?? 0;
+      if (ownTableId <= otherTableId) return index;
+      return (sizeById.get(id) ?? 1) - 1 - index;
+    },
+  };
+}
+
+function pairKey(a: string, b: string) {
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+function normalizeAngle(angle: number) {
+  const value = angle % TAU;
+  return value < 0 ? value + TAU : value;
+}
+
+function orderAngle(
+  direction: DirectionName,
+  own: RelationshipGraph,
+  other: RelationshipGraph
+) {
+  const theta = Math.atan2(
+    other.centerY - own.centerY,
+    other.centerX - own.centerX
+  );
+  return normalizeAngle(theta - SIDE_START_ANGLE[direction]);
+}
+
+/**
+ * Chooses which side of each table the relationship leaves from: the nearest of
+ * the sixteen side-midpoint pairs, with `DirectionNameList` order breaking ties.
+ *
+ * Obstacles are deliberately not consulted here. Scoring candidates by how many
+ * tables they pass through was measured and reverted — with the path fixed at
+ * three segments the only way around a table is a different pair of sides, and
+ * the detour that buys costs more crossings and length than the penetration it
+ * avoids. Routing past a table needs the path to bend, not the anchors to move.
+ */
 function getAndSetDirection(
   start: ObjectPoint,
   end: ObjectPoint,
@@ -194,103 +414,84 @@ function getAndSetDirection(
   return direction;
 }
 
-function relationshipOverlaySort(
+/**
+ * Spaces one side's anchors and records the slot each took.
+ *
+ * Spacing is capped rather than filling the side. Dividing the whole edge by
+ * the number of relationships — what this used to do — pushes two anchors on a
+ * tall table hundreds of pixels apart, so the pair splays out and converges
+ * again for no reason. When the side is too short for the cap the anchors
+ * compress instead of spilling past the corners.
+ */
+function placeSide(
   direction: DirectionName,
-  graph: RelationshipGraph
+  graph: RelationshipGraph,
+  slotMap: Map<string, SlotPair>
 ) {
-  const point = relationshipOverlayPoint(direction, graph);
-  const distances = relationshipOverlayOrder(direction, graph);
+  const entries = graph[direction];
+  if (!entries.length) return;
 
-  if (direction === DirectionName.left || direction === DirectionName.right) {
-    point.yArray.forEach((y, index) => {
-      distances[index].start.y = y;
-    });
-  } else if (
-    direction === DirectionName.top ||
-    direction === DirectionName.bottom
-  ) {
-    point.xArray.forEach((x, index) => {
-      distances[index].start.x = x;
-    });
-  }
-}
+  // Ordering is by angle, then by the parallel-edge tie, then by id. The last
+  // key is what makes the result independent of `relationshipIds` order, and so
+  // identical across peers, workers and reserialisation.
+  entries.sort(
+    (a, b) => a.angle - b.angle || a.tie - b.tie || (a.id < b.id ? -1 : 1)
+  );
 
-function relationshipOverlayPoint(
-  direction: DirectionName,
-  graph: RelationshipGraph
-): RelationshipMarginPoint {
-  const size = graph[direction].size;
-  const margin = {
-    x: graph.objectPoint.width / size,
-    y: graph.objectPoint.height / size,
-  };
-  const padding = {
-    x: margin.x / 2,
-    y: margin.y / 2,
-  };
-  const xArray: number[] = [];
-  const yArray: number[] = [];
-
-  if (direction === DirectionName.left || direction === DirectionName.right) {
-    let sum = graph.objectPoint.lt.y - padding.y;
-    for (let i = 0; i < size; i++) {
-      sum += margin.y;
-      yArray.push(sum);
-    }
-  } else if (
-    direction === DirectionName.top ||
-    direction === DirectionName.bottom
-  ) {
-    let sum = graph.objectPoint.lt.x - padding.x;
-    for (let i = 0; i < size; i++) {
-      sum += margin.x;
-      xArray.push(sum);
-    }
-  }
-  return {
-    xArray,
-    yArray,
-  };
-}
-
-function relationshipOverlayOrder(
-  direction: DirectionName,
-  graph: RelationshipGraph
-): RelationshipOrder[] {
-  const startPoints: RelationshipPoint[] = [];
-  const endPoints: RelationshipPoint[] = [];
-  const distances: RelationshipOrder[] = [];
+  const { objectPoint } = graph;
   const isX =
     direction === DirectionName.top || direction === DirectionName.bottom;
 
-  for (const relationship of graph[direction].values()) {
-    const { start, end } = relationship;
+  let low = (isX ? objectPoint.lt.x : objectPoint.lt.y) + ANCHOR_EDGE_INSET;
+  let high = (isX ? objectPoint.rb.x : objectPoint.rb.y) - ANCHOR_EDGE_INSET;
 
-    if (start.tableId === end.tableId) {
-      // self relationship
-      if (direction === DirectionName.top) {
-        startPoints.push(relationship.start);
-        endPoints.push(relationship.end);
-      } else if (direction === DirectionName.right) {
-        startPoints.push(relationship.end);
-        endPoints.push(relationship.start);
-      }
-    } else if (relationship.start.tableId === graph.tableId) {
-      startPoints.push(relationship.start);
-      endPoints.push(relationship.end);
-    } else {
-      startPoints.push(relationship.end);
-      endPoints.push(relationship.start);
+  // Loops sit at the top-right corner, so they eat the far end of the top side
+  // and the near end of the right one.
+  const reserve = selfReserve(graph);
+  if (reserve) {
+    if (direction === DirectionName.top) {
+      high -= reserve;
+    } else if (direction === DirectionName.right) {
+      low += reserve;
     }
   }
+  if (high < low) {
+    const middle = (low + high) / 2;
+    low = middle;
+    high = middle;
+  }
 
-  endPoints.forEach((endPoint, index) => {
-    distances.push({
-      start: startPoints[index],
-      end: endPoints[index],
-      distance: isX ? endPoint.x : endPoint.y,
-    });
+  const available = high - low;
+  const center = (low + high) / 2;
+
+  const count = entries.length;
+  const pitch =
+    count > 1 ? Math.min(available / (count - 1), ANCHOR_MAX_PITCH) : 0;
+  const first = center - (pitch * (count - 1)) / 2;
+
+  entries.forEach((entry, index) => {
+    // The clockwise walk runs against the axis on the bottom and left sides, so
+    // the first entry takes the last position there.
+    const step = WALKS_BACKWARDS[direction] ? count - 1 - index : index;
+    const position = first + step * pitch;
+
+    if (isX) {
+      entry.point.x = position;
+      entry.point.y =
+        direction === DirectionName.top
+          ? objectPoint.top.y
+          : objectPoint.bottom.y;
+    } else {
+      entry.point.y = position;
+      entry.point.x =
+        direction === DirectionName.left
+          ? objectPoint.left.x
+          : objectPoint.right.x;
+    }
+
+    const slots = slotMap.get(entry.id);
+    if (slots) {
+      slots[entry.isStart ? 0 : 1] = index;
+    }
   });
-
-  return distances.sort((a, b) => a.distance - b.distance);
 }

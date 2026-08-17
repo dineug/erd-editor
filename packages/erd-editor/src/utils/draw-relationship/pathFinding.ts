@@ -2,28 +2,92 @@ import { Direction } from '@/constants/schema';
 import { Relationship, RelationshipPoint } from '@/internal-types';
 import {
   CIRCLE_HEIGHT,
+  getStubSlots,
   Line,
   LINE_HEIGHT,
   LINE_SIZE,
+  MIN_STUB,
   PATH_END_HEIGHT,
   PATH_LINE_HEIGHT,
   PathLine,
   PathPoint,
   RelationshipPath,
+  STUB_CYCLE,
+  STUB_STEP,
 } from '@/utils/draw-relationship';
 
 export function getRelationshipPath(
   relationship: Relationship
 ): RelationshipPath {
+  const { start, end } = relationship;
+  const [startSlot, endSlot] = getStubSlots(relationship);
+  const gap = facingGap(start, end);
+
   return {
-    path: getPath(relationship.start, relationship.end),
-    line: getLine(relationship.start, relationship.end),
+    path: getPath(
+      start,
+      end,
+      clampStub(stubFor(startSlot), gap),
+      clampStub(stubFor(endSlot), gap)
+    ),
+    line: getLine(start, end),
   };
+}
+
+/**
+ * How far from the anchor a path turns. Slot zero keeps the historical
+ * `PATH_END_HEIGHT`, so a relationship that never went through
+ * `relationshipSort` draws exactly as it did before.
+ */
+function stubFor(slot: number) {
+  return PATH_END_HEIGHT + (slot % STUB_CYCLE) * STUB_STEP;
+}
+
+/**
+ * The axis-aligned distance between two anchors that point at each other, or
+ * `null` when they do not.
+ *
+ * Only this arrangement can collapse: with a stub on each side, a gap of twice
+ * the stub puts both turning points on the same spot and the connector vanishes,
+ * and a smaller gap inverts it so the path runs backwards through both tables.
+ * Nothing stops two tables being that close — the editor allows them to overlap.
+ */
+function facingGap(
+  start: Relationship['start'],
+  end: Relationship['end']
+): number | null {
+  if (start.tableId === end.tableId) return null;
+
+  if (start.direction === Direction.right && end.direction === Direction.left) {
+    return end.x - start.x;
+  }
+  if (start.direction === Direction.left && end.direction === Direction.right) {
+    return start.x - end.x;
+  }
+  if (start.direction === Direction.bottom && end.direction === Direction.top) {
+    return end.y - start.y;
+  }
+  if (start.direction === Direction.top && end.direction === Direction.bottom) {
+    return start.y - end.y;
+  }
+  return null;
+}
+
+/**
+ * Below roughly `2 * MIN_STUB` the two cardinality decorations already overlap
+ * each other, which no stub length can fix; the clamp stops short of making it
+ * worse by drawing the guide line backwards.
+ */
+function clampStub(stub: number, gap: number | null) {
+  if (gap === null || gap <= 0) return stub;
+  return Math.max(MIN_STUB, Math.min(stub, gap / 2 - 1));
 }
 
 function getPath(
   start: Relationship['start'],
-  end: Relationship['end']
+  end: Relationship['end'],
+  startStub: number,
+  endStub: number
 ): RelationshipPath['path'] {
   const line: PathLine = {
     start: {
@@ -101,7 +165,7 @@ function getPath(
     if (start.direction === Direction.left) {
       change *= -1;
     }
-    line.start.x2 = start.x + change * PATH_END_HEIGHT;
+    line.start.x2 = start.x + change * startStub;
     line.start.x1 += change * PATH_LINE_HEIGHT;
     path.M.x = line.start.x2;
     path.M.y = start.y;
@@ -112,7 +176,7 @@ function getPath(
     if (start.direction === Direction.top) {
       change *= -1;
     }
-    line.start.y2 = start.y + change * PATH_END_HEIGHT;
+    line.start.y2 = start.y + change * startStub;
     line.start.y1 += change * PATH_LINE_HEIGHT;
     path.M.x = start.x;
     path.M.y = line.start.y2;
@@ -123,7 +187,7 @@ function getPath(
     if (end.direction === Direction.left) {
       change *= -1;
     }
-    line.end.x2 = end.x + change * PATH_END_HEIGHT;
+    line.end.x2 = end.x + change * endStub;
     line.end.x1 += change * PATH_LINE_HEIGHT;
     path.L.x = line.end.x2;
     path.L.y = end.y;
@@ -134,7 +198,7 @@ function getPath(
     if (end.direction === Direction.top) {
       change *= -1;
     }
-    line.end.y2 = end.y + change * PATH_END_HEIGHT;
+    line.end.y2 = end.y + change * endStub;
     line.end.y1 += change * PATH_LINE_HEIGHT;
     path.L.x = end.x;
     path.L.y = line.end.y2;

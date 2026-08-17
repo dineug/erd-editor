@@ -142,69 +142,86 @@ describe('relationshipSort', () => {
 
     relationshipSort(state);
 
-    // height 56 / 2 anchors -> margin 28, padding 14 -> y = 14, 42
+    // Right side: height 56 less two 12px insets leaves 32, which one gap of
+    // 32 fills without reaching the 60 cap. Centred on y = 28 -> 12 and 44.
+    //
+    // B is above A and C below it, so walking the right side downwards has to
+    // meet B first — anything else crosses the two lines.
     expect(ab.start).toMatchObject({
       x: 118,
-      y: 14,
+      y: 12,
       direction: Direction.right,
     });
     expect(ab.end).toMatchObject({ x: 400, y: -72, direction: Direction.left });
     expect(ac.start).toMatchObject({
       x: 118,
-      y: 42,
+      y: 44,
       direction: Direction.right,
     });
     expect(ac.end).toMatchObject({ x: 400, y: 228, direction: Direction.left });
+    expect(ab.start.y).toBeLessThan(ac.start.y);
   });
 
   it('spreads overlapping bottom-edge anchors along the x axis', () => {
     addTable(state, 'A', 0, 0);
-    addTable(state, 'B', 0, 300);
-    addTable(state, 'C', 0, 600);
+    addTable(state, 'B', -120, 300);
+    addTable(state, 'C', 120, 300);
     const ab = addRelationship(state, 'ab', 'A', 'B');
     const ac = addRelationship(state, 'ac', 'A', 'C');
 
     relationshipSort(state);
 
-    // width 118 / 2 anchors -> margin 59, padding 29.5 -> x = 29.5, 88.5
+    // Bottom side: width 118 less two 12px insets leaves a 94px gap, which is
+    // under the 120px cap, so it is used in full -> x = 12 and 106.
+    //
+    // C is to the right of B, and the bottom edge is walked right to left, so
+    // the anchor pointing at C has to be the right-hand one.
     expect(ab.start).toMatchObject({
-      x: 29.5,
+      x: 12,
       y: 56,
       direction: Direction.bottom,
     });
-    expect(ab.end).toMatchObject({ x: 59, y: 300, direction: Direction.top });
+    expect(ab.end).toMatchObject({ x: -61, y: 300, direction: Direction.top });
     expect(ac.start).toMatchObject({
-      x: 88.5,
+      x: 106,
       y: 56,
       direction: Direction.bottom,
     });
-    expect(ac.end).toMatchObject({ x: 59, y: 600, direction: Direction.top });
+    expect(ac.end).toMatchObject({ x: 179, y: 300, direction: Direction.top });
   });
 
   it('spreads overlapping anchors when the shared table is the relationship end', () => {
     addTable(state, 'A', 0, 0);
-    addTable(state, 'B', 0, 300);
-    addTable(state, 'C', 0, 600);
+    addTable(state, 'B', -120, 300);
+    addTable(state, 'C', 120, 300);
     const ba = addRelationship(state, 'ba', 'B', 'A');
     const ca = addRelationship(state, 'ca', 'C', 'A');
 
     relationshipSort(state);
 
-    expect(ba.start).toMatchObject({ x: 59, y: 300, direction: Direction.top });
+    expect(ba.start).toMatchObject({
+      x: -61,
+      y: 300,
+      direction: Direction.top,
+    });
     expect(ba.end).toMatchObject({
-      x: 29.5,
+      x: 12,
       y: 56,
       direction: Direction.bottom,
     });
-    expect(ca.start).toMatchObject({ x: 59, y: 600, direction: Direction.top });
+    expect(ca.start).toMatchObject({
+      x: 179,
+      y: 300,
+      direction: Direction.top,
+    });
     expect(ca.end).toMatchObject({
-      x: 88.5,
+      x: 106,
       y: 56,
       direction: Direction.bottom,
     });
   });
 
-  it('includes a self relationship in both the top and the right edge distribution', () => {
+  it('keeps a self relationship in the corner without crowding the sides it touches', () => {
     addTable(state, 'A', 0, 0);
     addTable(state, 'B', 400, 0);
     addTable(state, 'C', 0, -300);
@@ -214,16 +231,23 @@ describe('relationshipSort', () => {
 
     relationshipSort(state);
 
+    // 15% of the shorter side is 8.4, below the 20px floor.
     expect(self.start).toMatchObject({
-      x: 88.5,
+      x: 98,
       y: 0,
       direction: Direction.top,
     });
     expect(self.end).toMatchObject({
       x: 118,
-      y: 14,
+      y: 20,
       direction: Direction.right,
     });
+
+    // The loop no longer takes a slot on either side, so it cannot tighten the
+    // spacing of relationships that go nowhere near it. It does reserve the
+    // corner it occupies — 20px of offset plus 8px of clearance — which is why
+    // `ab` and `ac` centre on what is left of their sides rather than on the
+    // full edge.
     expect(ab.start).toMatchObject({
       x: 118,
       y: 42,
@@ -231,7 +255,7 @@ describe('relationshipSort', () => {
     });
     expect(ab.end).toMatchObject({ x: 400, y: 28, direction: Direction.left });
     expect(ac.start).toMatchObject({
-      x: 29.5,
+      x: 45,
       y: 0,
       direction: Direction.top,
     });
@@ -240,6 +264,58 @@ describe('relationshipSort', () => {
       y: -244,
       direction: Direction.bottom,
     });
+  });
+
+  it('caps how far apart two anchors are spread on a tall table', () => {
+    // 20 columns make A 536px tall. Dividing that edge by the anchor count —
+    // what this used to do — would put the two anchors 268px apart, so the pair
+    // splayed to opposite ends of the table and converged again. The cap holds
+    // them together as a group instead.
+    const tall = addTable(state, 'A', 0, 0);
+    tall.columnIds = Array.from({ length: 20 }, (_, index) => `c${index}`);
+    addTable(state, 'B', 700, 150);
+    addTable(state, 'C', 700, 400);
+    const ab = addRelationship(state, 'ab', 'A', 'B');
+    const ac = addRelationship(state, 'ac', 'A', 'C');
+
+    relationshipSort(state);
+
+    expect(ab.start.direction).toBe(Direction.right);
+    expect(ac.start.direction).toBe(Direction.right);
+    expect(Math.abs(ac.start.y - ab.start.y)).toBe(120);
+  });
+
+  it('places anchors independently of the order relationships are stored in', () => {
+    addTable(state, 'A', 0, 0);
+    addTable(state, 'B', 400, -100);
+    addTable(state, 'C', 400, 200);
+    addTable(state, 'D', 0, 400);
+    addRelationship(state, 'ab', 'A', 'B');
+    addRelationship(state, 'ac', 'A', 'C');
+    addRelationship(state, 'ad', 'A', 'D');
+
+    relationshipSort(state);
+    const first = JSON.stringify(
+      state.doc.relationshipIds
+        .map(id => state.collections.relationshipEntities[id])
+        .map(({ id, start, end }) => ({ id, start, end }))
+    );
+
+    state.doc.relationshipIds.reverse();
+    relationshipSort(state);
+    const second = JSON.stringify(
+      [...state.doc.relationshipIds]
+        .sort()
+        .map(id => state.collections.relationshipEntities[id])
+        .map(({ id, start, end }) => ({ id, start, end }))
+    );
+
+    const firstSorted = JSON.stringify(
+      JSON.parse(first).sort((a: { id: string }, b: { id: string }) =>
+        a.id < b.id ? -1 : 1
+      )
+    );
+    expect(second).toBe(firstSorted);
   });
 
   it('ignores relationships whose tables are not part of the document', () => {
