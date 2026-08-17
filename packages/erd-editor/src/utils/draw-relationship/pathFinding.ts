@@ -1,20 +1,18 @@
 import { Direction } from '@/constants/schema';
-import { Relationship, RelationshipPoint } from '@/internal-types';
+import { Point, Relationship, RelationshipPoint } from '@/internal-types';
 import {
   CIRCLE_HEIGHT,
+  getRoute,
   getStubSlots,
   Line,
   LINE_HEIGHT,
   LINE_SIZE,
-  MIN_STUB,
-  PATH_END_HEIGHT,
   PATH_LINE_HEIGHT,
   PathLine,
   PathPoint,
   RelationshipPath,
-  STUB_CYCLE,
-  STUB_STEP,
 } from '@/utils/draw-relationship';
+import { clampStub, facingGap, stubFor } from '@/utils/draw-relationship/stub';
 
 export function getRelationshipPath(
   relationship: Relationship
@@ -28,66 +26,19 @@ export function getRelationshipPath(
       start,
       end,
       clampStub(stubFor(startSlot), gap),
-      clampStub(stubFor(endSlot), gap)
+      clampStub(stubFor(endSlot), gap),
+      getRoute(relationship)
     ),
     line: getLine(start, end),
   };
-}
-
-/**
- * How far from the anchor a path turns. Slot zero keeps the historical
- * `PATH_END_HEIGHT`, so a relationship that never went through
- * `relationshipSort` draws exactly as it did before.
- */
-function stubFor(slot: number) {
-  return PATH_END_HEIGHT + (slot % STUB_CYCLE) * STUB_STEP;
-}
-
-/**
- * The axis-aligned distance between two anchors that point at each other, or
- * `null` when they do not.
- *
- * Only this arrangement can collapse: with a stub on each side, a gap of twice
- * the stub puts both turning points on the same spot and the connector vanishes,
- * and a smaller gap inverts it so the path runs backwards through both tables.
- * Nothing stops two tables being that close — the editor allows them to overlap.
- */
-function facingGap(
-  start: Relationship['start'],
-  end: Relationship['end']
-): number | null {
-  if (start.tableId === end.tableId) return null;
-
-  if (start.direction === Direction.right && end.direction === Direction.left) {
-    return end.x - start.x;
-  }
-  if (start.direction === Direction.left && end.direction === Direction.right) {
-    return start.x - end.x;
-  }
-  if (start.direction === Direction.bottom && end.direction === Direction.top) {
-    return end.y - start.y;
-  }
-  if (start.direction === Direction.top && end.direction === Direction.bottom) {
-    return start.y - end.y;
-  }
-  return null;
-}
-
-/**
- * Below roughly `2 * MIN_STUB` the two cardinality decorations already overlap
- * each other, which no stub length can fix; the clamp stops short of making it
- * worse by drawing the guide line backwards.
- */
-function clampStub(stub: number, gap: number | null) {
-  if (gap === null || gap <= 0) return stub;
-  return Math.max(MIN_STUB, Math.min(stub, gap / 2 - 1));
 }
 
 function getPath(
   start: Relationship['start'],
   end: Relationship['end'],
   startStub: number,
-  endStub: number
+  endStub: number,
+  route: Point[] | undefined
 ): RelationshipPath['path'] {
   const line: PathLine = {
     start: {
@@ -115,6 +66,14 @@ function getPath(
             { x: this.L.x, y: this.L.y },
           ],
         ];
+      }
+
+      if (route && route.length > 1) {
+        const segments: Array<[Point, Point]> = [];
+        for (let index = 1; index < route.length; index++) {
+          segments.push([route[index - 1], route[index]]);
+        }
+        return segments;
       }
 
       const distanceX = this.M.x - this.L.x;

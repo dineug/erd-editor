@@ -3,19 +3,26 @@ import { arrayHas } from '@dineug/shared';
 
 import { Direction } from '@/constants/schema';
 import { RootState } from '@/engine/state';
-import { Relationship, Table } from '@/internal-types';
+import { Point, Relationship, Table } from '@/internal-types';
 import {
   ANCHOR_EDGE_INSET,
   ANCHOR_MAX_PITCH,
   DirectionName,
   DirectionNameList,
   ObjectPoint,
+  setRoute,
   setStubSlots,
 } from '@/utils/draw-relationship';
 import {
   euclideanDistance,
   tableToObjectPoint,
 } from '@/utils/draw-relationship/calc';
+import { nudgeRoutes } from '@/utils/draw-relationship/nudge';
+import {
+  collectObstacles,
+  routeOrthogonal,
+} from '@/utils/draw-relationship/route';
+import { stubEnds } from '@/utils/draw-relationship/stub';
 
 type RelationshipGraph = {
   tableId: string;
@@ -187,6 +194,55 @@ export function relationshipSort(state: RootState) {
     origin.end.direction = change.end.direction;
     origin.end.x = change.end.x;
     origin.end.y = change.end.y;
+  }
+
+  routeRelationships(state, changeMap);
+}
+
+/**
+ * Routes every relationship around the tables, then pulls apart the routes that
+ * ended up sharing a channel.
+ *
+ * This runs after the anchors are written back, not before: a route starts from
+ * the turning point, and that depends on both the final anchor and the slot it
+ * was given. Loops keep their single straight segment — they never leave the
+ * corner they are drawn in.
+ */
+function routeRelationships(
+  state: RootState,
+  changeMap: Map<Relationship, ChangeRelationship>
+) {
+  const obstacles = collectObstacles(state);
+  const routes = new Map<string, Point[]>();
+  const endpoints = new Map<string, [string, string]>();
+  const origins = new Map<string, Relationship>();
+
+  for (const origin of changeMap.keys()) {
+    const { start, end } = origin;
+    if (start.tableId === end.tableId) continue;
+
+    const { m, l } = stubEnds(origin);
+    routes.set(
+      origin.id,
+      routeOrthogonal(
+        m,
+        start.direction,
+        l,
+        end.direction,
+        obstacles,
+        start.tableId,
+        end.tableId
+      )
+    );
+    endpoints.set(origin.id, [start.tableId, end.tableId]);
+    origins.set(origin.id, origin);
+  }
+
+  nudgeRoutes(routes, obstacles, endpoints);
+
+  for (const [id, points] of routes) {
+    const origin = origins.get(id);
+    if (origin) setRoute(origin, points);
   }
 }
 

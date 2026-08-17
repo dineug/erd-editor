@@ -171,3 +171,21 @@ export function getStubSlots(
 ): readonly [number, number] {
   return stubSlots.get(relationship) ?? EMPTY_SLOTS;
 }
+
+/**
+ * The routed polyline, from the first turning point to the last.
+ *
+ * Routing needs every table in the document and every other relationship's
+ * route, so it cannot happen where the path is drawn — it is computed once per
+ * sort and read back here. A relationship with no entry falls back to the
+ * two-bend path, which is what a document renders before its first sort.
+ */
+const routes = new WeakMap<Relationship, Point[]>();
+
+export function setRoute(relationship: Relationship, points: Point[]) {
+  routes.set(relationship, points);
+}
+
+export function getRoute(relationship: Relationship): Point[] | undefined {
+  return routes.get(relationship);
+}

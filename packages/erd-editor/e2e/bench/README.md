@@ -93,14 +93,25 @@ Sweeping the penalty just trades one against the other. With the path fixed at
 three segments the only way around a table is a different pair of sides; going
 round properly needs the path to bend. That change was reverted too.
 
-**Nothing cheap is left for table penetration.** Three attempts, all reverted.
+**Table penetration needed a router, and three cheaper attempts proved it.**
 Scoring side pairs by obstacles is above. Flipping which axis the path leaves on
 is worse everywhere — the existing heuristic already picks the good one, and the
-alternative is 71% longer. Replacing the 45-degree middle segment with a proper
-orthogonal elbow — which costs no extra segments — cuts node crossings 7-15% but
-raises collinear overlap 783%, because parallel orthogonal routes share a
-corridor where diagonals separate naturally. That is the result the routing plan
-predicted for orthogonal routing shipped without nudging.
+alternative is 71% longer. Replacing the 45-degree middle segment with a plain
+orthogonal elbow, which costs no extra segments, cuts node crossings 7-15% but
+raises collinear overlap 783%: parallel orthogonal routes share a corridor where
+diagonals separate on their own. Only a router that bends around obstacles, with
+nudging in the same change, moved the number — and the residual it leaves on
+`large` is the entry below.
+
+**What the router still gets wrong.** Node crossings are down 25-34% and the
+picture reads far better, but on the largest corpus collinear overlap is worse
+than the diagonal it replaced. The residual is long straight runs — a 1.8k-pixel
+vertical crossing the whole canvas — where nudging correctly declines to move,
+because at that length no lane is clear and shifting one only trades which
+tables it clips. Snapping channels to the nudge grid was tried and made it worse
+by a further 60%: it puts more routes on one coordinate than can be safely
+spaced apart. Fixing it properly means routes that do not run that far in a
+straight line, which is a search, not a channel heuristic.
 
 **Side choice is stable enough.** `flips/move` is 0.05 at the largest corpus —
 about six jumps over a 240px drag of a hub table. Hysteresis was considered and

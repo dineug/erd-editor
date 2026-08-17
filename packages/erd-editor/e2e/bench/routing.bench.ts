@@ -231,6 +231,14 @@ function print(report: Report, baseline: Report | null) {
         qualityRows
       ),
       '',
+      ...report.rows
+        .filter(row => row.quality.worstCollinear)
+        .map(
+          row =>
+            `worst ${row.corpus}: ${row.quality.worstCollinear!.a} ${row.quality.worstCollinear!.aPath}\n` +
+            `      ${' '.repeat(row.corpus.length)}${row.quality.worstCollinear!.b} ${row.quality.worstCollinear!.bPath}`
+        ),
+      '',
       `written: ${LATEST}`,
       process.env.E2E_BENCH_BASELINE ? `baseline: ${BASELINE}` : '',
       '',

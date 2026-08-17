@@ -71,6 +71,9 @@ export type QualityMetrics = {
     b: string;
     aEnds: string;
     bEnds: string;
+    /** The two polylines, so a stubborn overlap can be read directly. */
+    aPath: string;
+    bPath: string;
   } | null;
 };
 
@@ -366,6 +369,15 @@ export function measureQuality(scene: Scene): QualityMetrics {
   const collinear = collinearOverlap(segments);
   const pitch = minAnchorPitch(scene);
 
+  const pathOf = (relationshipId: string) =>
+    segments
+      .filter(segment => segment.relationshipId === relationshipId)
+      .map(
+        segment =>
+          `(${segment.x1.toFixed(0)},${segment.y1.toFixed(0)})-(${segment.x2.toFixed(0)},${segment.y2.toFixed(0)})`
+      )
+      .join(' ');
+
   const sideOf = (relationshipId: string) => {
     const ends = scene.anchors.filter(a => a.relationshipId === relationshipId);
     const NAME: Record<number, string> = {
@@ -394,6 +406,8 @@ export function measureQuality(scene: Scene): QualityMetrics {
           ...collinear.worst,
           aEnds: sideOf(collinear.worst.a),
           bEnds: sideOf(collinear.worst.b),
+          aPath: pathOf(collinear.worst.a),
+          bPath: pathOf(collinear.worst.b),
         }
       : null,
   };
