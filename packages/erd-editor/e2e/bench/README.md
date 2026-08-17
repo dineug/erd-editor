@@ -148,13 +148,75 @@ the corpora hold 748 / 1329 / 8015 px of overlap, where the old count reported
 0 / 0 / 2616. The router's own effect on it is no longer a number anyone has:
 the pre-router diagonal was never measured this way.
 
-The worst pair in each corpus is 2px apart — `x=920` against `x=922` on small,
-`y=736` against `y=738` on medium, `y=1431` against `y=1433` on large. That is
-not a coincidence but `CHANNEL_EPSILON = 1` in `nudge.ts`, which buckets a
-channel by its coordinate rounded to the pixel: two segments 2px apart land in
-different buckets, are never seen as sharing a channel, and are never considered
-for separation. The nudge unit tests pass because they are built from pairs that
-share a coordinate exactly.
+**Collecting a channel the way a reader sees one, and scoring in pixels, took
+two thirds of the overlap out.** The worst pair in every corpus was 2px apart —
+`x=920` against `x=922` on small, `y=736` against `y=738` on medium, `y=1431`
+against `y=1433` on large — which was `CHANNEL_EPSILON = 1` in `nudge.ts`
+bucketing a channel by its coordinate rounded to the pixel: two segments 2px
+apart landed in different buckets and were never considered for separation.
+Collecting a channel by proximity instead took the corpora from 748 / 1329 / 8015
+to 374 / 176 / 3532 px. Node crossings did not move (39 / 133 / 275 to
+39 / 133 / 277) and total length rose 0.1%. Crossings between connectors rose — 3
+to 5 and 77 to 79 for pairs sharing a table, 82 to 87 and 553 to 560 for
+independent ones — which is what nudging costs: pulling two segments apart moves
+one of them across whatever lies between.
+
+**What the pass is scored on decided most of that.** Counting how many pairs of
+segments an attempt leaves overlapping left large at 4504px; measuring how many
+*pixels* they run together took it to 3081. The choices trade against each other
+— clearing a 750px overlap is worth landing on a 16px one — and a count of pairs
+cannot tell which way round to prefer. It is the question this file's
+`collinearOverlap` asks, and aligning the two was the single largest step.
+
+**Two guards cost overlap and are worth it.** A route may only leave its anchor
+outward, which `routeOrthogonal` enforces when it enumerates candidates; keeping
+that through a nudge costs large 3081 to 3532px and removes 9 connectors on that
+corpus that folded back over their own turning point, 4 of them across the 35px
+run the cardinality symbols are drawn on. Nothing else sees those: the fold stays
+orthogonal, collapses nothing, and `countBlocked` skips the connector's own two
+tables. Separately, a lane may not push the connector into either table it joins,
+which `countBlocked` also cannot see for the same reason.
+
+**What is left is three problems, and only one of them is this pass's.**
+Splitting the metric by whether both segments are ones the pass may move puts
+medium's whole 176px, and 1261px of large's, between runs attached to an anchor,
+whose coordinate is the anchor's and not the route's. Small's 374px falls to zero
+when the obstacle test in `isSafe` is disabled, at a cost of 3 node crossings, so
+every lane its group could take runs into a table. The rest of large — 2271px
+between interior segments, some of that obstacle-forced as well — is a group
+spreading outward and landing within a stroke width of a segment in a channel it
+was not grouped with.
+
+**What it costs.** Measured alternately, three rounds each, `busy/move` ran
+7.55 / 7.95 / 7.63 against 8.56 / 8.14 / 8.57 on large: non-overlapping, so a
+real regression of roughly half a millisecond a move, 8% of the pass's frame
+against a 16.7ms budget that still holds. Small came out 1.25 / 1.23 / 1.25
+against 1.32 / 1.32 / 1.26 and medium 4.07 / 4.28 / 4.08 against
+4.14 / 4.16 / 4.47, neither resolvable. The ladder is where it goes: three
+separations by two orderings, each letting a segment try up to seven lanes, and
+`countBlocked` walks every table. The quality figures were identical in every
+round, which is the determinism the replication-store worker needs.
+
+**Four things were tried and reverted.** A second separation round over the whole
+drawing, which does see the overlaps the first pass creates, took large from 4504
+to 7559px: what one group gains, the group it displaces loses. Scoring the runs
+attached to an anchor as part of the objective cost 12%, and rejecting outright
+any lane that lands on one cost 143% — they are neighbours a lane must weigh, not
+a veto. And neither ordering of a bundle wins on its own: by where each route
+arrives leaves large at 5486px, by where each segment already sits leaves it at
+7332 and medium at 508 while clearing small outright, so both are tried and
+scored.
+
+**The next lever is a channel-wide track assignment.** Runs are chained
+components of the span-overlap relation, so a chain that only ever overlaps its
+neighbour is still splayed across one lane each; colouring the channel as the
+interval graph it is would clear the same overlaps with less displacement, and
+displacement is what the extra crossings and the extra length are paid in. Two
+cheaper cuts sit alongside it: a fifth of lane probes re-test a segment at a lane
+already rejected in the same group's ladder, and band chaining leaves a group
+unbounded — 30 slots on the large corpus where exact-coordinate bucketing reached
+8.
+
 
 Snapping channels to the nudge grid was tried and made the old count worse by
 60%: it puts more routes on one coordinate than can be safely spaced apart.
