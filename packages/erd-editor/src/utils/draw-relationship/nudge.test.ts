@@ -197,6 +197,36 @@ describe('nudgeRoutes', () => {
     expect(bandOverlap({ a, b, c })).toBe(0);
   });
 
+  it('gives a chain of segments two lanes rather than one each', () => {
+    // Each of these only reaches its neighbour, so the run is a chain and not a
+    // bundle: two lanes clear every overlapping pair. A lane each would splay the
+    // outer two 30px apart to fix overlaps that 5px of movement covers, and every
+    // pixel of that is paid in crossings and length.
+    const a = line([0, 0], [100, 0], [100, 40], [200, 40]);
+    const b = line([0, 30], [100, 30], [100, 80], [200, 80]);
+    const c = line([0, 70], [100, 70], [100, 120], [200, 120]);
+    const d = line([0, 110], [100, 110], [100, 160], [200, 160]);
+
+    nudgeRoutes(
+      new Map([
+        ['a', a],
+        ['b', b],
+        ['c', c],
+        ['d', d],
+      ]),
+      NO_OBSTACLES,
+      new Map([
+        ['a', ['t0', 't1']],
+        ['b', ['t2', 't3']],
+        ['c', ['t4', 't5']],
+        ['d', ['t6', 't7']],
+      ])
+    );
+
+    expect([a[1].x, b[1].x, c[1].x, d[1].x]).toEqual([95, 105, 95, 105]);
+    expect(bandOverlap({ a, b, c, d })).toBe(0);
+  });
+
   it('leaves a bundle the router already spaced alone', () => {
     // Proximity collects these into one channel, but they are a gap apart
     // already. Re-laning them would reorder a legible bundle for nothing.

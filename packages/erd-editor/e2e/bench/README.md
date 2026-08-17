@@ -244,15 +244,24 @@ it — the dash pattern now runs continuously through a corner instead of restar
 at each segment, and the element census in `e2e/specs/relationship.spec.ts` stopped
 depending on how many runs a route is drawn in, which is what had broken it.
 
-**The next lever is a channel-wide track assignment.** Runs are chained
-components of the span-overlap relation, so a chain that only ever overlaps its
-neighbour is still splayed across one lane each; colouring the channel as the
-interval graph it is would clear the same overlaps with less displacement, and
-displacement is what the extra crossings and the extra length are paid in. Two
-cheaper cuts sit alongside it: a fifth of lane probes re-test a segment at a lane
-already rejected in the same group's ladder, and band chaining leaves a group
-unbounded — 30 slots on the large corpus where exact-coordinate bucketing reached
-8.
+**Track assignment took another sixth off, as an option rather than a rule.** A
+run is a chain of the span-overlap relation and not a clique, so four segments
+that each only reach their neighbour were handed a lane each and splayed over
+30px, where two lanes clear every overlapping pair and move nobody more than 5.
+Colouring the group as the interval graph it is — greedily, by where each segment
+starts, which is optimal for intervals — gives that compact layout. Imposing it
+made large *worse*, 3294 to 4305px: a lane is also how a segment gets away from
+something outside its group, and using fewer of them leaves more of those
+standing. Offering both layouts and scoring them, compact first, took large to
+2685px with crossings and length unchanged, and `busy/move` on large from
+8.53 / 8.41 / 8.46 to 8.58 / 8.70 / 8.56 — resolvable, but by 1.5%. Small and
+medium do not move at either: their groups are buses, where every span meets every
+other and the two layouts are the same thing.
+
+**Two cheaper cuts are what is left of the cost.** A fifth of lane probes re-test
+a segment at a lane already rejected in the same group's ladder, and band chaining
+leaves a group unbounded — 30 slots on the large corpus where exact-coordinate
+bucketing reached 8, and nothing bounds what the ladder spends on one.
 
 
 Snapping channels to the nudge grid was tried and made the old count worse by

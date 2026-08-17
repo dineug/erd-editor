@@ -265,6 +265,11 @@ function separateRuns(
   flush();
 }
 
+/** Whether two segments on one axis run alongside each other at all. */
+function spansMeet(a: Slot, b: Slot) {
+  return a.high > b.low && b.high > a.low;
+}
+
 /** How far two segments on one axis are drawn over each other. */
 function overlapLength(a: Slot, b: Slot) {
   if (Math.abs(a.coordinate - b.coordinate) >= SEPARATED) return 0;
@@ -331,6 +336,37 @@ function neighboursOf(group: Slot[], axis: Slot[]) {
   return neighbours;
 }
 
+/**
+ * Splits a group into tracks of segments that never meet, which is the fewest
+ * lanes it can be drawn in.
+ *
+ * A run is a chain of the span-overlap relation, not a clique: four segments that
+ * each only reach their neighbour used to be handed a lane each and splayed over
+ * 30px, when two lanes clear every overlapping pair and move nobody more than 5.
+ * Every pixel of that displacement is paid in the crossings and the length the
+ * benchmark reports.
+ *
+ * The group arrives ordered by where each segment starts, which is what makes one
+ * greedy pass optimal here: intervals on a line form an interval graph, and
+ * colouring those by left endpoint never opens a track it could have avoided.
+ */
+function colourGroup(group: Slot[]): Slot[][] {
+  const tracks: Slot[][] = [];
+
+  for (const slot of group) {
+    const track = tracks.find(
+      members => members[members.length - 1].high <= slot.low
+    );
+    if (track) {
+      track.push(slot);
+    } else {
+      tracks.push([slot]);
+    }
+  }
+
+  return tracks;
+}
+
 function separate(
   group: Slot[],
   axis: Slot[],
@@ -353,13 +389,13 @@ function separate(
   const centre =
     originals.reduce((total, value) => total + value, 0) / originals.length;
 
-  const candidates = orderings(group);
+  const candidates = laneModels(group);
   let best: number[] | null = null;
   let bestLeft = Infinity;
 
   for (const gap of NUDGE_GAPS) {
-    for (const ordered of candidates) {
-      place(ordered, gap, centre, baselines, obstacles, endpoints);
+    for (const tracks of candidates) {
+      place(tracks, gap, centre, baselines, obstacles, endpoints);
 
       const left = stillOverlapping(group, neighbours);
       if (!left) return;
@@ -379,6 +415,26 @@ function separate(
 }
 
 /**
+ * The ways a group can be laid out, best first.
+ *
+ * Colouring it into tracks uses the fewest lanes, which moves every segment the
+ * least — but a lane is also how a segment gets away from something *outside* the
+ * group, and using fewer of them leaves more of those overlaps standing: on the
+ * large corpus the compact layout alone measured 4305px against 3294. So both are
+ * offered and scored, the compact one first, and a group takes whichever clears
+ * it. Where every span in the group meets every other the two are the same layout
+ * and only one is tried.
+ */
+function laneModels(group: Slot[]): Slot[][][] {
+  const coloured = colourGroup(group);
+  const compact = orderings(coloured);
+
+  return coloured.length === group.length
+    ? compact
+    : [...compact, ...orderings(group.map(slot => [slot]))];
+}
+
+/**
  * The orders a bundle can be laid across its lanes, best first.
  *
  * Neither wins everywhere, which is why both are tried and scored. Ordering by
@@ -386,25 +442,32 @@ function separate(
  * and large corpora prefer it — while ordering by where each segment already sits
  * moves nobody across anybody, which the small corpus needs to clear at all.
  */
-function orderings(group: Slot[]): Slot[][] {
-  const byEntry = [...group].sort(
+function orderings(tracks: Slot[][]): Slot[][][] {
+  const mean = (track: Slot[], of: (slot: Slot) => number) =>
+    track.reduce((total, slot) => total + of(slot), 0) / track.length;
+
+  const byEntry = [...tracks].sort(
     (a, b) =>
-      entryOf(a) - entryOf(b) ||
-      a.coordinate - b.coordinate ||
-      compareSlots(a, b)
+      mean(a, entryOf) - mean(b, entryOf) ||
+      mean(a, coordinateOf) - mean(b, coordinateOf) ||
+      compareSlots(a[0], b[0])
   );
-  const byCoordinate = [...group].sort(
+  const byCoordinate = [...tracks].sort(
     (a, b) =>
-      a.coordinate - b.coordinate ||
-      entryOf(a) - entryOf(b) ||
-      compareSlots(a, b)
+      mean(a, coordinateOf) - mean(b, coordinateOf) ||
+      mean(a, entryOf) - mean(b, entryOf) ||
+      compareSlots(a[0], b[0])
   );
 
   // For a tight bundle the two usually agree, and `place` is deterministic, so
   // running the second would repeat every lane test — a `countBlocked` each —
   // for no new information.
-  const same = byEntry.every((slot, index) => slot === byCoordinate[index]);
+  const same = byEntry.every((track, index) => track === byCoordinate[index]);
   return same ? [byEntry] : [byEntry, byCoordinate];
+}
+
+function coordinateOf(slot: Slot) {
+  return slot.coordinate;
 }
 
 function apply(group: Slot[], coordinates: number[]) {
@@ -419,43 +482,51 @@ function apply(group: Slot[], coordinates: number[]) {
  * already are, skipping any lane a segment cannot safely take.
  */
 function place(
-  ordered: Slot[],
+  tracks: Slot[][],
   gap: number,
   centre: number,
   baselines: Map<Slot, Baseline>,
   obstacles: Obstacles,
   endpoints: Map<string, [string, string]>
 ) {
-  const first = centre - (gap * (ordered.length - 1)) / 2;
-  const taken = new Set<number>();
+  const first = centre - (gap * (tracks.length - 1)) / 2;
+  const occupants: Slot[][] = tracks.map(() => []);
 
-  ordered.forEach((slot, index) => {
-    const baseline = baselines.get(slot);
-    if (!baseline) return;
+  tracks.forEach((track, index) => {
+    for (const slot of track) {
+      const baseline = baselines.get(slot);
+      if (!baseline) continue;
 
-    const tryLane = (laneIndex: number) => {
-      if (laneIndex < 0 || laneIndex >= ordered.length) return false;
-      if (taken.has(laneIndex)) return false;
+      const tryLane = (laneIndex: number) => {
+        if (laneIndex < 0 || laneIndex >= tracks.length) return false;
+        // A lane holds as many segments as never meet on it, which is what
+        // colouring the group first buys. Spans only: the coordinate this
+        // segment is about to take is the lane, not the one it still holds.
+        if (occupants[laneIndex].some(other => spansMeet(slot, other))) {
+          return false;
+        }
 
-      const lane = first + laneIndex * gap;
-      moveSlot(slot, lane);
-      if (!isSafe(slot, obstacles, endpoints, baseline)) return false;
+        const lane = first + laneIndex * gap;
+        moveSlot(slot, lane);
+        if (!isSafe(slot, obstacles, endpoints, baseline)) return false;
 
-      slot.coordinate = lane;
-      taken.add(laneIndex);
-      return true;
-    };
+        slot.coordinate = lane;
+        occupants[laneIndex].push(slot);
+        return true;
+      };
 
-    // Own lane first, then outwards, the lower side first at each distance so
-    // the choice cannot depend on which way the search walks.
-    for (let drift = 0; drift <= MAX_LANE_DRIFT; drift++) {
-      if (tryLane(index - drift)) return;
-      if (drift > 0 && tryLane(index + drift)) return;
+      // Own lane first, then outwards, the lower side first at each distance so
+      // the choice cannot depend on which way the search walks.
+      let placed = false;
+      for (let drift = 0; drift <= MAX_LANE_DRIFT && !placed; drift++) {
+        placed =
+          tryLane(index - drift) || (drift > 0 && tryLane(index + drift));
+      }
+
+      // `coordinate` is only written once a lane is accepted, so it still holds
+      // where this segment started.
+      if (!placed) moveSlot(slot, slot.coordinate);
     }
-
-    // `coordinate` is only written once a lane is accepted, so it still holds
-    // where this segment started.
-    moveSlot(slot, slot.coordinate);
   });
 }
 
