@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vite-plus/test';
 import { Direction } from '@/constants/schema';
 import { Relationship } from '@/internal-types';
 import { createRelationship } from '@/utils/collection/relationship.entity';
-import { getRelationshipPath } from '@/utils/draw-relationship/pathFinding';
+import {
+  getRelationshipPath,
+  toPathD,
+} from '@/utils/draw-relationship/pathFinding';
 
 type Point = { tableId: string; x: number; y: number; direction: number };
 
@@ -398,5 +401,37 @@ describe('getRelationshipPath', () => {
       expect(line.startCircle).toEqual({ cx: 100, cy: 50 });
       expect(line.circle).toEqual({ cx: 400, cy: 90 });
     });
+  });
+});
+
+describe('toPathD', () => {
+  it('writes one move and a line per segment', () => {
+    expect(
+      toPathD([
+        [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+        ],
+        [
+          { x: 10, y: 0 },
+          { x: 10, y: 20 },
+        ],
+      ])
+    ).toBe('M0 0L10 0L10 20');
+  });
+
+  it('rounds each coordinate to two decimals', () => {
+    expect(
+      toPathD([
+        [
+          { x: 1 / 3, y: 2 / 3 },
+          { x: 10.005, y: 4.994 },
+        ],
+      ])
+    ).toBe('M0.33 0.67L10.01 4.99');
+  });
+
+  it('draws nothing when there is no segment', () => {
+    expect(toPathD([])).toBe('');
   });
 });

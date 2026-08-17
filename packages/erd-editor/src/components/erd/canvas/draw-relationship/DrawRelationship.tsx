@@ -57,6 +57,7 @@ const DrawRelationship: FC<DrawRelationshipProps> = (props, ctx) => {
       >
         <g>
           <path
+            class="draw-preview"
             d={path.path.d()}
             stroke-dasharray="10"
             stroke-width="3"

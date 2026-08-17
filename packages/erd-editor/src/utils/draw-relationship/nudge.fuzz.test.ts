@@ -75,6 +75,91 @@ function scene(seed: number): Scene {
   return { routes, obstacles: OBSTACLES, endpoints };
 }
 
+/**
+ * The escape shape, whose two upright runs meet end to end rather than side by
+ * side — a chain of the span-overlap relation and not a bundle.
+ *
+ * The staircases above cannot reach the compact layout at all: every one of their
+ * spans straddles the same band, so every group is a clique and a track holds one
+ * segment. Instrumented over 400 of those scenes, the compact layout was offered
+ * 0 times in 446 groups.
+ */
+function chainScene(seed: number): Scene {
+  const random = prng(seed);
+  const pick = (bound: number) => Math.floor(random() * bound);
+
+  const routes: Array<[string, Point[]]> = [];
+  const endpoints = new Map<string, [string, string]>();
+  const count = 3 + pick(6);
+  const band = 1 + pick(6);
+
+  for (let index = 0; index < count; index++) {
+    const id = `r${index}`;
+    const first = 100 + pick(8) * band;
+    const second = first + 1 + pick(8) * band;
+    const top = pick(10) * 10;
+    const middle = top + 60 + pick(8) * 10;
+    const bottom = middle + 60 + pick(8) * 10;
+
+    routes.push([
+      id,
+      [
+        { x: 20 + pick(6) * 10, y: top },
+        { x: first, y: top },
+        { x: first, y: middle },
+        { x: second, y: middle },
+        { x: second, y: bottom },
+        { x: 300 + pick(20) * 10, y: bottom },
+      ],
+    ]);
+    endpoints.set(id, [`t${index}`, `t${index + count}`]);
+  }
+
+  return { routes, obstacles: OBSTACLES, endpoints };
+}
+
+/** Total length two connectors run within a stroke width of each other. */
+const bandOverlap = (routes: Scene['routes'], band = 3) => {
+  const runs: Array<{
+    id: string;
+    upright: boolean;
+    at: number;
+    low: number;
+    high: number;
+  }> = [];
+
+  for (const [id, points] of routes) {
+    for (let index = 0; index + 1 < points.length; index++) {
+      const a = points[index];
+      const b = points[index + 1];
+      const upright = Math.abs(a.x - b.x) < 0.5;
+      const flat = Math.abs(a.y - b.y) < 0.5;
+      if (upright === flat) continue;
+
+      runs.push({
+        id,
+        upright,
+        at: upright ? a.x : a.y,
+        low: upright ? Math.min(a.y, b.y) : Math.min(a.x, b.x),
+        high: upright ? Math.max(a.y, b.y) : Math.max(a.x, b.x),
+      });
+    }
+  }
+
+  let total = 0;
+  for (let i = 0; i < runs.length; i++) {
+    for (let j = i + 1; j < runs.length; j++) {
+      const a = runs[i];
+      const b = runs[j];
+      if (a.id === b.id || a.upright !== b.upright) continue;
+      if (Math.abs(a.at - b.at) >= band) continue;
+      total += Math.max(0, Math.min(a.high, b.high) - Math.max(a.low, b.low));
+    }
+  }
+
+  return total;
+};
+
 const clone = (routes: Scene['routes']): Scene['routes'] =>
   routes.map(([id, points]) => [id, points.map(point => ({ ...point }))]);
 
@@ -106,6 +191,84 @@ const blockedTotal = (routes: Scene['routes'], scene: Scene) =>
   }, 0);
 
 const SEEDS = 400;
+
+describe('nudgeRoutes over random chains', () => {
+  it('never doubles up more of the drawing than it un-doubles', () => {
+    // Summed rather than asserted scene by scene: a group is separated against
+    // its own channel and the segments near it, so one scene in a few hundred can
+    // still end up worse. What must not happen is the pass losing ground overall,
+    // which is what choosing a layout by list position rather than by how far it
+    // moves the group did.
+    let before = 0;
+    let after = 0;
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const scene = chainScene(seed);
+      const nudged = clone(scene.routes);
+      before += bandOverlap(scene.routes);
+      nudgeRoutes(new Map(nudged), scene.obstacles, scene.endpoints);
+      after += bandOverlap(nudged);
+    }
+
+    expect(after).toBeLessThanOrEqual(before);
+  });
+
+  it('keeps the anchors, the right angles and the penetration count', () => {
+    const broken: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const scene = chainScene(seed);
+      const nudged = clone(scene.routes);
+      const blockedBefore = blockedTotal(scene.routes, scene);
+
+      nudgeRoutes(new Map(nudged), scene.obstacles, scene.endpoints);
+
+      nudged.forEach(([id, points], index) => {
+        const original = scene.routes[index][1];
+        const last = points.length - 1;
+        if (
+          points[0].x !== original[0].x ||
+          points[0].y !== original[0].y ||
+          points[last].x !== original[last].x ||
+          points[last].y !== original[last].y
+        ) {
+          broken.push(`seed ${seed} ${id} anchor`);
+        }
+        if (!isOrthogonal(points)) broken.push(`seed ${seed} ${id} diagonal`);
+      });
+
+      if (blockedTotal(nudged, scene) > blockedBefore) {
+        broken.push(`seed ${seed} penetration`);
+      }
+    }
+
+    expect(broken).toEqual([]);
+  });
+
+  it('gives the same drawing whatever order the routes arrive in', () => {
+    const differed: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const scene = chainScene(seed);
+      const random = prng(seed * 104729);
+
+      const forward = clone(scene.routes);
+      nudgeRoutes(new Map(forward), scene.obstacles, scene.endpoints);
+      const expected = fingerprint(forward);
+
+      const shuffled = clone(scene.routes);
+      for (let index = shuffled.length - 1; index > 0; index--) {
+        const other = Math.floor(random() * (index + 1));
+        [shuffled[index], shuffled[other]] = [shuffled[other], shuffled[index]];
+      }
+      nudgeRoutes(new Map(shuffled), scene.obstacles, scene.endpoints);
+
+      if (fingerprint(shuffled) !== expected) differed.push(`seed ${seed}`);
+    }
+
+    expect(differed).toEqual([]);
+  });
+});
 
 describe('nudgeRoutes over random bundles', () => {
   it('gives the same drawing whatever order the routes arrive in', () => {

@@ -164,12 +164,13 @@ export class ErdEditorPage {
 
   /**
    * The dashed preview drawn between the start table and the cursor while a
-   * relationship draw is in flight. It is the only `<path>` the canvas renders —
-   * finished relationships are built from `<line>` and `<circle>` — so its
-   * presence is the visible proof that a draw is still open.
+   * relationship draw is in flight, and the visible proof that a draw is still
+   * open. Matched by its own class: a finished relationship is a dashed `<path>`
+   * too, so anything less specific counts one of those per relationship on the
+   * canvas.
    */
   get drawPreview() {
-    return this.canvas.locator('svg path[stroke-dasharray="10"]');
+    return this.canvas.locator('svg path.draw-preview');
   }
 
   /**

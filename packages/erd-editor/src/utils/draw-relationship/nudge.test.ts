@@ -227,6 +227,62 @@ describe('nudgeRoutes', () => {
     expect(bandOverlap({ a, b, c, d })).toBe(0);
   });
 
+  it('does not leave a chain of staircases more doubled up than it found it', () => {
+    // Four escape-shaped routes whose upright runs form chains rather than
+    // bundles. Choosing the compact layout because it came first in the list —
+    // rather than because it moved the group least — added overlap here: its
+    // longer jumps stretch the runs attached to an anchor, which this pass cannot
+    // move and the other axis has already finished with.
+    const routes = {
+      r0: line(
+        [30, 10],
+        [105, 10],
+        [105, 180],
+        [100, 180],
+        [100, 380],
+        [400, 380]
+      ),
+      r1: line(
+        [20, 90],
+        [115, 90],
+        [115, 200],
+        [122, 200],
+        [122, 360],
+        [390, 360]
+      ),
+      r2: line(
+        [50, 0],
+        [130, 0],
+        [130, 140],
+        [136, 140],
+        [136, 320],
+        [340, 320]
+      ),
+      r3: line(
+        [60, 10],
+        [100, 10],
+        [100, 200],
+        [105, 200],
+        [105, 320],
+        [490, 320]
+      ),
+    };
+    const before = bandOverlap(routes);
+
+    nudgeRoutes(
+      new Map(Object.entries(routes)),
+      NO_OBSTACLES,
+      new Map([
+        ['r0', ['t0', 't1']],
+        ['r1', ['t2', 't3']],
+        ['r2', ['t4', 't5']],
+        ['r3', ['t6', 't7']],
+      ])
+    );
+
+    expect(bandOverlap(routes)).toBeLessThanOrEqual(before);
+  });
+
   it('leaves a bundle the router already spaced alone', () => {
     // Proximity collects these into one channel, but they are a gap apart
     // already. Re-laning them would reorder a legible bundle for nothing.

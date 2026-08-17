@@ -265,9 +265,17 @@ function separateRuns(
   flush();
 }
 
-/** Whether two segments on one axis run alongside each other at all. */
-function spansMeet(a: Slot, b: Slot) {
-  return a.high > b.low && b.high > a.low;
+/**
+ * Whether two segments are too close along a lane to share it.
+ *
+ * A gap of clearance rather than a bare touch: two segments that meet end to end
+ * overlap by no length at all, so a score in pixels calls sharing a lane free,
+ * but their corners land on the same point and each one's arms continue the
+ * other's — the reader sees one long connector crossing another, neither of which
+ * is there.
+ */
+function crowdsLane(a: Slot, b: Slot) {
+  return a.high + NUDGE_GAP > b.low && b.high + NUDGE_GAP > a.low;
 }
 
 /** How far two segments on one axis are drawn over each other. */
@@ -355,7 +363,7 @@ function colourGroup(group: Slot[]): Slot[][] {
 
   for (const slot of group) {
     const track = tracks.find(
-      members => members[members.length - 1].high <= slot.low
+      members => !crowdsLane(members[members.length - 1], slot)
     );
     if (track) {
       track.push(slot);
@@ -394,17 +402,35 @@ function separate(
   let bestLeft = Infinity;
 
   for (const gap of NUDGE_GAPS) {
+    // Every layout that clears the channel is measured, not just the first one
+    // found: taking the first meant the order of the list decided between two
+    // that both worked, and the compact one moves segments further, which
+    // lengthens the runs attached to an anchor — runs this pass cannot move and
+    // the other axis has already finished with.
+    let cleared: number[] | null = null;
+    let clearedDrift = Infinity;
+
     for (const tracks of candidates) {
       place(tracks, gap, centre, baselines, obstacles, endpoints);
 
       const left = stillOverlapping(group, neighbours);
-      if (!left) return;
-
-      if (left < bestLeft) {
+      if (!left) {
+        const drift = totalDrift(group, originals);
+        if (drift < clearedDrift) {
+          clearedDrift = drift;
+          cleared = group.map(slot => slot.coordinate);
+        }
+      } else if (left < bestLeft) {
         best = group.map(slot => slot.coordinate);
         bestLeft = left;
       }
+
       apply(group, originals);
+    }
+
+    if (cleared) {
+      apply(group, cleared);
+      return;
     }
   }
 
@@ -470,6 +496,15 @@ function coordinateOf(slot: Slot) {
   return slot.coordinate;
 }
 
+/** How far the group moved in total, which is what the extra crossings cost. */
+function totalDrift(group: Slot[], originals: number[]) {
+  return group.reduce(
+    (total, slot, index) =>
+      total + Math.abs(slot.coordinate - originals[index]),
+    0
+  );
+}
+
 function apply(group: Slot[], coordinates: number[]) {
   group.forEach((slot, index) => {
     moveSlot(slot, coordinates[index]);
@@ -502,7 +537,7 @@ function place(
         // A lane holds as many segments as never meet on it, which is what
         // colouring the group first buys. Spans only: the coordinate this
         // segment is about to take is the lane, not the one it still holds.
-        if (occupants[laneIndex].some(other => spansMeet(slot, other))) {
+        if (occupants[laneIndex].some(other => crowdsLane(slot, other))) {
           return false;
         }
 

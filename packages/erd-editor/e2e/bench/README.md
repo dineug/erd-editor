@@ -137,6 +137,9 @@ three segments the only way around a table is a different pair of sides; going
 round properly needs the path to bend. That change was reverted too.
 
 **Table penetration needed a router, and three cheaper attempts proved it.**
+(Every `node-cross` figure in this paragraph and the next two is a metrics v1 or v2
+quantity — segment-against-table incidences. Metrics v3 counts connector-table
+pairs, so none of them is comparable with a run of the current harness.)
 Scoring side pairs by obstacles is above. Flipping which axis the path leaves on
 is worse everywhere — the existing heuristic already picks the good one, and the
 alternative is 71% longer. Replacing the 45-degree middle segment with a plain
@@ -184,15 +187,13 @@ orthogonal, collapses nothing, and `countBlocked` skips the connector's own two
 tables. Separately, a lane may not push the connector into either table it joins,
 which `countBlocked` also cannot see for the same reason.
 
-**What is left is three problems, and only one of them is this pass's.**
-Splitting the metric by whether both segments are ones the pass may move puts
-medium's whole 176px, and 1261px of large's, between runs attached to an anchor,
-whose coordinate is the anchor's and not the route's. Small's 374px falls to zero
-when the obstacle test in `isSafe` is disabled, at a cost of 3 node crossings, so
-every lane its group could take runs into a table. The rest of large — 2271px
-between interior segments, some of that obstacle-forced as well — is a group
-spreading outward and landing within a stroke width of a segment in a channel it
-was not grouped with.
+**What is left is two problems, and only one of them is this pass's.** Splitting
+the metric by whether both segments are ones the pass may move puts medium's whole
+168px, and 1121px of large's, between runs attached to an anchor — a connector's
+first and last run, whose coordinate is the anchor's and not the route's, and which
+nothing here can move. The other 1822px of large's is a group spreading outward and
+landing within a stroke width of a segment in a channel it was not grouped with.
+Small has none of either.
 
 **What it costs.** Measured alternately, three rounds each, `busy/move` ran
 7.55 / 7.95 / 7.63 against 8.56 / 8.14 / 8.57 on large: non-overlapping, so a
@@ -218,9 +219,11 @@ scored.
 millisecond a move.** The polyline the router and the nudge pass work on stays
 orthogonal; only what reaches the screen is cut, so channels, obstacle tests and
 the overlap metrics keep measuring right angles. Segments rise 72 / 228 / 452 to
-101 / 375 / 751 — two per cut corner — and with them `node-cross` (39 / 133 / 277
-to 52 / 196 / 385), which counts incidences and not connectors: the same run
-through the same table, in three pieces. Total length falls 1.2% on the large
+101 / 375 / 751, two per cut corner. `node-cross` rose with them at the time —
+39 / 133 / 277 to 52 / 196 / 385, both metrics v2 quantities — because it counted
+the same run through the same table three times over once the run was in three
+pieces. That is what metrics v3 fixed; neither figure is comparable with what the
+harness prints now. Total length falls 1.2% on the large
 corpus, because a cut corner is shorter than the two legs it replaces, and
 collinear overlap falls with it for the same reason. Measured alternately, three
 rounds each, `busy/move` ran 1.31 / 1.35 / 1.35 against 1.49 / 1.46 / 1.45 on
@@ -244,19 +247,31 @@ it — the dash pattern now runs continuously through a corner instead of restar
 at each segment, and the element census in `e2e/specs/relationship.spec.ts` stopped
 depending on how many runs a route is drawn in, which is what had broken it.
 
-**Track assignment took another sixth off, as an option rather than a rule.** A
-run is a chain of the span-overlap relation and not a clique, so four segments
-that each only reach their neighbour were handed a lane each and splayed over
-30px, where two lanes clear every overlapping pair and move nobody more than 5.
-Colouring the group as the interval graph it is — greedily, by where each segment
-starts, which is optimal for intervals — gives that compact layout. Imposing it
-made large *worse*, 3294 to 4305px: a lane is also how a segment gets away from
-something outside its group, and using fewer of them leaves more of those
-standing. Offering both layouts and scoring them, compact first, took large to
-2685px with crossings and length unchanged, and `busy/move` on large from
-8.53 / 8.41 / 8.46 to 8.58 / 8.70 / 8.56 — resolvable, but by 1.5%. Small and
-medium do not move at either: their groups are buses, where every span meets every
-other and the two layouts are the same thing.
+**Track assignment, and then how the layout is chosen, cleared the small corpus
+outright.** A run is a chain of the span-overlap relation and not a clique, so
+four segments that each only reach their neighbour were handed a lane each and
+splayed over 30px, where two lanes clear every overlapping pair and move nobody
+more than 5. Colouring the group as the interval graph it is — greedily, by where
+each segment starts, which is optimal for intervals — gives that compact layout.
+
+Three things had to be right about it. Sharing a lane needs a gap of clearance and
+not a bare touch: two segments that meet end to end overlap by no *length*, so a
+score in pixels called sharing a lane free, while their corners landed on the same
+point and each one's arms continued the other's — one long connector crossing
+another, neither of which was there. Imposing the compact layout made large worse,
+3294 to 4305px, because a lane is also how a segment gets away from something
+outside its group. And taking the first layout that clears the channel made the
+order of a list the tie-break between two that both work.
+
+Offering both layouts and taking whichever clears the channel *having moved the
+group least* gives 0 / 168 / 2943px, with crossings back to where they were before
+any of this work (3 / 16 / 81 same-table, 1 / 80 / 549 independent) and length 1.1%
+shorter. Preferring the compact layout instead, on list position, reads
+358 / 168 / 2685: better on the large corpus and worse everywhere else, including
+small, which the least-movement rule clears completely — the obstacles that were
+forcing that residual only forced it because the group was being moved further than
+it needed to be. `busy/move` on large went 8.53 / 8.41 / 8.46 to 8.58 / 8.70 / 8.56
+measured alternately, which resolves at 1.5%.
 
 **Two cheaper cuts are what is left of the cost.** A fifth of lane probes re-test
 a segment at a lane already rejected in the same group's ladder, and band chaining
