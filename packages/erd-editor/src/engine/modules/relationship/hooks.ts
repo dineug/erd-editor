@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 import { arrayHas } from '@dineug/shared';
-import { throttleTime } from 'rxjs';
+import { tap, throttleTime } from 'rxjs';
 
 import { ColumnOption, StartRelationshipType } from '@/constants/schema';
 import type { Hook, HookEffect } from '@/engine/hooks';
@@ -32,6 +32,7 @@ import {
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { bHas } from '@/utils/bit';
+import { invalidateTableWidths } from '@/utils/calcTable';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
 const identificationHook: HookEffect = (action$, getState) =>
@@ -104,9 +105,28 @@ const startRelationshipHook: HookEffect = (action$, getState) =>
       }
     });
 
+/**
+ * Actions that move something without changing what it contains. Every other
+ * action this hook wakes on can change a table's width, and the routing layer
+ * caches those widths across sorts.
+ */
+const isMoveOnly = arrayHas<string>([
+  moveTableAction.type,
+  moveToTableAction.type,
+  moveMemoAction.type,
+]);
+
 const relationshipSortHook: HookEffect = (action$, getState) =>
   action$
-    .pipe(throttleTime(5, undefined, { leading: false, trailing: true }))
+    .pipe(
+      // Invalidation reads every action, the sort reads one per window. Putting
+      // this after the throttle would drop the width-changing action whenever
+      // it shared a window with a move.
+      tap(action => {
+        if (!isMoveOnly(action.type)) invalidateTableWidths();
+      }),
+      throttleTime(5, undefined, { leading: false, trailing: true })
+    )
     .subscribe(() => {
       relationshipSort(getState());
     });

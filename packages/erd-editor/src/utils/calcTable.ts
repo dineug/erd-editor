@@ -20,6 +20,27 @@ import { Column, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { textInRange } from '@/utils/validation';
 
+/**
+ * Bumped whenever anything `calcTableWidths` reads outside a table's own
+ * `ui.width*` can have changed — every column width, and the two settings that
+ * gate them. Consumers that cache a computed size key on this instead of
+ * re-reading every column; see `utils/draw-relationship/calc.ts`.
+ */
+let widthGeneration = 0;
+
+export function getWidthGeneration() {
+  return widthGeneration;
+}
+
+/**
+ * Invalidates every cached table size. Called from `recalculateTableWidth`,
+ * which rewrites widths without dispatching an action, and from the
+ * relationship-sort hook for any action that is not a pure move.
+ */
+export function invalidateTableWidths() {
+  widthGeneration++;
+}
+
 export function calcTableWidths(
   table: Table,
   { settings: { show, maxWidthComment }, collections }: RootState
@@ -198,6 +219,10 @@ export function recalculateTableWidth(
   { doc: { tableIds }, collections }: RootState,
   { toWidth }: EngineContext
 ) {
+  // Rewrites every `ui.width*` without dispatching an action, so a size cache
+  // has no other way to learn it went stale.
+  invalidateTableWidths();
+
   const tables = query(collections)
     .collection('tableEntities')
     .selectByIds(tableIds);
