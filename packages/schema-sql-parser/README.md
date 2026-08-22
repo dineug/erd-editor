@@ -1,8 +1,49 @@
 # schema-sql-parser
 
+> Permissive DDL parser behind the editor's SQL import.
+
+Internal to the erd-editor monorepo — this package is private and is never published to npm.
+
+`schemaSQLParser(source)` tokenizes SQL of any dialect and returns a flat array of statements:
+`create.table`, `create.index`, and `alter.table.add.{primaryKey,unique,foreignKey}`. It is permissive
+by design — anything it does not recognize is skipped instead of rejected, so a real dump full of
+dialect quirks imports partially rather than failing outright. It never throws on bad input.
+
+Its one consumer is `@dineug/erd-editor`, which depends on it as
+`"@dineug/schema-sql-parser": "workspace:*"`.
+
+## Usage
+
+```ts
+import { schemaSQLParser, StatementType } from '@dineug/schema-sql-parser';
+
+const statements = schemaSQLParser(`
+  CREATE TABLE users (
+    id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    email varchar(255) NOT NULL UNIQUE
+  );
+
+  ALTER TABLE orders ADD FOREIGN KEY (user_id) REFERENCES users (id);
+`);
+
+for (const statement of statements) {
+  if (statement.type === StatementType.createTable) {
+    // users [ 'id', 'email' ]
+    console.log(statement.name, statement.columns.map(column => column.name));
+  }
+}
+```
+
+`statement.type` narrows the union. `CreateTable` carries `name`, `comment`, `columns`, `indexes` and
+`foreignKeys`; `CreateIndex` carries `tableName`, `unique` and `columns`; the three `alter.table.add.*`
+nodes carry the altered table's `name` and `columnNames`, plus `refTableName` / `refColumnNames` on
+foreign keys — a `CONSTRAINT <id>` prefix is consumed and dropped, so the constraint's own name is not
+reported. Index columns carry a `sort` of `SortType.asc` / `SortType.desc`.
+
 ## Support DataType
 
-- MySQL / MariaDB
+<details>
+<summary>MySQL / MariaDB (44 types)</summary>
 
   > bigint
   > binary
@@ -49,7 +90,10 @@
   > varchar
   > year
 
-- MSSQL
+</details>
+
+<details>
+<summary>MSSQL (31 types)</summary>
 
   > bigint
   > binary
@@ -83,7 +127,10 @@
   > varchar
   > xml
 
-- Oracle
+</details>
+
+<details>
+<summary>Oracle (19 types)</summary>
 
   > bfile
   > binary_double
@@ -105,7 +152,10 @@
   > varchar2
   > xmltype
 
-- PostgreSQL
+</details>
+
+<details>
+<summary>PostgreSQL (53 types)</summary>
 
   > bigint
   > bigserial
@@ -161,12 +211,18 @@
   > varchar
   > xml
 
-- SQLite
+</details>
+
+<details>
+<summary>SQLite (5 types)</summary>
+
   > blob
   > integer
   > numeric
   > real
   > text
+
+</details>
 
 ## Support Syntax
 
@@ -366,4 +422,11 @@ ALTER TABLE ONLY Persons ADD UNIQUE (ID)
 ALTER TABLE ONLY Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
 ALTER TABLE ONLY "public".Persons ADD UNIQUE (ID)
 ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
+```
+
+## Development
+
+```sh
+pnpm exec vp run --filter @dineug/schema-sql-parser --fail-if-no-match test
+pnpm --filter @dineug/schema-sql-parser test:coverage
 ```
