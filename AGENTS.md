@@ -105,6 +105,6 @@ Build order is derived from workspace dependencies: the first five rows below ar
 | --- | --- |
 | `.nvmrc` | `erd-editor-intellij-plugin`'s workflows, as `node-version-file: erd-editor/.nvmrc` — see the comment in `.github/actions/setup-workspace/action.yml`. Both node files must stay and must agree |
 | `pnpm-lock.yaml` format | those same workflows, which install **pnpm 10**. A lockfile written by pnpm 11 is unreadable there, which is why `packageManager` pins 10.34.3 — do not bump it to 11 |
-| `intellij-webview`'s `build:webview` | that same plugin repo — it emits into `../../../erd-editor-intellij-plugin/src/main/resources/assets` with `emptyOutDir`, and is `cache: false` because the cache cannot restore files outside this tree |
+| `intellij-webview`'s `build:webview` | that same plugin repo — it emits into `../../../erd-editor-intellij-plugin/src/main/resources/assets` with `emptyOutDir`, and is `cache: false` because the cache cannot restore files outside this tree. That default assumes the plugin repo sits beside this one; it also vendors this repo as a submodule, and its CI sets `ERD_EDITOR_ASSETS_DIR` to redirect the output |
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

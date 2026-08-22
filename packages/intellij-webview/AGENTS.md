@@ -31,7 +31,7 @@ Same `<erd-editor>` element and same `@dineug/erd-editor-vscode-bridge` protocol
 
 ### Working In This Directory
 
-- **`build:webview` writes outside this repo**, `emptyOutDir: true` into `../../../erd-editor-intellij-plugin/src/main/resources/assets`;
+- **`build:webview` writes outside this repo**, `emptyOutDir: true` into `../../../erd-editor-intellij-plugin/src/main/resources/assets` — or into `ERD_EDITOR_ASSETS_DIR` when that is set, which is how the plugin repo builds this from its `erd-editor/` submodule;
   it is `cache: false` because a hit cannot restore files outside the package. Plain `build` writes `dist/`.
 - **`base` stays `/`, only `.html`/`.js`/`.css` may be emitted, `sourcemap: false`** — the plugin's CEF
   `SchemeHandlerFactory` maps the URL path onto the classpath and types those three extensions, nothing else.

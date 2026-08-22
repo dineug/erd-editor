@@ -23,6 +23,13 @@ function stripCrossorigin(): Plugin {
  * `vp build --mode webview` writes into the IntelliJ plugin repo's
  * `src/main/resources/assets`, which is what ships.
  *
+ * The default webview path assumes the plugin repo sits *beside* this one. It
+ * also vendors this repo as a git submodule at `erd-editor/`, and there the
+ * same relative path climbs one directory too few. `ERD_EDITOR_ASSETS_DIR`
+ * overrides it so one config serves both layouts; the plugin repo's CI sets it
+ * to its own `src/main/resources/assets`. Keep it absolute — it is resolved
+ * against this package, not the cwd.
+ *
  * The scheme handler maps a URL path straight onto the classpath and assigns a
  * MIME type from a three-way `when` on the extension — `.html`, `.js`, `.css`.
  * Two consequences run through this file: `base` must stay `/` because the URL
@@ -41,7 +48,8 @@ export default defineConfig(({ mode }) => {
 
     build: {
       outDir: isWebview
-        ? '../../../erd-editor-intellij-plugin/src/main/resources/assets'
+        ? (process.env.ERD_EDITOR_ASSETS_DIR ??
+          '../../../erd-editor-intellij-plugin/src/main/resources/assets')
         : 'dist',
       // ⚠️ In webview mode this clears a directory in *another repository*.
       // That is the intent — stale hashed bundles there are packaged into the
