@@ -145,11 +145,67 @@ kover {
 }
 
 tasks {
+    // Build the webview bundle from the `erd-editor` submodule into
+    // src/main/resources/assets. The submodule works out that destination itself, so this
+    // only saves the `cd` — run it after updating the submodule, or whenever the editor
+    // source changes. Not wired into `buildPlugin`: the bundle changes far less often than
+    // the Kotlin side, and pnpm has no business running on every Gradle build.
+    register<Exec>("buildWebview") {
+        group = "build"
+        description = "Builds the ERD Editor webview bundle from the erd-editor submodule."
+
+        val submodule = layout.projectDirectory.dir("erd-editor")
+        workingDir = submodule.asFile
+
+        doFirst {
+            if (!submodule.file("package.json").asFile.exists()) {
+                throw GradleException(
+                    "The erd-editor submodule is empty. Run: git submodule update --init --recursive",
+                )
+            }
+        }
+
+        commandLine(
+            "pnpm",
+            "exec",
+            "vp",
+            "run",
+            "--filter",
+            "@dineug/erd-editor-intellij-webview",
+            "--fail-if-no-match",
+            "build:webview",
+        )
+    }
+
+    // The webview bundle is gitignored and built from the submodule, so an absent one is the
+    // normal state of a fresh clone — and Gradle would happily package the empty directory.
+    // That failure is invisible until someone opens a diagram and gets a blank panel, so make
+    // it a build failure instead.
+    val verifyWebviewAssets = register("verifyWebviewAssets") {
+        group = "verification"
+        description = "Fails when the webview bundle is missing from src/main/resources/assets."
+
+        val index = layout.projectDirectory.file("src/main/resources/assets/index.html").asFile
+        doLast {
+            if (!index.exists()) {
+                throw GradleException(
+                    "The webview bundle is missing from src/main/resources/assets, so the plugin " +
+                        "would ship a blank editor. Run: ./gradlew buildWebview",
+                )
+            }
+        }
+    }
+
+    buildPlugin {
+        dependsOn(verifyWebviewAssets)
+    }
+
     wrapper {
         gradleVersion = properties("gradleVersion").get()
     }
 
     runIde {
+        dependsOn(verifyWebviewAssets)
         systemProperty("idea.log.debug.categories", "com.github.dineug.erdeditorintellijplugin")
     }
 

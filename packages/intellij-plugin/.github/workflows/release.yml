@@ -38,10 +38,12 @@ jobs:
 
       # Build the webview bundle into src/main/resources/assets - publishing without it
       # would ship a plugin that opens a blank editor.
+      # Take the pnpm version from the submodule's `packageManager` field rather than
+      # pinning it here, so the lockfile is always read by the pnpm that wrote it.
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: erd-editor/package.json
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -50,11 +52,15 @@ jobs:
           cache: pnpm
           cache-dependency-path: erd-editor/pnpm-lock.yaml
 
+      # `build:webview` is a Vite Task, not a package.json script, so it goes through `vp run`.
+      # It resolves this repo's src/main/resources/assets on its own, whether it is vendored
+      # here as a submodule or checked out beside us. `verifyWebviewAssets` fails the Gradle
+      # build if the bundle does not arrive.
       - name: Build Webview
         working-directory: erd-editor
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter @dineug/erd-editor-intellij-webview run nx:build:webview
+          pnpm exec vp run --filter @dineug/erd-editor-intellij-webview --fail-if-no-match build:webview
 
       # Set environment variables
       - name: Export Properties
