@@ -12,4 +12,29 @@
 
 ## Structure
 
-![erd-editor-app](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-app.png?raw=true)
+```mermaid
+flowchart TB
+    subgraph clientA["Client A"]
+        bcA["Broadcast Channel"]
+        tabA1["Tab (leader)"]
+        tabA2["Tab"]
+        swA["Shared Worker"]
+        idbA[("IndexedDB")]
+
+        bcA <--> tabA1
+        bcA <--> tabA2
+        tabA1 <--> swA
+        tabA2 <--> swA
+        swA <--> idbA
+    end
+
+    subgraph clientB["Client B (guest)"]
+        tabB1["Tab"]
+    end
+
+    relay["Signaling Relay (nostr / mqtt)"]
+
+    tabA1 <-->|"WebRTC (AES-GCM)"| tabB1
+    tabA1 -. "signaling" .-> relay
+    tabB1 -. "signaling" .-> relay
+```
