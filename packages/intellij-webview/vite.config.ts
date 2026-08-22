@@ -1,4 +1,5 @@
-import { join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 
 import { defineConfig, type Plugin } from 'vite-plus';
 
@@ -19,16 +20,38 @@ function stripCrossorigin(): Plugin {
 }
 
 /**
+ * The plugin repo consumes this one in two shapes: checked out beside it, and
+ * vendored as a git submodule at its `erd-editor/`. Both put the bundle in that
+ * repo's `src/main/resources/assets`, but from here the two are one directory
+ * apart, and picking the wrong one is silent — the build succeeds, the plugin
+ * packages an empty `assets/`, and the editor comes up blank.
+ *
+ * So detect it rather than asking the caller to remember. `plugin.xml` exists
+ * only in the plugin repo, which makes it an unambiguous marker: find it in our
+ * parent and we are the submodule. `ERD_EDITOR_ASSETS_DIR` still overrides,
+ * for a layout that is neither.
+ */
+const PLUGIN_ASSETS = join('src', 'main', 'resources', 'assets');
+
+function resolveWebviewOutDir(): string {
+  const override = process.env.ERD_EDITOR_ASSETS_DIR;
+  if (override) return override;
+
+  const parent = dirname(resolve(import.meta.dirname, '..', '..'));
+  const marker = join('src', 'main', 'resources', 'META-INF', 'plugin.xml');
+
+  return existsSync(join(parent, marker))
+    ? join(parent, PLUGIN_ASSETS)
+    : join(parent, 'erd-editor-intellij-plugin', PLUGIN_ASSETS);
+}
+
+/**
  * Two outputs from one config. `vp build` writes `dist/` for local inspection;
  * `vp build --mode webview` writes into the IntelliJ plugin repo's
  * `src/main/resources/assets`, which is what ships.
  *
- * The default webview path assumes the plugin repo sits *beside* this one. It
- * also vendors this repo as a git submodule at `erd-editor/`, and there the
- * same relative path climbs one directory too few. `ERD_EDITOR_ASSETS_DIR`
- * overrides it so one config serves both layouts; the plugin repo's CI sets it
- * to its own `src/main/resources/assets`. Keep it absolute — it is resolved
- * against this package, not the cwd.
+ * Where that is depends on how the two repos are laid out — see
+ * `resolveWebviewOutDir`.
  *
  * The scheme handler maps a URL path straight onto the classpath and assigns a
  * MIME type from a three-way `when` on the extension — `.html`, `.js`, `.css`.
@@ -47,10 +70,7 @@ export default defineConfig(({ mode }) => {
     publicDir: false,
 
     build: {
-      outDir: isWebview
-        ? (process.env.ERD_EDITOR_ASSETS_DIR ??
-          '../../../erd-editor-intellij-plugin/src/main/resources/assets')
-        : 'dist',
+      outDir: isWebview ? resolveWebviewOutDir() : 'dist',
       // ⚠️ In webview mode this clears a directory in *another repository*.
       // That is the intent — stale hashed bundles there are packaged into the
       // plugin jar — but it is also why `build:webview` is `cache: false`:
