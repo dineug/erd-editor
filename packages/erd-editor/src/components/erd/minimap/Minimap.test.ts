@@ -11,8 +11,10 @@ import { AppContext } from '@/components/appContext';
 import * as canvasStyles from '@/components/erd/canvas/Canvas.styles';
 import Minimap from '@/components/erd/minimap/Minimap';
 import * as styles from '@/components/erd/minimap/Minimap.styles';
-import { Show } from '@/constants/schema';
+import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
+import { RelationshipType, Show } from '@/constants/schema';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
+import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeShowAction,
   changeZoomLevelAction,
@@ -149,6 +151,31 @@ describe('Minimap', () => {
     await flush();
 
     expect(minimapOf().querySelector('svg')).toBeNull();
+  });
+
+  it('draws the relationship route far thicker than the canvas does', async () => {
+    const app = createTestAppContext();
+    await mount_(app);
+
+    app.store.dispatchSync(
+      addRelationshipAction({
+        id: 'r1',
+        relationshipType: RelationshipType.ZeroOne,
+        start: { tableId: 'table-a', columnIds: ['c1'] },
+        end: { tableId: 'table-b', columnIds: ['c2'] },
+      })
+    );
+    await flush();
+
+    // The minimap scales the canvas down by `MINIMAP_SIZE / settings.width`, so
+    // the route would be a fraction of a device pixel at the width the canvas
+    // draws it. This number is a legibility floor of its own and is not derived
+    // from `RELATIONSHIP_STROKE_WIDTH`.
+    const route = minimapOf().querySelector('svg path.route');
+    expect(route?.getAttribute('stroke-width')).toBe('12');
+    expect(Number(route?.getAttribute('stroke-width'))).toBeGreaterThan(
+      RELATIONSHIP_STROKE_WIDTH
+    );
   });
 
   it('scrolls the canvas so the pressed point becomes the viewport center', async () => {

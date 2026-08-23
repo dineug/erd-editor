@@ -19,6 +19,8 @@ const only = <T>(values: T[]): T => {
  * | part         | elements                                                   |
  * | ------------ | ---------------------------------------------------------- |
  * | routing path | one `path.route`, dashed unless the relationship identifies |
+ * | hit band     | one `path.hit-area`, transparent and wider — the pointer    |
+ * |              | target, which is why neither count below covers it          |
  * | start marker | 4 `<line>` — the stem, base, base2 and center2 of the       |
  * |              | `dash` start, which is what a `notNull` end column selects  |
  * | end marker   | varies per type, below — this is the cardinality symbol     |

@@ -1,15 +1,46 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import {
+  RELATIONSHIP_HIT_STROKE_WIDTH,
+  RELATIONSHIP_STROKE_WIDTH,
+} from '@/constants/layout';
 import { StartRelationshipType } from '@/constants/schema';
 import { hoverColumnMapAction } from '@/engine/modules/editor/atom.actions';
-import { Relationship as RelationshipType } from '@/internal-types';
+import { Point, Relationship as RelationshipType } from '@/internal-types';
+import { CIRCLE_RADIUS, RelationshipPath } from '@/utils/draw-relationship';
 import {
   getRelationshipPath,
   toPathD,
 } from '@/utils/draw-relationship/pathFinding';
 
 import { relationshipShape } from './Relationship.template';
+
+/**
+ * The whole connector as one path, from one cardinality decoration to the other.
+ *
+ * Only for hit-testing: a pointer finds an SVG path along its painted stroke, so
+ * a connector is exactly as easy to hover as it is thick — and thinning it to
+ * `RELATIONSHIP_STROKE_WIDTH` halved a target that was already the width of a
+ * line. The guide lines either side of the route start and end where the route
+ * does, so all three fit in one extra element instead of one band per segment.
+ */
+function toHitPathD(
+  { line }: RelationshipPath['path'],
+  segments: Array<[Point, Point]>
+) {
+  return toPathD([
+    [
+      { x: line.start.x1, y: line.start.y1 },
+      { x: line.start.x2, y: line.start.y2 },
+    ],
+    ...segments,
+    [
+      { x: line.end.x2, y: line.end.y2 },
+      { x: line.end.x1, y: line.end.y1 },
+    ],
+  ]);
+}
 
 export type RelationshipProps = {
   relationship: RelationshipType;
@@ -61,6 +92,14 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
         on:mouseleave={handleMouseleave}
       >
         <path
+          class="hit-area"
+          d={toHitPathD(path, lines)}
+          stroke-width={RELATIONSHIP_HIT_STROKE_WIDTH}
+          stroke="transparent"
+          pointer-events="stroke"
+          fill="none"
+        ></path>
+        <path
           class="route"
           d={toPathD(lines)}
           stroke-dasharray={relationship.identification ? 0 : 10}
@@ -72,30 +111,30 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
           y1={path.line.start.y1}
           x2={path.line.start.x2}
           y2={path.line.start.y2}
-          stroke-width="3"
+          stroke-width={RELATIONSHIP_STROKE_WIDTH}
         ></line>
         <line
           x1={line.line.start.base.x1}
           y1={line.line.start.base.y1}
           x2={line.line.start.base.x2}
           y2={line.line.start.base.y2}
-          stroke-width="3"
+          stroke-width={RELATIONSHIP_STROKE_WIDTH}
         ></line>
         {relationship.startRelationshipType === StartRelationshipType.ring ? (
           <>
             <circle
               cx={line.startCircle.cx}
               cy={line.startCircle.cy}
-              r="8"
+              r={CIRCLE_RADIUS}
               fill-opacity="0.0"
-              stroke-width="3"
+              stroke-width={RELATIONSHIP_STROKE_WIDTH}
             ></circle>
             <line
               x1={line.line.start.center.x1}
               y1={line.line.start.center.y1}
               x2={line.line.start.center.x2}
               y2={line.line.start.center.y2}
-              stroke-width="3"
+              stroke-width={RELATIONSHIP_STROKE_WIDTH}
             ></line>
           </>
         ) : (
@@ -105,14 +144,14 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
               y1={line.line.start.base2.y1}
               x2={line.line.start.base2.x2}
               y2={line.line.start.base2.y2}
-              stroke-width="3"
+              stroke-width={RELATIONSHIP_STROKE_WIDTH}
             ></line>
             <line
               x1={line.line.start.center2.x1}
               y1={line.line.start.center2.y1}
               x2={line.line.start.center2.x2}
               y2={line.line.start.center2.y2}
-              stroke-width="3"
+              stroke-width={RELATIONSHIP_STROKE_WIDTH}
             ></line>
           </>
         )}

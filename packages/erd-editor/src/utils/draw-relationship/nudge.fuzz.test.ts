@@ -118,7 +118,7 @@ function chainScene(seed: number): Scene {
   return { routes, obstacles: OBSTACLES, endpoints };
 }
 
-/** Total length two connectors run within a stroke width of each other. */
+/** Total length two connectors run within 3px of each other. */
 const bandOverlap = (routes: Scene['routes'], band = 3) => {
   const runs: Array<{
     id: string;

@@ -86,10 +86,22 @@ happened to sit near a table box and reported whatever it found, including
 nothing at all once stub lengths changed.
 
 `collinear px` is how far two connectors run side by side within one stroke
-width of each other — 3px, the width they are drawn at. It is a visual
-complaint, so the threshold is the stroke and not equality. Pairs are compared
+width of each other, read from `RELATIONSHIP_STROKE_WIDTH`. It is a visual
+complaint, so the threshold is a band and not equality. Pairs are compared
 directly rather than bucketed: a band is not an equivalence relation, and
 clustering chains 0-3-6-9 into one group.
+
+**Every `collinear px` figure recorded below was measured at a band of 3**, the
+width connectors were drawn at then. They are drawn at 2 now and the band
+followed, so those figures read high against a run made today: the same routing
+scores 0 / 0 / 2721 under the current band where it scored 0 / 168 / 2943 under
+the old one. Nothing moved — thinning the connector cleared the medium corpus on
+its own, and the wider band had been counting pairs a reader can now separate.
+
+Do not hold the band still to keep old numbers comparable. A band wider than the
+stroke puts a rung of `NUDGE_GAPS` exactly on its boundary, where floating point
+drops it inside: measured at 3 against a 2px connector, adding a 3px rung looked
+like a 188% collinear regression when its real cost was 0 → 316px on medium.
 
 ## Comparing runs
 
@@ -192,7 +204,7 @@ the metric by whether both segments are ones the pass may move puts medium's who
 168px, and 1121px of large's, between runs attached to an anchor — a connector's
 first and last run, whose coordinate is the anchor's and not the route's, and which
 nothing here can move. The other 1822px of large's is a group spreading outward and
-landing within a stroke width of a segment in a channel it was not grouped with.
+landing within the band of a segment in a channel it was not grouped with.
 Small has none of either.
 
 **What it costs.** Measured alternately, three rounds each, `busy/move` ran

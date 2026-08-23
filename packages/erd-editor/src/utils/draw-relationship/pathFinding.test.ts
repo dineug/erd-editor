@@ -30,8 +30,8 @@ describe('getRelationshipPath', () => {
     });
 
     it('pushes the path guide line out by PATH_LINE_HEIGHT', () => {
-      expect(path.line.start).toEqual({ x1: 135, y1: 50, x2: 150, y2: 50 });
-      expect(path.line.end).toEqual({ x1: 365, y1: 50, x2: 350, y2: 50 });
+      expect(path.line.start).toEqual({ x1: 125, y1: 50, x2: 150, y2: 50 });
+      expect(path.line.end).toEqual({ x1: 375, y1: 50, x2: 350, y2: 50 });
     });
 
     it('draws one straight run when the two anchors line up', () => {
@@ -45,50 +45,50 @@ describe('getRelationshipPath', () => {
 
     it('lays out the start decoration lines horizontally', () => {
       expect(line.line.start.base).toEqual({
-        x1: 116,
-        y1: 40,
-        x2: 116,
-        y2: 60,
+        x1: 111,
+        y1: 43,
+        x2: 111,
+        y2: 57,
       });
       expect(line.line.start.base2).toEqual({
-        x1: 126,
-        y1: 40,
-        x2: 126,
-        y2: 60,
+        x1: 118,
+        y1: 43,
+        x2: 118,
+        y2: 57,
       });
       expect(line.line.start.center).toEqual({
-        x1: 116,
+        x1: 111,
         y1: 50,
         x2: 100,
         y2: 50,
       });
       expect(line.line.start.center2).toEqual({
-        x1: 135,
+        x1: 125,
         y1: 50,
         x2: 100,
         y2: 50,
       });
-      expect(line.startCircle).toEqual({ cx: 126, cy: 50 });
+      expect(line.startCircle).toEqual({ cx: 118, cy: 50 });
     });
 
     it('lays out the end decoration lines horizontally', () => {
-      expect(line.line.end.base).toEqual({ x1: 384, y1: 40, x2: 384, y2: 60 });
-      expect(line.line.end.base2).toEqual({ x1: 374, y1: 40, x2: 374, y2: 60 });
-      expect(line.line.end.left).toEqual({ x1: 384, y1: 50, x2: 400, y2: 60 });
-      expect(line.line.end.right).toEqual({ x1: 384, y1: 50, x2: 400, y2: 40 });
+      expect(line.line.end.base).toEqual({ x1: 389, y1: 43, x2: 389, y2: 57 });
+      expect(line.line.end.base2).toEqual({ x1: 382, y1: 43, x2: 382, y2: 57 });
+      expect(line.line.end.left).toEqual({ x1: 389, y1: 50, x2: 400, y2: 57 });
+      expect(line.line.end.right).toEqual({ x1: 389, y1: 50, x2: 400, y2: 43 });
       expect(line.line.end.center).toEqual({
-        x1: 384,
+        x1: 389,
         y1: 50,
         x2: 400,
         y2: 50,
       });
       expect(line.line.end.center2).toEqual({
-        x1: 365,
+        x1: 375,
         y1: 50,
         x2: 400,
         y2: 50,
       });
-      expect(line.circle).toEqual({ cx: 374, cy: 50 });
+      expect(line.circle).toEqual({ cx: 382, cy: 50 });
     });
   });
 
@@ -103,8 +103,8 @@ describe('getRelationshipPath', () => {
     it('pushes the path end points out on the y axis', () => {
       expect(path.path.M).toEqual({ x: 100, y: 150 });
       expect(path.path.L).toEqual({ x: 300, y: 450 });
-      expect(path.line.start).toEqual({ x1: 100, y1: 135, x2: 100, y2: 150 });
-      expect(path.line.end).toEqual({ x1: 300, y1: 465, x2: 300, y2: 450 });
+      expect(path.line.start).toEqual({ x1: 100, y1: 125, x2: 100, y2: 150 });
+      expect(path.line.end).toEqual({ x1: 300, y1: 475, x2: 300, y2: 450 });
     });
 
     it('turns at right angles on the y axis, with the corners cut', () => {
@@ -136,70 +136,70 @@ describe('getRelationshipPath', () => {
 
     it('lays out the start decoration lines vertically', () => {
       expect(line.line.start.base).toEqual({
-        x1: 90,
-        y1: 116,
-        x2: 110,
-        y2: 116,
+        x1: 93,
+        y1: 111,
+        x2: 107,
+        y2: 111,
       });
       expect(line.line.start.base2).toEqual({
-        x1: 90,
-        y1: 126,
-        x2: 110,
-        y2: 126,
+        x1: 93,
+        y1: 118,
+        x2: 107,
+        y2: 118,
       });
       expect(line.line.start.center).toEqual({
         x1: 100,
-        y1: 116,
+        y1: 111,
         x2: 100,
         y2: 100,
       });
       expect(line.line.start.center2).toEqual({
         x1: 100,
-        y1: 135,
+        y1: 125,
         x2: 100,
         y2: 100,
       });
-      expect(line.startCircle).toEqual({ cx: 100, cy: 126 });
+      expect(line.startCircle).toEqual({ cx: 100, cy: 118 });
     });
 
     it('lays out the end decoration lines vertically', () => {
       expect(line.line.end.base).toEqual({
-        x1: 290,
-        y1: 484,
-        x2: 310,
-        y2: 484,
+        x1: 293,
+        y1: 489,
+        x2: 307,
+        y2: 489,
       });
       expect(line.line.end.base2).toEqual({
-        x1: 290,
-        y1: 474,
-        x2: 310,
-        y2: 474,
+        x1: 293,
+        y1: 482,
+        x2: 307,
+        y2: 482,
       });
       expect(line.line.end.left).toEqual({
         x1: 300,
-        y1: 484,
-        x2: 310,
+        y1: 489,
+        x2: 307,
         y2: 500,
       });
       expect(line.line.end.right).toEqual({
         x1: 300,
-        y1: 484,
-        x2: 290,
+        y1: 489,
+        x2: 293,
         y2: 500,
       });
       expect(line.line.end.center).toEqual({
         x1: 300,
-        y1: 484,
+        y1: 489,
         x2: 300,
         y2: 500,
       });
       expect(line.line.end.center2).toEqual({
         x1: 300,
-        y1: 465,
+        y1: 475,
         x2: 300,
         y2: 500,
       });
-      expect(line.circle).toEqual({ cx: 300, cy: 474 });
+      expect(line.circle).toEqual({ cx: 300, cy: 482 });
     });
   });
 
@@ -240,31 +240,31 @@ describe('getRelationshipPath', () => {
 
     it('mirrors the decoration lines for the inverted directions', () => {
       expect(line.line.start.center).toEqual({
-        x1: 484,
+        x1: 489,
         y1: 200,
         x2: 500,
         y2: 200,
       });
       expect(line.line.start.center2).toEqual({
-        x1: 465,
+        x1: 475,
         y1: 200,
         x2: 500,
         y2: 200,
       });
       expect(line.line.end.left).toEqual({
-        x1: 116,
+        x1: 111,
         y1: 260,
         x2: 100,
-        y2: 270,
+        y2: 267,
       });
       expect(line.line.end.right).toEqual({
-        x1: 116,
+        x1: 111,
         y1: 260,
         x2: 100,
-        y2: 250,
+        y2: 253,
       });
-      expect(line.startCircle).toEqual({ cx: 474, cy: 200 });
-      expect(line.circle).toEqual({ cx: 126, cy: 260 });
+      expect(line.startCircle).toEqual({ cx: 482, cy: 200 });
+      expect(line.circle).toEqual({ cx: 118, cy: 260 });
     });
   });
 
@@ -289,37 +289,37 @@ describe('getRelationshipPath', () => {
 
     it('flips the end decoration lines downwards', () => {
       expect(line.line.end.base).toEqual({
-        x1: 190,
-        y1: 116,
-        x2: 210,
-        y2: 116,
+        x1: 193,
+        y1: 111,
+        x2: 207,
+        y2: 111,
       });
       expect(line.line.end.base2).toEqual({
-        x1: 190,
-        y1: 126,
-        x2: 210,
-        y2: 126,
+        x1: 193,
+        y1: 118,
+        x2: 207,
+        y2: 118,
       });
       expect(line.line.end.left).toEqual({
         x1: 200,
-        y1: 116,
-        x2: 210,
+        y1: 111,
+        x2: 207,
         y2: 100,
       });
       expect(line.line.end.right).toEqual({
         x1: 200,
-        y1: 116,
-        x2: 190,
+        y1: 111,
+        x2: 193,
         y2: 100,
       });
       expect(line.line.end.center2).toEqual({
         x1: 200,
-        y1: 135,
+        y1: 125,
         x2: 200,
         y2: 100,
       });
-      expect(line.startCircle).toEqual({ cx: 200, cy: 374 });
-      expect(line.circle).toEqual({ cx: 200, cy: 126 });
+      expect(line.startCircle).toEqual({ cx: 200, cy: 382 });
+      expect(line.circle).toEqual({ cx: 200, cy: 118 });
     });
   });
 
@@ -343,29 +343,29 @@ describe('getRelationshipPath', () => {
     });
 
     it('still lays out both decoration ends', () => {
-      expect(path.line.start).toEqual({ x1: 98, y1: -35, x2: 98, y2: -50 });
-      expect(path.line.end).toEqual({ x1: 153, y1: 20, x2: 168, y2: 20 });
+      expect(path.line.start).toEqual({ x1: 98, y1: -25, x2: 98, y2: -50 });
+      expect(path.line.end).toEqual({ x1: 143, y1: 20, x2: 168, y2: 20 });
       expect(line.line.start.base).toEqual({
-        x1: 88,
-        y1: -16,
-        x2: 108,
-        y2: -16,
+        x1: 91,
+        y1: -11,
+        x2: 105,
+        y2: -11,
       });
       expect(line.line.start.center2).toEqual({
         x1: 98,
-        y1: -35,
+        y1: -25,
         x2: 98,
         y2: 0,
       });
-      expect(line.line.end.base).toEqual({ x1: 134, y1: 10, x2: 134, y2: 30 });
+      expect(line.line.end.base).toEqual({ x1: 129, y1: 13, x2: 129, y2: 27 });
       expect(line.line.end.center2).toEqual({
-        x1: 153,
+        x1: 143,
         y1: 20,
         x2: 118,
         y2: 20,
       });
-      expect(line.startCircle).toEqual({ cx: 98, cy: -26 });
-      expect(line.circle).toEqual({ cx: 144, cy: 20 });
+      expect(line.startCircle).toEqual({ cx: 98, cy: -18 });
+      expect(line.circle).toEqual({ cx: 136, cy: 20 });
     });
   });
 

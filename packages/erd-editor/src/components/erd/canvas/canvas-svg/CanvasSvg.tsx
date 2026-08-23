@@ -3,6 +3,7 @@ import { FC, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import Relationship from '@/components/erd/canvas/canvas-svg/relationship/Relationship';
+import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 
 import * as styles from './CanvasSvg.styles';
 
@@ -42,7 +43,7 @@ const CanvasSvg: FC<CanvasSvgProps> = (props, ctx) => {
           relationship => (
             <Relationship
               relationship={relationship}
-              strokeWidth={props.strokeWidth ?? 3}
+              strokeWidth={props.strokeWidth ?? RELATIONSHIP_STROKE_WIDTH}
             />
           )
         )}

@@ -82,7 +82,7 @@ describe('DrawRelationship', () => {
     expect(path.getAttribute('d')).toBe(expected.path.path.d());
     expect(path.getAttribute('stroke-dasharray')).toBe('10');
     expect(path.getAttribute('fill')).toBe('transparent');
-    expect(path.getAttribute('stroke-width')).toBe('3');
+    expect(path.getAttribute('stroke-width')).toBe('2');
   });
 
   it('renders the start tick, base, base2 and center2 markers', async () => {
@@ -110,7 +110,7 @@ describe('DrawRelationship', () => {
     expect(xy(lines[1])).toEqual(toXY(line.start.base));
     expect(xy(lines[2])).toEqual(toXY(line.start.base2));
     expect(xy(lines[3])).toEqual(toXY(line.start.center2));
-    lines.forEach(el => expect(el.getAttribute('stroke-width')).toBe('3'));
+    lines.forEach(el => expect(el.getAttribute('stroke-width')).toBe('2'));
   });
 
   it('falls back to a degenerate path when the draw has no start point', async () => {

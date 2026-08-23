@@ -4,6 +4,10 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import Relationship from '@/components/erd/canvas/canvas-svg/relationship/Relationship';
 import {
+  RELATIONSHIP_HIT_STROKE_WIDTH,
+  RELATIONSHIP_STROKE_WIDTH,
+} from '@/constants/layout';
+import {
   Direction,
   RelationshipType,
   StartRelationshipType,
@@ -47,7 +51,10 @@ afterEach(() => {
   mounted = null;
 });
 
-const mountRelationship = (relationship: RelationshipType_, strokeWidth = 3) =>
+const mountRelationship = (
+  relationship: RelationshipType_,
+  strokeWidth = RELATIONSHIP_STROKE_WIDTH
+) =>
   mountAndFlush(
     svg`<svg><${Relationship} relationship=${relationship} strokeWidth=${strokeWidth} /></svg>`
   );
@@ -139,8 +146,65 @@ describe('Relationship', () => {
     // Every remaining line is a cardinality decoration, drawn at a fixed width.
     const lines = Array.from(mounted.container.querySelectorAll('line'));
     lines.forEach(line => {
-      expect(line.getAttribute('stroke-width')).toBe('3');
+      expect(line.getAttribute('stroke-width')).toBe('2');
     });
+  });
+
+  it('lays a pointer band over the connector that is wider than the drawing', async () => {
+    mounted = await mountRelationship(makeRelationship());
+
+    const hit = mounted.container.querySelector(
+      'path.hit-area'
+    ) as SVGPathElement;
+    expect(Number(hit.getAttribute('stroke-width'))).toBe(
+      RELATIONSHIP_HIT_STROKE_WIDTH
+    );
+    expect(RELATIONSHIP_HIT_STROKE_WIDTH).toBeGreaterThan(
+      RELATIONSHIP_STROKE_WIDTH
+    );
+    // Only the stroke is a target: a filled interior would swallow the canvas
+    // enclosed by the bends.
+    expect(hit.getAttribute('fill')).toBe('none');
+    expect(hit.getAttribute('pointer-events')).toBe('stroke');
+    // `CanvasSvg.styles.ts` strokes the group and lets the shapes inherit it,
+    // so the band needs a paint of its own — a presentation attribute, which
+    // applies to the element and therefore beats what it would inherit.
+    expect(hit.getAttribute('stroke')).toBe('transparent');
+  });
+
+  it('keeps the pointer band solid while the route it covers is dashed', async () => {
+    mounted = await mountRelationship(makeRelationship());
+
+    // A dash gap is unpainted and therefore not a target, so a banded copy of
+    // the route's dasharray would leave half the connector unhoverable.
+    const route = mounted.container.querySelector(
+      'path.route'
+    ) as SVGPathElement;
+    expect(route.getAttribute('stroke-dasharray')).toBe('10');
+    expect(
+      mounted.container
+        .querySelector('path.hit-area')
+        ?.hasAttribute('stroke-dasharray')
+    ).toBe(false);
+  });
+
+  it('runs the pointer band from one cardinality decoration to the other', async () => {
+    const relationship = makeRelationship();
+    const { path } = getRelationshipPath(relationship);
+    mounted = await mountRelationship(relationship);
+
+    const d =
+      mounted.container.querySelector('path.hit-area')?.getAttribute('d') ?? '';
+    const numbers = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+
+    // The route alone spans the two turning points. The guide lines either side
+    // of it carry the connector the rest of the way to its decorations, and
+    // they are as thin as the route — so the band has to cover them too.
+    expect(numbers.slice(0, 2)).toEqual([
+      path.line.start.x1,
+      path.line.start.y1,
+    ]);
+    expect(numbers.slice(-2)).toEqual([path.line.end.x1, path.line.end.y1]);
   });
 
   it('renders the dash start marker for a dash start relationship type', async () => {
@@ -172,6 +236,16 @@ describe('Relationship', () => {
     expect(circles).toHaveLength(2);
     expect(circles[0].getAttribute('cx')).toBe(`${line.startCircle.cx}`);
     expect(circles[0].getAttribute('cy')).toBe(`${line.startCircle.cy}`);
+
+    // The ring branch renders markup the dash branch never does, and every
+    // other mount in this file takes the dash branch.
+    for (const el of [
+      ...circles,
+      ...Array.from(mounted.container.querySelectorAll('line')),
+    ]) {
+      expect(el.getAttribute('stroke-width')).toBe('2');
+    }
+    expect(circles[0].getAttribute('r')).toBe('6');
   });
 
   it('omits the end shape when the relationship type has no registered shape', async () => {

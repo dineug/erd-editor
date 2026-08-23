@@ -1,5 +1,7 @@
 import type { Page } from '@playwright/test';
 
+import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
+
 /**
  * Overlap metrics, computed from what the editor actually drew.
  *
@@ -82,10 +84,12 @@ export type QualityMetrics = {
  * coordinates.
  *
  * `Relationship.tsx` renders the routing polyline as one `path.route` and every
- * cardinality decoration as a bare `stroke-width="3"` line, so the route is read
- * back out of that path's `d` — a run of `M`/`L` points, contiguous by
- * construction. Scoping to `[data-testid="erd-canvas"]` keeps the minimap's
- * second copy of the same SVG out of the count.
+ * cardinality decoration as a bare `<line>`, so the route is read back out of
+ * that path's `d` — a run of `M`/`L` points, contiguous by construction. The
+ * class is what selects it: the same `<g>` also holds a `path.hit-area` with the
+ * same shape, and counting both would double every segment. Scoping to
+ * `[data-testid="erd-canvas"]` keeps the minimap's second copy of the same SVG
+ * out of the count.
  */
 export async function readScene(page: Page): Promise<Scene> {
   return page.evaluate(() => {
@@ -223,16 +227,27 @@ function segmentIntersectsRect(segment: Segment, rect: TableRect) {
 /**
  * How far two connectors run side by side close enough to read as one line.
  *
- * The reader's complaint is visual, so the threshold is the stroke width, not
- * equality. An earlier version bucketed segments by their coordinate rounded to
- * one decimal, which answers a different question — how often two segments land
+ * The reader's complaint is visual, not equality. An earlier version bucketed
+ * segments by their coordinate rounded to one decimal, which answers a different
+ * question — how often two segments land
  * on the *identical* line — and that question flatters any change that moves a
  * shared channel by a pixel. It reported zero for the medium corpus while the
  * same scene held 2008px of overlap a reader cannot distinguish from a single
  * connector. Pairs are compared directly rather than clustered: clustering
  * chains 0-3-6-9 into one group, and a band is not an equivalence relation.
+ *
+ * Read from the width the editor draws with, so it cannot drift from the
+ * picture it is a complaint about: two connectors are within a band of each
+ * other exactly when their strokes overlap. It was 3 while the connector was,
+ * and followed it to 2 — figures recorded under the old band read high by
+ * comparison and are marked as such in `README.md`.
+ *
+ * A stale band is not a harmless conservatism. At 3 against a 2px connector a
+ * pair separated by exactly 3 sits on the boundary and floating point drops it
+ * inside, which is what made a 3px rung of `NUDGE_GAPS` look like a 188%
+ * regression when its real cost was a tenth of that.
  */
-const STROKE_WIDTH = 3;
+const OVERLAP_BAND = RELATIONSHIP_STROKE_WIDTH;
 
 type Run = {
   low: number;
@@ -241,7 +256,7 @@ type Run = {
   relationshipId: string;
 };
 
-export function collinearOverlap(segments: Segment[], band = STROKE_WIDTH) {
+export function collinearOverlap(segments: Segment[], band = OVERLAP_BAND) {
   const byAxis: Record<'h' | 'v', Run[]> = { h: [], v: [] };
 
   for (const segment of segments) {

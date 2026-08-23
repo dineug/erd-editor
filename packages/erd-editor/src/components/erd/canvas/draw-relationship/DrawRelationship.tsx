@@ -2,6 +2,7 @@ import { FC, onMounted, Ref } from '@dineug/r-html';
 import { fromEvent } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 import { drawRelationshipAction } from '@/engine/modules/editor/atom.actions';
 import { DrawRelationship as DrawRelationshipType } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -60,7 +61,7 @@ const DrawRelationship: FC<DrawRelationshipProps> = (props, ctx) => {
             class="draw-preview"
             d={path.path.d()}
             stroke-dasharray="10"
-            stroke-width="3"
+            stroke-width={RELATIONSHIP_STROKE_WIDTH}
             fill="transparent"
           ></path>
           <line
@@ -68,28 +69,28 @@ const DrawRelationship: FC<DrawRelationshipProps> = (props, ctx) => {
             y1={path.line.start.y1}
             x2={path.line.start.x2}
             y2={path.line.start.y2}
-            stroke-width="3"
+            stroke-width={RELATIONSHIP_STROKE_WIDTH}
           ></line>
           <line
             x1={line.start.base.x1}
             y1={line.start.base.y1}
             x2={line.start.base.x2}
             y2={line.start.base.y2}
-            stroke-width="3"
+            stroke-width={RELATIONSHIP_STROKE_WIDTH}
           ></line>
           <line
             x1={line.start.base2.x1}
             y1={line.start.base2.y1}
             x2={line.start.base2.x2}
             y2={line.start.base2.y2}
-            stroke-width="3"
+            stroke-width={RELATIONSHIP_STROKE_WIDTH}
           ></line>
           <line
             x1={line.start.center2.x1}
             y1={line.start.center2.y1}
             x2={line.start.center2.x2}
             y2={line.start.center2.y2}
-            stroke-width="3"
+            stroke-width={RELATIONSHIP_STROKE_WIDTH}
           ></line>
         </g>
       </svg>

@@ -232,7 +232,7 @@ function getLine(
     line.start.base.y2 += LINE_SIZE;
     line.start.base2.y1 -= LINE_SIZE;
     line.start.base2.y2 += LINE_SIZE;
-    line.start.center2.x1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
+    line.start.center2.x1 += change * PATH_LINE_HEIGHT;
 
     startCircle.cx += change * CIRCLE_HEIGHT;
   } else if (
@@ -250,7 +250,7 @@ function getLine(
     line.start.base.x2 += LINE_SIZE;
     line.start.base2.x1 -= LINE_SIZE;
     line.start.base2.x2 += LINE_SIZE;
-    line.start.center2.y1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
+    line.start.center2.y1 += change * PATH_LINE_HEIGHT;
 
     startCircle.cy += change * CIRCLE_HEIGHT;
   }
@@ -272,7 +272,7 @@ function getLine(
     line.end.base2.y2 += LINE_SIZE;
     line.end.left.y2 += LINE_SIZE;
     line.end.right.y2 -= LINE_SIZE;
-    line.end.center2.x1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
+    line.end.center2.x1 += change * PATH_LINE_HEIGHT;
 
     circle.cx += change * CIRCLE_HEIGHT;
   } else if (
@@ -294,7 +294,7 @@ function getLine(
     line.end.base2.x2 += LINE_SIZE;
     line.end.left.x2 += LINE_SIZE;
     line.end.right.x2 -= LINE_SIZE;
-    line.end.center2.y1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
+    line.end.center2.y1 += change * PATH_LINE_HEIGHT;
 
     circle.cy += change * CIRCLE_HEIGHT;
   }
