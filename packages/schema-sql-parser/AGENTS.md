@@ -17,7 +17,7 @@ rather than rejected, so a real dump imports partially instead of failing. Its o
 | --- | --- |
 | `src/index.ts` | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, statement types |
 | `src/parser/index.ts` | Dispatch loop — probes each matcher at `$pos`, calls a statement parser, else advances |
-| `src/parser/helper.ts` | Curried token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set |
+| `src/parser/helper.ts` | Curried token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set and `matchDataType` |
 | `src/parser/statement/index.ts` | `Statement` union, `StatementType`, `SortType`, `RefPos`, AST node shapes |
 | `src/schema_sql_test_case.md` | 24 end-to-end fixture sections (`### ` heading + fenced `sql` + fenced `json`) |
 
@@ -39,6 +39,7 @@ rather than rejected, so a real dump imports partially instead of failing. Its o
 - Adding a statement kind is four edits: the parser file, the `Statement` union and `StatementType`, a matcher in
   `parser/helper.ts`, a branch in `parser/index.ts`.
 - `helper.ts` merges all six `dataType/` lists into one deduped uppercase set, so adding a type to one vendor widens every dialect.
+- **A type name is matched word by word, longest first**, so multi-word names are written in full (`TIMESTAMP WITHOUT TIME ZONE`, not `TIMESTAMP WITHOUT`) and `matchDataType` returns the token span — argument lists included, wherever they sit (`TIMESTAMP(3) WITH TIME ZONE`). Each name is mirrored in `erd-editor/src/constants/sql/dataType/` with a `primitiveType`; the two lists hold the same names and change together.
 
 ### Testing Requirements
 

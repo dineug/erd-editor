@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import { PostgreSQLTypes } from '@/parser/dataType/PostgreSQL';
-import { isDataType } from '@/parser/helper';
+import { isDataType, matchDataType } from '@/parser/helper';
 import { tokenizer, TokenType } from '@/parser/tokenizer';
 
 const orderViolations = (list: string[]) =>
@@ -22,37 +22,76 @@ describe('PostgreSQLTypes', () => {
       'BOOL',
       'BOOLEAN',
       'BOX',
+      'BPCHAR',
       'BYTEA',
       'CHAR',
       'CHARACTER VARYING',
       'CHARACTER',
+      'CID',
       'CIDR',
       'CIRCLE',
       'DATE',
+      'DATEMULTIRANGE',
+      'DATERANGE',
       'DECIMAL',
       'DOUBLE PRECISION',
+      'FLOAT',
       'FLOAT4',
       'FLOAT8',
       'INET',
       'INT',
       'INT2',
       'INT4',
+      'INT4MULTIRANGE',
+      'INT4RANGE',
       'INT8',
+      'INT8MULTIRANGE',
+      'INT8RANGE',
       'INTEGER',
+      'INTERVAL DAY TO HOUR',
+      'INTERVAL DAY TO MINUTE',
+      'INTERVAL DAY TO SECOND',
+      'INTERVAL DAY',
+      'INTERVAL HOUR TO MINUTE',
+      'INTERVAL HOUR TO SECOND',
+      'INTERVAL HOUR',
+      'INTERVAL MINUTE TO SECOND',
+      'INTERVAL MINUTE',
+      'INTERVAL MONTH',
+      'INTERVAL SECOND',
+      'INTERVAL YEAR TO MONTH',
+      'INTERVAL YEAR',
       'INTERVAL',
       'JSON',
       'JSONB',
+      'JSONPATH',
       'LINE',
       'LSEG',
       'MACADDR',
       'MACADDR8',
       'MONEY',
+      'NAME',
       'NUMERIC',
+      'NUMMULTIRANGE',
+      'NUMRANGE',
+      'OID',
       'PATH',
       'PG_LSN',
+      'PG_SNAPSHOT',
       'POINT',
       'POLYGON',
       'REAL',
+      'REGCLASS',
+      'REGCOLLATION',
+      'REGCONFIG',
+      'REGDICTIONARY',
+      'REGNAMESPACE',
+      'REGOPER',
+      'REGOPERATOR',
+      'REGPROC',
+      'REGPROCEDURE',
+      'REGROLE',
+      'REGTYPE',
       'SERIAL',
       'SERIAL2',
       'SERIAL4',
@@ -60,21 +99,30 @@ describe('PostgreSQLTypes', () => {
       'SMALLINT',
       'SMALLSERIAL',
       'TEXT',
-      'TIME WITH',
+      'TID',
+      'TIME WITH TIME ZONE',
+      'TIME WITHOUT TIME ZONE',
       'TIME',
-      'TIMESTAMP WITH',
+      'TIMESTAMP WITH TIME ZONE',
+      'TIMESTAMP WITHOUT TIME ZONE',
       'TIMESTAMP',
       'TIMESTAMPTZ',
       'TIMETZ',
+      'TSMULTIRANGE',
       'TSQUERY',
+      'TSRANGE',
+      'TSTZMULTIRANGE',
+      'TSTZRANGE',
       'TSVECTOR',
       'TXID_SNAPSHOT',
       'UUID',
       'VARBIT',
       'VARCHAR',
+      'XID',
+      'XID8',
       'XML',
     ]);
-    expect(PostgreSQLTypes).toHaveLength(58);
+    expect(PostgreSQLTypes).toHaveLength(106);
   });
 
   it('contains no duplicate entries', () => {
@@ -93,8 +141,12 @@ describe('PostgreSQLTypes', () => {
     for (const [longer, shorter] of [
       ['BIT VARYING', 'BIT'],
       ['CHARACTER VARYING', 'CHARACTER'],
-      ['TIME WITH', 'TIME'],
-      ['TIMESTAMP WITH', 'TIMESTAMP'],
+      ['TIME WITH TIME ZONE', 'TIME'],
+      ['TIME WITHOUT TIME ZONE', 'TIME'],
+      ['TIMESTAMP WITH TIME ZONE', 'TIMESTAMP'],
+      ['TIMESTAMP WITHOUT TIME ZONE', 'TIMESTAMP'],
+      ['INTERVAL DAY TO SECOND', 'INTERVAL DAY'],
+      ['INTERVAL DAY', 'INTERVAL'],
     ]) {
       expect(PostgreSQLTypes.indexOf(longer)).toBeLessThan(
         PostgreSQLTypes.indexOf(shorter)
@@ -102,16 +154,29 @@ describe('PostgreSQLTypes', () => {
     }
   });
 
-  it('lists the multi-word types, two of which are truncated fragments', () => {
+  it('spells every multi-word type in full', () => {
     expect(PostgreSQLTypes.filter(type => type.includes(' '))).toEqual([
       'BIT VARYING',
       'CHARACTER VARYING',
       'DOUBLE PRECISION',
-      'TIME WITH',
-      'TIMESTAMP WITH',
+      'INTERVAL DAY TO HOUR',
+      'INTERVAL DAY TO MINUTE',
+      'INTERVAL DAY TO SECOND',
+      'INTERVAL DAY',
+      'INTERVAL HOUR TO MINUTE',
+      'INTERVAL HOUR TO SECOND',
+      'INTERVAL HOUR',
+      'INTERVAL MINUTE TO SECOND',
+      'INTERVAL MINUTE',
+      'INTERVAL MONTH',
+      'INTERVAL SECOND',
+      'INTERVAL YEAR TO MONTH',
+      'INTERVAL YEAR',
+      'TIME WITH TIME ZONE',
+      'TIME WITHOUT TIME ZONE',
+      'TIMESTAMP WITH TIME ZONE',
+      'TIMESTAMP WITHOUT TIME ZONE',
     ]);
-    expect(PostgreSQLTypes).not.toContain('TIME WITH TIME ZONE');
-    expect(PostgreSQLTypes).not.toContain('TIMESTAMP WITH TIME ZONE');
   });
 
   it('covers the serial and integer alias families', () => {
@@ -153,14 +218,22 @@ describe('PostgreSQLTypes', () => {
     expect(isDataType(tokenizer('txid_snapshot'))(0)).toBe(true);
   });
 
-  it('cannot reach multi-word types through the tokenizer', () => {
+  it('reaches every multi-word type through the tokenizer', () => {
     for (const type of PostgreSQLTypes.filter(value => value.includes(' '))) {
       expect(isDataType([{ type: TokenType.string, value: type }])(0)).toBe(
         true
       );
-      expect(tokenizer(type)).toHaveLength(2);
+      const tokens = tokenizer(type);
+      expect(matchDataType(tokens)(0)).toBe(tokens.length);
     }
-    expect(isDataType(tokenizer('BIT VARYING'))(0)).toBe(true);
     expect(isDataType(tokenizer('BIT VARYING'))(1)).toBe(false);
+  });
+
+  it('takes the longest name when several share a first word', () => {
+    expect(matchDataType(tokenizer('timestamp without time zone'))(0)).toBe(4);
+    expect(matchDataType(tokenizer('timestamptz'))(0)).toBe(1);
+    expect(matchDataType(tokenizer('interval day to second'))(0)).toBe(4);
+    expect(matchDataType(tokenizer('interval day'))(0)).toBe(2);
+    expect(matchDataType(tokenizer('interval'))(0)).toBe(1);
   });
 });

@@ -62,8 +62,9 @@ import {
   isTableValue,
   isUniqueValue,
   isUseValue,
+  matchDataType,
 } from '@/parser/helper';
-import { Token, TokenType } from '@/parser/tokenizer';
+import { Token, tokenizer, TokenType } from '@/parser/tokenizer';
 
 const str = (value: string): Token => ({ type: TokenType.string, value });
 const quoted = (value: string): Token => ({
@@ -802,6 +803,17 @@ describe('isDataType', () => {
     expect(isDataType([str('DOUBLE PRECISION')])(0)).toBe(true);
   });
 
+  it('accepts a multi word data type spread over one token per word', () => {
+    expect(isDataType(tokenizer('DOUBLE PRECISION'))(0)).toBe(true);
+    expect(isDataType(tokenizer('TIMESTAMP WITH TIME ZONE'))(0)).toBe(true);
+  });
+
+  it('rejects the continuation words of a multi word data type', () => {
+    const test = isDataType(tokenizer('TIMESTAMP WITH LOCAL TIME ZONE'));
+
+    expect([test(1), test(2), test(4)]).toEqual([false, false, false]);
+  });
+
   it('rejects an unknown data type', () => {
     expect(isDataType(words('notatype'))(0)).toBe(false);
   });
@@ -829,5 +841,58 @@ describe('isDataType', () => {
       true,
       true,
     ]);
+  });
+});
+
+describe('matchDataType', () => {
+  const spanOf = (source: string) => matchDataType(tokenizer(source))(0);
+
+  it('spans one token for a single word type', () => {
+    expect(spanOf('INT')).toBe(1);
+  });
+
+  it('spans every word of a multi word type', () => {
+    expect(spanOf('DOUBLE PRECISION')).toBe(2);
+    expect(spanOf('LONG RAW')).toBe(2);
+    expect(spanOf('TIMESTAMP WITH TIME ZONE')).toBe(4);
+  });
+
+  it('prefers the longest name sharing a first word', () => {
+    expect(spanOf('TIMESTAMP WITH LOCAL TIME ZONE')).toBe(5);
+    expect(spanOf('TIMESTAMP WITH TIME ZONE')).toBe(4);
+    expect(spanOf('TIMESTAMP')).toBe(1);
+  });
+
+  it('falls back to the shorter name when the next word does not follow', () => {
+    const tokens = tokenizer('DOUBLE, PRECISION INT');
+
+    expect(matchDataType(tokens)(0)).toBe(1);
+  });
+
+  it('takes the argument list as part of the span', () => {
+    expect(spanOf('VARCHAR(255)')).toBe(4);
+    expect(spanOf('DECIMAL(10, 2)')).toBe(6);
+  });
+
+  it('takes an argument list sitting on a middle word', () => {
+    expect(spanOf('TIMESTAMP(3) WITH TIME ZONE')).toBe(7);
+  });
+
+  it('takes the rest of the input when the argument list is unterminated', () => {
+    expect(spanOf('VARCHAR(255')).toBe(3);
+  });
+
+  it('accepts a quoted first word, the way T-SQL writes [int]', () => {
+    expect(matchDataType([quoted('int')])(0)).toBe(1);
+  });
+
+  it('rejects a quoted continuation word', () => {
+    expect(matchDataType([str('DOUBLE'), quoted('PRECISION')])(0)).toBe(1);
+  });
+
+  it('returns zero when there is no data type at the position', () => {
+    expect(spanOf('notatype')).toBe(0);
+    expect(matchDataType([])(0)).toBe(0);
+    expect(matchDataType(tokenizer('INT'))(1)).toBe(0);
   });
 });

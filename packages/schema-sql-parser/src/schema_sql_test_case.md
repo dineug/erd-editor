@@ -2,7 +2,7 @@
 
 ## Support DataType
 
-- MySQL / MariaDB
+- MySQL
 
   > bigint
   > binary
@@ -11,32 +11,57 @@
   > bool
   > boolean
   > char
+  > char byte
+  > character
+  > character varying
   > date
   > datetime
   > dec
   > decimal
   > double
+  > double precision
   > enum
   > fixed
   > float
+  > float4
+  > float8
+  > geomcollection
   > geometry
   > geometrycollection
   > int
+  > int1
+  > int2
+  > int3
+  > int4
+  > int8
   > integer
   > json
   > linestring
+  > long
+  > long varbinary
+  > long varchar
   > longblob
   > longtext
   > mediumblob
   > mediumint
   > mediumtext
+  > middleint
   > multilinestring
   > multipoint
   > multipolygon
+  > national char
+  > national char varying
+  > national character
+  > national character varying
+  > national varchar
+  > nchar
+  > nchar varchar
   > numeric
+  > nvarchar
   > point
   > polygon
   > real
+  > serial
   > set
   > smallint
   > text
@@ -47,62 +72,201 @@
   > tinytext
   > varbinary
   > varchar
+  > varcharacter
+  > year
+
+- MariaDB
+
+  > bigint
+  > binary
+  > bit
+  > blob
+  > bool
+  > boolean
+  > char
+  > char byte
+  > char varying
+  > character
+  > character varying
+  > clob
+  > date
+  > datetime
+  > dec
+  > decimal
+  > double
+  > double precision
+  > enum
+  > fixed
+  > float
+  > float4
+  > float8
+  > geometry
+  > geometrycollection
+  > inet4
+  > inet6
+  > int
+  > int1
+  > int2
+  > int3
+  > int4
+  > int8
+  > integer
+  > json
+  > linestring
+  > long
+  > long char varying
+  > long character varying
+  > long varbinary
+  > long varchar
+  > long varcharacter
+  > longblob
+  > longtext
+  > mediumblob
+  > mediumint
+  > mediumtext
+  > middleint
+  > multilinestring
+  > multipoint
+  > multipolygon
+  > national char
+  > national char varying
+  > national character
+  > national character varying
+  > national varchar
+  > national varcharacter
+  > nchar
+  > nchar varchar
+  > nchar varcharacter
+  > nchar varying
+  > number
+  > numeric
+  > nvarchar
+  > point
+  > polygon
+  > raw
+  > real
+  > serial
+  > set
+  > smallint
+  > sql_tsi_year
+  > text
+  > time
+  > timestamp
+  > tinyblob
+  > tinyint
+  > tinytext
+  > uuid
+  > varbinary
+  > varchar
+  > varchar2
+  > varcharacter
+  > vector
+  > xmltype
   > year
 
 - MSSQL
 
   > bigint
   > binary
+  > binary varying
   > bit
   > char
+  > char varying
+  > character
+  > character varying
   > date
   > datetime
   > datetime2
   > datetimeoffset
+  > dec
   > decimal
+  > double precision
   > float
   > geography
   > geometry
+  > hierarchyid
   > image
   > int
+  > integer
+  > json
   > money
+  > national char
+  > national char varying
+  > national character
+  > national character varying
+  > national text
   > nchar
   > ntext
   > numeric
   > nvarchar
   > real
+  > rowversion
   > smalldatetime
   > smallint
   > smallmoney
   > sql_variant
   > text
   > time
+  > timestamp
   > tinyint
   > uniqueidentifier
   > varbinary
   > varchar
+  > vector
   > xml
 
 - Oracle
 
+  > anydata
   > bfile
   > binary_double
   > binary_float
   > blob
+  > bool
+  > boolean
   > char
+  > char varying
+  > character
+  > character varying
   > clob
   > date
-  > datetime
+  > dec
+  > decimal
+  > double precision
+  > float
+  > int
+  > integer
+  > interval day to second
+  > interval year to month
+  > json
   > long
+  > long raw
+  > long varchar
+  > national char
+  > national char varying
+  > national character
+  > national character varying
   > nchar
+  > nchar varying
   > nclob
   > number
+  > numeric
   > nvarchar2
   > raw
+  > real
+  > rowid
+  > sdo_geometry
+  > sdo_georaster
+  > sdo_topo_geometry
+  > smallint
   > timestamp
+  > timestamp with local time zone
+  > timestamp with time zone
   > uritype
+  > urowid
   > varchar
   > varchar2
+  > vector
   > xmltype
 
 - PostgreSQL
@@ -110,38 +274,80 @@
   > bigint
   > bigserial
   > bit
+  > bit varying
   > bool
   > boolean
   > box
+  > bpchar
   > bytea
   > char
   > character
+  > character varying
+  > cid
   > cidr
   > circle
   > date
+  > datemultirange
+  > daterange
   > decimal
+  > double precision
+  > float
   > float4
   > float8
   > inet
   > int
   > int2
   > int4
+  > int4multirange
+  > int4range
   > int8
+  > int8multirange
+  > int8range
   > integer
   > interval
+  > interval day
+  > interval day to hour
+  > interval day to minute
+  > interval day to second
+  > interval hour
+  > interval hour to minute
+  > interval hour to second
+  > interval minute
+  > interval minute to second
+  > interval month
+  > interval second
+  > interval year
+  > interval year to month
   > json
   > jsonb
+  > jsonpath
   > line
   > lseg
   > macaddr
   > macaddr8
   > money
+  > name
   > numeric
+  > nummultirange
+  > numrange
+  > oid
   > path
   > pg_lsn
+  > pg_snapshot
   > point
   > polygon
   > real
+  > regclass
+  > regcollation
+  > regconfig
+  > regdictionary
+  > regnamespace
+  > regoper
+  > regoperator
+  > regproc
+  > regprocedure
+  > regrole
+  > regtype
   > serial
   > serial2
   > serial4
@@ -149,24 +355,58 @@
   > smallint
   > smallserial
   > text
+  > tid
   > time
+  > time with time zone
+  > time without time zone
   > timestamp
+  > timestamp with time zone
+  > timestamp without time zone
   > timestamptz
   > timetz
+  > tsmultirange
   > tsquery
+  > tsrange
+  > tstzmultirange
+  > tstzrange
   > tsvector
   > txid_snapshot
   > uuid
   > varbit
   > varchar
+  > xid
+  > xid8
   > xml
 
 - SQLite
+
+  > bigint
   > blob
+  > boolean
+  > character
+  > clob
+  > date
+  > datetime
+  > decimal
+  > double
+  > double precision
+  > float
+  > int
+  > int2
+  > int8
   > integer
+  > mediumint
+  > native character
+  > nchar
   > numeric
+  > nvarchar
   > real
+  > smallint
   > text
+  > tinyint
+  > unsigned big int
+  > varchar
+  > varying character
 
 ## Support Syntax
 

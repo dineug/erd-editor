@@ -4,10 +4,46 @@ import { SQLiteTypes } from '@/parser/dataType/SQLite';
 import { isDataType } from '@/parser/helper';
 import { tokenizer } from '@/parser/tokenizer';
 
+const orderViolations = (list: string[]) =>
+  list.filter((value, index) => {
+    if (index === 0) return false;
+    const prev = list[index - 1];
+    if (prev.startsWith(`${value} `)) return false;
+    return prev.toUpperCase() >= value.toUpperCase();
+  });
+
 describe('SQLiteTypes', () => {
-  it('exposes only the five storage class names', () => {
-    expect(SQLiteTypes).toEqual(['BLOB', 'INTEGER', 'NUMERIC', 'REAL', 'TEXT']);
-    expect(SQLiteTypes).toHaveLength(5);
+  it('exposes the storage classes and the documented affinity names', () => {
+    expect(SQLiteTypes).toEqual([
+      'BIGINT',
+      'BLOB',
+      'BOOLEAN',
+      'CHARACTER',
+      'CLOB',
+      'DATE',
+      'DATETIME',
+      'DECIMAL',
+      'DOUBLE PRECISION',
+      'DOUBLE',
+      'FLOAT',
+      'INT',
+      'INT2',
+      'INT8',
+      'INTEGER',
+      'MEDIUMINT',
+      'NATIVE CHARACTER',
+      'NCHAR',
+      'NUMERIC',
+      'NVARCHAR',
+      'REAL',
+      'SMALLINT',
+      'TEXT',
+      'TINYINT',
+      'UNSIGNED BIG INT',
+      'VARCHAR',
+      'VARYING CHARACTER',
+    ]);
+    expect(SQLiteTypes).toHaveLength(27);
   });
 
   it('contains no duplicate entries', () => {
@@ -19,21 +55,23 @@ describe('SQLiteTypes', () => {
       type => type !== type.toUpperCase()
     );
     expect(notUpperCase).toEqual([]);
-    expect([...SQLiteTypes].sort()).toEqual(SQLiteTypes);
+    expect(orderViolations(SQLiteTypes)).toEqual([]);
   });
 
-  it('has no multi-word type, so every entry survives tokenization', () => {
-    expect(SQLiteTypes.filter(type => type.includes(' '))).toEqual([]);
-    const split = SQLiteTypes.filter(type => tokenizer(type).length !== 1);
-    expect(split).toEqual([]);
+  it('lists the affinity names spelled over several words', () => {
+    expect(SQLiteTypes.filter(type => type.includes(' '))).toEqual([
+      'DOUBLE PRECISION',
+      'NATIVE CHARACTER',
+      'UNSIGNED BIG INT',
+      'VARYING CHARACTER',
+    ]);
   });
 
-  it('omits the affinity aliases SQLite also accepts', () => {
-    expect(SQLiteTypes).not.toContain('INT');
-    expect(SQLiteTypes).not.toContain('VARCHAR');
-    expect(SQLiteTypes).not.toContain('DOUBLE');
-    expect(SQLiteTypes).not.toContain('BOOLEAN');
-    expect(SQLiteTypes).not.toContain('DATETIME');
+  it('omits the names the affinity rules only use as counter-examples', () => {
+    expect(SQLiteTypes).not.toContain('STRING');
+    expect(SQLiteTypes).not.toContain('FLOATING POINT');
+    // ANY is legal in a STRICT table only, and datatype3.html never lists it.
+    expect(SQLiteTypes).not.toContain('ANY');
   });
 
   it('makes every type recognizable by isDataType', () => {

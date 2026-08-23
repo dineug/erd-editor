@@ -389,12 +389,89 @@ const DataTypes: ReadonlyArray<string> = Array.from(
   )
 );
 
-export const isDataType = (tokens: Token[]) => {
+// A multi-word type reaches the parser as one token per word, so it is matched
+// word by word. Candidates are grouped by their first word and tried longest
+// first: TIMESTAMP WITH TIME ZONE has to win over TIMESTAMP.
+const groupByFirstWord = (types: ReadonlyArray<string>) => {
+  const groups = new Map<string, string[][]>();
+
+  for (const type of types) {
+    const words = type.split(' ');
+    const candidates = groups.get(words[0]) ?? [];
+    candidates.push(words);
+    groups.set(words[0], candidates);
+  }
+
+  for (const candidates of groups.values()) {
+    candidates.sort((a, b) => b.length - a.length);
+  }
+
+  return groups;
+};
+
+const DataTypeWords = groupByFirstWord(DataTypes);
+
+// How many tokens the data type at `pos` spans, 0 when there is none. The
+// argument list is part of the span, and it can sit on any word of a
+// multi-word name -- `TIMESTAMP(3) WITH TIME ZONE`.
+export const matchDataType = (tokens: Token[]) => {
   const isString = isStringToken(tokens);
+  const isLeftParent = isLeftParentToken(tokens);
+  const isRightParent = isRightParentToken(tokens);
+
+  const skipArguments = (pos: number) => {
+    let depth = 0;
+
+    for (let cursor = pos; cursor < tokens.length; cursor++) {
+      if (isLeftParent(cursor)) {
+        depth++;
+      } else if (isRightParent(cursor)) {
+        depth--;
+        if (depth === 0) return cursor + 1;
+      }
+    }
+
+    // Unterminated: the permissive parser takes the rest as the argument list.
+    return tokens.length;
+  };
+
+  const matchWords = (pos: number, words: string[]) => {
+    let cursor = pos;
+
+    for (const [index, word] of words.entries()) {
+      const token = tokens[cursor];
+      // Only the first word may be quoted: `[int]` is how T-SQL writes a type,
+      // but a quoted continuation word is an identifier, never a keyword.
+      if (!token || !isString(cursor) || (index > 0 && token.quoted)) return 0;
+      if (token.value.toUpperCase() !== word) return 0;
+
+      cursor++;
+
+      if (isLeftParent(cursor)) {
+        cursor = skipArguments(cursor);
+      }
+    }
+
+    return cursor - pos;
+  };
+
   return (pos: number) => {
     const token = tokens[pos];
-    return token
-      ? isString(pos) && DataTypes.includes(token.value.toUpperCase())
-      : false;
+    if (!token || !isString(pos)) return 0;
+
+    const value = token.value.toUpperCase();
+
+    for (const words of DataTypeWords.get(value) ?? []) {
+      const length = matchWords(pos, words);
+      if (length) return length;
+    }
+
+    // A whole multi-word name also arrives as one token when it is quoted.
+    return DataTypes.includes(value) ? 1 : 0;
   };
+};
+
+export const isDataType = (tokens: Token[]) => {
+  const matchType = matchDataType(tokens);
+  return (pos: number) => matchType(pos) > 0;
 };

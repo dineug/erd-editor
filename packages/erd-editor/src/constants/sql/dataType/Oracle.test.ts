@@ -8,13 +8,14 @@ import { OracleTypes } from '@/constants/sql/dataType/Oracle';
  * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
-  const value = dataType.toLocaleLowerCase();
+  const value = dataType.toLocaleLowerCase().replace(/\([^)]*\)/g, '');
   let matched: DataTypeHint | undefined;
 
   for (const hint of OracleTypes) {
     const name = hint.name.toLocaleLowerCase();
     if (
       value.indexOf(name) === 0 &&
+      !/[0-9A-Za-z_]/.test(value.charAt(name.length)) &&
       (!matched || name.length > matched.name.length)
     ) {
       matched = hint;
@@ -32,32 +33,61 @@ function namesOf(primitiveType: PrimitiveType): string[] {
 
 describe('OracleTypes', () => {
   it('lists the 22 supported data types', () => {
-    expect(OracleTypes).toHaveLength(22);
+    expect(OracleTypes).toHaveLength(51);
   });
 
   it('keeps the documented order', () => {
     expect(OracleTypes.map(hint => hint.name)).toEqual([
+      'ANYDATA',
       'BFILE',
       'BINARY_DOUBLE',
       'BINARY_FLOAT',
       'BLOB',
+      'BOOL',
+      'BOOLEAN',
+      'CHAR VARYING',
       'CHAR',
+      'CHARACTER VARYING',
+      'CHARACTER',
       'CLOB',
       'DATE',
-      'DATETIME',
+      'DEC',
+      'DECIMAL',
+      'DOUBLE PRECISION',
+      'FLOAT',
+      'INT',
+      'INTEGER',
+      'INTERVAL DAY TO SECOND',
+      'INTERVAL YEAR TO MONTH',
+      'JSON',
       'LONG RAW',
+      'LONG VARCHAR',
       'LONG',
+      'NATIONAL CHAR VARYING',
+      'NATIONAL CHAR',
+      'NATIONAL CHARACTER VARYING',
+      'NATIONAL CHARACTER',
+      'NCHAR VARYING',
       'NCHAR',
       'NCLOB',
       'NUMBER',
+      'NUMERIC',
       'NVARCHAR2',
       'RAW',
+      'REAL',
+      'ROWID',
+      'SDO_GEOMETRY',
+      'SDO_GEORASTER',
+      'SDO_TOPO_GEOMETRY',
+      'SMALLINT',
       'TIMESTAMP WITH LOCAL TIME ZONE',
       'TIMESTAMP WITH TIME ZONE',
       'TIMESTAMP',
-      'UriType',
+      'URIType',
+      'UROWID',
       'VARCHAR',
       'VARCHAR2',
+      'VECTOR',
       'XMLType',
     ]);
   });
@@ -67,23 +97,29 @@ describe('OracleTypes', () => {
       name => name !== name.toUpperCase()
     );
 
-    expect(mixedCase).toEqual(['UriType', 'XMLType']);
+    expect(mixedCase).toEqual(['URIType', 'XMLType']);
   });
 
   it('classifies NUMBER as long and the binary floats separately', () => {
     expect(namesOf('long')).toEqual(['NUMBER']);
-    expect(namesOf('double')).toEqual(['BINARY_DOUBLE']);
-    expect(namesOf('float')).toEqual(['BINARY_FLOAT']);
-    expect(namesOf('int')).toEqual([]);
-    expect(namesOf('decimal')).toEqual([]);
-    expect(namesOf('boolean')).toEqual([]);
-    expect(namesOf('time')).toEqual([]);
+    expect(namesOf('double')).toEqual([
+      'BINARY_DOUBLE',
+      'DOUBLE PRECISION',
+      'FLOAT',
+    ]);
+    expect(namesOf('float')).toEqual(['BINARY_FLOAT', 'REAL']);
+    expect(namesOf('int')).toEqual(['INT', 'INTEGER', 'SMALLINT']);
+    expect(namesOf('decimal')).toEqual(['DEC', 'DECIMAL', 'NUMERIC']);
+    expect(namesOf('boolean')).toEqual(['BOOL', 'BOOLEAN']);
+    expect(namesOf('time')).toEqual([
+      'INTERVAL DAY TO SECOND',
+      'INTERVAL YEAR TO MONTH',
+    ]);
   });
 
   it('classifies the temporal types', () => {
     expect(namesOf('date')).toEqual(['DATE']);
     expect(namesOf('dateTime')).toEqual([
-      'DATETIME',
       'TIMESTAMP WITH LOCAL TIME ZONE',
       'TIMESTAMP WITH TIME ZONE',
       'TIMESTAMP',
@@ -95,18 +131,35 @@ describe('OracleTypes', () => {
       'BFILE',
       'BLOB',
       'CLOB',
+      'JSON',
       'LONG RAW',
+      'LONG VARCHAR',
       'LONG',
       'NCLOB',
       'RAW',
     ]);
     expect(namesOf('string')).toEqual([
+      'ANYDATA',
+      'CHAR VARYING',
       'CHAR',
+      'CHARACTER VARYING',
+      'CHARACTER',
+      'NATIONAL CHAR VARYING',
+      'NATIONAL CHAR',
+      'NATIONAL CHARACTER VARYING',
+      'NATIONAL CHARACTER',
+      'NCHAR VARYING',
       'NCHAR',
       'NVARCHAR2',
-      'UriType',
+      'ROWID',
+      'SDO_GEOMETRY',
+      'SDO_GEORASTER',
+      'SDO_TOPO_GEOMETRY',
+      'URIType',
+      'UROWID',
       'VARCHAR',
       'VARCHAR2',
+      'VECTOR',
       'XMLType',
     ]);
   });
@@ -140,13 +193,16 @@ describe('OracleTypes', () => {
   it('resolves parameterised data types by prefix', () => {
     expect(resolvePrimitiveType('VARCHAR2(4000 CHAR)')).toBe('string');
     expect(resolvePrimitiveType('NUMBER(10, 2)')).toBe('long');
-    expect(resolvePrimitiveType('rowid')).toBeUndefined();
+    expect(resolvePrimitiveType('rowid')).toBe('string');
+    expect(resolvePrimitiveType('interval day(2) to second(6)')).toBe('time');
     expect(resolvePrimitiveType('')).toBeUndefined();
   });
 
-  it('resolves DATETIME to dateTime despite the shorter DATE prefix', () => {
-    expect(resolvePrimitiveType('DATETIME')).toBe('dateTime');
+  it('resolves a longer name past the shorter one that prefixes it', () => {
     expect(resolvePrimitiveType('DATE')).toBe('date');
+    // Oracle has no DATETIME; the doc's datetime types are DATE, TIMESTAMP and
+    // the two INTERVAL forms.
+    expect(resolvePrimitiveType('DATETIME')).toBeUndefined();
 
     const extendingAnEarlierName = OracleTypes.filter((hint, index) =>
       OracleTypes.slice(0, index).some(
@@ -157,7 +213,8 @@ describe('OracleTypes', () => {
     );
 
     expect(extendingAnEarlierName).toEqual<DataTypeHint[]>([
-      { name: 'DATETIME', primitiveType: 'dateTime' },
+      { name: 'INTERVAL DAY TO SECOND', primitiveType: 'time' },
+      { name: 'INTERVAL YEAR TO MONTH', primitiveType: 'time' },
     ]);
 
     for (const hint of extendingAnEarlierName) {

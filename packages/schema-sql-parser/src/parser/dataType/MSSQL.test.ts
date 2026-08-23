@@ -16,38 +16,55 @@ describe('MSSQLTypes', () => {
   it('exposes the documented T-SQL data type list verbatim', () => {
     expect(MSSQLTypes).toEqual([
       'BIGINT',
+      'BINARY VARYING',
       'BINARY',
       'BIT',
+      'CHAR VARYING',
       'CHAR',
+      'CHARACTER VARYING',
+      'CHARACTER',
       'DATE',
       'DATETIME',
       'DATETIME2',
       'DATETIMEOFFSET',
+      'DEC',
       'DECIMAL',
+      'DOUBLE PRECISION',
       'FLOAT',
       'GEOGRAPHY',
       'GEOMETRY',
+      'HIERARCHYID',
       'IMAGE',
       'INT',
+      'INTEGER',
+      'JSON',
       'MONEY',
+      'NATIONAL CHAR VARYING',
+      'NATIONAL CHAR',
+      'NATIONAL CHARACTER VARYING',
+      'NATIONAL CHARACTER',
+      'NATIONAL TEXT',
       'NCHAR',
       'NTEXT',
       'NUMERIC',
       'NVARCHAR',
       'REAL',
+      'ROWVERSION',
       'SMALLDATETIME',
       'SMALLINT',
       'SMALLMONEY',
       'SQL_VARIANT',
       'TEXT',
       'TIME',
+      'TIMESTAMP',
       'TINYINT',
       'UNIQUEIDENTIFIER',
       'VARBINARY',
       'VARCHAR',
+      'VECTOR',
       'XML',
     ]);
-    expect(MSSQLTypes).toHaveLength(31);
+    expect(MSSQLTypes).toHaveLength(48);
   });
 
   it('contains no duplicate entries', () => {
@@ -69,10 +86,18 @@ describe('MSSQLTypes', () => {
     );
   });
 
-  it('has no multi-word type, so every entry survives tokenization', () => {
-    expect(MSSQLTypes.filter(type => type.includes(' '))).toEqual([]);
-    const split = MSSQLTypes.filter(type => tokenizer(type).length !== 1);
-    expect(split).toEqual([]);
+  it('lists the ISO synonyms that spell a type over several words', () => {
+    expect(MSSQLTypes.filter(type => type.includes(' '))).toEqual([
+      'BINARY VARYING',
+      'CHAR VARYING',
+      'CHARACTER VARYING',
+      'DOUBLE PRECISION',
+      'NATIONAL CHAR VARYING',
+      'NATIONAL CHAR',
+      'NATIONAL CHARACTER VARYING',
+      'NATIONAL CHARACTER',
+      'NATIONAL TEXT',
+    ]);
   });
 
   it('keeps the underscore of SQL_VARIANT as part of a single token', () => {
@@ -92,8 +117,16 @@ describe('MSSQLTypes', () => {
   it('omits types that belong to other vendors', () => {
     expect(MSSQLTypes).not.toContain('BOOLEAN');
     expect(MSSQLTypes).not.toContain('BLOB');
-    expect(MSSQLTypes).not.toContain('JSON');
-    expect(MSSQLTypes).not.toContain('TIMESTAMP');
+    expect(MSSQLTypes).not.toContain('CLOB');
+    expect(MSSQLTypes).not.toContain('NUMBER');
+  });
+
+  it('carries the T-SQL types that share a name with another vendor', () => {
+    // JSON is a SQL Server 2025 type; TIMESTAMP is the deprecated synonym for
+    // ROWVERSION, not a datetime.
+    expect(MSSQLTypes).toContain('JSON');
+    expect(MSSQLTypes).toContain('TIMESTAMP');
+    expect(MSSQLTypes).toContain('ROWVERSION');
   });
 
   it('makes every type recognizable by isDataType', () => {

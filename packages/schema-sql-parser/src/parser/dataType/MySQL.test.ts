@@ -21,7 +21,10 @@ describe('MySQLTypes', () => {
       'BLOB',
       'BOOL',
       'BOOLEAN',
+      'CHAR BYTE',
       'CHAR',
+      'CHARACTER VARYING',
+      'CHARACTER',
       'DATE',
       'DATETIME',
       'DEC',
@@ -29,24 +32,47 @@ describe('MySQLTypes', () => {
       'DOUBLE PRECISION',
       'DOUBLE',
       'ENUM',
+      'FIXED',
       'FLOAT',
+      'FLOAT4',
+      'FLOAT8',
+      'GEOMCOLLECTION',
       'GEOMETRY',
       'GEOMETRYCOLLECTION',
       'INT',
+      'INT1',
+      'INT2',
+      'INT3',
+      'INT4',
+      'INT8',
       'INTEGER',
       'JSON',
       'LINESTRING',
+      'LONG VARBINARY',
+      'LONG VARCHAR',
+      'LONG',
       'LONGBLOB',
       'LONGTEXT',
       'MEDIUMBLOB',
       'MEDIUMINT',
       'MEDIUMTEXT',
+      'MIDDLEINT',
       'MULTILINESTRING',
       'MULTIPOINT',
       'MULTIPOLYGON',
+      'NATIONAL CHAR VARYING',
+      'NATIONAL CHAR',
+      'NATIONAL CHARACTER VARYING',
+      'NATIONAL CHARACTER',
+      'NATIONAL VARCHAR',
+      'NCHAR VARCHAR',
+      'NCHAR',
       'NUMERIC',
+      'NVARCHAR',
       'POINT',
       'POLYGON',
+      'REAL',
+      'SERIAL',
       'SET',
       'SMALLINT',
       'TEXT',
@@ -57,9 +83,10 @@ describe('MySQLTypes', () => {
       'TINYTEXT',
       'VARBINARY',
       'VARCHAR',
+      'VARCHARACTER',
       'YEAR',
     ]);
-    expect(MySQLTypes).toHaveLength(43);
+    expect(MySQLTypes).toHaveLength(70);
   });
 
   it('contains no duplicate entries', () => {
@@ -78,9 +105,19 @@ describe('MySQLTypes', () => {
     );
   });
 
-  it('holds a single multi-word type', () => {
+  it('lists the synonyms that spell a type over several words', () => {
     expect(MySQLTypes.filter(type => type.includes(' '))).toEqual([
+      'CHAR BYTE',
+      'CHARACTER VARYING',
       'DOUBLE PRECISION',
+      'LONG VARBINARY',
+      'LONG VARCHAR',
+      'NATIONAL CHAR VARYING',
+      'NATIONAL CHAR',
+      'NATIONAL CHARACTER VARYING',
+      'NATIONAL CHARACTER',
+      'NATIONAL VARCHAR',
+      'NCHAR VARCHAR',
     ]);
   });
 
@@ -102,11 +139,11 @@ describe('MySQLTypes', () => {
     }
   });
 
-  it('omits FIXED and REAL as well as other vendor types', () => {
-    expect(MySQLTypes).not.toContain('FIXED');
-    expect(MySQLTypes).not.toContain('REAL');
+  it('omits types that belong to other vendors', () => {
     expect(MySQLTypes).not.toContain('NUMBER');
     expect(MySQLTypes).not.toContain('UUID');
+    expect(MySQLTypes).not.toContain('VARCHAR2');
+    expect(MySQLTypes).not.toContain('CLOB');
   });
 
   it('makes every single-word type recognizable by isDataType', () => {

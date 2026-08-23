@@ -7,7 +7,6 @@ import {
   isCommentValue,
   isConstraintValue,
   isCreateTableIfNotExists,
-  isDataType,
   isDefaultValue,
   isDescValue,
   isEqualToken,
@@ -25,6 +24,7 @@ import {
   isSemicolonToken,
   isStringToken,
   isUniqueValue,
+  matchDataType,
 } from '@/parser/helper';
 import {
   Column,
@@ -170,7 +170,7 @@ function createTableColumnsParser(
   const isEqual = isEqualToken(tokens);
   const characterSet = isCharacterSet(tokens);
   const isCollate = isCollateValue(tokens);
-  const dataType = isDataType(tokens);
+  const dataType = matchDataType(tokens);
 
   const isToken = () => $pos.value < tokens.length;
 
@@ -419,21 +419,34 @@ function createTableColumnsParser(
       continue;
     }
 
-    if (dataType($pos.value)) {
-      let value = token.value;
-      token = tokens[++$pos.value];
+    const dataTypeLength = dataType($pos.value);
 
-      if (isLeftParent($pos.value)) {
-        value += '(';
-        token = tokens[++$pos.value];
+    if (dataTypeLength) {
+      const end = $pos.value + dataTypeLength;
+      let value = '';
+      let depth = 0;
 
-        while (isToken() && !isRightParent($pos.value)) {
+      while ($pos.value < end) {
+        token = tokens[$pos.value];
+
+        if (isLeftParent($pos.value)) {
+          value += '(';
+          depth++;
+        } else if (isRightParent($pos.value)) {
+          value += ')';
+          depth--;
+        } else if (depth) {
           value += token.value;
-          token = tokens[++$pos.value];
+        } else {
+          value += value ? ` ${token.value}` : token.value;
         }
 
-        value += ')';
         $pos.value++;
+      }
+
+      while (depth > 0) {
+        value += ')';
+        depth--;
       }
 
       column.dataType = value;

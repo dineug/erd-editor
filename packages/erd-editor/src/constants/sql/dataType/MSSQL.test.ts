@@ -8,13 +8,14 @@ import { MSSQLTypes } from '@/constants/sql/dataType/MSSQL';
  * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
-  const value = dataType.toLocaleLowerCase();
+  const value = dataType.toLocaleLowerCase().replace(/\([^)]*\)/g, '');
   let matched: DataTypeHint | undefined;
 
   for (const hint of MSSQLTypes) {
     const name = hint.name.toLocaleLowerCase();
     if (
       value.indexOf(name) === 0 &&
+      !/[0-9A-Za-z_]/.test(value.charAt(name.length)) &&
       (!matched || name.length > matched.name.length)
     ) {
       matched = hint;
@@ -32,7 +33,7 @@ function namesOf(primitiveType: PrimitiveType): string[] {
 
 describe('MSSQLTypes', () => {
   it('lists the 31 supported data types in lower case', () => {
-    expect(MSSQLTypes).toHaveLength(31);
+    expect(MSSQLTypes).toHaveLength(48);
 
     for (const hint of MSSQLTypes) {
       expect(hint.name).toBe(hint.name.toLowerCase());
@@ -42,44 +43,67 @@ describe('MSSQLTypes', () => {
   it('keeps the documented order', () => {
     expect(MSSQLTypes.map(hint => hint.name)).toEqual([
       'bigint',
+      'binary varying',
       'binary',
       'bit',
+      'char varying',
       'char',
+      'character varying',
+      'character',
       'date',
       'datetime',
       'datetime2',
       'datetimeoffset',
+      'dec',
       'decimal',
+      'double precision',
       'float',
       'geography',
       'geometry',
+      'hierarchyid',
       'image',
       'int',
+      'integer',
+      'json',
       'money',
+      'national char varying',
+      'national char',
+      'national character varying',
+      'national character',
+      'national text',
       'nchar',
       'ntext',
       'numeric',
       'nvarchar',
       'real',
+      'rowversion',
       'smalldatetime',
       'smallint',
       'smallmoney',
       'sql_variant',
       'text',
       'time',
+      'timestamp',
       'tinyint',
       'uniqueidentifier',
       'varbinary',
       'varchar',
+      'vector',
       'xml',
     ]);
   });
 
   it('classifies the numeric types', () => {
     expect(namesOf('long')).toEqual(['bigint']);
-    expect(namesOf('int')).toEqual(['bit', 'int', 'smallint', 'tinyint']);
-    expect(namesOf('decimal')).toEqual(['decimal']);
-    expect(namesOf('double')).toEqual(['float', 'money']);
+    expect(namesOf('int')).toEqual([
+      'bit',
+      'int',
+      'integer',
+      'smallint',
+      'tinyint',
+    ]);
+    expect(namesOf('decimal')).toEqual(['dec', 'decimal']);
+    expect(namesOf('double')).toEqual(['double precision', 'float', 'money']);
     expect(namesOf('float')).toEqual(['numeric', 'real', 'smallmoney']);
   });
 
@@ -102,17 +126,37 @@ describe('MSSQLTypes', () => {
   });
 
   it('classifies the large object and string types', () => {
-    expect(namesOf('lob')).toEqual(['binary', 'image', 'ntext', 'text', 'xml']);
+    expect(namesOf('lob')).toEqual([
+      'binary',
+      'image',
+      'json',
+      'national text',
+      'ntext',
+      'text',
+      'xml',
+    ]);
     expect(namesOf('string')).toEqual([
+      'binary varying',
+      'char varying',
       'char',
+      'character varying',
+      'character',
       'geography',
       'geometry',
+      'hierarchyid',
+      'national char varying',
+      'national char',
+      'national character varying',
+      'national character',
       'nchar',
       'nvarchar',
+      'rowversion',
       'sql_variant',
+      'timestamp',
       'uniqueidentifier',
       'varbinary',
       'varchar',
+      'vector',
     ]);
   });
 
@@ -129,7 +173,10 @@ describe('MSSQLTypes', () => {
     expect(resolvePrimitiveType('nvarchar(max)')).toBe('string');
     expect(resolvePrimitiveType('VARCHAR(50)')).toBe('string');
     expect(resolvePrimitiveType('bigint')).toBe('long');
-    expect(resolvePrimitiveType('rowversion')).toBeUndefined();
+    expect(resolvePrimitiveType('rowversion')).toBe('string');
+    expect(resolvePrimitiveType('national character varying(20)')).toBe(
+      'string'
+    );
     expect(resolvePrimitiveType('')).toBeUndefined();
   });
 
@@ -154,6 +201,7 @@ describe('MSSQLTypes', () => {
       { name: 'datetime', primitiveType: 'dateTime' },
       { name: 'datetime2', primitiveType: 'dateTime' },
       { name: 'datetimeoffset', primitiveType: 'dateTime' },
+      { name: 'timestamp', primitiveType: 'string' },
     ]);
 
     for (const hint of extendingAnEarlierName) {
