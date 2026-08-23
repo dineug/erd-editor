@@ -5,6 +5,7 @@ import {
   closeColorPickerAction,
   copyAction,
   dragendColumnAllAction,
+  duplicateDragStartAction,
   Emitter,
   loadShikiServiceAction,
   mouseTrackerEndAction,
@@ -119,6 +120,22 @@ describe('Emitter', () => {
     expect(consoleError).toHaveBeenCalledWith(error);
   });
 
+  it('delivers the duplicate drag start snapshot to its listener', () => {
+    const emitter = new Emitter();
+    const onDuplicateDragStart = vi.fn();
+
+    emitter.on({ duplicateDragStart: onDuplicateDragStart });
+    emitter.emit(
+      duplicateDragStartAction({ tableIds: ['a', 'b'], memoIds: ['c'] })
+    );
+
+    expect(onDuplicateDragStart).toHaveBeenCalledOnce();
+    expect(onDuplicateDragStart).toHaveBeenCalledWith({
+      type: 'duplicateDragStart',
+      payload: { tableIds: ['a', 'b'], memoIds: ['c'] },
+    });
+  });
+
   it('drops every observer on clear', () => {
     const emitter = new Emitter();
     const onSchemaGC = vi.fn();
@@ -193,6 +210,19 @@ describe('action creators', () => {
     expect(openDiffViewerAction({ value: 'diff' })).toEqual({
       type: 'openDiffViewer',
       payload: { value: 'diff' },
+    });
+    expect(
+      duplicateDragStartAction({ tableIds: ['a'], memoIds: ['b'] })
+    ).toEqual({
+      type: 'duplicateDragStart',
+      payload: { tableIds: ['a'], memoIds: ['b'] },
+    });
+  });
+
+  it('lets the duplicate drag start action be built without a payload', () => {
+    expect(duplicateDragStartAction()).toEqual({
+      type: 'duplicateDragStart',
+      payload: undefined,
     });
   });
 

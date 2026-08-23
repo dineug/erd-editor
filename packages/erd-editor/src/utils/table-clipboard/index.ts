@@ -4,6 +4,9 @@ import { ColumnType, Show } from '@/constants/schema';
 import { ValuesType } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
+export * from './payload';
+export * from './placement';
+
 export type Cell = [CellType | '', string];
 export type Row = Cell[];
 

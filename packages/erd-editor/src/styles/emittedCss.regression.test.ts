@@ -7,12 +7,12 @@ import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
  * 1. Selector-list scope widening. The old hand-written pipeline treated a comma list as one
  *    string and prefixed the scope once, so segments 2..n leaked globally. `stylis`' `ruleset()`
  *    distributes the scope over the cartesian product instead, so every segment is scoped.
- * 2. Rule-count invariance. Loading all 61 style modules must not lose a rule, whether they are
+ * 2. Rule-count invariance. Loading all 62 style modules must not lose a rule, whether they are
  *    loaded in isolation (one module per module registry) or cumulatively (all in one).
  *
- * The 61 here is the `*.styles.ts` / `*.style.ts` glob, which is the surface the compiler switch
+ * The 62 here is the `*.styles.ts` / `*.style.ts` glob, which is the surface the compiler switch
  * was measured over. It is not the whole style surface: `utils/text.ts` declares a `css` template
- * too. `emittedCss.cascade.test.ts` is the file that covers all 62 and guards the count.
+ * too. `emittedCss.cascade.test.ts` is the file that covers all 63 and guards the count.
  *
  * Both are measured against the emitted CSSOM — `adoptedStyleSheets` on a real shadow root — and
  * not against the source text, because the source text is what the other 49 `*.styles.test.ts`
@@ -55,7 +55,7 @@ function selectorOf(cssText: string): string {
   return cssText.slice(0, cssText.indexOf('{')).trim();
 }
 
-/** Every rule adopted when all 61 modules share one module registry. */
+/** Every rule adopted when all 62 modules share one module registry. */
 let cumulative: string[] = [];
 /** The `css.global` half of `cumulative`, which the bucket keeps in front. */
 let globalRules: string[] = [];
@@ -175,37 +175,39 @@ describe('selector-list scope widening', () => {
 });
 
 describe('rule-count invariance', () => {
-  it('loads 61 style modules', () => {
+  it('loads 62 style modules', () => {
     // Does not move with the color picker fold. `colorPicker.style.ts` already matched the
     // `*.style.ts` half of the glob while it was a `/* css */` raw string — it was loaded and
     // registered nothing. What the fold changed is what it emits, not whether it is walked.
-    expect(modulePaths).toHaveLength(61);
+    //
+    // 61 -> 62: `duplicate-ghost/DuplicateGhost.styles.ts`, the Alt+drag ghost overlay. A new
+    // style module is meant to move this number, which is why it is pinned rather than derived.
+    expect(modulePaths).toHaveLength(62);
   });
 
-  it('adopts 609 rules, none of them a duplicate', () => {
+  it('adopts 611 rules, none of them a duplicate', () => {
     // 302 -> 609: the color picker fold, +307. It rendered into a tree `<style>` before, so none
     // of its rules were adopted and none of them were counted here; as a `css.global` literal all
-    // 307 are. Nothing else moved — see the global/component split below, where the component
-    // half is unchanged at 282.
-    expect(cumulative).toHaveLength(609);
-    expect(new Set(cumulative).size).toBe(609);
+    // 307 are. 609 -> 611: the Alt+drag ghost's two scoped rules.
+    expect(cumulative).toHaveLength(611);
+    expect(new Set(cumulative).size).toBe(611);
   });
 
-  it('splits into 327 global rules ahead of 282 component rules', () => {
+  it('splits into 327 global rules ahead of 284 component rules', () => {
     // P4 moved reset (12), fonts (1), typography (1) and scrollbar (6) out of tree `<style>`
     // elements and into `adoptedStyleSheets`. A shadow root applies its own `styleSheets` before
     // its `adoptedStyleSheets`, so the only thing keeping the reset ahead of the components now
     // is the bucket — which is what this asserts, positionally.
     //
     // The color picker fold added the fifth global sheet and its 307 rules: 4 -> 5 sheets and
-    // 20 -> 327 global rules. It was the last tree `<style>` and therefore the last sheet
-    // outranking the whole adopted pool, so folding it is what makes "global bucket first" the
-    // complete statement of the cascade rather than most of it. `component` is untouched at
-    // 158 sheets / 282 rules, which is what says the fold moved a sheet between pools and did
-    // not rewrite one.
-    expect(sheetsOfEachKind).toEqual({ global: 5, component: 158 });
+    // 20 -> 327 global rules, while `component` stayed at 158 sheets / 282 rules — which is what
+    // says the fold moved a sheet between pools rather than rewriting one. The component half
+    // then went 158 -> 160 sheets and 282 -> 284 rules on its own account, when the Alt+drag
+    // ghost added its layer and per-entity templates; the global half did not move with it,
+    // which is the same statement in the other direction.
+    expect(sheetsOfEachKind).toEqual({ global: 5, component: 160 });
     expect(globalRules).toHaveLength(327);
-    expect(componentRules).toHaveLength(282);
+    expect(componentRules).toHaveLength(284);
     expect(cumulative).toEqual([...globalRules, ...componentRules]);
   });
 
@@ -220,12 +222,9 @@ describe('rule-count invariance', () => {
     );
 
     // Identifiers are content hashes now, so a rule's text is the same whether its module is
-    // rendered alone or with the other 60 — which is exactly what makes this comparison mean
+    // rendered alone or with the other 61 — which is exactly what makes this comparison mean
     // "nothing was lost to dedup" rather than "the class names differ".
-    //
-    // 302 -> 609 for the same reason as the count above: the color picker's 307 rules are adopted
-    // now, in isolation and cumulatively alike, so they are in both sides of this comparison.
-    expect(union.size).toBe(609);
+    expect(union.size).toBe(611);
     expect(droppedByLoadingTogether).toEqual([]);
   });
 

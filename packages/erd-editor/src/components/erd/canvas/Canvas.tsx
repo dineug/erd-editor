@@ -4,6 +4,7 @@ import { cache, FC, Ref, ref, repeat } from '@dineug/r-html';
 import { useAppContext } from '@/components/appContext';
 import CanvasSvg from '@/components/erd/canvas/canvas-svg/CanvasSvg';
 import DrawRelationship from '@/components/erd/canvas/draw-relationship/DrawRelationship';
+import DuplicateGhost from '@/components/erd/canvas/duplicate-ghost/DuplicateGhost';
 import HighLevelTable from '@/components/erd/canvas/high-level-table/HighLevelTable';
 import Memo from '@/components/erd/canvas/memo/Memo';
 import SharedMouseTracker from '@/components/erd/canvas/shared-mouse-tracker/SharedMouseTracker';
@@ -98,6 +99,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
             <DrawRelationship root={props.root} draw={drawRelationship} />
           ) : null}
           <SharedMouseTracker />
+          <DuplicateGhost />
         </div>
       </div>
     );

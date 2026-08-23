@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { FC, html } from '@dineug/r-html';
+import { AnyAction, FC, html } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
@@ -26,6 +26,15 @@ import { bHas } from '@/utils/bit';
 import { copyAction, pasteAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { tableCopyToHtml, tableCopyToText } from '@/utils/table-clipboard/copy';
+import {
+  CLIPBOARD_HTML_TRUNCATED_ATTR,
+  CLIPBOARD_MIME,
+  CLIPBOARD_VERSION,
+  ClipboardPayload,
+  createPayload,
+  PayloadKind,
+} from '@/utils/table-clipboard/payload';
 
 const ShortcutHost: FC = (props, ctx) => {
   useErdShortcut(ctx);
@@ -74,7 +83,10 @@ const getColumn = (app: AppContext, columnId: string) =>
     .collection('tableColumnEntities')
     .selectById(columnId);
 
-function createClipboardEvent(data: Record<string, string> = {}) {
+function createClipboardEvent(
+  data: Record<string, string> = {},
+  target: EventTarget | null = null
+) {
   const setData = vi.fn();
   const clearData = vi.fn();
   const preventDefault = vi.fn();
@@ -82,11 +94,32 @@ function createClipboardEvent(data: Record<string, string> = {}) {
 
   const event = {
     preventDefault,
+    target,
     clipboardData: { setData, clearData, getData },
   } as unknown as ClipboardEvent;
 
   return { event, setData, clearData, preventDefault, getData };
 }
+
+const setDataTypes = (setData: ReturnType<typeof vi.fn>) =>
+  setData.mock.calls.map(([type]) => type);
+
+const readPayload = (setData: ReturnType<typeof vi.fn>): ClipboardPayload =>
+  JSON.parse(
+    setData.mock.calls.find(([type]) => type === CLIPBOARD_MIME)![1] as string
+  );
+
+const copyToClipboard = async (app: AppContext) => {
+  const { event, setData } = createClipboardEvent();
+  app.emitter.emit(copyAction({ event }));
+  await flush();
+  return setData.mock.calls.find(([type]) => type === CLIPBOARD_MIME)![1];
+};
+
+const newestTable = (app: AppContext) => {
+  const { tableIds } = app.store.state.doc;
+  return getTable(app, tableIds[tableIds.length - 1])!;
+};
 
 describe('useErdShortcut - creation shortcuts', () => {
   it('adds a table', async () => {
@@ -562,6 +595,9 @@ describe('useErdShortcut - keydown handling', () => {
 });
 
 describe('useErdShortcut - clipboard', () => {
+  // AC-1 / AC-4: three flavours go out, and the two the rest of the world reads
+  // are byte-for-byte what the editor has written since 3.3.1 — the column
+  // payload rides the custom MIME alone so the html is never wrapped.
   it('writes the selected columns to the clipboard on copy', async () => {
     const app = await setup();
     const tableId = seedTable(app);
@@ -574,21 +610,265 @@ describe('useErdShortcut - clipboard', () => {
 
     expect(preventDefault).toHaveBeenCalledTimes(1);
     expect(clearData).toHaveBeenCalledTimes(1);
-    expect(setData).toHaveBeenCalledTimes(2);
-    expect(setData.mock.calls[0][0]).toBe('text/plain');
-    expect(setData.mock.calls[1][0]).toBe('text/html');
+    expect(setData).toHaveBeenCalledTimes(3);
+    expect(setDataTypes(setData)).toEqual([
+      'text/plain',
+      'text/html',
+      CLIPBOARD_MIME,
+    ]);
+    expect(setData.mock.calls[0][1]).toBe(tableCopyToText(app.store.state));
+    expect(setData.mock.calls[1][1]).toBe(tableCopyToHtml(app.store.state));
     expect(setData.mock.calls[1][1]).toContain('<table>');
+    expect(readPayload(setData).kind).toBe(PayloadKind.columns);
   });
 
-  it('ignores copy when no column is selected', async () => {
+  // AC-1 / AC-3 / AC-19. `seedTable` selects the table it creates, so "no
+  // column is selected" is an entity copy, not a no-op — and a table with no
+  // columns leaves the human-visible grid empty.
+  it('copies the selected table when no column is selected', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    const { event, setData, preventDefault } = createClipboardEvent();
+
+    app.emitter.emit(copyAction({ event }));
+    await flush();
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(setData).toHaveBeenCalledTimes(3);
+    expect(setDataTypes(setData)).toEqual([
+      'text/plain',
+      'text/html',
+      CLIPBOARD_MIME,
+    ]);
+
+    const payload = readPayload(setData);
+    expect(payload.kind).toBe(PayloadKind.tables);
+    expect(payload.tables).toHaveLength(1);
+    expect(payload.tables[0].sourceId).toBe(tableId);
+
+    expect(setData.mock.calls[0][1]).toBe('');
+    expect(setData.mock.calls[1][1]).not.toContain('<table>');
+  });
+
+  // AC-5
+  it('ignores copy when nothing is selected', async () => {
     const app = await setup();
     seedTable(app);
-    const { event, setData } = createClipboardEvent();
+    app.store.state.editor.selectedMap = {};
+    const { event, setData, clearData, preventDefault } =
+      createClipboardEvent();
 
     app.emitter.emit(copyAction({ event }));
     await flush();
 
     expect(setData).not.toHaveBeenCalled();
+    expect(clearData).not.toHaveBeenCalled();
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
+
+  // AC-32: a memo keeps itself selected while its textarea has focus, so the
+  // guard has to read the event target rather than the selection.
+  it.each([
+    ['textarea', document.createElement('textarea')],
+    ['input', document.createElement('input')],
+    [
+      'contenteditable',
+      (() => {
+        const el = document.createElement('div');
+        el.setAttribute('contenteditable', '');
+        return el;
+      })(),
+    ],
+  ])('ignores copy while the target is inside a %s', async (_, target) => {
+    const app = await setup();
+    seedTable(app);
+    const { event, setData, preventDefault } = createClipboardEvent({}, target);
+
+    app.emitter.emit(copyAction({ event }));
+    await flush();
+
+    expect(setData).not.toHaveBeenCalled();
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
+
+  // AC-6: the payload's `kind` decides the mode, so a table being selected does
+  // not turn an entity paste into a column merge.
+  it('creates new entities from a kind:"tables" payload while a table is selected', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    seedColumn(app, tableId);
+    app.store.dispatchSync(
+      focusTableAction({ tableId, focusType: FocusType.tableName })
+    );
+
+    const json = await copyToClipboard(app);
+    const { event, preventDefault } = createClipboardEvent({
+      [CLIPBOARD_MIME]: json,
+    });
+
+    app.emitter.emit(pasteAction({ event }));
+    await flush();
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(app.store.state.doc.tableIds).toHaveLength(2);
+    expect(getTable(app, tableId)?.columnIds).toHaveLength(1);
+    expect(newestTable(app).columnIds).toHaveLength(1);
+  });
+
+  // AC-7: issue #408 — the original is still selected right after a copy, and
+  // it must not be fed its own columns back.
+  it('does not append a table its own columns when pasting straight after copying it', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    seedColumn(app, tableId);
+    app.store.dispatchSync(
+      focusTableAction({ tableId, focusType: FocusType.tableName })
+    );
+
+    const json = await copyToClipboard(app);
+    expect(app.store.state.editor.selectedMap[tableId]).toBe('table');
+
+    const { event } = createClipboardEvent({ [CLIPBOARD_MIME]: json });
+    app.emitter.emit(pasteAction({ event }));
+    await flush();
+
+    expect(getTable(app, tableId)?.columnIds).toHaveLength(1);
+  });
+
+  // AC-29 (a) and (c)
+  it('cascades repeated pastes of the same payload', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    const origin = { ...getTable(app, tableId)!.ui };
+    const editorKeys = Object.keys(app.store.state.editor);
+
+    const json = await copyToClipboard(app);
+
+    // Each copy is removed again before the next paste. Leaving them on the
+    // canvas makes this assertion vacuous: with the round multiplication taken
+    // out entirely, every paste would target `origin + 50` and the collision
+    // escape would walk it to +100 and +150 on its own, reproducing the whole
+    // sequence. Removing the copy leaves the counter as the only thing that can
+    // produce these coordinates.
+    for (const round of [1, 2, 3]) {
+      const { event } = createClipboardEvent({ [CLIPBOARD_MIME]: json });
+      app.emitter.emit(pasteAction({ event }));
+      await flush();
+
+      const { ui } = newestTable(app);
+      expect(ui.x).toBe(origin.x + 50 * round);
+      expect(ui.y).toBe(origin.y + 50 * round);
+
+      shortcut(app, KeyBindingName.removeTable);
+      await flush();
+    }
+
+    expect(getTable(app, tableId)!.ui.x).toBe(origin.x);
+    expect(Object.keys(app.store.state.editor)).toEqual(editorKeys);
+  });
+
+  // AC-29 (b) / AC-10: the counter is keyed by the payload's `copyId`, not by a
+  // local copy event — a payload from another tab has to reset it too.
+  it('restarts the cascade when a payload with a different copyId arrives', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    const origin = { ...getTable(app, tableId)!.ui };
+    const json = await copyToClipboard(app);
+
+    // Each copy is removed again so the coordinates below can only come from
+    // the round counter, never from the collision escape.
+    for (const round of [1, 2]) {
+      const { event } = createClipboardEvent({ [CLIPBOARD_MIME]: json });
+      app.emitter.emit(pasteAction({ event }));
+      await flush();
+
+      expect(newestTable(app).ui.x).toBe(origin.x + 50 * round);
+
+      shortcut(app, KeyBindingName.removeTable);
+      await flush();
+    }
+
+    const foreign = JSON.stringify({
+      ...(JSON.parse(json) as ClipboardPayload),
+      copyId: 'copied-somewhere-else',
+    });
+    const { event } = createClipboardEvent({ [CLIPBOARD_MIME]: foreign });
+    app.emitter.emit(pasteAction({ event }));
+    await flush();
+
+    expect(newestTable(app).ui.x).toBe(origin.x + 50);
+  });
+
+  // AC-27 (a): ours, and from a release this one cannot read.
+  it('hard stops on a payload newer than this reader', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    seedColumn(app, tableId);
+
+    // The seeds above leave `editor.changeHasHistory` in flight; let it land so
+    // the collector only ever sees what the paste itself dispatches.
+    await flush();
+
+    const before = {
+      doc: JSON.stringify(app.store.state.doc),
+      collections: JSON.stringify(app.store.state.collections),
+    };
+    const dispatched: AnyAction[] = [];
+    app.store.subscribe(actions => dispatched.push(...actions));
+
+    const payload = {
+      ...createPayload({ kind: PayloadKind.tables }),
+      version: CLIPBOARD_VERSION + 1,
+    };
+    const { event, preventDefault } = createClipboardEvent({
+      [CLIPBOARD_MIME]: JSON.stringify(payload),
+    });
+
+    app.emitter.emit(pasteAction({ event }));
+    await flush();
+
+    expect(dispatched).toHaveLength(0);
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(getTable(app, tableId)?.columnIds).toHaveLength(1);
+    expect(JSON.stringify(app.store.state.doc)).toBe(before.doc);
+    expect(JSON.stringify(app.store.state.collections)).toBe(
+      before.collections
+    );
+  });
+
+  // AC-27 (b): the writer dropped the hidden JSON for size and left the flag in
+  // its place. The `<table>` below it is ours and would parse cleanly, which is
+  // exactly why the ladder must not descend to it.
+  it('hard stops on a truncated payload rather than parsing the html it wrote', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    seedColumn(app, tableId);
+
+    // The seeds above leave `editor.changeHasHistory` in flight; let it land so
+    // the collector only ever sees what the paste itself dispatches.
+    await flush();
+
+    const before = {
+      doc: JSON.stringify(app.store.state.doc),
+      collections: JSON.stringify(app.store.state.collections),
+    };
+    const dispatched: AnyAction[] = [];
+    app.store.subscribe(actions => dispatched.push(...actions));
+
+    const { event, preventDefault } = createClipboardEvent({
+      'text/html': `<span ${CLIPBOARD_HTML_TRUNCATED_ATTR}="1"><table><tbody><tr><td data-type="columnName">leaked</td></tr></tbody></table></span>`,
+    });
+
+    app.emitter.emit(pasteAction({ event }));
+    await flush();
+
+    expect(dispatched).toHaveLength(0);
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(getTable(app, tableId)?.columnIds).toHaveLength(1);
+    expect(JSON.stringify(app.store.state.doc)).toBe(before.doc);
+    expect(JSON.stringify(app.store.state.collections)).toBe(
+      before.collections
+    );
   });
 
   it('pastes plain text rows as new columns of the selected tables', async () => {

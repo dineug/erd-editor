@@ -63,3 +63,12 @@ export function toSafeString(value: any): string {
 export function isHighLevelTable(zoomLevel: number): boolean {
   return zoomLevel <= 0.7;
 }
+
+const EDITABLE_SELECTOR = 'input, textarea, [contenteditable]';
+
+export function isEditableTarget(target: EventTarget | null): boolean {
+  const el = target as Element | null;
+  return Boolean(
+    el && typeof el.closest === 'function' && el.closest(EDITABLE_SELECTOR)
+  );
+}

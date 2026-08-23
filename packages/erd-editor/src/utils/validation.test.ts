@@ -19,6 +19,7 @@ import {
   hasDatabaseVendor,
   hasLanguage,
   hasNameCase,
+  isEditableTarget,
   isHighLevelTable,
   maxWidthCommentInRange,
   textInRange,
@@ -196,5 +197,61 @@ describe('isHighLevelTable', () => {
   it('is false above 0.7 zoom', () => {
     expect(isHighLevelTable(0.71)).toBe(false);
     expect(isHighLevelTable(1)).toBe(false);
+  });
+});
+
+describe('isEditableTarget', () => {
+  const nest = (parent: Element, child: Element) => {
+    parent.appendChild(child);
+    return child;
+  };
+
+  it('is true for the editing element itself', () => {
+    expect(isEditableTarget(document.createElement('input'))).toBe(true);
+    expect(isEditableTarget(document.createElement('textarea'))).toBe(true);
+
+    const editable = document.createElement('div');
+    editable.setAttribute('contenteditable', '');
+    expect(isEditableTarget(editable)).toBe(true);
+
+    const editableTrue = document.createElement('div');
+    editableTrue.setAttribute('contenteditable', 'true');
+    expect(isEditableTarget(editableTrue)).toBe(true);
+  });
+
+  it('is true for a descendant of an editing element', () => {
+    const editable = document.createElement('div');
+    editable.setAttribute('contenteditable', 'true');
+    const inner = nest(editable, document.createElement('span'));
+    expect(isEditableTarget(inner)).toBe(true);
+
+    const label = document.createElement('label');
+    const input = nest(label, document.createElement('input'));
+    expect(isEditableTarget(input)).toBe(true);
+  });
+
+  it('is false for an element outside any editing surface', () => {
+    // The column selection state renders no `<input>` at all: `EditInput` only
+    // mounts one while `edit` is true, so the copy handler sees the plain host
+    // div and column copy stays untouched.
+    const root = document.createElement('div');
+    root.className = 'root';
+    const table = nest(root, document.createElement('div'));
+    expect(isEditableTarget(root)).toBe(false);
+    expect(isEditableTarget(table)).toBe(false);
+  });
+
+  it('is false for a sibling of an editing element', () => {
+    const root = document.createElement('div');
+    nest(root, document.createElement('textarea'));
+    const sibling = nest(root, document.createElement('div'));
+    expect(isEditableTarget(sibling)).toBe(false);
+  });
+
+  it('is false for null and for a target that is not an element', () => {
+    expect(isEditableTarget(null)).toBe(false);
+    expect(isEditableTarget(document)).toBe(false);
+    expect(isEditableTarget(new EventTarget())).toBe(false);
+    expect(isEditableTarget(document.createTextNode('text'))).toBe(false);
   });
 });

@@ -16,6 +16,7 @@ import {
 import {
   drawStartRelationshipAction$,
   focusMoveTableAction$,
+  pasteEntitiesAction$,
   removeSelectedAction$,
   unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
@@ -44,12 +45,23 @@ import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { fromCopy } from '@/utils/rx-operators/fromCopy';
 import { fromPaste } from '@/utils/rx-operators/fromPaste';
-import { tableCopyToHtml, tableCopyToText } from '@/utils/table-clipboard/copy';
 import {
+  columnsCopyToPayload,
+  entitiesCopyToPayload,
+  entitiesToHtmlTable,
+  entitiesToTsv,
+  payloadToHtml,
+  tableCopyToHtml,
+  tableCopyToText,
+} from '@/utils/table-clipboard/copy';
+import {
+  payloadToColumns,
+  readClipboardPayload,
   tablePasteFromHtmlToColumns,
   tablePasteFromTextToColumns,
 } from '@/utils/table-clipboard/paste';
-import { isHighLevelTable } from '@/utils/validation';
+import { CLIPBOARD_MIME, PayloadKind } from '@/utils/table-clipboard/payload';
+import { isEditableTarget, isHighLevelTable } from '@/utils/validation';
 
 import { erdShortcutPerformCheck } from './erdShortcutPerformCheck';
 
@@ -70,6 +82,17 @@ const keyBindingNameToRelationshipType: Record<string, number> = {
 export function useErdShortcut(ctx: Ctx) {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
+
+  let lastCopyId: string | null = null;
+  let pasteRound = 0;
+
+  const nextRound = (copyId: string) => {
+    if (copyId !== lastCopyId) {
+      lastCopyId = copyId;
+      pasteRound = 0;
+    }
+    return ++pasteRound;
+  };
 
   const handleKeydown = (event: KeyboardEvent) => {
     const { store } = app.value;
@@ -218,28 +241,62 @@ export function useErdShortcut(ctx: Ctx) {
 
   const handleCopy = (event: ClipboardEvent) => {
     const { store } = app.value;
-    const { editor, settings } = store.state;
+    const { state } = store;
+    const { editor, settings } = state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
 
-    if (
-      !showHighLevelTable &&
-      editor.focusTable &&
-      !editor.focusTable.edit &&
-      editor.focusTable.selectColumnIds.length !== 0 &&
-      event.clipboardData
-    ) {
-      event.preventDefault();
-      event.clipboardData.clearData();
-      event.clipboardData.setData('text/plain', tableCopyToText(store.state));
-      event.clipboardData.setData('text/html', tableCopyToHtml(store.state));
+    if (showHighLevelTable || !event.clipboardData) return;
+    if (editor.focusTable?.edit) return;
+    if (isEditableTarget(event.target)) return;
+
+    const focusTable = editor.focusTable;
+    const payload =
+      focusTable && focusTable.selectColumnIds.length !== 0
+        ? columnsCopyToPayload(state)
+        : entitiesCopyToPayload(state);
+    if (!payload) return;
+
+    event.preventDefault();
+    event.clipboardData.clearData();
+
+    if (payload.kind === PayloadKind.columns) {
+      event.clipboardData.setData('text/plain', tableCopyToText(state));
+      event.clipboardData.setData('text/html', tableCopyToHtml(state));
+    } else {
+      event.clipboardData.setData(
+        'text/plain',
+        entitiesToTsv(payload, settings)
+      );
+      event.clipboardData.setData(
+        'text/html',
+        payloadToHtml(payload, entitiesToHtmlTable(payload, settings))
+      );
     }
+
+    event.clipboardData.setData(CLIPBOARD_MIME, JSON.stringify(payload));
   };
 
   const handlePaste = (event: ClipboardEvent) => {
     const { store } = app.value;
-    const { editor, settings } = store.state;
+    const { state } = store;
+    const { editor, settings } = state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
     if (showHighLevelTable || editor.focusTable?.edit || !event.clipboardData) {
+      return;
+    }
+
+    const result = readClipboardPayload(event.clipboardData);
+
+    if (result.status === 'unsupported') {
+      event.preventDefault();
+      return;
+    }
+
+    if (result.status === 'ok' && result.payload.kind === PayloadKind.tables) {
+      event.preventDefault();
+      store.dispatch(
+        pasteEntitiesAction$(result.payload, nextRound(result.payload.copyId))
+      );
       return;
     }
 
@@ -248,14 +305,19 @@ export function useErdShortcut(ctx: Ctx) {
     );
     if (selectedTables.length === 0) return;
 
-    const html = event.clipboardData.getData('text/html');
-    const text = event.clipboardData.getData('text/plain');
     let columns: Column[] = [];
 
-    if (html.trim()) {
-      columns = tablePasteFromHtmlToColumns(store.state, html);
-    } else if (text.trim()) {
-      columns = tablePasteFromTextToColumns(store.state, text);
+    if (result.status === 'ok') {
+      columns = payloadToColumns(result.payload);
+    } else {
+      const html = event.clipboardData.getData('text/html');
+      const text = event.clipboardData.getData('text/plain');
+
+      if (html.trim()) {
+        columns = tablePasteFromHtmlToColumns(state, html);
+      } else if (text.trim()) {
+        columns = tablePasteFromTextToColumns(state, text);
+      }
     }
 
     if (columns.length === 0) return;

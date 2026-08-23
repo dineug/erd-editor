@@ -1,5 +1,5 @@
 import { FC, html } from '@dineug/r-html';
-import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createTestAppContext,
@@ -99,6 +99,17 @@ const mousemove = (clientX: number, clientY: number) => {
     clientY,
   });
   window.dispatchEvent(event);
+  return event;
+};
+
+const altMousedownOn = (el: HTMLElement, init: MouseEventInit = {}) => {
+  const event = new MouseEvent('mousedown', {
+    bubbles: true,
+    cancelable: true,
+    altKey: true,
+    ...init,
+  });
+  el.dispatchEvent(event);
   return event;
 };
 
@@ -234,6 +245,94 @@ describe('useMoveTable', () => {
     await flush();
 
     expect(app.store.state.editor.selectedMap[table.id]).toBe(before);
+  });
+
+  it('hands an Alt+drag to the duplicate ghost instead of moving the table', async () => {
+    const { app, table, query } = await setup();
+    const duplicateDragStart = vi.fn();
+    app.emitter.on({ duplicateDragStart });
+
+    const startX = table.ui.x;
+    const startY = table.ui.y;
+
+    const event = altMousedownOn(query('.plain'));
+    mousemove(130, 150);
+    await flush();
+
+    expect(duplicateDragStart).toHaveBeenCalledOnce();
+    expect(event.defaultPrevented).toBe(true);
+    // no second `drag$` subscription — the ghost owns the gesture from here
+    expect(table.ui.x).toBe(startX);
+    expect(table.ui.y).toBe(startY);
+  });
+
+  it('keeps a multi selection when the Alt+drag starts on a selected table', async () => {
+    const { app, table, otherTable, query } = await setup();
+    const selected = {
+      [table.id]: SelectType.table,
+      [otherTable.id]: SelectType.table,
+    };
+    app.store.dispatchSync(selectAction(selected));
+
+    altMousedownOn(query('.plain'));
+    await flush();
+
+    expect({ ...app.store.state.editor.selectedMap }).toEqual(selected);
+  });
+
+  it('never starts a duplicate from an area the drag is blocked on', async () => {
+    const { app, table, query } = await setup();
+    const duplicateDragStart = vi.fn();
+    app.emitter.on({ duplicateDragStart });
+
+    altMousedownOn(query('.icon'));
+    await flush();
+
+    expect(duplicateDragStart).not.toHaveBeenCalled();
+    // the blocked area still selects, exactly as it does without Alt
+    expect(app.store.state.editor.selectedMap[table.id]).toBe(SelectType.table);
+  });
+
+  it('never starts a duplicate from a non-primary button', async () => {
+    const { app, table, query } = await setup();
+    const duplicateDragStart = vi.fn();
+    app.emitter.on({ duplicateDragStart });
+
+    const startX = table.ui.x;
+    altMousedownOn(query('.plain'), { button: 2 });
+    mousemove(30, 0);
+    await flush();
+
+    expect(duplicateDragStart).not.toHaveBeenCalled();
+    expect(table.ui.x).toBe(startX + 30);
+  });
+
+  it('never starts a duplicate from a touch start', async () => {
+    const { app, table, query } = await setup();
+    const duplicateDragStart = vi.fn();
+    app.emitter.on({ duplicateDragStart });
+
+    const startX = table.ui.x;
+    query('.plain').dispatchEvent(touchEvent('touchstart', 10, 10));
+    window.dispatchEvent(touchEvent('touchmove', 40, 10));
+    await flush();
+
+    expect(duplicateDragStart).not.toHaveBeenCalled();
+    expect(table.ui.x).toBe(startX + 30);
+  });
+
+  it('leaves the drag alone when Alt is not held', async () => {
+    const { app, table, query } = await setup();
+    const duplicateDragStart = vi.fn();
+    app.emitter.on({ duplicateDragStart });
+
+    const startX = table.ui.x;
+    mousedownOn(query('.plain'), 0, 0);
+    mousemove(40, 0);
+    await flush();
+
+    expect(duplicateDragStart).not.toHaveBeenCalled();
+    expect(table.ui.x).toBe(startX + 40);
   });
 
   it('stops moving once the pointer is released', async () => {

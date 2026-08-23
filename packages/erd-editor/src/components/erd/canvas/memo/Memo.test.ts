@@ -293,6 +293,89 @@ describe('Memo', () => {
     });
   });
 
+  it('hands an Alt+drag to the duplicate ghost instead of moving the memo', async () => {
+    const app = createTestAppContext();
+    const entity = seedMemo(app);
+    const duplicateDragStart = vi.fn();
+    app.emitter.on({ duplicateDragStart });
+    mounted = await mountAndFlush(html`<${Memo} memo=${entity} />`, app);
+
+    const notPrevented = mousedown(rootOf(), 100, 100, { altKey: true });
+    mousemove(130, 150);
+    await flush();
+
+    expect(duplicateDragStart).toHaveBeenCalledOnce();
+    expect(notPrevented).toBe(false);
+    // no second `drag$` subscription — the ghost owns the gesture from here
+    expect(entity.ui.x).toBe(30);
+    expect(entity.ui.y).toBe(40);
+  });
+
+  it('keeps a multi selection when the Alt+drag starts on a selected memo', async () => {
+    const app = createTestAppContext();
+    const entity = seedMemo(app);
+    const selected = {
+      other: SelectType.table,
+      [MEMO_ID]: SelectType.memo,
+    };
+    app.store.dispatchSync(selectAction(selected));
+    mounted = await mountAndFlush(html`<${Memo} memo=${entity} />`, app);
+
+    mousedown(rootOf(), 0, 0, { altKey: true });
+    await flush();
+
+    expect({ ...app.store.state.editor.selectedMap }).toEqual(selected);
+  });
+
+  it('never starts a duplicate from an area the drag is blocked on', async () => {
+    const app = createTestAppContext();
+    const entity = seedMemo(app);
+    const duplicateDragStart = vi.fn();
+    app.emitter.on({ duplicateDragStart });
+    mounted = await mountAndFlush(html`<${Memo} memo=${entity} />`, app);
+
+    mousedown(mounted.container.querySelector('.memo-textarea')!, 0, 0, {
+      altKey: true,
+    });
+    await flush();
+
+    expect(duplicateDragStart).not.toHaveBeenCalled();
+    // the blocked area still selects, exactly as it does without Alt
+    expect(app.store.state.editor.selectedMap[MEMO_ID]).toBe(SelectType.memo);
+  });
+
+  it('never starts a duplicate from a non-primary button', async () => {
+    const app = createTestAppContext();
+    const entity = seedMemo(app);
+    const duplicateDragStart = vi.fn();
+    app.emitter.on({ duplicateDragStart });
+    mounted = await mountAndFlush(html`<${Memo} memo=${entity} />`, app);
+
+    mousedown(rootOf(), 100, 100, { altKey: true, button: 2 });
+    mousemove(130, 150);
+    await flush();
+
+    expect(duplicateDragStart).not.toHaveBeenCalled();
+    expect(entity.ui.x).toBe(60);
+    expect(entity.ui.y).toBe(90);
+  });
+
+  it('never starts a duplicate from a touch start', async () => {
+    const app = createTestAppContext();
+    const entity = seedMemo(app);
+    const duplicateDragStart = vi.fn();
+    app.emitter.on({ duplicateDragStart });
+    mounted = await mountAndFlush(html`<${Memo} memo=${entity} />`, app);
+
+    touchstart(rootOf(), 100, 100);
+    touchmove(130, 150);
+    await flush();
+
+    expect(duplicateDragStart).not.toHaveBeenCalled();
+    expect(entity.ui.x).toBe(60);
+    expect(entity.ui.y).toBe(90);
+  });
+
   it('emits an openColorPicker action with the pointer position and current color', async () => {
     const app = createTestAppContext();
     const openColorPicker = vi.fn();

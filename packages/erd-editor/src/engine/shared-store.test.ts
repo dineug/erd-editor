@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
 import { getLWWAction } from '@/engine/modules/editor/atom.actions';
+import { duplicateAction$ } from '@/engine/modules/editor/generator.actions';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { createRxStore, RxStore } from '@/engine/rx-store';
@@ -153,6 +154,59 @@ describe('createSharedStore', () => {
     fixture.store.dispatchSync({ type: 'editor.selectAll', payload: {} });
 
     expect(fixture.seen).toHaveLength(0);
+  });
+
+  it('broadcasts a duplicate as entity actions, without the selection framing', () => {
+    const fixture = make();
+    fixture.store.dispatchSync(addTable('t1'));
+    fixture.shared.subscribe(actions => fixture.seen.push(actions));
+    fixture.reset();
+
+    fixture.store.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        memoIds: [],
+        offset: { x: 50, y: 50 },
+        escapeCollision: true,
+      })
+    );
+
+    const types = fixture.types();
+    expect(types).toContain('table.add');
+    expect(types).toContain('table.changeName');
+    // Selection is local: a peer pasting must not move anyone else's cursor.
+    expect(types).not.toContain('editor.select');
+    expect(types).not.toContain('editor.unselectAll');
+    expect(types).not.toContain('editor.focusTableEnd');
+  });
+
+  it('carries the duplicate colour on the add payload rather than a change action', () => {
+    const fixture = make();
+    fixture.store.dispatchSync(
+      addTableAction({
+        id: 't1',
+        ui: { x: 200, y: 100, zIndex: 2, color: '#ff0000' },
+      })
+    );
+    fixture.shared.subscribe(actions => fixture.seen.push(actions));
+    fixture.reset();
+
+    fixture.store.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        memoIds: [],
+        offset: { x: 50, y: 50 },
+        escapeCollision: true,
+      })
+    );
+
+    // `table.changeColor` is a stream action; sending one here would reach the
+    // peer as a second, debounced command and cost them an extra undo.
+    expect(fixture.types()).not.toContain('table.changeColor');
+    const add = fixture.seen
+      .flat()
+      .find(action => action.type === 'table.add') as any;
+    expect(add.payload.ui.color).toBe('#ff0000');
   });
 
   describe('circuit breaker', () => {
