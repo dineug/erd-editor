@@ -19,6 +19,7 @@ describe('languageMenus', () => {
       { name: 'JPA', value: Language.JPA },
       { name: 'Scala', value: Language.Scala },
       { name: 'Go', value: Language.Go },
+      { name: 'SQLAlchemy', value: Language.SQLAlchemy },
     ]);
   });
 
@@ -36,6 +37,7 @@ describe('languageMenus', () => {
       'JPA',
       'Scala',
       'Go',
+      'SQLAlchemy',
     ]);
     created.forEach(menu => expect(typeof menu.onClick).toBe('function'));
   });

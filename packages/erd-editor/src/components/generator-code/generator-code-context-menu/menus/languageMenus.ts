@@ -40,6 +40,10 @@ export const menus: Menu[] = [
     name: 'Go',
     value: Language.Go,
   },
+  {
+    name: 'SQLAlchemy',
+    value: Language.SQLAlchemy,
+  },
 ];
 
 export function createLanguageMenus({ store }: AppContext) {

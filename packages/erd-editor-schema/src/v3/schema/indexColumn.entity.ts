@@ -8,7 +8,7 @@ export type IndexColumn = EntityType<{
 }>;
 
 export const OrderType = {
-  ASC: /*  */ 0b0000000000000000000000000000001,
-  DESC: /* */ 0b0000000000000000000000000000010,
+  ASC: 1,
+  DESC: 2,
 } as const;
 export const OrderTypeList: ReadonlyArray<number> = Object.values(OrderType);

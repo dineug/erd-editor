@@ -9,9 +9,9 @@ import { RelationshipPath } from '@/utils/draw-relationship';
 import { getRelationshipPath } from '@/utils/draw-relationship/pathFinding';
 
 /** Bit slots the schema comments out but the shape map still keys on. */
-const ZERO_ONE_N = 0b0000000000000000000000000000001;
-const ONE = 0b0000000000000000000000000100000;
-const N = 0b0000000000000000000000001000000;
+const ZERO_ONE_N = 1;
+const ONE = 32;
+const N = 64;
 
 const createPath = (): RelationshipPath =>
   getRelationshipPath(
@@ -70,8 +70,8 @@ describe('relationshipShape', () => {
   it('returns null for a relationship type with no registered shape', () => {
     const path = createPath();
     expect(relationshipShape(0, path)).toBeNull();
-    expect(relationshipShape(0b11, path)).toBeNull();
-    expect(relationshipShape(0b10000000, path)).toBeNull();
+    expect(relationshipShape(3, path)).toBeNull();
+    expect(relationshipShape(128, path)).toBeNull();
   });
 
   it('renders the zero-one-n shape with a circle and left/center/right ticks', async () => {

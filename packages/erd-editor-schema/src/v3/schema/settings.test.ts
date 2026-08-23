@@ -151,8 +151,9 @@ describe('v3/schema/settings', () => {
         JPA: 32,
         Scala: 64,
         Go: 128,
+        SQLAlchemy: 256,
       });
-      expect(LanguageList).toEqual([1, 2, 4, 8, 16, 32, 64, 128]);
+      expect(LanguageList).toEqual([1, 2, 4, 8, 16, 32, 64, 128, 256]);
       expect(Object.values(Language).every(isPowerOfTwo)).toBe(true);
     });
   });

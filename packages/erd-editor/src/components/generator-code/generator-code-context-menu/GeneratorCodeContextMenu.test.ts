@@ -128,6 +128,7 @@ describe('GeneratorCodeContextMenu', () => {
       'JPA',
       'Scala',
       'Go',
+      'SQLAlchemy',
     ]);
     expect(checkedNameOf(submenu)).toEqual(['GraphQL']);
   });

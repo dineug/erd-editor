@@ -6,6 +6,7 @@ import go from 'shiki/languages/go.tmLanguage.json';
 import graphql from 'shiki/languages/graphql.tmLanguage.json';
 import java from 'shiki/languages/java.tmLanguage.json';
 import kotlin from 'shiki/languages/kotlin.tmLanguage.json';
+import python from 'shiki/languages/python.tmLanguage.json';
 import scala from 'shiki/languages/scala.tmLanguage.json';
 import sql from 'shiki/languages/sql.tmLanguage.json';
 import typescript from 'shiki/languages/typescript.tmLanguage.json';
@@ -71,6 +72,13 @@ const languages: Array<any> = [
     aliases: ['golang'],
     grammar: go,
   },
+  {
+    id: 'python',
+    scopeName: 'source.python',
+    displayName: 'Python',
+    aliases: ['py'],
+    grammar: python,
+  },
 ];
 
 function getThemeKey(theme?: string): 'dark' | 'light' {
@@ -105,7 +113,8 @@ export class ShikiService {
         | 'java'
         | 'kotlin'
         | 'scala'
-        | 'go';
+        | 'go'
+        | 'python';
       theme?: 'dark' | 'light';
     }
   ): Promise<string> {

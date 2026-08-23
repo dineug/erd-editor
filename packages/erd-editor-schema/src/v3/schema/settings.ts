@@ -32,74 +32,77 @@ export type CanvasType = ValuesType<typeof CanvasType>;
 export const CanvasTypeList: ReadonlyArray<string> = Object.values(CanvasType);
 
 export const Show = {
-  tableComment: /*        */ 0b0000000000000000000000000000001,
-  columnComment: /*       */ 0b0000000000000000000000000000010,
-  columnDataType: /*      */ 0b0000000000000000000000000000100,
-  columnDefault: /*       */ 0b0000000000000000000000000001000,
-  columnAutoIncrement: /* */ 0b0000000000000000000000000010000,
-  columnPrimaryKey: /*    */ 0b0000000000000000000000000100000,
-  columnUnique: /*        */ 0b0000000000000000000000001000000,
-  columnNotNull: /*       */ 0b0000000000000000000000010000000,
-  relationship: /*        */ 0b0000000000000000000000100000000,
+  tableComment: 1,
+  columnComment: 2,
+  columnDataType: 4,
+  columnDefault: 8,
+  columnAutoIncrement: 16,
+  columnPrimaryKey: 32,
+  columnUnique: 64,
+  columnNotNull: 128,
+  relationship: 256,
 } as const;
 
 export const ColumnType = {
-  columnName: /*          */ 0b0000000000000000000000000000001,
-  columnDataType: /*      */ 0b0000000000000000000000000000010,
-  columnNotNull: /*       */ 0b0000000000000000000000000000100,
-  columnUnique: /*        */ 0b0000000000000000000000000001000,
-  columnAutoIncrement: /* */ 0b0000000000000000000000000010000,
-  columnDefault: /*       */ 0b0000000000000000000000000100000,
-  columnComment: /*       */ 0b0000000000000000000000001000000,
+  columnName: 1,
+  columnDataType: 2,
+  columnNotNull: 4,
+  columnUnique: 8,
+  columnAutoIncrement: 16,
+  columnDefault: 32,
+  columnComment: 64,
 } as const;
 export const ColumnTypeList: ReadonlyArray<number> = Object.values(ColumnType);
 
 // Append only. A stored document holds the number, so reordering these
 // remaps every diagram already saved.
 export const Database = {
-  MariaDB: /*    */ 0b0000000000000000000000000000001,
-  MSSQL: /*      */ 0b0000000000000000000000000000010,
-  MySQL: /*      */ 0b0000000000000000000000000000100,
-  Oracle: /*     */ 0b0000000000000000000000000001000,
-  PostgreSQL: /* */ 0b0000000000000000000000000010000,
-  SQLite: /*     */ 0b0000000000000000000000000100000,
-  Databricks: /* */ 0b0000000000000000000000001000000,
+  MariaDB: 1,
+  MSSQL: 2,
+  MySQL: 4,
+  Oracle: 8,
+  PostgreSQL: 16,
+  SQLite: 32,
+  Databricks: 64,
 } as const;
 export const DatabaseList: ReadonlyArray<number> = Object.values(Database);
 
+// Append only. A stored document holds the number, so reordering these
+// remaps every diagram already saved.
 export const Language = {
-  GraphQL: /*    */ 0b0000000000000000000000000000001,
-  csharp: /*     */ 0b0000000000000000000000000000010,
-  Java: /*       */ 0b0000000000000000000000000000100,
-  Kotlin: /*     */ 0b0000000000000000000000000001000,
-  TypeScript: /* */ 0b0000000000000000000000000010000,
-  JPA: /*        */ 0b0000000000000000000000000100000,
-  Scala: /*      */ 0b0000000000000000000000001000000,
-  Go: /*         */ 0b0000000000000000000000010000000,
+  GraphQL: 1,
+  csharp: 2,
+  Java: 4,
+  Kotlin: 8,
+  TypeScript: 16,
+  JPA: 32,
+  Scala: 64,
+  Go: 128,
+  SQLAlchemy: 256,
 } as const;
 export const LanguageList: ReadonlyArray<number> = Object.values(Language);
 
 export const NameCase = {
-  none: /*       */ 0b0000000000000000000000000000001,
-  camelCase: /*  */ 0b0000000000000000000000000000010,
-  pascalCase: /* */ 0b0000000000000000000000000000100,
-  snakeCase: /*  */ 0b0000000000000000000000000001000,
+  none: 1,
+  camelCase: 2,
+  pascalCase: 4,
+  snakeCase: 8,
 } as const;
 export const NameCaseList: ReadonlyArray<number> = Object.values(NameCase);
 
 export const BracketType = {
-  none: /*        */ 0b0000000000000000000000000000001,
-  doubleQuote: /* */ 0b0000000000000000000000000000010,
-  singleQuote: /* */ 0b0000000000000000000000000000100,
-  backtick: /*    */ 0b0000000000000000000000000001000,
+  none: 1,
+  doubleQuote: 2,
+  singleQuote: 4,
+  backtick: 8,
 } as const;
 export const BracketTypeList: ReadonlyArray<number> =
   Object.values(BracketType);
 
 export const SaveSettingType = {
-  scroll: /*    */ 0b0000000000000000000000000000001,
-  zoomLevel: /* */ 0b0000000000000000000000000000010,
-};
+  scroll: 1,
+  zoomLevel: 2,
+} as const;
 
 export const CANVAS_ZOOM_MIN = 0.1;
 export const CANVAS_ZOOM_MAX = 1;

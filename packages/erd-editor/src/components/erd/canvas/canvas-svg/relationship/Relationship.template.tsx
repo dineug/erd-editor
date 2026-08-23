@@ -256,17 +256,19 @@ const relationshipN = ({ path, line }: RelationshipPath) => (
   </>
 );
 
+// 1, 32 and 64 are the RelationshipType members left commented out in
+// @dineug/erd-editor-schema; they have no constant, so the bits are spelled out.
 const relationshipShapeMap: Record<
   number,
   (value: RelationshipPath) => DOMTemplateLiterals
 > = {
-  [0b0000000000000000000000000000001]: relationshipZeroOneN,
+  [1]: relationshipZeroOneN,
   [RelationshipType.ZeroOne]: relationshipZeroOne,
   [RelationshipType.ZeroN]: relationshipZeroN,
   [RelationshipType.OneOnly]: relationshipOneOnly,
   [RelationshipType.OneN]: relationshipOneN,
-  [0b0000000000000000000000000100000]: relationshipOne,
-  [0b0000000000000000000000001000000]: relationshipN,
+  [32]: relationshipOne,
+  [64]: relationshipN,
 };
 
 export function relationshipShape(

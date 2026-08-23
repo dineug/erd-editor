@@ -19,15 +19,9 @@ describe('getRelationshipIcon', () => {
   });
 
   it('still resolves the deprecated v2 relationship types', () => {
-    expect(getRelationshipIcon(0b0000000000000000000000000000001)).toBe(
-      BASE_64_ICON.ZeroOneN
-    );
-    expect(getRelationshipIcon(0b0000000000000000000000000100000)).toBe(
-      BASE_64_ICON.One
-    );
-    expect(getRelationshipIcon(0b0000000000000000000000001000000)).toBe(
-      BASE_64_ICON.N
-    );
+    expect(getRelationshipIcon(1)).toBe(BASE_64_ICON.ZeroOneN);
+    expect(getRelationshipIcon(32)).toBe(BASE_64_ICON.One);
+    expect(getRelationshipIcon(64)).toBe(BASE_64_ICON.N);
   });
 
   it('returns a data uri string', () => {
@@ -38,7 +32,7 @@ describe('getRelationshipIcon', () => {
 
   it('returns null for an unknown relationship type', () => {
     expect(getRelationshipIcon(0)).toBeNull();
-    expect(getRelationshipIcon(0b10000000)).toBeNull();
+    expect(getRelationshipIcon(128)).toBeNull();
     expect(getRelationshipIcon(-1)).toBeNull();
     expect(getRelationshipIcon(3)).toBeNull();
   });

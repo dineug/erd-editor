@@ -21,8 +21,8 @@ type NameToTableMap = Map<
 >;
 
 export const Diff = {
-  insert: 0b0000000000000000000000000000001,
-  delete: 0b0000000000000000000000000000010,
+  insert: 1,
+  delete: 2,
 } as const;
 
 export function diffState(

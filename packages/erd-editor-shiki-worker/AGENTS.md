@@ -7,8 +7,8 @@
 
 Runs [Shiki](https://shiki.style) syntax highlighting off the main thread. `getShikiService()` spawns
 a `SharedWorker` and returns a Comlink proxy of `ShikiService`, whose only method is
-`codeToHtml(code, { lang, theme })` over seven grammars (sql, typescript, graphql, csharp, java,
-kotlin, scala) and the github-dark / github-light themes. Published to npm at v0.1.2; `app`,
+`codeToHtml(code, { lang, theme })` over nine grammars (sql, typescript, graphql, csharp, java,
+kotlin, scala, go, python) and the github-dark / github-light themes. Published to npm at v0.1.2; `app`,
 `vscode-webview` and `intellij-webview` `import()` it lazily and pass the factory to
 `@dineug/erd-editor`'s `setGetShikiServiceCallback`.
 
@@ -40,7 +40,7 @@ kotlin, scala) and the github-dark / github-light themes. Published to npm at v0
   Returning a class instance or DOM node from `shikiService.ts` fails at runtime, not at build.
 - **`shiki` is pinned to exactly `0.14.7`.** `shikiService.ts` binds to `setWasm` / `toShikiTheme` and to
   `shiki/languages/*.tmLanguage.json`, `shiki/themes/*.json`, `shiki/dist/onig.wasm` — a bump rewrites it.
-- Grammars and themes drive bundle size (built bundle ~1.3 MB); add one only when the editor uses it.
+- Grammars and themes drive bundle size (built bundle ~1.4 MB); add one only when the editor uses it.
 
 ### Testing Requirements
 

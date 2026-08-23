@@ -20,13 +20,13 @@ export type ColumnUI = {
 };
 
 export const ColumnOption = {
-  autoIncrement: /* */ 0b0000000000000000000000000000001,
-  primaryKey: /*    */ 0b0000000000000000000000000000010,
-  unique: /*        */ 0b0000000000000000000000000000100,
-  notNull: /*       */ 0b0000000000000000000000000001000,
+  autoIncrement: 1,
+  primaryKey: 2,
+  unique: 4,
+  notNull: 8,
 } as const;
 
 export const ColumnUIKey = {
-  primaryKey: /* */ 0b0000000000000000000000000000001,
-  foreignKey: /* */ 0b0000000000000000000000000000010,
+  primaryKey: 1,
+  foreignKey: 2,
 } as const;

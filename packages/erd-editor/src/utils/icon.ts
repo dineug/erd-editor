@@ -1,14 +1,16 @@
 import { getIcon } from '@/components/primitives/icon/icons';
 import { RelationshipType } from '@/constants/schema';
 
+// 1, 32 and 64 are the RelationshipType members left commented out in
+// @dineug/erd-editor-schema; they have no constant, so the bits are spelled out.
 const relationshipTypeToIconName: Record<number, string> = {
-  [0b0000000000000000000000000000001]: 'ZeroOneN',
+  [1]: 'ZeroOneN',
   [RelationshipType.ZeroOne]: 'ZeroOne',
   [RelationshipType.ZeroN]: 'ZeroN',
   [RelationshipType.OneOnly]: 'OneOnly',
   [RelationshipType.OneN]: 'OneN',
-  [0b0000000000000000000000000100000]: 'One',
-  [0b0000000000000000000000001000000]: 'N',
+  [32]: 'One',
+  [64]: 'N',
 };
 
 export function getRelationshipIcon(relationshipType: number): string | null {

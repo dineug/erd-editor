@@ -273,7 +273,7 @@ describe('settings/atom.actions', () => {
     });
 
     it('ignores an unknown database', () => {
-      store.dispatchSync(changeDatabaseAction({ value: 0b1010101 }));
+      store.dispatchSync(changeDatabaseAction({ value: 85 }));
       expect(store.state.settings.database).toBe(Database.MySQL);
     });
   });
@@ -307,7 +307,7 @@ describe('settings/atom.actions', () => {
       store.dispatchSync(changeLanguageAction({ value: Language.Kotlin }));
       expect(store.state.settings.language).toBe(Language.Kotlin);
 
-      store.dispatchSync(changeLanguageAction({ value: 0b1010101010 }));
+      store.dispatchSync(changeLanguageAction({ value: 682 }));
       expect(store.state.settings.language).toBe(Language.Kotlin);
     });
   });
@@ -326,8 +326,8 @@ describe('settings/atom.actions', () => {
     });
 
     it('ignores unknown name cases', () => {
-      store.dispatchSync(changeTableNameCaseAction({ value: 0b1010101 }));
-      store.dispatchSync(changeColumnNameCaseAction({ value: 0b1010101 }));
+      store.dispatchSync(changeTableNameCaseAction({ value: 85 }));
+      store.dispatchSync(changeColumnNameCaseAction({ value: 85 }));
 
       expect(store.state.settings.tableNameCase).toBe(NameCase.pascalCase);
       expect(store.state.settings.columnNameCase).toBe(NameCase.camelCase);
@@ -341,7 +341,7 @@ describe('settings/atom.actions', () => {
       );
       expect(store.state.settings.bracketType).toBe(BracketType.backtick);
 
-      store.dispatchSync(changeBracketTypeAction({ value: 0b1010101 }));
+      store.dispatchSync(changeBracketTypeAction({ value: 85 }));
       expect(store.state.settings.bracketType).toBe(BracketType.backtick);
     });
   });
@@ -427,14 +427,14 @@ describe('settings/atom.actions', () => {
 
       store.dispatchSync(
         changeColumnOrderAction({
-          value: 0b1000000000,
+          value: 512,
           target: ColumnType.columnName,
         })
       );
       store.dispatchSync(
         changeColumnOrderAction({
           value: ColumnType.columnName,
-          target: 0b1000000000,
+          target: 512,
         })
       );
 

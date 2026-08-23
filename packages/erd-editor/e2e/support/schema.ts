@@ -10,37 +10,37 @@
 
 /** `ColumnOption` bits — see `v3/schema/tableColumn.entity.ts`. */
 export const ColumnOption = {
-  autoIncrement: 0b0001,
-  primaryKey: 0b0010,
-  unique: 0b0100,
-  notNull: 0b1000,
+  autoIncrement: 1,
+  primaryKey: 2,
+  unique: 4,
+  notNull: 8,
 } as const;
 
 /** `ColumnUIKey` bits — the key badge rendered on a column row. */
 export const ColumnUIKey = {
-  primaryKey: 0b01,
-  foreignKey: 0b10,
+  primaryKey: 1,
+  foreignKey: 2,
 } as const;
 
 /** `RelationshipType` bits — the four drawable relationship kinds. */
 export const RelationshipType = {
-  ZeroOne: 0b00010,
-  ZeroN: 0b00100,
-  OneOnly: 0b01000,
-  OneN: 0b10000,
+  ZeroOne: 2,
+  ZeroN: 4,
+  OneOnly: 8,
+  OneN: 16,
 } as const;
 
 /** `Show` bits — which parts of a table row are rendered. */
 export const Show = {
-  tableComment: 0b000000001,
-  columnComment: 0b000000010,
-  columnDataType: 0b000000100,
-  columnDefault: 0b000001000,
-  columnAutoIncrement: 0b000010000,
-  columnPrimaryKey: 0b000100000,
-  columnUnique: 0b001000000,
-  columnNotNull: 0b010000000,
-  relationship: 0b100000000,
+  tableComment: 1,
+  columnComment: 2,
+  columnDataType: 4,
+  columnDefault: 8,
+  columnAutoIncrement: 16,
+  columnPrimaryKey: 32,
+  columnUnique: 64,
+  columnNotNull: 128,
+  relationship: 256,
 } as const;
 
 /** The editor's own default for `settings.show`. */

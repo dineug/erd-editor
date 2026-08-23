@@ -103,6 +103,26 @@ const expectedByLanguage: Array<[string, number, string[]]> = [
       '',
     ],
   ],
+  [
+    'SQLAlchemy',
+    Language.SQLAlchemy,
+    [
+      '',
+      'from sqlalchemy import Integer',
+      'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
+      '',
+      '',
+      'class Base(DeclarativeBase):',
+      '    pass',
+      '',
+      '',
+      'class User(Base):',
+      '    __tablename__ = "user"',
+      '',
+      '    createdAt: Mapped[int] = mapped_column("created_at", Integer, nullable=False)',
+      '',
+    ],
+  ],
 ];
 
 describe('generator-code/index', () => {

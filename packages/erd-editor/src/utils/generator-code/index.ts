@@ -28,6 +28,10 @@ import {
   formatTable as formatTableScala,
 } from './scala';
 import {
+  createCode as createCodeSQLAlchemy,
+  formatTable as formatTableSQLAlchemy,
+} from './sqlalchemy';
+import {
   createCode as createCodeTypescript,
   formatTable as formatTableTypescript,
 } from './typescript';
@@ -54,6 +58,8 @@ export function createGeneratorCode(state: RootState): string {
       return createCodeScala(state);
     case Language.Go:
       return createCodeGo(state);
+    case Language.SQLAlchemy:
+      return createCodeSQLAlchemy(state);
   }
 
   return '';
@@ -99,6 +105,10 @@ export function createGeneratorCodeTable(
       break;
     case Language.Go:
       formatTableGo(state, { buffer, table });
+      buffer.push('');
+      break;
+    case Language.SQLAlchemy:
+      formatTableSQLAlchemy(state, { buffer, table });
       buffer.push('');
       break;
   }

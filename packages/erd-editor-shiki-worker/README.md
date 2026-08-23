@@ -7,7 +7,7 @@ This package supplies the highlighter they look for. It is not a standalone high
 plugs into the editor through that package's `setGetShikiServiceCallback` export.
 
 It ships separately because highlighting is optional and expensive: [Shiki](https://shiki.style),
-its WASM regex engine and seven TextMate grammars build out to well over a megabyte, with the
+its WASM regex engine and nine TextMate grammars build out to well over a megabyte, with the
 worker and the WASM both inlined as `data:` URIs. Keeping it out of the editor means you pay
 that only where you actually load this package — and when you do, tokenizing runs in a shared
 worker that is named per version, so every editor on the page, and in other tabs on the same
@@ -52,11 +52,11 @@ puts the whole bundle in your entry chunk whether or not a code panel is ever op
 
 | | |
 | --- | --- |
-| Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go |
+| Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go, Python |
 | Themes | `github-dark`, `github-light`, picked from the editor's light / dark appearance |
 
-Those are exactly the languages the editor's own panels emit — the SQL export and the seven
-code generators (the JPA generator emits Java).
+Those are exactly the languages the editor's own panels emit — the SQL export and the nine
+code generators (the JPA generator emits Java, the SQLAlchemy generator emits Python).
 
 ## Notes
 
