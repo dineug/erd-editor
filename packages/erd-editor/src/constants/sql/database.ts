@@ -2,6 +2,7 @@ import { Database } from '@/constants/schema';
 import { ValuesType } from '@/internal-types';
 
 export const DatabaseVendor = {
+  Databricks: 'Databricks',
   MariaDB: 'MariaDB',
   MSSQL: 'MSSQL',
   MySQL: 'MySQL',
@@ -14,6 +15,7 @@ export const DatabaseVendorList: ReadonlyArray<string> =
   Object.values(DatabaseVendor);
 
 export const DatabaseVendorToDatabase: Record<DatabaseVendor, number> = {
+  [DatabaseVendor.Databricks]: Database.Databricks,
   [DatabaseVendor.MariaDB]: Database.MariaDB,
   [DatabaseVendor.MSSQL]: Database.MSSQL,
   [DatabaseVendor.MySQL]: Database.MySQL,

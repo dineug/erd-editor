@@ -120,6 +120,7 @@ describe('membership helpers', () => {
   it('hasDatabase', () => {
     expect(hasDatabase(Database.MySQL)).toBe(true);
     expect(hasDatabase(Database.PostgreSQL)).toBe(true);
+    expect(hasDatabase(Database.Databricks)).toBe(true);
     expect(hasDatabase(0)).toBe(false);
     expect(hasDatabase(9999)).toBe(false);
   });
@@ -151,6 +152,7 @@ describe('membership helpers', () => {
   it('hasDatabaseVendor', () => {
     expect(hasDatabaseVendor(DatabaseVendor.MySQL)).toBe(true);
     expect(hasDatabaseVendor(DatabaseVendor.SQLite)).toBe(true);
+    expect(hasDatabaseVendor(DatabaseVendor.Databricks)).toBe(true);
     expect(hasDatabaseVendor('CockroachDB')).toBe(false);
   });
 

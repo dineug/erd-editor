@@ -10,6 +10,7 @@ import {
 describe('DatabaseVendor', () => {
   it('lists every supported vendor with the key as its own value', () => {
     expect(DatabaseVendor).toEqual({
+      Databricks: 'Databricks',
       MariaDB: 'MariaDB',
       MSSQL: 'MSSQL',
       MySQL: 'MySQL',
@@ -27,6 +28,7 @@ describe('DatabaseVendor', () => {
 describe('DatabaseVendorList', () => {
   it('is the alphabetically ordered vendor name list', () => {
     expect(DatabaseVendorList).toEqual([
+      'Databricks',
       'MariaDB',
       'MSSQL',
       'MySQL',
@@ -45,6 +47,7 @@ describe('DatabaseVendorList', () => {
 describe('DatabaseVendorToDatabase', () => {
   it('maps each vendor name to its Database flag', () => {
     expect(DatabaseVendorToDatabase).toEqual({
+      Databricks: Database.Databricks,
       MariaDB: Database.MariaDB,
       MSSQL: Database.MSSQL,
       MySQL: Database.MySQL,
@@ -61,6 +64,7 @@ describe('DatabaseVendorToDatabase', () => {
     expect(DatabaseVendorToDatabase.Oracle).toBe(8);
     expect(DatabaseVendorToDatabase.PostgreSQL).toBe(16);
     expect(DatabaseVendorToDatabase.SQLite).toBe(32);
+    expect(DatabaseVendorToDatabase.Databricks).toBe(64);
   });
 
   it('is a bijection onto DatabaseList', () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { Database, DatabaseList } from '@/constants/schema';
 import { DatabaseHintMap, PrimitiveType } from '@/constants/sql/dataType';
+import { DatabricksTypes } from '@/constants/sql/dataType/Databricks';
 import { MariaDBTypes } from '@/constants/sql/dataType/MariaDB';
 import { MSSQLTypes } from '@/constants/sql/dataType/MSSQL';
 import { MySQLTypes } from '@/constants/sql/dataType/MySQL';
@@ -37,6 +38,7 @@ describe('PrimitiveType', () => {
 
 describe('DatabaseHintMap', () => {
   it('maps each Database flag to that vendor hint list', () => {
+    expect(DatabaseHintMap[Database.Databricks]).toBe(DatabricksTypes);
     expect(DatabaseHintMap[Database.MariaDB]).toBe(MariaDBTypes);
     expect(DatabaseHintMap[Database.MSSQL]).toBe(MSSQLTypes);
     expect(DatabaseHintMap[Database.MySQL]).toBe(MySQLTypes);
