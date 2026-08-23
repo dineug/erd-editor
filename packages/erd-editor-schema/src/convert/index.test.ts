@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { v2ToV3, v3ToV2 } from '@/convert';
 import { type ERDEditorSchemaV2, schemaV2Parser } from '@/v2';
-import { type ERDEditorSchemaV3, schemaV3Parser } from '@/v3';
+import {
+  type ERDEditorSchemaV3,
+  SchemaV3Constants,
+  schemaV3Parser,
+} from '@/v3';
 
 function createSchemaV2(): ERDEditorSchemaV2 {
   return schemaV2Parser({
@@ -245,6 +249,15 @@ describe('convert barrel', () => {
       expect(result.settings.database).toBe(source.settings.database);
       expect(result.settings.language).toBe(source.settings.language);
       expect(result.settings.columnOrder).toEqual(source.settings.columnOrder);
+    });
+
+    it('loses the Databricks database because v2 has no such vendor', () => {
+      const source = createSchemaV3();
+      source.settings.database = SchemaV3Constants.Database.Databricks;
+      const result = v2ToV3(v3ToV2(source));
+
+      expect(result.settings.database).not.toBe(source.settings.database);
+      expect(result.settings.database).toBe(SchemaV3Constants.Database.MySQL);
     });
 
     it('preserves the document ids of tables, memos and relationships', () => {

@@ -1,6 +1,7 @@
 import { Database } from '@/constants/schema';
 import { ValuesType } from '@/internal-types';
 
+import { DatabricksTypes } from './Databricks';
 import { MariaDBTypes } from './MariaDB';
 import { MSSQLTypes } from './MSSQL';
 import { MySQLTypes } from './MySQL';
@@ -35,6 +36,7 @@ export type DatabaseHint = {
 };
 
 export const DatabaseHintMap: Record<number, Array<DataTypeHint>> = {
+  [Database.Databricks]: DatabricksTypes,
   [Database.MariaDB]: MariaDBTypes,
   [Database.MSSQL]: MSSQLTypes,
   [Database.MySQL]: MySQLTypes,

@@ -267,6 +267,7 @@ describe('ErdContextMenu / ERD type', () => {
     const items = itemsOf(sub);
 
     expect(labelsOf(items)).toEqual([
+      'Databricks',
       'MSSQL',
       'MariaDB',
       'MySQL',

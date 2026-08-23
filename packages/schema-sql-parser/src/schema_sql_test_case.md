@@ -75,6 +75,54 @@
   > varcharacter
   > year
 
+- Databricks
+
+  > array
+  > bigint
+  > binary
+  > boolean
+  > byte
+  > char
+  > date
+  > dec
+  > decimal
+  > double
+  > float
+  > geography
+  > geometry
+  > int
+  > integer
+  > interval
+  > interval day
+  > interval day to hour
+  > interval day to minute
+  > interval day to second
+  > interval hour
+  > interval hour to minute
+  > interval hour to second
+  > interval minute
+  > interval minute to second
+  > interval month
+  > interval second
+  > interval year
+  > interval year to month
+  > long
+  > map
+  > numeric
+  > object
+  > real
+  > short
+  > smallint
+  > string
+  > struct
+  > timestamp
+  > timestamp_ltz
+  > timestamp_ntz
+  > tinyint
+  > varchar
+  > variant
+  > void
+
 - MariaDB
 
   > bigint
@@ -1530,6 +1578,86 @@ CREATE TABLE users /* pk: id; see docs (v2) */ (
         {
           "name": "email",
           "dataType": "TEXT",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    }
+  ]
+}
+```
+
+### Databricks CREATE TABLE
+
+```sql
+CREATE TABLE `main`.`events` (
+  `event_id` BIGINT NOT NULL COMMENT 'event id',
+  `user_id` STRING NOT NULL,
+  `occurred_at` TIMESTAMP_NTZ,
+  `tags` ARRAY<STRING>,
+  `props` MAP<STRING, STRING>,
+  CONSTRAINT `pk_events` PRIMARY KEY (`event_id`) NOT ENFORCED RELY
+)
+USING DELTA
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "events",
+      "comment": "",
+      "columns": [
+        {
+          "name": "event_id",
+          "dataType": "BIGINT",
+          "default": "",
+          "comment": "event id",
+          "primaryKey": true,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "dataType": "STRING",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "occurred_at",
+          "dataType": "TIMESTAMP_NTZ",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "dataType": "ARRAY<STRING>",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "props",
+          "dataType": "MAP<STRING, STRING>",
           "default": "",
           "comment": "",
           "primaryKey": false,

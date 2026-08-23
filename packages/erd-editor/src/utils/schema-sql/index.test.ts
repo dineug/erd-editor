@@ -145,7 +145,7 @@ describe('schema-sql/index', () => {
     it('returns an empty string for an unsupported database', () => {
       const { state } = createFixture();
 
-      expect(createSchemaSQL(state, 0b1000000)).toBe('');
+      expect(createSchemaSQL(state, 0b10000000)).toBe('');
     });
 
     it('falls back to settings.database when the override is 0', () => {

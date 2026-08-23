@@ -81,9 +81,9 @@
           "type": "integer"
         },
         "database": {
-          "description": "bit value (MariaDB: 1) | (MSSQL: 2) | (MySQL: 4) | (Oracle: 8) | (PostgreSQL: 16) | (SQLite: 32)",
+          "description": "bit value (MariaDB: 1) | (MSSQL: 2) | (MySQL: 4) | (Oracle: 8) | (PostgreSQL: 16) | (SQLite: 32) | (Databricks: 64)",
           "type": "integer",
-          "enum": [1, 2, 4, 8, 16, 32]
+          "enum": [1, 2, 4, 8, 16, 32, 64]
         },
         "databaseName": {
           "type": "string"

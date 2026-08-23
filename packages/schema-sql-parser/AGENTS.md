@@ -17,9 +17,9 @@ rather than rejected, so a real dump imports partially instead of failing. Its o
 | --- | --- |
 | `src/index.ts` | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, statement types |
 | `src/parser/index.ts` | Dispatch loop — probes each matcher at `$pos`, calls a statement parser, else advances |
-| `src/parser/helper.ts` | Curried token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set and `matchDataType` |
+| `src/parser/helper.ts` | Curried token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set, `matchDataType` and `matchNestedDataType` |
 | `src/parser/statement/index.ts` | `Statement` union, `StatementType`, `SortType`, `RefPos`, AST node shapes |
-| `src/schema_sql_test_case.md` | 24 end-to-end fixture sections (`### ` heading + fenced `sql` + fenced `json`) |
+| `src/schema_sql_test_case.md` | 25 end-to-end fixture sections (`### ` heading + fenced `sql` + fenced `json`) |
 
 ## Subdirectories
 
@@ -27,7 +27,7 @@ rather than rejected, so a real dump imports partially instead of failing. Its o
 | --- | --- |
 | `src/parser/` | `tokenizer.ts` (lexer — emits `string` plus six punctuation kinds; `TokenType`'s `leftBracket` / `rightBracket` are declared but never produced, so their predicates never fire), matchers, dispatch loop |
 | `src/parser/statement/` | One parser file per statement kind, plus the AST type module |
-| `src/parser/dataType/` | Per-vendor keyword lists: MySQL, MariaDB, PostgreSQL, MSSQL, Oracle, SQLite |
+| `src/parser/dataType/` | Per-vendor keyword lists: MySQL, MariaDB, PostgreSQL, MSSQL, Oracle, SQLite, Databricks |
 
 ## For AI Agents
 
@@ -36,10 +36,10 @@ rather than rejected, so a real dump imports partially instead of failing. Its o
 - **Never throw on unrecognized SQL** — the loop advances `$pos` and continues; bailing turns a partial import into a failed one.
 - **`$pos` (`RefPos = { value: number }`) is a shared mutable cursor.** Each parser must leave it just past what it
   consumed — off-by-one either loops forever or swallows a statement.
-- Adding a statement kind is four edits: the parser file, the `Statement` union and `StatementType`, a matcher in
-  `parser/helper.ts`, a branch in `parser/index.ts`.
-- `helper.ts` merges all six `dataType/` lists into one deduped uppercase set, so adding a type to one vendor widens every dialect.
+- Adding a statement kind is four edits: the parser file, the `Statement` union and `StatementType`, a matcher in `parser/helper.ts`, a branch in `parser/index.ts`.
+- `helper.ts` merges all seven `dataType/` lists, Databricks included, into one deduped uppercase set, so adding a type to one vendor widens every dialect.
 - **A type name is matched word by word, longest first**, so multi-word names are written in full (`TIMESTAMP WITHOUT TIME ZONE`, not `TIMESTAMP WITHOUT`) and `matchDataType` returns the token span — argument lists included, wherever they sit (`TIMESTAMP(3) WITH TIME ZONE`). Each name is mirrored in `erd-editor/src/constants/sql/dataType/` with a `primitiveType`; the two lists hold the same names and change together.
+- **Angle-bracket generics are recovered in the parser, not the lexer**: `<` / `>` are not break characters, so `MAP<STRING, INT>` arrives as `MAP<STRING`, `,`, `INT>` and `matchNestedDataType` rebalances the span for `ARRAY` / `MAP` / `STRUCT`, keeping that comma from reading as a column separator.
 
 ### Testing Requirements
 

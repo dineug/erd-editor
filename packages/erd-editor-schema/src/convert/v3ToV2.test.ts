@@ -309,6 +309,13 @@ describe('v3ToV2', () => {
       expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
     });
 
+    it('drops the Databricks database because "Databricks" is not a v2 database name', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.database = Database.Databricks;
+
+      expect(v3ToV2(schemaV3).canvas.database).toBe('MySQL');
+    });
+
     it('picks the lowest matching bit when several are set', () => {
       const schemaV3 = createSchemaV3();
       schemaV3.settings.database = Database.MSSQL | Database.SQLite;

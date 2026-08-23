@@ -131,6 +131,7 @@ describe('SchemaSQLContextMenu', () => {
     const content = await openSubmenu('Database');
 
     expect(subItems(content).map(el => el.textContent?.trim())).toEqual([
+      'Databricks',
       'MSSQL',
       'MariaDB',
       'MySQL',
@@ -156,7 +157,7 @@ describe('SchemaSQLContextMenu', () => {
     const items = subItems(await openSubmenu('Database'));
 
     expect(items.map(el => el.querySelectorAll('svg').length)).toEqual([
-      0, 0, 1, 0, 0, 0,
+      0, 0, 0, 1, 0, 0, 0,
     ]);
   });
 
@@ -176,7 +177,7 @@ describe('SchemaSQLContextMenu', () => {
     await open(() => {}, app);
 
     const items = subItems(await openSubmenu('Database'));
-    items[4].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    items[5].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await flush();
 
     expect(app.store.state.settings.database).toBe(Database.PostgreSQL);

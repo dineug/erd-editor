@@ -30,10 +30,10 @@ only; they do not appear in the Command Palette.
 
 - **Visual schema design** — tables, columns, memos, and four relationship cardinalities
   (zero-one, zero-N, one-only, one-N)
-- **SQL DDL import** — bring in a `.sql` dump from any of the six vendors below. The parser
+- **SQL DDL import** — bring in a `.sql` dump from any of the seven vendors below. The parser
   reads `CREATE TABLE`, `CREATE INDEX` and `ALTER TABLE` constraints and skips what it does
   not recognize, so an awkward dump imports partially rather than failing outright
-- **SQL DDL export** — MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
+- **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, `.png`

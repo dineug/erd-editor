@@ -5,6 +5,7 @@ import {
   isCollateValue,
   isCommaToken,
   isCommentValue,
+  isConstraintState,
   isConstraintValue,
   isCreateTableIfNotExists,
   isDefaultValue,
@@ -25,6 +26,7 @@ import {
   isStringToken,
   isUniqueValue,
   matchDataType,
+  matchNestedDataType,
 } from '@/parser/helper';
 import {
   Column,
@@ -109,16 +111,20 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
 
     if (isString($pos.value) && !ast.name) {
       ast.name = token.value;
+      $pos.value++;
 
-      token = tokens[++$pos.value];
-
-      if (isPeriod($pos.value)) {
-        token = tokens[++$pos.value];
-
-        if (isString($pos.value)) {
-          ast.name = token.value;
+      // `catalog.schema.table` is Unity Catalog's standard shape, and one
+      // period was all this consumed -- the middle segment became the name
+      // and the last was left to be read as something else.
+      while (isPeriod($pos.value)) {
+        if (!isString($pos.value + 1)) {
+          // A period with nothing after it: consume it and keep what we have.
           $pos.value++;
+          break;
         }
+
+        ast.name = tokens[$pos.value + 1].value;
+        $pos.value += 2;
       }
 
       continue;
@@ -170,7 +176,9 @@ function createTableColumnsParser(
   const isEqual = isEqualToken(tokens);
   const characterSet = isCharacterSet(tokens);
   const isCollate = isCollateValue(tokens);
+  const constraintState = isConstraintState(tokens);
   const dataType = matchDataType(tokens);
+  const nestedDataType = matchNestedDataType(tokens);
 
   const isToken = () => $pos.value < tokens.length;
 
@@ -194,6 +202,24 @@ function createTableColumnsParser(
   while (isToken()) {
     let token = tokens[$pos.value];
 
+    const nestedLength = nestedDataType($pos.value);
+
+    if (nestedLength) {
+      const end = $pos.value + nestedLength;
+      const parts: string[] = [];
+
+      while ($pos.value < end) {
+        parts.push(isComma($pos.value) ? ',' : tokens[$pos.value].value);
+        $pos.value++;
+      }
+
+      column.dataType = parts.reduce(
+        (acc, part) => (!acc || part === ',' ? acc + part : `${acc} ${part}`),
+        ''
+      );
+      continue;
+    }
+
     if (
       isString($pos.value) &&
       !column.name &&
@@ -202,7 +228,9 @@ function createTableColumnsParser(
       !isForeign($pos.value) &&
       !isUnique($pos.value) &&
       !isIndex($pos.value) &&
-      !isKey($pos.value)
+      !isKey($pos.value) &&
+      !isNot($pos.value) &&
+      !constraintState($pos.value)
     ) {
       column.name = token.value;
       $pos.value++;
@@ -210,13 +238,26 @@ function createTableColumnsParser(
     }
 
     if (isLeftParent($pos.value)) {
-      token = tokens[++$pos.value];
+      // Depth matters: `GENERATED ALWAYS AS (CAST(ts AS DATE))` closes twice,
+      // and stopping at the first `)` left the rest of the column list being
+      // read as arguments -- every column after it vanished.
+      let depth = 0;
 
-      while (isToken() && !isRightParent($pos.value)) {
-        token = tokens[++$pos.value];
+      while (isToken()) {
+        if (isLeftParent($pos.value)) {
+          depth++;
+        } else if (isRightParent($pos.value)) {
+          depth--;
+
+          if (depth === 0) {
+            $pos.value++;
+            break;
+          }
+        }
+
+        $pos.value++;
       }
 
-      $pos.value++;
       continue;
     }
 
@@ -355,8 +396,15 @@ function createTableColumnsParser(
       if (isNull($pos.value)) {
         column.nullable = false;
         $pos.value++;
+      } else if (constraintState($pos.value)) {
+        $pos.value++;
       }
 
+      continue;
+    }
+
+    if (constraintState($pos.value)) {
+      $pos.value++;
       continue;
     }
 
@@ -542,17 +590,22 @@ export function parserForeignKeyParser(
 
       if (isString($pos.value)) {
         foreignKey.refTableName = token.value;
+        $pos.value++;
 
-        token = tokens[++$pos.value];
-
-        if (isPeriod($pos.value)) {
-          token = tokens[++$pos.value];
-
-          if (isString($pos.value)) {
-            foreignKey.refTableName = token.value;
-            token = tokens[++$pos.value];
+        // A three-part `REFERENCES` left a period unconsumed, so the column
+        // list was never reached: the whole key was dropped and the trailing
+        // segment became a column of the table being defined.
+        while (isPeriod($pos.value)) {
+          if (!isString($pos.value + 1)) {
+            $pos.value++;
+            break;
           }
+
+          foreignKey.refTableName = tokens[$pos.value + 1].value;
+          $pos.value += 2;
         }
+
+        token = tokens[$pos.value];
 
         if (isLeftParent($pos.value)) {
           token = tokens[++$pos.value];

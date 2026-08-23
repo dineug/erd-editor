@@ -18,6 +18,7 @@ beforeEach(() => {
 describe('databaseMenus', () => {
   it('exposes one menu per supported database vendor', () => {
     expect(menus.map(menu => menu.name)).toEqual([
+      'Databricks',
       'MSSQL',
       'MariaDB',
       'MySQL',
@@ -26,6 +27,7 @@ describe('databaseMenus', () => {
       'SQLite',
     ]);
     expect(menus.map(menu => menu.value)).toEqual([
+      Database.Databricks,
       Database.MSSQL,
       Database.MariaDB,
       Database.MySQL,
