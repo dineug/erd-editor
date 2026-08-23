@@ -52,7 +52,7 @@ puts the whole bundle in your entry chunk whether or not a code panel is ever op
 
 | | |
 | --- | --- |
-| Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala |
+| Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go |
 | Themes | `github-dark`, `github-light`, picked from the editor's light / dark appearance |
 
 Those are exactly the languages the editor's own panels emit — the SQL export and the seven
