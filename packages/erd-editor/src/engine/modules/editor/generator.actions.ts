@@ -1,8 +1,9 @@
 import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from '@dineug/shared';
 import { cloneDeep, omit, uniq } from 'es-toolkit';
-import { isEmpty } from 'es-toolkit/compat';
+import { isEmpty, round } from 'es-toolkit/compat';
 
+import { START_ADD } from '@/constants/layout';
 import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
 import {
@@ -32,11 +33,21 @@ import {
   addColumnAction$,
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
+import { RootState } from '@/engine/state';
+import { Collections, Point } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { isOverlapPosition, Rect } from '@/utils/dragSelect';
 import { schemaSQLParserToSchemaJson } from '@/utils/schema-sql-parser';
+import {
+  ClipboardMemo,
+  ClipboardPayload,
+  ClipboardTable,
+  PlacementEntity,
+  PlacementPoint,
+  resolvePlacement,
+} from '@/utils/table-clipboard';
 
 import {
   clearAction,
@@ -56,6 +67,7 @@ import {
   unselectAllAction,
 } from './atom.actions';
 import { FocusType, MoveKey, SelectType } from './state';
+import { CreateEntityInput, toCreateEntityActions } from './utils/duplicate';
 import { findRelationshipColumn } from './utils/findRelationshipColumn';
 import {
   isColumns,
@@ -132,6 +144,183 @@ export const removeSelectedAction$ = (): GeneratorAction =>
     yield removeTableAction$();
     yield removeMemoAction$();
   };
+
+export type DuplicateConfig = {
+  tableIds?: string[];
+  memoIds?: string[];
+  offset: Point;
+  escapeCollision: boolean;
+};
+
+export const pasteEntitiesAction$ = (
+  payload: ClipboardPayload,
+  pasteRound: number
+): GeneratorAction =>
+  function* (state) {
+    yield* createEntities$(state, {
+      input: {
+        tables: payload.tables,
+        columns: payload.columns,
+        memos: payload.memos,
+      },
+      offset: { x: START_ADD * pasteRound, y: START_ADD * pasteRound },
+      escapeCollision: true,
+    });
+  };
+
+export const duplicateAction$ = ({
+  tableIds,
+  memoIds,
+  offset,
+  escapeCollision,
+}: DuplicateConfig): GeneratorAction =>
+  function* (state) {
+    yield* createEntities$(state, {
+      input: toDuplicateInput(state.collections, {
+        tableIds: tableIds ?? [],
+        memoIds: memoIds ?? [],
+      }),
+      offset: { x: round(offset.x, 4), y: round(offset.y, 4) },
+      escapeCollision,
+    });
+  };
+
+type CreateEntitiesConfig = {
+  input: CreateEntityInput;
+  offset: Point;
+  escapeCollision: boolean;
+};
+
+function* createEntities$(
+  state: RootState,
+  { input, offset, escapeCollision }: CreateEntitiesConfig
+) {
+  if (input.tables.length === 0 && input.memos.length === 0) return;
+
+  const {
+    settings,
+    doc: { tableIds, memoIds },
+    collections,
+  } = state;
+
+  const tableCollection = query(collections).collection('tableEntities');
+  const memoCollection = query(collections).collection('memoEntities');
+
+  const placement = resolvePlacement({
+    entities: [
+      ...input.tables.map(toPlacementEntity),
+      ...input.memos.map(toPlacementEntity),
+    ],
+    offset,
+    escapeCollision,
+    settings,
+    tables: tableCollection.selectByIds(tableIds),
+    memos: memoCollection.selectByIds(memoIds),
+    findSource: sourceId =>
+      tableCollection.selectById(sourceId) ??
+      memoCollection.selectById(sourceId),
+  });
+
+  const {
+    actions,
+    tableIds: newTableIds,
+    memoIds: newMemoIds,
+  } = toCreateEntityActions(input, roundPlacement(placement));
+
+  yield unselectAllAction$();
+  yield actions;
+  yield selectAction({
+    ...newTableIds.reduce<Record<string, SelectType>>((acc, id) => {
+      acc[id] = SelectType.table;
+      return acc;
+    }, {}),
+    ...newMemoIds.reduce<Record<string, SelectType>>((acc, id) => {
+      acc[id] = SelectType.memo;
+      return acc;
+    }, {}),
+  });
+}
+
+const toPlacementEntity = ({
+  sourceId,
+  ui: { x, y, zIndex },
+}: ClipboardTable | ClipboardMemo): PlacementEntity => ({
+  sourceId,
+  ui: { x, y, zIndex },
+});
+
+function roundPlacement(
+  placement: Map<string, PlacementPoint>
+): Map<string, PlacementPoint> {
+  return new Map(
+    Array.from(placement, ([sourceId, { x, y, zIndex }]) => [
+      sourceId,
+      { x: round(x, 4), y: round(y, 4), zIndex },
+    ])
+  );
+}
+
+function toDuplicateInput(
+  collections: Collections,
+  { tableIds, memoIds }: SelectTypeIds
+): CreateEntityInput {
+  const tables = query(collections)
+    .collection('tableEntities')
+    .selectByIds(tableIds);
+  const memos = query(collections)
+    .collection('memoEntities')
+    .selectByIds(memoIds);
+  const columns = tables.flatMap(table =>
+    query(collections)
+      .collection('tableColumnEntities')
+      .selectByIds(table.columnIds)
+  );
+
+  return {
+    tables: tables.map(table => ({
+      sourceId: table.id,
+      name: table.name,
+      comment: table.comment,
+      columnIds: [...table.columnIds],
+      ui: {
+        x: table.ui.x,
+        y: table.ui.y,
+        zIndex: table.ui.zIndex,
+        widthName: table.ui.widthName,
+        widthComment: table.ui.widthComment,
+        color: table.ui.color,
+      },
+    })),
+    columns: columns.map(column => ({
+      sourceId: column.id,
+      tableId: column.tableId,
+      name: column.name,
+      comment: column.comment,
+      dataType: column.dataType,
+      default: column.default,
+      options: column.options,
+      ui: {
+        keys: column.ui.keys,
+        widthName: column.ui.widthName,
+        widthComment: column.ui.widthComment,
+        widthDataType: column.ui.widthDataType,
+        widthDefault: column.ui.widthDefault,
+      },
+    })),
+    memos: memos.map(memo => ({
+      sourceId: memo.id,
+      value: memo.value,
+      ui: {
+        x: memo.ui.x,
+        y: memo.ui.y,
+        width: memo.ui.width,
+        height: memo.ui.height,
+        zIndex: memo.ui.zIndex,
+        color: memo.ui.color,
+      },
+    })),
+  };
+}
 
 export const dragSelectAction$ = (dragRect: Rect): GeneratorAction =>
   function* (state) {
@@ -463,6 +652,8 @@ export const actions$ = {
   initialLoadJsonAction$,
   moveAllAction$,
   removeSelectedAction$,
+  pasteEntitiesAction$,
+  duplicateAction$,
   dragSelectAction$,
   unselectAllAction$,
   focusMoveTableAction$,

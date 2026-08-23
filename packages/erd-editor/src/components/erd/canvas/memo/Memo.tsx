@@ -1,9 +1,11 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { tryStartAltDragDuplicate } from '@/components/erd/canvas/altDragDuplicate';
 import MemoSash from '@/components/erd/canvas/memo/memo-sash/MemoSash';
 import Icon from '@/components/primitives/icon/Icon';
 import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
+import { SelectType } from '@/engine/modules/editor/state';
 import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
 import {
   removeMemoAction$,
@@ -37,14 +39,24 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     if (!el) return;
 
     const { store } = app.value;
-    store.dispatch(selectMemoAction$(props.memo.id, isMod(event)));
-
-    if (
+    const canDrag =
       !el.closest('.memo-header-color') &&
       !el.closest('.memo-textarea') &&
       !el.closest('.icon') &&
-      !el.closest('.sash')
+      !el.closest('.sash');
+
+    // `move$` is not `share()`d and mutates module-global `prevX`/`prevY`, so
+    // a second concurrent `drag$` subscriber always reads `movementX === 0`.
+    if (
+      canDrag &&
+      tryStartAltDragDuplicate(app.value, event, props.memo.id, SelectType.memo)
     ) {
+      return;
+    }
+
+    store.dispatch(selectMemoAction$(props.memo.id, isMod(event)));
+
+    if (canDrag) {
       drag$.subscribe(handleMove);
     }
   };

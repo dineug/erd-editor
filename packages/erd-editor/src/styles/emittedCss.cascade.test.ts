@@ -8,7 +8,7 @@ import { beforeAll, describe, expect, it } from 'vite-plus/test';
 /**
  * The emitted-CSS gate.
  *
- * 62 of this package's modules define styles, and all but a dozen of their tests assert
+ * 63 of this package's modules define styles, and all but a dozen of their tests assert
  * `strings.join('')` — the *source* text of the tagged template. Source text passes no matter
  * what the compiler emits or where the emitted rules end up, so those tests cannot see a
  * compiler change, a scoping change, or a cascade change. This file closes that gap by loading
@@ -204,7 +204,7 @@ beforeAll(async () => {
 
 describe('emitted CSS', () => {
   it('reaches a shadow root from every style module', () => {
-    expect(actual.moduleCount).toBe(62);
+    expect(actual.moduleCount).toBe(63);
     expect(actual.ruleCount).toBe(
       actual.treeStyleRuleCount + actual.adoptedRuleCount
     );

@@ -24,6 +24,7 @@ export type ActionMap = {
       x: number;
       y: number;
       zIndex: number;
+      color?: string;
     };
   };
   [ActionType.moveTable]: {

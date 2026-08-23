@@ -1,6 +1,13 @@
 import { schemaV3Parser, toJson } from '@dineug/erd-editor-schema';
 import { AnyAction, compositionActionsFlat } from '@dineug/r-html';
-import { beforeEach, describe, expect, it } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { ColumnOption, RelationshipType } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
@@ -21,33 +28,56 @@ import {
   dragstartColumnAction$,
   drawStartAddRelationshipAction$,
   drawStartRelationshipAction$,
+  duplicateAction$,
   focusMoveTableAction$,
   initialLoadJsonAction$,
   loadJsonAction$,
   loadSchemaSQLAction$,
   moveAllAction$,
+  pasteEntitiesAction$,
   removeSelectedAction$,
   unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
 import { FocusType, MoveKey, SelectType } from '@/engine/modules/editor/state';
-import { addMemoAction } from '@/engine/modules/memo/atom.actions';
+import {
+  addMemoAction,
+  changeMemoColorAction,
+  changeMemoValueAction,
+} from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeDatabaseNameAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  changeTableColorAction,
+  changeTableCommentAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnAutoIncrementAction,
+  changeColumnCommentAction,
   changeColumnDataTypeAction,
+  changeColumnDefaultAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { createRxStore, RxStore } from '@/engine/rx-store';
 import { createStore, Store } from '@/engine/store';
 import { bHas } from '@/utils/bit';
 import { createTable } from '@/utils/collection/table.entity';
+import {
+  ClipboardColumn,
+  ClipboardMemo,
+  ClipboardTable,
+  createPayload,
+  PayloadKind,
+} from '@/utils/table-clipboard';
+import { entitiesCopyToPayload } from '@/utils/table-clipboard/copy';
 
 const toWidth = (text: string) => text.length * 10;
 
@@ -85,6 +115,75 @@ function columnOf(store: Store, id: string) {
 
 function memoOf(store: Store, id: string) {
   return store.state.collections.memoEntities[id];
+}
+
+function clipboardTable(
+  sourceId: string,
+  x: number,
+  y: number,
+  rest: Partial<Pick<ClipboardTable, 'name' | 'comment' | 'columnIds'>> = {},
+  color = ''
+): ClipboardTable {
+  return {
+    sourceId,
+    name: 'table',
+    comment: '',
+    columnIds: [],
+    ...rest,
+    ui: { x, y, zIndex: 2, widthName: 60, widthComment: 60, color },
+  };
+}
+
+function clipboardColumn(
+  sourceId: string,
+  tableId: string,
+  rest: Partial<Omit<ClipboardColumn, 'sourceId' | 'tableId' | 'ui'>> = {}
+): ClipboardColumn {
+  return {
+    sourceId,
+    tableId,
+    name: '',
+    comment: '',
+    dataType: '',
+    default: '',
+    options: 0,
+    ...rest,
+    ui: {
+      keys: 0,
+      widthName: 60,
+      widthComment: 60,
+      widthDataType: 60,
+      widthDefault: 60,
+    },
+  };
+}
+
+function clipboardMemo(
+  sourceId: string,
+  x: number,
+  y: number,
+  value = '',
+  color = ''
+): ClipboardMemo {
+  return {
+    sourceId,
+    value,
+    ui: { x, y, width: 116, height: 100, zIndex: 2, color },
+  };
+}
+
+const entitiesPayload = (
+  parts: Partial<{
+    tables: ClipboardTable[];
+    columns: ClipboardColumn[];
+    memos: ClipboardMemo[];
+  }> = {}
+) => createPayload({ kind: PayloadKind.tables, ...parts });
+
+/** The ids `doc` gained, in document order. */
+function addedIds(before: string[], after: string[]): string[] {
+  const had = new Set(before);
+  return after.filter(id => !had.has(id));
 }
 
 let store: Store;
@@ -831,6 +930,456 @@ describe('columnKeyHoverStartAction$ / columnKeyHoverEndAction$', () => {
   });
 });
 
+describe('pasteEntitiesAction$', () => {
+  it('emits nothing at all for a payload with no tables and no memos', () => {
+    // AC-41. Without the guard the generator still emits `unselectAll` +
+    // `select({})` and wipes a selection the user never asked to lose.
+    seedTable(store, 't1');
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+    const before = { ...store.state.editor.selectedMap };
+
+    const payload = entitiesPayload({
+      columns: [clipboardColumn('sc1', 'st1')],
+    });
+
+    expect(typesOf(store, pasteEntitiesAction$(payload, 1))).toEqual([]);
+
+    store.dispatchSync(pasteEntitiesAction$(payload, 1));
+
+    expect(store.state.editor.selectedMap).toEqual(before);
+    expect(store.state.doc.tableIds).toEqual(['t1']);
+  });
+
+  it('creates new tables instead of merging into the selected one', () => {
+    // AC-6.
+    seedTable(store, 't1', 100, 100);
+    seedColumn(store, 't1', 'c1');
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+
+    store.dispatchSync(
+      pasteEntitiesAction$(
+        entitiesPayload({
+          tables: [clipboardTable('st1', 0, 0, { columnIds: ['sc1'] })],
+          columns: [clipboardColumn('sc1', 'st1', { name: 'pasted' })],
+        }),
+        1
+      )
+    );
+
+    expect(tableOf(store, 't1').columnIds).toEqual(['c1']);
+    expect(store.state.doc.tableIds).toHaveLength(2);
+
+    const [copyId] = addedIds(['t1'], store.state.doc.tableIds);
+    expect(tableOf(store, copyId).columnIds).toHaveLength(1);
+  });
+
+  it('does not append a table its own columns when pasted straight after a copy', () => {
+    // AC-7 — the issue #408 trap: the source is still selected at paste time.
+    seedTable(store, 't1', 100, 100);
+    seedColumn(store, 't1', 'c1');
+    seedColumn(store, 't1', 'c2');
+    store.dispatchSync(
+      changeColumnNameAction({ tableId: 't1', id: 'c1', value: 'id' })
+    );
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+
+    const payload = entitiesCopyToPayload(store.state);
+    expect(payload).not.toBeNull();
+
+    store.dispatchSync(pasteEntitiesAction$(payload!, 1));
+
+    expect(tableOf(store, 't1').columnIds).toEqual(['c1', 'c2']);
+
+    const [copyId] = addedIds(['t1'], store.state.doc.tableIds);
+    const copy = tableOf(store, copyId);
+    expect(copy.columnIds).toHaveLength(2);
+    expect(columnOf(store, copy.columnIds[0]).name).toBe('id');
+    expect(copy.ui.x).toBe(150);
+    expect(copy.ui.y).toBe(150);
+  });
+
+  it('creates memos alone, without inventing a table', () => {
+    // AC-33, paste half: a memo-only copy is still `kind: 'tables'`.
+    seedTable(store, 't1');
+
+    store.dispatchSync(
+      pasteEntitiesAction$(
+        entitiesPayload({
+          memos: [
+            clipboardMemo('sm1', 10, 10, 'first'),
+            clipboardMemo('sm2', 10, 200, 'second'),
+          ],
+        }),
+        1
+      )
+    );
+
+    expect(store.state.doc.tableIds).toEqual(['t1']);
+    expect(store.state.doc.memoIds).toHaveLength(2);
+    expect(
+      store.state.doc.memoIds.map(id => memoOf(store, id).value).sort()
+    ).toEqual(['first', 'second']);
+  });
+
+  it('multiplies the round into the offset', () => {
+    // AC-9: the round lives here, not in `resolvePlacement`.
+    seedTable(store, 't1', 100, 100);
+
+    store.dispatchSync(
+      pasteEntitiesAction$(
+        entitiesPayload({ tables: [clipboardTable('t1', 100, 100)] }),
+        3
+      )
+    );
+
+    const [copyId] = addedIds(['t1'], store.state.doc.tableIds);
+    expect(tableOf(store, copyId).ui.x).toBe(250);
+    expect(tableOf(store, copyId).ui.y).toBe(250);
+  });
+
+  it('hands the selection and the focus over to the new entities', () => {
+    seedTable(store, 't1', 100, 100);
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+    store.dispatchSync(focusTableAction({ tableId: 't1' }));
+
+    store.dispatchSync(
+      pasteEntitiesAction$(
+        entitiesPayload({
+          tables: [clipboardTable('st1', 0, 0)],
+          memos: [clipboardMemo('sm1', 0, 300)],
+        }),
+        1
+      )
+    );
+
+    const [tableCopyId] = addedIds(['t1'], store.state.doc.tableIds);
+    const [memoCopyId] = store.state.doc.memoIds;
+
+    expect(store.state.editor.selectedMap).toEqual({
+      [tableCopyId]: SelectType.table,
+      [memoCopyId]: SelectType.memo,
+    });
+    expect(store.state.editor.focusTable).toBeNull();
+  });
+
+  it('restores every copied attribute of a table, its columns and a memo', () => {
+    // AC-17.
+    seedTable(store, 't1', 100, 100);
+    seedColumn(store, 't1', 'c1');
+    store.dispatchSync(changeTableNameAction({ id: 't1', value: 'users' }));
+    store.dispatchSync(
+      changeTableCommentAction({ id: 't1', value: 'the users' })
+    );
+    store.dispatchSync(
+      changeTableColorAction({ id: 't1', color: '#ff0000', prevColor: '' })
+    );
+    store.dispatchSync(
+      changeColumnNameAction({ tableId: 't1', id: 'c1', value: 'id' })
+    );
+    store.dispatchSync(
+      changeColumnDataTypeAction({ tableId: 't1', id: 'c1', value: 'int' })
+    );
+    store.dispatchSync(
+      changeColumnDefaultAction({ tableId: 't1', id: 'c1', value: '0' })
+    );
+    store.dispatchSync(
+      changeColumnCommentAction({ tableId: 't1', id: 'c1', value: 'pk' })
+    );
+    store.dispatchSync(
+      changeColumnPrimaryKeyAction({ tableId: 't1', id: 'c1', value: true })
+    );
+    store.dispatchSync(
+      changeColumnNotNullAction({ tableId: 't1', id: 'c1', value: true })
+    );
+    store.dispatchSync(
+      changeColumnUniqueAction({ tableId: 't1', id: 'c1', value: true })
+    );
+    store.dispatchSync(
+      changeColumnAutoIncrementAction({ tableId: 't1', id: 'c1', value: true })
+    );
+
+    seedMemo(store, 'm1', 400, 400);
+    store.dispatchSync(changeMemoValueAction({ id: 'm1', value: 'a note' }));
+    store.dispatchSync(
+      changeMemoColorAction({ id: 'm1', color: '#00ff00', prevColor: '' })
+    );
+
+    store.dispatchSync(
+      selectAction({ t1: SelectType.table, m1: SelectType.memo })
+    );
+
+    store.dispatchSync(
+      pasteEntitiesAction$(entitiesCopyToPayload(store.state)!, 1)
+    );
+
+    const [tableCopyId] = addedIds(['t1'], store.state.doc.tableIds);
+    const [memoCopyId] = addedIds(['m1'], store.state.doc.memoIds);
+    const tableCopy = tableOf(store, tableCopyId);
+    const memoCopy = memoOf(store, memoCopyId);
+
+    expect(tableCopy.name).toBe('users');
+    expect(tableCopy.comment).toBe('the users');
+    expect(tableCopy.ui.color).toBe('#ff0000');
+    // Stacked above everything that was already there, in the source's own
+    // overlap order: both sources sit at zIndex 2, so the tie breaks on id.
+    expect(memoCopy.ui.zIndex).toBe(3);
+    expect(tableCopy.ui.zIndex).toBe(4);
+
+    const columnCopy = columnOf(store, tableCopy.columnIds[0]);
+    expect(columnCopy.name).toBe('id');
+    expect(columnCopy.dataType).toBe('int');
+    expect(columnCopy.default).toBe('0');
+    expect(columnCopy.comment).toBe('pk');
+    expect(bHas(columnCopy.options, ColumnOption.primaryKey)).toBe(true);
+    expect(bHas(columnCopy.options, ColumnOption.notNull)).toBe(true);
+    expect(bHas(columnCopy.options, ColumnOption.unique)).toBe(true);
+    expect(bHas(columnCopy.options, ColumnOption.autoIncrement)).toBe(true);
+
+    expect(memoCopy.value).toBe('a note');
+    expect(memoCopy.ui.color).toBe('#00ff00');
+    expect(memoCopy.ui.width).toBe(memoOf(store, 'm1').ui.width);
+    expect(memoCopy.ui.height).toBe(memoOf(store, 'm1').ui.height);
+
+    // The widths are derived, not copied: `changeTableName` recomputes them.
+    // Comparing against a table freshly named the same way is the only check
+    // that is not a tautology.
+    seedTable(store, 't-ref', 900, 900);
+    store.dispatchSync(changeTableNameAction({ id: 't-ref', value: 'users' }));
+    expect(tableCopy.ui.widthName).toBe(tableOf(store, 't-ref').ui.widthName);
+  });
+});
+
+describe('duplicateAction$', () => {
+  it('emits nothing when the given ids match no entity', () => {
+    seedTable(store, 't1');
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+
+    expect(
+      typesOf(
+        store,
+        duplicateAction$({
+          tableIds: ['ghost'],
+          offset: { x: 50, y: 50 },
+          escapeCollision: true,
+        })
+      )
+    ).toEqual([]);
+    expect(store.state.editor.selectedMap).toEqual({ t1: SelectType.table });
+  });
+
+  it('emits nothing when both id lists are empty', () => {
+    seedTable(store, 't1');
+
+    expect(
+      typesOf(
+        store,
+        duplicateAction$({
+          tableIds: [],
+          memoIds: [],
+          offset: { x: 50, y: 50 },
+          escapeCollision: true,
+        })
+      )
+    ).toEqual([]);
+  });
+
+  it('duplicates the whole selection, keeping the relative layout', () => {
+    // AC-21.
+    seedTable(store, 't1', 100, 100);
+    seedTable(store, 't2', 300, 250);
+    seedMemo(store, 'm1', 500, 400);
+    store.dispatchSync(changeTableNameAction({ id: 't1', value: 'one' }));
+    store.dispatchSync(changeTableNameAction({ id: 't2', value: 'two' }));
+    store.dispatchSync(
+      selectAction({
+        t1: SelectType.table,
+        t2: SelectType.table,
+        m1: SelectType.memo,
+      })
+    );
+
+    store.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1', 't2'],
+        memoIds: ['m1'],
+        offset: { x: 50, y: 50 },
+        escapeCollision: true,
+      })
+    );
+
+    const copyIds = addedIds(['t1', 't2'], store.state.doc.tableIds);
+    const [memoCopyId] = addedIds(['m1'], store.state.doc.memoIds);
+    expect(copyIds).toHaveLength(2);
+
+    const byName = new Map(
+      copyIds.map(id => [tableOf(store, id).name, tableOf(store, id)])
+    );
+    const one = byName.get('one')!;
+    const two = byName.get('two')!;
+    const memoCopy = memoOf(store, memoCopyId);
+
+    expect(one.ui.x).toBe(150);
+    expect(one.ui.y).toBe(150);
+    expect(two.ui.x - one.ui.x).toBe(200);
+    expect(two.ui.y - one.ui.y).toBe(150);
+    expect(memoCopy.ui.x - one.ui.x).toBe(400);
+    expect(memoCopy.ui.y - one.ui.y).toBe(300);
+  });
+
+  it('duplicates only the given table, ignoring the wider selection', () => {
+    // The context menu path: a right click collapses the selection, so it hands
+    // over `props.tableId` alone.
+    seedTable(store, 't1', 100, 100);
+    seedTable(store, 't2', 300, 300);
+    seedMemo(store, 'm1', 500, 500);
+    store.dispatchSync(
+      selectAction({
+        t1: SelectType.table,
+        t2: SelectType.table,
+        m1: SelectType.memo,
+      })
+    );
+
+    store.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        offset: { x: 50, y: 50 },
+        escapeCollision: true,
+      })
+    );
+
+    expect(store.state.doc.tableIds).toHaveLength(3);
+    expect(store.state.doc.memoIds).toEqual(['m1']);
+
+    const [copyId] = addedIds(['t1', 't2'], store.state.doc.tableIds);
+    expect(store.state.editor.selectedMap).toEqual({
+      [copyId]: SelectType.table,
+    });
+  });
+
+  it('passes escapeCollision straight through instead of inferring it', () => {
+    // AC-37: an explicit drag onto an occupied point stays where it was dropped.
+    seedTable(store, 't1', 100, 100);
+    seedTable(store, 't2', 150, 150);
+
+    store.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        offset: { x: 50, y: 50 },
+        escapeCollision: false,
+      })
+    );
+
+    const [droppedId] = addedIds(['t1', 't2'], store.state.doc.tableIds);
+    expect(tableOf(store, droppedId).ui.x).toBe(150);
+    expect(tableOf(store, droppedId).ui.y).toBe(150);
+
+    store.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        offset: { x: 50, y: 50 },
+        escapeCollision: true,
+      })
+    );
+
+    const [escapedId] = addedIds(
+      ['t1', 't2', droppedId],
+      store.state.doc.tableIds
+    );
+    expect(tableOf(store, escapedId).ui.x).toBe(200);
+    expect(tableOf(store, escapedId).ui.y).toBe(200);
+  });
+
+  it('keeps the committed coordinates at four decimals', () => {
+    // AC-39. Rounding the offset alone is not enough — 0.1 + 0.2 lands on
+    // 0.30000000000000004, and that is what would reach `ui.x`.
+    seedTable(store, 't1', 0.1, 0.2);
+
+    store.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        offset: { x: 0.2, y: 0.12345678 },
+        escapeCollision: false,
+      })
+    );
+
+    const [copyId] = addedIds(['t1'], store.state.doc.tableIds);
+    const { x, y } = tableOf(store, copyId).ui;
+
+    expect(x).toBe(0.3);
+    expect(y).toBe(0.3235);
+    expect(Number(x.toFixed(4))).toBe(x);
+    expect(Number(y.toFixed(4))).toBe(y);
+  });
+});
+
+describe('duplicateAction$ history depth', () => {
+  const stores: RxStore[] = [];
+
+  function createRxTestStore(): RxStore {
+    const rxStore = createRxStore({ toWidth, clock: new Clock() });
+    stores.push(rxStore);
+    return rxStore;
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    while (stores.length) {
+      stores.pop()?.destroy();
+    }
+  });
+
+  it('records exactly one history command for coloured entities', () => {
+    // AC-23/AC-31/AC-35. The colours matter: `table.changeColor` and
+    // `memo.changeColor` are stream actions, so a batch carrying them would be
+    // regrouped into a second `@@color` command ~200ms later and one undo would
+    // restore only the colour. Checking immediately would miss it, which is why
+    // the size is asserted again past the 200ms buffer.
+    vi.useFakeTimers();
+    const rxStore = createRxTestStore();
+
+    rxStore.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 100, y: 100, zIndex: 2 } })
+    );
+    rxStore.dispatchSync(
+      changeTableColorAction({ id: 't1', color: '#ff0000', prevColor: '' })
+    );
+    rxStore.dispatchSync(
+      addMemoAction({ id: 'm1', ui: { x: 400, y: 400, zIndex: 2 } })
+    );
+    rxStore.dispatchSync(
+      changeMemoColorAction({ id: 'm1', color: '#00ff00', prevColor: '' })
+    );
+    vi.advanceTimersByTime(300);
+
+    const size = rxStore.history.size;
+
+    rxStore.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        memoIds: ['m1'],
+        offset: { x: 50, y: 50 },
+        escapeCollision: true,
+      })
+    );
+
+    expect(rxStore.state.doc.tableIds).toHaveLength(2);
+    expect(rxStore.state.doc.memoIds).toHaveLength(2);
+    expect(rxStore.history.size).toBe(size + 1);
+
+    vi.advanceTimersByTime(300);
+    expect(rxStore.history.size).toBe(size + 1);
+
+    rxStore.undo();
+
+    expect(rxStore.state.doc.tableIds).toEqual(['t1']);
+    expect(rxStore.state.doc.memoIds).toEqual(['m1']);
+    expect(rxStore.state.collections.tableEntities['t1'].ui.color).toBe(
+      '#ff0000'
+    );
+  });
+});
+
 describe('actions$', () => {
   it('exposes every generator action of the editor module', () => {
     expect(Object.keys(actions$).sort()).toEqual(
@@ -843,11 +1392,13 @@ describe('actions$', () => {
         'dragstartColumnAction$',
         'drawStartAddRelationshipAction$',
         'drawStartRelationshipAction$',
+        'duplicateAction$',
         'focusMoveTableAction$',
         'initialLoadJsonAction$',
         'loadJsonAction$',
         'loadSchemaSQLAction$',
         'moveAllAction$',
+        'pasteEntitiesAction$',
         'removeSelectedAction$',
         'unselectAllAction$',
       ].sort()

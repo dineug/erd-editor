@@ -11,6 +11,14 @@ import {
   hasCellType,
   Row,
 } from '@/utils/table-clipboard';
+import {
+  CLIPBOARD_HTML_ATTR,
+  CLIPBOARD_HTML_TRUNCATED_ATTR,
+  CLIPBOARD_MIME,
+  ClipboardPayload,
+  parsePayload,
+  ParseResult,
+} from '@/utils/table-clipboard/payload';
 
 const hasTruthy = arrayHas(['true', '1', 'yes', 'y']);
 const hasNotNullTruthy = arrayHas(['true', '1', 'yes', 'y', 'not null']);
@@ -74,6 +82,43 @@ export function tablePasteFromHtmlToColumns(
 
     return column;
   });
+}
+
+// `unsupported` must stop the caller's ladder (#408): the rung below parses our
+// own `<table>`, so it always succeeds and appends columns to selected tables.
+export function readClipboardPayload(dataTransfer: DataTransfer): ParseResult {
+  const json = dataTransfer.getData(CLIPBOARD_MIME);
+  if (json) {
+    const result = parsePayload(json);
+    if (result.status !== 'foreign') return result;
+  }
+
+  const html = dataTransfer.getData('text/html');
+  if (!html) return { status: 'foreign' };
+
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const fragment = template.content;
+
+  const hidden = fragment
+    .querySelector(`[${CLIPBOARD_HTML_ATTR}]`)
+    ?.getAttribute(CLIPBOARD_HTML_ATTR);
+  if (hidden) {
+    const result = parsePayload(hidden);
+    if (result.status !== 'foreign') return result;
+  }
+
+  if (fragment.querySelector(`[${CLIPBOARD_HTML_TRUNCATED_ATTR}]`)) {
+    return { status: 'unsupported', version: Number.NaN };
+  }
+
+  return { status: 'foreign' };
+}
+
+export function payloadToColumns({ columns }: ClipboardPayload): Column[] {
+  return columns.map(({ sourceId, tableId, ui, ...rest }) =>
+    createColumn({ ...rest, ui: { ...ui, keys: 0 } })
+  );
 }
 
 function assignColumn(
