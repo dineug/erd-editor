@@ -23,11 +23,11 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
   const app = useAppContext(ctx);
 
   const state = observable({
-    index: null as Index | null,
+    indexId: null as string | null,
   });
 
   const handleSelectIndex = (index: Index | null) => {
-    state.index = index;
+    state.indexId = index?.id ?? null;
   };
 
   const handleAddIndex = () => {
@@ -48,6 +48,9 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
       .selectByIds(indexIds)
       .filter(index => index.tableId === tableId);
 
+    const { indexId } = state;
+    const selectedIndex = indexes.find(index => index.id === indexId) ?? null;
+
     return (
       <>
         <div class={styles.leftArea}>
@@ -57,7 +60,7 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
             index => (
               <IndexesIndex
                 index={index}
-                selected={index.id === state.index?.id}
+                selected={index.id === selectedIndex?.id}
                 onSelect={handleSelectIndex}
               />
             )
@@ -71,8 +74,8 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
           </div>
         </div>
         <div class={styles.rightArea}>
-          <IndexesCheckboxColumn tableId={tableId} index={state.index} />
-          {state.index ? <IndexesColumn index={state.index} /> : null}
+          <IndexesCheckboxColumn tableId={tableId} index={selectedIndex} />
+          {selectedIndex ? <IndexesColumn index={selectedIndex} /> : null}
         </div>
       </>
     );

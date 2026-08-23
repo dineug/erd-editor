@@ -188,7 +188,7 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
                 <input
                   type="checkbox"
                   bool:disabled={!index}
-                  bool:checked={hasChecked(column.id)}
+                  prop:checked={hasChecked(column.id)}
                   on:change={event => handleChangeIndexColumn(event, column)}
                 />
               </div>
