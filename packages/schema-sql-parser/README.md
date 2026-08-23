@@ -124,6 +124,57 @@ two arrive separately from the `create.table` they belong to.
 </details>
 
 <details>
+<summary>Databricks (45 types)</summary>
+
+  > array
+  > bigint
+  > binary
+  > boolean
+  > byte
+  > char
+  > date
+  > dec
+  > decimal
+  > double
+  > float
+  > geography
+  > geometry
+  > int
+  > integer
+  > interval
+  > interval day
+  > interval day to hour
+  > interval day to minute
+  > interval day to second
+  > interval hour
+  > interval hour to minute
+  > interval hour to second
+  > interval minute
+  > interval minute to second
+  > interval month
+  > interval second
+  > interval year
+  > interval year to month
+  > long
+  > map
+  > numeric
+  > object
+  > real
+  > short
+  > smallint
+  > string
+  > struct
+  > timestamp
+  > timestamp_ltz
+  > timestamp_ntz
+  > tinyint
+  > varchar
+  > variant
+  > void
+
+</details>
+
+<details>
 <summary>MariaDB (86 types)</summary>
 
   > bigint
@@ -715,6 +766,20 @@ ALTER TABLE ONLY Persons ADD UNIQUE (ID)
 ALTER TABLE ONLY Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
 ALTER TABLE ONLY "public".Persons ADD UNIQUE (ID)
 ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
+```
+
+### Databricks CREATE TABLE
+
+```sql
+CREATE TABLE `main`.`events` (
+  `event_id` BIGINT NOT NULL COMMENT 'event id',
+  `user_id` STRING NOT NULL,
+  `occurred_at` TIMESTAMP_NTZ,
+  `tags` ARRAY<STRING>,
+  `props` MAP<STRING, STRING>,
+  CONSTRAINT `pk_events` PRIMARY KEY (`event_id`) NOT ENFORCED RELY
+)
+USING DELTA
 ```
 
 ## Development
