@@ -36,6 +36,10 @@ export const menus: Menu[] = [
     name: 'Scala',
     value: Language.Scala,
   },
+  {
+    name: 'Go',
+    value: Language.Go,
+  },
 ];
 
 export function createLanguageMenus({ store }: AppContext) {

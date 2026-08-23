@@ -7,6 +7,7 @@ import { Language } from '@/constants/schema';
  */
 export type Lang =
   | 'csharp'
+  | 'go'
   | 'graphql'
   | 'java'
   | 'kotlin'
@@ -21,4 +22,5 @@ export const LanguageToLangMap: Record<number, Lang> = {
   [Language.Kotlin]: 'kotlin',
   [Language.Scala]: 'scala',
   [Language.JPA]: 'java',
+  [Language.Go]: 'go',
 };

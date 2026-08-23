@@ -13,6 +13,7 @@ describe('LanguageToLangMap', () => {
       [Language.TypeScript]: 'typescript',
       [Language.JPA]: 'java',
       [Language.Scala]: 'scala',
+      [Language.Go]: 'go',
     });
   });
 

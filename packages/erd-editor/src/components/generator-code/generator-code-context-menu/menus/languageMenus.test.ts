@@ -18,6 +18,7 @@ describe('languageMenus', () => {
       { name: 'TypeScript', value: Language.TypeScript },
       { name: 'JPA', value: Language.JPA },
       { name: 'Scala', value: Language.Scala },
+      { name: 'Go', value: Language.Go },
     ]);
   });
 
@@ -34,6 +35,7 @@ describe('languageMenus', () => {
       'TypeScript',
       'JPA',
       'Scala',
+      'Go',
     ]);
     created.forEach(menu => expect(typeof menu.onClick).toBe('function'));
   });

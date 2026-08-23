@@ -92,6 +92,17 @@ const expectedByLanguage: Array<[string, number, string[]]> = [
     Language.Scala,
     ['', '@Data', 'case class User(', ' createdAt: Int', ')', ''],
   ],
+  [
+    'Go',
+    Language.Go,
+    [
+      '',
+      'type User struct {',
+      '\tCreatedAt int32 `json:"created_at"`',
+      '}',
+      '',
+    ],
+  ],
 ];
 
 describe('generator-code/index', () => {

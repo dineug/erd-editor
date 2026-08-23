@@ -6,6 +6,7 @@ import {
   createCode as createCodeCsharp,
   formatTable as formatTableCsharp,
 } from './csharp';
+import { createCode as createCodeGo, formatTable as formatTableGo } from './go';
 import {
   createCode as createCodeGraphql,
   formatTable as formatTableGraphql,
@@ -51,6 +52,8 @@ export function createGeneratorCode(state: RootState): string {
       return createCodeKotlin(state);
     case Language.Scala:
       return createCodeScala(state);
+    case Language.Go:
+      return createCodeGo(state);
   }
 
   return '';
@@ -92,6 +95,10 @@ export function createGeneratorCodeTable(
       break;
     case Language.Scala:
       formatTableScala(state, { buffer, table });
+      buffer.push('');
+      break;
+    case Language.Go:
+      formatTableGo(state, { buffer, table });
       buffer.push('');
       break;
   }
