@@ -2,6 +2,7 @@ import { getHighlighter, setWasm, toShikiTheme } from 'shiki';
 // @ts-ignore
 import wasmUrl from 'shiki/dist/onig.wasm?url';
 import csharp from 'shiki/languages/csharp.tmLanguage.json';
+import go from 'shiki/languages/go.tmLanguage.json';
 import graphql from 'shiki/languages/graphql.tmLanguage.json';
 import java from 'shiki/languages/java.tmLanguage.json';
 import kotlin from 'shiki/languages/kotlin.tmLanguage.json';
@@ -63,6 +64,13 @@ const languages: Array<any> = [
     displayName: 'Scala',
     grammar: scala,
   },
+  {
+    id: 'go',
+    scopeName: 'source.go',
+    displayName: 'Go',
+    aliases: ['golang'],
+    grammar: go,
+  },
 ];
 
 function getThemeKey(theme?: string): 'dark' | 'light' {
@@ -96,7 +104,8 @@ export class ShikiService {
         | 'csharp'
         | 'java'
         | 'kotlin'
-        | 'scala';
+        | 'scala'
+        | 'go';
       theme?: 'dark' | 'light';
     }
   ): Promise<string> {
