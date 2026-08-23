@@ -8,6 +8,8 @@ import {
   AlterTableAddForeignKey,
   AlterTableAddPrimaryKey,
   AlterTableAddUnique,
+  CommentOnColumn,
+  CommentOnTable,
   CreateIndex,
   CreateTable,
   schemaSQLParser,
@@ -40,6 +42,8 @@ type StatementMap = {
   primaryKeys: AlterTableAddPrimaryKey[];
   foreignKeys: AlterTableAddForeignKey[];
   uniques: AlterTableAddUnique[];
+  tableComments: CommentOnTable[];
+  columnComments: CommentOnColumn[];
 };
 
 export function schemaSQLParserToSchemaJson(
@@ -70,6 +74,8 @@ function getStatementMap(statements: Statement[]): StatementMap {
     primaryKeys: [],
     foreignKeys: [],
     uniques: [],
+    tableComments: [],
+    columnComments: [],
   };
 
   for (const statement of statements) {
@@ -105,6 +111,16 @@ function getStatementMap(statements: Statement[]): StatementMap {
           map.uniques.push(statement);
         }
         break;
+      case StatementType.commentOnTable:
+        if (statement.name) {
+          map.tableComments.push(statement);
+        }
+        break;
+      case StatementType.commentOnColumn:
+        if (statement.tableName && statement.columnName) {
+          map.columnComments.push(statement);
+        }
+        break;
     }
   }
 
@@ -117,6 +133,8 @@ function mergeTables({
   primaryKeys,
   foreignKeys,
   uniques,
+  tableComments,
+  columnComments,
 }: StatementMap): CreateTable[] {
   indexes.forEach(index => {
     const table = findByName(tables, index.tableName);
@@ -162,6 +180,25 @@ function mergeTables({
       refTableName: foreignKey.refTableName,
       refColumnNames: foreignKey.refColumnNames,
     });
+  });
+
+  // PostgreSQL and Oracle carry comments as their own statement rather than as
+  // an option on the table.
+  tableComments.forEach(({ name, comment }) => {
+    const table = findByName(tables, name);
+    if (!table) return;
+
+    table.comment = comment;
+  });
+
+  columnComments.forEach(({ tableName, columnName, comment }) => {
+    const table = findByName(tables, tableName);
+    if (!table) return;
+
+    const column = findByName(table.columns, columnName);
+    if (!column) return;
+
+    column.comment = comment;
   });
 
   return tables;
