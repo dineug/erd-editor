@@ -219,6 +219,12 @@ describe('createAndMergeSettings', () => {
       ).toBe(Database.Databricks);
     });
 
+    it('keeps the Go language', () => {
+      expect(createAndMergeSettings({ language: Language.Go }).language).toBe(
+        Language.Go
+      );
+    });
+
     it('ignores numbers outside the enum lists', () => {
       const settings = createAndMergeSettings({
         database: 999,

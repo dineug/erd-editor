@@ -15,7 +15,8 @@ export type ShikiService = {
         | 'csharp'
         | 'java'
         | 'kotlin'
-        | 'scala';
+        | 'scala'
+        | 'go';
       theme?: 'dark' | 'light';
     }
   ): Promise<string>;

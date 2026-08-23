@@ -150,8 +150,9 @@ describe('v3/schema/settings', () => {
         TypeScript: 16,
         JPA: 32,
         Scala: 64,
+        Go: 128,
       });
-      expect(LanguageList).toEqual([1, 2, 4, 8, 16, 32, 64]);
+      expect(LanguageList).toEqual([1, 2, 4, 8, 16, 32, 64, 128]);
       expect(Object.values(Language).every(isPowerOfTwo)).toBe(true);
     });
   });
