@@ -1,16 +1,21 @@
-import { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
+import { ERDEditorSchemaV3, schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
   ColumnOption,
   ColumnUIKey,
+  Database,
   OrderType,
   RelationshipType,
   StartRelationshipType,
 } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
+import { RootState } from '@/engine/state';
 import { Column, Index, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { createTable } from '@/utils/collection/table.entity';
+import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { createSchemaSQL } from '@/utils/schema-sql';
 import { schemaSQLParserToSchemaJson } from '@/utils/schema-sql-parser';
 
 type Schema = Pick<
@@ -198,6 +203,65 @@ describe('schemaSQLParserToSchemaJson', () => {
 
       expect(schema.doc.tableIds).toHaveLength(0);
       expect(schema.collections.tableColumnEntities).toEqual({});
+    });
+  });
+
+  describe('COMMENT ON merging', () => {
+    const SQL = `
+      CREATE TABLE users
+      (
+        id    INT          NOT NULL,
+        email VARCHAR(255) NOT NULL
+      );
+
+      COMMENT ON TABLE users IS 'user table';
+
+      COMMENT ON COLUMN users.id IS 'user id';
+
+      COMMENT ON COLUMN public.users.email IS 'email address';
+    `;
+
+    it('applies the PostgreSQL table and column comments', () => {
+      const schema = parse(SQL);
+      const users = tableByName(schema, 'users');
+
+      expect(users.comment).toBe('user table');
+      expect(columnByName(schema, users, 'id').comment).toBe('user id');
+      expect(columnByName(schema, users, 'email').comment).toBe(
+        'email address'
+      );
+    });
+
+    it('sizes the comment columns from the applied comments', () => {
+      const schema = parse(SQL);
+      const users = tableByName(schema, 'users');
+
+      // 'user table'.length * 10 === 100
+      expect(users.ui.widthComment).toBe(100);
+      // 'user id'.length * 10 === 70
+      expect(columnByName(schema, users, 'id').ui.widthComment).toBe(70);
+    });
+
+    it('ignores a COMMENT ON that names a table or column the source never created', () => {
+      const schema = parse(`
+        CREATE TABLE users (id INT);
+
+        COMMENT ON TABLE missing IS 'nope';
+        COMMENT ON COLUMN users.missing IS 'nope';
+        COMMENT ON COLUMN missing.id IS 'nope';
+      `);
+      const users = tableByName(schema, 'users');
+
+      expect(users.comment).toBe('');
+      expect(columnByName(schema, users, 'id').comment).toBe('');
+    });
+
+    it('reads a MySQL table option comment through the equal sign', () => {
+      const schema = parse(
+        "CREATE TABLE t (id INT) ENGINE=InnoDB COMMENT='(test)bug here!!';"
+      );
+
+      expect(tableByName(schema, 't').comment).toBe('(test)bug here!!');
     });
   });
 
@@ -592,6 +656,58 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(
         bHas(columnByName(schema, users, 'email').options, ColumnOption.unique)
       ).toBe(true);
+    });
+  });
+
+  describe('comment round trip', () => {
+    function commentedState(): RootState {
+      const state = {
+        ...schemaV3Parser({}),
+        editor: {},
+        lww: {},
+      } as unknown as RootState;
+
+      state.collections.tableColumnEntities = {
+        'col-id': createColumn({
+          id: 'col-id',
+          tableId: 'tbl-users',
+          name: 'id',
+          dataType: 'INT',
+          comment: 'user id',
+          options: ColumnOption.primaryKey | ColumnOption.notNull,
+        }),
+      };
+      state.collections.tableEntities = {
+        'tbl-users': createTable({
+          id: 'tbl-users',
+          name: 'users',
+          comment: 'user table',
+          columnIds: ['col-id'],
+        }),
+      };
+      state.doc.tableIds = ['tbl-users'];
+
+      return state;
+    }
+
+    it.each([Database.PostgreSQL, Database.Oracle, Database.MySQL])(
+      'keeps the comments of a %s export when the SQL is imported back',
+      database => {
+        const schema = parse(createSchemaSQL(commentedState(), database));
+        const users = tableByName(schema, 'users');
+
+        expect(users.comment).toBe('user table');
+        expect(columnByName(schema, users, 'id').comment).toBe('user id');
+      }
+    );
+
+    it('keeps the columns of a SQLite export, whose comments are plain -- lines', () => {
+      const schema = parse(createSchemaSQL(commentedState(), Database.SQLite));
+      const users = tableByName(schema, 'users');
+
+      expect(columnsOf(schema, users).map(column => column.name)).toEqual([
+        'id',
+      ]);
     });
   });
 });

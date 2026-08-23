@@ -4,6 +4,7 @@ import {
   isForeignValue,
   isNewStatement,
   isPeriodToken,
+  isSemicolonToken,
   isStringToken,
   isTableValue,
 } from '@/parser/helper';
@@ -17,6 +18,7 @@ import { Token } from '@/parser/tokenizer';
 
 export function alterTableAddForeignKeyParser(tokens: Token[], $pos: RefPos) {
   const newStatement = isNewStatement(tokens);
+  const isSemicolon = isSemicolonToken(tokens);
   const isString = isStringToken(tokens);
   const isConstraint = isConstraintValue(tokens);
   const isPeriod = isPeriodToken(tokens);
@@ -38,6 +40,13 @@ export function alterTableAddForeignKeyParser(tokens: Token[], $pos: RefPos) {
 
   while (isToken() && !newStatement($pos.value)) {
     let token = tokens[$pos.value];
+
+    // The terminator ends the statement; without it the loop runs on into
+    // whatever follows, and a `COMMENT ON` right after is swallowed.
+    if (isSemicolon($pos.value)) {
+      $pos.value++;
+      break;
+    }
 
     if (isTable($pos.value)) {
       token = tokens[++$pos.value];

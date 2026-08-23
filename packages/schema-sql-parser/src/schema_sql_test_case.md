@@ -1088,3 +1088,219 @@ ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
   ]
 }
 ```
+### Table Options
+
+```sql
+CREATE TABLE `role` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `key` varchar(30) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
+  `description` text,
+  PRIMARY KEY (`id`,`key`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='role';
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "role",
+      "comment": "role",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": true,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "key",
+          "dataType": "varchar(30)",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "dataType": "text",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    }
+  ]
+}
+```
+
+### Table COMMENT with parentheses
+
+```sql
+CREATE TABLE `test` (
+  `id` int NOT NULL COMMENT '(a)b',
+  `name` varchar(30)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='(test)bug here!!';
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "test",
+      "comment": "(test)bug here!!",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "int",
+          "default": "",
+          "comment": "(a)b",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "dataType": "varchar(30)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    }
+  ]
+}
+```
+
+### COMMENT ON TABLE, COMMENT ON COLUMN
+
+```sql
+CREATE TABLE users (
+  id INT NOT NULL,
+  email VARCHAR(255)
+);
+
+COMMENT ON TABLE users IS 'user table';
+
+COMMENT ON COLUMN users.id IS 'user id';
+
+COMMENT ON COLUMN public.users.email IS 'email address';
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "users",
+      "comment": "",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "email",
+          "dataType": "VARCHAR(255)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    },
+    {
+      "type": "comment.on.table",
+      "name": "users",
+      "comment": "user table"
+    },
+    {
+      "type": "comment.on.column",
+      "tableName": "users",
+      "columnName": "id",
+      "comment": "user id"
+    },
+    {
+      "type": "comment.on.column",
+      "tableName": "users",
+      "columnName": "email",
+      "comment": "email address"
+    }
+  ]
+}
+```
+
+### SQL Comments
+
+```sql
+-- the user table
+CREATE TABLE users /* pk: id; see docs (v2) */ (
+  id INTEGER NOT NULL, -- user id
+  /* the address it was signed up with */
+  email TEXT
+);
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "users",
+      "comment": "",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INTEGER",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "email",
+          "dataType": "TEXT",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    }
+  ]
+}
+```

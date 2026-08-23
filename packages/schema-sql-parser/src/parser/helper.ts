@@ -9,10 +9,14 @@ import { Token, TokenType } from '@/parser/tokenizer';
 const createTypeEqual = (type: string) => (tokens: Token[]) => (pos: number) =>
   tokens[pos] ? tokens[pos].type === type : false;
 
+// A quoted token is always an identifier, never a keyword: `key` is a column
+// named key, KEY is the index definition.
 const createValueEqual = (type: string) => {
   const value = type.toUpperCase();
-  return (tokens: Token[]) => (pos: number) =>
-    tokens[pos] ? tokens[pos].value.toUpperCase() === value : false;
+  return (tokens: Token[]) => (pos: number) => {
+    const token = tokens[pos];
+    return token ? !token.quoted && token.value.toUpperCase() === value : false;
+  };
 };
 
 export const isStringToken = createTypeEqual(TokenType.string);
@@ -52,11 +56,34 @@ export const isAutoincrementValue = createValueEqual('AUTOINCREMENT');
 export const isIfValue = createValueEqual('IF');
 export const isExistsValue = createValueEqual('EXISTS');
 export const isOnlyValue = createValueEqual('ONLY');
+export const isIsValue = createValueEqual('IS');
+export const isColumnValue = createValueEqual('COLUMN');
+export const isCharacterValue = createValueEqual('CHARACTER');
+export const isSetValue = createValueEqual('SET');
+export const isCollateValue = createValueEqual('COLLATE');
 
 export const isAutoIncrementValue = (tokens: Token[]) => {
   const isAuto_increment = isAuto_incrementValue(tokens);
   const isAutoincrement = isAutoincrementValue(tokens);
   return (pos: number) => isAuto_increment(pos) || isAutoincrement(pos);
+};
+
+export const isCommentOn = (tokens: Token[]) => {
+  const isComment = isCommentValue(tokens);
+  const isOn = isOnValue(tokens);
+  return (pos: number) => isComment(pos) && isOn(pos + 1);
+};
+
+export const isCommentOnTable = (tokens: Token[]) => {
+  const commentOn = isCommentOn(tokens);
+  const isTable = isTableValue(tokens);
+  return (pos: number) => commentOn(pos) && isTable(pos + 2);
+};
+
+export const isCommentOnColumn = (tokens: Token[]) => {
+  const commentOn = isCommentOn(tokens);
+  const isColumn = isColumnValue(tokens);
+  return (pos: number) => commentOn(pos) && isColumn(pos + 2);
 };
 
 export const isNewStatement = (tokens: Token[]) => {
@@ -67,6 +94,7 @@ export const isNewStatement = (tokens: Token[]) => {
   const isRename = isRenameValue(tokens);
   const isDelete = isDeleteValue(tokens);
   const isSelect = isSelectValue(tokens);
+  const commentOn = isCommentOn(tokens);
   return (pos: number) =>
     isCreate(pos) ||
     isAlter(pos) ||
@@ -74,7 +102,8 @@ export const isNewStatement = (tokens: Token[]) => {
     isUse(pos) ||
     isRename(pos) ||
     isDelete(pos) ||
-    isSelect(pos);
+    isSelect(pos) ||
+    commentOn(pos);
 };
 
 export const isCreateTableIfNotExists = (tokens: Token[]) => {
@@ -89,6 +118,12 @@ export const isCreateTableIfNotExists = (tokens: Token[]) => {
     isIf(pos + 2) &&
     isNot(pos + 3) &&
     isExists(pos + 4);
+};
+
+export const isCharacterSet = (tokens: Token[]) => {
+  const isCharacter = isCharacterValue(tokens);
+  const isSet = isSetValue(tokens);
+  return (pos: number) => isCharacter(pos) && isSet(pos + 1);
 };
 
 export const isCreateTable = (tokens: Token[]) => {

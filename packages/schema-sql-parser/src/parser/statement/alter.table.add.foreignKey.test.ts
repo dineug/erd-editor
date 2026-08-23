@@ -26,6 +26,16 @@ const emptyAst = {
 };
 
 describe('alterTableAddForeignKeyParser', () => {
+  it('stops on the terminator instead of reading the statement after it', () => {
+    const { ast, $pos, tokens } = parse(
+      'ALTER TABLE orders ADD FOREIGN KEY (user_id) REFERENCES users (id);' +
+        " COMMENT ON TABLE orders IS 'a';"
+    );
+
+    expect(ast.name).toBe('orders');
+    expect(tokens[$pos.value].value).toBe('COMMENT');
+  });
+
   it('parses an anonymous foreign key over a single column', () => {
     const { ast } = parse(
       'ALTER TABLE post ADD FOREIGN KEY (user_id) REFERENCES user (id);'

@@ -8,6 +8,7 @@ import {
   isNewStatement,
   isOnValue,
   isRightParentToken,
+  isSemicolonToken,
   isStringToken,
   isUniqueValue,
 } from '@/parser/helper';
@@ -22,6 +23,7 @@ import { Token } from '@/parser/tokenizer';
 
 export function createIndexParser(tokens: Token[], $pos: RefPos) {
   const newStatement = isNewStatement(tokens);
+  const isSemicolon = isSemicolonToken(tokens);
   const isUnique = isUniqueValue(tokens);
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
@@ -47,6 +49,13 @@ export function createIndexParser(tokens: Token[], $pos: RefPos) {
 
   while (isToken() && !newStatement($pos.value)) {
     let token = tokens[$pos.value];
+
+    // The terminator ends the statement; without it the loop runs on into
+    // whatever follows, and a `COMMENT ON` right after is swallowed.
+    if (isSemicolon($pos.value)) {
+      $pos.value++;
+      break;
+    }
 
     if (isIndex($pos.value)) {
       token = tokens[++$pos.value];

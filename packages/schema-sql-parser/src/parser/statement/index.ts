@@ -5,7 +5,9 @@ export type Statement =
   | CreateIndex
   | AlterTableAddUnique
   | AlterTableAddPrimaryKey
-  | AlterTableAddForeignKey;
+  | AlterTableAddForeignKey
+  | CommentOnTable
+  | CommentOnColumn;
 
 export const StatementType = {
   createTable: 'create.table',
@@ -13,6 +15,8 @@ export const StatementType = {
   alterTableAddUnique: 'alter.table.add.unique',
   alterTableAddPrimaryKey: 'alter.table.add.primaryKey',
   alterTableAddForeignKey: 'alter.table.add.foreignKey',
+  commentOnTable: 'comment.on.table',
+  commentOnColumn: 'comment.on.column',
 } as const;
 export type StatementType = ValuesType<typeof StatementType>;
 
@@ -93,4 +97,17 @@ export type AlterTableAddForeignKey = {
   columnNames: string[];
   refTableName: string;
   refColumnNames: string[];
+};
+
+export type CommentOnTable = {
+  type: typeof StatementType.commentOnTable;
+  name: string;
+  comment: string;
+};
+
+export type CommentOnColumn = {
+  type: typeof StatementType.commentOnColumn;
+  tableName: string;
+  columnName: string;
+  comment: string;
 };

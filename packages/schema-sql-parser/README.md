@@ -5,9 +5,11 @@
 Internal to the erd-editor monorepo — this package is private and is never published to npm.
 
 `schemaSQLParser(source)` tokenizes SQL of any dialect and returns a flat array of statements:
-`create.table`, `create.index`, and `alter.table.add.{primaryKey,unique,foreignKey}`. It is permissive
+`create.table`, `create.index`, `alter.table.add.{primaryKey,unique,foreignKey}` and
+`comment.on.{table,column}`. It is permissive
 by design — anything it does not recognize is skipped instead of rejected, so a real dump full of
-dialect quirks imports partially rather than failing outright. It never throws on bad input.
+dialect quirks imports partially rather than failing outright. `--` and `/* */` comments are dropped by
+the lexer. It never throws on bad input.
 
 Its one consumer is `@dineug/erd-editor`, which depends on it as
 `"@dineug/schema-sql-parser": "workspace:*"`.
@@ -38,7 +40,10 @@ for (const statement of statements) {
 `foreignKeys`; `CreateIndex` carries `tableName`, `unique` and `columns`; the three `alter.table.add.*`
 nodes carry the altered table's `name` and `columnNames`, plus `refTableName` / `refColumnNames` on
 foreign keys — a `CONSTRAINT <id>` prefix is consumed and dropped, so the constraint's own name is not
-reported. Index columns carry a `sort` of `SortType.asc` / `SortType.desc`.
+reported. Index columns carry a `sort` of `SortType.asc` / `SortType.desc`. `CommentOnTable` carries the
+table's `name` and its `comment`, `CommentOnColumn` carries `tableName`, `columnName` and `comment` —
+PostgreSQL and Oracle attach comments with a statement of their own instead of a table option, so those
+two arrive separately from the `create.table` they belong to.
 
 ## Support DataType
 
@@ -333,6 +338,52 @@ CREATE TABLE 'users' (
   UNIQUE KEY 'users_email_unique' ('email'),
   KEY 'test_name_index' ('name'),
 );
+```
+
+### SQL Comments
+
+```sql
+-- the user table
+CREATE TABLE users /* pk: id; see docs (v2) */ (
+  id INTEGER NOT NULL, -- user id
+  /* the address it was signed up with */
+  email TEXT
+);
+```
+
+### Table Options
+
+```sql
+CREATE TABLE `role` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `key` varchar(30) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
+  `description` text,
+  PRIMARY KEY (`id`,`key`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='role';
+```
+
+### Table COMMENT with parentheses
+
+```sql
+CREATE TABLE `test` (
+  `id` int NOT NULL COMMENT '(a)b',
+  `name` varchar(30)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='(test)bug here!!';
+```
+
+### COMMENT ON TABLE, COMMENT ON COLUMN
+
+```sql
+CREATE TABLE users (
+  id INT NOT NULL,
+  email VARCHAR(255)
+);
+
+COMMENT ON TABLE users IS 'user table';
+
+COMMENT ON COLUMN users.id IS 'user id';
+
+COMMENT ON COLUMN public.users.email IS 'email address';
 ```
 
 ### Column FOREIGN KEY

@@ -12,6 +12,15 @@ function parse(sql: string, start = 0) {
 }
 
 describe('createIndexParser', () => {
+  it('stops on the terminator instead of reading the statement after it', () => {
+    const { ast, $pos, tokens } = parse(
+      "CREATE INDEX idx_a ON t (a); COMMENT ON TABLE t IS 'a';"
+    );
+
+    expect(ast.tableName).toBe('t');
+    expect(tokens[$pos.value].value).toBe('COMMENT');
+  });
+
   it('parses a simple non unique index', () => {
     const { ast } = parse('CREATE INDEX idx_a ON t (a);');
 

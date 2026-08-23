@@ -111,8 +111,25 @@ describe('createTableParser - table name', () => {
     expect(ast.columns).toEqual([column({ name: 'a', dataType: 'INT' })]);
   });
 
-  it('ignores a table COMMENT that is written with an equal sign', () => {
+  it('reads a table COMMENT that is written with an equal sign', () => {
     const { ast } = parse("CREATE TABLE t (id INT) COMMENT='table comment';");
+
+    expect(ast.comment).toBe('table comment');
+  });
+
+  it('keeps parentheses that a quoted table COMMENT contains', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (id INT) ENGINE=InnoDB COMMENT='(test)bug here!!';"
+    );
+
+    expect(ast.comment).toBe('(test)bug here!!');
+    expect(ast.columns).toEqual([column({ name: 'id', dataType: 'INT' })]);
+  });
+
+  it('stops at the terminator instead of reading the next statement as options', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (id INT);\nCOMMENT ON TABLE t IS 'table comment';"
+    );
 
     expect(ast.comment).toBe('');
   });
@@ -248,6 +265,74 @@ describe('createTableParser - column options', () => {
     expect(ast.columns).toEqual([
       column({ name: 'id', dataType: 'serial', primaryKey: true }),
       column({ name: 'd', dataType: 'time' }),
+    ]);
+  });
+});
+
+describe('createTableParser - column attributes', () => {
+  it('reads a quoted reserved word as a column name', () => {
+    const { ast } = parse('CREATE TABLE `t` (`key` VARCHAR(30) NOT NULL);');
+
+    expect(ast.columns).toEqual([
+      column({ name: 'key', dataType: 'VARCHAR(30)', nullable: false }),
+    ]);
+    expect(ast.indexes).toEqual([]);
+  });
+
+  it('still reads an unquoted KEY as an index definition', () => {
+    const { ast } = parse('CREATE TABLE t (a INT, KEY idx_a (a));');
+
+    expect(ast.columns).toEqual([column({ name: 'a', dataType: 'INT' })]);
+    expect(ast.indexes).toEqual([
+      { name: 'idx_a', unique: false, columns: [{ name: 'a', sort: 'ASC' }] },
+    ]);
+  });
+
+  it('skips CHARACTER SET and COLLATE instead of reading them as the data type', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a VARCHAR(30) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'VARCHAR(30)', nullable: false }),
+    ]);
+  });
+
+  it('skips a COLLATE written with an equal sign', () => {
+    const { ast } = parse('CREATE TABLE t (a VARCHAR(30) COLLATE=binary);');
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'VARCHAR(30)' }),
+    ]);
+  });
+
+  it('keeps the column list when a comment before it holds a semicolon or parentheses', () => {
+    const { ast } = parse(
+      'CREATE TABLE users /* pk: id; see docs (v2) */ (id INT, name VARCHAR(30));'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'id', dataType: 'INT' }),
+      column({ name: 'name', dataType: 'VARCHAR(30)' }),
+    ]);
+  });
+
+  it('keeps the column list when a table option brings a second paren group', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (id INT, name VARCHAR(30)) WITH (fillfactor=70);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'id', dataType: 'INT' }),
+      column({ name: 'name', dataType: 'VARCHAR(30)' }),
+    ]);
+  });
+
+  it('reads a column COMMENT written with an equal sign', () => {
+    const { ast } = parse("CREATE TABLE t (a INT COMMENT='(a)b');");
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT', comment: '(a)b' }),
     ]);
   });
 });

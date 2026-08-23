@@ -7,6 +7,7 @@ import {
   isPeriodToken,
   isPrimaryValue,
   isRightParentToken,
+  isSemicolonToken,
   isStringToken,
   isTableValue,
 } from '@/parser/helper';
@@ -19,6 +20,7 @@ import { Token } from '@/parser/tokenizer';
 
 export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
   const newStatement = isNewStatement(tokens);
+  const isSemicolon = isSemicolonToken(tokens);
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
   const isRightParent = isRightParentToken(tokens);
@@ -41,6 +43,13 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
 
   while (isToken() && !newStatement($pos.value)) {
     let token = tokens[$pos.value];
+
+    // The terminator ends the statement; without it the loop runs on into
+    // whatever follows, and a `COMMENT ON` right after is swallowed.
+    if (isSemicolon($pos.value)) {
+      $pos.value++;
+      break;
+    }
 
     if (isTable($pos.value)) {
       token = tokens[++$pos.value];
