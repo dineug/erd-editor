@@ -236,7 +236,7 @@ function getDrawLine(
     line.start.base.y2 += LINE_SIZE;
     line.start.base2.y1 -= LINE_SIZE;
     line.start.base2.y2 += LINE_SIZE;
-    line.start.center2.x1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
+    line.start.center2.x1 += change * PATH_LINE_HEIGHT;
   } else if (
     direction === DirectionName.top ||
     direction === DirectionName.bottom
@@ -252,7 +252,7 @@ function getDrawLine(
     line.start.base.x2 += LINE_SIZE;
     line.start.base2.x1 -= LINE_SIZE;
     line.start.base2.x2 += LINE_SIZE;
-    line.start.center2.y1 += change * (LINE_HEIGHT + LINE_HEIGHT + 3);
+    line.start.center2.y1 += change * PATH_LINE_HEIGHT;
   }
 
   return line;

@@ -105,10 +105,26 @@ export const isDirection = arrayHas<string>([
 
 export const PATH_HEIGHT = 30;
 export const PATH_END_HEIGHT = PATH_HEIGHT + 20;
-export const PATH_LINE_HEIGHT = 35;
-export const LINE_SIZE = 10;
-export const LINE_HEIGHT = 16;
-export const CIRCLE_HEIGHT = 26;
+
+/**
+ * The cardinality decoration, measured outward from the anchor.
+ *
+ * The four are one shape and cannot be set independently: the second tick and
+ * the ring share a centre at `LINE_SIZE + LINE_HEIGHT`, the guide line starts
+ * where the longest stroke ends at `LINE_HEIGHT * 2 + 3`, and the ring has to
+ * clear the first tick behind it and the guide line in front of it, which puts
+ * its radius between those two.
+ *
+ * Scaled to 0.7 of what they were, so a decoration reaches 25px out rather than
+ * 35px. `RELATIONSHIP_STROKE_WIDTH` thinned the connector; leaving the notation
+ * at its old size would have made the crow's foot the heaviest thing on the
+ * canvas.
+ */
+export const LINE_SIZE = 7;
+export const LINE_HEIGHT = 11;
+export const CIRCLE_HEIGHT = LINE_SIZE + LINE_HEIGHT;
+export const CIRCLE_RADIUS = 6;
+export const PATH_LINE_HEIGHT = LINE_HEIGHT + LINE_HEIGHT + 3;
 
 /**
  * How far apart the corridors of two relationships leaving the same table side
@@ -127,11 +143,17 @@ export const STUB_STEP = 12;
 export const STUB_CYCLE = 4;
 
 /**
- * The shortest a stub may be clamped to. The cardinality decorations reach
- * `PATH_LINE_HEIGHT` out from the anchor and the guide line is drawn from there
- * to the stub, so a shorter stub draws that line backwards.
+ * The shortest a stub may be clamped to.
+ *
+ * It has to clear `PATH_LINE_HEIGHT`: the cardinality decorations reach that far
+ * out from the anchor and the guide line is drawn from there to the stub, so a
+ * shorter stub draws that line backwards. It is not derived from it. 36 is where
+ * the routing was measured, and letting it follow the decorations down to 26
+ * when they shrank took the medium corpus from 168px of collinear overlap to
+ * 484px — two tables facing each other closer than `2 * MIN_STUB` turn in
+ * earlier, and the routing bench found them sharing a corridor for 316px.
  */
-export const MIN_STUB = PATH_LINE_HEIGHT + 1;
+export const MIN_STUB = 36;
 
 /**
  * The widest gap allowed between two anchors on the same table side.

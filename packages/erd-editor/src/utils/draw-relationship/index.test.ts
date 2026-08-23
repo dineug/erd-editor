@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import {
   CIRCLE_HEIGHT,
+  CIRCLE_RADIUS,
   DirectionName,
   DirectionNameList,
   isDirection,
   LINE_HEIGHT,
   LINE_SIZE,
+  MIN_STUB,
   PATH_END_HEIGHT,
   PATH_HEIGHT,
   PATH_LINE_HEIGHT,
@@ -53,13 +55,34 @@ describe('layout constants', () => {
   });
 
   it('exposes the line drawing metrics', () => {
-    expect(PATH_LINE_HEIGHT).toBe(35);
-    expect(LINE_SIZE).toBe(10);
-    expect(LINE_HEIGHT).toBe(16);
-    expect(CIRCLE_HEIGHT).toBe(26);
+    expect(PATH_LINE_HEIGHT).toBe(25);
+    expect(LINE_SIZE).toBe(7);
+    expect(LINE_HEIGHT).toBe(11);
+    expect(CIRCLE_HEIGHT).toBe(18);
+    expect(CIRCLE_RADIUS).toBe(6);
+  });
+
+  it('centres the ring on the second tick', () => {
+    expect(CIRCLE_HEIGHT).toBe(LINE_SIZE + LINE_HEIGHT);
+  });
+
+  it('starts the guide line where the longest decoration stroke ends', () => {
+    expect(PATH_LINE_HEIGHT).toBe(LINE_HEIGHT + LINE_HEIGHT + 3);
+  });
+
+  it('leaves the ring clear of the tick behind it and the guide line ahead', () => {
+    expect(CIRCLE_HEIGHT - CIRCLE_RADIUS).toBeGreaterThan(LINE_HEIGHT);
+    expect(CIRCLE_HEIGHT + CIRCLE_RADIUS).toBeLessThan(PATH_LINE_HEIGHT);
   });
 
   it('keeps the path line stub shorter than the path end', () => {
     expect(PATH_LINE_HEIGHT).toBeLessThan(PATH_END_HEIGHT);
+  });
+
+  it('clamps a stub clear of the decorations without following them down', () => {
+    expect(MIN_STUB).toBe(36);
+    // The guide line runs from the decorations out to the stub, so a stub
+    // inside them draws it backwards.
+    expect(MIN_STUB).toBeGreaterThan(PATH_LINE_HEIGHT);
   });
 });

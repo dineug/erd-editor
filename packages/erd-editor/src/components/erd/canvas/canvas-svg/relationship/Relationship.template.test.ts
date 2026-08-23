@@ -83,7 +83,7 @@ describe('relationshipShape', () => {
     expect(xy(lines[0])).toEqual(toXY(path.path.line.end));
     expect(circles[0].getAttribute('cx')).toBe(`${path.line.circle.cx}`);
     expect(circles[0].getAttribute('cy')).toBe(`${path.line.circle.cy}`);
-    expect(circles[0].getAttribute('r')).toBe('8');
+    expect(circles[0].getAttribute('r')).toBe('6');
     expect(circles[0].getAttribute('fill-opacity')).toBe('0.0');
     expect(xy(lines[1])).toEqual(toXY(path.line.line.end.base));
     expect(xy(lines[2])).toEqual(toXY(path.line.line.end.left));
@@ -163,12 +163,39 @@ describe('relationshipShape', () => {
     expect(xy(lines[3])).toEqual(toXY(path.line.line.end.right));
   });
 
-  it('gives every rendered segment a stroke-width of 3', async () => {
-    const path = createPath();
-    const { lines, circles } = await renderShape(ZERO_ONE_N, path);
+  // Every shape in the map, not just one of them: the widths are seven separate
+  // literals per shape and a sweep that leaves one behind draws a single
+  // cardinality symbol at the old weight.
+  const EVERY_SHAPE = [
+    ['zero-one-n', ZERO_ONE_N],
+    ['zero-one', RelationshipType.ZeroOne],
+    ['zero-n', RelationshipType.ZeroN],
+    ['one-only', RelationshipType.OneOnly],
+    ['one-n', RelationshipType.OneN],
+    ['one', ONE],
+    ['n', N],
+  ] as const;
 
-    for (const el of [...lines, ...circles]) {
-      expect(el.getAttribute('stroke-width')).toBe('3');
-    }
-  });
+  for (const [name, relationshipType] of EVERY_SHAPE) {
+    it(`gives every segment of the ${name} shape a stroke-width of 2`, async () => {
+      const path = createPath();
+      const { lines, circles } = await renderShape(relationshipType, path);
+
+      expect(lines.length).toBeGreaterThan(0);
+      for (const el of [...lines, ...circles]) {
+        expect(el.getAttribute('stroke-width')).toBe('2');
+      }
+    });
+  }
+
+  for (const [name, relationshipType] of EVERY_SHAPE) {
+    it(`draws every ring of the ${name} shape at the shared radius`, async () => {
+      const path = createPath();
+      const { circles } = await renderShape(relationshipType, path);
+
+      for (const el of circles) {
+        expect(el.getAttribute('r')).toBe('6');
+      }
+    });
+  }
 });

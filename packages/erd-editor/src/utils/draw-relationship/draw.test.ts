@@ -74,7 +74,7 @@ describe('getDraw', () => {
       });
       expect(result.path.line.start).toEqual({
         x1: CENTER_X,
-        y1: TABLE_HEIGHT + 35,
+        y1: TABLE_HEIGHT + 25,
         x2: CENTER_X,
         y2: TABLE_HEIGHT + 50,
       });
@@ -89,26 +89,26 @@ describe('getDraw', () => {
       const { line } = getDraw(state, draw);
 
       expect(line.start.base).toEqual({
-        x1: CENTER_X - 10,
-        y1: TABLE_HEIGHT + 16,
-        x2: CENTER_X + 10,
-        y2: TABLE_HEIGHT + 16,
+        x1: CENTER_X - 7,
+        y1: TABLE_HEIGHT + 11,
+        x2: CENTER_X + 7,
+        y2: TABLE_HEIGHT + 11,
       });
       expect(line.start.base2).toEqual({
-        x1: CENTER_X - 10,
-        y1: TABLE_HEIGHT + 26,
-        x2: CENTER_X + 10,
-        y2: TABLE_HEIGHT + 26,
+        x1: CENTER_X - 7,
+        y1: TABLE_HEIGHT + 18,
+        x2: CENTER_X + 7,
+        y2: TABLE_HEIGHT + 18,
       });
       expect(line.start.center).toEqual({
         x1: CENTER_X,
-        y1: TABLE_HEIGHT + 16,
+        y1: TABLE_HEIGHT + 11,
         x2: CENTER_X,
         y2: TABLE_HEIGHT,
       });
       expect(line.start.center2).toEqual({
         x1: CENTER_X,
-        y1: TABLE_HEIGHT + 35,
+        y1: TABLE_HEIGHT + 25,
         x2: CENTER_X,
         y2: TABLE_HEIGHT,
       });
@@ -138,7 +138,7 @@ describe('getDraw', () => {
       expect(draw.start).toEqual({ tableId: 'table-a', x: CENTER_X, y: 0 });
       expect(result.path.line.start).toEqual({
         x1: CENTER_X,
-        y1: -35,
+        y1: -25,
         x2: CENTER_X,
         y2: -50,
       });
@@ -146,26 +146,26 @@ describe('getDraw', () => {
       expect(result.path.path.L).toEqual({ x: CENTER_X, y: -500 });
       expect(result.path.path.d()).toBe('M 182.5 -50 L 182.5 -500');
       expect(result.line.start.base).toEqual({
-        x1: CENTER_X - 10,
-        y1: -16,
-        x2: CENTER_X + 10,
-        y2: -16,
+        x1: CENTER_X - 7,
+        y1: -11,
+        x2: CENTER_X + 7,
+        y2: -11,
       });
       expect(result.line.start.base2).toEqual({
-        x1: CENTER_X - 10,
-        y1: -26,
-        x2: CENTER_X + 10,
-        y2: -26,
+        x1: CENTER_X - 7,
+        y1: -18,
+        x2: CENTER_X + 7,
+        y2: -18,
       });
       expect(result.line.start.center).toEqual({
         x1: CENTER_X,
-        y1: -16,
+        y1: -11,
         x2: CENTER_X,
         y2: 0,
       });
       expect(result.line.start.center2).toEqual({
         x1: CENTER_X,
-        y1: -35,
+        y1: -25,
         x2: CENTER_X,
         y2: 0,
       });
@@ -180,7 +180,7 @@ describe('getDraw', () => {
 
       expect(draw.start).toEqual({ tableId: 'table-a', x: 0, y: CENTER_Y });
       expect(result.path.line.start).toEqual({
-        x1: -35,
+        x1: -25,
         y1: CENTER_Y,
         x2: -50,
         y2: CENTER_Y,
@@ -189,25 +189,25 @@ describe('getDraw', () => {
       expect(result.path.path.L).toEqual({ x: -500, y: CENTER_Y });
       expect(result.path.path.d()).toBe('M -50 28 L -500 28');
       expect(result.line.start.base).toEqual({
-        x1: -16,
-        y1: CENTER_Y - 10,
-        x2: -16,
-        y2: CENTER_Y + 10,
+        x1: -11,
+        y1: CENTER_Y - 7,
+        x2: -11,
+        y2: CENTER_Y + 7,
       });
       expect(result.line.start.base2).toEqual({
-        x1: -26,
-        y1: CENTER_Y - 10,
-        x2: -26,
-        y2: CENTER_Y + 10,
+        x1: -18,
+        y1: CENTER_Y - 7,
+        x2: -18,
+        y2: CENTER_Y + 7,
       });
       expect(result.line.start.center).toEqual({
-        x1: -16,
+        x1: -11,
         y1: CENTER_Y,
         x2: 0,
         y2: CENTER_Y,
       });
       expect(result.line.start.center2).toEqual({
-        x1: -35,
+        x1: -25,
         y1: CENTER_Y,
         x2: 0,
         y2: CENTER_Y,
@@ -227,7 +227,7 @@ describe('getDraw', () => {
         y: CENTER_Y,
       });
       expect(result.path.line.start).toEqual({
-        x1: TABLE_WIDTH + 35,
+        x1: TABLE_WIDTH + 25,
         y1: CENTER_Y,
         x2: TABLE_WIDTH + 50,
         y2: CENTER_Y,
@@ -239,25 +239,25 @@ describe('getDraw', () => {
       expect(result.path.path.L).toEqual({ x: 900, y: CENTER_Y });
       expect(result.path.path.d()).toBe('M 415 28 L 900 28');
       expect(result.line.start.base).toEqual({
-        x1: TABLE_WIDTH + 16,
-        y1: CENTER_Y - 10,
-        x2: TABLE_WIDTH + 16,
-        y2: CENTER_Y + 10,
+        x1: TABLE_WIDTH + 11,
+        y1: CENTER_Y - 7,
+        x2: TABLE_WIDTH + 11,
+        y2: CENTER_Y + 7,
       });
       expect(result.line.start.base2).toEqual({
-        x1: TABLE_WIDTH + 26,
-        y1: CENTER_Y - 10,
-        x2: TABLE_WIDTH + 26,
-        y2: CENTER_Y + 10,
+        x1: TABLE_WIDTH + 18,
+        y1: CENTER_Y - 7,
+        x2: TABLE_WIDTH + 18,
+        y2: CENTER_Y + 7,
       });
       expect(result.line.start.center).toEqual({
-        x1: TABLE_WIDTH + 16,
+        x1: TABLE_WIDTH + 11,
         y1: CENTER_Y,
         x2: TABLE_WIDTH,
         y2: CENTER_Y,
       });
       expect(result.line.start.center2).toEqual({
-        x1: TABLE_WIDTH + 35,
+        x1: TABLE_WIDTH + 25,
         y1: CENTER_Y,
         x2: TABLE_WIDTH,
         y2: CENTER_Y,
@@ -299,13 +299,13 @@ describe('getDraw', () => {
     expect(draw.start).toEqual({ tableId: 'does-not-exist', x: 10, y: 20 });
     // bottom is the default direction, so the path still grows downwards even
     // though the end point sits to the left
-    expect(result.path.line.start).toEqual({ x1: 10, y1: 55, x2: 10, y2: 70 });
+    expect(result.path.line.start).toEqual({ x1: 10, y1: 45, x2: 10, y2: 70 });
     expect(result.path.path.M).toEqual({ x: 10, y: 70 });
     expect(result.path.path.L).toEqual({ x: -900, y: 20 });
-    expect(result.line.start.base).toEqual({ x1: 0, y1: 36, x2: 20, y2: 36 });
+    expect(result.line.start.base).toEqual({ x1: 3, y1: 31, x2: 17, y2: 31 });
     expect(result.line.start.center2).toEqual({
       x1: 10,
-      y1: 55,
+      y1: 45,
       x2: 10,
       y2: 20,
     });

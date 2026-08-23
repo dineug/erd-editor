@@ -71,13 +71,18 @@ describe('CanvasSvg', () => {
     expect(groups.map(g => g.getAttribute('data-id'))).toEqual(['r1', 'r2']);
   });
 
-  it('defaults the relationship stroke width to 3', async () => {
+  it('defaults the relationship stroke width to 2', async () => {
     mounted = await mountAndFlush(svg`<${CanvasSvg} />`);
     mounted.app.store.dispatchSync(addRelationship('r1'));
     await flush();
 
-    const line = root().querySelector('g.relationship line') as SVGLineElement;
-    expect(line.getAttribute('stroke-width')).toBe('3');
+    // The route, not a decoration: every decoration carries the same width from
+    // the same constant, so reading one of those passes whatever the prop
+    // default is and covers nothing.
+    const route = root().querySelector(
+      'g.relationship path.route'
+    ) as SVGPathElement;
+    expect(route.getAttribute('stroke-width')).toBe('2');
   });
 
   it('forwards the strokeWidth prop to every relationship', async () => {

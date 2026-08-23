@@ -23,6 +23,8 @@ import {
   MEMO_PADDING,
   MINIMAP_MARGIN,
   MINIMAP_SIZE,
+  RELATIONSHIP_HIT_STROKE_WIDTH,
+  RELATIONSHIP_STROKE_WIDTH,
   START_ADD,
   START_X,
   START_Y,
@@ -117,6 +119,16 @@ describe('layout constants', () => {
     expect(DIFF_TREE_WIDTH).toBe(200);
   });
 
+  it('draws the connector thinner than the band that catches the pointer', () => {
+    expect(RELATIONSHIP_STROKE_WIDTH).toBe(2);
+    expect(RELATIONSHIP_HIT_STROKE_WIDTH).toBe(8);
+    // Hit-testing follows the painted stroke, so the band is the whole reason a
+    // connector this thin is still reachable.
+    expect(RELATIONSHIP_HIT_STROKE_WIDTH).toBeGreaterThan(
+      RELATIONSHIP_STROKE_WIDTH
+    );
+  });
+
   it('exports only finite positive numbers', () => {
     const values = [
       START_X,
@@ -152,6 +164,8 @@ describe('layout constants', () => {
       MINIMAP_MARGIN,
       TOOLBAR_HEIGHT,
       DIFF_TREE_WIDTH,
+      RELATIONSHIP_STROKE_WIDTH,
+      RELATIONSHIP_HIT_STROKE_WIDTH,
     ];
 
     for (const value of values) {
