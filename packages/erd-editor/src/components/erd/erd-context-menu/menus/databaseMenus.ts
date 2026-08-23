@@ -9,6 +9,10 @@ type Menu = {
 
 export const menus: Menu[] = [
   {
+    name: 'Databricks',
+    value: Database.Databricks,
+  },
+  {
     name: 'MSSQL',
     value: Database.MSSQL,
   },
