@@ -3,6 +3,9 @@ import { ValuesType } from '@/internal-types';
 export type Token = {
   type: TokenType;
   value: string;
+  // Set on tokens that came out of `"`, `'`, backtick or `[]` quoting, so a
+  // quoted identifier such as `key` is never read back as the KEY keyword.
+  quoted?: boolean;
 };
 
 export const TokenType = {
@@ -20,11 +23,15 @@ export type TokenType = ValuesType<typeof TokenType>;
 
 const pattern = {
   doubleQuote: `"`,
+  dash: '-',
+  slash: '/',
+  asterisk: '*',
+  newLine: '\n',
   singleQuote: `'`,
   backtick: '`',
   whiteSpace: /\s/,
   string: /\S/,
-  breakString: /;|,|\(|\)|\[|\]|\./,
+  breakString: /;|,|\(|\)|\[|\]|\.|=/,
   equal: '=',
   period: '.',
   comma: ',',
@@ -40,6 +47,10 @@ const createTest = (regexp: RegExp) => (char: string) => regexp.test(char);
 
 const match = {
   doubleQuote: createEqual(pattern.doubleQuote),
+  dash: createEqual(pattern.dash),
+  slash: createEqual(pattern.slash),
+  asterisk: createEqual(pattern.asterisk),
+  newLine: createEqual(pattern.newLine),
   singleQuote: createEqual(pattern.singleQuote),
   backtick: createEqual(pattern.backtick),
   whiteSpace: createTest(pattern.whiteSpace),
@@ -71,6 +82,30 @@ export function tokenizer(source: string): Token[] {
         value += char;
         char = source[++pos];
       }
+      continue;
+    }
+
+    // SQL comments are not tokens: a `;` or `(` inside one would otherwise end
+    // the statement or be read as its column list.
+    if (match.dash(char) && match.dash(source[pos + 1])) {
+      while (isChar() && !match.newLine(char)) {
+        char = source[++pos];
+      }
+      continue;
+    }
+
+    if (match.slash(char) && match.asterisk(source[pos + 1])) {
+      pos += 2;
+      char = source[pos];
+
+      while (
+        isChar() &&
+        !(match.asterisk(char) && match.slash(source[pos + 1]))
+      ) {
+        char = source[++pos];
+      }
+
+      pos += 2;
       continue;
     }
 
@@ -119,7 +154,7 @@ export function tokenizer(source: string): Token[] {
         char = source[++pos];
       }
 
-      tokens.push({ type: TokenType.string, value });
+      tokens.push({ type: TokenType.string, value, quoted: true });
       pos++;
       continue;
     }
@@ -133,7 +168,7 @@ export function tokenizer(source: string): Token[] {
         char = source[++pos];
       }
 
-      tokens.push({ type: TokenType.string, value });
+      tokens.push({ type: TokenType.string, value, quoted: true });
       pos++;
       continue;
     }
@@ -147,7 +182,7 @@ export function tokenizer(source: string): Token[] {
         char = source[++pos];
       }
 
-      tokens.push({ type: TokenType.string, value });
+      tokens.push({ type: TokenType.string, value, quoted: true });
       pos++;
       continue;
     }
@@ -161,7 +196,7 @@ export function tokenizer(source: string): Token[] {
         char = source[++pos];
       }
 
-      tokens.push({ type: TokenType.string, value });
+      tokens.push({ type: TokenType.string, value, quoted: true });
       pos++;
       continue;
     }
@@ -169,7 +204,14 @@ export function tokenizer(source: string): Token[] {
     if (match.string(char)) {
       let value = '';
 
-      while (isChar() && match.string(char) && !match.breakString(char)) {
+      while (
+        isChar() &&
+        match.string(char) &&
+        !match.breakString(char) &&
+        // A comment needs no whitespace in front of it: `INT-- pk`.
+        !(match.dash(char) && match.dash(source[pos + 1])) &&
+        !(match.slash(char) && match.asterisk(source[pos + 1]))
+      ) {
         value += char;
         char = source[++pos];
       }

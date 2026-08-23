@@ -18,6 +18,15 @@ const parseTokens = (tokens: Token[], start = 0) => {
 };
 
 describe('alterTableAddPrimaryKeyParser', () => {
+  it('stops on the terminator instead of reading the statement after it', () => {
+    const { ast, $pos, tokens } = parse(
+      "ALTER TABLE users ADD PRIMARY KEY (id); COMMENT ON TABLE orders IS 'a';"
+    );
+
+    expect(ast.name).toBe('users');
+    expect(tokens[$pos.value].value).toBe('COMMENT');
+  });
+
   it('parses an anonymous primary key over a single column', () => {
     const { ast } = parse('ALTER TABLE users ADD PRIMARY KEY (id);');
 

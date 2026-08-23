@@ -22,6 +22,18 @@ describe('TokenType', () => {
 });
 
 describe('tokenizer', () => {
+  describe('quoted flag', () => {
+    it('marks every quoting style as quoted', () => {
+      expect(tokenizer('`a` "b" \'c\' [d]').map(token => token.quoted)).toEqual(
+        [true, true, true, true]
+      );
+    });
+
+    it('leaves a bare word unquoted', () => {
+      expect(tokenizer('a').map(token => token.quoted)).toEqual([undefined]);
+    });
+  });
+
   describe('empty and whitespace input', () => {
     it('returns no tokens for an empty source', () => {
       expect(tokenizer('')).toEqual([]);
@@ -83,23 +95,25 @@ describe('tokenizer', () => {
   describe('bracket quoting', () => {
     it('reads a bracket quoted identifier as a single string token', () => {
       expect(tokenizer('[my table]')).toEqual([
-        { type: TokenType.string, value: 'my table' },
+        { type: TokenType.string, value: 'my table', quoted: true },
       ]);
     });
 
     it('keeps break characters inside brackets', () => {
       expect(tokenizer('[a.b,c(d)]')).toEqual([
-        { type: TokenType.string, value: 'a.b,c(d)' },
+        { type: TokenType.string, value: 'a.b,c(d)', quoted: true },
       ]);
     });
 
     it('produces an empty string token for an empty bracket pair', () => {
-      expect(tokenizer('[]')).toEqual([{ type: TokenType.string, value: '' }]);
+      expect(tokenizer('[]')).toEqual([
+        { type: TokenType.string, value: '', quoted: true },
+      ]);
     });
 
     it('consumes the rest of the source when the bracket is unterminated', () => {
       expect(tokenizer('[abc')).toEqual([
-        { type: TokenType.string, value: 'abc' },
+        { type: TokenType.string, value: 'abc', quoted: true },
       ]);
     });
 
@@ -115,23 +129,25 @@ describe('tokenizer', () => {
   describe('double quote quoting', () => {
     it('reads a double quoted identifier as a single string token', () => {
       expect(tokenizer('"my table"')).toEqual([
-        { type: TokenType.string, value: 'my table' },
+        { type: TokenType.string, value: 'my table', quoted: true },
       ]);
     });
 
     it('keeps break characters inside double quotes', () => {
       expect(tokenizer('"a.b;c"')).toEqual([
-        { type: TokenType.string, value: 'a.b;c' },
+        { type: TokenType.string, value: 'a.b;c', quoted: true },
       ]);
     });
 
     it('produces an empty string token for an empty double quote pair', () => {
-      expect(tokenizer('""')).toEqual([{ type: TokenType.string, value: '' }]);
+      expect(tokenizer('""')).toEqual([
+        { type: TokenType.string, value: '', quoted: true },
+      ]);
     });
 
     it('consumes the rest of the source when the double quote is unterminated', () => {
       expect(tokenizer('"abc')).toEqual([
-        { type: TokenType.string, value: 'abc' },
+        { type: TokenType.string, value: 'abc', quoted: true },
       ]);
     });
   });
@@ -139,23 +155,25 @@ describe('tokenizer', () => {
   describe('single quote quoting', () => {
     it('reads a single quoted literal as a single string token', () => {
       expect(tokenizer("'hello world'")).toEqual([
-        { type: TokenType.string, value: 'hello world' },
+        { type: TokenType.string, value: 'hello world', quoted: true },
       ]);
     });
 
     it('keeps break characters inside single quotes', () => {
       expect(tokenizer("'(1,2)'")).toEqual([
-        { type: TokenType.string, value: '(1,2)' },
+        { type: TokenType.string, value: '(1,2)', quoted: true },
       ]);
     });
 
     it('produces an empty string token for an empty single quote pair', () => {
-      expect(tokenizer("''")).toEqual([{ type: TokenType.string, value: '' }]);
+      expect(tokenizer("''")).toEqual([
+        { type: TokenType.string, value: '', quoted: true },
+      ]);
     });
 
     it('consumes the rest of the source when the single quote is unterminated', () => {
       expect(tokenizer("'abc")).toEqual([
-        { type: TokenType.string, value: 'abc' },
+        { type: TokenType.string, value: 'abc', quoted: true },
       ]);
     });
   });
@@ -163,24 +181,81 @@ describe('tokenizer', () => {
   describe('backtick quoting', () => {
     it('reads a backtick quoted identifier as a single string token', () => {
       expect(tokenizer('`my table`')).toEqual([
-        { type: TokenType.string, value: 'my table' },
+        { type: TokenType.string, value: 'my table', quoted: true },
       ]);
     });
 
     it('keeps break characters inside backticks', () => {
       expect(tokenizer('`a.b`')).toEqual([
-        { type: TokenType.string, value: 'a.b' },
+        { type: TokenType.string, value: 'a.b', quoted: true },
       ]);
     });
 
     it('produces an empty string token for an empty backtick pair', () => {
-      expect(tokenizer('``')).toEqual([{ type: TokenType.string, value: '' }]);
+      expect(tokenizer('``')).toEqual([
+        { type: TokenType.string, value: '', quoted: true },
+      ]);
     });
 
     it('consumes the rest of the source when the backtick is unterminated', () => {
       expect(tokenizer('`abc')).toEqual([
-        { type: TokenType.string, value: 'abc' },
+        { type: TokenType.string, value: 'abc', quoted: true },
       ]);
+    });
+  });
+
+  describe('sql comments', () => {
+    it('drops a line comment and everything it contains', () => {
+      expect(pairs(tokenizer('a -- b; c (d)\ne'))).toEqual([
+        ['string', 'a'],
+        ['string', 'e'],
+      ]);
+    });
+
+    it('drops a line comment that runs to the end of the source', () => {
+      expect(pairs(tokenizer('a -- b'))).toEqual([['string', 'a']]);
+    });
+
+    it('ends a bare word at a line comment that has no space in front of it', () => {
+      expect(pairs(tokenizer('INT-- pk\nb'))).toEqual([
+        ['string', 'INT'],
+        ['string', 'b'],
+      ]);
+    });
+
+    it('drops a block comment and everything it contains', () => {
+      expect(pairs(tokenizer('a /* b; c (d) */ e'))).toEqual([
+        ['string', 'a'],
+        ['string', 'e'],
+      ]);
+    });
+
+    it('drops a block comment spread over several lines', () => {
+      expect(pairs(tokenizer('a /*\n b;\n*/ e'))).toEqual([
+        ['string', 'a'],
+        ['string', 'e'],
+      ]);
+    });
+
+    it('ends a bare word at a block comment that has no space in front of it', () => {
+      expect(pairs(tokenizer('INT/* pk */b'))).toEqual([
+        ['string', 'INT'],
+        ['string', 'b'],
+      ]);
+    });
+
+    it('consumes the rest of the source when the block comment is unterminated', () => {
+      expect(pairs(tokenizer('a /* b'))).toEqual([['string', 'a']]);
+    });
+
+    it('keeps comment markers that sit inside a quoted value', () => {
+      expect(pairs(tokenizer("'a -- b /* c */'"))).toEqual([
+        ['string', 'a -- b /* c */'],
+      ]);
+    });
+
+    it('does not read a single dash as a comment', () => {
+      expect(pairs(tokenizer('-1'))).toEqual([['string', '-1']]);
     });
   });
 
@@ -209,16 +284,16 @@ describe('tokenizer', () => {
       ]);
     });
 
-    it('does not break a bare word on an equal sign', () => {
-      expect(pairs(tokenizer('a=b'))).toEqual([['string', 'a=b']]);
-    });
-
-    it('emits an equal token only when it starts a token', () => {
-      expect(pairs(tokenizer('a = b'))).toEqual([
+    it('breaks a bare word on an equal sign', () => {
+      expect(pairs(tokenizer('a=b'))).toEqual([
         ['string', 'a'],
         ['equal', '='],
         ['string', 'b'],
       ]);
+    });
+
+    it('emits the same tokens whether or not the equal sign is padded', () => {
+      expect(pairs(tokenizer('a = b'))).toEqual(pairs(tokenizer('a=b')));
     });
 
     it('stops a bare word at the end of the source', () => {
@@ -227,6 +302,26 @@ describe('tokenizer', () => {
 
     it('treats a quote in the middle of a bare word as part of the word', () => {
       expect(pairs(tokenizer("a'b'"))).toEqual([['string', "a'b'"]]);
+    });
+
+    it('keeps a typed literal prefix attached to its literal', () => {
+      expect(pairs(tokenizer("N'hello'"))).toEqual([['string', "N'hello'"]]);
+    });
+
+    it('splits a MySQL table option written without whitespace', () => {
+      expect(pairs(tokenizer("COMMENT='role'"))).toEqual([
+        ['string', 'COMMENT'],
+        ['equal', '='],
+        ['string', 'role'],
+      ]);
+    });
+
+    it('keeps parentheses inside a quoted option value out of the token stream', () => {
+      expect(pairs(tokenizer("COMMENT='(test)bug here!!'"))).toEqual([
+        ['string', 'COMMENT'],
+        ['equal', '='],
+        ['string', '(test)bug here!!'],
+      ]);
     });
   });
 

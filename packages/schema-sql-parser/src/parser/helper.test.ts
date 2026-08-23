@@ -15,7 +15,14 @@ import {
   isAuto_incrementValue,
   isAutoIncrementValue,
   isAutoincrementValue,
+  isCharacterSet,
+  isCharacterValue,
+  isCollateValue,
+  isColumnValue,
   isCommaToken,
+  isCommentOn,
+  isCommentOnColumn,
+  isCommentOnTable,
   isCommentValue,
   isConstraintValue,
   isCreateIndex,
@@ -33,6 +40,7 @@ import {
   isForeignValue,
   isIfValue,
   isIndexValue,
+  isIsValue,
   isKeyValue,
   isLeftBracketToken,
   isLeftParentToken,
@@ -49,6 +57,7 @@ import {
   isRightParentToken,
   isSelectValue,
   isSemicolonToken,
+  isSetValue,
   isStringToken,
   isTableValue,
   isUniqueValue,
@@ -57,6 +66,11 @@ import {
 import { Token, TokenType } from '@/parser/tokenizer';
 
 const str = (value: string): Token => ({ type: TokenType.string, value });
+const quoted = (value: string): Token => ({
+  type: TokenType.string,
+  value,
+  quoted: true,
+});
 const words = (...values: string[]): Token[] => values.map(str);
 const period: Token = { type: TokenType.period, value: '.' };
 
@@ -133,6 +147,11 @@ describe('token value predicates', () => {
     ['isIfValue', isIfValue, 'IF'],
     ['isExistsValue', isExistsValue, 'EXISTS'],
     ['isOnlyValue', isOnlyValue, 'ONLY'],
+    ['isIsValue', isIsValue, 'IS'],
+    ['isColumnValue', isColumnValue, 'COLUMN'],
+    ['isCharacterValue', isCharacterValue, 'CHARACTER'],
+    ['isSetValue', isSetValue, 'SET'],
+    ['isCollateValue', isCollateValue, 'COLLATE'],
   ];
 
   it.each(cases)(
@@ -154,10 +173,90 @@ describe('token value predicates', () => {
     }
   );
 
+  it.each(cases)(
+    '%s never matches a quoted token',
+    (_name, predicate, keyword) => {
+      expect(predicate([quoted(keyword)])(0)).toBe(false);
+    }
+  );
+
   it('ignores the token type and only compares the value', () => {
     const tokens: Token[] = [{ type: TokenType.comma, value: 'create' }];
 
     expect(isCreateValue(tokens)(0)).toBe(true);
+  });
+
+  it('reads a quoted keyword as an identifier, not as the keyword', () => {
+    expect(isKeyValue([quoted('key')])(0)).toBe(false);
+    expect(isKeyValue(words('key'))(0)).toBe(true);
+  });
+});
+
+describe('isCommentOn', () => {
+  it('matches any COMMENT ON target', () => {
+    const test = isCommentOn(words('COMMENT', 'ON', 'SCHEMA'));
+
+    expect(test(0)).toBe(true);
+  });
+
+  it('rejects a MySQL table option', () => {
+    expect(isCommentOn(words('COMMENT', 'a comment'))(0)).toBe(false);
+  });
+
+  it('rejects a quoted comment value that reads ON', () => {
+    expect(isCommentOn([str('COMMENT'), quoted('ON'), str('TABLE')])(0)).toBe(
+      false
+    );
+  });
+});
+
+describe('isCommentOnTable', () => {
+  it('matches the COMMENT ON TABLE prefix', () => {
+    expect(isCommentOnTable(words('COMMENT', 'ON', 'TABLE', 'users'))(0)).toBe(
+      true
+    );
+  });
+
+  it('rejects the COMMENT ON COLUMN prefix', () => {
+    expect(isCommentOnTable(words('COMMENT', 'ON', 'COLUMN'))(0)).toBe(false);
+  });
+
+  it('rejects a MySQL table option', () => {
+    expect(isCommentOnTable(words('COMMENT', 'a comment'))(0)).toBe(false);
+  });
+
+  it('rejects a position past the end of the token list', () => {
+    expect(isCommentOnTable(words('COMMENT', 'ON'))(0)).toBe(false);
+  });
+});
+
+describe('isCommentOnColumn', () => {
+  it('matches the COMMENT ON COLUMN prefix', () => {
+    expect(
+      isCommentOnColumn(words('COMMENT', 'ON', 'COLUMN', 'users'))(0)
+    ).toBe(true);
+  });
+
+  it('rejects the COMMENT ON TABLE prefix', () => {
+    expect(isCommentOnColumn(words('COMMENT', 'ON', 'TABLE'))(0)).toBe(false);
+  });
+
+  it('rejects a position past the end of the token list', () => {
+    expect(isCommentOnColumn(words('COMMENT', 'ON'))(0)).toBe(false);
+  });
+});
+
+describe('isCharacterSet', () => {
+  it('matches the CHARACTER SET column attribute', () => {
+    expect(isCharacterSet(words('CHARACTER', 'SET', 'utf8mb3'))(0)).toBe(true);
+  });
+
+  it('rejects the CHARACTER VARYING data type', () => {
+    expect(isCharacterSet(words('CHARACTER', 'VARYING'))(0)).toBe(false);
+  });
+
+  it('rejects a position past the end of the token list', () => {
+    expect(isCharacterSet(words('CHARACTER'))(0)).toBe(false);
   });
 });
 
@@ -170,6 +269,16 @@ describe('isAutoIncrementValue', () => {
     expect(test(1)).toBe(true);
     expect(test(2)).toBe(false);
     expect(test(3)).toBe(false);
+  });
+});
+
+describe('isNewStatement - COMMENT ON', () => {
+  it('treats COMMENT ON as the start of a new statement', () => {
+    expect(isNewStatement(words('COMMENT', 'ON', 'TABLE'))(0)).toBe(true);
+  });
+
+  it('leaves a MySQL COMMENT table option alone', () => {
+    expect(isNewStatement(words('COMMENT', 'a comment'))(0)).toBe(false);
   });
 });
 

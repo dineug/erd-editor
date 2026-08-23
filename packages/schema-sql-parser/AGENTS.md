@@ -6,9 +6,9 @@
 ## Purpose
 
 `@dineug/schema-sql-parser` is a hand-written, permissive DDL parser: `schemaSQLParser(source)` tokenizes SQL of
-any dialect and returns a flat `Statement[]` of five kinds — `create.table`, `create.index`, and
-`alter.table.add.{primaryKey,unique,foreignKey}`. Unrecognised input is skipped rather than rejected, so a real dump
-imports partially instead of failing. Its only consumer is `@dineug/erd-editor`, whose
+any dialect and returns a flat `Statement[]` of seven kinds — `create.table`, `create.index`,
+`alter.table.add.{primaryKey,unique,foreignKey}` and `comment.on.{table,column}`. Unrecognised input is skipped
+rather than rejected, so a real dump imports partially instead of failing. Its only consumer is `@dineug/erd-editor`, whose
 `src/utils/schema-sql-parser/` folds the AST into an `ERDEditorSchemaV3` document, not into editor actions.
 
 ## Key Files
@@ -19,7 +19,7 @@ imports partially instead of failing. Its only consumer is `@dineug/erd-editor`,
 | `src/parser/index.ts` | Dispatch loop — probes each matcher at `$pos`, calls a statement parser, else advances |
 | `src/parser/helper.ts` | Curried token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set |
 | `src/parser/statement/index.ts` | `Statement` union, `StatementType`, `SortType`, `RefPos`, AST node shapes |
-| `src/schema_sql_test_case.md` | 20 end-to-end fixture sections (`### ` heading + fenced `sql` + fenced `json`) |
+| `src/schema_sql_test_case.md` | 24 end-to-end fixture sections (`### ` heading + fenced `sql` + fenced `json`) |
 
 ## Subdirectories
 
@@ -52,7 +52,7 @@ imports partially instead of failing. Its only consumer is `@dineug/erd-editor`,
 ### Common Patterns
 
 - Tokenize once, then parse by lookahead — no backtracking.
-- No keyword or comment token exists: keywords are `string` tokens compared case-insensitively by value, and `"x"`, `'x'`, `` `x` `` and `[x]` all collapse to one `string` token with delimiters stripped.
+- No keyword token exists, and `--` / `/* */` comments are dropped by the lexer rather than emitted: keywords are `string` tokens compared case-insensitively by value, and `"x"`, `'x'`, `` `x` `` and `[x]` all collapse to one `string` token with delimiters stripped — but marked `quoted`, which every `is*Value` matcher refuses, so `` `key` `` is a column and `KEY` is an index.
 - Matchers are curried over `tokens` (`isCreateTable(tokens)` → `(pos) => boolean`) and hoisted out of the loop.
 - AST nodes are fully populated with `''` and `[]` rather than optional fields.
 

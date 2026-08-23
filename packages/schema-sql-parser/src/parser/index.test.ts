@@ -173,6 +173,86 @@ describe('schemaSQLParser', () => {
     ]);
   });
 
+  it('parses COMMENT ON TABLE and COMMENT ON COLUMN', () => {
+    const ast = schemaSQLParser(`
+      COMMENT ON TABLE users IS 'user table';
+      COMMENT ON COLUMN users.id IS 'user id';
+    `);
+
+    expect(ast).toEqual([
+      {
+        type: 'comment.on.table',
+        name: 'users',
+        comment: 'user table',
+      },
+      {
+        type: 'comment.on.column',
+        tableName: 'users',
+        columnName: 'id',
+        comment: 'user id',
+      },
+    ]);
+  });
+
+  it('does not read a COMMENT ON statement as the comment of the table above it', () => {
+    const ast = schemaSQLParser(`
+      CREATE TABLE users (id INT);
+
+      COMMENT ON TABLE users IS 'user table';
+
+      COMMENT ON COLUMN users.id IS 'user id';
+    `);
+
+    expect(ast.map(statement => statement.type)).toEqual([
+      'create.table',
+      'comment.on.table',
+      'comment.on.column',
+    ]);
+    expect((ast[0] as { comment: string }).comment).toBe('');
+  });
+
+  it('keeps the COMMENT ON statements of a pg_dump style source', () => {
+    const ast = schemaSQLParser(`
+      ALTER TABLE ONLY public.users
+          ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+      COMMENT ON TABLE public.users IS 'user table';
+
+      CREATE INDEX idx_users_email ON users (email);
+
+      COMMENT ON COLUMN public.users.email IS 'email address';
+
+      ALTER TABLE ONLY public.orders
+          ADD CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+      COMMENT ON COLUMN public.users.id IS 'user id';
+
+      ALTER TABLE ONLY public.users ADD CONSTRAINT uq_email UNIQUE (email);
+
+      COMMENT ON TABLE public.orders IS 'order table';
+    `);
+
+    expect(ast.map(statement => statement.type)).toEqual([
+      'alter.table.add.primaryKey',
+      'comment.on.table',
+      'create.index',
+      'comment.on.column',
+      'alter.table.add.foreignKey',
+      'comment.on.column',
+      'alter.table.add.unique',
+      'comment.on.table',
+    ]);
+  });
+
+  it('skips a COMMENT ON target it has no statement for', () => {
+    const ast = schemaSQLParser(`
+      COMMENT ON SCHEMA public IS 'standard public schema';
+      CREATE TABLE users (id INT);
+    `);
+
+    expect(ast.map(statement => statement.type)).toEqual(['create.table']);
+  });
+
   it('keeps parsing after a statement that consumes no closing semicolon', () => {
     const ast = schemaSQLParser(
       'CREATE TABLE a (id INT) CREATE TABLE b (id INT)'

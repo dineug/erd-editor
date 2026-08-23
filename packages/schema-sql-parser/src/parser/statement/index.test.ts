@@ -11,14 +11,16 @@ describe('StatementType', () => {
       alterTableAddUnique: 'alter.table.add.unique',
       alterTableAddPrimaryKey: 'alter.table.add.primaryKey',
       alterTableAddForeignKey: 'alter.table.add.foreignKey',
+      commentOnTable: 'comment.on.table',
+      commentOnColumn: 'comment.on.column',
     });
   });
 
-  it('exposes exactly five distinct discriminators', () => {
+  it('exposes exactly seven distinct discriminators', () => {
     const values = Object.values(StatementType);
 
-    expect(values).toHaveLength(5);
-    expect(new Set(values).size).toBe(5);
+    expect(values).toHaveLength(7);
+    expect(new Set(values).size).toBe(7);
   });
 
   it('names alter statements after their ALTER TABLE ADD prefix', () => {

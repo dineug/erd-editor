@@ -1,6 +1,8 @@
 import {
   isAscValue,
   isAutoIncrementValue,
+  isCharacterSet,
+  isCollateValue,
   isCommaToken,
   isCommentValue,
   isConstraintValue,
@@ -8,6 +10,7 @@ import {
   isDataType,
   isDefaultValue,
   isDescValue,
+  isEqualToken,
   isForeignValue,
   isIndexValue,
   isKeyValue,
@@ -19,6 +22,7 @@ import {
   isPrimaryValue,
   isReferencesValue,
   isRightParentToken,
+  isSemicolonToken,
   isStringToken,
   isUniqueValue,
 } from '@/parser/helper';
@@ -39,7 +43,10 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
   const newStatement = isNewStatement(tokens);
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
+  const isRightParent = isRightParentToken(tokens);
   const isPeriod = isPeriodToken(tokens);
+  const isSemicolon = isSemicolonToken(tokens);
+  const isEqual = isEqualToken(tokens);
   const isComment = isCommentValue(tokens);
   const createTableIfNotExists = isCreateTableIfNotExists(tokens);
 
@@ -55,12 +62,40 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
   };
 
   $pos.value += createTableIfNotExists($pos.value) ? 5 : 2;
+  let hasColumns = false;
 
   while (isToken() && !newStatement($pos.value)) {
     let token = tokens[$pos.value];
 
+    // The terminator ends the statement: without it the table options loop
+    // runs on into whatever follows, and a `COMMENT ON TABLE` right after
+    // reads back as the table comment `ON`.
+    if (isSemicolon($pos.value)) {
+      $pos.value++;
+      break;
+    }
+
     if (isLeftParent($pos.value)) {
       $pos.value++;
+
+      // Only the first group is the column list. A later one — `WITH (...)`,
+      // or a paren the tokenizer found outside a quote — would otherwise
+      // replace everything the table already has.
+      if (hasColumns) {
+        let depth = 1;
+
+        while (isToken() && depth > 0) {
+          if (isLeftParent($pos.value)) {
+            depth++;
+          } else if (isRightParent($pos.value)) {
+            depth--;
+          }
+          $pos.value++;
+        }
+
+        continue;
+      }
+
       const { columns, indexes, foreignKeys } = createTableColumnsParser(
         tokens,
         $pos
@@ -68,6 +103,7 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
       ast.columns = columns;
       ast.indexes = indexes;
       ast.foreignKeys = foreignKeys;
+      hasColumns = true;
       continue;
     }
 
@@ -90,6 +126,11 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
 
     if (isComment($pos.value)) {
       token = tokens[++$pos.value];
+
+      // MySQL writes the table option as `COMMENT='a'`.
+      if (isEqual($pos.value)) {
+        token = tokens[++$pos.value];
+      }
 
       if (isString($pos.value)) {
         ast.comment = token.value;
@@ -126,6 +167,9 @@ function createTableColumnsParser(
   const isDesc = isDescValue(tokens);
   const isAsc = isAscValue(tokens);
   const isKey = isKeyValue(tokens);
+  const isEqual = isEqualToken(tokens);
+  const characterSet = isCharacterSet(tokens);
+  const isCollate = isCollateValue(tokens);
   const dataType = isDataType(tokens);
 
   const isToken = () => $pos.value < tokens.length;
@@ -330,6 +374,10 @@ function createTableColumnsParser(
     if (isComment($pos.value)) {
       token = tokens[++$pos.value];
 
+      if (isEqual($pos.value)) {
+        token = tokens[++$pos.value];
+      }
+
       if (isString($pos.value)) {
         column.comment = token.value;
         $pos.value++;
@@ -341,6 +389,33 @@ function createTableColumnsParser(
     if (isAutoIncrement($pos.value)) {
       column.autoIncrement = true;
       $pos.value++;
+      continue;
+    }
+
+    // `CHARACTER SET x` and `COLLATE y` are column attributes, but CHARACTER,
+    // SET and some collation names are data types — left alone they overwrite
+    // the one already parsed.
+    if (characterSet($pos.value)) {
+      $pos.value += 2;
+
+      if (isString($pos.value)) {
+        $pos.value++;
+      }
+
+      continue;
+    }
+
+    if (isCollate($pos.value)) {
+      $pos.value++;
+
+      if (isEqual($pos.value)) {
+        $pos.value++;
+      }
+
+      if (isString($pos.value)) {
+        $pos.value++;
+      }
+
       continue;
     }
 
