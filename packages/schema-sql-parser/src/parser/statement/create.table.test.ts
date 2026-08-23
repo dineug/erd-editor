@@ -77,6 +77,13 @@ describe('createTableParser - table name', () => {
     expect(ast.columns).toEqual([column({ name: 'id', dataType: 'INT' })]);
   });
 
+  it('keeps only the last identifier of a catalog qualified name', () => {
+    const { ast } = parse('CREATE TABLE main.sales.orders (id BIGINT);');
+
+    expect(ast.name).toBe('orders');
+    expect(ast.columns).toEqual([column({ name: 'id', dataType: 'BIGINT' })]);
+  });
+
   it('keeps the first identifier when the period is not followed by a name', () => {
     const { ast } = parse('CREATE TABLE db. (a INT);');
 
@@ -248,6 +255,77 @@ describe('createTableParser - column options', () => {
     expect(ast.columns).toEqual([
       column({ name: 'a', dataType: 'INT' }),
       column({ name: 'b', dataType: 'INT' }),
+    ]);
+  });
+
+  it('keeps the columns that follow an option with nested parentheses', () => {
+    const { ast } = parse(
+      'CREATE TABLE t2 (\n' +
+        ' ts TIMESTAMP,\n' +
+        ' d DATE GENERATED ALWAYS AS (CAST(ts AS DATE)),\n' +
+        ' name STRING,\n' +
+        ' email STRING\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'ts', dataType: 'TIMESTAMP' }),
+      column({ name: 'd', dataType: 'DATE' }),
+      column({ name: 'name', dataType: 'STRING' }),
+      column({ name: 'email', dataType: 'STRING' }),
+    ]);
+  });
+
+  it('skips a CHECK that wraps a subquery in its own parentheses', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (v INT CHECK (v > (SELECT 1)), w INT);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'v', dataType: 'INT' }),
+      column({ name: 'w', dataType: 'INT' }),
+    ]);
+  });
+
+  it('skips a DEFAULT written as a parenthesised function call', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a INT DEFAULT (CURRENT_TIMESTAMP()), b INT);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT' }),
+      column({ name: 'b', dataType: 'INT' }),
+    ]);
+  });
+
+  it('keeps a nested type together when its arguments hold a comma', () => {
+    const { ast } = parse(
+      'CREATE TABLE t3 (\n' +
+        ' id BIGINT,\n' +
+        ' tags ARRAY<STRING>,\n' +
+        ' props MAP<STRING, INT>,\n' +
+        ' addr STRUCT<city: STRING, zip: INT>,\n' +
+        ' name STRING\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'id', dataType: 'BIGINT' }),
+      column({ name: 'tags', dataType: 'ARRAY<STRING>' }),
+      column({ name: 'props', dataType: 'MAP<STRING, INT>' }),
+      column({ name: 'addr', dataType: 'STRUCT<city: STRING, zip: INT>' }),
+      column({ name: 'name', dataType: 'STRING' }),
+    ]);
+  });
+
+  it('balances the angle brackets of a doubly nested type', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a ARRAY<STRUCT<a:INT, b:STRING>>, b DECIMAL(10,2));'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'ARRAY<STRUCT<a:INT, b:STRING>>' }),
+      column({ name: 'b', dataType: 'DECIMAL(10,2)' }),
     ]);
   });
 
@@ -532,6 +610,78 @@ describe('createTableParser - table level constraints', () => {
     ]);
   });
 
+  it('parses a FOREIGN KEY that references a catalog qualified table', () => {
+    const { ast } = parse(
+      'CREATE TABLE orders (\n' +
+        ' id BIGINT,\n' +
+        ' cust_id BIGINT,\n' +
+        ' CONSTRAINT fk1 FOREIGN KEY (cust_id) REFERENCES main.sales.customers (id)\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'id', dataType: 'BIGINT' }),
+      column({ name: 'cust_id', dataType: 'BIGINT' }),
+    ]);
+    expect(ast.foreignKeys).toEqual([
+      {
+        columnNames: ['cust_id'],
+        refTableName: 'customers',
+        refColumnNames: ['id'],
+      },
+    ]);
+  });
+
+  it('skips the state clauses that trail a constraint', () => {
+    const { ast } = parse(
+      'CREATE TABLE posts (\n' +
+        ' id BIGINT NOT NULL,\n' +
+        ' user_id BIGINT,\n' +
+        ' CONSTRAINT pk_posts PRIMARY KEY (id) NOT ENFORCED RELY,\n' +
+        ' CONSTRAINT fk_posts FOREIGN KEY (user_id) REFERENCES users (id) NOT ENFORCED RELY\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'id',
+        dataType: 'BIGINT',
+        primaryKey: true,
+        nullable: false,
+      }),
+      column({ name: 'user_id', dataType: 'BIGINT' }),
+    ]);
+    expect(ast.foreignKeys).toEqual([
+      {
+        columnNames: ['user_id'],
+        refTableName: 'users',
+        refColumnNames: ['id'],
+      },
+    ]);
+  });
+
+  it('skips the ANSI DEFERRABLE INITIALLY DEFERRED spelling', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a INT,\n' +
+        ' CONSTRAINT fk_a FOREIGN KEY (a) REFERENCES o (x) DEFERRABLE INITIALLY DEFERRED\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([column({ name: 'a', dataType: 'INT' })]);
+    expect(ast.foreignKeys).toEqual([
+      { columnNames: ['a'], refTableName: 'o', refColumnNames: ['x'] },
+    ]);
+  });
+
+  it('skips a bare NORELY that trails a PRIMARY KEY', () => {
+    const { ast } = parse('CREATE TABLE t (a INT, PRIMARY KEY (a) NORELY);');
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT', primaryKey: true }),
+    ]);
+  });
+
   it('drops a FOREIGN KEY whose column counts do not match', () => {
     const { ast } = parse(
       'CREATE TABLE t (a INT, FOREIGN KEY (a) REFERENCES o (x, y));'
@@ -628,6 +778,14 @@ describe('parserForeignKeyParser', () => {
   it('resolves a schema qualified reference table', () => {
     const { foreignKey } = parseForeignKey(
       'FOREIGN KEY (a) REFERENCES sc.o (x)'
+    );
+
+    expect(foreignKey?.refTableName).toBe('o');
+  });
+
+  it('resolves a catalog qualified reference table', () => {
+    const { foreignKey } = parseForeignKey(
+      'FOREIGN KEY (a) REFERENCES cat.sc.o (x)'
     );
 
     expect(foreignKey?.refTableName).toBe('o');
