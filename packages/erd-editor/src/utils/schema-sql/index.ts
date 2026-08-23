@@ -5,6 +5,11 @@ import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
 
 import {
+  createSchema as createSchemaDatabricks,
+  formatIndex as formatIndexDatabricks,
+  formatTable as formatTableDatabricks,
+} from './Databricks';
+import {
   createSchema as createSchemaMariaDB,
   formatIndex as formatIndexMariaDB,
   formatTable as formatTableMariaDB,
@@ -39,6 +44,8 @@ import { Name } from './utils';
 export function createSchemaSQL(state: RootState, database?: number): string {
   const currentDatabase = database ? database : state.settings.database;
   switch (currentDatabase) {
+    case Database.Databricks:
+      return createSchemaDatabricks(state);
     case Database.MariaDB:
       return createSchemaMariaDB(state);
     case Database.MSSQL:
@@ -71,6 +78,18 @@ export function createSchemaSQLTable(state: RootState, table: Table) {
     .filter(index => index.tableId === table.id);
 
   switch (database) {
+    case Database.Databricks:
+      formatTableDatabricks(state, { buffer, table });
+      buffer.push('');
+      indexes.forEach(index => {
+        formatIndexDatabricks(state, {
+          index,
+          buffer,
+          indexNames,
+        });
+        buffer.push('');
+      });
+      break;
     case Database.MariaDB:
       formatTableMariaDB(state, { buffer, table });
       buffer.push('');
