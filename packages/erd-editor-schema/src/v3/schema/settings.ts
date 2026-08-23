@@ -54,6 +54,8 @@ export const ColumnType = {
 } as const;
 export const ColumnTypeList: ReadonlyArray<number> = Object.values(ColumnType);
 
+// Append only. A stored document holds the number, so reordering these
+// remaps every diagram already saved.
 export const Database = {
   MariaDB: /*    */ 0b0000000000000000000000000000001,
   MSSQL: /*      */ 0b0000000000000000000000000000010,
@@ -61,6 +63,7 @@ export const Database = {
   Oracle: /*     */ 0b0000000000000000000000000001000,
   PostgreSQL: /* */ 0b0000000000000000000000000010000,
   SQLite: /*     */ 0b0000000000000000000000000100000,
+  Databricks: /* */ 0b0000000000000000000000001000000,
 } as const;
 export const DatabaseList: ReadonlyArray<number> = Object.values(Database);
 

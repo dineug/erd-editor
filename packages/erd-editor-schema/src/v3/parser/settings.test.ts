@@ -213,6 +213,12 @@ describe('createAndMergeSettings', () => {
       expect(settings.bracketType).toBe(BracketType.backtick);
     });
 
+    it('keeps the Databricks database', () => {
+      expect(
+        createAndMergeSettings({ database: Database.Databricks }).database
+      ).toBe(Database.Databricks);
+    });
+
     it('ignores numbers outside the enum lists', () => {
       const settings = createAndMergeSettings({
         database: 999,
