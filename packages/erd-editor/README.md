@@ -16,7 +16,8 @@ and the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor)
 
 - Visual schema design — tables, columns, memos, and four relationship cardinalities
   (zero-one, zero-N, one-only, one-N)
-- SQL DDL import, and export for MariaDB, MSSQL, MySQL, Oracle, PostgreSQL and SQLite
+- SQL DDL import, and export for Databricks, MariaDB, MSSQL, MySQL, Oracle,
+  PostgreSQL and SQLite
 - Code generation — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala
 - Export — `.erd.json`, `.sql`, `.png`
 - Force-directed visualization of table relationships
@@ -108,7 +109,7 @@ erd-editor {
 | Method | Description |
 | --- | --- |
 | `setInitialValue(value: string)` | Load the initial document. Does not create a history entry. |
-| `getSchemaSQL(vendor?)` | Export DDL. `vendor` is one of `MariaDB`, `MSSQL`, `MySQL`, `Oracle`, `PostgreSQL`, `SQLite`; omit it to use the document's own setting. |
+| `getSchemaSQL(vendor?)` | Export DDL. `vendor` is one of `Databricks`, `MariaDB`, `MSSQL`, `MySQL`, `Oracle`, `PostgreSQL`, `SQLite`; omit it to use the document's own setting. |
 | `setSchemaSQL(value: string)` | Parse a DDL string and **replace** the current document with it. Lands in the undo history; an empty string is ignored. |
 | `setDiffValue(value: string)` | Open the diff viewer against another document. |
 | `setPresetTheme(options)` | Set `appearance`, `grayColor` and `accentColor`. |

@@ -25,7 +25,7 @@ To try it in an IDE, create an empty file with a `.erd.json` extension and open 
   (zero-one, zero-N, one-only, one-N)
 - **SQL DDL import** — point it at a `.sql` dump and get a diagram; the parser skips what it
   does not recognize, so an awkward dump imports partially rather than failing outright
-- **SQL DDL export** — MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
+- **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, `.png`
