@@ -259,12 +259,12 @@ describe('createTableParser - column options', () => {
 
   it('keeps every word of a multi word PostgreSQL type', () => {
     const { ast } = parse(
-      'CREATE TABLE t ("id" serial PRIMARY KEY, "d" timestamp with time zone);'
+      'CREATE TABLE t ("id" serial PRIMARY KEY, "d" timestamp without time zone);'
     );
 
     expect(ast.columns).toEqual([
       column({ name: 'id', dataType: 'serial', primaryKey: true }),
-      column({ name: 'd', dataType: 'timestamp with time zone' }),
+      column({ name: 'd', dataType: 'timestamp without time zone' }),
     ]);
   });
 
@@ -278,22 +278,24 @@ describe('createTableParser - column options', () => {
 
   it('takes the longest type name when a shorter one prefixes it', () => {
     const { ast } = parse(
-      'CREATE TABLE t (a DOUBLE PRECISION, b DOUBLE, c TIMESTAMP WITH LOCAL TIME ZONE);'
+      'CREATE TABLE t (a DOUBLE PRECISION, b DOUBLE, c INTERVAL DAY TO SECOND);'
     );
 
     expect(ast.columns).toEqual([
       column({ name: 'a', dataType: 'DOUBLE PRECISION' }),
       column({ name: 'b', dataType: 'DOUBLE' }),
-      column({ name: 'c', dataType: 'TIMESTAMP WITH LOCAL TIME ZONE' }),
+      column({ name: 'c', dataType: 'INTERVAL DAY TO SECOND' }),
     ]);
   });
 
   it('leaves a type no vendor list carries empty', () => {
-    const { ast } = parse('CREATE TABLE t (a hstore, b citext);');
+    // Extension types such as citext and hstore are outside every list.
+    const { ast } = parse('CREATE TABLE t (a numrange, b hstore, c citext);');
 
     expect(ast.columns).toEqual([
-      column({ name: 'a', dataType: '' }),
+      column({ name: 'a', dataType: 'numrange' }),
       column({ name: 'b', dataType: '' }),
+      column({ name: 'c', dataType: '' }),
     ]);
   });
 });

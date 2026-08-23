@@ -39,7 +39,7 @@ rather than rejected, so a real dump imports partially instead of failing. Its o
 - Adding a statement kind is four edits: the parser file, the `Statement` union and `StatementType`, a matcher in
   `parser/helper.ts`, a branch in `parser/index.ts`.
 - `helper.ts` merges all six `dataType/` lists into one deduped uppercase set, so adding a type to one vendor widens every dialect.
-- **A type name is matched word by word, longest first**, so multi-word names are written in full (`TIMESTAMP WITHOUT TIME ZONE`, not `TIMESTAMP WITHOUT`) and `matchDataType` returns the token span — argument lists included, wherever they sit (`TIMESTAMP(3) WITH TIME ZONE`).
+- **A type name is matched word by word, longest first**, so multi-word names are written in full (`TIMESTAMP WITHOUT TIME ZONE`, not `TIMESTAMP WITHOUT`) and `matchDataType` returns the token span — argument lists included, wherever they sit (`TIMESTAMP(3) WITH TIME ZONE`). Each name is mirrored in `erd-editor/src/constants/sql/dataType/` with a `primitiveType`; the two lists hold the same names and change together.
 
 ### Testing Requirements
 

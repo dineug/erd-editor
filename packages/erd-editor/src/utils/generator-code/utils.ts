@@ -35,19 +35,27 @@ export const hasNRelationship = arrayHas<number>([
   RelationshipType.OneN,
 ]);
 
+const WORD = /[0-9A-Za-z_]/;
+const ARGUMENTS = /\([^)]*\)/g;
+
 export function getPrimitiveType(
   dataType: string,
   database: number
 ): PrimitiveType {
-  const value = dataType.toLocaleLowerCase();
+  // Drop the argument list so a name whose words wrap one still matches:
+  // `interval day(2) to second(6)` has to reach `interval day to second`.
+  const value = dataType.toLocaleLowerCase().replace(ARGUMENTS, '');
   let matched: DataTypeHint | undefined;
 
   // The hint lists are alphabetical, so a shorter name (DATE, int, time) can
-  // prefix a longer one (DATETIME, int8, timestamp). Pick the longest match.
+  // prefix a longer one (DATETIME, int8, timestamp). Pick the longest match,
+  // and only where the name ends on a word boundary -- otherwise Oracle's int
+  // claims `interval day to second` and PostgreSQL's int4 claims `int4range`.
   for (const dataTypeHint of getDataTypeHints(database)) {
     const name = dataTypeHint.name.toLocaleLowerCase();
     if (
       value.indexOf(name) === 0 &&
+      !WORD.test(value.charAt(name.length)) &&
       (!matched || name.length > matched.name.length)
     ) {
       matched = dataTypeHint;

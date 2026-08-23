@@ -83,7 +83,7 @@ describe('generator-code/utils', () => {
       expect(getPrimitiveType('datetimeoffset', Database.MSSQL)).toBe(
         'dateTime'
       );
-      expect(getPrimitiveType('DATETIME', Database.Oracle)).toBe('dateTime');
+      expect(getPrimitiveType('TIMESTAMP', Database.Oracle)).toBe('dateTime');
       expect(getPrimitiveType('int8', Database.PostgreSQL)).toBe('long');
       expect(getPrimitiveType('serial8', Database.PostgreSQL)).toBe('long');
       expect(getPrimitiveType('interval', Database.PostgreSQL)).toBe('time');
@@ -104,6 +104,46 @@ describe('generator-code/utils', () => {
         'dateTime'
       );
       expect(getPrimitiveType('LONG RAW', Database.Oracle)).toBe('lob');
+    });
+
+    it('stops a hint at a word boundary instead of mid-word', () => {
+      // Oracle's INT must not claim INTERVAL, PostgreSQL's INT4 must not claim
+      // INT4RANGE, and MySQL's INT must not claim a bare INTX.
+      expect(getPrimitiveType('interval day to second', Database.Oracle)).toBe(
+        'time'
+      );
+      expect(getPrimitiveType('int4range', Database.PostgreSQL)).toBe('string');
+      expect(getPrimitiveType('int8range', Database.PostgreSQL)).toBe('string');
+      expect(getPrimitiveType('INTX', Database.MySQL)).toBe('string');
+    });
+
+    it('looks past an argument list sitting inside a multi word name', () => {
+      expect(
+        getPrimitiveType('timestamp(3) with time zone', Database.PostgreSQL)
+      ).toBe('dateTime');
+      expect(
+        getPrimitiveType('interval day(2) to second(6)', Database.Oracle)
+      ).toBe('time');
+      expect(
+        getPrimitiveType('national character varying(20)', Database.MSSQL)
+      ).toBe('string');
+      expect(getPrimitiveType('bigint(20) unsigned', Database.MySQL)).toBe(
+        'long'
+      );
+    });
+
+    it('resolves the names the vendor lists gained', () => {
+      expect(getPrimitiveType('numrange', Database.PostgreSQL)).toBe('string');
+      expect(
+        getPrimitiveType('timestamp without time zone', Database.PostgreSQL)
+      ).toBe('dateTime');
+      expect(getPrimitiveType('SERIAL', Database.MySQL)).toBe('long');
+      expect(getPrimitiveType('UNSIGNED BIG INT', Database.SQLite)).toBe(
+        'long'
+      );
+      expect(getPrimitiveType('rowversion', Database.MSSQL)).toBe('string');
+      expect(getPrimitiveType('INTEGER', Database.Oracle)).toBe('int');
+      expect(getPrimitiveType('INET6', Database.MariaDB)).toBe('string');
     });
   });
 

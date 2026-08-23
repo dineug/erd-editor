@@ -15,30 +15,59 @@ const orderViolations = (list: string[]) =>
 describe('OracleTypes', () => {
   it('exposes the documented Oracle data type list verbatim', () => {
     expect(OracleTypes).toEqual([
+      'ANYDATA',
       'BFILE',
       'BINARY_DOUBLE',
       'BINARY_FLOAT',
       'BLOB',
+      'BOOL',
+      'BOOLEAN',
+      'CHAR VARYING',
       'CHAR',
+      'CHARACTER VARYING',
+      'CHARACTER',
       'CLOB',
       'DATE',
-      'DATETIME',
+      'DEC',
+      'DECIMAL',
+      'DOUBLE PRECISION',
+      'FLOAT',
+      'INT',
+      'INTEGER',
+      'INTERVAL DAY TO SECOND',
+      'INTERVAL YEAR TO MONTH',
+      'JSON',
       'LONG RAW',
+      'LONG VARCHAR',
       'LONG',
+      'NATIONAL CHAR VARYING',
+      'NATIONAL CHAR',
+      'NATIONAL CHARACTER VARYING',
+      'NATIONAL CHARACTER',
+      'NCHAR VARYING',
       'NCHAR',
       'NCLOB',
       'NUMBER',
+      'NUMERIC',
       'NVARCHAR2',
       'RAW',
+      'REAL',
+      'ROWID',
+      'SDO_GEOMETRY',
+      'SDO_GEORASTER',
+      'SDO_TOPO_GEOMETRY',
+      'SMALLINT',
       'TIMESTAMP WITH LOCAL TIME ZONE',
       'TIMESTAMP WITH TIME ZONE',
       'TIMESTAMP',
-      'UriType',
+      'URIType',
+      'UROWID',
       'VARCHAR',
       'VARCHAR2',
+      'VECTOR',
       'XMLType',
     ]);
-    expect(OracleTypes).toHaveLength(22);
+    expect(OracleTypes).toHaveLength(51);
   });
 
   it('contains no duplicate entries', () => {
@@ -47,7 +76,7 @@ describe('OracleTypes', () => {
 
   it('is the only vendor list carrying mixed-case entries', () => {
     const mixedCase = OracleTypes.filter(type => type !== type.toUpperCase());
-    expect(mixedCase).toEqual(['UriType', 'XMLType']);
+    expect(mixedCase).toEqual(['URIType', 'XMLType']);
   });
 
   it('is sorted ascending case-insensitively, longest multi-word first', () => {
@@ -63,19 +92,38 @@ describe('OracleTypes', () => {
     );
   });
 
-  it('lists exactly three multi-word types', () => {
+  it('lists the ANSI and datetime names spelled over several words', () => {
     expect(OracleTypes.filter(type => type.includes(' '))).toEqual([
+      'CHAR VARYING',
+      'CHARACTER VARYING',
+      'DOUBLE PRECISION',
+      'INTERVAL DAY TO SECOND',
+      'INTERVAL YEAR TO MONTH',
       'LONG RAW',
+      'LONG VARCHAR',
+      'NATIONAL CHAR VARYING',
+      'NATIONAL CHAR',
+      'NATIONAL CHARACTER VARYING',
+      'NATIONAL CHARACTER',
+      'NCHAR VARYING',
       'TIMESTAMP WITH LOCAL TIME ZONE',
       'TIMESTAMP WITH TIME ZONE',
     ]);
   });
 
-  it('omits the integer aliases that other vendors provide', () => {
-    expect(OracleTypes).not.toContain('INT');
-    expect(OracleTypes).not.toContain('INTEGER');
-    expect(OracleTypes).not.toContain('BOOLEAN');
+  it('carries the ANSI-supported aliases Oracle maps onto its own types', () => {
+    for (const type of ['INT', 'INTEGER', 'SMALLINT', 'DEC', 'NUMERIC']) {
+      expect(OracleTypes).toContain(type);
+    }
+  });
+
+  it('omits types that belong to other vendors', () => {
     expect(OracleTypes).not.toContain('TEXT');
+    expect(OracleTypes).not.toContain('TINYINT');
+    expect(OracleTypes).not.toContain('ENUM');
+    // Table 2-1 and datetime_datatypes::= carry DATE, TIMESTAMP and the two
+    // INTERVAL forms; Oracle has no DATETIME.
+    expect(OracleTypes).not.toContain('DATETIME');
   });
 
   it('makes every single-word type recognizable by isDataType', () => {

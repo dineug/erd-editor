@@ -8,13 +8,14 @@ import { SQLiteTypes } from '@/constants/sql/dataType/SQLite';
  * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
-  const value = dataType.toLocaleLowerCase();
+  const value = dataType.toLocaleLowerCase().replace(/\([^)]*\)/g, '');
   let matched: DataTypeHint | undefined;
 
   for (const hint of SQLiteTypes) {
     const name = hint.name.toLocaleLowerCase();
     if (
       value.indexOf(name) === 0 &&
+      !/[0-9A-Za-z_]/.test(value.charAt(name.length)) &&
       (!matched || name.length > matched.name.length)
     ) {
       matched = hint;
@@ -25,34 +26,56 @@ function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
 }
 
 describe('SQLiteTypes', () => {
-  it('lists only the five storage classes', () => {
+  it('lists the storage classes plus the documented affinity names', () => {
     expect(SQLiteTypes).toEqual([
+      { name: 'BIGINT', primitiveType: 'long' },
       { name: 'BLOB', primitiveType: 'lob' },
+      { name: 'BOOLEAN', primitiveType: 'boolean' },
+      { name: 'CHARACTER', primitiveType: 'string' },
+      { name: 'CLOB', primitiveType: 'lob' },
+      { name: 'DATE', primitiveType: 'date' },
+      { name: 'DATETIME', primitiveType: 'dateTime' },
+      { name: 'DECIMAL', primitiveType: 'decimal' },
+      { name: 'DOUBLE PRECISION', primitiveType: 'double' },
+      { name: 'DOUBLE', primitiveType: 'double' },
+      { name: 'FLOAT', primitiveType: 'double' },
+      { name: 'INT', primitiveType: 'int' },
+      { name: 'INT2', primitiveType: 'int' },
+      { name: 'INT8', primitiveType: 'long' },
       { name: 'INTEGER', primitiveType: 'int' },
+      { name: 'MEDIUMINT', primitiveType: 'int' },
+      { name: 'NATIVE CHARACTER', primitiveType: 'string' },
+      { name: 'NCHAR', primitiveType: 'string' },
       { name: 'NUMERIC', primitiveType: 'decimal' },
+      { name: 'NVARCHAR', primitiveType: 'string' },
       { name: 'REAL', primitiveType: 'double' },
+      { name: 'SMALLINT', primitiveType: 'int' },
       { name: 'TEXT', primitiveType: 'string' },
+      { name: 'TINYINT', primitiveType: 'int' },
+      { name: 'UNSIGNED BIG INT', primitiveType: 'long' },
+      { name: 'VARCHAR', primitiveType: 'string' },
+      { name: 'VARYING CHARACTER', primitiveType: 'string' },
     ]);
   });
 
-  it('is alphabetically ordered upper case with one hint per primitive', () => {
+  it('is upper case and ordered so a longer name precedes its prefix', () => {
     const names = SQLiteTypes.map(hint => hint.name);
 
-    expect(names).toEqual([...names].sort());
     expect(names).toEqual(names.map(name => name.toUpperCase()));
-
-    const primitiveTypes = SQLiteTypes.map(hint => hint.primitiveType);
-    expect(new Set(primitiveTypes).size).toBe(primitiveTypes.length);
+    expect(
+      names.filter((name, index) => {
+        if (index === 0) return false;
+        const prev = names[index - 1];
+        if (prev.startsWith(`${name} `)) return false;
+        return prev >= name;
+      })
+    ).toEqual([]);
   });
 
-  it('has no temporal or boolean hints, matching SQLite storage classes', () => {
+  it('carries no time hint, the one primitive SQLite has no name for', () => {
     const primitiveTypes = SQLiteTypes.map(hint => hint.primitiveType);
 
-    expect(primitiveTypes).not.toContain('date');
-    expect(primitiveTypes).not.toContain('dateTime');
     expect(primitiveTypes).not.toContain('time');
-    expect(primitiveTypes).not.toContain('boolean');
-    expect(primitiveTypes).not.toContain('long');
     expect(primitiveTypes).not.toContain('float');
   });
 
@@ -65,21 +88,21 @@ describe('SQLiteTypes', () => {
     expect(resolvePrimitiveType('blob')).toBe('lob');
   });
 
-  it('does not resolve SQLite type affinities that are absent from the list', () => {
-    expect(resolvePrimitiveType('VARCHAR(255)')).toBeUndefined();
-    expect(resolvePrimitiveType('INT')).toBeUndefined();
-    expect(resolvePrimitiveType('DATETIME')).toBeUndefined();
+  it('resolves the affinity names, longest prefix first', () => {
+    expect(resolvePrimitiveType('VARCHAR(255)')).toBe('string');
+    expect(resolvePrimitiveType('INT')).toBe('int');
+    expect(resolvePrimitiveType('INT8')).toBe('long');
+    expect(resolvePrimitiveType('DATETIME')).toBe('dateTime');
+    expect(resolvePrimitiveType('UNSIGNED BIG INT')).toBe('long');
+    expect(resolvePrimitiveType('STRING')).toBeUndefined();
     expect(resolvePrimitiveType('')).toBeUndefined();
   });
 
-  it('has no name that shadows another by prefix', () => {
-    const shadowed = SQLiteTypes.filter((hint, index) =>
-      SQLiteTypes.slice(0, index).some(
-        earlier =>
-          hint.name.toLowerCase().indexOf(earlier.name.toLowerCase()) === 0
-      )
+  it('resolves every listed name to its own primitive, longest match first', () => {
+    const misresolved = SQLiteTypes.filter(
+      hint => resolvePrimitiveType(hint.name) !== hint.primitiveType
     );
 
-    expect(shadowed).toEqual([]);
+    expect(misresolved).toEqual([]);
   });
 });

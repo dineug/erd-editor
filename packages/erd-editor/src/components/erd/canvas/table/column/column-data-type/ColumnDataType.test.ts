@@ -18,6 +18,7 @@ import { AppContext, appContext, appDestroy } from '@/components/appContext';
 import ColumnDataType from '@/components/erd/canvas/table/column/column-data-type/ColumnDataType';
 import * as styles from '@/components/erd/canvas/table/column/column-data-type/ColumnDataType.styles';
 import { Database } from '@/constants/schema';
+import { SQLiteTypes } from '@/constants/sql/dataType/SQLite';
 import {
   changeDatabaseAction,
   changeDatabaseNameAction,
@@ -522,7 +523,8 @@ describe('ColumnDataType', () => {
       const names = h.hintNames();
       expect(names.length).toBeGreaterThan(0);
       expect(names).toContain('INTEGER');
-      expect(names.every(name => name !== 'BIGINT')).toBe(true);
+      const sqlite = SQLiteTypes.map(hint => hint.name);
+      expect(names.filter(name => !sqlite.includes(name))).toEqual([]);
     });
 
     it('ignores settings changes other than the database', async () => {

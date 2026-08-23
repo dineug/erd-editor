@@ -8,13 +8,14 @@ import { MariaDBTypes } from '@/constants/sql/dataType/MariaDB';
  * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
-  const value = dataType.toLocaleLowerCase();
+  const value = dataType.toLocaleLowerCase().replace(/\([^)]*\)/g, '');
   let matched: DataTypeHint | undefined;
 
   for (const hint of MariaDBTypes) {
     const name = hint.name.toLocaleLowerCase();
     if (
       value.indexOf(name) === 0 &&
+      !/[0-9A-Za-z_]/.test(value.charAt(name.length)) &&
       (!matched || name.length > matched.name.length)
     ) {
       matched = hint;
@@ -32,7 +33,7 @@ function namesOf(primitiveType: PrimitiveType): string[] {
 
 describe('MariaDBTypes', () => {
   it('lists the 45 supported data types in upper case', () => {
-    expect(MariaDBTypes).toHaveLength(45);
+    expect(MariaDBTypes).toHaveLength(86);
 
     for (const hint of MariaDBTypes) {
       expect(hint.name).toBe(hint.name.toUpperCase());
@@ -47,7 +48,12 @@ describe('MariaDBTypes', () => {
       'BLOB',
       'BOOL',
       'BOOLEAN',
+      'CHAR BYTE',
+      'CHAR VARYING',
       'CHAR',
+      'CHARACTER VARYING',
+      'CHARACTER',
+      'CLOB',
       'DATE',
       'DATETIME',
       'DEC',
@@ -57,52 +63,105 @@ describe('MariaDBTypes', () => {
       'ENUM',
       'FIXED',
       'FLOAT',
+      'FLOAT4',
+      'FLOAT8',
       'GEOMETRY',
       'GEOMETRYCOLLECTION',
+      'INET4',
+      'INET6',
       'INT',
+      'INT1',
+      'INT2',
+      'INT3',
+      'INT4',
+      'INT8',
       'INTEGER',
       'JSON',
       'LINESTRING',
+      'LONG CHAR VARYING',
+      'LONG CHARACTER VARYING',
+      'LONG VARBINARY',
+      'LONG VARCHAR',
+      'LONG VARCHARACTER',
+      'LONG',
       'LONGBLOB',
       'LONGTEXT',
       'MEDIUMBLOB',
       'MEDIUMINT',
       'MEDIUMTEXT',
+      'MIDDLEINT',
       'MULTILINESTRING',
       'MULTIPOINT',
       'MULTIPOLYGON',
+      'NATIONAL CHAR VARYING',
+      'NATIONAL CHAR',
+      'NATIONAL CHARACTER VARYING',
+      'NATIONAL CHARACTER',
+      'NATIONAL VARCHAR',
+      'NATIONAL VARCHARACTER',
+      'NCHAR VARCHAR',
+      'NCHAR VARCHARACTER',
+      'NCHAR VARYING',
+      'NCHAR',
+      'NUMBER',
       'NUMERIC',
+      'NVARCHAR',
       'POINT',
       'POLYGON',
+      'RAW',
       'REAL',
+      'SERIAL',
       'SET',
       'SMALLINT',
+      'SQL_TSI_YEAR',
       'TEXT',
       'TIME',
       'TIMESTAMP',
       'TINYBLOB',
       'TINYINT',
       'TINYTEXT',
+      'UUID',
       'VARBINARY',
       'VARCHAR',
+      'VARCHAR2',
+      'VARCHARACTER',
+      'VECTOR',
+      'XMLTYPE',
       'YEAR',
     ]);
   });
 
   it('classifies the numeric types', () => {
-    expect(namesOf('long')).toEqual(['BIGINT']);
+    expect(namesOf('long')).toEqual(['BIGINT', 'INT8', 'SERIAL']);
     expect(namesOf('int')).toEqual([
       'BIT',
       'INT',
+      'INT1',
+      'INT2',
+      'INT3',
+      'INT4',
       'INTEGER',
       'MEDIUMINT',
+      'MIDDLEINT',
       'SMALLINT',
+      'SQL_TSI_YEAR',
       'TINYINT',
       'YEAR',
     ]);
-    expect(namesOf('decimal')).toEqual(['DEC', 'DECIMAL', 'FIXED', 'NUMERIC']);
-    expect(namesOf('float')).toEqual(['FLOAT']);
-    expect(namesOf('double')).toEqual(['DOUBLE PRECISION', 'DOUBLE', 'REAL']);
+    expect(namesOf('decimal')).toEqual([
+      'DEC',
+      'DECIMAL',
+      'FIXED',
+      'NUMBER',
+      'NUMERIC',
+    ]);
+    expect(namesOf('float')).toEqual(['FLOAT', 'FLOAT4']);
+    expect(namesOf('double')).toEqual([
+      'DOUBLE PRECISION',
+      'DOUBLE',
+      'FLOAT8',
+      'REAL',
+    ]);
   });
 
   it('classifies the boolean, temporal and large object types', () => {
@@ -112,7 +171,14 @@ describe('MariaDBTypes', () => {
     expect(namesOf('time')).toEqual(['TIME']);
     expect(namesOf('lob')).toEqual([
       'BLOB',
+      'CLOB',
       'JSON',
+      'LONG CHAR VARYING',
+      'LONG CHARACTER VARYING',
+      'LONG VARBINARY',
+      'LONG VARCHAR',
+      'LONG VARCHARACTER',
+      'LONG',
       'LONGBLOB',
       'LONGTEXT',
       'MEDIUMBLOB',
@@ -120,25 +186,48 @@ describe('MariaDBTypes', () => {
       'TEXT',
       'TINYBLOB',
       'TINYTEXT',
+      'XMLTYPE',
     ]);
   });
 
   it('treats the spatial and character types as strings', () => {
     expect(namesOf('string')).toEqual([
       'BINARY',
+      'CHAR BYTE',
+      'CHAR VARYING',
       'CHAR',
+      'CHARACTER VARYING',
+      'CHARACTER',
       'ENUM',
       'GEOMETRY',
       'GEOMETRYCOLLECTION',
+      'INET4',
+      'INET6',
       'LINESTRING',
       'MULTILINESTRING',
       'MULTIPOINT',
       'MULTIPOLYGON',
+      'NATIONAL CHAR VARYING',
+      'NATIONAL CHAR',
+      'NATIONAL CHARACTER VARYING',
+      'NATIONAL CHARACTER',
+      'NATIONAL VARCHAR',
+      'NATIONAL VARCHARACTER',
+      'NCHAR VARCHAR',
+      'NCHAR VARCHARACTER',
+      'NCHAR VARYING',
+      'NCHAR',
+      'NVARCHAR',
       'POINT',
       'POLYGON',
+      'RAW',
       'SET',
+      'UUID',
       'VARBINARY',
       'VARCHAR',
+      'VARCHAR2',
+      'VARCHARACTER',
+      'VECTOR',
     ]);
   });
 
@@ -184,6 +273,8 @@ describe('MariaDBTypes', () => {
 
     expect(extendingAnEarlierName).toEqual<DataTypeHint[]>([
       { name: 'DATETIME', primitiveType: 'dateTime' },
+      { name: 'FLOAT8', primitiveType: 'double' },
+      { name: 'INT8', primitiveType: 'long' },
       { name: 'TIMESTAMP', primitiveType: 'dateTime' },
     ]);
 
