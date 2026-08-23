@@ -75,6 +75,7 @@ export const Language = {
   TypeScript: /* */ 0b0000000000000000000000000010000,
   JPA: /*        */ 0b0000000000000000000000000100000,
   Scala: /*      */ 0b0000000000000000000000001000000,
+  Go: /*         */ 0b0000000000000000000000010000000,
 } as const;
 export const LanguageList: ReadonlyArray<number> = Object.values(Language);
 

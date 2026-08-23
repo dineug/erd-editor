@@ -260,6 +260,15 @@ describe('convert barrel', () => {
       expect(result.settings.database).toBe(SchemaV3Constants.Database.MySQL);
     });
 
+    it('loses the Go language because v2 has no such language', () => {
+      const source = createSchemaV3();
+      source.settings.language = SchemaV3Constants.Language.Go;
+      const result = v2ToV3(v3ToV2(source));
+
+      expect(result.settings.language).not.toBe(source.settings.language);
+      expect(result.settings.language).toBe(SchemaV3Constants.Language.GraphQL);
+    });
+
     it('preserves the document ids of tables, memos and relationships', () => {
       const source = createSchemaV3();
       const result = v2ToV3(v3ToV2(source));
