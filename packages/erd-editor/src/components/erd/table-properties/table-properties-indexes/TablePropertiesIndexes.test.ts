@@ -52,6 +52,18 @@ const checkboxesOf = (mounted: Mounted) =>
 const click = (el: Element) =>
   el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
+/**
+ * Mirrors a real click: the browser flips the `checked` property before the
+ * change event, which is what sets the input's dirty checkedness flag.
+ */
+const changeCheckbox = (input: HTMLInputElement, checked: boolean) => {
+  input.checked = checked;
+  input.dispatchEvent(new InputEvent('change', { bubbles: true }));
+};
+
+const indexColumnRowsOf = (mounted: Mounted) =>
+  Array.from(indexColumnRootOf(mounted)?.children ?? []);
+
 function seed(app: AppContext) {
   const { store } = app;
   store.dispatchSync(
@@ -181,6 +193,24 @@ describe('TablePropertiesIndexes', () => {
       ).toEqual([false, true]);
     });
 
+    it('rebinds the checkbox column when the selection moves to another index', async () => {
+      mounted = await mountAndFlush(template(), app);
+
+      click(indexRowsOf(mounted)[0]);
+      await flush();
+      changeCheckbox(checkboxesOf(mounted)[0], true);
+      await flush();
+
+      expect(checkboxesOf(mounted)[0].checked).toBe(true);
+      expect(indexColumnRowsOf(mounted)).toHaveLength(1);
+
+      click(indexRowsOf(mounted)[1]);
+      await flush();
+
+      expect(checkboxesOf(mounted)[0].checked).toBe(false);
+      expect(indexColumnRowsOf(mounted)).toHaveLength(0);
+    });
+
     it('clears the selection when the selected index is removed', async () => {
       mounted = await mountAndFlush(template(), app);
 
@@ -197,6 +227,7 @@ describe('TablePropertiesIndexes', () => {
       expect(indexRowsOf(mounted)).toHaveLength(1);
       expect(indexColumnRootOf(mounted)).toBeNull();
       expect(checkboxesOf(mounted)[0].disabled).toBe(true);
+      expect(checkboxesOf(mounted)[0].checked).toBe(false);
     });
   });
 });
