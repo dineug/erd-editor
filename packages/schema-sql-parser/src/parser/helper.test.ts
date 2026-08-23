@@ -842,6 +842,19 @@ describe('isDataType', () => {
       true,
     ]);
   });
+
+  it('accepts the names only Databricks brings to the merged list', () => {
+    const test = isDataType(
+      words('STRING', 'TIMESTAMP_NTZ', 'VARIANT', 'VOID')
+    );
+
+    expect([test(0), test(1), test(2), test(3)]).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+  });
 });
 
 describe('matchDataType', () => {

@@ -1,3 +1,4 @@
+import { DatabricksTypes } from '@/parser/dataType/Databricks';
 import { MariaDBTypes } from '@/parser/dataType/MariaDB';
 import { MSSQLTypes } from '@/parser/dataType/MSSQL';
 import { MySQLTypes } from '@/parser/dataType/MySQL';
@@ -61,6 +62,79 @@ export const isColumnValue = createValueEqual('COLUMN');
 export const isCharacterValue = createValueEqual('CHARACTER');
 export const isSetValue = createValueEqual('SET');
 export const isCollateValue = createValueEqual('COLLATE');
+export const isEnforcedValue = createValueEqual('ENFORCED');
+export const isRelyValue = createValueEqual('RELY');
+export const isNorelyValue = createValueEqual('NORELY');
+export const isDeferrableValue = createValueEqual('DEFERRABLE');
+export const isInitiallyValue = createValueEqual('INITIALLY');
+export const isDeferredValue = createValueEqual('DEFERRED');
+export const isImmediateValue = createValueEqual('IMMEDIATE');
+
+// What a constraint may carry after its key list: Databricks writes
+// `NOT ENFORCED RELY` on every key it exports, ANSI writes
+// `DEFERRABLE INITIALLY DEFERRED`. None of it belongs to a column, and the
+// column branch runs first -- left unclaimed, the leading word becomes one.
+export const isConstraintState = (tokens: Token[]) => {
+  const isEnforced = isEnforcedValue(tokens);
+  const isRely = isRelyValue(tokens);
+  const isNorely = isNorelyValue(tokens);
+  const isDeferrable = isDeferrableValue(tokens);
+  const isInitially = isInitiallyValue(tokens);
+  const isDeferred = isDeferredValue(tokens);
+  const isImmediate = isImmediateValue(tokens);
+
+  return (pos: number) =>
+    isEnforced(pos) ||
+    isRely(pos) ||
+    isNorely(pos) ||
+    isDeferrable(pos) ||
+    isInitially(pos) ||
+    isDeferred(pos) ||
+    isImmediate(pos);
+};
+
+// `<` and `>` are not break characters, so a nested type arrives glued to
+// whatever sits beside it -- `MAP<STRING, INT>` is `MAP<STRING`, `,`, `INT>`.
+// The comma is the column separator, so one column read as several. Rather
+// than break the angle brackets in the lexer, where every fixed-offset
+// matcher would shift, the span is recovered here by balancing them.
+const NestedDataTypes = ['ARRAY', 'MAP', 'STRUCT'];
+
+export const matchNestedDataType = (tokens: Token[]) => {
+  const isString = isStringToken(tokens);
+
+  const angleDepth = (value: string) => {
+    let depth = 0;
+
+    for (const char of value) {
+      if (char === '<') depth++;
+      else if (char === '>') depth--;
+    }
+
+    return depth;
+  };
+
+  return (pos: number) => {
+    const token = tokens[pos];
+    if (!token || token.quoted || !isString(pos)) return 0;
+
+    const open = token.value.indexOf('<');
+    if (open === -1) return 0;
+    if (!NestedDataTypes.includes(token.value.slice(0, open).toUpperCase())) {
+      return 0;
+    }
+
+    let depth = 0;
+
+    for (let cursor = pos; cursor < tokens.length; cursor++) {
+      depth += angleDepth(tokens[cursor].value);
+      if (depth <= 0) return cursor - pos + 1;
+    }
+
+    // Unterminated: the permissive parser takes what is left as the type.
+    return tokens.length - pos;
+  };
+};
 
 export const isAutoIncrementValue = (tokens: Token[]) => {
   const isAuto_increment = isAuto_incrementValue(tokens);
@@ -379,6 +453,7 @@ export const isAlterTableAddUnique = (tokens: Token[]) => {
 const DataTypes: ReadonlyArray<string> = Array.from(
   new Set(
     [
+      ...DatabricksTypes,
       ...MariaDBTypes,
       ...MSSQLTypes,
       ...MySQLTypes,
