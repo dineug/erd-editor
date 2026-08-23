@@ -61,10 +61,15 @@ const selfCrosses = (points: Point[]) => {
 };
 
 /**
- * Total length two connectors run within one stroke width of each other, over
- * every segment drawn — the same question `e2e/bench/geometry.ts` asks of a real
- * scene, and the one the tests below would otherwise only ask of the two or three
+ * Total length two connectors run within 3px of each other, over every segment
+ * drawn — the same question `e2e/bench/geometry.ts` asks of a real scene, and
+ * the one the tests below would otherwise only ask of the two or three
  * coordinates each was written around.
+ *
+ * The band is not `RELATIONSHIP_STROKE_WIDTH`. It is the separation these cases
+ * are written around: the pairs below start 2px and 3px apart, and a band as
+ * narrow as the connector is drawn would score them clear before the pass had
+ * moved anything.
  */
 const bandOverlap = (routes: Record<string, Point[]>, band = 3) => {
   type Run = {
@@ -146,7 +151,7 @@ describe('nudgeRoutes', () => {
     expect(bandOverlap({ a, b })).toBe(0);
   });
 
-  it('separates two channels a stroke width apart', () => {
+  it('separates two channels two pixels apart', () => {
     // The worst pair of the small benchmark corpus: two vertical runs at x = 920
     // and x = 922, which a channel keyed on the rounded coordinate filed apart
     // and never considered.
@@ -173,7 +178,7 @@ describe('nudgeRoutes', () => {
 
   it('spreads a chain of near-coincident channels evenly', () => {
     // 0-3-6 is one bundle even though no two share a coordinate: a reader sees
-    // three lines within a stroke width, not three channels. The lanes are
+    // three lines within one band, not three channels. The lanes are
     // centred on the mean of the three, not on whichever the sort put first.
     const a = line([0, 0], [0, 100], [300, 100], [300, 400]);
     const b = line([10, 0], [10, 103], [310, 103], [310, 400]);
@@ -419,7 +424,7 @@ describe('nudgeRoutes', () => {
 
   it('separates two parallel runs of one connector without folding it', () => {
     // The escape route leaves both anchors on the same axis and comes back, so
-    // its two upright runs can land within a stroke width of each other. The
+    // its two upright runs can land within one band of each other. The
     // lanes are handed out in entry order, which here swaps them — and one of
     // the two ways round walks the connector across itself.
     const u = line(

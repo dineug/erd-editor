@@ -16,7 +16,7 @@ import {
  * on their own. Measured, not predicted.
  *
  * Segments are collected into a channel by proximity, not by a shared
- * coordinate. The complaint is visual — two connectors within a stroke width
+ * coordinate. The complaint is visual — two connectors within a few pixels
  * read as one line — and the benchmark's worst pair in every corpus was 2px
  * apart: indistinguishable to a reader, yet far enough apart that rounding each
  * coordinate to the pixel filed them under different channels, where nothing
@@ -27,7 +27,7 @@ import {
  * from its anchor.
  */
 
-/** Separation given to routes sharing a channel. Stroke width is 3. */
+/** Separation given to routes sharing a channel. The connector is 2 wide. */
 const NUDGE_GAP = 10;
 
 /**
@@ -35,13 +35,23 @@ const NUDGE_GAP = 10;
  * lanes hold each segment nearer the channel the router chose, so a group whose
  * preferred lanes all run into a table can still be pulled apart rather than
  * give up and stay collinear.
+ *
+ * The floor is 4 rather than the 3 a 2px connector would allow, because the
+ * routing bench says so: `[10, 7, 4, 3]`, `[10, 7, 5, 3]` and `[10, 6, 3]` each
+ * took the medium corpus from 0 to 316px of collinear overlap and cost the large
+ * one 1-10% besides, for 5-6% fewer crossings. Since the first rung that clears
+ * a group wins, a narrower rung is not an extra chance — it lets a group settle
+ * where a wider one would have pushed it somewhere better.
  */
 const NUDGE_GAPS = [NUDGE_GAP, 7, 4];
 
 /**
  * Closer than this and two segments still read as one line, so this is both what
- * the pass sets out to fix and the floor of the ladder above: a pixel clear of
- * the stroke, because touching is legible and drawn on top of each other is not.
+ * the pass sets out to fix and the floor of the ladder above: touching is
+ * legible and drawn on top of each other is not.
+ *
+ * A 2px connector 4px from its neighbour leaves 2px of clear space, where the
+ * 3px one it replaced left 1px. That is slack the ladder above keeps on purpose.
  */
 const MIN_NUDGE_GAP = NUDGE_GAPS[NUDGE_GAPS.length - 1];
 
@@ -56,7 +66,7 @@ const NUDGE_EPSILON = 0.5;
  * out 3.999999999999982 apart for a centre of 126.8333. Measured against the rung
  * itself, the narrowest one can then never clear a group, and the group is
  * abandoned on the coordinate it started on: whether the pass works at all turns
- * on the fraction in a table's position. 3.5px is still clear of the 3px stroke.
+ * on the fraction in a table's position. 3.5px is still clear of the stroke.
  */
 const SEPARATED = MIN_NUDGE_GAP - NUDGE_EPSILON;
 
