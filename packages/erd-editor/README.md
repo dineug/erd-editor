@@ -16,8 +16,8 @@ and the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor)
 
 - Visual schema design — tables, columns, memos, and four relationship cardinalities
   (zero-one, zero-N, one-only, one-N)
-- SQL DDL import, and export for Databricks, MariaDB, MSSQL, MySQL, Oracle,
-  PostgreSQL and SQLite
+- Import — a `.sql` dump, or a GraphQL SDL schema from any tool that emits one
+- SQL DDL export — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL and SQLite
 - Code generation — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM
 - Export — `.erd.json`, `.sql`, `.png`
@@ -95,7 +95,7 @@ erd-editor {
 
 | Attribute | Property | Description |
 | --- | --- | --- |
-| `readonly` | `readonly` | Blocks editing and suppresses the `change` event. Assigning `value`, `setSchemaSQL()` and `clear()` are ignored while it is set — load with `setInitialValue()` instead. Viewport actions and the SQL/code output settings still apply. |
+| `readonly` | `readonly` | Blocks editing and suppresses the `change` event. Assigning `value`, `setSchemaSQL()`, `setSchemaGraphQL()` and `clear()` are ignored while it is set — load with `setInitialValue()` instead. Viewport actions and the SQL/code output settings still apply. |
 | `system-dark-mode` | `systemDarkMode` | Follows the OS color scheme |
 | `enable-theme-builder` | `enableThemeBuilder` | Shows the built-in theme builder |
 
@@ -112,6 +112,7 @@ erd-editor {
 | `setInitialValue(value: string)` | Load the initial document. Does not create a history entry. |
 | `getSchemaSQL(vendor?)` | Export DDL. `vendor` is one of `Databricks`, `MariaDB`, `MSSQL`, `MySQL`, `Oracle`, `PostgreSQL`, `SQLite`; omit it to use the document's own setting. |
 | `setSchemaSQL(value: string)` | Parse a DDL string and **replace** the current document with it. Lands in the undo history; an empty string is ignored. |
+| `setSchemaGraphQL(value: string)` | Parse a GraphQL SDL string and **replace** the current document with it. Object types become tables, scalars map to the document's own dialect, and relationships are read from the fields that point at another type. Lands in the undo history; an empty string is ignored. |
 | `setDiffValue(value: string)` | Open the diff viewer against another document. |
 | `setPresetTheme(options)` | Set `appearance`, `grayColor` and `accentColor`. |
 | `setTheme(theme)` | Override individual theme tokens. |
@@ -160,11 +161,24 @@ setExportFileCallback((blob, { fileName }) => host.writeFile(fileName, blob));
 
 setImportFileCallback(async ({ type, op, accept }) => {
   const text = await host.pickFile(accept);
-  if (op === 'diff') editor.setDiffValue(text);
-  else if (type === 'sql') editor.setSchemaSQL(text);
-  else editor.value = text;
+
+  if (op === 'diff') {
+    editor.setDiffValue(text);
+  } else if (type === 'json') {
+    editor.value = text;
+  } else if (type === 'sql') {
+    editor.setSchemaSQL(text);
+  } else if (type === 'graphql') {
+    editor.setSchemaGraphQL(text);
+  }
 });
 ```
+
+Dispatch on every `type` you handle and ignore the rest. Assigning `value` clears the
+document before it parses, so routing a payload there that is not an `.erd.json` document —
+through a catch-all `else`, or because a `type` added later fell through — empties the
+diagram instead of importing anything. `accept` carries the extensions for that type
+(`.json`, `.sql`, or `.graphql,.gql,.graphqls`), ready to hand to a host file dialog.
 
 Left unset, the editor uses the browser's own download and file-picker behavior.
 

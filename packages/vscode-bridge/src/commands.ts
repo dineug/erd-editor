@@ -8,7 +8,7 @@ export const hostExportFileCommand = createCommand<{
   fileName: string;
 }>('hostExportFileCommand');
 export const hostImportFileCommand = createCommand<{
-  type: 'json' | 'sql';
+  type: 'json' | 'sql' | 'graphql';
   op: 'set' | 'diff';
   accept: string;
 }>('hostImportFileCommand');
@@ -24,7 +24,7 @@ export const hostSaveThemeCommand = createCommand<ThemeOptions>(
 );
 
 export const webviewImportFileCommand = createCommand<{
-  type: 'json' | 'sql';
+  type: 'json' | 'sql' | 'graphql';
   op: 'set' | 'diff';
   value: string;
 }>('webviewImportFileCommand');

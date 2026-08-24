@@ -133,6 +133,7 @@ describe('useErdEditorAttachElement', () => {
     expect(typeof ctx.setTheme).toBe('function');
     expect(typeof ctx.setKeyBindingMap).toBe('function');
     expect(typeof ctx.setSchemaSQL).toBe('function');
+    expect(typeof ctx.setSchemaGraphQL).toBe('function');
     expect(typeof ctx.getSchemaSQL).toBe('function');
     expect(typeof ctx.getSharedStore).toBe('function');
     expect(typeof ctx.setDiffValue).toBe('function');
@@ -292,6 +293,29 @@ describe('useErdEditorAttachElement', () => {
 
     ctx.setSchemaSQL('   ');
     expect(app.store.state.doc.tableIds).toEqual(tableIds);
+  });
+
+  it('imports GraphQL SDL and ignores blank input', async () => {
+    const { app, ctx } = await setup();
+
+    ctx.setSchemaGraphQL('type User {\n  id: ID!\n}');
+    const tableIds = [...app.store.state.doc.tableIds];
+    expect(tableIds.length).toBe(1);
+    expect(app.store.state.collections.tableEntities[tableIds[0]].name).toBe(
+      'User'
+    );
+
+    ctx.setSchemaGraphQL('   ');
+    expect(app.store.state.doc.tableIds).toEqual(tableIds);
+  });
+
+  it('loads an empty document when the SDL declares no object type', async () => {
+    const { app, ctx } = await setup();
+    ctx.setSchemaGraphQL('type User {\n  id: ID!\n}');
+
+    ctx.setSchemaGraphQL('query GetUser { user { id } }');
+
+    expect(app.store.state.doc.tableIds).toEqual([]);
   });
 
   it('exports schema SQL for the default and for a named vendor', async () => {

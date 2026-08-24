@@ -74,6 +74,16 @@ Bridge.mergeRegister(
       case 'sql':
         op === 'set' && editor.setSchemaSQL(value);
         break;
+      case 'graphql':
+        op === 'set' && editor.setSchemaGraphQL(value);
+        break;
+      default: {
+        // The host has already read the file by the time we get here, so an
+        // unhandled type is a silent loss. `type` is `never` in this arm, so
+        // widening the bridge union without adding a case breaks the build.
+        const unhandled: never = type;
+        throw new Error(`unsupported import file type "${unhandled}"`);
+      }
     }
   }),
   bridge.registerCommand(webviewInitialValueCommand, ({ value }) => {

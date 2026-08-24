@@ -32,6 +32,7 @@ import {
   focusMoveTableAction$,
   initialLoadJsonAction$,
   loadJsonAction$,
+  loadSchemaGraphQLAction$,
   loadSchemaSQLAction$,
   moveAllAction$,
   pasteEntitiesAction$,
@@ -639,6 +640,54 @@ describe('loadSchemaSQLAction$', () => {
       'editor.loadJson',
       'table.sort',
     ]);
+  });
+});
+
+describe('loadSchemaGraphQLAction$', () => {
+  const sdl = `type User {
+  id: ID!
+  name: String
+}`;
+
+  it('imports the SDL, keeps the current settings and sorts the tables', () => {
+    store.dispatchSync(changeDatabaseNameAction({ value: 'keep-me' }));
+
+    store.dispatchSync(loadSchemaGraphQLAction$(sdl));
+
+    const tables = Object.values(store.state.collections.tableEntities);
+    expect(tables.map(({ name }) => name)).toEqual(['User']);
+    expect(store.state.doc.tableIds).toHaveLength(1);
+    expect(store.state.settings.databaseName).toBe('keep-me');
+  });
+
+  it('emits clear, loadJson and sortTable', () => {
+    expect(typesOf(store, loadSchemaGraphQLAction$(sdl))).toEqual([
+      'editor.clear',
+      'editor.loadJson',
+      'table.sort',
+    ]);
+  });
+
+  // Unified with `loadSchemaSQLAction$`: input the parser cannot read loads an
+  // empty document rather than being refused, and undo puts the diagram back.
+  it('loads an empty document for SDL that declares no object type', () => {
+    seedTable(store, 't1');
+
+    store.dispatchSync(
+      loadSchemaGraphQLAction$('type Query { hello: String }')
+    );
+
+    expect(store.state.doc.tableIds).toEqual([]);
+  });
+
+  it('loads an empty document for SDL it cannot parse', () => {
+    seedTable(store, 't1');
+
+    store.dispatchSync(
+      loadSchemaGraphQLAction$('model User {\n  id Int @id\n}')
+    );
+
+    expect(store.state.doc.tableIds).toEqual([]);
   });
 });
 
@@ -1396,6 +1445,7 @@ describe('actions$', () => {
         'focusMoveTableAction$',
         'initialLoadJsonAction$',
         'loadJsonAction$',
+        'loadSchemaGraphQLAction$',
         'loadSchemaSQLAction$',
         'moveAllAction$',
         'pasteEntitiesAction$',

@@ -12,6 +12,7 @@ import { AppContext } from '@/components/appContext';
 import { Emitter } from '@/utils/emitter';
 import {
   importDiffJSON,
+  importGraphQL,
   importJSON,
   importSchemaSQL,
   setImportFileCallback,
@@ -112,6 +113,21 @@ describe('importFile', () => {
         accept: '.sql',
       });
       expect(harness.inputs).toHaveLength(0);
+    });
+
+    it('short-circuits importGraphQL with a graphql/set descriptor', () => {
+      const callback = vi.fn();
+      setImportFileCallback(callback);
+
+      importGraphQL(harness.app);
+
+      expect(callback).toHaveBeenCalledWith({
+        type: 'graphql',
+        op: 'set',
+        accept: '.graphql,.gql,.graphqls',
+      });
+      expect(harness.inputs).toHaveLength(0);
+      expect(harness.clicks).toBe(0);
     });
 
     it('short-circuits importDiffJSON with a json/diff descriptor', () => {
@@ -277,6 +293,92 @@ describe('importFile', () => {
 
       await change(input);
 
+      expect(harness.dispatch).not.toHaveBeenCalled();
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe('importGraphQL', () => {
+    const sdl = 'type User {\n  id: ID!\n}';
+
+    it('creates and clicks a file input accepting every SDL extension', () => {
+      importGraphQL(harness.app);
+
+      const [input] = harness.inputs;
+      expect(input.getAttribute('type')).toBe('file');
+      expect(input.getAttribute('accept')).toBe('.graphql,.gql,.graphqls');
+      expect(harness.clicks).toBe(1);
+    });
+
+    it.each(['schema.graphql', 'schema.GQL', 'schema.graphqls'])(
+      'dispatches loadSchemaGraphQLAction$ for %s',
+      async name => {
+        importGraphQL(harness.app);
+        const [input] = harness.inputs;
+        attachFile(input, name, sdl);
+
+        await change(input);
+
+        expect(harness.dispatch).toHaveBeenCalledTimes(1);
+        expect(typeof harness.dispatch.mock.calls[0][0]).toBe('function');
+        expect(harness.emitted).toHaveLength(0);
+      }
+    );
+
+    it('does nothing when no file is selected', async () => {
+      importGraphQL(harness.app);
+
+      await change(harness.inputs[0]);
+
+      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(harness.emitted).toHaveLength(0);
+    });
+
+    it('emits a toast when the extension is not an SDL one', async () => {
+      importGraphQL(harness.app);
+      const [input] = harness.inputs;
+      attachFile(input, 'schema.prisma', sdl);
+
+      await change(input);
+
+      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(harness.emitted).toHaveLength(1);
+      expect(harness.emitted[0].type).toBe('openToast');
+    });
+
+    it('dispatches whatever the file holds, as the SQL import does', async () => {
+      importGraphQL(harness.app);
+      const [input] = harness.inputs;
+      attachFile(input, 'query.graphql', 'query GetUser { user { id } }');
+
+      await change(input);
+
+      expect(harness.dispatch).toHaveBeenCalledTimes(1);
+      expect(harness.emitted).toHaveLength(0);
+    });
+
+    it('ignores a non-string FileReader result', async () => {
+      const readers: any[] = [];
+      class FakeFileReader {
+        result: unknown = null;
+        onload: (() => void) | null = null;
+        constructor() {
+          readers.push(this);
+        }
+        readAsText() {
+          this.result = new ArrayBuffer(4);
+          queueMicrotask(() => this.onload?.());
+        }
+      }
+      vi.stubGlobal('FileReader', FakeFileReader);
+
+      importJSON(harness.app);
+      const [input] = harness.inputs;
+      attachFile(input, 'schema.json', '{}');
+
+      await change(input);
+
+      expect(readers).toHaveLength(1);
       expect(harness.dispatch).not.toHaveBeenCalled();
       vi.unstubAllGlobals();
     });

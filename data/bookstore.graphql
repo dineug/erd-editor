@@ -1,0 +1,235 @@
+# Bookstore -- the public GraphQL API of a small publisher's online shop.
+#
+# Hand-written SDL with no directives anywhere: every table, primary key,
+# column type and relationship the importer draws is inferred from the schema
+# itself. Query and Mutation are the default root names, so both are dropped.
+
+scalar Date
+scalar DateTime
+scalar Decimal
+scalar URL
+scalar UUID
+
+"Anything persisted: a surrogate key and audit timestamps."
+interface Node {
+  id: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum BookFormat {
+  HARDCOVER
+  PAPERBACK
+  EBOOK
+  AUDIOBOOK
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum AddressKind {
+  BILLING
+  SHIPPING
+}
+
+"A publishing house."
+type Publisher implements Node {
+  id: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  "Trading name, as printed on the imprint page."
+  name: String!
+  foundedOn: Date
+  websiteUrl: URL
+  books: [Book!]!
+}
+
+"A person credited as the writer of at least one book."
+type Author implements Node {
+  id: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  displayName: String!
+  "Surname first, for shelf ordering."
+  sortName: String!
+  bornOn: Date
+  "Exactly one profile per author, and one author per profile."
+  profile: AuthorProfile!
+  books: [Book!]!
+}
+
+"The editorial copy behind an author page, kept out of Author so the row stays narrow."
+type AuthorProfile implements Node {
+  id: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  author: Author!
+  biography: String!
+  headshotUrl: URL
+  agencyName: String
+}
+
+"One edition of a title. A different ISBN is a different Book."
+type Book implements Node {
+  id: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  isbn13: String!
+  title: String!
+  subtitle: String
+  format: BookFormat!
+  pageCount: Int
+  listPrice: Decimal!
+  publishedOn: Date
+  synopsis: String
+  coverUrl: URL
+  "False once the last print run is exhausted; the row is never deleted."
+  inPrint: Boolean!
+  author: Author!
+  publisher: Publisher!
+  categories: [Category!]!
+  reviews(first: Int = 20, after: UUID): [Review!]!
+  orderLines: [OrderLine!]!
+}
+
+"A shelf label. A book sits under several, and a category holds many books."
+type Category implements Node {
+  id: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  name: String!
+  slug: String!
+  description: String
+  books(format: BookFormat, first: Int = 20): [Book!]!
+}
+
+"Someone who buys books."
+type Customer implements Node {
+  id: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  email: String!
+  fullName: String!
+  marketingOptIn: Boolean!
+  lastSeenAt: DateTime
+  addresses: [Address!]!
+  orders(status: OrderStatus): [Order!]!
+  reviews: [Review!]!
+}
+
+"A postal address a customer has saved. Kept after an order ships, so orders stay readable."
+type Address implements Node {
+  id: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  kind: AddressKind!
+  line1: String!
+  line2: String
+  city: String!
+  region: String
+  postalCode: String!
+  "ISO 3166-1 alpha-2."
+  countryCode: String!
+  customer: Customer!
+  orders: [Order!]!
+}
+
+"A basket that has been paid for."
+type Order implements Node {
+  id: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  "Human-readable, shown on the receipt."
+  reference: String!
+  status: OrderStatus!
+  placedAt: DateTime!
+  shippedAt: DateTime
+  itemTotal: Decimal!
+  shippingTotal: Decimal!
+  grandTotal: Decimal!
+  customer: Customer!
+  shippingAddress: Address!
+  lines: [OrderLine!]!
+}
+
+"One book on one order, priced at the moment the order was placed."
+type OrderLine implements Node {
+  id: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  quantity: Int!
+  unitPrice: Decimal!
+  lineTotal: Decimal!
+  order: Order!
+  book: Book!
+}
+
+"A customer's rating of a book."
+type Review implements Node {
+  id: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  "1 to 5."
+  rating: Int!
+  headline: String!
+  body: String
+  verifiedPurchase: Boolean!
+  book: Book!
+  customer: Customer!
+}
+
+input AddressInput {
+  kind: AddressKind!
+  line1: String!
+  line2: String
+  city: String!
+  region: String
+  postalCode: String!
+  countryCode: String!
+}
+
+input OrderLineInput {
+  bookIsbn13: String!
+  quantity: Int!
+}
+
+input PlaceOrderInput {
+  customerEmail: String!
+  shippingAddress: AddressInput!
+  lines: [OrderLineInput!]!
+}
+
+input ReviewInput {
+  bookIsbn13: String!
+  rating: Int!
+  headline: String!
+  body: String
+}
+
+type Query {
+  node(id: UUID!): Node
+  book(isbn13: String!): Book
+  books(
+    category: String
+    format: BookFormat
+    inPrintOnly: Boolean = true
+    first: Int = 20
+    after: UUID
+  ): [Book!]!
+  authors(search: String, first: Int = 20): [Author!]!
+  categories: [Category!]!
+  order(reference: String!): Order
+}
+
+type Mutation {
+  placeOrder(input: PlaceOrderInput!): Order!
+  cancelOrder(reference: String!): Order!
+  writeReview(input: ReviewInput!): Review!
+  saveAddress(customerEmail: String!, input: AddressInput!): Address!
+}

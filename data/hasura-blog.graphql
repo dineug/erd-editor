@@ -1,0 +1,1107 @@
+# hasura-blog -- the SDL a Hasura GraphQL Engine serves for a seven-table blog
+# schema, in the shape `gq dump-schema` / an introspection export produces it:
+# snake_case table types, Postgres scalar names, and one generated family of
+# aggregate, filter, ordering and mutation-response types per table.
+#
+# Only the seven table types below should reach the canvas. Everything else --
+# the roots named by the `schema` block, `*_aggregate`, `*_aggregate_fields`,
+# `*_max_fields` and friends, `*_mutation_response`, and every `*_bool_exp` /
+# `*_order_by` / `*_insert_input` / `*_on_conflict` input -- is API surface
+# rather than storage, and is what the pruning path has to drop.
+#
+# The relationship columns are real columns here (`author_id`, `post_id`,
+# `parent_id`), so the importer binds each relationship onto the column that is
+# already there rather than inventing a second one beside it.
+
+schema {
+  query: query_root
+  mutation: mutation_root
+  subscription: subscription_root
+}
+
+scalar bigint
+
+scalar date
+
+scalar float8
+
+scalar jsonb
+
+scalar numeric
+
+scalar timestamptz
+
+scalar uuid
+
+"""
+ordering argument of a cursor
+"""
+enum cursor_ordering {
+  ASC
+  DESC
+}
+
+"""
+column ordering options
+"""
+enum order_by {
+  asc
+  asc_nulls_first
+  asc_nulls_last
+  desc
+  desc_nulls_first
+  desc_nulls_last
+}
+
+"""
+Boolean expression to compare columns of type "String". All fields are combined with logical 'AND'.
+"""
+input String_comparison_exp {
+  _eq: String
+  _gt: String
+  _ilike: String
+  _in: [String!]
+  _is_null: Boolean
+  _like: String
+  _lt: String
+  _neq: String
+  _nlike: String
+}
+
+"""
+Boolean expression to compare columns of type "uuid". All fields are combined with logical 'AND'.
+"""
+input uuid_comparison_exp {
+  _eq: uuid
+  _gt: uuid
+  _in: [uuid!]
+  _is_null: Boolean
+  _lt: uuid
+  _neq: uuid
+}
+
+"""
+columns and relationships of "categories"
+"""
+type categories {
+  created_at: timestamptz!
+  description: String
+  id: uuid!
+  name: String!
+  """
+  An array relationship
+  """
+  posts(
+    distinct_on: [posts_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [posts_order_by!]
+    where: posts_bool_exp
+  ): [posts!]!
+  """
+  An aggregate relationship
+  """
+  posts_aggregate(
+    distinct_on: [posts_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [posts_order_by!]
+    where: posts_bool_exp
+  ): posts_aggregate!
+  slug: String!
+}
+
+"""
+aggregated selection of "categories"
+"""
+type categories_aggregate {
+  aggregate: categories_aggregate_fields
+  nodes: [categories!]!
+}
+
+"""
+aggregate fields of "categories"
+"""
+type categories_aggregate_fields {
+  count(columns: [categories_select_column!], distinct: Boolean): Int!
+  max: categories_max_fields
+  min: categories_min_fields
+}
+
+"""
+aggregate max on columns
+"""
+type categories_max_fields {
+  created_at: timestamptz
+  description: String
+  id: uuid
+  name: String
+  slug: String
+}
+
+"""
+aggregate min on columns
+"""
+type categories_min_fields {
+  created_at: timestamptz
+  description: String
+  id: uuid
+  name: String
+  slug: String
+}
+
+"""
+select columns of table "categories"
+"""
+enum categories_select_column {
+  created_at
+  description
+  id
+  name
+  slug
+}
+
+"""
+columns and relationships of "comments"
+"""
+type comments {
+  """
+  An object relationship
+  """
+  author: users!
+  author_id: uuid!
+  body: String!
+  created_at: timestamptz!
+  id: uuid!
+  is_approved: Boolean!
+  """
+  An object relationship
+  """
+  parent: comments
+  parent_id: uuid
+  """
+  An object relationship
+  """
+  post: posts!
+  post_id: uuid!
+  """
+  An array relationship
+  """
+  replies(
+    distinct_on: [comments_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [comments_order_by!]
+    where: comments_bool_exp
+  ): [comments!]!
+  """
+  An aggregate relationship
+  """
+  replies_aggregate(
+    distinct_on: [comments_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [comments_order_by!]
+    where: comments_bool_exp
+  ): comments_aggregate!
+  sentiment_score: float8
+  updated_at: timestamptz!
+}
+
+"""
+aggregated selection of "comments"
+"""
+type comments_aggregate {
+  aggregate: comments_aggregate_fields
+  nodes: [comments!]!
+}
+
+"""
+aggregate fields of "comments"
+"""
+type comments_aggregate_fields {
+  avg: comments_avg_fields
+  count(columns: [comments_select_column!], distinct: Boolean): Int!
+  max: comments_max_fields
+  min: comments_min_fields
+  stddev: comments_stddev_fields
+  sum: comments_sum_fields
+  variance: comments_variance_fields
+}
+
+"""
+aggregate avg on columns
+"""
+type comments_avg_fields {
+  sentiment_score: Float
+}
+
+"""
+aggregate max on columns
+"""
+type comments_max_fields {
+  author_id: uuid
+  body: String
+  created_at: timestamptz
+  id: uuid
+  parent_id: uuid
+  post_id: uuid
+  sentiment_score: float8
+  updated_at: timestamptz
+}
+
+"""
+aggregate min on columns
+"""
+type comments_min_fields {
+  author_id: uuid
+  body: String
+  created_at: timestamptz
+  id: uuid
+  parent_id: uuid
+  post_id: uuid
+  sentiment_score: float8
+  updated_at: timestamptz
+}
+
+"""
+aggregate stddev on columns
+"""
+type comments_stddev_fields {
+  sentiment_score: Float
+}
+
+"""
+aggregate sum on columns
+"""
+type comments_sum_fields {
+  sentiment_score: float8
+}
+
+"""
+aggregate variance on columns
+"""
+type comments_variance_fields {
+  sentiment_score: Float
+}
+
+"""
+response of any mutation on the table "comments"
+"""
+type comments_mutation_response {
+  """
+  number of rows affected by the mutation
+  """
+  affected_rows: Int!
+  """
+  data from the rows affected by the mutation
+  """
+  returning: [comments!]!
+}
+
+"""
+Boolean expression to filter rows from the table "comments"
+"""
+input comments_bool_exp {
+  _and: [comments_bool_exp!]
+  _not: comments_bool_exp
+  _or: [comments_bool_exp!]
+  author: users_bool_exp
+  author_id: uuid_comparison_exp
+  body: String_comparison_exp
+  post: posts_bool_exp
+  post_id: uuid_comparison_exp
+}
+
+"""
+input type for inserting data into table "comments"
+"""
+input comments_insert_input {
+  author_id: uuid
+  body: String
+  is_approved: Boolean
+  parent_id: uuid
+  post_id: uuid
+}
+
+"""
+on_conflict condition type for table "comments"
+"""
+input comments_on_conflict {
+  constraint: comments_constraint!
+  update_columns: [comments_update_column!]! = []
+  where: comments_bool_exp
+}
+
+"""
+Ordering options when selecting data from "comments"
+"""
+input comments_order_by {
+  author_id: order_by
+  body: order_by
+  created_at: order_by
+  id: order_by
+  post_id: order_by
+}
+
+"""
+input type for updating data in table "comments"
+"""
+input comments_set_input {
+  body: String
+  is_approved: Boolean
+  updated_at: timestamptz
+}
+
+"""
+unique or primary key constraints on table "comments"
+"""
+enum comments_constraint {
+  comments_pkey
+}
+
+"""
+select columns of table "comments"
+"""
+enum comments_select_column {
+  author_id
+  body
+  created_at
+  id
+  is_approved
+  parent_id
+  post_id
+  sentiment_score
+  updated_at
+}
+
+"""
+update columns of table "comments"
+"""
+enum comments_update_column {
+  body
+  is_approved
+  updated_at
+}
+
+"""
+columns and relationships of "post_tags"
+"""
+type post_tags {
+  id: uuid!
+  """
+  An object relationship
+  """
+  post: posts!
+  post_id: uuid!
+  """
+  An object relationship
+  """
+  tag: tags!
+  tag_id: uuid!
+}
+
+"""
+aggregated selection of "post_tags"
+"""
+type post_tags_aggregate {
+  aggregate: post_tags_aggregate_fields
+  nodes: [post_tags!]!
+}
+
+"""
+aggregate fields of "post_tags"
+"""
+type post_tags_aggregate_fields {
+  count(columns: [post_tags_select_column!], distinct: Boolean): Int!
+  max: post_tags_max_fields
+  min: post_tags_min_fields
+}
+
+"""
+aggregate max on columns
+"""
+type post_tags_max_fields {
+  id: uuid
+  post_id: uuid
+  tag_id: uuid
+}
+
+"""
+aggregate min on columns
+"""
+type post_tags_min_fields {
+  id: uuid
+  post_id: uuid
+  tag_id: uuid
+}
+
+"""
+select columns of table "post_tags"
+"""
+enum post_tags_select_column {
+  id
+  post_id
+  tag_id
+}
+
+"""
+columns and relationships of "posts"
+"""
+type posts {
+  """
+  An object relationship
+  """
+  author: users!
+  author_id: uuid!
+  body: String!
+  """
+  An object relationship
+  """
+  category: categories
+  category_id: uuid
+  """
+  An array relationship
+  """
+  comments(
+    distinct_on: [comments_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [comments_order_by!]
+    where: comments_bool_exp
+  ): [comments!]!
+  """
+  An aggregate relationship
+  """
+  comments_aggregate(
+    distinct_on: [comments_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [comments_order_by!]
+    where: comments_bool_exp
+  ): comments_aggregate!
+  created_at: timestamptz!
+  excerpt: String
+  id: uuid!
+  """
+  Editorial metadata the CMS writes but never queries by.
+  """
+  metadata(path: String): jsonb
+  paywall_price: numeric
+  """
+  An array relationship
+  """
+  post_tags(
+    distinct_on: [post_tags_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [post_tags_order_by!]
+    where: post_tags_bool_exp
+  ): [post_tags!]!
+  published_at: timestamptz
+  reading_minutes: Int
+  slug: String!
+  status: String!
+  title: String!
+  updated_at: timestamptz!
+  view_count: bigint!
+}
+
+"""
+aggregated selection of "posts"
+"""
+type posts_aggregate {
+  aggregate: posts_aggregate_fields
+  nodes: [posts!]!
+}
+
+"""
+aggregate fields of "posts"
+"""
+type posts_aggregate_fields {
+  avg: posts_avg_fields
+  count(columns: [posts_select_column!], distinct: Boolean): Int!
+  max: posts_max_fields
+  min: posts_min_fields
+  stddev: posts_stddev_fields
+  sum: posts_sum_fields
+  variance: posts_variance_fields
+}
+
+"""
+aggregate avg on columns
+"""
+type posts_avg_fields {
+  paywall_price: Float
+  reading_minutes: Float
+  view_count: Float
+}
+
+"""
+aggregate max on columns
+"""
+type posts_max_fields {
+  author_id: uuid
+  category_id: uuid
+  created_at: timestamptz
+  excerpt: String
+  id: uuid
+  paywall_price: numeric
+  published_at: timestamptz
+  reading_minutes: Int
+  slug: String
+  status: String
+  title: String
+  updated_at: timestamptz
+  view_count: bigint
+}
+
+"""
+aggregate min on columns
+"""
+type posts_min_fields {
+  author_id: uuid
+  category_id: uuid
+  created_at: timestamptz
+  excerpt: String
+  id: uuid
+  paywall_price: numeric
+  published_at: timestamptz
+  reading_minutes: Int
+  slug: String
+  status: String
+  title: String
+  updated_at: timestamptz
+  view_count: bigint
+}
+
+"""
+aggregate stddev on columns
+"""
+type posts_stddev_fields {
+  paywall_price: Float
+  reading_minutes: Float
+  view_count: Float
+}
+
+"""
+aggregate sum on columns
+"""
+type posts_sum_fields {
+  paywall_price: numeric
+  reading_minutes: Int
+  view_count: bigint
+}
+
+"""
+aggregate variance on columns
+"""
+type posts_variance_fields {
+  paywall_price: Float
+  reading_minutes: Float
+  view_count: Float
+}
+
+"""
+response of any mutation on the table "posts"
+"""
+type posts_mutation_response {
+  """
+  number of rows affected by the mutation
+  """
+  affected_rows: Int!
+  """
+  data from the rows affected by the mutation
+  """
+  returning: [posts!]!
+}
+
+"""
+Boolean expression to filter rows from the table "posts"
+"""
+input posts_bool_exp {
+  _and: [posts_bool_exp!]
+  _not: posts_bool_exp
+  _or: [posts_bool_exp!]
+  author: users_bool_exp
+  author_id: uuid_comparison_exp
+  category_id: uuid_comparison_exp
+  slug: String_comparison_exp
+  status: String_comparison_exp
+  title: String_comparison_exp
+}
+
+"""
+input type for inserting data into table "posts"
+"""
+input posts_insert_input {
+  author_id: uuid
+  body: String
+  category_id: uuid
+  excerpt: String
+  metadata: jsonb
+  paywall_price: numeric
+  slug: String
+  status: String
+  title: String
+}
+
+"""
+on_conflict condition type for table "posts"
+"""
+input posts_on_conflict {
+  constraint: posts_constraint!
+  update_columns: [posts_update_column!]! = []
+  where: posts_bool_exp
+}
+
+"""
+Ordering options when selecting data from "posts"
+"""
+input posts_order_by {
+  author_id: order_by
+  created_at: order_by
+  id: order_by
+  published_at: order_by
+  title: order_by
+  view_count: order_by
+}
+
+"""
+input type for updating data in table "posts"
+"""
+input posts_set_input {
+  body: String
+  excerpt: String
+  metadata: jsonb
+  paywall_price: numeric
+  published_at: timestamptz
+  status: String
+  title: String
+  updated_at: timestamptz
+}
+
+"""
+unique or primary key constraints on table "posts"
+"""
+enum posts_constraint {
+  posts_pkey
+  posts_slug_key
+}
+
+"""
+select columns of table "posts"
+"""
+enum posts_select_column {
+  author_id
+  body
+  category_id
+  created_at
+  excerpt
+  id
+  metadata
+  paywall_price
+  published_at
+  reading_minutes
+  slug
+  status
+  title
+  updated_at
+  view_count
+}
+
+"""
+update columns of table "posts"
+"""
+enum posts_update_column {
+  body
+  excerpt
+  metadata
+  paywall_price
+  published_at
+  status
+  title
+  updated_at
+}
+
+"""
+columns and relationships of "profiles"
+"""
+type profiles {
+  avatar_url: String
+  bio: String
+  birth_date: date
+  created_at: timestamptz!
+  id: uuid!
+  location: String
+  """
+  An object relationship
+  """
+  user: users!
+  user_id: uuid!
+  website: String
+}
+
+"""
+aggregated selection of "profiles"
+"""
+type profiles_aggregate {
+  aggregate: profiles_aggregate_fields
+  nodes: [profiles!]!
+}
+
+"""
+aggregate fields of "profiles"
+"""
+type profiles_aggregate_fields {
+  count(columns: [profiles_select_column!], distinct: Boolean): Int!
+  max: profiles_max_fields
+  min: profiles_min_fields
+}
+
+"""
+aggregate max on columns
+"""
+type profiles_max_fields {
+  avatar_url: String
+  bio: String
+  birth_date: date
+  created_at: timestamptz
+  id: uuid
+  location: String
+  user_id: uuid
+  website: String
+}
+
+"""
+aggregate min on columns
+"""
+type profiles_min_fields {
+  avatar_url: String
+  bio: String
+  birth_date: date
+  created_at: timestamptz
+  id: uuid
+  location: String
+  user_id: uuid
+  website: String
+}
+
+"""
+select columns of table "profiles"
+"""
+enum profiles_select_column {
+  avatar_url
+  bio
+  birth_date
+  created_at
+  id
+  location
+  user_id
+  website
+}
+
+"""
+columns and relationships of "tags"
+"""
+type tags {
+  created_at: timestamptz!
+  id: uuid!
+  name: String!
+  """
+  An array relationship
+  """
+  post_tags(
+    distinct_on: [post_tags_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [post_tags_order_by!]
+    where: post_tags_bool_exp
+  ): [post_tags!]!
+  """
+  An aggregate relationship
+  """
+  post_tags_aggregate(
+    distinct_on: [post_tags_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [post_tags_order_by!]
+    where: post_tags_bool_exp
+  ): post_tags_aggregate!
+  slug: String!
+}
+
+"""
+aggregated selection of "tags"
+"""
+type tags_aggregate {
+  aggregate: tags_aggregate_fields
+  nodes: [tags!]!
+}
+
+"""
+aggregate fields of "tags"
+"""
+type tags_aggregate_fields {
+  count(columns: [tags_select_column!], distinct: Boolean): Int!
+  max: tags_max_fields
+  min: tags_min_fields
+}
+
+"""
+aggregate max on columns
+"""
+type tags_max_fields {
+  created_at: timestamptz
+  id: uuid
+  name: String
+  slug: String
+}
+
+"""
+aggregate min on columns
+"""
+type tags_min_fields {
+  created_at: timestamptz
+  id: uuid
+  name: String
+  slug: String
+}
+
+"""
+select columns of table "tags"
+"""
+enum tags_select_column {
+  created_at
+  id
+  name
+  slug
+}
+
+"""
+columns and relationships of "users"
+"""
+type users {
+  """
+  An array relationship
+  """
+  comments(
+    distinct_on: [comments_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [comments_order_by!]
+    where: comments_bool_exp
+  ): [comments!]!
+  """
+  An aggregate relationship
+  """
+  comments_aggregate(
+    distinct_on: [comments_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [comments_order_by!]
+    where: comments_bool_exp
+  ): comments_aggregate!
+  created_at: timestamptz!
+  display_name: String!
+  email: String!
+  id: uuid!
+  is_active: Boolean!
+  last_seen_at: timestamptz
+  """
+  An array relationship
+  """
+  posts(
+    distinct_on: [posts_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [posts_order_by!]
+    where: posts_bool_exp
+  ): [posts!]!
+  """
+  An aggregate relationship
+  """
+  posts_aggregate(
+    distinct_on: [posts_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [posts_order_by!]
+    where: posts_bool_exp
+  ): posts_aggregate!
+  """
+  An object relationship
+  """
+  profile: profiles
+  role: String!
+  updated_at: timestamptz!
+}
+
+"""
+aggregated selection of "users"
+"""
+type users_aggregate {
+  aggregate: users_aggregate_fields
+  nodes: [users!]!
+}
+
+"""
+aggregate fields of "users"
+"""
+type users_aggregate_fields {
+  count(columns: [users_select_column!], distinct: Boolean): Int!
+  max: users_max_fields
+  min: users_min_fields
+}
+
+"""
+aggregate max on columns
+"""
+type users_max_fields {
+  created_at: timestamptz
+  display_name: String
+  email: String
+  id: uuid
+  last_seen_at: timestamptz
+  role: String
+  updated_at: timestamptz
+}
+
+"""
+aggregate min on columns
+"""
+type users_min_fields {
+  created_at: timestamptz
+  display_name: String
+  email: String
+  id: uuid
+  last_seen_at: timestamptz
+  role: String
+  updated_at: timestamptz
+}
+
+"""
+response of any mutation on the table "users"
+"""
+type users_mutation_response {
+  """
+  number of rows affected by the mutation
+  """
+  affected_rows: Int!
+  """
+  data from the rows affected by the mutation
+  """
+  returning: [users!]!
+}
+
+"""
+Boolean expression to filter rows from the table "users"
+"""
+input users_bool_exp {
+  _and: [users_bool_exp!]
+  _not: users_bool_exp
+  _or: [users_bool_exp!]
+  display_name: String_comparison_exp
+  email: String_comparison_exp
+  id: uuid_comparison_exp
+  role: String_comparison_exp
+}
+
+"""
+select columns of table "users"
+"""
+enum users_select_column {
+  created_at
+  display_name
+  email
+  id
+  is_active
+  last_seen_at
+  role
+  updated_at
+}
+
+input post_tags_bool_exp {
+  _and: [post_tags_bool_exp!]
+  _not: post_tags_bool_exp
+  _or: [post_tags_bool_exp!]
+  post_id: uuid_comparison_exp
+  tag_id: uuid_comparison_exp
+}
+
+input post_tags_order_by {
+  id: order_by
+  post_id: order_by
+  tag_id: order_by
+}
+
+type query_root {
+  categories(
+    distinct_on: [categories_select_column!]
+    limit: Int
+    offset: Int
+  ): [categories!]!
+  categories_aggregate(limit: Int, offset: Int): categories_aggregate!
+  comments(
+    distinct_on: [comments_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [comments_order_by!]
+    where: comments_bool_exp
+  ): [comments!]!
+  comments_aggregate(where: comments_bool_exp): comments_aggregate!
+  comments_by_pk(id: uuid!): comments
+  posts(
+    distinct_on: [posts_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [posts_order_by!]
+    where: posts_bool_exp
+  ): [posts!]!
+  posts_aggregate(where: posts_bool_exp): posts_aggregate!
+  posts_by_pk(id: uuid!): posts
+  profiles(limit: Int, offset: Int): [profiles!]!
+  tags(limit: Int, offset: Int): [tags!]!
+  users(where: users_bool_exp, limit: Int, offset: Int): [users!]!
+  users_aggregate(where: users_bool_exp): users_aggregate!
+  users_by_pk(id: uuid!): users
+}
+
+type mutation_root {
+  delete_comments(where: comments_bool_exp!): comments_mutation_response
+  delete_posts_by_pk(id: uuid!): posts
+  insert_comments(
+    objects: [comments_insert_input!]!
+    on_conflict: comments_on_conflict
+  ): comments_mutation_response
+  insert_posts(
+    objects: [posts_insert_input!]!
+    on_conflict: posts_on_conflict
+  ): posts_mutation_response
+  update_comments(
+    _set: comments_set_input
+    where: comments_bool_exp!
+  ): comments_mutation_response
+  update_posts(
+    _set: posts_set_input
+    where: posts_bool_exp!
+  ): posts_mutation_response
+  update_users_by_pk(id: uuid!): users
+}
+
+type subscription_root {
+  comments(
+    distinct_on: [comments_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [comments_order_by!]
+    where: comments_bool_exp
+  ): [comments!]!
+  posts(
+    distinct_on: [posts_select_column!]
+    limit: Int
+    offset: Int
+    order_by: [posts_order_by!]
+    where: posts_bool_exp
+  ): [posts!]!
+  posts_by_pk(id: uuid!): posts
+}

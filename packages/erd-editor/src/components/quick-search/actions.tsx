@@ -32,7 +32,11 @@ import {
 } from '@/engine/modules/table/generator.actions';
 import { getAbsoluteZoomPoint } from '@/utils/dragSelect';
 import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
-import { importJSON, importSchemaSQL } from '@/utils/file/importFile';
+import {
+  importGraphQL,
+  importJSON,
+  importSchemaSQL,
+} from '@/utils/file/importFile';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 
@@ -99,6 +103,14 @@ export function createScopeActions(app: AppContext): Action[] {
           name: 'Schema SQL',
           perform: app => {
             importSchemaSQL(app);
+          },
+        },
+        {
+          icon: <Icon prefix="mdi" name="graphql" size={16} />,
+          name: 'GraphQL',
+          keywords: 'graphql sdl gql schema',
+          perform: app => {
+            importGraphQL(app);
           },
         },
       ],

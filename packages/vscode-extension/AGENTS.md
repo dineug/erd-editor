@@ -16,7 +16,7 @@ APIs into `@dineug/erd-editor-vscode-bridge` commands. The only package importin
 | File | Description |
 | --- | --- |
 | `package.json` | Also the extension manifest: `contributes` (custom editor, four `vuerd.*` commands, three theme settings), `activationEvents`, `engines` |
-| `src/erd-editor.ts` | All host-side bridge wiring: initial value, save, replication broadcast, import/export dialogs, theme push |
+| `src/erd-editor.ts` | All host-side bridge wiring: initial value, save, replication broadcast, import/export dialogs, theme push. `IMPORT_FILE_TYPES` is keyed by the bridge's `type` union and feeds both the open dialog's `filters` and the check on what was picked — widening that union without a row there is a build error, and `graphql` is why the check is an alternation and not the type string |
 | `src/erd-editor-provider.ts` | `ErdEditorProvider` — open/save/backup/revert, `resolveCustomEditor`, the `docToWebviewMap` |
 | `src/editor.ts` | Abstract `Editor` — the `Bridge`, `buildHtmlForWebview` (`{{extension-base-url}}`), `readonly` by URI scheme |
 | `vite.config.ts` | CJS lib build to `dist/extension.js` (`ssr`, `target: 'node20'`, `publicDir: false`, `vscode` + builtins external) plus `run.tasks` |

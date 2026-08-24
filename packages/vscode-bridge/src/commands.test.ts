@@ -108,6 +108,29 @@ describe('commands over a Bridge', () => {
     });
   });
 
+  it('round-trips a host import file payload for graphql', () => {
+    const bridge = new Bridge();
+    const listener = vi.fn();
+    bridge.registerCommand(hostImportFileCommand, listener);
+
+    bridge.executeAction(
+      Bridge.executeCommand(hostImportFileCommand, {
+        type: 'graphql',
+        op: 'set',
+        // `accept` is the browser input attribute the editor authors, so it
+        // carries every extension the type answers to, not just the canonical
+        // one.
+        accept: '.graphql,.gql,.graphqls',
+      })
+    );
+
+    expect(listener).toHaveBeenCalledWith({
+      type: 'graphql',
+      op: 'set',
+      accept: '.graphql,.gql,.graphqls',
+    });
+  });
+
   it('round-trips the payload-less host initial command', () => {
     const bridge = new Bridge();
     const listener = vi.fn();
@@ -214,6 +237,26 @@ describe('commands over a Bridge', () => {
       type: 'json',
       op: 'set',
       value: '{"version":3}',
+    });
+  });
+
+  it('round-trips a webview import file payload for graphql', () => {
+    const bridge = new Bridge();
+    const listener = vi.fn();
+    bridge.registerCommand(webviewImportFileCommand, listener);
+
+    bridge.executeAction(
+      Bridge.executeCommand(webviewImportFileCommand, {
+        type: 'graphql',
+        op: 'set',
+        value: 'type User { id: ID! }',
+      })
+    );
+
+    expect(listener).toHaveBeenCalledWith({
+      type: 'graphql',
+      op: 'set',
+      value: 'type User { id: ID! }',
     });
   });
 });

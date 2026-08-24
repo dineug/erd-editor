@@ -12,15 +12,16 @@ project, so they diff and review like any other source file.
 ![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-intellij.png?raw=true)
 
 The editor never connects to a database — it reads and writes files only. You bring a schema in from
-a `.sql` dump, and take one back out as DDL.
+a `.sql` dump or a GraphQL SDL file, and take one back out as DDL.
 
 ## Getting started
 
 Create an empty file with a `.erd.json` extension and open it. The diagram opens in the ERD Editor
 instead of the text editor.
 
-To start from a schema you already have, right-click the canvas and choose **Import → Schema SQL**,
-then pick a `.sql` dump.
+To start from a schema you already have, right-click the canvas and choose **Import → Schema SQL**
+for a `.sql` dump, or **Import → GraphQL** for a `.graphql`, `.gql` or `.graphqls` file. The editor
+opens its own file chooser for both; the file does not have to be inside the project.
 
 ## Features
 
@@ -29,6 +30,10 @@ then pick a `.sql` dump.
 - **SQL DDL import** — bring in a `.sql` dump from any of the six vendors below. The parser reads
   `CREATE TABLE`, `CREATE INDEX` and `ALTER TABLE` constraints and skips what it does not recognize,
   so an awkward dump imports partially rather than failing outright
+- **GraphQL SDL import** — bring in a schema from any tool that emits SDL. Object types become
+  tables, scalars map to the diagram's own dialect, and the fields pointing at another type become
+  the relationships; the generated types an API layer wraps its rows in are left out rather than
+  drawn as tables
 - **SQL DDL export** — MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go, SQLAlchemy, TypeORM
 - **Visualization** — a force-directed view of how the tables actually relate
