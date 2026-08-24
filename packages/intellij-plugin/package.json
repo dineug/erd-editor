@@ -1,0 +1,7 @@
+{
+  "name": "@dineug/erd-editor-intellij-plugin",
+  "private": true,
+  "description": "Entity-Relationship Diagram Editor IntelliJ plugin",
+  "author": "SeungHwan-Lee <dineug2@gmail.com>",
+  "license": "MIT"
+}

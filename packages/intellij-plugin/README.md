@@ -1,9 +1,9 @@
-# erd-editor-intellij-plugin
+# intellij-plugin
 
 The [ERD Editor](https://plugins.jetbrains.com/plugin/23594-erd-editor) plugin for IntelliJ-based
 IDEs. The Kotlin code here is a thin host layer — it registers the file editor, runs a JCEF webview
-and bridges it to the IDE. The diagram editor itself lives in the
-[erd-editor](https://github.com/dineug/erd-editor) monorepo, vendored as a git submodule.
+and bridges it to the IDE. The diagram editor itself is `@dineug/erd-editor`, bundled for this
+panel by [`packages/intellij-webview`](../intellij-webview).
 
 <!-- Plugin description -->
 Design a database schema visually, without leaving your IDE. Diagrams are plain JSON files in your
@@ -57,27 +57,25 @@ Editing marks the tab dirty like any other file; the diagram is written to disk 
 
 ### Setup
 
-The webview is built from the `erd-editor` submodule, and its output
-(`src/main/resources/assets`) is **not** committed. A fresh clone has none until you build it.
+The webview bundle (`src/main/resources/assets`) is **not** committed. A fresh clone has none
+until you build it, and every Gradle task below is run from this directory.
 
 ```sh
-git submodule update --init --recursive
-(cd erd-editor && pnpm install)
-
+pnpm install          # from the repository root
 ./gradlew buildWebview
 ```
 
-Run `buildWebview` again after moving the submodule or changing the editor source. It is
-deliberately not part of `buildPlugin` — the bundle changes far less often than the Kotlin side,
-and pnpm has no business running on every Gradle build. `buildPlugin` and `runIde` do check that
-the bundle is there, and fail pointing back at this task rather than packaging an empty `assets/`
-that would ship as a blank editor.
+Run `buildWebview` again whenever the editor source changes. It is deliberately not part of
+`buildPlugin` — the bundle changes far less often than the Kotlin side, and pnpm has no business
+running on every Gradle build. `buildPlugin` and `runIde` do check that the bundle is there, and
+fail pointing back at this task rather than packaging an empty `assets/` that would ship as a
+blank editor.
 
-Building it by hand works too, from either the submodule or a standalone checkout of the editor
-repo — it locates this repo on its own:
+`buildWebview` is a convenience wrapper; the underlying command works from anywhere in the
+workspace:
 
 ```sh
-pnpm exec vp run --filter @dineug/erd-editor-intellij-webview --fail-if-no-match build:webview
+pnpm exec vp run --filter @dineug/erd-editor-intellij-webview --fail-if-no-match build
 ```
 
 ### Build and run
@@ -100,14 +98,17 @@ The plugin compiles against JDK 21; Gradle's toolchain resolver fetches it if yo
 | `src/main/kotlin/.../files/` | `.erd.json` recognition and the file icon |
 | `src/main/kotlin/.../settings/` | Theme persistence |
 | `src/main/resources/META-INF/plugin.xml` | Plugin manifest |
-| `erd-editor/` | The editor monorepo, as a git submodule |
+| `src/main/resources/assets/` | The webview bundle, written here by `packages/intellij-webview` |
 
-The bridge command names in `WebviewBridge.kt` must match the definitions in the submodule's
-`packages/vscode-bridge` exactly — change one side only and messages are silently dropped.
+The bridge command names in `WebviewBridge.kt` must match the definitions in
+[`packages/vscode-bridge`](../vscode-bridge) exactly — change one side only and messages are
+silently dropped.
 
 ### Releasing
 
-Bump `pluginVersion` in `gradle.properties` and fill in the matching section of `CHANGELOG.md`.
+Publishing to the JetBrains Marketplace is manual: no signing key or publish token lives in this
+repository. Bump `pluginVersion` in `gradle.properties`, fill in the matching section of
+`CHANGELOG.md`, run `./gradlew buildPlugin`, and upload the zip from `build/distributions/`.
 The build derives the plugin description from the marked section of this file and the release notes
 from the changelog, so neither belongs in `plugin.xml`.
 

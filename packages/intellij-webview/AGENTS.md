@@ -5,7 +5,7 @@
 
 ## Purpose
 
-The HTML/JS bundle embedded by the IntelliJ ERD Editor plugin, whose Kotlin/JVM side lives in the separate `erd-editor-intellij-plugin` repository.
+The HTML/JS bundle embedded by the IntelliJ ERD Editor plugin, whose Kotlin/JVM side is `packages/intellij-plugin`.
 Same `<erd-editor>` element and same `@dineug/erd-editor-vscode-bridge` protocol as `vscode-webview`, but webview→host is
 `window.cefQuery` with a JSON string, so payloads must survive `JSON.stringify`/`parse` and binary data is base64-encoded first.
 
@@ -18,7 +18,7 @@ Same `<erd-editor>` element and same `@dineug/erd-editor-vscode-bridge` protocol
 | `src/utils/text.ts` | `toWidth` metrics for the worker; byte-identical to `packages/vscode-replication-store-worker/src/utils/text.ts` — fix both |
 | `src/env.d.ts` | Ambient `window.cefQuery` / `cefQueryCancel` types and `declare module '*.css'` |
 | `index.html` | Build entry at the package root; `publicDir: false`, so no static asset dir sits beside it |
-| `vite.config.ts` | Both output modes, the `stripCrossorigin` plugin, the `worker` block, `run.tasks` |
+| `vite.config.ts` | The one output path, the `stripCrossorigin` plugin, the `worker` block, `run.tasks` |
 
 ## Subdirectories
 
@@ -31,8 +31,7 @@ Same `<erd-editor>` element and same `@dineug/erd-editor-vscode-bridge` protocol
 
 ### Working In This Directory
 
-- **`build:webview` writes outside this repo**, `emptyOutDir: true` into the plugin repo's `src/main/resources/assets`. `resolveWebviewOutDir` finds that repo whether it sits beside this one or vendors this one as its `erd-editor/` submodule, keyed off `plugin.xml` in the parent; `ERD_EDITOR_ASSETS_DIR` overrides both. Getting it wrong is silent — an empty `assets/` ships as a blank editor;
-  it is `cache: false` because a hit cannot restore files outside the package. Plain `build` writes `dist/`.
+- **`build` writes outside this package**, `emptyOutDir: true` into `../intellij-plugin/src/main/resources/assets`. There is no `dist/`, because nothing here imports this package. The task declares that directory as its `output`; drop that and a cache hit replays the log without restoring the bundle, which ships as a blank editor.
 - **`base` stays `/`, only `.html`/`.js`/`.css` may be emitted, `sourcemap: false`** — the plugin's CEF
   `SchemeHandlerFactory` maps the URL path onto the classpath and types those three extensions, nothing else.
 - **Do not restore `crossorigin` on injected tags.** `stripCrossorigin` removes it: the scheme handler sends no CORS headers, so the module script is refused and the panel stays blank.
@@ -41,14 +40,14 @@ Same `<erd-editor>` element and same `@dineug/erd-editor-vscode-bridge` protocol
 
 ### Testing Requirements
 
-No `test` task and no test files, so `pnpm test` walks past this package; the build is the gate, and both tasks run
-`tsc --noEmit` first. `cefQuery` is undefined in a plain browser — host round trips need the plugin's own repo.
+No `test` task and no test files, so `pnpm test` walks past this package; the build is the gate, and it runs
+`tsc --noEmit` first. `cefQuery` is undefined in a plain browser — host round trips need a sandbox IDE.
 
 ```
 pnpm exec vp run --filter @dineug/erd-editor-intellij-webview --fail-if-no-match build
-pnpm exec vp run --filter @dineug/erd-editor-intellij-webview --fail-if-no-match build:webview
 pnpm --filter @dineug/erd-editor-intellij-webview typecheck
 pnpm --filter @dineug/erd-editor-intellij-webview dev
+cd ../intellij-plugin && ./gradlew runIde
 ```
 
 ### Common Patterns

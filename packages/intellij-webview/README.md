@@ -9,9 +9,9 @@ The web bundle rendered inside the IntelliJ plugin's editor panel. It hosts the
 command protocol from `@dineug/erd-editor-vscode-bridge`.
 
 This package is internal to the erd-editor monorepo and is never published to npm. It is
-a build artifact: no package in this repository imports it, and the only consumer is the
-separate plugin repository
-[dineug/erd-editor-intellij-plugin](https://github.com/dineug/erd-editor-intellij-plugin).
+a build artifact: no package in this repository imports it, and its only consumer is
+[`packages/intellij-plugin`](../intellij-plugin), which packages the bundle onto the plugin's
+classpath.
 
 ## For users
 
@@ -22,16 +22,11 @@ in your IDE.
 
 ## Build
 
-`build:webview` is the one that ships. It writes into the plugin repository's resources
-directory — `../../../erd-editor-intellij-plugin/src/main/resources/assets`, relative to
-this package — and empties that directory first, so check the plugin repo out as a
-sibling of the erd-editor repo before running it.
+There is one output and it is the plugin's resources directory —
+`../intellij-plugin/src/main/resources/assets` — which the build empties first, because
+stale hashed bundles left there are packaged into the plugin jar.
 
 ```sh
-# bundle into the sibling plugin repo (what ships)
-pnpm exec vp run --filter @dineug/erd-editor-intellij-webview --fail-if-no-match build:webview
-
-# bundle into ./dist for local inspection
 pnpm exec vp run --filter @dineug/erd-editor-intellij-webview --fail-if-no-match build
 
 pnpm --filter @dineug/erd-editor-intellij-webview dev
@@ -39,7 +34,8 @@ pnpm --filter @dineug/erd-editor-intellij-webview typecheck
 ```
 
 `dev` serves the bundle in an ordinary browser, where `window.cefQuery` is undefined —
-host round trips have to be exercised from the plugin repository.
+host round trips have to be exercised from a sandbox IDE
+(`cd ../intellij-plugin && ./gradlew runIde`).
 
 ## Guides
 

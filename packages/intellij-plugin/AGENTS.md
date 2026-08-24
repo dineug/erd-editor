@@ -1,182 +1,73 @@
-<!-- Generated: 2026-08-08 | Updated: 2026-08-08 -->
+<!-- Parent: ../../AGENTS.md -->
+<!-- Generated: 2026-08-08 | Updated: 2026-08-24 -->
 
-# erd-editor-intellij-plugin
+# intellij-plugin
 
 ## Purpose
 
-ERD(Entity-Relationship Diagram) 에디터를 IntelliJ 계열 IDE에 통합하는 JetBrains 플러그인입니다. `.erd` / `.erd.json` 파일을 열면 기본 텍스트 에디터 대신 JCEF(Chromium Embedded Framework) 기반 웹뷰가 열리고, 그 안에서 [erd-editor](https://github.com/dineug/erd-editor) 웹앱이 실행됩니다.
-
-Kotlin 코드는 **얇은 호스트 레이어**입니다. 다이어그램 편집 로직은 전부 웹앱(`erd-editor` 서브모듈)에 있고, 플러그인은 다음만 담당합니다.
-
-- `.erd` 파일 확장자 인식 및 커스텀 `FileEditor` 등록
-- JCEF 브라우저 생성과 번들된 정적 자산(`/assets`) 서빙
-- 웹뷰 ↔ IDE 간 JSON 메시지 브리지 (파일 읽기/쓰기, 내보내기, 테마, 실시간 복제)
-- 테마 설정 영속화
+The Kotlin/JVM half of the JetBrains plugin: a thin host layer that registers a `FileEditor` for `.erd` / `.erd.json`, runs a JCEF webview, and bridges it to the IDE. All editing logic lives in the bundle `packages/intellij-webview` builds into `src/main/resources/assets`, which this package puts on the classpath and serves over a custom CEF scheme. It is the one Gradle project in the workspace; pnpm sees a `private` package.json with no `vite.config.ts`, so `pnpm build` and `pnpm test` walk past it.
 
 ## Key Files
 
 | File | Description |
-|------|-------------|
-| `build.gradle.kts` | IntelliJ Platform Gradle Plugin 2.x 설정. `pluginConfiguration`에서 README의 `<!-- Plugin description -->` 구간과 CHANGELOG를 플러그인 매니페스트로 주입 |
-| `gradle.properties` | `pluginVersion`, `platformVersion`(2026.1.4), `pluginSinceBuild`(252), `javaVersion`(21) 등 빌드 파라미터의 단일 진실 공급원 |
-| `gradle/libs.versions.toml` | Gradle version catalog (Kotlin 2.3.21, intellij.platform 2.18.1, changelog/qodana/kover) |
-| `settings.gradle.kts` | 루트 프로젝트 이름 정의. 단일 모듈 구성(서브프로젝트 없음) |
-| `README.md` | 플러그인 마켓플레이스 설명 원본. `<!-- Plugin description -->` 마커를 지우면 **빌드가 실패**함 |
-| `CHANGELOG.md` | Keep a Changelog 형식. `publishPlugin`이 `patchChangelog`에 의존하므로 릴리스 노트의 출처 |
-| `qodana.yml` | Qodana JVM 정적 분석 설정 (JDK 21, `qodana.recommended` 프로파일) |
-| `.gitmodules` | `erd-editor` 서브모듈 핀 (https://github.com/dineug/erd-editor.git) |
-| `gradlew` / `gradlew.bat` | Gradle wrapper (8.5) |
+| --- | --- |
+| `build.gradle.kts` | IntelliJ Platform Gradle Plugin 2.x. Injects the README's `<!-- Plugin description -->` section and the changelog into the manifest; `buildWebview` shells out to `vp run … build`, `verifyWebviewAssets` fails the build when the bundle is absent |
+| `gradle.properties` | Single source for `pluginVersion`, `platformVersion`, `pluginSinceBuild` (252), `javaVersion` (21); `plugin.xml` carries neither a version nor a repository URL |
+| `README.md` | The Marketplace listing. Removing the `<!-- Plugin description -->` markers is a `GradleException`; the screenshot line is stripped by exact string match, so leave its absolute URL alone |
+| `CHANGELOG.md` | Keep a Changelog. `versionPrefix` is `intellij-plugin-v` — the monorepo's own `v*` tags belong to the editor |
 
 ## Subdirectories
 
 | Directory | Purpose |
-|-----------|---------|
-| `src/main/kotlin/` | 플러그인 Kotlin 소스. 패키지 루트는 `com.github.dineug.erdeditorintellijplugin` |
-| `src/main/resources/` | `META-INF/plugin.xml`, 아이콘, 메시지 번들, 그리고 **빌드로 생성되는** `assets/` 웹뷰 번들 |
-| `erd-editor/` | git 서브모듈. erd-editor 모노레포 전체. 웹뷰 번들의 소스 (`packages/intellij-webview`) |
-| `.github/workflows/` | `build.yml`(테스트·Qodana·Plugin Verifier·릴리스 초안), `release.yml`(마켓플레이스 배포) |
-| `.run/` | IntelliJ 실행 구성: "Run Plugin"(`runIde`), "Run Verifications"(`verifyPlugin`) |
-| `gradle/wrapper/` | Gradle wrapper 바이너리 및 프로퍼티 |
-
-### Kotlin 소스 구조
-
-| File | Description |
-|------|-------------|
-| `editor/ErdEditorProvider.kt` | `FileEditorProvider`. `.erd` 파일을 가로채 `FileEditorPolicy.HIDE_DEFAULT_EDITOR`로 기본 에디터를 숨김. `docToEditorsMap`으로 같은 파일의 여러 에디터 인스턴스를 추적 |
-| `editor/ErdEditor.kt` | `FileEditor` 구현체이자 브리지 명령 핸들러. 파일 로드, 100ms 디바운스 저장, 파일 내보내기 다이얼로그, 테마 변경 수신을 처리 |
-| `editor/WebviewPanel.kt` | JCEF 메시지 라우터 연결. `https://erd-editor-jetbrains-plugin/index.html` 커스텀 스킴 등록, `dispatch`/`dispatchBroadcast`로 웹뷰에 `window.postMessage` 실행 |
-| `editor/Webview.kt` | `JBCefBrowser` 래핑. 로딩 패널 ↔ 콘텐츠 패널을 `MultiPanel`로 전환, 로드 타임아웃 처리 |
-| `editor/WebviewBridge.kt` | 브리지 프로토콜 정의. Jackson `@JsonSubTypes`로 `HostBridgeCommand`(웹뷰→호스트) 역직렬화, `WebviewBridgeCommand`(호스트→웹뷰) 직렬화. `MutableSharedFlow` 기반 |
-| `editor/SchemeHandlerFactory.kt` | 클래스패스 `/assets/**`를 HTTPS 리소스로 서빙하는 CEF 리소스 핸들러. MIME 타입을 확장자로 판별 |
-| `editor/JCEFUnsupportedViewPanel.kt` | JCEF를 못 쓰는 런타임(비 JetBrains Runtime)에서 보여줄 안내 패널 |
-| `files/ErdEditorFiles.kt` | `.erd`, `.erd.json` 확장자 판별 (단일 진실 공급원) |
-| `files/ErdEditorIconProvider.kt` | 프로젝트 트리에서 `.erd` 파일 아이콘 교체 |
-| `files/ErdEditorIcons.kt` | `icons/erd-editor-file-icon.svg` 로더 |
-| `settings/ErdEditorAppSettings.kt` | 애플리케이션 레벨 `PersistentStateComponent`. `erd-editor.xml`에 테마(appearance/grayColor/accentColor) 저장, `Topic` 메시지 버스로 변경 브로드캐스트 |
+| --- | --- |
+| `src/main/kotlin/…/editor/` | `FileEditor`, JCEF webview, scheme handler, host↔webview bridge |
+| `src/main/kotlin/…/files\|settings/` | `.erd` / `.erd.json` recognition and icon; theme persistence over the message bus |
+| `src/main/resources/` | The manifest, icons and message bundle, plus the generated `assets/` bundle |
 
 ## For AI Agents
 
 ### Working In This Directory
 
-**서브모듈을 먼저 확인하세요.** `erd-editor/`는 git 서브모듈입니다. 비어 있으면 아무것도 빌드되지 않습니다.
+- **Gradle only, and always from this directory** — `cd packages/intellij-plugin && ./gradlew <task>`. There is no `run.tasks` block and no package.json script, by the workspace's one-command-surface rule.
 
-```bash
-git submodule update --init --recursive
-```
+  | Task | What it does |
+  | --- | --- |
+  | `buildWebview` | `vp run --filter @dineug/erd-editor-intellij-webview build` from the workspace root |
+  | `buildPlugin` | Distributable zip → `build/distributions/` |
+  | `runIde` | Sandbox IDE with the plugin loaded |
+  | `verifyPlugin` | Plugin Verifier against the `pluginSinceBuild` floor and the newest release |
 
-**웹뷰 자산은 커밋되지 않습니다.** `.gitignore`에 `src/main/resources/assets`가 있습니다. 클린 체크아웃에서는 서브모듈에서 웹뷰를 빌드해야 플러그인이 빈 화면 대신 에디터를 띄웁니다.
-
-```bash
-cd erd-editor && pnpm install
-cd packages/intellij-webview && pnpm nx:build:webview   # → ../../../src/main/resources/assets
-```
-
-서브모듈은 pnpm workspace + nx 모노레포입니다. `nx:build:webview`(= `nx build:webview`)는 `dependsOn: ["^build"]` 덕분에 워크스페이스 의존 패키지를 먼저 빌드합니다. `pnpm build:webview`는 webpack만 직접 돌리므로 의존 패키지가 이미 빌드된 상태에서만 쓰세요.
-
-빌드 출력 경로는 `erd-editor/packages/intellij-webview/webpack.config.js`에 하드코딩되어 있습니다(`env.target === 'webview'`일 때만 이 저장소의 `src/main/resources/assets`로 나감). 이 상대 경로 규약이 두 저장소를 잇는 **유일한 결합점**이므로 디렉터리 레이아웃을 바꾸지 마세요.
-
-**빌드·실행**
-
-```bash
-./gradlew buildPlugin                      # 배포용 zip → build/distributions/
-./gradlew runIde                           # 샌드박스 IDE 실행 (.run/Run Plugin 과 동일)
-./gradlew verifyPlugin                     # Plugin Verifier 호환성 검증 (.run/Run Verifications 와 동일)
-./gradlew verifyPluginStructure            # plugin.xml·아카이브 구조 검증
-./gradlew verifyPluginProjectConfiguration # 빌드 설정 정합성 점검
-```
-
-2.x에서 태스크 이름이 바뀌었습니다. 1.x의 `runPluginVerifier` → `verifyPlugin`, 1.x의 `verifyPlugin` → `verifyPluginStructure`, `listProductsReleases` → `printProductsReleases`(파일 대신 stdout).
-
-JDK 21로 컴파일합니다. 머신에 JDK 21이 없어도 `settings.gradle.kts`의 foojay resolver가 자동으로 받아옵니다(Gradle 데몬 자체는 더 높은 JDK에서 돌아도 무방).
-
-`verifyPluginProjectConfiguration`은 "since-build 252 < target platform 261" 경고를 냅니다. 구버전 IDE를 함께 지원하려는 **의도된 상태**이며, Plugin Verifier가 실제 252 IDE에서 `Compatible`을 확인해 줍니다.
-
-**의존성은 플랫폼에서 옵니다.** `dependencies` 블록에는 `intellijPlatform { intellijIdea(...) }`만 있습니다. `kotlinx.coroutines`, Jackson(`jacksonObjectMapper`, `@JsonSubTypes`), JCEF/`org.cef.*`는 모두 IntelliJ Platform이 번들한 것을 씁니다. 여기에 직접 추가하면 클래스 로더 충돌이 나기 쉬우므로, 새 라이브러리가 필요하면 플랫폼이 이미 제공하는지 먼저 확인하세요. `kotlin.stdlib.default.dependency = false`도 같은 이유이며, 같은 이유로 `apiVersion = KOTLIN_2_1`을 걸어 하한 IDE(2025.2, 번들 stdlib 2.1.20)의 API 표면을 넘지 않게 합니다.
-
-**Community Edition은 더 이상 없습니다.** 별도 `ideaIC` 배포는 2025.2가 마지막이고 2025.3부터 통합 IntelliJ IDEA 하나로 나옵니다. `platformType = IC` / `intellijIdeaCommunity(...)`를 쓰면 아티팩트 해석이 실패하므로 `intellijIdea(...)`를 씁니다.
-
-**버전은 `gradle.properties`에서만 올립니다.** `pluginVersion`을 바꾸고 `CHANGELOG.md`에 해당 버전 섹션을 채우면 `pluginConfiguration`이 나머지를 처리합니다. `plugin.xml`에 버전을 직접 쓰지 마세요.
-
-**브리지 프로토콜은 양쪽을 함께 바꿔야 합니다.** `WebviewBridge.kt`의 `type` 문자열(`hostSaveValueCommand`, `webviewUpdateThemeCommand` 등)은 `erd-editor/packages/vscode-bridge`의 정의와 정확히 일치해야 합니다. 한쪽만 바꾸면 메시지가 조용히 무시됩니다.
-
-**스레딩 규칙을 지키세요.** IntelliJ 파일 쓰기는 `readAndEdtWriteAction { writeAction { ... } }` 안에서만 가능하고, 파일 선택 다이얼로그는 EDT에서 열어야 합니다(`ApplicationManager.getApplication().invokeLater`). 기존 코드가 이 패턴을 따르고 있으니 그대로 모방하세요.
+- **Publishing is manual.** No token or signing key lives in this repository: build the zip and upload it. Bump `pluginVersion` and fill the matching `CHANGELOG.md` section first.
+- **Dependencies come from the platform** — Jackson, `kotlinx.coroutines` and `org.cef.*` are all bundled, and adding a library here invites classloader conflicts. `kotlin.stdlib.default.dependency = false` and `apiVersion = KOTLIN_2_1` keep the plugin inside the API surface of the 2025.2 floor, which is also why it resolves `intellijIdea(...)` and never `intellijIdeaCommunity(...)`: the separate IC distribution ended after 2025.2.
+- **Bridge command `type` strings must match `packages/vscode-bridge` exactly.** Change one side only and messages are dropped in silence.
+- **Threading:** file writes go inside `readAndEdtWriteAction { writeAction { … } }` (the older `readAndWriteAction` is deprecated), file dialogs open on the EDT through `invokeLater`.
+- `vp staged` globs `**/*.{ts,mts,tsx}`, so a Kotlin-only commit passes pre-commit unchecked. The root `.gitignore` also carries a bare `build` pattern — a Kotlin package named `build` would be untracked while compiling fine locally.
 
 ### Testing Requirements
 
-**순수 JVM 단위 테스트 13개가 있습니다**(`src/test/kotlin/`, `./gradlew test`). 브리지 직렬화·스크립트 인코딩·확장자 판별만 덮으며, JCEF 경로는 헤드리스에서 못 돌리므로 아래 절차를 병행하세요.
-
-1. `./gradlew buildPlugin` — 컴파일 및 매니페스트 패치 통과
-2. `./gradlew runIde --args="/경로/sample.erd.json"` — 샌드박스가 그 파일을 바로 열어줍니다. **다이어그램이 실제로 렌더되는지 눈으로 확인하세요.** 아래 JCEF 항목 참고
-3. `./gradlew verifyPlugin` — `pluginSinceBuild` 하한과 최신 릴리스 양쪽에서 `Compatible` 확인
-4. 필요 시 `./gradlew qodanaScan` 또는 CI의 Qodana 잡
-
-**빌드 통과는 동작을 보장하지 않습니다.** 웹뷰는 커스텀 스킴으로 자산을 받아오므로, 컴파일과 Plugin Verifier를 모두 통과하고도 화면이 비거나 `DNS_PROBE_FINISHED_NXDOMAIN`이 뜰 수 있습니다. JCEF를 건드렸다면 반드시 2번을 수행하세요.
-
-런타임 로그는 `.intellijPlatform/sandbox/erd-editor-intellij-plugin/IU-<버전>/log/idea.log`에 남습니다(2.x에서 `build/idea-sandbox`로부터 이동). `runIde`가 `idea.log.debug.categories`를 설정하지만 **기본 appender는 DEBUG를 파일에 쓰지 않습니다** — `thisLogger().debug(...)`가 안 보인다고 코드가 안 돌았다고 판단하지 마세요. 웹뷰 `console.*`는 `WebviewPanel`의 `CefDisplayHandlerAdapter`가 INFO 이상으로 올려줍니다.
-
-테스트를 새로 추가한다면 `src/test/kotlin/`에 두고 `BasePlatformTestCase` 계열을 쓰되, JCEF에 의존하는 부분은 헤드리스에서 동작하지 않으므로 `ErdEditorFiles` 같은 순수 로직부터 다루는 편이 현실적입니다.
+`./gradlew check` runs 13 plain JVM tests over bridge serialization, script encoding and extension matching. JCEF cannot run headless, so **the eye is the only gate on the webview**: `./gradlew runIde`, open any project, create an empty `foo.erd.json`, and confirm the canvas renders. Compilation and a `Compatible` Verifier verdict both pass on a blank panel. `verifyPluginProjectConfiguration` warns that since-build 252 sits below the 261 target; that is the intended range. Sandbox logs are at `.intellijPlatform/sandbox/erd-editor-intellij-plugin/IU-<version>/log/idea.log` — a path the `.run/*.run.xml` configs pin to `IU-2026.1.4`, so bump those with `platformVersion`. The default appender drops DEBUG, so a missing `thisLogger().debug` line is not evidence; webview `console.*` is raised to INFO by `WebviewPanel`. For DevTools, enable `ide.browser.jcef.contextMenu.devTools.enabled` in the Registry and reopen the tab — `Webview.kt` disables the menu item, but the platform ORs it with that key.
 
 ### Common Patterns
 
-- **Disposable 체인** — `ErdEditor` → `WebviewPanel` → `Webview` → `JBCefBrowser` 순으로 `Disposer.register`가 걸려 있습니다. 새 리소스는 반드시 이 체인에 등록해 에디터 탭이 닫힐 때 함께 해제되게 하세요.
-- **`isDisposed` 가드** — 코루틴이 해제된 패널에 접근하지 않도록 `WebviewPanel`/`ErdEditor` 모두 플래그를 확인합니다. 비동기 콜백을 추가할 때 같은 가드를 넣으세요.
-- **에디터당 코루틴 스코프** — `CoroutineScope(SupervisorJob() + CoroutineName(...))`를 에디터마다 만듭니다. IO는 `Dispatchers.IO`로 넘깁니다.
-- **디바운스 저장** — `MutableStateFlow` + `debounce(100.milliseconds)` + `collectLatest`로 잦은 편집을 흡수합니다.
-- **다중 에디터 복제** — 같은 파일이 여러 탭에 열렸을 때 `dispatchBroadcast`가 `docToEditorsMap`을 돌며 자신을 제외한 나머지 웹뷰에 변경을 전파합니다.
-- **읽기 전용 반영** — `file.isWritable`을 `webviewUpdateReadonlyCommand`로 웹뷰에 전달합니다.
-- **sealed class + Jackson** — 브리지 명령은 sealed class 계층에 `type` 프로퍼티를 두고 `JsonTypeInfo.As.EXISTING_PROPERTY`로 판별합니다. 새 명령을 추가하면 `@JsonSubTypes`에도 등록해야 합니다.
+- **Disposable chain** — `ErdEditor` → `WebviewPanel` → `Webview` → `JBCefBrowser`. Register new resources into it so they die with the tab, and guard async callbacks with the existing `isDisposed` flags.
+- One `CoroutineScope(SupervisorJob() + CoroutineName(…))` per editor; saves debounce through `MutableStateFlow` + `debounce(100.milliseconds)` + `collectLatest`; `dispatchBroadcast` replicates to the other tabs on the same file via `docToEditorsMap`.
+- Bridge commands are a sealed hierarchy with `JsonTypeInfo.As.EXISTING_PROPERTY`; register a new one in `@JsonSubTypes` as well.
 
 ### Gotchas
 
-- **JCEF는 2026.2부터 코어에서 분리된 별도 번들 플러그인입니다.** `plugin.xml`이 의존성을 선언하지 않으면 2026.2+ IDE에서 `WebviewPanel`의 companion object 초기화(`JBCefApp.isSupported()`)가 `NoClassDefFoundError: com/intellij/ui/jcef/JBCefApp`로 죽고 에디터 탭이 아예 열리지 않습니다.
-  - 필수(`<depends>`)로 걸면 **2025.2/2025.3에서 로드가 깨집니다** — 그 버전에는 `com.intellij.modules.jcef`가 해석 가능한 플러그인으로 존재하지 않습니다. `intellij.platform.ui.jcef`를 v2 `<dependencies><module>`로 거는 것도 같은 이유로 실패합니다(이름은 `module-descriptors.dat`에 있지만 의존 가능한 콘텐츠 모듈로 노출되지 않음).
-  - 그래서 `<depends optional="true" config-file="jcef.xml">com.intellij.modules.jcef</depends>`를 씁니다. 구버전에서는 무시되고(코어에 JCEF가 있으므로 정상), 2026.2+에서는 해석되어 클래스로더 부모로 붙습니다.
-  - **Plugin Verifier는 이 결함을 잡지 못합니다.** IU-262를 검사하고도 `Compatible`을 냅니다 — 클래스 존재 여부는 보지만 모듈 단위 클래스로더 격리는 모델링하지 않습니다. `runIde` 샌드박스도 빌드 대상 버전(261)으로 뜨므로 재현되지 않습니다. 실제 설치로만 확인됩니다.
-- **JCEF 초기화 순서는 깨지기 쉽습니다.** `WebviewPanel`은 (1) `JBCefApp.getInstance()`로 플랫폼이 CEF를 부트스트랩하게 하고 → (2) 스킴 핸들러를 앱당 1회 등록하고 → (3) 그제서야 `Webview`를 만들어 `loadURL`합니다. 이 순서를 바꾸면 조용히 깨집니다.
-  - 등록이 `loadURL` **이후**로 밀리면: out-of-process JCEF(2025.x 이후 기본값)에서 팩토리가 반영되지 않아 Chromium이 `erd-editor-jetbrains-plugin`을 실제 DNS로 해석하고 `DNS_PROBE_FINISHED_NXDOMAIN`이 뜹니다. in-process에서는 경합에서 이겨 통과하므로 재현이 안 될 수 있습니다.
-  - `JBCefApp` 초기화 **이전**에 raw `CefApp.getInstance()`를 만지면: CEF가 플랫폼 설정 없이 생성되어 `JBCefBrowser` 생성이 `IllegalStateException: JCEF is not supported in this env`로 죽고, 에디터 탭 자체가 열리지 않습니다.
-  - `CefApp.clearSchemeHandlerFactories()`는 전역입니다. IDE와 다른 플러그인의 핸들러까지 지우므로 쓰지 마세요.
-- **`org.cef` 인터페이스는 IDE 버전 사이에서 넓어집니다.** 2026.2가 번들한 JCEF 144는 `CefResourceHandler`에 `open`/`read`/`skip`을 추가했습니다(261은 추상 메서드 4개, 262는 7개 — `javap`로 실측). 인터페이스를 직접 구현하면 하한 버전으로 컴파일한 익명 클래스가 262에서 3개를 미구현 상태로 남기고, Plugin Verifier가 `binary incompatible`로 잡습니다.
-  - 그래서 `SchemeHandlerFactory`는 `CefResourceHandlerAdapter`를 상속합니다. 이 클래스는 252/253/261/262에 모두 있고 각 버전의 인터페이스를 전부 구현하므로, 앞으로 메서드가 또 늘어도 하한 컴파일이 깨지지 않습니다.
-  - 어댑터의 `open`/`read`/`skip`은 CEF가 문서화한 하위호환 센티널(`handle_request=false`+`false`, `bytesRead=-1`, `bytesSkipped=-2`)을 세팅하므로 Chromium이 기존 `processRequest`/`readResponse` 경로로 되돌아갑니다. 동작은 그대로입니다.
-  - 262에서도 실제로는 렌더가 되던 이유: out-of-process JCEF의 thrift 프로토콜에는 `ProcessRequest`/`ReadResponse`만 있고 `Open`/`Read`/`Skip`이 없어 Java 쪽으로 호출이 오지 않습니다. in-process(`ide.browser.jcef.out-of-process.enabled=false`)로 전환하면 `AbstractMethodError`가 될 수 있던 잠재 결함이었습니다.
-  - 262에서 `processRequest`/`readResponse`는 `@Deprecated`입니다. 인터페이스를 직접 구현하던 때는 Marketplace가 262에만 deprecated 4건(다른 버전 2건)을 보고했지만, 어댑터를 상속하면서 오버라이드 대상이 deprecated가 아닌 어댑터 쪽으로 바뀌어 지금은 0건입니다. 하한이 252인 이상 `open`/`read`로 옮길 수는 없습니다 — 그 메서드들이 252~261에는 아예 없습니다.
-- **Verifier 경고 0건은 의도적으로 맞춘 상태입니다.** 되돌리기 쉬우니 아래 두 가지를 건드릴 때 주의하세요.
-  - `readAndWriteAction`은 `readAndEdtWriteAction`으로 개명됐고 구 이름은 `@Deprecated`입니다("unclear threading semantics"). 새 이름은 252부터 있으므로 하한과 무관하게 새 이름만 쓰면 됩니다.
-  - `ErdEditorProvider`가 `AsyncFileEditorProvider`를 구현하면 `@Experimental`인 `createFileEditor`가 **소스에 없어도** 기본 구현 상속으로 딸려 들어와 Verifier에 2건으로 잡힙니다. 그 기본 구현은 `createEditorAsync`를 EDT 밖에서 부른 뒤 `withContext(Dispatchers.EDT)`에서 빌더를 실행할 뿐이고, 이 프로바이더는 빌더 이전에 할 일이 없어 안정 API인 `FileEditorProvider`로 충분합니다.
-- **`com.intellij.modules.jcef` optional 의존성 미해결 경고는 남습니다.** 252~261에는 그 플러그인이 없으므로 Marketplace가 "couldn't be resolved"를 보고하지만, optional이라 런타임에서는 무시되고 코어 JCEF가 쓰입니다. 없애려면 262+ 전용으로 하한을 올리거나 262+ 지원을 포기하는 수밖에 없습니다.
-- **macOS에서 `Alt(⌥)+문자키` 단축키는 웹뷰에 제대로 도달하지 않습니다 — JCEF가 물리 키 대신 *문자*로 keycode를 역산합니다.** 영문 입력 소스에서만 깨지고 한글 입력 소스에서는 멀쩡해서 IME 문제로 오진하기 쉽습니다.
-  - 경로: `JBCefOsrComponent.processKeyEvent` → `CefBrowser_N.sendKeyEvent(AWT KeyEvent)` → `libjcef.dylib`의 `jcef_keyboard_utils::javaKeyEventToCef`. macOS 분기는 `getKeyCode()`를 Backspace/Delete/Clear/Enter/Escape/Tab/방향키/PageUp·Down/Home/End/F1–F19/모디파이어 등 약 40개 특수키에만 쓰고, **문자키와 Space는 전부 `native_key_code = GetMacKeyCodeFromChar(getKeyChar())`로 떨어집니다.** AWT는 잘못이 없습니다 — JBR의 `CPlatformResponder`는 물리 keycode에서 `getKeyCode()`를 뽑아 `VK_N`을 정확히 넘겨주는데 JCEF가 그걸 안 씁니다.
-  - `GetMacKeyCodeFromChar`의 정의역은 **U+000A–U+007E뿐**이고(`sub w8,w0,#0xa; cmp w8,#0x74; b.hi`), 117-entry 테이블에는 ASCII printable + `\n`(→36 `kVK_Return`) + `ESC`(→53)만 있습니다. 나머지는 `-1`.
-  - 결정적으로 **`-1`은 `0`으로 치환되고 macOS 가상 키코드 `0`은 `kVK_ANSI_A`입니다.** CEF `TranslateWebKeyEvent`가 `keyCode: native_key_code`로 합성 NSEvent를 만들고 Chromium `DomCodeFromNSEvent(0)` → `DomCode::US_A` → **`KeyboardEvent.code === "KeyA"`**. 빈 문자열이 아니라 멀쩡해 보이는 잘못된 값이라, 아무 일도 안 일어나는 게 아니라 **조용히 엉뚱한 단축키가 실행됩니다.**
-  - macOS 라틴 레이아웃에서 `⌥`는 문자를 non-ASCII로 바꿉니다(`UCKeyTranslate` 실측: `⌥N`=dead key, `⌥M`=U+00B5, `⌥K`=U+02DA, `⌥A`=U+00E5, `⌥Space`=U+00A0, `⌥1`=U+00A1, `⌥2`=U+2122). 반면 `com.apple.keylayout.2SetHangul`은 Option 레이어가 평범한 로마자(`n`/`m`/`k`/`a`)라 그대로 통과합니다 — **한글 입력 상태에서만 동작하는 이유가 이것입니다.**
-  - `⌘`는 Option 레이어를 막지 못하고(`⌘⌥A`=U+00E5, `⌘⌥1`=U+00A1), `⌃`는 문자키에서 제어문자 0x01–0x1A가 되어 전부 `-1`입니다. **문자키에 안전한 modifier는 없음 / `Shift` / `⌘` / `⇧⌘` 뿐입니다.** 숫자키와 Space는 `⌥`만 피하면 됩니다.
-  - `erd-editor/packages/erd-editor/src/utils/keyboard-shortcut/index.ts` 기준 실제 증상: `Alt+KeyN`·`Alt+KeyM`·`Alt+KeyK`·`Alt+Space`가 전부 `selectAllColumn`으로, `$mod+Alt+Digit1~4`가 전부 `selectAllTable`로 빠집니다. `Alt+KeyA`와 `$mod+Alt+KeyA`는 손상 결과값이 우연히 `KeyA`라 정상 동작합니다. `Alt+Enter`/`Alt+Backspace`/`Alt+Delete`는 VK 특수분기라 무사합니다.
-  - in-process/out-of-process, windowed/OSR **네 조합이 모두 같은 함수를 탑니다**(out-of-process는 `com.jetbrains.cef.remote.PlatformUtils.getCefKeyEventAttributes` → 동일 네이티브). 레지스트리로 우회할 수 없습니다.
-  - **웹뷰 쪽 폴백은 불가능합니다.** 손상이 IDE JVM 안에서 끝나 Chromium은 `keyCode:0`인 합성 NSEvent만 보므로 `event.key`/`keyCode`/`which`가 함께 오염됩니다. `navigator.keyboard.getLayoutMap()`은 `code`를 입력으로 받는 API라 방향이 반대입니다. 고치려면 Alt+문자키를 안 쓰도록 재바인딩하거나(`intellij-webview`의 `editor.setKeyBindingMap`) IntelliJ `AnAction` + 브리지로 우회해야 합니다.
-  - 업스트림 [JetBrains/jcef#17](https://github.com/JetBrains/jcef/issues/17)이 같은 원인으로 닫혔지만 macOS Option 레이어 경로는 그대로 남아 2026.1.4 번들 JBR에도 있습니다.
-  - **30초 재현**: 영문 입력 소스에서 테이블을 focus한 뒤 `⌥N` → 테이블이 추가되는 대신 그 테이블의 모든 컬럼이 선택되면 이 버그입니다.
-- **IDE keymap이 먼저 먹는 단축키는 위 버그와 구분하세요.** `⌘Z`/`⌘⇧Z`는 `code`가 정상(`KeyZ`)인데도 안 먹히는데, macOS keymap의 `$Undo`/`$Redo`가 소비하기 때문입니다. 반면 `⌘K`는 `Terminal.ClearBuffer`(터미널 한정)라 비활성이어서 통과합니다 — **활성 액션은 먹고 비활성 액션은 흘려보냅니다.** `⌥Space`도 `QuickImplementations`에 걸려 있습니다. keymap XML은 `lib/intellij.platform.ide.impl.jar!/keymaps/Mac OS X 10.5+.xml`(및 `$default.xml`)에서 확인합니다.
-- **웹뷰 DevTools는 코드 수정 없이 열 수 있습니다.** `Webview.kt`가 `setEnableOpenDevToolsMenuItem(false)`를 주지만, `JBCefBrowserBase$DefaultCefContextMenuHandler`가 `myEnableOpenDevToolsMenuItem || Registry.is("ide.browser.jcef.contextMenu.devTools.enabled")`로 **OR 결합**합니다. Registry에서 그 키를 켜고 `.erd` 탭을 닫았다 열면(핸들러는 브라우저 생성자에서 만들어짐) 우클릭 → Open DevTools. IDE 재시작 불필요. 외부 Chrome을 쓰려면 `ide.browser.jcef.debug.port=9222`(재시작 필요) 후 `localhost:9222`.
-- `plugin.xml`에는 `applicationConfigurable`이 등록되어 있지 않습니다. 테마 설정 UI는 없고, 값은 오직 웹뷰가 보내는 `hostSaveThemeCommand`로만 갱신됩니다. `ErdEditorBundle.properties`의 `settings.erd-editor.name` 키는 현재 사용처가 없습니다.
-- `ErdEditor`의 `HostBridgeCommand.ImportFile` 분기는 비어 있습니다(웹뷰가 자체 처리). 파일 쓰기 실패 경로에는 `// TODO: notifyAboutWriteError` 주석만 있고 사용자 알림이 없습니다.
-- `.run/*.run.xml`의 로그 경로에는 플랫폼 버전(`IU-2026.1.4`)이 박혀 있습니다. `platformVersion`을 올리면 함께 고쳐야 합니다.
+- **JCEF left the core in 2026.2.** `plugin.xml` declares `<depends optional="true" config-file="jcef.xml">com.intellij.modules.jcef</depends>`: mandatory breaks loading on 2025.2/2025.3, where that plugin does not exist, and declaring nothing kills the editor on 2026.2+ with `NoClassDefFoundError: JBCefApp`. The Verifier reports `Compatible` either way — it does not model per-module classloader isolation, and the sandbox runs the build target. Only a real install shows it. The unresolved-optional-dependency warning on 252–261 is expected.
+- **`SchemeHandlerFactory` extends `CefResourceHandlerAdapter` rather than implementing `CefResourceHandler`.** The interface widened in the JCEF that 2026.2 bundles (4 abstract methods → 7); an anonymous class compiled against the floor would be binary-incompatible there. The adapter exists on every supported build and fills in the compatibility sentinels. For the same reason `ErdEditorProvider` stays on `FileEditorProvider` — `AsyncFileEditorProvider` inherits an `@Experimental` `createFileEditor` even when unwritten, and the Verifier counts it.
+- **The JCEF init order in `WebviewPanel` is load-bearing:** `JBCefApp.getInstance()` → register the scheme handler once per app → build `Webview` and `loadURL`. Registering after `loadURL` makes out-of-process Chromium resolve the scheme host through DNS (`DNS_PROBE_FINISHED_NXDOMAIN`); touching raw `CefApp.getInstance()` first throws `JCEF is not supported in this env`. `CefApp.clearSchemeHandlerFactories()` is global — never call it.
+- **macOS `⌥`+letter shortcuts reach the webview corrupted.** JCEF derives the native keycode from the *character*, and the Option layer of a Latin layout produces non-ASCII, which falls back to `0` = `kVK_ANSI_A` — so `KeyboardEvent.code` arrives as a plausible-but-wrong `"KeyA"` and a different shortcut fires. Korean input sources keep roman characters on that layer, which is why it reads as an IME bug. No registry flag or webview-side fallback exists; rebind away from `Alt`+letter. Unaffected: no modifier, `Shift`, `⌘`, `⇧⌘`, and the ~40 VK special keys. Separately, `⌘Z`/`⌘⇧Z` are eaten by the IDE keymap before the webview sees them.
 
 ## Dependencies
 
 ### Internal
 
-- `erd-editor/packages/intellij-webview` — 웹뷰 번들 소스. `src/main/resources/assets`의 생성 주체
-- `erd-editor/packages/vscode-bridge` — 브리지 명령 타입 정의. Kotlin 쪽 `WebviewBridge.kt`와 짝을 이룸
-- `erd-editor/packages/erd-editor` — 실제 다이어그램 에디터 구현
-- 서브모듈 내부 구조는 `erd-editor/AGENTS.md` 및 각 패키지의 `AGENTS.md` 참고
+`@dineug/erd-editor-intellij-webview` produces `src/main/resources/assets`; the `@dineug/erd-editor-vscode-bridge` command definitions are the contract `WebviewBridge.kt` mirrors.
 
 ### External
 
-- IntelliJ Platform 2026.1.4 (통합 IntelliJ IDEA) — `FileEditor`, JCEF(`JBCefBrowser`), VFS, 메시지 버스, `PersistentStateComponent`
-- Kotlin 2.3.21 + kotlinx.coroutines — 플랫폼 번들 사용 (`apiVersion` 2.1로 제한)
-- Jackson (`jackson-module-kotlin`) — 브리지 JSON 직렬화, 플랫폼 번들 사용
-- JCEF / `org.cef.*` — 웹뷰 및 커스텀 스킴 핸들러. 최신 IDE는 out-of-process 모드가 기본
-- IntelliJ Platform Gradle Plugin 2.18.1 (Gradle 9.0+ 필수), gradle-changelog-plugin 2.5.0, Qodana 2026.2.0, Kover 0.9.9
+IntelliJ Platform 2026.1.4 (`FileEditor`, JCEF, VFS, message bus, `PersistentStateComponent`), Kotlin 2.3.21 + coroutines and Jackson — all from the platform. Build side: IntelliJ Platform Gradle Plugin 2.18.1 (needs Gradle 9.0+), gradle-changelog-plugin 2.5.0, Kover 0.9.9, Qodana 2026.2.0 (configured, not wired into CI).
 
-<!-- MANUAL: 아래에 수동 메모를 추가하면 재생성 시에도 보존됩니다 -->
+<!-- MANUAL: notes added below this line are preserved on regeneration -->

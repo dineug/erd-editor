@@ -32,9 +32,14 @@ export default defineConfig({
       '**/build',
       '**/.docusaurus',
       '**/.cache-loader',
+      '**/.gradle',
+      '**/.intellijPlatform',
+      '**/.kotlin',
+      '**/.qodana',
       'packages/vscode-extension/public',
       'packages/vscode-extension/out',
       'packages/vscode-extension/.vscode-test',
+      'packages/intellij-plugin/src/main/resources/assets',
       '**/npm-debug.log*',
       '**/yarn-debug.log*',
       '**/yarn-error.log*',
@@ -253,7 +258,7 @@ export default defineConfig({
      * oxfmt handles seventeen languages, so leaving this empty silently widens
      * the scope to 82 files — Markdown, HTML, JSON, JS and the webpack configs.
      *
-     * Markdown matters most. The fourteen AGENTS.md files are hand-maintained
+     * Markdown matters most. The fifteen AGENTS.md files are hand-maintained
      * prose that the repo treats as canonical; one unscoped `vp fmt` rewrites
      * hundreds of lines of them, and that is not a style accident.
      *
@@ -295,6 +300,7 @@ export default defineConfig({
       'packages/vscode-extension/out/**',
       'packages/vscode-extension/public/**',
       'packages/vscode-extension/.vscode-test/**',
+      'packages/intellij-plugin/src/main/resources/assets/**',
     ],
   },
 });

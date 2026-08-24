@@ -131,6 +131,10 @@ intellijPlatform {
 changelog {
     groups.empty()
     repositoryUrl = properties("pluginRepositoryUrl")
+    // The monorepo already carries `v*` tags for the editor itself, and `v0.3.2` / `v0.4.6`
+    // exist while the plugin is on 0.2.1 — a bare `v` prefix would render compare links that
+    // resolve to unrelated releases rather than 404ing.
+    versionPrefix = "intellij-plugin-v"
 }
 
 // Configure Gradle Kover Plugin - read more: https://github.com/Kotlin/kotlinx-kover#configuration
@@ -145,22 +149,21 @@ kover {
 }
 
 tasks {
-    // Build the webview bundle from the `erd-editor` submodule into
-    // src/main/resources/assets. The submodule works out that destination itself, so this
-    // only saves the `cd` — run it after updating the submodule, or whenever the editor
-    // source changes. Not wired into `buildPlugin`: the bundle changes far less often than
-    // the Kotlin side, and pnpm has no business running on every Gradle build.
+    // Build the webview bundle into src/main/resources/assets. `@dineug/erd-editor-intellij-webview`
+    // writes there directly (its `build.outDir`), so this only saves the `cd` to the workspace
+    // root. Not wired into `buildPlugin`: the bundle changes far less often than the Kotlin side,
+    // and pnpm has no business running on every Gradle build.
     register<Exec>("buildWebview") {
         group = "build"
-        description = "Builds the ERD Editor webview bundle from the erd-editor submodule."
+        description = "Builds the ERD Editor webview bundle from @dineug/erd-editor-intellij-webview."
 
-        val submodule = layout.projectDirectory.dir("erd-editor")
-        workingDir = submodule.asFile
+        val workspace = layout.projectDirectory.dir("../..")
+        workingDir = workspace.asFile
 
         doFirst {
-            if (!submodule.file("package.json").asFile.exists()) {
+            if (!workspace.file("pnpm-workspace.yaml").asFile.exists()) {
                 throw GradleException(
-                    "The erd-editor submodule is empty. Run: git submodule update --init --recursive",
+                    "Expected the pnpm workspace root at ${workspace.asFile}, but pnpm-workspace.yaml is not there.",
                 )
             }
         }
@@ -173,12 +176,12 @@ tasks {
             "--filter",
             "@dineug/erd-editor-intellij-webview",
             "--fail-if-no-match",
-            "build:webview",
+            "build",
         )
     }
 
-    // The webview bundle is gitignored and built from the submodule, so an absent one is the
-    // normal state of a fresh clone — and Gradle would happily package the empty directory.
+    // The webview bundle is gitignored and built by pnpm, so an absent one is the normal
+    // state of a fresh clone — and Gradle would happily package the empty directory.
     // That failure is invisible until someone opens a diagram and gets a blank panel, so make
     // it a build failure instead.
     val verifyWebviewAssets = register("verifyWebviewAssets") {
