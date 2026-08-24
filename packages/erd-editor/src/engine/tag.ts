@@ -9,9 +9,9 @@ import { cloneDeep } from 'es-toolkit';
 import { GeneratorAction } from '@/engine/generator.actions';
 
 export const Tag = {
-  shared: /*     */ 0b0000000000000000000000000000001,
-  changeOnly: /* */ 0b0000000000000000000000000000010,
-  following: /*  */ 0b0000000000000000000000000000100,
+  shared: 1,
+  changeOnly: 2,
+  following: 4,
 } as const;
 
 export function attachActionTag(tag: number, action: AnyAction): AnyAction {

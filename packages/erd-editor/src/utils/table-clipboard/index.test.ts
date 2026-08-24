@@ -102,7 +102,7 @@ describe('getShowColumnOrder', () => {
   });
 
   it('drops column types that are not part of ColumnType', () => {
-    expect(getShowColumnOrder(ALL_SHOW, [0, 0b10000000, -1])).toEqual([]);
+    expect(getShowColumnOrder(ALL_SHOW, [0, 128, -1])).toEqual([]);
   });
 
   it('returns an empty array for an empty columnOrder', () => {

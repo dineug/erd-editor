@@ -315,7 +315,7 @@ export function collinearOverlap(segments: Segment[], band = OVERLAP_BAND) {
 }
 
 /** Direction bits are horizontal when the anchor sits on a left or right side. */
-const HORIZONTAL_SIDE = 0b0011;
+const HORIZONTAL_SIDE = 3;
 
 /**
  * Smallest gap between two anchors on the same table side.

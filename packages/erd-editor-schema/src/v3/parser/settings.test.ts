@@ -225,6 +225,12 @@ describe('createAndMergeSettings', () => {
       );
     });
 
+    it('keeps the SQLAlchemy language', () => {
+      expect(
+        createAndMergeSettings({ language: Language.SQLAlchemy }).language
+      ).toBe(Language.SQLAlchemy);
+    });
+
     it('ignores numbers outside the enum lists', () => {
       const settings = createAndMergeSettings({
         database: 999,

@@ -323,6 +323,13 @@ describe('v3ToV2', () => {
       expect(v3ToV2(schemaV3).canvas.database).toBe('MySQL');
     });
 
+    it('drops the SQLAlchemy language because "SQLAlchemy" is not a v2 language name', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.language = Language.SQLAlchemy;
+
+      expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
+    });
+
     it('picks the lowest matching bit when several are set', () => {
       const schemaV3 = createSchemaV3();
       schemaV3.settings.database = Database.MSSQL | Database.SQLite;
@@ -371,7 +378,7 @@ describe('v3ToV2', () => {
         ColumnType.columnUnique,
         ColumnType.columnAutoIncrement,
         ColumnType.columnDefault,
-        0b10000000,
+        128,
       ];
 
       expect(v3ToV2(schemaV3).canvas.setting.columnOrder).toContain(
@@ -560,7 +567,7 @@ describe('v3ToV2', () => {
 
     it('falls back to ZeroN and bottom for unmapped bit values', () => {
       const schemaV3 = createSchemaV3();
-      schemaV3.collections.relationshipEntities.r1.relationshipType = 0b1;
+      schemaV3.collections.relationshipEntities.r1.relationshipType = 1;
       schemaV3.collections.relationshipEntities.r1.start.direction = 0;
       schemaV3.collections.relationshipEntities.r1.end.direction = 0;
 

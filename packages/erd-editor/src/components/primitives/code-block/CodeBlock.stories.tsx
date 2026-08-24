@@ -24,6 +24,8 @@ const meta = {
         'java',
         'kotlin',
         'scala',
+        'go',
+        'python',
       ],
     },
     theme: {

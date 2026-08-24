@@ -14,6 +14,7 @@ describe('LanguageToLangMap', () => {
       [Language.JPA]: 'java',
       [Language.Scala]: 'scala',
       [Language.Go]: 'go',
+      [Language.SQLAlchemy]: 'python',
     });
   });
 
@@ -39,6 +40,10 @@ describe('LanguageToLangMap', () => {
     expect(LanguageToLangMap[Language.JPA]).toBe(
       LanguageToLangMap[Language.Java]
     );
+  });
+
+  it('renders SQLAlchemy with the Python highlighter', () => {
+    expect(LanguageToLangMap[Language.SQLAlchemy]).toBe('python');
   });
 
   it('returns undefined for a language flag that does not exist', () => {

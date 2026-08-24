@@ -11,6 +11,7 @@ export type Lang =
   | 'graphql'
   | 'java'
   | 'kotlin'
+  | 'python'
   | 'scala'
   | 'typescript';
 
@@ -23,4 +24,5 @@ export const LanguageToLangMap: Record<number, Lang> = {
   [Language.Scala]: 'scala',
   [Language.JPA]: 'java',
   [Language.Go]: 'go',
+  [Language.SQLAlchemy]: 'python',
 };
