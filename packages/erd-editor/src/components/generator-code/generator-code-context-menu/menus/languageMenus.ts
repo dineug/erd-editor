@@ -52,6 +52,10 @@ export const menus: Menu[] = [
     name: 'Sequelize',
     value: Language.Sequelize,
   },
+  {
+    name: 'Drizzle',
+    value: Language.Drizzle,
+  },
 ];
 
 export function createLanguageMenus({ store }: AppContext) {

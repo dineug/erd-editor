@@ -27,4 +27,5 @@ export const LanguageToLangMap: Record<number, Lang> = {
   [Language.SQLAlchemy]: 'python',
   [Language.TypeORM]: 'typescript',
   [Language.Sequelize]: 'typescript',
+  [Language.Drizzle]: 'typescript',
 };

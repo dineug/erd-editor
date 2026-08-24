@@ -161,6 +161,19 @@ const expectedByLanguage: Array<[string, number, string[]]> = [
       '',
     ],
   ],
+  [
+    'Drizzle',
+    Language.Drizzle,
+    [
+      '',
+      'import { int, mysqlTable } from "drizzle-orm/mysql-core";',
+      '',
+      'export const User = mysqlTable("user", {',
+      '  createdAt: int("created_at").notNull(),',
+      '});',
+      '',
+    ],
+  ],
 ];
 
 describe('generator-code/index', () => {

@@ -81,6 +81,7 @@ export const Language = {
   SQLAlchemy: 256,
   TypeORM: 512,
   Sequelize: 1024,
+  Drizzle: 2048,
 } as const;
 export const LanguageList: ReadonlyArray<number> = Object.values(Language);
 
