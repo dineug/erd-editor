@@ -1,0 +1,9 @@
+.gradle
+.idea
+.intellijPlatform
+.kotlin
+.qodana
+build
+src/main/resources/assets
+.DS_Store
+.omc
