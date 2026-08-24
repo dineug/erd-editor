@@ -55,9 +55,9 @@ puts the whole bundle in your entry chunk whether or not a code panel is ever op
 | Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go, Python |
 | Themes | `github-dark`, `github-light`, picked from the editor's light / dark appearance |
 
-Those are exactly the languages the editor's own panels emit — the SQL export and the eleven
+Those are exactly the languages the editor's own panels emit — the SQL export and the twelve
 code generators (the JPA generator emits Java, the SQLAlchemy generator emits Python, and the
-TypeORM and Sequelize generators emit TypeScript).
+TypeORM, Sequelize and Drizzle generators emit TypeScript).
 
 ## Notes
 

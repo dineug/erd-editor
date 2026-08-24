@@ -19,7 +19,7 @@ and the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor)
 - Import — a `.sql` dump, or a GraphQL SDL schema from any tool that emits one
 - SQL DDL export — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL and SQLite
 - Code generation — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize
+  SQLAlchemy, TypeORM, Sequelize, Drizzle
 - Export — `.erd.json`, `.sql`, `.png`
 - Force-directed visualization of table relationships
 - Quick search, undo / redo, remappable keyboard shortcuts, and a built-in theme builder

@@ -17,6 +17,7 @@ describe('LanguageToLangMap', () => {
       [Language.SQLAlchemy]: 'python',
       [Language.TypeORM]: 'typescript',
       [Language.Sequelize]: 'typescript',
+      [Language.Drizzle]: 'typescript',
     });
   });
 
@@ -58,6 +59,13 @@ describe('LanguageToLangMap', () => {
   it('renders Sequelize with the same highlighter as TypeScript', () => {
     expect(LanguageToLangMap[Language.Sequelize]).toBe('typescript');
     expect(LanguageToLangMap[Language.Sequelize]).toBe(
+      LanguageToLangMap[Language.TypeScript]
+    );
+  });
+
+  it('renders Drizzle with the same highlighter as TypeScript', () => {
+    expect(LanguageToLangMap[Language.Drizzle]).toBe('typescript');
+    expect(LanguageToLangMap[Language.Drizzle]).toBe(
       LanguageToLangMap[Language.TypeScript]
     );
   });

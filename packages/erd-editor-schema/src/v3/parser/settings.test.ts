@@ -243,6 +243,12 @@ describe('createAndMergeSettings', () => {
       ).toBe(Language.Sequelize);
     });
 
+    it('keeps the Drizzle language', () => {
+      expect(
+        createAndMergeSettings({ language: Language.Drizzle }).language
+      ).toBe(Language.Drizzle);
+    });
+
     it('ignores numbers outside the enum lists', () => {
       const settings = createAndMergeSettings({
         database: 999,
