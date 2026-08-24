@@ -136,6 +136,31 @@ const expectedByLanguage: Array<[string, number, string[]]> = [
       '',
     ],
   ],
+  [
+    'Sequelize',
+    Language.Sequelize,
+    [
+      '',
+      'export class User extends Model<',
+      '  InferAttributes<User>,',
+      '  InferCreationAttributes<User>',
+      '> {',
+      '  declare createdAt: number;',
+      '}',
+      '',
+      'User.init(',
+      '  {',
+      '    createdAt: {',
+      '      type: DataTypes.INTEGER,',
+      '      field: "created_at",',
+      '      allowNull: false,',
+      '    },',
+      '  },',
+      '  { sequelize, tableName: "user", timestamps: false }',
+      ');',
+      '',
+    ],
+  ],
 ];
 
 describe('generator-code/index', () => {

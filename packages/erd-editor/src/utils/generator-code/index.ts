@@ -28,6 +28,10 @@ import {
   formatTable as formatTableScala,
 } from './scala';
 import {
+  createCode as createCodeSequelize,
+  formatTable as formatTableSequelize,
+} from './sequelize';
+import {
   createCode as createCodeSQLAlchemy,
   formatTable as formatTableSQLAlchemy,
 } from './sqlalchemy';
@@ -66,6 +70,8 @@ export function createGeneratorCode(state: RootState): string {
       return createCodeSQLAlchemy(state);
     case Language.TypeORM:
       return createCodeTypeORM(state);
+    case Language.Sequelize:
+      return createCodeSequelize(state);
   }
 
   return '';
@@ -119,6 +125,10 @@ export function createGeneratorCodeTable(
       break;
     case Language.TypeORM:
       formatTableTypeORM(state, { buffer, table });
+      buffer.push('');
+      break;
+    case Language.Sequelize:
+      formatTableSequelize(state, { buffer, table });
       buffer.push('');
       break;
   }

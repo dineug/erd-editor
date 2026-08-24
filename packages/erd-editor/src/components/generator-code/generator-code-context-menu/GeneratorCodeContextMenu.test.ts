@@ -130,6 +130,7 @@ describe('GeneratorCodeContextMenu', () => {
       'Go',
       'SQLAlchemy',
       'TypeORM',
+      'Sequelize',
     ]);
     expect(checkedNameOf(submenu)).toEqual(['GraphQL']);
   });

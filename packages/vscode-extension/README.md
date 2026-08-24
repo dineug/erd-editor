@@ -35,7 +35,7 @@ only; they do not appear in the Command Palette.
   not recognize, so an awkward dump imports partially rather than failing outright
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM
+  SQLAlchemy, TypeORM, Sequelize
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, `.png`
 - **Quick search** — `Ctrl`/`Cmd`+`K` to jump to any table, or run any editor command

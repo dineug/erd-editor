@@ -21,6 +21,7 @@ describe('languageMenus', () => {
       { name: 'Go', value: Language.Go },
       { name: 'SQLAlchemy', value: Language.SQLAlchemy },
       { name: 'TypeORM', value: Language.TypeORM },
+      { name: 'Sequelize', value: Language.Sequelize },
     ]);
   });
 
@@ -40,6 +41,7 @@ describe('languageMenus', () => {
       'Go',
       'SQLAlchemy',
       'TypeORM',
+      'Sequelize',
     ]);
     created.forEach(menu => expect(typeof menu.onClick).toBe('function'));
   });

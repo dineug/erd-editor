@@ -26,4 +26,5 @@ export const LanguageToLangMap: Record<number, Lang> = {
   [Language.Go]: 'go',
   [Language.SQLAlchemy]: 'python',
   [Language.TypeORM]: 'typescript',
+  [Language.Sequelize]: 'typescript',
 };

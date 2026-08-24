@@ -153,8 +153,11 @@ describe('v3/schema/settings', () => {
         Go: 128,
         SQLAlchemy: 256,
         TypeORM: 512,
+        Sequelize: 1024,
       });
-      expect(LanguageList).toEqual([1, 2, 4, 8, 16, 32, 64, 128, 256, 512]);
+      expect(LanguageList).toEqual([
+        1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024,
+      ]);
       expect(Object.values(Language).every(isPowerOfTwo)).toBe(true);
     });
   });
