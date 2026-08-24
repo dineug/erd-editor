@@ -7,8 +7,8 @@ This package supplies the highlighter they look for. It is not a standalone high
 plugs into the editor through that package's `setGetShikiServiceCallback` export.
 
 It ships separately because highlighting is optional and expensive: [Shiki](https://shiki.style),
-its WASM regex engine and nine TextMate grammars build out to well over a megabyte, with the
-worker and the WASM both inlined as `data:` URIs. Keeping it out of the editor means you pay
+its JavaScript regex engine and nine TextMate grammars build out to well over a megabyte, with
+the worker inlined as a `data:` URI. Keeping it out of the editor means you pay
 that only where you actually load this package — and when you do, tokenizing runs in a shared
 worker that is named per version, so every editor on the page, and in other tabs on the same
 origin, talks to one highlighter instead of one each.
@@ -62,8 +62,9 @@ code generators (the JPA generator emits Java, the SQLAlchemy generator emits Py
 
 - The worker is bundled inline, so there is no extra file to copy or host. Importing the
   package is the whole deployment step.
-- A host page with a strict CSP needs `worker-src data:` and `script-src 'wasm-unsafe-eval'`.
-  Without them the worker fails to construct, the error is logged, and the panels stay plain.
+- A host page with a strict CSP needs `worker-src data:`. Without it the worker fails to
+  construct, the error is logged, and the panels stay plain. No WASM directive is required —
+  the regex engine is plain JavaScript.
 - Where `SharedWorker` is missing — Chrome on Android, Safari before 16.4 — no service is
   returned and the underlying error is logged to the console. The editor treats that as "no
   highlighter" and renders the code panels as plain text; nothing else is affected.

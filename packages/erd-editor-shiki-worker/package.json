@@ -28,7 +28,9 @@
   "scripts": {},
   "devDependencies": {
     "comlink": "4.4.1",
-    "shiki": "0.14.7",
+    "@shikijs/langs": "4.4.3",
+    "@shikijs/themes": "4.4.3",
+    "shiki": "4.4.3",
     "tslib": "^2.8.1",
     "typescript": "7.0.2",
     "vite": "catalog:",

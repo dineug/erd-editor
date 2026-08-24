@@ -14,6 +14,89 @@ const banner = `/*!
  * @license ${pkg.license}
  */`;
 
+/** Chromium이 URL 하나에 허용하는 최대 길이. 넘기면 워커가 로드되지 않는다. */
+const MAX_URL_LENGTH = 2 * 1024 * 1024;
+
+const INLINE_WORKER_URL =
+  /"data:text\/javascript;charset=utf-8," \+ encodeURIComponent\((\w+)\)/g;
+
+/**
+ * `?sharedworker&inline`이 만드는 워커 URL을 percent 인코딩에서 base64로 바꾼다.
+ *
+ * percent 인코딩은 TextMate 문법의 `"` `{` `\` 를 전부 `%XX` 3자로 부풀려 1.8배가
+ * 되는데, 그 결과가 `MAX_URL_LENGTH`를 넘으면 `new SharedWorker`가 **본문이 빈**
+ * 에러 이벤트만 남기고 실패한다. Comlink는 응답을 영원히 기다리고 패널은 조용히
+ * 빈 채로 남는다 — 로그도 스택도 없다. base64는 1.33배고, blob URL과 달리 같은
+ * 소스가 항상 같은 URL이라 탭마다 SharedWorker가 갈라지지 않는다.
+ */
+function base64InlineWorker() {
+  return {
+    name: 'erd-editor:base64-inline-worker',
+    renderChunk(code: string) {
+      const matches = [...code.matchAll(INLINE_WORKER_URL)];
+      if (!matches.length) return null;
+
+      for (const [, ident] of matches) {
+        const source = readStringLiteral(code, ident);
+        // 워커 소스를 못 읽으면 길이를 잴 수 없다. 조용한 실패로 돌아가느니 멈춘다.
+        if (source === null) {
+          throw new Error(
+            `[base64InlineWorker] could not read the inlined worker source \`${ident}\``
+          );
+        }
+
+        const length =
+          'data:text/javascript;base64,'.length +
+          4 * Math.ceil(Buffer.byteLength(source, 'utf8') / 3);
+        if (length > MAX_URL_LENGTH) {
+          throw new Error(
+            `[base64InlineWorker] inlined worker URL is ${length} chars, over the ${MAX_URL_LENGTH} limit ` +
+              `by ${length - MAX_URL_LENGTH}. Drop a grammar or theme — shipping this builds a highlighter that never starts.`
+          );
+        }
+      }
+
+      // 배너가 파일 첫머리를 지키도록 뒤에 붙인다. 함수 선언이라 호이스팅된다.
+      return {
+        code: `${code.replace(
+          INLINE_WORKER_URL,
+          (_, ident) => `__toDataUrl(${ident})`
+        )}\n${TO_DATA_URL}`,
+        map: null,
+      };
+    },
+  };
+}
+
+const TO_DATA_URL = `function __toDataUrl(source) {
+\tconst bytes = new TextEncoder().encode(source);
+\tlet binary = "";
+\tfor (let i = 0; i < bytes.length; i += 0x8000) {
+\t\tbinary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+\t}
+\treturn "data:text/javascript;base64," + btoa(binary);
+}`;
+
+/** `var <ident> = "..."`의 문자열 리터럴을 이스케이프를 지켜가며 읽어 값으로 돌려준다. */
+function readStringLiteral(code: string, ident: string): string | null {
+  const declaration = new RegExp(
+    `(?:var|const|let)\\s+${ident}\\s*=\\s*"`
+  ).exec(code);
+  if (!declaration) return null;
+
+  const start = declaration.index + declaration[0].length;
+  for (let i = start; i < code.length; i++) {
+    if (code[i] === '\\') {
+      i++;
+      continue;
+    }
+    if (code[i] === '"') {
+      return Function(`return "${code.slice(start, i)}"`)();
+    }
+  }
+  return null;
+}
+
 export default defineConfig({
   /**
    * nx.json `targetDefaults`의 대체. `dependsOn`이 `^build`를, `output`이
@@ -73,5 +156,5 @@ export default defineConfig({
       '@': join(import.meta.dirname, 'src'),
     },
   },
-  plugins: lazyPlugins(() => [dts()]),
+  plugins: lazyPlugins(() => [dts(), base64InlineWorker()]),
 });
