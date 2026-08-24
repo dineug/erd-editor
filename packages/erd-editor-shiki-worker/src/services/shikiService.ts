@@ -1,101 +1,44 @@
-import { getHighlighter, setWasm, toShikiTheme } from 'shiki';
-// @ts-ignore
-import wasmUrl from 'shiki/dist/onig.wasm?url';
-import csharp from 'shiki/languages/csharp.tmLanguage.json';
-import go from 'shiki/languages/go.tmLanguage.json';
-import graphql from 'shiki/languages/graphql.tmLanguage.json';
-import java from 'shiki/languages/java.tmLanguage.json';
-import kotlin from 'shiki/languages/kotlin.tmLanguage.json';
-import python from 'shiki/languages/python.tmLanguage.json';
-import scala from 'shiki/languages/scala.tmLanguage.json';
-import sql from 'shiki/languages/sql.tmLanguage.json';
-import typescript from 'shiki/languages/typescript.tmLanguage.json';
-import githubDark from 'shiki/themes/github-dark.json';
-import githubLight from 'shiki/themes/github-light.json';
+import csharp from '@shikijs/langs/csharp';
+import go from '@shikijs/langs/go';
+import graphql from '@shikijs/langs/graphql';
+import java from '@shikijs/langs/java';
+import kotlin from '@shikijs/langs/kotlin';
+import python from '@shikijs/langs/python';
+import scala from '@shikijs/langs/scala';
+import sql from '@shikijs/langs/sql';
+import typescript from '@shikijs/langs/typescript';
+import githubDark from '@shikijs/themes/github-dark';
+import githubLight from '@shikijs/themes/github-light';
+import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
+import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 
-const themeMap: Record<string, any> = {
-  dark: githubDark,
-  light: githubLight,
-};
-
-const languages: Array<any> = [
-  {
-    id: 'typescript',
-    scopeName: 'source.ts',
-    displayName: 'TypeScript',
-    aliases: ['ts'],
-    grammar: typescript,
-  },
-  {
-    id: 'sql',
-    scopeName: 'source.sql',
-    displayName: 'SQL',
-    grammar: sql,
-  },
-  {
-    id: 'graphql',
-    scopeName: 'source.graphql',
-    displayName: 'GraphQL',
-    aliases: ['gql'],
-    grammar: graphql,
-  },
-  {
-    id: 'csharp',
-    scopeName: 'source.cs',
-    displayName: 'C#',
-    aliases: ['c#', 'cs'],
-    grammar: csharp,
-  },
-  {
-    id: 'java',
-    scopeName: 'source.java',
-    displayName: 'Java',
-    grammar: java,
-  },
-  {
-    id: 'kotlin',
-    scopeName: 'source.kotlin',
-    displayName: 'Kotlin',
-    aliases: ['kt', 'kts'],
-    grammar: kotlin,
-  },
-  {
-    id: 'scala',
-    scopeName: 'source.scala',
-    displayName: 'Scala',
-    grammar: scala,
-  },
-  {
-    id: 'go',
-    scopeName: 'source.go',
-    displayName: 'Go',
-    aliases: ['golang'],
-    grammar: go,
-  },
-  {
-    id: 'python',
-    scopeName: 'source.python',
-    displayName: 'Python',
-    aliases: ['py'],
-    grammar: python,
-  },
-];
+const themeMap = {
+  dark: 'github-dark',
+  light: 'github-light',
+} as const;
 
 function getThemeKey(theme?: string): 'dark' | 'light' {
   return theme === 'dark' || theme === 'light' ? theme : 'dark';
 }
 
 export class ShikiService {
-  private ready: Promise<void>;
+  private highlighter: Promise<HighlighterCore>;
 
   constructor() {
-    this.ready = new Promise((resolve, reject) => {
-      fetch(wasmUrl)
-        .then(wasmResponse => {
-          setWasm(wasmResponse);
-          resolve();
-        })
-        .catch(reject);
+    this.highlighter = createHighlighterCore({
+      themes: [githubDark, githubLight],
+      langs: [
+        sql,
+        typescript,
+        graphql,
+        csharp,
+        java,
+        kotlin,
+        scala,
+        go,
+        python,
+      ],
+      engine: createJavaScriptRegexEngine({ forgiving: true }),
     });
   }
 
@@ -118,13 +61,11 @@ export class ShikiService {
       theme?: 'dark' | 'light';
     }
   ): Promise<string> {
-    return await this.ready.then(async () => {
-      const highlighter = await getHighlighter({
-        theme: toShikiTheme(Reflect.get(themeMap, getThemeKey(theme))),
-        langs: languages,
-      });
+    const highlighter = await this.highlighter;
 
-      return highlighter.codeToHtml(code, { lang });
+    return highlighter.codeToHtml(code, {
+      lang,
+      theme: themeMap[getThemeKey(theme)],
     });
   }
 }
