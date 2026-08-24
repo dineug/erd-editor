@@ -25,4 +25,5 @@ export const LanguageToLangMap: Record<number, Lang> = {
   [Language.JPA]: 'java',
   [Language.Go]: 'go',
   [Language.SQLAlchemy]: 'python',
+  [Language.TypeORM]: 'typescript',
 };

@@ -15,6 +15,7 @@ describe('LanguageToLangMap', () => {
       [Language.Scala]: 'scala',
       [Language.Go]: 'go',
       [Language.SQLAlchemy]: 'python',
+      [Language.TypeORM]: 'typescript',
     });
   });
 
@@ -44,6 +45,13 @@ describe('LanguageToLangMap', () => {
 
   it('renders SQLAlchemy with the Python highlighter', () => {
     expect(LanguageToLangMap[Language.SQLAlchemy]).toBe('python');
+  });
+
+  it('renders TypeORM with the same highlighter as TypeScript', () => {
+    expect(LanguageToLangMap[Language.TypeORM]).toBe('typescript');
+    expect(LanguageToLangMap[Language.TypeORM]).toBe(
+      LanguageToLangMap[Language.TypeScript]
+    );
   });
 
   it('returns undefined for a language flag that does not exist', () => {

@@ -123,6 +123,19 @@ const expectedByLanguage: Array<[string, number, string[]]> = [
       '',
     ],
   ],
+  [
+    'TypeORM',
+    Language.TypeORM,
+    [
+      '',
+      '@Entity("user")',
+      'export class User {',
+      '  @Column("int", { name: "created_at" })',
+      '  createdAt: number;',
+      '}',
+      '',
+    ],
+  ],
 ];
 
 describe('generator-code/index', () => {

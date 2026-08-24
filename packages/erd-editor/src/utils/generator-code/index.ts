@@ -32,6 +32,10 @@ import {
   formatTable as formatTableSQLAlchemy,
 } from './sqlalchemy';
 import {
+  createCode as createCodeTypeORM,
+  formatTable as formatTableTypeORM,
+} from './typeorm';
+import {
   createCode as createCodeTypescript,
   formatTable as formatTableTypescript,
 } from './typescript';
@@ -60,6 +64,8 @@ export function createGeneratorCode(state: RootState): string {
       return createCodeGo(state);
     case Language.SQLAlchemy:
       return createCodeSQLAlchemy(state);
+    case Language.TypeORM:
+      return createCodeTypeORM(state);
   }
 
   return '';
@@ -109,6 +115,10 @@ export function createGeneratorCodeTable(
       break;
     case Language.SQLAlchemy:
       formatTableSQLAlchemy(state, { buffer, table });
+      buffer.push('');
+      break;
+    case Language.TypeORM:
+      formatTableTypeORM(state, { buffer, table });
       buffer.push('');
       break;
   }
