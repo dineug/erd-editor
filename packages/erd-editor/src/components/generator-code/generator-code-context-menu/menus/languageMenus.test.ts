@@ -20,6 +20,7 @@ describe('languageMenus', () => {
       { name: 'Scala', value: Language.Scala },
       { name: 'Go', value: Language.Go },
       { name: 'SQLAlchemy', value: Language.SQLAlchemy },
+      { name: 'TypeORM', value: Language.TypeORM },
     ]);
   });
 
@@ -38,6 +39,7 @@ describe('languageMenus', () => {
       'Scala',
       'Go',
       'SQLAlchemy',
+      'TypeORM',
     ]);
     created.forEach(menu => expect(typeof menu.onClick).toBe('function'));
   });

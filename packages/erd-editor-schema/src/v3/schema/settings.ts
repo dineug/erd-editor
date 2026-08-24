@@ -79,6 +79,7 @@ export const Language = {
   Scala: 64,
   Go: 128,
   SQLAlchemy: 256,
+  TypeORM: 512,
 } as const;
 export const LanguageList: ReadonlyArray<number> = Object.values(Language);
 

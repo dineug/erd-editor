@@ -30,7 +30,7 @@ then pick a `.sql` dump.
   `CREATE TABLE`, `CREATE INDEX` and `ALTER TABLE` constraints and skips what it does not recognize,
   so an awkward dump imports partially rather than failing outright
 - **SQL DDL export** — MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
-- **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala
+- **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go, SQLAlchemy, TypeORM
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, `.png`
 - **Quick search** to jump to any table, **time travel** through this session's edit history, and

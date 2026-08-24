@@ -44,6 +44,10 @@ export const menus: Menu[] = [
     name: 'SQLAlchemy',
     value: Language.SQLAlchemy,
   },
+  {
+    name: 'TypeORM',
+    value: Language.TypeORM,
+  },
 ];
 
 export function createLanguageMenus({ store }: AppContext) {

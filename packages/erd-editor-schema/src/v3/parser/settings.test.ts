@@ -231,6 +231,12 @@ describe('createAndMergeSettings', () => {
       ).toBe(Language.SQLAlchemy);
     });
 
+    it('keeps the TypeORM language', () => {
+      expect(
+        createAndMergeSettings({ language: Language.TypeORM }).language
+      ).toBe(Language.TypeORM);
+    });
+
     it('ignores numbers outside the enum lists', () => {
       const settings = createAndMergeSettings({
         database: 999,
