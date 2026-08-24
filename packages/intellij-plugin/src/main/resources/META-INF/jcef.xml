@@ -1,0 +1,5 @@
+<!-- Loaded only when com.intellij.modules.jcef is present (IntelliJ 2026.2+, where JCEF was split out
+     of the core platform). It contributes no extra configuration; its purpose is to make the JCEF
+     module a class loader parent of this plugin so com.intellij.ui.jcef.* resolves. -->
+<idea-plugin>
+</idea-plugin>

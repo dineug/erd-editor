@@ -113,7 +113,7 @@ This is a pnpm workspace. The two packages published to npm are
 highlighting). Everything else is internal.
 
 <details>
-<summary>All 13 packages</summary>
+<summary>All 14 packages</summary>
 
 | Package | Description |
 | --- | --- |
@@ -129,13 +129,16 @@ highlighting). Everything else is internal.
 | [`vscode-webview`](./packages/vscode-webview) | The bundle inside the VS Code webview |
 | [`vscode-bridge`](./packages/vscode-bridge) | Typed host ↔ webview command protocol |
 | [`vscode-replication-store-worker`](./packages/vscode-replication-store-worker) | Headless document replica for the VS Code host |
-| [`intellij-webview`](./packages/intellij-webview) | The bundle for the [IntelliJ plugin](https://github.com/dineug/erd-editor-intellij-plugin) |
+| [`intellij-webview`](./packages/intellij-webview) | The bundle inside the IntelliJ plugin's editor panel |
+| [`intellij-plugin`](./packages/intellij-plugin) | The published IntelliJ plugin — Kotlin and Gradle, not TypeScript |
 
 </details>
 
 ## Development
 
 Requires Node 22 (`.nvmrc` pins `22.23.2`) and pnpm `10.34.3`, which `packageManager` pins for you.
+The IntelliJ plugin additionally needs a JDK; Gradle's toolchain resolver fetches JDK 21 if your
+machine has none.
 
 ```sh
 pnpm install
@@ -153,6 +156,16 @@ tasks go through [Vite+](https://viteplus.dev/), whose `vp` binary `pnpm install
 pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build   # a task
 pnpm --filter @dineug/erd-editor dev                                    # a script
 pnpm --filter @dineug/erd-editor-app dev                                # the web app
+```
+
+`intellij-plugin` is the exception — it is a Gradle project and declares neither, so its
+commands are run from its own directory.
+
+```sh
+cd packages/intellij-plugin
+./gradlew buildWebview   # the webview bundle it packages
+./gradlew runIde         # a sandbox IDE with the plugin loaded
+./gradlew buildPlugin    # the distributable zip
 ```
 
 The Playwright and Extension Host suites are not part of `pnpm test`; CI runs them as separate

@@ -1,13 +1,13 @@
-import { existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 import { defineConfig, type Plugin } from 'vite-plus';
 
 /**
  * Strips `crossorigin` from the tags Vite injects. The IDE serves these assets
- * through a custom CEF scheme handler (`SchemeHandlerFactory` in the plugin
- * repo) which returns a body and a MIME type and nothing else — no CORS
- * headers — so a crossorigin module script is refused and the panel stays blank.
+ * through a custom CEF scheme handler (`SchemeHandlerFactory` in
+ * `packages/intellij-plugin`) which returns a body and a MIME type and nothing
+ * else — no CORS headers — so a crossorigin module script is refused and the
+ * panel stays blank.
  */
 function stripCrossorigin(): Plugin {
   return {
@@ -20,38 +20,8 @@ function stripCrossorigin(): Plugin {
 }
 
 /**
- * The plugin repo consumes this one in two shapes: checked out beside it, and
- * vendored as a git submodule at its `erd-editor/`. Both put the bundle in that
- * repo's `src/main/resources/assets`, but from here the two are one directory
- * apart, and picking the wrong one is silent — the build succeeds, the plugin
- * packages an empty `assets/`, and the editor comes up blank.
- *
- * So detect it rather than asking the caller to remember. `plugin.xml` exists
- * only in the plugin repo, which makes it an unambiguous marker: find it in our
- * parent and we are the submodule. `ERD_EDITOR_ASSETS_DIR` still overrides,
- * for a layout that is neither.
- */
-const PLUGIN_ASSETS = join('src', 'main', 'resources', 'assets');
-
-function resolveWebviewOutDir(): string {
-  const override = process.env.ERD_EDITOR_ASSETS_DIR;
-  if (override) return override;
-
-  const parent = dirname(resolve(import.meta.dirname, '..', '..'));
-  const marker = join('src', 'main', 'resources', 'META-INF', 'plugin.xml');
-
-  return existsSync(join(parent, marker))
-    ? join(parent, PLUGIN_ASSETS)
-    : join(parent, 'erd-editor-intellij-plugin', PLUGIN_ASSETS);
-}
-
-/**
- * Two outputs from one config. `vp build` writes `dist/` for local inspection;
- * `vp build --mode webview` writes into the IntelliJ plugin repo's
- * `src/main/resources/assets`, which is what ships.
- *
- * Where that is depends on how the two repos are laid out — see
- * `resolveWebviewOutDir`.
+ * The one output is the plugin's classpath resources; there is no `dist/`,
+ * because nothing in the workspace consumes this package.
  *
  * The scheme handler maps a URL path straight onto the classpath and assigns a
  * MIME type from a three-way `when` on the extension — `.html`, `.js`, `.css`.
@@ -59,127 +29,113 @@ function resolveWebviewOutDir(): string {
  * path *is* the resource path, and nothing outside those three extensions may
  * be emitted, because anything else is served with no MIME type at all.
  */
-export default defineConfig(({ mode }) => {
-  const isWebview = mode === 'webview';
+export default defineConfig({
+  base: '/',
+  plugins: [stripCrossorigin()],
+  // `index.html` is the entry and sits at the package root; there is no static
+  // asset directory to copy.
+  publicDir: false,
 
-  return {
-    base: '/',
-    plugins: [stripCrossorigin()],
-    // `index.html` is the entry and sits at the package root; there is no static
-    // asset directory to copy.
-    publicDir: false,
-
-    build: {
-      outDir: isWebview ? resolveWebviewOutDir() : 'dist',
-      // ⚠️ In webview mode this clears a directory in *another repository*.
-      // That is the intent — stale hashed bundles there are packaged into the
-      // plugin jar — but it is also why `build:webview` is `cache: false`:
-      // a cache hit cannot restore files Vite Task never archived.
-      emptyOutDir: true,
-      // webpack emitted no sourcemap in production, and `.map` is outside the
-      // scheme handler's MIME whitelist.
-      sourcemap: false,
-      modulePreload: false,
-      rolldownOptions: {
-        output: {
-          hashCharacters: 'hex',
-          entryFileNames: 'static/js/bundle.[hash:8].js',
-          chunkFileNames: 'static/js/[name].[hash:8].js',
-          assetFileNames: 'static/css/bundle.[hash:8][extname]',
-        },
+  build: {
+    outDir: '../intellij-plugin/src/main/resources/assets',
+    // The output directory is outside this package's root, where Vite only
+    // warns and declines to clear by default. Stale hashed bundles left there
+    // are packaged into the plugin jar.
+    emptyOutDir: true,
+    // webpack emitted no sourcemap in production, and `.map` is outside the
+    // scheme handler's MIME whitelist.
+    sourcemap: false,
+    modulePreload: false,
+    rolldownOptions: {
+      output: {
+        hashCharacters: 'hex',
+        entryFileNames: 'static/js/bundle.[hash:8].js',
+        chunkFileNames: 'static/js/[name].[hash:8].js',
+        assetFileNames: 'static/css/bundle.[hash:8][extname]',
       },
     },
+  },
 
-    /**
-     * `src/main.ts` constructs its worker with `{ type: 'module' }`. Vite's
-     * default `worker.format` is `iife`, and an iife worker that gets code-split
-     * loads its pieces with `importScripts`, which a module worker is not
-     * allowed to call. Workers also do not inherit `build.rolldownOptions.output`,
-     * so the naming has to be repeated here or the chunks land outside
-     * `static/js` with base64 hashes.
-     */
-    worker: {
-      format: 'es',
-      rolldownOptions: {
-        output: {
-          hashCharacters: 'hex',
-          entryFileNames: 'static/js/[name].[hash:8].js',
-          chunkFileNames: 'static/js/[name].[hash:8].js',
-        },
+  /**
+   * `src/main.ts` constructs its worker with `{ type: 'module' }`. Vite's
+   * default `worker.format` is `iife`, and an iife worker that gets code-split
+   * loads its pieces with `importScripts`, which a module worker is not
+   * allowed to call. Workers also do not inherit `build.rolldownOptions.output`,
+   * so the naming has to be repeated here or the chunks land outside
+   * `static/js` with base64 hashes.
+   */
+  worker: {
+    format: 'es',
+    rolldownOptions: {
+      output: {
+        hashCharacters: 'hex',
+        entryFileNames: 'static/js/[name].[hash:8].js',
+        chunkFileNames: 'static/js/[name].[hash:8].js',
       },
     },
+  },
 
-    resolve: {
-      alias: {
-        '@': join(import.meta.dirname, 'src'),
+  resolve: {
+    alias: {
+      '@': join(import.meta.dirname, 'src'),
+    },
+  },
+
+  /**
+   * nx.json `targetDefaults`의 대체. `dependsOn`이 `^build`를, `output`이
+   * `outputs: ["{projectRoot}/dist"]`를 잇는다.
+   *
+   * `from`에 셋을 다 적는 이유: 워크스페이스 의존이 패키지마다 다른 필드에 있다 —
+   * 라이브러리 아홉은 전부 devDependencies에 걸고, 앱 형태 넷은 dependencies에 건다.
+   * 기본값(`dependencies`)에 맡기면 라이브러리 쪽 간선이 통째로 비고, 그 결과는
+   * 실패가 아니라 stale dist를 상대로 한 초록이다.
+   */
+  run: {
+    tasks: {
+      build: {
+        // 타입 게이트 ①. 배열은 순차 실행이자 독립 캐시 단위인데, 태스크 레벨
+        // `input`은 두 서브태스크가 공유한다(실측) — 그래서 소스만 바뀌어도
+        // 자동 추적에 안 잡히는 `tsc`가 다시 돈다.
+        command: ['tsc --noEmit', 'vp build'],
+        dependsOn: [
+          {
+            task: 'build',
+            from: ['dependencies', 'devDependencies', 'peerDependencies'],
+          },
+        ],
+        input: [
+          { auto: true },
+          'src/**',
+          'package.json',
+          'vite.config.ts',
+          'index.html',
+          'tsconfig.json',
+          { pattern: 'tsconfig.app.json', base: 'workspace' },
+          {
+            pattern: 'packages/erd-editor/dist/**/*.d.ts',
+            base: 'workspace',
+          },
+          {
+            pattern: 'packages/erd-editor-shiki-worker/dist/**/*.d.ts',
+            base: 'workspace',
+          },
+          {
+            pattern: 'packages/vscode-bridge/dist/**/*.d.ts',
+            base: 'workspace',
+          },
+          { pattern: 'packages/shared/dist/**/*.d.ts', base: 'workspace' },
+          '!**/*.tsbuildinfo',
+        ],
+        // 이 패키지는 자기 밖에 쓴다 — Gradle이 그 산출물을 클래스패스 리소스로
+        // 싣는다. 빠뜨리면 캐시 히트가 터미널 출력만 재생하고 산출물을 복원하지
+        // 않는다.
+        output: [
+          {
+            pattern: 'packages/intellij-plugin/src/main/resources/assets/**',
+            base: 'workspace',
+          },
+        ],
       },
     },
-
-    /**
-     * nx.json `targetDefaults`의 대체. `dependsOn`이 `^build`를, `output`이
-     * `outputs: ["{projectRoot}/dist"]`를 잇는다.
-     *
-     * `from`에 셋을 다 적는 이유: 워크스페이스 의존이 패키지마다 다른 필드에 있다 —
-
-     * 라이브러리 아홉은 전부 devDependencies에 걸고, 앱 형태 넷은 dependencies에 건다.
-
-     * 기본값(`dependencies`)에 맡기면 라이브러리 쪽 간선이 통째로 비고, 그 결과는
-
-     * 실패가 아니라 stale dist를 상대로 한 초록이다.
-     */
-    run: {
-      tasks: {
-        build: {
-          // 타입 게이트 ①. 배열은 순차 실행이자 독립 캐시 단위인데, 태스크 레벨
-          // `input`은 두 서브태스크가 공유한다(실측) — 그래서 소스만 바뀌어도
-          // 자동 추적에 안 잡히는 `tsc`가 다시 돈다.
-          command: ['tsc --noEmit', 'vp build'],
-          dependsOn: [
-            {
-              task: 'build',
-              from: ['dependencies', 'devDependencies', 'peerDependencies'],
-            },
-          ],
-          input: [
-            { auto: true },
-            'src/**',
-            'package.json',
-            'vite.config.ts',
-            'index.html',
-            'tsconfig.json',
-            { pattern: 'tsconfig.app.json', base: 'workspace' },
-            {
-              pattern: 'packages/erd-editor/dist/**/*.d.ts',
-              base: 'workspace',
-            },
-            {
-              pattern: 'packages/erd-editor-shiki-worker/dist/**/*.d.ts',
-              base: 'workspace',
-            },
-            {
-              pattern: 'packages/vscode-bridge/dist/**/*.d.ts',
-              base: 'workspace',
-            },
-            { pattern: 'packages/shared/dist/**/*.d.ts', base: 'workspace' },
-            '!**/*.tsbuildinfo',
-            '!dist/**',
-          ],
-          // 빠뜨리면 캐시 히트가 터미널 출력만 재생하고 산출물을 복원하지 않는다.
-          output: ['dist/**'],
-        },
-        'build:webview': {
-          command: ['tsc --noEmit', 'vp build --mode webview'],
-          dependsOn: [
-            {
-              task: 'build',
-              from: ['dependencies', 'devDependencies', 'peerDependencies'],
-            },
-          ],
-          // 산출물이 이 레포 밖(erd-editor-intellij-plugin/src/main/resources/assets)이라 캐시가 복원할
-          // 수 없다. 히트가 나면 IntelliJ 플러그인은 어제 자 assets로 빌드된다.
-          cache: false,
-        },
-      },
-    },
-  };
+  },
 });

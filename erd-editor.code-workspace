@@ -33,6 +33,10 @@
       "path": "packages/intellij-webview",
     },
     {
+      "name": "intellij-plugin",
+      "path": "packages/intellij-plugin",
+    },
+    {
       "name": "app",
       "path": "packages/app",
     },
