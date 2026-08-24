@@ -16,6 +16,7 @@ describe('LanguageToLangMap', () => {
       [Language.Go]: 'go',
       [Language.SQLAlchemy]: 'python',
       [Language.TypeORM]: 'typescript',
+      [Language.Sequelize]: 'typescript',
     });
   });
 
@@ -50,6 +51,13 @@ describe('LanguageToLangMap', () => {
   it('renders TypeORM with the same highlighter as TypeScript', () => {
     expect(LanguageToLangMap[Language.TypeORM]).toBe('typescript');
     expect(LanguageToLangMap[Language.TypeORM]).toBe(
+      LanguageToLangMap[Language.TypeScript]
+    );
+  });
+
+  it('renders Sequelize with the same highlighter as TypeScript', () => {
+    expect(LanguageToLangMap[Language.Sequelize]).toBe('typescript');
+    expect(LanguageToLangMap[Language.Sequelize]).toBe(
       LanguageToLangMap[Language.TypeScript]
     );
   });

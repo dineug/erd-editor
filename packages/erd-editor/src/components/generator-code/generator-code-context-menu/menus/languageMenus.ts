@@ -48,6 +48,10 @@ export const menus: Menu[] = [
     name: 'TypeORM',
     value: Language.TypeORM,
   },
+  {
+    name: 'Sequelize',
+    value: Language.Sequelize,
+  },
 ];
 
 export function createLanguageMenus({ store }: AppContext) {

@@ -287,6 +287,15 @@ describe('convert barrel', () => {
       expect(result.settings.language).toBe(SchemaV3Constants.Language.GraphQL);
     });
 
+    it('loses the Sequelize language because v2 has no such name', () => {
+      const source = createSchemaV3();
+      source.settings.language = SchemaV3Constants.Language.Sequelize;
+      const result = v2ToV3(v3ToV2(source));
+
+      expect(result.settings.language).not.toBe(source.settings.language);
+      expect(result.settings.language).toBe(SchemaV3Constants.Language.GraphQL);
+    });
+
     it('preserves the document ids of tables, memos and relationships', () => {
       const source = createSchemaV3();
       const result = v2ToV3(v3ToV2(source));

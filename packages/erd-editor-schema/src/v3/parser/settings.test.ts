@@ -237,6 +237,12 @@ describe('createAndMergeSettings', () => {
       ).toBe(Language.TypeORM);
     });
 
+    it('keeps the Sequelize language', () => {
+      expect(
+        createAndMergeSettings({ language: Language.Sequelize }).language
+      ).toBe(Language.Sequelize);
+    });
+
     it('ignores numbers outside the enum lists', () => {
       const settings = createAndMergeSettings({
         database: 999,

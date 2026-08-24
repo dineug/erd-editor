@@ -337,6 +337,13 @@ describe('v3ToV2', () => {
       expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
     });
 
+    it('drops the Sequelize language because "Sequelize" is not a v2 language name', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.language = Language.Sequelize;
+
+      expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
+    });
+
     it('picks the lowest matching bit when several are set', () => {
       const schemaV3 = createSchemaV3();
       schemaV3.settings.database = Database.MSSQL | Database.SQLite;

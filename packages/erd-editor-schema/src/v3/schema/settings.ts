@@ -80,6 +80,7 @@ export const Language = {
   Go: 128,
   SQLAlchemy: 256,
   TypeORM: 512,
+  Sequelize: 1024,
 } as const;
 export const LanguageList: ReadonlyArray<number> = Object.values(Language);
 
