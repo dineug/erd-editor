@@ -81,6 +81,25 @@ class WebviewBridgeCommandTest {
     }
 
     @Test
+    fun `import file payload carries the file type through untouched`() {
+        // `type` is a plain String here, so the host never validates it; the webview switch is the
+        // only thing that reads it. Whatever the bridge union grows must survive this round trip
+        // verbatim, casing included.
+        val json = mapper.readTree(
+            mapper.writeValueAsString(
+                WebviewBridgeCommand.ImportFile(
+                    WebviewImportFileCommandPayload("graphql", "set", "type User { id: ID! }")
+                )
+            )
+        )
+
+        val payload = json.get("payload")
+        assertEquals("graphql", payload.get("type").asText())
+        assertEquals("set", payload.get("op").asText())
+        assertEquals("type User { id: ID! }", payload.get("value").asText())
+    }
+
+    @Test
     fun `null theme fields are omitted rather than serialized as null`() {
         val json: JsonNode = mapper.readTree(
             mapper.writeValueAsString(

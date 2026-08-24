@@ -8,7 +8,7 @@ Design a database schema visually, right next to your code. Diagrams are plain J
 your repository, so they diff and review like any other source file.
 
 The editor never connects to a database — it reads and writes files only. You bring a schema
-in from a `.sql` dump, and take one back out as DDL.
+in from a `.sql` dump or a GraphQL SDL file, and take one back out as DDL.
 
 ## Getting started
 
@@ -19,8 +19,9 @@ Editing marks the tab dirty like any other file; the diagram is written to disk 
 Undo and redo are the diagram editor's own history, not VS Code's.
 
 On the empty canvas, `Alt`+`N` adds a table and `Alt`+`Enter` adds a column to it. To start
-from a schema you already have, right-click the canvas and choose **Import → Schema SQL**,
-then pick a `.sql` dump.
+from a schema you already have, right-click the canvas and choose **Import → Schema SQL**
+for a `.sql` dump, or **Import → GraphQL** for a `.graphql`, `.gql` or `.graphqls` file.
+Either one replaces the diagram in one undoable step.
 
 Use the icon in the editor title bar to switch between the diagram and its JSON source — hold
 `Alt` while clicking to open the other view to the side instead. These are title-bar actions
@@ -33,6 +34,10 @@ only; they do not appear in the Command Palette.
 - **SQL DDL import** — bring in a `.sql` dump from any of the seven vendors below. The parser
   reads `CREATE TABLE`, `CREATE INDEX` and `ALTER TABLE` constraints and skips what it does
   not recognize, so an awkward dump imports partially rather than failing outright
+- **GraphQL SDL import** — bring in a schema from any tool that emits SDL. Object types
+  become tables, scalars map to the diagram's own dialect, and the fields pointing at another
+  type become the relationships; the generated types an API layer wraps its rows in are left
+  out rather than drawn as tables
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize

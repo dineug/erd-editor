@@ -145,7 +145,9 @@ describe('GeneratorCode', () => {
     );
     expect(codeOf(mounted).textContent).toContain('type User {');
     expect(codeOf(mounted).textContent).toContain('userName: String');
-    expect(codeOf(mounted).textContent).toContain('type Post {');
+    // `post` is seeded without a column, and a GraphQL type with no field is
+    // written braceless -- `type Post {}` is a syntax error.
+    expect(codeOf(mounted).textContent).toContain('type Post');
   });
 
   it('renders only the requested table when tableId is given', async () => {
@@ -160,7 +162,7 @@ describe('GeneratorCode', () => {
       createGeneratorCodeTable(app.store.state, table)
     );
     expect(codeOf(mounted).textContent).toContain('type User {');
-    expect(codeOf(mounted).textContent).not.toContain('type Post {');
+    expect(codeOf(mounted).textContent).not.toContain('type Post');
   });
 
   it('leaves the code empty when tableId matches no table', async () => {
@@ -184,13 +186,13 @@ describe('GeneratorCode', () => {
 
     state.tableId = 'table-b';
     await flush();
-    expect(codeOf(mounted).textContent).toContain('type Post {');
+    expect(codeOf(mounted).textContent).toContain('type Post');
     expect(codeOf(mounted).textContent).not.toContain('type User {');
 
     state.tableId = undefined;
     await flush();
     expect(codeOf(mounted).textContent).toContain('type User {');
-    expect(codeOf(mounted).textContent).toContain('type Post {');
+    expect(codeOf(mounted).textContent).toContain('type Post');
   });
 
   it('regenerates on a watched settings change and ignores the rest', async () => {

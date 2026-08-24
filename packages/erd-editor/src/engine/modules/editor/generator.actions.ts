@@ -39,6 +39,7 @@ import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { isOverlapPosition, Rect } from '@/utils/dragSelect';
+import { schemaGraphQLParserToSchemaJson } from '@/utils/schema-graphql-parser';
 import { schemaSQLParserToSchemaJson } from '@/utils/schema-sql-parser';
 import {
   ClipboardMemo,
@@ -502,6 +503,26 @@ export const loadSchemaSQLAction$ = (value: string): GeneratorAction =>
     yield sortTableAction();
   };
 
+export const loadSchemaGraphQLAction$ = (value: string): GeneratorAction =>
+  function* ({ settings }, ctx) {
+    yield loadJsonAction$(
+      schemaGraphQLParserToSchemaJson(value, ctx, schema => {
+        schema.settings = {
+          ...schema.settings,
+          ...omit(cloneDeep(settings), [
+            'width',
+            'height',
+            'scrollTop',
+            'scrollLeft',
+            'zoomLevel',
+          ]),
+        };
+        return schema;
+      })
+    );
+    yield sortTableAction();
+  };
+
 export const dragstartColumnAction$ = ($mod: boolean): GeneratorAction =>
   function* ({ editor: { focusTable } }) {
     if (!focusTable || !focusTable.columnId) return;
@@ -661,6 +682,7 @@ export const actions$ = {
   drawStartAddRelationshipAction$,
   changeColorAllAction$,
   loadSchemaSQLAction$,
+  loadSchemaGraphQLAction$,
   dragstartColumnAction$,
   dragoverColumnAction$,
   columnKeyHoverStartAction$,

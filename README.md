@@ -4,9 +4,10 @@
 
 ![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
 
-Design a database schema visually, import and export SQL DDL, and generate code from the
-result — in the browser, in VS Code or IntelliJ, or embedded in your own page as a custom element.
-One editor and one document format across all of them.
+Design a database schema visually, import one you already have from SQL DDL or GraphQL SDL,
+export DDL, and generate code from the result — in the browser, in VS Code or IntelliJ, or
+embedded in your own page as a custom element. One editor and one document format across all
+of them.
 
 ## Where to use it
 
@@ -25,6 +26,9 @@ To try it in an IDE, create an empty file with a `.erd.json` extension and open 
   (zero-one, zero-N, one-only, one-N)
 - **SQL DDL import** — point it at a `.sql` dump and get a diagram; the parser skips what it
   does not recognize, so an awkward dump imports partially rather than failing outright
+- **GraphQL SDL import** — point it at a schema from any tool that emits SDL and get a
+  diagram. Object types become tables, scalars map to the diagram's own dialect, and the
+  fields that point at another type become the relationships between them
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize

@@ -26,7 +26,7 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 | --- | --- |
 | `src/engine/` | `store` / `rx-store` / `shared-store` (collaboration) / `replication-store` (headless), `clock`, `history`, `tag`, plus `modules/` (eight state modules) and `rx-operators/` |
 | `src/components/` | r-html FCs — `erd/` (canvas, minimap, context menus), `primitives/` (design system), and the `toolbar` / `schema-sql` / `generator-code` / `visualization` / `settings` / `theme-builder` / `quick-search` panels |
-| `src/utils/` | `schema-sql/` (one module per DDL vendor), `generator-code/` (one per language), `schema-sql-parser/` (SQL import), `draw-relationship/`, `collection/`, `file/`, `keyboard-shortcut/`, `rx-operators/` |
+| `src/utils/` | `schema-sql/` (one module per DDL vendor), `generator-code/` (one per language), `schema-sql-parser/` (SQL import), `schema-graphql-parser/` (GraphQL SDL import — `parser.ts` owns every `graphql` AST concern, `convert.ts` never imports it), `draw-relationship/`, `collection/`, `file/`, `keyboard-shortcut/`, `rx-operators/` |
 | `src/services/` | `schema-gc/` — orphan collection in a dedicated and a shared worker over comlink — plus `shikiService.ts` |
 | `src/themes/`, `src/styles/` | Theme tokens and the radix palette; global style fragments (reset, typography, fonts, scrollbar). `src/__test-utils__/` holds vitest-only mount helpers, excluded from the dts build and from coverage |
 | `e2e/` | Playwright — `fixture/` (deterministic mount page), `support/` (page object, seeds), `specs/`, `bench/` (routing benchmark, own config, never in CI), `README.md` |
@@ -37,7 +37,7 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 
 - Adding an action is a four-file change: the module's `actions.ts`, `atom.actions.ts` and `history.ts`, **plus** the classification lists in `src/engine/actions.ts` — skipping the last compiles and then silently breaks undo, autosave or collaboration. `readonly` is enforced there too, by `readonlyIgnoreFilter` over `ReadonlyIgnoreActionTypes` and the `hasReadonlyIgnore` exemption list, never in components.
 - Reducers must write through the LWW operators from `@dineug/erd-editor-schema` using `action.version`; a direct state write wins every merge and corrupts collaborative sessions.
-- File IO and highlighting go through the three injected callbacks — the VSCode and IntelliJ webviews have no browser file dialog, so a direct `<input type=file>` is dead code there.
+- File IO and highlighting go through the three injected callbacks. `vscode-webview` sets all three, so the built-in `<input type=file>` never runs there; `intellij-webview` leaves `setImportFileCallback` unset — `ErdEditor.kt` no-ops `ImportFile` — so that input is the only import path inside JCEF, and dropping it would take IntelliJ's import with it.
 - `draw-relationship/sort.ts` runs the whole geometry pass: it picks each end's side, orders that side's anchors by the angle of the opposite table (walking the boundary clockwise, so anchors sharing a table cannot cross), then routes every connector orthogonally around the tables (`route.ts`) and pulls apart the routes that share a channel (`nudge.ts`). `pathFinding.ts` only draws, cutting each corner to 45 degrees on the way out (`chamfer.ts`) — the routed polyline itself stays orthogonal. Routing has to live there because it needs every table and every other route; `pathFinding` sees one relationship. Anchors land in schema fields and therefore serialise, so a rendering-only value — the routed polyline, the stub slot — belongs in the `WeakMap` side channels in `draw-relationship/index.ts`, never a new field.
 - Everything renders inside a closed shadow root, so `document.querySelector` never finds editor internals; use `queryShadowSelector` / `closestElement`. Every dependency is a `devDependency` and the lib build declares no `external`, so anything added ships inside `dist/erd-editor.js` for all four consumers.
 
@@ -64,7 +64,7 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 
 ### External
 
-- `rxjs` (action pipelines), `comlink` (schema-GC worker RPC), `d3` (force simulation in `visualization/` and `erd/automatic-table-placement/`, plus `drag` and the ordinal scale in the former), `tinykeys`, `fuse.js`, `luxon`, `html-to-image`, `@radix-ui/colors`, `@mdi/js` + FontAwesome icons, `@egjs/agent`.
+- `rxjs` (action pipelines), `comlink` (schema-GC worker RPC), `d3` (force simulation in `visualization/` and `erd/automatic-table-placement/`, plus `drag` and the ordinal scale in the former), `graphql` (`parse` only, for `schema-graphql-parser/`), `tinykeys`, `fuse.js`, `luxon`, `html-to-image`, `@radix-ui/colors`, `@mdi/js` + FontAwesome icons, `@egjs/agent`.
 - `es-toolkit`: `get`, `set`, `isEmpty` and `round` come from `es-toolkit/compat` on purpose — the main entry lacks the first three and rounds exact `.xx5` ties down into persisted LWW state. `@floating-ui/dom` and `framer-motion` are declared but imported nowhere in `src/`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

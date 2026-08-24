@@ -1,4 +1,5 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
+import { buildSchema } from 'graphql';
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
@@ -87,6 +88,14 @@ function addRelationship(
   return relationship;
 }
 
+// The generated document is only useful if a GraphQL implementation accepts it,
+// so every case below is handed to the real parser as well as compared to an
+// expected string. `buildSchema` covers the validation rules -- duplicate type
+// and field names -- that `parse` alone would let through.
+function expectValidSDL(code: string) {
+  expect(() => buildSchema(code)).not.toThrow();
+}
+
 describe('generator-code/graphql', () => {
   it('returns an empty string when there is no table', () => {
     expect(createCode(createState())).toBe('');
@@ -140,20 +149,22 @@ describe('generator-code/graphql', () => {
     });
     addRelationship(state, 'r-1', 't-users', 't-posts');
 
-    expect(createCode(state)).toBe(
+    const code = createCode(state);
+
+    expect(code).toBe(
       [
         '',
         'type Posts {',
         '  id: ID!',
-        '  # post title',
+        '  """post title"""',
         '  title: String',
-        '  # user table',
+        '  """user table"""',
         '  users: Users',
         '}',
         '',
-        '# user table',
+        '"""user table"""',
         'type Users {',
-        '  # user id',
+        '  """user id"""',
         '  id: ID!',
         '  email: String!',
         '  age: Int',
@@ -162,6 +173,7 @@ describe('generator-code/graphql', () => {
         '',
       ].join('\n')
     );
+    expectValidSDL(code);
   });
 
   it('renders a foreign key that is also a primary key as a nullable ID', () => {
@@ -261,15 +273,15 @@ describe('generator-code/graphql', () => {
     expect(createCode(state)).toBe(
       [
         '',
-        '# a table',
+        '"""a table"""',
         'type A {',
-        '  # b table',
+        '  """b table"""',
         '  bList: [B!]!',
         '}',
         '',
-        '# b table',
+        '"""b table"""',
         'type B {',
-        '  # a table',
+        '  """a table"""',
         '  a: A',
         '}',
         '',
@@ -287,15 +299,15 @@ describe('generator-code/graphql', () => {
     expect(createCode(state)).toBe(
       [
         '',
-        '# a table',
+        '"""a table"""',
         'type A {',
-        '  # b table',
+        '  """b table"""',
         '  b: B',
         '}',
         '',
-        '# b table',
+        '"""b table"""',
         'type B {',
-        '  # a table',
+        '  """a table"""',
         '  a: A',
         '}',
         '',
@@ -309,9 +321,12 @@ describe('generator-code/graphql', () => {
     addTable(state, { id: 't-b', name: 'b' });
     addRelationship(state, 'r-1', 't-a', 't-b', 0);
 
-    expect(createCode(state)).toBe(
-      ['', 'type A {', '}', '', 'type B {', '  a: A', '}', ''].join('\n')
+    const code = createCode(state);
+
+    expect(code).toBe(
+      ['', 'type A', '', 'type B {', '  a: A', '}', ''].join('\n')
     );
+    expectValidSDL(code);
   });
 
   it('ignores relationships pointing at a missing table', () => {
@@ -321,9 +336,351 @@ describe('generator-code/graphql', () => {
     addRelationship(state, 'r-1', 'ghost', 't-b');
     addRelationship(state, 'r-2', 't-a', 'ghost');
 
-    expect(createCode(state)).toBe(
-      ['', 'type A {', '}', '', 'type B {', '}', ''].join('\n')
+    const code = createCode(state);
+
+    expect(code).toBe(['', 'type A', '', 'type B', ''].join('\n'));
+    expectValidSDL(code);
+  });
+
+  it('omits the braces of a type whose every column is a foreign key', () => {
+    const state = createState();
+    addTable(state, {
+      id: 't-a',
+      name: 'a',
+      comment: 'a table',
+      columns: [
+        { name: 'b_id', dataType: 'INT', keys: ColumnUIKey.foreignKey },
+      ],
+    });
+
+    const code = createCode(state);
+
+    expect(code).toBe(['', '"""a table"""', 'type A', ''].join('\n'));
+    expectValidSDL(code);
+  });
+
+  it('emits a single field for a self-referencing relationship', () => {
+    const state = createState();
+    addTable(state, {
+      id: 't-users',
+      name: 'users',
+      columns: [
+        {
+          name: 'id',
+          dataType: 'INT',
+          options: ColumnOption.primaryKey,
+          keys: ColumnUIKey.primaryKey,
+        },
+      ],
+    });
+    addRelationship(
+      state,
+      'r-1',
+      't-users',
+      't-users',
+      RelationshipType.ZeroOne
     );
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      ['', 'type Users {', '  id: ID', '  users: Users', '}', ''].join('\n')
+    );
+    expectValidSDL(code);
+  });
+
+  it('emits a single field per side of a bidirectional relationship pair', () => {
+    const state = createState();
+    addTable(state, { id: 't-users', name: 'users' });
+    addTable(state, { id: 't-profiles', name: 'profiles' });
+    addRelationship(
+      state,
+      'r-1',
+      't-users',
+      't-profiles',
+      RelationshipType.ZeroOne
+    );
+    addRelationship(
+      state,
+      'r-2',
+      't-profiles',
+      't-users',
+      RelationshipType.OneOnly
+    );
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      [
+        '',
+        'type Profiles {',
+        '  users: Users',
+        '}',
+        '',
+        'type Users {',
+        '  profiles: Profiles',
+        '}',
+        '',
+      ].join('\n')
+    );
+    expectValidSDL(code);
+  });
+
+  it('drops a relation field that collides with a column name', () => {
+    const state = createState();
+    addTable(state, { id: 't-user', name: 'user' });
+    addTable(state, {
+      id: 't-post',
+      name: 'post',
+      columns: [{ name: 'user', dataType: 'VARCHAR(10)', comment: 'author' }],
+    });
+    addRelationship(state, 'r-1', 't-user', 't-post', RelationshipType.ZeroN);
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      [
+        '',
+        'type Post {',
+        '  """author"""',
+        '  user: String',
+        '}',
+        '',
+        'type User {',
+        '  postList: [Post!]!',
+        '}',
+        '',
+      ].join('\n')
+    );
+    expectValidSDL(code);
+  });
+
+  it('drops a column whose name is already taken by another column', () => {
+    const state = createState();
+    addTable(state, {
+      id: 't-user',
+      name: 'user',
+      columns: [
+        { name: 'name', dataType: 'VARCHAR(10)' },
+        { name: 'name', dataType: 'INT', comment: 'shadowed' },
+        { name: 'user_id', dataType: 'INT' },
+        { name: 'userId', dataType: 'INT' },
+      ],
+    });
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      ['', 'type User {', '  name: String', '  userId: Int', '}', ''].join('\n')
+    );
+    expectValidSDL(code);
+  });
+
+  it('wraps a multi-line comment in a block string', () => {
+    const state = createState();
+    addTable(state, {
+      id: 't-users',
+      name: 'users',
+      comment: 'line one\n\nline two',
+      columns: [{ name: 'id', dataType: 'INT', comment: 'PK\nauto' }],
+    });
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      [
+        '',
+        '"""',
+        'line one',
+        '',
+        'line two',
+        '"""',
+        'type Users {',
+        '  """',
+        '  PK',
+        '  auto',
+        '  """',
+        '  id: Int',
+        '}',
+        '',
+      ].join('\n')
+    );
+    expectValidSDL(code);
+  });
+
+  it('escapes a comment that would close its own block string', () => {
+    const state = createState();
+    addTable(state, {
+      id: 't-notes',
+      name: 'notes',
+      comment: 'has """ inside',
+      columns: [{ name: 'id', dataType: 'INT', comment: 'ends with "' }],
+    });
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      [
+        '',
+        '"""has \\""" inside"""',
+        'type Notes {',
+        '  """',
+        '  ends with "',
+        '  """',
+        '  id: Int',
+        '}',
+        '',
+      ].join('\n')
+    );
+    expectValidSDL(code);
+  });
+
+  it('replaces the characters a GraphQL name cannot hold', () => {
+    const state = createState();
+    addTable(state, {
+      id: 't-order',
+      name: '주문',
+      comment: '주문 내역',
+    });
+    addTable(state, {
+      id: 't-member',
+      name: '회원',
+      comment: '회원 정보',
+      columns: [{ name: '이름', dataType: 'VARCHAR(10)' }],
+    });
+    addRelationship(
+      state,
+      'r-1',
+      't-member',
+      't-order',
+      RelationshipType.ZeroN
+    );
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      [
+        '',
+        '"""주문 - 주문 내역"""',
+        'type __ {',
+        '  """회원 - 회원 정보"""',
+        '  __: __2',
+        '}',
+        '',
+        '"""회원 - 회원 정보"""',
+        'type __2 {',
+        '  """이름"""',
+        '  __: String',
+        '  """주문 - 주문 내역"""',
+        '  __list: [__!]!',
+        '}',
+        '',
+      ].join('\n')
+    );
+    expectValidSDL(code);
+  });
+
+  it('prefixes a name that starts with a digit', () => {
+    const state = createState();
+    addTable(state, {
+      id: 't-token',
+      name: '2fa_token',
+      columns: [{ name: '2step', dataType: 'INT' }],
+    });
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      ['', 'type _2FaToken {', '  _2Step: Int', '}', ''].join('\n')
+    );
+    expectValidSDL(code);
+  });
+
+  it('falls back to a placeholder for an empty name', () => {
+    const state = createState();
+    addTable(state, {
+      id: 't-new',
+      name: '',
+      columns: [{ name: '', dataType: 'INT' }],
+    });
+
+    const code = createCode(state);
+
+    expect(code).toBe(['', 'type _ {', '  _: Int', '}', ''].join('\n'));
+    expectValidSDL(code);
+  });
+
+  it('replaces the spaces a name keeps under NameCase.none', () => {
+    const state = createState();
+    state.settings.tableNameCase = NameCase.none;
+    state.settings.columnNameCase = NameCase.none;
+    addTable(state, {
+      id: 't-user',
+      name: 'user table',
+      columns: [{ name: 'first name', dataType: 'VARCHAR(10)' }],
+    });
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      ['', 'type user_table {', '  first_name: String', '}', ''].join('\n')
+    );
+    expectValidSDL(code);
+  });
+
+  it('suffixes a type name two tables fold onto', () => {
+    const state = createState();
+    addTable(state, {
+      id: 't-1',
+      name: 'user_profile',
+      columns: [{ name: 'id', dataType: 'INT' }],
+    });
+    addTable(state, {
+      id: 't-2',
+      name: 'UserProfile',
+      columns: [{ name: 'code', dataType: 'INT' }],
+    });
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      [
+        '',
+        'type UserProfile {',
+        '  id: Int',
+        '}',
+        '',
+        'type UserProfile2 {',
+        '  code: Int',
+        '}',
+        '',
+      ].join('\n')
+    );
+    expectValidSDL(code);
+  });
+
+  it('gives a relation field the same type name the document assigned', () => {
+    const state = createState();
+    addTable(state, { id: 't-1', name: 'user_profile' });
+    addTable(state, { id: 't-2', name: 'UserProfile' });
+    addRelationship(state, 'r-1', 't-1', 't-2', RelationshipType.ZeroOne);
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      [
+        '',
+        'type UserProfile {',
+        '  userProfile: UserProfile2',
+        '}',
+        '',
+        'type UserProfile2 {',
+        '  userProfile: UserProfile',
+        '}',
+        '',
+      ].join('\n')
+    );
+    expectValidSDL(code);
   });
 
   it('applies the configured table and column name cases', () => {

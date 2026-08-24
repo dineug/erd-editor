@@ -1,6 +1,7 @@
 import {
   AnyAction,
   Bridge,
+  type CommandPayload,
   hostExportFileCommand,
   hostImportFileCommand,
   hostInitialCommand,
@@ -21,6 +22,24 @@ import * as vscode from 'vscode';
 import { getTheme, saveTheme } from '@/configuration';
 import { Editor } from '@/editor';
 import { textDecoder, textEncoder } from '@/utils';
+
+type ImportFileType = CommandPayload<typeof hostImportFileCommand>['type'];
+
+/**
+ * The extensions each import type answers to, and the label the open dialog
+ * shows for them. One source feeds both the dialog filter and the check on what
+ * the user picked, so the two cannot drift apart. Keyed by `ImportFileType`, so
+ * widening the bridge union without listing its extensions is a build error
+ * rather than a dialog that matches nothing.
+ */
+const IMPORT_FILE_TYPES: Record<
+  ImportFileType,
+  { label: string; extensions: string[] }
+> = {
+  json: { label: 'JSON', extensions: ['json'] },
+  sql: { label: 'SQL', extensions: ['sql'] },
+  graphql: { label: 'GraphQL', extensions: ['graphql', 'gql', 'graphqls'] },
+};
 
 const THEME_KEYS = [
   'dineug.erd-editor.theme.appearance',
@@ -74,13 +93,19 @@ export class ErdEditor extends Editor {
       this.bridge.registerCommand(
         hostImportFileCommand,
         async ({ type, op }) => {
-          const uris = await vscode.window.showOpenDialog();
+          const { label, extensions } = IMPORT_FILE_TYPES[type];
+
+          const uris = await vscode.window.showOpenDialog({
+            filters: { [label]: extensions },
+          });
           if (!uris || !uris.length) return;
 
           const uri = uris[0];
-          // The backslash has to survive the template literal, or the pattern
+          // The alternation is what lets `graphql` arrive as `.gql` or
+          // `.graphqls` too — the type string is a poor extension. The
+          // backslash has to survive the template literal, or the pattern
           // becomes `.json$` — a wildcard — and `sample.xjson` passes as JSON.
-          const regexp = new RegExp(`\\.${type}$`, 'i');
+          const regexp = new RegExp(`\\.(?:${extensions.join('|')})$`, 'i');
 
           if (!regexp.test(uri.path)) {
             vscode.window.showInformationMessage(

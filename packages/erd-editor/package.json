@@ -77,6 +77,7 @@
     "@types/highlight-words-core": "^1.2.3",
     "@types/luxon": "^3.4.2",
     "@types/node": "^22.20.1",
+    "@typescript/typescript6": "6.0.2",
     "@vitest/coverage-v8": "catalog:",
     "color": "^4.2.3",
     "comlink": "4.4.1",
@@ -85,6 +86,7 @@
     "es-toolkit": "^1.50.0",
     "framer-motion": "^11.0.28",
     "fuse.js": "^7.0.0",
+    "graphql": "^16.14.2",
     "happy-dom": "^20.11.2",
     "highlight-words-core": "^1.2.2",
     "html-to-image": "^1.11.11",
@@ -97,8 +99,7 @@
     "typescript": "7.0.2",
     "vite": "catalog:",
     "vite-plugin-dts": "^5.0.3",
-    "vitest": "catalog:",
     "vite-plus": "catalog:",
-    "@typescript/typescript6": "6.0.2"
+    "vitest": "catalog:"
   }
 }

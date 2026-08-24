@@ -28,13 +28,18 @@ afterEach(() => {
 });
 
 describe('importMenus', () => {
-  it('exposes a json and a Schema SQL entry with their icons', () => {
+  it('exposes a json, a Schema SQL and a GraphQL entry with their icons', () => {
     const result = createImportMenus(app, () => {});
 
-    expect(result.map(menu => menu.name)).toEqual(['json', 'Schema SQL']);
+    expect(result.map(menu => menu.name)).toEqual([
+      'json',
+      'Schema SQL',
+      'GraphQL',
+    ]);
     expect(result.map(menu => menu.icon)).toEqual([
       { prefix: 'mdi', name: 'code-json' },
       { prefix: 'mdi', name: 'database-import' },
+      { prefix: 'mdi', name: 'graphql' },
     ]);
   });
 
@@ -53,6 +58,17 @@ describe('importMenus', () => {
     createImportMenus(app, onClose)[1].onClick();
 
     expect(requests).toEqual([{ type: 'sql', op: 'set', accept: '.sql' }]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('requests a graphql import and closes the menu', () => {
+    const onClose = vi.fn();
+
+    createImportMenus(app, onClose)[2].onClick();
+
+    expect(requests).toEqual([
+      { type: 'graphql', op: 'set', accept: '.graphql,.gql,.graphqls' },
+    ]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

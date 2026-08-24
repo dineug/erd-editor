@@ -1,5 +1,9 @@
 import { AppContext } from '@/components/appContext';
-import { importJSON, importSchemaSQL } from '@/utils/file/importFile';
+import {
+  importGraphQL,
+  importJSON,
+  importSchemaSQL,
+} from '@/utils/file/importFile';
 
 export function createImportMenus(app: AppContext, onClose: () => void) {
   return [
@@ -22,6 +26,17 @@ export function createImportMenus(app: AppContext, onClose: () => void) {
       name: 'Schema SQL',
       onClick: () => {
         importSchemaSQL(app);
+        onClose();
+      },
+    },
+    {
+      icon: {
+        prefix: 'mdi',
+        name: 'graphql',
+      },
+      name: 'GraphQL',
+      onClick: () => {
+        importGraphQL(app);
         onClose();
       },
     },

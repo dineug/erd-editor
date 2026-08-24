@@ -306,7 +306,14 @@ describe('ErdEditor', () => {
         accept: '.json',
       });
 
-    it('opens an unfiltered dialog — the accept payload is never forwarded', async () => {
+    const importGraphQL = () =>
+      Bridge.executeCommand(hostImportFileCommand, {
+        type: 'graphql',
+        op: 'set',
+        accept: '.graphql,.gql,.graphqls',
+      });
+
+    it('filters the dialog by the extensions of the requested type', async () => {
       const { webview } = await bootstrap();
       window.showOpenDialog.mockResolvedValue([
         Uri.file('/workspace/sample.json'),
@@ -316,10 +323,25 @@ describe('ErdEditor', () => {
       webview.__receive(importJson());
       await flush();
 
-      // `hostImportFileCommand` carries `accept: '.json'`, but the dialog is
-      // opened with no options at all — no `filters`, no `canSelectMany`. The
-      // type check happens afterwards, on whatever the user picked.
-      expect(window.showOpenDialog).toHaveBeenCalledWith();
+      // The filter comes from the extension table, not from the `accept` string
+      // on the payload: the same table decides whether the picked file is
+      // accepted afterwards, so the dialog can never offer a file the check
+      // then rejects.
+      expect(window.showOpenDialog).toHaveBeenCalledWith({
+        filters: { JSON: ['json'] },
+      });
+    });
+
+    it('offers every graphql extension in one filter', async () => {
+      const { webview } = await bootstrap();
+      window.showOpenDialog.mockResolvedValue(undefined);
+
+      webview.__receive(importGraphQL());
+      await flush();
+
+      expect(window.showOpenDialog).toHaveBeenCalledWith({
+        filters: { GraphQL: ['graphql', 'gql', 'graphqls'] },
+      });
     });
 
     it('does nothing when the open dialog is cancelled', async () => {
@@ -400,6 +422,79 @@ describe('ErdEditor', () => {
       // and any `*xjson` file passes as JSON.
       expect(window.showInformationMessage).toHaveBeenCalledWith(
         'Just import the json file'
+      );
+      expect(webview.postMessage).not.toHaveBeenCalled();
+    });
+
+    it.each(['schema.graphql', 'schema.gql', 'schema.graphqls'])(
+      'forwards %s — graphql answers to more than one extension',
+      async fileName => {
+        const { webview } = await bootstrap();
+        const uri = Uri.file(`/workspace/${fileName}`);
+        window.showOpenDialog.mockResolvedValue([uri]);
+        workspace.fs.readFile.mockResolvedValue(
+          encoder.encode('type User { id: ID! }')
+        );
+
+        webview.__receive(importGraphQL());
+        await flush();
+
+        expect(workspace.fs.readFile).toHaveBeenCalledWith(uri);
+        expect(window.showInformationMessage).not.toHaveBeenCalled();
+        expect(webview.postMessage).toHaveBeenCalledWith({
+          type: 'webviewImportFileCommand',
+          payload: {
+            type: 'graphql',
+            op: 'set',
+            value: 'type User { id: ID! }',
+          },
+        });
+      }
+    );
+
+    it('matches the graphql extensions case-insensitively', async () => {
+      const { webview } = await bootstrap();
+      window.showOpenDialog.mockResolvedValue([
+        Uri.file('/workspace/Schema.GQL'),
+      ]);
+      workspace.fs.readFile.mockResolvedValue(
+        encoder.encode('type A { b: ID }')
+      );
+
+      webview.__receive(importGraphQL());
+      await flush();
+
+      expect(window.showInformationMessage).not.toHaveBeenCalled();
+      expect(webview.postMessage).toHaveBeenCalled();
+    });
+
+    it('refuses a prisma schema — a neighbouring format, not SDL', async () => {
+      const { webview } = await bootstrap();
+      window.showOpenDialog.mockResolvedValue([
+        Uri.file('/workspace/schema.prisma'),
+      ]);
+
+      webview.__receive(importGraphQL());
+      await flush();
+
+      expect(window.showInformationMessage).toHaveBeenCalledWith(
+        'Just import the graphql file'
+      );
+      expect(workspace.fs.readFile).not.toHaveBeenCalled();
+      expect(webview.postMessage).not.toHaveBeenCalled();
+    });
+
+    it('rejects sample.xgql — the alternation stays anchored to the dot', async () => {
+      const { webview } = await bootstrap();
+      window.showOpenDialog.mockResolvedValue([
+        Uri.file('/workspace/sample.xgql'),
+      ]);
+
+      webview.__receive(importGraphQL());
+      await flush();
+
+      expect(window.showInformationMessage).toHaveBeenCalledWith(
+        'Just import the graphql file'
       );
       expect(webview.postMessage).not.toHaveBeenCalled();
     });

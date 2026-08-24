@@ -317,15 +317,16 @@ describe('createScopeActions / Import and Export', () => {
     setCanvasType(CanvasType.ERD);
   });
 
-  it('routes both import entries through the import file callback', () => {
+  it('routes every import entry through the import file callback', () => {
     const onImport = vi.fn();
     setImportFileCallback(onImport);
     const entries = find(scope(), 'Import').next ?? [];
 
-    expect(names(entries)).toEqual(['json', 'Schema SQL']);
+    expect(names(entries)).toEqual(['json', 'Schema SQL', 'GraphQL']);
 
     find(entries, 'json').perform?.(app);
     find(entries, 'Schema SQL').perform?.(app);
+    find(entries, 'GraphQL').perform?.(app);
 
     expect(onImport).toHaveBeenNthCalledWith(1, {
       type: 'json',
@@ -337,6 +338,17 @@ describe('createScopeActions / Import and Export', () => {
       op: 'set',
       accept: '.sql',
     });
+    expect(onImport).toHaveBeenNthCalledWith(3, {
+      type: 'graphql',
+      op: 'set',
+      accept: '.graphql,.gql,.graphqls',
+    });
+  });
+
+  it('finds the GraphQL import entry by its sdl keywords', () => {
+    const entries = find(scope(), 'Import').next ?? [];
+
+    expect(names(searchActions(entries, 'sdl'))).toContain('GraphQL');
   });
 
   it('exports the document as json named after the database', async () => {

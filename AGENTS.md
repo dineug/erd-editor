@@ -24,7 +24,7 @@
 | Directory | Purpose |
 | --- | --- |
 | `packages/` | The 14 workspace packages; each carries its own `AGENTS.md` |
-| `data/` | Sample SQL dumps (`sakila`, `OKKY`, `GNUBOARD5`, `YOUNGCART5`, `Magento2-sales`) and `test.json`, for exercising the SQL importer by hand |
+| `data/` | Importer fixtures, all for hand-testing: SQL dumps (`sakila`, `OKKY`, `GNUBOARD5`, `YOUNGCART5`, `Magento2-sales`), GraphQL SDL (`bookstore` directive-free, `hasura-blog` for the generated-type pruning path) and `test.json` |
 | `docker/` | Per-vendor `docker-compose.yml` (mysql, mariadb, mssql, oracle, postgres, sqlite) for validating generated DDL; Databricks has no entry |
 | `json-schema/` | `schema.json` for `.erd` / `.vuerd` documents; `erd-editor-schema` stamps its URL into every parsed document |
 | `.github/` | `workflows/ci.yml` and `workflows/intellij-plugin.yml`, the `setup-workspace` composite action, two issue templates |

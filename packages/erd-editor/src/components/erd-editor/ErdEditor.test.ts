@@ -515,6 +515,25 @@ describe('<erd-editor>', () => {
     expect(app.store.state.doc.tableIds.length).toBeGreaterThan(0);
   });
 
+  it('imports GraphQL SDL and stays quiet while readonly', async () => {
+    const { el, app } = await createEditor();
+    const onChange = vi.fn();
+    el.addEventListener('change', onChange);
+
+    el.setSchemaGraphQL('type User {\n  id: ID!\n}');
+    await new Promise(resolve => setTimeout(resolve, 260));
+    expect(onChange).toHaveBeenCalled();
+
+    el.readonly = true;
+    await flush();
+    onChange.mockClear();
+
+    el.setSchemaGraphQL('type Post {\n  id: ID!\n}');
+    await new Promise(resolve => setTimeout(resolve, 260));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(app.store.state.doc.tableIds.length).toBeGreaterThan(0);
+  });
+
   it('asks for a diff viewer through setDiffValue', async () => {
     const { el, app } = await createEditor();
     const openDiffViewer = vi.fn();
