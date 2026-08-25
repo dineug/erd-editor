@@ -38,6 +38,25 @@ test.each(testCaseList)('%s', (_, sql, json) => {
 });
 
 describe('public entry surface', () => {
+  // An unpaired `]` used to spin the tokenizer until the heap died, and a
+  // Snowflake setup script reaches one through a `$$ ... $$` procedure body.
+  it('reads past an unpaired closing bracket instead of hanging', () => {
+    expect(schemaSQLParser(']')).toEqual([]);
+    expect(
+      schemaSQLParser(
+        [
+          'CREATE TABLE t (id INT);',
+          'CREATE OR REPLACE PROCEDURE p() RETURNS STRING LANGUAGE PYTHON AS $$',
+          'def run(session):',
+          '    pii = [x.lower() for x in cols]',
+          '    return pii[0]',
+          '$$;',
+          'CREATE TABLE u (id INT);',
+        ].join('\n')
+      ).map(statement => (statement as { name: string }).name)
+    ).toEqual(['t', 'u']);
+  });
+
   it('re-exports schemaSQLParser as a callable parser', () => {
     expect(typeof schemaSQLParser).toBe('function');
     expect(schemaSQLParser('CREATE TABLE t (id INT);')).toEqual([
