@@ -11,6 +11,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import { Emitter } from '@/utils/emitter';
 import {
+  importDBML,
   importDiffJSON,
   importGraphQL,
   importJSON,
@@ -125,6 +126,21 @@ describe('importFile', () => {
         type: 'graphql',
         op: 'set',
         accept: '.graphql,.gql,.graphqls',
+      });
+      expect(harness.inputs).toHaveLength(0);
+      expect(harness.clicks).toBe(0);
+    });
+
+    it('short-circuits importDBML with a dbml/set descriptor', () => {
+      const callback = vi.fn();
+      setImportFileCallback(callback);
+
+      importDBML(harness.app);
+
+      expect(callback).toHaveBeenCalledWith({
+        type: 'dbml',
+        op: 'set',
+        accept: '.dbml',
       });
       expect(harness.inputs).toHaveLength(0);
       expect(harness.clicks).toBe(0);
@@ -381,6 +397,66 @@ describe('importFile', () => {
       expect(readers).toHaveLength(1);
       expect(harness.dispatch).not.toHaveBeenCalled();
       vi.unstubAllGlobals();
+    });
+  });
+
+  describe('importDBML', () => {
+    const dbml = 'Table users {\n  id int [pk]\n}';
+
+    it('creates and clicks a file input accepting the dbml extension', () => {
+      importDBML(harness.app);
+
+      const [input] = harness.inputs;
+      expect(input.getAttribute('type')).toBe('file');
+      expect(input.getAttribute('accept')).toBe('.dbml');
+      expect(harness.clicks).toBe(1);
+    });
+
+    it.each(['schema.dbml', 'schema.DBML'])(
+      'dispatches loadSchemaDBMLAction$ for %s',
+      async name => {
+        importDBML(harness.app);
+        const [input] = harness.inputs;
+        attachFile(input, name, dbml);
+
+        await change(input);
+
+        expect(harness.dispatch).toHaveBeenCalledTimes(1);
+        expect(typeof harness.dispatch.mock.calls[0][0]).toBe('function');
+        expect(harness.emitted).toHaveLength(0);
+      }
+    );
+
+    it('does nothing when no file is selected', async () => {
+      importDBML(harness.app);
+
+      await change(harness.inputs[0]);
+
+      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(harness.emitted).toHaveLength(0);
+    });
+
+    it('emits a toast when the extension is not dbml', async () => {
+      importDBML(harness.app);
+      const [input] = harness.inputs;
+      attachFile(input, 'schema.sql', dbml);
+
+      await change(input);
+
+      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(harness.emitted).toHaveLength(1);
+      expect(harness.emitted[0].type).toBe('openToast');
+    });
+
+    it('rejects a name ending in dbml without the dot', async () => {
+      importDBML(harness.app);
+      const [input] = harness.inputs;
+      attachFile(input, 'schemadbml', dbml);
+
+      await change(input);
+
+      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(harness.emitted).toHaveLength(1);
     });
   });
 

@@ -13,6 +13,7 @@ import {
 import {
   initialLoadJsonAction$,
   loadJsonAction$,
+  loadSchemaDBMLAction$,
   loadSchemaGraphQLAction$,
   loadSchemaSQLAction$,
 } from '@/engine/modules/editor/generator.actions';
@@ -244,6 +245,13 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     if (isEmpty(safeValue)) return;
 
     store.dispatchSync(loadSchemaGraphQLAction$(safeValue));
+  };
+
+  ctx.setSchemaDBML = value => {
+    const safeValue = toSafeString(value);
+    if (isEmpty(safeValue)) return;
+
+    store.dispatchSync(loadSchemaDBMLAction$(safeValue));
   };
 
   ctx.getSchemaSQL = databaseVendor => {

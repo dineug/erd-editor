@@ -84,6 +84,7 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   ) => void;
   setSchemaSQL: (value: string) => void;
   setSchemaGraphQL: (value: string) => void;
+  setSchemaDBML: (value: string) => void;
   getSchemaSQL: (databaseVendor?: DatabaseVendor) => string;
   getSharedStore: (
     config?: SharedStoreConfig & { mouseTracker?: boolean }

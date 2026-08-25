@@ -34,6 +34,9 @@ opens its own file chooser for both; the file does not have to be inside the pro
   tables, scalars map to the diagram's own dialect, and the fields pointing at another type become
   the relationships; the generated types an API layer wraps its rows in are left out rather than
   drawn as tables
+- **DBML import** — bring in a `.dbml` file written for dbdiagram.io or dbdocs.io, or emitted by
+  `sql2dbml` or `prisma-dbml-generator`. Tables, columns, indexes, enums and every `Ref` spelling
+  arrive; a `Project`, `TableGroup` or sticky `Note` is skipped rather than refused
 - **SQL DDL export** — MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go, SQLAlchemy,
   TypeORM, Sequelize, Drizzle, DBML

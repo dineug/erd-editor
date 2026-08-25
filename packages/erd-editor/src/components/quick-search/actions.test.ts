@@ -322,11 +322,12 @@ describe('createScopeActions / Import and Export', () => {
     setImportFileCallback(onImport);
     const entries = find(scope(), 'Import').next ?? [];
 
-    expect(names(entries)).toEqual(['json', 'Schema SQL', 'GraphQL']);
+    expect(names(entries)).toEqual(['json', 'Schema SQL', 'GraphQL', 'DBML']);
 
     find(entries, 'json').perform?.(app);
     find(entries, 'Schema SQL').perform?.(app);
     find(entries, 'GraphQL').perform?.(app);
+    find(entries, 'DBML').perform?.(app);
 
     expect(onImport).toHaveBeenNthCalledWith(1, {
       type: 'json',
@@ -343,12 +344,23 @@ describe('createScopeActions / Import and Export', () => {
       op: 'set',
       accept: '.graphql,.gql,.graphqls',
     });
+    expect(onImport).toHaveBeenNthCalledWith(4, {
+      type: 'dbml',
+      op: 'set',
+      accept: '.dbml',
+    });
   });
 
   it('finds the GraphQL import entry by its sdl keywords', () => {
     const entries = find(scope(), 'Import').next ?? [];
 
     expect(names(searchActions(entries, 'sdl'))).toContain('GraphQL');
+  });
+
+  it('finds the DBML import entry by its dbdiagram keywords', () => {
+    const entries = find(scope(), 'Import').next ?? [];
+
+    expect(names(searchActions(entries, 'dbdiagram'))).toContain('DBML');
   });
 
   it('exports the document as json named after the database', async () => {

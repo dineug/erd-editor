@@ -131,6 +131,26 @@ describe('commands over a Bridge', () => {
     });
   });
 
+  it('round-trips a host import file payload for dbml', () => {
+    const bridge = new Bridge();
+    const listener = vi.fn();
+    bridge.registerCommand(hostImportFileCommand, listener);
+
+    bridge.executeAction(
+      Bridge.executeCommand(hostImportFileCommand, {
+        type: 'dbml',
+        op: 'set',
+        accept: '.dbml',
+      })
+    );
+
+    expect(listener).toHaveBeenCalledWith({
+      type: 'dbml',
+      op: 'set',
+      accept: '.dbml',
+    });
+  });
+
   it('round-trips the payload-less host initial command', () => {
     const bridge = new Bridge();
     const listener = vi.fn();
@@ -257,6 +277,26 @@ describe('commands over a Bridge', () => {
       type: 'graphql',
       op: 'set',
       value: 'type User { id: ID! }',
+    });
+  });
+
+  it('round-trips a webview import file payload for dbml', () => {
+    const bridge = new Bridge();
+    const listener = vi.fn();
+    bridge.registerCommand(webviewImportFileCommand, listener);
+
+    bridge.executeAction(
+      Bridge.executeCommand(webviewImportFileCommand, {
+        type: 'dbml',
+        op: 'set',
+        value: 'Table users { id int [pk] }',
+      })
+    );
+
+    expect(listener).toHaveBeenCalledWith({
+      type: 'dbml',
+      op: 'set',
+      value: 'Table users { id int [pk] }',
     });
   });
 });

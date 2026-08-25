@@ -134,6 +134,7 @@ describe('useErdEditorAttachElement', () => {
     expect(typeof ctx.setKeyBindingMap).toBe('function');
     expect(typeof ctx.setSchemaSQL).toBe('function');
     expect(typeof ctx.setSchemaGraphQL).toBe('function');
+    expect(typeof ctx.setSchemaDBML).toBe('function');
     expect(typeof ctx.getSchemaSQL).toBe('function');
     expect(typeof ctx.getSharedStore).toBe('function');
     expect(typeof ctx.setDiffValue).toBe('function');
@@ -314,6 +315,29 @@ describe('useErdEditorAttachElement', () => {
     ctx.setSchemaGraphQL('type User {\n  id: ID!\n}');
 
     ctx.setSchemaGraphQL('query GetUser { user { id } }');
+
+    expect(app.store.state.doc.tableIds).toEqual([]);
+  });
+
+  it('imports DBML and ignores blank input', async () => {
+    const { app, ctx } = await setup();
+
+    ctx.setSchemaDBML('Table users {\n  id int [pk]\n}');
+    const tableIds = [...app.store.state.doc.tableIds];
+    expect(tableIds.length).toBe(1);
+    expect(app.store.state.collections.tableEntities[tableIds[0]].name).toBe(
+      'users'
+    );
+
+    ctx.setSchemaDBML('   ');
+    expect(app.store.state.doc.tableIds).toEqual(tableIds);
+  });
+
+  it('loads an empty document when the DBML declares no table', async () => {
+    const { app, ctx } = await setup();
+    ctx.setSchemaDBML('Table users {\n  id int [pk]\n}');
+
+    ctx.setSchemaDBML("Project p { database_type: 'PostgreSQL' }");
 
     expect(app.store.state.doc.tableIds).toEqual([]);
   });

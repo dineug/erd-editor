@@ -77,6 +77,9 @@ Bridge.mergeRegister(
       case 'graphql':
         op === 'set' && editor.setSchemaGraphQL(value);
         break;
+      case 'dbml':
+        op === 'set' && editor.setSchemaDBML(value);
+        break;
       default: {
         // The host has already read the file by the time we get here, so an
         // unhandled type is a silent loss. `type` is `never` in this arm, so

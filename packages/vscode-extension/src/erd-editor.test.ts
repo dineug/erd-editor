@@ -313,6 +313,13 @@ describe('ErdEditor', () => {
         accept: '.graphql,.gql,.graphqls',
       });
 
+    const importDBML = () =>
+      Bridge.executeCommand(hostImportFileCommand, {
+        type: 'dbml',
+        op: 'set',
+        accept: '.dbml',
+      });
+
     it('filters the dialog by the extensions of the requested type', async () => {
       const { webview } = await bootstrap();
       window.showOpenDialog.mockResolvedValue([
@@ -342,6 +349,54 @@ describe('ErdEditor', () => {
       expect(window.showOpenDialog).toHaveBeenCalledWith({
         filters: { GraphQL: ['graphql', 'gql', 'graphqls'] },
       });
+    });
+
+    it('offers the dbml extension in its own filter', async () => {
+      const { webview } = await bootstrap();
+      window.showOpenDialog.mockResolvedValue(undefined);
+
+      webview.__receive(importDBML());
+      await flush();
+
+      expect(window.showOpenDialog).toHaveBeenCalledWith({
+        filters: { DBML: ['dbml'] },
+      });
+    });
+
+    it('forwards a dbml file', async () => {
+      const { webview } = await bootstrap();
+      const uri = Uri.file('/workspace/schema.dbml');
+      window.showOpenDialog.mockResolvedValue([uri]);
+      workspace.fs.readFile.mockResolvedValue(
+        encoder.encode('Table users { id int [pk] }')
+      );
+
+      webview.__receive(importDBML());
+      await flush();
+
+      expect(webview.postMessage).toHaveBeenCalledWith({
+        type: 'webviewImportFileCommand',
+        payload: {
+          type: 'dbml',
+          op: 'set',
+          value: 'Table users { id int [pk] }',
+        },
+      });
+    });
+
+    it('refuses a file that is not dbml', async () => {
+      const { webview } = await bootstrap();
+      window.showOpenDialog.mockResolvedValue([
+        Uri.file('/workspace/schema.sql'),
+      ]);
+
+      webview.__receive(importDBML());
+      await flush();
+
+      expect(window.showInformationMessage).toHaveBeenCalledWith(
+        'Just import the dbml file'
+      );
+      expect(webview.postMessage).not.toHaveBeenCalled();
     });
 
     it('does nothing when the open dialog is cancelled', async () => {
