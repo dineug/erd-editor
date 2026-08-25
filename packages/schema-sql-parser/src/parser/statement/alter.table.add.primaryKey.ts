@@ -1,5 +1,5 @@
 import {
-  isAlterTableOnlyAddPrimaryKey,
+  isAlterTableAddOnly,
   isConstraintValue,
   isKeyValue,
   isLeftParentToken,
@@ -29,7 +29,7 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
   const isPeriod = isPeriodToken(tokens);
   const isKey = isKeyValue(tokens);
   const isTable = isTableValue(tokens);
-  const isOnly = isAlterTableOnlyAddPrimaryKey(tokens)($pos.value);
+  const isOnly = isAlterTableAddOnly(tokens)($pos.value);
 
   const isToken = () => $pos.value < tokens.length;
 
@@ -60,16 +60,19 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
 
       if (isString($pos.value)) {
         ast.name = token.value;
+        $pos.value++;
 
-        token = tokens[++$pos.value];
-
-        if (isPeriod($pos.value)) {
-          token = tokens[++$pos.value];
-
-          if (isString($pos.value)) {
-            ast.name = token.value;
+        // `db.schema.t` is what SnowDDL writes, and one period was all this
+        // consumed -- the middle segment became the name and the last was
+        // left to be read as something else.
+        while (isPeriod($pos.value)) {
+          if (!isString($pos.value + 1)) {
             $pos.value++;
+            break;
           }
+
+          ast.name = tokens[$pos.value + 1].value;
+          $pos.value += 2;
         }
       }
 

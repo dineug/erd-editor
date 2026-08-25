@@ -4,12 +4,10 @@ import {
   isAddValue,
   isAlterTable,
   isAlterTableAddForeignKey,
+  isAlterTableAddOnly,
   isAlterTableAddPrimaryKey,
   isAlterTableAddUnique,
   isAlterTableOnly,
-  isAlterTableOnlyAddForeignKey,
-  isAlterTableOnlyAddPrimaryKey,
-  isAlterTableOnlyAddUnique,
   isAlterValue,
   isAscValue,
   isAuto_incrementValue,
@@ -27,7 +25,6 @@ import {
   isConstraintValue,
   isCreateIndex,
   isCreateTable,
-  isCreateTableIfNotExists,
   isCreateUniqueIndex,
   isCreateValue,
   isDataType,
@@ -62,7 +59,9 @@ import {
   isTableValue,
   isUniqueValue,
   isUseValue,
+  matchCreateTable,
   matchDataType,
+  matchQualifiedName,
 } from '@/parser/helper';
 import { Token, tokenizer, TokenType } from '@/parser/tokenizer';
 
@@ -317,31 +316,97 @@ describe('isCreateTable', () => {
   it('rejects a non CREATE token', () => {
     expect(isCreateTable(words('ALTER', 'TABLE'))(0)).toBe(false);
   });
+
+  it('matches a header carrying OR REPLACE and a table kind', () => {
+    expect(isCreateTable(words('CREATE', 'OR', 'REPLACE', 'TABLE'))(0)).toBe(
+      true
+    );
+    expect(
+      isCreateTable(words('create', 'or', 'replace', 'transient', 'table'))(0)
+    ).toBe(true);
+  });
 });
 
-describe('isCreateTableIfNotExists', () => {
-  it('matches the full CREATE TABLE IF NOT EXISTS prefix', () => {
-    const tokens = words('CREATE', 'TABLE', 'IF', 'NOT', 'EXISTS', 'user');
-
-    expect(isCreateTableIfNotExists(tokens)(0)).toBe(true);
+describe('matchCreateTable', () => {
+  it('spans CREATE TABLE', () => {
+    expect(matchCreateTable(words('CREATE', 'TABLE', 'user'))(0)).toBe(2);
   });
 
-  it('is case insensitive', () => {
-    const tokens = words('create', 'table', 'if', 'not', 'exists', 'user');
+  it('spans the IF NOT EXISTS prefix', () => {
+    const tokens = words('CREATE', 'TABLE', 'IF', 'NOT', 'EXISTS', 'user');
 
-    expect(isCreateTableIfNotExists(tokens)(0)).toBe(true);
+    expect(matchCreateTable(tokens)(0)).toBe(5);
+    expect(
+      matchCreateTable(words('create', 'table', 'if', 'not', 'exists'))(0)
+    ).toBe(5);
+  });
+
+  it('spans every modifier Snowflake writes between CREATE and TABLE', () => {
+    expect(matchCreateTable(words('CREATE', 'OR', 'REPLACE', 'TABLE'))(0)).toBe(
+      4
+    );
+    expect(
+      matchCreateTable(
+        words('create', 'or', 'replace', 'transient', 'table', 't')
+      )(0)
+    ).toBe(5);
+    expect(matchCreateTable(words('CREATE', 'HYBRID', 'TABLE', 't'))(0)).toBe(
+      3
+    );
+    expect(
+      matchCreateTable(
+        words(
+          'CREATE',
+          'OR',
+          'REPLACE',
+          'TEMPORARY',
+          'TABLE',
+          'IF',
+          'NOT',
+          'EXISTS'
+        )
+      )(0)
+    ).toBe(8);
+  });
+
+  it('refuses a BigQuery table-valued function', () => {
+    expect(
+      matchCreateTable(tokenizer('CREATE OR REPLACE TABLE FUNCTION f(x INT)'))(
+        0
+      )
+    ).toBe(0);
+    expect(matchCreateTable(tokenizer('CREATE TABLE FUNCTION f()'))(0)).toBe(0);
+  });
+
+  it('refuses a word that is not a table modifier', () => {
+    expect(matchCreateTable(words('CREATE', 'OR', 'REPLACE', 'VIEW'))(0)).toBe(
+      0
+    );
+    expect(matchCreateTable(words('CREATE', 'INDEX'))(0)).toBe(0);
+    expect(matchCreateTable(words('ALTER', 'TABLE'))(0)).toBe(0);
+    expect(matchCreateTable(words('CREATE'))(0)).toBe(0);
+  });
+
+  it('refuses a quoted modifier, which is an identifier', () => {
+    const tokens: Token[] = [
+      { type: TokenType.string, value: 'CREATE' },
+      { type: TokenType.string, value: 'OR', quoted: true },
+      { type: TokenType.string, value: 'TABLE' },
+    ];
+
+    expect(matchCreateTable(tokens)(0)).toBe(0);
   });
 
   it.each([
-    ['ALTER', 'TABLE', 'IF', 'NOT', 'EXISTS'],
-    ['CREATE', 'INDEX', 'IF', 'NOT', 'EXISTS'],
     ['CREATE', 'TABLE', 'user', 'NOT', 'EXISTS'],
     ['CREATE', 'TABLE', 'IF', 'user', 'EXISTS'],
     ['CREATE', 'TABLE', 'IF', 'NOT', 'user'],
-    ['CREATE', 'TABLE'],
-  ])('rejects %s %s %s %s %s', (...values) => {
-    expect(isCreateTableIfNotExists(words(...values))(0)).toBe(false);
-  });
+  ])(
+    'stops before an incomplete IF NOT EXISTS: %s %s %s %s %s',
+    (...values) => {
+      expect(matchCreateTable(words(...values))(0)).toBe(2);
+    }
+  );
 });
 
 describe('isCreateUniqueIndex', () => {
@@ -410,7 +475,60 @@ describe('isAlterTableOnly', () => {
   });
 });
 
-describe('isAlterTableOnlyAddPrimaryKey', () => {
+describe('matchQualifiedName', () => {
+  it('spans one, two and three part names', () => {
+    expect(matchQualifiedName(words('t'))(0)).toBe(1);
+    expect(matchQualifiedName(tokenizer('schema.t'))(0)).toBe(3);
+    expect(matchQualifiedName(tokenizer('db.schema.t'))(0)).toBe(5);
+  });
+
+  it('stops at a period with nothing after it', () => {
+    expect(matchQualifiedName(tokenizer('db.'))(0)).toBe(1);
+  });
+
+  it('reports no name where there is no string token', () => {
+    expect(matchQualifiedName(tokenizer('(id)'))(0)).toBe(0);
+  });
+});
+
+describe('a table literally named only', () => {
+  it('is read as the name when ONLY leads nowhere', () => {
+    const tokens = tokenizer('ALTER TABLE only ADD PRIMARY KEY (id);');
+
+    expect(isAlterTableAddPrimaryKey(tokens)(0)).toBe(true);
+    expect(isAlterTableAddOnly(tokens)(0)).toBe(false);
+  });
+
+  it('is read as the keyword when a name follows it', () => {
+    const tokens = tokenizer('ALTER TABLE ONLY d.s.t ADD PRIMARY KEY (id);');
+
+    expect(isAlterTableAddPrimaryKey(tokens)(0)).toBe(true);
+    expect(isAlterTableAddOnly(tokens)(0)).toBe(true);
+  });
+});
+
+describe('a fully qualified ALTER TABLE target', () => {
+  it.each([
+    ['ALTER TABLE db.sch.t ADD PRIMARY KEY (id);', isAlterTableAddPrimaryKey],
+    [
+      'ALTER TABLE db.sch.t ADD FOREIGN KEY (a) REFERENCES db.sch.o (b);',
+      isAlterTableAddForeignKey,
+    ],
+    ['ALTER TABLE db.sch.t ADD UNIQUE (a);', isAlterTableAddUnique],
+    [
+      'ALTER TABLE db.sch.t ADD CONSTRAINT pk PRIMARY KEY (id);',
+      isAlterTableAddPrimaryKey,
+    ],
+    [
+      'ALTER TABLE ONLY db.sch.t ADD CONSTRAINT pk PRIMARY KEY (id);',
+      isAlterTableAddPrimaryKey,
+    ],
+  ])('matches %s', (sql, matcher) => {
+    expect(matcher(tokenizer(sql))(0)).toBe(true);
+  });
+});
+
+describe('isAlterTableAddPrimaryKey with ONLY', () => {
   it('matches ALTER TABLE ONLY name ADD PRIMARY KEY', () => {
     const tokens = words(
       'ALTER',
@@ -422,7 +540,7 @@ describe('isAlterTableOnlyAddPrimaryKey', () => {
       'KEY'
     );
 
-    expect(isAlterTableOnlyAddPrimaryKey(tokens)(0)).toBe(true);
+    expect(isAlterTableAddPrimaryKey(tokens)(0)).toBe(true);
   });
 
   it('matches ALTER TABLE ONLY name ADD CONSTRAINT pk PRIMARY KEY', () => {
@@ -438,7 +556,7 @@ describe('isAlterTableOnlyAddPrimaryKey', () => {
       'KEY'
     );
 
-    expect(isAlterTableOnlyAddPrimaryKey(tokens)(0)).toBe(true);
+    expect(isAlterTableAddPrimaryKey(tokens)(0)).toBe(true);
   });
 
   it('matches a schema qualified ALTER TABLE ONLY public.user ADD PRIMARY KEY', () => {
@@ -448,7 +566,7 @@ describe('isAlterTableOnlyAddPrimaryKey', () => {
       ...words('user', 'ADD', 'PRIMARY', 'KEY'),
     ];
 
-    expect(isAlterTableOnlyAddPrimaryKey(tokens)(0)).toBe(true);
+    expect(isAlterTableAddPrimaryKey(tokens)(0)).toBe(true);
   });
 
   it('matches a schema qualified variant with a named constraint', () => {
@@ -458,7 +576,7 @@ describe('isAlterTableOnlyAddPrimaryKey', () => {
       ...words('user', 'ADD', 'CONSTRAINT', 'pk_user', 'PRIMARY', 'KEY'),
     ];
 
-    expect(isAlterTableOnlyAddPrimaryKey(tokens)(0)).toBe(true);
+    expect(isAlterTableAddPrimaryKey(tokens)(0)).toBe(true);
   });
 
   it('rejects ALTER TABLE ONLY name ADD FOREIGN KEY', () => {
@@ -472,13 +590,7 @@ describe('isAlterTableOnlyAddPrimaryKey', () => {
       'KEY'
     );
 
-    expect(isAlterTableOnlyAddPrimaryKey(tokens)(0)).toBe(false);
-  });
-
-  it('rejects when ONLY is missing', () => {
-    const tokens = words('ALTER', 'TABLE', 'user', 'ADD', 'PRIMARY', 'KEY');
-
-    expect(isAlterTableOnlyAddPrimaryKey(tokens)(0)).toBe(false);
+    expect(isAlterTableAddPrimaryKey(tokens)(0)).toBe(false);
   });
 });
 
@@ -549,7 +661,7 @@ describe('isAlterTableAddPrimaryKey', () => {
   });
 });
 
-describe('isAlterTableOnlyAddForeignKey', () => {
+describe('isAlterTableAddForeignKey with ONLY', () => {
   it('matches ALTER TABLE ONLY name ADD FOREIGN KEY', () => {
     const tokens = words(
       'ALTER',
@@ -561,7 +673,7 @@ describe('isAlterTableOnlyAddForeignKey', () => {
       'KEY'
     );
 
-    expect(isAlterTableOnlyAddForeignKey(tokens)(0)).toBe(true);
+    expect(isAlterTableAddForeignKey(tokens)(0)).toBe(true);
   });
 
   it('matches ALTER TABLE ONLY name ADD CONSTRAINT fk FOREIGN KEY', () => {
@@ -577,7 +689,7 @@ describe('isAlterTableOnlyAddForeignKey', () => {
       'KEY'
     );
 
-    expect(isAlterTableOnlyAddForeignKey(tokens)(0)).toBe(true);
+    expect(isAlterTableAddForeignKey(tokens)(0)).toBe(true);
   });
 
   it('matches a schema qualified ALTER TABLE ONLY public.user ADD FOREIGN KEY', () => {
@@ -587,7 +699,7 @@ describe('isAlterTableOnlyAddForeignKey', () => {
       ...words('user', 'ADD', 'FOREIGN', 'KEY'),
     ];
 
-    expect(isAlterTableOnlyAddForeignKey(tokens)(0)).toBe(true);
+    expect(isAlterTableAddForeignKey(tokens)(0)).toBe(true);
   });
 
   it('matches a schema qualified variant with a named constraint', () => {
@@ -597,7 +709,7 @@ describe('isAlterTableOnlyAddForeignKey', () => {
       ...words('user', 'ADD', 'CONSTRAINT', 'fk_user', 'FOREIGN', 'KEY'),
     ];
 
-    expect(isAlterTableOnlyAddForeignKey(tokens)(0)).toBe(true);
+    expect(isAlterTableAddForeignKey(tokens)(0)).toBe(true);
   });
 
   it('rejects the primary key variant', () => {
@@ -611,7 +723,7 @@ describe('isAlterTableOnlyAddForeignKey', () => {
       'KEY'
     );
 
-    expect(isAlterTableOnlyAddForeignKey(tokens)(0)).toBe(false);
+    expect(isAlterTableAddForeignKey(tokens)(0)).toBe(false);
   });
 });
 
@@ -678,11 +790,11 @@ describe('isAlterTableAddForeignKey', () => {
   });
 });
 
-describe('isAlterTableOnlyAddUnique', () => {
+describe('isAlterTableAddUnique with ONLY', () => {
   it('matches ALTER TABLE ONLY name ADD UNIQUE', () => {
     const tokens = words('ALTER', 'TABLE', 'ONLY', 'user', 'ADD', 'UNIQUE');
 
-    expect(isAlterTableOnlyAddUnique(tokens)(0)).toBe(true);
+    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
   });
 
   it('matches ALTER TABLE ONLY name ADD CONSTRAINT uq UNIQUE', () => {
@@ -697,7 +809,7 @@ describe('isAlterTableOnlyAddUnique', () => {
       'UNIQUE'
     );
 
-    expect(isAlterTableOnlyAddUnique(tokens)(0)).toBe(true);
+    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
   });
 
   it('matches a schema qualified ALTER TABLE ONLY public.user ADD UNIQUE', () => {
@@ -707,7 +819,7 @@ describe('isAlterTableOnlyAddUnique', () => {
       ...words('user', 'ADD', 'UNIQUE'),
     ];
 
-    expect(isAlterTableOnlyAddUnique(tokens)(0)).toBe(true);
+    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
   });
 
   it('matches a schema qualified variant with a named constraint', () => {
@@ -717,7 +829,7 @@ describe('isAlterTableOnlyAddUnique', () => {
       ...words('user', 'ADD', 'CONSTRAINT', 'uq_user', 'UNIQUE'),
     ];
 
-    expect(isAlterTableOnlyAddUnique(tokens)(0)).toBe(true);
+    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
   });
 
   it('rejects the primary key variant', () => {
@@ -731,7 +843,7 @@ describe('isAlterTableOnlyAddUnique', () => {
       'KEY'
     );
 
-    expect(isAlterTableOnlyAddUnique(tokens)(0)).toBe(false);
+    expect(isAlterTableAddUnique(tokens)(0)).toBe(false);
   });
 });
 

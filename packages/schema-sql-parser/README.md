@@ -490,6 +490,66 @@ two arrive separately from the `create.table` they belong to.
 </details>
 
 <details>
+<summary>Snowflake (54 types)</summary>
+
+  > array
+  > bigint
+  > binary
+  > boolean
+  > byteint
+  > char
+  > char varying
+  > character
+  > date
+  > datetime
+  > dec
+  > decfloat
+  > decimal
+  > double
+  > double precision
+  > file
+  > float
+  > float4
+  > float8
+  > geography
+  > geometry
+  > int
+  > integer
+  > map
+  > nchar
+  > nchar varying
+  > number
+  > numeric
+  > nvarchar
+  > nvarchar2
+  > object
+  > real
+  > smallint
+  > string
+  > text
+  > time
+  > timestamp
+  > timestamp with local time zone
+  > timestamp with time zone
+  > timestamp without time zone
+  > timestamp_ltz
+  > timestamp_ntz
+  > timestamp_tz
+  > timestampltz
+  > timestampntz
+  > timestamptz
+  > tinyint
+  > unknown
+  > uuid
+  > varbinary
+  > varchar
+  > varchar2
+  > variant
+  > vector
+
+</details>
+
+<details>
 <summary>SQLite (27 types)</summary>
 
   > bigint
@@ -766,6 +826,25 @@ ALTER TABLE ONLY Persons ADD UNIQUE (ID)
 ALTER TABLE ONLY Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
 ALTER TABLE ONLY "public".Persons ADD UNIQUE (ID)
 ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
+```
+
+### Snowflake CREATE OR REPLACE TABLE
+
+```sql
+create or replace TABLE MYDATABASE.PUBLIC.SALESORDERS cluster by LINEAR(ORDER_DATE)(
+	ORDER_ID NUMBER(38,0) NOT NULL autoincrement start 1 increment 1,
+	ORDER_DATE DATE NOT NULL,
+	PROFILE OBJECT(city VARCHAR, zip NUMBER),
+	SP_ID NUMBER(38,0) NOT NULL,
+	unique (SP_ID),
+	constraint PK_ORDER_ID primary key (ORDER_ID) not enforced rely,
+	constraint FK_SP_ID foreign key (SP_ID) references MYDATABASE.PUBLIC.SALESPEOPLE(SP_ID)
+)
+COMMENT = 'sales orders'
+```
+
+```sql
+ALTER TABLE MY_DB.MY_SCHEMA.ORDERS ADD FOREIGN KEY (CUSTOMER_ID) REFERENCES MY_DB.MY_SCHEMA.CUSTOMER (CUSTOMER_ID)
 ```
 
 ### Databricks CREATE TABLE

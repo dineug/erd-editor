@@ -111,6 +111,47 @@ describe('createTableParser - table name', () => {
     ]);
   });
 
+  it('skips a CREATE OR REPLACE header and a table kind', () => {
+    expect(parse('CREATE OR REPLACE TABLE t (id INT);').ast.name).toBe('t');
+    expect(
+      parse('create or replace transient table d.s.t (id INT);').ast.name
+    ).toBe('t');
+    expect(parse('CREATE HYBRID TABLE h (id INT);').ast.name).toBe('h');
+  });
+
+  // An option group is not a column list: `file_format = (...)` used to be
+  // read as one, inventing a column out of a table that declares none.
+  it('takes only the group that follows the name as the column list', () => {
+    expect(
+      parse(
+        'create or replace external table e location=@s file_format = (type = parquet);'
+      ).ast.columns
+    ).toEqual([]);
+    expect(
+      parse("CREATE TABLE t LOCATION 's3://b/p' TBLPROPERTIES ('a' = 'b');").ast
+        .columns
+    ).toEqual([]);
+    expect(
+      parse("CREATE EXTERNAL TABLE e (id INT) LOCATION 's3://b/p';").ast.columns
+    ).toEqual([column({ name: 'id', dataType: 'INT' })]);
+  });
+
+  it('consumes a clustering clause that precedes the column list', () => {
+    expect(
+      parse('create or replace TABLE L cluster by LINEAR(d)(a INT, d DATE);')
+        .ast.columns
+    ).toEqual([
+      column({ name: 'a', dataType: 'INT' }),
+      column({ name: 'd', dataType: 'DATE' }),
+    ]);
+    expect(
+      parse('CREATE TABLE t cluster by (a) (a INT, b INT);').ast.columns
+    ).toEqual([
+      column({ name: 'a', dataType: 'INT' }),
+      column({ name: 'b', dataType: 'INT' }),
+    ]);
+  });
+
   it('leaves the name empty when the body starts immediately', () => {
     const { ast } = parse('CREATE TABLE (a INT);');
 
