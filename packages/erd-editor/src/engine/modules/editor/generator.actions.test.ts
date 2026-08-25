@@ -32,6 +32,7 @@ import {
   focusMoveTableAction$,
   initialLoadJsonAction$,
   loadJsonAction$,
+  loadSchemaAMLAction$,
   loadSchemaDBMLAction$,
   loadSchemaGraphQLAction$,
   loadSchemaSQLAction$,
@@ -733,6 +734,41 @@ describe('loadSchemaDBMLAction$', () => {
     seedTable(store, 't1');
 
     store.dispatchSync(loadSchemaDBMLAction$('CREATE TABLE users (id INT);'));
+
+    expect(store.state.doc.tableIds).toEqual([]);
+  });
+});
+
+describe('loadSchemaAMLAction$', () => {
+  const aml = `users
+  id int pk
+  name varchar`;
+
+  it('imports the AML, keeps the current settings and sorts the tables', () => {
+    store.dispatchSync(changeDatabaseNameAction({ value: 'keep-me' }));
+
+    store.dispatchSync(loadSchemaAMLAction$(aml));
+
+    const tables = Object.values(store.state.collections.tableEntities);
+    expect(tables.map(({ name }) => name)).toEqual(['users']);
+    expect(store.state.doc.tableIds).toHaveLength(1);
+    expect(store.state.settings.databaseName).toBe('keep-me');
+  });
+
+  it('emits clear, loadJson and sortTable', () => {
+    expect(typesOf(store, loadSchemaAMLAction$(aml))).toEqual([
+      'editor.clear',
+      'editor.loadJson',
+      'table.sort',
+    ]);
+  });
+
+  // Unified with `loadSchemaSQLAction$`: input the parser cannot read loads an
+  // empty document rather than being refused, and undo puts the diagram back.
+  it('loads an empty document for text that declares no entity', () => {
+    seedTable(store, 't1');
+
+    store.dispatchSync(loadSchemaAMLAction$('type uid int'));
 
     expect(store.state.doc.tableIds).toEqual([]);
   });
@@ -1492,6 +1528,7 @@ describe('actions$', () => {
         'focusMoveTableAction$',
         'initialLoadJsonAction$',
         'loadJsonAction$',
+        'loadSchemaAMLAction$',
         'loadSchemaDBMLAction$',
         'loadSchemaGraphQLAction$',
         'loadSchemaSQLAction$',

@@ -4,6 +4,7 @@ import { AppContext } from '@/components/appContext';
 import Toast from '@/components/primitives/toast/Toast';
 import {
   loadJsonAction$,
+  loadSchemaAMLAction$,
   loadSchemaDBMLAction$,
   loadSchemaGraphQLAction$,
   loadSchemaSQLAction$,
@@ -11,7 +12,7 @@ import {
 import { openDiffViewerAction, openToastAction } from '@/utils/emitter';
 
 type ImportOptions = {
-  type: 'json' | 'sql' | 'graphql' | 'dbml';
+  type: 'json' | 'sql' | 'graphql' | 'dbml' | 'aml';
   op: 'set' | 'diff';
   accept: string;
 };
@@ -23,6 +24,7 @@ const SQL_EXTENSION = /\.sql$/i;
 const GRAPHQL_EXTENSION = /\.(graphql|gql|graphqls)$/i;
 const GRAPHQL_ACCEPT = '.graphql,.gql,.graphqls';
 const DBML_EXTENSION = /\.dbml$/i;
+const AML_EXTENSION = /\.aml$/i;
 
 let performImportFileExtra: ImportFileCallback | null = null;
 
@@ -181,6 +183,46 @@ export function importDBML({ store, emitter }: AppContext) {
       }
 
       store.dispatch(loadSchemaDBMLAction$(value));
+    };
+  });
+  input.click();
+}
+
+export function importAML({ store, emitter }: AppContext) {
+  if (performImportFileExtra) {
+    performImportFileExtra({
+      type: 'aml',
+      op: 'set',
+      accept: '.aml',
+    });
+    return;
+  }
+
+  const input = document.createElement('input');
+  input.setAttribute('type', 'file');
+  input.setAttribute('accept', '.aml');
+  input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!AML_EXTENSION.test(file.name)) {
+      emitter.emit(
+        openToastAction({
+          message: <Toast description="Just import the aml file" />,
+        })
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsText(file);
+    reader.onload = () => {
+      const value = reader.result;
+      if (!isString(value)) {
+        return;
+      }
+
+      store.dispatch(loadSchemaAMLAction$(value));
     };
   });
   input.click();

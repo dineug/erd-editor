@@ -135,6 +135,7 @@ describe('useErdEditorAttachElement', () => {
     expect(typeof ctx.setSchemaSQL).toBe('function');
     expect(typeof ctx.setSchemaGraphQL).toBe('function');
     expect(typeof ctx.setSchemaDBML).toBe('function');
+    expect(typeof ctx.setSchemaAML).toBe('function');
     expect(typeof ctx.getSchemaSQL).toBe('function');
     expect(typeof ctx.getSharedStore).toBe('function');
     expect(typeof ctx.setDiffValue).toBe('function');
@@ -338,6 +339,29 @@ describe('useErdEditorAttachElement', () => {
     ctx.setSchemaDBML('Table users {\n  id int [pk]\n}');
 
     ctx.setSchemaDBML("Project p { database_type: 'PostgreSQL' }");
+
+    expect(app.store.state.doc.tableIds).toEqual([]);
+  });
+
+  it('imports AML and ignores blank input', async () => {
+    const { app, ctx } = await setup();
+
+    ctx.setSchemaAML('users\n  id int pk');
+    const tableIds = [...app.store.state.doc.tableIds];
+    expect(tableIds.length).toBe(1);
+    expect(app.store.state.collections.tableEntities[tableIds[0]].name).toBe(
+      'users'
+    );
+
+    ctx.setSchemaAML('   ');
+    expect(app.store.state.doc.tableIds).toEqual(tableIds);
+  });
+
+  it('loads an empty document when the AML declares no entity', async () => {
+    const { app, ctx } = await setup();
+    ctx.setSchemaAML('users\n  id int pk');
+
+    ctx.setSchemaAML('type uid int');
 
     expect(app.store.state.doc.tableIds).toEqual([]);
   });

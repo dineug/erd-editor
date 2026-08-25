@@ -320,6 +320,13 @@ describe('ErdEditor', () => {
         accept: '.dbml',
       });
 
+    const importAML = () =>
+      Bridge.executeCommand(hostImportFileCommand, {
+        type: 'aml',
+        op: 'set',
+        accept: '.aml',
+      });
+
     it('filters the dialog by the extensions of the requested type', async () => {
       const { webview } = await bootstrap();
       window.showOpenDialog.mockResolvedValue([
@@ -395,6 +402,54 @@ describe('ErdEditor', () => {
 
       expect(window.showInformationMessage).toHaveBeenCalledWith(
         'Just import the dbml file'
+      );
+      expect(webview.postMessage).not.toHaveBeenCalled();
+    });
+
+    it('offers the aml extension in its own filter', async () => {
+      const { webview } = await bootstrap();
+      window.showOpenDialog.mockResolvedValue(undefined);
+
+      webview.__receive(importAML());
+      await flush();
+
+      expect(window.showOpenDialog).toHaveBeenCalledWith({
+        filters: { AML: ['aml'] },
+      });
+    });
+
+    it('forwards an aml file', async () => {
+      const { webview } = await bootstrap();
+      const uri = Uri.file('/workspace/schema.aml');
+      window.showOpenDialog.mockResolvedValue([uri]);
+      workspace.fs.readFile.mockResolvedValue(
+        encoder.encode('users\n  id int pk')
+      );
+
+      webview.__receive(importAML());
+      await flush();
+
+      expect(webview.postMessage).toHaveBeenCalledWith({
+        type: 'webviewImportFileCommand',
+        payload: {
+          type: 'aml',
+          op: 'set',
+          value: 'users\n  id int pk',
+        },
+      });
+    });
+
+    it('refuses a file that is not aml', async () => {
+      const { webview } = await bootstrap();
+      window.showOpenDialog.mockResolvedValue([
+        Uri.file('/workspace/schema.sql'),
+      ]);
+
+      webview.__receive(importAML());
+      await flush();
+
+      expect(window.showInformationMessage).toHaveBeenCalledWith(
+        'Just import the aml file'
       );
       expect(webview.postMessage).not.toHaveBeenCalled();
     });

@@ -40,6 +40,7 @@ const IMPORT_FILE_TYPES: Record<
   sql: { label: 'SQL', extensions: ['sql'] },
   graphql: { label: 'GraphQL', extensions: ['graphql', 'gql', 'graphqls'] },
   dbml: { label: 'DBML', extensions: ['dbml'] },
+  aml: { label: 'AML', extensions: ['aml'] },
 };
 
 const THEME_KEYS = [
