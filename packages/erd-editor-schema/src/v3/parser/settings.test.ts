@@ -219,6 +219,12 @@ describe('createAndMergeSettings', () => {
       ).toBe(Database.Databricks);
     });
 
+    it('keeps the Snowflake database', () => {
+      expect(
+        createAndMergeSettings({ database: Database.Snowflake }).database
+      ).toBe(Database.Snowflake);
+    });
+
     it('keeps the Go language', () => {
       expect(createAndMergeSettings({ language: Language.Go }).language).toBe(
         Language.Go

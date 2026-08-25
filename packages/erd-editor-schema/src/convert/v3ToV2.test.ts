@@ -323,6 +323,13 @@ describe('v3ToV2', () => {
       expect(v3ToV2(schemaV3).canvas.database).toBe('MySQL');
     });
 
+    it('drops the Snowflake database because "Snowflake" is not a v2 database name', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.database = Database.Snowflake;
+
+      expect(v3ToV2(schemaV3).canvas.database).toBe('MySQL');
+    });
+
     it('drops the SQLAlchemy language because "SQLAlchemy" is not a v2 language name', () => {
       const schemaV3 = createSchemaV3();
       schemaV3.settings.language = Language.SQLAlchemy;
