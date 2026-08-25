@@ -28,6 +28,7 @@ const DATABASE_NAMES: Record<number, string> = {
   [Database.PostgreSQL]: 'PostgreSQL',
   [Database.SQLite]: 'SQLite',
   [Database.Databricks]: 'Databricks',
+  [Database.Snowflake]: 'Snowflake',
 };
 
 const STRING_TYPES: Record<number, string> = {
@@ -38,6 +39,7 @@ const STRING_TYPES: Record<number, string> = {
   [Database.PostgreSQL]: 'varchar(255)',
   [Database.SQLite]: 'TEXT',
   [Database.Databricks]: 'STRING',
+  [Database.Snowflake]: 'VARCHAR(255)',
 };
 
 /** One built-in and one representative of every custom-scalar family. */
@@ -174,6 +176,25 @@ const EXPECTED: Record<number, Record<string, string>> = {
     UUID: 'STRING',
     Bytes: 'BINARY',
     EmailAddress: 'STRING',
+  },
+  [Database.Snowflake]: {
+    ID: 'VARCHAR(255)',
+    Int: 'INT',
+    Float: 'FLOAT',
+    Boolean: 'BOOLEAN',
+    String: 'VARCHAR(255)',
+    Short: 'SMALLINT',
+    BigInt: 'BIGINT',
+    Decimal: 'DECIMAL',
+    Date: 'DATE',
+    Time: 'TIME',
+    DateTime: 'TIMESTAMP_NTZ',
+    timestamptz: 'TIMESTAMP_TZ',
+    Duration: 'VARCHAR(255)',
+    JSON: 'VARIANT',
+    UUID: 'UUID',
+    Bytes: 'BINARY',
+    EmailAddress: 'VARCHAR(255)',
   },
 };
 
@@ -316,6 +337,7 @@ describe('resolveDataType enum', () => {
     Database.PostgreSQL,
     Database.SQLite,
     Database.Databricks,
+    Database.Snowflake,
   ])('falls back to the string type on %i', database => {
     expect(resolveDataType('Role', database, model)).toBe(
       STRING_TYPES[database]
@@ -375,6 +397,7 @@ describe('enumCommentSuffix', () => {
     Database.PostgreSQL,
     Database.SQLite,
     Database.Databricks,
+    Database.Snowflake,
   ])('lists the enum members on %i', database => {
     expect(enumCommentSuffix('Role', model, database)).toBe(
       ' Role: ADMIN | USER'

@@ -4,6 +4,7 @@ import { MSSQLTypes } from '@/parser/dataType/MSSQL';
 import { MySQLTypes } from '@/parser/dataType/MySQL';
 import { OracleTypes } from '@/parser/dataType/Oracle';
 import { PostgreSQLTypes } from '@/parser/dataType/PostgreSQL';
+import { SnowflakeTypes } from '@/parser/dataType/Snowflake';
 import { SQLiteTypes } from '@/parser/dataType/SQLite';
 import { Token, TokenType } from '@/parser/tokenizer';
 
@@ -69,6 +70,10 @@ export const isDeferrableValue = createValueEqual('DEFERRABLE');
 export const isInitiallyValue = createValueEqual('INITIALLY');
 export const isDeferredValue = createValueEqual('DEFERRED');
 export const isImmediateValue = createValueEqual('IMMEDIATE');
+export const isIdentityValue = createValueEqual('IDENTITY');
+export const isFunctionValue = createValueEqual('FUNCTION');
+export const isClusterValue = createValueEqual('CLUSTER');
+export const isByValue = createValueEqual('BY');
 
 // What a constraint may carry after its key list: Databricks writes
 // `NOT ENFORCED RELY` on every key it exports, ANSI writes
@@ -139,7 +144,15 @@ export const matchNestedDataType = (tokens: Token[]) => {
 export const isAutoIncrementValue = (tokens: Token[]) => {
   const isAuto_increment = isAuto_incrementValue(tokens);
   const isAutoincrement = isAutoincrementValue(tokens);
-  return (pos: number) => isAuto_increment(pos) || isAutoincrement(pos);
+  const isIdentity = isIdentityValue(tokens);
+  return (pos: number) =>
+    isAuto_increment(pos) || isAutoincrement(pos) || isIdentity(pos);
+};
+
+export const isClusterBy = (tokens: Token[]) => {
+  const isCluster = isClusterValue(tokens);
+  const isBy = isByValue(tokens);
+  return (pos: number) => isCluster(pos) && isBy(pos + 1);
 };
 
 export const isCommentOn = (tokens: Token[]) => {
@@ -180,18 +193,72 @@ export const isNewStatement = (tokens: Token[]) => {
     commentOn(pos);
 };
 
-export const isCreateTableIfNotExists = (tokens: Token[]) => {
+// What may sit between CREATE and TABLE. Snowflake's GET_DDL always writes
+// `CREATE OR REPLACE`, and the table kind is a word of its own. The list is a
+// whitelist rather than a scan to the next TABLE, which would also claim
+// `CREATE OR REPLACE VIEW v AS SELECT ... FROM TABLE(...)`.
+const CreateTableModifiers: ReadonlyArray<string> = [
+  'OR',
+  'REPLACE',
+  'TRANSIENT',
+  'TEMPORARY',
+  'TEMP',
+  'LOCAL',
+  'GLOBAL',
+  'VOLATILE',
+  'UNLOGGED',
+  'HYBRID',
+  'ICEBERG',
+  'DYNAMIC',
+  'EXTERNAL',
+];
+
+// How many tokens the header spans before the table name, 0 when there is no
+// CREATE TABLE at `pos`. The dispatch loop only needs to know that it matched;
+// the statement parser needs the length, because the name sits right after it
+// and the modifiers are not a fixed count.
+export const matchCreateTable = (tokens: Token[]) => {
   const isCreate = isCreateValue(tokens);
   const isTable = isTableValue(tokens);
+  const isString = isStringToken(tokens);
+  const isFunction = isFunctionValue(tokens);
   const isIf = isIfValue(tokens);
   const isNot = isNotValue(tokens);
   const isExists = isExistsValue(tokens);
-  return (pos: number) =>
-    isCreate(pos) &&
-    isTable(pos + 1) &&
-    isIf(pos + 2) &&
-    isNot(pos + 3) &&
-    isExists(pos + 4);
+
+  return (pos: number) => {
+    if (!isCreate(pos)) return 0;
+
+    let cursor = pos + 1;
+
+    while (cursor < tokens.length && !isTable(cursor)) {
+      const token = tokens[cursor];
+
+      if (
+        !isString(cursor) ||
+        token.quoted ||
+        !CreateTableModifiers.includes(token.value.toUpperCase())
+      ) {
+        return 0;
+      }
+
+      cursor++;
+    }
+
+    if (!isTable(cursor)) return 0;
+
+    // BigQuery spells a table-valued function `CREATE OR REPLACE TABLE
+    // FUNCTION f(...)`, which would otherwise take FUNCTION as the name.
+    if (isFunction(cursor + 1)) return 0;
+
+    cursor++;
+
+    if (isIf(cursor) && isNot(cursor + 1) && isExists(cursor + 2)) {
+      cursor += 3;
+    }
+
+    return cursor - pos;
+  };
 };
 
 export const isCharacterSet = (tokens: Token[]) => {
@@ -201,9 +268,8 @@ export const isCharacterSet = (tokens: Token[]) => {
 };
 
 export const isCreateTable = (tokens: Token[]) => {
-  const isCreate = isCreateValue(tokens);
-  const isTable = isTableValue(tokens);
-  return (pos: number) => isCreate(pos) && isTable(pos + 1);
+  const createTable = matchCreateTable(tokens);
+  return (pos: number) => createTable(pos) > 0;
 };
 
 export const isCreateUniqueIndex = (tokens: Token[]) => {
@@ -234,220 +300,113 @@ export const isAlterTableOnly = (tokens: Token[]) => {
   return (pos: number) => alterTable(pos) && isOnly(pos + 2);
 };
 
-export const isAlterTableOnlyAddPrimaryKey = (tokens: Token[]) => {
-  const alterTableOnly = isAlterTableOnly(tokens);
+// How many tokens a possibly qualified name spans: `t`, `schema.t` and
+// Snowflake's `db.schema.t` are one name each.
+export const matchQualifiedName = (tokens: Token[]) => {
+  const isString = isStringToken(tokens);
+  const isPeriod = isPeriodToken(tokens);
+
+  return (pos: number) => {
+    if (!isString(pos)) return 0;
+
+    let cursor = pos + 1;
+
+    while (isPeriod(cursor) && isString(cursor + 1)) {
+      cursor += 2;
+    }
+
+    return cursor - pos;
+  };
+};
+
+// `ALTER TABLE [ONLY] <name> ADD [CONSTRAINT <name>]`: how many tokens the
+// head spans, 0 when there is none at `pos`, and whether ONLY was read as the
+// keyword rather than as the table name. The name is measured rather than
+// counted, which is what lets a three-part `db.schema.t` through.
+const matchAlterTableAddHead = (tokens: Token[]) => {
+  const alterTable = isAlterTable(tokens);
+  const isOnly = isOnlyValue(tokens);
   const isAdd = isAddValue(tokens);
-  const isPrimary = isPrimaryValue(tokens);
-  const isKey = isKeyValue(tokens);
   const isConstraint = isConstraintValue(tokens);
+  const isString = isStringToken(tokens);
+  const qualifiedName = matchQualifiedName(tokens);
 
-  const expression1 = (pos: number) =>
-    alterTableOnly(pos) &&
-    isAdd(pos + 4) &&
-    isPrimary(pos + 5) &&
-    isKey(pos + 6);
+  // ONLY is optional, and it is also a legal table name: both readings are
+  // tried, the one that reaches ADD wins.
+  const fromName = (pos: number, start: number) => {
+    let cursor = start;
 
-  const expression2 = (pos: number) =>
-    alterTableOnly(pos) &&
-    isAdd(pos + 4) &&
-    isConstraint(pos + 5) &&
-    isPrimary(pos + 7) &&
-    isKey(pos + 8);
+    const name = qualifiedName(cursor);
+    if (!name) return 0;
+    cursor += name;
 
-  const expression3 = (pos: number) =>
-    alterTableOnly(pos) &&
-    isAdd(pos + 6) &&
-    isPrimary(pos + 7) &&
-    isKey(pos + 8);
+    if (!isAdd(cursor)) return 0;
+    cursor++;
 
-  const expression4 = (pos: number) =>
-    alterTableOnly(pos) &&
-    isAdd(pos + 6) &&
-    isConstraint(pos + 7) &&
-    isPrimary(pos + 9) &&
-    isKey(pos + 10);
+    if (isConstraint(cursor) && isString(cursor + 1)) {
+      cursor += 2;
+    }
 
-  return (pos: number) =>
-    expression1(pos) ||
-    expression2(pos) ||
-    expression3(pos) ||
-    expression4(pos);
+    return cursor - pos;
+  };
+
+  return (pos: number) => {
+    if (!alterTable(pos)) return { length: 0, only: false };
+
+    const start = pos + 2;
+
+    if (isOnly(start)) {
+      const length = fromName(pos, start + 1);
+      if (length) return { length, only: true };
+    }
+
+    return { length: fromName(pos, start), only: false };
+  };
+};
+
+const matchAlterTableAdd = (tokens: Token[]) => {
+  const head = matchAlterTableAddHead(tokens);
+  return (pos: number) => head(pos).length;
+};
+
+// Whether the head at `pos` spends a token on the ONLY keyword. `only` is also
+// a legal table name, and the statement parsers have to skip exactly what the
+// matcher read.
+export const isAlterTableAddOnly = (tokens: Token[]) => {
+  const head = matchAlterTableAddHead(tokens);
+  return (pos: number) => head(pos).only;
 };
 
 export const isAlterTableAddPrimaryKey = (tokens: Token[]) => {
-  const alterTableOnlyAddPrimaryKey = isAlterTableOnlyAddPrimaryKey(tokens);
-  const alterTable = isAlterTable(tokens);
-  const isAdd = isAddValue(tokens);
+  const alterTableAdd = matchAlterTableAdd(tokens);
   const isPrimary = isPrimaryValue(tokens);
   const isKey = isKeyValue(tokens);
-  const isConstraint = isConstraintValue(tokens);
 
-  const expression1 = (pos: number) =>
-    alterTable(pos) && isAdd(pos + 3) && isPrimary(pos + 4) && isKey(pos + 5);
-
-  const expression2 = (pos: number) =>
-    alterTable(pos) &&
-    isAdd(pos + 3) &&
-    isConstraint(pos + 4) &&
-    isPrimary(pos + 6) &&
-    isKey(pos + 7);
-
-  const expression3 = (pos: number) =>
-    alterTable(pos) && isAdd(pos + 5) && isPrimary(pos + 6) && isKey(pos + 7);
-
-  const expression4 = (pos: number) =>
-    alterTable(pos) &&
-    isAdd(pos + 5) &&
-    isConstraint(pos + 6) &&
-    isPrimary(pos + 8) &&
-    isKey(pos + 9);
-
-  return (pos: number) =>
-    expression1(pos) ||
-    expression2(pos) ||
-    expression3(pos) ||
-    expression4(pos) ||
-    alterTableOnlyAddPrimaryKey(pos);
-};
-
-export const isAlterTableOnlyAddForeignKey = (tokens: Token[]) => {
-  const alterTableOnly = isAlterTableOnly(tokens);
-  const isAdd = isAddValue(tokens);
-  const isForeign = isForeignValue(tokens);
-  const isKey = isKeyValue(tokens);
-  const isConstraint = isConstraintValue(tokens);
-
-  const expression1 = (pos: number) =>
-    alterTableOnly(pos) &&
-    isAdd(pos + 4) &&
-    isForeign(pos + 5) &&
-    isKey(pos + 6);
-
-  const expression2 = (pos: number) =>
-    alterTableOnly(pos) &&
-    isAdd(pos + 4) &&
-    isConstraint(pos + 5) &&
-    isForeign(pos + 7) &&
-    isKey(pos + 8);
-
-  const expression3 = (pos: number) =>
-    alterTableOnly(pos) &&
-    isAdd(pos + 6) &&
-    isForeign(pos + 7) &&
-    isKey(pos + 8);
-
-  const expression4 = (pos: number) =>
-    alterTableOnly(pos) &&
-    isAdd(pos + 6) &&
-    isConstraint(pos + 7) &&
-    isForeign(pos + 9) &&
-    isKey(pos + 10);
-
-  return (pos: number) =>
-    expression1(pos) ||
-    expression2(pos) ||
-    expression3(pos) ||
-    expression4(pos);
+  return (pos: number) => {
+    const length = alterTableAdd(pos);
+    return length > 0 && isPrimary(pos + length) && isKey(pos + length + 1);
+  };
 };
 
 export const isAlterTableAddForeignKey = (tokens: Token[]) => {
-  const alterTableOnlyAddForeignKey = isAlterTableOnlyAddForeignKey(tokens);
-  const alterTable = isAlterTable(tokens);
-  const isAdd = isAddValue(tokens);
+  const alterTableAdd = matchAlterTableAdd(tokens);
   const isForeign = isForeignValue(tokens);
   const isKey = isKeyValue(tokens);
-  const isConstraint = isConstraintValue(tokens);
 
-  const expression1 = (pos: number) =>
-    alterTable(pos) && isAdd(pos + 3) && isForeign(pos + 4) && isKey(pos + 5);
-
-  const expression2 = (pos: number) =>
-    alterTable(pos) &&
-    isAdd(pos + 3) &&
-    isConstraint(pos + 4) &&
-    isForeign(pos + 6) &&
-    isKey(pos + 7);
-
-  const expression3 = (pos: number) =>
-    alterTable(pos) && isAdd(pos + 5) && isForeign(pos + 6) && isKey(pos + 7);
-
-  const expression4 = (pos: number) =>
-    alterTable(pos) &&
-    isAdd(pos + 5) &&
-    isConstraint(pos + 6) &&
-    isForeign(pos + 8) &&
-    isKey(pos + 9);
-
-  return (pos: number) =>
-    expression1(pos) ||
-    expression2(pos) ||
-    expression3(pos) ||
-    expression4(pos) ||
-    alterTableOnlyAddForeignKey(pos);
-};
-
-export const isAlterTableOnlyAddUnique = (tokens: Token[]) => {
-  const alterTableOnly = isAlterTableOnly(tokens);
-  const isAdd = isAddValue(tokens);
-  const isUnique = isUniqueValue(tokens);
-  const isConstraint = isConstraintValue(tokens);
-
-  const expression1 = (pos: number) =>
-    alterTableOnly(pos) && isAdd(pos + 4) && isUnique(pos + 5);
-
-  const expression2 = (pos: number) =>
-    alterTableOnly(pos) &&
-    isAdd(pos + 4) &&
-    isConstraint(pos + 5) &&
-    isUnique(pos + 7);
-
-  const expression3 = (pos: number) =>
-    alterTableOnly(pos) && isAdd(pos + 6) && isUnique(pos + 7);
-
-  const expression4 = (pos: number) =>
-    alterTableOnly(pos) &&
-    isAdd(pos + 6) &&
-    isConstraint(pos + 7) &&
-    isUnique(pos + 9);
-
-  return (pos: number) =>
-    expression1(pos) ||
-    expression2(pos) ||
-    expression3(pos) ||
-    expression4(pos);
+  return (pos: number) => {
+    const length = alterTableAdd(pos);
+    return length > 0 && isForeign(pos + length) && isKey(pos + length + 1);
+  };
 };
 
 export const isAlterTableAddUnique = (tokens: Token[]) => {
-  const alterTableOnlyAddUnique = isAlterTableOnlyAddUnique(tokens);
-  const alterTable = isAlterTable(tokens);
-  const isAdd = isAddValue(tokens);
+  const alterTableAdd = matchAlterTableAdd(tokens);
   const isUnique = isUniqueValue(tokens);
-  const isConstraint = isConstraintValue(tokens);
 
-  const expression1 = (pos: number) =>
-    alterTable(pos) && isAdd(pos + 3) && isUnique(pos + 4);
-
-  const expression2 = (pos: number) =>
-    alterTable(pos) &&
-    isAdd(pos + 3) &&
-    isConstraint(pos + 4) &&
-    isUnique(pos + 6);
-
-  const expression3 = (pos: number) =>
-    alterTable(pos) && isAdd(pos + 5) && isUnique(pos + 6);
-
-  const expression4 = (pos: number) =>
-    alterTable(pos) &&
-    isAdd(pos + 5) &&
-    isConstraint(pos + 6) &&
-    isUnique(pos + 8);
-
-  return (pos: number) =>
-    expression1(pos) ||
-    expression2(pos) ||
-    expression3(pos) ||
-    expression4(pos) ||
-    alterTableOnlyAddUnique(pos);
+  return (pos: number) => {
+    const length = alterTableAdd(pos);
+    return length > 0 && isUnique(pos + length);
+  };
 };
 
 const DataTypes: ReadonlyArray<string> = Array.from(
@@ -459,6 +418,7 @@ const DataTypes: ReadonlyArray<string> = Array.from(
       ...MySQLTypes,
       ...OracleTypes,
       ...PostgreSQLTypes,
+      ...SnowflakeTypes,
       ...SQLiteTypes,
     ].map(type => type.toUpperCase())
   )

@@ -145,6 +145,12 @@ export function tokenizer(source: string): Token[] {
       continue;
     }
 
+    if (match.rightBracket(char)) {
+      tokens.push({ type: TokenType.rightBracket, value: char });
+      pos++;
+      continue;
+    }
+
     if (match.leftBracket(char)) {
       let value = '';
       char = source[++pos];

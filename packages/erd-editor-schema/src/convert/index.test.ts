@@ -260,6 +260,15 @@ describe('convert barrel', () => {
       expect(result.settings.database).toBe(SchemaV3Constants.Database.MySQL);
     });
 
+    it('loses the Snowflake database because v2 has no such vendor', () => {
+      const source = createSchemaV3();
+      source.settings.database = SchemaV3Constants.Database.Snowflake;
+      const result = v2ToV3(v3ToV2(source));
+
+      expect(result.settings.database).not.toBe(source.settings.database);
+      expect(result.settings.database).toBe(SchemaV3Constants.Database.MySQL);
+    });
+
     it('loses the Go language because v2 has no such language', () => {
       const source = createSchemaV3();
       source.settings.language = SchemaV3Constants.Language.Go;

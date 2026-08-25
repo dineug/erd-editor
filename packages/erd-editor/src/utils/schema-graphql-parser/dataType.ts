@@ -16,6 +16,7 @@ const stringTypes: Record<number, string> = {
   [Database.PostgreSQL]: 'varchar(255)',
   [Database.SQLite]: 'TEXT',
   [Database.Databricks]: 'STRING',
+  [Database.Snowflake]: 'VARCHAR(255)',
 };
 
 const intTypes: Record<number, string> = {
@@ -26,6 +27,7 @@ const intTypes: Record<number, string> = {
   [Database.PostgreSQL]: 'integer',
   [Database.SQLite]: 'INTEGER',
   [Database.Databricks]: 'INT',
+  [Database.Snowflake]: 'INT',
 };
 
 const smallintTypes: Record<number, string> = {
@@ -36,6 +38,7 @@ const smallintTypes: Record<number, string> = {
   [Database.PostgreSQL]: 'smallint',
   [Database.SQLite]: 'SMALLINT',
   [Database.Databricks]: 'SMALLINT',
+  [Database.Snowflake]: 'SMALLINT',
 };
 
 const bigintTypes: Record<number, string> = {
@@ -47,6 +50,7 @@ const bigintTypes: Record<number, string> = {
   [Database.PostgreSQL]: 'bigint',
   [Database.SQLite]: 'BIGINT',
   [Database.Databricks]: 'BIGINT',
+  [Database.Snowflake]: 'BIGINT',
 };
 
 // GraphQL Float is an IEEE 754 double, so every cell is the 64-bit column.
@@ -58,6 +62,7 @@ const floatTypes: Record<number, string> = {
   [Database.PostgreSQL]: 'double precision',
   [Database.SQLite]: 'REAL',
   [Database.Databricks]: 'DOUBLE',
+  [Database.Snowflake]: 'FLOAT',
 };
 
 const decimalTypes: Record<number, string> = {
@@ -68,6 +73,7 @@ const decimalTypes: Record<number, string> = {
   [Database.PostgreSQL]: 'numeric',
   [Database.SQLite]: 'DECIMAL',
   [Database.Databricks]: 'DECIMAL',
+  [Database.Snowflake]: 'DECIMAL',
 };
 
 const booleanTypes: Record<number, string> = {
@@ -79,6 +85,7 @@ const booleanTypes: Record<number, string> = {
   [Database.PostgreSQL]: 'boolean',
   [Database.SQLite]: 'BOOLEAN',
   [Database.Databricks]: 'BOOLEAN',
+  [Database.Snowflake]: 'BOOLEAN',
 };
 
 const dateTypes: Record<number, string> = {
@@ -89,6 +96,7 @@ const dateTypes: Record<number, string> = {
   [Database.PostgreSQL]: 'date',
   [Database.SQLite]: 'DATE',
   [Database.Databricks]: 'DATE',
+  [Database.Snowflake]: 'DATE',
 };
 
 const timeTypes: Record<number, string> = {
@@ -100,6 +108,7 @@ const timeTypes: Record<number, string> = {
   [Database.PostgreSQL]: 'time',
   [Database.SQLite]: 'TEXT',
   [Database.Databricks]: 'STRING',
+  [Database.Snowflake]: 'TIME',
 };
 
 const dateTimeTypes: Record<number, string> = {
@@ -110,6 +119,7 @@ const dateTimeTypes: Record<number, string> = {
   [Database.PostgreSQL]: 'timestamp',
   [Database.SQLite]: 'DATETIME',
   [Database.Databricks]: 'TIMESTAMP',
+  [Database.Snowflake]: 'TIMESTAMP_NTZ',
 };
 
 const dateTimeTzTypes: Record<number, string> = {
@@ -122,11 +132,13 @@ const dateTimeTzTypes: Record<number, string> = {
   // SQLite.ts and Databricks.ts list no zoned variant.
   [Database.SQLite]: 'DATETIME',
   [Database.Databricks]: 'TIMESTAMP',
+  [Database.Snowflake]: 'TIMESTAMP_TZ',
 };
 
 const durationTypes: Record<number, string> = {
-  // MariaDB.ts, MSSQL.ts, MySQL.ts and SQLite.ts list no interval type, and an
-  // ISO-8601 duration such as `P3Y6M` does not fit MySQL's TIME either.
+  // MariaDB.ts, MSSQL.ts, MySQL.ts, SQLite.ts and Snowflake.ts list no interval
+  // type, and an ISO-8601 duration such as `P3Y6M` does not fit MySQL's TIME
+  // either.
   [Database.MariaDB]: 'VARCHAR(255)',
   [Database.MSSQL]: 'varchar(255)',
   [Database.MySQL]: 'VARCHAR(255)',
@@ -134,6 +146,7 @@ const durationTypes: Record<number, string> = {
   [Database.PostgreSQL]: 'interval',
   [Database.SQLite]: 'TEXT',
   [Database.Databricks]: 'INTERVAL DAY TO SECOND',
+  [Database.Snowflake]: 'VARCHAR(255)',
 };
 
 const jsonTypes: Record<number, string> = {
@@ -142,21 +155,24 @@ const jsonTypes: Record<number, string> = {
   [Database.MySQL]: 'JSON',
   [Database.Oracle]: 'JSON',
   [Database.PostgreSQL]: 'jsonb',
-  // SQLite.ts lists no JSON type; Databricks.ts spells it VARIANT.
+  // SQLite.ts lists no JSON type; Databricks.ts and Snowflake.ts spell it
+  // VARIANT.
   [Database.SQLite]: 'TEXT',
   [Database.Databricks]: 'VARIANT',
+  [Database.Snowflake]: 'VARIANT',
 };
 
 const uuidTypes: Record<number, string> = {
   [Database.MariaDB]: 'UUID',
   [Database.MSSQL]: 'uniqueidentifier',
   // MySQL.ts, Oracle.ts, SQLite.ts and Databricks.ts list no UUID type; the
-  // canonical text form is 36 characters wide.
+  // canonical text form is 36 characters wide. Snowflake.ts lists one.
   [Database.MySQL]: 'CHAR(36)',
   [Database.Oracle]: 'VARCHAR2(36)',
   [Database.PostgreSQL]: 'uuid',
   [Database.SQLite]: 'TEXT',
   [Database.Databricks]: 'STRING',
+  [Database.Snowflake]: 'UUID',
 };
 
 const bytesTypes: Record<number, string> = {
@@ -167,6 +183,7 @@ const bytesTypes: Record<number, string> = {
   [Database.PostgreSQL]: 'bytea',
   [Database.SQLite]: 'BLOB',
   [Database.Databricks]: 'BINARY',
+  [Database.Snowflake]: 'BINARY',
 };
 
 /**

@@ -2,12 +2,12 @@ import {
   isAscValue,
   isAutoIncrementValue,
   isCharacterSet,
+  isClusterBy,
   isCollateValue,
   isCommaToken,
   isCommentValue,
   isConstraintState,
   isConstraintValue,
-  isCreateTableIfNotExists,
   isDefaultValue,
   isDescValue,
   isEqualToken,
@@ -25,6 +25,7 @@ import {
   isSemicolonToken,
   isStringToken,
   isUniqueValue,
+  matchCreateTable,
   matchDataType,
   matchNestedDataType,
 } from '@/parser/helper';
@@ -50,7 +51,8 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
   const isSemicolon = isSemicolonToken(tokens);
   const isEqual = isEqualToken(tokens);
   const isComment = isCommentValue(tokens);
-  const createTableIfNotExists = isCreateTableIfNotExists(tokens);
+  const clusterBy = isClusterBy(tokens);
+  const createTable = matchCreateTable(tokens);
 
   const isToken = () => $pos.value < tokens.length;
 
@@ -63,8 +65,16 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
     foreignKeys: [],
   };
 
-  $pos.value += createTableIfNotExists($pos.value) ? 5 : 2;
+  // The dispatch loop only reaches here where the header matched, but this
+  // parser is exported: a zero span would leave `$pos` on CREATE and spin.
+  const header = createTable($pos.value);
+  $pos.value += header === 0 ? 2 : header;
   let hasColumns = false;
+  // The column list is the group that follows the table name, optionally
+  // across a clustering clause. A later one belongs to a table option --
+  // `file_format = (...)`, `TBLPROPERTIES (...)` -- and reading it as columns
+  // invents a table out of an external or CTAS definition that declares none.
+  let atColumnList = true;
 
   while (isToken() && !newStatement($pos.value)) {
     let token = tokens[$pos.value];
@@ -77,13 +87,47 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
       break;
     }
 
+    // Snowflake writes the clustering key between the table name and the column
+    // list -- `cluster by LINEAR(L_SHIPDATE)(`. Left unclaimed, its key list is
+    // read as the column list and every real column is lost.
+    if (ast.name && clusterBy($pos.value)) {
+      $pos.value += 2;
+
+      // `LINEAR(` is a clustering function; a bare word is not, and eating it
+      // would leave the column list to be read as its argument list.
+      if (isString($pos.value) && isLeftParent($pos.value + 1)) {
+        $pos.value++;
+      }
+
+      if (isLeftParent($pos.value)) {
+        let depth = 0;
+
+        while (isToken()) {
+          if (isLeftParent($pos.value)) {
+            depth++;
+          } else if (isRightParent($pos.value)) {
+            depth--;
+
+            if (depth === 0) {
+              $pos.value++;
+              break;
+            }
+          }
+
+          $pos.value++;
+        }
+      }
+
+      continue;
+    }
+
     if (isLeftParent($pos.value)) {
       $pos.value++;
 
       // Only the first group is the column list. A later one — `WITH (...)`,
       // or a paren the tokenizer found outside a quote — would otherwise
       // replace everything the table already has.
-      if (hasColumns) {
+      if (hasColumns || !atColumnList) {
         let depth = 1;
 
         while (isToken() && depth > 0) {
@@ -111,6 +155,7 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
 
     if (isString($pos.value) && !ast.name) {
       ast.name = token.value;
+      atColumnList = true;
       $pos.value++;
 
       // `catalog.schema.table` is Unity Catalog's standard shape, and one
@@ -143,9 +188,11 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
         $pos.value++;
       }
 
+      atColumnList = false;
       continue;
     }
 
+    atColumnList = false;
     $pos.value++;
   }
 
@@ -484,7 +531,13 @@ function createTableColumnsParser(
           value += ')';
           depth--;
         } else if (depth) {
-          value += token.value;
+          // A structured type spells its fields as words -- Snowflake's
+          // `OBJECT(city VARCHAR)`. Gluing them together loses the field.
+          value +=
+            isString($pos.value) &&
+            (isString($pos.value - 1) || isRightParent($pos.value - 1))
+              ? ` ${token.value}`
+              : token.value;
         } else {
           value += value ? ` ${token.value}` : token.value;
         }

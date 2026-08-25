@@ -38,7 +38,7 @@ only; they do not appear in the Command Palette.
   become tables, scalars map to the diagram's own dialect, and the fields pointing at another
   type become the relationships; the generated types an API layer wraps its rows in are left
   out rather than drawn as tables
-- **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
+- **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle
 - **Visualization** — a force-directed view of how the tables actually relate

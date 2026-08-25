@@ -122,6 +122,7 @@ describe('membership helpers', () => {
     expect(hasDatabase(Database.MySQL)).toBe(true);
     expect(hasDatabase(Database.PostgreSQL)).toBe(true);
     expect(hasDatabase(Database.Databricks)).toBe(true);
+    expect(hasDatabase(Database.Snowflake)).toBe(true);
     expect(hasDatabase(0)).toBe(false);
     expect(hasDatabase(9999)).toBe(false);
   });
@@ -154,6 +155,7 @@ describe('membership helpers', () => {
     expect(hasDatabaseVendor(DatabaseVendor.MySQL)).toBe(true);
     expect(hasDatabaseVendor(DatabaseVendor.SQLite)).toBe(true);
     expect(hasDatabaseVendor(DatabaseVendor.Databricks)).toBe(true);
+    expect(hasDatabaseVendor(DatabaseVendor.Snowflake)).toBe(true);
     expect(hasDatabaseVendor('CockroachDB')).toBe(false);
   });
 

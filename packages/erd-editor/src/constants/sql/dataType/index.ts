@@ -7,6 +7,7 @@ import { MSSQLTypes } from './MSSQL';
 import { MySQLTypes } from './MySQL';
 import { OracleTypes } from './Oracle';
 import { PostgreSQLTypes } from './PostgreSQL';
+import { SnowflakeTypes } from './Snowflake';
 import { SQLiteTypes } from './SQLite';
 
 export const PrimitiveType = {
@@ -42,5 +43,6 @@ export const DatabaseHintMap: Record<number, Array<DataTypeHint>> = {
   [Database.MySQL]: MySQLTypes,
   [Database.Oracle]: OracleTypes,
   [Database.PostgreSQL]: PostgreSQLTypes,
+  [Database.Snowflake]: SnowflakeTypes,
   [Database.SQLite]: SQLiteTypes,
 };

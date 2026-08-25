@@ -124,6 +124,17 @@ describe('tokenizer', () => {
         ['string', 'tbl'],
       ]);
     });
+
+    // An unpaired `]` used to fall through to the bare-string branch, which
+    // pushed an empty token without advancing: the loop never ended.
+    it('emits a token for an unpaired closing bracket and moves on', () => {
+      expect(pairs(tokenizer(']'))).toEqual([['rightBracket', ']']]);
+      expect(pairs(tokenizer('a] b'))).toEqual([
+        ['string', 'a'],
+        ['rightBracket', ']'],
+        ['string', 'b'],
+      ]);
+    });
   });
 
   describe('double quote quoting', () => {

@@ -8,6 +8,7 @@ import { MSSQLTypes } from '@/constants/sql/dataType/MSSQL';
 import { MySQLTypes } from '@/constants/sql/dataType/MySQL';
 import { OracleTypes } from '@/constants/sql/dataType/Oracle';
 import { PostgreSQLTypes } from '@/constants/sql/dataType/PostgreSQL';
+import { SnowflakeTypes } from '@/constants/sql/dataType/Snowflake';
 import { SQLiteTypes } from '@/constants/sql/dataType/SQLite';
 
 describe('PrimitiveType', () => {
@@ -44,6 +45,7 @@ describe('DatabaseHintMap', () => {
     expect(DatabaseHintMap[Database.MySQL]).toBe(MySQLTypes);
     expect(DatabaseHintMap[Database.Oracle]).toBe(OracleTypes);
     expect(DatabaseHintMap[Database.PostgreSQL]).toBe(PostgreSQLTypes);
+    expect(DatabaseHintMap[Database.Snowflake]).toBe(SnowflakeTypes);
     expect(DatabaseHintMap[Database.SQLite]).toBe(SQLiteTypes);
   });
 

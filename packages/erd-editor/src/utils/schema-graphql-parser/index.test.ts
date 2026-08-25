@@ -273,6 +273,15 @@ describe('schemaGraphQLParserToSchemaJson custom scalars per dialect', () => {
       day: 'DATE',
       clock: 'STRING',
     },
+    [Database.Snowflake]: {
+      id: 'UUID',
+      at: 'TIMESTAMP_NTZ',
+      payload: 'VARIANT',
+      counter: 'BIGINT',
+      amount: 'DECIMAL',
+      day: 'DATE',
+      clock: 'TIME',
+    },
   };
 
   DatabaseList.forEach(database => {

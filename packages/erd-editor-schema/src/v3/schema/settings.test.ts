@@ -123,8 +123,9 @@ describe('v3/schema/settings', () => {
         PostgreSQL: 16,
         SQLite: 32,
         Databricks: 64,
+        Snowflake: 128,
       });
-      expect(DatabaseList).toEqual([1, 2, 4, 8, 16, 32, 64]);
+      expect(DatabaseList).toEqual([1, 2, 4, 8, 16, 32, 64, 128]);
     });
 
     it('resolves a flag back to its vendor name', () => {
@@ -136,7 +137,8 @@ describe('v3/schema/settings', () => {
       expect(nameOf(Database.PostgreSQL)).toBe('PostgreSQL');
       expect(nameOf(Database.SQLite)).toBe('SQLite');
       expect(nameOf(Database.Databricks)).toBe('Databricks');
-      expect(nameOf(128)).toBeUndefined();
+      expect(nameOf(Database.Snowflake)).toBe('Snowflake');
+      expect(nameOf(256)).toBeUndefined();
     });
   });
 

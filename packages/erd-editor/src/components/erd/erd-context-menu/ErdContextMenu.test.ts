@@ -273,6 +273,7 @@ describe('ErdContextMenu / ERD type', () => {
       'MySQL',
       'Oracle',
       'PostgreSQL',
+      'Snowflake',
       'SQLite',
     ]);
 

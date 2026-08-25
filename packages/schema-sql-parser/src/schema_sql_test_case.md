@@ -426,6 +426,63 @@
   > xid8
   > xml
 
+- Snowflake
+
+  > array
+  > bigint
+  > binary
+  > boolean
+  > byteint
+  > char
+  > char varying
+  > character
+  > date
+  > datetime
+  > dec
+  > decfloat
+  > decimal
+  > double
+  > double precision
+  > file
+  > float
+  > float4
+  > float8
+  > geography
+  > geometry
+  > int
+  > integer
+  > map
+  > nchar
+  > nchar varying
+  > number
+  > numeric
+  > nvarchar
+  > nvarchar2
+  > object
+  > real
+  > smallint
+  > string
+  > text
+  > time
+  > timestamp
+  > timestamp with local time zone
+  > timestamp with time zone
+  > timestamp without time zone
+  > timestamp_ltz
+  > timestamp_ntz
+  > timestamp_tz
+  > timestampltz
+  > timestampntz
+  > timestamptz
+  > tinyint
+  > unknown
+  > uuid
+  > varbinary
+  > varchar
+  > varchar2
+  > variant
+  > vector
+
 - SQLite
 
   > bigint
@@ -1668,6 +1725,186 @@ USING DELTA
       ],
       "indexes": [],
       "foreignKeys": []
+    }
+  ]
+}
+```
+### Snowflake CREATE OR REPLACE TABLE
+
+```sql
+create or replace TABLE MYDATABASE.PUBLIC.SALESORDERS cluster by LINEAR(ORDER_DATE)(
+	ORDER_ID NUMBER(38,0) NOT NULL autoincrement start 1 increment 1,
+	ORDER_DATE DATE NOT NULL,
+	DESCRIPTION VARCHAR(16777216) COMMENT 'free text',
+	PROFILE OBJECT(city VARCHAR, zip NUMBER),
+	TAGS ARRAY(VARCHAR),
+	CREATED_AT TIMESTAMP_TZ(9),
+	SP_ID NUMBER(38,0) NOT NULL,
+	unique (SP_ID),
+	constraint PK_ORDER_ID primary key (ORDER_ID) not enforced rely,
+	constraint FK_SP_ID foreign key (SP_ID) references MYDATABASE.PUBLIC.SALESPEOPLE(SP_ID) not enforced
+)
+COMMENT = 'sales orders'
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "SALESORDERS",
+      "comment": "sales orders",
+      "columns": [
+        {
+          "name": "ORDER_ID",
+          "dataType": "NUMBER(38,0)",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": true,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "ORDER_DATE",
+          "dataType": "DATE",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "DESCRIPTION",
+          "dataType": "VARCHAR(16777216)",
+          "default": "",
+          "comment": "free text",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "PROFILE",
+          "dataType": "OBJECT(city VARCHAR,zip NUMBER)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "TAGS",
+          "dataType": "ARRAY(VARCHAR)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "CREATED_AT",
+          "dataType": "TIMESTAMP_TZ(9)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "SP_ID",
+          "dataType": "NUMBER(38,0)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": true,
+          "nullable": false
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "columnNames": [
+            "SP_ID"
+          ],
+          "refTableName": "SALESPEOPLE",
+          "refColumnNames": [
+            "SP_ID"
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Snowflake transient table and a fully qualified ALTER
+
+```sql
+CREATE OR REPLACE TRANSIENT TABLE analytics.dbt_dev.users (
+  user_id INT IDENTITY(1,1),
+  username VARCHAR(50) NOT NULL
+);
+
+ALTER TABLE analytics.dbt_dev.users ADD CONSTRAINT PK_USERS PRIMARY KEY (user_id);
+
+ALTER TABLE analytics.dbt_dev.orders ADD FOREIGN KEY (user_id) REFERENCES analytics.dbt_dev.users (user_id);
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "users",
+      "comment": "",
+      "columns": [
+        {
+          "name": "user_id",
+          "dataType": "INT",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": true,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "username",
+          "dataType": "VARCHAR(50)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    },
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "users",
+      "columnNames": [
+        "user_id"
+      ]
+    },
+    {
+      "type": "alter.table.add.foreignKey",
+      "name": "orders",
+      "columnNames": [
+        "user_id"
+      ],
+      "refTableName": "users",
+      "refColumnNames": [
+        "user_id"
+      ]
     }
   ]
 }

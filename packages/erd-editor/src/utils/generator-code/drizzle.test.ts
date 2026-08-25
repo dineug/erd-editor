@@ -645,6 +645,10 @@ describe('generator-code/drizzle', () => {
           Database.Databricks,
           'import { integer, pgTable } from "drizzle-orm/pg-core";',
         ],
+        [
+          Database.Snowflake,
+          'import { integer, pgTable } from "drizzle-orm/pg-core";',
+        ],
       ];
 
       cases.forEach(([database, header]) => {

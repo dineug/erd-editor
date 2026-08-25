@@ -64,6 +64,7 @@ export const Database = {
   PostgreSQL: 16,
   SQLite: 32,
   Databricks: 64,
+  Snowflake: 128,
 } as const;
 export const DatabaseList: ReadonlyArray<number> = Object.values(Database);
 

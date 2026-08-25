@@ -16,6 +16,7 @@ describe('DatabaseVendor', () => {
       MySQL: 'MySQL',
       Oracle: 'Oracle',
       PostgreSQL: 'PostgreSQL',
+      Snowflake: 'Snowflake',
       SQLite: 'SQLite',
     });
 
@@ -34,6 +35,7 @@ describe('DatabaseVendorList', () => {
       'MySQL',
       'Oracle',
       'PostgreSQL',
+      'Snowflake',
       'SQLite',
     ]);
   });
@@ -53,6 +55,7 @@ describe('DatabaseVendorToDatabase', () => {
       MySQL: Database.MySQL,
       Oracle: Database.Oracle,
       PostgreSQL: Database.PostgreSQL,
+      Snowflake: Database.Snowflake,
       SQLite: Database.SQLite,
     });
   });
@@ -65,6 +68,7 @@ describe('DatabaseVendorToDatabase', () => {
     expect(DatabaseVendorToDatabase.PostgreSQL).toBe(16);
     expect(DatabaseVendorToDatabase.SQLite).toBe(32);
     expect(DatabaseVendorToDatabase.Databricks).toBe(64);
+    expect(DatabaseVendorToDatabase.Snowflake).toBe(128);
   });
 
   it('is a bijection onto DatabaseList', () => {
