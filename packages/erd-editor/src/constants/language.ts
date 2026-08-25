@@ -30,4 +30,5 @@ export const LanguageToLangMap: Record<number, Lang> = {
   [Language.Sequelize]: 'typescript',
   [Language.Drizzle]: 'typescript',
   [Language.DBML]: 'sql',
+  [Language.AML]: 'sql',
 };

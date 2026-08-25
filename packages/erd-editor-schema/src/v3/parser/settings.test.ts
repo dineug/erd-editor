@@ -261,6 +261,12 @@ describe('createAndMergeSettings', () => {
       );
     });
 
+    it('keeps the AML language', () => {
+      expect(createAndMergeSettings({ language: Language.AML }).language).toBe(
+        Language.AML
+      );
+    });
+
     it('ignores numbers outside the enum lists', () => {
       const settings = createAndMergeSettings({
         database: 999,
