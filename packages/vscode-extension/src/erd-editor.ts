@@ -39,6 +39,7 @@ const IMPORT_FILE_TYPES: Record<
   json: { label: 'JSON', extensions: ['json'] },
   sql: { label: 'SQL', extensions: ['sql'] },
   graphql: { label: 'GraphQL', extensions: ['graphql', 'gql', 'graphqls'] },
+  dbml: { label: 'DBML', extensions: ['dbml'] },
 };
 
 const THEME_KEYS = [

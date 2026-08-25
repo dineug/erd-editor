@@ -28,18 +28,20 @@ afterEach(() => {
 });
 
 describe('importMenus', () => {
-  it('exposes a json, a Schema SQL and a GraphQL entry with their icons', () => {
+  it('exposes every import format with its icon', () => {
     const result = createImportMenus(app, () => {});
 
     expect(result.map(menu => menu.name)).toEqual([
       'json',
       'Schema SQL',
       'GraphQL',
+      'DBML',
     ]);
     expect(result.map(menu => menu.icon)).toEqual([
       { prefix: 'mdi', name: 'code-json' },
       { prefix: 'mdi', name: 'database-import' },
       { prefix: 'mdi', name: 'graphql' },
+      { prefix: 'mdi', name: 'relation-one-to-many' },
     ]);
   });
 
@@ -69,6 +71,15 @@ describe('importMenus', () => {
     expect(requests).toEqual([
       { type: 'graphql', op: 'set', accept: '.graphql,.gql,.graphqls' },
     ]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('requests a dbml import and closes the menu', () => {
+    const onClose = vi.fn();
+
+    createImportMenus(app, onClose)[3].onClick();
+
+    expect(requests).toEqual([{ type: 'dbml', op: 'set', accept: '.dbml' }]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

@@ -534,6 +534,25 @@ describe('<erd-editor>', () => {
     expect(app.store.state.doc.tableIds.length).toBeGreaterThan(0);
   });
 
+  it('imports DBML and stays quiet while readonly', async () => {
+    const { el, app } = await createEditor();
+    const onChange = vi.fn();
+    el.addEventListener('change', onChange);
+
+    el.setSchemaDBML('Table users {\n  id int [pk]\n}');
+    await new Promise(resolve => setTimeout(resolve, 260));
+    expect(onChange).toHaveBeenCalled();
+
+    el.readonly = true;
+    await flush();
+    onChange.mockClear();
+
+    el.setSchemaDBML('Table posts {\n  id int [pk]\n}');
+    await new Promise(resolve => setTimeout(resolve, 260));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(app.store.state.doc.tableIds.length).toBeGreaterThan(0);
+  });
+
   it('asks for a diff viewer through setDiffValue', async () => {
     const { el, app } = await createEditor();
     const openDiffViewer = vi.fn();

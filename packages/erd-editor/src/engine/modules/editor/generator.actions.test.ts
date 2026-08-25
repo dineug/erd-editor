@@ -32,6 +32,7 @@ import {
   focusMoveTableAction$,
   initialLoadJsonAction$,
   loadJsonAction$,
+  loadSchemaDBMLAction$,
   loadSchemaGraphQLAction$,
   loadSchemaSQLAction$,
   moveAllAction$,
@@ -686,6 +687,52 @@ describe('loadSchemaGraphQLAction$', () => {
     store.dispatchSync(
       loadSchemaGraphQLAction$('model User {\n  id Int @id\n}')
     );
+
+    expect(store.state.doc.tableIds).toEqual([]);
+  });
+});
+
+describe('loadSchemaDBMLAction$', () => {
+  const dbml = `Table users {
+  id int [pk]
+  name varchar
+}`;
+
+  it('imports the DBML, keeps the current settings and sorts the tables', () => {
+    store.dispatchSync(changeDatabaseNameAction({ value: 'keep-me' }));
+
+    store.dispatchSync(loadSchemaDBMLAction$(dbml));
+
+    const tables = Object.values(store.state.collections.tableEntities);
+    expect(tables.map(({ name }) => name)).toEqual(['users']);
+    expect(store.state.doc.tableIds).toHaveLength(1);
+    expect(store.state.settings.databaseName).toBe('keep-me');
+  });
+
+  it('emits clear, loadJson and sortTable', () => {
+    expect(typesOf(store, loadSchemaDBMLAction$(dbml))).toEqual([
+      'editor.clear',
+      'editor.loadJson',
+      'table.sort',
+    ]);
+  });
+
+  // Unified with `loadSchemaSQLAction$`: input the parser cannot read loads an
+  // empty document rather than being refused, and undo puts the diagram back.
+  it('loads an empty document for text that declares no table', () => {
+    seedTable(store, 't1');
+
+    store.dispatchSync(
+      loadSchemaDBMLAction$("Project p { database_type: 'X' }")
+    );
+
+    expect(store.state.doc.tableIds).toEqual([]);
+  });
+
+  it('loads an empty document for text it cannot read as DBML', () => {
+    seedTable(store, 't1');
+
+    store.dispatchSync(loadSchemaDBMLAction$('CREATE TABLE users (id INT);'));
 
     expect(store.state.doc.tableIds).toEqual([]);
   });
@@ -1445,6 +1492,7 @@ describe('actions$', () => {
         'focusMoveTableAction$',
         'initialLoadJsonAction$',
         'loadJsonAction$',
+        'loadSchemaDBMLAction$',
         'loadSchemaGraphQLAction$',
         'loadSchemaSQLAction$',
         'moveAllAction$',

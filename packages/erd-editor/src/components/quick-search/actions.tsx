@@ -33,6 +33,7 @@ import {
 import { getAbsoluteZoomPoint } from '@/utils/dragSelect';
 import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
 import {
+  importDBML,
   importGraphQL,
   importJSON,
   importSchemaSQL,
@@ -111,6 +112,14 @@ export function createScopeActions(app: AppContext): Action[] {
           keywords: 'graphql sdl gql schema',
           perform: app => {
             importGraphQL(app);
+          },
+        },
+        {
+          icon: <Icon prefix="mdi" name="relation-one-to-many" size={16} />,
+          name: 'DBML',
+          keywords: 'dbml dbdiagram dbdocs schema',
+          perform: app => {
+            importDBML(app);
           },
         },
       ],

@@ -56,6 +56,10 @@ export const menus: Menu[] = [
     name: 'Drizzle',
     value: Language.Drizzle,
   },
+  {
+    name: 'DBML',
+    value: Language.DBML,
+  },
 ];
 
 export function createLanguageMenus({ store }: AppContext) {

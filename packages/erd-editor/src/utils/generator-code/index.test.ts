@@ -174,6 +174,11 @@ const expectedByLanguage: Array<[string, number, string[]]> = [
       '',
     ],
   ],
+  [
+    'DBML',
+    Language.DBML,
+    ['', 'Table "user" {', '  "created_at" INT [not null]', '}', ''],
+  ],
 ];
 
 describe('generator-code/index', () => {

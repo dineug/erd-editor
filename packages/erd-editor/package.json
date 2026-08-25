@@ -55,6 +55,7 @@
     "e2e:typecheck": "tsc -p e2e/tsconfig.json"
   },
   "devDependencies": {
+    "@dbml/parse": "10.1.1",
     "@dineug/erd-editor-schema": "workspace:*",
     "@dineug/erd-editor-shiki-worker": "workspace:*",
     "@dineug/r-html": "workspace:*",

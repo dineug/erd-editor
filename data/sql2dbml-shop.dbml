@@ -1,0 +1,75 @@
+Table "shop"."customers" {
+  "id" serial [pk, increment]
+  "email" varchar(255) [not null, unique]
+  "full_name" varchar(120) [not null]
+  "created_at" timestamptz [not null, default: `now()`]
+
+  Note: '''people who buy
+things'''
+}
+
+Table "shop"."addresses" {
+  "id" serial [pk, increment]
+  "customer_id" integer
+  "line1" varchar(255) [not null]
+  "line2" varchar(255)
+  "postal_code" varchar(20) [not null]
+  "country" "character varying"(2) [not null, default: 'KR']
+
+  Indexes {
+    (customer_id, postal_code) [name: "idx_addresses_customer_postal"]
+  }
+}
+
+Table "shop"."products" {
+  "id" serial [pk, increment]
+  "sku" varchar(40) [not null, unique]
+  "name" varchar(255) [not null]
+  "price" "numeric(10,2)" [not null, default: 0]
+  "attributes" jsonb
+  "tags" "text[]"
+}
+
+Table "warehouse"."stock_levels" {
+  "product_id" integer [not null]
+  "warehouse_code" varchar(10) [not null]
+  "quantity" integer [not null, default: 0]
+
+  Indexes {
+    (product_id, warehouse_code) [pk]
+  }
+}
+
+Table "shop"."orders" {
+  "id" serial [pk, increment]
+  "customer_id" integer
+  "billing_address_id" integer
+  "shipping_address_id" integer
+  "placed_at" timestamptz [not null, default: `now()`]
+  "total" "numeric(10,2)" [not null, default: 0]
+}
+
+Table "shop"."order_items" {
+  "order_id" integer [not null]
+  "product_id" integer [not null]
+  "quantity" integer [not null, default: 1]
+  "unit_price" "numeric(10,2)" [not null]
+
+  Indexes {
+    (order_id, product_id) [pk]
+  }
+}
+
+Ref:"shop"."customers"."id" ?<? "shop"."addresses"."customer_id"
+
+Ref:"shop"."customers"."id" ?<? "shop"."orders"."customer_id"
+
+Ref:"shop"."addresses"."id" ?<? "shop"."orders"."billing_address_id"
+
+Ref:"shop"."addresses"."id" ?<? "shop"."orders"."shipping_address_id"
+
+Ref:"shop"."orders"."id" <? "shop"."order_items"."order_id"
+
+Ref:"shop"."products"."id" <? "shop"."order_items"."product_id"
+
+Ref:"shop"."products"."id" <? "warehouse"."stock_levels"."product_id"

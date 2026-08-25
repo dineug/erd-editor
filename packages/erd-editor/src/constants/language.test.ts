@@ -18,6 +18,7 @@ describe('LanguageToLangMap', () => {
       [Language.TypeORM]: 'typescript',
       [Language.Sequelize]: 'typescript',
       [Language.Drizzle]: 'typescript',
+      [Language.DBML]: 'sql',
     });
   });
 
@@ -68,6 +69,10 @@ describe('LanguageToLangMap', () => {
     expect(LanguageToLangMap[Language.Drizzle]).toBe(
       LanguageToLangMap[Language.TypeScript]
     );
+  });
+
+  it('renders DBML with the SQL highlighter, the closest grammar shiki bundles', () => {
+    expect(LanguageToLangMap[Language.DBML]).toBe('sql');
   });
 
   it('returns undefined for a language flag that does not exist', () => {

@@ -1,5 +1,6 @@
 import { AppContext } from '@/components/appContext';
 import {
+  importDBML,
   importGraphQL,
   importJSON,
   importSchemaSQL,
@@ -37,6 +38,17 @@ export function createImportMenus(app: AppContext, onClose: () => void) {
       name: 'GraphQL',
       onClick: () => {
         importGraphQL(app);
+        onClose();
+      },
+    },
+    {
+      icon: {
+        prefix: 'mdi',
+        name: 'relation-one-to-many',
+      },
+      name: 'DBML',
+      onClick: () => {
+        importDBML(app);
         onClose();
       },
     },
