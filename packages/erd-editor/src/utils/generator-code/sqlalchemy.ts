@@ -789,6 +789,7 @@ const binaryTypes = new Set([
 const timestampTzTypes = new Set([
   'datetimeoffset',
   'timestamp with time zone',
+  'timestamp_tz',
   'timestamptz',
 ]);
 

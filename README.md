@@ -29,7 +29,7 @@ To try it in an IDE, create an empty file with a `.erd.json` extension and open 
 - **GraphQL SDL import** — point it at a schema from any tool that emits SDL and get a
   diagram. Object types become tables, scalars map to the diagram's own dialect, and the
   fields that point at another type become the relationships between them
-- **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
+- **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle
 - **Visualization** — a force-directed view of how the tables actually relate

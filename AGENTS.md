@@ -25,7 +25,7 @@
 | --- | --- |
 | `packages/` | The 14 workspace packages; each carries its own `AGENTS.md` |
 | `data/` | Importer fixtures, all for hand-testing: SQL dumps (`sakila`, `OKKY`, `GNUBOARD5`, `YOUNGCART5`, `Magento2-sales`), GraphQL SDL (`bookstore` directive-free, `hasura-blog` for the generated-type pruning path) and `test.json` |
-| `docker/` | Per-vendor `docker-compose.yml` (mysql, mariadb, mssql, oracle, postgres, sqlite) for validating generated DDL; Databricks has no entry |
+| `docker/` | Per-vendor `docker-compose.yml` (mysql, mariadb, mssql, oracle, postgres, sqlite) for validating generated DDL; Databricks and Snowflake have no entry |
 | `json-schema/` | `schema.json` for `.erd` / `.vuerd` documents; `erd-editor-schema` stamps its URL into every parsed document |
 | `.github/` | `workflows/ci.yml` and `workflows/intellij-plugin.yml`, the `setup-workspace` composite action, two issue templates |
 | `.vite-hooks/` | `pre-commit` runs `vp staged`, `commit-msg` runs commitlint; only the generated `_/` dispatcher is gitignored |
@@ -79,7 +79,7 @@ Build order is derived from workspace dependencies: the first five rows below ar
 - `pnpm check` = `vp check` (oxfmt + oxlint in one pass) + the root `tsc --noEmit` + `scripts/check-task-inputs.mjs`. `pnpm format` is the writing half.
 - Out-of-process suites, none of them in `pnpm test`: `pnpm --filter <pkg> e2e` for `erd-editor`, `app` and `r-html` (Playwright), and `vscode-extension` (`@vscode/test-cli`; needs `xvfb-run -a` on Linux). `app`'s is the one with no CI job.
 - `ci.yml` runs five jobs on push/PR/dispatch: `check` (`pnpm check`, then a build of `app`'s and `vuerd-vscode`'s dependencies, then those two `typecheck` scripts and `app`'s `e2e:typecheck`), `ci` (`pnpm test`, r-html `test:coverage`, `pnpm build`), `e2e`, `r-html-e2e`, `vscode-extension-e2e`. `intellij-plugin.yml` is separate so its `cancel-in-progress` does not reach those five; a `gate` job there decides whether the Gradle jobs run, because a job skipped by `paths` at workflow level leaves its check Pending forever. That build step in `check` is load-bearing: those typechecks resolve siblings through `dist/**/*.d.ts`, so dropping it passes locally and fails only on a runner.
-- Lint scope is `**/src/**/*.{ts,tsx}` — e2e specs, config files and `vscode-extension/test/**` are outside it. For SQL-generation changes, `docker/<vendor>/` plus `data/*.sql` is the manual loop — except Databricks, a proprietary managed cloud service with no local container, so there is no `docker/databricks/` and there will not be one.
+- Lint scope is `**/src/**/*.{ts,tsx}` — e2e specs, config files and `vscode-extension/test/**` are outside it. For SQL-generation changes, `docker/<vendor>/` plus `data/*.sql` is the manual loop — except Databricks and Snowflake, proprietary managed cloud services with no local container, so there is no `docker/databricks/` or `docker/snowflake/` and there will not be one.
 
 ### Common Patterns
 

@@ -17,7 +17,7 @@ and the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor)
 - Visual schema design — tables, columns, memos, and four relationship cardinalities
   (zero-one, zero-N, one-only, one-N)
 - Import — a `.sql` dump, or a GraphQL SDL schema from any tool that emits one
-- SQL DDL export — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL and SQLite
+- SQL DDL export — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake and SQLite
 - Code generation — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle
 - Export — `.erd.json`, `.sql`, `.png`
@@ -110,7 +110,7 @@ erd-editor {
 | Method | Description |
 | --- | --- |
 | `setInitialValue(value: string)` | Load the initial document. Does not create a history entry. |
-| `getSchemaSQL(vendor?)` | Export DDL. `vendor` is one of `Databricks`, `MariaDB`, `MSSQL`, `MySQL`, `Oracle`, `PostgreSQL`, `SQLite`; omit it to use the document's own setting. |
+| `getSchemaSQL(vendor?)` | Export DDL. `vendor` is one of `Databricks`, `MariaDB`, `MSSQL`, `MySQL`, `Oracle`, `PostgreSQL`, `Snowflake`, `SQLite`; omit it to use the document's own setting. |
 | `setSchemaSQL(value: string)` | Parse a DDL string and **replace** the current document with it. Lands in the undo history; an empty string is ignored. |
 | `setSchemaGraphQL(value: string)` | Parse a GraphQL SDL string and **replace** the current document with it. Object types become tables, scalars map to the document's own dialect, and relationships are read from the fields that point at another type. Lands in the undo history; an empty string is ignored. |
 | `setDiffValue(value: string)` | Open the diff viewer against another document. |

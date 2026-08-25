@@ -33,6 +33,10 @@ export const menus: Menu[] = [
     value: Database.PostgreSQL,
   },
   {
+    name: 'Snowflake',
+    value: Database.Snowflake,
+  },
+  {
     name: 'SQLite',
     value: Database.SQLite,
   },

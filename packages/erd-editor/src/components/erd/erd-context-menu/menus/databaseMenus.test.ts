@@ -24,6 +24,7 @@ describe('databaseMenus', () => {
       'MySQL',
       'Oracle',
       'PostgreSQL',
+      'Snowflake',
       'SQLite',
     ]);
     expect(menus.map(menu => menu.value)).toEqual([
@@ -33,6 +34,7 @@ describe('databaseMenus', () => {
       Database.MySQL,
       Database.Oracle,
       Database.PostgreSQL,
+      Database.Snowflake,
       Database.SQLite,
     ]);
   });

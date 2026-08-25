@@ -137,6 +137,7 @@ describe('SchemaSQLContextMenu', () => {
       'MySQL',
       'Oracle',
       'PostgreSQL',
+      'Snowflake',
       'SQLite',
     ]);
   });
@@ -157,7 +158,7 @@ describe('SchemaSQLContextMenu', () => {
     const items = subItems(await openSubmenu('Database'));
 
     expect(items.map(el => el.querySelectorAll('svg').length)).toEqual([
-      0, 0, 0, 1, 0, 0, 0,
+      0, 0, 0, 1, 0, 0, 0, 0,
     ]);
   });
 

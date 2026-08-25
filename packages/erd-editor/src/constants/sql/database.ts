@@ -8,6 +8,7 @@ export const DatabaseVendor = {
   MySQL: 'MySQL',
   Oracle: 'Oracle',
   PostgreSQL: 'PostgreSQL',
+  Snowflake: 'Snowflake',
   SQLite: 'SQLite',
 } as const;
 export type DatabaseVendor = ValuesType<typeof DatabaseVendor>;
@@ -21,5 +22,6 @@ export const DatabaseVendorToDatabase: Record<DatabaseVendor, number> = {
   [DatabaseVendor.MySQL]: Database.MySQL,
   [DatabaseVendor.Oracle]: Database.Oracle,
   [DatabaseVendor.PostgreSQL]: Database.PostgreSQL,
+  [DatabaseVendor.Snowflake]: Database.Snowflake,
   [DatabaseVendor.SQLite]: Database.SQLite,
 };
