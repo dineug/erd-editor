@@ -4,10 +4,10 @@
 
 ![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
 
-Design a database schema visually, import one you already have from SQL DDL, GraphQL SDL or
-DBML, export DDL, and generate code from the result — in the browser, in VS Code or IntelliJ, or
-embedded in your own page as a custom element. One editor and one document format across all
-of them.
+Design a database schema visually, import one you already have from SQL DDL, GraphQL SDL,
+DBML or AML, export DDL, and generate code from the result — in the browser, in VS Code or
+IntelliJ, or embedded in your own page as a custom element. One editor and one document format
+across all of them.
 
 ## Where to use it
 
@@ -32,9 +32,12 @@ To try it in an IDE, create an empty file with a `.erd.json` extension and open 
 - **DBML import** — read a `.dbml` file written for dbdiagram.io or dbdocs.io, or emitted by
   `sql2dbml` or `prisma-dbml-generator`. Tables, columns, indexes, enums and every `Ref`
   spelling arrive; the elements the diagram has no place for are skipped rather than refused
+- **AML import** — read an `.aml` file written for [Azimutt](https://azimutt.app), in either the
+  v2 or the legacy v1 spelling. Entities, attributes, indexes, enums and every relation arrow
+  arrive; a check, a struct type and a view are skipped rather than refused
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML
+  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, `.png`
 - **Quick search**, **undo / redo**, keyboard shortcuts, and a theme builder

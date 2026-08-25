@@ -11,6 +11,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import { Emitter } from '@/utils/emitter';
 import {
+  importAML,
   importDBML,
   importDiffJSON,
   importGraphQL,
@@ -141,6 +142,21 @@ describe('importFile', () => {
         type: 'dbml',
         op: 'set',
         accept: '.dbml',
+      });
+      expect(harness.inputs).toHaveLength(0);
+      expect(harness.clicks).toBe(0);
+    });
+
+    it('short-circuits importAML with a aml/set descriptor', () => {
+      const callback = vi.fn();
+      setImportFileCallback(callback);
+
+      importAML(harness.app);
+
+      expect(callback).toHaveBeenCalledWith({
+        type: 'aml',
+        op: 'set',
+        accept: '.aml',
       });
       expect(harness.inputs).toHaveLength(0);
       expect(harness.clicks).toBe(0);
@@ -452,6 +468,66 @@ describe('importFile', () => {
       importDBML(harness.app);
       const [input] = harness.inputs;
       attachFile(input, 'schemadbml', dbml);
+
+      await change(input);
+
+      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(harness.emitted).toHaveLength(1);
+    });
+  });
+
+  describe('importAML', () => {
+    const aml = 'users\n  id int pk';
+
+    it('creates and clicks a file input accepting the aml extension', () => {
+      importAML(harness.app);
+
+      const [input] = harness.inputs;
+      expect(input.getAttribute('type')).toBe('file');
+      expect(input.getAttribute('accept')).toBe('.aml');
+      expect(harness.clicks).toBe(1);
+    });
+
+    it.each(['schema.aml', 'schema.AML'])(
+      'dispatches loadSchemaAMLAction$ for %s',
+      async name => {
+        importAML(harness.app);
+        const [input] = harness.inputs;
+        attachFile(input, name, aml);
+
+        await change(input);
+
+        expect(harness.dispatch).toHaveBeenCalledTimes(1);
+        expect(typeof harness.dispatch.mock.calls[0][0]).toBe('function');
+        expect(harness.emitted).toHaveLength(0);
+      }
+    );
+
+    it('does nothing when no file is selected', async () => {
+      importAML(harness.app);
+
+      await change(harness.inputs[0]);
+
+      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(harness.emitted).toHaveLength(0);
+    });
+
+    it('emits a toast when the extension is not aml', async () => {
+      importAML(harness.app);
+      const [input] = harness.inputs;
+      attachFile(input, 'schema.sql', aml);
+
+      await change(input);
+
+      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(harness.emitted).toHaveLength(1);
+      expect(harness.emitted[0].type).toBe('openToast');
+    });
+
+    it('rejects a name ending in aml without the dot', async () => {
+      importAML(harness.app);
+      const [input] = harness.inputs;
+      attachFile(input, 'schemaaml', aml);
 
       await change(input);
 

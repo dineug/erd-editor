@@ -36,12 +36,14 @@ describe('importMenus', () => {
       'Schema SQL',
       'GraphQL',
       'DBML',
+      'AML',
     ]);
     expect(result.map(menu => menu.icon)).toEqual([
       { prefix: 'mdi', name: 'code-json' },
       { prefix: 'mdi', name: 'database-import' },
       { prefix: 'mdi', name: 'graphql' },
       { prefix: 'mdi', name: 'relation-one-to-many' },
+      { prefix: 'mdi', name: 'format-indent-increase' },
     ]);
   });
 
@@ -80,6 +82,15 @@ describe('importMenus', () => {
     createImportMenus(app, onClose)[3].onClick();
 
     expect(requests).toEqual([{ type: 'dbml', op: 'set', accept: '.dbml' }]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('requests an aml import and closes the menu', () => {
+    const onClose = vi.fn();
+
+    createImportMenus(app, onClose)[4].onClick();
+
+    expect(requests).toEqual([{ type: 'aml', op: 'set', accept: '.aml' }]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

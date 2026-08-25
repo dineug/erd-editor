@@ -1,0 +1,90 @@
+# Hand-written AMLv2: a schema namespace per group, an alias type and two enums,
+# inline `->` relations, a composite `rel`, a one-to-one `--` and a
+# many-to-many `<>`. Everything a small store needs, written the way Azimutt
+# writes one.
+
+type uid int # alias type
+type member_tier (bronze, silver, gold) # enum type
+type order_status (pending, paid, shipped, cancelled)
+
+namespace catalog
+
+authors as a | People who wrote something we sell
+  id uid pk
+  name varchar(120) index=idx_authors_name
+  born date nullable
+  homepage varchar(255) nullable
+  bio text nullable | Free-form, shown on the author page
+
+publishers
+  id uid pk
+  name varchar(120) unique
+  country_code char(2)=KR
+
+books |||
+  One row per edition.
+  A reprint with a new ISBN is a new row.
+|||
+  id uid pk
+  publisher_id int index=idx_books_publisher_published -> catalog.publishers(id)
+  isbn char(13) unique | ISBN-13, no dashes
+  title varchar(255) index
+  subtitle varchar(255) nullable
+  price decimal(10,2)=0
+  published_on date nullable index=idx_books_publisher_published
+  page_count smallint nullable
+  in_print bool=true
+  created_at timestamp=`now()`
+
+book_authors | The join table between books and authors, written out
+  book_id uid pk=book_authors_pk -> catalog.books(id)
+  author_id uid pk=book_authors_pk -> a(id)
+  position smallint=1 | Order on the cover
+
+namespace sales
+
+members
+  id uid pk
+  email varchar(255) unique
+  display_name varchar(60)
+  tier member_tier=bronze
+  joined_at timestamp=`now()`
+  newsletter bool=false
+
+member_profiles
+  member_id uid pk -- sales.members(id) | one-to-one relation
+  phone varchar(30) nullable
+  address varchar(255) nullable
+  birthday date nullable
+
+orders
+  id uid pk
+  member_id uid index=idx_orders_member_placed -> sales.members(id)
+  status order_status=pending index
+  total decimal(10,2)=0
+  placed_at timestamp=`now()` index=idx_orders_member_placed
+  note text nullable
+
+order_lines
+  order_id uid pk=order_lines_pk -> sales.orders(id)
+  line_no smallint pk=order_lines_pk
+  book_id uid -> catalog.books(id)
+  quantity smallint=1
+  unit_price decimal(10,2)
+
+picking_slips
+  order_id uid pk=picking_slips_pk
+  line_no smallint pk=picking_slips_pk
+  picked_at timestamp nullable
+
+reviews
+  id uid pk
+  book_id uid unique=uq_reviews_book_member -> catalog.books(id)
+  member_id uid unique=uq_reviews_book_member -> sales.members(id)
+  rating smallint | 1 to 5
+  body text nullable
+  posted_at timestamp=`now()`
+
+rel sales.picking_slips(order_id, line_no) -> sales.order_lines(order_id, line_no) | composite relation
+
+rel sales.members(id) <> catalog.authors(id) | natural many-to-many relation, readers following an author

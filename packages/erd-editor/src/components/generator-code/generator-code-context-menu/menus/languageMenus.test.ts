@@ -24,6 +24,7 @@ describe('languageMenus', () => {
       { name: 'Sequelize', value: Language.Sequelize },
       { name: 'Drizzle', value: Language.Drizzle },
       { name: 'DBML', value: Language.DBML },
+      { name: 'AML', value: Language.AML },
     ]);
   });
 
@@ -46,6 +47,7 @@ describe('languageMenus', () => {
       'Sequelize',
       'Drizzle',
       'DBML',
+      'AML',
     ]);
     created.forEach(menu => expect(typeof menu.onClick).toBe('function'));
   });

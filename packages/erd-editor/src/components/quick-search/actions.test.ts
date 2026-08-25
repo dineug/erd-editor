@@ -322,12 +322,19 @@ describe('createScopeActions / Import and Export', () => {
     setImportFileCallback(onImport);
     const entries = find(scope(), 'Import').next ?? [];
 
-    expect(names(entries)).toEqual(['json', 'Schema SQL', 'GraphQL', 'DBML']);
+    expect(names(entries)).toEqual([
+      'json',
+      'Schema SQL',
+      'GraphQL',
+      'DBML',
+      'AML',
+    ]);
 
     find(entries, 'json').perform?.(app);
     find(entries, 'Schema SQL').perform?.(app);
     find(entries, 'GraphQL').perform?.(app);
     find(entries, 'DBML').perform?.(app);
+    find(entries, 'AML').perform?.(app);
 
     expect(onImport).toHaveBeenNthCalledWith(1, {
       type: 'json',
@@ -349,6 +356,11 @@ describe('createScopeActions / Import and Export', () => {
       op: 'set',
       accept: '.dbml',
     });
+    expect(onImport).toHaveBeenNthCalledWith(5, {
+      type: 'aml',
+      op: 'set',
+      accept: '.aml',
+    });
   });
 
   it('finds the GraphQL import entry by its sdl keywords', () => {
@@ -361,6 +373,12 @@ describe('createScopeActions / Import and Export', () => {
     const entries = find(scope(), 'Import').next ?? [];
 
     expect(names(searchActions(entries, 'dbdiagram'))).toContain('DBML');
+  });
+
+  it('finds the AML import entry by its azimutt keywords', () => {
+    const entries = find(scope(), 'Import').next ?? [];
+
+    expect(names(searchActions(entries, 'azimutt'))).toContain('AML');
   });
 
   it('exports the document as json named after the database', async () => {

@@ -151,6 +151,26 @@ describe('commands over a Bridge', () => {
     });
   });
 
+  it('round-trips a host import file payload for aml', () => {
+    const bridge = new Bridge();
+    const listener = vi.fn();
+    bridge.registerCommand(hostImportFileCommand, listener);
+
+    bridge.executeAction(
+      Bridge.executeCommand(hostImportFileCommand, {
+        type: 'aml',
+        op: 'set',
+        accept: '.aml',
+      })
+    );
+
+    expect(listener).toHaveBeenCalledWith({
+      type: 'aml',
+      op: 'set',
+      accept: '.aml',
+    });
+  });
+
   it('round-trips the payload-less host initial command', () => {
     const bridge = new Bridge();
     const listener = vi.fn();
@@ -297,6 +317,26 @@ describe('commands over a Bridge', () => {
       type: 'dbml',
       op: 'set',
       value: 'Table users { id int [pk] }',
+    });
+  });
+
+  it('round-trips a webview import file payload for aml', () => {
+    const bridge = new Bridge();
+    const listener = vi.fn();
+    bridge.registerCommand(webviewImportFileCommand, listener);
+
+    bridge.executeAction(
+      Bridge.executeCommand(webviewImportFileCommand, {
+        type: 'aml',
+        op: 'set',
+        value: 'users\n  id int pk',
+      })
+    );
+
+    expect(listener).toHaveBeenCalledWith({
+      type: 'aml',
+      op: 'set',
+      value: 'users\n  id int pk',
     });
   });
 });

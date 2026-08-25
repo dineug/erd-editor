@@ -3,6 +3,10 @@ import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
 
 import {
+  createCode as createCodeAML,
+  formatTable as formatTableAML,
+} from './aml';
+import {
   createCode as createCodeCsharp,
   formatTable as formatTableCsharp,
 } from './csharp';
@@ -84,6 +88,8 @@ export function createGeneratorCode(state: RootState): string {
       return createCodeDrizzle(state);
     case Language.DBML:
       return createCodeDBML(state);
+    case Language.AML:
+      return createCodeAML(state);
   }
 
   return '';
@@ -149,6 +155,10 @@ export function createGeneratorCodeTable(
       break;
     case Language.DBML:
       formatTableDBML(state, { buffer, table });
+      buffer.push('');
+      break;
+    case Language.AML:
+      formatTableAML(state, { buffer, table });
       buffer.push('');
       break;
   }

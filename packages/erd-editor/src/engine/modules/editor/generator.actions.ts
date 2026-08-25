@@ -39,6 +39,7 @@ import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { isOverlapPosition, Rect } from '@/utils/dragSelect';
+import { schemaAMLParserToSchemaJson } from '@/utils/schema-aml-parser';
 import { schemaDBMLParserToSchemaJson } from '@/utils/schema-dbml-parser';
 import { schemaGraphQLParserToSchemaJson } from '@/utils/schema-graphql-parser';
 import { schemaSQLParserToSchemaJson } from '@/utils/schema-sql-parser';
@@ -544,6 +545,26 @@ export const loadSchemaDBMLAction$ = (value: string): GeneratorAction =>
     yield sortTableAction();
   };
 
+export const loadSchemaAMLAction$ = (value: string): GeneratorAction =>
+  function* ({ settings }, ctx) {
+    yield loadJsonAction$(
+      schemaAMLParserToSchemaJson(value, ctx, schema => {
+        schema.settings = {
+          ...schema.settings,
+          ...omit(cloneDeep(settings), [
+            'width',
+            'height',
+            'scrollTop',
+            'scrollLeft',
+            'zoomLevel',
+          ]),
+        };
+        return schema;
+      })
+    );
+    yield sortTableAction();
+  };
+
 export const dragstartColumnAction$ = ($mod: boolean): GeneratorAction =>
   function* ({ editor: { focusTable } }) {
     if (!focusTable || !focusTable.columnId) return;
@@ -705,6 +726,7 @@ export const actions$ = {
   loadSchemaSQLAction$,
   loadSchemaGraphQLAction$,
   loadSchemaDBMLAction$,
+  loadSchemaAMLAction$,
   dragstartColumnAction$,
   dragoverColumnAction$,
   columnKeyHoverStartAction$,

@@ -1,5 +1,6 @@
 import { AppContext } from '@/components/appContext';
 import {
+  importAML,
   importDBML,
   importGraphQL,
   importJSON,
@@ -49,6 +50,17 @@ export function createImportMenus(app: AppContext, onClose: () => void) {
       name: 'DBML',
       onClick: () => {
         importDBML(app);
+        onClose();
+      },
+    },
+    {
+      icon: {
+        prefix: 'mdi',
+        name: 'format-indent-increase',
+      },
+      name: 'AML',
+      onClick: () => {
+        importAML(app);
         onClose();
       },
     },

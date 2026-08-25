@@ -288,7 +288,13 @@ describe('ErdContextMenu / ERD type', () => {
     const sub = await openSubMenu(findItem(rootItems(), 'Import'));
     const items = itemsOf(sub);
 
-    expect(labelsOf(items)).toEqual(['json', 'Schema SQL', 'GraphQL', 'DBML']);
+    expect(labelsOf(items)).toEqual([
+      'json',
+      'Schema SQL',
+      'GraphQL',
+      'DBML',
+      'AML',
+    ]);
 
     await click(items[0]);
 

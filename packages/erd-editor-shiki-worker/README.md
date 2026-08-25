@@ -55,10 +55,10 @@ puts the whole bundle in your entry chunk whether or not a code panel is ever op
 | Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go, Python |
 | Themes | `github-dark`, `github-light`, picked from the editor's light / dark appearance |
 
-Those are exactly the languages the editor's own panels emit — the SQL export and the thirteen
+Those are exactly the languages the editor's own panels emit — the SQL export and the fourteen
 code generators (the JPA generator emits Java, the SQLAlchemy generator emits Python, the
-TypeORM, Sequelize and Drizzle generators emit TypeScript, and the DBML generator is highlighted
-as SQL, the closest grammar shiki ships).
+TypeORM, Sequelize and Drizzle generators emit TypeScript, and the DBML and AML generators are
+highlighted as SQL, the closest grammar shiki ships).
 
 ## Notes
 

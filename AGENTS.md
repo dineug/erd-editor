@@ -24,7 +24,7 @@
 | Directory | Purpose |
 | --- | --- |
 | `packages/` | The 14 workspace packages; each carries its own `AGENTS.md` |
-| `data/` | Importer fixtures, all for hand-testing: SQL dumps (`sakila`, `OKKY`, `GNUBOARD5`, `YOUNGCART5`, `Magento2-sales`), GraphQL SDL (`bookstore` directive-free, `hasura-blog` for the generated-type pruning path), DBML (`bookstore` hand-written dbdiagram style, `sql2dbml-shop` for the fully quoted multi-schema machine dialect) and `test.json` |
+| `data/` | Importer fixtures, all for hand-testing: SQL dumps (`sakila`, `OKKY`, `GNUBOARD5`, `YOUNGCART5`, `Magento2-sales`), GraphQL SDL (`bookstore` directive-free, `hasura-blog` for the generated-type pruning path), DBML (`bookstore` hand-written dbdiagram style, `sql2dbml-shop` for the fully quoted multi-schema machine dialect), AML (`bookstore` hand-written v2, `azimutt-full` and `azimutt-full-legacy` for the exhaustive v2 and v1 spellings) and `test.json` |
 | `docker/` | Per-vendor `docker-compose.yml` (mysql, mariadb, mssql, oracle, postgres, sqlite) for validating generated DDL; Databricks and Snowflake have no entry |
 | `json-schema/` | `schema.json` for `.erd` / `.vuerd` documents; `erd-editor-schema` stamps its URL into every parsed document |
 | `.github/` | `workflows/ci.yml` and `workflows/intellij-plugin.yml`, the `setup-workspace` composite action, two issue templates |

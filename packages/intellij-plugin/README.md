@@ -37,9 +37,12 @@ opens its own file chooser for both; the file does not have to be inside the pro
 - **DBML import** — bring in a `.dbml` file written for dbdiagram.io or dbdocs.io, or emitted by
   `sql2dbml` or `prisma-dbml-generator`. Tables, columns, indexes, enums and every `Ref` spelling
   arrive; a `Project`, `TableGroup` or sticky `Note` is skipped rather than refused
+- **AML import** — bring in an `.aml` file written for [Azimutt](https://azimutt.app), in either the
+  v2 or the legacy v1 spelling. Entities, attributes, indexes, enums and every relation arrow
+  arrive; a check, a struct type and a view are skipped rather than refused
 - **SQL DDL export** — MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go, SQLAlchemy,
-  TypeORM, Sequelize, Drizzle, DBML
+  TypeORM, Sequelize, Drizzle, DBML, AML
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, `.png`
 - **Quick search** to jump to any table, **time travel** through this session's edit history, and

@@ -33,6 +33,7 @@ import {
 import { getAbsoluteZoomPoint } from '@/utils/dragSelect';
 import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
 import {
+  importAML,
   importDBML,
   importGraphQL,
   importJSON,
@@ -120,6 +121,14 @@ export function createScopeActions(app: AppContext): Action[] {
           keywords: 'dbml dbdiagram dbdocs schema',
           perform: app => {
             importDBML(app);
+          },
+        },
+        {
+          icon: <Icon prefix="mdi" name="format-indent-increase" size={16} />,
+          name: 'AML',
+          keywords: 'aml azimutt markup language schema',
+          perform: app => {
+            importAML(app);
           },
         },
       ],
