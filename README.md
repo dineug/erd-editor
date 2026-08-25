@@ -31,7 +31,7 @@ To try it in an IDE, create an empty file with a `.erd.json` extension and open 
   fields that point at another type become the relationships between them
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize, Drizzle
+  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, `.png`
 - **Quick search**, **undo / redo**, keyboard shortcuts, and a theme builder

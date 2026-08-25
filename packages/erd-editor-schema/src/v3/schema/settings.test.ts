@@ -157,9 +157,10 @@ describe('v3/schema/settings', () => {
         TypeORM: 512,
         Sequelize: 1024,
         Drizzle: 2048,
+        DBML: 4096,
       });
       expect(LanguageList).toEqual([
-        1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048,
+        1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096,
       ]);
       expect(Object.values(Language).every(isPowerOfTwo)).toBe(true);
     });

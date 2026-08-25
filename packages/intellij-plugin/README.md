@@ -36,7 +36,7 @@ opens its own file chooser for both; the file does not have to be inside the pro
   drawn as tables
 - **SQL DDL export** — MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go, SQLAlchemy,
-  TypeORM, Sequelize, Drizzle
+  TypeORM, Sequelize, Drizzle, DBML
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, `.png`
 - **Quick search** to jump to any table, **time travel** through this session's edit history, and

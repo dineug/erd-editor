@@ -255,6 +255,12 @@ describe('createAndMergeSettings', () => {
       ).toBe(Language.Drizzle);
     });
 
+    it('keeps the DBML language', () => {
+      expect(createAndMergeSettings({ language: Language.DBML }).language).toBe(
+        Language.DBML
+      );
+    });
+
     it('ignores numbers outside the enum lists', () => {
       const settings = createAndMergeSettings({
         database: 999,

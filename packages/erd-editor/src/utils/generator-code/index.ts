@@ -7,6 +7,10 @@ import {
   formatTable as formatTableCsharp,
 } from './csharp';
 import {
+  createCode as createCodeDBML,
+  formatTable as formatTableDBML,
+} from './dbml';
+import {
   createCode as createCodeDrizzle,
   formatTable as formatTableDrizzle,
 } from './drizzle';
@@ -78,6 +82,8 @@ export function createGeneratorCode(state: RootState): string {
       return createCodeSequelize(state);
     case Language.Drizzle:
       return createCodeDrizzle(state);
+    case Language.DBML:
+      return createCodeDBML(state);
   }
 
   return '';
@@ -139,6 +145,10 @@ export function createGeneratorCodeTable(
       break;
     case Language.Drizzle:
       formatTableDrizzle(state, { buffer, table });
+      buffer.push('');
+      break;
+    case Language.DBML:
+      formatTableDBML(state, { buffer, table });
       buffer.push('');
       break;
   }

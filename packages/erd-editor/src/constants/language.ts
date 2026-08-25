@@ -13,6 +13,7 @@ export type Lang =
   | 'kotlin'
   | 'python'
   | 'scala'
+  | 'sql'
   | 'typescript';
 
 export const LanguageToLangMap: Record<number, Lang> = {
@@ -28,4 +29,5 @@ export const LanguageToLangMap: Record<number, Lang> = {
   [Language.TypeORM]: 'typescript',
   [Language.Sequelize]: 'typescript',
   [Language.Drizzle]: 'typescript',
+  [Language.DBML]: 'sql',
 };

@@ -40,7 +40,7 @@ only; they do not appear in the Command Palette.
   out rather than drawn as tables
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize, Drizzle
+  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, `.png`
 - **Quick search** — `Ctrl`/`Cmd`+`K` to jump to any table, or run any editor command

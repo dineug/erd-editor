@@ -83,6 +83,7 @@ export const Language = {
   TypeORM: 512,
   Sequelize: 1024,
   Drizzle: 2048,
+  DBML: 4096,
 } as const;
 export const LanguageList: ReadonlyArray<number> = Object.values(Language);
 

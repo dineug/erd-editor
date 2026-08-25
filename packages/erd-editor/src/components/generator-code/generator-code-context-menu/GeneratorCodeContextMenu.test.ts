@@ -132,6 +132,7 @@ describe('GeneratorCodeContextMenu', () => {
       'TypeORM',
       'Sequelize',
       'Drizzle',
+      'DBML',
     ]);
     expect(checkedNameOf(submenu)).toEqual(['GraphQL']);
   });

@@ -23,6 +23,7 @@ describe('languageMenus', () => {
       { name: 'TypeORM', value: Language.TypeORM },
       { name: 'Sequelize', value: Language.Sequelize },
       { name: 'Drizzle', value: Language.Drizzle },
+      { name: 'DBML', value: Language.DBML },
     ]);
   });
 
@@ -44,6 +45,7 @@ describe('languageMenus', () => {
       'TypeORM',
       'Sequelize',
       'Drizzle',
+      'DBML',
     ]);
     created.forEach(menu => expect(typeof menu.onClick).toBe('function'));
   });
