@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-17 | Updated: 2026-08-17 -->
+<!-- Generated: 2026-08-17 | Updated: 2026-08-27 -->
 
 # vscode-replication-store-worker
 
@@ -31,7 +31,7 @@ instead of inlined. `private: true`.
 ### Working In This Directory
 
 - **`?worker&inline` is load-bearing.** It compiles the whole worker — engine, bridge and all — into
-  a ~244 kB string in `dist/index.js`, run from a Blob URL with no module resolution; a plain worker URL would fail to load its imports.
+  a bundled string in `dist/index.js`, run from a Blob URL with no module resolution; a plain worker URL would fail to load its imports.
 - Import `@dineug/erd-editor/engine.js` (DOM-free), never the package root, which registers custom
   elements and throws in a worker. `tsconfig.json` replaces the inherited `lib` with
   `["ES2022", "WebWorker"]`, so `document` does not typecheck here.

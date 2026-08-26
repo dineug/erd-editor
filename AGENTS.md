@@ -1,4 +1,4 @@
-<!-- Generated: 2026-08-17 | Updated: 2026-08-17 -->
+<!-- Generated: 2026-08-17 | Updated: 2026-08-27 -->
 
 # erd-editor
 
@@ -64,7 +64,7 @@ Build order is derived from workspace dependencies: the first five rows below ar
   | script (`dev`, `e2e`, `typecheck`, `test:coverage`) | `pnpm --filter <pkg> <script>` |
   | Gradle (`intellij-plugin` only) | `cd packages/intellij-plugin && ./gradlew <task>` — it declares neither of the above |
 
-  Flags go before the task name: `vp run build -r` builds one package and exits 0. `vp build` and `vp test` are built-ins that skip `run.tasks`, its `tsc --noEmit` gate and `dependsOn`. A `--filter` matching no package exits 0, so pass `--fail-if-no-match` or a rename leaves CI green while building nothing.
+  Selection flags go before the task name: `vp run -r build` is recursive, while `vp run build -r` forwards `-r` as a task argument instead of enabling recursion. `vp build` and `vp test` are built-ins that skip `run.tasks`, its `tsc --noEmit` gate and `dependsOn`. A `--filter` matching no package exits 0, so pass `--fail-if-no-match` or a rename leaves CI green while building nothing.
 - **TypeScript 7.0.2 everywhere.** Its `tsc` is a native binary Vite Task cannot trace, so every task declares `input` explicitly — change a tsconfig `include` without the matching `input` and a stale `.d.ts` typechecks green.
 - **One bundler.** Nine libraries build in Vite library mode with `vite-plugin-dts`; `app`, `intellij-webview`, `vscode-webview` and `vscode-extension` build an entry. Match the neighbouring package.
 - **`@/*` → `<package>/src/*`** is in all 13 TypeScript packages' `tsconfig.json` `paths`, and repeated in each config that has to resolve it — `vite.config.ts` in twelve (`vscode-extension` declares none; only its specs import through `@/`) and `vitest.config.*` in the eight with a suite. A new alias needs every copy.
@@ -74,7 +74,7 @@ Build order is derived from workspace dependencies: the first five rows below ar
 ### Testing Requirements
 
 - `pnpm test` = `vp run -r test`. Nine packages define a `test` task — `shared`, `r-html`, `schema-sql-parser`, `erd-editor-schema`, `erd-editor`, `vscode-bridge`, `vite-plugin-r-html`, `app`, `vscode-extension`; the other five no-op. Each runs `tsc --noEmit` before Vitest.
-- Vitest configs are uniform: `include: ['src/**/*.test.ts']` — a test outside `src/` is never collected — and a v8 coverage block at `perFile` 80%. Those thresholds gate `pnpm --filter <pkg> test:coverage` only; `pnpm test` and CI do not enforce them.
+- Eight Vitest configs use `include: ['src/**/*.test.ts']`; `erd-editor` uses `include: ['src/**/*.test.{ts,tsx}']` for its JSX parity spec. A test outside `src/` is never collected, and all nine configs have a v8 coverage block at `perFile` 80%. Those thresholds gate `pnpm --filter <pkg> test:coverage` only; `pnpm test` and CI do not enforce them.
 - **A change is not verified until `pnpm build` passes.** Every `build` task runs `tsc --noEmit` first, so a green `pnpm test` proves nothing about the types of what ships.
 - `pnpm check` = `vp check` (oxfmt + oxlint in one pass) + the root `tsc --noEmit` + `scripts/check-task-inputs.mjs`. `pnpm format` is the writing half.
 - Out-of-process suites, none of them in `pnpm test`: `pnpm --filter <pkg> e2e` for `erd-editor`, `app` and `r-html` (Playwright), and `vscode-extension` (`@vscode/test-cli`; needs `xvfb-run -a` on Linux). `app`'s is the one with no CI job.

@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-08 | Updated: 2026-08-24 -->
+<!-- Generated: 2026-08-08 | Updated: 2026-08-27 -->
 
 # intellij-plugin
 
@@ -38,7 +38,7 @@ The Kotlin/JVM half of the JetBrains plugin: a thin host layer that registers a 
   | `verifyPlugin` | Plugin Verifier against the `pluginSinceBuild` floor and the newest release |
 
 - **Publishing is manual.** No token or signing key lives in this repository: build the zip and upload it. Bump `pluginVersion` and fill the matching `CHANGELOG.md` section first.
-- **Dependencies come from the platform** — Jackson, `kotlinx.coroutines` and `org.cef.*` are all bundled, and adding a library here invites classloader conflicts. `kotlin.stdlib.default.dependency = false` and `apiVersion = KOTLIN_2_1` keep the plugin inside the API surface of the 2025.2 floor, which is also why it resolves `intellijIdea(...)` and never `intellijIdeaCommunity(...)`: the separate IC distribution ended after 2025.2.
+- **Dependencies come from the platform** — Jackson, `kotlinx.coroutines` and `org.cef.*` are all bundled, and adding a library here invites classloader conflicts. The build uses Kotlin 2.3.21, but `apiVersion = KOTLIN_2_1` limits compiled code to the Kotlin 2.1 API surface bundled by the 2025.2 floor, and `kotlin.stdlib.default.dependency = false` prevents shipping another stdlib copy. That floor is also why it resolves `intellijIdea(...)` and never `intellijIdeaCommunity(...)`: the separate IC distribution ended after 2025.2.
 - **Bridge command `type` strings must match `packages/vscode-bridge` exactly.** Change one side only and messages are dropped in silence.
 - **Threading:** file writes go inside `readAndEdtWriteAction { writeAction { … } }` (the older `readAndWriteAction` is deprecated), file dialogs open on the EDT through `invokeLater`.
 - `vp staged` globs `**/*.{ts,mts,tsx}`, so a Kotlin-only commit passes pre-commit unchecked. The root `.gitignore` also carries a bare `build` pattern — a Kotlin package named `build` would be untracked while compiling fine locally.

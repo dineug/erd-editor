@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-17 | Updated: 2026-08-17 -->
+<!-- Generated: 2026-08-17 | Updated: 2026-08-27 -->
 
 # erd-editor
 
@@ -18,7 +18,7 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 | `src/components/erd-editor/ErdEditor.tsx` | The element: `shadow: 'closed'`, the full `ErdEditorElement` API, and the `readonly` / `systemDarkMode` / `enableThemeBuilder` props |
 | `src/engine/rx-store.ts` | UI store — stamps actions with `clock.getNextVersion()`, feeds the history and reducer pipelines, exposes `change$` (debounced 200 ms) and `HISTORY_LIMIT = 2048` |
 | `src/engine/actions.ts` | The action-type classification lists: `ChangeActionTypes`, `HistoryActionTypes`, `SharedActionTypes`, `ReadonlyIgnoreActionTypes`, `StreamRegroup*` |
-| `vite.config.ts` | `run.tasks` `build`/`test` (both lead with `tsc --noEmit`), two lib entries, `vite-plugin-dts` reading `tsconfig.build.json` (which drops `*.test.ts` and `__test-utils__` from `dist/`), `server.open` off under `E2E` |
+| `vite.config.ts` | `run.tasks` `build`/`test` (both lead with `tsc --noEmit`), two lib entries, `vite-plugin-dts` reading `tsconfig.build.json` (which drops `*.test.{ts,tsx}` and `__test-utils__` from `dist/`), `server.open` off under `E2E` |
 
 ## Subdirectories
 
@@ -43,7 +43,7 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 
 ### Testing Requirements
 
-- `vp run --filter @dineug/erd-editor --fail-if-no-match test` — `tsc --noEmit`, then `vp test run` over `src/**/*.test.ts` in happy-dom. `vitest.setup.ts` polyfills `ResizeObserver`, `IntersectionObserver`, `matchMedia` and `requestIdleCallback`. `test:coverage` (v8, per-file 80%) and `test:dev` (watch) are the built-in `vp test`: no type gate, no dependency builds.
+- `vp run --filter @dineug/erd-editor --fail-if-no-match test` — `tsc --noEmit`, then `vp test run` over `src/**/*.test.{ts,tsx}` in happy-dom. `vitest.setup.ts` polyfills `ResizeObserver`, `IntersectionObserver`, `matchMedia` and `requestIdleCallback`. `test:coverage` (v8, per-file 80%) and `test:dev` (watch) are the built-in `vp test`: no type gate, no dependency builds.
 - `pnpm --filter @dineug/erd-editor e2e` — builds this package, then Playwright/Chromium over `e2e/specs/`; also `e2e:dev`, `e2e:headed`, `e2e:report`, `e2e:typecheck`. Read `e2e/README.md` first — the fixture reopens the closed shadow root before the element registers.
 - `pnpm --filter @dineug/erd-editor dev` builds the workspace deps then serves `vp dev` with r-html HMR; `dev:storybook` / `build:storybook` drive the Storybook 10 workbench. Colocated `*.test.ts` files import from `vite-plus/test`, never `vitest`, and `tsconfig.json` includes all of `src/`, so a type error in a test or in `__test-utils__` turns the run red. Specs stay `.ts` with tagged templates — `mount(template: DOMTemplateLiterals)` is orthogonal to how a component body is written, so they are what says the JSX layer changed nothing.
 
