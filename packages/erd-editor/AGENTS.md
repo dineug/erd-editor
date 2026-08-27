@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-17 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
 
 # erd-editor
 
@@ -14,11 +14,13 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 | File | Description |
 | --- | --- |
 | `src/index.ts` | Public entry: side-effect-registers `<erd-editor>`, exports the `ErdEditorElement` type and the three host callbacks (`setGetShikiServiceCallback`, `setExportFileCallback`, `setImportFileCallback`) |
+| `src/index.dev.ts` | Dev-only entry that statically wires the Shiki worker callback for local use |
 | `src/engine/index.ts` | Second published entry (`@dineug/erd-editor/engine.js`) — `createReplicationStore` only, deliberately DOM-free |
 | `src/components/erd-editor/ErdEditor.tsx` | The element: `shadow: 'closed'`, the full `ErdEditorElement` API, and the `readonly` / `systemDarkMode` / `enableThemeBuilder` props |
 | `src/engine/rx-store.ts` | UI store — stamps actions with `clock.getNextVersion()`, feeds the history and reducer pipelines, exposes `change$` (debounced 200 ms) and `HISTORY_LIMIT = 2048` |
 | `src/engine/actions.ts` | The action-type classification lists: `ChangeActionTypes`, `HistoryActionTypes`, `SharedActionTypes`, `ReadonlyIgnoreActionTypes`, `StreamRegroup*` |
 | `vite.config.ts` | `run.tasks` `build`/`test` (both lead with `tsc --noEmit`), two lib entries, `vite-plugin-dts` reading `tsconfig.build.json` (which drops `*.test.{ts,tsx}` and `__test-utils__` from `dist/`), `server.open` off under `E2E` |
+| `.storybook/main.ts`, `.storybook/preview.ts`, `.storybook/ThemeProvider.ts` | Storybook 10 setup and the shared theme decorator for component stories |
 
 ## Subdirectories
 
@@ -37,6 +39,8 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 
 - Adding an action is a four-file change: the module's `actions.ts`, `atom.actions.ts` and `history.ts`, **plus** the classification lists in `src/engine/actions.ts` — skipping the last compiles and then silently breaks undo, autosave or collaboration. `readonly` is enforced there too, by `readonlyIgnoreFilter` over `ReadonlyIgnoreActionTypes` and the `hasReadonlyIgnore` exemption list, never in components.
 - Reducers must write through the LWW operators from `@dineug/erd-editor-schema` using `action.version`; a direct state write wins every merge and corrupts collaborative sessions.
+- `ErdEditorElement` exposes `value`, focus/blur/clear/destroy, initial value and theme/keybinding setters, SQL/GraphQL/DBML/AML import setters, `getSchemaSQL`, `getSharedStore`, and `setDiffValue`; keep host integrations on that public surface.
+- The DOM-free `createReplicationStore` accepts initial JSON, forwards only `ChangeActionTypes`, strips action tags before reduction, defers `dispatch` to a microtask while `dispatchSync` is immediate, and emits `change` after a 200 ms debounce. `setInitialValue` also runs schema GC.
 - File IO and highlighting go through the three injected callbacks. `vscode-webview` sets all three, so the built-in `<input type=file>` never runs there; `intellij-webview` leaves `setImportFileCallback` unset — `ErdEditor.kt` no-ops `ImportFile` — so that input is the only import path inside JCEF, and dropping it would take IntelliJ's import with it.
 - `draw-relationship/sort.ts` runs the whole geometry pass: it picks each end's side, orders that side's anchors by the angle of the opposite table (walking the boundary clockwise, so anchors sharing a table cannot cross), then routes every connector orthogonally around the tables (`route.ts`) and pulls apart the routes that share a channel (`nudge.ts`). `pathFinding.ts` only draws, cutting each corner to 45 degrees on the way out (`chamfer.ts`) — the routed polyline itself stays orthogonal. Routing has to live there because it needs every table and every other route; `pathFinding` sees one relationship. Anchors land in schema fields and therefore serialise, so a rendering-only value — the routed polyline, the stub slot — belongs in the `WeakMap` side channels in `draw-relationship/index.ts`, never a new field.
 - Everything renders inside a closed shadow root, so `document.querySelector` never finds editor internals; use `queryShadowSelector` / `closestElement`. Every dependency is a `devDependency` and the lib build declares no `external`, so anything added ships inside `dist/erd-editor.js` for all four consumers.
@@ -46,6 +50,7 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 - `vp run --filter @dineug/erd-editor --fail-if-no-match test` — `tsc --noEmit`, then `vp test run` over `src/**/*.test.{ts,tsx}` in happy-dom. `vitest.setup.ts` polyfills `ResizeObserver`, `IntersectionObserver`, `matchMedia` and `requestIdleCallback`. `test:coverage` (v8, per-file 80%) and `test:dev` (watch) are the built-in `vp test`: no type gate, no dependency builds.
 - `pnpm --filter @dineug/erd-editor e2e` — builds this package, then Playwright/Chromium over `e2e/specs/`; also `e2e:dev`, `e2e:headed`, `e2e:report`, `e2e:typecheck`. Read `e2e/README.md` first — the fixture reopens the closed shadow root before the element registers.
 - `pnpm --filter @dineug/erd-editor dev` builds the workspace deps then serves `vp dev` with r-html HMR; `dev:storybook` / `build:storybook` drive the Storybook 10 workbench. Colocated `*.test.ts` files import from `vite-plus/test`, never `vitest`, and `tsconfig.json` includes all of `src/`, so a type error in a test or in `__test-utils__` turns the run red. Specs stay `.ts` with tagged templates — `mount(template: DOMTemplateLiterals)` is orthogonal to how a component body is written, so they are what says the JSX layer changed nothing.
+- `src/engine/index.test.ts` pins the DOM-free entry to exactly `createReplicationStore`; keep that barrel free of browser registration and component exports.
 
 ### Common Patterns
 

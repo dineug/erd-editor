@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-08 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
 
 # intellij-plugin
 
@@ -37,6 +37,8 @@ The Kotlin/JVM half of the JetBrains plugin: a thin host layer that registers a 
   | `runIde` | Sandbox IDE with the plugin loaded |
   | `verifyPlugin` | Plugin Verifier against the `pluginSinceBuild` floor and the newest release |
 
+- `buildWebview` is intentionally separate from `buildPlugin`: the Gradle packaging task only runs `verifyWebviewAssets`. CI and a fresh local build must run `./gradlew buildWebview` or the equivalent pnpm task first.
+
 - **Publishing is manual.** No token or signing key lives in this repository: build the zip and upload it. Bump `pluginVersion` and fill the matching `CHANGELOG.md` section first.
 - **Dependencies come from the platform** — Jackson, `kotlinx.coroutines` and `org.cef.*` are all bundled, and adding a library here invites classloader conflicts. The build uses Kotlin 2.3.21, but `apiVersion = KOTLIN_2_1` limits compiled code to the Kotlin 2.1 API surface bundled by the 2025.2 floor, and `kotlin.stdlib.default.dependency = false` prevents shipping another stdlib copy. That floor is also why it resolves `intellijIdea(...)` and never `intellijIdeaCommunity(...)`: the separate IC distribution ended after 2025.2.
 - **Bridge command `type` strings must match `packages/vscode-bridge` exactly.** Change one side only and messages are dropped in silence.
@@ -45,7 +47,7 @@ The Kotlin/JVM half of the JetBrains plugin: a thin host layer that registers a 
 
 ### Testing Requirements
 
-`./gradlew check` runs 13 plain JVM tests over bridge serialization, script encoding and extension matching. JCEF cannot run headless, so **the eye is the only gate on the webview**: `./gradlew runIde`, open any project, create an empty `foo.erd.json`, and confirm the canvas renders. Compilation and a `Compatible` Verifier verdict both pass on a blank panel. `verifyPluginProjectConfiguration` warns that since-build 252 sits below the 261 target; that is the intended range. Sandbox logs are at `.intellijPlatform/sandbox/erd-editor-intellij-plugin/IU-<version>/log/idea.log` — a path the `.run/*.run.xml` configs pin to `IU-2026.1.4`, so bump those with `platformVersion`. The default appender drops DEBUG, so a missing `thisLogger().debug` line is not evidence; webview `console.*` is raised to INFO by `WebviewPanel`. For DevTools, enable `ide.browser.jcef.contextMenu.devTools.enabled` in the Registry and reopen the tab — `Webview.kt` disables the menu item, but the platform ORs it with that key.
+`./gradlew check` runs 14 plain JVM tests: five bridge-serialization, six script-encoding and three extension-matching tests. JCEF cannot run headless, so **the eye is the only gate on the webview**: `./gradlew runIde`, open any project, create an empty `foo.erd.json`, and confirm the canvas renders. Compilation and a `Compatible` Verifier verdict both pass on a blank panel. `verifyPluginProjectConfiguration` warns that since-build 252 sits below the 261 target; that is the intended range. Sandbox logs are at `.intellijPlatform/sandbox/erd-editor-intellij-plugin/IU-<version>/log/idea.log` — a path the `.run/*.run.xml` configs pin to `IU-2026.1.4`, so bump those with `platformVersion`. The default appender drops DEBUG, so a missing `thisLogger().debug` line is not evidence; webview `console.*` is raised to INFO by `WebviewPanel`. For DevTools, enable `ide.browser.jcef.contextMenu.devTools.enabled` in the Registry and reopen the tab — `Webview.kt` disables the menu item, but the platform ORs it with that key.
 
 ### Common Patterns
 
@@ -68,6 +70,6 @@ The Kotlin/JVM half of the JetBrains plugin: a thin host layer that registers a 
 
 ### External
 
-IntelliJ Platform 2026.1.4 (`FileEditor`, JCEF, VFS, message bus, `PersistentStateComponent`), Kotlin 2.3.21 + coroutines and Jackson — all from the platform. Build side: IntelliJ Platform Gradle Plugin 2.18.1 (needs Gradle 9.0+), gradle-changelog-plugin 2.5.0, Kover 0.9.9, Qodana 2026.2.0 (configured, not wired into CI).
+IntelliJ Platform 2026.1.4 (`FileEditor`, JCEF, VFS, message bus, `PersistentStateComponent`), Kotlin 2.3.21 + coroutines and Jackson — all from the platform. Build side: IntelliJ Platform Gradle Plugin 2.18.1 with the wrapper pinned to Gradle 9.1.0, gradle-changelog-plugin 2.5.0, Kover 0.9.9, Qodana 2026.2.0 (configured, not wired into CI).
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

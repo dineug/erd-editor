@@ -1,4 +1,4 @@
-<!-- Generated: 2026-08-17 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
 
 # erd-editor
 
@@ -20,6 +20,7 @@
 | `tools/vite/package-metadata.ts` | Derives task inputs, banners and runtime externals from JSONC tsconfig files and workspace manifests |
 | `scripts/check-task-inputs.mjs` | Independently verifies exact task/cache contracts and workspace declaration inputs during `pnpm check` |
 | `erd-editor.code-workspace` | Multi-root workspace; sets `oxc.oxc-vscode` as the formatter per language so the editor matches `vp fmt` |
+| `CLAUDE.md` | Two-line alias to this file; `AGENTS.md` is the canonical repository guidance |
 
 ## Subdirectories
 
@@ -52,6 +53,17 @@ Build order is derived from workspace dependencies: the first five rows below ar
 | `packages/intellij-webview` | `@dineug/erd-editor-intellij-webview` | App | bundle for the IntelliJ plugin, over `window.cefQuery` |
 | `packages/intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | App | the published IntelliJ plugin — Kotlin/Gradle, no TS (0.2.1) |
 | `packages/app` | `@dineug/erd-editor-app` | App | the React PWA at erd-editor.io |
+
+## CODE MAP
+
+The TypeScript LSP is configured but unavailable in this checkout; the rows below come from the indexed code graph and manifest/config inspection.
+
+| Symbol | Location | Graph signal | Role |
+| --- | --- | --- | --- |
+| `defineLibraryConfig` | `tools/vite/library-config.ts:110` | 7 callers | Standard library Vite configs; delegates to `createLibraryConfig` and the generated task graph |
+| `createLibraryTasks` | `tools/vite/library-config.ts:42` | 5 callers | Shared `tsc --noEmit` → build/test task contract, including the two bespoke library configs |
+| `createReplicationStore` | `packages/erd-editor/src/engine/replication-store.ts:44` | 7 callers | DOM-free document replica consumed by the engine entry, app IndexedDB, and both IDE workers |
+| `Bridge` | `packages/vscode-bridge/src/bridge.ts:23` | host/webview/worker/IntelliJ surfaces | Transport-neutral command registry and dispatch boundary |
 
 ## For AI Agents
 

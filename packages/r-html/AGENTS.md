@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-17 | Updated: 2026-08-17 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
 
 # r-html
 
 ## Purpose
 
-`@dineug/r-html` is the in-house rendering framework `@dineug/erd-editor` is built on — the only workspace package depending on it. It supplies tagged templates (`html`, `svg`, `css`) compiled to a virtual node tree, Proxy-based reactivity with a microtask scheduler, a functional component model with lifecycle hooks and a `defineCustomElement` adapter, and a Redux-like `createStore`. A second, types-only entry at `./jsx-runtime` carries the JSX contract those templates can also be written in. `private: true`, so its `version` is never published.
+`@dineug/r-html` is the in-house rendering framework `@dineug/erd-editor` is built on. It supplies tagged templates (`html`, `svg`, `css`) compiled to a virtual node tree, Proxy-based reactivity with a microtask scheduler, a functional component model with lifecycle hooks and a `defineCustomElement` adapter, and a Redux-like `createStore`. A second, types-only entry at `./jsx-runtime` carries the JSX contract those templates can also be written in. `private: true`, so its `version` is never published; `vite-plugin-r-html` is the separate build-time JSX/HMR integration.
 
 ## Key Files
 
@@ -17,8 +17,10 @@
 | `src/template/vCSSStyleSheet.ts` | Adopted-stylesheet registry: one sheet per template, global/component cascade buckets, `<style>` fallback |
 | `src/render/part/node/text/helper.ts` | `PartType`, `getPartType`, and the `isPartMap`/`partMap` registries every value kind goes through |
 | `vite.config.ts` | `run.tasks` (`build`, `test`, both prefixed by `tsc --noEmit`), ESM lib build, `vite-plugin-dts` |
+| `vitest.config.ts` | `happy-dom`, `src/**/*.test.ts`, v8 coverage and the `jsx-runtime`/test-utils exclusions |
 | `playwright.config.ts` | Chromium e2e against `vp dev` on port 5176, viewport pinned 1280x720 |
-| `tsconfig.build.json` | Build/dts view — excludes `src/**/*.test.ts` so specs never reach `dist/` |
+| `tsconfig.build.json` | Build/dts view — excludes `src/**/*.test.ts` and `src/__test-utils__/**` so specs and mount helpers never reach `dist/` |
+| `src/index.dev.ts` | Development-only demo entry; separate from the Playwright fixture |
 
 ## Subdirectories
 
@@ -38,7 +40,7 @@
 ### Working In This Directory
 
 - `exports` is asymmetric on purpose: `.` ships `types` and `default`, `./jsx-runtime` ships `types` alone, so a build whose JSX transform went missing dies on `ERR_PACKAGE_PATH_NOT_EXPORTED` rather than rendering wrongly. That file is a `.ts` because `vite-plugin-dts` emits declarations and does not copy hand-written ones, which costs it a `typescript/no-namespace` exemption in the root `vite.config.ts` — `JSX` has to be a namespace, that being the shape `jsxImportSource` looks for.
-- `src/index.ts` is the contract; a symbol not re-exported there is private. `removeCSSHost` is deliberately absent — its only caller is the `disconnectedCallback` of the element class `defineCustomElement` registers.
+- `src/index.ts` is the runtime contract; a symbol not re-exported there is private. `removeCSSHost` is deliberately absent — its only caller is the `disconnectedCallback` of the element class `defineCustomElement` registers. The public surface also includes context, directives, CSS diagnostics, HMR, refs/cache/repeat, store, and stylesheet controls.
 - `src/parser/` imports nothing from `src/constants.ts` — it tokenizes plain HTML. `MARKER` is injected by `template/html.ts` (`createMarker`) and read back only in `template/helper.ts` and `template/tNode.ts`, so those three move together.
 - Reactivity is batched through `observable/scheduler.ts`, so a DOM read taken right after a state write still sees the old tree — `await nextTick()` first.
 - `helpers/array.ts` `groupBy` accumulates into `Object.create(null)`: attributes are grouped by name, and a `constructor` attribute would otherwise hit an inherited function.
@@ -47,9 +49,9 @@
 ### Testing Requirements
 
 - Unit: `pnpm exec vp run --filter @dineug/r-html --fail-if-no-match test` — `tsc --noEmit` then `vp test run`, happy-dom, 76 colocated `src/**/*.test.ts` files.
-- Coverage: `pnpm --filter @dineug/r-html test:coverage` — v8, `perFile` 80% lines/functions/branches/statements, excluding `src/internal-types/**` and `src/index.dev.ts`.
+- Coverage: `pnpm --filter @dineug/r-html test:coverage` — v8, `perFile` 80% lines/functions/branches/statements, excluding `src/internal-types/**`, `src/index.dev.ts`, and type-only `src/jsx-runtime.ts`.
 - E2E: `pnpm --filter @dineug/r-html e2e` (plus `e2e:dev`, `e2e:headed`, `e2e:report`, `e2e:typecheck`). No build step — `vp dev` serves `src/` through `@`. See `e2e/README.md`.
-- happy-dom has no style engine, so `vCSSStyleSheet.ts`'s `adoptedStyleSheets` behaviour is pinned only by the e2e specs; re-run them after touching that file.
+- happy-dom has no style engine, so `vCSSStyleSheet.ts`'s `adoptedStyleSheets` behaviour is pinned only by the e2e specs; re-run them after touching that file. The Playwright web server uses `E2E=1` to suppress `server.open`; it does not pass `--no-open`.
 - `tsconfig.json` is `include: ["src"]` with no `exclude`, so the type gate covers the specs. `e2e/` belongs to no package program and is typechecked only by `e2e:typecheck`.
 
 ### Common Patterns

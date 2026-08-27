@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-17 | Updated: 2026-08-17 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
 
 # vscode-webview
 
@@ -15,8 +15,9 @@ replication-store worker holding the host's copy. It builds *into* `../vscode-ex
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `src/index.ts`   | The entire client — element creation, both `Bridge` instances, worker spawn, theme/readonly/import-export handling      |
 | `index.html`     | Entry, at the package root; carries the `{{extension-base-url}}` base tag and the `#loading` placeholder                |
-| `vite.config.ts` | `run.tasks.build`, `base: './'`, the out-of-package `outDir`, `bundle.[hash:8]` names, local `strip-crossorigin` plugin |
+| `vite.config.ts` | `run.tasks.build`, `base: './'`, `publicDir: false`, the out-of-package `outDir`, `bundle.[hash:8]` names, local `strip-crossorigin` plugin |
 | `src/env.d.ts`   | `@types/vscode-webview` (for `acquireVsCodeApi`) and `vite/client` — the only thing declaring `*.css` imports           |
+| `src/webview.css` | Webview loading and editor-host styles imported before the element is appended |
 
 ## For AI Agents
 
@@ -29,6 +30,12 @@ replication-store worker holding the host's copy. It builds *into* `../vscode-ex
 - **`crossorigin` must not reach the emitted HTML** — assets come via `asWebviewUri` from an origin sending
   no CORS headers, so such a script never loads; hence `strip-crossorigin` and `modulePreload: false`.
 - **`acquireVsCodeApi()` is called once, at module scope in `src/index.ts`**; a second call throws.
+- `hostInitialCommand` is dispatched at module evaluation, before the editor is appended. The host's
+  `webviewInitialValueCommand` is the gate that creates the element, starts worker replication, removes
+  `#loading`, and appends the editor.
+- Local editor actions go to both the replication worker and the extension host as
+  `hostSaveReplicationCommand`; actions received from the host update the editor and worker without
+  echoing a host save command.
 - **File dialogs live on the host**: `setImportFileCallback` / `setExportFileCallback` dispatch host commands
   and base64-encode export blobs — everything crossing `postMessage` must be JSON-safe.
 - **`appearance: 'auto'` resolves locally** from `document.body`'s `data-vscode-theme-kind` (or the

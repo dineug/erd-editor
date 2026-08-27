@@ -1,15 +1,14 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-17 | Updated: 2026-08-17 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
 
 # shared
 
 ## Purpose
 
 `@dineug/shared` is the bottom leaf of the workspace graph: runtime type guards, two tiny
-array/number helpers, callback safety wrappers, and a crypto-seeded `nanoid`. Eight packages depend
-on it; `erd-editor-schema` and `vscode-bridge` additionally declare it as a `peerDependency` so the
-workspace resolves one copy. It is `private: true` — never published, always inlined by the
-consumer's bundler.
+array/number helpers, callback safety wrappers, and a crypto-seeded `nanoid`. Six packages consume it
+directly and `erd-editor-schema` plus `vscode-bridge` also declare it as a peer dependency. It is
+`private: true` — never published; the library build currently inlines its only runtime dependency.
 
 ## Key Files
 
@@ -18,7 +17,7 @@ consumer's bundler.
 | `src/index.ts`        | Barrel — `export *` over the five modules; the whole public surface                                       |
 | `src/is-types.ts`     | 19 guards — 8 from a `createIsTypeof` factory (`isString`, `isNumber`, …), the rest written out by hand |
 | `src/fn.ts`           | `safeCallback` (invoke, `console.error` on throw) and `asap` (`queueMicrotask` with a Promise fallback)    |
-| `src/nanoid.ts`       | `customRandom(urlAlphabet, 21, …)` fed by `globalThis.crypto.getRandomValues` — the 21-char entity IDs     |
+| `src/nanoid.ts`       | `customRandom(urlAlphabet, 21, …)` fed by `globalThis.crypto.getRandomValues` — shared URL-safe IDs |
 | `src/array.utils.ts`  | `arrayHas`, a `Set`-backed membership predicate; `src/number.utils.ts` holds `createInRange`, a clamp      |
 | `vite.config.ts`      | `run.tasks` `build`/`test`, plus the ESM lib build (`BROWSER_TARGET`, `vite-plugin-dts` + declaration maps) |
 | `tsconfig.build.json` | dts-only program; excludes `src/**/*.test.ts` so tests never land in `dist/`                               |
@@ -27,13 +26,19 @@ consumer's bundler.
 
 ### Working In This Directory
 
-- **Keep it dependency-free.** `nanoid` is the only external the bundle carries, and the lib build
-  inlines it — `dist/index.js` imports nothing. Anything added here reaches all eight consumers.
-- **Every export must stay pure.** `sideEffects: false` lets bundlers drop a module-level effect.
+- **Keep `src` dependency-light.** `nanoid` is the only external the bundle carries, and the lib
+  build inlines it — `dist/index.js` imports nothing. A signature change affects the direct consumers
+  listed in the root package map.
+- **Avoid module-load side effects.** `sideEffects: false` is the package contract, but exported
+  helpers are not mathematically pure: `safeCallback` logs, `asap` schedules, and `nanoid` reads
+  `globalThis.crypto`.
 - `index.test.ts` pins the 24 public names with `expect.arrayContaining` plus a uniqueness check. That
   catches a removed or renamed export; an **added** one passes untouched, so add the name yourself.
 - **`nanoid` has no fallback randomness source** — `globalThis.crypto` must exist in every target
   runtime (browser, worker, Extension Host); a test asserts the throw propagates.
+- `safeCallback` returns the callback result, or `undefined` when absent or when the callback throws;
+  thrown errors are logged and swallowed by design. `isObjectRaw(null)` follows `typeof`, while
+  `isObject` excludes `null` and arrays. `arrayHas` snapshots its input into a `Set`.
 - The library factory derives task inputs from `tsconfig.json` and local config files even though this
   leaf has no sibling `dist/`; `scripts/check-task-inputs.mjs` independently checks that exact contract.
 
@@ -50,9 +55,8 @@ consumer's bundler.
 
 ### Common Patterns
 
-- One concern per file, with a colocated `<name>.test.ts`; the barrel picks it up via `export *`.
-- Type guards are `value is T` predicates so callers narrow for free — `isPrimitive` is the one
-  exception, a plain `boolean`.
+- Public helpers live in five barrel modules; `isPrimitive` is the only guard returning plain
+  `boolean` rather than a type predicate. Keep the intentionally spelled `isNill` name.
 - Specs import `describe`/`it`/`expect`/`vi` from `vite-plus/test` and reach sources through `@/*`.
 
 ## Dependencies

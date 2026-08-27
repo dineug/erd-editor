@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-17 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
 
 # intellij-webview
 
@@ -31,7 +31,8 @@ Same `<erd-editor>` element and same `@dineug/erd-editor-vscode-bridge` protocol
 
 ### Working In This Directory
 
-- **`build` writes outside this package**, `emptyOutDir: true` into `../intellij-plugin/src/main/resources/assets`. There is no `dist/`, because nothing here imports this package. The task declares that directory as its `output`; drop that and a cache hit replays the log without restoring the bundle, which ships as a blank editor.
+- **`build` writes outside this package**, `emptyOutDir: true` into `../intellij-plugin/src/main/resources/assets`. There is no configured production `dist/` and nothing here imports this package; a local dev command may still leave a generated `dist/`, but it is not the shipped output. The task declares the plugin asset directory as its `output`; drop that and a cache hit replays the log without restoring the bundle, which ships as a blank editor.
+- Gradle `buildPlugin` and `runIde` verify that the asset bundle exists but do not invoke `buildWebview`; the IntelliJ workflow runs the pnpm webview build before Gradle. Run `./gradlew buildWebview` explicitly after webview changes when working locally.
 - **`base` stays `/`, only `.html`/`.js`/`.css` may be emitted, `sourcemap: false`** — the plugin's CEF
   `SchemeHandlerFactory` maps the URL path onto the classpath and types those three extensions, nothing else.
 - **Do not restore `crossorigin` on injected tags.** `stripCrossorigin` removes it: the scheme handler sends no CORS headers, so the module script is refused and the panel stays blank.

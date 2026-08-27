@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-17 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
 
 # vscode-extension
 
@@ -17,6 +17,7 @@ APIs into `@dineug/erd-editor-vscode-bridge` commands. The only package importin
 | --- | --- |
 | `package.json` | Also the extension manifest: `contributes` (custom editor, four `vuerd.*` commands, three theme settings), `activationEvents`, `engines` |
 | `src/erd-editor.ts` | All host-side bridge wiring: initial value, save, replication broadcast, import/export dialogs, theme push. `IMPORT_FILE_TYPES` is keyed by the bridge's `type` union and feeds both the open dialog's `filters` and the check on what was picked — widening that union without a row there is a build error, and `graphql` is why the check is an alternation and not the type string |
+| `src/erd-document.ts` | `CustomDocument` implementation — owns raw bytes, dirty state and save/revert/backup updates for the provider |
 | `src/erd-editor-provider.ts` | `ErdEditorProvider` — open/save/backup/revert, `resolveCustomEditor`, the `docToWebviewMap` |
 | `src/editor.ts` | Abstract `Editor` — the `Bridge`, `buildHtmlForWebview` (`{{extension-base-url}}`), `readonly` by URI scheme |
 | `vite.config.ts` | CJS lib build to `dist/extension.js` (`ssr`, `target: 'node20'`, `publicDir: false`, `vscode` + builtins external) plus `run.tasks` |
@@ -40,7 +41,8 @@ APIs into `@dineug/erd-editor-vscode-bridge` commands. The only package importin
 - `package.json` is the manifest. Two src↔manifest invariants are unit-asserted: `src/constants/viewType.test.ts` and the defaults check in `src/configuration.test.ts`.
 - `engines.vscode: ^1.90.0` feeds three places — `build.target: 'node20'`, `@types/node` `^20`, and `.vscode-test.mjs`'s `minimum-supported` run. Raise them together.
 - The emitted name `dist/extension.js` is a contract: `main` is `"./dist/extension"`, so a `.cjs` emit means the extension never activates.
-- Never edit `public/`. `publicDir: false` is what keeps its 2.6MB out of `dist/` and the VSIX.
+- Never edit `public/`. `publicDir: false` keeps the generated webview directory from being copied into the extension bundle's `dist/`; the webview build writes `public/` separately, where `vsce` packages it into the VSIX.
+- `activationEvents` uses `workspaceContains:**/*.{erd,vuerd}`, while `contributes.customEditors[].selector` supports the four `*.erd`, `*.erd.json`, `*.vuerd` and `*.vuerd.json` forms. Keep both manifest surfaces in sync when changing file support.
 - New state-changing bridge commands must go through the `docToWebviewMap` broadcast in `src/erd-editor.ts`, or one document open in two groups desynchronizes.
 - `capabilities.untrustedWorkspaces.supported` is `true` — never eval or execute document content.
 

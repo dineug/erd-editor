@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-17 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
 
 # vscode-replication-store-worker
 
@@ -17,7 +17,8 @@ instead of inlined. `private: true`.
 | File | Description |
 | --- | --- |
 | `src/index.ts` | Exports `ReplicationStoreWorker`, the worker constructor, via Vite's `?worker&inline` suffix |
-| `src/services/replicationStore.worker.ts` | Worker body — builds the store, registers the two inbound commands, dispatches `hostSaveValueCommand` on change |
+| `src/services/replicationStore.worker.ts` | Worker body — builds the store, registers the two inbound commands, and dispatches `hostSaveValueCommand` after a replica change |
+| `vite.config.ts` | Library worker build; `?worker&inline` is part of the emitted API and the shared library config supplies task inputs |
 
 ## Subdirectories
 
@@ -35,12 +36,15 @@ instead of inlined. `private: true`.
 - Import `@dineug/erd-editor/engine.js` (DOM-free), never the package root, which registers custom
   elements and throws in a worker. `tsconfig.json` replaces the inherited `lib` with
   `["ES2022", "WebWorker"]`, so `document` does not typecheck here.
-- `toWidth` measures with a lazy `OffscreenCanvas` 2d context at `400 12px`, falling back to
+- `toWidth` measures with a lazy `OffscreenCanvas(0, 0)` 2d context at `400 12px`, falling back to
   `text.length * 10`. It is byte-identical to `packages/intellij-webview/src/utils/text.ts` — a
   divergent font or `TEXT_PADDING` drifts replicated column widths.
 - Three commands cross this boundary: in `webviewInitialValueCommand` and
   `webviewReplicationCommand`, out `hostSaveValueCommand`. A fourth means editing `vscode-bridge`
   and `vscode-webview` too.
+- The webview sends both the initial value and raw editor actions into this worker. The worker's
+  `change` callback serializes the current value and sends it back to the host; it does not own the
+  VSCode document or perform transport-level replication.
 
 ### Testing Requirements
 

@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-17 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
 
 # schema-sql-parser
 
 ## Purpose
 
-`@dineug/schema-sql-parser` is a hand-written, permissive DDL parser: `schemaSQLParser(source)` tokenizes SQL of
+`@dineug/schema-sql-parser` is a private, hand-written, permissive DDL parser: `schemaSQLParser(source)` tokenizes SQL of
 any dialect and returns a flat `Statement[]` of seven kinds — `create.table`, `create.index`,
 `alter.table.add.{primaryKey,unique,foreignKey}` and `comment.on.{table,column}`. Unrecognised input is skipped
 rather than rejected, so a real dump imports partially instead of failing. Its only consumer is `@dineug/erd-editor`, whose
@@ -25,7 +25,7 @@ rather than rejected, so a real dump imports partially instead of failing. Its o
 
 | Directory | Purpose |
 | --- | --- |
-| `src/parser/` | `tokenizer.ts` (lexer — emits `string` plus six punctuation kinds; `TokenType`'s `leftBracket` is declared but never produced — `[x]` collapses into one quoted `string` — while an unpaired `]` emits `rightBracket`, which nothing consumes), matchers, dispatch loop |
+| `src/parser/` | `tokenizer.ts` (lexer — bracket, quote and backtick forms emit one quoted `string`; an unpaired `]` emits `rightBracket`), matchers, dispatch loop |
 | `src/parser/statement/` | One parser file per statement kind, plus the AST type module |
 | `src/parser/dataType/` | Per-vendor keyword lists: MySQL, MariaDB, PostgreSQL, MSSQL, Oracle, SQLite, Databricks, Snowflake |
 
@@ -34,6 +34,7 @@ rather than rejected, so a real dump imports partially instead of failing. Its o
 ### Working In This Directory
 
 - **Never throw on unrecognized SQL** — the loop advances `$pos` and continues; bailing turns a partial import into a failed one.
+- The public API is only `schemaSQLParser`, `StatementType`, `SortType`, and statement types; tokenizer, matchers, and dialect lists remain internal. The sole workspace consumer is `packages/erd-editor/src/utils/schema-sql-parser/`.
 - **`$pos` (`RefPos = { value: number }`) is a shared mutable cursor.** Each parser must leave it just past what it
   consumed — off-by-one either loops forever or swallows a statement.
 - Adding a statement kind is four edits: the parser file, the `Statement` union and `StatementType`, a matcher in `parser/helper.ts`, a branch in `parser/index.ts`.
@@ -53,10 +54,8 @@ rather than rejected, so a real dump imports partially instead of failing. Its o
 
 ### Common Patterns
 
-- Tokenize once, then parse by lookahead — no backtracking.
 - No keyword token exists, and `--` / `/* */` comments are dropped by the lexer rather than emitted: keywords are `string` tokens compared case-insensitively by value, and `"x"`, `'x'`, `` `x` `` and `[x]` all collapse to one `string` token with delimiters stripped — but marked `quoted`, which every `is*Value` matcher refuses, so `` `key` `` is a column and `KEY` is an index.
-- Matchers are curried over `tokens` (`isCreateTable(tokens)` → `(pos) => boolean`) and hoisted out of the loop.
-- AST nodes are fully populated with `''` and `[]` rather than optional fields.
+- AST nodes are fully populated with `''` and `[]` rather than optional fields; qualified names are reduced to their final table name by the editor consumer.
 
 ## Dependencies
 
@@ -66,7 +65,6 @@ None — leaf package.
 
 ### External
 
-No runtime dependencies. Build-only: `vite-plugin-dts` 5 with `@typescript/typescript6` 6.0.2 for declaration emit,
-and `BROWSER_TARGET` from the root `build-target.ts`.
+No runtime dependencies. Build-only: `vite-plugin-dts` `^5.0.3` with `@typescript/typescript6` 6.0.2; the shared library factory supplies the browser target and task inputs.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->
