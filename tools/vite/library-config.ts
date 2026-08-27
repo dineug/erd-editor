@@ -1,0 +1,117 @@
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import {
+  defineConfig,
+  lazyPlugins,
+  type PluginOption,
+  type ViteUserConfig,
+} from 'vite-plus';
+
+import { BROWSER_TARGET } from '../../build-target.ts';
+import {
+  createBanner,
+  createExternal,
+  loadLibraryMetadata,
+} from './package-metadata.ts';
+
+export interface DtsPluginOptions {
+  tsconfigPath?: string;
+  compilerOptions: { declarationMap: true };
+}
+
+interface LibraryConfigOptions {
+  banner?: true;
+  dts: (options: DtsPluginOptions) => PluginOption;
+  format?: 'es' | 'cjs';
+  minify?: false;
+  server?: ViteUserConfig['server'];
+}
+
+const dependsOn: Array<{
+  task: string;
+  from: Array<'dependencies' | 'devDependencies' | 'peerDependencies'>;
+}> = [
+  {
+    task: 'build',
+    from: ['dependencies', 'devDependencies', 'peerDependencies'],
+  },
+];
+
+export function createLibraryTasks(packageDir: string) {
+  const metadata = loadLibraryMetadata(packageDir);
+  const tasks: NonNullable<NonNullable<ViteUserConfig['run']>['tasks']> = {
+    build: {
+      command: ['tsc --noEmit', 'vp build'],
+      dependsOn,
+      input: [...metadata.typeGateInput, '!dist/**'],
+      output: ['dist/**'],
+    },
+  };
+
+  if (metadata.hasTest) {
+    tasks.test = {
+      command: ['tsc --noEmit', 'vp test run'],
+      dependsOn,
+      input: [...metadata.typeGateInput],
+    };
+  }
+
+  return tasks;
+}
+
+export function createLibraryConfig(
+  packageDir: string,
+  options: LibraryConfigOptions
+): ViteUserConfig {
+  const metadata = loadLibraryMetadata(packageDir);
+  const external = createExternal(metadata.manifest);
+  const rolldownOptions =
+    external || options.banner
+      ? {
+          ...(external ? { external } : {}),
+          ...(options.banner
+            ? { output: { banner: createBanner(metadata.manifest) } }
+            : {}),
+        }
+      : undefined;
+  const tsconfigBuild = join(packageDir, 'tsconfig.build.json');
+  const dtsOptions: DtsPluginOptions = {
+    ...(existsSync(tsconfigBuild)
+      ? { tsconfigPath: './tsconfig.build.json' }
+      : {}),
+    compilerOptions: { declarationMap: true },
+  };
+
+  return {
+    run: {
+      tasks: createLibraryTasks(packageDir),
+    },
+    build: {
+      target: BROWSER_TARGET,
+      ...(options.minify === false ? { minify: false } : {}),
+      lib: {
+        entry: ['./src/index.ts'],
+        formats: [options.format ?? 'es'],
+      },
+      ...(rolldownOptions ? { rolldownOptions } : {}),
+    },
+    resolve: {
+      alias: {
+        '@': join(packageDir, 'src'),
+      },
+    },
+    plugins: lazyPlugins(() => [options.dts(dtsOptions)]),
+    ...(options.server ? { server: options.server } : {}),
+  };
+}
+
+export function defineLibraryConfig(
+  configUrl: string,
+  options: LibraryConfigOptions
+) {
+  return defineConfig(
+    createLibraryConfig(dirname(fileURLToPath(configUrl)), options)
+  );
+}

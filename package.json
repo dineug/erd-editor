@@ -28,7 +28,7 @@
     "test": "vp run -r test",
     "format": "vp fmt",
     "lint": "vp lint .",
-    "check": "vp check && tsc --noEmit && node scripts/check-task-inputs.mjs",
+    "check": "vp check && tsc --noEmit && node --test tools/vite-config.test.ts && node scripts/check-task-inputs.mjs",
     "cache:clear": "vp cache clean",
     "prepare": "vp config"
   },

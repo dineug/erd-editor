@@ -14,9 +14,11 @@
 | `package.json` | Root scripts (`build`, `test`, `check`, `format`, `lint`, `cache:clear`); pins pnpm 10.34.3 via `packageManager` |
 | `pnpm-workspace.yaml` | `packages/*`, the catalog aliasing `vite` → `@voidzero-dev/vite-plus-core@0.2.9`, and the `typescript: 7.0.2` override |
 | `tsconfig.app.json` | Base config every package extends — ES2022 `target` and `lib`, strict, bundler resolution |
-| `tsconfig.json` | Typechecks the `vite.config.*` / `vitest.config.*` files, which sit in no package program; without it a typo in a `run.tasks` block is accepted silently |
-| `build-target.ts` | `BROWSER_TARGET` / `BROWSER_TARGET_QUERY` — the one browser floor, imported by the nine library `vite.config`s and `app`'s, and by neither webview |
-| `scripts/check-task-inputs.mjs` | Fails `pnpm check` when a package gains a workspace dep without the matching `dist/**/*.d.ts` input glob |
+| `tsconfig.json` | Typechecks the root tooling plus every `vite.config.*` / `vitest.config.*`, which sit in no package program |
+| `build-target.ts` | `BROWSER_TARGET` / `BROWSER_TARGET_QUERY` — the one browser floor, consumed by the library config factory, the two bespoke library configs and `app` |
+| `tools/vite/library-config.ts` | Typed factory for the seven standard library builds and shared task builder used by all nine library-mode packages |
+| `tools/vite/package-metadata.ts` | Derives task inputs, banners and runtime externals from JSONC tsconfig files and workspace manifests |
+| `scripts/check-task-inputs.mjs` | Independently verifies exact task/cache contracts and workspace declaration inputs during `pnpm check` |
 | `erd-editor.code-workspace` | Multi-root workspace; sets `oxc.oxc-vscode` as the formatter per language so the editor matches `vp fmt` |
 
 ## Subdirectories
@@ -65,9 +67,9 @@ Build order is derived from workspace dependencies: the first five rows below ar
   | Gradle (`intellij-plugin` only) | `cd packages/intellij-plugin && ./gradlew <task>` — it declares neither of the above |
 
   Selection flags go before the task name: `vp run -r build` is recursive, while `vp run build -r` forwards `-r` as a task argument instead of enabling recursion. `vp build` and `vp test` are built-ins that skip `run.tasks`, its `tsc --noEmit` gate and `dependsOn`. A `--filter` matching no package exits 0, so pass `--fail-if-no-match` or a rename leaves CI green while building nothing.
-- **TypeScript 7.0.2 everywhere.** Its `tsc` is a native binary Vite Task cannot trace, so every task declares `input` explicitly — change a tsconfig `include` without the matching `input` and a stale `.d.ts` typechecks green.
+- **TypeScript 7.0.2 everywhere.** Its `tsc` is a native binary Vite Task cannot trace, so every task declares `input` explicitly. The nine library-mode packages derive those inputs from their tsconfig and workspace manifests; bespoke app tasks still own their lists locally.
 - **One bundler.** Nine libraries build in Vite library mode with `vite-plugin-dts`; `app`, `intellij-webview`, `vscode-webview` and `vscode-extension` build an entry. Match the neighbouring package.
-- **`@/*` → `<package>/src/*`** is in all 13 TypeScript packages' `tsconfig.json` `paths`, and repeated in each config that has to resolve it — `vite.config.ts` in twelve (`vscode-extension` declares none; only its specs import through `@/`) and `vitest.config.*` in the eight with a suite. A new alias needs every copy.
+- **`@/*` → `<package>/src/*`** is in all 13 TypeScript packages' `tsconfig.json` `paths`. The seven standard library builds receive the matching Vite alias from `tools/vite/library-config.ts`; bespoke build and test configs still declare it locally.
 - **Formatting covers `.{ts,mts,tsx}` only** — `fmt.ignorePatterns` excludes Markdown, so `pnpm format` never rewrites the 15 AGENTS.md files. oxlint does not read `.gitignore`; its ignore list is in the root `vite.config.ts`, so gitignoring a path does not un-lint it.
 - Commit messages are linted by commitlint (Conventional Commits); `subject-case` is off because this repo capitalizes subjects.
 
@@ -76,7 +78,7 @@ Build order is derived from workspace dependencies: the first five rows below ar
 - `pnpm test` = `vp run -r test`. Nine packages define a `test` task — `shared`, `r-html`, `schema-sql-parser`, `erd-editor-schema`, `erd-editor`, `vscode-bridge`, `vite-plugin-r-html`, `app`, `vscode-extension`; the other five no-op. Each runs `tsc --noEmit` before Vitest.
 - Eight Vitest configs use `include: ['src/**/*.test.ts']`; `erd-editor` uses `include: ['src/**/*.test.{ts,tsx}']` for its JSX parity spec. A test outside `src/` is never collected, and all nine configs have a v8 coverage block at `perFile` 80%. Those thresholds gate `pnpm --filter <pkg> test:coverage` only; `pnpm test` and CI do not enforce them.
 - **A change is not verified until `pnpm build` passes.** Every `build` task runs `tsc --noEmit` first, so a green `pnpm test` proves nothing about the types of what ships.
-- `pnpm check` = `vp check` (oxfmt + oxlint in one pass) + the root `tsc --noEmit` + `scripts/check-task-inputs.mjs`. `pnpm format` is the writing half.
+- `pnpm check` = `vp check` (oxfmt + oxlint in one pass) + the root `tsc --noEmit` + the library config contract tests + `scripts/check-task-inputs.mjs`. `pnpm format` is the writing half.
 - Out-of-process suites, none of them in `pnpm test`: `pnpm --filter <pkg> e2e` for `erd-editor`, `app` and `r-html` (Playwright), and `vscode-extension` (`@vscode/test-cli`; needs `xvfb-run -a` on Linux). `app`'s is the one with no CI job.
 - `ci.yml` runs five jobs on push/PR/dispatch: `check` (`pnpm check`, then a build of `app`'s and `vuerd-vscode`'s dependencies, then those two `typecheck` scripts and `app`'s `e2e:typecheck`), `ci` (`pnpm test`, r-html `test:coverage`, `pnpm build`), `e2e`, `r-html-e2e`, `vscode-extension-e2e`. `intellij-plugin.yml` is separate so its `cancel-in-progress` does not reach those five; a `gate` job there decides whether the Gradle jobs run, because a job skipped by `paths` at workflow level leaves its check Pending forever. That build step in `check` is load-bearing: those typechecks resolve siblings through `dist/**/*.d.ts`, so dropping it passes locally and fails only on a runner.
 - Lint scope is `**/src/**/*.{ts,tsx}` — e2e specs, config files and `vscode-extension/test/**` are outside it. For SQL-generation changes, `docker/<vendor>/` plus `data/*.sql` is the manual loop — except Databricks and Snowflake, proprietary managed cloud services with no local container, so there is no `docker/databricks/` or `docker/snowflake/` and there will not be one.

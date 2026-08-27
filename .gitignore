@@ -38,6 +38,7 @@ yarn-error.log*
 
 .nx
 .omc
+.omx
 .playwright-mcp
 
 # Playwright

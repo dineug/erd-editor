@@ -34,8 +34,8 @@ consumer's bundler.
   catches a removed or renamed export; an **added** one passes untouched, so add the name yourself.
 - **`nanoid` has no fallback randomness source** — `globalThis.crypto` must exist in every target
   runtime (browser, worker, Extension Host); a test asserts the throw propagates.
-- `scripts/check-task-inputs.mjs` verifies nothing here — a leaf declares no sibling `dist/`. Widening
-  `tsconfig.json`'s `include` past `src/` without widening `input` buys a stale cache hit, not a failure.
+- The library factory derives task inputs from `tsconfig.json` and local config files even though this
+  leaf has no sibling `dist/`; `scripts/check-task-inputs.mjs` independently checks that exact contract.
 
 ### Testing Requirements
 
