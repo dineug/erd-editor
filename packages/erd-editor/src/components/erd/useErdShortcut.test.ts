@@ -931,6 +931,34 @@ describe('useErdShortcut - clipboard', () => {
     expect(preventDefault).not.toHaveBeenCalled();
   });
 
+  // the copy twin above has read the target since AC-32; paste did not, so text
+  // pasted into a memo or the Schema SQL overlay also landed on the diagram.
+  it.each([
+    ['textarea', () => document.createElement('textarea')],
+    ['input', () => document.createElement('input')],
+    [
+      'contenteditable',
+      () => {
+        const el = document.createElement('div');
+        el.setAttribute('contenteditable', '');
+        return el;
+      },
+    ],
+  ])('ignores paste while the target is inside a %s', async (_, create) => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    const { event, preventDefault } = createClipboardEvent(
+      { 'text/plain': 'nickname' },
+      create()
+    );
+
+    app.emitter.emit(pasteAction({ event }));
+    await flush();
+
+    expect(getTable(app, tableId)?.columnIds ?? []).toHaveLength(0);
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
+
   it('ignores paste while the focused table is being edited', async () => {
     const app = await setup();
     const tableId = seedTable(app);

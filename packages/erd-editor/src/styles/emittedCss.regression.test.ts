@@ -185,15 +185,17 @@ describe('rule-count invariance', () => {
     expect(modulePaths).toHaveLength(62);
   });
 
-  it('adopts 611 rules, none of them a duplicate', () => {
+  it('adopts 617 rules, none of them a duplicate', () => {
     // 302 -> 609: the color picker fold, +307. It rendered into a tree `<style>` before, so none
     // of its rules were adopted and none of them were counted here; as a `css.global` literal all
-    // 307 are. 609 -> 611: the Alt+drag ghost's two scoped rules.
-    expect(cumulative).toHaveLength(611);
-    expect(new Set(cumulative).size).toBe(611);
+    // 307 are. 609 -> 611: the Alt+drag ghost's two scoped rules. 611 -> 617: the CodeBlock
+    // overlay, which splits its one `code` rule into a shared alignment fragment, a scroller, a
+    // layer box, a preview and its `*` block, and a textarea with its `::selection`.
+    expect(cumulative).toHaveLength(617);
+    expect(new Set(cumulative).size).toBe(617);
   });
 
-  it('splits into 327 global rules ahead of 284 component rules', () => {
+  it('splits into 327 global rules ahead of 290 component rules', () => {
     // P4 moved reset (12), fonts (1), typography (1) and scrollbar (6) out of tree `<style>`
     // elements and into `adoptedStyleSheets`. A shadow root applies its own `styleSheets` before
     // its `adoptedStyleSheets`, so the only thing keeping the reset ahead of the components now
@@ -204,10 +206,11 @@ describe('rule-count invariance', () => {
     // says the fold moved a sheet between pools rather than rewriting one. The component half
     // then went 158 -> 160 sheets and 282 -> 284 rules on its own account, when the Alt+drag
     // ghost added its layer and per-entity templates; the global half did not move with it,
-    // which is the same statement in the other direction.
-    expect(sheetsOfEachKind).toEqual({ global: 5, component: 160 });
+    // which is the same statement in the other direction. 160 -> 164 sheets / 284 -> 290 rules is
+    // the CodeBlock overlay, on the same terms.
+    expect(sheetsOfEachKind).toEqual({ global: 5, component: 164 });
     expect(globalRules).toHaveLength(327);
-    expect(componentRules).toHaveLength(284);
+    expect(componentRules).toHaveLength(290);
     expect(cumulative).toEqual([...globalRules, ...componentRules]);
   });
 
@@ -224,7 +227,7 @@ describe('rule-count invariance', () => {
     // Identifiers are content hashes now, so a rule's text is the same whether its module is
     // rendered alone or with the other 61 — which is exactly what makes this comparison mean
     // "nothing was lost to dedup" rather than "the class names differ".
-    expect(union.size).toBe(611);
+    expect(union.size).toBe(617);
     expect(droppedByLoadingTogether).toEqual([]);
   });
 
@@ -242,7 +245,7 @@ describe('rule-count invariance', () => {
 
 describe('empty rules', () => {
   it('discards the two rules whose bodies were empty, keeping their children', () => {
-    // `ErdEditor.styles.ts:17` `&.none-focus` and `CodeBlock.styles.ts:30` `&:hover` hold nested
+    // `ErdEditor.styles.ts:17` `&.none-focus` and `CodeBlock.styles.ts:59` `&:hover` hold nested
     // rules and no declarations of their own. The old pipeline emitted `.S.none-focus {  }` and
     // `.S:hover {  }`; the compiler discards a rule with no declarations.
     expect(cumulative.filter(text => /\{\s*\}$/.test(text))).toEqual([]);

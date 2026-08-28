@@ -284,6 +284,7 @@ export function useErdShortcut(ctx: Ctx) {
     if (showHighLevelTable || editor.focusTable?.edit || !event.clipboardData) {
       return;
     }
+    if (isEditableTarget(event.target)) return;
 
     const result = readClipboardPayload(event.clipboardData);
 
