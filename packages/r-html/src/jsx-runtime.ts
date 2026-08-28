@@ -107,9 +107,21 @@ export interface CommonAttributes extends Sigils, DatasetAttributes {
 
 export interface HTMLAttributes
   extends CommonAttributes, EventHandlers<HTMLElementEventMap> {
+  /** Global, and enumerated: the values are the strings. */
+  autocapitalize?: 'off' | 'none' | 'on' | 'sentences' | 'words' | 'characters';
   /** Enumerated, like `spellcheck`: the values are the strings. */
   draggable?: boolean | 'true' | 'false';
   hidden?: boolean;
+  /** Global, and enumerated: `none` keeps a focusable field from raising a keyboard. */
+  inputmode?:
+    | 'none'
+    | 'text'
+    | 'decimal'
+    | 'numeric'
+    | 'tel'
+    | 'search'
+    | 'email'
+    | 'url';
   role?: string;
   /** An enumerated attribute, not a boolean one: the values are the strings. */
   spellcheck?: boolean | 'true' | 'false';
@@ -161,6 +173,9 @@ export interface InputAttributes extends HTMLAttributes {
 }
 
 export interface TextareaAttributes extends HTMLAttributes {
+  autocomplete?: string;
+  /** WebKit's, and enumerated: the values are the strings. */
+  autocorrect?: 'on' | 'off';
   cols?: number;
   disabled?: boolean;
   name?: string;
