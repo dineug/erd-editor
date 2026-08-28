@@ -85,6 +85,12 @@ const rootOf = (m: Mounted) =>
 const codeOf = (m: Mounted) =>
   m.container.querySelector('.scrollbar') as HTMLDivElement;
 
+/**
+ * CodeBlock strips the generators' trailing blank line, which a textarea turns into a real last
+ * line and a block container does not.
+ */
+const rendered = (code: string) => code.replace(/\n+$/, '');
+
 const copyButtonOf = (m: Mounted) =>
   m.container.querySelector('[title="Copy"]') as HTMLDivElement;
 
@@ -141,7 +147,7 @@ describe('GeneratorCode', () => {
     expect(root).toBeTruthy();
     expect(root.contains(codeOf(mounted))).toBe(true);
     expect(codeOf(mounted).textContent).toBe(
-      createGeneratorCode(app.store.state)
+      rendered(createGeneratorCode(app.store.state))
     );
     expect(codeOf(mounted).textContent).toContain('type User {');
     expect(codeOf(mounted).textContent).toContain('userName: String');
@@ -159,7 +165,7 @@ describe('GeneratorCode', () => {
 
     const table = app.store.state.collections.tableEntities['table-a'];
     expect(codeOf(mounted).textContent).toBe(
-      createGeneratorCodeTable(app.store.state, table)
+      rendered(createGeneratorCodeTable(app.store.state, table))
     );
     expect(codeOf(mounted).textContent).toContain('type User {');
     expect(codeOf(mounted).textContent).not.toContain('type Post');
@@ -249,7 +255,7 @@ describe('GeneratorCode', () => {
       theme: 'light',
     });
     expect(codeToHtml.mock.calls.at(-1)?.[0]).toBe(
-      createGeneratorCode(app.store.state)
+      rendered(createGeneratorCode(app.store.state))
     );
   });
 

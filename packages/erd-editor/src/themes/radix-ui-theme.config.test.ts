@@ -13,6 +13,11 @@ describe('ThemeConfig', () => {
     expect(entries).toHaveLength(65);
   });
 
+  it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {
+    // the band is painted over the highlighted code, so an opaque value would hide what it selects
+    expect(ThemeConfig.placeholder).toMatch(/^grayA-/);
+  });
+
   it('maps every gray/accent scale token onto its own scale step', () => {
     for (let step = 1; step <= 12; step++) {
       expect(get(ThemeConfig, `grayColor${step}`)).toBe(`gray-${step}`);

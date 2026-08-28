@@ -31,7 +31,7 @@ export type CodeBlockProps = {
 };
 
 const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
-  const root = createRef<HTMLDivElement>();
+  const preview = createRef<HTMLDivElement>();
   const { addUnsubscribe } = useUnmounted();
 
   const state = observable({
@@ -39,15 +39,48 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
     backgroundColor: '',
   });
 
+  let highlightSource: string | null = null;
+  let highlightRequestId = 0;
+
+  // a trailing break is a real last line in a textarea and no line box in the preview
+  const getValue = () => props.value.replace(/\n+$/, '');
+
   const handleCopy = () => {
-    props.onCopy?.(props.value);
+    props.onCopy?.(getValue());
+  };
+
+  /*
+   * The overlay refuses edits here rather than through `readonly`, which Chrome paints no caret in.
+   * `input` covers the composition paths `beforeinput` cannot cancel.
+   */
+  const handleBeforeinput = (event: Event) => {
+    event.preventDefault();
+  };
+
+  const handleInput = (event: Event) => {
+    const $textarea = event.target as HTMLTextAreaElement;
+    const value = getValue();
+
+    if ($textarea.value !== value) {
+      $textarea.value = value;
+    }
+  };
+
+  // the editor root turns a `paste` that reaches it into a diagram-level action
+  const handlePaste = (event: ClipboardEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const getPre = () => {
+    const $preview = preview.value;
+    if (!$preview) return null;
+
+    return $preview.querySelector('pre.shiki') as HTMLPreElement | null;
   };
 
   const getBackgroundColor = () => {
-    const $root = root.value;
-    if (!$root) return null;
-
-    const pre = $root.querySelector('pre.shiki') as HTMLPreElement | null;
+    const pre = getPre();
     if (!pre) return null;
 
     const backgroundColor = pre.style.backgroundColor;
@@ -59,16 +92,29 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
   const setBackgroundColor = () => {
     nextTick(() => {
       state.backgroundColor = getBackgroundColor() || '';
+      // shiki ships `tabindex="0"`, a tab stop inside the aria-hidden preview
+      getPre()?.removeAttribute('tabindex');
     });
   };
 
   const setHighlight = () => {
+    const value = getValue();
+    const requestId = ++highlightRequestId;
+
+    // the overlay commits the new value on the next render; stale markup would outlive it
+    if (highlightSource !== value) {
+      highlightSource = value;
+      state.highlight = '';
+    }
+
     getShikiService()
-      ?.codeToHtml(props.value, {
+      ?.codeToHtml(value, {
         lang: props.lang,
         theme: props.theme,
       })
       .then(highlight => {
+        if (requestId !== highlightRequestId) return;
+
         state.highlight = highlight;
         setBackgroundColor();
       });
@@ -88,21 +134,48 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
     );
   });
 
-  return () => (
-    <div class={styles.root} use:ref={ref(root)}>
-      <div
-        class={['scrollbar', styles.code]}
-        style={{
-          'background-color': state.backgroundColor,
-        }}
-      >
-        {innerHTML(state.highlight ? state.highlight : props.value)}
+  return () => {
+    const value = getValue();
+
+    return (
+      <div class={styles.root}>
+        <div
+          class={['scrollbar', styles.scroller]}
+          style={{
+            'background-color': state.backgroundColor,
+          }}
+        >
+          <div class={styles.layers}>
+            <div
+              class={styles.preview}
+              aria-hidden="true"
+              use:ref={ref(preview)}
+            >
+              {state.highlight ? innerHTML(state.highlight) : value}
+            </div>
+            <textarea
+              class={styles.textarea}
+              aria-label="Code"
+              aria-readonly="true"
+              inputmode="none"
+              tabindex="0"
+              spellcheck="false"
+              autocorrect="off"
+              autocapitalize="off"
+              autocomplete="off"
+              prop:value={value}
+              on:beforeinput={handleBeforeinput}
+              on:input={handleInput}
+              on:paste={handlePaste}
+            ></textarea>
+          </div>
+        </div>
+        <div class={styles.clipboard} title="Copy" on:click={handleCopy}>
+          <Icon prefix="far" name="copy" useTransition={true} />
+        </div>
       </div>
-      <div class={styles.clipboard} title="Copy" on:click={handleCopy}>
-        <Icon prefix="far" name="copy" useTransition={true} />
-      </div>
-    </div>
-  );
+    );
+  };
 };
 
 export default CodeBlock;

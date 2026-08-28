@@ -53,7 +53,7 @@ describe('classifySlots', () => {
   });
 
   it('reads a selector site as inline', () => {
-    // `CodeBlock.styles.ts:31` — `${clipboard} {`
+    // `CodeBlock.styles.ts:60` — `${clipboard} {`
     expect(kindsOf('\n  ', ' {\n    opacity: 1;\n  }\n')).toEqual(['inline']);
     // `css.test.ts` — `.wrap ${child} {`
     expect(kindsOf('\n  .wrap ', ' {\n    color: pink;\n  }\n')).toEqual([
