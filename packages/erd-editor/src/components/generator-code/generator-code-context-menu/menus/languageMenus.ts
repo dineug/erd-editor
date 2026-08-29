@@ -7,14 +7,15 @@ type Menu = {
   value: number;
 };
 
+// Three groups, each ascending by name: languages, ORMs, schema DSLs.
 export const menus: Menu[] = [
-  {
-    name: 'GraphQL',
-    value: Language.GraphQL,
-  },
   {
     name: 'C#',
     value: Language.csharp,
+  },
+  {
+    name: 'Go',
+    value: Language.Go,
   },
   {
     name: 'Java',
@@ -25,20 +26,24 @@ export const menus: Menu[] = [
     value: Language.Kotlin,
   },
   {
+    name: 'Scala',
+    value: Language.Scala,
+  },
+  {
     name: 'TypeScript',
     value: Language.TypeScript,
+  },
+  {
+    name: 'Drizzle',
+    value: Language.Drizzle,
   },
   {
     name: 'JPA',
     value: Language.JPA,
   },
   {
-    name: 'Scala',
-    value: Language.Scala,
-  },
-  {
-    name: 'Go',
-    value: Language.Go,
+    name: 'Sequelize',
+    value: Language.Sequelize,
   },
   {
     name: 'SQLAlchemy',
@@ -49,20 +54,16 @@ export const menus: Menu[] = [
     value: Language.TypeORM,
   },
   {
-    name: 'Sequelize',
-    value: Language.Sequelize,
-  },
-  {
-    name: 'Drizzle',
-    value: Language.Drizzle,
+    name: 'AML',
+    value: Language.AML,
   },
   {
     name: 'DBML',
     value: Language.DBML,
   },
   {
-    name: 'AML',
-    value: Language.AML,
+    name: 'GraphQL',
+    value: Language.GraphQL,
   },
 ];
 

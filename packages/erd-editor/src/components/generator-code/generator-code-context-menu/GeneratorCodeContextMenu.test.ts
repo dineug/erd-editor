@@ -120,20 +120,20 @@ describe('GeneratorCodeContextMenu', () => {
     const submenu = await openSubmenu('Language');
 
     expect(namesOf(submenu)).toEqual([
-      'GraphQL',
       'C#',
+      'Go',
       'Java',
       'Kotlin',
-      'TypeScript',
-      'JPA',
       'Scala',
-      'Go',
+      'TypeScript',
+      'Drizzle',
+      'JPA',
+      'Sequelize',
       'SQLAlchemy',
       'TypeORM',
-      'Sequelize',
-      'Drizzle',
-      'DBML',
       'AML',
+      'DBML',
+      'GraphQL',
     ]);
     expect(checkedNameOf(submenu)).toEqual(['GraphQL']);
   });
