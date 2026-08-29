@@ -17,14 +17,23 @@ import {
   TABLE_HEADER_HEIGHT,
   TABLE_PADDING,
 } from '@/constants/layout';
-import { selectAction } from '@/engine/modules/editor/atom.actions';
-import { SelectType } from '@/engine/modules/editor/state';
+import {
+  selectAction,
+  sharedFocusTrackerAction,
+  sharedSelectionTrackerAction,
+} from '@/engine/modules/editor/atom.actions';
+import {
+  FocusType,
+  SelectType,
+  SharedFocus,
+} from '@/engine/modules/editor/state';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableColorAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
+import { Tag } from '@/engine/tag';
 import type { Table } from '@/internal-types';
 import {
   fontSize5,
@@ -34,6 +43,7 @@ import {
   fontSize9,
 } from '@/styles/typography.styles';
 import { calcTableWidths } from '@/utils/calcTable';
+import { toSharedColor } from '@/utils/sharedColor';
 
 let mounted: Mounted | null = null;
 
@@ -95,6 +105,13 @@ const mountTable = async (app: AppContext, table: Table) => {
   );
   return mounted;
 };
+
+const trackFocus = (app: AppContext, focus: SharedFocus | null) =>
+  app.store.dispatchSync({
+    ...sharedFocusTrackerAction({ focus }),
+    tags: Tag.shared,
+    meta: { editorId: 'remote-1' },
+  });
 
 describe('HighLevelTable', () => {
   it('positions the table box and stamps its id on the root', async () => {
@@ -271,5 +288,137 @@ describe('HighLevelTable', () => {
       other: SelectType.memo,
       [TABLE_ID]: SelectType.table,
     });
+  });
+
+  it('outlines the root while a remote editor focuses the table', async () => {
+    const app = createTestAppContext();
+    const table = seedTable(app);
+    await mountTable(app, table);
+
+    expect(rootOf().hasAttribute('data-shared-focus')).toBe(false);
+
+    trackFocus(app, {
+      tableId: TABLE_ID,
+      columnId: null,
+      focusType: FocusType.tableName,
+    });
+    await flush();
+
+    expect(rootOf().hasAttribute('data-shared-focus')).toBe(true);
+
+    trackFocus(app, null);
+    await flush();
+
+    expect(app.store.state.editor.sharedFocusTrackerMap).toEqual({});
+    expect(rootOf().hasAttribute('data-shared-focus')).toBe(false);
+  });
+});
+
+describe('HighLevelTable shared select', () => {
+  const apps = new Set<AppContext>();
+
+  afterEach(() => {
+    for (const app of apps) {
+      for (const tracker of Object.values(
+        app.store.state.editor.sharedSelectionTrackerMap
+      )) {
+        clearTimeout(tracker.timeoutId);
+      }
+    }
+    apps.clear();
+  });
+
+  const trackSelection = (
+    app: AppContext,
+    selectedIds: string[],
+    editorId = 'remote-1'
+  ) => {
+    apps.add(app);
+    app.store.dispatchSync({
+      ...sharedSelectionTrackerAction({ selectedIds }),
+      tags: Tag.shared,
+      meta: { editorId },
+    });
+  };
+
+  const snapshotSelectedMap = (app: AppContext) => ({
+    ...app.store.state.editor.selectedMap,
+  });
+
+  it('leaves the root unmarked while no peer has selected it', async () => {
+    const app = createTestAppContext();
+    await mountTable(app, seedTable(app));
+
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(false);
+    expect(rootOf().style.getPropertyValue('--shared-select')).toBe('');
+  });
+
+  it('marks the root in the peer color once a peer selects the table', async () => {
+    const app = createTestAppContext();
+    await mountTable(app, seedTable(app));
+
+    trackSelection(app, [TABLE_ID]);
+    await flush();
+
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(true);
+    expect(rootOf().style.getPropertyValue('--shared-select')).toBe(
+      toSharedColor('remote-1')
+    );
+  });
+
+  it('leaves the root unmarked while the peer selects another entity', async () => {
+    const app = createTestAppContext();
+    await mountTable(app, seedTable(app));
+
+    trackSelection(app, ['other-table']);
+    await flush();
+
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(false);
+    expect(rootOf().style.getPropertyValue('--shared-select')).toBe('');
+  });
+
+  it('marks the root when the peer selection holds several ids', async () => {
+    const app = createTestAppContext();
+    await mountTable(app, seedTable(app));
+
+    trackSelection(app, ['memo-1', 'other-table', TABLE_ID]);
+    await flush();
+
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(true);
+    expect(rootOf().style.getPropertyValue('--shared-select')).toBe(
+      toSharedColor('remote-1')
+    );
+  });
+
+  it('clears the marker when the peer selection empties', async () => {
+    const app = createTestAppContext();
+    await mountTable(app, seedTable(app));
+
+    trackSelection(app, [TABLE_ID]);
+    await flush();
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(true);
+
+    trackSelection(app, []);
+    await flush();
+
+    expect(app.store.state.editor.sharedSelectionTrackerMap).toEqual({});
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(false);
+    expect(rootOf().style.getPropertyValue('--shared-select')).toBe('');
+  });
+
+  it('never writes a peer selection into the local selection map', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(selectAction({ other: SelectType.memo }));
+    await mountTable(app, seedTable(app));
+
+    const before = snapshotSelectedMap(app);
+    expect(before).toEqual({ other: SelectType.memo });
+
+    trackSelection(app, [TABLE_ID, 'other-table']);
+    await flush();
+
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(true);
+    expect(rootOf().hasAttribute('data-selected')).toBe(false);
+    expect(snapshotSelectedMap(app)).toEqual(before);
   });
 });

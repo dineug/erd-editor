@@ -171,8 +171,13 @@ describe('ReadonlyIgnoreActionTypes', () => {
 });
 
 describe('shared action types', () => {
-  it('SharedStreamActionTypes tracks only the mouse tracker', () => {
-    expect(SharedStreamActionTypes).toEqual(['editor.sharedMouseTracker']);
+  it('SharedStreamActionTypes tracks the ephemeral presence streams', () => {
+    expect(SharedStreamActionTypes).toEqual([
+      'editor.sharedMouseTracker',
+      'editor.sharedFocusTracker',
+      'editor.sharedSelectionTracker',
+      'editor.sharedDragSelectTracker',
+    ]);
   });
 
   it('SharedActionTypes is ChangeActionTypes plus stream and LWW sync', () => {

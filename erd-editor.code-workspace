@@ -62,26 +62,11 @@
     },
   ],
   "settings": {
-    // Editor and CLI run the same rules, and not by coincidence: Vite+ installs
-    // `oxlint` and `oxfmt` shims into `node_modules/.bin` whose only purpose is
-    // to let this extension discover and start their LSP servers, and those
-    // shims load the root `vite.config.ts` before handing off. So the `lint`
-    // and `fmt` blocks there are the single source of truth for both — there is
-    // deliberately no `.oxlintrc.json` or `.oxfmtrc.json` in this repo, and
-    // adding one would give the editor a second, competing answer.
     "editor.formatOnSave": true,
-    // oxfmt formats whole files. The default, "modifications", would hand it
-    // only the changed ranges and produce output `vp fmt` disagrees with.
     "editor.formatOnSaveMode": "file",
     "editor.codeActionsOnSave": {
       "source.fixAll.oxc": "explicit",
     },
-    // Named per language rather than globally. oxfmt honours the root
-    // `fmt.ignorePatterns`, which denies json/css/markdown/js among others, and
-    // for those it returns the buffer untouched — as the *default* formatter
-    // that reads to the editor as "formatting did nothing" while displacing
-    // VSCode's own built-ins. So it is declared only for what it actually
-    // formats: `.ts`/`.mts` (typescript) and `.tsx` (typescriptreact).
     "[typescript]": {
       "editor.defaultFormatter": "oxc.oxc-vscode",
     },

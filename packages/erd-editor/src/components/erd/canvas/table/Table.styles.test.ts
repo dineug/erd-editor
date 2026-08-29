@@ -15,6 +15,12 @@ import { typography } from '@/styles/typography.styles';
 const sourceOf = (style: { strings: TemplateStringsArray }) =>
   style.strings.join('');
 
+const blockOf = (source: string, selector: string) => {
+  const start = source.indexOf(`${selector} {`);
+
+  return source.slice(start, source.indexOf('}', start));
+};
+
 describe('Table.styles', () => {
   it('exports every class the Table template composes', () => {
     expect(Object.keys(styles).sort()).toEqual([
@@ -49,6 +55,28 @@ describe('Table.styles', () => {
     expect(source).toContain('color: var(--foreground)');
     expect(source).toContain('&[data-selected]');
     expect(source).toContain('border: 1px solid var(--table-select)');
+  });
+
+  it('marks a remote peer focus with an outline and underlines the focused header input', () => {
+    const source = sourceOf(styles.root);
+
+    expect(source).toContain('&[data-shared-focus]');
+    expect(source).toContain('outline: 1px solid var(--shared-focus)');
+    expect(source).toContain('outline-offset: 0');
+    expect(source).toContain('& .input-padding[data-shared-focus]');
+    expect(source).toContain(
+      'box-shadow: inset 0 -1.5px 0 var(--shared-focus)'
+    );
+  });
+
+  it('leaves the two border writes to the base and selected rules', () => {
+    const source = sourceOf(styles.root);
+
+    expect(source.match(/border:/g)).toHaveLength(2);
+    expect(blockOf(source, '&[data-shared-focus]')).not.toContain('border');
+    expect(
+      blockOf(source, '& .input-padding[data-shared-focus]')
+    ).not.toContain('border');
   });
 
   it('declares the column-row-move transition the flip animation toggles', () => {

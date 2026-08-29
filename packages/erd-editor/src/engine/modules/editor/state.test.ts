@@ -37,6 +37,10 @@ describe('editor/state', () => {
       expect(editor.draggableColumn).toBeNull();
       expect(editor.draggingColumnMap).toEqual({});
       expect(editor.sharedMouseTrackerMap).toEqual({});
+      expect(editor.sharedFocusTrackerMap).toEqual({});
+      expect(editor.sharedSelectionTrackerMap).toEqual({});
+      expect(editor.sharedDragSelectTrackerMap).toEqual({});
+      expect(editor.dragSelect).toBeNull();
     });
 
     it('gives each editor its own id and its own mutable containers', () => {
@@ -58,6 +62,27 @@ describe('editor/state', () => {
         nickname: 'user',
         timeoutId: null,
       };
+      a.sharedFocusTrackerMap['e1'] = {
+        id: 'e1',
+        tableId: 't1',
+        columnId: 'c1',
+        focusType: FocusType.columnName,
+        timeoutId: null,
+      };
+      a.sharedSelectionTrackerMap['e1'] = {
+        id: 'e1',
+        selectedIds: ['m1', 't1'],
+        timeoutId: null,
+      };
+      a.sharedDragSelectTrackerMap['e1'] = {
+        id: 'e1',
+        x: 10,
+        y: 20,
+        w: 200,
+        h: 100,
+        timeoutId: null,
+      };
+      a.dragSelect = { x: 5, y: 6, w: 70, h: 80 };
 
       expect(b.selectedMap).toEqual({});
       expect(b.viewport.width).toBe(DEFAULT_WIDTH);
@@ -66,6 +91,10 @@ describe('editor/state', () => {
       expect(b.draggingColumnMap).toEqual({});
       expect(b.hoverRelationshipMap).toEqual({});
       expect(b.sharedMouseTrackerMap).toEqual({});
+      expect(b.sharedFocusTrackerMap).toEqual({});
+      expect(b.sharedSelectionTrackerMap).toEqual({});
+      expect(b.sharedDragSelectTrackerMap).toEqual({});
+      expect(b.dragSelect).toBeNull();
     });
 
     it('is the shape the real store starts from and mutates', () => {

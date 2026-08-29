@@ -1,7 +1,11 @@
-import { FocusTable, FocusType } from '@/engine/modules/editor/state';
+import {
+  FocusTable,
+  FocusType,
+  SharedFocus,
+} from '@/engine/modules/editor/state';
 
 export function isFocus(
-  focusTable: FocusTable | null,
+  focusTable: Pick<FocusTable, 'tableId' | 'columnId' | 'focusType'> | null,
   focusType: FocusType,
   tableId: string,
   columnId: string | null = null
@@ -52,3 +56,17 @@ export function lastCursorFocus(input: HTMLInputElement) {
   input.selectionEnd = len;
   input.focus();
 }
+
+export const toSharedFocus = (
+  focusTable: FocusTable | null
+): SharedFocus | null =>
+  focusTable
+    ? {
+        tableId: focusTable.tableId,
+        columnId: focusTable.columnId,
+        focusType: focusTable.focusType,
+      }
+    : null;
+
+export const toSharedFocusKey = (focus: SharedFocus | null) =>
+  focus ? JSON.stringify([focus.tableId, focus.columnId, focus.focusType]) : '';

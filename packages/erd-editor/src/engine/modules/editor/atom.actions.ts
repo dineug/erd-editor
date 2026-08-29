@@ -27,6 +27,8 @@ import {
 } from './utils/selectRangeColumn';
 
 const SHARED_MOUSE_TRACKER_TIMEOUT = 1000 * 30;
+export const SHARED_FOCUS_TRACKER_TIMEOUT = 1000 * 90;
+export const SHARED_DRAG_SELECT_TRACKER_TIMEOUT = 1000 * 3;
 
 export const changeHasHistoryAction = createAction<
   ActionMap[typeof ActionType.changeHasHistory]
@@ -530,6 +532,160 @@ const sharedMouseTracker: ReducerType<typeof ActionType.sharedMouseTracker> = (
   }
 };
 
+export const sharedFocusTrackerAction = createAction<
+  ActionMap[typeof ActionType.sharedFocusTracker]
+>(ActionType.sharedFocusTracker);
+
+const sharedFocusTracker: ReducerType<typeof ActionType.sharedFocusTracker> = (
+  { editor },
+  { payload: { focus }, tags, meta }
+) => {
+  if (
+    isNill(tags) ||
+    !bHas(tags, Tag.shared) ||
+    !isString(meta?.editorId) ||
+    editor.id === meta.editorId
+  ) {
+    return;
+  }
+
+  const sharedFocusTracker = editor.sharedFocusTrackerMap[meta.editorId];
+
+  if (!focus) {
+    if (sharedFocusTracker) {
+      clearTimeout(sharedFocusTracker.timeoutId);
+      Reflect.deleteProperty(editor.sharedFocusTrackerMap, meta.editorId);
+    }
+    return;
+  }
+
+  if (sharedFocusTracker) {
+    sharedFocusTracker.tableId = focus.tableId;
+    sharedFocusTracker.columnId = focus.columnId;
+    sharedFocusTracker.focusType = focus.focusType;
+
+    clearTimeout(sharedFocusTracker.timeoutId);
+    sharedFocusTracker.timeoutId = setTimeout(() => {
+      Reflect.deleteProperty(editor.sharedFocusTrackerMap, meta.editorId);
+    }, SHARED_FOCUS_TRACKER_TIMEOUT);
+  } else {
+    editor.sharedFocusTrackerMap[meta.editorId] = {
+      ...focus,
+      id: meta.editorId,
+      timeoutId: setTimeout(() => {
+        Reflect.deleteProperty(editor.sharedFocusTrackerMap, meta.editorId);
+      }, SHARED_FOCUS_TRACKER_TIMEOUT),
+    };
+  }
+};
+
+export const sharedSelectionTrackerAction = createAction<
+  ActionMap[typeof ActionType.sharedSelectionTracker]
+>(ActionType.sharedSelectionTracker);
+
+const sharedSelectionTracker: ReducerType<
+  typeof ActionType.sharedSelectionTracker
+> = ({ editor }, { payload: { selectedIds }, tags, meta }) => {
+  if (
+    isNill(tags) ||
+    !bHas(tags, Tag.shared) ||
+    !isString(meta?.editorId) ||
+    editor.id === meta.editorId
+  ) {
+    return;
+  }
+
+  const sharedSelectionTracker =
+    editor.sharedSelectionTrackerMap[meta.editorId];
+
+  if (!selectedIds.length) {
+    if (sharedSelectionTracker) {
+      clearTimeout(sharedSelectionTracker.timeoutId);
+      Reflect.deleteProperty(editor.sharedSelectionTrackerMap, meta.editorId);
+    }
+    return;
+  }
+
+  if (sharedSelectionTracker) {
+    sharedSelectionTracker.selectedIds = selectedIds;
+
+    clearTimeout(sharedSelectionTracker.timeoutId);
+    sharedSelectionTracker.timeoutId = setTimeout(() => {
+      Reflect.deleteProperty(editor.sharedSelectionTrackerMap, meta.editorId);
+    }, SHARED_FOCUS_TRACKER_TIMEOUT);
+  } else {
+    editor.sharedSelectionTrackerMap[meta.editorId] = {
+      id: meta.editorId,
+      selectedIds,
+      timeoutId: setTimeout(() => {
+        Reflect.deleteProperty(editor.sharedSelectionTrackerMap, meta.editorId);
+      }, SHARED_FOCUS_TRACKER_TIMEOUT),
+    };
+  }
+};
+
+export const sharedDragSelectTrackerAction = createAction<
+  ActionMap[typeof ActionType.sharedDragSelectTracker]
+>(ActionType.sharedDragSelectTracker);
+
+const sharedDragSelectTracker: ReducerType<
+  typeof ActionType.sharedDragSelectTracker
+> = ({ editor }, { payload: { rect }, tags, meta }) => {
+  if (
+    isNill(tags) ||
+    !bHas(tags, Tag.shared) ||
+    !isString(meta?.editorId) ||
+    editor.id === meta.editorId
+  ) {
+    return;
+  }
+
+  const sharedDragSelectTracker =
+    editor.sharedDragSelectTrackerMap[meta.editorId];
+
+  if (!rect) {
+    if (sharedDragSelectTracker) {
+      clearTimeout(sharedDragSelectTracker.timeoutId);
+      Reflect.deleteProperty(editor.sharedDragSelectTrackerMap, meta.editorId);
+    }
+    return;
+  }
+
+  if (sharedDragSelectTracker) {
+    sharedDragSelectTracker.x = rect.x;
+    sharedDragSelectTracker.y = rect.y;
+    sharedDragSelectTracker.w = rect.w;
+    sharedDragSelectTracker.h = rect.h;
+
+    clearTimeout(sharedDragSelectTracker.timeoutId);
+    sharedDragSelectTracker.timeoutId = setTimeout(() => {
+      Reflect.deleteProperty(editor.sharedDragSelectTrackerMap, meta.editorId);
+    }, SHARED_DRAG_SELECT_TRACKER_TIMEOUT);
+  } else {
+    editor.sharedDragSelectTrackerMap[meta.editorId] = {
+      ...rect,
+      id: meta.editorId,
+      timeoutId: setTimeout(() => {
+        Reflect.deleteProperty(
+          editor.sharedDragSelectTrackerMap,
+          meta.editorId
+        );
+      }, SHARED_DRAG_SELECT_TRACKER_TIMEOUT),
+    };
+  }
+};
+
+export const dragSelectRectAction = createAction<
+  ActionMap[typeof ActionType.dragSelectRect]
+>(ActionType.dragSelectRect);
+
+const dragSelectRect: ReducerType<typeof ActionType.dragSelectRect> = (
+  { editor },
+  { payload: { rect } }
+) => {
+  editor.dragSelect = rect;
+};
+
 export const validationIdsAction = createAction<
   ActionMap[typeof ActionType.validationIds]
 >(ActionType.validationIds);
@@ -657,6 +813,10 @@ export const editorReducers = {
   [ActionType.dragstartColumn]: dragstartColumn,
   [ActionType.dragendColumn]: dragendColumn,
   [ActionType.sharedMouseTracker]: sharedMouseTracker,
+  [ActionType.sharedFocusTracker]: sharedFocusTracker,
+  [ActionType.sharedSelectionTracker]: sharedSelectionTracker,
+  [ActionType.sharedDragSelectTracker]: sharedDragSelectTracker,
+  [ActionType.dragSelectRect]: dragSelectRect,
   [ActionType.validationIds]: validationIds,
   [ActionType.getLWW]: getLWW,
   [ActionType.mergeLWW]: mergeLWW,
@@ -689,6 +849,10 @@ export const actions = {
   dragstartColumnAction,
   dragendColumnAction,
   sharedMouseTrackerAction,
+  sharedFocusTrackerAction,
+  sharedSelectionTrackerAction,
+  sharedDragSelectTrackerAction,
+  dragSelectRectAction,
   validationIdsAction,
   getLWWAction,
   mergeLWWAction,

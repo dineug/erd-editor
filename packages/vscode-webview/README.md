@@ -27,7 +27,7 @@ shares with the extension host:
   `@dineug/erd-editor-vscode-replication-store-worker`, which keeps a headless
   replica of the document.
 
-`editor.getSharedStore({ mouseTracker: false })` is subscribed once the host
+`editor.getSharedStore({ mouseTracker: false, focusTracker: false })` is subscribed once the host
 sends the initial value; every batch of actions is forwarded to both the worker
 and the host. File dialogs belong to the host — `setImportFileCallback` and
 `setExportFileCallback` dispatch host commands, and export blobs are

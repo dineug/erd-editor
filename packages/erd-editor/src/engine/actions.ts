@@ -163,6 +163,9 @@ export const ReadonlyIgnoreActionTypes: ReadonlyArray<ActionType> = [
 
 export const SharedStreamActionTypes: ReadonlyArray<ActionType> = [
   'editor.sharedMouseTracker',
+  'editor.sharedFocusTracker',
+  'editor.sharedSelectionTracker',
+  'editor.sharedDragSelectTracker',
 ];
 
 export const SharedActionTypes: ReadonlyArray<ActionType> = [

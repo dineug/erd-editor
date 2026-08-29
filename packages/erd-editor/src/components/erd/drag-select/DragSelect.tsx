@@ -2,6 +2,7 @@ import { FC, observable, onBeforeMount, Ref } from '@dineug/r-html';
 import { fromEvent } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { dragSelectRectAction } from '@/engine/modules/editor/atom.actions';
 import { dragSelectAction$ } from '@/engine/modules/editor/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getAbsolutePoint } from '@/utils/dragSelect';
@@ -26,6 +27,7 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
     const $root = props.root.value;
 
     addUnsubscribe(
+      () => store.dispatchSync(dragSelectRectAction({ rect: null })),
       mouseup$.subscribe(props.onDragSelectEnd),
       fromEvent<MouseEvent>($root, 'mousemove').subscribe(event => {
         event.preventDefault();
@@ -77,12 +79,15 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
           zoomLevel
         );
 
+        const dragRect = {
+          ...absoluteMin,
+          w: absoluteMax.x - absoluteMin.x,
+          h: absoluteMax.y - absoluteMin.y,
+        };
+
         store.dispatch(
-          dragSelectAction$({
-            ...absoluteMin,
-            w: absoluteMax.x - absoluteMin.x,
-            h: absoluteMax.y - absoluteMin.y,
-          })
+          dragSelectAction$(dragRect),
+          dragSelectRectAction({ rect: dragRect })
         );
       })
     );
