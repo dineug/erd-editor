@@ -34,7 +34,6 @@ describe('Memo.styles', () => {
     expect(source).toContain('position: absolute');
     expect(source).toContain('background-color: var(--memo-background)');
     expect(source).toContain('border: 1px solid var(--memo-border)');
-    expect(source).toContain('fill: transparent');
     expect(source).toContain('color: transparent');
   });
 
@@ -42,7 +41,7 @@ describe('Memo.styles', () => {
     const source = styles.root.strings.join('');
 
     expect(source).toContain('&:hover');
-    expect(source).toContain('fill: var(--foreground)');
+    expect(source).toContain('color: var(--foreground)');
     expect(source).toContain('&[data-selected]');
     expect(source).toContain('border: 1px solid var(--memo-select)');
   });
@@ -87,7 +86,7 @@ describe('Memo.styles', () => {
     expect(source).toContain('cursor: move');
     expect(source).toContain('& > .icon');
     expect(source).toContain('& > .icon:hover');
-    expect(source).toContain('fill: var(--active)');
+    expect(source).toContain('color: var(--active)');
     expect(styles.headerButtonWrap.values).toEqual([
       HEADER_ICON_HEIGHT,
       HEADER_ICON_MARGIN_BOTTOM,

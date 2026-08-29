@@ -1,57 +1,48 @@
-import { faCopy } from '@fortawesome/free-regular-svg-icons';
 import {
-  faBars,
-  faCheck,
-  faChevronRight,
-  faCircleHalfStroke,
-  faCode,
-  faCog,
-  faColumns,
-  faEye,
-  faFileCode,
-  faFileExport,
-  faFileImage,
-  faFileImport,
-  faKey,
-  faLocationDot,
-  faMagnifyingGlass,
-  faMousePointer,
-  faNoteSticky,
-  faPalette,
-  faPlus,
-  faProjectDiagram,
-  faQuestion,
-  faRotateLeft,
-  faRotateRight,
-  faSyncAlt,
-  faTable,
-  faTimes,
-} from '@fortawesome/free-solid-svg-icons';
-import {
-  mdiAtom,
-  mdiAvTimer,
-  mdiChartScatterPlot,
-  mdiCodeBrackets,
-  mdiCodeJson,
-  mdiDatabase,
-  mdiDatabaseExport,
-  mdiDatabaseImport,
-  mdiFormatIndentIncrease,
-  mdiFormatLetterCase,
-  mdiGraphql,
-  mdiMinus,
-  mdiPlus,
-  mdiPlusMinus,
-  mdiPlusMinusBox,
-  mdiRelationOneToMany,
-  mdiTableCog,
-  mdiVectorLine,
-  mdiWeatherNight,
-  mdiWhiteBalanceSunny,
-} from '@mdi/js';
+  Atom,
+  Braces,
+  Brackets,
+  CaseSensitive,
+  Check,
+  ChevronRight,
+  Code,
+  Contrast,
+  Copy,
+  Database,
+  Diff,
+  Eye,
+  FileDiff,
+  FileImage,
+  FileInput,
+  FileOutput,
+  GripVertical,
+  type IconNode,
+  KeyRound,
+  MapPin,
+  Minus,
+  MoonStar,
+  MousePointer2,
+  Palette,
+  Plus,
+  Redo2,
+  RefreshCw,
+  RotateCcwClock,
+  Search,
+  Settings,
+  Share2,
+  Spline,
+  StickyNote,
+  Sun,
+  Table,
+  TableProperties,
+  Undo2,
+  Workflow,
+  X,
+} from 'lucide';
 
 import { ValuesType } from '@/internal-types';
 
+/** Raster crow's-foot notation; `@/utils/icon` reads the data URIs back as strings. */
 export const BASE_64_ICON = {
   /** @deprecated */
   ZeroOneN:
@@ -70,106 +61,76 @@ export const BASE_64_ICON = {
 } as const;
 export type BASE_64_ICON = ValuesType<typeof BASE_64_ICON>;
 
-export interface IconDefinition {
-  prefix: string;
-  iconName: string;
-  icon: [
-    number, // width
-    number, // height
-    string[] | undefined, // ligatures
-    string | undefined, // unicode
-    string, // svgPathData
-  ];
+export const ICON_VIEW_BOX = '0 0 24 24';
+
+export type IconNodeChild = IconNode[number];
+
+// lucide's own kebab names, disjoint from the PascalCase base64 ones, which is
+// what lets one flat namespace serve both.
+const SVG_ICON = {
+  atom: Atom,
+  braces: Braces,
+  brackets: Brackets,
+  'case-sensitive': CaseSensitive,
+  check: Check,
+  'chevron-right': ChevronRight,
+  code: Code,
+  contrast: Contrast,
+  copy: Copy,
+  database: Database,
+  diff: Diff,
+  eye: Eye,
+  'file-diff': FileDiff,
+  'file-image': FileImage,
+  'file-input': FileInput,
+  'file-output': FileOutput,
+  'grip-vertical': GripVertical,
+  'key-round': KeyRound,
+  'map-pin': MapPin,
+  minus: Minus,
+  'moon-star': MoonStar,
+  'mouse-pointer-2': MousePointer2,
+  palette: Palette,
+  plus: Plus,
+  'redo-2': Redo2,
+  'refresh-cw': RefreshCw,
+  'rotate-ccw-clock': RotateCcwClock,
+  search: Search,
+  settings: Settings,
+  'share-2': Share2,
+  spline: Spline,
+  'sticky-note': StickyNote,
+  sun: Sun,
+  table: Table,
+  'table-properties': TableProperties,
+  'undo-2': Undo2,
+  workflow: Workflow,
+  x: X,
+} satisfies Record<string, IconNode>;
+
+export type SvgIconName = keyof typeof SVG_ICON;
+export type Base64IconName = keyof typeof BASE_64_ICON;
+export type IconName = SvgIconName | Base64IconName;
+
+export type IconDefinition =
+  | { type: 'svg'; name: SvgIconName; node: IconNode }
+  | { type: 'base64'; name: Base64IconName; src: string };
+
+export const iconMap: Record<IconName, IconDefinition> = {} as Record<
+  IconName,
+  IconDefinition
+>;
+setIconMap();
+
+function setIconMap() {
+  for (const name of Object.keys(SVG_ICON) as SvgIconName[]) {
+    iconMap[name] = { type: 'svg', name, node: SVG_ICON[name] };
+  }
+  for (const name of Object.keys(BASE_64_ICON) as Base64IconName[]) {
+    iconMap[name] = { type: 'base64', name, src: BASE_64_ICON[name] };
+  }
 }
 
-const createMDI = (name: string, icon: string): IconDefinition => ({
-  prefix: 'mdi',
-  iconName: name,
-  icon: [24, 24, , , icon],
-});
-
-const createBase64 = (name: string, icon: string): IconDefinition => ({
-  prefix: 'base64',
-  iconName: name,
-  icon: [24, 24, , , icon],
-});
-
-const createRadix = (name: string, data: string): IconDefinition => ({
-  prefix: 'radix',
-  iconName: name,
-  icon: [15, 15, , , data],
-});
-
-const radixTimer =
-  'M7.49998 0.849976C7.22383 0.849976 6.99998 1.07383 6.99998 1.34998V3.52234C6.99998 3.79848 7.22383 4.02234 7.49998 4.02234C7.77612 4.02234 7.99998 3.79848 7.99998 3.52234V1.8718C10.8862 2.12488 13.15 4.54806 13.15 7.49998C13.15 10.6204 10.6204 13.15 7.49998 13.15C4.37957 13.15 1.84998 10.6204 1.84998 7.49998C1.84998 6.10612 2.35407 4.83128 3.19049 3.8459C3.36919 3.63538 3.34339 3.31985 3.13286 3.14115C2.92234 2.96245 2.60681 2.98825 2.42811 3.19877C1.44405 4.35808 0.849976 5.86029 0.849976 7.49998C0.849976 11.1727 3.82728 14.15 7.49998 14.15C11.1727 14.15 14.15 11.1727 14.15 7.49998C14.15 3.82728 11.1727 0.849976 7.49998 0.849976ZM6.74049 8.08072L4.22363 4.57237C4.15231 4.47295 4.16346 4.33652 4.24998 4.25C4.33649 4.16348 4.47293 4.15233 4.57234 4.22365L8.08069 6.74051C8.56227 7.08599 8.61906 7.78091 8.19998 8.2C7.78089 8.61909 7.08597 8.56229 6.74049 8.08072Z';
-
-const icons = [
-  faKey,
-  faTable,
-  faNoteSticky,
-  faPlus,
-  faTimes,
-  faChevronRight,
-  faCheck,
-  faRotateRight,
-  faRotateLeft,
-  faMagnifyingGlass,
-  faQuestion,
-  faProjectDiagram,
-  faFileImage,
-  faFileExport,
-  faEye,
-  faFileImport,
-  faFileCode,
-  faCog,
-  faMousePointer,
-  faCode,
-  faSyncAlt,
-  faPalette,
-  faColumns,
-  faCopy,
-  faBars,
-  faLocationDot,
-  faCircleHalfStroke,
-  createMDI('code-json', mdiCodeJson),
-  createMDI('database', mdiDatabase),
-  createMDI('database-import', mdiDatabaseImport),
-  createMDI('database-export', mdiDatabaseExport),
-  createMDI('format-indent-increase', mdiFormatIndentIncrease),
-  createMDI('format-letter-case', mdiFormatLetterCase),
-  createMDI('graphql', mdiGraphql),
-  createMDI('relation-one-to-many', mdiRelationOneToMany),
-  createMDI('table-cog', mdiTableCog),
-  createMDI('code-brackets', mdiCodeBrackets),
-  createMDI('vector-line', mdiVectorLine),
-  createMDI('atom', mdiAtom),
-  createMDI('chart-scatter-plot', mdiChartScatterPlot),
-  createMDI('white-balance-sunny', mdiWhiteBalanceSunny),
-  createMDI('weather-might', mdiWeatherNight),
-  createMDI('plus-minus-box', mdiPlusMinusBox),
-  createMDI('plus-minus', mdiPlusMinus),
-  createMDI('plus', mdiPlus),
-  createMDI('minus', mdiMinus),
-  createMDI('av-timer', mdiAvTimer),
-  createRadix('timer', radixTimer),
-  ...Object.entries(BASE_64_ICON).map(([name, base64]) =>
-    createBase64(name, base64)
-  ),
-] as IconDefinition[];
-
-export const iconMap: Record<string, IconDefinition> = {};
-setIconMap(icons);
-
-function setIconMap(newIcons: IconDefinition[]) {
-  newIcons.reduce<Record<string, IconDefinition>>((acc, cur) => {
-    acc[`${cur.prefix}-${cur.iconName}`] = cur;
-    return acc;
-  }, iconMap);
-}
-
-export function getIcon(
-  prefix: string,
-  iconName: string
-): IconDefinition | undefined {
-  return iconMap[`${prefix}-${iconName}`];
+export function getIcon(name: string): IconDefinition | undefined {
+  return (iconMap as Record<string, IconDefinition>)[name];
 }

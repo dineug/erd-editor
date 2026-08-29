@@ -39,11 +39,11 @@ describe('importMenus', () => {
       'AML',
     ]);
     expect(result.map(menu => menu.icon)).toEqual([
-      { prefix: 'mdi', name: 'code-json' },
-      { prefix: 'mdi', name: 'database-import' },
-      { prefix: 'mdi', name: 'graphql' },
-      { prefix: 'mdi', name: 'relation-one-to-many' },
-      { prefix: 'mdi', name: 'format-indent-increase' },
+      'braces',
+      'database',
+      'code',
+      'code',
+      'code',
     ]);
   });
 

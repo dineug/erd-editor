@@ -1,17 +1,17 @@
 import { css } from '@dineug/r-html';
 
 export const key = css`
-  fill: transparent;
+  color: transparent;
 
   &.pk {
-    fill: var(--key-pk);
+    color: var(--key-pk);
   }
 
   &.fk {
-    fill: var(--key-fk);
+    color: var(--key-fk);
   }
 
   &.pfk {
-    fill: var(--key-pfk);
+    color: var(--key-pfk);
   }
 `;

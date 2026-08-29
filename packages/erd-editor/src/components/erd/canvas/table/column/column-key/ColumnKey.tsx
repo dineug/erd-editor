@@ -28,7 +28,7 @@ const ColumnKey: FC<ColumnKeyProps> = (props, ctx) => {
     <Icon
       class={['column-col', styles.key, className()]}
       size={12}
-      name="key"
+      name="key-round"
       onMouseenter={props.onMouseenter}
       onMouseleave={props.onMouseleave}
     />

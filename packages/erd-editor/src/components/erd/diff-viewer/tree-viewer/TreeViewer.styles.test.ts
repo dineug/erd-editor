@@ -35,11 +35,11 @@ describe('TreeViewer.styles', () => {
     const source = styles.icon.strings.join('');
 
     expect(source).toContain('&.diff-insert');
-    expect(source).toContain('fill: var(--diff-insert-foreground)');
+    expect(source).toContain('color: var(--diff-insert-foreground)');
     expect(source).toContain('&.diff-delete');
-    expect(source).toContain('fill: var(--diff-delete-foreground)');
+    expect(source).toContain('color: var(--diff-delete-foreground)');
     expect(source).toContain('&.diff-cross');
-    expect(source).toContain('fill: var(--diff-cross-foreground)');
+    expect(source).toContain('color: var(--diff-cross-foreground)');
   });
 
   it('composes the shared clickable item rules into the row styles', () => {

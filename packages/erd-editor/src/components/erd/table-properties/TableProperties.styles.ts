@@ -59,13 +59,11 @@ export const tab = css`
   &:hover {
     background-color: var(--context-menu-hover);
     color: var(--active);
-    fill: var(--active);
   }
 
   &.selected {
     background-color: var(--context-menu-select);
     color: var(--active);
-    fill: var(--active);
   }
 
   & > span {

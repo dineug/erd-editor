@@ -37,13 +37,13 @@ describe('ColumnKey.styles', () => {
   });
 
   it('hides the key glyph by default', () => {
-    expect(ruleTextOf(`.${styles.key}`)).toContain('fill: transparent');
+    expect(ruleTextOf(`.${styles.key}`)).toContain('color: transparent');
   });
 
-  it('fills each key variant from its own theme custom property', () => {
-    expect(ruleTextOf(`.${styles.key}.pk`)).toContain('fill: var(--key-pk)');
-    expect(ruleTextOf(`.${styles.key}.fk`)).toContain('fill: var(--key-fk)');
-    expect(ruleTextOf(`.${styles.key}.pfk`)).toContain('fill: var(--key-pfk)');
+  it('colours each key variant from its own theme custom property', () => {
+    expect(ruleTextOf(`.${styles.key}.pk`)).toContain('color: var(--key-pk)');
+    expect(ruleTextOf(`.${styles.key}.fk`)).toContain('color: var(--key-fk)');
+    expect(ruleTextOf(`.${styles.key}.pfk`)).toContain('color: var(--key-pfk)');
   });
 
   it('emits exactly the base rule plus the three key variants', () => {

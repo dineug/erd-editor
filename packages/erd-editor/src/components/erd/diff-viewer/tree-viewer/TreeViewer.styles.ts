@@ -22,7 +22,6 @@ const item = css`
   &:hover {
     background-color: var(--context-menu-hover);
     color: var(--active);
-    fill: var(--active);
   }
 `;
 
@@ -33,15 +32,15 @@ export const icon = css`
   margin-right: 8px;
 
   &.diff-insert {
-    fill: var(--diff-insert-foreground);
+    color: var(--diff-insert-foreground);
   }
 
   &.diff-delete {
-    fill: var(--diff-delete-foreground);
+    color: var(--diff-delete-foreground);
   }
 
   &.diff-cross {
-    fill: var(--diff-cross-foreground);
+    color: var(--diff-cross-foreground);
   }
 `;
 

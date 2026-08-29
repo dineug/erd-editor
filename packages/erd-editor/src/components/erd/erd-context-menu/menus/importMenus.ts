@@ -1,4 +1,5 @@
 import { AppContext } from '@/components/appContext';
+import { IconName } from '@/components/primitives/icon/icons';
 import {
   importAML,
   importDBML,
@@ -7,13 +8,19 @@ import {
   importSchemaSQL,
 } from '@/utils/file/importFile';
 
-export function createImportMenus(app: AppContext, onClose: () => void) {
+type Menu = {
+  icon: IconName;
+  name: string;
+  onClick: () => void;
+};
+
+export function createImportMenus(
+  app: AppContext,
+  onClose: () => void
+): Menu[] {
   return [
     {
-      icon: {
-        prefix: 'mdi',
-        name: 'code-json',
-      },
+      icon: 'braces',
       name: 'json',
       onClick: () => {
         importJSON(app);
@@ -21,10 +28,7 @@ export function createImportMenus(app: AppContext, onClose: () => void) {
       },
     },
     {
-      icon: {
-        prefix: 'mdi',
-        name: 'database-import',
-      },
+      icon: 'database',
       name: 'Schema SQL',
       onClick: () => {
         importSchemaSQL(app);
@@ -32,10 +36,7 @@ export function createImportMenus(app: AppContext, onClose: () => void) {
       },
     },
     {
-      icon: {
-        prefix: 'mdi',
-        name: 'graphql',
-      },
+      icon: 'code',
       name: 'GraphQL',
       onClick: () => {
         importGraphQL(app);
@@ -43,10 +44,7 @@ export function createImportMenus(app: AppContext, onClose: () => void) {
       },
     },
     {
-      icon: {
-        prefix: 'mdi',
-        name: 'relation-one-to-many',
-      },
+      icon: 'code',
       name: 'DBML',
       onClick: () => {
         importDBML(app);
@@ -54,10 +52,7 @@ export function createImportMenus(app: AppContext, onClose: () => void) {
       },
     },
     {
-      icon: {
-        prefix: 'mdi',
-        name: 'format-indent-increase',
-      },
+      icon: 'code',
       name: 'AML',
       onClick: () => {
         importAML(app);

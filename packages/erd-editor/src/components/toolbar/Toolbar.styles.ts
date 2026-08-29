@@ -32,20 +32,20 @@ export const menu = css`
   height: 100%;
 
   &.active {
-    fill: var(--active);
+    color: var(--active);
   }
   &:hover {
-    fill: var(--active);
+    color: var(--active);
   }
 
   &.undo-redo {
     cursor: not-allowed;
-    fill: var(--foreground);
+    color: var(--foreground);
   }
 
   &.undo-redo.active {
     cursor: pointer;
-    fill: var(--active);
+    color: var(--active);
   }
 `;
 

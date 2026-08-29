@@ -29,7 +29,6 @@ export const clipboard = css`
   padding: 8px;
   margin: 8px;
   cursor: pointer;
-  fill: var(--foreground);
   color: var(--foreground);
   opacity: 0;
   transition: opacity 0.15s;
@@ -37,7 +36,6 @@ export const clipboard = css`
   user-select: none;
 
   &:hover {
-    fill: var(--active);
     color: var(--active);
   }
 `;

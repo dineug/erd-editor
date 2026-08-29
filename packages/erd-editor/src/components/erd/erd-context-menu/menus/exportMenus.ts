@@ -1,6 +1,7 @@
 import { toJson } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/appContext';
+import { IconName } from '@/components/primitives/icon/icons';
 import {
   exportJSON,
   exportPNG,
@@ -8,20 +9,23 @@ import {
 } from '@/utils/file/exportFile';
 import { createSchemaSQL } from '@/utils/schema-sql';
 
+type Menu = {
+  icon: IconName;
+  name: string;
+  onClick: () => void;
+};
+
 export function createExportMenus(
   app: AppContext,
   onClose: () => void,
   root: HTMLElement
-) {
+): Menu[] {
   const { store } = app;
   const databaseName = store.state.settings.databaseName;
 
   return [
     {
-      icon: {
-        prefix: 'mdi',
-        name: 'code-json',
-      },
+      icon: 'braces',
       name: 'json',
       onClick: () => {
         onClose();
@@ -29,10 +33,7 @@ export function createExportMenus(
       },
     },
     {
-      icon: {
-        prefix: 'mdi',
-        name: 'database-export',
-      },
+      icon: 'database',
       name: 'Schema SQL',
       onClick: () => {
         onClose();
@@ -40,10 +41,7 @@ export function createExportMenus(
       },
     },
     {
-      icon: {
-        prefix: 'fas',
-        name: 'file-image',
-      },
+      icon: 'file-image',
       name: 'png',
       onClick: () => {
         onClose();

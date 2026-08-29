@@ -1,9 +1,9 @@
-import { getIcon } from '@/components/primitives/icon/icons';
+import { Base64IconName, getIcon } from '@/components/primitives/icon/icons';
 import { RelationshipType } from '@/constants/schema';
 
 // 1, 32 and 64 are the RelationshipType members left commented out in
 // @dineug/erd-editor-schema; they have no constant, so the bits are spelled out.
-const relationshipTypeToIconName: Record<number, string> = {
+const relationshipTypeToIconName: Record<number, Base64IconName> = {
   [1]: 'ZeroOneN',
   [RelationshipType.ZeroOne]: 'ZeroOne',
   [RelationshipType.ZeroN]: 'ZeroN',
@@ -15,9 +15,8 @@ const relationshipTypeToIconName: Record<number, string> = {
 
 export function getRelationshipIcon(relationshipType: number): string | null {
   const iconName = relationshipTypeToIconName[relationshipType];
-  const icon = getIcon('base64', iconName);
-  if (!icon) return null;
+  const icon = getIcon(iconName);
+  if (icon?.type !== 'base64') return null;
 
-  const [width, height, , , d] = icon.icon;
-  return d;
+  return icon.src;
 }

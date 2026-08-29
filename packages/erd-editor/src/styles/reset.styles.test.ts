@@ -149,7 +149,6 @@ describe('reset.styles', () => {
         'var(--text-font-family)'
       );
       expect(rule.style.getPropertyValue('color')).toBe('var(--foreground)');
-      expect(rule.style.getPropertyValue('fill')).toBe('var(--foreground)');
       expect(rule.style.getPropertyValue('font-size')).toBe(
         'var(--font-size-2)'
       );

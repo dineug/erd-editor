@@ -35,7 +35,6 @@ describe('IndexesColumn.styles', () => {
     expect(text).toContain('align-items: center');
     expect(text).toContain('cursor: move');
     expect(text).toContain('color: var(--active)');
-    expect(text).toContain('fill: var(--active)');
   });
 
   it('carries the drag states the dragstart handler toggles', () => {

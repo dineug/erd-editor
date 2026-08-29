@@ -42,10 +42,9 @@ const SharedMouseCursor: FC<SharedMouseCursorProps> = (props, ctx) => {
           left: `${state.x}px`,
           top: `${state.y}px`,
           color,
-          fill: color,
         }}
       >
-        <Icon name="arrow-pointer" size={16} />
+        <Icon name="mouse-pointer-2" size={16} />
         <span>{nickname}</span>
       </div>
     );

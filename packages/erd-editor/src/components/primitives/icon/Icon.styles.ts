@@ -6,6 +6,7 @@ export const wrap = css`
   align-items: center;
 `;
 
+/* Not stroke: it is always currentColor, so only color ever changes. */
 export const icon = css`
-  transition: fill 0.15s;
+  transition: color 0.15s;
 `;

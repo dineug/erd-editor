@@ -388,7 +388,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         <Icon
           class={styles.iconButton}
           size={12}
-          name="xmark"
+          name="x"
           title={simpleShortcutToString(
             keyBindingMap.removeColumn[0]?.shortcut
           )}

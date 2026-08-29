@@ -1,11 +1,12 @@
 import { query } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/appContext';
+import { Base64IconName } from '@/components/primitives/icon/icons';
 import { RelationshipType } from '@/constants/schema';
 import { changeRelationshipTypeAction } from '@/engine/modules/relationship/atom.actions';
 
 type Menu = {
-  iconName: string;
+  iconName: Base64IconName;
   name: string;
   relationshipType: number;
 };

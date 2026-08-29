@@ -78,13 +78,11 @@ export const columnOrderItem = css`
   &:hover {
     background-color: var(--context-menu-hover);
     color: var(--active);
-    fill: var(--active);
   }
 
   &.none-hover {
     background-color: transparent;
     color: var(--foreground);
-    fill: var(--foreground);
   }
 
   &.dragging {

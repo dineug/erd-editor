@@ -3,6 +3,7 @@ import { get } from 'es-toolkit/compat';
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import Icon from '@/components/primitives/icon/Icon';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -18,7 +19,6 @@ import {
 import { setThemeOptionsAction } from '@/utils/emitter';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
-import Icon from '../primitives/icon/Icon';
 import * as styles from './ThemeBuilder.styles';
 
 export type ThemeBuilderProps = {
@@ -121,7 +121,7 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
             ]}
             on:click={() => handleChangeAppearance(Appearance.light)}
           >
-            <Icon prefix="mdi" name="white-balance-sunny" />
+            <Icon name="sun" />
             <span class={styles.vertical} />
             <span>Light</span>
           </div>
@@ -133,7 +133,7 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
             ]}
             on:click={() => handleChangeAppearance(Appearance.dark)}
           >
-            <Icon prefix="mdi" name="weather-might" />
+            <Icon name="moon-star" />
             <span class={styles.vertical} />
             <span>Dark</span>
           </div>

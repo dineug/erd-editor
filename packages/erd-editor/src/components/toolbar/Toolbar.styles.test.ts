@@ -63,12 +63,12 @@ describe('Toolbar.styles', () => {
     expect(source).toContain('height: 100%');
   });
 
-  it('highlights active and hovered menu items with the active fill', () => {
+  it('highlights active and hovered menu items with the active color', () => {
     const source = styles.menu.strings.join('');
 
     expect(source).toContain('&.active');
     expect(source).toContain('&:hover');
-    expect(source).toContain('fill: var(--active)');
+    expect(source).toContain('color: var(--active)');
   });
 
   it('disables the undo-redo group until it carries the active class', () => {
@@ -76,7 +76,7 @@ describe('Toolbar.styles', () => {
 
     expect(source).toContain('&.undo-redo');
     expect(source).toContain('cursor: not-allowed');
-    expect(source).toContain('fill: var(--foreground)');
+    expect(source).toContain('color: var(--foreground)');
     expect(source).toContain('&.undo-redo.active');
   });
 

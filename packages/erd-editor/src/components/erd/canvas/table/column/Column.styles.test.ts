@@ -30,7 +30,6 @@ describe('Column.styles', () => {
     expect(text).toContain('display: flex');
     expect(text).toContain('width: 100%');
     expect(text).toContain('align-items: center');
-    expect(text).toContain('fill: transparent');
     expect(text).toContain('color: transparent');
   });
 

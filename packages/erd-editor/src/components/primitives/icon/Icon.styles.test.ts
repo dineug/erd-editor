@@ -16,9 +16,17 @@ describe('Icon.styles', () => {
     expect(source).toContain('align-items: center');
   });
 
-  it('exposes `icon` as a separate class that transitions fill', () => {
+  it('exposes `icon` as a separate class that transitions color, not stroke', () => {
     expect(String(styles.icon)).toMatch(/\S/);
     expect(String(styles.icon)).not.toBe(String(styles.wrap));
-    expect(styles.icon.strings.join('')).toContain('transition: fill 0.15s');
+
+    const source = styles.icon.strings.join('');
+
+    // The glyph is painted `stroke="currentColor"`, whose specified value never
+    // changes, so a `stroke` transition has nothing to interpolate and never
+    // fires. `color` is the property that actually changes.
+    expect(source).toContain('transition: color 0.15s');
+    expect(source).not.toContain('transition: stroke');
+    expect(source).not.toContain('transition: fill');
   });
 });

@@ -35,7 +35,7 @@ const SchemaSQLContextMenu: FC<SchemaSQLContextMenuProps> = (props, ctx) => {
           <ContextMenu.Item
             children={
               <ContextMenu.Menu
-                icon={<Icon prefix="mdi" name="database" size={14} />}
+                icon={<Icon name="database" size={14} />}
                 name="Database"
                 right={chevronRightIcon}
               />
@@ -61,7 +61,7 @@ const SchemaSQLContextMenu: FC<SchemaSQLContextMenuProps> = (props, ctx) => {
           <ContextMenu.Item
             children={
               <ContextMenu.Menu
-                icon={<Icon prefix="mdi" name="code-brackets" size={14} />}
+                icon={<Icon name="brackets" size={14} />}
                 name="Bracket"
                 right={chevronRightIcon}
               />
