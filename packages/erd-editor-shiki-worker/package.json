@@ -1,6 +1,6 @@
 {
   "name": "@dineug/erd-editor-shiki-worker",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Entity-Relationship Diagram Editor shiki-worker",
   "type": "module",
   "main": "./dist/erd-editor-shiki-worker.js",

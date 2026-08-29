@@ -8,7 +8,7 @@
 Runs [Shiki](https://shiki.style) syntax highlighting off the main thread. `getShikiService()` creates
 a named `SharedWorker` and returns a Comlink proxy of `ShikiService`, whose only method is
 `codeToHtml(code, { lang, theme })` over nine grammars (sql, typescript, graphql, csharp, java, kotlin,
-scala, go, python) and the github-dark / github-light themes. Published to npm at v0.1.2; `app`,
+scala, go, python) and the github-dark / github-light themes. Published to npm at v0.2.0; `app`,
 `vscode-webview` and `intellij-webview` load it lazily, while the editor dev and e2e fixtures wire the
 same callback statically.
 

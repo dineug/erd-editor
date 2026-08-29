@@ -132,7 +132,7 @@ changelog {
     groups.empty()
     repositoryUrl = properties("pluginRepositoryUrl")
     // The monorepo already carries `v*` tags for the editor itself, and `v0.3.2` / `v0.4.6`
-    // exist while the plugin is on 0.2.1 — a bare `v` prefix would render compare links that
+    // exist while the plugin is on 0.3.0 — a bare `v` prefix would render compare links that
     // resolve to unrelated releases rather than 404ing.
     versionPrefix = "intellij-plugin-v"
 }

@@ -4,6 +4,39 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-29
+
+### Added
+
+- Import GraphQL SDL, DBML and Azimutt AML files, including legacy AML v1, as diagrams.
+- Generate Go structs, code for SQLAlchemy, TypeORM, Sequelize and Drizzle, and DBML or AML
+  schemas.
+- Add Databricks and Snowflake support, including DDL generation, SQL import and data-type
+  suggestions.
+- Copy and paste selected tables or memos, duplicate them with Alt+drag, and use their tab-separated
+  or HTML clipboard representations outside the editor.
+- Expand data-type suggestions for every supported database vendor.
+
+### Changed
+
+- Route relationship lines around tables with more compact connectors and easier hit targets.
+- Replace editor icons with Lucide outlines while preserving crow's-foot relationship notation.
+- Make Schema SQL and Code Generator output selectable, and group the generator's language menu by
+  kind.
+
+### Fixed
+
+- Make SQL import robust across complex `CREATE` forms, three-part identifiers, multi-word types,
+  quoted names, comments, identity columns, nested options and unmatched `]`, preventing hangs,
+  phantom columns and lost schema detail.
+- Generate valid GraphQL schemas and map vendor types and unique constraint names correctly in
+  generated output.
+- Stabilize relationship routing and large-diagram dragging, and correct index-column selection in
+  the table properties panel.
+- Make Time Travel restore diagrams correctly after moving forward from a rewind.
+- Preserve angle-bracket code while highlighting, and deliver copy and paste keys to text fields
+  rather than the canvas.
+
 ## [0.2.1] - 2026-08-08
 
 ### Changed
