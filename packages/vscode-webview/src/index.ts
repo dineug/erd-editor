@@ -30,7 +30,10 @@ const bridge = new Bridge();
 const workerBridge = new Bridge();
 const vscode = acquireVsCodeApi();
 const editor = document.createElement('erd-editor');
-const sharedStore = editor.getSharedStore({ mouseTracker: false });
+const sharedStore = editor.getSharedStore({
+  mouseTracker: false,
+  focusTracker: false,
+});
 const replicationStoreWorker = new ReplicationStoreWorker({
   name: '@dineug/erd-editor-vscode-webview/replication-store-worker',
 });

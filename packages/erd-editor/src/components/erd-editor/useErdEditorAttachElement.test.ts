@@ -1,4 +1,12 @@
-import { createRef, FC, html, observable, Ref, ref } from '@dineug/r-html';
+import {
+  AnyAction,
+  createRef,
+  FC,
+  html,
+  observable,
+  Ref,
+  ref,
+} from '@dineug/r-html';
 import {
   afterEach,
   beforeEach,
@@ -20,6 +28,23 @@ import {
   ErdEditorProps,
 } from '@/components/erd-editor/ErdEditor';
 import { useErdEditorAttachElement } from '@/components/erd-editor/useErdEditorAttachElement';
+import {
+  dragSelectRectAction,
+  editTableAction,
+  focusColumnAction,
+  focusTableAction,
+  focusTableEndAction,
+  getLWWAction,
+  selectAction,
+  selectAllAction,
+  SHARED_DRAG_SELECT_TRACKER_TIMEOUT,
+  SHARED_FOCUS_TRACKER_TIMEOUT,
+  sharedDragSelectTrackerAction,
+  sharedFocusTrackerAction,
+  sharedSelectionTrackerAction,
+  unselectAllAction,
+} from '@/engine/modules/editor/atom.actions';
+import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { AccentColor, Appearance, GrayColor } from '@/themes/radix-ui-theme';
 import {
   openDiffViewerAction,
@@ -453,6 +478,377 @@ describe('useErdEditorAttachElement', () => {
     expect(mouseTrackerEnd).toHaveBeenCalledTimes(1);
   });
 
+  it('broadcasts no presence while no shared store is open', async () => {
+    const { app, ctx } = await setup();
+    const { tableId } = await seedUsersTable(app, ctx);
+    const focus = collectSharedFocus(app);
+    const selection = collectSharedSelection(app);
+    const dragSelect = collectSharedDragSelect(app);
+
+    app.store.dispatchSync(
+      focusTableAction({ tableId, focusType: FocusType.tableName }),
+      selectAction({ [tableId]: SelectType.table }),
+      dragSelectRectAction({ rect: { x: 1, y: 2, w: 3, h: 4 } })
+    );
+    await flush();
+
+    expect(focus).toHaveLength(0);
+    expect(selection).toHaveLength(0);
+    expect(dragSelect).toHaveLength(0);
+  });
+
+  it('broadcasts an absolute focus snapshot once a shared store exists', async () => {
+    const { app, ctx } = await setup();
+    const { tableId, columnId } = await seedUsersTable(app, ctx);
+    const dispatched = collectSharedFocus(app);
+    const sharedStore = ctx.getSharedStore();
+
+    app.store.dispatchSync(
+      focusColumnAction({
+        tableId,
+        columnId,
+        focusType: FocusType.columnName,
+        $mod: false,
+        shiftKey: false,
+      })
+    );
+    await flush();
+
+    expect(dispatched).toHaveLength(1);
+    expect(dispatched[0].payload).toEqual({
+      focus: { tableId, columnId, focusType: FocusType.columnName },
+    });
+    sharedStore.destroy();
+  });
+
+  it('repeats neither the same focus nor the edit flag', async () => {
+    const { app, ctx } = await setup();
+    const { tableId } = await seedUsersTable(app, ctx);
+    const dispatched = collectSharedFocus(app);
+    const sharedStore = ctx.getSharedStore();
+
+    app.store.dispatchSync(
+      focusTableAction({ tableId, focusType: FocusType.tableName })
+    );
+    await flush();
+    expect(dispatched).toHaveLength(1);
+
+    app.store.dispatchSync(
+      focusTableAction({ tableId, focusType: FocusType.tableName })
+    );
+    await flush();
+    expect(dispatched).toHaveLength(1);
+
+    app.store.dispatchSync(editTableAction());
+    await flush();
+
+    expect(app.store.state.editor.focusTable?.edit).toBe(true);
+    expect(dispatched).toHaveLength(1);
+    sharedStore.destroy();
+  });
+
+  it('broadcasts a null focus when the focus ends', async () => {
+    const { app, ctx } = await setup();
+    const { tableId } = await seedUsersTable(app, ctx);
+    const dispatched = collectSharedFocus(app);
+    const sharedStore = ctx.getSharedStore();
+
+    app.store.dispatchSync(
+      focusTableAction({ tableId, focusType: FocusType.tableName })
+    );
+    await flush();
+    app.store.dispatchSync(focusTableEndAction());
+    await flush();
+
+    expect(dispatched).toHaveLength(2);
+    expect(dispatched[1].payload).toEqual({ focus: null });
+    sharedStore.destroy();
+  });
+
+  it('skips every presence channel when the shared store opts out', async () => {
+    const { app, ctx } = await setup();
+    const { tableId } = await seedUsersTable(app, ctx);
+    const focus = collectSharedFocus(app);
+    const selection = collectSharedSelection(app);
+    const dragSelect = collectSharedDragSelect(app);
+    const sharedStore = ctx.getSharedStore({ focusTracker: false });
+
+    app.store.dispatchSync(
+      focusTableAction({ tableId, focusType: FocusType.tableName }),
+      selectAction({ [tableId]: SelectType.table }),
+      dragSelectRectAction({ rect: { x: 1, y: 2, w: 3, h: 4 } })
+    );
+    await flush();
+
+    expect(focus).toHaveLength(0);
+    expect(selection).toHaveLength(0);
+    expect(dragSelect).toHaveLength(0);
+    sharedStore.destroy();
+  });
+
+  it('ends focus tracking when the last shared store is an opted-out one', async () => {
+    const { app, ctx } = await setup();
+    const { tableId } = await seedUsersTable(app, ctx);
+    const dispatched = collectSharedFocus(app);
+
+    const tracked = ctx.getSharedStore();
+    const untracked = ctx.getSharedStore({ focusTracker: false });
+
+    tracked.destroy();
+    app.store.dispatchSync(
+      focusTableAction({ tableId, focusType: FocusType.tableName })
+    );
+    await flush();
+    expect(dispatched).toHaveLength(1);
+
+    untracked.destroy();
+    app.store.dispatchSync(
+      focusTableAction({ tableId, focusType: FocusType.tableComment })
+    );
+    await flush();
+
+    expect(dispatched).toHaveLength(1);
+  });
+
+  it('rebroadcasts the unchanged focus so a joining peer learns it', async () => {
+    const { app, ctx } = await setup();
+    const { tableId } = await seedUsersTable(app, ctx);
+    const dispatched = collectSharedFocus(app);
+    const sharedStore = ctx.getSharedStore();
+
+    app.store.dispatchSync(
+      focusTableAction({ tableId, focusType: FocusType.tableName })
+    );
+    await flush();
+    expect(dispatched).toHaveLength(1);
+
+    app.store.dispatchSync(getLWWAction());
+    await flush();
+
+    expect(dispatched).toHaveLength(2);
+    expect(dispatched[1].payload).toEqual({
+      focus: { tableId, columnId: null, focusType: FocusType.tableName },
+    });
+    sharedStore.destroy();
+  });
+
+  it('heartbeats the held focus so a peer never expires a live marker', async () => {
+    vi.useFakeTimers();
+    try {
+      const { app, ctx } = await setup();
+      const { tableId } = await seedUsersTable(app, ctx);
+      const dispatched = collectSharedFocus(app);
+      const sharedStore = ctx.getSharedStore();
+
+      app.store.dispatchSync(
+        focusTableAction({ tableId, focusType: FocusType.tableName })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      expect(dispatched).toHaveLength(1);
+
+      await vi.advanceTimersByTimeAsync(SHARED_FOCUS_TRACKER_TIMEOUT);
+
+      expect(dispatched.length).toBeGreaterThan(1);
+      expect(dispatched.at(-1)!.payload).toEqual({
+        focus: { tableId, columnId: null, focusType: FocusType.tableName },
+      });
+
+      sharedStore.destroy();
+      const settled = dispatched.length;
+      await vi.advanceTimersByTimeAsync(SHARED_FOCUS_TRACKER_TIMEOUT);
+      expect(dispatched).toHaveLength(settled);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('broadcasts the sorted selection snapshot once a shared store exists', async () => {
+    const { app, ctx } = await setup();
+    const { first, second } = await seedTwoTables(app, ctx);
+    const dispatched = collectSharedSelection(app);
+    const sharedStore = ctx.getSharedStore();
+
+    app.store.dispatchSync(
+      selectAction({ [second]: SelectType.table, [first]: SelectType.table })
+    );
+    await flush();
+
+    expect(dispatched).toHaveLength(1);
+    expect(dispatched[0].payload).toEqual({
+      selectedIds: [first, second].sort(),
+    });
+    sharedStore.destroy();
+  });
+
+  it('repeats no selection broadcast when the same set arrives in another order', async () => {
+    const { app, ctx } = await setup();
+    const { first, second } = await seedTwoTables(app, ctx);
+    const dispatched = collectSharedSelection(app);
+    const sharedStore = ctx.getSharedStore();
+
+    app.store.dispatchSync(
+      selectAction({ [second]: SelectType.table, [first]: SelectType.table })
+    );
+    await flush();
+    const selectOrder = Object.keys(app.store.state.editor.selectedMap);
+    expect(dispatched).toHaveLength(1);
+
+    app.store.dispatchSync(selectAllAction());
+    await flush();
+    const selectAllOrder = Object.keys(app.store.state.editor.selectedMap);
+
+    expect(selectAllOrder).not.toEqual(selectOrder);
+    expect([...selectAllOrder].sort()).toEqual([...selectOrder].sort());
+    expect(dispatched).toHaveLength(1);
+    sharedStore.destroy();
+  });
+
+  it('broadcasts an empty selection when everything is unselected', async () => {
+    const { app, ctx } = await setup();
+    const { tableId } = await seedUsersTable(app, ctx);
+    const dispatched = collectSharedSelection(app);
+    const sharedStore = ctx.getSharedStore();
+
+    app.store.dispatchSync(selectAction({ [tableId]: SelectType.table }));
+    await flush();
+    app.store.dispatchSync(unselectAllAction());
+    await flush();
+
+    expect(dispatched).toHaveLength(2);
+    expect(dispatched[1].payload).toEqual({ selectedIds: [] });
+    sharedStore.destroy();
+  });
+
+  it('broadcasts a detached copy of the local drag box', async () => {
+    const { app, ctx } = await setup();
+    const dispatched = collectSharedDragSelect(app);
+    const sharedStore = ctx.getSharedStore();
+    const rect = { x: 10, y: 20, w: 30, h: 40 };
+
+    app.store.dispatchSync(dragSelectRectAction({ rect }));
+    await flush();
+
+    expect(dispatched).toHaveLength(1);
+    expect(dispatched[0].payload).toEqual({ rect });
+    expect(dispatched[0].payload.rect).not.toBe(
+      app.store.state.editor.dragSelect
+    );
+    sharedStore.destroy();
+  });
+
+  it('broadcasts a null drag box when the drag ends', async () => {
+    const { app, ctx } = await setup();
+    const dispatched = collectSharedDragSelect(app);
+    const sharedStore = ctx.getSharedStore();
+
+    app.store.dispatchSync(
+      dragSelectRectAction({ rect: { x: 1, y: 2, w: 3, h: 4 } })
+    );
+    await flush();
+    app.store.dispatchSync(dragSelectRectAction({ rect: null }));
+    await flush();
+
+    expect(dispatched).toHaveLength(2);
+    expect(dispatched[1].payload).toEqual({ rect: null });
+    sharedStore.destroy();
+  });
+
+  it('rebroadcasts every presence channel so a joining peer learns them', async () => {
+    const { app, ctx } = await setup();
+    const { tableId } = await seedUsersTable(app, ctx);
+    const focus = collectSharedFocus(app);
+    const selection = collectSharedSelection(app);
+    const dragSelect = collectSharedDragSelect(app);
+    const sharedStore = ctx.getSharedStore();
+    const rect = { x: 5, y: 6, w: 7, h: 8 };
+
+    app.store.dispatchSync(
+      focusTableAction({ tableId, focusType: FocusType.tableName }),
+      selectAction({ [tableId]: SelectType.table }),
+      dragSelectRectAction({ rect })
+    );
+    await flush();
+    expect(focus).toHaveLength(1);
+    expect(selection).toHaveLength(1);
+    expect(dragSelect).toHaveLength(1);
+
+    app.store.dispatchSync(getLWWAction());
+    await flush();
+
+    expect(focus).toHaveLength(2);
+    expect(selection).toHaveLength(2);
+    expect(dragSelect).toHaveLength(2);
+    expect(focus[1].payload).toEqual({
+      focus: { tableId, columnId: null, focusType: FocusType.tableName },
+    });
+    expect(selection[1].payload).toEqual({ selectedIds: [tableId] });
+    expect(dragSelect[1].payload).toEqual({ rect });
+    sharedStore.destroy();
+  });
+
+  it('heartbeats the held drag box and stays silent once it is gone', async () => {
+    vi.useFakeTimers();
+    try {
+      const { app, ctx } = await setup();
+      const dispatched = collectSharedDragSelect(app);
+      const sharedStore = ctx.getSharedStore();
+      const rect = { x: 12, y: 34, w: 56, h: 78 };
+
+      app.store.dispatchSync(dragSelectRectAction({ rect }));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(dispatched).toHaveLength(1);
+
+      await vi.advanceTimersByTimeAsync(SHARED_DRAG_SELECT_TRACKER_TIMEOUT);
+
+      expect(dispatched.length).toBeGreaterThan(1);
+      expect(dispatched.at(-1)!.payload).toEqual({ rect });
+
+      app.store.dispatchSync(dragSelectRectAction({ rect: null }));
+      await vi.advanceTimersByTimeAsync(0);
+      const settled = dispatched.length;
+      expect(dispatched.at(-1)!.payload).toEqual({ rect: null });
+
+      await vi.advanceTimersByTimeAsync(SHARED_DRAG_SELECT_TRACKER_TIMEOUT);
+
+      expect(dispatched).toHaveLength(settled);
+      sharedStore.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('stops every presence channel and both intervals on the last destroy', async () => {
+    vi.useFakeTimers();
+    try {
+      const { app, ctx } = await setup();
+      const { tableId } = await seedUsersTable(app, ctx);
+      const focus = collectSharedFocus(app);
+      const selection = collectSharedSelection(app);
+      const dragSelect = collectSharedDragSelect(app);
+      const sharedStore = ctx.getSharedStore();
+
+      app.store.dispatchSync(
+        focusTableAction({ tableId, focusType: FocusType.tableName }),
+        selectAction({ [tableId]: SelectType.table }),
+        dragSelectRectAction({ rect: { x: 1, y: 2, w: 3, h: 4 } })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      expect(focus).toHaveLength(1);
+      expect(selection).toHaveLength(1);
+      expect(dragSelect).toHaveLength(1);
+
+      sharedStore.destroy();
+      await vi.advanceTimersByTimeAsync(SHARED_DRAG_SELECT_TRACKER_TIMEOUT);
+      await vi.advanceTimersByTimeAsync(SHARED_FOCUS_TRACKER_TIMEOUT);
+
+      expect(focus).toHaveLength(1);
+      expect(selection).toHaveLength(1);
+      expect(dragSelect).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('tears every watcher and shared store down on destroy()', async () => {
     const { api, app, ctx } = await setup();
     ctx.getSharedStore({ mouseTracker: false });
@@ -568,4 +964,46 @@ describe('useErdEditorAttachElement', () => {
 
 function ctxSetLight(api: ReturnType<typeof useErdEditorAttachElement>) {
   api.themeState.options.appearance = Appearance.light;
+}
+
+async function seedUsersTable(app: AppContext, ctx: ErdEditorElement) {
+  ctx.setSchemaSQL('CREATE TABLE users (id INT);');
+  await flush();
+
+  const tableId = app.store.state.doc.tableIds[0];
+  const columnId =
+    app.store.state.collections.tableEntities[tableId].columnIds[0];
+  return { tableId, columnId };
+}
+
+async function seedTwoTables(app: AppContext, ctx: ErdEditorElement) {
+  ctx.setSchemaSQL(
+    'CREATE TABLE users (id INT);\nCREATE TABLE posts (id INT);'
+  );
+  await flush();
+
+  const [first, second] = app.store.state.doc.tableIds;
+  return { first, second };
+}
+
+function collectDispatched(app: AppContext, type: string) {
+  const dispatched: AnyAction[] = [];
+  app.store.subscribe(actions => {
+    actions.forEach(action => {
+      action.type === type && dispatched.push(action);
+    });
+  });
+  return dispatched;
+}
+
+function collectSharedFocus(app: AppContext) {
+  return collectDispatched(app, sharedFocusTrackerAction.type);
+}
+
+function collectSharedSelection(app: AppContext) {
+  return collectDispatched(app, sharedSelectionTrackerAction.type);
+}
+
+function collectSharedDragSelect(app: AppContext) {
+  return collectDispatched(app, sharedDragSelectTrackerAction.type);
 }

@@ -12,6 +12,7 @@ import { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import Column from '@/components/erd/canvas/table/column/Column';
+import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import Icon from '@/components/primitives/icon/Icon';
 import { Show } from '@/constants/schema';
@@ -46,6 +47,7 @@ import { takeUnsubscribe } from '@/utils/rx-operators/takeUnsubscribe';
 import * as styles from './Table.styles';
 import { useFocusTable } from './useFocusTable';
 import { useMoveTable } from './useMoveTable';
+import { useSharedFocusTable } from './useSharedFocusTable';
 
 export type TableProps = {
   table: Table;
@@ -58,6 +60,11 @@ const Table: FC<TableProps> = (props, ctx) => {
     ctx,
     props.table.id
   );
+  const { sharedFocusColor, sharedFocusTableColor } = useSharedFocusTable(
+    ctx,
+    props.table.id
+  );
+  const { sharedSelectColor } = useSharedSelectEntity(ctx, props.table.id);
   const { onMoveStart } = useMoveTable(ctx, props);
   const { addUnsubscribe } = useUnmounted();
 
@@ -230,6 +237,11 @@ const Table: FC<TableProps> = (props, ctx) => {
       state.dragstartId !== null &&
       !table.columnIds.includes(state.dragstartId);
 
+    const sharedTableColor = sharedFocusTableColor();
+    const sharedSelected = sharedSelectColor();
+    const sharedNameColor = sharedFocusColor(FocusType.tableName);
+    const sharedCommentColor = sharedFocusColor(FocusType.tableComment);
+
     const columns = query(collections)
       .collection('tableColumnEntities')
       .selectByIds(
@@ -247,10 +259,14 @@ const Table: FC<TableProps> = (props, ctx) => {
           'z-index': `${table.ui.zIndex}`,
           width: `${tableWidths.width}px`,
           height: `${height}px`,
+          '--shared-focus': sharedTableColor ?? '',
+          '--shared-select': sharedSelected ?? '',
         }}
         use:ref={ref(root)}
         bool:data-selected={selected}
         bool:data-focus-border={selected}
+        bool:data-shared-focus={Boolean(sharedTableColor)}
+        bool:data-shared-select={Boolean(sharedSelected)}
         data-id={table.id}
         on:mousedown={onMoveStart}
         on:touchstart={onMoveStart}
@@ -287,6 +303,8 @@ const Table: FC<TableProps> = (props, ctx) => {
             <div
               class="input-padding"
               data-type="tableName"
+              bool:data-shared-focus={Boolean(sharedNameColor)}
+              style={{ '--shared-focus': sharedNameColor ?? '' }}
               on:mousedown={() => {
                 handleFocus(FocusType.tableName);
               }}
@@ -309,6 +327,8 @@ const Table: FC<TableProps> = (props, ctx) => {
               <div
                 class="input-padding"
                 data-type="tableComment"
+                bool:data-shared-focus={Boolean(sharedCommentColor)}
+                style={{ '--shared-focus': sharedCommentColor ?? '' }}
                 on:mousedown={() => {
                   handleFocus(FocusType.tableComment);
                 }}
@@ -367,6 +387,34 @@ const Table: FC<TableProps> = (props, ctx) => {
                 editDataType={hasEdit(FocusType.columnDataType, column.id)}
                 editDefault={hasEdit(FocusType.columnDefault, column.id)}
                 editComment={hasEdit(FocusType.columnComment, column.id)}
+                sharedFocusName={sharedFocusColor(
+                  FocusType.columnName,
+                  column.id
+                )}
+                sharedFocusDataType={sharedFocusColor(
+                  FocusType.columnDataType,
+                  column.id
+                )}
+                sharedFocusNotNull={sharedFocusColor(
+                  FocusType.columnNotNull,
+                  column.id
+                )}
+                sharedFocusDefault={sharedFocusColor(
+                  FocusType.columnDefault,
+                  column.id
+                )}
+                sharedFocusComment={sharedFocusColor(
+                  FocusType.columnComment,
+                  column.id
+                )}
+                sharedFocusUnique={sharedFocusColor(
+                  FocusType.columnUnique,
+                  column.id
+                )}
+                sharedFocusAutoIncrement={sharedFocusColor(
+                  FocusType.columnAutoIncrement,
+                  column.id
+                )}
                 draggable={true}
                 ghost={isGhostColumn && column.id === state.dragstartId}
                 onDragstart={handleDragstartColumn}

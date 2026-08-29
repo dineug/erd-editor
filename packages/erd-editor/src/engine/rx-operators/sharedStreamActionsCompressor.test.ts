@@ -9,7 +9,13 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { sharedMouseTrackerAction } from '@/engine/modules/editor/atom.actions';
+import {
+  sharedDragSelectTrackerAction,
+  sharedFocusTrackerAction,
+  sharedMouseTrackerAction,
+  sharedSelectionTrackerAction,
+} from '@/engine/modules/editor/atom.actions';
+import { FocusType } from '@/engine/modules/editor/state';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import { streamZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import {
@@ -59,11 +65,100 @@ describe('sharedStreamActionsCompressor', () => {
     expect(emitted).toHaveLength(1);
 
     vi.advanceTimersByTime(100);
-    source$.next([sharedMouseTrackerAction({ x: 4, y: 4 })]);
 
     expect(emitted).toEqual([
       [sharedMouseTrackerAction({ x: 1, y: 1 })],
-      [sharedMouseTrackerAction({ x: 4, y: 4 })],
+      [sharedMouseTrackerAction({ x: 3, y: 3 })],
+    ]);
+  });
+
+  it('delivers the last action of a burst instead of stranding it in the buffer', () => {
+    const { source$, emitted } = createHarness();
+
+    source$.next([sharedMouseTrackerAction({ x: 1, y: 1 })]);
+    source$.next([sharedMouseTrackerAction({ x: 2, y: 2 })]);
+    source$.next([sharedMouseTrackerAction({ x: 3, y: 3 })]);
+
+    vi.advanceTimersByTime(1000);
+
+    expect(emitted.at(-1)).toEqual([sharedMouseTrackerAction({ x: 3, y: 3 })]);
+  });
+
+  it('delivers a terminal shared focus action so a peer never keeps a stale marker', () => {
+    const { source$, emitted } = createHarness();
+    const move = sharedFocusTrackerAction({
+      focus: {
+        tableId: 't1',
+        columnId: 'c1',
+        focusType: FocusType.columnName,
+      },
+    });
+    const clear = sharedFocusTrackerAction({ focus: null });
+
+    source$.next([move]);
+    source$.next([clear]);
+
+    vi.advanceTimersByTime(1000);
+
+    expect(emitted.at(-1)).toEqual([clear]);
+  });
+
+  it('delivers a terminal shared drag select action so a peer never keeps a phantom marquee', () => {
+    const { source$, emitted } = createHarness();
+    const drag = sharedDragSelectTrackerAction({
+      rect: { x: 10, y: 20, w: 200, h: 100 },
+    });
+    const clear = sharedDragSelectTrackerAction({ rect: null });
+
+    source$.next([drag]);
+    source$.next([clear]);
+
+    vi.advanceTimersByTime(1000);
+
+    expect(emitted.at(-1)).toEqual([clear]);
+  });
+
+  it('groups every shared tracker by its own type, so a regroup alias over them would drop whole presence channels', () => {
+    const { source$, emitted } = createHarness();
+    const focus1 = sharedFocusTrackerAction({
+      focus: { tableId: 't1', columnId: null, focusType: FocusType.tableName },
+    });
+    const focus2 = sharedFocusTrackerAction({
+      focus: {
+        tableId: 't1',
+        columnId: 'c1',
+        focusType: FocusType.columnName,
+      },
+    });
+    const selection1 = sharedSelectionTrackerAction({ selectedIds: ['t1'] });
+    const selection2 = sharedSelectionTrackerAction({
+      selectedIds: ['m1', 't1'],
+    });
+    const dragSelect1 = sharedDragSelectTrackerAction({
+      rect: { x: 0, y: 0, w: 10, h: 10 },
+    });
+    const dragSelect2 = sharedDragSelectTrackerAction({
+      rect: { x: 0, y: 0, w: 20, h: 20 },
+    });
+
+    source$.next([
+      sharedMouseTrackerAction({ x: 1, y: 1 }),
+      focus1,
+      selection1,
+      dragSelect1,
+      sharedMouseTrackerAction({ x: 2, y: 2 }),
+      focus2,
+      selection2,
+      dragSelect2,
+    ]);
+
+    vi.advanceTimersByTime(100);
+
+    expect(emitted).toEqual([
+      [sharedMouseTrackerAction({ x: 2, y: 2 })],
+      [focus2],
+      [selection2],
+      [dragSelect2],
     ]);
   });
 

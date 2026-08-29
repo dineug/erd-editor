@@ -3,6 +3,7 @@ import { FC } from '@dineug/r-html';
 import { useAppContext } from '@/components/appContext';
 import { tryStartAltDragDuplicate } from '@/components/erd/canvas/altDragDuplicate';
 import MemoSash from '@/components/erd/canvas/memo/memo-sash/MemoSash';
+import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
 import Icon from '@/components/primitives/icon/Icon';
 import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
@@ -27,6 +28,7 @@ export type MemoProps = {
 
 const Memo: FC<MemoProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const { sharedSelectColor } = useSharedSelectEntity(ctx, props.memo.id);
 
   const handleMove = ({ event, movementX, movementY }: DragMove) => {
     event.type === 'mousemove' && event.preventDefault();
@@ -99,6 +101,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     const { editor } = store.state;
     const { memo } = props;
     const selected = Boolean(editor.selectedMap[memo.id]);
+    const sharedSelected = sharedSelectColor();
     const width = calcMemoWidth(memo);
     const height = calcMemoHeight(memo);
 
@@ -111,8 +114,10 @@ const Memo: FC<MemoProps> = (props, ctx) => {
           'z-index': `${memo.ui.zIndex}`,
           width: `${width}px`,
           height: `${height}px`,
+          '--shared-select': sharedSelected ?? '',
         }}
         bool:data-selected={selected}
+        bool:data-shared-select={Boolean(sharedSelected)}
         bool:data-focus-border={selected}
         on:mousedown={handleMoveStart}
         on:touchstart={handleMoveStart}

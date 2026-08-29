@@ -8,7 +8,13 @@ import { AppContext, appDestroy } from '@/components/appContext';
 import { DatabaseVendorToDatabase } from '@/constants/sql/database';
 import {
   clearAction,
+  getLWWAction,
   initialClearAction,
+  SHARED_DRAG_SELECT_TRACKER_TIMEOUT,
+  SHARED_FOCUS_TRACKER_TIMEOUT,
+  sharedDragSelectTrackerAction,
+  sharedFocusTrackerAction,
+  sharedSelectionTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
   initialLoadJsonAction$,
@@ -39,6 +45,7 @@ import {
   openDiffViewerAction,
   schemaGCAction,
 } from '@/utils/emitter';
+import { toSharedFocus, toSharedFocusKey } from '@/utils/focus';
 import { KeyBindingName, KeyBindingNameList } from '@/utils/keyboard-shortcut';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import { hasDatabaseVendor, toSafeString } from '@/utils/validation';
@@ -100,6 +107,73 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   const darkMode = useDarkMode();
   const { addUnsubscribe } = useUnmounted();
   const sharedStoreSet = new Set<SharedStore>();
+  let presenceTrackerUnsubscribe: Unsubscribe | null = null;
+  let presenceTrackerIntervalId: any = -1;
+  let dragSelectTrackerIntervalId: any = -1;
+  let sharedFocusKey = '';
+  let sharedSelectionKey = '';
+  let sharedDragSelectKey = '';
+
+  const broadcastSharedFocus = (force: boolean) => {
+    const focus = toSharedFocus(store.state.editor.focusTable);
+    const key = toSharedFocusKey(focus);
+    if (key === sharedFocusKey && !force) return;
+
+    sharedFocusKey = key;
+    store.dispatch(sharedFocusTrackerAction({ focus }));
+  };
+
+  const broadcastSharedSelection = (force: boolean) => {
+    const selectedIds = Object.keys(store.state.editor.selectedMap).sort();
+    const key = selectedIds.length ? JSON.stringify(selectedIds) : '';
+    if (key === sharedSelectionKey && !force) return;
+
+    sharedSelectionKey = key;
+    store.dispatch(sharedSelectionTrackerAction({ selectedIds }));
+  };
+
+  const broadcastSharedDragSelect = (force: boolean) => {
+    const rect = store.state.editor.dragSelect;
+    const key = rect ? JSON.stringify([rect.x, rect.y, rect.w, rect.h]) : '';
+    if (key === sharedDragSelectKey && !force) return;
+
+    sharedDragSelectKey = key;
+    store.dispatch(
+      sharedDragSelectTrackerAction({ rect: rect ? { ...rect } : null })
+    );
+  };
+
+  const presenceTrackerEnd = () => {
+    presenceTrackerUnsubscribe?.();
+    presenceTrackerUnsubscribe = null;
+    clearInterval(presenceTrackerIntervalId);
+    presenceTrackerIntervalId = -1;
+    clearInterval(dragSelectTrackerIntervalId);
+    dragSelectTrackerIntervalId = -1;
+  };
+
+  const presenceTrackerStart = () => {
+    presenceTrackerEnd();
+    sharedFocusKey = '';
+    sharedSelectionKey = '';
+    sharedDragSelectKey = '';
+    presenceTrackerUnsubscribe = store.subscribe(actions => {
+      const force = actions.some(action => action.type === getLWWAction.type);
+      broadcastSharedFocus(force);
+      broadcastSharedSelection(force);
+      broadcastSharedDragSelect(force);
+    });
+    presenceTrackerIntervalId = setInterval(() => {
+      sharedFocusKey && broadcastSharedFocus(true);
+      sharedSelectionKey && broadcastSharedSelection(true);
+    }, SHARED_FOCUS_TRACKER_TIMEOUT / 3);
+    dragSelectTrackerIntervalId = setInterval(() => {
+      sharedDragSelectKey && broadcastSharedDragSelect(true);
+    }, SHARED_DRAG_SELECT_TRACKER_TIMEOUT / 3);
+    broadcastSharedFocus(false);
+    broadcastSharedSelection(false);
+    broadcastSharedDragSelect(false);
+  };
 
   const emitChange = () => {
     getReadonly() || ctx.dispatchEvent(new CustomEvent('change'));
@@ -272,6 +346,7 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
 
   ctx.getSharedStore = config => {
     const mouseTracker = config?.mouseTracker ?? true;
+    const focusTracker = config?.focusTracker ?? true;
     const sharedStore = createSharedStore(store, config);
     const facade: SharedStore = Object.freeze({
       ...sharedStore,
@@ -281,6 +356,7 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
 
         if (sharedStoreSet.size === 0) {
           emitter.emit(mouseTrackerEndAction());
+          presenceTrackerEnd();
         }
       },
     });
@@ -288,6 +364,10 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
 
     if (mouseTracker) {
       emitter.emit(mouseTrackerStartAction());
+    }
+
+    if (focusTracker) {
+      presenceTrackerStart();
     }
 
     return facade;

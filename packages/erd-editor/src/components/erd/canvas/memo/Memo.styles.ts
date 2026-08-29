@@ -23,6 +23,10 @@ export const root = css`
   &[data-selected] {
     border: 1px solid var(--memo-select);
   }
+
+  &[data-shared-select] {
+    box-shadow: 0 0 0 1px var(--shared-select);
+  }
 `;
 
 export const container = css`

@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { FocusTable, FocusType } from '@/engine/modules/editor/state';
+import {
+  FocusTable,
+  FocusType,
+  SharedFocus,
+} from '@/engine/modules/editor/state';
 import {
   isEdit,
   isFocus,
   isSelectColumn,
   lastCursorFocus,
+  toSharedFocus,
+  toSharedFocusKey,
 } from '@/utils/focus';
 
 const createFocusTable = (value?: Partial<FocusTable>): FocusTable => ({
@@ -15,6 +21,13 @@ const createFocusTable = (value?: Partial<FocusTable>): FocusTable => ({
   selectColumnIds: [],
   prevSelectColumnId: null,
   edit: false,
+  ...value,
+});
+
+const createSharedFocus = (value?: Partial<SharedFocus>): SharedFocus => ({
+  tableId: 'table-1',
+  columnId: null,
+  focusType: FocusType.tableName,
   ...value,
 });
 
@@ -82,6 +95,20 @@ describe('isFocus', () => {
 
     expect(
       isFocus(focusTable, FocusType.columnUnique, 'table-1', 'column-1')
+    ).toBe(false);
+  });
+
+  it('accepts a shared focus without the selection and edit fields', () => {
+    const sharedFocus = createSharedFocus({
+      focusType: FocusType.columnName,
+      columnId: 'column-1',
+    });
+
+    expect(
+      isFocus(sharedFocus, FocusType.columnName, 'table-1', 'column-1')
+    ).toBe(true);
+    expect(
+      isFocus(sharedFocus, FocusType.columnName, 'table-1', 'column-2')
     ).toBe(false);
   });
 });
@@ -209,5 +236,95 @@ describe('lastCursorFocus', () => {
     expect(document.activeElement).toBe(input);
 
     input.remove();
+  });
+});
+
+describe('toSharedFocus', () => {
+  it('returns null when there is no focus table', () => {
+    expect(toSharedFocus(null)).toBe(null);
+  });
+
+  it('keeps only the table id, the column id and the focus type', () => {
+    const sharedFocus = toSharedFocus(
+      createFocusTable({
+        focusType: FocusType.columnDataType,
+        columnId: 'column-1',
+        selectColumnIds: ['column-1', 'column-2'],
+        prevSelectColumnId: 'column-2',
+        edit: true,
+      })
+    );
+
+    expect(sharedFocus).toEqual({
+      tableId: 'table-1',
+      columnId: 'column-1',
+      focusType: FocusType.columnDataType,
+    });
+    expect(Object.keys(sharedFocus ?? {})).toHaveLength(3);
+  });
+
+  it('produces the same key when only the selection and edit fields change', () => {
+    const focusTable = createFocusTable({
+      focusType: FocusType.columnName,
+      columnId: 'column-1',
+    });
+    const editing = createFocusTable({
+      focusType: FocusType.columnName,
+      columnId: 'column-1',
+      selectColumnIds: ['column-1'],
+      prevSelectColumnId: 'column-1',
+      edit: true,
+    });
+
+    expect(toSharedFocusKey(toSharedFocus(focusTable))).toBe(
+      toSharedFocusKey(toSharedFocus(editing))
+    );
+  });
+});
+
+describe('toSharedFocusKey', () => {
+  it('returns an empty string when there is no focus', () => {
+    expect(toSharedFocusKey(null)).toBe('');
+  });
+
+  it('separates focuses that only differ in the column id', () => {
+    const columnA = createSharedFocus({
+      focusType: FocusType.columnName,
+      columnId: 'column-1',
+    });
+    const columnB = createSharedFocus({
+      focusType: FocusType.columnName,
+      columnId: 'column-2',
+    });
+
+    expect(toSharedFocusKey(columnA)).not.toBe(toSharedFocusKey(columnB));
+  });
+
+  it('separates focuses that only differ in the focus type', () => {
+    const name = createSharedFocus({
+      focusType: FocusType.columnName,
+      columnId: 'column-1',
+    });
+    const dataType = createSharedFocus({
+      focusType: FocusType.columnDataType,
+      columnId: 'column-1',
+    });
+
+    expect(toSharedFocusKey(name)).not.toBe(toSharedFocusKey(dataType));
+  });
+
+  it('separates a null column id from an empty string column id', () => {
+    const nullColumn = createSharedFocus({
+      focusType: FocusType.columnName,
+      columnId: null,
+    });
+    const emptyColumn = createSharedFocus({
+      focusType: FocusType.columnName,
+      columnId: '',
+    });
+
+    expect(toSharedFocusKey(nullColumn)).not.toBe(
+      toSharedFocusKey(emptyColumn)
+    );
   });
 });

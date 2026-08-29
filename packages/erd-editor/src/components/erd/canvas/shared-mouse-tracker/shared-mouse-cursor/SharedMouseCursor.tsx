@@ -4,6 +4,7 @@ import Icon from '@/components/primitives/icon/Icon';
 import { SharedMouseTracker } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { animationFrames$ } from '@/utils/globalEventObservable';
+import { toSharedColor } from '@/utils/sharedColor';
 
 import * as styles from './SharedMouseCursor.styles';
 
@@ -30,13 +31,19 @@ const SharedMouseCursor: FC<SharedMouseCursorProps> = (props, ctx) => {
 
   return () => {
     const {
-      tracker: { nickname },
+      tracker: { id, nickname },
     } = props;
+    const color = toSharedColor(id);
 
     return (
       <div
         class={styles.cursor}
-        style={{ left: `${state.x}px`, top: `${state.y}px` }}
+        style={{
+          left: `${state.x}px`,
+          top: `${state.y}px`,
+          color,
+          fill: color,
+        }}
       >
         <Icon name="arrow-pointer" size={16} />
         <span>{nickname}</span>

@@ -88,7 +88,10 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   setSchemaAML: (value: string) => void;
   getSchemaSQL: (databaseVendor?: DatabaseVendor) => string;
   getSharedStore: (
-    config?: SharedStoreConfig & { mouseTracker?: boolean }
+    config?: SharedStoreConfig & {
+      mouseTracker?: boolean;
+      focusTracker?: boolean;
+    }
   ) => SharedStore;
   setDiffValue: (value: string) => void;
 }

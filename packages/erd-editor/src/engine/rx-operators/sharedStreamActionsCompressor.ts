@@ -20,7 +20,11 @@ export const sharedStreamActionsCompressor = (
   source$: Observable<Array<AnyAction>>
 ) =>
   source$.pipe(
-    groupByStreamActions(SharedStreamActionTypes, [], throttleTime(100)),
+    groupByStreamActions(
+      SharedStreamActionTypes,
+      [],
+      throttleTime(100, undefined, { leading: true, trailing: true })
+    ),
     map(actions =>
       hasSharedStreamActionTypes(actions[0]?.type)
         ? [last(actions) as AnyAction]

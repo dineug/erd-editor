@@ -55,7 +55,7 @@ cd ../intellij-plugin && ./gradlew runIde
 
 - Mirror of `packages/vscode-webview/src/index.ts` — diff both when either moves. The same two gaps: no `setImportFileCallback`, so the element's own file input is what imports here and the mirrored `webviewImportFileCommand` handler goes unreached while `ErdEditor.kt` no-ops `ImportFile`; and `auto` appearance resolves to dark instead of following the host.
 - Register commands up front, collecting disposers with `Bridge.mergeRegister`; a new command belongs in the bridge package, not a fork.
-- The shared store is created with `mouseTracker: false` — it exists for host replication only.
+- The shared store is created with `mouseTracker: false, focusTracker: false` — it exists for host replication only.
 
 ## Dependencies
 
