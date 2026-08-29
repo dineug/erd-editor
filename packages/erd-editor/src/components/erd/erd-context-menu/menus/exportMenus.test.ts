@@ -51,9 +51,9 @@ describe('exportMenus', () => {
       'png',
     ]);
     expect(result.map(menu => menu.icon)).toEqual([
-      { prefix: 'mdi', name: 'code-json' },
-      { prefix: 'mdi', name: 'database-export' },
-      { prefix: 'fas', name: 'file-image' },
+      'braces',
+      'database',
+      'file-image',
     ]);
   });
 

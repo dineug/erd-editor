@@ -118,7 +118,7 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
               data-id={indexColumn.id}
               on:dragstart={handleDragstart}
             >
-              <Icon class={'column-col'} name="bars" size={14} />
+              <Icon class={'column-col'} name="grip-vertical" size={14} />
               <div
                 class="column-col"
                 on:click={() => handleChangeOrderType(indexColumn)}

@@ -21,7 +21,6 @@ export const row = css`
   height: ${COLUMN_HEIGHT}px;
   align-items: center;
   color: var(--active);
-  fill: var(--active);
   padding: 0 ${TABLE_PADDING}px;
   cursor: move;
 

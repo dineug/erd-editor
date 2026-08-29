@@ -154,7 +154,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           title="Entity Relationship Diagram"
           on:click={() => handleChangeCanvasType(CanvasType.ERD)}
         >
-          <Icon name="diagram-project" size={16} />
+          <Icon name="workflow" size={16} />
         </div>
         <div
           class={[
@@ -164,7 +164,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           title="Visualization"
           on:click={() => handleChangeCanvasType(CanvasType.visualization)}
         >
-          <Icon prefix="mdi" name="chart-scatter-plot" size={16} />
+          <Icon name="share-2" size={16} />
         </div>
         <div
           class={[
@@ -174,7 +174,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           title="Schema SQL"
           on:click={() => handleChangeCanvasType(CanvasType.schemaSQL)}
         >
-          <Icon prefix="mdi" name="database-export" size={16} />
+          <Icon name="database" size={16} />
         </div>
         <div
           class={[
@@ -184,7 +184,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           title="Code Generator"
           on:click={() => handleChangeCanvasType(CanvasType.generatorCode)}
         >
-          <Icon name="file-code" size={16} />
+          <Icon name="code" size={16} />
         </div>
         <div
           class={[
@@ -194,15 +194,15 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           title="Settings"
           on:click={() => handleChangeCanvasType(CanvasType.settings)}
         >
-          <Icon name="gear" size={16} />
+          <Icon name="settings" size={16} />
         </div>
         <div class={styles.vertical}></div>
         <div class={styles.menu} title="Search" on:click={handleSearch}>
-          <Icon name="magnifying-glass" size={16} />
+          <Icon name="search" size={16} />
         </div>
         {props.enableThemeBuilder ? (
           <div class={styles.menu} title="Theme" on:click={handleTheme}>
-            <Icon name="circle-half-stroke" size={16} />
+            <Icon name="contrast" size={16} />
           </div>
         ) : null}
         <div class={styles.vertical}></div>
@@ -219,7 +219,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
               title="Undo"
               on:click={handleUndo}
             >
-              <Icon name="rotate-left" size={16} />
+              <Icon name="undo-2" size={16} />
             </div>
             <div
               class={[
@@ -232,7 +232,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
               title="Redo"
               on:click={handleRedo}
             >
-              <Icon name="rotate-right" size={16} />
+              <Icon name="redo-2" size={16} />
             </div>
             <div
               class={[
@@ -248,7 +248,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
               }}
               on:click={handleOpenTimeTravel}
             >
-              <Icon prefix="mdi" name="av-timer" size={20} />
+              <Icon name="rotate-ccw-clock" size={16} />
             </div>
           </>
         ) : null}

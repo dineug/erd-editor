@@ -25,7 +25,6 @@ export const addIndexButtonArea = css`
 
   &:hover {
     background-color: var(--column-hover);
-    fill: var(--active);
     color: var(--active);
   }
 `;

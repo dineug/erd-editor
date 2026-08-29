@@ -30,7 +30,6 @@ describe('IndexesIndex.styles', () => {
     expect(text).toContain('display: flex');
     expect(text).toContain('width: 100%');
     expect(text).toContain('align-items: center');
-    expect(text).toContain('fill: transparent');
     expect(text).toContain('color: transparent');
     expect(text).toContain('&:hover');
     expect(text).toContain('var(--foreground)');
@@ -63,7 +62,6 @@ describe('IndexesIndex.styles', () => {
     expect(iconButton).toContain('cursor: pointer');
     expect(iconButton).toContain('margin-left: auto');
     expect(iconButton).toContain('&:hover');
-    expect(iconButton).toContain('fill: var(--active)');
     expect(iconButton).toContain('color: var(--active)');
   });
 });

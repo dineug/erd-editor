@@ -149,7 +149,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 onClick={handleChangeColumnPrimaryKey}
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon name="key" size={14} />}
+                    icon={<Icon name="key-round" size={14} />}
                     name="Primary Key"
                     right={
                       <Kbd shortcut={keyBindingMap.primaryKey[0]?.shortcut} />
@@ -161,7 +161,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 onClick={handleOpenTableProperties}
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon prefix="mdi" name="table-cog" size={14} />}
+                    icon={<Icon name="table-properties" size={14} />}
                     name="Table Properties"
                     right={
                       <Kbd
@@ -186,7 +186,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
               <ContextMenu.Item
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon prefix="mdi" name="vector-line" size={14} />}
+                    icon={<Icon name="spline" size={14} />}
                     name="Relationship Type"
                     right={chevronRightIcon}
                   />
@@ -208,13 +208,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                             }
                             name={
                               <ContextMenu.Menu
-                                icon={
-                                  <Icon
-                                    prefix="base64"
-                                    name={menu.iconName}
-                                    size={14}
-                                  />
-                                }
+                                icon={<Icon name={menu.iconName} size={14} />}
                                 name={menu.name}
                               />
                             }
@@ -248,7 +242,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 onClick={handleAddMemo}
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon name="note-sticky" size={14} />}
+                    icon={<Icon name="sticky-note" size={14} />}
                     name="New Memo"
                     right={
                       <Kbd shortcut={keyBindingMap.addMemo[0]?.shortcut} />
@@ -259,7 +253,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
               <ContextMenu.Item
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon prefix="mdi" name="vector-line" size={14} />}
+                    icon={<Icon name="spline" size={14} />}
                     name="Relationship"
                     right={chevronRightIcon}
                   />
@@ -272,13 +266,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                           onClick={menu.onClick}
                           children={
                             <ContextMenu.Menu
-                              icon={
-                                <Icon
-                                  prefix="base64"
-                                  name={menu.iconName}
-                                  size={14}
-                                />
-                              }
+                              icon={<Icon name={menu.iconName} size={14} />}
                               name={menu.name}
                               right={<Kbd shortcut={menu.shortcut} />}
                             />
@@ -320,7 +308,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
               <ContextMenu.Item
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon prefix="mdi" name="database" size={14} />}
+                    icon={<Icon name="database" size={14} />}
                     name="Database"
                     right={chevronRightIcon}
                   />
@@ -348,7 +336,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
               <ContextMenu.Item
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon name="file-import" size={14} />}
+                    icon={<Icon name="file-input" size={14} />}
                     name="Import"
                     right={chevronRightIcon}
                   />
@@ -360,13 +348,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                         onClick={menu.onClick}
                         children={
                           <ContextMenu.Menu
-                            icon={
-                              <Icon
-                                prefix={menu.icon.prefix}
-                                name={menu.icon.name}
-                                size={14}
-                              />
-                            }
+                            icon={<Icon name={menu.icon} size={14} />}
                             name={menu.name}
                           />
                         }
@@ -378,7 +360,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
               <ContextMenu.Item
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon name="file-export" size={14} />}
+                    icon={<Icon name="file-output" size={14} />}
                     name="Export"
                     right={chevronRightIcon}
                   />
@@ -394,13 +376,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                         onClick={menu.onClick}
                         children={
                           <ContextMenu.Menu
-                            icon={
-                              <Icon
-                                prefix={menu.icon.prefix}
-                                name={menu.icon.name}
-                                size={14}
-                              />
-                            }
+                            icon={<Icon name={menu.icon} size={14} />}
                             name={menu.name}
                           />
                         }
@@ -413,7 +389,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 onClick={handleAutomaticTablePlacement}
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon prefix="mdi" name="atom" size={14} />}
+                    icon={<Icon name="atom" size={14} />}
                     name="Automatic Table Placement"
                   />
                 }
@@ -422,7 +398,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 onClick={handleOpenDiffViewer}
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon prefix="mdi" name="plus-minus-box" size={14} />}
+                    icon={<Icon name="file-diff" size={14} />}
                     name="Diff Viewer"
                   />
                 }

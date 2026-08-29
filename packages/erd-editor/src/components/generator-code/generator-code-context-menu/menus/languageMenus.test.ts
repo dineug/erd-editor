@@ -11,20 +11,20 @@ import { changeTableNameCaseAction } from '@/engine/modules/settings/atom.action
 describe('languageMenus', () => {
   it('exposes every supported generator language in a stable order', () => {
     expect(menus).toEqual([
-      { name: 'GraphQL', value: Language.GraphQL },
       { name: 'C#', value: Language.csharp },
+      { name: 'Go', value: Language.Go },
       { name: 'Java', value: Language.Java },
       { name: 'Kotlin', value: Language.Kotlin },
-      { name: 'TypeScript', value: Language.TypeScript },
-      { name: 'JPA', value: Language.JPA },
       { name: 'Scala', value: Language.Scala },
-      { name: 'Go', value: Language.Go },
+      { name: 'TypeScript', value: Language.TypeScript },
+      { name: 'Drizzle', value: Language.Drizzle },
+      { name: 'JPA', value: Language.JPA },
+      { name: 'Sequelize', value: Language.Sequelize },
       { name: 'SQLAlchemy', value: Language.SQLAlchemy },
       { name: 'TypeORM', value: Language.TypeORM },
-      { name: 'Sequelize', value: Language.Sequelize },
-      { name: 'Drizzle', value: Language.Drizzle },
-      { name: 'DBML', value: Language.DBML },
       { name: 'AML', value: Language.AML },
+      { name: 'DBML', value: Language.DBML },
+      { name: 'GraphQL', value: Language.GraphQL },
     ]);
   });
 
@@ -34,20 +34,20 @@ describe('languageMenus', () => {
 
     expect(created).toHaveLength(menus.length);
     expect(created.map(menu => menu.name)).toEqual([
-      'GraphQL',
       'C#',
+      'Go',
       'Java',
       'Kotlin',
-      'TypeScript',
-      'JPA',
       'Scala',
-      'Go',
+      'TypeScript',
+      'Drizzle',
+      'JPA',
+      'Sequelize',
       'SQLAlchemy',
       'TypeORM',
-      'Sequelize',
-      'Drizzle',
-      'DBML',
       'AML',
+      'DBML',
+      'GraphQL',
     ]);
     created.forEach(menu => expect(typeof menu.onClick).toBe('function'));
   });

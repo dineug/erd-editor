@@ -5,6 +5,6 @@ export const sign = css`
   cursor: pointer;
 
   &:hover {
-    fill: var(--active);
+    color: var(--active);
   }
 `;

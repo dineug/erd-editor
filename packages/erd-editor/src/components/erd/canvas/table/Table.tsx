@@ -291,7 +291,7 @@ const Table: FC<TableProps> = (props, ctx) => {
             />
             <Icon
               size={12}
-              name="xmark"
+              name="x"
               title={simpleShortcutToString(
                 keyBindingMap.removeTable[0]?.shortcut
               )}

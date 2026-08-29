@@ -220,11 +220,11 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
             <div class={styles.table} on:click={() => handleMove(table)}>
               <div class={[styles.icon, classMap]}>
                 {isInsert && isDelete ? (
-                  <Icon prefix="mdi" name="plus-minus" size={14} />
+                  <Icon name="diff" size={14} />
                 ) : isInsert ? (
-                  <Icon prefix="mdi" name="plus" size={14} />
+                  <Icon name="plus" size={14} />
                 ) : isDelete ? (
-                  <Icon prefix="mdi" name="minus" size={14} />
+                  <Icon name="minus" size={14} />
                 ) : (
                   <Icon name="table" size={14} />
                 )}
@@ -245,11 +245,11 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
                 <div class={styles.column} on:click={() => handleMove(table)}>
                   <div class={[styles.icon, classMap]}>
                     {isInsert && isDelete ? (
-                      <Icon prefix="mdi" name="plus-minus" size={14} />
+                      <Icon name="diff" size={14} />
                     ) : isInsert ? (
-                      <Icon prefix="mdi" name="plus" size={14} />
+                      <Icon name="plus" size={14} />
                     ) : isDelete ? (
-                      <Icon prefix="mdi" name="minus" size={14} />
+                      <Icon name="minus" size={14} />
                     ) : null}
                   </div>
                   <span class={styles.ellipsis}>{columnName}</span>

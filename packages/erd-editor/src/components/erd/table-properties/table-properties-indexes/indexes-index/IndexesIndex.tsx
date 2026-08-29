@@ -89,7 +89,7 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
         <Icon
           class={styles.iconButton}
           size={12}
-          name="xmark"
+          name="x"
           title="Remove"
           onClick={handleRemoveIndex}
         />

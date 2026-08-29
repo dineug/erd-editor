@@ -12,11 +12,9 @@ export const root = css`
   background-color: var(--memo-background);
   border-radius: 6px;
   border: 1px solid var(--memo-border);
-  fill: transparent;
   color: transparent;
 
   &:hover {
-    fill: var(--foreground);
     color: var(--foreground);
   }
 
@@ -67,7 +65,6 @@ export const headerButtonWrap = css`
   }
 
   & > .icon:hover {
-    fill: var(--active);
     color: var(--active);
   }
 `;

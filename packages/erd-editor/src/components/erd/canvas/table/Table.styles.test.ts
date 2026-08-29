@@ -43,7 +43,6 @@ describe('Table.styles', () => {
     expect(source).toContain('background-color: var(--table-background)');
     expect(source).toContain('border: 1px solid var(--table-border)');
     expect(source).toContain('border-radius: 6px');
-    expect(source).toContain('fill: transparent');
     expect(source).toContain('color: transparent');
   });
 
@@ -51,7 +50,6 @@ describe('Table.styles', () => {
     const source = sourceOf(styles.root);
 
     expect(source).toContain('&:hover');
-    expect(source).toContain('fill: var(--foreground)');
     expect(source).toContain('color: var(--foreground)');
     expect(source).toContain('&[data-selected]');
     expect(source).toContain('border: 1px solid var(--table-select)');
@@ -119,7 +117,6 @@ describe('Table.styles', () => {
     expect(source).toContain('& > .icon');
     expect(source).toContain('& > .icon:last-child');
     expect(source).toContain('& > .icon:hover');
-    expect(source).toContain('fill: var(--active)');
     expect(source).toContain('color: var(--active)');
     expect(styles.headerButtonWrap.values).toEqual([
       HEADER_ICON_HEIGHT,

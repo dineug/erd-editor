@@ -14,7 +14,6 @@ export const button = css`
 export const soft = css`
   background-color: var(--accent-color-3);
   color: var(--accent-color-11);
-  fill: var(--accent-color-11);
 
   &:hover {
     background-color: var(--accent-color-4);
@@ -28,7 +27,6 @@ export const soft = css`
 export const solid = css`
   background-color: var(--accent-color-9);
   color: #fff;
-  fill: #fff;
 
   &:hover {
     background-color: var(--accent-color-10);

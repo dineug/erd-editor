@@ -1,10 +1,11 @@
 import { AppContext } from '@/components/appContext';
+import { Base64IconName } from '@/components/primitives/icon/icons';
 import { RelationshipType } from '@/constants/schema';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 type Menu = {
-  iconName: string;
+  iconName: Base64IconName;
   name: string;
   keyBindingName: KeyBindingName;
   relationshipType: number;

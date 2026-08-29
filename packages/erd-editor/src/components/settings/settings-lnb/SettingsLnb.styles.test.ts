@@ -47,6 +47,5 @@ describe('SettingsLnb.styles', () => {
     expect(css).toContain('&.selected');
     expect(css).toContain('background-color: var(--context-menu-select)');
     expect(css).toContain('color: var(--active)');
-    expect(css).toContain('fill: var(--active)');
   });
 });

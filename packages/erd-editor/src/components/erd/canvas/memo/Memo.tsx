@@ -134,7 +134,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
             <div class={styles.headerButtonWrap}>
               <Icon
                 size={12}
-                name="xmark"
+                name="x"
                 title={simpleShortcutToString(
                   keyBindingMap.removeTable[0]?.shortcut
                 )}

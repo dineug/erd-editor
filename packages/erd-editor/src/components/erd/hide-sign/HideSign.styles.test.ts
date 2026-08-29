@@ -21,7 +21,7 @@ describe('HideSign.styles', () => {
     const source = styles.sign.strings.join('');
 
     expect(source).toContain('&:hover');
-    expect(source).toContain('fill: var(--active)');
+    expect(source).toContain('color: var(--active)');
   });
 
   it('exports nothing but the sign class', () => {

@@ -171,7 +171,7 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
           </div>
         </div>
         <div class={styles.clipboard} title="Copy" on:click={handleCopy}>
-          <Icon prefix="far" name="copy" useTransition={true} />
+          <Icon name="copy" useTransition={true} />
         </div>
       </div>
     );

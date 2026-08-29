@@ -130,7 +130,30 @@ describe('SharedMouseCursor', () => {
     expect(el.style.color).toBeTruthy();
     expect(SharedColors).toContain(toHex(el.style.color));
     expect(toHex(el.style.color)).toBe(toSharedColor('remote-1'));
-    expect(toHex(el.style.fill)).toBe(toHex(el.style.color));
+  });
+
+  it('carries that color into the pointer outline', async () => {
+    mounted = await mountAndFlush(
+      html`<${SharedMouseCursor}
+        tracker=${createTracker({ id: 'remote-2' })}
+      />`
+    );
+
+    const el = cursorOf();
+    const svg = el.querySelector('svg') as SVGSVGElement;
+    const outline = Array.from(svg.children);
+
+    expect(outline.length).toBeGreaterThan(0);
+    expect(svg.getAttribute('fill')).toBe('none');
+    expect(svg.getAttribute('stroke')).toBe('currentColor');
+
+    for (const child of outline) {
+      expect(child.getAttribute('fill')).toBe('none');
+      expect(child.getAttribute('stroke')).toBe('currentColor');
+      expect(toHex(getComputedStyle(child).color)).toBe(
+        toSharedColor('remote-2')
+      );
+    }
   });
 
   it('stops following the tracker once unmounted', async () => {

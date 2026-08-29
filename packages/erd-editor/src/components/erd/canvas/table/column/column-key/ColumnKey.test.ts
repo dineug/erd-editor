@@ -4,13 +4,16 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import ColumnKey from '@/components/erd/canvas/table/column/column-key/ColumnKey';
 import * as styles from '@/components/erd/canvas/table/column/column-key/ColumnKey.styles';
+import { iconMap } from '@/components/primitives/icon/icons';
 import { ColumnUIKey } from '@/constants/schema';
 
-let mounted: Mounted | null = null;
+let mounts: Mounted[] = [];
 
 afterEach(() => {
-  mounted?.unmount();
-  mounted = null;
+  for (const mounted of mounts) {
+    mounted.unmount();
+  }
+  mounts = [];
 });
 
 type Handlers = {
@@ -19,14 +22,28 @@ type Handlers = {
 };
 
 async function mountKey(keys: number, handlers: Handlers = {}) {
-  mounted = await mountAndFlush(
+  const mounted = await mountAndFlush(
     html`<${ColumnKey}
       keys=${keys}
       .onMouseenter=${handlers.onMouseenter}
       .onMouseleave=${handlers.onMouseleave}
     />`
   );
+  mounts.push(mounted);
   return mounted.container.querySelector(`.${styles.key}`) as HTMLDivElement;
+}
+
+function keyRoundNode() {
+  const icon = iconMap['key-round'];
+  if (icon.type !== 'svg') {
+    throw new Error('key-round is not an svg icon');
+  }
+  return icon.node;
+}
+
+function glyphOf(el: HTMLDivElement) {
+  const svg = el.querySelector('svg') as SVGSVGElement;
+  return Array.from(svg.children);
 }
 
 describe('ColumnKey', () => {
@@ -39,14 +56,49 @@ describe('ColumnKey', () => {
     expect(el.classList.contains(String(styles.key))).toBe(true);
   });
 
-  it('renders an svg path for the key glyph at size 12', async () => {
+  it('renders the key-round glyph at the 12px the column layout reserves', async () => {
     const el = await mountKey(0);
     const svg = el.querySelector('svg') as SVGSVGElement;
 
     expect(svg).toBeTruthy();
-    expect(svg.style.width).toBe('0.75rem');
-    expect(svg.style.height).toBe('0.75rem');
-    expect(svg.querySelector('path')?.getAttribute('d')).toBeTruthy();
+    expect(svg.style.width).toBe('12px');
+    expect(svg.style.height).toBe('12px');
+    expect(glyphOf(el).map(child => child.tagName)).toEqual(
+      keyRoundNode().map(([tag]) => tag)
+    );
+    expect(svg.querySelector('path')?.getAttribute('d')).toBe(
+      String(keyRoundNode()[0][1].d)
+    );
+  });
+
+  it('renders the same glyph whichever key bits are set', async () => {
+    const glyphs: string[] = [];
+    for (const keys of [
+      0,
+      ColumnUIKey.primaryKey,
+      ColumnUIKey.foreignKey,
+      ColumnUIKey.primaryKey | ColumnUIKey.foreignKey,
+    ]) {
+      const el = await mountKey(keys);
+      glyphs.push((el.querySelector('svg') as SVGSVGElement).innerHTML);
+    }
+
+    expect(new Set(glyphs).size).toBe(1);
+  });
+
+  it('strokes the glyph with the wrapper color, so a variant tints it', async () => {
+    const el = await mountKey(ColumnUIKey.primaryKey);
+    const children = glyphOf(el);
+
+    expect(children.length).toBeGreaterThan(0);
+    for (const child of children) {
+      expect(child.getAttribute('stroke')).toBe('currentColor');
+    }
+
+    el.style.color = 'rgb(1, 2, 3)';
+    for (const child of children) {
+      expect(getComputedStyle(child).color).toBe('rgb(1, 2, 3)');
+    }
   });
 
   it('applies no key variant class when no key bits are set', async () => {
@@ -108,7 +160,8 @@ describe('ColumnKey', () => {
     const Wrapper: FC<any> = () => () =>
       html`<${ColumnKey} keys=${state.keys} />`;
 
-    mounted = await mountAndFlush(html`<${Wrapper} />`);
+    const mounted = await mountAndFlush(html`<${Wrapper} />`);
+    mounts.push(mounted);
     const el = mounted.container.querySelector(
       `.${styles.key}`
     ) as HTMLDivElement;

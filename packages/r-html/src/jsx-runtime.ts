@@ -137,6 +137,7 @@ export interface SVGAttributes
   stroke?: string;
   'stroke-dasharray'?: number | string;
   'stroke-linecap'?: 'butt' | 'round' | 'square';
+  'stroke-linejoin'?: 'arcs' | 'bevel' | 'miter' | 'miter-clip' | 'round';
   'stroke-opacity'?: number | string;
   'stroke-width'?: number | string;
   transform?: string;
@@ -224,6 +225,17 @@ export interface PathAttributes extends SVGAttributes {
   d?: string;
 }
 
+export interface EllipseAttributes extends SVGAttributes {
+  cx?: number | string;
+  cy?: number | string;
+  rx?: number | string;
+  ry?: number | string;
+}
+
+export interface PolyAttributes extends SVGAttributes {
+  points?: string;
+}
+
 type IntrinsicHTMLElements = {
   [Tag in keyof HTMLElementTagNameMap]: HTMLAttributes;
 };
@@ -278,10 +290,13 @@ export declare namespace JSX {
     // subtype of what it overrides, so the two stay assignable.
     button: ButtonAttributes;
     circle: CircleAttributes;
+    ellipse: EllipseAttributes;
     img: ImgAttributes;
     input: InputAttributes;
     line: LineAttributes;
     path: PathAttributes;
+    polygon: PolyAttributes;
+    polyline: PolyAttributes;
     rect: RectAttributes;
     svg: SvgRootAttributes;
     td: TableCellAttributes;

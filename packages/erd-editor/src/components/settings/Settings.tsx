@@ -239,7 +239,7 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                     size="1"
                     text={
                       <>
-                        <Icon size={14} name="rotate" />
+                        <Icon size={14} name="refresh-cw" />
                         <div class={styles.vertical(8)}></div>
                         <span>Sync</span>
                       </>
@@ -266,7 +266,7 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                           on:dragstart={handleDragstartColumnOrder}
                         >
                           <Menu
-                            icon={<Icon name="bars" size={14} />}
+                            icon={<Icon name="grip-vertical" size={14} />}
                             name={ColumnTypeToName[columnType]}
                           />
                         </div>

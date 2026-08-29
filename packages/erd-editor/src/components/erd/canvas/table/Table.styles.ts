@@ -17,12 +17,10 @@ export const root = css`
   padding: ${TABLE_PADDING}px 0;
   border-radius: 6px;
   border: 1px solid var(--table-border);
-  fill: transparent;
   color: transparent;
   ${typography.paragraph};
 
   &:hover {
-    fill: var(--foreground);
     color: var(--foreground);
   }
 
@@ -81,7 +79,6 @@ export const headerButtonWrap = css`
   }
 
   & > .icon:hover {
-    fill: var(--active);
     color: var(--active);
   }
 `;

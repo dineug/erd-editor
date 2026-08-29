@@ -12,12 +12,10 @@ export const root = css`
   width: 100%;
   height: ${COLUMN_HEIGHT}px;
   align-items: center;
-  fill: transparent;
   color: transparent;
   padding: 0 ${TABLE_PADDING}px;
 
   &:hover {
-    fill: var(--foreground);
     color: var(--foreground);
     background-color: var(--column-hover);
   }
@@ -56,7 +54,6 @@ export const iconButton = css`
   margin-left: auto;
 
   &:hover {
-    fill: var(--active);
     color: var(--active);
   }
 `;

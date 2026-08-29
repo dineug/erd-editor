@@ -286,7 +286,7 @@ const HideSign: FC<HideSignProps> = (props, ctx) => {
                   handleMoveToTable(event, table)
                 }
               >
-                <Icon name="location-dot" rotate={rotate} />
+                <Icon name="map-pin" rotate={rotate} />
               </div>
             );
           }
@@ -303,7 +303,7 @@ const HideSign: FC<HideSignProps> = (props, ctx) => {
                 style={style}
                 on:click={(event: MouseEvent) => handleMoveToMemo(event, memo)}
               >
-                <Icon name="location-dot" rotate={rotate} />
+                <Icon name="map-pin" rotate={rotate} />
               </div>
             );
           }

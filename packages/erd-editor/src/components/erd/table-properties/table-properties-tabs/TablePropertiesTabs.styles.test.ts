@@ -40,6 +40,5 @@ describe('TablePropertiesTabs.styles', () => {
     expect(text).toContain('var(--context-menu-hover)');
     expect(text).toContain('var(--context-menu-select)');
     expect(text).toContain('color: var(--active)');
-    expect(text).toContain('fill: var(--active)');
   });
 });

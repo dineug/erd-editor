@@ -65,7 +65,7 @@ const GeneratorCodeContextMenu: FC<GeneratorCodeContextMenuProps> = (
           <ContextMenu.Item
             children={
               <ContextMenu.Menu
-                icon={<Icon prefix="mdi" name="format-letter-case" size={14} />}
+                icon={<Icon name="case-sensitive" size={14} />}
                 name="Table Name Case"
                 right={chevronRightIcon}
               />
@@ -91,7 +91,7 @@ const GeneratorCodeContextMenu: FC<GeneratorCodeContextMenuProps> = (
           <ContextMenu.Item
             children={
               <ContextMenu.Menu
-                icon={<Icon prefix="mdi" name="format-letter-case" size={14} />}
+                icon={<Icon name="case-sensitive" size={14} />}
                 name="Column Name Case"
                 right={chevronRightIcon}
               />
