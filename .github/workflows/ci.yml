@@ -1,9 +1,26 @@
 name: ci
 
 on:
-  - workflow_dispatch
-  - push
-  - pull_request
+  workflow_dispatch:
+  # `push` is main-only and `pull_request` covers everything else, so a branch
+  # with an open PR runs once rather than twice. Dropping `pull_request` instead
+  # would be cheaper still and is wrong: a fork's branch push runs in the fork's
+  # own Actions, so external contributions — 12 of the last 60 PRs — would arrive
+  # here with no checks at all. `pull_request` also tests the merge commit, which
+  # is what catches a branch that is green alone and broken against current main.
+  push:
+    branches:
+      - main
+  pull_request:
+
+# Superseding a PR's run is free — the older commit is not what anyone will
+# merge. A main run is not: cancelling it leaves the commit that was pushed
+# first unverified, which is why `cancel-in-progress` is an expression rather
+# than `true` and why `intellij-plugin.yml`, whose block is unconditional, stays
+# a separate workflow.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # Style and types. This is the only place they are enforced for everyone: the

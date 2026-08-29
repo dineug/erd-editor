@@ -36,6 +36,7 @@ import {
 import type { Column as ColumnEntity } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { simpleShortcutToString } from '@/utils/keyboard-shortcut';
+import { toSharedColor } from '@/utils/sharedColor';
 
 type TemplateOptions = {
   selected?: boolean;
@@ -46,6 +47,13 @@ type TemplateOptions = {
   focusComment?: boolean;
   focusUnique?: boolean;
   focusAutoIncrement?: boolean;
+  sharedFocusName?: string | null;
+  sharedFocusDataType?: string | null;
+  sharedFocusNotNull?: string | null;
+  sharedFocusDefault?: string | null;
+  sharedFocusComment?: string | null;
+  sharedFocusUnique?: string | null;
+  sharedFocusAutoIncrement?: string | null;
   editName?: boolean;
   editDataType?: boolean;
   editDefault?: boolean;
@@ -69,6 +77,13 @@ function columnTemplate(column: ColumnEntity, options: TemplateOptions = {}) {
     focusComment = false,
     focusUnique = false,
     focusAutoIncrement = false,
+    sharedFocusName = null,
+    sharedFocusDataType = null,
+    sharedFocusNotNull = null,
+    sharedFocusDefault = null,
+    sharedFocusComment = null,
+    sharedFocusUnique = null,
+    sharedFocusAutoIncrement = null,
     editName = false,
     editDataType = false,
     editDefault = false,
@@ -94,6 +109,13 @@ function columnTemplate(column: ColumnEntity, options: TemplateOptions = {}) {
       focusComment=${focusComment}
       focusUnique=${focusUnique}
       focusAutoIncrement=${focusAutoIncrement}
+      sharedFocusName=${sharedFocusName}
+      sharedFocusDataType=${sharedFocusDataType}
+      sharedFocusNotNull=${sharedFocusNotNull}
+      sharedFocusDefault=${sharedFocusDefault}
+      sharedFocusComment=${sharedFocusComment}
+      sharedFocusUnique=${sharedFocusUnique}
+      sharedFocusAutoIncrement=${sharedFocusAutoIncrement}
       editName=${editName}
       editDataType=${editDataType}
       editDefault=${editDefault}
@@ -419,6 +441,89 @@ describe('Column', () => {
         COLUMN_ID,
         'c2',
       ]);
+    });
+  });
+
+  describe('shared focus', () => {
+    const PEER_COLOR = toSharedColor('peer-1');
+
+    const sharedFocusMapOf = (m: Mounted) =>
+      Object.fromEntries(
+        Array.from(m.container.querySelectorAll('.column-col[data-type]')).map(
+          el => [
+            el.getAttribute('data-type'),
+            el.hasAttribute('data-shared-focus'),
+          ]
+        )
+      );
+
+    const noSharedFocus = {
+      columnName: false,
+      columnDataType: false,
+      columnNotNull: false,
+      columnUnique: false,
+      columnAutoIncrement: false,
+      columnDefault: false,
+      columnComment: false,
+    };
+
+    const cases: Array<[string, string, TemplateOptions]> = [
+      ['sharedFocusName', 'columnName', { sharedFocusName: PEER_COLOR }],
+      [
+        'sharedFocusDataType',
+        'columnDataType',
+        { sharedFocusDataType: PEER_COLOR },
+      ],
+      [
+        'sharedFocusAutoIncrement',
+        'columnAutoIncrement',
+        { sharedFocusAutoIncrement: PEER_COLOR },
+      ],
+    ];
+
+    it('marks no cell while every shared focus prop is false', async () => {
+      showAll(app);
+      mounted = await mountAndFlush(columnTemplate(column), app);
+
+      expect(sharedFocusMapOf(mounted)).toEqual(noSharedFocus);
+    });
+
+    for (const [prop, dataType, options] of cases) {
+      it(`marks only the ${dataType} cell from ${prop}`, async () => {
+        showAll(app);
+        mounted = await mountAndFlush(columnTemplate(column, options), app);
+
+        expect(sharedFocusMapOf(mounted)).toEqual({
+          ...noSharedFocus,
+          [dataType]: true,
+        });
+      });
+    }
+
+    it('keeps a local focus and a remote focus on their own cells', async () => {
+      showAll(app);
+      mounted = await mountAndFlush(
+        columnTemplate(column, {
+          focusName: true,
+          sharedFocusDataType: PEER_COLOR,
+        }),
+        app
+      );
+
+      expect(sharedFocusMapOf(mounted)).toEqual({
+        ...noSharedFocus,
+        columnDataType: true,
+      });
+      expect(
+        colOf(mounted, 'columnName')?.querySelector(
+          '.edit-input[data-focus-border-bottom]'
+        )
+      ).toBeTruthy();
+      expect(
+        colOf(mounted, 'columnDataType')?.querySelector(
+          '.edit-input[data-focus-border-bottom]'
+        )
+      ).toBeNull();
     });
   });
 

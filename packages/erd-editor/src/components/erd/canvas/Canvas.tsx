@@ -7,6 +7,7 @@ import DrawRelationship from '@/components/erd/canvas/draw-relationship/DrawRela
 import DuplicateGhost from '@/components/erd/canvas/duplicate-ghost/DuplicateGhost';
 import HighLevelTable from '@/components/erd/canvas/high-level-table/HighLevelTable';
 import Memo from '@/components/erd/canvas/memo/Memo';
+import SharedDragSelect from '@/components/erd/canvas/shared-drag-select/SharedDragSelect';
 import SharedMouseTracker from '@/components/erd/canvas/shared-mouse-tracker/SharedMouseTracker';
 import Table from '@/components/erd/canvas/table/Table';
 import { Show } from '@/constants/schema';
@@ -99,6 +100,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
             <DrawRelationship root={props.root} draw={drawRelationship} />
           ) : null}
           <SharedMouseTracker />
+          <SharedDragSelect />
           <DuplicateGhost />
         </div>
       </div>

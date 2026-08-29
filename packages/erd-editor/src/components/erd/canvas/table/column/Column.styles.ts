@@ -34,6 +34,10 @@ export const root = css`
     padding: ${COLUMN_PADDING}px ${INPUT_MARGIN_RIGHT}px ${COLUMN_PADDING}px 0;
   }
 
+  & > .column-col[data-shared-focus] {
+    box-shadow: inset 0 -1.5px 0 var(--shared-focus);
+  }
+
   &.none-hover {
     background-color: transparent;
   }

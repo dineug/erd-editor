@@ -331,16 +331,17 @@ describe('createSharedStore', () => {
 
     // leading emission of the 100ms throttle window
     track(1);
-    // throttled: buffered until the window reopens
+    // throttled: buffered until the trailing edge closes the window
     track(2);
     track(3);
     vi.advanceTimersByTime(150);
     track(4);
+    vi.advanceTimersByTime(150);
 
     const trackers = fixture.seen
       .flat()
       .filter(action => action.type === 'editor.sharedMouseTracker');
-    expect(trackers.map(action => action.payload.x)).toEqual([1, 4]);
+    expect(trackers.map(action => action.payload.x)).toEqual([1, 3, 4]);
   });
 
   it('destroy tears down its own subscriptions and leaves the borrowed store alive', () => {

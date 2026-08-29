@@ -49,12 +49,14 @@ const replicationSchemaEntityAtom = atom(
       replicationSchemaEntityAction({
         id,
         actions: actions.filter(
-          (action: any) => action.type !== 'editor.sharedMouseTracker'
+          (action: any) =>
+            action.type !== 'editor.sharedMouseTracker' &&
+            action.type !== 'editor.sharedFocusTracker'
         ),
       })
     );
 
-    // Peers get the unfiltered stream — shared cursors are part of the session
+    // Peers get the unfiltered stream — shared presence is part of the session
     // even though they are noise for the cross-tab replica. Only the tab holding
     // the leadership lock owns the peer connections, so everyone else has to hand
     // the batch over the bridge.

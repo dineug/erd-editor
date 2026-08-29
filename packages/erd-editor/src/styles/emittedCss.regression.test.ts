@@ -185,17 +185,19 @@ describe('rule-count invariance', () => {
     expect(modulePaths).toHaveLength(62);
   });
 
-  it('adopts 617 rules, none of them a duplicate', () => {
+  it('adopts 622 rules, none of them a duplicate', () => {
     // 302 -> 609: the color picker fold, +307. It rendered into a tree `<style>` before, so none
     // of its rules were adopted and none of them were counted here; as a `css.global` literal all
     // 307 are. 609 -> 611: the Alt+drag ghost's two scoped rules. 611 -> 617: the CodeBlock
     // overlay, which splits its one `code` rule into a shared alignment fragment, a scroller, a
-    // layer box, a preview and its `*` block, and a textarea with its `::selection`.
-    expect(cumulative).toHaveLength(617);
-    expect(new Set(cumulative).size).toBe(617);
+    // layer box, a preview and its `*` block, and a textarea with its `::selection`. 617 -> 622:
+    // the five collaborative presence rules, all nested into existing templates rather than
+    // modules of their own — which is why the sheet count below did not move with them.
+    expect(cumulative).toHaveLength(622);
+    expect(new Set(cumulative).size).toBe(622);
   });
 
-  it('splits into 327 global rules ahead of 290 component rules', () => {
+  it('splits into 327 global rules ahead of 295 component rules', () => {
     // P4 moved reset (12), fonts (1), typography (1) and scrollbar (6) out of tree `<style>`
     // elements and into `adoptedStyleSheets`. A shadow root applies its own `styleSheets` before
     // its `adoptedStyleSheets`, so the only thing keeping the reset ahead of the components now
@@ -207,10 +209,12 @@ describe('rule-count invariance', () => {
     // then went 158 -> 160 sheets and 282 -> 284 rules on its own account, when the Alt+drag
     // ghost added its layer and per-entity templates; the global half did not move with it,
     // which is the same statement in the other direction. 160 -> 164 sheets / 284 -> 290 rules is
-    // the CodeBlock overlay, on the same terms.
+    // the CodeBlock overlay, on the same terms. 290 -> 295 is collaborative presence, with the
+    // sheet count unmoved — the one thing that says those rules nested into existing templates
+    // instead of adding a module.
     expect(sheetsOfEachKind).toEqual({ global: 5, component: 164 });
     expect(globalRules).toHaveLength(327);
-    expect(componentRules).toHaveLength(290);
+    expect(componentRules).toHaveLength(295);
     expect(cumulative).toEqual([...globalRules, ...componentRules]);
   });
 
@@ -227,7 +231,7 @@ describe('rule-count invariance', () => {
     // Identifiers are content hashes now, so a rule's text is the same whether its module is
     // rendered alone or with the other 61 — which is exactly what makes this comparison mean
     // "nothing was lost to dedup" rather than "the class names differ".
-    expect(union.size).toBe(617);
+    expect(union.size).toBe(622);
     expect(droppedByLoadingTogether).toEqual([]);
   });
 

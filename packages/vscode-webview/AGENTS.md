@@ -53,7 +53,7 @@ replication-store worker holding the host's copy. It builds *into* `../vscode-ex
 
 - Two `Bridge` instances — `bridge` for host ↔ webview, `workerBridge` for webview ↔ replication worker.
   Handlers are registered up front and collected with `Bridge.mergeRegister`.
-- `editor.getSharedStore({ mouseTracker: false })` — that store feeds host replication, not collaboration;
+- `editor.getSharedStore({ mouseTracker: false, focusTracker: false })` — that store feeds host replication, not collaboration;
   nothing here receives cursor positions.
 - Shiki loads lazily into its own chunk; `#loading` is removed and the editor appended to `document.body`
   only when `webviewInitialValueCommand` arrives.

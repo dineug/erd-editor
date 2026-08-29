@@ -16,12 +16,17 @@ import {
   MEMO_HEADER_HEIGHT,
   MEMO_PADDING,
 } from '@/constants/layout';
-import { selectAction } from '@/engine/modules/editor/atom.actions';
+import {
+  selectAction,
+  sharedSelectionTrackerAction,
+} from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
+import { Tag } from '@/engine/tag';
 import type { Memo as MemoType } from '@/internal-types';
 import { createMemo } from '@/utils/collection/memo.entity';
 import { InternalEventType } from '@/utils/internalEvents';
+import { toSharedColor } from '@/utils/sharedColor';
 
 let mounted: Mounted | null = null;
 
@@ -455,5 +460,120 @@ describe('Memo', () => {
     mounted = await mountAndFlush(html`<${Memo} memo=${createProps()} />`);
 
     expect(mounted.container.querySelectorAll('.sash')).toHaveLength(7);
+  });
+});
+
+describe('Memo shared select', () => {
+  const apps = new Set<AppContext>();
+
+  afterEach(() => {
+    for (const app of apps) {
+      for (const tracker of Object.values(
+        app.store.state.editor.sharedSelectionTrackerMap
+      )) {
+        clearTimeout(tracker.timeoutId);
+      }
+    }
+    apps.clear();
+  });
+
+  const trackSelection = (
+    app: AppContext,
+    selectedIds: string[],
+    editorId = 'remote-1'
+  ) => {
+    apps.add(app);
+    app.store.dispatchSync({
+      ...sharedSelectionTrackerAction({ selectedIds }),
+      tags: Tag.shared,
+      meta: { editorId },
+    });
+  };
+
+  const snapshotSelectedMap = (app: AppContext) => ({
+    ...app.store.state.editor.selectedMap,
+  });
+
+  const mountMemo = async (app: AppContext) => {
+    const entity = seedMemo(app);
+    mounted = await mountAndFlush(html`<${Memo} memo=${entity} />`, app);
+    return entity;
+  };
+
+  it('leaves the root unmarked while no peer has selected it', async () => {
+    const app = createTestAppContext();
+    await mountMemo(app);
+
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(false);
+    expect(rootOf().style.getPropertyValue('--shared-select')).toBe('');
+  });
+
+  it('marks the root in the peer color once a peer selects the memo', async () => {
+    const app = createTestAppContext();
+    await mountMemo(app);
+
+    trackSelection(app, [MEMO_ID]);
+    await flush();
+
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(true);
+    expect(rootOf().style.getPropertyValue('--shared-select')).toBe(
+      toSharedColor('remote-1')
+    );
+  });
+
+  it('leaves the root unmarked while the peer selects another entity', async () => {
+    const app = createTestAppContext();
+    await mountMemo(app);
+
+    trackSelection(app, ['memo-2']);
+    await flush();
+
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(false);
+    expect(rootOf().style.getPropertyValue('--shared-select')).toBe('');
+  });
+
+  it('marks the root when the peer selection holds several ids', async () => {
+    const app = createTestAppContext();
+    await mountMemo(app);
+
+    trackSelection(app, ['memo-2', 'table-1', MEMO_ID]);
+    await flush();
+
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(true);
+    expect(rootOf().style.getPropertyValue('--shared-select')).toBe(
+      toSharedColor('remote-1')
+    );
+  });
+
+  it('clears the marker when the peer selection empties', async () => {
+    const app = createTestAppContext();
+    await mountMemo(app);
+
+    trackSelection(app, [MEMO_ID]);
+    await flush();
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(true);
+
+    trackSelection(app, []);
+    await flush();
+
+    expect(app.store.state.editor.sharedSelectionTrackerMap).toEqual({});
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(false);
+    expect(rootOf().style.getPropertyValue('--shared-select')).toBe('');
+  });
+
+  it('never writes a peer selection into the local selection map', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(selectAction({ other: SelectType.table }));
+    await mountMemo(app);
+
+    const before = snapshotSelectedMap(app);
+    expect(before).toEqual({ other: SelectType.table });
+
+    trackSelection(app, [MEMO_ID, 'memo-2']);
+    await flush();
+
+    expect(rootOf().hasAttribute('data-shared-select')).toBe(true);
+    expect(rootOf().hasAttribute('data-selected')).toBe(false);
+    expect(snapshotSelectedMap(app)).toEqual(before);
   });
 });

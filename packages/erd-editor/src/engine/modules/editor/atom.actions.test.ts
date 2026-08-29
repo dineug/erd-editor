@@ -16,6 +16,7 @@ import {
   changeViewportAction,
   clearAction,
   dragendColumnAction,
+  dragSelectRectAction,
   dragstartColumnAction,
   drawEndRelationshipAction,
   drawRelationshipAction,
@@ -37,11 +38,20 @@ import {
   selectAction,
   selectAllAction,
   selectAllColumnAction,
+  SHARED_DRAG_SELECT_TRACKER_TIMEOUT,
+  sharedDragSelectTrackerAction,
+  sharedFocusTrackerAction,
   sharedMouseTrackerAction,
+  sharedSelectionTrackerAction,
   unselectAllAction,
   validationIdsAction,
 } from '@/engine/modules/editor/atom.actions';
-import { FocusType, MoveKey, SelectType } from '@/engine/modules/editor/state';
+import {
+  FocusType,
+  MoveKey,
+  SelectType,
+  type SharedFocus,
+} from '@/engine/modules/editor/state';
 import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
 import { createIndex } from '@/utils/collection/index.entity';
@@ -50,6 +60,7 @@ import { createMemo } from '@/utils/collection/memo.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { type Rect } from '@/utils/dragSelect';
 
 function createTestStore(enableObservable = true): Store {
   return createStore(
@@ -868,6 +879,434 @@ describe('editor.sharedMouseTracker', () => {
 
     vi.advanceTimersByTime(11_000);
     expect(store.state.editor.sharedMouseTrackerMap.remote).toBeUndefined();
+  });
+});
+
+describe('editor.sharedFocusTracker', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const track = (
+    focus: SharedFocus | null,
+    { tags, meta }: { tags?: number; meta?: Record<string, any> } = {}
+  ) =>
+    store.dispatchSync({
+      ...sharedFocusTrackerAction({ focus }),
+      tags,
+      meta,
+    });
+
+  const tableNameFocus: SharedFocus = {
+    tableId: 't1',
+    columnId: null,
+    focusType: FocusType.tableName,
+  };
+
+  it('ignores actions without tags', () => {
+    track(tableNameFocus, { meta: { editorId: 'remote' } });
+    expect(store.state.editor.sharedFocusTrackerMap).toEqual({});
+  });
+
+  it('ignores actions that are not tagged as shared', () => {
+    track(tableNameFocus, {
+      tags: Tag.changeOnly,
+      meta: { editorId: 'remote' },
+    });
+    expect(store.state.editor.sharedFocusTrackerMap).toEqual({});
+  });
+
+  it('ignores actions without a string editorId', () => {
+    track(tableNameFocus, { tags: Tag.shared, meta: { editorId: 42 } });
+    track(tableNameFocus, { tags: Tag.shared });
+    expect(store.state.editor.sharedFocusTrackerMap).toEqual({});
+  });
+
+  it('ignores its own editor id', () => {
+    track(tableNameFocus, {
+      tags: Tag.shared,
+      meta: { editorId: store.state.editor.id },
+    });
+    expect(store.state.editor.sharedFocusTrackerMap).toEqual({});
+  });
+
+  it('creates a tracker without a nickname', () => {
+    track(
+      {
+        tableId: 't1',
+        columnId: 'c1',
+        focusType: FocusType.columnDataType,
+      },
+      { tags: Tag.shared, meta: { editorId: 'remote', nickname: 'kim' } }
+    );
+
+    const tracker = store.state.editor.sharedFocusTrackerMap.remote;
+    expect(tracker.id).toBe('remote');
+    expect(tracker.tableId).toBe('t1');
+    expect(tracker.columnId).toBe('c1');
+    expect(tracker.focusType).toBe(FocusType.columnDataType);
+    expect(Object.keys(tracker).sort()).toEqual([
+      'columnId',
+      'focusType',
+      'id',
+      'tableId',
+      'timeoutId',
+    ]);
+  });
+
+  it('updates an existing tracker in place', () => {
+    track(tableNameFocus, { tags: Tag.shared, meta: { editorId: 'remote' } });
+    track(
+      {
+        tableId: 't2',
+        columnId: 'c9',
+        focusType: FocusType.columnComment,
+      },
+      { tags: Tag.shared, meta: { editorId: 'remote' } }
+    );
+
+    expect(Object.keys(store.state.editor.sharedFocusTrackerMap)).toEqual([
+      'remote',
+    ]);
+    const tracker = store.state.editor.sharedFocusTrackerMap.remote;
+    expect(tracker.tableId).toBe('t2');
+    expect(tracker.columnId).toBe('c9');
+    expect(tracker.focusType).toBe(FocusType.columnComment);
+  });
+
+  it('deletes the tracker on a null focus', () => {
+    track(tableNameFocus, { tags: Tag.shared, meta: { editorId: 'remote' } });
+    expect(store.state.editor.sharedFocusTrackerMap.remote).toBeDefined();
+
+    track(null, { tags: Tag.shared, meta: { editorId: 'remote' } });
+    expect(store.state.editor.sharedFocusTrackerMap).toEqual({});
+  });
+
+  it('ignores a null focus for an unknown editor id', () => {
+    track(null, { tags: Tag.shared, meta: { editorId: 'remote' } });
+    expect(store.state.editor.sharedFocusTrackerMap).toEqual({});
+  });
+
+  it('drops the tracker after 90s without a heartbeat', () => {
+    track(tableNameFocus, { tags: Tag.shared, meta: { editorId: 'remote' } });
+
+    vi.advanceTimersByTime(89_999);
+    expect(store.state.editor.sharedFocusTrackerMap.remote).toBeDefined();
+
+    vi.advanceTimersByTime(2);
+    expect(store.state.editor.sharedFocusTrackerMap.remote).toBeUndefined();
+  });
+
+  it('restarts the expiry timer on every update', () => {
+    track(tableNameFocus, { tags: Tag.shared, meta: { editorId: 'remote' } });
+    vi.advanceTimersByTime(60_000);
+
+    track(
+      {
+        tableId: 't1',
+        columnId: 'c1',
+        focusType: FocusType.columnName,
+      },
+      { tags: Tag.shared, meta: { editorId: 'remote' } }
+    );
+    vi.advanceTimersByTime(60_000);
+    expect(store.state.editor.sharedFocusTrackerMap.remote).toBeDefined();
+
+    vi.advanceTimersByTime(31_000);
+    expect(store.state.editor.sharedFocusTrackerMap.remote).toBeUndefined();
+  });
+});
+
+describe('editor.sharedSelectionTracker', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const track = (
+    selectedIds: string[],
+    { tags, meta }: { tags?: number; meta?: Record<string, any> } = {}
+  ) =>
+    store.dispatchSync({
+      ...sharedSelectionTrackerAction({ selectedIds }),
+      tags,
+      meta,
+    });
+
+  it('ignores actions without tags', () => {
+    track(['t1'], { meta: { editorId: 'remote' } });
+    expect(store.state.editor.sharedSelectionTrackerMap).toEqual({});
+  });
+
+  it('ignores actions that are not tagged as shared', () => {
+    track(['t1'], {
+      tags: Tag.changeOnly,
+      meta: { editorId: 'remote' },
+    });
+    expect(store.state.editor.sharedSelectionTrackerMap).toEqual({});
+  });
+
+  it('ignores actions without a string editorId', () => {
+    track(['t1'], { tags: Tag.shared, meta: { editorId: 42 } });
+    track(['t1'], { tags: Tag.shared });
+    expect(store.state.editor.sharedSelectionTrackerMap).toEqual({});
+  });
+
+  it('ignores its own editor id', () => {
+    track(['t1'], {
+      tags: Tag.shared,
+      meta: { editorId: store.state.editor.id },
+    });
+    expect(store.state.editor.sharedSelectionTrackerMap).toEqual({});
+  });
+
+  it('creates a tracker holding the selected ids', () => {
+    track(['m1', 't1'], { tags: Tag.shared, meta: { editorId: 'remote' } });
+
+    const tracker = store.state.editor.sharedSelectionTrackerMap.remote;
+    expect(tracker.id).toBe('remote');
+    expect(tracker.selectedIds).toEqual(['m1', 't1']);
+    expect(Object.keys(tracker).sort()).toEqual([
+      'id',
+      'selectedIds',
+      'timeoutId',
+    ]);
+  });
+
+  it('replaces the id array instead of mutating it in place', () => {
+    track(['t1'], { tags: Tag.shared, meta: { editorId: 'remote' } });
+    const before =
+      store.state.editor.sharedSelectionTrackerMap.remote.selectedIds;
+
+    track(['t1', 'm1'], { tags: Tag.shared, meta: { editorId: 'remote' } });
+
+    expect(Object.keys(store.state.editor.sharedSelectionTrackerMap)).toEqual([
+      'remote',
+    ]);
+    const tracker = store.state.editor.sharedSelectionTrackerMap.remote;
+    expect(tracker.selectedIds).toEqual(['t1', 'm1']);
+    expect(tracker.selectedIds).not.toBe(before);
+    expect(before).toEqual(['t1']);
+  });
+
+  it('deletes the tracker on an empty selection', () => {
+    track(['t1'], { tags: Tag.shared, meta: { editorId: 'remote' } });
+    expect(store.state.editor.sharedSelectionTrackerMap.remote).toBeDefined();
+
+    track([], { tags: Tag.shared, meta: { editorId: 'remote' } });
+
+    expect(store.state.editor.sharedSelectionTrackerMap).toEqual({});
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('ignores an empty selection for an unknown editor id', () => {
+    track([], { tags: Tag.shared, meta: { editorId: 'remote' } });
+    expect(store.state.editor.sharedSelectionTrackerMap).toEqual({});
+  });
+
+  it('keeps two peers with overlapping selections apart', () => {
+    track(['t1', 't2'], { tags: Tag.shared, meta: { editorId: 'remote-1' } });
+    track(['m1', 't2'], { tags: Tag.shared, meta: { editorId: 'remote-2' } });
+
+    const map = store.state.editor.sharedSelectionTrackerMap;
+    expect(Object.keys(map).sort()).toEqual(['remote-1', 'remote-2']);
+    expect(map['remote-1'].selectedIds).toEqual(['t1', 't2']);
+    expect(map['remote-2'].selectedIds).toEqual(['m1', 't2']);
+
+    track([], { tags: Tag.shared, meta: { editorId: 'remote-1' } });
+
+    expect(Object.keys(map)).toEqual(['remote-2']);
+    expect(map['remote-2'].selectedIds).toEqual(['m1', 't2']);
+  });
+
+  it('drops the tracker after 90s without a heartbeat', () => {
+    track(['t1'], { tags: Tag.shared, meta: { editorId: 'remote' } });
+
+    vi.advanceTimersByTime(89_999);
+    expect(store.state.editor.sharedSelectionTrackerMap.remote).toBeDefined();
+
+    vi.advanceTimersByTime(2);
+    expect(store.state.editor.sharedSelectionTrackerMap.remote).toBeUndefined();
+  });
+
+  it('restarts the expiry timer on every update', () => {
+    track(['t1'], { tags: Tag.shared, meta: { editorId: 'remote' } });
+    vi.advanceTimersByTime(60_000);
+
+    track(['t1', 't2'], { tags: Tag.shared, meta: { editorId: 'remote' } });
+    vi.advanceTimersByTime(60_000);
+    expect(store.state.editor.sharedSelectionTrackerMap.remote).toBeDefined();
+
+    vi.advanceTimersByTime(31_000);
+    expect(store.state.editor.sharedSelectionTrackerMap.remote).toBeUndefined();
+  });
+});
+
+describe('editor.sharedDragSelectTracker', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const track = (
+    rect: Rect | null,
+    { tags, meta }: { tags?: number; meta?: Record<string, any> } = {}
+  ) =>
+    store.dispatchSync({
+      ...sharedDragSelectTrackerAction({ rect }),
+      tags,
+      meta,
+    });
+
+  const dragRect: Rect = { x: 10, y: 20, w: 30, h: 40 };
+
+  it('ignores actions without tags', () => {
+    track(dragRect, { meta: { editorId: 'remote' } });
+    expect(store.state.editor.sharedDragSelectTrackerMap).toEqual({});
+  });
+
+  it('ignores actions that are not tagged as shared', () => {
+    track(dragRect, {
+      tags: Tag.changeOnly,
+      meta: { editorId: 'remote' },
+    });
+    expect(store.state.editor.sharedDragSelectTrackerMap).toEqual({});
+  });
+
+  it('ignores actions without a string editorId', () => {
+    track(dragRect, { tags: Tag.shared, meta: { editorId: 42 } });
+    track(dragRect, { tags: Tag.shared });
+    expect(store.state.editor.sharedDragSelectTrackerMap).toEqual({});
+  });
+
+  it('ignores its own editor id', () => {
+    track(dragRect, {
+      tags: Tag.shared,
+      meta: { editorId: store.state.editor.id },
+    });
+    expect(store.state.editor.sharedDragSelectTrackerMap).toEqual({});
+  });
+
+  it('creates a tracker carrying the rect', () => {
+    track(dragRect, { tags: Tag.shared, meta: { editorId: 'remote' } });
+
+    const tracker = store.state.editor.sharedDragSelectTrackerMap.remote;
+    expect(tracker.id).toBe('remote');
+    expect(tracker.x).toBe(10);
+    expect(tracker.y).toBe(20);
+    expect(tracker.w).toBe(30);
+    expect(tracker.h).toBe(40);
+    expect(Object.keys(tracker).sort()).toEqual([
+      'h',
+      'id',
+      'timeoutId',
+      'w',
+      'x',
+      'y',
+    ]);
+  });
+
+  it('updates an existing tracker in place', () => {
+    track(dragRect, { tags: Tag.shared, meta: { editorId: 'remote' } });
+    track(
+      { x: -5, y: -6, w: 7, h: 8 },
+      { tags: Tag.shared, meta: { editorId: 'remote' } }
+    );
+
+    expect(Object.keys(store.state.editor.sharedDragSelectTrackerMap)).toEqual([
+      'remote',
+    ]);
+    const tracker = store.state.editor.sharedDragSelectTrackerMap.remote;
+    expect(tracker.x).toBe(-5);
+    expect(tracker.y).toBe(-6);
+    expect(tracker.w).toBe(7);
+    expect(tracker.h).toBe(8);
+  });
+
+  it('deletes the tracker on a null rect', () => {
+    track(dragRect, { tags: Tag.shared, meta: { editorId: 'remote' } });
+    expect(store.state.editor.sharedDragSelectTrackerMap.remote).toBeDefined();
+
+    track(null, { tags: Tag.shared, meta: { editorId: 'remote' } });
+
+    expect(store.state.editor.sharedDragSelectTrackerMap).toEqual({});
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('ignores a null rect for an unknown editor id', () => {
+    track(null, { tags: Tag.shared, meta: { editorId: 'remote' } });
+    expect(store.state.editor.sharedDragSelectTrackerMap).toEqual({});
+  });
+
+  it('drops the tracker after 3s without a heartbeat', () => {
+    expect(SHARED_DRAG_SELECT_TRACKER_TIMEOUT).toBe(3_000);
+    track(dragRect, { tags: Tag.shared, meta: { editorId: 'remote' } });
+
+    vi.advanceTimersByTime(SHARED_DRAG_SELECT_TRACKER_TIMEOUT - 1);
+    expect(store.state.editor.sharedDragSelectTrackerMap.remote).toBeDefined();
+
+    vi.advanceTimersByTime(2);
+    expect(
+      store.state.editor.sharedDragSelectTrackerMap.remote
+    ).toBeUndefined();
+  });
+
+  it('restarts the expiry timer on every update', () => {
+    track(dragRect, { tags: Tag.shared, meta: { editorId: 'remote' } });
+    vi.advanceTimersByTime(2_000);
+
+    track(
+      { x: 1, y: 2, w: 3, h: 4 },
+      { tags: Tag.shared, meta: { editorId: 'remote' } }
+    );
+    vi.advanceTimersByTime(2_000);
+    expect(store.state.editor.sharedDragSelectTrackerMap.remote).toBeDefined();
+
+    vi.advanceTimersByTime(1_001);
+    expect(
+      store.state.editor.sharedDragSelectTrackerMap.remote
+    ).toBeUndefined();
+  });
+});
+
+describe('editor.dragSelectRect', () => {
+  it('sets the local rect from an untagged action', () => {
+    store.dispatchSync(
+      dragSelectRectAction({ rect: { x: 1, y: 2, w: 3, h: 4 } })
+    );
+
+    expect(store.state.editor.dragSelect).toEqual({ x: 1, y: 2, w: 3, h: 4 });
+    expect(store.state.editor.sharedDragSelectTrackerMap).toEqual({});
+  });
+
+  it('sets the local rect even when the action carries its own editor id', () => {
+    store.dispatchSync({
+      ...dragSelectRectAction({ rect: { x: 5, y: 6, w: 7, h: 8 } }),
+      tags: Tag.shared,
+      meta: { editorId: store.state.editor.id },
+    });
+
+    expect(store.state.editor.dragSelect).toEqual({ x: 5, y: 6, w: 7, h: 8 });
+  });
+
+  it('clears the local rect on a null rect', () => {
+    store.dispatchSync(
+      dragSelectRectAction({ rect: { x: 1, y: 2, w: 3, h: 4 } })
+    );
+
+    store.dispatchSync(dragSelectRectAction({ rect: null }));
+
+    expect(store.state.editor.dragSelect).toBeNull();
   });
 });
 

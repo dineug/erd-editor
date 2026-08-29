@@ -17,12 +17,14 @@ import {
 import { AppContext } from '@/components/appContext';
 import DragSelect from '@/components/erd/drag-select/DragSelect';
 import * as styles from '@/components/erd/drag-select/DragSelect.styles';
+import { dragSelectRectAction } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import {
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { Rect } from '@/utils/dragSelect';
 
 // happy-dom measures everything as 0x0 at (0, 0); the root gets a deliberate
 // origin so the component has to subtract it from the pointer position.
@@ -68,6 +70,17 @@ const rect = () =>
 // An empty table renders 365x56, so its 15x15 center box sits at (167.5, 13).
 const seedTable = (id: string, x = 0, y = 0) => {
   app.store.dispatchSync(addTableAction({ id, ui: { x, y, zIndex: 2 } }));
+};
+
+const recordDragSelectRects = () => {
+  const rects: Array<Rect | null> = [];
+  const unsubscribe = app.store.subscribe(actions => {
+    actions.forEach(action => {
+      action.type === dragSelectRectAction.type &&
+        rects.push(action.payload.rect);
+    });
+  });
+  return { rects, unsubscribe };
 };
 
 beforeEach(() => {
@@ -232,6 +245,79 @@ describe('DragSelect', () => {
     await flush();
 
     expect(app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('shares the dragged rect on every move', async () => {
+    mounted = await mount(0, 0);
+    const { rects, unsubscribe } = recordDragSelectRects();
+
+    moveTo(300, 300);
+    await flush();
+    moveTo(120, 90);
+    await flush();
+    unsubscribe();
+
+    expect(rects).toEqual([
+      { x: 0, y: 0, w: 300, h: 300 },
+      { x: 0, y: 0, w: 120, h: 90 },
+    ]);
+    expect(app.store.state.editor.dragSelect).toEqual({
+      x: 0,
+      y: 0,
+      w: 120,
+      h: 90,
+    });
+  });
+
+  it('shares the same absolute rect the selection was computed from', async () => {
+    seedTable('t1', 0, 0);
+    seedTable('t2', -800, -800);
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+    mounted = await mount(0, 0);
+    const { rects, unsubscribe } = recordDragSelectRects();
+
+    moveTo(300, 300);
+    await flush();
+    unsubscribe();
+
+    // The same -1000..-400 canvas rect the selection above is derived from,
+    // not the 0..300 screen box the svg is drawn with.
+    const shared = { x: -1000, y: -1000, w: 600, h: 600 };
+    expect(rects).toEqual([shared]);
+    expect(app.store.state.editor.dragSelect).toEqual(shared);
+    expect(app.store.state.editor.selectedMap).toEqual({
+      t2: SelectType.table,
+    });
+  });
+
+  it('shares the rect shifted by the canvas scroll', async () => {
+    app.store.dispatchSync(
+      scrollToAction({ scrollLeft: -100, scrollTop: -100 })
+    );
+    mounted = await mount(0, 0);
+    const { rects, unsubscribe } = recordDragSelectRects();
+
+    moveTo(300, 300);
+    await flush();
+    unsubscribe();
+
+    expect(rects).toEqual([{ x: 100, y: 100, w: 300, h: 300 }]);
+  });
+
+  it('clears the shared rect when the drag ends by unmount', async () => {
+    mounted = await mount(0, 0);
+    moveTo(300, 300);
+    await flush();
+    expect(app.store.state.editor.dragSelect).not.toBeNull();
+
+    const { rects, unsubscribe } = recordDragSelectRects();
+    mounted.unmount();
+    mounted = null;
+    await flush();
+    unsubscribe();
+
+    expect(rects).toEqual([null]);
+    expect(app.store.state.editor.dragSelect).toBeNull();
   });
 
   it('reports the end of the drag on the global mouseup', async () => {

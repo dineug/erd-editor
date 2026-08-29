@@ -53,12 +53,20 @@ describe('Column.styles', () => {
     expect(text).toContain('& > .column-col');
   });
 
+  it('underlines the single column cell a remote peer has focused', () => {
+    const text = staticText(styles.root);
+
+    expect(text).toContain('& > .column-col[data-shared-focus]');
+    expect(text).toContain('box-shadow: inset 0 -1.5px 0 var(--shared-focus)');
+  });
+
   it('drives the row colors from the theme custom properties', () => {
     const text = staticText(styles.root);
 
     expect(text).toContain('var(--foreground)');
     expect(text).toContain('var(--column-hover)');
     expect(text).toContain('var(--column-select)');
+    expect(text).toContain('var(--shared-focus)');
   });
 
   it('hides the dragging row and removes the ghost row from view', () => {

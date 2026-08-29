@@ -2,6 +2,7 @@ import { arrayHas, nanoid } from '@dineug/shared';
 
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
 import { Point, ValuesType } from '@/internal-types';
+import { Rect } from '@/utils/dragSelect';
 
 export type Editor = {
   id: string;
@@ -17,6 +18,10 @@ export type Editor = {
   draggableColumn: DraggableColumn | null;
   draggingColumnMap: Record<string, boolean>;
   sharedMouseTrackerMap: Record<string, SharedMouseTracker>;
+  sharedFocusTrackerMap: Record<string, SharedFocusTracker>;
+  sharedSelectionTrackerMap: Record<string, SharedSelectionTracker>;
+  sharedDragSelectTrackerMap: Record<string, SharedDragSelectTracker>;
+  dragSelect: Rect | null;
 };
 
 export type Viewport = {
@@ -53,6 +58,28 @@ export type SharedMouseTracker = {
   x: number;
   y: number;
   nickname: string;
+  timeoutId: any;
+};
+
+export type SharedFocus = {
+  tableId: string;
+  columnId: string | null;
+  focusType: FocusType;
+};
+
+export type SharedFocusTracker = SharedFocus & {
+  id: string;
+  timeoutId: any;
+};
+
+export type SharedSelectionTracker = {
+  id: string;
+  selectedIds: string[];
+  timeoutId: any;
+};
+
+export type SharedDragSelectTracker = Rect & {
+  id: string;
   timeoutId: any;
 };
 
@@ -102,4 +129,8 @@ export const createEditor = (): Editor => ({
   draggableColumn: null,
   draggingColumnMap: {},
   sharedMouseTrackerMap: {},
+  sharedFocusTrackerMap: {},
+  sharedSelectionTrackerMap: {},
+  sharedDragSelectTrackerMap: {},
+  dragSelect: null,
 });

@@ -5,6 +5,7 @@ import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import SharedMouseCursor from '@/components/erd/canvas/shared-mouse-tracker/shared-mouse-cursor/SharedMouseCursor';
 import * as styles from '@/components/erd/canvas/shared-mouse-tracker/shared-mouse-cursor/SharedMouseCursor.styles';
 import type { SharedMouseTracker } from '@/engine/modules/editor/state';
+import { SharedColors, toSharedColor } from '@/utils/sharedColor';
 
 let mounted: Mounted | null = null;
 
@@ -26,6 +27,16 @@ const createTracker = (
 
 const cursorOf = () =>
   mounted!.container.querySelector<HTMLElement>(`.${String(styles.cursor)}`)!;
+
+const toHex = (value: string) => {
+  if (!value.startsWith('rgb')) return value;
+
+  const channels = value.match(/\d+/g) ?? [];
+  return `#${channels
+    .slice(0, 3)
+    .map(channel => Number(channel).toString(16).padStart(2, '0'))
+    .join('')}`;
+};
 
 const nextFrame = () =>
   new Promise<void>(resolve => {
@@ -106,6 +117,20 @@ describe('SharedMouseCursor', () => {
     await waitFrames(2);
 
     expect(cursorOf().querySelector('span')?.textContent).toBe('renamed');
+  });
+
+  it('paints itself in the color that identifies its editor', async () => {
+    mounted = await mountAndFlush(
+      html`<${SharedMouseCursor}
+        tracker=${createTracker({ id: 'remote-1' })}
+      />`
+    );
+
+    const el = cursorOf();
+    expect(el.style.color).toBeTruthy();
+    expect(SharedColors).toContain(toHex(el.style.color));
+    expect(toHex(el.style.color)).toBe(toSharedColor('remote-1'));
+    expect(toHex(el.style.fill)).toBe(toHex(el.style.color));
   });
 
   it('stops following the tracker once unmounted', async () => {

@@ -30,6 +30,19 @@ export const root = css`
     border: 1px solid var(--table-select);
   }
 
+  &[data-shared-focus] {
+    outline: 1px solid var(--shared-focus);
+    outline-offset: 0;
+  }
+
+  &[data-shared-select]:not([data-shared-focus]) {
+    box-shadow: 0 0 0 1px var(--shared-select);
+  }
+
+  & .input-padding[data-shared-focus] {
+    box-shadow: inset 0 -1.5px 0 var(--shared-focus);
+  }
+
   .column-row-move {
     transition: transform 0.3s;
   }

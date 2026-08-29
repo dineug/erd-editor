@@ -53,6 +53,13 @@ export type ColumnProps = {
   focusComment: boolean;
   focusUnique: boolean;
   focusAutoIncrement: boolean;
+  sharedFocusName: string | null;
+  sharedFocusDataType: string | null;
+  sharedFocusNotNull: string | null;
+  sharedFocusDefault: string | null;
+  sharedFocusComment: string | null;
+  sharedFocusUnique: string | null;
+  sharedFocusAutoIncrement: string | null;
   editName: boolean;
   editDataType: boolean;
   editDefault: boolean;
@@ -153,6 +160,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               <div
                 class="column-col"
                 data-type="columnName"
+                bool:data-shared-focus={Boolean(props.sharedFocusName)}
+                style={{ '--shared-focus': props.sharedFocusName ?? '' }}
                 on:mousedown={(event: MouseEvent) => {
                   handleFocus(event, FocusType.columnName);
                 }}
@@ -180,6 +189,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               <div
                 class="column-col"
                 data-type="columnDefault"
+                bool:data-shared-focus={Boolean(props.sharedFocusDefault)}
+                style={{ '--shared-focus': props.sharedFocusDefault ?? '' }}
                 on:mousedown={(event: MouseEvent) => {
                   handleFocus(event, FocusType.columnDefault);
                 }}
@@ -207,6 +218,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               <div
                 class="column-col"
                 data-type="columnComment"
+                bool:data-shared-focus={Boolean(props.sharedFocusComment)}
+                style={{ '--shared-focus': props.sharedFocusComment ?? '' }}
                 on:mousedown={(event: MouseEvent) => {
                   handleFocus(event, FocusType.columnComment);
                 }}
@@ -235,6 +248,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               <div
                 class="column-col"
                 data-type="columnDataType"
+                bool:data-shared-focus={Boolean(props.sharedFocusDataType)}
+                style={{ '--shared-focus': props.sharedFocusDataType ?? '' }}
                 on:mousedown={(event: MouseEvent) => {
                   handleFocus(event, FocusType.columnDataType);
                 }}
@@ -264,6 +279,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               <div
                 class="column-col"
                 data-type="columnNotNull"
+                bool:data-shared-focus={Boolean(props.sharedFocusNotNull)}
+                style={{ '--shared-focus': props.sharedFocusNotNull ?? '' }}
                 on:mousedown={(event: MouseEvent) => {
                   handleFocus(event, FocusType.columnNotNull);
                 }}
@@ -283,6 +300,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               <div
                 class="column-col"
                 data-type="columnUnique"
+                bool:data-shared-focus={Boolean(props.sharedFocusUnique)}
+                style={{ '--shared-focus': props.sharedFocusUnique ?? '' }}
                 on:mousedown={(event: MouseEvent) => {
                   handleFocus(event, FocusType.columnUnique);
                 }}
@@ -305,6 +324,10 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               <div
                 class="column-col"
                 data-type="columnAutoIncrement"
+                bool:data-shared-focus={Boolean(props.sharedFocusAutoIncrement)}
+                style={{
+                  '--shared-focus': props.sharedFocusAutoIncrement ?? '',
+                }}
                 on:mousedown={(event: MouseEvent) => {
                   handleFocus(event, FocusType.columnAutoIncrement);
                 }}

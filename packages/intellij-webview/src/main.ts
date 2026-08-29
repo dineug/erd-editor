@@ -25,7 +25,10 @@ import { encode } from 'base64-arraybuffer';
 const bridge = new Bridge();
 const workerBridge = new Bridge();
 const editor = document.createElement('erd-editor');
-const sharedStore = editor.getSharedStore({ mouseTracker: false });
+const sharedStore = editor.getSharedStore({
+  mouseTracker: false,
+  focusTracker: false,
+});
 const replicationStoreWorker = new Worker(
   new URL('./services/replicationStore.worker.ts', import.meta.url),
   {

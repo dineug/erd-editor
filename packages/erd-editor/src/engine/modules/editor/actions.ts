@@ -3,8 +3,9 @@ import { Reducer } from '@dineug/r-html';
 import { EngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
 import { type LWW, ValuesType } from '@/internal-types';
+import { Rect } from '@/utils/dragSelect';
 
-import { FocusType, MoveKey, SelectType } from './state';
+import { FocusType, MoveKey, SelectType, SharedFocus } from './state';
 
 export const ActionType = {
   changeHasHistory: 'editor.changeHasHistory',
@@ -33,6 +34,10 @@ export const ActionType = {
   dragstartColumn: 'editor.dragstartColumn',
   dragendColumn: 'editor.dragendColumn',
   sharedMouseTracker: 'editor.sharedMouseTracker',
+  sharedFocusTracker: 'editor.sharedFocusTracker',
+  sharedSelectionTracker: 'editor.sharedSelectionTracker',
+  sharedDragSelectTracker: 'editor.sharedDragSelectTracker',
+  dragSelectRect: 'editor.dragSelectRect',
   validationIds: 'editor.validationIds',
   getLWW: 'editor.getLWW',
   mergeLWW: 'editor.mergeLWW',
@@ -104,6 +109,18 @@ export type ActionMap = {
   [ActionType.sharedMouseTracker]: {
     x: number;
     y: number;
+  };
+  [ActionType.sharedFocusTracker]: {
+    focus: SharedFocus | null;
+  };
+  [ActionType.sharedSelectionTracker]: {
+    selectedIds: string[];
+  };
+  [ActionType.sharedDragSelectTracker]: {
+    rect: Rect | null;
+  };
+  [ActionType.dragSelectRect]: {
+    rect: Rect | null;
   };
   [ActionType.validationIds]: void;
   [ActionType.getLWW]: void;

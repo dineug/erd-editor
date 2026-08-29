@@ -4,6 +4,8 @@ import { isEmpty } from 'es-toolkit/compat';
 import { useAppContext } from '@/components/appContext';
 import * as styles from '@/components/erd/canvas/table/Table.styles';
 import { useMoveTable } from '@/components/erd/canvas/table/useMoveTable';
+import { useSharedFocusTable } from '@/components/erd/canvas/table/useSharedFocusTable';
+import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
 import { Table } from '@/internal-types';
 import {
   fontSize5,
@@ -23,6 +25,8 @@ export type HighLevelTableProps = {
 
 const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const { sharedFocusTableColor } = useSharedFocusTable(ctx, props.table.id);
+  const { sharedSelectColor } = useSharedSelectEntity(ctx, props.table.id);
   const { onMoveStart } = useMoveTable(ctx, props);
 
   const fontSize = () => {
@@ -67,6 +71,8 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
     const height = calcTableHeight(table);
 
     const isEmptyName = isEmpty(table.name.trim());
+    const sharedTableColor = sharedFocusTableColor();
+    const sharedSelected = sharedSelectColor();
 
     return (
       <div
@@ -77,8 +83,12 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
           'z-index': `${table.ui.zIndex}`,
           width: `${tableWidths.width}px`,
           height: `${height}px`,
+          '--shared-focus': sharedTableColor ?? '',
+          '--shared-select': sharedSelected ?? '',
         }}
         bool:data-selected={selected}
+        bool:data-shared-focus={Boolean(sharedTableColor)}
+        bool:data-shared-select={Boolean(sharedSelected)}
         data-id={table.id}
         on:mousedown={onMoveStart}
         on:touchstart={onMoveStart}
