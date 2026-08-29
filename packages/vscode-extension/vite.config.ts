@@ -12,9 +12,9 @@ import { defineConfig } from 'vite-plus';
  *
  * Everything the host does not ship stays external. `vscode` is injected by the
  * host and is not resolvable at build time; the node builtins are present at
- * runtime and bundling them would be wrong even where it is possible. Workspace
- * dependencies are *not* external — the VSIX contains only this file, so they
- * have to be inlined, which is what webpack did.
+ * runtime and bundling them would be wrong even where it is possible. Every
+ * other dependency is inlined — the VSIX carries only this file, so a surviving
+ * `require` of an npm package fails activation outright.
  */
 const external = [
   'vscode',
@@ -29,6 +29,17 @@ export default defineConfig({
   // copies `publicDir` into `outDir` on build, so leaving this at its default
   // duplicates 2.6MB of webview into `dist/` and into the VSIX.
   publicDir: false,
+
+  // `build.ssr` puts Rolldown in Node resolution mode, and that mode also makes
+  // Vite externalize anything resolved out of `node_modules` on its own — a
+  // rule `rolldownOptions.external` adds to rather than replaces. Workspace
+  // siblings are symlinked and stay inlined either way, so the only packages it
+  // caught were the real ones (`base64-arraybuffer`), emitted as a bare
+  // `require` into a VSIX that ships no `node_modules`. `noExternal` turns that
+  // off; the list above remains the whole of what stays external.
+  ssr: {
+    noExternal: true,
+  },
 
   build: {
     // `ssr` puts Rolldown in Node resolution mode: no browser field, no
