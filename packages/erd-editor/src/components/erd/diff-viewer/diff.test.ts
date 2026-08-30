@@ -224,7 +224,7 @@ describe('diffState', () => {
       createState([{ id: 't2', name: 'members' }])
     );
 
-    // both comments are '' but the name lookup fails, so `undefined` is
+    // both comments are '' but the name lookup fails, so undefined is
     // compared against '' and the comment is reported as changed too.
     expect(pathsOf(prevDiffMap, 't1').sort()).toEqual([
       'tableComment',

@@ -15,7 +15,7 @@ const NO_OBSTACLES: Obstacles = {
 const line = (...pairs: Array<[number, number]>): Point[] =>
   pairs.map(([x, y]) => ({ x, y }));
 
-/** `[id, left, top, right, bottom]` per table, already inset. */
+/** [id, left, top, right, bottom] per table, already inset. */
 const boxes = (
   ...rects: Array<[string, number, number, number, number]>
 ): Obstacles => ({
@@ -61,15 +61,9 @@ const selfCrosses = (points: Point[]) => {
 };
 
 /**
- * Total length two connectors run within 3px of each other, over every segment
- * drawn — the same question `e2e/bench/geometry.ts` asks of a real scene, and
- * the one the tests below would otherwise only ask of the two or three
- * coordinates each was written around.
- *
- * The band is not `RELATIONSHIP_STROKE_WIDTH`. It is the separation these cases
- * are written around: the pairs below start 2px and 3px apart, and a band as
- * narrow as the connector is drawn would score them clear before the pass had
- * moved anything.
+ * Total length two connectors run within 3px of each other, the question
+ * e2e/bench/geometry.ts asks of a real scene. The band is the separation these
+ * cases are written around, not the width the connector is drawn at.
  */
 const bandOverlap = (routes: Record<string, Point[]>, band = 3) => {
   type Run = {
@@ -204,9 +198,8 @@ describe('nudgeRoutes', () => {
 
   it('gives a chain of segments two lanes rather than one each', () => {
     // Each of these only reaches its neighbour, so the run is a chain and not a
-    // bundle: two lanes clear every overlapping pair. A lane each would splay the
-    // outer two 30px apart to fix overlaps that 5px of movement covers, and every
-    // pixel of that is paid in crossings and length.
+    // bundle: two lanes clear every overlapping pair, where a lane each splays
+    // the outer two far apart and pays for it in crossings and length.
     const a = line([0, 0], [100, 0], [100, 40], [200, 40]);
     const b = line([0, 30], [100, 30], [100, 80], [200, 80]);
     const c = line([0, 70], [100, 70], [100, 120], [200, 120]);
@@ -234,10 +227,8 @@ describe('nudgeRoutes', () => {
 
   it('does not leave a chain of staircases more doubled up than it found it', () => {
     // Four escape-shaped routes whose upright runs form chains rather than
-    // bundles. Choosing the compact layout because it came first in the list —
-    // rather than because it moved the group least — added overlap here: its
-    // longer jumps stretch the runs attached to an anchor, which this pass cannot
-    // move and the other axis has already finished with.
+    // bundles. Choosing the compact layout by list position rather than by how
+    // far it moves the group adds overlap here, by stretching the anchor runs.
     const routes = {
       r0: line(
         [30, 10],
@@ -374,9 +365,8 @@ describe('nudgeRoutes', () => {
 
   it('separates on the narrowest rung whatever fraction the channel sits on', () => {
     // The same corridor a third of a pixel up the canvas. Lanes are built as
-    // `first + index * gap`, so the narrowest rung lands 3.999999999999982 apart
-    // — measured against the rung itself the placement reads as a failure and the
-    // group is abandoned on the coordinate it started on.
+    // first + index * gap, so the narrowest rung lands a hair under gap apart
+    // and, scored against the rung itself, reads as a failure.
     const third = 1 / 3;
     const a = line([0, 0], [0, 126 + third], [200, 126 + third], [200, 300]);
     const b = line([10, 0], [10, 127 + third], [210, 127 + third], [210, 300]);
@@ -424,9 +414,8 @@ describe('nudgeRoutes', () => {
 
   it('separates two parallel runs of one connector without folding it', () => {
     // The escape route leaves both anchors on the same axis and comes back, so
-    // its two upright runs can land within one band of each other. The
-    // lanes are handed out in entry order, which here swaps them — and one of
-    // the two ways round walks the connector across itself.
+    // its two upright runs can land within one band. Lanes go out in entry
+    // order, which swaps them here, and one way round crosses the connector.
     const u = line(
       [100, 50],
       [116, 50],
@@ -495,9 +484,9 @@ describe('nudgeRoutes', () => {
   });
 
   it('re-reads how far a segment runs between the two axis passes', () => {
-    // Separating the upright bundle at x = 100..106 stretches `a`'s flat run
+    // Separating the upright bundle at x = 100..106 stretches a's flat run
     // leftwards. Read from the extent collected before that, the flat run looks
-    // like it starts at x = 100 and misses `c` entirely, and both stay on y = 100.
+    // like it starts at x = 100 and misses c entirely, and both stay on y = 100.
     const a = line([0, 200], [100, 200], [100, 100], [300, 100], [300, 0]);
     const b = line([0, 300], [102, 300], [102, 150], [400, 150]);
     const d = line([0, 320], [104, 320], [104, 160], [420, 160]);
@@ -567,11 +556,9 @@ describe('nudgeRoutes', () => {
   });
 
   it('gives the same lane to the same connector when every key ties', () => {
-    // Three routes on one coordinate, over one span, entered from one place:
-    // coordinate, span and entry all tie, so only the identifier decides which
-    // lane each takes. Without that last key the answer follows insertion order,
-    // and a peer or the replication-store worker iterating differently draws a
-    // different picture of the same document.
+    // Three routes on one coordinate, span and entry, so only the identifier
+    // decides the lanes. Without that key the answer follows insertion order and
+    // a peer iterating differently draws a different picture.
     const build = () => ({
       r1: line([0, 0], [0, 100], [300, 100], [300, 400]),
       r2: line([0, 0], [0, 100], [300, 100], [300, 400]),

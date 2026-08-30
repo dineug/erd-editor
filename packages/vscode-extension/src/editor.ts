@@ -20,11 +20,12 @@ export abstract class Editor {
   ) {}
 
   get readonly() {
-    // TODO: scheme
-    // scheme: untitled, file, git, conflictResolution
-    // const editable = vscode.workspace.fs.isWritableFileSystem(
-    //   this.document.uri.scheme
-    // );
+    // TODO: scheme -- untitled, file, git, conflictResolution
+    /*
+    const editable = vscode.workspace.fs.isWritableFileSystem(
+      this.document.uri.scheme
+    );
+    */
     return (
       this.document.uri.scheme === 'git' ||
       this.document.uri.scheme === 'conflictResolution'

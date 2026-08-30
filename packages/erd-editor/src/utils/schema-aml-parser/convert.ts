@@ -96,8 +96,8 @@ function createQualifier(entities: AMLEntity[]): (entity: AMLEntity) => string {
 }
 
 /**
- * Keeps the empty slots, so the `identity...profiles` database and the
- * `identity.profiles` schema stay two namespaces rather than one.
+ * Keeps the empty slots, so the identity...profiles database and the
+ * identity.profiles schema stay two namespaces rather than one.
  */
 function namespaceKeyOf({ database, catalog, schema }: AMLNamespace): string {
   return `${database}.${catalog}.${schema}`;
@@ -213,7 +213,7 @@ function convertEntity(
           widthDataType: textInRange(toWidth(dataType)),
           widthDefault: textInRange(toWidth(defaultValue)),
           // Only the foreign key bit is recomputed on load, so the primary key
-          // one has to be written here as well as into `options`.
+          // one has to be written here as well as into options.
           keys: attribute.primaryKey ? ColumnUIKey.primaryKey : 0,
         },
       })
@@ -226,7 +226,7 @@ function convertEntity(
   return context;
 }
 
-/** A bare `unique` is the one constraint the column itself can hold. */
+/** A bare unique is the one constraint the column itself can hold. */
 function hasColumnUnique(attribute: AMLAttribute): boolean {
   return attribute.indexes.some(entry => entry.unique && entry.name === '');
 }
@@ -323,7 +323,7 @@ function appendRelationship(
 
   childColumns.forEach((column, index) => {
     // The type slot sits between the name and the relation, so an attribute
-    // written as `created_by -> users(id)` reaches here with none.
+    // written as created_by -> users(id) reaches here with none.
     if (column.dataType === '') {
       const { dataType } = parentColumns[index];
 
@@ -381,7 +381,7 @@ function appendJunctionTable(
     '',
     `${left.table.name}_${right.table.name}`
   );
-  // `convertToSchema` has no warning channel, so the note that this is the one
+  // convertToSchema has no warning channel, so the note that this is the one
   // entity the importer invented rather than read travels in the diagram.
   const comment = `Junction table inferred from ${left.table.name} <-> ${right.table.name}`;
   const newTable = createTable({
@@ -475,7 +475,7 @@ function convertIndexes(
       attribute.indexes.forEach((entry, entryIndex) => {
         if (entry.unique && entry.name === '') return;
 
-        // Only a name groups members together; an unnamed `index` is its own.
+        // Only a name groups members together; an unnamed index is its own.
         const key =
           entry.name === ''
             ? `b:${attributeIndex}:${entryIndex}`

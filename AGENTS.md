@@ -16,6 +16,7 @@
 | `tsconfig.app.json` | Base config every package extends — ES2022 `target` and `lib`, strict, bundler resolution |
 | `tsconfig.json` | Typechecks the root tooling plus every `vite.config.*` / `vitest.config.*`, which sit in no package program |
 | `build-target.ts` | `BROWSER_TARGET` / `BROWSER_TARGET_QUERY` — the one browser floor, consumed by the library config factory, the two bespoke library configs and `app` |
+| `tools/eslint-rules/index.js` | The `local` oxlint plugin — the four comment rules `vite.config.ts` enables; the directory is itself lint-exempt |
 | `tools/vite/library-config.ts` | Typed factory for the seven standard library builds and shared task builder used by all nine library-mode packages |
 | `tools/vite/package-metadata.ts` | Derives task inputs, banners and runtime externals from JSONC tsconfig files and workspace manifests |
 | `scripts/check-task-inputs.mjs` | Independently verifies exact task/cache contracts and workspace declaration inputs during `pnpm check` |
@@ -83,6 +84,16 @@ The TypeScript LSP is configured but unavailable in this checkout; the rows belo
 - **One bundler.** Nine libraries build in Vite library mode with `vite-plugin-dts`; `app`, `intellij-webview`, `vscode-webview` and `vscode-extension` build an entry. Match the neighbouring package.
 - **`@/*` → `<package>/src/*`** is in all 13 TypeScript packages' `tsconfig.json` `paths`. The seven standard library builds receive the matching Vite alias from `tools/vite/library-config.ts`; bespoke build and test configs still declare it locally.
 - **Formatting covers `.{ts,mts,tsx}` only** — `fmt.ignorePatterns` excludes Markdown, so `pnpm format` never rewrites the 15 AGENTS.md files. oxlint does not read `.gitignore`; its ignore list is in the root `vite.config.ts`, so gitignoring a path does not un-lint it.
+- **Comments are lint-enforced, repo-wide.** Four rules in `tools/eslint-rules/`, enabled as `error` in the root `vite.config.ts` — global rather than under the `**/src/**` overrides, because the longest prose here lives in the configs, the e2e harnesses and the specs. What no longer fits a comment goes to a package `AGENTS.md`, becomes a test, or is left to git history.
+
+  | Rule | Bound |
+  | --- | --- |
+  | `local/jsdoc-prose-limit` | One prose paragraph, three lines. `@example` and `@tag` lines do not count |
+  | `local/comment-run-limit` | Three consecutive line comments that open their line; a bare `//` separator counts |
+  | `local/jsdoc-attached` | A JSDoc block describes the declaration below it — never an import, a re-export, or another block. A tags-only block such as `@type` is machine-read and exempt |
+  | `local/no-comment-markdown` | No emphasis, backticks, fences, tables or lists in comment prose — nothing renders it. `@example` bodies are exempt, and it auto-fixes the paired forms |
+
+  `no-comment-markdown --fix` mis-pairs where a code span itself contains backticks or `${…}`; review those hunks rather than taking the fix. Lint reaches `.{ts,tsx,js,mjs}` only, so the `.github/` YAML follows the same bounds by hand — the `**bold**` in `ISSUE_TEMPLATE/` is the exception, since GitHub renders it.
 - Commit messages are linted by commitlint (Conventional Commits); `subject-case` is off because this repo capitalizes subjects.
 
 ### Testing Requirements

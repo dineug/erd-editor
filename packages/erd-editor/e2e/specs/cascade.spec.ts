@@ -1,26 +1,6 @@
 import { expect, test } from '../support/fixtures';
 import { twoTables } from '../support/schema';
 
-/**
- * The cascade gate, in a real browser.
- *
- * `src/styles/emittedCss.cascade.test.ts` pins what CSS the editor emits and in what order it is
- * delivered, but it reads happy-dom. What needs a browser is the part of the cascade that lives in
- * the *pools* rather than the rule text: a shadow root applies its own tree-order `styleSheets`
- * before its `adoptedStyleSheets`, so a stylesheet that moves between those two pools changes
- * which declaration wins at equal specificity without changing one character of anything.
- *
- * P4 moved reset, fonts, typography and scrollbar out of `<style>` elements into the adopted
- * global bucket, and the color-picker fold moved the last one after them. Every assertion below
- * reads the layout those moves produced, straight off `erd-editor.shadowRoot`.
- *
- * There used to be a fifth check here: four scenes of `getComputedStyle` over the whole shadow
- * tree, compared against a frozen `e2e/fixture/cascade-baseline.json` captured before the move.
- * It was migration scaffolding — it answered "did the move change anything" once, and after that
- * every intended edit to a style module was a re-baseline, which is how a real regression would
- * have been laundered through it. The properties below hold without a fixture.
- */
-
 test.describe('cascade invariants', () => {
   test('the global bucket is adopted ahead of every component sheet', async ({
     erd,
@@ -39,7 +19,7 @@ test.describe('cascade invariants', () => {
       );
       return {
         sheetCount: sheets.length,
-        // A `css.global` sheet is the only kind that carries no generated class anywhere in it.
+        // A css.global sheet is the only kind that carries no generated class anywhere in it.
         globalSheetIndexes: sheets
           .map((rules, index) => (rules.some(r => SCOPE.test(r)) ? -1 : index))
           .filter(index => index >= 0),
@@ -49,16 +29,16 @@ test.describe('cascade invariants', () => {
       };
     });
 
-    // The five `css.global` sheets, and nothing else, hold the head of the adopted list.
+    // The five css.global sheets, and nothing else, hold the head of the adopted list.
     expect(layout.globalSheetIndexes).toEqual([0, 1, 2, 3, 4]);
     expect(layout.firstAdoptedRule.startsWith('p, ol, ul')).toBe(true);
 
     // The color picker is the fifth, last in the bucket — which is where it sat relative to the
-    // other four when it was a tree `<style>`, minus the inversion that put it ahead of the whole
+    // other four when it was a tree <style>, minus the inversion that put it ahead of the whole
     // adopted pool.
     expect(layout.lastGlobalRule).toContain('.easylogic-colorpicker');
 
-    // The theme tokens are the one `<style>` element left in the tree.
+    // The theme tokens are the one <style> element left in the tree.
     expect(layout.treeStyleCount).toBe(1);
   });
 
@@ -68,12 +48,9 @@ test.describe('cascade invariants', () => {
   }) => {
     await erd.seed(twoTables());
 
-    // The second inversion P4 caused, and the one the emitted-CSS gate cannot see because
-    // `themes/tokens.ts` is not a `*.styles.ts` module. Its `:host { --gray-color-1: … }` block
-    // is a tree `<style>`, so it used to come *after* reset/fonts/typography/scrollbar and now
-    // comes before them. Both sides are `:host`, i.e. the same specificity on the same element,
-    // so the only thing making the order irrelevant is that they never name the same property.
-    // Adding a `--font-size-*` to `Theme` would break that silently; this is what says so.
+    // The emitted-CSS gate cannot see this, because the theme tokens are not a
+    // styles module. Both sides are :host, so the only thing making their order
+    // irrelevant is that they never name the same property.
     const names = await page.evaluate(() => {
       const editor = window.document.querySelector('erd-editor');
       const root = editor?.shadowRoot;
@@ -115,7 +92,7 @@ test.describe('cascade invariants', () => {
     await erd.toolbarButton('Settings').click();
     await expect(page.locator('erd-editor .scrollbar').first()).toBeVisible();
 
-    // `::-webkit-scrollbar` sizing is the one thing an element walk deliberately cannot carry —
+    // ::-webkit-scrollbar sizing is the one thing an element walk deliberately cannot carry —
     // it is a width, and widths depend on the font the machine has.
     const scrollbar = await page.evaluate(() => {
       const editor = window.document.querySelector('erd-editor');
@@ -144,7 +121,7 @@ test.describe('cascade invariants', () => {
     await erd.seed(twoTables());
 
     // The picker's markup is built by the upstream library at runtime, so its sheet is the one
-    // that had to stay unscoped when it moved from a tree `<style>` to `css.global`. Opening it
+    // that had to stay unscoped when it moved from a tree <style> to css.global. Opening it
     // is what proves the selectors still match the class names that library writes.
     await erd.tableEl('users').locator('.table-header-color').click();
     const picker = page.locator('erd-editor .easylogic-colorpicker');
@@ -160,7 +137,7 @@ test.describe('cascade invariants', () => {
       };
     });
 
-    // `.easylogic-colorpicker` — the first rule of the sheet, and unreachable if scoping had
+    // .easylogic-colorpicker — the first rule of the sheet, and unreachable if scoping had
     // renamed the class out from under the library.
     expect(applied).toEqual({
       position: 'relative',

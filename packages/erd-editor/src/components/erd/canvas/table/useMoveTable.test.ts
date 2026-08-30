@@ -261,7 +261,7 @@ describe('useMoveTable', () => {
 
     expect(duplicateDragStart).toHaveBeenCalledOnce();
     expect(event.defaultPrevented).toBe(true);
-    // no second `drag$` subscription — the ghost owns the gesture from here
+    // no second drag$ subscription — the ghost owns the gesture from here
     expect(table.ui.x).toBe(startX);
     expect(table.ui.y).toBe(startY);
   });

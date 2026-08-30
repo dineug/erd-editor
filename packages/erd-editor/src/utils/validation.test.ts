@@ -233,8 +233,8 @@ describe('isEditableTarget', () => {
   });
 
   it('is false for an element outside any editing surface', () => {
-    // The column selection state renders no `<input>` at all: `EditInput` only
-    // mounts one while `edit` is true, so the copy handler sees the plain host
+    // The column selection state renders no <input> at all: EditInput only
+    // mounts one while edit is true, so the copy handler sees the plain host
     // div and column copy stays untouched.
     const root = document.createElement('div');
     root.className = 'root';

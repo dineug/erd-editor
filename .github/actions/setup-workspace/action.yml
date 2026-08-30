@@ -4,21 +4,18 @@ description: pnpm, Node and dependencies. Versions come only from what the repo 
 runs:
   using: composite
   steps:
-    # No `version:` argument. pnpm comes from `packageManager` (10.34.3) and Node
-    # from `.nvmrc`; naming either here creates a second place to update and a
-    # way for the two to drift.
+    # No version argument. pnpm comes from packageManager and Node from .nvmrc;
+    # naming either here creates a second place to update and a way to drift.
     - uses: pnpm/action-setup@v6
 
     - uses: actions/setup-node@v7
       with:
-        # `.nvmrc`, not `.node-version`. Both exist with the same content;
-        # `.node-version` is kept for the version managers that read it, and
-        # nothing in CI does.
+        # .nvmrc, not .node-version. Both exist with the same content, and
+        # .node-version is kept for the version managers that read it.
         node-version-file: .nvmrc
-        # The pnpm store only. Vite Task's cache (`node_modules/.vite`) is
-        # deliberately not carried between runs: a cold cache is what makes the
-        # `input` declarations do real work, and a warm one would let a wrong
-        # declaration replay a green result it did not earn.
+        # The pnpm store only. Vite Task's cache is deliberately not carried
+        # between runs: a cold cache is what makes the input declarations do real
+        # work, and a warm one would replay a green result it did not earn.
         cache: pnpm
 
     - run: pnpm install --frozen-lockfile

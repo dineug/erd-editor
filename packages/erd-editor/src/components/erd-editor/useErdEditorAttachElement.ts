@@ -227,10 +227,9 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     );
   });
 
-  // `focus`/`blur` shadow HTMLElement.prototype methods. Environments that patch those
-  // methods can leave them as getter-only accessors on the prototype — Storybook's preview
-  // runtime does, via @testing-library/user-event — and a plain assignment then throws in
-  // strict mode. Defining own properties skips the prototype setter lookup entirely.
+  // focus and blur shadow the prototype methods. An environment that patches
+  // those can leave them getter-only accessors, where a plain assignment throws
+  // in strict mode; defining own properties skips the setter lookup.
   Object.defineProperties(ctx, {
     focus: {
       configurable: true,

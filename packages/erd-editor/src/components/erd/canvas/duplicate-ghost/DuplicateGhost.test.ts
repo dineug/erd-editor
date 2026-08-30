@@ -25,10 +25,9 @@ import { duplicateDragStartAction } from '@/utils/emitter';
 let mounted: Mounted | null = null;
 
 /**
- * `DuplicateGhost` holds a live `drag$` subscription for the length of a
- * gesture, and only a global mouseup completes it. Ending the drag before
- * unmounting keeps a subscription — and the module-global movement bookkeeping
- * in `globalEventObservable` — from leaking into the next test.
+ * DuplicateGhost holds a live drag$ subscription for the length of a gesture and
+ * only a global mouseup completes it, so ending the drag before unmounting
+ * keeps it and the module-global movement bookkeeping out of the next test.
  */
 const endGesture = () => {
   window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
@@ -63,12 +62,9 @@ const layerIn = (root: ParentNode) =>
   ) as HTMLElement | null;
 
 /**
- * Where a ghost actually lands.
- *
- * The position is split across two elements on purpose: the entity draws itself
- * at the coordinates it was frozen with at mousedown and never re-renders, and
- * the layer above it carries the whole drag delta in one `transform`. Composing
- * them here is what the user sees, and it fails if either half is wrong.
+ * Where a ghost actually lands. The position is split on purpose: the entity
+ * draws at the coordinates frozen at mousedown and the layer above carries the
+ * drag delta, so composing them here fails if either half is wrong.
  */
 const ghostPosition = (root: ParentNode, index = 0) => {
   const entity = ghostsIn(root)[index]?.querySelector(
@@ -125,8 +121,8 @@ const setViewport = (app: AppContext, zoomLevel: number, scroll = 0) => {
 
 /**
  * Starts a gesture the way the canvas does: a real mousedown (which is what
- * resets the shared `prevX`/`prevY` the movement deltas are measured from),
- * then the emitter action `tryStartAltDragDuplicate` fires.
+ * resets the shared prevX/prevY the movement deltas are measured from),
+ * then the emitter action tryStartAltDragDuplicate fires.
  */
 const startGesture = async (app: AppContext, x = 0, y = 0) => {
   dispatchMouse(window, 'mousedown', { clientX: x, clientY: y });
@@ -196,10 +192,9 @@ describe('DuplicateGhost - rendering', () => {
       const { container } = await mountCanvas(app);
       await startGesture(app);
 
-      // `isHighLevelTable` is `zoomLevel <= 0.7`, and the high-level render
-      // draws the name alone — no column rows. A ghost stuck on one component
-      // would look nothing like the entity it stands for on the other side of
-      // that threshold.
+      // Below the high-level zoom threshold a table draws its name alone, with
+      // no column rows, so a ghost stuck on one component would look nothing
+      // like the entity it stands for on the other side of it.
       const [ghost] = ghostsIn(container);
       expect(ghost.querySelectorAll('.column-row').length > 0).toBe(
         expectColumns
@@ -256,11 +251,9 @@ describe('DuplicateGhost - coordinate space (AC-36)', () => {
 
     const [ghost] = ghostsIn(container);
     expect(ghost).toBeTruthy();
-    // The controller above the canvas carries
-    // `translate(scrollLeft, scrollTop) scale(zoomLevel)`. A ghost rendered as a
-    // sibling of `<Canvas>` instead would sit outside it and be off by the
-    // scroll offset and wrong by a factor of the zoom — while still looking
-    // right at the default zoom 1 / scroll 0.
+    // The controller above the canvas carries the scroll translate and the zoom
+    // scale, so a ghost rendered as a sibling would be off by the scroll and
+    // wrong by the zoom, while still looking right at the defaults.
     expect(ghost.closest('[data-testid="erd-canvas"]')).not.toBeNull();
   });
 
@@ -329,7 +322,7 @@ describe('DuplicateGhost - commit', () => {
 
       await mountGhost(app);
       await startGesture(app);
-      // 8 screen pixels of travel — twice `DUPLICATE_MIN_MOVE` at every zoom.
+      // 8 screen pixels of travel — twice DUPLICATE_MIN_MOVE at every zoom.
       await movePointer([[4, 4]]);
       await dropAndSettle();
 
@@ -349,7 +342,7 @@ describe('DuplicateGhost - commit', () => {
 
       await mountGhost(app);
       await startGesture(app);
-      // 2 screen pixels of travel — below `DUPLICATE_MIN_MOVE` at every zoom.
+      // 2 screen pixels of travel — below DUPLICATE_MIN_MOVE at every zoom.
       await movePointer([[1, 1]]);
       await dropAndSettle();
 
@@ -372,7 +365,7 @@ describe('DuplicateGhost - commit', () => {
   it('escapes a collision below the threshold but never above it (AC-37)', async () => {
     const { app } = await mountGhost();
     seedTable(app, 't1', 100, 200);
-    // Already sitting exactly where a `+(50, 50)` copy would land.
+    // Already sitting exactly where a +(50, 50) copy would land.
     seedTable(app, 't2', 150, 250);
     select(app, { t1: SelectType.table });
 
@@ -478,8 +471,8 @@ describe('DuplicateGhost - commit', () => {
     expect(lastTable(app).ui).toMatchObject({ x: 160, y: 230 });
   });
 
-  // Covers the outcome, not the mechanism: unmounting unsubscribes `drag$`
-  // (so the completion never arrives) and `commit` re-checks the flag anyway.
+  // Covers the outcome, not the mechanism: unmounting unsubscribes drag$
+  // (so the completion never arrives) and commit re-checks the flag anyway.
   it('does not commit a gesture whose editor was torn down mid-drag', async () => {
     const errors: unknown[] = [];
     const onUnhandledError = rxjsConfig.onUnhandledError;

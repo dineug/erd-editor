@@ -58,7 +58,7 @@ function createEditorDouble(
 type EditorDouble = ReturnType<typeof createEditorDouble>;
 
 /**
- * A `CreateEditor` double that records every editor it builds, so a spec can
+ * A CreateEditor double that records every editor it builds, so a spec can
  * tell the two editors of a split view apart.
  */
 function createEditorFactory(
@@ -85,8 +85,8 @@ function createEditorFactory(
 }
 
 /**
- * Builds a provider around an editor double. `createEditor` is the only seam
- * through which the private `docToWebviewMap` is observable — the provider
+ * Builds a provider around an editor double. createEditor is the only seam
+ * through which the private docToWebviewMap is observable — the provider
  * hands it the live map as the fourth argument.
  */
 function createProvider(options?: {
@@ -103,7 +103,7 @@ function createProvider(options?: {
   return { provider, context, createEditor, editors };
 }
 
-/** The map instance the provider really owns, as handed to `createEditor`. */
+/** The map instance the provider really owns, as handed to createEditor. */
 function liveMap(createEditor: { mock: { calls: any[][] } }): DocToWebviewMap {
   if (!createEditor.mock.calls.length) {
     throw new Error('createEditor has not run yet — resolve an editor first');
@@ -111,7 +111,7 @@ function liveMap(createEditor: { mock: { calls: any[][] } }): DocToWebviewMap {
   return createEditor.mock.calls[0][3];
 }
 
-/** Reference-identity view of the webviews registered for `document`. */
+/** Reference-identity view of the webviews registered for document. */
 function webviewsOf(map: DocToWebviewMap, document: ErdDocument) {
   const set = map.get(document);
   if (!set) throw new Error('the document has no entry in docToWebviewMap');
@@ -138,12 +138,9 @@ function openDocument(
 const asPanel = (panel: MockWebviewPanel) => panel as unknown as WebviewPanel;
 
 /**
- * Opens a document whose `onDidChangeContent` subscriptions are observable.
- *
- * `ErdDocument.dispose()` tears down its own content emitter, so "a disposed
- * document notifies nobody" holds even if the provider never released the
- * subscription it took out. Watching the Disposable the provider was handed is
- * the only way to prove it actually unsubscribes.
+ * Opens a document whose onDidChangeContent subscriptions are observable. A
+ * disposed document notifies nobody even if the provider leaked its
+ * subscription, so watching the Disposable is the only proof it unsubscribes.
  */
 async function openDocumentTrackingSubscriptions(
   provider: ErdEditorProvider,
@@ -176,7 +173,7 @@ describe('ErdEditorProvider', () => {
   });
 
   afterEach(() => {
-    // `openDocumentTrackingSubscriptions` and the delegation specs put spies on
+    // openDocumentTrackingSubscriptions and the delegation specs put spies on
     // real classes; leaving one behind would leak into the next spec.
     vi.restoreAllMocks();
   });
@@ -269,7 +266,7 @@ describe('ErdEditorProvider', () => {
       expect(document.content).toBe(backedUp);
     });
 
-    // Characterises a gap against the real API: `CustomDocumentOpenContext`
+    // Characterises a gap against the real API: CustomDocumentOpenContext
     // says an untitled document arrives with its bytes attached and the fs
     // should not be touched. The provider reads the uri regardless.
     it('ignores untitledDocumentData and still reads the uri, which is what VSCode says not to do', async () => {
@@ -305,7 +302,7 @@ describe('ErdEditorProvider', () => {
       const docToWebviewMap = liveMap(createEditor);
 
       // VSCode reuses a CustomDocument for further editors of one resource, so
-      // the `has` guard is what stops a second open from resetting the set and
+      // the has guard is what stops a second open from resetting the set and
       // orphaning the webview that is already attached.
       const create = vi.spyOn(ErdDocument, 'create').mockReturnValue(document);
       const reopened = await openDocument(provider);
@@ -395,7 +392,7 @@ describe('ErdEditorProvider', () => {
       expect(passedDocument).toBe(document);
       expect(passedWebview).toBe(panel.webview);
       expect(passedContext).toBe(context);
-      // `has` is reference identity — a structurally identical clone of the
+      // has is reference identity — a structurally identical clone of the
       // webview would be useless to the editor, which posts messages to it.
       const webviews = webviewsOf(docToWebviewMap, document);
       expect(webviews.has(panel.webview)).toBe(true);
@@ -482,7 +479,7 @@ describe('ErdEditorProvider', () => {
     it('builds an editor for a document it never opened instead of throwing, and still cleans it up', async () => {
       const { provider, createEditor, editors } = createProvider();
       // VSCode always opens before it resolves, but the provider guards the
-      // lookup with `?.` — that guard is what this pins down.
+      // lookup with ?. — that guard is what this pins down.
       const stray = ErdDocument.create(
         Uri.file('/workspace/stray.erd') as unknown as VscodeUri,
         encoder.encode('stray')
@@ -513,7 +510,7 @@ describe('ErdEditorProvider', () => {
       expect(docToWebviewMap.has(document)).toBe(false);
     });
 
-    // `bootstrapWebview` reads `index.html` off disk, so closing the tab while
+    // bootstrapWebview reads index.html off disk, so closing the tab while
     // it is in flight is a real race, not a theoretical one — the dispose event
     // arrives before the editor exists to be disposed.
     it('still disposes the editor when the panel closes while bootstrapWebview is pending', async () => {

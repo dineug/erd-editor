@@ -3,10 +3,9 @@ import { CANVAS_ZOOM_MIN, twoTables } from '../support/schema';
 import { Shortcut, WHEEL_ZOOM_STEP, ZOOM_STEP } from '../support/shortcuts';
 
 /**
- * Zoom, scroll and the overlays that sit on top of the canvas.
- *
- * The common thread is `zoomLevel` starting at its own maximum: every zoom
- * gesture here has to go down before it can go anywhere.
+ * Zoom, scroll and the overlays that sit on top of the canvas. The common thread
+ * is zoomLevel starting at its own maximum, so every gesture here has to go down
+ * before it can go anywhere.
  */
 test.describe('zoom, scroll and overlays', () => {
   test('$mod+wheel zooms out in 0.03 steps and the toolbar shows the percentage', async ({
@@ -18,23 +17,22 @@ test.describe('zoom, scroll and overlays', () => {
 
     const before = await erd.tableEl('users').boundingBox();
 
-    // Wheeling down (positive deltaY) zooms out; wheeling up is a no-op here
-    // because the editor already sits at the 1.0 ceiling. The modifier comes
-    // from the page, not from `MOD_KEY` — `Erd.ts#handleWheel` asks `isMod()`,
-    // which reads the UA rather than the keyboard layout tinykeys uses.
+    // Wheeling down zooms out and wheeling up is a no-op, because the editor
+    // already sits at the ceiling. The modifier comes from the page, since
+    // handleWheel reads the UA rather than the layout tinykeys uses.
     const modKey = await erd.pointerModKey();
     for (let notch = 0; notch < 4; notch++) {
       await erd.wheel(120, { modifiers: [modKey] });
     }
 
-    // `streamZoomLevelAction$` batches, so the notches settle a tick after the
+    // streamZoomLevelAction$ batches, so the notches settle a tick after the
     // last one is delivered — poll rather than read straight through.
     await expect
       .poll(async () => (await erd.settings()).zoomLevel)
       .toBeCloseTo(1 - 4 * WHEEL_ZOOM_STEP, 5);
     await expect(zoom).toHaveValue('88%');
 
-    // The canvas is `scale()`d, so the zoom is visible as a smaller table: the
+    // The canvas is scale()d, so the zoom is visible as a smaller table: the
     // box shrinks by exactly the zoom factor.
     const after = await erd.tableEl('users').boundingBox();
     expect(after!.width / before!.width).toBeCloseTo(0.88, 2);
@@ -80,10 +78,9 @@ test.describe('zoom, scroll and overlays', () => {
     await erd.seed(twoTables());
     const before = await erd.tableEl('users').boundingBox();
 
-    // `handleWheel` calls `preventDefault`, so every wheel that reaches window
-    // — window is above the editor root, where the handler is bound — must
-    // already be cancelled. This is the direct signal; the host document not
-    // scrolling is not, since the fixture page sets `overflow: hidden` anyway.
+    // handleWheel calls preventDefault, so every wheel reaching window, which
+    // sits above the root the handler is bound to, must already be cancelled.
+    // The host document not scrolling would not say so, given its overflow.
     await erd.page.evaluate(() => {
       (window as any).__wheelPrevented = [];
       window.addEventListener('wheel', event => {
@@ -99,13 +96,13 @@ test.describe('zoom, scroll and overlays', () => {
     const scrolled = await erd.settings();
     const afterY = await erd.tableEl('users').boundingBox();
     expect(scrolled.scrollLeft).toBe(0);
-    // `scrollTop` is applied as a canvas translate, so the table moves with it.
+    // scrollTop is applied as a canvas translate, so the table moves with it.
     expect(afterY!.y - before!.y).toBeCloseTo(scrolled.scrollTop, 0);
     expect(afterY!.x).toBeCloseTo(before!.x, 0);
 
     // Shift maps the vertical notch onto the horizontal axis. Chromium keeps
     // deltaY and sets shiftKey rather than pre-swapping the axes, so it is
-    // `handleWheel`'s `isReverse` branch that runs; both branches land here.
+    // handleWheel's isReverse branch that runs; both branches land here.
     await erd.wheel(200, { modifiers: ['Shift'] });
     await expect
       .poll(async () => (await erd.settings()).scrollLeft)
@@ -131,15 +128,15 @@ test.describe('zoom, scroll and overlays', () => {
     await expect(erd.canvas.locator('.column-row')).toHaveCount(4);
 
     // 7 shortcut steps of 0.04 from 1.0 → 0.72, still one step above the
-    // `isHighLevelTable` threshold of 0.7.
+    // isHighLevelTable threshold of 0.7.
     for (let step = 0; step < 7; step++) {
       await erd.press(Shortcut.zoomOut);
     }
     expect((await erd.settings()).zoomLevel).toBeCloseTo(0.72, 5);
     await expect(erd.canvas.locator('.column-row')).toHaveCount(4);
 
-    // 0.68 — `isHighLevelTable` flips and `Canvas` swaps every `Table` for a
-    // `HighLevelTable`: same nodes, same selection, no column rows.
+    // 0.68 — isHighLevelTable flips and Canvas swaps every Table for a
+    // HighLevelTable: same nodes, same selection, no column rows.
     await erd.press(Shortcut.zoomOut);
     expect((await erd.settings()).zoomLevel).toBeCloseTo(0.68, 5);
     await expect(erd.canvas.locator('.column-row')).toHaveCount(0);
@@ -147,10 +144,9 @@ test.describe('zoom, scroll and overlays', () => {
     await expect(erd.tableEl('users')).toContainText('users');
     await expect(erd.selectedTables()).toHaveCount(1);
 
-    // Surprising but real, and asserted as-is: `useErdShortcut` gates only the
-    // focus/traversal branch on `showHighLevelTable`, so `addColumn` still
-    // fires. The column is appended to the store with nothing on screen to
-    // show for it until the zoom comes back up.
+    // Surprising but real: useErdShortcut gates only the focus branch on the
+    // high-level flag, so addColumn still fires and the column is appended with
+    // nothing on screen to show for it until the zoom comes back up.
     await erd.press(Shortcut.addColumn);
     await expect.poll(() => erd.columnIds('users')).toHaveLength(3);
     await expect(erd.canvas.locator('.column-row')).toHaveCount(0);
@@ -205,7 +201,7 @@ test.describe('zoom, scroll and overlays', () => {
       erd.contextMenu.nth(1).getByText('One Only', { exact: true })
     ).toBeVisible();
 
-    // `ContextMenuItem` closes a sibling's submenu as soon as another item in
+    // ContextMenuItem closes a sibling's submenu as soon as another item in
     // the same panel is entered — even one that has no submenu of its own.
     await erd.contextMenu
       .first()
@@ -228,13 +224,13 @@ test.describe('zoom, scroll and overlays', () => {
     await expect(quickSearch.locator('input')).toBeFocused();
 
     // Membership only — the list is fuse.js ranked and its order is not part of
-    // the contract. `createScopeActions` mixes fixed commands with one row per
+    // the contract. createScopeActions mixes fixed commands with one row per
     // table in the document, so the seed shows up here too.
     for (const label of ['New Table', 'New Memo', 'users', 'posts']) {
       await expect(quickSearch.getByText(label, { exact: true })).toBeVisible();
     }
 
-    // 'memo' matches exactly one action: fuse.js searches `name` + `keywords`,
+    // 'memo' matches exactly one action: fuse.js searches name + keywords,
     // and no other entry carries either token.
     await erd.page.keyboard.type('memo');
     await expect(rows).toHaveCount(1);
@@ -257,7 +253,7 @@ test.describe('zoom, scroll and overlays', () => {
     await erd.press(Shortcut.search);
     await expect(quickSearch).toBeVisible();
 
-    // `erdShortcutPerformCheck` drops every shortcut while `Open.search` is on.
+    // erdShortcutPerformCheck drops every shortcut while Open.search is on.
     await erd.press(Shortcut.addTable);
     await erd.press(Shortcut.stop);
     await expect(quickSearch).toHaveCount(0);
@@ -312,7 +308,7 @@ test.describe('zoom, scroll and overlays', () => {
     await expect(erd.canvas.locator('.table')).toHaveCount(2);
 
     await erd.toolbarButton('Settings').click();
-    // `cache()` detaches the ERD subtree rather than hiding it.
+    // cache() detaches the ERD subtree rather than hiding it.
     await expect(erd.canvas).toHaveCount(0);
     await expect(erd.toolbarButton('Settings')).toHaveClass(/\bactive\b/);
     // 'Preferences' names both the LNB entry and the heading of the panel it

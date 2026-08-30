@@ -16,21 +16,6 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { flush } from '@/__test-utils__/index';
 
-/**
- * The regression harness the JSX conversion commits lean on.
- *
- * `@dineug/r-html/jsx-runtime` says what an attribute *means*; the
- * codegen in `@dineug/vite-plugin-r-html` decides what it *emits*. They are two
- * independent implementations of one mapping, and nothing makes them disagree
- * loudly — a wrong emit typechecks green and renders nothing. Every case here is
- * the same shape written twice, in JSX and in the tagged template it is supposed
- * to compile to, compared on the DOM that comes out.
- *
- * This file is `.tsx`, so the transform rewrites its JSX and leaves its tagged
- * templates alone. That is the point: both halves of each pair live side by side
- * in one module.
- */
-
 const containers: HTMLDivElement[] = [];
 
 const mount = (template: DOMTemplateLiterals | null) => {
@@ -48,10 +33,9 @@ const draw = async (template: DOMTemplateLiterals) => {
 };
 
 /**
- * Renders both spellings, asserts their markup is identical, and hands back the
- * JSX container so a case can go on to check something `innerHTML` cannot show.
- * Text assertions have to go through `textContent`: r-html separates every part
- * with comment markers, so `n:3` reaches the DOM as `n<!---->:<!---->3`.
+ * Renders both spellings, asserts their markup is identical and hands back the
+ * JSX container. Text assertions go through textContent, because r-html
+ * separates every part with comment markers.
  */
 const both = async (jsx: DOMTemplateLiterals, tagged: DOMTemplateLiterals) => {
   const a = await draw(jsx);
@@ -223,16 +207,16 @@ describe('markup parity', () => {
 
     expect(jsx.innerHTML).toBe(tagged.innerHTML);
     // The namespace is the thing that silently renders nothing when inferred
-    // wrong, and it does not show up in `innerHTML`.
+    // wrong, and it does not show up in innerHTML.
     expect(jsx.querySelector('line')?.namespaceURI).toBe(
       'http://www.w3.org/2000/svg'
     );
   });
 
   it('keeps a shared HTML/SVG tag in the HTML namespace at the root', async () => {
-    // `style`, like `a`, `script` and `title`, is defined by both. A component
-    // whose root is one of them is HTML — the case `<style>` rules make common,
-    // since a `:host { … }` block cannot be written as JSX text.
+    // style, like a, script and title, is defined by both. A component
+    // whose root is one of them is HTML — the case <style> rules make common,
+    // since a :host { … } block cannot be written as JSX text.
     const sheet = ':host { color: red; }';
     const el = await both(
       <style>{sheet}</style>,
@@ -372,11 +356,9 @@ describe('update parity', () => {
   );
 
   /**
-   * One call site, so both renders share a `TemplateStringsArray` — that
-   * identity is what `templateCache` and `ContainerPart#equalStrings` key on,
-   * and it is the whole reason the transform emits a real tagged template
-   * rather than building nodes at runtime. Two separate literals would be two
-   * templates and would legitimately rebuild.
+   * One call site, so both renders share a TemplateStringsArray, the identity
+   * the template cache keys on and the reason the transform emits a real tagged
+   * template. Two literals would be two templates and would rebuild.
    */
   const view = (step: number) => html`<${Counter} .step=${step} />`;
 

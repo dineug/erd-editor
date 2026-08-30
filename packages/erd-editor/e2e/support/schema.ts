@@ -1,14 +1,4 @@
-/**
- * Minimal, hand-authored v3 documents used to seed the editor.
- *
- * These mirror `@dineug/erd-editor-schema`'s v3 shape but are intentionally
- * duplicated rather than imported: pulling the schema package into the
- * Playwright (Node) process would drag the editor's browser-only module graph
- * along with it. The editor's own parser fills in every field omitted here, so
- * a seed only has to state what a test actually cares about.
- */
-
-/** `ColumnOption` bits — see `v3/schema/tableColumn.entity.ts`. */
+/** ColumnOption bits — see v3/schema/tableColumn.entity.ts. */
 export const ColumnOption = {
   autoIncrement: 1,
   primaryKey: 2,
@@ -16,13 +6,13 @@ export const ColumnOption = {
   notNull: 8,
 } as const;
 
-/** `ColumnUIKey` bits — the key badge rendered on a column row. */
+/** ColumnUIKey bits — the key badge rendered on a column row. */
 export const ColumnUIKey = {
   primaryKey: 1,
   foreignKey: 2,
 } as const;
 
-/** `RelationshipType` bits — the four drawable relationship kinds. */
+/** RelationshipType bits — the four drawable relationship kinds. */
 export const RelationshipType = {
   ZeroOne: 2,
   ZeroN: 4,
@@ -30,7 +20,7 @@ export const RelationshipType = {
   OneN: 16,
 } as const;
 
-/** `Show` bits — which parts of a table row are rendered. */
+/** Show bits — which parts of a table row are rendered. */
 export const Show = {
   tableComment: 1,
   columnComment: 2,
@@ -43,7 +33,7 @@ export const Show = {
   relationship: 256,
 } as const;
 
-/** The editor's own default for `settings.show`. */
+/** The editor's own default for settings.show. */
 export const DEFAULT_SHOW =
   Show.tableComment |
   Show.columnComment |
@@ -53,7 +43,7 @@ export const DEFAULT_SHOW =
   Show.columnNotNull |
   Show.relationship;
 
-/** `settings.columnOrder` default — name, dataType, notNull, default, comment… */
+/** settings.columnOrder default — name, dataType, notNull, default, comment… */
 export const DEFAULT_COLUMN_ORDER = [1, 2, 4, 8, 16, 32, 64];
 
 export const CANVAS_SIZE = 2000;
@@ -66,9 +56,9 @@ export type ColumnSeed = {
   dataType?: string;
   comment?: string;
   default?: string;
-  /** Bitmask of `ColumnOption`. */
+  /** Bitmask of ColumnOption. */
   options?: number;
-  /** Bitmask of `ColumnUIKey`. */
+  /** Bitmask of ColumnUIKey. */
   keys?: number;
 };
 
@@ -294,11 +284,9 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
 }
 
 /**
- * Two well-separated tables — the default stage for interaction specs.
- *
- * Positions are chosen so both tables sit inside a 1440x900 viewport with the
- * canvas unscrolled, and so the horizontal gap between them is wide enough for
- * a marquee drag to start on empty canvas.
+ * Two well-separated tables, the default stage for interaction specs. Positioned
+ * so both sit inside the viewport with the canvas unscrolled, and so the gap
+ * between them is wide enough for a marquee drag to start on empty canvas.
  */
 export const twoTables = () =>
   createSchema({

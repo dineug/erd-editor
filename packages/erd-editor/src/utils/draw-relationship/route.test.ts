@@ -86,10 +86,9 @@ describe('countBlocked', () => {
   });
 
   it('agrees with an unfiltered count over random scenes', () => {
-    // `countBlocked` skips whole tables using the polyline's bounding box. The
-    // saving is real — it is the router's hot function — but it is only allowed
-    // if it never changes an answer, which a handful of hand-picked cases
-    // cannot show. This is the same count without any of the skipping.
+    // countBlocked skips whole tables using the polyline's bounding box, which
+    // is only allowed if it never changes an answer. This is the same count
+    // without any of the skipping.
     const naive = (
       points: Point[],
       boxes: Obstacles,
@@ -239,9 +238,8 @@ describe('routeOrthogonal', () => {
 
   it('joins two ends that face different axes with a single bend when it can', () => {
     // The end turning point is above its anchor, so a route arriving from above
-    // carries straight on into the guide line. Were it below (`bottom`), the
-    // same corner would arrive and immediately reverse, and the router takes
-    // three bends instead.
+    // carries straight on into the guide line. Below, the same corner would
+    // reverse on arrival and the router takes three bends instead.
     const points = routeOrthogonal(
       { x: 100, y: 100 },
       Direction.right,

@@ -57,10 +57,9 @@ vi.mock('@easylogic/colorpicker', () => ({
 let mounted: Mounted | null = null;
 
 /**
- * `Erd` subscribes to the global `drag$` on every canvas mousedown, and only a
- * global mouseup/touchend completes that subscription. Ending the drag before
- * unmounting keeps one test from leaking a live subscription (and the shared
- * movement bookkeeping) into the next one.
+ * Erd subscribes to the global drag$ on every canvas mousedown, and only a
+ * global mouseup completes it. Ending the drag before unmounting keeps a live
+ * subscription and the shared movement bookkeeping out of the next test.
  */
 afterEach(() => {
   window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));

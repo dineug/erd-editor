@@ -1,23 +1,9 @@
 import { Point } from '@/internal-types';
 
-/**
- * Cuts the corners of an orthogonal polyline at 45 degrees.
- *
- * This is where the drawing gets its printed-circuit look, and it is deliberately
- * the last thing that happens to a route: the polyline the router and the nudge
- * pass work on stays orthogonal, so obstacle tests, channels and the overlap
- * metrics all keep measuring right angles. Only what reaches the screen is cut.
- *
- * A staircase — two turns the opposite way round a short middle run — needs no
- * special case. Both cuts reach the middle of that run and continue in the same
- * direction, so they meet as one long diagonal, which is the pattern a circuit
- * board is made of.
- */
-
 /** Below this a cut is a smudge rather than a corner, and the corner is kept. */
 const MIN_CHAMFER = 2;
 
-/** Steps `distance` from `corner` towards `toward`, which shares one axis. */
+/** Steps distance from corner towards toward, which shares one axis. */
 function along(corner: Point, toward: Point, distance: number): Point {
   return Math.abs(corner.x - toward.x) < 0.5
     ? { x: corner.x, y: corner.y + Math.sign(toward.y - corner.y) * distance }

@@ -2,51 +2,6 @@ import type { Page } from '@playwright/test';
 
 import type { ErdDocument } from '../support/schema';
 
-/**
- * In-page measurement for the routing benchmark.
- *
- * Everything is measured inside the browser rather than across the Playwright
- * wire: a `page.mouse.move` is a CDP round trip whose latency is larger than
- * the work being measured. The harness dispatches the same events the editor
- * actually listens to (`src/utils/globalEventObservable.ts` merges window-level
- * `mousedown`/`mousemove`/`mouseup`) and times the pipeline they drive.
- *
- * ## What each metric includes
- *
- * `busyMs`      Main-thread blocking over the drag, measured by a ping loop
- *               that runs outside every task the editor owns, minus the same
- *               measurement taken while idle. Bracketing a dispatch instead
- *               would miss most of the work: `relationshipSortHook` is a 5ms
- *               trailing throttle, so the relationship update lands in a later
- *               task than the move that caused it — a probe run against the
- *               large corpus saw 8 attribute writes and zero relationship
- *               groups inside such a bracket.
- *
- * `frameMs`     Interval between animation frames while one move is driven per
- *               frame. Includes style, layout, paint and compositing. This is
- *               the *user-visible* half, and the only number that can fall
- *               behind 60fps.
- *
- * `attrWrites`  Attribute mutations committed to the DOM during the drag,
- *               counted by `MutationObserver` and split by whether the target
- *               is inside the relationship SVG. Deterministic — no timing noise
- *               at all — which makes it the sharpest regression signal of the
- *               three. A change that claims to cut render work has to move it.
- *
- * `loadMs`      `setInitialValue` to settled, which is the one path that runs
- *               `relationshipSort` over the whole document at once.
- *
- * ## Why the two passes observe different things
- *
- * The `MutationObserver` that produces `attrWrites` and `fanOut` costs time
- * itself, and that cost scales with how many attributes the drag writes — which
- * is exactly the quantity a routing change moves. Leaving it installed during
- * the blocking pass charged the editor for the harness watching it, and the idle
- * control it is subtracted against had no observer to cancel out against. So it
- * runs in the frame pass only, where its cost lands in `frameMs` alongside the
- * paint it belongs next to, and the blocking pass measures the editor alone.
- */
-
 export type Stats = {
   count: number;
   min: number;
@@ -64,11 +19,9 @@ export type BenchResult = {
   /** Main-thread blocking per move, with the idle floor already subtracted. */
   busyMsPerMove: number;
   /**
-   * The two halves `busyMsPerMove` is the difference of, kept so the
-   * subtraction can be audited. A drag whose raw blocking barely clears the
-   * idle floor produces a small difference out of two large numbers, and the
-   * clamp at zero hides it entirely; without these a run cannot be told from a
-   * measurement that fell apart.
+   * The two halves busyMsPerMove is the difference of, kept so the subtraction
+   * can be audited: a drag barely clearing the idle floor is a small difference
+   * of two large numbers, which the clamp at zero would hide entirely.
    */
   busyRaw: { dragMs: number; idleMs: number; clamped: boolean };
   /**
@@ -126,7 +79,7 @@ type BenchHarness = {
 };
 
 /**
- * Defines `window.__erdBench`. Runs once per page — the fixture is reloaded
+ * Defines window.__erdBench. Runs once per page — the fixture is reloaded
  * between benchmarks, so state never leaks across a run.
  */
 export async function installBench(page: Page) {
@@ -134,7 +87,7 @@ export async function installBench(page: Page) {
     const host = document.querySelector('erd-editor');
     if (!host) throw new Error('erd-editor is not mounted');
 
-    // The fixture page forces `attachShadow` open; production stays `closed`.
+    // The fixture page forces attachShadow open; production stays closed.
     const root = (host as HTMLElement & { shadowRoot: ShadowRoot | null })
       .shadowRoot;
     if (!root) throw new Error('shadow root is not reachable');
@@ -155,14 +108,9 @@ export async function installBench(page: Page) {
       });
 
     /**
-     * Resolves after the reactive drain that a dispatch kicks off.
-     *
-     * `store.dispatch` defers through `asap` (one microtask), and the observer
-     * flush that follows queues itself as another. Chaining past both would
-     * pin the bracket to a hop count that a scheduler change could silently
-     * invalidate, so this drains to the end of the *task* instead and accepts
-     * that a rendering opportunity may occasionally land inside. Medians over
-     * a hundred-odd samples absorb it; `frameMs` measures paint on purpose.
+     * Resolves after the reactive drain a dispatch kicks off. Draining to the
+     * end of the task rather than chaining microtasks keeps this off a hop
+     * count a scheduler change could invalidate; medians absorb the slack.
      */
     const settled = () => macrotask();
 
@@ -184,14 +132,9 @@ export async function installBench(page: Page) {
       });
 
     /**
-     * Main-thread blocking, measured from outside every task the editor owns.
-     *
-     * A tight MessageChannel ping loop ticks in tens of microseconds when the
-     * thread is free; every millisecond it is late by is a millisecond
-     * something else held the thread. This catches work the editor schedules
-     * on its own timers — the 5ms trailing throttle on `relationshipSortHook`
-     * lands in a task of its own, outside any bracket drawn around a dispatch —
-     * as well as style, layout and paint.
+     * Main-thread blocking, measured from outside every task the editor owns: a
+     * ping loop's lateness is time something else held the thread. This catches
+     * work the editor schedules on its own timers, as well as style and paint.
      */
     const blockingMonitor = () => {
       const loop = new MessageChannel();
@@ -237,7 +180,7 @@ export async function installBench(page: Page) {
       /**
        * The control. Same page, same loaded document, same rAF loop — but no
        * event is dispatched, so nothing re-renders. Whatever this reports is
-       * the runner's floor, and `frameMs` only means something above it.
+       * the runner's floor, and frameMs only means something above it.
        */
       idleFrames(count: number, useMonitor: boolean) {
         const monitor = useMonitor ? blockingMonitor() : null;
@@ -262,17 +205,9 @@ export async function installBench(page: Page) {
       },
 
       /**
-       * How often a relationship changes which side of a table it leaves from,
-       * over the course of one drag.
-       *
-       * Side choice is remade from scratch on every mousemove, so a table
-       * crossing the point where a different pair of sides becomes marginally
-       * closer makes its connectors jump. Nothing else here can see that: the
-       * drawing is equally valid before and after, so no overlap metric moves,
-       * and a jump costs no measurable time.
-       *
-       * This runs as its own pass and serialises the document every frame,
-       * which is far too expensive to do while timing anything.
+       * How often a relationship changes which side it leaves from over one
+       * drag, which no overlap metric can see and which costs no measurable
+       * time. Its own pass, because it serialises the document every frame.
        */
       async sideFlips({ tableId, moves, stepX, stepY }) {
         const editor = host as HTMLElement & { value: string };
@@ -353,7 +288,7 @@ export async function installBench(page: Page) {
 
         const box = (header as HTMLElement).getBoundingClientRect();
         // Same grip point the interaction specs use: the header strip, clear of
-        // the colour bar and the column rows that `onMoveStart` opts out of.
+        // the colour bar and the column rows that onMoveStart opts out of.
         let x = box.x + box.width / 2;
         let y = box.y + 8;
 
@@ -377,10 +312,9 @@ export async function installBench(page: Page) {
           }
         };
 
-        // Installed for the frame pass only. Its cost rises with the number of
+        // Installed for the frame pass only: its cost rises with the number of
         // attributes the drag writes, so leaving it on during the blocking pass
-        // billed the editor for the harness — and by an amount that grows with
-        // exactly what a routing change moves.
+        // bills the editor for the harness by exactly what a change moves.
         const observer = observe ? new MutationObserver(consume) : null;
         observer?.observe(canvas(), { attributes: true, subtree: true });
 
@@ -392,7 +326,7 @@ export async function installBench(page: Page) {
 
         // One move per animation frame — the cadence a real 60Hz drag
         // produces, and the only one under which the 5ms trailing throttle on
-        // `relationshipSortHook` fires once per move rather than coalescing.
+        // relationshipSortHook fires once per move rather than coalescing.
         await new Promise<void>(resolve => {
           let step = 0;
           let previous = 0;

@@ -3,8 +3,8 @@ import { ValuesType } from '@/internal-types';
 export type Token = {
   type: TokenType;
   value: string;
-  // Set on tokens that came out of `"`, `'`, backtick or `[]` quoting, so a
-  // quoted identifier such as `key` is never read back as the KEY keyword.
+  // Set on tokens that came out of ", ', backtick or [] quoting, so a
+  // quoted identifier such as key is never read back as the KEY keyword.
   quoted?: boolean;
 };
 
@@ -85,7 +85,7 @@ export function tokenizer(source: string): Token[] {
       continue;
     }
 
-    // SQL comments are not tokens: a `;` or `(` inside one would otherwise end
+    // SQL comments are not tokens: a ; or ( inside one would otherwise end
     // the statement or be read as its column list.
     if (match.dash(char) && match.dash(source[pos + 1])) {
       while (isChar() && !match.newLine(char)) {
@@ -214,7 +214,7 @@ export function tokenizer(source: string): Token[] {
         isChar() &&
         match.string(char) &&
         !match.breakString(char) &&
-        // A comment needs no whitespace in front of it: `INT-- pk`.
+        // A comment needs no whitespace in front of it: INT-- pk.
         !(match.dash(char) && match.dash(source[pos + 1])) &&
         !(match.slash(char) && match.asterisk(source[pos + 1]))
       ) {

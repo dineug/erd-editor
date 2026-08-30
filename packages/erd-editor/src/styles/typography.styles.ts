@@ -31,7 +31,7 @@ export const typography = {
   paragraph,
 } as const;
 
-/** Global, not scoped: `:host` is the shadow host, which no component class matches. */
+/** Global, not scoped: :host is the shadow host, which no component class matches. */
 export const typographyStyle = css.global`
   :host {
     --font-size-1: 12px;

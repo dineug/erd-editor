@@ -2,20 +2,6 @@ import type { Page } from '@playwright/test';
 
 import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 
-/**
- * Overlap metrics, computed from what the editor actually drew.
- *
- * The segments are read back out of the canvas SVG rather than recomputed from
- * the document, so these numbers describe the rendered picture — a routing
- * change that only edits anchors but never reaches the path still moves them.
- *
- * Two counts are kept apart on purpose. `crossingsShared` are between
- * relationships that touch the same table, which anchor ordering can drive to
- * zero on its own; `crossingsFree` are between relationships with no table in
- * common, which only side re-assignment can reduce. Summing them hides which
- * change did the work.
- */
-
 export type Segment = {
   relationshipId: string;
   x1: number;
@@ -56,15 +42,13 @@ export type QualityMetrics = {
   crossingsFree: number;
   nodeCrossings: number;
   collinearOverlapPx: number;
-  /** `Infinity` when no table side carries two anchors. */
+  /** Infinity when no table side carries two anchors. */
   minAnchorPitch: number;
   totalLengthPx: number;
   /**
-   * Longest single collinear overlap and enough context to act on it: which
-   * relationships, which axis, and which table side each end sits on. Two
-   * relationships leaving the *same* side share a corridor only if slotting
-   * failed; two leaving *different* tables share one because nothing coordinates
-   * across tables at all.
+   * Longest single collinear overlap and enough context to act on it. Two
+   * relationships leaving one side share a corridor only if slotting failed;
+   * two leaving different tables share one because nothing coordinates them.
    */
   worstCollinear: {
     length: number;
@@ -80,16 +64,9 @@ export type QualityMetrics = {
 };
 
 /**
- * Reads the drawn routing segments and the table boxes, both in canvas
- * coordinates.
- *
- * `Relationship.tsx` renders the routing polyline as one `path.route` and every
- * cardinality decoration as a bare `<line>`, so the route is read back out of
- * that path's `d` — a run of `M`/`L` points, contiguous by construction. The
- * class is what selects it: the same `<g>` also holds a `path.hit-area` with the
- * same shape, and counting both would double every segment. Scoping to
- * `[data-testid="erd-canvas"]` keeps the minimap's second copy of the same SVG
- * out of the count.
+ * Reads the drawn routing segments and the table boxes in canvas coordinates.
+ * The route class is what selects the polyline, because the same group holds a
+ * hit band of the same shape, and the canvas scope excludes the minimap's copy.
  */
 export async function readScene(page: Page): Promise<Scene> {
   return page.evaluate(() => {
@@ -124,8 +101,8 @@ export async function readScene(page: Page): Promise<Scene> {
     const rects: TableRect[] = [];
     canvas.querySelectorAll('.table[data-id]').forEach(element => {
       const table = element as HTMLElement;
-      // `offsetWidth` is layout px, so the canvas zoom transform does not scale
-      // it; `left`/`top` are the inline position the editor writes from ui.x/y.
+      // offsetWidth is layout px, so the canvas zoom transform does not scale
+      // it; left/top are the inline position the editor writes from ui.x/y.
       rects.push({
         id: table.getAttribute('data-id') ?? '',
         x: table.offsetLeft,
@@ -225,27 +202,9 @@ function segmentIntersectsRect(segment: Segment, rect: TableRect) {
 }
 
 /**
- * How far two connectors run side by side close enough to read as one line.
- *
- * The reader's complaint is visual, not equality. An earlier version bucketed
- * segments by their coordinate rounded to one decimal, which answers a different
- * question — how often two segments land
- * on the *identical* line — and that question flatters any change that moves a
- * shared channel by a pixel. It reported zero for the medium corpus while the
- * same scene held 2008px of overlap a reader cannot distinguish from a single
- * connector. Pairs are compared directly rather than clustered: clustering
- * chains 0-3-6-9 into one group, and a band is not an equivalence relation.
- *
- * Read from the width the editor draws with, so it cannot drift from the
- * picture it is a complaint about: two connectors are within a band of each
- * other exactly when their strokes overlap. It was 3 while the connector was,
- * and followed it to 2 — figures recorded under the old band read high by
- * comparison and are marked as such in `README.md`.
- *
- * A stale band is not a harmless conservatism. At 3 against a 2px connector a
- * pair separated by exactly 3 sits on the boundary and floating point drops it
- * inside, which is what made a 3px rung of `NUDGE_GAPS` look like a 188%
- * regression when its real cost was a tenth of that.
+ * How far two connectors run close enough to read as one line. Read from the
+ * width the editor draws with, so two are within a band exactly when their
+ * strokes overlap. Pairs are compared directly, since a band is no equivalence.
  */
 const OVERLAP_BAND = RELATIONSHIP_STROKE_WIDTH;
 
@@ -318,16 +277,9 @@ export function collinearOverlap(segments: Segment[], band = OVERLAP_BAND) {
 const HORIZONTAL_SIDE = 3;
 
 /**
- * Smallest gap between two anchors on the same table side.
- *
- * Read from the document rather than from the drawn segments: the routing
- * polyline starts at the *turning point*, one stub away from the table, so no
- * segment endpoint is an anchor. An earlier version of this scanned segment
- * ends for points that happened to sit near a table box and silently reported
- * whatever it found — including nothing at all once stub lengths changed.
- *
- * `Infinity` means no side carries two anchors, which is a real answer and not
- * a failure; callers render it as such rather than folding it into zero.
+ * Smallest gap between two anchors on the same table side, read from the
+ * document rather than the drawn segments, whose polyline starts a stub away
+ * from the table. Infinity means no side carries two anchors, a real answer.
  */
 export function minAnchorPitch(scene: Scene) {
   const sides = new Map<string, number[]>();

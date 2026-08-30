@@ -29,7 +29,7 @@ const rulesOf = (host: ShadowRoot): string[] =>
 const styleTextsOf = (host: ShadowRoot): string[] =>
   Array.from(host.querySelectorAll('style')).map(el => el.textContent ?? '');
 
-/** `css` and the sheet registry, in a module registry of their own so no state leaks between tests. */
+/** css and the sheet registry, in a module registry of their own so no state leaks between tests. */
 const load = async () => {
   vi.resetModules();
   css = (await import('@/template/css')).css;
@@ -40,14 +40,9 @@ const load = async () => {
 };
 
 /**
- * The prototype that actually owns a `CSSStyleSheet` method.
- *
- * happy-dom hands each window its own `class CSSStyleSheet extends <impl>`, so
- * `CSSStyleSheet.prototype` owns nothing but `constructor` and the methods are inherited one link
- * up. `delete CSSStyleSheet.prototype.replace` therefore returns `true` and removes nothing — a
- * stub that looks like it worked and leaves the fallback unreachable. `vi.spyOn` has the same
- * problem in reverse: it would install an own property on the subclass and shadow the real one
- * without ever seeing the calls the library makes. This walks to the owner instead.
+ * The prototype that actually owns a CSSStyleSheet method. happy-dom subclasses
+ * per window, so deleting off the subclass removes nothing and spying installs
+ * a shadowing own property; this walks to the owner instead.
  */
 const ownerOf = (method: keyof CSSStyleSheet): object => {
   let proto: object | null = CSSStyleSheet.prototype;
@@ -66,18 +61,9 @@ const REPLACE_DESCRIPTOR = Object.getOwnPropertyDescriptor(
 ) as PropertyDescriptor;
 
 /**
- * The same load, with constructable stylesheets taken away.
- *
- * `supportsAdoptingStyleSheets` is a module-level const evaluated once at import time, so the only
- * way into the `<style>` fallback is to make the capability absent *before* the import. This
- * removes `replace` — the third term of that detection, and the one that can go without breaking
- * the CSSOM the rest of the file reads back through `adoptedStyleSheets` — for exactly the length
- * of the import, then puts it straight back. The const is resolved by then, so the loaded module
- * keeps the fallback while every other test sees an intact `CSSStyleSheet`.
- *
- * The capability is never assumed to be gone: `adopts nothing` below reads `adoptedStyleSheets`
- * and fails loudly if a future happy-dom moves `replace` again, rather than quietly re-testing the
- * adopted path under a fallback heading.
+ * The same load with constructable stylesheets taken away. The capability is a
+ * module-level const, so replace is removed for exactly the length of the
+ * import and put straight back, leaving every other test an intact CSSStyleSheet.
  */
 const loadWithoutConstructableStyleSheets = async () => {
   delete (REPLACE_OWNER as Partial<CSSStyleSheet>).replace;
@@ -94,14 +80,9 @@ const ADOPTED_DESCRIPTOR = Object.getOwnPropertyDescriptor(
 ) as PropertyDescriptor;
 
 /**
- * Turns `adoptedStyleSheets` into the shape Chrome 73-98 exposed.
- *
- * happy-dom's is a plain mutable array — the ObservableArray of Chrome 99, Firefox 101 and Safari
- * 16.4, the *newer* of the two shapes the attribute has had. The older one is a WebIDL
- * `FrozenArray`: the setter still works, but every read hands back a frozen array, so the list can
- * only ever be replaced. Wrapping the getter reproduces that exactly, which does two things — it
- * reaches the reassignment fallback, and it makes a `push` the code should not have attempted
- * throw rather than quietly succeed.
+ * Turns adoptedStyleSheets into the older FrozenArray shape, where the setter
+ * works but every read hands back a frozen array. That reaches the reassignment
+ * fallback and makes an unwanted push throw rather than quietly succeed.
  */
 const freezeAdoptedStyleSheets = () => {
   const get = ADOPTED_DESCRIPTOR.get as (this: ShadowRoot) => CSSStyleSheet[];
@@ -256,7 +237,7 @@ describe('template/vCSSStyleSheet', () => {
       const host = createHost();
       addCSSHost(host);
 
-      // Registered alphabetically, the way `simple-import-sort` would order the imports.
+      // Registered alphabetically, the way simple-import-sort would order the imports.
       const fonts = css.global`
         .fonts {
           color: blue;
@@ -384,15 +365,9 @@ describe('template/vCSSStyleSheet', () => {
   });
 
   /**
-   * Reordering the array is only half of what a pin has to do.
-   *
-   * Chromium works out what to invalidate after an `adoptedStyleSheets` change from the symmetric
-   * difference of the rule sets, so a permutation — same sheets, new order — dirties nothing and
-   * every element that already has a computed style keeps the winner it first resolved with.
-   * `setGlobalStyleOrder` re-runs `replaceSync` over each global's own text to force that
-   * invalidation. `e2e/specs/chromium-ignores-adopted-sheet-reorder.spec.ts` is what proves the
-   * sequence moves a real cascade; happy-dom has no style engine and can only hold the call
-   * pattern in place, which is exactly what these do.
+   * Reordering the array is only half of what a pin has to do, because a
+   * permutation dirties nothing in Chromium. These hold the replaceSync call
+   * pattern in place; the e2e spec is what proves it moves a real cascade.
    */
   describe('pinned order invalidation', () => {
     const spyReplaceSync = () =>
@@ -418,7 +393,7 @@ describe('template/vCSSStyleSheet', () => {
         }
       `;
 
-      // Installed after registration, so the `replaceSync` each sheet gets on creation is not
+      // Installed after registration, so the replaceSync each sheet gets on creation is not
       // counted and the only calls left are the ones the pin makes.
       const replaceSync = spyReplaceSync();
       setGlobalStyleOrder([fonts, reset]);
@@ -596,11 +571,9 @@ describe('template/vCSSStyleSheet', () => {
   });
 
   /**
-   * The path a browser without constructable stylesheets takes. Safari shipped
-   * `adoptedStyleSheets` in 16.4 and this package targets ES2020, so it is a shipping path and not
-   * dead code — but happy-dom supports the constructable API, which means nothing reaches it
-   * unless the capability is taken away at import time. See
-   * `loadWithoutConstructableStyleSheets`.
+   * The path a browser without constructable stylesheets takes: a shipping path
+   * for this package's floor, not dead code, but happy-dom supports the
+   * constructable API so nothing reaches it unless the capability is removed.
    */
   describe('<style> element fallback', () => {
     beforeEach(loadWithoutConstructableStyleSheets);
@@ -694,7 +667,7 @@ describe('template/vCSSStyleSheet', () => {
         }
       `;
 
-      // The `insertBefore` half of the fallback: the component element is already in the tree and
+      // The insertBefore half of the fallback: the component element is already in the tree and
       // is not moved, so the only way the global lands ahead of it is the insertion point.
       expect(styleTextsOf(host)).toEqual([
         '.g{color:blue;}',
@@ -744,14 +717,9 @@ describe('template/vCSSStyleSheet', () => {
   });
 
   /**
-   * Which path a registration took is observable without a spy, because the two do different
-   * things to the array object the host is holding: an append mutates the one that is already
-   * there, a rebuild hands over a new one. So array identity *is* the signal, and it is a better
-   * one than a counter — it reads the effect the optimisation exists to produce instead of the
-   * call that was supposed to produce it.
-   *
-   * It holds whichever way the setter behaves. A rebuild assigns, and an assignment always
-   * installs a new backing list; an append never assigns, so nothing can replace it.
+   * Which path a registration took is observable without a spy: an append
+   * mutates the array the host already holds and a rebuild hands over a new one,
+   * so array identity reads the effect rather than the call meant to produce it.
    */
   describe('append fast path', () => {
     it('appends a component sheet without rebuilding the adopted list', () => {
@@ -845,7 +813,7 @@ describe('template/vCSSStyleSheet', () => {
         color: red;
       `;
 
-      // `setGlobalStyleOrder` invalidates the cache, and the rebuild it triggers has to leave it
+      // setGlobalStyleOrder invalidates the cache, and the rebuild it triggers has to leave it
       // populated — otherwise the next component registration falls back to a rebuild forever.
       expect(host.adoptedStyleSheets).toBe(adopted);
       expect(rulesOf(host)).toEqual([
@@ -856,13 +824,9 @@ describe('template/vCSSStyleSheet', () => {
   });
 
   /**
-   * The trap in `adoptedStyleSheets`: a browser can support the attribute and still refuse to let
-   * it be mutated. Chrome 73-98 is that browser. `supportsAdoptingStyleSheets` cannot see the
-   * difference — both shapes answer its three questions the same way — so mutability is detected
-   * on its own, and when it is absent every update is a reassignment, permanently.
-   *
-   * The getter stays wrapped for the whole block on purpose: if anything below reached for `push`,
-   * it would throw here rather than pass.
+   * A browser can support adoptedStyleSheets and still refuse to let it be
+   * mutated, and the capability check cannot see the difference, so mutability
+   * is detected on its own and its absence makes every update a reassignment.
    */
   describe('frozen adoptedStyleSheets', () => {
     beforeEach(async () => {
@@ -956,13 +920,9 @@ describe('template/vCSSStyleSheet', () => {
   });
 
   /**
-   * The fast path is only sound if nothing can tell it from the slow one, and the interesting
-   * failures are the ones no hand-written case thinks to interleave — a pin between two component
-   * registrations, a host joining while the bucket is stale, a global arriving after a host left.
-   *
-   * So the sequence is generated and the expectation is derived independently: the oracle below
-   * re-states the rule (`orderedVSheets`) from the operations the test itself issued, rather than
-   * calling into the module and comparing it with itself. The seed is fixed, so a failure replays.
+   * The fast path is sound only if nothing tells it from the slow one, and the
+   * interesting interleavings are the ones no hand-written case thinks of. The
+   * oracle re-states the rule from the operations issued; the seed is fixed.
    */
   describe('equivalence with a full rebuild', () => {
     const componentTemplates = [
@@ -1034,7 +994,7 @@ describe('template/vCSSStyleSheet', () => {
           mode: 'global' | 'scoped'
         ) => {
           const id = String(literal);
-          if (literalOf.has(id)) return; // same content, so `vRender` registered nothing
+          if (literalOf.has(id)) return; // same content, so vRender registered nothing
 
           const added = Array.from(observer.adoptedStyleSheets).find(
             sheet => !idOf.has(sheet)
@@ -1046,7 +1006,7 @@ describe('template/vCSSStyleSheet', () => {
           idOf.set(added, id);
         };
 
-        /** `orderedVSheets`, restated: pinned globals, then unpinned ones, then components. */
+        /** orderedVSheets, restated: pinned globals, then unpinned ones, then components. */
         const expected = () => {
           const rank = (id: string) => {
             const index = pinned.indexOf(id);
@@ -1055,7 +1015,7 @@ describe('template/vCSSStyleSheet', () => {
           const globals = registered
             .map((entry, index) => ({ ...entry, index }))
             .filter(({ mode }) => mode === 'global')
-            // The tiebreak is explicit rather than leaning on `sort` being stable, so the oracle
+            // The tiebreak is explicit rather than leaning on sort being stable, so the oracle
             // and the implementation agree for reasons of their own.
             .sort((a, b) => rank(a.id) - rank(b.id) || a.index - b.index)
             .map(({ id }) => id);
@@ -1089,7 +1049,7 @@ describe('template/vCSSStyleSheet', () => {
               [pool[i], pool[j]] = [pool[j], pool[i]];
             }
             // A prefix, so the pin covers "some pinned, some not" — and it is drawn from every
-            // literal, so a component sometimes lands in the array the way `setGlobalStyleOrder`
+            // literal, so a component sometimes lands in the array the way setGlobalStyleOrder
             // says it may.
             const order = pool.slice(
               0,
@@ -1118,8 +1078,8 @@ describe('template/vCSSStyleSheet', () => {
             performed.left++;
           },
           () => {
-            // Moving a custom element in the DOM runs `disconnectedCallback` and then
-            // `connectedCallback`, so a host that left and came back is a shipping path and not a
+            // Moving a custom element in the DOM runs disconnectedCallback and then
+            // connectedCallback, so a host that left and came back is a shipping path and not a
             // contrivance.
             if (removed.length === 0) return;
             const [host] = removed.splice(

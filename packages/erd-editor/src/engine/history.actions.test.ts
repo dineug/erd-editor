@@ -107,7 +107,7 @@ describe('pushHistory', () => {
   it('records nothing when the undo handler produced no actions', () => {
     const { history, push } = setup();
 
-    // the table does not exist, so `removeTable` bails out before pushing undo
+    // the table does not exist, so removeTable bails out before pushing undo
     push([removeTableAction({ id: 'ghost' })]);
 
     expect(history.size).toBe(0);

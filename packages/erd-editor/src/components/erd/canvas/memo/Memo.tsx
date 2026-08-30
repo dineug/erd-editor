@@ -47,8 +47,8 @@ const Memo: FC<MemoProps> = (props, ctx) => {
       !el.closest('.icon') &&
       !el.closest('.sash');
 
-    // `move$` is not `share()`d and mutates module-global `prevX`/`prevY`, so
-    // a second concurrent `drag$` subscriber always reads `movementX === 0`.
+    // move$ is not share()d and mutates module-global prevX/prevY, so
+    // a second concurrent drag$ subscriber always reads movementX === 0.
     if (
       canDrag &&
       tryStartAltDragDuplicate(app.value, event, props.memo.id, SelectType.memo)

@@ -73,7 +73,7 @@ const base64Names = Object.values(iconMap)
   .filter(icon => icon.type === 'base64')
   .map(icon => icon.name);
 
-// 12px is the row to check: `stroke-width: 2` on a 24 grid renders at 1.0 device px.
+// 12px is the row to check: stroke-width: 2 on a 24 grid renders at 1.0 device px.
 const SIZES = [12, 14, 16, 18, 24];
 
 const SAMPLE: IconName[] = [

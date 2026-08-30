@@ -11,7 +11,7 @@ import { Token, TokenType } from '@/parser/tokenizer';
 const createTypeEqual = (type: string) => (tokens: Token[]) => (pos: number) =>
   tokens[pos] ? tokens[pos].type === type : false;
 
-// A quoted token is always an identifier, never a keyword: `key` is a column
+// A quoted token is always an identifier, never a keyword: key is a column
 // named key, KEY is the index definition.
 const createValueEqual = (type: string) => {
   const value = type.toUpperCase();
@@ -75,10 +75,9 @@ export const isFunctionValue = createValueEqual('FUNCTION');
 export const isClusterValue = createValueEqual('CLUSTER');
 export const isByValue = createValueEqual('BY');
 
-// What a constraint may carry after its key list: Databricks writes
-// `NOT ENFORCED RELY` on every key it exports, ANSI writes
-// `DEFERRABLE INITIALLY DEFERRED`. None of it belongs to a column, and the
-// column branch runs first -- left unclaimed, the leading word becomes one.
+// What a constraint may carry after its key list, from Databricks' NOT
+// ENFORCED RELY to ANSI's DEFERRABLE INITIALLY DEFERRED. The column branch runs
+// first, so left unclaimed the leading word becomes a column.
 export const isConstraintState = (tokens: Token[]) => {
   const isEnforced = isEnforcedValue(tokens);
   const isRely = isRelyValue(tokens);
@@ -98,11 +97,9 @@ export const isConstraintState = (tokens: Token[]) => {
     isImmediate(pos);
 };
 
-// `<` and `>` are not break characters, so a nested type arrives glued to
-// whatever sits beside it -- `MAP<STRING, INT>` is `MAP<STRING`, `,`, `INT>`.
-// The comma is the column separator, so one column read as several. Rather
-// than break the angle brackets in the lexer, where every fixed-offset
-// matcher would shift, the span is recovered here by balancing them.
+// Angle brackets are not break characters, so a nested type arrives glued to
+// its neighbours and its commas read as column separators. Breaking them in the
+// lexer would shift every fixed-offset matcher, so the span is balanced here.
 const NestedDataTypes = ['ARRAY', 'MAP', 'STRUCT'];
 
 export const matchNestedDataType = (tokens: Token[]) => {
@@ -193,10 +190,9 @@ export const isNewStatement = (tokens: Token[]) => {
     commentOn(pos);
 };
 
-// What may sit between CREATE and TABLE. Snowflake's GET_DDL always writes
-// `CREATE OR REPLACE`, and the table kind is a word of its own. The list is a
-// whitelist rather than a scan to the next TABLE, which would also claim
-// `CREATE OR REPLACE VIEW v AS SELECT ... FROM TABLE(...)`.
+// What may sit between CREATE and TABLE. A whitelist rather than a scan to the
+// next TABLE, which would also claim a view whose select reads from a table
+// function.
 const CreateTableModifiers: ReadonlyArray<string> = [
   'OR',
   'REPLACE',
@@ -214,9 +210,8 @@ const CreateTableModifiers: ReadonlyArray<string> = [
 ];
 
 // How many tokens the header spans before the table name, 0 when there is no
-// CREATE TABLE at `pos`. The dispatch loop only needs to know that it matched;
-// the statement parser needs the length, because the name sits right after it
-// and the modifiers are not a fixed count.
+// CREATE TABLE at pos. The statement parser needs the length, because the name
+// sits right after it and the modifiers are not a fixed count.
 export const matchCreateTable = (tokens: Token[]) => {
   const isCreate = isCreateValue(tokens);
   const isTable = isTableValue(tokens);
@@ -247,8 +242,8 @@ export const matchCreateTable = (tokens: Token[]) => {
 
     if (!isTable(cursor)) return 0;
 
-    // BigQuery spells a table-valued function `CREATE OR REPLACE TABLE
-    // FUNCTION f(...)`, which would otherwise take FUNCTION as the name.
+    // BigQuery spells a table-valued function CREATE OR REPLACE TABLE
+    // FUNCTION f(...), which would otherwise take FUNCTION as the name.
     if (isFunction(cursor + 1)) return 0;
 
     cursor++;
@@ -300,8 +295,8 @@ export const isAlterTableOnly = (tokens: Token[]) => {
   return (pos: number) => alterTable(pos) && isOnly(pos + 2);
 };
 
-// How many tokens a possibly qualified name spans: `t`, `schema.t` and
-// Snowflake's `db.schema.t` are one name each.
+// How many tokens a possibly qualified name spans: t, schema.t and
+// Snowflake's db.schema.t are one name each.
 export const matchQualifiedName = (tokens: Token[]) => {
   const isString = isStringToken(tokens);
   const isPeriod = isPeriodToken(tokens);
@@ -319,10 +314,9 @@ export const matchQualifiedName = (tokens: Token[]) => {
   };
 };
 
-// `ALTER TABLE [ONLY] <name> ADD [CONSTRAINT <name>]`: how many tokens the
-// head spans, 0 when there is none at `pos`, and whether ONLY was read as the
-// keyword rather than as the table name. The name is measured rather than
-// counted, which is what lets a three-part `db.schema.t` through.
+// How many tokens the ALTER TABLE ADD head spans, 0 when there is none at pos,
+// and whether ONLY was read as the keyword rather than the table name. The name
+// is measured rather than counted, which lets a three-part name through.
 const matchAlterTableAddHead = (tokens: Token[]) => {
   const alterTable = isAlterTable(tokens);
   const isOnly = isOnlyValue(tokens);
@@ -369,7 +363,7 @@ const matchAlterTableAdd = (tokens: Token[]) => {
   return (pos: number) => head(pos).length;
 };
 
-// Whether the head at `pos` spends a token on the ONLY keyword. `only` is also
+// Whether the head at pos spends a token on the ONLY keyword. only is also
 // a legal table name, and the statement parsers have to skip exactly what the
 // matcher read.
 export const isAlterTableAddOnly = (tokens: Token[]) => {
@@ -446,9 +440,9 @@ const groupByFirstWord = (types: ReadonlyArray<string>) => {
 
 const DataTypeWords = groupByFirstWord(DataTypes);
 
-// How many tokens the data type at `pos` spans, 0 when there is none. The
+// How many tokens the data type at pos spans, 0 when there is none. The
 // argument list is part of the span, and it can sit on any word of a
-// multi-word name -- `TIMESTAMP(3) WITH TIME ZONE`.
+// multi-word name -- TIMESTAMP(3) WITH TIME ZONE.
 export const matchDataType = (tokens: Token[]) => {
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
@@ -475,7 +469,7 @@ export const matchDataType = (tokens: Token[]) => {
 
     for (const [index, word] of words.entries()) {
       const token = tokens[cursor];
-      // Only the first word may be quoted: `[int]` is how T-SQL writes a type,
+      // Only the first word may be quoted: [int] is how T-SQL writes a type,
       // but a quoted continuation word is an identifier, never a keyword.
       if (!token || !isString(cursor) || (index > 0 && token.quoted)) return 0;
       if (token.value.toUpperCase() !== word) return 0;

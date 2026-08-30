@@ -115,7 +115,7 @@ describe('closePromise', () => {
     }
 
     expect(typeof executor).toBe('function');
-    // The executor never ran, so `close` still points at the no-op.
+    // The executor never ran, so close still points at the no-op.
     expect(close!()).toBeUndefined();
 
     const resolve = vi.fn();

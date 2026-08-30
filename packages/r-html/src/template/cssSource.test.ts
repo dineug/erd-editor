@@ -11,13 +11,13 @@ import {
   terminate,
 } from '@/template/cssSource';
 
-/** `strings.raw` of a tagged template, without needing a call site for every shape. */
+/** strings.raw of a tagged template, without needing a call site for every shape. */
 const raw = (...parts: string[]): readonly string[] => parts;
 
 const kindsOf = (...parts: string[]) =>
   classifySlots(raw(...parts)).map(({ kind }) => kind);
 
-/** Passes `isCSSTemplateLiterals` without carrying a resolved source. */
+/** Passes isCSSTemplateLiterals without carrying a resolved source. */
 const fakeLiteral = (): any => {
   const strings: any = ['a'];
   strings.raw = ['a'];
@@ -44,36 +44,36 @@ describe('classifySlots', () => {
   });
 
   it('reads a mixin site as a statement', () => {
-    // `typography.styles.ts:20` — `${fontSize2};`
+    // typography.styles.ts:20 — ${fontSize2};
     expect(kindsOf('\n  ', ';\n')).toEqual(['statement']);
-    // `Toast.styles.ts:33` — `${typography.paragraph};` after another declaration
+    // Toast.styles.ts:33 — ${typography.paragraph}; after another declaration
     expect(kindsOf('\n  color: red;\n  ', ';\n')).toEqual(['statement']);
-    // `Icon.stories.ts` — the one mixin site that is not followed by a `;`
+    // Icon.stories.ts — the one mixin site that is not followed by a ;
     expect(kindsOf('\n  ', '\n                  ')).toEqual(['statement']);
   });
 
   it('reads a selector site as inline', () => {
-    // `CodeBlock.styles.ts:60` — `${clipboard} {`
+    // CodeBlock.styles.ts:60 — ${clipboard} {
     expect(kindsOf('\n  ', ' {\n    opacity: 1;\n  }\n')).toEqual(['inline']);
-    // `css.test.ts` — `.wrap ${child} {`
+    // css.test.ts — .wrap ${child} {
     expect(kindsOf('\n  .wrap ', ' {\n    color: pink;\n  }\n')).toEqual([
       'inline',
     ]);
   });
 
   it('reads a declaration value site as inline', () => {
-    // `Settings.styles.ts:55` — `width: ${size}px`
+    // Settings.styles.ts:55 — width: ${size}px
     expect(kindsOf('\n  width: ', 'px;\n')).toEqual(['inline']);
-    // `typography.styles.ts:4` — `var(--font-size-${size})`
+    // typography.styles.ts:4 — var(--font-size-${size})
     expect(kindsOf('\n  font-size: var(--font-size-', ');\n')).toEqual([
       'inline',
     ]);
   });
 
   it('misreads the middle slots of a shorthand as unprovable statements', () => {
-    // `Column.styles.ts` etc — `padding: ${A}px ${B}px ${C}px 0;`. Eight sites in erd-editor
-    // land here. They are harmless because every one of them holds a number, and `slotText()`
-    // ignores `kind` for primitives — not because the rule proved anything.
+    // Column.styles.ts etc — padding: ${A}px ${B}px ${C}px 0;. Eight sites in erd-editor
+    // land here. They are harmless because every one of them holds a number, and slotText()
+    // ignores kind for primitives — not because the rule proved anything.
     const slots = classifySlots(raw('\n  padding: ', 'px ', 'px ', 'px 0;\n'));
 
     expect(slots).toEqual([
@@ -96,7 +96,7 @@ describe('classifySlots', () => {
   });
 
   it('reads adjacent slots off the empty string between them', () => {
-    // `color: ${a}${b};` — the second slot sees an empty head and reads as a statement. Harmless
+    // color: ${a}${b}; — the second slot sees an empty head and reads as a statement. Harmless
     // for the primitives that actually occur, and documented here so the shape is not a surprise.
     expect(classifySlots(raw('\n  color: ', '', ';\n'))).toEqual([
       { kind: 'inline', provable: false },
@@ -107,7 +107,7 @@ describe('classifySlots', () => {
   it('falls back to inline whenever either side is ambiguous', () => {
     // A colon in the head is enough, wherever it sits in the compound.
     expect(kindsOf('\n  background: url(', ');\n')).toEqual(['inline']);
-    // So is a brace in the tail, before any `;`, `}` or newline.
+    // So is a brace in the tail, before any ;, } or newline.
     expect(kindsOf('\n  ', '.a { color: red; }\n')).toEqual(['inline']);
     // A brace after the tail delimiter does not count.
     expect(kindsOf('\n  ', ';\n  .a { color: red; }\n')).toEqual(['statement']);
@@ -143,8 +143,8 @@ describe('slotText', () => {
       color: red;
     `;
 
-    // oxfmt formats the contents of a `css` literal, so an unterminated declaration cannot be
-    // written here; `terminate()` covers that path against raw strings instead.
+    // oxfmt formats the contents of a css literal, so an unterminated declaration cannot be
+    // written here; terminate() covers that path against raw strings instead.
     expect(child[CSS_SOURCE]).toBe('\n      color: red;\n    ');
     expect(slotText(child, 'statement')).toBe('\n      color: red;\n    ');
   });

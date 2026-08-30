@@ -1,20 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// 5174 is `@dineug/erd-editor`, 5175 is `@dineug/erd-editor-app`. Keeping a
+// 5174 is @dineug/erd-editor, 5175 is @dineug/erd-editor-app. Keeping a
 // third port means all three suites can be running at the same time.
 const PORT = Number(process.env.E2E_PORT ?? 5176);
-// Vite's dev server binds to `localhost` only; 127.0.0.1 is refused.
+// Vite's dev server binds to localhost only; 127.0.0.1 is refused.
 const BASE_URL = `http://localhost:${PORT}`;
 
-/**
- * The suite drives r-html's own CSS pipeline in Chromium against the Vite dev
- * server, using the deterministic page in `e2e/fixture/`.
- *
- * Everything here is about questions a DOM emulation cannot answer:
- * `adoptedStyleSheets` mutability, whether an adopted sheet actually paints,
- * whether the real CSSOM keeps the declarations we emit, and what the cascade
- * does with them. See `e2e/README.md`.
- */
 export default defineConfig({
   testDir: './e2e/specs',
   outputDir: './e2e/.results',
@@ -45,18 +36,17 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 },
         launchOptions: {
-          // Playwright launches headless Chromium with `--hide-scrollbars`, which
-          // leaves every scroller with a zero-width gutter — `offsetWidth -
-          // clientWidth` is 0 whatever `::-webkit-scrollbar` says, so the one
-          // observable that proves a scrollbar rule matched would be dead.
+          // Playwright launches headless Chromium with --hide-scrollbars, which
+          // leaves every scroller a zero-width gutter, killing the one
+          // observable that proves a scrollbar rule matched.
           ignoreDefaultArgs: ['--hide-scrollbars'],
         },
       },
     },
   ],
   webServer: {
-    // `vite.config.ts` opens a browser for `pnpm dev`. `vp dev` has no
-    // `--no-open` flag, so `E2E` is what keeps this run headless.
+    // vite.config.ts opens a browser for pnpm dev. vp dev has no
+    // --no-open flag, so E2E is what keeps this run headless.
     command: `pnpm exec vp dev --port ${PORT} --strictPort`,
     env: { E2E: '1' },
     url: `${BASE_URL}/e2e/fixture/index.html`,

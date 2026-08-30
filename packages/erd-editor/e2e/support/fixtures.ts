@@ -7,11 +7,9 @@ export type ErdFixtures = {
 };
 
 /**
- * Every spec starts on a freshly loaded fixture page with the editor mounted.
- * The page is torn down between tests, so no seed leaks into the next one.
- *
- * Any uncaught page error fails the test that caused it — a silent exception in
- * the editor is exactly the class of regression this suite exists to catch.
+ * Every spec starts on a freshly loaded fixture page with the editor mounted and
+ * the page torn down between tests, so no seed leaks. Any uncaught page error
+ * fails the test that caused it.
  */
 export const test = base.extend<ErdFixtures>({
   erd: async ({ page }, use) => {

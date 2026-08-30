@@ -72,8 +72,8 @@ function render(state: RootState, table: Table): string[] {
 }
 
 /**
- * The document `generator-code/index.test.ts` shares across every language:
- * one `user` table with a single `created_at INT NOT NULL` column on MySQL.
+ * The document generator-code/index.test.ts shares across every language:
+ * one user table with a single created_at INT NOT NULL column on MySQL.
  */
 function createSharedFixture() {
   const table = createTable({ id: 't1', name: 'user', columnIds: ['c1'] });
@@ -95,8 +95,8 @@ function createSharedFixture() {
 }
 
 /**
- * The `users` table from the feature request: a PostgreSQL-native document
- * whose types (`uuid`, `text`, `timestamptz`) all sit outside the eleven
+ * The users table from the feature request: a PostgreSQL-native document
+ * whose types (uuid, text, timestamptz) all sit outside the eleven
  * primitive types.
  */
 function createUsersFixture(settings?: Partial<RootState['settings']>) {
@@ -170,10 +170,8 @@ function createUsersFixture(settings?: Partial<RootState['settings']>) {
 }
 
 /**
- * team (1) ── (N) player
- *
- * The join is a two-column composite foreign key, and both of its columns are
- * also part of `player`'s three-column composite primary key.
+ * team (1) to (N) player, joined by a two-column composite foreign key whose
+ * columns are also part of player's three-column composite primary key.
  */
 function createCompositeFixture() {
   const team = createTable({
@@ -727,11 +725,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // `getColumnType` normalizes a data type before it looks the raw name up:
-    // the argument list goes, every run of whitespace collapses, and the ends
-    // are trimmed. Drop any one step and the name misses its set and falls
-    // back to the primitive type -- `VARBINARY(255)` lands on `String`, which
-    // is the collapse the raw-name lists exist to prevent.
+    // getColumnType drops the argument list, collapses whitespace and trims
+    // before matching a raw name. Skip any step and the name misses its set and
+    // falls back to the primitive type, the collapse those lists prevent.
     it('strips arguments and repeated whitespace before matching a raw type name', () => {
       const table = createTable({
         id: 't1',
@@ -761,7 +757,7 @@ describe('generator-code/sqlalchemy', () => {
             dataType: 'TIME(6) WITH TIME ZONE',
           }),
           // two runs of stray whitespace, so collapsing only the first leaves
-          // `timestamp with  time zone` unmatched
+          // timestamp with  time zone unmatched
           createColumn({
             id: 'd',
             tableId: 't1',
@@ -795,12 +791,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // `JSONB` and `UUID` live in `sqlalchemy.dialects.postgresql`, so the
-    // database check is what keeps them out of a MySQL document. Emitting
-    // JSONB anyway costs the model its portability: create_all against SQLite
-    // raises CompileError ("(in table 'portable', column 'a'): Compiler
-    // <sqlalchemy.dialects.sqlite.base.SQLiteTypeCompiler object> can't render
-    // element of type JSONB").
+    // JSONB and UUID live in sqlalchemy.dialects.postgresql, so the database
+    // check keeps them out of a MySQL document. Emitted anyway, create_all
+    // against SQLite raises CompileError on rendering the element.
     it('keeps the portable type for jsonb and uuid outside PostgreSQL', () => {
       const table = createTable({
         id: 't1',
@@ -843,11 +836,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // A data type argument reaches `String(n)` / `Numeric(p, s)` only as a
-    // positive integer. `VARCHAR(MAX)` is SQL Server's own spelling and
-    // `Number('MAX')` is NaN, which Python does not define: the module dies at
-    // import with NameError ("name 'NaN' is not defined"). `VARCHAR(0)` is the
-    // other end -- it imports, but create_all writes `VARCHAR(0)`.
+    // A type argument reaches String(n) or Numeric(p, s) only as a positive
+    // integer: SQL Server's VARCHAR(MAX) would emit NaN, which Python does not
+    // define, and VARCHAR(0) imports but writes a zero-width column.
     it('ignores a type argument that is not a positive integer', () => {
       const table = createTable({
         id: 't1',
@@ -919,11 +910,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // An empty argument list is free text like any other, and `TYPE_ARGUMENTS`
-    // captures the empty string from it: only the `+` in `DIGITS` keeps
-    // `Number('')` from reaching the expression as 0. Both spellings have to
-    // land on the bare callable -- `Numeric(0)` imports without complaint, and
-    // create_all then writes `a NUMERIC(0)` where `Numeric` writes `a NUMERIC`.
+    // TYPE_ARGUMENTS captures the empty string from an empty argument list, and
+    // only the + in DIGITS keeps Number('') from arriving as 0. Both spellings
+    // have to land on the bare callable, or create_all writes NUMERIC(0).
     it('drops an empty type argument list', () => {
       const table = createTable({
         id: 't1',
@@ -1010,11 +999,9 @@ describe('generator-code/sqlalchemy', () => {
       expect(lines.join('\n')).not.toContain('datetime');
     });
 
-    // Every from-import the generator can write, in the order `isort 6.1.0
-    // --profile black` leaves them: the CONSTANT bucket first, then the rest by
-    // name. A name added to the tuples in `sqlalchemy.ts` has to land here,
-    // which is what keeps `sortImportNames` checkable -- nothing a document can
-    // say makes the sort observable on its own.
+    // Every from-import the generator can write, in the order isort leaves
+    // them: the CONSTANT bucket first, then the rest by name. A name added to
+    // the tuples in sqlalchemy.ts has to land here, or the sort is unchecked.
     it('orders a from-import the way isort does', () => {
       const code = createCode(createEveryImportState());
 
@@ -1306,10 +1293,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // Each escape is global: one backslash left raw makes the module a
-    // SyntaxError ("invalid escape sequence \\c"), one newline left in place
-    // ends the string early ("EOL while scanning string literal"), and a CRLF
-    // matched as two breaks leaves a double space in the comment.
+    // Each escape is global: a raw backslash makes the module a SyntaxError, a
+    // newline left in place ends the string early, and a CRLF matched as two
+    // breaks leaves a double space in the comment.
     it('escapes every backslash and every newline, and a CRLF only once', () => {
       const table = createTable({
         id: 't1',
@@ -1359,11 +1345,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // A classic-Mac lone CR is a line break as well, and Python's tokenizer
-    // reads one in source as a newline: left in the literal it ends the string
-    // early and the module dies at import with SyntaxError ("EOL while
-    // scanning string literal"). Flattened, the module imports and create_all
-    // runs clean.
+    // Python's tokenizer reads a lone CR in source as a newline, so one left in
+    // the literal ends the string early and the module dies at import.
+    // Flattened, the module imports and create_all runs clean.
     it('flattens a lone carriage return in a comment and a default', () => {
       const table = createTable({
         id: 't1',
@@ -1414,7 +1398,7 @@ describe('generator-code/sqlalchemy', () => {
     });
 
     // A comment of nothing but spaces is a comment the document does not
-    // carry: it reaches neither the docstring nor `__table_args__`.
+    // carry: it reaches neither the docstring nor __table_args__.
     it('ignores a table comment that is only whitespace', () => {
       const table = createTable({
         id: 't1',
@@ -1568,13 +1552,9 @@ describe('generator-code/sqlalchemy', () => {
       expect(render(state, scored)).toContain('class UserPost_2(Base):');
     });
 
-    // Which of two colliding tables keeps the un-suffixed class name is
-    // decided by the order `createClassContext` pre-resolves them, and that
-    // loop only matches `createCode`'s emission order because it sorts the
-    // same way. Drop the sort and it walks `doc.tableIds` instead: both names
-    // are still unique and the module still imports clean, so nothing fails --
-    // the `_2` just moves to the other table, silently renaming the class a
-    // saved document already generated.
+    // Which colliding table keeps the un-suffixed class name follows the order
+    // createClassContext pre-resolves them, which matches createCode only
+    // because it sorts alike. Drop the sort and a saved class silently renames.
     it('gives the un-suffixed class name to the table emitted first, not the one listed first', () => {
       // sorted by name, "zeta profile" precedes "zeta_profile" -- the reverse
       // of the document order below
@@ -1668,14 +1648,9 @@ describe('generator-code/sqlalchemy', () => {
       );
     });
 
-    // Verified against SQLAlchemy 2.0.52 with `warnings.simplefilter("error")`,
-    // importing the module and running `configure_mappers()` and
-    // `create_all(create_engine("sqlite://"))`. Before the repair each of these
-    // three failed differently: `__secret` reached the database as
-    // `_zzz__secret`, `__doc__` and `__dict__` left no column at all while
-    // `createSchemaSQL` still declared them, and `_sa_registry` raised
-    // AttributeError ("'MappedColumn' object has no attribute 'constructor'")
-    // at import.
+    // Without the repair each of these fails differently: __secret reaches the
+    // database mangled, __doc__ and __dict__ leave no column at all while
+    // createSchemaSQL declares them, and _sa_registry raises at import.
     it('moves a leading-underscore column off the namespace it does not own', () => {
       const { state, table } = createUnderscoreFixture(NameCase.none);
 
@@ -1833,10 +1808,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // Three column names normalize to `a_b`, so `uniqueName` has to keep
-    // counting: stopping after one retry hands `a-b` and `a+b` the same
-    // attribute, and the later class-body assignment wins -- the model loses
-    // `a-b` entirely while the DDL still declares it.
+    // Three column names normalize to a_b, so uniqueName has to keep counting:
+    // stopping after one retry hands two of them the same attribute, and the
+    // later class-body assignment wins while the DDL still declares both.
     it('keeps numbering past the second collision on one attribute name', () => {
       const table = createTable({
         id: 't1',
@@ -1908,7 +1882,7 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // Pins the guarantee `formatRelation` leans on for its `Optional` import:
+    // Pins the guarantee formatRelation leans on for its Optional import:
     // every column a relationship names belongs to the table at that end.
     it('drops a relationship whose end column the table does not hold', () => {
       const user = createTable({
@@ -1926,7 +1900,7 @@ describe('generator-code/sqlalchemy', () => {
         columns: [
           primaryKey('u_id', 't_user'),
           primaryKey('p_id', 't_post'),
-          // a stray column, left on `user` rather than on `post`
+          // a stray column, left on user rather than on post
           createColumn({
             id: 'p_user_id',
             tableId: 't_user',
@@ -1950,7 +1924,7 @@ describe('generator-code/sqlalchemy', () => {
       expect(code).not.toContain('relationship');
     });
 
-    // Asserted whole so the `from typing import Optional` line is pinned: the
+    // Asserted whole so the from typing import Optional line is pinned: the
     // annotation is a NameError away from an unimportable module.
     it('marks the parent Optional when the foreign key is nullable', () => {
       const state = createOneToManyState(RelationshipType.ZeroN, 0);
@@ -1976,7 +1950,7 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // `user`'s one column is its primary key, so the scalar relationship is the
+    // user's one column is its primary key, so the scalar relationship is the
     // only Optional here -- the parent side has to import the name itself.
     it('renders a one relationship as a scalar on both sides', () => {
       const state = createOneToManyState(RelationshipType.ZeroOne);
@@ -2209,16 +2183,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // Every other guard in `resolveRelationships` passes here: both tables
-    // resolve, neither column list lost an id, and every column belongs to the
-    // table naming it -- only the arity check stands between a two-column
-    // parent end and a one-column child end. Without it the pair renders as a
-    // plain single-column `ForeignKey("parent.a")`, quietly dropping
-    // `parent.b`: the module imports and `configure_mappers()` is happy, but
-    // `create_all` writes `FOREIGN KEY(parent_a) REFERENCES parent (a)`
-    // against a composite primary key, and the first insert fails with
-    // OperationalError (foreign key mismatch - "child" referencing "parent")
-    // while `child.parent` joins on half the composite key.
+    // Every other guard passes here, so only the arity check stands between a
+    // two-column parent end and a one-column child end. Without it the pair
+    // renders as a single-column foreign key and joins on half the key.
     it('drops a relationship whose two ends name a different number of columns', () => {
       const parent = createTable({
         id: 't_parent',
@@ -2265,13 +2232,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // `columnIds` defaults to `[]` in the v3 parser, and a non-array is
-    // coerced to `[]` too, so a relationship naming no column at all is a
-    // document the parser produces. It cannot become a foreign key: the pair
-    // renders as `ForeignKeyConstraint([], [])` and `configure_mappers()`
-    // raises NoForeignKeysError ("Could not determine join condition between
-    // parent/child tables on relationship Child.parent - there are no foreign
-    // keys linking these tables").
+    // columnIds defaults to [] in the v3 parser, so a relationship naming no
+    // column is a document the parser produces. It cannot become a foreign key:
+    // an empty constraint leaves configure_mappers() with no join condition.
     it('skips a relationship whose ends name no columns', () => {
       const parent = createTable({
         id: 'tp',
@@ -2317,7 +2280,7 @@ describe('generator-code/sqlalchemy', () => {
 
     // Each of these is the only guard standing between the relationship and a
     // foreign key: the others let it through. Every one of them would emit a
-    // `ForeignKey` naming a table or column the document cannot resolve.
+    // ForeignKey naming a table or column the document cannot resolve.
     it('skips a relationship whose ends do not resolve, one reason at a time', () => {
       const parent = createTable({
         id: 'tp',
@@ -2358,7 +2321,7 @@ describe('generator-code/sqlalchemy', () => {
           }),
           // a start column id resolves to nothing, and the two ends still come
           // out the same length, so only the arity check against
-          // `start.columnIds` catches it
+          // start.columnIds catches it
           createRelationship({
             id: 'r3',
             relationshipType: RelationshipType.ZeroN,
@@ -2409,10 +2372,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // Two parents can land on one child column, and both foreign keys have to
-    // reach it: `mapped_column` takes them as separate positional arguments.
-    // Keeping only the last leaves `Alpha.childList` with nothing to join on
-    // and `configure_mappers()` raises NoForeignKeysError.
+    // Two parents can land on one child column and both foreign keys have to
+    // reach it, as separate positional arguments to mapped_column. Keeping only
+    // the last leaves one parent's collection with nothing to join on.
     it('keeps every foreign key that lands on one child column', () => {
       const alpha = createTable({ id: 'ta', name: 'alpha', columnIds: ['ca'] });
       const beta = createTable({ id: 'tb', name: 'beta', columnIds: ['cb'] });
@@ -2496,11 +2458,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // The parent is required only when *every* column carrying the composite
-    // key is one: `code` is nullable here, so the row can exist with no
-    // parent and the annotation has to say so. `Mapped["Parent"]` would be a
-    // lie the type checker believes -- SQLAlchemy itself loads None either
-    // way.
+    // The parent is required only when every column carrying the composite key
+    // is. One nullable half means the row can exist with no parent, and a
+    // non-optional annotation is a lie the type checker believes.
     it('marks the parent Optional when one half of a composite key is nullable', () => {
       const parent = createTable({
         id: 'tp',
@@ -2580,10 +2540,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // The column names inside a ForeignKeyConstraint are Python string
-    // literals like every other name the generator writes, so a quote in a
-    // column name has to be escaped there too: unescaped, the tuple reads as
-    // `["a"b", ...]` and the module never parses (SyntaxError).
+    // The column names inside a ForeignKeyConstraint are Python string literals
+    // like every other name the generator writes, so a quote in one has to be
+    // escaped there too or the module never parses.
     it('escapes a quoted column name inside a ForeignKeyConstraint', () => {
       const parent = createTable({
         id: 'tp',
@@ -2985,10 +2944,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // An index column whose column is gone drops out of the list rather than
-    // reaching `columnKey` as undefined, and an index named only whitespace is
-    // an index with no name -- both are shapes the v3 parser produces, since
-    // `columnId` and `name` are plain strings it never cross-checks.
+    // An index column whose column is gone drops out rather than reaching
+    // columnKey as undefined, and a whitespace-only index name is no name --
+    // both are shapes the v3 parser produces without cross-checking.
     it('drops an unresolved index column and auto-names a whitespace-only index', () => {
       const users = createTable({
         id: 't1',
@@ -3069,13 +3027,9 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
-    // An index column can name a column of another table, and the index still
-    // belongs to this one. The column keeps its own name, which is what
-    // `createSchemaSQL` writes into `CREATE INDEX ... ON users (nickname)` as
-    // well -- both generators describe the same document and let the target
-    // reject it, SQLAlchemy at import with ConstraintColumnNotFoundError
-    // ("Can't create Index on table 'users': no column named 'nickname' is
-    // present.").
+    // An index column can name a column of another table and the index still
+    // belongs to this one, keeping the raw name createSchemaSQL also writes:
+    // both generators describe the document and let the target reject it.
     it('keeps the raw name of an index column the table does not hold', () => {
       const users = createTable({
         id: 't1',
@@ -3363,7 +3317,7 @@ describe('generator-code/sqlalchemy', () => {
           ],
           settings: { columnNameCase: NameCase.none },
         });
-        // A long name pushes the call past the line limit, where `formatCall`
+        // A long name pushes the call past the line limit, where formatCall
         // breaks it one argument to a line -- match both layouts.
         const code = createCode(state);
 
@@ -3487,12 +3441,9 @@ describe('generator-code/sqlalchemy', () => {
       );
     });
 
-    // The carrier's repaired names have to reach the duplicate, because every
-    // string that names a column resolves against `Table.c` and the duplicate
-    // never declared one of its own. Verified against SQLAlchemy 2.0.52:
-    // without the copy the index names `a.b`, a key no column holds, and
-    // `create_all` raises ConstraintColumnNotFoundError ("Can't create Index on
-    // table 'zzz': no column named 'a.b' is present").
+    // The carrier's repaired names have to reach the duplicate: every string
+    // naming a column resolves against Table.c, and the duplicate declared none
+    // of its own, so without the copy the index names a key no column holds.
     it('gives a duplicate the repaired key of the column that carries it', () => {
       const table = createTable({
         id: 't1',
@@ -3539,11 +3490,9 @@ describe('generator-code/sqlalchemy', () => {
       expect(code).not.toContain('"a.b"),');
     });
 
-    // The other half of the same copy: `foreign_keys` names the Python
-    // attribute, and a duplicate that kept its raw `__b_id` would name one the
-    // class never grew -- SQLAlchemy 2.0.52 raises AttributeError ("Class
-    // <class 'x__a'> does not have a mapped column named '__b_id'") at
-    // `configure_mappers()`.
+    // The other half of the same copy: foreign_keys names the Python attribute,
+    // so a duplicate keeping its raw underscore name would name one the class
+    // never grew and configure_mappers() would not find it.
     it('gives a duplicate the repaired attribute of the column that carries it', () => {
       const { state, left } = createDuplicateAmbiguousFixture();
 
@@ -3569,15 +3518,9 @@ describe('generator-code/sqlalchemy', () => {
   });
 
   describe('duplicate table names', () => {
-    // erd-editor lets two tables carry one name and `createSchemaSQL` emits two
-    // `CREATE TABLE zzz` statements for them, so this generator renders them the
-    // same way rather than inventing a second table name the DDL would not
-    // share. `uniqueName` still separates the two *class* names, because two
-    // `class Zzz` statements would leave the second silently replacing the
-    // first. Verified against SQLAlchemy 2.0.52: importing the module raises
-    // InvalidRequestError ("Table 'zzz' is already defined for this MetaData
-    // instance"), which is the same shape of failure a table with no primary
-    // key already produces.
+    // Two tables can carry one name and createSchemaSQL emits both, so this
+    // generator does too rather than invent a name the DDL would not share. The
+    // class names still separate, or the second statement replaces the first.
     it('renders two tables of one name as two classes sharing a __tablename__', () => {
       const state = createState({
         tables: [
@@ -3598,13 +3541,9 @@ describe('generator-code/sqlalchemy', () => {
   });
 
   describe('unnamed columns', () => {
-    // A column can exist with no name, and `createSchemaSQL` renders it as a
+    // A column can exist with no name, and createSchemaSQL renders it as a
     // nameless slot the database rejects. Rendering it here keeps the two
-    // generators saying the same thing: the empty name reaches
-    // `mapped_column("")`, which SQLAlchemy 2.0.52 refuses with ArgumentError
-    // ("Column must be constructed with a non-blank name"). Dropping the column
-    // instead would be the one failure the leading-underscore repair exists to
-    // prevent -- a model quietly missing a column the DDL declares.
+    // generators saying the same thing rather than quietly dropping a column.
     it('renders an unnamed column with a repaired attribute and an empty name', () => {
       const table = createTable({
         id: 't1',
@@ -3789,14 +3728,9 @@ describe('generator-code/sqlalchemy', () => {
       expect(code).not.toContain('key="');
     });
 
-    // `assignColumnKeys` runs two passes, and the order is the whole point:
-    // every dot-free column claims its own name as its `Table.c` key first, so
-    // a dotted column repairing itself is the side that has to yield. Run the
-    // passes the other way round and the dotted `a.b` takes `a_b` from an
-    // empty used set, leaving the plain `a_b` column -- whose branch sets its
-    // key unconditionally -- nothing left to claim. SQLAlchemy 2.0.52 then
-    // refuses the class with DuplicateColumnError ("A column with name 'a_b'
-    // is already present in table 'zzz'.") and the module never imports.
+    // assignColumnKeys runs two passes and the order is the point: every
+    // dot-free column claims its own name first, so a dotted column repairing
+    // itself yields. The other way round, the plain column has nothing left.
     it('lets a plain column keep the key a dotted one has to repair around', () => {
       const table = createTable({
         id: 't1',
@@ -3824,7 +3758,7 @@ describe('generator-code/sqlalchemy', () => {
       });
 
       // the dotted column is the one carrying an explicit key, and it is the
-      // repaired `a_b_2` -- not the `a_b` the plain column owns
+      // repaired a_b_2 -- not the a_b the plain column owns
       expect(render(state, table).slice(-2)).toEqual([
         '    a_b: Mapped[Optional[int]] = mapped_column("a.b", Integer, key="a_b_2")',
         '    a_b_2: Mapped[Optional[int]] = mapped_column("a_b", Integer)',
@@ -3885,7 +3819,7 @@ function createOneToManyState(
 }
 
 /**
- * An adjacency list: `employee.manager_id` points back at `employee.id`, so
+ * An adjacency list: employee.manager_id points back at employee.id, so
  * both ends of the relationship land on the one class.
  */
 function createSelfReferenceFixture(relationshipType: number) {
@@ -3928,8 +3862,8 @@ function createSelfReferenceFixture(relationshipType: number) {
 }
 
 /**
- * Two tables holding a foreign key to each other, the way `data/test.json`
- * pairs `article` with `content`.
+ * Two tables holding a foreign key to each other, the way data/test.json
+ * pairs article with content.
  */
 function createMutualForeignKeyFixture() {
   const article = createTable({
@@ -3997,7 +3931,7 @@ function createMutualForeignKeyFixture() {
 }
 
 /**
- * Every identifier `sqlalchemy.ts` can put at module scope: `Base`, the names
+ * Every identifier sqlalchemy.ts can put at module scope: Base, the names
  * it can import, and the builtins its annotations name. A class or a column
  * attribute taking any of these shadows it for the statements that follow.
  */
@@ -4042,7 +3976,7 @@ const MODULE_SCOPE_IDENTIFIERS = [
   'uuid',
 ];
 
-/** `Base` is declared, not imported; the rest are builtins. */
+/** Base is declared, not imported; the rest are builtins. */
 const NEVER_IMPORTED = ['Base', 'bool', 'bytes', 'float', 'int', 'str'];
 
 function importedNames(code: string): string[] {
@@ -4079,7 +4013,7 @@ function importedNames(code: string): string[] {
   return names;
 }
 
-/** The names of one `from <module> import ...`, in the order they are written. */
+/** The names of one from <module> import ..., in the order they are written. */
 function fromImportNames(code: string, module: string): string[] {
   const lines = code.split('\n');
   const head = lines.indexOf(`from ${module} import (`);
@@ -4111,9 +4045,8 @@ function primaryKey(id: string, tableId: string, name = 'id'): Column {
 
 /**
  * One MySQL document reaching every import the generator can emit outside the
- * two PostgreSQL dialect types: every primitive type, the raw types that sit
- * outside them, an index, a server default, a single-column foreign key and a
- * composite one, and both ends of a one-to-many.
+ * two PostgreSQL dialect types, from the primitive and raw types through
+ * indexes, server defaults, both foreign key shapes and a one-to-many.
  */
 function createEveryImportState(): RootState {
   const types = [
@@ -4216,7 +4149,7 @@ function createEveryImportState(): RootState {
   });
 }
 
-/** The two `sqlalchemy.dialects.postgresql` names. */
+/** The two sqlalchemy.dialects.postgresql names. */
 function createPostgresImportState(): RootState {
   return createState({
     tables: [
@@ -4242,10 +4175,9 @@ function createPostgresImportState(): RootState {
 }
 
 /**
- * One table carrying every column name the leading-underscore rule has to
- * move: private name mangling (`__secret`), the dunders the class machinery
- * owns (`__x__`, `__doc__`, `__dict__`), SQLAlchemy's instrumentation
- * (`_sa_class_manager`, `_sa_registry`) and a plain single underscore.
+ * One table carrying every column name the leading-underscore rule has to move:
+ * private name mangling, the dunders the class machinery owns, SQLAlchemy's
+ * instrumentation names and a plain single underscore.
  */
 function createUnderscoreFixture(nameCase: number) {
   const names = [
@@ -4285,7 +4217,7 @@ function createUnderscoreFixture(nameCase: number) {
   return { state, table };
 }
 
-/** A leading-underscore table name, with the dotted `key=` path under it. */
+/** A leading-underscore table name, with the dotted key= path under it. */
 function createUnderscoreTableFixture(nameCase: number) {
   const table = createTable({
     id: 't1',
@@ -4330,7 +4262,7 @@ function createUnderscoreTableFixture(nameCase: number) {
 
 /**
  * Two leading-underscore tables plus an adjacency list on the child, so one
- * class carries `back_populates` on both sides and `remote_side`.
+ * class carries back_populates on both sides and remote_side.
  */
 function createUnderscoreRelationFixture(nameCase: number) {
   const parent = createTable({
@@ -4386,11 +4318,10 @@ function createUnderscoreRelationFixture(nameCase: number) {
   return { state, parent, child };
 }
 
-/** Two foreign keys over one pair of leading-underscore tables. */
 /**
- * `createUnderscoreAmbiguousFixture` with one column duplicated: `__a` holds
- * `__b_id` twice, and the relationship that makes the pair ambiguous ends on
- * the second of the two -- the one that never declares a column of its own.
+ * createUnderscoreAmbiguousFixture with one column duplicated: __a holds __b_id
+ * twice, and the relationship making the pair ambiguous ends on the second --
+ * the one that never declares a column of its own.
  */
 function createDuplicateAmbiguousFixture() {
   const left = createTable({

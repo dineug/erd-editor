@@ -10,16 +10,8 @@ import {
 } from '@/utils/draw-relationship';
 
 /**
- * Where a connector turns away from its anchor.
- *
- * Shared because two callers need the same answer: `pathFinding` draws from it,
- * and `relationshipSort` routes from it. Deriving it twice would let the routed
- * polyline and the guide line drift apart by a slot's worth of stub.
- */
-
-/**
- * Slot zero keeps the historical `PATH_END_HEIGHT`, so a relationship that never
- * went through `relationshipSort` draws exactly as it did before.
+ * Slot zero keeps the historical PATH_END_HEIGHT, so a relationship that never
+ * went through relationshipSort draws exactly as it did before.
  */
 export function stubFor(slot: number) {
   return PATH_END_HEIGHT + (slot % STUB_CYCLE) * STUB_STEP;
@@ -27,12 +19,8 @@ export function stubFor(slot: number) {
 
 /**
  * The axis-aligned distance between two anchors that point at each other, or
- * `null` when they do not.
- *
- * Only this arrangement can collapse: with a stub on each side, a gap of twice
- * the stub puts both turning points on the same spot and the connector vanishes,
- * and a smaller gap inverts it so the path runs backwards through both tables.
- * Nothing stops two tables being that close — the editor allows them to overlap.
+ * null when they do not. Only this arrangement can collapse: a gap of twice the
+ * stub puts both turning points on one spot, and a smaller gap inverts the path.
  */
 export function facingGap(
   start: Relationship['start'],
@@ -56,7 +44,7 @@ export function facingGap(
 }
 
 /**
- * Below roughly `2 * MIN_STUB` the two cardinality decorations already overlap
+ * Below roughly 2 * MIN_STUB the two cardinality decorations already overlap
  * each other, which no stub length can fix; the clamp stops short of making it
  * worse by drawing the guide line backwards.
  */

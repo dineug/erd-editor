@@ -6,7 +6,7 @@ import { FlatRule } from '@/css/flatten';
 import { isShadowBoundary, SCOPE, substituteScope } from '@/css/selector';
 
 /**
- * `selector.ts` is two small functions, but both encode a decision that is expensive to get wrong:
+ * selector.ts is two small functions, but both encode a decision that is expensive to get wrong:
  * R6 (the substitution is global, unanchored, and confined to selectors) and R1's replacement
  * (shadow boundaries are diagnosed, not rewritten, and only in the leftmost compound).
  */
@@ -14,8 +14,8 @@ import { isShadowBoundary, SCOPE, substituteScope } from '@/css/selector';
 describe('SCOPE', () => {
   it('is an identifier-safe token, so the scanner treats it as a plain type selector', () => {
     expect(SCOPE).toBe('rhtml-scope');
-    // No `@`, `%`, quote or brace: every one of those is a scanner state change in stylis, which is
-    // how the old `@@r-html…` marker lost the scope entirely.
+    // No @, %, quote or brace: every one of those is a scanner state change in stylis, which is
+    // how the old @@r-html… marker lost the scope entirely.
     expect(SCOPE).toMatch(/^[a-z][a-z-]*$/);
   });
 });
@@ -26,14 +26,14 @@ describe('substituteScope', () => {
   });
 
   it('is global — `&&{}` compiles to two adjacent sentinels and both must be replaced', () => {
-    // This is the case that forbids a first-occurrence-only replace: stylis expands `&&{color:red}`
-    // to the single selector `rhtml-scoperhtml-scope`.
+    // This is the case that forbids a first-occurrence-only replace: stylis expands &&{color:red}
+    // to the single selector rhtml-scoperhtml-scope.
     expect(substituteScope(`${SCOPE}${SCOPE}`, '._x')).toBe('._x._x');
     expect(substituteScope(`${SCOPE}+${SCOPE}`, '._x')).toBe('._x+._x');
   });
 
   it('is unanchored — the sentinel is not always leftmost', () => {
-    // `.x &{color:red}` puts the scope at the end, `${child} &{}` puts it in the middle.
+    // .x &{color:red} puts the scope at the end, ${child} &{} puts it in the middle.
     expect(substituteScope(`.x ${SCOPE}`, '._x')).toBe('.x ._x');
     expect(substituteScope(`.p ${SCOPE} .q`, '._x')).toBe('.p ._x .q');
   });
@@ -44,7 +44,7 @@ describe('substituteScope', () => {
   });
 
   it('is a plain textual replace, with no token boundary of its own', () => {
-    // Documented, not desired: nothing downstream can produce `rhtml-scopeX`, because the sentinel
+    // Documented, not desired: nothing downstream can produce rhtml-scopeX, because the sentinel
     // only ever enters a selector as a whole parent frame. The guard that matters is the one below —
     // this function is never run over anything but a selector.
     expect(substituteScope(`${SCOPE}d`, '._x')).toBe('._xd');
@@ -124,8 +124,8 @@ describe('isShadowBoundary', () => {
   });
 
   it('only the leftmost compound counts', () => {
-    // The asymmetry is the whole rule. `:host .a` is dead once the scope class is prepended;
-    // `.a :host` was written by an author who already knew where the boundary was.
+    // The asymmetry is the whole rule. :host .a is dead once the scope class is prepended;
+    // .a :host was written by an author who already knew where the boundary was.
     expect(isShadowBoundary(':host .a')).toBe(true);
     expect(isShadowBoundary('.a :host')).toBe(false);
   });

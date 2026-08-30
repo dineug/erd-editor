@@ -10,22 +10,17 @@ const importMetaHot = `${'import'}.${'meta'}.${'hot'}`;
 const DEFAULT_EXPORT = /\bexport\s+default\b/;
 
 /**
- * The module that calls `hmr()`, which is what registers r-html's listener.
- *
- * Every boundary imports it and ES module semantics evaluate it exactly once,
- * however many boundaries there are — so the listener is registered by the same
- * act that creates something for it to hear. No entry file has to remember to
- * do it, which matters because a package's entries are not one place: this
- * package's consumer has three, and its Storybook stories reach none of them.
+ * The module that calls hmr(), which registers r-html's listener. Every
+ * boundary imports it and module semantics evaluate it once, so the listener is
+ * registered by the same act that creates something for it to hear.
  */
 const VIRTUAL_ID = 'virtual:r-html-hmr';
 const RESOLVED_VIRTUAL_ID = `\0${VIRTUAL_ID}`;
 
 /**
- * Appended, never prepended, so no line below it moves. The `import` is still
- * hoisted above the module body — position in the file does not change when a
- * top-level import is evaluated — and it sits outside the `if` because an
- * import declaration cannot live in a block.
+ * Appended, never prepended, so no line below it moves; a top-level import is
+ * hoisted whatever its position. It sits outside the if because an import
+ * declaration cannot live in a block.
  */
 const hmr = (name: string) => `
 import '${VIRTUAL_ID}';
@@ -39,17 +34,9 @@ if (${importMetaHot}) {
 `;
 
 /**
- * Marks component modules as HMR boundaries so `r-html`'s `hmr.ts` can swap them
- * in place, and switches that listener on for them.
- *
- * `apply: 'serve'` rather than a caller-side `isServe` gate, and it does the
- * whole job: only a dev server has `import.meta.hot` to accept on, so the
- * plugin's own lifecycle is the dev/production switch. Nothing downstream needs
- * an `import.meta.env.DEV` branch, and nothing ships to production that would
- * have to be tree-shaken back out.
- *
- * Must NOT be `enforce: 'pre'` — it calls Babel with no parser plugins, so it
- * can only parse once `vite:oxc` has stripped the types ahead of it.
+ * Marks component modules as HMR boundaries so hmr.ts can swap them in place.
+ * apply: serve is the whole dev/production switch, and this must not be
+ * enforce: pre, because Babel here parses only once the types are stripped.
  */
 export function rHtmlRefresh(options: RefreshOptions = {}): Plugin {
   const filter = createFilter(
@@ -74,7 +61,7 @@ export function rHtmlRefresh(options: RefreshOptions = {}): Plugin {
         return;
       }
 
-      // Nothing is injected without an `export default`, so modules that have
+      // Nothing is injected without an export default, so modules that have
       // none never need to be parsed. Without this the dev server runs Babel
       // over every module in the graph on startup and on every change.
       if (!DEFAULT_EXPORT.test(code)) {
@@ -126,11 +113,9 @@ export function rHtmlRefresh(options: RefreshOptions = {}): Plugin {
 
       if (node?.type === 'ExportDefaultDeclaration') {
         const declaration = node.declaration as any;
-        // `export default A` is an Identifier; `export default function A() {}`
-        // carries the name on `.id`. Reading only `.name` made the second form
-        // inject `originComponent: undefined` — which still marks the module
-        // self-accepting, so Vite stops propagating and the edit does nothing
-        // at all, not even a reload.
+        // A default-exported identifier and a default-exported function carry
+        // the name in different places. Missing one injects an undefined origin,
+        // which still self-accepts, so Vite stops propagating and nothing runs.
         const name =
           declaration.type === 'Identifier'
             ? declaration.name

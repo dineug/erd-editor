@@ -622,7 +622,7 @@ describe('useErdShortcut - clipboard', () => {
     expect(readPayload(setData).kind).toBe(PayloadKind.columns);
   });
 
-  // AC-1 / AC-3 / AC-19. `seedTable` selects the table it creates, so "no
+  // AC-1 / AC-3 / AC-19. seedTable selects the table it creates, so "no
   // column is selected" is an entity copy, not a no-op — and a table with no
   // columns leaves the human-visible grid empty.
   it('copies the selected table when no column is selected', async () => {
@@ -691,7 +691,7 @@ describe('useErdShortcut - clipboard', () => {
     expect(preventDefault).not.toHaveBeenCalled();
   });
 
-  // AC-6: the payload's `kind` decides the mode, so a table being selected does
+  // AC-6: the payload's kind decides the mode, so a table being selected does
   // not turn an entity paste into a column merge.
   it('creates new entities from a kind:"tables" payload while a table is selected', async () => {
     const app = await setup();
@@ -744,12 +744,9 @@ describe('useErdShortcut - clipboard', () => {
 
     const json = await copyToClipboard(app);
 
-    // Each copy is removed again before the next paste. Leaving them on the
-    // canvas makes this assertion vacuous: with the round multiplication taken
-    // out entirely, every paste would target `origin + 50` and the collision
-    // escape would walk it to +100 and +150 on its own, reproducing the whole
-    // sequence. Removing the copy leaves the counter as the only thing that can
-    // produce these coordinates.
+    // Each copy is removed before the next paste, or the assertion is vacuous:
+    // with the round multiplication gone the collision escape would walk every
+    // paste to the same coordinates on its own.
     for (const round of [1, 2, 3]) {
       const { event } = createClipboardEvent({ [CLIPBOARD_MIME]: json });
       app.emitter.emit(pasteAction({ event }));
@@ -767,7 +764,7 @@ describe('useErdShortcut - clipboard', () => {
     expect(Object.keys(app.store.state.editor)).toEqual(editorKeys);
   });
 
-  // AC-29 (b) / AC-10: the counter is keyed by the payload's `copyId`, not by a
+  // AC-29 (b) / AC-10: the counter is keyed by the payload's copyId, not by a
   // local copy event — a payload from another tab has to reset it too.
   it('restarts the cascade when a payload with a different copyId arrives', async () => {
     const app = await setup();
@@ -805,7 +802,7 @@ describe('useErdShortcut - clipboard', () => {
     const tableId = seedTable(app);
     seedColumn(app, tableId);
 
-    // The seeds above leave `editor.changeHasHistory` in flight; let it land so
+    // The seeds above leave editor.changeHasHistory in flight; let it land so
     // the collector only ever sees what the paste itself dispatches.
     await flush();
 
@@ -837,14 +834,14 @@ describe('useErdShortcut - clipboard', () => {
   });
 
   // AC-27 (b): the writer dropped the hidden JSON for size and left the flag in
-  // its place. The `<table>` below it is ours and would parse cleanly, which is
+  // its place. The <table> below it is ours and would parse cleanly, which is
   // exactly why the ladder must not descend to it.
   it('hard stops on a truncated payload rather than parsing the html it wrote', async () => {
     const app = await setup();
     const tableId = seedTable(app);
     seedColumn(app, tableId);
 
-    // The seeds above leave `editor.changeHasHistory` in flight; let it land so
+    // The seeds above leave editor.changeHasHistory in flight; let it land so
     // the collector only ever sees what the paste itself dispatches.
     await flush();
 

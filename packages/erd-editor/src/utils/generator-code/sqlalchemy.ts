@@ -17,14 +17,9 @@ import {
   hasOneRelationship,
 } from './utils';
 
-// A class body sees module scope, and a class-body assignment is visible to the
-// statements after it, so every identifier this generator can put at module
-// scope has to be off limits to a class name and to a column attribute:
-// `class Text(Base)` ahead of a LONGTEXT column, or a `text` column ahead of
-// `server_default=text(...)`, breaks the module at import time. Each import set
-// is a `Set` of the matching tuple's member type, so a name missing from these
-// tuples -- and therefore unreserved -- fails `tsc --noEmit` at the `add` that
-// would emit it.
+// A class body sees module scope, so every identifier this generator can put
+// there is off limits to a class name and a column attribute. Each import set
+// is typed from its tuple, so an unreserved name fails tsc --noEmit.
 const SQLALCHEMY_NAMES = [
   'BigInteger',
   'Boolean',
@@ -63,7 +58,7 @@ const STDLIB_FROM_NAMES = {
   typing: ['Any', 'List', 'Optional'],
 } as const;
 
-// Builtins rather than imports, but an attribute named `str` shadows the
+// Builtins rather than imports, but an attribute named str shadows the
 // annotation of every column after it exactly the way an import name does.
 const BUILTIN_NAMES = ['bool', 'bytes', 'float', 'int', 'str'] as const;
 
@@ -161,7 +156,7 @@ type TableNaming = {
   // it: itself, or the earlier column that already claimed its name
   columnRefs: Map<string, string>;
   columnNames: Map<string, string>;
-  // the `Table.c` key of each column, which is what every string that names a
+  // the Table.c key of each column, which is what every string that names a
   // column -- ForeignKey, ForeignKeyConstraint, Index -- is resolved against
   columnKeys: Map<string, string>;
   relationshipNames: Map<string, string>;
@@ -197,10 +192,9 @@ export function createCode(state: RootState): string {
     return '';
   }
 
-  // One import header and one `class Base` serve the whole module, so looping
-  // the per-table entry point the way the sibling generators do would emit N of
-  // each. The classes render into a scratch buffer first; the header is written
-  // once, after every class has contributed the names it imports.
+  // One import header and one class Base serve the whole module, so the classes
+  // render into a scratch buffer first and the header is written once, after
+  // every class has contributed the names it imports.
   const stringBuffer: string[] = [''];
   const classBuffer: string[] = [];
   const context = createClassContext(state);
@@ -318,7 +312,7 @@ function formatClass(
   formatRelation(state, { buffer: relationBuffer, table }, context);
 
   // A relationship line means a resolved relationship names this table, which
-  // means a column of this table carries it, so `bodyBuffer` is never empty
+  // means a column of this table carries it, so bodyBuffer is never empty
   // here -- the second half is defence, not a shape the document reaches.
   if (relationBuffer.length !== 0 && bodyBuffer.length !== 0) {
     bodyBuffer.push('');
@@ -423,10 +417,9 @@ function formatRelation(
           bHas(column.options, ColumnOption.notNull)
       );
 
-      // No `Optional` import here: `isRequired` is false exactly when one of
-      // the end columns is neither a primary key nor NOT NULL, which is
-      // `formatColumn`'s own `isOptional` -- and `formatClass` has already run
-      // `formatColumn` over every column this relationship can name.
+      // No Optional import here: isRequired is false exactly when formatColumn
+      // would call the column optional, and formatClass has already run it over
+      // every column this relationship can name.
       const annotation = isRequired
         ? `Mapped["${parentNaming.className}"]`
         : `Mapped[Optional["${parentNaming.className}"]]`;
@@ -489,16 +482,15 @@ function relationArguments(
     otherTable
   ).relationshipNames.get(relationshipKey(relationship, backPopulatesSide));
 
-  // Both ends name themselves under the same condition, so an end that got
-  // this far always finds the other one. The guard is defence: a template
-  // literal would write `back_populates="undefined"` without complaint, and
-  // `tsc` does not object to it.
+  // Both ends name themselves under the same condition, so an end that got this
+  // far always finds the other. The guard is defence: a template literal would
+  // write the string undefined without complaint, and tsc would not object.
   if (backPopulates) {
     args.push(`back_populates="${backPopulates}"`);
   }
 
   // SQLAlchemy cannot pick between two foreign keys joining the same pair of
-  // tables -- without `foreign_keys` it raises AmbiguousForeignKeysError at
+  // tables -- without foreign_keys it raises AmbiguousForeignKeysError at
   // mapper configuration. The string form keeps the forward reference lazy.
   if (context.ambiguous.has(pairKey(relationship))) {
     const childNaming = getNaming(state, context, endTable);
@@ -510,10 +502,8 @@ function relationArguments(
   }
 
   // An adjacency list joins one table to itself, so nothing in the join
-  // condition tells the two ends apart -- SQLAlchemy assumes one-to-many for
-  // both and raises ArgumentError ("both of the same direction") at mapper
-  // configuration. `remote_side` names the referenced columns, which marks this
-  // end as the many-to-one side: the INVERSE end, the one holding the key.
+  // condition tells the ends apart and SQLAlchemy calls both one-to-many.
+  // remote_side marks this end as the many-to-one side, the one holding the key.
   if (isSelfReferential(relationship) && backPopulatesSide === INVERSE) {
     const parentNaming = getNaming(state, context, startTable);
     const names = startColumns.map(
@@ -625,7 +615,7 @@ function formatImports(buffer: string[], imports: ImportSet) {
   const stdlibBuffer: string[] = [];
   const sqlalchemyBuffer: string[] = [];
 
-  // `uuid` is the only member `STDLIB_PLAIN_NAMES` has, so this `sort` is
+  // uuid is the only member STDLIB_PLAIN_NAMES has, so this sort is
   // defence for a second one rather than something the output shows.
   Array.from(imports.stdlibPlain)
     .sort()
@@ -677,24 +667,14 @@ function formatFromImport(
   buffer.push(')');
 }
 
-// `JSON` and `UUID` are CONSTANT to isort, `DateTime` is a class: the two are
-// different groups, not one CamelCase group. `isupper()` is false for a name of
-// digits and underscores alone, which the `(?=.*[A-Z])` lookahead reproduces --
-// defence for a tuple that has not grown such a name, not something the current
-// members reach.
+// JSON and UUID are CONSTANT to isort where DateTime is a class, so the two are
+// different groups. The lookahead reproduces isupper() being false for a name
+// of digits and underscores alone, which no current member reaches.
 const CONSTANT = /^(?=.*[A-Z])[A-Z0-9_]{2,}$/;
 
-// `isort/sorting.py: module_key` builds its sort key in two halves:
-// `order_by_type` prefixes a name with its bucket -- CONSTANT (`isupper() and
-// len > 1`), then class (leading capital), then the rest -- and
-// `case_sensitive = False` lowercases the name itself. Over the closed name
-// tuples above only the CONSTANT bucket has to be spelled out, and it is what
-// keeps `JSON, BigInteger, ...` off `BigInteger, ..., JSON`. The class/rest
-// split does not: every leading-capital name here sorts ahead of every
-// lowercase one under a raw ASCII comparison anyway, which is also the order
-// lowercasing gives each bucket internally, so the raw name is the second half.
-// `imports > orders a from-import the way isort does` pins the result against
-// isort 6.1.0, whose `--profile black` run over this output is a no-op.
+// isort keys a name by its bucket, then by the name lowercased. Over the closed
+// tuples above only the CONSTANT bucket has to be spelled out; the class/rest
+// split falls out of a raw ASCII comparison, so the raw name is the second half.
 function importGroup(name: string): number {
   return CONSTANT.test(name) ? 0 : 1;
 }
@@ -749,13 +729,9 @@ function addStdlibFrom<T extends StdlibModule>(
   imports.stdlibFrom.set(module, names);
 }
 
-// `ARGUMENTS` is global to match `getPrimitiveType`'s own copy in utils.ts: a
-// vendor name can carry two argument groups -- `interval day(2) to second(6)`,
-// which Oracle and Databricks both resolve to `time`. `TYPE_ARGUMENTS` must
-// stay non-global, because it is module scoped and read with `exec`, whose
-// `lastIndex` a global regex would carry from one column to the next; it
-// therefore captures the first group only, and its leading `\s*` is redundant
-// with the `trim()` below.
+// ARGUMENTS is global to match getPrimitiveType's copy, because a vendor name
+// can carry two argument groups. TYPE_ARGUMENTS stays non-global: it is module
+// scoped and read with exec, whose lastIndex would carry between columns.
 const ARGUMENTS = /\([^)]*\)/g;
 const WHITESPACE = /\s+/g;
 const TYPE_ARGUMENTS = /\(\s*([^)]*)\)/;
@@ -795,11 +771,9 @@ const timestampTzTypes = new Set([
 
 const timeTzTypes = new Set(['time with time zone', 'timetz']);
 
-// The 11 primitive types cannot tell `TEXT` from `BLOB` from `JSON`, nor keep
-// `uuid` and `timestamptz` apart from a plain string or datetime. Alembic's
-// autogenerate compares the mapped type against the reflected one, so a model
-// that collapsed them would make every round trip emit a `modify_type` back to
-// the type the database already has -- hence the raw name.
+// The 11 primitive types cannot tell TEXT from BLOB from JSON. Alembic compares
+// the mapped type against the reflected one, so a model that collapsed them
+// would emit a modify_type back to the type the database already has.
 function getColumnType(
   dataType: string,
   database: number,
@@ -918,12 +892,9 @@ function createClassContext(state: RootState): ClassContext {
     ambiguous,
   };
 
-  // A class name is unique per declarative Base, so two tables whose names
-  // normalize to one identifier have to be resolved against each other.
-  // `formatTable` renders one table but resolves every table here too, in the
-  // order `createCode` emits them -- otherwise the panel would name a class
-  // differently from the module and the `Mapped["..."]` forward references
-  // would bind to the wrong mapper.
+  // A class name is unique per declarative Base, so tables normalizing to one
+  // identifier resolve against each other. formatTable renders one table but
+  // resolves every table here, in the order createCode emits them.
   query(state.collections)
     .collection('tableEntities')
     .selectByIds(state.doc.tableIds)
@@ -956,7 +927,7 @@ function resolveRelationships(state: RootState): ResolvedRelationship[] {
 
       // A column the table does not hold cannot carry the foreign key, and no
       // string could name it. Both ends are checked here so the rest of the
-      // file can take that for granted -- `formatRelation` leans on it.
+      // file can take that for granted -- formatRelation leans on it.
       return !startTable ||
         !endTable ||
         endColumns.length === 0 ||
@@ -1007,12 +978,9 @@ function createTableNaming(
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
 
-  // A diagram can carry two columns of one name; a table cannot. Declaring both
-  // does not give the class two columns -- SQLAlchemy raises
-  // DuplicateColumnError ("A column with name 'x' is already present in table
-  // 't'") and the module never imports. So the first column of a name is the
-  // column, and every later one resolves to its attribute and key instead of
-  // declaring a second.
+  // A diagram can carry two columns of one name; a table cannot, and declaring
+  // both stops the module importing. So the first column of a name is the
+  // column, and every later one resolves to its attribute and key.
   const carriers = new Map<string, string>();
 
   columns.forEach(column => {
@@ -1062,9 +1030,8 @@ function createTableNaming(
       }
 
       // Both ends of an adjacency list land on this one class, so naming the
-      // owning end after its table would leave `category.category` pointing at
-      // the parent row -- and collide outright with the scalar inverse end of a
-      // one-to-one, which `uniqueName` could only fix as `category_2`.
+      // owning end after its table points a same-named attribute at the parent
+      // row and collides with the scalar inverse end of a one-to-one.
       const name = isSelfReferential(relationship)
         ? `parent_${startTable.name}`
         : startTable.name;
@@ -1095,11 +1062,9 @@ function createTableNaming(
     });
 
   return {
-    // Two tables can share a name, and `__tablename__` keeps it on both -- the
-    // DDL declares the same collision, and inventing a second table name here
-    // would leave the two generators describing different documents. The class
-    // name is deduplicated all the same: a repeated `class` statement is not a
-    // collision Python reports, it silently drops the earlier class.
+    // Two tables can share a name and __tablename__ keeps it on both, because
+    // the DDL declares the same collision. The class name is deduplicated all
+    // the same: a repeated class statement silently drops the earlier one.
     className: uniqueName(
       classNames,
       pyIdentifier(getNameCase(table.name, tableNameCase))
@@ -1114,15 +1079,9 @@ function createTableNaming(
 
 const DOT = '.';
 
-// A Column's `key` -- not its name -- is what `Table.c` is keyed by, so it is
-// what `ForeignKey`, `ForeignKeyConstraint` and `Index` resolve their strings
-// against. `mapped_column("name", ...)` leaves key equal to name, which holds
-// until the name has a dot: `ForeignKey` splits its target into
-// schema/table/column, so `parent.the.id` reads as column `id` of table `the`
-// in schema `parent` and the join is never found. (A dotted *table* name
-// survives -- the leftover tokens are joined back into the table key.) So a
-// dotted column takes its Python attribute, always dot free, as an explicit
-// key.
+// Table.c is keyed by a Column's key, not its name, which is what ForeignKey
+// and Index resolve against. A dotted name breaks that, because ForeignKey
+// splits its target, so a dotted column takes its dot-free attribute as key.
 function assignColumnKeys(
   declared: Column[],
   columnNames: Map<string, string>,
@@ -1155,7 +1114,7 @@ function columnRef(naming: TableNaming, column: Column): string {
 }
 
 // Each column replaced by the one that carries it: only the carrier reaches
-// `formatColumn`.
+// formatColumn.
 function carriedColumns(
   state: RootState,
   naming: TableNaming,
@@ -1179,11 +1138,9 @@ function isSelfReferential(relationship: Relationship): boolean {
   return relationship.start.tableId === relationship.end.tableId;
 }
 
-// SQLAlchemy resolves a join over every foreign key between the two Tables, in
-// whichever direction each one points -- `article.content_id -> content` and
-// `content.article_id -> article` are two paths over the same pair, and either
-// relationship() raises AmbiguousForeignKeysError. So the ambiguity is a
-// property of the unordered pair; sort the ids to key it.
+// SQLAlchemy resolves a join over every foreign key between two Tables in
+// whichever direction each points, so two opposite keys over one pair are both
+// ambiguous. The ambiguity belongs to the unordered pair; sort the ids to key it.
 function pairKey(relationship: Relationship): string {
   const [first, second] = [
     relationship.start.tableId,
@@ -1208,13 +1165,9 @@ function uniqueName(used: Set<string>, name: string): string {
 const NON_IDENTIFIER = /[^0-9A-Za-z_]/g;
 const IDENTIFIER_START = /^[A-Za-z]/;
 
-// `metadata` is not a Python keyword, but DeclarativeBase owns it -- mapping a
-// column onto that name raises InvalidRequestError ("Attribute name 'metadata'
-// is reserved when using the Declarative API"). `registry` is the other name
-// DeclarativeBase carries and it is *not* rejected, so it is not in this set.
-// SQLAlchemy's own `_sa_class_manager` / `_sa_registry` are absent for a
-// different reason: `pyIdentifier` keeps every generated name out of the
-// underscore namespace entirely, so no column can reach them.
+// metadata is no Python keyword but DeclarativeBase owns it, and mapping a
+// column onto it is rejected; registry is carried and not rejected, so it is
+// absent. The _sa_ names are absent because pyIdentifier bars that namespace.
 const RESERVED = new Set([
   'False',
   'None',
@@ -1254,24 +1207,9 @@ const RESERVED = new Set([
   'yield',
 ]);
 
-// Inside a class body every leading underscore belongs to someone else, and
-// the three owners are not enumerable, so the rule is the whole namespace: a
-// generated identifier starts with a letter. `__x` is rewritten by Python's
-// private name mangling -- the attribute becomes `_Class__x` and the column
-// silently takes that name; `__x__` is a dunder the class machinery already
-// holds, and `__doc__` or `__dict__` swallow the assignment whole, so the
-// column disappears from the model while the DDL still declares it; `_sa_*` is
-// where SQLAlchemy keeps its instrumentation, and a column landing on
-// `_sa_class_manager` or `_sa_registry` fails at import. Prefixing is what
-// leaves the original text readable in the attribute, and it costs nothing:
-// `mapped_column("<name>", ...)` carries the database name, `key=` the
-// `Table.c` key, so only the Python identifier moves. The same repair covers a
-// name that starts with a digit or is empty once the non-identifier characters
-// are gone -- and only the identifier: an unnamed column still reaches
-// `mapped_column("")`, which SQLAlchemy rejects, the way `createSchemaSQL`
-// leaves it a nameless slot the database rejects. Skipping it instead would
-// drop a column the DDL declares, which is the failure this whole repair
-// exists to prevent.
+// Inside a class body every leading underscore belongs to name mangling, the
+// dunders or SQLAlchemy's instrumentation, and the owners are not enumerable,
+// so a generated identifier starts with a letter and only the identifier moves.
 const SAFE_PREFIX = 'x';
 
 function pyIdentifier(name: string): string {
@@ -1293,7 +1231,7 @@ function escapeString(value: string): string {
     .replace(NEWLINE, ' ');
 }
 
-// A comment ending in a quote would close the docstring as `\""""`. That parses,
+// A comment ending in a quote would close the docstring as \"""". That parses,
 // but it is unreadable and black rewrites it -- pad it the way black does.
 function formatDocstring(comment: string): string {
   const value = escapeString(comment);

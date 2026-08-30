@@ -40,7 +40,7 @@ function stubCreateElement(canvas: CanvasStub, spanWidthPerChar?: number) {
     });
 }
 
-/** `createText` caches the canvas/context at module scope. */
+/** createText caches the canvas/context at module scope. */
 async function importText() {
   vi.resetModules();
   return await import('@/utils/text');

@@ -9,23 +9,6 @@ import {
 } from '@/__test-utils__/adoptedCss';
 import { colorPickerStyle } from '@/styles/colorPicker.style';
 
-/**
- * This file used to assert a `<style>` element factory. The sheet is a `css.global` literal now,
- * so the assertions read the emitted CSSOM instead — which is a stronger reading of the same
- * things, because the old test compared the raw text it had itself just handed to the element and
- * could not see the compiler at all.
- *
- * One assertion did not survive the move: the old suite pinned the leading
- * `/* easylogic-colorpicker *\/` credit comment as the first thing in the emitted text. The
- * compiler discards comments, so no comment reaches a sheet by any route. The attribution lives in
- * the module's JSDoc, where nothing can strip it.
- *
- * One assertion gained teeth. `scopes every rule to the easylogic colorpicker or its context menu`
- * was housekeeping while the sheet was a `<style>` inside one shadow root. A global sheet is
- * adopted into *every* root registered with `addCSSHost`, so those two literal class names are now
- * the only thing standing between 307 vendored rules and the rest of the editor.
- */
-
 let rules: CSSStyleRule[] = [];
 
 beforeAll(() => {
@@ -47,10 +30,9 @@ describe('colorPicker.style', () => {
     });
 
     it('emits all 307 rules, every one of them with a selector', () => {
-      // The count is the invariant the old `toBeGreaterThan(200)` was reaching for. It is exact
-      // here because a vendored stylesheet does not drift on its own: a change in this number
-      // means either the vendored text changed or the compiler started dropping rules, and both
-      // are things to look at rather than re-baseline.
+      // Exact rather than a lower bound, because a vendored stylesheet does not
+      // drift on its own: a change here means the vendored text changed or the
+      // compiler started dropping rules, both worth looking at.
       expect(rules).toHaveLength(307);
       for (const rule of rules) {
         expect(rule.selectorText).toBeTruthy();
@@ -61,7 +43,7 @@ describe('colorPicker.style', () => {
   describe('containment', () => {
     it('namespaces every selector under one of the two upstream class names', () => {
       // Load-bearing, not housekeeping. This sheet is unscoped and adopted into every shadow root
-      // `addCSSHost` knows about, so a selector that escapes these two names is a 307-rule
+      // addCSSHost knows about, so a selector that escapes these two names is a 307-rule
       // vendored stylesheet applying to the whole editor.
       const escaped = selectorsOf(rules).filter(
         selector =>
@@ -120,8 +102,8 @@ describe('colorPicker.style', () => {
     });
 
     it('hides the arrow decoration by default', () => {
-      // `>` with no surrounding whitespace: the compiler compacts combinators, where the old
-      // `<style>` path handed the source text to the parser verbatim. Same rule, same match.
+      // > with no surrounding whitespace: the compiler compacts combinators, where the old
+      // <style> path handed the source text to the parser verbatim. Same rule, same match.
       const rule = ruleOf(rules, '.easylogic-colorpicker>.arrow');
 
       expect(rule.style.getPropertyValue('display')).toBe('none');

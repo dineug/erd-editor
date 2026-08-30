@@ -1,6 +1,6 @@
 import { TEMPLATE_LITERALS } from '@/constants';
 import type { CompileMode, FlatRule } from '@/css';
-// Type-only, and therefore erased: `cssSource.ts` imports `CSS_SOURCE` back at runtime.
+// Type-only, and therefore erased: cssSource.ts imports CSS_SOURCE back at runtime.
 import type { Slot } from '@/template/cssSource';
 import { TNode } from '@/template/tNode';
 
@@ -50,7 +50,7 @@ export interface Compiled {
   /** The substituted source the compiler was handed. */
   source: string;
   /**
-   * Copied off the node so the compiled artifact is self-describing: `vCSSStyleSheet.ts` buckets
+   * Copied off the node so the compiled artifact is self-describing: vCSSStyleSheet.ts buckets
    * by this and never has to be told which tag produced the sheet.
    */
   mode: CompileMode;
@@ -63,7 +63,7 @@ export interface Compiled {
 
 /**
  * Slot classification is value independent, so it is cached with the strings array; only the
- * compiled output depends on the values, and that is what `memo` holds.
+ * compiled output depends on the values, and that is what memo holds.
  */
 export interface CSSTemplateNode {
   raw: readonly string[];

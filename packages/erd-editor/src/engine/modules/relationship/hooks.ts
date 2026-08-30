@@ -163,11 +163,8 @@ export const hooks: Hook[] = [
       removeRelationshipAction,
       moveMemoAction,
       // Routing reads every table in the document, not only the two a
-      // relationship connects, so the set of tables is part of its input. While
-      // a connector was a straight line between its own two ends this made no
-      // difference and neither action was here; now a table appearing between
-      // two connected ones leaves every route that should bend around it drawn
-      // straight through it until something else happens to trigger a sort.
+      // relationship connects, so the set of tables is part of its input: a
+      // table appearing between two connected ones has to trigger a sort.
       addTableAction,
       removeTableAction,
       moveTableAction,

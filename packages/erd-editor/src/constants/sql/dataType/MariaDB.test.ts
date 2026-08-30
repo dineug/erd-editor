@@ -4,7 +4,7 @@ import { DataTypeHint, PrimitiveType } from '@/constants/sql/dataType';
 import { MariaDBTypes } from '@/constants/sql/dataType/MariaDB';
 
 /**
- * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: among the hints
+ * Mirrors getPrimitiveType in @/utils/generator-code/utils: among the hints
  * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
@@ -257,7 +257,7 @@ describe('MariaDBTypes', () => {
   });
 
   it('resolves DATETIME and TIMESTAMP to dateTime despite their shorter prefixes', () => {
-    // `DATE` and `TIME` come first, but the longest matching hint wins.
+    // DATE and TIME come first, but the longest matching hint wins.
     expect(resolvePrimitiveType('DATETIME')).toBe('dateTime');
     expect(resolvePrimitiveType('TIMESTAMP')).toBe('dateTime');
     expect(resolvePrimitiveType('DATE')).toBe('date');

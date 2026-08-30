@@ -46,7 +46,7 @@ type RelationshipInput = {
   parent: TableContext;
   child: TableContext;
   field: GraphQLField;
-  /** The field lives on the child, so `@relation(fields:)` names child columns. */
+  /** The field lives on the child, so @relation(fields:) names child columns. */
   childSide: boolean;
   relationshipType: number;
 };
@@ -66,7 +66,7 @@ export function convertToSchema(
   const skipped = new Set(model.skipped);
 
   // Every table and every scalar column has to exist before a reference field is
-  // read, otherwise a relationship can name a table that is not in `doc.tableIds`.
+  // read, otherwise a relationship can name a table that is not in doc.tableIds.
   const contexts = model.tables.map(source =>
     convertTable(schema, ctx, model, database, source, findTable, skipped)
   );
@@ -206,7 +206,7 @@ function createFieldColumn(
       widthDataType: textInRange(toWidth(dataType)),
       widthDefault: textInRange(toWidth(defaultValue)),
       // Only the foreign key bit is recomputed on load, so the primary key one
-      // has to be written here as well as into `options`.
+      // has to be written here as well as into options.
       keys: primaryKey ? ColumnUIKey.primaryKey : 0,
     },
   });
@@ -265,7 +265,7 @@ function convertRelationships(
   };
   const singularEdges = edges.filter(edge => !edge.field.typeRef.isList);
 
-  // `@relation(fields:)` marks the side that owns the foreign key, so those edges
+  // @relation(fields:) marks the side that owns the foreign key, so those edges
   // claim their reciprocal before an unannotated one can.
   [
     ...singularEdges.filter(edge => edge.field.relationFields.length),
@@ -401,7 +401,7 @@ function appendRelationship(
   const { doc, collections } = schema;
   const { parent, child, relationshipType } = input;
   const parentKeys = primaryKeyColumns(parent.columns);
-  // An empty `end.columnIds` still draws a connector, and the data type sync
+  // An empty end.columnIds still draws a connector, and the data type sync
   // walks the two id lists positionally, so a half-bound pair goes wrong later.
   if (!parentKeys.length) return;
 
@@ -582,7 +582,7 @@ function appendJunctionTable(
     '',
     `${left.name}_${right.name}`
   );
-  // `convertToSchema` has no warning channel, so the note that this is the one
+  // convertToSchema has no warning channel, so the note that this is the one
   // table the importer invented rather than read travels in the diagram.
   const comment = `Junction table inferred from ${left.name} <-> ${right.name}`;
   const newTable = createTable({

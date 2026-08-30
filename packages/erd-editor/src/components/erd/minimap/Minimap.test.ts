@@ -167,10 +167,9 @@ describe('Minimap', () => {
     );
     await flush();
 
-    // The minimap scales the canvas down by `MINIMAP_SIZE / settings.width`, so
-    // the route would be a fraction of a device pixel at the width the canvas
-    // draws it. This number is a legibility floor of its own and is not derived
-    // from `RELATIONSHIP_STROKE_WIDTH`.
+    // The minimap scales the canvas down far enough that a route drawn at the
+    // canvas width would be a fraction of a device pixel. This is a legibility
+    // floor of its own, not derived from the canvas stroke.
     const route = minimapOf().querySelector('svg path.route');
     expect(route?.getAttribute('stroke-width')).toBe('12');
     expect(Number(route?.getAttribute('stroke-width'))).toBeGreaterThan(

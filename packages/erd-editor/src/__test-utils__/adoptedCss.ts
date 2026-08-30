@@ -1,14 +1,5 @@
 import { addCSSHost } from '@dineug/r-html';
 
-/**
- * Test-only helpers for reading what the css compiler actually emitted.
- *
- * Deliberately a module of its own rather than a member of `__test-utils__/index.ts`: importing
- * that barrel pulls in the whole app context, and every component style module it drags along
- * would register another sheet into the same shared registry. A style test that imports only the
- * module under test reads only that module's rules.
- */
-
 /** A fresh shadow root's adopted rules, in cascade order — global sheets first. */
 export function adoptedRules(): CSSStyleRule[] {
   const host = document.createElement('div').attachShadow({ mode: 'open' });

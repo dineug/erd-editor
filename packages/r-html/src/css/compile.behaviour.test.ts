@@ -6,33 +6,6 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { compile } from '@/css/compile';
 
-/**
- * Characterization suite for the stylis 4.4.0 behaviour `@dineug/r-html` depends on.
- *
- * We consume stylis as a dependency, so this is not a correctness proof of our own parser — there
- * isn't one. It serves two other purposes:
- *
- * 1. **It pins the argument threading in `compile()`.** Our wrapper calls stylis' `parse()` directly
- *    rather than its `compile()`, so that it can seed the parent selector list and the synthetic
- *    scope rule. Passing nine positional arguments by hand is exactly the kind of thing that is
- *    silently wrong, so the unseeded path is asserted to be indistinguishable from stylis' own
- *    `compile()` over a broad corpus.
- *
- * 2. **It is the upgrade gate.** stylis is pinned to 4.4.0. When that pin moves, whatever this
- *    corpus stops agreeing on is the behaviour our compiler layers were relying on.
- *
- * Both checks run over every row — twice:
- *
- * - **Structurally**, on the whole tree: `value` / `type` / `props` / `children` plus `line` /
- *   `column` / `length` / `return`. This catches differences serialization hides — two different
- *   trees can both serialize to `''`.
- * - **Byte-for-byte after serialization**, using stylis' own `serialize`/`stringify`.
- *
- * Order matters: `stringify` mutates the nodes it visits (it memoizes into `element.return` and
- * rewrites `element.value` from `element.props` for a RULESET), so the structural comparison has to
- * happen before anything is serialized.
- */
-
 type UnknownElement = {
   value: string;
   type: string;
@@ -93,7 +66,7 @@ function indexTree(
 }
 
 /**
- * `root` and `parent` are object references, so `toEqual` would recurse into them forever (and
+ * root and parent are object references, so toEqual would recurse into them forever (and
  * compare by value rather than by identity). Reducing each reference to the path of the node it
  * points at compares the *graph* instead: same shape, same wiring.
  */
@@ -141,11 +114,9 @@ const COLOR_PICKER_STYLE = join(
 );
 
 /**
- * Resolves a workspace-relative path by walking up from the current working directory.
- *
- * The `happy-dom` environment leaves `import.meta.url` as a non-`file:` URL, so the usual
- * `fileURLToPath(new URL(..., import.meta.url))` is unavailable here; walking up also keeps the
- * lookup independent of whether the suite was started from the package or from the repo root.
+ * Resolves a workspace-relative path by walking up from the working directory.
+ * happy-dom leaves import.meta.url a non-file URL, and walking up also works
+ * whether the suite started from the package or from the repo root.
  */
 function resolveFromWorkspace(relative: string): string {
   const { root } = parsePath(process.cwd());
@@ -368,10 +339,9 @@ describe('unseeded compile() is indistinguishable from stylis compile()', () => 
 
 describe('unseeded compile() over a real 69KB stylesheet', () => {
   /**
-   * `packages/erd-editor/src/styles/colorPicker.style.ts` holds a ~69KB vendored stylesheet in a
-   * single template literal with no interpolations - by far the largest real CSS in the repo, and a
-   * far better stress test than anything hand-written. It is read out of the sibling package rather
-   * than imported, because `@dineug/r-html` does not (and must not) depend on `@dineug/erd-editor`.
+   * The largest real CSS in the repo, a vendored stylesheet in one template
+   * literal with no interpolations. Read out of the sibling package rather than
+   * imported, because r-html must not depend on erd-editor.
    */
   const colorPickerCss = (() => {
     const source = readFileSync(

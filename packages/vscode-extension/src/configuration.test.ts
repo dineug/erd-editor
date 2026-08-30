@@ -30,8 +30,8 @@ const theme: ThemeOptions = {
 function arrangeConfiguration(options?: {
   values?: Record<string, unknown>;
   /**
-   * Per-scope values only. The real `inspect` always reports the full setting
-   * id back as `key`, so it is filled in here rather than at each call site.
+   * Per-scope values only. The real inspect always reports the full setting
+   * id back as key, so it is filled in here rather than at each call site.
    */
   inspect?: Record<string, Omit<ConfigurationInspect, 'key'> | undefined>;
 }) {
@@ -56,7 +56,7 @@ function arrangeConfiguration(options?: {
 type UpdateCall = [key: string, value: unknown, target: ConfigurationTarget];
 
 /**
- * The stub's `update` is declared without parameters, so its recorded calls
+ * The stub's update is declared without parameters, so its recorded calls
  * need re-typing before a spec can read the scope argument back out.
  */
 function updateCalls(config: MockWorkspaceConfiguration): UpdateCall[] {
@@ -70,8 +70,8 @@ const manifest = JSON.parse(
 );
 
 /**
- * `contributes.configuration` may be a single object or an array of them, and
- * each entry carries its own `properties` map keyed by full setting id.
+ * contributes.configuration may be a single object or an array of them, and
+ * each entry carries its own properties map keyed by full setting id.
  */
 const manifestSettings: Record<string, ManifestSetting> = Object.fromEntries(
   [manifest.contributes?.configuration ?? []]
@@ -112,7 +112,7 @@ describe('configuration', () => {
         grayColor: GrayColor.slate,
         accentColor: AccentColor.indigo,
       });
-      // The defaults are handed to `get` per key, which is what makes a
+      // The defaults are handed to get per key, which is what makes a
       // partially configured theme fill in the rest rather than yield undefined.
       expect(config.get.mock.calls).toEqual([
         ['appearance', Appearance.dark],
@@ -158,8 +158,8 @@ describe('configuration', () => {
     });
 
     it("hands 'auto' back untouched — the manifest offers it but Appearance has no such member", () => {
-      // `ThemeOptions['appearance']` is `Appearance | 'auto'`, so the value the
-      // settings UI offers is deliberately outside the `Appearance` map.
+      // ThemeOptions['appearance'] is Appearance | 'auto', so the value the
+      // settings UI offers is deliberately outside the Appearance map.
       expect(manifestSetting('appearance').enum).toContain('auto');
       arrangeConfiguration({ values: { appearance: 'auto' } });
 
@@ -335,7 +335,7 @@ describe('configuration', () => {
     });
 
     it('treats a falsy-but-present value as set — scope is decided on presence, not truthiness', () => {
-      // A setting deliberately stored as `''` (or `false`, or `0`) at a narrower
+      // A setting deliberately stored as '' (or false, or 0) at a narrower
       // scope is still set. Redirecting its write to Global would leave the
       // narrower value in place, silently overriding what was just saved.
       const config = arrangeConfiguration({
@@ -369,7 +369,7 @@ describe('configuration', () => {
 
     it('cannot write a theme the manifest would reject — every bridge value is contributed', () => {
       expect([...(manifestSetting('appearance').enum ?? [])].sort()).toEqual(
-        // `ThemeOptions['appearance']` is `Appearance | 'auto'`.
+        // ThemeOptions['appearance'] is Appearance | 'auto'.
         [...Object.values(Appearance), 'auto'].sort()
       );
       expect([...(manifestSetting('grayColor').enum ?? [])].sort()).toEqual(
@@ -411,7 +411,7 @@ describe('configuration', () => {
       const config = arrangeConfiguration();
       config.update.mockImplementation(() => {
         const rejected = Promise.reject(new Error('settings.json is readonly'));
-        // `saveTheme` drops the thenable, so the spec owns the rejection
+        // saveTheme drops the thenable, so the spec owns the rejection
         // handler; without one Node reports it as unhandled.
         rejected.catch(() => undefined);
         return rejected;

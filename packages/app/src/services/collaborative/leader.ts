@@ -11,7 +11,7 @@ let leader = false;
 export const isLeader = () => leader;
 
 /**
- * Elects a single tab to host the WebRTC sessions. `navigator.locks` holds a lock
+ * Elects a single tab to host the WebRTC sessions. navigator.locks holds a lock
  * for as long as the holder's callback promise is pending, so closing the leader
  * tab hands the lock — and the sessions — to whichever tab is next in line.
  */

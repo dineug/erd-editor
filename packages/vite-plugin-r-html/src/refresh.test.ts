@@ -70,8 +70,8 @@ describe('rHtmlRefresh', () => {
   });
 
   it('names a default-exported function declaration', async () => {
-    // `.name` is undefined on a FunctionDeclaration — reading only that used to
-    // inject `originComponent: undefined`, which self-accepts the module and
+    // .name is undefined on a FunctionDeclaration — reading only that used to
+    // inject originComponent: undefined, which self-accepts the module and
     // then swallows the update instead of swapping or reloading.
     const result = await run('export default function A() {}');
     expect(result?.code).toContain('originComponent: A');

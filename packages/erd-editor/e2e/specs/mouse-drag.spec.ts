@@ -3,29 +3,10 @@ import type { ErdEditorPage, Point } from '../support/ErdEditorPage';
 import { createSchema, oneTable, twoTables } from '../support/schema';
 import { MOD_KEY } from '../support/shortcuts';
 
-/**
- * Mouse-drag gestures: table move, marquee select, canvas pan, the two
- * scroll handles and column reordering.
- *
- * Every number asserted here is derived, not measured:
- *
- * - a table move is `movementX / zoomLevel` (`moveAllAction$`),
- * - a minimap pan is `-movement / (MINIMAP_SIZE / settings.width)`
- *   (`useMinimapScroll#absoluteMovement`),
- * - a scrollbar pan is `-movement / (viewport.width / settings.width)`
- *   (`useVirtualScroll#getWidthRatio`).
- *
- * Both ratios are read back off the rendered DOM rather than hard-coded, so a
- * change to either scale fails the assertion instead of quietly rescaling it.
- *
- * Pointer coordinates land on whole device pixels, so a screen-derived
- * expectation is compared with an explicit tolerance rather than exactly.
- */
-
 /** One screen pixel of pointer rounding, doubled for the two drag endpoints. */
 const PIXEL_TOLERANCE = 2;
 
-/** `constants/layout.ts` — the rendered edge of `.minimap`, re-checked below. */
+/** constants/layout.ts — the rendered edge of .minimap, re-checked below. */
 const MINIMAP_SIZE = 150;
 
 function expectClose(actual: number, expected: number, tolerance: number) {
@@ -37,7 +18,7 @@ function expectClose(actual: number, expected: number, tolerance: number) {
 
 type Box = { x: number; y: number; width: number; height: number };
 
-/** `boundingBox()` narrowed to a value, so every geometry read stays readable. */
+/** boundingBox() narrowed to a value, so every geometry read stays readable. */
 async function boxOf(target: {
   boundingBox: () => Promise<Box | null>;
 }): Promise<Box> {
@@ -47,26 +28,23 @@ async function boxOf(target: {
 }
 
 /**
- * `DragSelect` renders its marquee with an emotion-generated class, so the
- * stable handle is its own markup: it is the only `<rect stroke-dasharray="3">`
- * in the editor (relationships and the draw preview use `10`).
- *
- * It lives outside the canvas — a sibling of it under the Erd root — so this is
- * one of the few locators that legitimately goes through `erd.host`.
+ * DragSelect renders its marquee with a generated class, so the stable handle is
+ * its own markup: the one short-dashed rect in the editor. It lives outside the
+ * canvas, so this is one of the few locators going through the host.
  */
 const marqueeBand = (erd: ErdEditorPage) =>
   erd.host.locator('svg:has(rect[stroke-dasharray="3"])');
 
 /**
- * The div `Canvas.ts` wraps the canvas in. It carries the
- * `translate(scrollLeft, scrollTop) scale(zoomLevel)` transform and the
- * `pointer-events` switch, so it is what a pan visibly moves.
+ * The div Canvas.ts wraps the canvas in. It carries the
+ * translate(scrollLeft, scrollTop) scale(zoomLevel) transform and the
+ * pointer-events switch, so it is what a pan visibly moves.
  */
 const canvasController = (erd: ErdEditorPage) => erd.canvas.locator('xpath=..');
 
 /**
- * Presses and steps the mouse to `to` without releasing, so a spec can assert
- * on the state that only exists mid-drag. The caller owns the `mouse.up()`.
+ * Presses and steps the mouse to to without releasing, so a spec can assert
+ * on the state that only exists mid-drag. The caller owns the mouse.up().
  */
 async function dragHold(
   erd: ErdEditorPage,
@@ -85,13 +63,9 @@ async function dragHold(
 }
 
 /**
- * Mousedown on a table header — the strip that starts a move drag.
- *
- * Holding `$mod` here has a host-dependent side effect: Chromium on macOS turns
- * a Control+mousedown into a `contextmenu`, so the ERD context menu opens as
- * well; on a Linux runner it does not. It is harmless either way — the menu
- * closes again on the next mousedown outside it (`useContextMenuRootProvider`)
- * — but nothing in this file may assert on its presence or absence.
+ * Mousedown on a table header, the strip that starts a move drag. Holding the
+ * modifier opens the context menu on some hosts and not others, harmlessly, so
+ * nothing in this file may assert on its presence or absence.
  */
 async function pressTableHeader(
   erd: ErdEditorPage,
@@ -140,7 +114,7 @@ test.describe('mouse drag', () => {
     const before = await boxOf(erd.tableEl('users'));
 
     // 120 x 60 over the helper's 12 steps is a whole number of pixels per move,
-    // and well past the 20px `MOVE_MIN` that gates a history entry.
+    // and well past the 20px MOVE_MIN that gates a history entry.
     await erd.moveTable('users', 120, 60);
 
     const users = await erd.table('users');
@@ -176,7 +150,7 @@ test.describe('mouse drag', () => {
 
     await erd.moveTable('users', 96, 48);
 
-    // `moveAllAction$` divides the pointer delta by zoomLevel, so 96 screen px
+    // moveAllAction$ divides the pointer delta by zoomLevel, so 96 screen px
     // is 120 canvas units at 0.8.
     const users = await erd.table('users');
     expectClose(users.ui.x, 160 + 96 / 0.8, PIXEL_TOLERANCE / 0.8);
@@ -200,7 +174,7 @@ test.describe('mouse drag', () => {
     await pressTableHeader(erd, 'b', { mod: true });
     await expect(erd.selectedTables()).toHaveCount(2);
 
-    // The drag has to carry $mod as well: `selectTableAction$` unselects
+    // The drag has to carry $mod as well: selectTableAction$ unselects
     // everything else when the mousedown has no modifier, so a plain drag would
     // collapse the multi-selection to the table under the cursor first.
     const from = await erd.tableHeaderPoint('a');
@@ -221,7 +195,7 @@ test.describe('mouse drag', () => {
     expectClose(b.ui.y, 160 + 60, PIXEL_TOLERANCE);
     expect([c.ui.x, c.ui.y]).toEqual([160, 520]);
 
-    // `b` was never under the cursor, so its rendered box is the visible proof
+    // b was never under the cursor, so its rendered box is the visible proof
     // that the drag carried the whole selection.
     const afterB = await boxOf(erd.tableEl('b'));
     expectClose(afterB.x - beforeB.x, 120, PIXEL_TOLERANCE);
@@ -240,7 +214,7 @@ test.describe('mouse drag', () => {
     await expect(band).toHaveCount(0);
 
     // Selection tests the table's centre box, so the band is built around the
-    // rendered `users` element with a margin — well clear of `posts`.
+    // rendered users element with a margin — well clear of posts.
     const users = await boxOf(erd.tableEl('users'));
     const from = { x: users.x - 30, y: users.y - 30 };
     const to = {
@@ -259,16 +233,14 @@ test.describe('mouse drag', () => {
     await erd.page.mouse.up();
     await erd.page.keyboard.up(MOD_KEY);
 
-    // The band only exists while `state.dragSelect` is true.
+    // The band only exists while state.dragSelect is true.
     await expect(band).toHaveCount(0);
     await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
     await expect(erd.selectedTables()).toHaveCount(1);
 
     // A second band over blank canvas selects nothing, which clears the first.
-    // `posts` is the furthest node and its box ends short of viewport x 1150,
-    // so this rectangle covers no table; the band assertion below is what
-    // distinguishes a real marquee from the pan the same drag would be without
-    // $mod — an unselect-all is the outcome of either.
+    // The band assertion below is what distinguishes a real marquee from the
+    // pan the same drag would be unmodified, since either unselects all.
     const posts = await boxOf(erd.tableEl('posts'));
     const blankFrom = { x: posts.x + posts.width + 60, y: posts.y + 120 };
     const blankTo = { x: blankFrom.x + 180, y: blankFrom.y + 120 };
@@ -294,7 +266,7 @@ test.describe('mouse drag', () => {
 
     const before = await boxOf(canvasController(erd));
 
-    // (1100, 700) in canvas coordinates is empty: `posts` sits at (760, 420)
+    // (1100, 700) in canvas coordinates is empty: posts sits at (760, 420)
     // and its box ends near (1090, 530).
     await erd.panBy(-240, -120, { x: 1100, y: 700 });
 
@@ -307,7 +279,7 @@ test.describe('mouse drag', () => {
     expectClose(panned.x - before.x, -240, PIXEL_TOLERANCE);
     expectClose(panned.y - before.y, -120, PIXEL_TOLERANCE);
 
-    // Scrolling back past the origin clamps: `streamScrollTo` caps at 0.
+    // Scrolling back past the origin clamps: streamScrollTo caps at 0.
     await erd.panBy(360, 240, { x: 1100, y: 700 });
 
     const clamped = await erd.settings();
@@ -324,7 +296,7 @@ test.describe('mouse drag', () => {
   }) => {
     await erd.seed(twoTables());
 
-    // `grabMove` is armed by a Space keydown whose target is a DIV, so the
+    // grabMove is armed by a Space keydown whose target is a DIV, so the
     // editor root has to hold focus first. (1100, 700) is the same empty canvas
     // point the pan test uses.
     await erd.focusCanvas({ x: 1100, y: 700 });
@@ -364,10 +336,9 @@ test.describe('mouse drag', () => {
 
     const settingsBefore = await erd.settings();
 
-    // `useMinimapScroll` divides the pointer movement by
-    // `MINIMAP_SIZE / settings.width`. `.minimap` is the full canvas scaled by
-    // exactly that ratio, so the rendered box is where the ratio comes from —
-    // and it doubles as a check that MINIMAP_SIZE is still 150.
+    // useMinimapScroll divides the pointer movement by the minimap's own scale,
+    // and the minimap is the full canvas scaled by exactly that ratio, so the
+    // rendered box is where the ratio comes from.
     const minimapBox = await boxOf(erd.minimap);
     expect(minimapBox.width).toBeCloseTo(MINIMAP_SIZE, 3);
     const ratio = minimapBox.width / settingsBefore.width;
@@ -388,7 +359,7 @@ test.describe('mouse drag', () => {
     expectClose(canvasAfter.y - canvasBefore.y, -12 / ratio, tolerance);
 
     // The handle follows the pointer 1:1, because it is drawn at
-    // `scroll * ratio`.
+    // scroll * ratio.
     const handleAfter = await boxOf(erd.minimapViewport);
     expectClose(handleAfter.x - handleBefore.x, 24, PIXEL_TOLERANCE);
     expectClose(handleAfter.y - handleBefore.y, 12, PIXEL_TOLERANCE);
@@ -399,8 +370,8 @@ test.describe('mouse drag', () => {
   }) => {
     await erd.seed(twoTables());
 
-    // `VirtualScroll` is a sibling of the canvas, not a child of it, so this is
-    // a deliberate `host` locator. It renders the horizontal track first and
+    // VirtualScroll is a sibling of the canvas, not a child of it, so this is
+    // a deliberate host locator. It renders the horizontal track first and
     // the vertical one second; the shape assertion pins which one this is.
     const tracks = erd.host.locator('.virtual-scroll');
     await expect(tracks).toHaveCount(2);
@@ -412,17 +383,16 @@ test.describe('mouse drag', () => {
     const settingsBefore = await erd.settings();
     const before = await boxOf(thumb);
 
-    // `getWidthRatio` is `viewport.width / settings.width`, and the viewport is
-    // fed by a ResizeObserver on the host that subtracts only TOOLBAR_HEIGHT —
-    // so the host width is the viewport width. The thumb is rendered
-    // `viewport.width * ratio` wide, which verifies that derivation.
+    // getWidthRatio is the viewport over the canvas width, and the viewport is
+    // fed by a ResizeObserver that subtracts only the toolbar height, so the
+    // host width is the viewport width. The thumb width verifies that.
     const hostBox = await boxOf(erd.host);
     const ratio = hostBox.width / settingsBefore.width;
     expectClose(before.width, hostBox.width * ratio, PIXEL_TOLERANCE);
 
     const from = await erd.centerOf(thumb);
     await dragHold(erd, from, { x: from.x + 48, y: from.y });
-    // `[data-selected]` marks the grabbed thumb for as long as the drag runs.
+    // [data-selected] marks the grabbed thumb for as long as the drag runs.
     await expect(thumb).toHaveAttribute('data-selected', '');
     await erd.page.mouse.up();
     await expect(thumb).not.toHaveAttribute('data-selected', '');
@@ -431,7 +401,7 @@ test.describe('mouse drag', () => {
     expectClose(settings.scrollLeft, -48 / ratio, PIXEL_TOLERANCE / ratio);
     expect(settings.scrollTop).toBe(0);
 
-    // The thumb is drawn at `-scrollLeft * ratio`, which is exactly the
+    // The thumb is drawn at -scrollLeft * ratio, which is exactly the
     // pointer delta again.
     const after = await boxOf(thumb);
     expectClose(after.x - before.x, 48, PIXEL_TOLERANCE);
@@ -450,14 +420,13 @@ test.describe('mouse drag', () => {
     expect(await erd.columnIds('users')).toEqual(['users_id', 'users_name']);
     expect(await domOrder()).toEqual(['users_id', 'users_name']);
 
-    // `handleDragstartColumn` bails unless a column already holds focus, so the
+    // handleDragstartColumn bails unless a column already holds focus, so the
     // focus ring is a precondition rather than a nicety.
     await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
 
-    // Column rows use native HTML5 drag-and-drop. `locator.dragTo()` drops too
-    // fast for it: `fromShadowDraggable` debounces `dragover` by 50ms and is
-    // torn down on `dragend`, so a drag that releases immediately never emits.
-    // Hence press, move, wait for the reorder to land, then release.
+    // Column rows use native drag-and-drop, and dragTo() drops too fast:
+    // fromShadowDraggable debounces dragover and tears down on dragend, so a
+    // drag that releases immediately never emits.
     const source = await erd.centerOf(erd.columnEl('users_name'));
     const target = await erd.centerOf(erd.columnEl('users_id'));
     await dragHold(erd, source, target, 6);
@@ -482,14 +451,14 @@ test.describe('mouse drag', () => {
     await erd.seed(twoTables());
 
     const before = await boxOf(erd.tableEl('users'));
-    // `active` is one class among emotion-generated ones, hence the word match.
+    // active is one class among emotion-generated ones, hence the word match.
     await expect(erd.toolbarButton('Undo')).not.toHaveClass(/\bactive\b/);
     await expect(erd.toolbarButton('Redo')).not.toHaveClass(/\bactive\b/);
 
     await erd.moveTable('users', 120, 60);
     await expect(erd.toolbarButton('Undo')).toHaveClass(/\bactive\b/);
 
-    // 12 mousemoves, one history entry: `moveTable` is a stream action that the
+    // 12 mousemoves, one history entry: moveTable is a stream action that the
     // history groups per drag, so a single click has to undo the whole thing.
     await erd.toolbarButton('Undo').click();
 

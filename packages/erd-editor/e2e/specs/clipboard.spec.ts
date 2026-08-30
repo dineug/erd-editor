@@ -7,46 +7,20 @@ import {
   type ErdDocument,
 } from '../support/schema';
 
-/**
- * The paste ladder, driven through the real clipboard.
- *
- * The unit suite covers every rung of `readClipboardPayload` against a synthetic
- * `DataTransfer` under happy-dom. What it cannot cover is the part that only
- * exists in a browser: Chromium serialising the three flavours out to the system
- * clipboard and handing them back on a trusted `paste`, the shadow-root `.root`
- * div receiving that event, and `template.innerHTML` un-escaping the JSON the
- * writer hid in a `text/html` attribute. Everything here rides on that path.
- *
- * **How the clipboard is driven.** Every copy is a real `ControlOrMeta+C` and
- * every paste a real `ControlOrMeta+V`, so the editor always sees a trusted
- * `ClipboardEvent` carrying a `DataTransfer` Chromium built from the OS
- * clipboard. Crafting the cases a process hop would produce — the custom flavour
- * dropped, a payload from a newer release — needs bytes the editor would never
- * write itself, so those are put on the same clipboard by hijacking a `copy`
- * event on the host document (`seedClipboard`). The bytes still make the full
- * round trip through Chromium's clipboard; only their authorship is ours.
- *
- * Measured in this harness: headless Chromium backs the clipboard per browser
- * process, so parallel workers do not share one and a run does not disturb the
- * developer's own clipboard. `--headed` on macOS uses the real pasteboard, where
- * both of those stop holding.
- */
-
 // ── mirrored from src ─────────────────────────────────────────────────────
 
-/** `utils/table-clipboard/payload.ts`. */
+/** utils/table-clipboard/payload.ts. */
 const CLIPBOARD_MIME = 'application/x-erd-editor';
 const CLIPBOARD_HTML_ATTR = 'data-erd-editor';
 const CLIPBOARD_HTML_TRUNCATED_ATTR = 'data-erd-editor-truncated';
 
-/** `constants/layout.ts` — the displacement of the first paste round. */
+/** constants/layout.ts — the displacement of the first paste round. */
 const START_ADD = 50;
 
 /**
- * The browser's own clipboard shortcuts, not `tinykeys` bindings — Chromium's
- * editing layer, not the editor, is what turns these into `copy`/`paste` events.
- * Playwright resolves `ControlOrMeta` from the real platform, which is the same
- * signal Chromium uses.
+ * The browser's own clipboard shortcuts, not tinykeys bindings: Chromium's
+ * editing layer is what turns these into copy and paste events, and Playwright
+ * resolves the modifier from the same signal Chromium uses.
  */
 const COPY = 'ControlOrMeta+KeyC';
 const PASTE = 'ControlOrMeta+KeyV';
@@ -54,11 +28,9 @@ const PASTE = 'ControlOrMeta+KeyV';
 // ── fixtures ──────────────────────────────────────────────────────────────
 
 /**
- * The table that gets copied. Names and comments are deliberately wider than
- * `COLUMN_MIN_WIDTH` so that `ui.width*` — recomputed from a real text
- * measurement on load and on every paste — carries information rather than the
- * floor, and `"anon"` puts a character in the payload that has to survive
- * `escapeHtmlAttribute` and come back out of `template.innerHTML`.
+ * The table that gets copied. Names and comments are wider than the column
+ * minimum so the recomputed widths carry information rather than the floor, and
+ * a quoted name puts a character in the payload that has to survive escaping.
  */
 const sourceDocument = (): ErdDocument =>
   createSchema({
@@ -103,10 +75,9 @@ const sourceDocument = (): ErdDocument =>
   });
 
 /**
- * The document a copied payload is pasted into: one unrelated table, and no
- * `users` for `resolvePlacement` to find. Selecting `orders` is what makes the
- * hard-stop cases assert something — a ladder that kept descending would append
- * the copied columns to it.
+ * The document a copied payload is pasted into: one unrelated table and nothing
+ * for resolvePlacement to find. Selecting it is what makes the hard-stop cases
+ * assert something, since a descending ladder would append columns to it.
  */
 const targetDocument = (): ErdDocument =>
   createSchema({
@@ -128,17 +99,14 @@ type Flavours = Record<string, string>;
 type PasteRecord = {
   /** The flavours Chromium actually handed the editor. */
   types: string[];
-  /** True once a handler called `preventDefault()` — proof the paste arrived. */
+  /** True once a handler called preventDefault() — proof the paste arrived. */
   defaultPrevented: boolean;
 };
 
 /**
- * Puts an arbitrary set of flavours on the real clipboard.
- *
- * `document.execCommand('copy')` fires a real `copy` at the focused element,
- * which is inside the editor's shadow root — so the seed has to be stopped at
- * the document before it reaches the editor's own `copy` handler, which would
- * otherwise overwrite these flavours with the current selection.
+ * Puts an arbitrary set of flavours on the real clipboard. The copy fires at the
+ * focused element inside the editor's shadow root, so the seed is stopped at the
+ * document before the editor's own handler overwrites it with the selection.
  */
 async function seedClipboard(erd: ErdEditorPage, flavours: Flavours) {
   const copied = await erd.page.evaluate(entries => {
@@ -195,10 +163,8 @@ async function copy(erd: ErdEditorPage): Promise<Flavours> {
 
 /**
  * Presses paste and resolves once the event has been fully dispatched.
- *
- * `defaultPrevented` is read a task later rather than inside the listener, so
- * the record does not depend on whether this listener happens to run before or
- * after the editor's.
+ * defaultPrevented is read a task later rather than inside the listener, so the
+ * record does not depend on which listener ran first.
  */
 async function paste(erd: ErdEditorPage): Promise<PasteRecord> {
   await erd.page.evaluate(() => {
@@ -206,7 +172,7 @@ async function paste(erd: ErdEditorPage): Promise<PasteRecord> {
     document.addEventListener(
       'paste',
       event => {
-        // `clipboardData` empties once dispatch ends, so the types are read now
+        // clipboardData empties once dispatch ends, so the types are read now
         // and only the flag is deferred.
         const types = Array.from(event.clipboardData?.types ?? []);
         setTimeout(() => {
@@ -232,7 +198,7 @@ async function paste(erd: ErdEditorPage): Promise<PasteRecord> {
 
 // ── payload surgery ───────────────────────────────────────────────────────
 
-/** The visible `<table>` alone, with the editor's `<span>` wrapper stripped. */
+/** The visible <table> alone, with the editor's <span> wrapper stripped. */
 function visibleTable(erd: ErdEditorPage, html: string) {
   return erd.page.evaluate(source => {
     const template = document.createElement('template');
@@ -242,7 +208,7 @@ function visibleTable(erd: ErdEditorPage, html: string) {
 }
 
 /**
- * Rewrites the `version` of the JSON hidden in a `text/html` flavour, leaving
+ * Rewrites the version of the JSON hidden in a text/html flavour, leaving
  * the visible table alone. Done in page context so the attribute comes back out
  * escaped exactly the way a browser writes it.
  */
@@ -274,7 +240,7 @@ function withVersion(json: string, version: number) {
 
 /**
  * Everything a lossless copy has to carry, minus the parts that are meant to
- * differ: ids are freshly minted and `ui.x`/`ui.y`/`ui.zIndex` are re-placed and
+ * differ: ids are freshly minted and ui.x/ui.y/ui.zIndex are re-placed and
  * re-stacked, so those are asserted separately where they mean something.
  */
 async function tableShape(erd: ErdEditorPage, tableId: string) {
@@ -311,14 +277,14 @@ async function addedTableId(erd: ErdEditorPage, before: string[]) {
   return added[0];
 }
 
-/** `doc` and `collections` — what AC-27 requires to be untouched. */
+/** doc and collections — what AC-27 requires to be untouched. */
 async function documentSnapshot(erd: ErdEditorPage) {
   const { doc, collections } = await erd.value();
   return { doc, collections };
 }
 
 /**
- * Copies `users` out of a freshly seeded source document and returns both the
+ * Copies users out of a freshly seeded source document and returns both the
  * clipboard flavours and the shape the paste has to reproduce.
  */
 async function copySourceTable(erd: ErdEditorPage) {
@@ -336,12 +302,9 @@ async function copySourceTable(erd: ErdEditorPage) {
 }
 
 /**
- * A full run in a freshly mounted editor: reload, seed the target document,
- * put `flavours` on the clipboard, paste into empty canvas.
- *
- * The reload is what makes two runs comparable — the repeat-paste counter lives
- * in a component closure, so a second paste of the same `copyId` in the same
- * mount would be round 2.
+ * A full run in a freshly mounted editor: reload, seed the document, put
+ * flavours on the clipboard, paste into empty canvas. The reload is what makes
+ * two runs comparable, since the repeat-paste counter lives in a closure.
  */
 async function pasteIntoFreshEditor(erd: ErdEditorPage, flavours: Flavours) {
   await erd.goto();
@@ -378,7 +341,7 @@ test.describe('clipboard paste ladder', () => {
   });
 
   // AC-18: a hop that drops the custom flavour still produces the identical
-  // result, because the same JSON rides in a `text/html` attribute. Both halves
+  // result, because the same JSON rides in a text/html attribute. Both halves
   // run in a fresh mount so the only difference between them is the channel.
   test('produces the identical result from the hidden text/html JSON', async ({
     erd,
@@ -403,11 +366,9 @@ test.describe('clipboard paste ladder', () => {
     expect(viaHtml.ui).toEqual(viaCustom.ui);
   });
 
-  // AC-28 / the control for the two hard stops below. The same `<table>` the
-  // editor wrote, with our wrapper stripped, is somebody else's html — the
-  // ladder descends and merges it into the selected table. Whether the copied
-  // columns are appended is decided by the marker on the wrapper, and by nothing
-  // else.
+  // The control for the two hard stops below: the same table the editor wrote
+  // with the wrapper stripped is somebody else's html, so the ladder descends
+  // and merges it. The marker on the wrapper decides, and nothing else.
   test("merges a stranger's html table into the selected table", async ({
     erd,
   }) => {
@@ -432,10 +393,9 @@ test.describe('clipboard paste ladder', () => {
     expect(names).toEqual(['id', 'email', 'created_at']);
   });
 
-  // AC-27 (a): a payload from a release that has not shipped yet. The version
-  // check has to stop the ladder dead — the rung below it is the html table we
-  // wrote ourselves, which parses cleanly and would append the copied columns to
-  // whatever the user has selected (issue #408).
+  // A payload from a release that has not shipped yet. The version check has to
+  // stop the ladder dead, because the rung below is the html table we wrote
+  // ourselves, which parses cleanly and would append to the selection.
   test('hard stops on a payload from a newer version', async ({ erd }) => {
     const { flavours } = await copySourceTable(erd);
 
@@ -451,7 +411,7 @@ test.describe('clipboard paste ladder', () => {
     const record = await paste(erd);
 
     expect(record.types).toContain(CLIPBOARD_MIME);
-    // The stop is a `preventDefault()` with no dispatch, so the flag is the only
+    // The stop is a preventDefault() with no dispatch, so the flag is the only
     // signal that the handler ran at all rather than the event going missing.
     expect(record.defaultPrevented).toBe(true);
 
@@ -460,10 +420,9 @@ test.describe('clipboard paste ladder', () => {
     expect(await documentSnapshot(erd)).toEqual(before);
   });
 
-  // AC-27 (b): the copy was too large for the hidden JSON, and the hop dropped
-  // the custom flavour. All that is left is our own visible table plus the
-  // marker that says the JSON used to be there — which is the whole reason the
-  // marker exists.
+  // The copy was too large for the hidden JSON and the hop dropped the custom
+  // flavour, leaving our own visible table plus the marker saying the JSON used
+  // to be there, which is the whole reason the marker exists.
   test('hard stops on a truncated payload with no hidden JSON', async ({
     erd,
   }) => {

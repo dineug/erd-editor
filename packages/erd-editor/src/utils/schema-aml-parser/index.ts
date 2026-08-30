@@ -30,8 +30,8 @@ export function schemaAMLParserToSchemaJson(
   schema.settings.width = canvasSize;
   schema.settings.height = canvasSize;
 
-  // The editor's dialect reaches this function through `prepare`, and
-  // `resolveDataType` needs it before the first column is created.
+  // The editor's dialect reaches this function through prepare, and
+  // resolveDataType needs it before the first column is created.
   const { settings } = prepare ? prepare(schema) : schema;
   const converted = convertToSchema(model, ctx, settings.database);
   converted.settings = settings;

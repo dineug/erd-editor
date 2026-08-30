@@ -68,10 +68,9 @@ export class ErdEditorProvider implements vscode.CustomEditorProvider<ErdDocumen
       this.context,
       this.docToWebviewMap
     );
-    // Subscribed before `bootstrapWebview` is awaited: it reads `index.html` off
-    // disk, so a tab closed while it is still in flight fires `onDidDispose`
-    // before there is anything to unregister, and the webview would be left in
-    // `docToWebviewMap` for a panel that no longer exists.
+    // Subscribed before bootstrapWebview is awaited, since that reads off disk:
+    // a tab closed in flight fires onDidDispose before there is anything to
+    // unregister, leaving the webview mapped to a panel that no longer exists.
     let disposed = false;
     webviewPanel.onDidDispose(() => {
       disposed = true;

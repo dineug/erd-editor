@@ -6,11 +6,9 @@ import { createSchema } from '../support/schema';
 import { Shortcut } from '../support/shortcuts';
 
 /**
- * The panel carries no test ids, so every locator here is structural:
- * `[title="Add Index"]` is the "+" button, `[title="<table name>"]` a table tab,
- * `input[placeholder="name"]` an index row's name field,
- * `input[type="checkbox"]` exists only in the checkbox column, and
- * `[draggable="true"][data-id]` is a row of the lower-right selected-column list.
+ * The panel carries no test ids, so every locator here is structural: titles
+ * pick out the add button and the table tabs, placeholders the name fields, and
+ * the draggable rows are the lower-right selected-column list.
  */
 
 const schema = () =>
@@ -68,7 +66,7 @@ async function openIndexesTab(erd: ErdEditorPage, page: Page) {
   return locators;
 }
 
-/** What the browser paints is the `checked` property, never the attribute. */
+/** What the browser paints is the checked property, never the attribute. */
 const checkedStates = (panel: ReturnType<Page['locator']>) =>
   panel
     .locator('input[type="checkbox"]')
@@ -132,7 +130,7 @@ test.describe('table properties — indexes tab', () => {
     await expect(selectedColumns.nth(0)).toContainText('id');
     await expect.poll(() => checkedStates(panel)).toEqual([true, false, false]);
 
-    // `schema.ts` leaves the two index collections untyped, so read them here.
+    // schema.ts leaves the two index collections untyped, so read them here.
     const { collections, doc } = await erd.value();
     const [, secondIndexId] = doc.indexIds;
     const { indexColumnIds } = collections.indexEntities[
@@ -167,14 +165,14 @@ test.describe('table properties — indexes tab', () => {
     await checkboxes.nth(0).click();
     await expect(selectedColumns).toHaveCount(1);
 
-    // `course` has no index at all, so nothing can be selected while it shows.
+    // course has no index at all, so nothing can be selected while it shows.
     await tableTab('course').click();
     await expect(indexNames).toHaveCount(0);
     await expect(checkboxes).toHaveCount(1);
     await expect(checkboxes.nth(0)).toBeDisabled();
     await expect(selectedColumns).toHaveCount(0);
 
-    // Scoped out while `course` shows, not erased.
+    // Scoped out while course shows, not erased.
     await tableTab('student').click();
     await expect(indexNames).toHaveCount(1);
     await expect(selectedColumns).toHaveCount(1);

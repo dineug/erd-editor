@@ -14,11 +14,9 @@ const escapeRegExp = (text: string) =>
   text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
- * Page object over `window.rHtmlE2E`.
- *
- * Every method is a one-line `evaluate` on purpose: the fixture owns the logic,
- * this file only carries it across the bridge with types attached. A spec that
- * needs something new should grow the fixture, not inline a page function here.
+ * Page object over window.rHtmlE2E. Every method is a one-line evaluate on
+ * purpose: the fixture owns the logic and this file carries it across the bridge
+ * with types attached, so a spec grows the fixture rather than inlining here.
  */
 export class CssPage {
   constructor(readonly page: Page) {}
@@ -36,7 +34,7 @@ export class CssPage {
     );
   }
 
-  /** An element inside one probe's shadow root — `'host'` is the element itself. */
+  /** An element inside one probe's shadow root — 'host' is the element itself. */
   target(id: HostId, target: ProbeTarget): Locator {
     return target === 'host'
       ? this.probe(id)
@@ -90,14 +88,9 @@ export class CssPage {
   }
 
   /**
-   * `setClass`, then wait for r-html's re-render to actually put the names in the
-   * DOM.
-   *
-   * Setting an observed prop schedules a render; it does not perform one. A
-   * `computed()` read issued straight after `setClass` can therefore land on the
-   * element before the scope class is on it and report the unstyled value — a
-   * race that shows up as a rare, unreproducible failure. Every spec that styles
-   * through a class goes through here.
+   * setClass, then wait for the re-render to put the names in the DOM. Setting
+   * an observed prop schedules a render rather than performing one, so a read
+   * issued straight after can land before the scope class is on the element.
    */
   async applyClasses(
     id: HostId,

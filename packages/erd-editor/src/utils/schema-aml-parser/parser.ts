@@ -45,14 +45,14 @@ type RelationTail = {
   polymorphic: boolean;
 };
 
-/** The running parent path `advanceNesting` rewrites, one entity at a time. */
+/** The running parent path advanceNesting rewrites, one entity at a time. */
 type Nesting = {
   path: string[];
   depth: number;
 };
 
-// A keyword never reads as a name, which is why `full.aml` spells `"index"`
-// quoted; `indexed` stays one identifier and so never reaches this set.
+// A keyword never reads as a name, which is why full.aml spells "index"
+// quoted; indexed stays one identifier and so never reaches this set.
 const KEYWORDS = new Set([
   'as',
   'check',
@@ -251,7 +251,7 @@ function parseAttribute(
 }
 
 /**
- * Reproduces the reference's `nestAttributes`: the parent path only ever grows
+ * Reproduces the reference's nestAttributes: the parent path only ever grows
  * one level at a time, so an over-indented line lands under the attribute above
  * it instead of dropping.
  */
@@ -288,8 +288,8 @@ function readAttributeType(reader: Reader): {
   if (opening && isPunctuation(opening, '(')) {
     reader.next();
     const { values, numeric } = readValueList(reader);
-    // Up to two integers are the type's own parameters -- `varchar(100)`,
-    // `decimal(2,3)` -- and anything else is an inline enum.
+    // Up to two integers are the type's own parameters -- varchar(100),
+    // decimal(2,3) -- and anything else is an inline enum.
     if (values.length !== 0 && values.length <= 2 && numeric) {
       typeName = `${name}(${values.join(',')})`;
     } else {
@@ -415,7 +415,7 @@ function parseRelation(
 
 /**
  * The arrow reads its cardinalities in source order, so the first character is
- * the ref side and the second the src side: `->` is one parent, many children.
+ * the ref side and the second the src side: -> is one parent, many children.
  */
 function readRelationTail(reader: Reader): RelationTail | null {
   const legacy = reader.peek();
@@ -458,7 +458,7 @@ function readCardinality(reader: Reader): AMLCardinality | null {
   return token.value === '-' ? '1' : 'n';
 }
 
-/** `-item_kind=User>` -- an attribute path followed by `=` opens the discriminator. */
+/** -item_kind=User> -- an attribute path followed by = opens the discriminator. */
 function isPolymorphic(reader: Reader): boolean {
   let offset = 0;
 
@@ -496,7 +496,7 @@ function readAttributeRef(reader: Reader): AMLEndpoint {
   }
 
   // A ref that names no attribute is natural: it binds to the target's primary
-  // key, which only `convert.ts` can resolve.
+  // key, which only convert.ts can resolve.
   if (ref.namespace.schema === '') {
     return {
       namespace: EMPTY_NAMESPACE,
@@ -505,7 +505,7 @@ function readAttributeRef(reader: Reader): AMLEndpoint {
     };
   }
 
-  // AMLv1 spells the attribute as a trailing `.column` and nests it with `:`,
+  // AMLv1 spells the attribute as a trailing .column and nests it with :,
   // so one segment shifts out of the namespace and into the entity name.
   const path = [ref.name, ...readLegacyPath(reader)].join('.');
 
@@ -631,7 +631,7 @@ function readNamespace(reader: Reader): AMLNamespace {
 
 /**
  * Right-associative over four segments, and a dot with nothing after it still
- * counts -- that is what makes `identity...profiles` and `social.` legal.
+ * counts -- that is what makes identity...profiles and social. legal.
  */
 function readEntityRef(reader: Reader): EntityRef {
   const first = readName(reader);
@@ -690,7 +690,7 @@ function readAlias(reader: Reader): string {
 }
 
 /**
- * The `{props}` / `| doc` / `# comment` tail. It runs to the end of the line, so
+ * The {props} / | doc / # comment tail. It runs to the end of the line, so
  * anything a rule above could not read degrades to nothing rather than throwing.
  */
 function readExtra(reader: Reader, skip: Skip): Extra {

@@ -6,7 +6,7 @@ import * as styles from '@/components/primitives/code-block/CodeBlock.styles';
 const source = (tpl: { strings: TemplateStringsArray }) =>
   tpl.strings.raw.join('');
 
-/** Read from the emitted CSSOM: the shared block is an interpolation, which `source()` drops. */
+/** Read from the emitted CSSOM: the shared block is an interpolation, which source() drops. */
 const ALIGNMENT = [
   'padding',
   'font-family',
@@ -135,7 +135,7 @@ describe('CodeBlock.styles', () => {
     const preview = ruleOf(rules, `.${String(styles.preview)}`);
     const textarea = ruleOf(rules, `.${String(styles.textarea)}`);
 
-    // `word-spacing` is the one declaration in the shared fragment happy-dom's parser drops, so it
+    // word-spacing is the one declaration in the shared fragment happy-dom's parser drops, so it
     // rests on the two templates splicing in the same fragment object rather than on the loop
     expect(styles.preview.values[0]).toBeTruthy();
     expect(styles.preview.values[0]).toBe(styles.textarea.values[0]);

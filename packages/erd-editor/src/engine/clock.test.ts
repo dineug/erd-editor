@@ -71,7 +71,7 @@ describe('Clock', () => {
 
     expect(a.getVersion()).toBe(9);
     expect(b.getVersion()).toBe(0);
-    // the counter lives in a `#version` private field, so it is not an own
+    // the counter lives in a #version private field, so it is not an own
     // property — only the bound method properties are enumerable.
     expect(Object.keys(a)).toEqual(['getVersion', 'getNextVersion', 'merge']);
     expect(JSON.parse(JSON.stringify(a))).toEqual({});

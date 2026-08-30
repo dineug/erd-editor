@@ -3,11 +3,9 @@ import { getShikiService } from '@dineug/erd-editor-shiki-worker';
 import { setGetShikiServiceCallback } from '@/index';
 
 /**
- * Deterministic mount for the e2e suite.
- *
- * Differences from `src/index.dev.ts` are all in service of repeatability:
- * no stats.js rAF loop, no HMR, no theme builder, and `systemDarkMode` pinned
- * off so the runner's `prefers-color-scheme` cannot change what is rendered.
+ * Deterministic mount for the e2e suite: no stats.js loop, no HMR, no theme
+ * builder, and systemDarkMode pinned off so the runner's prefers-color-scheme
+ * cannot change what is rendered.
  */
 setGetShikiServiceCallback(getShikiService);
 
@@ -22,6 +20,6 @@ if (!app) {
 }
 app.appendChild(editor);
 
-// Tests reach the element through `document.querySelector('erd-editor')`; this
+// Tests reach the element through document.querySelector('erd-editor'); this
 // handle exists so a failing spec can be debugged from the browser console.
 Reflect.set(window, 'erdEditor', editor);

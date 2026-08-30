@@ -154,7 +154,7 @@ describe('ToastContainer', () => {
   it('ignores a repeated close signal for a toast that is already gone', async () => {
     mounted = await mountAndFlush(html`<${ToastContainer} />`);
     const closeCallbacks: Array<() => void> = [];
-    // the component only ever calls `.finally` on the close promise, so a
+    // the component only ever calls .finally on the close promise, so a
     // thenable double lets us replay the close signal twice
     const close = {
       finally(callback: () => void) {

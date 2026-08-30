@@ -4,17 +4,6 @@ import { Point } from '@/internal-types';
 import { nudgeRoutes } from '@/utils/draw-relationship/nudge';
 import { countBlocked, type Obstacles } from '@/utils/draw-relationship/route';
 
-/**
- * Random scenes over the invariants the nudge pass has to hold whatever it is
- * handed. The hand-written cases in `nudge.test.ts` each pin one decision; these
- * catch the ones no scene was written for — a rounding that only shows up at some
- * coordinates, a lane that folds a connector nobody thought to build.
- *
- * Every route here is the staircase `routeOrthogonal` emits most often, and every
- * channel is drawn from a band a few pixels wide, so a scene is a bundle of runs
- * that all have to be pulled apart at once.
- */
-
 /** mulberry32 — the generator the routing benchmark uses, for the same reason. */
 function prng(seed: number) {
   let a = seed >>> 0;
@@ -77,12 +66,8 @@ function scene(seed: number): Scene {
 
 /**
  * The escape shape, whose two upright runs meet end to end rather than side by
- * side — a chain of the span-overlap relation and not a bundle.
- *
- * The staircases above cannot reach the compact layout at all: every one of their
- * spans straddles the same band, so every group is a clique and a track holds one
- * segment. Instrumented over 400 of those scenes, the compact layout was offered
- * 0 times in 446 groups.
+ * side — a chain of the span-overlap relation, not a bundle. The staircases
+ * above cannot reach the compact layout at all: every group there is a clique.
  */
 function chainScene(seed: number): Scene {
   const random = prng(seed);
@@ -195,10 +180,8 @@ const SEEDS = 400;
 describe('nudgeRoutes over random chains', () => {
   it('never doubles up more of the drawing than it un-doubles', () => {
     // Summed rather than asserted scene by scene: a group is separated against
-    // its own channel and the segments near it, so one scene in a few hundred can
-    // still end up worse. What must not happen is the pass losing ground overall,
-    // which is what choosing a layout by list position rather than by how far it
-    // moves the group did.
+    // its own channel and the segments near it, so one scene in a few hundred
+    // can end up worse. The pass must not lose ground overall.
     let before = 0;
     let after = 0;
 
@@ -302,11 +285,9 @@ describe('nudgeRoutes over random bundles', () => {
     const anchorMoved: string[] = [];
     const diagonal: string[] = [];
     const blockedWorse: string[] = [];
-    // A route may only leave its anchor outward, which is what routeOrthogonal
-    // enforces when it enumerates candidates. A lane on the other side of the
-    // turning point sends the run back over the guide line the cardinality
-    // symbols are drawn on, and nothing else here can see that: the fold stays
-    // orthogonal, collapses nothing, and misses every foreign table.
+    // A route may only leave its anchor outward. A lane past the turning point
+    // folds the run back over the cardinality guide line, and nothing else here
+    // sees it: the fold stays orthogonal and misses every foreign table.
     const folded: string[] = [];
     const direction = (points: Point[], index: number) => {
       const a = points[index];

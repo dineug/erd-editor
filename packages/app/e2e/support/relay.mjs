@@ -3,18 +3,9 @@ import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 
 /**
- * A minimal in-memory nostr relay — just enough of NIP-01 for trystero to
- * complete a WebRTC handshake.
- *
- * The e2e suite points the app at this instead of the public relay pool
- * (`ERD_EDITOR_NOSTR_RELAY_URLS`), which is what makes a collaboration test
- * deterministic and offline: no third-party relay, no rate limits, no flake.
- *
- * Trystero's nostr strategy speaks exactly three client messages — `REQ` to
- * subscribe to a set of topics, `CLOSE` to drop a subscription, and `EVENT` to
- * publish — and reads back `["EVENT", subId, event]`. Signature verification,
- * persistence, and every other relay responsibility are deliberately absent;
- * trystero encrypts its own payloads and ignores events from itself.
+ * A minimal in-memory nostr relay, just enough of NIP-01 for trystero to
+ * complete a WebRTC handshake. Pointing the suite here rather than at the public
+ * pool is what makes a collaboration test deterministic and offline.
  */
 
 const port = Number(process.argv[2] ?? 5176);

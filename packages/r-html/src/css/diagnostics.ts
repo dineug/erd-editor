@@ -35,7 +35,7 @@ export type Diagnostic = {
   column?: number;
 };
 
-// Matched by name, not by shape: `@font-face{}` also parses to an at-rule with no children, but
+// Matched by name, not by shape: @font-face{} also parses to an at-rule with no children, but
 // that is an ordinary empty-block discard rather than an unsupported statement.
 const STATEMENT_AT_RULES: ReadonlySet<string> = new Set([
   IMPORT,
@@ -46,7 +46,7 @@ const STATEMENT_AT_RULES: ReadonlySet<string> = new Set([
 
 export type DiagnosticsOptions = {
   source: string;
-  /** `false` when the tree was compiled with `rules: ['']`. */
+  /** false when the tree was compiled with rules: ['']. */
   scoped: boolean;
 };
 
@@ -146,10 +146,10 @@ function reportRuleset(
     }
   }
 
-  // The two selector findings are silent in global mode, where a leading `:` is simply correct.
+  // The two selector findings are silent in global mode, where a leading : is simply correct.
   if (!scoped) return;
 
-  // `value` is the selector as authored at this nesting level, not the expanded `props`.
+  // value is the selector as authored at this nesting level, not the expanded props.
   for (const segment of splitSelectorList(element.value)) {
     const selector = segment.trim();
 
@@ -176,7 +176,7 @@ function reportRuleset(
   }
 }
 
-// `@keyframes` names are global and deliberately unscoped, so a duplicate overwrites rather than
+// @keyframes names are global and deliberately unscoped, so a duplicate overwrites rather than
 // collides.
 function reportKeyframes(
   element: Element,
@@ -215,7 +215,7 @@ function reportScopeInDeclarations(
   }
 }
 
-// Top-level commas only: `:not(.a, .b)` and `[data-x='a,b']` are each one segment.
+// Top-level commas only: :not(.a, .b) and [data-x='a,b'] are each one segment.
 function splitSelectorList(value: string): string[] {
   const segments: string[] = [];
   let depth = 0;

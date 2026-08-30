@@ -3,19 +3,9 @@ import { join } from 'node:path';
 import { defineConfig, type Plugin } from 'vite-plus';
 
 /**
- * Strips `crossorigin` from the tags Vite injects.
- *
- * webpack emitted `<script defer src>`; Vite emits `<script type="module"
- * crossorigin>`, which asks the browser to make a CORS request. Inside a VSCode
- * webview the document runs on `vscode-webview://` while assets are served from
- * a different origin through `asWebviewUri`, and that origin does not answer
- * with the CORS headers a crossorigin module script requires.
- *
- * This is not covered by any test here. The Extension Host suite asserts the
- * editor resolves and the commands work, but the harness blocks the webview
- * document request itself (`Blocked vscode-webview request … index.html` in its
- * log), so a panel that fails to load its bundle still passes. Removing the
- * attribute costs nothing and closes a failure the suite cannot see.
+ * Strips crossorigin from the tags Vite injects. A webview document runs on one
+ * origin while asWebviewUri serves assets from another, which answers with none
+ * of the CORS headers a crossorigin module script requires.
  */
 function stripCrossorigin(): Plugin {
   return {
@@ -27,39 +17,21 @@ function stripCrossorigin(): Plugin {
   };
 }
 
-/**
- * This package builds *into another package*: `vuerd-vscode/public`, which the
- * extension reads at runtime and ships inside the VSIX. Three parts of the
- * output are contracts.
- *
- * `base: './'` — `Editor#buildHtmlForWebview` substitutes the webview URI into
- * `<base href="{{extension-base-url}}">` and lets relative asset URLs resolve
- * against it. Vite's default `/` would emit absolute paths, which resolve
- * against the webview origin instead and render a blank panel.
- *
- * The `{{extension-base-url}}` token has to survive HTML processing verbatim;
- * the extension replaces every occurrence with a regex, and a rewritten or
- * dropped `<base>` breaks every asset at once.
- *
- * Filenames stay `bundle.<hex8>.js` / `.css`. Rolldown hashes in base64 by
- * default, which is a different alphabet from webpack's `[contenthash:8]`.
- */
 export default defineConfig({
   base: './',
   plugins: [stripCrossorigin()],
-  // `index.html` is the entry and lives at the package root. There is no static
-  // asset directory here, and leaving `publicDir` at its default would make
+  // index.html is the entry and lives at the package root. There is no static
+  // asset directory here, and leaving publicDir at its default would make
   // Vite look for one inside the output it is about to write.
   publicDir: false,
 
   build: {
     outDir: '../vscode-extension/public',
     // The output directory is outside this package's root, where Vite only
-    // warns and declines to clear by default. Stale hashed bundles left there
-    // are picked up by `vsce` and shipped — the directory already carried one
-    // before this migration.
+    // warns and declines to clear by default, so stale hashed bundles left
+    // there are picked up by vsce and shipped.
     emptyOutDir: true,
-    // Preload links carry `crossorigin` too, and the extension has one entry —
+    // Preload links carry crossorigin too, and the extension has one entry —
     // there is nothing for the browser to usefully preload here anyway.
     modulePreload: false,
     rolldownOptions: {
@@ -79,20 +51,16 @@ export default defineConfig({
   },
 
   /**
-   * nx.json `targetDefaults`의 대체. `dependsOn`이 `^build`를, `output`이
-   * `outputs: ["{projectRoot}/dist"]`를 잇는다.
-   *
-   * `from`에 셋을 다 적는 이유: 워크스페이스 의존이 패키지마다 다른 필드에 있다 —
-   * 라이브러리 아홉은 전부 devDependencies에 걸고, 앱 형태 넷은 dependencies에 건다.
-   * 기본값(`dependencies`)에 맡기면 라이브러리 쪽 간선이 통째로 비고, 그 결과는
-   * 실패가 아니라 stale dist를 상대로 한 초록이다.
+   * nx.json targetDefaults의 대체. from에 셋을 다 적는 이유는 워크스페이스 의존이
+   * 패키지마다 다른 필드에 있어서다 — 기본값에 맡기면 라이브러리 쪽 간선이 비고,
+   * 그 결과는 실패가 아니라 stale dist를 상대로 한 초록이다.
    */
   run: {
     tasks: {
       build: {
         // 타입 게이트 ①. 배열은 순차 실행이자 독립 캐시 단위인데, 태스크 레벨
-        // `input`은 두 서브태스크가 공유한다(실측) — 그래서 소스만 바뀌어도
-        // 자동 추적에 안 잡히는 `tsc`가 다시 돈다.
+        // input은 두 서브태스크가 공유한다(실측) — 그래서 소스만 바뀌어도
+        // 자동 추적에 안 잡히는 tsc가 다시 돈다.
         command: ['tsc --noEmit', 'vp build'],
         dependsOn: [
           {

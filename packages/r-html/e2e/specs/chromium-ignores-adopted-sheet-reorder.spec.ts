@@ -1,35 +1,6 @@
 import { expect, test } from '../support/fixtures';
 
-/**
- * A platform defect, isolated away from r-html so the ownership is not in doubt.
- *
- * **Chromium does not re-resolve the cascade when the order of
- * `adoptedStyleSheets` changes but the set of sheets does not.** Once a tree has
- * had its style resolved, permuting the sheets it already knows — by assigning a
- * permutation, or by splicing in place — leaves the old winner in place
- * indefinitely.
- *
- * The mechanism, which the last two tests pin down, is narrower than "the order
- * is frozen": Blink decides what to invalidate from the symmetric difference of
- * the **rule sets**, not from anyone's position in the list. A permutation has an
- * empty difference, so nothing is marked dirty and every element that already has
- * a computed style keeps it. The new order is perfectly readable and would be read
- * correctly — the engine just never asks. That distinction is what makes the
- * defect cheap to work around: dirty a rule set that the affected elements match,
- * and the correct order is picked up with no clearing and no forced recalc.
- * `setGlobalStyleOrder` does exactly that, which is why the equivalent test in
- * `cascade-and-scoping.spec.ts` passes while the ones below do not.
- *
- * Nothing here touches r-html. Every case builds its own shadow root, its own
- * `CSSStyleSheet` objects and its own element, so a failure is a statement about
- * the browser. The expected failures assert the **correct** behaviour, so the day
- * the engine is fixed they turn red and say so; the two passing tests at the end
- * assert the workaround the library depends on, so they turn red the day it stops
- * working. Observed on the Chromium bundled with this repo's Playwright
- * (Chrome/151).
- */
-
-/** One shadow root, one `.conflict` element, and two sheets that fight over it. */
+/** One shadow root, one .conflict element, and two sheets that fight over it. */
 const SETUP = `
   const mk = css => { const s = new CSSStyleSheet(); s.replaceSync(css); return s; };
   const host = document.createElement('div');
@@ -109,10 +80,8 @@ test.describe('Chromium and a reordered adoptedStyleSheets', () => {
     're-resolves when a permutation is followed by adding a new sheet',
     async ({ cssPage }) => {
       // A genuine set change is not enough on its own: the sheet added here
-      // carries `.unrelated`, so the rule sets that entered the difference match
-      // nothing on the element under test and it is never invalidated. Narrow the
-      // added sheet to a rule that *does* match — see the last test — and the
-      // permutation is picked up.
+      // matches nothing on the element under test, so it is never invalidated.
+      // Narrow it to a rule that does match and the permutation is picked up.
       const color = await cssPage.page.evaluate(
         `(() => { ${SETUP}
           root.adoptedStyleSheets = [red, blue];
@@ -131,11 +100,9 @@ test.describe('Chromium and a reordered adoptedStyleSheets', () => {
   test.fail(
     're-resolves when the list is cleared and re-assigned in one task',
     async ({ cssPage }) => {
-      // The obvious workaround, and it does not work: without a style resolution
-      // while the list is empty, the clear and the re-assign coalesce into "the
-      // same set as before" and the stale order survives. Interposing a read
-      // between the two is one way out — see the next test — and dirtying a rule
-      // set the element matches is the cheaper one the library actually uses.
+      // Clearing and re-assigning does not work: without a style resolution
+      // while the list is empty the two coalesce into the same set as before.
+      // Interposing a read is one way out; dirtying a matching rule is cheaper.
       const color = await cssPage.page.evaluate(
         `(() => { ${SETUP}
           root.adoptedStyleSheets = [red, blue];
@@ -153,11 +120,9 @@ test.describe('Chromium and a reordered adoptedStyleSheets', () => {
   test('a clear that is itself style-resolved before the re-assign does work', async ({
     cssPage,
   }) => {
-    // The obvious recovery: empty the list, force a resolution against the empty
-    // list, then assign the new order. It works, and it is what the last two tests
-    // are measured against — it costs a synchronous style recalc per host and
-    // leaves a frame in which the tree is unstyled, so `src/` uses the cheaper
-    // route below instead.
+    // Empty the list, force a resolution against it, then assign the new order.
+    // It works, and it is what the last two tests are measured against, but it
+    // costs a synchronous recalc per host and leaves an unstyled frame.
     const result = await cssPage.page.evaluate(
       `(() => { ${SETUP}
         root.adoptedStyleSheets = [red, blue];
@@ -202,19 +167,17 @@ test.describe('Chromium and a reordered adoptedStyleSheets', () => {
   );
 
   /**
-   * The two below are load-bearing. `setGlobalStyleOrder` reorders the array and
-   * then re-runs `replaceSync` over each global's own text; if either of these
+   * The two below are load-bearing. setGlobalStyleOrder reorders the array and
+   * then re-runs replaceSync over each global's own text; if either of these
    * stops holding, that call silently stops working and only this file will say so.
    */
 
   test('a replaceSync over the same text is enough to pick the new order up', async ({
     cssPage,
   }) => {
-    // The cheap recovery, and the one `src/template/vCSSStyleSheet.ts` uses. The
-    // text does not change and neither does the set of sheet objects — but the
-    // sheet's rules leave and re-enter the changed-rule-set difference, so every
-    // element they match is invalidated and recomputed against the list the host
-    // is already holding. No clear, no forced recalc, no unstyled frame.
+    // The cheap recovery, and the one vCSSStyleSheet.ts uses: neither the text
+    // nor the set of sheets changes, but the rules leave and re-enter the
+    // difference, so every element they match is invalidated and recomputed.
     const result = await cssPage.page.evaluate(
       `(() => { ${SETUP}
         root.adoptedStyleSheets = [red, blue];
@@ -237,11 +200,9 @@ test.describe('Chromium and a reordered adoptedStyleSheets', () => {
   test('a replaceSync without a reorder leaves the winner alone', async ({
     cssPage,
   }) => {
-    // The other half of the contract: re-running `replaceSync` over unchanged text
-    // must invalidate without *deciding* anything. If it could move a winner on its
-    // own, `setGlobalStyleOrder` would be reordering the bucket twice — once
-    // deliberately, once as a side effect — and the pin would not be the only thing
-    // choosing the order.
+    // The other half of the contract: re-running replaceSync over unchanged text
+    // must invalidate without deciding anything, or setGlobalStyleOrder would be
+    // reordering the bucket twice and the pin would not choose the order.
     const result = await cssPage.page.evaluate(
       `(() => { ${SETUP}
         root.adoptedStyleSheets = [red, blue];

@@ -1,25 +1,9 @@
 import { expect, test } from '../support/fixtures';
 
 /**
- * Q1 — is `adoptedStyleSheets` mutable in a real engine, and does the append fast
- * path in `vCSSStyleSheet.ts` rest on a verdict that is actually true?
- *
- * `detectMutableAdoptedStyleSheets()` decides between two shapes of the same API:
- * the Chrome 73-98 `FrozenArray`, where the list can only be replaced wholesale,
- * and the Chrome 99+ `ObservableArray`, where `push` reaches the real list. Get it
- * wrong in the optimistic direction and every host silently keeps only the sheets
- * it had when it joined. Until this file ran, the probe had never been executed by
- * anything but happy-dom.
- *
- * Three independent claims, deliberately not folded together, so a failure names
- * which layer moved:
- *
- *   1. the probe's verdict,
- *   2. the platform primitive the probe is asking about, measured directly,
- *   3. the consequence — that the library's own hosts really do accumulate.
- *
- * If (1) and (2) ever disagree the probe is broken. If they agree and (3) fails,
- * the fast path is wired up wrongly and the probe is innocent.
+ * Whether adoptedStyleSheets is mutable in a real engine, which the append fast
+ * path rests on. The probe's verdict, the platform primitive it asks about and
+ * the accumulation it buys are asserted apart, so a failure names the layer.
  */
 test.describe('adoptedStyleSheets is mutable in Chromium', () => {
   test('the probe reports the list as mutable', async ({ cssPage }) => {
@@ -74,11 +58,9 @@ test.describe('adoptedStyleSheets is mutable in Chromium', () => {
   }) => {
     const [id] = await cssPage.hostIds();
 
-    // The FrozenArray era returned a new frozen array on every read, so identity
-    // was unstable and a push could never be observed. Stable identity is the
-    // structural signature of the ObservableArray the fast path requires, and it
-    // is what makes the cross-host inequality in `adopted-arrays-are-per-host`
-    // mean something rather than being true of any two reads.
+    // A new frozen array per read makes identity unstable and a push
+    // unobservable, so stable identity is the structural signature the fast path
+    // requires and what makes the cross-host inequality mean anything.
     expect(
       await cssPage.sharesAdoptedArray(id, id),
       "reading one host's adoptedStyleSheets twice gave two different objects. " +
@@ -105,10 +87,9 @@ test.describe('adoptedStyleSheets is mutable in Chromium', () => {
 
     const adopted = await cssPage.adopted(id);
 
-    // The first registration finds `orderedSheets` null and takes the rebuild
-    // path; every one after it takes `host.adoptedStyleSheets.push(sheet)`. So a
-    // push that silently did nothing leaves exactly one sheet here, which is why
-    // the count is the discriminating assertion and not just a sanity check.
+    // The first registration rebuilds and every one after it pushes, so a push
+    // that silently did nothing leaves exactly one sheet here. The count is the
+    // discriminating assertion rather than a sanity check.
     expect(
       adopted.map(sheet => sheet.cssText),
       `the host holds ${adopted.length} of the 6 templates registered after it ` +

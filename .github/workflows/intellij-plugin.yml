@@ -1,11 +1,6 @@
-# The Kotlin/Gradle half of the IntelliJ plugin. Its own file rather than jobs on
-# `ci.yml`, because the concurrency block below is workflow-level: folding it into
-# `ci.yml` would apply `cancel-in-progress` to the five jobs already there and start
-# cancelling their runs on consecutive pushes to main.
-#
-# Publishing to the JetBrains Marketplace is deliberately not automated — it is a
-# manual `./gradlew buildPlugin` plus an upload, so no signing or publish token
-# lives in this repository.
+# The Kotlin/Gradle half of the IntelliJ plugin, its own file because the
+# concurrency block below is workflow-level and folding it into ci.yml would
+# start cancelling those five jobs on consecutive pushes to main.
 name: intellij-plugin
 
 on:
@@ -20,10 +15,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Always runs, always green. The `build` and `verify` jobs below are gated on its
-  # output rather than on a workflow-level `paths:` filter: a workflow skipped by
-  # `paths` leaves its checks Pending forever, which blocks merges if anyone marks
-  # one required, while a skipped *job* counts as passing.
+  # Always runs, always green. The jobs below gate on its output rather than a
+  # workflow-level paths filter, because a workflow skipped by paths leaves its
+  # checks Pending forever while a skipped job counts as passing.
   gate:
     runs-on: ubuntu-latest
     outputs:
@@ -40,15 +34,13 @@ jobs:
               - '.github/workflows/intellij-plugin.yml'
               - '.github/actions/setup-workspace/**'
 
-  # The webview's upstream packages are not in the filter above on purpose: their
-  # `build` task now writes straight into this plugin's resources, so `pnpm build`
-  # in `ci.yml` already fails on anything that breaks the bundle. Nothing on the TS
-  # side can break Kotlin compilation, and paying for a JDK setup plus an IntelliJ
-  # distribution download on every `packages/shared` edit buys nothing.
+  # The webview's upstream packages are left out of the filter on purpose: their
+  # build writes straight into this plugin's resources, so pnpm build in ci.yml
+  # already fails on anything that breaks the bundle.
   build:
     needs: gate
-    # The two `||` clauses are the safety net: a gate that misreads the diff can only
-    # cost a run here, never skip one on main or on an explicit dispatch.
+    # The two fallback clauses are the safety net: a gate that misreads the diff
+    # can only cost a run here, never skip one on main or an explicit dispatch.
     if: >-
       needs.gate.outputs.plugin == 'true'
       || github.ref == 'refs/heads/main'
@@ -58,12 +50,12 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-workspace
 
-      # `buildPlugin` packages `src/main/resources/assets`, which is gitignored and
-      # produced here. `verifyWebviewAssets` turns an absent bundle into a build
+      # buildPlugin packages src/main/resources/assets, which is gitignored and
+      # produced here. verifyWebviewAssets turns an absent bundle into a build
       # failure rather than a plugin that opens a blank editor.
       - run: pnpm exec vp run --filter @dineug/erd-editor-intellij-webview --fail-if-no-match build
 
-      # `javaVersion` in packages/intellij-plugin/gradle.properties. The plugin is
+      # javaVersion in packages/intellij-plugin/gradle.properties. The plugin is
       # compiled against the oldest JDK it must load on.
       - uses: actions/setup-java@v5
         with:
@@ -71,7 +63,7 @@ jobs:
           java-version: 21
       - uses: gradle/actions/setup-gradle@v6
 
-      # `check` is the JVM unit tests plus the Kover coverage report.
+      # check is the JVM unit tests plus the Kover coverage report.
       - run: ./gradlew check buildPlugin
         working-directory: packages/intellij-plugin
 
@@ -88,9 +80,9 @@ jobs:
           path: packages/intellij-plugin/build/distributions/*.zip
           retention-days: 7
 
-  # The IntelliJ Plugin Verifier downloads a full IntelliJ IDEA distribution per IDE
-  # in the range, which is why it is not on every pull request. Releases are manual,
-  # so main and `workflow_dispatch` are the two moments the answer is needed.
+  # The IntelliJ Plugin Verifier downloads a full IDEA distribution per IDE in
+  # the range, which is why it is not on every pull request. Releases are manual,
+  # so main and workflow_dispatch are the two moments the answer is needed.
   verify:
     needs: [gate, build]
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
@@ -113,17 +105,16 @@ jobs:
           java-version: 21
       - uses: gradle/actions/setup-gradle@v6
 
-      # The IDE set is derived from `platformVersion` / `pluginSinceBuild`, so
-      # gradle.properties is what should invalidate this cache. The path prefix is
-      # not optional: `hashFiles` ignores `working-directory` and returns an empty
-      # string for a path it cannot find, which freezes the key at `plugin-verifier-`.
+      # The IDE set is derived from gradle.properties, so that is what should
+      # invalidate this cache. The path prefix is not optional: hashFiles ignores
+      # working-directory and returns an empty string for a path it cannot find.
       - uses: actions/cache@v6
         with:
           path: ~/.pluginVerifier/ides
           key: plugin-verifier-${{ hashFiles('packages/intellij-plugin/gradle.properties') }}
           restore-keys: plugin-verifier-
 
-      # $HOME rather than ~: bash does not tilde-expand inside -Dkey=~/value.
+      # $HOME rather than a tilde: bash does not expand one inside -Dkey=~/value.
       - run: ./gradlew verifyPlugin -Dplugin.verifier.home.dir=$HOME/.pluginVerifier
         working-directory: packages/intellij-plugin
 

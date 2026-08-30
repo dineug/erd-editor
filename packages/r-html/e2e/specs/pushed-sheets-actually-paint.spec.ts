@@ -1,17 +1,9 @@
 import { expect, test } from '../support/fixtures';
 
 /**
- * Q2 — do the sheets the fast path pushes actually style anything?
- *
- * Every assertion the unit suite makes about `adoptedStyleSheets` is about array
- * contents: the right sheet objects, in the right order, on the right hosts.
- * happy-dom computes no styles at all, so none of it can distinguish "the sheet is
- * in the list" from "the sheet is in the list *and* applies". A push that landed
- * in an array the engine had stopped consulting would pass the whole unit suite.
- *
- * So nothing here reads `adoptedStyleSheets`. Every assertion goes through
- * `getComputedStyle`, and the templates are registered *after* the host joined —
- * the append path, not the join path.
+ * Whether the sheets the fast path pushes actually style anything. Nothing here
+ * reads adoptedStyleSheets: every assertion goes through getComputedStyle, and
+ * the templates register after the host joined, which is the append path.
  */
 test.describe('sheets pushed after a host joined actually paint', () => {
   test('a template registered after the host joined styles it', async ({
@@ -19,8 +11,8 @@ test.describe('sheets pushed after a host joined actually paint', () => {
   }) => {
     const [id] = await cssPage.hostIds();
 
-    // Registration order matters: the host is already in `hostContextMap`, so this
-    // reaches it through `addSheet`, not through `addCSSHost`.
+    // Registration order matters: the host is already in hostContextMap, so this
+    // reaches it through addSheet, not through addCSSHost.
     const identifier = await cssPage.registerStyle(
       'color: rgb(0, 128, 0); padding-left: 7px;'
     );
@@ -45,7 +37,7 @@ test.describe('sheets pushed after a host joined actually paint', () => {
     const [id] = await cssPage.hostIds();
 
     // Distinct properties rather than distinct values of one property: if they all
-    // set `padding-left` the last would win and a middle sheet could go missing
+    // set padding-left the last would win and a middle sheet could go missing
     // without anything noticing. Each one here has to land on its own.
     const declarations: Array<[string, string]> = [
       ['padding-left', '1px'],
@@ -74,7 +66,7 @@ test.describe('sheets pushed after a host joined actually paint', () => {
   test('a host that mounts after registration paints too', async ({
     cssPage,
   }) => {
-    // The other direction: `addCSSHost` hands a joining host the ordered list. The
+    // The other direction: addCSSHost hands a joining host the ordered list. The
     // unit suite covers the array; this covers whether it renders.
     const identifier = await cssPage.registerStyle('padding-left: 21px;');
     const late = await cssPage.mountHost();

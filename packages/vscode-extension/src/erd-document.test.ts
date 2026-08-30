@@ -120,7 +120,7 @@ describe('ErdDocument', () => {
 
       const backup = await document.backup(destination as any);
 
-      // `ErdEditorProvider.openCustomDocument` does exactly this with `backupId`.
+      // ErdEditorProvider.openCustomDocument does exactly this with backupId.
       expect(Uri.parse(backup.id).path).toBe(destination.path);
       expect(Uri.parse(backup.id).scheme).toBe('file');
     });

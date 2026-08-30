@@ -89,7 +89,7 @@ function addMemo(store: Store, id: string) {
   return memo;
 }
 
-/** table `t1` with columns `c1`, `c2`, `c3`. */
+/** table t1 with columns c1, c2, c3. */
 function seedTableWithColumns(store: Store) {
   addTable(store, 't1', ['c1', 'c2', 'c3']);
   addColumn(store, 't1', 'c1');

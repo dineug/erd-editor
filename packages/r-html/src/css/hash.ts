@@ -3,7 +3,7 @@ export function fnv1a32(text: string): number {
 
   for (let i = 0; i < text.length; i++) {
     h ^= text.charCodeAt(i);
-    // `imul`, not `*`: the prime overflows the float mantissa within a few rounds.
+    // imul, not *: the prime overflows the float mantissa within a few rounds.
     h = Math.imul(h, 0x01000193);
   }
 

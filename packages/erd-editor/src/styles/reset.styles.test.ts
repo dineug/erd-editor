@@ -89,7 +89,7 @@ describe('reset.styles', () => {
     });
 
     it('strips the native border and outline off form controls', () => {
-      // This used to read `style.textContent` for `border: none;` / `outline: none;`. There is no
+      // This used to read style.textContent for border: none; / outline: none;. There is no
       // element and no source text any more, so it reads the two shorthands back off the CSSOM.
       const rule = ruleOf(rules, 'button,input,select,textarea');
 

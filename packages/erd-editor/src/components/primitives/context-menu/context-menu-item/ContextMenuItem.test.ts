@@ -310,10 +310,9 @@ describe('ContextMenuItem', () => {
   });
 
   it('unsubscribes from change$ when the item is removed from the tree', async () => {
-    // A plain (non observable) context value is used here so that rxjs
-    // bookkeeping such as `observed` stays readable; reading `change$` through
-    // the observable proxy hands back a proxied Subject whose `observed` flag
-    // no longer tracks removals.
+    // A plain rather than observable context value, so rxjs bookkeeping such as
+    // observed stays readable: through the observable proxy the Subject comes
+    // back proxied and its observed flag stops tracking removals.
     const change$ = new Subject<{ parentId: string; id: string }>();
     const toggle = observable({ visible: true });
 

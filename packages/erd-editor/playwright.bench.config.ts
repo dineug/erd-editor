@@ -1,22 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = Number(process.env.E2E_PORT ?? 5175);
-// Vite's dev server binds to `localhost` only; 127.0.0.1 is refused.
+// Vite's dev server binds to localhost only; 127.0.0.1 is refused.
 const BASE_URL = `http://localhost:${PORT}`;
 
-/**
- * The routing benchmark, kept in its own config so it can never join the e2e
- * run or a CI job.
- *
- * Everything here exists to lower the noise floor: one worker, no parallelism,
- * no retries, no trace or video capture. It uses a different port from
- * `playwright.config.ts` so a benchmark and a spec run can coexist.
- */
 export default defineConfig({
   testDir: './e2e/bench',
-  // `routing.bench.ts` is the one that reports against a saved baseline. The
+  // routing.bench.ts is the one that reports against a saved baseline. The
   // others are diagnostics that answer a specific question and are noise in a
-  // before/after comparison, so they need `E2E_BENCH_ALL=1` to run.
+  // before/after comparison, so they need E2E_BENCH_ALL=1 to run.
   testMatch: process.env.E2E_BENCH_ALL
     ? '**/*.bench.ts'
     : '**/routing.bench.ts',
@@ -52,7 +44,7 @@ export default defineConfig({
     timeout: 120_000,
     stdout: 'ignore',
     stderr: 'pipe',
-    // `vite.config.ts` opens a browser on serve; this keeps the run headless.
+    // vite.config.ts opens a browser on serve; this keeps the run headless.
     env: { E2E: '1' },
   },
 });

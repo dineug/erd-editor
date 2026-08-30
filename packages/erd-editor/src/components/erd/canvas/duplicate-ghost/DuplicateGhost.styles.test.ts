@@ -12,8 +12,8 @@ describe('DuplicateGhost.styles', () => {
   });
 
   it('spans the canvas without displacing the ghosts', () => {
-    // The ghosts are `<Table>`/`<Memo>` positioning themselves absolutely from
-    // their own `ui.x`/`ui.y`. `inset: 0` with no `position` of its own leaves
+    // The ghosts are <Table>/<Memo> positioning themselves absolutely from
+    // their own ui.x/ui.y. inset: 0 with no position of its own leaves
     // them resolving against the canvas root, exactly as the originals do.
     const text = staticText(styles.ghostLayer);
     expect(text).toContain('position: absolute');
@@ -21,19 +21,16 @@ describe('DuplicateGhost.styles', () => {
   });
 
   it('pins the layer above every entity z-index', () => {
-    // Tables and memos paint at their own `ui.zIndex`, which grows without
-    // bound as entities are brought forward, so the layer cannot rely on
-    // document order. Both `transform` and `opacity < 1` open a stacking
-    // context here, which is what keeps the ghosts' own z-index values from
-    // escaping it.
+    // Tables and memos paint at their own unbounded ui.zIndex, so the layer
+    // cannot rely on document order. Both transform and a fractional opacity
+    // open a stacking context, which keeps the ghosts' z-index values inside.
     expect(staticText(styles.ghostLayer)).toContain('z-index: 2147483647');
   });
 
   it('keeps the layer out of hit-testing', () => {
-    // The layer sits under the cursor for the whole gesture; catching pointer
-    // events would shadow the entity being dragged. It is also what makes
-    // rendering a second `<Table>` safe — `useMoveTable`'s `onMoveStart` is on
-    // that markup and can never be reached.
+    // The layer sits under the cursor for the whole gesture, so catching
+    // pointer events would shadow the entity being dragged. It is also what
+    // makes rendering a second table safe: its move handler is unreachable.
     expect(staticText(styles.ghostLayer)).toContain('pointer-events: none');
   });
 
@@ -45,10 +42,9 @@ describe('DuplicateGhost.styles', () => {
   });
 
   it('gives the per-entity marker no box of its own', () => {
-    // The marker exists only to carry `data-id` / `data-select-type`, which
-    // `<Table>` and `<Memo>` cannot be given from outside. Any box here would
-    // become the containing block for the absolutely positioned entity inside
-    // it and break the coordinates.
+    // The marker exists only to carry the data attributes the entity
+    // components cannot be given from outside. Any box here would become the
+    // containing block for the entity inside it and break the coordinates.
     expect(staticText(styles.ghostItem)).toContain('display: contents');
   });
 });

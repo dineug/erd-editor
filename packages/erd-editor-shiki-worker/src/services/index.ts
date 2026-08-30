@@ -19,10 +19,12 @@ export function getShikiService(): ShikiService | null {
   } catch (error) {
     console.error(error);
 
-    // const worker = new ShikiWorker({
-    //   name: WORKER_NAME,
-    // });
-    // remoteService = Comlink.wrap(worker) as unknown as ShikiService;
+    /*
+    const worker = new ShikiWorker({
+      name: WORKER_NAME,
+    });
+    remoteService = Comlink.wrap(worker) as unknown as ShikiService;
+    */
   }
 
   return remoteService;

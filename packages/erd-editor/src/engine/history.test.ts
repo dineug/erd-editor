@@ -262,7 +262,7 @@ describe('createHistory', () => {
     // the cursor never moved because the throw happened inside execute()
     expect(history.cursor).toBe(0);
 
-    // `executable` is stuck at false, so every later push is silently dropped
+    // executable is stuck at false, so every later push is silently dropped
     history.push(createCommand('after'));
     expect(history.size).toBe(1);
   });

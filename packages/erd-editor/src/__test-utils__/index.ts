@@ -35,8 +35,8 @@ export type Mounted = {
 };
 
 /**
- * Mounts a template into a container attached to `document.body`, providing
- * `appContext` from the container so any child that calls `useAppContext`
+ * Mounts a template into a container attached to document.body, providing
+ * appContext from the container so any child that calls useAppContext
  * resolves it through the normal context event flow.
  */
 export function mount(
@@ -46,9 +46,8 @@ export function mount(
   const container = document.createElement('div');
   document.body.append(container);
 
-  // `useProvider` accepts a bare HTMLElement at runtime (`ctx instanceof HTMLElement`)
-  // but its public type only admits a component context, hence the cast.
-  // It is also r-html's useProvider, not a React hook — the rule cannot tell them apart.
+  // useProvider takes a bare HTMLElement at runtime but types only a component
+  // context, hence the cast; it is r-html's, not a React hook.
   // oxlint-disable-next-line react-hooks/rules-of-hooks
   const provider = useProvider(container as any, appContext, app);
   render(container, template);

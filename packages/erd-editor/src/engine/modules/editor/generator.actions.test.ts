@@ -183,7 +183,7 @@ const entitiesPayload = (
   }> = {}
 ) => createPayload({ kind: PayloadKind.tables, ...parts });
 
-/** The ids `doc` gained, in document order. */
+/** The ids doc gained, in document order. */
 function addedIds(before: string[], after: string[]): string[] {
   const had = new Set(before);
   return after.filter(id => !had.has(id));
@@ -539,7 +539,7 @@ describe('drawStartAddRelationshipAction$', () => {
 
     store.dispatchSync(drawStartAddRelationshipAction$('t1'));
 
-    // `drawStartAddRelationship` is a no-op without an active draw, but the
+    // drawStartAddRelationship is a no-op without an active draw, but the
     // generated primary key column is kept anyway.
     expect(store.state.editor.drawRelationship).toBeNull();
     expect(tableOf(store, 't1').columnIds).toHaveLength(2);
@@ -670,7 +670,7 @@ describe('loadSchemaGraphQLAction$', () => {
     ]);
   });
 
-  // Unified with `loadSchemaSQLAction$`: input the parser cannot read loads an
+  // Unified with loadSchemaSQLAction$: input the parser cannot read loads an
   // empty document rather than being refused, and undo puts the diagram back.
   it('loads an empty document for SDL that declares no object type', () => {
     seedTable(store, 't1');
@@ -718,7 +718,7 @@ describe('loadSchemaDBMLAction$', () => {
     ]);
   });
 
-  // Unified with `loadSchemaSQLAction$`: input the parser cannot read loads an
+  // Unified with loadSchemaSQLAction$: input the parser cannot read loads an
   // empty document rather than being refused, and undo puts the diagram back.
   it('loads an empty document for text that declares no table', () => {
     seedTable(store, 't1');
@@ -763,7 +763,7 @@ describe('loadSchemaAMLAction$', () => {
     ]);
   });
 
-  // Unified with `loadSchemaSQLAction$`: input the parser cannot read loads an
+  // Unified with loadSchemaSQLAction$: input the parser cannot read loads an
   // empty document rather than being refused, and undo puts the diagram back.
   it('loads an empty document for text that declares no entity', () => {
     seedTable(store, 't1');
@@ -1064,8 +1064,8 @@ describe('columnKeyHoverStartAction$ / columnKeyHoverEndAction$', () => {
 
 describe('pasteEntitiesAction$', () => {
   it('emits nothing at all for a payload with no tables and no memos', () => {
-    // AC-41. Without the guard the generator still emits `unselectAll` +
-    // `select({})` and wipes a selection the user never asked to lose.
+    // AC-41. Without the guard the generator still emits unselectAll +
+    // select({}) and wipes a selection the user never asked to lose.
     seedTable(store, 't1');
     store.dispatchSync(selectAction({ t1: SelectType.table }));
     const before = { ...store.state.editor.selectedMap };
@@ -1131,7 +1131,7 @@ describe('pasteEntitiesAction$', () => {
   });
 
   it('creates memos alone, without inventing a table', () => {
-    // AC-33, paste half: a memo-only copy is still `kind: 'tables'`.
+    // AC-33, paste half: a memo-only copy is still kind: 'tables'.
     seedTable(store, 't1');
 
     store.dispatchSync(
@@ -1154,7 +1154,7 @@ describe('pasteEntitiesAction$', () => {
   });
 
   it('multiplies the round into the offset', () => {
-    // AC-9: the round lives here, not in `resolvePlacement`.
+    // AC-9: the round lives here, not in resolvePlacement.
     seedTable(store, 't1', 100, 100);
 
     store.dispatchSync(
@@ -1272,7 +1272,7 @@ describe('pasteEntitiesAction$', () => {
     expect(memoCopy.ui.width).toBe(memoOf(store, 'm1').ui.width);
     expect(memoCopy.ui.height).toBe(memoOf(store, 'm1').ui.height);
 
-    // The widths are derived, not copied: `changeTableName` recomputes them.
+    // The widths are derived, not copied: changeTableName recomputes them.
     // Comparing against a table freshly named the same way is the only check
     // that is not a tautology.
     seedTable(store, 't-ref', 900, 900);
@@ -1360,7 +1360,7 @@ describe('duplicateAction$', () => {
 
   it('duplicates only the given table, ignoring the wider selection', () => {
     // The context menu path: a right click collapses the selection, so it hands
-    // over `props.tableId` alone.
+    // over props.tableId alone.
     seedTable(store, 't1', 100, 100);
     seedTable(store, 't2', 300, 300);
     seedMemo(store, 'm1', 500, 500);
@@ -1424,7 +1424,7 @@ describe('duplicateAction$', () => {
 
   it('keeps the committed coordinates at four decimals', () => {
     // AC-39. Rounding the offset alone is not enough — 0.1 + 0.2 lands on
-    // 0.30000000000000004, and that is what would reach `ui.x`.
+    // 0.30000000000000004, and that is what would reach ui.x.
     seedTable(store, 't1', 0.1, 0.2);
 
     store.dispatchSync(
@@ -1462,11 +1462,9 @@ describe('duplicateAction$ history depth', () => {
   });
 
   it('records exactly one history command for coloured entities', () => {
-    // AC-23/AC-31/AC-35. The colours matter: `table.changeColor` and
-    // `memo.changeColor` are stream actions, so a batch carrying them would be
-    // regrouped into a second `@@color` command ~200ms later and one undo would
-    // restore only the colour. Checking immediately would miss it, which is why
-    // the size is asserted again past the 200ms buffer.
+    // The colours matter: the changeColor actions are stream actions, so a
+    // batch carrying them regroups into a second colour command later and one
+    // undo restores only the colour. Hence the assertion past the buffer.
     vi.useFakeTimers();
     const rxStore = createRxTestStore();
 

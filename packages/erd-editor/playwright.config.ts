@@ -1,16 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = Number(process.env.E2E_PORT ?? 5174);
-// Vite's dev server binds to `localhost` only; 127.0.0.1 is refused.
+// Vite's dev server binds to localhost only; 127.0.0.1 is refused.
 const BASE_URL = `http://localhost:${PORT}`;
 
-/**
- * The suite drives the real `<erd-editor>` element in Chromium against the Vite
- * dev server, using the deterministic page in `e2e/fixture/`.
- *
- * The dev server runs the package's one and only Vite config, so what the suite
- * drives is compiled exactly the way the published bundle is.
- */
 export default defineConfig({
   testDir: './e2e/specs',
   outputDir: './e2e/.results',
@@ -50,7 +43,7 @@ export default defineConfig({
     timeout: 120_000,
     stdout: 'ignore',
     stderr: 'pipe',
-    // `vite.config.ts` opens a browser on serve; this keeps the e2e run headless.
+    // vite.config.ts opens a browser on serve; this keeps the e2e run headless.
     env: { E2E: '1' },
   },
 });

@@ -27,8 +27,8 @@ export function useMoveTable(ctx: Ctx, props: { table: Table }) {
       !el.closest('.icon') &&
       !el.closest('.input-padding');
 
-    // `move$` is not `share()`d and mutates module-global `prevX`/`prevY`, so
-    // a second concurrent `drag$` subscriber always reads `movementX === 0`.
+    // move$ is not share()d and mutates module-global prevX/prevY, so
+    // a second concurrent drag$ subscriber always reads movementX === 0.
     if (
       canDrag &&
       tryStartAltDragDuplicate(

@@ -6,20 +6,6 @@ import { DEFAULT_SHOW, Show } from '../support/schema';
 import { createCorpus } from './corpus';
 import { installBench, runDragBench } from './harness';
 
-/**
- * Where the frame goes.
- *
- * The main benchmark says the script half of a drag costs about a millisecond
- * while the frame takes fifty, against an idle floor of one vsync. That gap is
- * style, layout and paint — but not which of them, and not for which subtree.
- * This probe answers that by removing one painter at a time and re-measuring
- * the same drag.
- *
- * It is a diagnostic, not a regression gate: run it when the answer to "what
- * should I optimise next" is not obvious, and read it alongside the main
- * benchmark rather than instead of it.
- */
-
 const CORPUS = { name: 'large', tables: 56, relationships: 120, hubDegree: 9 };
 
 type Variant = {

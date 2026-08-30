@@ -321,7 +321,7 @@ const escapeAttribute = (value: string) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-/** The visible half of a `kind: 'tables'` copy — the rung under the payload. */
+/** The visible half of a kind: 'tables' copy — the rung under the payload. */
 const TABLE_HTML =
   '<table><tbody><tr>' +
   '<td data-type="columnName">id</td>' +

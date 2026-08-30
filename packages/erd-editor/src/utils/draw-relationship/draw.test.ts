@@ -8,8 +8,8 @@ import { createStore } from '@/engine/store';
 import { createTable } from '@/utils/collection/table.entity';
 import { getDraw } from '@/utils/draw-relationship/draw';
 
-// The default `show` flags plus the default 60px name/comment widths make an
-// empty table exactly 365 x 56, so `table-a` at (0, 0) has these anchors:
+// The default show flags plus the default 60px name/comment widths make an
+// empty table exactly 365 x 56, so table-a at (0, 0) has these anchors:
 const TABLE_WIDTH = 365;
 const TABLE_HEIGHT = 56;
 const CENTER_X = TABLE_WIDTH / 2; // 182.5

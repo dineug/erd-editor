@@ -46,7 +46,7 @@ export function commentOnColumnParser(
       isValue = true;
       token = tokens[++$pos.value];
 
-      // `IS NULL` removes a comment rather than setting one.
+      // IS NULL removes a comment rather than setting one.
       if (isNull($pos.value)) {
         $pos.value++;
         continue;

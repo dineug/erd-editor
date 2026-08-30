@@ -167,7 +167,7 @@ describe('tryStartAltDragDuplicate', () => {
 
     tryStartAltDragDuplicate(app, mousedown(), tableId, SelectType.table);
 
-    // a microtask-deferred `store.dispatch` would leave the old selection here
+    // a microtask-deferred store.dispatch would leave the old selection here
     expect(selectedAtEmit).toEqual({ [tableId]: SelectType.table });
   });
 

@@ -4,7 +4,7 @@ import { AMLModel, AMLType } from './types';
 
 /**
  * Every cell below is a name taken from that dialect's hint list under
- * `@/constants/sql/dataType`, so `getPrimitiveType` resolves it back to a
+ * @/constants/sql/dataType, so getPrimitiveType resolves it back to a
  * primitive the code generators understand.
  */
 const stringTypes: Record<number, string> = {
@@ -19,10 +19,9 @@ const stringTypes: Record<number, string> = {
 };
 
 /**
- * `enumValues` carries the inline `status post_status(draft, published)`
- * members, which never reach `model.types`. Both entry points take them as a
- * trailing optional argument so `convert.ts` keeps one call site each, and
- * inline members take precedence over anything the name would resolve to.
+ * enumValues carries the inline members, which never reach model.types. Both
+ * entry points take them as a trailing optional argument, and inline members
+ * take precedence over anything the name would resolve to.
  */
 export function resolveDataType(
   typeName: string,
@@ -43,8 +42,8 @@ export function resolveDataType(
 }
 
 /**
- * Keeps the members where the column type cannot hold them. Pass `database` to
- * drop it on the dialects whose `ENUM(...)` column already spells them out.
+ * Keeps the members where the column type cannot hold them. Pass database to
+ * drop it on the dialects whose ENUM(...) column already spells them out.
  */
 export function enumCommentSuffix(
   typeName: string,
@@ -62,7 +61,7 @@ export function enumCommentSuffix(
 
 /**
  * Only MySQL.ts and MariaDB.ts list ENUM; every other dialect takes the string
- * fallback and leans on `enumCommentSuffix` to keep the members.
+ * fallback and leans on enumCommentSuffix to keep the members.
  */
 function enumDataType(members: string[], database: number): string | undefined {
   if (database !== Database.MySQL && database !== Database.MariaDB) {
@@ -75,10 +74,9 @@ function enumDataType(members: string[], database: number): string | undefined {
 }
 
 /**
- * Walks the `type uid int` alias chain until it lands on an enum or on a name
- * `model.types` does not hold. A struct and a custom type carry neither field,
- * so they stop the walk and pass their own name through. `seen` is what makes
- * a `type a b` / `type b a` pair terminate.
+ * Walks the alias chain until it lands on an enum or on a name model.types does
+ * not hold. A struct and a custom type carry neither field, so they stop the
+ * walk; seen is what makes a mutually aliased pair terminate.
  */
 function resolveType(
   typeName: string,
@@ -109,7 +107,7 @@ function resolveType(
 /**
  * The reference parser cannot spell a scoped type in an attribute type
  * position, so an attribute only ever names a type bare. The qualified pass is
- * what lets `namespace app` + `type app.status (...)` still be found by name.
+ * what lets namespace app + type app.status (...) still be found by name.
  */
 function getType(typeName: string, model: AMLModel): AMLType | undefined {
   const type = model.types[typeName];

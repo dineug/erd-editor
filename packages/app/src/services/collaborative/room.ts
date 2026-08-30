@@ -4,7 +4,7 @@ import { ValuesType } from '@/internal-types';
 import { EncryptJson } from '@/utils/crypto';
 
 /**
- * Trystero derives its relay topics from `appId` + `roomId`, so this value is the
+ * Trystero derives its relay topics from appId + roomId, so this value is the
  * namespace every erd-editor session shares. Changing it partitions old links off
  * from new ones.
  */
@@ -34,7 +34,7 @@ export type HelloPayload = {
 
 /**
  * Private nostr relays to use instead of the public ones, from
- * `ERD_EDITOR_NOSTR_RELAY_URLS` at build time. Self-hosting the signalling is also
+ * ERD_EDITOR_NOSTR_RELAY_URLS at build time. Self-hosting the signalling is also
  * how the e2e suite runs the mesh offline.
  */
 const relayUrls = (import.meta.env.NOSTR_RELAY_URLS ?? '')
@@ -84,17 +84,12 @@ type Entry = {
 };
 
 /**
- * Trystero hands back the *same* room object for a given `appId` + `roomId`, and
- * `leave()` tears that shared object down asynchronously. Joining the same room
- * twice — a React strict-mode remount is enough — would otherwise let the first
- * caller's `leave()` destroy the peers of the second, silently and seconds later.
- *
- * So joins are reference counted, and the entry is created synchronously: a
- * second caller arriving while the first is still connecting shares its entry
- * rather than racing it.
+ * Trystero hands back the same room object per appId and roomId, and leave()
+ * tears it down asynchronously, so joins are reference counted. The entry is
+ * created synchronously, so a second caller shares it rather than racing.
  */
 const entries = new Map<string, Entry>();
-/** In-flight `leave()` per room, so a re-join waits for the teardown to finish. */
+/** In-flight leave() per room, so a re-join waits for the teardown to finish. */
 const teardowns = new Map<string, Promise<unknown>>();
 
 async function open(

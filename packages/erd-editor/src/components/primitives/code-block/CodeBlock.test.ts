@@ -520,7 +520,7 @@ describe('CodeBlock', () => {
     resolveHighlight(HIGHLIGHT);
     await flush();
 
-    // the ref directive nulls `preview.value` on destroy, so `getPre` bails out and the background
+    // the ref directive nulls preview.value on destroy, so getPre bails out and the background
     // color is never committed to the detached node
     expect(scroller.style.backgroundColor).toBe('');
     expect(root.isConnected).toBe(false);

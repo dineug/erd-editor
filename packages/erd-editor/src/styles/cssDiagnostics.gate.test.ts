@@ -2,23 +2,11 @@
 import { css, Diagnostic, setCSSDiagnostics } from '@dineug/r-html';
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 
-/**
- * The gate the compiler's diagnostics exist for.
- *
- * `collectDiagnostics` is opt-in — it re-walks the element tree and rescans the source, so nothing
- * asks for it unless somebody is listening. This file is the listener: it turns diagnostics on,
- * loads every style module in the package, and asserts the whole surface is clean. Without it the
- * 328 lines of `diagnostics.ts` would have no caller outside their own unit tests.
- *
- * `index.html` turns the same thing on for the dev server through the ambient flag, so an
- * authoring mistake is visible while writing as well as here.
- */
-
 const styleModules: Record<string, () => Promise<unknown>> = {
   ...import.meta.glob('../**/*.styles.ts'),
   ...import.meta.glob('../**/*.style.ts'),
-  // The one shipped module that declares a `css` template without being named `*.styles.ts`.
-  // `emittedCss.cascade.test.ts` carries the guard that keeps this list honest.
+  // The one shipped module that declares a css template without being named *.styles.ts.
+  // emittedCss.cascade.test.ts carries the guard that keeps this list honest.
   '../utils/text.ts': () => import('@/utils/text'),
 };
 

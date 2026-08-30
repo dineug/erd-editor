@@ -13,21 +13,9 @@ const only = <T>(values: T[]): T => {
 };
 
 /**
- * The element census of a rendered relationship `<g>`, which is the one visible
- * difference between the four relationship types:
- *
- * | part         | elements                                                   |
- * | ------------ | ---------------------------------------------------------- |
- * | routing path | one `path.route`, dashed unless the relationship identifies |
- * | hit band     | one `path.hit-area`, transparent and wider — the pointer    |
- * |              | target, which is why neither count below covers it          |
- * | start marker | 4 `<line>` — the stem, base, base2 and center2 of the       |
- * |              | `dash` start, which is what a `notNull` end column selects  |
- * | end marker   | varies per type, below — this is the cardinality symbol     |
- *
- * `line` is the total for the whole `<g>`, so it is `4 + <end lines>`: the route
- * is one element however many runs and cut corners the router made of it, which
- * is why this census no longer moves when the drawing changes shape.
+ * The element census of a rendered relationship group, the one visible
+ * difference between the four types. line counts the whole group, so it is the
+ * four start-marker lines plus the end marker's; the route is one element.
  */
 const SHAPE = {
   // circle = the "zero" ring; the crow's foot adds left/center/right lines.
@@ -38,10 +26,9 @@ const SHAPE = {
 } as const;
 
 /**
- * The armed-draw cursor `Erd.ts` paints on the editor root: the relationship
- * icon as a base64 PNG with a 16x16 hotspot. The payload is a build artefact,
- * so the shape of the declaration is what is asserted, not the bytes —
- * `src/utils/icon.test.ts` already pins the type-to-icon mapping.
+ * The armed-draw cursor painted on the editor root: the relationship icon as a
+ * base64 PNG with a centred hotspot. The payload is a build artefact, so the
+ * shape of the declaration is asserted rather than the bytes.
  */
 const DRAW_CURSOR = /^url\("data:image\/png;base64,[^"]+"\) 16 16, auto$/;
 
@@ -67,7 +54,7 @@ test.describe('relationship drawing', () => {
     expect(relationship.start.columnIds).toEqual(['users_id']);
     expect(relationship.end.tableId).toBe('posts');
 
-    // The end column is minted on the fly and appended, so `posts` keeps its
+    // The end column is minted on the fly and appended, so posts keeps its
     // seeded order and gains exactly one id at the tail.
     const columnIds = await erd.columnIds('posts');
     const fkColumnId = columnIds[columnIds.length - 1];
@@ -83,7 +70,7 @@ test.describe('relationship drawing', () => {
     expect(fkColumn.options).toBe(ColumnOption.notNull);
     expect(relationship.identification).toBe(false);
 
-    // `ui.keys` is stamped by a throttled hook, so it lands a tick later.
+    // ui.keys is stamped by a throttled hook, so it lands a tick later.
     await expect
       .poll(async () => (await erd.column(fkColumnId)).ui.keys)
       .toBe(ColumnUIKey.foreignKey);
@@ -162,7 +149,7 @@ test.describe('relationship drawing', () => {
 
     await erd.press(Shortcut.stop);
 
-    // `cache()` detaches the preview subtree rather than hiding it.
+    // cache() detaches the preview subtree rather than hiding it.
     await expect(erd.drawPreview).toHaveCount(0);
     await expect.poll(() => erd.canvasCursor()).toBe(IDLE_CURSOR);
     expect(await erd.relationshipIds()).toEqual([]);
@@ -181,10 +168,9 @@ test.describe('relationship drawing', () => {
 
     const usersBox = await erd.tableEl('users').boundingBox();
     expect(usersBox).not.toBeNull();
-    // A quarter of the header apart. Two clicks on the same spot are a
-    // dblclick as far as the browser is concerned, which opens the table name
-    // for editing instead of closing the draw; a quarter-width is far past
-    // Chromium's dblclick radius and still inside the header strip.
+    // A quarter of the header apart: two clicks on one spot are a dblclick to
+    // the browser, which opens the table name for editing instead of closing
+    // the draw, and a quarter-width is past that radius and still on the strip.
     const offsetX = usersBox!.width / 4;
 
     await erd.press(Shortcut.relationshipZeroOne);
@@ -208,7 +194,7 @@ test.describe('relationship drawing', () => {
     await expect(
       erd.cell(erd.tableEl('users'), 'tableName').locator('input')
     ).toHaveCount(0);
-    // `posts` was never touched.
+    // posts was never touched.
     await expect(
       erd.canvas.locator('.column-row[data-table-id="posts"]')
     ).toHaveCount(2);
@@ -287,7 +273,7 @@ test.describe('inline editing', () => {
     await erd.editCell(nameCell, 'accounts');
     await erd.press(Shortcut.stop);
 
-    // Every keystroke is dispatched as it is typed, so `Escape` only closes the
+    // Every keystroke is dispatched as it is typed, so Escape only closes the
     // input — there is no draft to roll back. Asserted as-is, not as a wish.
     await expect(nameCell.locator('input')).toHaveCount(0);
     await expect(nameCell.locator('div.edit-input')).toHaveText('accounts');

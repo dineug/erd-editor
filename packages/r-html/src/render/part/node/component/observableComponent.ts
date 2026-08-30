@@ -133,11 +133,13 @@ export class ObservableComponentPart implements Part {
     }
 
     // TODO: slot
-    // if (this.#tNode.children) {
-    //   const [fragment, parts] = createTemplate(this.#tNode);
-    //   Reflect.set(this.#props, 'children', fragment);
-    //   this.#parts.push(...parts);
-    // }
+    /*
+    if (this.#tNode.children) {
+      const [fragment, parts] = createTemplate(this.#tNode);
+      Reflect.set(this.#props, 'children', fragment);
+      this.#parts.push(...parts);
+    }
+    */
 
     lifecycleHooks(this, BEFORE_MOUNT);
 

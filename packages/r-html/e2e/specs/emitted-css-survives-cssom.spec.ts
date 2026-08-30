@@ -1,27 +1,9 @@
 import { expect, test } from '../support/fixtures';
 
 /**
- * Q5 — does Chromium's CSSOM keep what the compiler emits?
- *
- * `vRender` hands every template to `replaceSync`, and a parser drops what it
- * cannot understand *silently* — no throw, no warning, just a declaration that is
- * no longer there. happy-dom's parser is both stricter and differently wrong than
- * Chromium's: it drops `background-position: 0` outright, which is perfectly valid
- * CSS. So the unit suite's snapshots record happy-dom's opinion of our output, not
- * a browser's, and a declaration could be missing in production while every test
- * is green.
- *
- * Two things are checked for each case, because either alone is a false negative:
- * the declaration is present in `cssRules` (the CSSOM kept it) *and* it computes
- * (the cascade applied it). Text alone would pass on a rule the engine never
- * matched; computed style alone would pass on a value that happened to be the
- * initial one.
- *
- * A note that shaped every assertion here: `cssRules` is Chromium's
- * *re-serialization*, not our emitted bytes. It normalizes values, collapses
- * longhands into shorthands and re-spaces combinators, so nothing below compares
- * `cssText` for equality — that is the unit suite's job, against the compiler
- * output, where byte-stability actually matters because it feeds the hash.
+ * Whether Chromium's CSSOM keeps what the compiler emits, since a parser drops
+ * what it cannot understand silently. Each case checks both that the declaration
+ * survives in cssRules and that it computes; either alone is a false negative.
  */
 test.describe('emitted css survives the real CSSOM', () => {
   test('keeps background-position: 0, which happy-dom drops', async ({
@@ -37,7 +19,7 @@ test.describe('emitted css survives the real CSSOM', () => {
     const [sheet] = await cssPage.adopted(id);
 
     // The regression this whole file exists for. happy-dom parses
-    // `background-position: 0` and throws it away — a unit snapshot of the same
+    // background-position: 0 and throws it away — a unit snapshot of the same
     // template has a hole where this declaration should be.
     expect(
       sheet.cssText,
@@ -65,15 +47,15 @@ test.describe('emitted css survives the real CSSOM', () => {
   }) => {
     const [id] = await cssPage.hostIds();
 
-    // The `Switch.styles.ts` shape, and the one whose emitted text drops the space
-    // after the value comma (`background-position,background-color`).
+    // The Switch.styles.ts shape, and the one whose emitted text drops the space
+    // after the value comma (background-position,background-color).
     const identifier = await cssPage.registerStyle(
       'transition: background-position, background-color; ' +
         'transition-timing-function: linear, ease-in-out;'
     );
     await cssPage.applyClasses(id, 'root', [identifier]);
 
-    // Chromium folds the two longhands back into the `transition` shorthand here,
+    // Chromium folds the two longhands back into the transition shorthand here,
     // so the round-tripped text does not resemble what was emitted. Only the
     // computed values say whether the meaning survived.
     expect(
@@ -93,14 +75,9 @@ test.describe('emitted css survives the real CSSOM', () => {
   }) => {
     const [id] = await cssPage.hostIds();
 
-    // No two blocks here declare the same property, and that is load-bearing
-    // rather than tidy. `.root` is the first thing in a zero-margin body, so it
-    // covers the viewport origin — and where the pointer is understood to be
-    // before any mouse event is a platform decision, not a guarantee: headless
-    // Chromium on Linux treats it as (0, 0) and hovers `.root` from load, macOS
-    // treats it as nowhere. A `:hover` block declaring `color` therefore decided
-    // the base rule's assertion by operating system. Each state now owns a
-    // property no other state touches, so every read below means one thing.
+    // No two blocks declare the same property, which is load-bearing: where the
+    // pointer sits before any mouse event is a platform decision, so a shared
+    // property would let the hover state decide the base rule's assertion.
     const identifier = await cssPage.registerStyle(
       'color: rgb(1, 2, 3);' +
         '&:hover { padding-right: 13px; }' +
@@ -128,10 +105,9 @@ test.describe('emitted css survives the real CSSOM', () => {
       'the nested child rule did not apply'
     ).toBe('8px');
 
-    // Rule count alone cannot tell `.x:hover` from `.x :hover` — both parse, and
-    // only one is what `&:hover` meant. Driving the pointer onto the element is
-    // what separates them, so the pseudo-class is asserted deliberately instead
-    // of being left to whatever the runner's mouse happened to be doing.
+    // Rule count alone cannot tell a compound selector from a descendant one:
+    // both parse, and only one is what the nested ampersand meant. Driving the
+    // pointer onto the element is what separates them.
     await cssPage.target(id, 'root').hover();
     expect(
       await cssPage.computed(id, 'root', 'padding-right'),
@@ -172,7 +148,7 @@ test.describe('emitted css survives the real CSSOM', () => {
   }) => {
     const [id] = await cssPage.hostIds();
 
-    // The `body` path in `emit()` — steps are serialized once and never scoped, so
+    // The body path in emit() — steps are serialized once and never scoped, so
     // this is the one place the emitter writes CSS the substitution never touches.
     const identifier = await cssPage.registerStyle(
       '@keyframes rhtml-e2e-spin { from { opacity: 0.25; } to { opacity: 0.75; } }' +
@@ -192,8 +168,8 @@ test.describe('emitted css survives the real CSSOM', () => {
       'the animation-name declaration did not apply'
     ).toBe('rhtml-e2e-spin');
 
-    // The decisive one: a `@keyframes` block that failed to parse leaves
-    // `animation-name` resolving to nothing and opacity at its initial 1.
+    // The decisive one: a @keyframes block that failed to parse leaves
+    // animation-name resolving to nothing and opacity at its initial 1.
     expect(
       Number(await cssPage.computed(id, 'root', 'opacity')),
       'the animation is named and running but opacity is not being driven by the ' +

@@ -56,7 +56,7 @@ function columnTemplate(entity: ColumnEntity, selected = false) {
 const rootOf = (m: Mounted) =>
   m.container.querySelector('.column-row') as HTMLElement;
 
-/** The key icon also carries `column-col`, so exclude it from the cell list. */
+/** The key icon also carries column-col, so exclude it from the cell list. */
 const cellsOf = (m: Mounted) =>
   Array.from(
     m.container.querySelectorAll('.column-row > .column-col:not(.icon)')

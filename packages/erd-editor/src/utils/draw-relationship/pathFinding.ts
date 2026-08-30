@@ -307,11 +307,9 @@ function getLine(
 }
 
 /**
- * The routing polyline as one `d`, so a connector is a single element whatever
- * the router and the corner cuts made of it.
- *
- * The segments are contiguous by construction — they come from a polyline — so
- * each one contributes its far end and nothing else.
+ * The routing polyline as one d, so a connector is a single element whatever the
+ * router and the corner cuts made of it. The segments are contiguous by
+ * construction, so each contributes its far end and nothing else.
  */
 export function toPathD(segments: Array<[Point, Point]>) {
   if (!segments.length) return '';
@@ -340,7 +338,7 @@ function toSegments(points: Point[]): Array<[Point, Point]> {
 
 /**
  * What a relationship is drawn as before its first sort, which is the only time
- * it has no route: the same shape `routeOrthogonal` falls back to. Deriving it
+ * it has no route: the same shape routeOrthogonal falls back to. Deriving it
  * any other way put a diagonal on screen that no corner had been cut from.
  */
 function twoBend(m: Point, l: Point, direction: number): Point[] {

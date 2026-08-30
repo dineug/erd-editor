@@ -11,11 +11,9 @@ export const TokenKind = {
 } as const;
 
 /**
- * AML is indentation-sensitive, so every token carries the depth of its line --
- * `-1` when the line is unindented, `0` for the first nesting level. A newline
- * token opens the line that follows it and already holds that line's depth, and
- * the stream always starts with a synthetic one (`value: ''`, `line: 0`), so
- * `parser.ts` reads the first line's depth the same way as every other line's.
+ * AML is indentation-sensitive, so every token carries its line's depth. A
+ * newline token opens the line that follows and holds that line's depth, and a
+ * synthetic one starts the stream so the first line reads like every other.
  */
 export type Token = {
   kind: number;
@@ -30,7 +28,7 @@ const IDENTIFIER_START = /[A-Za-z_\u0080-\uffff]/;
 const IDENTIFIER_PART = /[0-9A-Za-z_#\u0080-\uffff]/;
 const INDENT = /^[ \t]*/;
 const ESCAPED_HASH = /\\#/g;
-// AML spells only `\n`; anything else decodes to the character it escapes.
+// AML spells only \n; anything else decodes to the character it escapes.
 const ESCAPE_MAP: Record<string, string> = { n: '\n' };
 
 export function tokenize(source: string): Token[] {
@@ -136,8 +134,8 @@ export function tokenize(source: string): Token[] {
       while (end < source.length && IDENTIFIER_PART.test(source[end])) {
         end += 1;
       }
-      // An identifier ends on a word boundary, so a trailing `#` is left behind
-      // to open a comment while `a#b` stays one name.
+      // An identifier ends on a word boundary, so a trailing # is left behind
+      // to open a comment while a#b stays one name.
       while (end > index && source[end - 1] === '#') {
         end -= 1;
       }
@@ -172,8 +170,8 @@ function indentDepth(source: string, index: number): number {
 }
 
 /**
- * A `#` stays inside the doc unless a space precedes it, which is what lets
- * `| doc with \# escaped # no type` end in a comment.
+ * A # stays inside the doc unless a space precedes it, which is what lets
+ * | doc with \# escaped # no type end in a comment.
  */
 function readDoc(
   source: string,

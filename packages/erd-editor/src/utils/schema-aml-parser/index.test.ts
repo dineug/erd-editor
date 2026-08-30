@@ -87,8 +87,8 @@ admins {view}
 type uid int # alias type
 type cms.post_status (draft, published, archived) # enum type`;
 
-// The AMLv1 spelling the reference parser still accepts: `fk` for `rel`, a
-// dotted attribute path, `check=` with a quoted predicate and `*` for a view.
+// The AMLv1 spelling the reference parser still accepts: fk for rel, a
+// dotted attribute path, check= with a quoted predicate and * for a view.
 const AML_V1 = `users # simplest entity
   id int pk
   email varchar unique

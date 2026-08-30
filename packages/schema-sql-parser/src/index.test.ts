@@ -38,8 +38,8 @@ test.each(testCaseList)('%s', (_, sql, json) => {
 });
 
 describe('public entry surface', () => {
-  // An unpaired `]` used to spin the tokenizer until the heap died, and a
-  // Snowflake setup script reaches one through a `$$ ... $$` procedure body.
+  // An unpaired ] used to spin the tokenizer until the heap died, and a
+  // Snowflake setup script reaches one through a $$ ... $$ procedure body.
   it('reads past an unpaired closing bracket instead of hanging', () => {
     expect(schemaSQLParser(']')).toEqual([]);
     expect(

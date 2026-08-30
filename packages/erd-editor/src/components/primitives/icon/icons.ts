@@ -42,7 +42,7 @@ import {
 
 import { ValuesType } from '@/internal-types';
 
-/** Raster crow's-foot notation; `@/utils/icon` reads the data URIs back as strings. */
+/** Raster crow's-foot notation; @/utils/icon reads the data URIs back as strings. */
 export const BASE_64_ICON = {
   /** @deprecated */
   ZeroOneN:

@@ -14,13 +14,9 @@ afterEach(() => {
 });
 
 /**
- * Which sheet is which.
- *
- * A `css.global` sheet is the one kind that carries no generated class anywhere in it — marker
- * text alone will not do, because four component sheets also declare `box-sizing: border-box`
- * `[measured]`. Within the global five, a marker is then unambiguous — with one ordering
- * constraint: the vendored color picker declares `box-sizing: border-box` 88 times of its own, so
- * it has to be identified by its own class name before the reset's marker is tried.
+ * Which sheet is which. A global sheet is the one kind carrying no generated
+ * class, after which a marker is unambiguous — except that the vendored picker
+ * declares the reset's marker itself and has to be identified first.
  */
 function kindOf(rules: CSSStyleRule[]): string {
   const text = rules.map(rule => rule.cssText).join('');
@@ -44,8 +40,8 @@ describe('GlobalStyles', () => {
   describe('cascade order of the global bucket', () => {
     it('adopts the five global sheets in the pinned order', () => {
       // Registration order is module evaluation order, which follows the alphabetically sorted
-      // import list in `GlobalStyles.ts` — colorPicker, fonts, reset, scrollbar, typography. The
-      // explicit array passed to `setGlobalStyleOrder` is what produces this sequence instead.
+      // import list in GlobalStyles.ts — colorPicker, fonts, reset, scrollbar, typography. The
+      // explicit array passed to setGlobalStyleOrder is what produces this sequence instead.
       expect(sheetKinds.slice(0, 5)).toEqual([
         'reset',
         'fonts',
@@ -68,8 +64,8 @@ describe('GlobalStyles', () => {
     });
 
     it('puts every global sheet ahead of every component sheet', () => {
-      // A fold rather than `findLastIndex`: the root `tsconfig.app.json` targets ES2020 and
-      // `findLastIndex` is ES2023, so it type-errors here even though Node 22 runs it fine.
+      // A fold rather than findLastIndex: the root tsconfig.app.json targets ES2020 and
+      // findLastIndex is ES2023, so it type-errors here even though Node 22 runs it fine.
       const lastGlobal = sheetKinds.reduce(
         (last, kind, index) => (kind === 'component' ? last : index),
         -1
@@ -121,10 +117,9 @@ describe('GlobalStyles', () => {
 
   describe('the color picker is adopted, not a tree <style>', () => {
     it('renders no markup at all', async () => {
-      // The component is now nothing but the `setGlobalStyleOrder` call at module scope; the
-      // color picker was the last thing it had to emit and it is an adopted sheet as of this
-      // phase. Rendering a `<style>` again would put 307 vendored rules back in front of the
-      // whole adopted pool, because a shadow root applies its own `styleSheets` first.
+      // The component is nothing but the setGlobalStyleOrder call at module
+      // scope. Rendering a <style> again would put the vendored rules back in
+      // front of the whole adopted pool, which a shadow root applies second.
       mounted = await mountAndFlush(html`<${GlobalStyles} />`);
 
       expect(mounted.container.querySelectorAll('style')).toHaveLength(0);

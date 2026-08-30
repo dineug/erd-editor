@@ -33,7 +33,7 @@ describe('Shortcuts.styles', () => {
     expect(css).toContain('td {');
     expect(css).toContain('font-weight: var(--font-weight-bold)');
 
-    // `cell` is private, but it is interpolated once per cell selector.
+    // cell is private, but it is interpolated once per cell selector.
     expect(styles.table.values).toHaveLength(2);
     const [th, td] = styles.table.values;
     expect(th).toBe(td);

@@ -47,8 +47,8 @@ const SIMPLE = `Table users {
   name varchar
 }`;
 
-// The spelling `sql2dbml` emits: every identifier quoted, no space after the
-// colon, and `?<?` on a nullable foreign key.
+// The spelling sql2dbml emits: every identifier quoted, no space after the
+// colon, and ?<? on a nullable foreign key.
 const SQL2DBML = `Table "app"."users" {
   "id" serial [pk, increment]
   "email" varchar(255) [not null, unique]

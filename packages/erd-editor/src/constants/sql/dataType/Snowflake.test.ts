@@ -6,9 +6,9 @@ import { SnowflakeTypes } from '@/constants/sql/dataType/Snowflake';
 import { getPrimitiveType } from '@/utils/generator-code/utils';
 
 /**
- * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: among the hints
+ * Mirrors getPrimitiveType in @/utils/generator-code/utils: among the hints
  * whose lowercased name prefixes the lowercased data type, the longest wins.
- * Unlike the real one this reports a miss instead of falling back to `string`.
+ * Unlike the real one this reports a miss instead of falling back to string.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
   const value = dataType.toLocaleLowerCase().replace(/\([^)]*\)/g, '');
@@ -35,10 +35,9 @@ function namesOf(primitiveType: PrimitiveType): string[] {
 }
 
 /**
- * `SnowflakeTypes` in `@dineug/schema-sql-parser` holds the same names without
- * the primitive types, but that package exports only `schemaSQLParser` from its
- * entry point, so the parser side cannot be imported here — it is repeated as a
- * literal and the two lists have to be edited together.
+ * The parser package holds the same names without the primitive types, but
+ * exports only its entry point, so the list is repeated as a literal here and
+ * the two have to be edited together.
  */
 const PARSER_NAMES = [
   'ARRAY',

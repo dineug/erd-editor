@@ -32,20 +32,18 @@ const convertTypeMap: PrimitiveTypeMap = {
 };
 
 // A Name is /[_A-Za-z][_0-9A-Za-z]*/, so anything else -- Hangul, a space, a
-// leading digit, the empty name a table carries the moment it is created -- is
-// a syntax error rather than an odd-looking name. `getNameCase` is a case
-// transform and leaves all of them untouched.
+// leading digit, the empty name a new table carries -- is a syntax error rather
+// than an odd-looking name, and getNameCase leaves all of them untouched.
 const NON_NAME = /[^_0-9A-Za-z]/g;
 const NAME_START = /^[_A-Za-z]/;
 const FALLBACK_NAME = '_';
 
-// A name written in Hangul or any other non-ASCII script sanitizes to nothing
-// but underscores, so the exported name carries none of what the user typed.
-// The description is the only field that survives to a consumer, so it takes
-// the original.
+// A name in a non-ASCII script sanitizes to nothing but underscores, so the
+// exported name carries none of what the user typed. The description is the
+// only field that reaches a consumer, so it takes the original.
 const NAME_INFORMATIVE = /[0-9A-Za-z]/;
 
-// `#` is an Ignored token: it never reaches the AST, so a comment written as
+// # is an Ignored token: it never reaches the AST, so a comment written as
 // one is invisible to every consumer. A description is the form that survives,
 // and the block string is the only spelling of it that tolerates a newline.
 const BLOCK_STRING = /"""/g;
@@ -81,7 +79,7 @@ export function formatTable(
   { buffer, table }: FormatTableOptions
 ) {
   // The standalone entry has no document-wide view of its own, so it builds the
-  // same context `createCode` does -- a type name is only unique against every
+  // same context createCode does -- a type name is only unique against every
   // other table's.
   formatType(state, { buffer, table }, createTypeContext(state));
 }
@@ -99,7 +97,7 @@ function formatType(
   const bodyBuffer: string[] = [];
   const fieldNames = new Set<string>();
 
-  // Judged on the sanitized name, never on `typeName` -- the digit `uniqueName`
+  // Judged on the sanitized name, never on typeName -- the digit uniqueName
   // appends to a collision would read as information the name does not carry.
   pushDescription(
     buffer,
@@ -119,7 +117,7 @@ function formatType(
     });
   formatRelation(state, { buffer: bodyBuffer, table }, context, fieldNames);
 
-  // `FieldsDefinition` is `{ FieldDefinition+ }`: a braceless type is valid, an
+  // FieldsDefinition is { FieldDefinition+ }: a braceless type is valid, an
   // empty pair of braces is not.
   if (bodyBuffer.length === 0) {
     buffer.push(`type ${typeName}`);
@@ -195,7 +193,7 @@ function formatRelation(
     .selectByIds(relationshipIds);
 
   // A relation field is named after the table it points at, so the description
-  // is judged on that name alone -- the `List` suffix is ours, and would make
+  // is judged on that name alone -- the List suffix is ours, and would make
   // an all-underscore name look informative.
   const pushField = (
     relatedTable: Table,
@@ -283,8 +281,8 @@ function getTypeName(
     return cached;
   }
 
-  // The case transform is many-to-one -- `user_profile` and `UserProfile` both
-  // fold to `UserProfile` -- and sanitizing folds far more together, so two
+  // The case transform is many-to-one -- user_profile and UserProfile both
+  // fold to UserProfile -- and sanitizing folds far more together, so two
   // tables can reach the same type name.
   const typeName = uniqueName(
     context.usedTypeNames,

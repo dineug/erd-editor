@@ -1,19 +1,19 @@
 /**
- * `parser.ts` owns every `graphql` AST concern -- directives are resolved into
- * the flat fields below, so `convert.ts` never imports from `graphql`.
+ * parser.ts owns every graphql AST concern -- directives are resolved into
+ * the flat fields below, so convert.ts never imports from graphql.
  */
 
 export type GraphQLTypeRef = {
   named: string;
-  /** The outermost wrapper is `NonNull` -- the column-level NOT NULL signal. */
+  /** The outermost wrapper is NonNull -- the column-level NOT NULL signal. */
   nonNull: boolean;
   isList: boolean;
-  /** The `!` inside `[T!]` -- a cardinality signal, never a column one. */
+  /** The ! inside [T!] -- a cardinality signal, never a column one. */
   itemNonNull: boolean;
 };
 
 export type GraphQLField = {
-  /** Already rewritten by `@map` / `@column(name:)` when either is present. */
+  /** Already rewritten by @map / @column(name:) when either is present. */
   name: string;
   comment: string;
   typeRef: GraphQLTypeRef;
@@ -21,7 +21,7 @@ export type GraphQLField = {
   unique: boolean;
   autoIncrement: boolean;
   default: string;
-  /** `@db.*` or `@column(dataType:)`; wins over the scalar lookup when set. */
+  /** @db.* or @column(dataType:); wins over the scalar lookup when set. */
   dataType: string;
   relationName: string;
   /** Columns on this type. */
@@ -48,7 +48,7 @@ export type GraphQLTable = {
 export type GraphQLModel = {
   tables: GraphQLTable[];
   enums: Record<string, string[]>;
-  /** `scalar X` declarations, so an unknown name can be told from a typo. */
+  /** scalar X declarations, so an unknown name can be told from a typo. */
   customScalars: string[];
   unions: Record<string, string[]>;
   /** Pruned type names, so a field pointing at one is dropped rather than read. */

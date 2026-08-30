@@ -311,7 +311,7 @@ describe('Memo', () => {
 
     expect(duplicateDragStart).toHaveBeenCalledOnce();
     expect(notPrevented).toBe(false);
-    // no second `drag$` subscription — the ghost owns the gesture from here
+    // no second drag$ subscription — the ghost owns the gesture from here
     expect(entity.ui.x).toBe(30);
     expect(entity.ui.y).toBe(40);
   });

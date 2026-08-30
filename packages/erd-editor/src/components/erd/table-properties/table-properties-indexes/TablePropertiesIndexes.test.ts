@@ -26,7 +26,7 @@ const template = (tableId = TABLE_ID) =>
   html`<${TablePropertiesIndexes} tableId=${tableId} />`;
 
 /**
- * Mirrors `Erd.tsx`: the table tab strip swaps `tableId` while the panel — and
+ * Mirrors Erd.tsx: the table tab strip swaps tableId while the panel — and
  * with it whatever this component has selected — stays mounted.
  */
 const Host: FC = () => {
@@ -43,7 +43,7 @@ const Host: FC = () => {
 };
 
 /**
- * `IndexesIndex.styles.row` and `Column.styles.root` declare the same top level
+ * IndexesIndex.styles.row and Column.styles.root declare the same top level
  * block, so r-html hands both of them the same generated class name. Scope the
  * lookup to the left pane so the checkbox rows of the right pane cannot match.
  */
@@ -73,7 +73,7 @@ const click = (el: Element) =>
   el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 /**
- * Mirrors a real click: the browser flips the `checked` property before the
+ * Mirrors a real click: the browser flips the checked property before the
  * change event, which is what sets the input's dirty checkedness flag.
  */
 const changeCheckbox = (input: HTMLInputElement, checked: boolean) => {

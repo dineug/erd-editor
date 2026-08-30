@@ -1,12 +1,9 @@
 import { expect, test } from '../support/fixtures';
 
 /**
- * Guards the assumptions every other spec is built on. If one of these fails,
- * the failures elsewhere are noise — fix this file first.
- *
- * No claim about css behaviour lives here yet; this only proves the page boots,
- * the element renders, and the window surface is reachable and wired to a real
- * shadow root.
+ * Guards the assumptions every other spec is built on, so a failure here makes
+ * the failures elsewhere noise. It claims nothing about css: only that the page
+ * boots, the element renders and the window surface reaches a shadow root.
  */
 test.describe('e2e harness', () => {
   test('mounts the r-html custom element and renders its shadow tree', async ({

@@ -19,7 +19,7 @@ import * as styles from './DuplicateGhost.styles';
 
 export type DuplicateGhostProps = {};
 
-// Rendered inside the canvas transform: ghost geometry comes from `table.ui`,
+// Rendered inside the canvas transform: ghost geometry comes from table.ui,
 // which is document coordinates.
 const DuplicateGhost: FC<DuplicateGhostProps> = (props, ctx) => {
   const app = useAppContext(ctx);

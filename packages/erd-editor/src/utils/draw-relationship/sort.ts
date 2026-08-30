@@ -46,7 +46,7 @@ type ChangeRelationship = {
 /** One relationship end sitting on one table side, before it is given a slot. */
 type SideEntry = {
   id: string;
-  /** True when the end on this side is the relationship's `start`. */
+  /** True when the end on this side is the relationship's start. */
   isStart: boolean;
   point: ChangeRelationship['start'];
   /**
@@ -82,12 +82,9 @@ const SELF_CORNER_STRIDE = 14;
 const SELF_CLEARANCE = 8;
 
 /**
- * The angle at which each side's clockwise walk begins.
- *
- * Reading the boundary as one clockwise loop — top left to right, right top to
- * bottom, bottom right to left, left bottom to top — is what makes the anchor
- * order planar: two relationships leaving the same table cannot cross when both
- * are placed in the order their targets appear around it.
+ * The angle at which each side's clockwise walk begins. Reading the boundary as
+ * one clockwise loop is what makes the anchor order planar: two relationships
+ * leaving a table cannot cross when both follow the order of their targets.
  */
 const SIDE_START_ANGLE: Record<DirectionName, number> = {
   [DirectionName.top]: -Math.PI,
@@ -133,7 +130,7 @@ export function relationshipSort(state: RootState) {
     }
 
     changeMap.set(relationship, relationshipShape);
-    // Seeded here so `placeSide` only ever mutates an existing pair; looking it
+    // Seeded here so placeSide only ever mutates an existing pair; looking it
     // up with a fallback allocates a throwaway array for every side entry.
     slotMap.set(relationshipShape.id, [0, 0]);
 
@@ -186,13 +183,9 @@ export function relationshipSort(state: RootState) {
 }
 
 /**
- * Routes every relationship around the tables, then pulls apart the routes that
- * ended up sharing a channel.
- *
- * This runs after the anchors are written back, not before: a route starts from
- * the turning point, and that depends on both the final anchor and the slot it
- * was given. Loops keep their single straight segment — they never leave the
- * corner they are drawn in.
+ * Routes every relationship around the tables, then pulls apart the routes
+ * sharing a channel. Runs after the anchors are written back, because a route
+ * starts from a turning point that depends on the final anchor and its slot.
  */
 function routeRelationships(
   state: RootState,
@@ -257,15 +250,9 @@ function getOrCreateGraph(
 }
 
 /**
- * Places a loop around the table's top-right corner.
- *
- * Loops are kept out of the side lists entirely. Registering one on both the
- * top and the right — which is what used to happen — inflated the count on two
- * sides, tightening the spacing of every unrelated relationship there, and it
- * pinned the loop to whichever slot the ordering happened to give it.
- *
- * The offset grows with the table so a loop on a large table is not a small
- * scratch in one corner, and each further loop steps outwards from the last.
+ * Places a loop around the table's top-right corner, kept out of the side lists
+ * entirely so it inflates no side's count. The offset grows with the table, and
+ * each further loop steps outwards from the last.
  */
 function placeSelf(graph: RelationshipGraph, relationship: ChangeRelationship) {
   const { rt, width, height } = graph.objectPoint;
@@ -299,11 +286,9 @@ function selfOffset(graph: RelationshipGraph, index: number) {
 }
 
 /**
- * How much of a side the loops in the top-right corner have taken.
- *
- * Loops are placed before the sides are laid out and are not part of the slot
- * order, so without this the two collide: the anchor spread reaches the corner
- * a loop already sits in, and the gap between them shrinks to nothing.
+ * How much of a side the loops in the top-right corner have taken. Loops are
+ * placed before the sides are laid out and are not in the slot order, so without
+ * this the anchor spread reaches the corner one already sits in.
  */
 function selfReserve(graph: RelationshipGraph) {
   if (!graph.selfCount) return 0;
@@ -335,13 +320,9 @@ function createChangeRelationship(
 }
 
 /**
- * Positions within the set of relationships connecting the same two tables.
- *
- * Those relationships all point at the same place, so the angle key ties and
- * something else has to order them. Both ends read the same sorted list, and
- * the end belonging to the larger table id reads it backwards — walking one
- * table clockwise means walking the other anticlockwise, so matching the two in
- * the same direction is exactly what would make parallel edges cross.
+ * Positions within the set of relationships joining the same two tables, whose
+ * angle keys all tie. Both ends read one sorted list and the larger table id
+ * reads it backwards, because clockwise on one side is anticlockwise on the other.
  */
 function pairIndexes(relationships: Relationship[]) {
   const groups = new Map<string, string[]>();
@@ -408,13 +389,8 @@ function orderAngle(
 
 /**
  * Chooses which side of each table the relationship leaves from: the nearest of
- * the sixteen side-midpoint pairs, with `DirectionNameList` order breaking ties.
- *
- * Obstacles are deliberately not consulted here. Scoring candidates by how many
- * tables they pass through was measured and reverted — with the path fixed at
- * three segments the only way around a table is a different pair of sides, and
- * the detour that buys costs more crossings and length than the penetration it
- * avoids. Routing past a table needs the path to bend, not the anchors to move.
+ * the sixteen side-midpoint pairs, DirectionNameList order breaking ties.
+ * Obstacles are not consulted — routing past a table is the router's job.
  */
 function getAndSetDirection(
   start: ObjectPoint,
@@ -457,13 +433,9 @@ function getAndSetDirection(
 }
 
 /**
- * Spaces one side's anchors and records the slot each took.
- *
- * Spacing is capped rather than filling the side. Dividing the whole edge by
- * the number of relationships — what this used to do — pushes two anchors on a
- * tall table hundreds of pixels apart, so the pair splays out and converges
- * again for no reason. When the side is too short for the cap the anchors
- * compress instead of spilling past the corners.
+ * Spaces one side's anchors and records the slot each took. Spacing is capped
+ * rather than filling the side, and when the side is too short for the cap the
+ * anchors compress instead of spilling past the corners.
  */
 function placeSide(
   direction: DirectionName,
@@ -474,7 +446,7 @@ function placeSide(
   if (!entries.length) return;
 
   // Ordering is by angle, then by the parallel-edge tie, then by id. The last
-  // key is what makes the result independent of `relationshipIds` order, and so
+  // key is what makes the result independent of relationshipIds order, and so
   // identical across peers, workers and reserialisation.
   entries.sort(
     (a, b) => a.angle - b.angle || a.tie - b.tie || (a.id < b.id ? -1 : 1)

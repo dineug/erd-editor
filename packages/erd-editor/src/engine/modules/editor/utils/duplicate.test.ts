@@ -17,11 +17,9 @@ import {
 } from '@/utils/table-clipboard';
 
 /**
- * The complete set of action types a create batch is allowed to emit (AC-35).
- *
- * Restated here as literals on purpose: the point of the assertion is that it
- * breaks when the builder starts emitting something new, so it must not be
- * derived from the builder's own imports.
+ * The complete set of action types a create batch may emit, restated as
+ * literals on purpose: the assertion has to break when the builder emits
+ * something new, so it must not derive from the builder's own imports.
  */
 const ALLOWED_ACTION_TYPES = [
   'column.add',
@@ -42,7 +40,7 @@ const ALLOWED_ACTION_TYPES = [
 
 /**
  * The three stream actions split the batch into a second history command, and
- * the two `changeZIndex` actions are in no classification list at all.
+ * the two changeZIndex actions are in no classification list at all.
  */
 const FORBIDDEN_ACTION_TYPES = [
   'table.changeColor',
@@ -210,8 +208,8 @@ describe('toCreateEntityActions — forbidden actions (AC-35)', () => {
       streamTypes.includes(type)
     );
 
-    // A stream action would be regrouped by `groupByStreamActions` and buffered
-    // behind `debounceTime(200)`, producing a second history command ~200ms
+    // A stream action would be regrouped by groupByStreamActions and buffered
+    // behind debounceTime(200), producing a second history command ~200ms
     // after the batch — one undo would then restore only part of the copy.
     expect(intersection).toEqual([]);
     expect(streamTypes.length).toBeGreaterThan(0);
@@ -259,8 +257,8 @@ describe('toCreateEntityActions — forbidden actions (AC-35)', () => {
     const { actions } = createColourfulBatch();
     const addTable = findAction(actions, 'table.add');
 
-    // `changeTableName`/`changeTableComment` recompute them with
-    // `textInRange(toWidth(value))`, so sending them would be sending stale
+    // changeTableName/changeTableComment recompute them with
+    // textInRange(toWidth(value)), so sending them would be sending stale
     // state, not restoring it.
     expect(addTable?.payload.ui).not.toHaveProperty('widthName');
     expect(addTable?.payload.ui).not.toHaveProperty('widthComment');

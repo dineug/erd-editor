@@ -12,13 +12,9 @@ import {
 import { Shortcut } from '../support/shortcuts';
 
 /**
- * Keyboard shortcuts and the focus/edit state machine behind them.
- *
- * Two DOM markers carry every assertion here:
- * `[data-focus-border-bottom]` is painted on the focused cell, and an
- * `input.edit-input` replaces a cell's static text only while it is in edit
- * mode. `useErdShortcut.ts` gates most shortcuts on `focusTable && !edit`, so
- * the pair is exactly what decides whether a key does anything.
+ * Keyboard shortcuts and the focus/edit state machine behind them. Two DOM
+ * markers carry every assertion: the focus border on the focused cell, and the
+ * edit input that replaces a cell's static text only while it is in edit mode.
  */
 test.describe('keyboard shortcuts', () => {
   test('Alt+KeyN adds a selected table and Alt+Enter gives it a column', async ({
@@ -26,17 +22,16 @@ test.describe('keyboard shortcuts', () => {
   }) => {
     await erd.seed(oneTable());
     await erd.focusCanvas();
-    // `tinykeys` is bound to the editor root, so every press below is only
-    // meaningful while DOM focus is inside the element. Asserting the
-    // precondition turns a lost-focus regression into a clear failure instead
-    // of an inscrutable "the table never appeared".
+    // tinykeys is bound to the editor root, so every press below is meaningful
+    // only while DOM focus is inside the element. Asserting the precondition
+    // turns a lost-focus regression into a clear failure.
     await erd.expectKeyboardFocusInside();
 
     await erd.press(Shortcut.addTable);
     await expect(erd.canvas.locator('.table')).toHaveCount(2);
 
     const [addedId] = (await erd.tableIds()).filter(id => id !== 'users');
-    // `addTableAction$` unselects everything, then selects and focuses what it
+    // addTableAction$ unselects everything, then selects and focuses what it
     // just created — which is what makes the next shortcut land on it.
     await expect(erd.selectedTables()).toHaveCount(1);
     await expect(erd.tableEl(addedId)).toHaveAttribute('data-selected', '');
@@ -45,8 +40,8 @@ test.describe('keyboard shortcuts', () => {
     await expect(erd.tableEl(addedId).locator('.column-row')).toHaveCount(1);
     expect(await erd.columnIds(addedId)).toHaveLength(1);
 
-    // The new column takes the focus ring on its name cell. `addColumnAction$`
-    // only yields `focusColumnAction`, never `editTableAction`, so — unlike a
+    // The new column takes the focus ring on its name cell. addColumnAction$
+    // only yields focusColumnAction, never editTableAction, so — unlike a
     // Tab stop — no editor opens: the ring lands on a cell still showing text.
     await expect(erd.focusRings()).toHaveCount(1);
     const [addedColumnId] = await erd.columnIds(addedId);
@@ -73,7 +68,7 @@ test.describe('keyboard shortcuts', () => {
     await erd.press(Shortcut.removeTable);
     await expect(erd.tableEl('users')).toHaveCount(0);
     await expect(erd.canvas.locator('.table')).toHaveCount(1);
-    // deletes are LWW tombstones, so `doc` is the only honest count
+    // deletes are LWW tombstones, so doc is the only honest count
     expect(await erd.tableIds()).toEqual(['posts']);
   });
 
@@ -120,7 +115,7 @@ test.describe('keyboard shortcuts', () => {
     await erd.focusCell(erd.cell(table, 'tableName'));
 
     // Every stop here opens an editor, so DOM focus hops input to input and
-    // `toBeFocused` is the honest signal that the step has landed.
+    // toBeFocused is the honest signal that the step has landed.
     const editable: Locator[] = [
       erd.cell(table, 'tableComment'),
       erd.cell(idRow, 'columnName'),
@@ -134,14 +129,9 @@ test.describe('keyboard shortcuts', () => {
       await expect(erd.editInput(cell)).toBeFocused();
     }
 
-    // The toggle cells are flipped, never typed into: `isToggleColumnTypes`
-    // suppresses the auto-edit, so the cell keeps rendering its label.
-    //
-    // The walk stops here on purpose. Landing on a toggle cell tears down the
-    // previous cell's `<input>` without opening a new one, and DOM focus drops
-    // to `<body>` — `checkAndFocus` is throttled and often never pulls it back,
-    // which leaves the keyboard dead. The rest of the ring is covered with the
-    // arrow keys, which never open an editor and so never lose focus.
+    // Toggle cells are flipped, never typed into, and landing on one tears down
+    // the previous input without opening a new one, dropping DOM focus to the
+    // body. The rest of the ring is walked with arrows, which never lose it.
     const notNull = erd.cell(idRow, 'columnNotNull');
     await erd.press('Tab');
     await expect(erd.focusRing(notNull)).toBeVisible();
@@ -158,7 +148,7 @@ test.describe('keyboard shortcuts', () => {
     const lastCell = erd.cell(erd.columnEl('users_name'), 'columnComment');
     await erd.focusCell(lastCell);
 
-    // The grid does not wrap: `focusMoveTableAction$` turns the last Tab into
+    // The grid does not wrap: focusMoveTableAction$ turns the last Tab into
     // an addColumn instead.
     await erd.press('Tab');
     await expect(erd.tableEl('users').locator('.column-row')).toHaveCount(3);
@@ -167,7 +157,7 @@ test.describe('keyboard shortcuts', () => {
     expect(columnIds).toEqual(['users_id', 'users_name', columnIds[2]]);
     const addedName = erd.cell(erd.columnEl(columnIds[2]), 'columnName');
     await expect(erd.focusRing(addedName)).toBeVisible();
-    // `handleKeydown` schedules `editTableAction()` 1ms after every non-toggle
+    // handleKeydown schedules editTableAction() 1ms after every non-toggle
     // Tab stop, the appended row included. Waiting for that editor is what
     // makes the next press land on a settled state rather than mid-transition.
     await expect(erd.editInput(addedName)).toBeFocused();
@@ -187,9 +177,8 @@ test.describe('keyboard shortcuts', () => {
     await erd.focusCell(erd.cell(idRow, 'columnName'));
 
     // Arrows move focus without opening an editor, so the whole ring can be
-    // walked with DOM focus parked on the editor root.
-    // `DEFAULT_SHOW` leaves unique and autoIncrement out of the document
-    // entirely, and out of the ring with them.
+    // walked with DOM focus parked on the editor root. The default show leaves
+    // unique and autoIncrement out of the document, and out of the ring.
     await expect(erd.cell(idRow, 'columnUnique')).toHaveCount(0);
     await expect(erd.cell(idRow, 'columnAutoIncrement')).toHaveCount(0);
 
@@ -210,13 +199,9 @@ test.describe('keyboard shortcuts', () => {
     const nextRowName = erd.cell(erd.columnEl('users_name'), 'columnName');
     await expect(erd.focusRing(nextRowName)).toBeVisible();
 
-    // Same document, one `show` bit cleared: the data type cell leaves the DOM
-    // and the focus ring steps straight over it.
-    //
-    // `seed` settles by polling `doc.tableIds`, which is unchanged here, so it
-    // returns without proving anything about this reseed. The disappearing
-    // `columnDataType` cell below is the signal that the new `show` landed —
-    // every assertion after it depends on that wait, not on `seed`.
+    // Same document with one show bit cleared, so the data type cell leaves the
+    // DOM and the ring steps over it. seed polls tableIds, unchanged here, so
+    // the disappearing cell below is the signal that the new show landed.
     const withoutDataType = oneTable();
     withoutDataType.settings.show = DEFAULT_SHOW & ~Show.columnDataType;
     await erd.seed(withoutDataType);
@@ -240,13 +225,9 @@ test.describe('keyboard shortcuts', () => {
     await expect(erd.selectedTables()).toHaveCount(0);
     await expect(erd.focusRings()).toHaveCount(0);
 
-    // `handleKeydown` needs a focus target before it will move anything.
-    //
-    // A "nothing happened" assertion is only honest if the app has already had
-    // its chance to react. It has: `store.dispatch` defers through `asap()`,
-    // which is `queueMicrotask`, and r-html schedules renders the same way — no
-    // rAF anywhere in the path. Both drain before the task that runs the next
-    // CDP query, so this count is taken after any reaction would have painted.
+    // handleKeydown needs a focus target before it moves anything, and a
+    // nothing-happened assertion is honest only after the app had its chance.
+    // Dispatch and render both drain in microtasks, before the next CDP query.
     await erd.press('ArrowDown');
     await expect(erd.focusRings()).toHaveCount(0);
 
@@ -271,7 +252,7 @@ test.describe('keyboard shortcuts', () => {
 
     await erd.press(Shortcut.primaryKey);
     await expect(erd.columnKey('users_id', 'pk')).toHaveCount(1);
-    // `changeColumnNotNullHook` rides along with the primary key
+    // changeColumnNotNullHook rides along with the primary key
     await expect(notNullCell).toContainText('N-N');
 
     const column = await erd.column('users_id');
@@ -299,8 +280,8 @@ test.describe('keyboard shortcuts', () => {
     await erd.press(Shortcut.selectAllTable);
     await expect(erd.selectedTables()).toHaveCount(2);
 
-    // Column selection is scoped to `focusTable`, so the click that focuses
-    // `users` is also what limits the next shortcut to its rows.
+    // Column selection is scoped to focusTable, so the click that focuses
+    // users is also what limits the next shortcut to its rows.
     await erd.focusCell(erd.cell(erd.columnEl('users_id'), 'columnName'));
     await expect(erd.selectedColumns()).toHaveCount(1);
 
@@ -329,7 +310,7 @@ test.describe('keyboard shortcuts', () => {
     });
     await page.locator('#outside').focus();
 
-    // `tinykeys` is bound to the editor root, and the editor dims itself the
+    // tinykeys is bound to the editor root, and the editor dims itself the
     // moment focus leaves it — that class is the signal the keys are gone too.
     await expect(erd.host.locator('.root')).toHaveClass(/\bnone-focus\b/);
 
@@ -339,7 +320,7 @@ test.describe('keyboard shortcuts', () => {
 
     // Positive control: the identical press lands once focus is back inside.
     // Clicking bare canvas will not do it — the click only blurs the button —
-    // so this goes through the element's public `focus()`.
+    // so this goes through the element's public focus().
     await erd.focusHost();
     await erd.expectKeyboardFocusInside();
     await erd.press(Shortcut.addTable);

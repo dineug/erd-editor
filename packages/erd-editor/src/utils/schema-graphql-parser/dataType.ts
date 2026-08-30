@@ -4,7 +4,7 @@ import { GraphQLModel } from './types';
 
 /**
  * Every cell below is a name taken from that dialect's hint list under
- * `@/constants/sql/dataType`, so `getPrimitiveType` resolves it back to a
+ * @/constants/sql/dataType, so getPrimitiveType resolves it back to a
  * primitive the ten code generators understand.
  */
 
@@ -45,7 +45,7 @@ const bigintTypes: Record<number, string> = {
   [Database.MariaDB]: 'BIGINT',
   [Database.MSSQL]: 'bigint',
   [Database.MySQL]: 'BIGINT',
-  // Oracle.ts has no BIGINT; NUMBER carries the `long` primitive there.
+  // Oracle.ts has no BIGINT; NUMBER carries the long primitive there.
   [Database.Oracle]: 'NUMBER(19)',
   [Database.PostgreSQL]: 'bigint',
   [Database.SQLite]: 'BIGINT',
@@ -78,7 +78,7 @@ const decimalTypes: Record<number, string> = {
 
 const booleanTypes: Record<number, string> = {
   [Database.MariaDB]: 'BOOLEAN',
-  // MSSQL.ts has no boolean; bit is the T-SQL stand-in, primitive `int`.
+  // MSSQL.ts has no boolean; bit is the T-SQL stand-in, primitive int.
   [Database.MSSQL]: 'bit',
   [Database.MySQL]: 'BOOLEAN',
   [Database.Oracle]: 'BOOLEAN',
@@ -137,7 +137,7 @@ const dateTimeTzTypes: Record<number, string> = {
 
 const durationTypes: Record<number, string> = {
   // MariaDB.ts, MSSQL.ts, MySQL.ts, SQLite.ts and Snowflake.ts list no interval
-  // type, and an ISO-8601 duration such as `P3Y6M` does not fit MySQL's TIME
+  // type, and an ISO-8601 duration such as P3Y6M does not fit MySQL's TIME
   // either.
   [Database.MariaDB]: 'VARCHAR(255)',
   [Database.MSSQL]: 'varchar(255)',
@@ -188,8 +188,8 @@ const bytesTypes: Record<number, string> = {
 
 /**
  * Keys are lowercase because the same scalar reaches us spelled three ways:
- * Prisma writes `DateTime`, Hasura echoes the PostgreSQL name `timestamptz`,
- * graphql-scalars writes `DateTimeISO`.
+ * Prisma writes DateTime, Hasura echoes the PostgreSQL name timestamptz,
+ * graphql-scalars writes DateTimeISO.
  */
 const scalarTypes: Record<string, Record<number, string>> = {
   // ID serializes as a String, and a Relay or Federation global id is an opaque
@@ -216,14 +216,14 @@ const scalarTypes: Record<string, Record<number, string>> = {
   decimal: decimalTypes,
   bigdecimal: decimalTypes,
   numeric: decimalTypes,
-  // Hasura surfaces PostgreSQL `money`; DECIMAL beats the string fallback on
+  // Hasura surfaces PostgreSQL money; DECIMAL beats the string fallback on
   // the five dialects with no money column.
   money: decimalTypes,
 
   datetime: dateTimeTypes,
   datetimeiso: dateTimeTypes,
   localdatetime: dateTimeTypes,
-  // graphql-scalars' Timestamp is epoch millis, but `timestamp` echoed from an
+  // graphql-scalars' Timestamp is epoch millis, but timestamp echoed from an
   // introspected SQL schema is the far more common spelling in external SDL.
   timestamp: dateTimeTypes,
   timestamptz: dateTimeTzTypes,
@@ -271,14 +271,14 @@ export function resolveDataType(
     return fallback;
   }
 
-  // `toLowerCase` and not `toLocaleLowerCase`: the latter maps `ID` to `ıd`
+  // toLowerCase and not toLocaleLowerCase: the latter maps ID to ıd
   // under a Turkish locale, which would miss the key.
   return scalarTypes[named.toLowerCase()]?.[database] ?? fallback;
 }
 
 /**
- * Keeps the members where the column type cannot hold them. Pass `database` to
- * drop it on the dialects whose `ENUM(...)` column already spells them out.
+ * Keeps the members where the column type cannot hold them. Pass database to
+ * drop it on the dialects whose ENUM(...) column already spells them out.
  */
 export function enumCommentSuffix(
   named: string,
@@ -301,7 +301,7 @@ export function enumCommentSuffix(
 
 /**
  * Only MySQL.ts and MariaDB.ts list ENUM; every other dialect takes the string
- * fallback and leans on `enumCommentSuffix` to keep the members.
+ * fallback and leans on enumCommentSuffix to keep the members.
  */
 function enumDataType(members: string[], database: number): string | undefined {
   if (database !== Database.MySQL && database !== Database.MariaDB) {
@@ -315,7 +315,7 @@ function membersSuffix(named: string, members: string[]): string {
 }
 
 /**
- * A GraphQL type may legally be named `constructor` or `toString`, so an
+ * A GraphQL type may legally be named constructor or toString, so an
  * inherited property has to be told from a real entry.
  */
 function getMembers(

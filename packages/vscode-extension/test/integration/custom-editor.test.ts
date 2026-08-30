@@ -1,24 +1,11 @@
 import * as assert from 'assert/strict';
 import * as vscode from 'vscode';
 
-/**
- * These specs run inside a real Extension Host (see `.vscode-test.mjs`), so
- * `vscode` is the genuine API and the extension is loaded from this folder via
- * `--extensionDevelopmentPath`. `test/fixtures/workspace` is the open folder.
- *
- * Scope note: the custom editor paints `@dineug/erd-editor-vscode-webview`
- * into an out-of-process webview, and its DOM is not reachable from the
- * Extension Host — there is no API that returns webview content. Everything
- * below therefore stops at the host-side contract (documents, tabs, commands);
- * the rendered editor surface belongs to the Playwright suite in
- * `packages/erd-editor`.
- */
-
 const EXTENSION_ID = 'dineug.vuerd-vscode';
 const VIEW_TYPE = 'editor.erd';
 const POLL_INTERVAL = 50;
-// Kept well under the 30s mocha timeout in `.vscode-test.mjs` so that a spec
-// with several waits still fails with `waitUntil`'s description rather than
+// Kept well under the 30s mocha timeout in .vscode-test.mjs so that a spec
+// with several waits still fails with waitUntil's description rather than
 // with an anonymous mocha timeout.
 const POLL_TIMEOUT = 5_000;
 
@@ -72,7 +59,7 @@ function sourceTabsFor(uri: vscode.Uri): vscode.Tab[] {
 }
 
 function viewColumnsOf(tabs: vscode.Tab[]): Set<vscode.ViewColumn> {
-  // `TabGroup` object identity is an implementation detail; `viewColumn` is the
+  // TabGroup object identity is an implementation detail; viewColumn is the
   // documented, comparable value.
   return new Set(tabs.map(tab => tab.group.viewColumn));
 }
@@ -108,7 +95,7 @@ describe('custom editor', () => {
 
     const extension = vscode.extensions.getExtension(EXTENSION_ID);
     assert.ok(extension, `${EXTENSION_ID} is not installed in this host`);
-    // `activationEvents` is `workspaceContains:**/*.{erd,vuerd}`, so the
+    // activationEvents is workspaceContains:**/*.{erd,vuerd}, so the
     // fixture already triggers activation; awaiting it only removes the race.
     await extension.activate();
     assert.strictEqual(extension.isActive, true);
@@ -126,7 +113,7 @@ describe('custom editor', () => {
       const bytes = await vscode.workspace.fs.readFile(documentUri);
       const parsed = JSON.parse(Buffer.from(bytes).toString('utf8'));
 
-      // A guard on the fixture rather than on the extension: `ErdDocument`
+      // A guard on the fixture rather than on the extension: ErdDocument
       // hands these exact bytes to the webview untouched, so a fixture that
       // stopped being valid v3 JSON would silently gut every spec below.
       assert.strictEqual(parsed.version, '3.0.0');
@@ -135,8 +122,8 @@ describe('custom editor', () => {
 
   describe('opening the document', () => {
     it('resolves the custom editor and leaves a single erd tab, with no text editor on the file', async () => {
-      // `vscode.openWith` only resolves once `resolveCustomEditor` has run, so
-      // a throw from `bootstrapWebview` would surface right here.
+      // vscode.openWith only resolves once resolveCustomEditor has run, so
+      // a throw from bootstrapWebview would surface right here.
       await openErdEditor(documentUri);
 
       await waitUntil(
@@ -161,10 +148,9 @@ describe('custom editor', () => {
     });
 
     it('claims .erd by default, so a plain open never falls back to the text editor', async () => {
-      // `vscode.openWith` names the viewType explicitly and would pass even if
-      // the manifest selector were wrong. `vscode.open` is what a double-click
-      // in the explorer does, so this is the spec that actually proves
-      // `contributes.customEditors` (`priority: "default"`, `*.erd`) is wired.
+      // openWith names the viewType explicitly and would pass even with a wrong
+      // manifest selector. vscode.open is what a double-click does, so this is
+      // what proves the customEditors contribution is wired.
       await vscode.commands.executeCommand('vscode.open', documentUri);
 
       await waitUntil(
@@ -187,8 +173,8 @@ describe('custom editor', () => {
         () => erdEditorTabsFor(documentUri).length === 1
       );
 
-      // The command handler calls `showTextDocument` without returning its
-      // promise, so `executeCommand` resolves before the editor is visible.
+      // The command handler calls showTextDocument without returning its
+      // promise, so executeCommand resolves before the editor is visible.
       await vscode.commands.executeCommand('vuerd.showSource', documentUri);
 
       await waitUntil(
@@ -241,7 +227,7 @@ describe('custom editor', () => {
         () => sourceTabsFor(documentUri).length === 1
       );
 
-      // Also a fire-and-forget handler: it starts `vscode.openWith` and returns
+      // Also a fire-and-forget handler: it starts vscode.openWith and returns
       // undefined, so there is nothing to await but the observable tab state.
       await vscode.commands.executeCommand('vuerd.showEditor', documentUri);
 
@@ -299,11 +285,9 @@ describe('custom editor', () => {
         () => erdEditorTabsFor(documentUri).length === 2
       );
 
-      // `ErdEditorProvider` maps one `ErdDocument` to a *set* of webviews and
-      // `bootstrapWebview` relays every replication action to all of them but
-      // the sender; without a second live editor that fan-out is dead code.
-      // With `supportsMultipleEditorsPerDocument: false` VSCode would move the
-      // single editor instead of resolving a second one.
+      // The provider maps one document to a set of webviews and relays every
+      // replication action to all but the sender, which is dead code without a
+      // second live editor. Without the manifest flag VSCode would move one.
       assert.strictEqual(
         viewColumnsOf(erdEditorTabsFor(documentUri)).size,
         2,

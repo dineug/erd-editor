@@ -9,7 +9,7 @@ import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
-// A table with no columns and every `show` flag disabled is 118 x 56.
+// A table with no columns and every show flag disabled is 118 x 56.
 const TABLE_WIDTH = 118;
 const TABLE_HEIGHT = 56;
 
@@ -142,11 +142,9 @@ describe('relationshipSort', () => {
 
     relationshipSort(state);
 
-    // Right side: height 56 less two 12px insets leaves 32, which one gap of
-    // 32 fills without reaching the 60 cap. Centred on y = 28 -> 12 and 44.
-    //
-    // B is above A and C below it, so walking the right side downwards has to
-    // meet B first — anything else crosses the two lines.
+    // Right side: height 56 less two 12px insets leaves 32, one gap under the
+    // 60 cap, centred on y = 28. B is above A and C below it, so walking the
+    // side downwards has to meet B first or the two lines cross.
     expect(ab.start).toMatchObject({
       x: 118,
       y: 12,
@@ -171,11 +169,9 @@ describe('relationshipSort', () => {
 
     relationshipSort(state);
 
-    // Bottom side: width 118 less two 12px insets leaves a 94px gap, which is
-    // under the 120px cap, so it is used in full -> x = 12 and 106.
-    //
-    // C is to the right of B, and the bottom edge is walked right to left, so
-    // the anchor pointing at C has to be the right-hand one.
+    // Bottom side: width 118 less two 12px insets leaves a 94px gap, under the
+    // 120px cap and so used in full. C is right of B and the bottom edge walks
+    // right to left, so the anchor pointing at C is the right-hand one.
     expect(ab.start).toMatchObject({
       x: 12,
       y: 56,
@@ -243,11 +239,9 @@ describe('relationshipSort', () => {
       direction: Direction.right,
     });
 
-    // The loop no longer takes a slot on either side, so it cannot tighten the
-    // spacing of relationships that go nowhere near it. It does reserve the
-    // corner it occupies — 20px of offset plus 8px of clearance — which is why
-    // `ab` and `ac` centre on what is left of their sides rather than on the
-    // full edge.
+    // The loop takes no slot on either side, so it cannot tighten the spacing of
+    // relationships that go nowhere near it. It does reserve the corner it sits
+    // in, which is why ab and ac centre on what is left of their sides.
     expect(ab.start).toMatchObject({
       x: 118,
       y: 42,
@@ -267,10 +261,9 @@ describe('relationshipSort', () => {
   });
 
   it('caps how far apart two anchors are spread on a tall table', () => {
-    // 20 columns make A 536px tall. Dividing that edge by the anchor count —
-    // what this used to do — would put the two anchors 268px apart, so the pair
-    // splayed to opposite ends of the table and converged again. The cap holds
-    // them together as a group instead.
+    // 20 columns make A 536px tall. Dividing that edge by the anchor count puts
+    // the two anchors 268px apart, splayed to opposite ends and converging
+    // again; the cap holds them together as a group instead.
     const tall = addTable(state, 'A', 0, 0);
     tall.columnIds = Array.from({ length: 20 }, (_, index) => `c${index}`);
     addTable(state, 'B', 700, 150);

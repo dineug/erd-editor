@@ -11,8 +11,8 @@ const css = (source: string, rules?: string[]) =>
 const scoped = (source: string) => css(source, [SCOPE]);
 
 /**
- * `@types/stylis` types every node with `props: string[] | string` and
- * `children: Element[] | string`, so narrowing lives here rather than in the source. Precise
+ * @types/stylis types every node with props: string[] | string and
+ * children: Element[] | string, so narrowing lives here rather than in the source. Precise
  * element types arrive with the flattening layer, which is the first code that needs them.
  */
 const rulesetAt = (elements: Element[], index: number) => {
@@ -31,15 +31,9 @@ describe('scope seeding', () => {
   });
 
   it('leaves ROOT level bare declarations unwrapped', () => {
-    // The synthetic scope rule only makes stylis wrap bare declarations that sit inside a
-    // conditional at-rule (`Parser.js`: `rule && append(ruleset(...), children)`). At the root,
-    // declarations are appended straight to the element list instead.
-    //
-    // This is deliberate. The alternative — handing stylis `declarations = synthetic.children` —
-    // does collect them, but it also splits declarations away from the rules they were interleaved
-    // with and destroys source order. Attaching root declarations to the scope is therefore the
-    // flattening layer's job, not the parser's. This assertion pins the contract that layer builds
-    // on.
+    // The synthetic scope rule only makes stylis wrap bare declarations inside a
+    // conditional at-rule; at the root they go straight to the element list.
+    // Attaching those to the scope is the flattening layer's job, not stylis'.
     expect(scoped('color:red;')).toBe('color:red;');
 
     const elements = compile('color:red;', { rules: [SCOPE] });
@@ -56,7 +50,7 @@ describe('scope seeding', () => {
   });
 
   it('resolves every & in a selector, not just the first', () => {
-    // stylis classes `+` as an isolate token, so it collapses the whitespace around it.
+    // stylis classes + as an isolate token, so it collapses the whitespace around it.
     expect(scoped('& + &{color:red}')).toBe(`${SCOPE}+${SCOPE}{color:red;}`);
   });
 
@@ -85,7 +79,7 @@ describe('selector lists', () => {
   });
 
   it('expands a nested list against every parent as a cartesian product', () => {
-    // Segment-major, parent-minor: `ruleset()` loops the comma segments outside and the parent
+    // Segment-major, parent-minor: ruleset() loops the comma segments outside and the parent
     // selectors inside, so the child segment varies slowest.
     const out = css('.p, .q{ a, b{color:red} }', ['']);
     expect(out).toBe('.p a,.q a,.p b,.q b{color:red;}');
@@ -99,7 +93,7 @@ describe('selector lists', () => {
 });
 
 describe('root level conditional at-rules', () => {
-  // Without the synthetic scope rule, stylis emits `@supports (a:b){color:red;}` — a declaration
+  // Without the synthetic scope rule, stylis emits @supports (a:b){color:red;} — a declaration
   // with no selector, which browsers drop silently.
   it('wraps bare declarations inside @supports', () => {
     expect(scoped('@supports (display:grid){color:red}')).toBe(
@@ -172,7 +166,7 @@ describe('element shapes', () => {
   it('records a comment body, with the last scanned character as its prop', () => {
     const [block] = compile('/* hi */');
     expect(block.type).toBe('comm');
-    // `props` is `from(char())` — the character the scanner stopped on, not the comment kind.
+    // props is from(char()) — the character the scanner stopped on, not the comment kind.
     expect(block.props).toBe('/');
     expect(block.children).toBe(' hi ');
     expect(block.value).toBe('/* hi */');

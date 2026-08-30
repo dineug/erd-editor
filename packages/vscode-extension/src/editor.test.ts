@@ -17,21 +17,20 @@ import {
 const encoder = new TextEncoder();
 
 /**
- * The shipped `public/index.html`, trimmed to the parts this module touches:
- * one `{{extension-base-url}}` inside `<base href>` and relative asset urls
+ * The shipped public/index.html, trimmed to the parts this module touches:
+ * one {{extension-base-url}} inside <base href> and relative asset urls
  * that resolve against it.
  */
 const SHIPPED_TEMPLATE =
   '<!doctype html><html><head><base href="{{extension-base-url}}"/>' +
-  // `type="module"`, and no `crossorigin`: Vite emits the former and the
-  // webview config strips the latter, because the asset origin returns no CORS
-  // headers. Kept faithful to the real output so this fixture goes stale loudly
-  // rather than quietly.
+  // A module script and no crossorigin: Vite emits the former and the webview
+  // config strips the latter, since the asset origin returns no CORS headers.
+  // Kept faithful to the real output so the fixture goes stale loudly.
   '<script type="module" src="./bundle.c489f6f5.js"></script>' +
   '<link rel="stylesheet" href="./bundle.97d5c01d.css"></head><body></body></html>';
 
 /**
- * What the real `Webview.asWebviewUri` hands back for a local folder — the
+ * What the real Webview.asWebviewUri hands back for a local folder — the
  * path is carried over verbatim, trailing slash included.
  */
 const WEBVIEW_ASSETS_URL =
@@ -43,7 +42,7 @@ const asDirPath = (path: string) => (path.endsWith('/') ? path : `${path}/`);
 class TestEditor extends Editor {
   assetsDir = 'public';
 
-  /** `bridge` is protected on the base; the isolation specs need to see it. */
+  /** bridge is protected on the base; the isolation specs need to see it. */
   get testBridge() {
     return this.bridge;
   }
@@ -110,7 +109,7 @@ describe('Editor', () => {
         Uri.parse('git:/repo/sample.erd')
       );
 
-      // The extension itself always lives on `file:`; if `readonly` ever read
+      // The extension itself always lives on file:; if readonly ever read
       // that uri instead, every git document would silently become editable.
       expect(context.extensionUri.scheme).toBe('file');
       expect(editor.readonly).toBe(true);
@@ -149,12 +148,9 @@ describe('Editor', () => {
       const [assetsUri] = webview.asWebviewUri.mock.calls[0];
       const [readUri] = workspace.fs.readFile.mock.calls[0];
       expect(assetsUri.scheme).toBe('file');
-      // Production asks for `Uri.joinPath(publicUri, '/')`. The real
-      // `Uri.joinPath` is `path.posix.join`, which keeps the trailing slash
-      // (`/ext/public/`); the stub in `test/mocks/vscode.ts` normalises it
-      // away. The slash is load-bearing for `<base href>`, so it is normalised
-      // here instead of pinning either implementation's spelling — what this
-      // asserts is the directory, and that it is not the html file itself.
+      // The real Uri.joinPath keeps a trailing slash where the stub normalises
+      // it away, and the slash is load-bearing for the base href. Normalised
+      // here rather than pinning either spelling: this asserts the directory.
       expect(asDirPath(assetsUri.path)).toBe('/ext/public/');
       expect(readUri.path).toBe(`${asDirPath(assetsUri.path)}index.html`);
     });
@@ -172,8 +168,8 @@ describe('Editor', () => {
         SHIPPED_TEMPLATE.replace('{{extension-base-url}}', WEBVIEW_ASSETS_URL)
       );
       expect(html).not.toContain('{{extension-base-url}}');
-      // A raw `file:` uri in the webview is blocked by its CSP — the whole
-      // point of routing the assets dir through `asWebviewUri`.
+      // A raw file: uri in the webview is blocked by its CSP — the whole
+      // point of routing the assets dir through asWebviewUri.
       expect(html).not.toContain('file://');
     });
 
@@ -186,7 +182,7 @@ describe('Editor', () => {
 
       const baseUrl = /<base href="([^"]*)"/.exec(html)?.[1];
       expect(baseUrl).toBeTruthy();
-      // `index.html` links its bundles relatively; if the substituted base url
+      // index.html links its bundles relatively; if the substituted base url
       // ever loses its trailing directory, every asset resolves one level too
       // high and the webview boots blank.
       expect(new URL('./bundle.6468ad69.js', baseUrl).toString()).toBe(
@@ -221,8 +217,8 @@ describe('Editor', () => {
       const { editor } = createEditor();
       workspace.fs.readFile.mockRejectedValue(new Error('ENOENT'));
 
-      // `ErdEditor.bootstrapWebview` assigns the result straight to
-      // `webview.html`; a swallowed failure would paint an empty panel.
+      // ErdEditor.bootstrapWebview assigns the result straight to
+      // webview.html; a swallowed failure would paint an empty panel.
       await expect(editor.buildHtmlForWebview()).rejects.toThrow('ENOENT');
     });
 
@@ -239,7 +235,7 @@ describe('Editor', () => {
       const html = await editor.buildHtmlForWebview();
 
       // A string pattern would rewrite one occurrence and ship the literal
-      // `{{extension-base-url}}` for the rest, breaking those asset loads.
+      // {{extension-base-url}} for the rest, breaking those asset loads.
       expect(html).toBe(
         `<base href="${WEBVIEW_ASSETS_URL}"/>` +
           `<script src="${WEBVIEW_ASSETS_URL}bundle.js"></script>`

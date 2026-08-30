@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { LivePage } from '../support/AppPage';
 
-/** A valid all-zero AES-GCM 128 key, so the guest gets past `importKey`. */
+/** A valid all-zero AES-GCM 128 key, so the guest gets past importKey. */
 const VALID_SECRET_KEY = 'A'.repeat(22);
 
 test.describe('the /live guest view without a host', () => {

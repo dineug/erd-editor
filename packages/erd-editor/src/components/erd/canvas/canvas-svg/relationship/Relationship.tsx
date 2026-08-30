@@ -17,13 +17,9 @@ import {
 import { relationshipShape } from './Relationship.template';
 
 /**
- * The whole connector as one path, from one cardinality decoration to the other.
- *
- * Only for hit-testing: a pointer finds an SVG path along its painted stroke, so
- * a connector is exactly as easy to hover as it is thick — and thinning it to
- * `RELATIONSHIP_STROKE_WIDTH` halved a target that was already the width of a
- * line. The guide lines either side of the route start and end where the route
- * does, so all three fit in one extra element instead of one band per segment.
+ * The whole connector as one path, for hit-testing only: a pointer finds an SVG
+ * path along its painted stroke, so a connector is as easy to hover as it is
+ * thick. All three runs fit one element rather than a band per segment.
  */
 function toHitPathD(
   { line }: RelationshipPath['path'],

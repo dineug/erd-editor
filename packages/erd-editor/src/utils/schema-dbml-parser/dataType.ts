@@ -4,7 +4,7 @@ import { DBMLModel } from './types';
 
 /**
  * Every cell below is a name taken from that dialect's hint list under
- * `@/constants/sql/dataType`, so `getPrimitiveType` resolves it back to a
+ * @/constants/sql/dataType, so getPrimitiveType resolves it back to a
  * primitive the code generators understand.
  */
 const stringTypes: Record<number, string> = {
@@ -33,8 +33,8 @@ export function resolveDataType(
 }
 
 /**
- * Keeps the members where the column type cannot hold them. Pass `database` to
- * drop it on the dialects whose `ENUM(...)` column already spells them out.
+ * Keeps the members where the column type cannot hold them. Pass database to
+ * drop it on the dialects whose ENUM(...) column already spells them out.
  */
 export function enumCommentSuffix(
   typeName: string,
@@ -52,7 +52,7 @@ export function enumCommentSuffix(
 
 /**
  * Only MySQL.ts and MariaDB.ts list ENUM; every other dialect takes the string
- * fallback and leans on `enumCommentSuffix` to keep the members.
+ * fallback and leans on enumCommentSuffix to keep the members.
  */
 function enumDataType(members: string[], database: number): string | undefined {
   if (database !== Database.MySQL && database !== Database.MariaDB) {

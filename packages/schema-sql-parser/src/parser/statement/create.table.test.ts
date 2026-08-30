@@ -119,7 +119,7 @@ describe('createTableParser - table name', () => {
     expect(parse('CREATE HYBRID TABLE h (id INT);').ast.name).toBe('h');
   });
 
-  // An option group is not a column list: `file_format = (...)` used to be
+  // An option group is not a column list: file_format = (...) used to be
   // read as one, inventing a column out of a table that declares none.
   it('takes only the group that follows the name as the column list', () => {
     expect(

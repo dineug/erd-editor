@@ -27,16 +27,16 @@ export function compile(
   options: CompileOptions = {}
 ): Element[] {
   const rules = options.rules ?? DEFAULT_RULES;
-  // stylis' `compile()` seeds `parse()` with `rules: ['']` and `rule: null`; we call `parse()`
-  // ourselves because the scope belongs in `rules`, and `rule` has to be non-null for bare
+  // stylis' compile() seeds parse() with rules: [''] and rule: null; we call parse()
+  // ourselves because the scope belongs in rules, and rule has to be non-null for bare
   // declarations inside a root-level conditional at-rule to get wrapped in a ruleset.
   const rule = options.rules === undefined ? null : createScopeRule(rules);
 
-  // `alloc()` brackets the parse and stylis keeps the scanner cursor in module-level bindings,
+  // alloc() brackets the parse and stylis keeps the scanner cursor in module-level bindings,
   // so this call must not be re-entered.
   const collected = alloc(source) as Element[];
 
-  // `@types/stylis` types `root`/`rule` as non-nullable, but stylis itself passes `null` for
+  // @types/stylis types root/rule as non-nullable, but stylis itself passes null for
   // both at its entry point; the casts are the cost of that hand-written signature.
   const nullElement = null as unknown as Element;
 

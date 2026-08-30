@@ -280,7 +280,7 @@ describe('table-column history', () => {
         store.state
       );
 
-      // index === targetIndex takes the `index - 1` branch, which underflows
+      // index === targetIndex takes the index - 1 branch, which underflows
       expect(undoActions).toEqual([
         moveColumnAction({
           id: 'c1',

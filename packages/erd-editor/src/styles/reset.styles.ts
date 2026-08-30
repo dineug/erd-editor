@@ -1,7 +1,7 @@
 import { css } from '@dineug/r-html';
 
 /**
- * Global, not scoped: every selector here is a type selector, the universal selector or `:host`,
+ * Global, not scoped: every selector here is a type selector, the universal selector or :host,
  * none of which survives having a component class prepended to it.
  */
 export const resetStyle = css.global`

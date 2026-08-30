@@ -1,34 +1,9 @@
 import { expect, test } from '../support/fixtures';
 
 /**
- * Q6 — the cascade and the scoping, decided by the engine rather than by an array
- * index.
- *
- * The unit suite asserts the *order* of `adoptedStyleSheets`, which is one
- * inference away from the thing anyone cares about: which rule wins. Ordering is
- * only meaningful if the engine resolves conflicts the way the ordering assumes,
- * and happy-dom never resolves one. Every test below therefore sets up a genuine
- * conflict — two rules of equal specificity on one element — and reads the winner
- * out of `getComputedStyle`.
- *
- * Same for scoping. That `._x` is a prefix of the emitted selector is a string
- * fact; that the selector matches the element carrying `_x` and nothing else is a
- * matching fact, and only one of the two has ever been checked.
- */
-
-/**
- * A note that governs the first block. Chromium does not re-resolve the cascade on
- * its own when the *order* of `adoptedStyleSheets` changes and the *set* does not —
- * see `chromium-ignores-adopted-sheet-reorder.spec.ts` for the isolated proof and
- * the mechanism. A host that has already had its style resolved would otherwise
- * keep the order it was first resolved with, and a later pin could not move it.
- *
- * `setGlobalStyleOrder` therefore does a second thing besides reordering the array:
- * it re-runs `replaceSync` over each global's own text, which is what makes the
- * engine look again. Most tests below read the pin on a host mounted *after* it,
- * where Chromium is correct unaided and the invalidation is not what is under test.
- * Exactly one — `a pin reaches a host that has already resolved style` — reads it on
- * a host that has already rendered, and it is the only coverage that path has.
+ * The cascade and the scoping decided by the engine rather than by an array
+ * index: every test sets up a genuine conflict and reads the winner out of
+ * getComputedStyle, which is the half happy-dom can never resolve.
  */
 test.describe('setGlobalStyleOrder decides a real conflict', () => {
   test('the pinned order picks the winner, in both directions', async ({
@@ -116,13 +91,9 @@ test.describe('setGlobalStyleOrder decides a real conflict', () => {
     ).toBe('2px');
   });
 
-  // The hard case, and the reason `setGlobalStyleOrder` calls `invalidateGlobalRules`.
-  // Chromium does not re-resolve a permuted sheet list on its own — see
-  // `chromium-ignores-adopted-sheet-reorder.spec.ts` — so a pin that arrives
-  // after a host has rendered only moves the cascade because the library forces
-  // the invalidation. Nothing else in the suite covers that path: every other pin
-  // assertion reads a host mounted after the pin, which Chromium gets right
-  // unaided.
+  // The hard case, and the reason setGlobalStyleOrder calls
+  // invalidateGlobalRules: a pin arriving after a host has rendered only moves
+  // the cascade because the library forces the invalidation.
   test('a pin reaches a host that has already resolved style', async ({
     cssPage,
   }) => {
@@ -175,11 +146,9 @@ test.describe('setGlobalStyleOrder decides a real conflict', () => {
     const scoped = await cssPage.registerStyle('padding-left: 9px;');
     await cssPage.applyClasses(id, 'root', [scoped, 'dual']);
 
-    // Deliberately resolves the host's style with only the component sheet
-    // present, so the global below is inserted into a tree that has *already*
-    // rendered. That is the one case Chromium could plausibly get wrong — and,
-    // unlike a reorder, it does not: a sheet the tree has never seen forces a
-    // real rebuild, so the insertion position is honoured.
+    // Resolves the host's style with only the component sheet present, so the
+    // global is inserted into a tree that has already rendered. Unlike a
+    // reorder, a sheet the tree has never seen forces a real rebuild.
     expect(
       await cssPage.computed(id, 'root', 'padding-left'),
       'the component sheet did not apply before the global was introduced'
@@ -193,7 +162,7 @@ test.describe('setGlobalStyleOrder decides a real conflict', () => {
       'the global literal should still stringify to an identifier'
     ).not.toEqual('');
 
-    // `._x` and `.dual` are both (0,1,0), so specificity cannot decide it.
+    // ._x and .dual are both (0,1,0), so specificity cannot decide it.
     expect(
       await cssPage.computed(id, 'root', 'padding-left'),
       `.${scoped} (component) and .dual (global) have equal specificity, so the ` +
@@ -217,8 +186,8 @@ test.describe('css.global leaves selectors unscoped and they match', () => {
   test(':host matches the custom element itself', async ({ cssPage }) => {
     const [id] = await cssPage.hostIds();
 
-    // A scoped template could never express this: `:host` would come out as
-    // `._x:host`, which matches nothing.
+    // A scoped template could never express this: :host would come out as
+    // ._x:host, which matches nothing.
     await cssPage.registerStyle(
       ':host { display: block; padding-left: 11px; }',
       { global: true }
@@ -240,12 +209,9 @@ test.describe('css.global leaves selectors unscoped and they match', () => {
   }) => {
     const [id] = await cssPage.hostIds();
 
-    // There is no computed style to read for a scrollbar pseudo-element, so the
-    // gutter is the observable: on a border-less scroller, `offsetWidth -
-    // clientWidth` is the width the scrollbar took out of the content box.
-    // Headless Chromium uses overlay scrollbars (gutter 0) until a
-    // `::-webkit-scrollbar` rule matches, which makes this a clean before/after —
-    // and is why playwright.config.ts drops Playwright's `--hide-scrollbars`.
+    // A scrollbar pseudo-element has no computed style to read, so the gutter is
+    // the observable. Headless Chromium leaves it at zero until a scrollbar rule
+    // matches, which is why the config drops Playwright's --hide-scrollbars.
     const before = await cssPage.boxMetrics(id, 'scroller');
 
     await cssPage.registerStyle('::-webkit-scrollbar { width: 13px; }', {
@@ -269,11 +235,9 @@ test.describe('a scoped template matches exactly its scope', () => {
   test('the unspaced child combinator matches', async ({ cssPage }) => {
     const [id] = await cssPage.hostIds();
 
-    // Written tight on purpose. stylis preserves the author's spacing, so this
-    // emits `._x>span` with no whitespace around the combinator, and whether a
-    // parser accepts that is a question about the parser. (Chromium re-serializes
-    // it back to `._x > span` in cssRules, so the text cannot be read back to
-    // prove which form was handed in — only the match can.)
+    // Written tight on purpose: stylis preserves the author's spacing, so this
+    // emits no whitespace around the combinator. Chromium re-serializes it in
+    // cssRules, so only the match can prove which form was handed in.
     const identifier = await cssPage.registerStyle(
       '&>span{padding-left:19px;}'
     );
@@ -292,8 +256,8 @@ test.describe('a scoped template matches exactly its scope', () => {
   }) => {
     const [id] = await cssPage.hostIds();
 
-    // `&.a, &.b` emits `._x.a,._x.b`. If only the leading segment were scoped the
-    // second would come out as a bare `.b` and match anything on the page — which
+    // &.a, &.b emits ._x.a,._x.b. If only the leading segment were scoped the
+    // second would come out as a bare .b and match anything on the page — which
     // is what the child element below is there to catch.
     const identifier = await cssPage.registerStyle(
       '&.a, &.b { padding-left: 23px; }'

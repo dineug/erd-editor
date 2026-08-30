@@ -117,7 +117,7 @@ const nestedMixin = css`
   }
 `;
 
-// `Switch.styles.ts` shape — a quoted attribute selector and comma lists in declaration values.
+// Switch.styles.ts shape — a quoted attribute selector and comma lists in declaration values.
 const track = css`
   transition: background-position, background-color;
   transition-timing-function: linear, ease-in-out;
@@ -128,13 +128,13 @@ const track = css`
   }
 `;
 
-// `ErdEditor.styles.ts` shape — a mixin, own declarations, and a nested rule that only has children.
+// ErdEditor.styles.ts shape — a mixin, own declarations, and a nested rule that only has children.
 const container = css`
   display: flex;
   overflow: hidden;
 `;
 
-// `outline: none` is deliberately not used here: happy-dom expands that shorthand into three
+// outline: none is deliberately not used here: happy-dom expands that shorthand into three
 // longhands, which would put its CSSOM quirks in the expected value instead of the emitted CSS.
 const composite = css`
   ${container};
@@ -147,7 +147,7 @@ const composite = css`
   }
 `;
 
-// `CodeBlock.styles.ts` shape — a sibling literal used as a selector inside a nested rule.
+// CodeBlock.styles.ts shape — a sibling literal used as a selector inside a nested rule.
 const clipboard = css`
   opacity: 0;
 `;
@@ -209,7 +209,7 @@ describe('emitted css fixtures', () => {
     expect(rulesOf(String(keyframes))).toEqual([
       `.${String(keyframes)} { animation: fixtureMove 0.3s; }`,
     ]);
-    // happy-dom renormalizes `from`/`to` into percentages; the steps keep no scope either way.
+    // happy-dom renormalizes from/to into percentages; the steps keep no scope either way.
     expect(
       host.adoptedStyleSheets.flatMap(sheet =>
         Array.from(sheet.cssRules)

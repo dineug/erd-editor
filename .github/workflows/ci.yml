@@ -2,66 +2,36 @@ name: ci
 
 on:
   workflow_dispatch:
-  # `push` is main-only and `pull_request` covers everything else, so a branch
-  # with an open PR runs once rather than twice. Dropping `pull_request` instead
-  # would be cheaper still and is wrong: a fork's branch push runs in the fork's
-  # own Actions, so external contributions — 12 of the last 60 PRs — would arrive
-  # here with no checks at all. `pull_request` also tests the merge commit, which
-  # is what catches a branch that is green alone and broken against current main.
+  # push is main-only and pull_request covers everything else, so a branch with
+  # an open PR runs once. Dropping pull_request would leave a fork's push with no
+  # checks here, and it is also what tests the merge commit against main.
   push:
     branches:
       - main
   pull_request:
 
-# Superseding a PR's run is free — the older commit is not what anyone will
-# merge. A main run is not: cancelling it leaves the commit that was pushed
-# first unverified, which is why `cancel-in-progress` is an expression rather
-# than `true` and why `intellij-plugin.yml`, whose block is unconditional, stays
-# a separate workflow.
+# Superseding a PR run is free; cancelling a main run leaves the commit pushed
+# first unverified, which is why this is an expression rather than true — and
+# why intellij-plugin.yml, whose block is unconditional, is its own workflow.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Style and types. This is the only place they are enforced for everyone: the
-  # `pre-commit` hook runs the same checks, but its dispatcher lives in
-  # gitignored `.vite-hooks/_/` and is written by `pnpm install`, so a clone
-  # that has never installed pushes unchecked code and nothing goes red.
-  #
-  # It was added deliberately *before* the toolchain migration rather than
-  # alongside it. The commits that followed replaced eslint, prettier, husky,
-  # lint-staged and Nx wholesale, and swapping the tools that guard a repo while
-  # nothing guards them is how a rule silently stops being enforced. Having this
-  # job green beforehand is what made the swap observable — it had to stay green
-  # through every step, and it did.
-  #
-  # `vp check` reports rather than rewrites; `pnpm format` is the writing half.
+  # Style and types, the only place they are enforced for everyone: the
+  # pre-commit hook's dispatcher is gitignored and written by pnpm install, so a
+  # clone that never installed pushes unchecked code and nothing goes red.
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-workspace
-      # One pass over format and lint, both from the root `vite.config.ts`.
-      # Replaces `pnpm lint` + `prettier --check`; the job was green with those
-      # and has to stay green with this, which is the point of adding it first.
+      # One pass over format and lint, both from the root vite.config.ts.
       - run: pnpm check
-      # The three typechecks below resolve their workspace dependencies through
-      # those packages' emitted `dist/**/*.d.ts`, so something has to build them
-      # first. Nothing in this job did, and the failure only showed on a runner:
-      # a developer's tree still has `dist/` lying around from the last build, so
-      # it passes locally and goes red here. Exactly the trap the cold Vite Task
-      # cache exists to expose, walked into by the job that is supposed to expose
-      # it.
-      #
-      # `<pkg>...` selects a package plus its dependencies; the two `!` filters
-      # drop the targets themselves, since building `app` or `vuerd-vscode` here
-      # would only re-run the same `tsc` the steps below run.
-      #
-      # Deliberately not solved with `paths` into the siblings' `src/`. That
-      # would typecheck against source and stop this gate ever seeing a broken
-      # declaration emit — which is a live failure mode here: `hmr.d.ts` was
-      # silently dropped by TS7 (TS4094) while `index.d.ts` kept re-exporting it,
-      # and only a typecheck against real `.d.ts` catches that.
+      # The typechecks below resolve their workspace dependencies through
+      # emitted .d.ts, so something has to build them first. Pointing them at a
+      # sibling's src/ would stop this gate ever seeing a broken declaration
+      # emit, which is a live failure mode.
       - run: >-
           pnpm exec vp run
           --filter "@dineug/erd-editor-app..."
@@ -69,15 +39,13 @@ jobs:
           --filter "!@dineug/erd-editor-app"
           --filter "!vuerd-vscode"
           --fail-if-no-match build
-      # `app` and `vuerd-vscode` keep a `typecheck` script because each has a
-      # program its `build` task does not cover — `app`'s is the same one, run
-      # here for a clearer failure, and `vuerd-vscode`'s `tsconfig.unit.json`
-      # widens to the `vscode` stub outside `rootDir`.
+      # Both keep a typecheck script because each has a program its build task
+      # does not cover: app's runs here for a clearer failure, and
+      # vuerd-vscode's unit config widens to the vscode stub outside rootDir.
       - run: pnpm --filter @dineug/erd-editor-app typecheck
       - run: pnpm --filter vuerd-vscode typecheck
-      # `app`'s e2e specs and its playwright.config are outside the package
-      # tsconfig's program, so this is the only thing that reads them. The
-      # erd-editor and r-html equivalents already run in their own e2e jobs.
+      # app's e2e specs and its playwright.config are outside the package
+      # program, so this is the only thing that reads them.
       - run: pnpm --filter @dineug/erd-editor-app e2e:typecheck
 
   ci:
@@ -86,10 +54,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-workspace
       - run: pnpm test
-      # `pnpm test` does not enforce coverage. r-html's `vitest.config.ts` sets
-      # `perFile: true` at 80% on all four metrics, and the CSS compiler under
-      # `src/css/` is reached from `css``` through one narrow seam — a whole
-      # rule class can stop being exercised without a single test going red.
+      # pnpm test does not enforce coverage. r-html sets perFile 80% on all four
+      # metrics, and its CSS compiler is reached through one narrow seam, so a
+      # whole rule class can stop being exercised without a test going red.
       - run: pnpm --filter @dineug/r-html test:coverage
       - run: pnpm build
 
@@ -100,12 +67,9 @@ jobs:
       - uses: ./.github/actions/setup-workspace
       - name: Install Playwright browsers
         run: pnpm --filter @dineug/erd-editor exec playwright install --with-deps chromium
-      # The dev server resolves workspace deps to their `dist/`, and the e2e
-      # typecheck reads their `.d.ts`, so both need this first. The `e2e` script
-      # builds them too; Vite Task replays that from cache rather than rebuilding.
-      # `--fail-if-no-match` because a filter that matches no package exits 0 and
-      # prints a line nobody reads. Rename or move this package and the job stays
-      # green while building nothing. A missing *task* name already exits 1.
+      # The dev server resolves workspace deps to their dist/ and the e2e
+      # typecheck reads their .d.ts, so both need this first. --fail-if-no-match
+      # because a filter matching no package exits 0 and builds nothing.
       - run: pnpm exec vp run --fail-if-no-match --filter @dineug/erd-editor build
       - run: pnpm --filter @dineug/erd-editor e2e:typecheck
       - run: pnpm --filter @dineug/erd-editor e2e
@@ -114,24 +78,14 @@ jobs:
         with:
           name: playwright-report
           path: packages/erd-editor/e2e/.report
-          # The action skips hidden paths by default, and that includes anything
-          # inside a folder beginning with `.` — so the whole report is filtered
-          # out and the upload reports "No files were found" on a green run.
+          # The action skips anything under a dot-prefixed folder by default, so
+          # the whole report is filtered out and a green run reports no files.
           include-hidden-files: true
           retention-days: 7
 
-  # Its own job rather than a few extra steps on `e2e`, for the same reason
-  # `e2e` is not part of `ci`: it needs a browser download. Keeping it separate
-  # also keeps it fast — unlike the erd-editor suite this one needs no `dist/`
-  # at all (the Vite dev server serves r-html's own `src/` through the `@`
-  # alias), so folding it in would park a build-free suite behind
-  # `vp run --filter @dineug/erd-editor build`.
-  #
-  # It earns a CI slot because `src/template/vCSSStyleSheet.ts` is built on two
-  # facts about a real engine that no unit test can see: `adoptedStyleSheets` is
-  # mutable in place, and a permuted sheet list is only re-resolved if something
-  # dirties a rule set the affected elements match. happy-dom has no style engine
-  # and will keep agreeing with us whatever Chromium does.
+  # Its own job because it needs a browser download, and unlike the erd-editor
+  # suite it needs no dist/ at all. It earns a CI slot because vCSSStyleSheet.ts
+  # rests on two facts about a real engine happy-dom will never contradict.
   r-html-e2e:
     runs-on: ubuntu-latest
     steps:
@@ -139,7 +93,7 @@ jobs:
       - uses: ./.github/actions/setup-workspace
       - name: Install Playwright browsers
         run: pnpm --filter @dineug/r-html exec playwright install --with-deps chromium
-      # `e2e/` is outside `tsconfig.build.json`'s program, so nothing else ever
+      # e2e/ is outside tsconfig.build.json's program, so nothing else ever
       # typechecks these files.
       - run: pnpm --filter @dineug/r-html e2e:typecheck
       - run: pnpm --filter @dineug/r-html e2e
@@ -148,9 +102,8 @@ jobs:
         with:
           name: r-html-playwright-report
           path: packages/r-html/e2e/.report
-          # Same trap as the erd-editor report: the action skips anything under a
-          # dot-prefixed folder unless told otherwise, and reports "No files were
-          # found" on a green run.
+          # Same trap as the erd-editor report: the action skips a dot-prefixed
+          # folder unless told otherwise, and reports no files on a green run.
           include-hidden-files: true
           retention-days: 7
 
@@ -159,17 +112,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-workspace
-      # The Extension Host loads `main` (`dist/extension.js`), and
-      # `Editor#buildHtmlForWebview` reads `public/index.html` emitted by
-      # `@dineug/erd-editor-vscode-webview` — so the extension cannot activate
-      # until its own build and its dependencies' builds have run.
+      # The Extension Host loads dist/extension.js, and buildHtmlForWebview
+      # reads the public/index.html the webview package emits, so the extension
+      # cannot activate until its own and its dependencies' builds have run.
       - run: pnpm exec vp run --fail-if-no-match --filter vuerd-vscode build
-      # `@vscode/test-cli` launches a real (Electron) VSCode, which needs a
-      # display even in `--disable-gpu` headless CI. This runs the whole matrix
-      # in `.vscode-test.mjs` — stable plus the `engines.vscode` floor — so it
-      # downloads two VSCode builds. `VSCODE_TEST_USER_DATA_DIR` is the base each
-      # version's profile hangs off; it keeps VSCode's IPC socket well under the
-      # unix socket path limit and puts the logs somewhere this job can upload.
+      # @vscode/test-cli launches a real Electron VSCode, which needs a display
+      # even headless, and runs the whole matrix in .vscode-test.mjs. The env var
+      # keeps its IPC socket under the unix path limit and the logs uploadable.
       - name: Run Extension Host tests
         run: xvfb-run -a pnpm --filter vuerd-vscode e2e
         env:

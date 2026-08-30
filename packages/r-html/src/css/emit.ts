@@ -1,4 +1,4 @@
-// Type-only, and therefore erased: `flatten.ts` imports `emit()` back for `@keyframes` bodies.
+// Type-only, and therefore erased: flatten.ts imports emit() back for @keyframes bodies.
 import type { FlatRule } from '@/css/flatten';
 import { substituteScope } from '@/css/selector';
 
@@ -39,7 +39,7 @@ export function emit(rules: FlatRule[], options: EmitOptions = {}): string {
 }
 
 function emitRule(rule: FlatRule, scope?: string): string {
-  // `body` is already serialized and already unscoped — `@keyframes` steps must not be rewritten.
+  // body is already serialized and already unscoped — @keyframes steps must not be rewritten.
   if (rule.body !== undefined) return `${rule.prelude}{${rule.body}}`;
 
   const head = rule.prelude ?? emitSelectors(rule.selectors, scope);

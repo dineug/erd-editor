@@ -3,24 +3,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-/**
- * Runs inside a real Extension Host, so `vscode` here is the genuine API and
- * every spec below is about something `test/mocks/vscode.ts` cannot fake: that
- * VSCode loaded *this* working tree, parsed its manifest, put the extension's
- * commands into the live command registry, and registered the contributed
- * configuration defaults `src/configuration.ts` reads back.
- *
- * Deliberately *not* asserted here: the shape of `activate()`'s arguments and
- * the per-command handler bodies — `src/extension.test.ts` covers those against
- * the stub, and repeating them here would only re-test VSCode itself.
- */
-
 const EXTENSION_ID = 'dineug.vuerd-vscode';
 const VIEW_TYPE = 'editor.erd';
 const THEME_SECTION = 'dineug.erd-editor.theme';
 const FIXTURE_FILE = 'sample.erd';
 
-// This file is executed as `out/test/integration/extension.test.js`.
+// This file is executed as out/test/integration/extension.test.js.
 const PACKAGE_ROOT = path.resolve(__dirname, '..', '..', '..');
 const FIXTURE_WORKSPACE = path.join(
   PACKAGE_ROOT,
@@ -61,7 +49,7 @@ async function activateExtension(): Promise<vscode.Extension<unknown>> {
   return extension;
 }
 
-/** The manifest as *VSCode parsed it*, not as `readFileSync` would see it. */
+/** The manifest as *VSCode parsed it*, not as readFileSync would see it. */
 function manifest(): any {
   return getExtension().packageJSON;
 }
@@ -72,7 +60,7 @@ function contributedCommandIds(): string[] {
   );
 }
 
-/** Every command id a contributed menu can invoke, `alt` actions included. */
+/** Every command id a contributed menu can invoke, alt actions included. */
 function menuCommandIds(): string[] {
   const menus: Record<string, ManifestMenuItem[]> =
     manifest().contributes.menus;
@@ -105,7 +93,7 @@ function getContributedThemeProperty(name: string): any {
 }
 
 /**
- * Both sides of every path comparison go through `realpathSync`: the host
+ * Both sides of every path comparison go through realpathSync: the host
  * reports resolved paths, and a symlinked checkout would otherwise fail on a
  * difference that means nothing.
  */
@@ -114,10 +102,9 @@ function realPath(target: string): string {
 }
 
 /**
- * Leaves the fixture workspace with no theme override, so the "default"
- * specs cannot be masked by a value this suite — or a crashed earlier run —
- * wrote into `test/fixtures/workspace/.vscode/settings.json`. Sequential on
- * purpose: three concurrent writes to one settings file race each other.
+ * Leaves the fixture workspace with no theme override, so the default specs
+ * cannot be masked by a value this suite or a crashed run wrote. Sequential on
+ * purpose: concurrent writes to one settings file race each other.
  */
 async function clearThemeOverrides(): Promise<void> {
   for (const key of THEME_KEYS) {
@@ -134,7 +121,7 @@ describe('vuerd-vscode in the Extension Host', () => {
 
       assert.strictEqual(extension.id, EXTENSION_ID);
       // Guards against the suite silently passing against an installed
-      // marketplace build instead of the `--extensionDevelopmentPath` one.
+      // marketplace build instead of the --extensionDevelopmentPath one.
       assert.strictEqual(
         realPath(extension.extensionPath),
         realPath(PACKAGE_ROOT)
@@ -146,10 +133,9 @@ describe('vuerd-vscode in the Extension Host', () => {
 
       await extension.activate();
 
-      // `isActive` after an awaited `activate()` is the API's own guarantee —
-      // the load-bearing part of this spec is that the promise resolves at all,
-      // which a missing or throwing `dist/extension.js` would not. What
-      // `activate` actually *did* is asserted by the command specs below.
+      // isActive after an awaited activate() is the API's own guarantee, so the
+      // load-bearing part is that the promise resolves at all. What activate
+      // did is asserted by the command specs below.
       assert.strictEqual(extension.isActive, true);
     });
 
@@ -171,7 +157,7 @@ describe('vuerd-vscode in the Extension Host', () => {
         'without a workspaceContains event the extension stays dormant until a file is opened by hand'
       );
 
-      // `findFiles` runs the workbench's own glob engine, so this fails for any
+      // findFiles runs the workbench's own glob engine, so this fails for any
       // rewrite of the pattern that stops covering .erd files — which a string
       // comparison against the manifest could never notice.
       const matches = await Promise.all(
@@ -193,7 +179,7 @@ describe('vuerd-vscode in the Extension Host', () => {
 
     it('registers a live handler for every command the manifest contributes', async () => {
       const contributed = contributedCommandIds();
-      // Pinned so an emptied `contributes.commands` cannot make the loop below
+      // Pinned so an emptied contributes.commands cannot make the loop below
       // pass by iterating over nothing.
       assert.deepStrictEqual([...contributed].sort(), [...COMMANDS].sort());
 
@@ -216,7 +202,7 @@ describe('vuerd-vscode in the Extension Host', () => {
 
     it('points every menu entry — alt actions included — at a registered command', async () => {
       const referenced = menuCommandIds();
-      // The `editor/title` entries carry their "to the side" variant in `alt`;
+      // The editor/title entries carry their "to the side" variant in alt;
       // if the extractor ever stopped reading it this spec would go vacuous.
       assert.ok(referenced.includes('vuerd.showEditorToSide'));
       assert.ok(referenced.includes('vuerd.showSourceToSide'));
@@ -249,7 +235,7 @@ describe('vuerd-vscode in the Extension Host', () => {
         ['*.erd', '*.erd.json', '*.vuerd', '*.vuerd.json']
       );
       // Anything other than "default" would hand a double-clicked .erd file to
-      // the text editor, and `vuerd.showEditor` would become the only way in.
+      // the text editor, and vuerd.showEditor would become the only way in.
       assert.strictEqual(customEditor.priority, 'default');
     });
   });
@@ -267,8 +253,8 @@ describe('vuerd-vscode in the Extension Host', () => {
     it('resolves appearance to the documented "dark" default', () => {
       const config = getThemeConfiguration();
 
-      // `defaultValue` proves VSCode registered the contributed property;
-      // `get` proves that is also what `getTheme()` resolves to at runtime.
+      // defaultValue proves VSCode registered the contributed property;
+      // get proves that is also what getTheme() resolves to at runtime.
       assert.strictEqual(config.inspect('appearance')?.defaultValue, 'dark');
       assert.strictEqual(config.get('appearance'), 'dark');
     });
@@ -299,15 +285,15 @@ describe('vuerd-vscode in the Extension Host', () => {
         vscode.ConfigurationTarget.Workspace
       );
 
-      // A `WorkspaceConfiguration` is a snapshot, so the handle used for the
-      // write cannot see it — `getTheme()` re-reads for the same reason.
+      // A WorkspaceConfiguration is a snapshot, so the handle used for the
+      // write cannot see it — getTheme() re-reads for the same reason.
       const config = getThemeConfiguration();
       assert.strictEqual(config.get('accentColor'), 'ruby');
-      // `getConfigurationScope` in src/configuration.ts branches on exactly
+      // getConfigurationScope in src/configuration.ts branches on exactly
       // this, so a later save has to stay in the workspace file.
       assert.strictEqual(config.inspect('accentColor')?.workspaceValue, 'ruby');
       // The manifest default survives underneath the override, which is what
-      // makes resetting the setting to `undefined` a real reset.
+      // makes resetting the setting to undefined a real reset.
       assert.strictEqual(config.inspect('accentColor')?.defaultValue, 'indigo');
     });
 
@@ -315,7 +301,7 @@ describe('vuerd-vscode in the Extension Host', () => {
       const config = vscode.workspace.getConfiguration('files');
       const associations = config.get<Record<string, string>>('associations');
 
-      // Contributed via `contributes.configurationDefaults`, so it has to land
+      // Contributed via contributes.configurationDefaults, so it has to land
       // in the *default* layer rather than in any user or workspace file.
       assert.strictEqual(
         config.inspect<Record<string, string>>('associations')?.defaultValue?.[

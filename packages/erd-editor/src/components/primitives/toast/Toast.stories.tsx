@@ -11,8 +11,8 @@ const meta = {
     const fragment = document.createDocumentFragment();
     render(
       fragment,
-      // `action` is an optional control, `Button`'s `text` is not: the tagged
-      // template passed `undefined` straight through and nothing checked it.
+      // action is an optional control, Button's text is not: the tagged
+      // template passed undefined straight through and nothing checked it.
       <Toast {...args} action={<Button text={args.action ?? ''} />} />
     );
     return fragment;

@@ -53,10 +53,9 @@ function render(state: RootState, table: Table): string[] {
 }
 
 /**
- * users (1) ── (N) user_post (N) ── (1) posts
- *
- * `user_post` has a three-column composite primary key, two of whose columns
- * are also foreign keys.
+ * users (1) to (N) user_post (N) to (1) posts, where user_post has a
+ * three-column composite primary key, two of whose columns are also foreign
+ * keys.
  */
 function createJoinFixture() {
   const users = createTable({

@@ -4,19 +4,6 @@ import { FIXTURE_URL } from '../support/ErdEditorPage';
 import { createCorpus } from './corpus';
 import { installBench, runDragBench } from './harness';
 
-/**
- * Does a drag cost what it *changes*, or what is on screen?
- *
- * Every variant here drags a hub of the same degree across the same 56 tables,
- * so the number of relationships that have to be redrawn is held constant. Only
- * the number of relationships that exist — and therefore the size of the SVG
- * that has to be re-rastered when any part of it changes — varies.
- *
- * If cost tracks the fan-out, the routing pipeline is what to optimise. If it
- * tracks the total, the rendering layer is, and no amount of cheaper geometry
- * will help.
- */
-
 const HUB_DEGREE = 9;
 const TOTALS = [24, 48, 80, 120];
 

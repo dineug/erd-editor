@@ -20,13 +20,9 @@ const INLINE_WORKER_URL =
   /"data:text\/javascript;charset=utf-8," \+ encodeURIComponent\((\w+)\)/g;
 
 /**
- * `?sharedworker&inline`이 만드는 워커 URL을 percent 인코딩에서 base64로 바꾼다.
- *
- * percent 인코딩은 TextMate 문법의 `"` `{` `\` 를 전부 `%XX` 3자로 부풀려 1.8배가
- * 되는데, 그 결과가 `MAX_URL_LENGTH`를 넘으면 `new SharedWorker`가 **본문이 빈**
- * 에러 이벤트만 남기고 실패한다. Comlink는 응답을 영원히 기다리고 패널은 조용히
- * 빈 채로 남는다 — 로그도 스택도 없다. base64는 1.33배고, blob URL과 달리 같은
- * 소스가 항상 같은 URL이라 탭마다 SharedWorker가 갈라지지 않는다.
+ * 인라인 워커 URL을 percent 인코딩에서 base64로 바꾼다. percent 인코딩은 1.8배로
+ * 부풀어 MAX_URL_LENGTH를 넘기면 SharedWorker가 빈 에러만 남기고 실패한다.
+ * base64는 1.33배고, blob URL과 달리 같은 소스가 항상 같은 URL이다.
  */
 function base64InlineWorker() {
   return {
@@ -76,7 +72,7 @@ const TO_DATA_URL = `function __toDataUrl(source) {
 \treturn "data:text/javascript;base64," + btoa(binary);
 }`;
 
-/** `var <ident> = "..."`의 문자열 리터럴을 이스케이프를 지켜가며 읽어 값으로 돌려준다. */
+/** var <ident> = "..."의 문자열 리터럴을 이스케이프를 지켜가며 읽어 값으로 돌려준다. */
 function readStringLiteral(code: string, ident: string): string | null {
   const declaration = new RegExp(
     `(?:var|const|let)\\s+${ident}\\s*=\\s*"`
@@ -104,7 +100,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(manifest.version),
   },
   build: {
-    // 공개 라이브러리의 하한은 한 곳에서 온다 — 루트 `build-target.ts`.
+    // 공개 라이브러리의 하한은 한 곳에서 온다 — 루트 build-target.ts.
     target: BROWSER_TARGET,
     lib: {
       entry: './src/index.ts',

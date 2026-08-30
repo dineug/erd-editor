@@ -2,11 +2,9 @@ import type { StorybookConfig } from '@storybook/html-vite';
 import type { PluginOption } from 'vite';
 
 /**
- * `vite-plugin-dts` calls itself `unplugin-dts`. It is `apply: 'build'`, so it
- * would otherwise run here too — Storybook loads the package's `vite.config.ts`
- * at `command=build`, and a Storybook bundle has no use for declarations.
- * Dropping it here rather than branching on `mode` in `vite.config.ts` keeps the
- * exception where the exception is.
+ * vite-plugin-dts calls itself unplugin-dts and is apply: build, so Storybook
+ * loading the package config at command=build would run it for a bundle with no
+ * use for declarations. Dropped here, where the exception belongs.
  */
 const withoutDts = (plugins: PluginOption[]): PluginOption[] =>
   plugins

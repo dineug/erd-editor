@@ -71,7 +71,7 @@ describe('generator-code/utils', () => {
     });
 
     it('resolves to the longest prefix match, so DATETIME and TIMESTAMP report dateTime', () => {
-      // `DATE` precedes `DATETIME` and `TIME` precedes `TIMESTAMP` in
+      // DATE precedes DATETIME and TIME precedes TIMESTAMP in
       // MySQLTypes, but the longer hint has to win over the shorter prefix.
       expect(getPrimitiveType('DATETIME', Database.MySQL)).toBe('dateTime');
       expect(getPrimitiveType('TIMESTAMP', Database.MySQL)).toBe('dateTime');

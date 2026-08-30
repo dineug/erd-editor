@@ -84,8 +84,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
 
   const resetScroll = () => {
-    // Defensive: the drag subscription outlives the render part, so `root` can
-    // already be cleared by `ref`'s destroy when a move arrives.
+    // Defensive: the drag subscription outlives the render part, so root can
+    // already be cleared by ref's destroy when a move arrives.
     const $root = root.value;
     if (!$root) return;
 

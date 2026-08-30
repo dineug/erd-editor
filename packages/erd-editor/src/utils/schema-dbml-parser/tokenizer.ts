@@ -34,8 +34,8 @@ export function tokenize(source: string): Token[] {
   const tokens: Token[] = [];
   let index = 0;
   let line = 1;
-  // Only `[` and `(` suppress a line terminator. A `{` opens an element body,
-  // whose entries are line-delimited: `Table t { a int b varchar }` is an error.
+  // Only [ and ( suppress a line terminator. A { opens an element body,
+  // whose entries are line-delimited: Table t { a int b varchar } is an error.
   let depth = 0;
 
   const push = (kind: number, value: string) => {
@@ -184,8 +184,9 @@ export function tokenize(source: string): Token[] {
 }
 
 /**
- * `-` is left to the parser, which reads it as a sign inside a value and as a
- * relationship operator between two endpoints; `-?` cannot be either.
+ * A bare dash is left to the parser, which reads it as a sign inside a value and
+ * as a relationship operator between two endpoints; a dash followed by anything
+ * else can be neither.
  */
 function readOperator(source: string, index: number): string {
   const char = source[index];

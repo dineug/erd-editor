@@ -18,19 +18,6 @@ import type {
   RHtmlE2E,
 } from '../support/window-api';
 
-/**
- * Deterministic mount for the e2e suite.
- *
- * `src/index.dev.ts` is a hand-written counter demo — it registers styles at
- * module scope, before anything has joined, which is precisely the case the
- * unit suite already covers. This page instead mounts hosts and registers
- * templates *on demand*, so a spec can put a host in the document first and
- * then ask what happens to it.
- *
- * Everything a spec needs is on `window.rHtmlE2E`; the surface is declared in
- * `e2e/support/window-api.ts` and typed on both sides.
- */
-
 type ProbeProps = {
   rootClass: string[];
   childClass: string[];
@@ -38,12 +25,9 @@ type ProbeProps = {
 };
 
 /**
- * One custom element, mounted many times. Three class slots rather than one,
- * because a scoped selector like `._x > span` only means something when the
- * class sits on the parent and the assertion reads the child.
- *
- * The bindings pass **arrays**: `AttributePart#classCommit` bails on anything
- * that is not an object or an array, so `class=${'a b'}` silently does nothing.
+ * One custom element, mounted many times, with three class slots because a
+ * descendant selector only means something when the class sits on the parent.
+ * The bindings pass arrays, since classCommit ignores a plain string.
  */
 const CssProbe: FC<ProbeProps, HTMLElement> = props => () =>
   html`
@@ -61,7 +45,7 @@ const CssProbe: FC<ProbeProps, HTMLElement> = props => () =>
     </div>
   `;
 
-// The array form of `observedProps` declares no attribute conversion, which is
+// The array form of observedProps declares no attribute conversion, which is
 // what lets the props hold real arrays when set as properties.
 defineCustomElement('css-probe', {
   shadow: 'open',
@@ -75,7 +59,7 @@ if (!app) {
 }
 
 const hosts = new Map<HostId, HTMLElement>();
-/** Identifier -> literal, so `setGlobalOrder` can take the strings a spec is holding. */
+/** Identifier -> literal, so setGlobalOrder can take the strings a spec is holding. */
 const literals = new Map<string, CSSTemplateLiterals>();
 let hostSeq = 0;
 let styleSeq = 0;
@@ -110,10 +94,9 @@ function targetElement(id: HostId, target: ProbeTarget): Element {
 }
 
 /**
- * `css` is a tag, and a spec has a string. This is the one adapter that lets a
- * template be composed at run time: a single-chunk `TemplateStringsArray` with
- * no slots, freshly allocated per call so it never collides in the call-site
- * cache keyed on the strings identity.
+ * css is a tag and a spec has a string, so this composes a template at run time:
+ * a single-chunk TemplateStringsArray with no slots, freshly allocated per call
+ * so it never collides in the cache keyed on the strings identity.
  */
 function toTemplateStrings(text: string): TemplateStringsArray {
   const strings: string[] & { raw?: string[] } = [text];
@@ -293,7 +276,7 @@ const api: RHtmlE2E = {
     }
     const roots = ids.map(shadowOf);
 
-    // Built up front, so `replaceSync` parsing — which is the cost the fast path
+    // Built up front, so replaceSync parsing — which is the cost the fast path
     // does *not* remove — stays outside the window and cannot swamp the constant
     // being measured. Distinct selectors, so nothing is deduplicated.
     const sheets = Array.from({ length: count }, (_, index) =>

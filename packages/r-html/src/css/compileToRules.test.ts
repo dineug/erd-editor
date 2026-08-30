@@ -7,33 +7,7 @@ import {
   toIdentifier,
 } from '@/css';
 
-/**
- * The acceptance suite for the compiler: the design document's 33 row input → output table, driven
- * end to end through `compileToRules()`.
- *
- * ## How the table is transcribed
- *
- * The document writes the scope as `.S`. The real scope is a hash of the compiled output, so every
- * expectation below is written with `.S` as a placeholder and expanded against the identifier the
- * call actually produced (see {@link expand}). That is deliberate: it pins the *shape* of the output
- * while letting the identifier stay what it is — a function of the content.
- *
- * Two mechanical adjustments to the table's shorthand:
- *
- * 1. The table writes selector-only rows as `&:hover{}` and gives only the selector as the expected
- *    output. An empty block is discarded (R4-B), so each of those rows is exercised with a single
- *    declaration added and the expectation is written in `emit()`'s canonical format —
- *    `<selectors>{<declarations>;}`.
- * 2. Rows that list several inputs (13, 14, 23, 24) become one case per input: `13a`, `13b`, …
- *
- * Rows 11–14 are the withdrawn R1/R2. They are no longer selector rewrites, so the assertion is that
- * the output is **unchanged** (the scope is prepended, producing a descendant combinator or dead
- * CSS) *and* that a diagnostic is emitted saying so.
- *
- * Diagnostics are asserted exactly, by code, in emission order. Every row runs with `dev: true`.
- */
-
-/** Stands in for `.${identifier}` in the expected output. */
+/** Stands in for .${identifier} in the expected output. */
 const SCOPE_PLACEHOLDER = '.S';
 
 const expand = (expected: string, identifier: string) =>
@@ -44,7 +18,7 @@ type Row = {
   id: string;
   label: string;
   source: string;
-  /** Canonical CSS with `.S` for the scope. */
+  /** Canonical CSS with .S for the scope. */
   expected: string;
   /** Every diagnostic code the row must produce, in order. Defaults to none. */
   diagnostics?: DiagnosticCode[];
@@ -259,7 +233,7 @@ const ROWS: Row[] = [
   {
     id: '25',
     label: 'a rule whose selector interpolated to nothing is discarded (R4-A)',
-    // `${null}{color:red}` after pre-substitution. The warning is beyond the document's list: it is
+    // ${null}{color:red} after pre-substitution. The warning is beyond the document's list: it is
     // the only report of R4-A's otherwise silent data loss.
     source: '{color:red}',
     expected: '',
@@ -388,7 +362,7 @@ describe('R6 — substitution is confined to selectors', () => {
   });
 
   it('replaces every occurrence in a selector', () => {
-    // `&&` compiles to `rhtml-scoperhtml-scope`, which is why the substitution has to be global and
+    // && compiles to rhtml-scoperhtml-scope, which is why the substitution has to be global and
     // unanchored — and therefore why it cannot be run over the whole serialized text.
     const { cssText, identifier } = compileToRules('&&{color:red}');
 

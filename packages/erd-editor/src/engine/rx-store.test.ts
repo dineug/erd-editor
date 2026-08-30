@@ -33,7 +33,7 @@ function make(...args: Parameters<typeof createRxStore>): RxStore {
   return store;
 }
 
-/** Let a queueMicrotask based `asap` callback run. */
+/** Let a queueMicrotask based asap callback run. */
 async function tick() {
   await Promise.resolve();
   await Promise.resolve();

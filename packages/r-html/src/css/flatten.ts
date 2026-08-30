@@ -23,11 +23,11 @@ export type FlatRule = {
   body?: string;
 };
 
-/** Return the rule to keep or replace it, or an array to expand it — `[]` discards. */
+/** Return the rule to keep or replace it, or an array to expand it — [] discards. */
 export type Middleware = (rule: FlatRule) => FlatRule | FlatRule[];
 
 export type FlattenOptions = {
-  /** The same parent selector list the tree was compiled with (`[SCOPE]`, or `['']` for global). */
+  /** The same parent selector list the tree was compiled with ([SCOPE], or [''] for global). */
   rules: string[];
   plugins?: Middleware[];
 };
@@ -48,7 +48,7 @@ export function flatten(
     collected
   );
 
-  // Re-run after the plugins: a middleware can empty a rule. A no-op on `walk()`'s own output.
+  // Re-run after the plugins: a middleware can empty a rule. A no-op on walk()'s own output.
   return piped.filter(isEmittable);
 }
 
@@ -80,7 +80,7 @@ function walk(
 
   if (rootDeclarations.length === 0) return;
 
-  // Bare declarations have no selector of their own and inherit `rules`, merged to the front of
+  // Bare declarations have no selector of their own and inherit rules, merged to the front of
   // their condition context. In global mode there is nothing to give them.
   const selectors = rules.filter(isNotEmpty);
   if (selectors.length === 0) return;
@@ -97,7 +97,7 @@ function appendStyleRule(
   conditions: string[],
   collected: FlatRule[]
 ): void {
-  // Discarding an empty selector list is RULESET-only: `@font-face` and `@page` carry empty
+  // Discarding an empty selector list is RULESET-only: @font-face and @page carry empty
   // props too and must survive.
   const selectors = element.props.filter(isNotEmpty);
   if (selectors.length === 0) return;
@@ -115,9 +115,9 @@ function appendAtRule(
   collected: FlatRule[]
 ): void {
   const children = childrenOf(element);
-  // Statement at-rules — `@import` / `@charset` / `@namespace` / `@layer a;` — are unsupported:
+  // Statement at-rules — @import / @charset / @namespace / @layer a; — are unsupported:
   // happy-dom throws away the whole sheet, and one sheet per template means one component's
-  // styles. `diagnostics.ts` reports them.
+  // styles. diagnostics.ts reports them.
   if (children.length === 0) return;
 
   if (isConditionalAtRule(element.type)) {
@@ -132,7 +132,7 @@ function appendAtRule(
 
   const steps = stepsOf(element);
   if (steps.length > 0) {
-    // Steps arrive unscoped and are serialized here; `emit()` never looks inside `body` again.
+    // Steps arrive unscoped and are serialized here; emit() never looks inside body again.
     const stepRules: FlatRule[] = [];
     for (const step of steps) appendStyleRule(step, NO_CONDITIONS, stepRules);
     const body = emit(stepRules);

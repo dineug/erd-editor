@@ -33,7 +33,7 @@ describe('tableToObjectPoint', () => {
 
     const point = tableToObjectPoint(state, table);
 
-    // default widths (60) + default `show` flags => 365 wide,
+    // default widths (60) + default show flags => 365 wide,
     // no columns => 1 + 8 + 38 + 0 + 8 + 1 = 56 high
     expect(point.width).toBe(365);
     expect(point.height).toBe(56);

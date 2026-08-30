@@ -19,7 +19,7 @@ describe('relationship/generator.actions', () => {
     for (const key of Object.keys(actions)) {
       expect(rootActions).toHaveProperty(key);
     }
-    // no `*Action$` key came from this module
+    // no *Action$ key came from this module
     expect(
       Object.keys(actions$).filter(key => key.endsWith('Action$'))
     ).toEqual([]);

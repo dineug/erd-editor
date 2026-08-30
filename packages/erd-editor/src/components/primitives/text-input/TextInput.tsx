@@ -15,7 +15,7 @@ export type TextInputProps = {
   numberOnly?: boolean;
   autofocus?: boolean;
   onInput?: (event: InputEvent) => void;
-  // `change` delivers a plain `Event`, not an `InputEvent` — the old declaration
+  // change delivers a plain Event, not an InputEvent — the old declaration
   // was never checked against the binding, and nothing outside the spec passes
   // this prop.
   onChange?: (event: Event) => void;

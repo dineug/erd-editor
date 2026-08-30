@@ -200,7 +200,7 @@ describe('createSharedStore', () => {
       })
     );
 
-    // `table.changeColor` is a stream action; sending one here would reach the
+    // table.changeColor is a stream action; sending one here would reach the
     // peer as a second, debounced command and cost them an extra undo.
     expect(fixture.types()).not.toContain('table.changeColor');
     const add = fixture.seen

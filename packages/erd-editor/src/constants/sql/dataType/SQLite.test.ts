@@ -4,7 +4,7 @@ import { DataTypeHint, PrimitiveType } from '@/constants/sql/dataType';
 import { SQLiteTypes } from '@/constants/sql/dataType/SQLite';
 
 /**
- * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: among the hints
+ * Mirrors getPrimitiveType in @/utils/generator-code/utils: among the hints
  * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {

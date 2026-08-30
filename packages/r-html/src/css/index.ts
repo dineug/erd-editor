@@ -22,13 +22,13 @@ export { fnv1a32, toIdentifier } from '@/css/hash';
 export { isShadowBoundary, SCOPE, substituteScope } from '@/css/selector';
 
 /**
- * `scoped` seeds `rules` with the sentinel; `global` seeds it empty, the way
- * stylis' own `compile()` does.
+ * scoped seeds rules with the sentinel; global seeds it empty, the way
+ * stylis' own compile() does.
  */
 export type CompileMode = 'scoped' | 'global';
 
 export type CompileToRulesOptions = {
-  /** Defaults to `scoped`. */
+  /** Defaults to scoped. */
   mode?: CompileMode;
   plugins?: Middleware[];
   /** Diagnostics are only collected when this is on; the array is empty otherwise. */
@@ -41,14 +41,14 @@ export type CompiledRules = {
   /** Serialized with the sentinel — the hash input. */
   canonicalText: string;
   identifier: string;
-  /** Serialized with the sentinel replaced by `.${identifier}` — this is what gets adopted. */
+  /** Serialized with the sentinel replaced by .${identifier} — this is what gets adopted. */
   cssText: string;
   diagnostics: Diagnostic[];
 };
 
 const NO_DIAGNOSTICS: Diagnostic[] = [];
 
-/** `source` must already have every interpolation substituted; markers never reach the compiler. */
+/** source must already have every interpolation substituted; markers never reach the compiler. */
 export function compileToRules(
   source: string,
   options: CompileToRulesOptions = {}
@@ -62,7 +62,7 @@ export function compileToRules(
   const flattened = flatten(elements, { rules, plugins: options.plugins });
 
   // The identifier hashes the rules and the rules carry the identifier, so the hash has to be
-  // taken against the sentinel and only the second `emit()` can substitute it in.
+  // taken against the sentinel and only the second emit() can substitute it in.
   const canonicalText = emit(flattened);
   const identifier = toIdentifier(canonicalText);
   const cssText = emit(flattened, { scope: `.${identifier}` });

@@ -4,7 +4,7 @@ import { textDecoder, textEncoder } from '@/utils';
 
 describe('textEncoder / textDecoder', () => {
   it('decodes as utf-8 with the forgiving defaults', () => {
-    // `TextEncoder` is utf-8 by specification and accepts no options, so the
+    // TextEncoder is utf-8 by specification and accepts no options, so the
     // decoder is the only half whose construction is an actual choice.
     expect(textDecoder.encoding).toBe('utf-8');
     expect(textDecoder.fatal).toBe(false);
@@ -28,9 +28,9 @@ describe('textEncoder / textDecoder', () => {
   });
 
   it('replaces invalid bytes instead of throwing, so a corrupted .erd still opens', () => {
-    // 0xff is not a legal utf-8 lead byte. `fatal` is false, so it decodes to
-    // U+FFFD; with `fatal: true` this would throw and reject
-    // `bootstrapWebview`, failing the editor open outright.
+    // 0xff is not a legal utf-8 lead byte. fatal is false, so it decodes to
+    // U+FFFD; with fatal: true this would throw and reject
+    // bootstrapWebview, failing the editor open outright.
     const corrupted = new Uint8Array([0x7b, 0xff, 0x7d]);
 
     expect(textDecoder.decode(corrupted)).toBe('{\ufffd}');
@@ -48,9 +48,9 @@ describe('textEncoder / textDecoder', () => {
   });
 
   it('never writes a BOM back, so a BOM-prefixed file loses it on the first save', () => {
-    // Characterises current behaviour, not desired behaviour: `ignoreBOM` is
-    // false on the way in and `TextEncoder` cannot emit a BOM on the way out,
-    // so the decode/encode round trip in `erd-editor.ts` drops it silently.
+    // Characterises current behaviour, not desired behaviour: ignoreBOM is
+    // false on the way in and TextEncoder cannot emit a BOM on the way out,
+    // so the decode/encode round trip in erd-editor.ts drops it silently.
     const withBom = new Uint8Array([
       0xef,
       0xbb,

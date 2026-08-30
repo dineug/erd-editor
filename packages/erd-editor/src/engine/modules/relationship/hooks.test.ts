@@ -435,7 +435,7 @@ describe('relationship/hooks relationshipSortHook', () => {
   });
 
   it('routes around a table that appeared between the two ends', async () => {
-    // Why `table.add` is on the subscription list. The route is recomputed from
+    // Why table.add is on the subscription list. The route is recomputed from
     // every table in the document, so one arriving in the corridor invalidates
     // routes it has no other connection to; nothing else would wake the hook.
     const store = createTestStore();

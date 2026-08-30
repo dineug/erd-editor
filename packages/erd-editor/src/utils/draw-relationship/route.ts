@@ -5,20 +5,6 @@ import { Point } from '@/internal-types';
 import { tableToObjectPoint } from '@/utils/draw-relationship/calc';
 import { isHorizontal, outwardSign } from '@/utils/draw-relationship/stub';
 
-/**
- * Orthogonal routing between the two turning points of a relationship.
- *
- * The connector used to be three segments with a 45-degree middle, which cannot
- * be steered around anything: measurements showed that scoring side pairs by the
- * tables they cross buys fewer penetrations only by taking detours that cross
- * more relationships than they avoid. Bending the path is the only thing that
- * gets past a table without going the long way round.
- *
- * Candidates are enumerated from a handful of channel coordinates rather than
- * searched for. A grid search would find better routes, but this runs inside
- * `relationshipSort`, which reruns on every mousemove of a drag.
- */
-
 /** Clearance kept between a route and the table boxes it passes. */
 const ROUTE_CLEARANCE = 16;
 /** Shrinks each obstacle so a route grazing an edge is not "through" it. */
@@ -113,14 +99,9 @@ export function segmentHitsBox(
 }
 
 /**
- * How many tables a polyline passes through, ignoring the two it connects.
- *
- * This is the hot function of the whole router: every candidate is scored with
- * it, and the nudge pass calls it twice per lane it tries. The polyline's own
- * bounding box is computed once and used to skip tables outright — a connector
- * spans a small part of the canvas, so most tables fail it. Every segment's box
- * sits inside the polyline's, so a table the polyline's box misses is a table
- * every segment's cheap reject would have missed too; the count is unchanged.
+ * How many tables a polyline passes through, ignoring the two it connects. The
+ * hot function of the router, so the polyline's own box is computed once to skip
+ * tables outright; every segment's box sits inside it, so the count is the same.
  */
 export function countBlocked(
   points: Point[],
@@ -182,12 +163,8 @@ function polylineLength(points: Point[]) {
 
 /**
  * Channel coordinates worth turning at on one axis: the midpoint, and a lane
- * just clear of each table that reaches into the band the route has to cross.
- *
- * Sorted by distance from the midpoint and then truncated, never truncated by
- * iteration order. Taking whichever tables came first in the document leaves the
- * relevant lanes out, and the router falls back to a long detour — several of
- * which then converge on the same coordinate and are drawn on top of each other.
+ * just clear of each table reaching into the band the route crosses. Sorted by
+ * distance before truncating, never truncated by document order.
  */
 function channels(
   from: number,
@@ -217,11 +194,9 @@ function channels(
 type Candidate = { points: Point[]; bends: number };
 
 /**
- * Builds the candidate polylines for one pair of turning points.
- *
- * A route may only leave `m` and arrive at `l` heading outward from its table,
- * or it doubles back through the guide line that carries the cardinality
- * symbols. That is what every feasibility test below is checking.
+ * Builds the candidate polylines for one pair of turning points. A route may
+ * only leave and arrive heading outward from its table or it doubles back
+ * through the cardinality guide line, which is what the tests below check.
  */
 function candidates(
   m: Point,
@@ -334,7 +309,7 @@ function candidates(
 }
 
 /**
- * The cheapest orthogonal polyline from `m` to `l`, or a two-bend fallback when
+ * The cheapest orthogonal polyline from m to l, or a two-bend fallback when
  * nothing is feasible — a connector always has to be drawn.
  */
 export function routeOrthogonal(

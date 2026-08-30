@@ -25,7 +25,7 @@ import {
 } from './utils';
 
 // Databricks SQL quotes identifiers with backticks only -- "x" and 'x' are
-// string literals there -- so `settings.bracketType` cannot be honoured.
+// string literals there -- so settings.bracketType cannot be honoured.
 const BRACKET = '`';
 
 // Keys are never enforced. RELY is what lets the optimizer act on the

@@ -85,7 +85,7 @@ describe('scrollbar.styles', () => {
     });
 
     it('keeps .scrollbar a literal hook class, not a generated one', () => {
-      // Seven components opt in with `class=${['scrollbar', ...]}` and nine tests assert the
+      // Seven components opt in with class=${['scrollbar', ...]} and nine tests assert the
       // literal name, so this class is API. Scoping the sheet would rename it out from under them.
       expect(selectorsOf(rules)).toContain('.scrollbar');
       for (const rule of rules) {

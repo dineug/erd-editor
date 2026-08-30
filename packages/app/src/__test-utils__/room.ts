@@ -26,8 +26,8 @@ function createFakeAction<T>(): FakeAction<T> {
 
 /**
  * A stand-in for a joined trystero room. Tests drive it by invoking the handlers
- * the service under test assigned — `room.onPeerJoin('peer-1')`,
- * `dispatch.onMessage(payload, { peerId })`, and so on.
+ * the service under test assigned — room.onPeerJoin('peer-1'),
+ * dispatch.onMessage(payload, { peerId }), and so on.
  */
 export function createFakeRoom(strategy: Strategy): FakeCollaborativeRoom {
   const room = {

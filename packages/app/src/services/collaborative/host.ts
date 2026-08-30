@@ -34,12 +34,9 @@ type Session = {
 };
 
 /**
- * Hosts the live collaboration sessions owned by this browser.
- *
- * `RTCPeerConnection` does not exist inside a worker, so unlike the rest of the
- * schema plumbing this service runs on the main thread. Only the tab that wins the
- * leadership lock actually joins the rooms; the others forward their editor action
- * streams to it over the BroadcastChannel bridge.
+ * Hosts the live collaboration sessions owned by this browser. RTCPeerConnection
+ * does not exist inside a worker, so this runs on the main thread, and only the
+ * tab that wins the leadership lock actually joins the rooms.
  */
 export class CollaborativeHostService {
   #sessionMap = new Map<SchemaId, Session>();
@@ -197,10 +194,9 @@ export class CollaborativeHostService {
       .forEach(room => room.dispatch.send(value));
   }
 
-  // TODO: disconnect buffer. Unlike a guest — whose shared store buffers while
-  // disconnected and flushes on reconnect — a batch dispatched before the rooms
-  // are open is dropped, so an edit made in the seconds after a leadership
-  // handover never reaches the guests.
+  // TODO: disconnect buffer. A guest's shared store buffers and flushes on
+  // reconnect, but a batch dispatched before the rooms are open is dropped, so
+  // an edit made just after a leadership handover never reaches the guests.
   async #dispatch(schemaId: SchemaId, actions: any) {
     const session = this.#sessionMap.get(schemaId);
     if (!session?.key || !session.rooms.length) return;

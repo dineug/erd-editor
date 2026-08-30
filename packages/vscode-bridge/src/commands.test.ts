@@ -117,7 +117,7 @@ describe('commands over a Bridge', () => {
       Bridge.executeCommand(hostImportFileCommand, {
         type: 'graphql',
         op: 'set',
-        // `accept` is the browser input attribute the editor authors, so it
+        // accept is the browser input attribute the editor authors, so it
         // carries every extension the type answers to, not just the canonical
         // one.
         accept: '.graphql,.gql,.graphqls',

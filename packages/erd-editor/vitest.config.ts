@@ -7,10 +7,9 @@ import { defineConfig } from 'vite-plus';
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 
 export default defineConfig({
-  // Vitest does not read `vite.config.ts`, so the JSX transform has to be
-  // repeated here or a `.tsx` spec would reach oxc with its JSX intact. The HMR
-  // half is off: it would inject `virtual:r-html-hmr` into every component
-  // module under test and switch on state recording the specs never asked for.
+  // Vitest does not read vite.config.ts, so the JSX transform repeats here or a
+  // .tsx spec reaches oxc with its JSX intact. The HMR half is off: it would
+  // switch on state recording in every component the specs never asked for.
   plugins: [rHtml({ refresh: false })],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),

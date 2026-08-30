@@ -32,7 +32,7 @@ import * as styles from './IndexesCheckboxColumn.styles';
 export type IndexesCheckboxColumnProps = {
   tableId: string;
   // The panel renders this column before an index is picked; the body already
-  // reads it as `!index` and `index?.indexColumnIds ?? []`.
+  // reads it as !index and index?.indexColumnIds ?? [].
   index: Index | null;
 };
 

@@ -23,7 +23,7 @@ const base64Icons = Object.values(iconMap).filter(
   (icon): icon is Base64Icon => icon.type === 'base64'
 );
 
-// Exactly what `Icon.tsx`'s `shape` reads. Anything else is dropped silently,
+// Exactly what Icon.tsx's shape reads. Anything else is dropped silently,
 // so a lucide bump that adds an attribute has to fail here.
 const RENDERED_ATTRIBUTES: Record<string, string[]> = {
   path: ['d', 'fill', 'stroke'],
@@ -46,8 +46,8 @@ function sourceFiles(directory = SRC): string[] {
   });
 }
 
-// Two spellings reach `Icon`: the JSX attribute and a menu descriptor field.
-// Every other `name=` in this package is Title Case, so case keeps them apart.
+// Two spellings reach Icon: the JSX attribute and a menu descriptor field.
+// Every other name= in this package is Title Case, so case keeps them apart.
 function referencedNames(): Set<string> {
   const names = new Set<string>();
 
@@ -67,7 +67,7 @@ function referencedNames(): Set<string> {
   return names;
 }
 
-// Reached from a numeric `RelationshipType`, so no literal exists to collect.
+// Reached from a numeric RelationshipType, so no literal exists to collect.
 const UNREFERENCED_BY_DESIGN = ['ZeroOneN', 'One', 'N'];
 
 describe('icons', () => {

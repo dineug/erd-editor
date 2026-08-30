@@ -8,21 +8,6 @@ import { CORPORA, createCorpus } from './corpus';
 import { measureQuality, readScene, type QualityMetrics } from './geometry';
 import { installBench, runDragBench, type BenchResult } from './harness';
 
-/**
- * The routing benchmark.
- *
- * Not a spec — it asserts nothing and gates nothing. It runs on demand
- * (`pnpm --filter @dineug/erd-editor e2e:bench`), never in CI, because a
- * runner's noise floor is larger than the differences it is meant to resolve.
- *
- *   E2E_BENCH_LABEL=phase-1   name the run in the report
- *   E2E_BENCH_BASELINE=1      save this run as the comparison baseline
- *
- * Each corpus is measured twice over: `perf` is what a drag costs, `quality` is
- * how much the drawing overlaps. Both have to be read together — cutting frame
- * cost by drawing worse is not an improvement, and neither is the reverse.
- */
-
 const OUT_DIR = join(import.meta.dirname, '..', '.bench');
 const BASELINE = join(OUT_DIR, 'baseline.json');
 const LATEST = join(OUT_DIR, 'latest.json');
@@ -37,12 +22,9 @@ type Row = {
 };
 
 /**
- * Bumped whenever a metric changes what it means rather than what it measures.
- *
- * Deltas are suppressed across a bump. The alternative is what happened once
- * already: a baseline captured by an older harness kept printing percentages
- * against numbers that were no longer the same quantity, and every one of them
- * was quoted as a result.
+ * Bumped whenever a metric changes what it means rather than what it measures,
+ * which suppresses deltas across the bump. Otherwise a stale baseline prints
+ * percentages against numbers that are no longer the same quantity.
  */
 const METRICS_VERSION = 3;
 

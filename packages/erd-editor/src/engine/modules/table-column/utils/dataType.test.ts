@@ -247,7 +247,7 @@ describe('getDataTypeSyncColumns', () => {
   });
 
   it('emits a payload with an undefined id when the two sides are unbalanced', () => {
-    // Suspicious behaviour, asserted as-is: `end.columnIds[index]` can be
+    // Suspicious behaviour, asserted as-is: end.columnIds[index] can be
     // undefined when the relationship sides have different lengths, and the
     // resulting payload is still pushed.
     const store = setup();

@@ -7,20 +7,6 @@ import { FIXTURE_URL } from '../support/ErdEditorPage';
 import { createCorpus, type CorpusOptions } from './corpus';
 import { installBench } from './harness';
 
-/**
- * Renders each scene and saves a PNG.
- *
- * This repo has no visual regression test of any kind, and the overlap metrics
- * cannot see everything — a drawing can score well and still read badly. These
- * images are for a person to look at before calling a routing change done.
- *
- *   E2E_BENCH_ALL=1 E2E_BENCH_LABEL=before \
- *     pnpm exec playwright test -c playwright.bench.config.ts screenshot
- *
- * Output goes to `e2e/.bench/shots/`, which is gitignored. Label the run to
- * keep a before and after side by side.
- */
-
 const SHOTS = join(import.meta.dirname, '..', '.bench', 'shots');
 const VIEWPORT = { width: 1440, height: 900 };
 

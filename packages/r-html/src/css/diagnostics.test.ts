@@ -7,10 +7,8 @@ import { flatten } from '@/css/flatten';
 import { SCOPE } from '@/css/selector';
 
 /**
- * The diagnostics are the whole of R1 and R2 — both were withdrawn as selector rewrites and both
- * survive here as warnings — plus the reports for everything the compiler silently drops. Two
- * properties are asserted for every code: it fires exactly when it should, and its message names the
- * thing the author has to go and change.
+ * Two properties are asserted for every diagnostic code: it fires exactly when
+ * it should, and its message names the thing the author has to go and change.
  */
 
 const diagnose = (source: string, scoped = true): Diagnostic[] => {
@@ -42,7 +40,7 @@ describe('shadow-boundary (R1)', () => {
   });
 
   it('does not fire when the boundary is not the leftmost compound', () => {
-    // `.a :host` was written by an author who already knew where the boundary was; prepending the
+    // .a :host was written by an author who already knew where the boundary was; prepending the
     // scope to it changes nothing about whether it can match.
     expect(codes('.a :host{color:red}')).toEqual([]);
     expect(codes('.a ::slotted(span){color:red}')).toEqual([]);
@@ -103,7 +101,7 @@ describe('implicit-descendant (R2)', () => {
   });
 
   it('yields to shadow-boundary rather than doubling up on it', () => {
-    // `:host` starts with a colon too. Reporting both would give the author two contradictory
+    // :host starts with a colon too. Reporting both would give the author two contradictory
     // instructions for one selector.
     expect(codes(':host{color:red}')).toEqual(['shadow-boundary']);
   });
@@ -140,8 +138,8 @@ describe('unsupported-at-rule (R8)', () => {
     '@layer a;',
   ])('fires for %s', source => {
     expect(codes(source)).toEqual(['unsupported-at-rule']);
-    // The only `error` in the set: this one silently erases the whole sheet in happy-dom, and
-    // `replaceSync` strips `@import` by spec even when it is written first.
+    // The only error in the set: this one silently erases the whole sheet in happy-dom, and
+    // replaceSync strips @import by spec even when it is written first.
     expect(diagnose(source)[0].severity).toBe('error');
   });
 
@@ -159,18 +157,17 @@ describe('unsupported-at-rule (R8)', () => {
     '@counter-style x{}',
     '@font-feature-values f{}',
   ])('does not fire for the empty block %s — that is R4-B', source => {
-    // An empty block parses to the same shape as a statement at-rule (`children: []`), but it is a
-    // different finding: these four are supported and would have been emitted had they carried
-    // anything. Telling their author to "move it to a `<link>`" would be wrong on every clause, and
-    // it would report a discard that `.a{}`, `@media m{}` and `@layer a{}` all take in silence.
+    // An empty block parses to the shape of a statement at-rule but is a
+    // different finding: these are supported and would have been emitted had
+    // they carried anything, so the statement message would be wrong here.
     expect(codes(source)).toEqual([]);
     // The rule is still gone — only the diagnostic changed.
     expect(compileToRules(source, { dev: true }).cssText).toBe('');
   });
 
   it('still fires for a body-less `@layer`, which shares its type with the block form', () => {
-    // `@layer a{}` is conditional, so stylis gives it a wrapper child and it never reaches the R8
-    // test at all. Only `@layer a;` arrives with an empty child list.
+    // @layer a{} is conditional, so stylis gives it a wrapper child and it never reaches the R8
+    // test at all. Only @layer a; arrives with an empty child list.
     expect(codes('@layer a;')).toEqual(['unsupported-at-rule']);
     expect(codes('@layer a{}')).toEqual([]);
   });

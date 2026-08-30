@@ -256,10 +256,9 @@ describe('TimeTravel', () => {
     });
 
     it('resurrects the rewound tables when replaying forward', async () => {
-      // The cloned history stamps versions from the PREVIEW store clock
-      // (HistoryOptions.getNextVersion), so every replayed add outranks the
-      // remove version the rewind wrote and passes addOperator's
-      // `removeVersion < version` check.
+      // The cloned history stamps versions from the preview store clock, so
+      // every replayed add outranks the remove version the rewind wrote and
+      // passes the add operator's version check.
       const { originApp } = await setup({ tableIds: ['t1', 't2'] });
 
       await slideTo(0);

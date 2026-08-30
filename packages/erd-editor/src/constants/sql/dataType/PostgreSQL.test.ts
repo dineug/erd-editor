@@ -4,7 +4,7 @@ import { DataTypeHint, PrimitiveType } from '@/constants/sql/dataType';
 import { PostgreSQLTypes } from '@/constants/sql/dataType/PostgreSQL';
 
 /**
- * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: among the hints
+ * Mirrors getPrimitiveType in @/utils/generator-code/utils: among the hints
  * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
@@ -305,7 +305,7 @@ describe('PostgreSQLTypes', () => {
   });
 
   it('resolves int8, interval, serial8 and the timestamps past their shorter prefixes', () => {
-    // `int`, `serial` and `time` are listed before their longer siblings, but
+    // int, serial and time are listed before their longer siblings, but
     // the longest matching hint wins.
     expect(resolvePrimitiveType('int8')).toBe('long');
     expect(resolvePrimitiveType('interval')).toBe('time');

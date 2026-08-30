@@ -9,16 +9,9 @@ import {
 } from '@/utils/crypto';
 
 /**
- * Captured before `encryptToJson` switched from `base64.encode(iv)` to
- * `base64.encode(iv.buffer)`, using the exact call the old code made. The two
- * forms agree only while the view covers its whole buffer — `generateIv`
- * allocates 12 bytes and never subarrays them, so it does — but "agree today"
- * is a fact about the current implementation, not a guarantee.
- *
- * Every document a user has already stored was encoded the old way. If the iv
- * is ever derived or sliced differently, `encode` starts emitting a different
- * string and the only symptom in production is that existing rooms silently
- * stop decrypting. Here it goes red instead.
+ * A frozen ciphertext, because every document already stored was encoded this
+ * way. Derive or slice the iv differently and encode emits a different string,
+ * whose only symptom in production is that existing rooms stop decrypting.
  */
 const FROZEN = {
   key: 'LFSozsFn8wg1ReEXTqTBEA',
@@ -47,7 +40,7 @@ describe('crypto', () => {
 
     // base64 of 12 bytes is 16 characters with no padding. Encoding the backing
     // buffer of a subarray — rather than the 12-byte view — lands on a different
-    // length here, which is the failure the `.buffer` change could have introduced.
+    // length here, which is the failure the .buffer change could have introduced.
     expect(iv).toHaveLength(16);
   });
 

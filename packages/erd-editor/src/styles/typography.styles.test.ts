@@ -138,7 +138,7 @@ describe('typography.styles', () => {
 
     it('leads the adopted list, ahead of the scoped scale steps', () => {
       // The global bucket is adopted before every component sheet, so the token block that the
-      // eleven scoped templates read through `var()` cannot end up behind them.
+      // eleven scoped templates read through var() cannot end up behind them.
       const sheets = adoptedSheets();
 
       expect(sheets).toHaveLength(12);

@@ -43,10 +43,12 @@ const createSash = (
     position: Position.right,
     left,
   },
-  // {
-  //   type: SashType.horizontal,
-  //   position: Position.top,
-  // },
+  /*
+  {
+    type: SashType.horizontal,
+    position: Position.top,
+  },
+  */
   {
     type: SashType.horizontal,
     position: Position.bottom,

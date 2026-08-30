@@ -5,53 +5,19 @@ import {
   segmentHitsBox,
 } from '@/utils/draw-relationship/route';
 
-/**
- * Pulls apart routes that ended up running down the same line.
- *
- * Orthogonal routing and this pass are one change, not two. Turning the old
- * 45-degree middle segment into a right angle costs nothing in segment count and
- * cuts table penetrations, but on its own it raises collinear overlap by nearly
- * eight times: two connectors between neighbouring tables pick the same channel
- * and are drawn exactly on top of each other, where diagonals had drifted apart
- * on their own. Measured, not predicted.
- *
- * Segments are collected into a channel by proximity, not by a shared
- * coordinate. The complaint is visual — two connectors within a few pixels
- * read as one line — and the benchmark's worst pair in every corpus was 2px
- * apart: indistinguishable to a reader, yet far enough apart that rounding each
- * coordinate to the pixel filed them under different channels, where nothing
- * ever considered separating them.
- *
- * Only interior segments move. The first and last are attached to the guide line
- * carrying the cardinality symbols, and sliding those would detach the connector
- * from its anchor.
- */
-
 /** Separation given to routes sharing a channel. The connector is 2 wide. */
 const NUDGE_GAP = 10;
 
 /**
- * Separations tried in turn; the first that leaves no overlap wins. Narrower
- * lanes hold each segment nearer the channel the router chose, so a group whose
- * preferred lanes all run into a table can still be pulled apart rather than
- * give up and stay collinear.
- *
- * The floor is 4 rather than the 3 a 2px connector would allow, because the
- * routing bench says so: `[10, 7, 4, 3]`, `[10, 7, 5, 3]` and `[10, 6, 3]` each
- * took the medium corpus from 0 to 316px of collinear overlap and cost the large
- * one 1-10% besides, for 5-6% fewer crossings. Since the first rung that clears
- * a group wins, a narrower rung is not an extra chance — it lets a group settle
- * where a wider one would have pushed it somewhere better.
+ * Separations tried in turn; the first that leaves no overlap wins. The floor is
+ * 4 rather than the 3 a 2px connector allows, because a narrower rung lets a
+ * group settle where a wider one would have pushed it somewhere better.
  */
 const NUDGE_GAPS = [NUDGE_GAP, 7, 4];
 
 /**
- * Closer than this and two segments still read as one line, so this is both what
- * the pass sets out to fix and the floor of the ladder above: touching is
- * legible and drawn on top of each other is not.
- *
- * A 2px connector 4px from its neighbour leaves 2px of clear space, where the
- * 3px one it replaced left 1px. That is slack the ladder above keeps on purpose.
+ * Closer than this and two segments still read as one line, which is both what
+ * the pass sets out to fix and the floor of the ladder above.
  */
 const MIN_NUDGE_GAP = NUDGE_GAPS[NUDGE_GAPS.length - 1];
 
@@ -59,37 +25,28 @@ const MIN_NUDGE_GAP = NUDGE_GAPS[NUDGE_GAPS.length - 1];
 const NUDGE_EPSILON = 0.5;
 
 /**
- * What counts as separated when an attempt is scored.
- *
- * A rung of the ladder places its lanes exactly `gap` apart in exact arithmetic
- * and a hair under it in floating point — `centre - 2` against `centre + 2` came
- * out 3.999999999999982 apart for a centre of 126.8333. Measured against the rung
- * itself, the narrowest one can then never clear a group, and the group is
- * abandoned on the coordinate it started on: whether the pass works at all turns
- * on the fraction in a table's position. 3.5px is still clear of the stroke.
+ * What counts as separated when an attempt is scored. A rung places its lanes a
+ * hair under gap apart in floating point, so scoring against the rung itself
+ * would leave the narrowest one unable to ever clear a group.
  */
 const SEPARATED = MIN_NUDGE_GAP - NUDGE_EPSILON;
 
 /**
- * How many lanes either side of its own a segment may be placed in.
- *
- * A segment blocked out of its own lane is better off in a nearby free one than
- * back on the shared line, but not in a distant one: reaching that means
- * crossing every neighbour in between, and the search for it is what makes this
- * pass quadratic in the size of a group.
+ * How many lanes either side of its own a segment may be placed in. A distant
+ * lane means crossing every neighbour on the way, and searching for one is what
+ * makes this pass quadratic in the size of a group.
  */
 const MAX_LANE_DRIFT = 3;
 
 type Slot = {
   relationshipId: string;
   points: Point[];
-  /** The segment runs from `points[index]` to `points[index + 1]`. */
+  /** The segment runs from points[index] to points[index + 1]. */
   index: number;
   /**
    * False for a connector's first and last run, which are attached to the guide
-   * line carrying the cardinality symbols and cannot slide. They are collected
-   * all the same: a lane parked on one is as much a doubled line as any other,
-   * and a score that could not see them called that a success.
+   * line carrying the cardinality symbols. Collected all the same: a lane parked
+   * on one is as much a doubled line as any other.
    */
   movable: boolean;
   vertical: boolean;
@@ -101,30 +58,28 @@ type Slot = {
 
 /**
  * What a slot's polyline looked like before its group was touched; a nudge may
- * make neither worse. Both are read before the first move rather than per
- * attempt, so the ladder of separations is compared against one reference
- * instead of against whatever the previous attempt left behind.
+ * make neither worse. Read once rather than per attempt, so every rung of the
+ * ladder is compared against one reference.
  */
 type Baseline = {
   blocked: number;
   crossed: boolean;
   /**
-   * Where the two tables this connector joins sit in `obstacles`, resolved once:
-   * `isSafe` runs per lane tried, and finding them by identity there walked every
-   * table in the document to reach two boxes.
+   * Where the two tables this connector joins sit in obstacles, resolved once:
+   * isSafe runs per lane tried, and finding them by identity there walked every
+   * table in the document.
    */
   own: number[];
   /**
-   * How much of the connector already lay inside those two. `countBlocked` skips
-   * them, so nothing else would notice a lane that folds the run leaving an
-   * anchor back over the table it is anchored to.
+   * How much of the connector already lay inside those two. countBlocked skips
+   * them, so nothing else notices a lane that folds an anchor run back over the
+   * table it is anchored to.
    */
   intruded: number;
   /**
    * Which way the run leaving each anchor pointed. A route may only leave its
-   * anchor outward — `routeOrthogonal` enforces that when it enumerates
-   * candidates — and a lane on the other side of the turning point sends it back
-   * over the guide line the cardinality symbols are drawn on.
+   * anchor outward, and a lane past the turning point sends it back over the
+   * guide line the cardinality symbols are drawn on.
    */
   beforeDelta: number;
   afterDelta: number;
@@ -260,10 +215,9 @@ function separateRuns(
   const flush = () => {
     if (group.length > 1) separate(group, axis, obstacles, endpoints);
     group = [];
-    // Reset with the group. Carrying the previous group's reach forward makes
-    // every later segment on this line join one giant group, which spreads them
-    // so far apart that the safety check rejects the move and drops them back
-    // onto the coordinate they were meant to leave.
+    // Reset with the group. Carrying the previous reach forward joins every
+    // later segment on this line into one giant group, spread so far apart that
+    // the safety check rejects the move.
     reach = -Infinity;
   };
 
@@ -276,13 +230,9 @@ function separateRuns(
 }
 
 /**
- * Whether two segments are too close along a lane to share it.
- *
- * A gap of clearance rather than a bare touch: two segments that meet end to end
- * overlap by no length at all, so a score in pixels calls sharing a lane free,
- * but their corners land on the same point and each one's arms continue the
- * other's — the reader sees one long connector crossing another, neither of which
- * is there.
+ * Whether two segments are too close along a lane to share it. Clearance rather
+ * than a bare touch: two that meet end to end overlap by no length, yet their
+ * corners land on one point and read as a connector that is not there.
  */
 function crowdsLane(a: Slot, b: Slot) {
   return a.high + NUDGE_GAP > b.low && b.high + NUDGE_GAP > a.low;
@@ -295,20 +245,9 @@ function overlapLength(a: Slot, b: Slot) {
 }
 
 /**
- * How much of the drawing this group is still doubling up, in pixels — which is
- * what an attempt is scored on, rather than how many segments it managed to move.
- * A segment that took a lane while the one it was covering could not is no better
- * off, and counting placements calls that a partial success.
- *
- * Length rather than a count of pairs, because the choices trade against each
- * other: clearing a 750px overlap is worth landing on a 16px one, and a score
- * that counted both as "one pair" could not tell which way round to prefer. It is
- * the question `e2e/bench/geometry.ts` asks of a real scene.
- *
- * `neighbours` are the segments outside the group a lane could reach, movable or
- * not. Left out, a group spreads far enough to land on the channel next to it, or
- * on a run attached to an anchor, and calls that a success: fuzzing 600 scenes
- * over the group alone made the total overlap worse in 17 of them.
+ * How much of the drawing this group is still doubling up, in pixels, which is
+ * what an attempt is scored on. Length rather than a count of pairs, because
+ * clearing a wide overlap is worth landing on a narrow one.
  */
 function stillOverlapping(group: Slot[], neighbours: Slot[]) {
   let total = 0;
@@ -355,18 +294,9 @@ function neighboursOf(group: Slot[], axis: Slot[]) {
 }
 
 /**
- * Splits a group into tracks of segments that never meet, which is the fewest
- * lanes it can be drawn in.
- *
- * A run is a chain of the span-overlap relation, not a clique: four segments that
- * each only reach their neighbour used to be handed a lane each and splayed over
- * 30px, when two lanes clear every overlapping pair and move nobody more than 5.
- * Every pixel of that displacement is paid in the crossings and the length the
- * benchmark reports.
- *
- * The group arrives ordered by where each segment starts, which is what makes one
- * greedy pass optimal here: intervals on a line form an interval graph, and
- * colouring those by left endpoint never opens a track it could have avoided.
+ * Splits a group into tracks of segments that never meet, the fewest lanes it
+ * can be drawn in. The group arrives ordered by where each segment starts, and
+ * colouring intervals by left endpoint never opens a track it could avoid.
  */
 function colourGroup(group: Slot[]): Slot[][] {
   const tracks: Slot[][] = [];
@@ -392,9 +322,7 @@ function separate(
   endpoints: Map<string, [string, string]>
 ) {
   // A channel is collected by proximity, so most groups arrive already legible.
-  // Leaving those alone is what keeps the pass from re-laning a bundle the router
-  // spaced perfectly well, and it is checked before the baselines below, which
-  // cost a `countBlocked` each.
+  // Checked before the baselines below, which cost a countBlocked each.
   const neighbours = neighboursOf(group, axis);
   const before = stillOverlapping(group, neighbours);
   if (!before) return;
@@ -412,11 +340,9 @@ function separate(
   let bestLeft = Infinity;
 
   for (const gap of NUDGE_GAPS) {
-    // Every layout that clears the channel is measured, not just the first one
-    // found: taking the first meant the order of the list decided between two
-    // that both worked, and the compact one moves segments further, which
-    // lengthens the runs attached to an anchor — runs this pass cannot move and
-    // the other axis has already finished with.
+    // Every layout that clears the channel is measured, not just the first
+    // found: otherwise list order decides between two that both work, and the
+    // compact one lengthens the anchor runs this pass cannot move.
     let cleared: number[] | null = null;
     let clearedDrift = Infinity;
 
@@ -451,15 +377,9 @@ function separate(
 }
 
 /**
- * The ways a group can be laid out, best first.
- *
- * Colouring it into tracks uses the fewest lanes, which moves every segment the
- * least — but a lane is also how a segment gets away from something *outside* the
- * group, and using fewer of them leaves more of those overlaps standing: on the
- * large corpus the compact layout alone measured 4305px against 3294. So both are
- * offered and scored, the compact one first, and a group takes whichever clears
- * it. Where every span in the group meets every other the two are the same layout
- * and only one is tried.
+ * The ways a group can be laid out, best first. Fewer lanes moves each segment
+ * least, but a lane is also how one gets away from something outside the group,
+ * so both layouts are scored and the group takes whichever clears it.
  */
 function laneModels(group: Slot[]): Slot[][][] {
   const coloured = colourGroup(group);
@@ -471,12 +391,9 @@ function laneModels(group: Slot[]): Slot[][][] {
 }
 
 /**
- * The orders a bundle can be laid across its lanes, best first.
- *
- * Neither wins everywhere, which is why both are tried and scored. Ordering by
- * where each route came from keeps neighbours together — the benchmark's medium
- * and large corpora prefer it — while ordering by where each segment already sits
- * moves nobody across anybody, which the small corpus needs to clear at all.
+ * The orders a bundle can be laid across its lanes, best first. Neither wins
+ * everywhere: entry order keeps neighbours together, coordinate order moves
+ * nobody across anybody, so both are tried and scored.
  */
 function orderings(tracks: Slot[][]): Slot[][][] {
   const mean = (track: Slot[], of: (slot: Slot) => number) =>
@@ -495,9 +412,8 @@ function orderings(tracks: Slot[][]): Slot[][][] {
       compareSlots(a[0], b[0])
   );
 
-  // For a tight bundle the two usually agree, and `place` is deterministic, so
-  // running the second would repeat every lane test — a `countBlocked` each —
-  // for no new information.
+  // For a tight bundle the two usually agree, and place is deterministic, so
+  // running the second repeats every lane test for no new information.
   const same = byEntry.every((track, index) => track === byCoordinate[index]);
   return same ? [byEntry] : [byEntry, byCoordinate];
 }
@@ -523,7 +439,7 @@ function apply(group: Slot[], coordinates: number[]) {
 }
 
 /**
- * Spreads the group over lanes `gap` apart, centred on where its segments
+ * Spreads the group over lanes gap apart, centred on where its segments
  * already are, skipping any lane a segment cannot safely take.
  */
 function place(
@@ -568,7 +484,7 @@ function place(
           tryLane(index - drift) || (drift > 0 && tryLane(index + drift));
       }
 
-      // `coordinate` is only written once a lane is accepted, so it still holds
+      // coordinate is only written once a lane is accepted, so it still holds
       // where this segment started.
       if (!placed) moveSlot(slot, slot.coordinate);
     }
@@ -604,7 +520,7 @@ function baselineOf(
 }
 
 /**
- * How far, and which way, the segment on one side of a slot reaches. `side` is
+ * How far, and which way, the segment on one side of a slot reaches. side is
  * -1 for the one before it and 1 for the one after.
  */
 function neighbourDelta(slot: Slot, side: number) {
@@ -619,11 +535,9 @@ function reverses(delta: number, was: number) {
 }
 
 /**
- * Segments of the connector that lie inside either table it joins.
- *
- * A route leaves its anchor a stub's length clear of the table, so any overlap
- * with those two boxes is a fold back over the guide line that carries the
- * cardinality symbols.
+ * Segments of the connector that lie inside either table it joins. A route
+ * leaves its anchor a stub clear of the table, so any overlap with those two
+ * boxes is a fold back over the cardinality guide line.
  */
 function countIntruded(points: Point[], obstacles: Obstacles, own: number[]) {
   let count = 0;
@@ -689,7 +603,7 @@ function isSafe(
   }
 
   // Cheap tests first: the ones above and this one read a handful of points,
-  // while `countBlocked` walks every table in the document.
+  // while countBlocked walks every table in the document.
   if (!baseline.crossed && selfCrosses(slot.points)) return false;
 
   const pair = endpoints.get(slot.relationshipId);
@@ -703,13 +617,9 @@ function isSafe(
 }
 
 /**
- * Whether the polyline crosses itself.
- *
- * Only one segment moves, but the two either side of it change length, and a
- * lengthened run can reach across a later segment of the same connector — the
- * escape route, which leaves both anchors on the same axis and comes back, is
- * the shape that can do it. The `shrank` test only catches the opposite case, a
- * neighbour collapsing to nothing.
+ * Whether the polyline crosses itself. One segment moves but its neighbours
+ * change length, and a lengthened run can reach across a later segment of the
+ * same connector, which the shrank test does not catch.
  */
 function selfCrosses(points: Point[]) {
   for (let i = 0; i + 1 < points.length; i++) {

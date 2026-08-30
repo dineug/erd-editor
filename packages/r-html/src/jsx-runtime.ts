@@ -1,40 +1,9 @@
-/**
- * The JSX contract for r-html, reached as `@dineug/r-html/jsx-runtime` through
- * `jsxImportSource`.
- *
- * Declarations only. Nothing here exists at run time and nothing should: the
- * transform in `@dineug/vite-plugin-r-html` rewrites every JSX tree into an
- * `html` / `svg` tagged template before the file reaches a JS transform, so no
- * `jsx()` call is ever emitted.
- *
- * Pair this with `jsx: "preserve"`. `jsxImportSource` still resolves this
- * namespace under it, and it stops every other tool trying to compile JSX that
- * is already spoken for — including Vite's dependency scanner, which runs its
- * own pass without plugin `transform` hooks and would otherwise emit an import
- * of the `jsx-dev-runtime` subpath this package deliberately does not export.
- * It also keeps the failure loud: a build that lost the transform dies on JSX
- * the bundler cannot parse, at the first `.tsx`, rather than rendering the
- * wrong thing quietly.
- *
- * `IntrinsicElements` covers the standard tags. A consumer with custom elements
- * adds them by merging:
- *
- * ```ts
- * declare module '@dineug/r-html/jsx-runtime' {
- *   namespace JSX {
- *     interface IntrinsicElements {
- *       'my-element': HTMLAttributes;
- *     }
- *   }
- * }
- * ```
- */
 import type { FunctionalComponent } from '@/render/part/node/component/observableComponent';
 import type { CSSTemplateLiterals, DOMTemplateLiterals } from '@/template';
 
 export type Falsy = false | null | undefined;
 
-/** What `toClassList` walks; a falsy entry is skipped at any depth. */
+/** What toClassList walks; a falsy entry is skipped at any depth. */
 export type ClassValue =
   | string
   | number
@@ -43,26 +12,20 @@ export type ClassValue =
   | readonly ClassValue[]
   | Falsy;
 
-/** `styleCommit` writes each entry with `setProperty`, so keys stay kebab-case. */
+/** styleCommit writes each entry with setProperty, so keys stay kebab-case. */
 export type StyleValue = Record<string, string | number | Falsy>;
 
 /**
- * JSX rejects a repeated attribute outright (TS17001), but r-html keeps every
- * listener bound to one event name — `tNode` groups events and `EventPart` adds
- * each separately, and the order is observable. `on:input__2` is the escape
- * hatch: the transform strips the suffix, so the second binding lands on
- * `@input` exactly like the first.
- *
- * Spelling the suffixes out rather than reaching for an `on:${string}` index
- * signature is what keeps `on:clik` a type error.
+ * JSX rejects a repeated attribute, but r-html keeps every listener bound to one
+ * event name, so a numbered suffix the transform strips is the escape hatch.
+ * Spelt out rather than an index signature, which keeps a typo a type error.
  */
 export type DuplicateSuffix = '' | '__2' | '__3';
 
 /**
- * `EventPart` keeps only values that are a function or an
- * `[handler, options]` tuple and silently drops everything else, so a
- * conditional binding can hand it `null` to mean "not this time" without the
- * component having to split its template in two.
+ * EventPart keeps only a function or a [handler, options] tuple and drops
+ * everything else, so a conditional binding can hand it null rather than the
+ * component splitting its template in two.
  */
 export type EventHandler<E> =
   | ((event: E) => void)
@@ -78,11 +41,11 @@ export type EventHandlers<M> = {
 
 /** The three sigils the transform maps onto r-html's attribute kinds. */
 export interface Sigils {
-  /** `?name` — coerced with `isTruthy`, so not restricted to booleans. */
+  /** ?name — coerced with isTruthy, so not restricted to booleans. */
   [bool: `bool:${string}`]: unknown;
-  /** `.name` — set as a DOM property rather than an attribute. */
+  /** .name — set as a DOM property rather than an attribute. */
   [prop: `prop:${string}`]: unknown;
-  /** A bare marker in attribute position: `ref`, and any other directive. */
+  /** A bare marker in attribute position: ref, and any other directive. */
   [use: `use:${string}`]: unknown;
 }
 
@@ -93,10 +56,9 @@ export interface DatasetAttributes {
 
 export interface CommonAttributes extends Sigils, DatasetAttributes {
   /**
-   * Deliberately `unknown`: a text position accepts primitives, nested
-   * templates, arrays, DOM nodes, functions and directives, and `getPartType`
-   * picks a `Part` for whatever turns up. Components are stricter — their
-   * children land on the `children` prop and are typed by it.
+   * Deliberately unknown: a text position accepts primitives, templates,
+   * arrays, nodes, functions and directives, and getPartType picks a Part for
+   * whatever turns up. Components are stricter, typed by their children prop.
    */
   children?: unknown;
   class?: ClassValue;
@@ -109,10 +71,10 @@ export interface HTMLAttributes
   extends CommonAttributes, EventHandlers<HTMLElementEventMap> {
   /** Global, and enumerated: the values are the strings. */
   autocapitalize?: 'off' | 'none' | 'on' | 'sentences' | 'words' | 'characters';
-  /** Enumerated, like `spellcheck`: the values are the strings. */
+  /** Enumerated, like spellcheck: the values are the strings. */
   draggable?: boolean | 'true' | 'false';
   hidden?: boolean;
-  /** Global, and enumerated: `none` keeps a focusable field from raising a keyboard. */
+  /** Global, and enumerated: none keeps a focusable field from raising a keyboard. */
   inputmode?:
     | 'none'
     | 'text'
@@ -125,7 +87,7 @@ export interface HTMLAttributes
   role?: string;
   /** An enumerated attribute, not a boolean one: the values are the strings. */
   spellcheck?: boolean | 'true' | 'false';
-  /** An attribute value is a string; `tabindex="-1"` is the usual spelling. */
+  /** An attribute value is a string; tabindex="-1" is the usual spelling. */
   tabindex?: number | `${number}`;
 }
 
@@ -259,30 +221,9 @@ export declare namespace JSX {
   interface IntrinsicAttributes {}
 
   /**
-   * No `LibraryManagedAttributes` on purpose. A component's accepted attributes
-   * are exactly the props it declares, so that is what hovering a tag shows and
-   * what an error names.
-   *
-   * The alternative was grafting on an `on:${string}` index signature for the
-   * `@event` binding routed to a component's event bus. It would sit on top of
-   * every component's props — in completions and in every error message — to
-   * type a binding whose payload no type here can know. Adding it back is a
-   * deliberate act for whoever first needs it.
-   */
-
-  /**
-   * Every standard tag, taken from the DOM lib rather than listed by hand:
-   * `HTMLElementTagNameMap` and `SVGElementTagNameMap` already are that list,
-   * and reading them keeps this in step with the TypeScript version in use.
-   *
-   * SVG contributes only the names HTML does not already define — `a`,
-   * `script`, `style` and `title` exist in both, and HTML wins. The transform
-   * resolves the same four the same way, so the two agree. Their SVG spelling
-   * still works: it sits inside an `<svg>` in the same template, where the
-   * namespace comes from that root rather than from this map.
-   *
-   * There is deliberately no index signature: `<dvi>` is a typo, not an
-   * element. Custom elements are added by merging — see the module doc above.
+   * Every standard tag, read from the DOM lib rather than listed by hand, with
+   * SVG contributing only the names HTML does not define — the transform
+   * resolves the overlap the same way. No index signature: a typo is a typo.
    */
   interface IntrinsicElements
     extends IntrinsicHTMLElements, IntrinsicSVGElements {

@@ -143,7 +143,7 @@ describe('AttributePart', () => {
     });
 
     it('adds nothing for a falsy value, and does not throw on one', () => {
-      // `classList.add('')` is a SyntaxError, so an empty token must never
+      // classList.add('') is a SyntaxError, so an empty token must never
       // reach it — the same rule the array branch has always applied.
       for (const value of [null, undefined, '', false, 0]) {
         const el = document.createElement('div');

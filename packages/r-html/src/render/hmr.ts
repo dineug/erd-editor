@@ -52,15 +52,9 @@ const hotReplaceComponent = (values: any[]): any[] =>
     : values;
 
 /**
- * The return type is annotated rather than inferred. The class below is
- * anonymous and carries `#private` fields, which TypeScript 6+ refuses to name
- * in a declaration file (TS4094) — and `vite-plugin-dts` responds by skipping
- * the whole module, so `dist/render/hmr.d.ts` silently disappears while
- * `index.d.ts` keeps re-exporting from it. The build stays green; consumers get
- * TS2307.
- *
- * `ComponentPartClass` is what the one caller already narrows the result to, so
- * this widens nothing that was actually reachable.
+ * The return type is annotated rather than inferred: the anonymous class below
+ * carries #private fields, which TypeScript refuses to name in a declaration
+ * file, and vite-plugin-dts answers by skipping the whole module.
  */
 export const mixinHmrComponent = (
   ComponentClass: ComponentPartClass
@@ -97,8 +91,8 @@ export const mixinHmrComponent = (
 };
 
 /**
- * Called from `observable()` for every proxy a component body creates, which
- * only happens while that body is being evaluated — `getCurrentInstance()` is
+ * Called from observable() for every proxy a component body creates, which
+ * only happens while that body is being evaluated — getCurrentInstance() is
  * null everywhere else, including in the event handlers the body closes over.
  */
 export function addHmrObservable(proxy: any) {
@@ -114,19 +108,9 @@ export function addHmrObservable(proxy: any) {
 }
 
 /**
- * Carries state across a hot swap, and is the reason a reload does not reset
- * the component you are editing.
- *
- * `ObservableComponentPart#commit` calls this immediately after evaluating a
- * body, and only when the component function's identity changed — so exactly
- * once per mount and once per swap. The list collected during that evaluation
- * is the new set of observables; the list already stored is the old set, still
- * holding whatever the user did before saving the file. Copying old onto new
- * by creation order is what makes the edit feel local.
- *
- * Pairing by index is the same contract as hooks: reorder or conditionally
- * create your `observable()` calls between saves and the state lands on the
- * wrong object. A full reload is the reset.
+ * Carries state across a hot swap by copying the old observables onto the new
+ * ones in creation order. Pairing by index is the same contract as hooks:
+ * reorder or conditionally create them between saves and the state misses.
  */
 export function hotReloadObservable(component: Part) {
   if (!active) return;

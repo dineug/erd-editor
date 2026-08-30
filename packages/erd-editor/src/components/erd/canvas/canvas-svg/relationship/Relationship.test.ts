@@ -166,7 +166,7 @@ describe('Relationship', () => {
     // enclosed by the bends.
     expect(hit.getAttribute('fill')).toBe('none');
     expect(hit.getAttribute('pointer-events')).toBe('stroke');
-    // `CanvasSvg.styles.ts` strokes the group and lets the shapes inherit it,
+    // CanvasSvg.styles.ts strokes the group and lets the shapes inherit it,
     // so the band needs a paint of its own — a presentation attribute, which
     // applies to the element and therefore beats what it would inherit.
     expect(hit.getAttribute('stroke')).toBe('transparent');

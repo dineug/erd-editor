@@ -3,7 +3,7 @@ import type { CompileMode, Diagnostic } from '@/css';
 export type CSSDiagnosticContext = {
   /** The fully substituted source the finding was made against. */
   source: string;
-  /** The content hash of the template — an opaque handle, and a class only when `mode` is scoped. */
+  /** The content hash of the template — an opaque handle, and a class only when mode is scoped. */
   identifier: string;
   mode: CompileMode;
 };
@@ -14,9 +14,9 @@ export type CSSDiagnosticHandler = (
 ) => void;
 
 /**
- * Read lazily on every compile, so a page can turn diagnostics on with an inline `<script>` before
- * the bundle loads and never has to care where r-html sits in the module graph. `true` installs
- * `consoleDiagnosticHandler`; a function is used as the handler directly.
+ * Read lazily on every compile, so a page can turn diagnostics on with an inline <script> before
+ * the bundle loads and never has to care where r-html sits in the module graph. true installs
+ * consoleDiagnosticHandler; a function is used as the handler directly.
  */
 const AMBIENT_FLAG = '__RHTML_CSS_DIAGNOSTICS__';
 
@@ -35,7 +35,7 @@ export const consoleDiagnosticHandler: CSSDiagnosticHandler = (
     : console.warn(message);
 };
 
-/** `undefined` means nothing called `setCSSDiagnostics`, so the ambient flag decides. */
+/** undefined means nothing called setCSSDiagnostics, so the ambient flag decides. */
 let override: CSSDiagnosticHandler | null | undefined;
 
 function resolveHandler(): CSSDiagnosticHandler | null {
@@ -50,18 +50,9 @@ function resolveHandler(): CSSDiagnosticHandler | null {
 }
 
 /**
- * The compiler collects diagnostics only when this is on, and the collection is not free — it
- * re-walks the element tree and scans the source for an unterminated comment or string.
- *
- * - `true` — report to the console.
- * - a function — report to it.
- * - `false` — off, whatever the ambient flag says.
- * - `null` — forget the override and fall back to the ambient flag.
- *
- * Findings are a property of the source, not of the call, so each distinct compilation reports
- * once: the second render of a template hits the memo and stays silent. That also means switching
- * diagnostics on after a template has already compiled will not re-report it — set the ambient
- * flag instead when the templates evaluate at import time, which is the usual shape.
+ * Turns diagnostic collection on, which is not free: true reports to the
+ * console, a function reports to it, false is off whatever the ambient flag
+ * says, and null forgets the override. Each compilation reports once.
  */
 export function setCSSDiagnostics(
   value: boolean | CSSDiagnosticHandler | null

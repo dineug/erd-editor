@@ -143,7 +143,7 @@ function convertTable(
     },
   });
   const context: TableContext = { source, table: newTable, columns: [] };
-  // `Indexes { (a, b) [pk] }` is DBML's only composite primary key spelling and
+  // Indexes { (a, b) [pk] } is DBML's only composite primary key spelling and
   // it leaves the columns themselves unmarked.
   const primaryKeyNames = new Set(
     source.indexes
@@ -190,7 +190,7 @@ function convertTable(
           widthDataType: textInRange(toWidth(dataType)),
           widthDefault: textInRange(toWidth(defaultValue)),
           // Only the foreign key bit is recomputed on load, so the primary key
-          // one has to be written here as well as into `options`.
+          // one has to be written here as well as into options.
           keys: primaryKey ? ColumnUIKey.primaryKey : 0,
         },
       })
@@ -243,8 +243,8 @@ function convertRelationships(
           return;
         }
 
-        // `>` is the only spelling where the annotated column is the parent's
-        // opposite; `-` puts the foreign key on the column carrying the ref.
+        // > is the only spelling where the annotated column is the parent's
+        // opposite; - puts the foreign key on the column carrying the ref.
         const childIsOwner = inlineRef.operator !== '<';
 
         append(
@@ -330,7 +330,7 @@ function appendRelationship(
   if (relationshipKeys.has(key)) return;
   relationshipKeys.add(key);
 
-  // DBML's `?` markers state the parent's optionality as often as the child's,
+  // DBML's ? markers state the parent's optionality as often as the child's,
   // and the editor has no slot for the former, so the child columns decide.
   const mandatory = childColumns.every(column =>
     bHas(column.options, ColumnOption.notNull)
@@ -387,7 +387,7 @@ function appendJunctionTable(
     '',
     `${left.table.name}_${right.table.name}`
   );
-  // `convertToSchema` has no warning channel, so the note that this is the one
+  // convertToSchema has no warning channel, so the note that this is the one
   // table the importer invented rather than read travels in the diagram.
   const comment = `Junction table inferred from ${left.table.name} <-> ${right.table.name}`;
   const newTable = createTable({
@@ -474,7 +474,7 @@ function convertIndexes(
 ) {
   contexts.forEach(({ source, table, columns }) => {
     source.indexes.forEach(index => {
-      // A `[pk]` index was already projected onto the columns it names.
+      // A [pk] index was already projected onto the columns it names.
       if (index.primaryKey) return;
 
       const newIndex = createIndex({

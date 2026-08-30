@@ -4,7 +4,7 @@ import * as canvasColumnStyles from '@/components/erd/canvas/table/column/Column
 import * as styles from '@/components/visualization/table/column/Column.styles';
 
 /**
- * This module is a leftover stub: it only imports `css` and declares nothing.
+ * This module is a leftover stub: it only imports css and declares nothing.
  * The visualization Column renders with the erd canvas column styles instead,
  * so the assertions below pin the current (empty) public surface.
  */

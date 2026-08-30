@@ -151,8 +151,8 @@ describe('GeneratorCode', () => {
     );
     expect(codeOf(mounted).textContent).toContain('type User {');
     expect(codeOf(mounted).textContent).toContain('userName: String');
-    // `post` is seeded without a column, and a GraphQL type with no field is
-    // written braceless -- `type Post {}` is a syntax error.
+    // post is seeded without a column, and a GraphQL type with no field is
+    // written braceless -- type Post {} is a syntax error.
     expect(codeOf(mounted).textContent).toContain('type Post');
   });
 

@@ -1,6 +1,6 @@
 /**
- * `tokenizer.ts` and `parser.ts` own every DBML syntax concern -- settings are
- * resolved into the flat fields below, so `convert.ts` never sees a token.
+ * tokenizer.ts and parser.ts own every DBML syntax concern -- settings are
+ * resolved into the flat fields below, so convert.ts never sees a token.
  */
 
 export type DBMLEndpoint = {
@@ -10,7 +10,7 @@ export type DBMLEndpoint = {
 };
 
 export type DBMLInlineRef = {
-  /** `-`, `<`, `>` or `<>`, with the `?` optionality markers dropped. */
+  /** -, <, > or <>, with the ? optionality markers dropped. */
   operator: string;
   target: DBMLEndpoint;
 };
@@ -32,7 +32,7 @@ export type DBMLColumn = {
 export type DBMLIndex = {
   name: string;
   unique: boolean;
-  /** `[pk]`, which is DBML's only composite primary key spelling. */
+  /** [pk], which is DBML's only composite primary key spelling. */
   primaryKey: boolean;
   /** Expression columns are dropped, so these are column names only. */
   columnNames: string[];
@@ -56,7 +56,7 @@ export type DBMLRef = {
 export type DBMLModel = {
   tables: DBMLTable[];
   refs: DBMLRef[];
-  /** Keyed by the qualified name, so `s.status` and `status` stay apart. */
+  /** Keyed by the qualified name, so s.status and status stay apart. */
   enums: Record<string, string[]>;
   skipped: string[];
 };

@@ -2,40 +2,13 @@ import { expect, test } from '../support/fixtures';
 
 import type { CssPage } from '../support/CssPage';
 
-/**
- * Q4 — what is the append fast path actually worth in a real engine?
- *
- * In happy-dom the largest batch went 5.01ms -> 1.77ms, but happy-dom models no
- * style invalidation at all: reassigning `adoptedStyleSheets` there is an array
- * write and nothing else. In Chromium every mutation dirties the shadow tree, and
- * that could push the number either way — reassignment could be far worse than
- * happy-dom suggested, or `replaceSync` parsing could swamp the whole difference.
- *
- * This file measures and prints. It deliberately does **not** assert milliseconds:
- * a wall-clock threshold on a shared CI runner fails for reasons that have nothing
- * to do with this repository, and a perf test that cries wolf gets ignored, which
- * is worse than not having one. The only assertion is on the *shape* — cost per
- * template must stay flat as the batch grows, because that is the property the
- * fast path exists to provide and the one a regression would destroy. Quadratic
- * accumulation over an 8x range shows up as 8x per-template growth; the guard
- * trips at 3x.
- *
- * Numbers are wall time from inside the page. `performance.now()` is coarsened to
- * 100µs, so the smallest batch carries the most quantization error — read the
- * table, not the last digit.
- */
-
 const BATCHES = [100, 200, 400, 800] as const;
 /** Quadratic over BATCHES would be ~8x. Linear is ~1x. */
 const GROWTH_LIMIT = 3;
 /**
- * Each batch is measured this many times and the **fastest** run is kept. A
- * descheduled worker or a GC pause can only ever make a run slower, so the minimum
- * is the sample least contaminated by the machine — and taking it is what stops
- * the shape guard from failing on a busy CI box. It does not weaken the guard: the
- * batches are run in ascending order, so the largest one is still measured with
- * the most templates already registered, which is where superlinear accumulation
- * would show up.
+ * Each batch is measured this many times and the fastest run kept, because a
+ * descheduled worker or a GC pause can only make a run slower. Batches still run
+ * ascending, so the largest is measured with the most templates registered.
  */
 const REPEATS = 3;
 
@@ -146,16 +119,9 @@ test.describe('registration cost', () => {
     test.setTimeout(180_000);
     await mountHosts(cssPage, 8);
 
-    // The control. `benchmarkRegister` measures compile + hash + replaceSync +
-    // adopt together, so the adopt term is not separable from it — and the
-    // question is precisely whether the parsing swamps the constant. This runs the
-    // same number of pre-built sheets onto the same mounted hosts through the raw
-    // platform call, which isolates the one line the fast path changed.
-    //
-    // `flush` decides whether the style recalc each mutation invalidated is paid
-    // inside the window. Real startup registers in a burst and recalculates once,
-    // which is the unflushed row; flushing every iteration is the pessimistic
-    // bound where every registration is immediately observed.
+    // The control: pre-built sheets onto the same mounted hosts through the raw
+    // platform call, isolating the one line the fast path changed. flush decides
+    // whether each mutation's style recalc is paid inside the window.
     const rows: Row[] = [];
     await cssPage.benchmarkAdopt({ count: 100, mode: 'push' });
 

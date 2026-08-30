@@ -6,7 +6,7 @@ export const TextFontFamily =
 export const CodeFontFamily =
   "'Menlo', 'Consolas', 'Bitstream Vera Sans Mono', monospace, 'Apple Color Emoji', 'Segoe UI Emoji'" as const;
 
-/** Global, not scoped: `:host` is the shadow host, which no component class matches. */
+/** Global, not scoped: :host is the shadow host, which no component class matches. */
 export const fontsStyle = css.global`
   :host {
     --text-font-family: ${TextFontFamily};

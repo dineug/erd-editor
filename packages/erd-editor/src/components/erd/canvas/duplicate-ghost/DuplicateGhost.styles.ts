@@ -8,7 +8,7 @@ export const ghostLayer = css`
   opacity: 0.6;
 `;
 
-// `display: contents` generates no box, so the entity inside keeps resolving its
+// display: contents generates no box, so the entity inside keeps resolving its
 // absolute position against the canvas root.
 export const ghostItem = css`
   display: contents;

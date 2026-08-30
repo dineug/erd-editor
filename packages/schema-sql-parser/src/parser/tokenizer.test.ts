@@ -125,7 +125,7 @@ describe('tokenizer', () => {
       ]);
     });
 
-    // An unpaired `]` used to fall through to the bare-string branch, which
+    // An unpaired ] used to fall through to the bare-string branch, which
     // pushed an empty token without advancing: the loop never ended.
     it('emits a token for an unpaired closing bracket and moves on', () => {
       expect(pairs(tokenizer(']'))).toEqual([['rightBracket', ']']]);

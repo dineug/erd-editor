@@ -1,13 +1,9 @@
 import { css } from '@dineug/r-html';
 
 /**
- * Vendored from https://github.com/easylogic/colorpicker.
- *
- * Global, not scoped. The picker's markup is built by the upstream library at runtime, outside
- * anything r-html renders, so there is no element here to hang a generated component class on —
- * every selector below matches by the literal class names that library writes
- * (`.easylogic-colorpicker`, `.colorsets-contextmenu`), and scoping them would rename them out
- * from under it. Last in `setGlobalStyleOrder`, which is where it sat when it was a tree `<style>`.
+ * Vendored from https://github.com/easylogic/colorpicker. Global, not scoped:
+ * the upstream library builds its own markup at runtime, so every selector below
+ * matches literal class names that scoping would rename out from under it.
  */
 export const colorPickerStyle = css.global`
   /* easylogic-colorpicker */

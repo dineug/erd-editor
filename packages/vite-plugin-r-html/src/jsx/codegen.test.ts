@@ -196,7 +196,7 @@ describe('escaping', () => {
   });
 
   it('escapes ${ in a string attribute, the one place JSX lets it through', () => {
-    // JSX text cannot contain `${` — `{` always opens an expression container —
+    // JSX text cannot contain ${ — { always opens an expression container —
     // but a string attribute value is raw, so this is the real injection path.
     expect(expr('<div title="${danger}" />')).toBe(
       'const a = __rHtml`<div title="\\${danger}" />`;'
@@ -204,7 +204,7 @@ describe('escaping', () => {
   });
 
   it('leaves a trailing $ before an interpolation alone', () => {
-    // `$` + `${price}` is two tokens to the template scanner, not `$${`.
+    // $ + ${price} is two tokens to the template scanner, not $${.
     expect(expr('<p>cost {price}</p>')).toBe(
       'const a = __rHtml`<p>cost ${price}</p>`;'
     );

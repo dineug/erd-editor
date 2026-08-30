@@ -12,7 +12,7 @@ const action = (type: string, tags?: number): AnyAction => ({
   ...(tags === undefined ? {} : { tags }),
 });
 
-// `table.add` mutates the document, so it is blocked in readonly mode.
+// table.add mutates the document, so it is blocked in readonly mode.
 const BLOCKED = 'table.add';
 // zoom / scroll style actions are deliberately excluded from the ignore list.
 const ALLOWED = 'settings.changeZoomLevel';

@@ -144,7 +144,7 @@ describe('schema-graphql-parser/convert hand-written SDL', () => {
 
     expect(email.ui.widthDataType).toBe('varchar(255)'.length * 10);
     expect(email.ui.widthComment).toBe('The login address.'.length * 10);
-    // `textInRange` floors every width at the column minimum.
+    // textInRange floors every width at the column minimum.
     expect(email.ui.widthName).toBe(60);
     expect(tableByName(schema, 'User').ui.widthName).toBe(60);
   });

@@ -109,7 +109,7 @@ describe('getRelationshipPath', () => {
 
     it('turns at right angles on the y axis, with the corners cut', () => {
       // Two turns at the midpoint, each drawn as a 45-degree cut of
-      // `ROUTE_CHAMFER` either side of the corner.
+      // ROUTE_CHAMFER either side of the corner.
       expect(path.path.d()).toEqual([
         [
           { x: 100, y: 150 },

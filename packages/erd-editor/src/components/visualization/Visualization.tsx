@@ -102,8 +102,8 @@ const Visualization: FC<VisualizationProps> = (props, ctx) => {
   });
 
   return () => {
-    // Read once into a const so the `showPreview` guard actually narrows it.
-    // `state` is an observable proxy, and a guard on one of its properties does
+    // Read once into a const so the showPreview guard actually narrows it.
+    // state is an observable proxy, and a guard on one of its properties does
     // not survive to the next read of that property.
     const table = state.table;
     const showPreview = table && !state.drag && state.preview;

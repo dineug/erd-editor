@@ -94,8 +94,8 @@ describe('ColumnDataType.styles', () => {
   });
 
   it('reveals the Tab kbd badge only on the selected row', () => {
-    // The compiler emits child combinators unspaced (`._x>.kbd`), which is what
-    // `adoptedStyleSheets` echoes back.
+    // The compiler emits child combinators unspaced (._x>.kbd), which is what
+    // adoptedStyleSheets echoes back.
     expect(ruleTextOf(`.${styles.hintItem}>.kbd`)).toContain(
       'visibility: hidden'
     );

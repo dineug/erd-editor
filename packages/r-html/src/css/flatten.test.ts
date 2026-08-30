@@ -6,10 +6,9 @@ import { FlatRule, flatten, Middleware } from '@/css/flatten';
 import { SCOPE } from '@/css/selector';
 
 /**
- * `flatten()` is the layer that owns everything stylis does not do for us: the condition stack, the
- * two discard conditions, the statement at-rule drop, the root declaration merge, and the plugin
- * seam. Selector algebra is deliberately not tested here — it belongs to stylis and is pinned by
- * `compile.test.ts`.
+ * flatten() owns everything stylis does not: the condition stack, the discard
+ * conditions, the statement at-rule drop, the root declaration merge and the
+ * plugin seam. Selector algebra belongs to stylis and to compile.test.ts.
  */
 
 const flat = (
@@ -61,7 +60,7 @@ describe('condition stack', () => {
   });
 
   it('lifts a nested at-rule out of the rule it was written in', () => {
-    // stylis hoists: the `@media` is a sibling of `.c`, and the selector context survives it.
+    // stylis hoists: the @media is a sibling of .c, and the selector context survives it.
     expect(flat('.c{color:red;@media m{&:hover{color:blue}}}')).toEqual([
       {
         conditions: [],
@@ -95,9 +94,9 @@ describe('R4-A — a RULESET with no selector is discarded', () => {
   });
 
   it('drops the empty-string wrapper the global seed produces inside a conditional at-rule', () => {
-    // In global mode `rules` is `['']`, so the wrapper stylis synthesizes for bare declarations
-    // carries `props: ['']` — not `props: []`. Testing `props.length === 0` alone would emit
-    // `@media m{{color:red;}}`.
+    // In global mode rules is [''], so the wrapper stylis synthesizes for bare declarations
+    // carries props: [''] — not props: []. Testing props.length === 0 alone would emit
+    // @media m{{color:red;}}.
     expect(global('@media m{color:red}')).toEqual([]);
     expect(global('.a{color:red}')).toEqual([
       { conditions: [], selectors: ['.a'], declarations: ['color:red'] },
@@ -105,7 +104,7 @@ describe('R4-A — a RULESET with no selector is discarded', () => {
   });
 
   it('drops the empty members of a mixed seed rather than the whole rule', () => {
-    // A seed of `['', SCOPE]` is not something the product builds, but it is what separates
+    // A seed of ['', SCOPE] is not something the product builds, but it is what separates
     // "filter the empty selectors" from "drop the rule if any selector is empty".
     expect(flat('color:red', { rules: ['', SCOPE] })).toEqual([
       { conditions: [], selectors: [SCOPE], declarations: ['color:red'] },
@@ -139,13 +138,13 @@ describe('R4-B — a rule with no declarations and no body is discarded, bottom-
   });
 
   it('propagates the discard upwards through two levels of at-rule', () => {
-    // Emptiness has to be evaluated after the children, not before: `@media a` looks non-empty until
-    // `@media b` has been flattened and thrown away.
+    // Emptiness has to be evaluated after the children, not before: @media a looks non-empty until
+    // @media b has been flattened and thrown away.
     expect(flat('@media a{@media b{.c{}}}')).toEqual([]);
   });
 
   it('removes the childless ghost wrapper a nested conditional at-rule leaves behind', () => {
-    // `@media a{@media b{…}}` parses to `[@media a [rule props=[SCOPE] children=[]] [@media b …]]`.
+    // @media a{@media b{…}} parses to [@media a [rule props=[SCOPE] children=[]] [@media b …]].
     // The ghost carries a selector but no declarations, so condition B is what removes it.
     expect(flat('@media a{@media b{color:red}}')).toEqual([
       {
@@ -207,8 +206,8 @@ describe('R7 — the two classes of at-rule', () => {
   );
 
   it('a `@c…` that is not `@container` is not conditional', () => {
-    // stylis lets `case 99` fall through into the `@layer` test, so `@counter-style` is measured
-    // against `charat(2) === 'a'` and comes out non-conditional. We reproduce that, not tidy it.
+    // stylis lets case 99 fall through into the @layer test, so @counter-style is measured
+    // against charat(2) === 'a' and comes out non-conditional. We reproduce that, not tidy it.
     expect(flat('@counter-style x{system:cyclic}')[0].prelude).toBe(
       '@counter-style x'
     );
@@ -285,8 +284,8 @@ describe('R8 — statement at-rules are dropped', () => {
   });
 
   it('keeps a `@layer` that does have a body', () => {
-    // The test is "no children", not the at-rule name: `@layer a;` and `@layer a{…}` are the same
-    // `type` and only differ in whether a body was parsed.
+    // The test is "no children", not the at-rule name: @layer a; and @layer a{…} are the same
+    // type and only differ in whether a body was parsed.
     expect(flat('@layer a{.b{color:red}}')).toEqual([
       {
         conditions: ['@layer a'],
@@ -362,8 +361,8 @@ describe('R9 — root declarations merge to the front of their condition context
   });
 
   it('keeps a custom property whose value contains braces intact', () => {
-    // `--x:{a:b}` splits into `props: '--x:{a'` / `children: 'b}'`, so the text has to come from
-    // `Element.value`, not from `props + ':' + children`.
+    // --x:{a:b} splits into props: '--x:{a' / children: 'b}', so the text has to come from
+    // Element.value, not from props + ':' + children.
     expect(flat('.a{--x:{a:b};color:red}')[0].declarations).toEqual([
       '--x:{a:b}',
       'color:red',
@@ -447,7 +446,7 @@ describe('the middleware seam', () => {
 
   it('re-establishes the emittable invariant after the plugins have run', () => {
     // The discards run before the seam, so a plugin can hand back a rule with nothing between the
-    // braces. Left alone that serializes to `.S .a{;}`.
+    // braces. Left alone that serializes to .S .a{;}.
     const emptied = flat(source, {
       plugins: [rule => ({ ...rule, declarations: [] })],
     });
@@ -458,7 +457,7 @@ describe('the middleware seam', () => {
 
   it('re-establishes it for the head as well, not just the body', () => {
     // The other half of the same hole, and the worse one: a rule with no selectors and no prelude
-    // serializes to `{color:red;}` — the selectorless output R4-A exists to keep out, and the only
+    // serializes to {color:red;} — the selectorless output R4-A exists to keep out, and the only
     // discard whose escape makes the whole sheet ill-formed rather than merely useless.
     const headless = flat(source, {
       plugins: [rule => ({ ...rule, selectors: [] })],
@@ -478,7 +477,7 @@ describe('the middleware seam', () => {
   });
 
   it('keeps a rule whose head is a prelude rather than selectors', () => {
-    // The guard above must not swallow at-rule leaves, which legitimately carry `selectors: []`.
+    // The guard above must not swallow at-rule leaves, which legitimately carry selectors: [].
     expect(emit(flat('@font-face{src:x}', { plugins: [rule => rule] }))).toBe(
       '@font-face{src:x;}'
     );
@@ -508,8 +507,8 @@ describe('the middleware seam', () => {
 describe('aliasing', () => {
   it('never hands back the caller`s seed array, and never mutates it', () => {
     const seed = [SCOPE];
-    // The wrapper stylis synthesizes for a conditional at-rule is handed `rules` itself as its
-    // `props`, so an in-place substitution here would poison the parent frame.
+    // The wrapper stylis synthesizes for a conditional at-rule is handed rules itself as its
+    // props, so an in-place substitution here would poison the parent frame.
     const rules = flatten(compile('@media m{color:red}', { rules: seed }), {
       rules: seed,
     });

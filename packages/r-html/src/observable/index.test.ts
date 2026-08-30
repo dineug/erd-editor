@@ -343,7 +343,7 @@ describe('observable', () => {
       expect(runs).toBe(1);
 
       // NOTE: actual implementation behaviour - index writes on arrays are not
-      // notified because `isEffect` only honours `p === 'length'` for arrays.
+      // notified because isEffect only honours p === 'length' for arrays.
       proxy[0] = 99;
       await flush();
 

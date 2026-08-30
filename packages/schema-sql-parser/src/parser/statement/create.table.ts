@@ -66,34 +66,33 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
   };
 
   // The dispatch loop only reaches here where the header matched, but this
-  // parser is exported: a zero span would leave `$pos` on CREATE and spin.
+  // parser is exported: a zero span would leave $pos on CREATE and spin.
   const header = createTable($pos.value);
   $pos.value += header === 0 ? 2 : header;
   let hasColumns = false;
-  // The column list is the group that follows the table name, optionally
-  // across a clustering clause. A later one belongs to a table option --
-  // `file_format = (...)`, `TBLPROPERTIES (...)` -- and reading it as columns
-  // invents a table out of an external or CTAS definition that declares none.
+  // The column list is the group following the table name, optionally across a
+  // clustering clause. A later group belongs to a table option, and reading it
+  // as columns invents a table out of a definition that declares none.
   let atColumnList = true;
 
   while (isToken() && !newStatement($pos.value)) {
     let token = tokens[$pos.value];
 
     // The terminator ends the statement: without it the table options loop
-    // runs on into whatever follows, and a `COMMENT ON TABLE` right after
-    // reads back as the table comment `ON`.
+    // runs on into whatever follows, and a COMMENT ON TABLE right after
+    // reads back as the table comment ON.
     if (isSemicolon($pos.value)) {
       $pos.value++;
       break;
     }
 
     // Snowflake writes the clustering key between the table name and the column
-    // list -- `cluster by LINEAR(L_SHIPDATE)(`. Left unclaimed, its key list is
+    // list -- cluster by LINEAR(L_SHIPDATE)(. Left unclaimed, its key list is
     // read as the column list and every real column is lost.
     if (ast.name && clusterBy($pos.value)) {
       $pos.value += 2;
 
-      // `LINEAR(` is a clustering function; a bare word is not, and eating it
+      // LINEAR( is a clustering function; a bare word is not, and eating it
       // would leave the column list to be read as its argument list.
       if (isString($pos.value) && isLeftParent($pos.value + 1)) {
         $pos.value++;
@@ -124,7 +123,7 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
     if (isLeftParent($pos.value)) {
       $pos.value++;
 
-      // Only the first group is the column list. A later one — `WITH (...)`,
+      // Only the first group is the column list. A later one — WITH (...),
       // or a paren the tokenizer found outside a quote — would otherwise
       // replace everything the table already has.
       if (hasColumns || !atColumnList) {
@@ -158,7 +157,7 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
       atColumnList = true;
       $pos.value++;
 
-      // `catalog.schema.table` is Unity Catalog's standard shape, and one
+      // catalog.schema.table is Unity Catalog's standard shape, and one
       // period was all this consumed -- the middle segment became the name
       // and the last was left to be read as something else.
       while (isPeriod($pos.value)) {
@@ -178,7 +177,7 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
     if (isComment($pos.value)) {
       token = tokens[++$pos.value];
 
-      // MySQL writes the table option as `COMMENT='a'`.
+      // MySQL writes the table option as COMMENT='a'.
       if (isEqual($pos.value)) {
         token = tokens[++$pos.value];
       }
@@ -285,8 +284,8 @@ function createTableColumnsParser(
     }
 
     if (isLeftParent($pos.value)) {
-      // Depth matters: `GENERATED ALWAYS AS (CAST(ts AS DATE))` closes twice,
-      // and stopping at the first `)` left the rest of the column list being
+      // Depth matters: GENERATED ALWAYS AS (CAST(ts AS DATE)) closes twice,
+      // and stopping at the first ) left the rest of the column list being
       // read as arguments -- every column after it vanished.
       let depth = 0;
 
@@ -487,7 +486,7 @@ function createTableColumnsParser(
       continue;
     }
 
-    // `CHARACTER SET x` and `COLLATE y` are column attributes, but CHARACTER,
+    // CHARACTER SET x and COLLATE y are column attributes, but CHARACTER,
     // SET and some collation names are data types — left alone they overwrite
     // the one already parsed.
     if (characterSet($pos.value)) {
@@ -532,7 +531,7 @@ function createTableColumnsParser(
           depth--;
         } else if (depth) {
           // A structured type spells its fields as words -- Snowflake's
-          // `OBJECT(city VARCHAR)`. Gluing them together loses the field.
+          // OBJECT(city VARCHAR). Gluing them together loses the field.
           value +=
             isString($pos.value) &&
             (isString($pos.value - 1) || isRightParent($pos.value - 1))
@@ -645,7 +644,7 @@ export function parserForeignKeyParser(
         foreignKey.refTableName = token.value;
         $pos.value++;
 
-        // A three-part `REFERENCES` left a period unconsumed, so the column
+        // A three-part REFERENCES left a period unconsumed, so the column
         // list was never reached: the whole key was dropped and the trailing
         // segment became a column of the table being defined.
         while (isPeriod($pos.value)) {

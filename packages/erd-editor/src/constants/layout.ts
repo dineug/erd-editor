@@ -52,22 +52,15 @@ export const TOOLBAR_HEIGHT = 30;
 export const DIFF_TREE_WIDTH = 200;
 
 /**
- * How thick a relationship connector is drawn.
- *
- * Down from 3: the thick line ate the gap between neighbouring tables and made a
- * busy diagram read as a mass of strokes rather than as connections. A whole
- * number rather than 1.5, so the stroke lands on pixel boundaries instead of
- * being spread across two rows at partial alpha on a 1x display.
+ * How thick a relationship connector is drawn. A whole number rather than a
+ * fraction, so the stroke lands on pixel boundaries instead of spreading across
+ * two rows at partial alpha on a 1x display.
  */
 export const RELATIONSHIP_STROKE_WIDTH = 2;
 
 /**
- * The width of the invisible band that catches the pointer for a connector.
- *
- * Hit-testing an SVG path follows its painted stroke, so halving the stroke
- * would otherwise halve the target the user has to hit to hover a relationship
- * or open its context menu. `NUDGE_GAP` is 10, so a band this wide stays clear
- * of the neighbouring corridor except where the router had to fall back to a
- * narrower gap.
+ * The invisible band that catches the pointer for a connector, because
+ * hit-testing follows the painted stroke. Narrower than NUDGE_GAP, so it stays
+ * clear of the neighbouring corridor at the router's usual separation.
  */
 export const RELATIONSHIP_HIT_STROKE_WIDTH = 8;

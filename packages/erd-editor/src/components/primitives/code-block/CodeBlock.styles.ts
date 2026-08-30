@@ -1,6 +1,6 @@
 import { css } from '@dineug/r-html';
 
-/** Spliced into both layers: a textarea inherits none of `:host`'s typography, the preview does. */
+/** Spliced into both layers: a textarea inherits none of :host's typography, the preview does. */
 const layer = css`
   padding: 16px;
   font-family: var(--code-font-family);
@@ -55,7 +55,7 @@ export const root = css`
   }
 `;
 
-/** Out of flow, the root loses its content height and collapses to `min-height`. */
+/** Out of flow, the root loses its content height and collapses to min-height. */
 export const scroller = css`
   width: 100%;
   height: 100%;

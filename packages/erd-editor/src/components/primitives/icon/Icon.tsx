@@ -30,12 +30,12 @@ export type IconProps = {
 const text = (value: string | number | undefined) =>
   value === undefined ? undefined : String(value);
 
-// An omitted attribute commits as `''`, not as absent, so a child has to spell
+// An omitted attribute commits as '', not as absent, so a child has to spell
 // out the root's own value to inherit it.
 const paint = (value: string | number | undefined, inherited: string) =>
   value === undefined ? inherited : String(value);
 
-// Spelled out rather than spread: `SpreadPart` commits with `Reflect.set`, and
+// Spelled out rather than spread: SpreadPart commits with Reflect.set, and
 // an SVG geometry attribute is not a DOM property.
 const shape = ([tag, attrs]: IconNodeChild) => {
   const fill = paint(attrs.fill, FILL);

@@ -4,10 +4,8 @@ import { AppPage, LivePage } from '../support/AppPage';
 
 /**
  * The end of the collaboration path a unit test cannot reach: two real browser
- * contexts, a real `RTCPeerConnection`, and the trystero mesh in between.
- *
- * Each context gets its own storage, so the guest genuinely starts with nothing
- * and has to receive the document over the wire.
+ * contexts, a real RTCPeerConnection and the trystero mesh between them. Each
+ * has its own storage, so the guest starts with nothing.
  */
 test.describe('live collaboration over the trystero mesh', () => {
   test('hands a guest the host document and then keeps both in step', async ({

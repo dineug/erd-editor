@@ -130,7 +130,7 @@ function createFixture() {
   return { state, users, posts, postsIndex, usersIndex };
 }
 
-/** Table with `count` primary key columns plus one plain column. */
+/** Table with count primary key columns plus one plain column. */
 function seedParentChild(
   state: RootState,
   {

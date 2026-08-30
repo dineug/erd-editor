@@ -250,7 +250,7 @@ const SCALAR_NAMES = [
   'Void',
 ];
 
-/** The name a hint list would carry, with any `(...)` argument list dropped. */
+/** The name a hint list would carry, with any (...) argument list dropped. */
 function toHintName(dataType: string): string {
   return dataType
     .replace(/\([^)]*\)/g, '')

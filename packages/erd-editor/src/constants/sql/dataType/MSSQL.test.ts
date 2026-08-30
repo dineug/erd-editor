@@ -4,7 +4,7 @@ import { DataTypeHint, PrimitiveType } from '@/constants/sql/dataType';
 import { MSSQLTypes } from '@/constants/sql/dataType/MSSQL';
 
 /**
- * Mirrors `getPrimitiveType` in `@/utils/generator-code/utils`: among the hints
+ * Mirrors getPrimitiveType in @/utils/generator-code/utils: among the hints
  * whose lowercased name prefixes the lowercased data type, the longest wins.
  */
 function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
@@ -108,7 +108,7 @@ describe('MSSQLTypes', () => {
   });
 
   it('classifies numeric as float and decimal as decimal', () => {
-    // Unlike every other vendor list, MSSQL maps `numeric` to float rather
+    // Unlike every other vendor list, MSSQL maps numeric to float rather
     // than decimal.
     expect(resolvePrimitiveType('numeric(18, 0)')).toBe('float');
     expect(resolvePrimitiveType('decimal(18, 0)')).toBe('decimal');
@@ -181,12 +181,12 @@ describe('MSSQLTypes', () => {
   });
 
   it('resolves every datetime variant to dateTime despite the shorter date prefix', () => {
-    // `date` comes first, but the longest matching hint wins.
+    // date comes first, but the longest matching hint wins.
     expect(resolvePrimitiveType('datetime')).toBe('dateTime');
     expect(resolvePrimitiveType('datetime2(7)')).toBe('dateTime');
     expect(resolvePrimitiveType('datetimeoffset')).toBe('dateTime');
     expect(resolvePrimitiveType('smalldatetime')).toBe('dateTime');
-    // `date` itself keeps its own primitive type.
+    // date itself keeps its own primitive type.
     expect(resolvePrimitiveType('date')).toBe('date');
 
     const extendingAnEarlierName = MSSQLTypes.filter((hint, index) =>

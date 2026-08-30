@@ -64,9 +64,9 @@ const hover = (el: Element, clientX = 0, clientY = 0) =>
   el.dispatchEvent(new MouseEvent('mouseenter', { clientX, clientY }));
 
 /**
- * happy-dom's `createSVGPoint()` has no `matrixTransform`, the branch
- * `d3-selection`'s `pointer()` takes for svg nodes. Give d3-drag enough shape
- * to compute a position so its `start` / `end` events fire.
+ * happy-dom's createSVGPoint() has no matrixTransform, the branch
+ * d3-selection's pointer() takes for svg nodes. Give d3-drag enough shape
+ * to compute a position so its start / end events fire.
  */
 function stubSvgGeometry() {
   const matrix = { inverse: () => matrix };

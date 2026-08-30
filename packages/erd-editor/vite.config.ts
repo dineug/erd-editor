@@ -22,7 +22,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(manifest.version),
   },
   build: {
-    // 공개 라이브러리의 하한은 한 곳에서 온다 — 루트 `build-target.ts`.
+    // 공개 라이브러리의 하한은 한 곳에서 온다 — 루트 build-target.ts.
     target: BROWSER_TARGET,
     lib: {
       entry: {
@@ -42,11 +42,9 @@ export default defineConfig({
       '@': join(import.meta.dirname, 'src'),
     },
   },
-  // Task metadata is resolved before workspace dependencies are built on a
-  // clean checkout. Loading r-html's generated entry here would make that
-  // graph impossible to create, so only the workspace plugin is deferred.
-  // `dts` stays eager because Storybook removes it from its config copy — see
-  // `.storybook/main.ts`.
+  // Task metadata resolves before workspace dependencies are built on a clean
+  // checkout, so loading r-html's generated entry here would make that graph
+  // impossible. dts stays eager because Storybook removes it from its copy.
   plugins: [
     lazyPlugins(async () => {
       const { rHtml } = await import(rHtmlPackage);
@@ -55,7 +53,7 @@ export default defineConfig({
     dts({ tsconfigPath: './tsconfig.build.json' }),
   ],
   server: {
-    // The Playwright `webServer` starts this same command; opening a browser
+    // The Playwright webServer starts this same command; opening a browser
     // there would race the run.
     open: !process.env.E2E,
   },

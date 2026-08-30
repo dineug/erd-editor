@@ -42,8 +42,8 @@ export type CreateEntityActions = {
   memoIds: string[];
 };
 
-// `changeColor`/`memo.resize` are in `pushStreamHistoryMap` and would land as a
-// second, debounced history command, so colour and size ride the `add` payload.
+// changeColor/memo.resize are in pushStreamHistoryMap and would land as a
+// second, debounced history command, so colour and size ride the add payload.
 export function toCreateEntityActions(
   { tables, columns, memos }: CreateEntityInput,
   placement: Map<string, PlacementPoint>

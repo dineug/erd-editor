@@ -6,7 +6,7 @@ import { FlatRule, flatten } from '@/css/flatten';
 import { SCOPE } from '@/css/selector';
 
 /**
- * `emit()` defines the canonical text — the string that gets hashed — so every assertion here is a
+ * emit() defines the canonical text — the string that gets hashed — so every assertion here is a
  * literal. Anything it is allowed to vary on would become a way for two identical stylesheets to get
  * two identifiers.
  */

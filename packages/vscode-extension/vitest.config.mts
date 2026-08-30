@@ -5,10 +5,9 @@ import { defineConfig } from 'vite-plus';
 export default defineConfig({
   resolve: {
     alias: {
-      // `vite.config.ts` marks `vscode` external, so the
-      // module does not exist outside the Extension Host. The unit suite
-      // resolves it to an in-memory stub; the real API is exercised by the
-      // `@vscode/test-cli` suite under `test/integration/`.
+      // vite.config.ts marks vscode external, so the module does not exist
+      // outside the Extension Host. The unit suite resolves it to a stub; the
+      // real API is exercised by the suite under test/integration/.
       vscode: join(import.meta.dirname, 'test/mocks/vscode.ts'),
       '@': join(import.meta.dirname, 'src'),
     },

@@ -43,14 +43,13 @@ export function getPrimitiveType(
   database: number
 ): PrimitiveType {
   // Drop the argument list so a name whose words wrap one still matches:
-  // `interval day(2) to second(6)` has to reach `interval day to second`.
+  // interval day(2) to second(6) has to reach interval day to second.
   const value = dataType.toLocaleLowerCase().replace(ARGUMENTS, '');
   let matched: DataTypeHint | undefined;
 
-  // The hint lists are alphabetical, so a shorter name (DATE, int, time) can
-  // prefix a longer one (DATETIME, int8, timestamp). Pick the longest match,
-  // and only where the name ends on a word boundary -- otherwise Oracle's int
-  // claims `interval day to second` and PostgreSQL's int4 claims `int4range`.
+  // The hint lists are alphabetical, so a shorter name can prefix a longer one.
+  // Pick the longest match, and only where the name ends on a word boundary, or
+  // Oracle's int claims interval day to second and int4 claims int4range.
   for (const dataTypeHint of getDataTypeHints(database)) {
     const name = dataTypeHint.name.toLocaleLowerCase();
     if (

@@ -50,8 +50,8 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
   };
 
   /*
-   * The overlay refuses edits here rather than through `readonly`, which Chrome paints no caret in.
-   * `input` covers the composition paths `beforeinput` cannot cancel.
+   * The overlay refuses edits here rather than through readonly, which Chrome paints no caret in.
+   * input covers the composition paths beforeinput cannot cancel.
    */
   const handleBeforeinput = (event: Event) => {
     event.preventDefault();
@@ -66,7 +66,7 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
     }
   };
 
-  // the editor root turns a `paste` that reaches it into a diagram-level action
+  // the editor root turns a paste that reaches it into a diagram-level action
   const handlePaste = (event: ClipboardEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -92,7 +92,7 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
   const setBackgroundColor = () => {
     nextTick(() => {
       state.backgroundColor = getBackgroundColor() || '';
-      // shiki ships `tabindex="0"`, a tab stop inside the aria-hidden preview
+      // shiki ships tabindex="0", a tab stop inside the aria-hidden preview
       getPre()?.removeAttribute('tabindex');
     });
   };

@@ -83,15 +83,15 @@ async function waitForTick(svg: ReturnType<typeof createVisualization>) {
 }
 
 /**
- * happy-dom's `createSVGPoint()` has no `matrixTransform`, which is the branch
- * `d3-selection`'s `pointer()` takes for svg nodes. Give it just enough shape
+ * happy-dom's createSVGPoint() has no matrixTransform, which is the branch
+ * d3-selection's pointer() takes for svg nodes. Give it just enough shape
  * for d3-drag to compute a position.
  */
 let pointerAt: [number, number] = [0, 0];
 
 function stubSvgGeometry() {
   const matrix = { inverse: () => matrix };
-  // d3-drag only binds its touch listeners to `"ontouchstart" in node` elements.
+  // d3-drag only binds its touch listeners to "ontouchstart" in node elements.
   Object.defineProperty(SVGCircleElement.prototype, 'ontouchstart', {
     configurable: true,
     writable: true,
@@ -121,7 +121,7 @@ const mouse = (
 
 type TouchLike = { identifier: number; clientX: number; clientY: number };
 
-/** happy-dom has no TouchEvent; d3-drag only reads `changedTouches`. */
+/** happy-dom has no TouchEvent; d3-drag only reads changedTouches. */
 function touch(type: string, touches: TouchLike[]): Event {
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.defineProperty(event, 'changedTouches', { value: touches });

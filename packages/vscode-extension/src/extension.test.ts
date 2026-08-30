@@ -35,10 +35,9 @@ const COMMAND_IDS = [
 ];
 
 /**
- * All four commands are contributed to `editor/title`, and VSCode invokes an
- * editor title action with the resource uri *plus* its own editor group context
- * object — never a `ViewColumn`. This is what the unwrapped registrations of
- * `vuerd.showSource` / `vuerd.showEditor` end up passing along as `viewColumn`.
+ * All four commands are contributed to editor/title, where VSCode passes the
+ * resource uri plus its own editor group context object and never a ViewColumn.
+ * An unwrapped registration passes that object along as viewColumn.
  */
 const EDITOR_TITLE_CONTEXT = { groupId: 1, editorIndex: 0 };
 
@@ -48,7 +47,7 @@ function registeredCommandIds() {
   return commands.registerCommand.mock.calls.map(([command]) => command).sort();
 }
 
-/** Runs `activate` and hands back the callback registered under `id`. */
+/** Runs activate and hands back the callback registered under id. */
 function activateAndGetCommand(id: string) {
   activate(createExtensionContext() as any);
   const entry = commands.registerCommand.mock.calls.find(
@@ -135,10 +134,9 @@ describe('extension', () => {
     it('backs every menu entry, alt action included, with a registered handler', () => {
       activate(createExtensionContext() as any);
 
-      // Every command is hidden from the palette (`when: false`), so a menu
-      // entry is the only way to reach one: an id here with no handler is an
-      // action that silently does nothing, and a handler no menu names is
-      // unreachable.
+      // Every command is hidden from the palette, so a menu entry is the only
+      // way to reach one: an id with no handler silently does nothing, and a
+      // handler no menu names is unreachable.
       const menuCommandIds = Object.values(manifest.contributes.menus)
         .flat()
         .flatMap(item =>
@@ -162,9 +160,9 @@ describe('extension', () => {
     });
 
     it('ignores the extra arguments VSCode passes from the editor title bar', () => {
-      // The command is contributed to `editor/title`, where VSCode calls the
-      // handler with more than the resource uri. Registering `showSource` by
-      // reference would bind that second argument to `viewColumn`.
+      // The command is contributed to editor/title, where VSCode calls the
+      // handler with more than the resource uri. Registering showSource by
+      // reference would bind that second argument to viewColumn.
       activateAndGetCommand('vuerd.showSource')(uri, EDITOR_TITLE_CONTEXT);
 
       expect(window.showTextDocument).toHaveBeenCalledWith(uri, {
@@ -219,7 +217,7 @@ describe('extension', () => {
     });
 
     it('ignores the extra arguments VSCode passes from the editor title bar', () => {
-      // Same contract as `vuerd.showSource`: only the uri may reach the handler.
+      // Same contract as vuerd.showSource: only the uri may reach the handler.
       activateAndGetCommand('vuerd.showEditor')(uri, EDITOR_TITLE_CONTEXT);
 
       expect(commands.executeCommand).toHaveBeenCalledWith(

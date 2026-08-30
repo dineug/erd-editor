@@ -56,10 +56,9 @@ const replicationSchemaEntityAtom = atom(
       })
     );
 
-    // Peers get the unfiltered stream — shared presence is part of the session
-    // even though they are noise for the cross-tab replica. Only the tab holding
-    // the leadership lock owns the peer connections, so everyone else has to hand
-    // the batch over the bridge.
+    // Peers get the unfiltered stream, because shared presence is part of the
+    // session even where it is noise for the cross-tab replica. Only the tab
+    // holding the lock owns the connections, so the rest hand the batch over.
     if (!get(collaborativeAtom)[id]) return;
 
     const action = collaborativeDispatchAction({ schemaId: id, actions });

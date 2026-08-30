@@ -1,24 +1,9 @@
 import { expect, test } from '../support/fixtures';
 
 /**
- * Q3 — does the real `adoptedStyleSheets` setter copy the array it is handed?
- *
- * `adoptInto` spends a `[...sheets]` on every host:
- *
- *   host.adoptedStyleSheets = [...sheets];
- *
- * The comment on it says the spread is redundant in a browser and load-bearing in
- * happy-dom, whose setter keeps the reference — hand the shared `orderedSheets`
- * cache straight to two hosts there and both end up aliasing it, so the next
- * append lands twice in each. That claim about browsers has never been checked
- * against one.
- *
- * The two halves have to be read together. "Two hosts do not share an array" is
- * worth nothing on its own, because it is also true of an implementation that
- * mints a fresh array on every read — which is why
- * `adopted-stylesheets-are-mutable` pins read identity as stable first, and why
- * the probe below assigns *one* array object to two hosts rather than comparing
- * two independently-assigned ones.
+ * Whether the real adoptedStyleSheets setter copies the array it is handed,
+ * which is what adoptInto's spread rests on. The probe assigns one array object
+ * to two hosts, because two independent assignments would prove nothing.
  */
 test.describe('each host owns its adoptedStyleSheets array', () => {
   test('the setter copies: mutating the assigned array does not reach the host', async ({
@@ -73,7 +58,7 @@ test.describe('each host owns its adoptedStyleSheets array', () => {
     expect(await cssPage.adopted(second)).toHaveLength(2);
 
     // Meaningful only because a repeated read on one host *is* identity-equal;
-    // see `adopted-stylesheets-are-mutable`.
+    // see adopted-stylesheets-are-mutable.
     expect(
       await cssPage.sharesAdoptedArray(first, first),
       'read identity is not stable on a single host, so the cross-host comparison ' +

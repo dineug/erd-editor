@@ -2,13 +2,9 @@ import { expect, test } from '../support/fixtures';
 import { twoTables } from '../support/schema';
 
 /**
- * Collaborative presence, driven through the real transport: a second
- * `<erd-editor>` on the page, cross-wired to the first through `getSharedStore`.
- *
- * Unit tests cover the action, the reducer and the attributes in isolation.
- * What only a real pair can show is that a burst of focus changes leaves the
- * peer on the cell the user actually stopped on — the shared stream compresses
- * bursts, and a leading-only throttle strands the last one forever.
+ * Collaborative presence through the real transport: a second editor on the
+ * page, cross-wired to the first. What only a real pair shows is that a burst of
+ * focus changes leaves the peer on the cell the user actually stopped on.
  */
 const PEER = '#peer erd-editor';
 const LOCAL = '#app erd-editor';

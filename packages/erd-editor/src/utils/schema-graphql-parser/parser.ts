@@ -173,8 +173,8 @@ function toModel(document: DocumentNode): GraphQLModel {
 }
 
 /**
- * A field keeps naming the GraphQL type after `@map` / `@table` renamed its
- * table, and `convert.ts` recognises a reference field by `table.name` alone --
+ * A field keeps naming the GraphQL type after @map / @table renamed its
+ * table, and convert.ts recognises a reference field by table.name alone --
  * left unmapped, every relation field is read as a scalar column instead.
  */
 function applyTableRenames(
@@ -503,8 +503,8 @@ function isNoiseTypeName(
   );
 }
 
-// `Edge` and `Connection` are plausible type names on their own; only the
-// generated `<Type><Suffix>` spelling is noise.
+// Edge and Connection are plausible type names on their own; only the
+// generated <Type><Suffix> spelling is noise.
 function hasNoiseSuffix(name: string, suffix: string): boolean {
   return name.length > suffix.length && name.endsWith(suffix);
 }
@@ -518,7 +518,7 @@ function describe(node: {
   }
   if (!node.loc) return '';
 
-  // `#` comments are lexed but never reach the AST, so the token chain in front
+  // # comments are lexed but never reach the AST, so the token chain in front
   // of the node is the only place they survive.
   const comments: string[] = [];
   let line = node.loc.startToken.line - 1;
@@ -543,11 +543,9 @@ function normalizeText(text: string): string {
 }
 
 /**
- * GraphQL Names cannot contain `.` and every directive argument must be named,
- * so `@db.VarChar(255)` and `@map("users")` are rejected by the lexer and the
- * parser respectively. Both spellings are common in Prisma-flavoured SDL, so a
- * document the strict parse refused is retried with them rewritten. Text this
- * touches never parsed to begin with, and the retry is dropped when it fails.
+ * A GraphQL name cannot carry a dot and every directive argument must be named,
+ * so the two Prisma-flavoured spellings are rejected outright. A document the
+ * strict parse refused is retried with them rewritten, and dropped if it fails.
  */
 function sanitizePrismaDirectives(sdl: string): string {
   let out = '';
@@ -611,7 +609,7 @@ function sanitizePrismaDirectives(sdl: string): string {
         index = colon + 1;
       }
 
-      // `index + 1` keeps a value the scanner cannot make sense of from
+      // index + 1 keeps a value the scanner cannot make sense of from
       // stalling the loop; the retry parse drops the result either way.
       const valueEnd = Math.max(
         endOfValue(sdl, skipTrivia(sdl, index)),

@@ -8,8 +8,8 @@ export type ThemeProps = {
 
 const Theme: FC<ThemeProps> = props => {
   return () => (
-    // The whole rule has to be one expression: `{` opens an interpolation in
-    // JSX, so `:host {` cannot be written as markup text the way it was in the
+    // The whole rule has to be one expression: { opens an interpolation in
+    // JSX, so :host { cannot be written as markup text the way it was in the
     // tagged template.
     <style>
       {`:host {

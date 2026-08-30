@@ -32,11 +32,9 @@ export type GuestOptions = {
 };
 
 /**
- * Joins a live collaboration session as a guest.
- *
- * Relays are tried in order and the first one a host answers on wins. Falling
- * back leaves the previous relay behind, so a guest never ends up talking to the
- * same host across two separate meshes.
+ * Joins a live collaboration session as a guest. Relays are tried in order and
+ * the first a host answers on wins; falling back leaves the previous relay
+ * behind, so a guest never talks to one host across two meshes.
  */
 export function createCollaborativeGuest(
   roomId: string,
@@ -151,7 +149,7 @@ export function createCollaborativeGuest(
       if (!room || !key) return;
 
       const value = await encryptToJson(JSON.stringify(actions), key);
-      // `close()` may have landed while the payload was being encrypted.
+      // close() may have landed while the payload was being encrypted.
       room?.dispatch.send(value);
     },
     close: () => {

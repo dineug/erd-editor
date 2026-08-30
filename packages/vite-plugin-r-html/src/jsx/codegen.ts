@@ -1,16 +1,14 @@
-// @ts-ignore — no `@types/babel__core` in this workspace; the existing plugin
-// in `../index.ts` reaches for the same untyped surface.
+// @ts-ignore — no @types/babel__core in this workspace; the existing plugin
+// in ../index.ts reaches for the same untyped surface.
 import { parseSync } from '@babel/core';
 
 import { escapeTemplateAttrValue, escapeTemplateText } from './escape';
 import { cleanJsxText } from './text';
 
 /**
- * Elements that exist only in the SVG namespace. A template whose root is one
- * of these has to be tagged `svg` rather than `html`, because `TNode.isSvg`
- * only ever becomes true from a literal `<svg>` tag inside the template — a
- * root `<path>` has nothing above it to inherit from and would otherwise be
- * created in the HTML namespace and draw nothing.
+ * Elements that exist only in the SVG namespace, whose template has to be
+ * tagged svg. TNode.isSvg only becomes true from a literal svg tag inside the
+ * template, so such a root has nothing above it to inherit from.
  */
 const SVG_ONLY_TAGS = new Set([
   'svg',
@@ -38,27 +36,13 @@ const SVG_ONLY_TAGS = new Set([
   'use',
 ]);
 
-/**
- * `a`, `script`, `style` and `title` are defined by both HTML and SVG and are
- * deliberately absent above, so they resolve to HTML — the same way
- * `JSX.IntrinsicElements` resolves them, since SVG only contributes the names
- * HTML does not already define.
- *
- * The SVG spelling of those four still works: it has to sit inside an `<svg>`
- * in the same template, where the namespace comes from that root rather than
- * from this map. A component whose own root is an SVG `<title>` would be the
- * one broken case, and the type layer already rules it out by giving those
- * tags HTML attributes.
- */
-
-/** `on:click__2` — the escape hatch for the one thing JSX cannot say twice. */
+/** on:click__2 — the escape hatch for the one thing JSX cannot say twice. */
 const DUPLICATE_EVENT_SUFFIX = /__\d+$/;
 
 /**
- * A `.tsx` that writes only JSX has no reason to import `html`, but the code it
- * compiles to calls it. The tags are injected under aliases rather than their
- * own names so that a file part-way through conversion — some JSX, some
- * hand-written `html``` — keeps both, and neither shadows the other.
+ * A .tsx writing only JSX has no reason to import html, but the code it
+ * compiles to calls it. The tags are injected under aliases so a file part-way
+ * through conversion keeps both, and neither shadows the other.
  */
 const HTML_TAG = '__rHtml';
 const SVG_TAG = '__rSvg';
@@ -106,7 +90,7 @@ function walk(
 const isJsxNode = (node: Node) =>
   node.type === 'JSXElement' || node.type === 'JSXFragment';
 
-/** The JSX nodes inside `root` that have no JSX ancestor below `root`. */
+/** The JSX nodes inside root that have no JSX ancestor below root. */
 function findOutermostJsx(root: Node): Node[] {
   const found: Node[] = [];
   walk(root, node => {
@@ -148,7 +132,7 @@ class Codegen {
     private readonly filename: string
   ) {}
 
-  /** `html` or `svg` — decided once, at the root of each emitted template. */
+  /** html or svg — decided once, at the root of each emitted template. */
   private resolveTag(node: Node): 'html' | 'svg' {
     const element =
       node.type === 'JSXElement'
@@ -208,7 +192,7 @@ class Codegen {
         const local = name.name.name;
 
         if (ns === 'use') {
-          // A bare marker in attribute position — `TAttrType.directive`. The
+          // A bare marker in attribute position — TAttrType.directive. The
           // local name is for the reader; r-html keys the directive off the
           // value alone.
           if (!value || value.type !== 'JSXExpressionContainer') {
@@ -235,10 +219,9 @@ class Codegen {
                     `unknown attribute namespace \`${ns}:\`. Use bool:, on:, prop: or use:.`
                   );
       } else if (name.type === 'JSXIdentifier') {
-        // Every component attribute carries the dot. `.x` and `x` reach the
-        // same `PropPart`/`setProps` destination, but `getAttrType` classifies
-        // any bare name starting with `on` as an event — so an undotted
-        // `once=` would be read as an event named `ce` and vanish.
+        // Every component attribute carries the dot. Both spellings reach the
+        // same prop destination, but getAttrType reads any bare name starting
+        // with on as an event, so an undotted one would vanish.
         attrName = isComponent ? `.${name.name}` : name.name;
       } else {
         attrName = fail(
@@ -253,7 +236,7 @@ class Codegen {
       } else if (value.type === 'StringLiteral') {
         out += ` ${attrName}="${escapeTemplateAttrValue(value.value)}"`;
       } else if (value.type === 'JSXExpressionContainer') {
-        // No `JSXEmptyExpression` branch here: unlike a child container, an
+        // No JSXEmptyExpression branch here: unlike a child container, an
         // empty attribute expression is a parse error, so it never arrives.
         out += ` ${attrName}=\${${this.emitExpr(value.expression)}}`;
       } else if (isJsxNode(value)) {
@@ -364,12 +347,9 @@ class Codegen {
 const lineCount = (value: string) => value.split('\n').length;
 
 /**
- * Rewrites every JSX tree in `code` as the `html`/`svg` tagged template it
- * stands for, and leaves the rest of the file untouched byte for byte.
- *
- * The output is spliced, not re-printed, so nothing outside a JSX range moves —
- * and each replacement is padded back up to the line count it replaced, which
- * keeps every line number after it pointing where it did before.
+ * Rewrites every JSX tree as the tagged template it stands for and leaves the
+ * rest of the file byte for byte. The output is spliced rather than re-printed,
+ * and each replacement is padded back to the line count it replaced.
  */
 export function transformJsxToTagged(
   code: string,

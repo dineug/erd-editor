@@ -3,35 +3,35 @@ import { CSS_SOURCE } from '@/template';
 import { isCSSTemplateLiterals } from '@/template/helper';
 
 /**
- * `statement` slots splice the child literal's source in; `inline` slots render it as a class
- * selector. Primitives ignore the verdict entirely — see `slotText()`.
+ * statement slots splice the child literal's source in; inline slots render it as a class
+ * selector. Primitives ignore the verdict entirely — see slotText().
  */
 export type SlotKind = 'statement' | 'inline';
 
 export interface Slot {
   kind: SlotKind;
   /**
-   * `true` when the `statement` verdict rests on a delimiter rather than on text the rule cannot
-   * read. `padding: ${a}px ${b}px` classifies its middle slot as a statement because `px ` holds
+   * true when the statement verdict rests on a delimiter rather than on text the rule cannot
+   * read. padding: ${a}px ${b}px classifies its middle slot as a statement because px  holds
    * no colon, which is harmless for a primitive and wrong for a css literal.
    */
   provable: boolean;
 }
 
-/** Everything after the last `;`, `{` or `}` of the string in front of the slot. */
+/** Everything after the last ;, { or } of the string in front of the slot. */
 function headSegment(raw: string): string {
   const match = /[;{}][^;{}]*$/.exec(raw);
   return match ? match[0].slice(1) : raw;
 }
 
-/** Everything up to the first `;`, `}` or newline of the string behind the slot. */
+/** Everything up to the first ;, } or newline of the string behind the slot. */
 function tailSegment(raw: string): string {
   const index = raw.search(/[;}\n]/);
   return index === -1 ? raw : raw.slice(0, index);
 }
 
 /**
- * One slot per gap, so `raw.length - 1` of them. The classification only depends on the strings,
+ * One slot per gap, so raw.length - 1 of them. The classification only depends on the strings,
  * which is why it is cached with the template and not with the values.
  */
 export function classifySlots(raw: readonly string[]): Slot[] {
@@ -51,7 +51,7 @@ export function classifySlots(raw: readonly string[]): Slot[] {
 
 /**
  * A spliced source has to end in a delimiter or the next declaration is welded onto the last one:
- * `color:red\nfont-size:1px` compiles to the single declaration `color:red font-size:1px`.
+ * color:red\nfont-size:1px compiles to the single declaration color:red font-size:1px.
  */
 export function terminate(source: string): string {
   const trimmed = source.trimEnd();
@@ -74,10 +74,9 @@ export function slotText(value: any, kind: SlotKind): string {
 }
 
 /**
- * Substitution happens before compiling, so a value can change the rule structure the way a
- * post-substituted marker could not. Both findings are authoring mistakes with no occurrence in
- * this repository; they are reported unconditionally because r-html has no dev-only branch to
- * hang them on, and a flag nothing ever sets would only be dead code.
+ * Substitution happens before compiling, so a value can change rule structure
+ * the way a post-substituted marker could not. Reported unconditionally, since
+ * r-html has no dev-only branch to hang a flag on.
  */
 function report(slot: Slot, value: any, text: string): void {
   if (isCSSTemplateLiterals(value)) {
@@ -109,7 +108,7 @@ function isUnbalanced(text: string, quote: string): boolean {
   return count % 2 === 1;
 }
 
-/** Called on a cache miss only: the memo key is built from `slotText()` without coming here. */
+/** Called on a cache miss only: the memo key is built from slotText() without coming here. */
 export function buildSource(
   raw: readonly string[],
   slots: Slot[],

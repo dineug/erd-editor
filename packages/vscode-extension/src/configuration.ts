@@ -11,8 +11,8 @@ function getConfigurationScope(
   key: string
 ) {
   const inspect = config.inspect(key);
-  // Presence, not truthiness: a setting deliberately stored as `false`, `0` or
-  // `''` at a narrower scope is still set, and redirecting its write to Global
+  // Presence, not truthiness: a setting deliberately stored as false, 0 or
+  // '' at a narrower scope is still set, and redirecting its write to Global
   // would leave the narrower value in place and silently win over it.
   if (inspect?.workspaceFolderValue !== undefined) {
     return vscode.ConfigurationTarget.WorkspaceFolder;

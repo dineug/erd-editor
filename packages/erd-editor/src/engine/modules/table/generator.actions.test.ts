@@ -508,7 +508,7 @@ describe('pasteTableAction$', () => {
     expect(columns[1].default).toBe('1');
     expect(columns[1].comment).toBe('ca');
     expect(bHas(columns[1].options, ColumnOption.notNull)).toBe(true);
-    // unique / autoIncrement are hidden by the default `show` settings
+    // unique / autoIncrement are hidden by the default show settings
     expect(bHas(columns[1].options, ColumnOption.unique)).toBe(false);
     expect(bHas(columns[1].options, ColumnOption.autoIncrement)).toBe(false);
     expect(columns[3].dataType).toBe('text');

@@ -88,10 +88,9 @@ function addRelationship(
   return relationship;
 }
 
-// The generated document is only useful if a GraphQL implementation accepts it,
-// so every case below is handed to the real parser as well as compared to an
-// expected string. `buildSchema` covers the validation rules -- duplicate type
-// and field names -- that `parse` alone would let through.
+// Every case is handed to the real parser as well as compared to an expected
+// string. buildSchema covers the validation rules -- duplicate type and field
+// names -- that parse alone would let through.
 function expectValidSDL(code: string) {
   expect(() => buildSchema(code)).not.toThrow();
 }

@@ -108,8 +108,8 @@ describe('Switch.styles', () => {
         expect(ruleOf(identifier, '::before')).toContain(
           `background-size: calc(${width}px * 2 + ${height}px) 100%`
         );
-        // The compiler emits child combinators unspaced (`._x>span`), which is what
-        // `adoptedStyleSheets` echoes back.
+        // The compiler emits child combinators unspaced (._x>span), which is what
+        // adoptedStyleSheets echoes back.
         expect(ruleOf(identifier, '>span')).toContain(`width: ${thumb}px`);
         expect(ruleOf(identifier, '>span[data-checked]')).toContain(
           `translateX(calc(${width}px - ${thumb}px - 1px))`

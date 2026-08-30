@@ -3,29 +3,15 @@ import type { ErdEditorPage, Point } from '../support/ErdEditorPage';
 import { createSchema, twoTables } from '../support/schema';
 import { Shortcut } from '../support/shortcuts';
 
-/**
- * Alt+drag duplicate, in a real browser.
- *
- * The unit suite runs under happy-dom, which has no layout engine, so it can
- * only assert the ghost's DOM ancestry and its inline `left`/`top` strings. The
- * question those cannot answer — whether the ghost actually lands on top of the
- * entity it stands for once the canvas transform has been applied — is what
- * this spec exists for.
- *
- * A ghost rendered outside `translate(scroll…) scale(zoom)` still looks right at
- * the default zoom 1 / scroll 0, so every geometry assertion here runs at
- * `zoomLevel: 0.5` with a non-zero scroll.
- */
-
 /** Pointer coordinates land on whole device pixels, at both drag endpoints. */
 const PIXEL_TOLERANCE = 2;
 
-/** `constants/layout.ts` — the offset for an Alt+click that never travelled. */
+/** constants/layout.ts — the offset for an Alt+click that never travelled. */
 const START_ADD = 50;
 
-// The marker is a `display: contents` wrapper carrying the identity
+// The marker is a display: contents wrapper carrying the identity
 // attributes, so it has no layout box of its own — the entity inside it is
-// the real `<Table>`/`<Memo>` and the thing with geometry.
+// the real <Table>/<Memo> and the thing with geometry.
 const GHOST = '[data-testid="duplicate-ghost"] > *';
 
 function expectClose(actual: number, expected: number, label: string) {
@@ -44,7 +30,7 @@ async function originOf(erd: ErdEditorPage, selector: string): Promise<Point> {
 }
 
 /**
- * Holds Alt, presses on a table header and walks the pointer to `to`, leaving
+ * Holds Alt, presses on a table header and walks the pointer to to, leaving
  * the button down so the ghost can be measured mid-gesture.
  */
 async function startAltDrag(erd: ErdEditorPage, tableId: string, to?: Point) {
@@ -88,10 +74,9 @@ const zoomedTwoTables = () => {
 };
 
 test.describe('Alt+drag duplicate', () => {
-  // AC-36 (d): the ghost is drawn from document coordinates, so it is only in
-  // the right place if it renders inside the canvas transform. Compared as
-  // top-left origins with a tolerance — a table's outer box is its width plus
-  // its two 1px borders, so the sizes are deliberately not compared.
+  // The ghost is drawn from document coordinates, so it is only in the right
+  // place if it renders inside the canvas transform. Compared as top-left
+  // origins with a tolerance; the outer boxes differ by their borders.
   test('draws the ghost over the table it stands for at zoom 0.5 and non-zero scroll', async ({
     erd,
   }) => {
@@ -110,7 +95,7 @@ test.describe('Alt+drag duplicate', () => {
   });
 
   // AC-36 (d): and it tracks the pointer one-for-one on screen, which is what
-  // says the per-frame `/= zoomLevel` and the `scale(zoomLevel)` cancel out.
+  // says the per-frame /= zoomLevel and the scale(zoomLevel) cancel out.
   test('moves the ghost with the pointer, one screen pixel per screen pixel', async ({
     erd,
   }) => {
@@ -193,7 +178,7 @@ test.describe('Alt+drag duplicate', () => {
   });
 
   // AC-23: the duplicate is one history command, colour included — a
-  // `table.changeColor` in the batch would be buffered into a second command
+  // table.changeColor in the batch would be buffered into a second command
   // and one undo would then restore only the colour.
   test('undoes a coloured duplicate in a single step', async ({ erd }) => {
     await erd.seed(

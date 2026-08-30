@@ -145,12 +145,9 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
               )
             )}
             {bHas(show, Show.relationship) ? (
-              // Not a multiple of what the canvas draws. The minimap scales the
-              // whole canvas by `MINIMAP_SIZE / settings.width` — 0.075 at the
-              // default width, less on a bigger canvas — so a connector at the
-              // canvas width would land far under one device pixel here. 12 is
-              // the floor that keeps the route near a pixel in a 150px
-              // thumbnail, and it does not move when the canvas stroke does.
+              // Not a multiple of what the canvas draws: the minimap scales the
+              // whole canvas down far enough that a connector at the canvas
+              // width lands under a device pixel. This floor is independent.
               <CanvasSvg class={styles.canvasSvg} strokeWidth={12} />
             ) : null}
           </div>

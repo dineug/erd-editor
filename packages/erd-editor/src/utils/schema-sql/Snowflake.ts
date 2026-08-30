@@ -23,10 +23,9 @@ import {
   toOrderName,
 } from './utils';
 
-// `"` is Snowflake's only identifier delimiter -- 'x' is a string literal and
-// `x` is not one at all -- and a quoted name is case sensitive where a bare one
-// folds to upper case. So `settings.bracketType` chooses whether to quote, not
-// which character to quote with.
+// The double quote is Snowflake's only identifier delimiter, and a quoted name
+// is case sensitive where a bare one folds to upper case. So settings
+// .bracketType chooses whether to quote, not which character to quote with.
 const toBracket = (bracketType: number) =>
   getBracket(bracketType) === '' ? '' : '"';
 

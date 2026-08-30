@@ -2,10 +2,9 @@ import { defineConfig } from 'vite-plus';
 
 export default defineConfig({
   /**
-   * Replaces the root `lint-staged` field. `vp check --fix` is fmt -> lint --fix
-   * -> fmt in one pass. The glob is the one lint-staged used, `.mts` included.
-   * No type gate here — there was none before either; that lives in CI and in
-   * each package's `build` and `test` tasks.
+   * Replaces the root lint-staged field, glob included. vp check --fix is
+   * fmt -> lint --fix -> fmt in one pass; the type gate stays in CI and in
+   * each package's build and test tasks, as it was.
    */
   staged: {
     '**/*.{ts,mts,tsx}': 'vp check --fix',
@@ -19,6 +18,10 @@ export default defineConfig({
       builtin: true,
     },
     ignorePatterns: [
+      // The rules cannot lint themselves: a rule file's header block names the
+      // rule on its own line, which is the second prose paragraph the rule
+      // forbids, and the plugin barrel's block sits on an import by design.
+      'tools/eslint-rules/**',
       '**/.DS_Store',
       '**/node_modules',
       '**/dist',
@@ -181,34 +184,31 @@ export default defineConfig({
       },
       {
         /**
-         * `erd-editor`'s `.tsx` is JSX, not React: it compiles to r-html tagged
-         * templates. Scoped rather than global because `app` is React 19, where
-         * these rules mean what they say.
+         * erd-editor's .tsx is JSX, not React: it compiles to r-html tagged
+         * templates. Scoped rather than global because app is React 19, where
+         * these three rules mean what they say.
          */
         files: ['packages/erd-editor/src/**/*.tsx'],
         rules: {
-          // There is no `key` prop to add. List identity is the `repeat()`
+          // There is no key prop to add. List identity is the repeat()
           // directive's job, and it takes the key function as its second
           // argument.
           'react/jsx-key': 'off',
-          // `children` is an ordinary prop of type `DOMTemplateLiterals` here,
-          // and forwarding one is not the same as nesting it: `<C>{t}</C>`
-          // compiles to `.children=${html`${t}`}`, a second template around the
-          // one you already had.
+          // children is an ordinary prop of type DOMTemplateLiterals here, and
+          // forwarding one is not nesting it: a child expression compiles to a
+          // second template wrapped around the one you already had.
           'react/no-children-prop': 'off',
-          // Reports a file as un-refreshable on React's boundary rule, which is
-          // not r-html's: `rHtml()` accepts any export whose name starts with a
-          // capital, so `export const Cursor = {…} as const` keeps the file a
-          // boundary while this rule calls it broken.
+          // Reports a file as un-refreshable on React's boundary rule, not
+          // r-html's: rHtml() accepts any export whose name starts with a
+          // capital, so a const object export keeps the file a boundary.
           'react/only-export-components': 'off',
         },
       },
       {
         /**
-         * The JSX contract has to be a `namespace` — that is the shape
-         * `jsxImportSource` looks for — and it has to be a `.ts` rather than a
-         * `.d.ts`, because `vite-plugin-dts` emits declarations and does not
-         * copy hand-written ones.
+         * The JSX contract has to be a namespace, the shape jsxImportSource
+         * looks for, and a .ts rather than a .d.ts, because vite-plugin-dts
+         * emits declarations and does not copy hand-written ones.
          */
         files: ['packages/r-html/src/jsx-runtime.ts'],
         rules: {
@@ -217,16 +217,9 @@ export default defineConfig({
       },
     ],
     /**
-     * Type-aware lint is off. tsgolint targets TypeScript 7 and reads this repo
-     * differently from the compiler that actually gates it: turned on today it
-     * reports errors in `.storybook/preview.ts`, the vscode-extension specs and
-     * the integration suite, none of which `tsc --noEmit` flags. Two checkers
-     * disagreeing is worse than one that agrees, and the type gate keeps its
-     * existing home — `tsc --noEmit`, per package.
-     *
-     * Turning this on is its own track: it needs the tsgolint/tsc gap closed
-     * first, and that is what buys the single-pass `vp check` this migration
-     * otherwise leaves on the table.
+     * Type-aware lint is off: tsgolint reports errors the compiler that
+     * actually gates this repo does not, and two checkers disagreeing is worse
+     * than one that agrees. The type gate stays at tsc --noEmit, per package.
      */
     options: {
       typeAware: false,
@@ -237,9 +230,27 @@ export default defineConfig({
         name: 'vite-plus',
         specifier: 'vite-plus/oxlint-plugin',
       },
+      /**
+       * This repo's own rules. A local path is the supported spelling — it is
+       * the first example in oxlint's own type annotation. oxlint JS plugins
+       * are alpha and outside semver, so a toolchain bump can move this.
+       */
+      {
+        name: 'local',
+        specifier: './tools/eslint-rules/index.js',
+      },
     ],
+    /**
+     * The comment rules are global, unlike the src-scoped overrides above:
+     * scoping them to src would leave the configs, the e2e harnesses and the
+     * specs out, and that is where the longest prose in this repo lives.
+     */
     rules: {
       'vite-plus/prefer-vite-plus-imports': 'error',
+      'local/comment-run-limit': 'error',
+      'local/jsdoc-attached': 'error',
+      'local/jsdoc-prose-limit': 'error',
+      'local/no-comment-markdown': 'error',
     },
   },
   fmt: {
@@ -253,24 +264,14 @@ export default defineConfig({
     printWidth: 80,
     sortPackageJson: false,
     /**
-     * Formatting scope is exactly what it was before the migration: the previous
-     * `format:prettier` script passed `**\/*.{ts,mts,tsx}` and nothing else.
-     * oxfmt handles seventeen languages, so leaving this empty silently widens
-     * the scope to 82 files — Markdown, HTML, JSON, JS and the webpack configs.
-     *
-     * Markdown matters most. The fifteen AGENTS.md files are hand-maintained
-     * prose that the repo treats as canonical; one unscoped `vp fmt` rewrites
-     * hundreds of lines of them, and that is not a style accident.
-     *
-     * Widening this is a separate decision, not a side effect of changing
-     * formatters. Witness: `git status --short` lists no AGENTS.md after
-     * `vp fmt`.
+     * Formatting stops at TypeScript. oxfmt handles seventeen languages, and
+     * an unscoped run rewrites the fifteen hand-maintained AGENTS.md files,
+     * which the repo treats as canonical. Widening this is its own decision.
      */
     ignorePatterns: [
       // Everything oxfmt handles that Prettier was never pointed at. A deny
-      // list rather than `['**/*', '!**/*.ts', …]`, because oxfmt does not
-      // re-include after a global exclude — that spelling matches zero files
-      // and reports success.
+      // list, because oxfmt does not re-include after a global exclude — that
+      // spelling matches zero files and reports success.
       '**/*.md',
       '**/*.mdx',
       '**/*.html',

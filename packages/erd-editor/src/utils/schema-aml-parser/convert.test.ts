@@ -75,7 +75,7 @@ const at = (
   namespace: AMLNamespace = EMPTY_NAMESPACE
 ): AMLEndpoint => ({ namespace, entityName, attributePaths });
 
-/** `[srcCardinality, refCardinality]`, in the order the arrow spells them. */
+/** [srcCardinality, refCardinality], in the order the arrow spells them. */
 const ARROWS: Record<string, [AMLCardinality, AMLCardinality]> = {
   '->': ['1', 'n'],
   '--': ['1', '1'],

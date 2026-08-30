@@ -10,14 +10,9 @@ import { ObjectPoint } from '@/utils/draw-relationship';
 type TableSize = { key: string; width: number; height: number };
 
 /**
- * Table box sizes, held across relationship sorts.
- *
- * `calcTableWidths` scans every column of the table, so a sort costs one pass
- * over the whole document's columns — and the sort reruns on every mousemove of
- * a drag, during which no width can change. This cache is deliberately *not*
- * inside `calcTableWidths`: eight component render paths call that function
- * from inside an r-html observer, and memoising the column reads away there
- * would drop the dependencies those components re-render on.
+ * Table box sizes, held across relationship sorts. Deliberately outside
+ * calcTableWidths: component render paths call that from inside an r-html
+ * observer, and memoising the column reads there drops their dependencies.
  */
 const tableSizeCache = new WeakMap<Table, TableSize>();
 

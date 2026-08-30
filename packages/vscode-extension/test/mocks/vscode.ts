@@ -1,19 +1,3 @@
-/**
- * In-memory stand-in for the `vscode` module.
- *
- * `webpack.config.js` declares `vscode` as a commonjs external, so the real
- * module only ever exists inside the Extension Host. `vitest.config.mts` aliases
- * the specifier here so the unit suite runs in plain Node.
- *
- * Types still come from `@types/vscode` — only the runtime values live here.
- * The pieces the extension relies on for *behaviour* (`EventEmitter`, `Uri`,
- * `Disposable`, the enums) are implemented for real, because tests assert on
- * what they do. The host surfaces (`workspace`, `window`, `commands`) are
- * `vi.fn()` spies each test arranges for itself.
- *
- * Anything asserted through this stub is asserted against our idea of the API,
- * not the API — that gap is what `test/integration/` covers.
- */
 import { vi } from 'vite-plus/test';
 
 export class Disposable {
@@ -171,8 +155,8 @@ export type ConfigurationInspect = {
 };
 
 /**
- * Builds a `WorkspaceConfiguration` double. Hand it to a spec with
- * `workspace.getConfiguration.mockReturnValue(createWorkspaceConfiguration(...))`.
+ * Builds a WorkspaceConfiguration double. Hand it to a spec with
+ * workspace.getConfiguration.mockReturnValue(createWorkspaceConfiguration(...)).
  */
 export function createWorkspaceConfiguration(options?: {
   values?: Record<string, unknown>;
@@ -232,8 +216,8 @@ export const commands = {
 };
 
 /**
- * Fires `workspace.onDidChangeConfiguration`. `affects` decides what
- * `event.affectsConfiguration(section)` answers — pass the sections that
+ * Fires workspace.onDidChangeConfiguration. affects decides what
+ * event.affectsConfiguration(section) answers — pass the sections that
  * should be reported as changed.
  */
 export function fireConfigurationChange(affects: string[] = []) {
@@ -242,7 +226,7 @@ export function fireConfigurationChange(affects: string[] = []) {
   });
 }
 
-/** Builds a `vscode.Webview` double. */
+/** Builds a vscode.Webview double. */
 export function createWebview() {
   const messageEmitter = new EventEmitter<any>();
 
@@ -264,7 +248,7 @@ export function createWebview() {
 
 export type MockWebview = ReturnType<typeof createWebview>;
 
-/** Builds a `vscode.ExtensionContext` double. */
+/** Builds a vscode.ExtensionContext double. */
 export function createExtensionContext(extensionPath = '/ext') {
   return {
     extensionUri: Uri.file(extensionPath),
@@ -277,7 +261,7 @@ export function createExtensionContext(extensionPath = '/ext') {
 
 export type MockExtensionContext = ReturnType<typeof createExtensionContext>;
 
-/** Builds a `vscode.WebviewPanel` double around `createWebview()`. */
+/** Builds a vscode.WebviewPanel double around createWebview(). */
 export function createWebviewPanel(webview = createWebview()) {
   const disposeEmitter = new EventEmitter<void>();
 
@@ -289,7 +273,7 @@ export function createWebviewPanel(webview = createWebview()) {
     onDidChangeViewState: vi.fn(() => new Disposable(() => undefined)),
     reveal: vi.fn(),
     dispose: vi.fn(() => disposeEmitter.fire()),
-    /** Test-only: fires `onDidDispose` the way VSCode does on panel close. */
+    /** Test-only: fires onDidDispose the way VSCode does on panel close. */
     __dispose: () => disposeEmitter.fire(),
   };
 }
@@ -314,8 +298,8 @@ const spies = [
 
 /**
  * Restores every spy to the default implementation declared above and drops
- * any listener a previous spec left on `onDidChangeConfiguration`. Call it from
- * `beforeEach` — the module is shared across a file's tests.
+ * any listener a previous spec left on onDidChangeConfiguration. Call it from
+ * beforeEach — the module is shared across a file's tests.
  */
 export function resetVscodeMock() {
   for (const spy of spies) spy.mockReset();

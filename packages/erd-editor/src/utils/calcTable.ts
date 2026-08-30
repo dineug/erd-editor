@@ -21,10 +21,9 @@ import { bHas } from '@/utils/bit';
 import { textInRange } from '@/utils/validation';
 
 /**
- * Bumped whenever anything `calcTableWidths` reads outside a table's own
- * `ui.width*` can have changed — every column width, and the two settings that
- * gate them. Consumers that cache a computed size key on this instead of
- * re-reading every column; see `utils/draw-relationship/calc.ts`.
+ * Bumped whenever anything calcTableWidths reads outside a table's own widths
+ * can have changed. A consumer caching a computed size keys on this rather than
+ * re-reading every column.
  */
 let widthGeneration = 0;
 
@@ -33,7 +32,7 @@ export function getWidthGeneration() {
 }
 
 /**
- * Invalidates every cached table size. Called from `recalculateTableWidth`,
+ * Invalidates every cached table size. Called from recalculateTableWidth,
  * which rewrites widths without dispatching an action, and from the
  * relationship-sort hook for any action that is not a pure move.
  */
@@ -219,7 +218,7 @@ export function recalculateTableWidth(
   { doc: { tableIds }, collections }: RootState,
   { toWidth }: EngineContext
 ) {
-  // Rewrites every `ui.width*` without dispatching an action, so a size cache
+  // Rewrites every ui.width* without dispatching an action, so a size cache
   // has no other way to learn it went stale.
   invalidateTableWidths();
 

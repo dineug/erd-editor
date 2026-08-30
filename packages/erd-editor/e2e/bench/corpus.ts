@@ -10,15 +10,6 @@ import {
   type TableEntity,
 } from '../support/schema';
 
-/**
- * Deterministic corpora for the routing benchmark.
- *
- * These are generated rather than imported from `data/*.sql` on purpose: the
- * generator is the only way to hold table count, relationship count and column
- * count independently while keeping two runs byte-identical. `data/` is still
- * the manual eyeball check — see `e2e/bench/README.md`.
- */
-
 /** Every corpus uses one canvas size so SVG area never confounds a comparison. */
 export const BENCH_CANVAS = 4000;
 
@@ -45,7 +36,7 @@ export type CorpusOptions = {
   columnsPerTable?: number;
   /** How many relationships to force onto a single hub table. */
   hubDegree?: number;
-  /** Self relationships, which take their own code path in `relationshipSort`. */
+  /** Self relationships, which take their own code path in relationshipSort. */
   selfRelationships?: number;
   seed?: number;
 };
@@ -90,10 +81,9 @@ export function createCorpus(options: CorpusOptions): Corpus {
   const tableIds: string[] = [];
   const relationshipIds: string[] = [];
 
-  // ── tables on a jittered grid ──────────────────────────────────────────────
-  // Jitter keeps the layout off a perfect lattice, where every side-pair
-  // distance would tie and the greedy side choice would be unrealistically
-  // stable. It stays well under the cell size so tables never overlap.
+  // Tables on a jittered grid. Jitter keeps the layout off a perfect lattice,
+  // where every side-pair distance ties and the greedy side choice is
+  // unrealistically stable; it stays under the cell size so nothing overlaps.
   const columns = Math.ceil(Math.sqrt(tableCount));
   const CELL_X = 420;
   const CELL_Y = 340;
@@ -142,10 +132,9 @@ export function createCorpus(options: CorpusOptions): Corpus {
     }
   }
 
-  // ── relationship graph ────────────────────────────────────────────────────
-  // A spanning tree first so nothing is orphaned, then a forced hub, then
-  // random extra edges. Duplicates are allowed only where they model a real
-  // schema: two tables genuinely can carry more than one foreign key.
+  // The relationship graph: a spanning tree first so nothing is orphaned, then
+  // a forced hub, then random extra edges. Duplicates are allowed because two
+  // tables genuinely can carry more than one foreign key.
   const pairs: Array<[string, string]> = [];
   const seen = new Set<string>();
 
@@ -299,8 +288,8 @@ function countDegree(pairs: Array<[string, string]>, id: string) {
 
 /**
  * Adds the relationship plus the foreign key column it hangs off, so the
- * document is one the editor's own hooks would accept — `identification` and
- * `startRelationshipType` are both derived from the end column's options.
+ * document is one the editor's own hooks would accept — identification and
+ * startRelationshipType are both derived from the end column's options.
  */
 function pushRelationship(
   relationshipEntities: Record<string, RelationshipEntity>,
@@ -338,8 +327,8 @@ function pushRelationship(
     identification: false,
     relationshipType: types[Math.floor(random() * types.length)],
     startRelationshipType: 2,
-    // Geometry is seeded at the origin on purpose. `relationshipSort` runs on
-    // `initialLoadJson`, so whatever is here is overwritten before first paint —
+    // Geometry is seeded at the origin on purpose. relationshipSort runs on
+    // initialLoadJson, so whatever is here is overwritten before first paint —
     // seeding real coordinates would hide a regression that stops it running.
     start: {
       tableId: startTableId,
@@ -362,7 +351,7 @@ function pushRelationship(
 }
 
 /**
- * The three scales the benchmark reports on, sized against `data/`:
+ * The three scales the benchmark reports on, sized against data/:
  * sakila (16 tables), OKKY (39), Magento2-sales (54).
  */
 export const CORPORA: CorpusOptions[] = [

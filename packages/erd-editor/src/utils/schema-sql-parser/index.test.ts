@@ -456,7 +456,7 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(relationship.start.columnIds).toEqual([
         columnByName(schema, users, 'id').id,
       ]);
-      // no end column resolved, yet `[].some(...)` makes it identifying
+      // no end column resolved, yet [].some(...) makes it identifying
       expect(relationship.end.columnIds).toEqual([]);
       expect(relationship.identification).toBe(true);
     });

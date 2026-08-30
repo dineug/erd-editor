@@ -251,7 +251,7 @@ describe('MemoSash', () => {
     await flush();
     expect(memo.ui.width).toBe(MEMO_MIN_WIDTH + 4);
 
-    // the anchor did not advance, so the move back is rejected by `x > clientX`
+    // the anchor did not advance, so the move back is rejected by x > clientX
     mousemove(0, 0);
     await flush();
     expect(memo.ui.width).toBe(MEMO_MIN_WIDTH + 4);
@@ -268,7 +268,7 @@ describe('MemoSash', () => {
     await flush();
     expect(memo.ui.width).toBe(MEMO_MIN_WIDTH + 4);
 
-    // the anchor did not advance, so the move back is rejected by `x < clientX`
+    // the anchor did not advance, so the move back is rejected by x < clientX
     mousemove(0, 0);
     await flush();
     expect(memo.ui.width).toBe(MEMO_MIN_WIDTH + 4);

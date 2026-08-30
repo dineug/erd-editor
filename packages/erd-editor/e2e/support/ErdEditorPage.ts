@@ -8,16 +8,9 @@ export const FIXTURE_URL = '/e2e/fixture/index.html';
 export type Point = { x: number; y: number };
 
 /**
- * Page object for the `<erd-editor>` custom element.
- *
- * Two things about this component shape drive the whole design:
- *
- * 1. The editor renders into a shadow root that production code declares as
- *    `closed`. The e2e fixture page reopens it (see `e2e/fixture/index.html`),
- *    after which ordinary Playwright locators pierce it.
- * 2. The minimap re-renders the canvas contents, so a bare `.table` locator
- *    matches every table twice. Every canvas locator here is scoped to
- *    `[data-testid="erd-canvas"]`, which the minimap does not contain.
+ * Page object for the <erd-editor> custom element. The fixture page reopens the
+ * shadow root production declares closed, and every canvas locator is scoped to
+ * the canvas, because the minimap re-renders the same contents.
  */
 export class ErdEditorPage {
   readonly host: Locator;
@@ -44,7 +37,7 @@ export class ErdEditorPage {
   }
 
   /**
-   * Loads a document through the element's public `setInitialValue`, which
+   * Loads a document through the element's public setInitialValue, which
    * dispatches straight to the store and therefore leaves undo history empty —
    * a seeded editor starts with nothing to undo.
    */
@@ -62,7 +55,7 @@ export class ErdEditorPage {
   // ── authoritative state ──────────────────────────────────────────────────
 
   /**
-   * The element's `value` getter serialises the live store synchronously, so
+   * The element's value getter serialises the live store synchronously, so
    * this is the authoritative view of editor state — not a rendering of it.
    */
   async value(): Promise<ErdDocument> {
@@ -76,8 +69,8 @@ export class ErdEditorPage {
 
   /**
    * Deletes are LWW tombstones: a removed table stays in
-   * `collections.tableEntities` and only leaves `doc.tableIds`. Always count
-   * through `doc`, never through the collections.
+   * collections.tableEntities and only leaves doc.tableIds. Always count
+   * through doc, never through the collections.
    */
   async tableIds() {
     return (await this.value()).doc.tableIds;
@@ -124,16 +117,15 @@ export class ErdEditorPage {
     return this.canvas.locator(`.column-row[data-id="${id}"]`);
   }
 
-  /** A cell inside a table or column row, e.g. `'tableName'`, `'columnName'`. */
+  /** A cell inside a table or column row, e.g. 'tableName', 'columnName'. */
   cell(root: Locator, type: string) {
     return root.locator(`[data-type="${type}"]`);
   }
 
   /**
-   * The focus ring the editor paints on the focused cell. `EditInput` and the
-   * toggle cells (`ColumnNotNull`, `ColumnOption`) all carry
-   * `data-focus-border-bottom`, so it is the one marker that covers every stop
-   * in the traversal ring.
+   * The focus ring the editor paints on the focused cell. The edit input and the
+   * toggle cells all carry the same marker, so it is the one that covers every
+   * stop in the traversal ring.
    */
   focusRing(cell: Locator) {
     return cell.locator('[data-focus-border-bottom]');
@@ -144,7 +136,7 @@ export class ErdEditorPage {
     return this.canvas.locator('[data-focus-border-bottom]');
   }
 
-  /** The `<input>` a cell swaps in for its static text while in edit mode. */
+  /** The <input> a cell swaps in for its static text while in edit mode. */
   editInput(cell: Locator) {
     return cell.locator('input.edit-input');
   }
@@ -157,24 +149,22 @@ export class ErdEditorPage {
     return this.canvas.locator('.column-row[data-selected]');
   }
 
-  /** The rendered `<g>` of a relationship in the canvas SVG. */
+  /** The rendered <g> of a relationship in the canvas SVG. */
   relationshipEl(id: string) {
     return this.canvas.locator(`g.relationship[data-id="${id}"]`);
   }
 
   /**
-   * The dashed preview drawn between the start table and the cursor while a
-   * relationship draw is in flight, and the visible proof that a draw is still
-   * open. Matched by its own class: a finished relationship is a dashed `<path>`
-   * too, so anything less specific counts one of those per relationship on the
-   * canvas.
+   * The dashed preview drawn between the start table and the cursor while a draw
+   * is in flight. Matched by its own class, because a finished relationship is a
+   * dashed path too and anything less specific counts those as well.
    */
   get drawPreview() {
     return this.canvas.locator('svg path.draw-preview');
   }
 
   /**
-   * The key badge on a column row. `ColumnKey` always renders the icon and
+   * The key badge on a column row. ColumnKey always renders the icon and
    * colours it by class, so the class is what says which key it is.
    */
   columnKey(columnId: string, kind: 'pk' | 'fk' | 'pfk') {
@@ -192,7 +182,7 @@ export class ErdEditorPage {
   // ── coordinates ──────────────────────────────────────────────────────────
 
   /**
-   * Maps a canvas coordinate (the same space as `table.ui.x/y`) to a viewport
+   * Maps a canvas coordinate (the same space as table.ui.x/y) to a viewport
    * coordinate, deriving the current zoom from the canvas box itself so callers
    * never have to account for it.
    */
@@ -220,12 +210,9 @@ export class ErdEditorPage {
   }
 
   /**
-   * A viewport point over bare canvas — inside the visible area and clear of
-   * every rendered node.
-   *
-   * The canvas is 2000x2000 while the viewport is 1440x900, so a hard-coded
-   * canvas coordinate can easily land off-screen, where a click is silently a
-   * no-op rather than a failure. This searches the visible region instead.
+   * A viewport point over bare canvas, inside the visible area and clear of every
+   * rendered node. The canvas is larger than the viewport, so a hard-coded
+   * coordinate can land off-screen, where a click is silently a no-op.
    */
   async emptyPoint(): Promise<Point> {
     const canvasBox = await this.canvas.boundingBox();
@@ -271,7 +258,7 @@ export class ErdEditorPage {
   // ── input ────────────────────────────────────────────────────────────────
 
   /**
-   * Puts keyboard focus on the editor root, which is where `tinykeys` is bound.
+   * Puts keyboard focus on the editor root, which is where tinykeys is bound.
    * Clicking empty canvas also clears the current selection.
    */
   async focusCanvas(at?: Point) {
@@ -284,15 +271,9 @@ export class ErdEditorPage {
   }
 
   /**
-   * The modifier the editor's *pointer* handlers read as `$mod`.
-   *
-   * Keyboard shortcuts and mouse gestures resolve the platform differently:
-   * `tinykeys` reads `navigator.platform`, while the editor's own `isMod()`
-   * goes through `@egjs/agent`, which parses the UA string. Under Playwright
-   * those two disagree — `devices['Desktop Chrome']` ships a Windows UA on top
-   * of a real macOS `navigator.platform` — so a wheel or drag gesture can need
-   * a different key from the one `MOD_KEY` names. This mirrors what
-   * `@egjs/agent` will conclude from the UA the page actually reports.
+   * The modifier the editor's pointer handlers read as $mod. tinykeys reads
+   * navigator.platform while the editor's isMod parses the UA, and Playwright's
+   * pinned device makes those disagree, so this mirrors what the UA says.
    */
   async pointerModKey(): Promise<'Meta' | 'Control'> {
     const isApple = await this.page.evaluate(() =>
@@ -303,7 +284,7 @@ export class ErdEditorPage {
 
   /**
    * Clicks a cell, which both selects its table (the mousedown bubbles to
-   * `useMoveTable`) and moves the focus ring onto that cell — the cheapest way
+   * useMoveTable) and moves the focus ring onto that cell — the cheapest way
    * into the focus state machine without opening an editor.
    */
   async focusCell(cell: Locator) {
@@ -311,7 +292,7 @@ export class ErdEditorPage {
     await expect(this.focusRing(cell)).toBeVisible();
   }
 
-  /** The element's public `focus()`, which puts DOM focus on the editor root. */
+  /** The element's public focus(), which puts DOM focus on the editor root. */
   async focusHost() {
     await this.page.evaluate(() => {
       const editor = window.document.querySelector('erd-editor');
@@ -321,13 +302,9 @@ export class ErdEditorPage {
   }
 
   /**
-   * Resolves once keyboard focus is back inside the element.
-   *
-   * Leaving a cell's edit mode deletes the focused `<input>`, which drops DOM
-   * focus to `<body>`; the editor pulls it back to its root asynchronously
-   * (`checkAndFocus`, throttled). `tinykeys` is bound to that root, so a key
-   * pressed inside the gap is delivered to `<body>` and simply vanishes —
-   * anything that presses twice in a row has to wait for this in between.
+   * Resolves once keyboard focus is back inside the element. Leaving edit mode
+   * deletes the focused input and drops focus to the body, which the editor
+   * repairs asynchronously; a key pressed inside that gap simply vanishes.
    */
   async expectKeyboardFocusInside() {
     await expect
@@ -338,9 +315,9 @@ export class ErdEditorPage {
   }
 
   /**
-   * The cursor the user sees over the canvas. `cursor` is inherited and the
-   * canvas sets none of its own, so this reports what `Erd.ts` put on the
-   * editor root — a `url(...)` icon while a relationship draw is armed.
+   * The cursor the user sees over the canvas. cursor is inherited and the
+   * canvas sets none of its own, so this reports what Erd.ts put on the
+   * editor root — a url(...) icon while a relationship draw is armed.
    */
   async canvasCursor() {
     return this.canvas.evaluate(element => getComputedStyle(element).cursor);
@@ -348,7 +325,7 @@ export class ErdEditorPage {
 
   /**
    * Clicks a table's header strip, which is what selects it — and what closes a
-   * relationship draw. `offsetX` shifts the click along the header so two
+   * relationship draw. offsetX shifts the click along the header so two
    * consecutive clicks on the same table are not read as a double-click.
    */
   async clickTableHeader(id: string, offsetX = 0) {
@@ -357,12 +334,9 @@ export class ErdEditorPage {
   }
 
   /**
-   * A press-move-release sequence built from raw mouse events.
-   *
-   * The editor's drag pipeline (`src/utils/globalEventObservable.ts`) is a
-   * merge of window-level `mousedown`/`mousemove`/`mouseup`, so movement has to
-   * arrive as a series of discrete moves — a single jump produces one delta and
-   * misses the intermediate state the UI reacts to.
+   * A press-move-release sequence built from raw mouse events. The editor's drag
+   * pipeline merges window-level mouse events, so movement has to arrive as
+   * discrete moves; a single jump produces one delta and misses the rest.
    */
   async drag(
     from: Point,
@@ -397,7 +371,7 @@ export class ErdEditorPage {
   }
 
   /**
-   * Marquee selection. `handleDragSelect` only starts a selection rectangle
+   * Marquee selection. handleDragSelect only starts a selection rectangle
    * when the mousedown carries the platform modifier; without it the same
    * gesture pans the canvas instead.
    */
@@ -420,11 +394,9 @@ export class ErdEditorPage {
   }
 
   /**
-   * One wheel notch over the canvas.
-   *
-   * `Erd.ts#handleWheel` reads the modifier off the wheel event itself, so a
-   * zoom gesture needs the key held down while the notch is delivered — not
-   * pressed around it.
+   * One wheel notch over the canvas. handleWheel reads the modifier off the
+   * wheel event itself, so a zoom gesture needs the key held down while the
+   * notch is delivered rather than pressed around it.
    */
   async wheel(
     deltaY: number,
@@ -444,10 +416,9 @@ export class ErdEditorPage {
   }
 
   /**
-   * Opens a table cell for editing and replaces its contents.
-   *
-   * Editing is committed as you type — `Escape` ends edit mode but does not
-   * revert — so the caller decides how to leave the field.
+   * Opens a table cell for editing and replaces its contents. Editing is
+   * committed as you type and Escape ends edit mode without reverting, so the
+   * caller decides how to leave the field.
    */
   async editCell(cell: Locator, text: string) {
     await cell.dblclick();

@@ -438,7 +438,7 @@ const escapedByteLength = (payload: ClipboardPayload) =>
   ).length;
 
 /**
- * A payload whose escaped JSON weighs exactly `bytes`, so the ceiling can be
+ * A payload whose escaped JSON weighs exactly bytes, so the ceiling can be
  * probed from both sides. The padding is plain ASCII, which neither JSON nor the
  * attribute escaper rewrites, so one character is one byte.
  */

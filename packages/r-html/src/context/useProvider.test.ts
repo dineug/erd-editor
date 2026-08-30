@@ -11,8 +11,8 @@ import { Context as Ctx } from '@/render/part/node/component/observableComponent
 
 const created: HTMLElement[] = [];
 
-// useProvider/useContext accept a bare element at runtime (`ctx instanceof
-// HTMLElement`), but the declared Ctx<HTMLElement> type also demands `host`.
+// useProvider/useContext accept a bare element at runtime (ctx instanceof
+// HTMLElement), but the declared Ctx<HTMLElement> type also demands host.
 const asCtx = (el: HTMLElement) => el as unknown as Ctx<HTMLElement>;
 
 const createElement = (tag = 'div') => {

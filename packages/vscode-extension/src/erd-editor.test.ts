@@ -24,8 +24,8 @@ import {
   workspace,
 } from '../test/mocks/vscode';
 
-// `hostExportFileCommand` falls back to `os.homedir()`, which is machine
-// dependent. Everything else about `os` stays real.
+// hostExportFileCommand falls back to os.homedir(), which is machine
+// dependent. Everything else about os stays real.
 vi.mock('os', async importOriginal => ({
   ...(await importOriginal<typeof import('os')>()),
   homedir: () => '/home/tester',
@@ -35,11 +35,9 @@ const encoder = new TextEncoder();
 const HTML_TEMPLATE = '<html><base href="{{extension-base-url}}"></html>';
 
 /**
- * What the real `Webview.asWebviewUri` hands back for the assets folder.
- * Arranged explicitly rather than leaning on the stub's own mapping: the stub
- * normalises the trailing slash of `Uri.joinPath(dir, '/')` away where the real
- * `Uri.joinPath` (`path.posix.join`) keeps it, and the slash is load-bearing
- * for `<base href>`.
+ * What the real asWebviewUri hands back for the assets folder, arranged
+ * explicitly rather than through the stub's mapping, which normalises away a
+ * trailing slash the real join keeps and the base href needs.
  */
 const WEBVIEW_ASSETS_URL =
   'https://file+.vscode-resource.vscode-cdn.net/ext/public/';
@@ -48,7 +46,7 @@ const asDirPath = (path: string) => (path.endsWith('/') ? path : `${path}/`);
 
 /**
  * Lets every already-resolved promise chain inside an async command handler
- * settle. The bridge dispatches synchronously but the handlers `await`.
+ * settle. The bridge dispatches synchronously but the handlers await.
  */
 function flush() {
   return new Promise(resolve => setTimeout(resolve, 0));
@@ -92,7 +90,7 @@ async function bootstrap(options: Parameters<typeof createEditor>[0] = {}) {
   const created = createEditor(options);
   const disposable = await created.editor.bootstrapWebview();
 
-  // `buildHtmlForWebview` already consumed one `readFile`; specs that assert on
+  // buildHtmlForWebview already consumed one readFile; specs that assert on
   // imports care only about what happens after bootstrap.
   const [htmlUri] = workspace.fs.readFile.mock.calls[0];
   workspace.fs.readFile.mockClear();
@@ -100,7 +98,7 @@ async function bootstrap(options: Parameters<typeof createEditor>[0] = {}) {
   return { ...created, disposable, htmlUri };
 }
 
-/** `bridge` is protected on `Editor`; the dispose specs need to drive it. */
+/** bridge is protected on Editor; the dispose specs need to drive it. */
 function bridgeOf(editor: ErdEditor): Bridge {
   return (editor as unknown as { bridge: Bridge }).bridge;
 }
@@ -131,7 +129,7 @@ describe('ErdEditor', () => {
 
       expect(htmlUri.toString()).toBe('file:///ext/public/index.html');
       const [assetsUri] = webview.asWebviewUri.mock.calls[0];
-      // Normalised because the stub and the real `Uri.joinPath` disagree about
+      // Normalised because the stub and the real Uri.joinPath disagree about
       // the trailing slash; what this pins is the directory that gets rewritten.
       expect(asDirPath(assetsUri.path)).toBe('/ext/public/');
     });
@@ -142,7 +140,7 @@ describe('ErdEditor', () => {
 
       await expect(editor.bootstrapWebview()).rejects.toThrow('ENOENT');
 
-      // Every listener is registered before `buildHtmlForWebview` is awaited,
+      // Every listener is registered before buildHtmlForWebview is awaited,
       // and the Disposable that would release them is never returned — so a
       // panel that failed to boot keeps answering configuration changes.
       fireConfigurationChange(['workbench.colorTheme']);
@@ -278,7 +276,7 @@ describe('ErdEditor', () => {
       );
 
       // The set is non-empty — it holds the sender — so this exercises the
-      // filter, not the `!webviewSet` early return below.
+      // filter, not the !webviewSet early return below.
       expect(webview.postMessage).not.toHaveBeenCalled();
     });
 
@@ -337,10 +335,9 @@ describe('ErdEditor', () => {
       webview.__receive(importJson());
       await flush();
 
-      // The filter comes from the extension table, not from the `accept` string
-      // on the payload: the same table decides whether the picked file is
-      // accepted afterwards, so the dialog can never offer a file the check
-      // then rejects.
+      // The filter comes from the extension table rather than the payload's
+      // accept string, because the same table decides whether the picked file
+      // is accepted, so the dialog cannot offer one the check then rejects.
       expect(window.showOpenDialog).toHaveBeenCalledWith({
         filters: { JSON: ['json'] },
       });
@@ -527,9 +524,9 @@ describe('ErdEditor', () => {
       webview.__receive(importJson());
       await flush();
 
-      // Guards the escaping in `new RegExp(\`\\.${type}$\`)`: with a single
-      // backslash the pattern degrades to `.json$`, where the dot is a wildcard
-      // and any `*xjson` file passes as JSON.
+      // Guards the escaping in new RegExp(\\\.${type}$\): with a single
+      // backslash the pattern degrades to .json$, where the dot is a wildcard
+      // and any *xjson file passes as JSON.
       expect(window.showInformationMessage).toHaveBeenCalledWith(
         'Just import the json file'
       );
@@ -747,7 +744,7 @@ describe('ErdEditor', () => {
         listener({ affectsConfiguration })
       );
 
-      // `affectsConfiguration` takes an optional scope; without the document
+      // affectsConfiguration takes an optional scope; without the document
       // uri a folder-scoped theme would repaint panels in other folders too.
       expect(affectsConfiguration.mock.calls).toEqual([
         ['dineug.erd-editor.theme.appearance', document.uri],
@@ -818,7 +815,7 @@ describe('ErdEditor', () => {
 
       disposable.dispose();
       // Driven straight at the bridge on purpose: replaying this through
-      // `webview.__receive` would be satisfied by the message listener being
+      // webview.__receive would be satisfied by the message listener being
       // gone and would say nothing about the command registrations.
       bridge.executeAction(save);
       await flush();

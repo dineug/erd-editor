@@ -100,7 +100,7 @@ describe('template/cssDiagnostics', () => {
         }
       `;
 
-      // `rule-without-selector` at the top level of a global block carries no position.
+      // rule-without-selector at the top level of a global block carries no position.
       expect(warn.mock.calls[0][0]).toContain('[r-html] css.global _');
       expect(warn.mock.calls[0][0]).toContain('rule-without-selector');
     });

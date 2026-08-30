@@ -1,7 +1,7 @@
 import { type BrowserContext, expect, type Page } from '@playwright/test';
 
 /**
- * `<erd-editor>` is defined with `shadow: 'closed'`, which puts its canvas out of
+ * <erd-editor> is defined with shadow: 'closed', which puts its canvas out of
  * reach of Playwright locators. Reopening the boundary before any page script
  * runs — and only here, in the e2e suite — lets the specs drive the real editor.
  */
@@ -17,7 +17,7 @@ async function reopenShadowRoots(page: Page) {
 const CANVAS = 'erd-editor [data-testid="erd-canvas"]';
 
 /**
- * Reads the editor's `value` getter, which serialises the live store
+ * Reads the editor's value getter, which serialises the live store
  * synchronously — the authoritative view of editor state rather than a rendering
  * of it.
  */
@@ -29,7 +29,7 @@ async function tableIds(page: Page): Promise<string[]> {
   });
 }
 
-/** The `/live` guest view. */
+/** The /live guest view. */
 export class LivePage {
   constructor(readonly page: Page) {}
 
@@ -58,10 +58,8 @@ export class LivePage {
 }
 
 /**
- * The main app shell.
- *
- * Specs keep a single schema in the sidebar, so the collaboration controls are
- * addressed by their (only) `.collaborative` trigger rather than by row.
+ * The main app shell. Specs keep a single schema in the sidebar, so the
+ * collaboration controls are addressed by their only trigger rather than by row.
  */
 export class AppPage {
   private schemaName = '';
@@ -108,7 +106,7 @@ export class AppPage {
     return addTable(this.page);
   }
 
-  /** Starts a session and returns the `/live#<roomId>,<secretKey>` invite. */
+  /** Starts a session and returns the /live#<roomId>,<secretKey> invite. */
   async startSession(): Promise<string> {
     const dialog = await this.openCollaborativeDialog();
     await dialog.getByRole('button', { name: 'Start session' }).click();
@@ -133,7 +131,7 @@ export class AppPage {
   }
 
   private async openCollaborativeDialog() {
-    // The trigger is `visibility: hidden` until the row is hovered, unless a
+    // The trigger is visibility: hidden until the row is hovered, unless a
     // session is already running.
     await this.sidebarItem().hover();
     const trigger = this.page.locator('.collaborative');
@@ -151,7 +149,7 @@ export class AppPage {
 }
 
 /**
- * `Alt+N` is the editor's add-table shortcut. tinykeys binds it to a element
+ * Alt+N is the editor's add-table shortcut. tinykeys binds it to a element
  * inside the shadow root, so the canvas has to be clicked first for the keydown
  * to reach the binding.
  */

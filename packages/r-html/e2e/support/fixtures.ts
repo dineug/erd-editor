@@ -7,13 +7,9 @@ export type CssFixtures = {
 };
 
 /**
- * Every spec starts on a freshly loaded fixture page with one host mounted.
- * The page is torn down between tests, so the module-scope style registry in
- * `vCSSStyleSheet.ts` — which is process-global and never resets — starts empty
- * for each one. That isolation is the reason specs may register freely.
- *
- * Any uncaught page error fails the test that caused it: `replaceSync` throwing
- * on emitted CSS is exactly the class of regression this suite exists to catch.
+ * Every spec starts on a freshly loaded fixture page with one host mounted, so
+ * the process-global style registry starts empty for each and specs may register
+ * freely. Any uncaught page error fails the test that caused it.
  */
 export const test = base.extend<CssFixtures>({
   cssPage: async ({ page }, use) => {

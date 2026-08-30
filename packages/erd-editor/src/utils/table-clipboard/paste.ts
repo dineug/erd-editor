@@ -84,8 +84,8 @@ export function tablePasteFromHtmlToColumns(
   });
 }
 
-// `unsupported` must stop the caller's ladder (#408): the rung below parses our
-// own `<table>`, so it always succeeds and appends columns to selected tables.
+// unsupported must stop the caller's ladder (#408): the rung below parses our
+// own <table>, so it always succeeds and appends columns to selected tables.
 export function readClipboardPayload(dataTransfer: DataTransfer): ParseResult {
   const json = dataTransfer.getData(CLIPBOARD_MIME);
   if (json) {

@@ -83,7 +83,7 @@ describe('Shortcuts', () => {
       app.keyBindingMap.edit.length
     );
 
-    // `removeTable` is bound twice ($mod+Backspace and $mod+Delete).
+    // removeTable is bound twice ($mod+Backspace and $mod+Delete).
     const removeRow = rowByCommand('Remove Table, Memo');
     expect(app.keyBindingMap.removeTable.length).toBe(2);
     expect(removeRow.querySelectorAll(`.${styles.shortcutGroup}`)).toHaveLength(

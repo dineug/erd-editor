@@ -3,12 +3,9 @@ import { expect, test } from '@playwright/test';
 import { AppPage, LivePage } from '../support/AppPage';
 
 /**
- * `navigator.locks` elects one tab to own the peer connections; the rest forward
- * their editor action streams to it over the BroadcastChannel bridge.
- *
- * Nothing about that survives a single-page unit test — it needs two real tabs in
- * one browser profile (so they share a lock manager, a SharedWorker and a
- * BroadcastChannel) plus a third context playing the guest.
+ * navigator.locks elects one tab to own the peer connections and the rest
+ * forward to it. That needs two real tabs in one profile, so they share a lock
+ * manager, a SharedWorker and a channel, plus a third context as the guest.
  */
 test.describe('leadership across tabs', () => {
   test('shows a session started in one tab in the other', async ({

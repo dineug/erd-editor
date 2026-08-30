@@ -143,8 +143,8 @@ function getStyleRecord(el: HTMLElement | SVGElement) {
 
 function toClassList(value: any, list: string[] = []) {
   // The same rule the array branch below has always applied, hoisted so it also
-  // covers the top-level value. Without it a falsy one reaches `safeToString`,
-  // which answers `''`, and `classList.add('')` is a SyntaxError.
+  // covers the top-level value. Without it a falsy one reaches safeToString,
+  // which answers '', and classList.add('') is a SyntaxError.
   if (!value) {
     return list;
   }
