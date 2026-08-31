@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-08-31 -->
 
 # vite-plugin-r-html
 
@@ -10,7 +10,8 @@
 (uppercase first letter), appending an `import.meta.hot.accept` that dispatches `hmr:r-html` with
 `{ originComponent, newComponent }` for `r-html`'s `hmr.ts` to swap on, plus an
 `import 'virtual:r-html-hmr'` — the module that calls `hmr()`. `vite:r-html-jsx` compiles `.tsx`
-into the `html`/`svg` tagged templates the runtime already reads.
+into the `html`/`svg` tagged templates the runtime already reads, or into `konva` ones when the
+file carries the host pragma.
 
 ## Key Files
 
@@ -18,8 +19,9 @@ into the `html`/`svg` tagged templates the runtime already reads.
 | -------------------- | ----------------------------------------------------------------------------------------------------- |
 | `src/index.ts`       | `rHtml(options)` plus `transformJsxToTagged` and the `Options`/`JsxOptions`/`RefreshOptions` types |
 | `src/refresh.ts`     | The HMR half: boundary detection, the injected snippet, and the `virtual:r-html-hmr` module           |
-| `src/jsx/codegen.ts` | JSX AST → tagged-template source; owns the attribute mapping, the SVG namespace call and the escaping |
-| `src/jsx/plugin.ts`  | `rHtmlJsx(options)` — `enforce: 'pre'`, `.tsx` only, injects `html`/`svg` under aliases                |
+| `src/jsx/codegen.ts` | JSX AST → tagged-template source; owns the attribute mapping, the SVG namespace call, the `@jsxHost` pragma and the escaping |
+| `src/jsx/plugin.ts`  | `rHtmlJsx(options)` — `enforce: 'pre'`, `.tsx` only, injects `html`/`svg`/`konva` under aliases        |
+| `src/options.ts`     | `Options`, `JsxOptions` (`importSource`, `konvaImportSource`) and `RefreshOptions`                     |
 | `vite.config.mts`    | `run.tasks` (`build`, `test`) plus a CJS-only lib build (`formats: ['cjs']`, `minify: false`) with dts |
 | `vitest.config.mts`  | Node tests over `src/**/*.test.ts`; v8 per-file 80% thresholds for coverage runs |
 
@@ -40,6 +42,23 @@ into the `html`/`svg` tagged templates the runtime already reads.
 - Codegen emits `html`/`svg` aliases, preserves source line count, normalizes JSX whitespace, and
   escapes template delimiters, backslashes and quotes. Direct codegen returns `null` when no JSX exists;
   the Vite hook returns `{ code, map: null }`.
+- **One file, one host.** The host is picked from a file-level `/** @jsxHost konva */` pragma, never
+  from a root tag: `isComponentName` resolves every component root, `emitExpr` recurses into a
+  `repeat(...)` argument as an independent root, and a component's `.children` wrapper is emitted with
+  no intrinsic in sight — none of the three can see a `k-*` name. A konva file emits every template
+  under `__rKonva`, imported from the `konvaImportSource` option; there is no default, so a pragma with
+  that option unset is a compile error. So are, each with a `codegen.test.ts` case: a DOM tag in a konva
+  file, a `k-*` tag in a file without the pragma, a string or number child under `k-*`, and
+  `{...spread}` / `class` / `style` / `zIndex` on a `k-*` tag. Component tags stand in either host,
+  spread included — a spread there lands on props, not on a node. A file with no pragma compiles byte
+  for byte the way it did before the pragma existed, which the inline snapshot in `codegen.test.ts` pins.
+- **Writing the pragma** is bound by two of the repo's comment rules (`tools/eslint-rules/jsdoc-attached.js`).
+  It has to be a **tags-only** block: `/** @jsxHost konva */` passes, `/** Konva scene. @jsxHost konva */`
+  is a lint error, because `carriesProse()` exempts a block only when every non-blank line starts with `@`.
+  And **no other JSDoc may sit between the pragma and the first declaration**: the `stacked` check groups
+  blocks by the next code token and only the last one attaches, so the pragma is the one reported. The
+  compiler reads it from a block comment above the first statement only — later in the file, in a line
+  comment, or with a value other than `dom`/`konva`, it is a compile error rather than a silent miss.
 - The `accept` block is appended only when the module also has a named `export default`; every named
   export must be component-shaped (uppercase first letter), and a nameless default is declined.
 - Boundary modules import `virtual:r-html-hmr`, whose module calls `hmr()` once; `apply: 'serve'` is
@@ -52,7 +71,9 @@ into the `html`/`svg` tagged templates the runtime already reads.
 - `vp run --filter @dineug/vite-plugin-r-html --fail-if-no-match test` — `tsc --noEmit` then Vitest
   over `src/**/*.test.ts` in the `node` env. Both halves' hooks are called directly.
 - The codegen suite is the transform's spec — every attribute mapping, rejected construct and
-  escaping case. DOM parity against hand-written `html` lives in `packages/erd-editor`.
+  escaping case. DOM parity against hand-written `html` lives in `packages/erd-editor`. The one
+  inline snapshot is the byte-invariance witness for pragma-less files; regenerate it only when the DOM
+  half is meant to change, never to make a konva change go green.
 - Boundary selection is tested; the swap itself is not. That stays manual:
   `pnpm --filter @dineug/erd-editor dev`, edit a component, watch it swap in place.
 

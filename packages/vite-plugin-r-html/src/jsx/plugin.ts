@@ -8,6 +8,8 @@ export interface JsxOptions {
   exclude?: string | RegExp | Array<string | RegExp>;
   /** Where the injected html / svg tags are imported from. */
   importSource?: string;
+  /** Where the injected konva tag comes from; a @jsxHost konva file needs it. */
+  konvaImportSource?: string;
 }
 
 const cleanId = (id: string) => id.split('?')[0];
@@ -35,7 +37,8 @@ export function rHtmlJsx(options: JsxOptions = {}): Plugin {
       const transformed = transformJsxToTagged(
         code,
         path,
-        options.importSource
+        options.importSource,
+        options.konvaImportSource
       );
       return transformed === null
         ? undefined

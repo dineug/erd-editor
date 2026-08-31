@@ -12,6 +12,8 @@ export interface JsxOptions {
   exclude?: Matcher;
   /** Where the injected html / svg tags are imported from. */
   importSource?: string;
+  /** Where the injected konva tag comes from; a @jsxHost konva file needs it. */
+  konvaImportSource?: string;
 }
 
 export interface Options {

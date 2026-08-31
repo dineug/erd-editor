@@ -58,4 +58,16 @@ describe('rHtmlJsx', () => {
     });
     expect(result?.code).toContain("from '@scope/pkg'");
   });
+
+  it('passes the konva import source through, which a host pragma needs', () => {
+    const result = run(
+      '/** @jsxHost konva */\nconst a = <k-rect />;',
+      '/src/Scene.tsx',
+      { konvaImportSource: '@/konva/host' }
+    );
+    expect(result?.code).toContain(
+      "import { konva as __rKonva } from '@/konva/host';"
+    );
+    expect(result?.code).toContain('__rKonva`<k-rect />`');
+  });
 });
