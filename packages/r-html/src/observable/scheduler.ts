@@ -71,6 +71,21 @@ const createNextTick =
 const observerNextTick = createNextTick('observer');
 export const nextTick = createNextTick('nextTick');
 
+/**
+ * Drops the task an observer had already queued. An observer that goes away
+ * between the write that queued it and the drain that would run it has nothing
+ * left to render into, so the job has to leave with it.
+ */
+export function cancelTask(fn: Observer | VoidFunction) {
+  const task = queueMap.get(fn);
+  if (!task) return;
+
+  const index = queue.indexOf(task);
+  index === -1 || queue.splice(index, 1);
+  queueMap.delete(fn);
+  task.resolve();
+}
+
 export const effect = (raw: any, p: PropName) =>
   rawToObservers
     .get(raw)
