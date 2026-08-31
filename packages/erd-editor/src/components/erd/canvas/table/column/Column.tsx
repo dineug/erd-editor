@@ -1,24 +1,49 @@
-import { DOMTemplateLiterals, FC, Ref, repeat } from '@dineug/r-html';
+/** @jsxHost konva */
 
-import { AppContext, useAppContext } from '@/components/appContext';
-import ColumnDataType from '@/components/erd/canvas/table/column/column-data-type/ColumnDataType';
-import ColumnKey from '@/components/erd/canvas/table/column/column-key/ColumnKey';
-import ColumnNotNull from '@/components/erd/canvas/table/column/column-not-null/ColumnNotNull';
-import ColumnOption from '@/components/erd/canvas/table/column/column-option/ColumnOption';
-import EditInput from '@/components/primitives/edit-input/EditInput';
-import Icon from '@/components/primitives/icon/Icon';
 import {
-  COLUMN_AUTO_INCREMENT_WIDTH,
-  COLUMN_UNIQUE_WIDTH,
+  type DOMTemplateLiterals,
+  FC,
+  observable,
+  repeat,
+} from '@dineug/r-html';
+import type { Subscription } from 'rxjs';
+
+import { useAppContext } from '@/components/appContext';
+import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
+import {
+  CURSOR_INHERIT,
+  CURSOR_POINTER,
+  FOCUS_BORDER_HEIGHT,
+  HIT_FILL,
+  SCENE_FONT_FAMILY,
+  SCENE_FONT_SIZE,
+  type SceneMouseEvent,
+  setSceneCursor,
+  TABLE_INSET,
+  TRANSPARENT,
+} from '@/components/erd/canvas/sceneTokens';
+import {
+  COLUMN_TEXT_Y,
+  type ColumnCellSlot,
+  getColumnCellSlots,
+} from '@/components/erd/canvas/table/cellLayout';
+import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
+import { useThemeContext } from '@/components/themeContext';
+import {
+  COLUMN_DELETE_WIDTH,
+  COLUMN_HEIGHT,
+  COLUMN_KEY_WIDTH,
+  INPUT_HEIGHT,
+  INPUT_MARGIN_RIGHT,
+  TABLE_BORDER,
 } from '@/constants/layout';
 import {
   ColumnOption as ColumnOptionType,
   ColumnType,
-  Show,
+  ColumnUIKey,
 } from '@/constants/schema';
 import {
   editTableAction,
-  editTableEndAction,
   focusColumnAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
@@ -27,20 +52,21 @@ import {
 } from '@/engine/modules/editor/generator.actions';
 import { FocusType } from '@/engine/modules/editor/state';
 import {
-  changeColumnValueAction$,
   isToggleColumnTypes,
   removeColumnAction$,
   toggleColumnValueAction$,
 } from '@/engine/modules/table-column/generator.actions';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Column } from '@/internal-types';
+import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
-import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
-
-import * as styles from './Column.styles';
+import { drag$ } from '@/utils/globalEventObservable';
+import { isMod } from '@/utils/keyboard-shortcut';
 
 export type ColumnProps = {
-  app: Ref<AppContext>;
   column: Column;
+  y: number;
+  width: number;
   selected: boolean;
   widthName: number;
   widthDataType: number;
@@ -64,10 +90,31 @@ export type ColumnProps = {
   editDataType: boolean;
   editDefault: boolean;
   editComment: boolean;
-  draggable?: boolean;
+  hovered?: boolean;
+  /** The placeholder row for a column dragged in from another table. */
   ghost?: boolean;
-  onDragstart?: (event: DragEvent) => void;
-  onDragend?: (event: DragEvent) => void;
+  /** Drawn inside a copy of the table, which owns none of its ids. */
+  preview?: boolean;
+  editorFocused?: boolean;
+  /**
+   * The one pair of callbacks the scene keeps. A drop lands between siblings,
+   * so the table that owns the order is the only thing that can judge one, and
+   * the row can only say that a drag of it started and that it ended.
+   */
+  onDragstart?: (columnId: string, event: SceneMouseEvent) => void;
+  onDragend?: () => void;
+};
+
+type CellOptions = {
+  focusType: FocusType;
+  x: number;
+  width: number;
+  text: string;
+  fill: string;
+  focus: boolean;
+  edit: boolean;
+  sharedFocus: string | null;
+  ellipsis: boolean;
 };
 
 type ColumnOrderTpl = {
@@ -75,63 +122,111 @@ type ColumnOrderTpl = {
   template: DOMTemplateLiterals | null;
 };
 
-const Column: FC<ColumnProps> = (props, ctx) => {
-  const app = useAppContext(ctx, props.app?.value);
+/** Which of the three key colours a column's key bits paint it, if any. */
+const keyFill = (keys: number, theme: Theme) => {
+  const isPrimaryKey = bHas(keys, ColumnUIKey.primaryKey);
+  const isForeignKey = bHas(keys, ColumnUIKey.foreignKey);
 
-  const handleRemoveColumn = () => {
-    const { store } = app.value;
-    store.dispatch(
-      removeColumnAction$(props.column.tableId, [props.column.id])
-    );
+  if (isPrimaryKey && isForeignKey) return theme.keyPFK;
+  if (isPrimaryKey) return theme.keyPK;
+  if (isForeignKey) return theme.keyFK;
+  return TRANSPARENT;
+};
+
+const Column: FC<ColumnProps> = (props, ctx) => {
+  const app = useAppContext(ctx);
+  const themeRef = useThemeContext(ctx);
+  const state = observable({ hover: false, removeHover: false });
+  const { addUnsubscribe } = useUnmounted();
+  const doubleClick = createDoubleClickGuard();
+
+  let dragSubscription: Subscription | null = null;
+
+  const endDrag = () => {
+    dragSubscription?.unsubscribe();
+    dragSubscription = null;
   };
 
-  const handleFocus = (event: MouseEvent, focusType: FocusType) => {
+  addUnsubscribe(endDrag);
+
+  /**
+   * Arms a column drag on the press and reports it once the pointer has moved,
+   * which is the moment the browser used to call a dragstart. A press that never
+   * moves stays a click, so a button and a cell focus still work.
+   */
+  const handleDragstart = (event: SceneMouseEvent) => {
+    if (props.preview || props.ghost || event.evt.button !== 0) return;
+
+    endDrag();
+    let started = false;
+
+    const subscription = drag$.subscribe({
+      next: () => {
+        if (started) return;
+        started = true;
+        props.onDragstart?.(props.column.id, event);
+      },
+      complete: () => {
+        if (dragSubscription === subscription) dragSubscription = null;
+        started && props.onDragend?.();
+      },
+    });
+
+    dragSubscription = subscription;
+  };
+
+  const handleMouseenter = () => {
+    state.hover = true;
+  };
+
+  const handleMouseleave = () => {
+    state.hover = false;
+  };
+
+  /** What the remove button had as its hover colour and its pointer cursor. */
+  const handleRemoveMouseenter = (event: SceneMouseEvent) => {
+    state.removeHover = true;
+    setSceneCursor(event, CURSOR_POINTER);
+  };
+
+  const handleRemoveMouseleave = (event: SceneMouseEvent) => {
+    state.removeHover = false;
+    setSceneCursor(event, CURSOR_INHERIT);
+  };
+
+  const handleFocus = (focusType: FocusType, event: SceneMouseEvent) => {
     const { store } = app.value;
+    const { column } = props;
     store.dispatch(
       focusColumnAction({
-        tableId: props.column.tableId,
-        columnId: props.column.id,
+        tableId: column.tableId,
+        columnId: column.id,
         focusType,
-        $mod: isMod(event),
-        shiftKey: event.shiftKey,
+        $mod: isMod(event.evt),
+        shiftKey: event.evt.shiftKey,
       })
     );
   };
 
-  const handleEdit = (focusType: FocusType) => {
+  const handleEdit = (focusType: FocusType, event: SceneMouseEvent) => {
+    if (!doubleClick.isDouble(focusType, event)) return;
+
     const { store } = app.value;
+    const { column } = props;
     store.dispatch(
       isToggleColumnTypes(focusType)
-        ? toggleColumnValueAction$(
-            focusType,
-            props.column.tableId,
-            props.column.id
-          )
+        ? toggleColumnValueAction$(focusType, column.tableId, column.id)
         : editTableAction()
     );
   };
 
-  const handleEditEnd = () => {
+  const handleRemove = () => {
     const { store } = app.value;
-    store.dispatch(editTableEndAction());
+    const { column } = props;
+    store.dispatch(removeColumnAction$(column.tableId, [column.id]));
   };
 
-  const handleInput = (event: InputEvent, focusType: FocusType) => {
-    const { store } = app.value;
-    const input = event.target as HTMLInputElement | null;
-    if (!input) return;
-
-    store.dispatch(
-      changeColumnValueAction$(
-        focusType,
-        props.column.tableId,
-        props.column.id,
-        input.value
-      )
-    );
-  };
-
-  const handleMouseenterKey = () => {
+  const handleKeyMouseenter = () => {
     const { column } = props;
     if (column.ui.keys === 0) return;
 
@@ -139,262 +234,274 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     store.dispatch(columnKeyHoverStartAction$(column.id));
   };
 
-  const handleMouseleaveKey = () => {
+  const handleKeyMouseleave = () => {
     const { store } = app.value;
     store.dispatch(columnKeyHoverEndAction$());
   };
 
-  const getColumnOrder = (): ColumnOrderTpl[] => {
-    const { store } = app.value;
-    const { settings } = store.state;
-    const { column, widthName, widthDataType, widthDefault, widthComment } =
-      props;
+  /**
+   * One cell, laid out the way its div was: a hit box, the text in the 20px
+   * input line inside it, and the two underlines at their own edge. The focus
+   * underline keeps its box while edited and paints nothing there.
+   */
+  const cell = ({
+    focusType,
+    x,
+    width,
+    text,
+    fill,
+    focus,
+    edit,
+    sharedFocus,
+    ellipsis,
+  }: CellOptions) => (
+    <k-group
+      name={`column-col ${focusType}`}
+      kind="column-col"
+      sharedFocus={sharedFocus}
+      x={x}
+      y={0}
+      on:mousedown={(event: SceneMouseEvent) => {
+        handleFocus(focusType, event);
+        doubleClick.track(focusType, event);
+      }}
+      on:dblclick={(event: SceneMouseEvent) => {
+        handleEdit(focusType, event);
+      }}
+    >
+      <k-rect
+        name="cell-hit"
+        width={width + INPUT_MARGIN_RIGHT}
+        height={COLUMN_HEIGHT}
+        fill={HIT_FILL}
+      />
+      <k-text
+        name="cell-text"
+        y={COLUMN_TEXT_Y}
+        width={width}
+        height={INPUT_HEIGHT}
+        text={text}
+        fill={fill}
+        fontFamily={SCENE_FONT_FAMILY}
+        fontSize={SCENE_FONT_SIZE}
+        verticalAlign="middle"
+        wrap="none"
+        ellipsis={ellipsis}
+        visible={!edit}
+      />
+      {focus ? (
+        <k-rect
+          name="cell-focus-border"
+          y={COLUMN_TEXT_Y + INPUT_HEIGHT - FOCUS_BORDER_HEIGHT}
+          width={width}
+          height={FOCUS_BORDER_HEIGHT}
+          fill={
+            edit
+              ? TRANSPARENT
+              : props.editorFocused === false
+                ? themeRef.value.placeholder
+                : themeRef.value.focus
+          }
+        />
+      ) : null}
+      {sharedFocus ? (
+        <k-rect
+          name="cell-shared-focus-border"
+          y={COLUMN_HEIGHT - FOCUS_BORDER_HEIGHT}
+          width={width + INPUT_MARGIN_RIGHT}
+          height={FOCUS_BORDER_HEIGHT}
+          fill={sharedFocus}
+        />
+      ) : null}
+    </k-group>
+  );
 
-    return settings.columnOrder
-      .map((columnType: number) => {
-        let template: DOMTemplateLiterals | null = null;
+  /** One cell, filled in with what its own column type puts in the box. */
+  const cellOf = ({
+    columnType,
+    focusType,
+    x,
+    width,
+  }: ColumnCellSlot): DOMTemplateLiterals | null => {
+    const { column } = props;
+    const theme = themeRef.value;
 
-        switch (columnType) {
-          case ColumnType.columnName:
-            template = (
-              <div
-                class="column-col"
-                data-type="columnName"
-                bool:data-shared-focus={Boolean(props.sharedFocusName)}
-                style={{ '--shared-focus': props.sharedFocusName ?? '' }}
-                on:mousedown={(event: MouseEvent) => {
-                  handleFocus(event, FocusType.columnName);
-                }}
-                on:dblclick={() => {
-                  handleEdit(FocusType.columnName);
-                }}
-              >
-                <EditInput
-                  placeholder="column"
-                  width={widthName}
-                  value={column.name}
-                  focus={props.focusName}
-                  edit={props.editName}
-                  autofocus={true}
-                  onBlur={handleEditEnd}
-                  onInput={(event: InputEvent) => {
-                    handleInput(event, FocusType.columnName);
-                  }}
-                />
-              </div>
-            );
-            break;
-          case ColumnType.columnDefault:
-            template = bHas(settings.show, Show.columnDefault) ? (
-              <div
-                class="column-col"
-                data-type="columnDefault"
-                bool:data-shared-focus={Boolean(props.sharedFocusDefault)}
-                style={{ '--shared-focus': props.sharedFocusDefault ?? '' }}
-                on:mousedown={(event: MouseEvent) => {
-                  handleFocus(event, FocusType.columnDefault);
-                }}
-                on:dblclick={() => {
-                  handleEdit(FocusType.columnDefault);
-                }}
-              >
-                <EditInput
-                  placeholder="default"
-                  width={widthDefault}
-                  value={column.default}
-                  focus={props.focusDefault}
-                  edit={props.editDefault}
-                  autofocus={true}
-                  onBlur={handleEditEnd}
-                  onInput={(event: InputEvent) => {
-                    handleInput(event, FocusType.columnDefault);
-                  }}
-                />
-              </div>
-            ) : null;
-            break;
-          case ColumnType.columnComment:
-            template = bHas(settings.show, Show.columnComment) ? (
-              <div
-                class="column-col"
-                data-type="columnComment"
-                bool:data-shared-focus={Boolean(props.sharedFocusComment)}
-                style={{ '--shared-focus': props.sharedFocusComment ?? '' }}
-                on:mousedown={(event: MouseEvent) => {
-                  handleFocus(event, FocusType.columnComment);
-                }}
-                on:dblclick={() => {
-                  handleEdit(FocusType.columnComment);
-                }}
-              >
-                <EditInput
-                  title={column.comment}
-                  placeholder="comment"
-                  width={widthComment}
-                  value={column.comment}
-                  focus={props.focusComment}
-                  edit={props.editComment}
-                  autofocus={true}
-                  onBlur={handleEditEnd}
-                  onInput={(event: InputEvent) => {
-                    handleInput(event, FocusType.columnComment);
-                  }}
-                />
-              </div>
-            ) : null;
-            break;
-          case ColumnType.columnDataType:
-            template = bHas(settings.show, Show.columnDataType) ? (
-              <div
-                class="column-col"
-                data-type="columnDataType"
-                bool:data-shared-focus={Boolean(props.sharedFocusDataType)}
-                style={{ '--shared-focus': props.sharedFocusDataType ?? '' }}
-                on:mousedown={(event: MouseEvent) => {
-                  handleFocus(event, FocusType.columnDataType);
-                }}
-                on:dblclick={() => {
-                  handleEdit(FocusType.columnDataType);
-                }}
-              >
-                <ColumnDataType
-                  app={app}
-                  tableId={column.tableId}
-                  columnId={column.id}
-                  width={widthDataType}
-                  value={column.dataType}
-                  focus={props.focusDataType}
-                  edit={props.editDataType}
-                  onBlur={handleEditEnd}
-                  onEditEnd={handleEditEnd}
-                  onInput={(event: InputEvent) => {
-                    handleInput(event, FocusType.columnDataType);
-                  }}
-                />
-              </div>
-            ) : null;
-            break;
-          case ColumnType.columnNotNull:
-            template = bHas(settings.show, Show.columnNotNull) ? (
-              <div
-                class="column-col"
-                data-type="columnNotNull"
-                bool:data-shared-focus={Boolean(props.sharedFocusNotNull)}
-                style={{ '--shared-focus': props.sharedFocusNotNull ?? '' }}
-                on:mousedown={(event: MouseEvent) => {
-                  handleFocus(event, FocusType.columnNotNull);
-                }}
-                on:dblclick={() => {
-                  handleEdit(FocusType.columnNotNull);
-                }}
-              >
-                <ColumnNotNull
-                  options={column.options}
-                  focus={props.focusNotNull}
-                />
-              </div>
-            ) : null;
-            break;
-          case ColumnType.columnUnique:
-            template = bHas(settings.show, Show.columnUnique) ? (
-              <div
-                class="column-col"
-                data-type="columnUnique"
-                bool:data-shared-focus={Boolean(props.sharedFocusUnique)}
-                style={{ '--shared-focus': props.sharedFocusUnique ?? '' }}
-                on:mousedown={(event: MouseEvent) => {
-                  handleFocus(event, FocusType.columnUnique);
-                }}
-                on:dblclick={() => {
-                  handleEdit(FocusType.columnUnique);
-                }}
-              >
-                <ColumnOption
-                  checked={bHas(column.options, ColumnOptionType.unique)}
-                  width={COLUMN_UNIQUE_WIDTH}
-                  text="UQ"
-                  title="Unique"
-                  focus={props.focusUnique}
-                />
-              </div>
-            ) : null;
-            break;
-          case ColumnType.columnAutoIncrement:
-            template = bHas(settings.show, Show.columnAutoIncrement) ? (
-              <div
-                class="column-col"
-                data-type="columnAutoIncrement"
-                bool:data-shared-focus={Boolean(props.sharedFocusAutoIncrement)}
-                style={{
-                  '--shared-focus': props.sharedFocusAutoIncrement ?? '',
-                }}
-                on:mousedown={(event: MouseEvent) => {
-                  handleFocus(event, FocusType.columnAutoIncrement);
-                }}
-                on:dblclick={() => {
-                  handleEdit(FocusType.columnAutoIncrement);
-                }}
-              >
-                <ColumnOption
-                  checked={bHas(column.options, ColumnOptionType.autoIncrement)}
-                  width={COLUMN_AUTO_INCREMENT_WIDTH}
-                  text="AI"
-                  title="Auto Increment"
-                  focus={props.focusAutoIncrement}
-                />
-              </div>
-            ) : null;
-            break;
-        }
+    switch (columnType) {
+      case ColumnType.columnName:
+        return cell({
+          focusType,
+          x,
+          width,
+          text: column.name.trim() ? column.name : 'column',
+          fill: column.name.trim() ? theme.active : theme.placeholder,
+          focus: props.focusName,
+          edit: props.editName,
+          sharedFocus: props.sharedFocusName,
+          ellipsis: true,
+        });
+      case ColumnType.columnDefault:
+        return cell({
+          focusType,
+          x,
+          width,
+          text: column.default.trim() ? column.default : 'default',
+          fill: column.default.trim() ? theme.active : theme.placeholder,
+          focus: props.focusDefault,
+          edit: props.editDefault,
+          sharedFocus: props.sharedFocusDefault,
+          ellipsis: true,
+        });
+      case ColumnType.columnComment:
+        return cell({
+          focusType,
+          x,
+          width,
+          text: column.comment.trim() ? column.comment : 'comment',
+          fill: column.comment.trim() ? theme.active : theme.placeholder,
+          focus: props.focusComment,
+          edit: props.editComment,
+          sharedFocus: props.sharedFocusComment,
+          ellipsis: true,
+        });
+      case ColumnType.columnDataType:
+        return cell({
+          focusType,
+          x,
+          width,
+          text: column.dataType.trim() ? column.dataType : 'dataType',
+          fill: column.dataType.trim() ? theme.active : theme.placeholder,
+          focus: props.focusDataType,
+          edit: props.editDataType,
+          sharedFocus: props.sharedFocusDataType,
+          ellipsis: true,
+        });
+      case ColumnType.columnNotNull:
+        return cell({
+          focusType,
+          x,
+          width,
+          text: bHas(column.options, ColumnOptionType.notNull) ? 'N-N' : 'NULL',
+          fill: theme.active,
+          focus: props.focusNotNull,
+          edit: false,
+          sharedFocus: props.sharedFocusNotNull,
+          ellipsis: false,
+        });
+      case ColumnType.columnUnique:
+        return cell({
+          focusType,
+          x,
+          width,
+          text: 'UQ',
+          fill: bHas(column.options, ColumnOptionType.unique)
+            ? theme.active
+            : theme.placeholder,
+          focus: props.focusUnique,
+          edit: false,
+          sharedFocus: props.sharedFocusUnique,
+          ellipsis: false,
+        });
+      case ColumnType.columnAutoIncrement:
+        return cell({
+          focusType,
+          x,
+          width,
+          text: 'AI',
+          fill: bHas(column.options, ColumnOptionType.autoIncrement)
+            ? theme.active
+            : theme.placeholder,
+          focus: props.focusAutoIncrement,
+          edit: false,
+          sharedFocus: props.sharedFocusAutoIncrement,
+          ellipsis: false,
+        });
+    }
 
-        return {
-          columnType,
-          template,
-        };
-      })
-      .filter(({ template }) => Boolean(template));
+    return null;
   };
 
+  const getColumnOrder = (): ColumnOrderTpl[] => {
+    const { store } = app.value;
+
+    return getColumnCellSlots(store.state, {
+      name: props.widthName,
+      comment: props.widthComment,
+      dataType: props.widthDataType,
+      default: props.widthDefault,
+    })
+      .map(slot => ({ columnType: slot.columnType, template: cellOf(slot) }))
+      .filter(({ template }) => Boolean(template));
+  };
   return () => {
-    const { store, keyBindingMap } = app.value;
+    const { store } = app.value;
     const { editor } = store.state;
-    const { column, selected } = props;
-    const hover = Boolean(editor.hoverColumnMap[column.id]);
-    const dragging = editor.draggingColumnMap[column.id];
+    const { column, selected, width } = props;
+    const theme = themeRef.value;
+    const hover = Boolean(
+      props.hovered || state.hover || editor.hoverColumnMap[column.id]
+    );
+    const dragging = Boolean(editor.draggingColumnMap[column.id]);
+    const contentWidth = width - TABLE_INSET * 2;
+    const background = selected
+      ? theme.columnSelect
+      : hover
+        ? theme.columnHover
+        : TRANSPARENT;
 
     return (
-      <div
-        class={['column-row', styles.root]}
-        data-id={column.id}
-        data-table-id={column.tableId}
-        bool:data-selected={selected}
-        bool:data-hover={hover}
-        bool:data-dragging={dragging}
-        bool:data-ghost={props.ghost}
-        draggable={props.draggable ? 'true' : 'false'}
-        on:dragstart={props.onDragstart}
-        on:dragend={props.onDragend}
+      <k-group
+        id={props.preview ? '' : `column-${column.id}`}
+        name="column-row"
+        kind="column-row"
+        tableId={column.tableId}
+        selected={selected}
+        y={props.y}
+        opacity={dragging ? 0.5 : 1}
+        visible={!props.ghost}
+        on:mousedown={handleDragstart}
+        on:mouseenter={handleMouseenter}
+        on:mouseleave={handleMouseleave}
       >
-        <ColumnKey
-          keys={column.ui.keys}
-          onMouseenter={handleMouseenterKey}
-          onMouseleave={handleMouseleaveKey}
+        <k-rect
+          name="column-row-background"
+          x={TABLE_BORDER}
+          width={width - TABLE_BORDER * 2}
+          height={COLUMN_HEIGHT}
+          fill={background}
         />
+        {sceneIcon({
+          icon: 'key-round',
+          name: 'column-col column-key',
+          kind: 'column-col',
+          size: COLUMN_KEY_WIDTH,
+          color: keyFill(column.ui.keys, theme),
+          x: TABLE_INSET,
+          y: (COLUMN_HEIGHT - COLUMN_KEY_WIDTH) / 2,
+          mouseenter: handleKeyMouseenter,
+          mouseleave: handleKeyMouseleave,
+        })}
         {repeat(
           getColumnOrder(),
           ({ columnType }) => columnType,
           ({ template }) => template
         )}
-        <Icon
-          class={styles.iconButton}
-          size={12}
-          name="x"
-          title={simpleShortcutToString(
-            keyBindingMap.removeColumn[0]?.shortcut
-          )}
-          onClick={handleRemoveColumn}
-        />
-      </div>
+        {sceneIcon({
+          icon: 'x',
+          name: 'column-remove',
+          kind: 'icon',
+          size: COLUMN_DELETE_WIDTH,
+          color: hover
+            ? state.removeHover
+              ? theme.active
+              : theme.foreground
+            : TRANSPARENT,
+          x: TABLE_INSET + contentWidth - COLUMN_DELETE_WIDTH,
+          y: (COLUMN_HEIGHT - COLUMN_DELETE_WIDTH) / 2,
+          click: handleRemove,
+          mouseenter: handleRemoveMouseenter,
+          mouseleave: handleRemoveMouseleave,
+        })}
+      </k-group>
     );
   };
 };

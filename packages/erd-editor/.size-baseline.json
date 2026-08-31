@@ -1,0 +1,12 @@
+{
+  "baseCommit": "3a524e6eb5b2e9edb686792744ef3a71ac65fbc6",
+  "recordedAt": "2026-08-30T18:01:45.249Z",
+  "gzipLevel": 9,
+  "entries": {
+    "dist/erd-editor.js": {
+      "bytes": 1079085,
+      "gzip": 252529,
+      "budgetGzip": 306000
+    }
+  }
+}

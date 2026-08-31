@@ -4,6 +4,7 @@ catalog:
   vite: npm:@voidzero-dev/vite-plus-core@0.2.9
   vitest: 4.1.10
   vite-plus: 0.2.9
+  '@vitest/browser-playwright': 4.1.10
   '@vitest/coverage-v8': 4.1.10
 overrides:
   # Was `resolutions` in the root package.json, which pnpm reads but does not

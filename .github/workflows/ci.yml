@@ -53,6 +53,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-workspace
+      # erd-editor's browser-mode vitest project drives a real Chromium, so
+      # pnpm test no longer runs without one. Same invocation as the e2e job
+      # below, and the download is shared, so installing once here covers it.
+      - name: Install Playwright browsers
+        run: pnpm --filter @dineug/erd-editor exec playwright install --with-deps chromium
       - run: pnpm test
       # pnpm test does not enforce coverage. r-html sets perFile 80% on all four
       # metrics, and its CSS compiler is reached through one narrow seam, so a

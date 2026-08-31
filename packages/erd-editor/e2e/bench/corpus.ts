@@ -10,8 +10,29 @@ import {
   type TableEntity,
 } from '../support/schema';
 
-/** Every corpus uses one canvas size so SVG area never confounds a comparison. */
+/**
+ * The canvas size every corpus that fits inside it shares, so SVG area never
+ * confounds a comparison. fitCanvas covers the one that outgrows it.
+ */
 export const BENCH_CANVAS = 4000;
+
+/** Mirrors CANVAS_SIZE_MAX in src/constants/schema.ts, past which the editor clamps. */
+const CANVAS_MAX = 20_000;
+
+/**
+ * The shared canvas wherever the grid fits inside it, which is every corpus up
+ * to large, and the grid's own extent where it does not — a canvas short of
+ * the grid clips the SVG the quality metrics are read from.
+ */
+function fitCanvas(extent: number) {
+  const size = Math.max(BENCH_CANVAS, Math.ceil(extent));
+  if (size > CANVAS_MAX) {
+    throw new Error(
+      `corpus needs a ${size}px canvas, above the schema maximum of ${CANVAS_MAX}`
+    );
+  }
+  return size;
+}
 
 const META = { updateAt: 0, createAt: 0 };
 
@@ -132,6 +153,16 @@ export function createCorpus(options: CorpusOptions): Corpus {
     }
   }
 
+  // The canvas has to hold the grid. A table is drawn from its own top-left,
+  // so one cell of allowance past the furthest origin covers the box and the
+  // jitter under it.
+  const canvasWidth = fitCanvas(
+    Math.max(...tableIds.map(id => tableEntities[id].ui.x)) + CELL_X
+  );
+  const canvasHeight = fitCanvas(
+    Math.max(...tableIds.map(id => tableEntities[id].ui.y)) + CELL_Y
+  );
+
   // The relationship graph: a spanning tree first so nothing is orphaned, then
   // a forced hub, then random extra edges. Duplicates are allowed because two
   // tables genuinely can carry more than one foreign key.
@@ -215,8 +246,8 @@ export function createCorpus(options: CorpusOptions): Corpus {
     document: {
       version: '3.0.0',
       settings: {
-        width: BENCH_CANVAS,
-        height: BENCH_CANVAS,
+        width: canvasWidth,
+        height: canvasHeight,
         scrollTop: 0,
         scrollLeft: 0,
         zoomLevel: 1,
@@ -351,11 +382,29 @@ function pushRelationship(
 }
 
 /**
- * The three scales the benchmark reports on, sized against data/:
- * sakila (16 tables), OKKY (39), Magento2-sales (54).
+ * The scales the benchmark reports on: small, medium and large are sized
+ * against data/ — sakila (16 tables), OKKY (39), Magento2-sales (54) — and
+ * xlarge is the thousand-table scene the canvas work is measured against.
  */
 export const CORPORA: CorpusOptions[] = [
   { name: 'small', tables: 16, relationships: 24, hubDegree: 4 },
   { name: 'medium', tables: 40, relationships: 62, hubDegree: 6 },
   { name: 'large', tables: 56, relationships: 120, hubDegree: 9 },
+  { name: 'xlarge', tables: 1000, relationships: 1600, hubDegree: 14 },
 ];
+
+/**
+ * The one corpus a single-corpus bench runs, chosen by E2E_BENCH_CORPUS.
+ * routing.bench.ts is the exception: it walks all of CORPORA.
+ */
+export function selectCorpus(): CorpusOptions {
+  const name = process.env.E2E_BENCH_CORPUS ?? 'large';
+  const options = CORPORA.find(corpus => corpus.name === name);
+  if (!options) {
+    const names = CORPORA.map(corpus => corpus.name).join(', ');
+    throw new Error(
+      `unknown E2E_BENCH_CORPUS "${name}"; expected one of ${names}`
+    );
+  }
+  return options;
+}

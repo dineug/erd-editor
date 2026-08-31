@@ -22,6 +22,8 @@ import {
   drawRelationshipAction,
   drawStartAddRelationshipAction,
   drawStartRelationshipAction,
+  editMemoAction,
+  editMemoEndAction,
   editTableAction,
   editTableEndAction,
   focusColumnAction,
@@ -575,6 +577,34 @@ describe('editor.editTable / editTableEnd', () => {
     store.dispatchSync(editTableEndAction());
 
     expect(store.state.editor.focusTable).toBeNull();
+  });
+});
+
+describe('editor.editMemo / editMemoEnd', () => {
+  it('names the memo the body editor is open on', () => {
+    store.dispatchSync(editMemoAction({ id: 'm1' }));
+    expect(store.state.editor.editMemoId).toBe('m1');
+
+    store.dispatchSync(editMemoEndAction());
+    expect(store.state.editor.editMemoId).toBeNull();
+  });
+
+  it('moves the editor straight from one memo to another', () => {
+    store.dispatchSync(editMemoAction({ id: 'm1' }));
+    store.dispatchSync(editMemoAction({ id: 'm2' }));
+
+    expect(store.state.editor.editMemoId).toBe('m2');
+  });
+
+  it('leaves the table focus alone', () => {
+    addTable(store, 't1');
+    store.dispatchSync(
+      focusTableAction({ tableId: 't1' }),
+      editMemoAction({ id: 'm1' })
+    );
+
+    expect(store.state.editor.focusTable?.tableId).toBe('t1');
+    expect(store.state.editor.editMemoId).toBe('m1');
   });
 });
 

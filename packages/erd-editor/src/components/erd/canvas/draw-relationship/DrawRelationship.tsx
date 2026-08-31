@@ -1,14 +1,21 @@
+/** @jsxHost konva */
+
 import { FC, onMounted, Ref } from '@dineug/r-html';
 import { fromEvent } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { segment } from '@/components/erd/canvas/relationship-group/relationship/Relationship.template';
+import { useThemeContext } from '@/components/themeContext';
 import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 import { drawRelationshipAction } from '@/engine/modules/editor/atom.actions';
 import { DrawRelationship as DrawRelationshipType } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getDraw } from '@/utils/draw-relationship/draw';
 
-import * as styles from './DrawRelationship.styles';
+/** Ten on, ten off: what the svg preview spelt as a single dasharray of 10. */
+const PREVIEW_DASH = [10, 10];
+
+const DECORATION = 'draw-relationship-decoration';
 
 export type DrawRelationshipProps = {
   root: Ref<HTMLDivElement>;
@@ -17,6 +24,7 @@ export type DrawRelationshipProps = {
 
 const DrawRelationship: FC<DrawRelationshipProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const themeRef = useThemeContext(ctx);
   const { addUnsubscribe } = useUnmounted();
 
   onMounted(() => {
@@ -40,60 +48,53 @@ const DrawRelationship: FC<DrawRelationshipProps> = (props, ctx) => {
 
   return () => {
     const { store } = app.value;
-    const {
-      settings: { width, height },
-    } = store.state;
-
     const { path, line } = getDraw(store.state, props.draw);
+    const stroke = themeRef.value.keyFK;
 
     return (
-      <svg
-        class={styles.root}
-        style={{
-          width: `${width}px`,
-          height: `${height}px`,
-          'min-width': `${width}px`,
-          'min-height': `${height}px`,
-        }}
+      <k-group
+        id="draw-relationship"
+        name="draw-relationship"
+        kind="draw-relationship"
+        listening={false}
       >
-        <g>
-          <path
-            class="draw-preview"
-            d={path.path.d()}
-            stroke-dasharray="10"
-            stroke-width={RELATIONSHIP_STROKE_WIDTH}
-            fill="transparent"
-          ></path>
-          <line
-            x1={path.line.start.x1}
-            y1={path.line.start.y1}
-            x2={path.line.start.x2}
-            y2={path.line.start.y2}
-            stroke-width={RELATIONSHIP_STROKE_WIDTH}
-          ></line>
-          <line
-            x1={line.start.base.x1}
-            y1={line.start.base.y1}
-            x2={line.start.base.x2}
-            y2={line.start.base.y2}
-            stroke-width={RELATIONSHIP_STROKE_WIDTH}
-          ></line>
-          <line
-            x1={line.start.base2.x1}
-            y1={line.start.base2.y1}
-            x2={line.start.base2.x2}
-            y2={line.start.base2.y2}
-            stroke-width={RELATIONSHIP_STROKE_WIDTH}
-          ></line>
-          <line
-            x1={line.start.center2.x1}
-            y1={line.start.center2.y1}
-            x2={line.start.center2.x2}
-            y2={line.start.center2.y2}
-            stroke-width={RELATIONSHIP_STROKE_WIDTH}
-          ></line>
-        </g>
-      </svg>
+        <k-path
+          name="draw-relationship-preview"
+          kind="draw-relationship-preview"
+          data={path.path.d()}
+          dash={PREVIEW_DASH}
+          stroke={stroke}
+          strokeWidth={RELATIONSHIP_STROKE_WIDTH}
+        />
+        <k-line
+          name={DECORATION}
+          kind={DECORATION}
+          points={segment(path.line.start)}
+          stroke={stroke}
+          strokeWidth={RELATIONSHIP_STROKE_WIDTH}
+        />
+        <k-line
+          name={DECORATION}
+          kind={DECORATION}
+          points={segment(line.start.base)}
+          stroke={stroke}
+          strokeWidth={RELATIONSHIP_STROKE_WIDTH}
+        />
+        <k-line
+          name={DECORATION}
+          kind={DECORATION}
+          points={segment(line.start.base2)}
+          stroke={stroke}
+          strokeWidth={RELATIONSHIP_STROKE_WIDTH}
+        />
+        <k-line
+          name={DECORATION}
+          kind={DECORATION}
+          points={segment(line.start.center2)}
+          stroke={stroke}
+          strokeWidth={RELATIONSHIP_STROKE_WIDTH}
+        />
+      </k-group>
     );
   };
 };

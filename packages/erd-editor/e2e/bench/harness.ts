@@ -11,6 +11,23 @@ export type Stats = {
   mean: number;
 };
 
+export type AttrWrites = {
+  /** Effective konva attr writes over the pass, whichever stage owns the node. */
+  total: number;
+  /** The subset on nodes attached to the canvas stage. */
+  scene: number;
+  /** The subset on nodes attached to the minimap stage. */
+  minimap: number;
+  /**
+   * Writes on nodes no stage owns yet, which a template commits before it
+   * attaches the node it built. The dom bench could not see these either: a
+   * MutationObserver over the canvas records nothing until the node is in it.
+   */
+  detached: number;
+  /** Canvas-stage writes per move, the scope the dom bench reported. */
+  perMove: number;
+};
+
 export type BenchResult = {
   loadMs: number;
   frame: Stats;
@@ -30,11 +47,11 @@ export type BenchResult = {
    * does, and above 1 the frame is script-bound rather than compositing-bound.
    */
   utilization: number;
-  /** Distinct relationships whose DOM was rewritten by a single move. */
+  /** Distinct relationships whose scene nodes a single move rewrote. */
   fanOut: Stats;
   /** Side changes per move over the drag — how much the drawing jumps. */
   flipsPerMove: number;
-  attrWrites: { total: number; svg: number; perMove: number };
+  attrWrites: AttrWrites;
   moves: number;
 };
 
@@ -46,6 +63,14 @@ export type DragBenchOptions = {
   /** Pixels moved per step. Kept small so the table stays on canvas. */
   stepX?: number;
   stepY?: number;
+};
+
+/** The four buckets one pass counts konva attr writes into. */
+export type AttrCounts = {
+  total: number;
+  scene: number;
+  minimap: number;
+  detached: number;
 };
 
 declare global {
@@ -73,8 +98,7 @@ type BenchHarness = {
     frameMs: number[];
     fanOut: number[];
     busyMs: number;
-    attrTotal: number;
-    attrSvg: number;
+    attr: AttrCounts;
   }>;
 };
 
@@ -91,6 +115,31 @@ export async function installBench(page: Page) {
     const root = (host as HTMLElement & { shadowRoot: ShadowRoot | null })
       .shadowRoot;
     if (!root) throw new Error('shadow root is not reachable');
+
+    /** The shape of a konva node this harness reaches through, and no more. */
+    type SceneNode = {
+      attrs: Record<string, unknown>;
+      _setAttr(key: string, value: unknown): void;
+      name(): string;
+      getParent(): SceneNode | null;
+      findOne(selector: string): SceneNode | undefined;
+      getClientRect(config?: { relativeTo?: SceneNode }): {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+      container(): HTMLElement;
+    };
+
+    const stages = () =>
+      (Reflect.get(window, '__erdStages') ?? {}) as Record<string, SceneNode>;
+
+    const stageNamed = (name: string) => {
+      const stage = stages()[name];
+      if (!stage) throw new Error(`konva stage "${name}" is not registered`);
+      return stage;
+    };
 
     // A MessageChannel task is not subject to the nested-setTimeout clamp, so
     // it can close a bracket around sub-millisecond work without adding 4ms.
@@ -114,10 +163,84 @@ export async function installBench(page: Page) {
      */
     const settled = () => macrotask();
 
-    const canvas = () => {
-      const element = root.querySelector('[data-testid="erd-canvas"]');
-      if (!element) throw new Error('canvas is not rendered');
-      return element as HTMLElement;
+    /**
+     * Where an attr write is sent while a pass is counting. Konva funnels every
+     * effective write through one method, so this is the whole scene's write
+     * traffic and not a sample of it.
+     */
+    let sink: ((node: SceneNode) => void) | null = null;
+    let patched = false;
+
+    const patch = () => {
+      if (patched) return;
+      let proto: SceneNode | null = Object.getPrototypeOf(
+        stageNamed('canvas')
+      ) as SceneNode | null;
+      while (
+        proto &&
+        !Object.prototype.hasOwnProperty.call(proto, '_setAttr')
+      ) {
+        proto = Object.getPrototypeOf(proto) as SceneNode | null;
+      }
+      if (!proto) throw new Error('konva Node.prototype is not reachable');
+
+      const original = proto._setAttr;
+      proto._setAttr = function (this: SceneNode, key: string, value: unknown) {
+        // The same guard the method itself opens with, so a write that changes
+        // nothing is not counted as one. Objects are always re-read.
+        if (
+          sink &&
+          !(this.attrs[key] === value && !(value instanceof Object))
+        ) {
+          sink(this);
+        }
+        return original.call(this, key, value);
+      };
+      patched = true;
+    };
+
+    const RELATIONSHIP = 'relationship ';
+
+    type Owner = 'scene' | 'minimap' | 'detached';
+    type Origin = { owner: Owner; relationshipId: string | null };
+
+    const origins = new WeakMap<SceneNode, Origin>();
+
+    /**
+     * Which stage a written node hangs under, and the relationship it draws.
+     * The walk is cached per node, so the count a pass takes is one pointer
+     * chase per write once the scene has been touched.
+     */
+    const originOf = (node: SceneNode): Origin => {
+      const cached = origins.get(node);
+      if (cached) return cached;
+
+      let relationshipId: string | null = null;
+      let current: SceneNode | null = node;
+      let top: SceneNode = node;
+
+      while (current) {
+        const name =
+          typeof current.name === 'function' ? (current.name() ?? '') : '';
+        if (relationshipId === null && name.startsWith(RELATIONSHIP)) {
+          relationshipId = name.slice(RELATIONSHIP.length).trim() || null;
+        }
+        top = current;
+        current =
+          typeof current.getParent === 'function' ? current.getParent() : null;
+      }
+
+      const registry = stages();
+      const owner: Owner =
+        top === registry.canvas
+          ? 'scene'
+          : top === registry.minimap
+            ? 'minimap'
+            : 'detached';
+
+      const origin: Origin = { owner, relationshipId };
+      if (owner !== 'detached') origins.set(node, origin);
+      return origin;
     };
 
     const mouse = (type: string, x: number, y: number) =>
@@ -130,6 +253,25 @@ export async function installBench(page: Page) {
         button: 0,
         buttons: type === 'mouseup' ? 0 : 1,
       });
+
+    /**
+     * The point a drag grips a table by, in client coordinates. Same strip the
+     * interaction specs use: the middle of the header, above the colour bar and
+     * clear of the column rows onMoveStart opts out of.
+     */
+    const grip = (tableId: string) => {
+      const stage = stageNamed('canvas');
+      const table = stage.findOne(`#table-${tableId}`);
+      if (!table) {
+        throw new Error(`table ${tableId} has no scene node`);
+      }
+      const box = table.getClientRect({ relativeTo: stage });
+      const container = stage.container().getBoundingClientRect();
+      return {
+        x: container.x + box.x + box.width / 2,
+        y: container.y + box.y + 8,
+      };
+    };
 
     /**
      * Main-thread blocking, measured from outside every task the editor owns: a
@@ -211,16 +353,12 @@ export async function installBench(page: Page) {
        */
       async sideFlips({ tableId, moves, stepX, stepY }) {
         const editor = host as HTMLElement & { value: string };
-        const header = root.querySelector(
-          `[data-testid="erd-canvas"] .table[data-id="${tableId}"]`
-        );
-        if (!header) throw new Error(`table ${tableId} is not rendered`);
+        const point = grip(tableId);
+        let x = point.x;
+        let y = point.y;
 
-        const box = (header as HTMLElement).getBoundingClientRect();
-        let x = box.x + box.width / 2;
-        let y = box.y + 8;
-
-        const target = root.elementFromPoint(x, y) ?? header;
+        const target =
+          root.elementFromPoint(x, y) ?? stageNamed('canvas').container();
         target.dispatchEvent(mouse('mousedown', x, y));
         await settled();
 
@@ -281,42 +419,43 @@ export async function installBench(page: Page) {
         monitor: useMonitor,
         observe,
       }) {
-        const header = root.querySelector(
-          `[data-testid="erd-canvas"] .table[data-id="${tableId}"]`
-        );
-        if (!header) throw new Error(`table ${tableId} is not rendered`);
+        patch();
+        const point = grip(tableId);
+        let x = point.x;
+        let y = point.y;
 
-        const box = (header as HTMLElement).getBoundingClientRect();
-        // Same grip point the interaction specs use: the header strip, clear of
-        // the colour bar and the column rows that onMoveStart opts out of.
-        let x = box.x + box.width / 2;
-        let y = box.y + 8;
-
-        const target = root.elementFromPoint(x, y) ?? header;
+        const target =
+          root.elementFromPoint(x, y) ?? stageNamed('canvas').container();
         target.dispatchEvent(mouse('mousedown', x, y));
         await settled();
 
-        let attrTotal = 0;
-        let attrSvg = 0;
+        const attr: AttrCounts = {
+          total: 0,
+          scene: 0,
+          minimap: 0,
+          detached: 0,
+        };
         let touched = new Set<string>();
         const fanOut: number[] = [];
-        const consume = (records: MutationRecord[]) => {
-          for (const record of records) {
-            if (record.type !== 'attributes') continue;
-            attrTotal++;
-            const node = record.target as Element;
-            if (node.namespaceURI === 'http://www.w3.org/2000/svg') attrSvg++;
-            const group = node.closest?.('g.relationship');
-            const id = group?.getAttribute('data-id');
-            if (id) touched.add(id);
+
+        // Attribution is deferred to the frame boundary so the write path pays
+        // one array push. Walking the tree inside _setAttr would bill the
+        // editor for the harness by exactly what a change moves.
+        let queue: SceneNode[] = [];
+        const consume = () => {
+          const batch = queue;
+          queue = [];
+          for (const node of batch) {
+            attr.total++;
+            const origin = originOf(node);
+            attr[origin.owner]++;
+            if (origin.relationshipId) touched.add(origin.relationshipId);
           }
         };
 
-        // Installed for the frame pass only: its cost rises with the number of
-        // attributes the drag writes, so leaving it on during the blocking pass
-        // bills the editor for the harness by exactly what a change moves.
-        const observer = observe ? new MutationObserver(consume) : null;
-        observer?.observe(canvas(), { attributes: true, subtree: true });
+        // Installed for the frame pass only, the way the dom bench installed
+        // its MutationObserver for one of the two passes.
+        if (observe) sink = node => queue.push(node);
 
         // The ping loop competes for the very thread it measures, which
         // stretches frame intervals under load. Frames and blocking are
@@ -335,9 +474,9 @@ export async function installBench(page: Page) {
             if (previous) frameMs.push(now - previous);
             previous = now;
 
-            // Attribute the previous frame's mutations before starting the next.
-            if (observer) {
-              consume(observer.takeRecords());
+            // Attribute the previous frame's writes before starting the next.
+            if (observe) {
+              consume();
               fanOut.push(touched.size);
               touched = new Set<string>();
             }
@@ -361,9 +500,9 @@ export async function installBench(page: Page) {
         window.dispatchEvent(mouse('mouseup', x, y));
         await settled();
 
-        if (observer) {
-          consume(observer.takeRecords());
-          observer.disconnect();
+        if (observe) {
+          sink = null;
+          consume();
         }
 
         // The first entry is the frame before any move was dispatched.
@@ -371,8 +510,7 @@ export async function installBench(page: Page) {
           frameMs,
           fanOut: fanOut.slice(1),
           busyMs: busy.blockedMs,
-          attrTotal,
-          attrSvg,
+          attr,
         };
       },
     };
@@ -398,6 +536,41 @@ export function stats(samples: number[]): Stats {
   };
 }
 
+/** Where the dragged table is parked before the measurement starts. */
+const GRIP_X = 400;
+const GRIP_Y = 200;
+
+/** The runner's window, which the editor fills; see playwright.bench.config.ts. */
+const VIEWPORT = { width: 1440, height: 900 };
+
+/**
+ * Scrolls the document so the dragged table is on screen before it is loaded.
+ * The scene culls, so a table outside the drawn region has no node to grip, and
+ * the corpus parks its hub in the middle of a canvas many screens wide.
+ */
+function scrollToTable(document: ErdDocument, tableId: string) {
+  const table = document.collections.tableEntities[tableId];
+  if (!table) return;
+
+  // Parking it mid-range also keeps the scroll clamp out of the measurement:
+  // from a corner, half of a there-and-back pan is clamped flat by the reducer
+  // and measures nothing at all.
+  const { settings } = document;
+  const inRange = (value: number, viewport: number, size: number) =>
+    Math.max(Math.min(0, viewport - size), Math.min(0, value));
+
+  settings.scrollLeft = inRange(
+    Math.round(GRIP_X - table.ui.x),
+    VIEWPORT.width,
+    settings.width
+  );
+  settings.scrollTop = inRange(
+    Math.round(GRIP_Y - table.ui.y),
+    VIEWPORT.height,
+    settings.height
+  );
+}
+
 export async function runDragBench(
   page: Page,
   document: ErdDocument,
@@ -412,6 +585,8 @@ export async function runDragBench(
     stepY: options.stepY ?? 1,
   };
 
+  scrollToTable(document, resolved.tableId);
+
   const loadMs = await page.evaluate(
     json => window.__erdBench!.load(json),
     JSON.stringify(document)
@@ -419,7 +594,7 @@ export async function runDragBench(
 
   await beforeMeasure?.(page);
 
-  // Pass 1 — frame pacing and DOM writes, with no ping loop on the thread.
+  // Pass 1 — frame pacing and scene writes, with no ping loop on the thread.
   const idleFrames = await page.evaluate(
     count => window.__erdBench!.idleFrames(count, false),
     resolved.moves
@@ -431,8 +606,8 @@ export async function runDragBench(
   );
 
   // Pass 2 — main-thread blocking. The ping loop would inflate pass 1, and the
-  // observer would inflate this one; each pass carries only its own instrument,
-  // and the idle control it is measured against carries the same one.
+  // write counter would inflate this one; each pass carries only its own
+  // instrument, and the idle control it is measured against carries the same.
   const idleBusy = await page.evaluate(
     count => window.__erdBench!.idleFrames(count, true),
     resolved.moves
@@ -468,9 +643,11 @@ export async function runDragBench(
     utilization: frame.p50 > 0 ? busyMsPerMove / frame.p50 : 0,
     fanOut: stats(framePass.fanOut),
     attrWrites: {
-      total: framePass.attrTotal,
-      svg: framePass.attrSvg,
-      perMove: framePass.attrTotal / resolved.moves,
+      total: framePass.attr.total,
+      scene: framePass.attr.scene,
+      minimap: framePass.attr.minimap,
+      detached: framePass.attr.detached,
+      perMove: framePass.attr.scene / resolved.moves,
     },
     moves: resolved.moves,
   };

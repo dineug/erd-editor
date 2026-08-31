@@ -65,27 +65,42 @@ export type QualityMetrics = {
 
 /**
  * Reads the drawn routing segments and the table boxes in canvas coordinates.
- * The route class is what selects the polyline, because the same group holds a
- * hit band of the same shape, and the canvas scope excludes the minimap's copy.
+ * The route name is what selects the polyline, because the same group holds a
+ * hit band of the same shape, and only the canvas stage carries scene ids.
  */
 export async function readScene(page: Page): Promise<Scene> {
   return page.evaluate(() => {
     const host = document.querySelector('erd-editor');
-    const root = (host as HTMLElement & { shadowRoot: ShadowRoot | null })
-      ?.shadowRoot;
-    if (!root) throw new Error('shadow root is not reachable');
+    if (!host) throw new Error('erd-editor is not mounted');
 
-    const canvas = root.querySelector('[data-testid="erd-canvas"]');
-    if (!canvas) throw new Error('canvas is not rendered');
+    /** The shape of a konva node this reader reaches through, and no more. */
+    type SceneNode = {
+      id(): string;
+      name(): string;
+      x(): number;
+      y(): number;
+      width(): number;
+      height(): number;
+      strokeWidth(): number;
+      getAttr(name: string): unknown;
+      find(selector: string): SceneNode[];
+      findOne(selector: string): SceneNode | undefined;
+    };
+
+    const stages = Reflect.get(window, '__erdStages') as
+      | Record<string, SceneNode>
+      | undefined;
+    const stage = stages?.canvas;
+    if (!stage) throw new Error('the canvas konva stage is not registered');
 
     const segments: Segment[] = [];
-    canvas.querySelectorAll('g.relationship').forEach(group => {
-      const relationshipId = group.getAttribute('data-id') ?? '';
-      const route = group.querySelector('path.route');
-      const numbers = (route?.getAttribute('d') ?? '').match(
+    for (const group of stage.find('.relationship')) {
+      const relationshipId = group.name().split(/\s+/)[1] ?? '';
+      const route = group.findOne('.relationship-route');
+      const numbers = String(route?.getAttr('data') ?? '').match(
         /-?\d+(?:\.\d+)?/g
       );
-      if (!numbers) return;
+      if (!numbers) continue;
 
       for (let index = 2; index + 1 < numbers.length; index += 2) {
         segments.push({
@@ -96,21 +111,23 @@ export async function readScene(page: Page): Promise<Scene> {
           y2: Number(numbers[index + 1]),
         });
       }
-    });
+    }
 
     const rects: TableRect[] = [];
-    canvas.querySelectorAll('.table[data-id]').forEach(element => {
-      const table = element as HTMLElement;
-      // offsetWidth is layout px, so the canvas zoom transform does not scale
-      // it; left/top are the inline position the editor writes from ui.x/y.
+    for (const table of stage.find('.table')) {
+      // The body rect is the box itself; the group holds its position, and the
+      // border straddles the edge, so half a stroke reaches past on each side.
+      const body = table.findOne('.table-body');
+      if (!body) continue;
+      const border = body.strokeWidth();
       rects.push({
-        id: table.getAttribute('data-id') ?? '',
-        x: table.offsetLeft,
-        y: table.offsetTop,
-        width: table.offsetWidth,
-        height: table.offsetHeight,
+        id: table.id().replace(/^table-/, ''),
+        x: table.x() + body.x() - border / 2,
+        y: table.y() + body.y() - border / 2,
+        width: body.width() + border,
+        height: body.height() + border,
       });
-    });
+    }
 
     const editor = host as HTMLElement & { value: string };
     type Point = {

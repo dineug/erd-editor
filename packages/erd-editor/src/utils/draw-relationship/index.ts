@@ -1,5 +1,6 @@
 import { arrayHas } from '@dineug/shared';
 
+import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 import { Point, Relationship, ValuesType } from '@/internal-types';
 
 export const DirectionName = {
@@ -187,8 +188,96 @@ const routes = new WeakMap<Relationship, Point[]>();
 
 export function setRoute(relationship: Relationship, points: Point[]) {
   routes.set(relationship, points);
+  routeBBoxes.set(relationship, { points, epoch: sortEpoch });
 }
 
 export function getRoute(relationship: Relationship): Point[] | undefined {
   return routes.get(relationship);
+}
+
+/**
+ * How far a connector reaches past its anchor, whichever decoration is furthest
+ * out. The ring shares a centre with the second tick, so its outer edge and the
+ * start of the guide line are the two candidates.
+ */
+export const ROUTE_BBOX_REACH = Math.max(
+  CIRCLE_HEIGHT + CIRCLE_RADIUS,
+  PATH_LINE_HEIGHT
+);
+
+/**
+ * The longest stub a slot can ask for. It bounds where the turning points of an
+ * unrouted relationship can be, which is the only thing the route itself would
+ * have told us.
+ */
+export const MAX_STUB = PATH_END_HEIGHT + (STUB_CYCLE - 1) * STUB_STEP;
+
+export type BBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+type RouteBBox = {
+  points: Point[];
+  epoch: number;
+};
+
+/**
+ * Route boxes under the same identity as the routes themselves, stamped with the
+ * sort that wrote them. Identity outlives a sort, so the stamp is what separates
+ * a box for the current routes from one the next sort has already replaced.
+ */
+const routeBBoxes = new WeakMap<Relationship, RouteBBox>();
+
+let sortEpoch = 0;
+
+/** Opens a sort, retiring every route box the previous one wrote. */
+export function nextSortEpoch() {
+  sortEpoch += 1;
+}
+
+function aabb(points: Point[]): BBox {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  for (const { x, y } of points) {
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+function inflate({ x, y, width, height }: BBox, padding: number): BBox {
+  return {
+    x: x - padding,
+    y: y - padding,
+    width: width + padding * 2,
+    height: height + padding * 2,
+  };
+}
+
+/**
+ * Everywhere a relationship can be drawn, for a culling test that must not lose
+ * a connector whose anchors are on screen and whose route is not. Without a
+ * route from this sort the stub ends are unknown, so the padding carries them.
+ */
+export function getRouteBBox(
+  relationship: Relationship,
+  strokeWidth: number = RELATIONSHIP_STROKE_WIDTH
+): BBox {
+  const { start, end } = relationship;
+  const entry = routeBBoxes.get(relationship);
+  const routed = entry && entry.epoch === sortEpoch ? entry.points : null;
+
+  return inflate(
+    aabb(routed ? [...routed, start, end] : [start, end]),
+    ROUTE_BBOX_REACH + strokeWidth + (routed ? 0 : MAX_STUB)
+  );
 }

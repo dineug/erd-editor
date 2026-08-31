@@ -2,7 +2,7 @@ import { html } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { mountAndFlush, Mounted } from '@/__test-utils__/index';
-import Table from '@/components/erd/minimap/table/Table';
+import Viewport from '@/components/erd/minimap/viewport/Viewport';
 import Toast from '@/components/primitives/toast/Toast';
 
 let mounted: Mounted | null = null;
@@ -22,28 +22,14 @@ describe('harness', () => {
   });
 
   it('renders an FC that consumes appContext', async () => {
-    const table = {
-      id: 't1',
-      name: 'users',
-      comment: '',
-      columnIds: [],
-      seqColumnIds: [],
-      ui: {
-        x: 10,
-        y: 20,
-        zIndex: 3,
-        widthName: 60,
-        widthComment: 60,
-        color: '',
-      },
-      meta: { updateAt: 0, createAt: 0 },
-    };
+    mounted = await mountAndFlush(html`<${Viewport} selected=${false} />`);
 
-    mounted = await mountAndFlush(html`<${Table} table=${table} />`);
-
-    const el = mounted.container.querySelector('.table') as HTMLElement;
+    const el = mounted.container.querySelector(
+      '.minimap-viewport'
+    ) as HTMLElement;
     expect(el).toBeTruthy();
-    expect(el.style.top).toBe('20px');
-    expect(el.style.left).toBe('10px');
+    // the 1200 by 675 default viewport at the 150 / 2000 minimap ratio
+    expect(el.style.width).toBe('90px');
+    expect(el.style.height).toBe('50.625px');
   });
 });

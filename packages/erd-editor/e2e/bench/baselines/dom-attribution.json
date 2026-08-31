@@ -1,0 +1,69 @@
+{
+  "label": "dom-xlarge",
+  "createdAt": "2026-08-30T19:08:33.938Z",
+  "metricsVersion": 1,
+  "corpus": {
+    "name": "xlarge",
+    "tables": 1000,
+    "relationships": 1600,
+    "columns": 7600
+  },
+  "rows": [
+    {
+      "variant": "full",
+      "what": "everything the editor normally paints",
+      "frameP50": 631.8999999999996,
+      "frameP95": 666.7000000000007,
+      "busyMsPerMove": 350.12833333301046,
+      "attrPerMove": 147.71666666666667
+    },
+    {
+      "variant": "no-minimap",
+      "what": "minimap hidden — it renders a second copy of every table and edge",
+      "frameP50": 666.6000000000058,
+      "frameP95": 699.6999999999971,
+      "busyMsPerMove": 653.7300000000745,
+      "attrPerMove": 283.56666666666666
+    },
+    {
+      "variant": "no-relationships",
+      "what": "relationship SVG off via settings.show",
+      "frameP50": 649.9000000000015,
+      "frameP95": 666.6000000000058,
+      "busyMsPerMove": 342.215833333383,
+      "attrPerMove": 2
+    },
+    {
+      "variant": "no-svg-layer",
+      "what": "the canvas SVG element hidden, tables still live",
+      "frameP50": 649.9000000000015,
+      "frameP95": 666.7000000000007,
+      "busyMsPerMove": 366.23833333340787,
+      "attrPerMove": 157.25
+    },
+    {
+      "variant": "minimap-layer",
+      "what": "minimap promoted to its own layer — this is what shipped",
+      "frameP50": 633.2999999999956,
+      "frameP95": 666.6999999999971,
+      "busyMsPerMove": 349.7575000000497,
+      "attrPerMove": 150.1
+    },
+    {
+      "variant": "minimap-contain",
+      "what": "paint containment on the minimap subtree — measured to do nothing",
+      "frameP50": 633.1999999999971,
+      "frameP95": 666.7000000000007,
+      "busyMsPerMove": 352.22000000004965,
+      "attrPerMove": 145.33333333333334
+    },
+    {
+      "variant": "neither",
+      "what": "no minimap and no relationships — the floor for table painting",
+      "frameP50": 666.5999999999985,
+      "frameP95": 683.4000000000015,
+      "busyMsPerMove": 635.7108333333085,
+      "attrPerMove": 2
+    }
+  ]
+}

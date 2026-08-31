@@ -1,11 +1,17 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
-import { CANVAS_SIZE, type ErdDocument } from './schema';
+import { type ErdDocument } from './schema';
+import { SCENE_MIRROR_FLAG } from './sceneMirror';
 import { MOD_KEY, type Shortcut } from './shortcuts';
 
 export const FIXTURE_URL = '/e2e/fixture/index.html';
 
+/** The fixture with the scene mirror on, which is what a spec drives. */
+const SPEC_URL = `${FIXTURE_URL}?${SCENE_MIRROR_FLAG}=1`;
+
 export type Point = { x: number; y: number };
+
+export type Box = { x: number; y: number; width: number; height: number };
 
 /**
  * Page object for the <erd-editor> custom element. The fixture page reopens the
@@ -32,7 +38,7 @@ export class ErdEditorPage {
   // ── lifecycle ────────────────────────────────────────────────────────────
 
   async goto() {
-    await this.page.goto(FIXTURE_URL);
+    await this.page.goto(SPEC_URL);
     await expect(this.canvas).toBeAttached();
   }
 
@@ -50,6 +56,21 @@ export class ErdEditorPage {
     }, json);
 
     await expect.poll(() => this.tableIds()).toEqual(document.doc.tableIds);
+    await this.whenDrawn();
+  }
+
+  /**
+   * Resolves once the scene is on screen and answering hit tests. The commit
+   * gate only calls konva's batchDraw, which paints on the next frame, so the
+   * frame after it is what a click at a scene coordinate has to wait for.
+   */
+  async whenDrawn() {
+    await this.page.evaluate(async () => {
+      await Reflect.get(window, '__erdWhenDrawn')?.();
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+    });
   }
 
   // ── authoritative state ──────────────────────────────────────────────────
@@ -136,9 +157,13 @@ export class ErdEditorPage {
     return this.canvas.locator('[data-focus-border-bottom]');
   }
 
-  /** The <input> a cell swaps in for its static text while in edit mode. */
-  editInput(cell: Locator) {
-    return cell.locator('input.edit-input');
+  /**
+   * The live <input> the editing overlay opens over a cell. It is placed over
+   * the stage rather than inside the cell it edits, and at most one is open, so
+   * the argument names the cell it is expected on rather than scoping it.
+   */
+  editInput(_cell?: Locator) {
+    return this.host.locator('.edit-overlay input.edit-input');
   }
 
   selectedTables() {
@@ -149,18 +174,18 @@ export class ErdEditorPage {
     return this.canvas.locator('.column-row[data-selected]');
   }
 
-  /** The rendered <g> of a relationship in the canvas SVG. */
+  /** The scene group of one relationship, which carries its id in its name. */
   relationshipEl(id: string) {
-    return this.canvas.locator(`g.relationship[data-id="${id}"]`);
+    return this.canvas.locator(`.relationship[data-type="${id}"]`);
   }
 
   /**
    * The dashed preview drawn between the start table and the cursor while a draw
-   * is in flight. Matched by its own class, because a finished relationship is a
+   * is in flight. Matched by its own name, because a finished relationship is a
    * dashed path too and anything less specific counts those as well.
    */
   get drawPreview() {
-    return this.canvas.locator('svg path.draw-preview');
+    return this.canvas.locator('.draw-relationship-preview');
   }
 
   /**
@@ -182,17 +207,73 @@ export class ErdEditorPage {
   // ── coordinates ──────────────────────────────────────────────────────────
 
   /**
+   * The screen box of one node in the main canvas Stage. Scroll and zoom live
+   * on the scene layer's transform, and a node's client rect already carries
+   * both, so the container origin is all that is left to add.
+   */
+  async sceneBox(selector: string): Promise<Box> {
+    const handle = await this.page.waitForFunction(target => {
+      const stage = Reflect.get(window, '__erdStages')?.canvas;
+      const node = stage?.findOne(target);
+      if (!node) return null;
+
+      const rect = node.getClientRect({ relativeTo: stage });
+      const origin = stage.container().getBoundingClientRect();
+      return {
+        x: origin.x + rect.x,
+        y: origin.y + rect.y,
+        width: rect.width,
+        height: rect.height,
+      };
+    }, selector);
+
+    return (await handle.jsonValue()) as Box;
+  }
+
+  /**
    * Maps a canvas coordinate (the same space as table.ui.x/y) to a viewport
-   * coordinate, deriving the current zoom from the canvas box itself so callers
-   * never have to account for it.
+   * coordinate through the scene layer's own transform, which is where scroll
+   * and zoom moved when the canvas became a Stage.
    */
   async pointAt(x: number, y: number): Promise<Point> {
-    const box = await this.canvas.boundingBox();
-    if (!box) throw new Error('canvas has no bounding box');
-    return {
-      x: box.x + (x * box.width) / CANVAS_SIZE,
-      y: box.y + (y * box.height) / CANVAS_SIZE,
-    };
+    const handle = await this.page.waitForFunction(
+      ([canvasX, canvasY]) => {
+        const stage = Reflect.get(window, '__erdStages')?.canvas;
+        const layer = stage?.findOne('.scene');
+        if (!layer) return null;
+
+        const point = layer
+          .getAbsoluteTransform()
+          .point({ x: canvasX, y: canvasY });
+        const origin = stage.container().getBoundingClientRect();
+        return { x: origin.x + point.x, y: origin.y + point.y };
+      },
+      [x, y]
+    );
+
+    return (await handle.jsonValue()) as Point;
+  }
+
+  /** The screen boxes of every table and memo the scene currently draws. */
+  async occupiedBoxes(): Promise<Box[]> {
+    const handle = await this.page.waitForFunction(() => {
+      const stage = Reflect.get(window, '__erdStages')?.canvas;
+      if (!stage) return null;
+
+      const origin = stage.container().getBoundingClientRect();
+      const nodes = [...stage.find('.table'), ...stage.find('.memo')];
+      return nodes.map((node: any) => {
+        const rect = node.getClientRect({ relativeTo: stage });
+        return {
+          x: origin.x + rect.x,
+          y: origin.y + rect.y,
+          width: rect.width,
+          height: rect.height,
+        };
+      });
+    });
+
+    return (await handle.jsonValue()) as Box[];
   }
 
   /** The viewport-centre of a locator, for drags that start on an element. */
@@ -204,9 +285,14 @@ export class ErdEditorPage {
 
   /** A point on a table's header strip, above its column rows. */
   async tableHeaderPoint(id: string): Promise<Point> {
-    const box = await this.tableEl(id).boundingBox();
-    if (!box) throw new Error(`table ${id} has no bounding box`);
+    const box = await this.sceneBox(`#table-${id}`);
     return { x: box.x + box.width / 2, y: box.y + 8 };
+  }
+
+  /** The centre of one column row, which is where a column drag starts. */
+  async columnPoint(id: string): Promise<Point> {
+    const box = await this.sceneBox(`#column-${id}`);
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   }
 
   /**
@@ -221,14 +307,7 @@ export class ErdEditorPage {
     const viewport = this.page.viewportSize();
     if (!viewport) throw new Error('page has no viewport size');
 
-    const occupied = await this.canvas
-      .locator('.table, .memo')
-      .evaluateAll(elements =>
-        elements.map(element => {
-          const { x, y, width, height } = element.getBoundingClientRect();
-          return { x, y, width, height };
-        })
-      );
+    const occupied = await this.occupiedBoxes();
 
     const left = Math.max(canvasBox.x, 0) + 8;
     const right = Math.min(canvasBox.x + canvasBox.width, viewport.width) - 8;
@@ -288,7 +367,7 @@ export class ErdEditorPage {
    * into the focus state machine without opening an editor.
    */
   async focusCell(cell: Locator) {
-    await cell.click();
+    await this.clickAt(await this.centerOf(cell));
     await expect(this.focusRing(cell)).toBeVisible();
   }
 
@@ -331,6 +410,15 @@ export class ErdEditorPage {
   async clickTableHeader(id: string, offsetX = 0) {
     const point = await this.tableHeaderPoint(id);
     await this.page.mouse.click(point.x + offsetX, point.y);
+  }
+
+  /**
+   * A plain click at a viewport point. The scene projection never receives a
+   * pointer event, so a click on a scene node is a raw mouse event at the
+   * coordinate the projection reports rather than a locator click.
+   */
+  async clickAt(point: Point, options: { button?: 'right' } = {}) {
+    await this.page.mouse.click(point.x, point.y, options);
   }
 
   /**
@@ -421,8 +509,9 @@ export class ErdEditorPage {
    * caller decides how to leave the field.
    */
   async editCell(cell: Locator, text: string) {
-    await cell.dblclick();
-    const input = cell.locator('input');
+    const point = await this.centerOf(cell);
+    await this.page.mouse.dblclick(point.x, point.y);
+    const input = this.editInput(cell);
     await expect(input).toBeVisible();
     await input.selectText();
     await this.page.keyboard.type(text);

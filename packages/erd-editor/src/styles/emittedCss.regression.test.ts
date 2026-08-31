@@ -148,26 +148,26 @@ describe('selector-list scope widening', () => {
 });
 
 describe('rule-count invariance', () => {
-  it('loads 62 style modules', () => {
+  it('loads 61 style modules', () => {
     // A new style module is meant to move this number, which is why it is
     // pinned rather than derived.
-    expect(modulePaths).toHaveLength(62);
+    expect(modulePaths).toHaveLength(61);
   });
 
-  it('adopts 622 rules, none of them a duplicate', () => {
+  it('adopts 620 rules, none of them a duplicate', () => {
     // Pinned rather than derived, so a rule added or lost anywhere in the
     // package has to be accounted for here.
-    expect(cumulative).toHaveLength(622);
-    expect(new Set(cumulative).size).toBe(622);
+    expect(cumulative).toHaveLength(620);
+    expect(new Set(cumulative).size).toBe(620);
   });
 
-  it('splits into 327 global rules ahead of 295 component rules', () => {
+  it('splits into 327 global rules ahead of 293 component rules', () => {
     // A shadow root applies its own styleSheets before its adoptedStyleSheets,
     // so the only thing keeping the reset ahead of the components is the bucket,
     // which is what this asserts positionally. Both halves move independently.
-    expect(sheetsOfEachKind).toEqual({ global: 5, component: 164 });
+    expect(sheetsOfEachKind).toEqual({ global: 5, component: 162 });
     expect(globalRules).toHaveLength(327);
-    expect(componentRules).toHaveLength(295);
+    expect(componentRules).toHaveLength(293);
     expect(cumulative).toEqual([...globalRules, ...componentRules]);
   });
 
@@ -182,9 +182,9 @@ describe('rule-count invariance', () => {
     );
 
     // Identifiers are content hashes now, so a rule's text is the same whether its module is
-    // rendered alone or with the other 61 — which is exactly what makes this comparison mean
+    // rendered alone or with the other 60 — which is exactly what makes this comparison mean
     // "nothing was lost to dedup" rather than "the class names differ".
-    expect(union.size).toBe(622);
+    expect(union.size).toBe(620);
     expect(droppedByLoadingTogether).toEqual([]);
   });
 

@@ -1,10 +1,21 @@
+/** @jsxHost konva */
+
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import Sash, { SashProps, SashType } from '@/components/primitives/sash/Sash';
-import { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
+import {
+  HIT_FILL,
+  type ScenePointerEvent,
+} from '@/components/erd/canvas/sceneTokens';
+import { SASH_SIZE } from '@/components/primitives/sash/Sash.styles';
+import {
+  MEMO_BORDER,
+  MEMO_MIN_HEIGHT,
+  MEMO_MIN_WIDTH,
+} from '@/constants/layout';
 import { resizeMemoAction } from '@/engine/modules/memo/atom.actions';
-import { Memo, ValuesType } from '@/internal-types';
+import type { Memo, ValuesType } from '@/internal-types';
+import { isMouseEvent } from '@/utils/domEvent';
 import { DirectionName } from '@/utils/draw-relationship';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 
@@ -14,71 +25,93 @@ export type MemoSashProps = {
   left: number;
 };
 
-const Position = {
+export const MemoSashPosition = {
   left: 'left',
   right: 'right',
-  top: 'top',
   bottom: 'bottom',
   lt: 'lt',
   rt: 'rt',
   lb: 'lb',
   rb: 'rb',
 } as const;
-type Position = ValuesType<typeof Position>;
+export type MemoSashPosition = ValuesType<typeof MemoSashPosition>;
 
-const createSash = (
-  top: number,
-  left: number
-): Array<
+/**
+ * The three shapes a sash takes, spelled out rather than imported from the DOM
+ * Sash primitive: that module reaches the window through drag$, which a scene
+ * drawn in a worker has none of.
+ */
+const SashShape = {
+  vertical: 'vertical',
+  horizontal: 'horizontal',
+  edge: 'edge',
+} as const;
+type SashShape = ValuesType<typeof SashShape>;
+
+/**
+ * The pointer a sash asks the stage container for while it is under one. Sash
+ * styles gave the sides theirs through a class and each corner one of its own,
+ * and a konva node has no cursor of its own to carry them.
+ */
+const CURSORS: Record<MemoSashPosition, string> = {
+  left: 'ew-resize',
+  right: 'ew-resize',
+  bottom: 'ns-resize',
+  lt: 'nwse-resize',
+  rt: 'nesw-resize',
+  lb: 'nesw-resize',
+  rb: 'nwse-resize',
+};
+
+type SashPlacement = {
+  position: MemoSashPosition;
+  shape: SashShape;
+  top?: number;
+  left?: number;
+};
+
+const createSash = (top: number, left: number): SashPlacement[] => [
   {
-    position: Position;
-  } & SashProps
-> => [
-  {
-    type: SashType.vertical,
-    position: Position.left,
+    shape: SashShape.vertical,
+    position: MemoSashPosition.left,
   },
   {
-    type: SashType.vertical,
-    position: Position.right,
+    shape: SashShape.vertical,
+    position: MemoSashPosition.right,
     left,
   },
-  /*
   {
-    type: SashType.horizontal,
-    position: Position.top,
-  },
-  */
-  {
-    type: SashType.horizontal,
-    position: Position.bottom,
+    shape: SashShape.horizontal,
+    position: MemoSashPosition.bottom,
     top,
   },
   {
-    type: SashType.edge,
-    position: Position.lt,
-    cursor: 'nwse-resize',
+    shape: SashShape.edge,
+    position: MemoSashPosition.lt,
   },
   {
-    type: SashType.edge,
-    position: Position.rt,
-    cursor: 'nesw-resize',
+    shape: SashShape.edge,
+    position: MemoSashPosition.rt,
     left,
   },
   {
-    type: SashType.edge,
-    position: Position.lb,
-    cursor: 'nesw-resize',
+    shape: SashShape.edge,
+    position: MemoSashPosition.lb,
     top,
   },
   {
-    type: SashType.edge,
-    position: Position.rb,
-    cursor: 'nwse-resize',
+    shape: SashShape.edge,
+    position: MemoSashPosition.rb,
     top,
     left,
   },
 ];
+
+const centerTop = ({ shape, top = 0 }: SashPlacement) =>
+  top === 0 && shape === SashShape.vertical ? top : top - SASH_SIZE / 2;
+
+const centerLeft = ({ shape, left = 0 }: SashPlacement) =>
+  left === 0 && shape === SashShape.horizontal ? left : left - SASH_SIZE / 2;
 
 type ResizeMemo = {
   change: boolean;
@@ -87,6 +120,15 @@ type ResizeMemo = {
   width: number;
   height: number;
 };
+
+/** Where the gesture began, from either pointer kind the scene accepts. */
+const pointerOf = (event: ScenePointerEvent) =>
+  isMouseEvent(event.evt)
+    ? { x: event.evt.clientX, y: event.evt.clientY }
+    : {
+        x: event.evt.touches[0]?.clientX ?? 0,
+        y: event.evt.touches[0]?.clientY ?? 0,
+      };
 
 const MemoSash: FC<MemoSashProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -160,36 +202,33 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
     return ui;
   };
 
-  const handleMousemove = (dragMove: DragMove, position: Position) => {
-    dragMove.event.preventDefault();
+  const handleMove = (dragMove: DragMove, position: MemoSashPosition) => {
+    dragMove.event.type === 'mousemove' && dragMove.event.preventDefault();
     const { store } = app.value;
     let verticalUI: ResizeMemo | null = null;
     let horizontalUI: ResizeMemo | null = null;
 
-    // TODO: zoomLevel
-
     switch (position) {
-      case Position.left:
-      case Position.right:
+      case MemoSashPosition.left:
+      case MemoSashPosition.right:
         verticalUI = resizeWidth(dragMove, position);
         break;
-      case Position.top:
-      case Position.bottom:
-        horizontalUI = resizeHeight(dragMove, position);
+      case MemoSashPosition.bottom:
+        horizontalUI = resizeHeight(dragMove, DirectionName.bottom);
         break;
-      case Position.lt:
+      case MemoSashPosition.lt:
         verticalUI = resizeWidth(dragMove, DirectionName.left);
         horizontalUI = resizeHeight(dragMove, DirectionName.top);
         break;
-      case Position.rt:
+      case MemoSashPosition.rt:
         verticalUI = resizeWidth(dragMove, DirectionName.right);
         horizontalUI = resizeHeight(dragMove, DirectionName.top);
         break;
-      case Position.lb:
+      case MemoSashPosition.lb:
         verticalUI = resizeWidth(dragMove, DirectionName.left);
         horizontalUI = resizeHeight(dragMove, DirectionName.bottom);
         break;
-      case Position.rb:
+      case MemoSashPosition.rb:
         verticalUI = resizeWidth(dragMove, DirectionName.right);
         horizontalUI = resizeHeight(dragMove, DirectionName.bottom);
         break;
@@ -228,24 +267,55 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
     }
   };
 
-  const handleMousedown = (event: MouseEvent, position: Position) => {
-    clientX = event.clientX;
-    clientY = event.clientY;
-    drag$.subscribe(dragMove => handleMousemove(dragMove, position));
+  const handleMoveStart = (
+    event: ScenePointerEvent,
+    position: MemoSashPosition
+  ) => {
+    const pointer = pointerOf(event);
+    clientX = pointer.x;
+    clientY = pointer.y;
+    drag$.subscribe(dragMove => handleMove(dragMove, position));
   };
 
-  return () => (
-    <>
-      {createSash(props.top, props.left).map(sashProps => (
-        <Sash
-          {...sashProps}
-          onMousedown={(event: MouseEvent) => {
-            handleMousedown(event, sashProps.position);
-          }}
-        />
-      ))}
-    </>
-  );
+  const setCursor = (event: ScenePointerEvent, cursor: string) => {
+    const container = event.target?.getStage()?.container();
+    if (container) container.style.cursor = cursor;
+  };
+
+  return () => {
+    // What the DOM sash spanned with a width or height of 100%: the memo box less
+    // the border it sits inside on both sides.
+    const spanWidth = props.left - MEMO_BORDER * 2;
+    const spanHeight = props.top - MEMO_BORDER * 2;
+
+    return (
+      <>
+        {createSash(props.top, props.left).map(sash => (
+          <k-rect
+            name={`memo-sash memo-sash-${sash.position}`}
+            kind="sash"
+            x={centerLeft(sash)}
+            y={centerTop(sash)}
+            width={sash.shape === SashShape.horizontal ? spanWidth : SASH_SIZE}
+            height={sash.shape === SashShape.vertical ? spanHeight : SASH_SIZE}
+            fill={HIT_FILL}
+            on:mousedown={(event: ScenePointerEvent) => {
+              handleMoveStart(event, sash.position);
+            }}
+            on:touchstart={(event: ScenePointerEvent) => {
+              handleMoveStart(event, sash.position);
+            }}
+            on:mouseenter={(event: ScenePointerEvent) => {
+              setCursor(event, CURSORS[sash.position]);
+            }}
+            on:mouseleave={(event: ScenePointerEvent) => {
+              setCursor(event, '');
+            }}
+          />
+        ))}
+      </>
+    );
+  };
 };
 
 export default MemoSash;

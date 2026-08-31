@@ -1,16 +1,15 @@
-import { query } from '@dineug/erd-editor-schema';
-import { createRef, FC, ref, repeat } from '@dineug/r-html';
+import { createRef, FC, onMounted, ref, watch } from '@dineug/r-html';
+import { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
 import * as canvasStyle from '@/components/erd/canvas/Canvas.styles';
-import CanvasSvg from '@/components/erd/canvas/canvas-svg/CanvasSvg';
-import Memo from '@/components/erd/minimap/memo/Memo';
-import Table from '@/components/erd/minimap/table/Table';
+import { renderMinimapScene } from '@/components/erd/minimap/MinimapScene';
 import Viewport from '@/components/erd/minimap/viewport/Viewport';
 import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
-import { Show } from '@/constants/schema';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
-import { bHas } from '@/utils/bit';
+import { useUnmounted } from '@/hooks/useUnmounted';
+import { MINIMAP_STAGE_NAME, renderKonva } from '@/konva/host';
+import { registerStage, unregisterStage } from '@/konva/testHandle';
 import { isMouseEvent } from '@/utils/domEvent';
 
 import * as styles from './Minimap.styles';
@@ -23,7 +22,10 @@ export type MinimapProps = {};
 const Minimap: FC<MinimapProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const minimap = createRef<HTMLDivElement>();
+  const canvas = createRef<HTMLDivElement>();
   const { state, onScrollStart } = useMinimapScroll(ctx);
+  const { addUnsubscribe } = useUnmounted();
+  let stage: Stage | null = null;
 
   const getRatio = () => {
     const { store } = app.value;
@@ -33,23 +35,38 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
     return MINIMAP_SIZE / width;
   };
 
-  const styleMap = () => {
+  /**
+   * The thumbnail's own box. The container used to be the canvas at full size
+   * with a scale on it, and the box below is what that scale drew, which is
+   * what getBoundingClientRect answered then and answers now.
+   */
+  const getSize = () => {
     const { store } = app.value;
     const {
       settings: { width, height },
     } = store.state;
     const ratio = getRatio();
-    const x = (-1 * width) / 2 + (width * ratio) / 2;
-    const y = (-1 * height) / 2 + (height * ratio) / 2;
-    const right = x + MINIMAP_MARGIN;
-    const top = y + MINIMAP_MARGIN;
+
+    return { width: width * ratio, height: height * ratio };
+  };
+
+  const styleMap = () => {
+    const { width, height } = getSize();
 
     return {
-      transform: `scale(${ratio})`,
       width: `${width}px`,
       height: `${height}px`,
-      right: `${right}px`,
-      top: `${top}px`,
+      right: `${MINIMAP_MARGIN}px`,
+      top: `${MINIMAP_MARGIN}px`,
+    };
+  };
+
+  const sceneStyleMap = () => {
+    const { width, height } = getSize();
+
+    return {
+      width: `${width}px`,
+      height: `${height}px`,
     };
   };
 
@@ -95,68 +112,68 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
     onScrollStart(event);
   };
 
-  return () => {
+  onMounted(() => {
     const { store } = app.value;
-    const {
-      settings: { width, height, zoomLevel, show },
-      doc: { tableIds, memoIds },
-      collections,
-    } = store.state;
+    const { settings } = store.state;
+    const size = getSize();
 
-    const tables = query(collections)
-      .collection('tableEntities')
-      .selectByIds(tableIds);
+    const $stage = new Stage({
+      container: canvas.value,
+      name: MINIMAP_STAGE_NAME,
+      width: size.width,
+      height: size.height,
+    });
 
-    const memos = query(collections)
-      .collection('memoEntities')
-      .selectByIds(memoIds);
+    stage = $stage;
+    registerStage(MINIMAP_STAGE_NAME, $stage);
+    renderMinimapScene($stage);
 
-    return (
-      <>
-        <div
-          class={['minimap', styles.minimap]}
-          style={styleMap()}
-          use:ref={ref(minimap)}
-          on:mousedown={handleMove}
-          on:touchstart={handleMove}
-        >
-          <div
-            class={canvasStyle.root}
-            style={{
-              width: `${width}px`,
-              height: `${height}px`,
-              'min-width': `${width}px`,
-              'min-height': `${height}px`,
-              transform: `scale(${zoomLevel})`,
-            }}
-          >
-            {repeat(
-              tables,
-              table => table.id,
-              table => (
-                <Table table={table} />
-              )
-            )}
-            {repeat(
-              memos,
-              memo => memo.id,
-              memo => (
-                <Memo memo={memo} />
-              )
-            )}
-            {bHas(show, Show.relationship) ? (
-              // Not a multiple of what the canvas draws: the minimap scales the
-              // whole canvas down far enough that a connector at the canvas
-              // width lands under a device pixel. This floor is independent.
-              <CanvasSvg class={styles.canvasSvg} strokeWidth={12} />
-            ) : null}
-          </div>
-        </div>
-        <div class={styles.border} style={borderStyleMap()}></div>
-        <Viewport selected={state.selected} />
-      </>
+    addUnsubscribe(
+      watch(settings).subscribe(propName => {
+        if (propName !== 'width' && propName !== 'height') return;
+        $stage.size(getSize());
+      }),
+      () => {
+        stage = null;
+        unregisterStage(MINIMAP_STAGE_NAME, $stage);
+        renderKonva($stage, null);
+        $stage.destroy();
+      }
     );
-  };
+  });
+
+  if (import.meta.hot) {
+    // The scene is the root of an imperative render rather than a value in this
+    // template, so r-html's own boundary cannot swap it. Rendering the root
+    // again here is what makes an edit to the scene show without a reload.
+    import.meta.hot.accept(
+      '@/components/erd/minimap/MinimapScene',
+      (mod: any) => {
+        if (!stage || !mod) return;
+        mod.renderMinimapScene(stage);
+      }
+    );
+  }
+
+  return () => (
+    <>
+      <div
+        class={['minimap', styles.minimap]}
+        style={styleMap()}
+        use:ref={ref(minimap)}
+        on:mousedown={handleMove}
+        on:touchstart={handleMove}
+      >
+        <div
+          class={canvasStyle.root}
+          style={sceneStyleMap()}
+          use:ref={ref(canvas)}
+        ></div>
+      </div>
+      <div class={styles.border} style={borderStyleMap()}></div>
+      <Viewport selected={state.selected} />
+    </>
+  );
 };
 
 export default Minimap;

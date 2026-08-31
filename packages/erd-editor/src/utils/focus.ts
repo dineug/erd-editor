@@ -50,7 +50,7 @@ export function isEdit(
   );
 }
 
-export function lastCursorFocus(input: HTMLInputElement) {
+export function lastCursorFocus(input: HTMLInputElement | HTMLTextAreaElement) {
   const len = input.value.length;
   input.selectionStart = len;
   input.selectionEnd = len;

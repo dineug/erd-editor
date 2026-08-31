@@ -30,6 +30,7 @@ describe('editor/state', () => {
         height: DEFAULT_HEIGHT,
       });
       expect(editor.focusTable).toBeNull();
+      expect(editor.editMemoId).toBeNull();
       expect(editor.drawRelationship).toBeNull();
       expect(editor.hoverColumnMap).toEqual({});
       expect(editor.hoverRelationshipMap).toEqual({});

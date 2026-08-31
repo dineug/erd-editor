@@ -3,12 +3,12 @@ import { DOMTemplateLiterals, FC, repeat } from '@dineug/r-html';
 import { arrayHas } from '@dineug/shared';
 
 import { useAppContext } from '@/components/appContext';
-import * as columnStyles from '@/components/erd/canvas/table/column/Column.styles';
-import ColumnDataType from '@/components/erd/canvas/table/column/column-data-type/ColumnDataType';
-import ColumnKey from '@/components/erd/canvas/table/column/column-key/ColumnKey';
-import ColumnNotNull from '@/components/erd/canvas/table/column/column-not-null/ColumnNotNull';
-import ColumnOption from '@/components/erd/canvas/table/column/column-option/ColumnOption';
 import EditInput from '@/components/primitives/edit-input/EditInput';
+import * as columnStyles from '@/components/table-view/column/Column.styles';
+import ColumnDataType from '@/components/table-view/column/column-data-type/ColumnDataType';
+import ColumnKey from '@/components/table-view/column/column-key/ColumnKey';
+import ColumnNotNull from '@/components/table-view/column/column-not-null/ColumnNotNull';
+import ColumnOption from '@/components/table-view/column/column-option/ColumnOption';
 import {
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_UNIQUE_WIDTH,

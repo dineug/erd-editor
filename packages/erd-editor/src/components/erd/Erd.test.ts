@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { AnyAction, FC, html, observable } from '@dineug/r-html';
 import { config as rxjsConfig } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -10,7 +13,6 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import * as dragSelectStyles from '@/components/erd/drag-select/DragSelect.styles';
 import Erd from '@/components/erd/Erd';
 import * as styles from '@/components/erd/Erd.styles';
 import * as tablePropertiesStyles from '@/components/erd/table-properties/TableProperties.styles';
@@ -115,6 +117,32 @@ const seedTable = (app: AppContext, name?: string) => {
   return id;
 };
 
+const ERD_SOURCE = readFileSync(
+  join(process.cwd(), 'src', 'components', 'erd', 'Erd.tsx'),
+  'utf8'
+);
+
+/** Every place the routing asks the event target for an ancestor of one class. */
+const routingCalls = (className: string) =>
+  ERD_SOURCE.match(
+    new RegExp(String.raw`closest\(\s*'\.${className}'\s*\)`, 'g')
+  ) ?? [];
+
+/**
+ * The overlays that stayed dom when the scene moved onto a canvas. A press
+ * inside one of these is still an element the routing can ask an ancestor for,
+ * and each is a guard that has to survive the move.
+ */
+const DOM_GUARDS = [
+  'color-picker',
+  'edit-input',
+  'context-menu-content',
+  'hide-sign',
+  'minimap',
+  'minimap-viewport',
+  'virtual-scroll',
+];
+
 const dispatchMouse = (
   target: EventTarget,
   type: string,
@@ -143,6 +171,64 @@ const findByText = (root: ParentNode, selector: string, text: string) =>
     el => el.textContent?.trim() === text
   ) as HTMLElement | undefined;
 
+const seedRelationship = (app: AppContext, id: string) => {
+  const start = seedTable(app, 'alpha');
+  const end = seedTable(app, 'beta');
+  app.store.dispatchSync(addColumnAction$(start));
+  app.store.dispatchSync(addColumnAction$(end));
+  const { tableEntities } = app.store.state.collections;
+
+  app.store.dispatchSync(
+    addRelationshipAction({
+      id,
+      relationshipType: RelationshipType.ZeroN,
+      start: { tableId: start, columnIds: [tableEntities[start].columnIds[0]] },
+      end: { tableId: end, columnIds: [tableEntities[end].columnIds[0]] },
+    })
+  );
+
+  return id;
+};
+
+/**
+ * Where the routing now reads an entity from, which is AC-G15 in both
+ * directions: the scene half asks the konva hit test and the overlay half still
+ * asks a dom ancestor. What each answer then does is asserted in the browser.
+ */
+describe('Erd - scene routing', () => {
+  it('asks no dom ancestor for a table, a memo or a relationship', () => {
+    expect(routingCalls('table')).toEqual([]);
+    expect(routingCalls('memo')).toEqual([]);
+    expect(routingCalls('relationship')).toEqual([]);
+  });
+
+  it('keeps a dom guard for every overlay the scene never drew', () => {
+    const guarded = DOM_GUARDS.filter(name => routingCalls(name).length > 0);
+
+    expect(guarded).toEqual(DOM_GUARDS);
+  });
+
+  it('reads the scene half through the shared hit test', () => {
+    expect(ERD_SOURCE).toMatch(/from '@\/components\/erd\/hitTest'/);
+  });
+
+  it('hands that hit test the stage container and not the erd root', () => {
+    const calls = ERD_SOURCE.match(/sceneHit\(canvas\.value, event\)/g) ?? [];
+
+    expect(calls).toHaveLength(2);
+    expect(ERD_SOURCE).not.toMatch(/sceneHit\(root\./);
+  });
+
+  it('draws its entities as no element of its own', async () => {
+    const { app, root } = await setup();
+    seedRelationship(app, 'rel-scene');
+    await flush();
+
+    expect(root.querySelector('.table')).toBeNull();
+    expect(root.querySelector('.relationship')).toBeNull();
+  });
+});
+
 describe('Erd - shell', () => {
   it('renders the canvas shell with the scroll, minimap and hide sign layers', async () => {
     const { root } = await setup();
@@ -159,7 +245,7 @@ describe('Erd - shell', () => {
 
     expect(root.querySelector('.color-picker')).toBeNull();
     expect(root.querySelector('.table-properties')).toBeNull();
-    expect(root.querySelector('svg[class]')).toBeTruthy();
+    expect(root.querySelector('[data-testid="erd-canvas"]')).toBeTruthy();
   });
 });
 
@@ -346,51 +432,16 @@ describe('Erd - context menu', () => {
     expect(findByText(root, 'div', 'Automatic Table Placement')).toBeTruthy();
   });
 
-  it('opens the table context menu when the target is a table', async () => {
+  it('opens the erd context menu where the scene answers with no entity', async () => {
     const { app, root } = await setup();
-    const tableId = seedTable(app);
+    seedRelationship(app, 'rel-1');
     await flush();
 
-    const table = root.querySelector('.table[data-id]') as HTMLElement;
-    expect(table.dataset.id).toBe(tableId);
+    await openContextMenu(root);
 
-    await openContextMenu(table);
-
-    expect(findByText(root, 'div', 'Table Properties')).toBeTruthy();
-    expect(findByText(root, 'div', 'New Table')).toBeUndefined();
-  });
-
-  it('opens the relationship context menu when the target is a relationship', async () => {
-    const { app, root } = await setup();
-    const start = seedTable(app, 'alpha');
-    const end = seedTable(app, 'beta');
-    app.store.dispatchSync(addColumnAction$(start));
-    app.store.dispatchSync(addColumnAction$(end));
-    const startColumnId =
-      app.store.state.collections.tableEntities[start].columnIds[0];
-    const endColumnId =
-      app.store.state.collections.tableEntities[end].columnIds[0];
-    app.store.dispatchSync(
-      addRelationshipAction({
-        id: 'rel-1',
-        relationshipType: RelationshipType.ZeroN,
-        start: { tableId: start, columnIds: [startColumnId] },
-        end: { tableId: end, columnIds: [endColumnId] },
-      })
-    );
-    await flush();
-
-    const relationship = root.querySelector(
-      '.relationship[data-id]'
-    ) as SVGGElement;
-    expect(relationship).toBeTruthy();
-    expect(relationship.dataset.id).toBe('rel-1');
-
-    await openContextMenu(relationship);
-
-    expect(findByText(root, 'div', 'Relationship Type')).toBeTruthy();
-    expect(findByText(root, 'div', 'Delete')).toBeTruthy();
-    expect(findByText(root, 'div', 'New Table')).toBeUndefined();
+    expect(findByText(root, 'div', 'New Table')).toBeTruthy();
+    expect(findByText(root, 'div', 'Table Properties')).toBeUndefined();
+    expect(findByText(root, 'div', 'Relationship Type')).toBeUndefined();
   });
 
   it('closes the context menu when a menu item is chosen', async () => {
@@ -417,10 +468,10 @@ describe('Erd - context menu', () => {
 });
 
 describe('Erd - drag select and grab move', () => {
-  const dragSelectSelector = `svg.${String(dragSelectStyles.dragSelect)}`;
-
-  it('opens the drag select rectangle on a modifier mousedown', async () => {
-    const { root } = await setup();
+  it('hands the marquee its origin in root coordinates on a modifier mousedown', async () => {
+    const { app, root } = await setup();
+    const dragSelectStart = vi.fn();
+    app.emitter.on({ dragSelectStart });
 
     const event = dispatchMouse(root, 'mousedown', {
       clientX: 40,
@@ -431,21 +482,26 @@ describe('Erd - drag select and grab move', () => {
     await flush();
 
     expect(event.defaultPrevented).toBe(true);
-    expect(root.querySelector(dragSelectSelector)).toBeTruthy();
+    expect(dragSelectStart).toHaveBeenCalledWith({
+      type: 'dragSelectStart',
+      payload: { x: 40, y: 60 },
+    });
+  });
 
-    dispatchMouse(root, 'mousemove', { clientX: 100, clientY: 160 });
+  it('never pans while the marquee owns the modifier drag', async () => {
+    const { app, root } = await setup();
+
+    dispatchMouse(root, 'mousedown', {
+      clientX: 40,
+      clientY: 60,
+      ctrlKey: true,
+      metaKey: true,
+    });
+    dispatchMouse(window, 'mousemove', { clientX: 140, clientY: 160 });
     await flush();
 
-    const rect = root.querySelector(dragSelectSelector) as SVGElement;
-    expect(rect.style.left).toBe('40px');
-    expect(rect.style.top).toBe('60px');
-    expect(rect.style.width).toBe('60px');
-    expect(rect.style.height).toBe('100px');
-
-    dispatchMouse(window, 'mouseup');
-    await flush();
-
-    expect(root.querySelector(dragSelectSelector)).toBeNull();
+    const { scrollLeft, scrollTop } = app.store.state.settings;
+    expect([scrollLeft, scrollTop]).toEqual([0, 0]);
   });
 
   it('unselects everything and hides the color picker on a canvas mousedown', async () => {
@@ -460,18 +516,6 @@ describe('Erd - drag select and grab move', () => {
 
     expect(app.store.state.editor.selectedMap).toEqual({});
     expect(root.querySelector('.color-picker')).toBeNull();
-  });
-
-  it('keeps the selection when the mousedown starts on a table', async () => {
-    const { app, root } = await setup();
-    const tableId = seedTable(app);
-    await flush();
-
-    const table = root.querySelector('.table[data-id]') as HTMLElement;
-    dispatchMouse(table, 'mousedown', { clientX: 5, clientY: 5 });
-    await flush();
-
-    expect(app.store.state.editor.selectedMap[tableId]).toBe('table');
   });
 
   it('scrolls the canvas while dragging', async () => {
@@ -546,6 +590,8 @@ describe('Erd - drag select and grab move', () => {
 
   it('does not drag select while an overlay is open', async () => {
     const { app, root } = await setup();
+    const dragSelectStart = vi.fn();
+    app.emitter.on({ dragSelectStart });
     app.store.dispatchSync(changeOpenMapAction({ [Open.timeTravel]: true }));
     await flush();
 
@@ -557,7 +603,7 @@ describe('Erd - drag select and grab move', () => {
     });
     await flush();
 
-    expect(root.querySelector(dragSelectSelector)).toBeNull();
+    expect(dragSelectStart).not.toHaveBeenCalled();
   });
 });
 

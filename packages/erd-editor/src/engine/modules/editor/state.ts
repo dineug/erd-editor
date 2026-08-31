@@ -11,6 +11,8 @@ export type Editor = {
   hasRedo: boolean;
   viewport: Viewport;
   focusTable: FocusTable | null;
+  /** The memo whose body an overlay editor is open on, and null while none is. */
+  editMemoId: string | null;
   drawRelationship: DrawRelationship | null;
   hoverColumnMap: Record<string, boolean>;
   hoverRelationshipMap: Record<string, boolean>;
@@ -122,6 +124,7 @@ export const createEditor = (): Editor => ({
     height: DEFAULT_HEIGHT,
   },
   focusTable: null,
+  editMemoId: null,
   drawRelationship: null,
   hoverColumnMap: {},
   hoverRelationshipMap: {},

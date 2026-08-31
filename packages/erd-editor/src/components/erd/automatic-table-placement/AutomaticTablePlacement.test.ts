@@ -19,7 +19,7 @@ import AutomaticTablePlacement, {
   TablePoint,
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import * as styles from '@/components/erd/automatic-table-placement/AutomaticTablePlacement.styles';
-import { MINIMAP_SIZE } from '@/constants/layout';
+import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
@@ -180,25 +180,33 @@ describe('AutomaticTablePlacement', () => {
       expect(root?.querySelector(`.${styles.container}`)).toBeTruthy();
       expect(container.querySelector('.minimap')).toBeTruthy();
       expect(container.querySelector('.minimap-viewport')).toBeTruthy();
-      expect(container.querySelectorAll('.table').length).toBeGreaterThan(0);
+      expect(
+        container.querySelector('[data-testid="erd-canvas"]')
+      ).toBeTruthy();
     });
 
-    it('previews the document in its own store, zoomed and centered on the viewport', async () => {
+    it('centers the preview scroll on the origin viewport', async () => {
       const app = createOrigin();
       addTable(app, 't1', 'users');
       const { width, height } = app.store.state.settings;
 
       const { container } = await open(app, vi.fn());
 
-      const controller = container.querySelector(
-        `.${styles.container} > div`
+      // The scroll is the preview store's, and the minimap viewport rectangle
+      // is where it reaches the dom: the scene's own copy of it went onto the
+      // konva layer, which no unit environment can build.
+      const viewport = container.querySelector(
+        '.minimap-viewport'
       ) as HTMLElement;
-      const zoomLevel = 800 / width;
+      const ratio = MINIMAP_SIZE / width;
       const scrollLeft = -1 * (width / 2 - 800 / 2);
       const scrollTop = -1 * (height / 2 - 600 / 2);
 
-      expect(controller.style.transform).toBe(
-        `translate(${scrollLeft}px, ${scrollTop}px) scale(${zoomLevel})`
+      expect(viewport.style.top).toBe(
+        `${MINIMAP_MARGIN - scrollTop * ratio}px`
+      );
+      expect(viewport.style.right).toBe(
+        `${scrollLeft * ratio - 800 * ratio + MINIMAP_SIZE + MINIMAP_MARGIN}px`
       );
     });
 

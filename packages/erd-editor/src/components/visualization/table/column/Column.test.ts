@@ -8,7 +8,7 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import * as styles from '@/components/erd/canvas/table/column/Column.styles';
+import * as styles from '@/components/table-view/column/Column.styles';
 import Column from '@/components/visualization/table/column/Column';
 import {
   COLUMN_AUTO_INCREMENT_WIDTH,

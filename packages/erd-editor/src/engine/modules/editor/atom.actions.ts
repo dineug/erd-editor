@@ -327,6 +327,27 @@ const editTableEnd: ReducerType<typeof ActionType.editTableEnd> = ({
   focusTable.edit = false;
 };
 
+export const editMemoAction = createAction<
+  ActionMap[typeof ActionType.editMemo]
+>(ActionType.editMemo);
+
+const editMemo: ReducerType<typeof ActionType.editMemo> = (
+  { editor },
+  { payload: { id } }
+) => {
+  editor.editMemoId = id;
+};
+
+export const editMemoEndAction = createAction<
+  ActionMap[typeof ActionType.editMemoEnd]
+>(ActionType.editMemoEnd);
+
+const editMemoEnd: ReducerType<typeof ActionType.editMemoEnd> = ({
+  editor,
+}) => {
+  editor.editMemoId = null;
+};
+
 export const selectAllColumnAction = createAction<
   ActionMap[typeof ActionType.selectAllColumn]
 >(ActionType.selectAllColumn);
@@ -802,6 +823,8 @@ export const editorReducers = {
   [ActionType.focusMoveTable]: focusMoveTable,
   [ActionType.editTable]: editTable,
   [ActionType.editTableEnd]: editTableEnd,
+  [ActionType.editMemo]: editMemo,
+  [ActionType.editMemoEnd]: editMemoEnd,
   [ActionType.selectAllColumn]: selectAllColumn,
   [ActionType.drawStartRelationship]: drawStartRelationship,
   [ActionType.drawStartAddRelationship]: drawStartAddRelationship,
@@ -838,6 +861,8 @@ export const actions = {
   focusMoveTableAction,
   editTableAction,
   editTableEndAction,
+  editMemoAction,
+  editMemoEndAction,
   selectAllColumnAction,
   drawStartRelationshipAction,
   drawStartAddRelationshipAction,

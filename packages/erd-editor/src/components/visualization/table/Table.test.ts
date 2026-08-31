@@ -8,7 +8,7 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import * as styles from '@/components/erd/canvas/table/Table.styles';
+import * as styles from '@/components/table-view/Table.styles';
 import Table from '@/components/visualization/table/Table';
 import { Show } from '@/constants/schema';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';

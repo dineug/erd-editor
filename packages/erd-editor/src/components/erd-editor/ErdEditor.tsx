@@ -20,6 +20,7 @@ import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import Settings from '@/components/settings/Settings';
 import Theme from '@/components/theme/Theme';
 import ThemeBuilder from '@/components/theme-builder/ThemeBuilder';
+import { themeContext } from '@/components/themeContext';
 import ToastContainer from '@/components/toast-container/ToastContainer';
 import Toolbar from '@/components/toolbar/Toolbar';
 import Visualization from '@/components/visualization/Visualization';
@@ -115,6 +116,10 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
       app: appContextValue,
       root,
     });
+  // Konva resolves no custom property, so the scene reads the palette as values
+  // off this provider. It is the same object <Theme> writes the css variables
+  // from, which is what keeps the two surfaces on one source.
+  const themeProvider = useProvider(ctx, themeContext, theme);
   const { store, keydown$, emitter } = appContextValue;
   const { addUnsubscribe } = useUnmounted();
   const state = observable({
@@ -123,6 +128,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   });
 
   destroySet.add(provider.destroy);
+  destroySet.add(themeProvider.destroy);
   destroySet.add(
     emitter.on({
       mouseTrackerStart: () => {

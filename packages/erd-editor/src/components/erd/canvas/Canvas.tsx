@@ -1,20 +1,18 @@
-import { query } from '@dineug/erd-editor-schema';
-import { cache, FC, Ref, ref, repeat } from '@dineug/r-html';
+import { FC, onMounted, Ref, ref, watch } from '@dineug/r-html';
+import { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
-import CanvasSvg from '@/components/erd/canvas/canvas-svg/CanvasSvg';
-import DrawRelationship from '@/components/erd/canvas/draw-relationship/DrawRelationship';
-import DuplicateGhost from '@/components/erd/canvas/duplicate-ghost/DuplicateGhost';
-import HighLevelTable from '@/components/erd/canvas/high-level-table/HighLevelTable';
-import Memo from '@/components/erd/canvas/memo/Memo';
-import SharedDragSelect from '@/components/erd/canvas/shared-drag-select/SharedDragSelect';
-import SharedMouseTracker from '@/components/erd/canvas/shared-mouse-tracker/SharedMouseTracker';
-import Table from '@/components/erd/canvas/table/Table';
-import { Show } from '@/constants/schema';
-import { bHas } from '@/utils/bit';
-import { isHighLevelTable } from '@/utils/validation';
+import { renderCanvasScene } from '@/components/erd/canvas/CanvasScene';
+import EditOverlay from '@/components/erd/canvas/EditOverlay';
+import { trackSceneHits } from '@/components/erd/hitTest';
+import { useUnmounted } from '@/hooks/useUnmounted';
+import { renderKonva } from '@/konva/host';
+import { registerStage, unregisterStage } from '@/konva/testHandle';
 
 import * as styles from './Canvas.styles';
+
+/** The registry key a spec reads the main canvas Stage back from. */
+const STAGE_NAME = 'canvas';
 
 export type CanvasProps = {
   root: Ref<HTMLDivElement>;
@@ -22,35 +20,69 @@ export type CanvasProps = {
   grabMove?: boolean;
 };
 
+/**
+ * The dom shell the scene hangs in: a controller box, the Stage container in it
+ * and the editing overlay over that. Scroll and zoom moved onto the scene's
+ * layers, so the shell is viewport sized rather than schema sized.
+ */
 const Canvas: FC<CanvasProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const { addUnsubscribe } = useUnmounted();
+  let stage: Stage | null = null;
+
+  onMounted(() => {
+    const { store } = app.value;
+    const { viewport } = store.state.editor;
+
+    const $stage = new Stage({
+      container: props.canvas.value,
+      width: viewport.width,
+      height: viewport.height,
+    });
+
+    stage = $stage;
+    registerStage(STAGE_NAME, $stage);
+    renderCanvasScene($stage, { root: props.root });
+
+    addUnsubscribe(
+      trackSceneHits($stage),
+      watch(viewport).subscribe(() => {
+        $stage.size({ width: viewport.width, height: viewport.height });
+      }),
+      () => {
+        stage = null;
+        unregisterStage(STAGE_NAME, $stage);
+        renderKonva($stage, null);
+        $stage.destroy();
+      }
+    );
+  });
+
+  if (import.meta.hot) {
+    // The scene is the root of an imperative render rather than a value in this
+    // template, so r-html's own boundary cannot swap it. Rendering the root
+    // again here is what makes an edit to the scene show without a reload.
+    import.meta.hot.accept(
+      '@/components/erd/canvas/CanvasScene',
+      (mod: any) => {
+        if (!stage || !mod) return;
+        mod.renderCanvasScene(stage, { root: props.root });
+      }
+    );
+  }
 
   return () => {
     const { store } = app.value;
-    const {
-      settings: { width, height, scrollTop, scrollLeft, zoomLevel, show },
-      doc: { tableIds, memoIds },
-      editor: { drawRelationship },
-      collections,
-    } = store.state;
-
-    const tables = query(collections)
-      .collection('tableEntities')
-      .selectByIds(tableIds);
-
-    const memos = query(collections)
-      .collection('memoEntities')
-      .selectByIds(memoIds);
+    const { viewport } = store.state.editor;
 
     return (
       <div
         class={styles.controller}
         style={{
-          width: `${width}px`,
-          height: `${height}px`,
-          'min-width': `${width}px`,
-          'min-height': `${height}px`,
-          transform: `translate(${scrollLeft}px, ${scrollTop}px) scale(${zoomLevel})`,
+          width: `${viewport.width}px`,
+          height: `${viewport.height}px`,
+          'min-width': `${viewport.width}px`,
+          'min-height': `${viewport.height}px`,
           'pointer-events': props.grabMove ? 'none' : 'auto',
         }}
       >
@@ -59,50 +91,13 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
           data-testid="erd-canvas"
           use:ref={ref(props.canvas)}
           style={{
-            width: `${width}px`,
-            height: `${height}px`,
-            'min-width': `${width}px`,
-            'min-height': `${height}px`,
+            width: `${viewport.width}px`,
+            height: `${viewport.height}px`,
+            'min-width': `${viewport.width}px`,
+            'min-height': `${viewport.height}px`,
           }}
-        >
-          {cache(
-            isHighLevelTable(zoomLevel) ? (
-              <>
-                {repeat(
-                  tables,
-                  table => table.id,
-                  table => (
-                    <HighLevelTable table={table} />
-                  )
-                )}
-              </>
-            ) : (
-              <>
-                {repeat(
-                  tables,
-                  table => table.id,
-                  table => (
-                    <Table table={table} />
-                  )
-                )}
-              </>
-            )
-          )}
-          {repeat(
-            memos,
-            memo => memo.id,
-            memo => (
-              <Memo memo={memo} />
-            )
-          )}
-          {bHas(show, Show.relationship) ? <CanvasSvg /> : null}
-          {drawRelationship?.start ? (
-            <DrawRelationship root={props.root} draw={drawRelationship} />
-          ) : null}
-          <SharedMouseTracker />
-          <SharedDragSelect />
-          <DuplicateGhost />
-        </div>
+        ></div>
+        <EditOverlay />
       </div>
     );
   };

@@ -1,0 +1,57 @@
+{
+  "label": "dom-xlarge",
+  "createdAt": "2026-08-30T19:20:03.624Z",
+  "metricsVersion": 1,
+  "corpus": {
+    "name": "xlarge",
+    "tables": 1000,
+    "relationships": 1600,
+    "columns": 7600
+  },
+  "rows": [
+    {
+      "scene": "detail",
+      "tables": 6,
+      "relationships": 11,
+      "columns": 47,
+      "width": 1378,
+      "height": 877,
+      "zoomLevel": 1,
+      "file": "packages/erd-editor/e2e/.bench/shots/dom-xlarge-detail.png",
+      "bytes": 150166
+    },
+    {
+      "scene": "hub",
+      "tables": 9,
+      "relationships": 18,
+      "columns": 72,
+      "width": 1356,
+      "height": 1209,
+      "zoomLevel": 0.7444168734491315,
+      "file": "packages/erd-editor/e2e/.bench/shots/dom-xlarge-hub.png",
+      "bytes": 174452
+    },
+    {
+      "scene": "dense",
+      "tables": 20,
+      "relationships": 38,
+      "columns": 158,
+      "width": 2173,
+      "height": 1537,
+      "zoomLevel": 0.5855562784645413,
+      "file": "packages/erd-editor/e2e/.bench/shots/dom-xlarge-dense.png",
+      "bytes": 52786
+    },
+    {
+      "scene": "xlarge",
+      "tables": 1000,
+      "relationships": 1600,
+      "columns": 7600,
+      "width": 13565,
+      "height": 11082,
+      "zoomLevel": 0.08121277747698971,
+      "file": "packages/erd-editor/e2e/.bench/shots/dom-xlarge-xlarge.png",
+      "bytes": 14578
+    }
+  ]
+}

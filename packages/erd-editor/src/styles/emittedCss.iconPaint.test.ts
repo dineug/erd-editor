@@ -15,15 +15,14 @@ const toSourcePath = (path: string) =>
     ? path.replace(/^\.\//, 'src/styles/')
     : path.replace(/^\.\.\//, 'src/');
 
-const DRAG_SELECT = 'src/components/erd/drag-select/DragSelect.styles.ts';
 const COLOR_PICKER = 'src/styles/colorPicker.style.ts';
 
 /**
- * The only two modules allowed a fill: DragSelect paints a marquee on an svg of
- * its own, and colorPicker's fills are all scoped under a subtree this package
- * renders no Icon into. Both claims are asserted below rather than trusted.
+ * The one module allowed a fill: colorPicker's fills are all scoped under a
+ * subtree this package renders no Icon into. The claim is asserted below rather
+ * than trusted, and the marquee that once shared the list is konva now.
  */
-const FILL_ALLOW_LIST = [DRAG_SELECT, COLOR_PICKER];
+const FILL_ALLOW_LIST = [COLOR_PICKER];
 
 type FillRule = { module: string; selector: string; value: string };
 
@@ -99,17 +98,12 @@ describe('icon paint', () => {
     );
   });
 
-  it('keeps the drag box fill on the drag box, not on a class an icon shares', async () => {
-    const styles =
-      await import('@/components/erd/drag-select/DragSelect.styles');
-
-    // Read through the export rather than a hashed class literal: this is the one selector
-    // DragSelect.tsx puts on its own <svg>, and nothing else carries it.
-    expect(
-      fills
-        .filter(fill => fill.module === DRAG_SELECT)
-        .map(fill => fill.selector)
-    ).toEqual([`.${String(styles.dragSelect)}`]);
+  it('leaves the marquee out of the fills, now that konva draws it', () => {
+    // The dashed band was the one non-icon svg this package shipped a fill for.
+    // Its konva successor paints through node attrs, so no stylesheet declares it.
+    expect(fills.filter(fill => fill.module.includes('drag-select'))).toEqual(
+      []
+    );
   });
 
   it('keeps every color picker fill under the upstream class name', () => {
@@ -203,8 +197,7 @@ describe('hide-until-hover', () => {
     [
       'table header',
       async () => {
-        const styles =
-          await import('@/components/erd/canvas/table/Table.styles');
+        const styles = await import('@/components/table-view/Table.styles');
         return {
           row: String(styles.root),
           button: String(styles.headerButtonWrap),
@@ -227,7 +220,7 @@ describe('hide-until-hover', () => {
       'column row',
       async () => {
         const styles =
-          await import('@/components/erd/canvas/table/column/Column.styles');
+          await import('@/components/table-view/column/Column.styles');
         return {
           row: String(styles.root),
           button: String(styles.iconButton),

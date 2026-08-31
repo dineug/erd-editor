@@ -48,13 +48,8 @@ export default defineConfig({
   plugins: [
     lazyPlugins(async () => {
       const { rHtml } = await import(rHtmlPackage);
-      return [rHtml()];
+      return [rHtml({ jsx: { konvaImportSource: '@/konva/host' } })];
     }),
     dts({ tsconfigPath: './tsconfig.build.json' }),
   ],
-  server: {
-    // The Playwright webServer starts this same command; opening a browser
-    // there would race the run.
-    open: !process.env.E2E,
-  },
 });

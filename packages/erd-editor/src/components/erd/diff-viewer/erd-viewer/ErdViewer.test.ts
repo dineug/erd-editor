@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { html } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -44,6 +47,40 @@ async function mountViewer(
   )!;
   return { app, root };
 }
+
+const VIEWER_SOURCE = readFileSync(
+  join(
+    process.cwd(),
+    'src',
+    'components',
+    'erd',
+    'diff-viewer',
+    'erd-viewer',
+    'ErdViewer.tsx'
+  ),
+  'utf8'
+);
+
+/** Every place the routing asks the event target for an ancestor of one class. */
+const routingCalls = (className: string) =>
+  VIEWER_SOURCE.match(
+    new RegExp(String.raw`closest\(\s*'\.${className}'\s*\)`, 'g')
+  ) ?? [];
+
+/**
+ * The overlays that stayed dom when the scene moved onto a canvas. The viewer
+ * carries the same guard list the editor does, minus the ones only an editable
+ * canvas can raise.
+ */
+const DOM_GUARDS = [
+  'color-picker',
+  'edit-input',
+  'context-menu-content',
+  'hide-sign',
+  'minimap',
+  'minimap-viewport',
+  'virtual-scroll',
+];
 
 const mousedownAt = (target: Element) =>
   target.dispatchEvent(
@@ -100,7 +137,7 @@ describe('ErdViewer', () => {
 
     expect(root.querySelector('.virtual-scroll')).toBeTruthy();
     expect(root.querySelector('.minimap')).toBeTruthy();
-    expect(root.querySelector('canvas, .canvas, svg')).toBeTruthy();
+    expect(root.querySelector('[data-testid="erd-canvas"]')).toBeTruthy();
   });
 
   it('prevents the native context menu', async () => {
@@ -172,24 +209,20 @@ describe('ErdViewer', () => {
     expect(root.style.cursor).toBe('grabbing');
   });
 
-  it('keeps the grab cursor and skips unselect when the press starts on a table', async () => {
-    const app = createApp();
-    const { root } = await mountViewer(Diff.insert, new Map(), app);
+  it('asks no dom ancestor for a table or a memo', () => {
+    expect(routingCalls('table')).toEqual([]);
+    expect(routingCalls('memo')).toEqual([]);
+  });
 
-    const emitted: string[] = [];
-    app.emitter.on({
-      closeColorPicker: () => emitted.push('closeColorPicker'),
-    });
+  it('keeps a dom guard for every overlay the scene never drew', () => {
+    const guarded = DOM_GUARDS.filter(name => routingCalls(name).length > 0);
 
-    const table = document.createElement('div');
-    table.classList.add('table');
-    root.append(table);
+    expect(guarded).toEqual(DOM_GUARDS);
+  });
 
-    mousedownAt(table);
-    await flush();
-
-    expect(emitted).toEqual(['closeColorPicker']);
-    expect(root.style.cursor).toBe('grab');
+  it('reads the scene half through the same hit test the editor uses', () => {
+    expect(VIEWER_SOURCE).toMatch(/from '@\/components\/erd\/hitTest'/);
+    expect(VIEWER_SOURCE).toContain('sceneHit(canvas.value, event)');
   });
 
   it('does not close the color picker when the press starts inside it', async () => {

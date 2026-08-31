@@ -2,8 +2,8 @@ import { query } from '@dineug/erd-editor-schema';
 import { FC, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import * as styles from '@/components/erd/canvas/table/Table.styles';
 import EditInput from '@/components/primitives/edit-input/EditInput';
+import * as styles from '@/components/table-view/Table.styles';
 import Column from '@/components/visualization/table/column/Column';
 import { Show } from '@/constants/schema';
 import type { Table } from '@/internal-types';

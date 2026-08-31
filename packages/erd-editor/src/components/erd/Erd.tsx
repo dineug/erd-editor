@@ -14,11 +14,11 @@ import AutomaticTablePlacement, {
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import Canvas from '@/components/erd/canvas/Canvas';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
-import DragSelect from '@/components/erd/drag-select/DragSelect';
 import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
 import HideSign from '@/components/erd/hide-sign/HideSign';
+import { sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
 import TableProperties from '@/components/erd/table-properties/TableProperties';
 import TimeTravel from '@/components/erd/time-travel/TimeTravel';
@@ -43,7 +43,7 @@ import { HISTORY_LIMIT } from '@/engine/rx-store';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { isMouseEvent } from '@/utils/domEvent';
 import { getAbsolutePoint } from '@/utils/dragSelect';
-import { closeColorPickerAction } from '@/utils/emitter';
+import { closeColorPickerAction, dragSelectStartAction } from '@/utils/emitter';
 import { drag$, DragMove, keyup$ } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
 import { isMod } from '@/utils/keyboard-shortcut';
@@ -62,9 +62,6 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   const canvas = createRef<HTMLDivElement>();
   const app = useAppContext(ctx);
   const state = observable({
-    dragSelect: false,
-    dragSelectX: 0,
-    dragSelectY: 0,
     contextMenuType: ErdContextMenuType.ERD as ErdContextMenuType,
     relationshipId: '' as string | undefined,
     tableId: '' as string | undefined,
@@ -117,14 +114,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const el = event.target as HTMLElement | null;
     if (!el || getShowOverLayout()) return;
 
-    const $table = el.closest('.table') as HTMLElement | null;
-    const $relationship = el.closest('.relationship') as HTMLElement | null;
+    const hit = sceneHit(canvas.value, event);
 
-    if ($table) {
-      state.tableId = $table.dataset.id;
+    if (hit?.kind === 'table') {
+      state.tableId = hit.id;
       state.contextMenuType = ErdContextMenuType.table;
-    } else if ($relationship) {
-      state.relationshipId = $relationship.dataset.id;
+    } else if (hit?.kind === 'relationship') {
+      state.relationshipId = hit.id;
       state.contextMenuType = ErdContextMenuType.relationship;
     } else {
       state.contextMenuType = ErdContextMenuType.ERD;
@@ -190,10 +186,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     const showOverLayout = getShowOverLayout();
     const canHideColorPicker = !el.closest('.color-picker');
+    const hit = sceneHit(canvas.value, event);
+    const onEntity = hit?.kind === 'table' || hit?.kind === 'memo';
 
     const canUnselectAll =
-      !el.closest('.table') &&
-      !el.closest('.memo') &&
+      !onEntity &&
       !el.closest('.edit-input') &&
       !el.closest('.context-menu-content') &&
       !el.closest('.hide-sign') &&
@@ -221,10 +218,14 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     if (isMouseEvent(event) && isMod(event)) {
       event.preventDefault();
+      const { emitter } = app.value;
       const { x, y } = root.value.getBoundingClientRect();
-      state.dragSelect = true;
-      state.dragSelectX = event.clientX - x;
-      state.dragSelectY = event.clientY - y;
+      emitter.emit(
+        dragSelectStartAction({
+          x: event.clientX - x,
+          y: event.clientY - y,
+        })
+      );
     } else {
       if (state.grabMove) {
         state.grabCursor = 'grabbing';
@@ -237,10 +238,6 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         },
       });
     }
-  };
-
-  const handleDragSelectEnd = () => {
-    state.dragSelect = false;
   };
 
   const handleChangeColorPicker = (color: string) => {
@@ -426,14 +423,6 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         <VirtualScroll />
         <Minimap />
         <HideSign root={root} />
-        {state.dragSelect ? (
-          <DragSelect
-            root={root}
-            x={state.dragSelectX}
-            y={state.dragSelectY}
-            onDragSelectEnd={handleDragSelectEnd}
-          />
-        ) : null}
         {contextMenu.state.show ? (
           <ErdContextMenu
             type={state.contextMenuType}
