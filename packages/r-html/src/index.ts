@@ -10,12 +10,15 @@ export type {
 export { observable, observer, watch } from '@/observable';
 export { nextTick } from '@/observable/scheduler';
 export { reduxDevtools } from '@/reduxDevtools';
-export { render } from '@/render';
+export { html, render, svg } from '@/render';
+export type { HostAdapter, HostNode } from '@/render/adapter';
 export * from '@/render/directives/attribute';
 export { createAttributeDirective } from '@/render/directives/attributeDirective';
 export * from '@/render/directives/node';
 export { createNodeDirective } from '@/render/directives/nodeDirective';
 export { hmr } from '@/render/hmr';
+export type { HostContainer, HostTemplate } from '@/render/hostTemplate';
+export { createHostTemplate } from '@/render/hostTemplate';
 export { NoopComponent } from '@/render/part/node/component/helper';
 export {
   onBeforeFirstUpdate,
@@ -56,5 +59,4 @@ export type {
   CSSDiagnosticHandler,
 } from '@/template/cssDiagnostics';
 export { setCSSDiagnostics } from '@/template/cssDiagnostics';
-export { html, svg } from '@/template/html';
 export { addCSSHost, setGlobalStyleOrder } from '@/template/vCSSStyleSheet';

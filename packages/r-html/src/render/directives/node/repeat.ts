@@ -1,10 +1,9 @@
-import { createNodeDirective } from '@/render/directives/nodeDirective';
+import type { HostNode } from '@/render/adapter';
 import {
-  insertAfterNode,
-  insertBeforeNode,
-  rangeNodes,
-  removeNode,
-} from '@/render/helper';
+  createNodeDirective,
+  NodeDirectiveProps,
+} from '@/render/directives/nodeDirective';
+import { domHelper, HostHelper } from '@/render/helper';
 import { Part } from '@/render/part';
 import {
   Action,
@@ -33,7 +32,7 @@ export const repeat = createNodeDirective<RepeatFn>(
     list.length; // observable dependency
     return [list, getKey, getResult];
   },
-  ({ startNode, endNode }) => {
+  ({ startNode, endNode, helper = domHelper }: NodeDirectiveProps) => {
     let parts: ItemPart[] = [];
 
     const destroy = () => {
@@ -51,23 +50,24 @@ export const repeat = createNodeDirective<RepeatFn>(
       diff.update.forEach(({ action, from, to }) => {
         switch (action) {
           case Action.create:
-            const node = document.createComment('');
+            const node = helper.createMarker('');
 
             to === 0
-              ? insertAfterNode(node, startNode)
+              ? helper.insertAfterNode(node, startNode)
               : parts.length
-                ? insertAfterNode(
+                ? helper.insertAfterNode(
                     node,
                     arrayLike[to - 1]
                       ? arrayLike[to - 1].endNode
                       : parts[to - 1].endNode
                   )
-                : insertBeforeNode(node, endNode);
+                : helper.insertBeforeNode(node, endNode);
 
             arrayLike[to] = new ItemPart(
               node,
               values[to].value,
-              values[to].key
+              values[to].key,
+              helper
             );
             break;
           case Action.move:
@@ -97,41 +97,54 @@ export const repeat = createNodeDirective<RepeatFn>(
 
 class ItemPart implements Part {
   #part: Part;
-  startNode = document.createComment('');
-  endNode = document.createComment('');
+  #helper: HostHelper;
+  startNode: HostNode;
+  endNode: HostNode;
   type: PartType;
   key: any;
 
-  constructor(node: Node, value: any, key: any) {
-    insertBeforeNode(this.startNode, node);
-    insertAfterNode(this.endNode, node);
-    removeNode(node);
+  constructor(
+    node: HostNode,
+    value: any,
+    key: any,
+    helper: HostHelper = domHelper
+  ) {
+    this.#helper = helper;
+    this.startNode = helper.createMarker('');
+    this.endNode = helper.createMarker('');
+    helper.insertBeforeNode(this.startNode, node);
+    helper.insertAfterNode(this.endNode, node);
+    helper.removeNode(node);
     this.key = key;
     this.type = getPartType(value);
-    this.#part = createPart(this.type, this.startNode, this.endNode);
+    this.#part = createPart(this.type, this.startNode, this.endNode, helper);
   }
 
   commit(value: any) {
     this.#part.commit(value);
   }
 
-  insert(position: 'before' | 'after', refChild: Node) {
+  insert(position: 'before' | 'after', refChild: HostNode) {
     const nodes = [
       this.startNode,
-      ...rangeNodes(this.startNode, this.endNode),
+      ...this.#helper.rangeNodes(this.startNode, this.endNode),
       this.endNode,
     ];
 
     position === 'before'
-      ? nodes.forEach(node => insertBeforeNode(node, refChild))
-      : nodes.reverse().forEach(node => insertAfterNode(node, refChild));
+      ? nodes.forEach(node => this.#helper.insertBeforeNode(node, refChild))
+      : nodes
+          .reverse()
+          .forEach(node => this.#helper.insertAfterNode(node, refChild));
   }
 
   destroy() {
     this.#part.destroy?.();
-    rangeNodes(this.startNode, this.endNode).forEach(removeNode);
-    this.startNode.remove();
-    this.endNode.remove();
+    this.#helper
+      .rangeNodes(this.startNode, this.endNode)
+      .forEach(node => this.#helper.removeNode(node));
+    this.#helper.removeNode(this.startNode);
+    this.#helper.removeNode(this.endNode);
   }
 }
 

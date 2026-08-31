@@ -1,5 +1,7 @@
 import { isFunction } from '@/helpers/is-type';
 import { createSubject, Unsubscribe } from '@/helpers/subject';
+import type { HostNode } from '@/render/adapter';
+import type { HostHelper } from '@/render/helper';
 import { Part } from '@/render/part';
 import type { ComponentPartClass } from '@/render/part/node/component';
 import { getCurrentInstance } from '@/render/part/node/component/hooks';
@@ -56,15 +58,15 @@ const hotReplaceComponent = (values: any[]): any[] =>
  * carries #private fields, which TypeScript refuses to name in a declaration
  * file, and vite-plugin-dts answers by skipping the whole module.
  */
-export const mixinHmrComponent = (
-  ComponentClass: ComponentPartClass
-): ComponentPartClass => {
+export const mixinHmrComponent = <T extends HostNode>(
+  ComponentClass: ComponentPartClass<T>
+): ComponentPartClass<T> => {
   const C = class extends ComponentClass {
     #prevValues: any[] = [];
     #hmrUnsubscribe: Unsubscribe | null = null;
 
-    constructor(node: Comment, tNode: TNode, parts: Part[]) {
-      super(node, tNode, parts);
+    constructor(node: T, tNode: TNode, parts: Part[], helper?: HostHelper) {
+      super(node, tNode, parts, helper);
       this.hmr();
     }
 

@@ -1,16 +1,21 @@
+import type { HostNode } from '@/render/adapter';
 import {
   Directive,
   DirectiveCreator,
   DirectiveFunction,
 } from '@/render/directives';
-import { NodeDirectiveProps } from '@/render/directives/nodeDirective';
-import { rangeNodes, removeNode } from '@/render/helper';
+import {
+  createNodeDirectiveProps,
+  NodeDirectiveProps,
+} from '@/render/directives/nodeDirective';
+import { domHelper, HostHelper } from '@/render/helper';
 import { Part } from '@/render/part';
 import { isDirective } from '@/render/part/node/text/helper';
 
 export class DirectivePart implements Part {
-  #startNode: Comment;
-  #endNode: Comment;
+  #helper: HostHelper;
+  #startNode: HostNode;
+  #endNode: HostNode;
   #directiveCreator: DirectiveCreator<
     NodeDirectiveProps,
     DirectiveFunction
@@ -18,9 +23,14 @@ export class DirectivePart implements Part {
   #directive: Directive<DirectiveFunction> | null = null;
   #directiveDestroy: (() => void) | void = void 0;
 
-  constructor(startNode: Comment, endNode: Comment) {
+  constructor(
+    startNode: HostNode,
+    endNode: HostNode,
+    helper: HostHelper = domHelper
+  ) {
     this.#startNode = startNode;
     this.#endNode = endNode;
+    this.#helper = helper;
   }
 
   commit(newValue: any) {
@@ -30,10 +40,9 @@ export class DirectivePart implements Part {
 
     if (this.#directiveCreator !== directiveCreator) {
       this.clear();
-      this.#directive = directiveCreator({
-        startNode: this.#startNode,
-        endNode: this.#endNode,
-      });
+      this.#directive = directiveCreator(
+        createNodeDirectiveProps(this.#startNode, this.#endNode, this.#helper)
+      );
       this.#directiveCreator = directiveCreator;
       this.#directiveDestroy = this.#directive?.(value);
     } else {
@@ -47,7 +56,9 @@ export class DirectivePart implements Part {
 
   clear() {
     this.#directiveDestroy?.();
-    rangeNodes(this.#startNode, this.#endNode).forEach(removeNode);
+    this.#helper
+      .rangeNodes(this.#startNode, this.#endNode)
+      .forEach(node => this.#helper.removeNode(node));
   }
 
   destroy() {

@@ -1,21 +1,23 @@
-import { fragmentContextBridge } from '@/context/createContext';
-import { createNodeDirective } from '@/render/directives/nodeDirective';
-import { insertBeforeNode, rangeNodes, removeNode } from '@/render/helper';
-import { fragmentHostBridge } from '@/render/host';
+import type { HostNode } from '@/render/adapter';
+import {
+  createNodeDirective,
+  NodeDirectiveProps,
+} from '@/render/directives/nodeDirective';
+import { domHelper } from '@/render/helper';
 import { Part } from '@/render/part';
 import { createPart, getPartType } from '@/render/part/node/text/helper';
 import { isTemplateLiterals } from '@/template/helper';
 
 interface CachePart {
   part: Part;
-  fragment: DocumentFragment;
+  fragment: HostNode;
   destroy: () => void;
 }
 
 export const cache = createNodeDirective(
   (value: any) => value,
-  ({ startNode, endNode }) => {
-    const rootNode = startNode.getRootNode();
+  ({ startNode, endNode, helper = domHelper }: NodeDirectiveProps) => {
+    const rootNode = helper.getRoot(startNode);
     let cache = new Map<any, CachePart>();
     let prevValue: any = null;
 
@@ -34,17 +36,15 @@ export const cache = createNodeDirective(
 
     const create = (value: any): CachePart => {
       const type = getPartType(value);
-      const part = createPart(type, startNode, endNode);
-      const fragment = document.createDocumentFragment();
-      const contextBridgeDestroy = fragmentContextBridge(fragment, rootNode);
-      const hostBridgeDestroy = fragmentHostBridge(fragment, rootNode);
+      const part = createPart(type, startNode, endNode, helper);
+      const fragment = helper.createFragment();
+      const unbridge = helper.bridgeFragment(fragment, rootNode);
 
       return {
         part,
         fragment,
         destroy: () => {
-          contextBridgeDestroy();
-          hostBridgeDestroy();
+          unbridge();
           part.destroy?.();
         },
       };
@@ -53,7 +53,9 @@ export const cache = createNodeDirective(
     const destroy = () => {
       cache.forEach(({ destroy }) => destroy());
       cache = new Map();
-      rangeNodes(startNode, endNode).forEach(removeNode);
+      helper
+        .rangeNodes(startNode, endNode)
+        .forEach(node => helper.removeNode(node));
     };
 
     return value => {
@@ -61,14 +63,14 @@ export const cache = createNodeDirective(
       const oldCachePart = getPart(value);
 
       if (currentCachePart && getKey(prevValue) !== getKey(value)) {
-        rangeNodes(startNode, endNode).forEach(node =>
-          currentCachePart.fragment.appendChild(node)
-        );
+        helper
+          .rangeNodes(startNode, endNode)
+          .forEach(node => helper.appendChild(currentCachePart.fragment, node));
       }
 
       if (oldCachePart) {
         if (getKey(prevValue) !== getKey(value)) {
-          insertBeforeNode(oldCachePart.fragment, endNode);
+          helper.insertBeforeNode(oldCachePart.fragment, endNode);
         }
         oldCachePart.part.commit(value);
       } else {

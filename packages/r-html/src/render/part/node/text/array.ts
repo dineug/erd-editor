@@ -1,9 +1,5 @@
-import {
-  insertAfterNode,
-  insertBeforeNode,
-  rangeNodes,
-  removeNode,
-} from '@/render/helper';
+import type { HostNode } from '@/render/adapter';
+import { domHelper, HostHelper } from '@/render/helper';
 import { Part } from '@/render/part';
 import {
   Action,
@@ -18,13 +14,19 @@ import {
 } from '@/render/part/node/text/helper';
 
 export class ArrayPart implements Part {
-  #startNode: Comment;
-  #endNode: Comment;
+  #helper: HostHelper;
+  #startNode: HostNode;
+  #endNode: HostNode;
   #parts: ItemPart[] = [];
 
-  constructor(startNode: Comment, endNode: Comment) {
+  constructor(
+    startNode: HostNode,
+    endNode: HostNode,
+    helper: HostHelper = domHelper
+  ) {
     this.#startNode = startNode;
     this.#endNode = endNode;
+    this.#helper = helper;
   }
 
   commit(values: any[]) {
@@ -37,20 +39,20 @@ export class ArrayPart implements Part {
     diff.update.forEach(({ action, from, to }) => {
       switch (action) {
         case Action.create:
-          const node = document.createComment('');
+          const node = this.#helper.createMarker('');
 
           to === 0
-            ? insertAfterNode(node, this.#startNode)
+            ? this.#helper.insertAfterNode(node, this.#startNode)
             : this.#parts.length
-              ? insertAfterNode(
+              ? this.#helper.insertAfterNode(
                   node,
                   arrayLike[to - 1]
                     ? arrayLike[to - 1].endNode
                     : this.#parts[to - 1].endNode
                 )
-              : insertBeforeNode(node, this.#endNode);
+              : this.#helper.insertBeforeNode(node, this.#endNode);
 
-          arrayLike[to] = new ItemPart(node, values[to]);
+          arrayLike[to] = new ItemPart(node, values[to], this.#helper);
           break;
         case Action.move:
           arrayLike[to] = this.#parts[from];
@@ -80,18 +82,23 @@ export class ArrayPart implements Part {
 
 export class ItemPart implements Part {
   #part: Part;
-  startNode = document.createComment('');
-  endNode = document.createComment('');
+  #helper: HostHelper;
+  // The boundary markers stay DOM typed: they are read as nodes from outside.
+  startNode: Comment;
+  endNode: Comment;
   type: PartType;
   value: any;
 
-  constructor(node: Node, value: any) {
-    insertBeforeNode(this.startNode, node);
-    insertAfterNode(this.endNode, node);
-    removeNode(node);
+  constructor(node: HostNode, value: any, helper: HostHelper = domHelper) {
+    this.#helper = helper;
+    this.startNode = helper.createMarker('') as Comment;
+    this.endNode = helper.createMarker('') as Comment;
+    helper.insertBeforeNode(this.startNode, node);
+    helper.insertAfterNode(this.endNode, node);
+    helper.removeNode(node);
     this.value = value;
     this.type = getPartType(value);
-    this.#part = createPart(this.type, this.startNode, this.endNode);
+    this.#part = createPart(this.type, this.startNode, this.endNode, helper);
   }
 
   commit(value: any) {
@@ -99,22 +106,26 @@ export class ItemPart implements Part {
     this.value = value;
   }
 
-  insert(position: 'before' | 'after', refChild: Node) {
+  insert(position: 'before' | 'after', refChild: HostNode) {
     const nodes = [
       this.startNode,
-      ...rangeNodes(this.startNode, this.endNode),
+      ...this.#helper.rangeNodes(this.startNode, this.endNode),
       this.endNode,
     ];
 
     position === 'before'
-      ? nodes.forEach(node => insertBeforeNode(node, refChild))
-      : nodes.reverse().forEach(node => insertAfterNode(node, refChild));
+      ? nodes.forEach(node => this.#helper.insertBeforeNode(node, refChild))
+      : nodes
+          .reverse()
+          .forEach(node => this.#helper.insertAfterNode(node, refChild));
   }
 
   destroy() {
     this.#part.destroy?.();
-    rangeNodes(this.startNode, this.endNode).forEach(removeNode);
-    this.startNode.remove();
-    this.endNode.remove();
+    this.#helper
+      .rangeNodes(this.startNode, this.endNode)
+      .forEach(node => this.#helper.removeNode(node));
+    this.#helper.removeNode(this.startNode);
+    this.#helper.removeNode(this.endNode);
   }
 }

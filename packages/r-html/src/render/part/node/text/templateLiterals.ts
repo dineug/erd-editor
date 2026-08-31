@@ -1,15 +1,23 @@
+import type { HostNode } from '@/render/adapter';
+import { domHelper, HostHelper } from '@/render/helper';
 import { Part } from '@/render/part';
 import { ContainerPart } from '@/render/part/container';
 import { TemplateLiterals } from '@/template';
 
 export class TemplateLiteralsPart implements Part {
-  #startNode: Comment;
-  #endNode: Comment;
+  #helper: HostHelper;
+  #startNode: HostNode;
+  #endNode: HostNode;
   #part: ContainerPart | null = null;
 
-  constructor(startNode: Comment, endNode: Comment) {
+  constructor(
+    startNode: HostNode,
+    endNode: HostNode,
+    helper: HostHelper = domHelper
+  ) {
     this.#startNode = startNode;
     this.#endNode = endNode;
+    this.#helper = helper;
   }
 
   commit(templateLiterals: TemplateLiterals) {
@@ -24,7 +32,8 @@ export class TemplateLiteralsPart implements Part {
       this.#part = new ContainerPart(
         templateLiterals,
         this.#startNode,
-        this.#endNode
+        this.#endNode,
+        this.#helper
       );
       this.#part.insert('before', this.#endNode);
     }

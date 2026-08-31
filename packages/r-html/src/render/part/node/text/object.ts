@@ -1,17 +1,24 @@
-import { isPromise, noop, rangeNodes, removeNode } from '@/render/helper';
+import type { HostNode } from '@/render/adapter';
+import { domHelper, HostHelper, isPromise, noop } from '@/render/helper';
 import { Part } from '@/render/part';
 import { createPart, getPartType } from '@/render/part/node/text/helper';
 
 export class ObjectPart implements Part {
-  #startNode: Comment;
-  #endNode: Comment;
+  #helper: HostHelper;
+  #startNode: HostNode;
+  #endNode: HostNode;
   #value: any = null;
   #part: Part | null = null;
   #cancel = noop;
 
-  constructor(startNode: Comment, endNode: Comment) {
+  constructor(
+    startNode: HostNode,
+    endNode: HostNode,
+    helper: HostHelper = domHelper
+  ) {
     this.#startNode = startNode;
     this.#endNode = endNode;
+    this.#helper = helper;
   }
 
   commit(value: any) {
@@ -29,7 +36,12 @@ export class ObjectPart implements Part {
 
     newPromise.then(value => {
       const type = getPartType(value);
-      this.#part = createPart(type, this.#startNode, this.#endNode);
+      this.#part = createPart(
+        type,
+        this.#startNode,
+        this.#endNode,
+        this.#helper
+      );
       this.#part?.commit(value);
     });
 
@@ -38,13 +50,17 @@ export class ObjectPart implements Part {
 
   partClear() {
     this.#part?.destroy?.();
-    rangeNodes(this.#startNode, this.#endNode).forEach(removeNode);
+    this.#helper
+      .rangeNodes(this.#startNode, this.#endNode)
+      .forEach(node => this.#helper.removeNode(node));
   }
 
   clear() {
     this.#cancel();
     this.#part?.destroy?.();
-    rangeNodes(this.#startNode, this.#endNode).forEach(removeNode);
+    this.#helper
+      .rangeNodes(this.#startNode, this.#endNode)
+      .forEach(node => this.#helper.removeNode(node));
     this.#cancel = noop;
   }
 

@@ -1,12 +1,13 @@
 import { DIRECTIVE } from '@/constants';
 import { isArray, isFunction, isPrimitive } from '@/helpers/is-type';
+import type { HostNode } from '@/render/adapter';
 import {
   DirectiveFunction,
   DirectiveTuple,
   DirectiveType,
 } from '@/render/directives';
 import { NodeDirectiveProps } from '@/render/directives/nodeDirective';
-import { isNode } from '@/render/helper';
+import { domHelper, HostHelper, isHostNode } from '@/render/helper';
 import { Part } from '@/render/part';
 import { ArrayPart } from '@/render/part/node/text/array';
 import { DirectivePart } from '@/render/part/node/text/directive';
@@ -51,7 +52,7 @@ export const getPartType = (value: any): PartType =>
         ? PartType.directive
         : isArray(value)
           ? PartType.array
-          : isNode(value)
+          : isHostNode(value)
             ? PartType.node
             : isFunction(value)
               ? PartType.function
@@ -82,6 +83,7 @@ export const isPart = (type: PartType, part: Part | null) =>
 
 export const createPart = (
   type: PartType,
-  startNode: Comment,
-  endNode: Comment
-): Part => new partMap[type](startNode, endNode);
+  startNode: HostNode,
+  endNode: HostNode,
+  helper: HostHelper = domHelper
+): Part => new partMap[type](startNode, endNode, helper);

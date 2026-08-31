@@ -4,15 +4,18 @@ import {
   isObject,
   isObjectRaw,
   isPrimitive,
-  isUndefined,
 } from '@/helpers/is-type';
+import type { HostNode } from '@/render/adapter';
 import {
+  domHelper,
   equalValues,
+  HostHelper,
   isEqualShallowObject,
   isHTMLElement,
   isSvgElement,
 } from '@/render/helper';
 import { Part } from '@/render/part';
+import { safeToString } from '@/render/value';
 import {
   getMarkers,
   isCSSTemplateLiterals,
@@ -23,20 +26,30 @@ import { TAttr } from '@/template/tNode';
 type StyleRecord = Record<string, string>;
 
 export class AttributePart implements Part {
-  #node: Element;
+  #helper: HostHelper;
+  #node: HostNode;
   #attrName: TAttr['name'];
   #attrValue: TAttr['value'];
   #markerTuples: Array<MarkerTuple> = [];
   #values: any[] = [];
+  #isSingleMarker: boolean;
 
   #originStyleRecord: StyleRecord | null = null;
   #originClassList: string[] | null = null;
 
-  constructor(node: Element, { name, value }: TAttr) {
+  constructor(
+    node: HostNode,
+    { name, value }: TAttr,
+    helper: HostHelper = domHelper
+  ) {
+    this.#helper = helper;
     this.#node = node;
     this.#attrName = name;
     this.#attrValue = value;
     this.#markerTuples = getMarkers(value ?? '');
+    this.#isSingleMarker =
+      this.#markerTuples.length === 1 &&
+      (value ?? '').trim() === this.#markerTuples[0][0];
   }
 
   commit(values: any[]) {
@@ -49,20 +62,28 @@ export class AttributePart implements Part {
       this.classCommit(value);
     } else if (this.#attrName === 'style') {
       this.styleCommit(value);
+    } else if (this.#isSingleMarker) {
+      this.#helper.setAttribute(this.#node, this.#attrName, newValues[0], true);
     } else {
       const value = newValues.reduce<string>(
         (acc, cur, i) =>
           acc.replace(new RegExp(this.#markerTuples[i][0]), safeToString(cur)),
         this.#attrValue ?? ''
       );
-      this.#node.setAttribute(this.#attrName, value.trim());
+      this.#helper.setAttribute(
+        this.#node,
+        this.#attrName,
+        value.trim(),
+        false
+      );
     }
 
     this.#values = newValues;
   }
 
   classCommit(value: any) {
-    if (!isHTMLElement(this.#node) && !isSvgElement(this.#node)) {
+    const node = this.#node;
+    if (!isHTMLElement(node) && !isSvgElement(node)) {
       return;
     }
 
@@ -77,7 +98,7 @@ export class AttributePart implements Part {
       return;
     }
 
-    const classList = [...this.#node.classList];
+    const classList = [...node.classList];
     const newClassList = toClassList(value);
 
     if (isNull(this.#originClassList)) {
@@ -90,21 +111,22 @@ export class AttributePart implements Part {
           !newClassList.includes(className)
       );
 
-      this.#node.classList.remove(...oldClassList);
+      node.classList.remove(...oldClassList);
     }
 
-    this.#node.classList.add(...newClassList);
+    node.classList.add(...newClassList);
   }
 
   styleCommit(value: any) {
-    if (!isHTMLElement(this.#node) && !isSvgElement(this.#node)) return;
+    const node = this.#node;
+    if (!isHTMLElement(node) && !isSvgElement(node)) return;
 
     const prevValue = this.#values[this.#values.length - 1];
     if (isEqualShallowObject(prevValue, value)) {
       return;
     }
 
-    const current = getStyleRecord(this.#node);
+    const current = getStyleRecord(node);
     const styleRecord = isObject(value) ? value : {};
 
     if (isNull(this.#originStyleRecord)) {
@@ -114,22 +136,13 @@ export class AttributePart implements Part {
 
       Object.keys(current)
         .filter((key: any) => !originStyleRecord[key] && !styleRecord[key])
-        .forEach(key =>
-          (this.#node as HTMLElement | SVGElement).style.removeProperty(key)
-        );
+        .forEach(key => node.style.removeProperty(key));
     }
 
     for (const key of Object.keys(styleRecord)) {
-      this.#node.style.setProperty(key, styleRecord[key]);
+      node.style.setProperty(key, styleRecord[key]);
     }
   }
-}
-
-function safeToString(value: any) {
-  return (isPrimitive(value) && !isNull(value) && !isUndefined(value)) ||
-    isCSSTemplateLiterals(value)
-    ? String(value)
-    : '';
 }
 
 function getStyleRecord(el: HTMLElement | SVGElement) {

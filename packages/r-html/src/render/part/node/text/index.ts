@@ -1,10 +1,6 @@
 import { isNull } from '@/helpers/is-type';
-import {
-  insertAfterNode,
-  insertBeforeNode,
-  rangeNodes,
-  removeNode,
-} from '@/render/helper';
+import type { HostNode } from '@/render/adapter';
+import { domHelper, HostHelper } from '@/render/helper';
 import { Part } from '@/render/part';
 import {
   createPart,
@@ -15,17 +11,25 @@ import { getMarkers, MarkerTuple } from '@/template/helper';
 import { TNode } from '@/template/tNode';
 
 export class TextPart implements Part {
-  #startNode = document.createComment('');
-  #endNode = document.createComment('');
+  #helper: HostHelper;
+  #startNode: HostNode;
+  #endNode: HostNode;
   #markerTuple: MarkerTuple;
   #value: any = null;
   #part: Part | null = null;
 
-  constructor(node: Text, { value }: TNode) {
+  constructor(
+    node: HostNode,
+    { value }: TNode,
+    helper: HostHelper = domHelper
+  ) {
+    this.#helper = helper;
+    this.#startNode = helper.createMarker('');
+    this.#endNode = helper.createMarker('');
     this.#markerTuple = getMarkers(value)[0];
-    insertBeforeNode(this.#startNode, node);
-    insertAfterNode(this.#endNode, node);
-    node.remove();
+    helper.insertBeforeNode(this.#startNode, node);
+    helper.insertAfterNode(this.#endNode, node);
+    helper.removeNode(node);
   }
 
   commit(values: any[]) {
@@ -36,7 +40,12 @@ export class TextPart implements Part {
     const type = getPartType(newValue);
     if (!isPart(type, this.#part)) {
       isNull(this.#part) || this.clear();
-      this.#part = createPart(type, this.#startNode, this.#endNode);
+      this.#part = createPart(
+        type,
+        this.#startNode,
+        this.#endNode,
+        this.#helper
+      );
     }
 
     this.#part?.commit(newValue);
@@ -45,12 +54,14 @@ export class TextPart implements Part {
 
   clear() {
     this.#part?.destroy?.();
-    rangeNodes(this.#startNode, this.#endNode).forEach(removeNode);
+    this.#helper
+      .rangeNodes(this.#startNode, this.#endNode)
+      .forEach(node => this.#helper.removeNode(node));
   }
 
   destroy() {
     this.clear();
-    this.#startNode.remove();
-    this.#endNode.remove();
+    this.#helper.removeNode(this.#startNode);
+    this.#helper.removeNode(this.#endNode);
   }
 }

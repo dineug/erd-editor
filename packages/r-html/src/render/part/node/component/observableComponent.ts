@@ -10,9 +10,9 @@ import {
 } from '@/constants';
 import { isFunction } from '@/helpers/is-type';
 import { observable, observer, Unsubscribe } from '@/observable';
-import { rangeNodes, removeNode, setProps } from '@/render/helper';
+import type { HostNode } from '@/render/adapter';
+import { domHelper, HostHelper, setProps } from '@/render/helper';
 import { hotReloadObservable } from '@/render/hmr';
-import { getFragmentHost } from '@/render/host';
 import { createTemplate, Part } from '@/render/part';
 import { DirectivePart } from '@/render/part/attribute/directive';
 import { EventPart } from '@/render/part/attribute/event';
@@ -45,8 +45,9 @@ export type FunctionalComponent<P = {}, C = {}> = (
 export type FC<P = {}, C = {}> = FunctionalComponent<P, C>;
 
 export class ObservableComponentPart implements Part {
-  #startNode = document.createComment('');
-  #endNode = document.createComment('');
+  #helper: HostHelper;
+  #startNode: HostNode;
+  #endNode: HostNode;
   #markerTuple: MarkerTuple;
   #tNode: TNode;
   #directiveAttrs: TAttr[] = [];
@@ -55,14 +56,17 @@ export class ObservableComponentPart implements Part {
   #props = observable<any>({}, { shallow: true });
   #Component: Function | null = null;
   #unsubscribe: Unsubscribe | null = null;
-  #eventBus = document.createElement('div');
+  #eventBus: HostNode;
 
   constructor(
-    startNode: Comment,
-    endNode: Comment,
+    startNode: HostNode,
+    endNode: HostNode,
     tNode: TNode,
-    parts: Part[]
+    parts: Part[],
+    helper: HostHelper = domHelper
   ) {
+    this.#helper = helper;
+    this.#eventBus = helper.createEventBus();
     this.#startNode = startNode;
     this.#endNode = endNode;
     this.#tNode = tNode;
@@ -77,33 +81,13 @@ export class ObservableComponentPart implements Part {
         : attr.type === TAttrType.spread
           ? parts.push(new SpreadPart(this.#props, attr))
           : attr.type === TAttrType.event
-            ? parts.push(new EventPart(this.#eventBus, attr))
+            ? parts.push(new EventPart(this.#eventBus, attr, helper))
             : parts.push(new PropPart(this.#props, attr));
     });
   }
 
   createContext(): Context {
-    const startNode = this.#startNode;
-    const ctx: Context = {
-      host: document.body,
-      get parentElement() {
-        return startNode.parentElement;
-      },
-      dispatchEvent: (event: Event) => this.#eventBus.dispatchEvent(event),
-    };
-    const rootNode = this.#startNode.getRootNode();
-
-    if (rootNode instanceof ShadowRoot) {
-      const host = rootNode.host as HTMLElement;
-      ctx.host = host;
-    } else if (rootNode instanceof DocumentFragment) {
-      const host = getFragmentHost(rootNode);
-      if (host) {
-        ctx.host = host;
-      }
-    }
-
-    return ctx;
+    return this.#helper.createComponentContext(this.#startNode, this.#eventBus);
   }
 
   commit(values: any[]) {
@@ -150,7 +134,12 @@ export class ObservableComponentPart implements Part {
 
       if (!isPart(type, this.#part)) {
         this.partClear();
-        this.#part = createPart(type, this.#startNode, this.#endNode);
+        this.#part = createPart(
+          type,
+          this.#startNode,
+          this.#endNode,
+          this.#helper
+        );
       }
 
       lifecycleHooks(this, isMounted ? BEFORE_UPDATE : BEFORE_FIRST_UPDATE);
@@ -172,11 +161,11 @@ export class ObservableComponentPart implements Part {
 
   partClear() {
     this.#part?.destroy?.();
-    rangeNodes(this.#startNode, this.#endNode).forEach(removeNode);
+    this.#clearRange();
   }
 
   clear() {
-    rangeNodes(this.#startNode, this.#endNode).forEach(removeNode);
+    this.#clearRange();
     lifecycleHooks(this, UNMOUNTED);
     this.#parts.forEach(part => part.destroy?.());
     this.#unsubscribe?.();
@@ -188,5 +177,11 @@ export class ObservableComponentPart implements Part {
   destroy() {
     this.clear();
     this.partClear();
+  }
+
+  #clearRange() {
+    this.#helper
+      .rangeNodes(this.#startNode, this.#endNode)
+      .forEach(node => this.#helper.removeNode(node));
   }
 }
