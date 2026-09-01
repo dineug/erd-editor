@@ -1,9 +1,11 @@
 import {
   animationFrames,
+  defer,
   filter,
   fromEvent,
   map,
   merge,
+  Observable,
   share,
   takeUntil,
 } from 'rxjs';
@@ -11,23 +13,30 @@ import {
 import { isMouseEvent } from '@/utils/domEvent';
 import { forwardMoveStartEvent } from '@/utils/internalEvents';
 
-export const keyup$ = fromEvent<KeyboardEvent>(window, 'keyup');
+/**
+ * Reads the global at subscription time instead of at module evaluation, so a
+ * realm without a window can still import this module. defer and fromEvent are
+ * both cold, so a subscriber still adds one listener and drops it on teardown.
+ */
+function windowEvent$<T extends Event>(type: string): Observable<T> {
+  return defer(() => fromEvent<T>(window, type));
+}
 
-export const mousedown$ = fromEvent<MouseEvent>(window, 'mousedown');
-export const mousemove$ = fromEvent<MouseEvent>(window, 'mousemove');
-export const mouseup$ = fromEvent<MouseEvent>(window, 'mouseup');
+export const keyup$ = windowEvent$<KeyboardEvent>('keyup');
 
-export const touchstart$ = fromEvent<TouchEvent>(window, 'touchstart');
-export const touchmove$ = fromEvent<TouchEvent>(window, 'touchmove');
-export const touchend$ = fromEvent<TouchEvent>(window, 'touchend');
+export const mousedown$ = windowEvent$<MouseEvent>('mousedown');
+export const mousemove$ = windowEvent$<MouseEvent>('mousemove');
+export const mouseup$ = windowEvent$<MouseEvent>('mouseup');
+
+export const touchstart$ = windowEvent$<TouchEvent>('touchstart');
+export const touchmove$ = windowEvent$<TouchEvent>('touchmove');
+export const touchend$ = windowEvent$<TouchEvent>('touchend');
 
 export const animationFrames$ = animationFrames().pipe(share());
 
-const forwardMoveStartEvent$ = fromEvent<
+const forwardMoveStartEvent$ = windowEvent$<
   CustomEvent<ReturnType<typeof forwardMoveStartEvent>['detail']>
->(window, forwardMoveStartEvent.type).pipe(
-  map(event => event.detail.originEvent)
-);
+>(forwardMoveStartEvent.type).pipe(map(event => event.detail.originEvent));
 
 export const moveStart$ = merge(
   mousedown$,
@@ -39,15 +48,20 @@ export const moveEnd$ = merge(mouseup$, touchend$);
 let prevX = 0;
 let prevY = 0;
 
-const subscription = moveStart$.subscribe(event => {
-  if (isMouseEvent(event)) {
-    prevX = event.clientX;
-    prevY = event.clientY;
-  } else {
-    prevX = event.touches[0].clientX;
-    prevY = event.touches[0].clientY;
-  }
-});
+// The one subscription this module opens itself, and the only reason importing
+// it has an effect at all. It anchors the deltas below and stays open for the
+// life of the realm, so the guard is what a realm without a window skips.
+if (typeof window !== 'undefined') {
+  moveStart$.subscribe(event => {
+    if (isMouseEvent(event)) {
+      prevX = event.clientX;
+      prevY = event.clientY;
+    } else {
+      prevX = event.touches[0].clientX;
+      prevY = event.touches[0].clientY;
+    }
+  });
+}
 
 export type DragMove = {
   movementX: number;
