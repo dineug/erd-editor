@@ -4,10 +4,12 @@ import {
   createRef,
   defineCustomElement,
   FC,
+  nextTick,
   observable,
   onMounted,
   ref,
   useProvider,
+  watch,
 } from '@dineug/r-html';
 import { fromEvent, throttleTime } from 'rxjs';
 
@@ -36,6 +38,7 @@ import {
 import { SharedStore, SharedStoreConfig } from '@/engine/shared-store';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { observeThemeOverrides, resolveHostTheme } from '@/konva/theme';
 import { getSchemaGCService } from '@/services/schema-gc';
 import { procGC } from '@/services/schema-gc/procGC';
 import { ThemeOptions } from '@/themes/radix-ui-theme';
@@ -117,11 +120,26 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
       root,
     });
   // Konva resolves no custom property, so the scene reads the palette as values
-  // off this provider. It is the same object <Theme> writes the css variables
-  // from, which is what keeps the two surfaces on one source.
-  const themeProvider = useProvider(ctx, themeContext, theme);
+  // off this provider. What it carries is the cascade's answer rather than the
+  // preset, which is how an --erd-editor-* override reaches a painted node.
+  const sceneTheme = observable<ThemeType>({ ...theme }, { shallow: true });
+  const themeProvider = useProvider(ctx, themeContext, sceneTheme);
   const { store, keydown$, emitter } = appContextValue;
   const { addUnsubscribe } = useUnmounted();
+
+  const resolveSceneTheme = () => {
+    Object.assign(sceneTheme, resolveHostTheme(ctx, theme));
+  };
+
+  /**
+   * Coalesces the reads a burst of mutations would each ask for. nextTick keys
+   * on the function, so one pass runs however many triggers arrive, and it
+   * lands after the style block a theme change rewrites.
+   */
+  const scheduleSceneTheme = () => {
+    nextTick(resolveSceneTheme);
+  };
+
   const state = observable({
     isFocus: false,
     mouseTracking: false,
@@ -129,6 +147,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 
   destroySet.add(provider.destroy);
   destroySet.add(themeProvider.destroy);
+  destroySet.add(watch(theme).subscribe(scheduleSceneTheme));
   destroySet.add(
     emitter.on({
       mouseTrackerStart: () => {
@@ -200,6 +219,8 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 
   onMounted(() => {
     ctx.focus();
+    resolveSceneTheme();
+    addUnsubscribe(observeThemeOverrides(ctx, scheduleSceneTheme));
 
     const $root = root.value;
     const resizeObserver = new ResizeObserver(entries => {

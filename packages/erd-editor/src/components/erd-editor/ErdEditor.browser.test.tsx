@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { flush } from '@/__test-utils__/index';
 import type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
 import { whenDrawn } from '@/konva/batchDraw';
+import { Appearance, GrayColor } from '@/themes/radix-ui-theme';
 
 await import('@/components/erd-editor/ErdEditor');
 
@@ -82,11 +83,32 @@ const document$ = JSON.stringify({
 });
 
 const editors: ErdEditorElement[] = [];
+const overrides: HTMLStyleElement[] = [];
 
 afterEach(async () => {
   editors.splice(0).forEach(el => el.remove());
+  overrides.splice(0).forEach(style => style.remove());
   await whenDrawn();
 });
+
+/** An outside stylesheet, which is the only way --erd-editor-* is ever set. */
+function overrideStyle(css: string): HTMLStyleElement {
+  const style = document.createElement('style');
+  style.textContent = css;
+  document.head.append(style);
+  overrides.push(style);
+
+  return style;
+}
+
+/** Lets a MutationObserver deliver before the scheduler is asked to drain. */
+const settle = () => new Promise<void>(resolve => setTimeout(resolve, 0));
+
+async function settleScene() {
+  await settle();
+  await flush();
+  await whenDrawn();
+}
 
 const stageRegistry = (): Record<string, Stage> =>
   Reflect.get(globalThis, '__erdStages') ?? {};
@@ -174,5 +196,76 @@ describe('<erd-editor> scene palette', () => {
 
     expect(before).not.toBe('#123456');
     expect(tableBody(stage).getAttr('fill')).toBe('#123456');
+  });
+});
+
+describe('<erd-editor> css theme overrides', () => {
+  it('paints a scene node from an override the document set before mount', async () => {
+    overrideStyle('erd-editor { --erd-editor-table-background: #abcdef; }');
+    await createSeededEditor();
+
+    expect(tableBody(stageRegistry().canvas).getAttr('fill')).toBe('#abcdef');
+  });
+
+  it('follows an override the document adds after mount', async () => {
+    await createSeededEditor();
+    const stage = stageRegistry().canvas;
+    const before = tableBody(stage).getAttr('fill');
+
+    overrideStyle('erd-editor { --erd-editor-table-background: #abcdef; }');
+    await settleScene();
+
+    expect(before).not.toBe('#abcdef');
+    expect(tableBody(stage).getAttr('fill')).toBe('#abcdef');
+  });
+
+  it('returns to the preset when the override is taken away', async () => {
+    await createSeededEditor();
+    const stage = stageRegistry().canvas;
+    const preset = tableBody(stage).getAttr('fill');
+
+    const style = overrideStyle(
+      'erd-editor { --erd-editor-table-background: #abcdef; }'
+    );
+    await settleScene();
+    style.remove();
+    await settleScene();
+
+    expect(tableBody(stage).getAttr('fill')).toBe(preset);
+  });
+
+  it('lets an override outrank a preset change', async () => {
+    overrideStyle('erd-editor { --erd-editor-table-background: #abcdef; }');
+    const el = await createSeededEditor();
+    const stage = stageRegistry().canvas;
+
+    el.setPresetTheme({ appearance: Appearance.light });
+    await settleScene();
+
+    expect(tableBody(stage).getAttr('fill')).toBe('#abcdef');
+  });
+});
+
+describe('<erd-editor> preset changes', () => {
+  it('repaints the scene when the appearance flips', async () => {
+    const el = await createSeededEditor();
+    const stage = stageRegistry().canvas;
+    const dark = tableBody(stage).getAttr('fill');
+
+    el.setPresetTheme({ appearance: Appearance.light });
+    await settleScene();
+
+    expect(tableBody(stage).getAttr('fill')).not.toBe(dark);
+  });
+
+  it('repaints the scene when the gray scale changes', async () => {
+    const el = await createSeededEditor();
+    const stage = stageRegistry().canvas;
+    const slate = tableBody(stage).getAttr('fill');
+
+    el.setPresetTheme({ grayColor: GrayColor.sand });
+    await settleScene();
+
+    expect(tableBody(stage).getAttr('fill')).not.toBe(slate);
   });
 });
