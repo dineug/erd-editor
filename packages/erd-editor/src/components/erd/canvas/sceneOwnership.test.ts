@@ -7,7 +7,9 @@ import { join, relative, sep } from 'node:path';
 
 import { describe, expect, it } from 'vite-plus/test';
 
-const CANVAS_ROOT = join(process.cwd(), 'src', 'components', 'erd', 'canvas');
+const SRC_ROOT = join(process.cwd(), 'src');
+
+const CANVAS_ROOT = join(SRC_ROOT, 'components', 'erd', 'canvas');
 
 const CALLBACK_PROP_DECLARATION = /\bon[A-Z][A-Za-z0-9_]*\??\s*:/g;
 
@@ -88,5 +90,87 @@ describe('the canvas scene owns its interaction (P4-A)', () => {
     expect(files.length).toBeGreaterThan(10);
 
     for (const shell of DOM_SHELLS) expect(files).toContain(shell);
+  });
+});
+
+/**
+ * AC-S1. The scene is konva, so a dom tag written in jsx under this root is
+ * either a shell that owns the stage container or a leak. Both spellings are
+ * here because the svg scene these replaced was one element holding shapes.
+ */
+const DOM_TAG = /<(div|svg)\b/;
+
+/**
+ * AC-G17. Every reference to this root from outside it, as file and import
+ * target with its multiplicity kept, so a second copy of one import in one file
+ * still fails. Line numbers are left out because formatting moves them.
+ */
+const OUTSIDE_REFERENCES = [
+  'components/erd/Erd.tsx @/components/erd/canvas/Canvas',
+  'components/erd/automatic-table-placement/AutomaticTablePlacement.tsx @/components/erd/canvas/Canvas',
+  'components/erd/diff-viewer/erd-viewer/ErdViewer.tsx @/components/erd/canvas/Canvas',
+  'components/erd/hitTest.browser.test.tsx @/components/erd/canvas/CanvasScene',
+  'components/erd/minimap/Minimap.browser.test.tsx @/components/erd/canvas/Canvas.styles',
+  'components/erd/minimap/Minimap.tsx @/components/erd/canvas/Canvas.styles',
+  'components/erd/time-travel/TimeTravel.tsx @/components/erd/canvas/Canvas',
+  'components/themeContext.browser.test.tsx @/components/erd/canvas/memo/Memo',
+  'services/export-png/ExportScene.tsx @/components/erd/canvas/memo/Memo',
+  'services/export-png/ExportScene.tsx @/components/erd/canvas/relationship-group/RelationshipGroup',
+  'services/export-png/ExportScene.tsx @/components/erd/canvas/table/Table',
+];
+
+const CANVAS_REFERENCE = /@\/components\/erd\/canvas\/[\w./-]+/g;
+
+function sourceFiles(directory: string, found: string[] = []): string[] {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      sourceFiles(path, found);
+    } else if (/\.tsx?$/.test(entry.name)) {
+      found.push(path);
+    }
+  }
+
+  return found;
+}
+
+const fromSrc = (path: string) => relative(SRC_ROOT, path).split(sep).join('/');
+
+describe('the canvas root keeps its boundary (P6-51)', () => {
+  it('writes a dom tag in the two shells alone, and konva everywhere else', () => {
+    // Jsx only. Four .test.ts specs mount an html host to read a hook's return,
+    // which is a harness rather than a scene, and none of them is compiled by
+    // the konva jsx host in the first place.
+    const withDomTag = sourceFiles(CANVAS_ROOT)
+      .filter(path => path.endsWith('.tsx'))
+      .filter(path => DOM_TAG.test(readFileSync(path, 'utf8')))
+      .map(posix)
+      .sort();
+
+    expect(withDomTag).toEqual([...DOM_SHELLS].sort());
+  });
+
+  it('is reached from outside by the eleven references that own a reason to', () => {
+    const references = sourceFiles(SRC_ROOT)
+      .filter(path => !path.startsWith(CANVAS_ROOT))
+      .flatMap(path =>
+        [...readFileSync(path, 'utf8').matchAll(CANVAS_REFERENCE)].map(
+          match => `${fromSrc(path)} ${match[0]}`
+        )
+      )
+      .sort();
+
+    expect(references).toEqual([...OUTSIDE_REFERENCES].sort());
+  });
+
+  it('scanned the package, and this file is outside its own count', () => {
+    // Vacuous otherwise: the whitelist above is a literal list of the string it
+    // greps for, and it lives under the root the second assertion excludes.
+    const files = sourceFiles(SRC_ROOT).map(fromSrc);
+
+    expect(files).toContain('components/erd/Erd.tsx');
+    expect(files).toContain('components/erd/canvas/sceneOwnership.test.ts');
+    expect(files.length).toBeGreaterThan(500);
   });
 });

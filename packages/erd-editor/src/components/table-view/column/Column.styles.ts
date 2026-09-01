@@ -48,12 +48,3 @@ export const root = css`
     visibility: hidden;
   }
 `;
-
-export const iconButton = css`
-  cursor: pointer;
-  margin-left: auto;
-
-  &:hover {
-    color: var(--active);
-  }
-`;

@@ -170,7 +170,7 @@ beforeAll(async () => {
 
 describe('emitted CSS', () => {
   it('reaches a shadow root from every style module', () => {
-    expect(actual.moduleCount).toBe(62);
+    expect(actual.moduleCount).toBe(56);
     expect(actual.ruleCount).toBe(
       actual.treeStyleRuleCount + actual.adoptedRuleCount
     );

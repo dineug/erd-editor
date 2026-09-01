@@ -206,29 +206,6 @@ describe('hide-until-hover', () => {
       },
     ],
     [
-      'memo header',
-      async () => {
-        const styles = await import('@/components/erd/canvas/memo/Memo.styles');
-        return {
-          row: String(styles.root),
-          button: String(styles.headerButtonWrap),
-          wraps: true,
-        };
-      },
-    ],
-    [
-      'column row',
-      async () => {
-        const styles =
-          await import('@/components/table-view/column/Column.styles');
-        return {
-          row: String(styles.root),
-          button: String(styles.iconButton),
-          wraps: false,
-        };
-      },
-    ],
-    [
       'index row',
       async () => {
         const styles =

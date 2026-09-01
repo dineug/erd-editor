@@ -37,10 +37,10 @@ import type { Memo } from '@/internal-types';
 import { getMemoRect } from '@/konva/scene/metrics';
 import { openColorPickerAction } from '@/utils/emitter';
 
-/** The radius Memo.styles rounds the memo box with. */
+/** The radius the memo box is rounded with. */
 const MEMO_CORNER_RADIUS = 6;
 
-/** The min-height Memo.styles gives the colour bar across the memo header. */
+/** The height of the colour bar across the memo header. */
 const MEMO_HEADER_COLOR_HEIGHT = 4;
 
 export type MemoProps = {

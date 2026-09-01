@@ -12,16 +12,12 @@ const staticText = (literals: { strings: TemplateStringsArray }) =>
   [...literals.strings].join(' ');
 
 describe('Column.styles', () => {
-  it('exports the root and iconButton tokens as css templates', () => {
-    for (const token of [styles.root, styles.iconButton]) {
-      expect(token).toBeTruthy();
-      expect(typeof token.toString()).toBe('string');
-      expect(token.toString().length).toBeGreaterThan(0);
-    }
-  });
-
-  it('generates a distinct class identifier per token', () => {
-    expect(String(styles.root)).not.toBe(String(styles.iconButton));
+  it('exports the row token, and only it, as a css template', () => {
+    // P6-51 deleted iconButton with the dom column that wore it; the row token
+    // survives because visualization and the index checkbox still render it.
+    expect(Object.keys(styles)).toEqual(['root']);
+    expect(styles.root).toBeTruthy();
+    expect(styles.root.toString().length).toBeGreaterThan(0);
   });
 
   it('lays the row out as a full width flex line', () => {
@@ -73,14 +69,5 @@ describe('Column.styles', () => {
 
     expect(text).toContain('opacity: 0.5');
     expect(text).toContain('visibility: hidden');
-  });
-
-  it('makes the remove button a clickable trailing icon', () => {
-    const text = staticText(styles.iconButton);
-
-    expect(text).toContain('cursor: pointer');
-    expect(text).toContain('margin-left: auto');
-    expect(text).toContain('&:hover');
-    expect(text).toContain('var(--active)');
   });
 });
