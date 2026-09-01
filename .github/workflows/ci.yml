@@ -64,6 +64,10 @@ jobs:
       # whole rule class can stop being exercised without a test going red.
       - run: pnpm --filter @dineug/r-html test:coverage
       - run: pnpm build
+      # Reads packages/erd-editor/dist, so it cannot sit in pnpm check, which
+      # runs before anything is built. It is a regression watch rather than a
+      # cap: the budget is set to catch an abnormal jump, not every byte.
+      - run: pnpm size
 
   e2e:
     runs-on: ubuntu-latest

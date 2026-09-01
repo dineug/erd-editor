@@ -47,7 +47,5 @@ export default defineConfig({
     timeout: 120_000,
     stdout: 'ignore',
     stderr: 'pipe',
-    // vite.config.ts opens a browser on serve; this keeps the run headless.
-    env: { E2E: '1' },
   },
 });

@@ -6,7 +6,8 @@
     "dist/erd-editor.js": {
       "bytes": 1079085,
       "gzip": 252529,
-      "budgetGzip": 306000
+      "budgetGzip": 327000,
+      "budgetNote": "319,237 B measured after the Konva port, plus a 7,763 B (2.43%) margin. The margin is wider than the largest ordinary step measured in this migration (one more konva submodule, konva/lib/Tween at +2,772 B gz) and narrower than the smallest new dependency in it (@chenglou/pretext at ~16,500 B gz), so a package of that class fails the round it lands while routine work does not."
     }
   }
 }
