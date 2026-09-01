@@ -51,6 +51,15 @@ function toHitPathD(
   ]);
 }
 
+/**
+ * The hit band in scene units. Konva tests a pointer against a raster the layer
+ * scale has already been applied to, so dividing by the zoom is what holds the
+ * band at one screen width the way the analytic svg hit test did.
+ */
+function hitBandWidth(zoomLevel: number) {
+  return RELATIONSHIP_HIT_STROKE_WIDTH / (zoomLevel > 0 ? zoomLevel : 1);
+}
+
 export type RelationshipProps = {
   relationship: RelationshipType;
   strokeWidth: number;
@@ -83,7 +92,7 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
 
   return () => {
     const { store } = app.value;
-    const { editor } = store.state;
+    const { editor, settings } = store.state;
     const { relationship, strokeWidth } = props;
     const theme = themeRef.value;
     const relationshipPath = getRelationshipPath(relationship);
@@ -115,7 +124,7 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
           name="relationship-hit-area"
           kind="relationship-hit-area"
           data={toHitPathD(path, lines)}
-          hitStrokeWidth={RELATIONSHIP_HIT_STROKE_WIDTH}
+          hitStrokeWidth={hitBandWidth(settings.zoomLevel)}
         />
         <k-path
           name="relationship-route"

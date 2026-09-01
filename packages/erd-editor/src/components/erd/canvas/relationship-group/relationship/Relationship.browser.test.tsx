@@ -1,14 +1,21 @@
 /** @jsxHost konva */
 
 // P3-30 and P3-34: one connector as konva nodes — the node types and their
-// order, the hit band the svg path used to be, and the paint that used to come
-// from a stylesheet selector.
+// order, the paint a stylesheet selector used to give it, and the hit band the
+// svg path was, which the last block drives at four zooms through konva itself.
 
 import { type DOMTemplateLiterals } from '@dineug/r-html';
 import type { Container } from 'konva/lib/Container';
+import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
+import {
+  createTestAppContext,
+  createTestTheme,
+  flush,
+  moveScenePointer,
+  whenPainted,
+} from '@/__test-utils__';
 import { type AppContext } from '@/components/appContext';
 import Relationship from '@/components/erd/canvas/relationship-group/relationship/Relationship';
 import {
@@ -378,4 +385,181 @@ describe('Relationship as konva nodes', () => {
     expect(app.store.state.editor.hoverColumnMap).toEqual({});
     expect(route.getAttr('stroke')).toBe(THEME.keyFK);
   });
+});
+
+/** The four zooms the band has to hold, either side of the unscaled scene. */
+const ZOOM_LEVELS = [0.1, 0.5, 1, 1.5];
+
+/** Half the band, less the antialiased rim konva's hit read never counts. */
+const INSIDE_BAND = 3;
+
+/** Clear of the band at every zoom, and of every other run of the connector. */
+const OUTSIDE_BAND = 12;
+
+const ZOOM_STAGE = { width: 900, height: 700 };
+
+/** Inside the stage, off the connector at every zoom this file mounts. */
+const AWAY = { x: 860, y: 660 };
+
+type ZoomMounted = {
+  app: AppContext;
+  stage: Stage;
+  hit: Container;
+};
+
+/**
+ * The middle of the route's longest straight run, and the unit normal to it. A
+ * probe offset along that normal measures the band in screen pixels, which is
+ * the width the layer scale would otherwise rewrite.
+ */
+function longestRun(relationship: RelationshipType_) {
+  const segments = getRelationshipPath(relationship).path.path.d();
+  let best = segments[0];
+  let bestLength = -1;
+
+  for (const segment of segments) {
+    const [from, to] = segment;
+    const length = Math.hypot(to.x - from.x, to.y - from.y);
+
+    if (length > bestLength) {
+      bestLength = length;
+      best = segment;
+    }
+  }
+
+  const [from, to] = best;
+
+  return {
+    mid: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
+    normal: {
+      x: -(to.y - from.y) / bestLength,
+      y: (to.x - from.x) / bestLength,
+    },
+  };
+}
+
+/**
+ * The connector in a layer scaled the way CanvasScene scales the scene one, with
+ * settings carrying that same zoom. Written straight onto the state because the
+ * zoom action clamps to the range the editor exposes today.
+ */
+async function mountAtZoom(
+  relationship: RelationshipType_,
+  zoomLevel: number
+): Promise<ZoomMounted> {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const app = createTestAppContext();
+  app.store.state.settings.zoomLevel = zoomLevel;
+
+  const rendered = renderScene({
+    app,
+    container,
+    scene: (
+      <k-layer name="scene" scaleX={zoomLevel} scaleY={zoomLevel}>
+        <Relationship
+          relationship={relationship}
+          strokeWidth={RELATIONSHIP_STROKE_WIDTH}
+        />
+      </k-layer>
+    ),
+    width: ZOOM_STAGE.width,
+    height: ZOOM_STAGE.height,
+    theme: THEME,
+  });
+
+  teardowns.push(() => {
+    rendered.destroy();
+    container.remove();
+  });
+
+  await flush();
+  await whenDrawn();
+  await whenPainted();
+
+  return {
+    app,
+    stage: rendered.stage,
+    hit: rendered.stage.findOne<Container>(
+      '.relationship-hit-area'
+    ) as Container,
+  };
+}
+
+/**
+ * Whether konva's own hit graph answers the connector at a point that many
+ * screen pixels off the route. Every probe leaves the band first, so the enter
+ * it reports is one konva dispatched for this point and not the one before it.
+ */
+async function hoversAt(
+  { app, stage }: ZoomMounted,
+  relationship: RelationshipType_,
+  zoomLevel: number,
+  offset: number
+): Promise<boolean> {
+  const { mid, normal } = longestRun(relationship);
+
+  moveScenePointer(stage, AWAY.x, AWAY.y);
+  await flush();
+  await whenDrawn();
+  await whenPainted();
+
+  moveScenePointer(
+    stage,
+    mid.x * zoomLevel + normal.x * offset,
+    mid.y * zoomLevel + normal.y * offset
+  );
+  await flush();
+  await whenDrawn();
+
+  return Object.keys(app.store.state.editor.hoverColumnMap).length > 0;
+}
+
+describe('the connector catches the pointer at one screen width', () => {
+  it.each(ZOOM_LEVELS)('holds the band at zoom %s', async zoomLevel => {
+    const relationship = makeRelationship();
+    const { hit } = await mountAtZoom(relationship, zoomLevel);
+
+    expect(hit.getAttr('hitStrokeWidth') * zoomLevel).toBeCloseTo(
+      RELATIONSHIP_HIT_STROKE_WIDTH,
+      6
+    );
+  });
+
+  it.each(ZOOM_LEVELS)('hovers the route at zoom %s', async zoomLevel => {
+    const relationship = makeRelationship();
+    const mounted = await mountAtZoom(relationship, zoomLevel);
+
+    expect(await hoversAt(mounted, relationship, zoomLevel, 0)).toBe(true);
+  });
+
+  it.each(ZOOM_LEVELS)(
+    'hovers three screen pixels off the route at zoom %s',
+    async zoomLevel => {
+      const relationship = makeRelationship();
+      const mounted = await mountAtZoom(relationship, zoomLevel);
+
+      expect(
+        await hoversAt(mounted, relationship, zoomLevel, INSIDE_BAND)
+      ).toBe(true);
+      expect(
+        await hoversAt(mounted, relationship, zoomLevel, -INSIDE_BAND)
+      ).toBe(true);
+    }
+  );
+
+  it.each(ZOOM_LEVELS)(
+    'stays off twelve screen pixels away at zoom %s',
+    async zoomLevel => {
+      const relationship = makeRelationship();
+      const mounted = await mountAtZoom(relationship, zoomLevel);
+
+      expect(
+        await hoversAt(mounted, relationship, zoomLevel, OUTSIDE_BAND)
+      ).toBe(false);
+      expect(
+        await hoversAt(mounted, relationship, zoomLevel, -OUTSIDE_BAND)
+      ).toBe(false);
+    }
+  );
 });

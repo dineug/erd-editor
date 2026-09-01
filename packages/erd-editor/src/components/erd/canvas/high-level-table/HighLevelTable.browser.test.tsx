@@ -28,6 +28,7 @@ import { TABLE_BORDER } from '@/constants/layout';
 import {
   sharedFocusTrackerAction,
   sharedSelectionTrackerAction,
+  unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
@@ -173,6 +174,22 @@ describe('the simplified table a zoomed out canvas swaps in', () => {
       theme.tableSelect
     );
   });
+
+  it('marks the group selected, which the border colour alone never says', async () => {
+    const { app, stage, table } = await setup();
+
+    // What the dom scene spelt as data-selected, and the one handle a caller
+    // above the scene has on a selection once the zoom swaps this table in.
+    expect(rootOf(stage).getAttr('selected')).toBe(true);
+
+    app.store.dispatchSync(unselectAllAction());
+    await settle();
+    expect(rootOf(stage).getAttr('selected')).toBe(false);
+
+    app.store.dispatchSync(selectTableAction$(table.id, false));
+    await settle();
+    expect(rootOf(stage).getAttr('selected')).toBe(true);
+  });
 });
 
 describe('the name a simplified table shows', () => {
@@ -283,6 +300,21 @@ describe('what a peer marks on a simplified table', () => {
     await settle();
 
     expect(ringOf(stage)).toBeUndefined();
+  });
+
+  it('carries both peer colours as attrs of its own', async () => {
+    const { app, stage, table } = await setup();
+    const root = rootOf(stage);
+
+    expect(root.getAttr('sharedFocus')).toBeFalsy();
+    expect(root.getAttr('sharedSelect')).toBeFalsy();
+
+    trackFocus(app, table.id);
+    trackSelection(app, [table.id]);
+    await settle();
+
+    expect(root.getAttr('sharedFocus')).toBeTruthy();
+    expect(root.getAttr('sharedSelect')).toBeTruthy();
   });
 
   it('never writes a peer selection into the local selection map', async () => {

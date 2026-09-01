@@ -380,6 +380,36 @@ describe('the memo scene', () => {
     expect(nodeNamed(stage, 'memo-body').attrs.stroke).toBe(theme.memoSelect);
   });
 
+  it('marks the group selected, which the border colour alone never says', async () => {
+    const app = createTestAppContext();
+    const stage = await mountMemo(createProps(), app);
+    const root = nodeNamed(stage, 'memo');
+
+    expect(root.getAttr('selected')).toBe(false);
+
+    app.store.dispatchSync(selectAction({ [MEMO_ID]: SelectType.memo }));
+    await flush();
+    await whenDrawn();
+
+    // What the dom scene spelt as data-selected, and the one handle a caller
+    // above the scene has on the selection this group is in.
+    expect(root.getAttr('selected')).toBe(true);
+  });
+
+  it('carries the peer colour as an attr of its own, not the ring alone', async () => {
+    const app = createTestAppContext();
+    const stage = await mountMemo(createProps(), app);
+    const root = nodeNamed(stage, 'memo');
+
+    expect(root.getAttr('sharedSelect')).toBeFalsy();
+
+    trackSelection(app, [MEMO_ID]);
+    await flush();
+    await whenDrawn();
+
+    expect(root.getAttr('sharedSelect')).toBe(toSharedColor('remote-1'));
+  });
+
   it('rings the memo in a peer color only while a peer has it selected', async () => {
     const app = createTestAppContext();
     const stage = await mountMemo(createProps(), app);

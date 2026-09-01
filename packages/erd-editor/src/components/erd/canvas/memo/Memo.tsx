@@ -125,6 +125,8 @@ const Memo: FC<MemoProps> = (props, ctx) => {
         id={props.preview ? '' : `memo-${memo.id}`}
         name="memo"
         kind="memo"
+        selected={selected}
+        sharedSelect={sharedSelected}
         x={memo.ui.x}
         y={memo.ui.y}
         on:mousedown={onMoveStart}

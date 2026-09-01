@@ -71,13 +71,18 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
     const rect = getTableRect(store.state, table);
 
     const isEmptyName = isEmpty(table.name.trim());
-    const ringColor = sharedFocusTableColor() ?? sharedSelectColor();
+    const sharedFocus = sharedFocusTableColor();
+    const sharedSelected = sharedSelectColor();
+    const ringColor = sharedFocus ?? sharedSelected;
 
     return (
       <k-group
         id={props.preview ? '' : `table-${table.id}`}
         name="table high-level-table"
         kind="table"
+        selected={selected}
+        sharedFocus={sharedFocus}
+        sharedSelect={sharedSelected}
         x={rect.x}
         y={rect.y}
         on:mousedown={onMoveStart}
