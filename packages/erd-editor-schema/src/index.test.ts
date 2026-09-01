@@ -55,6 +55,17 @@ describe('public entry point', () => {
     expect(SchemaV2Constants.CanvasType.ERD).toBe('ERD');
     expect(SchemaV3Constants.CanvasType.ERD).toBe('ERD');
     expect(SchemaV3Constants.SaveSettingType.scroll).toBe(1);
-    expect(SchemaV3Constants.CANVAS_ZOOM_MAX).toBe(1);
+    expect(SchemaV3Constants.CANVAS_ZOOM_MAX).toBe(1.5);
+  });
+
+  it('opens the zoom ceiling in v3 alone, leaving the v2 read path at 1', () => {
+    expect(SchemaV2Constants.CANVAS_ZOOM_MAX).toBe(1);
+    expect(SchemaV3Constants.CANVAS_ZOOM_MAX).toBe(1.5);
+    expect(SchemaV3Constants.CANVAS_ZOOM_MAX).toBeGreaterThan(
+      SchemaV2Constants.CANVAS_ZOOM_MAX
+    );
+    expect(SchemaV2Constants.CANVAS_ZOOM_MIN).toBe(
+      SchemaV3Constants.CANVAS_ZOOM_MIN
+    );
   });
 });

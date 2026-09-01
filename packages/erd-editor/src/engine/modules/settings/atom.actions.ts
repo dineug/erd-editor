@@ -3,8 +3,11 @@ import { createAction } from '@dineug/r-html';
 import { createInRange, isNill } from '@dineug/shared';
 import { round } from 'es-toolkit/compat';
 
+import { Viewport } from '@/engine/modules/editor/state';
 import { Tag } from '@/engine/tag';
+import { Settings } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { getZoomViewport } from '@/utils/dragSelect';
 import {
   canvasSizeInRange,
   hasBracketType,
@@ -82,6 +85,27 @@ const streamZoomLevel: ReducerType<typeof ActionType.streamZoomLevel> = (
   settings.zoomLevel = zoomLevelInRange(settings.zoomLevel + value);
 };
 
+/** A zoom of exactly 1 negates a zero offset, and the store compares with Object.is. */
+const unsigned = (value: number) => value + 0;
+
+/**
+ * How far the scroll may travel before the drawn canvas leaves the viewport.
+ * A scene layer sits at the scroll plus the zoom viewport offset and is scaled
+ * by the zoom, so both ends move with the drawn box rather than the canvas box.
+ */
+function createScrollInRange(settings: Settings, viewport: Viewport) {
+  const { x, y, w, h } = getZoomViewport(
+    settings.width,
+    settings.height,
+    settings.zoomLevel
+  );
+
+  return {
+    scrollLeftInRange: createInRange(viewport.width - w - x, unsigned(-x)),
+    scrollTopInRange: createInRange(viewport.height - h - y, unsigned(-y)),
+  };
+}
+
 export const scrollToAction = createAction<
   ActionMap[typeof ActionType.scrollTo]
 >(ActionType.scrollTo);
@@ -94,8 +118,10 @@ const scrollTo: ReducerType<typeof ActionType.scrollTo> = (
     return;
   }
 
-  const scrollTopInRange = createInRange(viewport.height - settings.height, 0);
-  const scrollLeftInRange = createInRange(viewport.width - settings.width, 0);
+  const { scrollTopInRange, scrollLeftInRange } = createScrollInRange(
+    settings,
+    viewport
+  );
 
   settings.scrollTop = round(scrollTopInRange(scrollTop), 4);
   settings.scrollLeft = round(scrollLeftInRange(scrollLeft), 4);
@@ -113,8 +139,10 @@ const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
     return;
   }
 
-  const scrollTopInRange = createInRange(viewport.height - settings.height, 0);
-  const scrollLeftInRange = createInRange(viewport.width - settings.width, 0);
+  const { scrollTopInRange, scrollLeftInRange } = createScrollInRange(
+    settings,
+    viewport
+  );
 
   settings.scrollTop = round(
     scrollTopInRange(settings.scrollTop + movementY),

@@ -30,6 +30,7 @@ import {
   StartRelationshipTypeList,
 } from '@/v2/schema/relationshipEntity';
 import { OrderType, OrderTypeList } from '@/v2/schema/tableEntity';
+import { SchemaV3Constants } from '@/v3/schema/index';
 
 describe('v2/schema/index', () => {
   describe('SchemaV2Constants', () => {
@@ -105,6 +106,23 @@ describe('v2/schema/index', () => {
       expect(SchemaV2Constants.CANVAS_ZOOM_MIN).toBe(CANVAS_ZOOM_MIN);
       expect(SchemaV2Constants.CANVAS_SIZE_MAX).toBe(20000);
       expect(SchemaV2Constants.CANVAS_ZOOM_MIN).toBe(0.1);
+      expect(SchemaV2Constants.CANVAS_ZOOM_MAX).toBe(1);
+    });
+
+    /**
+     * The legacy read path keeps its own ceiling. Raising the v3 one to 1.5 is
+     * what the editor writes; a .vuerd document parsed here never carried a zoom
+     * above 1, so widening this one would only invent values no v2 file has.
+     */
+    it('holds its zoom ceiling at 1 while v3 opens to 1.5', () => {
+      expect(SchemaV2Constants.CANVAS_ZOOM_MAX).toBe(1);
+      expect(SchemaV3Constants.CANVAS_ZOOM_MAX).toBe(1.5);
+      expect(SchemaV2Constants.CANVAS_ZOOM_MAX).not.toBe(
+        SchemaV3Constants.CANVAS_ZOOM_MAX
+      );
+      expect(SchemaV2Constants.CANVAS_ZOOM_MIN).toBe(
+        SchemaV3Constants.CANVAS_ZOOM_MIN
+      );
     });
 
     it('does not re-export the memo entity (type-only module)', () => {

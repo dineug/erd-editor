@@ -170,8 +170,10 @@ describe('ErdViewer', () => {
     wheelAt(root, { deltaY: 100, mod: true });
     await flush();
 
+    // A plain wheel carrying no deltaX leaves scrollLeft alone; the zoom path
+    // re-centres both axes, so the horizontal offset is what separates them.
     expect(app.store.state.settings.zoomLevel).toBeCloseTo(0.9, 5);
-    expect(app.store.state.settings.scrollTop).not.toBe(-100);
+    expect(app.store.state.settings.scrollLeft).toBe(-100);
   });
 
   it('zooms in when the wheel scrolls up with the mod key', async () => {

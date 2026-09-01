@@ -343,6 +343,161 @@ describe('the culling rect is three screens on a side (AC-G4)', () => {
   });
 });
 
+/**
+ * The scroll offsets the reducer allows, longhand. Zooming past 1 flips the
+ * sign of the box offset, so the far end of the range moves the opposite way
+ * from the one the shrinking half of the zoom range walks.
+ */
+function reachableScrolls(size: number, zoomLevel: number, viewport: number) {
+  const drawn = size * zoomLevel;
+  const offset = (size - drawn) / 2;
+  const max = -offset;
+  const min = viewport - drawn - offset;
+
+  return min > max ? [max] : [min, (min + max) / 2, max];
+}
+
+const MAGNIFIED_GRID: Array<[number, number]> = [];
+for (const size of [2_000, 8_000, 20_000]) {
+  for (const zoomLevel of [1, 1.2, 1.5]) {
+    MAGNIFIED_GRID.push([size, zoomLevel]);
+  }
+}
+
+describe('nothing on screen goes undrawn while the zoom magnifies', () => {
+  const VIEWPORT_WIDTH = 1440;
+  const VIEWPORT_HEIGHT = 900;
+
+  it.each(MAGNIFIED_GRID)(
+    'covers every reachable scroll of a %s canvas at zoom %s',
+    (width, zoomLevel) => {
+      const missed: string[] = [];
+
+      for (const scrollLeft of reachableScrolls(
+        width,
+        zoomLevel,
+        VIEWPORT_WIDTH
+      )) {
+        for (const scrollTop of reachableScrolls(
+          width,
+          zoomLevel,
+          VIEWPORT_HEIGHT
+        )) {
+          const options: ScreenCase = {
+            width,
+            height: width,
+            scrollLeft,
+            scrollTop,
+            zoomLevel,
+            viewportWidth: VIEWPORT_WIDTH,
+            viewportHeight: VIEWPORT_HEIGHT,
+          };
+          const rect = createCullingRect(options);
+
+          for (const corner of screenCorners(options)) {
+            if (!contains(rect, corner)) {
+              missed.push(
+                `${scrollLeft},${scrollTop} @ ${corner.x},${corner.y}`
+              );
+            }
+          }
+        }
+      }
+
+      expect(missed).toEqual([]);
+    }
+  );
+
+  it.each(MAGNIFIED_GRID)(
+    'keeps a table under the screen centre of a %s canvas at zoom %s',
+    (width, zoomLevel) => {
+      const state = createState();
+      state.settings.width = width;
+      state.settings.height = width;
+      state.settings.zoomLevel = zoomLevel;
+      state.editor.viewport = {
+        width: VIEWPORT_WIDTH,
+        height: VIEWPORT_HEIGHT,
+      };
+      const undrawn: string[] = [];
+
+      for (const scrollLeft of reachableScrolls(
+        width,
+        zoomLevel,
+        VIEWPORT_WIDTH
+      )) {
+        for (const scrollTop of reachableScrolls(
+          width,
+          zoomLevel,
+          VIEWPORT_HEIGHT
+        )) {
+          state.settings.scrollLeft = scrollLeft;
+          state.settings.scrollTop = scrollTop;
+          const centre = screenToScene(
+            { x: VIEWPORT_WIDTH / 2, y: VIEWPORT_HEIGHT / 2 },
+            state.settings
+          );
+          const table = addTable(
+            state,
+            `${scrollLeft}:${scrollTop}`,
+            centre.x - TABLE_WIDTH / 2,
+            centre.y - TABLE_HEIGHT / 2
+          );
+
+          if (!isTableVisible(getCullingRect(state), state, table)) {
+            undrawn.push(`${scrollLeft},${scrollTop}`);
+          }
+        }
+      }
+
+      expect(undrawn).toEqual([]);
+    }
+  );
+
+  /**
+   * The far corner is the one a magnifying zoom loses: the box offset turns
+   * negative, so a rect that read the scroll alone would slide off the wrong
+   * end of the screen from the one the shrinking half slides off.
+   */
+  it('keeps the bottom right corner of a magnified 20000 canvas', () => {
+    const options: ScreenCase = {
+      width: 20_000,
+      height: 20_000,
+      scrollLeft: VIEWPORT_WIDTH - 30_000 + 5_000,
+      scrollTop: VIEWPORT_HEIGHT - 30_000 + 5_000,
+      zoomLevel: 1.5,
+      viewportWidth: VIEWPORT_WIDTH,
+      viewportHeight: VIEWPORT_HEIGHT,
+    };
+    const rect = createCullingRect(options);
+    const corner = screenToScene(
+      { x: VIEWPORT_WIDTH, y: VIEWPORT_HEIGHT },
+      options
+    );
+
+    expect(corner.x).toBeCloseTo(20_000, 6);
+    expect(corner.y).toBeCloseTo(20_000, 6);
+    expect(contains(rect, corner)).toBe(true);
+  });
+
+  it('reads the canvas box at a magnifying zoom, not the scroll alone', () => {
+    const base: ScreenCase = {
+      width: 2_000,
+      height: 2_000,
+      scrollLeft: 0,
+      scrollTop: 0,
+      zoomLevel: 1.5,
+      viewportWidth: VIEWPORT_WIDTH,
+      viewportHeight: VIEWPORT_HEIGHT,
+    };
+
+    expect(getSceneOrigin(base)).toEqual({ x: -500, y: -500 });
+    expect(createCullingRect(base)).not.toEqual(
+      createCullingRect({ ...base, width: 8_000, height: 8_000 })
+    );
+  });
+});
+
 describe('a frame the host has not measured yet', () => {
   const canvas = {
     width: 2000,

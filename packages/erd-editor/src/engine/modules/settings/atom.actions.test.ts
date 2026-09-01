@@ -249,6 +249,131 @@ describe('settings/atom.actions', () => {
     });
   });
 
+  /**
+   * Where a scene point lands on screen, written out longhand rather than read
+   * back from the helper the reducer clamps with, so the two have to agree
+   * instead of restating one another.
+   */
+  const toScreen = (
+    scene: number,
+    scroll: number,
+    size: number,
+    zoomLevel: number
+  ) => scene * zoomLevel + scroll + (size * (1 - zoomLevel)) / 2;
+
+  describe('the scroll range the zoom draws', () => {
+    const VIEWPORT_WIDTH = 1000;
+    const VIEWPORT_HEIGHT = 800;
+
+    const grid: Array<[number, number]> = [];
+    for (const size of [2_000, 8_000, 20_000]) {
+      for (const zoomLevel of [0.1, 0.5, 1, 1.2, 1.5]) {
+        grid.push([size, zoomLevel]);
+      }
+    }
+
+    function place(size: number, zoomLevel: number) {
+      store.dispatchSync(resizeAction({ width: size, height: size }));
+      store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+    }
+
+    it.each(grid)(
+      'puts both canvas edges on the screen at size %s zoom %s',
+      (size, zoomLevel) => {
+        place(size, zoomLevel);
+        const drawn = size * zoomLevel;
+
+        store.dispatchSync(
+          scrollToAction({ scrollTop: 1_000_000, scrollLeft: 1_000_000 })
+        );
+        const { scrollLeft: atStart, scrollTop: atTop } = store.state.settings;
+
+        expect(toScreen(0, atStart, size, zoomLevel)).toBeCloseTo(0, 3);
+        expect(toScreen(0, atTop, size, zoomLevel)).toBeCloseTo(0, 3);
+
+        store.dispatchSync(
+          scrollToAction({ scrollTop: -1_000_000, scrollLeft: -1_000_000 })
+        );
+        const { scrollLeft: atEnd, scrollTop: atBottom } = store.state.settings;
+        const right = toScreen(size, atEnd, size, zoomLevel);
+        const bottom = toScreen(size, atBottom, size, zoomLevel);
+
+        // A canvas the zoom draws smaller than the screen has nowhere to go,
+        // so it stays where the first press put it instead of running past.
+        expect(right).toBeCloseTo(
+          drawn >= VIEWPORT_WIDTH ? VIEWPORT_WIDTH : drawn,
+          3
+        );
+        expect(bottom).toBeCloseTo(
+          drawn >= VIEWPORT_HEIGHT ? VIEWPORT_HEIGHT : drawn,
+          3
+        );
+      }
+    );
+
+    /**
+     * The magnifying half of the range, which the pre-canvas clamp had no term
+     * for: at zoom 1.5 the 2000 box draws 3000 wide and starts 500 to the left
+     * of the scroll, so the offset has to go positive to show the left edge.
+     */
+    it('lets the scroll go positive once the zoom magnifies', () => {
+      place(2_000, 1.5);
+
+      store.dispatchSync(
+        scrollToAction({ scrollTop: 1_000_000, scrollLeft: 1_000_000 })
+      );
+      expect(store.state.settings.scrollLeft).toBe(500);
+      expect(store.state.settings.scrollTop).toBe(500);
+
+      store.dispatchSync(
+        scrollToAction({ scrollTop: -1_000_000, scrollLeft: -1_000_000 })
+      );
+      expect(store.state.settings.scrollLeft).toBe(1000 - 3000 + 500);
+      expect(store.state.settings.scrollTop).toBe(800 - 3000 + 500);
+    });
+
+    it('holds the shrunk canvas against the origin instead of drifting off it', () => {
+      place(8_000, 0.1);
+
+      store.dispatchSync(scrollToAction({ scrollTop: 0, scrollLeft: 0 }));
+
+      expect(store.state.settings.scrollLeft).toBe(-3600);
+      expect(store.state.settings.scrollTop).toBe(-3600);
+      expect(toScreen(0, -3600, 8_000, 0.1)).toBeCloseTo(0, 3);
+      expect(toScreen(8_000, -3600, 8_000, 0.1)).toBeCloseTo(800, 3);
+    });
+
+    it('keeps the unzoomed range and its sign exactly as it was', () => {
+      place(2_000, 1);
+
+      store.dispatchSync(scrollToAction({ scrollTop: 500, scrollLeft: 500 }));
+      expect(Object.is(store.state.settings.scrollTop, 0)).toBe(true);
+      expect(Object.is(store.state.settings.scrollLeft, 0)).toBe(true);
+
+      store.dispatchSync(
+        scrollToAction({ scrollTop: -99_999, scrollLeft: -99_999 })
+      );
+      expect(store.state.settings.scrollTop).toBe(800 - 2000);
+      expect(store.state.settings.scrollLeft).toBe(1000 - 2000);
+    });
+
+    it('carries the same range into the streaming reducer', () => {
+      place(2_000, 1.5);
+
+      store.dispatchSync(
+        streamScrollToAction({ movementX: 99_999, movementY: 99_999 })
+      );
+      expect(store.state.settings.scrollLeft).toBe(500);
+      expect(store.state.settings.scrollTop).toBe(500);
+
+      store.dispatchSync(
+        streamScrollToAction({ movementX: -99_999, movementY: -99_999 })
+      );
+      expect(store.state.settings.scrollLeft).toBe(-1500);
+      expect(store.state.settings.scrollTop).toBe(-1700);
+    });
+  });
+
   describe('changeShow', () => {
     it('sets and unsets a single show bit', () => {
       const initial = store.state.settings.show;

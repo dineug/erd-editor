@@ -48,7 +48,7 @@ export const DEFAULT_COLUMN_ORDER = [1, 2, 4, 8, 16, 32, 64];
 
 export const CANVAS_SIZE = 2000;
 export const CANVAS_ZOOM_MIN = 0.1;
-export const CANVAS_ZOOM_MAX = 1;
+export const CANVAS_ZOOM_MAX = 1.5;
 
 export type ColumnSeed = {
   id: string;

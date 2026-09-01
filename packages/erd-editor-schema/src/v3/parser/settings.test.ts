@@ -105,11 +105,17 @@ describe('createAndMergeSettings', () => {
     });
 
     it('clamps above the maximum', () => {
-      expect(createAndMergeSettings({ zoomLevel: 10 }).zoomLevel).toBe(1);
+      expect(createAndMergeSettings({ zoomLevel: 10 }).zoomLevel).toBe(1.5);
     });
 
     it('keeps a value inside the range', () => {
       expect(createAndMergeSettings({ zoomLevel: 0.5 }).zoomLevel).toBe(0.5);
+    });
+
+    it('keeps a magnified zoom a v3 document may now carry', () => {
+      expect(createAndMergeSettings({ zoomLevel: 1.2 }).zoomLevel).toBe(1.2);
+      expect(createAndMergeSettings({ zoomLevel: 1.5 }).zoomLevel).toBe(1.5);
+      expect(createAndMergeSettings({ zoomLevel: 1.51 }).zoomLevel).toBe(1.5);
     });
 
     it('ignores a non-number', () => {

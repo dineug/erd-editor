@@ -105,6 +105,8 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants.CANVAS_SIZE_MIN).toBe(CANVAS_SIZE_MIN);
       expect(SchemaV3Constants.CANVAS_ZOOM_MAX).toBe(CANVAS_ZOOM_MAX);
       expect(SchemaV3Constants.CANVAS_ZOOM_MIN).toBe(CANVAS_ZOOM_MIN);
+      expect(SchemaV3Constants.CANVAS_ZOOM_MAX).toBe(1.5);
+      expect(SchemaV3Constants.CANVAS_ZOOM_MIN).toBe(0.1);
     });
 
     it('does not leak the v3 doc or entity type helpers as runtime values', () => {

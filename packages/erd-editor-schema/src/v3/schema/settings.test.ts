@@ -211,10 +211,14 @@ describe('v3/schema/settings', () => {
   });
 
   describe('canvas boundaries', () => {
-    it('constrains zoom between 0.1 and 1', () => {
+    it('constrains zoom between 0.1 and 1.5', () => {
       expect(CANVAS_ZOOM_MIN).toBe(0.1);
-      expect(CANVAS_ZOOM_MAX).toBe(1);
+      expect(CANVAS_ZOOM_MAX).toBe(1.5);
       expect(CANVAS_ZOOM_MIN).toBeLessThan(CANVAS_ZOOM_MAX);
+    });
+
+    it('puts the ceiling above 1, so a document may store a magnified zoom', () => {
+      expect(CANVAS_ZOOM_MAX).toBeGreaterThan(1);
     });
 
     it('constrains canvas size between 2000 and 20000', () => {

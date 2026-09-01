@@ -61,12 +61,17 @@ describe('settings/generator.actions', () => {
       expect(emitted[1].type).toBe(scrollToAction.type);
     });
 
+    /**
+     * The generator asks for -250 x -300, and the reducer clamps that against
+     * the box the zoom actually draws: 1000 wide at zoom 0.5, exactly the
+     * viewport, so the horizontal offset has one legal value and both land on it.
+     */
     it('applies zoom and scroll to the store when dispatched', () => {
       store.dispatchSync(changeZoomLevelAction$(0.5));
 
       expect(store.state.settings.zoomLevel).toBe(0.5);
-      expect(store.state.settings.scrollLeft).toBe(-250);
-      expect(store.state.settings.scrollTop).toBe(-300);
+      expect(store.state.settings.scrollLeft).toBe(-500);
+      expect(store.state.settings.scrollTop).toBe(-500);
     });
 
     it('adds the movement on top of the existing scroll offsets', () => {
@@ -75,26 +80,33 @@ describe('settings/generator.actions', () => {
 
       // centerXRatio = (1000 - (100 + 500)) / 1000 = 0.4
       // centerYRatio = (1000 - (100 + 400)) / 1000 = 0.5
-      expect(store.state.settings.scrollLeft).toBe(-100 + -200);
-      expect(store.state.settings.scrollTop).toBe(-100 + -250);
+      // Both asked-for offsets sit past the edge of the 1000x1000 drawn box.
+      expect(store.state.settings.scrollLeft).toBe(-500);
+      expect(store.state.settings.scrollTop).toBe(-500);
       expect(store.state.settings.zoomLevel).toBe(0.5);
     });
 
-    it('clamps an out-of-range zoom level and computes no movement', () => {
+    /**
+     * Magnifying moves the scroll the other way. At zoom 1.5 the 2000 box draws
+     * 3000 wide and starts 500 left of the scroll, so a positive offset is what
+     * keeps its top left corner on screen.
+     */
+    it('clamps an out-of-range zoom level and re-centres on the way up', () => {
       store.dispatchSync(changeZoomLevelAction$(10));
 
       expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MAX);
-      expect(store.state.settings.scrollLeft).toBe(0);
-      expect(store.state.settings.scrollTop).toBe(0);
+      expect(store.state.settings.scrollLeft).toBe(250);
+      expect(store.state.settings.scrollTop).toBe(300);
     });
 
     it('clamps a below-range zoom level', () => {
       store.dispatchSync(changeZoomLevelAction$(-3));
 
       expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MIN);
-      // x = y = (2000 - 200) / 2 = 900
-      expect(store.state.settings.scrollLeft).toBe(-450);
-      expect(store.state.settings.scrollTop).toBe(-540);
+      // x = y = (2000 - 200) / 2 = 900, and 200 of drawn canvas fits any
+      // viewport, so the clamp pins the box to the top left rather than -450.
+      expect(store.state.settings.scrollLeft).toBe(-900);
+      expect(store.state.settings.scrollTop).toBe(-900);
     });
   });
 
@@ -116,8 +128,8 @@ describe('settings/generator.actions', () => {
       store.dispatchSync(streamZoomLevelAction$(-0.5));
 
       expect(store.state.settings.zoomLevel).toBe(0.5);
-      expect(store.state.settings.scrollLeft).toBe(-250);
-      expect(store.state.settings.scrollTop).toBe(-300);
+      expect(store.state.settings.scrollLeft).toBe(-500);
+      expect(store.state.settings.scrollTop).toBe(-500);
     });
 
     it('accumulates across successive deltas', () => {
@@ -130,12 +142,25 @@ describe('settings/generator.actions', () => {
       expect(store.state.settings.scrollTop).toBeLessThan(0);
     });
 
-    it('produces no movement once the zoom level is already clamped', () => {
+    it('stops the delta at the ceiling and re-centres for the zoom it reached', () => {
       store.dispatchSync(streamZoomLevelAction$(5));
 
       expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MAX);
-      expect(store.state.settings.scrollLeft).toBe(0);
-      expect(store.state.settings.scrollTop).toBe(0);
+      expect(store.state.settings.scrollLeft).toBe(250);
+      expect(store.state.settings.scrollTop).toBe(300);
+    });
+
+    it('reaches the ceiling in shortcut sized steps', () => {
+      for (let step = 0; step < 12; step++) {
+        store.dispatchSync(streamZoomLevelAction$(0.04));
+      }
+
+      expect(store.state.settings.zoomLevel).toBeCloseTo(1.48, 5);
+
+      store.dispatchSync(streamZoomLevelAction$(0.04));
+      store.dispatchSync(streamZoomLevelAction$(0.04));
+
+      expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MAX);
     });
   });
 });
