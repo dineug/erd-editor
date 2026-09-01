@@ -293,9 +293,6 @@ importers:
       highlight-words-core:
         specifier: ^1.2.2
         version: 1.2.2
-      html-to-image:
-        specifier: ^1.11.11
-        version: 1.11.11
       konva:
         specifier: 10.3.2
         version: 10.3.2
@@ -5897,9 +5894,6 @@ packages:
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
-
-  html-to-image@1.11.11:
-    resolution: {integrity: sha512-9gux8QhvjRO/erSnDPv28noDZcPZmYE7e1vFsBLKLlRlKDSqNJYebj6Qz1TGd5lsRV+X+xYyjCKjuZdABinWjA==}
 
   html-void-elements@3.0.0:
     resolution: {integrity: sha512-bEqo66MRXsUGxWHV5IP0PUiAWwoEjba4VCzg0LjFJBpchPaTfyfCKTG6bc5F8ucKec3q5y6qOdGyYTSBEvhCrg==}
@@ -13304,8 +13298,6 @@ snapshots:
       react-is: 16.13.1
 
   html-escaper@2.0.2: {}
-
-  html-to-image@1.11.11: {}
 
   html-void-elements@3.0.0: {}
 

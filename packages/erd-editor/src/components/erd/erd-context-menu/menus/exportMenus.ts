@@ -2,6 +2,7 @@ import { toJson } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/appContext';
 import { IconName } from '@/components/primitives/icon/icons';
+import type { Theme } from '@/themes/tokens';
 import {
   exportJSON,
   exportPNG,
@@ -18,9 +19,9 @@ type Menu = {
 export function createExportMenus(
   app: AppContext,
   onClose: () => void,
-  root: HTMLElement
+  theme: Theme
 ): Menu[] {
-  const { store } = app;
+  const { store, toWidth } = app;
   const databaseName = store.state.settings.databaseName;
 
   return [
@@ -45,7 +46,15 @@ export function createExportMenus(
       name: 'png',
       onClick: () => {
         onClose();
-        exportPNG(root, databaseName);
+        exportPNG(
+          { doc: toJson(store.state), theme, toWidth },
+          databaseName
+        ).catch(error => {
+          console.error(
+            '[export-png] the document could not be exported',
+            error
+          );
+        });
       },
     },
   ];

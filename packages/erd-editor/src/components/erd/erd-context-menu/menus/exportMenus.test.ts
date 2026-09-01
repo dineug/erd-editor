@@ -1,4 +1,3 @@
-import { toBlob } from 'html-to-image';
 import {
   afterEach,
   beforeEach,
@@ -13,19 +12,23 @@ import { AppContext } from '@/components/appContext';
 import { createExportMenus } from '@/components/erd/erd-context-menu/menus/exportMenus';
 import { changeDatabaseNameAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { createDocumentPng } from '@/services/export-png';
+import type { Theme } from '@/themes/tokens';
 import { setExportFileCallback } from '@/utils/file/exportFile';
 
-vi.mock('html-to-image', () => ({
-  toBlob: vi.fn(async () => new Blob(['png-bytes'], { type: 'image/png' })),
+vi.mock('@/services/export-png', () => ({
+  createDocumentPng: vi.fn(
+    async () => new Blob(['png-bytes'], { type: 'image/png' })
+  ),
 }));
 
+const theme = { canvasBackground: '#101112' } as Theme;
+
 let app: AppContext;
-let root: HTMLElement;
 let exported: Array<{ text: string; type: string; fileName: string }>;
 
 beforeEach(() => {
   app = createTestAppContext();
-  root = document.createElement('div');
   exported = [];
   setExportFileCallback((blob, options) => {
     exported.push({
@@ -34,7 +37,7 @@ beforeEach(() => {
       fileName: options.fileName,
     });
   });
-  vi.mocked(toBlob).mockClear();
+  vi.mocked(createDocumentPng).mockClear();
 });
 
 afterEach(() => {
@@ -43,7 +46,7 @@ afterEach(() => {
 
 describe('exportMenus', () => {
   it('exposes json, Schema SQL and png entries with their icons', () => {
-    const result = createExportMenus(app, () => {}, root);
+    const result = createExportMenus(app, () => {}, theme);
 
     expect(result.map(menu => menu.name)).toEqual([
       'json',
@@ -61,7 +64,7 @@ describe('exportMenus', () => {
     app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
     const onClose = vi.fn();
 
-    createExportMenus(app, onClose, root)[0].onClick();
+    createExportMenus(app, onClose, theme)[0].onClick();
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(exported).toHaveLength(1);
@@ -70,7 +73,7 @@ describe('exportMenus', () => {
   });
 
   it('falls back to an unnamed file when the database name is blank', () => {
-    createExportMenus(app, () => {}, root)[0].onClick();
+    createExportMenus(app, () => {}, theme)[0].onClick();
 
     expect(exported[0].fileName).toMatch(/^unnamed-.*\.erd\.json$/);
   });
@@ -83,20 +86,27 @@ describe('exportMenus', () => {
     await flush();
     const onClose = vi.fn();
 
-    createExportMenus(app, onClose, root)[1].onClick();
+    createExportMenus(app, onClose, theme)[1].onClick();
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(exported).toHaveLength(1);
     expect(exported[0].fileName).toMatch(/^shop-.*\.sql$/);
   });
 
-  it('renders the canvas root to a png', async () => {
+  it('renders the whole document to a png, not anything on screen', async () => {
+    app.store.dispatchSync(
+      addTableAction({ id: 'table-1', ui: { x: 0, y: 0, zIndex: 1 } })
+    );
+    await flush();
     const onClose = vi.fn();
 
-    createExportMenus(app, onClose, root)[2].onClick();
+    createExportMenus(app, onClose, theme)[2].onClick();
 
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(toBlob).toHaveBeenCalledWith(root);
+    const [request] = vi.mocked(createDocumentPng).mock.calls[0];
+    expect(JSON.parse(request.doc).doc.tableIds).toEqual(['table-1']);
+    expect(request.theme).toBe(theme);
+    expect(request.toWidth).toBe(app.toWidth);
 
     await flush();
 
@@ -105,17 +115,20 @@ describe('exportMenus', () => {
     expect(exported[0].fileName).toMatch(/\.png$/);
   });
 
-  it('skips the export when png rendering yields no blob', async () => {
-    vi.mocked(toBlob).mockResolvedValueOnce(null as unknown as Blob);
+  it('reports rather than swallows a render failure, and writes no file', async () => {
+    vi.mocked(createDocumentPng).mockRejectedValueOnce(new Error('no canvas'));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    createExportMenus(app, () => {}, root)[2].onClick();
+    createExportMenus(app, () => {}, theme)[2].onClick();
     await flush();
 
     expect(exported).toHaveLength(0);
+    expect(error).toHaveBeenCalledTimes(1);
+    error.mockRestore();
   });
 
   it('captures the database name at creation time', () => {
-    const menus = createExportMenus(app, () => {}, root);
+    const menus = createExportMenus(app, () => {}, theme);
     app.store.dispatchSync(changeDatabaseNameAction({ value: 'later' }));
 
     menus[0].onClick();

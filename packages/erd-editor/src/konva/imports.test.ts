@@ -141,3 +141,66 @@ describe('konva enters this package through konva/lib only (AC-L6)', () => {
     expect(references.map(({ file }) => file)).toContain('konva/host.ts');
   });
 });
+
+/**
+ * The DOM rasterizer that drew the PNG export before the scene moved to canvas.
+ * It is declared nowhere now, so a returning import would not even resolve, and
+ * a measured 5,155 B gzipped rides back into the build with it.
+ */
+const REMOVED_RASTERIZER = 'html-to-image';
+
+/** The dependency fields npm resolves for a consumer of this package. */
+const MANIFEST_FIELDS = [
+  'dependencies',
+  'devDependencies',
+  'peerDependencies',
+  'optionalDependencies',
+];
+
+function rasterizerReferences(): Reference[] {
+  const references: Reference[] = [];
+
+  for (const path of sourceFiles(SOURCE_ROOT)) {
+    const source = readFileSync(path, 'utf8');
+
+    for (const [, specifier] of source.matchAll(SPECIFIER)) {
+      if (
+        specifier === REMOVED_RASTERIZER ||
+        specifier.startsWith(`${REMOVED_RASTERIZER}/`)
+      ) {
+        references.push({ file: posix(path), specifier });
+      }
+    }
+  }
+
+  return references;
+}
+
+describe('the DOM rasterizer left with the DOM scene', () => {
+  it('is imported by no file in the package', () => {
+    expect(rasterizerReferences()).toEqual([]);
+  });
+
+  it('is declared by no dependency field of the manifest', () => {
+    const manifest = JSON.parse(
+      readFileSync(join(process.cwd(), 'package.json'), 'utf8')
+    );
+
+    const declared = MANIFEST_FIELDS.filter(field =>
+      Object.hasOwn(manifest[field] ?? {}, REMOVED_RASTERIZER)
+    );
+
+    expect(declared).toEqual([]);
+  });
+
+  it('scanned the tree and the manifest that used to name it', () => {
+    const manifest = JSON.parse(
+      readFileSync(join(process.cwd(), 'package.json'), 'utf8')
+    );
+
+    expect(sourceFiles(SOURCE_ROOT).map(posix)).toContain(
+      'utils/file/exportFile.ts'
+    );
+    expect(Object.keys(manifest.devDependencies)).toContain('konva');
+  });
+});

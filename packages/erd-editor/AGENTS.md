@@ -71,7 +71,7 @@ store whose actions carry a Lamport clock version and merge through the LWW regi
 
 ### External
 
-- `rxjs` (action pipelines), `comlink` (schema-GC worker RPC), `d3` (force simulation in `visualization/` and `erd/automatic-table-placement/`, plus `drag` and the ordinal scale in the former), `graphql` (`parse` only, for `schema-graphql-parser/`), `tinykeys`, `fuse.js`, `luxon`, `html-to-image`, `@radix-ui/colors`, `lucide` (icon path data), `@egjs/agent`.
+- `rxjs` (action pipelines), `comlink` (schema-GC worker RPC), `d3` (force simulation in `visualization/` and `erd/automatic-table-placement/`, plus `drag` and the ordinal scale in the former), `graphql` (`parse` only, for `schema-graphql-parser/`), `tinykeys`, `fuse.js`, `luxon`, `@radix-ui/colors`, `lucide` (icon path data), `@egjs/agent`.
 - `es-toolkit`: `get`, `set`, `isEmpty` and `round` come from `es-toolkit/compat` on purpose — the main entry lacks the first three and rounds exact `.xx5` ties down into persisted LWW state. `@floating-ui/dom` and `framer-motion` are declared but imported nowhere in `src/`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

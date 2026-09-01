@@ -426,7 +426,6 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         {contextMenu.state.show ? (
           <ErdContextMenu
             type={state.contextMenuType}
-            canvas={canvas}
             relationshipId={state.relationshipId}
             tableId={state.tableId}
             onClose={handleContextmenuClose}

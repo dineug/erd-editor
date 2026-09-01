@@ -89,7 +89,6 @@
     "graphql": "^16.14.2",
     "happy-dom": "^20.11.2",
     "highlight-words-core": "^1.2.2",
-    "html-to-image": "^1.11.11",
     "konva": "10.3.2",
     "lucide": "1.35.0",
     "luxon": "^3.4.4",
