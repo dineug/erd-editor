@@ -141,6 +141,42 @@ describe('exportMenus', () => {
     error.mockRestore();
   });
 
+  it('tells the user what it gave up when the image is scaled down', async () => {
+    vi.mocked(createDocumentPng).mockImplementationOnce(async options => {
+      options.onResolutionReduced?.({
+        documentWidth: 20_000,
+        documentHeight: 20_000,
+        width: 16_384,
+        height: 16_384,
+      });
+      return new Blob(['png-bytes'], { type: 'image/png' });
+    });
+    const toasts: Array<{ payload: { message: { values: unknown[] } } }> = [];
+    const off = app.emitter.on({ openToast: action => toasts.push(action) });
+
+    createExportMenus(app, () => {}, theme)[2].onClick();
+    await flush();
+
+    expect(exported).toHaveLength(1);
+    expect(toasts).toHaveLength(1);
+    expect(toasts[0].payload.message.values).toContain(
+      '20000x20000 is past what a browser canvas can hold, so the image is 16384x16384'
+    );
+    off();
+  });
+
+  it('says nothing when the image kept every pixel of the document', async () => {
+    const toasts: unknown[] = [];
+    const off = app.emitter.on({ openToast: action => toasts.push(action) });
+
+    createExportMenus(app, () => {}, theme)[2].onClick();
+    await flush();
+
+    expect(exported).toHaveLength(1);
+    expect(toasts).toEqual([]);
+    off();
+  });
+
   it('captures the database name at creation time', () => {
     const menus = createExportMenus(app, () => {}, theme);
     app.store.dispatchSync(changeDatabaseNameAction({ value: 'later' }));

@@ -3,6 +3,14 @@ import type { Theme } from '@/themes/tokens';
 import { renderDocumentScene } from './documentScene';
 import { fitPixelRatio } from './pixelRatio';
 
+/** The box that was asked for and the raster that fitted inside a canvas. */
+export type ResolutionReduction = {
+  documentWidth: number;
+  documentHeight: number;
+  width: number;
+  height: number;
+};
+
 export type DocumentPngOptions = {
   doc: string;
   theme: Theme;
@@ -12,6 +20,12 @@ export type DocumentPngOptions = {
    */
   toWidth: (text: string) => number;
   pixelRatio?: number;
+  /**
+   * Called once, after a file exists, when the box outran what a canvas holds
+   * and the image had to be scaled down. A caller with somewhere to put it is
+   * what turns a silent loss of resolution into something the author is told.
+   */
+  onResolutionReduced?: (reduction: ResolutionReduction) => void;
 };
 
 /**
@@ -43,6 +57,7 @@ export async function createDocumentPng({
   theme,
   toWidth,
   pixelRatio = DEFAULT_PIXEL_RATIO,
+  onResolutionReduced,
 }: DocumentPngOptions): Promise<Blob> {
   // A face still loading measures differently from the one the document was
   // laid out with, and the image keeps whichever was in place when it was drawn.
@@ -53,13 +68,23 @@ export async function createDocumentPng({
   try {
     // A stage rasterises at its own box times the ratio, so the box is read
     // back off the stage rather than recomputed from the document here.
-    const ratio = fitPixelRatio(
-      pixelRatio,
-      scene.stage.width(),
-      scene.stage.height()
-    );
+    const documentWidth = scene.stage.width();
+    const documentHeight = scene.stage.height();
+    const ratio = fitPixelRatio(pixelRatio, documentWidth, documentHeight);
 
-    return await toBlob(scene.stage.toCanvas({ pixelRatio: ratio }));
+    const canvas = scene.stage.toCanvas({ pixelRatio: ratio });
+    const blob = await toBlob(canvas);
+
+    if (ratio < pixelRatio) {
+      onResolutionReduced?.({
+        documentWidth,
+        documentHeight,
+        width: canvas.width,
+        height: canvas.height,
+      });
+    }
+
+    return blob;
   } finally {
     scene.destroy();
   }

@@ -4,6 +4,7 @@ import { html } from '@dineug/r-html';
 import { AppContext } from '@/components/appContext';
 import { IconName } from '@/components/primitives/icon/icons';
 import Toast from '@/components/primitives/toast/Toast';
+import type { ResolutionReduction } from '@/services/export-png';
 import type { Theme } from '@/themes/tokens';
 import { openToastAction } from '@/utils/emitter';
 import {
@@ -18,6 +19,19 @@ type Menu = {
   name: string;
   onClick: () => void;
 };
+
+/**
+ * Says what was lost and why, because a png smaller than the document it came
+ * from otherwise looks like the editor drew the wrong thing.
+ */
+function describeReduction({
+  documentWidth,
+  documentHeight,
+  width,
+  height,
+}: ResolutionReduction) {
+  return `${documentWidth}x${documentHeight} is past what a browser canvas can hold, so the image is ${width}x${height}`;
+}
 
 export function createExportMenus(
   app: AppContext,
@@ -50,7 +64,21 @@ export function createExportMenus(
       onClick: () => {
         onClose();
         exportPNG(
-          { doc: toJson(store.state), theme, toWidth },
+          {
+            doc: toJson(store.state),
+            theme,
+            toWidth,
+            onResolutionReduced: reduction => {
+              emitter.emit(
+                openToastAction({
+                  message: html`<${Toast}
+                    title=${'Exported at a reduced resolution'}
+                    description=${describeReduction(reduction)}
+                  />`,
+                })
+              );
+            },
+          },
           databaseName
         ).catch(error => {
           console.error(

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import { createTestTheme } from '@/__test-utils__';
-import { createDocumentPng } from '@/services/export-png';
+import {
+  createDocumentPng,
+  type ResolutionReduction,
+} from '@/services/export-png';
+import { CANVAS_SIDE_MAX } from '@/services/export-png/pixelRatio';
 import type { Theme } from '@/themes/tokens';
 
 const CANVAS = 2000;
@@ -179,25 +183,64 @@ describe('createDocumentPng', () => {
     expect(image.at(10, 10)).toBe(theme.canvasBackground);
   });
 
-  it('fits the image to the canvas ceiling when the box outruns it', async () => {
+  it('keeps a box taller than a canvas side at full resolution', async () => {
     const image = await decode(
       await createDocumentPng({ doc: createTallDoc(), theme, toWidth })
     );
 
-    // 20000 tall is past the ceiling, so the long side lands on it and the
-    // short one rides the same ratio rather than being cropped to fit.
-    expect(image.height).toBe(16_384);
-    expect(image.width).toBe(1638);
+    // 20000 is past any one canvas side, but 2000 by 20000 is well under the
+    // area a canvas holds, so nothing about this box has to be scaled down.
+    expect(image.width).toBe(TALL_WIDTH);
+    expect(image.height).toBe(TALL_HEIGHT);
   });
 
-  it('keeps the far end of a box no canvas could hold', async () => {
+  it('says nothing about resolution for a box that kept all of it', async () => {
+    const reductions: unknown[] = [];
+
+    await createDocumentPng({
+      doc: createTallDoc(),
+      theme,
+      toWidth,
+      onResolutionReduced: reduction => reductions.push(reduction),
+    });
+
+    expect(reductions).toEqual([]);
+  });
+
+  it('keeps the far end of a box no viewport could reach', async () => {
     const image = await decode(
       await createDocumentPng({ doc: createTallDoc(), theme, toWidth })
     );
 
     // Inside the memo at y 18000, which only an image of the whole box reaches.
-    expect(image.at(827, 15_269)).toBe(theme.memoBackground);
+    expect(image.at(1000, 18_600)).toBe(theme.memoBackground);
     expect(image.at(10, 10)).toBe(theme.canvasBackground);
+  });
+
+  it('scales down and says so when the raster runs past a canvas', async () => {
+    const reductions: ResolutionReduction[] = [];
+
+    const image = await decode(
+      await createDocumentPng({
+        doc: createTallDoc(),
+        theme,
+        toWidth,
+        // Twice over is past the longest side a canvas will hold, so this is
+        // the cheapest box that has to give resolution back.
+        pixelRatio: 2,
+        onResolutionReduced: reduction => reductions.push(reduction),
+      })
+    );
+
+    expect(image.height).toBe(CANVAS_SIDE_MAX);
+    expect(reductions).toEqual([
+      {
+        documentWidth: TALL_WIDTH,
+        documentHeight: TALL_HEIGHT,
+        width: image.width,
+        height: image.height,
+      },
+    ]);
   });
 
   it('paints the palette it was handed rather than one it looked up', async () => {
