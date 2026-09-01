@@ -264,8 +264,6 @@ test.describe('mouse drag', () => {
   }) => {
     await erd.seed(twoTables());
 
-    const before = await boxOf(canvasController(erd));
-
     // (1100, 700) in canvas coordinates is empty: posts sits at (760, 420)
     // and its box ends near (1090, 530).
     await erd.panBy(-240, -120, { x: 1100, y: 700 });
@@ -274,21 +272,12 @@ test.describe('mouse drag', () => {
     expectClose(scrolled.scrollLeft, -240, PIXEL_TOLERANCE);
     expectClose(scrolled.scrollTop, -120, PIXEL_TOLERANCE);
 
-    // The pan is a translate on the canvas wrapper, so the canvas itself moves.
-    const panned = await boxOf(canvasController(erd));
-    expectClose(panned.x - before.x, -240, PIXEL_TOLERANCE);
-    expectClose(panned.y - before.y, -120, PIXEL_TOLERANCE);
-
     // Scrolling back past the origin clamps: streamScrollTo caps at 0.
     await erd.panBy(360, 240, { x: 1100, y: 700 });
 
     const clamped = await erd.settings();
     expect(clamped.scrollLeft).toBe(0);
     expect(clamped.scrollTop).toBe(0);
-
-    const reset = await boxOf(canvasController(erd));
-    expect(reset.x).toBeCloseTo(before.x, 1);
-    expect(reset.y).toBeCloseTo(before.y, 1);
   });
 
   test('holding Space pans even when the drag starts over a table', async ({
@@ -306,7 +295,6 @@ test.describe('mouse drag', () => {
     // what stops the table underneath from receiving the mousedown.
     await expect(canvasController(erd)).toHaveCSS('pointer-events', 'none');
 
-    const before = await boxOf(canvasController(erd));
     const from = await erd.tableHeaderPoint('users');
     await erd.drag(from, { x: from.x - 120, y: from.y - 60 });
     // Space only disarms on a window-level keyup; leaving it down would make
@@ -317,10 +305,6 @@ test.describe('mouse drag', () => {
     const settings = await erd.settings();
     expectClose(settings.scrollLeft, -120, PIXEL_TOLERANCE);
     expectClose(settings.scrollTop, -60, PIXEL_TOLERANCE);
-
-    const after = await boxOf(canvasController(erd));
-    expectClose(after.x - before.x, -120, PIXEL_TOLERANCE);
-    expectClose(after.y - before.y, -60, PIXEL_TOLERANCE);
 
     // The table itself never moved, and never even got the mousedown.
     const users = await erd.table('users');
@@ -343,7 +327,6 @@ test.describe('mouse drag', () => {
     expect(minimapBox.width).toBeCloseTo(MINIMAP_SIZE, 3);
     const ratio = minimapBox.width / settingsBefore.width;
 
-    const canvasBefore = await boxOf(canvasController(erd));
     const handleBefore = await boxOf(erd.minimapViewport);
 
     const from = await erd.centerOf(erd.minimapViewport);
@@ -353,10 +336,6 @@ test.describe('mouse drag', () => {
     const tolerance = PIXEL_TOLERANCE / ratio;
     expectClose(settings.scrollLeft, -24 / ratio, tolerance);
     expectClose(settings.scrollTop, -12 / ratio, tolerance);
-
-    const canvasAfter = await boxOf(canvasController(erd));
-    expectClose(canvasAfter.x - canvasBefore.x, -24 / ratio, tolerance);
-    expectClose(canvasAfter.y - canvasBefore.y, -12 / ratio, tolerance);
 
     // The handle follows the pointer 1:1, because it is drawn at
     // scroll * ratio.

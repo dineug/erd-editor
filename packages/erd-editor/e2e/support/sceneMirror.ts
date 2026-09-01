@@ -3,10 +3,11 @@ import type { Node as KonvaNode } from 'konva/lib/Node';
 import { type Stage, stages } from 'konva/lib/Stage';
 
 import { onBeforeFlush, whenDrawn } from '@/konva/batchDraw';
+import { toThemeVariableName } from '@/themes/tokens';
 
-// Projects every live Konva stage into positioned divs so a Playwright css
-// locator can still address the scene. Assertion only: the projection takes no
-// pointer event, so nothing the editor does can route through it.
+// Projects every live Konva stage into positioned elements so a Playwright css
+// locator can still address the scene, and routes a pointer event dispatched on
+// one of those elements back onto the stage the element stands for.
 
 /** The one place the projection is switched on, so the bench never pays for it. */
 export const SCENE_MIRROR_FLAG = 'sceneMirror';
@@ -22,6 +23,7 @@ const CLASS_ALIASES: Record<string, string[]> = {
   'minimap-table': ['table'],
   'minimap-memo': ['memo'],
   'cell-text': ['edit-input'],
+  'relationship-route': ['route'],
 };
 
 /**
@@ -46,6 +48,15 @@ const VALUE_ATTRIBUTES: Array<[string, string]> = [
   ['tableId', 'data-table-id'],
 ];
 
+/**
+ * Konva attrs projected as a css custom property, which is where the dom scene
+ * published a peer's colour for a spec to read back off the element.
+ */
+const STYLE_ATTRIBUTES: Array<[string, string]> = [
+  ['sharedSelect', '--shared-select'],
+  ['sharedFocus', '--shared-focus'],
+];
+
 const ID_PREFIXES = ['table-', 'column-', 'memo-', 'relationship-'];
 
 /**
@@ -57,9 +68,44 @@ const BAND_NAMES: readonly string[] = ['drag-select'];
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+/**
+ * The svg tag one konva shape answers to. The dom scene drew its connectors in
+ * svg and the specs count those by tag name, so each of the three keeps a
+ * namespaced marker inside the box the projection places for it.
+ */
+const SVG_TAGS: Record<string, string> = {
+  Line: 'line',
+  Circle: 'circle',
+  Path: 'path',
+};
+
+/** What a colour is when the scene paints nothing, as konva takes it. */
+const TRANSPARENT = 'transparent';
+
+/**
+ * The palette tokens a mirrored element is labelled with. A column key was a
+ * class in the dom scene and is only a paint colour in the konva one, so the
+ * token that colour resolved from is what the projection can name it by.
+ */
+const PAINT_TOKENS = ['keyPK', 'keyFK', 'keyPFK'];
+
+/** Pointer events the projection routes back onto the stage. */
+const ROUTED_EVENTS = [
+  'mousedown',
+  'mouseup',
+  'click',
+  'dblclick',
+  'contextmenu',
+  'mousemove',
+];
+
+type MirrorElement = HTMLElement;
+
 type MirrorState = {
   root: HTMLElement;
-  elements: Map<number, HTMLElement>;
+  elements: Map<number, MirrorElement>;
+  nodes: WeakMap<Element, KonvaNode>;
+  retired: MirrorElement[];
 };
 
 const states = new WeakMap<Stage, MirrorState>();
@@ -77,28 +123,105 @@ function isContainer(node: KonvaNode): node is Container<KonvaNode> {
   return typeof (node as Container<KonvaNode>).getChildren === 'function';
 }
 
-function createElement(root: HTMLElement): HTMLElement {
+/** The colour a node paints its own outline with, or null for one that paints none. */
+function ownStroke(node: KonvaNode): string | null {
+  const stroke = node.getAttr('stroke');
+
+  return typeof stroke === 'string' && stroke && stroke !== TRANSPARENT
+    ? stroke
+    : null;
+}
+
+/** The dash the dom scene wrote as one stroke-dasharray number. */
+function dashOf(node: KonvaNode): string | null {
+  const dash = node.getAttr('dash');
+  if (!Array.isArray(dash) || dash.length === 0) return null;
+
+  const unique = [...new Set(dash.map(Number))];
+  return unique.length === 1 ? String(unique[0]) : dash.join(' ');
+}
+
+/** The token each palette colour resolves from, read off the stage container. */
+function paintTokensOf(stage: Stage): Map<string, string> {
+  const tokens = new Map<string, string>();
+  const container = stage.container();
+  if (!container.isConnected) return tokens;
+
+  const style = getComputedStyle(container);
+
+  for (const token of PAINT_TOKENS) {
+    const value = style.getPropertyValue(toThemeVariableName(token)).trim();
+    if (value && !tokens.has(value)) tokens.set(value, token);
+  }
+
+  return tokens;
+}
+
+// Pointer events are taken rather than refused: a locator click is dropped
+// unless the element it names answers the hit test. Neither this nor the root
+// declares one, so grab mode still turns the whole canvas transparent.
+
+function createElement(parent: MirrorElement): MirrorElement {
   const element = document.createElement('div');
+
   element.style.position = 'absolute';
-  element.style.pointerEvents = 'none';
   element.style.userSelect = 'none';
   element.style.margin = '0';
-  root.appendChild(element);
+  parent.appendChild(element);
+
   return element;
 }
 
-function applyAttributes(
-  element: HTMLElement,
+/**
+ * The namespaced twin a connector shape earns, so a tag selector still counts
+ * it. An svg element outside an svg root lays out no box, which is why the box
+ * stays a div and the marker inside it is what carries the tag.
+ */
+function applyMarker(
+  element: MirrorElement,
   node: KonvaNode,
-  names: string[]
+  classes: string,
+  dash: string | null
+) {
+  const tag = SVG_TAGS[node.className];
+  if (!tag) return;
+
+  let marker = element.firstElementChild;
+  if (!marker || marker.localName !== tag) {
+    marker = document.createElementNS(SVG_NS, tag);
+    element.insertBefore(marker, element.firstChild);
+  }
+
+  marker.setAttribute('class', classes);
+  if (dash === null) {
+    marker.removeAttribute('stroke-dasharray');
+  } else {
+    marker.setAttribute('stroke-dasharray', dash);
+  }
+}
+
+function applyAttributes(
+  element: MirrorElement,
+  node: KonvaNode,
+  names: string[],
+  stroke: string | null,
+  tokens: Map<string, string>
 ) {
   const aliases = names.flatMap(name => CLASS_ALIASES[name] ?? []);
-  element.className = [...names, ...aliases].join(' ');
+  const classes = [...names, ...aliases].join(' ');
+  element.setAttribute('class', classes);
 
   const wanted = new Map<string, string>();
   const dataId = dataIdOf(node);
   if (dataId !== null) wanted.set('data-id', dataId);
   if (names.length > 1) wanted.set('data-type', names[1]);
+
+  const dash = dashOf(node);
+  if (dash !== null) wanted.set('stroke-dasharray', dash);
+  applyMarker(element, node, classes, dash);
+
+  const token = stroke === null ? undefined : tokens.get(stroke);
+  if (token) wanted.set('data-paint-token', token);
 
   for (const [attr, mirrored] of VALUE_ATTRIBUTES) {
     const value = node.getAttr(attr);
@@ -125,10 +248,21 @@ function applyAttributes(
   for (const [attr, value] of wanted) {
     if (element.getAttribute(attr) !== value) element.setAttribute(attr, value);
   }
+
+  element.style.removeProperty('stroke');
+  if (stroke !== null) element.style.setProperty('stroke', stroke);
+
+  for (const [attr, property] of STYLE_ATTRIBUTES) {
+    const value = node.getAttr(attr);
+    element.style.removeProperty(property);
+    if (typeof value === 'string' && value) {
+      element.style.setProperty(property, value);
+    }
+  }
 }
 
 /** The dashed svg a band name earns, sized to the element the projection placed. */
-function applyBand(element: HTMLElement, names: string[]) {
+function applyBand(element: MirrorElement, names: string[]) {
   const band = element.querySelector('svg');
 
   if (!names.some(name => BAND_NAMES.includes(name))) {
@@ -159,7 +293,7 @@ type Origin = { x: number; y: number };
  * box its parent was given rather than from the stage.
  */
 function place(
-  element: HTMLElement,
+  element: MirrorElement,
   node: KonvaNode,
   stage: Stage,
   origin: Origin
@@ -173,6 +307,101 @@ function place(
   return { x: rect.x, y: rect.y };
 }
 
+/** Where a mirrored node sits on screen, in the coordinates a pointer arrives in. */
+function screenBoxOf(node: KonvaNode, stage: Stage) {
+  const rect = node.getClientRect({ relativeTo: stage as never });
+  const origin = stage.container().getBoundingClientRect();
+
+  return {
+    x: origin.x + rect.x,
+    y: origin.y + rect.y,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+type Box = { x: number; y: number; width: number; height: number };
+
+const isInside = (box: Box, x: number, y: number) =>
+  x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height;
+
+/**
+ * Where to aim a press meant for one node. A node half off screen has a centre
+ * the stage never hit tests, so the part of it the stage can still see is what
+ * the point is taken from.
+ */
+function aimAt(box: Box, stage: Stage) {
+  const view = stage.container().getBoundingClientRect();
+  const left = Math.max(box.x, view.left);
+  const top = Math.max(box.y, view.top);
+  const right = Math.min(box.x + box.width, view.right);
+  const bottom = Math.min(box.y + box.height, view.bottom);
+
+  return right > left && bottom > top
+    ? { x: (left + right) / 2, y: (top + bottom) / 2 }
+    : { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+/**
+ * Re-dispatches a synthetic press on the stage, centred on the node the element
+ * stands for. A konva scene resolves what was pressed from the coordinates
+ * alone, and a dispatchEvent carries none, so the projection supplies them.
+ *
+ * @example
+ * routeSyntheticPointer(stage, state);
+ */
+function routeSyntheticPointer(stage: Stage, state: MirrorState) {
+  const nodeOf = (target: EventTarget | null): KonvaNode | null => {
+    let element = target instanceof Element ? target : null;
+
+    while (element && element !== state.root) {
+      const node = state.nodes.get(element);
+      if (node) return node;
+      element = element.parentElement;
+    }
+
+    return null;
+  };
+
+  const handle = (event: Event) => {
+    // A real press already carries the coordinates konva hit tests with, and it
+    // reaches the stage by bubbling through the content div the projection
+    // hangs in, so only a dispatched one is rewritten here.
+    if (event.isTrusted) return;
+
+    const mouse = event as MouseEvent;
+    const node = nodeOf(event.target);
+    if (!node) return;
+
+    const box = screenBoxOf(node, stage);
+    if (isInside(box, mouse.clientX, mouse.clientY)) return;
+
+    const aim = aimAt(box, stage);
+
+    event.stopPropagation();
+    stage.content.dispatchEvent(
+      new MouseEvent(event.type, {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        button: mouse.button,
+        buttons: mouse.buttons,
+        detail: mouse.detail,
+        altKey: mouse.altKey,
+        ctrlKey: mouse.ctrlKey,
+        metaKey: mouse.metaKey,
+        shiftKey: mouse.shiftKey,
+        clientX: aim.x,
+        clientY: aim.y,
+      })
+    );
+  };
+
+  for (const type of ROUTED_EVENTS) {
+    state.root.addEventListener(type, handle);
+  }
+}
+
 function syncStage(stage: Stage) {
   const content = stage.content;
   if (!content || !content.isConnected) return;
@@ -183,44 +412,60 @@ function syncStage(stage: Stage) {
     root.className = ROOT_CLASS;
     root.style.position = 'absolute';
     root.style.inset = '0';
-    root.style.pointerEvents = 'none';
     content.appendChild(root);
-    state = { root, elements: new Map() };
+    state = { root, elements: new Map(), nodes: new WeakMap(), retired: [] };
     states.set(stage, state);
+    routeSyntheticPointer(stage, state);
   }
 
+  // A press re-renders the scene inside its own dispatch, so an element the
+  // press landed on is gone before the routing above the stage asks what it
+  // was. Detaching one pass late leaves that target where the walk can find it.
+  for (const element of state.retired.splice(0)) element.remove();
+
   const live = new Set<number>();
+  const tokens = paintTokensOf(stage);
 
   // A reorder leaves konva's children in the new order and the projection's in
   // the old one, so the slot each element belongs in is carried down the walk
   // and an element that is not already in it is moved there.
-  const cursors = new Map<HTMLElement, number>();
+  const cursors = new Map<MirrorElement, number>();
 
-  const placeAt = (parent: HTMLElement, element: HTMLElement) => {
+  const placeAt = (parent: MirrorElement, element: MirrorElement) => {
     const index = cursors.get(parent) ?? 0;
     cursors.set(parent, index + 1);
+
+    // Entities keep the order they were first drawn in. The dom scene raised
+    // one with a z-index and left the markup alone, and a spec that reads the
+    // first table means the first one in the document either way.
+    if (parent === state.root) return;
 
     if (parent.children[index] === element) return;
     parent.insertBefore(element, parent.children[index] ?? null);
   };
 
-  const visit = (node: KonvaNode, parent: HTMLElement, origin: Origin) => {
-    if (!node.visible()) return;
+  const visit = (
+    node: KonvaNode,
+    parent: MirrorElement,
+    origin: Origin
+  ): string | null => {
+    if (!node.visible()) return null;
 
     const names = node.name().trim().split(/\s+/).filter(Boolean);
+    let element: MirrorElement | null = null;
     let host = parent;
     let hostOrigin = origin;
 
     if (names.length) {
       const key = node._id;
-      let element = state.elements.get(key);
+      element = state.elements.get(key) ?? null;
       if (!element || !element.isConnected) {
         element = createElement(parent);
         state.elements.set(key, element);
       }
       placeAt(parent, element);
 
-      applyAttributes(element, node, names);
+      state.nodes.set(element, node);
       applyBand(element, names);
       hostOrigin = place(element, node, stage, origin);
       if (node.className === 'Text') {
@@ -231,9 +476,21 @@ function syncStage(stage: Stage) {
       host = element;
     }
 
+    // The colour a group is labelled by is the one its own shapes paint with:
+    // a scene icon is a group of paths, and the palette token behind those
+    // paths is the whole of what the dom scene spelled as a class on the icon.
+    let stroke = ownStroke(node);
+
     if (isContainer(node)) {
-      for (const child of node.getChildren()) visit(child, host, hostOrigin);
+      for (const child of node.getChildren()) {
+        const childStroke = visit(child, host, hostOrigin);
+        stroke = stroke ?? childStroke;
+      }
     }
+
+    if (element) applyAttributes(element, node, names, stroke, tokens);
+
+    return stroke;
   };
 
   const stageOrigin: Origin = { x: 0, y: 0 };
@@ -249,8 +506,17 @@ function syncStage(stage: Stage) {
 
   for (const [key, element] of state.elements) {
     if (live.has(key)) continue;
-    element.remove();
+    // Stripped of its identity at once, so no locator counts a node the scene
+    // has already dropped, and detached on the pass after this one. What is
+    // left under it went with it, so the marker and the strays lose theirs too.
+    for (const attr of [...element.getAttributeNames()]) {
+      if (attr !== 'style') element.removeAttribute(attr);
+    }
+    for (const stray of element.querySelectorAll('*')) {
+      stray.removeAttribute('class');
+    }
     state.elements.delete(key);
+    state.retired.push(element);
   }
 }
 
