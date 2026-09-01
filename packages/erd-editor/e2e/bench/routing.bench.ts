@@ -1,12 +1,23 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 import { FIXTURE_URL } from '../support/ErdEditorPage';
+import type { ErdDocument } from '../support/schema';
 import { CORPORA, createCorpus } from './corpus';
-import { measureQuality, readScene, type QualityMetrics } from './geometry';
-import { installBench, runDragBench, type BenchResult } from './harness';
+import {
+  fitWholeCanvas,
+  measureQuality,
+  readScene,
+  type QualityMetrics,
+} from './geometry';
+import {
+  installBench,
+  runDragBench,
+  VIEWPORT,
+  type BenchResult,
+} from './harness';
 
 const OUT_DIR = join(import.meta.dirname, '..', '.bench');
 const BASELINE = join(OUT_DIR, 'baseline.json');
@@ -18,7 +29,10 @@ type Row = {
   relationships: number;
   columns: number;
   perf: BenchResult;
+  /** Every connector, read off a second load at a zoom that culls none. */
   quality: QualityMetrics;
+  /** The same read off the screen the drag left, which the canvas does cull. */
+  onScreen: QualityMetrics;
 };
 
 /**
@@ -55,7 +69,44 @@ for (const options of CORPORA) {
       moves: 120,
     });
 
+    const onScreen = measureQuality(await readScene(page));
+
+    // Quality is read from a second load rather than off the drag: the scene
+    // culls, and the dom scene it is compared against did not. A zoom where
+    // three screens hold the whole canvas is what leaves nothing culled.
+    const dragged = JSON.parse(
+      await page.evaluate(
+        () =>
+          (
+            document.querySelector('erd-editor') as HTMLElement & {
+              value: string;
+            }
+          ).value
+      )
+    ) as ErdDocument;
+
+    // The corpus as generated, with the tables where the drag left them. What
+    // the editor serialised would not do: it carries measured column widths,
+    // and a document already measured is sorted a different number of times.
+    const whole = JSON.parse(JSON.stringify(corpus.document)) as ErdDocument;
+    for (const id of whole.doc.tableIds) {
+      const { ui } = dragged.collections.tableEntities[id];
+      whole.collections.tableEntities[id].ui.x = ui.x;
+      whole.collections.tableEntities[id].ui.y = ui.y;
+    }
+    Object.assign(whole.settings, fitWholeCanvas(whole.settings, VIEWPORT));
+
+    await page.goto(FIXTURE_URL);
+    await installBench(page);
+    await page.evaluate(
+      json => window.__erdBench!.load(json),
+      JSON.stringify(whole)
+    );
+
     const quality = measureQuality(await readScene(page));
+    // The point of the second load. A short read is a culled one, and every
+    // number under it would be a fraction of the document rather than all of it.
+    expect(quality.drawn).toBe(quality.total);
 
     rows.push({
       corpus: corpus.name,
@@ -64,6 +115,7 @@ for (const options of CORPORA) {
       columns: corpus.columns,
       perf,
       quality,
+      onScreen,
     });
   });
 }
@@ -100,6 +152,9 @@ function readBaseline(): Report | null {
 
 const ms = (value: number) => `${value.toFixed(2)}ms`;
 const num = (value: number) => `${value}`;
+
+/** Printed where a delta would be, when the two rows counted different sets. */
+const POPULATION_MISMATCH = '≠pop';
 
 function delta(
   current: number,
@@ -166,27 +221,49 @@ function print(report: Report, saved: Report | null) {
     ];
   });
 
+  // A baseline row read off a culled scene counted a different set of
+  // connectors, and a percentage between two populations reads exactly like a
+  // result. Its deltas are replaced by the marker rather than printed.
+  const wholeDocument = (metrics: QualityMetrics) => {
+    const { drawn, total } = metrics as Partial<QualityMetrics>;
+    return drawn === undefined || drawn === total;
+  };
+
   const qualityRows = report.rows.map(row => {
     const old = previous.get(row.corpus);
+    const change = (current: number, previousValue: number | undefined) =>
+      old && !wholeDocument(old.quality)
+        ? POPULATION_MISMATCH
+        : delta(current, previousValue);
+
     return [
       row.corpus,
       num(row.quality.segments),
       num(row.quality.crossingsShared),
-      delta(row.quality.crossingsShared, old?.quality.crossingsShared),
+      change(row.quality.crossingsShared, old?.quality.crossingsShared),
       num(row.quality.crossingsFree),
-      delta(row.quality.crossingsFree, old?.quality.crossingsFree),
+      change(row.quality.crossingsFree, old?.quality.crossingsFree),
       num(row.quality.nodeCrossings),
-      delta(row.quality.nodeCrossings, old?.quality.nodeCrossings),
+      change(row.quality.nodeCrossings, old?.quality.nodeCrossings),
       num(row.quality.collinearOverlapPx),
-      delta(row.quality.collinearOverlapPx, old?.quality.collinearOverlapPx),
+      change(row.quality.collinearOverlapPx, old?.quality.collinearOverlapPx),
       Number.isFinite(row.quality.minAnchorPitch)
         ? row.quality.minAnchorPitch.toFixed(1)
         : 'n/a',
       num(row.quality.totalLengthPx),
+      `${row.onScreen.drawn}/${row.onScreen.total}`,
+      num(row.onScreen.segments),
       row.quality.worstCollinear
         ? `${row.quality.worstCollinear.length}px ${row.quality.worstCollinear.axis[0]} ${row.quality.worstCollinear.aEnds} vs ${row.quality.worstCollinear.bEnds}`
         : '—',
     ];
+  });
+
+  const unknownPopulation = report.rows.some(row => {
+    const old = previous.get(row.corpus);
+    return (
+      !!old && (old.quality as Partial<QualityMetrics>).drawn === undefined
+    );
   });
 
   process.stdout.write(
@@ -217,7 +294,13 @@ function print(report: Report, saved: Report | null) {
         perfRows
       ),
       '',
-      'quality   (cross-shared = same table, cross-free = independent pairs; collinear = length two connectors run within one stroke width of each other)',
+      'quality   (every connector, off a second load of the corpus with the tables where the drag left them, at a zoom that culls nothing; cross-shared = same table, cross-free = independent pairs; collinear = length two connectors run within one stroke width of each other)',
+      '          (routing depends on the run of sorts a layout was reached by, so this lands within a percent or two of the scene the drag ended on rather than on it)',
+      `          (on screen = the population that drag left drawn, and its segment count — a culled subset, never compared with anything${
+        unknownPopulation
+          ? '; the baseline predates these two columns, so what it counted is on its own record'
+          : ''
+      })`,
       table(
         [
           'corpus',
@@ -232,6 +315,8 @@ function print(report: Report, saved: Report | null) {
           'Δ',
           'min pitch',
           'length px',
+          'on screen',
+          'screen segs',
           'worst collinear',
         ],
         qualityRows

@@ -541,7 +541,7 @@ const GRIP_X = 400;
 const GRIP_Y = 200;
 
 /** The runner's window, which the editor fills; see playwright.bench.config.ts. */
-const VIEWPORT = { width: 1440, height: 900 };
+export const VIEWPORT = { width: 1440, height: 900 };
 
 /**
  * Scrolls the document so the dragged table is on screen before it is loaded.

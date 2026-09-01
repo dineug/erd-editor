@@ -382,14 +382,16 @@ function pushRelationship(
 }
 
 /**
- * The scales the benchmark reports on: small, medium and large are sized
- * against data/ — sakila (16 tables), OKKY (39), Magento2-sales (54) — and
- * xlarge is the thousand-table scene the canvas work is measured against.
+ * The scales the benchmark reports on, sized against data/ — sakila (16
+ * tables), OKKY (39), Magento2-sales (54) — then the two that fill the gap up
+ * to the thousand-table scene the canvas work is measured against.
  */
 export const CORPORA: CorpusOptions[] = [
   { name: 'small', tables: 16, relationships: 24, hubDegree: 4 },
   { name: 'medium', tables: 40, relationships: 62, hubDegree: 6 },
   { name: 'large', tables: 56, relationships: 120, hubDegree: 9 },
+  { name: 'x150', tables: 150, relationships: 240, hubDegree: 10 },
+  { name: 'x400', tables: 400, relationships: 640, hubDegree: 12 },
   { name: 'xlarge', tables: 1000, relationships: 1600, hubDegree: 14 },
 ];
 

@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 
 import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
+import { CANVAS_ZOOM_MIN } from '@/constants/schema';
+import { getSceneOrigin } from '@/konva/scene/viewport';
 
 export type Segment = {
   relationshipId: string;
@@ -34,6 +36,12 @@ export type Scene = {
   endpoints: Record<string, [string, string]>;
   /** Both ends of every relationship, read from the document. */
   anchors: Anchor[];
+  /**
+   * Connectors the scene actually holds against connectors the document has.
+   * The canvas culls and the dom scene it replaced did not, so a metric read
+   * off a scene where these two differ is measuring a different population.
+   */
+  population: { drawn: number; total: number };
 };
 
 export type QualityMetrics = {
@@ -45,6 +53,9 @@ export type QualityMetrics = {
   /** Infinity when no table side carries two anchors. */
   minAnchorPitch: number;
   totalLengthPx: number;
+  /** Connectors these numbers were read off, and connectors the document has. */
+  drawn: number;
+  total: number;
   /**
    * Longest single collinear overlap and enough context to act on it. Two
    * relationships leaving one side share a corridor only if slotting failed;
@@ -94,7 +105,8 @@ export async function readScene(page: Page): Promise<Scene> {
     if (!stage) throw new Error('the canvas konva stage is not registered');
 
     const segments: Segment[] = [];
-    for (const group of stage.find('.relationship')) {
+    const groups = stage.find('.relationship');
+    for (const group of groups) {
       const relationshipId = group.name().split(/\s+/)[1] ?? '';
       const route = group.findOne('.relationship-route');
       const numbers = String(route?.getAttr('data') ?? '').match(
@@ -160,7 +172,16 @@ export async function readScene(page: Page): Promise<Scene> {
       }
     }
 
-    return { segments, rects, endpoints, anchors };
+    return {
+      segments,
+      rects,
+      endpoints,
+      anchors,
+      population: {
+        drawn: groups.length,
+        total: value.doc.relationshipIds.length,
+      },
+    };
   });
 }
 
@@ -410,6 +431,8 @@ export function measureQuality(scene: Scene): QualityMetrics {
       ? Math.round(pitch * 10) / 10
       : Infinity,
     totalLengthPx: Math.round(totalLengthPx),
+    drawn: scene.population.drawn,
+    total: scene.population.total,
     worstCollinear: collinear.worst
       ? {
           ...collinear.worst,
@@ -419,5 +442,45 @@ export function measureQuality(scene: Scene): QualityMetrics {
           bPath: pathOf(collinear.worst.b),
         }
       : null,
+  };
+}
+
+export type SceneView = {
+  zoomLevel: number;
+  scrollLeft: number;
+  scrollTop: number;
+};
+
+/**
+ * A scroll and zoom that leave the whole canvas inside the culling rect, so a
+ * quality read covers every connector rather than the on-screen ones. Two of
+ * the rect's three screens hold the drawn box, centred.
+ *
+ * @example
+ * Object.assign(document.settings, fitWholeCanvas(document.settings, VIEWPORT));
+ */
+export function fitWholeCanvas(
+  canvas: { width: number; height: number },
+  viewport: { width: number; height: number }
+): SceneView {
+  const { width, height } = canvas;
+  const zoomLevel = Math.max(
+    CANVAS_ZOOM_MIN,
+    Math.min(1, (viewport.width * 2) / width, (viewport.height * 2) / height)
+  );
+  // getSceneOrigin is the scroll plus a term that does not move with it, so
+  // the scroll that centres the drawn box is the difference between the two.
+  const origin = getSceneOrigin({
+    width,
+    height,
+    zoomLevel,
+    scrollLeft: 0,
+    scrollTop: 0,
+  });
+
+  return {
+    zoomLevel,
+    scrollLeft: (viewport.width - width * zoomLevel) / 2 - origin.x,
+    scrollTop: (viewport.height - height * zoomLevel) / 2 - origin.y,
   };
 }
