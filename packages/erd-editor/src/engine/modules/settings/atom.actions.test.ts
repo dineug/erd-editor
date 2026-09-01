@@ -288,8 +288,16 @@ describe('settings/atom.actions', () => {
         );
         const { scrollLeft: atStart, scrollTop: atTop } = store.state.settings;
 
-        expect(toScreen(0, atStart, size, zoomLevel)).toBeCloseTo(0, 3);
-        expect(toScreen(0, atTop, size, zoomLevel)).toBeCloseTo(0, 3);
+        // A canvas the zoom draws smaller than the screen has nowhere to go and
+        // sits centred, which is where transform-origin 50% 50% used to put it.
+        expect(toScreen(0, atStart, size, zoomLevel)).toBeCloseTo(
+          drawn >= VIEWPORT_WIDTH ? 0 : (VIEWPORT_WIDTH - drawn) / 2,
+          3
+        );
+        expect(toScreen(0, atTop, size, zoomLevel)).toBeCloseTo(
+          drawn >= VIEWPORT_HEIGHT ? 0 : (VIEWPORT_HEIGHT - drawn) / 2,
+          3
+        );
 
         store.dispatchSync(
           scrollToAction({ scrollTop: -1_000_000, scrollLeft: -1_000_000 })
@@ -298,14 +306,16 @@ describe('settings/atom.actions', () => {
         const right = toScreen(size, atEnd, size, zoomLevel);
         const bottom = toScreen(size, atBottom, size, zoomLevel);
 
-        // A canvas the zoom draws smaller than the screen has nowhere to go,
-        // so it stays where the first press put it instead of running past.
         expect(right).toBeCloseTo(
-          drawn >= VIEWPORT_WIDTH ? VIEWPORT_WIDTH : drawn,
+          drawn >= VIEWPORT_WIDTH
+            ? VIEWPORT_WIDTH
+            : (VIEWPORT_WIDTH + drawn) / 2,
           3
         );
         expect(bottom).toBeCloseTo(
-          drawn >= VIEWPORT_HEIGHT ? VIEWPORT_HEIGHT : drawn,
+          drawn >= VIEWPORT_HEIGHT
+            ? VIEWPORT_HEIGHT
+            : (VIEWPORT_HEIGHT + drawn) / 2,
           3
         );
       }
@@ -332,15 +342,51 @@ describe('settings/atom.actions', () => {
       expect(store.state.settings.scrollTop).toBe(800 - 3000 + 500);
     });
 
-    it('holds the shrunk canvas against the origin instead of drifting off it', () => {
+    /**
+     * The shrunk canvas centres rather than sticking to one corner. Clamping a
+     * range whose min has run past its max keeps whichever end it was given,
+     * and the css transform this replaces scaled about the middle of the box.
+     */
+    it('centres the shrunk canvas the way transform-origin 50% 50% did', () => {
       place(8_000, 0.1);
+      const drawn = 800;
 
       store.dispatchSync(scrollToAction({ scrollTop: 0, scrollLeft: 0 }));
 
-      expect(store.state.settings.scrollLeft).toBe(-3600);
+      expect(store.state.settings.scrollLeft).toBe(-3500);
       expect(store.state.settings.scrollTop).toBe(-3600);
+      expect(toScreen(0, -3500, 8_000, 0.1)).toBeCloseTo(
+        (VIEWPORT_WIDTH - drawn) / 2,
+        3
+      );
+      expect(toScreen(8_000, -3500, 8_000, 0.1)).toBeCloseTo(
+        (VIEWPORT_WIDTH + drawn) / 2,
+        3
+      );
       expect(toScreen(0, -3600, 8_000, 0.1)).toBeCloseTo(0, 3);
-      expect(toScreen(8_000, -3600, 8_000, 0.1)).toBeCloseTo(800, 3);
+      expect(toScreen(8_000, -3600, 8_000, 0.1)).toBeCloseTo(
+        VIEWPORT_HEIGHT,
+        3
+      );
+    });
+
+    it('leaves the shrunk canvas centred however far the scroll is pushed', () => {
+      place(2_000, 0.1);
+      const centred = (1_000 - 200) / 2;
+
+      store.dispatchSync(
+        scrollToAction({ scrollTop: 1_000_000, scrollLeft: 1_000_000 })
+      );
+      expect(
+        toScreen(0, store.state.settings.scrollLeft, 2_000, 0.1)
+      ).toBeCloseTo(centred, 3);
+
+      store.dispatchSync(
+        streamScrollToAction({ movementX: -99_999, movementY: -99_999 })
+      );
+      expect(
+        toScreen(0, store.state.settings.scrollLeft, 2_000, 0.1)
+      ).toBeCloseTo(centred, 3);
     });
 
     it('keeps the unzoomed range and its sign exactly as it was', () => {

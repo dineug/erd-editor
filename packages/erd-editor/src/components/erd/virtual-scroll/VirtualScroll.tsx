@@ -1,9 +1,12 @@
 import { createRef, FC, ref } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import { scrollToAction } from '@/engine/modules/settings/atom.actions';
+import {
+  getScrollRanges,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 
-import { useVirtualScroll } from './useVirtualScroll';
+import { trackPointToScroll, useVirtualScroll } from './useVirtualScroll';
 import * as styles from './VirtualScroll.styles';
 
 export type VirtualScrollProps = {};
@@ -12,8 +15,8 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const {
     state,
-    getWidthRatio,
-    getHeightRatio,
+    getHorizontalTrack,
+    getVerticalTrack,
     onScrollLeftStart,
     onScrollTopStart,
   } = useVirtualScroll(ctx);
@@ -32,18 +35,18 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
       editor: { viewport },
       settings,
     } = store.state;
-    const ratio = getWidthRatio();
-    const $horizontal = horizontal.value;
-    const rect = $horizontal.getBoundingClientRect();
-    const clientX = event.clientX;
-
-    const x = clientX - rect.x;
-    const absoluteX = x / ratio;
-    const scrollLeft = absoluteX - viewport.width / 2;
+    const { left } = getScrollRanges(settings, viewport);
+    const { ratio } = getHorizontalTrack();
+    const rect = horizontal.value.getBoundingClientRect();
 
     store.dispatch(
       scrollToAction({
-        scrollLeft: -1 * scrollLeft,
+        scrollLeft: trackPointToScroll(
+          left,
+          ratio,
+          event.clientX - rect.x,
+          viewport.width
+        ),
         scrollTop: settings.scrollTop,
       })
     );
@@ -61,20 +64,21 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
     const { store } = app.value;
     const {
       editor: { viewport },
+      settings,
     } = store.state;
-    const ratio = getHeightRatio();
-    const $vertical = vertical.value;
-    const rect = $vertical.getBoundingClientRect();
-    const clientY = event.clientY;
-
-    const y = clientY - rect.y;
-    const absoluteY = y / ratio;
-    const scrollTop = absoluteY - viewport.height / 2;
+    const { top } = getScrollRanges(settings, viewport);
+    const { ratio } = getVerticalTrack();
+    const rect = vertical.value.getBoundingClientRect();
 
     store.dispatch(
       scrollToAction({
-        scrollLeft: store.state.settings.scrollLeft,
-        scrollTop: -1 * scrollTop,
+        scrollLeft: settings.scrollLeft,
+        scrollTop: trackPointToScroll(
+          top,
+          ratio,
+          event.clientY - rect.y,
+          viewport.height
+        ),
       })
     );
 
@@ -82,25 +86,12 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
   };
 
   return () => {
-    const { store } = app.value;
-    const {
-      editor: { viewport },
-      settings: { width, height, scrollLeft, scrollTop },
-    } = store.state;
-
-    const wRatio = getWidthRatio();
-    const hRatio = getHeightRatio();
-    const w = viewport.width * wRatio;
-    const h = viewport.height * hRatio;
-    const left = -1 * scrollLeft * wRatio;
-    const top = -1 * scrollTop * hRatio;
-
-    const showHorizontal = viewport.width < width;
-    const showVertical = viewport.height < height;
+    const horizontalTrack = getHorizontalTrack();
+    const verticalTrack = getVerticalTrack();
 
     return (
       <>
-        {showHorizontal ? (
+        {horizontalTrack.scrollable ? (
           <div
             class={['virtual-scroll', styles.horizontal]}
             use:ref={ref(horizontal)}
@@ -109,9 +100,9 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
             <div
               class={['virtual-scroll-ghost-thumb', styles.ghostThumb]}
               style={{
-                width: `${w}px`,
+                width: `${horizontalTrack.thumb}px`,
                 height: '100%',
-                transform: `translate(${left}px, 0px)`,
+                transform: `translate(${horizontalTrack.offset}px, 0px)`,
               }}
               bool:data-selected={state.selected === 'horizontal'}
               on:mousedown={onScrollLeftStart}
@@ -120,7 +111,7 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
             </div>
           </div>
         ) : null}
-        {showVertical ? (
+        {verticalTrack.scrollable ? (
           <div
             class={['virtual-scroll', styles.vertical]}
             use:ref={ref(vertical)}
@@ -130,8 +121,8 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
               class={['virtual-scroll-ghost-thumb', styles.ghostThumb]}
               style={{
                 width: '100%',
-                height: `${h}px`,
-                transform: `translate(0px, ${top}px)`,
+                height: `${verticalTrack.thumb}px`,
+                transform: `translate(0px, ${verticalTrack.offset}px)`,
               }}
               bool:data-selected={state.selected === 'vertical'}
               on:mousedown={onScrollTopStart}

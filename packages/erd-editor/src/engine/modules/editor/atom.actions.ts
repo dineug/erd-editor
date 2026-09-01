@@ -9,9 +9,10 @@ import {
 import { createAction } from '@dineug/r-html';
 import { isNill, isString } from '@dineug/shared';
 import { noop } from 'es-toolkit';
-import { isEmpty } from 'es-toolkit/compat';
+import { isEmpty, round } from 'es-toolkit/compat';
 
 import { CanvasType } from '@/constants/schema';
+import { createScrollInRange } from '@/engine/modules/settings/atom.actions';
 import { Tag } from '@/engine/tag';
 import { bHas } from '@/utils/bit';
 import { getAbsolutePoint } from '@/utils/dragSelect';
@@ -98,12 +99,25 @@ export const changeViewportAction = createAction<
   ActionMap[typeof ActionType.changeViewport]
 >(ActionType.changeViewport);
 
+/**
+ * The screen the canvas is looking through. Growing it widens the travel the
+ * scroll is allowed, and shrinking it narrows it, so the offsets are clamped
+ * again here: a scroll left outside the new range shows a band of nothing.
+ */
 const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
-  { editor },
+  { editor, settings },
   { payload: { width, height } }
 ) => {
   editor.viewport.width = width;
   editor.viewport.height = height;
+
+  const { scrollLeftInRange, scrollTopInRange } = createScrollInRange(
+    settings,
+    editor.viewport
+  );
+
+  settings.scrollLeft = round(scrollLeftInRange(settings.scrollLeft), 4);
+  settings.scrollTop = round(scrollTopInRange(settings.scrollTop), 4);
 };
 
 export const clearAction = createAction<ActionMap[typeof ActionType.clear]>(

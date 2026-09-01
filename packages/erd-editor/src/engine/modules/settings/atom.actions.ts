@@ -88,12 +88,44 @@ const streamZoomLevel: ReducerType<typeof ActionType.streamZoomLevel> = (
 /** A zoom of exactly 1 negates a zero offset, and the store compares with Object.is. */
 const unsigned = (value: number) => value + 0;
 
+/** How far the scroll may travel on one axis, measured in screen pixels. */
+export type ScrollRange = {
+  min: number;
+  max: number;
+};
+
+export type ScrollRanges = {
+  left: ScrollRange;
+  top: ScrollRange;
+};
+
+/** The canvas box and the zoom that draws it, which is all a range needs. */
+export type ScrollTransform = Pick<Settings, 'width' | 'height' | 'zoomLevel'>;
+
+/**
+ * A canvas the zoom draws smaller than the screen has no travel at all. The css
+ * transform this replaces scaled about the middle of the canvas box, so the two
+ * ends collapse onto their midpoint rather than onto whichever one clamping kept.
+ */
+function toScrollRange(min: number, max: number): ScrollRange {
+  if (min > max) {
+    const center = unsigned((min + max) / 2);
+
+    return { min: center, max: center };
+  }
+
+  return { min: unsigned(min), max: unsigned(max) };
+}
+
 /**
  * How far the scroll may travel before the drawn canvas leaves the viewport.
  * A scene layer sits at the scroll plus the zoom viewport offset and is scaled
  * by the zoom, so both ends move with the drawn box rather than the canvas box.
  */
-function createScrollInRange(settings: Settings, viewport: Viewport) {
+export function getScrollRanges(
+  settings: ScrollTransform,
+  viewport: Viewport
+): ScrollRanges {
   const { x, y, w, h } = getZoomViewport(
     settings.width,
     settings.height,
@@ -101,8 +133,21 @@ function createScrollInRange(settings: Settings, viewport: Viewport) {
   );
 
   return {
-    scrollLeftInRange: createInRange(viewport.width - w - x, unsigned(-x)),
-    scrollTopInRange: createInRange(viewport.height - h - y, unsigned(-y)),
+    left: toScrollRange(viewport.width - w - x, -x),
+    top: toScrollRange(viewport.height - h - y, -y),
+  };
+}
+
+/** The clamps every reducer that writes a scroll offset shares. */
+export function createScrollInRange(
+  settings: ScrollTransform,
+  viewport: Viewport
+) {
+  const { left, top } = getScrollRanges(settings, viewport);
+
+  return {
+    scrollLeftInRange: createInRange(left.min, left.max),
+    scrollTopInRange: createInRange(top.min, top.max),
   };
 }
 

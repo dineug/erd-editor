@@ -18,7 +18,10 @@ import { AppContext } from '@/components/appContext';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import * as styles from '@/components/erd/virtual-scroll/VirtualScroll.styles';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
-import { scrollToAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeZoomLevelAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 
 // Default state: viewport 1200x675, canvas 2000x2000.
 const VIEWPORT_WIDTH = 1200;
@@ -216,6 +219,82 @@ describe('VirtualScroll', () => {
     await flush();
 
     expect(app.store.state.settings.scrollLeft).toBeCloseTo(-50 / W_RATIO, 3);
+  });
+
+  /**
+   * At 150% the 2000 box draws 3000 wide and starts 500 left of the scroll. The
+   * offset the scroll then takes is positive at one end, so a thumb placed by
+   * negating the scroll alone hangs off the near end of its own track.
+   */
+  describe('at a zoom that magnifies', () => {
+    const ZOOMED_RATIO = VIEWPORT_WIDTH / 3000;
+    const MAX_SCROLL_LEFT = 500;
+    const MIN_SCROLL_LEFT = VIEWPORT_WIDTH - 3000 + 500;
+
+    const magnify = async () => {
+      app.store.dispatchSync(changeZoomLevelAction({ value: 1.5 }));
+      await flush();
+    };
+
+    it('sizes the thumb from the drawn canvas rather than the canvas box', async () => {
+      await magnify();
+
+      expect(parseFloat(thumbs()[0].style.width)).toBeCloseTo(
+        VIEWPORT_WIDTH * ZOOMED_RATIO,
+        6
+      );
+      expect(parseFloat(thumbs()[1].style.height)).toBeCloseTo(
+        VIEWPORT_HEIGHT * (VIEWPORT_HEIGHT / 3000),
+        6
+      );
+    });
+
+    it('keeps the thumb inside its track at both ends of the travel', async () => {
+      await magnify();
+      app.store.dispatchSync(
+        scrollToAction({ scrollLeft: MAX_SCROLL_LEFT, scrollTop: 0 })
+      );
+      await flush();
+
+      const thumb = () => thumbs()[0];
+      const offsetOf = () =>
+        parseFloat(
+          thumb().style.transform.replace('translate(', '').replace('px', '')
+        );
+
+      expect(offsetOf()).toBeCloseTo(0, 6);
+
+      app.store.dispatchSync(
+        scrollToAction({ scrollLeft: MIN_SCROLL_LEFT, scrollTop: 0 })
+      );
+      await flush();
+
+      const width = parseFloat(thumb().style.width);
+      expect(offsetOf()).toBeCloseTo(VIEWPORT_WIDTH - width, 6);
+      expect(offsetOf() + width).toBeCloseTo(VIEWPORT_WIDTH, 6);
+    });
+
+    it('keeps a track the zoom still has travel for', async () => {
+      app.store.dispatchSync(
+        changeViewportAction({ width: 2000, height: 2000 })
+      );
+      await magnify();
+
+      expect(tracks()).toHaveLength(2);
+    });
+
+    it('centres the clicked point through the zoomed ratio', async () => {
+      await magnify();
+      const [horizontal] = tracks();
+
+      horizontal.dispatchEvent(mouse('mousedown', TRACK_X + 600, TRACK_Y));
+      await flush();
+
+      expect(app.store.state.settings.scrollLeft).toBeCloseTo(
+        MAX_SCROLL_LEFT - (600 / ZOOMED_RATIO - VIEWPORT_WIDTH / 2),
+        3
+      );
+    });
   });
 
   it('releases the selected thumb on mouseup and stops following the pointer', async () => {

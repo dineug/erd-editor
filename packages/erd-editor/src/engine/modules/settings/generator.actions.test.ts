@@ -103,10 +103,11 @@ describe('settings/generator.actions', () => {
       store.dispatchSync(changeZoomLevelAction$(-3));
 
       expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MIN);
-      // x = y = (2000 - 200) / 2 = 900, and 200 of drawn canvas fits any
-      // viewport, so the clamp pins the box to the top left rather than -450.
-      expect(store.state.settings.scrollLeft).toBe(-900);
-      expect(store.state.settings.scrollTop).toBe(-900);
+      // x = y = (2000 - 200) / 2 = 900, and 200 of drawn canvas fits inside
+      // either axis of the viewport, so both ends collapse onto their midpoint
+      // and the box lands centred rather than against the origin.
+      expect(store.state.settings.scrollLeft).toBe(-500);
+      expect(store.state.settings.scrollTop).toBe(-600);
     });
   });
 

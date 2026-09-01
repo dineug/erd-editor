@@ -54,6 +54,10 @@ import {
   SelectType,
   type SharedFocus,
 } from '@/engine/modules/editor/state';
+import {
+  changeZoomLevelAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
 import { createIndex } from '@/utils/collection/index.entity';
@@ -183,6 +187,49 @@ describe('editor.changeViewport', () => {
     store.dispatchSync(changeViewportAction({ width: 1024, height: 768 }));
 
     expect(store.state.editor.viewport).toEqual({ width: 1024, height: 768 });
+  });
+
+  /**
+   * A window that grows shortens the travel the scroll is allowed. Leaving an
+   * offset outside it paints a band of nothing along two edges until the next
+   * scroll gesture happens to clamp it, which is a repaint the user has to ask for.
+   */
+  it('pulls a scroll left outside the widened range back into it', () => {
+    store.dispatchSync(changeViewportAction({ width: 900, height: 700 }));
+    store.dispatchSync(
+      scrollToAction({ scrollLeft: -1_000_000, scrollTop: -1_000_000 })
+    );
+    expect(store.state.settings.scrollLeft).toBe(900 - 2000);
+    expect(store.state.settings.scrollTop).toBe(700 - 2000);
+
+    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+
+    expect(store.state.settings.scrollLeft).toBe(1440 - 2000);
+    expect(store.state.settings.scrollTop).toBe(900 - 2000);
+  });
+
+  it('leaves a scroll the narrowed range still holds exactly where it was', () => {
+    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+    store.dispatchSync(scrollToAction({ scrollLeft: -100, scrollTop: -200 }));
+
+    store.dispatchSync(changeViewportAction({ width: 900, height: 700 }));
+
+    expect(store.state.settings.scrollLeft).toBe(-100);
+    expect(store.state.settings.scrollTop).toBe(-200);
+  });
+
+  it('centres the scroll when the new viewport covers the drawn canvas', () => {
+    store.dispatchSync(changeViewportAction({ width: 900, height: 700 }));
+    store.dispatchSync(changeZoomLevelAction({ value: 0.1 }));
+    store.dispatchSync(
+      scrollToAction({ scrollLeft: -1_000_000, scrollTop: -1_000_000 })
+    );
+
+    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+
+    // drawn 200 wide inside 1440: 900 of zoom offset less half the slack.
+    expect(store.state.settings.scrollLeft).toBe(-900 + (1440 - 200) / 2);
+    expect(store.state.settings.scrollTop).toBe(-900 + (900 - 200) / 2);
   });
 });
 
