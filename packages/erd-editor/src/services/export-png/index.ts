@@ -1,6 +1,7 @@
 import type { Theme } from '@/themes/tokens';
 
 import { renderDocumentScene } from './documentScene';
+import { fitPixelRatio } from './pixelRatio';
 
 export type DocumentPngOptions = {
   doc: string;
@@ -13,7 +14,10 @@ export type DocumentPngOptions = {
   pixelRatio?: number;
 };
 
-/** One image pixel per canvas unit, so the png is exactly the canvas box. */
+/**
+ * One image pixel per canvas unit, so the png is exactly the canvas box for
+ * every box a canvas can hold.
+ */
 const DEFAULT_PIXEL_RATIO = 1;
 
 function toBlob(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -47,7 +51,15 @@ export async function createDocumentPng({
   const scene = await renderDocumentScene({ doc, theme, toWidth });
 
   try {
-    return await toBlob(scene.stage.toCanvas({ pixelRatio }));
+    // A stage rasterises at its own box times the ratio, so the box is read
+    // back off the stage rather than recomputed from the document here.
+    const ratio = fitPixelRatio(
+      pixelRatio,
+      scene.stage.width(),
+      scene.stage.height()
+    );
+
+    return await toBlob(scene.stage.toCanvas({ pixelRatio: ratio }));
   } finally {
     scene.destroy();
   }

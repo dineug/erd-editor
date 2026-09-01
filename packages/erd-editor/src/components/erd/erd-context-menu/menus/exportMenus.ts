@@ -1,8 +1,11 @@
 import { toJson } from '@dineug/erd-editor-schema';
+import { html } from '@dineug/r-html';
 
 import { AppContext } from '@/components/appContext';
 import { IconName } from '@/components/primitives/icon/icons';
+import Toast from '@/components/primitives/toast/Toast';
 import type { Theme } from '@/themes/tokens';
+import { openToastAction } from '@/utils/emitter';
 import {
   exportJSON,
   exportPNG,
@@ -21,7 +24,7 @@ export function createExportMenus(
   onClose: () => void,
   theme: Theme
 ): Menu[] {
-  const { store, toWidth } = app;
+  const { store, emitter, toWidth } = app;
   const databaseName = store.state.settings.databaseName;
 
   return [
@@ -53,6 +56,13 @@ export function createExportMenus(
           console.error(
             '[export-png] the document could not be exported',
             error
+          );
+          emitter.emit(
+            openToastAction({
+              message: html`<${Toast}
+                description=${'Failed to export the document as a png'}
+              />`,
+            })
           );
         });
       },

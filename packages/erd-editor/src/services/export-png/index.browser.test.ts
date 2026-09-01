@@ -101,6 +101,52 @@ async function decode(blob: Blob): Promise<Decoded> {
 
 const bytesOf = async (blob: Blob) => new Uint8Array(await blob.arrayBuffer());
 
+/** CANVAS_SIZE_MIN by CANVAS_SIZE_MAX: the tallest box the schema will hold. */
+const TALL_WIDTH = 2000;
+
+const TALL_HEIGHT = 20_000;
+
+const TALL_MEMO = { x: 400, y: 18_000, width: 1200, height: 1200 };
+
+/**
+ * The tallest document the schema allows, with a memo far enough down that no
+ * image cropped to what a canvas can hold in one dimension would reach it.
+ */
+function createTallDoc() {
+  return JSON.stringify({
+    version: '3.0.0',
+    settings: {
+      width: TALL_WIDTH,
+      height: TALL_HEIGHT,
+      scrollLeft: 0,
+      scrollTop: 0,
+      zoomLevel: 1,
+      databaseName: 'tall',
+    },
+    doc: {
+      tableIds: [],
+      relationshipIds: [],
+      indexIds: [],
+      memoIds: ['m-bottom'],
+    },
+    collections: {
+      tableEntities: {},
+      tableColumnEntities: {},
+      relationshipEntities: {},
+      indexEntities: {},
+      indexColumnEntities: {},
+      memoEntities: {
+        'm-bottom': {
+          id: 'm-bottom',
+          value: '',
+          ui: { ...TALL_MEMO, zIndex: 2, color: '#ff0000' },
+          meta: meta(),
+        },
+      },
+    },
+  });
+}
+
 const theme: Theme = createTestTheme();
 
 describe('createDocumentPng', () => {
@@ -130,6 +176,27 @@ describe('createDocumentPng', () => {
     );
 
     expect(image.at(FAR_X + 20, FAR_Y + 10)).not.toBe(theme.canvasBackground);
+    expect(image.at(10, 10)).toBe(theme.canvasBackground);
+  });
+
+  it('fits the image to the canvas ceiling when the box outruns it', async () => {
+    const image = await decode(
+      await createDocumentPng({ doc: createTallDoc(), theme, toWidth })
+    );
+
+    // 20000 tall is past the ceiling, so the long side lands on it and the
+    // short one rides the same ratio rather than being cropped to fit.
+    expect(image.height).toBe(16_384);
+    expect(image.width).toBe(1638);
+  });
+
+  it('keeps the far end of a box no canvas could hold', async () => {
+    const image = await decode(
+      await createDocumentPng({ doc: createTallDoc(), theme, toWidth })
+    );
+
+    // Inside the memo at y 18000, which only an image of the whole box reaches.
+    expect(image.at(827, 15_269)).toBe(theme.memoBackground);
     expect(image.at(10, 10)).toBe(theme.canvasBackground);
   });
 

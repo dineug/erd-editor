@@ -127,6 +127,20 @@ describe('exportMenus', () => {
     error.mockRestore();
   });
 
+  it('tells the user with a toast when the render fails', async () => {
+    vi.mocked(createDocumentPng).mockRejectedValueOnce(new Error('no canvas'));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const toasts: unknown[] = [];
+    const off = app.emitter.on({ openToast: action => toasts.push(action) });
+
+    createExportMenus(app, () => {}, theme)[2].onClick();
+    await flush();
+
+    expect(toasts).toHaveLength(1);
+    off();
+    error.mockRestore();
+  });
+
   it('captures the database name at creation time', () => {
     const menus = createExportMenus(app, () => {}, theme);
     app.store.dispatchSync(changeDatabaseNameAction({ value: 'later' }));
