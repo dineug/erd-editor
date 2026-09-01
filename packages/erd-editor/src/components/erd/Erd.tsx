@@ -189,8 +189,14 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const hit = sceneHit(canvas.value, event);
     const onEntity = hit?.kind === 'table' || hit?.kind === 'memo';
 
+    // The editing surface sits beside the stage container rather than inside
+    // it, so sceneHit cannot see it and the entity it is open over cannot
+    // answer for it. The dom scene had the editor inside .table and .memo.
+    const onEditor = Boolean(el.closest('.edit-overlay'));
+
     const canUnselectAll =
       !onEntity &&
+      !onEditor &&
       !el.closest('.edit-input') &&
       !el.closest('.context-menu-content') &&
       !el.closest('.hide-sign') &&

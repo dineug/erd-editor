@@ -135,6 +135,7 @@ const routingCalls = (className: string) =>
  */
 const DOM_GUARDS = [
   'color-picker',
+  'edit-overlay',
   'edit-input',
   'context-menu-content',
   'hide-sign',

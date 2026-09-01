@@ -242,6 +242,42 @@ describe('ColumnDataType', () => {
       expect(h.hintRows()).toHaveLength(0);
     });
 
+    it('holds a press on the list, so the canvas routing never sees it', async () => {
+      const h = await setup({ edit: true });
+
+      await type(h, 'INT');
+      const [row] = h.hintRows();
+      const event = new MouseEvent('mousedown', {
+        bubbles: true,
+        cancelable: true,
+      });
+      const stopPropagation = vi.spyOn(event, 'stopPropagation');
+
+      row.dispatchEvent(event);
+
+      expect(stopPropagation).toHaveBeenCalled();
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('holds the same press arriving as touch', async () => {
+      const h = await setup({ edit: true });
+
+      await type(h, 'INT');
+      const [row] = h.hintRows();
+      const event = new Event('touchstart', {
+        bubbles: true,
+        cancelable: true,
+      });
+      const stopPropagation = vi.spyOn(event, 'stopPropagation');
+
+      row.dispatchEvent(event);
+
+      // Left cancellable, because preventing it is what would swallow the
+      // click a tap is otherwise about to synthesise.
+      expect(stopPropagation).toHaveBeenCalled();
+      expect(event.defaultPrevented).toBe(false);
+    });
+
     it('moves the selection down and wraps around with ArrowDown', async () => {
       const h = await setup({ edit: true });
 

@@ -57,6 +57,23 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
     props.onInput?.(event);
   };
 
+  /**
+   * Keeps a press on the list from being read as a press on bare canvas. The
+   * list is dom over the stage, so the scene hit test cannot see it, and the
+   * canvas routing above ends this editor's focus before the release arrives.
+   */
+  const handleHintMousedown = (event: MouseEvent) => {
+    // Holding the caret here too, so no blur, no focusout timer and no
+    // interrupted composition stands between the press and the click.
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  /** The same press, arriving as touch, which the canvas routing also reads. */
+  const handleHintTouchstart = (event: TouchEvent) => {
+    event.stopPropagation();
+  };
+
   return () => (
     <div
       class={styles.root}
@@ -77,13 +94,21 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
         onKeydown={handleKeydown}
       />
       {props.edit ? (
-        <div class={styles.hint}>
+        <div
+          class={['data-type-hint', styles.hint]}
+          on:mousedown={handleHintMousedown}
+          on:touchstart={handleHintTouchstart}
+        >
           {repeat(
             state.hints,
             hint => hint.name,
             (hint, index) => (
               <div
-                class={[styles.hintItem, { selected: index === state.index }]}
+                class={[
+                  'data-type-hint-item',
+                  styles.hintItem,
+                  { selected: index === state.index },
+                ]}
                 on:click={() => handleSelectHint(index)}
               >
                 <HighlightedText

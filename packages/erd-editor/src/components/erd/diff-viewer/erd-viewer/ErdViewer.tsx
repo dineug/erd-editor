@@ -83,6 +83,7 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
 
     const canUnselectAll =
       !onEntity &&
+      !el.closest('.edit-overlay') &&
       !el.closest('.edit-input') &&
       !el.closest('.context-menu-content') &&
       !el.closest('.hide-sign') &&

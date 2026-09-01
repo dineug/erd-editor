@@ -1,5 +1,6 @@
 import { createRef, useProvider } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { userEvent } from 'vite-plus/test/browser/context';
 
 import {
   createTestAppContext,
@@ -26,6 +27,7 @@ import {
   HEADER_CELLS_Y,
   HEADER_TEXT_Y,
 } from '@/components/erd/canvas/table/cellLayout';
+import * as dataTypeStyles from '@/components/table-view/column/column-data-type/ColumnDataType.styles';
 import { themeContext } from '@/components/themeContext';
 import {
   MEMO_BORDER,
@@ -154,6 +156,42 @@ async function editColumnName(fixture: Fixture) {
     }),
     editTableAction()
   );
+  await flush();
+}
+
+async function editColumnDataType(fixture: Fixture) {
+  const { store } = fixture.app;
+  store.dispatchSync(
+    focusColumnAction({
+      tableId: fixture.tableId,
+      columnId: fixture.columnId,
+      focusType: FocusType.columnDataType,
+      $mod: false,
+      shiftKey: false,
+    }),
+    editTableAction()
+  );
+  await flush();
+}
+
+const hintRowsOf = (mounted: Mounted) =>
+  Array.from(
+    cellOf(mounted).querySelectorAll<HTMLElement>(`.${dataTypeStyles.hintItem}`)
+  );
+
+/** A row's data type, without the shortcut badge sharing the line with it. */
+const hintNameOf = (row: HTMLElement) =>
+  Array.from(row.childNodes)
+    .filter(
+      node => !(node instanceof HTMLElement && node.classList.contains('kbd'))
+    )
+    .map(node => node.textContent ?? '')
+    .join('')
+    .trim();
+
+/** Raises the hint list the way a person does, by typing into the open editor. */
+async function typeDataType(fixture: Fixture, value: string) {
+  await userEvent.fill(inputOf(fixture.mounted), value);
   await flush();
 }
 
@@ -677,5 +715,57 @@ describe('the memo body editor over the scene', () => {
       .findOne('.memo-textarea').attrs.text as string;
 
     expect(drawn.split(LINE_BREAK)).toEqual(folded);
+  });
+});
+
+/**
+ * The data type autocomplete, which is the one editor that opens dom of its
+ * own beside the input. The list sits over the stage rather than in it, so the
+ * canvas routing cannot hit test it and reads a press on it as bare canvas.
+ */
+describe('the data type hint list over the scene', () => {
+  it('writes the data type of a hint pressed with a real mouse', async () => {
+    const fixture = await setup();
+    await editColumnDataType(fixture);
+    await typeDataType(fixture, 'int');
+
+    const [row] = hintRowsOf(fixture.mounted);
+    expect(row).toBeTruthy();
+    const name = hintNameOf(row);
+    expect(name).toBeTruthy();
+
+    await userEvent.click(row);
+    await flush();
+
+    const { store } = fixture.app;
+    expect(
+      store.state.collections.tableColumnEntities[fixture.columnId].dataType
+    ).toBe(name);
+    expect(hintRowsOf(fixture.mounted).length).toBe(0);
+    expect(store.state.editor.focusTable?.edit).toBe(true);
+  });
+
+  it('keeps a press on the hint list from reaching the canvas routing', async () => {
+    const fixture = await setup();
+    await editColumnDataType(fixture);
+    await typeDataType(fixture, 'int');
+
+    let reached = 0;
+    const listen = () => {
+      reached += 1;
+    };
+    fixture.mounted.container.addEventListener('mousedown', listen);
+
+    // The input's own press does travel, which is what the routing filters on
+    // its class and what proves the listener below is wired at all.
+    await userEvent.click(inputOf(fixture.mounted));
+    expect(reached).toBe(1);
+
+    const [row] = hintRowsOf(fixture.mounted);
+    expect(row).toBeTruthy();
+    await userEvent.click(row);
+    fixture.mounted.container.removeEventListener('mousedown', listen);
+
+    expect(reached).toBe(1);
   });
 });
