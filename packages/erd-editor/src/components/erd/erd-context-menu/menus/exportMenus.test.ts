@@ -42,7 +42,40 @@ beforeEach(() => {
 
 afterEach(() => {
   setExportFileCallback(null);
+  vi.useRealTimers();
 });
+
+const createDeferred = <T>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
+
+const png = () => new Blob(['png-bytes'], { type: 'image/png' });
+
+/** The strings a toast was built from, which is all its template exposes. */
+const labelOf = (payload: any) =>
+  (payload.message.values as unknown[])
+    .filter(value => typeof value === 'string')
+    .join(' | ');
+
+/**
+ * Every open and close of a toast in the order it happened, which is the one
+ * way to tell a sequence of messages from a pile of them.
+ */
+function recordToasts(app: AppContext, log: string[]) {
+  return app.emitter.on({
+    openToast: ({ payload }) => {
+      const label = labelOf(payload);
+      log.push(`open ${label}`);
+      payload.close?.then(() => log.push(`close ${label}`));
+    },
+  });
+}
 
 describe('exportMenus', () => {
   it('exposes json, Schema SQL and png entries with their icons', () => {
@@ -175,6 +208,116 @@ describe('exportMenus', () => {
     expect(exported).toHaveLength(1);
     expect(toasts).toEqual([]);
     off();
+  });
+
+  it('says the png is being generated while the render runs long', async () => {
+    vi.useFakeTimers();
+    const render = createDeferred<Blob>();
+    vi.mocked(createDocumentPng).mockReturnValueOnce(render.promise);
+    const log: string[] = [];
+    const off = recordToasts(app, log);
+
+    createExportMenus(app, () => {}, theme)[2].onClick();
+    await vi.advanceTimersByTimeAsync(399);
+    expect(log).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(log).toEqual(['open Generating the png']);
+    expect(exported).toHaveLength(0);
+
+    render.resolve(png());
+    await vi.advanceTimersByTimeAsync(600);
+    off();
+  });
+
+  it('says nothing about generating when the render is quick', async () => {
+    const log: string[] = [];
+    const off = recordToasts(app, log);
+
+    createExportMenus(app, () => {}, theme)[2].onClick();
+    await flush();
+
+    expect(exported).toHaveLength(1);
+    expect(log).toEqual([]);
+    off();
+  });
+
+  it('keeps the generating toast up until the file exists', async () => {
+    vi.useFakeTimers();
+    const render = createDeferred<Blob>();
+    vi.mocked(createDocumentPng).mockReturnValueOnce(render.promise);
+    const log: string[] = [];
+    const off = recordToasts(app, log);
+
+    createExportMenus(app, () => {}, theme)[2].onClick();
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(log).toEqual(['open Generating the png']);
+    expect(exported).toHaveLength(0);
+
+    render.resolve(png());
+    await vi.advanceTimersByTimeAsync(600);
+
+    expect(log).toEqual([
+      'open Generating the png',
+      'close Generating the png',
+    ]);
+    expect(exported).toHaveLength(1);
+    off();
+  });
+
+  it('takes the generating toast away before saying the image was scaled down', async () => {
+    vi.useFakeTimers();
+    const render = createDeferred<void>();
+    vi.mocked(createDocumentPng).mockImplementationOnce(async options => {
+      await render.promise;
+      options.onResolutionReduced?.({
+        documentWidth: 20_000,
+        documentHeight: 20_000,
+        width: 16_384,
+        height: 16_384,
+      });
+      return png();
+    });
+    const log: string[] = [];
+    const off = recordToasts(app, log);
+
+    createExportMenus(app, () => {}, theme)[2].onClick();
+    await vi.advanceTimersByTimeAsync(400);
+    render.resolve();
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(log).toEqual([
+      'open Generating the png',
+      'close Generating the png',
+      'open Exported at a reduced resolution | 20000x20000 is past what a browser canvas can hold, so the image is 16384x16384',
+    ]);
+    expect(exported).toHaveLength(1);
+    off();
+  });
+
+  it('takes the generating toast away before saying the export failed', async () => {
+    vi.useFakeTimers();
+    const render = createDeferred<Blob>();
+    vi.mocked(createDocumentPng).mockReturnValueOnce(render.promise);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const log: string[] = [];
+    const off = recordToasts(app, log);
+
+    createExportMenus(app, () => {}, theme)[2].onClick();
+    await vi.advanceTimersByTimeAsync(400);
+    render.reject(new Error('no canvas'));
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(log).toEqual([
+      'open Generating the png',
+      'close Generating the png',
+      'open Failed to export the document as a png',
+    ]);
+    expect(exported).toHaveLength(0);
+    expect(error).toHaveBeenCalledTimes(1);
+    off();
+    error.mockRestore();
   });
 
   it('captures the database name at creation time', () => {
