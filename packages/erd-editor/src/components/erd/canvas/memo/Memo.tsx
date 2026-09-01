@@ -1,6 +1,7 @@
 /** @jsxHost konva */
 
 import { FC, observable } from '@dineug/r-html';
+import type { KonvaEventObject } from 'konva/lib/Node';
 
 import { useAppContext } from '@/components/appContext';
 import MemoSash from '@/components/erd/canvas/memo/memo-sash/MemoSash';
@@ -103,6 +104,15 @@ const Memo: FC<MemoProps> = (props, ctx) => {
 
   const handleValueMouseleave = (event: SceneMouseEvent) => {
     setSceneCursor(event, CURSOR_INHERIT);
+  };
+
+  /**
+   * Swallows a wheel over the memo body, which the dom scene got for free from
+   * the textarea that always sat there. The stage container is inside the
+   * element the pan and zoom listener is bound to, so stopping it there is all.
+   */
+  const handleValueWheel = (event: KonvaEventObject<WheelEvent>) => {
+    event.evt.stopPropagation();
   };
 
   return () => {
@@ -209,6 +219,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
             on:click={handleEditValue}
             on:mouseenter={handleValueMouseenter}
             on:mouseleave={handleValueMouseleave}
+            on:wheel={handleValueWheel}
           >
             <k-rect
               name="memo-textarea-hit"

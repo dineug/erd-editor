@@ -1,3 +1,4 @@
+import type { ErdEditorPage, Point } from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
 import {
   createSchema,
@@ -5,6 +6,7 @@ import {
   MEMO_SIZE,
   twoTables,
 } from '../support/schema';
+import { MOD_KEY } from '../support/shortcuts';
 
 // AC-I2. A memo was a div with a textarea in it, so the browser owned its drag
 // surface, its resize handles and its caret. All three are scene nodes now, and
@@ -193,5 +195,101 @@ test.describe('memo', () => {
 
     await expect(erd.canvas.locator('.memo[data-selected]')).toHaveCount(1);
     await expect(erd.selectedTables()).toHaveCount(1);
+  });
+});
+
+// AC-I2. The DOM memo swallowed a wheel through the textarea that always sat
+// in its body, and only there: the header, the border and the sashes let one
+// through to the canvas. The scene has to answer a wheel the same way.
+
+/** A run of notches long enough that a leak lands on the scroll clamp. */
+const WHEEL_NOTCHES = 40;
+
+/** One notch of deltaY, which is what a wheel click reports. */
+const WHEEL_DELTA = 120;
+
+const viewOf = (settings: {
+  scrollLeft: number;
+  scrollTop: number;
+  zoomLevel: number;
+}) => [settings.scrollLeft, settings.scrollTop, settings.zoomLevel];
+
+/**
+ * Wheels over a viewport point, holding the modifier the zoom path reads when
+ * one is asked for. The pointer is moved first, because konva resolves the node
+ * under a wheel from the position the stage last recorded.
+ */
+async function wheelOver(
+  erd: ErdEditorPage,
+  point: Point,
+  options: { mod?: boolean; notches?: number } = {}
+) {
+  await erd.hoverAt(point);
+  if (options.mod) await erd.page.keyboard.down(MOD_KEY);
+
+  for (let i = 0; i < (options.notches ?? WHEEL_NOTCHES); i++) {
+    await erd.page.mouse.wheel(0, WHEEL_DELTA);
+  }
+
+  if (options.mod) await erd.page.keyboard.up(MOD_KEY);
+  await erd.whenDrawn();
+}
+
+test.describe('memo wheel', () => {
+  test('a wheel over a resting memo body never pans or zooms the canvas', async ({
+    erd,
+  }) => {
+    await erd.seed(withMemo());
+    await expect(erd.memoEditor).toHaveCount(0);
+
+    const hit = await erd.sceneBox([`#memo-${MEMO_ID}`, '.memo-textarea-hit']);
+    const centre = { x: hit.x + hit.width / 2, y: hit.y + hit.height / 2 };
+    const before = await erd.settings();
+
+    await wheelOver(erd, centre);
+    expect(viewOf(await erd.settings())).toEqual(viewOf(before));
+
+    await wheelOver(erd, centre, { mod: true });
+    expect(viewOf(await erd.settings())).toEqual(viewOf(before));
+
+    // Swallowed rather than rerouted: the memo is still where it was seeded,
+    // and the wheel opened no editor over it.
+    const memo = await erd.memo(MEMO_ID);
+    expect([memo.ui.x, memo.ui.y]).toEqual([320, 240]);
+    await expect(erd.memoEditor).toHaveCount(0);
+  });
+
+  test('a wheel on the canvas beside the memo still pans and zooms', async ({
+    erd,
+  }) => {
+    await erd.seed(withMemo());
+
+    const before = await erd.settings();
+    await wheelOver(erd, await erd.emptyPoint());
+    await expect
+      .poll(async () => (await erd.settings()).scrollTop)
+      .toBeLessThan(before.scrollTop);
+
+    const panned = await erd.settings();
+    await wheelOver(erd, await erd.emptyPoint(), { mod: true });
+    await expect
+      .poll(async () => (await erd.settings()).zoomLevel)
+      .toBeLessThan(panned.zoomLevel);
+  });
+
+  test('a wheel over the memo header pans, as the dom scene let it', async ({
+    erd,
+  }) => {
+    await erd.seed(withMemo());
+
+    const box = await erd.sceneBox(`#memo-${MEMO_ID}`);
+    const header = { x: box.x + GRAB_OFFSET.x, y: box.y + GRAB_OFFSET.y };
+    const before = await erd.settings();
+
+    await wheelOver(erd, header, { notches: 1 });
+
+    await expect
+      .poll(async () => (await erd.settings()).scrollTop)
+      .toBeLessThan(before.scrollTop);
   });
 });

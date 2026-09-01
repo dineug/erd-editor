@@ -789,3 +789,109 @@ describe('the buttons a memo owns', () => {
     expect(app.store.state.doc.memoIds).not.toContain(MEMO_ID);
   });
 });
+
+/**
+ * The memo scene under a wheel listener of its own, standing in for the element
+ * the editor binds pan and zoom to. Konva binds its listener on the stage
+ * content inside it, so a stopped wheel never reaches the box below.
+ */
+async function mountUnderWheelListener() {
+  const wheels: Event[] = [];
+  const outer = document.createElement('div');
+  outer.style.cssText = 'position: fixed; left: 0; top: 0';
+  const container = document.createElement('div');
+  outer.append(container);
+  document.body.append(outer);
+  outer.addEventListener('wheel', event => {
+    wheels.push(event);
+  });
+
+  const app = createTestAppContext();
+  apps.add(app);
+
+  const rendered: RenderedScene = renderScene({
+    app,
+    container,
+    scene: (
+      <k-layer name="scene">
+        <Memo memo={createProps()} />
+      </k-layer>
+    ),
+    width: 800,
+    height: 600,
+    theme,
+  });
+
+  teardowns.push(() => {
+    rendered.destroy();
+    outer.remove();
+  });
+
+  await flush();
+  await whenDrawn();
+  // batchDraw paints on the next frame, and the hit canvas a wheel is resolved
+  // against is painted with it, so the commit gate alone is a frame early.
+  await whenPainted();
+
+  return { stage: rendered.stage, wheels };
+}
+
+/** Where a scene node sits on screen, which is what a wheel event carries. */
+function viewportCentre(stage: Stage, name: string) {
+  const rect = nodeNamed(stage, name).getClientRect({ relativeTo: stage });
+  const origin = stage.content.getBoundingClientRect();
+
+  return {
+    x: origin.left + rect.x + rect.width / 2,
+    y: origin.top + rect.y + rect.height / 2,
+  };
+}
+
+/**
+ * Sends one notch at a screen point, the way a mouse over the stage does, and
+ * names the node konva resolved it against, so a test cannot pass by landing
+ * on nothing at all.
+ */
+function wheelAt(stage: Stage, point: { x: number; y: number }) {
+  stage.content.dispatchEvent(
+    new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      clientX: point.x,
+      clientY: point.y,
+      deltaY: 120,
+    })
+  );
+
+  return stage.getIntersection(stage.getPointerPosition()!)?.name() ?? '';
+}
+
+describe('the wheel a memo body swallows', () => {
+  it('keeps a wheel over the body out of the box the canvas listens on', async () => {
+    const { stage, wheels } = await mountUnderWheelListener();
+
+    const hit = wheelAt(stage, viewportCentre(stage, 'memo-textarea-hit'));
+
+    expect(hit).toBe('memo-textarea-hit');
+    expect(wheels).toHaveLength(0);
+  });
+
+  it('lets a wheel beside the memo through, so the canvas still pans', async () => {
+    const { stage, wheels } = await mountUnderWheelListener();
+    const origin = stage.content.getBoundingClientRect();
+
+    const hit = wheelAt(stage, { x: origin.left + 700, y: origin.top + 500 });
+
+    expect(hit).toBe('');
+    expect(wheels).toHaveLength(1);
+  });
+
+  it('lets a wheel over the memo header through, as the dom scene did', async () => {
+    const { stage, wheels } = await mountUnderWheelListener();
+
+    const hit = wheelAt(stage, viewportCentre(stage, 'memo-header-color'));
+
+    expect(hit).toBe('memo-header-color');
+    expect(wheels).toHaveLength(1);
+  });
+});
