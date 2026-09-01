@@ -1,6 +1,7 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { getMinimapHandleRect } from '@/components/erd/minimap/minimapGeometry';
 import { useMinimapScroll } from '@/components/erd/minimap/useMinimapScroll';
 import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
 
@@ -14,32 +15,36 @@ const Viewport: FC<ViewportProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const { state, onScrollStart } = useMinimapScroll(ctx);
 
-  const getRatio = () => {
-    const { store } = app.value;
-    const {
-      settings: { width },
-    } = store.state;
-    return MINIMAP_SIZE / width;
-  };
-
+  /**
+   * The screen's own footprint on the canvas, drawn at the minimap's fixed
+   * ratio and trimmed to the map. The zoom lives in the size here rather than
+   * in the thumbnail, so zooming out grows this instead of shrinking the map.
+   */
   const styleMap = () => {
     const { store } = app.value;
     const {
-      settings: { scrollTop, scrollLeft },
+      settings: { width, height, scrollLeft, scrollTop, zoomLevel },
       editor: { viewport },
     } = store.state;
-    const ratio = getRatio();
-    const x = scrollLeft * ratio;
-    const y = scrollTop * ratio;
-    const width = viewport.width * ratio;
-    const height = viewport.height * ratio;
-    const top = MINIMAP_MARGIN - y;
-    // const left = viewport.width - MINIMAP_SIZE - MINIMAP_MARGIN - x;
-    const right = x - width + MINIMAP_SIZE + MINIMAP_MARGIN;
+
+    const rect = getMinimapHandleRect({
+      width,
+      height,
+      scrollLeft,
+      scrollTop,
+      zoomLevel,
+      viewportWidth: viewport.width,
+      viewportHeight: viewport.height,
+    });
+
+    // The minimap box is anchored to the right, so the offset that positions
+    // this one is measured from its right edge back over the rectangle.
+    const top = MINIMAP_MARGIN + rect.y;
+    const right = MINIMAP_MARGIN + MINIMAP_SIZE - rect.x - rect.width;
 
     return {
-      width: `${width}px`,
-      height: `${height}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
       right: `${right}px`,
       top: `${top}px`,
     };

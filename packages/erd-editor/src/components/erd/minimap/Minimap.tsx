@@ -3,6 +3,11 @@ import { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
 import * as canvasStyle from '@/components/erd/canvas/Canvas.styles';
+import {
+  getMinimapBoxSize,
+  getMinimapRatio,
+  getScrollToCenter,
+} from '@/components/erd/minimap/minimapGeometry';
 import { renderMinimapScene } from '@/components/erd/minimap/MinimapScene';
 import Viewport from '@/components/erd/minimap/viewport/Viewport';
 import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
@@ -32,7 +37,7 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
     const {
       settings: { width },
     } = store.state;
-    return MINIMAP_SIZE / width;
+    return getMinimapRatio(width);
   };
 
   /**
@@ -45,9 +50,8 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
     const {
       settings: { width, height },
     } = store.state;
-    const ratio = getRatio();
 
-    return { width: width * ratio, height: height * ratio };
+    return getMinimapBoxSize(width, height);
   };
 
   const styleMap = () => {
@@ -80,9 +84,15 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
     };
   };
 
+  /**
+   * Centres the screen on the pressed point. The press lands in minimap pixels
+   * and the ratio turns it into canvas units, which is a zoom free step; how
+   * much scroll reaches that point is not, so the geometry does that half.
+   */
   const handleMove = (event: MouseEvent | TouchEvent) => {
     const { store } = app.value;
     const {
+      settings: { width, height, scrollLeft, scrollTop, zoomLevel },
       editor: { viewport },
     } = store.state;
     const ratio = getRatio();
@@ -95,18 +105,25 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
       ? event.clientY
       : event.touches[0].clientY;
 
-    const x = clientX - rect.x;
-    const y = clientY - rect.y;
-    const absoluteX = x / ratio;
-    const absoluteY = y / ratio;
-    const scrollLeft = absoluteX - viewport.width / 2;
-    const scrollTop = absoluteY - viewport.height / 2;
+    const center = {
+      x: (clientX - rect.x) / ratio,
+      y: (clientY - rect.y) / ratio,
+    };
+    const scroll = getScrollToCenter(
+      {
+        width,
+        height,
+        scrollLeft,
+        scrollTop,
+        zoomLevel,
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+      },
+      center
+    );
 
     store.dispatch(
-      scrollToAction({
-        scrollLeft: -1 * scrollLeft,
-        scrollTop: -1 * scrollTop,
-      })
+      scrollToAction({ scrollLeft: scroll.x, scrollTop: scroll.y })
     );
 
     onScrollStart(event);

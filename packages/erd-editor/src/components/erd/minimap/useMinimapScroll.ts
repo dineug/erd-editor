@@ -1,7 +1,10 @@
 import { observable } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import { MINIMAP_SIZE } from '@/constants/layout';
+import {
+  getMinimapRatio,
+  toScrollMovement,
+} from '@/components/erd/minimap/minimapGeometry';
 import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { Ctx } from '@/internal-types';
 import { isMouseEvent } from '@/utils/domEvent';
@@ -17,17 +20,18 @@ export function useMinimapScroll(ctx: Ctx) {
   let clientX = 0;
   let clientY = 0;
 
-  const getRatio = () => {
+  /**
+   * Minimap travel as the scroll the canvas has to take to follow it. The
+   * minimap is drawn at a fixed ratio, so the canvas distance is zoom free; the
+   * scroll that covers it is not, because a scroll pixel is a screen pixel.
+   */
+  const absoluteMovement = (movement: number) => {
     const { store } = app.value;
     const {
-      settings: { width },
+      settings: { width, zoomLevel },
     } = store.state;
-    return MINIMAP_SIZE / width;
-  };
 
-  const absoluteMovement = (movement: number) => {
-    const ratio = getRatio();
-    return -1 * (movement / ratio);
+    return toScrollMovement(movement, getMinimapRatio(width), zoomLevel);
   };
 
   const getMovementX = ({ movementX, x }: DragMove) => {

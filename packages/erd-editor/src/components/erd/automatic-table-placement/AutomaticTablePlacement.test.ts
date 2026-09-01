@@ -199,15 +199,16 @@ describe('AutomaticTablePlacement', () => {
         '.minimap-viewport'
       ) as HTMLElement;
       const ratio = MINIMAP_SIZE / width;
-      const scrollLeft = -1 * (width / 2 - 800 / 2);
+      const zoomLevel = 800 / width;
       const scrollTop = -1 * (height / 2 - 600 / 2);
+      // The rectangle is the canvas the screen reaches, not the screen's own
+      // size, so the preview zoom divides into both. Horizontally that is the
+      // whole 2000 box, which is the map, and the offset from its left is nil.
+      const top =
+        (-1 * (scrollTop + (height - height * zoomLevel) / 2)) / zoomLevel;
 
-      expect(viewport.style.top).toBe(
-        `${MINIMAP_MARGIN - scrollTop * ratio}px`
-      );
-      expect(viewport.style.right).toBe(
-        `${scrollLeft * ratio - 800 * ratio + MINIMAP_SIZE + MINIMAP_MARGIN}px`
-      );
+      expect(viewport.style.top).toBe(`${MINIMAP_MARGIN + top * ratio}px`);
+      expect(viewport.style.right).toBe(`${MINIMAP_MARGIN}px`);
     });
 
     it('mirrors the origin viewport into the preview store', async () => {
@@ -220,16 +221,21 @@ describe('AutomaticTablePlacement', () => {
       ) as HTMLElement;
       const ratio = MINIMAP_SIZE / width;
 
-      expect(viewport.style.width).toBe(`${800 * ratio}px`);
-      expect(viewport.style.height).toBe(`${600 * ratio}px`);
+      // The preview is zoomed to 0.4 so the whole canvas fits, so the screen
+      // reaches 800 / 0.4 across, which is the canvas box and therefore the
+      // whole map. Only the height leaves room to grow with the viewport.
+      const zoomLevel = 800 / width;
+
+      expect(viewport.style.width).toBe(`${MINIMAP_SIZE}px`);
+      expect(viewport.style.height).toBe(`${(600 / zoomLevel) * ratio}px`);
 
       app.store.dispatchSync(
         changeViewportAction({ width: 1000, height: 400 })
       );
       await flush();
 
-      expect(viewport.style.width).toBe(`${1000 * ratio}px`);
-      expect(viewport.style.height).toBe(`${400 * ratio}px`);
+      expect(viewport.style.width).toBe(`${MINIMAP_SIZE}px`);
+      expect(viewport.style.height).toBe(`${(400 / zoomLevel) * ratio}px`);
     });
 
     it('opens a closable toast offering Stop and Cancel', async () => {

@@ -10,8 +10,12 @@ import {
 import { AppContext } from '@/components/appContext';
 import Viewport from '@/components/erd/minimap/viewport/Viewport';
 import * as styles from '@/components/erd/minimap/viewport/Viewport.styles';
+import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
-import { scrollToAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeZoomLevelAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 
 let mounted: Mounted | null = null;
 
@@ -72,6 +76,51 @@ describe('minimap Viewport', () => {
     // x = -400 * 0.075 = -30, y = -200 * 0.075 = -15
     expect(el.style.top).toBe('35px');
     expect(el.style.right).toBe('50px');
+  });
+
+  it('grows with the zoom, trimmed to the map it is drawn on', async () => {
+    const app = createTestAppContext();
+    await mount_(false, app);
+
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+    await flush();
+
+    const el = viewportOf();
+    // At half zoom the screen reaches 2400 x 1350 canvas units, which is 180 x
+    // 101.25 from -75, -75 at the same 0.075. The map is 150 square, so what is
+    // drawn is the part of that which lands on it.
+    expect(parseFloat(el.style.width)).toBeCloseTo(105, 3);
+    expect(parseFloat(el.style.height)).toBeCloseTo(26.25, 3);
+    expect(parseFloat(el.style.top)).toBeCloseTo(20, 3);
+    expect(parseFloat(el.style.right)).toBeCloseTo(65, 3);
+
+    app.store.dispatchSync(changeZoomLevelAction({ value: 1 }));
+    await flush();
+    expect(parseFloat(viewportOf().style.width)).toBeCloseTo(90, 3);
+  });
+
+  it('never leaves the map, however far the canvas zooms out', async () => {
+    const app = createTestAppContext();
+    await mount_(false, app);
+
+    for (const value of [1, 0.7, 0.5, 0.2, 0.1]) {
+      app.store.dispatchSync(changeZoomLevelAction({ value }));
+      await flush();
+
+      const el = viewportOf();
+      const width = parseFloat(el.style.width);
+      const height = parseFloat(el.style.height);
+      const x =
+        MINIMAP_MARGIN + MINIMAP_SIZE - parseFloat(el.style.right) - width;
+      const y = parseFloat(el.style.top) - MINIMAP_MARGIN;
+
+      // This box is a pointer target: a rectangle that hung over the canvas
+      // would take the presses meant for the tables under it.
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(x + width).toBeLessThanOrEqual(MINIMAP_SIZE + 1e-6);
+      expect(y + height).toBeLessThanOrEqual(MINIMAP_SIZE + 1e-6);
+    }
   });
 
   it('resizes with the editor viewport', async () => {

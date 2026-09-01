@@ -5,20 +5,10 @@ import { FC, repeat } from '@dineug/r-html';
 import type { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
-import RelationshipGroup from '@/components/erd/canvas/relationship-group/RelationshipGroup';
 import Memo from '@/components/erd/minimap/memo/Memo';
+import { getMinimapRatio } from '@/components/erd/minimap/minimapGeometry';
 import Table from '@/components/erd/minimap/table/Table';
-import { MINIMAP_SIZE } from '@/constants/layout';
-import { Show } from '@/constants/schema';
 import { renderKonva } from '@/konva/host';
-import { bHas } from '@/utils/bit';
-
-/**
- * Not a multiple of what the canvas draws: the minimap scales the whole canvas
- * down far enough that a connector at the canvas width lands under a device
- * pixel. This floor is independent.
- */
-const STROKE_WIDTH = 12;
 
 export type MinimapSceneProps = {};
 
@@ -28,7 +18,8 @@ const byZIndex = (a: Stacked, b: Stacked) => a.ui.zIndex - b.ui.zIndex;
 
 /**
  * The whole document on one layer, with no culling: a thumbnail that dropped
- * what is off screen would stop being a map of where the rest of it is.
+ * what is off screen would stop being a map of where the rest of it is. Boxes
+ * only, because a connector between two of them is noise at this size.
  */
 const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -36,8 +27,8 @@ const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
   return () => {
     const { store } = app.value;
     const {
-      settings: { width, height, zoomLevel, show },
-      doc: { tableIds, memoIds, relationshipIds },
+      settings: { width },
+      doc: { tableIds, memoIds },
       collections,
     } = store.state;
 
@@ -51,33 +42,17 @@ const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
       .selectByIds(memoIds)
       .sort(byZIndex);
 
-    const relationships = query(collections)
-      .collection('relationshipEntities')
-      .selectByIds(relationshipIds);
-
-    // Two css scales in one layer transform: the thumbnail ratio the container
-    // used to carry, and the canvas zoom the copy inside it did. Both scaled
-    // about the middle of the canvas box, which is what the offsets restate.
-    const ratio = MINIMAP_SIZE / width;
-    const scale = ratio * zoomLevel;
-    const x = (ratio * width * (1 - zoomLevel)) / 2;
-    const y = (ratio * height * (1 - zoomLevel)) / 2;
+    // One scale and no offset: the canvas box fills the minimap square whatever
+    // the zoom is, and the zoom is drawn by the viewport rectangle over it.
+    const scale = getMinimapRatio(width);
 
     return (
       <k-layer
         name="minimap-scene"
         listening={false}
-        x={x}
-        y={y}
         scaleX={scale}
         scaleY={scale}
       >
-        {bHas(show, Show.relationship) ? (
-          <RelationshipGroup
-            relationships={relationships}
-            strokeWidth={STROKE_WIDTH}
-          />
-        ) : null}
         {repeat(
           tables,
           table => table.id,

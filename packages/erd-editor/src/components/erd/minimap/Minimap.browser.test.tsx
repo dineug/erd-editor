@@ -1,6 +1,6 @@
 // P3-31: the minimap as a second Stage. The thumbnail is its own 150px scene
-// now instead of a full size copy under a css scale, and the box it occupies,
-// the scroll it drives and the viewport rectangle over it are unchanged.
+// now instead of a full size copy under a css scale, and it holds that one
+// scale through a zoom: the zoom is drawn by the rectangle over it instead.
 
 import { useProvider } from '@dineug/r-html';
 import type { Stage } from 'konva/lib/Stage';
@@ -17,6 +17,7 @@ import * as canvasStyles from '@/components/erd/canvas/Canvas.styles';
 import Minimap from '@/components/erd/minimap/Minimap';
 import * as styles from '@/components/erd/minimap/Minimap.styles';
 import { themeContext } from '@/components/themeContext';
+import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
 import { RelationshipType, Show } from '@/constants/schema';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
@@ -130,7 +131,7 @@ describe('the minimap shell', () => {
     ]);
   });
 
-  it('folds the thumbnail ratio and the canvas zoom into one layer scale', async () => {
+  it('holds the thumbnail at the ratio alone, through every zoom', async () => {
     const app = createTestAppContext();
     await mountMinimap(app);
     const layer = stageRegistry().minimap.findOne('.minimap-scene')!;
@@ -138,14 +139,17 @@ describe('the minimap shell', () => {
     expect(layer.scaleX()).toBe(0.075);
     expect(layer.x()).toBe(0);
 
-    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
-    await flush();
+    for (const value of [0.5, 0.2, 0.1]) {
+      app.store.dispatchSync(changeZoomLevelAction({ value }));
+      await flush();
 
-    expect(layer.scaleX()).toBe(0.075 * 0.5);
-    // The canvas zoom scaled about the middle of the 2000px box, shrunk by the
-    // same ratio: 0.075 * 2000 * (1 - 0.5) / 2.
-    expect(layer.x()).toBe(37.5);
-    expect(layer.y()).toBe(37.5);
+      // The canvas box fills the square at every zoom, so there is no offset
+      // to restate either: a zoom that moved these would shrink the map.
+      expect(layer.scaleX()).toBe(0.075);
+      expect(layer.scaleY()).toBe(0.075);
+      expect(layer.x()).toBe(0);
+      expect(layer.y()).toBe(0);
+    }
   });
 
   it('follows a canvas resize on both the box and the Stage', async () => {
@@ -231,11 +235,17 @@ describe('the minimap shell', () => {
     expect(written).toEqual([]);
   });
 
-  it('draws the connectors far thicker than the canvas does', async () => {
+  it('draws no connectors at all, whatever the canvas is showing', async () => {
     const app = createTestAppContext();
     await mountMinimap(app);
     const stage = stageRegistry().minimap;
 
+    app.store.dispatchSync(
+      addTableAction({ id: 'table-a', ui: { x: 10, y: 20, zIndex: 1 } })
+    );
+    app.store.dispatchSync(
+      addTableAction({ id: 'table-b', ui: { x: 600, y: 400, zIndex: 2 } })
+    );
     app.store.dispatchSync(
       addRelationshipAction({
         id: 'r1',
@@ -244,20 +254,17 @@ describe('the minimap shell', () => {
         end: { tableId: 'table-b', columnIds: ['c2'] },
       })
     );
-    await flush();
-
-    // The minimap scales the canvas down far enough that a route drawn at the
-    // canvas width would be a fraction of a device pixel. This is a legibility
-    // floor of its own, not derived from the canvas stroke.
-    expect(stage.findOne('.relationship-route')?.getAttr('strokeWidth')).toBe(
-      12
-    );
-
     app.store.dispatchSync(
-      changeShowAction({ show: Show.relationship, value: false })
+      changeShowAction({ show: Show.relationship, value: true })
     );
     await flush();
+
+    // A connector between two boxes this small is noise, so the minimap draws
+    // the boxes and nothing between them. The canvas still draws its own.
+    expect(app.store.state.doc.relationshipIds).toHaveLength(1);
+    expect(stage.find('.minimap-table')).toHaveLength(2);
     expect(stage.find('.relationship-group')).toHaveLength(0);
+    expect(stage.find('.relationship-route')).toHaveLength(0);
   });
 
   it('scrolls the canvas so the pressed point becomes the viewport center', async () => {
@@ -274,6 +281,37 @@ describe('the minimap shell', () => {
     expect(app.store.state.settings.scrollLeft).toBe(-400);
     // (50 - 20) / 0.075 = 400 -> 400 - 675 / 2 = 62.5
     expect(app.store.state.settings.scrollTop).toBe(-62.5);
+  });
+
+  it('centres the press on the same canvas point while zoomed out', async () => {
+    const app = createTestAppContext();
+    const mounted = await mountMinimap(app);
+    // 8000 at half zoom still draws wider than the editor viewport, so the
+    // scroll this asks for is nowhere near the bound and no clamp hides it.
+    app.store.dispatchSync(resizeAction({ width: 8000, height: 8000 }));
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+    await flush();
+    stubRect(0, 0);
+
+    minimapOf(mounted).dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true, clientX: 45, clientY: 45 })
+    );
+    await flush();
+
+    // 45 / 0.01875 is canvas 2400 at any zoom, but at half zoom the screen
+    // spans 2400 canvas units, so centring it is not 2400 - 1200 / 2.
+    expect(app.store.state.settings.scrollLeft).toBe(-2600);
+    expect(app.store.state.settings.scrollTop).toBe(-2862.5);
+
+    const el = viewportOf(mounted);
+    const width = parseFloat(el.style.width);
+    const height = parseFloat(el.style.height);
+    const x =
+      MINIMAP_MARGIN + MINIMAP_SIZE - parseFloat(el.style.right) - width;
+    const y = parseFloat(el.style.top) - MINIMAP_MARGIN;
+
+    expect(x + width / 2).toBeCloseTo(45, 3);
+    expect(y + height / 2).toBeCloseTo(45, 3);
   });
 
   it('clamps the scroll to the canvas bounds', async () => {
@@ -350,6 +388,43 @@ describe('the minimap shell', () => {
 
     expect(afterPress).toBe(-200);
     expect(app.store.state.settings.scrollLeft).toBe(-333.3333);
+  });
+
+  it('keeps the viewport rectangle under the pointer while zoomed out', async () => {
+    const app = createTestAppContext();
+    const mounted = await mountMinimap(app);
+    app.store.dispatchSync(resizeAction({ width: 8000, height: 8000 }));
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+    await flush();
+    stubRect(0, 0);
+
+    minimapOf(mounted).dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true, clientX: 45, clientY: 45 })
+    );
+    await flush();
+
+    // Half zoom, so the screen reaches twice the canvas and the rectangle is
+    // twice the 22.5px it draws at zoom 1 over the same 150px map.
+    expect(parseFloat(viewportOf(mounted).style.width)).toBeCloseTo(45, 3);
+    const before = parseFloat(viewportOf(mounted).style.right);
+
+    window.dispatchEvent(
+      new MouseEvent('mousemove', {
+        bubbles: true,
+        cancelable: true,
+        clientX: 55,
+        clientY: 45,
+      })
+    );
+    await flush();
+
+    // The scroll carries the zoom, so ten pointer pixels are ten minimap
+    // pixels: dropping the zoom term moves the rectangle twice as far.
+    expect(app.store.state.settings.scrollLeft).toBe(-2866.6667);
+    expect(before - parseFloat(viewportOf(mounted).style.right)).toBeCloseTo(
+      10,
+      3
+    );
   });
 
   it('drops the Stage and its registry entry on unmount', async () => {

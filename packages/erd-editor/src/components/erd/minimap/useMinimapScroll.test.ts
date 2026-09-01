@@ -11,6 +11,7 @@ import { AppContext } from '@/components/appContext';
 import { useMinimapScroll } from '@/components/erd/minimap/useMinimapScroll';
 import { ActionType } from '@/engine/modules/settings/actions';
 import {
+  changeZoomLevelAction,
   resizeAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -283,6 +284,30 @@ describe('useMinimapScroll', () => {
     await flush();
 
     expect(api!.state.selected).toBe(false);
+  });
+
+  it('rescales the movement when the canvas is zoomed out', async () => {
+    // A canvas this large still draws wider than the viewport at half zoom, and
+    // the start is far from either bound, so the step below is never clamped.
+    app.store.dispatchSync(resizeAction({ width: 8000, height: 8000 }));
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+    app.store.dispatchSync(
+      scrollToAction({ scrollLeft: -3000, scrollTop: -3000 })
+    );
+    await flush();
+    const before = app.store.state.settings.scrollLeft;
+
+    mousedown(100, 100);
+    mousemove(110, 100);
+    await flush();
+
+    // The minimap keeps its scale, so 10px of travel is still 10 / ratio canvas
+    // px; a scroll pixel only buys half of one at this zoom, hence the halving.
+    expect(before).toBe(-3000);
+    expect(app.store.state.settings.scrollLeft - before).toBeCloseTo(
+      -266.6667,
+      3
+    );
   });
 
   it('rescales the movement when the canvas is resized', async () => {
