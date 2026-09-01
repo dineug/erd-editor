@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-08-31 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-01 -->
 
 # vite-plugin-r-html
 
@@ -61,6 +61,12 @@ file carries the host pragma.
   comment, or with a value other than `dom`/`konva`, it is a compile error rather than a silent miss.
 - The `accept` block is appended only when the module also has a named `export default`; every named
   export must be component-shaped (uppercase first letter), and a nameless default is declined.
+  **That test is the reason a scene root is exported in lower case.** `erd-editor`'s
+  `renderCanvasScene` / `renderMinimapScene` render imperatively into a Konva Stage, so their parents
+  hand-roll `import.meta.hot.accept` for those modules. Capitalize either name — or remove it, leaving
+  the export list all component-shaped — and this half classes the module a boundary, injects a
+  self-accept, and Vite stops propagating: the parent's `accept` never runs and scene HMR dies with no
+  error anywhere.
 - Boundary modules import `virtual:r-html-hmr`, whose module calls `hmr()` once; `apply: 'serve'` is
   the dev/production switch.
 - The root `tsconfig.json` maps this package to `src/index.ts` so the `check` CI job can typecheck
@@ -95,7 +101,10 @@ None. Pairs with `@dineug/r-html`'s `hmr.ts` by event contract only; it imports 
 
 ### Consumers
 
-`@dineug/erd-editor` only: production loads the plugin through `lazyPlugins`, while its Vitest config
-imports it directly with `{ refresh: false }`; its `build`/`test` tasks track this `dist/**/*.d.ts`.
+`@dineug/erd-editor` only. Its `vite.config.ts` loads the plugin through `lazyPlugins`, and its
+`vitest.config.ts` imports it directly with `{ refresh: false }` — repeated per project, because
+Vitest inherits neither config. **Both pass `jsx: { konvaImportSource: '@/konva/host' }`**, so adding
+a third entry point that compiles `.tsx` means adding it there too, or every `@jsxHost konva` file in
+the package becomes a compile error. Its `build`/`test` tasks track this `dist/**/*.d.ts`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

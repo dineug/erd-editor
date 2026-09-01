@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-01 -->
 
 # erd-editor-schema
 
@@ -42,6 +42,7 @@ Defines the persisted `.erd` / `.vuerd` document format: the v2 and v3 schemas, 
 - `selectByIds` reads `ids.length` before mapping to register an r-html observable dependency; removing that line breaks reactivity on id-list changes.
 - `query(collections)` exposes `collection`, `selectById(s)`, `selectEntities`, `selectAll`, `set/add/remove` one/many/all operations, `updateOne/many`, `getOrCreate`, and collection-bound LWW operators. `removeAll()` replaces only the query's private collection reference; callers needing the parent `collections[key]` slot replaced must handle that explicitly.
 - LWW comparisons are the correctness core: add runs its recipe when `removeVersion < version`, remove when `addVersion <= version`, replace when the path's `prevVersion <= version`. `src/query/lww.test.ts` pins all three.
+- The canvas bounds in `v3/schema/settings.ts` are the format's, not the editor's: `CANVAS_ZOOM_MIN` 0.1, `CANVAS_ZOOM_MAX` **1.5** (raised from 1 when the editor's scene moved to canvas), `CANVAS_SIZE_MIN` 2,000, `CANVAS_SIZE_MAX` 20,000. `v3/parser/settings.ts` clamps a parsed `zoomLevel` into that range, so widening the ceiling is backward compatible while narrowing it silently rewrites saved documents.
 - `@dineug/shared` is a `peerDependency` (plus a `workspace:*` dev entry), so both tasks list `peerDependencies` in `dependsOn` — dropping it builds against a stale `dist/`.
 
 ### Testing Requirements

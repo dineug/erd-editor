@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-01 -->
 
 # r-html
 
@@ -7,11 +7,17 @@
 
 `@dineug/r-html` is the in-house rendering framework `@dineug/erd-editor` is built on. It supplies tagged templates (`html`, `svg`, `css`) compiled to a virtual node tree, Proxy-based reactivity with a microtask scheduler, a functional component model with lifecycle hooks and a `defineCustomElement` adapter, and a Redux-like `createStore`. A second, types-only entry at `./jsx-runtime` carries the JSX contract those templates can also be written in. `private: true`, so its `version` is never published; `vite-plugin-r-html` is the separate build-time JSX/HMR integration.
 
+The renderer is host-neutral: `createHostTemplate(adapter)` builds an `html`/`svg`/`render` triple over any `HostAdapter`, and the DOM is one instance of it rather than the only target. The package ships the DOM adapter and carries a second, test-only one under `src/render/__fake-host__/`; the second production host is `packages/erd-editor/src/konva/host.ts`, which renders a Konva shape tree. Everything under **Host adapter contract** below is the seam's specification.
+
 ## Key Files
 
 | File | Description |
 | --- | --- |
 | `src/index.ts` | The public API — named re-exports, plus `export *` over the two directive barrels; anything else is private |
+| `src/render/adapter.ts` | `HostAdapter` and `HostNode` — the 24 methods a render host implements, in six groups |
+| `src/render/hostTemplate.ts` | `createHostTemplate(adapter)`: one host, one `html`/`svg`/`render` triple, one per-instance container map |
+| `src/render/domAdapter.ts` | The DOM implementation of the seam, and the only one that reaches `dist/` |
+| `src/render/__fake-host__/` | The second implementation, test-only: an in-memory tree plus a call-counting adapter, excluded from `tsconfig.build.json` |
 | `src/jsx-runtime.ts` | The `JSX` namespace behind `jsxImportSource`; intrinsic tags derived from the DOM lib's tag-name maps |
 | `src/constants.ts` | `MARKER` (per-load random suffix) and its regexps, `TAttrType`, 7 lifecycle `Symbol.for` keys |
 | `src/template/vCSSStyleSheet.ts` | Adopted-stylesheet registry: one sheet per template, global/component cascade buckets, `<style>` fallback |
@@ -40,7 +46,7 @@
 ### Working In This Directory
 
 - `exports` is asymmetric on purpose: `.` ships `types` and `default`, `./jsx-runtime` ships `types` alone, so a build whose JSX transform went missing dies on `ERR_PACKAGE_PATH_NOT_EXPORTED` rather than rendering wrongly. That file is a `.ts` because `vite-plugin-dts` emits declarations and does not copy hand-written ones, which costs it a `typescript/no-namespace` exemption in the root `vite.config.ts` — `JSX` has to be a namespace, that being the shape `jsxImportSource` looks for.
-- `src/index.ts` is the runtime contract; a symbol not re-exported there is private. `removeCSSHost` is deliberately absent — its only caller is the `disconnectedCallback` of the element class `defineCustomElement` registers. The public surface also includes context, directives, CSS diagnostics, HMR, refs/cache/repeat, store, and stylesheet controls.
+- `src/index.ts` is the runtime contract; a symbol not re-exported there is private. `removeCSSHost` is deliberately absent — its only caller is the `disconnectedCallback` of the element class `defineCustomElement` registers. The public surface also includes context, directives, CSS diagnostics, HMR, refs/cache/repeat, store, stylesheet controls, and the host seam (`createHostTemplate`, plus the `HostAdapter` / `HostNode` / `HostContainer` / `HostTemplate` types) — an out-of-tree host is written against those exports alone.
 - `src/parser/` imports nothing from `src/constants.ts` — it tokenizes plain HTML. `MARKER` is injected by `template/html.ts` (`createMarker`) and read back only in `template/helper.ts` and `template/tNode.ts`, so those three move together.
 - Reactivity is batched through `observable/scheduler.ts`, so a DOM read taken right after a state write still sees the old tree — `await nextTick()` first.
 - `helpers/array.ts` `groupBy` accumulates into `Object.create(null)`: attributes are grouped by name, and a `constructor` attribute would otherwise hit an inherited function.
@@ -48,7 +54,8 @@
 
 ### Testing Requirements
 
-- Unit: `pnpm exec vp run --filter @dineug/r-html --fail-if-no-match test` — `tsc --noEmit` then `vp test run`, happy-dom, 79 colocated `src/**/*.test.ts` files.
+- Unit: `pnpm exec vp run --filter @dineug/r-html --fail-if-no-match test` — `tsc --noEmit` then `vp test run`, happy-dom, 81 colocated `src/**/*.test.ts` files.
+- **The 76 specs that predate the host seam are frozen.** The seam was added without editing one of them, and that — not any new assertion — is the evidence that the DOM host still behaves as it did. Add specs freely; changing or deleting one of the 76 removes the only proof there is that a seam refactor was behaviour-preserving. `git diff 3a524e6e -- 'packages/r-html/src/**/*.test.ts'` is how to check, and the five files added since are `css/selectorList`, `observable/unobserve`, `render/domAdapter`, `render/fakeHost` and `render/part/attribute/attribute.singleMarker`.
 - Coverage: `pnpm --filter @dineug/r-html test:coverage` — v8, `perFile` 80% lines/functions/branches/statements, excluding `src/internal-types/**`, `src/index.dev.ts`, and type-only `src/jsx-runtime.ts`.
 - E2E: `pnpm --filter @dineug/r-html e2e` (plus `e2e:dev`, `e2e:headed`, `e2e:report`, `e2e:typecheck`). No build step — `vp dev` serves `src/` through `@`. See `e2e/README.md`.
 - happy-dom has no style engine, so `vCSSStyleSheet.ts`'s `adoptedStyleSheets` behaviour is pinned only by the e2e specs; re-run them after touching that file. The Playwright web server uses `E2E=1` to suppress `server.open`; it does not pass `--no-open`.
