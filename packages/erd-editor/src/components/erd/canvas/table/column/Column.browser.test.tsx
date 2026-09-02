@@ -420,14 +420,17 @@ describe('what a cell draws', () => {
       theme.focus
     );
 
+    const border = focused.findOne('.cell-focus-border') as Rect;
+
     await rerender({ focusName: true, editName: true });
     const edited = named<Group>(rowOf(stage), 'columnName');
+    const editedBorder = edited.findOne('.cell-focus-border') as Rect;
 
-    // The box stays and paints nothing: the editor the overlay opens draws its
-    // own border there, and the cell keeps its focus marker in both states.
-    expect((edited.findOne('.cell-focus-border') as Rect).fill()).toBe(
-      TRANSPARENT
-    );
+    // The same rect keeps running under the editor, only recoloured: a dom
+    // underline over a canvas one rasterises to a different thickness.
+    expect(editedBorder.fill()).toBe(theme.inputActive);
+    expect(editedBorder.y()).toBe(border.y());
+    expect(editedBorder.height()).toBe(border.height());
     expect((edited.findOne('.cell-text') as Text).visible()).toBe(false);
   });
 

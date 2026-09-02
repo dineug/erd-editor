@@ -31,6 +31,7 @@ import { INPUT_MARGIN_RIGHT, TABLE_BORDER } from '@/constants/layout';
 import { Show } from '@/constants/schema';
 import {
   dragendColumnAction,
+  editTableAction,
   focusColumnAction,
   focusTableAction,
   focusTableEndAction,
@@ -642,6 +643,30 @@ describe('the header cell text', () => {
     ) as Rect;
 
     expect(border.fill()).toBe(theme.focus);
+  });
+
+  it('keeps that underline under the editor, recoloured rather than redrawn', async () => {
+    const { app, stage, table, theme } = await setup();
+
+    app.store.dispatchSync(
+      focusTableAction({ tableId: table.id, focusType: FocusType.tableName })
+    );
+    await settle();
+
+    const cell = () =>
+      named<Group>(rootOf(stage), 'tableName').findOne<Rect>(
+        '.cell-focus-border'
+      ) as Rect;
+    const focused = { y: cell().y(), height: cell().height() };
+
+    app.store.dispatchSync(editTableAction());
+    await settle();
+
+    // A dom underline over a canvas one rasterises to a different thickness,
+    // so the editor paints none and this rect runs on in the editing colour.
+    expect(cell().fill()).toBe(theme.inputActive);
+    expect(cell().y()).toBe(focused.y);
+    expect(cell().height()).toBe(focused.height);
   });
 
   it('underlines a cell a peer is focused on, in the peer colour', async () => {

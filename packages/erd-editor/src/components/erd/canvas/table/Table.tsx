@@ -24,6 +24,7 @@ import {
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import {
+  CELL_UNDERLINE_Y,
   type CellSlot,
   getHeaderCellSlots,
   HEADER_CELLS_Y,
@@ -330,12 +331,12 @@ const Table: FC<TableProps> = (props, ctx) => {
       {focus ? (
         <k-rect
           name="cell-focus-border"
-          y={HEADER_TEXT_Y + INPUT_HEIGHT - FOCUS_BORDER_HEIGHT}
+          y={HEADER_TEXT_Y + CELL_UNDERLINE_Y}
           width={width}
           height={FOCUS_BORDER_HEIGHT}
           fill={
             edit
-              ? TRANSPARENT
+              ? themeRef.value.inputActive
               : props.editorFocused === false
                 ? themeRef.value.placeholder
                 : themeRef.value.focus

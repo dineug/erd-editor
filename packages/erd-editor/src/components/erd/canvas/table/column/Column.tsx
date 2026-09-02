@@ -23,6 +23,7 @@ import {
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import {
+  CELL_UNDERLINE_Y,
   COLUMN_TEXT_Y,
   type ColumnCellSlot,
   getColumnCellSlots,
@@ -292,12 +293,12 @@ const Column: FC<ColumnProps> = (props, ctx) => {
       {focus ? (
         <k-rect
           name="cell-focus-border"
-          y={COLUMN_TEXT_Y + INPUT_HEIGHT - FOCUS_BORDER_HEIGHT}
+          y={COLUMN_TEXT_Y + CELL_UNDERLINE_Y}
           width={width}
           height={FOCUS_BORDER_HEIGHT}
           fill={
             edit
-              ? TRANSPARENT
+              ? themeRef.value.inputActive
               : props.editorFocused === false
                 ? themeRef.value.placeholder
                 : themeRef.value.focus

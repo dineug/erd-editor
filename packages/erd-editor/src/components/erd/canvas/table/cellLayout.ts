@@ -55,7 +55,7 @@ export const COLUMN_TEXT_Y = COLUMN_PADDING;
  */
 export const CELL_TEXT_HEIGHT = INPUT_HEIGHT;
 
-/** Where the underline runs inside that box, for the scene and the editor both. */
+/** Where the scene runs its focus rect inside that box, header and column both. */
 export const CELL_UNDERLINE_Y = CELL_TEXT_HEIGHT - FOCUS_BORDER_HEIGHT;
 
 /**
