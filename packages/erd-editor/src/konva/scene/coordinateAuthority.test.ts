@@ -17,7 +17,7 @@ import {
   toScenePoint,
   toScreenPoint,
 } from '@/konva/scene/viewport';
-import { getAbsolutePoint, getZoomViewport } from '@/utils/dragSelect';
+import { getAbsolutePoint } from '@/utils/dragSelect';
 
 /**
  * The screen equals scene times zoom plus origin placement, stated once. Every
@@ -177,21 +177,25 @@ describe('the scene transform is one formula', () => {
     expect(bad).toEqual([]);
   });
 
-  it('ends the scroll travel where the document edge meets the screen edge', () => {
+  it('ends the scroll travel where the screen edge meets the document', () => {
     const bad = failures(GRID, ({ transform, viewport }) => {
       const { width, height, zoomLevel } = transform;
-      const zoom = getZoomViewport(width, height, zoomLevel);
       const ranges = getScrollRanges({ width, height, zoomLevel }, viewport);
-      const at = (scrollLeft: number, x: number) =>
-        toScreenPoint({ ...transform, scrollLeft }, { x, y: 0 }).x;
-      const inset = Math.max(zoom.x, 0);
+      const at = (scrollLeft: number) =>
+        toScenePoint(
+          { ...transform, scrollLeft },
+          { x: viewport.width / 2, y: 0 }
+        ).x;
+      const inset = viewport.width / (2 * Math.max(1, zoomLevel));
+      const near = Math.min(inset, width - inset);
+      const far = Math.max(inset, width - inset);
 
-      if (!close(at(ranges.left.max, 0), inset)) {
-        return `at the scroll maximum the document starts at screen x ${at(ranges.left.max, 0)}, not ${inset}`;
+      if (!close(at(ranges.left.max), near)) {
+        return `at the scroll maximum the middle of the screen reads scene x ${at(ranges.left.max)}, not ${near}`;
       }
 
-      if (!close(at(ranges.left.min, width), viewport.width - inset)) {
-        return `at the scroll minimum the document ends at screen x ${at(ranges.left.min, width)}, not ${viewport.width - inset}`;
+      if (!close(at(ranges.left.min), far)) {
+        return `at the scroll minimum the middle of the screen reads scene x ${at(ranges.left.min)}, not ${far}`;
       }
 
       return null;
@@ -200,27 +204,39 @@ describe('the scene transform is one formula', () => {
     expect(bad).toEqual([]);
   });
 
-  it('never lets a zoom-out narrow the travel a zoom of one already had', () => {
+  it('never lets a zoom-out narrow the document a zoom of one reaches', () => {
     const bad: string[] = [];
 
     for (const size of WIDTHS) {
       for (const viewport of VIEWPORTS) {
-        const unzoomed = getScrollRanges(
-          { width: size, height: size, zoomLevel: 1 },
-          viewport
-        );
-        const span = unzoomed.left.max - unzoomed.left.min;
-
-        for (const zoomLevel of ZOOMS.filter(zoom => zoom <= 1)) {
-          const shrunk = getScrollRanges(
+        const reach = (zoomLevel: number) => {
+          const transform = {
+            width: size,
+            height: size,
+            scrollLeft: 0,
+            scrollTop: 0,
+            zoomLevel,
+          };
+          const { left } = getScrollRanges(
             { width: size, height: size, zoomLevel },
             viewport
           );
-          const own = shrunk.left.max - shrunk.left.min;
+          const at = (scrollLeft: number) =>
+            toScenePoint(
+              { ...transform, scrollLeft },
+              { x: viewport.width / 2, y: 0 }
+            ).x;
 
-          if (own < span - 1e-9) {
+          return at(left.min) - at(left.max);
+        };
+        const unzoomed = reach(1);
+
+        for (const zoomLevel of ZOOMS.filter(zoom => zoom <= 1)) {
+          const own = reach(zoomLevel);
+
+          if (own < unzoomed - 1e-9) {
             bad.push(
-              `canvas ${size} viewport ${viewport.width}: zoom ${zoomLevel} travels ${own}, zoom 1 travels ${span}`
+              `canvas ${size} viewport ${viewport.width}: zoom ${zoomLevel} reaches ${own} of the document, zoom 1 reaches ${unzoomed}`
             );
           }
         }

@@ -219,9 +219,9 @@ describe('editor.changeViewport', () => {
   });
 
   /**
-   * The same pull with the canvas drawn far smaller than the screen. Travel is
-   * the box's own whatever the zoom draws, so the offset lands on the end of it
-   * rather than on a midpoint a later zoom would have no way back from.
+   * The same pull with the canvas drawn far smaller than the screen. Travel
+   * closes toward the middle of the screen as the zoom falls, so the offset
+   * lands on the end of it rather than on a midpoint no later zoom can leave.
    */
   it('pulls a shrunk canvas back to the end of the travel it still has', () => {
     store.dispatchSync(changeViewportAction({ width: 900, height: 700 }));
@@ -232,8 +232,10 @@ describe('editor.changeViewport', () => {
 
     store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
 
-    expect(store.state.settings.scrollLeft).toBe(1440 - 2000);
-    expect(store.state.settings.scrollTop).toBe(900 - 2000);
+    // (viewport - canvas) times (1 + zoom) halved, on each axis: the far end of
+    // a travel that closes in by the zoom rather than the canvas box's own end.
+    expect(store.state.settings.scrollLeft).toBe(-308);
+    expect(store.state.settings.scrollTop).toBe(-605);
   });
 });
 

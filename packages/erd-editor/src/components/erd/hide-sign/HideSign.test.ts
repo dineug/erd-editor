@@ -302,9 +302,9 @@ describe('HideSign', () => {
   const CANVAS = 2_000;
 
   const ZOOM_CASES: Array<[number, number, number]> = [
-    [0.1, 0, 0],
-    [0.1, -260, -180],
-    [0.5, -260, -180],
+    [0.1, -500, -600],
+    [0.1, -460, -560],
+    [0.5, -260, -400],
     [1, -260, -180],
     [1.2, -260, -180],
     [1.5, 340, 220],
@@ -630,10 +630,15 @@ describe('HideSign', () => {
       expect(titles(container)).toEqual(['beyond']);
     });
 
-    it('marks the same pair at zoom 0.5 as the css transform did', async () => {
+    /**
+     * What a shrinking zoom changed. The travel holds the screen's own edges on
+     * the document, so at zoom 0.5 it reaches 500 past the box on a 1000 wide
+     * screen rather than the 1000 the canvas box shrank by.
+     */
+    it('marks what no scroll at zoom 0.5 can reach', async () => {
       const { container } = await seedAt(0.5, [
-        ['reachable', 2_500, 100],
-        ['stranded', 3_200, 100],
+        ['reachable', 2_100, 100],
+        ['stranded', 2_600, 100],
       ]);
 
       expect(titles(container)).toEqual(['stranded']);

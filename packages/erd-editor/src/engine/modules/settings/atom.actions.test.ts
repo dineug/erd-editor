@@ -262,6 +262,26 @@ describe('settings/atom.actions', () => {
     zoomLevel: number
   ) => scene * zoomLevel + scroll + (size * (1 - zoomLevel)) / 2;
 
+  /**
+   * That placement inverted at the middle of the screen. The range is written
+   * on this point, so every property below reads it rather than the offset the
+   * reducer happens to store.
+   */
+  const atCentre = (
+    scroll: number,
+    size: number,
+    zoomLevel: number,
+    viewportLength: number
+  ) => (viewportLength / 2 - scroll - (size * (1 - zoomLevel)) / 2) / zoomLevel;
+
+  /** The scroll that puts a scene point under the middle of the screen. */
+  const toScroll = (
+    centre: number,
+    size: number,
+    zoomLevel: number,
+    viewportLength: number
+  ) => viewportLength / 2 - centre * zoomLevel - (size * (1 - zoomLevel)) / 2;
+
   describe('the scroll range the zoom draws', () => {
     const VIEWPORT_WIDTH = 1000;
     const VIEWPORT_HEIGHT = 800;
@@ -278,38 +298,43 @@ describe('settings/atom.actions', () => {
       store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
     }
 
+    /** How far in from an edge the middle of the screen is held, in scene units. */
+    const halfScreen = (viewportLength: number, zoomLevel: number) =>
+      viewportLength / (2 * Math.max(1, zoomLevel));
+
     it.each(grid)(
-      'reaches both canvas edges at size %s zoom %s',
+      'ends the travel with the screen edge on the document at size %s zoom %s',
       (size, zoomLevel) => {
         place(size, zoomLevel);
-        const drawn = size * zoomLevel;
-
-        // Half the shrink stays out of reach at either end, which is where the
-        // css transform this replaces left it: it scaled the canvas box about
-        // the middle, so the travel a zoom below 1 has is the box's own.
-        const shrink = Math.max(size - drawn, 0) / 2;
+        const insetX = halfScreen(VIEWPORT_WIDTH, zoomLevel);
+        const insetY = halfScreen(VIEWPORT_HEIGHT, zoomLevel);
 
         store.dispatchSync(
           scrollToAction({ scrollTop: 1_000_000, scrollLeft: 1_000_000 })
         );
         const { scrollLeft: atStart, scrollTop: atTop } = store.state.settings;
 
-        expect(toScreen(0, atStart, size, zoomLevel)).toBeCloseTo(shrink, 3);
-        expect(toScreen(0, atTop, size, zoomLevel)).toBeCloseTo(shrink, 3);
+        expect(atCentre(atStart, size, zoomLevel, VIEWPORT_WIDTH)).toBeCloseTo(
+          Math.min(insetX, size - insetX),
+          3
+        );
+        expect(atCentre(atTop, size, zoomLevel, VIEWPORT_HEIGHT)).toBeCloseTo(
+          Math.min(insetY, size - insetY),
+          3
+        );
 
         store.dispatchSync(
           scrollToAction({ scrollTop: -1_000_000, scrollLeft: -1_000_000 })
         );
         const { scrollLeft: atEnd, scrollTop: atBottom } = store.state.settings;
 
-        expect(toScreen(size, atEnd, size, zoomLevel)).toBeCloseTo(
-          VIEWPORT_WIDTH - shrink,
+        expect(atCentre(atEnd, size, zoomLevel, VIEWPORT_WIDTH)).toBeCloseTo(
+          Math.max(insetX, size - insetX),
           3
         );
-        expect(toScreen(size, atBottom, size, zoomLevel)).toBeCloseTo(
-          VIEWPORT_HEIGHT - shrink,
-          3
-        );
+        expect(
+          atCentre(atBottom, size, zoomLevel, VIEWPORT_HEIGHT)
+        ).toBeCloseTo(Math.max(insetY, size - insetY), 3);
       }
     );
 
@@ -335,28 +360,178 @@ describe('settings/atom.actions', () => {
     });
 
     /**
-     * Shrinking leaves the travel alone, down to the exact pair the pre-canvas
-     * clamp used. A range that narrowed with the canvas had to put the offset
-     * somewhere, and zooming in could not bring the view back from there.
+     * The pre-canvas range written longhand. A magnifying zoom is the half of
+     * the travel that was already right, so the new range has to hand back the
+     * same bits there rather than merely the same neighbourhood.
+     */
+    const preCanvasRange = (
+      size: number,
+      zoomLevel: number,
+      viewportLength: number
+    ) => {
+      const drawn = size * zoomLevel;
+      const offset = (size - drawn) / 2;
+
+      return {
+        min:
+          Math.min(viewportLength - size, viewportLength - drawn - offset) + 0,
+        max: Math.max(0, -offset) + 0,
+      };
+    };
+
+    it.each([1, 1.1, 1.25, 1.5])(
+      'is the pre-canvas range bit for bit at zoom %s',
+      zoomLevel => {
+        const off: string[] = [];
+
+        for (const size of [2_000, 8_000, 20_000]) {
+          for (const viewport of [
+            { width: 640, height: 480 },
+            { width: 1_000, height: 800 },
+            { width: 1_440, height: 900 },
+          ]) {
+            const { left, top } = getScrollRanges(
+              { width: size, height: size, zoomLevel },
+              viewport
+            );
+            const expected = {
+              left: preCanvasRange(size, zoomLevel, viewport.width),
+              top: preCanvasRange(size, zoomLevel, viewport.height),
+            };
+
+            for (const axis of ['left', 'top'] as const) {
+              for (const end of ['min', 'max'] as const) {
+                if (Object.is({ left, top }[axis][end], expected[axis][end])) {
+                  continue;
+                }
+                off.push(
+                  `size ${size} viewport ${viewport.width}x${viewport.height} ${axis}.${end}: ${{ left, top }[axis][end]} not ${expected[axis][end]}`
+                );
+              }
+            }
+          }
+        }
+
+        expect(off).toEqual([]);
+      }
+    );
+
+    /**
+     * The shrinking half, which is where the defect lived. The screen's own
+     * edges stay on the document, so the two offsets close in on each other by
+     * the zoom instead of holding the unzoomed box's pair.
      */
     it.each([1, 0.9, 0.5, 0.25, CANVAS_ZOOM_MIN])(
-      'travels the unzoomed canvas box at zoom %s',
+      'closes the travel in by the zoom at zoom %s',
       zoomLevel => {
         place(2_000, zoomLevel);
         const { left, top } = getScrollRanges(
           store.state.settings,
           store.state.editor.viewport
         );
+        const ends = (viewportLength: number) => ({
+          min: ((viewportLength - 2_000) * (1 + zoomLevel)) / 2,
+          max: ((viewportLength - 2_000) * (1 - zoomLevel)) / 2,
+        });
 
-        expect(left).toEqual({ min: VIEWPORT_WIDTH - 2_000, max: 0 });
-        expect(top).toEqual({ min: VIEWPORT_HEIGHT - 2_000, max: 0 });
+        expect(left.min).toBeCloseTo(ends(VIEWPORT_WIDTH).min, 9);
+        expect(left.max).toBeCloseTo(ends(VIEWPORT_WIDTH).max, 9);
+        expect(top.min).toBeCloseTo(ends(VIEWPORT_HEIGHT).min, 9);
+        expect(top.max).toBeCloseTo(ends(VIEWPORT_HEIGHT).max, 9);
       }
     );
 
+    it('is the pre-canvas clamp exactly at zoom 1', () => {
+      place(2_000, 1);
+      const { left, top } = getScrollRanges(
+        store.state.settings,
+        store.state.editor.viewport
+      );
+
+      expect(left).toEqual({ min: VIEWPORT_WIDTH - 2_000, max: 0 });
+      expect(top).toEqual({ min: VIEWPORT_HEIGHT - 2_000, max: 0 });
+    });
+
     /**
-     * The reversibility that follows, stated on the reducer rather than on the
-     * range: re-clamping at every zoom on the way down and back up is the trip
-     * a zoom gesture takes, and it has to leave the offsets where it found them.
+     * The defect this range closes. Shrinking used to leave the whole document
+     * past one end of the travel, and the reader was handed an empty canvas
+     * with the minimap the only way back to it.
+     */
+    it('keeps the document on screen at both ends of every travel', () => {
+      const blank: string[] = [];
+      const zooms = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.25, 1.5];
+
+      for (const size of [2_000, 6_000, 20_000]) {
+        for (const viewport of [
+          { width: 1_440, height: 900 },
+          { width: 1_024, height: 768 },
+          { width: 520, height: 420 },
+        ]) {
+          for (const zoomLevel of zooms) {
+            const ranges = getScrollRanges(
+              { width: size, height: size, zoomLevel },
+              viewport
+            );
+            const axes = [
+              ['left', ranges.left, viewport.width],
+              ['top', ranges.top, viewport.height],
+            ] as const;
+
+            for (const [axis, range, viewportLength] of axes) {
+              for (const end of ['min', 'max'] as const) {
+                const near = toScreen(0, range[end], size, zoomLevel);
+                const far = toScreen(size, range[end], size, zoomLevel);
+                const shown = Math.min(far, viewportLength) - Math.max(near, 0);
+
+                if (shown > 0) continue;
+                blank.push(
+                  `size ${size} viewport ${viewport.width}x${viewport.height} zoom ${zoomLevel} ${axis}.${end}: the document covers ${shown} of the screen`
+                );
+              }
+            }
+          }
+        }
+      }
+
+      expect(blank).toEqual([]);
+    });
+
+    /**
+     * What holds a zoom round trip together: below zoom 1 the run of the
+     * document the middle of the screen can reach is the same at every zoom,
+     * so no walk down and back can trim it.
+     */
+    it('holds the reachable middle of the screen fixed below zoom 1', () => {
+      const drift: string[] = [];
+
+      for (const zoomLevel of [CANVAS_ZOOM_MIN, 0.25, 0.5, 0.75, 0.9, 1]) {
+        place(2_000, zoomLevel);
+        const { left } = getScrollRanges(
+          store.state.settings,
+          store.state.editor.viewport
+        );
+        const low = atCentre(left.max, 2_000, zoomLevel, VIEWPORT_WIDTH);
+        const high = atCentre(left.min, 2_000, zoomLevel, VIEWPORT_WIDTH);
+
+        if (Math.abs(low - VIEWPORT_WIDTH / 2) > 1e-9) {
+          drift.push(
+            `zoom ${zoomLevel} reaches ${low}, not ${VIEWPORT_WIDTH / 2}`
+          );
+        }
+        if (Math.abs(high - (2_000 - VIEWPORT_WIDTH / 2)) > 1e-9) {
+          drift.push(
+            `zoom ${zoomLevel} reaches ${high}, not ${2_000 - VIEWPORT_WIDTH / 2}`
+          );
+        }
+      }
+
+      expect(drift).toEqual([]);
+    });
+
+    /**
+     * The reversibility that follows, stated on the reducer: a zoom gesture
+     * moves the scroll so the middle of the screen holds its scene point, and
+     * a trip to the floor and back has to leave the offsets where it found them.
      */
     it.each([0, -120, -500, -1_000])(
       'brings a scroll of %s back from the zoom floor unchanged',
@@ -370,6 +545,8 @@ describe('settings/atom.actions', () => {
           scrollLeft: store.state.settings.scrollLeft,
           scrollTop: store.state.settings.scrollTop,
         };
+        const centreX = atCentre(before.scrollLeft, 2_000, 1, VIEWPORT_WIDTH);
+        const centreY = atCentre(before.scrollTop, 2_000, 1, VIEWPORT_HEIGHT);
 
         for (const zoomLevel of [
           0.75,
@@ -384,10 +561,19 @@ describe('settings/atom.actions', () => {
           store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
           store.dispatchSync(
             scrollToAction({
-              scrollLeft: store.state.settings.scrollLeft,
-              scrollTop: store.state.settings.scrollTop,
+              scrollLeft: toScroll(centreX, 2_000, zoomLevel, VIEWPORT_WIDTH),
+              scrollTop: toScroll(centreY, 2_000, zoomLevel, VIEWPORT_HEIGHT),
             })
           );
+
+          expect(
+            atCentre(
+              store.state.settings.scrollLeft,
+              2_000,
+              zoomLevel,
+              VIEWPORT_WIDTH
+            )
+          ).toBeCloseTo(centreX, 6);
         }
 
         expect(store.state.settings.scrollLeft).toBe(before.scrollLeft);
@@ -396,11 +582,42 @@ describe('settings/atom.actions', () => {
     );
 
     /**
-     * A screen wider than the whole canvas leaves the range inverted, and the
-     * clamp keeps whichever end it applies last. That is the max, which is
-     * where the pre-canvas editor parked a canvas it could not fill either.
+     * A screen wider than the whole canvas turns the two ends around. The clamp
+     * keeps whichever end it applies last, so the pair is sorted and what stays
+     * inside is the document rather than the screen.
      */
-    it('pins the scroll to the near edge on a screen wider than the canvas', () => {
+    it('sorts the two ends on a screen wider than the canvas', () => {
+      const wrong: string[] = [];
+      const viewport = { width: 3_000, height: 3_000 };
+
+      for (const zoomLevel of [0.1, 0.5, 1, 1.2, 1.5]) {
+        const { left } = getScrollRanges(
+          { width: 2_000, height: 2_000, zoomLevel },
+          viewport
+        );
+
+        if (left.min > left.max) {
+          wrong.push(
+            `zoom ${zoomLevel} reads min ${left.min} above max ${left.max}`
+          );
+        }
+
+        for (const end of ['min', 'max'] as const) {
+          const near = toScreen(0, left[end], 2_000, zoomLevel);
+          const far = toScreen(2_000, left[end], 2_000, zoomLevel);
+
+          if (near < -1e-9 || far > viewport.width + 1e-9) {
+            wrong.push(
+              `zoom ${zoomLevel} ${end} puts the canvas at ${near} to ${far}, outside the screen`
+            );
+          }
+        }
+      }
+
+      expect(wrong).toEqual([]);
+    });
+
+    it('pins the scroll inside that sorted range', () => {
       place(2_000, 1);
       store.dispatchSync(changeViewportAction({ width: 3_000, height: 3_000 }));
 

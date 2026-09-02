@@ -103,28 +103,30 @@ export type ScrollRanges = {
 export type ScrollTransform = Pick<Settings, 'width' | 'height' | 'zoomLevel'>;
 
 /**
- * One axis of travel: the canvas box, widened by whatever a magnifying zoom
- * draws past it. Shrinking never narrows it, so an offset survives a trip down
- * to the zoom floor and back instead of being clamped onto the midpoint.
+ * One axis of travel, written on the scene point the middle of the screen sits
+ * over: it stays half a screen inside the canvas box, and once the box draws
+ * narrower than the screen the box is what stays inside instead.
  */
 function toScrollRange(
-  size: number,
   drawn: number,
   offset: number,
-  viewportLength: number
+  viewportLength: number,
+  zoomLevel: number
 ): ScrollRange {
+  const reach = Math.min(1, zoomLevel);
+  const near = (viewportLength * (1 - reach)) / 2 - offset;
+  const far = (viewportLength * (1 + reach)) / 2 - drawn - offset;
+
   return {
-    min: unsigned(
-      Math.min(viewportLength - size, viewportLength - drawn - offset)
-    ),
-    max: unsigned(Math.max(0, -offset)),
+    min: unsigned(Math.min(near, far)),
+    max: unsigned(Math.max(near, far)),
   };
 }
 
 /**
  * How far the scroll may travel on each axis. A scene layer sits at the scroll
  * plus the zoom viewport offset, so magnifying reaches further both ways, while
- * shrinking leaves the travel the unzoomed canvas box already had.
+ * shrinking holds the screen's own edges onto the document rather than past it.
  */
 export function getScrollRanges(
   settings: ScrollTransform,
@@ -137,8 +139,8 @@ export function getScrollRanges(
   );
 
   return {
-    left: toScrollRange(settings.width, w, x, viewport.width),
-    top: toScrollRange(settings.height, h, y, viewport.height),
+    left: toScrollRange(w, x, viewport.width, settings.zoomLevel),
+    top: toScrollRange(h, y, viewport.height, settings.zoomLevel),
   };
 }
 
