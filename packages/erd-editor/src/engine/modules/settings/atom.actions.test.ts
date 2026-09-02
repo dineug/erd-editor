@@ -35,6 +35,7 @@ import {
   changeShowAction,
   changeTableNameCaseAction,
   changeZoomLevelAction,
+  getScrollRanges,
   resizeAction,
   scrollToAction,
   settingsReducers,
@@ -278,44 +279,35 @@ describe('settings/atom.actions', () => {
     }
 
     it.each(grid)(
-      'puts both canvas edges on the screen at size %s zoom %s',
+      'reaches both canvas edges at size %s zoom %s',
       (size, zoomLevel) => {
         place(size, zoomLevel);
         const drawn = size * zoomLevel;
+
+        // Half the shrink stays out of reach at either end, which is where the
+        // css transform this replaces left it: it scaled the canvas box about
+        // the middle, so the travel a zoom below 1 has is the box's own.
+        const shrink = Math.max(size - drawn, 0) / 2;
 
         store.dispatchSync(
           scrollToAction({ scrollTop: 1_000_000, scrollLeft: 1_000_000 })
         );
         const { scrollLeft: atStart, scrollTop: atTop } = store.state.settings;
 
-        // A canvas the zoom draws smaller than the screen has nowhere to go and
-        // sits centred, which is where transform-origin 50% 50% used to put it.
-        expect(toScreen(0, atStart, size, zoomLevel)).toBeCloseTo(
-          drawn >= VIEWPORT_WIDTH ? 0 : (VIEWPORT_WIDTH - drawn) / 2,
-          3
-        );
-        expect(toScreen(0, atTop, size, zoomLevel)).toBeCloseTo(
-          drawn >= VIEWPORT_HEIGHT ? 0 : (VIEWPORT_HEIGHT - drawn) / 2,
-          3
-        );
+        expect(toScreen(0, atStart, size, zoomLevel)).toBeCloseTo(shrink, 3);
+        expect(toScreen(0, atTop, size, zoomLevel)).toBeCloseTo(shrink, 3);
 
         store.dispatchSync(
           scrollToAction({ scrollTop: -1_000_000, scrollLeft: -1_000_000 })
         );
         const { scrollLeft: atEnd, scrollTop: atBottom } = store.state.settings;
-        const right = toScreen(size, atEnd, size, zoomLevel);
-        const bottom = toScreen(size, atBottom, size, zoomLevel);
 
-        expect(right).toBeCloseTo(
-          drawn >= VIEWPORT_WIDTH
-            ? VIEWPORT_WIDTH
-            : (VIEWPORT_WIDTH + drawn) / 2,
+        expect(toScreen(size, atEnd, size, zoomLevel)).toBeCloseTo(
+          VIEWPORT_WIDTH - shrink,
           3
         );
-        expect(bottom).toBeCloseTo(
-          drawn >= VIEWPORT_HEIGHT
-            ? VIEWPORT_HEIGHT
-            : (VIEWPORT_HEIGHT + drawn) / 2,
+        expect(toScreen(size, atBottom, size, zoomLevel)).toBeCloseTo(
+          VIEWPORT_HEIGHT - shrink,
           3
         );
       }
@@ -343,50 +335,78 @@ describe('settings/atom.actions', () => {
     });
 
     /**
-     * The shrunk canvas centres rather than sticking to one corner. Clamping a
-     * range whose min has run past its max keeps whichever end it was given,
-     * and the css transform this replaces scaled about the middle of the box.
+     * Shrinking leaves the travel alone, down to the exact pair the pre-canvas
+     * clamp used. A range that narrowed with the canvas had to put the offset
+     * somewhere, and zooming in could not bring the view back from there.
      */
-    it('centres the shrunk canvas the way transform-origin 50% 50% did', () => {
-      place(8_000, 0.1);
-      const drawn = 800;
+    it.each([1, 0.9, 0.5, 0.25, CANVAS_ZOOM_MIN])(
+      'travels the unzoomed canvas box at zoom %s',
+      zoomLevel => {
+        place(2_000, zoomLevel);
+        const { left, top } = getScrollRanges(
+          store.state.settings,
+          store.state.editor.viewport
+        );
 
-      store.dispatchSync(scrollToAction({ scrollTop: 0, scrollLeft: 0 }));
+        expect(left).toEqual({ min: VIEWPORT_WIDTH - 2_000, max: 0 });
+        expect(top).toEqual({ min: VIEWPORT_HEIGHT - 2_000, max: 0 });
+      }
+    );
 
-      expect(store.state.settings.scrollLeft).toBe(-3500);
-      expect(store.state.settings.scrollTop).toBe(-3600);
-      expect(toScreen(0, -3500, 8_000, 0.1)).toBeCloseTo(
-        (VIEWPORT_WIDTH - drawn) / 2,
-        3
-      );
-      expect(toScreen(8_000, -3500, 8_000, 0.1)).toBeCloseTo(
-        (VIEWPORT_WIDTH + drawn) / 2,
-        3
-      );
-      expect(toScreen(0, -3600, 8_000, 0.1)).toBeCloseTo(0, 3);
-      expect(toScreen(8_000, -3600, 8_000, 0.1)).toBeCloseTo(
-        VIEWPORT_HEIGHT,
-        3
-      );
-    });
+    /**
+     * The reversibility that follows, stated on the reducer rather than on the
+     * range: re-clamping at every zoom on the way down and back up is the trip
+     * a zoom gesture takes, and it has to leave the offsets where it found them.
+     */
+    it.each([0, -120, -500, -1_000])(
+      'brings a scroll of %s back from the zoom floor unchanged',
+      scrollLeft => {
+        place(2_000, 1);
+        store.dispatchSync(
+          scrollToAction({ scrollLeft, scrollTop: scrollLeft })
+        );
 
-    it('leaves the shrunk canvas centred however far the scroll is pushed', () => {
-      place(2_000, 0.1);
-      const centred = (1_000 - 200) / 2;
+        const before = {
+          scrollLeft: store.state.settings.scrollLeft,
+          scrollTop: store.state.settings.scrollTop,
+        };
 
-      store.dispatchSync(
-        scrollToAction({ scrollTop: 1_000_000, scrollLeft: 1_000_000 })
-      );
-      expect(
-        toScreen(0, store.state.settings.scrollLeft, 2_000, 0.1)
-      ).toBeCloseTo(centred, 3);
+        for (const zoomLevel of [
+          0.75,
+          0.5,
+          0.25,
+          CANVAS_ZOOM_MIN,
+          0.25,
+          0.5,
+          0.75,
+          1,
+        ]) {
+          store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+          store.dispatchSync(
+            scrollToAction({
+              scrollLeft: store.state.settings.scrollLeft,
+              scrollTop: store.state.settings.scrollTop,
+            })
+          );
+        }
 
-      store.dispatchSync(
-        streamScrollToAction({ movementX: -99_999, movementY: -99_999 })
-      );
-      expect(
-        toScreen(0, store.state.settings.scrollLeft, 2_000, 0.1)
-      ).toBeCloseTo(centred, 3);
+        expect(store.state.settings.scrollLeft).toBe(before.scrollLeft);
+        expect(store.state.settings.scrollTop).toBe(before.scrollTop);
+      }
+    );
+
+    /**
+     * A screen wider than the whole canvas leaves the range inverted, and the
+     * clamp keeps whichever end it applies last. That is the max, which is
+     * where the pre-canvas editor parked a canvas it could not fill either.
+     */
+    it('pins the scroll to the near edge on a screen wider than the canvas', () => {
+      place(2_000, 1);
+      store.dispatchSync(changeViewportAction({ width: 3_000, height: 3_000 }));
+
+      store.dispatchSync(scrollToAction({ scrollLeft: -500, scrollTop: -500 }));
+      expect(store.state.settings.scrollLeft).toBe(0);
+      expect(store.state.settings.scrollTop).toBe(0);
     });
 
     it('keeps the unzoomed range and its sign exactly as it was', () => {

@@ -37,6 +37,27 @@ export function getSceneOrigin({
 /** A zoom of zero would invert to nothing, and only a torn frame reports one. */
 const safeZoom = (zoomLevel: number) => (zoomLevel > 0 ? zoomLevel : 1);
 
+/** Where a scene point lands on the stage, the placement above read forwards. */
+export function toScreenPoint(transform: SceneTransform, point: Point): Point {
+  const origin = getSceneOrigin(transform);
+
+  return {
+    x: origin.x + point.x * transform.zoomLevel,
+    y: origin.y + point.y * transform.zoomLevel,
+  };
+}
+
+/** The scene point under a point on the stage, that same placement inverted. */
+export function toScenePoint(transform: SceneTransform, point: Point): Point {
+  const zoomLevel = safeZoom(transform.zoomLevel);
+  const origin = getSceneOrigin({ ...transform, zoomLevel });
+
+  return {
+    x: (point.x - origin.x) / zoomLevel,
+    y: (point.y - origin.y) / zoomLevel,
+  };
+}
+
 /**
  * What is on screen with a screen's worth of margin on every side, read back
  * through the very origin getSceneOrigin places the layer at. The margin is

@@ -15,6 +15,8 @@ import {
   isRelationshipVisible,
   isTableVisible,
   type SceneTransform,
+  toScenePoint,
+  toScreenPoint,
 } from '@/konva/scene/viewport';
 import { createMemo } from '@/utils/collection/memo.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
@@ -290,6 +292,97 @@ describe('the culling rect covers the screen it is inverted out of', () => {
         viewportHeight: 1000,
       })
     );
+  });
+});
+
+describe('the two directions through the scene origin', () => {
+  const transforms: SceneTransform[] = [];
+  for (const zoomLevel of [0.1, 0.5, 1, 1.2, 1.5]) {
+    for (const scrollLeft of [0, -260, -1_000, 340]) {
+      transforms.push({
+        width: 2_000,
+        height: 2_000,
+        scrollLeft,
+        scrollTop: scrollLeft / 2,
+        zoomLevel,
+      });
+    }
+  }
+
+  const scenePoints: Point[] = [
+    { x: 0, y: 0 },
+    { x: 400, y: 300 },
+    { x: 2_000, y: 2_000 },
+    { x: -1_800, y: 900 },
+  ];
+
+  /**
+   * The placement written out longhand rather than read back from the helper,
+   * so the two have to agree instead of restating one another. It is the css
+   * transform the port replaced: scale about the middle of the box, then scroll.
+   */
+  const longhand = (
+    scene: number,
+    scroll: number,
+    size: number,
+    zoom: number
+  ) => scene * zoom + scroll + (size * (1 - zoom)) / 2;
+
+  it.each(transforms)('places a scene point at %s', transform => {
+    for (const point of scenePoints) {
+      const screen = toScreenPoint(transform, point);
+      const { width, height, scrollLeft, scrollTop, zoomLevel } = transform;
+
+      expect(screen.x).toBeCloseTo(
+        longhand(point.x, scrollLeft, width, zoomLevel),
+        6
+      );
+      expect(screen.y).toBeCloseTo(
+        longhand(point.y, scrollTop, height, zoomLevel),
+        6
+      );
+    }
+  });
+
+  it.each(transforms)('inverts its own placement at %s', transform => {
+    for (const point of scenePoints) {
+      const back = toScenePoint(transform, toScreenPoint(transform, point));
+
+      expect(back.x).toBeCloseTo(point.x, 6);
+      expect(back.y).toBeCloseTo(point.y, 6);
+    }
+  });
+
+  it.each(transforms)(
+    'agrees with the editor own inversion at %s',
+    transform => {
+      const screen = { x: 640, y: 480 };
+      const absolute = getAbsolutePoint(
+        {
+          x: screen.x - transform.scrollLeft,
+          y: screen.y - transform.scrollTop,
+        },
+        transform.width,
+        transform.height,
+        transform.zoomLevel
+      );
+      const scene = toScenePoint(transform, screen);
+
+      expect(scene.x).toBeCloseTo(absolute.x, 6);
+      expect(scene.y).toBeCloseTo(absolute.y, 6);
+    }
+  );
+
+  it('reads a zoom of zero as one on the way back, as the rect does', () => {
+    const torn: SceneTransform = {
+      width: 2_000,
+      height: 2_000,
+      scrollLeft: -100,
+      scrollTop: -100,
+      zoomLevel: 0,
+    };
+
+    expect(toScenePoint(torn, { x: 0, y: 0 })).toEqual({ x: 100, y: 100 });
   });
 });
 

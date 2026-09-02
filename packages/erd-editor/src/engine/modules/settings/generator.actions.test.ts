@@ -70,19 +70,19 @@ describe('settings/generator.actions', () => {
       store.dispatchSync(changeZoomLevelAction$(0.5));
 
       expect(store.state.settings.zoomLevel).toBe(0.5);
-      expect(store.state.settings.scrollLeft).toBe(-500);
-      expect(store.state.settings.scrollTop).toBe(-500);
+      expect(store.state.settings.scrollLeft).toBe(-250);
+      expect(store.state.settings.scrollTop).toBe(-300);
     });
 
     it('adds the movement on top of the existing scroll offsets', () => {
       store.dispatchSync(scrollToAction({ scrollLeft: -100, scrollTop: -100 }));
       store.dispatchSync(changeZoomLevelAction$(0.5));
 
-      // centerXRatio = (1000 - (100 + 500)) / 1000 = 0.4
-      // centerYRatio = (1000 - (100 + 400)) / 1000 = 0.5
-      // Both asked-for offsets sit past the edge of the 1000x1000 drawn box.
-      expect(store.state.settings.scrollLeft).toBe(-500);
-      expect(store.state.settings.scrollTop).toBe(-500);
+      // centerXRatio = (1000 - (100 + 500)) / 1000 = 0.4, centerYRatio = 0.5.
+      // Both offsets land inside the travel the 2000 box has, so the clamp
+      // hands back what the movement asked for rather than an end of it.
+      expect(store.state.settings.scrollLeft).toBe(-300);
+      expect(store.state.settings.scrollTop).toBe(-350);
       expect(store.state.settings.zoomLevel).toBe(0.5);
     });
 
@@ -103,11 +103,10 @@ describe('settings/generator.actions', () => {
       store.dispatchSync(changeZoomLevelAction$(-3));
 
       expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MIN);
-      // x = y = (2000 - 200) / 2 = 900, and 200 of drawn canvas fits inside
-      // either axis of the viewport, so both ends collapse onto their midpoint
-      // and the box lands centred rather than against the origin.
-      expect(store.state.settings.scrollLeft).toBe(-500);
-      expect(store.state.settings.scrollTop).toBe(-600);
+      // x = y = (2000 - 200) / 2 = 900, and the travel a canvas drawn smaller
+      // than the screen keeps is the box's own, so the movement lands whole.
+      expect(store.state.settings.scrollLeft).toBe(-450);
+      expect(store.state.settings.scrollTop).toBe(-540);
     });
   });
 
@@ -129,8 +128,8 @@ describe('settings/generator.actions', () => {
       store.dispatchSync(streamZoomLevelAction$(-0.5));
 
       expect(store.state.settings.zoomLevel).toBe(0.5);
-      expect(store.state.settings.scrollLeft).toBe(-500);
-      expect(store.state.settings.scrollTop).toBe(-500);
+      expect(store.state.settings.scrollLeft).toBe(-250);
+      expect(store.state.settings.scrollTop).toBe(-300);
     });
 
     it('accumulates across successive deltas', () => {
@@ -162,6 +161,85 @@ describe('settings/generator.actions', () => {
       store.dispatchSync(streamZoomLevelAction$(0.04));
 
       expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MAX);
+    });
+  });
+
+  /**
+   * The gesture, not the reducer. Every notch moves the scroll to hold the
+   * middle of the screen still, so walking the zoom down to the floor and back
+   * up the same path is a walk to nowhere and has to end where it started.
+   */
+  describe('a wheel zoom out and back in', () => {
+    const NOTCH = 0.03;
+
+    /** The zoom before each notch that moved it, floor included. */
+    function wheelToFloor(): number[] {
+      const path: number[] = [];
+
+      for (;;) {
+        const before = store.state.settings.zoomLevel;
+        store.dispatchSync(streamZoomLevelAction$(-NOTCH));
+        if (store.state.settings.zoomLevel === before) break;
+        path.push(before);
+      }
+
+      return path;
+    }
+
+    /** The same notches walked backwards, so the zoom retraces its own path. */
+    function wheelBack(path: number[]) {
+      for (const zoomLevel of [...path].reverse()) {
+        store.dispatchSync(
+          streamZoomLevelAction$(zoomLevel - store.state.settings.zoomLevel)
+        );
+      }
+    }
+
+    function roundTrip(scrollLeft: number, scrollTop: number) {
+      store.dispatchSync(scrollToAction({ scrollLeft, scrollTop }));
+      const before = {
+        scrollLeft: store.state.settings.scrollLeft,
+        scrollTop: store.state.settings.scrollTop,
+      };
+
+      const path = wheelToFloor();
+      expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MIN);
+      wheelBack(path);
+      expect(store.state.settings.zoomLevel).toBeCloseTo(1, 6);
+
+      return { before, after: { ...store.state.settings } };
+    }
+
+    /**
+     * What is left over is the euler error of sixty notches, which the
+     * pre-canvas editor carried too: it ran this very sum over a range that did
+     * not move with the zoom, and lands on these offsets to the last decimal.
+     */
+    it.each([
+      [0, 0],
+      [-120, -80],
+      [-400, -600],
+      [-1_000, -1_200],
+    ])('returns a scroll of %s, %s to within a notch', (left, top) => {
+      const { before, after } = roundTrip(left, top);
+
+      expect(Math.abs(after.scrollLeft - before.scrollLeft)).toBeLessThan(20);
+      expect(Math.abs(after.scrollTop - before.scrollTop)).toBeLessThan(20);
+    });
+
+    /**
+     * The shape of the regression this guards. The offsets used to arrive at
+     * the midpoint of the travel whatever they started as, so every row above
+     * landed on one pair and the view could not be zoomed back to.
+     */
+    it('does not gather every starting point onto one midpoint', () => {
+      const landings = [-120, -400, -900].map(scroll => {
+        store = createTestStore();
+        return roundTrip(scroll, scroll).after.scrollLeft;
+      });
+
+      expect(new Set(landings).size).toBe(landings.length);
+      expect(landings).not.toContain((1_000 - 2_000) / 2);
     });
   });
 });

@@ -10,10 +10,16 @@ import {
 import type { AppContext } from '@/components/appContext';
 import HideSign from '@/components/erd/hide-sign/HideSign';
 import * as styles from '@/components/erd/hide-sign/HideSign.styles';
-import { selectAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeViewportAction,
+  selectAction,
+} from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
-import { scrollToAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeZoomLevelAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableNameAction,
@@ -285,6 +291,104 @@ describe('HideSign', () => {
     expect(signByTitle(container, 'left-side').style.top).toBe('700px');
     expect(signByTitle(container, 'top-side').style.left).toBe('800px');
   });
+
+  /**
+   * Far enough west and north to stay off the canvas at every zoom, since the
+   * box the markers are measured against grows as the zoom shrinks and the
+   * nearer pair would drift in and out of the list along the way.
+   */
+  const WEST = -20_000;
+  const NORTH = -20_000;
+  const CANVAS = 2_000;
+
+  const ZOOM_CASES: Array<[number, number, number]> = [
+    [0.1, 0, 0],
+    [0.1, -260, -180],
+    [0.5, -260, -180],
+    [1, -260, -180],
+    [1.2, -260, -180],
+    [1.5, 340, 220],
+  ];
+
+  /**
+   * Where the scene layer puts a point, written longhand: the css transform the
+   * port replaced scaled the canvas box about its middle and then scrolled it,
+   * so half the shrink rides with the scroll rather than on the scale.
+   */
+  const onScreen = (scene: number, scroll: number, zoomLevel: number) =>
+    scene * zoomLevel + scroll + (CANVAS * (1 - zoomLevel)) / 2;
+
+  it.each(ZOOM_CASES)(
+    'reads the free axis off the scene origin at zoom %s scroll %s, %s',
+    async (zoomLevel, scrollLeft, scrollTop) => {
+      const { app, container } = await mountHideSign(a => {
+        a.store.dispatchSync(
+          changeViewportAction({ width: 1_000, height: 800 })
+        );
+        addTable(a, 'west', WEST, INSIDE);
+        addTable(a, 'north', INSIDE, NORTH);
+        a.store.dispatchSync(
+          changeTableNameAction({ id: 'west', value: 'west' })
+        );
+        a.store.dispatchSync(
+          changeTableNameAction({ id: 'north', value: 'north' })
+        );
+        a.store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+      });
+
+      app.store.dispatchSync(scrollToAction({ scrollLeft, scrollTop }));
+      expect(app.store.state.settings.scrollLeft).toBe(scrollLeft);
+      expect(app.store.state.settings.scrollTop).toBe(scrollTop);
+
+      await new Promise(resolve => setTimeout(resolve, 160));
+      await flush();
+
+      const west = signByTitle(container, 'west');
+      const north = signByTitle(container, 'north');
+
+      expect(west.style.left).toBe('0px');
+      expect(parseFloat(west.style.top)).toBeCloseTo(
+        onScreen(INSIDE, scrollTop, zoomLevel),
+        6
+      );
+      expect(north.style.top).toBe('0px');
+      expect(parseFloat(north.style.left)).toBeCloseTo(
+        onScreen(INSIDE, scrollLeft, zoomLevel),
+        6
+      );
+    }
+  );
+
+  /**
+   * The move-to point is the same placement inverted, so a click at a screen
+   * point has to name the scene point that placement would have put there.
+   */
+  it.each(ZOOM_CASES)(
+    'inverts that placement on a click at zoom %s scroll %s, %s',
+    async (zoomLevel, scrollLeft, scrollTop) => {
+      const { app, container } = await mountHideSign(a => {
+        a.store.dispatchSync(
+          changeViewportAction({ width: 1_000, height: 800 })
+        );
+        addTable(a, 'west', WEST, INSIDE);
+        a.store.dispatchSync(
+          changeTableNameAction({ id: 'west', value: 'west' })
+        );
+        a.store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+      });
+
+      app.store.dispatchSync(scrollToAction({ scrollLeft, scrollTop }));
+      await new Promise(resolve => setTimeout(resolve, 160));
+      await flush();
+
+      click(signByTitle(container, 'west'));
+      await flush();
+
+      const { ui } = app.store.state.collections.tableEntities.west;
+      expect(onScreen(ui.x, scrollLeft, zoomLevel)).toBeCloseTo(POINT_X, 6);
+      expect(onScreen(ui.y, scrollTop, zoomLevel)).toBeCloseTo(POINT_Y, 6);
+    }
+  );
 
   it('ignores settings changes that are not a scroll', async () => {
     const { app, container } = await mountHideSign(a => {

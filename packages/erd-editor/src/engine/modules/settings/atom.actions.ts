@@ -103,24 +103,28 @@ export type ScrollRanges = {
 export type ScrollTransform = Pick<Settings, 'width' | 'height' | 'zoomLevel'>;
 
 /**
- * A canvas the zoom draws smaller than the screen has no travel at all. The css
- * transform this replaces scaled about the middle of the canvas box, so the two
- * ends collapse onto their midpoint rather than onto whichever one clamping kept.
+ * One axis of travel: the canvas box, widened by whatever a magnifying zoom
+ * draws past it. Shrinking never narrows it, so an offset survives a trip down
+ * to the zoom floor and back instead of being clamped onto the midpoint.
  */
-function toScrollRange(min: number, max: number): ScrollRange {
-  if (min > max) {
-    const center = unsigned((min + max) / 2);
-
-    return { min: center, max: center };
-  }
-
-  return { min: unsigned(min), max: unsigned(max) };
+function toScrollRange(
+  size: number,
+  drawn: number,
+  offset: number,
+  viewportLength: number
+): ScrollRange {
+  return {
+    min: unsigned(
+      Math.min(viewportLength - size, viewportLength - drawn - offset)
+    ),
+    max: unsigned(Math.max(0, -offset)),
+  };
 }
 
 /**
- * How far the scroll may travel before the drawn canvas leaves the viewport.
- * A scene layer sits at the scroll plus the zoom viewport offset and is scaled
- * by the zoom, so both ends move with the drawn box rather than the canvas box.
+ * How far the scroll may travel on each axis. A scene layer sits at the scroll
+ * plus the zoom viewport offset, so magnifying reaches further both ways, while
+ * shrinking leaves the travel the unzoomed canvas box already had.
  */
 export function getScrollRanges(
   settings: ScrollTransform,
@@ -133,8 +137,8 @@ export function getScrollRanges(
   );
 
   return {
-    left: toScrollRange(viewport.width - w - x, -x),
-    top: toScrollRange(viewport.height - h - y, -y),
+    left: toScrollRange(settings.width, w, x, viewport.width),
+    top: toScrollRange(settings.height, h, y, viewport.height),
   };
 }
 

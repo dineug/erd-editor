@@ -218,7 +218,12 @@ describe('editor.changeViewport', () => {
     expect(store.state.settings.scrollTop).toBe(-200);
   });
 
-  it('centres the scroll when the new viewport covers the drawn canvas', () => {
+  /**
+   * The same pull with the canvas drawn far smaller than the screen. Travel is
+   * the box's own whatever the zoom draws, so the offset lands on the end of it
+   * rather than on a midpoint a later zoom would have no way back from.
+   */
+  it('pulls a shrunk canvas back to the end of the travel it still has', () => {
     store.dispatchSync(changeViewportAction({ width: 900, height: 700 }));
     store.dispatchSync(changeZoomLevelAction({ value: 0.1 }));
     store.dispatchSync(
@@ -227,9 +232,8 @@ describe('editor.changeViewport', () => {
 
     store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
 
-    // drawn 200 wide inside 1440: 900 of zoom offset less half the slack.
-    expect(store.state.settings.scrollLeft).toBe(-900 + (1440 - 200) / 2);
-    expect(store.state.settings.scrollTop).toBe(-900 + (900 - 200) / 2);
+    expect(store.state.settings.scrollLeft).toBe(1440 - 2000);
+    expect(store.state.settings.scrollTop).toBe(900 - 2000);
   });
 });
 
