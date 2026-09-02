@@ -13,6 +13,7 @@ import { isEmpty, round } from 'es-toolkit/compat';
 
 import { CanvasType } from '@/constants/schema';
 import { createScrollInRange } from '@/engine/modules/settings/atom.actions';
+import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
 import { bHas } from '@/utils/bit';
 import { getAbsolutePoint } from '@/utils/dragSelect';
@@ -130,6 +131,23 @@ const clear: ReducerType<typeof ActionType.clear> = state => {
   state.collections = collections;
 };
 
+/**
+ * The scroll a loaded document carries, pulled into the travel its own zoom
+ * allows. A file can name an offset no zoom below 1 can hold, and the load path
+ * clamps nowhere else, so the first wheel notch would jump the whole distance.
+ */
+function pullScrollIntoRange({ settings, editor }: RootState) {
+  if (!editor.viewport.width || !editor.viewport.height) return;
+
+  const { scrollLeftInRange, scrollTopInRange } = createScrollInRange(
+    settings,
+    editor.viewport
+  );
+
+  settings.scrollLeft = round(scrollLeftInRange(settings.scrollLeft), 4);
+  settings.scrollTop = round(scrollTopInRange(settings.scrollTop), 4);
+}
+
 export const loadJsonAction = createAction<
   ActionMap[typeof ActionType.loadJson]
 >(ActionType.loadJson);
@@ -147,6 +165,7 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state.version = version;
   state.doc = doc;
   state.collections = collections;
+  pullScrollIntoRange(state);
 };
 
 export const initialClearAction = createAction<
@@ -176,6 +195,7 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state.version = version;
   state.doc = doc;
   state.collections = collections;
+  pullScrollIntoRange(state);
 };
 
 export const focusTableAction = createAction<

@@ -239,6 +239,61 @@ describe('editor.changeViewport', () => {
   });
 });
 
+/** A document that names its own screen size, zoom and scroll and nothing else. */
+const documentAt = (zoomLevel: number, scrollLeft: number, scrollTop: number) =>
+  JSON.stringify({
+    version: '3.0.0',
+    settings: { zoomLevel, scrollLeft, scrollTop },
+  });
+
+describe('editor.loadJson / initialLoadJson', () => {
+  /**
+   * A file can name an offset no zoom below 1 can hold, and nothing else on the
+   * load path clamps. Left alone it opens on empty canvas and the first notch of
+   * the wheel jumps the whole way back in.
+   */
+  it.each([
+    ['loadJson', loadJsonAction],
+    ['initialLoadJson', initialLoadJsonAction],
+  ])('pulls a scroll %s carries into the travel its zoom allows', (_, load) => {
+    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+
+    store.dispatchSync(load({ value: documentAt(0.3, 0, 0) }));
+
+    expect(store.state.settings.zoomLevel).toBe(0.3);
+    expect(store.state.settings.scrollLeft).toBe(-196);
+    expect(store.state.settings.scrollTop).toBe(-385);
+  });
+
+  it('leaves a scroll the travel already holds exactly where the file put it', () => {
+    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+
+    store.dispatchSync(loadJsonAction({ value: documentAt(0.3, -300, -400) }));
+
+    expect(store.state.settings.scrollLeft).toBe(-300);
+    expect(store.state.settings.scrollTop).toBe(-400);
+  });
+
+  /**
+   * A host that has not measured its frame yet has no travel to speak of, so the
+   * file's own offset is kept and changeViewport clamps it once there is a
+   * screen. Clamping against a screen of nothing would move it twice.
+   */
+  it('keeps the offset until a screen exists, then lands it in range', () => {
+    store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+
+    store.dispatchSync(loadJsonAction({ value: documentAt(0.3, 0, 0) }));
+
+    expect(store.state.settings.scrollLeft).toBe(0);
+    expect(store.state.settings.scrollTop).toBe(0);
+
+    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+
+    expect(store.state.settings.scrollLeft).toBe(-196);
+    expect(store.state.settings.scrollTop).toBe(-385);
+  });
+});
+
 describe('editor.clear / initialClear', () => {
   it('resets doc and collections on clear', () => {
     seedTableWithColumns(store);
