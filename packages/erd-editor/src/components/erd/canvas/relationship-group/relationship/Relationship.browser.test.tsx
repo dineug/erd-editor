@@ -6,6 +6,7 @@
 
 import { type DOMTemplateLiterals } from '@dineug/r-html';
 import type { Container } from 'konva/lib/Container';
+import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -28,10 +29,11 @@ import {
   StartRelationshipType,
 } from '@/constants/schema';
 import { hoverRelationshipMapAction } from '@/engine/modules/editor/atom.actions';
-import { Relationship as RelationshipType_ } from '@/internal-types';
+import { Point, Relationship as RelationshipType_ } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { createRelationship } from '@/utils/collection/relationship.entity';
+import { CIRCLE_RADIUS } from '@/utils/draw-relationship';
 import {
   getRelationshipPath,
   toPathD,
@@ -130,6 +132,13 @@ const childNamed = (group: Container, name: string) =>
 
 const numbersIn = (data: string) =>
   (data.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+
+/** One hit path holds the run and a closed box per anchor, so it is split. */
+const subpaths = (node: KonvaNode) =>
+  (node.getAttr('data') as string)
+    .split('M')
+    .filter(Boolean)
+    .map(part => `M${part}`);
 
 describe('Relationship as konva nodes', () => {
   it('names the group for a lookup and an ancestor walk', async () => {
@@ -252,23 +261,58 @@ describe('Relationship as konva nodes', () => {
     expect(hit.listening()).toBe(true);
   });
 
-  it('runs the pointer band from one cardinality decoration to the other', async () => {
+  it('runs the pointer band from one anchor to the other', async () => {
     const relationship = makeRelationship();
-    const { path } = getRelationshipPath(relationship);
     const { group } = await mountRelationship(relationship);
 
-    const numbers = numbersIn(
-      childNamed(group, 'relationship-hit-area').getAttr('data')
-    );
+    const [run] = subpaths(childNamed(group, 'relationship-hit-area'));
+    const numbers = numbersIn(run);
 
-    // The route alone spans the two turning points. The guide lines either side
-    // of it carry the connector the rest of the way to its decorations, and
-    // they are as thin as the route.
+    // The route alone spans the two turning points. The band carries on past
+    // the guide lines to the anchors themselves, because the markers between
+    // them are drawn there and nothing else in the group listens.
     expect(numbers.slice(0, 2)).toEqual([
-      path.line.start.x1,
-      path.line.start.y1,
+      relationship.start.x,
+      relationship.start.y,
     ]);
-    expect(numbers.slice(-2)).toEqual([path.line.end.x1, path.line.end.y1]);
+    expect(numbers.slice(-2)).toEqual([relationship.end.x, relationship.end.y]);
+  });
+
+  it('traces every cardinality marker at both anchors', async () => {
+    const relationship = makeRelationship();
+    const { line } = getRelationshipPath(relationship);
+    const { group } = await mountRelationship(relationship);
+    const parts = subpaths(childNamed(group, 'relationship-hit-area'));
+
+    // The run, then the two ticks, the two crow's foot arms and the ring at
+    // each anchor. Traced whether or not this connector drew them, so the band
+    // never has to know which cardinality it is carrying.
+    expect(parts).toHaveLength(11);
+
+    expect(numbersIn(parts[1])).toEqual([
+      line.line.start.base.x1,
+      line.line.start.base.y1,
+      line.line.start.base.x1,
+      line.line.start.base.y2,
+    ]);
+    expect(numbersIn(parts[2])).toEqual([
+      line.line.start.base2.x1,
+      line.line.start.base2.y1,
+      line.line.start.base2.x1,
+      line.line.start.base2.y2,
+    ]);
+
+    // The arc command, which konva parses the way the browser did, and which
+    // is what carries the band round a ring the ticks leave a gap in.
+    expect(numbersIn(parts[5]).slice(0, 2)).toEqual([
+      line.startCircle.cx - CIRCLE_RADIUS,
+      line.startCircle.cy,
+    ]);
+    expect(parts[5]).toContain(`A${CIRCLE_RADIUS} ${CIRCLE_RADIUS} 0 0 1`);
+    expect(numbersIn(parts[10]).slice(0, 2)).toEqual([
+      line.circle.cx - CIRCLE_RADIUS,
+      line.circle.cy,
+    ]);
   });
 
   it('renders the dash start marker for a dash start relationship type', async () => {
@@ -405,6 +449,7 @@ type ZoomMounted = {
   app: AppContext;
   stage: Stage;
   hit: Container;
+  group: Container;
 };
 
 /**
@@ -483,6 +528,7 @@ async function mountAtZoom(
     hit: rendered.stage.findOne<Container>(
       '.relationship-hit-area'
     ) as Container,
+    group: rendered.stage.findOne<Container>('.relationship') as Container,
   };
 }
 
@@ -562,4 +608,141 @@ describe('the connector catches the pointer at one screen width', () => {
       ).toBe(false);
     }
   );
+});
+
+/** Enough of one drawn node to stand for it: both ends and the middle. */
+function drawnPoints(node: KonvaNode): Point[] {
+  if (node.getClassName() === 'Circle') {
+    const radius = node.getAttr('radius');
+
+    return Array.from({ length: 8 }, (_, index) => {
+      const angle = (index / 8) * Math.PI * 2;
+      return {
+        x: node.x() + radius * Math.cos(angle),
+        y: node.y() + radius * Math.sin(angle),
+      };
+    });
+  }
+
+  const flat: number[] =
+    node.getClassName() === 'Line'
+      ? node.getAttr('points')
+      : numbersIn(node.getAttr('data'));
+  const corners: Point[] = [];
+  for (let index = 0; index < flat.length; index += 2) {
+    corners.push({ x: flat[index], y: flat[index + 1] });
+  }
+
+  const points: Point[] = [];
+  for (let index = 1; index < corners.length; index++) {
+    const from = corners[index - 1];
+    const to = corners[index];
+    for (const t of [0, 0.5, 1]) {
+      points.push({
+        x: from.x + (to.x - from.x) * t,
+        y: from.y + (to.y - from.y) * t,
+      });
+    }
+  }
+
+  return points;
+}
+
+/**
+ * Where the stage answers with something other than the connector's own band.
+ * A layer scaled by the zoom is what the scene does, so a scene point is put
+ * through that same scale before konva's hit graph is asked about it.
+ */
+function unreachable({ stage, group }: ZoomMounted, zoomLevel: number) {
+  const missed: string[] = [];
+
+  for (const node of group.getChildren()) {
+    if (node.name() === 'relationship-hit-area') continue;
+
+    for (const point of drawnPoints(node)) {
+      const hit = stage.getIntersection({
+        x: point.x * zoomLevel,
+        y: point.y * zoomLevel,
+      });
+
+      if (hit?.name() !== 'relationship-hit-area') {
+        missed.push(`${node.getClassName()} ${point.x},${point.y}`);
+      }
+    }
+  }
+
+  return missed;
+}
+
+/** The bits the schema comments out, which the shape map still answers. */
+const ZERO_ONE_N = 1;
+const ONE = 32;
+const N = 64;
+
+const SHAPE_TYPES = [
+  ZERO_ONE_N,
+  RelationshipType.ZeroOne,
+  RelationshipType.ZeroN,
+  RelationshipType.OneOnly,
+  RelationshipType.OneN,
+  ONE,
+  N,
+];
+
+const START_TYPES = [StartRelationshipType.ring, StartRelationshipType.dash];
+
+const SWEEP = SHAPE_TYPES.flatMap(relationshipType =>
+  START_TYPES.flatMap(startRelationshipType =>
+    ZOOM_LEVELS.map(zoomLevel => ({
+      relationshipType,
+      startRelationshipType,
+      zoomLevel,
+    }))
+  )
+);
+
+describe('every drawn part of the connector takes the pointer', () => {
+  it.each(SWEEP)(
+    'type $relationshipType, start $startRelationshipType, zoom $zoomLevel',
+    async ({ relationshipType, startRelationshipType, zoomLevel }) => {
+      const relationship = makeRelationship({
+        relationshipType,
+        startRelationshipType,
+      });
+      const mounted = await mountAtZoom(relationship, zoomLevel);
+
+      // Nothing but the band listens, so a marker outside it is a marker the
+      // pointer cannot reach however plainly it is painted.
+      expect(mounted.group.getChildren().length).toBeGreaterThan(4);
+      expect(unreachable(mounted, zoomLevel)).toEqual([]);
+    }
+  );
+
+  it('dispatches enter from a marker the band now covers', async () => {
+    const relationship = makeRelationship({
+      startRelationshipType: StartRelationshipType.ring,
+    });
+    const mounted = await mountAtZoom(relationship, 1);
+    const ring = mounted.group
+      .getChildren()
+      .find(node => node.getClassName() === 'Circle')!;
+
+    moveScenePointer(mounted.stage, AWAY.x, AWAY.y);
+    await flush();
+    await whenDrawn();
+    await whenPainted();
+    expect(mounted.app.store.state.editor.hoverColumnMap).toEqual({});
+
+    moveScenePointer(
+      mounted.stage,
+      ring.x() + ring.getAttr('radius'),
+      ring.y()
+    );
+    await flush();
+    await whenDrawn();
+
+    expect(
+      Object.keys(mounted.app.store.state.editor.hoverColumnMap).sort()
+    ).toEqual(['c1', 'c2', 'c3']);
+  });
 });

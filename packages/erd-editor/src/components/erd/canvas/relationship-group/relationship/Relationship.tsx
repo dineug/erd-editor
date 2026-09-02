@@ -8,10 +8,20 @@ import {
   RELATIONSHIP_HIT_STROKE_WIDTH,
   RELATIONSHIP_STROKE_WIDTH,
 } from '@/constants/layout';
-import { StartRelationshipType } from '@/constants/schema';
+import { Direction, StartRelationshipType } from '@/constants/schema';
 import { hoverColumnMapAction } from '@/engine/modules/editor/atom.actions';
-import { Point, Relationship as RelationshipType } from '@/internal-types';
-import { CIRCLE_RADIUS, RelationshipPath } from '@/utils/draw-relationship';
+import {
+  Point,
+  Relationship as RelationshipType,
+  RelationshipPoint,
+} from '@/internal-types';
+import {
+  CIRCLE_HEIGHT,
+  CIRCLE_RADIUS,
+  LINE_HEIGHT,
+  LINE_SIZE,
+  RelationshipPath,
+} from '@/utils/draw-relationship';
 import {
   getRelationshipPath,
   toPathD,
@@ -30,25 +40,86 @@ const ROUTE_DASH = [10, 10];
 const ROUTE_SOLID: number[] = [];
 
 /**
+ * Which way a connector leaves its anchor, as the unit pair every marker is
+ * placed with: one step outward along the axis, one step across it.
+ */
+function anchorAxes({ direction }: RelationshipPoint) {
+  const outward =
+    direction === Direction.left || direction === Direction.top ? -1 : 1;
+  const horizontal =
+    direction === Direction.left || direction === Direction.right;
+
+  return horizontal
+    ? { along: { x: outward, y: 0 }, across: { x: 0, y: 1 } }
+    : { along: { x: 0, y: outward }, across: { x: 1, y: 0 } };
+}
+
+type AnchorAxes = ReturnType<typeof anchorAxes>;
+
+/** A point so far out from the anchor and so far across the axis. */
+function anchorPoint(
+  { x, y }: RelationshipPoint,
+  { along, across }: AnchorAxes,
+  out: number,
+  side: number
+): Point {
+  return {
+    x: x + along.x * out + across.x * side,
+    y: y + along.y * out + across.y * side,
+  };
+}
+
+/**
+ * The full circle as one subpath, since konva parses the svg arc command the
+ * same way the browser did. Two half turns, because a single one from a point
+ * back to itself draws nothing at all.
+ */
+function circleD({ x, y }: Point, radius: number) {
+  return `M${x - radius} ${y}A${radius} ${radius} 0 0 1 ${x + radius} ${y}A${radius} ${radius} 0 0 1 ${x - radius} ${y}`;
+}
+
+/**
+ * Every cardinality marker either anchor can draw, traced so the hit band
+ * follows each of them. Which ones this connector actually drew does not
+ * matter: a trace over an unused one costs a band nothing is painted under.
+ */
+function anchorMarkersD(point: RelationshipPoint) {
+  const axes = anchorAxes(point);
+  const at = (out: number, side: number) => anchorPoint(point, axes, out, side);
+  const tip = at(LINE_HEIGHT, 0);
+
+  return [
+    toPathD([[at(LINE_HEIGHT, -LINE_SIZE), at(LINE_HEIGHT, LINE_SIZE)]]),
+    toPathD([[at(CIRCLE_HEIGHT, -LINE_SIZE), at(CIRCLE_HEIGHT, LINE_SIZE)]]),
+    toPathD([[tip, at(0, LINE_SIZE)]]),
+    toPathD([[tip, at(0, -LINE_SIZE)]]),
+    circleD(at(CIRCLE_HEIGHT, 0), CIRCLE_RADIUS),
+  ].join('');
+}
+
+/**
  * The whole connector as one path, for hit-testing only: a pointer finds a
- * konva shape along its hit stroke, so a connector is as easy to hover as its
- * hit width. All three runs fit one shape rather than a band per segment.
+ * konva shape along its hit stroke, and nothing else here listens, so the run
+ * reaches both anchors and a marker trace carries the band over each end.
  */
 function toHitPathD(
+  { start, end }: RelationshipType,
   { line }: RelationshipPath['path'],
   segments: Array<[Point, Point]>
 ) {
-  return toPathD([
+  const run = toPathD([
     [
-      { x: line.start.x1, y: line.start.y1 },
+      { x: start.x, y: start.y },
       { x: line.start.x2, y: line.start.y2 },
     ],
     ...segments,
     [
       { x: line.end.x2, y: line.end.y2 },
-      { x: line.end.x1, y: line.end.y1 },
+      { x: end.x, y: end.y },
     ],
   ]);
+
+  return `${run}${anchorMarkersD(start)}${anchorMarkersD(end)}`;
 }
 
 /**
@@ -123,8 +194,9 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
         <k-path
           name="relationship-hit-area"
           kind="relationship-hit-area"
-          data={toHitPathD(path, lines)}
+          data={toHitPathD(relationship, path, lines)}
           hitStrokeWidth={hitBandWidth(settings.zoomLevel)}
+          lineCap="round"
         />
         <k-path
           name="relationship-route"
