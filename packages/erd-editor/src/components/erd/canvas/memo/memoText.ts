@@ -1,6 +1,7 @@
 import { layoutWithLines, prepareWithSegments } from '@chenglou/pretext';
 
 import {
+  getSceneFontMetrics,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
 } from '@/components/erd/canvas/sceneTokens';
@@ -20,6 +21,72 @@ export const MEMO_LINE_HEIGHT_PX = SCENE_FONT_SIZE * MEMO_LINE_HEIGHT;
 
 /** The css font shorthand the scene text and the overlay editor both resolve to. */
 export const MEMO_FONT = `${MEMO_FONT_WEIGHT} ${SCENE_FONT_SIZE}px ${SCENE_FONT_FAMILY}`;
+
+/**
+ * The baseline konva draws the first body line on, down from the top of the
+ * text node. A canvas has no line box, so the leading and the font's own ascent
+ * and descent are the whole of where that line lands.
+ *
+ * @example
+ * const baseline = getMemoTextBaseline();
+ */
+export function getMemoTextBaseline(): number {
+  const { ascent, descent } = getSceneFontMetrics();
+
+  return MEMO_LINE_HEIGHT_PX / 2 + (ascent - descent) / 2;
+}
+
+/** The side of the box the probe below is measured in, exact in dom layout. */
+const BASELINE_PROBE_SIZE = 100;
+
+/**
+ * Where a dom line box of this leading puts its first baseline. Blink floors
+ * the half leading to a whole pixel before it adds the ascent, and no api hands
+ * that number out, so the only way to it is to lay one line out and look.
+ */
+function measureDomTextBaseline(): number {
+  const box = document.createElement('div');
+  box.style.cssText = `position:absolute;visibility:hidden;top:0;left:0;width:${BASELINE_PROBE_SIZE}px;height:${BASELINE_PROBE_SIZE}px`;
+  const line = document.createElement('div');
+  line.style.cssText = `margin:0;padding:0;border:0;font:${MEMO_FONT};line-height:${MEMO_LINE_HEIGHT_PX}px;white-space:pre-wrap`;
+  line.textContent = 'M';
+  const marker = document.createElement('span');
+  marker.style.cssText =
+    'display:inline-block;width:0;height:0;vertical-align:baseline';
+  line.appendChild(marker);
+  box.appendChild(line);
+  document.body.appendChild(box);
+
+  // Every rect below carries the scale of whatever the host page put over the
+  // element, which the box of a known side is what divides back out.
+  const scale = box.getBoundingClientRect().height / BASELINE_PROBE_SIZE;
+  const top = line.getBoundingClientRect().top;
+  const bottom = marker.getBoundingClientRect().bottom;
+  box.remove();
+
+  return scale ? (bottom - top) / scale : 0;
+}
+
+let memoTextSnapOffset: number | null = null;
+
+/**
+ * The part of that baseline the dom cannot paint. Blink floors a line box's
+ * half leading to a whole pixel and a canvas floors nothing, so the editor
+ * hands the difference back to the textarea as a shift.
+ *
+ * @example
+ * transform: `translateY(${getMemoTextSnapOffset()}px)`
+ */
+export function getMemoTextSnapOffset(): number {
+  if (memoTextSnapOffset !== null) return memoTextSnapOffset;
+
+  const { ascent, descent } = getSceneFontMetrics();
+  if (typeof document === 'undefined' || (!ascent && !descent)) return 0;
+
+  memoTextSnapOffset = getMemoTextBaseline() - measureDomTextBaseline();
+
+  return memoTextSnapOffset;
+}
 
 /**
  * What a textarea's own layout does, restated for pretext. A textarea keeps its

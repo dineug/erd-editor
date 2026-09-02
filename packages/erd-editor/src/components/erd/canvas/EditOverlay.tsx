@@ -10,6 +10,7 @@ import {
 
 import { useAppContext } from '@/components/appContext';
 import {
+  getMemoTextSnapOffset,
   MEMO_FONT_WEIGHT,
   MEMO_LINE_HEIGHT_PX,
 } from '@/components/erd/canvas/memo/memoText';
@@ -270,6 +271,7 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
         'letter-spacing': '0em',
         'white-space': 'pre-wrap',
         'overflow-wrap': 'break-word',
+        transform: `translateY(${getMemoTextSnapOffset()}px)`,
       }}
       spellcheck="false"
       prop:value={props.target.value}
