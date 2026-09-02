@@ -1,7 +1,10 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
+import { FOCUS_BORDER_HEIGHT } from '@/components/erd/canvas/sceneTokens';
 import {
+  CELL_TEXT_HEIGHT,
+  CELL_UNDERLINE_Y,
   COLUMN_CELLS_X,
   type ColumnCellWidths,
   getColumnCellSlots,
@@ -11,6 +14,7 @@ import {
 import {
   COLUMN_NOT_NULL_WIDTH,
   COLUMN_UNIQUE_WIDTH,
+  INPUT_HEIGHT,
   INPUT_MARGIN_RIGHT,
 } from '@/constants/layout';
 import { ColumnType, Show } from '@/constants/schema';
@@ -168,5 +172,16 @@ describe('the boxes a column row lays out', () => {
         width: 60,
       },
     ]);
+  });
+});
+
+describe('the box a cell lays one line of text out in', () => {
+  it('is the input line the scene hands konva, so both centre in one box', () => {
+    expect(CELL_TEXT_HEIGHT).toBe(INPUT_HEIGHT);
+  });
+
+  it('runs its underline along the bottom of that box', () => {
+    expect(CELL_UNDERLINE_Y).toBe(CELL_TEXT_HEIGHT - FOCUS_BORDER_HEIGHT);
+    expect(CELL_UNDERLINE_Y + FOCUS_BORDER_HEIGHT).toBe(CELL_TEXT_HEIGHT);
   });
 });

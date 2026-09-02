@@ -19,6 +19,7 @@ import {
 } from '@/components/erd/canvas/sceneTokens';
 import {
   COLUMN_TEXT_Y,
+  getCellTextSnapOffset,
   getColumnCellSlots,
   getHeaderCellSlots,
   HEADER_CELLS_X,
@@ -54,6 +55,8 @@ import { onStop } from '@/utils/domEvent';
 import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
 import { isHighLevelTable } from '@/utils/validation';
+
+import * as styles from './EditOverlay.styles';
 
 /** What an editor writes into, and what it shows while the value is empty. */
 const EDITABLE: Partial<Record<FocusType, string>> = {
@@ -359,6 +362,7 @@ const EditOverlay: FC = (_, ctx) => {
     // The same origin CanvasScene gives its layers, read from the one place
     // that transform is written down.
     const { x: originX, y: originY } = getSceneOrigin(settings);
+    const snapOffset = getCellTextSnapOffset();
 
     return (
       <div
@@ -372,7 +376,10 @@ const EditOverlay: FC = (_, ctx) => {
       >
         {repeat(target ? [target] : [], keyOf, item => (
           <div
-            class="edit-overlay-cell"
+            class={[
+              'edit-overlay-cell',
+              item.kind === 'cell' ? styles.cell : null,
+            ]}
             style={{
               position: 'absolute',
               top: '0',
@@ -382,6 +389,12 @@ const EditOverlay: FC = (_, ctx) => {
               transform: `translate(${originX + item.x * zoomLevel}px, ${
                 originY + item.y * zoomLevel
               }px) scale(${zoomLevel})`,
+              ...(item.kind === 'cell'
+                ? {
+                    width: `${item.width}px`,
+                    '--cell-text-snap': `${snapOffset}px`,
+                  }
+                : {}),
             }}
           >
             {editor(item)}

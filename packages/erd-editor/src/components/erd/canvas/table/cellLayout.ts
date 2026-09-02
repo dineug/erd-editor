@@ -1,4 +1,8 @@
-import { TABLE_INSET } from '@/components/erd/canvas/sceneTokens';
+import {
+  FOCUS_BORDER_HEIGHT,
+  getSceneFontMetrics,
+  TABLE_INSET,
+} from '@/components/erd/canvas/sceneTokens';
 import {
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_KEY_WIDTH,
@@ -6,6 +10,7 @@ import {
   COLUMN_PADDING,
   COLUMN_UNIQUE_WIDTH,
   HEADER_ICON_HEIGHT,
+  INPUT_HEIGHT,
   INPUT_MARGIN_RIGHT,
   TABLE_HEADER_ICON_MARGIN_BOTTOM,
   TABLE_HEADER_PADDING,
@@ -42,6 +47,41 @@ export const HEADER_CELLS_Y =
 /** The text line inside a header cell and inside a column cell. */
 export const HEADER_TEXT_Y = TABLE_HEADER_PADDING;
 export const COLUMN_TEXT_Y = COLUMN_PADDING;
+
+/**
+ * The box one line of cell text is laid out in. The scene hands konva this
+ * height with verticalAlign middle and the editor gives its input the same one,
+ * which is what puts the two baselines in one place instead of two.
+ */
+export const CELL_TEXT_HEIGHT = INPUT_HEIGHT;
+
+/** Where the underline runs inside that box, for the scene and the editor both. */
+export const CELL_UNDERLINE_Y = CELL_TEXT_HEIGHT - FOCUS_BORDER_HEIGHT;
+
+/**
+ * The baseline konva centres that line on, down from the top of the box. A
+ * canvas has no line box, so the font's own ascent and descent are what carry
+ * it, and an editor over the scene has to read the same pair off the same font.
+ *
+ * @example
+ * const baseline = getCellTextBaseline();
+ */
+export function getCellTextBaseline(): number {
+  const { ascent, descent } = getSceneFontMetrics();
+
+  return CELL_TEXT_HEIGHT / 2 + (ascent - descent) / 2;
+}
+
+/**
+ * The fraction of that baseline the dom cannot paint. Blink rounds a painted
+ * baseline to a whole pixel of the layer the overlay is scaled inside and a
+ * canvas rounds nothing, so the editor gives the difference back as a shift.
+ */
+export function getCellTextSnapOffset(): number {
+  const baseline = getCellTextBaseline();
+
+  return baseline ? baseline - Math.round(baseline) : 0;
+}
 
 /** Where a column row's cells start, past the key badge. */
 export const COLUMN_CELLS_X =

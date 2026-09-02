@@ -11,17 +11,22 @@ import {
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
+import * as overlayStyles from '@/components/erd/canvas/EditOverlay.styles';
 import {
   layoutMemoLines,
   MEMO_FONT_WEIGHT,
   MEMO_LINE_HEIGHT_PX,
 } from '@/components/erd/canvas/memo/memoText';
 import {
+  SCENE_FONT,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
 } from '@/components/erd/canvas/sceneTokens';
 import {
+  CELL_TEXT_HEIGHT,
   COLUMN_TEXT_Y,
+  getCellTextBaseline,
+  getCellTextSnapOffset,
   getColumnCellSlots,
   HEADER_CELLS_X,
   HEADER_CELLS_Y,
@@ -767,5 +772,153 @@ describe('the data type hint list over the scene', () => {
     fixture.mounted.container.removeEventListener('mousedown', listen);
 
     expect(reached).toBe(1);
+  });
+});
+
+/** The pixel rows one crop of a canvas has ink in, dimmest sample first. */
+function inkRows(canvas: HTMLCanvasElement): number[] {
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('no 2d context to read the drawn line back');
+
+  const { width, height } = canvas;
+  const { data } = context.getImageData(0, 0, width, height);
+  const rows: number[] = [];
+
+  for (let y = 0; y < height; y++) {
+    let sum = 0;
+    for (let x = 0; x < width; x++) sum += data[(y * width + x) * 4 + 3] / 255;
+    rows.push(sum);
+  }
+
+  return rows;
+}
+
+/** Where the weight of an ink profile sits, which a sub-pixel shift moves. */
+function centroidOf(rows: number[]): number {
+  let weighted = 0;
+  let total = 0;
+
+  rows.forEach((row, index) => {
+    weighted += row * index;
+    total += row;
+  });
+
+  return total ? weighted / total : 0;
+}
+
+const CELL_SAMPLE = 'Hxp';
+const RASTER_SCALE = 4;
+
+/**
+ * Where getCellTextBaseline says the scene's line sits, drawn straight onto a
+ * canvas. Konva is the other half of the comparison, and neither one is allowed
+ * to be the definition of the other.
+ */
+function drawBaselineText(): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = 60 * RASTER_SCALE;
+  canvas.height = CELL_TEXT_HEIGHT * RASTER_SCALE;
+
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('no 2d context to draw the reference line');
+  context.scale(RASTER_SCALE, RASTER_SCALE);
+  context.font = SCENE_FONT;
+  context.textBaseline = 'alphabetic';
+  context.fillStyle = '#fff';
+  context.fillText(CELL_SAMPLE, 0, getCellTextBaseline());
+
+  return canvas;
+}
+
+/** The same string through konva, laid out the way a cell hands it over. */
+async function drawKonvaText(): Promise<HTMLCanvasElement> {
+  const { Stage } = await import('konva/lib/Stage');
+  const { Layer } = await import('konva/lib/Layer');
+  const { Text } = await import('konva/lib/shapes/Text');
+
+  const container = document.createElement('div');
+  document.body.append(container);
+  const stage = new Stage({
+    container,
+    width: 60,
+    height: CELL_TEXT_HEIGHT,
+  });
+  const layer = new Layer();
+  stage.add(layer);
+  layer.add(
+    new Text({
+      x: 0,
+      y: 0,
+      width: 60,
+      height: CELL_TEXT_HEIGHT,
+      text: CELL_SAMPLE,
+      fill: '#fff',
+      fontFamily: SCENE_FONT_FAMILY,
+      fontSize: SCENE_FONT_SIZE,
+      verticalAlign: 'middle',
+      wrap: 'none',
+    })
+  );
+  layer.draw();
+
+  const canvas = stage.toCanvas({ pixelRatio: RASTER_SCALE });
+  stage.destroy();
+  container.remove();
+
+  return canvas;
+}
+
+/**
+ * The number the editor places its input by. Konva centres a drawn line by the
+ * font's own metrics, so nothing but drawing it says where that lands, and the
+ * editor would follow a stale formula in silence.
+ */
+describe('the baseline the scene draws a cell line on', () => {
+  it('is the one getCellTextBaseline hands the editor', async () => {
+    const konva = inkRows(await drawKonvaText());
+    const reference = inkRows(drawBaselineText());
+
+    expect(konva.some(row => row > 0)).toBe(true);
+    expect(
+      Math.abs(centroidOf(konva) - centroidOf(reference)) / RASTER_SCALE
+    ).toBeLessThan(0.05);
+  });
+
+  it('is the snap offset away from the whole pixel the dom paints on', () => {
+    const baseline = getCellTextBaseline();
+    const offset = getCellTextSnapOffset();
+
+    expect(baseline).toBeGreaterThan(0);
+    expect(Math.abs(offset)).toBeLessThanOrEqual(0.5);
+    expect(baseline - offset).toBe(Math.round(baseline));
+  });
+});
+
+/**
+ * What the editor puts on the cell box so its own line lands on the drawn one.
+ * Each of these is a number the scene also draws by, and a cell that loses one
+ * of them drifts by a fraction nobody can see until the caret arrives.
+ */
+describe('the box the cell editor is placed in', () => {
+  it('carries the cell width and the snap the dom baseline lost', async () => {
+    const fixture = await setup();
+    await editTableName(fixture);
+
+    const cell = cellOf(fixture.mounted);
+    expect(cell.classList.contains(String(overlayStyles.cell))).toBe(true);
+    expect(cell.style.getPropertyValue('--cell-text-snap')).toBe(
+      `${getCellTextSnapOffset()}px`
+    );
+    expect(cell.style.width).toBe(
+      `${fixture.app.store.state.collections.tableEntities[fixture.tableId].ui.widthName}px`
+    );
+  });
+
+  it('leaves the memo body editor out of all of it', async () => {
+    const fixture = await editMemo();
+
+    const cell = cellOf(fixture.mounted);
+    expect(cell.classList.contains(String(overlayStyles.cell))).toBe(false);
+    expect(cell.style.getPropertyValue('--cell-text-snap')).toBe('');
   });
 });

@@ -20,6 +20,48 @@ export const SCENE_FONT_FAMILY = TextFontFamily;
 /** The px behind font-size-1, which is what typography.paragraph resolves to. */
 export const SCENE_FONT_SIZE = 12;
 
+/** The css font shorthand konva builds for a cell's text, and measures it with. */
+export const SCENE_FONT = `normal normal ${SCENE_FONT_SIZE}px ${SCENE_FONT_FAMILY}`;
+
+/** The pair a canvas centres a drawn line by, which no line box is involved in. */
+export type SceneFontMetrics = {
+  ascent: number;
+  descent: number;
+};
+
+const NO_SCENE_FONT_METRICS: SceneFontMetrics = { ascent: 0, descent: 0 };
+
+let sceneFontMetrics: SceneFontMetrics | null = null;
+
+/**
+ * The ascent and descent konva centres a drawn line by, read with the measure
+ * call konva makes itself. A canvas has no line box to lean on, so this pair is
+ * the whole of where a baseline lands, and the editor has to read the same one.
+ *
+ * @example
+ * const { ascent, descent } = getSceneFontMetrics();
+ */
+export function getSceneFontMetrics(): SceneFontMetrics {
+  if (sceneFontMetrics) return sceneFontMetrics;
+  if (typeof document === 'undefined') return NO_SCENE_FONT_METRICS;
+
+  const context = document.createElement('canvas').getContext('2d');
+  if (!context) return NO_SCENE_FONT_METRICS;
+
+  context.font = SCENE_FONT;
+  const metrics = context.measureText('M');
+  const ascent =
+    metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent;
+  const descent =
+    metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent;
+  if (!Number.isFinite(ascent) || !Number.isFinite(descent)) {
+    return NO_SCENE_FONT_METRICS;
+  }
+
+  sceneFontMetrics = { ascent, descent };
+  return sceneFontMetrics;
+}
+
 /**
  * The px behind font-size-5 through font-size-9, in the order HighLevelTable
  * steps through them as the zoom falls. The scale itself is a CSS custom
