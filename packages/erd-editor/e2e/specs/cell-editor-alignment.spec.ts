@@ -5,18 +5,23 @@ import { expect, test } from '../support/fixtures';
 import { createSchema } from '../support/schema';
 
 /**
- * Four device pixels to a css pixel, so half a pixel of drift is two rows of the
- * captured image rather than a change of shade nothing can name.
+ * Two device pixels to a css pixel, which is what a retina display gives. Four
+ * lands the whole fixture on the device grid, and a scale that cancels the
+ * rounding by construction is no place to guard against it.
  */
-const SCALE = 4;
+const SCALE = 2;
 
 test.use({ deviceScaleFactor: SCALE });
 
-/** How far a glyph may travel between the drawn cell and the editor over it. */
+/** How far a glyph may travel between the two states, in device pixels. */
 const DRIFT_LIMIT_PX = 0.05;
 
-/** Frames the open editor is caught in, so a blinking caret is off in one. */
-const CARET_FRAMES = 5;
+/**
+ * How much of one profile the other cannot account for once it is shifted and
+ * scaled onto it. The two states paint the same glyphs a shade apart, so the
+ * ink totals differ by a little and the shapes by nothing.
+ */
+const RESIDUAL_LIMIT = 0.01;
 
 /** The share of the cell the glyphs are read off, which the caret is past. */
 const TEXT_REACH = 0.8;
@@ -156,64 +161,85 @@ async function profileOf(page: Page, clip: Clip): Promise<Profile> {
   );
 }
 
-/** The same crop caught several times, kept at its dimmest sample by sample. */
-async function openProfileOf(page: Page, clip: Clip): Promise<Profile> {
-  let merged = await profileOf(page, clip);
+/** One profile read at a sample that need not be a whole one. */
+function sampleAt(samples: number[], at: number): number {
+  const low = Math.floor(at);
+  const share = at - low;
+  const before = low < 0 || low >= samples.length ? 0 : samples[low];
+  const after = low + 1 < 0 || low + 1 >= samples.length ? 0 : samples[low + 1];
 
-  for (let frame = 1; frame < CARET_FRAMES; frame++) {
-    await page.waitForTimeout(120);
-    const profile = await profileOf(page, clip);
-
-    merged = {
-      ...merged,
-      rows: merged.rows.map((row, index) =>
-        Math.min(row, profile.rows[index] ?? row)
-      ),
-      cols: merged.cols.map((col, index) =>
-        Math.min(col, profile.cols[index] ?? col)
-      ),
-    };
-  }
-
-  return merged;
+  return before * (1 - share) + after * share;
 }
 
-/** The rows above the underline, which are the ones a glyph can reach. */
-const glyphRowsOf = (profile: Profile) =>
-  profile.rows.slice(0, profile.bandTop ?? profile.rows.length);
+type Alignment = {
+  /** How far the second profile sits below the first, in device pixels. */
+  shift: number;
+  /** What share of the second profile the fit leaves unexplained. */
+  residual: number;
+};
 
-/** The whole-sample shift that lines two ink profiles up best, in css pixels. */
-function driftOf(before: number[], after: number[]): number {
-  let best = { shift: 0, cost: Infinity };
+/**
+ * Where one ink profile sits against another, to a fraction of a sample. The
+ * fit takes the best scale at every shift, so a state that paints the same
+ * glyphs a shade brighter reads as no movement rather than as a little.
+ */
+function alignmentOf(before: number[], after: number[]): Alignment {
+  let best: Alignment = { shift: 0, residual: Infinity };
 
-  for (let shift = -SCALE * 2; shift <= SCALE * 2; shift++) {
-    let cost = 0;
-    for (let index = 0; index < before.length; index++) {
-      cost += Math.abs(before[index] - (after[index + shift] ?? 0));
+  for (let shift = -2 * SCALE; shift <= 2 * SCALE; shift += 0.005) {
+    let product = 0;
+    let square = 0;
+    for (let index = 0; index < after.length; index++) {
+      const sample = sampleAt(before, index - shift);
+      product += sample * after[index];
+      square += sample * sample;
     }
-    if (cost < best.cost) best = { shift, cost };
+    if (!square) continue;
+
+    const scale = product / square;
+    let left = 0;
+    let energy = 0;
+    for (let index = 0; index < after.length; index++) {
+      const gap = after[index] - scale * sampleAt(before, index - shift);
+      left += gap * gap;
+      energy += after[index] * after[index];
+    }
+
+    const residual = energy ? left / energy : left;
+    if (residual < best.residual) best = { shift, residual };
   }
 
-  return best.shift / SCALE;
-}
-
-/** Where the weight of a profile sits, which moves with a sub-pixel shift. */
-function centroidOf(samples: number[]): number {
-  let weighted = 0;
-  let total = 0;
-
-  samples.forEach((sample, index) => {
-    weighted += sample * index;
-    total += sample;
-  });
-
-  return total ? weighted / total : 0;
+  return best;
 }
 
 /**
- * Blanks the projection's own copy of every scene string. The mirror writes a
- * konva Text back out as real dom text so a locator can read it, and that copy
- * would land in the crop on top of the pixels the canvas painted.
+ * Asserts that two profiles carry the same ink in the same place. Both states
+ * are read off one crop, so a glyph that moved shows up as a shift and a glyph
+ * that changed shape shows up as residual the shift cannot take away.
+ */
+function expectNoDrift(before: number[], after: number[], what: string) {
+  const { shift, residual } = alignmentOf(before, after);
+
+  expect(Math.abs(shift), `${what} drift`).toBeLessThan(DRIFT_LIMIT_PX);
+  expect(residual, `${what} shape`).toBeLessThan(RESIDUAL_LIMIT);
+}
+
+/** The rows both states agree are above the underline, which glyphs reach. */
+function glyphRowsOf(profile: Profile, cut: number) {
+  return profile.rows.slice(0, cut);
+}
+
+/** The last row a glyph can reach, being the one the underline starts on. */
+const cutOf = (drawn: Profile, edited: Profile) =>
+  Math.min(
+    drawn.bandTop ?? drawn.rows.length,
+    edited.bandTop ?? edited.rows.length
+  );
+
+/**
+ * Blanks the projection's own copy of every scene string and hides the caret.
+ * The mirror writes a konva Text back out as real dom text, and both that copy
+ * and a blinking caret would land in the crop over the pixels canvas painted.
  */
 async function hideProjectedText(page: Page) {
   await page.evaluate(() => {
@@ -221,8 +247,10 @@ async function hideProjectedText(page: Page) {
     if (!root) throw new Error('erd-editor is not mounted');
 
     const style = document.createElement('style');
-    style.textContent =
-      '.scene-mirror, .scene-mirror * { color: transparent !important; }';
+    style.textContent = [
+      '.scene-mirror, .scene-mirror * { color: transparent !important; }',
+      '.edit-overlay input.edit-input { caret-color: transparent !important; }',
+    ].join('\n');
     root.appendChild(style);
   });
 }
@@ -293,30 +321,21 @@ test('the glyphs hold at a placement that lands off the whole pixel', async ({
 
     await erd.press('Enter');
     await expect(erd.editInput()).toBeFocused();
-    const edited = await openProfileOf(erd.page, clip);
+    const edited = await profileOf(erd.page, clip);
     await erd.press('Enter');
     await expect(erd.editInput()).toHaveCount(0);
 
     // Read only the rows both states agree are above the underline: the two
     // paint that line in different colours, and the row it half covers falls
     // on either side of the coverage the band is found by.
-    const cut = Math.min(
-      drawn.bandTop ?? drawn.rows.length,
-      edited.bandTop ?? edited.rows.length
-    );
-    const rowsBefore = drawn.rows.slice(0, cut);
-    const rowsAfter = edited.rows.slice(0, cut);
+    const cut = cutOf(drawn, edited);
 
-    expect(driftOf(rowsBefore, rowsAfter), `${key} vertical drift`).toBe(0);
-    expect(
-      Math.abs(centroidOf(rowsAfter) - centroidOf(rowsBefore)) / SCALE,
-      `${key} sub pixel vertical drift`
-    ).toBeLessThan(DRIFT_LIMIT_PX);
-    expect(driftOf(drawn.cols, edited.cols), `${key} horizontal drift`).toBe(0);
-    expect(
-      Math.abs(centroidOf(edited.cols) - centroidOf(drawn.cols)) / SCALE,
-      `${key} sub pixel horizontal drift`
-    ).toBeLessThan(DRIFT_LIMIT_PX);
+    expectNoDrift(
+      glyphRowsOf(drawn, cut),
+      glyphRowsOf(edited, cut),
+      `${key} vertical`
+    );
+    expectNoDrift(drawn.cols, edited.cols, `${key} horizontal`);
   }
 });
 
@@ -374,7 +393,7 @@ test.describe('the cell editor lands on the text it replaces', () => {
 
         await erd.press('Enter');
         await expect(erd.editInput()).toBeFocused();
-        const edited = await openProfileOf(erd.page, clip);
+        const edited = await profileOf(erd.page, clip);
         await erd.press('Enter');
         await expect(erd.editInput()).toHaveCount(0);
 
@@ -389,22 +408,13 @@ test.describe('the cell editor lands on the text it replaces', () => {
           drawn.bandBottom
         );
 
-        const rowsBefore = glyphRowsOf(drawn);
-        const rowsAfter = glyphRowsOf(edited);
-        expect(driftOf(rowsBefore, rowsAfter), `${key} vertical drift`).toBe(0);
-        expect(
-          Math.abs(centroidOf(rowsAfter) - centroidOf(rowsBefore)) / SCALE,
-          `${key} sub pixel vertical drift`
-        ).toBeLessThan(DRIFT_LIMIT_PX);
-
-        expect(
-          driftOf(drawn.cols, edited.cols),
-          `${key} horizontal drift`
-        ).toBe(0);
-        expect(
-          Math.abs(centroidOf(edited.cols) - centroidOf(drawn.cols)) / SCALE,
-          `${key} sub pixel horizontal drift`
-        ).toBeLessThan(DRIFT_LIMIT_PX);
+        const cut = cutOf(drawn, edited);
+        expectNoDrift(
+          glyphRowsOf(drawn, cut),
+          glyphRowsOf(edited, cut),
+          `${key} vertical`
+        );
+        expectNoDrift(drawn.cols, edited.cols, `${key} horizontal`);
       }
     });
   }
