@@ -27,7 +27,14 @@ const COLUMN_ID = 'cells_a';
 /** Short enough that the caret sits outside the reach and no cell ellipsises. */
 const CELL_TEXT = 'Hxp';
 
-const seed = (zoomLevel: number) =>
+/**
+ * Far enough in that every cell is on screen at 1.5 too, where the canvas box is
+ * wider than the viewport and the scene starts negative. Round, so the scene
+ * lands on whole pixels at every zoom the round-placement cases use.
+ */
+const ROUND_AT = { x: 400, y: 400 };
+
+const seed = (zoomLevel: number, at = ROUND_AT) =>
   createSchema({
     zoomLevel,
     tables: [
@@ -35,10 +42,8 @@ const seed = (zoomLevel: number) =>
         id: TABLE_ID,
         name: CELL_TEXT,
         comment: CELL_TEXT,
-        // Far enough in that every cell is on screen at 1.5 too, where the
-        // canvas box is wider than the viewport and the scene starts negative.
-        x: 400,
-        y: 400,
+        x: at.x,
+        y: at.y,
         columns: [
           {
             id: COLUMN_ID,
@@ -264,13 +269,99 @@ const CELL_CASES: CellCase[] = [
   },
 ];
 
+/** A table and a zoom whose product puts the cell off the whole pixel. */
+const OFF_PIXEL = { x: 401, y: 401, zoomLevel: 1.25 };
+
+/**
+ * The offset the editor gives its input back is one number for every cell, so a
+ * placement that lands between two pixels is where a per-position correction
+ * would show up as drift the round placements above can never produce.
+ */
+test('the glyphs hold at a placement that lands off the whole pixel', async ({
+  erd,
+}) => {
+  await erd.seed(seed(OFF_PIXEL.zoomLevel, OFF_PIXEL));
+  await hideProjectedText(erd.page);
+
+  for (const { key, cell } of CELL_CASES) {
+    const target = cell(erd);
+    await erd.focusCell(target);
+    const clip = await textBoxOf(target);
+    expect(
+      Math.abs(clip.y % 1),
+      `${key} sits off the whole pixel`
+    ).toBeGreaterThan(0.05);
+    const drawn = await profileOf(erd.page, clip);
+
+    await erd.press('Enter');
+    await expect(erd.editInput()).toBeFocused();
+    const edited = await openProfileOf(erd.page, clip);
+    await erd.press('Enter');
+    await expect(erd.editInput()).toHaveCount(0);
+
+    // Read only the rows both states agree are above the underline: the two
+    // paint that line in different colours, and the row it half covers falls
+    // on either side of the coverage the band is found by.
+    const cut = Math.min(
+      drawn.bandTop ?? drawn.rows.length,
+      edited.bandTop ?? edited.rows.length
+    );
+    const rowsBefore = drawn.rows.slice(0, cut);
+    const rowsAfter = edited.rows.slice(0, cut);
+
+    expect(driftOf(rowsBefore, rowsAfter), `${key} vertical drift`).toBe(0);
+    expect(
+      Math.abs(centroidOf(rowsAfter) - centroidOf(rowsBefore)) / SCALE,
+      `${key} sub pixel vertical drift`
+    ).toBeLessThan(DRIFT_LIMIT_PX);
+    expect(driftOf(drawn.cols, edited.cols), `${key} horizontal drift`).toBe(0);
+    expect(
+      Math.abs(centroidOf(edited.cols) - centroidOf(drawn.cols)) / SCALE,
+      `${key} sub pixel horizontal drift`
+    ).toBeLessThan(DRIFT_LIMIT_PX);
+  }
+});
+
+/** The zoom at and below which the scene swaps the whole table for a name. */
+const HIGH_LEVEL_ZOOM = 0.7;
+
+/** Just above the swap, so a few notches of wheel zoom cross it. */
+const NEAR_SWAP_ZOOM = 0.75;
+
+/**
+ * Below the swap the scene draws no cells, so an editor has no text to land on.
+ * The zoom is crossed with one already open, which is the only way into that
+ * state, and it has to close rather than sit on a cell that was never drawn.
+ */
+test('the zoom crossing the swap closes the editor it would strand', async ({
+  erd,
+}) => {
+  await erd.seed(seed(NEAR_SWAP_ZOOM));
+  await erd.focusCell(erd.cell(erd.tableEl(TABLE_ID), 'tableName'));
+  await erd.press('Enter');
+  await expect(erd.editInput()).toBeFocused();
+  await expect(erd.canvas.locator('.high-level-table')).toHaveCount(0);
+
+  const modKey = await erd.pointerModKey();
+  for (let notch = 0; notch < 4; notch++) {
+    await erd.wheel(120, { modifiers: [modKey] });
+  }
+  await expect
+    .poll(async () => (await erd.settings()).zoomLevel)
+    .toBeLessThanOrEqual(HIGH_LEVEL_ZOOM);
+
+  await expect(erd.canvas.locator('.high-level-table')).toHaveCount(1);
+  await expect(erd.canvas.locator('.column-row')).toHaveCount(0);
+  await expect(erd.editInput()).toHaveCount(0);
+});
+
 /**
  * The editor is dom over a canvas, so nothing short of a measurement says the
  * two agree. Each case reads one crop twice, once with the scene drawing the
  * text and once with the input over it, and asks for the same pixels back.
  */
 test.describe('the cell editor lands on the text it replaces', () => {
-  for (const zoomLevel of [1, 1.5]) {
+  for (const zoomLevel of [0.8, 1, 1.5]) {
     test(`every cell keeps its glyphs and its underline at zoom ${zoomLevel}`, async ({
       erd,
     }) => {
