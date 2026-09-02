@@ -26,6 +26,7 @@ import {
   addMemoAction,
   resizeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
+import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import type { Memo } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
@@ -64,10 +65,14 @@ const seedMemo = (
 };
 
 async function mountSash(
-  options: { width?: number; height?: number } = {}
+  options: { width?: number; height?: number; zoomLevel?: number } = {}
 ): Promise<Fixture> {
+  const { zoomLevel, ...size } = options;
   const app = createTestAppContext();
-  const memo = seedMemo(app, options);
+  const memo = seedMemo(app, size);
+  if (zoomLevel !== undefined) {
+    app.store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+  }
   const container = document.createElement('div');
   document.body.append(container);
 
@@ -411,5 +416,133 @@ describe('the resize a sash drag commits', () => {
     await flush();
 
     expect(memo.ui.width).toBe(230);
+  });
+});
+
+const ZOOM_LEVELS = [0.5, 0.75, 1, 1.25, 1.5];
+
+type EdgeName = 'left' | 'right' | 'top' | 'bottom';
+
+const EDGE_NAMES: EdgeName[] = ['left', 'right', 'top', 'bottom'];
+
+/** The scene edge a sash grabs on each axis; every other edge has to hold still. */
+const GRABBED_EDGE: Record<SashPosition, { x?: EdgeName; y?: EdgeName }> = {
+  left: { x: 'left' },
+  right: { x: 'right' },
+  bottom: { y: 'bottom' },
+  lt: { x: 'left', y: 'top' },
+  rt: { x: 'right', y: 'top' },
+  lb: { x: 'left', y: 'bottom' },
+  rb: { x: 'right', y: 'bottom' },
+};
+
+const edgesOf = ({ ui }: Memo): Record<EdgeName, number> => ({
+  left: ui.x,
+  right: ui.x + ui.width,
+  top: ui.y,
+  bottom: ui.y + ui.height,
+});
+
+/** The eight compass directions the seven sashes can be dragged in. */
+const DRAGS: Array<[SashPosition, number, number]> = [
+  ['left', -60, 0],
+  ['left', 60, 0],
+  ['right', 60, 0],
+  ['right', -60, 0],
+  ['bottom', 0, 60],
+  ['bottom', 0, -60],
+  ['lt', -60, -60],
+  ['lt', 60, 60],
+  ['rt', 60, -60],
+  ['rt', -60, 60],
+  ['lb', -60, 60],
+  ['lb', 60, -60],
+  ['rb', 60, 60],
+  ['rb', -60, -60],
+];
+
+describe('the zoom a resize crosses', () => {
+  describe.each(ZOOM_LEVELS)('at zoom %s', zoomLevel => {
+    it.each(DRAGS)(
+      'walks the %s edge across the screen with the pointer, %s by %s',
+      async (position, dx, dy) => {
+        const { memo, stage } = await mountSash({
+          width: 400,
+          height: 400,
+          zoomLevel,
+        });
+        const before = edgesOf(memo);
+
+        await drag(stage, position, [0, 0], [dx, dy]);
+
+        const after = edgesOf(memo);
+        const grabbed = GRABBED_EDGE[position];
+
+        if (grabbed.x) {
+          const travel = (after[grabbed.x] - before[grabbed.x]) * zoomLevel;
+          expect(travel).toBeCloseTo(dx, 6);
+        }
+        if (grabbed.y) {
+          const travel = (after[grabbed.y] - before[grabbed.y]) * zoomLevel;
+          expect(travel).toBeCloseTo(dy, 6);
+        }
+        EDGE_NAMES.filter(
+          edge => edge !== grabbed.x && edge !== grabbed.y
+        ).forEach(edge => {
+          expect(after[edge]).toBe(before[edge]);
+        });
+      }
+    );
+  });
+});
+
+describe('the minimum a resize clamps to', () => {
+  it('measures the minimum in scene units, so a zoomed out drag hits it sooner', async () => {
+    const { memo, stage } = await mountSash({
+      width: MEMO_MIN_WIDTH + 40,
+      zoomLevel: 0.5,
+    });
+
+    await drag(stage, 'right', [0, 0], [-30, 0]);
+
+    expect(memo.ui.width).toBe(MEMO_MIN_WIDTH + 40);
+  });
+
+  it('measures the minimum in scene units, so a zoomed in drag clears it', async () => {
+    const { memo, stage } = await mountSash({
+      width: MEMO_MIN_WIDTH + 40,
+      zoomLevel: 1.5,
+    });
+
+    await drag(stage, 'right', [0, 0], [-45, 0]);
+
+    expect(memo.ui.width).toBe(MEMO_MIN_WIDTH + 10);
+  });
+
+  it('holds the resume anchor in screen pixels, where the clamp caught it', async () => {
+    const { memo, stage } = await mountSash({
+      width: MEMO_MIN_WIDTH + 100,
+      zoomLevel: 1.5,
+    });
+
+    fireScenePointer(sashAt(stage, 'right'), 'mousedown', {
+      clientX: 0,
+      clientY: 0,
+    });
+    movePointer(60, 0);
+    await flush();
+    expect(memo.ui.width).toBe(MEMO_MIN_WIDTH + 140);
+
+    movePointer(-300, 0);
+    await flush();
+    expect(memo.ui.width).toBe(MEMO_MIN_WIDTH + 140);
+
+    movePointer(50, 0);
+    await flush();
+    expect(memo.ui.width).toBe(MEMO_MIN_WIDTH + 140);
+
+    movePointer(80, 0);
+    await flush();
+    expect(memo.ui.width).toBeGreaterThan(MEMO_MIN_WIDTH + 140);
   });
 });

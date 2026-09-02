@@ -136,22 +136,29 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
   let clientX = 0;
   let clientY = 0;
 
+  /**
+   * The gesture straddles two spaces: movement and the anchor are screen pixels,
+   * while width, height and the origin are scene units, so the movement crosses
+   * over by zoomLevel the way moveAllAction$ does.
+   */
   const resizeWidth = (
     { movementX, x }: DragMove,
     direction: DirectionName
   ): ResizeMemo => {
+    const { zoomLevel } = app.value.store.state.settings;
     const ui = Object.assign({ change: false }, props.memo.ui);
     const mouseDirection =
       movementX < 0 ? DirectionName.left : DirectionName.right;
+    const movement = movementX / zoomLevel;
     const width =
       direction === DirectionName.left
-        ? ui.width - movementX
-        : ui.width + movementX;
+        ? ui.width - movement
+        : ui.width + movement;
 
     switch (mouseDirection) {
       case DirectionName.left:
         if (MEMO_MIN_WIDTH < width && x < clientX) {
-          direction === DirectionName.left && (ui.x += movementX);
+          direction === DirectionName.left && (ui.x += movement);
           clientX += movementX;
           ui.width = width;
           ui.change = true;
@@ -159,7 +166,7 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
         break;
       case DirectionName.right:
         if (MEMO_MIN_WIDTH < width && x > clientX) {
-          direction === DirectionName.left && (ui.x += movementX);
+          direction === DirectionName.left && (ui.x += movement);
           clientX += movementX;
           ui.width = width;
           ui.change = true;
@@ -173,18 +180,20 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
     { movementY, y }: DragMove,
     direction: DirectionName
   ): ResizeMemo => {
+    const { zoomLevel } = app.value.store.state.settings;
     const ui = Object.assign({ change: false }, props.memo.ui);
     const mouseDirection =
       movementY < 0 ? DirectionName.top : DirectionName.bottom;
+    const movement = movementY / zoomLevel;
     const height =
       direction === DirectionName.top
-        ? ui.height - movementY
-        : ui.height + movementY;
+        ? ui.height - movement
+        : ui.height + movement;
 
     switch (mouseDirection) {
       case DirectionName.top:
         if (MEMO_MIN_HEIGHT < height && y < clientY) {
-          direction === DirectionName.top && (ui.y += movementY);
+          direction === DirectionName.top && (ui.y += movement);
           clientY += movementY;
           ui.height = height;
           ui.change = true;
@@ -192,7 +201,7 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
         break;
       case DirectionName.bottom:
         if (MEMO_MIN_HEIGHT < height && y > clientY) {
-          direction === DirectionName.top && (ui.y += movementY);
+          direction === DirectionName.top && (ui.y += movement);
           clientY += movementY;
           ui.height = height;
           ui.change = true;
