@@ -158,25 +158,23 @@ async function profileOf(page: Page, clip: Clip): Promise<Profile> {
 
 /** The same crop caught several times, kept at its dimmest sample by sample. */
 async function openProfileOf(page: Page, clip: Clip): Promise<Profile> {
-  let merged: Profile | null = null;
+  let merged = await profileOf(page, clip);
 
-  for (let frame = 0; frame < CARET_FRAMES; frame++) {
-    const profile = await profileOf(page, clip);
-    merged = merged
-      ? {
-          ...merged,
-          rows: merged.rows.map((row, index) =>
-            Math.min(row, profile.rows[index] ?? row)
-          ),
-          cols: merged.cols.map((col, index) =>
-            Math.min(col, profile.cols[index] ?? col)
-          ),
-        }
-      : profile;
+  for (let frame = 1; frame < CARET_FRAMES; frame++) {
     await page.waitForTimeout(120);
+    const profile = await profileOf(page, clip);
+
+    merged = {
+      ...merged,
+      rows: merged.rows.map((row, index) =>
+        Math.min(row, profile.rows[index] ?? row)
+      ),
+      cols: merged.cols.map((col, index) =>
+        Math.min(col, profile.cols[index] ?? col)
+      ),
+    };
   }
 
-  if (!merged) throw new Error('no frame was captured');
   return merged;
 }
 

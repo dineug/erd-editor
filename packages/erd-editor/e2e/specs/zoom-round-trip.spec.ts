@@ -66,7 +66,8 @@ async function wheelZoom(erd: ErdEditorPage, notches: number, deltaY: number) {
 /** The editor box a marker is pinned inside, and the marker's place in it. */
 async function signPlacement(erd: ErdEditorPage, title: string) {
   return erd.hideSign(title).evaluate(el => {
-    const parent = (el.offsetParent as HTMLElement).getBoundingClientRect();
+    const box = el as HTMLElement;
+    const parent = (box.offsetParent as HTMLElement).getBoundingClientRect();
     const rect = el.getBoundingClientRect();
 
     return {
