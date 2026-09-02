@@ -39,6 +39,18 @@ function strandedWest(): ErdDocument {
   });
 }
 
+/** The toolbar box, which asks for one zoom rather than a run of notches. */
+async function toolbarZoom(erd: ErdEditorPage, percent: number) {
+  const input = erd.toolbar.locator('input[title="zoom level"]');
+
+  await input.click();
+  await input.fill(String(percent));
+  await input.press('Enter');
+  await expect
+    .poll(async () => (await erd.settings()).zoomLevel)
+    .toBeCloseTo(percent / 100, 5);
+}
+
 /** A run of $mod+wheel notches delivered without releasing the modifier. */
 async function wheelZoom(erd: ErdEditorPage, notches: number, deltaY: number) {
   const modKey = await erd.pointerModKey();
@@ -103,9 +115,35 @@ test.describe('a zoom out and back in', () => {
       .poll(async () => (await erd.settings()).zoomLevel)
       .toBeCloseTo(1, 5);
 
+    // Every notch holds the middle of the screen still, so forty of them
+    // compose to the identity and what is left is the four decimals each
+    // movement is rounded to rather than a drift the reader can see.
     const after = await erd.settings();
-    expect(Math.abs(after.scrollLeft - before.scrollLeft)).toBeLessThan(20);
-    expect(Math.abs(after.scrollTop - before.scrollTop)).toBeLessThan(20);
+    expect(Math.abs(after.scrollLeft - before.scrollLeft)).toBeLessThan(0.05);
+    expect(Math.abs(after.scrollTop - before.scrollTop)).toBeLessThan(0.05);
+  });
+
+  /**
+   * The same walk asked for in one step. The toolbar box carries no notches to
+   * average the error out over, so this is where the reader saw it: a trip to
+   * a tenth and straight back used to land hundreds of pixels away.
+   */
+  test('returns the scroll when the toolbar box does the zooming', async ({
+    erd,
+  }) => {
+    await erd.seed(strandedWest());
+    await erd.panBy(-200, -300);
+
+    const before = await erd.settings();
+
+    for (const percent of [10, 40, 150]) {
+      await toolbarZoom(erd, percent);
+      await toolbarZoom(erd, 100);
+
+      const after = await erd.settings();
+      expect(Math.abs(after.scrollLeft - before.scrollLeft)).toBeLessThan(0.05);
+      expect(Math.abs(after.scrollTop - before.scrollTop)).toBeLessThan(0.05);
+    }
   });
 
   test('keeps two different views apart all the way to the zoom floor', async ({

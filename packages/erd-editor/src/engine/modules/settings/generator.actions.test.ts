@@ -17,6 +17,8 @@ import {
   streamZoomLevelAction$,
 } from '@/engine/modules/settings/generator.actions';
 import { createStore, Store } from '@/engine/store';
+import { Point } from '@/internal-types';
+import { toScenePoint, toScreenPoint } from '@/konva/scene/viewport';
 
 const toWidth = (text: string) => text.length * 10;
 
@@ -78,9 +80,9 @@ describe('settings/generator.actions', () => {
       store.dispatchSync(scrollToAction({ scrollLeft: -100, scrollTop: -100 }));
       store.dispatchSync(changeZoomLevelAction$(0.5));
 
-      // centerXRatio = (1000 - (100 + 500)) / 1000 = 0.4, centerYRatio = 0.5.
-      // Both offsets land inside the travel the 2000 box has, so the clamp
-      // hands back what the movement asked for rather than an end of it.
+      // The middle of the screen sits over scene 600, 500 before the zoom, and
+      // holding it there at 0.5 asks for -200, -250 on top of what is already
+      // scrolled. Both land inside the travel the 2000 box has.
       expect(store.state.settings.scrollLeft).toBe(-300);
       expect(store.state.settings.scrollTop).toBe(-350);
       expect(store.state.settings.zoomLevel).toBe(0.5);
@@ -211,20 +213,20 @@ describe('settings/generator.actions', () => {
     }
 
     /**
-     * What is left over is the euler error of sixty notches, which the
-     * pre-canvas editor carried too: it ran this very sum over a range that did
-     * not move with the zoom, and lands on these offsets to the last decimal.
+     * Every notch holds one scene point still, so the sixty of them compose to
+     * the identity rather than to a drift. What is left is the four decimals
+     * each movement is rounded to, which cannot add up to a visible pixel.
      */
     it.each([
       [0, 0],
       [-120, -80],
       [-400, -600],
       [-1_000, -1_200],
-    ])('returns a scroll of %s, %s to within a notch', (left, top) => {
+    ])('returns a scroll of %s, %s to where it started', (left, top) => {
       const { before, after } = roundTrip(left, top);
 
-      expect(Math.abs(after.scrollLeft - before.scrollLeft)).toBeLessThan(20);
-      expect(Math.abs(after.scrollTop - before.scrollTop)).toBeLessThan(20);
+      expect(after.scrollLeft).toBeCloseTo(before.scrollLeft, 3);
+      expect(after.scrollTop).toBeCloseTo(before.scrollTop, 3);
     });
 
     /**
@@ -240,6 +242,182 @@ describe('settings/generator.actions', () => {
 
       expect(new Set(landings).size).toBe(landings.length);
       expect(landings).not.toContain((1_000 - 2_000) / 2);
+    });
+  });
+
+  /**
+   * The property the three zoom paths are built on. Whatever the zoom does, the
+   * scene point the reader has in the middle of the screen has to be the point
+   * that was there before, or the view has moved without being asked to.
+   */
+  describe('the scene point under the middle of the screen', () => {
+    /** Where the middle of the screen falls in the scene, right now. */
+    function centre(): Point {
+      const {
+        settings: { width, height, scrollLeft, scrollTop, zoomLevel },
+        editor: { viewport },
+      } = store.state;
+
+      return toScenePoint(
+        { width, height, scrollLeft, scrollTop, zoomLevel },
+        { x: viewport.width / 2, y: viewport.height / 2 }
+      );
+    }
+
+    /**
+     * Puts a scene point in the middle of the screen at a given zoom, then says
+     * so, since a point the travel cannot reach is a clamp rather than a
+     * measurement and every case below has to start from one that can.
+     */
+    function centreOn(anchor: Point, zoomLevel: number) {
+      const {
+        settings: { width, height },
+        editor: { viewport },
+      } = store.state;
+
+      store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+
+      const unscrolled = toScreenPoint(
+        { width, height, zoomLevel, scrollLeft: 0, scrollTop: 0 },
+        anchor
+      );
+
+      store.dispatchSync(
+        scrollToAction({
+          scrollLeft: viewport.width / 2 - unscrolled.x,
+          scrollTop: viewport.height / 2 - unscrolled.y,
+        })
+      );
+
+      expect(centre().x).toBeCloseTo(anchor.x, 6);
+      expect(centre().y).toBeCloseTo(anchor.y, 6);
+    }
+
+    /** Centrable at every zoom in the range, so no case starts on a clamp. */
+    const ANCHORS: Point[] = [
+      { x: 600, y: 500 },
+      { x: 1_000, y: 800 },
+      { x: 1_400, y: 1_500 },
+    ];
+
+    const JUMPS: Array<[number, number]> = [
+      [1, 0.1],
+      [1, 0.5],
+      [1, 1.5],
+      [1.5, 1],
+      [1.5, 0.1],
+      [0.5, 1.2],
+      [0.1, 1],
+      [1.2, 1.5],
+    ];
+
+    it.each(JUMPS)('survives a toolbar jump from %s to %s', (from, to) => {
+      for (const anchor of ANCHORS) {
+        centreOn(anchor, from);
+        store.dispatchSync(changeZoomLevelAction$(to));
+
+        expect(store.state.settings.zoomLevel).toBe(to);
+        expect(centre().x).toBeCloseTo(anchor.x, 3);
+        expect(centre().y).toBeCloseTo(anchor.y, 3);
+      }
+    });
+
+    /** The wheel notch and the shortcut step, walked one at a time. */
+    const STEPS = [0.03, 0.04];
+
+    /** Steps the zoom towards a target and stops when a step stops moving it. */
+    function walkTo(target: number, step: number) {
+      for (;;) {
+        const { zoomLevel } = store.state.settings;
+        if (Math.abs(zoomLevel - target) < 1e-9) return;
+
+        const delta =
+          zoomLevel < target
+            ? Math.min(step, target - zoomLevel)
+            : Math.max(-step, target - zoomLevel);
+
+        store.dispatchSync(streamZoomLevelAction$(delta));
+        if (store.state.settings.zoomLevel === zoomLevel) return;
+      }
+    }
+
+    it.each(STEPS)(
+      'survives a walk to the floor and back in %s steps',
+      step => {
+        for (const anchor of ANCHORS) {
+          centreOn(anchor, 1);
+          const before = { ...store.state.settings };
+
+          walkTo(CANVAS_ZOOM_MIN, step);
+          expect(store.state.settings.zoomLevel).toBeCloseTo(
+            CANVAS_ZOOM_MIN,
+            6
+          );
+          expect(centre().x).toBeCloseTo(anchor.x, 3);
+          expect(centre().y).toBeCloseTo(anchor.y, 3);
+
+          walkTo(1, step);
+          expect(store.state.settings.zoomLevel).toBeCloseTo(1, 6);
+          expect(store.state.settings.scrollLeft).toBeCloseTo(
+            before.scrollLeft,
+            3
+          );
+          expect(store.state.settings.scrollTop).toBeCloseTo(
+            before.scrollTop,
+            3
+          );
+        }
+      }
+    );
+
+    it.each(STEPS)(
+      'survives a walk to the ceiling and back in %s steps',
+      step => {
+        for (const anchor of ANCHORS) {
+          centreOn(anchor, 1);
+          const before = { ...store.state.settings };
+
+          walkTo(CANVAS_ZOOM_MAX, step);
+          expect(store.state.settings.zoomLevel).toBeCloseTo(
+            CANVAS_ZOOM_MAX,
+            6
+          );
+          expect(centre().x).toBeCloseTo(anchor.x, 3);
+          expect(centre().y).toBeCloseTo(anchor.y, 3);
+
+          walkTo(1, step);
+          expect(store.state.settings.zoomLevel).toBeCloseTo(1, 6);
+          expect(store.state.settings.scrollLeft).toBeCloseTo(
+            before.scrollLeft,
+            3
+          );
+          expect(store.state.settings.scrollTop).toBeCloseTo(
+            before.scrollTop,
+            3
+          );
+        }
+      }
+    );
+
+    /**
+     * The toolbar box is a single jump rather than a run of notches, and the
+     * reader's complaint was about this one: down to a tenth and straight back
+     * up used to land a quarter of a screen from where the view had been.
+     */
+    it('survives a toolbar jump down to the floor and straight back', () => {
+      for (const anchor of ANCHORS) {
+        centreOn(anchor, 1);
+        const before = { ...store.state.settings };
+
+        store.dispatchSync(changeZoomLevelAction$(CANVAS_ZOOM_MIN));
+        store.dispatchSync(changeZoomLevelAction$(1));
+
+        expect(store.state.settings.scrollLeft).toBeCloseTo(
+          before.scrollLeft,
+          3
+        );
+        expect(store.state.settings.scrollTop).toBeCloseTo(before.scrollTop, 3);
+      }
     });
   });
 });
