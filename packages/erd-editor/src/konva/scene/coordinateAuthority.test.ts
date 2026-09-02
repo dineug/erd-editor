@@ -32,6 +32,7 @@ const SCROLLS = [-2_400, -240, 0, 240];
 const VIEWPORTS = [
   { width: 640, height: 480 },
   { width: 1_440, height: 900 },
+  { width: 2_560, height: 1_440 },
 ];
 const POINTS = [
   { x: 0, y: 0 },

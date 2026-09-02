@@ -104,8 +104,8 @@ export type ScrollTransform = Pick<Settings, 'width' | 'height' | 'zoomLevel'>;
 
 /**
  * One axis of travel, written on the scene point the middle of the screen sits
- * over: it stays half a screen inside the canvas box, and once the box draws
- * narrower than the screen the box is what stays inside instead.
+ * over. It keeps the half screen a zoom of 1 would show between itself and each
+ * edge of the canvas box, which magnifying shrinks to the half it really shows.
  */
 function toScrollRange(
   drawn: number,
@@ -126,7 +126,7 @@ function toScrollRange(
 /**
  * How far the scroll may travel on each axis. A scene layer sits at the scroll
  * plus the zoom viewport offset, so magnifying reaches further both ways, while
- * shrinking holds the screen's own edges onto the document rather than past it.
+ * shrinking closes the travel in by the zoom instead of leaving the box's own.
  */
 export function getScrollRanges(
   settings: ScrollTransform,
