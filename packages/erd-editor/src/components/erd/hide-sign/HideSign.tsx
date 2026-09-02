@@ -14,10 +14,11 @@ import { Memo, Point, Table, ValuesType } from '@/internal-types';
 import { toScenePoint, toScreenPoint } from '@/konva/scene/viewport';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
-import { getAbsolutePoint, isOverlapPosition, Rect } from '@/utils/dragSelect';
+import { isOverlapPosition } from '@/utils/dragSelect';
 import { isMod } from '@/utils/keyboard-shortcut';
 
 import * as styles from './HideSign.styles';
+import { getReachableRect } from './hideSignBounds';
 
 export type HideSignProps = {
   root: Ref<HTMLDivElement>;
@@ -220,22 +221,12 @@ const HideSign: FC<HideSignProps> = (props, ctx) => {
     const { store } = app.value;
     const {
       doc: { tableIds, memoIds },
-      settings: { zoomLevel, width, height },
+      settings,
+      editor: { viewport },
       collections,
     } = store.state;
 
-    const min = getAbsolutePoint({ x: 0, y: 0 }, width, height, zoomLevel);
-    const max = getAbsolutePoint(
-      { x: width, y: height },
-      width,
-      height,
-      zoomLevel
-    );
-    const rect: Rect = {
-      ...min,
-      w: max.x - min.x,
-      h: max.y - min.y,
-    };
+    const rect = getReachableRect(settings, viewport);
 
     const tables = query(collections)
       .collection('tableEntities')

@@ -587,4 +587,56 @@ describe('HideSign', () => {
     expect(signs(container)).toHaveLength(1);
     expect(signs(container)[0].getAttribute('title')).toBe('unnamed');
   });
+
+  /**
+   * A marker means the reader cannot get to the entity at all. A magnifying
+   * zoom shows less of the document at once but scrolls over every part of it,
+   * so the set it marks is the set an unzoomed canvas marks.
+   */
+  describe('at a magnifying zoom', () => {
+    const seedAt = (
+      zoomLevel: number,
+      tables: Array<[string, number, number]>
+    ) =>
+      mountHideSign(app => {
+        app.store.dispatchSync(
+          changeViewportAction({ width: 1_000, height: 800 })
+        );
+        for (const [id, x, y] of tables) {
+          addTable(app, id, x, y);
+          app.store.dispatchSync(changeTableNameAction({ id, value: id }));
+        }
+        app.store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+      });
+
+    const titles = (container: HTMLElement) =>
+      signs(container).map(el => el.getAttribute('title'));
+
+    it('leaves both far corners of the document unmarked at zoom 1.5', async () => {
+      const { container } = await seedAt(1.5, [
+        ['north-west', 100, 100],
+        ['south-east', 1_700, 1_900],
+      ]);
+
+      expect(titles(container)).toEqual([]);
+    });
+
+    it('still marks what the document does not contain at zoom 1.5', async () => {
+      const { container } = await seedAt(1.5, [
+        ['inside', 1_700, 1_900],
+        ['beyond', 2_100, 1_000],
+      ]);
+
+      expect(titles(container)).toEqual(['beyond']);
+    });
+
+    it('marks the same pair at zoom 0.5 as the css transform did', async () => {
+      const { container } = await seedAt(0.5, [
+        ['reachable', 2_500, 100],
+        ['stranded', 3_200, 100],
+      ]);
+
+      expect(titles(container)).toEqual(['stranded']);
+    });
+  });
 });
