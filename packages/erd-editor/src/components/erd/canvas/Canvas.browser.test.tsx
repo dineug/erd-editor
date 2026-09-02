@@ -113,15 +113,29 @@ describe('the canvas shell', () => {
     const el = containerOf(mounted);
 
     expect(el.dataset.testid).toBe('erd-canvas');
-    expect(el.getAttribute('class')).toContain(String(styles.root));
+    expect(el.getAttribute('class')).toContain(String(styles.stage));
     expect(stageRegistry().canvas.container()).toBe(el);
   });
 
-  it('mounts one Stage of three layers in the inner box', async () => {
+  /**
+   * The inner box is the screen, so the document box class would paint the
+   * canvas colour over the whole viewport and leave the boundary outside the
+   * document indistinguishable from the document itself.
+   */
+  it('keeps the document box class off the viewport sized inner box', async () => {
+    const mounted = await mountCanvas();
+
+    expect(containerOf(mounted).getAttribute('class')).not.toContain(
+      String(styles.root)
+    );
+  });
+
+  it('mounts one Stage of four layers in the inner box, background first', async () => {
     await mountCanvas();
     const stage = stageRegistry().canvas;
 
     expect(stage.getLayers().map(layer => layer.name())).toEqual([
+      'canvas-background',
       'scene',
       'overlay-marquee',
       'presence',

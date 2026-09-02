@@ -87,7 +87,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
         }}
       >
         <div
-          class={styles.root}
+          class={styles.stage}
           data-testid="erd-canvas"
           use:ref={ref(props.canvas)}
           style={{

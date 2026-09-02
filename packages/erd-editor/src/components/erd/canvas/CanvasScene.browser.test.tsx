@@ -1,9 +1,11 @@
 /** @jsxHost konva */
 
-// P3-27 and P3-34: the scene's three layers, the transform that replaced the
+// P3-27 and P3-34: the scene's four layers, the transform that replaced the
 // css one and the culling that keeps a table off screen out of the tree.
 
 import { createRef } from '@dineug/r-html';
+import type { Layer } from 'konva/lib/Layer';
+import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -81,11 +83,19 @@ const seedTable = (app: AppContext, id: string, x: number, zIndex = 2) => {
 const tableIdsOf = (stage: Stage) =>
   stage.find('.table').map(node => node.getAttr('id'));
 
+const backgroundLayerOf = (stage: Stage) =>
+  stage.findOne<Layer>('.canvas-background')!;
+
+/** The one child of the background layer, which carries no name of its own. */
+const backgroundRectOf = (stage: Stage): KonvaNode =>
+  backgroundLayerOf(stage).getChildren()[0];
+
 describe('the canvas scene', () => {
-  it('roots three layers in the Stage, scene first and presence last', async () => {
+  it('roots four layers in the Stage, background first and presence last', async () => {
     const { stage } = await mountScene();
 
     expect(stage.getLayers().map(layer => layer.name())).toEqual([
+      'canvas-background',
       'scene',
       'overlay-marquee',
       'presence',
@@ -315,7 +325,7 @@ describe('the canvas scene', () => {
 
   it('draws the connectors under the tables while the show bit is set', async () => {
     const { app, stage } = await mountScene();
-    const [scene] = stage.getLayers();
+    const scene = stage.findOne<Layer>('.scene')!;
 
     seedTable(app, 't1', 100);
     await flush();
@@ -351,5 +361,86 @@ describe('the canvas scene', () => {
     app.store.dispatchSync(drawStartAddRelationshipAction({ tableId: 't1' }));
     await flush();
     expect(stage.find('.draw-relationship')).toHaveLength(1);
+  });
+});
+
+/**
+ * The dom scene painted the canvas colour on a document sized box and let the
+ * boundary colour of the editor show around it. The stage container is the
+ * screen now, so the document box is a rect the scene draws at its own origin.
+ */
+describe('the canvas background', () => {
+  const CANVAS = 2000;
+
+  it('covers the canvas box in the canvas colour of the live theme', async () => {
+    const { stage } = await mountScene();
+    const rect = backgroundRectOf(stage);
+
+    expect(rect.className).toBe('Rect');
+    expect(rect.getAttr('fill')).toBe(createTestTheme().canvasBackground);
+    expect(rect.x()).toBe(0);
+    expect(rect.y()).toBe(0);
+    expect(rect.getAttr('width')).toBe(CANVAS);
+    expect(rect.getAttr('height')).toBe(CANVAS);
+  });
+
+  it('is placed at the very origin the scene layer is placed at', async () => {
+    const { app, stage } = await mountScene();
+
+    app.store.dispatchSync(
+      scrollToAction({ scrollLeft: -100, scrollTop: -50 })
+    );
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+    await flush();
+
+    const scene = stage.findOne<Layer>('.scene')!;
+    const background = backgroundLayerOf(stage);
+
+    expect([background.x(), background.y()]).toEqual([scene.x(), scene.y()]);
+    expect([background.scaleX(), background.scaleY()]).toEqual([
+      scene.scaleX(),
+      scene.scaleY(),
+    ]);
+  });
+
+  it('follows the canvas box when the document is resized', async () => {
+    const { app, stage } = await mountScene();
+
+    app.store.dispatchSync(resizeAction({ width: 4000, height: 3000 }));
+    await flush();
+
+    const rect = backgroundRectOf(stage);
+    expect(rect.getAttr('width')).toBe(4000);
+    expect(rect.getAttr('height')).toBe(3000);
+  });
+
+  it('leaves the canvas box on the stage origin at a zoom of one', async () => {
+    const { stage } = await mountScene();
+
+    expect(backgroundRectOf(stage).getClientRect()).toEqual({
+      x: 0,
+      y: 0,
+      width: CANVAS,
+      height: CANVAS,
+    });
+  });
+
+  /**
+   * The whole point of the rect: zoomed out, the canvas box stops filling the
+   * stage, and what the scene leaves unpainted there is where the boundary
+   * colour of the element holding the editor shows through.
+   */
+  it('stops short of the stage once the zoom shrinks the canvas box', async () => {
+    const { app, stage } = await mountScene();
+
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+    await flush();
+
+    // Half the shrink of the 2000px box travels with the scroll, so the box
+    // lands at 500 and spans 1000 of the 1000px stage from there.
+    const box = backgroundRectOf(stage).getClientRect();
+    expect(box).toEqual({ x: 500, y: 500, width: 1000, height: 1000 });
+    expect(box.x).toBeGreaterThan(0);
+    expect(stage.width()).toBe(VIEWPORT);
   });
 });

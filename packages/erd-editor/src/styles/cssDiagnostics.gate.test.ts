@@ -32,7 +32,7 @@ afterAll(() => {
 
 describe('css diagnostics gate', () => {
   it('covers every style module in the package', () => {
-    expect(modulePaths).toHaveLength(56);
+    expect(modulePaths).toHaveLength(57);
   });
 
   it('reports nothing for the whole style surface', () => {

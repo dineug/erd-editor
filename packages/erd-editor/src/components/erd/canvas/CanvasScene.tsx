@@ -15,6 +15,7 @@ import RelationshipGroup from '@/components/erd/canvas/relationship-group/Relati
 import SharedDragSelect from '@/components/erd/canvas/shared-drag-select/SharedDragSelect';
 import SharedMouseTracker from '@/components/erd/canvas/shared-mouse-tracker/SharedMouseTracker';
 import Table from '@/components/erd/canvas/table/Table';
+import { useThemeContext } from '@/components/themeContext';
 import { Show } from '@/constants/schema';
 import type { Relationship } from '@/internal-types';
 import { renderKonva } from '@/konva/host';
@@ -40,22 +41,24 @@ type Stacked = { ui: { zIndex: number } };
 const byZIndex = (a: Stacked, b: Stacked) => a.ui.zIndex - b.ui.zIndex;
 
 /**
- * The three layers of the canvas, plus the two a drag opens. Scene and presence
- * carry the canvas transform, and the marquee layer stays in screen space
- * because that is where its own mousemove measures.
+ * The four layers of the canvas, plus the one a drag opens. Background, scene
+ * and presence carry the canvas transform, and the marquee layer stays in
+ * screen space because that is where its own mousemove measures.
  */
 const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const themeRef = useThemeContext(ctx);
 
   return () => {
     const { store } = app.value;
     const { state } = store;
     const {
-      settings: { zoomLevel, show },
+      settings: { width, height, zoomLevel, show },
       doc: { tableIds, memoIds, relationshipIds },
       editor: { drawRelationship },
       collections,
     } = state;
+    const theme = themeRef.value;
 
     const cullingRect = getCullingRect(state);
 
@@ -112,24 +115,42 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
     // culls against the origin these layers are actually placed at.
     const { x, y } = getSceneOrigin(state.settings);
 
+    /**
+     * The document box, nameless and deaf on purpose: a named node is projected
+     * into an element by the e2e scene mirror, and a listening one would answer
+     * the hit test that bare canvas has to leave unanswered.
+     */
+    const documentBox = (
+      <k-rect
+        listening={false}
+        x={0}
+        y={0}
+        width={width}
+        height={height}
+        fill={theme.canvasBackground}
+      />
+    );
+
+    // Everything under the static scene shares the bottom layer: the document
+    // box always, and a drag's own connectors while one runs. A layer each
+    // would put the stage at six while dragging, which is where konva warns.
     return (
       <>
-        {dragging ? (
-          <k-layer
-            name="drag-relationship"
-            x={x}
-            y={y}
-            scaleX={zoomLevel}
-            scaleY={zoomLevel}
-          >
-            {bHas(show, Show.relationship) ? (
-              <RelationshipGroup
-                relationships={dragRelationships}
-                viewport={cullingRect}
-              />
-            ) : null}
-          </k-layer>
-        ) : null}
+        <k-layer
+          name="canvas-background"
+          x={x}
+          y={y}
+          scaleX={zoomLevel}
+          scaleY={zoomLevel}
+        >
+          {documentBox}
+          {dragging && bHas(show, Show.relationship) ? (
+            <RelationshipGroup
+              relationships={dragRelationships}
+              viewport={cullingRect}
+            />
+          ) : null}
+        </k-layer>
         <k-layer name="scene" x={x} y={y} scaleX={zoomLevel} scaleY={zoomLevel}>
           {bHas(show, Show.relationship) ? (
             <RelationshipGroup
