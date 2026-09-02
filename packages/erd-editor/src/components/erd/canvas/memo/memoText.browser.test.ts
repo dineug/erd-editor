@@ -5,11 +5,10 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
+  getMemoLineHeightPx,
   layoutMemoLines,
   MEMO_FONT,
   MEMO_FONT_WEIGHT,
-  MEMO_LINE_HEIGHT,
-  MEMO_LINE_HEIGHT_PX,
 } from '@/components/erd/canvas/memo/memoText';
 import {
   SCENE_FONT_FAMILY,
@@ -55,7 +54,7 @@ function createMirror(width: number): HTMLElement {
     fontFamily: SCENE_FONT_FAMILY,
     fontSize: `${SCENE_FONT_SIZE}px`,
     fontWeight: MEMO_FONT_WEIGHT,
-    lineHeight: `${MEMO_LINE_HEIGHT_PX}px`,
+    lineHeight: `${getMemoLineHeightPx()}px`,
     letterSpacing: '0em',
     whiteSpace: 'pre-wrap',
     overflowWrap: 'break-word',
@@ -104,8 +103,7 @@ function domLines(value: string, width: number): string[] {
 
 describe('the memo body line breaker', () => {
   it('spells the font canvas and css both resolve to', () => {
-    expect(MEMO_FONT).toBe(`400 12px ${SCENE_FONT_FAMILY}`);
-    expect(MEMO_LINE_HEIGHT_PX).toBe(SCENE_FONT_SIZE * MEMO_LINE_HEIGHT);
+    expect(MEMO_FONT).toBe(`400 ${SCENE_FONT_SIZE}px ${SCENE_FONT_FAMILY}`);
   });
 
   it.each(WIDTHS)('folds prose exactly as a textarea does at %ipx', width => {

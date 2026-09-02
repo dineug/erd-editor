@@ -17,6 +17,13 @@ test.use({ deviceScaleFactor: SCALE });
 const DRIFT_LIMIT_PX = 0.05;
 
 /**
+ * What the two rasterisers may disagree by down the page, in css pixels. Blink
+ * lands a painted baseline on the device grid and a canvas paints between two,
+ * so the layout the editor is placed by is what pins the line to a fraction.
+ */
+const BASELINE_ROUNDING_PX = 1;
+
+/**
  * How much of one profile the other cannot account for once it is shifted and
  * scaled onto it. The two states paint the same glyphs a shade apart, so the
  * ink totals differ by a little and the shapes by nothing.
@@ -217,11 +224,66 @@ function alignmentOf(before: number[], after: number[]): Alignment {
  * are read off one crop, so a glyph that moved shows up as a shift and a glyph
  * that changed shape shows up as residual the shift cannot take away.
  */
-function expectNoDrift(before: number[], after: number[], what: string) {
+function expectNoDrift(
+  before: number[],
+  after: number[],
+  what: string,
+  limit = DRIFT_LIMIT_PX
+) {
   const { shift, residual } = alignmentOf(before, after);
 
-  expect(Math.abs(shift), `${what} drift`).toBeLessThan(DRIFT_LIMIT_PX);
+  expect(Math.abs(shift), `${what} drift`).toBeLessThan(limit);
   expect(residual, `${what} shape`).toBeLessThan(RESIDUAL_LIMIT);
+}
+
+/**
+ * Where the editor lays the line it edits, and where the scene draws one. A
+ * zero height inline block sits on the baseline of the line it joins, so a copy
+ * of the input shares one with it inside a box whose own strut carries nothing.
+ */
+async function baselinesOf(page: Page) {
+  return page.evaluate(() => {
+    const root = document.querySelector('erd-editor')?.shadowRoot;
+    const input = root?.querySelector<HTMLInputElement>(
+      '.edit-overlay input.edit-input'
+    );
+    const cell = input?.parentElement;
+    if (!input || !cell) throw new Error('no cell editor is open to measure');
+
+    const style = getComputedStyle(input);
+    const holder = document.createElement('div');
+    holder.style.cssText =
+      'position:absolute;visibility:hidden;white-space:nowrap;font-size:0;line-height:0';
+    const copy = input.cloneNode(true) as HTMLElement;
+    copy.style.verticalAlign = 'baseline';
+    const marker = document.createElement('span');
+    marker.style.cssText =
+      'display:inline-block;width:0;height:0;vertical-align:baseline';
+    holder.append(copy, marker);
+    cell.append(holder);
+
+    // The cell is scaled by the editor's zoom, so the box comes back that much
+    // bigger than the layout that made it; its own two heights are the ratio.
+    const box = copy.getBoundingClientRect();
+    const dom =
+      ((marker.getBoundingClientRect().top - box.top) *
+        parseFloat(style.height)) /
+      box.height;
+    holder.remove();
+
+    const context = document.createElement('canvas').getContext('2d');
+    if (!context) throw new Error('no 2d context to measure the face with');
+    context.font = style.font;
+    const metrics = context.measureText('M');
+
+    // The line konva centres in the same box, which is the whole of where a
+    // canvas puts a baseline: half the box, plus half the font's own overhang.
+    const scene =
+      parseFloat(style.height) / 2 +
+      (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2;
+
+    return { dom, scene, transform: style.transform };
+  });
 }
 
 /** The rows both states agree are above the underline, which glyphs reach. */
@@ -308,7 +370,6 @@ test('the glyphs hold at a placement that lands off the whole pixel', async ({
 }) => {
   await erd.seed(seed(OFF_PIXEL.zoomLevel, OFF_PIXEL));
   await hideProjectedText(erd.page);
-
   for (const { key, cell } of CELL_CASES) {
     const target = cell(erd);
     await erd.focusCell(target);
@@ -333,7 +394,8 @@ test('the glyphs hold at a placement that lands off the whole pixel', async ({
     expectNoDrift(
       glyphRowsOf(drawn, cut),
       glyphRowsOf(edited, cut),
-      `${key} vertical`
+      `${key} vertical`,
+      BASELINE_ROUNDING_PX * SCALE + DRIFT_LIMIT_PX
     );
     expectNoDrift(drawn.cols, edited.cols, `${key} horizontal`);
   }
@@ -384,7 +446,6 @@ test.describe('the cell editor lands on the text it replaces', () => {
     }) => {
       await erd.seed(seed(zoomLevel));
       await hideProjectedText(erd.page);
-
       for (const { key, cell } of CELL_CASES) {
         const target = cell(erd);
         await erd.focusCell(target);
@@ -412,9 +473,42 @@ test.describe('the cell editor lands on the text it replaces', () => {
         expectNoDrift(
           glyphRowsOf(drawn, cut),
           glyphRowsOf(edited, cut),
-          `${key} vertical`
+          `${key} vertical`,
+          BASELINE_ROUNDING_PX * SCALE + DRIFT_LIMIT_PX
         );
         expectNoDrift(drawn.cols, edited.cols, `${key} horizontal`);
+      }
+    });
+  }
+});
+
+/**
+ * The pixels above can only be read to the whole device row the dom rounds a
+ * painted baseline onto, and a headless rasteriser rounds where a headed one
+ * does not. What the editor is answerable for is the layout under that.
+ */
+test.describe('the line the cell editor lays out', () => {
+  for (const zoomLevel of [0.8, 1, 1.5]) {
+    test(`sits on the baseline the scene draws at zoom ${zoomLevel}`, async ({
+      erd,
+    }) => {
+      await erd.seed(seed(zoomLevel));
+
+      for (const { key, cell } of CELL_CASES) {
+        const target = cell(erd);
+        await erd.focusCell(target);
+        await erd.press('Enter');
+        await expect(erd.editInput()).toBeFocused();
+
+        const { dom, scene, transform } = await baselinesOf(erd.page);
+        expect(scene, `${key} scene baseline`).toBeGreaterThan(0);
+        expect(dom, `${key} baseline`).toBeCloseTo(scene, 3);
+        // Nothing on top of that box. A nudge is a guess about which way one
+        // rasteriser rounds, and the guess is wrong in a headed browser.
+        expect(transform, `${key} untouched`).toBe('none');
+
+        await erd.press('Enter');
+        await expect(erd.editInput()).toHaveCount(0);
       }
     });
   }

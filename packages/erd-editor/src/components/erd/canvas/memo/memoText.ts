@@ -9,18 +9,30 @@ import {
 /** The weight utils/text.ts measures with, which is what the body is drawn in. */
 export const MEMO_FONT_WEIGHT = '400';
 
-/**
- * The leading the memo body takes, as konva's multiple of the font size. The
- * DOM textarea left it to line-height normal, and neither a canvas nor a line
- * breaker can resolve a font dependent keyword, so both are pinned to this.
- */
-export const MEMO_LINE_HEIGHT = 1.2;
-
-/** The same leading in px, which is what a css line-height and pretext take. */
-export const MEMO_LINE_HEIGHT_PX = SCENE_FONT_SIZE * MEMO_LINE_HEIGHT;
-
 /** The css font shorthand the scene text and the overlay editor both resolve to. */
 export const MEMO_FONT = `${MEMO_FONT_WEIGHT} ${SCENE_FONT_SIZE}px ${SCENE_FONT_FAMILY}`;
+
+/** What the leading falls back to where no document can resolve the face. */
+const FALLBACK_LINE_HEIGHT_PX = SCENE_FONT_SIZE * 1.2;
+
+/**
+ * The leading a memo body takes, in px, which a css line-height and pretext
+ * both take. The dom textarea left it to line-height normal, and blink resolves
+ * that to the face's own ascent plus descent.
+ *
+ * @example
+ * const advance = getMemoLineHeightPx();
+ */
+export function getMemoLineHeightPx(): number {
+  const { ascent, descent } = getSceneFontMetrics();
+
+  return ascent + descent || FALLBACK_LINE_HEIGHT_PX;
+}
+
+/** The same leading as konva's multiple of the font size, which is what it takes. */
+export function getMemoLineHeight(): number {
+  return getMemoLineHeightPx() / SCENE_FONT_SIZE;
+}
 
 /**
  * The baseline konva draws the first body line on, down from the top of the
@@ -33,59 +45,7 @@ export const MEMO_FONT = `${MEMO_FONT_WEIGHT} ${SCENE_FONT_SIZE}px ${SCENE_FONT_
 export function getMemoTextBaseline(): number {
   const { ascent, descent } = getSceneFontMetrics();
 
-  return MEMO_LINE_HEIGHT_PX / 2 + (ascent - descent) / 2;
-}
-
-/** The side of the box the probe below is measured in, exact in dom layout. */
-const BASELINE_PROBE_SIZE = 100;
-
-/**
- * Where a dom line box of this leading puts its first baseline. Blink floors
- * the half leading to a whole pixel before it adds the ascent, and no api hands
- * that number out, so the only way to it is to lay one line out and look.
- */
-function measureDomTextBaseline(): number {
-  const box = document.createElement('div');
-  box.style.cssText = `position:absolute;visibility:hidden;top:0;left:0;width:${BASELINE_PROBE_SIZE}px;height:${BASELINE_PROBE_SIZE}px`;
-  const line = document.createElement('div');
-  line.style.cssText = `margin:0;padding:0;border:0;font:${MEMO_FONT};line-height:${MEMO_LINE_HEIGHT_PX}px;white-space:pre-wrap`;
-  line.textContent = 'M';
-  const marker = document.createElement('span');
-  marker.style.cssText =
-    'display:inline-block;width:0;height:0;vertical-align:baseline';
-  line.appendChild(marker);
-  box.appendChild(line);
-  document.body.appendChild(box);
-
-  // Every rect below carries the scale of whatever the host page put over the
-  // element, which the box of a known side is what divides back out.
-  const scale = box.getBoundingClientRect().height / BASELINE_PROBE_SIZE;
-  const top = line.getBoundingClientRect().top;
-  const bottom = marker.getBoundingClientRect().bottom;
-  box.remove();
-
-  return scale ? (bottom - top) / scale : 0;
-}
-
-let memoTextSnapOffset: number | null = null;
-
-/**
- * The part of that baseline the dom cannot paint. Blink floors a line box's
- * half leading to a whole pixel and a canvas floors nothing, so the editor
- * hands the difference back to the textarea as a shift.
- *
- * @example
- * transform: `translateY(${getMemoTextSnapOffset()}px)`
- */
-export function getMemoTextSnapOffset(): number {
-  if (memoTextSnapOffset !== null) return memoTextSnapOffset;
-
-  const { ascent, descent } = getSceneFontMetrics();
-  if (typeof document === 'undefined' || (!ascent && !descent)) return 0;
-
-  memoTextSnapOffset = getMemoTextBaseline() - measureDomTextBaseline();
-
-  return memoTextSnapOffset;
+  return getMemoLineHeightPx() / 2 + (ascent - descent) / 2;
 }
 
 /**
@@ -124,7 +84,7 @@ export function layoutMemoLines(
   if (cached) return cached;
 
   const prepared = prepareWithSegments(value, MEMO_FONT, LAYOUT_OPTIONS);
-  const { lines } = layoutWithLines(prepared, width, MEMO_LINE_HEIGHT_PX);
+  const { lines } = layoutWithLines(prepared, width, getMemoLineHeightPx());
   const folded = lines.map(line => line.text);
 
   if (lineCache.size >= CACHE_LIMIT) lineCache.clear();

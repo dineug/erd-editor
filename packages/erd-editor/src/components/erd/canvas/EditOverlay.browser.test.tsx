@@ -13,9 +13,9 @@ import type { AppContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import * as overlayStyles from '@/components/erd/canvas/EditOverlay.styles';
 import {
+  getMemoLineHeightPx,
   layoutMemoLines,
   MEMO_FONT_WEIGHT,
-  MEMO_LINE_HEIGHT_PX,
 } from '@/components/erd/canvas/memo/memoText';
 import {
   SCENE_FONT,
@@ -25,8 +25,6 @@ import {
 import {
   CELL_TEXT_HEIGHT,
   COLUMN_TEXT_Y,
-  getCellTextBaseline,
-  getCellTextSnapOffset,
   getColumnCellSlots,
   HEADER_CELLS_X,
   HEADER_CELLS_Y,
@@ -532,14 +530,14 @@ function domLineCount(value: string, width: number): number {
     fontFamily: SCENE_FONT_FAMILY,
     fontSize: `${SCENE_FONT_SIZE}px`,
     fontWeight: MEMO_FONT_WEIGHT,
-    lineHeight: `${MEMO_LINE_HEIGHT_PX}px`,
+    lineHeight: `${getMemoLineHeightPx()}px`,
     letterSpacing: '0em',
     whiteSpace: 'pre-wrap',
     overflowWrap: 'break-word',
   });
   document.body.append(mirror);
   const count = Math.round(
-    mirror.getBoundingClientRect().height / MEMO_LINE_HEIGHT_PX
+    mirror.getBoundingClientRect().height / getMemoLineHeightPx()
   );
   mirror.remove();
 
@@ -810,9 +808,26 @@ const CELL_SAMPLE = 'Hxp';
 const RASTER_SCALE = 4;
 
 /**
- * Where getCellTextBaseline says the scene's line sits, drawn straight onto a
- * canvas. Konva is the other half of the comparison, and neither one is allowed
- * to be the definition of the other.
+ * Where a line centred in the cell box sits, written out here rather than read
+ * off the scene. Konva is the other half of the comparison, and neither one is
+ * allowed to be the definition of the other.
+ */
+function cellTextBaseline(): number {
+  const context = document.createElement('canvas').getContext('2d');
+  if (!context) throw new Error('no 2d context to measure the face with');
+  context.font = SCENE_FONT;
+  const metrics = context.measureText('M');
+
+  return (
+    CELL_TEXT_HEIGHT / 2 +
+    (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2
+  );
+}
+
+/**
+ * That same line drawn straight onto a canvas, at the scale the comparison
+ * reads it back at. One rasteriser puts a glyph where the number says, which is
+ * what the other one is then asked to agree with.
  */
 function drawBaselineText(): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
@@ -825,7 +840,7 @@ function drawBaselineText(): HTMLCanvasElement {
   context.font = SCENE_FONT;
   context.textBaseline = 'alphabetic';
   context.fillStyle = '#fff';
-  context.fillText(CELL_SAMPLE, 0, getCellTextBaseline());
+  context.fillText(CELL_SAMPLE, 0, cellTextBaseline());
 
   return canvas;
 }
@@ -874,7 +889,7 @@ async function drawKonvaText(): Promise<HTMLCanvasElement> {
  * editor would follow a stale formula in silence.
  */
 describe('the baseline the scene draws a cell line on', () => {
-  it('is the one getCellTextBaseline hands the editor', async () => {
+  it('is the one a line centred in the cell box lands on', async () => {
     const konva = inkRows(await drawKonvaText());
     const reference = inkRows(drawBaselineText());
 
@@ -882,15 +897,6 @@ describe('the baseline the scene draws a cell line on', () => {
     expect(
       Math.abs(centroidOf(konva) - centroidOf(reference)) / RASTER_SCALE
     ).toBeLessThan(0.05);
-  });
-
-  it('is the snap offset away from the whole pixel the dom paints on', () => {
-    const baseline = getCellTextBaseline();
-    const offset = getCellTextSnapOffset();
-
-    expect(baseline).toBeGreaterThan(0);
-    expect(Math.abs(offset)).toBeLessThanOrEqual(0.5);
-    expect(baseline - offset).toBe(Math.round(baseline));
   });
 });
 
@@ -900,15 +906,12 @@ describe('the baseline the scene draws a cell line on', () => {
  * of them drifts by a fraction nobody can see until the caret arrives.
  */
 describe('the box the cell editor is placed in', () => {
-  it('carries the cell width and the snap the dom baseline lost', async () => {
+  it('carries the cell class and the width the scene reserved', async () => {
     const fixture = await setup();
     await editTableName(fixture);
 
     const cell = cellOf(fixture.mounted);
     expect(cell.classList.contains(String(overlayStyles.cell))).toBe(true);
-    expect(cell.style.getPropertyValue('--cell-text-snap')).toBe(
-      `${getCellTextSnapOffset()}px`
-    );
     expect(cell.style.width).toBe(
       `${fixture.app.store.state.collections.tableEntities[fixture.tableId].ui.widthName}px`
     );
@@ -919,6 +922,6 @@ describe('the box the cell editor is placed in', () => {
 
     const cell = cellOf(fixture.mounted);
     expect(cell.classList.contains(String(overlayStyles.cell))).toBe(false);
-    expect(cell.style.getPropertyValue('--cell-text-snap')).toBe('');
+    expect(cell.style.width).toBe('');
   });
 });

@@ -1,6 +1,5 @@
 import {
   FOCUS_BORDER_HEIGHT,
-  getSceneFontMetrics,
   TABLE_INSET,
 } from '@/components/erd/canvas/sceneTokens';
 import {
@@ -57,31 +56,6 @@ export const CELL_TEXT_HEIGHT = INPUT_HEIGHT;
 
 /** Where the scene runs its focus rect inside that box, header and column both. */
 export const CELL_UNDERLINE_Y = CELL_TEXT_HEIGHT - FOCUS_BORDER_HEIGHT;
-
-/**
- * The baseline konva centres that line on, down from the top of the box. A
- * canvas has no line box, so the font's own ascent and descent are what carry
- * it, and an editor over the scene has to read the same pair off the same font.
- *
- * @example
- * const baseline = getCellTextBaseline();
- */
-export function getCellTextBaseline(): number {
-  const { ascent, descent } = getSceneFontMetrics();
-
-  return CELL_TEXT_HEIGHT / 2 + (ascent - descent) / 2;
-}
-
-/**
- * The fraction of that baseline the dom cannot paint. Blink rounds a painted
- * baseline to a whole pixel of the layer the overlay is scaled inside and a
- * canvas rounds nothing, so the editor gives the difference back as a shift.
- */
-export function getCellTextSnapOffset(): number {
-  const baseline = getCellTextBaseline();
-
-  return baseline ? baseline - Math.round(baseline) : 0;
-}
 
 /** Where a column row's cells start, past the key badge. */
 export const COLUMN_CELLS_X =

@@ -21,7 +21,10 @@ import {
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import Memo from '@/components/erd/canvas/memo/Memo';
-import { layoutMemoLines } from '@/components/erd/canvas/memo/memoText';
+import {
+  getMemoLineHeight,
+  layoutMemoLines,
+} from '@/components/erd/canvas/memo/memoText';
 import {
   editMemoAction,
   editMemoEndAction,
@@ -61,13 +64,6 @@ const MEMO_BOX = { width: 218, height: 184 };
 
 /** Where the memo's own content begins inside the container, past the padding. */
 const CONTENT_ORIGIN = 8;
-
-/**
- * The leading line-height normal gave the DOM textarea at 12px, as konva's
- * multiple of the font size. It is an approximation of a font dependent value,
- * and the scene has to carry a number because a canvas cannot resolve normal.
- */
-const MEMO_LINE_HEIGHT = 1.2;
 
 const theme: Theme = createTheme({
   appearance: Appearance.dark,
@@ -255,7 +251,7 @@ describe('the memo scene', () => {
       visible: true,
       fontSize: 12,
       fontStyle: '400',
-      lineHeight: MEMO_LINE_HEIGHT,
+      lineHeight: getMemoLineHeight(),
       wrap: 'none',
       fill: theme.active,
     });

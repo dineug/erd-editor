@@ -1,16 +1,15 @@
-// AC-G24 (F-2): the line the scene draws a memo body on, and the whole pixel a
-// dom line box paints its own on. The editor sits over the first and is laid out
-// by the second, so nothing but drawing both says where either one lands.
+// AC-G24 (F-2): the line the scene draws a memo body on, and the line a dom
+// line box of the same leading puts its own on. The editor sits over the first
+// and is laid out by the second, so nothing but measuring both says they agree.
 
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
+  getMemoLineHeight,
+  getMemoLineHeightPx,
   getMemoTextBaseline,
-  getMemoTextSnapOffset,
   MEMO_FONT,
   MEMO_FONT_WEIGHT,
-  MEMO_LINE_HEIGHT,
-  MEMO_LINE_HEIGHT_PX,
 } from '@/components/erd/canvas/memo/memoText';
 import {
   SCENE_FONT_FAMILY,
@@ -32,7 +31,7 @@ const BOX_WIDTH = 60;
 function drawBaselineText(): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = BOX_WIDTH * RASTER_SCALE;
-  canvas.height = Math.ceil(MEMO_LINE_HEIGHT_PX) * RASTER_SCALE;
+  canvas.height = Math.ceil(getMemoLineHeightPx()) * RASTER_SCALE;
 
   const context = canvas.getContext('2d');
   if (!context) throw new Error('no 2d context to draw the reference line');
@@ -56,7 +55,7 @@ async function drawKonvaText(): Promise<HTMLCanvasElement> {
   const stage = new Stage({
     container,
     width: BOX_WIDTH,
-    height: Math.ceil(MEMO_LINE_HEIGHT_PX),
+    height: Math.ceil(getMemoLineHeightPx()),
   });
   const layer = new Layer();
   stage.add(layer);
@@ -69,7 +68,7 @@ async function drawKonvaText(): Promise<HTMLCanvasElement> {
       fontFamily: SCENE_FONT_FAMILY,
       fontSize: SCENE_FONT_SIZE,
       fontStyle: MEMO_FONT_WEIGHT,
-      lineHeight: MEMO_LINE_HEIGHT,
+      lineHeight: getMemoLineHeight(),
       wrap: 'none',
     })
   );
@@ -113,6 +112,39 @@ function centroidOf(rows: number[]): number {
   return total ? weighted / total : 0;
 }
 
+/** How many folded lines the dom probe below lays out and measures. */
+const LINES = 4;
+
+/**
+ * Where a dom line box of the memo's own leading puts the baseline of each
+ * line. No api hands a baseline out, so the only way to one is to lay the lines
+ * out and read a zero sized inline box aligned to it.
+ */
+function domBaselines(count: number): number[] {
+  const box = document.createElement('div');
+  box.style.cssText = `position:absolute;top:-10000px;left:0;width:${BOX_WIDTH}px;margin:0;padding:0;border:0;font:${MEMO_FONT};line-height:${getMemoLineHeightPx()}px;white-space:pre-wrap`;
+  document.body.append(box);
+
+  const markers: HTMLElement[] = [];
+  for (let line = 0; line < count; line++) {
+    if (line) box.append(document.createTextNode('\n'));
+    box.append(document.createTextNode(SAMPLE));
+    const marker = document.createElement('span');
+    marker.style.cssText =
+      'display:inline-block;width:0;height:0;vertical-align:baseline';
+    box.append(marker);
+    markers.push(marker);
+  }
+
+  const top = box.getBoundingClientRect().top;
+  const baselines = markers.map(
+    marker => marker.getBoundingClientRect().bottom - top
+  );
+  box.remove();
+
+  return baselines;
+}
+
 describe('the baseline the scene draws a memo body line on', () => {
   it('is the one getMemoTextBaseline hands the editor', async () => {
     const konva = inkRows(await drawKonvaText());
@@ -124,20 +156,17 @@ describe('the baseline the scene draws a memo body line on', () => {
     ).toBeLessThan(0.05);
   });
 
-  it('is the snap offset away from the whole pixel the dom paints on', () => {
+  it('is the line a dom line box of that leading puts every line on', () => {
+    const baselines = domBaselines(LINES);
+    const leading = getMemoLineHeightPx();
     const baseline = getMemoTextBaseline();
-    const offset = getMemoTextSnapOffset();
 
     expect(baseline).toBeGreaterThan(0);
-    expect(Math.abs(offset)).toBeLessThanOrEqual(MEMO_LINE_HEIGHT_PX / 2);
-    // Blink floors a line box's half leading to a whole pixel and rounds the
-    // ascent it adds to one, so the baseline a textarea paints on is an
-    // integer, and the offset is the whole of the distance to the scene's.
-    expect(baseline - offset).toBe(Math.round(baseline - offset));
-  });
-
-  it('measures that offset once and hands the same number back', () => {
-    expect(getMemoTextSnapOffset()).toBe(getMemoTextSnapOffset());
-    expect(Number.isFinite(getMemoTextSnapOffset())).toBe(true);
+    // The half leading is nothing when the leading is the ascent and descent
+    // themselves, so there is no fraction of one for blink to floor away and
+    // nothing left for the editor to shift itself by.
+    baselines.forEach((at, line) => {
+      expect(at, `line ${line}`).toBe(line * leading + baseline);
+    });
   });
 });

@@ -23,8 +23,12 @@ test.use({ deviceScaleFactor: SCALE });
  */
 const BAND_LIMIT_PX = 0.06;
 
-/** How far a glyph may travel between the two states, in device pixels. */
-const GLYPH_LIMIT_PX = 0.05;
+/**
+ * How far a glyph may travel between the two states, in device pixels. Blink
+ * lands a painted baseline on the device grid and a canvas paints between two,
+ * so a css pixel down the page is the two rasterisers and not the editor.
+ */
+const GLYPH_LIMIT_PX = 1 * SCALE + 0.05;
 
 /** Frames the open editor is caught in, so a blinking caret is off in one. */
 const CARET_FRAMES = 3;

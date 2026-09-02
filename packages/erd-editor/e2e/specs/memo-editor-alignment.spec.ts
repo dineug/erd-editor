@@ -1,6 +1,6 @@
 import type { CDPSession, Page } from '@playwright/test';
 
-import { ErdEditorPage } from '../support/ErdEditorPage';
+import { ErdEditorPage, type SceneSelector } from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
 import { createSchema, type ErdDocument } from '../support/schema';
 
@@ -14,10 +14,7 @@ test.use({ deviceScaleFactor: SCALE });
 
 const MEMO_ID = 'note';
 
-/** The leading the scene folds a body with, read back off the scene below. */
-const MEMO_LINE_HEIGHT_PX = 14.4;
-
-/** How far the first body line may travel between the drawn body and the editor. */
+/** How far any body line may travel between the drawn body and the editor. */
 const DRIFT_LIMIT_PX = 0.05;
 
 /** How far a glyph may travel across, which no correction here moves it by. */
@@ -25,13 +22,6 @@ const COLUMN_LIMIT_PX = 0.25;
 
 /** Margin around the drawn body, so a crop keeps every row a glyph reaches. */
 const CROP_MARGIN = 3;
-
-/**
- * What a line past the first may travel. Blink paints every baseline on a whole
- * pixel of the layer the editor is scaled inside and a canvas paints on none,
- * so half a scene pixel is the most one constant can take off any of them.
- */
-const lineLimitOf = (zoomLevel: number) => 0.5 * zoomLevel + 1 / SCALE;
 
 type Place = { key: string; x: number; y: number };
 
@@ -236,13 +226,33 @@ async function closeEditor(erd: ErdEditorPage) {
 }
 
 /**
+ * The leading the scene folded a body by, in px, read off the node that folded
+ * it. The leading follows the font the browser resolved, so a number written
+ * here would be this suite's own answer rather than the scene's.
+ */
+async function leadingOf(erd: ErdEditorPage): Promise<number> {
+  const body: SceneSelector = [`#memo-${MEMO_ID}`, '.memo-textarea'];
+  const lineHeight = await erd.sceneAttr(body, 'lineHeight');
+  const fontSize = await erd.sceneAttr(body, 'fontSize');
+  expect(
+    typeof lineHeight === 'number' && typeof fontSize === 'number',
+    'the scene folds by a leading it hands back'
+  ).toBe(true);
+
+  const leading = (lineHeight as number) * (fontSize as number);
+  expect(leading, 'that leading is a positive length').toBeGreaterThan(0);
+
+  return leading;
+}
+
+/**
  * The crop over the drawn body and the row bands its folded lines fall in. The
  * scene gives a text node one line box per line, so the count comes off the box
  * it drew rather than off a second copy of the line breaker.
  */
 async function frameOf(erd: ErdEditorPage, zoomLevel: number) {
   const box = await bodyBoxOf(erd);
-  const advance = MEMO_LINE_HEIGHT_PX * zoomLevel;
+  const advance = (await leadingOf(erd)) * zoomLevel;
   const lines = Math.round(box.height / advance);
 
   const clip = {
@@ -280,14 +290,6 @@ test.describe('the memo body editor lands on the body it replaces', () => {
           const label = `${body.key} at ${place.key}`;
           await erd.seed(seed(zoomLevel, place, body));
 
-          const leading = await erd.sceneAttr(
-            [`#memo-${MEMO_ID}`, '.memo-textarea'],
-            'lineHeight'
-          );
-          expect(leading, 'the scene folds by the leading measured here').toBe(
-            MEMO_LINE_HEIGHT_PX / 12
-          );
-
           const { clip, bands, lines } = await frameOf(erd, zoomLevel);
           expect(lines, `${label} folds into lines`).toBe(body.lines);
 
@@ -299,22 +301,17 @@ test.describe('the memo body editor lands on the body it replaces', () => {
           await closeEditor(erd);
           await erd.hoverAway();
 
-          const first = `${label} first line`;
-          const before = drawn.rows.slice(bands[0][0], bands[0][1]);
-          const after = edited.rows.slice(bands[0][0], bands[0][1]);
-          expect(driftOf(before, after), `${first} vertical drift`).toBe(0);
-          expect(
-            Math.abs(centroidOf(after) - centroidOf(before)) / SCALE,
-            `${first} sub pixel vertical drift`
-          ).toBeLessThan(DRIFT_LIMIT_PX);
-
           bands.forEach(([from, to], line) => {
             const rowsBefore = drawn.rows.slice(from, to);
             const rowsAfter = edited.rows.slice(from, to);
             expect(
-              Math.abs(centroidOf(rowsAfter) - centroidOf(rowsBefore)) / SCALE,
+              driftOf(rowsBefore, rowsAfter),
               `${label} line ${line} vertical drift`
-            ).toBeLessThanOrEqual(lineLimitOf(zoomLevel));
+            ).toBe(0);
+            expect(
+              Math.abs(centroidOf(rowsAfter) - centroidOf(rowsBefore)) / SCALE,
+              `${label} line ${line} sub pixel vertical drift`
+            ).toBeLessThan(DRIFT_LIMIT_PX);
 
             expect(
               driftOf(drawn.cols[line], edited.cols[line]),

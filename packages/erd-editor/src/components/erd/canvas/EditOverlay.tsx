@@ -10,9 +10,8 @@ import {
 
 import { useAppContext } from '@/components/appContext';
 import {
-  getMemoTextSnapOffset,
+  getMemoLineHeightPx,
   MEMO_FONT_WEIGHT,
-  MEMO_LINE_HEIGHT_PX,
 } from '@/components/erd/canvas/memo/memoText';
 import {
   SCENE_FONT_FAMILY,
@@ -20,7 +19,6 @@ import {
 } from '@/components/erd/canvas/sceneTokens';
 import {
   COLUMN_TEXT_Y,
-  getCellTextSnapOffset,
   getColumnCellSlots,
   getHeaderCellSlots,
   HEADER_CELLS_X,
@@ -267,11 +265,10 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
         'font-family': SCENE_FONT_FAMILY,
         'font-size': `${SCENE_FONT_SIZE}px`,
         'font-weight': MEMO_FONT_WEIGHT,
-        'line-height': `${MEMO_LINE_HEIGHT_PX}px`,
+        'line-height': `${getMemoLineHeightPx()}px`,
         'letter-spacing': '0em',
         'white-space': 'pre-wrap',
         'overflow-wrap': 'break-word',
-        transform: `translateY(${getMemoTextSnapOffset()}px)`,
       }}
       spellcheck="false"
       prop:value={props.target.value}
@@ -364,7 +361,6 @@ const EditOverlay: FC = (_, ctx) => {
     // The same origin CanvasScene gives its layers, read from the one place
     // that transform is written down.
     const { x: originX, y: originY } = getSceneOrigin(settings);
-    const snapOffset = getCellTextSnapOffset();
 
     return (
       <div
@@ -391,12 +387,7 @@ const EditOverlay: FC = (_, ctx) => {
               transform: `translate(${originX + item.x * zoomLevel}px, ${
                 originY + item.y * zoomLevel
               }px) scale(${zoomLevel})`,
-              ...(item.kind === 'cell'
-                ? {
-                    width: `${item.width}px`,
-                    '--cell-text-snap': `${snapOffset}px`,
-                  }
-                : {}),
+              ...(item.kind === 'cell' ? { width: `${item.width}px` } : {}),
             }}
           >
             {editor(item)}

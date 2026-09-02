@@ -14,6 +14,5 @@ export const cell = css`
     height: ${CELL_TEXT_HEIGHT}px;
     border-bottom: 0 none;
     vertical-align: top;
-    transform: translateY(var(--cell-text-snap, 0px));
   }
 `;

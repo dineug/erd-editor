@@ -42,7 +42,10 @@ describe('the cell editor box over the scene', () => {
     expect(style.borderBottomWidth).toBe('0px');
     expect(style.borderBottomStyle).toBe('none');
     expect(style.verticalAlign).toBe('top');
-    expect(style.transform).toBe('translateY(var(--cell-text-snap, 0px))');
+    // No transform of its own. The box already centres the input's line on the
+    // baseline konva draws at, and a nudge on top of that is a guess about how
+    // one rasteriser rounds a painted baseline, which is not portable.
+    expect(style.transform).toBe('');
   });
 
   it('outranks the underline EditInput paints for a focused or edited cell', () => {

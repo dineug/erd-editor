@@ -6,9 +6,9 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import { useAppContext } from '@/components/appContext';
 import MemoSash from '@/components/erd/canvas/memo/memo-sash/MemoSash';
 import {
+  getMemoLineHeight,
   layoutMemoLines,
   MEMO_FONT_WEIGHT,
-  MEMO_LINE_HEIGHT,
 } from '@/components/erd/canvas/memo/memoText';
 import { useMoveMemo } from '@/components/erd/canvas/memo/useMoveMemo';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
@@ -239,7 +239,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
               fontFamily={SCENE_FONT_FAMILY}
               fontSize={SCENE_FONT_SIZE}
               fontStyle={MEMO_FONT_WEIGHT}
-              lineHeight={MEMO_LINE_HEIGHT}
+              lineHeight={getMemoLineHeight()}
               wrap="none"
             />
           </k-group>
