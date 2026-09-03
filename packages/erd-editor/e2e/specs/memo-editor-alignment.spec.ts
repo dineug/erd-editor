@@ -633,6 +633,9 @@ for (const scale of SCALES) {
       );
 
       const composing = await profileOf(erd.page, clip, bands);
+      // Escape cancels a composition rather than the editor, so the browser has
+      // to be done with this one before the editor will answer the key.
+      await erd.endComposition(COMPOSING);
       await closeEditor(erd);
 
       expect(driftOf(drawn.rows, composing.rows, scale), 'vertical drift').toBe(

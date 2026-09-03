@@ -1,10 +1,13 @@
 import type { Locator } from '@playwright/test';
 
+import type { ErdEditorPage } from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
 import {
   ColumnOption,
   ColumnUIKey,
+  createSchema,
   DEFAULT_SHOW,
+  type ErdDocument,
   oneTable,
   Show,
   twoTables,
@@ -328,5 +331,534 @@ test.describe('keyboard shortcuts', () => {
     // The swallowed press cannot have landed late either: a leaked add would
     // show up here as a third table, which the exact count rules out.
     expect(await erd.tableIds()).toHaveLength(2);
+  });
+});
+
+const MEMO_ID = 'note';
+const MEMO_VALUE = 'alpha\nbravo\ncharlie';
+
+/** One table to aim the table shortcuts at, and one memo to type into. */
+const tableAndMemo = (): ErdDocument =>
+  createSchema({
+    tables: [
+      {
+        id: 'users',
+        name: 'users',
+        x: 200,
+        y: 180,
+        columns: [
+          { id: 'users_id', name: 'id', dataType: 'int' },
+          { id: 'users_name', name: 'name', dataType: 'varchar(255)' },
+        ],
+      },
+    ],
+    memos: [
+      {
+        id: MEMO_ID,
+        value: MEMO_VALUE,
+        x: 700,
+        y: 200,
+        width: 220,
+        height: 160,
+      },
+    ],
+  });
+
+type Press = {
+  name: string;
+  chord: string;
+  /** False only where the browser answers by moving focus out of the field. */
+  keepsEditor: boolean;
+};
+
+const binding = (name: string, chord: string): Press => ({
+  name,
+  chord,
+  keepsEditor: true,
+});
+
+/**
+ * Every canvas shortcut that has to stand down while a text editor owns the
+ * keyboard, then the traversal keys keydown carries rather than a binding.
+ * Both chords of each removal binding are here, not just the pressed one.
+ */
+const PRESSES: Press[] = [
+  binding('addTable', Shortcut.addTable),
+  binding('addColumn', Shortcut.addColumn),
+  binding('addMemo', Shortcut.addMemo),
+  binding('removeTable', Shortcut.removeTable),
+  binding('removeTable (Delete)', 'ControlOrMeta+Delete'),
+  binding('removeColumn', Shortcut.removeColumn),
+  binding('removeColumn (Delete)', 'Alt+Delete'),
+  binding('primaryKey', Shortcut.primaryKey),
+  binding('selectAllTable', Shortcut.selectAllTable),
+  binding('selectAllColumn', Shortcut.selectAllColumn),
+  binding('relationshipZeroOne', Shortcut.relationshipZeroOne),
+  binding('relationshipZeroN', Shortcut.relationshipZeroN),
+  binding('relationshipOneOnly', Shortcut.relationshipOneOnly),
+  binding('relationshipOneN', Shortcut.relationshipOneN),
+  binding('tableProperties', Shortcut.tableProperties),
+  binding('search', Shortcut.search),
+  binding('zoomIn', Shortcut.zoomIn),
+  binding('zoomOut', Shortcut.zoomOut),
+  binding('ArrowUp', 'ArrowUp'),
+  binding('ArrowDown', 'ArrowDown'),
+  binding('ArrowLeft', 'ArrowLeft'),
+  binding('ArrowRight', 'ArrowRight'),
+  { name: 'Tab', chord: 'Tab', keepsEditor: false },
+  { name: 'Shift+Tab', chord: 'Shift+Tab', keepsEditor: false },
+];
+
+type EditorState = {
+  name: string;
+  enter: (erd: ErdEditorPage) => Promise<void>;
+  /** Whether a table still wears the focus ring while the editor is open. */
+  focusRings: number;
+  /** The chords this state answers on purpose, and the grid therefore skips. */
+  owned: string[];
+};
+
+test.describe('shortcuts while a text editor owns the keyboard', () => {
+  const memoBodyPoint = async (erd: ErdEditorPage) => {
+    const hit = await erd.sceneBox([`#memo-${MEMO_ID}`, '.memo-textarea-hit']);
+    return { x: hit.x + 24, y: hit.y + 24 };
+  };
+
+  /** A plain click on the body, which unselects everything on the way in. */
+  const openMemoEditor = async (erd: ErdEditorPage) => {
+    await erd.clickAt(await memoBodyPoint(erd));
+    await expect(erd.memoEditor).toBeFocused();
+  };
+
+  /**
+   * The gesture the report came in on. selectMemoAction$ skips its unselect
+   * while the modifier is down, so the table keeps the focus ring the memo
+   * editor is then opened over — the axis every earlier grid was missing.
+   */
+  const openMemoEditorOverFocus = async (erd: ErdEditorPage) => {
+    await erd.focusCell(erd.cell(erd.columnEl('users_id'), 'columnName'));
+    await erd.modClickAt(await memoBodyPoint(erd));
+    await expect(erd.memoEditor).toBeFocused();
+  };
+
+  const openCellEditor = async (erd: ErdEditorPage) => {
+    const cell = erd.cell(erd.columnEl('users_name'), 'columnName');
+    await cell.dblclick();
+    await expect(erd.editInput(cell)).toBeFocused();
+  };
+
+  /** The second route to the same state: a cell editor, then the memo. */
+  const openCellThenMemo = async (erd: ErdEditorPage) => {
+    await openCellEditor(erd);
+    await erd.modClickAt(await memoBodyPoint(erd));
+    await expect(erd.memoEditor).toBeFocused();
+  };
+
+  const STATES: EditorState[] = [
+    { name: 'memoEdit', enter: openMemoEditor, focusRings: 0, owned: [] },
+    {
+      name: 'memoEditFocusTable',
+      enter: openMemoEditorOverFocus,
+      focusRings: 1,
+      owned: [],
+    },
+    {
+      name: 'cellEdit',
+      enter: openCellEditor,
+      focusRings: 1,
+      owned: ['Tab', 'Shift+Tab'],
+    },
+    {
+      name: 'cellEditThenMemo',
+      enter: openCellThenMemo,
+      focusRings: 1,
+      owned: [],
+    },
+  ];
+
+  /**
+   * Everything a leaked chord would move. A grid missing one of these axes
+   * cannot see the leak that lands on it, so all of them are read every round.
+   */
+  const scene = async (erd: ErdEditorPage) => {
+    const { doc, collections, settings } = await erd.value();
+
+    return {
+      doc,
+      tables: collections.tableEntities,
+      columns: collections.tableColumnEntities,
+      memos: collections.memoEntities,
+      zoomLevel: settings.zoomLevel,
+      focusRing: await erd.focusRingCells(),
+      selectedTables: await erd.selectedTables().count(),
+      selectedColumns: await erd.selectedColumns().count(),
+      // A relationship draw is armed in editor state alone until the pointer
+      // moves, and the icon the root takes as its cursor is where that shows.
+      drawArmed: (await erd.canvasCursor()).includes('url('),
+      search: await erd.host.locator('.quick-search').count(),
+      tableProperties: await erd.host.locator('.table-properties').count(),
+    };
+  };
+
+  const openEditor = (erd: ErdEditorPage, state: EditorState) =>
+    state.name === 'cellEdit' ? erd.editInput() : erd.memoEditor;
+
+  const editorValue = (state: EditorState) =>
+    state.name === 'cellEdit' ? 'name' : MEMO_VALUE;
+
+  for (const state of STATES) {
+    const staying = PRESSES.filter(
+      press => press.keepsEditor && !state.owned.includes(press.chord)
+    );
+
+    test(`${state.name}: every registered chord stands down`, async ({
+      erd,
+    }) => {
+      test.setTimeout(90_000);
+      await erd.seed(tableAndMemo());
+      await state.enter(erd);
+      await expect(erd.focusRings()).toHaveCount(state.focusRings);
+
+      // Read once: nothing below is allowed to move it, so the first snapshot
+      // stays the oracle for every press and the round trips halve.
+      const before = await scene(erd);
+
+      for (const { name, chord } of staying) {
+        await test.step(name, async () => {
+          await erd.press(chord);
+          await erd.page.waitForTimeout(150);
+
+          expect(await scene(erd)).toEqual(before);
+          await expect(openEditor(erd, state)).toBeFocused();
+          await expect(openEditor(erd, state)).toHaveValue(editorValue(state));
+        });
+      }
+    });
+
+    const leaving = PRESSES.filter(
+      press => !press.keepsEditor && !state.owned.includes(press.chord)
+    );
+
+    for (const { name, chord } of leaving) {
+      test(`${state.name}: ${name} moves focus out and no focus ring`, async ({
+        erd,
+      }) => {
+        await erd.seed(tableAndMemo());
+        await state.enter(erd);
+        const before = await scene(erd);
+
+        await erd.press(chord);
+        await erd.page.waitForTimeout(150);
+
+        // The editor closes because the browser moved focus, exactly as it
+        // does out of a plain textarea; the grid underneath must not have run.
+        expect(await scene(erd)).toEqual(before);
+        await expect(erd.memoEditor).toHaveCount(0);
+      });
+    }
+  }
+
+  test('the reported sequence deletes no column', async ({ erd }) => {
+    await erd.seed(tableAndMemo());
+
+    await erd.focusCell(erd.cell(erd.columnEl('users_id'), 'columnName'));
+    await erd.modClickAt(await memoBodyPoint(erd));
+    await expect(erd.memoEditor).toBeFocused();
+    // Both at once is the state the guard has to see: a memo editor open, and
+    // a table still focused and selected behind it.
+    await expect(erd.focusRings()).toHaveCount(1);
+    await expect(erd.selectedTables()).toHaveCount(1);
+
+    await erd.press(Shortcut.removeColumn);
+    await erd.page.waitForTimeout(200);
+
+    expect(await erd.columnIds('users')).toEqual(['users_id', 'users_name']);
+    await expect(erd.memoEditor).toBeFocused();
+    await expect(erd.memoEditor).toHaveValue(MEMO_VALUE);
+  });
+
+  test('Enter types a newline and arms no cell edit underneath', async ({
+    erd,
+  }) => {
+    await erd.seed(tableAndMemo());
+    await openMemoEditorOverFocus(erd);
+    await erd.memoEditor.evaluate((element: HTMLTextAreaElement) => {
+      element.setSelectionRange(0, 0);
+    });
+
+    await erd.press(Shortcut.edit);
+    await expect(erd.memoEditor).toBeFocused();
+    await expect
+      .poll(async () => (await erd.memo(MEMO_ID)).value)
+      .toBe(`\n${MEMO_VALUE}`);
+
+    // Closing the memo is what would reveal a cell editor the leaked Enter had
+    // armed: the overlay draws the memo in front of it while both are set.
+    await erd.memoEditor.evaluate((element: HTMLTextAreaElement) =>
+      element.blur()
+    );
+    await expect(erd.memoEditor).toHaveCount(0);
+    await erd.page.waitForTimeout(200);
+    await expect(erd.editInput()).toHaveCount(0);
+    await expect(erd.focusRings()).toHaveCount(1);
+  });
+
+  test('the same chords land again once the memo editor closes', async ({
+    erd,
+  }) => {
+    await erd.seed(tableAndMemo());
+    await openMemoEditorOverFocus(erd);
+
+    await erd.memoEditor.evaluate((element: HTMLTextAreaElement) =>
+      element.blur()
+    );
+    await expect(erd.memoEditor).toHaveCount(0);
+    await erd.expectKeyboardFocusInside();
+    await expect(erd.focusRings()).toHaveCount(1);
+
+    // The positive control for the grid above: same seed, same chords, memo
+    // shut. Each one lands, so "nothing changed" was the guard and not a state
+    // that had nothing left to change.
+    await erd.press(Shortcut.primaryKey);
+    await expect(erd.columnKey('users_id', 'pk')).toHaveCount(1);
+
+    await erd.press('ArrowRight');
+    await expect(
+      erd.focusRing(erd.cell(erd.columnEl('users_id'), 'columnDataType'))
+    ).toBeVisible();
+
+    await erd.press(Shortcut.selectAllColumn);
+    await expect(erd.selectedColumns()).toHaveCount(2);
+
+    await erd.press(Shortcut.removeColumn);
+    expect(await erd.columnIds('users')).toEqual([]);
+  });
+
+  test('Escape and Tab close the memo editor, Enter types a newline', async ({
+    erd,
+  }) => {
+    await erd.seed(tableAndMemo());
+
+    await openMemoEditor(erd);
+    await erd.press('Escape');
+    await expect(erd.memoEditor).toHaveCount(0);
+    expect((await erd.memo(MEMO_ID)).value).toBe(MEMO_VALUE);
+
+    await openMemoEditor(erd);
+    await erd.press('Tab');
+    await expect(erd.memoEditor).toHaveCount(0);
+    expect((await erd.memo(MEMO_ID)).value).toBe(MEMO_VALUE);
+
+    await openMemoEditor(erd);
+    await erd.memoEditor.evaluate((element: HTMLTextAreaElement) => {
+      element.setSelectionRange(0, 0);
+    });
+    await erd.press('Enter');
+    await expect(erd.memoEditor).toBeFocused();
+    await expect
+      .poll(async () => (await erd.memo(MEMO_ID)).value)
+      .toBe(`\n${MEMO_VALUE}`);
+  });
+
+  /**
+   * Five of the blocked chords need a focused table before they do anything, so
+   * pressed on their own inside a memo editor they are quiet for the wrong
+   * reason. This is the chain that used to hand them that table.
+   */
+  test('a memo editor cannot bootstrap itself a table to aim at', async ({
+    erd,
+  }) => {
+    await erd.seed(tableAndMemo());
+    await openMemoEditor(erd);
+
+    await erd.press(Shortcut.addTable);
+    await erd.page.waitForTimeout(200);
+    expect(await erd.tableIds()).toEqual(['users']);
+    await expect(erd.focusRings()).toHaveCount(0);
+
+    await erd.press(Shortcut.tableProperties);
+    await erd.page.waitForTimeout(200);
+    await expect(erd.host.locator('.table-properties')).toHaveCount(0);
+
+    await erd.press(Shortcut.addColumn);
+    await erd.page.waitForTimeout(200);
+    expect(await erd.columnIds('users')).toEqual(['users_id', 'users_name']);
+
+    await erd.press(Shortcut.removeTable);
+    await erd.page.waitForTimeout(200);
+    expect(await erd.memoIds()).toEqual([MEMO_ID]);
+    await expect(erd.memoEditor).toBeFocused();
+  });
+
+  test('undo still steps the store back from inside the memo editor', async ({
+    erd,
+  }) => {
+    await erd.seed(tableAndMemo());
+    await erd.focusCanvas();
+    await erd.expectKeyboardFocusInside();
+
+    await erd.press(Shortcut.addTable);
+    await expect(erd.canvas.locator('.table')).toHaveCount(2);
+    const [addedId] = (await erd.tableIds()).filter(id => id !== 'users');
+
+    // The memo editor is the one surface where a plain editing key used to
+    // reach the document; undo is the one that still has to, exactly as it
+    // does from inside a cell input.
+    await openMemoEditor(erd);
+    await erd.press(Shortcut.undo);
+
+    await expect(erd.tableEl(addedId)).toHaveCount(0);
+    expect(await erd.tableIds()).toEqual(['users']);
+    await expect(erd.memoEditor).toBeFocused();
+  });
+});
+
+test.describe('an IME composition owns the keyboard', () => {
+  const memoBodyPoint = async (erd: ErdEditorPage) => {
+    const hit = await erd.sceneBox([`#memo-${MEMO_ID}`, '.memo-textarea-hit']);
+    return { x: hit.x + 24, y: hit.y + 24 };
+  };
+
+  const openMemoEditor = async (erd: ErdEditorPage) => {
+    await erd.clickAt(await memoBodyPoint(erd));
+    await expect(erd.memoEditor).toBeFocused();
+  };
+
+  const openCellEditor = async (erd: ErdEditorPage) => {
+    const cell = erd.cell(erd.columnEl('users_name'), 'columnName');
+    await cell.dblclick();
+    await expect(erd.editInput(cell)).toBeFocused();
+  };
+
+  test('Escape cancels the composition rather than closing the memo', async ({
+    erd,
+  }) => {
+    await erd.seed(tableAndMemo());
+    await openMemoEditor(erd);
+    await erd.startComposition('한');
+    const composed = await erd.memoEditor.inputValue();
+
+    await erd.press('Escape');
+    await erd.page.waitForTimeout(200);
+
+    await expect(erd.memoEditor).toBeFocused();
+    await expect(erd.memoEditor).toHaveValue(composed);
+
+    // Positive control: the same key closes it the moment the composition is
+    // no longer in the way.
+    await erd.endComposition('한');
+    await erd.press('Escape');
+    await expect(erd.memoEditor).toHaveCount(0);
+  });
+
+  test('Enter settles a syllable rather than closing the cell editor', async ({
+    erd,
+  }) => {
+    await erd.seed(tableAndMemo());
+    await openCellEditor(erd);
+    await erd.startComposition('한');
+    const composed = await erd.editInput().inputValue();
+
+    await erd.press('Enter');
+    await erd.page.waitForTimeout(200);
+
+    await expect(erd.editInput()).toBeFocused();
+    await expect(erd.editInput()).toHaveValue(composed);
+
+    await erd.endComposition('한');
+    await erd.press('Enter');
+    await expect(erd.editInput()).toHaveCount(0);
+  });
+
+  test('no arrow walks the grid mid-composition', async ({ erd }) => {
+    await erd.seed(tableAndMemo());
+    await openCellEditor(erd);
+    await erd.startComposition('한');
+    const ring = await erd.focusRingCells();
+
+    for (const key of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
+      await erd.press(key);
+      await erd.page.waitForTimeout(120);
+      expect(await erd.focusRingCells()).toEqual(ring);
+      await expect(erd.editInput()).toBeFocused();
+    }
+  });
+
+  /**
+   * Tab is the one traversal key an open cell editor still answers, so it is
+   * also the only one a composition can be measured against: every other key
+   * is already the caret's while a cell is being edited.
+   */
+  test('Tab does not step the cell editor on mid-composition', async ({
+    erd,
+  }) => {
+    await erd.seed(tableAndMemo());
+    await openCellEditor(erd);
+    await erd.startComposition('한');
+    const ring = await erd.focusRingCells();
+
+    await erd.press('Tab');
+    await erd.page.waitForTimeout(200);
+
+    expect(await erd.focusRingCells()).toEqual(ring);
+    expect((await erd.column('users_name')).dataType).toBe('varchar(255)');
+
+    // Positive control: the same key steps the grid the moment the browser is
+    // done composing.
+    await erd.endComposition('한');
+    await openCellEditor(erd);
+    await erd.press('Tab');
+    await expect(
+      erd.focusRing(erd.cell(erd.columnEl('users_name'), 'columnDataType'))
+    ).toBeVisible();
+  });
+
+  /**
+   * The field itself is fair game: an unclaimed Alt+Backspace is a word delete
+   * in any input. What must not move is the scene around it.
+   */
+  const around = async (erd: ErdEditorPage) => {
+    const { doc, collections, settings } = await erd.value();
+
+    return {
+      tableIds: doc.tableIds,
+      memoIds: doc.memoIds,
+      columnIds: collections.tableEntities.users.columnIds,
+      options: Object.values(collections.tableColumnEntities).map(
+        column => column.options
+      ),
+      zoomLevel: settings.zoomLevel,
+      focusRing: await erd.focusRingCells(),
+      selectedTables: await erd.selectedTables().count(),
+      search: await erd.host.locator('.quick-search').count(),
+    };
+  };
+
+  test('no canvas shortcut fires mid-composition', async ({ erd }) => {
+    await erd.seed(tableAndMemo());
+    await openCellEditor(erd);
+    await erd.startComposition('한');
+    const before = await around(erd);
+
+    for (const chord of [
+      Shortcut.addTable,
+      Shortcut.addMemo,
+      Shortcut.removeTable,
+      Shortcut.removeColumn,
+      Shortcut.primaryKey,
+      Shortcut.selectAllTable,
+      Shortcut.selectAllColumn,
+      Shortcut.relationshipZeroN,
+      Shortcut.tableProperties,
+      Shortcut.zoomIn,
+      Shortcut.zoomOut,
+      Shortcut.search,
+    ]) {
+      await erd.press(chord);
+      await erd.page.waitForTimeout(120);
+    }
+
+    expect(await around(erd)).toEqual(before);
+    await expect(erd.editInput()).toBeFocused();
   });
 });

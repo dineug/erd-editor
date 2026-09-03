@@ -54,6 +54,7 @@ import {
 import { getSceneOrigin } from '@/konva/scene/viewport';
 import { onStop } from '@/utils/domEvent';
 import { focusEvent } from '@/utils/internalEvents';
+import { isComposing } from '@/utils/keyboard-shortcut';
 import { isHighLevelTable } from '@/utils/validation';
 
 import * as styles from './EditOverlay.styles';
@@ -237,7 +238,9 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
   };
 
   const handleKeydown = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape') return;
+    // While an IME is composing, Escape cancels the composition and the field
+    // stays, which is what the same key does in any other textarea.
+    if (event.key !== 'Escape' || isComposing(event)) return;
     textarea.value?.blur();
   };
 

@@ -114,6 +114,22 @@ export const MoveKey = {
 export type MoveKey = ValuesType<typeof MoveKey>;
 export const hasMoveKeys = arrayHas(Object.values(MoveKey));
 
+/**
+ * Whether the memo body editor owns the keyboard. Its textarea covers no grid,
+ * so the traversal and edit keys a focused table would otherwise answer belong
+ * to the caret for as long as it is open.
+ */
+export const isEditingMemo = ({ editMemoId }: Editor): boolean =>
+  Boolean(editMemoId);
+
+/**
+ * Whether a live text editor owns the keyboard. A memo body and a table cell
+ * both open a real input over the scene, so a canvas shortcut stands down for
+ * either of them rather than for the cell alone.
+ */
+export const isEditingText = (editor: Editor): boolean =>
+  isEditingMemo(editor) || Boolean(editor.focusTable?.edit);
+
 export const createEditor = (): Editor => ({
   id: nanoid(),
   selectedMap: {},

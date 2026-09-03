@@ -7,6 +7,7 @@ import { AppContext } from '@/components/appContext';
 import { DatabaseHintMap, DataTypeHint } from '@/constants/sql/dataType';
 import { changeColumnDataTypeAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { isComposing } from '@/utils/keyboard-shortcut';
 
 export type ColumnCellProps = {
   tableId: string;
@@ -119,8 +120,13 @@ export function useColumnCell(props: ColumnCellProps, app: Ref<AppContext>) {
     Enter: handleEnter,
   };
 
+  /**
+   * The autocomplete list's own keys. An IME composition claims the arrows for
+   * its candidate window and Enter to settle a syllable, so none of them is the
+   * list's until the browser has finished composing.
+   */
   const handleKeydown = (event: KeyboardEvent) => {
-    if (!hasAutocompleteKey(event.key)) return;
+    if (isComposing(event) || !hasAutocompleteKey(event.key)) return;
 
     keyMap[event.key]?.(event);
   };

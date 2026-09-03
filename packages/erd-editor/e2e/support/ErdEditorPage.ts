@@ -187,6 +187,25 @@ export class ErdEditorPage {
   }
 
   /**
+   * Which cell wears the focus ring, named row by column. A count alone cannot
+   * see a ring that moved from one cell to another, which is what a traversal
+   * key leaking out of a text editor does.
+   */
+  async focusRingCells(): Promise<string[]> {
+    return this.canvas.evaluate(root =>
+      Array.from(root.querySelectorAll('[data-focus-border-bottom]')).map(
+        element => {
+          const cell = element.closest('[data-type]');
+          const row = element.closest('[data-id]');
+          return `${row?.getAttribute('data-id') ?? '?'}:${
+            cell?.getAttribute('data-type') ?? '?'
+          }`;
+        }
+      )
+    );
+  }
+
+  /**
    * The live <input> the editing overlay opens over a cell. It is placed over
    * the stage rather than inside the cell it edits, and at most one is open, so
    * the argument names the cell it is expected on rather than scoping it.
@@ -803,6 +822,33 @@ export class ErdEditorPage {
   private async cdp(): Promise<CDPSession> {
     this.session ??= await this.page.context().newCDPSession(this.page);
     return this.session;
+  }
+
+  /**
+   * Starts a live IME composition on whatever holds the caret, which is the
+   * only way to get a keydown the browser itself marks as composing.
+   */
+  async startComposition(text: string) {
+    const session = await this.cdp();
+    await session.send('Input.imeSetComposition', {
+      text,
+      selectionStart: text.length,
+      selectionEnd: text.length,
+    });
+  }
+
+  /** Commits what the composition holds, which is what a space bar would do. */
+  async endComposition(text: string) {
+    const session = await this.cdp();
+    await session.send('Input.insertText', { text });
+  }
+
+  /** A click with the platform modifier the editor's pointer handlers read. */
+  async modClickAt(point: Point) {
+    const modifier = await this.pointerModKey();
+    await this.page.keyboard.down(modifier);
+    await this.page.mouse.click(point.x, point.y);
+    await this.page.keyboard.up(modifier);
   }
 
   /**

@@ -129,9 +129,10 @@ async function type(h: Harness, value: string) {
   await flush();
 }
 
-function keydown(h: Harness, key: string) {
+function keydown(h: Harness, key: string, isComposing = false) {
   const event = new KeyboardEvent('keydown', {
     key,
+    isComposing,
     bubbles: true,
     cancelable: true,
   });
@@ -276,6 +277,38 @@ describe('ColumnDataType', () => {
       // click a tap is otherwise about to synthesise.
       expect(stopPropagation).toHaveBeenCalled();
       expect(event.defaultPrevented).toBe(false);
+    });
+
+    // An IME candidate window answers these keys itself, so the list has to let
+    // them past until the browser says the composition is over.
+    it.each(['ArrowDown', 'ArrowUp', 'ArrowRight', 'Tab', 'Enter'])(
+      'leaves %s to the composition it is still part of',
+      async key => {
+        const h = await setup({ edit: true });
+        await type(h, 'INT');
+        keydown(h, 'ArrowDown');
+        await flush();
+        const selected = h.selectedIndex();
+
+        const { event } = keydown(h, key, true);
+        await flush();
+
+        expect(h.selectedIndex()).toBe(selected);
+        expect(event.defaultPrevented).toBe(false);
+      }
+    );
+
+    it('answers the very same key once the composition has ended', async () => {
+      const h = await setup({ edit: true });
+      await type(h, 'INT');
+
+      keydown(h, 'ArrowDown', true);
+      await flush();
+      expect(h.selectedIndex()).toBe(-1);
+
+      keydown(h, 'ArrowDown');
+      await flush();
+      expect(h.selectedIndex()).toBe(0);
     });
 
     it('moves the selection down and wraps around with ArrowDown', async () => {

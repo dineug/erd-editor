@@ -29,17 +29,21 @@ type KeyInit = {
   key: string;
   code?: string;
   altKey?: boolean;
+  isComposing?: boolean;
+  keyCode?: number;
 };
 
 let mounted: Mounted | null = null;
 let app: AppContext;
 let shortcuts: Array<{ type: KeyBindingName; event: KeyboardEvent }> = [];
 
-const keydown = ({ key, code, altKey }: KeyInit) =>
+const keydown = ({ key, code, altKey, isComposing, keyCode }: KeyInit) =>
   new KeyboardEvent('keydown', {
     key,
     code: code ?? key,
     altKey: altKey ?? false,
+    isComposing: isComposing ?? false,
+    keyCode: keyCode ?? 0,
     bubbles: true,
     cancelable: true,
   });
@@ -152,6 +156,38 @@ describe('useKeyBindingMap', () => {
     press({ key: 'Escape' });
 
     expect(shortcuts).toHaveLength(1);
+  });
+
+  // Every binding goes through one handler, so the composition guard is checked
+  // once for the whole map rather than per chord.
+  it.each([
+    ['isComposing', { isComposing: true }],
+    ['keyCode 229', { keyCode: 229 }],
+  ])('emits nothing while the IME reports %s', (_label, composing) => {
+    const event = press({ key: 'Enter', ...composing });
+
+    expect(shortcuts).toHaveLength(0);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('emits nothing for a preventDefault binding pressed mid-composition', () => {
+    const event = press({
+      key: 'n',
+      code: 'KeyN',
+      altKey: true,
+      isComposing: true,
+    });
+
+    expect(shortcuts).toHaveLength(0);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('emits the same chord again once the composition has ended', () => {
+    press({ key: 'Escape', isComposing: true });
+    expect(shortcuts).toHaveLength(0);
+
+    press({ key: 'Escape' });
+    expect(shortcuts.map(({ type }) => type)).toEqual([KeyBindingName.stop]);
   });
 
   it('stops listening after the component unmounts', () => {

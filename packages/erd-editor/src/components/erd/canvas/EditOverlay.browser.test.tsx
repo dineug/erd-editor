@@ -650,6 +650,30 @@ describe('the memo body editor over the scene', () => {
     expect(fixture.app.store.state.editor.editMemoId).toBeNull();
   });
 
+  // Escape mid-composition cancels the composition in any textarea and leaves
+  // the field standing; closing here would commit a half-formed syllable.
+  it.each([
+    ['isComposing', { isComposing: true }],
+    ['keyCode 229', { keyCode: 229 }],
+  ])(
+    'keeps the memo editor open on Escape while the IME reports %s',
+    async (_label, composing) => {
+      const fixture = await editMemo();
+
+      memoTextareaOf(fixture.mounted).dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          bubbles: true,
+          ...composing,
+        })
+      );
+      await flush();
+
+      expect(fixture.app.store.state.editor.editMemoId).toBe(fixture.memoId);
+      expect(memoTextareas(fixture.mounted).length).toBe(1);
+    }
+  );
+
   it('leaves the memo editor open on any other key', async () => {
     const fixture = await editMemo();
 

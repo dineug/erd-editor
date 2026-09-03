@@ -16,6 +16,7 @@ import Kbd from '@/components/primitives/kbd/Kbd';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import { isEditingText } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
@@ -163,11 +164,10 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
 
   const handleToggleSearch = () => {
     const { store } = app.value;
-    const {
-      editor: { focusTable, openMap },
-    } = store.state;
+    const { editor } = store.state;
+    const { openMap } = editor;
 
-    if (!focusTable || !focusTable.edit) {
+    if (!isEditingText(editor)) {
       const opened = !openMap[Open.search];
       store.dispatch(changeOpenMapAction({ [Open.search]: opened }));
 
