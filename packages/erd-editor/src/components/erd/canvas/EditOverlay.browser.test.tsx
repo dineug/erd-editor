@@ -61,7 +61,10 @@ import {
   changeZoomLevelAction,
   streamScrollToAction,
 } from '@/engine/modules/settings/atom.actions';
-import { addTableAction$ } from '@/engine/modules/table/generator.actions';
+import {
+  addTableAction$,
+  removeTableAction$,
+} from '@/engine/modules/table/generator.actions';
 import {
   addColumnAction$,
   removeColumnAction$,
@@ -370,6 +373,32 @@ describe('the editing overlay', () => {
 
     expect(inputOf(fixture.mounted)).toBeNull();
   });
+
+  it.each([
+    ['a header cell', editTableName],
+    ['a column cell', editColumnName],
+  ])(
+    'closes %s once its table has left the document',
+    async (_, openEditor) => {
+      const fixture = await setup();
+      await openEditor(fixture);
+      expect(inputOf(fixture.mounted)).toBeTruthy();
+
+      const { store } = fixture.app;
+      store.dispatchSync(removeTableAction$(fixture.tableId));
+      await flush();
+
+      // The tombstone outlives the removal with its columns intact, so neither
+      // cell can be resolved through the collections alone.
+      expect(
+        Boolean(store.state.collections.tableEntities[fixture.tableId])
+      ).toBe(true);
+      expect(inputOf(fixture.mounted)).toBeNull();
+      // Removing the input blurs it, which is what ends the edit and hands the
+      // keyboard back to the canvas shortcuts.
+      expect(store.state.editor.focusTable?.edit).toBe(false);
+    }
+  );
 
   it('ends the edit when the editor blurs', async () => {
     const fixture = await setup();

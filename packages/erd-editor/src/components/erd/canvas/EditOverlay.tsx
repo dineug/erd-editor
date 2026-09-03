@@ -106,10 +106,13 @@ const keyOf = (target: EditTarget) =>
  * the text it replaces rather than beside it.
  */
 function resolveCellTarget(state: RootState): CellTarget | null {
-  const { editor, collections, settings } = state;
+  const { editor, collections, settings, doc } = state;
   const { focusTable } = editor;
 
   if (!focusTable?.edit || isHighLevelTable(settings.zoomLevel)) return null;
+  // The document's own list, for the reason the memo target reads it too. A
+  // table's tombstone keeps its columns, so this covers a column cell as well.
+  if (!doc.tableIds.includes(focusTable.tableId)) return null;
 
   const placeholder = EDITABLE[focusTable.focusType];
   if (placeholder === undefined) return null;

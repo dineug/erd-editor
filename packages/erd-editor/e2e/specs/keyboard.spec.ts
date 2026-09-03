@@ -108,6 +108,46 @@ test.describe('keyboard shortcuts', () => {
     expect(await erd.tableIds()).toEqual(['users', addedId]);
   });
 
+  test('an undo that removes the named table takes its editor with it', async ({
+    erd,
+  }) => {
+    await erd.seed(oneTable());
+    await erd.focusCanvas();
+    await erd.expectKeyboardFocusInside();
+
+    await erd.press(Shortcut.addTable);
+    const [addedId] = (await erd.tableIds()).filter(id => id !== 'users');
+    const addedName = erd.cell(erd.tableEl(addedId), 'tableName');
+    await erd.press(Shortcut.edit);
+    await expect(erd.editInput(addedName)).toBeFocused();
+
+    // The editor is open on the very table the undo drops. A removal is an LWW
+    // tombstone, so nothing but doc.tableIds says the table has left, and an
+    // editor resolved from the collections alone would stay open over nothing.
+    await erd.press(Shortcut.undo);
+    expect(await erd.tableIds()).toEqual(['users']);
+    await expect(erd.canvas.locator('.table')).toHaveCount(1);
+    await expect(erd.editInput()).toHaveCount(0);
+    await erd.expectKeyboardFocusInside();
+
+    // Typing now has no editor to reach, so the tombstone keeps the name it
+    // was removed with and the redo it would have cleared still stands.
+    await erd.page.keyboard.type('ghost');
+    expect((await erd.table(addedId)).name).toBe('');
+    expect(await erd.tableIds()).toEqual(['users']);
+
+    await erd.press(Shortcut.redo);
+    expect(await erd.tableIds()).toEqual(['users', addedId]);
+    await expect(erd.canvas.locator('.table')).toHaveCount(2);
+    // the restored table carries the name it had, not what the ghost typed
+    expect((await erd.table(addedId)).name).toBe('');
+
+    // Alt+KeyN is one of the shortcuts an open editor swallows, so the table it
+    // adds is how the returned keyboard is read back.
+    await erd.press(Shortcut.addTable);
+    await expect(erd.canvas.locator('.table')).toHaveCount(3);
+  });
+
   test('Tab walks the grid, auto-editing every cell except the toggles', async ({
     erd,
   }) => {
