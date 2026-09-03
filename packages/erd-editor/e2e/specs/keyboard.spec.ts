@@ -132,15 +132,16 @@ test.describe('keyboard shortcuts', () => {
       await expect(erd.editInput(cell)).toBeFocused();
     }
 
-    // Toggle cells are flipped, never typed into, and landing on one tears down
-    // the previous input without opening a new one, dropping DOM focus to the
-    // body. The rest of the ring is walked with arrows, which never lose it.
+    // Toggle cells are flipped, never typed into, so landing on one tears down
+    // the previous input and opens none. DOM focus goes back to the editor root
+    // rather than out to the body, which is what keeps the grid answering.
     const notNull = erd.cell(idRow, 'columnNotNull');
     await erd.press('Tab');
     await expect(erd.focusRing(notNull)).toBeVisible();
     await expect(erd.focusRings()).toHaveCount(1);
     await expect(erd.editInput(notNull)).toHaveCount(0);
     await expect(notNull).toContainText('NULL');
+    await erd.expectKeyboardFocusInside();
   });
 
   test('Tab past the last cell appends a column, Shift+Tab only walks back', async ({
@@ -334,6 +335,131 @@ test.describe('keyboard shortcuts', () => {
   });
 });
 
+/**
+ * One stop on the traversal ring, named the way a focus ring reports itself: a
+ * row — the table for a header cell, the column otherwise — and the cell type
+ * inside it.
+ */
+type Stop = { row: string; type: string };
+
+/**
+ * The ring the default settings.show leaves on the oneTable seed, in the order
+ * Tab walks it. Shift+Tab walks the same list backwards and wraps at the front;
+ * a Tab off the last stop appends a column instead, which its own test owns.
+ */
+const RING: Stop[] = [
+  { row: 'users', type: 'tableName' },
+  { row: 'users', type: 'tableComment' },
+  { row: 'users_id', type: 'columnName' },
+  { row: 'users_id', type: 'columnDataType' },
+  { row: 'users_id', type: 'columnNotNull' },
+  { row: 'users_id', type: 'columnDefault' },
+  { row: 'users_id', type: 'columnComment' },
+  { row: 'users_name', type: 'columnName' },
+  { row: 'users_name', type: 'columnDataType' },
+  { row: 'users_name', type: 'columnNotNull' },
+  { row: 'users_name', type: 'columnDefault' },
+  { row: 'users_name', type: 'columnComment' },
+];
+
+/** The one kind of stop that is flipped rather than typed into. */
+const isToggle = (stop: Stop) => stop.type === 'columnNotNull';
+
+const nameOf = (stop: Stop) => `${stop.row}:${stop.type}`;
+
+const cellOf = (erd: ErdEditorPage, stop: Stop) =>
+  erd.cell(
+    stop.type.startsWith('column')
+      ? erd.columnEl(stop.row)
+      : erd.tableEl(stop.row),
+    stop.type
+  );
+
+const notNullOf = async (erd: ErdEditorPage, columnId: string) =>
+  Boolean((await erd.column(columnId)).options & ColumnOption.notNull);
+
+/** Opens the stop a step starts from — an editor on every cell but a toggle. */
+async function enterStop(erd: ErdEditorPage, stop: Stop) {
+  await erd.focusCell(cellOf(erd, stop));
+
+  if (isToggle(stop)) {
+    await expect(erd.editInput()).toHaveCount(0);
+    return;
+  }
+
+  await erd.press(Shortcut.edit);
+  await expect(erd.editInput()).toBeFocused();
+}
+
+/**
+ * Whether the element still answers a press in the state a step left behind.
+ * The focus ring is painted from store state and says nothing about where DOM
+ * focus went, so the answer has to come from a real key.
+ */
+async function expectKeyboardAnswers(erd: ErdEditorPage, stop: Stop) {
+  if (isToggle(stop)) {
+    await expect(erd.editInput()).toHaveCount(0);
+    await erd.expectKeyboardFocusInside();
+
+    const before = await notNullOf(erd, stop.row);
+    await erd.press(Shortcut.edit);
+    await expect.poll(() => notNullOf(erd, stop.row)).toBe(!before);
+    return;
+  }
+
+  await expect(erd.editInput()).toBeFocused();
+
+  // Enter ends the edit, which deletes the input holding DOM focus. The second
+  // press has to travel from wherever the browser put focus next, and that is
+  // the gap a keyboard left outside the element falls into.
+  await erd.press(Shortcut.edit);
+  await expect(erd.editInput()).toHaveCount(0);
+  await erd.expectKeyboardFocusInside();
+
+  await erd.press(Shortcut.edit);
+  await expect(erd.editInput()).toBeFocused();
+  expect(await erd.focusRingCells()).toEqual([nameOf(stop)]);
+}
+
+/**
+ * Every cell kind, walked out of in both directions, with the state each step
+ * lands in asked whether the keyboard still reaches the element. A step that
+ * drops DOM focus to the body paints the ring the same as one that does not.
+ */
+test.describe('Tab keeps the keyboard on whatever it lands on', () => {
+  const kinds = RING.filter(
+    (stop, index) => RING.findIndex(other => other.type === stop.type) === index
+  );
+
+  const steps = kinds.flatMap(from => {
+    const index = RING.indexOf(from);
+    return [
+      { key: 'Tab', from, to: RING[index + 1] },
+      {
+        key: 'Shift+Tab',
+        from,
+        to: RING[index === 0 ? RING.length - 1 : index - 1],
+      },
+    ];
+  });
+
+  for (const { key, from, to } of steps) {
+    test(`${key} out of ${nameOf(from)} lands on ${nameOf(to)}`, async ({
+      erd,
+    }) => {
+      await erd.seed(oneTable());
+      await enterStop(erd, from);
+
+      await erd.press(key);
+      await expect(erd.focusRing(cellOf(erd, to))).toBeVisible();
+      await expect(erd.focusRings()).toHaveCount(1);
+      expect(await erd.focusRingCells()).toEqual([nameOf(to)]);
+
+      await expectKeyboardAnswers(erd, to);
+    });
+  }
+});
+
 const MEMO_ID = 'note';
 const MEMO_VALUE = 'alpha\nbravo\ncharlie';
 
@@ -439,6 +565,9 @@ test.describe('shortcuts while a text editor owns the keyboard', () => {
     await erd.focusCell(erd.cell(erd.columnEl('users_id'), 'columnName'));
     await erd.modClickAt(await memoBodyPoint(erd));
     await expect(erd.memoEditor).toBeFocused();
+    // A modifier the host reads as a right click leaves a menu standing over
+    // the state, which is then what every press below is measured against.
+    await expect(erd.contextMenu).toHaveCount(0);
   };
 
   const openCellEditor = async (erd: ErdEditorPage) => {
@@ -452,6 +581,7 @@ test.describe('shortcuts while a text editor owns the keyboard', () => {
     await openCellEditor(erd);
     await erd.modClickAt(await memoBodyPoint(erd));
     await expect(erd.memoEditor).toBeFocused();
+    await expect(erd.contextMenu).toHaveCount(0);
   };
 
   const STATES: EditorState[] = [
@@ -497,6 +627,7 @@ test.describe('shortcuts while a text editor owns the keyboard', () => {
       drawArmed: (await erd.canvasCursor()).includes('url('),
       search: await erd.host.locator('.quick-search').count(),
       tableProperties: await erd.host.locator('.table-properties').count(),
+      contextMenu: await erd.contextMenu.count(),
     };
   };
 
@@ -518,6 +649,7 @@ test.describe('shortcuts while a text editor owns the keyboard', () => {
       await erd.seed(tableAndMemo());
       await state.enter(erd);
       await expect(erd.focusRings()).toHaveCount(state.focusRings);
+      await expect(erd.contextMenu).toHaveCount(0);
 
       // Read once: nothing below is allowed to move it, so the first snapshot
       // stays the oracle for every press and the round trips halve.
@@ -565,9 +697,10 @@ test.describe('shortcuts while a text editor owns the keyboard', () => {
     await erd.modClickAt(await memoBodyPoint(erd));
     await expect(erd.memoEditor).toBeFocused();
     // Both at once is the state the guard has to see: a memo editor open, and
-    // a table still focused and selected behind it.
+    // a table still focused and selected behind it — and nothing else over it.
     await expect(erd.focusRings()).toHaveCount(1);
     await expect(erd.selectedTables()).toHaveCount(1);
+    await expect(erd.contextMenu).toHaveCount(0);
 
     await erd.press(Shortcut.removeColumn);
     await erd.page.waitForTimeout(200);

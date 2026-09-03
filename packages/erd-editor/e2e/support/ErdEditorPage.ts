@@ -533,9 +533,9 @@ export class ErdEditorPage {
   }
 
   /**
-   * The modifier the editor's pointer handlers read as $mod. tinykeys reads
-   * navigator.platform while the editor's isMod parses the UA, and Playwright's
-   * pinned device makes those disagree, so this mirrors what the UA says.
+   * The modifier the editor's pointer handlers read as $mod. isMod parses the
+   * user agent, so this asks the page rather than the runner — the two agree
+   * only because the config no longer pins a user agent of its own.
    */
   async pointerModKey(): Promise<'Meta' | 'Control'> {
     const isApple = await this.page.evaluate(() =>
@@ -843,7 +843,11 @@ export class ErdEditorPage {
     await session.send('Input.insertText', { text });
   }
 
-  /** A click with the platform modifier the editor's pointer handlers read. */
+  /**
+   * A click with the platform modifier the editor's pointer handlers read. It
+   * is the gesture a person performs, so it opens no context menu on any host;
+   * the other modifier would, and would be a plain click to the editor.
+   */
   async modClickAt(point: Point) {
     const modifier = await this.pointerModKey();
     await this.page.keyboard.down(modifier);

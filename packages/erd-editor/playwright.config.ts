@@ -33,6 +33,10 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
+        // The descriptor pins a Windows user agent, which the editor parses to
+        // decide whether a mouse $mod is Ctrl or Cmd. On a mac host that answer
+        // is Ctrl, and a Ctrl+click there is a right click — see e2e/README.md.
+        userAgent: undefined,
       },
     },
   ],

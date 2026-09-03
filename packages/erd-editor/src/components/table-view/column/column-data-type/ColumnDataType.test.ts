@@ -548,6 +548,33 @@ describe('ColumnDataType', () => {
 
       expect(h.onBlur).toHaveBeenCalledTimes(1);
     });
+
+    // Tearing this editor down is how a Tab stop moves on, and the next cell's
+    // editor opens a turn later. A blur still waiting on its timer would land
+    // in that one and close it, with nothing left holding DOM focus.
+    it('answers a waiting focusout at once when the editor is torn down', async () => {
+      const h = await setup({ edit: true });
+
+      h.root().dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+      expect(h.onBlur).not.toHaveBeenCalled();
+
+      h.mounted.unmount();
+      harness = null;
+      expect(h.onBlur).toHaveBeenCalledTimes(1);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(h.onBlur).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports no blur from a teardown that never lost focus', async () => {
+      const h = await setup({ edit: true });
+
+      h.mounted.unmount();
+      harness = null;
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(h.onBlur).not.toHaveBeenCalled();
+    });
   });
 
   describe('prop and settings watchers', () => {

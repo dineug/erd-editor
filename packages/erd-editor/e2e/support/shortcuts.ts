@@ -30,10 +30,10 @@ export type Shortcut = (typeof Shortcut)[keyof typeof Shortcut];
 
 /**
  * The bare modifier for interactions that hold it across several mouse events.
- * The keyboard path reads navigator.platform and the mouse path parses the user
- * agent, which the pinned device overrides, so the mouse modifier is Control.
+ * It follows the host the browser really runs on, because a Ctrl+click on a mac
+ * is a right click and would put a context menu over whatever is measured.
  */
-export const MOD_KEY = 'Control';
+export const MOD_KEY = process.platform === 'darwin' ? 'Meta' : 'Control';
 
 /** streamZoomLevelAction$ steps the zoom by this much per shortcut press. */
 export const ZOOM_STEP = 0.04;

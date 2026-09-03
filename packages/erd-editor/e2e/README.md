@@ -346,8 +346,15 @@ cost when you hit them blind.
   and it decides `isMod` for _mouse_ paths. Keyboard paths are safe
   (`ControlOrMeta` matches tinykeys' synchronous check). For a mouse modifier
   read `erd.pointerModKey()`, which asks the page's own user agent; `MOD_KEY` is
-  the flat `'Control'` the pinned Desktop Chrome device implies, for gestures
-  that hold the key across several events.
+  the same answer taken from `process.platform`, for gestures that hold the key
+  across several events.
+- The chromium project clears the Windows `userAgent` that
+  `devices['Desktop Chrome']` pins, so `isMod` and the host agree. With it in
+  place a mod-click on a mac was `Ctrl`, which is a right click there: the
+  memo-over-focus states were measured with a context menu open, and CI — where
+  `Ctrl` opens nothing — tested a different state from a workstation. Sending
+  the ctrl bit through CDP without a key press opens the menu too, so the user
+  agent is the only place this can be fixed.
 - `toJson()` — which backs the `value` getter — mutates settings when
   `ignoreSaveSettings` bits are set. Every seed keeps it at `0`; leave it there.
 - Clipboard copy/paste is driven by native `ClipboardEvent`s on the shadow-root

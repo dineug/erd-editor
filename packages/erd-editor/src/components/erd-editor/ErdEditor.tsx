@@ -159,6 +159,11 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     })
   );
 
+  /**
+   * Puts the keyboard back inside the element after a field it was in went
+   * away. Retargeting reports the host for anything focused in the shadow root,
+   * so a caret that is already inside is left where it is.
+   */
   const checkAndFocus = () => {
     setTimeout(() => {
       if (document.activeElement !== ctx) {
@@ -239,8 +244,11 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         resizeObserver.unobserve($root);
         resizeObserver.disconnect();
       },
+      // The trailing edge is the load-bearing one: the last event of a burst is
+      // the one describing the focus the element is left holding, and dropping
+      // it parks the keyboard outside with the focus ring still painted.
       fromEvent(ctx, focusEvent.type)
-        .pipe(throttleTime(50))
+        .pipe(throttleTime(50, undefined, { leading: true, trailing: true }))
         .subscribe(checkAndFocus),
       fromEvent(ctx, forceFocusEvent.type).subscribe(ctx.focus)
     );

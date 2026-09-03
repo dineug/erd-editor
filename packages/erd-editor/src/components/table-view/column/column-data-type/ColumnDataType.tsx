@@ -1,4 +1,4 @@
-import { createRef, FC, Ref, ref, repeat } from '@dineug/r-html';
+import { createRef, FC, onUnmounted, Ref, ref, repeat } from '@dineug/r-html';
 
 import { AppContext, useAppContext } from '@/components/appContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
@@ -32,24 +32,49 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
 
   let currentFocus = false;
   let timerId: any = -1;
+  let pendingBlur: FocusEvent | null = null;
 
   const handleFocus = () => {
     currentFocus = true;
   };
 
+  /**
+   * Answers the question the focusout left open: the caret goes back when the
+   * press landed inside this editor, and the edit ends when it landed anywhere
+   * else. Answering twice is what a cleared timer prevents.
+   */
+  const settleFocusout = () => {
+    clearTimeout(timerId);
+    const event = pendingBlur;
+    if (!event) return;
+    pendingBlur = null;
+
+    const input = root.value?.querySelector('input');
+    const isFocus = currentFocus && input && props.edit;
+
+    isFocus ? lastCursorFocus(input) : props.onBlur?.(event);
+  };
+
+  /**
+   * A press on the hint list takes the caret off the input before the click
+   * lands, so the answer waits a turn for the focusin that press brings back.
+   */
   const handleFocusout = (event: FocusEvent) => {
     if (!props.edit) return;
 
     currentFocus = false;
+    pendingBlur = event;
 
     clearTimeout(timerId);
-    timerId = setTimeout(() => {
-      const input = root.value?.querySelector('input');
-      const isFocus = currentFocus && input && props.edit;
-
-      isFocus ? lastCursorFocus(input) : props.onBlur?.(event);
-    }, 1);
+    timerId = setTimeout(settleFocusout, 1);
   };
+
+  /**
+   * A torn down editor has no next turn to wait for, and the store has already
+   * moved on. Left to the timer, the answer lands after whatever cell opened
+   * next and ends that one's edit instead of this one's.
+   */
+  onUnmounted(settleFocusout);
 
   const handleInput = (event: InputEvent) => {
     const input = event.target as HTMLInputElement | null;
