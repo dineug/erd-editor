@@ -1,4 +1,4 @@
-import { createRef, useProvider } from '@dineug/r-html';
+import { addCSSHost, createRef, render, useProvider } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
@@ -9,7 +9,7 @@ import {
   mount,
   type Mounted,
 } from '@/__test-utils__';
-import type { AppContext } from '@/components/appContext';
+import { type AppContext, appContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import * as overlayStyles from '@/components/erd/canvas/EditOverlay.styles';
 import {
@@ -30,6 +30,7 @@ import {
   HEADER_CELLS_Y,
   HEADER_TEXT_Y,
 } from '@/components/erd/canvas/table/cellLayout';
+import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import * as dataTypeStyles from '@/components/table-view/column/column-data-type/ColumnDataType.styles';
 import { themeContext } from '@/components/themeContext';
 import {
@@ -924,4 +925,281 @@ describe('the box the cell editor is placed in', () => {
     expect(cell.classList.contains(String(overlayStyles.cell))).toBe(false);
     expect(cell.style.width).toBe('');
   });
+});
+
+/**
+ * A mount whose stylesheets are live. The fixture above renders into a bare
+ * div, which adopts no css template at all, so the input there falls back to
+ * the browser's own box and every rule the overlay is placed by goes missing.
+ */
+async function setupStyled(): Promise<Fixture> {
+  const $host = document.createElement('div');
+  document.body.append($host);
+  const shadow = $host.attachShadow({ mode: 'open' });
+  addCSSHost(shadow);
+
+  const globals = document.createElement('div');
+  const container = document.createElement('div');
+  const $root = document.createElement('div');
+  shadow.append(globals, container, $root);
+
+  const root = createRef<HTMLDivElement>($root);
+  const canvas = createRef<HTMLDivElement>();
+  const app = createTestAppContext();
+  // useProvider takes a bare element at runtime and types only a component
+  // context, hence the cast; it is r-html's own, not a React hook.
+  // oxlint-disable-next-line react-hooks/rules-of-hooks
+  const provider = useProvider(container as any, appContext, app);
+  // The reset, the fonts and the typography tokens, in the order the element
+  // itself puts them in. Without them an input keeps the browser's own border
+  // and padding, and the box under test is nobody's.
+  render(globals, <GlobalStyles />);
+  render(container, <Canvas root={root} canvas={canvas} />);
+  // oxlint-disable-next-line react-hooks/rules-of-hooks
+  const themeProvider = useProvider(
+    container as any,
+    themeContext,
+    createTestTheme()
+  );
+
+  const { store } = app;
+  store.dispatchSync(addTableAction$());
+  const tableId = store.state.doc.tableIds[0];
+  store.dispatchSync(addColumnAction$(tableId));
+  const columnId = store.state.collections.tableEntities[tableId].columnIds[0];
+
+  await flush();
+  await whenDrawn();
+
+  const mounted: Mounted = {
+    container,
+    app,
+    unmount: () => {
+      render(container, null);
+      render(globals, null);
+    },
+  };
+
+  teardowns.push(() => {
+    mounted.unmount();
+    provider.destroy();
+    themeProvider.destroy();
+    $host.remove();
+  });
+
+  return { app, mounted, tableId, columnId };
+}
+
+type EditedCell = {
+  focusType: FocusType;
+  /** Whether the cell belongs to a column row rather than the table header. */
+  column: boolean;
+};
+
+/** Every cell an editor opens on, the header row first. */
+const EDITED_CELLS: EditedCell[] = [
+  { focusType: FocusType.tableName, column: false },
+  { focusType: FocusType.tableComment, column: false },
+  { focusType: FocusType.columnName, column: true },
+  { focusType: FocusType.columnDataType, column: true },
+  { focusType: FocusType.columnDefault, column: true },
+  { focusType: FocusType.columnComment, column: true },
+];
+
+/**
+ * The box the scene drew one cell's line in, in the coordinates a dom rect is
+ * read in. Konva answers for it, so nothing the overlay computes goes into the
+ * number the editor's own box is then held against.
+ */
+function sceneCellBox(fixture: Fixture, cell: EditedCell) {
+  const stage = Reflect.get(globalThis, '__erdStages').canvas;
+  const owner = cell.column
+    ? stage.findOne(`#column-${fixture.columnId}`)
+    : stage.findOne(`#table-${fixture.tableId}`);
+  const text = owner?.findOne(`.${cell.focusType}`)?.findOne('.cell-text');
+  if (!text) throw new Error(`the scene draws no ${cell.focusType} cell`);
+
+  const rect = text.getClientRect({ relativeTo: stage });
+  const origin = stage.container().getBoundingClientRect();
+
+  return {
+    top: origin.y + rect.y,
+    left: origin.x + rect.x,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+/** Draws the cells the settings hide by default, at one zoom. */
+async function showEveryCell(fixture: Fixture, zoomLevel: number) {
+  fixture.app.store.dispatchSync(
+    changeShowAction({ show: Show.columnDefault, value: true }),
+    changeShowAction({ show: Show.columnComment, value: true }),
+    changeZoomLevelAction({ value: zoomLevel })
+  );
+  await flush();
+  await whenDrawn();
+}
+
+async function openCell(fixture: Fixture, cell: EditedCell) {
+  fixture.app.store.dispatchSync(
+    cell.column
+      ? focusColumnAction({
+          tableId: fixture.tableId,
+          columnId: fixture.columnId,
+          focusType: cell.focusType,
+          $mod: false,
+          shiftKey: false,
+        })
+      : focusTableAction({
+          tableId: fixture.tableId,
+          focusType: cell.focusType,
+        }),
+    editTableAction()
+  );
+  await flush();
+  await whenDrawn();
+}
+
+/**
+ * Ends the edit before the next cell is focused. The open input blurs when the
+ * focus moves and that blur ends the edit a beat later, which would close the
+ * editor the next cell had just opened.
+ */
+async function closeEditor(fixture: Fixture) {
+  fixture.app.store.dispatchSync(editTableEndAction());
+  await flush();
+  await whenDrawn();
+}
+
+/**
+ * Where the editor lays the line it edits, measured down from the top of its
+ * own box. A zero height inline block sits on the baseline of the line it
+ * joins, so a copy of the input shares one with it in a strut free holder.
+ */
+function editorBaselineOf(mounted: Mounted, zoomLevel: number): number {
+  const input = inputOf(mounted);
+  const holder = document.createElement('div');
+  holder.style.cssText =
+    'position:absolute;visibility:hidden;white-space:nowrap;font-size:0;line-height:0';
+  const copy = input.cloneNode(true) as HTMLElement;
+  copy.style.verticalAlign = 'baseline';
+  const marker = document.createElement('span');
+  marker.style.cssText =
+    'display:inline-block;width:0;height:0;vertical-align:baseline';
+  holder.append(copy, marker);
+  // Inside the cell the editor was placed in, so the copy is under the same
+  // scope class and the same scale as the input it stands for.
+  cellOf(mounted).append(holder);
+
+  const top = copy.getBoundingClientRect().top;
+  const baseline = marker.getBoundingClientRect().top;
+  holder.remove();
+
+  return (baseline - top) / zoomLevel;
+}
+
+/**
+ * That same line in a box carrying nothing but the scene's own font and the
+ * height it reserves. Laid out by the engine that lays the editor out, so the
+ * two can only differ by what the editor's box puts between them.
+ */
+function bareLineBaseline(mounted: Mounted): number {
+  const holder = document.createElement('div');
+  holder.style.cssText =
+    'position:absolute;visibility:hidden;white-space:nowrap;font-size:0;line-height:0';
+  const bare = document.createElement('input');
+  bare.style.cssText = [
+    'display:inline-flex',
+    'align-items:center',
+    'box-sizing:border-box',
+    `height:${CELL_TEXT_HEIGHT}px`,
+    'margin:0',
+    'padding:0',
+    'border:0',
+    `font-family:${SCENE_FONT_FAMILY}`,
+    `font-size:${SCENE_FONT_SIZE}px`,
+    'font-weight:400',
+    'line-height:normal',
+    'vertical-align:baseline',
+  ].join(';');
+  const marker = document.createElement('span');
+  marker.style.cssText =
+    'display:inline-block;width:0;height:0;vertical-align:baseline';
+  holder.append(bare, marker);
+  // Outside the placed cell, so nothing the overlay writes reaches it and no
+  // zoom scales the box it is measured in.
+  (mounted.container.getRootNode() as ShadowRoot).append(holder);
+
+  const top = bare.getBoundingClientRect().top;
+  const baseline = marker.getBoundingClientRect().top;
+  holder.remove();
+
+  return baseline - top;
+}
+
+/**
+ * What the layout may carry between the scene's box and the editor's, in scene
+ * pixels. Blink lays out on a sixty fourth of a pixel, and the half pixel one
+ * stray offset adds is thirty two times that.
+ */
+const PLACEMENT_LIMIT_PX = 1 / 64;
+
+/**
+ * The editor is dom over a canvas and the two agree only by construction. The
+ * pixels are read in the e2e suite, which can resolve no less than the device
+ * row a painted baseline rounds onto; the layout under that is read here.
+ */
+describe('the box the cell editor covers on the scene', () => {
+  for (const zoomLevel of [1, 0.8]) {
+    it(`is the box the scene drew the line in at zoom ${zoomLevel}`, async () => {
+      const fixture = await setupStyled();
+      await showEveryCell(fixture, zoomLevel);
+
+      for (const cell of EDITED_CELLS) {
+        await openCell(fixture, cell);
+
+        const scene = sceneCellBox(fixture, cell);
+        const box = inputOf(fixture.mounted).getBoundingClientRect();
+        const key = String(cell.focusType);
+        const offBy = (one: number, other: number) =>
+          Math.abs(one - other) / zoomLevel;
+
+        expect(offBy(box.top, scene.top), `${key} top`).toBeLessThan(
+          PLACEMENT_LIMIT_PX
+        );
+        expect(offBy(box.left, scene.left), `${key} left`).toBeLessThan(
+          PLACEMENT_LIMIT_PX
+        );
+        expect(offBy(box.height, scene.height), `${key} height`).toBeLessThan(
+          PLACEMENT_LIMIT_PX
+        );
+        expect(offBy(box.width, scene.width), `${key} width`).toBeLessThan(
+          PLACEMENT_LIMIT_PX
+        );
+
+        await closeEditor(fixture);
+      }
+    });
+
+    it(`puts its line on the baseline that box centres at zoom ${zoomLevel}`, async () => {
+      const fixture = await setupStyled();
+      await showEveryCell(fixture, zoomLevel);
+
+      for (const cell of EDITED_CELLS) {
+        await openCell(fixture, cell);
+
+        // A padding, a border or a leading of its own would leave the box the
+        // test above measures where it is and move the line inside it. Both
+        // sides are laid out, never painted, so a headless run reads the same.
+        const laid = editorBaselineOf(fixture.mounted, zoomLevel);
+        expect(
+          Math.abs(laid - bareLineBaseline(fixture.mounted)),
+          `${String(cell.focusType)} baseline`
+        ).toBeLessThan(PLACEMENT_LIMIT_PX);
+
+        await closeEditor(fixture);
+      }
+    });
+  }
 });

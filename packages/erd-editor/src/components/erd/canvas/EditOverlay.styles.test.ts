@@ -16,7 +16,48 @@ const INPUT_SELECTORS = [
   '.edit-input.edit',
 ];
 
+/**
+ * What would move the box the scene reserved, or the line centred inside it.
+ * A backstop only: the geometry these would shift is measured against the
+ * drawn cell in EditOverlay.browser.test.tsx, which no list can go stale on.
+ */
+const OFFSETS = [
+  'marginTop',
+  'marginRight',
+  'marginBottom',
+  'marginLeft',
+  'paddingTop',
+  'paddingRight',
+  'paddingBottom',
+  'paddingLeft',
+  'borderTopWidth',
+  'borderRightWidth',
+  'borderLeftWidth',
+  'position',
+  'top',
+  'right',
+  'bottom',
+  'left',
+  'lineHeight',
+  'transform',
+] as const;
+
 describe('the cell editor box over the scene', () => {
+  it('adds no offset of its own to the box it hands the input', () => {
+    const emitted = rules().filter(rule =>
+      rule.selectorText.startsWith(scope())
+    );
+
+    expect(emitted.length).toBeGreaterThan(0);
+    for (const rule of emitted) {
+      for (const property of OFFSETS) {
+        expect(rule.style[property], `${rule.selectorText} ${property}`).toBe(
+          ''
+        );
+      }
+    }
+  });
+
   it('paints no underline of its own, leaving the scene rect the only one', () => {
     const emitted = rules().filter(rule =>
       rule.selectorText.startsWith(scope())

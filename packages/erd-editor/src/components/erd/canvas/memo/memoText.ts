@@ -15,18 +15,42 @@ export const MEMO_FONT = `${MEMO_FONT_WEIGHT} ${SCENE_FONT_SIZE}px ${SCENE_FONT_
 /** What the leading falls back to where no document can resolve the face. */
 const FALLBACK_LINE_HEIGHT_PX = SCENE_FONT_SIZE * 1.2;
 
+/** Lines the probe lays out, so one box's own rounding is divided away. */
+const LEADING_PROBE_LINES = 10;
+
+let memoLineHeightPx: number | null = null;
+
 /**
  * The leading a memo body takes, in px, which a css line-height and pretext
- * both take. The dom textarea left it to line-height normal, and blink resolves
- * that to the face's own ascent plus descent.
+ * both take. The dom textarea this replaced left it to line-height normal, so
+ * that is the advance, and the only way to it is to lay the lines out.
  *
  * @example
  * const advance = getMemoLineHeightPx();
  */
 export function getMemoLineHeightPx(): number {
-  const { ascent, descent } = getSceneFontMetrics();
+  if (memoLineHeightPx !== null) return memoLineHeightPx;
+  if (typeof document === 'undefined' || !document.body) {
+    return FALLBACK_LINE_HEIGHT_PX;
+  }
 
-  return ascent + descent || FALLBACK_LINE_HEIGHT_PX;
+  // A layout metric, not the canvas one: blink resolves normal to the face's
+  // layout ascent and descent, which a real chrome puts a whole pixel below
+  // what a canvas reports for the same face.
+  const probe = document.createElement('div');
+  probe.setAttribute('aria-hidden', 'true');
+  probe.style.cssText = `position:absolute;visibility:hidden;top:-10000px;left:0;margin:0;padding:0;border:0;font:${MEMO_FONT};line-height:normal;white-space:pre`;
+  probe.textContent = Array.from(
+    { length: LEADING_PROBE_LINES },
+    () => 'M'
+  ).join('\n');
+  document.body.append(probe);
+  const height = probe.getBoundingClientRect().height;
+  probe.remove();
+
+  memoLineHeightPx = height / LEADING_PROBE_LINES || FALLBACK_LINE_HEIGHT_PX;
+
+  return memoLineHeightPx;
 }
 
 /** The same leading as konva's multiple of the font size, which is what it takes. */
@@ -36,8 +60,8 @@ export function getMemoLineHeight(): number {
 
 /**
  * The baseline konva draws the first body line on, down from the top of the
- * text node. A canvas has no line box, so the leading and the font's own ascent
- * and descent are the whole of where that line lands.
+ * text node. A canvas has no line box, so the leading and the canvas metrics
+ * konva itself measures with are the whole of where that line lands.
  *
  * @example
  * const baseline = getMemoTextBaseline();

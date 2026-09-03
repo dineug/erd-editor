@@ -483,6 +483,13 @@ test.describe('the cell editor lands on the text it replaces', () => {
 });
 
 /**
+ * What the layout may carry between the box the scene drew and the box the
+ * editor covers, in scene pixels. Blink lays out on a sixty fourth of a pixel
+ * and the projection nests one box in another, each rounded once.
+ */
+const PLACEMENT_LIMIT_PX = 0.1;
+
+/**
  * The pixels above can only be read to the whole device row the dom rounds a
  * painted baseline onto, and a headless rasteriser rounds where a headed one
  * does not. What the editor is answerable for is the layout under that.
@@ -497,8 +504,35 @@ test.describe('the line the cell editor lays out', () => {
       for (const { key, cell } of CELL_CASES) {
         const target = cell(erd);
         await erd.focusCell(target);
+        // The box the scene reserved for this line, read while the scene still
+        // draws it: the projection drops the text node once the editor opens.
+        const drawn = await textBoxOf(target);
+
         await erd.press('Enter');
         await expect(erd.editInput()).toBeFocused();
+
+        // Where the editor's own box landed on it. A margin, a padding or a
+        // border anywhere between the placed cell and the input moves this and
+        // nothing measured inside the input box can see it.
+        const placed = await erd.editInput().boundingBox();
+        if (!placed) throw new Error(`${key} opened no editor to measure`);
+        const offBy = (one: number, other: number) =>
+          Math.abs(one - other) / zoomLevel;
+
+        expect(offBy(placed.y, drawn.y), `${key} box top`).toBeLessThan(
+          PLACEMENT_LIMIT_PX
+        );
+        expect(offBy(placed.x, drawn.x), `${key} box left`).toBeLessThan(
+          PLACEMENT_LIMIT_PX
+        );
+        expect(
+          offBy(placed.height, drawn.height),
+          `${key} box height`
+        ).toBeLessThan(PLACEMENT_LIMIT_PX);
+        expect(
+          offBy(placed.width, drawn.width),
+          `${key} box width`
+        ).toBeLessThan(PLACEMENT_LIMIT_PX);
 
         const { dom, scene, transform } = await baselinesOf(erd.page);
         expect(scene, `${key} scene baseline`).toBeGreaterThan(0);

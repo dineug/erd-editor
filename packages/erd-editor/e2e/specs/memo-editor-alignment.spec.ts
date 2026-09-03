@@ -330,6 +330,97 @@ test.describe('the memo body editor lands on the body it replaces', () => {
   }
 });
 
+/** How many lines the probe below lays out, so one box's rounding is divided away. */
+const LEADING_PROBE_LINES = 10;
+
+/** A body long enough that every box below clips it rather than showing it whole. */
+const TALL_BODY = Array.from({ length: 24 }, () => WORD).join('\n');
+
+/**
+ * The advance a real textarea of the memo's own face lays out, measured in the
+ * page. The body was a textarea before the scene was a canvas, and it left the
+ * leading to line-height normal, which is a number only the browser knows.
+ */
+async function textareaLeadingOf(erd: ErdEditorPage): Promise<number> {
+  const body: SceneSelector = [`#memo-${MEMO_ID}`, '.memo-textarea'];
+  const family = await erd.sceneAttr(body, 'fontFamily');
+  const size = await erd.sceneAttr(body, 'fontSize');
+  const weight = await erd.sceneAttr(body, 'fontStyle');
+  const font = `${weight} ${size}px ${family}`;
+
+  return erd.page.evaluate(
+    ([shorthand, lines]: [string, number]) => {
+      const area = document.createElement('textarea');
+      area.style.cssText = `position:absolute;top:-10000px;left:0;width:220px;margin:0;padding:0;border:0;overflow:hidden;resize:none;box-sizing:border-box;font:${shorthand};white-space:pre-wrap`;
+      area.value = Array.from({ length: lines }, () => 'Hxpg').join('\n');
+      document.body.append(area);
+      const advance = area.scrollHeight / lines;
+      area.remove();
+
+      return advance;
+    },
+    [font, LEADING_PROBE_LINES] as [string, number]
+  );
+}
+
+/**
+ * The scene folds a memo body by a leading of its own, and a headless browser
+ * resolves line-height normal to a different number than a headed one does. A
+ * constant would therefore be this suite's own answer, so the textarea is asked.
+ */
+test('the scene folds a memo body by the leading a textarea of that face takes', async ({
+  erd,
+}) => {
+  await erd.seed(seed(1, PLACES[0], BODIES[0]));
+
+  expect(await leadingOf(erd)).toBe(await textareaLeadingOf(erd));
+});
+
+/**
+ * A memo clips its body to its own box, so the leading decides how many lines
+ * a reader sees. The count is against the textarea's own leading, because one
+ * line fewer per box was the visible half of taking the canvas metrics instead.
+ */
+test('a clipped memo body shows the lines its own leading fits in the box', async ({
+  erd,
+}) => {
+  await quietenOverlay(erd.page);
+
+  for (const height of [130, 160, 260]) {
+    await erd.seed(
+      createSchema({
+        zoomLevel: 1,
+        memos: [
+          {
+            id: MEMO_ID,
+            value: TALL_BODY,
+            x: PLACES[0].x,
+            y: PLACES[0].y,
+            width: 220,
+            height,
+          },
+        ],
+      })
+    );
+
+    const leading = await textareaLeadingOf(erd);
+    const box = await erd.sceneBox([`#memo-${MEMO_ID}`, '.memo-textarea-hit']);
+    const { rows } = await profileOf(erd.page, box, []);
+
+    let bands = 0;
+    let inside = false;
+    rows.forEach(row => {
+      const ink = row > 0.5;
+      if (ink && !inside) bands += 1;
+      inside = ink;
+    });
+
+    expect(bands, `a ${height}px memo shows its lines`).toBe(
+      Math.ceil(height / leading)
+    );
+  }
+});
+
 /** The syllable an ime hands over one jamo at a time while it is composing. */
 const COMPOSING = '한';
 
