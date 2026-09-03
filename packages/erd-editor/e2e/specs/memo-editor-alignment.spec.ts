@@ -5,12 +5,27 @@ import { expect, test } from '../support/fixtures';
 import { createSchema, type ErdDocument } from '../support/schema';
 
 /**
- * Four device pixels to a css pixel, so the half pixel blink snaps a painted
- * baseline to is two rows of the captured image rather than a shade.
+ * The display this whole file runs on. Blink resolves line-height normal from
+ * font metrics snapped to the device grid, so the leading is 14 here and 15 on
+ * a plain one, and every display a person is likely on is this one or finer.
  */
-const SCALE = 4;
+const DISPLAY_SCALE = 2;
 
-test.use({ deviceScaleFactor: SCALE });
+/**
+ * A whole browser started on that display, which is the only way to it. A
+ * context deviceScaleFactor moves what a screenshot is captured at and nothing
+ * else, so a suite that emulates one alone lays out on the grid ci already ran.
+ */
+test.use({
+  launchOptions: { args: [`--force-device-scale-factor=${DISPLAY_SCALE}`] },
+});
+
+/**
+ * The device grids a crop is read on. Two is what this display captures at, and
+ * four splits the half pixel blink snaps a painted baseline to into two rows of
+ * the image rather than one shade of it.
+ */
+const SCALES = [2, 4];
 
 const MEMO_ID = 'note';
 
@@ -34,6 +49,9 @@ type Body = { key: string; value: string; width: number; lines: number };
 
 /** Ascenders and descenders both, so a line's ink says where its baseline is. */
 const WORD = 'Hxpg';
+
+/** The syllable an ime hands over one jamo at a time while it is composing. */
+const COMPOSING = '한';
 
 const BODIES: Body[] = [
   { key: 'one line', value: WORD, width: 220, lines: 1 },
@@ -157,10 +175,10 @@ async function profileOf(
 }
 
 /** The whole-sample shift that lines two ink profiles up best, in css pixels. */
-function driftOf(before: number[], after: number[]): number {
+function driftOf(before: number[], after: number[], scale: number): number {
   let best = { shift: 0, cost: Infinity };
 
-  for (let shift = -SCALE * 3; shift <= SCALE * 3; shift++) {
+  for (let shift = -scale * 3; shift <= scale * 3; shift++) {
     let cost = 0;
     for (let index = 0; index < before.length; index++) {
       cost += Math.abs(before[index] - (after[index + shift] ?? 0));
@@ -168,7 +186,7 @@ function driftOf(before: number[], after: number[]): number {
     if (cost < best.cost) best = { shift, cost };
   }
 
-  return best.shift / SCALE;
+  return best.shift / scale;
 }
 
 /** Where the weight of a profile sits, which moves with a sub-pixel shift. */
@@ -250,7 +268,7 @@ async function leadingOf(erd: ErdEditorPage): Promise<number> {
  * scene gives a text node one line box per line, so the count comes off the box
  * it drew rather than off a second copy of the line breaker.
  */
-async function frameOf(erd: ErdEditorPage, zoomLevel: number) {
+async function frameOf(erd: ErdEditorPage, zoomLevel: number, scale: number) {
   const box = await bodyBoxOf(erd);
   const advance = (await leadingOf(erd)) * zoomLevel;
   const lines = Math.round(box.height / advance);
@@ -265,70 +283,13 @@ async function frameOf(erd: ErdEditorPage, zoomLevel: number) {
   const bands: Band[] = [];
   for (let line = 0; line < lines; line++) {
     bands.push([
-      Math.round((CROP_MARGIN + line * advance) * SCALE),
-      Math.round((CROP_MARGIN + (line + 1) * advance) * SCALE),
+      Math.round((CROP_MARGIN + line * advance) * scale),
+      Math.round((CROP_MARGIN + (line + 1) * advance) * scale),
     ]);
   }
 
   return { clip, bands, lines };
 }
-
-/**
- * The editor is dom over a canvas, so nothing short of a measurement says the
- * two agree. Each case reads one crop twice, once with the scene drawing the
- * body and once with the textarea over it, and asks for the same pixels back.
- */
-test.describe('the memo body editor lands on the body it replaces', () => {
-  for (const zoomLevel of [0.5, 0.75, 0.9, 1, 1.1, 1.25, 1.5]) {
-    for (const place of PLACES) {
-      test(`every body keeps its glyphs at zoom ${zoomLevel} on ${place.key}`, async ({
-        erd,
-      }) => {
-        await quietenOverlay(erd.page);
-
-        for (const body of BODIES) {
-          const label = `${body.key} at ${place.key}`;
-          await erd.seed(seed(zoomLevel, place, body));
-
-          const { clip, bands, lines } = await frameOf(erd, zoomLevel);
-          expect(lines, `${label} folds into lines`).toBe(body.lines);
-
-          const drawn = await profileOf(erd.page, clip, bands);
-          expect(inkOf(drawn.rows), `${label} draws glyphs`).toBeGreaterThan(1);
-
-          await openEditor(erd);
-          const edited = await profileOf(erd.page, clip, bands);
-          await closeEditor(erd);
-          await erd.hoverAway();
-
-          bands.forEach(([from, to], line) => {
-            const rowsBefore = drawn.rows.slice(from, to);
-            const rowsAfter = edited.rows.slice(from, to);
-            expect(
-              driftOf(rowsBefore, rowsAfter),
-              `${label} line ${line} vertical drift`
-            ).toBe(0);
-            expect(
-              Math.abs(centroidOf(rowsAfter) - centroidOf(rowsBefore)) / SCALE,
-              `${label} line ${line} sub pixel vertical drift`
-            ).toBeLessThan(DRIFT_LIMIT_PX);
-
-            expect(
-              driftOf(drawn.cols[line], edited.cols[line]),
-              `${label} line ${line} horizontal drift`
-            ).toBe(0);
-            expect(
-              Math.abs(
-                centroidOf(edited.cols[line]) - centroidOf(drawn.cols[line])
-              ) / SCALE,
-              `${label} line ${line} sub pixel horizontal drift`
-            ).toBeLessThan(COLUMN_LIMIT_PX);
-          });
-        }
-      });
-    }
-  }
-});
 
 /** How many lines the probe below lays out, so one box's rounding is divided away. */
 const LEADING_PROBE_LINES = 10;
@@ -363,110 +324,223 @@ async function textareaLeadingOf(erd: ErdEditorPage): Promise<number> {
   );
 }
 
-/**
- * The scene folds a memo body by a leading of its own, and a headless browser
- * resolves line-height normal to a different number than a headed one does. A
- * constant would therefore be this suite's own answer, so the textarea is asked.
- */
-test('the scene folds a memo body by the leading a textarea of that face takes', async ({
-  erd,
-}) => {
-  await erd.seed(seed(1, PLACES[0], BODIES[0]));
+/** The ascent and descent konva centres a drawn line by, read as konva reads them. */
+async function canvasFontSumOf(erd: ErdEditorPage): Promise<number> {
+  const body: SceneSelector = [`#memo-${MEMO_ID}`, '.memo-textarea'];
+  const family = await erd.sceneAttr(body, 'fontFamily');
+  const size = await erd.sceneAttr(body, 'fontSize');
+  const weight = await erd.sceneAttr(body, 'fontStyle');
+  const font = `${weight} ${size}px ${family}`;
 
-  expect(await leadingOf(erd)).toBe(await textareaLeadingOf(erd));
-});
+  return erd.page.evaluate((shorthand: string) => {
+    const context = document.createElement('canvas').getContext('2d');
+    if (!context) throw new Error('no 2d context to measure the face with');
+    context.font = shorthand;
+    const metrics = context.measureText('M');
 
-/**
- * A memo clips its body to its own box, so the leading decides how many lines
- * a reader sees. The count is against the textarea's own leading, because one
- * line fewer per box was the visible half of taking the canvas metrics instead.
- */
-test('a clipped memo body shows the lines its own leading fits in the box', async ({
-  erd,
-}) => {
-  await quietenOverlay(erd.page);
+    return metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
+  }, font);
+}
 
-  for (const height of [130, 160, 260]) {
-    await erd.seed(
-      createSchema({
-        zoomLevel: 1,
-        memos: [
-          {
-            id: MEMO_ID,
-            value: TALL_BODY,
-            x: PLACES[0].x,
-            y: PLACES[0].y,
-            width: 220,
-            height,
-          },
-        ],
-      })
-    );
+for (const scale of SCALES) {
+  test.describe(`read on ${scale} device pixels to a css pixel`, () => {
+    test.use({ deviceScaleFactor: scale });
 
-    const leading = await textareaLeadingOf(erd);
-    const box = await erd.sceneBox([`#memo-${MEMO_ID}`, '.memo-textarea-hit']);
-    const { rows } = await profileOf(erd.page, box, []);
+    /**
+     * The editor is dom over a canvas, so nothing short of a measurement says
+     * the two agree. Each case reads one crop twice, once with the scene
+     * drawing the body and once with the textarea over it, for the same pixels.
+     */
+    test.describe('the memo body editor lands on the body it replaces', () => {
+      for (const zoomLevel of [0.5, 0.75, 0.9, 1, 1.1, 1.25, 1.5]) {
+        for (const place of PLACES) {
+          test(`every body keeps its glyphs at zoom ${zoomLevel} on ${place.key}`, async ({
+            erd,
+          }) => {
+            await quietenOverlay(erd.page);
 
-    let bands = 0;
-    let inside = false;
-    rows.forEach(row => {
-      const ink = row > 0.5;
-      if (ink && !inside) bands += 1;
-      inside = ink;
+            for (const body of BODIES) {
+              const label = `${body.key} at ${place.key}`;
+              await erd.seed(seed(zoomLevel, place, body));
+
+              const { clip, bands, lines } = await frameOf(
+                erd,
+                zoomLevel,
+                scale
+              );
+              expect(lines, `${label} folds into lines`).toBe(body.lines);
+
+              const drawn = await profileOf(erd.page, clip, bands);
+              expect(
+                inkOf(drawn.rows),
+                `${label} draws glyphs`
+              ).toBeGreaterThan(1);
+
+              await openEditor(erd);
+              const edited = await profileOf(erd.page, clip, bands);
+              await closeEditor(erd);
+              await erd.hoverAway();
+
+              bands.forEach(([from, to], line) => {
+                const rowsBefore = drawn.rows.slice(from, to);
+                const rowsAfter = edited.rows.slice(from, to);
+                expect(
+                  driftOf(rowsBefore, rowsAfter, scale),
+                  `${label} line ${line} vertical drift`
+                ).toBe(0);
+                expect(
+                  Math.abs(centroidOf(rowsAfter) - centroidOf(rowsBefore)) /
+                    scale,
+                  `${label} line ${line} sub pixel vertical drift`
+                ).toBeLessThan(DRIFT_LIMIT_PX);
+
+                expect(
+                  driftOf(drawn.cols[line], edited.cols[line], scale),
+                  `${label} line ${line} horizontal drift`
+                ).toBe(0);
+                expect(
+                  Math.abs(
+                    centroidOf(edited.cols[line]) - centroidOf(drawn.cols[line])
+                  ) / scale,
+                  `${label} line ${line} sub pixel horizontal drift`
+                ).toBeLessThan(COLUMN_LIMIT_PX);
+              });
+            }
+          });
+        }
+      }
     });
 
-    expect(bands, `a ${height}px memo shows its lines`).toBe(
-      Math.ceil(height / leading)
-    );
-  }
-});
+    /**
+     * The scene folds a memo body by a leading of its own, and a browser
+     * resolves line-height normal to a different number on each display. A
+     * constant would be this suite's own answer, so the textarea is asked.
+     */
+    test('the scene folds a memo body by the leading a textarea of that face takes', async ({
+      erd,
+    }) => {
+      await erd.seed(seed(1, PLACES[0], BODIES[0]));
 
-/** The syllable an ime hands over one jamo at a time while it is composing. */
-const COMPOSING = '한';
+      expect(await leadingOf(erd)).toBe(await textareaLeadingOf(erd));
+    });
 
-/**
- * A composition is text the editor holds but has not committed, drawn with a
- * decoration of its own. The glyphs already laid out are not part of it, and a
- * body that reflows around one would move the line the caret is not on.
- */
-test('a body composed through an ime holds the glyphs already laid out', async ({
-  erd,
-}) => {
-  await quietenOverlay(erd.page);
-  await erd.seed(seed(1, PLACES[0], BODIES[0]));
+    /**
+     * What the guard above is worth here. The canvas pair is the number the
+     * leading was once taken from, and only on a display where the two part
+     * can any assertion tell a leading read off the font from one laid out.
+     */
+    test('the canvas pair for that face parts from it on this display', async ({
+      erd,
+    }) => {
+      await erd.seed(seed(1, PLACES[0], BODIES[0]));
 
-  const box = await bodyBoxOf(erd);
-  // Short of where the composition lands, which is past the end of the value.
-  const clip = {
-    x: box.x - CROP_MARGIN,
-    y: box.y - CROP_MARGIN,
-    width: box.width + CROP_MARGIN - 1,
-    height: box.height + CROP_MARGIN * 2,
-  };
-  const bands: Band[] = [[0, Math.round(clip.height * SCALE)]];
+      expect(await canvasFontSumOf(erd)).not.toBe(await textareaLeadingOf(erd));
+    });
 
-  const drawn = await profileOf(erd.page, clip, bands);
+    /**
+     * A memo clips its body to its own box, so the leading decides how many
+     * lines a reader sees. The count is against the textarea's own leading,
+     * because one line fewer per box was the visible half of the canvas pair.
+     */
+    test('a clipped memo body shows the lines its own leading fits in the box', async ({
+      erd,
+    }) => {
+      await quietenOverlay(erd.page);
 
-  await openEditor(erd);
-  const session: CDPSession = await erd.page.context().newCDPSession(erd.page);
-  await session.send('Input.imeSetComposition', {
-    text: COMPOSING,
-    selectionStart: 0,
-    selectionEnd: COMPOSING.length,
+      for (const height of [130, 160, 260]) {
+        await erd.seed(
+          createSchema({
+            zoomLevel: 1,
+            memos: [
+              {
+                id: MEMO_ID,
+                value: TALL_BODY,
+                x: PLACES[0].x,
+                y: PLACES[0].y,
+                width: 220,
+                height,
+              },
+            ],
+          })
+        );
+
+        const leading = await textareaLeadingOf(erd);
+        const box = await erd.sceneBox([
+          `#memo-${MEMO_ID}`,
+          '.memo-textarea-hit',
+        ]);
+        const { rows } = await profileOf(erd.page, box, []);
+
+        let bands = 0;
+        let inside = false;
+        rows.forEach(row => {
+          const ink = row > 0.5;
+          if (ink && !inside) bands += 1;
+          inside = ink;
+        });
+
+        expect(bands, `a ${height}px memo shows its lines`).toBe(
+          Math.ceil(height / leading)
+        );
+      }
+    });
+
+    /**
+     * A composition is text the editor holds but has not committed, drawn with
+     * a decoration of its own. The glyphs already laid out are not part of it,
+     * and a body that reflowed around one would move a line the caret is off.
+     */
+    test('a body composed through an ime holds the glyphs already laid out', async ({
+      erd,
+    }) => {
+      await quietenOverlay(erd.page);
+      await erd.seed(seed(1, PLACES[0], BODIES[0]));
+
+      const box = await bodyBoxOf(erd);
+      // Short of where the composition lands, which is past the end of the
+      // value.
+      const clip = {
+        x: box.x - CROP_MARGIN,
+        y: box.y - CROP_MARGIN,
+        width: box.width + CROP_MARGIN - 1,
+        height: box.height + CROP_MARGIN * 2,
+      };
+      const bands: Band[] = [[0, Math.round(clip.height * scale)]];
+
+      const drawn = await profileOf(erd.page, clip, bands);
+
+      await openEditor(erd);
+      const session: CDPSession = await erd.page
+        .context()
+        .newCDPSession(erd.page);
+      await session.send('Input.imeSetComposition', {
+        text: COMPOSING,
+        selectionStart: 0,
+        selectionEnd: COMPOSING.length,
+      });
+      await expect(erd.memoEditor).toHaveValue(
+        `${BODIES[0].value}${COMPOSING}`
+      );
+
+      const composing = await profileOf(erd.page, clip, bands);
+      await closeEditor(erd);
+
+      expect(driftOf(drawn.rows, composing.rows, scale), 'vertical drift').toBe(
+        0
+      );
+      expect(
+        Math.abs(centroidOf(composing.rows) - centroidOf(drawn.rows)) / scale,
+        'sub pixel vertical drift'
+      ).toBeLessThan(DRIFT_LIMIT_PX);
+      expect(
+        driftOf(drawn.cols[0], composing.cols[0], scale),
+        'horizontal drift'
+      ).toBe(0);
+      expect(
+        Math.abs(centroidOf(composing.cols[0]) - centroidOf(drawn.cols[0])) /
+          scale,
+        'sub pixel horizontal drift'
+      ).toBeLessThan(COLUMN_LIMIT_PX);
+    });
   });
-  await expect(erd.memoEditor).toHaveValue(`${BODIES[0].value}${COMPOSING}`);
-
-  const composing = await profileOf(erd.page, clip, bands);
-  await closeEditor(erd);
-
-  expect(driftOf(drawn.rows, composing.rows), 'vertical drift').toBe(0);
-  expect(
-    Math.abs(centroidOf(composing.rows) - centroidOf(drawn.rows)) / SCALE,
-    'sub pixel vertical drift'
-  ).toBeLessThan(DRIFT_LIMIT_PX);
-  expect(driftOf(drawn.cols[0], composing.cols[0]), 'horizontal drift').toBe(0);
-  expect(
-    Math.abs(centroidOf(composing.cols[0]) - centroidOf(drawn.cols[0])) / SCALE,
-    'sub pixel horizontal drift'
-  ).toBeLessThan(COLUMN_LIMIT_PX);
-});
+}

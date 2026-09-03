@@ -1,6 +1,6 @@
 // AC-G24 (F-2): the line the scene draws a memo body on, and the line a dom
-// line box of that leading puts its own on. The leading is a layout metric and
-// the baseline a canvas one, which only a headed browser tells apart.
+// line box of that leading puts its own on. Whether the leading is the one a
+// textarea takes is e2e's, where a browser can start on a 2x display.
 
 import { describe, expect, it } from 'vite-plus/test';
 
@@ -200,16 +200,5 @@ describe('the baseline the scene draws a memo body line on', () => {
     // less descent, and so does konva. Only that difference is shared, which
     // is why the leading is free to be the layout advance rather than the sum.
     expect(canvas.ascent - canvas.descent).toBe(layout.ascent - layout.descent);
-  });
-
-  it('takes the leading a textarea of the same face lays out', () => {
-    const area = document.createElement('textarea');
-    area.style.cssText = `position:absolute;top:-10000px;left:0;width:${BOX_WIDTH}px;margin:0;padding:0;border:0;overflow:hidden;resize:none;box-sizing:border-box;font:${MEMO_FONT};white-space:pre-wrap`;
-    area.value = Array.from({ length: LINES }, () => SAMPLE).join('\n');
-    document.body.append(area);
-    const advance = area.scrollHeight / LINES;
-    area.remove();
-
-    expect(getMemoLineHeightPx()).toBe(advance);
   });
 });
