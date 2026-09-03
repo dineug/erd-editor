@@ -185,6 +185,14 @@ async function textBoxOf(cell: Locator) {
   return box;
 }
 
+/** The rule the scene paints under a focused cell, which the band crop opens on. */
+async function ruleBoxOf(cell: Locator) {
+  const box = await cell.locator('[data-focus-border-bottom]').boundingBox();
+  if (!box) throw new Error('the cell draws no rule to measure against');
+
+  return box;
+}
+
 type CellCase = {
   key: string;
   cell: (erd: ErdEditorPage) => Locator;
@@ -219,17 +227,15 @@ const CELL_CASES: CellCase[] = [
 
 /**
  * The crop the underline is read in: the right of the cell, past the glyphs and
- * the caret, ending on the row the text box ends in. Eight rows, so the shade
+ * the caret, ending on the row the rule ends in. Eight rows, so the shade
  * behind it still covers most of the crop at the widest zoom.
  */
-const bandClipOf = (box: {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}): Clip => ({
+const bandClipOf = (
+  box: { x: number; width: number },
+  rule: { y: number; height: number }
+): Clip => ({
   x: Math.floor(box.x + box.width * 0.6),
-  y: Math.ceil(box.y + box.height) - 8,
+  y: Math.ceil(rule.y + rule.height) - 8,
   width: Math.max(6, Math.round(box.width * 0.3)),
   height: 8,
 });
@@ -298,7 +304,7 @@ test.describe('the cell editor keeps the underline the scene drew', () => {
           const target = cell(erd);
           await erd.focusCell(target);
           const box = await textBoxOf(target);
-          const bandClip = bandClipOf(box);
+          const bandClip = bandClipOf(box, await ruleBoxOf(target));
           const glyphClip = glyphClipOf(box);
 
           const drawnCrop = await cropOf(erd.page, bandClip);

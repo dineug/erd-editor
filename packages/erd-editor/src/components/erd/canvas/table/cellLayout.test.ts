@@ -1,12 +1,16 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { FOCUS_BORDER_HEIGHT } from '@/components/erd/canvas/sceneTokens';
 import {
-  CELL_TEXT_HEIGHT,
+  FOCUS_BORDER_HEIGHT,
+  getSceneFontMetrics,
+} from '@/components/erd/canvas/sceneTokens';
+import {
   CELL_UNDERLINE_Y,
   COLUMN_CELLS_X,
   type ColumnCellWidths,
+  getCellTextBaseline,
+  getCellTextHeight,
   getColumnCellSlots,
   getHeaderCellSlots,
   getWidthComment,
@@ -176,12 +180,25 @@ describe('the boxes a column row lays out', () => {
 });
 
 describe('the box a cell lays one line of text out in', () => {
-  it('is the input line the scene hands konva, so both centre in one box', () => {
-    expect(CELL_TEXT_HEIGHT).toBe(INPUT_HEIGHT);
+  it('runs its underline along the bottom of the input slot', () => {
+    expect(CELL_UNDERLINE_Y).toBe(INPUT_HEIGHT - FOCUS_BORDER_HEIGHT);
+    expect(CELL_UNDERLINE_Y + FOCUS_BORDER_HEIGHT).toBe(INPUT_HEIGHT);
   });
 
-  it('runs its underline along the bottom of that box', () => {
-    expect(CELL_UNDERLINE_Y).toBe(CELL_TEXT_HEIGHT - FOCUS_BORDER_HEIGHT);
-    expect(CELL_UNDERLINE_Y + FOCUS_BORDER_HEIGHT).toBe(CELL_TEXT_HEIGHT);
+  it('is the box whose centred line lands on a whole pixel', () => {
+    // The face's own overhang is the only thing that moves this, so the box is
+    // derived from it rather than written down, and both are held against a
+    // real face in EditOverlay.browser.test.tsx.
+    const { ascent, descent } = getSceneFontMetrics();
+    const overhang = (ascent - descent) / 2;
+
+    expect(Number.isInteger(getCellTextBaseline())).toBe(true);
+    expect(getCellTextHeight() / 2 + overhang).toBe(getCellTextBaseline());
+  });
+
+  it('keeps that box inside the slot and its line above the underline', () => {
+    expect(getCellTextHeight()).toBeGreaterThan(0);
+    expect(getCellTextHeight()).toBeLessThanOrEqual(INPUT_HEIGHT);
+    expect(getCellTextBaseline()).toBeLessThan(CELL_UNDERLINE_Y);
   });
 });

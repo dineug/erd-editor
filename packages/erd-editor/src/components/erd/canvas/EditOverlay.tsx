@@ -19,6 +19,7 @@ import {
 } from '@/components/erd/canvas/sceneTokens';
 import {
   COLUMN_TEXT_Y,
+  getCellTextHeight,
   getColumnCellSlots,
   getHeaderCellSlots,
   HEADER_CELLS_X,
@@ -387,7 +388,14 @@ const EditOverlay: FC = (_, ctx) => {
               transform: `translate(${originX + item.x * zoomLevel}px, ${
                 originY + item.y * zoomLevel
               }px) scale(${zoomLevel})`,
-              ...(item.kind === 'cell' ? { width: `${item.width}px` } : {}),
+              ...(item.kind === 'cell'
+                ? {
+                    width: `${item.width}px`,
+                    // The box konva centred the drawn line in, handed to the
+                    // input as a property so the two share one measurement.
+                    '--cell-text-height': `${getCellTextHeight()}px`,
+                  }
+                : {}),
             }}
           >
             {editor(item)}

@@ -26,6 +26,7 @@ import {
   CELL_UNDERLINE_Y,
   COLUMN_TEXT_Y,
   type ColumnCellSlot,
+  getCellTextHeight,
   getColumnCellSlots,
 } from '@/components/erd/canvas/table/cellLayout';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
@@ -34,7 +35,6 @@ import {
   COLUMN_DELETE_WIDTH,
   COLUMN_HEIGHT,
   COLUMN_KEY_WIDTH,
-  INPUT_HEIGHT,
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
 } from '@/constants/layout';
@@ -280,7 +280,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         name="cell-text"
         y={COLUMN_TEXT_Y}
         width={width}
-        height={INPUT_HEIGHT}
+        height={getCellTextHeight()}
         text={text}
         fill={fill}
         fontFamily={SCENE_FONT_FAMILY}

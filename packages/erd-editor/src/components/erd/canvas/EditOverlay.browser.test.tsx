@@ -23,8 +23,10 @@ import {
   SCENE_FONT_SIZE,
 } from '@/components/erd/canvas/sceneTokens';
 import {
-  CELL_TEXT_HEIGHT,
+  CELL_UNDERLINE_Y,
   COLUMN_TEXT_Y,
+  getCellTextBaseline,
+  getCellTextHeight,
   getColumnCellSlots,
   HEADER_CELLS_X,
   HEADER_CELLS_Y,
@@ -34,6 +36,7 @@ import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import * as dataTypeStyles from '@/components/table-view/column/column-data-type/ColumnDataType.styles';
 import { themeContext } from '@/components/themeContext';
 import {
+  INPUT_HEIGHT,
   MEMO_BORDER,
   MEMO_HEADER_HEIGHT,
   MEMO_PADDING,
@@ -820,7 +823,7 @@ function cellTextBaseline(): number {
   const metrics = context.measureText('M');
 
   return (
-    CELL_TEXT_HEIGHT / 2 +
+    getCellTextHeight() / 2 +
     (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2
   );
 }
@@ -833,7 +836,7 @@ function cellTextBaseline(): number {
 function drawBaselineText(): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = 60 * RASTER_SCALE;
-  canvas.height = CELL_TEXT_HEIGHT * RASTER_SCALE;
+  canvas.height = getCellTextHeight() * RASTER_SCALE;
 
   const context = canvas.getContext('2d');
   if (!context) throw new Error('no 2d context to draw the reference line');
@@ -857,7 +860,7 @@ async function drawKonvaText(): Promise<HTMLCanvasElement> {
   const stage = new Stage({
     container,
     width: 60,
-    height: CELL_TEXT_HEIGHT,
+    height: getCellTextHeight(),
   });
   const layer = new Layer();
   stage.add(layer);
@@ -866,7 +869,7 @@ async function drawKonvaText(): Promise<HTMLCanvasElement> {
       x: 0,
       y: 0,
       width: 60,
-      height: CELL_TEXT_HEIGHT,
+      height: getCellTextHeight(),
       text: CELL_SAMPLE,
       fill: '#fff',
       fontFamily: SCENE_FONT_FAMILY,
@@ -898,6 +901,19 @@ describe('the baseline the scene draws a cell line on', () => {
     expect(
       Math.abs(centroidOf(konva) - centroidOf(reference)) / RASTER_SCALE
     ).toBeLessThan(0.05);
+  });
+
+  it('is the whole pixel the cell box was sized to centre one on', () => {
+    // Blink puts a painted baseline on the device grid before the zoom scales
+    // it, and rounds to the css pixel where a device pixel is one. A fraction
+    // here is what one rasteriser keeps and the other takes away.
+    expect(cellTextBaseline()).toBe(getCellTextBaseline());
+    expect(Number.isInteger(getCellTextBaseline())).toBe(true);
+  });
+
+  it('keeps the box it centres in inside the slot, and the line above the rule', () => {
+    expect(getCellTextHeight()).toBeLessThanOrEqual(INPUT_HEIGHT);
+    expect(getCellTextBaseline()).toBeLessThan(CELL_UNDERLINE_Y);
   });
 });
 
@@ -1113,7 +1129,7 @@ function bareLineBaseline(mounted: Mounted): number {
     'display:inline-flex',
     'align-items:center',
     'box-sizing:border-box',
-    `height:${CELL_TEXT_HEIGHT}px`,
+    `height:${getCellTextHeight()}px`,
     'margin:0',
     'padding:0',
     'border:0',
@@ -1177,6 +1193,28 @@ describe('the box the cell editor covers on the scene', () => {
         expect(offBy(box.width, scene.width), `${key} width`).toBeLessThan(
           PLACEMENT_LIMIT_PX
         );
+
+        await closeEditor(fixture);
+      }
+    });
+
+    it(`lands that line on the whole pixel the scene draws at zoom ${zoomLevel}`, async () => {
+      const fixture = await setupStyled();
+      await showEveryCell(fixture, zoomLevel);
+
+      const baseline = getCellTextBaseline();
+      expect(Number.isInteger(baseline)).toBe(true);
+
+      for (const cell of EDITED_CELLS) {
+        await openCell(fixture, cell);
+
+        // The number both rasterisers are answerable for. A fraction here is
+        // rounded by the device scale factor rather than by the zoom, so one
+        // device pixel to a css pixel moves the line and a retina one does not.
+        expect(
+          editorBaselineOf(fixture.mounted, zoomLevel),
+          `${String(cell.focusType)} whole pixel`
+        ).toBeCloseTo(baseline, 3);
 
         await closeEditor(fixture);
       }

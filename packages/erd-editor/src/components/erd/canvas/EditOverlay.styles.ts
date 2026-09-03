@@ -1,7 +1,5 @@
 import { css } from '@dineug/r-html';
 
-import { CELL_TEXT_HEIGHT } from '@/components/erd/canvas/table/cellLayout';
-
 /**
  * A cell editor, laid out on the text the scene drew rather than beside it. The
  * input's own line is centred in the same box konva centred one in, and it
@@ -11,7 +9,7 @@ export const cell = css`
   & .edit-input,
   & .edit-input.focus,
   & .edit-input.edit {
-    height: ${CELL_TEXT_HEIGHT}px;
+    height: var(--cell-text-height);
     border-bottom: 0 none;
     vertical-align: top;
   }

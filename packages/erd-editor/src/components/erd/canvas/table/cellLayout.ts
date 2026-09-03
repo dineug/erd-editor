@@ -1,5 +1,6 @@
 import {
   FOCUS_BORDER_HEIGHT,
+  getSceneFontMetrics,
   TABLE_INSET,
 } from '@/components/erd/canvas/sceneTokens';
 import {
@@ -47,15 +48,39 @@ export const HEADER_CELLS_Y =
 export const HEADER_TEXT_Y = TABLE_HEADER_PADDING;
 export const COLUMN_TEXT_Y = COLUMN_PADDING;
 
-/**
- * The box one line of cell text is laid out in. The scene hands konva this
- * height with verticalAlign middle and the editor gives its input the same one,
- * which is what puts the two baselines in one place instead of two.
- */
-export const CELL_TEXT_HEIGHT = INPUT_HEIGHT;
+/** Where the scene runs its focus rect inside a cell, header and column both. */
+export const CELL_UNDERLINE_Y = INPUT_HEIGHT - FOCUS_BORDER_HEIGHT;
 
-/** Where the scene runs its focus rect inside that box, header and column both. */
-export const CELL_UNDERLINE_Y = CELL_TEXT_HEIGHT - FOCUS_BORDER_HEIGHT;
+/** The line box a cell reserves above its underline, before it is put on a grid. */
+const RAW_CELL_TEXT_HEIGHT = CELL_UNDERLINE_Y;
+
+/**
+ * The baseline one line of cell text is drawn on, down from the top of the
+ * cell. Blink puts a painted baseline on the device grid before the zoom scales
+ * it, so only a whole pixel survives both rasterisers unchanged.
+ *
+ * @example
+ * const baseline = getCellTextBaseline();
+ */
+export function getCellTextBaseline(): number {
+  const { ascent, descent } = getSceneFontMetrics();
+
+  return Math.round(RAW_CELL_TEXT_HEIGHT / 2 + (ascent - descent) / 2);
+}
+
+/**
+ * The box one line of cell text is centred in. The scene hands konva this
+ * height with verticalAlign middle and the editor gives its input the same one,
+ * which is what puts the two baselines on one whole pixel instead of two.
+ *
+ * @example
+ * const height = getCellTextHeight();
+ */
+export function getCellTextHeight(): number {
+  const { ascent, descent } = getSceneFontMetrics();
+
+  return (getCellTextBaseline() - (ascent - descent) / 2) * 2;
+}
 
 /** Where a column row's cells start, past the key badge. */
 export const COLUMN_CELLS_X =

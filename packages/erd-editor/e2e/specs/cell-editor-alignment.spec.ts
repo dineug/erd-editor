@@ -5,23 +5,14 @@ import { expect, test } from '../support/fixtures';
 import { createSchema } from '../support/schema';
 
 /**
- * Two device pixels to a css pixel, which is what a retina display gives. Four
- * lands the whole fixture on the device grid, and a scale that cancels the
- * rounding by construction is no place to guard against it.
+ * The two device grids a cell is drawn on. One device pixel to a css pixel is
+ * where blink rounds a painted baseline that a canvas keeps a fraction of, and
+ * two is a retina display, where the same fraction is already on the grid.
  */
-const SCALE = 2;
-
-test.use({ deviceScaleFactor: SCALE });
+const SCALES = [1, 2];
 
 /** How far a glyph may travel between the two states, in device pixels. */
 const DRIFT_LIMIT_PX = 0.05;
-
-/**
- * What the two rasterisers may disagree by down the page, in css pixels. Blink
- * lands a painted baseline on the device grid and a canvas paints between two,
- * so the layout the editor is placed by is what pins the line to a fraction.
- */
-const BASELINE_ROUNDING_PX = 1;
 
 /**
  * How much of one profile the other cannot account for once it is shifted and
@@ -190,10 +181,14 @@ type Alignment = {
  * fit takes the best scale at every shift, so a state that paints the same
  * glyphs a shade brighter reads as no movement rather than as a little.
  */
-function alignmentOf(before: number[], after: number[]): Alignment {
+function alignmentOf(
+  before: number[],
+  after: number[],
+  scale: number
+): Alignment {
   let best: Alignment = { shift: 0, residual: Infinity };
 
-  for (let shift = -2 * SCALE; shift <= 2 * SCALE; shift += 0.005) {
+  for (let shift = -2 * scale; shift <= 2 * scale; shift += 0.005) {
     let product = 0;
     let square = 0;
     for (let index = 0; index < after.length; index++) {
@@ -227,10 +222,11 @@ function alignmentOf(before: number[], after: number[]): Alignment {
 function expectNoDrift(
   before: number[],
   after: number[],
+  scale: number,
   what: string,
   limit = DRIFT_LIMIT_PX
 ) {
-  const { shift, residual } = alignmentOf(before, after);
+  const { shift, residual } = alignmentOf(before, after, scale);
 
   expect(Math.abs(shift), `${what} drift`).toBeLessThan(limit);
   expect(residual, `${what} shape`).toBeLessThan(RESIDUAL_LIMIT);
@@ -325,6 +321,21 @@ async function textBoxOf(cell: Locator): Promise<Clip> {
   return { x: box.x, y: box.y, width: box.width, height: box.height };
 }
 
+/**
+ * The crop both states are read off: the text box, run down to the bottom of
+ * the rule under it. The box a line is centred in stops short of that rule, and
+ * the rule is what the ink profile finds the glyphs by.
+ */
+async function cropOf(cell: Locator): Promise<Clip> {
+  const box = await textBoxOf(cell);
+  const rule = await cell.locator('[data-focus-border-bottom]').boundingBox();
+  if (!rule) throw new Error('the cell draws no rule to measure against');
+
+  // Rounded up, because a screenshot crops to whole pixels and a rule a fifth
+  // of one thick is the row the profile finds the glyphs by.
+  return { ...box, height: Math.ceil(rule.y + rule.height - box.y) };
+}
+
 type CellCase = {
   key: string;
   cell: (erd: ErdEditorPage) => Locator;
@@ -361,45 +372,102 @@ const CELL_CASES: CellCase[] = [
 const OFF_PIXEL = { x: 401, y: 401, zoomLevel: 1.25 };
 
 /**
- * The offset the editor gives its input back is one number for every cell, so a
- * placement that lands between two pixels is where a per-position correction
- * would show up as drift the round placements above can never produce.
+ * Both device grids, because the two rasterisers round a baseline by the device
+ * scale factor rather than by the zoom. A suite pinned to a retina grid puts
+ * the half pixel this cell used to carry on it, and reads a drift of nothing.
  */
-test('the glyphs hold at a placement that lands off the whole pixel', async ({
-  erd,
-}) => {
-  await erd.seed(seed(OFF_PIXEL.zoomLevel, OFF_PIXEL));
-  await hideProjectedText(erd.page);
-  for (const { key, cell } of CELL_CASES) {
-    const target = cell(erd);
-    await erd.focusCell(target);
-    const clip = await textBoxOf(target);
-    expect(
-      Math.abs(clip.y % 1),
-      `${key} sits off the whole pixel`
-    ).toBeGreaterThan(0.05);
-    const drawn = await profileOf(erd.page, clip);
+for (const scale of SCALES) {
+  test.describe(`on ${scale} device pixels to a css pixel`, () => {
+    test.use({ deviceScaleFactor: scale });
 
-    await erd.press('Enter');
-    await expect(erd.editInput()).toBeFocused();
-    const edited = await profileOf(erd.page, clip);
-    await erd.press('Enter');
-    await expect(erd.editInput()).toHaveCount(0);
+    /**
+     * The offset the editor gives its input back is one number for every cell,
+     * so a placement that lands between two pixels is where a per-position
+     * correction would show up as drift a round placement cannot produce.
+     */
+    test('the glyphs hold at a placement that lands off the whole pixel', async ({
+      erd,
+    }) => {
+      await erd.seed(seed(OFF_PIXEL.zoomLevel, OFF_PIXEL));
+      await hideProjectedText(erd.page);
+      for (const { key, cell } of CELL_CASES) {
+        const target = cell(erd);
+        await erd.focusCell(target);
+        const clip = await cropOf(target);
+        expect(
+          Math.abs(clip.y % 1),
+          `${key} sits off the whole pixel`
+        ).toBeGreaterThan(0.05);
+        const drawn = await profileOf(erd.page, clip);
 
-    // Read only the rows both states agree are above the underline: the two
-    // paint that line in different colours, and the row it half covers falls
-    // on either side of the coverage the band is found by.
-    const cut = cutOf(drawn, edited);
+        await erd.press('Enter');
+        await expect(erd.editInput()).toBeFocused();
+        const edited = await profileOf(erd.page, clip);
+        await erd.press('Enter');
+        await expect(erd.editInput()).toHaveCount(0);
 
-    expectNoDrift(
-      glyphRowsOf(drawn, cut),
-      glyphRowsOf(edited, cut),
-      `${key} vertical`,
-      BASELINE_ROUNDING_PX * SCALE + DRIFT_LIMIT_PX
-    );
-    expectNoDrift(drawn.cols, edited.cols, `${key} horizontal`);
-  }
-});
+        // Read only the rows both states agree are above the underline: the
+        // two paint that line in different colours, and the row it half covers
+        // falls on either side of the coverage the band is found by.
+        const cut = cutOf(drawn, edited);
+
+        expectNoDrift(
+          glyphRowsOf(drawn, cut),
+          glyphRowsOf(edited, cut),
+          scale,
+          `${key} vertical`
+        );
+        expectNoDrift(drawn.cols, edited.cols, scale, `${key} horizontal`);
+      }
+    });
+
+    /**
+     * The editor is dom over a canvas, so nothing short of a measurement says
+     * the two agree. Each case reads one crop twice, once drawn and once
+     * edited, and asks for the same pixels back.
+     */
+    for (const zoomLevel of [0.8, 1, 1.5]) {
+      test(`every cell keeps its glyphs and its underline at zoom ${zoomLevel}`, async ({
+        erd,
+      }) => {
+        await erd.seed(seed(zoomLevel));
+        await hideProjectedText(erd.page);
+        for (const { key, cell } of CELL_CASES) {
+          const target = cell(erd);
+          await erd.focusCell(target);
+          const clip = await cropOf(target);
+          const drawn = await profileOf(erd.page, clip);
+
+          await erd.press('Enter');
+          await expect(erd.editInput()).toBeFocused();
+          const edited = await profileOf(erd.page, clip);
+          await erd.press('Enter');
+          await expect(erd.editInput()).toHaveCount(0);
+
+          expect(drawn.bandTop, `${key} draws an underline`).not.toBeNull();
+          expect(
+            drawn.rows.reduce((total, row) => total + row, 0),
+            `${key} draws glyphs`
+          ).toBeGreaterThan(1);
+
+          expect(edited.bandTop, `${key} underline top`).toBe(drawn.bandTop);
+          expect(edited.bandBottom, `${key} underline bottom`).toBe(
+            drawn.bandBottom
+          );
+
+          const cut = cutOf(drawn, edited);
+          expectNoDrift(
+            glyphRowsOf(drawn, cut),
+            glyphRowsOf(edited, cut),
+            scale,
+            `${key} vertical`
+          );
+          expectNoDrift(drawn.cols, edited.cols, scale, `${key} horizontal`);
+        }
+      });
+    }
+  });
+}
 
 /** The zoom at and below which the scene swaps the whole table for a name. */
 const HIGH_LEVEL_ZOOM = 0.7;
@@ -435,54 +503,6 @@ test('the zoom crossing the swap closes the editor it would strand', async ({
 });
 
 /**
- * The editor is dom over a canvas, so nothing short of a measurement says the
- * two agree. Each case reads one crop twice, once with the scene drawing the
- * text and once with the input over it, and asks for the same pixels back.
- */
-test.describe('the cell editor lands on the text it replaces', () => {
-  for (const zoomLevel of [0.8, 1, 1.5]) {
-    test(`every cell keeps its glyphs and its underline at zoom ${zoomLevel}`, async ({
-      erd,
-    }) => {
-      await erd.seed(seed(zoomLevel));
-      await hideProjectedText(erd.page);
-      for (const { key, cell } of CELL_CASES) {
-        const target = cell(erd);
-        await erd.focusCell(target);
-        const clip = await textBoxOf(target);
-        const drawn = await profileOf(erd.page, clip);
-
-        await erd.press('Enter');
-        await expect(erd.editInput()).toBeFocused();
-        const edited = await profileOf(erd.page, clip);
-        await erd.press('Enter');
-        await expect(erd.editInput()).toHaveCount(0);
-
-        expect(drawn.bandTop, `${key} draws an underline`).not.toBeNull();
-        expect(
-          drawn.rows.reduce((total, row) => total + row, 0),
-          `${key} draws glyphs`
-        ).toBeGreaterThan(1);
-
-        expect(edited.bandTop, `${key} underline top`).toBe(drawn.bandTop);
-        expect(edited.bandBottom, `${key} underline bottom`).toBe(
-          drawn.bandBottom
-        );
-
-        const cut = cutOf(drawn, edited);
-        expectNoDrift(
-          glyphRowsOf(drawn, cut),
-          glyphRowsOf(edited, cut),
-          `${key} vertical`,
-          BASELINE_ROUNDING_PX * SCALE + DRIFT_LIMIT_PX
-        );
-        expectNoDrift(drawn.cols, edited.cols, `${key} horizontal`);
-      }
-    });
-  }
-});
-
-/**
  * What the layout may carry between the box the scene drew and the box the
  * editor covers, in scene pixels. Blink lays out on a sixty fourth of a pixel
  * and the projection nests one box in another, each rounded once.
@@ -490,9 +510,9 @@ test.describe('the cell editor lands on the text it replaces', () => {
 const PLACEMENT_LIMIT_PX = 0.1;
 
 /**
- * The pixels above can only be read to the whole device row the dom rounds a
- * painted baseline onto, and a headless rasteriser rounds where a headed one
- * does not. What the editor is answerable for is the layout under that.
+ * The pixels above can only be read to the whole device row a rasteriser rounds
+ * a painted baseline onto. What the editor is answerable for is the layout
+ * under that, which every device scale factor reads the same.
  */
 test.describe('the line the cell editor lays out', () => {
   for (const zoomLevel of [0.8, 1, 1.5]) {
@@ -537,6 +557,13 @@ test.describe('the line the cell editor lays out', () => {
         const { dom, scene, transform } = await baselinesOf(erd.page);
         expect(scene, `${key} scene baseline`).toBeGreaterThan(0);
         expect(dom, `${key} baseline`).toBeCloseTo(scene, 3);
+        // Blink puts a painted baseline on the device grid before the zoom
+        // scales it, so a fraction here is one the canvas keeps and the dom
+        // rounds away wherever a css pixel is one device pixel.
+        expect(
+          Number.isInteger(scene),
+          `${key} baseline is a whole pixel`
+        ).toBe(true);
         // Nothing on top of that box. A nudge is a guess about which way one
         // rasteriser rounds, and the guess is wrong in a headed browser.
         expect(transform, `${key} untouched`).toBe('none');

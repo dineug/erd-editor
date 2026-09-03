@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { adoptedRules, ruleOf } from '@/__test-utils__/adoptedCss';
 import { cell } from '@/components/erd/canvas/EditOverlay.styles';
-import { CELL_TEXT_HEIGHT } from '@/components/erd/canvas/table/cellLayout';
 import { root } from '@/components/primitives/edit-input/EditInput.styles';
 
 const rules = () => adoptedRules();
@@ -79,7 +78,9 @@ describe('the cell editor box over the scene', () => {
     );
     const style = rule.style;
 
-    expect(style.height).toBe(`${CELL_TEXT_HEIGHT}px`);
+    // The face's own metrics decide that height, so it is written as the
+    // custom property the placed cell resolves rather than a number here.
+    expect(style.height).toBe('var(--cell-text-height)');
     expect(style.borderBottomWidth).toBe('0px');
     expect(style.borderBottomStyle).toBe('none');
     expect(style.verticalAlign).toBe('top');

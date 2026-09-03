@@ -26,6 +26,7 @@ import {
 import {
   CELL_UNDERLINE_Y,
   type CellSlot,
+  getCellTextHeight,
   getHeaderCellSlots,
   HEADER_CELLS_Y,
   HEADER_TEXT_Y,
@@ -37,7 +38,6 @@ import type { IconName } from '@/components/primitives/icon/icons';
 import { useThemeContext } from '@/components/themeContext';
 import {
   HEADER_ICON_HEIGHT,
-  INPUT_HEIGHT,
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
   TABLE_HEADER_BUTTON_MARGIN_LEFT,
@@ -318,7 +318,7 @@ const Table: FC<TableProps> = (props, ctx) => {
         name="cell-text"
         y={HEADER_TEXT_Y}
         width={width}
-        height={INPUT_HEIGHT}
+        height={getCellTextHeight()}
         text={text}
         fill={fill}
         fontFamily={SCENE_FONT_FAMILY}
