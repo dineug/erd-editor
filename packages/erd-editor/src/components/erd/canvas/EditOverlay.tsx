@@ -9,6 +9,7 @@ import {
 } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { takeMemoCaret } from '@/components/erd/canvas/memo/memoCaret';
 import {
   getMemoLineHeightPx,
   MEMO_FONT_WEIGHT,
@@ -52,7 +53,6 @@ import {
 } from '@/konva/scene/metrics';
 import { getSceneOrigin } from '@/konva/scene/viewport';
 import { onStop } from '@/utils/domEvent';
-import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
 import { isHighLevelTable } from '@/utils/validation';
 
@@ -241,9 +241,19 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
     textarea.value?.blur();
   };
 
+  /**
+   * Opens on the glyph the click landed on, with the box held at its first
+   * line. The scene draws a body from that line and keeps no scroll of its own,
+   * so a caret that pulled the box down would move the body under the pointer.
+   */
   onMounted(() => {
     const el = textarea.value;
-    if (el) lastCursorFocus(el);
+    if (!el) return;
+
+    const offset = takeMemoCaret(props.target.memoId);
+    el.setSelectionRange(offset, offset);
+    el.focus({ preventScroll: true });
+    el.scrollTop = 0;
   });
 
   return () => (

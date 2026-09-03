@@ -1,6 +1,10 @@
 import type { CDPSession, Page } from '@playwright/test';
 
-import { ErdEditorPage, type SceneSelector } from '../support/ErdEditorPage';
+import {
+  ErdEditorPage,
+  type Point,
+  type SceneSelector,
+} from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
 import { createSchema, type ErdDocument } from '../support/schema';
 
@@ -37,6 +41,9 @@ const COLUMN_LIMIT_PX = 0.25;
 
 /** Margin around the drawn body, so a crop keeps every row a glyph reaches. */
 const CROP_MARGIN = 3;
+
+/** Every zoom the editor offers between its two ends, which each block walks. */
+const ZOOM_LEVELS = [0.5, 0.75, 0.9, 1, 1.1, 1.25, 1.5];
 
 type Place = { key: string; x: number; y: number };
 
@@ -298,6 +305,109 @@ const LEADING_PROBE_LINES = 10;
 const TALL_BODY = Array.from({ length: 24 }, () => WORD).join('\n');
 
 /**
+ * The whole device pixel the editor over a body longer than its box may sit
+ * from it, either way. That textarea is a scroll container, and blink snaps a
+ * scroller's contents to the device grid; a body that fits does not move.
+ */
+const SNAP_DRIFT_PX = 1;
+
+/** What that snap moves the weight of a row band by, rounding included. */
+const SNAP_ROW_PX = 1.1;
+
+/** And of a column band, which the edge of the crop takes more weight over. */
+const SNAP_COLUMN_PX = 1.3;
+
+/** The box every overflow case below runs in, which its body is taller than. */
+const LONG_BOX = { width: 220, height: 130 };
+
+/** A body of numbered lines, so every line the author wrote reads apart. */
+const NUMBERED_BODY = Array.from(
+  { length: 24 },
+  (_, line) => `${WORD}${line}`
+).join('\n');
+
+/** A body carrying no break of its own, so every line below is one the box folded. */
+const FLOWING_BODY = Array.from(
+  { length: 14 },
+  () => 'the quick brown fox jumps over the lazy dog'
+).join(' ');
+
+type LongBody = {
+  key: string;
+  value: string;
+  /** Whether the author's own breaks are what the body folds at. */
+  authored: boolean;
+};
+
+const LONG_BODIES: LongBody[] = [
+  { key: 'a body of numbered lines', value: NUMBERED_BODY, authored: true },
+  { key: 'a body the box folds', value: FLOWING_BODY, authored: false },
+];
+
+type Reach = {
+  key: string;
+  /** Which of the lines the box shows the pointer lands on. */
+  line: (shown: number) => number;
+  /** How far across the body, in its own pixels rather than the screen's. */
+  x: number;
+};
+
+const REACHES: Reach[] = [
+  { key: 'the first line', line: () => 0, x: 4 },
+  { key: 'a line in the middle', line: shown => Math.floor(shown / 2), x: 40 },
+  { key: 'the last line the box shows', line: shown => shown - 1, x: 200 },
+];
+
+const longSeed = (
+  value: string,
+  zoomLevel: number,
+  place: Place
+): ErdDocument =>
+  createSchema({
+    zoomLevel,
+    memos: [
+      {
+        id: MEMO_ID,
+        value,
+        x: place.x,
+        y: place.y,
+        ...LONG_BOX,
+      },
+    ],
+  });
+
+/** The lines the scene folded the body into, read off the node that drew them. */
+async function drawnLinesOf(erd: ErdEditorPage): Promise<string[]> {
+  const text = await erd.sceneAttr(
+    [`#memo-${MEMO_ID}`, '.memo-textarea'],
+    'text'
+  );
+  expect(typeof text, 'the scene draws a body to read the fold off').toBe(
+    'string'
+  );
+
+  return (text as string).split('\n');
+}
+
+/**
+ * Where each drawn line starts in the value the memo holds. A fold keeps every
+ * character, so one line's own length is the whole step to the next, and a
+ * break the author typed is the single character past it.
+ */
+function startsOf(value: string, lines: string[]): number[] {
+  const starts: number[] = [];
+  let at = 0;
+
+  for (const line of lines) {
+    starts.push(at);
+    at += line.length;
+    if (value[at] === '\n') at += 1;
+  }
+
+  return starts;
+}
+
+/**
  * The advance a real textarea of the memo's own face lays out, measured in the
  * page. The body was a textarea before the scene was a canvas, and it left the
  * leading to line-height normal, which is a number only the browser knows.
@@ -352,7 +462,7 @@ for (const scale of SCALES) {
      * drawing the body and once with the textarea over it, for the same pixels.
      */
     test.describe('the memo body editor lands on the body it replaces', () => {
-      for (const zoomLevel of [0.5, 0.75, 0.9, 1, 1.1, 1.25, 1.5]) {
+      for (const zoomLevel of ZOOM_LEVELS) {
         for (const place of PLACES) {
           test(`every body keeps its glyphs at zoom ${zoomLevel} on ${place.key}`, async ({
             erd,
@@ -542,5 +652,315 @@ for (const scale of SCALES) {
         'sub pixel horizontal drift'
       ).toBeLessThan(COLUMN_LIMIT_PX);
     });
+
+    /**
+     * The case a box that fits its body cannot reach. A caret the editor put
+     * past the fold pulls the textarea down to reach it, and the scene behind
+     * it draws from the first line and has no scroll to follow with.
+     */
+    test.describe('a body taller than the box it is edited in', () => {
+      for (const zoomLevel of ZOOM_LEVELS) {
+        for (const place of PLACES) {
+          for (const body of LONG_BODIES) {
+            test(`${body.key} opens under the pointer at zoom ${zoomLevel} on ${place.key}`, async ({
+              erd,
+            }) => {
+              await quietenOverlay(erd.page);
+              await erd.seed(longSeed(body.value, zoomLevel, place));
+
+              const advance = (await leadingOf(erd)) * zoomLevel;
+              const box = await erd.sceneBox([
+                `#memo-${MEMO_ID}`,
+                '.memo-textarea-hit',
+              ]);
+              const lines = await drawnLinesOf(erd);
+              const starts = startsOf(body.value, lines);
+              const shown = Math.floor(box.height / advance);
+              expect(shown, `${body.key} runs past the box`).toBeLessThan(
+                lines.length
+              );
+
+              const clip = {
+                x: box.x - CROP_MARGIN,
+                y: box.y - CROP_MARGIN,
+                width: box.width + CROP_MARGIN * 2,
+                height: box.height + CROP_MARGIN * 2,
+              };
+              const bands: Band[] = [];
+              for (let line = 0; line < shown; line++) {
+                bands.push([
+                  Math.round((CROP_MARGIN + line * advance) * scale),
+                  Math.round((CROP_MARGIN + (line + 1) * advance) * scale),
+                ]);
+              }
+              const drawn = await profileOf(erd.page, clip, bands);
+              expect(
+                inkOf(drawn.rows),
+                `${body.key} draws glyphs`
+              ).toBeGreaterThan(1);
+
+              for (const reach of REACHES) {
+                const line = reach.line(shown);
+                const label = `${body.key} on ${reach.key}`;
+                expect(
+                  reach.x,
+                  `${reach.key} is a point inside the box`
+                ).toBeLessThan(LONG_BOX.width);
+                await erd.clickAt({
+                  x: box.x + reach.x * zoomLevel,
+                  y: box.y + line * advance + advance / 2,
+                });
+                await expect(erd.memoEditor).toBeFocused();
+
+                const caret = await erd.memoEditor.evaluate(
+                  (el: HTMLTextAreaElement) => ({
+                    scrollTop: el.scrollTop,
+                    selectionStart: el.selectionStart,
+                  })
+                );
+                const edited = await profileOf(erd.page, clip, bands);
+                await closeEditor(erd);
+                await erd.hoverAway();
+
+                bands.forEach(([from, to], shownLine) => {
+                  const rowsBefore = drawn.rows.slice(from, to);
+                  const rowsAfter = edited.rows.slice(from, to);
+                  const at = `${label} line ${shownLine}`;
+                  expect(
+                    Math.abs(driftOf(rowsBefore, rowsAfter, scale)) * scale,
+                    `${at} vertical drift`
+                  ).toBeLessThanOrEqual(SNAP_DRIFT_PX);
+                  expect(
+                    Math.abs(centroidOf(rowsAfter) - centroidOf(rowsBefore)),
+                    `${at} sub pixel vertical drift`
+                  ).toBeLessThan(SNAP_ROW_PX);
+                  expect(
+                    Math.abs(
+                      driftOf(
+                        drawn.cols[shownLine],
+                        edited.cols[shownLine],
+                        scale
+                      )
+                    ) * scale,
+                    `${at} horizontal drift`
+                  ).toBeLessThanOrEqual(SNAP_DRIFT_PX);
+                  expect(
+                    Math.abs(
+                      centroidOf(edited.cols[shownLine]) -
+                        centroidOf(drawn.cols[shownLine])
+                    ),
+                    `${at} sub pixel horizontal drift`
+                  ).toBeLessThan(SNAP_COLUMN_PX);
+                });
+
+                expect(
+                  caret.scrollTop,
+                  `${label} holds the box at the line the scene starts on`
+                ).toBe(0);
+                expect(
+                  caret.selectionStart,
+                  `${label} puts the caret no earlier than that line`
+                ).toBeGreaterThanOrEqual(starts[line]);
+                expect(
+                  caret.selectionStart,
+                  `${label} puts the caret no later than that line`
+                ).toBeLessThanOrEqual(starts[line] + lines[line].length);
+                if (body.authored) {
+                  expect(
+                    body.value.slice(0, caret.selectionStart).split('\n')
+                      .length - 1,
+                    `${label} puts the caret on the line the author wrote`
+                  ).toBe(line);
+                }
+              }
+            });
+          }
+        }
+      }
+    });
   });
 }
+
+/** Written out because a comment cannot show the character it names. */
+const CARRIAGE_RETURN = String.fromCharCode(13);
+
+type CaretBody = {
+  key: string;
+  value: string;
+  /** The string a textarea holds for that body, which an offset indexes. */
+  held: string;
+  width: number;
+};
+
+const CARET_BODIES: CaretBody[] = [
+  {
+    key: 'a body the box has room under',
+    value: 'hello',
+    held: 'hello',
+    width: 220,
+  },
+  {
+    key: 'two lines the author wrote',
+    value: ['first line here', 'second line here'].join('\n'),
+    held: ['first line here', 'second line here'].join('\n'),
+    width: 220,
+  },
+  {
+    key: 'two lines of hangul',
+    value: ['첫째 줄 한글입니다', '둘째 줄 한글입니다'].join('\n'),
+    held: ['첫째 줄 한글입니다', '둘째 줄 한글입니다'].join('\n'),
+    width: 220,
+  },
+  {
+    key: 'a body the box folds',
+    value: 'the quick brown fox jumps over the lazy dog once more',
+    held: 'the quick brown fox jumps over the lazy dog once more',
+    width: 130,
+  },
+  {
+    key: 'a body stored with carriage returns',
+    value: ['alpha', 'bravo', 'charlie'].join(CARRIAGE_RETURN + '\n'),
+    held: ['alpha', 'bravo', 'charlie'].join('\n'),
+    width: 220,
+  },
+];
+
+const caretSeed = (
+  body: CaretBody,
+  zoomLevel: number,
+  place: Place
+): ErdDocument =>
+  createSchema({
+    zoomLevel,
+    memos: [
+      {
+        id: MEMO_ID,
+        value: body.value,
+        x: place.x,
+        y: place.y,
+        width: body.width,
+        height: 130,
+      },
+    ],
+  });
+
+/**
+ * Both answers for one screen point: the offset the scene mapped a click to,
+ * and the offset blink puts the caret at for the same point on the textarea now
+ * over it. The second is what the body did before the scene became a canvas.
+ */
+async function caretPairAt(erd: ErdEditorPage, point: Point) {
+  // An open editor covers the box, so the first click has to reach the scene
+  // or both answers come back off the same textarea and always agree.
+  if (await erd.memoEditor.count()) {
+    await closeEditor(erd);
+    await erd.hoverAway();
+  }
+  await erd.clickAt(point);
+  await expect(erd.memoEditor).toBeFocused();
+  const read = (el: HTMLTextAreaElement) => el.selectionStart;
+  const mapped = await erd.memoEditor.evaluate(read);
+  await erd.clickAt(point);
+  const native = await erd.memoEditor.evaluate(read);
+
+  return { mapped, native };
+}
+
+/**
+ * A whole viewport pixel, which is the only x both answers read alike. Blink
+ * hit tests a click at the coordinate it arrived on while a script is handed
+ * that coordinate rounded, so a fractional point is answered from two numbers.
+ */
+const wholePoint = (x: number, y: number): Point => ({
+  x: Math.round(x),
+  y: Math.round(y),
+});
+
+/**
+ * A canvas has no caret, so where a click leaves one is a decision this editor
+ * makes rather than one the platform makes for it. Every case below asks blink
+ * for the same point on a real textarea and holds the mapping to that answer.
+ */
+test.describe('the caret a click on a drawn memo body leaves', () => {
+  for (const zoomLevel of ZOOM_LEVELS) {
+    for (const place of PLACES) {
+      test(`lands where a textarea would put it at zoom ${zoomLevel} on ${place.key}`, async ({
+        erd,
+      }) => {
+        for (const body of CARET_BODIES) {
+          await erd.seed(caretSeed(body, zoomLevel, place));
+
+          const advance = (await leadingOf(erd)) * zoomLevel;
+          const box = await erd.sceneBox([
+            `#memo-${MEMO_ID}`,
+            '.memo-textarea-hit',
+          ]);
+          const lines = await drawnLinesOf(erd);
+          const starts = startsOf(body.held, lines);
+          expect(
+            (lines.length + 1) * advance,
+            `${body.key} leaves the box room under it`
+          ).toBeLessThan(box.height);
+
+          const below = [
+            wholePoint(box.x + 2, box.y + (lines.length + 0.5) * advance),
+            wholePoint(box.x + box.width / 2, box.y + box.height - 2),
+            wholePoint(box.x + box.width - 2, box.y + box.height - 2),
+          ];
+          for (const point of below) {
+            const caret = await caretPairAt(erd, point);
+            expect(
+              caret.mapped,
+              `${body.key} under the body at ${point.x}`
+            ).toBe(caret.native);
+            expect(
+              caret.mapped,
+              `${body.key} under the body takes the end`
+            ).toBe(body.held.length);
+          }
+
+          for (const [line, text] of lines.entries()) {
+            const y = box.y + line * advance + advance / 2;
+            // Zoomed out, one screen pixel is two of the body's own, so the
+            // nearest click to the left edge can be a glyph in and the offset
+            // it lands on is blink's to say rather than this suite's.
+            const left = await caretPairAt(erd, wholePoint(box.x + 1, y));
+            expect(left.mapped, `${body.key} line ${line} left edge`).toBe(
+              left.native
+            );
+            expect(
+              left.mapped,
+              `${body.key} line ${line} opens no earlier`
+            ).toBeGreaterThanOrEqual(starts[line]);
+            expect(
+              left.mapped,
+              `${body.key} line ${line} opens no later`
+            ).toBeLessThanOrEqual(starts[line] + text.length);
+
+            const right = await caretPairAt(
+              erd,
+              wholePoint(box.x + box.width - 2, y)
+            );
+            expect(right.mapped, `${body.key} line ${line} right edge`).toBe(
+              right.native
+            );
+            expect(right.mapped, `${body.key} line ${line} ends`).toBe(
+              starts[line] + text.length
+            );
+          }
+
+          expect(
+            await erd.memoEditor.inputValue(),
+            `${body.key} reaches the editor as the element holds it`
+          ).toBe(body.held);
+          await closeEditor(erd);
+          expect(
+            (await erd.memo(MEMO_ID)).value,
+            `${body.key} is not rewritten by a click`
+          ).toBe(body.value);
+          await erd.hoverAway();
+        }
+      });
+    }
+  }
+});

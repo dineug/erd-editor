@@ -6,6 +6,10 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import { useAppContext } from '@/components/appContext';
 import MemoSash from '@/components/erd/canvas/memo/memo-sash/MemoSash';
 import {
+  memoCaretOffsetAt,
+  requestMemoCaret,
+} from '@/components/erd/canvas/memo/memoCaret';
+import {
   getMemoLineHeight,
   layoutMemoLines,
   MEMO_FONT_WEIGHT,
@@ -91,11 +95,26 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     );
   };
 
-  const handleEditValue = () => {
+  /**
+   * Opens the body editor with its caret on the glyph the pointer was over. The
+   * point is read in the text group's own space, which is where the body was
+   * folded, so the mapping holds at any zoom and any scroll.
+   */
+  const handleEditValue = (event: SceneMouseEvent) => {
     if (props.preview) return;
 
     const { store } = app.value;
-    store.dispatch(editMemoAction({ id: props.memo.id }));
+    const { memo } = props;
+    const point = event.currentTarget.getRelativePointerPosition();
+
+    if (point) {
+      requestMemoCaret(
+        memo.id,
+        memoCaretOffsetAt(memo.value, memo.ui.width, point.x, point.y)
+      );
+    }
+
+    store.dispatch(editMemoAction({ id: memo.id }));
   };
 
   const handleValueMouseenter = (event: SceneMouseEvent) => {
