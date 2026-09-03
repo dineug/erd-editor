@@ -48,6 +48,10 @@ export default defineConfig({
           exclude: [...defaultExclude, browserSpecs],
           environment: 'happy-dom',
           setupFiles: ['./vitest.setup.ts'],
+          // Three hooks here import the editor graph, whose cold transform
+          // grew past the default when the scene landed in it. The bound suits
+          // a machine running the other packages' suites beside this one.
+          hookTimeout: 60_000,
         },
       },
       {
