@@ -154,6 +154,18 @@ async function editTableName(fixture: Fixture) {
   await flush();
 }
 
+async function editTableComment(fixture: Fixture) {
+  const { store } = fixture.app;
+  store.dispatchSync(
+    focusTableAction({
+      tableId: fixture.tableId,
+      focusType: FocusType.tableComment,
+    }),
+    editTableAction()
+  );
+  await flush();
+}
+
 async function editColumnName(fixture: Fixture) {
   const { store } = fixture.app;
   store.dispatchSync(
@@ -396,6 +408,27 @@ describe('the editing overlay', () => {
       expect(inputOf(fixture.mounted)).toBeNull();
       // Removing the input blurs it, which is what ends the edit and hands the
       // keyboard back to the canvas shortcuts.
+      expect(store.state.editor.focusTable?.edit).toBe(false);
+    }
+  );
+
+  it.each([
+    ['a header cell', editTableComment, Show.tableComment],
+    ['a column cell', editColumnDataType, Show.columnDataType],
+  ])(
+    'closes %s once the settings stop showing it',
+    async (_, openEditor, show) => {
+      const fixture = await setup();
+      await openEditor(fixture);
+      expect(inputOf(fixture.mounted)).toBeTruthy();
+
+      const { store } = fixture.app;
+      store.dispatchSync(changeShowAction({ show, value: false }));
+      await flush();
+
+      // The cell has no slot to sit in once its column is off, and a host or a
+      // peer can turn one off while the editor is open on it.
+      expect(inputOf(fixture.mounted)).toBeNull();
       expect(store.state.editor.focusTable?.edit).toBe(false);
     }
   );
