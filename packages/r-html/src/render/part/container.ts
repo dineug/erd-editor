@@ -70,9 +70,7 @@ export class ContainerPart implements Part {
 
   destroy() {
     this.#parts.forEach(part => part.destroy?.());
-    this.#helper
-      .rangeNodes(this.#startNode, this.#endNode)
-      .forEach(node => this.#helper.removeNode(node));
+    this.#helper.removeRange(this.#startNode, this.#endNode);
     if (!this.#isInject) {
       this.#helper.removeNode(this.#startNode);
       this.#helper.removeNode(this.#endNode);

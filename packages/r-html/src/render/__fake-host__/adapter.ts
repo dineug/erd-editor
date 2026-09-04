@@ -6,7 +6,7 @@ import {
   insertInto,
   isFakeNode,
 } from '@/render/__fake-host__/tree';
-import type { HostAdapter, HostNode } from '@/render/adapter';
+import type { HostAdapter } from '@/render/adapter';
 import type { Context } from '@/render/part/node/component/observableComponent';
 
 export type FakeHostOps = Record<string, number>;
@@ -16,8 +16,6 @@ export interface FakeHost {
   ops: FakeHostOps;
   resetOps(): void;
 }
-
-const asNode = (value: HostNode) => value as FakeNode;
 
 function countCalls(adapter: HostAdapter, ops: FakeHostOps): HostAdapter {
   const counted: Record<string, any> = {};
@@ -56,65 +54,63 @@ export function createFakeHost(): FakeHost {
     createFragment: () => createFakeNode('fragment'),
     createEventBus: () => createFakeNode('eventBus'),
 
-    insertBefore(newChild: HostNode, refChild: HostNode) {
-      const ref = asNode(refChild);
-      if (!ref.parent) return;
+    insertBefore(newChild: FakeNode, refChild: FakeNode) {
+      if (!refChild.parent) return;
 
-      insertInto(ref.parent, asNode(newChild), ref);
+      insertInto(refChild.parent, newChild, refChild);
     },
-    appendChild(parent: HostNode, newChild: HostNode) {
-      insertInto(asNode(parent), asNode(newChild), null);
+    appendChild(parent: FakeNode, newChild: FakeNode) {
+      insertInto(parent, newChild, null);
     },
-    prependChild(parent: HostNode, newChild: HostNode) {
-      const target = asNode(parent);
-      insertInto(target, asNode(newChild), target.first);
+    prependChild(parent: FakeNode, newChild: FakeNode) {
+      insertInto(parent, newChild, parent.first);
     },
-    removeChild(node: HostNode) {
-      detach(asNode(node));
+    removeChild(node: FakeNode) {
+      detach(node);
     },
-    parentOf: (node: HostNode) => asNode(node).parent,
-    nextSiblingOf: (node: HostNode) => asNode(node).next,
+    parentOf: (node: FakeNode) => node.parent,
+    nextSiblingOf: (node: FakeNode) => node.next,
 
-    setText(node: HostNode, value: string) {
-      asNode(node).data = value;
+    setText(node: FakeNode, value: string) {
+      node.data = value;
     },
     setAttribute(
-      node: HostNode,
+      node: FakeNode,
       name: string,
       value: any,
       isSingleMarker: boolean
     ) {
-      asNode(node).attrs.set(name, isSingleMarker ? value : String(value));
+      node.attrs.set(name, isSingleMarker ? value : String(value));
     },
-    removeAttribute(node: HostNode, name: string) {
-      asNode(node).attrs.delete(name);
+    removeAttribute(node: FakeNode, name: string) {
+      node.attrs.delete(name);
     },
 
     isHostNode: isFakeNode,
-    isMarker: (value: any): value is HostNode =>
+    isMarker: (value: any): value is FakeNode =>
       isFakeNode(value) && value.kind === 'marker',
-    isText: (value: any): value is HostNode =>
+    isText: (value: any): value is FakeNode =>
       isFakeNode(value) && value.kind === 'text',
-    isElement: (value: any): value is HostNode =>
+    isElement: (value: any): value is FakeNode =>
       isFakeNode(value) && value.kind === 'element',
-    isFragment: (value: any): value is HostNode =>
+    isFragment: (value: any): value is FakeNode =>
       isFakeNode(value) && value.kind === 'fragment',
 
     addEventListener(
-      node: HostNode,
+      node: FakeNode,
       type: string,
       listener: any,
       options?: any
     ) {
-      asNode(node).listeners.push({ type, listener, options });
+      node.listeners.push({ type, listener, options });
     },
     removeEventListener(
-      node: HostNode,
+      node: FakeNode,
       type: string,
       listener: any,
       options?: any
     ) {
-      const listeners = asNode(node).listeners;
+      const { listeners } = node;
       const index = listeners.findIndex(
         entry =>
           entry.type === type &&
@@ -125,25 +121,21 @@ export function createFakeHost(): FakeHost {
       index === -1 || listeners.splice(index, 1);
     },
 
-    getRoot: (node: HostNode) => rootOf(asNode(node)),
-    createComponentContext(startNode: HostNode, eventBus: HostNode): Context {
-      const start = asNode(startNode);
-      const bus = asNode(eventBus);
-
+    getRoot: rootOf,
+    createComponentContext(startNode: FakeNode, eventBus: FakeNode): Context {
       return {
-        host: rootOf(start) as unknown as HTMLElement,
+        host: rootOf(startNode) as unknown as HTMLElement,
         get parentElement() {
-          return start.parent as unknown as HTMLElement | null;
+          return startNode.parent as unknown as HTMLElement | null;
         },
-        dispatchEvent: (event: Event) => dispatchFakeEvent(bus, event),
+        dispatchEvent: (event: Event) => dispatchFakeEvent(eventBus, event),
       };
     },
-    bridgeFragment(fragment: HostNode, root: HostNode) {
-      const parked = asNode(fragment);
-      bridges.set(parked, asNode(root));
+    bridgeFragment(fragment: FakeNode, root: FakeNode) {
+      bridges.set(fragment, root);
 
       return () => {
-        bridges.delete(parked);
+        bridges.delete(fragment);
       };
     },
   };

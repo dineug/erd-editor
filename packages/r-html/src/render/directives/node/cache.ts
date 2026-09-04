@@ -53,9 +53,7 @@ export const cache = createNodeDirective(
     const destroy = () => {
       cache.forEach(({ destroy }) => destroy());
       cache = new Map();
-      helper
-        .rangeNodes(startNode, endNode)
-        .forEach(node => helper.removeNode(node));
+      helper.removeRange(startNode, endNode);
     };
 
     return value => {

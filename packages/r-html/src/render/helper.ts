@@ -30,8 +30,8 @@ export interface HostHelper extends HostAdapter {
   insertBeforeNode(newChild: HostNode, refChild: HostNode): void;
   insertAfterNode(newChild: HostNode, refChild: HostNode): void;
   removeNode(node: HostNode): HostNode | null;
-  isNode(value: any): value is HostNode;
   rangeNodes(startNode: HostNode, endNode: HostNode): HostNode[];
+  removeRange(startNode: HostNode, endNode: HostNode): void;
 }
 
 export function createHostHelper(adapter: HostAdapter): HostHelper {
@@ -89,6 +89,11 @@ export function createHostHelper(adapter: HostAdapter): HostHelper {
     return nodes;
   };
 
+  /** Removes every host node a part rendered between its two markers. */
+  const removeRange = (startNode: HostNode, endNode: HostNode) => {
+    rangeNodes(startNode, endNode).forEach(removeNode);
+  };
+
   return {
     ...adapter,
     createNode,
@@ -96,8 +101,8 @@ export function createHostHelper(adapter: HostAdapter): HostHelper {
     insertBeforeNode,
     insertAfterNode,
     removeNode,
-    isNode: adapter.isHostNode,
     rangeNodes,
+    removeRange,
   };
 }
 
@@ -118,12 +123,10 @@ export const setAttr = domHelper.setAttr;
 export const insertBeforeNode = domHelper.insertBeforeNode;
 export const insertAfterNode = domHelper.insertAfterNode;
 export const removeNode = domHelper.removeNode;
-export const isNode = domHelper.isNode;
 export const rangeNodes = domHelper.rangeNodes;
-export const appendChild = domHelper.appendChild;
-export const createMarker = domHelper.createMarker;
-export const createFragment = domHelper.createFragment;
+export const removeRange = domHelper.removeRange;
 export const isHostNode = domHelper.isHostNode;
+export const isNode = isHostNode;
 
 export function setProps(props: any, { type, name, value }: TAttr) {
   switch (type) {

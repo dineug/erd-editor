@@ -35,34 +35,36 @@ export class EventPart implements Part {
     if (equalValues(this.#values, newValues)) return;
 
     this.clear();
-    newValues.forEach((handle: any) =>
-      isFunction(handle)
-        ? this.#helper.addEventListener(this.#node, this.#attrName, handle)
-        : this.#helper.addEventListener(
-            this.#node,
-            this.#attrName,
-            handle[0],
-            handle[1]
-          )
-    );
+    newValues.forEach(handle => {
+      const [listener, options] = toListenerTuple(handle);
+      this.#helper.addEventListener(
+        this.#node,
+        this.#attrName,
+        listener,
+        options
+      );
+    });
 
     this.#values = newValues;
   }
 
   clear() {
-    this.#values.forEach(handle =>
-      isFunction(handle)
-        ? this.#helper.removeEventListener(this.#node, this.#attrName, handle)
-        : this.#helper.removeEventListener(
-            this.#node,
-            this.#attrName,
-            handle[0],
-            handle[1]
-          )
-    );
+    this.#values.forEach(handle => {
+      const [listener, options] = toListenerTuple(handle);
+      this.#helper.removeEventListener(
+        this.#node,
+        this.#attrName,
+        listener,
+        options
+      );
+    });
   }
 
   destroy() {
     this.clear();
   }
+}
+
+function toListenerTuple(handle: any): [Function, any] {
+  return isFunction(handle) ? [handle, undefined] : handle;
 }

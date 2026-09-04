@@ -27,9 +27,7 @@ export const domAdapter: HostAdapter = {
     parent.prepend(newChild);
   },
   removeChild(node: Node) {
-    if (node.parentNode) {
-      node.parentNode.removeChild(node);
-    }
+    node.parentNode?.removeChild(node);
   },
   parentOf: (node: Node) => node.parentNode,
   nextSiblingOf: (node: Node) => node.nextSibling,
@@ -88,8 +86,7 @@ export const domAdapter: HostAdapter = {
     const rootNode = startNode.getRootNode();
 
     if (rootNode instanceof ShadowRoot) {
-      const host = rootNode.host as HTMLElement;
-      ctx.host = host;
+      ctx.host = rootNode.host as HTMLElement;
     } else if (rootNode instanceof DocumentFragment) {
       const host = getFragmentHost(rootNode);
       if (host) {

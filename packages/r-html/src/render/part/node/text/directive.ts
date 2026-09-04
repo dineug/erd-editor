@@ -56,9 +56,7 @@ export class DirectivePart implements Part {
 
   clear() {
     this.#directiveDestroy?.();
-    this.#helper
-      .rangeNodes(this.#startNode, this.#endNode)
-      .forEach(node => this.#helper.removeNode(node));
+    this.#helper.removeRange(this.#startNode, this.#endNode);
   }
 
   destroy() {

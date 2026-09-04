@@ -50,17 +50,12 @@ export class ObjectPart implements Part {
 
   partClear() {
     this.#part?.destroy?.();
-    this.#helper
-      .rangeNodes(this.#startNode, this.#endNode)
-      .forEach(node => this.#helper.removeNode(node));
+    this.#helper.removeRange(this.#startNode, this.#endNode);
   }
 
   clear() {
     this.#cancel();
-    this.#part?.destroy?.();
-    this.#helper
-      .rangeNodes(this.#startNode, this.#endNode)
-      .forEach(node => this.#helper.removeNode(node));
+    this.partClear();
     this.#cancel = noop;
   }
 

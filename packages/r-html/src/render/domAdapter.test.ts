@@ -138,20 +138,8 @@ describe('domAdapter values', () => {
 });
 
 describe('domAdapter predicates', () => {
-  it('answers isHostNode exactly as isNode does', () => {
-    const values = [
-      document.createElement('div'),
-      document.createComment(''),
-      document.createTextNode(''),
-      document.createDocumentFragment(),
-      'div',
-      null,
-      {},
-    ];
-
-    expect(values.map(value => domAdapter.isHostNode(value))).toEqual(
-      values.map(value => isNode(value))
-    );
+  it('keeps isNode as the adapter predicate under its old name', () => {
+    expect(isNode).toBe(domAdapter.isHostNode);
   });
 
   it('separates markers, text, elements and fragments', () => {
